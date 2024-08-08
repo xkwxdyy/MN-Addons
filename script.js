@@ -41,7 +41,7 @@ function update(plugins) {
 
         const installBtn = document.createElement("button");
         switch (plugin.action) {
-          case "Re-install":
+          case "reinstall":
             installBtn.textContent = "Install";
             installBtn.className = "reinstall-btn";
             installBtn.addEventListener("click", (event) => {
@@ -49,7 +49,7 @@ function update(plugins) {
                 window.location.href = `mnaddon://action=reinstall?id=${plugin.id}?version=${plugin.version}`
             });
             break;
-          case "Install":
+          case "install":
             installBtn.textContent = "Install";
             installBtn.className = "install-btn";
             installBtn.addEventListener("click", (event) => {
@@ -57,7 +57,7 @@ function update(plugins) {
                 window.location.href = `mnaddon://action=install?id=${plugin.id}?version=${plugin.version}`
             });
             break;
-          case "Update":
+          case "update":
             installBtn.textContent = "Update";
             installBtn.className = "update-btn";
             installBtn.addEventListener("click", (event) => {

@@ -1274,6 +1274,15 @@ class MNNote{
     return MNUtil.version.version+'app://note/'+this.note.noteId
   }
   /**
+   * @returns {MNNote|undefined}
+   */
+  get childMindMap(){
+    if (this.note.childMindMap) {
+      return MNNote.new(this.note.childMindMap)
+    }
+    return undefined
+  }
+  /**
    * 
    * @returns {{descendant:MNNote[],treeIndex:number[][]}}
    */
@@ -1830,7 +1839,7 @@ class MNNote{
    * @param {{title:String,excerptText:string,excerptTextMarkdown:boolean,content:string,markdown:boolean,color:number}} config 
    * @returns {MNNote}
    */
-  createChildNote(config) {
+  createChildNote(config,undoGrouping=true) {
     let child
     let note = this
     let noteIdInMindmap = this.note.realGroupNoteIdForTopicId(MNUtil.currentNotebookId)
@@ -1838,18 +1847,23 @@ class MNNote{
       //对文档摘录添加子节点是无效的，需要对其脑图中的节点执行添加子节点
       note = MNNote.new(noteIdInMindmap) 
     }
-    MNUtil.undoGrouping(()=>{
+    if (undoGrouping) {
+      MNUtil.undoGrouping(()=>{
+        try {
+          child = MNNote.new(config)
+          this.addChild(child)
+        } catch (error) {
+          MNUtil.showHUD("Error in createChildNote:"+error)
+        }
+      })
+    }else{
       try {
-      child = MNNote.new(config)
-      // child.focusInMindMap()
-
-      // this.focusInMindMap()
-      // this.note.addChild(child.note)
-      this.addChild(child)
+        child = MNNote.new(config)
+        this.addChild(child)
       } catch (error) {
         MNUtil.showHUD("Error in createChildNote:"+error)
       }
-    })
+    }
     return child
   }
   /**
@@ -1857,17 +1871,28 @@ class MNNote{
    * @param {{title:String,content:String,markdown:Boolean,color:Number}} config 
    * @returns {MNNote}
    */
-  createBrotherNote(config) {
-    if (!this.parentNote) {
+  createBrotherNote(config,undoGrouping=true) {
+    let note = this
+    let noteIdInMindmap = this.note.realGroupNoteIdForTopicId(MNUtil.currentNotebookId)
+    if (noteIdInMindmap && this.noteId !== noteIdInMindmap) {
+      //对文档摘录添加子节点是无效的，需要对其脑图中的节点执行添加子节点
+      note = MNNote.new(noteIdInMindmap) 
+    }
+    if (!note.parentNote) {
       MNUtil.showHUD("No parent note!")
       return
     }
     let child
-    let parent = this.parentNote
-    MNUtil.undoGrouping(()=>{
+    let parent = note.parentNote
+    if (undoGrouping) {
+      MNUtil.undoGrouping(()=>{
+        child = MNNote.new(config)
+        parent.addChild(child)
+      })
+    }else{
       child = MNNote.new(config)
       parent.addChild(child)
-    })
+    }
     return child
   }
   /**

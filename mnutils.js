@@ -1675,9 +1675,174 @@ class MNNote{
   paste(){
     this.note.paste()
   }
-  /*
-    夏大鱼羊定制 - 开始
-  */
+  /**
+   * 夏大鱼羊定制 - begin
+   */
+  ifTemplateOldVersion(){
+    let remarkHtmlCommentIndex = this.getCommentIndex("Remark：",true)
+    return remarkHtmlCommentIndex !== -1
+  }
+  /**
+   * @param {Array<string>} types
+   */
+  removeCommentsByTypes(types){
+    if (Array.isArray(types)) {
+      types.forEach(type => {
+        this.removeCommentsByType(type)
+      });
+    } else {
+      MNUtil.showHUD("Please provide types in an array!")
+    }
+  }
+  /**
+   * @param {String} type
+   */
+  removeCommentsByType(type){
+    if (typeof type == "string") {
+      switch (type) {
+        /**
+         * 链接
+         */
+        case "link":
+        case "links":
+        case "Link":
+        case "Links":
+        case "alllink":
+        case "alllinks":
+        case "allLink":
+        case "allLinks":
+          for (let i = this.comments.length-1; i >= 0; i--) {
+            let comment = this.comments[i]
+            if (
+              comment.type == "TextNote" &&
+              (
+                comment.text.includes("marginnote3") ||
+                comment.text.includes("marginnote4")
+              )
+            ) {
+              this.removeCommentByIndex(i)
+            }
+          }
+          break;
+        
+        /**
+         * 手写
+         */
+        case "paint":
+        case "painting":
+        case "Paint":
+        case "Painting":
+        case "Handwriting":
+        case "HandWriting":
+        case "handwriting":
+          for (let i = this.comments.length-1; i >= 0; i--) {
+            let comment = this.comments[i]
+            if (
+              comment.type == "PaintNote"
+            ) {
+              this.removeCommentByIndex(i)
+            }
+          }
+          break;
+
+        /**
+         * 所有文本（不包括链接）
+         */
+        case "text":
+        case "Text":
+        case "alltext":
+        case "allText":
+          for (let i = this.comments.length-1; i >= 0; i--) {
+            let comment = this.comments[i]
+            if (
+              comment.type == "HtmlNote" ||
+              (
+                comment.type == "TextNote" &&
+                !(
+                  comment.text.includes("marginnote3") ||
+                  comment.text.includes("marginnote4")
+                )
+              )
+            ) {
+              this.removeCommentByIndex(i)
+            }
+          }
+          break;
+
+        /**
+         * Markdown 文本
+         */
+        case "markdown":
+        case "Markdown":
+        case "md":
+        case "MD":
+        case "MarkdownText":
+        case "mdtext":
+        case "MdText":
+        case "mdText":
+        case "Mdtext":
+        case "Markdowntext":
+          for (let i = this.comments.length-1; i >= 0; i--) {
+            let comment = this.comments[i]
+            if (
+              comment.type == "TextNote" &&
+              !(
+                comment.text.includes("marginnote3") ||
+                comment.text.includes("marginnote4")
+              )
+            ) {
+              this.removeCommentByIndex(i)
+            }
+          }
+          break;
+
+        /**
+         * Html 文本
+         */
+        case "html":
+        case "Html":
+        case "HTML":
+        case "HtmlText":
+        case "htmltext":
+        case "Htmltext":
+        case "htmlText":
+          for (let i = this.comments.length-1; i >= 0; i--) {
+            let comment = this.comments[i]
+            if (
+              comment.type == "HtmlNote"
+            ) {
+              this.removeCommentByIndex(i)
+            }
+          }
+          break;
+
+        /**
+         * 摘录
+         */
+        case "excerpt":
+        case "excerpts":
+        case "Excerpt":
+        case "Excerpts":
+        case "LinkNote":
+        case "LinkNotes":
+        case "linknote":
+        case "linknotes":
+          for (let i = this.comments.length-1; i >= 0; i--) {
+            let comment = this.comments[i]
+            if (
+              comment.type == "LinkNote"
+            ) {
+              this.removeCommentByIndex(i)
+            }
+          }
+          break;
+
+        default:
+          MNUtil.showHUD('No "' + type + '" type!')
+          break;
+      }
+    }
+  }
   refresh(){
     this.note.appendMarkdownComment("")
     this.note.removeCommentByIndex(this.note.comments.length-1)

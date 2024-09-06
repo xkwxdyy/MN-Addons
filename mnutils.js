@@ -1,3 +1,75 @@
+/**
+ * 夏大鱼羊 - begin
+ */
+
+/**
+ * 判断输入的字符串是否是卡片 URL 或者卡片 ID
+ */
+String.prototype.ifNoteIdorURL = function () {
+  return (
+    /^marginnote\dapp:\/\/note\//.test(this) ||
+    this.ifValidNoteId()
+  )
+}
+String.prototype.ifNoteURLorId = function () {
+  return this.ifNoteIdorURL()
+}
+String.prototype.ifNoteURLorID = function () {
+  return this.ifNoteIdorURL()
+}
+String.prototype.ifNoteIDorURL = function () {
+  return this.ifNoteIdorURL()
+}
+
+/**
+ * 判断是否是有效的卡片 ID
+ */
+String.prototype.ifValidNoteId = function() {
+  const regex = /^[0-9A-Z]{8}-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{12}$/;
+  return regex.test(this);
+}
+String.prototype.ifNoteId = function() {
+  return this.ifValidNoteId()
+}
+
+/**
+ * 把 ID 或 URL 统一转化为 URL
+ */
+String.prototype.toNoteURL = function() {
+  if (this.ifNoteIdorURL()) {
+    let noteId = this.trim()
+    let noteURL
+    if (/^marginnote\dapp:\/\/note\//.test(noteId)) {
+      noteURL = noteId
+    } else {
+      noteURL = "marginnote4app://note/" + noteId
+    }
+    return noteURL
+  }
+}
+
+/**
+ * 把 ID 或 URL 统一转化为 ID
+ */
+String.prototype.toNoteId = function() {
+  if (this.ifNoteIdorURL()) {
+    let noteURL = this.trim()
+    let noteId
+    if (/^marginnote\dapp:\/\/note\//.test(noteURL)) {
+      noteId = noteURL.slice(22)
+    } else {
+      noteId = noteURL
+    }
+    return noteId
+  }
+}
+String.prototype.toNoteID = function() {
+  return this.toNoteId()
+}
+/**
+ * 夏大鱼羊 - end
+ */
+
 class MNUtil {
   static themeColor = {
     Gray: UIColor.colorWithHexString("#414141"),
@@ -1678,11 +1750,15 @@ class MNNote{
   /**
    * 夏大鱼羊定制 - begin
    */
+  /**
+   * 判断卡片是不是旧模板制作的
+   */
   ifTemplateOldVersion(){
     let remarkHtmlCommentIndex = this.getCommentIndex("Remark：",true)
     return remarkHtmlCommentIndex !== -1
   }
   /**
+   * 根据类型去掉评论
    * @param {Array<string>} types
    */
   removeCommentsByTypes(types){
@@ -1843,6 +1919,103 @@ class MNNote{
       }
     }
   }
+
+  /**
+   * 将卡片转化为非摘录版本
+   */
+  toNoExceptVersion(){
+    if (this.parentNote) {
+      let parentNote = this.parentNote
+      let config = {
+        title: this.noteTitle,
+        content: "",
+        markdown: true,
+        color: this.colorIndex
+      }
+      // 创建新兄弟卡片，标题为旧卡片的标题
+      let newNote = parentNote.createChildNote(config)
+      this.noteTitle = ""
+      // 将旧卡片合并到新卡片中
+      newNote.merge(this)
+      newNote.focusInMindMap(0.2)
+    } else {
+      MNUtil.showHUD("没有父卡片，无法进行非摘录版本的转换！")
+    }
+  }
+
+  toNoExceptType(){
+    this.toNoExceptVersion()
+  }
+
+  toNonExceptVersion(){
+    this.toNoExceptVersion()
+  }
+
+  toNonExceptType(){
+    this.toNoExceptVersion()
+  }
+
+  /**
+   * 合并到目标卡片并更新链接
+   * 1. 更新新卡片里的链接（否则会丢失蓝色箭头）
+   * 2. 双向链接对应的卡片里的链接要更新，否则合并后会消失
+   */
+  mergeInto(targetNote){
+
+  }
+
+  /**
+   * 判断卡片中是否有某个链接
+   */
+  hasLink(link){
+    if (link.ifNoteIdorURL()) {
+      let URL = link.toNoteURL()
+      return this.getCommentIndex(URL) !== -1
+    }
+  }
+
+  /**
+   * 判断链接的类型：是单向链接还是双向链接
+   * @param {string} link
+   * @returns {String} "Double"|"Single"
+   */
+  LinkGetType(link){
+    if (link.ifNoteIdorURL()) {
+      // 先确保参数是链接的 ID 或者 URL
+      let linkedNoteId = link.toNoteID()
+      let linkedNoteURL = link.toNoteURL()
+      if (this.hasLink(linkedNoteURL)) {
+        let linkedNote = MNNote.new(linkedNoteId)
+        return linkedNote.hasLink(this.noteURL) ? "Double" : "Single"
+      } else {
+        MNUtil.showHUD("卡片中没有此链接！")
+        return "NoLink"
+      }
+    } else {
+      MNUtil.showHUD("参数不是合法的链接 ID 或 URL！")
+    }
+  }
+
+  /**
+   * 是否是单向链接
+   * @param {string} link
+   * @returns {Boolean}
+   */
+  LinkIfSingle(link){
+    return this.LinkGetType(link) === "Single"
+  }
+
+  /**
+   * 是否是双向链接
+   * @param {string} link
+   * @returns {Boolean}
+   */
+  LinkIfDouble(link){
+    return this.LinkGetType(link) === "Double"
+  }
+
+  
+
   refresh(){
     this.note.appendMarkdownComment("")
     this.note.removeCommentByIndex(this.note.comments.length-1)

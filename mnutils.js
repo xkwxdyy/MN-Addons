@@ -1762,18 +1762,24 @@ class MNNote{
    * @param {Array<string>} types
    */
   removeCommentsByTypes(types){
-    if (Array.isArray(types)) {
-      types.forEach(type => {
-        this.removeCommentsByType(type)
-      });
+    if (typeof types == "string") {
+      // 兼容 types 本身是字符串的情形
+      this.removeCommentsByOneType(types)
     } else {
-      MNUtil.showHUD("Please provide types in an array!")
+      if (Array.isArray(types)) {
+        types.forEach(type => {
+          this.removeCommentsByOneType(type)
+        });
+      }
     }
+  }
+  removeCommentsByType(type){
+    this.removeCommentsByTypes(type)
   }
   /**
    * @param {String} type
    */
-  removeCommentsByType(type){
+  removeCommentsByOneType(type){
     if (typeof type == "string") {
       switch (type) {
         /**

@@ -2020,7 +2020,68 @@ class MNNote{
     return this.LinkGetType(link) === "Double"
   }
 
-  
+  renew(){
+    /**
+     * 检测是否是旧模板制作的卡片
+     */
+    if (this.ifTemplateOldVersion()) {
+      /**
+       * 旧模板卡片则只保留
+       * 1. 标题
+       * 2. 摘录
+       * 3. 手写
+       * 4. 图片
+       * 也就是要去掉
+       * 1. 文本
+       * 2. 链接
+       * i.e. 去掉所有的 TextNote
+       */
+      this.removeCommentsByTypes(["text","link"])
+    } else {
+      /**
+       * 其它类型的旧卡片
+       */
+    }
+  }
+
+  /**
+   * 根据内容删除文本评论
+   */
+  removeCommentsByContent(content){
+    this.removeCommentsByText(content)
+  }
+
+  removeCommentsByText(text){
+    if (typeof text == "string") {
+      this.removeCommentsByOneText(text)
+    } else {
+      if (Array.isArray(text)) {
+        text.forEach(t => {
+          this.removeCommentsByOneText(t)
+        })
+      }
+    }
+  }
+
+  // aux function
+  removeCommentsByOneText(text){
+    if (typeof text == "string") {
+      for (let i = this.comments.length-1; i >= 0; i--) {
+        let comment = this.comments[i]
+        if (
+          (
+            comment.type == "TextNote" ||
+            comment.type == "HtmlNote"
+          )
+          &&
+          comment.text == text
+        ) {
+          this.removeCommentByIndex(i)
+        }
+      }
+    }
+  }
+
 
   refresh(){
     this.note.appendMarkdownComment("")

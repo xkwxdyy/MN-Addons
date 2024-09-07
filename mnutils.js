@@ -2100,11 +2100,13 @@ class MNNote{
       /**
        * 将“应用：”及下方的内容移动到最下方
        */
+      this.moveHtmlBlockToBottom("应用：")
 
 
       /**
        * 将“相关概念：”及下方的内容移动到最下方
        */
+      this.moveHtmlBlockToBottom("相关概念：")
 
       /**
        * 刷新卡片
@@ -2302,12 +2304,15 @@ class MNNote{
   /**
    * 将某一个 Html 评论到下一个 Html 评论之前的内容（不包含下一个 Html 评论）进行移动
    * 将 Html 评论和下方的内容看成一整个块，进行移动
+   * 注意此函数会将 Html 评论和下方的内容一起移动，而不只是下方内容
    * @param {String} htmltext Html 评论，定位的锚点
    * @param {Number} toIndex 目标 index
    */
   moveHtmlBlock(htmltext, toIndex) {
-    let htmlBlockIndexArr = this.getHtmlBlockIndexArr(htmltext)
-    this.moveCommentsByIndexArr(htmlBlockIndexArr, toIndex)
+    if (this.getHtmlCommentIndex(htmltext) !== -1) {
+      let htmlBlockIndexArr = this.getHtmlBlockIndexArr(htmltext)
+      this.moveCommentsByIndexArr(htmlBlockIndexArr, toIndex)
+    }
   }
 
   /**
@@ -2315,8 +2320,15 @@ class MNNote{
    * @param {String} htmltext Html 评论，定位的锚点
    */
   moveHtmlBlockToBottom(htmltext){
-    let htmlBlockIndexArr = this.getHtmlBlockIndexArr(htmltext)
-    this.moveCommentsByIndexArr(htmlBlockIndexArr, this.comments.length-1)
+    this.moveHtmlBlock(htmltext, this.comments.length-1)
+  }
+
+  /**
+   * 移动 HtmlBlock 到最上方
+   * @param {String} htmltext Html 评论，定位的锚点
+   */
+  moveHtmlBlockToTop(htmltext){
+    this.moveHtmlBlock(htmltext, 0)
   }
   
   /**

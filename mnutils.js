@@ -1772,8 +1772,11 @@ class MNNote{
    * 判断卡片是不是旧模板制作的
    */
   ifTemplateOldVersion(){
-    let remarkHtmlCommentIndex = this.getCommentIndex("Remark：",true)
+    let remarkHtmlCommentIndex = this.getHtmlCommentIndex("Remark：")
     return remarkHtmlCommentIndex !== -1
+  }
+  ifMadeByOldTemplate(){
+    return this.ifTemplateOldVersion()
   }
   /**
    * 根据类型去掉评论
@@ -2086,8 +2089,8 @@ class MNNote{
       /**
        * 更新两个 Html 评论
        */
-      this.renewCommentFromId("关键词：", "13D040DD-A662-4EFF-A751-217EE9AB7D2E")
-      this.renewCommentFromId("相关定义：", "9129B736-DBA1-441B-A111-EC0655B6120D")
+      this.renewHtmlCommentFromId("关键词：", "13D040DD-A662-4EFF-A751-217EE9AB7D2E")
+      this.renewHtmlCommentFromId("相关定义：", "9129B736-DBA1-441B-A111-EC0655B6120D")
 
       /**
        * 处理旧链接
@@ -2118,16 +2121,20 @@ class MNNote{
     this.renew()
   }
 
-  renewCommentFromId(text, id) {
-    let index = this.getCommentIndex(text, true)
-    if (index !== -1){
-      this.removeCommentByIndex(index)
-      this.mergeClonedNoteById(id)
-      this.moveComment(this.comments.length-1, index)
+  renewHtmlCommentFromId(comment, id) {
+    if (typeof comment == "string") {
+      let index = this.getHtmlCommentIndex(comment)
+      if (index !== -1){
+        this.removeCommentByIndex(index)
+        this.mergeClonedNoteFromId(id)
+        this.moveComment(this.comments.length-1, index)
+      }
+    } else {
+      MNUtil.showHUD("只能更新文本类型的评论！")
     }
   }
 
-  mergeClonedNoteById(id){
+  mergeClonedNoteFromId(id){
     let note = MNNote.clone(id)
     this.merge(note.note)
   }
@@ -2292,6 +2299,130 @@ class MNNote{
   }
 
 
+  /**
+   * 将某一个 Html 评论到下一个 Html 评论之前的内容（不包含下一个 Html 评论）进行移动
+   * 将 Html 评论和下方的内容看成一整个块，进行移动
+   * @param {String} htmltext Html 评论，定位的锚点
+   * @param {Number} toIndex 目标 index
+   */
+  moveHtmlBlock(htmltext, toIndex) {
+    let htmlBlockIndexArr = this.getHtmlBlockIndexArr(htmltext)
+    this.moveCommentsByIndexArr(htmlBlockIndexArr, toIndex)
+  }
+
+  /**
+   * 移动 HtmlBlock 到最下方
+   * @param {String} htmltext Html 评论，定位的锚点
+   */
+  moveHtmlBlockToBottom(htmltext){
+    let htmlBlockIndexArr = this.getHtmlBlockIndexArr(htmltext)
+    this.moveCommentsByIndexArr(htmlBlockIndexArr, this.comments.length-1)
+  }
+  
+  /**
+   * 获取 Html Block 的索引数组
+   */
+  getHtmlBlockIndexArr(htmltext){
+    let htmlCommentIndex = this.getHtmlCommentIndex(htmltext)
+    let indexArr = []
+    if (htmlCommentIndex !== -1) {
+      // 获取下一个 html 评论的 index
+      let nextHtmlCommentIndex = this.getNextHtmlCommentIndex(htmltext)
+      if (nextHtmlCommentIndex == -1) {
+        // 如果没有下一个 html 评论，则以 htmlCommentIndex 到最后一个评论作为 block
+        for (let i = htmlCommentIndex; i <= this.comments.length-1; i++) {
+          indexArr.push(i)
+        }
+      } else {
+        // 有下一个 html 评论，则以 htmlCommentIndex 到 nextHtmlCommentIndex 之间的评论作为 block
+        for (let i = htmlCommentIndex; i < nextHtmlCommentIndex; i++) {
+          indexArr.push(i)
+        }
+      }
+    }
+    return indexArr
+  }
+
+  /**
+   * 获取某个 html 评论的下一个 html 评论的索引
+   * 若没有下一个 html 评论，则返回 -1
+   * 思路：
+   *  1. 先获取所有 html 评论的索引 arr
+   *  2. 然后看 htmltext 在 arr 里的 index
+   *  3. 如果 arr 没有 index+1 索引，则返回 -1；否则返回 arr[index+1]
+   * @param {String} htmltext
+   */
+  getNextHtmlCommentIndex(htmltext){
+    let indexArr = this.getHtmlCommentsIndexArr()
+    let htmlCommentIndex = this.getHtmlCommentIndex(htmltext)
+    let nextHtmlCommentIndex = -1
+    if (htmlCommentIndex !== -1) {
+      let nextIndex = indexArr.indexOf(htmlCommentIndex) + 1
+      if (nextIndex < indexArr.length) {
+        nextHtmlCommentIndex = indexArr[nextIndex]
+      }
+    }
+    return nextHtmlCommentIndex
+  }
+
+  /**
+   * 获得所有 html 评论的索引列表
+   * @returns {Array}
+   */
+  getHtmlCommentsIndexArr(){
+    let indexArr = []
+    for (let i = 0; i < this.comments.length; i++) {
+      let comment = this.comments[i]
+      if (comment.type == "HtmlNote") {
+        indexArr.push(i)
+      }
+    }
+
+    return indexArr
+  }
+
+  /**
+   * 移动某个数组的评论到某个 index
+   * 注意往上移动和往下移动情况不太一样
+   */
+  moveCommentsByIndexArr(indexArr, toIndex){
+    let max = Math.max(...indexArr)
+    let min = Math.min(...indexArr)
+    if (toIndex < min) {
+      // 此时是往上移动
+      for (let i = 0; i < indexArr.length; i++) {
+        this.moveComment(indexArr[i], toIndex+i)
+      }
+    } else if (toIndex > max) {
+      // 此时是往下移动
+      for (let i = indexArr.length-1; i >= 0; i--) {
+        this.moveComment(indexArr[i], toIndex+i)
+      }
+    }
+  }
+
+  /**
+   * 获取 Html 评论的索引
+   * @param {String} comment 
+   */
+  getHtmlCommentIndex(comment) {
+    const comments = this.note.comments
+    for (let i = 0; i < comments.length; i++) {
+      const _comment = comments[i]
+      if (
+        typeof comment == "string" &&
+        _comment.type == "HtmlNote" &&
+        _comment.text == comment
+      ) {
+        return i
+      }
+    }
+    return -1
+  }
+
+  /**
+   * 刷新卡片及其父子卡片
+   */
   refreshAll(){
     if (this.descendantNodes.descendant.length > 0) {
       this.descendantNodes.descendant.forEach(descendantNote => {

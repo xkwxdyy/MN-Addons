@@ -11,13 +11,25 @@ String.prototype.ifNoteIdorURL = function () {
     this.ifValidNoteId()
   )
 }
+String.prototype.isNoteIdorURL = function () {
+  return this.ifNoteIdorURL()
+}
 String.prototype.ifNoteURLorId = function () {
+  return this.ifNoteIdorURL()
+}
+String.prototype.isNoteURLorId = function () {
   return this.ifNoteIdorURL()
 }
 String.prototype.ifNoteURLorID = function () {
   return this.ifNoteIdorURL()
 }
+String.prototype.isNoteURLorID = function () {
+  return this.ifNoteIdorURL()
+}
 String.prototype.ifNoteIDorURL = function () {
+  return this.ifNoteIdorURL()
+}
+String.prototype.isNoteIDorURL = function () {
   return this.ifNoteIdorURL()
 }
 
@@ -28,7 +40,13 @@ String.prototype.ifValidNoteId = function() {
   const regex = /^[0-9A-Z]{8}-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{12}$/;
   return regex.test(this);
 }
+String.prototype.isValidNoteId = function() {
+  return this.ifValidNoteId()
+}
 String.prototype.ifNoteId = function() {
+  return this.ifValidNoteId()
+}
+String.prototype.isNoteId = function() {
   return this.ifValidNoteId()
 }
 
@@ -1759,7 +1777,6 @@ class MNNote{
   }
   /**
    * 根据类型去掉评论
-   * @param {Array<string>} types
    */
   removeCommentsByTypes(types){
     if (typeof types == "string") {
@@ -2022,6 +2039,11 @@ class MNNote{
 
   renew(){
     /**
+     * TODO
+     * [] 旧模板制作的卡片保留“证明所需链接”
+     */
+
+    /**
      * 检测是否是旧模板制作的卡片
      */
     if (this.ifTemplateOldVersion()) {
@@ -2041,13 +2063,83 @@ class MNNote{
       /**
        * 其它类型的旧卡片
        */
+
+      /**
+       * 删除一些特定的文本
+       */
+      this.removeCommentsByText(
+        [
+          "零层",
+          "一层",
+          "两层",
+          "三层",
+          "四层",
+          "五层",
+          "由来/背景："
+        ]
+      )
+
+      this.removeCommentsByTrimText(
+        "-"
+      )
+
+      /**
+       * 更新两个 Html 评论
+       */
+      this.renewCommentFromId("关键词：", "13D040DD-A662-4EFF-A751-217EE9AB7D2E")
+      this.renewCommentFromId("相关定义：", "9129B736-DBA1-441B-A111-EC0655B6120D")
+
+      /**
+       * 处理旧链接
+       */
+      this.renewLinks()
+
+      /**
+       * 将“应用：”及下方的内容移动到最下方
+       */
+
+
+      /**
+       * 将“相关概念：”及下方的内容移动到最下方
+       */
+
+      /**
+       * 刷新卡片
+       */
+      this.refresh()
     }
+  }
+
+  renewNote(){
+    this.renew()
+  }
+
+  renewCard(){
+    this.renew()
+  }
+
+  renewCommentFromId(text, id) {
+    let index = this.getCommentIndex(text, true)
+    if (index !== -1){
+      this.removeCommentByIndex(index)
+      this.mergeClonedNoteById(id)
+      this.moveComment(this.comments.length-1, index)
+    }
+  }
+
+  mergeClonedNoteById(id){
+    let note = MNNote.clone(id)
+    this.merge(note.note)
   }
 
   /**
    * 根据内容删除文本评论
    */
   removeCommentsByContent(content){
+    this.removeCommentsByText(content)
+  }
+
+  removeCommentsByTrimContent(content){
     this.removeCommentsByText(content)
   }
 
@@ -2058,6 +2150,18 @@ class MNNote{
       if (Array.isArray(text)) {
         text.forEach(t => {
           this.removeCommentsByOneText(t)
+        })
+      }
+    }
+  }
+
+  removeCommentsByTrimText(text){
+    if (typeof text == "string") {
+      this.removeCommentsByOneTrimText(text)
+    } else {
+      if (Array.isArray(text)) {
+        text.forEach(t => {
+          this.removeCommentsByOneTrimText(t)
         })
       }
     }
@@ -2082,11 +2186,112 @@ class MNNote{
     }
   }
 
+  removeCommentsByOneTrimText(text){
+    if (typeof text == "string") {
+      for (let i = this.comments.length-1; i >= 0; i--) {
+        let comment = this.comments[i]
+        if (
+          (
+            comment.type == "TextNote" ||
+            comment.type == "HtmlNote"
+          )
+          &&
+          comment.text.trim() == text
+        ) {
+          this.removeCommentByIndex(i)
+        }
+      }
+    }
+  }
 
+  /**
+   * 刷新卡片
+   */
   refresh(){
     this.note.appendMarkdownComment("")
     this.note.removeCommentByIndex(this.note.comments.length-1)
   }
+
+  /**
+   * 更新卡片里的链接
+   * 1. 将 MN3 链接转化为 MN4 链接
+   * 2. 去掉所有失效链接
+   */
+  LinkRenew(){
+    this.convertLinksToNewVersion()
+    this.clearFailedLinks()
+  }
+
+  renewLink(){
+    this.LinkRenew()
+  }
+
+  renewLinks(){
+    this.LinkRenew()
+  }
+
+  LinksRenew(){
+    this.LinkRenew()
+  }
+
+  clearFailedLinks(){
+    for (let i = this.comments.length-1; i >= 0; i--) {
+      let comment = this.comments[i]
+      if  (
+        comment.type == "TextNote" &&
+        (
+          comment.text.startsWith("marginnote3app://note/") ||
+          comment.text.startsWith("marginnote4app://note/") 
+        )
+      ) {
+        let targetNoteId = comment.text.match(/marginnote4app:\/\/note\/(.*)/)[1]
+        if (!targetNoteId.includes("/summary/")) {  // 防止把概要的链接删掉了
+          let targetNote = MNNote.new(targetNoteId)
+          if (!targetNote) {
+            this.removeCommentByIndex(i)
+          }
+        }
+      }
+    }
+  }
+
+  LinkClearFailedLinks(){
+    this.clearFailedLinks()
+  }
+
+  LinksConvertToMN4Version(){
+    for (let i = this.comments.length-1; i >= 0; i--) {
+      let comment = this.comments[i]
+      if (
+        comment.type == "TextNote" &&
+        comment.text.startsWith("marginnote3app://note/")
+      ) {
+        let targetNoteId = comment.text.match(/marginnote3app:\/\/note\/(.*)/)[1]
+        let targetNote = MNNote.new(targetNoteId)
+        if (targetNote) {
+          this.removeCommentByIndex(i)
+          this.appendNoteLink(targetNote, "To")
+          this.moveComment(this.comments.length-1, i)
+        } else {
+          this.removeCommentByIndex(i)
+        }
+      }
+    }
+  }
+
+  convertLinksToMN4Version(){
+    this.LinksConvertToMN4Version()
+  }
+
+  LinksConvertToNewVersion(){
+    this.LinksConvertToMN4Version()
+  }
+
+  convertLinksToNewVersion(){
+    this.LinksConvertToMN4Version()
+  }
+
+
   refreshAll(){
     if (this.descendantNodes.descendant.length > 0) {
       this.descendantNodes.descendant.forEach(descendantNote => {

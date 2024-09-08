@@ -7,7 +7,7 @@
  */
 String.prototype.ifNoteIdorURL = function () {
   return (
-    /^marginnote\dapp:\/\/note\//.test(this) ||
+    this.ifValidNoteURL() ||
     this.ifValidNoteId()
   )
 }
@@ -50,6 +50,18 @@ String.prototype.isNoteId = function() {
   return this.ifValidNoteId()
 }
 
+/**
+ * 判断是否是有效的卡片 URL
+ */
+String.prototype.ifValidNoteURL = function() {
+  return /^marginnote\dapp:\/\/note\//.test(this)
+}
+String.prototype.isValidNoteURL = function() {
+  return this.ifValidNoteURL()
+}
+String.prototype.isLink = function() {
+  return this.ifValidNoteURL()
+}
 /**
  * 把 ID 或 URL 统一转化为 URL
  */
@@ -2042,9 +2054,9 @@ class MNNote{
 
   renew(){
     /**
-     * TODO
-     * [] 旧模板制作的卡片保留“证明所需链接”
+     * 转换为非摘录版本
      */
+    this.toNoExceptVersion()
 
     /**
      * 检测是否是旧模板制作的卡片
@@ -2061,7 +2073,27 @@ class MNNote{
        * 2. 链接
        * i.e. 去掉所有的 TextNote
        */
+      
+      // 先更新链接
+      this.renewLinks()
+
+      // 获取“证明过程相关知识：”的 block 内容
+      let proofKnowledgeBlockTextContentArr = this.getHtmlBlockTextContentArr("证明过程相关知识：")
+      
+      // 获取“证明体现的思想方法：”的 block 内容
+      let proofMethodBlockTextContentArr = this.getHtmlBlockTextContentArr("证明体现的思想方法：")
+
+      // 去掉所有的文本评论和链接
       this.removeCommentsByTypes(["text","link"])
+
+      // 重新添加两个 block 的内容
+      proofKnowledgeBlockTextContentArr.forEach(text => {
+        this.appendMarkdownComment(text)
+      })
+
+      proofMethodBlockTextContentArr.forEach(text => {
+        this.appendMarkdownComment(text)
+      })
     } else {
       /**
        * 其它类型的旧卡片
@@ -2078,7 +2110,8 @@ class MNNote{
           "三层",
           "四层",
           "五层",
-          "由来/背景："
+          "由来/背景：",
+          "- 所属："
         ]
       )
 
@@ -2136,9 +2169,17 @@ class MNNote{
     }
   }
 
+  renewHtmlCommentById(comment, id) {
+    this.renewHtmlCommentFromId(comment, id)
+  }
+
   mergeClonedNoteFromId(id){
     let note = MNNote.clone(id)
     this.merge(note.note)
+  }
+
+  mergeClonedNoteById(id){
+    this.mergeClonedNoteFromId(id)
   }
 
   /**
@@ -2391,6 +2432,35 @@ class MNNote{
     }
 
     return indexArr
+  }
+
+  /**
+   * 获取某个 html Block 的下方内容的 index arr
+   * 不包含 html 本身
+   */
+  getHtmlBlockContentIndexArr(htmltext){
+    let arr = this.getHtmlBlockIndexArr(htmltext)
+    if (arr.length > 0) {
+      arr.shift()
+    }
+    return arr
+  }
+
+  /**
+   * 获取 html block 下方的内容 arr
+   * 不包含 html 本身
+   * 但只能获取 TextNote，比如文字和链接
+   */
+  getHtmlBlockTextContentArr(htmltext){
+    let indexArr = this.getHtmlBlockContentIndexArr(htmltext)
+    let textArr = []
+    indexArr.forEach(index => {
+      let comment = this.comments[index]
+      if (comment.type == "TextNote") {
+        textArr.push(comment.text)
+      }
+    })
+    return textArr
   }
 
   /**

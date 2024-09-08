@@ -62,6 +62,9 @@ String.prototype.isValidNoteURL = function() {
 String.prototype.isLink = function() {
   return this.ifValidNoteURL()
 }
+String.prototype.ifLink = function() {
+  return this.ifValidNoteURL()
+}
 /**
  * 把 ID 或 URL 统一转化为 URL
  */
@@ -320,6 +323,57 @@ class MNUtil {
       return splitLine
     }
   }
+  /**
+   * 夏大鱼羊 - begin
+   */
+
+  /**
+   * 判断是否是普通对象
+   * @param {Object} obj 
+   * @returns {Boolean}
+   */
+  static isObj(obj) {
+    return typeof obj === "object" && obj !== null && !Array.isArray(obj)
+  }
+
+  static ifObj(obj) {
+    return this.isObj(obj)
+  }
+
+  /**
+   * 判断评论是否是链接
+   */
+  static isCommentLink(comment){
+    if (this.isObj(comment)) {
+      if (comment.type == "TextNote") {
+        return comment.text.isLink()
+      }
+    } else if (typeof comment == "string") {
+      return comment.isLink()
+    }
+  }
+  static isLink(comment){
+    return this.isCommentLink(comment)
+  }
+  static ifLink(comment){
+    return this.isCommentLink(comment)
+  }
+  static ifCommentLink(comment){
+    return this.isCommentLink(comment)
+  }
+
+  /**
+   * 获取到链接的文本
+   */
+  static getLinkText(link){
+    if (this.isObj(link) && this.isCommentLink(link)) {
+      return link.text
+    }
+    return link
+  }
+  /**
+   * 夏大鱼羊 - end
+   */
   static appVersion() {
     let info = {}
     let version = parseFloat(this.app.appVersion)
@@ -1960,6 +2014,7 @@ class MNNote{
 
   /**
    * 将卡片转化为非摘录版本
+   * TODO: 处理链接
    */
   toNoExceptVersion(){
     if (this.parentNote) {
@@ -1997,10 +2052,85 @@ class MNNote{
    * 合并到目标卡片并更新链接
    * 1. 更新新卡片里的链接（否则会丢失蓝色箭头）
    * 2. 双向链接对应的卡片里的链接要更新，否则合并后会消失
+   * 
+   * 思路：
+   * 1. 将 this 的所有链接信息作为对象存到一个数组里：
+   *   - 链接的 URL or ID
+   *   - 链接在 this 里的 index
+   *   - 单向链接还是双向链接
+   *   - 如果是双向链接，还要存 this.noteURL 在被链接的卡片里的 index
    */
   mergeInto(targetNote){
+    // 合并之前先更新链接
+    this.renewLinks()
 
+    /**
+     * 储存 this 里面的链接信息
+     */
+    let linksInfoArr = []
+    let handledLinksSet = new Set()  // 防止 this 里面有多个相同链接，造成对 linkedNote 的多次相同处理
+    this.comments.forEach((comment, index) => {
+      if (MNUtil.isCommentLink(comment)) {
+        if (this.LinkIfDouble(comment)) {
+          // 双向链接
+          linksInfoArr.push({
+            linkedNoteId: comment.text.toNoteId(),
+            indexInThisNote: index,
+            indexArrInLinkedNote: MNNote.new(comment.text.toNoteId()).getLinkCommentsIndexArr(this.noteId.toNoteURL())
+          })
+        } else {
+          // 单向链接
+          linksInfoArr.push({
+            linkedNoteId: comment.text.toNoteId(),
+            indexInThisNote: index,
+          })
+        }
+      }
+    })
+
+    // 去掉 this 里的链接
+    this.removeCommentsByTypes("link")
+
+    // 合并之前先把 linkedNote 里关于 this 的链接先去掉
+    linksInfoArr.forEach(linkInfo => {
+      if (!handledLinksSet.has(linkInfo.linkedNoteId)) {
+        let linkedNote = MNNote.new(linkInfo.linkedNoteId)
+        if (linkInfo.indexArrInLinkedNote !== undefined) { // 双向链接
+          linkedNote.removeCommentsByIndices(linkInfo.indexArrInLinkedNote)
+        }
+      }
+      handledLinksSet.add(linkInfo.linkedNoteId)
+    })
+
+    // 合并到目标卡片
+    targetNote.merge(this)
+
+    // 清空 handledLinksSet
+    handledLinksSet.clear()
+
+    // 重新链接
+    linksInfoArr.forEach(
+      linkInfo => {
+        let linkedNote = MNNote.new(linkInfo.linkedNoteId)
+        targetNote.appendNoteLink(linkedNote, "To")
+        targetNote.moveComment(targetNote.comments.length-1, linkInfo.indexInThisNote)
+        if (!handledLinksSet.has(linkInfo.linkedNoteId)) {
+          if (linkInfo.indexArrInLinkedNote !== undefined) {
+            // 双向链接
+            linkInfo.indexArrInLinkedNote.forEach(
+              index => {
+                linkedNote.appendNoteLink(targetNote, "To")
+                linkedNote.moveComment(linkedNote.comments.length-1, index)
+              }
+            )
+          }
+        }
+        handledLinksSet.add(linkInfo.linkedNoteId)
+        linkedNote.clearFailedLinks()
+      }
+    )
   }
+
 
   /**
    * 判断卡片中是否有某个链接
@@ -2018,6 +2148,10 @@ class MNNote{
    * @returns {String} "Double"|"Single"
    */
   LinkGetType(link){
+    // 兼容一下 link 是卡片 comment 的情形
+    if (MNUtil.isObj(link) && link.type == "TextNote") {
+      link = link.text
+    }
     if (link.ifNoteIdorURL()) {
       // 先确保参数是链接的 ID 或者 URL
       let linkedNoteId = link.toNoteID()
@@ -2054,6 +2188,11 @@ class MNNote{
 
   renew(){
     /**
+     * 更新链接
+     */
+    this.renewLinks()
+
+    /**
      * 转换为非摘录版本
      */
     this.toNoExceptVersion()
@@ -2073,9 +2212,6 @@ class MNNote{
        * 2. 链接
        * i.e. 去掉所有的 TextNote
        */
-      
-      // 先更新链接
-      this.renewLinks()
 
       // 获取“证明过程相关知识：”的 block 内容
       let proofKnowledgeBlockTextContentArr = this.getHtmlBlockTextContentArr("证明过程相关知识：")
@@ -2432,6 +2568,28 @@ class MNNote{
     }
 
     return indexArr
+  }
+
+  /**
+   * 获得某个文本评论的索引列表
+   * @param {String} text 
+   */
+  getTextCommentsIndexArr(text){
+    let arr = []
+    this.comments.forEach((comment, index) => {
+      if (comment.type == "TextNote" && comment.text == text) {
+        arr.push(index)
+      }
+    })
+    return arr
+  }
+
+  /**
+   * 获得某个链接评论的索引列表
+   * @param {Object|String} link
+   */
+  getLinkCommentsIndexArr(link){
+    return this.getTextCommentsIndexArr(MNUtil.getLinkText(link))
   }
 
   /**

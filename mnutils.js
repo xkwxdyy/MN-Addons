@@ -326,7 +326,51 @@ class MNUtil {
   /**
    * 夏大鱼羊 - begin
    */
-
+  /**
+   * 【数学】根据中文类型获取对应的英文
+   */
+  static getEnNoteTypeByZhVersion(type){
+    let typeMap = {
+      "定义": "definition",
+      "命题": "theorem",
+      "反例": "antiexample",
+      "例子": "example",
+      "思想方法": "method",
+      "问题": "question",
+      "应用": "application"
+    }
+    return typeMap[type]
+  }
+  /**
+   * 【数学】根据中文类型获取对应的卡片颜色 index
+   */
+  static getNoteColorIndexByZhType(type){
+    let typeMap = {
+      "定义": 2,
+      "命题": 10,
+      "反例": 3,
+      "例子": 15,
+      "思想方法": 9,
+      "问题": 13,
+      "应用": 6
+    }
+    return typeMap[type]
+  }
+  /**
+   * 【数学】根据卡片类型获取对应的模板卡片的 ID
+   */
+  static getTemplateNoteIdByZhType(type){
+    let typeMap = {
+      "定义": "C1052FDA-3343-45C6-93F6-61DCECF31A6D",
+      "命题": "C4B464CD-B8C6-42DE-B459-55B48EB31AD8",
+      "反例": "E64BDC36-DD8D-416D-88F5-0B3FCBE5D151",
+      "例子": "C4B464CD-B8C6-42DE-B459-55B48EB31AD8",
+      "思想方法": "EC68EDFE-580E-4E53-BA1B-875F3BEEFE62",
+      "问题": "C4B464CD-B8C6-42DE-B459-55B48EB31AD8",
+      "应用": "C4B464CD-B8C6-42DE-B459-55B48EB31AD8"
+    }
+    return typeMap[type]
+  }
   /**
    * 判断是否是普通对象
    * @param {Object} obj 
@@ -1835,6 +1879,76 @@ class MNNote{
    * 夏大鱼羊定制 - begin
    */
   /**
+   * 根据卡片类型自动修改颜色
+   */
+  changeColorByType(){
+    let noteType = this.getNoteTypeObjByParentNoteTitle()
+    let colorIndex = MNUtil.getNoteColorIndexByZhType(noteType.zh)
+    this.note.colorIndex = colorIndex
+  }
+  /**
+   * 【数学】合并模板卡片
+   * 1. 识别父卡片的标题，来判断卡片是什么类型
+   * 2. 根据卡片类型，合并不同的模板卡片
+   */
+  mergeTemplate(){
+    if (this.getHtmlCommentIndex("相关链接：") == -1) {
+      let noteType = this.getNoteTypeObjByParentNoteTitle()
+      this.mergeTemplateByNoteType(noteType)
+    }
+  }
+  /**
+   * 【数学】根据父卡片标题获取 note 的类型
+   * @returns {Object} zh 和 en 分别是类型的中英文版本
+   * TODO: 归类卡片的子卡片的子卡片无法识别到
+   */
+  getNoteTypeObjByParentNoteTitle(){
+    let parentNote = this.getClassificationParentNote()
+    let parentNoteTitle = parentNote.noteTitle
+    let match = parentNoteTitle.match(/“.*”相关(.*)/)
+    let noteType = {}
+    if (match) {
+      noteType.zh = match[1]
+      noteType.en = MNUtil.getEnNoteTypeByZhVersion(noteType.zh)
+
+      return noteType
+    }
+    return undefined
+  }
+  /**
+   * 【数学】获取到第一次出现的黄色或绿色的父卡片
+   * 检测父卡片是否是淡黄色、淡绿色或黄色的，不是的话获取父卡片的父卡片，直到是为止，获取第一次出现特定颜色的父卡片作为 parentNote
+   */
+  getClassificationParentNote(){
+    let ifParentNoteChosen = false 
+    let parentNote = this.parentNote
+    if (parentNote) {
+      while (parentNote) {
+        if (parentNote.colorIndex == 0 || parentNote.colorIndex == 1 || parentNote.colorIndex == 4) {
+          ifParentNoteChosen = true
+          break
+        }
+        parentNote = parentNote.parentNote
+      }
+      if (!ifParentNoteChosen) {
+        parentNote = undefined
+      }
+    }
+    return parentNote
+  }
+  /**
+   * 根据卡片类型合并不同的卡片
+   */
+  mergeTemplateByNoteType(type){
+    let templateNoteId
+    if (MNUtil.isObj(type)) {
+      templateNoteId = MNUtil.getTemplateNoteIdByZhType(type.zh)
+    } else if (typeof type == "string") {
+      templateNoteId = MNUtil.getTemplateNoteIdByZhType(type)
+    }
+    this.mergeClonedNoteFromId(templateNoteId)
+  }
+  /**
    * 判断卡片是不是旧模板制作的
    */
   ifTemplateOldVersion(){
@@ -2194,7 +2308,9 @@ class MNNote{
     /**
      * 转换为非摘录版本
      */
-    this.toNoExceptVersion()
+    if (this.excerptText) {
+      this.toNoExceptVersion()
+    }
 
     /**
      * 检测是否是旧模板制作的卡片

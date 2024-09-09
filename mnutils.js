@@ -2014,7 +2014,6 @@ class MNNote{
 
   /**
    * 将卡片转化为非摘录版本
-   * TODO: 处理链接
    */
   toNoExceptVersion(){
     if (this.parentNote) {
@@ -2029,7 +2028,7 @@ class MNNote{
       let newNote = parentNote.createChildNote(config)
       this.noteTitle = ""
       // 将旧卡片合并到新卡片中
-      newNote.merge(this)
+      this.mergeInto(newNote)
       newNote.focusInMindMap(0.2)
     } else {
       MNUtil.showHUD("没有父卡片，无法进行非摘录版本的转换！")
@@ -2260,11 +2259,6 @@ class MNNote{
        */
       this.renewHtmlCommentFromId("关键词：", "13D040DD-A662-4EFF-A751-217EE9AB7D2E")
       this.renewHtmlCommentFromId("相关定义：", "9129B736-DBA1-441B-A111-EC0655B6120D")
-
-      /**
-       * 处理旧链接
-       */
-      this.renewLinks()
 
       /**
        * 将“应用：”及下方的内容移动到最下方

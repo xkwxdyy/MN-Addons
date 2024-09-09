@@ -1940,12 +1940,67 @@ class MNNote{
    * 【数学】合并模板卡片
    * 1. 识别父卡片的标题，来判断卡片是什么类型
    * 2. 根据卡片类型，合并不同的模板卡片
+   * 3. 识别是否有摘录外的内容
+   *   - 有的话就移动到
+   *     - “证明：”下方（非概念类型卡片）
+   *     - “相关思考下方”（概念卡片）
+   *   - 没有的话就直接合并模板
    */
   mergeTemplate(){
     if (this.getHtmlCommentIndex("相关链接：") == -1) {
       let noteType = this.getNoteTypeObjByParentNoteTitle()
       this.mergeTemplateByNoteType(noteType)
+
+      let contentIndexArr = this.getContentWithoutLinkNoteTypeIndexArr()
+      if (contentIndexArr.length !== 0) {
+        switch (noteType.zh) {
+          case "定义":
+            let thoughtHtmlCommentIndex = this.getHtmlCommentIndex("相关思考：")
+            this.moveComment(thoughtHtmlCommentIndex, contentIndexArr[0])
+            break;
+          default:
+            let proofHtmlCommentIndex = this.getProofHtmlCommentIndexByNoteType(noteType)
+            this.moveComment(proofHtmlCommentIndex, contentIndexArr[0])
+            break;
+        }
+      }
     }
+  }
+  /**
+   * 【数学】获取“证明”系列的 Html 的 index
+   *  因为命题、反例、思想方法的“证明：”叫法不同
+   */
+  getProofHtmlCommentIndexByNoteType(type){
+    if (MNUtil.isObj(type)) {
+      type = type.zh
+    } 
+    let proofHtmlCommentIndex
+    switch (type) {
+      case "反例":
+        proofHtmlCommentIndex = this.getHtmlCommentIndex("反例及证明：")
+        break;
+      case "思想方法":
+        proofHtmlCommentIndex = this.getHtmlCommentIndex("原理：")
+        break;
+      default:
+        proofHtmlCommentIndex = this.getHtmlCommentIndex("证明：")
+        break;
+    }
+
+    return proofHtmlCommentIndex
+  }
+  /**
+   * 获取除了 LinkNote 以外的 indexArr
+   */
+  getContentWithoutLinkNoteTypeIndexArr(){
+    let indexArr = []
+    for (let i = 0; i < this.comments.length; i++) {
+      let comment = this.comments[i]
+      if (comment.type !== "LinkNote") {
+        indexArr.push(i)
+      }
+    }
+    return indexArr
   }
   /**
    * 【数学】根据父卡片标题获取 note 的类型

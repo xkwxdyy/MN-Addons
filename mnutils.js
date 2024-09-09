@@ -1879,6 +1879,56 @@ class MNNote{
    * 夏大鱼羊定制 - begin
    */
   /**
+   * 【数学】与父卡片进行链接
+   * 1. 先识别是否已经进行了链接，如果有的话就删掉 this 的相关链接的第一条和对应归类卡片里的 this 链接
+   * 2. 没有的话就进行双向链接，并且将链接移动到“相关链接：”下方
+   */
+  linkParentNote(){
+    let linksHtmlBlockContentIndexArr = this.getHtmlBlockContentIndexArr("相关链接：")
+    if (linksHtmlBlockContentIndexArr.length !== 0){
+      // 此时说明有链接，需要先删除
+      let oldLinkIndex = linksHtmlBlockContentIndexArr[0]
+      let oldLink = this.comments[oldLinkIndex].text
+      let oldClassificationNote = MNNote.new(oldLink.toNoteId())
+      let indexInOldClassificationNote = oldClassificationNote.getCommentIndex(this.noteURL)
+      if (indexInOldClassificationNote !== -1) {
+        oldClassificationNote.removeCommentByIndex(indexInOldClassificationNote)
+      }
+      this.removeCommentByIndex(oldLinkIndex)
+
+      // 重新链接
+      let parentNote = this.getClassificationParentNote()
+      let indexInParentNote = parentNote.getCommentIndex(this.noteURL)
+      if (parentNote) {
+        // 链接到父卡片
+        if (indexInParentNote == -1) {
+          parentNote.appendNoteLink(this, "To")
+        }
+        // 父卡片链接过来
+        this.appendNoteLink(parentNote, "To")
+        this.moveComment(this.comments.length-1, oldLinkIndex)
+      }
+    } else {
+      // 此时没有旧链接，直接链接即可
+      let parentNote = this.getClassificationParentNote()
+      let indexInParentNote = parentNote.getCommentIndex(this.noteURL)
+      let parentNoteIndexInThis = this.getCommentIndex(parentNote.noteURL)
+      if (parentNote) {
+        // 链接到父卡片
+        if (indexInParentNote == -1) {
+          parentNote.appendNoteLink(this, "To")
+        }
+        // 父卡片链接过来
+        if (parentNoteIndexInThis == -1) {
+          this.appendNoteLink(parentNote, "To")
+          this.moveComment(this.comments.length-1, this.getHtmlCommentIndex("相关链接：")+1)
+        } else {
+          this.moveComment(parentNoteIndexInThis, this.getHtmlCommentIndex("相关链接：")+1)
+        }
+      }
+    }
+  }
+  /**
    * 根据卡片类型自动修改颜色
    */
   changeColorByType(){
@@ -1900,7 +1950,6 @@ class MNNote{
   /**
    * 【数学】根据父卡片标题获取 note 的类型
    * @returns {Object} zh 和 en 分别是类型的中英文版本
-   * TODO: 归类卡片的子卡片的子卡片无法识别到
    */
   getNoteTypeObjByParentNoteTitle(){
     let parentNote = this.getClassificationParentNote()

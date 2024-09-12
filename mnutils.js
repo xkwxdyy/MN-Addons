@@ -1920,6 +1920,18 @@ class MNNote{
    * 2. 没有的话就进行双向链接，并且将链接移动到“相关链接：”下方
    */
   linkParentNote(){
+    // 先尝试获取归类的父卡片
+    let parentNote = this.getClassificationParentNote()
+
+    if (parentNote == undefined) {
+      // 如果没有归类的父卡片，此时单独制卡
+    } else {
+      // 有归类的卡片。此时正常制卡
+    }
+
+
+
+
     let noteType = MNUtil.getNoteZhTypeByNoteColorIndex(this.note.colorIndex)
     if (noteType !== "顶层") {
       if (noteType == "归类") {
@@ -2093,12 +2105,22 @@ class MNNote{
     return whiteNote.parentNote
   }
   /**
-   * 根据卡片类型自动修改颜色
+   * 【数学】根据卡片类型自动修改颜色
    */
   changeColorByType(){
+    // 先尝试获取归类的父卡片
+    let parentNote = this.getClassificationParentNote()
+
+    if (parentNote == undefined) {
+      // 如果没有归类的父卡片，此时单独制卡
+    } else {
+      // 有归类的卡片。此时正常制卡
+    }
+
+
     let noteType = MNUtil.getNoteZhTypeByNoteColorIndex(this.note.colorIndex)
     if (noteType !== "归类" && noteType !== "顶层") {
-      let noteType = this.getNoteTypeObjByParentNoteTitle()
+      let noteType = this.getNoteTypeObjByClassificationParentNoteTitle()
       let colorIndex = MNUtil.getNoteColorIndexByZhType(noteType.zh)
       this.note.colorIndex = colorIndex
     }
@@ -2114,28 +2136,53 @@ class MNNote{
    *   - 没有的话就直接合并模板
    */
   mergeTemplate(){
-    let noteType = MNUtil.getNoteZhTypeByNoteColorIndex(this.note.colorIndex)
-    if (noteType == "归类" || noteType == "顶层") {
-      // 和原本的处理不同，这里也采用合并模板的方式
+    // 先尝试获取归类的父卡片
+    let parentNote = this.getClassificationParentNote()
+
+    if (parentNote == undefined) {
+      // 如果没有归类的父卡片，此时单独制卡
+      // 此时主要根据卡片的颜色制卡
+      let noteType = MNUtil.getNoteZhTypeByNoteColorIndex(this.note.colorIndex)
       if (this.getHtmlCommentIndex("相关思考：") == -1) {
         this.mergeTemplateByNoteType(noteType)
       }
     } else {
-      if (this.getHtmlCommentIndex("相关思考：") == -1) {
-        noteType = this.getNoteTypeObjByParentNoteTitle()
-        this.mergeTemplateByNoteType(noteType)
-  
-        let contentIndexArr = this.getContentWithoutLinkNoteTypeIndexArr()
-        if (contentIndexArr.length !== 0) {
-          switch (noteType.zh) {
-            case "定义":
-              let thoughtHtmlCommentIndex = this.getHtmlCommentIndex("相关思考：")
-              this.moveComment(thoughtHtmlCommentIndex, contentIndexArr[0])
-              break;
-            default:
-              let proofHtmlCommentIndex = this.getProofHtmlCommentIndexByNoteType(noteType)
-              this.moveComment(proofHtmlCommentIndex, contentIndexArr[0])
-              break;
+      // 有归类的卡片。此时正常制卡
+      let noteType = MNUtil.getNoteZhTypeByNoteColorIndex(this.note.colorIndex)
+      if (noteType == "归类" || noteType == "顶层") {
+        /**
+         * 归类卡片
+         */
+        // 和原本的处理不同，这里也采用合并模板的方式
+        if (this.getHtmlCommentIndex("相关思考：") == -1) {
+          this.mergeTemplateByNoteType(noteType)
+        }
+      } else {
+        /**
+         * 知识点卡片
+         */
+        if (this.getHtmlCommentIndex("相关思考：") == -1) {
+          // 合并模板
+          noteType = this.getNoteTypeObjByClassificationParentNoteTitle()
+          this.mergeTemplateByNoteType(noteType)
+    
+          /**
+           * 把除了摘录外的其他内容移动到对应的位置
+           * 定义的默认到“相关思考：”下方
+           * 其他的默认到“证明：”下方
+           */
+          let contentIndexArr = this.getContentWithoutLinkNoteTypeIndexArr()
+          if (contentIndexArr.length !== 0) {
+            switch (noteType.zh) {
+              case "定义":
+                let thoughtHtmlCommentIndex = this.getHtmlCommentIndex("相关思考：")
+                this.moveComment(thoughtHtmlCommentIndex, contentIndexArr[0])
+                break;
+              default:
+                let proofHtmlCommentIndex = this.getProofHtmlCommentIndexByNoteType(noteType)
+                this.moveComment(proofHtmlCommentIndex, contentIndexArr[0])
+                break;
+            }
           }
         }
       }
@@ -2178,10 +2225,10 @@ class MNNote{
     return indexArr
   }
   /**
-   * 【数学】根据父卡片标题获取 note 的类型
+   * 【数学】根据归类的父卡片标题获取 note 的类型
    * @returns {Object} zh 和 en 分别是类型的中英文版本
    */
-  getNoteTypeObjByParentNoteTitle(){
+  getNoteTypeObjByClassificationParentNoteTitle(){
     let parentNote = this.getClassificationParentNote()
     let parentNoteTitle = parentNote.noteTitle
     let match = parentNoteTitle.match(/“.*”相关(.*)/)
@@ -2210,13 +2257,12 @@ class MNNote{
         parentNote = parentNote.parentNote
       }
       if (!ifParentNoteChosen) {
-        // 如果没有找到的话，就选父卡片作为最终的卡片
-        parentNote = this.parentNote
+        parentNote =  undefined
       }
+      return parentNote
     } else {
       return undefined
     }
-    return parentNote
   }
   /**
    * 根据卡片类型合并不同的卡片
@@ -2608,6 +2654,9 @@ class MNNote{
        * 1. 文本
        * 2. 链接
        * i.e. 去掉所有的 TextNote
+       * 但是保留原本的部分的链接
+       *   - 原本的证明中相关知识的部分
+       *   - 原本的证明中体现的思想方法的部分
        */
 
       // 获取“证明过程相关知识：”的 block 内容

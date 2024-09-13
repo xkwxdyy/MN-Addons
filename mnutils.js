@@ -2261,6 +2261,194 @@ class MNNote{
     }
     return indexArr
   }
+  moveNewContent() {
+    if (this.getNoteTypeZh() == "定义") {
+      /**
+       * 到“相关概念：”下方（定义类卡片）
+       */
+      this.moveNewContentTo("def")
+    } else {
+      /**
+       * 移动新内容到“证明”下方（非定义类卡片）
+       */
+      this.moveNewContentTo("proof")
+    }
+  }
+  /**
+   * 移动到对应的内容的某个地方
+   * @param {String} target
+   */
+  moveNewContentTo(target, toBottom = true) {
+    let newContentIndexArr = this.getNewContentIndexArr()
+    let targetIndex
+    switch (target) {
+      /**
+       * 证明
+       */
+      case "proof":
+      case "Proof":
+        if (toBottom) {
+          targetIndex = this.getHtmlCommentIndex("相关思考：")
+        } else {
+          targetIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh()) + 1
+        }
+        this.moveCommentsByIndexArr(newContentIndexArr, targetIndex)
+        break;
+
+      /**
+       * 相关思考
+       */
+      case "thought":
+      case "thoughts":
+      case "think":
+      case "thinks":
+      case "thinking":
+      case "idea":
+      case "ideas":
+        if (toBottom) {
+          if (this.getNoteTypeZh() == "定义") {
+            targetIndex = this.getHtmlCommentIndex("相关链接：")
+          } else {
+            targetIndex = this.getHtmlCommentIndex("关键词：")
+          }
+        } else {
+          targetIndex = this.getHtmlCommentIndex("相关思考：") + 1
+        }
+        this.moveCommentsByIndexArr(newContentIndexArr, targetIndex)
+        break;
+
+      
+      /**
+       * 相关概念
+       */
+      case "def":
+      case "definition":
+      case "concept":
+      case "concepts":
+        if (this.getNoteTypeZh() == "定义") {
+          if (toBottom) {
+            targetIndex = this.getHtmlCommentIndex("相关思考：")
+          } else {
+            targetIndex = this.getHtmlCommentIndex("相关概念：") + 1
+          }
+          this.moveCommentsByIndexArr(newContentIndexArr, targetIndex)
+        }
+        break;
+
+      /**
+       * 相关链接
+       */
+      case "link":
+      case "links":
+      case "Link":
+      case "Links":
+        if (toBottom) {
+          if (this.getNoteTypeZh() == "定义") {
+            targetIndex = this.comments.length - 1
+          } else {
+            targetIndex = this.getHtmlCommentIndex("应用：")
+          }
+        } else {
+          targetIndex = this.getHtmlCommentIndex("相关链接：") + 1
+        }
+        this.moveCommentsByIndexArr(newContentIndexArr, targetIndex)
+        break;
+    }
+  }
+  /**
+   * 【数学】获取定义类卡片外的卡片的新加内容的 Index
+   * 原理是从应用部分的最后一条链接开始
+   */
+  getNewContentIndexArr() {
+    let noteType = this.getNoteTypeZh()
+    let indexArr = []
+    if (noteType == "定义") {
+      // 定义类卡片获取“相关链接：”下方的第一个非链接开始之后
+      indexArr = this.getHtmlBlockNonLinkContentIndexArr("相关链接：")
+    } else {
+      // 非定义类卡片获取“应用”下方的第一个非链接开始之后
+      indexArr = this.getHtmlBlockNonLinkContentIndexArr("应用：")
+      // 应用部分有点特殊，需要防止“xxx 的应用：”这种文本也被识别，所以需要额外处理
+      if (indexArr.length !== 0) {
+        for (let i = 0; i < indexArr.length; i++) {
+          let index = indexArr[i]
+          let comment = this.comments[index]
+          if (
+            !MNUtil.isCommentLink(comment) &&
+            !comment.text.includes("的应用")
+          ) {
+            indexArr = indexArr.slice(i)
+            break
+          }
+        }
+      }
+    }
+    return indexArr
+  }
+  /**
+   * 获取某个 Html Block 中第一个非链接到最后的 Index Arr
+   * 函数名中的 NonLink 不是指内容都是非链接
+   * 而是指第一条是非链接，然后从这个开始到后面的都保留
+   */
+  getHtmlBlockNonLinkContentIndexArr (htmltext) {
+    let indexArr = this.getHtmlBlockContentIndexArr(htmltext)
+    if (indexArr.length !== 0) {
+      // 从头开始遍历，检测是否是链接，直到找到第一个非链接就停止
+      for (let i = 0; i < indexArr.length; i++) {
+        let index = indexArr[i]
+        let comment = this.comments[index]
+        if (!MNUtil.isCommentLink(comment)) {
+          indexArr = indexArr.slice(i)
+          break
+        }
+      }
+    }
+    return indexArr
+  }
+  /**
+   * 【数学】获取 this 的 noteType
+   * 可能返回字符串，也可能返回对象
+   */
+  getNoteType() {
+    let noteType
+    if (this.ifIndependentNote()) {
+      // 独立卡片根据颜色判断
+      noteType = MNUtil.getNoteZhTypeByNoteColorIndex(this.note.colorIndex)
+    } else {
+      // 有归类父卡片则根据父卡片的标题判断
+      noteType = this.getNoteTypeObjByClassificationParentNoteTitle()
+    }
+    return noteType
+  }
+  /**
+   * 返回中文的 noteType
+   */
+  getNoteTypeZh() {
+    let noteType
+    if (this.ifIndependentNote()) {
+      // 独立卡片根据颜色判断
+      noteType = MNUtil.getNoteZhTypeByNoteColorIndex(this.note.colorIndex)
+      return noteType
+    } else {
+      // 有归类父卡片则根据父卡片的标题判断
+      noteType = this.getNoteTypeObjByClassificationParentNoteTitle()
+      return noteType.zh
+    }
+  }
+  /**
+   * 【数学】是否是独立卡片，即没有归类父卡片的卡片
+   */
+  ifIndependentNote(){
+    let parentNote = this.getClassificationParentNote()
+    return parentNote === undefined
+  }
+  isIndependentNote(){
+    return this.ifIndependentNote()
+  }
+  /**
+   * 【数学】获得最新的一个“应用”的 Index
+   * 除了 HtmlNote，后面可能出现“xxx 的应用：”，这些要避免被识别为新内容
+   */
   /**
    * 【数学】根据归类的父卡片标题获取 note 的类型
    * @returns {Object} zh 和 en 分别是类型的中英文版本
@@ -2742,9 +2930,11 @@ class MNNote{
        * 更新 Html 评论
        */
       this.renewHtmlCommentFromId("关键词：", "13D040DD-A662-4EFF-A751-217EE9AB7D2E")
-      this.renewHtmlCommentFromId("相关定义：", "9129B736-DBA1-441B-A111-EC0655B6120D")
+      this.renewHtmlCommentFromId("相关定义：", "341A7B56-8B5F-42C8-AE50-61F7A1276FA1")
 
-      // 根据父卡片或者是卡片颜色（取决于有没有归类的父卡片）来修改“证明：”的 Html 版本
+      /**
+       * 根据父卡片或者是卡片颜色（取决于有没有归类的父卡片）来修改“证明：”的 Html 版本
+       */
       let classificationParentNote = this.getClassificationParentNote()
       let noteType
       if (classificationParentNote == undefined) {
@@ -2765,15 +2955,26 @@ class MNNote{
       }
 
       /**
-       * 将“应用：”及下方的内容移动到最下方
+       * 调整 Html Block 的结构
        */
-      this.moveHtmlBlockToBottom("应用：")
-
-
-      /**
-       * 将“相关概念：”及下方的内容移动到最下方
-       */
-      this.moveHtmlBlockToBottom("相关概念：")
+      if (this.getNoteTypeZh() == "定义") {
+        /**
+         * 定义类卡片，按照
+         * - 相关概念：
+         * - 相关思考：
+         * - 相关链接：
+         * 的顺序
+         */
+        this.moveHtmlBlockToBottom("相关概念：")
+        this.moveHtmlBlockToBottom("相关思考：")
+        this.moveHtmlBlockToBottom("相关链接：")
+      } else {
+        // 非定义类卡片
+        /**
+         * 将“应用：”及下方的内容移动到最下方
+         */
+        this.moveHtmlBlockToBottom("应用：")
+      }
 
       /**
        * 刷新卡片

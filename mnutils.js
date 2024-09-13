@@ -1,7 +1,52 @@
 /**
  * 夏大鱼羊 - begin
  */
-
+/**
+ * 判断是否是绿色归类卡片的标题
+ * @returns {boolean}
+ */
+String.prototype.ifGreenClassificationNoteTitle = function () {
+  return /^“[^”]+”\s*相关[^“]*$/.test(this)
+}
+String.prototype.isGreenClassificationNoteTitle = function () {
+  return this.ifGreenClassificationNoteTitle()
+}
+/**
+ * 获取绿色归类卡片的标题
+ */
+String.prototype.toGreenClassificationNoteTitle = function () {
+  let match = this.match(/^“([^”]+)”\s*相关[^“]*$/)[1]
+  return match ? match : ""
+}
+/**
+ * 判断是否是黄色归类卡片的标题
+ * @returns {boolean}
+ */
+String.prototype.ifYellowClassificationNoteTitle = function () {
+  return /^“[^”]+”：“[^”]+”\s*相关[^“]*$/.test(this)
+}
+String.prototype.isYellowClassificationNoteTitle = function () {
+  return this.ifYellowClassificationNoteTitle()
+}
+/**
+ * 获取黄色归类卡片的标题
+ */
+String.prototype.toYellowClassificationNoteTitle = function () {
+  let match = this.match(/^“[^”]+”：“([^”]+)”\s*相关[^“]*$/)[1]
+  return match ? match : ""
+}
+/**
+ * 获取绿色或者黄色归类卡片的标题
+ */
+String.prototype.toClassificationNoteTitle = function () {
+  if (this.ifGreenClassificationNoteTitle()) {
+    return this.toGreenClassificationNoteTitle()
+  }
+  if (this.ifYellowClassificationNoteTitle()) {
+    return this.toYellowClassificationNoteTitle()
+  }
+  return ""
+}
 /**
  * 判断输入的字符串是否是卡片 URL 或者卡片 ID
  */
@@ -1914,6 +1959,51 @@ class MNNote{
   /**
    * 夏大鱼羊定制 - begin
    */
+  
+  /**
+   * 【数学】修改和处理卡片标题
+   * - 知识类卡片增加标题前缀
+   * - 黄色归类卡片：“”：“”相关 xx
+   * - 绿色归类卡片：“”相关 xx
+   * - 处理卡片标题空格
+   */
+  changeTitle() {
+    let noteType = this.getNoteTypeZh()
+    let topestClassificationNote = this.getTopestClassificationNote()
+    let type
+    let title = this.noteTitle
+    let parentNoteTitle
+    switch (noteType) {
+      case "顶层":
+        type = this.getTopWhiteNoteType()
+        if (!title.isGreenClassificationNoteTitle()) {
+          title = "“" + title + "”" + "相关" + type
+        }
+        break;
+      case "归类":
+        if (!title.isYellowClassificationNoteTitle()) {
+          if (!this.isIndependentNote()) {
+            type = this.getNoteTypeObjByClassificationParentNoteTitle().zh
+            // 有归类父卡片
+            parentNoteTitle = this.parentNote.noteTitle.toClassificationNoteTitle()
+            this.title = "“" + parentNoteTitle + "”：“" + title + "”" + "相关" + type
+          }
+        } else {
+          if (!this.isIndependentNote()) {
+            type = this.getNoteTypeObjByClassificationParentNoteTitle().zh
+            /**
+             * 如果已经是黄色归类卡片的标题结构，此时需要
+             * - 获取第一个括号的内容
+             */
+            parentNoteTitle = this.parentNote.noteTitle.toClassificationNoteTitle()
+            this.title = "“" + parentNoteTitle + "”：“" + title.toClassificationNoteTitle() + "”" + "相关" + type
+          }
+        }
+        break;
+      default:
+        break;
+    }
+  }
   /**
    * 【数学】与父卡片进行链接
    * 1. 先识别是否已经进行了链接，如果有的话就删掉 this 的相关链接的第一条和对应归类卡片里的 this 链接
@@ -1926,9 +2016,54 @@ class MNNote{
     if (parentNote !== undefined) {
       // 有归类的卡片，此时才进行链接
       let noteType = MNUtil.getNoteZhTypeByNoteColorIndex(this.note.colorIndex)
-      if (noteType !== "顶层") {
-        if (noteType == "归类") {
-          let belongHtmlBlockContentIndexArr = this.getHtmlBlockContentIndexArr("所属：")
+      let belongHtmlBlockContentIndexArr
+      switch (noteType) {
+        case "顶层":
+          // 绿色的顶层卡片
+          belongHtmlBlockContentIndexArr = this.getHtmlBlockContentIndexArr("所属：")
+          if (belongHtmlBlockContentIndexArr.length !== 0) {
+            // 此时说明有链接，需要先删除
+            let oldBelongIndex = belongHtmlBlockContentIndexArr[0]
+            let oldLink = this.comments[oldBelongIndex].text
+            let oldLinkedNote = MNNote.new(oldLink.toNoteId())
+            let indexInOldLinkedNote = oldLinkedNote.getCommentIndex(this.noteURL)
+            if (indexInOldLinkedNote !== -1) {
+              oldLinkedNote.removeCommentByIndex(indexInOldLinkedNote)
+            }
+            this.removeCommentByIndex(oldBelongIndex)
+    
+            // 重新链接
+            let topestClassificationNote = this.getTopestClassificationNote()
+            if (topestClassificationNote) {
+              let indexInTopestClassificationNote = topestClassificationNote.getCommentIndex(this.noteURL)
+              if (indexInTopestClassificationNote == -1) {
+                topestClassificationNote.appendNoteLink(this, "To")
+              }
+              this.appendNoteLink(topestClassificationNote, "To")
+              this.moveComment(this.comments.length-1, oldBelongIndex)
+            }
+          } else {
+            // 此时说明原来没有链接，所以直接链接就行
+            let topestClassificationNote = this.getTopestClassificationNote()
+            let indexInTopestClassificationNote = topestClassificationNote.getCommentIndex(this.noteURL)
+            let topestClassificationNoteIndexInThis = this.getCommentIndex(topestClassificationNote.noteURL)
+            if (topestClassificationNote) {
+              // 链接到父卡片
+              if (indexInTopestClassificationNote == -1) {
+                topestClassificationNote.appendNoteLink(this, "To")
+              }
+              // 父卡片链接过来
+              if (topestClassificationNoteIndexInThis == -1) {
+                this.appendNoteLink(topestClassificationNote, "To")
+                this.moveComment(this.comments.length-1, this.getHtmlCommentIndex("所属：")+1)
+              } else {
+                this.moveComment(topestClassificationNoteIndexInThis, this.getHtmlCommentIndex("所属：")+1)
+              }
+            }
+          }
+          break;
+        case "归类":
+          belongHtmlBlockContentIndexArr = this.getHtmlBlockContentIndexArr("所属：")
           if (belongHtmlBlockContentIndexArr.length !== 0) {
             // 此时说明有链接，需要先删除
             let oldBelongIndex = belongHtmlBlockContentIndexArr[0]
@@ -1967,7 +2102,8 @@ class MNNote{
               }
             }
           }
-        } else {
+          break;
+        default:
           // 知识点卡片
           let linksHtmlBlockContentIndexArr = this.getHtmlBlockContentIndexArr("相关链接：")
           if (linksHtmlBlockContentIndexArr.length !== 0){
@@ -2012,50 +2148,7 @@ class MNNote{
               }
             }
           }
-        }
-      } else {
-        // 绿色的顶层卡片
-        let belongHtmlBlockContentIndexArr = this.getHtmlBlockContentIndexArr("所属：")
-        if (belongHtmlBlockContentIndexArr.length !== 0) {
-          // 此时说明有链接，需要先删除
-          let oldBelongIndex = belongHtmlBlockContentIndexArr[0]
-          let oldLink = this.comments[oldBelongIndex].text
-          let oldLinkedNote = MNNote.new(oldLink.toNoteId())
-          let indexInOldLinkedNote = oldLinkedNote.getCommentIndex(this.noteURL)
-          if (indexInOldLinkedNote !== -1) {
-            oldLinkedNote.removeCommentByIndex(indexInOldLinkedNote)
-          }
-          this.removeCommentByIndex(oldBelongIndex)
-  
-          // 重新链接
-          let topestClassificationNote = this.getTopestClassificationNote()
-          if (topestClassificationNote) {
-            let indexInTopestClassificationNote = topestClassificationNote.getCommentIndex(this.noteURL)
-            if (indexInTopestClassificationNote == -1) {
-              topestClassificationNote.appendNoteLink(this, "To")
-            }
-            this.appendNoteLink(topestClassificationNote, "To")
-            this.moveComment(this.comments.length-1, oldBelongIndex)
-          }
-        } else {
-          // 此时说明原来没有链接，所以直接链接就行
-          let topestClassificationNote = this.getTopestClassificationNote()
-          let indexInTopestClassificationNote = topestClassificationNote.getCommentIndex(this.noteURL)
-          let topestClassificationNoteIndexInThis = this.getCommentIndex(topestClassificationNote.noteURL)
-          if (topestClassificationNote) {
-            // 链接到父卡片
-            if (indexInTopestClassificationNote == -1) {
-              topestClassificationNote.appendNoteLink(this, "To")
-            }
-            // 父卡片链接过来
-            if (topestClassificationNoteIndexInThis == -1) {
-              this.appendNoteLink(topestClassificationNote, "To")
-              this.moveComment(this.comments.length-1, this.getHtmlCommentIndex("所属：")+1)
-            } else {
-              this.moveComment(topestClassificationNoteIndexInThis, this.getHtmlCommentIndex("所属：")+1)
-            }
-          }
-        }
+          break;
       }
     }
   }
@@ -2131,24 +2224,19 @@ class MNNote{
    */
   mergeTemplate(){
     // 先尝试获取归类的父卡片
-    let parentNote = this.getClassificationParentNote()
+    let noteType = this.getNoteTypeZh()
 
-    if (parentNote == undefined) {
-      // 如果没有归类的父卡片，此时单独制卡
-      // 此时主要根据卡片的颜色制卡
-      let noteType = MNUtil.getNoteZhTypeByNoteColorIndex(this.note.colorIndex)
+    if (this.ifIndependentNote()) {  
       if (this.getHtmlCommentIndex("相关思考：") == -1) {
         this.mergeTemplateByNoteType(noteType)
       }
     } else {
-      // 有归类的卡片。此时正常制卡
-      let noteType = MNUtil.getNoteZhTypeByNoteColorIndex(this.note.colorIndex)
       if (noteType == "归类" || noteType == "顶层") {
         /**
          * 归类卡片
          */
         // 和原本的处理不同，这里也采用合并模板的方式
-        if (this.getHtmlCommentIndex("相关思考：") == -1) {
+        if (this.getHtmlCommentIndex("包含：") == -1) {
           this.mergeTemplateByNoteType(noteType)
         }
       } else {
@@ -2275,7 +2363,7 @@ class MNNote{
     }
   }
   /**
-   * 移动到对应的内容的某个地方
+   * 移动新内容到对应的内容的某个地方
    * @param {String} target
    */
   moveNewContentTo(target, toBottom = true) {
@@ -2356,6 +2444,85 @@ class MNNote{
     }
   }
   /**
+   * 移动指定 index Arr 到对应的内容的某个地方
+   */
+  moveCommentsByIndexArrTo(indexArr, target, toBottom = true) {
+    let targetIndex
+    switch (target) {
+      /**
+       * 证明
+       */
+      case "proof":
+      case "Proof":
+        if (toBottom) {
+          targetIndex = this.getHtmlCommentIndex("相关思考：")
+        } else {
+          targetIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh()) + 1
+        }
+        this.moveCommentsByIndexArr(indexArr, targetIndex)
+        break;
+
+      /**
+       * 相关思考
+       */
+      case "thought":
+      case "thoughts":
+      case "think":
+      case "thinks":
+      case "thinking":
+      case "idea":
+      case "ideas":
+        if (toBottom) {
+          if (this.getNoteTypeZh() == "定义") {
+            targetIndex = this.getHtmlCommentIndex("相关链接：")
+          } else {
+            targetIndex = this.getHtmlCommentIndex("关键词：")
+          }
+        } else {
+          targetIndex = this.getHtmlCommentIndex("相关思考：") + 1
+        }
+        this.moveCommentsByIndexArr(indexArr, targetIndex)
+        break;
+
+      
+      /**
+       * 相关概念
+       */
+      case "def":
+      case "definition":
+      case "concept":
+      case "concepts":
+        if (this.getNoteTypeZh() == "定义") {
+          if (toBottom) {
+            targetIndex = this.getHtmlCommentIndex("相关思考：")
+          } else {
+            targetIndex = this.getHtmlCommentIndex("相关概念：") + 1
+          }
+          this.moveCommentsByIndexArr(indexArr, targetIndex)
+        }
+        break;
+
+      /**
+       * 相关链接
+       */
+      case "link":
+      case "links":
+      case "Link":
+      case "Links":
+        if (toBottom) {
+          if (this.getNoteTypeZh() == "定义") {
+            targetIndex = this.comments.length - 1
+          } else {
+            targetIndex = this.getHtmlCommentIndex("应用：")
+          }
+        } else {
+          targetIndex = this.getHtmlCommentIndex("相关链接：") + 1
+        }
+        this.moveCommentsByIndexArr(indexArr, targetIndex)
+        break;
+    }
+  }
+  /**
    * 【数学】获取定义类卡片外的卡片的新加内容的 Index
    * 原理是从应用部分的最后一条链接开始
    */
@@ -2425,14 +2592,27 @@ class MNNote{
    */
   getNoteTypeZh() {
     let noteType
+    let noteColorIndex = this.note.colorIndex
     if (this.ifIndependentNote()) {
       // 独立卡片根据颜色判断
       noteType = MNUtil.getNoteZhTypeByNoteColorIndex(this.note.colorIndex)
       return noteType
     } else {
       // 有归类父卡片则根据父卡片的标题判断
-      noteType = this.getNoteTypeObjByClassificationParentNoteTitle()
-      return noteType.zh
+      if (noteColorIndex == 0 || noteColorIndex == 4) {
+        /**
+         * 黄色归类卡片
+         */
+        return "归类"
+      } else if (noteColorIndex == 1) {
+        /**
+         * 绿色归类卡片
+         */
+        return "顶层"
+      } else {
+        noteType = this.getNoteTypeObjByClassificationParentNoteTitle()
+        return noteType.zh
+      }
     }
   }
   /**
@@ -2933,24 +3113,29 @@ class MNNote{
       this.renewHtmlCommentFromId("相关定义：", "341A7B56-8B5F-42C8-AE50-61F7A1276FA1")
 
       /**
-       * 根据父卡片或者是卡片颜色（取决于有没有归类的父卡片）来修改“证明：”的 Html 版本
+       * 根据父卡片或者是卡片颜色（取决于有没有归类的父卡片）来修改 Html 版本
        */
-      let classificationParentNote = this.getClassificationParentNote()
-      let noteType
-      if (classificationParentNote == undefined) {
-        // 没有归类的父卡片，此时通过卡片颜色来判断卡片类型
-        noteType = MNUtil.getNoteZhTypeByNoteColorIndex(this.note.colorIndex)
-      } else {
-        // 有归类的父卡片，此时通过父卡片的标题来判断卡片类型
-        noteType = this.getNoteTypeObjByClassificationParentNoteTitle()
-      }
-
+      let noteType = this.getNoteTypeZh()
       if (noteType !== "归类" && noteType !== "顶层") {
-        // 知识点卡片
+        // 修改对应 “证明：”的版本
         let proofHtmlCommentIndex = this.getProofHtmlCommentIndexByNoteType(noteType)
         if (proofHtmlCommentIndex == -1) {
           // 此时要先找到不正确的 proofHtmlComment 的 Index，然后删除掉
           this.getRenewProofHtmlCommentByNoteType(noteType)
+        }
+      } else {
+        // 去掉“相关xx：” 改成“相关思考：”
+        let oldRelatedHtmlCommentIndex = this.getIncludingHtmlCommentIndex("相关")
+        let includeHtmlCommentIndex = this.getHtmlCommentIndex("包含：")
+        if (includeHtmlCommentIndex !== -1) { // 原本合并过模板的才需要处理
+          if (oldRelatedHtmlCommentIndex == -1) {
+            this.mergeClonedNoteById("B3CAC635-F507-4BCF-943C-B3F9D4BF6D1D")
+            this.moveComment(this.comments.length-1, includeHtmlCommentIndex)
+          } else {
+            this.removeCommentByIndex(oldRelatedHtmlCommentIndex)
+            this.mergeClonedNoteById("B3CAC635-F507-4BCF-943C-B3F9D4BF6D1D")
+            this.moveComment(this.comments.length-1, oldRelatedHtmlCommentIndex)
+          }
         }
       }
 
@@ -2989,6 +3174,21 @@ class MNNote{
 
   renewCard(){
     this.renew()
+  }
+
+  getIncludingHtmlCommentIndex(htmlComment){
+    const comments = this.note.comments
+    for (let i = 0; i < comments.length; i++) {
+      const _comment = comments[i]
+      if (
+        typeof htmlComment == "string" &&
+        _comment.type == "HtmlNote" &&
+        _comment.text.includes(htmlComment)
+      ) {
+        return i
+      }
+    }
+    return -1
   }
 
   renewHtmlCommentFromId(comment, id) {
@@ -3342,16 +3542,16 @@ class MNNote{
 
   /**
    * 获取 Html 评论的索引
-   * @param {String} comment 
+   * @param {String} htmlcomment 
    */
-  getHtmlCommentIndex(comment) {
+  getHtmlCommentIndex(htmlcomment) {
     const comments = this.note.comments
     for (let i = 0; i < comments.length; i++) {
       const _comment = comments[i]
       if (
-        typeof comment == "string" &&
+        typeof htmlcomment == "string" &&
         _comment.type == "HtmlNote" &&
-        _comment.text == comment
+        _comment.text == htmlcomment
       ) {
         return i
       }

@@ -2,6 +2,29 @@
  * 夏大鱼羊 - begin
  */
 /**
+ * 判断是否是知识点卡片的标题
+ */
+String.prototype.ifKnowledgeNoteTitle = function () {
+  return /^【.{2,4}：.*】/.test(this)
+}
+String.prototype.isKnowledgeNoteTitle = function () {
+  return this.ifKnowledgeNoteTitle()
+}
+/**
+ * 获取知识点卡片的前缀
+ */
+String.prototype.toKnowledgeNotePrefix = function () {
+  let match = this.match(/^【.{2,4}：(.*)】/)
+  return match ? match[1] : this  // 如果匹配不到，返回原字符串
+}
+/**
+ * 获取知识点卡片的标题
+ */
+String.prototype.toKnowledgeNoteTitle = function () {
+  let match = this.match(/^【.{2,4}：.*】(.*)/)
+  return match ? match[1] : this  // 如果匹配不到，返回原字符串
+}
+/**
  * 判断是否是绿色归类卡片的标题
  * @returns {boolean}
  */
@@ -15,8 +38,8 @@ String.prototype.isGreenClassificationNoteTitle = function () {
  * 获取绿色归类卡片的标题
  */
 String.prototype.toGreenClassificationNoteTitle = function () {
-  let match = this.match(/^“([^”]+)”\s*相关[^“]*$/)[1]
-  return match ? match : ""
+  let match = this.match(/^“([^”]+)”\s*相关[^“]*$/)
+  return match ? match[1] : this  // 如果匹配不到，返回原字符串
 }
 /**
  * 判断是否是黄色归类卡片的标题
@@ -32,8 +55,8 @@ String.prototype.isYellowClassificationNoteTitle = function () {
  * 获取黄色归类卡片的标题
  */
 String.prototype.toYellowClassificationNoteTitle = function () {
-  let match = this.match(/^“[^”]+”：“([^”]+)”\s*相关[^“]*$/)[1]
-  return match ? match : ""
+  let match = this.match(/^“[^”]+”：“([^”]+)”\s*相关[^“]*$/)
+  return match ? match[1] : this  // 如果匹配不到，返回原字符串
 }
 /**
  * 获取绿色或者黄色归类卡片的标题
@@ -1969,7 +1992,7 @@ class MNNote{
    */
   changeTitle() {
     let noteType = this.getNoteTypeZh()
-    let topestClassificationNote = this.getTopestClassificationNote()
+    // let topestClassificationNote = this.getTopestClassificationNote()
     let type
     let title = this.noteTitle
     let parentNoteTitle
@@ -1982,6 +2005,7 @@ class MNNote{
         break;
       case "归类":
         if (!title.isYellowClassificationNoteTitle()) {
+          // 此时不是黄色卡片标题结构
           if (!this.isIndependentNote()) {
             type = this.getNoteTypeObjByClassificationParentNoteTitle().zh
             // 有归类父卡片
@@ -1989,18 +2013,88 @@ class MNNote{
             this.title = "“" + parentNoteTitle + "”：“" + title + "”" + "相关" + type
           }
         } else {
+          /**
+           * 如果已经是黄色归类卡片的标题结构，此时需要
+           * - 获取第一个括号的内容
+           */
           if (!this.isIndependentNote()) {
             type = this.getNoteTypeObjByClassificationParentNoteTitle().zh
-            /**
-             * 如果已经是黄色归类卡片的标题结构，此时需要
-             * - 获取第一个括号的内容
-             */
             parentNoteTitle = this.parentNote.noteTitle.toClassificationNoteTitle()
             this.title = "“" + parentNoteTitle + "”：“" + title.toClassificationNoteTitle() + "”" + "相关" + type
           }
         }
         break;
       default:
+        if (!this.isIndependentNote()) {
+          type = this.getNoteTypeObjByClassificationParentNoteTitle().zh
+          parentNoteTitle = this.parentNote.noteTitle.toClassificationNoteTitle()
+          if (title.ifKnowledgeNoteTitle()) {
+            /**
+             * 已经有前缀了，先获取不带前缀的部分作为 title
+             */
+            let prefix = title.toKnowledgeNotePrefix() // 要放在下面的 title 处理之前，因为 title 处理之后会改变 title 的值
+            title = title.toKnowledgeNoteTitle()
+            /**
+             * 需要检测前缀的结尾是否在「上一个」 parentNoteTitle 的基础上增加了“：xxx”的结构
+             * 此时的场景一般是：修改知识点卡片的归类卡片
+             */
+            // 先获取到旧的 parentNoteTitle。虽然可能出现“相关链接：”下方没有链接的情况，但是考虑到此时已经有前缀了，所以这个情况基本不会出现，除非是原归类卡片被删除的情况，所以就看能不能找到原归类卡片，找得到的话就增加判断是否多了结构，找不到的话直接按照现归类卡片的标题来处理即可。
+            let oldClassificationNoteId = this.comments[this.getHtmlCommentIndex("相关链接：")+1]
+            if (oldClassificationNoteId.text && oldClassificationNoteId.text.isLink()) {
+              /**
+               * 是链接的话基本就是对应原归类卡片
+               */
+              let oldClassificationNote = MNNote.new(oldClassificationNoteId.text.toNoteId())
+              let oldClassificationNoteTitle = oldClassificationNote.noteTitle.toClassificationNoteTitle()
+              if (prefix === oldClassificationNoteTitle) {
+                /**
+                 * 此时说明没有修改旧前缀
+                 * 那就直接按照新归类卡片来
+                 */
+                if (type == "定义") {
+                  this.title = "【" + type + "：" + parentNoteTitle + "】; " + title
+                } else {
+                  this.title = "【" + type + "：" + parentNoteTitle + "】" + title
+                }
+              } else if (prefix.startsWith(oldClassificationNoteTitle)) {
+                /**
+                 * 此时说明修改了旧前缀，此时需要获取到修改的部分
+                 */
+                let newContent = prefix.slice(oldClassificationNoteTitle.length)
+                if (type == "定义") {
+                  this.title = "【" + type + "：" + parentNoteTitle + newContent + "】; " + title
+                } else {
+                  this.title = "【" + type + "：" + parentNoteTitle + newContent + "】" + title
+                }
+              } else {
+                if (type == "定义") {
+                  this.title = "【" + type + "：" + parentNoteTitle + "】; " + title
+                } else {
+                  this.title = "【" + type + "：" + parentNoteTitle + "】" + title
+                }
+              }
+            } else {
+              /**
+               * 否则说明原归类卡片不存在了
+               * 那就直接按照新归类卡片来
+               */
+              if (type == "定义") {
+                this.title = "【" + type + "：" + parentNoteTitle + "】; " + title
+              } else {
+                this.title = "【" + type + "：" + parentNoteTitle + "】" + title
+              }
+            }
+          } else {
+            /**
+             * 没有前缀，直接加
+             */
+            if (type == "定义") {
+              this.title = "【" + type + "：" + parentNoteTitle + "】; " + title
+            } else {
+              this.title = "【" + type + "：" + parentNoteTitle + "】" + title
+            }
+          }
+        }
         break;
     }
   }

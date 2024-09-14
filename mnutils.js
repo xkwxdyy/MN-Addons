@@ -2431,7 +2431,6 @@ class MNNote{
               } else {
                 this.moveComment(parentNoteIndexInThis, targetIndex)
               }
-              MNUtil.showHUD(targetIndex)
             }
           }
           break;
@@ -2636,16 +2635,26 @@ class MNNote{
     return indexArr
   }
   moveNewContent() {
-    if (this.getNoteTypeZh() == "定义") {
-      /**
-       * 到“相关概念：”下方（定义类卡片）
-       */
-      this.moveNewContentTo("def")
-    } else {
-      /**
-       * 移动新内容到“证明”下方（非定义类卡片）
-       */
-      this.moveNewContentTo("proof")
+    switch (this.getNoteTypeZh()) {
+      case "定义":
+        /**
+         * 到“相关概念：”下方（定义类卡片）
+         */
+        this.moveNewContentTo("def")
+        break;
+      case "归类":
+      case "顶层":
+        /**
+         * 到“相关思考：”下方
+         */
+        this.moveNewContentTo("thinking")
+        break;
+      default:
+        /**
+         * 移动新内容到“证明”下方（非定义类卡片）
+         */
+        this.moveNewContentTo("proof")
+        break;
     }
   }
   /**
@@ -2680,10 +2689,17 @@ class MNNote{
       case "idea":
       case "ideas":
         if (toBottom) {
-          if (this.getNoteTypeZh() == "定义") {
-            targetIndex = this.getHtmlCommentIndex("相关链接：")
-          } else {
-            targetIndex = this.getHtmlCommentIndex("关键词：")
+          switch (this.getNoteTypeZh()) {
+            case "定义":
+              targetIndex = this.getHtmlCommentIndex("相关链接：")
+              break;
+            case "归类":
+            case "顶层":
+              targetIndex = this.getHtmlCommentIndex("包含：")
+              break;
+            default:
+              targetIndex = this.getHtmlCommentIndex("关键词：")
+              break;
           }
         } else {
           targetIndex = this.getHtmlCommentIndex("相关思考：") + 1
@@ -2813,28 +2829,35 @@ class MNNote{
    * 原理是从应用部分的最后一条链接开始
    */
   getNewContentIndexArr() {
-    let noteType = this.getNoteTypeZh()
     let indexArr = []
-    if (noteType == "定义") {
-      // 定义类卡片获取“相关链接：”下方的第一个非链接开始之后
-      indexArr = this.getHtmlBlockNonLinkContentIndexArr("相关链接：")
-    } else {
-      // 非定义类卡片获取“应用”下方的第一个非链接开始之后
-      indexArr = this.getHtmlBlockNonLinkContentIndexArr("应用：")
-      // 应用部分有点特殊，需要防止“xxx 的应用：”这种文本也被识别，所以需要额外处理
-      if (indexArr.length !== 0) {
-        for (let i = 0; i < indexArr.length; i++) {
-          let index = indexArr[i]
-          let comment = this.comments[index]
-          if (
-            !MNUtil.isCommentLink(comment) &&
-            !comment.text.includes("的应用")
-          ) {
-            indexArr = indexArr.slice(i)
-            break
+    switch (this.getNoteTypeZh()) {
+      case "定义":
+        // 定义类卡片获取“相关链接：”下方的第一个非链接开始之后
+        indexArr = this.getHtmlBlockNonLinkContentIndexArr("相关链接：")
+        break;
+      case "归类":
+      case "顶层":
+        // 归类类卡片获取“包含：”下方的第一个非链接开始之后
+        indexArr = this.getHtmlBlockNonLinkContentIndexArr("包含：")
+        break;
+      default:
+        // 非定义类卡片获取“应用”下方的第一个非链接开始之后
+        indexArr = this.getHtmlBlockNonLinkContentIndexArr("应用：")
+        // 应用部分有点特殊，需要防止“xxx 的应用：”这种文本也被识别，所以需要额外处理
+        if (indexArr.length !== 0) {
+          for (let i = 0; i < indexArr.length; i++) {
+            let index = indexArr[i]
+            let comment = this.comments[index]
+            if (
+              !MNUtil.isCommentLink(comment) &&
+              !comment.text.includes("的应用")
+            ) {
+              indexArr = indexArr.slice(i)
+              break
+            }
           }
         }
-      }
+        break;
     }
     return indexArr
   }

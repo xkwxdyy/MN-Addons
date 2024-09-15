@@ -2508,8 +2508,9 @@ class MNNote{
    *   - 没有的话就直接合并模板
    */
   mergeTemplate(){
-    // 先尝试获取归类的父卡片
     let noteType = this.getNoteTypeZh()
+    // 要在合并模板之前获取，否则会把 Html 评论移动
+    let contentIndexArr = this.getContentWithoutLinkNoteTypeIndexArr()
 
     if (this.ifIndependentNote()) {  
       if (this.getHtmlCommentIndex("相关思考：") == -1) {
@@ -2538,12 +2539,15 @@ class MNNote{
            * 定义的默认到“相关思考：”下方
            * 其他的默认到“证明：”下方
            */
-          let contentIndexArr = this.getContentWithoutLinkNoteTypeIndexArr()
           if (contentIndexArr.length !== 0) {
             switch (noteType.zh) {
               case "定义":
                 let thoughtHtmlCommentIndex = this.getHtmlCommentIndex("相关思考：")
                 this.moveComment(thoughtHtmlCommentIndex, contentIndexArr[0])
+                MNUtil.showHUD("移动" + thoughtHtmlCommentIndex + "到" + contentIndexArr[0])
+                // 注意相关概念的 index 要放在移动后取，否则移动后 index 会发生变化
+                let conceptHtmlCommentIndex = this.getHtmlCommentIndex("相关概念：")
+                this.moveComment(conceptHtmlCommentIndex, contentIndexArr[0])
                 break;
               default:
                 let proofHtmlCommentIndex = this.getProofHtmlCommentIndexByNoteType(noteType)
@@ -2850,7 +2854,10 @@ class MNNote{
             let comment = this.comments[index]
             if (
               !MNUtil.isCommentLink(comment) &&
-              !comment.text.includes("的应用")
+              (
+                comment.text && 
+                !comment.text.includes("的应用")
+              )
             ) {
               indexArr = indexArr.slice(i)
               break

@@ -2482,18 +2482,25 @@ class MNNote{
    * 【数学】根据卡片类型自动修改颜色
    */
   changeColorByType(){
-    // 先尝试获取归类的父卡片
-    let parentNote = this.getClassificationParentNote()
-
-    if (parentNote !== undefined) {
+    if (!this.isIndependentNote()) {
       // 有归类的卡片。此时才需要根据父卡片的标题来判断卡片类型来改变卡片颜色
-      let noteType = MNUtil.getNoteZhTypeByNoteColorIndex(this.note.colorIndex)
-      if (noteType !== "归类" && noteType !== "顶层") {
-        // 因为归类和顶层的颜色基本靠另外的函数已经确定了，所以不需要改
-        // 也就是基本就改知识点卡片的即可
-        let noteType = this.getNoteTypeObjByClassificationParentNoteTitle()
-        let colorIndex = MNUtil.getNoteColorIndexByZhType(noteType.zh)
-        this.note.colorIndex = colorIndex
+      let noteType = this.getNoteTypeZh()
+      switch (noteType) {
+        case "顶层":
+          this.note.colorIndex = 1
+          break;
+        case "归类":
+          if (this.parentNote.getNoteTypeZh() == "顶层") {
+            this.note.colorIndex = 4
+          } else {
+            this.note.colorIndex = 0
+          }
+          break;
+        default:
+          let noteType = this.getNoteTypeObjByClassificationParentNoteTitle()
+          let colorIndex = MNUtil.getNoteColorIndexByZhType(noteType.zh)
+          this.note.colorIndex = colorIndex
+          break;
       }
     }
   }

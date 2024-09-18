@@ -3048,8 +3048,13 @@ class MNNote{
    * 【数学】是否是独立卡片，即没有归类父卡片的卡片
    */
   ifIndependentNote(){
-    let parentNote = this.getClassificationParentNote()
-    return parentNote === undefined
+    if (this.note.colorIndex == 1) {
+      // 绿色卡片单独处理
+      return false
+    } else {
+      let parentNote = this.getClassificationParentNote()
+      return parentNote === undefined
+    }
   }
   isIndependentNote(){
     return this.ifIndependentNote()

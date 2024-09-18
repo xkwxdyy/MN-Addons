@@ -608,7 +608,8 @@ class MNUtil {
       "思想方法": "method",
       "问题": "question",
       "应用": "application",
-      "归类": "classification"
+      "归类": "classification",
+      "": "temporary"
     }
     return typeMap[type]
   }
@@ -2275,8 +2276,17 @@ class MNNote{
         }
         break;
       default:
-        if (!this.isIndependentNote()) {
-          type = this.getNoteTypeObjByClassificationParentNoteTitle().zh
+        if (
+          !this.isIndependentNote() ||
+          (
+            /**
+             * 此时为 Inbox 的特殊情况
+             */
+            this.getNoteTypeObjByClassificationParentNoteTitle().en == "temporary"
+          )
+        ) {
+          // type = this.getNoteTypeObjByClassificationParentNoteTitle().zh
+          type = this.getNoteTypeZh()
           parentNoteTitle = this.getClassificationParentNote().noteTitle.toClassificationNoteTitle()
           if (title.ifKnowledgeNoteTitle()) {
             /**
@@ -2358,7 +2368,10 @@ class MNNote{
    * 2. 没有的话就进行双向链接，并且将链接移动到“相关链接：”下方
    */
   linkParentNote(){
-    if (!this.ifIndependentNote()) {
+    if (
+      !this.ifIndependentNote() ||
+      this.getNoteTypeObjByClassificationParentNoteTitle().en == "temporary"
+    ) {
       // 有归类的卡片，此时才进行链接
       let noteType = this.getNoteTypeZh()
       let belongHtmlBlockContentIndexArr
@@ -2583,6 +2596,34 @@ class MNNote{
     if (this.ifIndependentNote()) {  
       if (this.getHtmlCommentIndex("相关思考：") == -1) {
         this.mergeTemplateByNoteType(noteType)
+
+        /**
+           * 把除了摘录外的其他内容移动到对应的位置
+           * 定义的默认到“相关思考：”下方
+           * 其他的默认到“证明：”下方
+           */
+        if (contentIndexArr.length !== 0) {
+          switch (noteType.zh) {
+            case "定义":
+              let thoughtHtmlCommentIndex = this.getHtmlCommentIndex("相关思考：")
+              this.moveComment(thoughtHtmlCommentIndex, contentIndexArr[0])
+              MNUtil.showHUD("移动" + thoughtHtmlCommentIndex + "到" + contentIndexArr[0])
+              // 注意相关概念的 index 要放在移动后取，否则移动后 index 会发生变化
+              let conceptHtmlCommentIndex = this.getHtmlCommentIndex("相关概念：")
+              this.moveComment(conceptHtmlCommentIndex, contentIndexArr[0])
+              break;
+            default:
+              let proofHtmlCommentIndex = this.getProofHtmlCommentIndexByNoteType(noteType)
+              if (this.ifCommentsAllLinksByIndexArr(contentIndexArr)) {
+                // 如果全是链接，就放在应用下方，其实刚合并的话就是放在最下方
+                this.moveCommentsByIndexArrTo(contentIndexArr, "applications", false)
+              } else {
+                // 如果有非链接，就放到证明下方
+                this.moveComment(proofHtmlCommentIndex, contentIndexArr[0])
+              }
+              break;
+          }
+        }
       }
     } else {
       if (noteType == "归类" || noteType == "顶层") {
@@ -3049,11 +3090,18 @@ class MNNote{
    */
   ifIndependentNote(){
     if (this.note.colorIndex == 1) {
-      // 绿色卡片单独处理
+      // 绿色卡片单独处理，始终作为非独立卡片
       return false
     } else {
       let parentNote = this.getClassificationParentNote()
-      return parentNote === undefined
+      if (parentNote === undefined) {
+        return true
+      } else {
+        let parentNoteTitle = parentNote.noteTitle
+        let match = parentNoteTitle.match(/“.*”相关(.*)/)
+        // 如果归类卡片的“相关 xx”的 xx 是空的，此时作为 Inbox 专用归类，此时视为下面的知识类卡片为独立的
+        return match[1] == ""
+      }
     }
   }
   isIndependentNote(){

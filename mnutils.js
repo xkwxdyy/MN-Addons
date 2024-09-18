@@ -191,6 +191,13 @@ class Pangu {
  * 字符串函数
  */
 /**
+ * 判断是否是正整数
+ */
+String.prototype.isPositiveInteger = function() {
+  const regex = /^[1-9]\d*$/;
+  return regex.test(this);
+}
+/**
  * 判断是否是知识点卡片的标题
  */
 String.prototype.ifKnowledgeNoteTitle = function () {
@@ -583,6 +590,12 @@ class MNUtil {
   /**
    * 夏大鱼羊 - begin
    */
+  /**
+   * 生成标题链接
+   */
+  static generateCustomTitleLink(keyword, titlelinkWord) {
+    return `[${keyword}](marginnote4app://titlelink/custom/${titlelinkWord})`
+  }
   /**
    * 【数学】根据中文类型获取对应的英文
    */
@@ -2171,6 +2184,54 @@ class MNNote{
   /**
    * 夏大鱼羊定制 - begin
    */
+  generateCustomTitleLinkFromFirstTitlelinkWord(keyword) {
+    let title = this.title
+    if (title.isKnowledgeNoteTitle()) {
+      let firstTitleLinkWord = this.getFirstTitleLinkWord()
+      return MNUtil.generateCustomTitleLink(keyword, firstTitleLinkWord)
+    } else {
+      return MNUtil.generateCustomTitleLink(keyword, title)
+    }
+  }
+  /**
+   * 获取标题的所有标题链接词
+   */
+  getTitleLinkWordsArr(){
+    let title = this.noteTitle
+    let titleLinkWordsArr = []
+    if (title.isKnowledgeNoteTitle()) {
+      let titlePart = title.toKnowledgeNoteTitle()
+      // titlePart 用 ; 分割，然后以此加入到 titleLinkWordsArr 中
+      titlePart.split(";").forEach((part) => {
+        if (part.trim() !== "") {
+          titleLinkWordsArr.push(part.trim())
+        }
+      })
+    } else {
+      titleLinkWordsArr.push(title)
+    }
+    return titleLinkWordsArr
+  }
+  /**
+   * 获取标题中的第一个标题链接词
+   */
+  getFirstTitleLinkWord(){
+    let title = this.noteTitle
+    if (title.isKnowledgeNoteTitle()) {
+      const regex = /【.*】(.*?);?\s*([^;]*?)(?:;|$)/;
+      const matches = title.match(regex);
+    
+      if (matches) {
+        const firstPart = matches[1].trim(); // 提取分号前的内容
+        const secondPart = matches[2].trim(); // 提取第一个分号后的内容
+    
+        // 根据第一部分是否为空选择返回内容
+        return firstPart === '' ? secondPart : firstPart;
+      }
+    } else {
+      return title
+    }
+  }
   
   /**
    * 【数学】修改和处理卡片标题
@@ -2558,13 +2619,35 @@ class MNNote{
                 break;
               default:
                 let proofHtmlCommentIndex = this.getProofHtmlCommentIndexByNoteType(noteType)
-                this.moveComment(proofHtmlCommentIndex, contentIndexArr[0])
+                if (this.ifCommentsAllLinksByIndexArr(contentIndexArr)) {
+                  // 如果全是链接，就放在应用下方，其实刚合并的话就是放在最下方
+                  this.moveCommentsByIndexArrTo(contentIndexArr, "applications", false)
+                } else {
+                  // 如果有非链接，就放到证明下方
+                  this.moveComment(proofHtmlCommentIndex, contentIndexArr[0])
+                }
                 break;
             }
           }
         }
       }
     }
+  }
+  /**
+   * 检测 indexArr 对应的评论是否全是链接
+   */
+  ifCommentsAllLinksByIndexArr(indexArr){
+    let flag = true
+    indexArr.forEach((index) => {
+      if (
+        this.comments[index].type !== "TextNote" ||
+        !this.comments[index].text.isLink()
+      ) {
+        flag = false
+      }
+    })
+
+    return flag
   }
   /**
    * 【数学】获取“证明”系列的 Html 的 index
@@ -2832,6 +2915,22 @@ class MNNote{
           targetIndex = this.getHtmlCommentIndex("相关链接：") + 1
         }
         this.moveCommentsByIndexArr(indexArr, targetIndex)
+        break;
+
+
+      /**
+       * 应用
+       */
+      case "application":
+      case "applications":
+        if (!["定义", "归类", "顶层"].includes(this.getNoteTypeZh())) {
+          if (toBottom) {
+            targetIndex = this.comments.length - 1
+          } else {
+            targetIndex = this.getHtmlCommentIndex("应用：") + 1
+          }
+          this.moveCommentsByIndexArr(indexArr, targetIndex)
+        }
         break;
     }
   }

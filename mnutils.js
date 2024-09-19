@@ -2185,6 +2185,38 @@ class MNNote{
   /**
    * 夏大鱼羊定制 - begin
    */
+  /**
+   * 将 IdArr 里的 ID 对应的卡片剪切到 this 作为子卡片
+   */
+  pasteChildNotesByIdArr(arr) {
+    arr.forEach((id) => {
+      if (id.isNoteIdorURL()) {
+        this.pasteChildNoteById(id.toNoteId())
+      }
+    })
+  }
+
+  pasteChildNoteById(id) {
+    if (typeof id == "string" && id.isNoteIdorURL()) {
+      let targetNote = MNNote.new(id.toNoteId())
+      if (targetNote) {
+        let config = {
+          title: targetNote.noteTitle,
+          content: "",
+          markdown: true,
+          color: targetNote.colorIndex
+        }
+        // 创建新兄弟卡片，标题为旧卡片的标题
+        let newNote = this.createChildNote(config)
+        targetNote.noteTitle = ""
+        // 将旧卡片合并到新卡片中
+        targetNote.mergeInto(newNote)
+      }
+    }
+  }
+  /**
+   * 获取第一个标题链接词并生成标题链接
+   */
   generateCustomTitleLinkFromFirstTitlelinkWord(keyword) {
     let title = this.title
     if (title.isKnowledgeNoteTitle()) {

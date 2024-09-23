@@ -3576,7 +3576,12 @@ class MNNote{
        * 但是保留原本的部分的链接
        *   - 原本的证明中相关知识的部分
        *   - 原本的证明中体现的思想方法的部分
+       * 
+       * 检测标题是否是知识类卡片的标题，如果是的话要把前缀去掉，否则会影响后续的添加到复习
        */
+      if (this.noteTitle.ifKnowledgeNoteTitle()) {
+        this.noteTitle = this.noteTitle.toKnowledgeNoteTitle()
+      }
 
       // 获取“证明过程相关知识：”的 block 内容
       let proofKnowledgeBlockTextContentArr = this.getHtmlBlockTextContentArr("证明过程相关知识：")
@@ -3599,6 +3604,17 @@ class MNNote{
       /**
        * 其它类型的旧卡片
        */
+
+      if (
+        this.noteTitle.ifKnowledgeNoteTitle() &&
+        (
+          this.getCommentIndex("由来/背景：") !== -1 ||
+          this.getCommentIndex("- ") !== -1 ||
+          this.getCommentIndex("-") !== -1
+        )
+      ) {
+        this.noteTitle = this.noteTitle.toKnowledgeNoteTitle()
+      }
 
       /**
        * 删除一些特定的文本

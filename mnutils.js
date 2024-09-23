@@ -2185,6 +2185,58 @@ class MNNote{
   /**
    * 夏大鱼羊定制 - begin
    */
+    /**
+   * 根据 indexarr 和弹窗按钮确定移动的位置
+   */
+  moveCommentsByIndexArrAndButtonTo(indexArr, popUpTitle = "移动评论到", popUpSubTitle = "") {
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      popUpTitle,
+      popUpSubTitle,
+      0,
+      "取消",
+      [
+        "🔝🔝🔝🔝卡片最顶端🔝🔝🔝🔝",
+        "----------【摘录区】----------",
+        "🔝🔝🔝Top🔝🔝🔝",
+        "⬇️⬇️⬇️ Bottom ⬇️⬇️⬇️",
+        "----------【证明区】----------",
+        "🔝🔝🔝Top🔝🔝🔝",
+        "⬇️⬇️⬇️ Bottom ⬇️⬇️⬇️",
+        "----------【相关思考区】----------",
+        "🔝🔝🔝Top🔝🔝🔝",
+        "⬇️⬇️⬇️ Bottom ⬇️⬇️⬇️"
+      ],
+      (alert, buttonIndex) => {
+        switch (buttonIndex) {
+          case 1:  // 卡片最顶端
+            this.moveCommentsByIndexArrTo(indexArr, "top")
+            break;
+          case 3:  // 摘录区最顶端
+            this.moveCommentsByIndexArrTo(indexArr, "excerpt", false)
+            break;
+          case 4:  // 摘录区最底部
+            this.moveCommentsByIndexArrTo(indexArr, "excerpt")
+            break;
+          case 6:  // 证明区最顶端
+            this.moveCommentsByIndexArrTo(indexArr, "proof", false)
+            break;
+          case 7:  // 证明区最底部
+            this.moveCommentsByIndexArrTo(indexArr, "proof")
+            break;
+          case 9:  // 相关思考区最顶端
+            this.moveCommentsByIndexArrTo(indexArr, "think", false)
+            break;
+          case 10:  // 相关思考区最底部
+            this.moveCommentsByIndexArrTo(indexArr, "think")
+            break;
+        }
+
+        MNUtil.undoGrouping(()=>{
+          this.refresh()
+        })
+      }
+    )
+  }
   /**
    * 将 IdArr 里的 ID 对应的卡片剪切到 this 作为子卡片
    */
@@ -2289,7 +2341,15 @@ class MNNote{
       case "归类":
         if (!title.isYellowClassificationNoteTitle()) {
           // 此时不是黄色卡片标题结构
-          if (!this.isIndependentNote()) {
+          if (
+            !this.isIndependentNote() ||
+            (
+              /**
+               * 此时为 Inbox 的特殊情况
+               */
+              this.getNoteTypeObjByClassificationParentNoteTitle().en == "temporary"
+            )
+          ) {
             type = this.getNoteTypeObjByClassificationParentNoteTitle().zh
             // 有归类父卡片
             parentNoteTitle = this.parentNote.noteTitle.toClassificationNoteTitle()
@@ -2300,7 +2360,15 @@ class MNNote{
            * 如果已经是黄色归类卡片的标题结构，此时需要
            * - 获取第一个括号的内容
            */
-          if (!this.isIndependentNote()) {
+          if (
+            !this.isIndependentNote() ||
+            (
+              /**
+               * 此时为 Inbox 的特殊情况
+               */
+              this.getNoteTypeObjByClassificationParentNoteTitle().en == "temporary"
+            )
+          ) {
             type = this.getNoteTypeObjByClassificationParentNoteTitle().zh
             parentNoteTitle = this.parentNote.noteTitle.toClassificationNoteTitle()
             this.title = "“" + parentNoteTitle + "”：“" + title.toClassificationNoteTitle() + "”" + "相关" + type
@@ -2919,6 +2987,41 @@ class MNNote{
     let targetIndex
     switch (target) {
       /**
+       * 置顶
+       */
+      case "top":
+        targetIndex = 0
+        this.moveCommentsByIndexArr(indexArr, targetIndex)
+        break;
+      /**
+       * 摘录区
+       */
+      case "excerpt":
+      case "excerption":
+        if (toBottom) {
+          if (this.getNoteTypeZh() == "定义") {
+            targetIndex = this.getHtmlCommentIndex("相关概念：")
+          } else {
+            targetIndex = this.getHtmlCommentIndex("证明：")
+          }
+        } else {
+          // top 的话要看摘录区有没有摘录内容
+          // - 如果有的话，就放在第一个摘录的前面
+          // - 如果没有的话，就和摘录的 bottom 是一样的
+          let excerptPartIndexArr = this.getExcerptPartIndexArr()
+          if (excerptPartIndexArr.length == 0) {
+            if (this.getNoteTypeZh() == "定义") {
+              targetIndex = this.getHtmlCommentIndex("相关概念：")
+            } else {
+              targetIndex = this.getHtmlCommentIndex("证明：")
+            }
+          } else {
+            targetIndex = excerptPartIndexArr[0]
+          }
+        }
+        this.moveCommentsByIndexArr(indexArr, targetIndex)
+        break;
+      /**
        * 证明
        */
       case "proof":
@@ -3008,7 +3111,33 @@ class MNNote{
     }
   }
   /**
-   * 【数学】获取定义类卡片外的卡片的新加内容的 Index
+   * 获取摘录区的 indexarr （制卡后）
+   * 
+   * 原理：
+   * 判断卡片类型
+   * - 定义：“相关概念：”前进行 LinkNote 评论的判断
+   * - 其他：“证明：”（注意反例、思想方法的“证明：”叫法不同）前进行 LinkNote 评论的判断
+   */
+  getExcerptPartIndexArr() {
+    let type = this.getNoteTypeZh()
+    let indexArr = []
+    let endIndex
+    if (type == "定义") {
+      endIndex = this.getHtmlCommentIndex("相关概念：")
+    } else {
+      endIndex = this.getProofHtmlCommentIndexByNoteType(type)
+    }
+    for (let i = 0; i < endIndex; i++) {
+      let comment = this.comments[i]
+      if (comment.type == "LinkNote") {
+        indexArr.push(i)
+      }
+    }
+
+    return indexArr
+  }
+  /**
+   * 【数学】获取知识类卡片的新加内容的 Index
    * 原理是从应用部分的最后一条链接开始
    */
   getNewContentIndexArr() {

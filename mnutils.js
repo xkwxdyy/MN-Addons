@@ -712,6 +712,7 @@ class MNUtil {
         workflow.toClassifyNoteId = ""
         break;
     }
+    return workflow
   }
 
   /**
@@ -2319,6 +2320,7 @@ class MNNote{
       let internalizationNoteId = workflowObj.internalizationNoteId
       let internalizationNote = MNNote.new(internalizationNoteId)
       internalizationNote.addChild(this)
+      // this.focusInMindMap(0.2) // bug: 无法定位
     }
   }
   /**
@@ -2331,8 +2333,10 @@ class MNNote{
       let toClassifyNoteId = workflowObj.toClassifyNoteId
       let toClassifyNote = MNNote.new(toClassifyNoteId)
       toClassifyNote.addChild(this)
+      this.changeTitle()
       this.linkParentNote()
       this.addToReview()
+      this.focusInMindMap(0.2)
     }
   }
   /**

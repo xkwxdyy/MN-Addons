@@ -345,6 +345,26 @@ String.prototype.toNoteURL = function() {
   }
 }
 
+
+String.prototype.ifNoteBookId = function() {
+  return /^marginnote\dapp:\/\/notebook\//.test(this)
+}
+/**
+ * 把 ID 或 URL 统一转化为 NoteBookId
+ */
+String.prototype.toNoteBookId = function() {
+  if (this.ifNoteBookId() || this.ifNoteId()) {
+    let noteId = this.trim()
+    let noteURL
+    if (/^marginnote\dapp:\/\/notebook\//.test(noteId)) {
+      noteURL = noteId
+    } else {
+      noteURL = "marginnote4app://notebook/" + noteId
+    }
+    return noteURL
+  }
+}
+
 /**
  * 把 ID 或 URL 统一转化为 ID
  */
@@ -590,6 +610,110 @@ class MNUtil {
   /**
    * 夏大鱼羊 - begin
    */
+  /**
+   * 根据名称获取 notebookid
+   */
+  static getNoteBookIdByName(name){
+    let notebookId
+    switch (name) {
+      case "数学":
+      case "数学基础":
+        notebookId = "D03C8B94-77CF-46E6-8AAB-CB129EDBCFBC"
+        break;
+      case "数学分析":
+      case "数分":
+        notebookId = "922D2CDF-07CF-4A88-99BA-7AAC60E3C517"
+        break;
+      case "高等代数":
+      case "高代":
+        notebookId = "6E84B815-7BB6-42B0-AE2B-4057279EA163"
+        break;
+      case "实分析":
+      case "实变函数":
+      case "调和分析":
+      case "实变":
+      case "调和":
+      case "实分析与调和分析":
+      case "调和分析与实分析":
+        notebookId = "B051BAC2-576D-4C18-B89E-B65C0E576C7F"
+        break;
+      case "复分析":
+      case "复变函数":
+      case "复变":
+        notebookId = "EAB02DA9-D467-4D7D-B6BA-9244FC326299"
+        break;
+      case "泛函分析":
+      case "泛函":
+      case "泛函分析与算子理论":
+      case "算子理论":
+        notebookId = "98F4FA11-39D3-41A8-845A-F74E2197E111"
+        break;
+      case "学习规划":
+      case "学习安排":
+      case "Inbox":
+      case "学习汇总":
+      case "学习集结":
+      case "规划":
+      case "安排":
+      case "inbox":
+      case "汇总":
+      case "集结":
+        notebookId = "A07420C1-661A-4C7D-BA06-C7035C18DA74"
+        break;
+    }
+
+    return notebookId.toNoteBookId()
+  }
+
+  /**
+   * 获取学习集里的 inbox 部分的三个顶层的卡片 id
+   */
+  static getWorkFlowObjByNoteBookId(notebookId){
+    let workflow = {}
+    switch (notebookId.toNoteBookId()) {
+      case "marginnote4app://notebook/A07420C1-661A-4C7D-BA06-C7035C18DA74":  // 学习规划 
+        workflow.inputNoteId = "DED2745C-6564-4EFA-86E2-42DAAED3281A"
+        workflow.internalizationNoteId = "796ACA3D-9A28-4DC7-89B4-EA5CC3928AFE"
+        workflow.toClassifyNoteId = "3572E6DC-887A-4376-B715-04B6D8F0C58B"
+        break;
+      case "marginnote4app://notebook/98F4FA11-39D3-41A8-845A-F74E2197E111": // 泛函分析
+        workflow.inputNoteId = "C1E43C94-287A-4324-9480-771815F82803"
+        workflow.internalizationNoteId = "FE4B1142-CE83-4BA7-B0CF-453E07663059"
+        workflow.toClassifyNoteId = "E1EACEC5-3ACD-424B-BD46-797CD8A56629"
+        break;
+      case "marginnote4app://notebook/EAB02DA9-D467-4D7D-B6BA-9244FC326299": // 复分析
+        workflow.inputNoteId = "26316838-475B-49D9-9C7C-75AB01D80EDE"
+        workflow.internalizationNoteId = "6FB0CEB6-DC7B-4EE6-AD73-4AA459EBE8D8"
+        workflow.toClassifyNoteId = "B27D8A02-BDC4-4D3F-908B-61AA19CBB861"
+        break;
+      case "marginnote4app://notebook/6E84B815-7BB6-42B0-AE2B-4057279EA163": // 高等代数
+        workflow.inputNoteId = "49E66E70-7249-47C6-869E-5A40448B9B0E"
+        workflow.internalizationNoteId = "FDB5289B-3186-4D93-ADFF-B72B4356CBCD"
+        workflow.toClassifyNoteId = "0164496D-FA35-421A-8A22-649831C83E63"
+        break;
+      case "marginnote4app://notebook/B051BAC2-576D-4C18-B89E-B65C0E576C7F": // 实分析
+        workflow.inputNoteId = "E7538B60-D8E2-4A41-B620-37D1AD48464C"
+        workflow.internalizationNoteId = "C5D44533-6D18-45F6-A010-9F83821F627F"
+        workflow.toClassifyNoteId = "13623BE8-8D26-4FEE-95D8-B704C34E92EC"
+        break;
+      case "marginnote4app://notebook/922D2CDF-07CF-4A88-99BA-7AAC60E3C517": // 数学分析
+        workflow.inputNoteId = "E22C7404-A6DE-4DB3-B749-BDF8C742F955"
+        workflow.internalizationNoteId = "BBD9C2C0-CDB5-485E-A338-2C75F1ABE59F"
+        workflow.toClassifyNoteId = "E7538B60-D8E2-4A41-B620-37D1AD48464C"
+        break;
+      case "marginnote4app://notebook/D03C8B94-77CF-46E6-8AAB-CB129EDBCFBC": // 数学基础 
+        workflow.inputNoteId = "E69B712B-E42C-47F3-ADA4-1CB41A3336BD"
+        workflow.internalizationNoteId = "6F5D6E1D-58C7-4E51-87CA-198607640FBE"
+        workflow.toClassifyNoteId = "F6CE6E2C-4126-4945-BB98-F2437F73C806"
+        break;
+      case "marginnote4app://notebook/0F74EF05-FAA1-493E-9D78-CC84C4C045A6": // 文献库
+        workflow.inputNoteId = ""
+        workflow.internalizationNoteId = ""
+        workflow.toClassifyNoteId = ""
+        break;
+    }
+  }
+
   /**
    * 生成标题链接
    */
@@ -2185,7 +2309,50 @@ class MNNote{
   /**
    * 夏大鱼羊定制 - begin
    */
-    /**
+  /**
+   * 将卡片转移到“内化”区
+   */
+  moveToInternalize(){
+    let notebookId = MNUtil.currentNotebookId
+    let workflowObj = MNUtil.getWorkFlowObjByNoteBookId(notebookId)
+    if (workflowObj.internalizationNoteId) {
+      let internalizationNoteId = workflowObj.internalizationNoteId
+      let internalizationNote = MNNote.new(internalizationNoteId)
+      internalizationNote.addChild(this)
+    }
+  }
+  /**
+   * 将卡片转移到“待归类”区
+   */
+  moveToBeClassified(){
+    let notebookId = MNUtil.currentNotebookId
+    let workflowObj = MNUtil.getWorkFlowObjByNoteBookId(notebookId)
+    if (workflowObj.toClassifyNoteId) {
+      let toClassifyNoteId = workflowObj.toClassifyNoteId
+      let toClassifyNote = MNNote.new(toClassifyNoteId)
+      toClassifyNote.addChild(this)
+      this.linkParentNote()
+      this.addToReview()
+    }
+  }
+  /**
+   * 【数学】加入复习
+   */
+  addToReview() {
+    if (
+      !(
+        this.noteTitle.includes("输入") ||
+        this.noteTitle.includes("内化")
+      )
+    ) {
+      if (this.getNoteTypeZh() !== "顶层" && this.getNoteTypeZh() !== "归类") {
+        if (!MNUtil.studyController.isNoteInReview(this.noteId)) {  // 2024-09-26 新增的 API
+          MNUtil.excuteCommand("AddToReview")
+        }
+      }
+    }
+  }
+  /**
    * 根据 indexarr 和弹窗按钮确定移动的位置
    */
   moveCommentsByIndexArrAndButtonTo(indexArr, popUpTitle = "移动评论到", popUpSubTitle = "") {
@@ -3328,8 +3495,8 @@ class MNNote{
    * 判断卡片是不是旧模板制作的
    */
   ifTemplateOldVersion(){
-    let remarkHtmlCommentIndex = this.getHtmlCommentIndex("Remark：")
-    return remarkHtmlCommentIndex !== -1
+    // let remarkHtmlCommentIndex = this.getHtmlCommentIndex("Remark：")
+    return this.getHtmlCommentIndex("Remark：") !== -1 || this.getHtmlCommentIndex("所属：") !== -1
   }
   ifMadeByOldTemplate(){
     return this.ifTemplateOldVersion()
@@ -3718,6 +3885,9 @@ class MNNote{
       // 获取“证明体现的思想方法：”的 block 内容
       let proofMethodBlockTextContentArr = this.getHtmlBlockTextContentArr("证明体现的思想方法：")
 
+      // 获取“应用：”的 block 内容
+      let applicationBlockTextContentArr = this.getHtmlBlockTextContentArr("应用：")
+
       // 去掉所有的文本评论和链接
       this.removeCommentsByTypes(["text","link"])
 
@@ -3727,6 +3897,10 @@ class MNNote{
       })
 
       proofMethodBlockTextContentArr.forEach(text => {
+        this.appendMarkdownComment(text)
+      })
+
+      applicationBlockTextContentArr.forEach(text => {
         this.appendMarkdownComment(text)
       })
     } else {
@@ -3739,7 +3913,8 @@ class MNNote{
         (
           this.getCommentIndex("由来/背景：") !== -1 ||
           this.getCommentIndex("- ") !== -1 ||
-          this.getCommentIndex("-") !== -1
+          this.getCommentIndex("-") !== -1 ||
+          this.getHtmlCommentIndex("所属：") !== -1
         )
       ) {
         this.noteTitle = this.noteTitle.toKnowledgeNoteTitle()
@@ -3757,7 +3932,8 @@ class MNNote{
           "四层",
           "五层",
           "由来/背景：",
-          "- 所属："
+          "- 所属：",
+          "所属："
         ]
       )
 

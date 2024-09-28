@@ -2338,12 +2338,12 @@ class MNNote{
   /**
    * 将卡片转移到“待归类”区
    */
-  moveToBeClassified(){
+  moveToBeClassified(targetNoteId){
     let notebookId = MNUtil.currentNotebookId
     let workflowObj = MNUtil.getWorkFlowObjByNoteBookId(notebookId)
-    if (workflowObj.toClassifyNoteId) {
-      let toClassifyNoteId = workflowObj.toClassifyNoteId
-      let toClassifyNote = MNNote.new(toClassifyNoteId)
+    let toClassifyNoteId = (targetNoteId == undefined)?workflowObj.toClassifyNoteId:targetNoteId
+    let toClassifyNote = MNNote.new(toClassifyNoteId)
+    if (toClassifyNote) {
       toClassifyNote.addChild(this)
       this.changeTitle()
       this.linkParentNote()

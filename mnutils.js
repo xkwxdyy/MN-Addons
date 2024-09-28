@@ -699,7 +699,7 @@ class MNUtil {
       case "marginnote4app://notebook/922D2CDF-07CF-4A88-99BA-7AAC60E3C517": // 数学分析
         workflow.inputNoteId = "E22C7404-A6DE-4DB3-B749-BDF8C742F955"
         workflow.internalizationNoteId = "BBD9C2C0-CDB5-485E-A338-2C75F1ABE59F"
-        workflow.toClassifyNoteId = "E7538B60-D8E2-4A41-B620-37D1AD48464C"
+        workflow.toClassifyNoteId = "C7768D8F-3BD3-4D9F-BC82-C3F12701E7BF"
         break;
       case "marginnote4app://notebook/D03C8B94-77CF-46E6-8AAB-CB129EDBCFBC": // 数学基础 
         workflow.inputNoteId = "E69B712B-E42C-47F3-ADA4-1CB41A3336BD"

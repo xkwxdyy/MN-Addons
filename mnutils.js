@@ -2328,7 +2328,11 @@ class MNNote{
       let internalizationNoteId = workflowObj.internalizationNoteId
       let internalizationNote = MNNote.new(internalizationNoteId)
       internalizationNote.addChild(this)
-      // this.focusInMindMap(0.2) // bug: 无法定位
+      if (this.title.includes("输入")) {
+        this.changeTitle()
+        this.linkParentNote()
+      }
+      this.focusInMindMap(1)
     }
   }
   /**
@@ -2344,7 +2348,6 @@ class MNNote{
       this.changeTitle()
       this.linkParentNote()
       this.addToReview()
-      this.focusInMindMap(0.2)
     }
   }
   /**

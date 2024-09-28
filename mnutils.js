@@ -2311,6 +2311,14 @@ class MNNote{
    * 夏大鱼羊定制 - begin
    */
   /**
+   * 让卡片独立出来
+   */
+  toBeIndependent(){
+    let parentNote = this.getClassificationParentNote()
+    parentNote.addChild(this)
+    this.focusInMindMap(0.5)
+  }
+  /**
    * 将卡片转移到“内化”区
    */
   moveToInternalize(){

@@ -667,7 +667,7 @@ class MNUtil {
       // 邱维元 - 复分析讲义
       "886469e3d70342159bb554cdaee604fa5a6018e84b6ff04bbb35f69ea764a757":"1BD3CD6C-BDEE-4078-9DF3-BB5C45351356",
       // 方企勤 - 复变函数
-      "e107e1772dbb53288a9d1c38781d3c77043ee40b68818a16f64c0e8480ed7c7e":"2FDA8616-2BE5-4253-BEE5-FA795AD37999",
+      "e107e1772dbb53288a9d1c38781d3c77043ee40b68818a16f64c0e8480ed7c7e":"2FDA8616-2BE5-4253-BEE5-FA795AD37999"
     }
 
     return md5IdPair[md5]
@@ -2385,11 +2385,12 @@ class MNNote{
    * 4. 将卡片移动到学习规划学习集中对应的卡片下成为子卡片
    */
   toBeProgressNote(){
-    let docMd5 = this.docMd5
+    let docMd5 = MNUtil.currentDocmd5
     let targetNote = MNNote.new(MNUtil.getNoteIdByMd5InPlanNotebook(docMd5))
     if (targetNote) {
       targetNote.addChild(this)
       this.colorIndex = 13 // 灰色
+      // bug 添加到卡片的兄弟卡片了而不是变成子卡片
     }
   }
   /**
@@ -3210,7 +3211,7 @@ class MNNote{
               targetIndex = this.getHtmlCommentIndex("包含：")
               break;
             default:
-              targetIndex = this.getHtmlCommentIndex("关键词：")
+              targetIndex = this.getIncludingHtmlCommentIndex("关键词：")
               break;
           }
         } else {
@@ -3325,7 +3326,7 @@ class MNNote{
           if (this.getNoteTypeZh() == "定义") {
             targetIndex = this.getHtmlCommentIndex("相关链接：")
           } else {
-            targetIndex = this.getHtmlCommentIndex("关键词：")
+            targetIndex = this.getIncludingHtmlCommentIndex("关键词：")
           }
         } else {
           targetIndex = this.getHtmlCommentIndex("相关思考：") + 1

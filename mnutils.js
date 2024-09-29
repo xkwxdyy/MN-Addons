@@ -2319,6 +2319,19 @@ class MNNote{
     this.focusInMindMap(0.5)
   }
   /**
+   * 将卡片转移到“输入”区
+   */
+  moveToInput(){
+    let notebookId = MNUtil.currentNotebookId
+    let workflowObj = MNUtil.getWorkFlowObjByNoteBookId(notebookId)
+    if (workflowObj.inputNoteId) {
+      let inputNoteId = workflowObj.inputNoteId
+      let inputNote = MNNote.new(inputNoteId)
+      inputNote.addChild(this)
+      this.focusInMindMap(1)
+    }
+  }
+  /**
    * 将卡片转移到“内化”区
    */
   moveToInternalize(){

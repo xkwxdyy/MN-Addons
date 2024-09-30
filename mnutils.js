@@ -1,614 +1,4 @@
-/**
- * 夏大鱼羊 - begin
- */
-// https://github.com/vinta/pangu.js
-// CJK is short for Chinese, Japanese, and Korean.
-//
-// CJK includes following Unicode blocks:
-// \u2e80-\u2eff CJK Radicals Supplement
-// \u2f00-\u2fdf Kangxi Radicals
-// \u3040-\u309f Hiragana
-// \u30a0-\u30ff Katakana
-// \u3100-\u312f Bopomofo
-// \u3200-\u32ff Enclosed CJK Letters and Months
-// \u3400-\u4dbf CJK Unified Ideographs Extension A
-// \u4e00-\u9fff CJK Unified Ideographs
-// \uf900-\ufaff CJK Compatibility Ideographs
-//
-// For more information about Unicode blocks, see
-// http://unicode-table.com/en/
-// https://github.com/vinta/pangu
-//
-// all J below does not include \u30fb
-const CJK =
-  "\u2e80-\u2eff\u2f00-\u2fdf\u3040-\u309f\u30a0-\u30fa\u30fc-\u30ff\u3100-\u312f\u3200-\u32ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff"
-// ANS is short for Alphabets, Numbers, and Symbols.
-//
-// A includes A-Za-z\u0370-\u03ff
-// N includes 0-9
-// S includes `~!@#$%^&*()-_=+[]{}\|;:'",<.>/?
-//
-// some S below does not include all symbols
-// the symbol part only includes ~ ! ; : , . ? but . only matches one character
-const CONVERT_TO_FULLWIDTH_CJK_SYMBOLS_CJK = new RegExp(
-  `([${CJK}])[ ]*([\\:]+|\\.)[ ]*([${CJK}])`,
-  "g"
-)
-const CONVERT_TO_FULLWIDTH_CJK_SYMBOLS = new RegExp(
-  `([${CJK}])[ ]*([~\\!;,\\?]+)[ ]*`,
-  "g"
-)
-const DOTS_CJK = new RegExp(`([\\.]{2,}|\u2026)([${CJK}])`, "g")
-const FIX_CJK_COLON_ANS = new RegExp(`([${CJK}])\\:([A-Z0-9\\(\\)])`, "g")
-// the symbol part does not include '
-const CJK_QUOTE = new RegExp(`([${CJK}])([\`"\u05f4])`, "g")
-const QUOTE_CJK = new RegExp(`([\`"\u05f4])([${CJK}])`, "g")
-const FIX_QUOTE_ANY_QUOTE = /([`"\u05f4]+)[ ]*(.+?)[ ]*([`"\u05f4]+)/g
-const CJK_SINGLE_QUOTE_BUT_POSSESSIVE = new RegExp(`([${CJK}])('[^s])`, "g")
-const SINGLE_QUOTE_CJK = new RegExp(`(')([${CJK}])`, "g")
-const FIX_POSSESSIVE_SINGLE_QUOTE = new RegExp(
-  `([A-Za-z0-9${CJK}])( )('s)`,
-  "g"
-)
-const HASH_ANS_CJK_HASH = new RegExp(
-  `([${CJK}])(#)([${CJK}]+)(#)([${CJK}])`,
-  "g"
-)
-const CJK_HASH = new RegExp(`([${CJK}])(#([^ ]))`, "g")
-const HASH_CJK = new RegExp(`(([^ ])#)([${CJK}])`, "g")
-// the symbol part only includes + - * / = & | < >
-const CJK_OPERATOR_ANS = new RegExp(
-  `([${CJK}])([\\+\\-\\*\\/=&\\|<>])([A-Za-z0-9])`,
-  "g"
-)
-const ANS_OPERATOR_CJK = new RegExp(
-  `([A-Za-z0-9])([\\+\\-\\*\\/=&\\|<>])([${CJK}])`,
-  "g"
-)
-const FIX_SLASH_AS = /([/]) ([a-z\-_\./]+)/g
-const FIX_SLASH_AS_SLASH = /([/\.])([A-Za-z\-_\./]+) ([/])/g
-// the bracket part only includes ( ) [ ] { } < > “ ”
-const CJK_LEFT_BRACKET = new RegExp(`([${CJK}])([\\(\\[\\{<>\u201c])`, "g")
-const RIGHT_BRACKET_CJK = new RegExp(`([\\)\\]\\}<>\u201d])([${CJK}])`, "g")
-const FIX_LEFT_BRACKET_ANY_RIGHT_BRACKET =
-  /([\(\[\{<\u201c]+)[ ]*(.+?)[ ]*([\)\]\}>\u201d]+)/
-const ANS_CJK_LEFT_BRACKET_ANY_RIGHT_BRACKET = new RegExp(
-  `([A-Za-z0-9${CJK}])[ ]*([\u201c])([A-Za-z0-9${CJK}\\-_ ]+)([\u201d])`,
-  "g"
-)
-const LEFT_BRACKET_ANY_RIGHT_BRACKET_ANS_CJK = new RegExp(
-  `([\u201c])([A-Za-z0-9${CJK}\\-_ ]+)([\u201d])[ ]*([A-Za-z0-9${CJK}])`,
-  "g"
-)
-const AN_LEFT_BRACKET = /([A-Za-z0-9])([\(\[\{])/g
-const RIGHT_BRACKET_AN = /([\)\]\}])([A-Za-z0-9])/g
-const CJK_ANS = new RegExp(
-  `([${CJK}])([A-Za-z\u0370-\u03ff0-9@\\$%\\^&\\*\\-\\+\\\\=\\|/\u00a1-\u00ff\u2150-\u218f\u2700—\u27bf])`,
-  "g"
-)
-const ANS_CJK = new RegExp(
-  `([A-Za-z\u0370-\u03ff0-9~\\$%\\^&\\*\\-\\+\\\\=\\|/!;:,\\.\\?\u00a1-\u00ff\u2150-\u218f\u2700—\u27bf])([${CJK}])`,
-  "g"
-)
-const S_A = /(%)([A-Za-z])/g
-const MIDDLE_DOT = /([ ]*)([\u00b7\u2022\u2027])([ ]*)/g
-const BACKSAPCE_CJK = new RegExp(`([${CJK}]) ([${CJK}])`, "g")
-const SUBSCRIPT_CJK = /([\u2080-\u2099])(?=[\u4e00-\u9fa5])/g
-// 上标 https://rupertshepherd.info/resource_pages/superscript-letters-in-unicode
-const SUPERSCRIPT_CJK = /([\u2070-\u209F\u1D56\u1D50\u207F\u1D4F\u1D57])(?=[\u4e00-\u9fa5])/g
-// 特殊字符
-// \u221E: ∞
-const SPECIAL = /([\u221E])(?!\s|[\(\[])/g  // (?!\s) 是为了当后面没有空格才加空格，防止出现多个空格
-class Pangu {
-  version
-  static convertToFullwidth(symbols) {
-    return symbols
-      .replace(/~/g, "～")
-      .replace(/!/g, "！")
-      .replace(/;/g, "；")
-      .replace(/:/g, "：")
-      .replace(/,/g, "，")
-      .replace(/\./g, "。")
-      .replace(/\?/g, "？")
-  }
-  static toFullwidth(text) {
-    let newText = text
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    const that = this
-    newText = newText.replace(
-      CONVERT_TO_FULLWIDTH_CJK_SYMBOLS_CJK,
-      (match, leftCjk, symbols, rightCjk) => {
-        const fullwidthSymbols = that.convertToFullwidth(symbols)
-        return `${leftCjk}${fullwidthSymbols}${rightCjk}`
-      }
-    )
-    newText = newText.replace(
-      CONVERT_TO_FULLWIDTH_CJK_SYMBOLS,
-      (match, cjk, symbols) => {
-        const fullwidthSymbols = that.convertToFullwidth(symbols)
-        return `${cjk}${fullwidthSymbols}`
-      }
-    )
-    return newText
-  }
-  static spacing(text) {
-    let newText = text
-    // https://stackoverflow.com/questions/4285472/multiple-regex-replace
-    newText = newText.replace(DOTS_CJK, "$1 $2")
-    newText = newText.replace(FIX_CJK_COLON_ANS, "$1：$2")
-    newText = newText.replace(CJK_QUOTE, "$1 $2")
-    newText = newText.replace(QUOTE_CJK, "$1 $2")
-    newText = newText.replace(FIX_QUOTE_ANY_QUOTE, "$1$2$3")
-    newText = newText.replace(CJK_SINGLE_QUOTE_BUT_POSSESSIVE, "$1 $2")
-    newText = newText.replace(SINGLE_QUOTE_CJK, "$1 $2")
-    newText = newText.replace(FIX_POSSESSIVE_SINGLE_QUOTE, "$1's") // eslint-disable-line quotes
-    newText = newText.replace(HASH_ANS_CJK_HASH, "$1 $2$3$4 $5")
-    newText = newText.replace(CJK_HASH, "$1 $2")
-    newText = newText.replace(HASH_CJK, "$1 $3")
-    newText = newText.replace(CJK_OPERATOR_ANS, "$1 $2 $3")
-    newText = newText.replace(ANS_OPERATOR_CJK, "$1 $2 $3")
-    newText = newText.replace(FIX_SLASH_AS, "$1$2")
-    newText = newText.replace(FIX_SLASH_AS_SLASH, "$1$2$3")
-    newText = newText.replace(CJK_LEFT_BRACKET, "$1 $2")
-    newText = newText.replace(RIGHT_BRACKET_CJK, "$1 $2")
-    newText = newText.replace(FIX_LEFT_BRACKET_ANY_RIGHT_BRACKET, "$1$2$3")
-    newText = newText.replace(
-      ANS_CJK_LEFT_BRACKET_ANY_RIGHT_BRACKET,
-      "$1 $2$3$4"
-    )
-    newText = newText.replace(
-      LEFT_BRACKET_ANY_RIGHT_BRACKET_ANS_CJK,
-      "$1$2$3 $4"
-    )
-    newText = newText.replace(AN_LEFT_BRACKET, "$1 $2")
-    newText = newText.replace(RIGHT_BRACKET_AN, "$1 $2")
-    newText = newText.replace(CJK_ANS, "$1 $2")
-    newText = newText.replace(ANS_CJK, "$1 $2")
-    newText = newText.replace(S_A, "$1 $2")
-    // newText = newText.replace(MIDDLE_DOT, "・")
-    // 去中文间的空格
-    newText = newText.replace(BACKSAPCE_CJK, "$1$2")
-    // 去掉下标和中文之间的空格
-    newText = newText.replace(SUBSCRIPT_CJK, "$1 ")
-    newText = newText.replace(SUPERSCRIPT_CJK, "$1 ")
-    /* 特殊处理 */
-    // 特殊字符
-    newText = newText.replace(SPECIAL, "$1 ")
-    // 处理 C[a,b] 这种单独字母紧跟括号的情形，不加空格
-    newText = newText.replace(/([A-Za-z])\s([\(\[\{])/g, "$1$2")
-    newText = newText.replace(/([\)\]\}])\s([A-Za-z])/g, "$1$2")
-    // ”后面不加空格
-    newText = newText.replace(/”\s/g, "”")
-    // · 左右的空格去掉
-    newText = newText.replace(/\s*·\s*/g, "·")
-    // - 左右的空格去掉
-    newText = newText.replace(/\s*-\s*/g, "-")
-    // ∞ 后面的空格去掉
-    newText = newText.replace(/∞\s/g, "∞")
-    return newText
-  }
-}
-
-/**
- * 夏大鱼羊 - 字符串函数 - begin
- */
-/**
- * 判断是否是正整数
- */
-String.prototype.isPositiveInteger = function() {
-  const regex = /^[1-9]\d*$/;
-  return regex.test(this);
-}
-/**
- * 判断是否是知识点卡片的标题
- */
-String.prototype.ifKnowledgeNoteTitle = function () {
-  return /^【.{2,4}：.*】/.test(this)
-}
-String.prototype.isKnowledgeNoteTitle = function () {
-  return this.ifKnowledgeNoteTitle()
-}
-/**
- * 获取知识点卡片的前缀
- */
-String.prototype.toKnowledgeNotePrefix = function () {
-  let match = this.match(/^【.{2,4}：(.*)】/)
-  return match ? match[1] : this  // 如果匹配不到，返回原字符串
-}
-/**
- * 获取知识点卡片的标题
- */
-String.prototype.toKnowledgeNoteTitle = function () {
-  let match = this.match(/^【.{2,4}：.*】(.*)/)
-  return match ? match[1] : this  // 如果匹配不到，返回原字符串
-}
-/**
- * 判断是否是绿色归类卡片的标题
- * @returns {boolean}
- */
-String.prototype.ifGreenClassificationNoteTitle = function () {
-  return /^“[^”]+”\s*相关[^“]*$/.test(this)
-}
-String.prototype.isGreenClassificationNoteTitle = function () {
-  return this.ifGreenClassificationNoteTitle()
-}
-/**
- * 获取绿色归类卡片的标题
- */
-String.prototype.toGreenClassificationNoteTitle = function () {
-  let match = this.match(/^“([^”]+)”\s*相关[^“]*$/)
-  return match ? match[1] : this  // 如果匹配不到，返回原字符串
-}
-/**
- * 判断是否是黄色归类卡片的标题
- * @returns {boolean}
- */
-String.prototype.ifYellowClassificationNoteTitle = function () {
-  return /^“[^”]+”：“[^”]+”\s*相关[^“]*$/.test(this)
-}
-String.prototype.isYellowClassificationNoteTitle = function () {
-  return this.ifYellowClassificationNoteTitle()
-}
-/**
- * 获取黄色归类卡片的标题
- */
-String.prototype.toYellowClassificationNoteTitle = function () {
-  let match = this.match(/^“[^”]+”：“([^”]+)”\s*相关[^“]*$/)
-  return match ? match[1] : this  // 如果匹配不到，返回原字符串
-}
-/**
- * 获取绿色或者黄色归类卡片的标题
- */
-String.prototype.toClassificationNoteTitle = function () {
-  if (this.ifGreenClassificationNoteTitle()) {
-    return this.toGreenClassificationNoteTitle()
-  }
-  if (this.ifYellowClassificationNoteTitle()) {
-    return this.toYellowClassificationNoteTitle()
-  }
-  return ""
-}
-/**
- * 判断输入的字符串是否是卡片 URL 或者卡片 ID
- */
-String.prototype.ifNoteIdorURL = function () {
-  return (
-    this.ifValidNoteURL() ||
-    this.ifValidNoteId()
-  )
-}
-String.prototype.isNoteIdorURL = function () {
-  return this.ifNoteIdorURL()
-}
-String.prototype.ifNoteURLorId = function () {
-  return this.ifNoteIdorURL()
-}
-String.prototype.isNoteURLorId = function () {
-  return this.ifNoteIdorURL()
-}
-String.prototype.ifNoteURLorID = function () {
-  return this.ifNoteIdorURL()
-}
-String.prototype.isNoteURLorID = function () {
-  return this.ifNoteIdorURL()
-}
-String.prototype.ifNoteIDorURL = function () {
-  return this.ifNoteIdorURL()
-}
-String.prototype.isNoteIDorURL = function () {
-  return this.ifNoteIdorURL()
-}
-
-/**
- * 判断是否是有效的卡片 ID
- */
-String.prototype.ifValidNoteId = function() {
-  const regex = /^[0-9A-Z]{8}-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{12}$/;
-  return regex.test(this);
-}
-String.prototype.isValidNoteId = function() {
-  return this.ifValidNoteId()
-}
-String.prototype.ifNoteId = function() {
-  return this.ifValidNoteId()
-}
-String.prototype.isNoteId = function() {
-  return this.ifValidNoteId()
-}
-
-/**
- * 判断是否是有效的卡片 URL
- */
-String.prototype.ifValidNoteURL = function() {
-  return /^marginnote\dapp:\/\/note\//.test(this)
-}
-String.prototype.isValidNoteURL = function() {
-  return this.ifValidNoteURL()
-}
-String.prototype.isLink = function() {
-  return this.ifValidNoteURL()
-}
-String.prototype.ifLink = function() {
-  return this.ifValidNoteURL()
-}
-/**
- * 把 ID 或 URL 统一转化为 URL
- */
-String.prototype.toNoteURL = function() {
-  if (this.ifNoteIdorURL()) {
-    let noteId = this.trim()
-    let noteURL
-    if (/^marginnote\dapp:\/\/note\//.test(noteId)) {
-      noteURL = noteId
-    } else {
-      noteURL = "marginnote4app://note/" + noteId
-    }
-    return noteURL
-  }
-}
-
-
-String.prototype.ifNoteBookId = function() {
-  return /^marginnote\dapp:\/\/notebook\//.test(this)
-}
-/**
- * 把 ID 或 URL 统一转化为 NoteBookId
- */
-String.prototype.toNoteBookId = function() {
-  if (this.ifNoteBookId() || this.ifNoteId()) {
-    let noteId = this.trim()
-    let noteURL
-    if (/^marginnote\dapp:\/\/notebook\//.test(noteId)) {
-      noteURL = noteId
-    } else {
-      noteURL = "marginnote4app://notebook/" + noteId
-    }
-    return noteURL
-  }
-}
-
-/**
- * 把 ID 或 URL 统一转化为 ID
- */
-String.prototype.toNoteId = function() {
-  if (this.ifNoteIdorURL()) {
-    let noteURL = this.trim()
-    let noteId
-    if (/^marginnote\dapp:\/\/note\//.test(noteURL)) {
-      noteId = noteURL.slice(22)
-    } else {
-      noteId = noteURL
-    }
-    return noteId
-  }
-}
-String.prototype.toNoteID = function() {
-  return this.toNoteId()
-}
-/**
- * 夏大鱼羊 - 字符串函数 - end
- */
-
 class MNUtil {
-  static themeColor = {
-    Gray: UIColor.colorWithHexString("#414141"),
-    Default: UIColor.colorWithHexString("#FFFFFF"),
-    Dark: UIColor.colorWithHexString("#000000"),
-    Green: UIColor.colorWithHexString("#E9FBC7"),
-    Sepia: UIColor.colorWithHexString("#F5EFDC")
-  }
-  static popUpNoteInfo = undefined;
-  static popUpSelectionInfo = undefined;
-  static mainPath
-  static init(mainPath){
-    if (this.mainPath) {
-      this.mainPath = mainPath
-      this.MNUtilVersion = this.getMNUtilVersion()
-      const renderer = new marked.Renderer();
-      renderer.code = (code, language) => {
-        const validLang = hljs.getLanguage(language) ? language : 'plaintext';
-        const uuid = NSUUID.UUID().UUIDString()
-        if (validLang === 'plaintext') {
-          return `<pre><div class="code-header" contenteditable="false"><span>${validLang}</span><button onclick="copyToClipboard('${uuid}')">复制</button></div><code class="hljs ${validLang}"  id="${uuid}">${code}</code></pre>`;
-        }
-        const highlightedCode = hljs.highlight(code, { language: validLang }).value;
-        return `<pre><div class="code-header" contenteditable="false"><span>${validLang}</span><button onclick="copyToClipboard('${uuid}')">复制</button></div><code class="hljs ${validLang}" id="${uuid}">${highlightedCode}</code></pre>`;
-      };
-      // renderer.em = function(text) {
-      //   return text;
-      // };
-      // marked.use({ renderer });
-      marked.setOptions({ renderer });
-    }
-  }
-  static get version(){
-    if (!this.mnVersion) {
-      this.mnVersion = this.appVersion()
-    }
-    return this.mnVersion
-  }
-  static get app(){
-    // this.appInstance = Application.sharedInstance()
-    // return this.appInstance
-    if (!this.appInstance) {
-      this.appInstance = Application.sharedInstance()
-    }
-    return this.appInstance
-  }
-  static get db(){
-    if (!this.data) {
-      this.data = Database.sharedInstance()
-    }
-    return this.data
-  }
-  static get currentWindow(){
-    //关闭mn4后再打开，得到的focusWindow会变，所以不能只在init做一遍初始化
-    return this.app.focusWindow
-  }
-  static get studyController(){
-    return this.app.studyController(this.currentWindow)
-  }
-  static get studyView() {
-    return this.app.studyController(this.currentWindow).view
-  }
-  static get mainPath(){
-    return this.mainPath
-  }
-  /**doc:0,1;study:2;review:3 */
-  static get studyMode(){
-    return this.studyController.studyMode
-  }
-  static get readerController() {
-    return this.studyController.readerController
-  }
-  static get notebookController(){
-    return this.studyController.notebookController
-  }
-  static get docControllers() {
-    return this.studyController.readerController.documentControllers
-  }
-  static get currentDocController() {
-    return this.studyController.readerController.currentDocumentController
-  }
-  static get mindmapView(){
-    return this.studyController.notebookController.mindmapView
-  }
-  static get selectionText(){
-    let selectionText = this.currentDocController.selectionText
-    if (selectionText) {
-      return selectionText
-    }
-    if (this.studyController.docMapSplitMode) {//不为0则表示documentControllers存在
-      let docControllers = this.docControllers
-      let docNumber = docControllers.length
-      for (let i = 0; i < docNumber; i++) {
-        const docController = docControllers[i];
-        selectionText = docController.selectionText
-        if (selectionText) {
-          return selectionText
-        }
-      }
-    }
-    if (this.popUpSelectionInfo) {
-      let docController = this.popUpSelectionInfo.docController
-      if (docController.selectionText) {
-        return docController.selectionText
-      }
-    }
-    return undefined
-  }
-  static get isSelectionText(){
-    let image = this.currentDocController.imageFromSelection()
-    if (image) {
-      return this.currentDocController.isSelectionText
-    }
-    if (this.studyController.docMapSplitMode) {//不为0则表示documentControllers存在
-      let docControllers = this.docControllers
-      let docNumber = docControllers.length
-      for (let i = 0; i < docNumber; i++) {
-        const docController = docControllers[i];
-        image = docController.imageFromSelection()
-        if (image) {
-          return docController.isSelectionText
-        }
-      }
-    }
-    if (this.popUpSelectionInfo) {
-      let docController = this.popUpSelectionInfo.docController
-      image = docController.imageFromSelection()
-      if (image) {
-        return docController.isSelectionText
-      }
-    }
-    return false
-  }
-  /** 
-   * 返回选中的内容，如果没有选中，则onSelection属性为false
-   * 如果有选中内容，则同时包括text和image，并通过isText属性表明当时是选中的文字还是图片
-   * @returns {{onSelection:boolean,image:null|undefined|NSData,text:null|undefined|string,isText:null|undefined|boolean}}
-   */
-  static get currentSelection(){
-    let image = this.currentDocController.imageFromSelection()
-    if (image) {
-      return this.genSelection(this.currentDocController)
-    }
-    if (this.studyController.docMapSplitMode) {//不为0则表示documentControllers存在
-      let docControllers = this.docControllers
-      let docNumber = docControllers.length
-      for (let i = 0; i < docNumber; i++) {
-        const docController = docControllers[i];
-        if (docController.imageFromSelection()) {
-          return this.genSelection(docController)
-        }
-      }
-    }
-    if (this.popUpSelectionInfo && this.popUpSelectionInfo.docController) {
-      let docController = this.popUpSelectionInfo.docController
-      if (docController.imageFromSelection()) {
-        return this.genSelection(docController)
-      }
-    }
-    return {onSelection:false}
-  }
-  static get currentNotebookId() {
-    return this.studyController.notebookController.notebookId
-  }
-  static get currentNotebook() {
-    return this.getNoteBookById(this.currentNotebookId)
-  }
-  static get currentDocmd5(){
-    try {
-      const { docMd5 } = this.currentDocController
-      if (docMd5 && docMd5.length === 32) return "00000000"
-      else return docMd5
-    } catch {
-      return undefined
-    }
-  }
-  static get isZH(){
-    return NSLocale.preferredLanguages()[0].startsWith("zh")
-  }
-
-  static get currentThemeColor(){
-    return this.themeColor[this.app.currentTheme]
-  }
-  static get clipboardText() {
-    return UIPasteboard.generalPasteboard().string
-  }
-  static get dbFolder(){
-    //结尾不带斜杠
-    return this.app.dbPath
-  }
-  static get cacheFolder(){
-    //结尾不带斜杠
-    return this.app.cachePath
-  }
-  static get documentFolder() {
-    //结尾不带斜杠
-    return this.app.documentPath
-  }
-  static get tempFolder() {
-    //结尾不带斜杠
-    return this.app.tempPath
-  }
-  static get splitLine() {
-    let study = this.studyController
-    let studyFrame = study.view.bounds
-    let readerFrame = study.readerController.view.frame
-    let hidden = study.readerController.view.hidden//true代表脑图全屏
-    let rightMode = study.rightMapMode
-    let fullWindow = readerFrame.width == studyFrame.width
-    if (hidden || fullWindow) {
-      return undefined
-    }
-    if (rightMode) {
-      let splitLine = readerFrame.x+readerFrame.width
-      return splitLine
-    }else{
-      let splitLine = readerFrame.x
-      return splitLine
-    }
-  }
   /**
    * 夏大鱼羊 - MNUtil - begin
    */
@@ -914,6 +304,264 @@ class MNUtil {
   /**
    * 夏大鱼羊 - MNUtil - end
    */
+  static themeColor = {
+    Gray: UIColor.colorWithHexString("#414141"),
+    Default: UIColor.colorWithHexString("#FFFFFF"),
+    Dark: UIColor.colorWithHexString("#000000"),
+    Green: UIColor.colorWithHexString("#E9FBC7"),
+    Sepia: UIColor.colorWithHexString("#F5EFDC")
+  }
+  static popUpNoteInfo = undefined;
+  static popUpSelectionInfo = undefined;
+  static mainPath
+  static init(mainPath){
+    if (this.mainPath) {
+      this.mainPath = mainPath
+      this.MNUtilVersion = this.getMNUtilVersion()
+      const renderer = new marked.Renderer();
+      renderer.code = (code, language) => {
+        const validLang = hljs.getLanguage(language) ? language : 'plaintext';
+        const uuid = NSUUID.UUID().UUIDString()
+        if (validLang === 'plaintext') {
+          return `<pre><div class="code-header" contenteditable="false"><span>${validLang}</span><button onclick="copyToClipboard('${uuid}')">复制</button></div><code class="hljs ${validLang}"  id="${uuid}">${code}</code></pre>`;
+        }
+        const highlightedCode = hljs.highlight(code, { language: validLang }).value;
+        return `<pre><div class="code-header" contenteditable="false"><span>${validLang}</span><button onclick="copyToClipboard('${uuid}')">复制</button></div><code class="hljs ${validLang}" id="${uuid}">${highlightedCode}</code></pre>`;
+      };
+      // renderer.em = function(text) {
+      //   return text;
+      // };
+      // marked.use({ renderer });
+      marked.setOptions({ renderer });
+    }
+  }
+  /**
+   * Retrieves the version of the application.
+   * 
+   * This method checks if the application version has already been set. If not,
+   * it sets the version using the `appVersion` method. The version is then
+   * returned.
+   * 
+   * @returns {{version: string,type: string;}} The version of the application.
+   */
+  static get version(){
+    if (!this.mnVersion) {
+      this.mnVersion = this.appVersion()
+    }
+    return this.mnVersion
+  }
+  static get app(){
+    // this.appInstance = Application.sharedInstance()
+    // return this.appInstance
+    if (!this.appInstance) {
+      this.appInstance = Application.sharedInstance()
+    }
+    return this.appInstance
+  }
+  static get db(){
+    if (!this.data) {
+      this.data = Database.sharedInstance()
+    }
+    return this.data
+  }
+  static get currentWindow(){
+    //关闭mn4后再打开，得到的focusWindow会变，所以不能只在init做一遍初始化
+    return this.app.focusWindow
+  }
+  static get studyController(){
+    return this.app.studyController(this.currentWindow)
+  }
+  static get studyView() {
+    return this.app.studyController(this.currentWindow).view
+  }
+  static get extensionPanelController(){
+    return this.studyController.extensionPanelController
+  }
+  /**
+   * @returns {UIView}
+   */
+  static get extensionPanelView(){
+    return this.studyController.extensionPanelController.view
+  }
+  static get mainPath(){
+    return this.mainPath
+  }
+  /**doc:0,1;study:2;review:3 */
+  static get studyMode(){
+    return this.studyController.studyMode
+  }
+  static get readerController() {
+    return this.studyController.readerController
+  }
+  static get notebookController(){
+    return this.studyController.notebookController
+  }
+  static get docControllers() {
+    return this.studyController.readerController.documentControllers
+  }
+  static get currentDocController() {
+    return this.studyController.readerController.currentDocumentController
+  }
+  static get mindmapView(){
+    return this.studyController.notebookController.mindmapView
+  }
+  static get selectionText(){
+    let selectionText = this.currentDocController.selectionText
+    if (selectionText) {
+      return selectionText
+    }
+    if (this.studyController.docMapSplitMode) {//不为0则表示documentControllers存在
+      let docControllers = this.docControllers
+      let docNumber = docControllers.length
+      for (let i = 0; i < docNumber; i++) {
+        const docController = docControllers[i];
+        selectionText = docController.selectionText
+        if (selectionText) {
+          return selectionText
+        }
+      }
+    }
+    if (this.popUpSelectionInfo) {
+      let docController = this.popUpSelectionInfo.docController
+      if (docController.selectionText) {
+        return docController.selectionText
+      }
+    }
+    return undefined
+  }
+  static get isSelectionText(){
+    let image = this.currentDocController.imageFromSelection()
+    if (image) {
+      return this.currentDocController.isSelectionText
+    }
+    if (this.studyController.docMapSplitMode) {//不为0则表示documentControllers存在
+      let docControllers = this.docControllers
+      let docNumber = docControllers.length
+      for (let i = 0; i < docNumber; i++) {
+        const docController = docControllers[i];
+        image = docController.imageFromSelection()
+        if (image) {
+          return docController.isSelectionText
+        }
+      }
+    }
+    if (this.popUpSelectionInfo) {
+      let docController = this.popUpSelectionInfo.docController
+      image = docController.imageFromSelection()
+      if (image) {
+        return docController.isSelectionText
+      }
+    }
+    return false
+  }
+  /**
+   * 返回选中的内容，如果没有选中，则onSelection属性为false
+   * 如果有选中内容，则同时包括text和image，并通过isText属性表明当时是选中的文字还是图片
+   * Retrieves the current selection details.
+   * 
+   * This method checks for the current document controller's selection. If an image is found,
+   * it generates the selection details using the `genSelection` method. If no image is found
+   * in the current document controller, it iterates through all document controllers if the
+   * study controller's document map split mode is enabled. If a selection is found in the
+   * pop-up selection info, it also generates the selection details. If no selection is found,
+   * it returns an object indicating no selection.
+   * 
+   * @returns {{onSelection: boolean, image: null|undefined|NSData, text: null|undefined|string, isText: null|undefined|boolean}} The current selection details.
+   */
+  static get currentSelection(){
+    if (this.studyController.readerController.view.hidden) {
+      return {onSelection:false}
+    }
+    let image = this.currentDocController.imageFromSelection()
+    if (image) {
+      return this.genSelection(this.currentDocController)
+    }
+    if (this.studyController.docMapSplitMode) {//不为0则表示documentControllers存在
+      let docControllers = this.docControllers
+      let docNumber = docControllers.length
+      for (let i = 0; i < docNumber; i++) {
+        const docController = docControllers[i];
+        if (docController.imageFromSelection()) {
+          return this.genSelection(docController)
+        }
+      }
+    }
+    if (this.popUpSelectionInfo && this.popUpSelectionInfo.docController) {
+      let docController = this.popUpSelectionInfo.docController
+      if (docController.imageFromSelection()) {
+        return this.genSelection(docController)
+      }
+    }
+    return {onSelection:false}
+  }
+  static get currentNotebookId() {
+    return this.studyController.notebookController.notebookId
+  }
+  static get currentNotebook() {
+    return this.getNoteBookById(this.currentNotebookId)
+  }
+  static get currentDocmd5(){
+    try {
+      const { docMd5 } = this.currentDocController
+      if (docMd5 && docMd5.length === 32) return "00000000"
+      else return docMd5
+    } catch {
+      return undefined
+    }
+  }
+  static get isZH(){
+    return NSLocale.preferredLanguages()[0].startsWith("zh")
+  }
+
+  static get currentThemeColor(){
+    return this.themeColor[this.app.currentTheme]
+  }
+  static get clipboardText() {
+    return UIPasteboard.generalPasteboard().string
+  }
+  static get dbFolder(){
+    //结尾不带斜杠
+    return this.app.dbPath
+  }
+  static get cacheFolder(){
+    //结尾不带斜杠
+    return this.app.cachePath
+  }
+  static get documentFolder() {
+    //结尾不带斜杠
+    return this.app.documentPath
+  }
+  static get tempFolder() {
+    //结尾不带斜杠
+    return this.app.tempPath
+  }
+  static get splitLine() {
+    let study = this.studyController
+    let studyFrame = study.view.bounds
+    let readerFrame = study.readerController.view.frame
+    let hidden = study.readerController.view.hidden//true代表脑图全屏
+    let rightMode = study.rightMapMode
+    let fullWindow = readerFrame.width == studyFrame.width
+    if (hidden || fullWindow) {
+      return undefined
+    }
+    if (rightMode) {
+      let splitLine = readerFrame.x+readerFrame.width
+      return splitLine
+    }else{
+      let splitLine = readerFrame.x
+      return splitLine
+    }
+  }
+  /**
+   * Retrieves the version and type of the application.
+   * 
+   * This method determines the version of the application by parsing the appVersion property.
+   * It categorizes the version as either "marginnote4" or "marginnote3" based on the parsed version number.
+   * Additionally, it identifies the operating system type (iPadOS, iPhoneOS, or macOS) based on the osType property.
+   *  
+   * @returns {{version: string, type: string}} An object containing the application version and operating system type.
+   */
   static appVersion() {
     let info = {}
     let version = parseFloat(this.app.appVersion)
@@ -941,9 +589,29 @@ class MNUtil {
     return res.version
     // this.copyJSON(res)
   }
-  static showHUD(message,duration=2,window = this.currentWindow) {
-    this.app.showHUD(message,window,duration)
+  /**
+   * Displays a Heads-Up Display (HUD) message on the specified window for a given duration.
+   * 
+   * This method shows a HUD message on the specified window for the specified duration.
+   * If no window is provided, it defaults to the current window. The duration is set to 2 seconds by default.
+   * 
+   * @param {string} message - The message to display in the HUD.
+   * @param {number} [duration=2] - The duration in seconds for which the HUD should be displayed.
+   * @param {UIWindow} [window=this.currentWindow] - The window on which the HUD should be displayed.
+   */
+  static showHUD(message, duration = 2, window = this.currentWindow) {
+    this.app.showHUD(message, window, duration);
   }
+  /**
+   * Displays a confirmation dialog with a main title and a subtitle.
+   * 
+   * This method shows a confirmation dialog with the specified main title and subtitle.
+   * It returns a promise that resolves with the button index of the button clicked by the user.
+   * 
+   * @param {string} mainTitle - The main title of the confirmation dialog.
+   * @param {string} subTitle - The subtitle of the confirmation dialog.
+   * @returns {Promise<number>} A promise that resolves with the button index of the button clicked by the user.
+   */
   static async confirm(mainTitle,subTitle){
     return new Promise((resolve, reject) => {
       UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
@@ -958,22 +626,45 @@ class MNUtil {
   static copy(text) {
     UIPasteboard.generalPasteboard().string = text
   }
+  /**
+   * Copies a JSON object to the clipboard as a formatted string.
+   * 
+   * This method converts the provided JSON object into a formatted string using `JSON.stringify`
+   * with indentation for readability, and then sets this string to the clipboard.
+   * 
+   * @param {Object} object - The JSON object to be copied to the clipboard.
+   */
   static copyJSON(object) {
     UIPasteboard.generalPasteboard().string = JSON.stringify(object,null,2)
   }
   /**
+   * Copies an image to the clipboard.
    * 
-   * @param {NSData} imageData 
+   * This method sets the provided image data to the clipboard with the specified pasteboard type.
+   * 
+   * @param {NSData} imageData - The image data to be copied to the clipboard.
    */
   static copyImage(imageData) {
     UIPasteboard.generalPasteboard().setDataForPasteboardType(imageData,"public.png")
   }
   /**
-   * 
-   * @param {string} url 
+   *
+   * @param {string} url
    */
   static openURL(url){
     this.app.openURL(NSURL.URLWithString(url));
+  }
+  static render(template,config){
+    let output = mustache.render(template,config)
+    return output
+  }
+  /**
+   * 
+   * @param {string} noteId 
+   * @returns {boolean}
+   */
+  static isNoteInReview(noteId){
+    return this.studyController.isNoteInReview(noteId)
   }
   static getNoteById(noteid) {
     let note = this.db.getNoteById(noteid)
@@ -994,8 +685,8 @@ class MNUtil {
     return doc
   }
   /**
-   * 
-   * @param {String} url 
+   *
+   * @param {String} url
    * @returns {String}
    */
   static getNoteIdByURL(url) {
@@ -1005,9 +696,34 @@ class MNUtil {
     }
     return targetNoteId
   }
+  /**
+   * 
+   * @param filePath The file path of the document to import
+   * @returns The imported document md5
+   */
+  static importDocument(filePath) {
+    return MNUtil.app.importDocument(filePath)
+  
+  }
+  static toggleExtensionPanel(){
+    this.studyController.toggleExtensionPanel()
+  }
   static isfileExists(path) {
     return NSFileManager.defaultManager().fileExistsAtPath(path)
   }
+  /**
+   * Generates a frame object with the specified x, y, width, and height values.
+   * 
+   * This method creates a frame object with the provided x, y, width, and height values.
+   * If any of these values are undefined, it displays a HUD message indicating the invalid parameter
+   * and sets the value to 10 as a default.
+   * 
+   * @param {number} x - The x-coordinate of the frame.
+   * @param {number} y - The y-coordinate of the frame.
+   * @param {number} width - The width of the frame.
+   * @param {number} height - The height of the frame.
+   * @returns {{x: number, y: number, width: number, height: number}} The frame object with the specified dimensions.
+   */
   static genFrame(x, y, width, height) {
     if (x === undefined) {
         MNUtil.showHUD("无效的参数: x");
@@ -1032,9 +748,9 @@ class MNUtil {
     view.frame = {x:x,y:y,width:width,height:height}
   }
   /**
-   * 
-   * @param {DocumentController} docController 
-   * @returns 
+   *
+   * @param {DocumentController} docController
+   * @returns
    */
   static genSelection(docController){
     let selection = {onSelection:true}
@@ -1049,7 +765,7 @@ class MNUtil {
       return selection
     }
     return {onSelection:false}
-  
+
   }
   static parseWinRect(winRect) {
     let rectArr = winRect.replace(/{/g, '').replace(/}/g, '').replace(/\s/g, '').split(',')
@@ -1063,7 +779,7 @@ class MNUtil {
     return new Promise((resolve, reject) => {
       UIView.animateWithDurationAnimationsCompletion(time,func,()=>(resolve()))
     })
-    
+
   }
   static checkSender(sender,window = this.currentWindow){
     return this.app.checkNotifySenderInWindow(sender, window)
@@ -1076,8 +792,8 @@ class MNUtil {
     })
   }
   /**
-   * 
-   * @param {UIView} view 
+   *
+   * @param {UIView} view
    */
   static isDescendantOfStudyView(view){
     return view.isDescendantOfView(this.studyView)
@@ -1099,6 +815,16 @@ class MNUtil {
   static refreshAfterDBChanged(notebookId = this.currentNotebookId){
     this.app.refreshAfterDBChanged(notebookId)
   }
+  /**
+   * Focuses a note in the mind map by its ID with an optional delay.
+   * 
+   * This method attempts to focus a note in the mind map by its ID. If the note is not in the current notebook,
+   * it displays a HUD message indicating that the note is not in the current notebook. If a delay is specified,
+   * it waits for the specified delay before focusing the note.
+   * 
+   * @param {string} noteId - The ID of the note to focus.
+   * @param {number} [delay=0] - The delay in seconds before focusing the note.
+   */
   static focusNoteInMindMapById(noteId,delay=0){
   try {
     let note = this.getNoteById(noteId)
@@ -1113,7 +839,7 @@ class MNUtil {
     }else{
       this.studyController.focusNoteInMindMapById(noteId)
     }
-    
+
   } catch (error) {
     MNUtil.showHUD(error)
   }
@@ -1173,15 +899,36 @@ class MNUtil {
       return undefined
     }
   }
+  /**
+   * Merges multiple consecutive whitespace characters into a single space, except for newlines.
+   * 
+   * This method processes the input string to replace multiple consecutive whitespace characters
+   * (excluding newlines) with a single space. It also ensures that multiple consecutive newlines
+   * are reduced to a single newline. The resulting string is then trimmed of any leading or trailing
+   * whitespace.
+   * 
+   * @param {string} str - The input string to be processed.
+   * @returns {string} The processed string with merged whitespace.
+   */
   static mergeWhitespace(str) {
       if (!str) {
-        return ""
+        return "";
       }
       // 先将多个连续的换行符替换为单个换行符
       var tempStr = str.replace(/\n+/g, '\n');
       // 再将其它的空白符（除了换行符）替换为单个空格
       return tempStr.replace(/[\r\t\f\v ]+/g, ' ').trim();
   }
+  /**
+   * Groups the specified function within an undo operation for the given notebook.
+   * 
+   * This method wraps the provided function within an undo operation for the specified notebook.
+   * It ensures that the function's changes can be undone as a single group. After the function is executed,
+   * it refreshes the application to reflect the changes.
+   * 
+   * @param {Function} f - The function to be executed within the undo group.
+   * @param {string} [notebookId=this.currentNotebookId] - The ID of the notebook for which the undo group is created.
+   */
   static undoGrouping(f,notebookId = this.currentNotebookId){
     UndoManager.sharedInstance().undoGrouping(
       String(Date.now()),
@@ -1197,9 +944,13 @@ class MNUtil {
     return NSData.dataWithContentsOfFile(path)
   }
   /**
+   * Extracts the file name from a full file path.
    * 
-   * @param {string} fullPath 
-   * @returns {string}
+   * This method takes a full file path as input and extracts the file name by finding the last occurrence
+   * of the '/' character and then taking the substring from that position to the end of the string.
+   * 
+   * @param {string} fullPath - The full path of the file.
+   * @returns {string} The extracted file name.
    */
   static getFileName(fullPath) {
       // 找到最后一个'/'的位置
@@ -1216,11 +967,11 @@ class MNUtil {
   }
   /**
    * 左 0, 下 1，3, 上 2, 右 4
-   * @param {*} sender 
-   * @param {*} commandTable 
-   * @param {*} width 
-   * @param {*} position 
-   * @returns 
+   * @param {*} sender
+   * @param {*} commandTable
+   * @param {*} width
+   * @param {*} position
+   * @returns
    */
   static getPopoverAndPresent(sender,commandTable,width=100,position=2) {
     var menuController = MenuController.new();
@@ -1240,9 +991,9 @@ class MNUtil {
     return popoverController
   }
   /**
-   * 
-   * @param {string} name 
-   * @param {*} userInfo 
+   *
+   * @param {string} name
+   * @param {*} userInfo
    */
   static postNotification(name,userInfo) {
     NSNotificationCenter.defaultCenter().postNotificationNameObjectUserInfo(name, this.currentWindow, userInfo)
@@ -1254,6 +1005,24 @@ class MNUtil {
   static genNSURL(url) {
     return NSURL.URLWithString(url)
   }
+  /**
+   * 默认在当前学习集打开
+   * @param {string} md5 
+   * @param {string} notebookId
+   */
+  static openDoc(md5,notebookId=MNUtil.currentNotebookId){
+    MNUtil.studyController.openNotebookAndDocument(notebookId, md5)
+  }
+  /**
+   * Converts NSData to a string.
+   * 
+   * This method checks if the provided data object has a base64 encoding method. If it does,
+   * it decodes the base64 data and converts it to a UTF-8 string. If the data object does not
+   * have a base64 encoding method, it returns the data object itself.
+   * 
+   * @param {NSData} data - The data object to be converted to a string.
+   * @returns {string} The converted string.
+   */
   static data2string(data){
     if (data.base64Encoding) {
       let test = CryptoJS.enc.Base64.parse(data.base64Encoding())
@@ -1303,6 +1072,18 @@ class MNUtil {
     let text = this.data2string(res)
     return text
   }
+  /**
+   * Encrypts or decrypts a string using XOR encryption with a given key.
+   * 
+   * This method performs XOR encryption or decryption on the input string using the provided key.
+   * Each character in the input string is XORed with the corresponding character in the key,
+   * repeating the key if it is shorter than the input string. The result is a new string
+   * where each character is the XOR result of the original character and the key character.
+   * 
+   * @param {string} input - The input string to be encrypted or decrypted.
+   * @param {string} key - The key used for XOR encryption or decryption.
+   * @returns {string} The encrypted or decrypted string.
+   */
   static xorEncryptDecrypt(input, key) {
     let output = [];
     for (let i = 0; i < input.length; i++) {
@@ -1324,10 +1105,20 @@ class MNUtil {
     let md5 = CryptoJS.MD5(data).toString();
     return md5
   }
-  
+
   static md2html(md){
     return marked.parse(md.replace(/_{/g,'\\_\{').replace(/_\\/g,'\\_\\'))
   }
+  /**
+   * Escapes special characters in a string to ensure it can be safely used in JavaScript code.
+   * 
+   * This method escapes backslashes, backticks, template literal placeholders, carriage returns,
+   * newlines, single quotes, and double quotes in the input string. The resulting string can be
+   * safely used in JavaScript code without causing syntax errors.
+   * 
+   * @param {string} str - The input string to be escaped.
+   * @returns {string} The escaped string.
+   */
   static escapeString(str) {
     return str.replace(/\\/g, '\\\\') // Escape backslashes
               .replace(/\`/g, '\\`') // Escape backticks
@@ -1346,9 +1137,9 @@ class MNUtil {
 
 
   /**
-   * 
-   * @param {string[]} UTI 
-   * @returns 
+   *
+   * @param {string[]} UTI
+   * @returns
    */
   static async importFile(UTI){
     return new Promise((resolve, reject) => {
@@ -1361,9 +1152,9 @@ class MNUtil {
     this.app.saveFileWithUti(filePath, UTI)
   }
   /**
-   * 
-   * @param {T[]} arr 
-   * @param {boolean} noEmpty 
+   *
+   * @param {T[]} arr
+   * @param {boolean} noEmpty
    * @returns {T[]}
    */
  static unique (arr, noEmpty = false){
@@ -1413,6 +1204,16 @@ class MNUtil {
     }
     return noteId
   }
+  /**
+   * Retrieves the image data from the current document controller or other document controllers if the document map split mode is enabled.
+   * 
+   * This method checks for image data in the current document controller's selection. If no image is found, it checks the focused note within the current document controller.
+   * If the document map split mode is enabled, it iterates through all document controllers to find the image data. If a pop-up selection info is available, it also checks the associated document controller.
+   * 
+   * @param {boolean} [checkImageFromNote=false] - Whether to check the focused note for image data.
+   * @param {boolean} [checkDocMapSplitMode=false] - Whether to check other document controllers if the document map split mode is enabled.
+   * @returns {NSData|undefined} The image data if found, otherwise undefined.
+   */
   static getDocImage(checkImageFromNote=false,checkDocMapSplitMode=false){
   try {
 
@@ -1473,9 +1274,9 @@ class MNUtil {
     }
   }
   /**
-   * 
-   * @param {number[]} arr 
-   * @param {string} type 
+   *
+   * @param {number[]} arr
+   * @param {string} type
    */
   static sort(arr,type="increment"){
     let arrToSort = arr
@@ -1492,11 +1293,15 @@ class MNUtil {
     return [...new Set(arrToSort)]
   }
   /**
+   * Displays an input dialog with a title, subtitle, and a list of items.
    * 
-   * @param {string} title 
-   * @param {string} subTitle 
-   * @param {string[]} items 
-   * @returns {Promise<{input:string,button:number}>}
+   * This method shows an input dialog with the specified title and subtitle. It allows the user to input text and select from a list of items.
+   * The method returns a promise that resolves with an object containing the input text and the index of the button clicked by the user.
+   * 
+   * @param {string} title - The main title of the input dialog.
+   * @param {string} subTitle - The subtitle of the input dialog.
+   * @param {string[]} items - The list of items to display in the dialog.
+   * @returns {Promise<{input:string,button:number}>} A promise that resolves with an object containing the input text and the button index.
    */
   static input(title,subTitle,items) {
     return new Promise((resolve, reject) => {
@@ -1511,16 +1316,11 @@ class MNUtil {
   }
   /**
    * 注意这里的code需要是字符串
-   * @param {string} code 
+   * @param {string} code
    * @returns {string}
    */
   static getStatusCodeDescription(code){
   try {
-    
-
-  // if (typeof code === "number") {
-  //   code = toString(code)
-  // }
     let des = {
     "400": "Bad Request",
     "401": "Unauthorized",
@@ -1562,7 +1362,7 @@ class MNUtil {
     "508": "Loop Detected",
     "510": "Not Extended",
     "511": "Network Authentication Required"
-  } 
+  }
   if (code in des) {
     return (code+": "+des[code])
   }
@@ -1570,6 +1370,10 @@ class MNUtil {
   } catch (error) {
     MNUtil.copy(error.toString())
   }
+  }
+  static render(template,config){
+    let output = mustache.render(template,config)
+    return output
   }
 }
 
@@ -1583,9 +1387,59 @@ class MNConnection{
   static requestWithURL(url){
     return NSMutableURLRequest.requestWithURL(NSURL.URLWithString(url))
   }
+  /**
+   * Loads a URL request into a web view.
+   * 
+   * This method loads the specified URL into the provided web view. It creates an NSURLRequest object
+   * from the given URL and then instructs the web view to load this request.
+   * 
+   * @param {UIWebView} webview - The web view into which the URL should be loaded.
+   * @param {string} url - The URL to be loaded into the web view.
+   */
   static loadRequest(webview,url){
     webview.loadRequest(NSURLRequest.requestWithURL(NSURL.URLWithString(url)));
   }
+  /**
+   * 
+   * @param {UIWebView} webview 
+   * @param {string} fileURL
+   * @param {string} baseURL 
+   */
+  static loadFile(webview,file,baseURL){
+    webview.loadFileURLAllowingReadAccessToURL(
+      NSURL.fileURLWithPath(file),
+      NSURL.fileURLWithPath(baseURL)
+    )
+  }
+  /**
+   * 
+   * @param {UIWebView} webview 
+   * @param {string} html
+   * @param {string} baseURL 
+   */
+  static loadHTML(webview,html,baseURL){
+    webview.loadFileURLAllowingReadAccessToURL(
+      html,
+      NSURL.fileURLWithPath(baseURL)
+    )
+  }
+  /**
+   * Initializes an HTTP request with the specified URL and options.
+   * 
+   * This method creates an NSMutableURLRequest object with the given URL and sets the HTTP method, timeout interval, and headers.
+   * It also handles query parameters, request body, form data, and JSON payloads based on the provided options.
+   * 
+   * @param {string} url - The URL for the HTTP request.
+   * @param {Object} options - The options for the HTTP request.
+   * @param {string} [options.method="GET"] - The HTTP method (e.g., "GET", "POST").
+   * @param {number} [options.timeout=10] - The timeout interval for the request in seconds.
+   * @param {Object} [options.headers] - Additional headers to include in the request.
+   * @param {Object} [options.search] - Query parameters to append to the URL.
+   * @param {string} [options.body] - The request body as a string.
+   * @param {Object} [options.form] - Form data to include in the request body.
+   * @param {Object} [options.json] - JSON data to include in the request body.
+   * @returns {NSMutableURLRequest} The initialized NSMutableURLRequest object.
+   */
   static initRequest(url,options) {
     const request = this.requestWithURL(url)
     request.setHTTPMethod(options.method ?? "GET")
@@ -1631,6 +1485,15 @@ class MNConnection{
     }
     return request
   }
+  /**
+   * Sends an HTTP request asynchronously and returns the response data.
+   * 
+   * This method sends the specified HTTP request asynchronously using NSURLConnection. It returns a promise that resolves with the response data if the request is successful,
+   * or with an error object if the request fails. The error object includes details such as the status code and error message.
+   * 
+   * @param {NSMutableURLRequest} request - The HTTP request to be sent.
+   * @returns {Promise<Object>} A promise that resolves with the response data or an error object.
+   */
   static async sendRequest(request){
     // MNUtil.copy("sendRequest")
     const queue = NSOperationQueue.mainQueue()
@@ -1693,12 +1556,38 @@ class MNConnection{
       )
   })
   }
+  /**
+   * Fetches data from a specified URL with optional request options.
+   * 
+   * This method initializes a request with the provided URL and options, then sends the request asynchronously.
+   * It returns a promise that resolves with the response data or an error object if the request fails.
+   * 
+   * @param {string} url - The URL to fetch data from.
+   * @param {Object} [options={}] - Optional request options.
+   * @param {string} [options.method="GET"] - The HTTP method to use for the request.
+   * @param {number} [options.timeout=10] - The timeout interval for the request in seconds.
+   * @param {Object} [options.headers={}] - Additional headers to include in the request.
+   * @param {Object} [options.search] - Query parameters to append to the URL.
+   * @param {string} [options.body] - The body of the request for POST, PUT, etc.
+   * @param {Object} [options.form] - Form data to include in the request body.
+   * @param {Object} [options.json] - JSON data to include in the request body.
+   * @returns {Promise<Object|Error>} A promise that resolves with the response data or an error object.
+   */
   static async fetch (url,options = {}){
     const request = this.initRequest(url, options)
     // MNUtil.copy(typeof request)
     const res = await this.sendRequest(request)
     return res
   }
+  /**
+   * Encodes a string to Base64.
+   * 
+   * This method encodes the provided string to a Base64 representation using the CryptoJS library.
+   * It first parses the string into a WordArray and then converts this WordArray to a Base64 string.
+   * 
+   * @param {string} str - The string to be encoded to Base64.
+   * @returns {string} The Base64 encoded string.
+   */
 static btoa(str) {
     // Encode the string to a WordArray
     const wordArray = CryptoJS.enc.Utf8.parse(str);
@@ -1706,6 +1595,17 @@ static btoa(str) {
     const base64 = CryptoJS.enc.Base64.stringify(wordArray);
     return base64;
 }
+  /**
+   * Reads a file from a WebDAV server using the provided URL, username, and password.
+   * 
+   * This method sends a GET request to the specified WebDAV URL with the provided username and password for authentication.
+   * It returns a promise that resolves with the response data if the request is successful, or with an error object if the request fails.
+   * 
+   * @param {string} url - The URL of the file on the WebDAV server.
+   * @param {string} username - The username for authentication.
+   * @param {string} password - The password for authentication.
+   * @returns {Promise<Object>} A promise that resolves with the response data or an error object.
+   */
 static async readWebDAVFile(url, username, password) {
     const headers = {
       Authorization:'Basic ' + this.btoa(username + ':' + password),
@@ -1717,6 +1617,19 @@ static async readWebDAVFile(url, username, password) {
         });
     return response
 }
+/**
+ * Uploads a file to a WebDAV server using the provided URL, username, password, and file content.
+ * 
+ * This method sends a PUT request to the specified WebDAV URL with the provided username and password for authentication.
+ * The file content is included in the request body. It returns a promise that resolves with the response data if the request is successful,
+ * or with an error object if the request fails.
+ * 
+ * @param {string} url - The URL of the file on the WebDAV server.
+ * @param {string} username - The username for authentication.
+ * @param {string} password - The password for authentication.
+ * @param {string} fileContent - The content of the file to be uploaded.
+ * @returns {Promise<Object>} A promise that resolves with the response data or an error object.
+ */
 static async uploadWebDAVFile(url, username, password, fileContent) {
     const headers = {
       Authorization:'Basic ' + this.btoa(username + ':' + password),
@@ -1739,8 +1652,8 @@ class MNButton{
     );
   }
   /**
-   * 
-   * @param {{color:string,title:string,bold:boolean,font:number,opacity:number,radius:number}} config 
+   *
+   * @param {{color:string,title:string,bold:boolean,font:number,opacity:number,radius:number}} config
    * @param {UIView} superView
    */
   static new(config = {},superView){
@@ -1776,10 +1689,20 @@ class MNButton{
 //     this.setConfig(button, config)
 //     return button
 // }
+  /**
+   * Creates a color from a hex string with an optional alpha value.
+   * 
+   * This method takes a hex color string and an optional alpha value, and returns a UIColor object.
+   * If the alpha value is not provided, the color is returned without modifying its alpha component.
+   * 
+   * @param {string} hex - The hex color string (e.g., "#RRGGBB").
+   * @param {number} [alpha=1.0] - The alpha value (opacity) of the color, ranging from 0.0 to 1.0.
+   * @returns {UIColor} The UIColor object representing the specified color with the given alpha value.
+   */
   static hexColorAlpha(hex,alpha) {
     let color = UIColor.colorWithHexString(hex)
     return alpha!==undefined?color.colorWithAlphaComponent(alpha):color
-  }  
+  }
   static setColor(button,hexColor,alpha = 1.0){
     button.backgroundColor = this.hexColorAlpha(hexColor, alpha)
   }
@@ -1792,9 +1715,9 @@ class MNButton{
     }
   }
   /**
-   * 
-   * @param {UIButton} button 
-   * @param {string|NSData} path 
+   *
+   * @param {UIButton} button
+   * @param {string|NSData} path
    */
   static setImage(button,path,scale){
     if (typeof path === "string") {
@@ -1805,572 +1728,40 @@ class MNButton{
   }
   static setOpacity(button,opacity){
     button.layer.opacity = opacity
+
+
   }
   static setRadius(button,radius = 8){
     button.layer.cornerRadius = radius;
   }
-  /**
-   * 
-   * @param {UIButton} button 
-   * @param {{color:string,title:string,bold:boolean,font:number,opacity:number,radius:number}} config 
+/**
+   * 设置按钮的配置
+   *
+   * @param {UIButton} button - 要设置配置的按钮对象
+   * @param {{color: string, title: string, bold: boolean, font: number, opacity: number, radius: number, image?: string, scale?: number}} config - 配置对象
    */
-  static setConfig(button,config){
+  static setConfig(button, config) {
     if ("color" in config) {
-      this.setColor(button, config.color, config.alpha)
+      this.setColor(button, config.color, config.alpha);
     }
     if ("title" in config) {
-      this.setTitle(button, config.title, config.font, config.bold)
+      this.setTitle(button, config.title, config.font, config.bold);
     }
     if ("opacity" in config) {
-      this.setOpacity(button, config.opacity)
+      this.setOpacity(button, config.opacity);
     }
     if ("radius" in config) {
-      this.setRadius(button,config.radius)
+      this.setRadius(button, config.radius);
     }
     if ("image" in config) {
-      this.setImage(button, config.image,config.scale)
+      this.setImage(button, config.image, config.scale);
     }
   }
+
 
 }
 
 class MNNote{
-  /** @type {MbBookNote} */
-  note
-  /**
-   * 
-   * @param {MbBookNote|string|object} note 
-   */
-  constructor(note) {
-    switch (MNUtil.typeOf(note)) {
-      case 'MbBookNote':
-        this.note = note
-        break;
-      case 'NoteURL':
-        let NoteFromURL = MNUtil.getNoteBookById(MNUtil.getNoteIdByURL(note))
-        if (NoteFromURL) {
-          this.note = NoteFromURL
-        }
-      case 'string':
-        let targetNoteId = note.trim()
-        let targetNote = MNUtil.getNoteById(targetNoteId)
-        if (targetNote) {
-          this.note = targetNote
-        }
-        // MNUtil.showHUD(this.note.noteId)
-        break;
-        // MNUtil.copyJSON(targetNoteId+":"+this.note.noteId)
-      case "NoteConfig":
-        let config = note
-        let notebook = MNUtil.currentNotebook
-        let title = config.title ?? ""
-        // MNUtil.showHUD("new note")
-        // MNUtil.copyJSON(note)
-        this.note = Note.createWithTitleNotebookDocument(title, notebook, MNUtil.currentDocController.document)
-        if (config.content) {
-          if (config.markdown) {
-            this.note.appendMarkdownComment(config.content)
-          }else{
-            this.note.appendTextComment(config.content)
-          }
-        }
-        if (config.color !== undefined) {
-          this.note.colorIndex = config.color
-        }
-        break;
-      default:
-        break;
-    }
-  }
-  /**
-   * 
-   * @param {MbBookNote|string|object} note 
-   */
-  static new(note){
-    if (note === undefined) {
-      return undefined
-    }
-    // MNUtil.showHUD(note)
-    // let paramType = MNUtil.typeOf(note)
-    // MNUtil.showHUD(paramType)
-    switch (MNUtil.typeOf(note)) {
-      case 'MbBookNote':
-        return new MNNote(note)
-      case 'NoteURL':
-        let NoteFromURL = MNUtil.getNoteById(MNUtil.getNoteIdByURL(note))
-        if (NoteFromURL) {
-          return new MNNote(NoteFromURL)
-        }
-        return undefined
-      case 'string':
-        let targetNoteId = note.trim()
-        let targetNote = MNUtil.getNoteById(targetNoteId)
-        if (targetNote) {
-          return new MNNote(targetNote)
-        }
-        return undefined
-      case "NoteConfig":
-        let config = note
-        let notebook = MNUtil.currentNotebook
-        let title = config.title ?? ""
-        // MNUtil.copyJSON(note)
-        let newNote = Note.createWithTitleNotebookDocument(title, notebook, MNUtil.currentDocController.document)
-        if (config.excerptText) {
-          newNote.excerptText = config.excerptText
-          if (config.excerptTextMarkdown) {
-            newNote.excerptTextMarkdown = true
-            if (/!\[.*?\]\((data:image\/.*;base64,.*?)(\))/.test(config.excerptText)) {
-              newNote.processMarkdownBase64Images()
-            }
-          }
-        }
-        if (config.content) {
-          if (config.markdown) {
-            newNote.appendMarkdownComment(config.content)
-          }else{
-            newNote.appendTextComment(config.content)
-          }
-        }
-        if (config.color !== undefined) {
-          newNote.colorIndex = config.color
-        }
-
-        return new MNNote(newNote)
-      default:
-        return undefined
-    }
-  }
-  get noteId() {
-    return this.note.noteId
-  }
-  get notebookId() {
-    return this.note.notebookId
-  }
-  /**
-   * 卡片被合并后，其对应的原始noteId
-   * @returns {string} 
-   */
-  get originNoteId(){
-    return this.note.originNoteId
-  }
-  /**
-   * 卡片被合并后，主卡片的noteId
-   * @returns {string} 
-   */
-  get groupNoteId(){
-    return this.note.groupNoteId
-  }
-  get childNotes() {
-    return this.note.childNotes?.map(k => new MNNote(k)) ?? []
-  }
-  get parentNote() {
-    return this.note.parentNote && new MNNote(this.note.parentNote)
-  }
-  get noteURL(){
-    return MNUtil.version.version+'app://note/'+this.note.noteId
-  }
-  /**
-   * @returns {MNNote|undefined}
-   */
-  get childMindMap(){
-    if (this.note.childMindMap) {
-      return MNNote.new(this.note.childMindMap)
-    }
-    return undefined
-  }
-  /**
-   * 
-   * @returns {{descendant:MNNote[],treeIndex:number[][]}}
-   */
-  get descendantNodes() {
-    const { childNotes } = this
-    if (!childNotes.length) {
-      return {
-        descendant: [],
-        treeIndex: []
-      }
-    } else {
-      /**
-       * 
-       * @param {MNNote[]} nodes 
-       * @param {number} level 
-       * @param {number[]} lastIndex 
-       * @param {{descendant:MNNote[],treeIndex:number[][]}} ret 
-       * @returns 
-       */
-      function down(
-        nodes,
-        level = 0,
-        lastIndex = [],
-        ret = {
-          descendant: [],
-          treeIndex: []
-        }
-      ) {
-        level++
-        nodes.forEach((node, index) => {
-          ret.descendant.push(node)
-          lastIndex = lastIndex.slice(0, level - 1)
-          lastIndex.push(index)
-          ret.treeIndex.push(lastIndex)
-          if (node.childNotes?.length) {
-            down(node.childNotes, level, lastIndex, ret)
-          }
-        })
-        return ret
-      }
-      return down(childNotes)
-    }
-  }
-  get ancestorNodes() {
-    /**
-     * 
-     * @param {MNNote} node 
-     * @param {MNNote[]} ancestorNodes 
-     * @returns 
-     */
-    function up(node, ancestorNodes) {
-      if (node.note.parentNote) {
-        const parentNode = new MNNote(node.note.parentNote)
-        ancestorNodes = up(parentNode, [...ancestorNodes, parentNode])
-      }
-      return ancestorNodes
-    }
-    return up(this, [])
-  }
-  get notes() {
-    return this.note.comments.reduce(
-      (acc, cur) => {
-        cur.type == "LinkNote" && acc.push(MNUtil.db.getNoteById(cur.noteid))
-        return acc
-      },
-      [this.note]
-    )
-  }
-  get titles() {
-    return MNUtil.unique(this.note.noteTitle?.split(/\s*[;；]\s*/) ?? [], true)
-  }
-  /**
-   * 
-   * @param {string[]} titles 
-   * @returns 
-   */
-  set titles(titles) {
-    const newTitle = MNUtil.unique(titles, true).join("; ")
-    if (this.note.excerptText === this.note.noteTitle) {
-      this.note.noteTitle = newTitle
-      this.note.excerptText = newTitle
-    } else {
-      this.note.noteTitle = newTitle
-    }
-  }
-  get isOCR() {
-    if (this.note.excerptPic?.paint) {
-      return this.note.textFirst
-    }
-    return false
-  }
-  get textFirst() {
-    return this.note.textFirst
-  }
-  get title() {
-    return this.note.noteTitle ?? ""
-  }
-  get noteTitle() {
-    return this.note.noteTitle ?? ""
-  }
-  /**
-   * 
-   * @param {string} title
-   * @returns 
-   */
-  set title(title) {
-    this.note.noteTitle = title
-  }
-  /**
-   * 
-   * @param {string} title
-   * @returns 
-   */
-  set noteTitle(title) {
-    this.note.noteTitle = title
-  }
-  get excerptText(){
-    return this.note.excerptText
-  }
-  get excerptTextMarkdown(){
-    return this.note.excerptTextMarkdown;
-  }
-  set excerptTextMarkdown(status){
-    this.note.excerptTextMarkdown = status
-  }
-  set excerptText(text){
-    this.note.excerptText = text
-  }
-  get mainExcerptText() {
-    return this.note.excerptText ?? ""
-  }
-  /**
-   * 
-   * @param {string} text
-   * @returns 
-   */
-  set mainExcerptText(text) {
-    this.note.excerptText = text
-  }
-  get excerptPic(){
-    return this.note.excerptPic
-  }
-  get excerptPicData(){
-    let imageData = MNUtil.getMediaByHash(this.note.excerptPic.paint)
-    return imageData
-  }
-  get colorIndex(){
-    return this.note.colorIndex
-  }
-  set colorIndex(index){
-    this.note.colorIndex = index
-  }
-  get fillIndex(){
-    return this.note.fillIndex
-  }
-  set fillIndex(index){
-    this.note.fillIndex = index
-  }
-  get createDate(){
-    return this.note.createDate
-  }
-  get modifiedDate(){
-    return this.note.modifiedDate
-  }
-  get linkedNotes(){
-    return this.note.linkedNotes
-  }
-  get summaryLinks(){
-    return this.note.summaryLinks
-  }
-  get mediaList(){
-    return this.note.mediaList
-  }
-  /**
-   * get all tags, without '#'
-   * @returns {string[]}
-   */
-  get tags() {
-    try {
-    // MNUtil.showHUD("length: "+this.note.comments.length)
-    const tags = this.note.comments.reduce((acc, cur) => {
-      // MNUtil.showHUD("cur.type")
-      if (cur.type == "TextNote" && cur.text.startsWith("#")) {
-        acc.push(...cur.text.split(/\s+/).filter(k => k.startsWith("#")))
-      }
-      return acc
-    }, [])
-    return tags.map(k => k.slice(1))
-      
-    } catch (error) {
-      MNUtil.showHUD(error)
-      return []
-    }
-  }
-  /**
-   * 
-   * @returns {NoteComment[]}
-   */
-  get comments(){
-    return this.note.comments
-  }
-  /**
-   * set tags, will remove all old tags
-   * 
-   * @param {string[]} tags
-   * @returns 
-   */
-  set tags(tags) {
-    this.tidyupTags()
-    tags = MNUtil.unique(tags, true)
-    const lastComment = this.note.comments[this.note.comments.length - 1]
-    if (lastComment?.type == "TextNote" && lastComment.text.startsWith("#")) {
-      this.note.removeCommentByIndex(this.note.comments.length - 1)
-    }
-    this.appendTextComments(tags.map(k => '#'+k).join(" "))
-  }
-  /**
-   * @returns {{ocr:string[],html:string[],md:string[]}}
-   */
-  get excerptsTextPic() {
-    return this.notes.reduce(
-      (acc, cur) => {
-        Object.entries(MNNote.getNoteExcerptTextPic(cur)).forEach(([k, v]) => {
-          if (k in acc) acc[k].push(...v)
-        })
-        return acc
-      },
-      {
-        ocr: [],
-        html: [],
-        md: []
-      }
-    )
-  }
-  /**
-   * @returns {{html:string[],md:string[]}}
-   */
-  get commentsTextPic() {
-    return this.note.comments.reduce(
-      (acc, cur) => {
-        if (cur.type === "PaintNote") {
-          const imgs = MNNote.exportPic(cur)
-          if (imgs)
-            Object.entries(imgs).forEach(([k, v]) => {
-              if (k in acc) acc[k].push(v)
-            })
-        } else if (cur.type == "TextNote" || cur.type == "HtmlNote") {
-          const text = cur.text.trim()
-          if (text && !text.includes("marginnote3app") && !text.startsWith("#"))
-            Object.values(acc).map(k => k.push(text))
-        }
-        return acc
-      },
-      {
-        html: [],
-        md: []
-      }
-    )
-  }
-  /** @returns {string[]} */
- get excerptsText() {
-    return this.notes.reduce((acc, note) => {
-      const text = note.excerptText?.trim()
-      if (text) {
-        if (!note.excerptPic?.paint || this.isOCR) {
-          acc.push(text)
-        }
-      }
-      return acc
-    }, [])
-  }
-  /**
-   * get all comment text
-   * @returns {string[]}
-   */
-  get commentsText() {
-    return this.note.comments.reduce((acc, cur) => {
-      if (cur.type == "TextNote" || cur.type == "HtmlNote") {
-        const text = cur.text.trim()
-        if (text && !text.includes("marginnote3app") && !text.startsWith("#"))
-          acc.push(text)
-      }
-      return acc
-    }, [])
-  }
-  /**
-   * get all text and pic note will be OCR or be transformed to base64
-   */
-  get allTextPic() {
-    const retVal = MNNote.getNoteExcerptTextPic(this.note)
-    this.note.comments.forEach(k => {
-      if (k.type === "PaintNote") {
-        const imgs = MNNote.exportPic(k)
-        if (imgs)
-          Object.entries(imgs).forEach(([k, v]) => {
-            if (k in retVal) retVal[k].push(v)
-          })
-      } else if (k.type == "TextNote" || k.type == "HtmlNote") {
-        const text = k.text.trim()
-        if (text) Object.values(retVal).map(k => k.push(text))
-      } else if (k.type == "LinkNote") {
-        const note = MNUtil.db.getNoteById(k.noteid)
-        if (note)
-          Object.entries(MNNote.getNoteExcerptTextPic(note)).forEach(([k, v]) => {
-            if (k in retVal) retVal[k].push(...v)
-          })
-      }
-    })
-    return {
-      html: retVal.html.join("\n\n"),
-      ocr: retVal.ocr.join("\n\n"),
-      md: retVal.md.join("\n\n")
-    }
-  }
-  /**
-   * Get all text
-   */
-  get allText() {
-
-    const { mainExcerptText } = this
-    const retVal =
-      mainExcerptText && (!this.note.excerptPic?.paint || this.isOCR)
-        ? [mainExcerptText]
-        : []
-    this.note.comments.forEach(k => {
-      if (k.type == "TextNote" || k.type == "HtmlNote") {
-        const text = k.text.trim()
-        if (text) retVal.push(text)
-      } else if (k.type == "LinkNote") {
-        const note = MNUtil.db.getNoteById(k.noteid)
-        const text = note?.excerptText?.trim()
-        if (text && (!note?.excerptPic?.paint || this.isOCR)) retVal.push(text)
-      }
-    })
-    return retVal.join("\n\n")
-  }
-  /**
-   * Get all text.
-   */
-  get excerptsCommentsText() {
-    const { mainExcerptText } = this
-    const retVal =
-      mainExcerptText && (!this.note.excerptPic?.paint || this.isOCR)
-        ? [mainExcerptText]
-        : []
-    this.note.comments.forEach(k => {
-      if (k.type == "TextNote" || k.type == "HtmlNote") {
-        const text = k.text.trim()
-        if (text && !text.includes("marginnote3app") && !text.includes("marginnote4app") && !text.startsWith("#"))
-          retVal.push(text)
-      } else if (k.type == "LinkNote") {
-        const note = MNUtil.db.getNoteById(k.noteid)
-        const text = note?.excerptText?.trim()
-        if (text && (!note?.excerptPic?.paint || this.isOCR)) retVal.push(text)
-      }
-    })
-    return retVal
-  }
-  get docMd5(){
-    if (this.note.docMd5) {
-      return this.note.docMd5
-    }
-    return undefined
-  }
-  /**
-   * 当前卡片可能只是文档上的摘录，通过这个方法获取它在指定学习集下的卡片noteId
-   * 与底层API不同的是，这里如果不提供nodebookid参数，则默认为当前学习集的nodebookid
-   * @param {string} nodebookid 
-   * @returns {string}
-   */
-  realGroupNoteIdForTopicId(nodebookid = MNUtil.currentNotebookId){
-    return this.note.realGroupNoteIdForTopicId(nodebookid)
-  };
-  /**
-   * 当前卡片可能只是文档上的摘录，通过这个方法获取它在指定学习集下的卡片noteId
-   * 与底层API不同的是，这里如果不提供nodebookid参数，则默认为当前学习集的nodebookid
-   * @param {string} nodebookid 
-   * @returns {MNNote}
-   */
-  realGroupNoteForTopicId(nodebookid = MNUtil.currentNotebookId){
-    let noteId = this.note.realGroupNoteIdForTopicId(nodebookid)
-    return MNNote.new(noteId)
-  };
-  processMarkdownBase64Images(){
-    this.note.processMarkdownBase64Images();
-  }
-  allNoteText(){
-    return this.note.allNoteText()
-  }
-  paste(){
-    this.note.paste()
-  }
   /**
    * 夏大鱼羊定制 - MNNote - begin
    */
@@ -4545,9 +3936,700 @@ class MNNote{
   /**
    * 夏大鱼羊定制 - MNNote - end
    */
+  /** @type {MbBookNote} */
+  note
   /**
+   * Initializes a new MNNote instance.
    * 
-   * @param {MbBookNote|MNNote|string} note 
+   * This constructor initializes a new MNNote instance based on the provided note object. The note object can be of various types:
+   * - An MbBookNote instance.
+   * - A string representing a note URL.
+   * - A string representing a note ID.
+   * - A configuration object for creating a new note.
+   * 
+   * If the note object is a string representing a note URL, the constructor will attempt to retrieve the corresponding note from the URL.
+   * If the note object is a string representing a note ID, the constructor will attempt to retrieve the corresponding note from the database.
+   * If the note object is a configuration object, the constructor will create a new note with the specified properties.
+   * 
+   * @param {MbBookNote|string|object} note - The note object to initialize the MNNote instance with.
+   */
+  constructor(note) {
+    switch (MNUtil.typeOf(note)) {
+      case 'MbBookNote':
+        this.note = note
+        break;
+      case 'NoteURL':
+        let NoteFromURL = MNUtil.getNoteBookById(MNUtil.getNoteIdByURL(note))
+        if (NoteFromURL) {
+          this.note = NoteFromURL
+        }
+      case 'string':
+        let targetNoteId = note.trim()
+        let targetNote = MNUtil.getNoteById(targetNoteId)
+        if (targetNote) {
+          this.note = targetNote
+        }
+        // MNUtil.showHUD(this.note.noteId)
+        break;
+        // MNUtil.copyJSON(targetNoteId+":"+this.note.noteId)
+      case "NoteConfig":
+        let config = note
+        let notebook = MNUtil.currentNotebook
+        let title = config.title ?? ""
+        // MNUtil.showHUD("new note")
+        // MNUtil.copyJSON(note)
+        this.note = Note.createWithTitleNotebookDocument(title, notebook, MNUtil.currentDocController.document)
+        if (config.content) {
+          if (config.markdown) {
+            this.note.appendMarkdownComment(config.content)
+          }else{
+            this.note.appendTextComment(config.content)
+          }
+        }
+        if (config.color !== undefined) {
+          this.note.colorIndex = config.color
+        }
+        break;
+      default:
+        break;
+    }
+  }
+  /**
+   * Creates a new MNNote instance based on the provided note object.
+   * 
+   * This static method initializes a new MNNote instance based on the provided note object. The note object can be of various types:
+   * - An MbBookNote instance.
+   * - A string representing a note URL.
+   * - A string representing a note ID.
+   * - A configuration object for creating a new note.
+   * 
+   * If the note object is a string representing a note URL, the method will attempt to retrieve the corresponding note from the URL.
+   * If the note object is a string representing a note ID, the method will attempt to retrieve the corresponding note from the database.
+   * If the note object is a configuration object, the method will create a new note with the specified properties.
+   * 
+   * @param {MbBookNote|string|object} note - The note object to initialize the MNNote instance with.
+   * @returns {MNNote|undefined} The initialized MNNote instance or undefined if the note object is invalid.
+   */
+  static new(note){
+    if (note === undefined) {
+      return undefined
+    }
+    // MNUtil.showHUD(note)
+    // let paramType = MNUtil.typeOf(note)
+    // MNUtil.showHUD(paramType)
+    switch (MNUtil.typeOf(note)) {
+      case 'MbBookNote':
+        return new MNNote(note)
+      case 'NoteURL':
+        let NoteFromURL = MNUtil.getNoteById(MNUtil.getNoteIdByURL(note))
+        if (NoteFromURL) {
+          return new MNNote(NoteFromURL)
+        }
+        return undefined
+      case 'string':
+        let targetNoteId = note.trim()
+        let targetNote = MNUtil.getNoteById(targetNoteId)
+        if (targetNote) {
+          return new MNNote(targetNote)
+        }
+        return undefined
+      case "NoteConfig":
+        let config = note
+        let notebook = MNUtil.currentNotebook
+        let title = config.title ?? ""
+        // MNUtil.copyJSON(note)
+        let newNote = Note.createWithTitleNotebookDocument(title, notebook, MNUtil.currentDocController.document)
+        if (config.excerptText) {
+          newNote.excerptText = config.excerptText
+          if (config.excerptTextMarkdown) {
+            newNote.excerptTextMarkdown = true
+            if (/!\[.*?\]\((data:image\/.*;base64,.*?)(\))/.test(config.excerptText)) {
+              newNote.processMarkdownBase64Images()
+            }
+          }
+        }
+        if (config.content) {
+          if (config.markdown) {
+            newNote.appendMarkdownComment(config.content)
+          }else{
+            newNote.appendTextComment(config.content)
+          }
+        }
+        if (config.color !== undefined) {
+          newNote.colorIndex = config.color
+        }
+
+        return new MNNote(newNote)
+      default:
+        return undefined
+    }
+  }
+  get noteId() {
+    return this.note.noteId
+  }
+  get notebookId() {
+    return this.note.notebookId
+  }
+  /**
+   * Retrieves the original note ID of a note that has been merged.
+   * 
+   * This method returns the original note ID of a note that has been merged into another note. This is useful for tracking the history of notes that have been combined.
+   * 
+   * @returns {string} The original note ID of the merged note.
+   */
+  get originNoteId(){
+    return this.note.originNoteId
+  }
+  /**
+   * Retrieves the note ID of the main note in a group of merged notes.
+   * 
+   * This method returns the note ID of the main note in a group of merged notes. This is useful for identifying the primary note in a set of combined notes.
+   * 
+   * @returns {string} The note ID of the main note in the group of merged notes.
+   */
+  get groupNoteId(){
+    return this.note.groupNoteId
+  }
+  /**
+   * Retrieves the child notes of the current note.
+   * 
+   * This method returns an array of MNNote instances representing the child notes of the current note. If the current note has no child notes, it returns an empty array.
+   * 
+   * @returns {MNNote[]} An array of MNNote instances representing the child notes.
+   */
+  get childNotes() {
+    return this.note.childNotes?.map(k => new MNNote(k)) ?? []
+  }
+  /**
+   * Retrieves the parent note of the current note.
+   * 
+   * This method returns an MNNote instance representing the parent note of the current note. If the current note has no parent note, it returns undefined.
+   * 
+   * @returns {MNNote|undefined} The parent note of the current note, or undefined if there is no parent note.
+   */
+  get parentNote() {
+    return this.note.parentNote && new MNNote(this.note.parentNote)
+  }
+  /**
+   * Retrieves the URL of the current note.
+   * 
+   * This method generates and returns the URL of the current note, which can be used to reference or share the note.
+   * 
+   * @returns {string} The URL of the current note.
+   */
+  get noteURL(){
+    return MNUtil.version.version+'app://note/'+this.note.noteId
+  }
+  /**
+   * Retrieves the child mind map note of the current note.
+   * 
+   * This method returns an MNNote instance representing the child mind map note of the current note. If the current note has no child mind map note, it returns undefined.
+   * 
+   * @returns {MNNote|undefined} The child mind map note of the current note, or undefined if there is no child mind map note.
+   */
+  get childMindMap(){
+    if (this.note.childMindMap) {
+      return MNNote.new(this.note.childMindMap)
+    }
+    return undefined
+  }
+  /**
+   *
+   * @returns {{descendant:MNNote[],treeIndex:number[][]}}
+   */
+  get descendantNodes() {
+    const { childNotes } = this
+    if (!childNotes.length) {
+      return {
+        descendant: [],
+        treeIndex: []
+      }
+    } else {
+      /**
+       *
+       * @param {MNNote[]} nodes
+       * @param {number} level
+       * @param {number[]} lastIndex
+       * @param {{descendant:MNNote[],treeIndex:number[][]}} ret
+       * @returns
+       */
+      function down(
+        nodes,
+        level = 0,
+        lastIndex = [],
+        ret = {
+          descendant: [],
+          treeIndex: []
+        }
+      ) {
+        level++
+        nodes.forEach((node, index) => {
+          ret.descendant.push(node)
+          lastIndex = lastIndex.slice(0, level - 1)
+          lastIndex.push(index)
+          ret.treeIndex.push(lastIndex)
+          if (node.childNotes?.length) {
+            down(node.childNotes, level, lastIndex, ret)
+          }
+        })
+        return ret
+      }
+      return down(childNotes)
+    }
+  }
+  get ancestorNodes() {
+    /**
+     *
+     * @param {MNNote} node
+     * @param {MNNote[]} ancestorNodes
+     * @returns
+     */
+    function up(node, ancestorNodes) {
+      if (node.note.parentNote) {
+        const parentNode = new MNNote(node.note.parentNote)
+        ancestorNodes = up(parentNode, [...ancestorNodes, parentNode])
+      }
+      return ancestorNodes
+    }
+    return up(this, [])
+  }
+  /**
+   * Retrieves the notes associated with the current note.
+   * 
+   * This method returns an array of notes that are linked to the current note. It includes the current note itself and any notes that are linked through the comments.
+   * 
+   * @returns {MNNote[]} An array of MNNote instances representing the notes associated with the current note.
+   */
+  get notes() {
+    return this.note.comments.reduce(
+      (acc, cur) => {
+        cur.type == "LinkNote" && acc.push(MNNote.new(cur.noteid))
+        return acc
+      },
+      [this]
+    )
+  }
+  /**
+   * Retrieves the titles associated with the current note.
+   * 
+   * This method splits the note title by semicolons and returns an array of unique titles. If the note title is not defined, it returns an empty array.
+   * 
+   * @returns {string[]} An array of unique titles associated with the current note.
+   */
+  get titles() {
+    return MNUtil.unique(this.note.noteTitle?.split(/\s*[;；]\s*/) ?? [], true)
+  }
+  /**
+   * Sets the titles associated with the current note.
+   * 
+   * This method sets the titles associated with the current note by joining the provided array of titles with semicolons. If the excerpt text of the note is the same as the note title, it updates both the note title and the excerpt text.
+   * 
+   * @param {string[]} titles - The array of titles to set for the current note.
+   */
+  set titles(titles) {
+    const newTitle = MNUtil.unique(titles, true).join("; ")
+    if (this.note.excerptText === this.note.noteTitle) {
+      this.note.noteTitle = newTitle
+      this.note.excerptText = newTitle
+    } else {
+      this.note.noteTitle = newTitle
+    }
+  }
+  get isOCR() {
+    if (this.note.excerptPic?.paint) {
+      return this.note.textFirst
+    }
+    return false
+  }
+  get textFirst() {
+    return this.note.textFirst
+  }
+  get title() {
+    return this.note.noteTitle ?? ""
+  }
+  get noteTitle() {
+    return this.note.noteTitle ?? ""
+  }
+  /**
+   *
+   * @param {string} title
+   * @returns
+   */
+  set title(title) {
+    this.note.noteTitle = title
+  }
+  /**
+   *
+   * @param {string} title
+   * @returns
+   */
+  set noteTitle(title) {
+    this.note.noteTitle = title
+  }
+  get excerptText(){
+    return this.note.excerptText
+  }
+  get excerptTextMarkdown(){
+    return this.note.excerptTextMarkdown;
+  }
+  set excerptTextMarkdown(status){
+    this.note.excerptTextMarkdown = status
+  }
+  set excerptText(text){
+    this.note.excerptText = text
+    // if (this.excerptPic && !this.textFirst) {
+    //   MNUtil.excuteCommand("EditTextMode")
+    // }
+  }
+  get mainExcerptText() {
+    return this.note.excerptText ?? ""
+  }
+  /**
+   *
+   * @param {string} text
+   * @returns
+   */
+  set mainExcerptText(text) {
+    this.note.excerptText = text
+  }
+  get excerptPic(){
+    return this.note.excerptPic
+  }
+  get excerptPicData(){
+    let imageData = MNUtil.getMediaByHash(this.note.excerptPic.paint)
+    return imageData
+  }
+  get colorIndex(){
+    return this.note.colorIndex
+  }
+  set colorIndex(index){
+    this.note.colorIndex = index
+  }
+  get fillIndex(){
+    return this.note.fillIndex
+  }
+  set fillIndex(index){
+    this.note.fillIndex = index
+  }
+  get createDate(){
+    return this.note.createDate
+  }
+  get modifiedDate(){
+    return this.note.modifiedDate
+  }
+  get linkedNotes(){
+    return this.note.linkedNotes
+  }
+  get summaryLinks(){
+    return this.note.summaryLinks
+  }
+  get mediaList(){
+    return this.note.mediaList
+  }
+  /**
+   * get all tags, without '#'
+   * @returns {string[]}
+   */
+  get tags() {
+    try {
+    // MNUtil.showHUD("length: "+this.note.comments.length)
+    const tags = this.note.comments.reduce((acc, cur) => {
+      // MNUtil.showHUD("cur.type")
+      if (cur.type == "TextNote" && cur.text.startsWith("#")) {
+        acc.push(...cur.text.split(/\s+/).filter(k => k.startsWith("#")))
+      }
+      return acc
+    }, [])
+    return tags.map(k => k.slice(1))
+
+    } catch (error) {
+      MNUtil.showHUD(error)
+      return []
+    }
+  }
+  /**
+   *
+   * @returns {NoteComment[]}
+   */
+  get comments(){
+    return this.note.comments
+  }
+  /**
+   * set tags, will remove all old tags
+   *
+   * @param {string[]} tags
+   * @returns
+   */
+  set tags(tags) {
+    this.tidyupTags()
+    tags = MNUtil.unique(tags, true)
+    const lastComment = this.note.comments[this.note.comments.length - 1]
+    if (lastComment?.type == "TextNote" && lastComment.text.startsWith("#")) {
+      this.note.removeCommentByIndex(this.note.comments.length - 1)
+    }
+    this.appendTextComments(tags.map(k => '#'+k).join(" "))
+  }
+  /**
+   * @returns {{ocr:string[],html:string[],md:string[]}}
+   */
+  get excerptsTextPic() {
+    return this.notes.reduce(
+      (acc, cur) => {
+        Object.entries(MNNote.getNoteExcerptTextPic(cur)).forEach(([k, v]) => {
+          if (k in acc) acc[k].push(...v)
+        })
+        return acc
+      },
+      {
+        ocr: [],
+        html: [],
+        md: []
+      }
+    )
+  }
+  /**
+   * @returns {{html:string[],md:string[]}}
+   */
+  get commentsTextPic() {
+    return this.note.comments.reduce(
+      (acc, cur) => {
+        if (cur.type === "PaintNote") {
+          const imgs = MNNote.exportPic(cur)
+          if (imgs)
+            Object.entries(imgs).forEach(([k, v]) => {
+              if (k in acc) acc[k].push(v)
+            })
+        } else if (cur.type == "TextNote" || cur.type == "HtmlNote") {
+          const text = cur.text.trim()
+          if (text && !text.includes("marginnote3app") && !text.startsWith("#"))
+            Object.values(acc).map(k => k.push(text))
+        }
+        return acc
+      },
+      {
+        html: [],
+        md: []
+      }
+    )
+  }
+  /** @returns {string[]} */
+ get excerptsText() {
+    return this.notes.reduce((acc, note) => {
+      const text = note.excerptText?.trim()
+      if (text) {
+        if (!note.excerptPic?.paint || this.isOCR) {
+          acc.push(text)
+        }
+      }
+      return acc
+    }, [])
+  }
+  /**
+   * get all comment text
+   * @returns {string[]}
+   */
+  get commentsText() {
+    return this.note.comments.reduce((acc, cur) => {
+      if (cur.type == "TextNote" || cur.type == "HtmlNote") {
+        const text = cur.text.trim()
+        if (text && !text.includes("marginnote3app") && !text.startsWith("#"))
+          acc.push(text)
+      }
+      return acc
+    }, [])
+  }
+  /**
+   * get all text and pic note will be OCR or be transformed to base64
+   */
+  get allTextPic() {
+    const retVal = MNNote.getNoteExcerptTextPic(this.note)
+    this.note.comments.forEach(k => {
+      if (k.type === "PaintNote") {
+        const imgs = MNNote.exportPic(k)
+        if (imgs)
+          Object.entries(imgs).forEach(([k, v]) => {
+            if (k in retVal) retVal[k].push(v)
+          })
+      } else if (k.type == "TextNote" || k.type == "HtmlNote") {
+        const text = k.text.trim()
+        if (text) Object.values(retVal).map(k => k.push(text))
+      } else if (k.type == "LinkNote") {
+        const note = MNUtil.db.getNoteById(k.noteid)
+        if (note)
+          Object.entries(MNNote.getNoteExcerptTextPic(note)).forEach(([k, v]) => {
+            if (k in retVal) retVal[k].push(...v)
+          })
+      }
+    })
+    return {
+      html: retVal.html.join("\n\n"),
+      ocr: retVal.ocr.join("\n\n"),
+      md: retVal.md.join("\n\n")
+    }
+  }
+  /**
+   * Get all text
+   */
+  get allText() {
+
+    const { mainExcerptText } = this
+    const retVal =
+      mainExcerptText && (!this.note.excerptPic?.paint || this.isOCR)
+        ? [mainExcerptText]
+        : []
+    this.note.comments.forEach(k => {
+      if (k.type == "TextNote" || k.type == "HtmlNote") {
+        const text = k.text.trim()
+        if (text) retVal.push(text)
+      } else if (k.type == "LinkNote") {
+        const note = MNUtil.db.getNoteById(k.noteid)
+        const text = note?.excerptText?.trim()
+        if (text && (!note?.excerptPic?.paint || this.isOCR)) retVal.push(text)
+      }
+    })
+    return retVal.join("\n\n")
+  }
+  /**
+   * Get all text.
+   */
+  get excerptsCommentsText() {
+    const { mainExcerptText } = this
+    const retVal =
+      mainExcerptText && (!this.note.excerptPic?.paint || this.isOCR)
+        ? [mainExcerptText]
+        : []
+    this.note.comments.forEach(k => {
+      if (k.type == "TextNote" || k.type == "HtmlNote") {
+        const text = k.text.trim()
+        if (text && !text.includes("marginnote3app") && !text.includes("marginnote4app") && !text.startsWith("#"))
+          retVal.push(text)
+      } else if (k.type == "LinkNote") {
+        const note = MNUtil.db.getNoteById(k.noteid)
+        const text = note?.excerptText?.trim()
+        if (text && (!note?.excerptPic?.paint || this.isOCR)) retVal.push(text)
+      }
+    })
+    return retVal
+  }
+  get docMd5(){
+    if (this.note.docMd5) {
+      return this.note.docMd5
+    }
+    return undefined
+  }
+  /**
+   * 当前卡片可能只是文档上的摘录，通过这个方法获取它在指定学习集下的卡片noteId
+   * 与底层API不同的是，这里如果不提供nodebookid参数，则默认为当前学习集的nodebookid
+   * @param {string} nodebookid
+   * @returns {string}
+   */
+  realGroupNoteIdForTopicId(nodebookid = MNUtil.currentNotebookId){
+    return this.note.realGroupNoteIdForTopicId(nodebookid)
+  };
+  /**
+   * 当前卡片可能只是文档上的摘录，通过这个方法获取它在指定学习集下的卡片noteId
+   * 与底层API不同的是，这里如果不提供nodebookid参数，则默认为当前学习集的nodebookid
+   * @param {string} nodebookid
+   * @returns {MNNote}
+   */
+  realGroupNoteForTopicId(nodebookid = MNUtil.currentNotebookId){
+    let noteId = this.note.realGroupNoteIdForTopicId(nodebookid)
+    return MNNote.new(noteId)
+  };
+  processMarkdownBase64Images(){
+    this.note.processMarkdownBase64Images();
+  }
+  allNoteText(){
+    return this.note.allNoteText()
+  }
+  async getMDContent(withBase64 = false){
+    let note = this.realGroupNoteForTopicId()
+try {
+  let title = (note.noteTitle && note.noteTitle.trim()) ? "# "+note.noteTitle.trim() : ""
+  if (title.trim()) {
+    title = title.split(";").filter(t=>{
+      if (/{{.*}}/.test(t)) {
+        return false
+      }
+      return true
+    }).join(";")
+  }
+  let textFirst = note.textFirst
+  let excerptText
+  if (note.excerptPic && !textFirst) {
+    if (withBase64) {
+      excerptText = `[image](${MNUtil.getMediaByHash(note.excerptPic.paint).base64Encoding()})`
+    }else{
+      excerptText = ""
+    }
+  }else{
+    excerptText = note.excerptText ?? ""
+  }
+  if (note.comments.length) {
+    let comments = note.comments
+    for (let i = 0; i < comments.length; i++) {
+      const comment = comments[i];
+      switch (comment.type) {
+        case "TextNote":
+          if (/^marginnote\dapp\:\/\//.test(comment.text)) {
+            //do nothing
+          }else{
+            excerptText = excerptText+"\n"+comment.text
+          }
+          break;
+        case "HtmlNote":
+          excerptText = excerptText+"\n"+comment.text
+          break
+        case "LinkNote":
+          if (withBase64 && comment.q_hpic  && comment.q_hpic.paint && !textFirst) {
+            let imageData = MNUtil.getMediaByHash(comment.q_hpic.paint)
+            let imageSize = UIImage.imageWithData(imageData).size
+            if (imageSize.width === 1 && imageSize.height === 1) {
+              if (comment.q_htext) {
+                excerptText = excerptText+"\n"+comment.q_htext
+              }
+            }else{
+              excerptText = excerptText+`\n[image](${imageData.base64Encoding()})`
+            }
+          }else{
+            excerptText = excerptText+"\n"+comment.q_htext
+          }
+          break
+        case "PaintNote":
+          if (withBase64 && comment.paint){
+            excerptText = excerptText+`\n[image](${MNUtil.getMediaByHash(comment.paint).base64Encoding()})`
+          }
+          break
+        default:
+          break;
+      }
+    }
+  }
+  // excerptText = (excerptText && excerptText.trim()) ? this.highlightEqualsContentReverse(excerptText) : ""
+  let content = title+"\n"+excerptText
+  return content
+}catch(error){
+  MNUtil.showHUD("Error in (getMDContent): "+error.toString())
+  return ""
+}
+  }
+  paste(){
+    this.note.paste()
+  }
+
+  /**
+   * Merges the current note with another note.
+   * 
+   * This method merges the current note with another note. The note to be merged can be specified in various ways:
+   * - An MbBookNote instance.
+   * - An MNNote instance.
+   * - A string representing a note URL.
+   * - A string representing a note ID.
+   * 
+   * If the note to be merged is a string representing a note URL, the method will attempt to retrieve the corresponding note from the URL.
+   * If the note to be merged is a string representing a note ID, the method will attempt to retrieve the corresponding note from the database.
+   * 
+   * @param {MbBookNote|MNNote|string} note - The note to be merged with the current note.
    */
   merge(note){
     switch (MNUtil.typeOf(note)) {
@@ -4578,6 +4660,25 @@ class MNNote{
         break;
     }
   }
+  /**
+   * Remove from parent
+   * 去除当前note的父关系(没用过不确定具体效果)
+   */
+  removeFromParent(){
+    this.note.removeFromParent()
+  }
+  insertChildBefore(){
+    this.note.insertChildBefore()
+  }
+  /**
+   * Deletes the current note, optionally including its descendant notes.
+   * 
+   * This method deletes the current note from the database. If the `withDescendant` parameter is set to `true`, it will also delete all descendant notes of the current note.
+   * The deletion can be grouped within an undo operation if the `undoGrouping` parameter is set to `true`.
+   * 
+   * @param {boolean} [withDescendant=false] - Whether to delete the descendant notes along with the current note.
+   * @param {boolean} [undoGrouping=true] - Whether to group the deletion within an undo operation.
+   */
   delete(withDescendant = false, undoGrouping = true){
     if (undoGrouping) {
       MNUtil.undoGrouping(()=>{
@@ -4596,12 +4697,17 @@ class MNNote{
     }
   }
   /**
+   * Adds a child note to the current note.
    * 
-   * @param {MbBookNote|MNNote|string} note 
+   * This method adds a child note to the current note. The child note can be specified as an MbBookNote instance, an MNNote instance, a note URL, or a note ID.
+   * If the child note is specified as a note URL or a note ID, the method will attempt to retrieve the corresponding note from the database.
+   * If the child note is specified as an MNNote instance, the method will add the underlying MbBookNote instance as a child.
+   * 
+   * @param {MbBookNote|MNNote|string} note - The child note to add to the current note.
    */
   addChild(note){
     try {
-      
+
     // MNUtil.showHUD(MNUtil.typeOf(note))
     switch (MNUtil.typeOf(note)) {
       case "NoteURL":
@@ -4636,8 +4742,13 @@ class MNNote{
     }
   }
   /**
+   * Adds a target note as a child note to the current note.
    * 
-   * @param {MbBookNote|MNNote} targetNote 
+   * This method adds the specified target note as a child note to the current note. If the `colorInheritance` parameter is set to true, the target note will inherit the color of the current note.
+   * The operation is wrapped within an undo grouping to allow for easy undo operations.
+   * 
+   * @param {MbBookNote|MNNote} targetNote - The note to be added as a child note.
+   * @param {boolean} [colorInheritance=false] - Whether the target note should inherit the color of the current note.
    */
   addAsChildNote(targetNote,colorInheritance=false) {
     MNUtil.undoGrouping(()=>{
@@ -4648,8 +4759,13 @@ class MNNote{
     })
   }
   /**
+   * Adds the specified note as a sibling note to the current note.
    * 
-   * @param {MbBookNote|MNNote} targetNote 
+   * This method adds the specified note as a sibling note to the current note. If the current note has no parent note, it displays a HUD message indicating that there is no parent note.
+   * If the `colorInheritance` parameter is set to true, the color index of the target note is set to the color index of the current note.
+   * 
+   * @param {MbBookNote|MNNote} targetNote - The note to be added as a sibling.
+   * @param {boolean} [colorInheritance=false] - Whether to inherit the color index from the current note.
    */
   addAsBrotherNote(targetNote,colorInheritance=false) {
     if (!this.note.parentNote) {
@@ -4665,9 +4781,14 @@ class MNNote{
     })
   }
   /**
+   * Creates a child note for the current note based on the provided configuration.
    * 
-   * @param {{title:String,excerptText:string,excerptTextMarkdown:boolean,content:string,markdown:boolean,color:number}} config 
-   * @returns {MNNote}
+   * This method creates a new child note for the current note using the specified configuration. If the current note is a document excerpt and not a mind map note,
+   * it will create the child note under the corresponding mind map note in the current notebook. The method can optionally group the operation within an undo group.
+   * 
+   * @param {{title:String,excerptText:string,excerptTextMarkdown:boolean,content:string,markdown:boolean,color:number}} config - The configuration for the new child note.
+   * @param {boolean} [undoGrouping=true] - Whether to group the operation within an undo group.
+   * @returns {MNNote} The newly created child note.
    */
   createChildNote(config,undoGrouping=true) {
     let child
@@ -4675,7 +4796,7 @@ class MNNote{
     let noteIdInMindmap = this.note.realGroupNoteIdForTopicId(MNUtil.currentNotebookId)
     if (noteIdInMindmap && this.noteId !== noteIdInMindmap) {
       //对文档摘录添加子节点是无效的，需要对其脑图中的节点执行添加子节点
-      note = MNNote.new(noteIdInMindmap) 
+      note = MNNote.new(noteIdInMindmap)
     }
     if (undoGrouping) {
       MNUtil.undoGrouping(()=>{
@@ -4697,8 +4818,8 @@ class MNNote{
     return child
   }
   /**
-   * 
-   * @param {{title:String,content:String,markdown:Boolean,color:Number}} config 
+   *
+   * @param {{title:String,content:String,markdown:Boolean,color:Number}} config
    * @returns {MNNote}
    */
   createBrotherNote(config,undoGrouping=true) {
@@ -4706,7 +4827,7 @@ class MNNote{
     let noteIdInMindmap = this.note.realGroupNoteIdForTopicId(MNUtil.currentNotebookId)
     if (noteIdInMindmap && this.noteId !== noteIdInMindmap) {
       //对文档摘录添加子节点是无效的，需要对其脑图中的节点执行添加子节点
-      note = MNNote.new(noteIdInMindmap) 
+      note = MNNote.new(noteIdInMindmap)
     }
     if (!note.parentNote) {
       MNUtil.showHUD("No parent note!")
@@ -4745,45 +4866,47 @@ class MNNote{
     return this
   }
   /**
-   * 
+   *
    * @param  {string} comment
    * @param  {number} index
-   * @returns 
+   * @returns
    */
-  appendMarkdownComment(comment,index){
+  appendMarkdownComment(comment,index=undefined){
     this.note.appendMarkdownComment(comment)
     if (index !== undefined) {
       this.moveComment(this.note.comments.length-1, index)
     }
   }
   /**
-   * 
+   *
    * @param  {string} comment
-   * @returns 
+   * @param  {number} index
+   * @returns
    */
-  appendTextComment(comment,index){
+  appendTextComment(comment,index=undefined){
     this.note.appendTextComment(comment)
     if (index !== undefined) {
       this.moveComment(this.note.comments.length-1, index)
     }
   }
   /**
-   * 
-   * @param {string} html 
-   * @param {string} text 
-   * @param {CGSize} size 
-   * @param {string} tag 
+   *
+   * @param {string} html
+   * @param {string} text
+   * @param {CGSize} size
+   * @param {string} tag
+   * @param  {number} index
    */
-  appendHtmlComment(html, text, size, tag, index){
+  appendHtmlComment(html, text, size, tag, index = undefined){
     this.note.appendHtmlComment(html, text, size, tag)
     if (index !== undefined) {
       this.moveComment(this.note.comments.length-1, index)
     }
   }
   /**
-   * 
-   * @param  {string[]} comments 
-   * @returns 
+   *
+   * @param  {string[]} comments
+   * @returns
    */
   appendMarkdownComments(...comments) {
     comments = unique(comments, true)
@@ -4802,6 +4925,16 @@ class MNNote{
   sortCommentsByNewIndices(arr){
     this.note.sortCommentsByNewIndices(arr)
   }
+  /**
+   * Moves a comment from one index to another within the note's comments array.
+   * 
+   * This method reorders the comments array by moving a comment from the specified `fromIndex` to the `toIndex`.
+   * If the `fromIndex` or `toIndex` is out of bounds, it adjusts them to the nearest valid index.
+   * If the `fromIndex` is the same as the `toIndex`, it does nothing and displays a message indicating no change.
+   * 
+   * @param {number} fromIndex - The current index of the comment to be moved.
+   * @param {number} toIndex - The target index where the comment should be moved.
+   */
   moveComment(fromIndex, toIndex) {
   try {
 
@@ -4822,7 +4955,7 @@ class MNNote{
       to = arr.length-1
     }
     if (from == to) {
-      // MNUtil.showHUD("No change")
+      MNUtil.showHUD("No change")
       return
     }
     // 取出要移动的元素
@@ -4835,6 +4968,19 @@ class MNNote{
     MNUtil.showHUD(error)
   }
   }
+  /**
+   * Moves a comment to a new position based on the specified action.
+   * 
+   * This method moves a comment from its current position to a new position based on the specified action.
+   * The available actions are:
+   * - "top": Moves the comment to the top of the list.
+   * - "bottom": Moves the comment to the bottom of the list.
+   * - "up": Moves the comment one position up in the list.
+   * - "down": Moves the comment one position down in the list.
+   * 
+   * @param {number} fromIndex - The current index of the comment to be moved.
+   * @param {string} action - The action to perform (top, bottom, up, down).
+   */
   moveCommentByAction(fromIndex, action) {
     let targetIndex
     switch (action) {
@@ -4857,6 +5003,19 @@ class MNNote{
     }
     this.moveComment(fromIndex, targetIndex)
   }
+  /**
+   * Retrieves the indices of comments that match the specified condition.
+   * 
+   * This method iterates through the comments of the current note and returns the indices of the comments that satisfy the given condition.
+   * The condition can include filtering by comment type, inclusion or exclusion of specific text, or matching a regular expression.
+   * 
+   * @param {Object} condition - The condition to filter the comments.
+   * @param {string[]} [condition.type] - The types of comments to include (e.g., "TextNote", "HtmlNote").
+   * @param {string} [condition.include] - The text that must be included in the comment.
+   * @param {string} [condition.exclude] - The text that must not be included in the comment.
+   * @param {string} [condition.reg] - The regular expression that the comment must match.
+   * @returns {number[]} An array of indices of the comments that match the condition.
+   */
   getCommentIndicesByCondition(condition){
     let indices = []
     let type = []
@@ -4899,8 +5058,8 @@ class MNNote{
     return indices
   }
   /**
-   * 
-   * @param {number} index 
+   *
+   * @param {number} index
    */
   removeCommentByIndex(index){
     let length = this.note.comments.length
@@ -4910,8 +5069,8 @@ class MNNote{
     this.note.removeCommentByIndex(index)
   }
   /**
-   * 
-   * @param {number[]} indices 
+   *
+   * @param {number[]} indices
    */
   removeCommentsByIndices(indices){
     let commentsLength = this.note.comments.length
@@ -4930,11 +5089,12 @@ class MNNote{
     })
   }
   /**
-   * 
-   * @param {{type:string,include:string,exclude:string,reg:string}} condition 
+   *
+   * @param {{type:string,include:string,exclude:string,reg:string}} condition
    */
   removeCommentByCondition(condition){
-
+    let indices = this.getCommentIndicesByCondition(condition)
+    this.removeCommentsByIndices(indices)
   }
   /**
    * Remove all comment but tag, link and also the filterd. And tags and links will be sat at the end。
@@ -4970,7 +5130,7 @@ class MNNote{
     this.appendTextComments(...linkTags)
     return this
   }
-  
+
   /**
    * @param {string[]} titles
    * append titles as much as you want
@@ -4991,7 +5151,7 @@ class MNNote{
    */
   appendTags(...tags) {
     this.tidyupTags()
-    tags = MNUtil.unique([...this.tags, ...tags], true)
+    tags = unique([...this.tags, ...tags], true)
     const lastComment = this.note.comments[this.note.comments.length - 1]
     if (lastComment?.type == "TextNote" && lastComment.text.startsWith("#")) {
       this.note.removeCommentByIndex(this.note.comments.length - 1)
@@ -5050,9 +5210,15 @@ class MNNote{
     this.note.clearFormat()
   }
   /**
+   * Appends a note link to the current note.
    * 
-   * @param {MNNote|MbBookNote} note 
-   * @param {string} type 
+   * This method appends a note link to the current note based on the specified type. The type can be "Both", "To", or "From".
+   * If the type is "Both", the note link is added to both the current note and the target note.
+   * If the type is "To", the note link is added only to the current note.
+   * If the type is "From", the note link is added only to the target note.
+   * 
+   * @param {MNNote|MbBookNote} note - The note to which the link should be added.
+   * @param {string} type - The type of link to add ("Both", "To", or "From").
    */
   appendNoteLink(note,type="To"){
     switch (MNUtil.typeOf(note)) {
@@ -5127,9 +5293,14 @@ class MNNote{
     }
   }
   /**
+   *
    * 
-   * @param {MbBookNote} note 
-   * @returns 
+   * This method checks if the note has an excerpt picture. If it does, it retrieves the image data and the excerpt text.
+   * If the note does not have an excerpt picture, it only retrieves the excerpt text. The method returns an object containing
+   * arrays of OCR text, HTML text, and Markdown text.
+   * 
+   * @param {MbBookNote} note - The note from which to retrieve the excerpt text and image data.
+   * @returns {{ocr: string[], html: string[], md: string[]}} An object containing arrays of OCR text, HTML text, and Markdown text.
    */
   static getNoteExcerptTextPic(note) {
     const acc = {
@@ -5179,8 +5350,8 @@ class MNNote{
     MNUtil.focusNoteInFloatMindMapById(noteId,delay = 0)
   }
   /**
-   * 
-   * @param {MbBookNote|string} note 
+   *
+   * @param {MbBookNote|string} note
    */
   static focusInMindMap(note,delay=0){
     let noteId = MNUtil.getNoteId(note);
@@ -5189,8 +5360,8 @@ class MNNote{
     }
   }
   /**
-   * 
-   * @param {MbBookNote|string} note 
+   *
+   * @param {MbBookNote|string} note
    */
   static focusInDocument(note,delay){
     let noteId = MNUtil.getNoteId(note);
@@ -5204,6 +5375,16 @@ class MNNote{
       MNUtil.focusNoteInFloatMindMapById(noteId,delay)
     }
   }
+  /**
+   * Retrieves the currently focused note in the mind map or document.
+   * 
+   * This method checks for the focused note in the following order:
+   * 1. If the notebook controller is visible and has a focused note, it returns that note.
+   * 2. If the document map split mode is enabled, it checks the current document controller and all document controllers for a focused note.
+   * 3. If a pop-up note info is available, it returns the note from the pop-up note info.
+   * 
+   * @returns {MNNote|undefined} The currently focused note, or undefined if no note is focused.
+   */
   static getFocusNote() {
     let notebookController = MNUtil.notebookController
     if (!notebookController.view.hidden && notebookController.mindmapView && notebookController.focusNote) {
@@ -5231,6 +5412,14 @@ class MNNote{
     return undefined
   }
 
+  /**
+   * Retrieves the focus notes in the current context.
+   * 
+   * This method checks for focus notes in various contexts such as the mind map, document controllers, and pop-up note info.
+   * It returns an array of MNNote instances representing the focus notes. If no focus notes are found, it returns an empty array.
+   * 
+   * @returns {MNNote[]} An array of MNNote instances representing the focus notes.
+   */
   static getFocusNotes() {
     let notebookController = MNUtil.notebookController
     if (!notebookController.view.hidden && notebookController.mindmapView && notebookController.mindmapView.selViewLst && notebookController.mindmapView.selViewLst.length) {
@@ -5264,9 +5453,21 @@ class MNNote{
     return this.getFocusNotes()
   }
   /**
+   * Clones a note to the specified notebook.
    * 
-   * @param {MbBookNote|MNNote|string} note 
-   * @returns 
+   * This method clones the provided note to the specified notebook. The note object can be of various types:
+   * - An MbBookNote instance.
+   * - A string representing a note URL.
+   * - A string representing a note ID.
+   * - A configuration object for creating a new note.
+   * 
+   * If the note object is a string representing a note URL, the method will attempt to retrieve the corresponding note from the URL.
+   * If the note object is a string representing a note ID, the method will attempt to retrieve the corresponding note from the database.
+   * If the note object is a configuration object, the method will create a new note with the specified properties.
+   * 
+   * @param {MbBookNote|string|MNNote} note - The note object to clone.
+   * @param {string} [notebookId=MNUtil.currentNotebookId] - The ID of the notebook to clone the note to.
+   * @returns {MNNote|undefined} The cloned MNNote instance or undefined if the note object is invalid.
    */
   static clone(note, notebookId = MNUtil.currentNotebookId) {
     let noteIds = []
@@ -5300,10 +5501,15 @@ class MNNote{
         break;
     }
   }
-/**
+  /**
+   * Retrieves the image data from the current document controller or other document controllers if the document map split mode is enabled.
    * 
-   * @param {MbBookNote|MNNote} note 
-   * @returns {NSData|undefined}
+   * This method checks for image data in the current document controller's selection. If no image is found, it checks the focused note within the current document controller.
+   * If the document map split mode is enabled, it iterates through all document controllers to find the image data. If a pop-up selection info is available, it also checks the associated document controller.
+   * 
+   * @param {boolean} [checkImageFromNote=false] - Whether to check the focused note for image data.
+   * @param {boolean} [checkDocMapSplitMode=false] - Whether to check other document controllers if the document map split mode is enabled.
+   * @returns {NSData|undefined} The image data if found, otherwise undefined.
    */
   static getImageFromNote(note,checkTextFirst = false) {
     if (note.excerptPic) {
@@ -5325,7 +5531,7 @@ class MNNote{
           imageData = MNUtil.getMediaByHash(comment.q_hpic.paint)
           break
         }
-        
+
       }
       if (imageData) {
         return imageData
@@ -5334,3 +5540,205 @@ class MNNote{
     return undefined
   }
 }
+
+
+
+/**
+ * 夏大鱼羊 - 字符串函数 - begin
+ */
+/**
+ * 判断是否是正整数
+ */
+String.prototype.isPositiveInteger = function() {
+  const regex = /^[1-9]\d*$/;
+  return regex.test(this);
+}
+/**
+ * 判断是否是知识点卡片的标题
+ */
+String.prototype.ifKnowledgeNoteTitle = function () {
+  return /^【.{2,4}：.*】/.test(this)
+}
+String.prototype.isKnowledgeNoteTitle = function () {
+  return this.ifKnowledgeNoteTitle()
+}
+/**
+ * 获取知识点卡片的前缀
+ */
+String.prototype.toKnowledgeNotePrefix = function () {
+  let match = this.match(/^【.{2,4}：(.*)】/)
+  return match ? match[1] : this  // 如果匹配不到，返回原字符串
+}
+/**
+ * 获取知识点卡片的标题
+ */
+String.prototype.toKnowledgeNoteTitle = function () {
+  let match = this.match(/^【.{2,4}：.*】(.*)/)
+  return match ? match[1] : this  // 如果匹配不到，返回原字符串
+}
+/**
+ * 判断是否是绿色归类卡片的标题
+ * @returns {boolean}
+ */
+String.prototype.ifGreenClassificationNoteTitle = function () {
+  return /^“[^”]+”\s*相关[^“]*$/.test(this)
+}
+String.prototype.isGreenClassificationNoteTitle = function () {
+  return this.ifGreenClassificationNoteTitle()
+}
+/**
+ * 获取绿色归类卡片的标题
+ */
+String.prototype.toGreenClassificationNoteTitle = function () {
+  let match = this.match(/^“([^”]+)”\s*相关[^“]*$/)
+  return match ? match[1] : this  // 如果匹配不到，返回原字符串
+}
+/**
+ * 判断是否是黄色归类卡片的标题
+ * @returns {boolean}
+ */
+String.prototype.ifYellowClassificationNoteTitle = function () {
+  return /^“[^”]+”：“[^”]+”\s*相关[^“]*$/.test(this)
+}
+String.prototype.isYellowClassificationNoteTitle = function () {
+  return this.ifYellowClassificationNoteTitle()
+}
+/**
+ * 获取黄色归类卡片的标题
+ */
+String.prototype.toYellowClassificationNoteTitle = function () {
+  let match = this.match(/^“[^”]+”：“([^”]+)”\s*相关[^“]*$/)
+  return match ? match[1] : this  // 如果匹配不到，返回原字符串
+}
+/**
+ * 获取绿色或者黄色归类卡片的标题
+ */
+String.prototype.toClassificationNoteTitle = function () {
+  if (this.ifGreenClassificationNoteTitle()) {
+    return this.toGreenClassificationNoteTitle()
+  }
+  if (this.ifYellowClassificationNoteTitle()) {
+    return this.toYellowClassificationNoteTitle()
+  }
+  return ""
+}
+/**
+ * 判断输入的字符串是否是卡片 URL 或者卡片 ID
+ */
+String.prototype.ifNoteIdorURL = function () {
+  return (
+    this.ifValidNoteURL() ||
+    this.ifValidNoteId()
+  )
+}
+String.prototype.isNoteIdorURL = function () {
+  return this.ifNoteIdorURL()
+}
+String.prototype.ifNoteURLorId = function () {
+  return this.ifNoteIdorURL()
+}
+String.prototype.isNoteURLorId = function () {
+  return this.ifNoteIdorURL()
+}
+String.prototype.ifNoteURLorID = function () {
+  return this.ifNoteIdorURL()
+}
+String.prototype.isNoteURLorID = function () {
+  return this.ifNoteIdorURL()
+}
+String.prototype.ifNoteIDorURL = function () {
+  return this.ifNoteIdorURL()
+}
+String.prototype.isNoteIDorURL = function () {
+  return this.ifNoteIdorURL()
+}
+
+/**
+ * 判断是否是有效的卡片 ID
+ */
+String.prototype.ifValidNoteId = function() {
+  const regex = /^[0-9A-Z]{8}-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{12}$/;
+  return regex.test(this);
+}
+String.prototype.isValidNoteId = function() {
+  return this.ifValidNoteId()
+}
+String.prototype.ifNoteId = function() {
+  return this.ifValidNoteId()
+}
+String.prototype.isNoteId = function() {
+  return this.ifValidNoteId()
+}
+
+/**
+ * 判断是否是有效的卡片 URL
+ */
+String.prototype.ifValidNoteURL = function() {
+  return /^marginnote\dapp:\/\/note\//.test(this)
+}
+String.prototype.isValidNoteURL = function() {
+  return this.ifValidNoteURL()
+}
+String.prototype.isLink = function() {
+  return this.ifValidNoteURL()
+}
+String.prototype.ifLink = function() {
+  return this.ifValidNoteURL()
+}
+/**
+ * 把 ID 或 URL 统一转化为 URL
+ */
+String.prototype.toNoteURL = function() {
+  if (this.ifNoteIdorURL()) {
+    let noteId = this.trim()
+    let noteURL
+    if (/^marginnote\dapp:\/\/note\//.test(noteId)) {
+      noteURL = noteId
+    } else {
+      noteURL = "marginnote4app://note/" + noteId
+    }
+    return noteURL
+  }
+}
+
+
+String.prototype.ifNoteBookId = function() {
+  return /^marginnote\dapp:\/\/notebook\//.test(this)
+}
+/**
+ * 把 ID 或 URL 统一转化为 NoteBookId
+ */
+String.prototype.toNoteBookId = function() {
+  if (this.ifNoteBookId() || this.ifNoteId()) {
+    let noteId = this.trim()
+    let noteURL
+    if (/^marginnote\dapp:\/\/notebook\//.test(noteId)) {
+      noteURL = noteId
+    } else {
+      noteURL = "marginnote4app://notebook/" + noteId
+    }
+    return noteURL
+  }
+}
+
+/**
+ * 把 ID 或 URL 统一转化为 ID
+ */
+String.prototype.toNoteId = function() {
+  if (this.ifNoteIdorURL()) {
+    let noteURL = this.trim()
+    let noteId
+    if (/^marginnote\dapp:\/\/note\//.test(noteURL)) {
+      noteId = noteURL.slice(22)
+    } else {
+      noteId = noteURL
+    }
+    return noteId
+  }
+}
+String.prototype.toNoteID = function() {
+  return this.toNoteId()
+}
+/**
+ * 夏大鱼羊 - 字符串函数 - end
+ */

@@ -183,12 +183,14 @@ class Pangu {
     newText = newText.replace(/\s*·\s*/g, "·")
     // - 左右的空格去掉
     newText = newText.replace(/\s*-\s*/g, "-")
+    // ∞ 后面的空格去掉
+    newText = newText.replace(/∞\s/g, "∞")
     return newText
   }
 }
 
 /**
- * 字符串函数
+ * 夏大鱼羊 - 字符串函数 - begin
  */
 /**
  * 判断是否是正整数
@@ -384,7 +386,7 @@ String.prototype.toNoteID = function() {
   return this.toNoteId()
 }
 /**
- * 夏大鱼羊 - end
+ * 夏大鱼羊 - 字符串函数 - end
  */
 
 class MNUtil {
@@ -608,7 +610,7 @@ class MNUtil {
     }
   }
   /**
-   * 夏大鱼羊 - begin
+   * 夏大鱼羊 - MNUtil - begin
    */
   /**
    * 根据 md5 获取学习规划学习集对应的卡片 ID
@@ -910,7 +912,7 @@ class MNUtil {
     return link
   }
   /**
-   * 夏大鱼羊 - end
+   * 夏大鱼羊 - MNUtil - end
    */
   static appVersion() {
     let info = {}
@@ -2370,7 +2372,7 @@ class MNNote{
     this.note.paste()
   }
   /**
-   * 夏大鱼羊定制 - begin
+   * 夏大鱼羊定制 - MNNote - begin
    */
   /**
    * 更新卡片学习状态
@@ -4540,9 +4542,9 @@ class MNNote{
     }
     return -1
   }
-  /*
-    夏大鱼羊定制 - 结束
-  */
+  /**
+   * 夏大鱼羊定制 - MNNote - end
+   */
   /**
    * 
    * @param {MbBookNote|MNNote|string} note 

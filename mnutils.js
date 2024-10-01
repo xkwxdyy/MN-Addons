@@ -4955,7 +4955,7 @@ try {
       to = arr.length-1
     }
     if (from == to) {
-      MNUtil.showHUD("No change")
+      // MNUtil.showHUD("No change")
       return
     }
     // 取出要移动的元素

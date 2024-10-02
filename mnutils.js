@@ -1766,6 +1766,17 @@ class MNNote{
    * 夏大鱼羊定制 - MNNote - begin
    */
   /**
+   * 【数学】把证明的内容移到最下方
+   * 
+   * 一般用于重新写证明
+   */
+  moveProofDown() {
+    let proofIndexArr = this.getHtmlBlockContentIndexArr("证明：")
+    if (proofIndexArr.length > 0) {
+      this.moveCommentsByIndexArrTo(proofIndexArr, "bottom")
+    }
+  }
+  /**
    * 更新卡片学习状态
    */
   /**
@@ -2662,6 +2673,13 @@ class MNNote{
        */
       case "top":
         targetIndex = 0
+        this.moveCommentsByIndexArr(indexArr, targetIndex)
+        break;
+      /**
+       * 移动到最底下
+       */
+      case "bottom":
+        targetIndex = this.comments.length - 1
         this.moveCommentsByIndexArr(indexArr, targetIndex)
         break;
       /**

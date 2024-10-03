@@ -1,3 +1,406 @@
+/**
+ * 夏大鱼羊 - 字符串函数 - begin
+ */
+// https://github.com/vinta/pangu.js
+// CJK is short for Chinese, Japanese, and Korean.
+//
+// CJK includes following Unicode blocks:
+// \u2e80-\u2eff CJK Radicals Supplement
+// \u2f00-\u2fdf Kangxi Radicals
+// \u3040-\u309f Hiragana
+// \u30a0-\u30ff Katakana
+// \u3100-\u312f Bopomofo
+// \u3200-\u32ff Enclosed CJK Letters and Months
+// \u3400-\u4dbf CJK Unified Ideographs Extension A
+// \u4e00-\u9fff CJK Unified Ideographs
+// \uf900-\ufaff CJK Compatibility Ideographs
+//
+// For more information about Unicode blocks, see
+// http://unicode-table.com/en/
+// https://github.com/vinta/pangu
+//
+// all J below does not include \u30fb
+const CJK =
+  "\u2e80-\u2eff\u2f00-\u2fdf\u3040-\u309f\u30a0-\u30fa\u30fc-\u30ff\u3100-\u312f\u3200-\u32ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff"
+// ANS is short for Alphabets, Numbers, and Symbols.
+//
+// A includes A-Za-z\u0370-\u03ff
+// N includes 0-9
+// S includes `~!@#$%^&*()-_=+[]{}\|;:'",<.>/?
+//
+// some S below does not include all symbols
+// the symbol part only includes ~ ! ; : , . ? but . only matches one character
+const CONVERT_TO_FULLWIDTH_CJK_SYMBOLS_CJK = new RegExp(
+  `([${CJK}])[ ]*([\\:]+|\\.)[ ]*([${CJK}])`,
+  "g"
+)
+const CONVERT_TO_FULLWIDTH_CJK_SYMBOLS = new RegExp(
+  `([${CJK}])[ ]*([~\\!;,\\?]+)[ ]*`,
+  "g"
+)
+const DOTS_CJK = new RegExp(`([\\.]{2,}|\u2026)([${CJK}])`, "g")
+const FIX_CJK_COLON_ANS = new RegExp(`([${CJK}])\\:([A-Z0-9\\(\\)])`, "g")
+// the symbol part does not include '
+const CJK_QUOTE = new RegExp(`([${CJK}])([\`"\u05f4])`, "g")
+const QUOTE_CJK = new RegExp(`([\`"\u05f4])([${CJK}])`, "g")
+const FIX_QUOTE_ANY_QUOTE = /([`"\u05f4]+)[ ]*(.+?)[ ]*([`"\u05f4]+)/g
+const CJK_SINGLE_QUOTE_BUT_POSSESSIVE = new RegExp(`([${CJK}])('[^s])`, "g")
+const SINGLE_QUOTE_CJK = new RegExp(`(')([${CJK}])`, "g")
+const FIX_POSSESSIVE_SINGLE_QUOTE = new RegExp(
+  `([A-Za-z0-9${CJK}])( )('s)`,
+  "g"
+)
+const HASH_ANS_CJK_HASH = new RegExp(
+  `([${CJK}])(#)([${CJK}]+)(#)([${CJK}])`,
+  "g"
+)
+const CJK_HASH = new RegExp(`([${CJK}])(#([^ ]))`, "g")
+const HASH_CJK = new RegExp(`(([^ ])#)([${CJK}])`, "g")
+// the symbol part only includes + - * / = & | < >
+const CJK_OPERATOR_ANS = new RegExp(
+  `([${CJK}])([\\+\\-\\*\\/=&\\|<>])([A-Za-z0-9])`,
+  "g"
+)
+const ANS_OPERATOR_CJK = new RegExp(
+  `([A-Za-z0-9])([\\+\\-\\*\\/=&\\|<>])([${CJK}])`,
+  "g"
+)
+const FIX_SLASH_AS = /([/]) ([a-z\-_\./]+)/g
+const FIX_SLASH_AS_SLASH = /([/\.])([A-Za-z\-_\./]+) ([/])/g
+// the bracket part only includes ( ) [ ] { } < > “ ”
+const CJK_LEFT_BRACKET = new RegExp(`([${CJK}])([\\(\\[\\{<>\u201c])`, "g")
+const RIGHT_BRACKET_CJK = new RegExp(`([\\)\\]\\}<>\u201d])([${CJK}])`, "g")
+const FIX_LEFT_BRACKET_ANY_RIGHT_BRACKET =
+  /([\(\[\{<\u201c]+)[ ]*(.+?)[ ]*([\)\]\}>\u201d]+)/
+const ANS_CJK_LEFT_BRACKET_ANY_RIGHT_BRACKET = new RegExp(
+  `([A-Za-z0-9${CJK}])[ ]*([\u201c])([A-Za-z0-9${CJK}\\-_ ]+)([\u201d])`,
+  "g"
+)
+const LEFT_BRACKET_ANY_RIGHT_BRACKET_ANS_CJK = new RegExp(
+  `([\u201c])([A-Za-z0-9${CJK}\\-_ ]+)([\u201d])[ ]*([A-Za-z0-9${CJK}])`,
+  "g"
+)
+const AN_LEFT_BRACKET = /([A-Za-z0-9])([\(\[\{])/g
+const RIGHT_BRACKET_AN = /([\)\]\}])([A-Za-z0-9])/g
+const CJK_ANS = new RegExp(
+  `([${CJK}])([A-Za-z\u0370-\u03ff0-9@\\$%\\^&\\*\\-\\+\\\\=\\|/\u00a1-\u00ff\u2150-\u218f\u2700—\u27bf])`,
+  "g"
+)
+const ANS_CJK = new RegExp(
+  `([A-Za-z\u0370-\u03ff0-9~\\$%\\^&\\*\\-\\+\\\\=\\|/!;:,\\.\\?\u00a1-\u00ff\u2150-\u218f\u2700—\u27bf])([${CJK}])`,
+  "g"
+)
+const S_A = /(%)([A-Za-z])/g
+const MIDDLE_DOT = /([ ]*)([\u00b7\u2022\u2027])([ ]*)/g
+const BACKSAPCE_CJK = new RegExp(`([${CJK}]) ([${CJK}])`, "g")
+const SUBSCRIPT_CJK = /([\u2080-\u2099])(?=[\u4e00-\u9fa5])/g
+// 上标 https://rupertshepherd.info/resource_pages/superscript-letters-in-unicode
+const SUPERSCRIPT_CJK = /([\u2070-\u209F\u1D56\u1D50\u207F\u1D4F\u1D57])(?=[\u4e00-\u9fa5])/g
+// 特殊字符
+// \u221E: ∞
+const SPECIAL = /([\u221E])(?!\s|[\(\[])/g  // (?!\s) 是为了当后面没有空格才加空格，防止出现多个空格
+class Pangu {
+  version
+  static convertToFullwidth(symbols) {
+    return symbols
+      .replace(/~/g, "～")
+      .replace(/!/g, "！")
+      .replace(/;/g, "；")
+      .replace(/:/g, "：")
+      .replace(/,/g, "，")
+      .replace(/\./g, "。")
+      .replace(/\?/g, "？")
+  }
+  static toFullwidth(text) {
+    let newText = text
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const that = this
+    newText = newText.replace(
+      CONVERT_TO_FULLWIDTH_CJK_SYMBOLS_CJK,
+      (match, leftCjk, symbols, rightCjk) => {
+        const fullwidthSymbols = that.convertToFullwidth(symbols)
+        return `${leftCjk}${fullwidthSymbols}${rightCjk}`
+      }
+    )
+    newText = newText.replace(
+      CONVERT_TO_FULLWIDTH_CJK_SYMBOLS,
+      (match, cjk, symbols) => {
+        const fullwidthSymbols = that.convertToFullwidth(symbols)
+        return `${cjk}${fullwidthSymbols}`
+      }
+    )
+    return newText
+  }
+  static spacing(text) {
+    let newText = text
+    // https://stackoverflow.com/questions/4285472/multiple-regex-replace
+    newText = newText.replace(DOTS_CJK, "$1 $2")
+    newText = newText.replace(FIX_CJK_COLON_ANS, "$1：$2")
+    newText = newText.replace(CJK_QUOTE, "$1 $2")
+    newText = newText.replace(QUOTE_CJK, "$1 $2")
+    newText = newText.replace(FIX_QUOTE_ANY_QUOTE, "$1$2$3")
+    newText = newText.replace(CJK_SINGLE_QUOTE_BUT_POSSESSIVE, "$1 $2")
+    newText = newText.replace(SINGLE_QUOTE_CJK, "$1 $2")
+    newText = newText.replace(FIX_POSSESSIVE_SINGLE_QUOTE, "$1's") // eslint-disable-line quotes
+    newText = newText.replace(HASH_ANS_CJK_HASH, "$1 $2$3$4 $5")
+    newText = newText.replace(CJK_HASH, "$1 $2")
+    newText = newText.replace(HASH_CJK, "$1 $3")
+    newText = newText.replace(CJK_OPERATOR_ANS, "$1 $2 $3")
+    newText = newText.replace(ANS_OPERATOR_CJK, "$1 $2 $3")
+    newText = newText.replace(FIX_SLASH_AS, "$1$2")
+    newText = newText.replace(FIX_SLASH_AS_SLASH, "$1$2$3")
+    newText = newText.replace(CJK_LEFT_BRACKET, "$1 $2")
+    newText = newText.replace(RIGHT_BRACKET_CJK, "$1 $2")
+    newText = newText.replace(FIX_LEFT_BRACKET_ANY_RIGHT_BRACKET, "$1$2$3")
+    newText = newText.replace(
+      ANS_CJK_LEFT_BRACKET_ANY_RIGHT_BRACKET,
+      "$1 $2$3$4"
+    )
+    newText = newText.replace(
+      LEFT_BRACKET_ANY_RIGHT_BRACKET_ANS_CJK,
+      "$1$2$3 $4"
+    )
+    newText = newText.replace(AN_LEFT_BRACKET, "$1 $2")
+    newText = newText.replace(RIGHT_BRACKET_AN, "$1 $2")
+    newText = newText.replace(CJK_ANS, "$1 $2")
+    newText = newText.replace(ANS_CJK, "$1 $2")
+    newText = newText.replace(S_A, "$1 $2")
+    // newText = newText.replace(MIDDLE_DOT, "・")
+    // 去中文间的空格
+    newText = newText.replace(BACKSAPCE_CJK, "$1$2")
+    // 去掉下标和中文之间的空格
+    newText = newText.replace(SUBSCRIPT_CJK, "$1 ")
+    newText = newText.replace(SUPERSCRIPT_CJK, "$1 ")
+    /* 特殊处理 */
+    // 特殊字符
+    newText = newText.replace(SPECIAL, "$1 ")
+    // 处理 C[a,b] 这种单独字母紧跟括号的情形，不加空格
+    newText = newText.replace(/([A-Za-z])\s([\(\[\{])/g, "$1$2")
+    newText = newText.replace(/([\)\]\}])\s([A-Za-z])/g, "$1$2")
+    // ”后面不加空格
+    newText = newText.replace(/”\s/g, "”")
+    // · 左右的空格去掉
+    newText = newText.replace(/\s*·\s*/g, "·")
+    // - 左右的空格去掉
+    newText = newText.replace(/\s*-\s*/g, "-")
+    // ∞ 后面的空格去掉
+    newText = newText.replace(/∞\s/g, "∞")
+    return newText
+  }
+}
+/**
+ * 判断是否是正整数
+ */
+String.prototype.isPositiveInteger = function() {
+  const regex = /^[1-9]\d*$/;
+  return regex.test(this);
+}
+/**
+ * 判断是否是知识点卡片的标题
+ */
+String.prototype.ifKnowledgeNoteTitle = function () {
+  return /^【.{2,4}：.*】/.test(this)
+}
+String.prototype.isKnowledgeNoteTitle = function () {
+  return this.ifKnowledgeNoteTitle()
+}
+/**
+ * 获取知识点卡片的前缀
+ */
+String.prototype.toKnowledgeNotePrefix = function () {
+  let match = this.match(/^【.{2,4}：(.*)】/)
+  return match ? match[1] : this  // 如果匹配不到，返回原字符串
+}
+/**
+ * 获取知识点卡片的标题
+ */
+String.prototype.toKnowledgeNoteTitle = function () {
+  let match = this.match(/^【.{2,4}：.*】(.*)/)
+  return match ? match[1] : this  // 如果匹配不到，返回原字符串
+}
+/**
+ * 判断是否是绿色归类卡片的标题
+ * @returns {boolean}
+ */
+String.prototype.ifGreenClassificationNoteTitle = function () {
+  return /^“[^”]+”\s*相关[^“]*$/.test(this)
+}
+String.prototype.isGreenClassificationNoteTitle = function () {
+  return this.ifGreenClassificationNoteTitle()
+}
+/**
+ * 获取绿色归类卡片的标题
+ */
+String.prototype.toGreenClassificationNoteTitle = function () {
+  let match = this.match(/^“([^”]+)”\s*相关[^“]*$/)
+  return match ? match[1] : this  // 如果匹配不到，返回原字符串
+}
+/**
+ * 判断是否是黄色归类卡片的标题
+ * @returns {boolean}
+ */
+String.prototype.ifYellowClassificationNoteTitle = function () {
+  return /^“[^”]+”：“[^”]+”\s*相关[^“]*$/.test(this)
+}
+String.prototype.isYellowClassificationNoteTitle = function () {
+  return this.ifYellowClassificationNoteTitle()
+}
+/**
+ * 获取黄色归类卡片的标题
+ */
+String.prototype.toYellowClassificationNoteTitle = function () {
+  let match = this.match(/^“[^”]+”：“([^”]+)”\s*相关[^“]*$/)
+  return match ? match[1] : this  // 如果匹配不到，返回原字符串
+}
+/**
+ * 获取绿色或者黄色归类卡片的标题
+ */
+String.prototype.toClassificationNoteTitle = function () {
+  if (this.ifGreenClassificationNoteTitle()) {
+    return this.toGreenClassificationNoteTitle()
+  }
+  if (this.ifYellowClassificationNoteTitle()) {
+    return this.toYellowClassificationNoteTitle()
+  }
+  return ""
+}
+/**
+ * 判断输入的字符串是否是卡片 URL 或者卡片 ID
+ */
+String.prototype.ifNoteIdorURL = function () {
+  return (
+    this.ifValidNoteURL() ||
+    this.ifValidNoteId()
+  )
+}
+String.prototype.isNoteIdorURL = function () {
+  return this.ifNoteIdorURL()
+}
+String.prototype.ifNoteURLorId = function () {
+  return this.ifNoteIdorURL()
+}
+String.prototype.isNoteURLorId = function () {
+  return this.ifNoteIdorURL()
+}
+String.prototype.ifNoteURLorID = function () {
+  return this.ifNoteIdorURL()
+}
+String.prototype.isNoteURLorID = function () {
+  return this.ifNoteIdorURL()
+}
+String.prototype.ifNoteIDorURL = function () {
+  return this.ifNoteIdorURL()
+}
+String.prototype.isNoteIDorURL = function () {
+  return this.ifNoteIdorURL()
+}
+
+/**
+ * 判断是否是有效的卡片 ID
+ */
+String.prototype.ifValidNoteId = function() {
+  const regex = /^[0-9A-Z]{8}-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{12}$/;
+  return regex.test(this);
+}
+String.prototype.isValidNoteId = function() {
+  return this.ifValidNoteId()
+}
+String.prototype.ifNoteId = function() {
+  return this.ifValidNoteId()
+}
+String.prototype.isNoteId = function() {
+  return this.ifValidNoteId()
+}
+
+/**
+ * 判断是否是有效的卡片 URL
+ */
+String.prototype.ifValidNoteURL = function() {
+  return /^marginnote\dapp:\/\/note\//.test(this)
+}
+String.prototype.isValidNoteURL = function() {
+  return this.ifValidNoteURL()
+}
+String.prototype.isLink = function() {
+  return this.ifValidNoteURL()
+}
+String.prototype.ifLink = function() {
+  return this.ifValidNoteURL()
+}
+/**
+ * 把 ID 或 URL 统一转化为 URL
+ */
+String.prototype.toNoteURL = function() {
+  if (this.ifNoteIdorURL()) {
+    let noteId = this.trim()
+    let noteURL
+    if (/^marginnote\dapp:\/\/note\//.test(noteId)) {
+      noteURL = noteId
+    } else {
+      noteURL = "marginnote4app://note/" + noteId
+    }
+    return noteURL
+  }
+}
+
+
+String.prototype.ifNoteBookId = function() {
+  return /^marginnote\dapp:\/\/notebook\//.test(this)
+}
+/**
+ * 把 ID 或 URL 统一转化为 NoteBookId
+ */
+String.prototype.toNoteBookId = function() {
+  if (this.ifNoteBookId() || this.ifNoteId()) {
+    let noteId = this.trim()
+    let noteURL
+    if (/^marginnote\dapp:\/\/notebook\//.test(noteId)) {
+      noteURL = noteId
+    } else {
+      noteURL = "marginnote4app://notebook/" + noteId
+    }
+    return noteURL
+  }
+}
+
+/**
+ * 把 ID 或 URL 统一转化为 ID
+ */
+String.prototype.toNoteId = function() {
+  if (this.ifNoteIdorURL()) {
+    let noteURL = this.trim()
+    let noteId
+    if (/^marginnote\dapp:\/\/note\//.test(noteURL)) {
+      noteId = noteURL.slice(22)
+    } else {
+      noteId = noteURL
+    }
+    return noteId
+  }
+}
+String.prototype.toNoteID = function() {
+  return this.toNoteId()
+}
+
+
+/**
+ * 夏大鱼羊 - 字符串函数 - end
+ */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class MNUtil {
   /**
    * 夏大鱼羊 - MNUtil - begin

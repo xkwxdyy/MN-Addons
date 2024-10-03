@@ -374,6 +374,9 @@ class MNUtil {
   static get studyView() {
     return this.app.studyController(this.currentWindow).view
   }
+  /**
+   * @returns {{view:UIView}}
+   **/
   static get extensionPanelController(){
     return this.studyController.extensionPanelController
   }
@@ -382,6 +385,12 @@ class MNUtil {
    */
   static get extensionPanelView(){
     return this.studyController.extensionPanelController.view
+  }
+  static get extensionPanelOn(){
+    if (this.extensionPanelController && this.extensionPanelController.view.window) {
+      return true
+    }
+    return false
   }
   static get mainPath(){
     return this.mainPath
@@ -567,8 +576,10 @@ class MNUtil {
     let version = parseFloat(this.app.appVersion)
     if (version >= 4) {
       info.version = "marginnote4"
+      info.versionNumber = version
     }else{
       info.version = "marginnote3"
+      info.versionNumber = version
     }
     switch (this.app.osType) {
       case 0:

@@ -2180,6 +2180,74 @@ class MNNote{
    * 夏大鱼羊定制 - MNNote - begin
    */
   /**
+   * 卡片变成归类卡片信息汇总卡片
+   */
+  toBeClassificationInfoNote() {
+    let classificationIdsArr = [
+      {
+        id: "3572E6DC-887A-4376-B715-04B6D8F0C58B",
+        name: "学习规划"
+      },
+      {
+        id: "E1EACEC5-3ACD-424B-BD46-797CD8A56629",
+        name: "泛函分析与算子理论"
+      },
+      {
+        id: "B27D8A02-BDC4-4D3F-908B-61AA19CBB861",
+        name: "复分析"
+      },
+      {
+        id: "13623BE8-8D26-4FEE-95D8-B704C34E92EC",
+        name: "实分析与调和分析"
+      },
+      {
+        id: "F6CE6E2C-4126-4945-BB98-F2437F73C806",
+        name: "数学基础"
+      },
+      {
+        id: "0164496D-FA35-421A-8A22-649831C83E63",
+        name: "高等代数"
+      },
+      {
+        id: "C7768D8F-3BD3-4D9F-BC82-C3F12701E7BF",
+        name: "数学分析"
+      }
+    ]
+
+    this.clearAllComments()
+    this.colorIndex = 0
+    classificationIdsArr.forEach(
+      info => {
+        let classificationNote = MNNote.new(info.id)
+        if (classificationNote) {
+          let childNotesNum = classificationNote.descendantNodes.descendant.length - 1  // 去掉归类卡片自己
+          if (info.name == "学习规划") {
+            if (childNotesNum > 6) {
+              // 因为学习规划有六张本来就有的
+              this.appendMarkdownComment("「" + info.name + "」还剩 " + childNotesNum + " 张卡片未归类")
+              this.appendNoteLink(classificationNote, "To")
+              this.colorIndex = 3
+            }
+          } else {
+            if (childNotesNum > 0) {
+              this.appendMarkdownComment("「" + info.name + "」还剩 " + childNotesNum + " 张卡片未归类")
+              this.appendNoteLink(classificationNote, "To")
+              this.colorIndex = 3
+            }
+          }
+        }
+      }
+    )
+  }
+  /**
+   * 卡片去掉所有评论
+   */
+  clearAllComments(){
+    for (let i = this.comments.length -1; i >= 0; i--) {
+      this.removeCommentByIndex(i)
+    }
+  }
+  /**
    * 【数学】把证明的内容移到最下方
    * 
    * 一般用于重新写证明

@@ -931,6 +931,16 @@ class MNUtil {
   static get clipboardText() {
     return UIPasteboard.generalPasteboard().string
   }
+  static get clipboardImage() {
+    return UIPasteboard.generalPasteboard().image
+  }
+  static get clipboardImageData() {
+    let image = this.clipboardImage
+    if (image) {
+      return image.pngData()
+    }
+    return undefined
+  }
   static get dbFolder(){
     //结尾不带斜杠
     return this.app.dbPath
@@ -998,10 +1008,96 @@ class MNUtil {
     }
     return info
   }
+  static isIOS(){
+    return this.appVersion().type == "iPhoneOS"
+  }
+  static isMacOS(){
+    return this.appVersion().type == "macOS"
+  }
+  static isIPadOS(){
+    return this.appVersion().type == "iPadOS"
+  }
   static getMNUtilVersion(){
     let res = this.readJSON(this.mainPath+"/mnaddon.json")
     return res.version
     // this.copyJSON(res)
+  }
+  static countWords(str) {
+    const chinese = Array.from(str)
+      .filter(ch => /[\u4e00-\u9fa5]/.test(ch))
+      .length
+    
+    const english = Array.from(str)
+      .map(ch => /[a-zA-Z0-9\s]/.test(ch) ? ch : ' ')
+      .join('').split(/\s+/).filter(s => s)
+      .length
+
+    return chinese + english
+  }
+  static getNoteFileById(noteId) {
+    let note = this.getNoteById(noteId)
+    let docFile = this.getDocById(note.docMd5)
+    if (!docFile) {
+      this.showHUD("No file")
+      return undefined
+    }
+    let fullPath
+    if (docFile.fullPathFileName) {
+      fullPath = docFile.fullPathFileName
+    }else{
+      let folder = this.documentFolder
+      let fullPath = folder+"/"+docFile.pathFile
+      if (docFile.pathFile.startsWith("$$$MNDOCLINK$$$")) {
+        let fileName = this.getFileName(docFile.pathFile)
+        fullPath = Application.sharedInstance().tempPath + fileName
+        // fullPath = docFile.pathFile.replace("$$$MNDOCLINK$$$", "/Users/linlifei/")
+      }
+    }
+    if (!this.isfileExists(fullPath)) {
+      this.showHUD("Invalid file: "+docFile.pathFile)
+      return undefined
+    }
+    // copy(fullPath)
+    let fileName = this.getFileName(fullPath)
+    return{
+      name:fileName,
+      path:fullPath,
+      md5:docFile.docMd5
+    }
+  }
+  static isNSNull(obj){
+    return (obj === NSNull.new())
+  }
+  static async runJavaScript(webview,script) {
+  // if(!this.webviewResponse || !this.webviewResponse.window)return;
+  return new Promise((resolve, reject) => {
+    try {
+      if (webview) {
+        // MNUtil.copy(webview)
+        webview.evaluateJavaScript(script,(result) => {
+          if (this.isNSNull(result)) {
+            resolve(undefined)
+          }
+          resolve(result)
+        });
+      }else{
+        resolve(undefined)
+      }
+    } catch (error) {
+      chatAIUtils.addErrorLog(error, "runJavaScript")
+      resolve(undefined)
+    }
+  })
+};
+  static getRandomElement(arr) {
+    if (arr.length === 1) {
+      return arr[0]
+    }
+    if (arr && arr.length) {
+      const randomIndex = Math.floor(Math.random() * arr.length);
+      return arr[randomIndex];
+    }
+    return ""; // 或者抛出一个错误，如果数组为空或者未定义
   }
   /**
    * Displays a Heads-Up Display (HUD) message on the specified window for a given duration.
@@ -1785,9 +1881,34 @@ class MNUtil {
     MNUtil.copy(error.toString())
   }
   }
+  /**
+   * 
+   * @param {string} template 
+   * @param {object} config 
+   * @returns {string}
+   */
   static render(template,config){
     let output = mustache.render(template,config)
     return output
+  }
+  /**
+   * 
+   * @param {number} value 
+   * @param {number} min 
+   * @param {number} max 
+   * @returns {number}
+   */
+  static constrain(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+  /**
+   * max为10
+   * @param {number} index 
+   * @returns 
+   */
+  static emojiNumber(index){
+    let emojiIndices = ["0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"]
+    return emojiIndices[index]
   }
 }
 
@@ -2056,6 +2177,16 @@ static async uploadWebDAVFile(url, username, password, fileContent) {
     });
     return response
 }
+  static getOnlineImage(url,scale=3){
+    MNUtil.showHUD("Downloading image")
+    let imageData = NSData.dataWithContentsOfURL(MNUtil.genNSURL(url))
+    if (imageData) {
+      MNUtil.showHUD("Download success")
+      return UIImage.imageWithDataScale(imageData,scale)
+    }
+    MNUtil.showHUD("Download failed")
+    return undefined
+  }
 }
 class MNButton{
   static get highlightColor(){
@@ -5042,6 +5173,7 @@ class MNNote{
   allNoteText(){
     return this.note.allNoteText()
   }
+
   async getMDContent(withBase64 = false){
     let note = this.realGroupNoteForTopicId()
 try {
@@ -5345,6 +5477,19 @@ try {
       parent.addChild(child)
     }
     return child
+  }
+  hasImage(){
+    if (this.excerptPic && !this.textFirst) {
+      return true
+    }
+    let comments = this.comments
+    if (comments && comments.length) {
+      let comment = comments.find(c=>c.type==="PaintNote")
+      if (comment) {
+        return true
+      }
+    }
+    return false
   }
   /**
    * Append text comments as much as you want.
@@ -5904,14 +6049,28 @@ try {
           return MNNote.new(focusNote)
         }
       }
-      return undefined
-    }
-    if (MNUtil.popUpNoteInfo) {
+      if (MNUtil.popUpNoteInfo) {
         return MNNote.new(MNUtil.popUpNoteInfo.noteId)
+      }
     }
     return undefined
   }
-
+    /**
+   * 
+   * @param {MbBookNote|MNNote} note 
+   */
+  static hasImageInNote(note){
+    if (note.excerptPic && !note.textFirst) {
+      return true
+    }
+    if (note.comments && note.comments.length) {
+      let comment = note.comments.find(c=>c.type==="PaintNote")
+      if (comment) {
+        return true
+      }
+    }
+    return false
+  }
   /**
    * Retrieves the focus notes in the current context.
    * 

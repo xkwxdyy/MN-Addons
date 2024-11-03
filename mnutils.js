@@ -878,7 +878,7 @@ class MNUtil {
    * pop-up selection info, it also generates the selection details. If no selection is found,
    * it returns an object indicating no selection.
    * 
-   * @returns {{onSelection: boolean, image: null|undefined|NSData, text: null|undefined|string, isText: null|undefined|boolean}} The current selection details.
+   * @returns {{onSelection: boolean, image: null|undefined|NSData, text: null|undefined|string, isText: null|undefined|boolean,docMd5:string|undefined,pageIndex:number|undefined}} The current selection details.
    */
   static get currentSelection(){
     if (this.studyController.readerController.view.hidden) {
@@ -1272,6 +1272,8 @@ class MNUtil {
       if (docController.selectionText) {
         selection.text = docController.selectionText
       }
+      selection.docMd5 = docController.docMd5
+      selection.pageIndex = docController.currPageIndex
       return selection
     }
     return {onSelection:false}
@@ -1616,8 +1618,39 @@ class MNUtil {
     return md5
   }
 
+  static replaceMNImagesWithBase64(markdown) {
+  // if (/!\[.*?\]\((marginnote4app\:\/\/markdownimg\/png\/.*?)(\))/) {
+
+  //   // ![image.png](marginnote4app://markdownimg/png/eebc45f6b237d8abf279d785e5dcda20)
+  // }
+try {
+    // let shouldOverWritten = false
+    // 匹配 base64 图片链接的正则表达式
+    const MNImagePattern = /!\[.*?\]\((marginnote4app\:\/\/markdownimg\/png\/.*?)(\))/g;
+    let images = []
+    // 处理 Markdown 字符串，替换每个 base64 图片链接
+    const result = markdown.replace(MNImagePattern, (match, MNImageURL,p2) => {
+      // 你可以在这里对 base64Str 进行替换或处理
+      // shouldOverWritten = true
+      let hash = MNImageURL.split("markdownimg/png/")[1]
+      let imageData = MNUtil.getMediaByHash(hash)
+      let imageBase64 = imageData.base64Encoding()
+      // if (!imageData) {
+      //   return match.replace(MNImageURL, hash+".png");
+      // }
+      // imageData.writeToFileAtomically(editorUtils.bufferFolder+hash+".png", false)
+      return match.replace(MNImageURL, "data:image/png;base64,"+imageBase64);
+    });
+  return result;
+} catch (error) {
+  editorUtils.addErrorLog(error, "replaceBase64ImagesWithR2")
+  return undefined
+}
+}
+
   static md2html(md){
-    return marked.parse(md.replace(/_{/g,'\\_\{').replace(/_\\/g,'\\_\\'))
+    let tem = this.replaceMNImagesWithBase64(md)
+    return marked.parse(tem.replace(/_{/g,'\\_\{').replace(/_\\/g,'\\_\\'))
   }
   /**
    * Escapes special characters in a string to ensure it can be safely used in JavaScript code.
@@ -4890,6 +4923,14 @@ class MNNote{
     this.note.noteTitle = title
   }
   /**
+   * set textFirst
+   * @param {boolean} on
+   * @returns
+   */
+  set textFirst(on){
+    this.note.textFirst = on
+  }
+  /**
    *
    * @param {string} title
    * @returns
@@ -4908,9 +4949,9 @@ class MNNote{
   }
   set excerptText(text){
     this.note.excerptText = text
-    // if (this.excerptPic && !this.textFirst) {
-    //   MNUtil.excuteCommand("EditTextMode")
-    // }
+    if (this.excerptPic && !this.textFirst) {
+      this.textFirst = true
+    }
   }
   get mainExcerptText() {
     return this.note.excerptText ?? ""
@@ -5367,6 +5408,7 @@ try {
         this.note.addChild(note)
         break;
       default:
+        MNUtil.showHUD("UNKNOWN Note")
         break;
     }
     } catch (error) {
@@ -5794,15 +5836,19 @@ try {
    * @param {string[]} tags
    * append tags as much as you want
    */
-  appendTags(...tags) {
+  appendTags(tags) {
+  try {
     this.tidyupTags()
-    tags = unique([...this.tags, ...tags], true)
+    tags = this.tags.concat(tags)//MNUtil.unique(this.tags.concat(tags), true)
     const lastComment = this.note.comments[this.note.comments.length - 1]
     if (lastComment?.type == "TextNote" && lastComment.text.startsWith("#")) {
       this.note.removeCommentByIndex(this.note.comments.length - 1)
     }
     this.appendTextComments(tags.map(k => '#'+k).join(" "))
     return this
+  } catch (error) {
+    MNUtil.copy(error.toString())
+  }
   }
   /**
    * make sure tags are in the last comment
@@ -6071,6 +6117,13 @@ try {
     }
     return false
   }
+  static fromSelection(docController = MNUtil.currentDocController){
+    let selection = MNUtil.currentSelection
+    if (!selection.onSelection) {
+      return undefined
+    }
+    return MNNote.new(docController.highlightFromSelection())
+  }
   /**
    * Retrieves the focus notes in the current context.
    * 
@@ -6205,6 +6258,9 @@ class MNExtensionPanel {
   static get currentWindow(){
     //关闭mn4后再打开，得到的focusWindow会变，所以不能只在init做一遍初始化
     return this.app.focusWindow
+  }
+  static get subviewNames(){
+    return Object.keys(this.subviews)
   }
   static get app(){
     // this.appInstance = Application.sharedInstance()

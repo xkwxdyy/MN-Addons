@@ -185,6 +185,8 @@ class Pangu {
     newText = newText.replace(/\s*-\s*/g, "-")
     // ∞ 后面的空格去掉
     newText = newText.replace(/∞\s/g, "∞")
+    // 处理一下 弱* w* 这种空格
+    newText = newText.replace(/([弱w])\s*\*/g, "$1*")
     return newText
   }
 }

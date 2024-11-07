@@ -2718,7 +2718,7 @@ class MNNote{
           // type = this.getNoteTypeObjByClassificationParentNoteTitle().zh
           type = this.getNoteTypeZh()
           parentNoteTitle = this.getClassificationParentNote().noteTitle.toClassificationNoteTitle()
-          if (title.ifKnowledgeNoteTitle()) {
+          if (title.ifKnowledgeNoteTitle() || ["输入","内化","待归类"].some(keyword => this.title.includes(keyword))) {
             /**
              * 已经有前缀了，先获取不带前缀的部分作为 title
              */

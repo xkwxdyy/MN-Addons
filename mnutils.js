@@ -186,7 +186,8 @@ class Pangu {
     // ∞ 后面的空格去掉
     newText = newText.replace(/∞\s/g, "∞")
     // 处理一下 弱* w* 这种空格
-    newText = newText.replace(/([弱w])\s*\*/g, "$1*")
+    newText = newText.replace(/([弱A-Za-z])\s*\*/g, "$1*")
+    newText = newText.replace(/\*\s*\*/g, "**")
     return newText
   }
 }
@@ -2796,6 +2797,8 @@ class MNNote{
    * 【数学】与父卡片进行链接
    * 1. 先识别是否已经进行了链接，如果有的话就删掉 this 的相关链接的第一条和对应归类卡片里的 this 链接
    * 2. 没有的话就进行双向链接，并且将链接移动到“相关链接：”下方
+   * 
+   * 【TODO】如果是输入、内化、待归类卡片，则不需要进行链接
    */
   linkParentNote(){
     if (
@@ -4518,7 +4521,7 @@ class MNNote{
   getHtmlBlockContentIndexArr(htmltext){
     let arr = this.getHtmlBlockIndexArr(htmltext)
     if (arr.length > 0) {
-      arr.shift()
+      arr.shift()  // 去掉 html 评论的 index
     }
     return arr
   }

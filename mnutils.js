@@ -3666,7 +3666,7 @@ class MNNote{
    */
   ifTemplateOldVersion(){
     // let remarkHtmlCommentIndex = this.getHtmlCommentIndex("Remark：")
-    return this.getHtmlCommentIndex("Remark：") !== -1 || this.getHtmlCommentIndex("所属：") !== -1
+    return this.getHtmlCommentIndex("Remark：") !== -1 || (this.getHtmlCommentIndex("所属：") !== -1 && this.getNoteTypeZh()!== "归类" && this.getNoteTypeZh()!== "顶层")
   }
   ifMadeByOldTemplate(){
     return this.ifTemplateOldVersion()
@@ -4013,6 +4013,7 @@ class MNNote{
   }
 
   renew(){
+    let noteType = this.getNoteTypeZh()
     /**
      * 更新链接
      */
@@ -4093,19 +4094,34 @@ class MNNote{
       /**
        * 删除一些特定的文本
        */
-      this.removeCommentsByText(
-        [
-          "零层",
-          "一层",
-          "两层",
-          "三层",
-          "四层",
-          "五层",
-          "由来/背景：",
-          "- 所属：",
-          "所属："
-        ]
-      )
+      if (noteType!== "归类" && noteType!== "顶层") {
+        this.removeCommentsByText(
+          [
+            "零层",
+            "一层",
+            "两层",
+            "三层",
+            "四层",
+            "五层",
+            "由来/背景：",
+            "- 所属：",
+            "所属："
+          ]
+        )
+      } else {
+        this.removeCommentsByText(
+          [
+            "零层",
+            "一层",
+            "两层",
+            "三层",
+            "四层",
+            "五层",
+            "由来/背景：",
+            "- 所属：",
+          ]
+        )
+      }
 
       this.removeCommentsByTrimText(
         "-"
@@ -4120,7 +4136,6 @@ class MNNote{
       /**
        * 根据父卡片或者是卡片颜色（取决于有没有归类的父卡片）来修改 Html 版本
        */
-      let noteType = this.getNoteTypeZh()
       if (noteType !== "归类" && noteType !== "顶层") {
         // 修改对应 “证明：”的版本
         let proofHtmlCommentIndex = this.getProofHtmlCommentIndexByNoteType(noteType)

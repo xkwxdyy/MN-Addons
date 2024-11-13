@@ -2648,6 +2648,16 @@ class MNNote{
       return title
     }
   }
+
+  /**
+   * 判断卡片的前缀是否包含
+   * - 输入
+   * - 内化
+   * - 待归类
+   */
+  ifNoteTemporary(){
+    return ["输入","内化","待归类"].some(keyword => this.title.includes(keyword))
+  }
   
   /**
    * 【数学】修改和处理卡片标题
@@ -2719,28 +2729,65 @@ class MNNote{
           // type = this.getNoteTypeObjByClassificationParentNoteTitle().zh
           type = this.getNoteTypeZh()
           parentNoteTitle = this.getClassificationParentNote().noteTitle.toClassificationNoteTitle()
-          if (title.ifKnowledgeNoteTitle() || ["输入","内化","待归类"].some(keyword => this.title.includes(keyword))) {
+          if (title.ifKnowledgeNoteTitle()) {
             /**
              * 已经有前缀了，先获取不带前缀的部分作为 title
              */
             let prefix = title.toKnowledgeNotePrefix() // 要放在下面的 title 处理之前，因为 title 处理之后会改变 title 的值
             title = title.toKnowledgeNoteTitle()
             /**
-             * 需要检测前缀的结尾是否在「上一个」 parentNoteTitle 的基础上增加了“：xxx”的结构
-             * 此时的场景一般是：修改知识点卡片的归类卡片
+             * 如果是临时卡片，就直接重新弄前缀
              */
-            // 先获取到旧的 parentNoteTitle。虽然可能出现“相关链接：”下方没有链接的情况，但是考虑到此时已经有前缀了，所以这个情况基本不会出现，除非是原归类卡片被删除的情况，所以就看能不能找到原归类卡片，找得到的话就增加判断是否多了结构，找不到的话直接按照现归类卡片的标题来处理即可。
-            if (this.getHtmlCommentIndex("相关链接：") < this.comments.length-1) {
-              let oldClassificationNoteId = this.comments[this.getHtmlCommentIndex("相关链接：")+1]
-              if (oldClassificationNoteId.text && oldClassificationNoteId.text.isLink()) {
-                /**
-                 * 是链接的话基本就是对应原归类卡片
-                 */
-                let oldClassificationNote = MNNote.new(oldClassificationNoteId.text.toNoteId())
-                let oldClassificationNoteTitle = oldClassificationNote.noteTitle.toClassificationNoteTitle()
-                if (prefix === oldClassificationNoteTitle) {
+            if (this.ifNoteTemporary()) {
+              if (type == "定义") {
+                this.title = "【" + type + "：" + parentNoteTitle + "】; " + title
+              } else {
+                this.title = "【" + type + "：" + parentNoteTitle + "】" + title
+              }
+            } else {
+              /**
+               * 需要检测前缀的结尾是否在「上一个」 parentNoteTitle 的基础上增加了“：xxx”的结构
+               * 此时的场景一般是：修改知识点卡片的归类卡片
+               */
+              // 先获取到旧的 parentNoteTitle。虽然可能出现“相关链接：”下方没有链接的情况，但是考虑到此时已经有前缀了，所以这个情况基本不会出现，除非是原归类卡片被删除的情况，所以就看能不能找到原归类卡片，找得到的话就增加判断是否多了结构，找不到的话直接按照现归类卡片的标题来处理即可。
+              if (this.getHtmlCommentIndex("相关链接：") < this.comments.length-1) {
+                let oldClassificationNoteId = this.comments[this.getHtmlCommentIndex("相关链接：")+1]
+                if (oldClassificationNoteId.text && oldClassificationNoteId.text.isLink()) {
                   /**
-                   * 此时说明没有修改旧前缀
+                   * 是链接的话基本就是对应原归类卡片
+                   */
+                  let oldClassificationNote = MNNote.new(oldClassificationNoteId.text.toNoteId())
+                  let oldClassificationNoteTitle = oldClassificationNote.noteTitle.toClassificationNoteTitle()
+                  if (prefix === oldClassificationNoteTitle) {
+                    /**
+                     * 此时说明没有修改旧前缀
+                     * 那就直接按照新归类卡片来
+                     */
+                    if (type == "定义") {
+                      this.title = "【" + type + "：" + parentNoteTitle + "】; " + title
+                    } else {
+                      this.title = "【" + type + "：" + parentNoteTitle + "】" + title
+                    }
+                  } else if (prefix.startsWith(oldClassificationNoteTitle)) {
+                    /**
+                     * 此时说明修改了旧前缀，此时需要获取到修改的部分
+                     */
+                    let newContent = prefix.slice(oldClassificationNoteTitle.length)
+                    if (type == "定义") {
+                      this.title = "【" + type + "：" + parentNoteTitle + newContent + "】; " + title
+                    } else {
+                      this.title = "【" + type + "：" + parentNoteTitle + newContent + "】" + title
+                    }
+                  } else {
+                    if (type == "定义") {
+                      this.title = "【" + type + "：" + parentNoteTitle + "】; " + title
+                    } else {
+                      this.title = "【" + type + "：" + parentNoteTitle + "】" + title
+                    }
+                  }
+                } else {
+                  /**
+                   * 否则说明原归类卡片不存在了
                    * 那就直接按照新归类卡片来
                    */
                   if (type == "定义") {
@@ -2748,32 +2795,6 @@ class MNNote{
                   } else {
                     this.title = "【" + type + "：" + parentNoteTitle + "】" + title
                   }
-                } else if (prefix.startsWith(oldClassificationNoteTitle)) {
-                  /**
-                   * 此时说明修改了旧前缀，此时需要获取到修改的部分
-                   */
-                  let newContent = prefix.slice(oldClassificationNoteTitle.length)
-                  if (type == "定义") {
-                    this.title = "【" + type + "：" + parentNoteTitle + newContent + "】; " + title
-                  } else {
-                    this.title = "【" + type + "：" + parentNoteTitle + newContent + "】" + title
-                  }
-                } else {
-                  if (type == "定义") {
-                    this.title = "【" + type + "：" + parentNoteTitle + "】; " + title
-                  } else {
-                    this.title = "【" + type + "：" + parentNoteTitle + "】" + title
-                  }
-                }
-              } else {
-                /**
-                 * 否则说明原归类卡片不存在了
-                 * 那就直接按照新归类卡片来
-                 */
-                if (type == "定义") {
-                  this.title = "【" + type + "：" + parentNoteTitle + "】; " + title
-                } else {
-                  this.title = "【" + type + "：" + parentNoteTitle + "】" + title
                 }
               }
             }
@@ -2860,11 +2881,13 @@ class MNNote{
             let oldBelongIndex = belongHtmlBlockContentIndexArr[0]
             let oldLink = this.comments[oldBelongIndex].text
             let oldLinkedNote = MNNote.new(oldLink.toNoteId())
-            let indexInOldLinkedNote = oldLinkedNote.getCommentIndex(this.noteURL)
-            if (indexInOldLinkedNote !== -1) {
-              oldLinkedNote.removeCommentByIndex(indexInOldLinkedNote)
-            }
-            this.removeCommentByIndex(oldBelongIndex)
+            if (oldLinkedNote.colorIndex !== 2) { // 如果是定义类卡片（此时对应的是从概念出发生成的归类），那么就不删除
+              let indexInOldLinkedNote = oldLinkedNote.getCommentIndex(this.noteURL)
+              if (indexInOldLinkedNote !== -1) {
+                oldLinkedNote.removeCommentByIndex(indexInOldLinkedNote)
+              }
+              this.removeCommentByIndex(oldBelongIndex)
+            } 
     
             // 重新链接
             if (this.parentNote) {
@@ -3040,7 +3063,6 @@ class MNNote{
             case "定义":
               let thoughtHtmlCommentIndex = this.getHtmlCommentIndex("相关思考：")
               this.moveComment(thoughtHtmlCommentIndex, contentIndexArr[0])
-              MNUtil.showHUD("移动" + thoughtHtmlCommentIndex + "到" + contentIndexArr[0])
               // 注意相关概念的 index 要放在移动后取，否则移动后 index 会发生变化
               let conceptHtmlCommentIndex = this.getHtmlCommentIndex("相关概念：")
               this.moveComment(conceptHtmlCommentIndex, contentIndexArr[0])
@@ -3086,7 +3108,6 @@ class MNNote{
               case "定义":
                 let thoughtHtmlCommentIndex = this.getHtmlCommentIndex("相关思考：")
                 this.moveComment(thoughtHtmlCommentIndex, contentIndexArr[0])
-                MNUtil.showHUD("移动" + thoughtHtmlCommentIndex + "到" + contentIndexArr[0])
                 // 注意相关概念的 index 要放在移动后取，否则移动后 index 会发生变化
                 let conceptHtmlCommentIndex = this.getHtmlCommentIndex("相关概念：")
                 this.moveComment(conceptHtmlCommentIndex, contentIndexArr[0])

@@ -243,7 +243,7 @@ String.prototype.toGreenClassificationNoteTitle = function () {
  * @returns {boolean}
  */
 String.prototype.ifYellowClassificationNoteTitle = function () {
-  return /^“[^”]+”：“[^”]+”\s*相关[^“]*$/.test(this)
+  return /^“[^”]*”：“[^”]*”\s*相关[^“]*$/.test(this)
 }
 String.prototype.isYellowClassificationNoteTitle = function () {
   return this.ifYellowClassificationNoteTitle()
@@ -252,7 +252,7 @@ String.prototype.isYellowClassificationNoteTitle = function () {
  * 获取黄色归类卡片的标题
  */
 String.prototype.toYellowClassificationNoteTitle = function () {
-  let match = this.match(/^“[^”]+”：“([^”]+)”\s*相关[^“]*$/)
+  let match = this.match(/^“[^”]*”：“([^”]*)”\s*相关[^“]*$/)
   return match ? match[1] : this  // 如果匹配不到，返回原字符串
 }
 /**

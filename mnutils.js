@@ -3363,7 +3363,8 @@ class MNNote{
           if (this.getNoteTypeZh() == "定义") {
             targetIndex = this.getHtmlCommentIndex("相关概念：")
           } else {
-            targetIndex = this.getHtmlCommentIndex("证明：")
+            // targetIndex = this.getHtmlCommentIndex("证明：")
+            targetIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh())
           }
         } else {
           // top 的话要看摘录区有没有摘录内容
@@ -3374,7 +3375,8 @@ class MNNote{
             if (this.getNoteTypeZh() == "定义") {
               targetIndex = this.getHtmlCommentIndex("相关概念：")
             } else {
-              targetIndex = this.getHtmlCommentIndex("证明：")
+              // targetIndex = this.getHtmlCommentIndex("证明：")
+              targetIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh())
             }
           } else {
             targetIndex = excerptPartIndexArr[0]

@@ -32,6 +32,56 @@ body {
       "enableTransform": false,
       "search": false,
       "mode":"tree",
+      "templates": [
+        {
+            text: '结束动作',
+            title: 'onFinish action',
+            className: 'jsoneditor-type-object',
+            field: 'onFinish',
+            value: {
+                'action': ''
+            }
+        },
+        {
+            text: '结束确认',
+            title: 'confirm action',
+            className: 'jsoneditor-type-object',
+            field: 'onFinish',
+            value: {
+              "action": "confirm",
+              "title": "请点击确认",
+              "onConfirm": {
+                "action": "",
+              },
+              "onCancel": {
+                "action": "",
+              }
+            }
+        },
+        {
+            text: '双击动作',
+            title: 'doubleClick action',
+            className: 'jsoneditor-type-object',
+            field: 'doubleClick',
+            value: {
+                'action': ''
+            }
+        },
+        {
+            text: '菜单选项',
+            title: 'menu items',
+            className: 'jsoneditor-type-array',
+            field: 'menuItems',
+            value: []
+        },
+        {
+            text: '步骤选项',
+            title: 'steps',
+            className: 'jsoneditor-type-array',
+            field: 'steps',
+            value: []
+        },
+      ],
       "navigationBar":false,
       "colorPicker":false,
       "autocomplete": {
@@ -40,7 +90,7 @@ body {
           //path: array
           // console.log(input);
           if (input === 'field') {
-            return ['followAutoStyle','menuTitle','name','input','text','target', 'action', 'description','menu', 'source','color','content','title','markdown','command','commands','OCR','fillPattern','asTitle','tags','tag','find','multi','type','index','removeSource','prompt','user','system','trim','replace','merge','linkType','target','from','to','steps','range','url','engine','targets','onFinish','doubleClick','menuItems','autoClose','parentNote','mainMindMap','method'];
+            return ['subTitle','onConfirm','onCancel','followAutoStyle','menuTitle','name','input','text','target', 'action', 'description','menu', 'source','color','content','title','markdown','command','commands','OCR','fillPattern','asTitle','tags','tag','find','multi','type','index','removeSource','prompt','user','system','trim','replace','merge','linkType','target','from','to','steps','range','url','engine','targets','onFinish','doubleClick','menuItems','autoClose','parentNote','mainMindMap','method'];
           }
           if (input === 'value') {
             let parent = path.at(-1)
@@ -51,13 +101,13 @@ body {
               case 'method':
                 return ['replace','append']
               case 'content':
-                return ['{{note.title}}','{{{note.url}}}']
+                return ['{{note.title}}','{{{note.url}}}','{{{date.now}}}']
               case 'targets':
                 return ['addonBar','mindmapToolbar']
               case 'source':
                 return ['photo','camera','file','parentNote','noteDoc','note','currentDoc'];
               case 'action':
-                return ['switchTitleOrExcerpt','ocr','moveNote','chatAI','command','setButtonImage','addImageComment','mergeText','toggleView','menu','shortcut','replace','showInFloatWindow','openURL','copy','addComment','export','removeComment','moveComment','paste','setContent','clearContent','search','noteHighlight','cloneAndMerge','cloneAsChildNote','addChildNote','addBrotherNote','crash','link','toggleTextFirst','toggleMarkdown','focus'];
+                return ['showMessage','confirm','triggerButton','switchTitleOrExcerpt','ocr','moveNote','chatAI','command','setButtonImage','addImageComment','mergeText','toggleView','menu','shortcut','replace','showInFloatWindow','openURL','copy','addComment','export','removeComment','moveComment','paste','setContent','clearContent','search','noteHighlight','cloneAndMerge','cloneAsChildNote','addChildNote','addBrotherNote','crash','link','toggleTextFirst','toggleMarkdown','focus'];
               case 'trim':
               case 'markdown':
               case 'autoClose':
@@ -89,8 +139,8 @@ body {
         const editor = new JSONEditor(container, options)
 
         // set json
-        const initialJson = {}
-        const initialJson0 = {
+        const initialJson0 = {}
+        const initialJson = {
   "action": "replace",
   "target": "excerpt",
   "steps": [

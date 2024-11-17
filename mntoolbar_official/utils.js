@@ -170,6 +170,24 @@ class toolbarUtils {
    */
   static textView
   static template = {
+      "🔨 trigger button":{
+        "action": "triggerButton",
+        "target": "Custom 3"
+      },
+      "🔨 user confirm":{
+        "action": "confirm",
+        "title": "请点击确认",
+        "onConfirm": {
+          "action": "",
+        },
+        "onCancel": {
+          "action": "",
+        }
+      },
+      "🔨 show message":{
+        "action": "showMessage",
+        "content": "Hello world"
+      },
       "🔨 empty action":{
           "description": "空白动作",
           "action": "xxx",
@@ -476,27 +494,27 @@ static replaceAction(des){
 try {
 
   let range = des.range ?? "currentNotes"
-  let targetNotes = toolbarUtils.getNotesByRange(range)
+  let targetNotes = this.getNotesByRange(range)
   if ("steps" in des) {//如果有steps则表示是多步替换,优先执行
     let nSteps = des.steps.length
     MNUtil.undoGrouping(()=>{
       targetNotes.forEach(note=>{
-        let content= toolbarUtils._replace_get_content_(note, des)
+        let content= this._replace_get_content_(note, des)
         for (let i = 0; i < nSteps; i++) {
           let step = des.steps[i]
-          let ptt = toolbarUtils._replace_get_ptt_(step)
+          let ptt = this._replace_get_ptt_(step)
           content = content.replace(ptt, step.to)
         }
-        toolbarUtils._replace_set_content_(note, des, content)
+        this._replace_set_content_(note, des, content)
       })
     })
     return;
   }
   //如果没有steps则直接执行
-  let ptt = toolbarUtils._replace_get_ptt_(des)
+  let ptt = this._replace_get_ptt_(des)
   MNUtil.undoGrouping(()=>{
     targetNotes.forEach(note=>{
-      toolbarUtils.replace(note, ptt, des)
+      this.replace(note, ptt, des)
     })
   })
   } catch (error) {
@@ -696,7 +714,12 @@ static insertSnippetToTextView(text, textView) {
               MNUtil.showHUD('摘录图片已复制')
               return
             }
-            element = text
+            if(text.trim()){
+              element = text
+            }else{
+              element = ""
+              MNUtil.showHUD("摘录文本为空")
+            }
           }
           break
         case "excerptOCR":
@@ -1417,7 +1440,10 @@ static insertSnippetToTextView(text, textView) {
 
   static detectAndReplace(text,element=undefined) {
     let noteConfig = this.getNoteObject(MNNote.getFocusNote(),{},{parent:true,child:true})
-    let config = {note:noteConfig,date:this.getDateObject()}
+    let config = {date:this.getDateObject()}
+    if (noteConfig) {
+      config.note = noteConfig
+    }
     if (element !== undefined) {
       config.element = element
     }
@@ -1565,7 +1591,27 @@ static insertSnippetToTextView(text, textView) {
     }
   
   }
-  static async chatAI(des){
+  static showMessage(des){
+    let content = this.detectAndReplace(des.content)
+    MNUtil.showHUD(content)
+  }
+  static async confirm(des){
+    if (des.title && "onConfirm" in des) {
+      let confirmTitle = toolbarUtils.detectAndReplace(des.title)
+      let confirmSubTitle = des.subTitle ? toolbarUtils.detectAndReplace(des.subTitle) : ""
+      let confirm = await MNUtil.confirm(confirmTitle, confirmSubTitle)
+      if (confirm && "onConfirm" in des) {
+        return des.onConfirm
+      }else{
+        if ("onCancel" in des) {
+          return des.onCancel
+        }
+      }
+      return undefined
+    }
+    return undefined
+  }
+  static chatAI(des){
     if (!des || !Object.keys(des).length) {
       MNUtil.postNotification("customChat",{})
       return
@@ -1851,6 +1897,9 @@ try {
    */
   static getNoteObject(note,config={},opt={}) {
     try {
+    if (!note) {
+      return undefined
+    }
       
     let noteConfig = config
     noteConfig.id = note.noteId
@@ -1883,7 +1932,7 @@ try {
     return noteConfig
     } catch (error) {
       this.addErrorLog(error, "getNoteObject")
-      return {}
+      return undefined
     }
   }
   static htmlDev(content){
@@ -2503,7 +2552,8 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
   static async noteHighlight(des){
     let selection = MNUtil.currentSelection
     if (!selection.onSelection) {
-      return
+      MNUtil.showHUD("No selection")
+      return undefined
     }
     let OCRText = undefined
     if ("OCR" in des && des.OCR) {
@@ -2643,25 +2693,55 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
   }
   static switchTitleOrExcerpt() {
     let focusNotes = MNNote.getFocusNotes()
-    for (const note of focusNotes) {
-      let title = note.noteTitle ?? ""
-      let text = note.excerptText ?? ""
-      // 只允许存在一个
-      MNUtil.undoGrouping(()=>{
-        if ((title && text) && (title !== text)) {
-          note.noteTitle = ""
-          note.excerptText = title
-          note.appendMarkdownComment(text)
-        }else if (title || text) {
-          // 去除划重点留下的 ****
-          note.noteTitle = text.replace(/\*\*(.*?)\*\*/g, "$1")
-          note.excerptText = title
-        }else if (title == text) {
-          // 如果摘录与标题相同，MN 只显示标题，此时我们必然想切换到摘录
-          note.noteTitle = ""
+    MNUtil.undoGrouping(()=>{
+    try {
+      
+
+      for (const note of focusNotes) {
+        let title = note.noteTitle ?? ""
+        let text = note.excerptText ?? ""
+        if (!title && !text) {
+          let comments = note.comments
+          if (comments.length > 0) {
+            let firstComment = comments[0]
+            switch (firstComment.type) {
+              case "TextNote":
+                note.noteTitle = firstComment.text
+                note.removeCommentByIndex(0)
+                break;
+              case "LinkNote":
+                note.noteTitle = firstComment.q_htext
+                note.removeCommentByIndex(0)
+                break;
+              case "HtmlNote":
+                note.noteTitle = firstComment.text
+                note.removeCommentByIndex(0)
+                break;
+              default:
+                MNUtil.showHUD("Unsupported comment type: "+firstComment.type)
+                break;
+            }
+          }
+          return
         }
-      })
+        // 只允许存在一个
+          if ((title && text) && (title !== text)) {
+            note.noteTitle = ""
+            note.excerptText = title
+            note.appendMarkdownComment(text)
+          }else if (title || text) {
+            // 去除划重点留下的 ****
+            note.noteTitle = text.replace(/\*\*(.*?)\*\*/g, "$1")
+            note.excerptText = title
+          }else if (title == text) {
+            // 如果摘录与标题相同，MN 只显示标题，此时我们必然想切换到摘录
+            note.noteTitle = ""
+          }
+      }
+    } catch (error) {
+      this.addErrorLog(error, "switchTitleOrExcerpt")
     }
+    })
   }
   /**
    * 
@@ -2980,6 +3060,9 @@ static getButtonFrame(button){
       "🔨 move note to main mindmap",
       "🔨 menu with actions",
       "🔨 focus in float window",
+      "🔨 user confirm",
+      "🔨 show message",
+      "🔨 trigger button"
     ]
   }
 }
@@ -3457,6 +3540,21 @@ class toolbarConfig {
     let allActions = this.action.concat(this.getDefaultActionKeys().slice(this.action.length))
     return allActions
   }
+  static getAllActionNames(){
+    //首先拿到所有的key
+    let allActions = this.action.concat(this.getDefaultActionKeys().slice(this.action.length))
+    let allActionNames = allActions.map(action=>this.getAction(action).name)
+    return allActionNames
+  }
+  static getDesByButtonName(targetButtonName){
+    let allActions = this.action.concat(this.getDefaultActionKeys().slice(this.action.length))
+    let allButtonNames = allActions.map(action=>this.getAction(action).name)
+    let buttonIndex = allButtonNames.indexOf(targetButtonName)
+    let action = allActions[buttonIndex]
+    let actionDes = toolbarConfig.getDescriptionByName(action)
+    return actionDes
+  
+  }
   static getWindowState(key){
     //用户已有配置可能不包含某些新的key，用这个方法做兼容性处理
     if (this.windowState[key] !== undefined) {
@@ -3543,11 +3641,11 @@ static template(action) {
   }
   return JSON.stringify(config,null,2)
 }
-static getAction(actionName){
-  if (actionName in this.actions) {
-    return this.actions[actionName]
+static getAction(actionKey){
+  if (actionKey in this.actions) {
+    return this.actions[actionKey]
   }
-  return this.getActions()[actionName]
+  return this.getActions()[actionKey]
 }
 
 static getActions() {

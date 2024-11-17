@@ -120,10 +120,10 @@ viewWillLayoutSubviews: function() {
   },
   resetButtonTapped: async function (button) {
     var commandTable = [
-      {title:'🔄   Reset prompts',object:self,selector:'resetConfig:',param:"prompts"},
-      {title:'🔄   Reset button image',object:self,selector:'resetConfig:',param:"image"},
+      {title:'🔄   Reset all button configs',object:self,selector:'resetConfig:',param:"prompts"},
+      {title:'🔄   Reset all button images',object:self,selector:'resetConfig:',param:"image"},
     ]
-    self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,200,0)
+    self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,250,0)
   },
   resetConfig: async function (param) {
   try {
@@ -326,6 +326,7 @@ viewWillLayoutSubviews: function() {
   },
   chooseTemplate: async function (button) {
     let self = getSettingController()
+    let buttonX = toolbarUtils.getButtonFrame(button).x//转化成相对于studyview的
     let selected = self.selectedItem
     let templateNames = toolbarUtils.getTempelateNames(selected)
     if (!templateNames) {
@@ -346,7 +347,13 @@ viewWillLayoutSubviews: function() {
       selector:'hideTemplateChooser:',
       param:undefined
     })
-    self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,300,4)
+    let width = 300
+    if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
+      self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
+    }else{
+      self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
+    }
+    // self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,300,4)
   },
   setTemplate: async function (config) {
     self.checkPopoverController()

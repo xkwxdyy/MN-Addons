@@ -45,6 +45,8 @@ var toolbarController = JSB.defineClass('toolbarController : UIViewController <U
     self.view.layer.cornerRadius = 5
     self.view.backgroundColor = UIColor.whiteColor().colorWithAlphaComponent(0)
     self.view.mntoolbar = true
+
+    
     if (toolbarConfig.action.length == 27) {
       toolbarConfig.action = toolbarConfig.action.concat(["custom1","custom2","custom3","custom4","custom5","custom6","custom7","custom8","custom9"])
     }
@@ -1147,6 +1149,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
     // MNUtil.showHUD("customActionByDes")
     let focusNote = undefined
     let targetNotes = []
+    let success = true
     try {
       focusNote = MNNote.getFocusNote()
     } catch (error) {
@@ -1165,9 +1168,11 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         break;
       case "paste":
         toolbarUtils.paste(des)
+        await MNUtil.delay(0.1)
         break;
       case "switchTitleOrExcerpt":
         toolbarUtils.switchTitleOrExcerpt()
+        await MNUtil.delay(0.1)
         break;
       case "cloneAndMerge":
       try {
@@ -1182,6 +1187,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
             MNUtil.showHUD(error)
           }
         })
+        await MNUtil.delay(0.1)
       } catch (error) {
         MNUtil.showHUD(error)
       }
@@ -1194,6 +1200,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
             toolbarUtils.cloneAsChildNote(focusNote, targetNoteId)
           })
         })
+        await MNUtil.delay(0.1)
         break;
       case "ocr":
         await toolbarUtils.ocr(des)
@@ -1209,7 +1216,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         break;
       case "noteHighlight":
         let newNote = await toolbarUtils.noteHighlight(des)
-        if (newNote.notebookId === MNUtil.currentNotebookId) {
+        if (newNote && newNote.notebookId === MNUtil.currentNotebookId) {
           newNote.focusInMindMap(0.5)
         }
         // if ("parentNote" in des) {
@@ -1221,9 +1228,11 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         //     parentNote.addChild(newNote)
         //   })
         // }
+
         break;
       case "moveNote":
         toolbarUtils.moveNote(des)
+        await MNUtil.delay(0.1)
         break;
       case "addChildNote":
         MNUtil.showHUD("addChildNote")
@@ -1255,6 +1264,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           config.color = color
         }
         focusNote.createChildNote(config)
+        await MNUtil.delay(0.1)
         break;
       case "addBrotherNote":
         MNUtil.showHUD("addBrotherNote")
@@ -1290,11 +1300,13 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           config.color = color
         }
         focusNote.createBrotherNote(config)
+        await MNUtil.delay(0.1)
         break;
 
       case "crash":
         MNUtil.showHUD("crash")
         MNUtil.studyView.frame = {x:undefined}
+        await MNUtil.delay(0.1)
         break;
       case "addComment":
         MNUtil.showHUD("addComment")
@@ -1310,14 +1322,17 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
             })
           })
         }
+        await MNUtil.delay(0.1)
         break;
       case "removeComment":
         MNUtil.showHUD("removeComment")
         toolbarUtils.removeComment(des)
+        await MNUtil.delay(0.1)
         break;
       case "moveComment":
         MNUtil.showHUD("moveComment")
         toolbarUtils.moveComment(des)
+        await MNUtil.delay(0.1)
         break;
       case "link":
         let linkType = des.linkType ?? "Both"
@@ -1336,6 +1351,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
             MNUtil.showHUD("Invalid target note!")
           }
         })
+        await MNUtil.delay(0.1)
         break;
       case "clearContent":
         toolbarUtils.clearContent(des)
@@ -1347,6 +1363,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         break;
       case "showInFloatWindow":
         toolbarUtils.showInFloatWindow(des)
+        await MNUtil.delay(0.1)
         break;
       case "openURL":
         if (des.url) {
@@ -1395,6 +1412,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
             note.textFirst = !note.textFirst
           })
         })
+        await MNUtil.delay(0.1)
         break
       case "toggleMarkdown":
         MNUtil.showHUD("toggleMarkdown")
@@ -1404,18 +1422,21 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
             note.excerptTextMarkdown = !note.excerptTextMarkdown
           })
         })
+        await MNUtil.delay(0.1)
         break
       case "replace":
         toolbarUtils.replaceAction(des)
         break;
       case "mergeText":
         let noteRange = des.range ?? "currentNotes"
-        let targetNotes = toolbarUtils.getNotesByRange(noteRange)
+        targetNotes = toolbarUtils.getNotesByRange(noteRange)
         MNUtil.undoGrouping(()=>{
           targetNotes.forEach((note,index)=>{
             let mergedText = toolbarUtils.getMergedText(note, des, index)
             if (mergedText === undefined) {
-              return
+              return new Promise((resolve, reject) => {
+                resolve()
+              })
             }
             switch (des.target) {
               case "excerptText":
@@ -1472,6 +1493,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
             })
           })
         }
+        await MNUtil.delay(0.1)
         break;
       case "chatAI":
         toolbarUtils.chatAI(des)
@@ -1517,6 +1539,17 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "focus":
         toolbarUtils.focus(focusNote, des)
         break 
+      case "showMessage":
+        toolbarUtils.showMessage(des)
+        break
+      case "confirm":
+        let targetDes = await toolbarUtils.confirm(des)
+        if (targetDes) {
+            await this.customActionByDes(button, targetDes) 
+        }else{
+          MNUtil.showHUD("No valid argument!")
+        }
+        break
       case "toggleView":
         if ("targets" in des) {
           des.targets.map(target=>{
@@ -1550,6 +1583,17 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           MNUtil.showHUD("Missing imageConfig")
         }
         break;
+      case "triggerButton":
+        let targetButtonName = des.target
+        await this.customActionByButton(button, targetButtonName)
+        // let allButtonNames = toolbarConfig.getAllActionNames()
+        // let buttonIndex = allButtonNames.indexOf(targetButtonName)
+        // let action = toolbarConfig.action[buttonIndex]
+        // let actionDes = toolbarConfig.getDescriptionByName(action)
+        // if (actionDes) {
+        //   this.customActionByDes(button, actionDes)
+        // }
+        break;
       default:
         MNUtil.showHUD("Not supported yet...")
         break;
@@ -1560,11 +1604,33 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
     }else{
       toolbarUtils.dismissPopupMenu(button.menu)
     }
+    if (success && "onSuccess" in des) {
+      let finishAction = des.onSuccess
+      await MNUtil.delay(0.5)
+      await this.customActionByDes(button, finishAction)
+      return new Promise((resolve, reject) => {
+        resolve()
+      })
+    } 
+    if (!success && "onFailed" in des) {
+      let finishAction = des.onFailed
+      await MNUtil.delay(0.5)
+      await this.customActionByDes(button, finishAction)
+      return new Promise((resolve, reject) => {
+        resolve()
+      })
+    }
     if ("onFinish" in des) {
       let finishAction = des.onFinish
       await MNUtil.delay(0.5)
-      this.customActionByDes(button, finishAction)
+      await this.customActionByDes(button, finishAction)
+      return new Promise((resolve, reject) => {
+        resolve()
+      })
     }
+    return new Promise((resolve, reject) => {
+      resolve()
+    })
     // if (this.dynamicWindow) {
     //   this.hideAfterDelay()
     // }
@@ -1572,6 +1638,19 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
   } catch (error) {
     toolbarUtils.addErrorLog(error, "customActionByDes")
     // MNUtil.showHUD(error)
+  }
+}
+
+/**
+ * @this {toolbarController}
+ * @param {UIButton} button 
+ * @param {object} des 
+ * @returns 
+ */
+toolbarController.prototype.customActionByButton = async function (button,targetButtonName,checkSubscribe = true) {//这里actionName指的是key
+  let des = toolbarConfig.getDesByButtonName(targetButtonName)
+  if (des) {
+    this.customActionByDes(button, des)
   }
 }
 /**

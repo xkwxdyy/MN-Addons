@@ -185,6 +185,8 @@ class Pangu {
     newText = newText.replace(/\s*-\s*/g, "-")
     // ∞ 后面的空格去掉
     newText = newText.replace(/∞\s/g, "∞")
+    // 大求和符号改成小求和符号
+    newText = newText.replace(/∑/g, "Σ")
     // 处理一下 弱* w* 这种空格
     newText = newText.replace(/([弱A-Za-z])\s*\*/g, "$1*")
     newText = newText.replace(/\*\s*\*/g, "**")
@@ -2800,8 +2802,10 @@ class MNNote{
             }
           } else {
             /**
-             * 没有前缀，直接加
+             * 没有前缀，但需要检测是否有旧卡片本来带的【】开头的内容，去掉后加前缀
              */
+            // MNUtil.showHUD("hahaha ")
+            this.title = this.title.replace(/^【[^】]*】/, "");
             if (type == "定义") {
               this.title = "【" + type + "：" + parentNoteTitle + "】; " + title
             } else {
@@ -4375,7 +4379,7 @@ class MNNote{
           comment.text.startsWith("marginnote4app://note/") 
         )
       ) {
-        let targetNoteId = comment.text.match(/marginnote4app:\/\/note\/(.*)/)[1]
+        let targetNoteId = comment.text.match(/marginnote[34]app:\/\/note\/(.*)/)[1]
         if (!targetNoteId.includes("/summary/")) {  // 防止把概要的链接删掉了
           let targetNote = MNNote.new(targetNoteId)
           if (!targetNote) {

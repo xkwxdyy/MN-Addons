@@ -4768,6 +4768,17 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
               focusNotes.forEach(focusNote=>{
                 toolbarUtils.TemplateMakeNote(focusNote)
               })
+            } else {
+              UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+                "撤销制卡","去掉所有「文本」和「链接」",0,"点错了",["确认"],
+                (alert, buttonIndex) => {
+                  if (buttonIndex == 1) {
+                    MNUtil.undoGrouping(()=>{
+                      focusNote.removeCommentsByTypes(["text","links"])
+                    })
+                  }
+                }
+              )
             }
           } catch (error) {
             MNUtil.showHUD(error);

@@ -152,31 +152,6 @@ JSB.newAddon = function (mainPath) {
             }
           }
         }
-        // TODO：失效
-        MNNote.prototype.clearAllFailedLinks = function() {
-          // this.linksConvertToMN4Type()
-          // 从最后往上删除，就不会出现前面删除后干扰后面的 index 的情况
-          for (let i = this.comments.length-1; i >= 0; i--) {
-            let comment = this.comments[i]
-            if (
-              comment.type == "TextNote" &&
-              comment.text.includes("marginnote3app://note/")
-            ) {
-              this.removeCommentByIndex(i)
-            } else if (
-              comment.type == "TextNote" &&
-              comment.text.includes("marginnote4app://note/")
-            ) {
-              let targetNoteId = comment.text.match(/marginnote4app:\/\/note\/(.*)/)[1]
-              if (!targetNoteId.includes("/summary/")) {  // 防止把概要的链接处理了
-                let targetNote = MNNote.new(targetNoteId)
-                if (!targetNote) {
-                  this.removeCommentByIndex(i)
-                }
-              }
-            }
-          }
-        }
         MNUtil.delay(0.2).then(()=>{
           MNUtil.studyView.becomeFirstResponder(); //For dismiss keyboard on iOS
         })

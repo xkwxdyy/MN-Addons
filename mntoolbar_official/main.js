@@ -29,7 +29,7 @@ JSB.newAddon = function (mainPath) {
         MNUtil.addObserver(self, 'onPopupMenuOnSelection:', 'PopupMenuOnSelection')
         MNUtil.addObserver(self, 'onToggleDynamic:', 'toggleDynamic')
         MNUtil.addObserver(self, 'onClosePopupMenuOnNote:', 'ClosePopupMenuOnNote')
-        MNUtil.addObserver(self, 'onRemoveMNToolbar:', 'removeMNToolbar')
+        // MNUtil.addObserver(self, 'onRemoveMNToolbar:', 'removeMNToolbar')
         MNUtil.addObserver(self, 'onToggleMindmapToolbar:', 'toggleMindmapToolbar')
         MNUtil.addObserver(self, 'onRefreshToolbarButton:', 'refreshToolbarButton')
         MNUtil.addObserver(self, 'onOpenToolbarSetting:', 'openToolbarSetting')
@@ -49,8 +49,7 @@ JSB.newAddon = function (mainPath) {
         MNUtil.removeObserver(self,'PopupMenuOnNote')
         MNUtil.removeObserver(self,'toggleDynamic')
         MNUtil.removeObserver(self,'ClosePopupMenuOnNote')
-        MNUtil.removeObserver(self,'removeMNToolbar')
-        MNUtil.removeObserver(self,'removeMNToolbar')
+        // MNUtil.removeObserver(self,'removeMNToolbar')
         MNUtil.removeObserver(self,'UITextViewTextDidBeginEditingNotification')
         MNUtil.removeObserver(self,'refreshToolbarButton')
         MNUtil.removeObserver(self,'openToolbarSetting')
@@ -679,7 +678,7 @@ try {
           toolbarConfig.remove("MNToolbar_action")
           toolbarConfig.remove("MNToolbar_actionConfig")
         }
-        MNUtil.postNotification("removeMNToolbar", {})
+        // MNUtil.postNotification("removeMNToolbar", {})
       },
 
       applicationWillEnterForeground: function () {

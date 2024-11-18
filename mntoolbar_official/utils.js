@@ -1022,31 +1022,25 @@ static insertSnippetToTextView(text, textView) {
         for (let i = commentLength-1; i >= 0; i--) {
           if (des.type) {
             switch (des.type) {
-              case "text":
+              case "TextNote":
                 comment = note.comments[i]
                 if (comment.type === "TextNote") {
                   note.removeCommentByIndex(i)
                 }
                 break;
-              case "link":
+              case "LinkNote":
                 comment = note.comments[i]
                 if (comment.type === "LinkNote") {
                   note.removeCommentByIndex(i)
                 }
                 break;
-              case "mergedNote":
-                comment = note.comments[i]
-                if (comment.type === "TextNote") {
-                  note.removeCommentByIndex(i)
-                }
-                break;
-              case "image":
+              case "PaintNote":
                 comment = note.comments[i]
                 if (comment.type === "PaintNote") {
                   note.removeCommentByIndex(i)
                 }
                 break;
-              case "html":
+              case "HtmlNote":
                 comment = note.comments[i]
                 if (comment.type === "HtmlNote") {
                   note.removeCommentByIndex(i)
@@ -1492,12 +1486,12 @@ static insertSnippetToTextView(text, textView) {
     }
   }
   static addErrorLog(error,source,info){
-    // MNUtil.showHUD("MN Toolbar Error ("+source+"): "+error)
+    MNUtil.showHUD("MN Toolbar Error ("+source+"): "+error)
     let log = {
       error:error.toString(),
       source:source,
       time:(new Date(Date.now())).toString(),
-      mnaddon:"MNToolbar"
+      mnaddon:"MN Toolbar"
     }
     if (info) {
       log.info = info
@@ -2620,15 +2614,15 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
   static async moveNote(des){
     let focusNotes = MNNote.getFocusNotes()
     MNUtil.undoGrouping(()=>{
-      if (des.target && des.target === "mainMindMap") {
+      if (des.mainMindMap) {
         focusNotes.map((note)=>{
           let realNote = note.realGroupNoteForTopicId()
           if (realNote.parentNote) {
             realNote.removeFromParent()
           }
         })
-      }else{
-        let parentNote = MNNote.new(des.target)
+      }else if(des.noteURL){
+        let parentNote = MNNote.new(des.noteURL)
         if (parentNote) {
           focusNotes.map((note)=>{
             if (parentNote.notebookId === note.notebookId) {
@@ -3537,19 +3531,18 @@ class toolbarConfig {
   }
   }
   static getAllActions(){
-    let allActions = this.action.concat(this.getDefaultActionKeys().slice(this.action.length))
+    let absentKeys = this.getDefaultActionKeys().filter(key=>!this.action.includes(key))
+    let allActions = this.action.concat(absentKeys)
     return allActions
-  }
-  static getAllActionNames(){
-    //首先拿到所有的key
-    let allActions = this.action.concat(this.getDefaultActionKeys().slice(this.action.length))
-    let allActionNames = allActions.map(action=>this.getAction(action).name)
-    return allActionNames
   }
   static getDesByButtonName(targetButtonName){
     let allActions = this.action.concat(this.getDefaultActionKeys().slice(this.action.length))
     let allButtonNames = allActions.map(action=>this.getAction(action).name)
     let buttonIndex = allButtonNames.indexOf(targetButtonName)
+    if (buttonIndex === -1) {
+      MNUtil.showHUD("Button not found: "	+ targetButtonName)
+      return undefined
+    }
     let action = allActions[buttonIndex]
     let actionDes = toolbarConfig.getDescriptionByName(action)
     return actionDes

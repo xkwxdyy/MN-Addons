@@ -6,6 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"/>
     <title>Vditor</title>
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <link href="jsoneditor.min.css" rel="stylesheet" type="text/css">
@@ -27,7 +28,252 @@ body {
   <script>
     // create the editor
     const container = document.getElementById("jsoneditor")
+
+    const action = {
+    "title": "Action",
+    "description": "Object containing employee details",
+    "type": "object",
+    "properties": {
+      "action": {
+        "title": "Action",
+        "type": "string",
+        "enum": ['addChildNote','addBrotherNote','addComment','addImageComment','crash','clearContent','cloneAndMerge','cloneAsChildNote','confirm','chatAI','copy','command','export','focus','link','moveNote','mergeText','moveComment','menu','noteHighlight','openURL','ocr','paste','replace','removeComment','showInFloatWindow','switchTitleOrExcerpt','search','setContent','showMessage','setButtonImage','shortcut','triggerButton','toggleView','toggleTextFirst','toggleMarkdown'],
+      },
+      "ocr":{
+        type:"boolean",
+        default:false
+      },
+      "tag": {
+        "title": "tag",
+        "type": "string"
+      },
+      "tags": {
+        "title": "tags",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "targets": {
+        "title": "Targets",
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": ['addonBar','mindmapToolbar'],
+        }
+      },
+      "menuWidth": {
+        "title": "menuWidth",
+        "type": "integer",
+        "enum": [100,150,200,250,300],
+      },
+      "linkType": {
+        "title": "linkType",
+        "type": "string",
+        "enum": ['Both','To','From'],
+      },
+      "range": {
+        "title": "range",
+        "type": "string",
+        "enum": ['currentNotes','childNotes','descendants'],
+      },
+      "target": {
+        "title": "target",
+        "type": "string",
+        "enum": ['addonBar','appendTitle','appendExcerpt','auto','both','comment','comments','clipboard','currentNote','currentChildMap','currentPrompt','currentNoteInMindMap','clipboardText','chatModeReference','doc','default','editor','excerpt','excerptText','excerptOCR','floatMindmap','menu','mindmap','mainMindMap','mindmapToolbar','newComment','notesText','noteId','noteURL','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown','noteInClipboard','openFloat','parentNote','selectionText','selectionImage','title'],
+      },
+      "fillPattern": {
+        "title": "fillPattern",
+        "type": "integer",
+        "enum": [-1,0,1,2],
+      },
+      "type": {
+        "title": "command",
+        "type": "string",
+        "enum":['TextNote','HtmlNote','PaintNote','LinkNote']
+      },
+      "command": {
+        "title": "command",
+        "type": "string",
+        "enum": ['GoNewFeatures','GoUserGuide','GoManual','InAppPurchase','DBVaults','ShareLicenses','SharePackage','GoiCloud','ExportPKG','ExportVault','ExportMapPDF','ExportDocPDF','ExportOmni','ExportWord','ExportMind','ExportAnki','BackupDB','ClearTemp','OpenTrash','OpenExtensions','GoSettings','EditUndo','EditRedo','EditCut','CommonCopy','EditPaste','EditSelAll','EditMarkdown','ToggleDocument','ToggleMindMap','ToggleCards','ToggleReview','ToggleResearch','ToggleMoreSettings','ToggleSidebar','FullTextSearch','DraftList','ManageDocs','ToggleFullDoc','ToggleBookLeft','ToggleBookBottom','ToggleTabsBar','ToggleAddFile','TabNextFile','TabPrevFile','ToggleSplit','BindSplit','EmphasisCloze','ToggleTextLink','SyncMindMapToBook','SyncBookToMindMap','SyncWindowPos','SyncDeletion','SetRefCopyMode','SetCloneCopyMode','UIStatusURL','BookTOC','BookPageList','BookMarkList','BookSketchList','BookCardList','EditDocLayers','ViewDocCardGroup','BookSearch','BookPageFlip','BookPageScroll','ExtendSplit','ExtendMargin','ExtendPopup','PdfCrop','BookPageNumber','GoBack','GoForward','BookMarkAdd','BookMarkRemove','EditPDFPages','AddToTOC','SplitBook','InsertBlank','Translate','FoldHighlight','SourceHighlight','EditTextBox','EditImageBox','ExcerptToolSettings','ExcerptToolSelect','ExcerptToolCustom0','ExcerptToolCustom1','ExcerptToolCustom2','ExcerptToolCustom3','HighlightShortcut1','HighlightShortcut2','HighlightShortcut3','HighlightShortcut4','ExcerptToolSketch','NotebookOutline','ViewMapCardGroup','EditMultiSel','FocusNote','FocusParent','NotebookOutlineEdit','EditOutlineIncLevel','EditOutlineDecLevel','SnippetMode','NewSiblingNote','NewChildNote','NewParentNote','ToggleExpand','EditGroupNotes','EditLinkNotes','EditMergeNotes','SelBranchStyle0','SelBranchStyle3','SelBranchStyle2','SelBranchStyle1','SelBranchStyle4','SelBranchStyle60','SelBranchStyle61','SelBranchStyle64','SelBranchStyle7','SelBranchStyle100','GlobalBranchStyle','ZoomToFit','ViewExpandAll','ViewCollapseAll','ViewExpandLevel0','ViewExpandLevel1','ViewExpandLevel2','ViewExpandLevel3','ViewExpandLevel4','ViewExpandLevel5','ViewExpandLevel6','ViewExpandLevel7','ViewExpandRows','ViewCollapseRows','EditArrangeNotes','MindmapSnippetMode','SelectBranch','ShowSketch','HideSketch','EditCopy','EditReference','EditCopyLink','EditDeleteNote','EditColorNoteIndex0','EditColorNoteIndex1','EditColorNoteIndex2','EditColorNoteIndex3','EditColorNoteIndex4','EditColorNoteIndex5','EditColorNoteIndex6','EditColorNoteIndex7','EditColorNoteIndex8','EditColorNoteIndex9','EditColorNoteIndex10','EditColorNoteIndex11','EditColorNoteIndex12','EditColorNoteIndex13','EditColorNoteIndex14','EditColorNoteIndex15','EditTagNote','EditAddTitle','EditAddText','EditAppendComment','ContinueExcerpt','EditTextMode','EditOcclusion','EditUnmergeNote','TextToTitle','ExpandExtend','CollapseExtend','SendToMap','RemoveFromMap','AddToReview','ClearFormat1','ClearFormat2','FlashcardSpeech','SetTitleHighlight','SetCommentHighlight','SetAsEmphasis','MergeTo','FlashcardsPlay','FlashcardsStop','FlashcardFlip','FlashcardLocal','FlashcardAgain','FlashcardHard','FlashcardGood','FlashcardEasy','FlashcardStarred'],
+      },
+      "color": {
+        "title": "linkType",
+        "enum": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,'parent','current'],
+      },
+      "trim": {
+        "type": "boolean",
+        "default": false
+      },
+      "markdown": {
+        "type": "boolean",
+        "default": false
+      },
+      "autoClose": {
+        "type": "boolean",
+        "default": false
+      },
+      "asTitle": {
+        "type": "boolean",
+        "default": false
+      },
+      "mainMindMap": {
+        "type": "boolean",
+        "default": false
+      },
+      "compression": {
+        "type": "boolean",
+        "default": true
+      },
+      "onFinish": {
+        "$ref": "action"
+      },
+      "onSuccess": {
+        "$ref": "action"
+      },
+      "doubleClick": {
+        "$ref": "action"
+      },
+      "onFailed": {
+        "$ref": "action"
+      },
+      "onConfirm": {
+        "$ref": "action"
+      },
+      "onCancel": {
+        "$ref": "action"
+      },
+      "menuItems": {   
+        "type": "array",
+        "items": {
+          "oneOf":[
+          {
+            "$ref": "action"
+          },
+          {
+            "$ref": "menuTitle"
+          }
+          ]
+        }
+      },
+      "name":{
+        type:"string",
+      },
+      "steps": {
+        "type": "array",
+      },
+      "commands": {
+        "type": "array",
+        "items": {
+          "enum": ['GoNewFeatures','GoUserGuide','GoManual','InAppPurchase','DBVaults','ShareLicenses','SharePackage','GoiCloud','ExportPKG','ExportVault','ExportMapPDF','ExportDocPDF','ExportOmni','ExportWord','ExportMind','ExportAnki','BackupDB','ClearTemp','OpenTrash','OpenExtensions','GoSettings','EditUndo','EditRedo','EditCut','CommonCopy','EditPaste','EditSelAll','EditMarkdown','ToggleDocument','ToggleMindMap','ToggleCards','ToggleReview','ToggleResearch','ToggleMoreSettings','ToggleSidebar','FullTextSearch','DraftList','ManageDocs','ToggleFullDoc','ToggleBookLeft','ToggleBookBottom','ToggleTabsBar','ToggleAddFile','TabNextFile','TabPrevFile','ToggleSplit','BindSplit','EmphasisCloze','ToggleTextLink','SyncMindMapToBook','SyncBookToMindMap','SyncWindowPos','SyncDeletion','SetRefCopyMode','SetCloneCopyMode','UIStatusURL','BookTOC','BookPageList','BookMarkList','BookSketchList','BookCardList','EditDocLayers','ViewDocCardGroup','BookSearch','BookPageFlip','BookPageScroll','ExtendSplit','ExtendMargin','ExtendPopup','PdfCrop','BookPageNumber','GoBack','GoForward','BookMarkAdd','BookMarkRemove','EditPDFPages','AddToTOC','SplitBook','InsertBlank','Translate','FoldHighlight','SourceHighlight','EditTextBox','EditImageBox','ExcerptToolSettings','ExcerptToolSelect','ExcerptToolCustom0','ExcerptToolCustom1','ExcerptToolCustom2','ExcerptToolCustom3','HighlightShortcut1','HighlightShortcut2','HighlightShortcut3','HighlightShortcut4','ExcerptToolSketch','NotebookOutline','ViewMapCardGroup','EditMultiSel','FocusNote','FocusParent','NotebookOutlineEdit','EditOutlineIncLevel','EditOutlineDecLevel','SnippetMode','NewSiblingNote','NewChildNote','NewParentNote','ToggleExpand','EditGroupNotes','EditLinkNotes','EditMergeNotes','SelBranchStyle0','SelBranchStyle3','SelBranchStyle2','SelBranchStyle1','SelBranchStyle4','SelBranchStyle60','SelBranchStyle61','SelBranchStyle64','SelBranchStyle7','SelBranchStyle100','GlobalBranchStyle','ZoomToFit','ViewExpandAll','ViewCollapseAll','ViewExpandLevel0','ViewExpandLevel1','ViewExpandLevel2','ViewExpandLevel3','ViewExpandLevel4','ViewExpandLevel5','ViewExpandLevel6','ViewExpandLevel7','ViewExpandRows','ViewCollapseRows','EditArrangeNotes','MindmapSnippetMode','SelectBranch','ShowSketch','HideSketch','EditCopy','EditReference','EditCopyLink','EditDeleteNote','EditColorNoteIndex0','EditColorNoteIndex1','EditColorNoteIndex2','EditColorNoteIndex3','EditColorNoteIndex4','EditColorNoteIndex5','EditColorNoteIndex6','EditColorNoteIndex7','EditColorNoteIndex8','EditColorNoteIndex9','EditColorNoteIndex10','EditColorNoteIndex11','EditColorNoteIndex12','EditColorNoteIndex13','EditColorNoteIndex14','EditColorNoteIndex15','EditTagNote','EditAddTitle','EditAddText','EditAppendComment','ContinueExcerpt','EditTextMode','EditOcclusion','EditUnmergeNote','TextToTitle','ExpandExtend','CollapseExtend','SendToMap','RemoveFromMap','AddToReview','ClearFormat1','ClearFormat2','FlashcardSpeech','SetTitleHighlight','SetCommentHighlight','SetAsEmphasis','MergeTo','FlashcardsPlay','FlashcardsStop','FlashcardFlip','FlashcardLocal','FlashcardAgain','FlashcardHard','FlashcardGood','FlashcardEasy','FlashcardStarred'],
+        }
+      }
+    },
+    "required": ["action"]
+  }
+  const menuTitle = {
+    "type": "string",
+    "title": "Menu Title",
+    "description": "Title of the menu item",
+  }
+    function adjustSelectWidth() {
+        const selects = document.getElementsByTagName('select');
+        for (let index = 0; index < selects.length; index++) {
+          const select = selects[index];
+          const maxWidth = window.innerWidth - select.getBoundingClientRect().left-30;
+          select.style.maxWidth = `${maxWidth}px`;
+        }
+    }
+ function moveDuplicateAndRemoveToFront(arr) {
+
+    // // // Find the index of the element with className 'jsoneditor-duplicate'
+    // const DuplicateIndex = arr.findIndex(item => item.className === 'jsoneditor-duplicate');
+
+    // // If such an element exists and is not already the first element
+    // if (DuplicateIndex > -1) {
+    //     // Extract the element
+    //     const [duplicateItem] = arr.splice(DuplicateIndex, 1);
+    //     // Move the element to the front
+    //     arr.push(duplicateItem);
+    // }
+
+    const removeIndex = arr.findIndex(item => item.className === 'jsoneditor-remove');
+
+    if (removeIndex > -1) {
+        // Extract the element
+        const [removeItem] = arr.splice(removeIndex, 1);
+        // Move the element to the front
+        arr.unshift(removeItem);
+    }
+
+    const extractIndex = arr.findIndex(item => item.className === "jsoneditor-extract");
+    if (extractIndex > -1) {
+        const [extractItem] = arr.splice(extractIndex, 1);
+        // Move the element to the front
+        arr.push(extractItem);
+    }
+
+    return arr;
+}
+function copyToClipboard(text) {
+  window.location.href = "nativeCopy://content="+encodeURIComponent(text);
+}
     const options = {
+      schema: action,
+      schemaRefs: {action:action,menuTitle:menuTitle},
+      allowSchemaSuggestions: true,
+      onCreateMenu:(items, node)=> {
+        
+        let path = node.path
+        if (path.length) {
+          items.unshift({
+              text: '拷贝值',
+              title: 'copy',
+              className: 'jsoneditor-duplicate',
+              click:()=>{
+                let tem = editor.get()
+                  // tem = tem[path[0]]
+                for (let index = 0; index <= path.length - 1; index++) {
+                  tem = tem[path[index]]
+                }
+                copyToClipboard(JSON.stringify(tem,null,2))
+              }
+          })
+        }else{
+          items.unshift({
+              text: '拷贝',
+              title: 'copy',
+              className: 'jsoneditor-duplicate',
+              click:()=>{
+                let tem = editor.get()
+                copyToClipboard(JSON.stringify(tem,null,2))
+
+              }
+          })
+        }
+        moveDuplicateAndRemoveToFront(items)
+
+        return items
+      },
+      onEvent:(node, event)=> {
+        if (event.type === 'blur') {
+          editor.refresh()
+          removeFocus()
+          return
+        }
+        if (event.type === 'change') {
+          // console.log("change");
+          // editor.refresh()
+          removeFocus()
+          return
+        }
+        if (event.type === 'keyup' && event.key === 'Tab') {
+          editor.refresh()
+          adjustSelectWidth()
+          return
+        }
+        
+      },
       "enableSort": false,
       "enableTransform": false,
       "search": false,
@@ -85,12 +331,13 @@ body {
       "navigationBar":false,
       "colorPicker":false,
       "autocomplete": {
+        filter:"contain",
         getOptions: function (text, path, input, editor) {
           //input: filed, value
           //path: array
           // console.log(input);
           if (input === 'field') {
-            return ['subTitle','onConfirm','onCancel','followAutoStyle','menuTitle','name','input','text','target', 'action', 'description','menu', 'source','color','content','title','markdown','command','commands','OCR','fillPattern','asTitle','tags','tag','find','multi','type','index','removeSource','prompt','user','system','trim','replace','merge','linkType','target','from','to','steps','range','url','engine','targets','onFinish','doubleClick','menuItems','autoClose','parentNote','mainMindMap','method'];
+            return ['menuWidth','buttonName','subTitle','onConfirm','onCancel','followAutoStyle','menuTitle','name','input','text','target', 'action', 'description','menu', 'source','color','content','title','markdown','command','commands','OCR','fillPattern','asTitle','tags','tag','find','multi','type','index','removeSource','prompt','user','system','trim','replace','merge','linkType','from','to','steps','range','url','engine','targets','onFinish','doubleClick','menuItems','autoClose','parentNote','mainMindMap','method','paste'];
           }
           if (input === 'value') {
             let parent = path.at(-1)
@@ -105,7 +352,7 @@ body {
               case 'targets':
                 return ['addonBar','mindmapToolbar']
               case 'source':
-                return ['photo','camera','file','parentNote','noteDoc','note','currentDoc'];
+                return ['photo','camera','file','parentNote','noteDoc','note','currentDoc','default','doc2x','simpletex', 'GPT-4o','GPT-4o-mini'];
               case 'action':
                 return ['showMessage','confirm','triggerButton','switchTitleOrExcerpt','ocr','moveNote','chatAI','command','setButtonImage','addImageComment','mergeText','toggleView','menu','shortcut','replace','showInFloatWindow','openURL','copy','addComment','export','removeComment','moveComment','paste','setContent','clearContent','search','noteHighlight','cloneAndMerge','cloneAsChildNote','addChildNote','addBrotherNote','crash','link','toggleTextFirst','toggleMarkdown','focus'];
               case 'trim':
@@ -113,7 +360,7 @@ body {
               case 'autoClose':
               case 'asTitle':
               case 'mainMindMap':
-                return ['true','false'];
+                return [true,false];
               case 'steps':
                 return ['from','to','reg','mod'];
               case 'linkType':
@@ -121,20 +368,22 @@ body {
               case 'range':
                 return ['currentNotes','childNotes','descendants'];
               case 'target':
-                return ['mainMindMap','addonBar','mindmapToolbar','default','title','excerpt','excerptText','newComment','clipboard','appendTitle','appendExcerpt','auto','menu','selectionText','selectionImage','excerptOCR','notesText','comment','noteId','noteURL','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown','clipboardText','noteInClipboard','currentNote','currentChildMap','parentNote','currentNoteInMindMap','doc','mindmap','both','floatMindmap'];
+                return ['addonBar','appendTitle','appendExcerpt','auto','both','comment','comments','clipboard','currentNote','currentChildMap','currentPrompt','currentNoteInMindMap','clipboardText','chatModeReference','doc','default','editor','excerpt','excerptText','excerptOCR','floatMindmap','menu','mindmap','mainMindMap','mindmapToolbar','newComment','notesText','noteId','noteURL','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown','noteInClipboard','openFloat','parentNote','selectionText','selectionImage','title'];
               case 'command':
               case 'commands':
                 return ['GoNewFeatures','GoUserGuide','GoManual','InAppPurchase','DBVaults','ShareLicenses','SharePackage','GoiCloud','ExportPKG','ExportVault','ExportMapPDF','ExportDocPDF','ExportOmni','ExportWord','ExportMind','ExportAnki','BackupDB','ClearTemp','OpenTrash','OpenExtensions','GoSettings','EditUndo','EditRedo','EditCut','CommonCopy','EditPaste','EditSelAll','EditMarkdown','ToggleDocument','ToggleMindMap','ToggleCards','ToggleReview','ToggleResearch','ToggleMoreSettings','ToggleSidebar','FullTextSearch','DraftList','ManageDocs','ToggleFullDoc','ToggleBookLeft','ToggleBookBottom','ToggleTabsBar','ToggleAddFile','TabNextFile','TabPrevFile','ToggleSplit','BindSplit','EmphasisCloze','ToggleTextLink','SyncMindMapToBook','SyncBookToMindMap','SyncWindowPos','SyncDeletion','SetRefCopyMode','SetCloneCopyMode','UIStatusURL','BookTOC','BookPageList','BookMarkList','BookSketchList','BookCardList','EditDocLayers','ViewDocCardGroup','BookSearch','BookPageFlip','BookPageScroll','ExtendSplit','ExtendMargin','ExtendPopup','PdfCrop','BookPageNumber','GoBack','GoForward','BookMarkAdd','BookMarkRemove','EditPDFPages','AddToTOC','SplitBook','InsertBlank','Translate','FoldHighlight','SourceHighlight','EditTextBox','EditImageBox','ExcerptToolSettings','ExcerptToolSelect','ExcerptToolCustom0','ExcerptToolCustom1','ExcerptToolCustom2','ExcerptToolCustom3','HighlightShortcut1','HighlightShortcut2','HighlightShortcut3','HighlightShortcut4','ExcerptToolSketch','NotebookOutline','ViewMapCardGroup','EditMultiSel','FocusNote','FocusParent','NotebookOutlineEdit','EditOutlineIncLevel','EditOutlineDecLevel','SnippetMode','NewSiblingNote','NewChildNote','NewParentNote','ToggleExpand','EditGroupNotes','EditLinkNotes','EditMergeNotes','SelBranchStyle0','SelBranchStyle3','SelBranchStyle2','SelBranchStyle1','SelBranchStyle4','SelBranchStyle60','SelBranchStyle61','SelBranchStyle64','SelBranchStyle7','SelBranchStyle100','GlobalBranchStyle','ZoomToFit','ViewExpandAll','ViewCollapseAll','ViewExpandLevel0','ViewExpandLevel1','ViewExpandLevel2','ViewExpandLevel3','ViewExpandLevel4','ViewExpandLevel5','ViewExpandLevel6','ViewExpandLevel7','ViewExpandRows','ViewCollapseRows','EditArrangeNotes','MindmapSnippetMode','SelectBranch','ShowSketch','HideSketch','EditCopy','EditReference','EditCopyLink','EditDeleteNote','EditColorNoteIndex0','EditColorNoteIndex1','EditColorNoteIndex2','EditColorNoteIndex3','EditColorNoteIndex4','EditColorNoteIndex5','EditColorNoteIndex6','EditColorNoteIndex7','EditColorNoteIndex8','EditColorNoteIndex9','EditColorNoteIndex10','EditColorNoteIndex11','EditColorNoteIndex12','EditColorNoteIndex13','EditColorNoteIndex14','EditColorNoteIndex15','EditTagNote','EditAddTitle','EditAddText','EditAppendComment','ContinueExcerpt','EditTextMode','EditOcclusion','EditUnmergeNote','TextToTitle','ExpandExtend','CollapseExtend','SendToMap','RemoveFromMap','AddToReview','ClearFormat1','ClearFormat2','FlashcardSpeech','SetTitleHighlight','SetCommentHighlight','SetAsEmphasis','MergeTo','FlashcardsPlay','FlashcardsStop','FlashcardFlip','FlashcardLocal','FlashcardAgain','FlashcardHard','FlashcardGood','FlashcardEasy','FlashcardStarred']
               case 'color':
                 return ['parent','current']
+              case 'type':
+                return ['TextNote','HtmlNote','PaintNote','LinkNote']
               default:
                 break;
             }
             return [];
           }
           return []
+        }
       }
-    }
         }
         const editor = new JSONEditor(container, options)
 
@@ -211,6 +460,7 @@ body {
           // MNUtil.copy(tem)
           editor.set(JSON.parse(tem))
           editor.expandAll()
+          adjustSelectWidth()
         }
         function getContent() {
           let tem = JSON.stringify(editor.get(),null,2)
@@ -221,6 +471,7 @@ body {
           document.activeElement.blur(); // 先尝试失去当前焦点
           // document.body.focus(); // 将焦点设置到 body
         }
+        window.addEventListener('resize', adjustSelectWidth);
     </script>
 </body>
 </html>

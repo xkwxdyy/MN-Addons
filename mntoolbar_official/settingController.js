@@ -2,7 +2,7 @@
 // JSB.require('base64')
 /** @return {settingController} */
 const getSettingController = ()=>self
-var settingController = JSB.defineClass('settingController : UIViewController <NSURLConnectionDelegate,UIImagePickerControllerDelegate>', {
+var settingController = JSB.defineClass('settingController : UIViewController <NSURLConnectionDelegate,UIImagePickerControllerDelegate,UIWebViewDelegate>', {
   viewDidLoad: function() {
     let self = getSettingController()
 try {
@@ -88,6 +88,25 @@ viewWillLayoutSubviews: function() {
     self.settingViewLayout()
     self.refreshLayout()
 
+  },
+webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
+    try {
+    let self = getSettingController()
+    let requestURL = request.URL().absoluteString()
+    if (!requestURL) {
+      MNUtil.showHUD("Empty URL")
+      return false
+    }
+    if (/^nativecopy\:\/\//.test(requestURL)) {
+      let text = decodeURIComponent(requestURL.split("content=")[1])
+      MNUtil.copy(text)
+      return false
+    }
+    return true;
+    } catch (error) {
+      editorUtils.addErrorLog(error, "webViewShouldStartLoadWithRequestNavigationType")
+      return false
+    }
   },
   changeOpacityTo:function (opacity) {
     self.view.layer.opacity = opacity
@@ -182,6 +201,8 @@ viewWillLayoutSubviews: function() {
         self.onAnimate = false
         // self.showAllButton()
         self.settingViewLayout()
+        self.editorAdjustSelectWidth()
+
       })
       return
     }
@@ -1443,6 +1464,10 @@ settingController.prototype.runJavaScript = async function(script) {
       this.webviewInput.evaluateJavaScript(script,(result) => {resolve(result)});
   })
 };
+/** @this {settingController} */
+settingController.prototype.editorAdjustSelectWidth = function (){
+  this.webviewInput.evaluateJavaScript(`adjustSelectWidth()`)
+}
 settingController.prototype.checkPopoverController = function () {
   if (this.popoverController) {this.popoverController.dismissPopoverAnimated(true);}
 }

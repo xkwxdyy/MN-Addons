@@ -32,7 +32,7 @@ JSB.newAddon = function (mainPath) {
         MNUtil.addObserver(self, 'onToggleDynamic:', 'toggleDynamic')
         MNUtil.addObserver(self, 'onTogglePreprocessMode:', 'togglePreprocessMode')
         MNUtil.addObserver(self, 'onClosePopupMenuOnNote:', 'ClosePopupMenuOnNote')
-        MNUtil.addObserver(self, 'onRemoveMNToolbar:', 'removeMNToolbar')
+        // MNUtil.addObserver(self, 'onRemoveMNToolbar:', 'removeMNToolbar')
         MNUtil.addObserver(self, 'onToggleMindmapToolbar:', 'toggleMindmapToolbar')
         MNUtil.addObserver(self, 'onRefreshToolbarButton:', 'refreshToolbarButton')
         MNUtil.addObserver(self, 'onOpenToolbarSetting:', 'openToolbarSetting')
@@ -53,7 +53,7 @@ JSB.newAddon = function (mainPath) {
         MNUtil.removeObserver(self,'toggleDynamic')
         MNUtil.removeObserver(self,'togglePreprocessMode')
         MNUtil.removeObserver(self,'ClosePopupMenuOnNote')
-        MNUtil.removeObserver(self,'removeMNToolbar')
+        // MNUtil.removeObserver(self,'removeMNToolbar')
         MNUtil.removeObserver(self,'UITextViewTextDidBeginEditingNotification')
         MNUtil.removeObserver(self,'refreshToolbarButton')
         MNUtil.removeObserver(self,'openToolbarSetting')
@@ -79,78 +79,6 @@ JSB.newAddon = function (mainPath) {
           self.addonController.notebookid = notebookid
           self.notebookid = notebookid
           toolbarUtils.notebookId = notebookid
-        }
-        MNNote.prototype.getLinksCommentsIndexArray = function(){
-          let linksCommentsIndexArray = []
-          this.comments.forEach((comment,index)=>{
-            if (
-              comment.type == "TextNote" &&
-              /^marginnote\dapp:\/\/note\//.test(comment.text)
-            ) {
-              linksCommentsIndexArray.push(index)
-            }
-          })
-          return linksCommentsIndexArray
-        }
-        MNNote.prototype.getCommentIndexArray = function(text){
-          let linksCommentsIndexArray = []
-          this.comments.forEach((comment,index)=>{
-            if (
-              comment.type == "TextNote" &&
-              comment.text.includes(text)
-            ) {
-              linksCommentsIndexArray.push(index)
-            }
-          })
-          return linksCommentsIndexArray
-        }
-        MNNote.prototype.hasComment = function(comment){
-          let comments = this.comments
-          for (let i = 0; i < comments.length; i++) {
-            if (
-              comments[i].text &&
-              comments[i].text === comment
-            ) {
-              return true
-            }
-          }
-          return false
-        }
-        MNNote.prototype.noteURL = function(){
-          return "marginnote4app://note/"+this.noteId
-        }
-        MNNote.prototype.clearAllLinks = function(){
-          for (let i = this.comments.length-1; i >= 0; i--) {
-            let comment = this.comments[i]
-            if (
-              comment.type == "TextNote" &&
-              (
-                comment.text.includes("marginnote3") ||
-                comment.text.includes("marginnote4")
-              )
-            ) {
-              this.removeCommentByIndex(i)
-            }
-          }
-        }
-        MNNote.prototype.linksConvertToMN4Type = function(){
-          for (let i = this.comments.length-1; i >= 0; i--) {
-            let comment = this.comments[i]
-            if (
-              comment.type == "TextNote" &&
-              comment.text.startsWith("marginnote3app://note/")
-            ) {
-              let targetNoteId = comment.text.match(/marginnote3app:\/\/note\/(.*)/)[1]
-              let targetNote = MNNote.new(targetNoteId)
-              if (targetNote) {
-                this.removeCommentByIndex(i)
-                this.appendNoteLink(targetNote, "To")
-                this.moveComment(this.comments.length-1, i)
-              } else {
-                this.removeCommentByIndex(i)
-              }
-            }
-          }
         }
         MNUtil.delay(0.2).then(()=>{
           MNUtil.studyView.becomeFirstResponder(); //For dismiss keyboard on iOS
@@ -789,7 +717,7 @@ try {
           toolbarConfig.remove("MNToolbar_action")
           toolbarConfig.remove("MNToolbar_actionConfig")
         }
-        MNUtil.postNotification("removeMNToolbar", {})
+        // MNUtil.postNotification("removeMNToolbar", {})
       },
 
       applicationWillEnterForeground: function () {

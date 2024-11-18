@@ -1584,15 +1584,8 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         }
         break;
       case "triggerButton":
-        let targetButtonName = des.target
-        await this.customActionByButton(button, targetButtonName)
-        // let allButtonNames = toolbarConfig.getAllActionNames()
-        // let buttonIndex = allButtonNames.indexOf(targetButtonName)
-        // let action = toolbarConfig.action[buttonIndex]
-        // let actionDes = toolbarConfig.getDescriptionByName(action)
-        // if (actionDes) {
-        //   this.customActionByDes(button, actionDes)
-        // }
+        let targetButtonName = des.buttonName
+        success = await this.customActionByButton(button, targetButtonName)
         break;
       default:
         MNUtil.showHUD("Not supported yet...")
@@ -1645,12 +1638,22 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
  * @this {toolbarController}
  * @param {UIButton} button 
  * @param {object} des 
- * @returns 
+ * @returns {Promise<boolean>}
  */
 toolbarController.prototype.customActionByButton = async function (button,targetButtonName,checkSubscribe = true) {//这里actionName指的是key
+  try {
+    
+
   let des = toolbarConfig.getDesByButtonName(targetButtonName)
   if (des) {
-    this.customActionByDes(button, des)
+    await this.customActionByDes(button, des)
+    return true
+  }else{
+    return false
+  }
+    } catch (error) {
+    toolbarUtils.addErrorLog(error, "customActionByButton")
+    return false
   }
 }
 /**

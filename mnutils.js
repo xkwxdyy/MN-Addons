@@ -2667,18 +2667,21 @@ class MNNote{
    * - 黄色归类卡片：“”：“”相关 xx
    * - 绿色归类卡片：“”相关 xx
    * - 处理卡片标题空格
+   * 
+   * @param {string} type - 针对归类卡片的类型
    */
-  changeTitle() {
+  changeTitle(type) {
     let noteType = this.getNoteTypeZh()
     // let topestClassificationNote = this.getTopestClassificationNote()
-    let type
+    let classificationNoteType
     let title = this.noteTitle
+    let parentNoteType = this.parentNote.getNoteTypeZh()
     let parentNoteTitle
     switch (noteType) {
       case "顶层":
-        type = this.getTopWhiteNoteType()
+        classificationNoteType = this.getTopWhiteNoteType()
         if (!title.isGreenClassificationNoteTitle()) {
-          title = "“" + title + "”" + "相关" + type
+          title = "“" + title + "”" + "相关" + classificationNoteType
         }
         break;
       case "归类":
@@ -2693,10 +2696,19 @@ class MNNote{
               this.getNoteTypeObjByClassificationParentNoteTitle().en == "temporary"
             )
           ) {
-            type = this.getNoteTypeObjByClassificationParentNoteTitle().zh
             // 有归类父卡片
-            parentNoteTitle = this.parentNote.noteTitle.toClassificationNoteTitle()
-            this.title = "“" + parentNoteTitle + "”：“" + title + "”" + "相关" + type
+            if (parentNoteType == "定义") {
+              // 也就是此时卡片的父卡片是一张定义类卡片
+              // 此时为基于定义类卡片生成归类卡片
+              classificationNoteType = type?type:this.getNoteTypeObjByClassificationParentNoteTitle().zh
+              parentNoteTitle = this.parentNote.getFirstTitleLinkWord()
+            } else {
+              // 其余情况为正常归类
+              classificationNoteType = this.getNoteTypeObjByClassificationParentNoteTitle().zh
+              parentNoteTitle = this.parentNote.noteTitle.toClassificationNoteTitle()
+            }
+            // 修改标题
+            this.title = "“" + parentNoteTitle + "”：“" + title + "”" + "相关" + classificationNoteType
           }
         } else {
           /**
@@ -2712,9 +2724,19 @@ class MNNote{
               this.getNoteTypeObjByClassificationParentNoteTitle().en == "temporary"
             )
           ) {
-            type = this.getNoteTypeObjByClassificationParentNoteTitle().zh
-            parentNoteTitle = this.parentNote.noteTitle.toClassificationNoteTitle()
-            this.title = "“" + parentNoteTitle + "”：“" + title.toClassificationNoteTitle() + "”" + "相关" + type
+            // 有归类父卡片
+            if (parentNoteType == "定义") {
+              // 也就是此时卡片的父卡片是一张定义类卡片
+              // 此时为基于定义类卡片生成归类卡片
+              classificationNoteType = type?type:this.getNoteTypeObjByClassificationParentNoteTitle().zh
+              parentNoteTitle = this.parentNote.getFirstTitleLinkWord()
+            } else {
+              // 其余情况为正常归类
+              classificationNoteType = this.getNoteTypeObjByClassificationParentNoteTitle().zh
+              parentNoteTitle = this.parentNote.noteTitle.toClassificationNoteTitle()
+            }
+            // 修改标题
+            this.title = "“" + parentNoteTitle + "”：“" + title.toClassificationNoteTitle() + "”" + "相关" + classificationNoteType
           }
         }
         break;
@@ -2729,7 +2751,7 @@ class MNNote{
           )
         ) {
           // type = this.getNoteTypeObjByClassificationParentNoteTitle().zh
-          type = this.getNoteTypeZh()
+          // noteType = this.getNoteTypeZh()
           parentNoteTitle = this.getClassificationParentNote().noteTitle.toClassificationNoteTitle()
           if (title.ifKnowledgeNoteTitle()) {
             /**
@@ -2806,10 +2828,10 @@ class MNNote{
              */
             // MNUtil.showHUD("hahaha ")
             this.title = this.title.replace(/^【[^】]*】/, "");
-            if (type == "定义") {
-              this.title = "【" + type + "：" + parentNoteTitle + "】; " + title
+            if (noteType == "定义") {
+              this.title = "【" + noteType + "：" + parentNoteTitle + "】; " + title
             } else {
-              this.title = "【" + type + "：" + parentNoteTitle + "】" + title
+              this.title = "【" + noteType + "：" + parentNoteTitle + "】" + title
             }
           }
         }
@@ -2879,6 +2901,11 @@ class MNNote{
           }
           break;
         case "归类":
+          /**
+           * 需要判断父卡片是不是定义类卡片，因为与定义类卡片的归类不删除
+           * 然后后续即使已经和定义类卡片链接了，和其他归类卡片链接时，要把链接移动到第一个
+           * 这样的话后续更改父卡片时可以进行链接的修改
+           */
           belongHtmlBlockContentIndexArr = this.getHtmlBlockContentIndexArr("所属：")
           if (belongHtmlBlockContentIndexArr.length !== 0) {
             // 此时说明有链接，需要先删除
@@ -4643,6 +4670,51 @@ class MNNote{
         return i
     }
     return -1
+  }
+
+  /**
+   * 【数学】定义类卡片的增加模板
+   * @param {string} type 需要生成的归类卡片的类型
+   */
+  addClassificationNoteByTypeBasedOnDefinitionNote(type, title=""){
+    /**
+     * 生成归类卡片
+     */
+    let classificationNote = this.addClassificationNote(title)
+
+    /**
+     * 修改标题
+     */
+    classificationNote.changeTitle(type)
+
+    /**
+     * [TODO：主要的处理]与定义类卡片进行链接，并防止后续归类后重新链接时导致归类卡片中定义卡片的链接被删除
+     * 主要要修改 linkParentNote
+     */
+    classificationNote.linkParentNote()
+  }
+
+  /**
+   * 
+   * @returns {MNNote} 生成的归类卡片
+   */
+  addClassificationNote (title="") {
+    let classificationNote = this.createEmptyChildNote(0,title)
+    classificationNote.mergeClonedNoteFromId("8853B79F-8579-46C6-8ABD-E7DE6F775B8B")
+    return classificationNote
+  }
+
+  createEmptyChildNote(colorIndex = this.colorIndex, title = "", content = ""){
+    let config = {
+      title: title,
+      content: content,
+      markdown: true,
+      color: colorIndex
+    }
+
+    let childNote = this.createChildNote(config)
+
+    return childNote
   }
   /**
    * 夏大鱼羊定制 - MNNote - end

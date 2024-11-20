@@ -16,6 +16,7 @@ var toolbarController = JSB.defineClass('toolbarController : UIViewController <U
     self.currentFrame = self.view.frame
     self.maxButtonNumber = 20
     self.buttonNumber = 22
+    self.isMac = MNUtil.version.type === "macOS"
       // MNUtil.copy("refreshHeight: "+self.buttonNumber)
     if (self.dynamicWindow) {
       // self.maxButtonNumber = 9
@@ -77,17 +78,14 @@ var toolbarController = JSB.defineClass('toolbarController : UIViewController <U
     // let command = self.keyCommandWithInputModifierFlagsAction('d',1 << 0,'test:')
     // let command = UIKeyCommand.keyCommandWithInputModifierFlagsAction('d',1 << 0,'test:')
     // <<< screen button <<<
-    self.moveGesture = new UIPanGestureRecognizer(self,"onMoveGesture:")
-    self.view.addGestureRecognizer(self.moveGesture)
-    self.moveGesture.view.hidden = false
-    // self.moveGesture.addTargetAction(self,"onMoveGesture:")
-    // self.moveButton.addGestureRecognizer(self.moveGesture)
-    // self.imageModeButton.addGestureRecognizer(self.moveGesture)
-    // self.bothModeButton.addGestureRecognizer(self.moveGesture)
+    // if (self.isMac) {
+      self.addPanGesture(self.view, "onMoveGesture:")
+    // }else{
+      // self.addLongPressGesture(self.screenButton, "onLongPressGesture:")
+    // }
+    self.addPanGesture(self.screenButton, "onResizeGesture:")
+    // self.addSwipeGesture(self.screenButton, "onSwipeGesture:")
 
-    self.resizeGesture = new UIPanGestureRecognizer(self,"onResizeGesture:")
-    self.screenButton.addGestureRecognizer(self.resizeGesture)
-    self.resizeGesture.view.hidden = false
     // self.resizeGesture.addTargetAction(self,"onResizeGesture:")
   } catch (error) {
     toolbarUtils.addErrorLog(error, "viewDidLoad")
@@ -739,18 +737,70 @@ try {
   },
   onMoveGesture:function (gesture) {
   try {
-    
-
     let self = getToolbarController()
-    // MNUtil.showHUD("move")
-    self.onAnimate = false
     if (self.dynamicWindow) {
       // self.hideAfterDelay()
       self.hide()
       return
     }
+    self.onAnimate = false
     self.onClick = true
+    if (gesture.state === 1) {//触发
+      self.initLocation = gesture.locationInView(MNUtil.studyView)
+      self.initFrame = self.view.frame
+      return
+    }
+    if (gesture.state === 3) {
+      // self.resi
+      MNUtil.studyView.bringSubviewToFront(self.view)
+      toolbarConfig.windowState.open = true
+      toolbarConfig.windowState.frame = self.view.frame
+      toolbarConfig.windowState.splitMode = self.splitMode
+      toolbarConfig.windowState.sideMode = self.sideMode
+      toolbarConfig.save("MNToolbar_windowState")
+      self.setToolbarLayout()
+      return
+    }
+    if (gesture.state === 2) {
+      let studyFrame = MNUtil.studyView.bounds
+      let locationInView = gesture.locationInView(MNUtil.studyView)
+      let y = MNUtil.constrain(self.initFrame.y+locationInView.y - self.initLocation.y, 0, studyFrame.height-15)
+      let x = self.initFrame.x+locationInView.x - self.initLocation.x
+      let splitLine = MNUtil.splitLine
+      let docMapSplitMode = MNUtil.studyController.docMapSplitMode
+      self.sideMode = ""
+      if (x<20) {
+        x = 0
+        self.sideMode = "left"
+        self.splitMode = false
+      }
+      if (x>studyFrame.width-60) {
+        x = studyFrame.width-40
+        self.sideMode = "right"
+        self.splitMode = false
+      }
+      if (splitLine && docMapSplitMode===1) {
+        if (x<splitLine && x>splitLine-40) {
+          x = splitLine-20
+          self.splitMode = true
+          self.sideMode = ""
+        }else{
+          self.splitMode = false
+        }
+      }else{
+        self.splitMode = false
+      }
+      let height = 45*self.buttonNumber+15
+      if ((y+height) > studyFrame.height) {
+        height = studyFrame.height - y
+      }
+      Frame.set(self.view,x,y,40,toolbarUtils.checkHeight(height,self.maxButtonNumber))
+      self.currentFrame  = self.view.frame
 
+      self.custom = false;
+    }
+return
+    // MNUtil.showHUD("move")
     let locationToMN = gesture.locationInView(MNUtil.studyView)
     if ( (Date.now() - self.moveDate) > 100) {
       let translation = gesture.translationInView(MNUtil.studyView)
@@ -764,15 +814,8 @@ try {
     let docMapSplitMode = MNUtil.studyController.docMapSplitMode
     let location = {x:locationToMN.x - gesture.locationToBrowser.x,y:locationToMN.y -gesture.locationToBrowser.y}
     let frame = self.view.frame
-    var viewFrame = self.view.bounds;
     let studyFrame = MNUtil.studyView.bounds
-    let y = location.y
-    if (y<=0) {
-      y = 0
-    }
-    if (y>=studyFrame.height-15) {
-      y = studyFrame.height-15
-    }
+    let y = MNUtil.constrain(location.y, 0, studyFrame.height-15)
     let x = location.x
     self.sideMode = ""
     if (x<20) {
@@ -803,20 +846,83 @@ try {
     }
     Frame.set(self.view,x,y,40,toolbarUtils.checkHeight(frame.height,self.maxButtonNumber))
     self.currentFrame  = self.view.frame
-    if (gesture.state === 3) {
-      // self.resi
-      MNUtil.studyView.bringSubviewToFront(self.view)
-      toolbarConfig.windowState.open = true
-      toolbarConfig.windowState.frame = self.view.frame
-      toolbarConfig.windowState.splitMode = self.splitMode
-      toolbarConfig.windowState.sideMode = self.sideMode
-      toolbarConfig.save("MNToolbar_windowState")
-      self.setToolbarLayout()
-    }
+
     self.custom = false;
   } catch (error) {
     toolbarUtils.addErrorLog(error, "onMoveGesture")
   }
+  },
+  onLongPressGesture:async function (gesture) {
+    if (gesture.state === 1) {
+      let button = gesture.view
+      let actionName = button.target ?? toolbarConfig.action[button.index]//这个是key
+      if (actionName) {
+        let des = toolbarConfig.getDescriptionByName(actionName)
+        if ("onLongPress" in des) {
+          let onLongPress = des.onLongPress
+          if (!("action" in onLongPress)) {
+            onLongPress.action = des.action
+          }
+          await self.customActionByDes(button, onLongPress)
+          return
+        }else{
+          MNUtil.showHUD("No long press action")
+        }
+      }
+    }
+    // if (gesture.state === 1) {//触发
+    //   self.initLocation = gesture.locationInView(MNUtil.studyView)
+    //   self.initFrame = self.view.frame
+    //   MNUtil.showHUD("Move mode ✅")
+    //   MNButton.setColor(self.screenButton, "#9898ff",1.0)
+    //   // self.view.layer.backgroundColor = MNUtil.hexColorAlpha("#b5b5f5",1.0)
+    //   // self.view.layer.borderWidth = 2
+    //   return
+    // }
+    // if (gesture.state === 3) {//停止
+    //   MNUtil.showHUD("Move mode ❌")
+    //   MNButton.setColor(self.screenButton, "#9bb2d6",0.8)
+    //   return
+    // }
+    // if (gesture.state === 2) {
+    //   let studyFrame = MNUtil.studyView.bounds
+    //   let locationInView = gesture.locationInView(MNUtil.studyView)
+    //   let y = MNUtil.constrain(self.initFrame.y+locationInView.y - self.initLocation.y, 0, studyFrame.height-15)
+    //   let x = self.initFrame.x+locationInView.x - self.initLocation.x
+    //   let splitLine = MNUtil.splitLine
+    //   let docMapSplitMode = MNUtil.studyController.docMapSplitMode
+    //   if (x<20) {
+    //     x = 0
+    //     self.sideMode = "left"
+    //     self.splitMode = false
+    //   }
+    //   if (x>studyFrame.width-60) {
+    //     x = studyFrame.width-40
+    //     self.sideMode = "right"
+    //     self.splitMode = false
+    //   }
+    //   if (splitLine && docMapSplitMode===1) {
+    //     if (x<splitLine && x>splitLine-40) {
+    //       x = splitLine-20
+    //       self.splitMode = true
+    //       self.sideMode = ""
+    //     }else{
+    //       self.splitMode = false
+    //     }
+    //   }else{
+    //     self.splitMode = false
+    //   }
+    //   let frame = {x:x,y:y,width:self.initFrame.width,height:self.initFrame.height}
+    //   Frame.set(self.view,frame.x,frame.y,frame.width,frame.height)
+    // }
+    // MNUtil.showHUD("message"+gesture.state)
+
+  },
+  onSwipeGesture:function (gesture) {
+    if (gesture.state === 1) {
+      MNUtil.showHUD("Swipe mode ✅")
+    }
+    // MNUtil.showHUD("message"+gesture.state)
   },
   onResizeGesture:function (gesture) {
     self.onClick = true
@@ -1054,29 +1160,40 @@ try {
   for (let index = 0; index < this.maxButtonNumber; index++) {
     let actionName = actionNames[index]
     let colorButton
-    if (actionName) {
-      if (this["ColorButton"+index]) {
-        colorButton = this["ColorButton"+index]
-      }else{
-        this["ColorButton"+index] = UIButton.buttonWithType(0);
-        colorButton = this["ColorButton"+index]
-        colorButton.height = 40
-        colorButton.width = 40
-        this["moveGesture"+index] = new UIPanGestureRecognizer(this,"onMoveGesture:")
-        colorButton.addGestureRecognizer(this["moveGesture"+index])
-        this["moveGesture"+index].view.hidden = false
-      }
+    if (this["ColorButton"+index]) {
+      colorButton = this["ColorButton"+index]
       colorButton.index = index
-      if (actionName.includes("color")) {
-        colorButton.color = parseInt(actionName.slice(5))
-        this.setColorButtonLayout(colorButton,"setColor:",buttonColor)
-      }else if(actionName.includes("custom")){
-        this.setColorButtonLayout(colorButton,"customAction:",buttonColor)
-      }else{
-        this.setColorButtonLayout(colorButton,actionName+":",buttonColor)
-      }
-      colorButton.setImageForState(toolbarConfig.imageConfigs[actionName],0)
+    }else{
+      this["ColorButton"+index] = UIButton.buttonWithType(0);
+      colorButton = this["ColorButton"+index]
+      colorButton.height = 40
+      colorButton.width = 40
+      colorButton.index = index
+      // if (this.isMac) {
+        this.addPanGesture(colorButton, "onMoveGesture:")  
+      // }else{
+        this.addLongPressGesture(colorButton, "onLongPressGesture:")
+        // this.addSwipeGesture(colorButton, "onSwipeGesture:")
+      // }
+
+      // this["moveGesture"+index] = new UIPanGestureRecognizer(this,"onMoveGesture:")
+      // colorButton.addGestureRecognizer(this["moveGesture"+index])
+      // this["moveGesture"+index].view.hidden = false
     }
+    if (actionName.includes("color")) {
+      colorButton.color = parseInt(actionName.slice(5))
+      this.setColorButtonLayout(colorButton,"setColor:",buttonColor)
+    }else if(actionName.includes("custom")){
+      this.setColorButtonLayout(colorButton,"customAction:",buttonColor)
+    }else{
+      this.setColorButtonLayout(colorButton,actionName+":",buttonColor)
+    }
+    // MNButton.setImage(colorButton, toolbarConfig.imageConfigs[actionName])
+    // let image = (actionName in actions)?actions[actionName].image+".png":defaultActions[actionName].image+".png"
+    // colorButton.setImageForState(MNUtil.getImage(toolbarConfig.mainPath + `/`+image),0)
+    colorButton.setImageForState(toolbarConfig.imageConfigs[actionName],0)
+    // self["ColorButton"+index].setTitleForState("",0) 
+    // self["ColorButton"+index].contentHorizontalAlignment = 1
   }
   if (this.dynamicToolbar) {
     this.dynamicToolbar.setToolbarButton(actionNames,newActions)
@@ -1185,9 +1302,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
     switch (des.action) {
       case "copy":
         if (des.target || des.content) {
-          toolbarUtils.copy(des)
+          success = await toolbarUtils.copy(des)
         }else{
-          toolbarUtils.smartCopy()
+          success = toolbarUtils.smartCopy()
         }
         break;
       case "paste":
@@ -5188,6 +5305,7 @@ toolbarController.prototype.replaceButtonTo = async function (button,target) {
   button.removeTargetActionForControlEvents(undefined, undefined, 1 << 6);
   button.addTargetActionForControlEvents(this, target, 1 << 6);
   button.addTargetActionForControlEvents(this, "doubleClick:", 1 << 1);
+  this.addLongPressGesture(button, "onLongPressGesture:")
 
 }
 /**
@@ -5402,7 +5520,7 @@ toolbarController.prototype.customActionMenu =  function (button,des) {
       }
       return true
     }
-    if (des.action === "showInFloatWindow" && toolbarUtils.shouldShowMenu(des)) {
+    if (des.action === "showInFloatWindow" && des.target && des.target === "menu") {
       this.onClick = true
       // MNUtil.showHUD("showInFloatWindow")
       var commandTable = [
@@ -5441,4 +5559,40 @@ toolbarController.prototype.customActionMenu =  function (button,des) {
     // toolbarUtils.addErrorLog(error, "customActionMenu")
     return false
   }
+}
+/**
+ * 
+ * @param {UIView} view 
+ * @param {string} selector 
+ */
+toolbarController.prototype.addPanGesture = function (view,selector) {
+  let gestureRecognizer = new UIPanGestureRecognizer(this,selector)
+  view.addGestureRecognizer(gestureRecognizer)
+}
+
+/**
+ * 
+ * @param {UIView} view 
+ * @param {string} selector 
+ */
+toolbarController.prototype.addLongPressGesture = function (view,selector) {
+  let gestureRecognizer = new UILongPressGestureRecognizer(this,selector)
+  gestureRecognizer.minimumPressDuration = 0.3
+  // if (view.target !== undefined) {
+  //   gestureRecognizer.target = view.target
+  // }
+  // if (view.index !== undefined) {
+  //   gestureRecognizer.index = view.index
+  // }
+  view.addGestureRecognizer(gestureRecognizer)
+}
+
+/**
+ * 
+ * @param {UIView} view 
+ * @param {string} selector 
+ */
+toolbarController.prototype.addSwipeGesture = function (view,selector) {
+  let gestureRecognizer = new UISwipeGestureRecognizer(this,selector)
+  view.addGestureRecognizer(gestureRecognizer)
 }

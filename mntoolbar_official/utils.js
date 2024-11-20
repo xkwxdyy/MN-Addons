@@ -608,17 +608,17 @@ static insertSnippetToTextView(text, textView) {
         MNUtil.copyImage(selection.image)
         MNUtil.showHUD('复制框选图片')
       }
-      return
+      return true
     }
     let focusNote = MNNote.getFocusNote()
     if (!focusNote) {
       MNUtil.showHUD("No note found")
-      return
+      return false
     }
     if (focusNote.excerptPic && !focusNote.textFirst && focusNote.excerptPic.paint) {
       MNUtil.copyImage(focusNote.excerptPicData)
       MNUtil.showHUD('摘录图片已复制')
-      return
+      return true
     }
     if ((focusNote.excerptText && focusNote.excerptText.trim())){
       let text = focusNote.excerptText
@@ -627,13 +627,13 @@ static insertSnippetToTextView(text, textView) {
           let imageData = this.getMNImagesFromMarkdown(text)
           MNUtil.copyImage(imageData)
           MNUtil.showHUD('摘录图片已复制')
-          return
+          return true
         }
       }
 
       MNUtil.copy(text)
       MNUtil.showHUD('摘录文字已复制')
-      return
+      return true
     }
     if (focusNote.comments.length) {
       let firstComment = focusNote.comments[0]
@@ -641,16 +641,16 @@ static insertSnippetToTextView(text, textView) {
         case "TextNote":
           MNUtil.copy(firstComment.text)
           MNUtil.showHUD('首条评论已复制')
-          return
+          return true
         case "PaintNote":
           let imageData = MNUtil.getMediaByHash(firstComment.paint)
           MNUtil.copyImage(imageData)
           MNUtil.showHUD('首条评论已复制')
-          return
+          return true
         case "HtmlNote":
           MNUtil.copy(firstComment.text)
           MNUtil.showHUD('尝试复制该类型评论: '+firstComment.type)
-          return
+          return true
         case "LinkNote":
           if (firstComment.q_hpic && !focusNote.textFirst && firstComment.q_hpic.paint) {
             MNUtil.copyImage(MNUtil.getMediaByHash(firstComment.q_hpic.paint))
@@ -659,16 +659,20 @@ static insertSnippetToTextView(text, textView) {
             MNUtil.copy(firstComment.q_htext)
             MNUtil.showHUD('首条评论已复制')
           }
-          return
+          return true
         default:
           MNUtil.showHUD('暂不支持的评论类型: '+firstComment.type)
-          break;
+          return false
       }
     }
     MNUtil.copy(focusNote.noteTitle)
     MNUtil.showHUD('标题已复制')
+    return true
   }
   static async copy(des) {
+    try {
+      
+
     let focusNote = MNNote.getFocusNote()
     let target = des.target
     let element = undefined
@@ -677,7 +681,6 @@ static insertSnippetToTextView(text, textView) {
         case "auto":
           toolbarUtils.smartCopy()
           return
-          break;
         case "selectionText":
           if (MNUtil.currentSelection.onSelection) {
             element = MNUtil.selectionText
@@ -694,6 +697,7 @@ static insertSnippetToTextView(text, textView) {
           break;
         case "selectionImage":
           MNUtil.copyImage(MNUtil.getDocImage(true))
+          MNUtil.showHUD("框选图片已复制")
           return;
         case "title":
           if (focusNote) {
@@ -746,7 +750,7 @@ static insertSnippetToTextView(text, textView) {
           }
           break;
         case "comment":
-          if (focusNote) {
+          if (focusNote && focusNote.comments.length) {
             let index = 1
             if (des.index) {
               index = des.index
@@ -801,8 +805,21 @@ static insertSnippetToTextView(text, textView) {
     if (copyContent) {
       let replacedText = this.detectAndReplace(copyContent,element)
       MNUtil.copy(replacedText)
+      MNUtil.showHUD("目标文本已复制")
+      return true
     }else{//没有提供content参数则直接复制目标内容
-      MNUtil.copy(element)
+      if (element) {
+        MNUtil.copy(element)
+        MNUtil.showHUD("目标文本已复制")
+        return true
+      }else{
+        MNUtil.showHUD("无法获取目标文本")
+        return false
+      }
+    }
+    } catch (error) {
+      toolbarUtils.addErrorLog(error, "copy")
+      return false
     }
   }
   static copyJSON(object) {
@@ -1225,6 +1242,9 @@ static insertSnippetToTextView(text, textView) {
   }
   static showInFloatWindow(des){
     let targetNoteid
+    if (des.noteURL) {
+      targetNoteid = MNUtil.getNoteIdByURL(des.noteURL)
+    }
     switch (des.target) {
       case "{{noteInClipboard}}":
       case "noteInClipboard":
@@ -1259,7 +1279,6 @@ static insertSnippetToTextView(text, textView) {
         }
         break;
       default:
-        targetNoteid= MNUtil.getNoteIdByURL(des.target)
         break;
     }
     if (targetNoteid) {

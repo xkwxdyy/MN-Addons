@@ -28,12 +28,7 @@ body {
   <script>
     // create the editor
     const container = document.getElementById("jsoneditor")
-
-    const action = {
-    "title": "Action",
-    "description": "Object containing employee details",
-    "type": "object",
-    "properties": {
+    const actionProperties = {
       "action": {
         "title": "Action",
         "type": "string",
@@ -66,6 +61,10 @@ body {
         "title": "menuWidth",
         "type": "integer",
         "enum": [100,150,200,250,300],
+      },
+      "menuTitle": {
+        "title": "menuTitle",
+        "type": "string",
       },
       "linkType": {
         "title": "linkType",
@@ -128,6 +127,9 @@ body {
       "onFinish": {
         "$ref": "action"
       },
+      "onLongPress": {
+        "$ref": "action"
+      },
       "onSuccess": {
         "$ref": "action"
       },
@@ -148,7 +150,7 @@ body {
         "items": {
           "oneOf":[
           {
-            "$ref": "action"
+            "$ref": "menuAction"
           },
           {
             "$ref": "menuTitle"
@@ -167,14 +169,28 @@ body {
         "items": {
           "enum": ['GoNewFeatures','GoUserGuide','GoManual','InAppPurchase','DBVaults','ShareLicenses','SharePackage','GoiCloud','ExportPKG','ExportVault','ExportMapPDF','ExportDocPDF','ExportOmni','ExportWord','ExportMind','ExportAnki','BackupDB','ClearTemp','OpenTrash','OpenExtensions','GoSettings','EditUndo','EditRedo','EditCut','CommonCopy','EditPaste','EditSelAll','EditMarkdown','ToggleDocument','ToggleMindMap','ToggleCards','ToggleReview','ToggleResearch','ToggleMoreSettings','ToggleSidebar','FullTextSearch','DraftList','ManageDocs','ToggleFullDoc','ToggleBookLeft','ToggleBookBottom','ToggleTabsBar','ToggleAddFile','TabNextFile','TabPrevFile','ToggleSplit','BindSplit','EmphasisCloze','ToggleTextLink','SyncMindMapToBook','SyncBookToMindMap','SyncWindowPos','SyncDeletion','SetRefCopyMode','SetCloneCopyMode','UIStatusURL','BookTOC','BookPageList','BookMarkList','BookSketchList','BookCardList','EditDocLayers','ViewDocCardGroup','BookSearch','BookPageFlip','BookPageScroll','ExtendSplit','ExtendMargin','ExtendPopup','PdfCrop','BookPageNumber','GoBack','GoForward','BookMarkAdd','BookMarkRemove','EditPDFPages','AddToTOC','SplitBook','InsertBlank','Translate','FoldHighlight','SourceHighlight','EditTextBox','EditImageBox','ExcerptToolSettings','ExcerptToolSelect','ExcerptToolCustom0','ExcerptToolCustom1','ExcerptToolCustom2','ExcerptToolCustom3','HighlightShortcut1','HighlightShortcut2','HighlightShortcut3','HighlightShortcut4','ExcerptToolSketch','NotebookOutline','ViewMapCardGroup','EditMultiSel','FocusNote','FocusParent','NotebookOutlineEdit','EditOutlineIncLevel','EditOutlineDecLevel','SnippetMode','NewSiblingNote','NewChildNote','NewParentNote','ToggleExpand','EditGroupNotes','EditLinkNotes','EditMergeNotes','SelBranchStyle0','SelBranchStyle3','SelBranchStyle2','SelBranchStyle1','SelBranchStyle4','SelBranchStyle60','SelBranchStyle61','SelBranchStyle64','SelBranchStyle7','SelBranchStyle100','GlobalBranchStyle','ZoomToFit','ViewExpandAll','ViewCollapseAll','ViewExpandLevel0','ViewExpandLevel1','ViewExpandLevel2','ViewExpandLevel3','ViewExpandLevel4','ViewExpandLevel5','ViewExpandLevel6','ViewExpandLevel7','ViewExpandRows','ViewCollapseRows','EditArrangeNotes','MindmapSnippetMode','SelectBranch','ShowSketch','HideSketch','EditCopy','EditReference','EditCopyLink','EditDeleteNote','EditColorNoteIndex0','EditColorNoteIndex1','EditColorNoteIndex2','EditColorNoteIndex3','EditColorNoteIndex4','EditColorNoteIndex5','EditColorNoteIndex6','EditColorNoteIndex7','EditColorNoteIndex8','EditColorNoteIndex9','EditColorNoteIndex10','EditColorNoteIndex11','EditColorNoteIndex12','EditColorNoteIndex13','EditColorNoteIndex14','EditColorNoteIndex15','EditTagNote','EditAddTitle','EditAddText','EditAppendComment','ContinueExcerpt','EditTextMode','EditOcclusion','EditUnmergeNote','TextToTitle','ExpandExtend','CollapseExtend','SendToMap','RemoveFromMap','AddToReview','ClearFormat1','ClearFormat2','FlashcardSpeech','SetTitleHighlight','SetCommentHighlight','SetAsEmphasis','MergeTo','FlashcardsPlay','FlashcardsStop','FlashcardFlip','FlashcardLocal','FlashcardAgain','FlashcardHard','FlashcardGood','FlashcardEasy','FlashcardStarred'],
         }
+      },
+      "content": {
+        "type":"string"
       }
-    },
+    }
+    const action = {
+    "title": "Action",
+    "description": "Object containing employee details",
+    "type": "object",
+    "properties": actionProperties,
     "required": ["action"]
   }
   const menuTitle = {
     "type": "string",
     "title": "Menu Title",
     "description": "Title of the menu item",
+  }
+  const menuAction = {
+    "title": "Action",
+    "description": "Object containing employee details",
+    "type": "object",
+    "properties": actionProperties
   }
     function adjustSelectWidth() {
         const selects = document.getElementsByTagName('select');
@@ -220,7 +236,8 @@ function copyToClipboard(text) {
 }
     const options = {
       schema: action,
-      schemaRefs: {action:action,menuTitle:menuTitle},
+      schemaRefs: {action:action,menuTitle:menuTitle,menuAction:menuAction},
+      theme: 'ace',
       allowSchemaSuggestions: true,
       onCreateMenu:(items, node)=> {
         
@@ -232,7 +249,6 @@ function copyToClipboard(text) {
               className: 'jsoneditor-duplicate',
               click:()=>{
                 let tem = editor.get()
-                  // tem = tem[path[0]]
                 for (let index = 0; index <= path.length - 1; index++) {
                   tem = tem[path[index]]
                 }
@@ -252,7 +268,6 @@ function copyToClipboard(text) {
           })
         }
         moveDuplicateAndRemoveToFront(items)
-
         return items
       },
       onEvent:(node, event)=> {
@@ -284,6 +299,15 @@ function copyToClipboard(text) {
             title: 'onFinish action',
             className: 'jsoneditor-type-object',
             field: 'onFinish',
+            value: {
+                'action': ''
+            }
+        },
+        {
+            text: '长按动作',
+            title: 'onLongPress action',
+            className: 'jsoneditor-type-object',
+            field: 'onLongPress',
             value: {
                 'action': ''
             }
@@ -328,6 +352,7 @@ function copyToClipboard(text) {
             value: []
         },
       ],
+      limitDragging:false,
       "navigationBar":false,
       "colorPicker":false,
       "autocomplete": {
@@ -337,7 +362,7 @@ function copyToClipboard(text) {
           //path: array
           // console.log(input);
           if (input === 'field') {
-            return ['menuWidth','buttonName','subTitle','onConfirm','onCancel','followAutoStyle','menuTitle','name','input','text','target', 'action', 'description','menu', 'source','color','content','title','markdown','command','commands','OCR','fillPattern','asTitle','tags','tag','find','multi','type','index','removeSource','prompt','user','system','trim','replace','merge','linkType','from','to','steps','range','url','engine','targets','onFinish','doubleClick','menuItems','autoClose','parentNote','mainMindMap','method','paste'];
+            return ['noteURL','menuWidth','buttonName','subTitle','onConfirm','onCancel','followAutoStyle','menuTitle','name','input','text','target', 'action', 'description','menu', 'source','color','content','title','markdown','command','commands','OCR','fillPattern','asTitle','tags','tag','find','multi','type','index','removeSource','prompt','user','system','trim','replace','merge','linkType','from','to','steps','range','url','engine','targets','onFinish','onLongPress','doubleClick','menuItems','autoClose','parentNote','mainMindMap','method','paste'];
           }
           if (input === 'value') {
             let parent = path.at(-1)
@@ -385,64 +410,90 @@ function copyToClipboard(text) {
         }
       }
         }
+
         const editor = new JSONEditor(container, options)
 
         // set json
         const initialJson0 = {}
         const initialJson = {
-  "action": "replace",
-  "target": "excerpt",
-  "steps": [
+  "action": "menu",
+  "menuItems": [
+    "👇🏻👇🏻👇🏻👇🏻编辑卡片",
     {
-      "reg": "\\，|、|,,|,",
-      "to": ","
+      "menuTitle": "1.开关MD",
+      "action": "mergeText",
+      "target": "excerptText",
+      "source": [
+        "{{excerptTexts}}",
+        "{{textComments}}"
+      ],
+      "removeSource": true,
+      "onFinish": {
+        "action": "toggleMarkdown"
+      }
     },
     {
-      "reg": "\\；|;",
-      "to": "; "
+      "menuTitle": "2.粘贴为评论",
+      "action": "paste",
+      "target": "default"
     },
     {
-      "reg": "“|”|-|’|\"|=|\\d+\\.|•|英汉翻译\\s*",
-      "to": ""
+      "menuTitle": "3.粘贴为追加摘录",
+      "action": "paste",
+      "target": "appendExcerpt"
+    },
+    "👇🏻👇🏻👇🏻👇🏻格式卡片",
+    {
+      "menuTitle": "1.清除格式",
+      "action": "command",
+      "command": "ClearFormat1"
     },
     {
-      "reg": "\\t",
-      "to": ""
+      "menuTitle": "2.评论转摘录",
+      "action": "mergeText",
+      "target": "excerptText",
+      "source": [
+        "{{excerptTexts}}",
+        "{{textComments}}"
+      ],
+      "removeSource": true
     },
     {
-      "reg": " +",
-      "to": " "
+      "menuTitle": "3.转换标题",
+      "action": "switchTitleOrExcerpt"
+    },
+    "👇🏻👇🏻👇🏻👇🏻学习卡片",
+    {
+      "menuTitle": "1.开始复习",
+      "action": "command",
+      "command": "FlashcardsPlay"
     },
     {
-      "reg": "\\s{2,}",
-      "to": "\n"
-    },
-{
-      "reg": "\\，|、|,,|,",
-      "to": ","
+      "menuTitle": "2.结束复习",
+      "action": "command",
+      "command": "FlashcardsStop"
     },
     {
-      "reg": "\\；|;",
-      "to": "; "
+      "menuTitle": "3.小窗显示卡片",
+      "action": "focus",
+      "target": "floatMindmap"
+    },
+    "👇🏻👇🏻👇🏻👇🏻系统设置",
+    {
+      "menuTitle": "1.开关工具栏",
+      "action": "toggleView",
+      "targets": [
+        "addonBar",
+        "mindmapToolbar"
+      ]
     },
     {
-      "reg": "“|”|-|’|\"|=|\\d+\\.|•|英汉翻译\\s*",
-      "to": ""
-    },
-    {
-      "reg": "\\t",
-      "to": ""
-    },
-    {
-      "reg": " +",
-      "to": " "
-    },
-    {
-      "reg": "\\s{2,}",
-      "to": "\n"
+      "menuTitle": "2.强制退出",
+      "action": "crash"
     }
   ]
 }
+
         editor.set(initialJson)
 
         // get json

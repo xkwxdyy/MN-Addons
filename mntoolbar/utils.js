@@ -6914,55 +6914,59 @@ static template(action) {
       config.content = "{{clipboardText}}"
       break;
     case "menu_comment":
-      config.action = "menu"
-      config.menuItems = [
-        {
-          "action" : "moveNewContentsByPopupTo",
-          "menuTitle" : "「自动」移动评论⬆️"
-        },
-        {
-          "action": "moveLastOneCommentByPopupTo",
-          "menuTitle": "移动「最后1️⃣条」评论",
-        },
-        {
-          "action": "moveLastTwoCommentByPopupTo",
-          "menuTitle": "移动「最后2️⃣条」评论",
-        },
-        {
-          "action": "moveLastThreeCommentByPopupTo",
-          "menuTitle": "移动「最后3️⃣条」评论",
-        },
-      ]
+      config.action = "moveNewContentsByPopupTo"
+      // config.doubleClick = "moveOldContentsByPopupTo"  // TODO: 把上面的内容移动下来，类似于移动上去
+      config.onLongPress = {
+        "action": "menu",
+        "menuItems":[
+          {
+            "action": "moveLastOneCommentByPopupTo",
+            "menuTitle": "移动「最后1️⃣条」评论",
+          },
+          {
+            "action": "moveLastTwoCommentByPopupTo",
+            "menuTitle": "移动「最后2️⃣条」评论",
+          },
+          {
+            "action": "moveLastThreeCommentByPopupTo",
+            "menuTitle": "移动「最后3️⃣条」评论",
+          },
+        ]
+      }
       break;
     case "menu_think":
-      config.action = "menu"
-      config.menuWidth =  330,
-      config.menuItems = [
-        {
-          "action" : "moveUpThoughtPoints",
-          "menuTitle" : "思考点⬆️"
-        },
-        {
-          "action" : "addThoughtPoint",
-          "menuTitle" : "➕思考点"
-        },
-        {
-          "action": "addThoughtPointAndMoveLastCommentToThought",
-          "menuTitle": "➕思考点&最后💬⬆️思考",
-        },
-        {
-          "action" : "moveLastCommentToThought",
-          "menuTitle" : "最后1️⃣💬⬆️思考"
-        },
-        {
-          "action" : "moveLastTwoCommentsToThought",
-          "menuTitle" : "最后2️⃣💬⬆️思考"
-        },
-        {
-          "action": "moveLastTwoCommentsInBiLinkNotesToThought",
-          "menuTitle": "双向链接的两张卡片同时最后2️⃣💬⬆️思考",
-        }
-      ]
+      config.action = "moveUpThoughtPointsToBottom"
+      // config.doubleClick = "moveUpThoughtPointsToTop" // 因为 action 也会执行，所以失效
+      config.onLongPress = {
+        "action": "menu",
+        "menuWidth": 330,
+        "menuItems":[
+          {
+            "action" : "moveUpThoughtPointsToTop",
+            "menuTitle" : "思考点🔝思考区「上方」"
+          },
+          {
+            "action" : "addThoughtPoint",
+            "menuTitle" : "➕思考点"
+          },
+          {
+            "action": "addThoughtPointAndMoveLastCommentToThought",
+            "menuTitle": "➕思考点&最后💬⬆️思考",
+          },
+          {
+            "action" : "moveLastCommentToThought",
+            "menuTitle" : "最后1️⃣💬⬆️思考"
+          },
+          {
+            "action" : "moveLastTwoCommentsToThought",
+            "menuTitle" : "最后2️⃣💬⬆️思考"
+          },
+          {
+            "action": "moveLastTwoCommentsInBiLinkNotesToThought",
+            "menuTitle": "双向链接的两张卡片同时最后2️⃣💬⬆️思考",
+          }
+        ]
+      }
       break;
     case "menu_study":
       config.action = "menu"
@@ -7402,10 +7406,10 @@ static template(action) {
           "action": "copyFocusNotesIdArr",
           "menuTitle": "复制卡片🆔",
         },
-        {
-          "action": "pasteAsChildNotesByIdArrFromClipboard",
-          "menuTitle": "复制卡片🆔后，剪切到选中卡片",
-        },
+        // {
+        //   "action": "pasteAsChildNotesByIdArrFromClipboard",
+        //   "menuTitle": "复制卡片🆔后，剪切到选中卡片",
+        // },
         {
           "action": "getNewClassificationInformation",
           "menuTitle": "更新卡片归类情况到选中的卡片中",
@@ -7476,14 +7480,6 @@ static template(action) {
               "menuTitle" : "📦 存档旧卡片"
             }
           ]
-        },
-        {
-          "action": "convertNoteToNonexcerptVersion",
-          "menuTitle": "➡️ 非摘录版本",
-        },
-        {
-          "action": "AddToReview",
-          "menuTitle": "加入复习",
         },
         "-----存档------",
         {
@@ -7637,6 +7633,28 @@ static template(action) {
       config.doubleClick = {
         "action": "mergeTemplateNotes"
       }
+      // TODO：预摘录模式下长按改成加入复习的制卡？
+      config.onLongPress = {
+        "action": "menu",
+        "menuItems": [
+          {
+            "action": "clearContentKeepExcerptWithTitle",
+            "menuTitle": "✅ 摘录 ✅ 标题",
+          },
+          {
+            "action": "clearContentKeepExcerpt",
+            "menuTitle": "✅ 摘录 ❌ 标题",
+          },
+          {
+            "action": "convertNoteToNonexcerptVersion",
+            "menuTitle": "➡️ 非摘录版本",
+          },
+          {
+            "action": "AddToReview",
+            "menuTitle": "加入复习",
+          },
+        ]
+      }
       break;
     default:
       break;
@@ -7656,12 +7674,12 @@ static getActions() {
     "custom9":{name:"思考",image:"think",description: this.template("menu_think")},
     "custom10":{name:"评论",image:"comment",description: this.template("menu_comment")},
     "custom2":{name:"学习",image:"study",description: this.template("menu_study")},
-    "custom11":{name:"工作流",image:"workflow",description: this.template("menu_workflow")},
     "custom3":{name:"增加模板",image:"addTemplate",description: this.template("addTemplate")},
     "custom5":{name:"卡片",image:"card",description: this.template("menu_card")},
     "custom4":{name:"文献",image:"reference",description: this.template("menu_reference")},
     "custom6":{name:"文本",image:"text",description: this.template("menu_text")},
     "snipaste":{name:"Snipaste",image:"snipaste",description:"Snipaste"},
+    "custom11":{name:"工作流",image:"workflow",description: this.template("menu_workflow")},
     "custom7":{name:"隐藏插件栏",image:"hideAddonBar",description: this.template("hideAddonBar")},
     "custom8":{name:"测试",image:"test",description: this.template("test")},
     "execute":{name:"execute",image:"execute",description:"let focusNote = MNNote.getFocusNote()\nMNUtil.showHUD(focusNote.noteTitle)"},

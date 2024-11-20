@@ -1898,7 +1898,11 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         break;
           
         case "AddToReview":
-          MNUtil.excuteCommand("AddToReview")
+          MNUtil.undoGrouping(()=>{
+            focusNotes.forEach(focusNote=>{
+              focusNote.addToReview()
+            })
+          })
           break;
         /**
          * 将剪切板中的 ID Arr 对应的卡片剪切过来作为选中卡片的子卡片
@@ -4512,11 +4516,24 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           }
         })
         break;
-      case "moveUpThoughtPoints":
+      case "moveUpThoughtPointsToBottom":
         MNUtil.undoGrouping(()=>{
           try {
             focusNotes.forEach(focusNote=>{
-              toolbarUtils.moveUpThoughtPoints(focusNote)
+              let newContentsIndexArr = focusNote.getNewContentIndexArr()
+              focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
+            })
+          } catch (error) {
+            MNUtil.showHUD(error)
+          }
+        })
+        break;
+      case "moveUpThoughtPointsToTop":
+        MNUtil.undoGrouping(()=>{
+          try {
+            focusNotes.forEach(focusNote=>{
+              let newContentsIndexArr = focusNote.getNewContentIndexArr()
+              focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think", false)
             })
           } catch (error) {
             MNUtil.showHUD(error)
@@ -4909,6 +4926,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
               focusNotes.forEach(focusNote=>{
                 // toolbarUtils.TemplateMakeNote(focusNote)
                 if (focusNote.excerptText) {
+                  focusNote.changeTitle()
                   focusNote.toNoExceptVersion()
                 }
                 focusNote.changeTitle()

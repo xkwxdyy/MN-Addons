@@ -4688,10 +4688,12 @@ class MNNote{
     classificationNote.changeTitle(type)
 
     /**
-     * [TODO：主要的处理]与定义类卡片进行链接，并防止后续归类后重新链接时导致归类卡片中定义卡片的链接被删除
+     * [Done：主要的处理]与定义类卡片进行链接，并防止后续归类后重新链接时导致归类卡片中定义卡片的链接被删除
      * 主要要修改 linkParentNote
      */
     classificationNote.linkParentNote()
+
+    classificationNote.focusInMindMap(0.2)
   }
 
   /**

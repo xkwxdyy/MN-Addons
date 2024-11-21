@@ -2751,7 +2751,7 @@ class MNNote{
           )
         ) {
           // type = this.getNoteTypeObjByClassificationParentNoteTitle().zh
-          // noteType = this.getNoteTypeZh()
+          noteType = this.getNoteTypeZh()
           parentNoteTitle = this.getClassificationParentNote().noteTitle.toClassificationNoteTitle()
           if (title.ifKnowledgeNoteTitle()) {
             /**
@@ -2763,10 +2763,10 @@ class MNNote{
              * 如果是临时卡片，就直接重新弄前缀
              */
             if (this.ifNoteTemporary()) {
-              if (type == "定义") {
-                this.title = "【" + type + "：" + parentNoteTitle + "】; " + title
+              if (noteType == "定义") {
+                this.title = "【" + noteType + "：" + parentNoteTitle + "】; " + title
               } else {
-                this.title = "【" + type + "：" + parentNoteTitle + "】" + title
+                this.title = "【" + noteType + "：" + parentNoteTitle + "】" + title
               }
             } else {
               /**
@@ -2787,26 +2787,26 @@ class MNNote{
                      * 此时说明没有修改旧前缀
                      * 那就直接按照新归类卡片来
                      */
-                    if (type == "定义") {
-                      this.title = "【" + type + "：" + parentNoteTitle + "】; " + title
+                    if (noteType == "定义") {
+                      this.title = "【" + noteType + "：" + parentNoteTitle + "】; " + title
                     } else {
-                      this.title = "【" + type + "：" + parentNoteTitle + "】" + title
+                      this.title = "【" + noteType + "：" + parentNoteTitle + "】" + title
                     }
                   } else if (prefix.startsWith(oldClassificationNoteTitle)) {
                     /**
                      * 此时说明修改了旧前缀，此时需要获取到修改的部分
                      */
                     let newContent = prefix.slice(oldClassificationNoteTitle.length)
-                    if (type == "定义") {
-                      this.title = "【" + type + "：" + parentNoteTitle + newContent + "】; " + title
+                    if (noteType == "定义") {
+                      this.title = "【" + noteType + "：" + parentNoteTitle + newContent + "】; " + title
                     } else {
-                      this.title = "【" + type + "：" + parentNoteTitle + newContent + "】" + title
+                      this.title = "【" + noteType + "：" + parentNoteTitle + newContent + "】" + title
                     }
                   } else {
-                    if (type == "定义") {
-                      this.title = "【" + type + "：" + parentNoteTitle + "】; " + title
+                    if (noteType == "定义") {
+                      this.title = "【" + noteType + "：" + parentNoteTitle + "】; " + title
                     } else {
-                      this.title = "【" + type + "：" + parentNoteTitle + "】" + title
+                      this.title = "【" + noteType + "：" + parentNoteTitle + "】" + title
                     }
                   }
                 } else {
@@ -2814,10 +2814,10 @@ class MNNote{
                    * 否则说明原归类卡片不存在了
                    * 那就直接按照新归类卡片来
                    */
-                  if (type == "定义") {
-                    this.title = "【" + type + "：" + parentNoteTitle + "】; " + title
+                  if (noteType == "定义") {
+                    this.title = "【" + noteType + "：" + parentNoteTitle + "】; " + title
                   } else {
-                    this.title = "【" + type + "：" + parentNoteTitle + "】" + title
+                    this.title = "【" + noteType + "：" + parentNoteTitle + "】" + title
                   }
                 }
               }

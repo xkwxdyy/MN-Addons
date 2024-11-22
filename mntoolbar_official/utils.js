@@ -1,3 +1,5 @@
+
+
 class Frame{
   static gen(x,y,width,height){
     return MNUtil.genFrame(x, y, width, height)
@@ -1541,31 +1543,39 @@ static insertSnippetToTextView(text, textView) {
       })
       return
     }
-    if (des.type) {
-      let type = Array.isArray(des.type) ? des.type : [des.type]
+    if (des.types || des.type) {
+      let types = Array.isArray(des.type) ? des.type : [des.type]
+      if (des.types) {
+        types = Array.isArray(des.types) ? des.types : [des.types]
+      }
       MNUtil.undoGrouping(()=>{
         focusNotes.forEach(note=>{
-          if (note.comments.length) {
-            if (des.multi) {
-              let commentsToRemove = []
-              note.comments.forEach((comment,index)=>{
-                if (type.includes(comment.type)) {
-                  commentsToRemove.push(index)
-                }
-              })
-              if (!commentsToRemove.length) {
-                MNUtil.showHUD("No match")
-                return
+          if (!note.comments.length) {
+            return
+          }
+          if (des.multi) {
+            let commentsToRemove = []
+            note.comments.forEach((comment,index)=>{
+              if (MNComment.commentBelongsToType(comment, types)) {
+                commentsToRemove.push(index)
               }
-              note.removeCommentsByIndices(commentsToRemove)
-            }else{
-              let index = note.comments.findIndex(comment=>type.includes(comment.type))
-              if (index < 0) {
-                MNUtil.showHUD("No match")
-                return
-              }
-              note.removeCommentByIndex(index)
+            })
+            if (!commentsToRemove.length) {
+              MNUtil.showHUD("No match")
+              return
             }
+            note.removeCommentsByIndices(commentsToRemove)
+          }else{
+            let index = note.comments.findIndex(comment=>{
+              if (MNComment.commentBelongsToType(comment, types)) {
+                return true
+              }
+            })
+            if (index < 0) {
+              MNUtil.showHUD("No match")
+              return
+            }
+            note.removeCommentByIndex(index)
           }
         })
       })
@@ -2706,10 +2716,9 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
   }
   static switchTitleOrExcerpt() {
     let focusNotes = MNNote.getFocusNotes()
+    let success = true
     MNUtil.undoGrouping(()=>{
     try {
-      
-
       for (const note of focusNotes) {
         let title = note.noteTitle ?? ""
         let text = note.excerptText ?? ""
@@ -2732,6 +2741,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
                 break;
               default:
                 MNUtil.showHUD("Unsupported comment type: "+firstComment.type)
+                success = false
                 break;
             }
           }
@@ -2753,8 +2763,10 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       }
     } catch (error) {
       this.addErrorLog(error, "switchTitleOrExcerpt")
+      success = false
     }
     })
+    return success
   }
   /**
    * 
@@ -3078,6 +3090,19 @@ static getButtonFrame(button){
       "🔨 trigger button"
     ]
   }
+  static extractJSONFromMarkdown(markdown) {
+    // 使用正则表达式匹配被```JSON```包裹的内容
+    const regex = /```JSON([\s\S]*?)```/g;
+    const matches = regex.exec(markdown);
+    
+    // 提取匹配结果中的JSON字符串部分，并去掉多余的空格和换行符
+    if (matches && matches[1]) {
+        const jsonString = matches[1].trim();
+        return JSON.parse(jsonString);
+    } else {
+        return undefined;
+    }
+  }
 }
 
 class toolbarConfig {
@@ -3145,6 +3170,7 @@ class toolbarConfig {
   "focusCurrentNote",
   "draftCurrentNote",
   "collapseBlank",
+  "collapseBlankOnPage",
   "setBlankLayer",
   "insertBlank",
   "insertTranslation",
@@ -3194,6 +3220,7 @@ class toolbarConfig {
     copy:{enabled:false,target:"",name:"copy"},
     insertBlank:{enabled:false,target:"",name:"insertBlank"},
     collapseBlank:{enabled:false,target:"",name:"collapseBlank"},
+    collapseBlankOnPage:{enabled:false,target:"",name:"collapseBlankOnPage"},
     copyOCR:{enabled:false,target:"",name:"copyOCR"},
     foldHighlight:{enabled:false,target:"",name:"foldHighlight"},
     addToTOC:{enabled:false,target:"",name:"addToTOC"},
@@ -3250,7 +3277,7 @@ class toolbarConfig {
   static imageConfigs = {}
   static imageScale = {}
   static defaultSyncConfig = {
-    iCloudSync: true,
+    iCloudSync: false,
     lastSyncTime: 0,
     lastModifyTime: 0
   }
@@ -3258,12 +3285,15 @@ class toolbarConfig {
    * @type {{iCloudSync:boolean,lastSyncTime:number,lastModifyTime:number}}
    */
   static syncConfig = {}
+  /**
+   * @type {NSUbiquitousKeyValueStore}
+   */
+  static cloudStore
   // static defaultConfig = {showEditorWhenEditingNote:false}
   static init(mainPath){
     // this.config = this.getByDefault("MNToolbar_config",this.defaultConfig)
     try {
     this.mainPath = mainPath
-    // this.cloudStore = NSUbiquitousKeyValueStore.defaultStore()
     this.dynamic = this.getByDefault("MNToolbar_dynamic",false)
     this.addonLogos = this.getByDefault("MNToolbar_addonLogos",{})
     this.windowState = this.getByDefault("MNToolbar_windowState",this.defaultWindowState)
@@ -3311,8 +3341,10 @@ class toolbarConfig {
     this.popupConfig = this.getByDefault("MNToolbar_popupConfig", this.defaultPopupReplaceConfig)
     this.syncConfig = this.getByDefault("MNToolbar_syncConfig", this.defaultSyncConfig)
     this.initImage()
-    // this.readCloudConfig()
-    // this.writeCloudConfig()
+  }
+  static initCloudStore(){
+    this.cloudStore = NSUbiquitousKeyValueStore.defaultStore()
+    this.readCloudConfig(false)
   }
   static getPopupConfig(key){
     if (this.popupConfig[key] !== undefined) {
@@ -3363,20 +3395,45 @@ class toolbarConfig {
     }
     return config
   }
-  static readCloudConfig(){
+  static importConfig(config){
+    this.windowState = config.windowState
+    this.syncConfig = config.syncConfig
+    this.dynamic = config.dynamic
+    this.addonLogos = config.addonLogos
+    this.action = config.actionKeys
+    this.actions = config.actions
+    this.buttonConfig = config.buttonConfig
+    this.popupConfig = config.popupConfig
+  }
+  static async readCloudConfig(msg = true,alert = false){
+    if(!this.syncConfig.iCloudSync){
+      return false
+    }
+    if (!toolbarUtils.checkSubscribe(false,msg,true)) {
+      return false
+    }
+    if (!this.cloudStore) {
+      this.cloudStore = NSUbiquitousKeyValueStore.defaultStore()
+    }
     try {
-      // let keyValueStore = NSUbiquitousKeyValueStore.defaultStore()
-      // keyValueStore.removeObjectForKey("MNToolbar_windowState")
-      // keyValueStore.setObjectForKey(this.windowState,"MNToolbar_windowState")
+      // this.cloudStore.removeObjectForKey("MNToolbar_totalConfig")
       let cloudConfig = this.cloudStore.objectForKey("MNToolbar_totalConfig")
+      // MNUtil.copy(cloudConfig)
       if (cloudConfig && cloudConfig.syncConfig) {
         let same = this.deepEqual(cloudConfig, this.getAllConfig())
         if (same) {
+          // MNUtil.showHUD("No change")
           return false
         }
         // MNUtil.copyJSON(cloudConfig)
         if (this.syncConfig.lastSyncTime < cloudConfig.syncConfig.lastSyncTime ) {
           // MNUtil.copy("Import from iCloud")
+          if (alert) {
+            let confirm = await MNUtil.confirm("Import from iCloud?","是否导入iCloud配置？")
+            if (!confirm) {
+              return false
+            }
+          }
           this.windowState = cloudConfig.windowState
           this.syncConfig = cloudConfig.syncConfig
           this.dynamic = cloudConfig.dynamic
@@ -3385,29 +3442,53 @@ class toolbarConfig {
           this.actions = cloudConfig.actions
           this.buttonConfig = cloudConfig.buttonConfig
           this.popupConfig = cloudConfig.popupConfig
-          this.writeCloudConfig()
+          this.save()
+          if (msg) {
+            MNUtil.showHUD("Importing...")
+          }
           return true
 
               // self.setButtonText(allActions,self.selectedItem)
     // self.toolbarController.setToolbarButton(allActions)
-          // MNUtil.showHUD("Import from iCloud")
         }else{
+          if (alert) {
+            let confirm = await MNUtil.confirm("Uploading to iCloud?","是否上传配置到iCloud？")
+            if (!confirm) {
+              return false
+            }
+          }
           this.writeCloudConfig()
-          // MNUtil.copy("Upload to iCloud")
+          if (msg) {
+            MNUtil.showHUD("Uploading...")
+          }
           return false
         }
       }else{
+        let confirm = await MNUtil.confirm("Empty config in iCloud, uploading?","iCloud配置为空,是否上传？")
+        if (!confirm) {
+          return false
+        }
         this.writeCloudConfig()
-        // MNUtil.copy("No cloud config, write to cloud")
+        if (msg) {
+          MNUtil.showHUD("No config in iCloud, uploading...")
+        }
         return false
       }
     } catch (error) {
-      MNUtil.copy(error.toString())
-      // toolbarUtils.addErrorLog(error, "readCloudConfig")
+      toolbarUtils.addErrorLog(error, "readCloudConfig")
       return false
     }
   }
-  static writeCloudConfig(){
+  static writeCloudConfig(msg = true){
+    if(!this.syncConfig.iCloudSync){
+      return
+    }
+    if (!toolbarUtils.checkSubscribe(false,msg,true)) {
+      return
+    }
+    if (!this.cloudStore) {
+      this.cloudStore = NSUbiquitousKeyValueStore.defaultStore()
+    }
     this.syncConfig.lastSyncTime = Date.now()
     this.syncConfig.lastModifyTime = Date.now()
     let config = {
@@ -3698,6 +3779,16 @@ static getActions() {
     "custom7":{name:"Custom 7",image:"custom7",description: this.template("setContent")},
     "custom8":{name:"Custom 8",image:"custom8",description: this.template("addComment")},
     "custom9":{name:"Custom 9",image:"custom9",description: this.template("removeComment")},
+    "custom10":{name:"Custom 10",image:"custom10",description: this.template("cloneAndMerge")},
+    "custom11":{name:"Custom 11",image:"custom11",description: this.template("cloneAndMerge")},
+    "custom12":{name:"Custom 12",image:"custom12",description: this.template("link")},
+    "custom13":{name:"Custom 13",image:"custom13",description: this.template("clearContent")},
+    "custom14":{name:"Custom 14",image:"custom14",description: this.template("copy")},
+    "custom15":{name:"Custom 15",image:"custom15",description: this.template("addChildNote")},
+    "custom16":{name:"Custom 16",image:"custom16",description: this.template("showInFloatWindow")},
+    "custom17":{name:"Custom 17",image:"custom17",description: this.template("setContent")},
+    "custom18":{name:"Custom 18",image:"custom18",description: this.template("addComment")},
+    "custom19":{name:"Custom 19",image:"custom19",description: this.template("removeComment")},
     "ocr":{name:"ocr",image:"ocr",description:JSON.stringify({target:"comment",source:"default"})},
     "edit":{name:"edit",image:"edit",description:JSON.stringify({showOnNoteEdit:false})},
     "execute":{name:"execute",image:"execute",description:"MNUtil.showHUD('Hello world')"},
@@ -3713,7 +3804,21 @@ static getDefaultActionKeys() {
   let actions = this.getActions()
   return Object.keys(actions)
 }
-static save(key,value = undefined) {
+static save(key = undefined,value = undefined) {
+  if(key === undefined){
+    let defaults = NSUserDefaults.standardUserDefaults()
+    defaults.setObjectForKey(this.windowState,"MNToolbar_windowState")
+    defaults.setObjectForKey(this.dynamic,"MNToolbar_dynamic")
+    defaults.setObjectForKey(this.action,"MNToolbar_action")
+    defaults.setObjectForKey(this.actions,"MNToolbar_actionConfig")
+    defaults.setObjectForKey(this.addonLogos,"MNToolbar_addonLogos")
+    defaults.setObjectForKey(this.buttonConfig,"MNToolbar_buttonConfig")
+    defaults.setObjectForKey(this.popupConfig,"MNToolbar_popupConfig")
+    defaults.setObjectForKey(this.imageScale,"MNToolbar_imageScale")
+    defaults.setObjectForKey(this.syncConfig,"MNToolbar_syncConfig")
+    this.writeCloudConfig(false)
+    return
+  }
   if (value) {
     NSUserDefaults.standardUserDefaults().setObjectForKey(value,key)
   }else{
@@ -3743,10 +3848,14 @@ static save(key,value = undefined) {
       case "MNToolbar_imageScale":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.imageScale,key)
         break;
+      case "MNToolbar_syncConfig":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.syncConfig,key)
+        break;
       default:
         toolbarUtils.showHUD("Not supported")
         break;
     }
+    this.writeCloudConfig(false)
     // this.readCloudConfig()
   }
   NSUserDefaults.standardUserDefaults().synchronize()

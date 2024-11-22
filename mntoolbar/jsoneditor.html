@@ -38,6 +38,16 @@ body {
         type:"boolean",
         default:false
       },
+      "commandDelay":{
+        "title": "delay",
+        "type": "number",
+        "enum": [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2,2.3,2.4,2.5,2.6,2.7,2.8,2.9,3.0],
+      },
+      "delay":{
+        "title": "delay",
+        "type": "number",
+        "enum": [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2,2.3,2.4,2.5,2.6,2.7,2.8,2.9,3.0],
+      },
       "tag": {
         "title": "tag",
         "type": "string"
@@ -87,9 +97,48 @@ body {
         "enum": [-1,0,1,2],
       },
       "type": {
-        "title": "command",
+        "title": "type",
         "type": "string",
-        "enum":['TextNote','HtmlNote','PaintNote','LinkNote']
+        "enum":['TextNote','HtmlNote','PaintNote','LinkNote','tagComment','linkComment','markdownComment','textComment','HtmlComment','blankTextComment','blankImageComment','mergedImageCommentWithDrawing','mergedImageComment','mergedTextComment','imageCommentWithDrawing','imageComment','drawingComment'],
+      },
+      "types": {
+        "title": "types",
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum":['TextNote','HtmlNote','PaintNote','LinkNote','tagComment','linkComment','markdownComment','textComment','HtmlComment','blankTextComment','blankImageComment','mergedImageCommentWithDrawing','mergedImageComment','mergedTextComment','imageCommentWithDrawing','imageComment','drawingComment']
+        }
+      },
+      "find":{
+        "title": "find",
+        "type": "object",
+        "properties": {
+          "include": {
+            "title": "include",
+            "type": "string",
+          },
+          "exclude": {
+            "title": "exclude",
+            "type": "string",
+          },
+          "reg": {
+            "title": "reg",
+            "type": "string",
+          },
+          "type": {
+            "title": "type",
+            "type": "string",
+            "enum":['TextNote','HtmlNote','PaintNote','LinkNote','tagComment','linkComment','markdownComment','textComment','HtmlComment','blankTextComment','blankImageComment','mergedImageCommentWithDrawing','mergedImageComment','mergedTextComment','imageCommentWithDrawing','imageComment','drawingComment']
+          },
+          "types": {
+            "title": "types",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum":['TextNote','HtmlNote','PaintNote','LinkNote','tagComment','linkComment','markdownComment','textComment','HtmlComment','blankTextComment','blankImageComment','mergedImageCommentWithDrawing','mergedImageComment','mergedTextComment','imageCommentWithDrawing','imageComment','drawingComment']
+            }
+          },
+        }
       },
       "command": {
         "title": "command",
@@ -279,6 +328,90 @@ function copyToClipboard(text) {
         if (event.type === 'change') {
           // console.log("change");
           // editor.refresh()
+          let config = editor.get()
+          let needSet = false
+          switch (config.action) {
+            case "copy":
+              if (!("target" in config)) {
+                config.target = "auto"
+                needSet = true
+              } 
+              break;
+            case "addComment":
+              if (!("content" in config)) {
+                config.content = ""
+                needSet = true
+              } 
+              break;
+            case "menu":
+              if (!("menuItems" in config)) {
+                config.menuItems = []
+                needSet = true
+              } 
+              break;
+            case "mergeText":
+              if (!("source" in config)) {
+                config.source = []
+                needSet = true
+              } 
+              if (!("target" in config)) {
+                config.target = "excerptText"
+                needSet = true
+              } 
+              break;
+            case "ocr":
+              if(!("target" in config)){
+                config.target = "excerpt"
+                needSet = true
+              }
+              break;
+            case "shortcut":{
+              if (!("name" in config)) {
+                config.name = ""
+                needSet = true
+              }
+            }
+            case "replace":
+              if(!("target" in config)){
+                config.target = "excerpt"
+                needSet = true
+              }
+              break;
+            case "openURL":
+              if(!("url" in config)){
+                config.url = ""
+                needSet = true
+              }
+              break;
+            case "triggerButton":
+              if(!("buttonName" in config)){
+                config.buttonName = ""
+                needSet = true
+              }
+              break;
+            case "confirm":
+              if(!("title" in config)){
+                config.title = ""
+                needSet = true
+              }
+              if(!("onConfirm" in config)){
+                config.onConfirm = {
+                  "action": "",
+                }
+                needSet = true
+              }
+              break;
+            case "showMessage":
+              if(!("content" in config)){
+                config.content = ""
+                needSet = true
+              }
+            default:
+              break;
+          }
+          if (needSet) {
+            editor.set(config)
+          }
           removeFocus()
           return
         }
@@ -362,7 +495,7 @@ function copyToClipboard(text) {
           //path: array
           // console.log(input);
           if (input === 'field') {
-            return ['noteURL','menuWidth','buttonName','subTitle','onConfirm','onCancel','followAutoStyle','menuTitle','name','input','text','target', 'action', 'description','menu', 'source','color','content','title','markdown','command','commands','OCR','fillPattern','asTitle','tags','tag','find','multi','type','index','removeSource','prompt','user','system','trim','replace','merge','linkType','from','to','steps','range','url','engine','targets','onFinish','onLongPress','doubleClick','menuItems','autoClose','parentNote','mainMindMap','method','paste'];
+            return ['find','delay','noteURL','menuWidth','buttonName','subTitle','onConfirm','onCancel','followAutoStyle','menuTitle','name','input','text','target', 'action', 'description','menu', 'source','color','content','title','markdown','command','commands','OCR','fillPattern','asTitle','tags','tag','find','multi','type','index','removeSource','prompt','user','system','trim','replace','merge','linkType','from','to','steps','range','url','engine','targets','onFinish','onLongPress','doubleClick','menuItems','autoClose','parentNote','mainMindMap','method','paste'];
           }
           if (input === 'value') {
             let parent = path.at(-1)
@@ -414,8 +547,8 @@ function copyToClipboard(text) {
         const editor = new JSONEditor(container, options)
 
         // set json
-        const initialJson0 = {}
-        const initialJson = {
+        const initialJson = {}
+        const initialJson0 = {
   "action": "menu",
   "menuItems": [
     "👇🏻👇🏻👇🏻👇🏻编辑卡片",

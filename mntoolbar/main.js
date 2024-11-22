@@ -32,12 +32,12 @@ JSB.newAddon = function (mainPath) {
         MNUtil.addObserver(self, 'onToggleDynamic:', 'toggleDynamic')
         MNUtil.addObserver(self, 'onTogglePreprocessMode:', 'togglePreprocessMode')
         MNUtil.addObserver(self, 'onClosePopupMenuOnNote:', 'ClosePopupMenuOnNote')
-        // MNUtil.addObserver(self, 'onRemoveMNToolbar:', 'removeMNToolbar')
+        MNUtil.addObserver(self, 'onRefreshView:', 'refreshView')
         MNUtil.addObserver(self, 'onToggleMindmapToolbar:', 'toggleMindmapToolbar')
         MNUtil.addObserver(self, 'onRefreshToolbarButton:', 'refreshToolbarButton')
         MNUtil.addObserver(self, 'onOpenToolbarSetting:', 'openToolbarSetting')
         MNUtil.addObserver(self, 'onTextDidBeginEditing:', 'UITextViewTextDidBeginEditingNotification')
-        // MNUtil.addObserver(self, 'onTest:', 'cloudConfigChange')
+        MNUtil.addObserver(self, 'onCloudConfigChange:', 'NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI')
         // MNUtil.addObserver(self, 'onAddonBroadcast:', 'AddonBroadcast');
         try {
           
@@ -79,6 +79,7 @@ JSB.newAddon = function (mainPath) {
           self.addonController.notebookid = notebookid
           self.notebookid = notebookid
           toolbarUtils.notebookId = notebookid
+          toolbarUtils.initCloudStore()
         }
         MNUtil.delay(0.2).then(()=>{
           MNUtil.studyView.becomeFirstResponder(); //For dismiss keyboard on iOS
@@ -463,44 +464,51 @@ JSB.newAddon = function (mainPath) {
         }
 
       },
-      onAddonBroadcast: function (sender) {
+      onRefreshView: function (sender) {
+        let self = getMNToolbarClass()
+        if (typeof MNUtil === 'undefined') return 
+        if (self.window !== MNUtil.currentWindow) {
+          return
+        } 
+        self.settingController.refreshView("popupEditView")
+        self.settingController.refreshView("advanceView")
+      },
+      onCloudConfigChange: async function (sender) {
+        //这个会闪退
+        // Application.sharedInstance().showHUD("message", self.window, 2)
+        let self = getMNToolbarClass()
         if (typeof MNUtil === 'undefined') return
+
+        // if (!MNUtil.app.checkNotifySenderInWindow(sender, self.window)){
+        //   MNUtil.showHUD("reject")
+        //   return; // Don't process message from other window
+        // } 
+        
         if (self.window !== MNUtil.currentWindow) {
           return
         }
-        let message = sender.userInfo.message
-        if (/onCloudConfigChange/.test(message)) {
-          MNUtil.showHUD(message)
-          // toolbarConfig.readCloudConfig()
-        }
-      },
-
-      onCloudConfigChange: function (sender) {
-        //这个会闪退
-        Application.sharedInstance().showHUD("message", self.window, 2)
-        // if (typeof MNUtil === 'undefined') return
-        // if (self.window !== MNUtil.currentWindow) {
-        //   return
-        // }
             // toolbarUtils.addErrorLog("error", "onCloudConfigChange")
         // let res =  getAllProperties(sender.userInfo)
         // MNUtil.copyJSON(res)
-        // let shouldUpdate = toolbarConfig.readCloudConfig()
-        // if (shouldUpdate) {
-        //   try {
-        //     // MNUtil.copy("update")
-        //   let allActions = toolbarConfig.getAllActions()
-        //   // MNUtil.copyJSON(allActions)
-        //   // if (self.settingController) {
-        //   //   self.settingController.setButtonText(allActions,self.settingController.selectedItem)
-        //   // }
-        //   // self.addonController.view.hidden = true
-        //   self.addonController.setToolbarButton(allActions)
-        //   } catch (error) {
-        //     MNUtil.copy(error.toString())
-        //     // toolbarUtils.addErrorLog(error, "onCloudConfigChange")
-        //   }
-        // }
+        if (!toolbarUtils.checkSubscribe(false,false,true)) {
+          return false
+        }
+        self.ensureView()
+        let shouldUpdate = await toolbarConfig.readCloudConfig()
+        if (shouldUpdate) {
+          let allActions = toolbarConfig.getAllActions()
+          // MNUtil.copyJSON(allActions)
+          if (self.settingController) {
+            self.settingController.setButtonText(allActions,self.settingController.selectedItem)
+          }
+          // self.addonController.view.hidden = true
+          if (self.addonController) {
+            self.addonController.setToolbarButton(allActions)
+          }else{
+            MNUtil.showHUD("No addonController")
+          }
+          MNUtil.postNotification("refreshView",{})
+        }
         
         // MNUtil.openURL("marginnote4app://addon/onCloudConfigChange")
       },

@@ -1517,12 +1517,13 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         break;
       case "command":
         let urlPre = "marginnote4app://command/"
+        let delay = des.commandDelay ?? 0.1
         if (des.commands) {
           for (let i = 0; i < des.commands.length; i++) {
             const command = des.commands[i];
             let url = urlPre+command
             MNUtil.openURL(url)
-            await MNUtil.delay(0.1)
+            await MNUtil.delay(delay)
           }
           break
         }
@@ -5253,9 +5254,10 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
     }else{
       toolbarUtils.dismissPopupMenu(button.menu)
     }
+    let delay = des.delay ?? 0.5
     if (success && "onSuccess" in des) {
       let finishAction = des.onSuccess
-      await MNUtil.delay(0.5)
+      await MNUtil.delay(delay)
       await this.customActionByDes(button, finishAction)
       return new Promise((resolve, reject) => {
         resolve()
@@ -5263,7 +5265,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
     } 
     if (!success && "onFailed" in des) {
       let finishAction = des.onFailed
-      await MNUtil.delay(0.5)
+      await MNUtil.delay(delay)
       await this.customActionByDes(button, finishAction)
       return new Promise((resolve, reject) => {
         resolve()
@@ -5271,7 +5273,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
     }
     if ("onFinish" in des) {
       let finishAction = des.onFinish
-      await MNUtil.delay(0.5)
+      await MNUtil.delay(delay)
       await this.customActionByDes(button, finishAction)
       return new Promise((resolve, reject) => {
         resolve()
@@ -5578,6 +5580,7 @@ toolbarController.prototype.customActionMenu =  function (button,des) {
     return false
   }
 }
+
 /**
  * 
  * @param {UIView} view 
@@ -5604,7 +5607,6 @@ toolbarController.prototype.addLongPressGesture = function (view,selector) {
   // }
   view.addGestureRecognizer(gestureRecognizer)
 }
-
 /**
  * 
  * @param {UIView} view 

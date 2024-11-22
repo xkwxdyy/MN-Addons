@@ -673,8 +673,120 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     }else{
       MNUtil.showHUD("Invalid hex color")
     }
-  }
-  
+  },
+  toggleICloudSync:async function () {
+    if (!toolbarUtils.checkSubscribe(false,true,true)) {
+      return
+    }
+    let iCloudSync = self.iCloudButton.currentTitle === "iCloud Sync: ✅"
+    toolbarConfig.syncConfig.iCloudSync = !iCloudSync
+    self.iCloudButton.setTitleForState("iCloud Sync: "+(toolbarConfig.syncConfig.iCloudSync? "✅":"❌"),0)
+    MNButton.setColor(self.iCloudButton, toolbarConfig.syncConfig.iCloudSync?"#457bd3":"#9bb2d6",0.8)
+    if (toolbarConfig.syncConfig.iCloudSync) {
+      let shouldUpdate = await toolbarConfig.readCloudConfig(true,true)
+      if (shouldUpdate) {
+        let allActions = toolbarConfig.getAllActions()
+        self.setButtonText(allActions,self.selectedItem)
+        if (self.toolbarController) {
+          self.toolbarController.setToolbarButton(allActions)
+        }else{
+          MNUtil.showHUD("No toolbarController")
+        }
+        MNUtil.postNotification("refreshView",{})
+      }
+    }
+    toolbarConfig.save("MNToolbar_syncConfig")
+  },
+  exportConfigTapped:function(button){
+    var commandTable = [
+      {title:'To clipborad',object:self,selector:'exportConfig:',param:"clipborad"},
+      {title:'To currentNote',object:self,selector:'exportConfig:',param:"currentNote"},
+      {title:'To file',object:self,selector:'exportConfig:',param:"file"},
+    ]
+    self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,250,2)
+  },
+  exportConfig:function(param){
+    self.checkPopoverController()
+    if (!toolbarUtils.checkSubscribe(true)) {
+      return
+    }
+    let allConfig = toolbarConfig.getAllConfig()
+    switch (param) {
+      case "clipborad":
+        MNUtil.copyJSON(allConfig)
+        break;
+      case "currentNote":
+        let focusNote = MNNote.getFocusNote()
+        if(focusNote){
+          MNUtil.undoGrouping(()=>{
+            focusNote.noteTitle = "MNToolbar_Config"
+            focusNote.excerptText = "```JSON\n"+JSON.stringify(allConfig,null,2)+"\n```"
+            focusNote.excerptTextMarkdown = true
+          })
+        }else{
+          MNUtil.showHUD("Invalid note")
+        }
+        break;
+      case "file":
+        MNUtil.writeJSON(toolbarConfig.mainPath+"/toolbar_config.json",allConfig)
+        MNUtil.saveFile(toolbarConfig.mainPath+"/toolbar_config.json",["public.json"])
+        break;
+      default:
+        break;
+    }
+  },
+  importConfigTapped:function(button){
+    var commandTable = [
+      {title:'From clipborad',object:self,selector:'importConfig:',param:"clipborad"},
+      {title:'From currentNote',object:self,selector:'importConfig:',param:"currentNote"},
+      {title:'From file',object:self,selector:'importConfig:',param:"file"},
+    ]
+    self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,250,2)
+  },
+  importConfig:async function(param){
+    self.checkPopoverController()
+    if (!toolbarUtils.checkSubscribe(true)) {
+      return
+    }
+    // MNUtil.showHUD(param)
+    let config = undefined
+    switch (param) {
+      case "clipborad":
+        if(MNUtil){
+          config = JSON.parse(MNUtil.clipboardText)
+        }
+        break;
+      case "currentNote":
+        let focusNote = MNNote.getFocusNote()
+        if(focusNote && focusNote.noteTitle == "MNToolbar_Config"){
+          config = toolbarUtils.extractJSONFromMarkdown(focusNote.excerptText)
+          // config = focusNote.excerptText
+          // MNUtil.copy(config)
+        }else{
+          MNUtil.showHUD("Invalid note")
+        }
+        break;
+      case "file":
+        let path = await MNUtil.importFile(["public.json"])
+        config = MNUtil.readJSON(path)
+        break;
+      default:
+        break;
+    }
+    toolbarConfig.importConfig(config)
+    let allActions = toolbarConfig.getAllActions()
+    // MNUtil.copyJSON(allActions)
+    self.setButtonText(allActions,self.selectedItem)
+    // self.addonController.view.hidden = true
+    if (self.toolbarController) {
+      self.toolbarController.setToolbarButton(allActions)
+    }else{
+      MNUtil.showHUD("No addonController")
+    }
+    toolbarConfig.save()
+    MNUtil.postNotification("refreshView",{})
+    // MNUtil.copyJSON(config)
+  },
 });
 settingController.prototype.init = function () {
   this.custom = false;
@@ -835,6 +947,9 @@ settingController.prototype.settingViewLayout = function (){
     Frame.set(this.OCRButton, 15+(width-25)/2, 95, (width-25)/2,35)
     Frame.set(this.hexInput, 10, 150, width-135,35)
     Frame.set(this.hexButton, width-120, 150, 110,35)
+    Frame.set(this.iCloudButton, 10, 190, 150,35)
+    Frame.set(this.exportButton, 165, 190, (width-180)/2,35)
+    Frame.set(this.importButton, 170+(width-180)/2, 190, (width-180)/2,35)
 }
 
 
@@ -960,6 +1075,23 @@ try {
   this.hexInput.text = toolbarConfig.buttonConfig.color
   MNButton.setColor(this.hexButton, toolbarConfig.checkLogoStatus("MNOCR")?"#457bd3":"#9bb2d6",0.8)
 
+  this.createButton("iCloudButton","toggleICloudSync:","advanceView")
+  let iCloudSync = toolbarUtils.checkSubscribe(false,false,true)
+  if (iCloudSync) {
+    iCloudSync = toolbarConfig.syncConfig?.iCloudSync
+  }
+  
+  MNButton.setColor(this.iCloudButton, iCloudSync?"#457bd3":"#9bb2d6",0.8)
+  MNButton.setTitle(this.iCloudButton, "iCloud Sync: "+(iCloudSync? "✅":"❌"),undefined, true)
+
+  this.createButton("exportButton","exportConfigTapped:","advanceView")
+  MNButton.setTitle(this.exportButton, "Export",undefined, true)
+  MNButton.setColor(this.exportButton, "#457bd3",0.8)
+
+  this.createButton("importButton","importConfigTapped:","advanceView")
+  MNButton.setColor(this.importButton, "#457bd3",0.8)
+  MNButton.setTitle(this.importButton, "Import",undefined, true)
+
   this.createScrollView("scrollview", "configView")
   // this.scrollview = UIScrollView.new()
   // this.configView.addSubview(this.scrollview)
@@ -1041,7 +1173,7 @@ try {
   this.saveButton.width = 65
   this.saveButton.height = 35
 
-  this.createButton("resizeButton",undefined,"configView")
+  this.createButton("resizeButton",undefined,"settingView")
   this.resizeButton.setImageForState(toolbarConfig.curveImage,0)
   MNButton.setConfig(this.resizeButton, {cornerRadius:20,color:"#ffffff",alpha:0.})
   this.resizeButton.width = 25
@@ -1185,6 +1317,60 @@ settingController.prototype.refreshLayout = function () {
     this.lastLength = this.words.length
     this.scrollview.contentSize= {width:viewFrame.width,height:initY+50}
   
+  }
+}
+
+settingController.prototype.refreshView = function (name) {
+  switch (name) {
+    case "advanceView":
+        this.editorButton.setTitleForState("MNEditor: "+(toolbarConfig.checkLogoStatus("MNEditor")?"✅":"❌"),0)
+        MNButton.setColor(this.editorButton, toolbarConfig.checkLogoStatus("MNEditor")?"#457bd3":"#9bb2d6",0.8)
+
+        this.chatAIButton.setTitleForState("MNChatAI: "+(toolbarConfig.checkLogoStatus("MNChatAI")?"✅":"❌"),0)
+        MNButton.setColor(this.chatAIButton, toolbarConfig.checkLogoStatus("MNChatAI")?"#457bd3":"#9bb2d6",0.8)
+
+        this.snipasteButton.setTitleForState("MNSnipaste: "+(toolbarConfig.checkLogoStatus("MNSnipaste")?"✅":"❌"),0)
+        MNButton.setColor(this.snipasteButton, toolbarConfig.checkLogoStatus("MNSnipaste")?"#457bd3":"#9bb2d6",0.8)
+
+        this.autoStyleButton.setTitleForState("MNAutoStyle: "+(toolbarConfig.checkLogoStatus("MNAutoStyle")?"✅":"❌"),0)
+        MNButton.setColor(this.autoStyleButton, toolbarConfig.checkLogoStatus("MNAutoStyle")?"#457bd3":"#9bb2d6",0.8)
+
+        this.browserButton.setTitleForState("MNBrowser: "+(toolbarConfig.checkLogoStatus("MNBrowser")?"✅":"❌"),0)
+        MNButton.setColor(this.browserButton, toolbarConfig.checkLogoStatus("MNBrowser")?"#457bd3":"#9bb2d6",0.8)
+
+        this.OCRButton.setTitleForState("MNOCR: "+(toolbarConfig.checkLogoStatus("MNOCR")?"✅":"❌"),0)
+        MNButton.setColor(this.OCRButton, toolbarConfig.checkLogoStatus("MNOCR")?"#457bd3":"#9bb2d6",0.8)
+
+        this.hexInput.text = toolbarConfig.buttonConfig.color
+        MNButton.setColor(this.hexButton, "#457bd3",0.8)
+
+        let iCloudSync = toolbarUtils.checkSubscribe(false,false,true)
+        if (iCloudSync) {
+          iCloudSync = toolbarConfig.syncConfig?.iCloudSync
+        }
+
+        MNButton.setColor(this.iCloudButton, iCloudSync?"#457bd3":"#9bb2d6",0.8)
+        MNButton.setTitle(this.iCloudButton, "iCloud Sync: "+(iCloudSync? "✅":"❌"),undefined, true)
+      break;
+    case "popupEditView":
+      toolbarConfig.allPopupButtons.forEach(buttonName=>{
+        let replaceButtonName = "replacePopupButton_"+buttonName
+        let replaceSwtichName = "replacePopupSwtich_"+buttonName
+        let replaceButton = this[replaceButtonName]
+        replaceButton.id = buttonName
+        let target = toolbarConfig.getPopupConfig(buttonName).target
+        if (target) {
+          let actionName = toolbarConfig.getAction(toolbarConfig.getPopupConfig(buttonName).target).name
+          MNButton.setConfig(replaceButton, {color:"#558fed",alpha:0.9,opacity:1.0,title:buttonName+": "+actionName,font:17,radius:10,bold:true})
+        }else{
+          MNButton.setConfig(replaceButton, {color:"#558fed",alpha:0.9,opacity:1.0,title:buttonName+": ",font:17,radius:10,bold:true})
+        }
+        let replaceSwtich = this[replaceSwtichName]
+        replaceSwtich.id = buttonName
+        replaceSwtich.on = toolbarConfig.getPopupConfig(buttonName).enabled
+      })
+    default:
+      break;
   }
 }
 

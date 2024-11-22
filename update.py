@@ -72,7 +72,7 @@ if not os.path.isdir(newVersion_path):
 
 # 将 newVersion_path 中的 .js 文件和 .html 文件复制到 oldVersion_path 中 
 for file in os.listdir(newVersion_path):
-    if file.endswith('.js') or file.endswith('.html') or file.endswith('.json'):
+    if file.endswith('.js') or file.endswith('.html') or file.endswith('.json') or file.endswith(".css") or file.endswith(".svg"):
         new_file = os.path.join(newVersion_path, file)
         old_file = os.path.join(oldVersion_path, file)
         if os.path.exists(old_file):
@@ -158,7 +158,7 @@ if not os.path.isdir(newVersion_path):
 
 # 将 newVersion_path 中的 .js 文件和 .html 文件复制到 oldVersion_path 中 
 for file in os.listdir(newVersion_path):
-    if file.endswith('.js') or file.endswith('.html') or file.endswith('.json'):
+    if file.endswith('.js') or file.endswith('.html') or file.endswith('.json') or file.endswith(".css") or file.endswith(".svg"):
         new_file = os.path.join(newVersion_path, file)
         old_file = os.path.join(oldVersion_path, file)
         if os.path.exists(old_file):

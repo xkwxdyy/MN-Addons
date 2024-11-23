@@ -32,7 +32,7 @@ body {
       "action": {
         "title": "Action",
         "type": "string",
-        "enum": ['addChildNote','addBrotherNote','addComment','addImageComment','crash','clearContent','cloneAndMerge','cloneAsChildNote','confirm','chatAI','copy','command','export','focus','link','moveNote','mergeText','moveComment','menu','noteHighlight','openURL','ocr','paste','replace','removeComment','showInFloatWindow','switchTitleOrExcerpt','search','setContent','showMessage','setButtonImage','shortcut','triggerButton','toggleView','toggleTextFirst','toggleMarkdown'],
+        "enum": ['addChildNote','addBrotherNote','addComment','addImageComment','crash','clearContent','cloneAndMerge','cloneAsChildNote','confirm','chatAI','copy','command','export','focus','link','moveNote','mergeText','moveComment','menu','noteHighlight','openURL','ocr','paste','replace','removeComment','showInFloatWindow','switchTitleOrExcerpt','search','setContent','showMessage','setButtonImage','shortcut','triggerButton','toggleView','toggleTextFirst','toggleMarkdown','userSelect'],
       },
       "ocr":{
         type:"boolean",
@@ -59,6 +59,13 @@ body {
           "type": "string"
         }
       },
+      "selectItems": {
+        "title": "selectItems",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
       "targets": {
         "title": "Targets",
         "type": "array",
@@ -74,6 +81,10 @@ body {
       },
       "menuTitle": {
         "title": "menuTitle",
+        "type": "string",
+      },
+      "selectTitle": {
+        "title": "selectTitle",
         "type": "string",
       },
       "linkType": {
@@ -207,6 +218,12 @@ body {
           ]
         }
       },
+      "selectItems": {   
+        "type": "array",
+        "items": {
+          "$ref": "selectAction"
+        }
+      },
       "name":{
         type:"string",
       },
@@ -240,6 +257,15 @@ body {
     "description": "Object containing employee details",
     "type": "object",
     "properties": actionProperties
+
+  }
+  const selectAction = {
+    "title": "Action",
+    "description": "Object containing employee details",
+    "type": "object",
+    "properties": actionProperties,
+    "required": ["selectTitle"]
+
   }
     function adjustSelectWidth() {
         const selects = document.getElementsByTagName('select');
@@ -285,7 +311,7 @@ function copyToClipboard(text) {
 }
     const options = {
       schema: action,
-      schemaRefs: {action:action,menuTitle:menuTitle,menuAction:menuAction},
+      schemaRefs: {action:action,menuTitle:menuTitle,menuAction:menuAction,selectAction:selectAction},
       theme: 'ace',
       allowSchemaSuggestions: true,
       onCreateMenu:(items, node)=> {
@@ -406,6 +432,17 @@ function copyToClipboard(text) {
                 config.content = ""
                 needSet = true
               }
+              break;
+            case "userSelect":
+              if(!("selectItems" in config)){
+                config.selectItems = [{action:""},{action:""}]
+                needSet = true
+              }
+              if(!("title" in config)){
+                config.title = ""
+                needSet = true
+              }
+              break;
             default:
               break;
           }
@@ -495,7 +532,7 @@ function copyToClipboard(text) {
           //path: array
           // console.log(input);
           if (input === 'field') {
-            return ['find','delay','noteURL','menuWidth','buttonName','subTitle','onConfirm','onCancel','followAutoStyle','menuTitle','name','input','text','target', 'action', 'description','menu', 'source','color','content','title','markdown','command','commands','OCR','fillPattern','asTitle','tags','tag','find','multi','type','index','removeSource','prompt','user','system','trim','replace','merge','linkType','from','to','steps','range','url','engine','targets','onFinish','onLongPress','doubleClick','menuItems','autoClose','parentNote','mainMindMap','method','paste'];
+            return ['selectTitle','selectItems','userSelect','find','delay','noteURL','menuWidth','buttonName','subTitle','onConfirm','onCancel','followAutoStyle','menuTitle','name','input','text','target', 'action', 'description','menu', 'source','color','content','title','markdown','command','commands','OCR','fillPattern','asTitle','tags','tag','find','multi','type','index','removeSource','prompt','user','system','trim','replace','merge','linkType','from','to','steps','range','url','engine','targets','onFinish','onLongPress','doubleClick','menuItems','autoClose','parentNote','mainMindMap','method','paste'];
           }
           if (input === 'value') {
             let parent = path.at(-1)

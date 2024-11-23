@@ -1623,8 +1623,28 @@ static insertSnippetToTextView(text, textView) {
       let confirmTitle = toolbarUtils.detectAndReplace(des.title)
       let confirmSubTitle = des.subTitle ? toolbarUtils.detectAndReplace(des.subTitle) : ""
       let confirm = await MNUtil.confirm(confirmTitle, confirmSubTitle)
-      if (confirm && "onConfirm" in des) {
+      if (confirm) {
         return des.onConfirm
+      }else{
+        if ("onCancel" in des) {
+          return des.onCancel
+        }
+      }
+      return undefined
+    }
+    return undefined
+  }
+  static async userSelect(des){
+    if (des.title && des.selectItems) {
+      let confirmTitle = toolbarUtils.detectAndReplace(des.title)
+      let confirmSubTitle = des.subTitle ? toolbarUtils.detectAndReplace(des.subTitle) : ""
+      let selectTitles = des.selectItems.map(item=>{
+        return toolbarUtils.detectAndReplace(item.selectTitle)
+      })
+      let select = await MNUtil.userSelect(confirmTitle, confirmSubTitle, selectTitles)
+      if (select) {
+        let targetDes = des.selectItems[select-1]
+        return targetDes
       }else{
         if ("onCancel" in des) {
           return des.onCancel
@@ -3344,7 +3364,8 @@ class toolbarConfig {
   }
   static initCloudStore(){
     this.cloudStore = NSUbiquitousKeyValueStore.defaultStore()
-    this.readCloudConfig(false)
+    MNUtil.postNotification("NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI", {})
+    // this.readCloudConfig(false)
   }
   static getPopupConfig(key){
     if (this.popupConfig[key] !== undefined) {
@@ -3373,7 +3394,7 @@ class toolbarConfig {
         if (!keys2.includes(key)) {
             return false;
         }
-        if (["modifiedTime","lastSyncTime"].includes(key)) {
+        if (["lastModifyTime","lastSyncTime"].includes(key)) {
           return true
         }
         if (!this.deepEqual(obj1[key], obj2[key])) {
@@ -3442,15 +3463,16 @@ class toolbarConfig {
           this.actions = cloudConfig.actions
           this.buttonConfig = cloudConfig.buttonConfig
           this.popupConfig = cloudConfig.popupConfig
-          this.save()
+          this.syncConfig.lastSyncTime = Date.now()
+          this.syncConfig.lastModifyTime = Date.now()
+          this.save(undefined,undefined,false)
           if (msg) {
             MNUtil.showHUD("Importing...")
           }
           return true
 
-              // self.setButtonText(allActions,self.selectedItem)
-    // self.toolbarController.setToolbarButton(allActions)
-        }else{
+        }
+        if (this.syncConfig.lastSyncTime > (cloudConfig.syncConfig.lastSyncTime+1000) ) {
           if (alert) {
             let confirm = await MNUtil.confirm("Uploading to iCloud?","是否上传配置到iCloud？")
             if (!confirm) {
@@ -3461,8 +3483,8 @@ class toolbarConfig {
           if (msg) {
             MNUtil.showHUD("Uploading...")
           }
-          return false
         }
+        return false
       }else{
         let confirm = await MNUtil.confirm("Empty config in iCloud, uploading?","iCloud配置为空,是否上传？")
         if (!confirm) {
@@ -3489,6 +3511,20 @@ class toolbarConfig {
     if (!this.cloudStore) {
       this.cloudStore = NSUbiquitousKeyValueStore.defaultStore()
     }
+    let cloudConfig = this.cloudStore.objectForKey("MNToolbar_totalConfig")
+    if (cloudConfig && cloudConfig.syncConfig) {
+      let same = this.deepEqual(cloudConfig, this.getAllConfig())
+      if (same) {
+        // MNUtil.showHUD("No change")
+        return false
+      }
+    }
+    if (this.syncConfig.lastSyncTime < cloudConfig.syncConfig.lastSyncTime ) {
+      let localTime = Date.parse(this.syncConfig.lastSyncTime).toLocaleString()
+      let cloudTime = Date.parse(cloudConfig.syncConfig.lastSyncTime).toLocaleString()
+      MNUtil.showHUD("Conflict config: loca_"+localTime+", cloud_"+cloudTime)
+      return false
+    }
     this.syncConfig.lastSyncTime = Date.now()
     this.syncConfig.lastModifyTime = Date.now()
     let config = {
@@ -3503,7 +3539,9 @@ class toolbarConfig {
     }
     // MNUtil.copyJSON(config)
     this.cloudStore.setObjectForKey(config,"MNToolbar_totalConfig")
-
+    this.syncConfig.lastSyncTime = Date.now()
+    this.syncConfig.lastModifyTime = Date.now()
+    this.save("MNToolbar_syncConfig",undefined,false)
   }
   static initImage(){
     try {
@@ -3804,7 +3842,8 @@ static getDefaultActionKeys() {
   let actions = this.getActions()
   return Object.keys(actions)
 }
-static save(key = undefined,value = undefined) {
+static save(key = undefined,value = undefined,upload = true) {
+  // MNUtil.showHUD("save")
   if(key === undefined){
     let defaults = NSUserDefaults.standardUserDefaults()
     defaults.setObjectForKey(this.windowState,"MNToolbar_windowState")
@@ -3816,7 +3855,9 @@ static save(key = undefined,value = undefined) {
     defaults.setObjectForKey(this.popupConfig,"MNToolbar_popupConfig")
     defaults.setObjectForKey(this.imageScale,"MNToolbar_imageScale")
     defaults.setObjectForKey(this.syncConfig,"MNToolbar_syncConfig")
-    this.writeCloudConfig(false)
+    if (upload) {
+      this.writeCloudConfig(false)
+    }
     return
   }
   if (value) {
@@ -3855,8 +3896,9 @@ static save(key = undefined,value = undefined) {
         toolbarUtils.showHUD("Not supported")
         break;
     }
-    this.writeCloudConfig(false)
-    // this.readCloudConfig()
+    if (upload) {
+      this.writeCloudConfig(false)
+    }
   }
   NSUserDefaults.standardUserDefaults().synchronize()
 }

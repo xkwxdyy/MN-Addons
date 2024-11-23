@@ -1665,6 +1665,14 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           MNUtil.showHUD("No valid argument!")
         }
         break
+      case "userSelect":
+        let selectDes = await toolbarUtils.userSelect(des)
+        if (selectDes) {
+            await this.customActionByDes(button, selectDes) 
+        }else{
+          MNUtil.showHUD("No valid argument!")
+        }
+        break
       case "toggleView":
         if ("targets" in des) {
           des.targets.map(target=>{

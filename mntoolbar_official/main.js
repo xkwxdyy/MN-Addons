@@ -53,7 +53,7 @@ JSB.newAddon = function (mainPath) {
         MNUtil.removeObserver(self,'UITextViewTextDidBeginEditingNotification')
         MNUtil.removeObserver(self,'refreshToolbarButton')
         MNUtil.removeObserver(self,'openToolbarSetting')
-        // MNUtil.removeObserver(self,'NSUbiquitousKeyValueStoreDidChangeExternallyNotification')
+        MNUtil.removeObserver(self,'NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI')
         // MNUtil.showHUD("remove")
       },
 
@@ -75,7 +75,7 @@ JSB.newAddon = function (mainPath) {
           self.addonController.notebookid = notebookid
           self.notebookid = notebookid
           toolbarUtils.notebookId = notebookid
-          toolbarUtils.initCloudStore()
+          toolbarConfig.initCloudStore()
         }
         MNUtil.delay(0.2).then(()=>{
           MNUtil.studyView.becomeFirstResponder(); //For dismiss keyboard on iOS
@@ -476,23 +476,18 @@ JSB.newAddon = function (mainPath) {
           return false
         }
         self.ensureView()
-        let shouldUpdate = await toolbarConfig.readCloudConfig()
-        if (shouldUpdate) {
-          let allActions = toolbarConfig.getAllActions()
-          // MNUtil.copyJSON(allActions)
-          if (self.settingController) {
-            self.settingController.setButtonText(allActions,self.settingController.selectedItem)
-          }
-          // self.addonController.view.hidden = true
-          if (self.addonController) {
-            self.addonController.setToolbarButton(allActions)
-          }else{
-            MNUtil.showHUD("No addonController")
-          }
-          MNUtil.postNotification("refreshView",{})
-        }
+        self.checkUpdate()
         
         // MNUtil.openURL("marginnote4app://addon/onCloudConfigChange")
+      },
+      manualSync: async function (sender) {
+        let self = getMNToolbarClass()
+        if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
+        if (typeof MNUtil === 'undefined') return
+        if (self.window !== MNUtil.currentWindow) {
+          return
+        }
+        self.checkUpdate()
       },
       /**
        * 
@@ -659,6 +654,7 @@ try {
             {title:'🛠️   Toolbar',object:self,selector:'toggleToolbar:',param:[1,3,2],checked:!self.addonController.view.hidden},
             {title:'🌟   Dynamic',object:self,selector:'toggleDynamic:',param:[1,3,2],checked:toolbarConfig.dynamic},
             {title:'📄   Document',object:self,selector:'openDocument:',param:[1,3,2]},
+            {title:'🔄   Manual Sync',object:self,selector:'manualSync:',param:[1,3,2]},
             // {title:'🗃️   Open Sidebar',object:self,selector:'openSideBar:',param:[1,2,3]}
           ];
         if (self.addonBar.frame.x < 100) {
@@ -690,6 +686,8 @@ try {
       },
 
       applicationWillEnterForeground: function () {
+        if (typeof MNUtil === 'undefined') return
+        MNUtil.postNotification("NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI", {})
         // toolbarUtils.addErrorLog("error", "applicationWillEnterForeground")
       },
 
@@ -766,5 +764,28 @@ try {
       toolbarUtils.addErrorLog(error, "openSetting")
     }
 }
+  MNToolbarClass.prototype.checkUpdate = async function () {
+    let shouldUpdate = await toolbarConfig.readCloudConfig()
+    if (shouldUpdate) {
+      try {
+        
+
+      let allActions = toolbarConfig.getAllActions()
+      // MNUtil.copyJSON(allActions)
+      if (this.settingController) {
+        this.settingController.setButtonText(allActions,this.settingController.selectedItem)
+      }
+      // this.addonController.view.hidden = true
+      if (this.addonController) {
+        this.addonController.setToolbarButton(allActions)
+      }else{
+        MNUtil.showHUD("No addonController")
+      }
+      MNUtil.postNotification("refreshView",{})
+      } catch (error) {
+        toolbarUtils.addErrorLog(error, "checkUpdate")
+      }
+    }
+  }
   return MNToolbarClass;
 };

@@ -758,6 +758,16 @@ class MNUtil {
     }
     return this.mnVersion
   }
+  static _isTagComment_(comment){
+    if (comment.type === "TextNote") {
+      if (/^#\S/.test(comment.text)) {
+        return true
+      }else{
+        return false
+      }
+    }
+    return false
+  }
   static get app(){
     // this.appInstance = Application.sharedInstance()
     // return this.appInstance
@@ -1138,6 +1148,24 @@ class MNUtil {
       )
     })
   }
+  /**
+   * 
+   * @param {string} mainTitle - The main title of the confirmation dialog.
+   * @param {string} subTitle - The subtitle of the confirmation dialog.
+   * @param {string[]} items - The items to display in the dialog.
+   * @returns {Promise<number>} A promise that resolves with the button index of the button clicked by the user.
+   */
+  static async userSelect(mainTitle,subTitle,items){
+    return new Promise((resolve, reject) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        mainTitle,subTitle,0,"Cancel",items,
+        (alert, buttonIndex) => {
+          // MNUtil.copyJSON({alert:alert,buttonIndex:buttonIndex})
+          resolve(buttonIndex)
+        }
+      )
+    })
+  }
   static copy(text) {
     UIPasteboard.generalPasteboard().string = text
   }
@@ -1169,10 +1197,6 @@ class MNUtil {
   static openURL(url){
     this.app.openURL(NSURL.URLWithString(url));
   }
-  static render(template,config){
-    let output = mustache.render(template,config)
-    return output
-  }
   /**
    * 
    * @param {string} noteId 
@@ -1181,6 +1205,11 @@ class MNUtil {
   static isNoteInReview(noteId){
     return this.studyController.isNoteInReview(noteId)
   }
+  /**
+   * 
+   * @param {string} noteid 
+   * @returns 
+   */
   static getNoteById(noteid) {
     let note = this.db.getNoteById(noteid)
     if (note) {
@@ -1682,7 +1711,12 @@ try {
   static setLocalDataByKey(data, key) {
     NSUserDefaults.standardUserDefaults().setObjectForKey(data, key)
   }
-
+  static getCloudDataByKey(key) {
+    return NSUbiquitousKeyValueStore.defaultStore().objectForKey(key)
+  }
+  static setCloudDataByKey(data, key) {
+    NSUbiquitousKeyValueStore.defaultStore().setObjectForKey(data, key)
+  }
 
   /**
    *
@@ -2341,11 +2375,635 @@ class MNButton{
     }
   }
 
+  /**
+   * 
+   * @param {UIView} button 
+   * @param {any} target 
+   * @param {string} selector 
+   */
+  static addPanGesture (button,target,selector) {
+    let gestureRecognizer = new UIPanGestureRecognizer(target,selector)
+    button.addGestureRecognizer(gestureRecognizer)
+  }
+
+  /**
+   * 
+   * @param {UIView} button 
+   * @param {any} target 
+   * @param {string} selector 
+   */
+  static addLongPressGesture (button,target,selector) {
+    let gestureRecognizer = new UILongPressGestureRecognizer(target,selector)
+    gestureRecognizer.minimumPressDuration = 0.3
+    button.addGestureRecognizer(gestureRecognizer)
+  }
+  /**
+   * 
+   * @param {UIView} button 
+   * @param {any} target 
+   * @param {string} selector 
+   */
+  static addSwipeGesture (button,target,selector) {
+    let gestureRecognizer = new UISwipeGestureRecognizer(target,selector)
+    button.addGestureRecognizer(gestureRecognizer)
+  }
 
 }
 
 class MNNote{
+  /** @type {MbBookNote} */
+  note
   /**
+   * Initializes a new MNNote instance.
+   * 
+   * This constructor initializes a new MNNote instance based on the provided note object. The note object can be of various types:
+   * - An MbBookNote instance.
+   * - A string representing a note URL.
+   * - A string representing a note ID.
+   * - A configuration object for creating a new note.
+   * 
+   * If the note object is a string representing a note URL, the constructor will attempt to retrieve the corresponding note from the URL.
+   * If the note object is a string representing a note ID, the constructor will attempt to retrieve the corresponding note from the database.
+   * If the note object is a configuration object, the constructor will create a new note with the specified properties.
+   * 
+   * @param {MbBookNote|string|object} note - The note object to initialize the MNNote instance with.
+   */
+  constructor(note) {
+    switch (MNUtil.typeOf(note)) {
+      case 'MbBookNote':
+        this.note = note
+        break;
+      case 'NoteURL':
+        let NoteFromURL = MNUtil.getNoteBookById(MNUtil.getNoteIdByURL(note))
+        if (NoteFromURL) {
+          this.note = NoteFromURL
+        }
+      case 'string':
+        let targetNoteId = note.trim()
+        let targetNote = MNUtil.getNoteById(targetNoteId)
+        if (targetNote) {
+          this.note = targetNote
+        }
+        // MNUtil.showHUD(this.note.noteId)
+        break;
+        // MNUtil.copyJSON(targetNoteId+":"+this.note.noteId)
+      case "NoteConfig":
+        let config = note
+        let notebook = MNUtil.currentNotebook
+        let title = config.title ?? ""
+        // MNUtil.showHUD("new note")
+        // MNUtil.copyJSON(note)
+        this.note = Note.createWithTitleNotebookDocument(title, notebook, MNUtil.currentDocController.document)
+        if (config.content) {
+          if (config.markdown) {
+            this.note.appendMarkdownComment(config.content)
+          }else{
+            this.note.appendTextComment(config.content)
+          }
+        }
+        if (config.color !== undefined) {
+          this.note.colorIndex = config.color
+        }
+        break;
+      default:
+        break;
+    }
+  }
+  /**
+   * Creates a new MNNote instance based on the provided note object.
+   * 
+   * This static method initializes a new MNNote instance based on the provided note object. The note object can be of various types:
+   * - An MbBookNote instance.
+   * - A string representing a note URL.
+   * - A string representing a note ID.
+   * - A configuration object for creating a new note.
+   * 
+   * If the note object is a string representing a note URL, the method will attempt to retrieve the corresponding note from the URL.
+   * If the note object is a string representing a note ID, the method will attempt to retrieve the corresponding note from the database.
+   * If the note object is a configuration object, the method will create a new note with the specified properties.
+   * 
+   * @param {MbBookNote|string|object} note - The note object to initialize the MNNote instance with.
+   * @returns {MNNote|undefined} The initialized MNNote instance or undefined if the note object is invalid.
+   */
+  static new(note){
+    if (note === undefined) {
+      return undefined
+    }
+    // MNUtil.showHUD(note)
+    // let paramType = MNUtil.typeOf(note)
+    // MNUtil.showHUD(paramType)
+    switch (MNUtil.typeOf(note)) {
+      case 'MbBookNote':
+        return new MNNote(note)
+      case 'NoteURL':
+        let NoteFromURL = MNUtil.getNoteById(MNUtil.getNoteIdByURL(note))
+        if (NoteFromURL) {
+          return new MNNote(NoteFromURL)
+        }
+        return undefined
+      case 'string':
+        let targetNoteId = note.trim()
+        let targetNote = MNUtil.getNoteById(targetNoteId)
+        if (targetNote) {
+          return new MNNote(targetNote)
+        }
+        return undefined
+      case "NoteConfig":
+        let config = note
+        let notebook = MNUtil.currentNotebook
+        let title = config.title ?? ""
+        // MNUtil.copyJSON(note)
+        let newNote = Note.createWithTitleNotebookDocument(title, notebook, MNUtil.currentDocController.document)
+        if (config.excerptText) {
+          newNote.excerptText = config.excerptText
+          if (config.excerptTextMarkdown) {
+            newNote.excerptTextMarkdown = true
+            if (/!\[.*?\]\((data:image\/.*;base64,.*?)(\))/.test(config.excerptText)) {
+              newNote.processMarkdownBase64Images()
+            }
+          }
+        }
+        if (config.content) {
+          if (config.markdown) {
+            newNote.appendMarkdownComment(config.content)
+          }else{
+            newNote.appendTextComment(config.content)
+          }
+        }
+        if (config.color !== undefined) {
+          newNote.colorIndex = config.color
+        }
+
+        return new MNNote(newNote)
+      default:
+        return undefined
+    }
+  }
+  get noteId() {
+    return this.note.noteId
+  }
+  get notebookId() {
+    return this.note.notebookId
+  }
+  /**
+   * Retrieves the original note ID of a note that has been merged.
+   * 
+   * This method returns the original note ID of a note that has been merged into another note. This is useful for tracking the history of notes that have been combined.
+   * 
+   * @returns {string} The original note ID of the merged note.
+   */
+  get originNoteId(){
+    return this.note.originNoteId
+  }
+  /**
+   * Retrieves the note ID of the main note in a group of merged notes.
+   * 
+   * This method returns the note ID of the main note in a group of merged notes. This is useful for identifying the primary note in a set of combined notes.
+   * 
+   * @returns {string} The note ID of the main note in the group of merged notes.
+   */
+  get groupNoteId(){
+    return this.note.groupNoteId
+  }
+  get groupMode(){
+    return this.note.groupMode
+  }
+  /**
+   * Retrieves the child notes of the current note.
+   * 
+   * This method returns an array of MNNote instances representing the child notes of the current note. If the current note has no child notes, it returns an empty array.
+   * 
+   * @returns {MNNote[]} An array of MNNote instances representing the child notes.
+   */
+  get childNotes() {
+    return this.note.childNotes?.map(k => new MNNote(k)) ?? []
+  }
+  /**
+   * Retrieves the parent note of the current note.
+   * 
+   * This method returns an MNNote instance representing the parent note of the current note. If the current note has no parent note, it returns undefined.
+   * 
+   * @returns {MNNote|undefined} The parent note of the current note, or undefined if there is no parent note.
+   */
+  get parentNote() {
+    return this.note.parentNote && new MNNote(this.note.parentNote)
+  }
+  /**
+   * Retrieves the URL of the current note.
+   * 
+   * This method generates and returns the URL of the current note, which can be used to reference or share the note.
+   * 
+   * @returns {string} The URL of the current note.
+   */
+  get noteURL(){
+    return MNUtil.version.version+'app://note/'+this.note.noteId
+  }
+  /**
+   * Retrieves the child mind map note of the current note.
+   * 
+   * This method returns an MNNote instance representing the child mind map note of the current note. If the current note has no child mind map note, it returns undefined.
+   * 
+   * @returns {MNNote|undefined} The child mind map note of the current note, or undefined if there is no child mind map note.
+   */
+  get childMindMap(){
+    if (this.note.childMindMap) {
+      return MNNote.new(this.note.childMindMap)
+    }
+    return undefined
+  }
+  /**
+   *
+   * @returns {{descendant:MNNote[],treeIndex:number[][]}}
+   */
+  get descendantNodes() {
+    const { childNotes } = this
+    if (!childNotes.length) {
+      return {
+        descendant: [],
+        treeIndex: []
+      }
+    } else {
+      /**
+       *
+       * @param {MNNote[]} nodes
+       * @param {number} level
+       * @param {number[]} lastIndex
+       * @param {{descendant:MNNote[],treeIndex:number[][]}} ret
+       * @returns
+       */
+      function down(
+        nodes,
+        level = 0,
+        lastIndex = [],
+        ret = {
+          descendant: [],
+          treeIndex: []
+        }
+      ) {
+        level++
+        nodes.forEach((node, index) => {
+          ret.descendant.push(node)
+          lastIndex = lastIndex.slice(0, level - 1)
+          lastIndex.push(index)
+          ret.treeIndex.push(lastIndex)
+          if (node.childNotes?.length) {
+            down(node.childNotes, level, lastIndex, ret)
+          }
+        })
+        return ret
+      }
+      return down(childNotes)
+    }
+  }
+  get ancestorNodes() {
+    /**
+     *
+     * @param {MNNote} node
+     * @param {MNNote[]} ancestorNodes
+     * @returns
+     */
+    function up(node, ancestorNodes) {
+      if (node.note.parentNote) {
+        const parentNode = new MNNote(node.note.parentNote)
+        ancestorNodes = up(parentNode, [...ancestorNodes, parentNode])
+      }
+      return ancestorNodes
+    }
+    return up(this, [])
+  }
+  /**
+   * Retrieves the notes associated with the current note.
+   * 
+   * This method returns an array of notes that are linked to the current note. It includes the current note itself and any notes that are linked through the comments.
+   * 
+   * @returns {MNNote[]} An array of MNNote instances representing the notes associated with the current note.
+   */
+  get notes() {
+    return this.note.comments.reduce(
+      (acc, cur) => {
+        cur.type == "LinkNote" && acc.push(MNNote.new(cur.noteid))
+        return acc
+      },
+      [this]
+    )
+  }
+  /**
+   * Retrieves the titles associated with the current note.
+   * 
+   * This method splits the note title by semicolons and returns an array of unique titles. If the note title is not defined, it returns an empty array.
+   * 
+   * @returns {string[]} An array of unique titles associated with the current note.
+   */
+  get titles() {
+    return MNUtil.unique(this.note.noteTitle?.split(/\s*[;；]\s*/) ?? [], true)
+  }
+  /**
+   * Sets the titles associated with the current note.
+   * 
+   * This method sets the titles associated with the current note by joining the provided array of titles with semicolons. If the excerpt text of the note is the same as the note title, it updates both the note title and the excerpt text.
+   * 
+   * @param {string[]} titles - The array of titles to set for the current note.
+   */
+  set titles(titles) {
+    const newTitle = MNUtil.unique(titles, true).join("; ")
+    if (this.note.excerptText === this.note.noteTitle) {
+      this.note.noteTitle = newTitle
+      this.note.excerptText = newTitle
+    } else {
+      this.note.noteTitle = newTitle
+    }
+  }
+  get isOCR() {
+    if (this.note.excerptPic?.paint) {
+      return this.note.textFirst
+    }
+    return false
+  }
+  get textFirst() {
+    return this.note.textFirst
+  }
+  get title() {
+    return this.note.noteTitle ?? ""
+  }
+  get noteTitle() {
+    return this.note.noteTitle ?? ""
+  }
+  /**
+   *
+   * @param {string} title
+   * @returns
+   */
+  set title(title) {
+    this.note.noteTitle = title
+  }
+  /**
+   * set textFirst
+   * @param {boolean} on
+   * @returns
+   */
+  set textFirst(on){
+    this.note.textFirst = on
+  }
+  /**
+   *
+   * @param {string} title
+   * @returns
+   */
+  set noteTitle(title) {
+    this.note.noteTitle = title
+  }
+  get excerptText(){
+    return this.note.excerptText
+  }
+  get excerptTextMarkdown(){
+    return this.note.excerptTextMarkdown;
+  }
+  set excerptTextMarkdown(status){
+    this.note.excerptTextMarkdown = status
+  }
+  set excerptText(text){
+    this.note.excerptText = text
+    if (this.excerptPic && !this.textFirst) {
+      this.textFirst = true
+    }
+  }
+  get mainExcerptText() {
+    return this.note.excerptText ?? ""
+  }
+  /**
+   *
+   * @param {string} text
+   * @returns
+   */
+  set mainExcerptText(text) {
+    this.note.excerptText = text
+  }
+  get excerptPic(){
+    return this.note.excerptPic
+  }
+  get excerptPicData(){
+    let imageData = MNUtil.getMediaByHash(this.note.excerptPic.paint)
+    return imageData
+  }
+  get colorIndex(){
+    return this.note.colorIndex
+  }
+  set colorIndex(index){
+    this.note.colorIndex = index
+  }
+  get fillIndex(){
+    return this.note.fillIndex
+  }
+  set fillIndex(index){
+    this.note.fillIndex = index
+  }
+  get createDate(){
+    return this.note.createDate
+  }
+  get modifiedDate(){
+    return this.note.modifiedDate
+  }
+  get linkedNotes(){
+    return this.note.linkedNotes
+  }
+  get summaryLinks(){
+    return this.note.summaryLinks
+  }
+  get mediaList(){
+    return this.note.mediaList
+  }
+  /**
+   * get all tags, without '#'
+   * @returns {string[]}
+   */
+  get tags() {
+    try {
+    // MNUtil.showHUD("length: "+this.note.comments.length)
+    const tags = this.note.comments.reduce((acc, cur) => {
+      // MNUtil.showHUD("cur.type")
+      if (cur.type == "TextNote" && MNUtil._isTagComment_(cur)) {
+        acc.push(...cur.text.split(/\s+/).filter(k => k.startsWith("#")))
+      }
+      return acc
+    }, [])
+    return tags.map(k => k.slice(1))
+
+    } catch (error) {
+      MNUtil.showHUD(error)
+      return []
+    }
+  }
+  /**
+   *
+   * @returns {NoteComment[]}
+   */
+  get comments(){
+    return this.note.comments
+  }
+  /**
+   * set tags, will remove all old tags
+   *
+   * @param {string[]} tags
+   * @returns
+   */
+  set tags(tags) {
+    this.tidyupTags()
+    tags = MNUtil.unique(tags, true)
+    const lastComment = this.note.comments[this.note.comments.length - 1]
+    if (lastComment?.type == "TextNote" && lastComment.text.startsWith("#")) {
+      this.note.removeCommentByIndex(this.note.comments.length - 1)
+    }
+    this.appendTextComments(tags.map(k => '#'+k).join(" "))
+  }
+  /**
+   * @returns {{ocr:string[],html:string[],md:string[]}}
+   */
+  get excerptsTextPic() {
+    return this.notes.reduce(
+      (acc, cur) => {
+        Object.entries(MNNote.getNoteExcerptTextPic(cur)).forEach(([k, v]) => {
+          if (k in acc) acc[k].push(...v)
+        })
+        return acc
+      },
+      {
+        ocr: [],
+        html: [],
+        md: []
+      }
+    )
+  }
+  /**
+   * @returns {{html:string[],md:string[]}}
+   */
+  get commentsTextPic() {
+    return this.note.comments.reduce(
+      (acc, cur) => {
+        if (cur.type === "PaintNote") {
+          const imgs = MNNote.exportPic(cur)
+          if (imgs)
+            Object.entries(imgs).forEach(([k, v]) => {
+              if (k in acc) acc[k].push(v)
+            })
+        } else if (cur.type == "TextNote" || cur.type == "HtmlNote") {
+          const text = cur.text.trim()
+          if (text && !text.includes("marginnote3app") && !text.startsWith("#"))
+            Object.values(acc).map(k => k.push(text))
+        }
+        return acc
+      },
+      {
+        html: [],
+        md: []
+      }
+    )
+  }
+  /** @returns {string[]} */
+ get excerptsText() {
+    return this.notes.reduce((acc, note) => {
+      const text = note.excerptText?.trim()
+      if (text) {
+        if (!note.excerptPic?.paint || this.isOCR) {
+          acc.push(text)
+        }
+      }
+      return acc
+    }, [])
+  }
+  /**
+   * get all comment text
+   * @returns {string[]}
+   */
+  get commentsText() {
+    return this.note.comments.reduce((acc, cur) => {
+      if (cur.type == "TextNote" || cur.type == "HtmlNote") {
+        const text = cur.text.trim()
+        if (text && !text.includes("marginnote3app") && !text.startsWith("#"))
+          acc.push(text)
+      }
+      return acc
+    }, [])
+  }
+  /**
+   * get all text and pic note will be OCR or be transformed to base64
+   */
+  get allTextPic() {
+    const retVal = MNNote.getNoteExcerptTextPic(this.note)
+    this.note.comments.forEach(k => {
+      if (k.type === "PaintNote") {
+        const imgs = MNNote.exportPic(k)
+        if (imgs)
+          Object.entries(imgs).forEach(([k, v]) => {
+            if (k in retVal) retVal[k].push(v)
+          })
+      } else if (k.type == "TextNote" || k.type == "HtmlNote") {
+        const text = k.text.trim()
+        if (text) Object.values(retVal).map(k => k.push(text))
+      } else if (k.type == "LinkNote") {
+        const note = MNUtil.db.getNoteById(k.noteid)
+        if (note)
+          Object.entries(MNNote.getNoteExcerptTextPic(note)).forEach(([k, v]) => {
+            if (k in retVal) retVal[k].push(...v)
+          })
+      }
+    })
+    return {
+      html: retVal.html.join("\n\n"),
+      ocr: retVal.ocr.join("\n\n"),
+      md: retVal.md.join("\n\n")
+    }
+  }
+  /**
+   * Get all text
+   */
+  get allText() {
+
+    const { mainExcerptText } = this
+    const retVal =
+      mainExcerptText && (!this.note.excerptPic?.paint || this.isOCR)
+        ? [mainExcerptText]
+        : []
+    this.note.comments.forEach(k => {
+      if (k.type == "TextNote" || k.type == "HtmlNote") {
+        const text = k.text.trim()
+        if (text) retVal.push(text)
+      } else if (k.type == "LinkNote") {
+        const note = MNUtil.db.getNoteById(k.noteid)
+        const text = note?.excerptText?.trim()
+        if (text && (!note?.excerptPic?.paint || this.isOCR)) retVal.push(text)
+      }
+    })
+    return retVal.join("\n\n")
+  }
+  /**
+   * Get all text.
+   */
+  get excerptsCommentsText() {
+    const { mainExcerptText } = this
+    const retVal =
+      mainExcerptText && (!this.note.excerptPic?.paint || this.isOCR)
+        ? [mainExcerptText]
+        : []
+    this.note.comments.forEach(k => {
+      if (k.type == "TextNote" || k.type == "HtmlNote") {
+        const text = k.text.trim()
+        if (text && !text.includes("marginnote3app") && !text.includes("marginnote4app") && !text.startsWith("#"))
+          retVal.push(text)
+      } else if (k.type == "LinkNote") {
+        const note = MNUtil.db.getNoteById(k.noteid)
+        const text = note?.excerptText?.trim()
+        if (text && (!note?.excerptPic?.paint || this.isOCR)) retVal.push(text)
+      }
+    })
+    return retVal
+  }
+  get docMd5(){
+    if (this.note.docMd5) {
+      return this.note.docMd5
+    }
+    return undefined
+  }
+    /**
    * 夏大鱼羊定制 - MNNote - begin
    */
   /**
@@ -2751,7 +3409,7 @@ class MNNote{
           )
         ) {
           // type = this.getNoteTypeObjByClassificationParentNoteTitle().zh
-          noteType = this.getNoteTypeZh()
+          // noteType = this.getNoteTypeZh()
           parentNoteTitle = this.getClassificationParentNote().noteTitle.toClassificationNoteTitle()
           if (title.ifKnowledgeNoteTitle()) {
             /**
@@ -2763,10 +3421,10 @@ class MNNote{
              * 如果是临时卡片，就直接重新弄前缀
              */
             if (this.ifNoteTemporary()) {
-              if (noteType == "定义") {
-                this.title = "【" + noteType + "：" + parentNoteTitle + "】; " + title
+              if (type == "定义") {
+                this.title = "【" + type + "：" + parentNoteTitle + "】; " + title
               } else {
-                this.title = "【" + noteType + "：" + parentNoteTitle + "】" + title
+                this.title = "【" + type + "：" + parentNoteTitle + "】" + title
               }
             } else {
               /**
@@ -2787,26 +3445,26 @@ class MNNote{
                      * 此时说明没有修改旧前缀
                      * 那就直接按照新归类卡片来
                      */
-                    if (noteType == "定义") {
-                      this.title = "【" + noteType + "：" + parentNoteTitle + "】; " + title
+                    if (type == "定义") {
+                      this.title = "【" + type + "：" + parentNoteTitle + "】; " + title
                     } else {
-                      this.title = "【" + noteType + "：" + parentNoteTitle + "】" + title
+                      this.title = "【" + type + "：" + parentNoteTitle + "】" + title
                     }
                   } else if (prefix.startsWith(oldClassificationNoteTitle)) {
                     /**
                      * 此时说明修改了旧前缀，此时需要获取到修改的部分
                      */
                     let newContent = prefix.slice(oldClassificationNoteTitle.length)
-                    if (noteType == "定义") {
-                      this.title = "【" + noteType + "：" + parentNoteTitle + newContent + "】; " + title
+                    if (type == "定义") {
+                      this.title = "【" + type + "：" + parentNoteTitle + newContent + "】; " + title
                     } else {
-                      this.title = "【" + noteType + "：" + parentNoteTitle + newContent + "】" + title
+                      this.title = "【" + type + "：" + parentNoteTitle + newContent + "】" + title
                     }
                   } else {
-                    if (noteType == "定义") {
-                      this.title = "【" + noteType + "：" + parentNoteTitle + "】; " + title
+                    if (type == "定义") {
+                      this.title = "【" + type + "：" + parentNoteTitle + "】; " + title
                     } else {
-                      this.title = "【" + noteType + "：" + parentNoteTitle + "】" + title
+                      this.title = "【" + type + "：" + parentNoteTitle + "】" + title
                     }
                   }
                 } else {
@@ -2814,10 +3472,10 @@ class MNNote{
                    * 否则说明原归类卡片不存在了
                    * 那就直接按照新归类卡片来
                    */
-                  if (noteType == "定义") {
-                    this.title = "【" + noteType + "：" + parentNoteTitle + "】; " + title
+                  if (type == "定义") {
+                    this.title = "【" + type + "：" + parentNoteTitle + "】; " + title
                   } else {
-                    this.title = "【" + noteType + "：" + parentNoteTitle + "】" + title
+                    this.title = "【" + type + "：" + parentNoteTitle + "】" + title
                   }
                 }
               }
@@ -4688,7 +5346,7 @@ class MNNote{
     classificationNote.changeTitle(type)
 
     /**
-     * [Done：主要的处理]与定义类卡片进行链接，并防止后续归类后重新链接时导致归类卡片中定义卡片的链接被删除
+     * [TODO：主要的处理]与定义类卡片进行链接，并防止后续归类后重新链接时导致归类卡片中定义卡片的链接被删除
      * 主要要修改 linkParentNote
      */
     classificationNote.linkParentNote()
@@ -4721,595 +5379,6 @@ class MNNote{
   /**
    * 夏大鱼羊定制 - MNNote - end
    */
-  /** @type {MbBookNote} */
-  note
-  /**
-   * Initializes a new MNNote instance.
-   * 
-   * This constructor initializes a new MNNote instance based on the provided note object. The note object can be of various types:
-   * - An MbBookNote instance.
-   * - A string representing a note URL.
-   * - A string representing a note ID.
-   * - A configuration object for creating a new note.
-   * 
-   * If the note object is a string representing a note URL, the constructor will attempt to retrieve the corresponding note from the URL.
-   * If the note object is a string representing a note ID, the constructor will attempt to retrieve the corresponding note from the database.
-   * If the note object is a configuration object, the constructor will create a new note with the specified properties.
-   * 
-   * @param {MbBookNote|string|object} note - The note object to initialize the MNNote instance with.
-   */
-  constructor(note) {
-    switch (MNUtil.typeOf(note)) {
-      case 'MbBookNote':
-        this.note = note
-        break;
-      case 'NoteURL':
-        let NoteFromURL = MNUtil.getNoteBookById(MNUtil.getNoteIdByURL(note))
-        if (NoteFromURL) {
-          this.note = NoteFromURL
-        }
-      case 'string':
-        let targetNoteId = note.trim()
-        let targetNote = MNUtil.getNoteById(targetNoteId)
-        if (targetNote) {
-          this.note = targetNote
-        }
-        // MNUtil.showHUD(this.note.noteId)
-        break;
-        // MNUtil.copyJSON(targetNoteId+":"+this.note.noteId)
-      case "NoteConfig":
-        let config = note
-        let notebook = MNUtil.currentNotebook
-        let title = config.title ?? ""
-        // MNUtil.showHUD("new note")
-        // MNUtil.copyJSON(note)
-        this.note = Note.createWithTitleNotebookDocument(title, notebook, MNUtil.currentDocController.document)
-        if (config.content) {
-          if (config.markdown) {
-            this.note.appendMarkdownComment(config.content)
-          }else{
-            this.note.appendTextComment(config.content)
-          }
-        }
-        if (config.color !== undefined) {
-          this.note.colorIndex = config.color
-        }
-        break;
-      default:
-        break;
-    }
-  }
-  /**
-   * Creates a new MNNote instance based on the provided note object.
-   * 
-   * This static method initializes a new MNNote instance based on the provided note object. The note object can be of various types:
-   * - An MbBookNote instance.
-   * - A string representing a note URL.
-   * - A string representing a note ID.
-   * - A configuration object for creating a new note.
-   * 
-   * If the note object is a string representing a note URL, the method will attempt to retrieve the corresponding note from the URL.
-   * If the note object is a string representing a note ID, the method will attempt to retrieve the corresponding note from the database.
-   * If the note object is a configuration object, the method will create a new note with the specified properties.
-   * 
-   * @param {MbBookNote|string|object} note - The note object to initialize the MNNote instance with.
-   * @returns {MNNote|undefined} The initialized MNNote instance or undefined if the note object is invalid.
-   */
-  static new(note){
-    if (note === undefined) {
-      return undefined
-    }
-    // MNUtil.showHUD(note)
-    // let paramType = MNUtil.typeOf(note)
-    // MNUtil.showHUD(paramType)
-    switch (MNUtil.typeOf(note)) {
-      case 'MbBookNote':
-        return new MNNote(note)
-      case 'NoteURL':
-        let NoteFromURL = MNUtil.getNoteById(MNUtil.getNoteIdByURL(note))
-        if (NoteFromURL) {
-          return new MNNote(NoteFromURL)
-        }
-        return undefined
-      case 'string':
-        let targetNoteId = note.trim()
-        let targetNote = MNUtil.getNoteById(targetNoteId)
-        if (targetNote) {
-          return new MNNote(targetNote)
-        }
-        return undefined
-      case "NoteConfig":
-        let config = note
-        let notebook = MNUtil.currentNotebook
-        let title = config.title ?? ""
-        // MNUtil.copyJSON(note)
-        let newNote = Note.createWithTitleNotebookDocument(title, notebook, MNUtil.currentDocController.document)
-        if (config.excerptText) {
-          newNote.excerptText = config.excerptText
-          if (config.excerptTextMarkdown) {
-            newNote.excerptTextMarkdown = true
-            if (/!\[.*?\]\((data:image\/.*;base64,.*?)(\))/.test(config.excerptText)) {
-              newNote.processMarkdownBase64Images()
-            }
-          }
-        }
-        if (config.content) {
-          if (config.markdown) {
-            newNote.appendMarkdownComment(config.content)
-          }else{
-            newNote.appendTextComment(config.content)
-          }
-        }
-        if (config.color !== undefined) {
-          newNote.colorIndex = config.color
-        }
-
-        return new MNNote(newNote)
-      default:
-        return undefined
-    }
-  }
-  get noteId() {
-    return this.note.noteId
-  }
-  get notebookId() {
-    return this.note.notebookId
-  }
-  /**
-   * Retrieves the original note ID of a note that has been merged.
-   * 
-   * This method returns the original note ID of a note that has been merged into another note. This is useful for tracking the history of notes that have been combined.
-   * 
-   * @returns {string} The original note ID of the merged note.
-   */
-  get originNoteId(){
-    return this.note.originNoteId
-  }
-  /**
-   * Retrieves the note ID of the main note in a group of merged notes.
-   * 
-   * This method returns the note ID of the main note in a group of merged notes. This is useful for identifying the primary note in a set of combined notes.
-   * 
-   * @returns {string} The note ID of the main note in the group of merged notes.
-   */
-  get groupNoteId(){
-    return this.note.groupNoteId
-  }
-  /**
-   * Retrieves the child notes of the current note.
-   * 
-   * This method returns an array of MNNote instances representing the child notes of the current note. If the current note has no child notes, it returns an empty array.
-   * 
-   * @returns {MNNote[]} An array of MNNote instances representing the child notes.
-   */
-  get childNotes() {
-    return this.note.childNotes?.map(k => new MNNote(k)) ?? []
-  }
-  /**
-   * Retrieves the parent note of the current note.
-   * 
-   * This method returns an MNNote instance representing the parent note of the current note. If the current note has no parent note, it returns undefined.
-   * 
-   * @returns {MNNote|undefined} The parent note of the current note, or undefined if there is no parent note.
-   */
-  get parentNote() {
-    return this.note.parentNote && new MNNote(this.note.parentNote)
-  }
-  /**
-   * Retrieves the URL of the current note.
-   * 
-   * This method generates and returns the URL of the current note, which can be used to reference or share the note.
-   * 
-   * @returns {string} The URL of the current note.
-   */
-  get noteURL(){
-    return MNUtil.version.version+'app://note/'+this.note.noteId
-  }
-  /**
-   * Retrieves the child mind map note of the current note.
-   * 
-   * This method returns an MNNote instance representing the child mind map note of the current note. If the current note has no child mind map note, it returns undefined.
-   * 
-   * @returns {MNNote|undefined} The child mind map note of the current note, or undefined if there is no child mind map note.
-   */
-  get childMindMap(){
-    if (this.note.childMindMap) {
-      return MNNote.new(this.note.childMindMap)
-    }
-    return undefined
-  }
-  /**
-   *
-   * @returns {{descendant:MNNote[],treeIndex:number[][]}}
-   */
-  get descendantNodes() {
-    const { childNotes } = this
-    if (!childNotes.length) {
-      return {
-        descendant: [],
-        treeIndex: []
-      }
-    } else {
-      /**
-       *
-       * @param {MNNote[]} nodes
-       * @param {number} level
-       * @param {number[]} lastIndex
-       * @param {{descendant:MNNote[],treeIndex:number[][]}} ret
-       * @returns
-       */
-      function down(
-        nodes,
-        level = 0,
-        lastIndex = [],
-        ret = {
-          descendant: [],
-          treeIndex: []
-        }
-      ) {
-        level++
-        nodes.forEach((node, index) => {
-          ret.descendant.push(node)
-          lastIndex = lastIndex.slice(0, level - 1)
-          lastIndex.push(index)
-          ret.treeIndex.push(lastIndex)
-          if (node.childNotes?.length) {
-            down(node.childNotes, level, lastIndex, ret)
-          }
-        })
-        return ret
-      }
-      return down(childNotes)
-    }
-  }
-  get ancestorNodes() {
-    /**
-     *
-     * @param {MNNote} node
-     * @param {MNNote[]} ancestorNodes
-     * @returns
-     */
-    function up(node, ancestorNodes) {
-      if (node.note.parentNote) {
-        const parentNode = new MNNote(node.note.parentNote)
-        ancestorNodes = up(parentNode, [...ancestorNodes, parentNode])
-      }
-      return ancestorNodes
-    }
-    return up(this, [])
-  }
-  /**
-   * Retrieves the notes associated with the current note.
-   * 
-   * This method returns an array of notes that are linked to the current note. It includes the current note itself and any notes that are linked through the comments.
-   * 
-   * @returns {MNNote[]} An array of MNNote instances representing the notes associated with the current note.
-   */
-  get notes() {
-    return this.note.comments.reduce(
-      (acc, cur) => {
-        cur.type == "LinkNote" && acc.push(MNNote.new(cur.noteid))
-        return acc
-      },
-      [this]
-    )
-  }
-  /**
-   * Retrieves the titles associated with the current note.
-   * 
-   * This method splits the note title by semicolons and returns an array of unique titles. If the note title is not defined, it returns an empty array.
-   * 
-   * @returns {string[]} An array of unique titles associated with the current note.
-   */
-  get titles() {
-    return MNUtil.unique(this.note.noteTitle?.split(/\s*[;；]\s*/) ?? [], true)
-  }
-  /**
-   * Sets the titles associated with the current note.
-   * 
-   * This method sets the titles associated with the current note by joining the provided array of titles with semicolons. If the excerpt text of the note is the same as the note title, it updates both the note title and the excerpt text.
-   * 
-   * @param {string[]} titles - The array of titles to set for the current note.
-   */
-  set titles(titles) {
-    const newTitle = MNUtil.unique(titles, true).join("; ")
-    if (this.note.excerptText === this.note.noteTitle) {
-      this.note.noteTitle = newTitle
-      this.note.excerptText = newTitle
-    } else {
-      this.note.noteTitle = newTitle
-    }
-  }
-  get isOCR() {
-    if (this.note.excerptPic?.paint) {
-      return this.note.textFirst
-    }
-    return false
-  }
-  get textFirst() {
-    return this.note.textFirst
-  }
-  get title() {
-    return this.note.noteTitle ?? ""
-  }
-  get noteTitle() {
-    return this.note.noteTitle ?? ""
-  }
-  /**
-   *
-   * @param {string} title
-   * @returns
-   */
-  set title(title) {
-    this.note.noteTitle = title
-  }
-  /**
-   * set textFirst
-   * @param {boolean} on
-   * @returns
-   */
-  set textFirst(on){
-    this.note.textFirst = on
-  }
-  /**
-   *
-   * @param {string} title
-   * @returns
-   */
-  set noteTitle(title) {
-    this.note.noteTitle = title
-  }
-  get excerptText(){
-    return this.note.excerptText
-  }
-  get excerptTextMarkdown(){
-    return this.note.excerptTextMarkdown;
-  }
-  set excerptTextMarkdown(status){
-    this.note.excerptTextMarkdown = status
-  }
-  set excerptText(text){
-    this.note.excerptText = text
-    if (this.excerptPic && !this.textFirst) {
-      this.textFirst = true
-    }
-  }
-  get mainExcerptText() {
-    return this.note.excerptText ?? ""
-  }
-  /**
-   *
-   * @param {string} text
-   * @returns
-   */
-  set mainExcerptText(text) {
-    this.note.excerptText = text
-  }
-  get excerptPic(){
-    return this.note.excerptPic
-  }
-  get excerptPicData(){
-    let imageData = MNUtil.getMediaByHash(this.note.excerptPic.paint)
-    return imageData
-  }
-  get colorIndex(){
-    return this.note.colorIndex
-  }
-  set colorIndex(index){
-    this.note.colorIndex = index
-  }
-  get fillIndex(){
-    return this.note.fillIndex
-  }
-  set fillIndex(index){
-    this.note.fillIndex = index
-  }
-  get createDate(){
-    return this.note.createDate
-  }
-  get modifiedDate(){
-    return this.note.modifiedDate
-  }
-  get linkedNotes(){
-    return this.note.linkedNotes
-  }
-  get summaryLinks(){
-    return this.note.summaryLinks
-  }
-  get mediaList(){
-    return this.note.mediaList
-  }
-  /**
-   * get all tags, without '#'
-   * @returns {string[]}
-   */
-  get tags() {
-    try {
-    // MNUtil.showHUD("length: "+this.note.comments.length)
-    const tags = this.note.comments.reduce((acc, cur) => {
-      // MNUtil.showHUD("cur.type")
-      if (cur.type == "TextNote" && cur.text.startsWith("#")) {
-        acc.push(...cur.text.split(/\s+/).filter(k => k.startsWith("#")))
-      }
-      return acc
-    }, [])
-    return tags.map(k => k.slice(1))
-
-    } catch (error) {
-      MNUtil.showHUD(error)
-      return []
-    }
-  }
-  /**
-   *
-   * @returns {NoteComment[]}
-   */
-  get comments(){
-    return this.note.comments
-  }
-  /**
-   * set tags, will remove all old tags
-   *
-   * @param {string[]} tags
-   * @returns
-   */
-  set tags(tags) {
-    this.tidyupTags()
-    tags = MNUtil.unique(tags, true)
-    const lastComment = this.note.comments[this.note.comments.length - 1]
-    if (lastComment?.type == "TextNote" && lastComment.text.startsWith("#")) {
-      this.note.removeCommentByIndex(this.note.comments.length - 1)
-    }
-    this.appendTextComments(tags.map(k => '#'+k).join(" "))
-  }
-  /**
-   * @returns {{ocr:string[],html:string[],md:string[]}}
-   */
-  get excerptsTextPic() {
-    return this.notes.reduce(
-      (acc, cur) => {
-        Object.entries(MNNote.getNoteExcerptTextPic(cur)).forEach(([k, v]) => {
-          if (k in acc) acc[k].push(...v)
-        })
-        return acc
-      },
-      {
-        ocr: [],
-        html: [],
-        md: []
-      }
-    )
-  }
-  /**
-   * @returns {{html:string[],md:string[]}}
-   */
-  get commentsTextPic() {
-    return this.note.comments.reduce(
-      (acc, cur) => {
-        if (cur.type === "PaintNote") {
-          const imgs = MNNote.exportPic(cur)
-          if (imgs)
-            Object.entries(imgs).forEach(([k, v]) => {
-              if (k in acc) acc[k].push(v)
-            })
-        } else if (cur.type == "TextNote" || cur.type == "HtmlNote") {
-          const text = cur.text.trim()
-          if (text && !text.includes("marginnote3app") && !text.startsWith("#"))
-            Object.values(acc).map(k => k.push(text))
-        }
-        return acc
-      },
-      {
-        html: [],
-        md: []
-      }
-    )
-  }
-  /** @returns {string[]} */
- get excerptsText() {
-    return this.notes.reduce((acc, note) => {
-      const text = note.excerptText?.trim()
-      if (text) {
-        if (!note.excerptPic?.paint || this.isOCR) {
-          acc.push(text)
-        }
-      }
-      return acc
-    }, [])
-  }
-  /**
-   * get all comment text
-   * @returns {string[]}
-   */
-  get commentsText() {
-    return this.note.comments.reduce((acc, cur) => {
-      if (cur.type == "TextNote" || cur.type == "HtmlNote") {
-        const text = cur.text.trim()
-        if (text && !text.includes("marginnote3app") && !text.startsWith("#"))
-          acc.push(text)
-      }
-      return acc
-    }, [])
-  }
-  /**
-   * get all text and pic note will be OCR or be transformed to base64
-   */
-  get allTextPic() {
-    const retVal = MNNote.getNoteExcerptTextPic(this.note)
-    this.note.comments.forEach(k => {
-      if (k.type === "PaintNote") {
-        const imgs = MNNote.exportPic(k)
-        if (imgs)
-          Object.entries(imgs).forEach(([k, v]) => {
-            if (k in retVal) retVal[k].push(v)
-          })
-      } else if (k.type == "TextNote" || k.type == "HtmlNote") {
-        const text = k.text.trim()
-        if (text) Object.values(retVal).map(k => k.push(text))
-      } else if (k.type == "LinkNote") {
-        const note = MNUtil.db.getNoteById(k.noteid)
-        if (note)
-          Object.entries(MNNote.getNoteExcerptTextPic(note)).forEach(([k, v]) => {
-            if (k in retVal) retVal[k].push(...v)
-          })
-      }
-    })
-    return {
-      html: retVal.html.join("\n\n"),
-      ocr: retVal.ocr.join("\n\n"),
-      md: retVal.md.join("\n\n")
-    }
-  }
-  /**
-   * Get all text
-   */
-  get allText() {
-
-    const { mainExcerptText } = this
-    const retVal =
-      mainExcerptText && (!this.note.excerptPic?.paint || this.isOCR)
-        ? [mainExcerptText]
-        : []
-    this.note.comments.forEach(k => {
-      if (k.type == "TextNote" || k.type == "HtmlNote") {
-        const text = k.text.trim()
-        if (text) retVal.push(text)
-      } else if (k.type == "LinkNote") {
-        const note = MNUtil.db.getNoteById(k.noteid)
-        const text = note?.excerptText?.trim()
-        if (text && (!note?.excerptPic?.paint || this.isOCR)) retVal.push(text)
-      }
-    })
-    return retVal.join("\n\n")
-  }
-  /**
-   * Get all text.
-   */
-  get excerptsCommentsText() {
-    const { mainExcerptText } = this
-    const retVal =
-      mainExcerptText && (!this.note.excerptPic?.paint || this.isOCR)
-        ? [mainExcerptText]
-        : []
-    this.note.comments.forEach(k => {
-      if (k.type == "TextNote" || k.type == "HtmlNote") {
-        const text = k.text.trim()
-        if (text && !text.includes("marginnote3app") && !text.includes("marginnote4app") && !text.startsWith("#"))
-          retVal.push(text)
-      } else if (k.type == "LinkNote") {
-        const note = MNUtil.db.getNoteById(k.noteid)
-        const text = note?.excerptText?.trim()
-        if (text && (!note?.excerptPic?.paint || this.isOCR)) retVal.push(text)
-      }
-    })
-    return retVal
-  }
-  get docMd5(){
-    if (this.note.docMd5) {
-      return this.note.docMd5
-    }
-    return undefined
-  }
   /**
    * 当前卡片可能只是文档上的摘录，通过这个方法获取它在指定学习集下的卡片noteId
    * 与底层API不同的是，这里如果不提供nodebookid参数，则默认为当前学习集的nodebookid
@@ -5763,7 +5832,7 @@ try {
       to = arr.length-1
     }
     if (from == to) {
-      // MNUtil.showHUD("No change")
+      MNUtil.showHUD("No change")
       return
     }
     // 取出要移动的元素
@@ -5826,36 +5895,33 @@ try {
    */
   getCommentIndicesByCondition(condition){
     let indices = []
-    let type = []
+    let types = []
     if ("type" in condition) {
-      type = Array.isArray(condition.type) ? condition.type : [condition.type]
+      types = Array.isArray(condition.type) ? condition.type : [condition.type]
     }
+    if ("types" in condition) {
+      types = Array.isArray(condition.types) ? condition.types : [condition.types]
+    }
+    let excludeNoneTextComment = false
+    if (condition.exclude || condition.include || condition.reg) {
+      excludeNoneTextComment = true
+    }
+    let noneTextCommentTypes = ["PaintNote","blankImageComment","mergedImageCommentWithDrawing","mergedImageComment"]
     this.note.comments.map((comment,commentIndex)=>{
-      if (type.length) {
-        if (!type.includes(comment.type)) {
-          return
-        }
+      if (types.length && !MNComment.commentBelongsToType(comment, types)) {
+        return
       }
-      if (condition.include) {
-        if (comment.type === "PaintNote") {
-          return
-        }
-        if (!comment.text.includes(condition.include)) {
-          return
-        }
+      let newComment = MNComment.new(comment, commentIndex, this.note)
+      if (excludeNoneTextComment && newComment.belongsToType(noneTextCommentTypes)) {
+        return
       }
-      if (condition.exclude) {
-        if (comment.type === "PaintNote") {
-          return
-        }
-        if (comment.text.includes(condition.include)) {
-          return
-        }
+      if (condition.include && !newComment.text.includes(condition.include)) {//指文字必须包含特定内容
+        return
+      }
+      if (condition.exclude &&newComment.text.includes(condition.include)) {
+        return
       }
       if (condition.reg) {
-        if (comment.type === "PaintNote") {
-          return
-        }
         let ptt = new RegExp(condition.reg,"g")
         if (!(ptt.test(comment.text))) {
           return
@@ -5918,7 +5984,7 @@ try {
       (acc, comment, i) => {
         if (
           comment.type == "TextNote" &&
-          (comment.text.includes("marginnote3app://note/") ||
+          (comment.text.includes("marginnote3app://note/") || comment.text.includes("marginnote4app://note/")||
             comment.text.startsWith("#"))
         ) {
           acc.linkTags.push(comment.text)
@@ -5978,7 +6044,7 @@ try {
     const existingTags= []
     const tagCommentIndex = []
     this.note.comments.forEach((comment, index) => {
-      if (comment.type == "TextNote" && comment.text.startsWith("#")) {
+      if (comment.type == "TextNote" && MNUtil._isTagComment_(comment)) {
         const tags = comment.text.split(" ").filter(k => k.startsWith("#"))
         existingTags.push(...tags.map(tag => tag.slice(1)))
         tagCommentIndex.unshift(index)
@@ -6371,6 +6437,250 @@ try {
       }
     }
     return undefined
+  }
+}
+
+class MNComment {
+  /** @type {string} */
+  type;
+  /** @type {string} */
+  originalNoteId;
+  /** @type {number} */
+  index;
+  /**
+   * 
+   * @param {NoteComment} comment 
+   */
+  constructor(comment) {
+    this.type = MNComment.getCommentType(comment)
+    this.detail = comment
+  }
+  get imageData() {
+    switch (this.type) {
+      case "blankImageComment":
+      case "mergedImageCommentWithDrawing":
+      case "mergedImageComment":
+        return MNUtil.getMediaByHash(this.detail.q_hpic.paint)
+      case "drawingComment":
+      case "imageCommentWithDrawing":
+      case "imageComment":
+        return MNUtil.getMediaByHash(this.detail.paint)
+      default:
+        MNUtil.showHUD("Invalid type: "+this.type)
+        return undefined
+    }
+  }
+
+  get text(){
+    if (this.detail.text) {
+      return this.detail.text
+    }
+    if (this.detail.q_htext) {
+      return this.detail.q_htext
+    }
+    MNUtil.showHUD("No available text")
+    return undefined
+  }
+  set text(text){
+    if (this.originalNoteId) {
+      let note = MNNote.new(this.originalNoteId)
+      switch (this.type) {
+        case "markdownComment":
+          this.detail.text = text
+          note.removeCommentByIndex(this.index)
+          note.appendMarkdownComment(text, this.index)
+          break;
+        case "textComment":
+          this.detail.text = text
+          note.appendTextComment(this.index)
+          note.appendMarkdownComment(text, this.index)
+          break;
+        case "blankTextComment":
+        case "mergedImageComment":
+        case "mergedTextComment":
+          this.detail.q_htext = text
+          let mergedNote = this.note
+          mergedNote.excerptText = text
+          break;
+        default:
+          MNUtil.showHUD("Unspported comment type: " + this.type)
+          break;
+      }
+    }else{
+      MNUtil.showHUD("No originalNoteId")
+    }
+  }
+  get tags(){
+    if (this.type === "tagComment") {
+      return this.detail.text.split(/\s+/).filter(k => k.startsWith("#"))
+    }
+    return undefined
+  }
+  get note(){
+    switch (this.type) {
+      case "linkComment":
+        return MNNote.new(this.detail.text)
+      case "blankTextComment":
+      case "blankImageComment":
+      case "mergedImageCommentWithDrawing":
+      case "mergedImageComment":
+      case "mergedTextComment":
+        return MNNote.new(this.detail.noteid)
+      default:
+        MNUtil.showHUD("No available note")
+        return undefined
+    }
+  }
+  copyImage(){
+    MNUtil.copyImage(this.imageData)
+  }
+  copyText(){
+    MNUtil.copy(this.detail.text)
+  }
+  copy(){
+    switch (this.type) {
+      case "blankImageComment":
+      case "mergedImageCommentWithDrawing":
+      case "mergedImageComment":
+        MNUtil.copyImage(MNUtil.getMediaByHash(this.detail.q_hpic.paint))
+        break;
+      case "drawingComment":
+      case "imageCommentWithDrawing":
+      case "imageComment":
+        MNUtil.copyImage(MNUtil.getMediaByHash(this.detail.paint))
+        break;
+      case "blankTextComment":
+      case "mergedTextComment":
+        MNUtil.copy(this.detail.q_htext)
+        break;
+      default:
+        MNUtil.copy(this.detail.text)
+        break;
+    }
+  }
+  remove(){
+    if (this.originalNoteId) {
+      let note = MNNote.new(this.originalNoteId)
+      note.removeCommentByIndex(this.index)
+    }else{
+      MNUtil.showHUD("No originalNoteId")
+    }
+  }
+  /**
+   * 
+   * @param {string[]} types 
+   * @returns {boolean}
+   */
+  belongsToType(types){
+    if (types.includes(this.detail.type)) {
+      return true
+    }
+    if (types.includes(this.type)) {
+      return true
+    }
+    return false
+  }
+  /**
+   * 
+   * @param {NoteComment} comment 
+   * @param {string[]} types 
+   * @returns {boolean}
+   */
+  static commentBelongsToType(comment,types){
+    if (types.length === 0) {
+      return false
+    }
+    if (types.includes(comment.type)) {
+      return true
+    }
+    let newType = MNComment.getCommentType(comment)
+    if (types.includes(newType)) {
+      return true
+    }
+    return false
+  }
+  /**
+   * 
+   * @param {NoteComment} comment 
+   * @returns {string}
+   */
+  static getCommentType(comment){
+    switch (comment.type) {
+      case "TextNote":
+        if (/^#\S/.test(comment.text)) {
+          return "tagComment"
+        }
+        if (/^marginnote\dapp:\/\/note\//.test(comment.text)) {
+          return "linkComment"
+        }
+        if (comment.markdown) {
+          return "markdownComment"
+        }
+        return "textComment"
+      case "HtmlNote":
+        return "HtmlComment"
+      case "LinkNote":
+        if (comment.q_hblank) {
+          let imageData = MNUtil.getMediaByHash(comment.q_hpic.paint)
+          let imageSize = UIImage.imageWithData(imageData).size
+          if (imageSize.width === 1 && imageSize.height === 1) {
+            return "blankTextComment"
+          }else{
+            return "blankImageComment"
+          }
+        }
+        if (comment.q_hpic) {
+          if (comment.q_hpic.drawing) {
+            return "mergedImageCommentWithDrawing"
+          }
+          return "mergedImageComment"
+        }else{
+          return "mergedTextComment"
+        }
+      case "PaintNote":
+        if (comment.drawing) {
+          if (comment.paint) {
+            return "imageCommentWithDrawing"
+          }else{
+            return "drawingComment"
+          }
+        }else{
+          return "imageComment"
+        }
+      default:
+        return undefined
+    }
+  }
+  /**
+   * 
+   * @param {MNNote|MbBookNote} note
+   * @returns {MNComment[]}
+   */
+  static from(note){
+    try {
+      let newComments = note.comments.map((c,ind)=>MNComment.new(c,ind,note))
+      return newComments
+    } catch (error) {
+      toolbarUtils.addErrorLog(error, "from")
+      return undefined
+    }
+  }
+  /**
+   * 
+   * @param {NoteComment} comment 
+   * @param {number|undefined} index 
+   * @param {MbBookNote|undefined} note
+   * @returns {MNComment}
+   */
+  static new(comment,index,note){
+      let newComment = new MNComment(comment)
+      if (index !== undefined) {
+        newComment.index = index
+      }
+      if (note) {
+        newComment.originalNoteId = note.noteId
+      }
+      return newComment
   }
 }
 

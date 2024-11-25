@@ -254,6 +254,9 @@ String.prototype.ifYellowClassificationNoteTitle = function () {
 String.prototype.isYellowClassificationNoteTitle = function () {
   return this.ifYellowClassificationNoteTitle()
 }
+String.prototype.isClassificationNoteTitle = function () {
+  return this.ifYellowClassificationNoteTitle() || this.ifGreenClassificationNoteTitle()
+}
 /**
  * 获取黄色归类卡片的标题
  */
@@ -4699,7 +4702,7 @@ class MNNote{
    * 【数学】定义类卡片的增加模板
    * @param {string} type 需要生成的归类卡片的类型
    */
-  addClassificationNoteByTypeBasedOnDefinitionNote(type, title=""){
+  addClassificationNoteByType(type, title=""){
     /**
      * 生成归类卡片
      */
@@ -4717,6 +4720,8 @@ class MNNote{
     classificationNote.linkParentNote()
 
     classificationNote.focusInMindMap(0.2)
+
+    return classificationNote
   }
 
   /**

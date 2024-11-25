@@ -7827,6 +7827,11 @@ static getActions() {
     "custom12":{name:"工作流",image:"workflow_white",description: this.template("menu_workflow")},
     "custom13":{name:"摘录",image:"excerpt_white",description: this.template("menu_excerpt")},
     "custom14":{name:"MN",image:"MN_white",description: this.template("menu_MN")},
+    "custom15":{name:"Custom 15",image:"custom15",description: this.template("addChildNote")},
+    "custom16":{name:"Custom 16",image:"custom16",description: this.template("showInFloatWindow")},
+    "custom17":{name:"Custom 17",image:"custom17",description: this.template("setContent")},
+    "custom18":{name:"Custom 18",image:"custom18",description: this.template("addComment")},
+    "custom19":{name:"Custom 19",image:"custom19",description: this.template("removeComment")},
   }
 }
 static execute(){

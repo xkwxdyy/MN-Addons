@@ -7752,10 +7752,25 @@ static template(action) {
       config.doubleClick = {
         "action": "mergeTemplateNotes"
       }
-      // TODO：预摘录模式下长按改成加入复习的制卡？
       config.onLongPress = {
         "action": "menu",
         "menuItems": [
+          {
+            "action": "changeChildNotesTitles",
+            "menuTitle": "批量修改子卡片标题"
+          },
+          {
+            "action": "changeDescendantNotesTitles",
+            "menuTitle": "批量修改子孙卡片标题"
+          },
+          {
+            "action": "TemplateMakeChildNotes",
+            "menuTitle": "批量进行子卡片制卡"
+          },
+          {
+            "action": "TemplateMakeDescendantNotes",
+            "menuTitle": "批量进行子孙卡片制卡"
+          },
           {
             "action": "clearContentKeepExcerptWithTitle",
             "menuTitle": "✅ 摘录 ✅ 标题",
@@ -7798,8 +7813,8 @@ static getActions() {
     "custom4":{name:"文献",image:"reference",description: this.template("menu_reference")},
     "custom6":{name:"文本",image:"text",description: this.template("menu_text")},
     "snipaste":{name:"Snipaste",image:"snipaste",description:"Snipaste"},
-    "custom11":{name:"工作流",image:"workflow",description: this.template("menu_workflow")},
     "custom7":{name:"隐藏插件栏",image:"hideAddonBar",description: this.template("hideAddonBar")},
+    "custom11":{name:"工作流",image:"workflow",description: this.template("menu_workflow")},
     "custom8":{name:"测试",image:"test",description: this.template("test")},
     "execute":{name:"execute",image:"execute",description:"let focusNote = MNNote.getFocusNote()\nMNUtil.showHUD(focusNote.noteTitle)"},
     "ocr":{name:"ocr",image:"ocr",description:JSON.stringify({target:"comment",source:"default"})},

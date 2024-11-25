@@ -4896,7 +4896,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           }
         )
         break
-      case "mergeTemplateNotes":
+      case "mergeTemplateNotes": // new
         MNUtil.undoGrouping(()=>{
           try {
             if (self.preprocessMode) {
@@ -4920,7 +4920,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           }
         })
         break;
-      case "TemplateMakeNotes":
+      case "TemplateMakeNotes": // new
         MNUtil.undoGrouping(()=>{
           try {
             if (self.preprocessMode) {
@@ -4932,17 +4932,18 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                 }
                 focusNote.changeTitle()
                 focusNote.changeColorByType()
-                if (focusNote.getNoteTypeZh()=="顶层" || focusNote.getNoteTypeZh()=="归类") {
-                  focusNote.descendantNodes.descendant.forEach(descendantNote => {
-                    if (descendantNote.excerptText) {
-                      descendantNote.toNoExceptVersion()
-                    }
-                    descendantNote.changeTitle()
-                    descendantNote.changeColorByType()
-                  })
+                focusNote.focusInMindMap(0.5)
+                // if (focusNote.getNoteTypeZh()=="顶层" || focusNote.getNoteTypeZh()=="归类") {
+                //   focusNote.descendantNodes.descendant.forEach(descendantNote => {
+                //     if (descendantNote.excerptText) {
+                //       descendantNote.toNoExceptVersion()
+                //     }
+                //     descendantNote.changeTitle()
+                //     descendantNote.changeColorByType()
+                //   })
   
-                  focusNote.focusInMindMap(0.5)
-                }
+                //   focusNote.focusInMindMap(0.5)
+                // }
               })
             } else {
               focusNotes.forEach(focusNote=>{
@@ -4950,15 +4951,17 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                 if (!focusNote.excerptText) {
                   focusNote.addToReview()
                 }
-                if (focusNote.getNoteTypeZh()=="顶层" || focusNote.getNoteTypeZh()=="归类") {
-                  focusNote.descendantNodes.descendant.forEach(descendantNote => {
-                    toolbarUtils.TemplateMakeNote(descendantNote)
-                    if (!descendantNote.excerptText) {
-                      descendantNote.addToReview()
-                    }
-                  })
-                  focusNote.focusInMindMap(0.5)
-                }
+                focusNote.refreshAll()
+                focusNote.focusInMindMap(0.5)
+                // if (focusNote.getNoteTypeZh()=="顶层" || focusNote.getNoteTypeZh()=="归类") {
+                //   focusNote.descendantNodes.descendant.forEach(descendantNote => {
+                //     toolbarUtils.TemplateMakeNote(descendantNote)
+                //     if (!descendantNote.excerptText) {
+                //       descendantNote.addToReview()
+                //     }
+                //   })
+                //   focusNote.focusInMindMap(0.5)
+                // }
               })
             }
           } catch (error) {
@@ -4966,192 +4969,51 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           }
         })
         break;
-      case "makeCards":
+      /**
+       * 修改子卡片标题（仅子卡片，不包含子卡片的子卡片）
+       */
+      case "changeChildNotesTitles": // new
         MNUtil.undoGrouping(()=>{
-          try {
-            // focusNotes.forEach(focusNote=>{
-            for (let i = 0; i < focusNotes.length; i++) {
-              focusNote = focusNotes[i]
-              /* 初始化 */
-              let ifParentNoteChosen = false
-
-              toolbarUtils.renewCards(focusNote)
-
-              /* 先将卡变成非摘录版本 */
-              // 如果是非摘录版本的就不处理，否则已有链接会失效（卡片里的失去箭头，被链接的失效，因为此时的卡片被合并了，id 不是原来的 id 了）
-              if (focusNote.excerptText) {
-                toolbarUtils.convertNoteToNonexcerptVersion(focusNote)
-                // 注意此时 focusNote 变成非摘录版本后，下面的代码中 focusNote 就失焦了（因为被合并到其它卡片了）
-                // 所以下面的代码不会执行，这就产生了一个效果：
-                // 点击第一次：将摘录版本变成非摘录版本
-                // 点击第二次：开始制卡
-                // 误打误撞产生最佳效果了属于是
-                break
-              }
-
-              /* 确定卡片类型 */
-              switch (focusNoteColorIndex) {
-                case 0: // 淡黄色
-                  focusNoteType = "classification"
-                  break;
-                case 2: // 淡蓝色：定义类
-                  focusNoteType = "definition"
-                  break;
-                case 3: // 淡粉色：反例
-                  focusNoteType = "antiexample"
-                  break;
-                case 4: // 黄色：归类
-                  focusNoteType = "classification"
-                  break;
-                case 6: // 蓝色：应用
-                  focusNoteType = "application"
-                  break;
-                case 9: // 深绿色：思想方法
-                  focusNoteType = "method"
-                  break;
-                case 10: // 深蓝色：定理命题
-                  focusNoteType = "theorem"
-                  break;
-                case 13: // 淡灰色：问题
-                  focusNoteType = "question"
-                  break;
-                case 15: // 淡紫色：例子
-                  focusNoteType = "example"
-                  break;
-              }
-
-              /* 预处理 */
-              /* 只对淡蓝色、淡粉色、深绿色、深蓝色、淡紫色的卡片进行制卡 */
-              if (
-                [0, 1, 2, 3, 4, 6, 9, 10, 13, 15].includes(focusNoteColorIndex) &&
-                !focusNote.noteTitle.startsWith("【文献")  // 防止文献卡片被制卡
-              ) {
-
-                /* 检测父卡片的存在和颜色 */
-                parentNote = focusNote.parentNote
-                if (parentNote) {
-                  // 有父节点
-                  // 检测父卡片是否是淡黄色、淡绿色或黄色的，不是的话获取父卡片的父卡片，直到是为止，获取第一次出现特定颜色的父卡片作为 parentNote
-                  while (parentNote) {
-                    if (parentNote.colorIndex == 0 || parentNote.colorIndex == 1 || parentNote.colorIndex == 4) {
-                      ifParentNoteChosen = true
-                      break
-                    }
-                    parentNote = parentNote.parentNote
-                  }
-                  if (!ifParentNoteChosen) {
-                    parentNote = undefined
-                  }
-                }
-              } else {
-                MNUtil.showHUD("此卡片不支持制卡！")
-                return // 使用 return 来提前结束函数, 避免了在内部函数中使用 break 导致的语法错误。
-              }
-
-              let parentNoteType = toolbarUtils.getClassificationNoteTypeByTitle(parentNote.noteTitle)
-              if (
-                [1,2,3,6,9,10,13,15].includes(focusNoteColorIndex) ||
-                !focusNote.noteTitle.match(/“.*”相关.*/) ||
-                !focusNote.noteTitle.match(/“.*”：“.*”相关.*/)
-              ) {
-                switch (parentNoteType) {
-                  case "定义":
-                    focusNoteType = "definition"
-                    focusNote.note.colorIndex = 2
-                    break
-                  case "命题":
-                    focusNoteType = "theorem"
-                    focusNote.note.colorIndex = 10
-                    break
-                  case "反例":
-                    focusNoteType = "antiexample"
-                    focusNote.note.colorIndex = 3
-                    break
-                  case "例子":
-                    focusNoteType = "example"
-                    focusNote.note.colorIndex = 15
-                    break
-                  case "思想方法":
-                    focusNoteType = "method"
-                    focusNote.note.colorIndex = 9
-                    break
-                  case "问题":
-                    focusNoteType = "question"
-                    focusNote.note.colorIndex = 13
-                    break
-                  case "应用":
-                    focusNoteType = "application"
-                    focusNote.note.colorIndex = 6
-                    break
-                }
-              }
-              
-              if ([2, 3, 6, 9, 10, 13, 15].includes(focusNote.note.colorIndex)) {
-                MNUtil.excuteCommand("AddToReview")
-              }
-
-              /* 开始制卡 */
-              /* 合并第一层模板 */
-              toolbarUtils.makeCardsAuxFirstLayerTemplate(focusNote, focusNoteType)
-              /* 与父卡片的链接 */
-              try {
-                // MNUtil.undoGrouping(()=>{
-                  toolbarUtils.makeCardsAuxLinkToParentNote(focusNote, focusNoteType, parentNote)
-                // })
-              } catch (error) {
-                MNUtil.showHUD(error);
-              }
-              /* 修改卡片前缀 */
-              toolbarUtils.makeCardsAuxChangefocusNotePrefix(focusNote, parentNote)
-              /* 合并第二层模板 */
-              toolbarUtils.makeCardsAuxSecondLayerTemplate(focusNote, focusNoteType)
-
-              // bug：先应用再证明时，无反应
-              /* 移动“应用：”和链接部分到最下方 */
-              toolbarUtils.makeCardsAuxMoveDownApplicationsComments(focusNote)
-              /* 
-                移动“证明：”到最上方
-                但要注意
-                - 反例类型的是“反例及证明：”
-                - 思想方法类型的是“原理：”
-              */
-              if (focusNoteType !== "definition" && focusNoteType !== "classification") {
-                try {
-                  toolbarUtils.makeCardsAuxMoveProofHtmlComment(focusNote,focusNoteType)
-                } catch (error) {
-                  MNUtil.showHUD(error)
-                }
-              }
-              if (focusNoteType == "classification") {
-                MNUtil.undoGrouping(()=>{
-                  try {
-                    toolbarUtils.changeChildNotesPrefix(focusNote)
-                  } catch (error) {
-                    MNUtil.showHUD(error);
-                  }
-                })
-              }
-              focusNote.refresh()
-              // 处理卡片标题空格
-              focusNote.noteTitle = Pangu.spacing(focusNote.noteTitle)
-              toolbarUtils.removeDuplicateKeywordsInTitle(focusNote)
-              
-              if (focusNotes.length == 1) {
-                try {
-                  // MNUtil.undoGrouping(()=>{
-                    focusNote.focusInMindMap()
-                  // })
-                } catch (error) {
-                  MNUtil.showHUD(error);
-                }
-              }
-            }
-          } catch (error) {
-            MNUtil.showHUD(error);
-          }
+          focusNote.childNotes.forEach(childNote => {
+            childNote.changeTitle()
+            childNote.refreshAll()
+          })
         })
         break;
-      /* 夏大鱼羊定制 - end */
+      /**
+       * 修改子孙卡片标题（包含子卡片的子卡片）
+       */
+      case "changeDescendantNotesTitles": // new
+        MNUtil.undoGrouping(()=>{
+          focusNote.descendantNodes.descendant.forEach(descendantNote => {
+            descendantNote.changeTitle()
+            descendantNote.refreshAll()
+          })
+        })
+        break;
+      /**
+       * 子卡片制卡（仅子卡片）
+       */
+      case "TemplateMakeChildNotes": // new
+        MNUtil.undoGrouping(()=>{
+          focusNote.childNotes.forEach(childNote => {
+            toolbarUtils.TemplateMakeNote(childNote)
+            childNote.refreshAll()
+          })
+        })
+        break;
+      /**
+       * 子孙卡片制卡（包含子卡片的子卡片）
+       */
+      case "TemplateMakeDescendantNotes": // new
+        MNUtil.undoGrouping(()=>{
+          focusNote.descendantNodes.descendant.forEach(descendantNote => {
+            toolbarUtils.TemplateMakeNote(descendantNote)
+            descendantNote.refreshAll()
+          })
+        })
+        break;
+        /* 夏大鱼羊定制 - end */
       case "chatAI":
         toolbarUtils.chatAI(des)
         break

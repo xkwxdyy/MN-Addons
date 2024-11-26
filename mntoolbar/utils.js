@@ -186,6 +186,23 @@ class toolbarUtils {
           "action": "",
         }
       },
+      "🔨 user select":{
+        "description": "要求用户选择一个选项",
+        "action": "userSelect",
+        "title": "test",
+        "selectItems": [
+          {
+            "action": "showMessage",
+            "content": "选中第一个",
+            "selectTitle": "teste1"
+          },
+          {
+            "action": "showMessage",
+            "content": "选中第二个",
+            "selectTitle": "teste2"
+          }
+        ]
+      },
       "🔨 show message":{
         "action": "showMessage",
         "content": "Hello world"
@@ -381,6 +398,14 @@ class toolbarUtils {
         "action": "noteHighlight",
         "parentNote": "marginnote4app://note/xxx"
       },
+      "🔨 create & set branch style":{
+        "description": "创建摘录并设置分支样式",
+        "action": "noteHighlight",
+        "onFinish": {
+          "action": "command",
+          "command": "SelBranchStyle3"
+        }
+        },
       "🔨 move note to main mindmap":{
         "description": "将当前笔记移动到主脑图中",
         "action": "moveNote",
@@ -534,7 +559,7 @@ static isPureMNImages(markdown) {
       return false
     }
   } catch (error) {
-    editorUtils.addErrorLog(error, "isPureMNImages")
+    toolbarUtils.addErrorLog(error, "isPureMNImages")
     return false
   }
 }
@@ -546,7 +571,7 @@ static hasMNImages(markdown) {
     // MNUtil.copyJSON({"a":link,"b":markdown})
     return markdown.match(MNImagePattern)?true:false
   } catch (error) {
-    editorUtils.addErrorLog(error, "hasMNImages")
+    toolbarUtils.addErrorLog(error, "hasMNImages")
     return false
   }
 }
@@ -575,7 +600,7 @@ static getMNImagesFromMarkdown(markdown) {
     // MNUtil.copy(result)
     // return result;
   } catch (error) {
-    editorUtils.addErrorLog(error, "replaceBase64ImagesWithR2")
+    toolbarUtils.addErrorLog(error, "replaceBase64ImagesWithR2")
     return undefined
   }
 }
@@ -585,6 +610,8 @@ static getMNImagesFromMarkdown(markdown) {
  * @param {UITextView} textView
  */
 static insertSnippetToTextView(text, textView) {
+try {
+  
 
   let textLength = text.length
   let cursorLocation = textLength
@@ -598,6 +625,11 @@ static insertSnippetToTextView(text, textView) {
   let post = textView.text.slice(selectedRange.location+selectedRange.length)
   textView.text = pre+text+post
   textView.selectedRange = {location:selectedRange.location+cursorLocation,length:0}
+  return true
+  } catch (error) {
+    this.addErrorLog(error, "insertSnippetToTextView")
+    return false
+  }
 }
   static smartCopy(){
     MNUtil.showHUD("smartcopy")
@@ -4739,15 +4771,17 @@ static insertSnippetToTextView(text, textView) {
         break;
       case "{{currentNoteInMindMap}}":
       case "currentNoteInMindMap":
-        let notebookController = MNUtil.notebookController
-        let currentNotebookId = notebookController.notebookId
+        MNNote.getFocusNote().realGroupNoteForTopicId().focusInFloatMindMap()
+        return
+        // let notebookController = MNUtil.notebookController
+        // let currentNotebookId = notebookController.notebookId
         
-        if (!notebookController.view.hidden && notebookController.mindmapView && notebookController.focusNote) {
-          targetNoteid = notebookController.focusNote.noteId
-        }else{
-          let testNote = MNUtil.currentDocController.focusNote
-          targetNoteid = testNote.realGroupNoteIdForTopicId(currentNotebookId)
-        }
+        // if (!notebookController.view.hidden && notebookController.mindmapView && notebookController.focusNote) {
+        //   targetNoteid = notebookController.focusNote.noteId
+        // }else{
+        //   let testNote = MNUtil.currentDocController.focusNote
+        //   targetNoteid = testNote.realGroupNoteIdForTopicId(currentNotebookId)
+        // }
         break;
       default:
         break;
@@ -4757,7 +4791,6 @@ static insertSnippetToTextView(text, textView) {
     }else{
       MNUtil.showHUD("No Note found!")
     }
-    // toolbarUtils.studyController().focusNoteInFloatMindMapById(targetNoteid)
   }
   static async delay (seconds) {
     return new Promise((resolve, reject) => {
@@ -4927,6 +4960,7 @@ static insertSnippetToTextView(text, textView) {
     let config = {date:this.getDateObject()}
     if (noteConfig) {
       config.note = noteConfig
+      config.cursor = "{{cursor}}"
     }
     if (element !== undefined) {
       config.element = element
@@ -6160,24 +6194,22 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     }
     if ("followAutoStyle" in des && des.followAutoStyle && (typeof autoUtils !== 'undefined')) {
       let focusNotes
-      let followAutoStyle = true
       let selection = MNUtil.currentSelection
       if (selection.onSelection) {
         focusNotes = MNNote.new(MNUtil.currentDocController.highlightFromSelection())
-        // followAutoStyle = false
       }else{
         focusNotes = MNNote.getFocusNotes()
       }
       MNUtil.showHUD("followAutoStyle")
       MNUtil.undoGrouping(()=>{
         focusNotes.map(note=>{
-          if (followAutoStyle) {
+          // if (followAutoStyle) {
             let fillIndex
             if (note.excerptPic) {
               fillIndex = autoUtils.getConfig("image")[colorIndex]
             }else{
               fillIndex = autoUtils.getConfig("text")[colorIndex]
-            }
+            // }
           }
           this.setNoteColor(note,colorIndex,fillIndex)
         })
@@ -6571,10 +6603,12 @@ static getButtonFrame(button){
       "🔨 merge text of merged notes",
       "🔨 create & move to main mindmap",
       "🔨 create & move as child note",
+      "🔨 create & set branch style",
       "🔨 move note to main mindmap",
       "🔨 menu with actions",
       "🔨 focus in float window",
       "🔨 user confirm",
+      "🔨 user select",
       "🔨 show message",
       "🔨 trigger button"
     ]
@@ -6992,12 +7026,12 @@ class toolbarConfig {
         // MNUtil.showHUD("No change")
         return false
       }
-    }
-    if (this.syncConfig.lastSyncTime < cloudConfig.syncConfig.lastSyncTime ) {
-      let localTime = Date.parse(this.syncConfig.lastSyncTime).toLocaleString()
-      let cloudTime = Date.parse(cloudConfig.syncConfig.lastSyncTime).toLocaleString()
-      MNUtil.showHUD("Conflict config: loca_"+localTime+", cloud_"+cloudTime)
-      return false
+      if (this.syncConfig.lastSyncTime < cloudConfig.syncConfig.lastSyncTime ) {
+        let localTime = Date.parse(this.syncConfig.lastSyncTime).toLocaleString()
+        let cloudTime = Date.parse(cloudConfig.syncConfig.lastSyncTime).toLocaleString()
+        MNUtil.showHUD("Conflict config: loca_"+localTime+", cloud_"+cloudTime)
+        return false
+      }
     }
     this.syncConfig.lastSyncTime = Date.now()
     this.syncConfig.lastModifyTime = Date.now()

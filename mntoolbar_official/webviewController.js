@@ -196,12 +196,14 @@ try {
    * 
    * @param {UIButton} button 
    */
-  setColor: function (button) {
+  setColor: async function (button) {
+    let self = getToolbarController()
     let actionName = "color"+button.color
     let des = toolbarConfig.getDescriptionByName(actionName)
     des.color = button.color
-    MNUtil.delay(0.1).then(()=>{
-      toolbarUtils.setColor(des)
+    des.action = "setColor"
+    MNUtil.delay(0.1).then(async ()=>{
+      await self.customActionByDes(button, des, false)
     })
     if (button.menu) {
       button.menu.dismissAnimated(true)
@@ -617,7 +619,7 @@ try {
     des.action = "ocr"
 
     // await toolbarUtils.ocr(des)
-    self.customActionByDes(button, des)
+    self.customActionByDes(button, des,false)
     // if ("onFinish" in des) {
     //   let finishAction = des.onFinish
     //   await MNUtil.delay(0.5)
@@ -1323,10 +1325,11 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         let textView = toolbarUtils.textView
         if (!textView || textView.hidden) {
           MNUtil.showHUD("No textView")
+          success = false
           break;
         }
         let textContent = toolbarUtils.detectAndReplace(des.content)
-        toolbarUtils.insertSnippetToTextView(textContent,textView)
+        success = toolbarUtils.insertSnippetToTextView(textContent,textView)
         break;
       case "noteHighlight":
         let newNote = await toolbarUtils.noteHighlight(des)
@@ -1477,6 +1480,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         break;
       case "showInFloatWindow":
         toolbarUtils.showInFloatWindow(des)
+        // MNUtil.copy(focusNote.noteId)
         await MNUtil.delay(0.1)
         break;
       case "openURL":
@@ -1660,16 +1664,18 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "confirm":
         let targetDes = await toolbarUtils.confirm(des)
         if (targetDes) {
-            await this.customActionByDes(button, targetDes) 
+          success = await this.customActionByDes(button, targetDes) 
         }else{
+          success = false
           MNUtil.showHUD("No valid argument!")
         }
         break
       case "userSelect":
         let selectDes = await toolbarUtils.userSelect(des)
         if (selectDes) {
-            await this.customActionByDes(button, selectDes) 
+          success = await this.customActionByDes(button, selectDes) 
         }else{
+          success = false
           MNUtil.showHUD("No valid argument!")
         }
         break
@@ -1705,6 +1711,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         }else{
           MNUtil.showHUD("Missing imageConfig")
         }
+        break;
+      case "setColor":
+        await toolbarUtils.setColor(des)
         break;
       case "triggerButton":
         let targetButtonName = des.buttonName

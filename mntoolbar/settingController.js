@@ -104,7 +104,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     }
     return true;
     } catch (error) {
-      editorUtils.addErrorLog(error, "webViewShouldStartLoadWithRequestNavigationType")
+      toolbarUtils.addErrorLog(error, "webViewShouldStartLoadWithRequestNavigationType")
       return false
     }
   },

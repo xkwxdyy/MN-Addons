@@ -1700,7 +1700,6 @@ try {
     });
   return result;
 } catch (error) {
-  editorUtils.addErrorLog(error, "replaceBase64ImagesWithR2")
   return undefined
 }
 }

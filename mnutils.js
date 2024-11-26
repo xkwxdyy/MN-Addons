@@ -3779,18 +3779,21 @@ try {
           case 3:  // 摘录区最顶端
             this.moveCommentsByIndexArrTo(indexArr, "excerpt", false)
             break;
+          case 2:
           case 4:  // 摘录区最底部
             this.moveCommentsByIndexArrTo(indexArr, "excerpt")
             break;
           case 6:  // 证明区最顶端
             this.moveCommentsByIndexArrTo(indexArr, "proof", false)
             break;
+          case 5:
           case 7:  // 证明区最底部
             this.moveCommentsByIndexArrTo(indexArr, "proof")
             break;
           case 9:  // 相关思考区最顶端
             this.moveCommentsByIndexArrTo(indexArr, "think", false)
             break;
+          case 8:
           case 10:  // 相关思考区最底部
             this.moveCommentsByIndexArrTo(indexArr, "think")
             break;
@@ -5942,7 +5945,9 @@ try {
     // classificationNote.mergeClonedNoteFromId("8853B79F-8579-46C6-8ABD-E7DE6F775B8B")
     let classificationNote = MNNote.clone("8853B79F-8579-46C6-8ABD-E7DE6F775B8B")
     classificationNote.title = title
-    this.addChild(classificationNote)
+    MNUtil.undoGrouping(()=>{
+      this.addChild(classificationNote)
+    })
     return classificationNote
   }
 

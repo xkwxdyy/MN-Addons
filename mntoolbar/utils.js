@@ -3357,11 +3357,11 @@ static insertSnippetToTextView(text, textView) {
         2,
         "取消",
         // ["向下层增加模板", "增加概念衍生层级","增加兄弟层级模板","向上层增加模板", "最顶层（淡绿色）", "专题"],
-        ["向下层增加模板", "连续向下增加模板","增加概念衍生层级","增加兄弟层级模板","向上层增加模板", "最顶层（淡绿色）", "专题"],
+        ["向下层增加模板", "连续向下「顺序」增加模板", "连续向下「倒序」增加模板","增加概念衍生层级","增加兄弟层级模板","向上层增加模板", "最顶层（淡绿色）", "专题"],
         (alert, buttonIndex) => {
           let userInputTitle = alert.textFieldAtIndex(0).text;
           switch (buttonIndex) {
-            case 7:
+            case 8:
               /* 专题 */
               // 因为专题模板卡片比较多，所以增加一个确认界面
               UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
@@ -3389,7 +3389,7 @@ static insertSnippetToTextView(text, textView) {
                 }
               )
               break;
-            case 6: 
+            case 7: 
             /* 增加最顶层的淡绿色模板 */
             try {
               let parentNote
@@ -3434,7 +3434,7 @@ static insertSnippetToTextView(text, textView) {
               }
               
               break;
-            case 5:
+            case 6:
               try {
                 /* 向上增加模板 */
                 let parentNote = focusNote.parentNote
@@ -3637,7 +3637,7 @@ static insertSnippetToTextView(text, textView) {
                 MNUtil.showHUD(error);
               }
               break;
-            case 4:
+            case 5:
               // 增加兄弟层级模板
               type = focusNote.noteTitle.match(/“.+”相关(.*)/)[1]
               if (type) {
@@ -3653,7 +3653,7 @@ static insertSnippetToTextView(text, textView) {
                 templateNote.focusInMindMap(0.5)
               }
               break
-            case 3: // 增加概念衍生层级
+            case 4: // 增加概念衍生层级
               try {
                 let concept
                 let targetType
@@ -3696,7 +3696,7 @@ static insertSnippetToTextView(text, textView) {
                 MNUtil.showHUD(error);
               }
               break;
-            case 2: // 连续向下增加模板
+            case 3: // 连续向下「倒序」增加模板
               /**
                * 通过//来分割标题，增加一连串的归类卡片
                * 比如：赋范空间上的//有界//线性//算子
@@ -3803,7 +3803,108 @@ static insertSnippetToTextView(text, textView) {
                 MNUtil.showHUD(error);
               }
               break;
-            case 1:
+            case 2: // 连续向下「顺序」增加模板
+              /**
+               * 通过//来分割标题，增加一连串的归类卡片
+               * 比如：赋范空间上的有界线性算子//的判定//：充分条件
+               * -> 赋范空间上的有界线性算子、赋范空间上的有界线性算子的判定、赋范空间上的有界线性算子的判定：充分条件
+               */
+              try {
+                let titlePartArray = userInputTitle.split("//")
+                let titlePartArrayLength = titlePartArray.length
+                let type
+                let classificationNote
+                if (focusNote.title.isClassificationNoteTitle()) { // 如果选中的是归类卡片
+                  // 获取要增加的归类卡片的类型
+                  type = focusNote.title.toClassificationNoteTitle()
+                  switch (titlePartArrayLength) {
+                    case 1:  // 此时表示没有输入 //，这个时候和正常的向下是一样的效果
+                    case 2:  // 此时表示只有 1 个//，这个分隔和不分是一样的
+                      classificationNote = focusNote.addClassificationNoteByType(type, userInputTitle)
+                      classificationNote.focusInMindMap(0.3)
+                      break;
+                    default: // 大于等于三个部分才需要处理
+                      let titleArray = []
+                      let changedTitlePart = titlePartArray[0];
+
+                      // 生成组合
+                      for (let i = 0 ; i < titlePartArray.length ; i++) {
+                        if  (i > 0) {
+                          changedTitlePart = changedTitlePart + titlePartArray[i]
+                        }
+                        titleArray.push(changedTitlePart)
+                      }
+                      classificationNote = focusNote
+                      titleArray.forEach(title => {
+                        classificationNote = classificationNote.addClassificationNoteByType(type, title)
+                      })
+                      classificationNote.focusInMindMap(0.3)
+                      break;
+                  }
+                } else {
+                  if (focusNote.getNoteTypeZh() == "定义") {
+                    // 如果选中的是定义类卡片，就要弹出一个选择框来选择要增加的类型
+                    //TODO:这里应该可以用 Promise，或者 delay 来
+                    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+                      "定义类卡片增加归类卡片",
+                      "选择类型",
+                      0,
+                      "写错了",
+                      ["定义","命题","例子","反例","思想方法","问题"],
+                      (alert, buttonIndex) => {
+                        if (buttonIndex == 0) { return }
+                        switch (buttonIndex) {
+                          case 1:
+                            type = "定义"
+                            break;
+                          case 2:
+                            type = "命题"
+                            break;
+                          case 3:
+                            type = "例子"
+                            break;
+                          case 4:
+                            type = "反例"
+                            break;
+                          case 4:
+                            type = "思想方法"
+                            break;
+                          case 6:
+                            type = "问题"
+                            break;
+                        }
+                        switch (titlePartArrayLength) {
+                          case 1:  // 此时表示没有输入 //，这个时候和正常的向下是一样的效果
+                          case 2:  // 此时表示只有 1 个//，这个分隔和不分是一样的
+                            classificationNote = focusNote.addClassificationNoteByType(type, userInputTitle)
+                            classificationNote.focusInMindMap(0.3)
+                            break;
+                          default: // 大于等于三个部分才需要处理
+                            let titleArray = []
+                            let changedTitlePart = titlePartArray[0];
+      
+                            // 生成组合
+                            for (let i = 0 ; i < titlePartArray.length ; i++) {
+                              if  (i > 0) {
+                                changedTitlePart = changedTitlePart + titlePartArray[i]
+                              }
+                              titleArray.push(changedTitlePart)
+                            }
+                            classificationNote = focusNote
+                            titleArray.forEach(title => {
+                              classificationNote = classificationNote.addClassificationNoteByType(type, title)
+                            })
+                            classificationNote.focusInMindMap(0.3)
+                            break;
+                        }
+                      })
+                  }
+                }
+              } catch (error) {
+                MNUtil.showHUD(error);
+              }
+              break;
+              case 1:
               /* 往下增加模板 */
               // 需要看选中的卡片的颜色
               switch (focusNoteColorIndex) {

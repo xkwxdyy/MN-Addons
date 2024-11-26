@@ -5938,8 +5938,11 @@ try {
    * @returns {MNNote} 生成的归类卡片
    */
   addClassificationNote (title="") {
-    let classificationNote = this.createEmptyChildNote(0,title)
-    classificationNote.mergeClonedNoteFromId("8853B79F-8579-46C6-8ABD-E7DE6F775B8B")
+    // let classificationNote = this.createEmptyChildNote(0,title)
+    // classificationNote.mergeClonedNoteFromId("8853B79F-8579-46C6-8ABD-E7DE6F775B8B")
+    let classificationNote = MNNote.clone("8853B79F-8579-46C6-8ABD-E7DE6F775B8B")
+    classificationNote.title = title
+    this.addChild(classificationNote)
     return classificationNote
   }
 

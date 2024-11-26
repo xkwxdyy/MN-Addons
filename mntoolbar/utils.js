@@ -3851,7 +3851,6 @@ try {
                   type = focusNote.title.toClassificationNoteTitle()
                   switch (titlePartArrayLength) {
                     case 1:  // 此时表示没有输入 //，这个时候和正常的向下是一样的效果
-                    case 2:  // 此时表示只有 1 个//，这个分隔和不分是一样的
                       classificationNote = focusNote.addClassificationNoteByType(type, userInputTitle)
                       classificationNote.focusInMindMap(0.3)
                       break;

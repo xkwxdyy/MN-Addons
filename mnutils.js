@@ -626,15 +626,28 @@ class MNUtil {
   /**
    * 【数学】根据中文类型获取对应的卡片颜色 index
    */
-  static getNoteColorIndexByZhType(type){
-    let typeMap = {
-      "定义": 2,
-      "命题": 10,
-      "反例": 3,
-      "例子": 15,
-      "思想方法": 9,
-      "问题": 13,
-      "应用": 6
+  static getNoteColorIndexByZhType(type, preprocess=false){
+    let typeMap
+    if (preprocess) {
+      typeMap = {
+        "定义": 2,
+        "命题": 6,
+        "反例": 6,
+        "例子": 6,
+        "思想方法": 9,
+        "问题": 13,
+        "应用": 6
+      }
+    } else {
+      typeMap = {
+        "定义": 2,
+        "命题": 10,
+        "反例": 3,
+        "例子": 15,
+        "思想方法": 9,
+        "问题": 13,
+        "应用": 6
+      }
     }
     return typeMap[type]
   }
@@ -4280,7 +4293,7 @@ try {
   /**
    * 【数学】根据卡片类型自动修改颜色
    */
-  changeColorByType(){
+  changeColorByType(preprocess = false){
     if (!this.isIndependentNote()) {
       // 有归类的卡片。此时才需要根据父卡片的标题来判断卡片类型来改变卡片颜色
       let noteType = this.getNoteTypeZh()
@@ -4297,7 +4310,7 @@ try {
           break;
         default:
           let noteType = this.getNoteTypeObjByClassificationParentNoteTitle()
-          let colorIndex = MNUtil.getNoteColorIndexByZhType(noteType.zh)
+          let colorIndex = MNUtil.getNoteColorIndexByZhType(noteType.zh, preprocess)
           this.note.colorIndex = colorIndex
           break;
       }
@@ -4396,6 +4409,12 @@ try {
         }
       }
     }
+  }
+  /**
+   * 判断卡片是否已经合并了模板
+   */
+  ifMergedTemplate(){
+    return this.getHtmlCommentIndex("相关思考：") !== -1 && this.getHtmlCommentIndex("相关链接：") !== -1
   }
   /**
    * 检测 indexArr 对应的评论是否全是链接

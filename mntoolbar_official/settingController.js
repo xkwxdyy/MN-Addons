@@ -541,12 +541,14 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     if (self.selectedItem === button.id) {
       let selected = self.selectedItem
       var commandTable = [
-        {title:"➕ new icon from photo", object:self, selector:'changeIconFromPhoto:',param:selected},
-        {title:"➕ new icon from file", object:self, selector:'changeIconFromFile:',param:selected},
+        {title:"➕ new icon from 🖼️ Photo", object:self, selector:'changeIconFromPhoto:',param:selected},
+        {title:"➕ new icon from 📄 File", object:self, selector:'changeIconFromFile:',param:selected},
+        {title:"➕ new icon from 🌐 Appicon Forge", object:self, selector:'changeIconFromWeb:',param:"https://zhangyu1818.github.io/appicon-forge/"},
+        {title:"➕ new icon from 🌐 Icon Font", object:self, selector:'changeIconFromWeb:',param:"https://www.iconfont.cn/"},
         {title:"🔍 change icon scale", object:self, selector:'changeIconScale:',param:selected},
         {title:"🔄 reset icon", object:self, selector:'resetIcon:',param:selected}
       ]
-      self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,200,1)
+      self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,300,1)
       return
     }
     button.isSelected = !button.isSelected
@@ -566,6 +568,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     }
   },
   changeIconFromPhoto:function (buttonName) {
+    self.checkPopoverController()
     if (toolbarUtils.checkSubscribe(true)) {
       self.checkPopoverController()
       self.imagePickerController = UIImagePickerController.new()
@@ -577,6 +580,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     }
   },
   changeIconFromFile:async function (buttonName) {
+    self.checkPopoverController()
     if (toolbarUtils.checkSubscribe(true)) {
       self.checkPopoverController()
       let UTI = ["public.image"]
@@ -585,6 +589,20 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       toolbarConfig.setButtonImage(buttonName, image,true)
     }
   },
+  changeIconFromWeb: function (url) {
+    self.checkPopoverController()
+    if (toolbarUtils.checkSubscribe(false)) {
+      let beginFrame = self.view.frame
+      let endFrame = self.view.frame
+      if (endFrame.width < 800) {
+        endFrame.width = 800
+      }
+      if (endFrame.height < 600) {
+        endFrame.height = 600
+      }
+      MNUtil.postNotification("openInBrowser", {url:url,beginFrame:beginFrame,endFrame:endFrame})
+    }
+  }, 
   changeIconScale:async function (buttonName) {
     self.checkPopoverController()
     let res = await MNUtil.input("Custom scale","自定义图片缩放比例",["cancel","1","2","3","confirm"])

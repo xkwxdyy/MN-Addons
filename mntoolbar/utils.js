@@ -6647,7 +6647,38 @@ class toolbarConfig {
     frame:{x:0,y:0,width:40,height:415}
   }
   //非自定义动作的key
-  static builtinActionKeys = ["copy","searchInEudic","switchTitleorExcerpt","copyAsMarkdownLink","search","bigbang","snipaste","chatglm","edit","ocr","execute","pasteAsTitle","clearFormat","color0","color1","color2","color3","color4","color5","color6","color7","color8","color9","color10","color11","color12","color13","color14","color15"]
+  static builtinActionKeys = [
+    "setting",
+    "copy",
+    "searchInEudic",
+    "switchTitleorExcerpt",
+    "copyAsMarkdownLink",
+    "search",
+    "bigbang",
+    "snipaste",
+    "chatglm",
+    "edit",
+    "ocr",
+    "execute",
+    "pasteAsTitle",
+    "clearFormat",
+    "color0",
+    "color1",
+    "color2",
+    "color3",
+    "color4",
+    "color5",
+    "color6",
+    "color7",
+    "color8",
+    "color9",
+    "color10",
+    "color11",
+    "color12",
+    "color13",
+    "color14",
+    "color15",
+    "sidebar",]
   static allPopupButtons = [
   "copy",
   "copyOCR",

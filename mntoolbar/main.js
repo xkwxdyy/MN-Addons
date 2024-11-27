@@ -36,6 +36,7 @@ JSB.newAddon = function (mainPath) {
         MNUtil.addObserver(self, 'onToggleMindmapToolbar:', 'toggleMindmapToolbar')
         MNUtil.addObserver(self, 'onRefreshToolbarButton:', 'refreshToolbarButton')
         MNUtil.addObserver(self, 'onOpenToolbarSetting:', 'openToolbarSetting')
+        MNUtil.addObserver(self, 'onNewIconImage:', 'newIconImage')
         MNUtil.addObserver(self, 'onTextDidBeginEditing:', 'UITextViewTextDidBeginEditingNotification')
         MNUtil.addObserver(self, 'onCloudConfigChange:', 'NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI')
         // MNUtil.addObserver(self, 'onAddonBroadcast:', 'AddonBroadcast');
@@ -368,6 +369,21 @@ JSB.newAddon = function (mainPath) {
           };
         } else {
           return null;
+        }
+      },
+      onNewIconImage: function (sender) {
+        if (typeof MNUtil === 'undefined') return
+        if (self.window !== MNUtil.currentWindow) {
+          return
+        }
+        // MNUtil.showHUD("replace icon")
+        if (sender.userInfo.imageBase64) {
+          let imageData = NSData.dataWithContentsOfURL(MNUtil.genNSURL(sender.userInfo.imageBase64))
+          // MNUtil.copyImage(imageData)
+          let image = UIImage.imageWithData(imageData)
+          let selected = self.settingController.selectedItem
+
+          toolbarConfig.setButtonImage(selected, image,true)
         }
       },
       onOpenToolbarSetting:function (params) {

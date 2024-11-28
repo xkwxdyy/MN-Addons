@@ -1160,8 +1160,14 @@ class MNUtil {
    * @param {number} [duration=2] - The duration in seconds for which the HUD should be displayed.
    * @param {UIWindow} [window=this.currentWindow] - The window on which the HUD should be displayed.
    */
-  static showHUD(message, duration = 2, window = this.currentWindow) {
-    this.app.showHUD(message, window, duration);
+  static showHUD(message, duration = 2, view = this.currentWindow) {
+    this.app.showHUD(message, view, duration);
+  }
+  static waitHUD(message, view = this.currentWindow) {
+    this.app.waitHUDOnView(message, view);
+  }
+  static stopHUD(view = this.currentWindow) {
+    this.app.stopWaitHUDOnView(view);
   }
   /**
    * Displays a confirmation dialog with a main title and a subtitle.
@@ -1278,8 +1284,8 @@ class MNUtil {
   }
   /**
    * 
-   * @param filePath The file path of the document to import
-   * @returns The imported document md5
+   * @param {string}filePath The file path of the document to import
+   * @returns {string} The imported document md5
    */
   static importDocument(filePath) {
     return MNUtil.app.importDocument(filePath)
@@ -2259,6 +2265,29 @@ static async readWebDAVFile(url, username, password) {
         });
     return response
 }
+
+  /**
+   * Reads a file from a WebDAV server using the provided URL, username, and password.
+   * 
+   * This method sends a GET request to the specified WebDAV URL with the provided username and password for authentication.
+   * It returns a promise that resolves with the response data if the request is successful, or with an error object if the request fails.
+   * 
+   * @param {string} url - The URL of the file on the WebDAV server.
+   * @param {string} username - The username for authentication.
+   * @param {string} password - The password for authentication.
+   * @returns {Promise<NSURLConnection>} A promise that resolves with the response data or an error object.
+   */
+static async readWebDAVFileWithDelegate(url, username, password) {
+    const headers = {
+      Authorization:'Basic ' + this.btoa(username + ':' + password),
+      "Cache-Control": "no-cache"
+      };
+      const request = this.initRequest(url, {
+            method: 'GET',
+            headers: headers
+        })
+    return request
+}
 /**
  * Uploads a file to a WebDAV server using the provided URL, username, password, and file content.
  * 
@@ -2427,9 +2456,9 @@ class MNButton{
    * @param {any} target 
    * @param {string} selector 
    */
-  static addLongPressGesture (button,target,selector) {
+  static addLongPressGesture (button,target,selector,duration = 0.3) {
     let gestureRecognizer = new UILongPressGestureRecognizer(target,selector)
-    gestureRecognizer.minimumPressDuration = 0.3
+    gestureRecognizer.minimumPressDuration = duration
     button.addGestureRecognizer(gestureRecognizer)
   }
   /**

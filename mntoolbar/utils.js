@@ -7328,7 +7328,8 @@ static template(action) {
       break;
     case "menu_think":
       config.action = "moveUpThoughtPointsToBottom"
-      // config.doubleClick = "moveUpThoughtPointsToTop" // 因为 action 也会执行，所以失效
+      // 本来想双击变成两张卡片同时上移的，但好像 action 本身会先执行所以失效了
+      // config.doubleClick = "moveLastTwoCommentsInBiLinkNotesToThought"
       config.onLongPress = {
         "action": "menu",
         "menuWidth": 330,

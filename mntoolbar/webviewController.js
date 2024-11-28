@@ -4937,7 +4937,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                   focusNote.toNoExceptVersion()
                 }
                 focusNote.changeTitle()
-                focusNote.changeColorByType(!focusNote.ifMergedTemplate())
+                focusNote.changeColorByType()
                 focusNote.refreshAll()
                 focusNote.focusInMindMap(0.5)
                 // if (focusNote.getNoteTypeZh()=="顶层" || focusNote.getNoteTypeZh()=="归类") {

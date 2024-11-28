@@ -4326,6 +4326,7 @@ try {
     if (!this.isIndependentNote()) {
       // 有归类的卡片。此时才需要根据父卡片的标题来判断卡片类型来改变卡片颜色
       let noteType = this.getNoteTypeZh()
+      this.fillIndex = 2
       switch (noteType) {
         case "顶层":
           this.note.colorIndex = 1

@@ -4792,6 +4792,151 @@ try {
     }
   }
   /**
+   * 【数学】添加文本到对应的内容的某个地方
+   */
+  addMarkdownTextCommentTo(text, target, toBottom = true) {
+    let targetIndex
+    switch (target) {
+      /**
+       * 置顶
+       */
+      case "top":
+        targetIndex = 0
+        this.appendMarkdownComment(text, targetIndex)
+        break;
+      /**
+       * 移动到最底下
+       */
+      case "bottom":
+        targetIndex = this.comments.length - 1
+        this.appendMarkdownComment(text, targetIndex)
+        break;
+      /**
+       * 摘录区
+       */
+      case "excerpt":
+      case "excerption":
+        if (toBottom) {
+          if (this.getNoteTypeZh() == "定义") {
+            targetIndex = this.getHtmlCommentIndex("相关概念：")
+          } else {
+            // targetIndex = this.getHtmlCommentIndex("证明：")
+            targetIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh())
+          }
+        } else {
+          // top 的话要看摘录区有没有摘录内容
+          // - 如果有的话，就放在第一个摘录的前面
+          // - 如果没有的话，就和摘录的 bottom 是一样的
+          let excerptPartIndexArr = this.getExcerptPartIndexArr()
+          if (excerptPartIndexArr.length == 0) {
+            if (this.getNoteTypeZh() == "定义") {
+              targetIndex = this.getHtmlCommentIndex("相关概念：")
+            } else {
+              // targetIndex = this.getHtmlCommentIndex("证明：")
+              targetIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh())
+            }
+          } else {
+            targetIndex = excerptPartIndexArr[0]
+          }
+        }
+        this.appendMarkdownComment(text, targetIndex)
+        break;
+      /**
+       * 证明
+       */
+      case "proof":
+      case "Proof":
+        if (toBottom) {
+          targetIndex = this.getHtmlCommentIndex("相关思考：")
+        } else {
+          targetIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh()) + 1
+        }
+        this.appendMarkdownComment(text, targetIndex)
+        break;
+  
+      /**
+       * 相关思考
+       */
+      case "thought":
+      case "thoughts":
+      case "think":
+      case "thinks":
+      case "thinking":
+      case "idea":
+      case "ideas":
+        if (toBottom) {
+          switch (this.getNoteTypeZh()) {
+            case "定义":
+              targetIndex = this.getHtmlCommentIndex("相关链接：")
+              break;
+            case "归类":
+              targetIndex = this.getHtmlCommentIndex("包含：")
+              break;
+            default:
+              targetIndex = this.getIncludingHtmlCommentIndex("关键词：")
+              break;
+          }
+        } else {
+          targetIndex = this.getHtmlCommentIndex("相关思考：") + 1
+        }
+        this.appendMarkdownComment(text, targetIndex)
+        break;
+  
+      
+      /**
+       * 相关概念
+       */
+      case "def":
+      case "definition":
+      case "concept":
+      case "concepts":
+        if (this.getNoteTypeZh() == "定义") {
+          if (toBottom) {
+            targetIndex = this.getHtmlCommentIndex("相关思考：")
+          } else {
+            targetIndex = this.getHtmlCommentIndex("相关概念：") + 1
+          }
+          this.appendMarkdownComment(text, targetIndex)
+        }
+        break;
+  
+      /**
+       * 相关链接
+       */
+      case "link":
+      case "links":
+      case "Link":
+      case "Links":
+        if (toBottom) {
+          if (this.getNoteTypeZh() == "定义") {
+            targetIndex = this.comments.length - 1
+          } else {
+            targetIndex = this.getHtmlCommentIndex("应用：")
+          }
+        } else {
+          targetIndex = this.getHtmlCommentIndex("相关链接：") + 1
+        }
+        this.appendMarkdownComment(text, targetIndex)
+        break;
+  
+  
+      /**
+       * 应用
+       */
+      case "application":
+      case "applications":
+        if (!["定义", "归类", "顶层"].includes(this.getNoteTypeZh())) {
+          if (toBottom) {
+            targetIndex = this.comments.length - 1
+          } else {
+            targetIndex = this.getHtmlCommentIndex("应用：") + 1
+          }
+          this.appendMarkdownComment(text, targetIndex)
+        }
+        break;
+    }
+  }
+  /**
    * 获取摘录区的 indexarr （制卡后）
    * 
    * 原理：

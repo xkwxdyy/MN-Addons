@@ -4309,7 +4309,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "moveLastCommentToThought":
         MNUtil.undoGrouping(()=>{
           focusNotes.forEach(focusNote=>{
-            toolbarUtils.moveLastCommentToThought(focusNote)
+            focusNote.moveCommentsByIndexArrTo([focusNote.comments.length-1], "think")
           })
         })
         break;
@@ -4337,7 +4337,12 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "moveLastTwoCommentsInBiLinkNotesToThought":
         MNUtil.undoGrouping(()=>{
           focusNotes.forEach(focusNote=>{
-            toolbarUtils.moveLastTwoCommentsInBiLinkNotesToThought(focusNote)
+            let targetNoteId = focusNote.comments[focusNote.comments.length-1].text.ifNoteIdorURL()?focusNote.comments[focusNote.comments.length-1].text.toNoteId():undefined
+            if (targetNoteId!==undefined) {
+              let targetNote = MNNote.new(targetNoteId)
+              targetNote.moveCommentsByIndexArrTo(targetNote.getNewContentIndexArr(), "think")
+              focusNote.moveCommentsByIndexArrTo(focusNote.getNewContentIndexArr(), "think")
+            }
           })
         })
         break;
@@ -4352,8 +4357,8 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         try {
           MNUtil.undoGrouping(()=>{
             focusNotes.forEach(focusNote=>{
-              toolbarUtils.addThoughtPoint(focusNote)
-              toolbarUtils.moveLastCommentToThought(focusNote)
+              focusNote.addMarkdownTextCommentTo("- ", "think")
+              focusNote.moveCommentsByIndexArrTo([focusNote.comments.length-1], "think")
             })
           })
         } catch (error) {
@@ -4505,7 +4510,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         MNUtil.undoGrouping(()=>{
           try {
             focusNotes.forEach(focusNote=>{
-              toolbarUtils.addThoughtPoint(focusNote)
+              focusNote.addMarkdownTextCommentTo("- ", "think")
             })
           } catch (error) {
             MNUtil.showHUD(error)

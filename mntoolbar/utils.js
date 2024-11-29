@@ -2940,43 +2940,19 @@ try {
     focusNote.moveComment(focusNote.comments.length-1, refedHtmlCommentIndex)
   }
 
-  static moveLastCommentToThought(focusNote){
-    let linkHtmlCommentIndex = focusNote.getCommentIndex("相关链接：", true)
-    let keywordsHtmlCommentIndex = focusNote.getIncludingCommentIndex("关键词：", true)
-    let finalIndex = (keywordsHtmlCommentIndex == -1)? linkHtmlCommentIndex : keywordsHtmlCommentIndex
-    focusNote.moveComment(focusNote.comments.length-1, finalIndex)
-  }
-
   static moveLastCommentToProof(focusNote){
-    let thoughtHtmlCommentIndex = focusNote.getCommentIndex("相关思考：", true)
-    let finalIndex = thoughtHtmlCommentIndex
-    focusNote.moveComment(focusNote.comments.length-1, finalIndex)
+    focusNote.moveCommentsByIndexArrTo([focusNote.comments.length-1], "proof")
   }
 
   static moveLastTwoCommentsToThought(focusNote){
-    let linkHtmlCommentIndex = focusNote.getCommentIndex("相关链接：", true)
-    let keywordsHtmlCommentIndex = focusNote.getIncludingCommentIndex("关键词：", true)
-    let finalIndex = (keywordsHtmlCommentIndex == -1)? linkHtmlCommentIndex : keywordsHtmlCommentIndex
-    focusNote.moveComment(focusNote.comments.length-1, finalIndex)
-    focusNote.moveComment(focusNote.comments.length-1, finalIndex)
+    focusNote.moveCommentsByIndexArrTo([focusNote.comments.length-1], "think")
+    focusNote.moveCommentsByIndexArrTo([focusNote.comments.length-1], "think")
   }
 
-  static moveLastTwoCommentsInBiLinkNotesToThought(focusNote){
-    let keywordsHtmlCommentIndexInFocusNote = focusNote.getIncludingCommentIndex("关键词：", true)
-    let targetNoteId = focusNote.comments[focusNote.comments.length-1].text.match(/marginnote4app:\/\/note\/(.*)/)[1]
-    let targetNote = MNNote.new(targetNoteId)
-    let keywordsHtmlCommentIndexInTargetNote = targetNote.getIncludingCommentIndex("关键词：", true)
-    focusNote.moveComment(focusNote.comments.length-1, keywordsHtmlCommentIndexInFocusNote)
-    focusNote.moveComment(focusNote.comments.length-1, keywordsHtmlCommentIndexInFocusNote)
-    targetNote.moveComment(targetNote.comments.length-1, keywordsHtmlCommentIndexInTargetNote)
-    targetNote.moveComment(targetNote.comments.length-1, keywordsHtmlCommentIndexInTargetNote)
-  }
 
   static moveLastTwoCommentsToProof(focusNote){
-    let thoughtHtmlCommentIndex = focusNote.getCommentIndex("相关思考：", true)
-    let finalIndex = thoughtHtmlCommentIndex
-    focusNote.moveComment(focusNote.comments.length-1, finalIndex)
-    focusNote.moveComment(focusNote.comments.length-1, finalIndex)
+    focusNote.moveCommentsByIndexArrTo([focusNote.comments.length-1], "proof")
+    focusNote.moveCommentsByIndexArrTo([focusNote.comments.length-1], "proof")
   }
 
   static referenceMoveLastTwoCommentsToThought(focusNote){
@@ -3076,20 +3052,6 @@ try {
         }
       }
     })
-  }
-
-  static addThoughtPoint(focusNote) {
-    let thoughtHtmlCommentIndex = focusNote.getCommentIndex("相关思考：", true)
-    if (thoughtHtmlCommentIndex !== -1) {
-      let keywordsHtmlCommentIndex = focusNote.getIncludingCommentIndex("关键词：", true)
-      let linkHtmlCommentIndex = focusNote.getCommentIndex("相关链接：", true)
-      if (this.getKnowledgeNoteTypeByColorIndex(focusNote.note.colorIndex) == "definition") {
-        focusNote.appendMarkdownComment("- ", linkHtmlCommentIndex)
-      } else {
-        let targetIndex = (keywordsHtmlCommentIndex == -1)? linkHtmlCommentIndex : keywordsHtmlCommentIndex
-        focusNote.appendMarkdownComment("- ", targetIndex)
-      }
-    }
   }
 
   static referenceAddThoughtPoint(focusNote) {

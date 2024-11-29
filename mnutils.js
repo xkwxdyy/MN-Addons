@@ -4726,10 +4726,16 @@ try {
       case "idea":
       case "ideas":
         if (toBottom) {
-          if (this.getNoteTypeZh() == "定义") {
-            targetIndex = this.getHtmlCommentIndex("相关链接：")
-          } else {
-            targetIndex = this.getIncludingHtmlCommentIndex("关键词：")
+          switch (this.getNoteTypeZh()) {
+            case "定义":
+              targetIndex = this.getHtmlCommentIndex("相关链接：")
+              break;
+            case "归类":
+              targetIndex = this.getHtmlCommentIndex("包含：")
+              break;
+            default:
+              targetIndex = this.getIncludingHtmlCommentIndex("关键词：")
+              break;
           }
         } else {
           targetIndex = this.getHtmlCommentIndex("相关思考：") + 1

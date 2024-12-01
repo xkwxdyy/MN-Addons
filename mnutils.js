@@ -183,8 +183,8 @@ class Pangu {
     newText = newText.replace(/\s*·\s*/g, "·")
     // - 左右的空格去掉
     newText = newText.replace(/\s*-\s*/g, "-")
-    // ∞ 后面的空格去掉
-    newText = newText.replace(/∞\s/g, "∞")
+    // ∞ 后面的只保留一个空格，而不是直接去掉
+    newText = newText.replace(/∞\s+/g, "∞\s")
     // 大求和符号改成小求和符号
     newText = newText.replace(/∑/g, "Σ")
     // 处理一下 弱* w* 这种空格
@@ -409,7 +409,20 @@ String.prototype.toNoteId = function() {
 String.prototype.toNoteID = function() {
   return this.toNoteId()
 }
-
+/**
+ * 将字符串用四种分割符之一进行分割
+ * @returns {string[]}
+ */
+String.prototype.splitStringByFourSeparators = function() {
+  // 正则表达式匹配中文逗号、中文分号和西文分号
+  const separatorRegex = /,\s*|，\s*|；\s*|;\s*/g;
+  
+  // 使用split方法按分隔符分割字符串
+  const arr = this.split(separatorRegex);
+  
+  // 去除可能的空字符串元素（如果输入字符串的前后或连续分隔符间有空白）
+  return arr.filter(Boolean);
+}
 
 /**
  * 夏大鱼羊 - 字符串函数 - end
@@ -3520,7 +3533,7 @@ try {
       to = arr.length-1
     }
     if (from == to) {
-      MNUtil.showHUD("No change")
+      // MNUtil.showHUD("No change")
       return
     }
     // 取出要移动的元素

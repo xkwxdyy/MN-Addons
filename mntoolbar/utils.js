@@ -3943,6 +3943,49 @@ try {
                     MNUtil.showHUD("匹配失败，匹配到的标题为" +  parentNote.noteTitle);
                   }
                   break;
+                case 2: // 淡蓝色，即定义类卡片
+                  try {
+                    let concept
+                    let targetType
+                    if (userInputTitle) {
+                      concept = userInputTitle
+                    } else {
+                      concept = focusNote.noteTitle.match(/【.*】;\s*([^;]*?)(?:;|$)/)[1]
+                    }
+                    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+                      "定义类卡片增加归类卡片",
+                      "选择类型",
+                      0,
+                      "写错了",
+                      ["定义","命题","例子","反例","思想方法","问题"],
+                      (alert, buttonIndex) => {
+                        if (buttonIndex == 0) { return }
+                        switch (buttonIndex) {
+                          case 1:
+                            targetType = "定义"
+                            break;
+                          case 2:
+                            targetType = "命题"
+                            break;
+                          case 3:
+                            targetType = "例子"
+                            break;
+                          case 4:
+                            targetType = "反例"
+                            break;
+                          case 4:
+                            targetType = "思想方法"
+                            break;
+                          case 6:
+                            targetType = "问题"
+                            break;
+                        }
+                        focusNote.addClassificationNoteByType(targetType, concept)
+                      })
+                  } catch (error) {
+                    MNUtil.showHUD(error);
+                  }
+                  break;
                 default:
                   /* 淡黄色、黄色 */
                   type = focusNote.noteTitle.match(/“.+”相关(.*)/)[1]
@@ -7285,6 +7328,10 @@ static template(action) {
             "action": "moveLastThreeCommentByPopupTo",
             "menuTitle": "移动「最后3️⃣条」评论",
           },
+          {
+            "action": "deleteCommentsByPopup",
+            "menuTitle": "删除评论",
+          }
         ]
       }
       break;
@@ -7325,7 +7372,16 @@ static template(action) {
       break;
     case "menu_study":
       config.action = "menu"
+      config.menuWidth = 330
       config.menuItems = [
+        {
+          "action": "moveLastTwoCommentsInBiLinkNotesToDefinition",
+          "menuTitle": "双向🔗定义卡片同时上移到「相关概念」",
+        },
+        {
+          "action": "renewLinksBetweenClassificationNoteAndExtensionNote",
+          "menuTitle": "更新1️⃣次「归类卡片」与「概念or归类卡片」之间的🔗"
+        },
         {
           "action": "menu",
           "menuTitle": "➡️ 注释",

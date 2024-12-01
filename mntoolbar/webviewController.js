@@ -1893,39 +1893,35 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       /**
        * 自动识别新内容，并通过弹窗选择，移动到指定位置
        */
-      case "moveNewContentsByPopupTo":
+      case "moveNewContentsByPopupTo":  // new
         MNUtil.undoGrouping(()=>{
           try {
-            let newContentsIndexArr = focusNote.getNewContentIndexArr()
-            focusNote.moveCommentsByIndexArrAndButtonTo(newContentsIndexArr, "移动「新增」评论到", "")
+            focusNote.moveCommentsByIndexArrAndButtonTo(focusNote.getNewContentIndexArr(), "移动「新增」评论到", "")
           } catch (error) {
             MNUtil.showHUD(error);
           }
         })
         break;
-          
-        case "AddToReview":
-          MNUtil.undoGrouping(()=>{
-            focusNotes.forEach(focusNote=>{
-              focusNote.addToReview()
-            })
+        
+      case "AddToReview":  // new
+        MNUtil.undoGrouping(()=>{
+          focusNotes.forEach(focusNote=>{
+            focusNote.addToReview()
           })
-          break;
-        /**
-         * 将剪切板中的 ID Arr 对应的卡片剪切过来作为选中卡片的子卡片
-         */
-        case "pasteAsChildNotesByIdArrFromClipboard":
-          MNUtil.undoGrouping(()=>{
-            try {
-              // 先把 MNUtils.clipboardText 转成数组
-              let idsArr = MNUtil.clipboardText.split(",")
-              // 再把数组中的 ID 对应的卡片作为选中卡片的子卡片
-              focusNote.pasteChildNotesByIdArr(idsArr)
-            } catch (error) {
-              MNUtil.showHUD(error);
-            }
-          })
-          break;
+        })
+        break;
+      /**
+       * 删除评论
+       */
+      case "deleteCommentsByPopup": // new
+        MNUtil.undoGrouping(()=>{
+          try {
+            focusNote.deleteCommentsByPopup()
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
       /**
        * 复制批量选中的卡片的 ID 到剪贴板
        */
@@ -4342,6 +4338,18 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
               let targetNote = MNNote.new(targetNoteId)
               targetNote.moveCommentsByIndexArrTo(targetNote.getNewContentIndexArr(), "think")
               focusNote.moveCommentsByIndexArrTo(focusNote.getNewContentIndexArr(), "think")
+            }
+          })
+        })
+        break;
+      case "moveLastTwoCommentsInBiLinkNotesToDefinition":  // new
+        MNUtil.undoGrouping(()=>{
+          focusNotes.forEach(focusNote=>{
+            let targetNoteId = focusNote.comments[focusNote.comments.length-1].text.ifNoteIdorURL()?focusNote.comments[focusNote.comments.length-1].text.toNoteId():undefined
+            if (targetNoteId!==undefined) {
+              let targetNote = MNNote.new(targetNoteId)
+              targetNote.moveCommentsByIndexArrTo(targetNote.getNewContentIndexArr(), "def")
+              focusNote.moveCommentsByIndexArrTo(focusNote.getNewContentIndexArr(), "def")
             }
           })
         })

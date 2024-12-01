@@ -3848,6 +3848,45 @@ try {
     )
   }
   /**
+   * 删除评论
+   * 
+   * 提供一些预设项，并且用户可以自行输入要删除的评论 Index
+   */
+  deleteCommentsByPopup(){
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "删除评论",
+      "可以选择，也可以输入 Index \n 注意输入情形从 0 开始\n 若多个评论 Index，用\n- 中文分号；\n- 英文分号;\n- 中文逗号，\n之一隔开",
+      2,
+      "取消",
+      [
+        "第1️⃣条评论",
+        "最后一条评论",
+        "确定删除输入的评论"
+      ],
+      (alert, buttonIndex) => {
+        let userInput = alert.textFieldAtIndex(0).text;
+        let deleteCommentIndexArr = userInput?userInput.splitStringByFourSeparators():[]
+        switch (buttonIndex) {
+          case 1:  // 删除第一条评论
+            this.removeCommentByIndex(0)
+            break;
+          case 2:  // 删除最后一条评论
+            this.removeCommentByIndex(this.comments.length-1)
+            break;
+          case 3:  // 确定删除输入的评论 Index
+            if (deleteCommentIndexArr.length > 0) {
+              this.removeCommentsByIndices(deleteCommentIndexArr)
+            }
+            break;
+        }
+
+        MNUtil.undoGrouping(()=>{
+          this.refresh()
+        })
+      }
+    )
+  }
+  /**
    * 将 IdArr 里的 ID 对应的卡片剪切到 this 作为子卡片
    */
   pasteChildNotesByIdArr(arr) {

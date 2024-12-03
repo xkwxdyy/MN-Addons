@@ -925,6 +925,327 @@ try {
   }
   // 夏大鱼羊自定义函数 - begin
   /**
+   * 【任务管理】 - begin
+   */
+  /**
+   * 获取卡片的标题
+   * 
+   * 如果没有【】前缀，就是原标题
+   * 如果有【】前缀，则获取去掉【】前缀后的内容
+   */
+  static getOKRNoteTitle(note) {
+    let title = note.noteTitle
+    const regex = /^\【.*?\】(.*)$/; // 匹配前面的【...】内容
+    const match = title.match(regex); // 进行正则匹配
+
+    if (match) {
+      return match[1].trim(); // 返回去掉前面内容后的字符串
+    } else {
+      return title; // 如果没有前面的【...】内容，返回原内容
+    }
+  }
+  /**
+   * 根据是否有前缀来判断是否制卡
+   */
+  static ifOCRNoteHandled(note) {
+    let title = note.noteTitle
+    const regex = /^\【.*?\】.*$/; // 匹配前面的【...】内容
+    const match = title.match(regex); // 进行正则匹配
+
+    return match? true : false;
+  }
+  /**
+   * 获取任务卡片的类型
+   * 
+   * - 目标
+   * - 关键结果
+   * - 项目
+   * - 任务
+   */
+  static getOKRNoteTypeObj(note) {
+    let noteType = {}
+    switch (note.colorIndex) {
+      case 1:
+        noteType.zh = "目标"
+        noteType.en = "objective"
+        break;
+      case 2:
+      case 3:
+      case 12:
+      // case 13:
+        noteType.zh = "任务"
+        noteType.en = "task"
+        break;
+      case 0:
+      case 11:
+        noteType.zh = "关键结果"
+        noteType.en = "keyresult"
+        break;
+      case 6:
+      case 7:
+        noteType.zh = "项目"
+        noteType.en = "project"
+        break;
+      case 13:
+        // 如果是灰色，就需要看标题的前缀
+        noteType.zh = this.getOKRNoteZhTypeByTitlePrefix(note)
+        break;
+    }
+    return noteType
+  }
+  
+  static getOKRNoteZhTypeByTitlePrefix(note) {
+    let type
+    if (this.ifOCRNoteHandled(note)) {
+      let title = note.noteTitle
+      const regex = /^\【(.*?)\】.*$/; // 匹配前面的【...】内容
+      const match = title.match(regex); // 进行正则匹配
+  
+      if (match) {
+        // 匹配到 xxx：yyy｜zzz 的 xxx
+        type = match[1].match(/^(.*?)：/)?.[1]
+      } else {
+        type = this.getOKRNoteTypeObj(note).zh
+      }
+    } else {
+      type = this.getOKRNoteTypeObj(note).zh
+    }
+    return type
+  }
+  /**
+   * 获取关键结果卡片
+   * 
+   * 主要因为项目的父卡片仍然可能是项目，所以需要递归获取
+   */
+  static getKeyResultNote(note) {
+    let keyResultNote = note.parentNote
+    while (keyResultNote && this.getOKRNoteTypeObj(keyResultNote).zh!== "关键结果") {
+      keyResultNote = keyResultNote.parentNote
+    }
+    return keyResultNote
+  }
+  /**
+   * 获取目标卡片
+   * 
+   * 主要因为项目的父卡片仍然可能是项目，所以需要递归获取
+   */
+  static getGoalNote(note){
+    let goalNote = note.parentNote
+    while (goalNote && this.getOKRNoteTypeObj(goalNote).zh !== "目标") {
+      goalNote = goalNote.parentNote
+    }
+    return goalNote
+  }
+
+  /**
+   * 获取所有的父辈项目卡片 Arr
+   * 
+   * 只考虑一条线，即 parentNote,  parentNote.parentNote, ...
+   */
+  static getParentProjectNotesArr(note) {
+    let parentProjectNotes = []
+    let parentNote = note.parentNote
+    while (parentNote && this.getOKRNoteTypeObj(parentNote).zh == "项目") {
+      parentProjectNotes.push(parentNote)
+      parentNote = parentNote.parentNote
+    }
+    return parentProjectNotes
+  }
+
+  /**
+   * 获取前缀
+   */
+  static getPrefixObj(note) {
+    let zhType = this.getOKRNoteTypeObj(note).zh 
+    let prefix = {}
+    let goalNote, keyResultNote, parentProjectNotesArr
+    switch (zhType) {
+      case "目标":
+        prefix.type = "目标"
+        // prefix.path = ""
+        break;
+      case "关键结果":
+        prefix.type = "关键结果"
+        goalNote = this.getGoalNote(note)
+        prefix.path =  this.getOKRNoteTitle(goalNote)
+        break;
+      case "项目":
+        // 注意：可能存在项目下方还是项目
+        prefix.type = "项目"
+        goalNote = this.getGoalNote(note)
+        keyResultNote = this.getKeyResultNote(note)
+        prefix.path = this.getOKRNoteTitle(goalNote) + "→" + this.getOKRNoteTitle(keyResultNote)
+        parentProjectNotesArr = this.getParentProjectNotesArr(note)
+        if (parentProjectNotesArr.length > 0) {
+          parentProjectNotesArr.forEach(parentProjectNote => {
+            prefix.path += "→" + this.getOKRNoteTitle(parentProjectNote)
+          })
+        }
+        break;
+      case "任务":
+        prefix.type = "任务"
+        prefix.path = this.getPrefixObj(note.parentNote).path + "→" + this.getOKRNoteTitle(note.parentNote)
+        break;
+    }
+    return prefix
+  }
+
+  /**
+   * 获取任务状态
+   * 
+   * - 没有前缀：未开始
+   * - 有前缀：获取前缀
+   */
+
+  static getOCRNoteStatus(note) {
+    let status
+    let title = note.noteTitle
+    const regex = /：([^｜]*)/; // 匹配前面的【...】内容
+    const match = title.match(regex); // 进行正则匹配
+
+    if (match) {
+      status = match[1].trim()
+    } else {
+      status = undefined
+    }
+
+    return status
+  }
+
+  /**
+   * 更新卡片状态
+   * 
+   * 未开始 -> 进行中 -> 已完成
+   * 
+   * 如果 status 是 undefined，则返回“未开始”
+   * 如果 status 是“未开始”，则返回“进行中”
+   * 如果 status 是“进行中”，则返回“已完成”
+   * 如果 status 是“已完成”，则返回“已完成”
+   */
+  static updateOCRNoteStatus(status) {
+    let newStatus
+    switch (status) {
+      case undefined:
+        newStatus = "未开始"
+        break;
+      case "未开始":
+        newStatus = "进行中"
+        break;
+      case "进行中":
+      case "已完成":
+        newStatus = "已完成"
+        break;
+    }
+    return newStatus
+  }
+  static undoOCRNoteStatus(status) {
+    let newStatus
+    switch (status) {
+      case "未开始":
+      case "进行中":
+        newStatus = "未开始"
+        break;
+      case "已完成":
+        newStatus = "进行中"
+        break;
+    }
+    return newStatus
+  }
+  /**
+   * 任务管理卡片制卡
+   * 
+   */
+
+  static OKRNoteMake(note, undoStatus = false) {
+    /**
+     * 获取 note 的信息
+     * 
+     */
+    let status = this.getOCRNoteStatus(note)// 任务状态
+    let noteInformation = {
+      title: this.getOKRNoteTitle(note),
+      zhType: status == "已完成"?this.getOKRNoteZhTypeByTitlePrefix(note):this.getOKRNoteTypeObj(note).zh,
+      prefix: this.getPrefixObj(note),
+    }
+    if (undoStatus) {
+      status = this.undoOCRNoteStatus(status) // 更新任务状态
+    } else {
+      status = this.updateOCRNoteStatus(status) // 更新任务状态
+    }
+    switch (noteInformation.zhType) {
+      case "任务":
+        switch (status) {
+          case "未开始":
+            note.colorIndex = 12
+            break;
+          case "进行中":
+            note.colorIndex = 3
+            break;
+          case "已完成":
+            note.colorIndex = 13
+            break;
+        }
+        break;
+      case "关键结果":
+        switch (status) {
+          case "未开始":
+            note.colorIndex = 0
+            break;
+          case "进行中":
+            note.colorIndex = 11
+            break;
+          case "已完成":
+            note.colorIndex = 13
+            break;
+        }
+        break;
+      case "项目":
+        switch (status) {
+          case "未开始":
+            note.colorIndex = 6
+            break;
+          case "进行中":
+            note.colorIndex = 7
+            break;
+          case "已完成":
+            note.colorIndex = 13
+            break;
+        }
+        break;
+    }
+    /**
+     * 修改标题前缀
+     */
+    let prefixString
+    prefixString = noteInformation.prefix.path == undefined? "【"+ noteInformation.prefix.type + "：" + status + "】": "【"+ noteInformation.prefix.type + "：" + status + "｜" + noteInformation.prefix.path + "】"
+
+    note.noteTitle = prefixString + noteInformation.title
+
+    /**
+     * 链接到父卡片
+     */
+    let parentNote = note.parentNote
+    let noteIdInParentNote = parentNote.getCommentIndex(note.noteURL)
+    if (status == "已完成") {
+      // 如果已完成，就把父卡片中的链接去掉
+      if (noteIdInParentNote !== -1) {
+        parentNote.removeCommentByIndex(noteIdInParentNote)
+      }
+    } else {
+      if (noteIdInParentNote == -1) {
+        parentNote.appendNoteLink(note, "To")
+      } else {
+        parentNote.moveComment(noteIdInParentNote, parentNote.comments.length - 1)
+      }
+    }
+
+    note.refreshAll()
+  }
+
+  /**
+   * 【任务管理】 - end
+   */
+  /**
    * 批量获取卡片 ID 存到 Arr 里
    */
   static getNoteIdArr(notes) {
@@ -8047,6 +8368,10 @@ static template(action) {
       config.onLongPress = {
         "action": "menu",
         "menuItems": [
+          {
+            "action": "undoOKRNoteMake",
+            "menuTitle": "回退任务卡片状态"
+          },
           {
             "action": "changeChildNotesTitles",
             "menuTitle": "批量修改子卡片标题"

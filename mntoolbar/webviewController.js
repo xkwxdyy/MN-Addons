@@ -4916,77 +4916,98 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         )
         break
       case "mergeTemplateNotes": // new
-        MNUtil.undoGrouping(()=>{
-          try {
-            if (self.preprocessMode) {
-              focusNotes.forEach(focusNote=>{
-                toolbarUtils.TemplateMakeNote(focusNote)
-              })
-            } else {
-              UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-                "撤销制卡","去掉所有「文本」和「链接」",0,"点错了",["确认"],
-                (alert, buttonIndex) => {
-                  if (buttonIndex == 1) {
-                    MNUtil.undoGrouping(()=>{
-                      focusNote.removeCommentsByTypes(["text","links"])
-                    })
+        if (MNUtil.currentNotebookId !== "9BA894B4-3509-4894-A05C-1B4BA0A9A4AE" ) {
+          MNUtil.undoGrouping(()=>{
+            try {
+              if (self.preprocessMode) {
+                focusNotes.forEach(focusNote=>{
+                  toolbarUtils.TemplateMakeNote(focusNote)
+                })
+              } else {
+                UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+                  "撤销制卡","去掉所有「文本」和「链接」",0,"点错了",["确认"],
+                  (alert, buttonIndex) => {
+                    if (buttonIndex == 1) {
+                      MNUtil.undoGrouping(()=>{
+                        focusNote.removeCommentsByTypes(["text","links"])
+                      })
+                    }
                   }
-                }
-              )
+                )
+              }
+            } catch (error) {
+              MNUtil.showHUD(error);
             }
-          } catch (error) {
-            MNUtil.showHUD(error);
-          }
-        })
+          })
+        }
         break;
       case "TemplateMakeNotes": // new
-        MNUtil.undoGrouping(()=>{
-          try {
-            if (self.preprocessMode) {
-              focusNotes.forEach(focusNote=>{
-                // toolbarUtils.TemplateMakeNote(focusNote)
-                if (focusNote.excerptText) {
+        if (MNUtil.currentNotebookId !== "9BA894B4-3509-4894-A05C-1B4BA0A9A4AE" ) {
+          MNUtil.undoGrouping(()=>{
+            try {
+              if (self.preprocessMode) {
+                focusNotes.forEach(focusNote=>{
+                  // toolbarUtils.TemplateMakeNote(focusNote)
+                  if (focusNote.excerptText) {
+                    focusNote.changeTitle()
+                    focusNote.toNoExceptVersion()
+                  }
                   focusNote.changeTitle()
-                  focusNote.toNoExceptVersion()
-                }
-                focusNote.changeTitle()
-                focusNote.changeColorByType()
-                focusNote.refreshAll()
-                focusNote.focusInMindMap(0.5)
-                // if (focusNote.getNoteTypeZh()=="顶层" || focusNote.getNoteTypeZh()=="归类") {
-                //   focusNote.descendantNodes.descendant.forEach(descendantNote => {
-                //     if (descendantNote.excerptText) {
-                //       descendantNote.toNoExceptVersion()
-                //     }
-                //     descendantNote.changeTitle()
-                //     descendantNote.changeColorByType()
-                //   })
-  
-                //   focusNote.focusInMindMap(0.5)
-                // }
-              })
-            } else {
-              focusNotes.forEach(focusNote=>{
-                toolbarUtils.TemplateMakeNote(focusNote)
-                if (!focusNote.excerptText) {
-                  focusNote.addToReview()
-                }
-                focusNote.refreshAll()
-                focusNote.focusInMindMap(0.5)
-                // if (focusNote.getNoteTypeZh()=="顶层" || focusNote.getNoteTypeZh()=="归类") {
-                //   focusNote.descendantNodes.descendant.forEach(descendantNote => {
-                //     toolbarUtils.TemplateMakeNote(descendantNote)
-                //     if (!descendantNote.excerptText) {
-                //       descendantNote.addToReview()
-                //     }
-                //   })
-                //   focusNote.focusInMindMap(0.5)
-                // }
-              })
+                  focusNote.changeColorByType()
+                  focusNote.refreshAll()
+                  focusNote.focusInMindMap(0.5)
+                  // if (focusNote.getNoteTypeZh()=="顶层" || focusNote.getNoteTypeZh()=="归类") {
+                  //   focusNote.descendantNodes.descendant.forEach(descendantNote => {
+                  //     if (descendantNote.excerptText) {
+                  //       descendantNote.toNoExceptVersion()
+                  //     }
+                  //     descendantNote.changeTitle()
+                  //     descendantNote.changeColorByType()
+                  //   })
+    
+                  //   focusNote.focusInMindMap(0.5)
+                  // }
+                })
+              } else {
+                focusNotes.forEach(focusNote=>{
+                  toolbarUtils.TemplateMakeNote(focusNote)
+                  if (!focusNote.excerptText) {
+                    focusNote.addToReview()
+                  }
+                  focusNote.refreshAll()
+                  focusNote.focusInMindMap(0.5)
+                  // if (focusNote.getNoteTypeZh()=="顶层" || focusNote.getNoteTypeZh()=="归类") {
+                  //   focusNote.descendantNodes.descendant.forEach(descendantNote => {
+                  //     toolbarUtils.TemplateMakeNote(descendantNote)
+                  //     if (!descendantNote.excerptText) {
+                  //       descendantNote.addToReview()
+                  //     }
+                  //   })
+                  //   focusNote.focusInMindMap(0.5)
+                  // }
+                })
+              }
+            } catch (error) {
+              MNUtil.showHUD(error);
             }
-          } catch (error) {
-            MNUtil.showHUD(error);
-          }
+          })
+        } else {
+          // 任务管理学习集
+          MNUtil.undoGrouping(()=>{
+            focusNotes.forEach(focusNote=>{
+              toolbarUtils.OKRNoteMake(focusNote)
+            })
+          })
+        }
+        break;
+      /**
+       * 撤回上一个任务状态
+       */
+      case "undoOKRNoteMake": // new
+        MNUtil.undoGrouping(()=>{
+          focusNotes.forEach(focusNote=>{
+            toolbarUtils.OKRNoteMake(focusNote, true)
+          })
         })
         break;
       /**

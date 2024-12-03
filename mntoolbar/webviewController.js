@@ -2733,14 +2733,15 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                         let classificationNoteIdIndexInRefSourceNote = refSourceNote.getCommentIndex("marginnote4app://note/" + classificationNote.noteId)
                         if (classificationNoteIdIndexInRefSourceNote == -1){
                           refSourceNote.appendNoteLink(classificationNote, "To")
+                          refSourceNote.moveComment(classificationNoteIdIndexInRefSourceNote, refSourceNote.getHtmlCommentIndex("被引用情况："))
                         }
                         // 链接归类卡片到 refedNote
                         let classificationNoteIdIndexInRefedNote = refedNote.getCommentIndex("marginnote4app://note/" + classificationNote.noteId)
                         if (classificationNoteIdIndexInRefedNote == -1){
                           refedNote.appendNoteLink(classificationNote, "To")
-                          refedNote.moveComment(refedNote.comments.length-1,refedNote.getCommentIndex("参考文献：", true))
+                          refedNote.moveComment(refedNote.comments.length-1,refedNote.getCommentIndex("被引用情况：", true))
                         } else {
-                          refedNote.moveComment(classificationNoteIdIndexInRefedNote,refedNote.getCommentIndex("参考文献：", true) - 1)
+                          refedNote.moveComment(classificationNoteIdIndexInRefedNote,refedNote.getCommentIndex("被引用情况：", true))
                         }
                         classificationNote.merge(focusNote.note)
                         classificationNote.moveComment(

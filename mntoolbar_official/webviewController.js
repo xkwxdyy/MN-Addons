@@ -399,62 +399,108 @@ try {
     self.hideAfterDelay()
   },
 
-  searchInEudic:function (button) {
+  searchInEudic:async function (button) {
   try {
     self.onClick = true
-    let textSelected = MNUtil.selectionText
-    if (!textSelected) {
-      let focusNote = MNNote.getFocusNote()
-      if (focusNote) {
-        if (focusNote.excerptText) {
-          textSelected = focusNote.excerptText
-        }else if (focusNote.noteTitle) {
-          textSelected = focusNote.noteTitle
-        }else{
-          let firstComment = focusNote.comments.filter(comment=>comment.type === "TextNote")[0]
-          if (firstComment) {
-            textSelected = firstComment.text
-          }
-        }
-      }
-    }
-    if (textSelected) {
-      let textEncoded = encodeURIComponent(textSelected)
-      let url = "eudic://dict/"+textEncoded
-      // let des = toolbarConfig.getDescriptionByName("searchInEudic")
-      // if (des && des.source) {
-      //   // MNUtil.copyJSON(des)
-      //   switch (des.source) {
-      //     case "eudic":
-      //       //donothing
-      //       break;
-      //     case "yddict":
-      //       MNUtil.copy(textSelected)
-      //       url = "yddict://"
-      //       break;
-      //     case "iciba":
-      //       url = "iciba://word="+textEncoded
-      //       break;
-      //     case "sogodict":
-      //       url = "bingdict://"+textEncoded
-      //       break;
-      //     case "bingdict":
-      //       url = "sogodict://"+textEncoded
-      //       break;
-      //     default:
-      //       MNUtil.showHUD("Invalid source")
-      //       return
-      //   }
-      // }
-      // showHUD(url)
-      MNUtil.openURL(url)
-    }else{
-      MNUtil.showHUD('未找到有效文字')
-    }
-    if (button.menu) {
-      button.menu.dismissAnimated(true)
-      return
-    }
+    let des = toolbarConfig.getDescriptionByName("searchInEudic")
+    des.action = "searchInDict"
+    await self.customActionByDes(button, des, false)
+    // let target = des.target ?? "eudic"
+    // let textSelected = MNUtil.selectionText
+    // if (!textSelected) {
+    //   let focusNote = MNNote.getFocusNote()
+    //   if (focusNote) {
+    //     if (focusNote.excerptText) {
+    //       textSelected = focusNote.excerptText
+    //     }else if (focusNote.noteTitle) {
+    //       textSelected = focusNote.noteTitle
+    //     }else{
+    //       let firstComment = focusNote.comments.filter(comment=>comment.type === "TextNote")[0]
+    //       if (firstComment) {
+    //         textSelected = firstComment.text
+    //       }
+    //     }
+    //   }
+    // }
+    // if (textSelected) {
+    //   if (target === "eudic") {
+    //     let textEncoded = encodeURIComponent(textSelected)
+    //     let url = "eudic://dict/"+textEncoded
+    //     MNUtil.openURL(url)
+    //   }else{
+    //     let studyFrame = MNUtil.studyView.bounds
+    //     let beginFrame = self.view.frame
+    //     if (button.menu) {
+    //       button.menu.dismissAnimated(true)
+    //       let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+    //       let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 500, 500)
+    //       endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
+    //       endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
+    //       MNUtil.postNotification("lookupText"+target,{text:textSelected,beginFrame:beginFrame,endFrame:endFrame})
+    //       return
+    //     }
+    //     let endFrame
+    //     beginFrame.y = beginFrame.y-10
+    //     if (beginFrame.x+490 > studyFrame.width) {
+    //       endFrame = Frame.gen(beginFrame.x-450, beginFrame.y-10, 500, 500)
+    //       if (beginFrame.y+490 > studyFrame.height) {
+    //         endFrame.y = studyFrame.height-500
+    //       }
+    //       if (endFrame.x < 0) {
+    //         endFrame.x = 0
+    //       }
+    //       if (endFrame.y < 0) {
+    //         endFrame.y = 0
+    //       }
+    //     }else{
+    //       endFrame = Frame.gen(beginFrame.x+40, beginFrame.y-10, 500, 500)
+    //       if (beginFrame.y+490 > studyFrame.height) {
+    //         endFrame.y = studyFrame.height-500
+    //       }
+    //       if (endFrame.x < 0) {
+    //         endFrame.x = 0
+    //       }
+    //       if (endFrame.y < 0) {
+    //         endFrame.y = 0
+    //       }
+    //     }
+    //     MNUtil.postNotification("lookupText"+target, {text:textSelected,beginFrame:beginFrame,endFrame:endFrame})
+    //   }
+
+
+    //   // let des = toolbarConfig.getDescriptionByName("searchInEudic")
+    //   // if (des && des.source) {
+    //   //   // MNUtil.copyJSON(des)
+    //   //   switch (des.source) {
+    //   //     case "eudic":
+    //   //       //donothing
+    //   //       break;
+    //   //     case "yddict":
+    //   //       MNUtil.copy(textSelected)
+    //   //       url = "yddict://"
+    //   //       break;
+    //   //     case "iciba":
+    //   //       url = "iciba://word="+textEncoded
+    //   //       break;
+    //   //     case "sogodict":
+    //   //       url = "bingdict://"+textEncoded
+    //   //       break;
+    //   //     case "bingdict":
+    //   //       url = "sogodict://"+textEncoded
+    //   //       break;
+    //   //     default:
+    //   //       MNUtil.showHUD("Invalid source")
+    //   //       return
+    //   //   }
+    //   // }
+    //   // showHUD(url)
+    // }else{
+    //   MNUtil.showHUD('未找到有效文字')
+    // }
+    // if (button.menu) {
+    //   button.menu.dismissAnimated(true)
+    //   return
+    // }
     self.hideAfterDelay()
     
   } catch (error) {
@@ -531,7 +577,19 @@ try {
     let studyFrame = MNUtil.studyView.bounds
     let beginFrame = self.view.frame
     if (button.menu) {
-      beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+      button.menu.dismissAnimated(true)
+      let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+      let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+      endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
+      endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
+      if (selectionText) {
+        // MNUtil.showHUD("Text:"+selectionText)
+        MNUtil.postNotification("searchInBrowser",{text:selectionText,beginFrame:beginFrame,endFrame:endFrame})
+      }else{
+        // MNUtil.showHUD("NoteId:"+noteId)
+        MNUtil.postNotification("searchInBrowser",{noteid:noteId,beginFrame:beginFrame,endFrame:endFrame})
+      }
+      return
     }
     let endFrame
     beginFrame.y = beginFrame.y-10
@@ -1323,6 +1381,10 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "ocr":
         await toolbarUtils.ocr(des)
         break;
+      case "searchInDict":
+        // MNUtil.showHUD("searchInDict")
+        toolbarUtils.searchInDict(des,button)
+        break;
       case "insertSnippet":
         let textView = toolbarUtils.textView
         if (!textView || textView.hidden) {
@@ -1384,6 +1446,11 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         }
         focusNote.createChildNote(config)
         await MNUtil.delay(0.1)
+        break;
+      case "file2base64":
+        let file = await MNUtil.importFile(["public.data"])
+        let data = NSData.dataWithContentsOfFile(file)
+        MNUtil.copy(data.base64Encoding())
         break;
       case "addBrotherNote":
         MNUtil.showHUD("addBrotherNote")

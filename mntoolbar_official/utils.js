@@ -1648,6 +1648,102 @@ try {
     }
   
   }
+  static searchInDict(des,button){
+    let target = des.target ?? "eudic"
+    let textSelected = MNUtil.selectionText
+    if (!textSelected) {
+      let focusNote = MNNote.getFocusNote()
+      if (focusNote) {
+        if (focusNote.excerptText) {
+          textSelected = focusNote.excerptText
+        }else if (focusNote.noteTitle) {
+          textSelected = focusNote.noteTitle
+        }else{
+          let firstComment = focusNote.comments.filter(comment=>comment.type === "TextNote")[0]
+          if (firstComment) {
+            textSelected = firstComment.text
+          }
+        }
+      }
+    }
+    if (textSelected) {
+      if (target === "eudic") {
+        let textEncoded = encodeURIComponent(textSelected)
+        let url = "eudic://dict/"+textEncoded
+        MNUtil.openURL(url)
+      }else{
+        let studyFrame = MNUtil.studyView.bounds
+        let beginFrame = self.view.frame
+        if (button.menu) {
+          button.menu.dismissAnimated(true)
+          let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+          let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 500, 500)
+          endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
+          endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
+          MNUtil.postNotification("lookupText"+target,{text:textSelected,beginFrame:beginFrame,endFrame:endFrame})
+          return
+        }
+        let endFrame
+        beginFrame.y = beginFrame.y-10
+        if (beginFrame.x+490 > studyFrame.width) {
+          endFrame = Frame.gen(beginFrame.x-450, beginFrame.y-10, 500, 500)
+          if (beginFrame.y+490 > studyFrame.height) {
+            endFrame.y = studyFrame.height-500
+          }
+          if (endFrame.x < 0) {
+            endFrame.x = 0
+          }
+          if (endFrame.y < 0) {
+            endFrame.y = 0
+          }
+        }else{
+          endFrame = Frame.gen(beginFrame.x+40, beginFrame.y-10, 500, 500)
+          if (beginFrame.y+490 > studyFrame.height) {
+            endFrame.y = studyFrame.height-500
+          }
+          if (endFrame.x < 0) {
+            endFrame.x = 0
+          }
+          if (endFrame.y < 0) {
+            endFrame.y = 0
+          }
+        }
+        MNUtil.postNotification("lookupText"+target, {text:textSelected,beginFrame:beginFrame,endFrame:endFrame})
+      }
+
+
+      // let des = toolbarConfig.getDescriptionByName("searchInEudic")
+      // if (des && des.source) {
+      //   // MNUtil.copyJSON(des)
+      //   switch (des.source) {
+      //     case "eudic":
+      //       //donothing
+      //       break;
+      //     case "yddict":
+      //       MNUtil.copy(textSelected)
+      //       url = "yddict://"
+      //       break;
+      //     case "iciba":
+      //       url = "iciba://word="+textEncoded
+      //       break;
+      //     case "sogodict":
+      //       url = "bingdict://"+textEncoded
+      //       break;
+      //     case "bingdict":
+      //       url = "sogodict://"+textEncoded
+      //       break;
+      //     default:
+      //       MNUtil.showHUD("Invalid source")
+      //       return
+      //   }
+      // }
+      // showHUD(url)
+    }else{
+      MNUtil.showHUD('未找到有效文字')
+    }
+
+
+  }
   static showMessage(des){
     let content = this.detectAndReplace(des.content)
     MNUtil.showHUD(content)
@@ -1722,8 +1818,23 @@ try {
     let studyFrame = MNUtil.studyView.bounds
     let beginFrame = button.frame
     if (button.menu) {
-      beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+      button.menu.dismissAnimated(true)
+      let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+      let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+      endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
+      endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
+      if (selectionText) {
+        // MNUtil.showHUD("Text:"+selectionText)
+        MNUtil.postNotification("searchInBrowser",{text:selectionText,beginFrame:beginFrame,endFrame:endFrame})
+      }else{
+        // MNUtil.showHUD("NoteId:"+noteId)
+        MNUtil.postNotification("searchInBrowser",{noteid:noteId,beginFrame:beginFrame,endFrame:endFrame})
+      }
+      return
     }
+    // if (button.menu) {
+    //   beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+    // }
     let endFrame
     beginFrame.y = beginFrame.y-10
     if (beginFrame.x+490 > studyFrame.width) {
@@ -4016,7 +4127,7 @@ static getDescriptionByName(actionName){
   if (MNUtil.isValidJSON(des)) {
     return JSON.parse(des)
   }
-  return undefined
+  return {}
 }
   static checkCouldSave(actionName){
     if (actionName.includes("custom")) {

@@ -558,11 +558,14 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       if (entryName !== title) {
         self["nameButton"+index].isSelected = false
         MNButton.setColor(self["nameButton"+index], "#ffffff", 0.8)
+        self["nameButton"+index].layer.borderWidth = 0
       }
     })
     if (button.isSelected) {
       self.setTextview(title)
       MNButton.setColor(button, "#9bb2d6", 0.8)
+      button.layer.borderWidth = 2
+      button.layer.borderColor = MNUtil.hexColorAlpha("#457bd3", 0.8)
     }else{
       MNButton.setColor(button, "#ffffff", 0.8)
     }
@@ -1230,6 +1233,12 @@ settingController.prototype.setButtonText = function (names=toolbarConfig.getAll
       this[buttonName].id = word
       this[buttonName].isSelected = (word === highlight)
       MNButton.setColor(this[buttonName], (word === highlight)?"#9bb2d6":"#ffffff", 0.8)
+      if (word === highlight) {
+        this[buttonName].layer.borderWidth = 2
+        this[buttonName].layer.borderColor = MNUtil.hexColorAlpha("#457bd3", 0.8)
+      }else{
+        this[buttonName].layer.borderWidth = 0
+      }
       MNButton.setImage(this[buttonName], toolbarConfig.imageConfigs[word])
 
       // if (word in actions) {

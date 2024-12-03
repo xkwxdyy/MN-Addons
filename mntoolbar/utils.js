@@ -1100,7 +1100,7 @@ try {
   static getOCRNoteStatus(note) {
     let status
     let title = note.noteTitle
-    const regex = /：([^｜]*)/; // 匹配前面的【...】内容
+    const regex = /【.*：([^｜]*)】/; // 匹配前面的【...】内容
     const match = title.match(regex); // 进行正则匹配
 
     if (match) {

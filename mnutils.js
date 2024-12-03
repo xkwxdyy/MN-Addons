@@ -184,7 +184,7 @@ class Pangu {
     // - 左右的空格去掉
     newText = newText.replace(/\s*-\s*/g, "-")
     // ∞ 后面的只保留一个空格，而不是直接去掉
-    newText = newText.replace(/∞\s+/g, "∞\s")
+    newText = newText.replace(/∞\s+/g, "∞ ")
     // 大求和符号改成小求和符号
     newText = newText.replace(/∑/g, "Σ")
     // 处理一下 弱* w* 这种空格
@@ -3825,6 +3825,9 @@ try {
         "----------【相关思考区】----------",
         "🔝Top🔝",
         "⬇️ Bottom ⬇️",
+        "----------【所属区】----------",
+        "🔝Top🔝",
+        "⬇️ Bottom ⬇️",
       ],
       (alert, buttonIndex) => {
         switch (buttonIndex) {
@@ -3851,6 +3854,13 @@ try {
           case 8:
           case 10:  // 相关思考区最底部
             this.moveCommentsByIndexArrTo(indexArr, "think")
+            break;
+          case 11:
+          case 13:  // 所属区底部
+            this.moveCommentsByIndexArrTo(indexArr, "belong")
+            break;
+          case 12:  // 所属区顶部
+            this.moveCommentsByIndexArrTo(indexArr, "belong", false)
             break;
         }
 
@@ -4845,6 +4855,36 @@ try {
             targetIndex = this.getHtmlCommentIndex("应用：") + 1
           }
           this.moveCommentsByIndexArr(indexArr, targetIndex)
+        }
+        break;
+
+      
+      /**
+       * 所属
+       */
+      case "belong":
+      case "belongs":
+      case "belongto":
+      case "belongsto":
+      case "belonging":
+        switch (this.getNoteTypeZh()) {
+          case "顶层":
+            if (toBottom) {
+              targetIndex = this.getHtmlCommentIndex("包含：")
+            } else {
+              targetIndex = this.getHtmlCommentIndex("所属：") + 1
+            }
+            this.moveCommentsByIndexArr(indexArr, targetIndex)
+            break;
+          case "归类":
+            if (toBottom) {
+              targetIndex = this.getHtmlCommentIndex("相关思考：")
+            } else {
+              targetIndex = this.getHtmlCommentIndex("所属：") + 1
+            }
+            this.moveCommentsByIndexArr(indexArr, targetIndex)
+            break;
+          default:
         }
         break;
     }

@@ -4592,13 +4592,26 @@ try {
   }
   /**
    * 获取除了 LinkNote 以外的 indexArr
+   * 
+   * 注意定义类卡片单独处理
+   * 因为手写不需要移动，一般定义类的手写都是作为定义的摘录的地位
    */
   getContentWithoutLinkNoteTypeIndexArr(){
     let indexArr = []
-    for (let i = 0; i < this.comments.length; i++) {
-      let comment = this.comments[i]
-      if (comment.type !== "LinkNote") {
-        indexArr.push(i)
+    let type = this.getNoteTypeZh()
+    if (type == "定义") {
+      for (let i = 0; i < this.comments.length; i++) {
+        let comment = this.comments[i]
+        if (comment.type !== "LinkNote" && comment.type !== "PaintNote") {
+          indexArr.push(i)
+        }
+      }
+    } else {
+      for (let i = 0; i < this.comments.length; i++) {
+        let comment = this.comments[i]
+        if (comment.type !== "LinkNote") {
+          indexArr.push(i)
+        }
       }
     }
     return indexArr

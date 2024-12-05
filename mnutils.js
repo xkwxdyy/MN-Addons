@@ -5114,10 +5114,15 @@ try {
       for (let i = 0; i < indexArr.length; i++) {
         let index = indexArr[i]
         let comment = this.comments[index]
-        if (!MNUtil.isCommentLink(comment)) {
-          indexArr = indexArr.slice(i)
-          findNonLink = true
-          break
+        if (
+          !MNUtil.isCommentLink(comment)
+        ) {
+          // 不处理 # 开头的文本，因为这种文本是用作标题链接，不能被识别为新内容
+          if (comment.type == "TextNote" && !comment.text.startsWith("#")) {
+            indexArr = indexArr.slice(i)
+            findNonLink = true
+            break
+          }
         }
       }
       if (!findNonLink) {

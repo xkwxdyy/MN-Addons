@@ -3809,66 +3809,143 @@ try {
    * 根据 indexarr 和弹窗按钮确定移动的位置
    */
   moveCommentsByIndexArrAndButtonTo(indexArr, popUpTitle = "移动评论到", popUpSubTitle = "") {
-    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-      popUpTitle,
-      popUpSubTitle,
-      0,
-      "取消",
-      [
-        "🔝🔝🔝🔝卡片最顶端🔝🔝🔝🔝",
-        "----------【摘录区】----------",
-        "🔝Top🔝",
-        "⬇️ Bottom ⬇️",
-        "----------【证明区】----------",
-        "🔝Top🔝",
-        "⬇️ Bottom ⬇️",
-        "----------【相关思考区】----------",
-        "🔝Top🔝",
-        "⬇️ Bottom ⬇️",
-        "----------【所属区】----------",
-        "🔝Top🔝",
-        "⬇️ Bottom ⬇️",
-      ],
-      (alert, buttonIndex) => {
-        switch (buttonIndex) {
-          case 1:  // 卡片最顶端
-            this.moveCommentsByIndexArrTo(indexArr, "top")
-            break;
-          case 3:  // 摘录区最顶端
-            this.moveCommentsByIndexArrTo(indexArr, "excerpt", false)
-            break;
-          case 2:
-          case 4:  // 摘录区最底部
-            this.moveCommentsByIndexArrTo(indexArr, "excerpt")
-            break;
-          case 6:  // 证明区最顶端
-            this.moveCommentsByIndexArrTo(indexArr, "proof", false)
-            break;
-          case 5:
-          case 7:  // 证明区最底部
-            this.moveCommentsByIndexArrTo(indexArr, "proof")
-            break;
-          case 9:  // 相关思考区最顶端
-            this.moveCommentsByIndexArrTo(indexArr, "think", false)
-            break;
-          case 8:
-          case 10:  // 相关思考区最底部
-            this.moveCommentsByIndexArrTo(indexArr, "think")
-            break;
-          case 11:
-          case 13:  // 所属区底部
-            this.moveCommentsByIndexArrTo(indexArr, "belong")
-            break;
-          case 12:  // 所属区顶部
-            this.moveCommentsByIndexArrTo(indexArr, "belong", false)
-            break;
+    MNUtil.undoGrouping(()=>{
+      try {
+        if (this.ifReferenceNote()) {
+          // 此时为文献类卡片，弹窗更新
+          UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+            popUpTitle,
+            popUpSubTitle,
+            0,
+            "取消",
+            [
+              "🔝🔝🔝🔝卡片最顶端🔝🔝🔝🔝",
+              "----------【摘录区】----------",
+              "🔝Top🔝",
+              "⬇️ Bottom ⬇️",
+              "----------【文献信息区】----------",
+              "🔝Top🔝",
+              "⬇️ Bottom ⬇️",
+              "----------【相关思考区】----------",
+              "🔝Top🔝",
+              "⬇️ Bottom ⬇️",
+              "----------【参考文献区】----------",
+              "🔝Top🔝",
+              "⬇️ Bottom ⬇️",
+            ],
+            (alert, buttonIndex) => {
+              switch (buttonIndex) {
+                case 1:  // 卡片最顶端
+                  this.moveCommentsByIndexArrTo(indexArr, "top")
+                  break;
+                case 3:  // 摘录区最顶端
+                  this.moveCommentsByIndexArrTo(indexArr, "excerpt", false)
+                  break;
+                case 2:
+                case 4:  // 摘录区最底部
+                  this.moveCommentsByIndexArrTo(indexArr, "excerpt")
+                  break;
+                case 6:  // 文献信息最顶端
+                  this.moveCommentsByIndexArrTo(indexArr, "literature", false)
+                  break;
+                case 5:
+                case 7:  // 文献信息最底部
+                  this.moveCommentsByIndexArrTo(indexArr, "literature")
+                  break;
+                case 9:  // 相关思考区最顶端
+                  this.moveCommentsByIndexArrTo(indexArr, "think", false)
+                  break;
+                case 8:
+                case 10:  // 相关思考区最底部
+                  this.moveCommentsByIndexArrTo(indexArr, "think")
+                  break;
+                case 11:
+                case 13:  // 参考文献区底部
+                  this.moveCommentsByIndexArrTo(indexArr, "ref")
+                  break;
+                case 12:  // 参考文献区顶部
+                  this.moveCommentsByIndexArrTo(indexArr, "ref", false)
+                  break;
+              }
+      
+              MNUtil.undoGrouping(()=>{
+                this.refresh()
+              })
+            }
+          )
+        } else {
+          UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+            popUpTitle,
+            popUpSubTitle,
+            0,
+            "取消",
+            [
+              "🔝🔝🔝🔝卡片最顶端🔝🔝🔝🔝",
+              "----------【摘录区】----------",
+              "🔝Top🔝",
+              "⬇️ Bottom ⬇️",
+              "----------【证明区】----------",
+              "🔝Top🔝",
+              "⬇️ Bottom ⬇️",
+              "----------【相关思考区】----------",
+              "🔝Top🔝",
+              "⬇️ Bottom ⬇️",
+              "----------【所属区】----------",
+              "🔝Top🔝",
+              "⬇️ Bottom ⬇️",
+            ],
+            (alert, buttonIndex) => {
+              switch (buttonIndex) {
+                case 1:  // 卡片最顶端
+                  this.moveCommentsByIndexArrTo(indexArr, "top")
+                  break;
+                case 3:  // 摘录区最顶端
+                  this.moveCommentsByIndexArrTo(indexArr, "excerpt", false)
+                  break;
+                case 2:
+                case 4:  // 摘录区最底部
+                  this.moveCommentsByIndexArrTo(indexArr, "excerpt")
+                  break;
+                case 6:  // 证明区最顶端
+                  this.moveCommentsByIndexArrTo(indexArr, "proof", false)
+                  break;
+                case 5:
+                case 7:  // 证明区最底部
+                  this.moveCommentsByIndexArrTo(indexArr, "proof")
+                  break;
+                case 9:  // 相关思考区最顶端
+                  this.moveCommentsByIndexArrTo(indexArr, "think", false)
+                  break;
+                case 8:
+                case 10:  // 相关思考区最底部
+                  this.moveCommentsByIndexArrTo(indexArr, "think")
+                  break;
+                case 11:
+                case 13:  // 所属区底部
+                  this.moveCommentsByIndexArrTo(indexArr, "belong")
+                  break;
+                case 12:  // 所属区顶部
+                  this.moveCommentsByIndexArrTo(indexArr, "belong", false)
+                  break;
+              }
+      
+              MNUtil.undoGrouping(()=>{
+                this.refresh()
+              })
+            }
+          )
         }
-
-        MNUtil.undoGrouping(()=>{
-          this.refresh()
-        })
+      } catch (error) {
+        MNUtil.showHUD(error);
       }
-    )
+    })
+  }
+
+  /**
+   * 判断是否是文献类型卡片
+   */
+  ifReferenceNote(){
+    return this.getHtmlCommentIndex("文献信息：") !== -1
   }
   /**
    * 删除评论
@@ -4753,11 +4830,16 @@ try {
       case "excerpt":
       case "excerption":
         if (toBottom) {
-          if (this.getNoteTypeZh() == "定义") {
-            targetIndex = this.getHtmlCommentIndex("相关概念：")
-          } else {
-            // targetIndex = this.getHtmlCommentIndex("证明：")
-            targetIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh())
+          switch (this.getNoteTypeZh()) {
+            case "定义":
+              targetIndex = this.getHtmlCommentIndex("相关概念：")
+              break;
+            case "文献":
+              targetIndex = this.getHtmlCommentIndex("文献信息：")
+              break;
+            default:
+              targetIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh())
+              break;
           }
         } else {
           // top 的话要看摘录区有没有摘录内容
@@ -4765,11 +4847,16 @@ try {
           // - 如果没有的话，就和摘录的 bottom 是一样的
           let excerptPartIndexArr = this.getExcerptPartIndexArr()
           if (excerptPartIndexArr.length == 0) {
-            if (this.getNoteTypeZh() == "定义") {
-              targetIndex = this.getHtmlCommentIndex("相关概念：")
-            } else {
-              // targetIndex = this.getHtmlCommentIndex("证明：")
-              targetIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh())
+            switch (this.getNoteTypeZh()) {
+              case "定义":
+                targetIndex = this.getHtmlCommentIndex("相关概念：")
+                break;
+              case "文献":
+                targetIndex = this.getHtmlCommentIndex("文献信息：")
+                break;
+              default:
+                targetIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh())
+                break;
             }
           } else {
             targetIndex = excerptPartIndexArr[0]
@@ -4807,6 +4894,9 @@ try {
               break;
             case "归类":
               targetIndex = this.getHtmlCommentIndex("包含：")
+              break;
+            case "文献":
+              targetIndex = this.getHtmlCommentIndex("参考文献：")
               break;
             default:
               targetIndex = this.getIncludingHtmlCommentIndex("关键词：")
@@ -4900,6 +4990,37 @@ try {
           default:
         }
         break;
+
+      /**
+       * 参考文献
+       */
+      case "ref":
+      case "refs":
+      case "Ref":
+      case "Refs":
+      case "reference":
+      case "references":
+      case "Reference":
+      case "References":
+        if (toBottom) {
+          targetIndex = this.getHtmlCommentIndex("被引用情况：")
+        } else {
+          targetIndex = this.getHtmlCommentIndex("参考文献：") + 1
+        }
+        this.moveCommentsByIndexArr(indexArr, targetIndex)
+        break;
+
+      /**
+       * 文献信息
+       */
+      case "literature":
+        if (toBottom) {
+          targetIndex = this.getHtmlCommentIndex("相关思考：")
+        } else {
+          targetIndex = this.getHtmlCommentIndex("文献信息：") + 1
+        }
+        this.moveCommentsByIndexArr(indexArr, targetIndex)
+        break;
     }
   }
   /**
@@ -4928,11 +5049,16 @@ try {
       case "excerpt":
       case "excerption":
         if (toBottom) {
-          if (this.getNoteTypeZh() == "定义") {
-            targetIndex = this.getHtmlCommentIndex("相关概念：")
-          } else {
-            // targetIndex = this.getHtmlCommentIndex("证明：")
-            targetIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh())
+          switch (this.getNoteTypeZh()) {
+            case "定义":
+              targetIndex = this.getHtmlCommentIndex("相关概念：")
+              break;
+            case "文献":
+              targetIndex = this.getHtmlCommentIndex("文献信息：")
+              break;
+            default:
+              targetIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh())
+              break;
           }
         } else {
           // top 的话要看摘录区有没有摘录内容
@@ -4940,11 +5066,16 @@ try {
           // - 如果没有的话，就和摘录的 bottom 是一样的
           let excerptPartIndexArr = this.getExcerptPartIndexArr()
           if (excerptPartIndexArr.length == 0) {
-            if (this.getNoteTypeZh() == "定义") {
-              targetIndex = this.getHtmlCommentIndex("相关概念：")
-            } else {
-              // targetIndex = this.getHtmlCommentIndex("证明：")
-              targetIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh())
+            switch (this.getNoteTypeZh()) {
+              case "定义":
+                targetIndex = this.getHtmlCommentIndex("相关概念：")
+                break;
+              case "文献":
+                targetIndex = this.getHtmlCommentIndex("文献信息：")
+                break;
+              default:
+                targetIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh())
+                break;
             }
           } else {
             targetIndex = excerptPartIndexArr[0]
@@ -4982,6 +5113,9 @@ try {
               break;
             case "归类":
               targetIndex = this.getHtmlCommentIndex("包含：")
+              break;
+            case "文献":
+              targetIndex = this.getHtmlCommentIndex("参考文献：")
               break;
             default:
               targetIndex = this.getIncludingHtmlCommentIndex("关键词：")
@@ -5045,6 +5179,37 @@ try {
           this.appendMarkdownComment(text, targetIndex)
         }
         break;
+
+      /**
+       * 参考文献
+       */
+      case "ref":
+      case "refs":
+      case "Ref":
+      case "Refs":
+      case "reference":
+      case "references":
+      case "Reference":
+      case "References":
+        if (toBottom) {
+          targetIndex = this.getHtmlCommentIndex("被引用情况：")
+        } else {
+          targetIndex = this.getHtmlCommentIndex("参考文献：") + 1
+        }
+        this.appendMarkdownComment(text, targetIndex)
+        break;
+
+      /**
+       * 文献信息
+       */
+      case "literature":
+        if (toBottom) {
+          targetIndex = this.getHtmlCommentIndex("相关思考：")
+        } else {
+          targetIndex = this.getHtmlCommentIndex("文献信息：") + 1
+        }
+        this.appendMarkdownComment(text, targetIndex)
+        break;
     }
   }
   /**
@@ -5053,16 +5218,23 @@ try {
    * 原理：
    * 判断卡片类型
    * - 定义：“相关概念：”前进行 LinkNote 评论的判断
+   * - 文献：“文献信息：”前
    * - 其他：“证明：”（注意反例、思想方法的“证明：”叫法不同）前进行 LinkNote 评论的判断
    */
   getExcerptPartIndexArr() {
     let type = this.getNoteTypeZh()
     let indexArr = []
     let endIndex
-    if (type == "定义") {
-      endIndex = this.getHtmlCommentIndex("相关概念：")
-    } else {
-      endIndex = this.getProofHtmlCommentIndexByNoteType(type)
+    switch (type) {
+      case "定义":
+        endIndex = this.getHtmlCommentIndex("相关概念：")
+        break;
+      case "文献":
+        endIndex = this.getHtmlCommentIndex("文献信息：")
+        break;
+      default:
+        endIndex = this.getProofHtmlCommentIndexByNoteType(type)
+        break;
     }
     for (let i = 0; i < endIndex; i++) {
       let comment = this.comments[i]
@@ -5088,6 +5260,9 @@ try {
       case "顶层":
         // 归类类卡片获取“包含：”下方的第一个非链接开始之后
         indexArr = this.getHtmlBlockNonLinkContentIndexArr("包含：")
+        break;
+      case "文献":
+        indexArr = this.getHtmlBlockNonLinkContentIndexArr("被引用情况：")
         break;
       default:
         // 非定义类卡片获取“应用”下方的第一个非链接开始之后
@@ -5166,25 +5341,30 @@ try {
   getNoteTypeZh() {
     let noteType
     let noteColorIndex = this.note.colorIndex
-    if (this.ifIndependentNote()) {
-      // 独立卡片根据颜色判断
-      noteType = MNUtil.getNoteZhTypeByNoteColorIndex(this.note.colorIndex)
+    if (this.ifReferenceNote()) {
+      noteType = "文献"
       return noteType
     } else {
-      // 有归类父卡片则根据父卡片的标题判断
-      if (noteColorIndex == 0 || noteColorIndex == 4) {
-        /**
-         * 黄色归类卡片
-         */
-        return "归类"
-      } else if (noteColorIndex == 1) {
-        /**
-         * 绿色归类卡片
-         */
-        return "顶层"
+      if (this.ifIndependentNote()) {
+        // 独立卡片根据颜色判断
+        noteType = MNUtil.getNoteZhTypeByNoteColorIndex(this.note.colorIndex)
+        return noteType
       } else {
-        noteType = this.getNoteTypeObjByClassificationParentNoteTitle()
-        return noteType.zh
+        // 有归类父卡片则根据父卡片的标题判断
+        if (noteColorIndex == 0 || noteColorIndex == 4) {
+          /**
+           * 黄色归类卡片
+           */
+          return "归类"
+        } else if (noteColorIndex == 1) {
+          /**
+           * 绿色归类卡片
+           */
+          return "顶层"
+        } else {
+          noteType = this.getNoteTypeObjByClassificationParentNoteTitle()
+          return noteType.zh
+        }
       }
     }
   }

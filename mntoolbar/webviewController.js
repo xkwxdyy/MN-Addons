@@ -2003,6 +2003,20 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           }
         })
         break;
+      /**
+       * 复制批量选中的卡片的 URL 到剪贴板
+       */
+      case "copyFocusNotesURLArr":    // new
+        MNUtil.undoGrouping(()=>{
+          try {
+            let idsArr = toolbarUtils.getNoteURLArr(focusNotes)
+            MNUtil.copy(idsArr)
+            MNUtil.showHUD(idsArr)
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
       case "generateCustomTitleLink":
         MNUtil.undoGrouping(()=>{
           toolbarUtils.generateCustomTitleLink()
@@ -5122,7 +5136,14 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           })
         })
         break;
-        /* 夏大鱼羊定制 - end */
+      /**
+       * 打开任务管理学习集到浮动脑图
+       */
+      case "openTasksFloatMindMap": // new
+        let OKRNote = MNNote.new("690ABF82-339C-4AE1-8BDB-FA6796204B27")
+        OKRNote.focusInFloatMindMap()
+        break;
+      /* 夏大鱼羊定制 - end */
       case "chatAI":
         toolbarUtils.chatAI(des)
         break

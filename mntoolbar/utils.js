@@ -1152,6 +1152,18 @@ try {
     return newStatus
   }
   /**
+   * 清除时间类标签
+   */
+  static clearTimeTag(note) {
+    // for (let i = 0; i < note.comments.length; i++) {
+    for (let i = note.comments.length - 1; i >= 0; i--) {
+      let comment = note.comments[i]
+      if (comment.type == "TextNote" && comment.text.startsWith("#时间")) {
+        note.removeCommentByIndex(i)
+      }
+    }
+  }
+  /**
    * 任务管理卡片制卡
    * 
    */
@@ -1172,6 +1184,12 @@ try {
     } else {
       status = this.updateOCRNoteStatus(status) // 更新任务状态
     }
+
+    // 如果已完成，则清除时间类的标签
+    if (status == "已完成") {
+      this.clearTimeTag(note)
+    }
+
     switch (noteInformation.zhType) {
       case "任务":
         switch (status) {
@@ -1252,6 +1270,17 @@ try {
     let idsArr = []
     notes.forEach(note => {
       idsArr.push(note.noteId)
+    })
+    return idsArr
+  }
+
+  /**
+   * 批量获取卡片 URL 存到 Arr 里
+   */
+  static getNoteURLArr(notes) {
+    let idsArr = []
+    notes.forEach(note => {
+      idsArr.push(note.noteURL)
     })
     return idsArr
   }
@@ -8246,8 +8275,16 @@ static template(action) {
       config.menuWidth = 250
       config.menuItems = [
         {
+          "action": "toBeIndependent",
+          "menuTitle": "⇨ 独立",
+        },
+        {
           "action": "copyFocusNotesIdArr",
           "menuTitle": "复制卡片🆔",
+        },
+        {
+          "action": "copyFocusNotesURLArr",
+          "menuTitle": "复制卡片 URL",
         },
         // {
         //   "action": "pasteAsChildNotesByIdArrFromClipboard",
@@ -8420,25 +8457,25 @@ static template(action) {
       config.menuWidth = 200
       config.menuItems = [
         {
-          "action": "toBeProgressNote",
-          "menuTitle": "⇨ 📍进度标记",
+          "action": "openTasksFloatMindMap" ,
+          "menuTitle": "打开任务管理脑图",
         },
-        {
-          "action": "toBeIndependent",
-          "menuTitle": "⇨ 独立",
-        },
-        {
-          "action": "moveToInput",
-          "menuTitle": "⇨ 输入",
-        },
-        {
-          "action": "moveToInternalize",
-          "menuTitle": "⇨ 内化",
-        },
-        {
-          "action": "moveToBeClassified",
-          "menuTitle": "⇨ 待归类",
-        },
+        // {
+        //   "action": "toBeProgressNote",
+        //   "menuTitle": "⇨ 📍进度标记",
+        // },
+        // {
+        //   "action": "moveToInput",
+        //   "menuTitle": "⇨ 输入",
+        // },
+        // {
+        //   "action": "moveToInternalize",
+        //   "menuTitle": "⇨ 内化",
+        // },
+        // {
+        //   "action": "moveToBeClassified",
+        //   "menuTitle": "⇨ 待归类",
+        // },
       ]
       break;
     case "menu_excerpt":

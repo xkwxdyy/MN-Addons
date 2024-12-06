@@ -1599,9 +1599,45 @@ class MNUtil {
   static postNotification(name,userInfo) {
     NSNotificationCenter.defaultCenter().postNotificationNameObjectUserInfo(name, this.currentWindow, userInfo)
   }
+  static parseHexColor(hex) {
+    // 检查输入是否是有效的6位16进制颜色字符串
+    if (typeof hex === 'string' && hex.length === 8) {
+          return {
+              color: hex,
+              opacity: 1
+          };
+    }
+    // 检查输入是否是有效的8位16进制颜色字符串
+    if (typeof hex !== 'string' || !/^#([0-9A-Fa-f]{8})$/.test(hex)) {
+        throw new Error('Invalid 8-digit hexadecimal color');
+    }
+
+    // 提取红色、绿色、蓝色和不透明度的16进制部分
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const a = parseInt(hex.slice(7, 9), 16) / 255; // 转换为0到1的不透明度
+
+    // 将RGB值转换为6位16进制颜色字符串
+    const rgbHex = `#${hex.slice(1, 7)}`;
+
+    return {
+        color: rgbHex,
+        opacity: parseFloat(a.toFixed(2)) // 保留2位小数
+    };
+  }
   static hexColorAlpha(hex,alpha=1.0) {
     let color = UIColor.colorWithHexString(hex)
     return alpha!==undefined?color.colorWithAlphaComponent(alpha):color
+  }
+  /**
+   * 
+   * @param {string} hex 
+   * @returns {UIColor}
+   */
+  static hexColor(hex) {
+    let colorObj = this.parseHexColor(hex)
+    return MNUtil.hexColorAlpha(colorObj.color,colorObj.opacity)
   }
   static genNSURL(url) {
     return NSURL.URLWithString(url)
@@ -2397,8 +2433,27 @@ class MNButton{
     let color = UIColor.colorWithHexString(hex)
     return alpha!==undefined?color.colorWithAlphaComponent(alpha):color
   }
+  /**
+   * function to create a color from a hex string
+   * @param {string} hex 
+   * @returns {UIColor}
+   */
+  static hexColor(hex) {
+    let colorObj = MNUtil.parseHexColor(hex)
+    return this.hexColorAlpha(colorObj.color,colorObj.opacity)
+  }
+  /**
+   * 
+   * @param {UIButton} button 
+   * @param {string} hexColor 
+   * @param {number} [alpha=1.0] 
+   */
   static setColor(button,hexColor,alpha = 1.0){
-    button.backgroundColor = this.hexColorAlpha(hexColor, alpha)
+    if(hexColor.length > 7){
+      button.backgroundColor = this.hexColor(hexColor)
+    }else{
+      button.backgroundColor = this.hexColorAlpha(hexColor, alpha)
+    }
   }
   static setTitle(button,title,font = 16,bold= false){
     button.setTitleForState(title,0)
@@ -2615,6 +2670,20 @@ class MNNote{
       default:
         return undefined
     }
+  }
+  static errorLog = []
+  static addErrorLog(error,source,info){
+    MNUtil.showHUD("MNNote Error ("+source+"): "+error)
+    let log = {
+      error:error.toString(),
+      source:source,
+      time:(new Date(Date.now())).toString()
+    }
+    if (info) {
+      log.info = info
+    }
+    this.errorLog.push(log)
+    MNUtil.copyJSON(this.errorLog)
   }
   get noteId() {
     return this.note.noteId
@@ -3177,8 +3246,13 @@ try {
   return ""
 }
   }
+  /**
+   * 
+   * @returns {MNNote}
+   */
   paste(){
     this.note.paste()
+    return this
   }
 
   /**
@@ -3194,6 +3268,7 @@ try {
    * If the note to be merged is a string representing a note ID, the method will attempt to retrieve the corresponding note from the database.
    * 
    * @param {MbBookNote|MNNote|string} note - The note to be merged with the current note.
+   * @returns {MNNote}
    */
   merge(note){
     switch (MNUtil.typeOf(note)) {
@@ -3223,16 +3298,24 @@ try {
       default:
         break;
     }
+    return this
   }
   /**
    * Remove from parent
    * 去除当前note的父关系(没用过不确定具体效果)
+   * @returns {MNNote}
    */
   removeFromParent(){
     this.note.removeFromParent()
+    return this
   }
+  /**
+   * 
+   * @returns {MNNote}
+   */
   insertChildBefore(){
     this.note.insertChildBefore()
+    return this
   }
   /**
    * Deletes the current note, optionally including its descendant notes.
@@ -3241,23 +3324,13 @@ try {
    * The deletion can be grouped within an undo operation if the `undoGrouping` parameter is set to `true`.
    * 
    * @param {boolean} [withDescendant=false] - Whether to delete the descendant notes along with the current note.
-   * @param {boolean} [undoGrouping=true] - Whether to group the deletion within an undo operation.
+   * @param {boolean} [undoGrouping=false] - Whether to group the deletion within an undo operation.
    */
-  delete(withDescendant = false, undoGrouping = true){
-    if (undoGrouping) {
-      MNUtil.undoGrouping(()=>{
-        if (withDescendant) {
-          MNUtil.db.deleteBookNoteTree(this.note.noteId)
-        }else{
-          MNUtil.db.deleteBookNote(this.note.noteId)
-        }
-      })
+  delete(withDescendant = false){
+    if (withDescendant) {
+      MNUtil.db.deleteBookNoteTree(this.note.noteId)
     }else{
-      if (withDescendant) {
-        MNUtil.db.deleteBookNoteTree(this.note.noteId)
-      }else{
-        MNUtil.db.deleteBookNote(this.note.noteId)
-      }
+      MNUtil.db.deleteBookNote(this.note.noteId)
     }
   }
   /**
@@ -3268,6 +3341,7 @@ try {
    * If the child note is specified as an MNNote instance, the method will add the underlying MbBookNote instance as a child.
    * 
    * @param {MbBookNote|MNNote|string} note - The child note to add to the current note.
+   * @returns {MNNote} The current note.
    */
   addChild(note){
     try {
@@ -3302,8 +3376,10 @@ try {
         MNUtil.showHUD("UNKNOWN Note")
         break;
     }
+    return this
     } catch (error) {
-      MNUtil.showHUD(error)
+      MNNote.addErrorLog(error, "addChild")
+      return this
     }
   }
   /**
@@ -3314,14 +3390,14 @@ try {
    * 
    * @param {MbBookNote|MNNote} targetNote - The note to be added as a child note.
    * @param {boolean} [colorInheritance=false] - Whether the target note should inherit the color of the current note.
+   * @returns {MNNote} The current note.
    */
   addAsChildNote(targetNote,colorInheritance=false) {
-    MNUtil.undoGrouping(()=>{
-      if (colorInheritance) {
-        targetNote.colorIndex = this.note.colorIndex
-      }
-      this.addChild(targetNote)
-    })
+    if (colorInheritance) {
+      targetNote.colorIndex = this.note.colorIndex
+    }
+    this.addChild(targetNote)
+    return this
   }
   /**
    * Adds the specified note as a sibling note to the current note.
@@ -3331,6 +3407,7 @@ try {
    * 
    * @param {MbBookNote|MNNote} targetNote - The note to be added as a sibling.
    * @param {boolean} [colorInheritance=false] - Whether to inherit the color index from the current note.
+   * @returns {MNNote} The current note.
    */
   addAsBrotherNote(targetNote,colorInheritance=false) {
     if (!this.note.parentNote) {
@@ -3338,12 +3415,11 @@ try {
       return
     }
     let parent = this.parentNote
-    MNUtil.undoGrouping(()=>{
-      if (colorInheritance) {
-        targetNote.colorIndex = this.note.colorIndex
-      }
-      parent.addChild(targetNote)
-    })
+    if (colorInheritance) {
+      targetNote.colorIndex = this.note.colorIndex
+    }
+    parent.addChild(targetNote)
+    return this
   }
   /**
    * Creates a child note for the current note based on the provided configuration.
@@ -3428,6 +3504,7 @@ try {
    * Append text comments as much as you want.
    * @param {string[]} comments
    * @example
+   * @returns {MNNote}
    * node.appendTextComments("a", "b", "c")
    */
   appendTextComments(...comments) {
@@ -3447,25 +3524,27 @@ try {
    *
    * @param  {string} comment
    * @param  {number} index
-   * @returns
+   * @returns {MNNote}
    */
   appendMarkdownComment(comment,index=undefined){
     this.note.appendMarkdownComment(comment)
     if (index !== undefined) {
       this.moveComment(this.note.comments.length-1, index)
     }
+    return this
   }
   /**
    *
    * @param  {string} comment
    * @param  {number} index
-   * @returns
+   * @returns {MNNote}
    */
   appendTextComment(comment,index=undefined){
     this.note.appendTextComment(comment)
     if (index !== undefined) {
       this.moveComment(this.note.comments.length-1, index)
     }
+    return this
   }
   /**
    *
@@ -3474,17 +3553,19 @@ try {
    * @param {CGSize} size
    * @param {string} tag
    * @param  {number} index
+   * @returns {MNNote}
    */
   appendHtmlComment(html, text, size, tag, index = undefined){
     this.note.appendHtmlComment(html, text, size, tag)
     if (index !== undefined) {
       this.moveComment(this.note.comments.length-1, index)
     }
+    return this
   }
   /**
    *
    * @param  {string[]} comments
-   * @returns
+   * @returns {MNNote}
    */
   appendMarkdownComments(...comments) {
     comments = unique(comments, true)
@@ -3499,9 +3580,16 @@ try {
         else this.note.appendTextComment(comment)
       }
     })
+    return this
   }
+  /**
+   * 
+   * @param {number[]} arr 
+   * @returns {MNNote}
+   */
   sortCommentsByNewIndices(arr){
     this.note.sortCommentsByNewIndices(arr)
+    return this
   }
   /**
    * Moves a comment from one index to another within the note's comments array.
@@ -3512,6 +3600,7 @@ try {
    * 
    * @param {number} fromIndex - The current index of the comment to be moved.
    * @param {number} toIndex - The target index where the comment should be moved.
+   * @returns {MNNote}
    */
   moveComment(fromIndex, toIndex) {
   try {
@@ -3542,8 +3631,10 @@ try {
     arr.splice(from, 0, element);
     let targetArr = arr
     this.sortCommentsByNewIndices(targetArr)
+    return this
     } catch (error) {
-    MNUtil.showHUD(error)
+      MNNote.addErrorLog(error, "moveComment")
+      return this
   }
   }
   /**
@@ -3558,6 +3649,7 @@ try {
    * 
    * @param {number} fromIndex - The current index of the comment to be moved.
    * @param {string} action - The action to perform (top, bottom, up, down).
+   * @returns {MNNote}
    */
   moveCommentByAction(fromIndex, action) {
     let targetIndex
@@ -3580,6 +3672,7 @@ try {
         return
     }
     this.moveComment(fromIndex, targetIndex)
+    return this
   }
   /**
    * Retrieves the indices of comments that match the specified condition.
@@ -6460,6 +6553,7 @@ try {
   /**
    *
    * @param {number} index
+   * @returns {MNNote}
    */
   removeCommentByIndex(index){
     let length = this.note.comments.length
@@ -6467,10 +6561,12 @@ try {
       index = length-1
     }
     this.note.removeCommentByIndex(index)
+    return this
   }
   /**
    *
    * @param {number[]} indices
+   * @returns {MNNote}
    */
   removeCommentsByIndices(indices){
     let commentsLength = this.note.comments.length
@@ -6487,14 +6583,17 @@ try {
     sortedIndices.map(index=>{
       this.note.removeCommentByIndex(index)
     })
+    return this
   }
   /**
    *
    * @param {{type:string,include:string,exclude:string,reg:string}} condition
+   * @returns {MNNote}
    */
   removeCommentByCondition(condition){
     let indices = this.getCommentIndicesByCondition(condition)
     this.removeCommentsByIndices(indices)
+    return this
   }
   /**
    * Remove all comment but tag, link and also the filterd. And tags and links will be sat at the end。
@@ -6547,20 +6646,26 @@ try {
   }
   /**
    * @param {string[]} tags
+   * @returns {MNNote}
    * append tags as much as you want
    */
   appendTags(tags) {
   try {
     this.tidyupTags()
-    tags = this.tags.concat(tags)//MNUtil.unique(this.tags.concat(tags), true)
+    // tags = this.tags.concat(tags)//MNUtil.unique(this.tags.concat(tags), true)
+    tags = MNUtil.unique(this.tags.concat(tags), true)
     const lastComment = this.note.comments[this.note.comments.length - 1]
     if (lastComment?.type == "TextNote" && lastComment.text.startsWith("#")) {
+      if (lastComment.text === tags.map(k => '#'+k).join(" ")) {
+        return this
+      }
       this.note.removeCommentByIndex(this.note.comments.length - 1)
     }
     this.appendTextComments(tags.map(k => '#'+k).join(" "))
     return this
   } catch (error) {
-    MNUtil.copy(error.toString())
+    MNNote.addErrorLog(error, "tidyupTags")
+    return this
   }
   }
   /**
@@ -6610,8 +6715,13 @@ try {
     }
     return -1
   }
+  /**
+   * Clear the format of the current note.
+   * @returns {MNNote}
+   */
   clearFormat(){
     this.note.clearFormat()
+    return this
   }
   /**
    * Appends a note link to the current note.
@@ -6623,6 +6733,7 @@ try {
    * 
    * @param {MNNote|MbBookNote} note - The note to which the link should be added.
    * @param {string} type - The type of link to add ("Both", "To", or "From").
+   * @returns {MNNote}
    */
   appendNoteLink(note,type="To"){
     switch (MNUtil.typeOf(note)) {
@@ -6659,42 +6770,62 @@ try {
       default:
         break;
     }
+    return this
   }
+  /**
+   *
+   * @returns {MNNote}
+   */
   clone() {
     let notebookId = MNUtil.currentNotebookId
     let noteIds = MNUtil.db.cloneNotesToTopic([this.note], notebookId)
     return MNNote.new(noteIds[0])
   }
-  focusInMindMap(delay = 0){
+  /**
+   *
+   * @param {number} [delay=0]
+   * @returns {MNNote}
+   */
+  async focusInMindMap(delay = 0){
     if (this.notebookId && this.notebookId !== MNUtil.currentNotebookId) {
       MNUtil.showHUD("Note not in current notebook")
-      return
+      return this
     }
     if (delay) {
-      MNUtil.delay(delay).then(()=>{
-        MNUtil.studyController.focusNoteInMindMapById(this.noteId)
-      })
+      await MNUtil.delay(delay)
+      MNUtil.studyController.focusNoteInMindMapById(this.noteId)
     }else{
       MNUtil.studyController.focusNoteInMindMapById(this.noteId)
     }
+    return this
   }
-  focusInDocument(delay = 0){
+  /**
+   *
+   * @param {number} [delay=0]
+   * @returns {MNNote}
+   */
+  async focusInDocument(delay = 0){
     if (delay) {
-      MNUtil.delay(delay).then(()=>{
-        MNUtil.studyController.focusNoteInDocumentById(this.noteId)
-      })
+      await MNUtil.delay(delay)
+      MNUtil.studyController.focusNoteInDocumentById(this.noteId)
     }else{
       MNUtil.studyController.focusNoteInDocumentById(this.noteId)
     }
+    return this
   }
-  focusInFloatMindMap(delay = 0){
+  /**
+   *
+   * @param {number} [delay=0]
+   * @returns {MNNote}
+   */
+  async focusInFloatMindMap(delay = 0){
     if (delay) {
-      MNUtil.delay(delay).then(()=>{
-        MNUtil.studyController.focusNoteInFloatMindMapById(this.noteId)
-      })
+      await MNUtil.delay(delay)
+      MNUtil.studyController.focusNoteInFloatMindMapById(this.noteId)
     }else{
       MNUtil.studyController.focusNoteInFloatMindMapById(this.noteId)
     }
+    return this
   }
   /**
    *

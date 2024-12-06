@@ -5306,11 +5306,12 @@ try {
           !MNUtil.isCommentLink(comment)
         ) {
           // 不处理 # 开头的文本，因为这种文本是用作标题链接，不能被识别为新内容
-          if (comment.type == "TextNote" && !comment.text.startsWith("#")) {
-            indexArr = indexArr.slice(i)
-            findNonLink = true
-            break
+          if (comment.type == "TextNote" && comment.text.startsWith("#")) {
+            continue
           }
+          indexArr = indexArr.slice(i)
+          findNonLink = true
+          break
         }
       }
       if (!findNonLink) {

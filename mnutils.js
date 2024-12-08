@@ -3989,6 +3989,9 @@ try {
               "----------【所属区】----------",
               "🔝Top🔝",
               "⬇️ Bottom ⬇️",
+              "----------【相关链接区】----------",
+              "🔝Top🔝",
+              "⬇️ Bottom ⬇️",
             ],
             (alert, buttonIndex) => {
               switch (buttonIndex) {
@@ -4022,6 +4025,13 @@ try {
                   break;
                 case 12:  // 所属区顶部
                   this.moveCommentsByIndexArrTo(indexArr, "belong", false)
+                  break;
+                case 14:  // 相关链接区底部
+                case 16:
+                  this.moveCommentsByIndexArrTo(indexArr, "link")
+                  break;
+                case 15:  // 相关链接区顶部
+                  this.moveCommentsByIndexArrTo(indexArr, "link", false)
                   break;
               }
       
@@ -5116,6 +5126,23 @@ try {
           targetIndex = this.getHtmlCommentIndex("文献信息：") + 1
         }
         this.moveCommentsByIndexArr(indexArr, targetIndex)
+        break;
+
+      /**
+       * 相关链接
+       */
+      case "link":
+      case "links":
+      case "relatedlink":
+      case "relatedlinks":
+        if (this.getNoteTypeZh() !== "定义") {
+          if (toBottom) {
+            targetIndex = this.getHtmlCommentIndex("应用：")
+          } else {
+            targetIndex = this.getHtmlCommentIndex("相关链接：") + 1
+          }
+          this.moveCommentsByIndexArr(indexArr, targetIndex)
+        }
         break;
     }
   }

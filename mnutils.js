@@ -5369,14 +5369,17 @@ try {
             let index = indexArr[i]
             let comment = this.comments[index]
             if (
-              !MNUtil.isCommentLink(comment) &&
-              (
-                comment.text && 
-                !comment.text.includes("的应用")
-              )
+              !MNUtil.isCommentLink(comment)
             ) {
-              indexArr = indexArr.slice(i)
-              break
+              if (
+                comment.text && 
+                comment.text.includes("的应用")
+              ) {
+                continue
+              } else {
+                indexArr = indexArr.slice(i)
+                break
+              }
             }
           }
         }

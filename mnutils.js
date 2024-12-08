@@ -185,11 +185,14 @@ class Pangu {
     newText = newText.replace(/\s*-\s*/g, "-")
     // ∞ 后面的只保留一个空格，而不是直接去掉
     newText = newText.replace(/∞\s+/g, "∞ ")
+    newText = newText.replace(/∞\s*}/g, "∞}")
     // 大求和符号改成小求和符号
     newText = newText.replace(/∑/g, "Σ")
     // 处理一下 弱* w* 这种空格
     newText = newText.replace(/([弱A-Za-z])\s*\*/g, "$1*")
     newText = newText.replace(/\*\s*\*/g, "**")
+    // 把 等价刻画/充要条件 中间的 / 两边的空格去掉
+    newText = newText.replace(/\s*\/\s*/g, '/')
     return newText
   }
 }

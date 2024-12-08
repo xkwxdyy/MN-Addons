@@ -8464,10 +8464,10 @@ static template(action) {
         //   "action": "toBeProgressNote",
         //   "menuTitle": "⇨ 📍进度标记",
         // },
-        // {
-        //   "action": "moveToInput",
-        //   "menuTitle": "⇨ 输入",
-        // },
+        {
+          "action": "moveToInput",
+          "menuTitle": "⇨ 输入",
+        },
         // {
         //   "action": "moveToInternalize",
         //   "menuTitle": "⇨ 内化",

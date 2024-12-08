@@ -3849,7 +3849,7 @@ try {
       let inputNoteId = workflowObj.inputNoteId
       let inputNote = MNNote.new(inputNoteId)
       inputNote.addChild(this)
-      this.focusInMindMap(0.8)
+      // this.focusInMindMap(0.8)
     }
   }
   /**

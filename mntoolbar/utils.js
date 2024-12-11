@@ -1163,12 +1163,142 @@ try {
       }
     }
   }
+
+  /**
+   * 增加当天的时间 tag
+   */
+  static addTodayTimeTag(note) {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');  // 月份从0开始，需+1
+    const date = String(today.getDate()).padStart(2, '0');  // 确保日期为两位数
+    const formattedDate = `#时间/${year}/${month}/${date}`;
+    if (!this.hasTodayTimeTag(note)) {
+      note.appendMarkdownComment(formattedDate)
+    }
+  }
+
+  /**
+   * 更新时间标签
+   * 
+   * - 先将时间标签分割
+   * - 删除今日前的时间标签
+   * - 增加当天的时间标签
+   */
+  static updateTimeTag(note) {
+    this.splitTimeTag(note)
+    this.clearBeforeTodayTimeTag(note)
+    this.addTodayTimeTag(note)
+  }
+
+  /**
+   * 更新当天的标签
+   */
+    static updateTodayTimeTag(note) {
+      this.clearTimeTag(note)
+      this.addTodayTimeTag(note)
+    }
+
+  /**
+   * 删除今日前的时间标签
+   */
+  static clearBeforeTodayTimeTag(note) {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');  // 月份从0开始，需+1
+    const date = String(today.getDate()).padStart(2, '0');  // 确保日期为两位数
+    for (let i =  note.comments.length - 1; i >= 0; i--) {
+      let comment = note.comments[i]
+      if (comment.type == "TextNote" && comment.text.startsWith("#时间")) {
+        let oldTimeArr = comment.text.split("/")
+        let oldYear = parseInt(oldTimeArr[1])
+        let oldMonth = parseInt(oldTimeArr[2])
+        let oldDate = parseInt(oldTimeArr[3])
+        
+        if (oldYear < year) {
+          note.removeCommentByIndex(i)
+          continue
+        } else {
+          if (oldMonth < month) {
+            note.removeCommentByIndex(i)
+            continue
+          } else {
+            if (oldDate < date) {
+              note.removeCommentByIndex(i)
+            }
+            continue
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * 把 MN 生成的连续型的 tag 分成多条 tag
+   * 
+   * MN 自带的添加为“#时间/2024/12/09 #时间/2024/12/10”
+   * 需要将这个分成多条，然后依次添加为评论
+   * 
+   * 1. 找到所有的时间 tag，存起来
+   * 2. 删除所有的时间 tag
+   * 3. 依次添加为评论
+   * 
+   * [TODO] 目前有个问题是此时 tag 不能包含时间外的，否则也会被清除
+   * [TODO] 增加一个排序功能
+   */
+  static splitTimeTag(note) {
+    let timeTags = []
+    for (let i = note.comments.length - 1; i >= 0; i--) {
+      let comment = note.comments[i]
+      if (comment.type == "TextNote" && comment.text.includes("#时间")) {
+        let timeTagArr = comment.text.split(" ")
+        timeTagArr.forEach(timeTag => {
+          timeTags.push(timeTag.trim())
+        })
+        note.removeCommentByIndex(i)
+      }
+    }
+    timeTags.forEach(timeTag => {
+      note.appendMarkdownComment(timeTag)
+    })
+  }
+
+  /**
+   * 判断是否有当天时期的 tag 了
+   */
+  static hasTodayTimeTag(note) {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');  // 月份从0开始，需+1
+    const date = String(today.getDate()).padStart(2, '0');  // 确保日期为两位数
+    const formattedDate = `#时间/${year}/${month}/${date}`;
+    let hasTimeTag = false
+    for (let i = 0; i < note.comments.length; i++) {
+      let comment = note.comments[i]
+      if (comment.type == "TextNote" && comment.text.includes(formattedDate)) {
+        hasTimeTag = true
+        break
+      }
+    }
+    return hasTimeTag
+  }
   /**
    * 任务管理卡片制卡
    * 
    */
 
   static OKRNoteMake(note, undoStatus = false) {
+    /**
+     * 更新链接
+     */
+    note.renewLinks()
+
+    /**
+     * 转换为非摘录版本
+     */
+    if (note.excerptText) {
+      note.toNoExceptVersion()
+    }
     /**
      * 获取 note 的信息
      * 
@@ -1185,9 +1315,22 @@ try {
       status = this.updateOCRNoteStatus(status) // 更新任务状态
     }
 
-    // 如果已完成，则清除时间类的标签
-    if (status == "已完成") {
-      this.clearTimeTag(note)
+    // 分割时间标签
+    this.splitTimeTag(note)
+
+    switch (status) {
+      case "进行中":
+        if (noteInformation.zhType == "任务") {
+          // 任务只需要保留当天的时间标签
+          this.updateTodayTimeTag(note)
+        } else {
+          // 其余的需要加上当天的时间标签
+          this.updateTimeTag(note)
+        }
+        break;
+      case "已完成":
+        this.clearTimeTag(note)
+        break;
     }
 
     switch (noteInformation.zhType) {
@@ -8454,12 +8597,24 @@ static template(action) {
       break;
     case "menu_workflow":
       config.action = "menu"
-      config.menuWidth = 200
+      config.menuWidth = 250
       config.menuItems = [
         {
           "action": "openTasksFloatMindMap" ,
           "menuTitle": "打开任务管理脑图",
         },
+        {
+          "action": "updateTimeTag",
+          "menuTitle": "更新卡片时间标签并添加「今日」",
+        },
+        {
+          "action": "updateTodayTimeTag",
+          "menuTitle": "时间标签 → 只显示「今日」",
+        },
+        // {
+        //   "action": "addTodayTimeTag",
+        //   "menuTitle": "增加「今日」时间标签",
+        // },
         // {
         //   "action": "toBeProgressNote",
         //   "menuTitle": "⇨ 📍进度标记",

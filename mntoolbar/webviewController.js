@@ -5093,6 +5093,36 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         })
         break;
       /**
+       * 更新卡片的标签为当天
+       */
+      case "updateTodayTimeTag": // new
+        MNUtil.undoGrouping(()=>{
+          focusNotes.forEach(focusNote=>{
+            toolbarUtils.updateTodayTimeTag(focusNote)
+          })
+        })
+        break;
+      /**
+       * 增加今日时间标签
+       */
+      case "addTodayTimeTag": // new
+        MNUtil.undoGrouping(()=>{
+          focusNotes.forEach(focusNote=>{
+            toolbarUtils.addTodayTimeTag(focusNote)
+          })
+        })
+        break;
+      /**
+       * 更新时间标签
+       */
+      case "updateTimeTag": // new
+        MNUtil.undoGrouping(()=>{
+          focusNotes.forEach(focusNote=>{
+            toolbarUtils.updateTimeTag(focusNote)
+          })
+        })
+        break;
+      /**
        * 修改子卡片标题（仅子卡片，不包含子卡片的子卡片）
        */
       case "changeChildNotesTitles": // new

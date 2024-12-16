@@ -4264,6 +4264,13 @@ try {
         break;
       default:
         if (
+          this.getClassificationParentNote().noteTitle.toClassificationNoteTitle() == "备考" &&
+          noteType !== "定义"
+        ) {
+          this.title = ""
+          break;
+        }
+        if (
           !this.isIndependentNote() ||
           (
             /**

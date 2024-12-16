@@ -4481,6 +4481,7 @@ try {
           }
           break;
         default:
+          if (this.getClassificationParentNote().noteTitle.toClassificationNoteTitle() == "备考") { break }
           // 知识点卡片
           let linksHtmlBlockContentIndexArr = this.getHtmlBlockContentIndexArr("相关链接：")
           if (linksHtmlBlockContentIndexArr.length !== 0){

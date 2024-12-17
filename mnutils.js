@@ -581,6 +581,7 @@ class MNUtil {
         workflow.inputNoteId = "C1E43C94-287A-4324-9480-771815F82803"
         workflow.internalizationNoteId = "FE4B1142-CE83-4BA7-B0CF-453E07663059"
         workflow.toClassifyNoteId = "E1EACEC5-3ACD-424B-BD46-797CD8A56629"
+        workflow.preparationNoteId = "339DC957-70B5-4350-9093-36706CEC8CD6"
         break;
       case "marginnote4app://notebook/EAB02DA9-D467-4D7D-B6BA-9244FC326299": // 复分析
         workflow.inputNoteId = "26316838-475B-49D9-9C7C-75AB01D80EDE"
@@ -596,6 +597,7 @@ class MNUtil {
         workflow.inputNoteId = "E7538B60-D8E2-4A41-B620-37D1AD48464C"
         workflow.internalizationNoteId = "C5D44533-6D18-45F6-A010-9F83821F627F"
         workflow.toClassifyNoteId = "13623BE8-8D26-4FEE-95D8-B704C34E92EC"
+        workflow.preparationNoteId = "832AC695-6014-4936-8CDE-3B2CE3C9BA96"
         break;
       case "marginnote4app://notebook/922D2CDF-07CF-4A88-99BA-7AAC60E3C517": // 数学分析
         workflow.inputNoteId = "E22C7404-A6DE-4DB3-B749-BDF8C742F955"
@@ -3853,6 +3855,19 @@ try {
     }
   }
   /**
+   * 将卡片转移到“备考”区
+   */
+  moveToPreparationForExam(){
+    let notebookId = MNUtil.currentNotebookId
+    let workflowObj = MNUtil.getWorkFlowObjByNoteBookId(notebookId)
+    if (workflowObj.preparationNoteId) {
+      let preparationNoteId = workflowObj.preparationNoteId
+      let preparationNote = MNNote.new(preparationNoteId)
+      preparationNote.addChild(this)
+      // this.focusInMindMap(0.8)
+    }
+  }
+  /**
    * 将卡片转移到“内化”区
    */
   moveToInternalize(){
@@ -4265,7 +4280,8 @@ try {
       default:
         if (
           this.getClassificationParentNote().noteTitle.toClassificationNoteTitle() == "备考" &&
-          noteType !== "定义"
+          noteType !== "定义" &&
+          this.title == ""
         ) {
           this.title = ""
           break;

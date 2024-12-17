@@ -1837,6 +1837,20 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         })
         break;
       /**
+        * 移动卡片到「备考」区
+        */
+      case "moveToPreparationForExam":
+        MNUtil.undoGrouping(()=>{
+          try {
+            focusNotes.forEach(focusNote=>{
+              focusNote.moveToPreparationForExam()
+            })
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
+      /**
        * 移动卡片到「内化」区
        */
       case "moveToInternalize":

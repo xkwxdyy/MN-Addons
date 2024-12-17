@@ -8611,18 +8611,22 @@ static template(action) {
           "action": "updateTodayTimeTag",
           "menuTitle": "时间标签 → 只显示「今日」",
         },
-        // {
-        //   "action": "addTodayTimeTag",
-        //   "menuTitle": "增加「今日」时间标签",
-        // },
-        // {
-        //   "action": "toBeProgressNote",
-        //   "menuTitle": "⇨ 📍进度标记",
-        // },
         {
           "action": "moveToInput",
           "menuTitle": "⇨ 输入",
         },
+        {
+          "action": "toBeIndependent",
+          "menuTitle": "⇨ 独立",
+        },
+        {
+          "action": "moveToPreparationForExam",
+          "menuTitle": "⇨ 备考",
+        },
+        // {
+        //   "action": "toBeProgressNote",
+        //   "menuTitle": "⇨ 📍进度标记",
+        // },
         // {
         //   "action": "moveToInternalize",
         //   "menuTitle": "⇨ 内化",

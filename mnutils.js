@@ -1179,13 +1179,18 @@ class MNUtil {
    * @param {UIWindow} [window=this.currentWindow] - The window on which the HUD should be displayed.
    */
   static showHUD(message, duration = 2, view = this.currentWindow) {
+    if (this.onWaitHUD) {
+      this.stopHUD(view)
+    }
     this.app.showHUD(message, view, duration);
   }
   static waitHUD(message, view = this.currentWindow) {
     this.app.waitHUDOnView(message, view);
+    this.onWaitHUD = true
   }
   static stopHUD(view = this.currentWindow) {
     this.app.stopWaitHUDOnView(view);
+    this.onWaitHUD = false
   }
   /**
    * Displays a confirmation dialog with a main title and a subtitle.
@@ -1270,13 +1275,15 @@ class MNUtil {
    * @param {string} noteid 
    * @returns 
    */
-  static getNoteById(noteid) {
+  static getNoteById(noteid,alert = true) {
     let note = this.db.getNoteById(noteid)
     if (note) {
       return note
     }else{
-      this.copy(noteid)
-      this.showHUD("Note not exist!")
+      if (alert){
+        this.copy(noteid)
+        this.showHUD("Note not exist!")
+      }
       return undefined
     }
   }
@@ -2622,7 +2629,7 @@ class MNNote{
    * @param {MbBookNote|string|object} note - The note object to initialize the MNNote instance with.
    * @returns {MNNote|undefined} The initialized MNNote instance or undefined if the note object is invalid.
    */
-  static new(note){
+  static new(note,alert = true){
     if (note === undefined) {
       return undefined
     }
@@ -2633,14 +2640,14 @@ class MNNote{
       case 'MbBookNote':
         return new MNNote(note)
       case 'NoteURL':
-        let NoteFromURL = MNUtil.getNoteById(MNUtil.getNoteIdByURL(note))
+        let NoteFromURL = MNUtil.getNoteById(MNUtil.getNoteIdByURL(note),alert)
         if (NoteFromURL) {
           return new MNNote(NoteFromURL)
         }
         return undefined
       case 'string':
         let targetNoteId = note.trim()
-        let targetNote = MNUtil.getNoteById(targetNoteId)
+        let targetNote = MNUtil.getNoteById(targetNoteId,alert)
         if (targetNote) {
           return new MNNote(targetNote)
         }
@@ -3171,6 +3178,9 @@ class MNNote{
    */
   realGroupNoteForTopicId(nodebookid = MNUtil.currentNotebookId){
     let noteId = this.note.realGroupNoteIdForTopicId(nodebookid)
+    if (!noteId) {
+      return this.note
+    }
     return MNNote.new(noteId)
   };
   processMarkdownBase64Images(){
@@ -3532,7 +3542,11 @@ try {
    * @returns {MNNote}
    */
   appendMarkdownComment(comment,index=undefined){
-    this.note.appendMarkdownComment(comment)
+    try {
+      this.note.appendMarkdownComment(comment)
+    } catch (error) {
+      this.note.appendTextComment(comment)
+    }
     if (index !== undefined) {
       this.moveComment(this.note.comments.length-1, index)
     }
@@ -6721,7 +6735,32 @@ try {
     this.appendTextComments(tags.map(k => '#'+k).join(" "))
     return this
   } catch (error) {
-    MNNote.addErrorLog(error, "tidyupTags")
+    MNNote.addErrorLog(error, "appendTags")
+    return this
+  }
+  }
+  /**
+   * @param {string[]} tags
+   * @returns {MNNote}
+   * append tags as much as you want
+   */
+  removeTags(tagsToRemove) {
+  try {
+    this.tidyupTags()
+    // tags = this.tags.concat(tags)//MNUtil.unique(this.tags.concat(tags), true)
+    let tags = this.tags.filter(tag=>!tagsToRemove.includes(tag))
+    // MNUtil.showHUD(tags)
+    const lastComment = this.note.comments[this.note.comments.length - 1]
+    if (lastComment?.type == "TextNote" && lastComment.text.startsWith("#")) {
+      if (lastComment.text === tags.map(k => '#'+k).join(" ")) {
+        return this
+      }
+      this.note.removeCommentByIndex(this.note.comments.length - 1)
+    }
+    this.appendTextComments(tags.map(k => '#'+k).join(" "))
+    return this
+  } catch (error) {
+    MNNote.addErrorLog(error, "removeTags")
     return this
   }
   }
@@ -6850,10 +6889,8 @@ try {
     }
     if (delay) {
       await MNUtil.delay(delay)
-      MNUtil.studyController.focusNoteInMindMapById(this.noteId)
-    }else{
-      MNUtil.studyController.focusNoteInMindMapById(this.noteId)
     }
+    MNUtil.studyController.focusNoteInMindMapById(this.noteId)
     return this
   }
   /**
@@ -6864,10 +6901,8 @@ try {
   async focusInDocument(delay = 0){
     if (delay) {
       await MNUtil.delay(delay)
-      MNUtil.studyController.focusNoteInDocumentById(this.noteId)
-    }else{
-      MNUtil.studyController.focusNoteInDocumentById(this.noteId)
     }
+    MNUtil.studyController.focusNoteInDocumentById(this.noteId)
     return this
   }
   /**
@@ -6878,11 +6913,12 @@ try {
   async focusInFloatMindMap(delay = 0){
     if (delay) {
       await MNUtil.delay(delay)
-      MNUtil.studyController.focusNoteInFloatMindMapById(this.noteId)
-    }else{
-      MNUtil.studyController.focusNoteInFloatMindMapById(this.noteId)
     }
+    MNUtil.studyController.focusNoteInFloatMindMapById(this.noteId)
     return this
+  }
+  copyURL(){
+    MNUtil.copy(this.noteURL)
   }
   /**
    *
@@ -7151,6 +7187,12 @@ try {
       }
     }
     return undefined
+  }
+  static exist(noteId){
+    if (MNUtil.db.getNoteById(noteId)) {
+      return true
+    }
+    return false
   }
 }
 

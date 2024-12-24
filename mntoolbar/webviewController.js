@@ -4786,6 +4786,8 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                     focusNote.removeCommentByIndex(i)
                   }
                 }
+
+                focusNote.title = focusNote.title.toKnowledgeNoteTitle()
               }
             )
           } catch (error) {

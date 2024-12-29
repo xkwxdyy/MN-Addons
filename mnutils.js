@@ -2088,6 +2088,9 @@ try {
     let emojiIndices = ["0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"]
     return emojiIndices[index]
   }
+  static tableItem(title,object,selector,params,checked=false) {
+    return {title:title,object:object,selector:selector,param:params,checked:checked}
+  }
 }
 
 class MNConnection{
@@ -2403,22 +2406,299 @@ class MNButton{
    * @param {UIView} superView
    */
   static new(config = {},superView){
-    let newButton = UIButton.buttonWithType(0);
-    newButton.autoresizingMask = (1 << 0 | 1 << 3);
-    newButton.layer.masksToBounds = true;
-    newButton.setTitleColorForState(UIColor.whiteColor(),0);
-    newButton.setTitleColorForState(this.highlightColor, 1);
-    let radius = ("radius" in config) ? config.radius : 8
-    newButton.layer.cornerRadius = radius;
-    this.setConfig(newButton, config)
-    if (superView) {
-      superView.addSubview(newButton)
-    }
-    return newButton
+    return new MNButton(config,superView)
+    // let newButton = UIButton.buttonWithType(0);
+    // newButton.autoresizingMask = (1 << 0 | 1 << 3);
+    // newButton.layer.masksToBounds = true;
+    // newButton.setTitleColorForState(UIColor.whiteColor(),0);
+    // newButton.setTitleColorForState(this.highlightColor, 1);
+    // let radius = ("radius" in config) ? config.radius : 8
+    // newButton.layer.cornerRadius = radius;
+    // this.setConfig(newButton, config)
+    // if (superView) {
+    //   superView.addSubview(newButton)
+    // }
+    // return newButton
   }
-  constructor(config){
+  constructor(config = {},superView){
     this.button = UIButton.buttonWithType(0);
+    this.button.autoresizingMask = (1 << 0 | 1 << 3);
+    this.button.layer.masksToBounds = true;
+    this.button.setTitleColorForState(UIColor.whiteColor(),0);
+    this.button.setTitleColorForState(this.highlightColor, 1);
+    let radius = ("radius" in config) ? config.radius : 8
+    this.button.layer.cornerRadius = radius;
     MNButton.setConfig(this.button, config)
+    this.titleLabel = this.button.titleLabel
+    if (superView) {
+      superView.addSubview(this.button)
+    }
+  }
+  /**
+   * @param {UIView} view
+   */
+  set superview(view){
+    view.addSubview(this.button)
+  }
+  get superview(){
+    return this.button.superview
+  }
+  /**
+   * @param {CGRect} targetFrame
+   */
+  set frame(targetFrame){
+    this.button.frame = targetFrame
+  }
+  get frame(){
+    return this.button.frame
+  }
+  set bounds(targetFrame){
+    this.button.bounds = targetFrame
+  }
+  get bounds(){
+    return this.button.bounds
+  }
+  set center(targetFrame){
+    this.button.center = targetFrame
+  }
+  get center(){
+    return this.button.center
+  }
+  get window(){
+    return this.button.window
+  }
+  get gestureRecognizers(){
+    return this.button.gestureRecognizers
+  }
+  /**
+   * 
+   * @param {UIColor|string} color 
+   */
+  set backgroundColor(color){
+    if (typeof color === "string") {
+      if(color.length > 7){
+        this.button.backgroundColor = MNButton.hexColor(color)
+      }else{
+        this.button.backgroundColor = MNButton.hexColorAlpha(color, 1.0)
+      }
+    }else{
+      this.button.backgroundColor = color
+    }
+  }
+  get backgroundColor(){
+    return this.button.backgroundColor
+  }
+  /**
+   * 
+   * @param {UIColor|string} color 
+   */
+  set color(color){
+    if (typeof color === "string") {
+      if(color.length > 7){
+        this.button.backgroundColor = MNButton.hexColor(color)
+      }else{
+        this.button.backgroundColor = MNButton.hexColorAlpha(color, 1.0)
+      }
+    }else{
+      this.button.backgroundColor = color
+    }
+  }
+  get color(){
+    return this.button.backgroundColor
+  }
+  /**
+   * 
+   * @param {boolean} hidden 
+   */
+  set hidden(hidden){
+    this.button.hidden = hidden
+  }
+  get hidden(){
+    return this.button.hidden
+  }
+  /**
+   * 
+   * @param {number} mask 
+   */
+  set autoresizingMask(mask){
+    this.button.autoresizingMask = mask
+  }
+  /**
+   * 
+   * @param {number} opacity 
+   */
+  set opacity(opacity){
+    this.button.layer.opacity = opacity
+  }
+  get opacity(){
+    return this.button.layer.opacity
+  }
+  /**
+   * 
+   * @param {number} radius 
+   */
+  set cornerRadius(radius){
+    this.button.layer.cornerRadius = radius
+  }
+  get cornerRadius(){
+    return this.button.layer.cornerRadius
+  }
+  /**
+   * 
+   * @param {string} title 
+   */
+  set currentTitle(title){
+    this.button.setTitleForState(title,0)
+  }
+  get currentTitle(){
+    return this.button.currentTitle
+  }
+  /**
+   * 
+   * @param {string|UIColor} color 
+   */
+  set currentTitleColor(color){
+    if (typeof color === "string") {
+      if(color.length > 7){
+        this.button.setTitleColorForState(MNButton.hexColor(color),0)
+      }else{
+        this.button.setTitleColorForState(MNButton.hexColorAlpha(color, 1.0),0)
+      }
+    }else{
+      this.button.setTitleColorForState(color,0)
+    }
+  }
+  get currentTitleColor(){
+    return this.button.currentTitleColor
+  }
+  /**
+   * 
+   * @param {UIImage} image 
+   */
+  set currentImage(image){
+    this.button.setImageForState(image,0)
+  }
+  get currentImage(){
+    return this.button.currentImage
+  }
+  get subviews(){
+    return this.button.subviews
+  }
+  /**
+   * 
+   * @param {UIFont} font 
+   */
+  set font(font){
+    this.button.titleLabel.font = font
+  }
+  get font(){
+    return this.button.titleLabel.font
+  }
+  /**
+   * 
+   * @param {boolean} masksToBounds 
+   */
+  set masksToBounds(masksToBounds){
+    this.button.layer.masksToBounds = masksToBounds
+  }
+  /**
+   * 
+   * @param {number} x 
+   * @param {number} y 
+   * @param {number} width 
+   * @param {number} height 
+   */
+  setFrame(x,y,width,height){
+    let frame = this.button.frame
+    if (x !== undefined) {
+      frame.x = x
+    }else if (this.button.x !== undefined) {
+      frame.x = this.button.x
+    }
+    if (y !== undefined) {
+      frame.y = y
+    }else if (this.button.y !== undefined) {
+      frame.y = this.button.y
+    }
+    if (width !== undefined) {
+      frame.width = width
+    }else if (this.button.width !== undefined) {
+      frame.width = this.button.width
+    }
+    if (height !== undefined) {
+      frame.height = height
+    }else if (this.button.height !== undefined) {
+      frame.height = this.button.height
+    }
+    this.button.frame = frame
+  }
+  addSubview(view){
+    this.button.addSubview(view)
+  }
+  removeFromSuperview(){this.button.removeFromSuperview()}
+  bringSubviewToFront(view){this.button.bringSubviewToFront(view)}
+  sendSubviewToBack(view){this.button.sendSubviewToBack(view)}
+  isDescendantOfView(view){return this.button.isDescendantOfView(view)}
+  isDescendantOfStudyView(){return this.button.isDescendantOfView(MNUtil.studyView)}
+  isDescendantOfCurrentWindow(){return this.button.isDescendantOfView(MNUtil.currentWindow)}
+  setNeedsLayout(){this.button.setNeedsLayout()}
+  layoutIfNeeded(){this.button.layoutIfNeeded()}
+  layoutSubviews(){this.button.layoutSubviews()}
+  setNeedsDisplay(){this.button.setNeedsDisplay()}
+  setImageForState(image,state = 0){this.button.setImageForState(image,state)}
+  setImage(image,state = 0){this.button.setImageForState(image,state)}
+  setTitleColorForState(color,state = 0){this.button.setTitleColorForState(color,state)}
+  setTitleColor(color,state = 0){this.button.setTitleColorForState(color,state)}
+  setTitleForState(title,state = 0){this.button.setTitleForState(title,state)}
+  setTitle(title,state = 0){this.button.setTitleForState(title,state)}
+  /**
+   * 
+   * @param {any} target 
+   * @param {any} controlEvent 
+   * @param {string} action 
+   */
+  addTargetActionForControlEvents(target,action,controlEvent = 1 << 6){
+    this.button.addTargetActionForControlEvents(target, action, controlEvent);
+  }
+  /**
+   * 
+   * @param {any} target 
+   * @param {string} selector 
+   */
+  addClickAction (target,selector) {
+    this.button.addTargetActionForControlEvents(target, selector, 1 << 6);
+  }
+  addGestureRecognizer(gestureRecognizer){
+    this.button.addGestureRecognizer(gestureRecognizer)
+  }
+  /**
+   * 
+   * @param {any} target 
+   * @param {string} selector 
+   */
+  addPanGesture (target,selector) {
+    let gestureRecognizer = new UIPanGestureRecognizer(target,selector)
+    this.button.addGestureRecognizer(gestureRecognizer)
+  }
+
+  /**
+   * 
+   * @param {any} target 
+   * @param {string} selector 
+   */
+  addLongPressGesture (target,selector,duration = 0.3) {
+    let gestureRecognizer = new UILongPressGestureRecognizer(target,selector)
+    gestureRecognizer.minimumPressDuration = duration
+    this.button.addGestureRecognizer(gestureRecognizer)
+  }
+  /**
+   * 
+   * @param {any} target 
+   * @param {string} selector 
+   */
+  addSwipeGesture (target,selector) {
+    let gestureRecognizer = new UISwipeGestureRecognizer(target,selector)
+    this.button.addGestureRecognizer(gestureRecognizer)
   }
 //   static createButton(superview,config) {
 //     let button = UIButton.buttonWithType(0);
@@ -2521,8 +2801,20 @@ class MNButton{
     if ("image" in config) {
       this.setImage(button, config.image, config.scale);
     }
+    if ("highlight" in config) {
+      button.setTitleColorForState(config.highlight, 1)
+    }
   }
-
+  /**
+   * 
+   * @param {UIView} button 
+   * @param {any} target 
+   * @param {string} selector 
+   */
+  static addClickAction (button,target,selector) {
+    button.addTargetActionForControlEvents(target, selector, 1 << 6);
+    
+  }
   /**
    * 
    * @param {UIView} button 

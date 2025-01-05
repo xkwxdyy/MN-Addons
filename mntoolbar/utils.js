@@ -3844,11 +3844,19 @@ try {
         2,
         "取消",
         // ["向下层增加模板", "增加概念衍生层级","增加兄弟层级模板","向上层增加模板", "最顶层（淡绿色）", "专题"],
-        ["向下层增加模板", "连续向下「顺序」增加模板", "连续向下「倒序」增加模板","增加概念衍生层级","增加兄弟层级模板","向上层增加模板", "最顶层（淡绿色）", "专题"],
+        [
+          "向下层增加模板",  // 1
+          "连续向下「顺序」增加模板",  // 2
+          "连续向下「倒序」增加模板",  // 3
+          "增加兄弟层级模板",  // 4
+          "向上层增加模板",  // 5
+          "最顶层（淡绿色）",  // 6
+          "专题"  // 7
+        ],
         (alert, buttonIndex) => {
           let userInputTitle = alert.textFieldAtIndex(0).text;
           switch (buttonIndex) {
-            case 8:
+            case 7:
               /* 专题 */
               // 因为专题模板卡片比较多，所以增加一个确认界面
               UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
@@ -3876,7 +3884,7 @@ try {
                 }
               )
               break;
-            case 7: 
+            case 6: 
             /* 增加最顶层的淡绿色模板 */
             try {
               let parentNote
@@ -3921,7 +3929,7 @@ try {
               }
               
               break;
-            case 6:
+            case 5:
               try {
                 /* 向上增加模板 */
                 let parentNote = focusNote.parentNote
@@ -4124,7 +4132,7 @@ try {
                 MNUtil.showHUD(error);
               }
               break;
-            case 5:
+            case 4:
               // 增加兄弟层级模板
               type = focusNote.noteTitle.match(/“.+”相关(.*)/)[1]
               if (type) {
@@ -4140,49 +4148,6 @@ try {
                 templateNote.focusInMindMap(0.5)
               }
               break
-            case 4: // 增加概念衍生层级
-              try {
-                let concept
-                let targetType
-                if (userInputTitle) {
-                  concept = userInputTitle
-                } else {
-                  concept = focusNote.noteTitle.match(/【.*】;\s*([^;]*?)(?:;|$)/)[1]
-                }
-                UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-                  "定义类卡片增加归类卡片",
-                  "选择类型",
-                  0,
-                  "写错了",
-                  ["定义","命题","例子","反例","思想方法","问题"],
-                  (alert, buttonIndex) => {
-                    if (buttonIndex == 0) { return }
-                    switch (buttonIndex) {
-                      case 1:
-                        targetType = "定义"
-                        break;
-                      case 2:
-                        targetType = "命题"
-                        break;
-                      case 3:
-                        targetType = "例子"
-                        break;
-                      case 4:
-                        targetType = "反例"
-                        break;
-                      case 4:
-                        targetType = "思想方法"
-                        break;
-                      case 6:
-                        targetType = "问题"
-                        break;
-                    }
-                    focusNote.addClassificationNoteByType(targetType, concept)
-                  })
-              } catch (error) {
-                MNUtil.showHUD(error);
-              }
-              break;
             case 3: // 连续向下「倒序」增加模板
               /**
                * 通过//来分割标题，增加一连串的归类卡片
@@ -4249,7 +4214,7 @@ try {
                           case 4:
                             type = "反例"
                             break;
-                          case 4:
+                          case 5:
                             type = "思想方法"
                             break;
                           case 6:

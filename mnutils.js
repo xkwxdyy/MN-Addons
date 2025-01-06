@@ -5844,7 +5844,11 @@ try {
         let parentNoteTitle = parentNote.noteTitle
         let match = parentNoteTitle.match(/“.*”相关(.*)/)
         // 如果归类卡片的“相关 xx”的 xx 是空的，此时作为 Inbox 专用归类，此时视为下面的知识类卡片为独立的
-        return match[1] == ""
+        if (match) {
+          return match[1] == ""
+        } else {
+          return true
+        }
       }
     }
   }

@@ -1439,52 +1439,59 @@ try {
      *   - 移动知识点卡片归类制卡完成链接操作
      *   - 移动归类卡片也可完成归类操作
      */
-    /** 
-     * 【Done】处理旧卡片
-     */
-    note.renew()
-
-    if (!note.excerptText) {
-      /**
-       * 【Done】合并模板卡片
+    if (note.ifIndependentNote()) {
+      // 如果是独立卡片（比如非知识库里的卡片），只进行转化为非摘录版本
+      if (note.excerptText) {
+        note.toNoExceptVersion()
+      }
+    } else {
+      /** 
+       * 【Done】处理旧卡片
        */
-      note.mergeTemplate()
+      note.renew()
 
-      /**
-       * 【Done】根据卡片类型修改卡片颜色
-       */
-      note.changeColorByType()
+      if (!note.excerptText) {
+        /**
+         * 【Done】合并模板卡片
+         */
+        note.mergeTemplate()
 
-      /**
-       * 【Done】处理标题
-       * - 知识类卡片增加标题前缀
-       * - 黄色归类卡片：“”：“”相关 xx
-       * - 绿色归类卡片：“”相关 xx
-       * - 处理卡片标题空格
-       * 
-       * 需要放在修改链接前，因为可能需要获取到旧归类卡片的标题来对标题修改进行处理
-       */
+        /**
+         * 【Done】根据卡片类型修改卡片颜色
+         */
+        note.changeColorByType()
 
-      note.changeTitle()
+        /**
+         * 【Done】处理标题
+         * - 知识类卡片增加标题前缀
+         * - 黄色归类卡片：“”：“”相关 xx
+         * - 绿色归类卡片：“”相关 xx
+         * - 处理卡片标题空格
+         * 
+         * 需要放在修改链接前，因为可能需要获取到旧归类卡片的标题来对标题修改进行处理
+         */
 
-      /**
-       * 【Done】与父卡片进行链接
-       */
-      note.linkParentNote()
+        note.changeTitle()
 
-      /**
-       * 【Done】移动新内容
-       */
-      note.moveNewContent()
+        /**
+         * 【Done】与父卡片进行链接
+         */
+        note.linkParentNote()
 
-      /**
-       * 【Done】加入复习
-       * 
-       * 什么时候需要加入复习
-       * - 制卡的那次需要加入
-       * - 后续点击制卡都不需要加入
-       */
-      // note.addToReview()
+        /**
+         * 【Done】移动新内容
+         */
+        note.moveNewContent()
+
+        /**
+         * 【Done】加入复习
+         * 
+         * 什么时候需要加入复习
+         * - 制卡的那次需要加入
+         * - 后续点击制卡都不需要加入
+         */
+        // note.addToReview()
+      }
     }
     /**
      * 【Done】聚焦

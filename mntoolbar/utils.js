@@ -1441,6 +1441,7 @@ try {
      */
     if (note.ifIndependentNote()) {
       // 如果是独立卡片（比如非知识库里的卡片），只进行转化为非摘录版本
+      note.title = Pangu.spacing(note.title)
       if (note.excerptText) {
         note.toNoExceptVersion()
       }

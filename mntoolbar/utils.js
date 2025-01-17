@@ -1492,6 +1492,13 @@ try {
          * - 后续点击制卡都不需要加入
          */
         // note.addToReview()
+
+        // 测试卡片是否有链接上移动 bug
+        note.appendMarkdownComment("-")
+        note.refresh()
+        MNUtil.delay(0.1).then(()=>{
+          note.removeCommentByIndex(note.comments.length - 1)
+        })
       }
     }
     /**

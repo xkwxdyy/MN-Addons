@@ -782,25 +782,27 @@ class MNUtil {
   static popUpSelectionInfo = undefined;
   static mainPath
   static init(mainPath){
-    if (this.mainPath) {
-      this.mainPath = mainPath
-      this.MNUtilVersion = this.getMNUtilVersion()
-      const renderer = new marked.Renderer();
-      renderer.code = (code, language) => {
-        const validLang = hljs.getLanguage(language) ? language : 'plaintext';
-        const uuid = NSUUID.UUID().UUIDString()
-        if (validLang === 'plaintext') {
-          return `<pre><div class="code-header" contenteditable="false"><span>${validLang}</span><button onclick="copyToClipboard('${uuid}')">复制</button></div><code class="hljs ${validLang}"  id="${uuid}">${code}</code></pre>`;
-        }
-        const highlightedCode = hljs.highlight(code, { language: validLang }).value;
-        return `<pre><div class="code-header" contenteditable="false"><span>${validLang}</span><button onclick="copyToClipboard('${uuid}')">复制</button></div><code class="hljs ${validLang}" id="${uuid}">${highlightedCode}</code></pre>`;
-      };
-      // renderer.em = function(text) {
-      //   return text;
-      // };
-      // marked.use({ renderer });
-      marked.setOptions({ renderer });
-    }
+    this.mainPath = mainPath
+    // MNUtil.copy("text")
+    // if (!this.mainPath) {
+    //   this.mainPath = mainPath
+    //   this.MNUtilVersion = this.getMNUtilVersion()
+    //   const renderer = new marked.Renderer();
+    //   renderer.code = (code, language) => {
+    //     const validLang = hljs.getLanguage(language) ? language : 'plaintext';
+    //     const uuid = NSUUID.UUID().UUIDString()
+    //     if (validLang === 'plaintext') {
+    //       return `<pre><div class="code-header" contenteditable="false"><span>${validLang}</span><button onclick="copyToClipboard('${uuid}')">复制</button></div><code class="hljs ${validLang}"  id="${uuid}">${code}</code></pre>`;
+    //     }
+    //     const highlightedCode = hljs.highlight(code, { language: validLang }).value;
+    //     return `<pre><div class="code-header" contenteditable="false"><span>${validLang}</span><button onclick="copyToClipboard('${uuid}')">复制</button></div><code class="hljs ${validLang}" id="${uuid}">${highlightedCode}</code></pre>`;
+    //   };
+    //   // renderer.em = function(text) {
+    //   //   return text;
+    //   // };
+    //   // marked.use({ renderer });
+    //   marked.setOptions({ renderer });
+    // }
   }
   /**
    * Retrieves the version of the application.
@@ -2092,6 +2094,19 @@ try {
   static tableItem(title,object,selector,params,checked=false) {
     return {title:title,object:object,selector:selector,param:params,checked:checked}
   }
+  static createJsonEditor(htmlPath){
+    let jsonEditor = new UIWebView(MNUtil.genFrame(0, 0, 100, 100));
+    try {
+    
+    jsonEditor.loadFileURLAllowingReadAccessToURL(
+      NSURL.fileURLWithPath(this.mainPath + '/jsoneditor.html'),
+      NSURL.fileURLWithPath(this.mainPath + '/')
+    );
+    } catch (error) {
+      MNUtil.showHUD(error)
+    }
+    return jsonEditor
+  }
 }
 
 class MNConnection{
@@ -2421,6 +2436,28 @@ class MNButton{
     // }
     // return newButton
   }
+  static builtInProperty = [
+    "superview",
+    "frame",
+    "bounds",
+    "center",
+    "window",
+    "gestureRecognizers",
+    "backgroundColor",
+    "color",
+    "hidden",
+    "autoresizingMask",
+    "currentTitle",
+    "currentTitleColor",
+    "currentImage",
+    "subviews",
+    "masksToBounds",
+    "title",
+    "font",
+    "opacity",
+    "radius",
+    "cornerRadius",
+  ]
   constructor(config = {},superView){
     this.button = UIButton.buttonWithType(0);
     this.button.autoresizingMask = (1 << 0 | 1 << 3);
@@ -2434,6 +2471,15 @@ class MNButton{
     if (superView) {
       superView.addSubview(this.button)
     }
+    return new Proxy(this, {
+      set(target, property, value) {
+        target[property] = value;
+        if (!MNButton.builtInProperty.includes(property)) {
+          target.button[property] = value
+        }
+        return true;
+      }
+    });
   }
   /**
    * @param {UIView} view
@@ -2552,6 +2598,16 @@ class MNButton{
     this.button.setTitleForState(title,0)
   }
   get currentTitle(){
+    return this.button.currentTitle
+  }
+  /**
+   * 
+   * @param {string} title 
+   */
+  set title(title){
+    this.button.setTitleForState(title,0)
+  }
+  get title(){
     return this.button.currentTitle
   }
   /**
@@ -7813,6 +7869,11 @@ class MNExtensionPanel {
   static show(name = undefined){
     if (!this.on) {
       this.toggle()
+      MNUtil.delay(0.1).then(()=>{
+        if (!this.on) {
+          this.toggle()
+        }
+      })
     }
     if (name && name in this.subviews) {
       let allNames = Object.keys(this.subviews)

@@ -67,8 +67,13 @@ var entityMap = {
   '`': '&#x60;',
   '=': '&#x3D;'
 };
-
+/**
+ * 
+ * @param {string} string 
+ * @returns 
+ */
 function escapeHtml (string) {
+  return string
   return String(string).replace(/[&<>"'`=\/]/g, function fromEntityMap (s) {
     return entityMap[s];
   });

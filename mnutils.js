@@ -6429,7 +6429,9 @@ try {
         /**
          * 将“应用：”及下方的内容移动到最下方
          */
-        this.moveHtmlBlockToBottom("相关思考：")
+        if (this.getNoteTypeZh()!== "归类" && this.getNoteTypeZh() !== "顶层"){
+          this.moveHtmlBlockToBottom("相关思考：")
+        }
         // this.moveHtmlBlockToBottom("关键词：")
         let keywordHtmlCommentIndex = this.getIncludingHtmlCommentIndex("关键词：")
         if (keywordHtmlCommentIndex !== -1) {

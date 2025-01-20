@@ -5774,9 +5774,9 @@ try {
     // MNUtil.showHUD("Search")
     let selectionText = MNUtil.selectionText
     let noteId = undefined
-    let foucsNote = MNNote.getFocusNote()
-    if (foucsNote) {
-      noteId = foucsNote.noteId
+    let focusNote = MNNote.getFocusNote()
+    if (focusNote) {
+      noteId = focusNote.noteId
     }
     let studyFrame = MNUtil.studyView.bounds
     let beginFrame = button.frame

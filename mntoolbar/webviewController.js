@@ -578,9 +578,9 @@ try {
     self.onClick = true
     let selectionText = MNUtil.selectionText
     let noteId = undefined
-    let foucsNote = MNNote.getFocusNote()
-    if (foucsNote) {
-      noteId = foucsNote.noteId
+    let focusNote = MNNote.getFocusNote()
+    if (focusNote) {
+      noteId = focusNote.noteId
     }
     let studyFrame = MNUtil.studyView.bounds
     let beginFrame = self.view.frame
@@ -642,9 +642,9 @@ try {
     if (self.dynamicWindow && toolbarUtils.currentNoteId) {
       noteId = toolbarUtils.currentNoteId
     }else{
-      let foucsNote = MNNote.getFocusNote()
-      if (foucsNote) {
-        noteId = foucsNote.noteId
+      let focusNote = MNNote.getFocusNote()
+      if (focusNote) {
+        noteId = focusNote.noteId
       }
     }
     if (!noteId && MNUtil.currentSelection.onSelection) {
@@ -1160,41 +1160,43 @@ try {
   // let activeActionNumbers = actionNames.length
   for (let index = 0; index < this.maxButtonNumber; index++) {
     let actionName = actionNames[index]
-    let colorButton
-    if (this["ColorButton"+index]) {
-      colorButton = this["ColorButton"+index]
-      colorButton.index = index
-    }else{
-      this["ColorButton"+index] = UIButton.buttonWithType(0);
-      colorButton = this["ColorButton"+index]
-      colorButton.height = 40
-      colorButton.width = 40
-      colorButton.index = index
-      // if (this.isMac) {
-        this.addPanGesture(colorButton, "onMoveGesture:")  
-      // }else{
-        this.addLongPressGesture(colorButton, "onLongPressGesture:")
-        // this.addSwipeGesture(colorButton, "onSwipeGesture:")
-      // }
+    if (actionName) {
+      let colorButton
+      if (this["ColorButton"+index]) {
+        colorButton = this["ColorButton"+index]
+        colorButton.index = index
+      }else{
+        this["ColorButton"+index] = UIButton.buttonWithType(0);
+        colorButton = this["ColorButton"+index]
+        colorButton.height = 40
+        colorButton.width = 40
+        colorButton.index = index
+        // if (this.isMac) {
+          this.addPanGesture(colorButton, "onMoveGesture:")  
+        // }else{
+          this.addLongPressGesture(colorButton, "onLongPressGesture:")
+          // this.addSwipeGesture(colorButton, "onSwipeGesture:")
+        // }
 
-      // this["moveGesture"+index] = new UIPanGestureRecognizer(this,"onMoveGesture:")
-      // colorButton.addGestureRecognizer(this["moveGesture"+index])
-      // this["moveGesture"+index].view.hidden = false
+        // this["moveGesture"+index] = new UIPanGestureRecognizer(this,"onMoveGesture:")
+        // colorButton.addGestureRecognizer(this["moveGesture"+index])
+        // this["moveGesture"+index].view.hidden = false
+      }
+      if (actionName.includes("color")) {
+        colorButton.color = parseInt(actionName.slice(5))
+        this.setColorButtonLayout(colorButton,"setColor:",buttonColor)
+      }else if(actionName.includes("custom")){
+        this.setColorButtonLayout(colorButton,"customAction:",buttonColor)
+      }else{
+        this.setColorButtonLayout(colorButton,actionName+":",buttonColor)
+      }
+      // MNButton.setImage(colorButton, toolbarConfig.imageConfigs[actionName])
+      // let image = (actionName in actions)?actions[actionName].image+".png":defaultActions[actionName].image+".png"
+      // colorButton.setImageForState(MNUtil.getImage(toolbarConfig.mainPath + `/`+image),0)
+      colorButton.setImageForState(toolbarConfig.imageConfigs[actionName],0)
+      // self["ColorButton"+index].setTitleForState("",0) 
+      // self["ColorButton"+index].contentHorizontalAlignment = 1
     }
-    if (actionName.includes("color")) {
-      colorButton.color = parseInt(actionName.slice(5))
-      this.setColorButtonLayout(colorButton,"setColor:",buttonColor)
-    }else if(actionName.includes("custom")){
-      this.setColorButtonLayout(colorButton,"customAction:",buttonColor)
-    }else{
-      this.setColorButtonLayout(colorButton,actionName+":",buttonColor)
-    }
-    // MNButton.setImage(colorButton, toolbarConfig.imageConfigs[actionName])
-    // let image = (actionName in actions)?actions[actionName].image+".png":defaultActions[actionName].image+".png"
-    // colorButton.setImageForState(MNUtil.getImage(toolbarConfig.mainPath + `/`+image),0)
-    colorButton.setImageForState(toolbarConfig.imageConfigs[actionName],0)
-    // self["ColorButton"+index].setTitleForState("",0) 
-    // self["ColorButton"+index].contentHorizontalAlignment = 1
   }
   if (this.dynamicToolbar) {
     this.dynamicToolbar.setToolbarButton(actionNames,newActions)

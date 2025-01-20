@@ -7430,7 +7430,6 @@ class toolbarConfig {
     try {
     this.mainPath = mainPath
     this.dynamic = this.getByDefault("MNToolbar_dynamic",false)
-    this.preprocessMode = this.getByDefault("MNToolbar_preprocessMode",false)
     this.addonLogos = this.getByDefault("MNToolbar_addonLogos",{})
     this.windowState = this.getByDefault("MNToolbar_windowState",this.defaultWindowState)
     this.buttonNumber = this.getDefaultActionKeys().length
@@ -8736,8 +8735,9 @@ static execute(){
 
 }
 static getDefaultActionKeys() {
-  
   let actions = this.getActions()
+  // MNUtil.copyJSON(actions)
+  // MNUtil.copyJSON(Object.keys(actions))
   return Object.keys(actions)
 }
 static save(key = undefined,value = undefined,upload = true) {
@@ -8771,9 +8771,6 @@ static save(key = undefined,value = undefined,upload = true) {
         break;
       case "MNToolbar_dynamic":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.dynamic,key)
-        break;
-      case "MNToolbar_preprocessMode":
-        NSUserDefaults.standardUserDefaults().setObjectForKey(this.preprocessMode,key)
         break;
       case "MNToolbar_action":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.action,key)

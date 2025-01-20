@@ -14,24 +14,20 @@ var toolbarController = JSB.defineClass('toolbarController : UIViewController <U
     self.isLoading = false;
     self.lastFrame = self.view.frame;
     self.currentFrame = self.view.frame
-    self.maxButtonNumber = 20
+    self.maxButtonNumber = 30
     self.buttonNumber = 9
     self.isMac = MNUtil.version.type === "macOS"
-      // MNUtil.copy("refreshHeight: "+self.buttonNumber)
     if (self.dynamicWindow) {
       // self.maxButtonNumber = 9
       self.buttonNumber = toolbarConfig.getWindowState("dynamicButton");
-      // MNUtil.copy("refreshHeight: "+self.buttonNumber)
     }else{
       let lastFrame = toolbarConfig.getWindowState("frame")
       if (lastFrame) {
         // MNUtil.copyJSON(lastFrame)
-        self.buttonNumber = Math.floor(lastFrame.height/45)
-  // MNUtil.copy("refreshHeight: "+Math.floor(lastFrame.height/45))
-  // MNUtil.copy("refreshHeight: "+self.buttonNumber)
+        //兼容两个方向的工具栏
+        self.buttonNumber = Math.floor(Math.max(lastFrame.width,lastFrame.height)/45)
       }
     }
-
     // self.buttonNumber = 9
     self.mode = 0
     self.sideMode = toolbarConfig.getWindowState("sideMode")
@@ -52,7 +48,6 @@ var toolbarController = JSB.defineClass('toolbarController : UIViewController <U
       toolbarConfig.action = toolbarConfig.action.concat(["custom1","custom2","custom3","custom4","custom5","custom6","custom7","custom8","custom9"])
     }
     self.setToolbarButton(toolbarConfig.action)
-  // MNUtil.copy("refreshHeight: "+self.buttonNumber)
 
     // >>> max button >>>
     self.maxButton = UIButton.buttonWithType(0);
@@ -73,8 +68,8 @@ var toolbarController = JSB.defineClass('toolbarController : UIViewController <U
     self.screenButton = UIButton.buttonWithType(0);
     self.setButtonLayout(self.screenButton,"changeScreen:")
     self.screenButton.layer.cornerRadius = 7;
-    self.screenButton.width = 40
-    self.screenButton.height = 15
+    self.screenButton.width = 40//竖向下的宽度
+    self.screenButton.height = 15//竖向下的高度
     // let command = self.keyCommandWithInputModifierFlagsAction('d',1 << 0,'test:')
     // let command = UIKeyCommand.keyCommandWithInputModifierFlagsAction('d',1 << 0,'test:')
     // <<< screen button <<<
@@ -102,23 +97,11 @@ var toolbarController = JSB.defineClass('toolbarController : UIViewController <U
 //   MNUtil.showHUD("message")
 // },
 viewWillLayoutSubviews: function() {
+  let self = getToolbarController()
   if (self.onAnimate) {
     return
   }
-    var viewFrame = self.view.bounds;
-    var xLeft     = viewFrame.x
-    var xRight    = xLeft + 40
-    var yTop      = viewFrame.y
-    var yBottom   = yTop + viewFrame.height
-    Frame.set(self.screenButton, 0, yBottom-15)
-    let initX = 0
-    let initY = 0
-    for (let index = 0; index < self.maxButtonNumber; index++) {
-      initX = 0
-      Frame.set(self["ColorButton"+index], xLeft+initX, initY)
-      initY = initY+45
-      self["ColorButton"+index].hidden = (initY > (yBottom+5))
-    }
+  self.setToolbarLayout()
 
   },
   scrollViewDidScroll: function() {
@@ -150,17 +133,36 @@ viewWillLayoutSubviews: function() {
     // self.webAppButton.setTitleForState(`${opacity*100}%`, 0);
   },
   changeScreen: function(sender) {
+    let self = getToolbarController()
     let clickDate = Date.now()
     // if (self.dynamicWindow) {
     //   return
     // }
     self.checkPopoverController()
+    let selector = "toggleToolbarDirection:"
     // if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
     var commandTable = [
-      {title:'🌟 Dynamic',object:self,selector:'toggleDynamic:',param:1.0,checked:toolbarConfig.dynamic},
-      {title:'⚙️ Setting',object:self,selector:'setting:',param:1.0}
+      self.tableItem('⚙️  Setting', 'setting:')
     ];
+    if (self.dynamicWindow) {
+      if (toolbarConfig.vertical(true)) {
+        commandTable.unshift(self.tableItem('🌟  Direction   ↕️', selector,"dynamic"))
+      }else{
+        commandTable.unshift(self.tableItem('🌟  Direction   ↔️', selector,"dynamic"))
+      }
+    }else{
+      if (toolbarConfig.vertical()) {
+        commandTable.unshift(self.tableItem('🛠️  Direction   ↕️', selector,"fixed"))
+      }else{
+        commandTable.unshift(self.tableItem('🛠️  Direction   ↔️', selector,"fixed"))
+      }
+    }
+    commandTable.push()
     self.popoverController = MNUtil.getPopoverAndPresent(sender, commandTable,200)
+  },
+  toggleToolbarDirection: function (source) {
+    self.checkPopoverController()
+    toolbarConfig.toggleToolbarDirection(source)
   },
   toggleDynamic: function () {
 try {
@@ -316,6 +318,12 @@ lastPopover: function (button) {
     // MNUtil.copy("text")
     MNUtil.studyController.dismissViewControllerAnimatedCompletion(true,undefined)
     
+  },
+  timer: function (button) {
+    self.onClick = true
+    let des = toolbarConfig.getDescriptionByName("timer")
+    des.action = "setTimer"
+    self.customActionByDes(button,des,false)
   },
   copy:function (button) {
     let self = getToolbarController()
@@ -639,6 +647,9 @@ try {
         noteId = foucsNote.noteId
       }
     }
+    if (!noteId && MNUtil.currentSelection.onSelection) {
+      noteId = MNNote.fromSelection().realGroupNoteForTopicId().noteId
+    }
     if (!noteId) {
       MNUtil.showHUD("No note")
       return
@@ -691,6 +702,7 @@ try {
     self.hideAfterDelay()
   },
   setting: function (button) {
+    self.checkPopoverController()
     MNUtil.postNotification("openToolbarSetting", {})
     // let self = getToolbarController()
     // self.checkPopoverController()
@@ -806,24 +818,28 @@ try {
       let locationInView = gesture.locationInView(MNUtil.studyView)
       let y = MNUtil.constrain(self.initFrame.y+locationInView.y - self.initLocation.y, 0, studyFrame.height-15)
       let x = self.initFrame.x+locationInView.x - self.initLocation.x
-      let splitLine = MNUtil.splitLine
-      let docMapSplitMode = MNUtil.studyController.docMapSplitMode
       self.sideMode = ""
-      if (x<20) {
-        x = 0
-        self.sideMode = "left"
-        self.splitMode = false
-      }
-      if (x>studyFrame.width-60) {
-        x = studyFrame.width-40
-        self.sideMode = "right"
-        self.splitMode = false
-      }
-      if (splitLine && docMapSplitMode===1) {
-        if (x<splitLine && x>splitLine-40) {
-          x = splitLine-20
-          self.splitMode = true
-          self.sideMode = ""
+      if (toolbarConfig.vertical()) {
+        let splitLine = MNUtil.splitLine
+        let docMapSplitMode = MNUtil.studyController.docMapSplitMode
+        if (x<20) {
+          x = 0
+          self.sideMode = "left"
+          self.splitMode = false
+        }
+        if (x>studyFrame.width-60) {
+          x = studyFrame.width-40
+          self.sideMode = "right"
+          self.splitMode = false
+        }
+        if (splitLine && docMapSplitMode===1) {
+          if (x<splitLine && x>splitLine-40) {
+            x = splitLine-20
+            self.splitMode = true
+            self.sideMode = ""
+          }else{
+            self.splitMode = false
+          }
         }else{
           self.splitMode = false
         }
@@ -831,63 +847,10 @@ try {
         self.splitMode = false
       }
       let height = 45*self.buttonNumber+15
-      if ((y+height) > studyFrame.height) {
-        height = studyFrame.height - y
-      }
-      Frame.set(self.view,x,y,40,toolbarUtils.checkHeight(height,self.maxButtonNumber))
-      self.currentFrame  = self.view.frame
+      self.setFrame(MNUtil.genFrame(x, y, 40, toolbarUtils.checkHeight(height,self.maxButtonNumber)))
 
       self.custom = false;
     }
-return
-    // MNUtil.showHUD("move")
-    let locationToMN = gesture.locationInView(MNUtil.studyView)
-    if ( (Date.now() - self.moveDate) > 100) {
-      let translation = gesture.translationInView(MNUtil.studyView)
-      let locationToBrowser = gesture.locationInView(self.view)
-      if (gesture.state === 1 ) {
-        gesture.locationToBrowser = {x:locationToBrowser.x-translation.x,y:locationToBrowser.y-translation.y}
-      }
-    }
-    self.moveDate = Date.now()
-    let splitLine = MNUtil.splitLine
-    let docMapSplitMode = MNUtil.studyController.docMapSplitMode
-    let location = {x:locationToMN.x - gesture.locationToBrowser.x,y:locationToMN.y -gesture.locationToBrowser.y}
-    let frame = self.view.frame
-    let studyFrame = MNUtil.studyView.bounds
-    let y = MNUtil.constrain(location.y, 0, studyFrame.height-15)
-    let x = location.x
-    self.sideMode = ""
-    if (x<20) {
-      x = 0
-      self.sideMode = "left"
-      self.splitMode = false
-    }
-    if (x>studyFrame.width-60) {
-      x = studyFrame.width-40
-      self.sideMode = "right"
-      self.splitMode = false
-    }
-    if (splitLine && docMapSplitMode===1) {
-      if (x<splitLine && x>splitLine-40) {
-        x = splitLine-20
-        self.splitMode = true
-        self.sideMode = ""
-      }else{
-        self.splitMode = false
-      }
-    }else{
-      self.splitMode = false
-    }
-    // MNUtil.showHUD(studyFrame.height+"message"+(y+self.lastFrame.height))
-    frame.height = 45*self.buttonNumber+15
-    if ((y+frame.height) > studyFrame.height) {
-      frame.height = studyFrame.height - y
-    }
-    Frame.set(self.view,x,y,40,toolbarUtils.checkHeight(frame.height,self.maxButtonNumber))
-    self.currentFrame  = self.view.frame
-
-    self.custom = false;
   } catch (error) {
     toolbarUtils.addErrorLog(error, "onMoveGesture")
   }
@@ -965,6 +928,10 @@ return
     // MNUtil.showHUD("message"+gesture.state)
   },
   onResizeGesture:function (gesture) {
+    let self = getToolbarController()
+    try {
+      
+
     self.onClick = true
     self.custom = false;
     self.onResize = true
@@ -972,14 +939,13 @@ return
     let locationInView = gesture.locationInView(gesture.view)
     let frame = self.view.frame
     let height = locationInView.y+baseframe.y+baseframe.height*0.5
-    if (frame.y + height > MNUtil.studyView.bounds.height) {
-      height = MNUtil.studyView.bounds.height - frame.y
-    }
-    height = toolbarUtils.checkHeight(height,self.maxButtonNumber)
-    Frame.set(self.view,frame.x,frame.y,40,height)
-    self.currentFrame  = self.view.frame
+    let width = locationInView.x+baseframe.x+baseframe.width*0.5
+    self.setFrame(MNUtil.genFrame(frame.x, frame.y, width, height))
     if (gesture.state === 3) {
       let buttonNumber = Math.floor(height/45)
+      if (toolbarConfig.horizonatl(self.dynamicWindow)) {
+        buttonNumber = Math.floor(width/45)
+      }
       //当用户拖拽距离过短时，不触发配置存储
       if (self.buttonNumber !== buttonNumber) {
         self.buttonNumber = buttonNumber
@@ -987,6 +953,7 @@ return
         let windowState = toolbarConfig.windowState
         if (self.dynamicWindow) {
           windowState.dynamicButton = buttonNumber
+          self.hide()
           // toolbarConfig.save("MNToolbar_windowState",{open:toolbarConfig.windowState.open,frame:self.view.frame})
         }else{
           windowState.frame = self.view.frame
@@ -995,6 +962,9 @@ return
         toolbarConfig.save("MNToolbar_windowState",windowState)
       }
       self.onResize = false
+    }
+    } catch (error) {
+      toolbarUtils.addErrorLog(error, "onResizeGesture")
     }
   },
 });
@@ -1040,13 +1010,14 @@ toolbarController.prototype.setColorButtonLayout = function (button,targetAction
  */
 toolbarController.prototype.show = async function (frame) {
   let preFrame = this.view.frame
-  preFrame.width = 40
-  preFrame.height = toolbarUtils.checkHeight(preFrame.height,this.maxButtonNumber)
-  if (preFrame.x < 0) {
-    preFrame.x = 0
-  }
-  if ((preFrame.x+40) > MNUtil.studyView.frame.width) {
-    preFrame.x = MNUtil.studyView.frame.width-40
+  if (toolbarConfig.horizonatl(this.dynamicWindow)) {
+    preFrame.width = toolbarUtils.checkHeight(preFrame.width,this.maxButtonNumber)
+    preFrame.height = 40
+    preFrame.y = toolbarUtils.constrain(preFrame.y, 0, MNUtil.studyView.frame.height-40)
+  }else{
+    preFrame.width = 40
+    preFrame.height = toolbarUtils.checkHeight(preFrame.height,this.maxButtonNumber)
+    preFrame.x = toolbarUtils.constrain(preFrame.x, 0, MNUtil.studyView.frame.width-40)
   }
   this.onAnimate = true
   // preFrame.width = 40
@@ -1062,9 +1033,6 @@ toolbarController.prototype.show = async function (frame) {
   this.view.hidden = false
   // this.moveButton.hidden = true
   this.screenButton.hidden = true
-  // for (let index = 0; index < this.buttonNumber; index++) {
-  //   this["ColorButton"+index].hidden = true
-  // }
   this.setToolbarButton(toolbarConfig.action)
 
   // showHUD(JSON.stringify(preFrame))
@@ -1080,10 +1048,6 @@ toolbarController.prototype.show = async function (frame) {
       let number = preFrame.height/40
       if (number > 9) {
         number = 9
-      }
-      // showHUD("number:"+number)
-      for (let index = 0; index < number-1; index++) {
-        this["ColorButton"+index].hidden = false
       }
       this.onAnimate = false
       this.setToolbarLayout()
@@ -1134,16 +1098,13 @@ toolbarController.prototype.hide = function (frame) {
   this.screenButton.hidden = true
   // return
   // showHUD("frame:"+JSON.stringify(this.currentFrame))
-  UIView.animateWithDurationAnimationsCompletion(0.25,()=>{
+  MNUtil.animate(()=>{
     this.view.layer.opacity = 0.2
     if (frame) {
       this.view.frame = frame
       this.currentFrame = frame
     }
-    // this.view.frame = {x:preFrame.x+preFrame.width*0.1,y:preFrame.y+preFrame.height*0.1,width:preFrame.width*0.8,height:preFrame.height*0.8}
-    // this.currentFrame = {x:preFrame.x+preFrame.width*0.1,y:preFrame.y+preFrame.height*0.1,width:preFrame.width*0.8,height:preFrame.height*0.8}
-  },
-  ()=>{
+  },0.25).then(()=>{
     this.view.hidden = true;
     this.view.layer.opacity = preOpacity      
     this.view.frame = preFrame
@@ -1238,8 +1199,7 @@ try {
   if (this.dynamicToolbar) {
     this.dynamicToolbar.setToolbarButton(actionNames,newActions)
   }
-  this.refreshHeight()
-  // MNUtil.copy("setToolbarButton")
+  this.refresh()
 } catch (error) {
   MNUtil.showHUD("Error in setToolbarButton: "+error)
 }
@@ -1249,57 +1209,58 @@ try {
  * @param {*} frame 
  * @this {toolbarController}
  */
-toolbarController.prototype.refreshHeight = function () {
-  try {
-    
-
-  let lastFrame = this.view.frame
-  let currentHeight = lastFrame.height
-  if (currentHeight > 420 && !toolbarUtils.isSubscribed(false)) {
-    lastFrame.height = 420
-    this.view.frame = lastFrame
-    return
+toolbarController.prototype.refresh = function (frame) {
+  if (!frame) {
+    frame = this.view.frame
   }
-  let height = 45*this.buttonNumber+15
-  // MNUtil.copyJSON(lastFrame)
-  if (lastFrame.y+lastFrame.height > MNUtil.studyView.frame.height) {
-
-  // MNUtil.showHUD("message")
-    let remainHeight = MNUtil.studyView.frame.height - lastFrame.y
-    let remainButton = Math.floor(remainHeight/45)
-    lastFrame.height = 45*(remainButton)+15
-  }else{
-    lastFrame.height = height
-  }
-  this.view.frame = lastFrame
-  this.currentFrame = lastFrame
-  // showHUD("number:"+height)
-  } catch (error) {
-    toolbarUtils.addErrorLog(error, "refreshHeight")
-  }
+  this.setFrame(frame,true)
+  this.setToolbarLayout()
 }
 
 toolbarController.prototype.setToolbarLayout = function () {
   if (this.onAnimate) {
     return
   }
+  // MNUtil.copyJSON(this.view.frame)
+  if (toolbarConfig.horizonatl(this.dynamicWindow)) {
+    var viewFrame = this.view.bounds;
+    var xLeft     = viewFrame.x
+    var xRight    = xLeft + viewFrame.width
+    var yTop      = viewFrame.y
+    var yBottom   = yTop + 40
+    // this.moveButton.frame = {x: 0 ,y: 0,width: 40,height: 15};
+    if (this.screenButton) {
+      Frame.set(this.screenButton, xRight-15, 0,this.screenButton.height,this.screenButton.width)
+      this.view.bringSubviewToFront(this.screenButton)
+    }
+    let initX = 0
+    let initY = 0
+    for (let index = 0; index < this.maxButtonNumber; index++) {
+      initY = 0
+      Frame.set(this["ColorButton"+index], xLeft+initX, initY)
+      initX = initX+45
+      this["ColorButton"+index].hidden = (initX > xRight+5)
+    }
+  }else{
     var viewFrame = this.view.bounds;
     var xLeft     = viewFrame.x
     var xRight    = xLeft + 40
     var yTop      = viewFrame.y
     var yBottom   = yTop + viewFrame.height
     // this.moveButton.frame = {x: 0 ,y: 0,width: 40,height: 15};
-    Frame.set(this.screenButton, 0, yBottom-15)
-    this.view.bringSubviewToFront(this.screenButton)
-
+    if (this.screenButton) {
+      Frame.set(this.screenButton, 0, yBottom-15,this.screenButton.width,this.screenButton.height)
+      this.view.bringSubviewToFront(this.screenButton)
+    }
     let initX = 0
     let initY = 0
-    for (let index = 0; index < this.buttonNumber; index++) {
+    for (let index = 0; index < this.maxButtonNumber; index++) {
       initX = 0
       Frame.set(this["ColorButton"+index], xLeft+initX, initY)
       initY = initY+45
-      this["ColorButton"+index].hidden = (initY > yBottom)
+      this["ColorButton"+index].hidden = (initY > yBottom+5)
     }
+  }
 
 }
 toolbarController.prototype.checkPopoverController = function () {
@@ -1335,6 +1296,16 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
     let title,content,color,config
     let targetNoteId
     switch (des.action) {
+      case "undo":
+        UndoManager.sharedInstance().undo()
+        MNUtil.app.refreshAfterDBChanged(MNUtil.currentNotebookId)
+        await MNUtil.delay(0.1)
+        break;
+      case "redo":
+        UndoManager.sharedInstance().redo()
+        MNUtil.app.refreshAfterDBChanged(MNUtil.currentNotebookId)
+        await MNUtil.delay(0.1)
+        break;
       case "copy":
         if (des.target || des.content) {
           success = await toolbarUtils.copy(des)
@@ -1346,13 +1317,18 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         toolbarUtils.paste(des)
         await MNUtil.delay(0.1)
         break;
+      case "setTimer":
+        toolbarUtils.setTimer(des)
+        break;
       case "switchTitleOrExcerpt":
         toolbarUtils.switchTitleOrExcerpt()
         await MNUtil.delay(0.1)
         break;
       case "cloneAndMerge":
       try {
-        MNUtil.showHUD("cloneAndMerge")
+        if (!des.hideMessage) {
+          MNUtil.showHUD("cloneAndMerge")
+        }
         targetNoteId= MNUtil.getNoteIdByURL(des.target)
         MNUtil.undoGrouping(()=>{
           try {
@@ -1369,7 +1345,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       }
         break;
       case "cloneAsChildNote":
-        MNUtil.showHUD("cloneAsChildNote")
+        if (!des.hideMessage) {
+          MNUtil.showHUD("cloneAsChildNote")
+        }
         targetNoteId= MNUtil.getNoteIdByURL(des.target)
         MNUtil.undoGrouping(()=>{
           MNNote.getFocusNotes().forEach(focusNote=>{
@@ -1377,6 +1355,12 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           })
         })
         await MNUtil.delay(0.1)
+        break;
+      case "addTags":
+        toolbarUtils.addTags(des)
+        break;
+      case "removeTags":
+        toolbarUtils.removeTags(des)
         break;
       case "ocr":
         await toolbarUtils.ocr(des)
@@ -1398,7 +1382,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "noteHighlight":
         let newNote = await toolbarUtils.noteHighlight(des)
         if (newNote && newNote.notebookId === MNUtil.currentNotebookId) {
-          newNote.focusInMindMap(0.5)
+          await newNote.focusInMindMap(0.5)
         }
         // if ("parentNote" in des) {
         //   await MNUtil.delay(5)
@@ -1416,7 +1400,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         await MNUtil.delay(0.1)
         break;
       case "addChildNote":
-        MNUtil.showHUD("addChildNote")
+        if (!des.hideMessage) {
+          MNUtil.showHUD("addChildNote")
+        }
         config = {}
         if (des.title) {
           config.title = toolbarUtils.detectAndReplace(des.title)
@@ -1444,8 +1430,8 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           }
           config.color = color
         }
-        focusNote.createChildNote(config)
-        await MNUtil.delay(0.1)
+        let childNote = focusNote.createChildNote(config)
+        await childNote.focusInMindMap(0.5)
         break;
       case "file2base64":
         let file = await MNUtil.importFile(["public.data"])
@@ -1453,7 +1439,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         MNUtil.copy(data.base64Encoding())
         break;
       case "addBrotherNote":
-        MNUtil.showHUD("addBrotherNote")
+        if (!des.hideMessage) {
+          MNUtil.showHUD("addBrotherNote")
+        }
         config = {}
         if (des.title) {
           config.title = toolbarUtils.detectAndReplace(des.title)
@@ -1485,38 +1473,70 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           }
           config.color = color
         }
-        focusNote.createBrotherNote(config)
-        await MNUtil.delay(0.1)
+        let brotherNote = focusNote.createBrotherNote(config)
+        await brotherNote.focusInMindMap(0.5)
         break;
 
       case "crash":
-        MNUtil.showHUD("crash")
+        if (!des.hideMessage) {
+          MNUtil.showHUD("crash")
+        }
         MNUtil.studyView.frame = {x:undefined}
         await MNUtil.delay(0.1)
         break;
       case "addComment":
-        MNUtil.showHUD("addComment")
+        if (!des.hideMessage) {
+          MNUtil.showHUD("addComment")
+        }
         let comment = des.content
         if (comment) {
           let replacedText = toolbarUtils.detectAndReplace(des.content)
           let focusNotes = MNNote.getFocusNotes()
+          let markdown = des.markdown ?? true
+          let commentIndex = des.index ?? 999
           // MNUtil.copy("text"+focusNotes.length)
           MNUtil.undoGrouping(()=>{
-            focusNotes.forEach(note => {
-              // note.appendTextComment(replacedText)
-              note.appendMarkdownComment(replacedText)
-            })
+            if (markdown) {
+              focusNotes.forEach(note => {
+                // note.appendTextComment(replacedText)
+                note.appendMarkdownComment(replacedText,commentIndex)
+              })
+            }else{
+              focusNotes.forEach(note => {
+                note.appendTextComment(replacedText,commentIndex)
+              })
+            }
+          })
+        }
+        await MNUtil.delay(0.1)
+        break;
+      case "addMarkdownLink":
+        if (!des.hideMessage) {
+          MNUtil.showHUD("addMarkdownLink")
+        }
+        let title = des.title
+        let link = des.link
+        if (title && link) {
+          let replacedTitle = toolbarUtils.detectAndReplace(title)
+          let replacedLink = toolbarUtils.detectAndReplace(link)
+          // MNUtil.copy("text"+focusNotes.length)
+          MNUtil.undoGrouping(()=>{
+            focusNote.appendMarkdownComment(`[${replacedTitle}](${replacedLink})`)
           })
         }
         await MNUtil.delay(0.1)
         break;
       case "removeComment":
-        MNUtil.showHUD("removeComment")
+        if (!des.hideMessage) {
+          MNUtil.showHUD("removeComment")
+        }
         toolbarUtils.removeComment(des)
         await MNUtil.delay(0.1)
         break;
       case "moveComment":
-        MNUtil.showHUD("moveComment")
+        if (!des.hideMessage) {
+          MNUtil.showHUD("moveComment")
+        }
         toolbarUtils.moveComment(des)
         await MNUtil.delay(0.1)
         break;
@@ -1593,7 +1613,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         MNUtil.openURL(url)
         break
       case "toggleTextFirst":
-        MNUtil.showHUD("toggleTextFirst")
+        if (!des.hideMessage) {
+          MNUtil.showHUD("toggleTextFirst")
+        }
         targetNotes = toolbarUtils.getNotesByRange(des.range ?? "currentNotes")
         MNUtil.undoGrouping(()=>{
           targetNotes.forEach(note=>{
@@ -1603,7 +1625,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         await MNUtil.delay(0.1)
         break
       case "toggleMarkdown":
-        MNUtil.showHUD("toggleMarkdown")
+        if (!des.hideMessage) {
+          MNUtil.showHUD("toggleMarkdown")
+        }
         targetNotes = toolbarUtils.getNotesByRange(des.range ?? "currentNotes")
         MNUtil.undoGrouping(()=>{
           targetNotes.forEach(note=>{
@@ -1684,11 +1708,14 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         await MNUtil.delay(0.1)
         break;
       case "chatAI":
-        toolbarUtils.chatAI(des)
+        toolbarUtils.chatAI(des,button)
         break
       case "search":
         toolbarUtils.search(des,button)
-        break
+        break;
+      case "openWebURL":
+        toolbarUtils.openWebURL(des)
+        break;
       case "addImageComment":
         let source = des.source ?? "photo"
         this.compression = des.compression ?? true
@@ -1725,7 +1752,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         // present(imagePickerController, animated: true, completion: nil)
         break;
       case "focus":
-        toolbarUtils.focus(focusNote, des)
+        await toolbarUtils.focus(focusNote, des)
         break 
       case "showMessage":
         toolbarUtils.showMessage(des)
@@ -1764,7 +1791,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         // MNUtil.saveFile(docPath, ["public.pdf"])
         break;
       case "setButtonImage":
-        MNUtil.showHUD("setButtonImage...")
+        if (!des.hideMessage) {
+          MNUtil.showHUD("setButtonImage...")
+        }
         await MNUtil.delay(0.01)
         if ("imageConfig" in des) {
           let config = des.imageConfig
@@ -1949,7 +1978,9 @@ toolbarController.prototype.popupReplace = async function (button) {
         }
       }
     }
+    return menu
   }else{
+    return undefined
     // MNUtil.showHUD("popupReplaceError")
   }
   } catch (error) {
@@ -1966,6 +1997,12 @@ toolbarController.prototype.popupReplace = async function (button) {
 toolbarController.prototype.customActionMenu =  function (button,des) {
   let buttonX = toolbarUtils.getButtonFrame(button).x//转化成相对于studyview的
   try {
+    let selector = "customActionByMenu:"
+    let object = this
+    function tableItem(title,params,checked=false) {
+      let des = {des:params,button:button}
+      return {title:title,object:object,selector:"customActionByMenu:",param:des,checked:checked}
+    }
     //先处理menu这个自定义动作
     if (des.action === "menu") {
       this.onClick = true
@@ -1977,7 +2014,8 @@ toolbarController.prototype.customActionMenu =  function (button,des) {
       if (menuItems.length) {
         var commandTable = menuItems.map(item=>{
           let title = (typeof item === "string")?item:(item.menuTitle ?? item.action)
-          return {title:title,object:this,selector:'customActionByMenu:',param:{des:item,button:button}}
+          return tableItem(title, item)
+          // return {title:title,object:this,selector:'customActionByMenu:',param:{des:item,button:button}}
         })
         this.commandTables = [commandTable]
         if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
@@ -1990,43 +2028,135 @@ toolbarController.prototype.customActionMenu =  function (button,des) {
     }
 
 
-    if (des.action === "chatAI" && des.target) {
-      if (des.target === "openFloat") {
-        MNUtil.postNotification("chatAIOpenFloat", {beginFrame:button.convertRectToView(button.bounds,MNUtil.studyView)})
-        return true
-      }
-      // if (des.target === "openSetting") {
-      //   MNUtil.postNotification("chatAIOpenSetting", {endFrame:button.convertRectToView(button.bounds,MNUtil.studyView)})
-      //   return true
-      // }
-      if (des.target === "currentPrompt") {
-        MNUtil.postNotification("customChat",{})
-        return true
-      }
-      if (des.target === "menu") {
-        this.onClick = true
-        let promptKeys = chatAIConfig.getConfig("promptNames")
-        let prompts = chatAIConfig.prompts
-        var commandTable = promptKeys.map(promptKey=>{
-          let title = prompts[promptKey].title.trim()
-          return {title:"🚀   "+title,object:this,selector:'customActionByMenu:',param:{des:{action:"chatAI",prompt:title},button:button}}
-        })
-        let width = 250
-        if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
-          this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
-        }else{
-          this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
-        }
-        return true
-      }
-    }
-    if (des.action === "insertSnippet" && des.target && des.target === "menu") {
+    // if (des.action === "chatAI" && des.target) {
+    //   if (des.target === "menu") {
+    //     this.onClick = true
+    //     let promptKeys = chatAIConfig.getConfig("promptNames")
+    //     let prompts = chatAIConfig.prompts
+    //     var commandTable = promptKeys.map(promptKey=>{
+    //       let title = prompts[promptKey].title.trim()
+    //       return {title:"🚀   "+title,object:this,selector:'customActionByMenu:',param:{des:{action:"chatAI",prompt:title},button:button}}
+    //     })
+    //     let width = 250
+    //     if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
+    //       this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
+    //     }else{
+    //       this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
+    //     }
+    //     return true
+    //   }
+    // }
+    if (des.target && des.target === "menu") {
       this.onClick = true
-      var commandTable = des.menuItems.map(item => {
-        item.action = "insertSnippet"
-        return {title:item.menuTitle,object:this,selector:'customActionByMenu:',param:{des:item,button:button}}
-      })
+      var commandTable
       let width = 250
+      let selector = "customActionByMenu:"
+      switch (des.action) {
+        case "chatAI":
+          let promptKeys = chatAIConfig.getConfig("promptNames")
+          let prompts = chatAIConfig.prompts
+          var commandTable = promptKeys.map(promptKey=>{
+            let title = prompts[promptKey].title.trim()
+            return tableItem("🚀   "+title, {action:"chatAI",prompt:title})
+          })
+          break;
+        case "insertSnippet":
+          commandTable = des.menuItems.map(item => {
+            item.action = "insertSnippet"
+            return tableItem(item.menuTitle,item)
+            // return this.tableItem(item.menuTitle, selector,{des:item,button:button})
+            // return {title:item.menuTitle,object:this,selector:'customActionByMenu:',param:{des:item,button:button}}
+          })
+          break;
+        case "paste":
+          commandTable = [
+            tableItem("default",{action:"paste",target:"default"}),
+            tableItem("title",{action:"paste",target:"title"}),
+            tableItem("excerpt",{action:"paste",target:"excerpt"}),
+            tableItem("appendTitle",{action:"paste",target:"appendTitle"}),
+            tableItem("appendExcerpt",{action:"paste",target:"appendExcerpt"}),
+          ]
+          break;
+        case "ocr":
+          commandTable = [
+            tableItem("clipboard", {action:"ocr",target:"clipboard"}),
+            tableItem("comment", {action:"ocr",target:"comment"}),
+            tableItem("excerpt", {action:"ocr",target:"excerpt"}),
+            tableItem("editor", {action:"ocr",target:"editor"}),
+            tableItem("chatModeReference", {action:"ocr",target:"chatModeReference"})
+          ]
+          break;
+        case "setTimer":
+          commandTable = [
+            tableItem("⏰  Clock Mode", {action:"setTimer",timerMode:"clock"}),
+            tableItem("⏱️  Count Up", {action:"setTimer",timerMode:"countUp"}),
+            tableItem("⏱️  Countdown: 5mins", {action:"setTimer",timerMode:"countdown",minutes:5}),
+            tableItem("⏱️  Countdown: 10mins", {action:"setTimer",timerMode:"countdown",minutes:10}),
+            tableItem("⏱️  Countdown: 15mins", {action:"setTimer",timerMode:"countdown",minutes:15}),
+            tableItem("🍅  Countdown: 25mins", {action:"setTimer",timerMode:"countdown",minutes:25}),
+            tableItem("⏱️  Countdown: 40mins", {action:"setTimer",timerMode:"countdown",minutes:40}),
+            tableItem("⏱️  Countdown: 60mins", {action:"setTimer",timerMode:"countdown",minutes:60}),
+          ]
+          break;
+        case "search":
+          let names = browserConfig.entrieNames
+          let entries = browserConfig.entries
+          var commandTable = names.map(name=>{
+            let title = entries[name].title
+            let engine = entries[name].engine
+            return tableItem(title, {action:"search",engine:engine})
+            // return {title:title,object:this,selector:'customActionByMenu:',param:{des:{action:"search",engine:engine},button:button}}
+          })
+          break;
+        case "copy":
+          commandTable = [
+            tableItem("selectionText", {action:"copy",target:"selectionText"}),
+            tableItem("selectionImage", {action:"copy",target:"selectionImage"}),
+            tableItem("title", {action:"copy",target:"title"}),
+            tableItem("excerpt", {action:"copy",target:"excerpt"}),
+            tableItem("excerpt (OCR)", {action:"copy",target:"excerptOCR"}),
+            tableItem("notesText", {action:"copy",target:"notesText"}),
+            tableItem("comment", {action:"copy",target:"comment"}),
+            tableItem("noteId", {action:"copy",target:"noteId"}),
+            tableItem("noteURL", {action:"copy",target:"noteURL"}),
+            tableItem("noteMarkdown", {action:"copy",target:"noteMarkdown"}),
+            tableItem("noteMarkdown (OCR)", {action:"copy",target:"noteMarkdownOCR"}),
+            tableItem("noteWithDecendentsMarkdown", {action:"copy",target:"noteWithDecendentsMarkdown"}),
+          ]
+          break;
+        case "showInFloatWindow":
+          commandTable = [
+            tableItem("noteInClipboard", {action:"showInFloatWindow",target:"noteInClipboard"}),
+            tableItem("currentNote", {action:"showInFloatWindow",target:"currentNote"}),
+            tableItem("currentChildMap", {action:"showInFloatWindow",target:"currentChildMap"}),
+            tableItem("parentNote", {action:"showInFloatWindow",target:"parentNote"}),
+            tableItem("currentNoteInMindMap", {action:"showInFloatWindow",target:"currentNoteInMindMap"}),
+          ]
+          break;
+        case "addImageComment":
+          commandTable = [
+            tableItem("photo", {action:"addImageComment",source:"photo"}),
+            tableItem("camera", {action:"addImageComment",source:"camera"}),
+            tableItem("file", {action:"addImageComment",source:"file"}),
+          ]
+          break;
+        case "removeTags":
+          let focusNote = MNNote.getFocusNote()
+          if (!focusNote) {
+            MNUtil.showHUD("No focus note")
+            return true
+          }
+          if (!focusNote.tags.length) {
+            MNUtil.showHUD("No tags")
+            return true
+          }
+          commandTable = focusNote.tags.map(tag=>{
+            return tableItem("#"+tag, {action:"removeTags",tag:tag})
+          })
+          break;
+        default:
+          return false;
+      }
       if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
         this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
       }else{
@@ -2034,116 +2164,160 @@ toolbarController.prototype.customActionMenu =  function (button,des) {
       }
       return true
     }
-    if (des.action === "paste" && des.target && des.target === "menu") {
-      this.onClick = true
-      var commandTable = [
-        {title:"default",object:this,selector:'customActionByMenu:',param:{des:{action:"paste",target:"default"},button:button}},
-        {title:"title",object:this,selector:'customActionByMenu:',param:{des:{action:"paste",target:"title"},button:button}},
-        {title:"excerpt",object:this,selector:'customActionByMenu:',param:{des:{action:"paste",target:"excerpt"},button:button}},
-        {title:"appendTitle",object:this,selector:'customActionByMenu:',param:{des:{action:"paste",target:"appendTitle"},button:button}},
-        {title:"appendExcerpt",object:this,selector:'customActionByMenu:',param:{des:{action:"paste",target:"appendExcerpt"},button:button}}
-      ]
-      let width = 250
-      if ((MNUtil.studyView.bounds.width - buttonX) < (width+40)) {
-        this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
-      }else{
-        this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
-      }
-      return true
-    }
+    // if (des.action === "insertSnippet" && des.target && des.target === "menu") {
+    //   this.onClick = true
+    //   var commandTable = des.menuItems.map(item => {
+    //     item.action = "insertSnippet"
+    //     return {title:item.menuTitle,object:this,selector:'customActionByMenu:',param:{des:item,button:button}}
+    //   })
+    //   let width = 250
+    //   if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
+    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
+    //   }else{
+    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
+    //   }
+    //   return true
+    // }
+    // if (des.action === "paste" && des.target && des.target === "menu") {
+    //   this.onClick = true
+    //   var commandTable = [
+    //     {title:"default",object:this,selector:'customActionByMenu:',param:{des:{action:"paste",target:"default"},button:button}},
+    //     {title:"title",object:this,selector:'customActionByMenu:',param:{des:{action:"paste",target:"title"},button:button}},
+    //     {title:"excerpt",object:this,selector:'customActionByMenu:',param:{des:{action:"paste",target:"excerpt"},button:button}},
+    //     {title:"appendTitle",object:this,selector:'customActionByMenu:',param:{des:{action:"paste",target:"appendTitle"},button:button}},
+    //     {title:"appendExcerpt",object:this,selector:'customActionByMenu:',param:{des:{action:"paste",target:"appendExcerpt"},button:button}}
+    //   ]
+    //   let width = 250
+    //   if ((MNUtil.studyView.bounds.width - buttonX) < (width+40)) {
+    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
+    //   }else{
+    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
+    //   }
+    //   return true
+    // }
 
-    if (des.action === "ocr" && des.target && des.target === "menu") {
-      this.onClick = true
-      var commandTable = [
-        {title:"clipboard",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"clipboard"},button:button}},
-        {title:"comment",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"comment"},button:button}},
-        {title:"excerpt",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"excerpt"},button:button}},
-        {title:"editor",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"editor"},button:button}},
-        {title:"chatModeReference",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"chatModeReference"},button:button}}
-      ]
-      let width = 250
-      if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
-        this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
-      }else{
-        this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
-      }
-      return true
-    }
+    // if (des.action === "ocr" && des.target && des.target === "menu") {
+    //   this.onClick = true
+    //   var commandTable = [
+    //     {title:"clipboard",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"clipboard"},button:button}},
+    //     {title:"comment",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"comment"},button:button}},
+    //     {title:"excerpt",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"excerpt"},button:button}},
+    //     {title:"editor",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"editor"},button:button}},
+    //     {title:"chatModeReference",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"chatModeReference"},button:button}}
+    //   ]
+    //   let width = 250
+    //   if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
+    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
+    //   }else{
+    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
+    //   }
+    //   return true
+    // }
 
-    if (des.action === "search" && des.target && des.target === "menu") {
-      this.onClick = true
-      let names = browserConfig.entrieNames
-      let entries = browserConfig.entries
-      var commandTable = names.map(name=>{
-        let title = entries[name].title
-        let engine = entries[name].engine
-        return {title:title,object:this,selector:'customActionByMenu:',param:{des:{action:"search",engine:engine},button:button}}
-      })
-      let width = 250
-      if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
-        this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
-      }else{
-        this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
-      }
-      return true
-    }
-    if (des.action === "copy" && des.target && des.target === "menu") {
-      this.onClick = true
-      var commandTable = [
-        {title:"selectionText",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"selectionText"},button:button}},
-        {title:"selectionImage",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"selectionImage"},button:button}},
-        {title:"title",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"title"},button:button}},
-        {title:"excerpt",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"excerpt"},button:button}},
-        {title:"excerpt (OCR)",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"excerptOCR"},button:button}},
-        {title:"notesText",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"notesText"},button:button}},
-        {title:"comment",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"comment"},button:button}},
-        {title:"noteId",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"noteId"},button:button}},
-        {title:"noteURL",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"noteURL"},button:button}},
-        {title:"noteMarkdown",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"noteMarkdown"},button:button}},
-        {title:"noteMarkdown (OCR)",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"noteMarkdownOCR"},button:button}},
-        {title:"noteWithDecendentsMarkdown",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"noteWithDecendentsMarkdown"},button:button}},
-      ]
-      let width = 250
-      if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
-        this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
-      }else{
-        this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
-      }
-      return true
-    }
-    if (des.action === "showInFloatWindow" && des.target && des.target === "menu") {
-      this.onClick = true
-      // MNUtil.showHUD("showInFloatWindow")
-      var commandTable = [
-        {title:"noteInClipboard",object:this,selector:'customActionByMenu:',param:{des:{action:"showInFloatWindow",target:"noteInClipboard"},button:button}},
-        {title:"currentNote",object:this,selector:'customActionByMenu:',param:{des:{action:"showInFloatWindow",target:"currentNote"},button:button}},
-        {title:"currentChildMap",object:this,selector:'customActionByMenu:',param:{des:{action:"showInFloatWindow",target:"currentChildMap"},button:button}},
-        {title:"parentNote",object:this,selector:'customActionByMenu:',param:{des:{action:"showInFloatWindow",target:"parentNote"},button:button}},
-        {title:"currentNoteInMindMap",object:this,selector:'customActionByMenu:',param:{des:{action:"showInFloatWindow",target:"currentNoteInMindMap"},button:button}}
-      ]
-      let width = 250
-      if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
-        this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
-      }else{
-        this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
-      }
-      return true
-    }
-    if (des.action === "addImageComment" && des.target === "menu") {
-      this.onClick = true
-      var commandTable = [
-        {title:"photo",object:this,selector:'customActionByMenu:',param:{des:{action:"addImageComment",source:"photo"},button:button}},
-        {title:"camera",object:this,selector:'customActionByMenu:',param:{des:{action:"addImageComment",source:"camera"},button:button}},
-        {title:"file",object:this,selector:'customActionByMenu:',param:{des:{action:"addImageComment",source:"file"},button:button}},
-      ]
-      let width = 250
-      if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
-        this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
-      }else{
-        this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
-      }
-      return true
-    }
+    // if (des.action === "setTimer" && des.target && des.target === "menu") {
+    //   this.onClick = true
+    //   var commandTable = [
+    //     // {title:'📝  Annotation',object:self,selector:'inputAnnotation:',param:'left'},
+    //     // {title:'⚙️  Setting',object:self,selector:'openSetting:',param:'left'},
+    //     {title:'⏰  Clock Mode',object:self,selector:'customActionByMenu:',param:{des:{action:"setTimer",timerMode:"clock"},button:button}},
+    //     {title:'⏱️  Count Up',object:self,selector:'customActionByMenu:',param:{des:{action:"setTimer",timerMode:"countUp"},button:button}},
+    //     {title:'⌛  Countdown: 5mins',object:self,selector:'customActionByMenu:',param:{des:{action:"setTimer",timerMode:"countdown",minutes:5},button:button}},
+    //     {title:'⌛  Countdown: 10mins',object:self,selector:'customActionByMenu:',param:{des:{action:"setTimer",timerMode:"countdown",minutes:10},button:button}},
+    //     {title:'⌛  Countdown: 15mins',object:self,selector:'customActionByMenu:',param:{des:{action:"setTimer",timerMode:"countdown",minutes:15},button:button}},
+    //     {title:'🍅  Countdown: 25mins',object:self,selector:'customActionByMenu:',param:{des:{action:"setTimer",timerMode:"countdown",minutes:25},button:button}},
+    //     {title:'⌛  Countdown: 40mins',object:self,selector:'customActionByMenu:',param:{des:{action:"setTimer",timerMode:"countdown",minutes:40},button:button}},
+    //     {title:'⌛  Countdown: 60mins',object:self,selector:'customActionByMenu:',param:{des:{action:"setTimer",timerMode:"countdown",minutes:60},button:button}},
+    //   ];
+    //   // var commandTable = [
+    //   //   {title:"clipboard",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"clipboard"},button:button}},
+    //   //   {title:"comment",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"comment"},button:button}},
+    //   //   {title:"excerpt",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"excerpt"},button:button}},
+    //   //   {title:"editor",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"editor"},button:button}},
+    //   //   {title:"chatModeReference",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"chatModeReference"},button:button}}
+    //   // ]
+    //   let width = 250
+    //   if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
+    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
+    //   }else{
+    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
+    //   }
+    //   return true
+    // }
+
+    // if (des.action === "search" && des.target && des.target === "menu") {
+    //   this.onClick = true
+    //   let names = browserConfig.entrieNames
+    //   let entries = browserConfig.entries
+    //   var commandTable = names.map(name=>{
+    //     let title = entries[name].title
+    //     let engine = entries[name].engine
+    //     return {title:title,object:this,selector:'customActionByMenu:',param:{des:{action:"search",engine:engine},button:button}}
+    //   })
+    //   let width = 250
+    //   if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
+    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
+    //   }else{
+    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
+    //   }
+    //   return true
+    // }
+    // if (des.action === "copy" && des.target && des.target === "menu") {
+    //   this.onClick = true
+    //   var commandTable = [
+    //     {title:"selectionText",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"selectionText"},button:button}},
+    //     {title:"selectionImage",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"selectionImage"},button:button}},
+    //     {title:"title",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"title"},button:button}},
+    //     {title:"excerpt",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"excerpt"},button:button}},
+    //     {title:"excerpt (OCR)",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"excerptOCR"},button:button}},
+    //     {title:"notesText",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"notesText"},button:button}},
+    //     {title:"comment",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"comment"},button:button}},
+    //     {title:"noteId",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"noteId"},button:button}},
+    //     {title:"noteURL",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"noteURL"},button:button}},
+    //     {title:"noteMarkdown",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"noteMarkdown"},button:button}},
+    //     {title:"noteMarkdown (OCR)",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"noteMarkdownOCR"},button:button}},
+    //     {title:"noteWithDecendentsMarkdown",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"noteWithDecendentsMarkdown"},button:button}},
+    //   ]
+    //   let width = 250
+    //   if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
+    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
+    //   }else{
+    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
+    //   }
+    //   return true
+    // }
+    // if (des.action === "showInFloatWindow" && des.target && des.target === "menu") {
+    //   this.onClick = true
+    //   // MNUtil.showHUD("showInFloatWindow")
+    //   var commandTable = [
+    //     {title:"noteInClipboard",object:this,selector:'customActionByMenu:',param:{des:{action:"showInFloatWindow",target:"noteInClipboard"},button:button}},
+    //     {title:"currentNote",object:this,selector:'customActionByMenu:',param:{des:{action:"showInFloatWindow",target:"currentNote"},button:button}},
+    //     {title:"currentChildMap",object:this,selector:'customActionByMenu:',param:{des:{action:"showInFloatWindow",target:"currentChildMap"},button:button}},
+    //     {title:"parentNote",object:this,selector:'customActionByMenu:',param:{des:{action:"showInFloatWindow",target:"parentNote"},button:button}},
+    //     {title:"currentNoteInMindMap",object:this,selector:'customActionByMenu:',param:{des:{action:"showInFloatWindow",target:"currentNoteInMindMap"},button:button}}
+    //   ]
+    //   let width = 250
+    //   if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
+    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
+    //   }else{
+    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
+    //   }
+    //   return true
+    // }
+    // if (des.action === "addImageComment" && des.target === "menu") {
+    //   this.onClick = true
+    //   var commandTable = [
+    //     {title:"photo",object:this,selector:'customActionByMenu:',param:{des:{action:"addImageComment",source:"photo"},button:button}},
+    //     {title:"camera",object:this,selector:'customActionByMenu:',param:{des:{action:"addImageComment",source:"camera"},button:button}},
+    //     {title:"file",object:this,selector:'customActionByMenu:',param:{des:{action:"addImageComment",source:"file"},button:button}},
+    //   ]
+    //   let width = 250
+    //   if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
+    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
+    //   }else{
+    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
+    //   }
+    //   return true
+    // }
     // MNUtil.showHUD("shouldShowMenu: false")
     return false
   } catch (error) {
@@ -2156,6 +2330,7 @@ toolbarController.prototype.customActionMenu =  function (button,des) {
  * 
  * @param {UIView} view 
  * @param {string} selector 
+ * @this {toolbarController}
  */
 toolbarController.prototype.addPanGesture = function (view,selector) {
   let gestureRecognizer = new UIPanGestureRecognizer(this,selector)
@@ -2166,6 +2341,7 @@ toolbarController.prototype.addPanGesture = function (view,selector) {
  * 
  * @param {UIView} view 
  * @param {string} selector 
+ * @this {toolbarController}
  */
 toolbarController.prototype.addLongPressGesture = function (view,selector) {
   let gestureRecognizer = new UILongPressGestureRecognizer(this,selector)
@@ -2182,8 +2358,63 @@ toolbarController.prototype.addLongPressGesture = function (view,selector) {
  * 
  * @param {UIView} view 
  * @param {string} selector 
+ * @this {toolbarController}
  */
 toolbarController.prototype.addSwipeGesture = function (view,selector) {
   let gestureRecognizer = new UISwipeGestureRecognizer(this,selector)
   view.addGestureRecognizer(gestureRecognizer)
+}
+
+/**
+ * 
+ * @param {string} title 
+ * @param {string} selector 
+ * @param {any} param 
+ * @param {boolean|undefined} checked 
+ * @this {toolbarController}
+ * @returns 
+ */
+toolbarController.prototype.tableItem = function (title,selector,param = "",checked = false) {
+  return {title:title,object:this,selector:selector,param:param,checked:checked}
+}
+/**
+ * 根据工具栏的方向,对frame做调整
+ * @this {toolbarController}
+ * @returns 
+ */
+toolbarController.prototype.setFrame = function (frame,maximize = false) {
+  let targetFrame = {x:frame.x,y:frame.y}
+  if(toolbarConfig.horizonatl(this.dynamicWindow)){
+    let width = Math.max(frame.width,frame.height)
+    if (maximize) {
+      width = 45*this.buttonNumber+15
+    }
+    if (width > 420 && !toolbarUtils.isSubscribed(false)) {
+      width = 420
+    }
+    if (frame.x + width > MNUtil.studyView.bounds.width) {
+      width = MNUtil.studyView.bounds.width - frame.x
+    }
+    width = toolbarUtils.checkHeight(width,this.maxButtonNumber)
+    targetFrame.width = width
+    targetFrame.height = 40
+    targetFrame.x = toolbarUtils.constrain(targetFrame.x, 0, MNUtil.studyView.bounds.width-width)
+    targetFrame.y = toolbarUtils.constrain(targetFrame.y, 0, MNUtil.studyView.bounds.height-40)
+  }else{
+    targetFrame.width = 40
+    let height = Math.max(frame.width,frame.height)
+    if (maximize) {
+      height = 45*this.buttonNumber+15
+    }
+    if (height > 420 && !toolbarUtils.isSubscribed(false)) {
+      height = 420
+    }
+    if (frame.y + height > MNUtil.studyView.bounds.height) {
+      height = MNUtil.studyView.bounds.height - frame.y
+    }
+    height = toolbarUtils.checkHeight(height,this.maxButtonNumber)
+    targetFrame.height = height
+  }
+  this.view.frame = targetFrame
+  this.currentFrame = targetFrame
 }

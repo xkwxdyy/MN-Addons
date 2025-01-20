@@ -521,6 +521,13 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       // toolbarUtils.ocr()
       return
     }
+    if (selected === "timer") {
+      let des = toolbarConfig.getDescriptionByName("timer")
+      des.action = "setTimer"
+      self.toolbarController.customActionByDes(button,des)
+      // toolbarUtils.ocr()
+      return
+    }
     if (selected === "execute") {
       // self.runJavaScript(`document.getElementById('editor').innerHTML = document.body.innerText`)
       let code = toolbarConfig.getExecuteCode()
@@ -699,9 +706,9 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     if (!toolbarUtils.checkSubscribe(false,true,true)) {
       return
     }
-    let iCloudSync = self.iCloudButton.currentTitle === "iCloud Sync: ✅"
+    let iCloudSync = self.iCloudButton.currentTitle === "iCloud Sync ✅"
     toolbarConfig.syncConfig.iCloudSync = !iCloudSync
-    self.iCloudButton.setTitleForState("iCloud Sync: "+(toolbarConfig.syncConfig.iCloudSync? "✅":"❌"),0)
+    self.iCloudButton.setTitleForState("iCloud Sync "+(toolbarConfig.syncConfig.iCloudSync? "✅":"❌"),0)
     MNButton.setColor(self.iCloudButton, toolbarConfig.syncConfig.iCloudSync?"#457bd3":"#9bb2d6",0.8)
     if (toolbarConfig.syncConfig.iCloudSync) {
       let shouldUpdate = await toolbarConfig.readCloudConfig(true,true)
@@ -720,6 +727,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   },
   exportConfigTapped:function(button){
     var commandTable = [
+      {title:'To iCloud',object:self,selector:'exportConfig:',param:"iCloud"},
       {title:'To clipborad',object:self,selector:'exportConfig:',param:"clipborad"},
       {title:'To currentNote',object:self,selector:'exportConfig:',param:"currentNote"},
       {title:'To file',object:self,selector:'exportConfig:',param:"file"},
@@ -733,6 +741,9 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     }
     let allConfig = toolbarConfig.getAllConfig()
     switch (param) {
+      case "iCloud":
+        toolbarConfig.writeCloudConfig(true,true)
+        break;
       case "clipborad":
         MNUtil.copyJSON(allConfig)
         break;
@@ -758,6 +769,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   },
   importConfigTapped:function(button){
     var commandTable = [
+      {title:'From iCloud',object:self,selector:'importConfig:',param:"iCloud"},
       {title:'From clipborad',object:self,selector:'importConfig:',param:"clipborad"},
       {title:'From currentNote',object:self,selector:'importConfig:',param:"currentNote"},
       {title:'From file',object:self,selector:'importConfig:',param:"file"},
@@ -772,6 +784,9 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     // MNUtil.showHUD(param)
     let config = undefined
     switch (param) {
+      case "iCloud":
+        toolbarConfig.readCloudConfig(true,false,true)
+        return;
       case "clipborad":
         if(MNUtil){
           config = JSON.parse(MNUtil.clipboardText)
@@ -808,6 +823,26 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     MNUtil.postNotification("refreshView",{})
     // MNUtil.copyJSON(config)
   },
+  changeToolbarDirection:async function (button) {
+    let self = getSettingController()
+    var commandTable = []
+    let selector = "toggleToolbarDirection:"
+    if (toolbarConfig.vertical()) {
+      commandTable.push(self.tableItem('🛠️  Toolbar Direction: ↕️ Vertical', selector,"fixed"))
+    }else{
+      commandTable.push(self.tableItem('🛠️  Toolbar Direction: ↔️ Horizontal', selector,"fixed"))
+    }
+    if (toolbarConfig.vertical(true)) {
+      commandTable.push(self.tableItem('🌟  Dynamic Direction: ↕️ Vertical', selector,"dynamic"))
+    }else{
+      commandTable.push(self.tableItem('🌟  Dynamic Direction: ↔️ Horizontal', selector,"dynamic"))
+    }
+    self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,300,2)
+  },
+  toggleToolbarDirection:function (source) {
+    self.checkPopoverController()
+    toolbarConfig.toggleToolbarDirection(source)
+  }
 });
 settingController.prototype.init = function () {
   this.custom = false;
@@ -960,17 +995,19 @@ settingController.prototype.settingViewLayout = function (){
     }
     Frame.set(this.popupScroll, 0, 0, width, height-55)
     this.popupScroll.contentSize = {width:width,height:scrollHeight}
-    Frame.set(this.editorButton, 10, 15, (width-25)/2,35)
-    Frame.set(this.chatAIButton, 15+(width-25)/2, 15, (width-25)/2,35)
-    Frame.set(this.snipasteButton, 10, 55, (width-25)/2,35)
-    Frame.set(this.autoStyleButton, 15+(width-25)/2, 55, (width-25)/2,35)
-    Frame.set(this.browserButton, 10, 95, (width-25)/2,35)
-    Frame.set(this.OCRButton, 15+(width-25)/2, 95, (width-25)/2,35)
-    Frame.set(this.hexInput, 10, 150, width-135,35)
-    Frame.set(this.hexButton, width-120, 150, 110,35)
-    Frame.set(this.iCloudButton, 10, 190, 150,35)
-    Frame.set(this.exportButton, 165, 190, (width-180)/2,35)
-    Frame.set(this.importButton, 170+(width-180)/2, 190, (width-180)/2,35)
+    Frame.set(this.editorButton, 5, 5, (width-15)/2,35)
+    Frame.set(this.chatAIButton, 10+(width-15)/2, 5, (width-15)/2,35)
+    Frame.set(this.snipasteButton, 5, 45, (width-15)/2,35)
+    Frame.set(this.autoStyleButton, 10+(width-15)/2, 45, (width-15)/2,35)
+    Frame.set(this.browserButton, 5, 85, (width-15)/2,35)
+    Frame.set(this.OCRButton, 10+(width-15)/2, 85, (width-15)/2,35)
+    Frame.set(this.timerButton, 5, 125, (width-15)/2,35)
+    Frame.set(this.hexInput, 5, 165, width-135,35)
+    Frame.set(this.hexButton, width-125, 165, 120,35)
+    Frame.set(this.iCloudButton, 5, 205, 160,35)
+    Frame.set(this.directionButton, 5, 245, width-10,35)
+    Frame.set(this.exportButton, 170, 205, (width-180)/2,35)
+    Frame.set(this.importButton, 175+(width-180)/2, 205, (width-180)/2,35)
 }
 
 
@@ -1087,6 +1124,13 @@ try {
   this.OCRButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
   MNButton.setColor(this.OCRButton, toolbarConfig.checkLogoStatus("MNOCR")?"#457bd3":"#9bb2d6",0.8)
 
+  this.createButton("timerButton","toggleAddonLogo:","advanceView")
+  this.timerButton.layer.opacity = 1.0
+  this.timerButton.addon = "MNTimer"
+  this.timerButton.setTitleForState("MNTimer: "+(toolbarConfig.checkLogoStatus("MNTimer")?"✅":"❌"),0)
+  this.timerButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
+  MNButton.setColor(this.timerButton, toolbarConfig.checkLogoStatus("MNTimer")?"#457bd3":"#9bb2d6",0.8)
+
   this.creatTextView("hexInput","advanceView","#9bb2d6")
   this.createButton("hexButton","saveButtonColor:","advanceView")
   this.hexButton.layer.opacity = 1.0
@@ -1103,7 +1147,7 @@ try {
   }
   
   MNButton.setColor(this.iCloudButton, iCloudSync?"#457bd3":"#9bb2d6",0.8)
-  MNButton.setTitle(this.iCloudButton, "iCloud Sync: "+(iCloudSync? "✅":"❌"),undefined, true)
+  MNButton.setTitle(this.iCloudButton, "iCloud Sync "+(iCloudSync? "✅":"❌"),undefined, true)
 
   this.createButton("exportButton","exportConfigTapped:","advanceView")
   MNButton.setTitle(this.exportButton, "Export",undefined, true)
@@ -1112,6 +1156,10 @@ try {
   this.createButton("importButton","importConfigTapped:","advanceView")
   MNButton.setColor(this.importButton, "#457bd3",0.8)
   MNButton.setTitle(this.importButton, "Import",undefined, true)
+
+  this.createButton("directionButton","changeToolbarDirection:","advanceView")
+  MNButton.setColor(this.directionButton, "#457bd3",0.8)
+  MNButton.setTitle(this.directionButton, "Direction",undefined, true)
 
   this.createScrollView("scrollview", "configView")
   // this.scrollview = UIScrollView.new()
@@ -1219,6 +1267,7 @@ try {
  */
 settingController.prototype.setButtonText = function (names=toolbarConfig.getAllActions(),highlight=this.selectedItem) {
     this.words = names
+
     let actions = toolbarConfig.actions
     let defaultActions = toolbarConfig.getActions()
     // MNUtil.copyJSON(names)
@@ -1368,6 +1417,9 @@ settingController.prototype.refreshView = function (name) {
         this.OCRButton.setTitleForState("MNOCR: "+(toolbarConfig.checkLogoStatus("MNOCR")?"✅":"❌"),0)
         MNButton.setColor(this.OCRButton, toolbarConfig.checkLogoStatus("MNOCR")?"#457bd3":"#9bb2d6",0.8)
 
+        this.timerButton.setTitleForState("MNTimer: "+(toolbarConfig.checkLogoStatus("MNTimer")?"✅":"❌"),0)
+        MNButton.setColor(this.timerButton, toolbarConfig.checkLogoStatus("MNTimer")?"#457bd3":"#9bb2d6",0.8)
+
         this.hexInput.text = toolbarConfig.buttonConfig.color
         MNButton.setColor(this.hexButton, "#457bd3",0.8)
 
@@ -1377,7 +1429,7 @@ settingController.prototype.refreshView = function (name) {
         }
 
         MNButton.setColor(this.iCloudButton, iCloudSync?"#457bd3":"#9bb2d6",0.8)
-        MNButton.setTitle(this.iCloudButton, "iCloud Sync: "+(iCloudSync? "✅":"❌"),undefined, true)
+        MNButton.setTitle(this.iCloudButton, "iCloud Sync "+(iCloudSync? "✅":"❌"),undefined, true)
       break;
     case "popupEditView":
       toolbarConfig.allPopupButtons.forEach(buttonName=>{
@@ -1424,7 +1476,7 @@ settingController.prototype.show = function (frame) {
   this.view.hidden = false
   this.miniMode = false
   // MNUtil.showHUD("message")
-  let allActions = toolbarConfig.action.concat(toolbarConfig.getDefaultActionKeys().slice(toolbarConfig.action.length))
+  let allActions = toolbarConfig.getAllActions()// toolbarConfig.action.concat(toolbarConfig.getDefaultActionKeys().slice(toolbarConfig.action.length))
   this.setButtonText(allActions,this.selectedItem)
   this.toolbarController.setToolbarButton(toolbarConfig.action)
   this.hideAllButton()
@@ -1576,7 +1628,7 @@ settingController.prototype.initRequest = function (url,options) {
  */
 settingController.prototype.createWebviewInput = function (superView) {
   try {
-    
+  // this.webviewInput = MNUtil.createJsonEditor(this.mainPath + '/jsoneditor.html')
   this.webviewInput = new UIWebView(this.view.bounds);
   this.webviewInput.backgroundColor = MNUtil.hexColorAlpha("#c0bfbf",0.8)
   this.webviewInput.scalesPageToFit = false;
@@ -1595,11 +1647,10 @@ settingController.prototype.createWebviewInput = function (superView) {
     NSURL.fileURLWithPath(this.mainPath + '/jsoneditor.html'),
     NSURL.fileURLWithPath(this.mainPath + '/')
   );
-  // this.webviewInput.loadHTMLStringBaseURL(
-  //   toolbarUtils.jsonEditor(),
-  //   NSURL.fileURLWithPath(this.mainPath + '/')
+  // this.webviewInput.loadFileURLAllowingReadAccessToURL(
+  //   NSURL.fileURLWithPath(this.mainPath + '/jsoneditor.html'),
+  //   NSURL.fileURLWithPath(MNUtil.mainPath + '/')
   // );
-  // this.webviewInput.loadHTMLStringBaseURL(toolbarUtils.html(`Loading...`))
     } catch (error) {
     MNUtil.showHUD(error)
   }
@@ -1624,11 +1675,6 @@ settingController.prototype.updateWebviewContent = function (content) {
     content = "{}"
   }
   this.runJavaScript(`updateContent('${encodeURIComponent(content)}')`)
-  // this.webviewInput.loadHTMLStringBaseURL(toolbarUtils.html(content))
-  // this.webviewInput.loadHTMLStringBaseURL(
-  //   toolbarUtils.jsonEditor(JSON.stringify(content)),
-  //   NSURL.fileURLWithPath(this.mainPath + '/')
-  // );
 }
 /**
  * @this {settingController}
@@ -1638,11 +1684,6 @@ settingController.prototype.setWebviewContent = function (content) {
     content = "{}"
   }
   this.runJavaScript(`setContent('${encodeURIComponent(content)}')`)
-  // this.webviewInput.loadHTMLStringBaseURL(toolbarUtils.html(content))
-  // this.webviewInput.loadHTMLStringBaseURL(
-  //   toolbarUtils.jsonEditor(JSON.stringify(content)),
-  //   NSURL.fileURLWithPath(this.mainPath + '/')
-  // );
 }
 /**
  * @this {settingController}
@@ -1683,6 +1724,18 @@ settingController.prototype.editorAdjustSelectWidth = function (){
 }
 settingController.prototype.checkPopoverController = function () {
   if (this.popoverController) {this.popoverController.dismissPopoverAnimated(true);}
+}
+/**
+ * 
+ * @param {string} title 
+ * @param {string} selector 
+ * @param {any} param 
+ * @param {boolean|undefined} checked 
+ * @this {settingController}
+ * @returns 
+ */
+settingController.prototype.tableItem = function (title,selector,param = "",checked = false) {
+  return {title:title,object:this,selector:selector,param:param,checked:checked}
 }
 /**
  * 

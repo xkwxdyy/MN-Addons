@@ -155,6 +155,8 @@ class toolbarUtils {
   constructor(name) {
     this.name = name;
   }
+  /**@type {string} */
+  static previousNoteId
   static errorLog = []
   static version
   static currentNoteId
@@ -1067,11 +1069,12 @@ try {
       case "excerptText":
         note.excerptText = ""
         break;
-      case "comments":
+      case "comments"://todo: 改进type检测,支持未添加index参数时移除所有评论
+        // this.removeComment(des)
         let commentLength = note.comments.length
         let comment
         for (let i = commentLength-1; i >= 0; i--) {
-          if (des.type) {
+          if ("type" in des) {
             switch (des.type) {
               case "TextNote":
                 comment = note.comments[i]
@@ -1236,7 +1239,9 @@ try {
     return true
   }
   static paste(des){
-    MNUtil.showHUD("paste")
+    if (!des.hideMessage) {
+      MNUtil.showHUD("paste")
+    }
     let focusNote = MNNote.getFocusNote()
     let text = MNUtil.clipboardText
     let target = des.target ?? "default"
@@ -1555,6 +1560,7 @@ try {
     MNUtil.copyJSON(this.errorLog)
   }
   static removeComment(des){
+    // MNUtil.copyJSON(des)
     let focusNotes = MNNote.getFocusNotes()
     if (des.find) {
       let condition  = des.find
@@ -1647,6 +1653,16 @@ try {
       }
     }
   
+  }
+  static setTimer(des){
+    let userInfo = {timerMode:des.timerMode}
+    if (des.timerMode === "countdown") {
+      userInfo.minutes = des.minutes
+    }
+    if ("annotation" in des) {
+      userInfo.annotation = des.annotation
+    }
+    MNUtil.postNotification("setTimer", userInfo)
   }
   static searchInDict(des,button){
     let target = des.target ?? "eudic"
@@ -1784,7 +1800,15 @@ try {
     }
     return undefined
   }
-  static chatAI(des){
+  static chatAI(des,button){
+    if (des.target === "openFloat") {
+      MNUtil.postNotification("chatAIOpenFloat", {beginFrame:button.convertRectToView(button.bounds,MNUtil.studyView)})
+      return
+    }
+    if (des.target === "currentPrompt") {
+      MNUtil.postNotification("customChat",{})
+      return true
+    }
     if (!des || !Object.keys(des).length) {
       MNUtil.postNotification("customChat",{})
       return
@@ -2693,7 +2717,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * @param {MNNote} note 
    * @param {*} des 
    */
-  static focus(note,des){
+  static async focus(note,des){
     let targetNote = note
     if (des.source) {
       switch (des.source) {
@@ -2715,17 +2739,17 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     targetNote = targetNote.realGroupNoteForTopicId()
     switch (des.target) {
         case "doc":
-          targetNote.focusInDocument()
+          await targetNote.focusInDocument()
           break;
         case "mindmap":
-          targetNote.focusInMindMap()
+          await targetNote.focusInMindMap()
           break;
         case "both":
-          targetNote.focusInDocument()
-          targetNote.focusInMindMap()
+          await targetNote.focusInDocument()
+          await targetNote.focusInMindMap()
           break;
         case "floatMindmap":
-          targetNote.focusInFloatMindMap()
+          await targetNote.focusInFloatMindMap()
           break;
         default:
           MNUtil.showHUD("No valid value for target!")
@@ -2747,6 +2771,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     if ("OCR" in des && des.OCR) {
       OCRText = await this.getTextOCR(selection.image)
     }
+    let currentNote = MNNote.getFocusNote()
     let focusNote = MNNote.new(MNUtil.currentDocController.highlightFromSelection())
     focusNote = focusNote.realGroupNoteForTopicId()
     return new Promise((resolve, reject) => {
@@ -2779,22 +2804,34 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
           MNUtil.showHUD("add tag: "+tag)
           focusNote.appendTags([tag])
         }
-        if ("mainMindMap" in des && des.mainMindMap) {
-          if (focusNote.parentNote) {
-            focusNote.removeFromParent()
-          }else{
-            MNUtil.showHUD("Already in main mindmap")
-          }
-        }else if ("parentNote" in des) {
-          let parentNote = MNNote.new(des.parentNote)
-          if (parentNote) {
-            parentNote = parentNote.realGroupNoteForTopicId()
-          }
-          if (parentNote.notebookId === focusNote.notebookId) {
-            MNUtil.showHUD("move to "+parentNote.noteId)
-            parentNote.addChild(focusNote)
-          }else{
-            MNUtil.showHUD("Not in same notebook")
+        if (des.mergeToPreviousNote && currentNote) {
+            currentNote.merge(focusNote)
+            focusNote.colorIndex = currentNote.colorIndex
+            focusNote.fillIndex = currentNote.fillIndex
+            if (currentNote.excerptText && (!currentNote.excerptPic || currentNote.textFirst) && focusNote.excerptText && (!focusNote.excerptPic || focusNote.textFirst)) {
+              let mergedText = currentNote.excerptText+" "+focusNote.excerptText
+              currentNote.excerptText = MNUtil.mergeWhitespace(mergedText)
+              focusNote.excerptText = ""
+            }
+            resolve(currentNote)
+        }else{
+          if ("mainMindMap" in des && des.mainMindMap) {
+            if (focusNote.parentNote) {
+              focusNote.removeFromParent()
+            }else{
+              MNUtil.showHUD("Already in main mindmap")
+            }
+          }else if ("parentNote" in des) {
+            let parentNote = MNNote.new(des.parentNote)
+            if (parentNote) {
+              parentNote = parentNote.realGroupNoteForTopicId()
+            }
+            if (parentNote.notebookId === focusNote.notebookId) {
+              MNUtil.showHUD("move to "+parentNote.noteId)
+              parentNote.addChild(focusNote)
+            }else{
+              MNUtil.showHUD("Not in same notebook")
+            }
           }
         }
         resolve(focusNote)
@@ -3049,18 +3086,63 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     }
     MNUtil.openURL(url)
   }
+  /**
+   * 
+   * @param {string} content 
+   */
+  static exportMD(content,target = "auto"){
+    switch (target) {
+      case "file":
+        MNUtil.writeText(toolbarConfig.mainPath+"/export.md",content)
+        MNUtil.saveFile(toolbarConfig.mainPath+"/export.md", ["public.md"])
+        break;
+      case "auto":
+      case "clipboard":
+        MNUtil.copy(content)
+        break;
+      default:
+        break;
+    }
+  }
   static async export(des){
+    try {
+
     let focusNote = MNNote.getFocusNote()
     let exportTarget = des.target ?? "auto"
     let exportSource = des.source ?? "noteDoc"
     switch (exportSource) {
       case "noteDoc":
-        let noteDocPath = MNUtil.getDocById(focusNote.note.docMd5).fullPathFileName
-        MNUtil.saveFile(noteDocPath, ["public.pdf"])
+        if (focusNote) {
+          let noteDocPath = MNUtil.getDocById(focusNote.note.docMd5).fullPathFileName
+          MNUtil.saveFile(noteDocPath, ["public.pdf"])
+        }else{
+          let docPath = MNUtil.currentDocController.document.fullPathFileName
+          MNUtil.saveFile(docPath, ["public.pdf"])
+        }
         break;
-      case "note":
+      case "noteMarkdown":
         let md = await this.getMDFromNote(focusNote)
-        MNUtil.copy(md)
+        this.exportMD(md,exportTarget)
+        break;
+      case "noteMarkdownOCR":
+        if (focusNote) {
+          let md = this.mergeWhitespace(await this.getMDFromNote(focusNote,0,true))
+          this.exportMD(md,exportTarget)
+        }
+        break;
+      case "noteWithDecendentsMarkdown":
+        if (focusNote) {
+          let md = await this.getMDFromNote(focusNote)
+          // MNUtil.copyJSON(focusNote.descendantNodes.treeIndex)
+          let levels = focusNote.descendantNodes.treeIndex.map(ind=>ind.length)
+          let descendantNotes = focusNote.descendantNodes.descendant
+          let descendantsMarkdowns = await Promise.all(descendantNotes.map(async (note,index)=>{
+              return this.getMDFromNote(note,levels[index])
+            })
+          )
+          md = this.mergeWhitespace(md+"\n"+descendantsMarkdowns.join("\n\n"))
+          this.exportMD(md,exportTarget)
+        }
         break;
       case "currentDoc":
         let docPath = MNUtil.currentDocController.document.fullPathFileName
@@ -3069,6 +3151,10 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       default:
         break;
     }
+      
+  } catch (error) {
+      toolbarUtils.addErrorLog(error, "export")
+  }
   }
   /**
    * 
@@ -3268,6 +3354,76 @@ static getButtonFrame(button){
         return undefined;
     }
   }
+  static addTags(des){
+    let focusNotes = MNNote.getFocusNotes()
+    if (des.tags) {
+      MNUtil.undoGrouping(()=>{
+        focusNotes.forEach(note=>{
+          note.appendTags(des.tags)
+        })
+      })
+    }else{
+      MNUtil.undoGrouping(()=>{
+        focusNotes.forEach(note=>{
+          note.appendTags([des.tag])
+        })
+      })
+    }
+  }
+  static removeTags(des){
+    let focusNotes = MNNote.getFocusNotes()
+    // MNUtil.showHUD("removeTags")
+    if (des.tags) {
+      MNUtil.undoGrouping(()=>{
+        focusNotes.forEach(note=>{
+          note.removeTags(des.tags)
+        })
+      })
+    }else{
+      MNUtil.undoGrouping(()=>{
+        focusNotes.forEach(note=>{
+          note.removeTags([des.tag])
+        })
+      })
+    }
+  }
+  static extractUrls(text) {
+  // 定义匹配URL的正则表达式
+  const urlRegex = /https?:\/\/[^\s/$.?#].[^\s]*/g;
+  // 使用正则表达式匹配所有的URL
+  const urls = text.match(urlRegex);
+  // 如果没有匹配的URL则返回空数组
+  return urls ? urls : [];
+}
+  /**
+   * 
+   * @param {MNNote} note 
+   */
+  static noteHasWebURL(note){
+    let content = note.allNoteText()
+    return this.extractUrls(content)
+  }
+  static openWebURL(des){
+    let focusNote = MNNote.getFocusNote()
+    if (focusNote) {
+      let urls = this.noteHasWebURL(focusNote)
+      if (urls.length) {
+        MNUtil.postNotification("openInBrowser", {url:urls[0]})
+        return true
+      }
+    }
+    let selection = MNUtil.currentSelection
+    if (selection.onSelection) {
+      let selectionText = selection.text
+      let urls = this.extractUrls(selectionText)
+      if (urls.length) {
+        MNUtil.postNotification("openInBrowser", {url:urls[0]})
+        return true
+      }
+    }
+    MNUtil.showHUD("No web url found")
+    return false
+  }
 }
 
 class toolbarConfig {
@@ -3287,7 +3443,9 @@ class toolbarConfig {
     splitMode:false,//固定工具栏下是否跟随分割线
     open:false,//固定工具栏是否默认常驻
     dynamicButton:9,//跟随模式下的工具栏显示的按钮数量,
-    frame:{x:0,y:0,width:40,height:415}
+    dynamicDirection:"vertical",//跟随模式下的工具栏默认方向
+    frame:{x:0,y:0,width:40,height:415},
+    direction:"vertical"//默认工具栏方向
   }
   //非自定义动作的key
   static builtinActionKeys = [
@@ -3336,6 +3494,7 @@ class toolbarConfig {
   "delHighlight",
   "sendHighlight",
   "foldHighlight",
+  "textHighlight",
   "paintHighlight",
   "sourceHighlight",
   "setTitleHighlight",
@@ -3386,9 +3545,11 @@ class toolbarConfig {
   "textboxOnPage",
   "imageboxOnPage",
   "moreOperations",
+  "dragDrop"
 ]
   static defaultPopupReplaceConfig = {
     noteHighlight:{enabled:false,target:"",name:"noteHighlight"},
+    textHighlight:{enabled:false,target:"",name:"textHighlight"},
     addToReview:{enabled:false,target:"",name:"addToReview"},
     goPalette:{enabled:false,target:"",name:"goPalette"},
     editHashtags:{enabled:false,target:"",name:"editHashtags"},
@@ -3451,6 +3612,7 @@ class toolbarConfig {
     setBlankLayer:{enabled:false,target:"",name:"setBlankLayer"},
     sourceHighlightOfNote:{enabled:false,target:"",name:"sourceHighlightOfNote"},
     paintHighlight:{enabled:false,target:"",name:"paintHighlight"},
+    dragDrop:{enabled:false,target:"",name:"dragDrop"},
   }
   static defalutImageScale = {
     "color0":2.4,
@@ -3538,6 +3700,14 @@ class toolbarConfig {
     this.syncConfig = this.getByDefault("MNToolbar_syncConfig", this.defaultSyncConfig)
     this.initImage()
   }
+  static checkCloudStore(notification = true){//用于替代initCloudStore
+    if (this.syncConfig.iCloudSync && !this.cloudStore) {
+      this.cloudStore = NSUbiquitousKeyValueStore.defaultStore()
+      if (notification) {
+        MNUtil.postNotification("NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI", {}) 
+      }
+    }
+  }
   static initCloudStore(){
     this.cloudStore = NSUbiquitousKeyValueStore.defaultStore()
     MNUtil.postNotification("NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI", {})
@@ -3549,9 +3719,6 @@ class toolbarConfig {
     }else{
       return this.defaultPopupReplaceConfig[key]
     }
-  }
-  static addCloudChangeObserver(observer, selector, name) {
-    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, name, this.cloudStore)
   }
   static deepEqual(obj1, obj2) {
     if (obj1 === obj2) return true;
@@ -3571,7 +3738,7 @@ class toolbarConfig {
             return false;
         }
         if (["lastModifyTime","lastSyncTime"].includes(key)) {
-          return true
+          continue
         }
         if (!this.deepEqual(obj1[key], obj2[key])) {
           return false;
@@ -3602,34 +3769,37 @@ class toolbarConfig {
     this.buttonConfig = config.buttonConfig
     this.popupConfig = config.popupConfig
   }
-  static async readCloudConfig(msg = true,alert = false){
+  static async readCloudConfig(msg = true,alert = false,force = false){
     if(!this.syncConfig.iCloudSync){
       return false
     }
     if (!toolbarUtils.checkSubscribe(false,msg,true)) {
       return false
     }
-    if (!this.cloudStore) {
-      this.cloudStore = NSUbiquitousKeyValueStore.defaultStore()
-    }
     try {
+    this.checkCloudStore(false)
       // this.cloudStore.removeObjectForKey("MNToolbar_totalConfig")
       let cloudConfig = this.cloudStore.objectForKey("MNToolbar_totalConfig")
       // MNUtil.copy(cloudConfig)
       if (cloudConfig && cloudConfig.syncConfig) {
         let same = this.deepEqual(cloudConfig, this.getAllConfig())
-        if (same) {
-          // MNUtil.showHUD("No change")
+        if (same && !force) {
+          if (msg) {
+            MNUtil.showHUD("No change")
+          }
           return false
         }
         // MNUtil.copyJSON(cloudConfig)
-        if (this.syncConfig.lastSyncTime < cloudConfig.syncConfig.lastSyncTime ) {
+        if (this.syncConfig.lastSyncTime < cloudConfig.syncConfig.lastSyncTime || force) {
           // MNUtil.copy("Import from iCloud")
           if (alert) {
             let confirm = await MNUtil.confirm("Import from iCloud?","是否导入iCloud配置？")
             if (!confirm) {
               return false
             }
+          }
+          if (msg) {
+            MNUtil.showHUD("Import from iCloud")
           }
           this.windowState = cloudConfig.windowState
           this.syncConfig = cloudConfig.syncConfig
@@ -3642,9 +3812,6 @@ class toolbarConfig {
           this.syncConfig.lastSyncTime = Date.now()
           this.syncConfig.lastModifyTime = Date.now()
           this.save(undefined,undefined,false)
-          if (msg) {
-            MNUtil.showHUD("Importing...")
-          }
           return true
 
         }
@@ -3656,9 +3823,6 @@ class toolbarConfig {
             }
           }
           this.writeCloudConfig()
-          if (msg) {
-            MNUtil.showHUD("Uploading...")
-          }
         }
         return false
       }else{
@@ -3677,18 +3841,16 @@ class toolbarConfig {
       return false
     }
   }
-  static writeCloudConfig(msg = true){
+  static writeCloudConfig(msg = true,force = false){
     if(!this.syncConfig.iCloudSync){
       return
     }
     if (!toolbarUtils.checkSubscribe(false,msg,true)) {
       return
     }
-    if (!this.cloudStore) {
-      this.cloudStore = NSUbiquitousKeyValueStore.defaultStore()
-    }
+    this.checkCloudStore()
     let cloudConfig = this.cloudStore.objectForKey("MNToolbar_totalConfig")
-    if (cloudConfig && cloudConfig.syncConfig) {
+    if (cloudConfig && cloudConfig.syncConfig && !force) {
       let same = this.deepEqual(cloudConfig, this.getAllConfig())
       if (same) {
         // MNUtil.showHUD("No change")
@@ -3714,6 +3876,9 @@ class toolbarConfig {
       popupConfig:this.popupConfig
     }
     // MNUtil.copyJSON(config)
+    if (msg) {
+      MNUtil.showHUD("Uploading...")
+    }
     this.cloudStore.setObjectForKey(config,"MNToolbar_totalConfig")
     this.syncConfig.lastSyncTime = Date.now()
     this.syncConfig.lastModifyTime = Date.now()
@@ -3847,6 +4012,7 @@ class toolbarConfig {
   static getAllActions(){
     let absentKeys = this.getDefaultActionKeys().filter(key=>!this.action.includes(key))
     let allActions = this.action.concat(absentKeys)
+    // MNUtil.copyJSON(allActions)
     return allActions
   }
   static getDesByButtonName(targetButtonName){
@@ -3869,6 +4035,60 @@ class toolbarConfig {
     }else{
       return this.defaultWindowState[key]
     }
+  }
+  static direction(dynamic = false){
+    if (dynamic) {
+      return this.getWindowState("dynamicDirection")
+    }else{
+      return this.getWindowState("direction")
+    }
+  }
+  static horizonatl(dynamic = false){
+    if (dynamic) {
+      return this.getWindowState("dynamicDirection") === "horizontal"
+    }else{
+      return this.getWindowState("direction") === "horizontal"
+    }
+  }
+  static vertical(dynamic = false){
+    if (dynamic) {
+      return this.getWindowState("dynamicDirection") === "vertical"
+    }else{
+      return this.getWindowState("direction") === "vertical"
+    }
+  }
+  static toggleToolbarDirection(source){
+    if (!toolbarUtils.checkSubscribe(true)) {
+      return
+    }
+    switch (source) {
+      case "fixed":
+        if (toolbarConfig.getWindowState("direction") === "vertical") {
+          toolbarConfig.windowState.direction = "horizontal"
+          toolbarConfig.save("MNToolbar_windowState")
+          MNUtil.showHUD("Set fixed direction to horizontal")
+
+        }else{
+          toolbarConfig.windowState.direction = "vertical"
+          toolbarConfig.save("MNToolbar_windowState")
+          MNUtil.showHUD("Set fixed direction to vertical")
+        }
+        break;
+      case "dynamic":
+        if (toolbarConfig.getWindowState("dynamicDirection") === "vertical") {
+          toolbarConfig.windowState.dynamicDirection = "horizontal"
+          toolbarConfig.save("MNToolbar_windowState")
+          MNUtil.showHUD("Set dynamic direction to horizontal")
+        }else{
+          toolbarConfig.windowState.dynamicDirection = "vertical"
+          toolbarConfig.save("MNToolbar_windowState")
+          MNUtil.showHUD("Set dynamic direction to vertical")
+        }
+        break;
+      default:
+        break;
+    }
+    MNUtil.postNotification("refreshToolbarButton",{})
   }
   /**
    * 
@@ -4005,6 +4225,7 @@ static getActions() {
     "custom19":{name:"Custom 19",image:"custom19",description: this.template("removeComment")},
     "ocr":{name:"ocr",image:"ocr",description:JSON.stringify({target:"comment",source:"default"})},
     "edit":{name:"edit",image:"edit",description:JSON.stringify({showOnNoteEdit:false})},
+    "timer":{name:"timer",image:"timer",description:JSON.stringify({target:"menu"})},
     "execute":{name:"execute",image:"execute",description:"MNUtil.showHUD('Hello world')"},
     "sidebar":{name:"sidebar",image:"sidebar",description:"{}"},
   }
@@ -4014,8 +4235,9 @@ static execute(){
 
 }
 static getDefaultActionKeys() {
-  
   let actions = this.getActions()
+  // MNUtil.copyJSON(actions)
+  // MNUtil.copyJSON(Object.keys(actions))
   return Object.keys(actions)
 }
 static save(key = undefined,value = undefined,upload = true) {
@@ -4136,7 +4358,7 @@ static getDescriptionByName(actionName){
     if (actionName.includes("color")) {
       return true
     }
-    let whiteNamelist = ["search","copy","chatglm","ocr","edit","searchInEudic","pasteAsTitle"]
+    let whiteNamelist = ["timer","search","copy","chatglm","ocr","edit","searchInEudic","pasteAsTitle"]
     if (whiteNamelist.includes(actionName)) {
       return true
     }

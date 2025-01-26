@@ -808,6 +808,13 @@ try {
         }
         MNUtil.refreshAddonCommands()
       },
+      // 夏大鱼羊增加：卡片的预处理
+      togglePreprocess: function () {
+        let self = getMNToolbarClass()
+        self.checkPopoverController()
+        toolbarConfig.togglePreprocess()
+      },
+      // 夏大鱼羊结束
       openDocument:function (button) {
         if (typeof MNUtil === 'undefined') return
         let self = getMNToolbarClass()
@@ -835,6 +842,7 @@ try {
             self.tableItem('🛠️   Direction   '+(toolbarConfig.vertical()?'↕️':'↔️'), selector,"fixed"),
             self.tableItem('🌟   Dynamic   ', "toggleDynamic",undefined,toolbarConfig.dynamic),
             self.tableItem('🌟   Direction   '+(toolbarConfig.vertical()?'↕️':'↔️'), selector,"dynamic"),
+            self.tableItem('🗂️   卡片预处理模式  ',"togglePreprocess:", undefined, toolbarConfig.windowState.preprocess),
             self.tableItem('📄   Document', 'openDocument:'),
             self.tableItem('🔄   Manual Sync','manualSync:')
         ];

@@ -150,16 +150,29 @@ viewWillLayoutSubviews: function() {
       }else{
         commandTable.unshift(self.tableItem('🌟  Direction   ↔️', selector,"dynamic"))
       }
+      // 夏大鱼羊 - begin
+      commandTable.unshift(self.tableItem('🗂️   卡片预处理模式',"togglePreprocess:", undefined, toolbarConfig.windowState.preprocess))
+      // 夏大鱼羊 - end
     }else{
       if (toolbarConfig.vertical()) {
         commandTable.unshift(self.tableItem('🛠️  Direction   ↕️', selector,"fixed"))
       }else{
         commandTable.unshift(self.tableItem('🛠️  Direction   ↔️', selector,"fixed"))
       }
+      // 夏大鱼羊 - begin
+      commandTable.unshift(self.tableItem('🗂️   卡片预处理模式',"togglePreprocess:", undefined, toolbarConfig.windowState.preprocess))
+      // 夏大鱼羊 - end
     }
     commandTable.push()
     self.popoverController = MNUtil.getPopoverAndPresent(sender, commandTable,200)
   },
+  // 夏大鱼羊 - begin
+  // dynamic 这里还需要再写一次下面的 togglePreprocess 函数
+  togglePreprocess: function () {
+    self.checkPopoverController()
+    toolbarConfig.togglePreprocess()
+  },
+  // 夏大鱼羊 - end
   toggleToolbarDirection: function (source) {
     self.checkPopoverController()
     toolbarConfig.toggleToolbarDirection(source)
@@ -5021,7 +5034,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         if (MNUtil.currentNotebookId !== "9BA894B4-3509-4894-A05C-1B4BA0A9A4AE" ) {
           MNUtil.undoGrouping(()=>{
             try {
-              if (self.preprocessMode) {
+              if (toolbarConfig.windowState.preprocess) {
                 focusNotes.forEach(focusNote=>{
                   toolbarUtils.TemplateMakeNote(focusNote)
                 })
@@ -5047,7 +5060,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         if (MNUtil.currentNotebookId !== "9BA894B4-3509-4894-A05C-1B4BA0A9A4AE" ) {
           MNUtil.undoGrouping(()=>{
             try {
-              if (self.preprocessMode) {
+              if (toolbarConfig.windowState.preprocess) {
                 focusNotes.forEach(focusNote=>{
                   // toolbarUtils.TemplateMakeNote(focusNote)
                   if (focusNote.excerptText) {
@@ -5058,17 +5071,6 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                   focusNote.changeColorByType()
                   focusNote.refreshAll()
                   focusNote.focusInMindMap(0.5)
-                  // if (focusNote.getNoteTypeZh()=="顶层" || focusNote.getNoteTypeZh()=="归类") {
-                  //   focusNote.descendantNodes.descendant.forEach(descendantNote => {
-                  //     if (descendantNote.excerptText) {
-                  //       descendantNote.toNoExceptVersion()
-                  //     }
-                  //     descendantNote.changeTitle()
-                  //     descendantNote.changeColorByType()
-                  //   })
-    
-                  //   focusNote.focusInMindMap(0.5)
-                  // }
                 })
               } else {
                 focusNotes.forEach(focusNote=>{
@@ -5078,15 +5080,6 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                   }
                   focusNote.refreshAll()
                   focusNote.focusInMindMap(0.5)
-                  // if (focusNote.getNoteTypeZh()=="顶层" || focusNote.getNoteTypeZh()=="归类") {
-                  //   focusNote.descendantNodes.descendant.forEach(descendantNote => {
-                  //     toolbarUtils.TemplateMakeNote(descendantNote)
-                  //     if (!descendantNote.excerptText) {
-                  //       descendantNote.addToReview()
-                  //     }
-                  //   })
-                  //   focusNote.focusInMindMap(0.5)
-                  // }
                 })
               }
             } catch (error) {

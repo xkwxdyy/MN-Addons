@@ -6094,17 +6094,21 @@ try {
       // 绿色卡片单独处理，始终作为非独立卡片
       return false
     } else {
-      let parentNote = this.getClassificationParentNote()
-      if (parentNote === undefined) {
-        return true
+      if (this.getNoteTypeZh() == "文献") {
+        return false
       } else {
-        let parentNoteTitle = parentNote.noteTitle
-        let match = parentNoteTitle.match(/“.*”相关(.*)/)
-        // 如果归类卡片的“相关 xx”的 xx 是空的，此时作为 Inbox 专用归类，此时视为下面的知识类卡片为独立的
-        if (match) {
-          return match[1] == ""
-        } else {
+        let parentNote = this.getClassificationParentNote()
+        if (parentNote === undefined) {
           return true
+        } else {
+          let parentNoteTitle = parentNote.noteTitle
+          let match = parentNoteTitle.match(/“.*”相关(.*)/)
+          // 如果归类卡片的“相关 xx”的 xx 是空的，此时作为 Inbox 专用归类，此时视为下面的知识类卡片为独立的
+          if (match) {
+            return match[1] == ""
+          } else {
+            return true
+          }
         }
       }
     }

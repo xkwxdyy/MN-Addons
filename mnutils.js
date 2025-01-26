@@ -6533,175 +6533,197 @@ try {
       this.toNoExceptVersion()
     }
 
-    /**
-     * 检测是否是旧模板制作的卡片
-     */
-    if (this.ifTemplateOldVersion()) {
-      /**
-       * 旧模板卡片则只保留
-       * 1. 标题
-       * 2. 摘录
-       * 3. 手写
-       * 4. 图片
-       * 也就是要去掉
-       * 1. 文本
-       * 2. 链接
-       * i.e. 去掉所有的 TextNote
-       * 但是保留原本的部分的链接
-       *   - 原本的证明中相关知识的部分
-       *   - 原本的证明中体现的思想方法的部分
-       * 
-       * 检测标题是否是知识类卡片的标题，如果是的话要把前缀去掉，否则会影响后续的添加到复习
-       */
-      if (this.noteTitle.ifKnowledgeNoteTitle()) {
-        this.noteTitle = this.noteTitle.toKnowledgeNoteTitle()
+    if (noteType == "文献") {
+      if (this.ifOldReferenceNote()) {
+        /**
+         * 重新处理旧文献卡片
+         * 
+         * 只保留
+         * 1. 标题（去掉前面的【】）
+         * 2. 摘录
+         * 
+         * 也就是去掉所有文本
+         */
+
+        // 处理标题
+        // 此处不处理标题，否则后续
+        // this.title = this.title.toReferenceNoteTitle()
+
+        // 去掉文本
+        this.removeCommentsByTypes(["text","link"])
       }
-
-      // // 获取“证明过程相关知识：”的 block 内容
-      // let proofKnowledgeBlockTextContentArr = this.getHtmlBlockTextContentArr("证明过程相关知识：")
-      
-      // // 获取“证明体现的思想方法：”的 block 内容
-      // let proofMethodBlockTextContentArr = this.getHtmlBlockTextContentArr("证明体现的思想方法：")
-
-      // // 获取“应用：”的 block 内容
-      // let applicationBlockTextContentArr = this.getHtmlBlockTextContentArr("应用：")
-
-      // 去掉所有的文本评论和链接
-      this.removeCommentsByTypes(["text","link"])
-
-      // // 重新添加两个 block 的内容
-      // proofKnowledgeBlockTextContentArr.forEach(text => {
-      //   this.appendMarkdownComment(text)
-      // })
-
-      // proofMethodBlockTextContentArr.forEach(text => {
-      //   this.appendMarkdownComment(text)
-      // })
-
-      // applicationBlockTextContentArr.forEach(text => {
-      //   this.appendMarkdownComment(text)
-      // })
     } else {
       /**
-       * 其它类型的旧卡片
+       * 检测是否是旧模板制作的卡片
        */
-
-      if (
-        this.noteTitle.ifKnowledgeNoteTitle() &&
-        (
-          this.getCommentIndex("由来/背景：") !== -1 ||
-          this.getCommentIndex("- ") !== -1 ||
-          this.getCommentIndex("-") !== -1 ||
-          this.getHtmlCommentIndex("所属：") !== -1
-        )
-      ) {
-        this.noteTitle = this.noteTitle.toKnowledgeNoteTitle()
-      }
-
-      /**
-       * 删除一些特定的文本
-       */
-      if (noteType!== "归类" && noteType!== "顶层") {
-        this.removeCommentsByText(
-          [
-            "零层",
-            "一层",
-            "两层",
-            "三层",
-            "四层",
-            "五层",
-            "由来/背景：",
-            "- 所属：",
-            "所属："
-          ]
-        )
-      } else {
-        this.removeCommentsByText(
-          [
-            "零层",
-            "一层",
-            "两层",
-            "三层",
-            "四层",
-            "五层",
-            "由来/背景：",
-            "- 所属：",
-          ]
-        )
-      }
-
-      this.removeCommentsByTrimText(
-        "-"
-      )
-
-      /**
-       * 更新 Html 评论
-       */
-      this.renewHtmlCommentFromId("关键词：", "13D040DD-A662-4EFF-A751-217EE9AB7D2E")
-      this.renewHtmlCommentFromId("相关定义：", "341A7B56-8B5F-42C8-AE50-61F7A1276FA1")
-
-      /**
-       * 根据父卡片或者是卡片颜色（取决于有没有归类的父卡片）来修改 Html 版本
-       */
-      if (noteType !== "归类" && noteType !== "顶层") {
-        // 修改对应 “证明：”的版本
-        let proofHtmlCommentIndex = this.getProofHtmlCommentIndexByNoteType(noteType)
-        if (proofHtmlCommentIndex == -1) {
-          // 此时要先找到不正确的 proofHtmlComment 的 Index，然后删除掉
-          this.getRenewProofHtmlCommentByNoteType(noteType)
+      if (this.ifTemplateOldVersion()) {
+        /**
+         * 旧模板卡片则只保留
+         * 1. 标题
+         * 2. 摘录
+         * 3. 手写
+         * 4. 图片
+         * 也就是要去掉
+         * 1. 文本
+         * 2. 链接
+         * i.e. 去掉所有的 TextNote
+         * 但是保留原本的部分的链接
+         *   - 原本的证明中相关知识的部分
+         *   - 原本的证明中体现的思想方法的部分
+         * 
+         * 检测标题是否是知识类卡片的标题，如果是的话要把前缀去掉，否则会影响后续的添加到复习
+         */
+        if (this.noteTitle.ifKnowledgeNoteTitle()) {
+          this.noteTitle = this.noteTitle.toKnowledgeNoteTitle()
         }
+
+        // // 获取“证明过程相关知识：”的 block 内容
+        // let proofKnowledgeBlockTextContentArr = this.getHtmlBlockTextContentArr("证明过程相关知识：")
+        
+        // // 获取“证明体现的思想方法：”的 block 内容
+        // let proofMethodBlockTextContentArr = this.getHtmlBlockTextContentArr("证明体现的思想方法：")
+
+        // // 获取“应用：”的 block 内容
+        // let applicationBlockTextContentArr = this.getHtmlBlockTextContentArr("应用：")
+
+        // 去掉所有的文本评论和链接
+        this.removeCommentsByTypes(["text","link"])
+
+        // // 重新添加两个 block 的内容
+        // proofKnowledgeBlockTextContentArr.forEach(text => {
+        //   this.appendMarkdownComment(text)
+        // })
+
+        // proofMethodBlockTextContentArr.forEach(text => {
+        //   this.appendMarkdownComment(text)
+        // })
+
+        // applicationBlockTextContentArr.forEach(text => {
+        //   this.appendMarkdownComment(text)
+        // })
       } else {
-        // 去掉“相关xx：” 改成“相关思考：”
-        let oldRelatedHtmlCommentIndex = this.getIncludingHtmlCommentIndex("相关")
-        let includeHtmlCommentIndex = this.getHtmlCommentIndex("包含：")
-        if (includeHtmlCommentIndex !== -1) { // 原本合并过模板的才需要处理
-          if (oldRelatedHtmlCommentIndex == -1) {
-            this.mergeClonedNoteById("B3CAC635-F507-4BCF-943C-B3F9D4BF6D1D")
-            this.moveComment(this.comments.length-1, includeHtmlCommentIndex)
-          } else {
-            this.removeCommentByIndex(oldRelatedHtmlCommentIndex)
-            this.mergeClonedNoteById("B3CAC635-F507-4BCF-943C-B3F9D4BF6D1D")
-            this.moveComment(this.comments.length-1, oldRelatedHtmlCommentIndex)
+        /**
+         * 其它类型的旧卡片
+         */
+
+        if (
+          this.noteTitle.ifKnowledgeNoteTitle() &&
+          (
+            this.getCommentIndex("由来/背景：") !== -1 ||
+            this.getCommentIndex("- ") !== -1 ||
+            this.getCommentIndex("-") !== -1 ||
+            this.getHtmlCommentIndex("所属：") !== -1
+          )
+        ) {
+          this.noteTitle = this.noteTitle.toKnowledgeNoteTitle()
+        }
+
+        /**
+         * 删除一些特定的文本
+         */
+        if (noteType!== "归类" && noteType!== "顶层") {
+          this.removeCommentsByText(
+            [
+              "零层",
+              "一层",
+              "两层",
+              "三层",
+              "四层",
+              "五层",
+              "由来/背景：",
+              "- 所属：",
+              "所属："
+            ]
+          )
+        } else {
+          this.removeCommentsByText(
+            [
+              "零层",
+              "一层",
+              "两层",
+              "三层",
+              "四层",
+              "五层",
+              "由来/背景：",
+              "- 所属：",
+            ]
+          )
+        }
+
+        this.removeCommentsByTrimText(
+          "-"
+        )
+
+        /**
+         * 更新 Html 评论
+         */
+        this.renewHtmlCommentFromId("关键词：", "13D040DD-A662-4EFF-A751-217EE9AB7D2E")
+        this.renewHtmlCommentFromId("相关定义：", "341A7B56-8B5F-42C8-AE50-61F7A1276FA1")
+
+        /**
+         * 根据父卡片或者是卡片颜色（取决于有没有归类的父卡片）来修改 Html 版本
+         */
+        if (noteType !== "归类" && noteType !== "顶层") {
+          // 修改对应 “证明：”的版本
+          let proofHtmlCommentIndex = this.getProofHtmlCommentIndexByNoteType(noteType)
+          if (proofHtmlCommentIndex == -1) {
+            // 此时要先找到不正确的 proofHtmlComment 的 Index，然后删除掉
+            this.getRenewProofHtmlCommentByNoteType(noteType)
+          }
+        } else {
+          // 去掉“相关xx：” 改成“相关思考：”
+          let oldRelatedHtmlCommentIndex = this.getIncludingHtmlCommentIndex("相关")
+          let includeHtmlCommentIndex = this.getHtmlCommentIndex("包含：")
+          if (includeHtmlCommentIndex !== -1) { // 原本合并过模板的才需要处理
+            if (oldRelatedHtmlCommentIndex == -1) {
+              this.mergeClonedNoteById("B3CAC635-F507-4BCF-943C-B3F9D4BF6D1D")
+              this.moveComment(this.comments.length-1, includeHtmlCommentIndex)
+            } else {
+              this.removeCommentByIndex(oldRelatedHtmlCommentIndex)
+              this.mergeClonedNoteById("B3CAC635-F507-4BCF-943C-B3F9D4BF6D1D")
+              this.moveComment(this.comments.length-1, oldRelatedHtmlCommentIndex)
+            }
           }
         }
-      }
 
-      /**
-       * 调整 Html Block 的结构
-       */
-      if (this.getNoteTypeZh() == "定义") {
         /**
-         * 定义类卡片，按照
-         * - 相关概念：
-         * - 相关思考：
-         * - 相关链接：
-         * 的顺序
+         * 调整 Html Block 的结构
          */
-        this.moveHtmlBlockToBottom("相关概念：")
-        this.moveHtmlBlockToBottom("相关思考：")
-        this.moveHtmlBlockToBottom("相关链接：")
-      } else {
-        // 非定义类卡片
-        /**
-         * 将“应用：”及下方的内容移动到最下方
-         */
-        if (this.getNoteTypeZh()!== "归类" && this.getNoteTypeZh() !== "顶层"){
+        if (this.getNoteTypeZh() == "定义") {
+          /**
+           * 定义类卡片，按照
+           * - 相关概念：
+           * - 相关思考：
+           * - 相关链接：
+           * 的顺序
+           */
+          this.moveHtmlBlockToBottom("相关概念：")
           this.moveHtmlBlockToBottom("相关思考：")
+          this.moveHtmlBlockToBottom("相关链接：")
+        } else {
+          // 非定义类卡片
+          /**
+           * 将“应用：”及下方的内容移动到最下方
+           */
+          if (this.getNoteTypeZh()!== "归类" && this.getNoteTypeZh() !== "顶层"){
+            this.moveHtmlBlockToBottom("相关思考：")
+          }
+          // this.moveHtmlBlockToBottom("关键词：")
+          let keywordHtmlCommentIndex = this.getIncludingHtmlCommentIndex("关键词：")
+          if (keywordHtmlCommentIndex !== -1) {
+            this.moveComment(keywordHtmlCommentIndex, this.comments.length-1)
+          }
+          this.moveHtmlBlockToBottom("相关链接：")
+          this.moveHtmlBlockToBottom("应用：")
         }
-        // this.moveHtmlBlockToBottom("关键词：")
-        let keywordHtmlCommentIndex = this.getIncludingHtmlCommentIndex("关键词：")
-        if (keywordHtmlCommentIndex !== -1) {
-          this.moveComment(keywordHtmlCommentIndex, this.comments.length-1)
-        }
-        this.moveHtmlBlockToBottom("相关链接：")
-        this.moveHtmlBlockToBottom("应用：")
-      }
 
-      /**
-       * 刷新卡片
-       */
-      this.refresh()
+        /**
+         * 刷新卡片
+         */
+        this.refresh()
+      }
     }
+
   }
 
   renewNote(){

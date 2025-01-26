@@ -232,6 +232,33 @@ String.prototype.toKnowledgeNoteTitle = function () {
   return match ? match[1] : this  // 如果匹配不到，返回原字符串
 }
 /**
+ * 获取参考文献的标题
+ */
+String.prototype.toReferenceNoteTitle = function () {
+  let match = this.match(/^【.*】(.*)/)
+  return match ? match[1] : this  // 如果匹配不到，返回原字符串
+}
+/**
+ * 判断是否是文献卡片的标题
+ */
+String.prototype.ifReferenceNoteTitle = function () {
+  return /^【文献：(论文|书作)：?.*】/.test(this)
+}
+/**
+ * 获取文献卡片标题的前缀内容
+ */
+String.prototype.toReferenceNoteTitlePrefixContent = function () {
+  let match = this.match(/^【(文献：(论文|书作)：?.*)】/)
+  return match ? match[1] : this  // 如果匹配不到，返回原字符串
+}
+/**
+ * 获取无前缀的部分
+ */
+String.prototype.toTitleWithoutPrefix = function () {
+  let match = this.match(/^【.*】(.*)/)
+  return match ? match[1] : this  // 如果匹配不到，返回原字符串
+}
+/**
  * 判断是否是绿色归类卡片的标题
  * @returns {boolean}
  */

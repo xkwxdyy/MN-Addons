@@ -4896,6 +4896,55 @@ try {
     // 最后处理一下标题的空格
     this.title = Pangu.spacing(this.title)
   }
+
+  /**
+   * 【数学】移动卡片到某些特定的子卡片后
+   * 
+   * 目前只移动文献
+   * 
+   * 1. 先判断是否需要移动文献
+   * 2. 如果要的话再移动到论文或者书作文献区
+   */
+  move() {
+    let noteType = this.getNoteTypeZh()
+    let targetNoteId
+    if (noteType == "文献") {
+      if (this.ifReferenceNoteToMove()) {
+        // 此时文献卡片不在“论文”或“书作”文献区
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "选择文献类型",
+          "",
+          0,
+          "取消",
+          ["论文", "书作"],
+          (alert, buttonIndex) => {
+            switch (buttonIndex) {
+              case 1:
+                noteType = "论文"
+                targetNoteId = "785225AC-5A2A-41BA-8760-3FEF10CF4AE0"
+                break;
+              case 2:
+                noteType = "书作"
+                targetNoteId = "49102A3D-7C64-42AD-864D-55EDA5EC3097"
+                break;
+            }
+            // 把修改前缀放在这里
+            this.changeTitle(noteType)
+            let targetNote = MNNote.new(targetNoteId)
+            targetNote.addChild(this)
+          }
+        )
+      } else {
+        // 如果在的话就 change 一下 Title
+        let parentNote = this.parentNote
+        if (parentNote.noteId == "785225AC-5A2A-41BA-8760-3FEF10CF4AE0") {
+          this.changeTitle("论文")
+        } else {
+          this.changeTitle("书作")
+        }
+      }
+    }
+  }
   /**
    * 【数学】与父卡片进行链接
    * 1. 先识别是否已经进行了链接，如果有的话就删掉 this 的相关链接的第一条和对应归类卡片里的 this 链接

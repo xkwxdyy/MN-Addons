@@ -2291,11 +2291,11 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           MNUtil.showHUD(error);
         }
         break;
-      case "copiedTextHandleSpaces":
+      case "selectionTextHandleSpaces":
         MNUtil.showHUD(Pangu.spacing(MNUtil.selectionText))
         MNUtil.copy(Pangu.spacing(MNUtil.selectionText))
         break;
-      case "selectionTextHandleSpaces":
+      case "copiedTextHandleSpaces":
         MNUtil.showHUD(Pangu.spacing(MNUtil.clipboardText))
         MNUtil.copy(Pangu.spacing(MNUtil.clipboardText))
         break;
@@ -2329,12 +2329,12 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         MNUtil.copy(MNUtil.selectionText.toLowerCase())
         break;
       case "selectionTextToTitleCase":
-        MNUtil.showHUD(MNUtil.selectionText.toTitleCase())
-        MNUtil.copy(MNUtil.selectionText.toTitleCase())
+        MNUtil.showHUD(MNUtil.selectionText.toTitleCasePro())
+        MNUtil.copy(MNUtil.selectionText.toTitleCasePro())
         break;
       case "copiedTextToTitleCase":
-        MNUtil.showHUD(MNUtil.clipboardText.toTitleCase())
-        MNUtil.copy(MNUtil.clipboardText.toTitleCase())
+        MNUtil.showHUD(MNUtil.clipboardText.toTitleCasePro())
+        MNUtil.copy(MNUtil.clipboardText.toTitleCasePro())
         break;
       case "copiedTextToLowerCase":
         MNUtil.showHUD(MNUtil.clipboardText.toLowerCase())
@@ -4474,12 +4474,12 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           })
         })
         break;
-      case "addThoughtPointAndMoveLastCommentToThought":
+      case "addThoughtPointAndMoveNewCommentsToThought":
         try {
           MNUtil.undoGrouping(()=>{
             focusNotes.forEach(focusNote=>{
               focusNote.addMarkdownTextCommentTo("- ", "think")
-              focusNote.moveCommentsByIndexArrTo([focusNote.comments.length-1], "think")
+              focusNote.moveCommentsByIndexArrTo(focusNote.getNewContentIndexArr(), "think")
             })
           })
         } catch (error) {

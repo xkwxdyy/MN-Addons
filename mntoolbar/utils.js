@@ -8169,8 +8169,8 @@ static template(action) {
             "menuTitle" : "➕思考点"
           },
           {
-            "action": "addThoughtPointAndMoveLastCommentToThought",
-            "menuTitle": "➕思考点&最后💬⬆️思考",
+            "action": "addThoughtPointAndMoveNewCommentsToThought",
+            "menuTitle": "➕思考点 & 新💬⬆️思考",
           },
           {
             "action" : "moveLastCommentToThought",
@@ -8626,6 +8626,26 @@ static template(action) {
         },
       ]
       break;
+    case "menu_handtool_text":
+      config.action = "selectionTextToTitleCase"
+      config.onLongPress = {
+        "action": "menu",
+        "menuItems": [
+          {
+            "action": "selectionTextToTitleCase",
+            "menuTitle": "标题规范"
+          },
+          {
+            "action": "selectionTextToLowerCase",
+            "menuTitle": "转小写"
+          },
+          {
+            "action": "selectionTextHandleSpaces",
+            "menuTitle": "处理空格"
+          }
+        ]
+      }
+      break;
     case "menu_card":
       config.action = "menu"
       config.menuWidth = 250
@@ -8850,18 +8870,21 @@ static template(action) {
         // },
       ]
       break;
-    case "menu_excerpt":
-      config.action = "menu"
-      config.menuItems = [
-        {
-          "action": "moveToExcerptPartBottom",
-          "menuTitle": "⇨ 摘录区「⬇️ bottom」",
-        },
-        {
-          "action": "moveToExcerptPartTop",
-          "menuTitle": "⇨ 摘录区「🔝 top」",
-        }
-      ]
+    case "menu_card_excerpt":
+      config.action = "moveToExcerptPartBottom"
+      config.onLongPress = {
+        "action": "menu",
+        "menuItems": [
+          {
+            "action": "moveToExcerptPartBottom",
+            "menuTitle": "⇨ 摘录区「⬇️ bottom」",
+          },
+          {
+            "action": "moveToExcerptPartTop",
+            "menuTitle": "⇨ 摘录区「🔝 top」",
+          }
+        ]
+      }
       break;
     /**
      * 把 MN 原生的一些功能整合，以把原本菜单用于替换自己的功能
@@ -8961,14 +8984,15 @@ static getActions() {
     "bigbang":{name:"Bigbang",image:"bigbang",description:"Bigbang"},
     "chatglm":{name:"ChatAI",image:"ai",description:"ChatAI"},
     // "setting":{name:"Setting",image:"setting",description:"Setting"}
-    "custom12":{name:"工作流",image:"workflow_white",description: this.template("menu_workflow")},
-    "custom13":{name:"摘录",image:"excerpt_white",description: this.template("menu_excerpt")},
-    "custom14":{name:"MN",image:"MN_white",description: this.template("menu_MN")},
-    "custom15":{name:"Custom 15",image:"custom15",description: this.template("addChildNote")},
-    "custom16":{name:"Custom 16",image:"custom16",description: this.template("showInFloatWindow")},
     "custom17":{name:"Custom 17",image:"custom17",description: this.template("setContent")},
     "custom18":{name:"Custom 18",image:"custom18",description: this.template("addComment")},
     "custom19":{name:"Custom 19",image:"custom19",description: this.template("removeComment")},
+    // 专门用于替换原有按钮
+    "custom16":{name:"[手型工具弹窗替换]文本",image:"text_white",description: this.template("menu_handtool_text")},
+    "custom15":{name:"[卡片弹窗替换]SOP",image:"sop_white",description: this.template("menu_sop")},
+    "custom12":{name:"[卡片弹窗替换]工作流",image:"workflow_white",description: this.template("menu_workflow")},
+    "custom13":{name:"[卡片弹窗替换]摘录",image:"excerpt_white",description: this.template("menu_card_excerpt")},
+    "custom14":{name:"MN",image:"MN_white",description: this.template("menu_MN")},
   }
 }
 static execute(){

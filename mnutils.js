@@ -5007,6 +5007,8 @@ try {
             }
           }
           break;
+        case "文献":
+          break;
         default:
           if (this.getClassificationParentNote().noteTitle.toClassificationNoteTitle() == "备考") { break }
           // 知识点卡片
@@ -5117,6 +5119,9 @@ try {
           } else {
             this.note.colorIndex = 0
           }
+          break;
+        case "文献":
+          this.note.colorIndex = 15
           break;
         default:
           let noteType = this.getNoteTypeObjByClassificationParentNoteTitle()
@@ -5348,6 +5353,8 @@ try {
          * 到“相关思考：”下方
          */
         this.moveNewContentTo("thinking")
+        break;
+      case "文献":
         break;
       default:
         /**
@@ -7127,6 +7134,14 @@ try {
     let childNote = this.createChildNote(config)
 
     return childNote
+  }
+
+  /**
+   * 判断文献卡片是否需要移动位置
+   */
+  ifReferenceNoteToMove(){
+    let parentNote = this.parentNote
+    return !["785225AC-5A2A-41BA-8760-3FEF10CF4AE0","49102A3D-7C64-42AD-864D-55EDA5EC3097"].includes(parentNote.noteId)
   }
   /**
    * 夏大鱼羊定制 - MNNote - end

@@ -4759,6 +4759,35 @@ try {
           }
         }
         break;
+      case "文献":
+        if (!title.ifReferenceNoteTitle()) {
+          // // 弹窗确认文献类型
+          // let referenceType
+          // UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherggButtonTitlesTapBlock(
+          //   "选择文献类型",
+          //   "",
+          //   0,
+          //   "取消",
+          //   ["论文", "书作"],
+          //   (alert, buttonIndex) => {
+          //     switch (buttonIndex) {
+          //       case 1:
+          //         referenceType = "论文"
+          //         break;
+          //       case 2:
+          //         referenceType = "书作"
+          //         break;
+          //     }
+          //   }
+          // )
+          // this.title = "【文献："+ referenceType + "】; " + title.toTitleWithoutPrefix()
+          if (type) {
+            this.title = "【文献："+ type + "】; " + title.toTitleWithoutPrefix()
+          } else {
+            this.title = "【文献】; " + title.toTitleWithoutPrefix()
+          }
+        }
+        break;
       default:
         if (
           this.getClassificationParentNote().noteTitle.toClassificationNoteTitle() == "备考" &&

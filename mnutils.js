@@ -743,7 +743,8 @@ class MNUtil {
       "问题": "question",
       "应用": "application",
       "归类": "classification",
-      "": "temporary"
+      "": "temporary",
+      "文献": "reference"
     }
     return typeMap[type]
   }
@@ -821,7 +822,8 @@ class MNUtil {
       "问题": "C4B464CD-B8C6-42DE-B459-55B48EB31AD8",
       "应用": "C4B464CD-B8C6-42DE-B459-55B48EB31AD8",
       "归类": "8853B79F-8579-46C6-8ABD-E7DE6F775B8B",
-      "顶层": "8853B79F-8579-46C6-8ABD-E7DE6F775B8B"
+      "顶层": "8853B79F-8579-46C6-8ABD-E7DE6F775B8B",
+      "文献": "F09C0EEB-4FB5-476C-8329-8CC5AEFECC43"
     }
     return typeMap[type]
   }
@@ -4201,6 +4203,25 @@ try {
   /**
    * 夏大鱼羊定制 - MNNote - begin
    */
+
+  /**
+   * 判断卡片是否是文献卡片：论文和书作
+   * 
+   * 依据：是否有“文献信息：”的评论问
+   * 注意：标题里带有“文献”二字的不一定，因为【文献：作者】暂时不需要判断为文献卡片
+   */
+  ifReferenceNote() {
+    // return this.getHtmlCommentIndex("文献信息：") !== -1
+    return this.title.startsWith("【文献") || this.title.startsWith("【参考文献")
+  }
+  
+  /**
+   * 判断是否是旧的文献卡片
+   */
+  ifOldReferenceNote() {
+    return this.getHtmlCommentIndex("主要内容、摘要：") !== -1 || this.getHtmlCommentIndex("主要内容/摘要：") !== -1
+  }
+
   /**
    * 卡片变成归类卡片信息汇总卡片
    */
@@ -4529,13 +4550,6 @@ try {
       }
     })
   }
-
-  /**
-   * 判断是否是文献类型卡片
-   */
-  ifReferenceNote(){
-    return this.getHtmlCommentIndex("文献信息：") !== -1
-  }
   /**
    * 删除评论
    * 
@@ -4686,7 +4700,7 @@ try {
       case "顶层":
         classificationNoteType = this.getTopWhiteNoteType()
         if (!title.isGreenClassificationNoteTitle()) {
-          title = "“" + title + "”" + "相关" + classificationNoteType
+          this.title = "“" + title + "”" + "相关" + classificationNoteType
         }
         break;
       case "归类":

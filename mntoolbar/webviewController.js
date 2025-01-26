@@ -5075,7 +5075,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
               } else {
                 focusNotes.forEach(focusNote=>{
                   toolbarUtils.TemplateMakeNote(focusNote)
-                  if (!focusNote.excerptText & !focusNote.ifIndependentNote() & !focusNote.ifReferenceNote()) {
+                  if (!focusNote.excerptText && !focusNote.ifIndependentNote() && !focusNote.ifReferenceNote()) {
                     focusNote.addToReview()
                   }
                   focusNote.refreshAll()

@@ -5239,15 +5239,14 @@ try {
           }
           break;
         case "文献":
-          if (this.getHtmlCommentIndex("被引用情况：") == -1) {
-            this.mergeTemplateByNoteType(noteType)
+          if (this.getHtmlCommentIndex("文献信息：") == -1) {
+            this.mergeTemplateByNoteType("文献")
           }
           break;
         default:
           /**
            * 知识点卡片
            */
-          // 增加判断防止重复制卡
           if (this.getHtmlCommentIndex("相关思考：") == -1) {
             // 合并模板
             noteType = this.getNoteTypeObjByClassificationParentNoteTitle()

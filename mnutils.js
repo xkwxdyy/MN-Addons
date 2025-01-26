@@ -5227,50 +5227,60 @@ try {
         }
       }
     } else {
-      if (noteType == "归类" || noteType == "顶层") {
-        /**
-         * 归类卡片
-         */
-        // 和原本的处理不同，这里也采用合并模板的方式
-        if (this.getHtmlCommentIndex("包含：") == -1) {
-          this.mergeTemplateByNoteType(noteType)
-        }
-      } else {
-        /**
-         * 知识点卡片
-         */
-        if (this.getHtmlCommentIndex("相关思考：") == -1) {
-          // 合并模板
-          noteType = this.getNoteTypeObjByClassificationParentNoteTitle()
-          this.mergeTemplateByNoteType(noteType)
-    
+      switch (noteType) {
+        case "归类":
+        case "顶层":
           /**
-           * 把除了摘录外的其他内容移动到对应的位置
-           * 定义的默认到“相关思考：”下方
-           * 其他的默认到“证明：”下方
+           * 归类卡片
            */
-          if (contentIndexArr.length !== 0) {
-            switch (noteType.zh) {
-              case "定义":
-                let thoughtHtmlCommentIndex = this.getHtmlCommentIndex("相关思考：")
-                this.moveComment(thoughtHtmlCommentIndex, contentIndexArr[0])
-                // 注意相关概念的 index 要放在移动后取，否则移动后 index 会发生变化
-                let conceptHtmlCommentIndex = this.getHtmlCommentIndex("相关概念：")
-                this.moveComment(conceptHtmlCommentIndex, contentIndexArr[0])
-                break;
-              default:
-                let proofHtmlCommentIndex = this.getProofHtmlCommentIndexByNoteType(noteType)
-                if (this.ifCommentsAllLinksByIndexArr(contentIndexArr)) {
-                  // 如果全是链接，就放在应用下方，其实刚合并的话就是放在最下方
-                  this.moveCommentsByIndexArrTo(contentIndexArr, "applications", false)
-                } else {
-                  // 如果有非链接，就放到证明下方
-                  this.moveComment(proofHtmlCommentIndex, contentIndexArr[0])
-                }
-                break;
+          // 和原本的处理不同，这里也采用合并模板的方式
+          if (this.getHtmlCommentIndex("包含：") == -1) {
+            this.mergeTemplateByNoteType(noteType)
+          }
+          break;
+        case "文献":
+          if (this.getHtmlCommentIndex("被引用情况：") == -1) {
+            this.mergeTemplateByNoteType(noteType)
+          }
+          break;
+        default:
+          /**
+           * 知识点卡片
+           */
+          // 增加判断防止重复制卡
+          if (this.getHtmlCommentIndex("相关思考：") == -1) {
+            // 合并模板
+            noteType = this.getNoteTypeObjByClassificationParentNoteTitle()
+            this.mergeTemplateByNoteType(noteType)
+      
+            /**
+             * 把除了摘录外的其他内容移动到对应的位置
+             * 定义的默认到“相关思考：”下方
+             * 其他的默认到“证明：”下方
+             */
+            if (contentIndexArr.length !== 0) {
+              switch (noteType.zh) {
+                case "定义":
+                  let thoughtHtmlCommentIndex = this.getHtmlCommentIndex("相关思考：")
+                  this.moveComment(thoughtHtmlCommentIndex, contentIndexArr[0])
+                  // 注意相关概念的 index 要放在移动后取，否则移动后 index 会发生变化
+                  let conceptHtmlCommentIndex = this.getHtmlCommentIndex("相关概念：")
+                  this.moveComment(conceptHtmlCommentIndex, contentIndexArr[0])
+                  break;
+                default:
+                  let proofHtmlCommentIndex = this.getProofHtmlCommentIndexByNoteType(noteType)
+                  if (this.ifCommentsAllLinksByIndexArr(contentIndexArr)) {
+                    // 如果全是链接，就放在应用下方，其实刚合并的话就是放在最下方
+                    this.moveCommentsByIndexArrTo(contentIndexArr, "applications", false)
+                  } else {
+                    // 如果有非链接，就放到证明下方
+                    this.moveComment(proofHtmlCommentIndex, contentIndexArr[0])
+                  }
+                  break;
+              }
             }
           }
-        }
+          break;
       }
     }
   }

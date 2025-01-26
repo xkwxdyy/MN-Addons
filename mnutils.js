@@ -6060,8 +6060,7 @@ try {
     let noteType
     let noteColorIndex = this.note.colorIndex
     if (this.ifReferenceNote()) {
-      noteType = "文献"
-      return noteType
+      return "文献"
     } else {
       if (this.ifIndependentNote()) {
         // 独立卡片根据颜色判断
@@ -6094,7 +6093,7 @@ try {
       // 绿色卡片单独处理，始终作为非独立卡片
       return false
     } else {
-      if (this.getNoteTypeZh() == "文献") {
+      if (this.ifReferenceNote()) {
         return false
       } else {
         let parentNote = this.getClassificationParentNote()

@@ -1455,16 +1455,6 @@ try {
 
       if (!note.excerptText) {
         /**
-         * 【Done】合并模板卡片
-         */
-        note.mergeTemplate()
-
-        /**
-         * 【Done】根据卡片类型修改卡片颜色
-         */
-        note.changeColorByType()
-
-        /**
          * 【Done】处理标题
          * - 知识类卡片增加标题前缀
          * - 黄色归类卡片：“”：“”相关 xx
@@ -1475,6 +1465,16 @@ try {
          */
 
         note.changeTitle()
+
+        /**
+         * 【Done】合并模板卡片
+         */
+        note.mergeTemplate()
+
+        /**
+         * 【Done】根据卡片类型修改卡片颜色
+         */
+        note.changeColorByType()
 
         /**
          * 【Done】与父卡片进行链接
@@ -1494,6 +1494,10 @@ try {
          * - 后续点击制卡都不需要加入
          */
         // note.addToReview()
+
+
+        // 移动文献卡片
+        note.move()
       }
     }
     /**

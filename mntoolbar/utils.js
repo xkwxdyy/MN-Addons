@@ -2154,16 +2154,16 @@ try {
       let currentDocmd5 = MNUtil.currentDocmd5
       let findClassificationNote = false
       let classificationNote
-      if (this.referenceIds.hasOwnProperty(currentDocmd5)) {
-        if (this.referenceIds[currentDocmd5].hasOwnProperty(refNum)) {
-          if (this.referenceIds[currentDocmd5][0] == undefined) {
+      if (toolbarConfig.referenceIds.hasOwnProperty(currentDocmd5)) {
+        if (toolbarConfig.referenceIds[currentDocmd5].hasOwnProperty(refNum)) {
+          if (toolbarConfig.referenceIds[currentDocmd5][0] == undefined) {
             MNUtil.showHUD("文档未绑定 ID")
           } else {
-            let refSourceNoteId = this.referenceIds[currentDocmd5][0]
+            let refSourceNoteId = toolbarConfig.referenceIds[currentDocmd5][0]
             let refSourceNote = MNNote.new(refSourceNoteId)
             let refSourceNoteTitle = toolbarUtils.getFirstKeywordFromTitle(refSourceNote.noteTitle)
             let refSourceNoteAuthor = toolbarUtils.getFirstAuthorFromReferenceById(refSourceNoteId)
-            let refedNoteId = this.referenceIds[currentDocmd5][refNum]
+            let refedNoteId = toolbarConfig.referenceIds[currentDocmd5][refNum]
             let refedNote = MNNote.new(refedNoteId)
             let refedNoteTitle = toolbarUtils.getFirstKeywordFromTitle(refedNote.noteTitle)
             let refedNoteAuthor = toolbarUtils.getFirstAuthorFromReferenceById(refedNoteId)
@@ -2379,11 +2379,11 @@ try {
     let refNum = input.split('@')[0]
     let refId = input.split('@')[1]
     let currentDocmd5 = MNUtil.currentDocmd5
-    if (this.referenceIds.hasOwnProperty(currentDocmd5)) {
-      this.referenceIds[currentDocmd5][refNum] = refId
+    if (toolbarConfig.referenceIds.hasOwnProperty(currentDocmd5)) {
+      toolbarConfig.referenceIds[currentDocmd5][refNum] = refId
     } else {
-      this.referenceIds[currentDocmd5] = {}
-      this.referenceIds[currentDocmd5][refNum] = refId
+      toolbarConfig.referenceIds[currentDocmd5] = {}
+      toolbarConfig.referenceIds[currentDocmd5][refNum] = refId
     }
     MNUtil.showHUD("Save: [" + refNum + "] -> " + refId);
     toolbarConfig.save("MNToolbar_referenceIds")
@@ -2391,8 +2391,8 @@ try {
 
   static getRefIdByNum(num) {
     let currentDocmd5 = MNUtil.currentDocmd5
-    if (this.referenceIds[currentDocmd5].hasOwnProperty(num)) {
-      return this.referenceIds[currentDocmd5][num]
+    if (toolbarConfig.referenceIds[currentDocmd5].hasOwnProperty(num)) {
+      return toolbarConfig.referenceIds[currentDocmd5][num]
     } else {
       MNUtil.showHUD("当前文档没有文献 [" + num + "] 的卡片 ID")
       return ""
@@ -7662,7 +7662,7 @@ class toolbarConfig {
     this.dynamic = this.getByDefault("MNToolbar_dynamic",false)
     this.addonLogos = this.getByDefault("MNToolbar_addonLogos",{})
     // 夏大鱼羊 - begin：用来存参考文献的数据
-    this.referenceIds = this.getByDefault("MNToolbar_referenceIds",{})
+    toolbarConfig.referenceIds = this.getByDefault("MNToolbar_referenceIds", {})
     // 夏大鱼羊 - end
     this.windowState = this.getByDefault("MNToolbar_windowState",this.defaultWindowState)
     this.buttonNumber = this.getDefaultActionKeys().length
@@ -8382,110 +8382,75 @@ static template(action) {
         {
           "action": "menu",
           "menuTitle": "➡️ 🧠文献学习",
+          "menuWidth": 500,
           "menuItems": [
+            "⬇️ ➕引用",
             {
-              "action": "menu",
-              "menuTitle": "➡️ 引用",
-              "menuWidth": 500,
-              "menuItems": [
-                "⬇️ ➕引用",
-                {
-                  "action": "referenceRefByRefNum",
-                  "menuTitle": "选中「具体引用」卡片+输入文献号→ ➕引用"
-                },
-                {
-                  "action": "referenceRefByRefNumAndFocusInMindMap",
-                  "menuTitle": "选中「具体引用」卡片+输入文献号→ ➕引用 + 剪切归类 + 主视图定位"
-                },
-                {
-                  "action": "referenceRefByRefNumAddFocusInFloatMindMap",
-                  "menuTitle": "选中「具体引用」卡片+输入文献号→ ➕引用 + 剪切归类 + 浮窗定位"
-                },
-                "⬇️ ➕引用归类卡片",
-                {
-                  "action": "referenceCreateClassificationNoteByIdAndFocusNote",
-                  "menuTitle": "选中「参考文献摘录」卡片+输入文献号→ ➕引用归类卡片 + 浮窗定位",
-                },
-                {
-                  "action": "referenceCreateClassificationNoteById",
-                  "menuTitle": "输入文献号→ ➕引用归类卡片 + 浮窗定位",
-                },
-                // {
-                //   "action": "referenceCreateClassificationNoteByFocusNote",
-                //   "menuTitle": "选中「参考文献摘录」卡片→ ➕引用归类卡片",
-                // },
-              ]
+              "action": "referenceRefByRefNum",
+              "menuTitle": "选中「具体引用」卡片+输入文献号→ ➕引用"
             },
             {
-              "action": "menu",
-              "menuTitle": "➡️ 思考",
-              "menuItems": [
-                {
-                  "action" : "referenceMoveUpThoughtPoints",
-                  "menuTitle" : "思考点⬆️"
-                },
-                {
-                  "action" : "referenceAddThoughtPoint",
-                  "menuTitle" : "➕思考点"
-                },
-                {
-                  "action": "referenceAddThoughtPointAndMoveLastCommentToThought",
-                  "menuTitle": "➕思考点 + 最后🔗⬆️思考",
-                },
-                {
-                  "action" : "referenceMoveLastCommentToThought",
-                  "menuTitle" : "最后1️⃣💬⬆️思考"
-                },
-                {
-                  "action" : "referenceMoveLastTwoCommentsToThought",
-                  "menuTitle" : "最后2️⃣💬⬆️思考"
-                },
-              ]
+              "action": "referenceRefByRefNumAndFocusInMindMap",
+              "menuTitle": "选中「具体引用」卡片+输入文献号→ ➕引用 + 剪切归类 + 主视图定位"
             },
+            {
+              "action": "referenceRefByRefNumAddFocusInFloatMindMap",
+              "menuTitle": "选中「具体引用」卡片+输入文献号→ ➕引用 + 剪切归类 + 浮窗定位"
+            },
+            "⬇️ ➕「具体引用情况」汇总卡片",
+            {
+              "action": "referenceCreateClassificationNoteByIdAndFocusNote",
+              "menuTitle": "选中「参考文献摘录」卡片+输入文献号→ 「具体引用情况」汇总卡片 + 浮窗定位",
+            },
+            // {
+            //   "action": "referenceCreateClassificationNoteById",
+            //   "menuTitle": "输入文献号→ ➕引用归类卡片 + 浮窗定位",
+            // }
           ]
         },
         {
           "action": "menu",
-          "menuTitle": "➡️ 参考文献",
+          "menuTitle": "➡️ 参考文献 🆔",
           "menuItems": [
             {
               "action": "menu",
-              "menuTitle": "👉 当前文档",
+              "menuTitle": "👉 当前文档相关 🆔 录入",
               "menuWidth": 350,
               "menuItems": [
                 {
-                  "action": "referenceTestIfIdInCurrentDoc",
-                  "menuTitle": "检测文献号的🆔绑定情况",
-                },
-                {
                   "action": "referenceStoreIdForCurrentDocByFocusNote",
-                  "menuTitle": "当前文档与选中卡片的🆔绑定",
+                  // "menuTitle": "当前文档与选中卡片的🆔绑定",
+                  "menuTitle": "绑定「选中的卡片」➡️「当前文档」",
                 },
                 {
                   "action": "referenceStoreOneIdForCurrentDocByFocusNote",
-                  "menuTitle": "录入「选中卡片」的🆔"
+                  "menuTitle": "绑定「选中的卡片」➡️ 文献号"
                 },
                 // {
                 //   "action": "referenceStoreOneIdForCurrentDoc",
                 //   "menuTitle": "当前文档：手动录入 1 条参考文献卡片🆔"
                 // },
+                // {
+                //   "action": "referenceStoreIdsForCurrentDoc",
+                //   "menuTitle": "「手动录入」参考文献卡片🆔"
+                // },
+                // {
+                //   "action": "referenceStoreIdsForCurrentDocFromClipboard",
+                //   "menuTitle": "从剪切板录入当前文档的参考文献卡片🆔"
+                // },
+                // {
+                //   "action": "referenceClearIdsForCurrentDoc",
+                //   "menuTitle": "清空「当前文档」卡片🆔",
+                // },
                 {
-                  "action": "referenceStoreIdsForCurrentDoc",
-                  "menuTitle": "「手动录入」参考文献卡片🆔"
-                },
-                {
-                  "action": "referenceStoreIdsForCurrentDocFromClipboard",
-                  "menuTitle": "从剪切板录入当前文档的参考文献卡片🆔"
-                },
-                {
-                  "action": "referenceClearIdsForCurrentDoc",
-                  "menuTitle": "清空当前文档卡片🆔",
+                  "action": "referenceTestIfIdInCurrentDoc",
+                  "menuTitle": "检测文献号的🆔绑定",
                 },
               ]
             },
             {
               "action": "menu",
-              "menuTitle": "➡️ 导出",
+              "menuTitle": "➡️ 导出 🆔",
               "menuWidth": 250,
               "menuItems": [
                 {
@@ -8500,7 +8465,7 @@ static template(action) {
             },
             {
               "action": "menu",
-              "menuTitle": "⬅️ 导入",
+              "menuTitle": "⬅️ 导入 🆔",
               "menuWidth": 250,
               "menuItems": [
                 {

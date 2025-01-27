@@ -2154,16 +2154,16 @@ try {
       let currentDocmd5 = MNUtil.currentDocmd5
       let findClassificationNote = false
       let classificationNote
-      if (referenceIds.hasOwnProperty(currentDocmd5)) {
-        if (referenceIds[currentDocmd5].hasOwnProperty(refNum)) {
-          if (referenceIds[currentDocmd5][0] == undefined) {
+      if (this.referenceIds.hasOwnProperty(currentDocmd5)) {
+        if (this.referenceIds[currentDocmd5].hasOwnProperty(refNum)) {
+          if (this.referenceIds[currentDocmd5][0] == undefined) {
             MNUtil.showHUD("文档未绑定 ID")
           } else {
-            let refSourceNoteId = referenceIds[currentDocmd5][0]
+            let refSourceNoteId = this.referenceIds[currentDocmd5][0]
             let refSourceNote = MNNote.new(refSourceNoteId)
             let refSourceNoteTitle = toolbarUtils.getFirstKeywordFromTitle(refSourceNote.noteTitle)
             let refSourceNoteAuthor = toolbarUtils.getFirstAuthorFromReferenceById(refSourceNoteId)
-            let refedNoteId = referenceIds[currentDocmd5][refNum]
+            let refedNoteId = this.referenceIds[currentDocmd5][refNum]
             let refedNote = MNNote.new(refedNoteId)
             let refedNoteTitle = toolbarUtils.getFirstKeywordFromTitle(refedNote.noteTitle)
             let refedNoteAuthor = toolbarUtils.getFirstAuthorFromReferenceById(refedNoteId)
@@ -2379,11 +2379,11 @@ try {
     let refNum = input.split('@')[0]
     let refId = input.split('@')[1]
     let currentDocmd5 = MNUtil.currentDocmd5
-    if (referenceIds.hasOwnProperty(currentDocmd5)) {
-      referenceIds[currentDocmd5][refNum] = refId
+    if (this.referenceIds.hasOwnProperty(currentDocmd5)) {
+      this.referenceIds[currentDocmd5][refNum] = refId
     } else {
-      referenceIds[currentDocmd5] = {}
-      referenceIds[currentDocmd5][refNum] = refId
+      this.referenceIds[currentDocmd5] = {}
+      this.referenceIds[currentDocmd5][refNum] = refId
     }
     MNUtil.showHUD("Save: [" + refNum + "] -> " + refId);
     toolbarConfig.save("MNToolbar_referenceIds")
@@ -2391,8 +2391,8 @@ try {
 
   static getRefIdByNum(num) {
     let currentDocmd5 = MNUtil.currentDocmd5
-    if (referenceIds[currentDocmd5].hasOwnProperty(num)) {
-      return referenceIds[currentDocmd5][num]
+    if (this.referenceIds[currentDocmd5].hasOwnProperty(num)) {
+      return this.referenceIds[currentDocmd5][num]
     } else {
       MNUtil.showHUD("当前文档没有文献 [" + num + "] 的卡片 ID")
       return ""
@@ -7661,13 +7661,12 @@ class toolbarConfig {
     this.mainPath = mainPath
     this.dynamic = this.getByDefault("MNToolbar_dynamic",false)
     this.addonLogos = this.getByDefault("MNToolbar_addonLogos",{})
+    // 夏大鱼羊 - begin：用来存参考文献的数据
+    this.referenceIds = this.getByDefault("MNToolbar_referenceIds",{})
+    // 夏大鱼羊 - end
     this.windowState = this.getByDefault("MNToolbar_windowState",this.defaultWindowState)
     this.buttonNumber = this.getDefaultActionKeys().length
     //数组格式,存的是每个action的key
-    referenceIds = this.getByDefault("MNToolbar_referenceIds",{})
-    /**
-     * 夏大鱼羊 - end
-     */
     this.action = this.getByDefault("MNToolbar_action", this.getDefaultActionKeys())
     this.action = this.action.map(a=>{
       if (a === "excute") {
@@ -7763,6 +7762,7 @@ class toolbarConfig {
       syncConfig: this.syncConfig,
       dynamic: this.dynamic,
       addonLogos: this.addonLogos,
+      referenceIds:this.referenceIds,
       actionKeys: this.action,
       actions: this.actions,
       buttonConfig:this.buttonConfig,
@@ -7775,6 +7775,7 @@ class toolbarConfig {
     this.syncConfig = config.syncConfig
     this.dynamic = config.dynamic
     this.addonLogos = config.addonLogos
+    this.referenceIds = config.referenceIds
     this.action = config.actionKeys
     this.actions = config.actions
     this.buttonConfig = config.buttonConfig
@@ -7816,6 +7817,7 @@ class toolbarConfig {
           this.syncConfig = cloudConfig.syncConfig
           this.dynamic = cloudConfig.dynamic
           this.addonLogos = cloudConfig.addonLogos
+          this.referenceIds = cloudConfig.referenceIds
           this.action = cloudConfig.actionKeys
           this.actions = cloudConfig.actions
           this.buttonConfig = cloudConfig.buttonConfig
@@ -7881,6 +7883,7 @@ class toolbarConfig {
       syncConfig: this.syncConfig,
       dynamic: this.dynamic,
       addonLogos: this.addonLogos,
+      referenceIds:this.referenceIds,
       actionKeys: this.action,
       actions: this.actions,
       buttonConfig:this.buttonConfig,
@@ -9087,6 +9090,7 @@ static save(key = undefined,value = undefined,upload = true) {
     defaults.setObjectForKey(this.action,"MNToolbar_action")
     defaults.setObjectForKey(this.actions,"MNToolbar_actionConfig")
     defaults.setObjectForKey(this.addonLogos,"MNToolbar_addonLogos")
+    defaults.setObjectForKey(this.referenceIds,"MNToolbar_referenceIds")
     defaults.setObjectForKey(this.buttonConfig,"MNToolbar_buttonConfig")
     defaults.setObjectForKey(this.popupConfig,"MNToolbar_popupConfig")
     defaults.setObjectForKey(this.imageScale,"MNToolbar_imageScale")
@@ -9102,7 +9106,7 @@ static save(key = undefined,value = undefined,upload = true) {
     // showHUD(key)
     switch (key) {
       case "MNToolbar_referenceIds":
-        NSUserDefaults.standardUserDefaults().setObjectForKey(referenceIds,key)
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.referenceIds,key)
         break;
       case "MNToolbar_windowState":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.windowState,key)

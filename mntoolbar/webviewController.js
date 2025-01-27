@@ -2788,16 +2788,16 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                   let currentDocmd5 = MNUtil.currentDocmd5
                   let findClassificationNote = false
                   let classificationNote
-                  if (referenceIds.hasOwnProperty(currentDocmd5)) {
-                    if (referenceIds[currentDocmd5].hasOwnProperty(refNum)) {
-                      if (referenceIds[currentDocmd5][0] == undefined) {
+                  if (this.referenceIds.hasOwnProperty(currentDocmd5)) {
+                    if (this.referenceIds[currentDocmd5].hasOwnProperty(refNum)) {
+                      if (this.referenceIds[currentDocmd5][0] == undefined) {
                         MNUtil.showHUD("文档未绑定 ID")
                       } else {
-                        let refSourceNoteId = referenceIds[currentDocmd5][0]
+                        let refSourceNoteId = this.referenceIds[currentDocmd5][0]
                         let refSourceNote = MNNote.new(refSourceNoteId)
                         let refSourceNoteTitle = toolbarUtils.getFirstKeywordFromTitle(refSourceNote.noteTitle)
                         let refSourceNoteAuthor = toolbarUtils.getFirstAuthorFromReferenceById(refSourceNoteId)
-                        let refedNoteId = referenceIds[currentDocmd5][refNum]
+                        let refedNoteId = this.referenceIds[currentDocmd5][refNum]
                         let refedNote = MNNote.new(refedNoteId)
                         let refedNoteTitle = toolbarUtils.getFirstKeywordFromTitle(refedNote.noteTitle)
                         let refedNoteAuthor = toolbarUtils.getFirstAuthorFromReferenceById(refedNoteId)
@@ -2891,16 +2891,16 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                   let currentDocmd5 = MNUtil.currentDocmd5
                   let findClassificationNote = false
                   let classificationNote
-                  if (referenceIds.hasOwnProperty(currentDocmd5)) {
-                    if (referenceIds[currentDocmd5].hasOwnProperty(refNum)) {
-                      if (referenceIds[currentDocmd5][0] == undefined) {
+                  if (this.referenceIds.hasOwnProperty(currentDocmd5)) {
+                    if (this.referenceIds[currentDocmd5].hasOwnProperty(refNum)) {
+                      if (this.referenceIds[currentDocmd5][0] == undefined) {
                         MNUtil.showHUD("文档未绑定 ID")
                       } else {
-                        let refSourceNoteId = referenceIds[currentDocmd5][0]
+                        let refSourceNoteId = this.referenceIds[currentDocmd5][0]
                         let refSourceNote = MNNote.new(refSourceNoteId)
                         let refSourceNoteTitle = toolbarUtils.getFirstKeywordFromTitle(refSourceNote.noteTitle)
                         let refSourceNoteAuthor = toolbarUtils.getFirstAuthorFromReferenceById(refSourceNoteId)
-                        let refedNoteId = referenceIds[currentDocmd5][refNum]
+                        let refedNoteId = this.referenceIds[currentDocmd5][refNum]
                         let refedNote = MNNote.new(refedNoteId)
                         let refedNoteTitle = toolbarUtils.getFirstKeywordFromTitle(refedNote.noteTitle)
                         let refedNoteAuthor = toolbarUtils.getFirstAuthorFromReferenceById(refedNoteId)
@@ -3008,9 +3008,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                 if (buttonIndex == 1) {
                   let refNum = alert.textFieldAtIndex(0).text
                   let currentDocmd5 = MNUtil.currentDocmd5
-                  if (referenceIds.hasOwnProperty(currentDocmd5)) {
-                    if (referenceIds[currentDocmd5].hasOwnProperty(refNum)) {
-                      MNUtil.showHUD("["+refNum+"] 与「" + MNNote.new(referenceIds[currentDocmd5][refNum]).noteTitle + "」绑定")
+                  if (this.referenceIds.hasOwnProperty(currentDocmd5)) {
+                    if (this.referenceIds[currentDocmd5].hasOwnProperty(refNum)) {
+                      MNUtil.showHUD("["+refNum+"] 与「" + MNNote.new(this.referenceIds[currentDocmd5][refNum]).noteTitle + "」绑定")
                     } else {
                       MNUtil.showHUD("["+refNum+"] 未进行 ID 绑定")
                     }
@@ -3039,11 +3039,11 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                   let refNum = alert.textFieldAtIndex(0).text
                   let refId = focusNote.noteId
                   let currentDocmd5 = MNUtil.currentDocmd5
-                  if (referenceIds.hasOwnProperty(currentDocmd5)) {
-                    referenceIds[currentDocmd5][refNum] = refId
+                  if (this.referenceIds.hasOwnProperty(currentDocmd5)) {
+                    this.referenceIds[currentDocmd5][refNum] = refId
                   } else {
-                    referenceIds[currentDocmd5] = {}
-                    referenceIds[currentDocmd5][refNum] = refId
+                    this.referenceIds[currentDocmd5] = {}
+                    this.referenceIds[currentDocmd5][refNum] = refId
                   }
                   MNUtil.showHUD("Save: [" + refNum + "] -> " + refId);
                   toolbarConfig.save("MNToolbar_referenceIds")
@@ -3124,20 +3124,20 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         break;
       case "referenceExportReferenceIdsToClipboard":
         MNUtil.copy(
-          JSON.stringify(referenceIds, null, 2)
+          JSON.stringify(this.referenceIds, null, 2)
         )
         MNUtil.showHUD("Copy successfully!")
         break;
       case "referenceExportReferenceIdsToFile":
         // 导出到 .JSON 文件
         path = MNUtil.cacheFolder+"/exportReferenceIds.json"
-        MNUtil.writeText(path, JSON.stringify(referenceIds, null, 2))
+        MNUtil.writeText(path, JSON.stringify(this.referenceIds, null, 2))
         UTI = ["public.json"]
         MNUtil.saveFile(path, UTI)
         break;
       case "referenceInputReferenceIdsFromClipboard":
         // MNUtil.copy(
-        //   JSON.stringify(referenceIds, null, 2)
+        //   JSON.stringify(this.referenceIds, null, 2)
         // )
         UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
           "确定要从剪切板导入所有参考文献 ID 吗？",
@@ -3149,7 +3149,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
             if (buttonIndex == 1) {
               try {
                 MNUtil.undoGrouping(()=>{
-                  referenceIds = JSON.parse(MNUtil.clipboardText)
+                  this.referenceIds = JSON.parse(MNUtil.clipboardText)
                   toolbarConfig.save("MNToolbar_referenceIds")
                 })
               } catch (error) {
@@ -3164,14 +3164,14 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           // MNUtil.undoGrouping(()=>{
             UTI = ["public.json"]
             path = await MNUtil.importFile(UTI)
-            referenceIds = MNUtil.readJSON(path)
+            this.referenceIds = MNUtil.readJSON(path)
             toolbarConfig.save("MNToolbar_referenceIds")
           // })
         } catch (error) {
           MNUtil.showHUD(error);
         }
         // MNUtil.copy(
-        //   JSON.stringify(referenceIds, null, 2)
+        //   JSON.stringify(this.referenceIds, null, 2)
         // )
         break;
       case "referenceClearIdsForCurrentDoc":
@@ -3179,7 +3179,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           // MNUtil.undoGrouping(()=>{
             currentDocmd5 = MNUtil.currentDocmd5
             currentDocName = MNUtil.currentDocController.document.docTitle
-            referenceIds[currentDocmd5] = {}
+            this.referenceIds[currentDocmd5] = {}
             toolbarConfig.save("MNToolbar_referenceIds")
             MNUtil.showHUD("已清空文档「"+currentDocName+"」的所有参考文献 ID");
           // })
@@ -3187,7 +3187,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           MNUtil.showHUD(error);
         }
         // MNUtil.copy(
-        //   JSON.stringify(referenceIds, null, 2)
+        //   JSON.stringify(this.referenceIds, null, 2)
         // )
         break;
       case "referenceStoreIdForCurrentDocByFocusNote":
@@ -3197,11 +3197,11 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
             let refId = focusNote.noteId
             currentDocmd5 = MNUtil.currentDocmd5
             currentDocName = MNUtil.currentDocController.document.docTitle
-            if (referenceIds.hasOwnProperty(currentDocmd5)) {
-              referenceIds[currentDocmd5][refNum] = refId
+            if (this.referenceIds.hasOwnProperty(currentDocmd5)) {
+              this.referenceIds[currentDocmd5][refNum] = refId
             } else {
-              referenceIds[currentDocmd5] = {}
-              referenceIds[currentDocmd5][refNum] = refId
+              this.referenceIds[currentDocmd5] = {}
+              this.referenceIds[currentDocmd5][refNum] = refId
             }
             MNUtil.showHUD("文档「" +currentDocName+ "」与 "+refId + "绑定");
             toolbarConfig.save("MNToolbar_referenceIds")
@@ -3210,7 +3210,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           MNUtil.showHUD(error);
         }
         // MNUtil.copy(
-        //   JSON.stringify(referenceIds, null, 2)
+        //   JSON.stringify(this.referenceIds, null, 2)
         // )
         break;
       case "referenceAuthorInfoFromClipboard":
@@ -4310,7 +4310,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                       MNUtil.showHUD("当前文档没有绑定卡片 ID")
                     } else {
                       currentDocmd5 = MNUtil.currentDocmd5
-                      let targetNoteId = referenceIds[currentDocmd5]?referenceIds[currentDocmd5][refNum]:undefined
+                      let targetNoteId = this.referenceIds[currentDocmd5]?referenceIds[currentDocmd5][refNum]:undefined
                       if (targetNoteId == undefined) {
                         MNUtil.showHUD("卡片 ID 还没绑定")
                       } else {
@@ -4353,7 +4353,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                 MNUtil.showHUD("当前文档没有绑定卡片 ID")
               } else {
                 currentDocmd5 = MNUtil.currentDocmd5
-                let targetNoteId = referenceIds[currentDocmd5]?referenceIds[currentDocmd5][refNum]:undefined
+                let targetNoteId = this.referenceIds[currentDocmd5]?referenceIds[currentDocmd5][refNum]:undefined
                 if (targetNoteId == undefined) {
                   MNUtil.showHUD("卡片 ID 还没绑定")
                 } else {

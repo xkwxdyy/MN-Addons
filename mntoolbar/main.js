@@ -1,5 +1,3 @@
-let referenceIds = {}
-
 JSB.newAddon = function (mainPath) {
   JSB.require('utils')
   JSB.require('pinyin')

@@ -5091,27 +5091,33 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         if (MNUtil.currentNotebookId !== "9BA894B4-3509-4894-A05C-1B4BA0A9A4AE" ) {
           MNUtil.undoGrouping(()=>{
             try {
-              if (toolbarConfig.windowState.preprocess) {
-                focusNotes.forEach(focusNote=>{
-                  // toolbarUtils.TemplateMakeNote(focusNote)
-                  if (focusNote.excerptText) {
-                    focusNote.changeTitle()
-                    focusNote.toNoExceptVersion()
-                  }
-                  focusNote.changeTitle()
-                  focusNote.changeColorByType()
-                  focusNote.refreshAll()
-                  focusNote.focusInMindMap(0.5)
-                })
+              if (focusNote.ifIndependentNote() && focusNote.title.includes("引用") && focusNote.title.includes("情况")) {
+                // 此时为参考文献的具体引用情况的制卡，此时只需要把新的摘录内容移动到「被引用的具体内容」下方
+                let newContentsIndexArr = focusNote.getHtmlBlockContinuousExcerptToEndContentIndexArr("相关思考：")
+                focusNote.moveCommentsByIndexArr(newContentsIndexArr, focusNote.getHtmlCommentIndex("相关思考："))
               } else {
-                focusNotes.forEach(focusNote=>{
-                  toolbarUtils.TemplateMakeNote(focusNote)
-                  if (!focusNote.excerptText && !focusNote.ifIndependentNote() && !focusNote.ifReferenceNote()) {
-                    focusNote.addToReview()
-                  }
-                  focusNote.refreshAll()
-                  focusNote.focusInMindMap(0.5)
-                })
+                if (toolbarConfig.windowState.preprocess) {
+                  focusNotes.forEach(focusNote=>{
+                    // toolbarUtils.TemplateMakeNote(focusNote)
+                    if (focusNote.excerptText) {
+                      focusNote.changeTitle()
+                      focusNote.toNoExceptVersion()
+                    }
+                    focusNote.changeTitle()
+                    focusNote.changeColorByType()
+                    focusNote.refreshAll()
+                    focusNote.focusInMindMap(0.5)
+                  })
+                } else {
+                  focusNotes.forEach(focusNote=>{
+                    toolbarUtils.TemplateMakeNote(focusNote)
+                    if (!focusNote.excerptText && !focusNote.ifIndependentNote() && !focusNote.ifReferenceNote()) {
+                      focusNote.addToReview()
+                    }
+                    focusNote.refreshAll()
+                    focusNote.focusInMindMap(0.5)
+                  })
+                }
               }
             } catch (error) {
               MNUtil.showHUD(error);

@@ -3439,6 +3439,20 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           MNUtil.showHUD(error);
         }
         break;
+      case "referenceAuthorNoteMake":
+        MNUtil.undoGrouping(()=>{
+          try {
+            focusNotes.forEach(
+              focusNote => {
+                toolbarUtils.referenceAuthorNoteMake(focusNote)
+              }
+            )
+          } catch (error) {
+            MNUtil.showHUD(error);
+            MNUtil.copy(error);
+          }
+        })
+        break;
       case "referenceBibInfoCopy":
         bibContentArr = []
         focusNotes.forEach(focusNote=>{
@@ -4141,13 +4155,8 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                 let paperInfoIndexInTargetAuthorNote
                 if (buttonIndex === 1) {
                   let authorLibraryNote = MNNote.new("A67469F8-FB6F-42C8-80A0-75EA1A93F746")
-                  // MNUtil.showHUD(authorArr)
                   authorArr.forEach(author=>{
                     findAuthor = false
-                    // let possibleAuthorFormatArr = [...new Set(
-                    //   Object.values(toolbarUtils.getAbbreviationsOfName(author)).filter(value => value !== "Chinese" && value !== "English")
-                    // )];
-                    // try {
                       let possibleAuthorFormatArr = [
                         ...new Set(
                           Object.values(
@@ -4155,20 +4164,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                           )
                         )
                       ]
-                      // MNUtil.showHUD(possibleAuthorFormatArr)
-                    // } catch (error) {
-                    //   MNUtil.showHUD(error);
-                    // }
                     for (let i = 0; i <= authorLibraryNote.childNotes.length-1; i++) {
-                      // if (authorLibraryNote.childNotes[i].noteTitle.includes(author)) {
-                      //   targetAuthorNote = authorLibraryNote.childNotes[i]
-                      //   findAuthor = true
-                      //   // MNUtil.showHUD("存在！" + targetAuthorNote.noteTitle)
-                      //   // MNUtil.delay(0.5).then(()=>{
-                      //   //   targetAuthorNote.focusInFloatMindMap()
-                      //   // })
-                      //   break;
-                      // }
                       let findPossibleAuthor = possibleAuthorFormatArr.some(
                         possibleAuthor => authorLibraryNote.childNotes[i].noteTitle.includes(possibleAuthor)
                       )
@@ -4194,13 +4190,8 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                         }
                       }
                     }
-                    // MNUtil.delay(0.5).then(()=>{
-                    //   targetAuthorNote.focusInFloatMindMap()
-                    // })
                     let authorTextIndex = focusNote.getIncludingCommentIndex("- 作者", true)
                     if (authorTextIndex == -1) {
-                      // focusNote.appendNoteLink(targetAuthorNote, "To")
-                      // focusNote.moveComment(focusNote.comments.length-1,referenceInfoHtmlCommentIndex+1)
                       focusNote.appendMarkdownComment("- 作者（Authors）：", referenceInfoHtmlCommentIndex + 1)
                     }
                     let authorIndexInFocusNote = focusNote.getCommentIndex("marginnote4app://note/" + targetAuthorNote.noteId)
@@ -4223,7 +4214,6 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                       let authorContinuousLinksArr = toolbarUtils.getContinuousSequenceFromNum(authorLinksArr, referenceInfoHtmlCommentIndex + 1)
                       focusNote.moveComment(focusNote.comments.length-1,authorContinuousLinksArr[authorContinuousLinksArr.length-1]+1)
                     } else {
-                      // focusNote.moveComment(authorTextIndex, referenceInfoHtmlCommentIndex + 1)
                       let authorLinksArr = []
                       focusNote.comments.forEach((comment,index)=>{
                         if (
@@ -4245,7 +4235,6 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                     // 处理作者卡片
                     focusNoteIndexInTargetAuthorNote = targetAuthorNote.getCommentIndex("marginnote4app://note/" + focusNote.noteId)
                     paperInfoIndexInTargetAuthorNote = targetAuthorNote.getIncludingCommentIndex("**论文**")
-                    // let bookInfoIndexIntargetAuthorNote = targetAuthorNote.getIncludingCommentIndex("**书作**")
                     if (focusNoteIndexInTargetAuthorNote == -1){
                       targetAuthorNote.appendNoteLink(focusNote, "To")
                       if (toolbarUtils.getReferenceNoteType(focusNote) == "book") {

@@ -1444,9 +1444,7 @@ try {
     if (note.ifIndependentNote()) {
       // 如果是独立卡片（比如非知识库里的卡片），只进行转化为非摘录版本
       note.title = Pangu.spacing(note.title)
-      if (note.excerptText) {
-        note.toNoExceptVersion()
-      }
+      note.toNoExceptVersion()
     } else {
       /** 
        * 【Done】处理旧卡片
@@ -2089,9 +2087,9 @@ try {
         let thoughtHtmlCommentIndex = focusNote.getCommentIndex("相关思考：", true)
         MNUtil.undoGrouping(()=>{
           if (seriesNum !== "0") {
-            focusNote.noteTitle = toolbarUtils.replaceStringStartWithSquarebracketContent(focusNote.noteTitle, "【文献：书作："+ seriesName + " - Vol. "+ seriesNum + "】")
+            focusNote.noteTitle = toolbarUtils.replaceStringStartWithSquarebracketContent(focusNote.noteTitle, "【文献：书作："+ seriesName + " - Vol. "+ seriesNum + "】; ")
           } else {
-            focusNote.noteTitle = toolbarUtils.replaceStringStartWithSquarebracketContent(focusNote.noteTitle, "【文献：书作："+ seriesName + "】")
+            focusNote.noteTitle = toolbarUtils.replaceStringStartWithSquarebracketContent(focusNote.noteTitle, "【文献：书作："+ seriesName + "】; ")
           }
         })
         if (seriesTextIndex == -1) {
@@ -2533,14 +2531,12 @@ try {
 
   static languageOfString(input) {
     const chineseRegex = /[\u4e00-\u9fa5]/; // 匹配中文字符的范围
-    const englishRegex = /^[A-Za-z0-9\s,.!?]+$/; // 匹配英文字符和常见标点
+    // const englishRegex = /^[A-Za-z0-9\s,.!?]+$/; // 匹配英文字符和常见标点
   
     if (chineseRegex.test(input)) {
       return 'Chinese';
-    } else if (englishRegex.test(input)) {
-      return 'English';
     } else {
-      return ;
+      return 'English';
     }
   }
 
@@ -2707,7 +2703,7 @@ try {
       }
       return Name
     } else {
-        return this.getAbbreviationsOfEnglishName(name)
+      return this.getAbbreviationsOfEnglishName(name)
     }
   }
 
@@ -4865,6 +4861,71 @@ try {
         }
       }
     )
+  }
+
+  /**
+   * 【文献】作者卡片制卡
+   * 
+   * 1. 转换为非摘录版本
+   * 2. 合并模板卡片
+   * 3. 处理标题
+   */
+  static referenceAuthorNoteMake (note){
+    // 先转化为非摘录版本
+    note.toNoExceptVersion()
+
+    // 修改颜色
+    note.colorIndex = 2
+
+    if (!note.excerptText) {
+      // 非摘录版本才开始后续处理
+
+      /**
+       * 合并模板卡片
+       */
+
+      if (note.getHtmlCommentIndex("个人信息：") == -1) { // 防止重复制卡
+        /**
+         * 处理作者名
+         * 
+         * 1. 获取第一个 keyword 作为主名
+        * 2. 获取所有主名的衍生名（基于 toolbarUtils 的 getAbbreviationsOfName）
+        * 3. 然后看名称中是否有衍生名了，没有就加进去
+        * 
+        * 最后处理前缀
+        */
+
+        let mainAuthorName = note.getFirstTitleLinkWord()
+        if (toolbarUtils.getAbbreviationsOfName(mainAuthorName)) {
+          let derivedNames = [
+            ...new Set(
+              Object.values(
+                toolbarUtils.getAbbreviationsOfName(mainAuthorName)
+              )
+            )
+          ]
+          // 去掉 derivedNames 里的“【文献：作者】”
+          derivedNames.forEach(derivedName => {
+            if (!note.title.includes(derivedName)) {
+              note.title += "; " + derivedName
+            }
+          })
+        }
+
+        /**
+         * 移动卡片
+         */
+        let authorLibraryNote = MNNote.new("A67469F8-FB6F-42C8-80A0-75EA1A93F746")  // 作者库卡片
+        note.mergeClonedNoteById("BBA8DDB0-1F74-4A84-9D8D-B04C5571E42A")  // 合并模板卡片
+        authorLibraryNote.addChild(note)  // 把作者卡片移动到作者库，这保证了可以在学习集内任意子脑图中进行作者卡片的制卡操作
+
+        // TODO: 文献卡片的作者制卡和手动制卡的标题有点区别，目前模板卡片是带着“【文献：作者】”标题的，所以合并进来的时候，后面会增加了一个“【文献：作者】”，所以这里先手动去掉再加
+        note.title = note.title.replace(/【文献：作者】/g, "")
+        note.title = "【文献：作者】; " + note.title.toTitleWithoutPrefix()
+      }
+    }
+
+    note.focusInMindMap(0.2)
   }
   /**
    * 夏大鱼羊 - end
@@ -8456,31 +8517,6 @@ static template(action) {
           "menuTitle": "➡️ 🗂️文献卡片",
           "menuItems": [
             {
-              "action": "menu",
-              "menuTitle": "️️➡️ 文献制卡",
-              "menuItems": [
-                // {
-                //   "menuTitle": "🔽 "
-                // },
-                {
-                  "action": "referencePaperMakeCards",
-                  "menuTitle": "📄 论文制卡"
-                },
-                {
-                  "action": "referenceBookMakeCards",
-                  "menuTitle": "📚 书作制卡"
-                },
-                {
-                  "action": "referenceSeriesBookMakeCard",
-                  "menuTitle": "📚 系列书作制卡"
-                },
-                {
-                  "action": "referenceOneVolumeJournalMakeCards",
-                  "menuTitle": "📄 整卷期刊制卡"
-                },
-              ]
-            },
-            {
               "action": "referenceInfoAuthor",
               "menuTitle": "👨‍🎓 作者"
             },
@@ -8553,6 +8589,10 @@ static template(action) {
             {
               "action": "referenceAuthorInfoFromClipboard",
               "menuTitle": "粘贴个人信息"
+            },
+            {
+              "action": "referenceAuthorNoteMake",
+              "menuTitle": "作者卡片制卡"
             }
           ]
         },
@@ -8916,9 +8956,38 @@ static template(action) {
         "action": "menu",
         "menuItems": [
           {
-            "action": "undoOKRNoteMake",
-            "menuTitle": "回退任务卡片状态"
+            "action": "menu",
+            "menuTitle": "️️➡️ 文献制卡",
+            "menuItems": [
+              // {
+              //   "menuTitle": "🔽 "
+              // },
+              {
+                "action": "referencePaperMakeCards",
+                "menuTitle": "📄 论文制卡"
+              },
+              {
+                "action": "referenceBookMakeCards",
+                "menuTitle": "📚 书作制卡"
+              },
+              {
+                "action": "referenceSeriesBookMakeCard",
+                "menuTitle": "📚 系列书作制卡"
+              },
+              {
+                "action": "referenceOneVolumeJournalMakeCards",
+                "menuTitle": "📄 整卷期刊制卡"
+              },
+              {
+                "action": "referenceAuthorNoteMake",
+                "menuTitle": "作者卡片制卡"
+              },
+            ]
           },
+          // {
+          //   "action": "undoOKRNoteMake",
+          //   "menuTitle": "回退任务卡片状态"
+          // },
           {
             "action": "changeChildNotesTitles",
             "menuTitle": "批量修改子卡片标题"

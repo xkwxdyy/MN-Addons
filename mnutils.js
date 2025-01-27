@@ -4654,19 +4654,26 @@ try {
    */
   getFirstTitleLinkWord(){
     let title = this.noteTitle
-    if (title.isKnowledgeNoteTitle()) {
-      const regex = /【.*】(.*?);?\s*([^;]*?)(?:;|$)/;
-      const matches = title.match(regex);
+    let regex = /【.*】(.*?);?\s*([^;]*?)(?:;|$)/;
+    let matches = title.match(regex);
+  
+    if (matches) {
+      const firstPart = matches[1].trim(); // 提取分号前的内容
+      const secondPart = matches[2].trim(); // 提取第一个分号后的内容
+  
+      // 根据第一部分是否为空选择返回内容
+      return firstPart === '' ? secondPart : firstPart;
+    } else {
+      // 如果没有前缀，就获取第一个 ; 前的内容
+      title = title.toTitleWithoutPrefix()
+      regex = /^(.*?);/;
+      matches = title.match(regex);
     
       if (matches) {
-        const firstPart = matches[1].trim(); // 提取分号前的内容
-        const secondPart = matches[2].trim(); // 提取第一个分号后的内容
-    
-        // 根据第一部分是否为空选择返回内容
-        return firstPart === '' ? secondPart : firstPart;
+        return matches[1].trim()
+      } else {
+        return title
       }
-    } else {
-      return title
     }
   }
 
@@ -6363,19 +6370,21 @@ try {
    */
   toNoExceptVersion(){
     if (this.parentNote) {
-      let parentNote = this.parentNote
-      let config = {
-        title: this.noteTitle,
-        content: "",
-        markdown: true,
-        color: this.colorIndex
+      if (this.excerptText) { // 把摘录内容的检测放到 toNoExceptVersion 的内部
+        let parentNote = this.parentNote
+        let config = {
+          title: this.noteTitle,
+          content: "",
+          markdown: true,
+          color: this.colorIndex
+        }
+        // 创建新兄弟卡片，标题为旧卡片的标题
+        let newNote = parentNote.createChildNote(config)
+        this.noteTitle = ""
+        // 将旧卡片合并到新卡片中
+        this.mergeInto(newNote)
+        newNote.focusInMindMap(0.2)
       }
-      // 创建新兄弟卡片，标题为旧卡片的标题
-      let newNote = parentNote.createChildNote(config)
-      this.noteTitle = ""
-      // 将旧卡片合并到新卡片中
-      this.mergeInto(newNote)
-      newNote.focusInMindMap(0.2)
     } else {
       MNUtil.showHUD("没有父卡片，无法进行非摘录版本的转换！")
     }
@@ -7226,6 +7235,7 @@ try {
     let parentNote = this.parentNote
     return !["785225AC-5A2A-41BA-8760-3FEF10CF4AE0","49102A3D-7C64-42AD-864D-55EDA5EC3097"].includes(parentNote.noteId)
   }
+
   /**
    * 夏大鱼羊定制 - MNNote - end
    */

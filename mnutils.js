@@ -6048,11 +6048,40 @@ try {
         }
       }
       if (!findNonLink) {
-        // 防止只有链接时，仍然返回数组
+        // 只有链接时，仍然返回数组
         return []
       }
     }
     return indexArr
+  }
+  /**
+   * 获取某个 Html Block 从最后一个开始检测，是摘录就往前，直到不是摘录
+   */
+  getHtmlBlockContinuousExcerptToEndContentIndexArr (htmltext) {
+    let indexArr = this.getHtmlBlockContentIndexArr(htmltext)
+    let continuousExcerptCommentsToEnd = true
+    let breakIndex = indexArr.length-1
+    if (indexArr.length !== 0) {
+      for (let i = indexArr.length-1; i >= 0 ; i--) {
+        let index = indexArr[i]
+        let comment = this.comments[index]
+        if (
+          comment.type == "LinkNote" && continuousExcerptCommentsToEnd
+        ) {
+          continue
+        } else {
+          continuousExcerptCommentsToEnd = false
+          breakIndex = i + 1 // 此时说明前一个（也就是下一条评论是最后连续的摘录）
+          break
+        }
+      }
+      if (this.comments[indexArr[indexArr.length-1]].type == "LinkNote") {
+        // 只有最后一个评论是摘录，才处理
+        return indexArr.slice(breakIndex)
+      } else {
+        return []
+      }
+    }
   }
   /**
    * 【数学】获取 this 的 noteType

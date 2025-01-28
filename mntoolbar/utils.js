@@ -4921,7 +4921,7 @@ try {
 
         // TODO: 文献卡片的作者制卡和手动制卡的标题有点区别，目前模板卡片是带着“【文献：作者】”标题的，所以合并进来的时候，后面会增加了一个“【文献：作者】”，所以这里先手动去掉再加
         note.title = note.title.replace(/【文献：作者】/g, "")
-        note.title = "【文献：作者】; " + note.title.toTitleWithoutPrefix()
+        note.title = "【文献：作者】; " + note.title.toNoBracketPrefixContent()
       }
     }
 

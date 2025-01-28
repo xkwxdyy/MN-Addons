@@ -4917,7 +4917,7 @@ try {
             )
           ) {
             // 有归类父卡片
-            if (parentNoteType == "定义") {
+            if (["定义","命题","例子","反例","思想方法"].includes(parentNoteType)) {
               // 也就是此时卡片的父卡片是一张定义类卡片
               // 此时为基于定义类卡片生成归类卡片
               classificationNoteType = type?type:this.getNoteTypeObjByClassificationParentNoteTitle().zh
@@ -4946,7 +4946,8 @@ try {
           ) {
             // 有归类父卡片
             let classificationNoteTitleType = this.title.toClassificationNoteTitleType()  // 获取“相关xx”的部分
-            if (parentNoteType == "定义") {
+            // if (parentNoteType == "定义") {
+            if (["定义","命题","例子","反例","思想方法"].includes(parentNoteType)) {
               // 也就是此时卡片的父卡片是一张定义类卡片
               // 此时为基于定义类卡片生成归类卡片
               parentNoteTitle = this.parentNote.getFirstTitleLinkWord()
@@ -4955,6 +4956,7 @@ try {
               // classificationNoteType = this.getNoteTypeObjByClassificationParentNoteTitle().zh
               parentNoteTitle = this.parentNote.noteTitle.toClassificationNoteTitle()
             }
+            // MNUtil.showHUD(parentNoteType + "+" + parentNoteTitle)
             // 修改标题
             this.title = "“" + parentNoteTitle + "”：“" + title.toClassificationNoteTitle() + "”" + classificationNoteTitleType
           }
@@ -5218,7 +5220,8 @@ try {
             let oldBelongIndex = belongHtmlBlockContentIndexArr[0]
             let oldLink = this.comments[oldBelongIndex].text
             let oldLinkedNote = MNNote.new(oldLink.toNoteId())
-            if (oldLinkedNote.colorIndex !== 2) { // 如果是定义类卡片（此时对应的是从概念出发生成的归类），那么就不删除
+            // if (oldLinkedNote.colorIndex !== 2) { // 如果是定义类卡片（此时对应的是从概念出发生成的归类），那么就不删除
+            if (!["定义","命题","例子","反例"].includes(oldLinkedNote.getNoteTypeZh())) { // 如果是定义类卡片（此时对应的是从概念出发生成的归类），那么就不删除
               let indexInOldLinkedNote = oldLinkedNote.getCommentIndex(this.noteURL)
               if (indexInOldLinkedNote !== -1) {
                 oldLinkedNote.removeCommentByIndex(indexInOldLinkedNote)

@@ -1450,7 +1450,24 @@ class MNUtil {
    */
   static importDocument(filePath) {
     return MNUtil.app.importDocument(filePath)
-  
+  }
+  /**
+   * 该方法会弹出文件选择窗口以选择要导入的文档
+   * @returns {string} 返回文件md5
+   */
+  static async importPDFFromFile(){
+    let docPath = await MNUtil.importFile("com.adobe.pdf")
+    return this.importDocument(docPath)
+  }
+  /**
+   * 该方法会弹出文件选择窗口以选择要导入的文档,并直接在指定学习集中打开
+   * @returns {string} 返回文件md5
+   */
+  static async importPDFFromFileAndOpen(notebookId){
+    let docPath = await MNUtil.importFile("com.adobe.pdf")
+    let md5 = this.importDocument(docPath)
+    MNUtil.openDoc(md5,notebookId)
+    return md5
   }
   static toggleExtensionPanel(){
     this.studyController.toggleExtensionPanel()
@@ -1668,6 +1685,15 @@ class MNUtil {
       // 再将其它的空白符（除了换行符）替换为单个空格
       return tempStr.replace(/[\r\t\f\v ]+/g, ' ').trim();
   }
+  static undo(notebookId = this.currentNotebookId){
+    UndoManager.sharedInstance().undo()
+    this.app.refreshAfterDBChanged(notebookId)
+
+  }
+  static redo(notebookId = this.currentNotebookId){
+    UndoManager.sharedInstance().redo()
+    this.app.refreshAfterDBChanged(notebookId)
+  }
   /**
    * Groups the specified function within an undo operation for the given notebook.
    * 
@@ -1722,7 +1748,8 @@ class MNUtil {
    * @param {*} position
    * @returns
    */
-  static getPopoverAndPresent(sender,commandTable,width=100,position=2) {
+  static getPopoverAndPresent(sender,commandTable,width=100,preferredPosition=2) {
+    let position = preferredPosition
     var menuController = MenuController.new();
     menuController.commandTable = commandTable
     menuController.rowHeight = 35;
@@ -1734,9 +1761,37 @@ class MNUtil {
     //下 1，3
     //上 2
     //右 4
+
     var popoverController = new UIPopoverController(menuController);
-    var r = sender.convertRectToView(sender.bounds,this.studyView);
-    popoverController.presentPopoverFromRect(r, this.studyView, position, true);
+    let targetView = this.studyView
+    var r = sender.convertRectToView(sender.bounds,targetView);
+    // MNUtil.showHUD("message"+preferredPosition)
+    switch (preferredPosition) {
+      case 0:
+        if (r.x < 50) {
+          position = 4
+        }
+        break;
+      case 1:
+      case 3:
+        if (r.y+r.height > targetView.frame.height - 50) {
+          position = 2
+        }
+        break;
+      case 2:
+        if (r.y < 50) {
+          position = 3
+        }
+        break;
+      case 4:
+        if (r.x+r.width > targetView.frame.width - 50) {
+          position = 0
+        }
+        break;
+      default:
+        break;
+    }
+    popoverController.presentPopoverFromRect(r, targetView, position, true);
     return popoverController
   }
   /**
@@ -1958,15 +2013,31 @@ try {
 
   /**
    *
-   * @param {string[]} UTI
+   * @param {string | string[]} UTI
    * @returns
    */
   static async importFile(UTI){
-    return new Promise((resolve, reject) => {
-      this.app.openFileWithUTIs(UTI,this.studyController,(path)=>{
-        resolve(path)
+    if (Array.isArray(UTI)) {
+      return new Promise((resolve, reject) => {
+        this.app.openFileWithUTIs(UTI,this.studyController,(path)=>{
+          resolve(path)
+        })
       })
-    })
+    }else{
+      return new Promise((resolve, reject) => {
+        this.app.openFileWithUTIs([UTI],this.studyController,(path)=>{
+          resolve(path)
+        })
+      })
+    }
+  }
+  /**
+   * 弹出文件选择窗口,选中json后直接返回对应的json对象
+   * @returns {Object}
+   */
+  static async importJSONFromFile(){
+    let path = await MNUtil.importFile("public.json")
+    return this.readJSON(path)
   }
   static saveFile(filePath, UTI) {
     this.app.saveFileWithUti(filePath, UTI)
@@ -2235,6 +2306,95 @@ try {
       MNUtil.showHUD(error)
     }
     return jsonEditor
+  }
+  static deepEqual(obj1, obj2,keysToIgnore) {
+    if (obj1 === obj2) return true;
+
+    if (typeof obj1 !== 'object' || obj1 === null ||
+        typeof obj2 !== 'object' || obj2 === null) {
+        return false;
+    }
+
+    let keys1 = Object.keys(obj1);
+    let keys2 = Object.keys(obj2);
+
+    if (keys1.length !== keys2.length) return false;
+
+    for (let key of keys1) {
+        if (!keys2.includes(key)) {
+            return false;
+        }
+        if (keysToIgnore && keysToIgnore.length && keysToIgnore.includes(key)) {
+          continue
+        }
+        if (!this.deepEqual(obj1[key], obj2[key])) {
+          return false;
+        }
+    }
+    return true;
+  }
+  static readCloudKey(key){
+    let cloudStore = NSUbiquitousKeyValueStore.defaultStore()
+    if (cloudStore) {
+      return cloudStore.objectForKey(key)
+    }else{
+      return undefined
+    }
+  }
+  static setCloudKey(key,value){
+    let cloudStore = NSUbiquitousKeyValueStore.defaultStore()
+    if (cloudStore) {
+      cloudStore.setObjectForKey(value,key)
+    }
+  }
+  /**
+   * 
+   * @param {string[]} arr 
+   * @param {string} element 
+   * @param {string} direction 
+   * @returns {string[]}
+   */
+  static moveElement(arr, element, direction) {
+      // 获取元素的索引
+      var index = arr.indexOf(element);
+      if (index === -1) {
+          this.showHUD('Element not found in array');
+          return;
+      }
+      switch (direction) {
+          case 'up':
+              if (index === 0) {
+                  this.showHUD('Element is already at the top');
+                  return;
+              }
+              // 交换元素位置
+              [arr[index], arr[index - 1]] = [arr[index - 1], arr[index]];
+              break;
+          case 'down':
+              if (index === arr.length - 1) {
+                  this.showHUD('Element is already at the bottom');
+                  return;
+              }
+              // 交换元素位置
+              [arr[index], arr[index + 1]] = [arr[index + 1], arr[index]];
+              break;
+          case 'top':
+              // 移除元素
+              arr.splice(index, 1);
+              // 添加到顶部
+              arr.unshift(element);
+              break;
+          case 'bottom':
+              // 移除元素
+              arr.splice(index, 1);
+              // 添加到底部
+              arr.push(element);
+              break;
+          default:
+              this.showHUD('Invalid direction');
+              break;
+      }
+      return arr
   }
 }
 
@@ -2586,6 +2746,7 @@ class MNButton{
     "opacity",
     "radius",
     "cornerRadius",
+    "highlight"
   ]
   constructor(config = {},superView){
     this.button = UIButton.buttonWithType(0);
@@ -2599,6 +2760,13 @@ class MNButton{
     this.titleLabel = this.button.titleLabel
     if (superView) {
       superView.addSubview(this.button)
+    }
+    let keys = Object.keys(config)
+    for (let i = 0; i < keys.length; i++) {
+      if (!MNButton.builtInProperty.includes(keys[i])) {
+        this.button[keys[i]] = config[keys[i]]
+        this[keys[i]] = config[keys[i]]
+      }
     }
     return new Proxy(this, {
       set(target, property, value) {
@@ -7747,13 +7915,13 @@ try {
     if (!notebookController.view.hidden && notebookController.mindmapView && notebookController.mindmapView.selViewLst && notebookController.mindmapView.selViewLst.length) {
       let selViewLst = notebookController.mindmapView.selViewLst
       return selViewLst.map(tem=>{
-        return MNNote.new(tem.note.note)
+        return this.new(tem.note.note)
       })
     }
     if (MNUtil.studyController.docMapSplitMode) {//不为0则表示documentControllers存在
       let note = MNUtil.currentDocController.focusNote
       if (note) {
-        return [MNNote.new(note)]
+        return [this.new(note)]
       }
       let focusNote
       let docNumber = MNUtil.docControllers.length
@@ -7761,18 +7929,46 @@ try {
         const docController = MNUtil.docControllers[i];
         focusNote = docController.focusNote
         if (focusNote) {
-          return [MNNote.new(focusNote)]
+          return [this.new(focusNote)]
         }
       }
     }
     if (MNUtil.popUpNoteInfo) {
-        return [MNNote.new(MNUtil.popUpNoteInfo.noteId)]
+        return [this.new(MNUtil.popUpNoteInfo.noteId)]
     }
     //如果两个上面两个都没有，那就可能是小窗里打开的
-    return [MNNote.new(notebookController.focusNote)]
+    return [this.new(notebookController.focusNote)]
   }
   static getSelectedNotes(){
     return this.getFocusNotes()
+  }
+  /**
+   * 还需要改进逻辑
+   * @param {*} range 
+   * @returns {MNNote[]}
+   */
+  static getNotesByRange(range){
+    if (range === undefined) {
+      return [this.getFocusNote()]
+    }
+    switch (range) {
+      case "currentNotes":
+        return this.getFocusNotes()
+      case "childNotes":
+        let childNotes = []
+        this.getFocusNotes().map(note=>{
+          childNotes = childNotes.concat(note.childNotes)
+        })
+        return childNotes
+      case "descendants":
+        let descendantNotes = []
+        this.getFocusNotes().map(note=>{
+          descendantNotes = descendantNotes.concat(note.descendantNodes.descendant)
+        })
+        return descendantNotes
+      default:
+        return [this.getFocusNote()]
+    }
   }
   /**
    * Clones a note to the specified notebook.

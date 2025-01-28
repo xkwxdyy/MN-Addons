@@ -42323,7 +42323,7 @@
                 REACT_APP_VERCEL_URL: "usage-rciqbw80u-feliks-projects.vercel.app",
                 REACT_APP_VERCEL_PROJECT_PRODUCTION_URL: "usage.feliks.top",
                 REACT_APP_VERCEL_GIT_PREVIOUS_SHA: "",
-                REACT_APP_BASE_URL: '{"URL1":"https://api.feliks.top","URL2":"https://api1.feliks.top","URL3":"https://api2.feliks.top","URL4":"https://api.u1162561.nyat.app:20074","URL5":"https://d2p9226849.vicp.fun"}',
+                REACT_APP_BASE_URL: '{"URL1":"https://api.feliks.top","URL2":"https://api1.feliks.top","URL3":"https://alpha.u1162561.nyat.app:20075","URL4":"https://api.u1162561.nyat.app:20074","URL5":"https://d2p9226849.vicp.fun"}',
                 REACT_APP_VERCEL_GIT_REPO_ID: "839376018",
                 REACT_APP_VERCEL_GIT_COMMIT_AUTHOR_LOGIN: "Feliks151450",
                 REACT_APP_VERCEL_GIT_REPO_OWNER: "Feliks151450"
@@ -42349,7 +42349,7 @@
                 REACT_APP_VERCEL_URL: "usage-rciqbw80u-feliks-projects.vercel.app",
                 REACT_APP_VERCEL_PROJECT_PRODUCTION_URL: "usage.feliks.top",
                 REACT_APP_VERCEL_GIT_PREVIOUS_SHA: "",
-                REACT_APP_BASE_URL: '{"URL1":"https://api.feliks.top","URL2":"https://api1.feliks.top","URL3":"https://api2.feliks.top","URL4":"https://api.u1162561.nyat.app:20074","URL5":"https://d2p9226849.vicp.fun"}',
+                REACT_APP_BASE_URL: '{"URL1":"https://api.feliks.top","URL2":"https://api1.feliks.top","URL3":"https://alpha.u1162561.nyat.app:20075/","URL4":"https://api.u1162561.nyat.app:20074","URL5":"https://d2p9226849.vicp.fun"}',
                 REACT_APP_VERCEL_GIT_REPO_ID: "839376018",
                 REACT_APP_VERCEL_GIT_COMMIT_AUTHOR_LOGIN: "Feliks151450",
                 REACT_APP_VERCEL_GIT_REPO_OWNER: "Feliks151450"
@@ -42467,7 +42467,7 @@
             e.useState)(""), 2)
               , E = w[0]
               , O = w[1]
-              , S = JSON.parse('{"URL1":"https://api.feliks.top","URL2":"https://api1.feliks.top","URL3":"https://api2.feliks.top","URL4":"https://api.u1162561.nyat.app:20074","URL5":"https://d2p9226849.vicp.fun"}');
+              , S = JSON.parse('{"URL1":"https://api.feliks.top","URL2":"https://api1.feliks.top","URL3":"https://alpha.u1162561.nyat.app:20075","URL4":"https://api.u1162561.nyat.app:20074","URL5":"https://d2p9226849.vicp.fun"}');
             (0,
             e.useEffect)((function() {
                 var e = Object.keys(S)[0];

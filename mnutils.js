@@ -252,11 +252,37 @@ String.prototype.toReferenceNoteTitlePrefixContent = function () {
   return match ? match[1] : this  // 如果匹配不到，返回原字符串
 }
 /**
+ * 判断是否有前缀部分
+ */
+String.prototype.ifWithBracketPrefix = function () {
+  let match = (/^【.*】(.*)/).test(this)
+  return match
+}
+/**
  * 获取无前缀的部分
  */
 String.prototype.toNoBracketPrefixContent = function () {
   let match = this.match(/^【.*】(.*)/)
   return match ? match[1] : this  // 如果匹配不到，返回原字符串
+}
+/**
+ * 获取前缀的内容
+ */
+String.prototype.toBracketPrefixContent = function () {
+  let match = this.match(/^【(.*)】.*/)
+  return match ? match[1] : this  // 如果匹配不到，返回原字符串
+}
+/**
+ * 【xxx】yyy 变成 【xxx→yyy】
+ */
+String.prototype.toBracketPrefixContentArrowSuffix = function () {
+  if (this.ifWithBracketPrefix()) {
+    // 有前缀就开始处理
+    return "【" + this.toBracketPrefixContent() + " → " + this.toNoBracketPrefixContent() + "】"
+  } else {
+    // 如果没有前缀，就直接输出 【this】
+    return "【" + this + "】"
+  }
 }
 /**
  * 判断是否是绿色归类卡片的标题

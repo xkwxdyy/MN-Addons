@@ -5069,6 +5069,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                 // 独立卡片双击时把父卡片的标题作为前缀
                 if (!focusNote.title.ifWithBracketPrefix()) {
                   focusNote.title = focusNote.parentNote.noteTitle.toBracketPrefixContentArrowSuffix() + focusNote.title
+                } else {
+                  // 有前缀的话，就更新前缀
+                  focusNote.title = focusNote.parentNote.noteTitle.toBracketPrefixContentArrowSuffix() + focusNote.title.toNoBracketPrefixContent()
                 }
               } else {
                 if (toolbarConfig.windowState.preprocess) {

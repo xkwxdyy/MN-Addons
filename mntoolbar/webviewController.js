@@ -5065,22 +5065,30 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         if (MNUtil.currentNotebookId !== "9BA894B4-3509-4894-A05C-1B4BA0A9A4AE" ) {
           MNUtil.undoGrouping(()=>{
             try {
-              if (toolbarConfig.windowState.preprocess) {
-                focusNotes.forEach(focusNote=>{
-                  toolbarUtils.TemplateMakeNote(focusNote)
-                })
+              if (focusNote.ifIndependentNote()) {
+                // 独立卡片双击时把父卡片的标题作为前缀
+                if (!focusNote.title.ifWithBracketPrefix()) {
+                  focusNote.title = focusNote.parentNote.noteTitle.toBracketPrefixContentArrowSuffix() + focusNote.title
+                }
               } else {
-                UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-                  "撤销制卡","去掉所有「文本」和「链接」",0,"点错了",["确认"],
-                  (alert, buttonIndex) => {
-                    if (buttonIndex == 1) {
-                      MNUtil.undoGrouping(()=>{
-                        focusNote.removeCommentsByTypes(["text","links"])
-                      })
+                if (toolbarConfig.windowState.preprocess) {
+                  focusNotes.forEach(focusNote=>{
+                    toolbarUtils.TemplateMakeNote(focusNote)
+                  })
+                } else {
+                  UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+                    "撤销制卡","去掉所有「文本」和「链接」",0,"点错了",["确认"],
+                    (alert, buttonIndex) => {
+                      if (buttonIndex == 1) {
+                        MNUtil.undoGrouping(()=>{
+                          focusNote.removeCommentsByTypes(["text","links"])
+                        })
+                      }
                     }
-                  }
-                )
+                  )
+                }
               }
+
             } catch (error) {
               MNUtil.showHUD(error);
             }

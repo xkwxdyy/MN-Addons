@@ -5098,23 +5098,31 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
               } else {
                 if (toolbarConfig.windowState.preprocess) {
                   focusNotes.forEach(focusNote=>{
-                    // toolbarUtils.TemplateMakeNote(focusNote)
-                    if (focusNote.excerptText) {
-                      focusNote.changeTitle()
+                    if (focusNote.ifIndependentNote()) {
                       focusNote.toNoExceptVersion()
+                    } else {
+                      // toolbarUtils.TemplateMakeNote(focusNote)
+                      if (focusNote.excerptText) {
+                        focusNote.changeTitle()
+                        focusNote.toNoExceptVersion()
+                      }
+                      focusNote.changeTitle()
+                      focusNote.changeColorByType()
+                      focusNote.refreshAll()
                     }
-                    focusNote.changeTitle()
-                    focusNote.changeColorByType()
-                    focusNote.refreshAll()
                     focusNote.focusInMindMap(0.5)
                   })
                 } else {
                   focusNotes.forEach(focusNote=>{
-                    toolbarUtils.TemplateMakeNote(focusNote)
-                    if (!focusNote.excerptText && !focusNote.ifIndependentNote() && !focusNote.ifReferenceNote()) {
-                      focusNote.addToReview()
+                    if (focusNote.ifIndependentNote()) {
+                      focusNote.toNoExceptVersion()
+                    } else {
+                      toolbarUtils.TemplateMakeNote(focusNote)
+                      if (!focusNote.excerptText && !focusNote.ifIndependentNote() && !focusNote.ifReferenceNote()) {
+                        focusNote.addToReview()
+                      }
+                      focusNote.refreshAll()
                     }
-                    focusNote.refreshAll()
                     focusNote.focusInMindMap(0.5)
                   })
                 }

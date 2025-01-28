@@ -254,7 +254,7 @@ String.prototype.toReferenceNoteTitlePrefixContent = function () {
 /**
  * 获取无前缀的部分
  */
-String.prototype.toTitleWithoutPrefix = function () {
+String.prototype.toNoBracketPrefixContent = function () {
   let match = this.match(/^【.*】(.*)/)
   return match ? match[1] : this  // 如果匹配不到，返回原字符串
 }
@@ -4665,7 +4665,7 @@ try {
       return firstPart === '' ? secondPart : firstPart;
     } else {
       // 如果没有前缀，就获取第一个 ; 前的内容
-      title = title.toTitleWithoutPrefix()
+      title = title.toNoBracketPrefixContent()
       regex = /^(.*?);/;
       matches = title.match(regex);
     
@@ -4787,11 +4787,11 @@ try {
           //     }
           //   }
           // )
-          // this.title = "【文献："+ referenceType + "】; " + title.toTitleWithoutPrefix()
+          // this.title = "【文献："+ referenceType + "】; " + title.toNoBracketPrefixContent()
           if (type) {
-            this.title = "【文献："+ type + "】; " + title.toTitleWithoutPrefix()
+            this.title = "【文献："+ type + "】; " + title.toNoBracketPrefixContent()
           } else {
-            this.title = "【文献】; " + title.toTitleWithoutPrefix()
+            this.title = "【文献】; " + title.toNoBracketPrefixContent()
           }
         }
         break;

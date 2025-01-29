@@ -8229,6 +8229,10 @@ static template(action) {
             "menuTitle" : "➕思考点"
           },
           {
+            "action": "addThoughtPointAndMoveLastCommentToThought",
+            "menuTitle": "➕思考点 & 最后1️⃣💬⬆️思考",
+          },
+          {
             "action": "addThoughtPointAndMoveNewCommentsToThought",
             "menuTitle": "➕思考点 & 新💬⬆️思考",
           },
@@ -8377,10 +8381,10 @@ static template(action) {
           "menuWidth": 500,
           "menuItems": [
             "⬇️ ➕引用",
-            {
-              "action": "referenceRefByRefNum",
-              "menuTitle": "选中「具体引用」卡片+输入文献号→ ➕引用"
-            },
+            // {
+            //   "action": "referenceRefByRefNum",
+            //   "menuTitle": "选中「具体引用」卡片+输入文献号→ ➕引用"
+            // },
             {
               "action": "referenceRefByRefNumAndFocusInMindMap",
               "menuTitle": "选中「具体引用」卡片+输入文献号→ ➕引用 + 剪切归类 + 主视图定位"

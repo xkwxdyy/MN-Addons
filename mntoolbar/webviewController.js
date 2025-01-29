@@ -4505,6 +4505,18 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           })
         })
         break;
+      case "addThoughtPointAndMoveLastCommentToThought":
+        try {
+          MNUtil.undoGrouping(()=>{
+            focusNotes.forEach(focusNote=>{
+              focusNote.addMarkdownTextCommentTo("- ", "think")
+              focusNote.moveCommentsByIndexArrTo([focusNote.comments.length-1], "think")
+            })
+          })
+        } catch (error) {
+          MNUtil.showHUD(error);
+        }
+        break;
       case "addThoughtPointAndMoveNewCommentsToThought":
         try {
           MNUtil.undoGrouping(()=>{

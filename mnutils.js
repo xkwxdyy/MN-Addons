@@ -1189,7 +1189,7 @@ class MNUtil {
    * It categorizes the version as either "marginnote4" or "marginnote3" based on the parsed version number.
    * Additionally, it identifies the operating system type (iPadOS, iPhoneOS, or macOS) based on the osType property.
    *  
-   * @returns {{version: string, type: string}} An object containing the application version and operating system type.
+   * @returns {{version: "marginnote4" | "marginnote3", type: "iPadOS" | "iPhoneOS" | "macOS"}} An object containing the application version and operating system type.
    */
   static appVersion() {
     let info = {}
@@ -1233,7 +1233,6 @@ class MNUtil {
     const chinese = Array.from(str)
       .filter(ch => /[\u4e00-\u9fa5]/.test(ch))
       .length
-    
     const english = Array.from(str)
       .map(ch => /[a-zA-Z0-9\s]/.test(ch) ? ch : ' ')
       .join('').split(/\s+/).filter(s => s)
@@ -1275,6 +1274,12 @@ class MNUtil {
   static isNSNull(obj){
     return (obj === NSNull.new())
   }
+  /**
+   * 
+   * @param {UIWebView} webview 
+   * @param {string} script 
+   * @returns 
+   */
   static async runJavaScript(webview,script) {
   // if(!this.webviewResponse || !this.webviewResponse.window)return;
   return new Promise((resolve, reject) => {
@@ -1369,8 +1374,34 @@ class MNUtil {
       )
     })
   }
-  static copy(text) {
-    UIPasteboard.generalPasteboard().string = text
+  /**
+   * 自动检测类型并复制
+   * @param {string|object|NSData|UIImage} object 
+   */
+  static copy(object) {
+    switch (typeof object) {
+      case "string":
+        UIPasteboard.generalPasteboard().string = object
+        break;
+      case "object":
+        if (object instanceof NSData) {//假设为图片的data
+          this.copyImage(object)
+          break;
+        }
+        if (object instanceof UIImage) {
+          this.copyImage(object.pngData())
+          break;
+        }
+        if (object instanceof MNNote) {
+          this.copy(object.noteId)
+          break;
+        }
+        UIPasteboard.generalPasteboard().string = JSON.stringify(object,null,2)
+        break;
+      default:
+        this.showHUD("Unsupported type")
+        break;
+    }
   }
   /**
    * Copies a JSON object to the clipboard as a formatted string.
@@ -1492,20 +1523,20 @@ class MNUtil {
    */
   static genFrame(x, y, width, height) {
     if (x === undefined) {
-        MNUtil.showHUD("无效的参数: x");
+        this.showHUD("无效的参数: x");
         x = 10;
     }
     if (y === undefined) {
-        MNUtil.showHUD("无效的参数: y");
+        this.showHUD("无效的参数: y");
         y = 10;
     }
     if (width === undefined) {
-        MNUtil.showHUD("无效的参数: width");
-        // MNUtil.copyJSON({x:x,y:y,width:width,height:height})
+        this.showHUD("无效的参数: width");
+        // this.copyJSON({x:x,y:y,width:width,height:height})
         width = 10;
     }
     if (height === undefined) {
-        MNUtil.showHUD("无效的参数: height");
+        this.showHUD("无效的参数: height");
         height = 10;
     }
     return { x: x, y: y, width: width, height: height };
@@ -1569,13 +1600,75 @@ class MNUtil {
   static addObserver(observer,selector,name){
     NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, name);
   }
+  
+  static addObserverForPopupMenuOnNote(observer,selector){
+    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, "PopupMenuOnNote");
+  }
+  static addObserverForClosePopupMenuOnNote(observer,selector){
+    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, "ClosePopupMenuOnNote");
+  }
+  static addObserverForPopupMenuOnSelection(observer,selector){
+    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, "PopupMenuOnSelection");
+  }
+  static addObserverForClosePopupMenuOnSelection(observer,selector){
+    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, "ClosePopupMenuOnSelection");
+  }
+  static addObserverForUITextViewTextDidBeginEditing(observer,selector){
+    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, "UITextViewTextDidBeginEditingNotification");
+  }
+  static addObserverForUITextViewTextDidEndEditing(observer,selector){
+    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, "UITextViewTextDidEndEditingNotification");
+  }
+  static addObserverForCloudKeyValueStoreDidChange(observer,selector){
+    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, "NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI");
+  }
+  static addObserverForProcessNewExcerpt(observer,selector){
+    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, "ProcessNewExcerpt");
+  }
+  static addObserverForAddonBroadcast(observer,selector){
+    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, "AddonBroadcast");
+  }
+  static addObserverForUIPasteboardChanged(observer,selector){
+    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, "UIPasteboardChangedNotification");
+  }
+
   static removeObserver(observer,name){
     NSNotificationCenter.defaultCenter().removeObserverName(observer, name);
   }
   static removeObservers(observer,notifications) {
     notifications.forEach(notification=>{
-      NSNotificationCenter.defaultCenter().removeObserverName(object, notification);
+      NSNotificationCenter.defaultCenter().removeObserverName(observer, notification);
     })
+  }
+  static removeObserverForPopupMenuOnNote(observer,selector){
+    NSNotificationCenter.defaultCenter().removeObserverName(observer, selector, "PopupMenuOnNote");
+  }
+  static removeObserverForClosePopupMenuOnNote(observer,selector){
+    NSNotificationCenter.defaultCenter().removeObserverName(observer, selector, "ClosePopupMenuOnNote");
+  }
+  static removeObserverForPopupMenuOnSelection(observer,selector){
+    NSNotificationCenter.defaultCenter().removeObserverName(observer, selector, "PopupMenuOnSelection");
+  }
+  static removeObserverForClosePopupMenuOnSelection(observer,selector){
+    NSNotificationCenter.defaultCenter().removeObserverName(observer, selector, "ClosePopupMenuOnSelection");
+  }
+  static removeObserverForUITextViewTextDidBeginEditing(observer,selector){
+    NSNotificationCenter.defaultCenter().removeObserverName(observer, selector, "UITextViewTextDidBeginEditingNotification");
+  }
+  static removeObserverForUITextViewTextDidEndEditing(observer,selector){
+    NSNotificationCenter.defaultCenter().removeObserverName(observer, selector, "UITextViewTextDidEndEditingNotification");
+  }
+  static removeObserverForCloudKeyValueStoreDidChange(observer,selector){
+    NSNotificationCenter.defaultCenter().removeObserverName(observer, selector, "NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI");
+  }
+  static removeObserverForProcessNewExcerpt(observer,selector){
+    NSNotificationCenter.defaultCenter().removeObserverName(observer, selector, "ProcessNewExcerpt");
+  }
+  static removeObserverForAddonBroadcast(observer,selector){
+    NSNotificationCenter.defaultCenter().removeObserverName(observer, selector, "AddonBroadcast");
+  }
+  static removeObserverForUIPasteboardChanged(observer,selector){
+    NSNotificationCenter.defaultCenter().removeObserverName(observer, selector, "UIPasteboardChangedNotification");
   }
   static refreshAddonCommands(){
     this.studyController.refreshAddonCommands()
@@ -1630,6 +1723,11 @@ class MNUtil {
       this.studyController.focusNoteInDocumentById(noteId)
     }
   }
+  /**
+   * 
+   * @param {string} jsonString 
+   * @returns {boolean}
+   */
   static isValidJSON(jsonString){
     // return NSJSONSerialization.isValidJSONObject(result)
      try{
@@ -1643,6 +1741,11 @@ class MNUtil {
      }
      return false;
   }
+  /**
+   * 
+   * @param {string} text 
+   * @returns {object|undefined}
+   */
   static getValidJSON(text) {
     try {
     if (text.endsWith(':')) {
@@ -1745,9 +1848,9 @@ class MNUtil {
   /**
    * 左 0, 下 1，3, 上 2, 右 4
    * @param {*} sender
-   * @param {*} commandTable
-   * @param {*} width
-   * @param {*} position
+   * @param {object[]} commandTable
+   * @param {number} width
+   * @param {number} preferredPosition
    * @returns
    */
   static getPopoverAndPresent(sender,commandTable,width=100,preferredPosition=2) {
@@ -1804,6 +1907,12 @@ class MNUtil {
   static postNotification(name,userInfo) {
     NSNotificationCenter.defaultCenter().postNotificationNameObjectUserInfo(name, this.currentWindow, userInfo)
   }
+  /**
+   * Parses a 6/8-digit hexadecimal color string into a color object.
+   * 
+   * @param {string} hex - The 6/8-digit hexadecimal color string to parse.
+   * @returns {object} An object with the following properties: `color` (the parsed color string), and `opacity` (the opacity of the color).
+   */
   static parseHexColor(hex) {
     // 检查输入是否是有效的6位16进制颜色字符串
     if (typeof hex === 'string' && hex.length === 8) {
@@ -2045,7 +2154,7 @@ try {
     this.app.saveFileWithUti(filePath, UTI)
   }
   /**
-   *
+   * 去重
    * @param {T[]} arr
    * @param {boolean} noEmpty
    * @returns {T[]}
@@ -2057,26 +2166,38 @@ try {
   if (noEmpty) ret = ret.filter(k => k)
   return ret
 }
-  static typeOf(note){
-    if (typeof note === "undefined") {
+  /**
+   * 
+   * @param {undefined|string|MNNote|MbBookNote|NSData|UIImage} object 
+   * @returns 
+   */
+  static typeOf(object){
+    if (typeof object === "undefined") {
       return "undefined"
     }
-    if (typeof note === "string") {
-      if (/^marginnote\dapp:\/\/note\//.test(note.trim())) {
+    if (typeof object === "string") {
+      if (/^marginnote\dapp:\/\/note\//.test(object.trim())) {
         return "NoteURL"
       }
       return "string"
     }
-    if (note instanceof MNNote) {
+    if (object instanceof MNNote) {
       return "MNNote"
     }
-    if (note.noteId) {
+    if (object instanceof NSData) {
+      return "NSData"
+    }
+    if (object instanceof UIImage) {
+      return "UIImage"
+    }
+    if (object.noteId) {
       return "MbBookNote"
     }
-    if ("title" in note || "content" in note || "excerptText" in note) {
+    if ("title" in object || "content" in object || "excerptText" in object) {
       return "NoteConfig"
     }
-    return typeof note
+
+    return typeof object
 
   }
   static getNoteId(note){
@@ -2196,7 +2317,7 @@ try {
    * @param {string[]} items - The list of items to display in the dialog.
    * @returns {Promise<{input:string,button:number}>} A promise that resolves with an object containing the input text and the button index.
    */
-  static input(title,subTitle,items) {
+  static async input(title,subTitle,items) {
     return new Promise((resolve, reject) => {
       UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
         title,subTitle,2,items[0],items.slice(1),
@@ -2611,13 +2732,13 @@ class MNConnection{
    * @param {string} str - The string to be encoded to Base64.
    * @returns {string} The Base64 encoded string.
    */
-static btoa(str) {
-    // Encode the string to a WordArray
-    const wordArray = CryptoJS.enc.Utf8.parse(str);
-    // Convert the WordArray to Base64
-    const base64 = CryptoJS.enc.Base64.stringify(wordArray);
-    return base64;
-}
+  static btoa(str) {
+      // Encode the string to a WordArray
+      const wordArray = CryptoJS.enc.Utf8.parse(str);
+      // Convert the WordArray to Base64
+      const base64 = CryptoJS.enc.Base64.stringify(wordArray);
+      return base64;
+  }
   /**
    * Reads a file from a WebDAV server using the provided URL, username, and password.
    * 
@@ -2650,9 +2771,9 @@ static async readWebDAVFile(url, username, password) {
    * @param {string} url - The URL of the file on the WebDAV server.
    * @param {string} username - The username for authentication.
    * @param {string} password - The password for authentication.
-   * @returns {Promise<NSURLConnection>} A promise that resolves with the response data or an error object.
+   * @returns {NSURLConnection} A promise that resolves with the response data or an error object.
    */
-static async readWebDAVFileWithDelegate(url, username, password) {
+static readWebDAVFileWithDelegate(url, username, password) {
     const headers = {
       Authorization:'Basic ' + this.btoa(username + ':' + password),
       "Cache-Control": "no-cache"
@@ -2744,6 +2865,7 @@ class MNButton{
     "subviews",
     "masksToBounds",
     "title",
+    "alpha",
     "font",
     "opacity",
     "radius",
@@ -2987,6 +3109,18 @@ class MNButton{
       frame.height = this.button.height
     }
     this.button.frame = frame
+  }
+  /**
+   * 
+   * @param {string} hexColor 
+   * @param {number} [alpha=1.0] 
+   */
+  setColor(hexColor,alpha = 1.0){
+    if(hexColor.length > 7){
+      this.button.backgroundColor = MNButton.hexColor(hexColor)
+    }else{
+      this.button.backgroundColor = MNButton.hexColorAlpha(hexColor, alpha)
+    }
   }
   addSubview(view){
     this.button.addSubview(view)

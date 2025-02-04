@@ -198,6 +198,8 @@ class Pangu {
     newText = newText.replace(/\*\s*\*/g, "**")
     // 把 等价刻画/充要条件 中间的 / 两边的空格去掉
     newText = newText.replace(/\s*\/\s*/g, '/')
+    // 处理括号后面的空格
+    newText = newText.replace(/\]\s*([A-Za-z])/g, "] $1")
     return newText
   }
 }

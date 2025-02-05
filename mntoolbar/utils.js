@@ -8882,7 +8882,16 @@ static template(action) {
       config.action = "moveToExcerptPartBottom"
       config.onLongPress = {
         "action": "menu",
+        "menuWidth":350,
         "menuItems": [
+          {
+            "action": "deleteCommentsByPopupAndMoveNewContentToExcerptAreaTop",
+            "menuTitle": "删除某些评论后移动新内容 ⇨ 摘录区「🔝 top」",
+          },
+          {
+            "action": "deleteCommentsByPopupAndMoveNewContentToExcerptAreaBottom",
+            "menuTitle": "删除某些评论后移动新内容 ⇨ 摘录区「⬇️ bottom」",
+          },
           {
             "action": "moveToExcerptPartBottom",
             "menuTitle": "⇨ 摘录区「⬇️ bottom」",

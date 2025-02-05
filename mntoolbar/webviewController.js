@@ -2021,6 +2021,30 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         })
         break;
       /**
+       * 删除某些评论后移动摘录到摘录区底部
+       */
+      case "deleteCommentsByPopupAndMoveNewContentToExcerptAreaBottom":
+        MNUtil.undoGrouping(()=>{
+          try {
+            focusNote.deleteCommentsByPopupAndMoveNewContentTo("excerpt")
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
+      /**
+       * 删除某些评论后移动摘录到摘录区顶部
+       */
+      case "deleteCommentsByPopupAndMoveNewContentToExcerptAreaTop":
+        MNUtil.undoGrouping(()=>{
+          try {
+            focusNote.deleteCommentsByPopupAndMoveNewContentTo("excerpt", false)
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
+      /**
        * 复制批量选中的卡片的 ID 到剪贴板
        */
       case "copyFocusNotesIdArr":

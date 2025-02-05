@@ -1315,6 +1315,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
     let currentDocmd5
     let path, UTI
     let currentDocName
+    let pinnedNote
     switch (des.action) {
       case "undo":
         UndoManager.sharedInstance().undo()
@@ -5277,6 +5278,17 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "openTasksFloatMindMap": // new
         let OKRNote = MNNote.new("690ABF82-339C-4AE1-8BDB-FA6796204B27")
         OKRNote.focusInFloatMindMap()
+        break;
+      /**
+       * 卡片固定和储存
+       */
+      case "openPinnedNote-1": 
+        pinnedNote = MNNote.new("1346BDF1-7F58-430F-874E-B814E7162BDF") // Hᵖ(D)
+        pinnedNote.focusInFloatMindMap()
+        break;
+      case "openPinnedNote-2":
+        pinnedNote = MNNote.new("89042A37-CC80-4FFC-B24F-F8E86CB764DC") // Lᵖ(T)
+        pinnedNote.focusInFloatMindMap()
         break;
       /* 夏大鱼羊定制 - end */
       case "chatAI":

@@ -8836,7 +8836,7 @@ static template(action) {
         },
       ]
       break;
-    case "menu_workflow":
+    case "menu_card_workflow":
       config.action = "menu"
       config.menuWidth = 250
       config.menuItems = [
@@ -8919,7 +8919,21 @@ static template(action) {
         },
       ]
       break;
-    // // 尝试制卡的双击操作
+    // 固定某些卡片，通过弹窗的方式调用
+    // TODO：通过对象方式储存和调用，但不知道怎么实现
+    case "menu_card_pin":
+      config.action = "menu"
+      config.menuItems = [
+        {
+          "action": "openPinnedNote-1",
+          "menuTitle": "Hᵖ(𝔻)",
+        },
+        {
+          "action": "openPinnedNote-2",
+          "menuTitle": "Lᵖ(𝕋)",
+        },
+      ]
+      break;
     case "TemplateMakeNotes":
       config.action = "TemplateMakeNotes"
       config.doubleClick = {
@@ -9020,7 +9034,7 @@ static getActions() {
     "custom6":{name:"文本",image:"text",description: this.template("menu_text")},
     "snipaste":{name:"Snipaste",image:"snipaste",description:"Snipaste"},
     "custom7":{name:"隐藏插件栏",image:"hideAddonBar",description: this.template("hideAddonBar")},
-    "custom11":{name:"工作流",image:"workflow",description: this.template("menu_workflow")},
+    "custom11":{name:"工作流",image:"workflow",description: this.template("menu_card_workflow")},
     "custom8":{name:"测试",image:"test",description: this.template("test")},
     "execute":{name:"execute",image:"execute",description:"let focusNote = MNNote.getFocusNote()\nMNUtil.showHUD(focusNote.noteTitle)"},
     "ocr":{name:"ocr",image:"ocr",description:JSON.stringify({target:"comment",source:"default"})},
@@ -9030,13 +9044,13 @@ static getActions() {
     "bigbang":{name:"Bigbang",image:"bigbang",description:"Bigbang"},
     "chatglm":{name:"ChatAI",image:"ai",description:"ChatAI"},
     // "setting":{name:"Setting",image:"setting",description:"Setting"}
-    "custom17":{name:"Custom 17",image:"custom17",description: this.template("setContent")},
     "custom18":{name:"Custom 18",image:"custom18",description: this.template("addComment")},
     "custom19":{name:"Custom 19",image:"custom19",description: this.template("removeComment")},
     // 专门用于替换原有按钮
     "custom16":{name:"[手型工具弹窗替换]文本",image:"text_white",description: this.template("menu_handtool_text")},
     "custom15":{name:"[卡片弹窗替换]SOP",image:"sop_white",description: this.template("menu_sop")},
-    "custom12":{name:"[卡片弹窗替换]工作流",image:"workflow_white",description: this.template("menu_workflow")},
+    "custom12":{name:"[卡片弹窗替换]工作流",image:"workflow_white",description: this.template("menu_card_workflow")},
+    "custom17":{name:"[卡片弹窗替换]卡片储存",image:"pin_white",description: this.template("menu_card_pin")},
     "custom13":{name:"[卡片弹窗替换]摘录",image:"excerpt_white",description: this.template("menu_card_excerpt")},
     "custom14":{name:"MN",image:"MN_white",description: this.template("menu_MN")},
   }

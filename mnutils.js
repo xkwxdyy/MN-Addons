@@ -4888,7 +4888,7 @@ try {
   deleteCommentsByPopup(){
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "删除评论",
-      "可以选择，也可以输入 Index \n 注意输入情形从 0 开始\n 若多个评论 Index，用\n- 中文分号；\n- 英文分号;\n- 中文逗号，\n之一隔开",
+      "可以选择，也可以输入 Index \n 注意输入情形从 0 开始\n 若多个评论 Index，用\n- 中文分号；\n- 英文分号;\n- 中文逗号，\n- 西文逗号,\n 之一隔开",
       2,
       "取消",
       [
@@ -4912,6 +4912,49 @@ try {
             }
             break;
         }
+
+        MNUtil.undoGrouping(()=>{
+          this.refresh()
+        })
+      }
+    )
+  }
+  /**
+   * 先删除评论再移动新内容
+   * 
+   * 两个参数和 moveNewContentTo 函数的参数相同
+   * @param {String} target 新内容移动的位置
+   * @param {boolean} [toBottom=true] 默认移动到底部
+   */
+  deleteCommentsByPopupAndMoveNewContentTo(target, toBottom= true){
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "先删除评论",
+      "可以选择，也可以输入 Index \n 注意输入情形从 0 开始\n 若多个评论 Index，用\n- 中文分号；\n- 英文分号;\n- 中文逗号，\n- 西文逗号,\n 之一隔开",
+      2,
+      "取消",
+      [
+        "第1️⃣条评论",
+        "最后一条评论",
+        "确定删除输入的评论"
+      ],
+      (alert, buttonIndex) => {
+        let userInput = alert.textFieldAtIndex(0).text;
+        let deleteCommentIndexArr = userInput?userInput.splitStringByFourSeparators():[]
+        switch (buttonIndex) {
+          case 1:  // 删除第一条评论
+            this.removeCommentByIndex(0)
+            break;
+          case 2:  // 删除最后一条评论
+            this.removeCommentByIndex(this.comments.length-1)
+            break;
+          case 3:  // 确定删除输入的评论 Index
+            if (deleteCommentIndexArr.length > 0) {
+              this.removeCommentsByIndices(deleteCommentIndexArr)
+            }
+            break;
+        }
+
+        this.moveNewContentTo(target, toBottom)
 
         MNUtil.undoGrouping(()=>{
           this.refresh()
@@ -5169,7 +5212,7 @@ try {
                * 此时的场景一般是：修改知识点卡片的归类卡片
                */
               // 先获取到旧的 parentNoteTitle。虽然可能出现“相关链接：”下方没有链接的情况，但是考虑到此时已经有前缀了，所以这个情况基本不会出现，除非是原归类卡片被删除的情况，所以就看能不能找到原归类卡片，找得到的话就增加判断是否多了结构，找不到的话直接按照现归类卡片的标题来处理即可。
-              if (this.getHtmlCommentIndex("相关链接：") < this.comments.length-1) {
+              if (this.getHtmlCommentIndex("相关链接：")!== -1 &&this.getHtmlCommentIndex("相关链接：") < this.comments.length-1) {
                 let oldClassificationNoteId = this.comments[this.getHtmlCommentIndex("相关链接：")+1]
                 if (oldClassificationNoteId.text && oldClassificationNoteId.text.isLink()) {
                   /**
@@ -5845,6 +5888,48 @@ try {
           }
         } else {
           targetIndex = this.getHtmlCommentIndex("相关链接：") + 1
+        }
+        this.moveCommentsByIndexArr(newContentIndexArr, targetIndex)
+        break;
+
+
+      /**
+       * 摘录区
+       */
+      case "excerpt":
+      case "excerption":
+        if (toBottom) {
+          switch (this.getNoteTypeZh()) {
+            case "定义":
+              targetIndex = this.getHtmlCommentIndex("相关概念：")
+              break;
+            case "文献":
+              targetIndex = this.getHtmlCommentIndex("文献信息：")
+              break;
+            default:
+              targetIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh())
+              break;
+          }
+        } else {
+          // top 的话要看摘录区有没有摘录内容
+          // - 如果有的话，就放在第一个摘录的前面
+          // - 如果没有的话，就和摘录的 bottom 是一样的
+          let excerptPartIndexArr = this.getExcerptPartIndexArr()
+          if (excerptPartIndexArr.length == 0) {
+            switch (this.getNoteTypeZh()) {
+              case "定义":
+                targetIndex = this.getHtmlCommentIndex("相关概念：")
+                break;
+              case "文献":
+                targetIndex = this.getHtmlCommentIndex("文献信息：")
+                break;
+              default:
+                targetIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh())
+                break;
+            }
+          } else {
+            targetIndex = excerptPartIndexArr[0]
+          }
         }
         this.moveCommentsByIndexArr(newContentIndexArr, targetIndex)
         break;

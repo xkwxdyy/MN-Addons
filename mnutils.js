@@ -7679,6 +7679,35 @@ try {
   }
 
   /**
+   * 最后两个评论的内容类型
+   * 
+   * 1. 文本 + 链接 => "text-link"
+   * 2. 链接 + 链接 => "link-link"
+   */
+  lastTwoCommentsType(){
+    let comments = this.comments
+    if (comments.length < 2) {
+      return undefined
+    } else {
+      let lastComment = comments[comments.length-1]
+      let secondLastComment = comments[comments.length-2]
+      if (
+        secondLastComment.type == "TextNote" &&
+        !secondLastComment.text.ifLink() &&
+        lastComment.text.ifLink()
+      ) {
+        return "text-link"
+      } else if (
+        lastComment.text.ifLink()
+      ) {
+        return "other-link"
+      } else {
+        return undefined
+      }
+    }
+  }
+
+  /**
    * 夏大鱼羊定制 - MNNote - end
    */
   /**

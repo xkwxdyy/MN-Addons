@@ -5171,6 +5171,7 @@ try {
         }
         break;
       default:
+        // 特殊情形
         if (
           this.getClassificationParentNote().noteTitle.toClassificationNoteTitle() == "备考" &&
           noteType !== "定义" &&
@@ -5180,15 +5181,11 @@ try {
           break;
         }
         if (
-          !this.isIndependentNote() ||
-          (
-            /**
-             * 此时为 Inbox 的特殊情况
-             */
-            this.getNoteTypeObjByClassificationParentNoteTitle().en == "temporary"
-          )
+          !this.isIndependentNote()
         ) {
-          // type = this.getNoteTypeObjByClassificationParentNoteTitle().zh
+          /**
+           * 知识点卡片
+           */
           noteType = this.getNoteTypeZh()
           parentNoteTitle = this.getClassificationParentNote().noteTitle.toClassificationNoteTitle()
           if (title.ifKnowledgeNoteTitle()) {
@@ -5197,59 +5194,24 @@ try {
              */
             let prefix = title.toKnowledgeNotePrefix() // 要放在下面的 title 处理之前，因为 title 处理之后会改变 title 的值
             title = title.toKnowledgeNoteTitle()
+
             /**
-             * 如果是临时卡片，就直接重新弄前缀
+             * 需要检测前缀的结尾是否在「上一个」 parentNoteTitle 的基础上增加了“：xxx”的结构
+             * 此时的场景一般是：移动知识点卡片，导致归类卡片不同，但是可以增加了原来的前缀的，比如一些参数的范围，如 Lp 的 p 的范围，就会加在前缀中，比如【命题：xxx：p>1】
              */
-            if (this.ifNoteTemporary()) {
-              if (noteType == "定义") {
-                this.title = "【" + noteType + "：" + parentNoteTitle + "】; " + title
-              } else {
-                this.title = "【" + noteType + "：" + parentNoteTitle + "】" + title
-              }
-            } else {
-              /**
-               * 需要检测前缀的结尾是否在「上一个」 parentNoteTitle 的基础上增加了“：xxx”的结构
-               * 此时的场景一般是：修改知识点卡片的归类卡片
-               */
-              // 先获取到旧的 parentNoteTitle。虽然可能出现“相关链接：”下方没有链接的情况，但是考虑到此时已经有前缀了，所以这个情况基本不会出现，除非是原归类卡片被删除的情况，所以就看能不能找到原归类卡片，找得到的话就增加判断是否多了结构，找不到的话直接按照现归类卡片的标题来处理即可。
-              if (this.getHtmlCommentIndex("相关链接：")!== -1 &&this.getHtmlCommentIndex("相关链接：") < this.comments.length-1) {
-                let oldClassificationNoteId = this.comments[this.getHtmlCommentIndex("相关链接：")+1]
-                if (oldClassificationNoteId.text && oldClassificationNoteId.text.isLink()) {
+
+            // 先获取到旧的 parentNoteTitle。虽然可能出现“相关链接：”下方没有链接的情况，但是考虑到此时已经有前缀了，所以这个情况基本不会出现，除非是原归类卡片被删除的情况，所以就看能不能找到原归类卡片，找得到的话就增加判断是否多了结构，找不到的话直接按照现归类卡片的标题来处理即可。
+            if (this.getHtmlCommentIndex("相关链接：")!== -1 && this.getHtmlCommentIndex("相关链接：") < this.comments.length-1) {
+              let oldClassificationNoteId = this.comments[this.getHtmlCommentIndex("相关链接：")+1]
+              if (oldClassificationNoteId.text && oldClassificationNoteId.text.isLink()) {
+                /**
+                 * 是链接的话基本就是对应原归类卡片
+                 */
+                let oldClassificationNote = MNNote.new(oldClassificationNoteId.text.toNoteId())
+                let oldClassificationNoteTitle = oldClassificationNote.noteTitle.toClassificationNoteTitle()
+                if (prefix === oldClassificationNoteTitle) {
                   /**
-                   * 是链接的话基本就是对应原归类卡片
-                   */
-                  let oldClassificationNote = MNNote.new(oldClassificationNoteId.text.toNoteId())
-                  let oldClassificationNoteTitle = oldClassificationNote.noteTitle.toClassificationNoteTitle()
-                  if (prefix === oldClassificationNoteTitle) {
-                    /**
-                     * 此时说明没有修改旧前缀
-                     * 那就直接按照新归类卡片来
-                     */
-                    if (noteType == "定义") {
-                      this.title = "【" + noteType + "：" + parentNoteTitle + "】; " + title
-                    } else {
-                      this.title = "【" + noteType + "：" + parentNoteTitle + "】" + title
-                    }
-                  } else if (prefix.startsWith(oldClassificationNoteTitle)) {
-                    /**
-                     * 此时说明修改了旧前缀，此时需要获取到修改的部分
-                     */
-                    let newContent = prefix.slice(oldClassificationNoteTitle.length)
-                    if (noteType == "定义") {
-                      this.title = "【" + noteType + "：" + parentNoteTitle + newContent + "】; " + title
-                    } else {
-                      this.title = "【" + noteType + "：" + parentNoteTitle + newContent + "】" + title
-                    }
-                  } else {
-                    if (noteType == "定义") {
-                      this.title = "【" + noteType + "：" + parentNoteTitle + "】; " + title
-                    } else {
-                      this.title = "【" + noteType + "：" + parentNoteTitle + "】" + title
-                    }
-                  }
-                } else {
-                  /**
-                   * 否则说明原归类卡片不存在了
+                   * 此时说明没有修改旧前缀
                    * 那就直接按照新归类卡片来
                    */
                   if (noteType == "定义") {
@@ -5257,7 +5219,40 @@ try {
                   } else {
                     this.title = "【" + noteType + "：" + parentNoteTitle + "】" + title
                   }
+                } else if (prefix.startsWith(oldClassificationNoteTitle)) {
+                  /**
+                   * 此时说明修改了旧前缀，此时需要获取到修改的部分
+                   */
+                  let newContent = prefix.slice(oldClassificationNoteTitle.length)
+                  if (noteType == "定义") {
+                    this.title = "【" + noteType + "：" + parentNoteTitle + newContent + "】; " + title
+                  } else {
+                    this.title = "【" + noteType + "：" + parentNoteTitle + newContent + "】" + title
+                  }
+                } else {
+                  if (noteType == "定义") {
+                    this.title = "【" + noteType + "：" + parentNoteTitle + "】; " + title
+                  } else {
+                    this.title = "【" + noteType + "：" + parentNoteTitle + "】" + title
+                  }
                 }
+              } else {
+                /**
+                 * 否则说明原归类卡片不存在了
+                 * 那就直接按照新归类卡片来
+                 */
+                if (noteType == "定义") {
+                  this.title = "【" + noteType + "：" + parentNoteTitle + "】; " + title
+                } else {
+                  this.title = "【" + noteType + "：" + parentNoteTitle + "】" + title
+                }
+              }
+            } else {
+              // 其余情况，直接修改前缀
+              if (noteType == "定义") {
+                this.title = "【" + noteType + "：" + parentNoteTitle + "】; " + title
+              } else {
+                this.title = "【" + noteType + "：" + parentNoteTitle + "】" + title
               }
             }
           } else {

@@ -2051,9 +2051,14 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "copyFocusNotesIdArr":
         MNUtil.undoGrouping(()=>{
           try {
-            let idsArr = toolbarUtils.getNoteIdArr(focusNotes)
-            MNUtil.copy(idsArr)
-            MNUtil.showHUD(idsArr)
+            if (focusNotes.length == 1) {
+              MNUtil.copy(focusNote.noteId)
+              MNUtil.showHUD(focusNote.noteId)
+            } else {
+              let idsArr = toolbarUtils.getNoteIdArr(focusNotes)
+              MNUtil.copy(idsArr)
+              MNUtil.showHUD(idsArr)
+            }
           } catch (error) {
             MNUtil.showHUD(error);
           }
@@ -2273,17 +2278,6 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
             }
           }
         )
-        break;
-      case "moveUpLinkToBelonging":
-        MNUtil.undoGrouping(()=>{
-          let type = focusNote.title.match(/“.*”：“.*”相关(.*)/)[1]
-          if (type) {
-            let targetIndex = focusNote.getCommentIndex("相关"+type+"：",true)
-            if (targetIndex !== -1) {
-              focusNote.moveComment(focusNote.comments.length-1,targetIndex)
-            }
-          }
-        })
         break;
       case "addOldNoteKeyword":
         MNUtil.undoGrouping(()=>{
@@ -2559,172 +2553,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           MNUtil.showHUD(error);
         }
         break;
-      case "renewLinksBetweenClassificationNoteAndExtensionNote":
+      case "renewLinksBetweenClassificationNoteAndKnowledegeNote":
         try {
-          MNUtil.undoGrouping(()=>{
-            let targetNoteId = MNUtil.getNoteIdByURL(focusNote.comments[focusNote.comments.length - 1].text)
-            let targetNote = MNNote.new(targetNoteId)
-            let targetNoteColorIndex = targetNote.note.colorIndex
-            let targetNoteType
-            let targetClassificationNoteType = toolbarUtils.getClassificationNoteTypeByTitle(targetNote.noteTitle)
-            let focusClassificationNoteType = toolbarUtils.getClassificationNoteTypeByTitle(focusNote.noteTitle)
-            let targetCommentIndex
-            if ([0,1,4].includes(targetNoteColorIndex)) {
-              targetNoteType = "classification"
-            } else {
-              switch (targetNoteColorIndex) {
-                case 2: // 淡蓝色：定义类
-                  targetNoteType = "definition"
-                  break;
-                case 3: // 淡粉色：反例
-                  targetNoteType = "antiexample"
-                  break;
-                case 6: // 蓝色：应用
-                  targetNoteType = "application"
-                  break;
-                case 9: // 深绿色：思想方法
-                  targetNoteType = "method"
-                  break;
-                case 10: // 深蓝色：定理命题
-                  targetNoteType = "theorem"
-                  break;
-                case 13: // 淡灰色：问题
-                  targetNoteType = "question"
-                  break;
-                case 15: // 淡紫色：例子
-                  targetNoteType = "example"
-                  break;
-              }
-            }
-
-            let focusNoteType
-            switch (focusNoteColorIndex) {
-              case 0: // 淡黄色：归类
-                focusNoteType = "classification"
-                break;
-              case 1: // 淡绿色：归类
-                focusNoteType = "classification"
-                break;
-              case 2: // 淡蓝色：定义类
-                focusNoteType = "definition"
-                break;
-              case 3: // 淡粉色：反例
-                focusNoteType = "antiexample"
-                break;
-              case 4: // 黄色：归类
-                focusNoteType = "classification"
-                break;
-              case 6: // 蓝色：应用
-                focusNoteType = "application"
-                break;
-              case 9: // 深绿色：思想方法
-                focusNoteType = "method"
-                break;
-              case 10: // 深蓝色：定理命题
-                focusNoteType = "theorem"
-                break;
-              case 13: // 淡灰色：问题
-                focusNoteType = "question"
-                break;
-              case 15: // 淡紫色：例子
-                focusNoteType = "example"
-                break;
-            }
-
-            switch (focusNoteType) {
-              case "definition":
-                // 概念卡片只会和归类卡片链接
-                targetCommentIndex = toolbarUtils.moveLastCommentAboveComment(targetNote, "相关"+targetClassificationNoteType+"：" )
-                if (targetCommentIndex == -1) {
-                  toolbarUtils.moveLastCommentAboveComment(
-                    targetNote,
-                    "包含："
-                  )
-                }
-
-                toolbarUtils.moveLastCommentAboveComment(focusNote, "相关概念：")
-                break;
-              case "classification":
-                switch (targetNoteType) {
-                  case "definition":
-                    // 淡绿色只会和概念卡片链接
-                    targetCommentIndex = toolbarUtils.moveLastCommentAboveComment(focusNote, "相关"+focusClassificationNoteType+"：" )
-                    if (targetCommentIndex == -1) {
-                      toolbarUtils.moveLastCommentAboveComment(
-                        focusNote,
-                        "包含："
-                      )
-                    }
-    
-                    toolbarUtils.moveLastCommentAboveComment(targetNote, "相关概念：")
-                    break;
-                  case "classification":
-                    // 此时黄色只能和黄色卡片链接，因为黄色和绿色只有一种链接
-                    // 此时就是移动到“相关xxx”下方
-                    toolbarUtils.moveLastCommentAboveComment(focusNote, "包含：" )
-                    toolbarUtils.moveLastCommentAboveComment(targetNote, "包含：" )
-                    break;
-                  default:
-                    // 其余的知识卡片都只移动知识卡片的链接
-                    toolbarUtils.moveLastCommentAboveComment(targetNote, "应用：" )
-                    break;
-                }
-                break;
-              default:
-                // 知识卡片只与归类卡片链接
-                toolbarUtils.moveLastCommentAboveComment(focusNote, "应用：" )
-                break;
-            }
-
-            // if (focusNoteColorIndex == 2) {
-            //   // 如果选择的是概念类型卡片
-              
-            //   let targetNoteType = toolbarUtils.getClassificationNoteTypeByTitle(targetNote.noteTitle)
-            //   let relatedHtmlCommentIndex = targetNote.getCommentIndex("相关"+targetNoteType+"：",true)
-            //   let includingHtmlCommentIndex = targetNote.getCommentIndex("包含：",true)
-            //   let targetNoteTargetIndex = (relatedHtmlCommentIndex==-1)? includingHtmlCommentIndex: relatedHtmlCommentIndex
-            //   targetNote.moveComment(
-            //     targetNote.comments.length-1,
-            //     targetNoteTargetIndex
-            //   )
-
-            //   // 处理概念卡片
-            //   let definitionHtmlCommentIndex = focusNote.getCommentIndex("相关概念：",true)
-            //   focusNote.moveComment(
-            //     focusNote.comments.length-1,
-            //     definitionHtmlCommentIndex
-            //   )
-            // } else {
-            //   if (
-            //     focusNoteColorIndex == 0 ||
-            //     focusNoteColorIndex == 1 ||
-            //     focusNoteColorIndex == 4
-            //   ) {
-            //     // 选择的是归类型卡片
-            //     let targetNoteId = MNUtil.getNoteIdByURL(focusNote.comments[focusNote.comments.length - 1].text)
-
-            //     // 处理概念卡片
-            //     let targetNote = MNNote.new(targetNoteId)
-            //     let definitionHtmlCommentIndex = targetNote.getCommentIndex("相关概念：",true)
-            //     targetNote.moveComment(
-            //       targetNote.comments.length-1,
-            //       definitionHtmlCommentIndex
-            //     )
-
-
-            //     // 处理衍生卡片
-            //     let focusNoteType = toolbarUtils.getClassificationNoteTypeByTitle(focusNote.noteTitle)
-            //     let relatedHtmlCommentIndex = focusNote.getCommentIndex("相关"+focusNoteType+"：",true)
-            //     let includingHtmlCommentIndex = focusNote.getCommentIndex("包含：",true)
-            //     let focusNoteTargetIndex = (relatedHtmlCommentIndex==-1)? includingHtmlCommentIndex: relatedHtmlCommentIndex
-            //     focusNote.moveComment(
-            //       focusNote.comments.length-1,
-            //       focusNoteTargetIndex
-            //     )
-
-            //   }
-            // }
-          })
+          toolbarUtils.renewLinksBetweenClassificationNoteAndKnowledegeNote(focusNote)
         } catch (error) {
           MNUtil.showHUD(error);
         }
@@ -5111,6 +4942,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                   focusNote.title = focusNote.parentNote.noteTitle.toBracketPrefixContentArrowSuffix() + focusNote.title.toNoBracketPrefixContent()
                 }
               } else {
+                // 非独立卡片
                 if (toolbarConfig.windowState.preprocess) {
                   focusNotes.forEach(focusNote=>{
                     toolbarUtils.TemplateMakeNote(focusNote)
@@ -5288,6 +5120,10 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         break;
       case "openPinnedNote-2":
         pinnedNote = MNNote.new("89042A37-CC80-4FFC-B24F-F8E86CB764DC") // Lᵖ(T)
+        pinnedNote.focusInFloatMindMap()
+        break;
+      case "openPinnedNote-3":
+        pinnedNote = MNNote.new("D7DEDE97-1B87-4BB6-B607-4FB987F230E4") // Hᵖ(T)
         pinnedNote.focusInFloatMindMap()
         break;
       /* 夏大鱼羊定制 - end */

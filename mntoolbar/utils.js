@@ -4919,6 +4919,106 @@ try {
 
     note.focusInMindMap(0.2)
   }
+
+  /**
+   * 【数学】归类卡片和知识卡片之间的链接移动
+   * 
+   * 目前的不足：只能处理最后两个评论
+   */
+  static renewLinksBetweenClassificationNoteAndKnowledegeNote (focusNote) {
+    let focusNoteType = focusNote.getNoteTypeZh()
+    let targetNote = MNNote.new(focusNote.comments[focusNote.comments.length - 1].text)
+    let targetNoteType = targetNote.getNoteTypeZh()
+    let focusNoteSecondLastComment = MNComment.new(focusNote.comments[focusNote.comments.length - 2], focusNote.comments.length - 2, focusNote.note)
+    let targetNoteSecondLastComment = MNComment.new(targetNote.comments[targetNote.comments.length - 2], targetNote.comments.length - 2, targetNote.note)
+
+    if (targetNote && targetNote.comments[targetNote.comments.length - 1].text == focusNote.noteURL) {
+      switch (focusNoteType) {
+        case "归类":
+          switch (targetNoteType) {
+            case "归类":
+              /**
+               * 下面的符号解释：{x, y} = {target, focus}
+               * 1. 如果 xNote 的最后两个评论是 “- xxx” + yNoteLink，则效果为「移动新内容到相关思考区」
+               * 2. 如果 xNote 的最后两个评论是 “xxx”（非链接的 Markdown 文本） + yNoteLink，则将“xxx”处理为 “- xxx”然后同 1
+               * 3. 如果 xNote 的最后两个评论是 其它链接 + yNoteLink，则效果为「相关思考区添加“- ”并移动最后一个摘录」
+               */
+              switch (focusNote.lastTwoCommentsType()) {
+                case "text-link":
+                  if (!focusNoteSecondLastComment.text.startsWith("- ")) {
+                    focusNoteSecondLastComment.text = "- " + focusNoteSecondLastComment.text.trim()
+                  }
+                  focusNote.moveCommentsByIndexArrTo([focusNote.comments.length-2, focusNote.comments.length-1], "thoughts")
+                  break;
+                case "other-link":
+                  focusNote.addMarkdownTextCommentTo("- ", "think")
+                  focusNote.moveCommentsByIndexArrTo([focusNote.comments.length-1], "thoughts")
+                  break;
+              }
+
+              switch (targetNote.lastTwoCommentsType()) {
+                case "text-link":
+                  if (!targetNoteSecondLastComment.text.startsWith("- ")) {
+                    targetNoteSecondLastComment.text = "- " + targetNoteSecondLastComment.text.trim()
+                  }
+                  targetNote.moveCommentsByIndexArrTo([targetNote.comments.length-2, targetNote.comments.length-1], "thoughts")
+                  break;
+                case "other-link":
+                  targetNote.addMarkdownTextCommentTo("- ", "think")
+                  targetNote.moveCommentsByIndexArrTo([targetNote.comments.length-1], "thoughts")
+                  break;
+              }
+              break;
+          
+            case "定义":
+              /**
+               * focusNote 的最后一评论移动到「所属」
+               */
+              focusNote.moveCommentsByIndexArrTo([focusNote.comments.length-1], "belonging")
+              break;
+
+            default:  // 其余知识卡片
+              /**
+               * targetNote 的最后一评论移动到「相关链接区」
+               */
+              targetNote.moveCommentsByIndexArrTo([targetNote.comments.length-1], "links")
+              break;
+          }
+          break;
+      
+        case "定义":
+          switch (targetNoteType) {
+            case "归类":
+              /**
+               * targetNote 的最后一评论移动到「所属」
+               */
+              targetNote.moveCommentsByIndexArrTo([targetNote.comments.length-1], "belong")
+              break;
+          
+            case "定义":
+              /**
+               * 下面的符号解释：{x, y} = {target, focus}
+               * 1. 如果 xNote 的最后两个评论是 “- xxx” + yNoteLink，则效果为「移动新内容到相关概念区」
+               * 2. 如果 xNote 的最后两个评论是 “xxx”（非链接的 Markdown 文本） + yNoteLink，则将“xxx”处理为 “- xxx”然后同 1
+               * 3. 如果 xNote 的最后两个评论是 其它链接 + yNoteLink，则效果为「相关概念区添加“- ”并移动最后一个摘录」
+               */
+              break;
+          }
+          break;
+        
+        default:
+          switch (targetNoteType) {
+            case "归类":
+              /**
+               * focusNote 的最后一评论移动到「相关链接」
+               */
+              focusNote.moveCommentsByIndexArrTo([focusNote.comments.length-1], "links")
+              break;
+          }
+          break;
+      }
+    }
+  }
   /**
    * 夏大鱼羊 - end
   */
@@ -8260,7 +8360,7 @@ static template(action) {
           "menuTitle": "双向🔗定义卡片同时上移到「相关概念」",
         },
         {
-          "action": "renewLinksBetweenClassificationNoteAndExtensionNote",
+          "action": "renewLinksBetweenClassificationNoteAndKnowledegeNote",
           "menuTitle": "更新1️⃣次「归类卡片」与「概念or归类卡片」之间的🔗"
         },
         {
@@ -8326,21 +8426,6 @@ static template(action) {
             {
               "action": "moveProofDown",
               "menuTitle": "将证明移到最下方",
-            },
-          ]
-        },
-        {
-          "action": "menu",
-          "menuTitle": "➡️ 链接 🔗",
-          "menuWidth": 400,
-          "menuItems": [
-            {
-              "action": "renewLinksBetweenClassificationNoteAndExtensionNote",
-              "menuTitle": "更新1️⃣次「归类卡片」与「概念or归类卡片」之间的🔗"
-            },
-            {
-              "action": "moveUpLinkToBelonging",
-              "menuTitle": "最后1️⃣💬⬆️所属",
             },
           ]
         },
@@ -8931,6 +9016,10 @@ static template(action) {
         {
           "action": "openPinnedNote-2",
           "menuTitle": "Lᵖ(𝕋)",
+        },
+        {
+          "action": "openPinnedNote-3",
+          "menuTitle": "Hᵖ(𝕋)",
         },
       ]
       break;

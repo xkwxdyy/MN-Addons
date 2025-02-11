@@ -5055,6 +5055,75 @@ try {
       })
     }
   }
+
+  /**
+   * 优化：移动摘录到到相关思考区
+   * 
+   * 会自动识别是否是同时移动 卡片最后一条评论对应链接的卡片 的新内容到相关思考区
+   */
+  static moveUpThoughtPointsToBottom (focusNote) {
+    let newContentsIndexArr
+    let focusNoteLastComment = MNComment.new(focusNote.comments[focusNote.comments.length - 1], focusNote.comments.length - 1, focusNote.note)
+
+    // if (!focusNoteLastComment.type == "linkComment") {  // 不知道为什么这个判定失效了
+    if (
+      !(
+        focusNoteLastComment.text &&
+        focusNoteLastComment.text.ifLink()
+      )
+    ) {
+      // 如果最后一条评论不是链接，那么就直接移动最新的内容到思考区
+      newContentsIndexArr = focusNote.getNewContentIndexArr()
+      focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
+    } else {
+      // 如果最后一条是链接，就开始检测
+      let targetNote = MNNote.new(focusNoteLastComment.text)
+      let targetNoteLastComment = MNComment.new(targetNote.comments[targetNote.comments.length - 1], targetNote.comments.length - 1, targetNote.note)
+
+      if (
+        targetNoteLastComment.type == "linkComment" &&
+        targetNoteLastComment.text == focusNote.noteURL
+      ) {
+        // 最后一条评论对应的卡片的最后一条评论也是链接，且就是 focusNote 的链接时，此时进行双向移动处理
+
+        newContentsIndexArr = focusNote.getNewContentIndexArr()
+        if (newContentsIndexArr.length == 0) {
+          // 没有新内容，说明此时是直接链接
+          // 此时手动加一个 - 然后移动最后一条链接
+          focusNote.addMarkdownTextCommentTo("- ", "think")
+          focusNote.moveCommentsByIndexArrTo([focusNote.comments.length-1], "thoughts")
+        } else {
+          // 有新内容，此时说明已经手动输入了文本了，个人习惯是加- 的，所以就不处理了，直接上移即可
+          focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
+        }
+        
+
+        // 对 targetNote 一样处理
+        newContentsIndexArr = targetNote.getNewContentIndexArr()
+        if (newContentsIndexArr.length == 0) {
+          // 没有新内容，说明此时是直接链接
+          // 此时手动加一个 - 然后移动最后一条链接
+          targetNote.addMarkdownTextCommentTo("- ", "think")
+          targetNote.moveCommentsByIndexArrTo([focusNote.comments.length-1], "thoughts")
+        } else {
+          // 有新内容，此时说明已经手动输入了文本了，个人习惯是加- 的，所以就不处理了，直接上移即可
+          targetNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
+        }
+      } else {
+        // 最后一条评论对应的卡片的最后一条评论也是链接，但对应的不是 focusNote 的链接时，就只处理 focusNote
+        newContentsIndexArr = focusNote.getNewContentIndexArr()
+        focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
+      }
+    }
+
+    // 最后刷新一下
+    MNUtil.undoGrouping(()=>{
+      MNUtil.delay(0.2).then(()=>{
+        focusNote.refresh()
+        if (targetNote) { targetNote.refresh() }
+      })
+    })
+  }
   /**
    * 夏大鱼羊 - end
   */

@@ -4552,8 +4552,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         MNUtil.undoGrouping(()=>{
           try {
             focusNotes.forEach(focusNote=>{
-              let newContentsIndexArr = focusNote.getNewContentIndexArr()
-              focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
+              // let newContentsIndexArr = focusNote.getNewContentIndexArr()
+              // focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
+              toolbarUtils.moveUpThoughtPointsToBottom(focusNote)
             })
           } catch (error) {
             MNUtil.showHUD(error)

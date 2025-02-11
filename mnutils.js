@@ -5957,6 +5957,10 @@ try {
       case "excerption":
         if (toBottom) {
           switch (this.getNoteTypeZh()) {
+            case "顶层":
+            case "归类":
+              targetIndex = this.getHtmlCommentIndex("所属：")
+              break;
             case "定义":
               targetIndex = this.getHtmlCommentIndex("相关概念：")
               break;
@@ -5974,6 +5978,10 @@ try {
           let excerptPartIndexArr = this.getExcerptPartIndexArr()
           if (excerptPartIndexArr.length == 0) {
             switch (this.getNoteTypeZh()) {
+              case "顶层":
+              case "归类":
+                targetIndex = this.getHtmlCommentIndex("所属：")
+                break;
               case "定义":
                 targetIndex = this.getHtmlCommentIndex("相关概念：")
                 break;
@@ -6370,6 +6378,10 @@ try {
     let indexArr = []
     let endIndex
     switch (type) {
+      case "顶层":
+      case "归类":
+        endIndex = this.getHtmlCommentIndex("所属：")
+        break;
       case "定义":
         endIndex = this.getHtmlCommentIndex("相关概念：")
         break;

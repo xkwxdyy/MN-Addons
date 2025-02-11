@@ -5043,8 +5043,16 @@ try {
           break;
       }
 
-      focusNote.refresh()
-      targetNote.refresh()
+      MNUtil.undoGrouping(()=>{
+        try {
+          MNUtil.delay(0.2).then(()=>{
+            focusNote.refresh()
+            targetNote.refresh()
+          })
+        } catch (error) {
+          MNUtil.showHUD(error);
+        }
+      })
     }
   }
   /**

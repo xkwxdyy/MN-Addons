@@ -5002,6 +5002,31 @@ try {
                * 2. 如果 xNote 的最后两个评论是 “xxx”（非链接的 Markdown 文本） + yNoteLink，则将“xxx”处理为 “- xxx”然后同 1
                * 3. 如果 xNote 的最后两个评论是 其它链接 + yNoteLink，则效果为「相关概念区添加“- ”并移动最后一个摘录」
                */
+              switch (focusNote.lastTwoCommentsType()) {
+                case "text-link":
+                  if (!focusNoteSecondLastComment.text.startsWith("- ")) {
+                    focusNoteSecondLastComment.text = "- " + focusNoteSecondLastComment.text.trim()
+                  }
+                  focusNote.moveCommentsByIndexArrTo([focusNote.comments.length-2, focusNote.comments.length-1], "def")
+                  break;
+                case "other-link":
+                  focusNote.addMarkdownTextCommentTo("- ", "def")
+                  focusNote.moveCommentsByIndexArrTo([focusNote.comments.length-1], "def")
+                  break;
+              }
+
+              switch (targetNote.lastTwoCommentsType()) {
+                case "text-link":
+                  if (!targetNoteSecondLastComment.text.startsWith("- ")) {
+                    targetNoteSecondLastComment.text = "- " + targetNoteSecondLastComment.text.trim()
+                  }
+                  targetNote.moveCommentsByIndexArrTo([targetNote.comments.length-2, targetNote.comments.length-1], "def")
+                  break;
+                case "other-link":
+                  targetNote.addMarkdownTextCommentTo("- ", "def")
+                  targetNote.moveCommentsByIndexArrTo([targetNote.comments.length-1], "def")
+                  break;
+              }
               break;
           }
           break;
@@ -5017,6 +5042,9 @@ try {
           }
           break;
       }
+
+      focusNote.refresh()
+      targetNote.refresh()
     }
   }
   /**

@@ -6018,6 +6018,7 @@ try {
             case "定义":
               targetIndex = this.getHtmlCommentIndex("相关链接：")
               break;
+            case "顶层":
             case "归类":
               targetIndex = this.getHtmlCommentIndex("包含：")
               break;

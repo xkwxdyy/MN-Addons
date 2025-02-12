@@ -5810,7 +5810,93 @@ try {
         /**
          * 到“相关概念：”下方（定义类卡片）
          */
-        this.moveNewContentTo("def")
+        // this.moveNewContentTo("def")
+        let newContentsIndexArr
+        let newContentsFirstComment  // 新内容的第一条评论
+        let focusNoteLastComment = MNComment.new(this.comments[this.comments.length - 1], this.comments.length - 1, this.note)
+    
+        if (!(focusNoteLastComment.type == "linkComment")) {
+          // 如果最后一条评论不是链接，那么就直接移动最新的内容到概念区
+          newContentsIndexArr = this.getNewContentIndexArr()
+          if (newContentsIndexArr.length > 0) {
+            newContentsFirstComment = MNComment.new(this.comments[newContentsIndexArr[0]], newContentsIndexArr[0], this.note)
+            if (newContentsFirstComment.type == "markdownComment") {
+              newContentsFirstComment.text = newContentsFirstComment.text.toDotPrefix()
+            }
+            this.moveCommentsByIndexArrTo(newContentsIndexArr, "def")
+          }
+        } else {
+          // 如果最后一条是链接，就开始检测
+          let targetNote = MNNote.new(focusNoteLastComment.text)
+          let targetNoteLastComment = MNComment.new(targetNote.comments[targetNote.comments.length - 1], targetNote.comments.length - 1, targetNote.note)
+    
+          if (
+            targetNoteLastComment.type == "linkComment" &&
+            targetNoteLastComment.text == this.noteURL
+          ) {
+            // 最后一条评论对应的卡片的最后一条评论也是链接，且就是 focusNote 的链接时，此时进行双向移动处理
+    
+            newContentsIndexArr = this.getNewContentIndexArr()
+            if (newContentsIndexArr.length == 0) {
+              // 没有新内容，说明此时是直接链接
+              // 此时手动加一个 - 然后移动最后一条链接
+              this.addMarkdownTextCommentTo("- ", "def")
+              this.moveCommentsByIndexArrTo([this.comments.length-1], "def")
+            } else {
+              // 有新内容，此时说明已经手动输入了文本了，把第一条内容自动加上 “- ”
+              // this.moveCommentsByIndexArrTo(newContentsIndexArr, "def")
+              newContentsIndexArr = this.getNewContentIndexArr()
+              if (newContentsIndexArr.length > 0) {
+                newContentsFirstComment = MNComment.new(this.comments[newContentsIndexArr[0]], newContentsIndexArr[0], this.note)
+                if (newContentsFirstComment.type == "markdownComment") {
+                  newContentsFirstComment.text = newContentsFirstComment.text.toDotPrefix()
+                }
+                this.moveCommentsByIndexArrTo(newContentsIndexArr, "def")
+              }
+            }
+            
+    
+            // 对 targetNote 一样处理
+            newContentsIndexArr = targetNote.getNewContentIndexArr()
+            if (newContentsIndexArr.length == 0) {
+              // 没有新内容，说明此时是直接链接
+              // 此时手动加一个 - 然后移动最后一条链接
+              targetNote.addMarkdownTextCommentTo("- ", "def")
+              targetNote.moveCommentsByIndexArrTo([this.comments.length-1], "def")
+            } else {
+              // 有新内容，此时说明已经手动输入了文本了，新内容的第一条文本评论自动加上“- ”
+              // targetNote.moveCommentsByIndexArrTo(newContentsIndexArr, "def")
+              newContentsIndexArr = targetNote.getNewContentIndexArr()
+              if (newContentsIndexArr.length > 0) {
+                newContentsFirstComment = MNComment.new(targetNote.comments[newContentsIndexArr[0]], newContentsIndexArr[0], targetNote.note)
+                if (newContentsFirstComment.type == "markdownComment") {
+                  newContentsFirstComment.text = newContentsFirstComment.text.toDotPrefix()
+                }
+                targetNote.moveCommentsByIndexArrTo(newContentsIndexArr, "def")
+              }
+            }
+          } else {
+            // 最后一条评论对应的卡片的最后一条评论也是链接，但对应的不是 focusNote 的链接时，就只处理 focusNote
+            // newContentsIndexArr = this.getNewContentIndexArr()
+            // this.moveCommentsByIndexArrTo(newContentsIndexArr, "def")
+            newContentsIndexArr = this.getNewContentIndexArr()
+            if (newContentsIndexArr.length > 0) {
+              newContentsFirstComment = MNComment.new(this.comments[newContentsIndexArr[0]], newContentsIndexArr[0], this.note)
+              if (newContentsFirstComment.type == "markdownComment") {
+                newContentsFirstComment.text = newContentsFirstComment.text.toDotPrefix()
+              }
+              this.moveCommentsByIndexArrTo(newContentsIndexArr, "def")
+            }
+          }
+        }
+    
+        // 最后刷新一下
+        MNUtil.undoGrouping(()=>{
+          MNUtil.delay(0.2).then(()=>{
+            this.refresh()
+            if (targetNote) { targetNote.refresh() }
+          })
+        })
         break;
       case "归类":
       case "顶层":

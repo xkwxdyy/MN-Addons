@@ -1474,15 +1474,18 @@ try {
          */
         note.changeColorByType()
 
+
+        /**
+         * 【Done】自动移动新内容（到固定位置）
+         * 
+         * 放在 linkParentNote 后面，否则会干扰自动链接移动
+         */
+        note.autoMoveNewContent()
+
         /**
          * 【Done】与父卡片进行链接
          */
         note.linkParentNote()
-
-        /**
-         * 【Done】自动移动新内容（到固定位置）
-         */
-        note.autoMoveNewContent()
 
         /**
          * 【Done】加入复习
@@ -5063,12 +5066,19 @@ try {
    */
   static moveUpThoughtPointsToBottom (focusNote) {
     let newContentsIndexArr
+    let newContentsFirstComment  // 新内容的第一条评论
     let focusNoteLastComment = MNComment.new(focusNote.comments[focusNote.comments.length - 1], focusNote.comments.length - 1, focusNote.note)
 
     if (!(focusNoteLastComment.type == "linkComment")) {
       // 如果最后一条评论不是链接，那么就直接移动最新的内容到思考区
       newContentsIndexArr = focusNote.getNewContentIndexArr()
-      focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
+      if (newContentsIndexArr.length > 0) {
+        newContentsFirstComment = MNComment.new(focusNote.comments[newContentsIndexArr[0]], newContentsIndexArr[0], focusNote.note)
+        if (newContentsFirstComment.type == "markdownComment") {
+          newContentsFirstComment.text = newContentsFirstComment.text.toDotPrefix()
+        }
+        focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
+      }
     } else {
       // 如果最后一条是链接，就开始检测
       let targetNote = MNNote.new(focusNoteLastComment.text)
@@ -5087,8 +5097,16 @@ try {
           focusNote.addMarkdownTextCommentTo("- ", "think")
           focusNote.moveCommentsByIndexArrTo([focusNote.comments.length-1], "thoughts")
         } else {
-          // 有新内容，此时说明已经手动输入了文本了，个人习惯是加- 的，所以就不处理了，直接上移即可
-          focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
+          // 有新内容，此时说明已经手动输入了文本了，把第一条内容自动加上 “- ”
+          // focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
+          newContentsIndexArr = focusNote.getNewContentIndexArr()
+          if (newContentsIndexArr.length > 0) {
+            newContentsFirstComment = MNComment.new(focusNote.comments[newContentsIndexArr[0]], newContentsIndexArr[0], focusNote.note)
+            if (newContentsFirstComment.type == "markdownComment") {
+              newContentsFirstComment.text = newContentsFirstComment.text.toDotPrefix()
+            }
+            focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
+          }
         }
         
 
@@ -5100,13 +5118,29 @@ try {
           targetNote.addMarkdownTextCommentTo("- ", "think")
           targetNote.moveCommentsByIndexArrTo([focusNote.comments.length-1], "thoughts")
         } else {
-          // 有新内容，此时说明已经手动输入了文本了，个人习惯是加- 的，所以就不处理了，直接上移即可
-          targetNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
+          // 有新内容，此时说明已经手动输入了文本了，新内容的第一条文本评论自动加上“- ”
+          // targetNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
+          newContentsIndexArr = targetNote.getNewContentIndexArr()
+          if (newContentsIndexArr.length > 0) {
+            newContentsFirstComment = MNComment.new(targetNote.comments[newContentsIndexArr[0]], newContentsIndexArr[0], targetNote.note)
+            if (newContentsFirstComment.type == "markdownComment") {
+              newContentsFirstComment.text = newContentsFirstComment.text.toDotPrefix()
+            }
+            targetNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
+          }
         }
       } else {
         // 最后一条评论对应的卡片的最后一条评论也是链接，但对应的不是 focusNote 的链接时，就只处理 focusNote
+        // newContentsIndexArr = focusNote.getNewContentIndexArr()
+        // focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
         newContentsIndexArr = focusNote.getNewContentIndexArr()
-        focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
+        if (newContentsIndexArr.length > 0) {
+          newContentsFirstComment = MNComment.new(focusNote.comments[newContentsIndexArr[0]], newContentsIndexArr[0], focusNote.note)
+          if (newContentsFirstComment.type == "markdownComment") {
+            newContentsFirstComment.text = newContentsFirstComment.text.toDotPrefix()
+          }
+          focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
+        }
       }
     }
 
@@ -8454,10 +8488,10 @@ static template(action) {
       config.action = "menu"
       config.menuWidth = 330
       config.menuItems = [
-        {
-          "action": "moveLastTwoCommentsInBiLinkNotesToDefinition",
-          "menuTitle": "双向🔗定义卡片同时上移到「相关概念」",
-        },
+        // {
+        //   "action": "moveLastTwoCommentsInBiLinkNotesToDefinition",
+        //   "menuTitle": "双向🔗定义卡片同时上移到「相关概念」",
+        // },
         {
           "action": "renewLinksBetweenClassificationNoteAndKnowledegeNote",
           "menuTitle": "更新1️⃣次「归类卡片」与「概念or归类卡片」之间的🔗"

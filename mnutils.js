@@ -5581,6 +5581,8 @@ try {
            * 把除了摘录外的其他内容移动到对应的位置
            * 定义的默认到“相关思考：”下方
            * 其他的默认到“证明：”下方
+           * 
+           * TODO: summary 的链接要移动到相关概念，或者不移动
            */
         if (contentIndexArr.length !== 0) {
           switch (noteType.zh) {
@@ -5633,6 +5635,8 @@ try {
             /**
              * 把除了摘录外的其他内容移动到对应的位置
              * 定义的默认到“相关思考：”下方
+             * TODO: summary 的链接要移动到相关概念，或者不移动
+             * 
              * 其他的默认到“证明：”下方
              */
             if (contentIndexArr.length !== 0) {
@@ -5775,7 +5779,7 @@ try {
     }
     return indexArr
   }
-  moveNewContent() {
+  autoMoveNewContent() {
     switch (this.getNoteTypeZh()) {
       case "定义":
         /**

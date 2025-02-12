@@ -455,6 +455,31 @@ String.prototype.toNoteBookId = function() {
 }
 
 /**
+ * 字符串改成“- xxx”的形式
+ * 
+ * xxx => - xxx
+ * -xxx => - xxx
+ * - xxx => - xxx
+ */
+String.prototype.toDotPrefix = function() {
+  let str = this.trim().removeDotPrefix()
+  return "- " + str
+}
+/**
+ * 去掉字符串的 - 前缀
+ * 
+ * 如果没有这个前缀，就原样返回
+ */
+String.prototype.removeDotPrefix = function() {
+  let str = this.trim()
+  if (str.startsWith("-")) {
+    return str.slice(1).trim()
+  } else {
+    return str
+  }
+}
+
+/**
  * 把 ID 或 URL 统一转化为 ID
  */
 String.prototype.toNoteId = function() {

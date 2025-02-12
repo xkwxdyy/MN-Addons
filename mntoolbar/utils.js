@@ -1480,9 +1480,9 @@ try {
         note.linkParentNote()
 
         /**
-         * 【Done】移动新内容
+         * 【Done】自动移动新内容（到固定位置）
          */
-        note.moveNewContent()
+        note.autoMoveNewContent()
 
         /**
          * 【Done】加入复习
@@ -5057,21 +5057,15 @@ try {
   }
 
   /**
-   * 优化：移动摘录到到相关思考区
+   * 移动摘录到到相关思考区
    * 
-   * 会自动识别是否是同时移动 卡片最后一条评论对应链接的卡片 的新内容到相关思考区
+   * 2.0：会自动识别是否是同时移动 卡片最后一条评论对应链接的卡片 的新内容到相关思考区
    */
   static moveUpThoughtPointsToBottom (focusNote) {
     let newContentsIndexArr
     let focusNoteLastComment = MNComment.new(focusNote.comments[focusNote.comments.length - 1], focusNote.comments.length - 1, focusNote.note)
 
-    // if (!focusNoteLastComment.type == "linkComment") {  // 不知道为什么这个判定失效了
-    if (
-      !(
-        focusNoteLastComment.text &&
-        focusNoteLastComment.text.ifLink()
-      )
-    ) {
+    if (!(focusNoteLastComment.type == "linkComment")) {
       // 如果最后一条评论不是链接，那么就直接移动最新的内容到思考区
       newContentsIndexArr = focusNote.getNewContentIndexArr()
       focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")

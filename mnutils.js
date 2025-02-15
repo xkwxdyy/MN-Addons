@@ -5811,7 +5811,7 @@ try {
          * 到“相关概念：”下方（定义类卡片）
          */
         // this.moveNewContentTo("def")
-        let newContentsIndexArr
+        let newContentsIndexArr,targetNoteNewContentsIndexArr
         let newContentsFirstComment  // 新内容的第一条评论
         let focusNoteLastComment = MNComment.new(this.comments[this.comments.length - 1], this.comments.length - 1, this.note)
     
@@ -5832,7 +5832,8 @@ try {
     
           if (
             targetNoteLastComment.type == "linkComment" &&
-            targetNoteLastComment.text == this.noteURL
+            targetNoteLastComment.text == this.noteURL &&
+            targetNote.getNoteTypeZh() == "定义"
           ) {
             // 最后一条评论对应的卡片的最后一条评论也是链接，且就是 focusNote 的链接时，此时进行双向移动处理
     

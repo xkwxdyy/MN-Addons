@@ -5857,22 +5857,22 @@ try {
             
     
             // 对 targetNote 一样处理
-            newContentsIndexArr = targetNote.getNewContentIndexArr()
-            if (newContentsIndexArr.length == 0) {
+            targetNoteNewContentsIndexArr = targetNote.getNewContentIndexArr()
+            if (targetNoteNewContentsIndexArr.length == 0) {
               // 没有新内容，说明此时是直接链接
               // 此时手动加一个 - 然后移动最后一条链接
               targetNote.addMarkdownTextCommentTo("- ", "def")
-              targetNote.moveCommentsByIndexArrTo([this.comments.length-1], "def")
+              targetNote.moveCommentsByIndexArrTo([targetNote.comments.length-1], "def")
             } else {
               // 有新内容，此时说明已经手动输入了文本了，新内容的第一条文本评论自动加上“- ”
               // targetNote.moveCommentsByIndexArrTo(newContentsIndexArr, "def")
-              newContentsIndexArr = targetNote.getNewContentIndexArr()
-              if (newContentsIndexArr.length > 0) {
-                newContentsFirstComment = MNComment.new(targetNote.comments[newContentsIndexArr[0]], newContentsIndexArr[0], targetNote.note)
+              targetNoteNewContentsIndexArr = targetNote.getNewContentIndexArr()
+              if (targetNoteNewContentsIndexArr.length > 0) {
+                newContentsFirstComment = MNComment.new(targetNote.comments[targetNoteNewContentsIndexArr[0]], targetNoteNewContentsIndexArr[0], targetNote.note)
                 if (newContentsFirstComment.type == "markdownComment") {
                   newContentsFirstComment.text = newContentsFirstComment.text.toDotPrefix()
                 }
-                targetNote.moveCommentsByIndexArrTo(newContentsIndexArr, "def")
+                targetNote.moveCommentsByIndexArrTo(targetNoteNewContentsIndexArr, "def")
               }
             }
           } else {

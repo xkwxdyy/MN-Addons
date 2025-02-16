@@ -2638,73 +2638,77 @@ try {
     }
   }
 
-  static getAbbreviationsOfName(name) {
-    let languageOfName = this.languageOfString(name)
+  static getAbbreviationsOfName(nameInput) {
+    let languageOfName = this.languageOfString(nameInput)
     let Name = {}
     let pinyinStandard
     if (languageOfName == "Chinese") {
       let namePinyinArr = pinyin.pinyin(
-        name, 
+        nameInput, 
         {
           style: "normal",
           mode: "surname"
         }
       )
-      let firstPart = namePinyinArr[0].toString()
-      let lastPart = namePinyinArr[namePinyinArr.length - 1].toString()
-      let middlePart = namePinyinArr[1].toString()
-      if (namePinyinArr.length == 2) {
-        // 以 lu xun 为例
-
-        // Xun Lu
-        pinyinStandard = this.camelizeString(lastPart) + " " + this.camelizeString(firstPart) 
-        // MNUtil.showHUD(pinyinStandard)
-        Name = this.getAbbreviationsOfEnglishName(pinyinStandard)
-        Name.originalChineseName = name
-        // Name.language = "Chinese"
-        // Lu Xun
-        Name.pinyinStandardAndReverse =  this.camelizeString(firstPart) + " " + this.camelizeString(lastPart)
-
-        Name = this.moveStringPropertyToSecondPosition(Name, "originalChineseName")
-
-        
-        // // Lu Xun
-        // Name.pinyinStandardAndReverse = this.camelizeString(firstPart) + " " + this.camelizeString(lastPart)
-        // // luxun
-        // Name.pinyinNoSpace = firstPart + lastPart
-        // // lu xun
-        // Name.pinyinWithSpace = firstPart + " " + lastPart
-        // // Lu xun
-        // Name.pinyinCamelizeFirstpartWithSpace = this.camelizeString(firstPart) + " " + lastPart 
-        // // Luxun
-        // Name.pinyinCamelizeFirstpartNoSpace = this.camelizeString(firstPart) + lastPart 
-        // // xun, Lu
-        // Name.pinyinCamelizeFirstpartAndReverseWithComma = lastPart + ", " + this.camelizeString(firstPart)
-        // // LuXun
-        // Name.pinyinCamelizeNoSpace = this.camelizeString(firstPart) +  this.camelizeString(lastPart)
-        // // xun Lu
-        // Name.pinyinCamelizeFirstpartAndReverseWithSpace = lastPart + " " + this.camelizeString(firstPart)
-        // // xunLu
-        // Name.pinyinCamelizeFirstpartAndReverseNoSpace = lastPart  + this.camelizeString(firstPart)
-        // // Xun, Lu
-        // Name.pinyinStandardWithComma = this.camelizeString(lastPart) + " " + this.camelizeString(firstPart) 
-      } else {
-        if (namePinyinArr.length == 3) {
-          // 以 xia kang wei 为例
-
-          // Kangwei Xia
-          pinyinStandard = this.camelizeString(middlePart) + lastPart + " " + this.camelizeString(firstPart)
+      if (namePinyinArr) {
+        let firstPart = namePinyinArr[0].toString()
+        let lastPart = namePinyinArr[namePinyinArr.length - 1].toString()
+        let middlePart = namePinyinArr[1].toString()
+        if (namePinyinArr.length == 2) {
+          // 以 lu xun 为例
+  
+          // Xun Lu
+          pinyinStandard = this.camelizeString(lastPart) + " " + this.camelizeString(firstPart) 
+          // MNUtil.showHUD(pinyinStandard)
           Name = this.getAbbreviationsOfEnglishName(pinyinStandard)
-          Name.originalChineseName = name
+          Name.originalChineseName = nameInput
           // Name.language = "Chinese"
-          // Xia Kangwei
-          Name.pinyinStandardAndReverse =  this.camelizeString(firstPart) + " " + this.camelizeString(middlePart) + lastPart
+          // Lu Xun
+          Name.pinyinStandardAndReverse =  this.camelizeString(firstPart) + " " + this.camelizeString(lastPart)
+  
           Name = this.moveStringPropertyToSecondPosition(Name, "originalChineseName")
+  
+          
+          // // Lu Xun
+          // Name.pinyinStandardAndReverse = this.camelizeString(firstPart) + " " + this.camelizeString(lastPart)
+          // // luxun
+          // Name.pinyinNoSpace = firstPart + lastPart
+          // // lu xun
+          // Name.pinyinWithSpace = firstPart + " " + lastPart
+          // // Lu xun
+          // Name.pinyinCamelizeFirstpartWithSpace = this.camelizeString(firstPart) + " " + lastPart 
+          // // Luxun
+          // Name.pinyinCamelizeFirstpartNoSpace = this.camelizeString(firstPart) + lastPart 
+          // // xun, Lu
+          // Name.pinyinCamelizeFirstpartAndReverseWithComma = lastPart + ", " + this.camelizeString(firstPart)
+          // // LuXun
+          // Name.pinyinCamelizeNoSpace = this.camelizeString(firstPart) +  this.camelizeString(lastPart)
+          // // xun Lu
+          // Name.pinyinCamelizeFirstpartAndReverseWithSpace = lastPart + " " + this.camelizeString(firstPart)
+          // // xunLu
+          // Name.pinyinCamelizeFirstpartAndReverseNoSpace = lastPart  + this.camelizeString(firstPart)
+          // // Xun, Lu
+          // Name.pinyinStandardWithComma = this.camelizeString(lastPart) + " " + this.camelizeString(firstPart) 
+        } else {
+          if (namePinyinArr.length == 3) {
+            // 以 xia kang wei 为例
+  
+            // Kangwei Xia
+            pinyinStandard = this.camelizeString(middlePart) + lastPart + " " + this.camelizeString(firstPart)
+            Name = this.getAbbreviationsOfEnglishName(pinyinStandard)
+            Name.originalChineseName = nameInput
+            // Name.language = "Chinese"
+            // Xia Kangwei
+            Name.pinyinStandardAndReverse =  this.camelizeString(firstPart) + " " + this.camelizeString(middlePart) + lastPart
+            Name = this.moveStringPropertyToSecondPosition(Name, "originalChineseName")
+          }
         }
+      } else {
+        MNUtil.showHUD(nameInput + "->" +namePinyinArr)
       }
       return Name
     } else {
-      return this.getAbbreviationsOfEnglishName(name)
+      return this.getAbbreviationsOfEnglishName(nameInput)
     }
   }
 

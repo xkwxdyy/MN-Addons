@@ -244,7 +244,7 @@ String.prototype.toReferenceNoteTitle = function () {
  * 判断是否是文献卡片的标题
  */
 String.prototype.ifReferenceNoteTitle = function () {
-  return /^【文献：(论文|书作)：?.*】/.test(this)
+  return /^【文献：(论文|书作|作者)：?.*】/.test(this)
 }
 /**
  * 获取文献卡片标题的前缀内容
@@ -876,7 +876,8 @@ class MNUtil {
       "应用": "C4B464CD-B8C6-42DE-B459-55B48EB31AD8",
       "归类": "8853B79F-8579-46C6-8ABD-E7DE6F775B8B",
       "顶层": "8853B79F-8579-46C6-8ABD-E7DE6F775B8B",
-      "文献": "F09C0EEB-4FB5-476C-8329-8CC5AEFECC43"
+      "文献": "F09C0EEB-4FB5-476C-8329-8CC5AEFECC43",
+      "文献作者":"782A91F4-421E-456B-80E6-2B34D402911A"
     }
     return typeMap[type]
   }
@@ -5573,7 +5574,11 @@ try {
           }
           break;
         case "文献":
-          this.note.colorIndex = 15
+          if (this.title.includes("作者")) {
+            this.note.colorIndex = 2
+          } else {
+            this.note.colorIndex = 15
+          }
           break;
         default:
           let noteType = this.getNoteTypeObjByClassificationParentNoteTitle()
@@ -5644,7 +5649,7 @@ try {
           }
           break;
         case "文献":
-          if (this.getHtmlCommentIndex("文献信息：") == -1) {
+          if (this.getHtmlCommentIndex("文献信息：") == -1 && !this.title.includes("作者")) {
             this.mergeTemplateByNoteType("文献")
           }
           break;
@@ -5907,6 +5912,12 @@ try {
         this.moveNewContentTo("thinking")
         break;
       case "文献":
+        /**
+         * 作者类型的卡片就把新内容移动到个人信息
+         */
+        if (this.title.includes("作者")) {
+          this.moveNewContentTo("info")
+        }
         break;
       default:
         /**
@@ -6041,6 +6052,22 @@ try {
           } else {
             targetIndex = excerptPartIndexArr[0]
           }
+        }
+        this.moveCommentsByIndexArr(newContentIndexArr, targetIndex)
+        break;
+
+
+      /**
+       * 【文献作者卡片】个人信息区
+       */
+      case "info":
+      case "infos":
+      case "information":
+      case "informations":
+        if (toBottom) {
+          targetIndex = this.getHtmlCommentIndex("文献：")
+        } else {
+          targetIndex = this.getHtmlCommentIndex("个人信息：") + 1
         }
         this.moveCommentsByIndexArr(newContentIndexArr, targetIndex)
         break;
@@ -6478,6 +6505,21 @@ try {
         }
         this.appendMarkdownComment(text, targetIndex)
         break;
+
+      /**
+       * 【文献作者卡片】个人信息区
+       */
+      case "info":
+      case "infos":
+      case "information":
+      case "informations":
+        if (toBottom) {
+          targetIndex = this.getHtmlCommentIndex("文献：")
+        } else {
+          targetIndex = this.getHtmlCommentIndex("个人信息：") + 1
+        }
+        this.appendMarkdownComment(text, targetIndex)
+        break;
     }
   }
   /**
@@ -6534,7 +6576,19 @@ try {
         indexArr = this.getHtmlBlockNonLinkContentIndexArr("包含：")
         break;
       case "文献":
-        indexArr = this.getHtmlBlockNonLinkContentIndexArr("被引用情况：")
+        if (this.title.includes("作者")) {
+          // 作者卡片，比较特殊，因为要获取“文献：”下方“论文：”后的第一个非链接
+
+          // 这里和 Html 的有点不一样，因为 Markdown Block 是以 Markdown comment 为分界点的，所以这里直接获取 block 的 contents 的 index，最后一个的下一个就是我们要的 indexArr 的开始
+          let indexArrAux = this.getMarkdownBlockContentIndexArr("📄 **论文**")
+          if (indexArrAux[indexArrAux.length -1] !== this.comments.length-1) {
+            // 此时表示下方有新的内容，则从 indexArrAux[indexArrAux.length -1] 开始到末尾作为 indexArr
+            indexArr = Array.from({ length: this.comments.length }, (_, index) => index).slice(indexArrAux[indexArrAux.length - 1] + 1)
+          }
+        } else {
+          // 论文书作卡片
+          indexArr = this.getHtmlBlockNonLinkContentIndexArr("被引用情况：")
+        }
         break;
       default:
         // 非定义类卡片获取“应用”下方的第一个非链接开始之后
@@ -6624,6 +6678,112 @@ try {
         return []
       }
     }
+  }
+  /**
+   * 类似于 getHtmlBlockIndexArr 获取 markdownComment Block 的 IndexArr
+   */
+  getMarkdownBlockIndexArr (markdowntext) {
+    let markdownCommentIndex = this.getMarkdownCommentIndex(markdowntext)
+    let indexArr = []
+    if (markdownCommentIndex !== -1) {
+      // 获取下一个 markdown 评论的 index
+      let nextMarkdownCommentIndex = this.getNextMarkdownCommentIndex(markdowntext)
+      if (nextMarkdownCommentIndex == -1) {
+        // 如果没有下一个 markdown 评论，则以 markdownCommentIndex 到最后一个评论作为 block
+        for (let i = markdownCommentIndex; i <= this.comments.length-1; i++) {
+          indexArr.push(i)
+        }
+      } else {
+        // 有下一个 markdown 评论，则以 markdownCommentIndex 到 nextMarkdownCommentIndex 之间的评论作为 block
+        for (let i = markdownCommentIndex; i < nextMarkdownCommentIndex; i++) {
+          indexArr.push(i)
+        }
+      }
+    }
+    return indexArr
+  }
+  /**
+   * 获取第一个出现的 markdowncomment 的 index
+   */
+  getMarkdownCommentIndex (markdowncomment) {
+    const comments = this.note.comments
+    for (let i = 0; i < comments.length; i++) {
+      // const _comment = comments[i]
+      const _comment = MNComment.new(comments[i], i, this.note)
+      if (
+        _comment.type == "markdownComment" &&
+        _comment.text == markdowncomment
+      ) {
+        return i
+      }
+    }
+    return -1
+  }
+  getNextMarkdownCommentIndex (markdowncomment) {
+    let indexArr = this.getMarkdownCommentsIndexArr()
+    let markdownCommentIndex = this.getMarkdownCommentIndex(markdowncomment)
+    let nextMarkdownCommentIndex = -1
+    if (markdownCommentIndex !== -1) {
+      let nextIndex = indexArr.indexOf(markdownCommentIndex) + 1
+      if (nextIndex < indexArr.length) {
+        nextMarkdownCommentIndex = indexArr[nextIndex]
+      }
+    }
+    return nextMarkdownCommentIndex
+  }
+  getMarkdownCommentsIndexArr () {
+    let indexArr = []
+    for (let i = 0; i < this.comments.length; i++) {
+      let comment = MNComment.new(this.comments[i], i, this.note)
+      if (comment.type == "markdownComment") {
+        indexArr.push(i)
+      }
+    }
+
+    return indexArr
+  }
+  /**
+   * 类似于 getMarkdownBlockContentIndexArr，获取 markdownComment Block 的「内容」的 IndexArr
+   */
+  getMarkdownBlockContentIndexArr (markdowntext) {
+    let arr = this.getMarkdownBlockIndexArr(markdowntext)
+    if (arr.length > 0) {
+      arr.shift()  // 去掉 html 评论的 index
+    }
+    return arr
+  }
+  /**
+   * 类似于 getHtmlBlockNonLinkContentIndexArr，要获取 markdownComment Block 的非链接到最后的 IndexArr
+   * 
+   * 和 Html 有点不同，如果直接仿照 Html 处理的话，新的 markdownComment 会被识别为下一个 Block，
+   */
+  getMarkdownBlockNonLinkContentIndexArr (markdowntext) {
+    let indexArr = this.getMarkdownBlockContentIndexArr(markdowntext)
+    let findNonLink = false
+    if (indexArr.length !== 0) {
+      // 从头开始遍历，检测是否是链接，直到找到第一个非链接就停止
+      // bug：如果下方是链接，也会被识别
+      for (let i = 0; i < indexArr.length; i++) {
+        let index = indexArr[i]
+        let comment = this.comments[index]
+        if (
+          !MNUtil.isCommentLink(comment)
+        ) {
+          // 不处理 # 开头的文本，因为这种文本是用作标题链接，不能被识别为新内容
+          if (comment.type == "TextNote" && comment.text.startsWith("#")) {
+            continue
+          }
+          indexArr = indexArr.slice(i)
+          findNonLink = true
+          break
+        }
+      }
+      if (!findNonLink) {
+        // 只有链接时，仍然返回数组
+        return []
+      }
+    }
+    return indexArr
   }
   /**
    * 【数学】获取 this 的 noteType

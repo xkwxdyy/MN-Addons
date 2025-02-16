@@ -1498,7 +1498,7 @@ try {
 
 
         // 移动文献卡片
-        note.move()
+        // note.move()
       }
     }
     /**
@@ -4880,10 +4880,10 @@ try {
        */
 
       if (note.getHtmlCommentIndex("个人信息：") == -1) { // 防止重复制卡
-        /**
-         * 处理作者名
-         * 
-         * 1. 获取第一个 keyword 作为主名
+       /**
+        * 处理作者名
+        * 
+        * 1. 获取第一个 keyword 作为主名
         * 2. 获取所有主名的衍生名（基于 toolbarUtils 的 getAbbreviationsOfName）
         * 3. 然后看名称中是否有衍生名了，没有就加进去
         * 

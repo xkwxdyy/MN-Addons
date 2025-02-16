@@ -6581,9 +6581,14 @@ try {
 
           // 这里和 Html 的有点不一样，因为 Markdown Block 是以 Markdown comment 为分界点的，所以这里直接获取 block 的 contents 的 index，最后一个的下一个就是我们要的 indexArr 的开始
           let indexArrAux = this.getMarkdownBlockContentIndexArr("📄 **论文**")
-          if (indexArrAux[indexArrAux.length -1] !== this.comments.length-1) {
-            // 此时表示下方有新的内容，则从 indexArrAux[indexArrAux.length -1] 开始到末尾作为 indexArr
-            indexArr = Array.from({ length: this.comments.length }, (_, index) => index).slice(indexArrAux[indexArrAux.length - 1] + 1)
+          if (indexArrAux) {
+            if (indexArrAux[indexArrAux.length -1] !== this.comments.length-1) {
+              // 此时表示下方有新的内容，则从 indexArrAux[indexArrAux.length -1] 开始到末尾作为 indexArr
+              indexArr = Array.from({ length: this.comments.length }, (_, index) => index).slice(indexArrAux[indexArrAux.length - 1] + 1)
+            }
+          } else {
+            // 此时说明“论文”下方没有连接
+            indexArr = Array.from({ length: this.comments.length }, (_, index) => index).slice(this.getMarkdownCommentIndex("📄 **论文**") + 1)
           }
         } else {
           // 论文书作卡片

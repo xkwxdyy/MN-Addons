@@ -5069,9 +5069,9 @@ try {
       matches = title.match(regex);
     
       if (matches) {
-        return matches[1].trim()
+        return matches[1].trim().toString()
       } else {
-        return title
+        return title.toString()
       }
     }
   }

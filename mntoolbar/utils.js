@@ -5090,7 +5090,17 @@ try {
 
       if (
         targetNoteLastComment.type == "linkComment" &&
-        targetNoteLastComment.text == focusNote.noteURL
+        targetNoteLastComment.text == focusNote.noteURL &&
+        (
+          (
+            focusNote.getNoteTypeZh() == "归类" &&
+            targetNote.getNoteTypeZh() == "归类"
+          ) || 
+          (
+            !(focusNote.getNoteTypeZh() == "归类") &&
+            !(targetNote.getNoteTypeZh() == "归类")
+          )
+        )
       ) {
         // 最后一条评论对应的卡片的最后一条评论也是链接，且就是 focusNote 的链接时，此时进行双向移动处理
 

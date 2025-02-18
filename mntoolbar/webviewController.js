@@ -4978,6 +4978,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                 focusNote.moveCommentsByIndexArr(newContentsIndexArr, focusNote.getHtmlCommentIndex("相关思考："))
               } else {
                 if (toolbarConfig.windowState.preprocess) {
+                  // 预处理模式
                   focusNotes.forEach(focusNote=>{
                     if (focusNote.ifIndependentNote()) {
                       focusNote.toNoExceptVersion()
@@ -4994,17 +4995,36 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                     focusNote.focusInMindMap(0.5)
                   })
                 } else {
+                  // 非预处理模式，即正常制卡模式
                   focusNotes.forEach(focusNote=>{
                     if (focusNote.ifIndependentNote()) {
                       focusNote.toNoExceptVersion()
+                      focusNote.refresh()
+                      focusNote.focusInMindMap(0.5)
                     } else {
-                      toolbarUtils.TemplateMakeNote(focusNote)
-                      if (!focusNote.excerptText && !focusNote.ifIndependentNote() && !focusNote.ifReferenceNote()) {
-                        focusNote.addToReview()
+                      if (!focusNote.excerptText) {
+                        toolbarUtils.TemplateMakeNote(focusNote)
+                        focusNote.focusInMindMap(0.3) 
+                      } else {
+                        focusNote.toNoExceptVersion()
+                        focusNote.focusInMindMap(0.3)             
+                        MNUtil.delay(0.3).then(()=>{
+                          focusNote = MNNote.getFocusNote()
+                          MNUtil.delay(0.3).then(()=>{
+                            toolbarUtils.TemplateMakeNote(focusNote)
+                          })
+                          MNUtil.delay(0.5).then(()=>{
+                            MNUtil.undoGrouping(()=>{
+                              focusNote.refresh()
+                              if (!focusNote.excerptText && !focusNote.ifIndependentNote() && !focusNote.ifReferenceNote()) {
+                                focusNote.addToReview()
+                              }
+                            })
+                          })
+                        })
                       }
-                      focusNote.refreshAll()
+                      
                     }
-                    focusNote.focusInMindMap(0.5)
                   })
                 }
               }

@@ -4748,16 +4748,9 @@ try {
    * 【数学】加入复习
    */
   addToReview() {
-    if (
-      !(
-        this.noteTitle.includes("输入") ||
-        this.noteTitle.includes("内化")
-      )
-    ) {
-      if (this.getNoteTypeZh() !== "顶层" && this.getNoteTypeZh() !== "归类") {
-        if (!MNUtil.isNoteInReview(this.noteId)) {  // 2024-09-26 新增的 API
-          MNUtil.excuteCommand("AddToReview")
-        }
+    if (this.getNoteTypeZh() !== "顶层" && this.getNoteTypeZh() !== "归类") {
+      if (!MNUtil.isNoteInReview(this.noteId)) {  // 2024-09-26 新增的 API
+        MNUtil.excuteCommand("AddToReview")
       }
     }
   }
@@ -7607,7 +7600,15 @@ try {
   /**
    * 刷新卡片
    */
-  refresh(){
+  // refresh(){
+  //   this.note.appendMarkdownComment("")
+  //   this.note.removeCommentByIndex(this.note.comments.length-1)
+  // }
+
+  async refresh(delay = 0){
+    if (delay) {
+      await MNUtil.delay(delay)
+    }
     this.note.appendMarkdownComment("")
     this.note.removeCommentByIndex(this.note.comments.length-1)
   }
@@ -8000,6 +8001,7 @@ try {
       }
     }
   }
+
 
   /**
    * 夏大鱼羊定制 - MNNote - end

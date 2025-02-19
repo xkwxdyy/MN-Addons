@@ -3828,30 +3828,14 @@ try {
     let templateNote
     let type
     let contentInTitle
-    if (focusNoteColorIndex == 1) {
-      const matchResult = focusNote.noteTitle.match(/“(.+)”相关(.+)/);
-      if (matchResult) {
-        contentInTitle = matchResult[1];
-      } else {
-        // 处理没有匹配到的情况，例如设置默认值或抛出错误
-        contentInTitle = ''; // 或者抛出错误：console.error('未匹配到预期格式');
-      }
-    } else if (focusNoteColorIndex == 0 || focusNoteColorIndex == 4) {
-      const matchResult = focusNote.noteTitle.match(/“(.+)”：“(.+)”相关(.+)/);
-      if (matchResult) {
-        contentInTitle = matchResult[2]; // 获取第二个匹配组
-      } else {
-        // 处理没有匹配到的情况
-        contentInTitle = ''; // 或者抛出错误
-      }
-    } else {
-      const matchResult = focusNote.noteTitle.match(/【(.*?)：(.*)】(.*)/);
-      if (matchResult) {
-        contentInTitle = matchResult[2]; // 获取第二个匹配组，即括号内的内容
-      } else {
-        // 处理没有匹配到的情况
-        contentInTitle = ''; // 或者抛出错误
-      }
+    switch (focusNote.getNoteTypeZh()) {
+      case "归类":
+      case "顶层":
+        contentInTitle = focusNote.title.toClassificationNoteTitle()
+        break;
+      default:
+        contentInTitle = focusNote.getFirstTitleLinkWord()
+        break;
     }
     MNUtil.copy(contentInTitle)
     try {

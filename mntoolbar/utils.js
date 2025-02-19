@@ -9182,6 +9182,10 @@ static template(action) {
         "action": "menu",
         "menuItems": [
           {
+            "action": "multiTemplateMakeNotes",
+            "menuTitle": "批量制卡",
+          },
+          {
             "action": "menu",
             "menuTitle": "️️➡️ 文献制卡",
             "menuItems": [

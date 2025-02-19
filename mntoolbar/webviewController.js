@@ -4968,6 +4968,18 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           })
         }
         break;
+      /**
+       * 批量制卡
+       * 
+       * 因为单击制卡现在支持了一键处理，但这个的弊端就是不支持批量制卡了
+       */
+      case "multiTemplateMakeNotes":
+        MNUtil.undoGrouping(()=>{
+          focusNotes.forEach(focusNote=>{
+            toolbarUtils.TemplateMakeNote(focusNote)
+          })
+        })
+        break;
       case "TemplateMakeNotes": // new
         if (MNUtil.currentNotebookId !== "9BA894B4-3509-4894-A05C-1B4BA0A9A4AE" ) {
           MNUtil.undoGrouping(()=>{
@@ -4996,36 +5008,33 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                   })
                 } else {
                   // 非预处理模式，即正常制卡模式
-                  focusNotes.forEach(focusNote=>{
-                    if (focusNote.ifIndependentNote()) {
-                      focusNote.toNoExceptVersion()
-                      focusNote.refresh()
-                      focusNote.focusInMindMap(0.5)
+                  if (focusNote.ifIndependentNote()) {
+                    focusNote.toNoExceptVersion()
+                    focusNote.refresh()
+                    focusNote.focusInMindMap(0.5)
+                  } else {
+                    if (!focusNote.excerptText) {
+                      toolbarUtils.TemplateMakeNote(focusNote)
+                      focusNote.focusInMindMap(0.3) 
                     } else {
-                      if (!focusNote.excerptText) {
-                        toolbarUtils.TemplateMakeNote(focusNote)
-                        focusNote.focusInMindMap(0.3) 
-                      } else {
-                        focusNote.toNoExceptVersion()
-                        focusNote.focusInMindMap(0.3)             
+                      focusNote.toNoExceptVersion()
+                      focusNote.focusInMindMap(0.3)             
+                      MNUtil.delay(0.3).then(()=>{
+                        focusNote = MNNote.getFocusNote()
                         MNUtil.delay(0.3).then(()=>{
-                          focusNote = MNNote.getFocusNote()
-                          MNUtil.delay(0.3).then(()=>{
-                            toolbarUtils.TemplateMakeNote(focusNote)
-                          })
-                          MNUtil.delay(0.5).then(()=>{
-                            MNUtil.undoGrouping(()=>{
-                              focusNote.refresh()
-                              if (!focusNote.excerptText && !focusNote.ifIndependentNote() && !focusNote.ifReferenceNote()) {
-                                focusNote.addToReview()
-                              }
-                            })
+                          toolbarUtils.TemplateMakeNote(focusNote)
+                        })
+                        MNUtil.delay(0.5).then(()=>{
+                          MNUtil.undoGrouping(()=>{
+                            focusNote.refresh()
+                            if (!focusNote.excerptText && !focusNote.ifIndependentNote() && !focusNote.ifReferenceNote()) {
+                              focusNote.addToReview()
+                            }
                           })
                         })
-                      }
-                      
+                      })
                     }
-                  })
+                  }
                 }
               }
             } catch (error) {

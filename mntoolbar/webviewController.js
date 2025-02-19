@@ -5096,8 +5096,18 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "changeChildNotesTitles": // new
         MNUtil.undoGrouping(()=>{
           focusNote.childNotes.forEach(childNote => {
-            childNote.changeTitle()
-            childNote.refreshAll()
+            if (childNote.ifIndependentNote()) {
+              // 独立卡片双击时把父卡片的标题作为前缀
+              if (!childNote.title.ifWithBracketPrefix()) {
+                childNote.title = childNote.parentNote.noteTitle.toBracketPrefixContentArrowSuffix() + childNote.title
+              } else {
+                // 有前缀的话，就更新前缀
+                childNote.title = childNote.parentNote.noteTitle.toBracketPrefixContentArrowSuffix() + childNote.title.toNoBracketPrefixContent()
+              }
+            } else {
+              childNote.changeTitle()
+              childNote.refreshAll()
+            }
           })
         })
         break;
@@ -5107,8 +5117,20 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "changeDescendantNotesTitles": // new
         MNUtil.undoGrouping(()=>{
           focusNote.descendantNodes.descendant.forEach(descendantNote => {
-            descendantNote.changeTitle()
-            descendantNote.refreshAll()
+            // descendantNote.changeTitle()
+            // descendantNote.refreshAll()
+            if (descendantNote.ifIndependentNote()) {
+              // 独立卡片双击时把父卡片的标题作为前缀
+              if (!descendantNote.title.ifWithBracketPrefix()) {
+                descendantNote.title = descendantNote.parentNote.noteTitle.toBracketPrefixContentArrowSuffix() + descendantNote.title
+              } else {
+                // 有前缀的话，就更新前缀
+                descendantNote.title = descendantNote.parentNote.noteTitle.toBracketPrefixContentArrowSuffix() + descendantNote.title.toNoBracketPrefixContent()
+              }
+            } else {
+              descendantNote.changeTitle()
+              descendantNote.refreshAll()
+            }
           })
         })
         break;

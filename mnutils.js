@@ -267,6 +267,29 @@ String.prototype.toNoBracketPrefixContent = function () {
   let match = this.match(/^【.*】(.*)/)
   return match ? match[1] : this  // 如果匹配不到，返回原字符串
 }
+String.prototype.toNoBracketPrefixContentFirstTitleLinkWord = function () {
+  let regex = /【.*】(.*?);?\s*([^;]*?)(?:;|$)/;
+  let matches = this.match(regex);
+
+  if (matches) {
+    const firstPart = matches[1].trim(); // 提取分号前的内容
+    const secondPart = matches[2].trim(); // 提取第一个分号后的内容
+
+    // 根据第一部分是否为空选择返回内容
+    return firstPart === '' ? secondPart : firstPart;
+  } else {
+    // 如果没有前缀，就获取第一个 ; 前的内容
+    let title = this.toNoBracketPrefixContent()
+    regex = /^(.*?);/;
+    matches = title.match(regex);
+  
+    if (matches) {
+      return matches[1].trim().toString()
+    } else {
+      return title.toString()
+    }
+  }
+}
 /**
  * 获取前缀的内容
  */
@@ -280,10 +303,10 @@ String.prototype.toBracketPrefixContent = function () {
 String.prototype.toBracketPrefixContentArrowSuffix = function () {
   if (this.ifWithBracketPrefix()) {
     // 有前缀就开始处理
-    return "【" + this.toBracketPrefixContent() + " → " + this.toNoBracketPrefixContent() + "】"
+    return "【" + this.toBracketPrefixContent() + " → " + this.toNoBracketPrefixContentFirstTitleLinkWord() + "】"
   } else {
     // 如果没有前缀，就直接输出 【this】
-    return "【" + this + "】"
+    return "【" + this.toNoBracketPrefixContentFirstTitleLinkWord() + "】"
   }
 }
 /**

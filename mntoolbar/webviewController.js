@@ -5015,6 +5015,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                   } else {
                     if (!focusNote.excerptText) {
                       toolbarUtils.TemplateMakeNote(focusNote)
+                      if (!focusNote.ifReferenceNote()) {
+                        focusNote.addToReview()
+                      }
                       focusNote.focusInMindMap(0.3) 
                     } else {
                       focusNote.toNoExceptVersion()

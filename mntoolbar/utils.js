@@ -1495,9 +1495,9 @@ try {
          * - 后续点击制卡都不需要加入
          */
         // note.addToReview()
-        if (!note.ifReferenceNote()) {
-          note.addToReview()
-        }
+        // if (!note.ifReferenceNote()) {
+        //   note.addToReview()
+        // }
 
 
         // 移动文献卡片

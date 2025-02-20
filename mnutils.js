@@ -7899,11 +7899,13 @@ try {
     }
     return -1
   }
-
   /**
    * 刷新卡片及其父子卡片
    */
-  refreshAll(){
+  async refreshAll(delay = 0){
+    if (delay) {
+      await MNUtil.delay(delay)
+    }
     if (this.descendantNodes.descendant.length > 0) {
       this.descendantNodes.descendant.forEach(descendantNote => {
         descendantNote.refresh()

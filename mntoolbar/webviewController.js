@@ -4977,6 +4977,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         MNUtil.undoGrouping(()=>{
           focusNotes.forEach(focusNote=>{
             toolbarUtils.TemplateMakeNote(focusNote)
+            if (!focusNote.ifIndependentNote() && !focusNote.ifReferenceNote()) {
+              focusNote.addToReview()
+            }
           })
         })
         break;

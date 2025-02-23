@@ -4984,76 +4984,99 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         })
         break;
       case "TemplateMakeNotes": // new
-        if (MNUtil.currentNotebookId !== "9BA894B4-3509-4894-A05C-1B4BA0A9A4AE" ) {
-          MNUtil.undoGrouping(()=>{
-            try {
-              if (focusNote.ifIndependentNote() && focusNote.title.includes("引用") && focusNote.title.includes("情况")) {
-                // 此时为参考文献的具体引用情况的制卡，此时只需要把新的摘录内容移动到「被引用的具体内容」下方
-                let newContentsIndexArr = focusNote.getHtmlBlockContinuousExcerptToEndContentIndexArr("相关思考：")
-                focusNote.moveCommentsByIndexArr(newContentsIndexArr, focusNote.getHtmlCommentIndex("相关思考："))
-              } else {
-                if (toolbarConfig.windowState.preprocess) {
-                  // 预处理模式
-                  focusNotes.forEach(focusNote=>{
+        switch (MNUtil.currentNotebookId) {
+          case "9BA894B4-3509-4894-A05C-1B4BA0A9A4AE":  // 任务管理学习集
+            MNUtil.undoGrouping(()=>{
+              focusNotes.forEach(focusNote=>{
+                toolbarUtils.OKRNoteMake(focusNote)
+              })
+            })
+            break;
+          case "014E76CA-94D6-48D5-82D2-F98A2F017219":  // 英语学习集
+            MNUtil.undoGrouping(()=>{
+              try {
+                focusNotes.forEach(focusNote=>{
+                  if (focusNote.colorIndex == 13) {  // 暂时先通过颜色判断
+                    // 此时表示是单词卡片
+                    /**
+                     * 目前采取的暂时方案是：只要制卡就复制新卡片，删除旧卡片
+                     * 因为一张单词卡片不会多次点击制卡，只会后续修改评论，所以这样问题不大
+                     */
+                    let vocabularyLibraryNote = MNNote.new("55C7235C-692E-44B4-BD0E-C1AF2A4AE805")
+                    let newNote = focusNote.createDuplicatedNoteAndDelete()
+                    vocabularyLibraryNote.addChild(newNote)
+                    newNote.focusInMindMap(0.3)
+                  }
+                })
+              } catch (error) {
+                MNUtil.showHUD(error);
+              }
+            })
+            break;
+          default:
+            MNUtil.undoGrouping(()=>{
+              try {
+                if (focusNote.ifIndependentNote() && focusNote.title.includes("引用") && focusNote.title.includes("情况")) {
+                  // 此时为参考文献的具体引用情况的制卡，此时只需要把新的摘录内容移动到「被引用的具体内容」下方
+                  let newContentsIndexArr = focusNote.getHtmlBlockContinuousExcerptToEndContentIndexArr("相关思考：")
+                  focusNote.moveCommentsByIndexArr(newContentsIndexArr, focusNote.getHtmlCommentIndex("相关思考："))
+                } else {
+                  if (toolbarConfig.windowState.preprocess) {
+                    // 预处理模式
+                    focusNotes.forEach(focusNote=>{
+                      if (focusNote.ifIndependentNote()) {
+                        focusNote.toNoExceptVersion()
+                      } else {
+                        // toolbarUtils.TemplateMakeNote(focusNote)
+                        if (focusNote.excerptText) {
+                          focusNote.changeTitle()
+                          focusNote.toNoExceptVersion()
+                        }
+                        focusNote.changeTitle()
+                        focusNote.changeColorByType()
+                        focusNote.refreshAll()
+                      }
+                      focusNote.focusInMindMap(0.5)
+                    })
+                  } else {
+                    // 非预处理模式，即正常制卡模式
                     if (focusNote.ifIndependentNote()) {
                       focusNote.toNoExceptVersion()
+                      focusNote.refresh()
+                      focusNote.focusInMindMap(0.5)
                     } else {
-                      // toolbarUtils.TemplateMakeNote(focusNote)
-                      if (focusNote.excerptText) {
-                        focusNote.changeTitle()
+                      if (!focusNote.excerptText) {
+                        toolbarUtils.TemplateMakeNote(focusNote)
+                        if (!focusNote.ifReferenceNote()) {
+                          focusNote.addToReview()
+                        }
+                        focusNote.focusInMindMap(0.3) 
+                      } else {
                         focusNote.toNoExceptVersion()
-                      }
-                      focusNote.changeTitle()
-                      focusNote.changeColorByType()
-                      focusNote.refreshAll()
-                    }
-                    focusNote.focusInMindMap(0.5)
-                  })
-                } else {
-                  // 非预处理模式，即正常制卡模式
-                  if (focusNote.ifIndependentNote()) {
-                    focusNote.toNoExceptVersion()
-                    focusNote.refresh()
-                    focusNote.focusInMindMap(0.5)
-                  } else {
-                    if (!focusNote.excerptText) {
-                      toolbarUtils.TemplateMakeNote(focusNote)
-                      if (!focusNote.ifReferenceNote()) {
-                        focusNote.addToReview()
-                      }
-                      focusNote.focusInMindMap(0.3) 
-                    } else {
-                      focusNote.toNoExceptVersion()
-                      focusNote.focusInMindMap(0.3)             
-                      MNUtil.delay(0.3).then(()=>{
-                        focusNote = MNNote.getFocusNote()
+                        focusNote.focusInMindMap(0.3)             
                         MNUtil.delay(0.3).then(()=>{
-                          toolbarUtils.TemplateMakeNote(focusNote)
-                        })
-                        MNUtil.delay(0.5).then(()=>{
-                          MNUtil.undoGrouping(()=>{
-                            focusNote.refresh()
-                            if (!focusNote.excerptText && !focusNote.ifIndependentNote() && !focusNote.ifReferenceNote()) {
-                              focusNote.addToReview()
-                            }
+                          focusNote = MNNote.getFocusNote()
+                          MNUtil.delay(0.3).then(()=>{
+                            toolbarUtils.TemplateMakeNote(focusNote)
+                          })
+                          MNUtil.delay(0.5).then(()=>{
+                            MNUtil.undoGrouping(()=>{
+                              focusNote.refresh()
+                              if (!focusNote.excerptText && !focusNote.ifIndependentNote() && !focusNote.ifReferenceNote()) {
+                                focusNote.addToReview()
+                              }
+                            })
                           })
                         })
-                      })
+                      }
                     }
                   }
                 }
+              } catch (error) {
+                MNUtil.showHUD(error);
               }
-            } catch (error) {
-              MNUtil.showHUD(error);
-            }
-          })
-        } else {
-          // 任务管理学习集
-          MNUtil.undoGrouping(()=>{
-            focusNotes.forEach(focusNote=>{
-              toolbarUtils.OKRNoteMake(focusNote)
             })
-          })
+            break;
         }
         break;
       /**

@@ -830,7 +830,7 @@ class MNUtil {
   static getNoteColorIndexByZhType(type, preprocess=false){
     let typeMap
     if (preprocess) {
-      typeMap = {
+      typeMap = {  // ? 自己也看不懂了
         "定义": 2,
         "命题": 6,
         "反例": 6,
@@ -7977,17 +7977,54 @@ try {
     return classificationNote
   }
 
-  createEmptyChildNote(colorIndex = this.colorIndex, title = "", content = ""){
+
+  /**
+   * 
+   * 复制当前卡片
+   * @param {String} title 
+   * @param {Number} colorIndex 
+   * @returns duplicatedNote
+   * 
+   * 但是目前只能复制一般文本、markdown 文本内容
+   */
+  createDuplicatedNote(title = this.title, colorIndex = this.colorIndex){
     let config = {
       title: title,
-      content: content,
+      // content: content,
       markdown: true,
       color: colorIndex
     }
 
-    let childNote = this.createChildNote(config)
+    let duplicatedNote = this.parentNote.createChildNote(config)
 
-    return childNote
+    let oldComments = MNComment.from(this)
+
+    oldComments.forEach(oldComment => {
+      switch (oldComment.type) {
+        case "linkComment":
+        case "markdownComment":
+          duplicatedNote.appendMarkdownComment(oldComment.text)
+          break;
+        case "textComment":
+          duplicatedNote.appendTextComment(oldComment.text)
+          break;
+      }
+    })
+
+    return duplicatedNote
+  }
+
+  /**
+   * 复制卡片后删除原卡片
+   * @param {String} title 
+   * @param {Number} colorIndex 
+   * @returns duplicatedNote
+   */
+  createDuplicatedNoteAndDelete(title = this.title, colorIndex = this.colorIndex) {
+    let duplicatedNote = this.createDuplicatedNote(title, colorIndex)
+    this.delete()
+
+    return duplicatedNote
   }
 
   /**
@@ -8026,7 +8063,6 @@ try {
       }
     }
   }
-
 
   /**
    * 夏大鱼羊定制 - MNNote - end

@@ -6865,7 +6865,7 @@ try {
         return false
       } else {
         let parentNote = this.getClassificationParentNote()
-        if (parentNote === undefined) {
+        if (parentNote === undefined && !(/定义|命题|例子|反例|思想方法/.test(this.parentNote.title))) {
           return true
         } else {
           let parentNoteTitle = parentNote.noteTitle
@@ -6874,7 +6874,8 @@ try {
           if (match) {
             return match[1] == ""
           } else {
-            return true
+            // return true
+            return !(/定义|命题|例子|反例|思想方法/.test(this.parentNote.title))
           }
         }
       }
@@ -6913,7 +6914,9 @@ try {
     let parentNote = this.parentNote
     if (parentNote) {
       while (parentNote) {
-        if (parentNote.colorIndex == 0 || parentNote.colorIndex == 1 || parentNote.colorIndex == 4) {
+        if (
+          (parentNote.colorIndex == 0 || parentNote.colorIndex == 1 || parentNote.colorIndex == 4) && parentNote.title
+        ) {
           ifParentNoteChosen = true
           break
         }

@@ -3834,7 +3834,7 @@ try {
         contentInTitle = focusNote.title.toClassificationNoteTitle()
         break;
       default:
-        contentInTitle = focusNote.getFirstTitleLinkWord()
+        contentInTitle = focusNote.title.toKnowledgeNotePrefix() + focusNote.getFirstTitleLinkWord()
         break;
     }
     MNUtil.copy(contentInTitle)

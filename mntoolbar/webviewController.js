@@ -5003,9 +5003,17 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                      * 因为一张单词卡片不会多次点击制卡，只会后续修改评论，所以这样问题不大
                      */
                     let vocabularyLibraryNote = MNNote.new("55C7235C-692E-44B4-BD0E-C1AF2A4AE805")
-                    let newNote = focusNote.createDuplicatedNoteAndDelete()
-                    vocabularyLibraryNote.addChild(newNote)
-                    newNote.focusInMindMap(0.3)
+                    // 通过判断有没有 originNoteId 来判断是否需要复制新卡片
+                    if (focusNote.originNoteId) {
+                      let newNote = focusNote.createDuplicatedNoteAndDelete()
+                      vocabularyLibraryNote.addChild(newNote)
+                      newNote.focusInMindMap(0.3)
+                    } else {
+                      if (focusNote.parentNote.noteId !== "55C7235C-692E-44B4-BD0E-C1AF2A4AE805") {
+                        vocabularyLibraryNote.addChild(focusNote)
+                      }
+                      focusNote.focusInMindMap(0.3)
+                    }
                   }
                 })
               } catch (error) {

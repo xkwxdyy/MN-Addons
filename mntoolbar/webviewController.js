@@ -5016,6 +5016,16 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                       focusNote.addToReview()
                       focusNote.focusInMindMap(0.3)
                     }
+                  } else {
+                    if (!focusNote.title.ifWithBracketPrefix()) {
+                      focusNote.title = focusNote.parentNote.noteTitle.toBracketPrefixContentArrowSuffix() + focusNote.title
+                    } else {
+                      // 有前缀的话，就更新前缀
+                      focusNote.title = focusNote.parentNote.noteTitle.toBracketPrefixContentArrowSuffix() + focusNote.title.toNoBracketPrefixContent()
+                    }
+                    if (focusNote.excerptText) {
+                      focusNote.toNoExceptVersion()
+                    }
                   }
                 })
               } catch (error) {

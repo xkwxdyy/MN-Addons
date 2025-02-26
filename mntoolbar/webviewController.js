@@ -5007,11 +5007,13 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                     if (focusNote.originNoteId) {
                       let newNote = focusNote.createDuplicatedNoteAndDelete()
                       vocabularyLibraryNote.addChild(newNote)
+                      newNote.addToReview()
                       newNote.focusInMindMap(0.3)
                     } else {
                       if (focusNote.parentNote.noteId !== "55C7235C-692E-44B4-BD0E-C1AF2A4AE805") {
                         vocabularyLibraryNote.addChild(focusNote)
                       }
+                      focusNote.addToReview()
                       focusNote.focusInMindMap(0.3)
                     }
                   }

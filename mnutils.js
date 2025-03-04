@@ -613,344 +613,118 @@ String.prototype.toTitleCasePro = function () {
  * 夏大鱼羊 - 字符串函数 - end
  */
 
+class Menu{
+  /**
+   * 左 0, 下 1，3, 上 2, 右 4
+   * @type {number}
+   */
+  preferredPosition = 2
+  /**
+   * @type {string[]}
+   */
+  titles = []
+  constructor(sender,delegate,width = 200,preferredPosition = 2){
+    this.menuController = MenuController.new()
+    this.delegate = delegate
+    this.sender = sender
+    this.commandTable = []
+    this.width = width
+    this.menuController.rowHeight = 35
+    this.preferredPosition = preferredPosition
+  }
+  /**
+   * @param {object[]} items
+   */
+  set menuItems(items){
+    this.commandTable = items
+  }
+  get menuItems(){
+    return this.commandTable
+  }
+  /**
+   * @param {number} height
+   */
+  set rowHeight(height){
+    this.menuController.rowHeight = height
+  }
+  get rowHeight(){
+    return this.menuController.rowHeight
+  }
+  /**
+   * @param {number} size
+   */
+  set fontSize(size){
+    this.menuController.fontSize = size
+  }
+  get fontSize(){
+    return this.menuController.fontSize
+  }
+  addMenuItem(title,selector,params = "",checked=false){
+    this.commandTable.push({title:title,object:this.delegate,selector:selector,param:params,checked:checked})
+  }
+  show(){
+  try {
 
+    let position = this.preferredPosition
+    this.menuController.commandTable = this.commandTable
+    this.menuController.preferredContentSize = {
+      width: this.width,
+      height: this.menuController.rowHeight * this.menuController.commandTable.length
+    };
+    // this.menuController.secHeight = 200
+    // this.menuController.sections = [{title:"123",length:10,size:10,row:this.commandTable,rows:this.commandTable,cell:this.commandTable}]
+    // this.menuController.delegate = this.delegate
 
-
-
-
-
-
-
-
-
-
-
-
-
+    var popoverController = new UIPopoverController(this.menuController);
+    let targetView = MNUtil.studyView
+    var r = this.sender.convertRectToView(this.sender.bounds,targetView);
+    switch (position) {
+      case 0:
+        if (r.x < 50) {
+          position = 4
+        }
+        break;
+      case 1:
+      case 3:
+        if (r.y+r.height > targetView.frame.height - 50) {
+          position = 2
+        }
+        break;
+      case 2:
+        if (r.y < 50) {
+          position = 3
+        }
+        break;
+      case 4:
+        if (r.x+r.width > targetView.frame.width - 50) {
+          position = 0
+        }
+        break;
+      default:
+        break;
+    }
+    popoverController.presentPopoverFromRect(r, targetView, position, true);
+    popoverController.delegate = this.delegate
+    // this.menuController.menuTableView.dataSource = this.delegate
+    Menu.popover = popoverController
+  } catch (error) {
+    MNUtil.showHUD(error)
+  }
+  }
+  dismiss(){
+    if (Menu.popover) {
+      Menu.popover.dismissPopoverAnimated(true)
+      Menu.popover = undefined
+    }
+  }
+  static popover = undefined
+  static dismissCurrentMenu(){
+    if (this.popover) {
+      this.popover.dismissPopoverAnimated(true)
+    }
+  }
+}
 class MNUtil {
-  /**
-   * 夏大鱼羊 - MNUtil - begin
-   */
-  /**
-   * 根据 md5 获取学习规划学习集对应的卡片 ID
-   */
-  static getNoteIdByMd5InPlanNotebook(md5){
-    let md5IdPair = {
-      // 刘培德《泛函分析基础》
-      "fccc394d73fd738b364d33e1373a4a7493fafea8c024f3712f63db882e79a1cd":"35B90CB6-5BCC-4AA4-AE24-C6B4CBCB9666",
-      // Jan van Neerven《Functional analysis》
-      "3e68d9f7755163f5aacd5d337bdd7a0b6bd70d0727f721778d24d114010e6d7a":"96F569A4-2B2E-4B8D-B789-56ACE09AA2F1",
-      // Conway《A course in Functional Analysis》
-      "88603c9aa7b3c7605d84c08e0e17527f8ae7de0a323c666a0331cc8e7b616eab":"0B8E664B-BB42-431A-8516-C4CA4CF36F94",
-      // 王凯 《泛函分析》
-      "cb15d5b4e55227a3373bde1dd6f1295b21b561dbec231c91edad50186991fd7d":"C0ED1035-ED3E-4051-A1F6-EDE95CE35370",
-      // Rudin 泛函分析
-      "34c59a3b8af79bb95139756fb2d7c9c115fe8a7c79d4939100558b8bc7420e53":"8F938A8F-58DA-452D-9DE9-905DC77ABF04",
-      // Folland 实分析
-      "5bb47aff3b50e7ec12b0ffc3de8e13a7acb4aa11caffa52c29f9f8a5c9b970d5":"02E775DE-1CA6-4D72-A42C-45ED03FD1251",
-      // Rudin - 实分析与复分析
-      "f45e28950cadc7d1b9d29cd2763b9b6a969c8f38b45efb8cc2ee302115c5e8b4":"9CB204AD-C640-4F97-B62F-E47E2D659C25",
-      // 赵焕光 - 现代分析入门
-      "34f67c3a452118b6f274b8c063b85b0544a5d272081c7fdc1be27b9575b8a6f1":"C877F723-7FA3-4D95-9C87-9C036687782A",
-      // 陆善镇 王昆扬 - 实分析
-      "0bb3627b57dc95b4f4d682c71df34b3df01676b9a6819a1c5928c5ce7cb6cb25":"B73922E2-7036-40FE-BC5D-8F4713616C62",
-      // 楼红卫《数学分析》
-      "320ec3909f6cbd91445a7e76c98a105f50998370f5856be716f704328c11263f":"AA1B5A69-B17E-4B5C-9702-06F3C647C40E",
-      // 李工宝《A first course in real analysis》
-      "d2ec247e78e7517a2fb158e074a90e0bc53c84a57f2777eaa490af57fafd9438":"2D247A3C-559A-473A-83FE-C2A9BD09A74F",
-      // MIRA
-      "7c8f458cf3064fa1daa215ded76980c9aea8624097dbdcf90cca5bb893627621":"198E8FF1-4AAE-42CE-9C0A-1B6A6395804A",
-      // 朱克和 《Operator Theory in Function Spaces》
-      "6a248b6b116e03153af7204b612f93c12a4700ff3de3b3903bb0bcd84e2f6b09":"B32D4EFD-AAF9-44C7-8FDB-E92560F1171F",
-      // 郭坤宇《算子理论基础》
-      "659a6778d0732985b91d72961591a62c21d2d1bfcbd8e78464cc9a9aa6434cf1":"C04668B1-D77A-4495-8972-F028D9F90BFC",
-      // 蹇人宜 安恒斌 《解析函数空间上的算子理论导引》
-      "495ff8e34c20c10fe1244a7b36272e1b8ef8b6c0b92e01793ef2e377bfb90d72":"D35871E8-9F3B-4B95-AD73-48A6DDF27DC4",
-      // The Theory of H(b) Spaces
-      "d86e2e385d353492d9796caacac6353d75351c76968e613539efcaab3f58c8c1":"60F4D62D-D958-4CC7-BD59-511EE1E4312B",
-      // Hoffman - Banach Spaces of Analytic Functions
-      "f2ecc0f4f97eb3907e00746b964ae62a9f378e2cb05f1811aa7b37bce656c025":"CF750547-4BE6-4ABF-BB16-EE6D9321F73F",
-      // Garnett - 有界解析函数
-      "3ec7c103d58eb81e3c4d46022b5736c34d137c905b31053f69fe14ecf8da3606":"15E27BF9-EE52-4C2D-A5FE-0F16C9BC9148",
-      // GTM249
-      "cda554d017af672e87d4261c0463e41893bcb0cf50cb3f2042afaef749297482":"04E7DD41-1DE4-485E-9791-15F7DC067A46",
-      // Stein - Harmonic Analysis: Real-Variable Methods, Orthogonality, and Oscillatory Integrals
-      "4dc6b7188781ebad8c25ad5e9d7635c040ae4a08ddcd196fe2e6e716704851c2":"2E550C5B-88DD-408E-B246-39B293A5910F",
-      // 郝成春 - 调和分析讲义
-      "3805c33987e654ff07ca9ce68cdddeaff965ad544625faaf14c3799e13996ade":"1F47692A-81D2-4890-9E56-0C084D2B622D",
-      // 谢启鸿《高等代数》
-      "32dc18e2e7696064b8da9b14af56dfb54e41b8f08044f2ef00aa21f94885fc08":"8CAA1FAE-2A69-4CBE-A1F0-A02FB1C95C3C",
-      // Krantz - 复变
-      "74f3f034fe67fd4573b33f7c978bb06c2642b892c4b237f2efe9256359935e6e":"1B38D33E-77B7-4391-88F2-2FE3126D6FC4",
-      "06c41fa919b0ec928c31f53e2301f4c9cc9ce1d820dcd5a1750db7144fb8caae":"1B38D33E-77B7-4391-88F2-2FE3126D6FC4",
-      // A first course in complex analysis with applications
-      "4f1fd75b664e8f7c8ee171ba2db11532fd34a3b010edad93fb5b0518243c164a":"7066180E-2430-4A3E-9241-135538474D86",
-      // 邱维元 - 复分析讲义
-      "886469e3d70342159bb554cdaee604fa5a6018e84b6ff04bbb35f69ea764a757":"1BD3CD6C-BDEE-4078-9DF3-BB5C45351356",
-      // 方企勤 - 复变函数
-      "e107e1772dbb53288a9d1c38781d3c77043ee40b68818a16f64c0e8480ed7c7e":"2FDA8616-2BE5-4253-BEE5-FA795AD37999"
-    }
-
-    return md5IdPair[md5]
-  }
-  /**
-   * 根据名称获取 notebookid
-   */
-  static getNoteBookIdByName(name){
-    let notebookId
-    switch (name) {
-      case "数学":
-      case "数学基础":
-        notebookId = "D03C8B94-77CF-46E6-8AAB-CB129EDBCFBC"
-        break;
-      case "数学分析":
-      case "数分":
-        notebookId = "922D2CDF-07CF-4A88-99BA-7AAC60E3C517"
-        break;
-      case "高等代数":
-      case "高代":
-        notebookId = "6E84B815-7BB6-42B0-AE2B-4057279EA163"
-        break;
-      case "实分析":
-      case "实变函数":
-      case "调和分析":
-      case "实变":
-      case "调和":
-      case "实分析与调和分析":
-      case "调和分析与实分析":
-        notebookId = "B051BAC2-576D-4C18-B89E-B65C0E576C7F"
-        break;
-      case "复分析":
-      case "复变函数":
-      case "复变":
-        notebookId = "EAB02DA9-D467-4D7D-B6BA-9244FC326299"
-        break;
-      case "泛函分析":
-      case "泛函":
-      case "泛函分析与算子理论":
-      case "算子理论":
-        notebookId = "98F4FA11-39D3-41A8-845A-F74E2197E111"
-        break;
-      case "学习规划":
-      case "学习安排":
-      case "Inbox":
-      case "学习汇总":
-      case "学习集结":
-      case "规划":
-      case "安排":
-      case "inbox":
-      case "汇总":
-      case "集结":
-        notebookId = "A07420C1-661A-4C7D-BA06-C7035C18DA74"
-        break;
-    }
-
-    return notebookId.toNoteBookId()
-  }
-
-  /**
-   * 获取学习集里的 inbox 部分的三个顶层的卡片 id
-   */
-  static getWorkFlowObjByNoteBookId(notebookId){
-    let workflow = {}
-    switch (notebookId.toNoteBookId()) {
-      case "marginnote4app://notebook/A07420C1-661A-4C7D-BA06-C7035C18DA74":  // 学习规划 
-        workflow.inputNoteId = "DED2745C-6564-4EFA-86E2-42DAAED3281A"
-        workflow.internalizationNoteId = "796ACA3D-9A28-4DC7-89B4-EA5CC3928AFE"
-        workflow.toClassifyNoteId = "3572E6DC-887A-4376-B715-04B6D8F0C58B"
-        break;
-      case "marginnote4app://notebook/98F4FA11-39D3-41A8-845A-F74E2197E111": // 泛函分析
-        workflow.inputNoteId = "C1E43C94-287A-4324-9480-771815F82803"
-        workflow.internalizationNoteId = "FE4B1142-CE83-4BA7-B0CF-453E07663059"
-        workflow.toClassifyNoteId = "E1EACEC5-3ACD-424B-BD46-797CD8A56629"
-        workflow.preparationNoteId = "339DC957-70B5-4350-9093-36706CEC8CD6"
-        break;
-      case "marginnote4app://notebook/EAB02DA9-D467-4D7D-B6BA-9244FC326299": // 复分析
-        workflow.inputNoteId = "26316838-475B-49D9-9C7C-75AB01D80EDE"
-        workflow.internalizationNoteId = "6FB0CEB6-DC7B-4EE6-AD73-4AA459EBE8D8"
-        workflow.toClassifyNoteId = "B27D8A02-BDC4-4D3F-908B-61AA19CBB861"
-        break;
-      case "marginnote4app://notebook/6E84B815-7BB6-42B0-AE2B-4057279EA163": // 高等代数
-        workflow.inputNoteId = "49E66E70-7249-47C6-869E-5A40448B9B0E"
-        workflow.internalizationNoteId = "FDB5289B-3186-4D93-ADFF-B72B4356CBCD"
-        workflow.toClassifyNoteId = "0164496D-FA35-421A-8A22-649831C83E63"
-        break;
-      case "marginnote4app://notebook/B051BAC2-576D-4C18-B89E-B65C0E576C7F": // 实分析
-        workflow.inputNoteId = "E7538B60-D8E2-4A41-B620-37D1AD48464C"
-        workflow.internalizationNoteId = "C5D44533-6D18-45F6-A010-9F83821F627F"
-        workflow.toClassifyNoteId = "13623BE8-8D26-4FEE-95D8-B704C34E92EC"
-        workflow.preparationNoteId = "832AC695-6014-4936-8CDE-3B2CE3C9BA96"
-        break;
-      case "marginnote4app://notebook/922D2CDF-07CF-4A88-99BA-7AAC60E3C517": // 数学分析
-        workflow.inputNoteId = "E22C7404-A6DE-4DB3-B749-BDF8C742F955"
-        workflow.internalizationNoteId = "BBD9C2C0-CDB5-485E-A338-2C75F1ABE59F"
-        workflow.toClassifyNoteId = "C7768D8F-3BD3-4D9F-BC82-C3F12701E7BF"
-        break;
-      case "marginnote4app://notebook/D03C8B94-77CF-46E6-8AAB-CB129EDBCFBC": // 数学基础 
-        workflow.inputNoteId = "E69B712B-E42C-47F3-ADA4-1CB41A3336BD"
-        workflow.internalizationNoteId = "6F5D6E1D-58C7-4E51-87CA-198607640FBE"
-        workflow.toClassifyNoteId = "F6CE6E2C-4126-4945-BB98-F2437F73C806"
-        break;
-      case "marginnote4app://notebook/0F74EF05-FAA1-493E-9D78-CC84C4C045A6": // 文献库
-        workflow.inputNoteId = ""
-        workflow.internalizationNoteId = ""
-        workflow.toClassifyNoteId = ""
-        break;
-    }
-    return workflow
-  }
-
-  /**
-   * 生成标题链接
-   */
-  static generateCustomTitleLink(keyword, titlelinkWord) {
-    return `[${keyword}](marginnote4app://titlelink/custom/${titlelinkWord})`
-  }
-  /**
-   * 【数学】根据中文类型获取对应的英文
-   */
-  static getEnNoteTypeByZhVersion(type){
-    let typeMap = {
-      "定义": "definition",
-      "命题": "theorem",
-      "反例": "antiexample",
-      "例子": "example",
-      "思想方法": "method",
-      "问题": "question",
-      "应用": "application",
-      "归类": "classification",
-      "": "temporary",
-      "文献": "reference"
-    }
-    return typeMap[type]
-  }
-  /**
-   * 【数学】根据中文类型获取对应的卡片颜色 index
-   */
-  static getNoteColorIndexByZhType(type, preprocess=false){
-    let typeMap
-    if (preprocess) {
-      typeMap = {  // ? 自己也看不懂了
-        "定义": 2,
-        "命题": 6,
-        "反例": 6,
-        "例子": 6,
-        "思想方法": 9,
-        "问题": 13,
-        "应用": 6
-      }
-    } else {
-      typeMap = {
-        "定义": 2,
-        "命题": 10,
-        "反例": 3,
-        "例子": 15,
-        "思想方法": 9,
-        "问题": 13,
-        "应用": 6
-      }
-    }
-    return typeMap[type]
-  }
-  /**
-   * 【数学】根据颜色 Index 来判断卡片类型
-   */
-  static getNoteZhTypeByNoteColorIndex(index){
-    let typeMap = {
-      2: "定义",
-      10: "命题",
-      3: "反例",
-      15: "例子",
-      9: "思想方法",
-      13: "问题",
-      6: "应用",
-      0: "归类",
-      1: "顶层",
-      4: "归类"
-    }
-    return typeMap[index]
-  }
-  static getNoteEnTypeByNoteColorIndex(index){
-    let typeMap = {
-      2: "definition",
-      10: "theorem",
-      3: "antiexample",
-      15: "example",
-      9: "method",
-      13: "question",
-      6: "application",
-      0: "classification",
-      1: "classification",
-      4: "classification"
-    }
-    return typeMap[index]
-  }
-  /**
-   * 【数学】根据卡片类型获取对应的模板卡片的 ID
-   */
-  static getTemplateNoteIdByZhType(type){
-    let typeMap = {
-      "定义": "C1052FDA-3343-45C6-93F6-61DCECF31A6D",
-      "命题": "C4B464CD-B8C6-42DE-B459-55B48EB31AD8",
-      "反例": "E64BDC36-DD8D-416D-88F5-0B3FCBE5D151",
-      "例子": "C4B464CD-B8C6-42DE-B459-55B48EB31AD8",
-      "思想方法": "EC68EDFE-580E-4E53-BA1B-875F3BEEFE62",
-      "问题": "C4B464CD-B8C6-42DE-B459-55B48EB31AD8",
-      "应用": "C4B464CD-B8C6-42DE-B459-55B48EB31AD8",
-      "归类": "8853B79F-8579-46C6-8ABD-E7DE6F775B8B",
-      "顶层": "8853B79F-8579-46C6-8ABD-E7DE6F775B8B",
-      "文献": "F09C0EEB-4FB5-476C-8329-8CC5AEFECC43",
-      "文献作者":"782A91F4-421E-456B-80E6-2B34D402911A"
-    }
-    return typeMap[type]
-  }
-  /**
-   * 判断是否是普通对象
-   * @param {Object} obj 
-   * @returns {Boolean}
-   */
-  static isObj(obj) {
-    return typeof obj === "object" && obj !== null && !Array.isArray(obj)
-  }
-
-  static ifObj(obj) {
-    return this.isObj(obj)
-  }
-
-  /**
-   * 判断评论是否是链接
-   */
-  static isCommentLink(comment){
-    if (this.isObj(comment)) {
-      if (comment.type == "TextNote") {
-        return comment.text.isLink()
-      }
-    } else if (typeof comment == "string") {
-      return comment.isLink()
-    }
-  }
-  static isLink(comment){
-    return this.isCommentLink(comment)
-  }
-  static ifLink(comment){
-    return this.isCommentLink(comment)
-  }
-  static ifCommentLink(comment){
-    return this.isCommentLink(comment)
-  }
-
-  /**
-   * 获取到链接的文本
-   */
-  static getLinkText(link){
-    if (this.isObj(link) && this.isCommentLink(link)) {
-      return link.text
-    }
-    return link
-  }
-  /**
-   * 夏大鱼羊 - MNUtil - end
-   */
   static themeColor = {
     Gray: UIColor.colorWithHexString("#414141"),
     Default: UIColor.colorWithHexString("#FFFFFF"),
@@ -1504,6 +1278,329 @@ class MNUtil {
   static isNoteInReview(noteId){
     return this.studyController.isNoteInReview(noteId)
   }
+  /**
+   * 夏大鱼羊 - MNUtil - begin
+   */
+  /**
+   * 根据 md5 获取学习规划学习集对应的卡片 ID
+   */
+  static getNoteIdByMd5InPlanNotebook(md5){
+    let md5IdPair = {
+      // 刘培德《泛函分析基础》
+      "fccc394d73fd738b364d33e1373a4a7493fafea8c024f3712f63db882e79a1cd":"35B90CB6-5BCC-4AA4-AE24-C6B4CBCB9666",
+      // Jan van Neerven《Functional analysis》
+      "3e68d9f7755163f5aacd5d337bdd7a0b6bd70d0727f721778d24d114010e6d7a":"96F569A4-2B2E-4B8D-B789-56ACE09AA2F1",
+      // Conway《A course in Functional Analysis》
+      "88603c9aa7b3c7605d84c08e0e17527f8ae7de0a323c666a0331cc8e7b616eab":"0B8E664B-BB42-431A-8516-C4CA4CF36F94",
+      // 王凯 《泛函分析》
+      "cb15d5b4e55227a3373bde1dd6f1295b21b561dbec231c91edad50186991fd7d":"C0ED1035-ED3E-4051-A1F6-EDE95CE35370",
+      // Rudin 泛函分析
+      "34c59a3b8af79bb95139756fb2d7c9c115fe8a7c79d4939100558b8bc7420e53":"8F938A8F-58DA-452D-9DE9-905DC77ABF04",
+      // Folland 实分析
+      "5bb47aff3b50e7ec12b0ffc3de8e13a7acb4aa11caffa52c29f9f8a5c9b970d5":"02E775DE-1CA6-4D72-A42C-45ED03FD1251",
+      // Rudin - 实分析与复分析
+      "f45e28950cadc7d1b9d29cd2763b9b6a969c8f38b45efb8cc2ee302115c5e8b4":"9CB204AD-C640-4F97-B62F-E47E2D659C25",
+      // 赵焕光 - 现代分析入门
+      "34f67c3a452118b6f274b8c063b85b0544a5d272081c7fdc1be27b9575b8a6f1":"C877F723-7FA3-4D95-9C87-9C036687782A",
+      // 陆善镇 王昆扬 - 实分析
+      "0bb3627b57dc95b4f4d682c71df34b3df01676b9a6819a1c5928c5ce7cb6cb25":"B73922E2-7036-40FE-BC5D-8F4713616C62",
+      // 楼红卫《数学分析》
+      "320ec3909f6cbd91445a7e76c98a105f50998370f5856be716f704328c11263f":"AA1B5A69-B17E-4B5C-9702-06F3C647C40E",
+      // 李工宝《A first course in real analysis》
+      "d2ec247e78e7517a2fb158e074a90e0bc53c84a57f2777eaa490af57fafd9438":"2D247A3C-559A-473A-83FE-C2A9BD09A74F",
+      // MIRA
+      "7c8f458cf3064fa1daa215ded76980c9aea8624097dbdcf90cca5bb893627621":"198E8FF1-4AAE-42CE-9C0A-1B6A6395804A",
+      // 朱克和 《Operator Theory in Function Spaces》
+      "6a248b6b116e03153af7204b612f93c12a4700ff3de3b3903bb0bcd84e2f6b09":"B32D4EFD-AAF9-44C7-8FDB-E92560F1171F",
+      // 郭坤宇《算子理论基础》
+      "659a6778d0732985b91d72961591a62c21d2d1bfcbd8e78464cc9a9aa6434cf1":"C04668B1-D77A-4495-8972-F028D9F90BFC",
+      // 蹇人宜 安恒斌 《解析函数空间上的算子理论导引》
+      "495ff8e34c20c10fe1244a7b36272e1b8ef8b6c0b92e01793ef2e377bfb90d72":"D35871E8-9F3B-4B95-AD73-48A6DDF27DC4",
+      // The Theory of H(b) Spaces
+      "d86e2e385d353492d9796caacac6353d75351c76968e613539efcaab3f58c8c1":"60F4D62D-D958-4CC7-BD59-511EE1E4312B",
+      // Hoffman - Banach Spaces of Analytic Functions
+      "f2ecc0f4f97eb3907e00746b964ae62a9f378e2cb05f1811aa7b37bce656c025":"CF750547-4BE6-4ABF-BB16-EE6D9321F73F",
+      // Garnett - 有界解析函数
+      "3ec7c103d58eb81e3c4d46022b5736c34d137c905b31053f69fe14ecf8da3606":"15E27BF9-EE52-4C2D-A5FE-0F16C9BC9148",
+      // GTM249
+      "cda554d017af672e87d4261c0463e41893bcb0cf50cb3f2042afaef749297482":"04E7DD41-1DE4-485E-9791-15F7DC067A46",
+      // Stein - Harmonic Analysis: Real-Variable Methods, Orthogonality, and Oscillatory Integrals
+      "4dc6b7188781ebad8c25ad5e9d7635c040ae4a08ddcd196fe2e6e716704851c2":"2E550C5B-88DD-408E-B246-39B293A5910F",
+      // 郝成春 - 调和分析讲义
+      "3805c33987e654ff07ca9ce68cdddeaff965ad544625faaf14c3799e13996ade":"1F47692A-81D2-4890-9E56-0C084D2B622D",
+      // 谢启鸿《高等代数》
+      "32dc18e2e7696064b8da9b14af56dfb54e41b8f08044f2ef00aa21f94885fc08":"8CAA1FAE-2A69-4CBE-A1F0-A02FB1C95C3C",
+      // Krantz - 复变
+      "74f3f034fe67fd4573b33f7c978bb06c2642b892c4b237f2efe9256359935e6e":"1B38D33E-77B7-4391-88F2-2FE3126D6FC4",
+      "06c41fa919b0ec928c31f53e2301f4c9cc9ce1d820dcd5a1750db7144fb8caae":"1B38D33E-77B7-4391-88F2-2FE3126D6FC4",
+      // A first course in complex analysis with applications
+      "4f1fd75b664e8f7c8ee171ba2db11532fd34a3b010edad93fb5b0518243c164a":"7066180E-2430-4A3E-9241-135538474D86",
+      // 邱维元 - 复分析讲义
+      "886469e3d70342159bb554cdaee604fa5a6018e84b6ff04bbb35f69ea764a757":"1BD3CD6C-BDEE-4078-9DF3-BB5C45351356",
+      // 方企勤 - 复变函数
+      "e107e1772dbb53288a9d1c38781d3c77043ee40b68818a16f64c0e8480ed7c7e":"2FDA8616-2BE5-4253-BEE5-FA795AD37999"
+    }
+
+    return md5IdPair[md5]
+  }
+  /**
+   * 根据名称获取 notebookid
+   */
+  static getNoteBookIdByName(name){
+    let notebookId
+    switch (name) {
+      case "数学":
+      case "数学基础":
+        notebookId = "D03C8B94-77CF-46E6-8AAB-CB129EDBCFBC"
+        break;
+      case "数学分析":
+      case "数分":
+        notebookId = "922D2CDF-07CF-4A88-99BA-7AAC60E3C517"
+        break;
+      case "高等代数":
+      case "高代":
+        notebookId = "6E84B815-7BB6-42B0-AE2B-4057279EA163"
+        break;
+      case "实分析":
+      case "实变函数":
+      case "调和分析":
+      case "实变":
+      case "调和":
+      case "实分析与调和分析":
+      case "调和分析与实分析":
+        notebookId = "B051BAC2-576D-4C18-B89E-B65C0E576C7F"
+        break;
+      case "复分析":
+      case "复变函数":
+      case "复变":
+        notebookId = "EAB02DA9-D467-4D7D-B6BA-9244FC326299"
+        break;
+      case "泛函分析":
+      case "泛函":
+      case "泛函分析与算子理论":
+      case "算子理论":
+        notebookId = "98F4FA11-39D3-41A8-845A-F74E2197E111"
+        break;
+      case "学习规划":
+      case "学习安排":
+      case "Inbox":
+      case "学习汇总":
+      case "学习集结":
+      case "规划":
+      case "安排":
+      case "inbox":
+      case "汇总":
+      case "集结":
+        notebookId = "A07420C1-661A-4C7D-BA06-C7035C18DA74"
+        break;
+    }
+
+    return notebookId.toNoteBookId()
+  }
+
+  /**
+   * 获取学习集里的 inbox 部分的三个顶层的卡片 id
+   */
+  static getWorkFlowObjByNoteBookId(notebookId){
+    let workflow = {}
+    switch (notebookId.toNoteBookId()) {
+      case "marginnote4app://notebook/A07420C1-661A-4C7D-BA06-C7035C18DA74":  // 学习规划 
+        workflow.inputNoteId = "DED2745C-6564-4EFA-86E2-42DAAED3281A"
+        workflow.internalizationNoteId = "796ACA3D-9A28-4DC7-89B4-EA5CC3928AFE"
+        workflow.toClassifyNoteId = "3572E6DC-887A-4376-B715-04B6D8F0C58B"
+        break;
+      case "marginnote4app://notebook/98F4FA11-39D3-41A8-845A-F74E2197E111": // 泛函分析
+        workflow.inputNoteId = "C1E43C94-287A-4324-9480-771815F82803"
+        workflow.internalizationNoteId = "FE4B1142-CE83-4BA7-B0CF-453E07663059"
+        workflow.toClassifyNoteId = "E1EACEC5-3ACD-424B-BD46-797CD8A56629"
+        workflow.preparationNoteId = "339DC957-70B5-4350-9093-36706CEC8CD6"
+        break;
+      case "marginnote4app://notebook/EAB02DA9-D467-4D7D-B6BA-9244FC326299": // 复分析
+        workflow.inputNoteId = "26316838-475B-49D9-9C7C-75AB01D80EDE"
+        workflow.internalizationNoteId = "6FB0CEB6-DC7B-4EE6-AD73-4AA459EBE8D8"
+        workflow.toClassifyNoteId = "B27D8A02-BDC4-4D3F-908B-61AA19CBB861"
+        break;
+      case "marginnote4app://notebook/6E84B815-7BB6-42B0-AE2B-4057279EA163": // 高等代数
+        workflow.inputNoteId = "49E66E70-7249-47C6-869E-5A40448B9B0E"
+        workflow.internalizationNoteId = "FDB5289B-3186-4D93-ADFF-B72B4356CBCD"
+        workflow.toClassifyNoteId = "0164496D-FA35-421A-8A22-649831C83E63"
+        break;
+      case "marginnote4app://notebook/B051BAC2-576D-4C18-B89E-B65C0E576C7F": // 实分析
+        workflow.inputNoteId = "E7538B60-D8E2-4A41-B620-37D1AD48464C"
+        workflow.internalizationNoteId = "C5D44533-6D18-45F6-A010-9F83821F627F"
+        workflow.toClassifyNoteId = "13623BE8-8D26-4FEE-95D8-B704C34E92EC"
+        workflow.preparationNoteId = "832AC695-6014-4936-8CDE-3B2CE3C9BA96"
+        break;
+      case "marginnote4app://notebook/922D2CDF-07CF-4A88-99BA-7AAC60E3C517": // 数学分析
+        workflow.inputNoteId = "E22C7404-A6DE-4DB3-B749-BDF8C742F955"
+        workflow.internalizationNoteId = "BBD9C2C0-CDB5-485E-A338-2C75F1ABE59F"
+        workflow.toClassifyNoteId = "C7768D8F-3BD3-4D9F-BC82-C3F12701E7BF"
+        break;
+      case "marginnote4app://notebook/D03C8B94-77CF-46E6-8AAB-CB129EDBCFBC": // 数学基础 
+        workflow.inputNoteId = "E69B712B-E42C-47F3-ADA4-1CB41A3336BD"
+        workflow.internalizationNoteId = "6F5D6E1D-58C7-4E51-87CA-198607640FBE"
+        workflow.toClassifyNoteId = "F6CE6E2C-4126-4945-BB98-F2437F73C806"
+        break;
+      case "marginnote4app://notebook/0F74EF05-FAA1-493E-9D78-CC84C4C045A6": // 文献库
+        workflow.inputNoteId = ""
+        workflow.internalizationNoteId = ""
+        workflow.toClassifyNoteId = ""
+        break;
+    }
+    return workflow
+  }
+
+  /**
+   * 生成标题链接
+   */
+  static generateCustomTitleLink(keyword, titlelinkWord) {
+    return `[${keyword}](marginnote4app://titlelink/custom/${titlelinkWord})`
+  }
+  /**
+   * 【数学】根据中文类型获取对应的英文
+   */
+  static getEnNoteTypeByZhVersion(type){
+    let typeMap = {
+      "定义": "definition",
+      "命题": "theorem",
+      "反例": "antiexample",
+      "例子": "example",
+      "思想方法": "method",
+      "问题": "question",
+      "应用": "application",
+      "归类": "classification",
+      "": "temporary",
+      "文献": "reference"
+    }
+    return typeMap[type]
+  }
+  /**
+   * 【数学】根据中文类型获取对应的卡片颜色 index
+   */
+  static getNoteColorIndexByZhType(type, preprocess=false){
+    let typeMap
+    if (preprocess) {
+      typeMap = {  // ? 自己也看不懂了
+        "定义": 2,
+        "命题": 6,
+        "反例": 6,
+        "例子": 6,
+        "思想方法": 9,
+        "问题": 13,
+        "应用": 6
+      }
+    } else {
+      typeMap = {
+        "定义": 2,
+        "命题": 10,
+        "反例": 3,
+        "例子": 15,
+        "思想方法": 9,
+        "问题": 13,
+        "应用": 6
+      }
+    }
+    return typeMap[type]
+  }
+  /**
+   * 【数学】根据颜色 Index 来判断卡片类型
+   */
+  static getNoteZhTypeByNoteColorIndex(index){
+    let typeMap = {
+      2: "定义",
+      10: "命题",
+      3: "反例",
+      15: "例子",
+      9: "思想方法",
+      13: "问题",
+      6: "应用",
+      0: "归类",
+      1: "顶层",
+      4: "归类"
+    }
+    return typeMap[index]
+  }
+  static getNoteEnTypeByNoteColorIndex(index){
+    let typeMap = {
+      2: "definition",
+      10: "theorem",
+      3: "antiexample",
+      15: "example",
+      9: "method",
+      13: "question",
+      6: "application",
+      0: "classification",
+      1: "classification",
+      4: "classification"
+    }
+    return typeMap[index]
+  }
+  /**
+   * 【数学】根据卡片类型获取对应的模板卡片的 ID
+   */
+  static getTemplateNoteIdByZhType(type){
+    let typeMap = {
+      "定义": "C1052FDA-3343-45C6-93F6-61DCECF31A6D",
+      "命题": "C4B464CD-B8C6-42DE-B459-55B48EB31AD8",
+      "反例": "E64BDC36-DD8D-416D-88F5-0B3FCBE5D151",
+      "例子": "C4B464CD-B8C6-42DE-B459-55B48EB31AD8",
+      "思想方法": "EC68EDFE-580E-4E53-BA1B-875F3BEEFE62",
+      "问题": "C4B464CD-B8C6-42DE-B459-55B48EB31AD8",
+      "应用": "C4B464CD-B8C6-42DE-B459-55B48EB31AD8",
+      "归类": "8853B79F-8579-46C6-8ABD-E7DE6F775B8B",
+      "顶层": "8853B79F-8579-46C6-8ABD-E7DE6F775B8B",
+      "文献": "F09C0EEB-4FB5-476C-8329-8CC5AEFECC43",
+      "文献作者":"782A91F4-421E-456B-80E6-2B34D402911A"
+    }
+    return typeMap[type]
+  }
+  /**
+   * 判断是否是普通对象
+   * @param {Object} obj 
+   * @returns {Boolean}
+   */
+  static isObj(obj) {
+    return typeof obj === "object" && obj !== null && !Array.isArray(obj)
+  }
+
+  static ifObj(obj) {
+    return this.isObj(obj)
+  }
+
+  /**
+   * 判断评论是否是链接
+   */
+  static isCommentLink(comment){
+    if (this.isObj(comment)) {
+      if (comment.type == "TextNote") {
+        return comment.text.isLink()
+      }
+    } else if (typeof comment == "string") {
+      return comment.isLink()
+    }
+  }
+  static isLink(comment){
+    return this.isCommentLink(comment)
+  }
+  static ifLink(comment){
+    return this.isCommentLink(comment)
+  }
+  static ifCommentLink(comment){
+    return this.isCommentLink(comment)
+  }
+
+  /**
+   * 获取到链接的文本
+   */
+  static getLinkText(link){
+    if (this.isObj(link) && this.isCommentLink(link)) {
+      return link.text
+    }
+    return link
+  }
+  /**
+   * 夏大鱼羊 - MNUtil - end
+   */
   /**
    * 
    * @param {string} noteid 

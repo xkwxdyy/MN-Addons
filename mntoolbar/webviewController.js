@@ -42,12 +42,21 @@ var toolbarController = JSB.defineClass('toolbarController : UIViewController <U
     self.view.layer.cornerRadius = 5
     self.view.backgroundColor = UIColor.whiteColor().colorWithAlphaComponent(0)
     self.view.mntoolbar = true
+    let dynamicOrder = toolbarConfig.getWindowState("dynamicOrder")
+    let useDynamic = dynamicOrder && self.dynamicWindow
 
-    
-    if (toolbarConfig.action.length == 27) {
-      toolbarConfig.action = toolbarConfig.action.concat(["custom1","custom2","custom3","custom4","custom5","custom6","custom7","custom8","custom9"])
+    if (self.dynamicWindow) {
+      if (toolbarConfig.dynamicAction.length == 27) {
+        toolbarConfig.dynamicAction = toolbarConfig.dynamicAction.concat(["custom1","custom2","custom3","custom4","custom5","custom6","custom7","custom8","custom9"])
+      }
+      self.setToolbarButton(useDynamic ? toolbarConfig.dynamicAction:toolbarConfig.action)
+    }else{
+      if (toolbarConfig.action.length == 27) {
+        toolbarConfig.action = toolbarConfig.action.concat(["custom1","custom2","custom3","custom4","custom5","custom6","custom7","custom8","custom9"])
+      }
+      self.setToolbarButton(toolbarConfig.action)
     }
-    self.setToolbarButton(toolbarConfig.action)
+    
 
     // >>> max button >>>
     self.maxButton = UIButton.buttonWithType(0);
@@ -107,7 +116,7 @@ viewWillLayoutSubviews: function() {
   scrollViewDidScroll: function() {
   },
   changeOpacity: function(sender) {
-    self.checkPopoverController()
+    self.checkPopover()
     // if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
     var menuController = MenuController.new();
     menuController.commandTable = [
@@ -138,7 +147,7 @@ viewWillLayoutSubviews: function() {
     // if (self.dynamicWindow) {
     //   return
     // }
-    self.checkPopoverController()
+    self.checkPopover()
     let selector = "toggleToolbarDirection:"
     // if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
     var commandTable = [
@@ -174,7 +183,7 @@ viewWillLayoutSubviews: function() {
   },
   // 夏大鱼羊 - end
   toggleToolbarDirection: function (source) {
-    self.checkPopoverController()
+    self.checkPopover()
     toolbarConfig.toggleToolbarDirection(source)
   },
   toggleDynamic: function () {
@@ -183,7 +192,7 @@ try {
 
     // MNUtil.showHUD("message")
     self.onClick = true
-    self.checkPopoverController()
+    self.checkPopover()
     // if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
     // MNUtil.postNotification('toggleDynamic', {test:123})
     if (typeof MNUtil === 'undefined') return
@@ -213,8 +222,36 @@ try {
    */
   setColor: async function (button) {
     let self = getToolbarController()
+    // let tem = {
+    // }
+    // let note = MNNote.getFocusNote()
+    // if (note) {
+    //   tem.noteid = note.noteId
+    //   tem.origin = note.originNoteId
+    // }
+    // MNUtil.copy(tem)
+    // return
     let actionName = "color"+button.color
+    let delay = false
     let des = toolbarConfig.getDescriptionByName(actionName)
+    if ("doubleClick" in des) {
+      delay = true
+      self.onClick = true
+      button.delay = true //让菜单延迟关闭,保证双击可以被执行
+      self.onClick = true
+      if (button.menu) {
+        button.menu.stopHide = true
+      }
+      if (button.doubleClick) {
+        button.doubleClick = false
+        let doubleClick = des.doubleClick
+        if (!("action" in doubleClick)) {
+          doubleClick.action = des.action
+        }
+        self.customActionByDes(button, doubleClick)
+        return
+      }
+    }
     des.color = button.color
     des.action = "setColor"
     MNUtil.delay(0.1).then(async ()=>{
@@ -224,19 +261,17 @@ try {
       button.menu.dismissAnimated(true)
       return
     }
-
-    self.hideAfterDelay()
+    if (!self.dynamicWindow) {
+      return
+    }
+    if (delay) {
+      self.hideAfterDelay()
+    }else{
+      self.hide()
+    }
   },
   execute: async function (button) {
     MNUtil.showHUD("Action disabled")
-    return
-    let code = toolbarConfig.getExecuteCode()
-    toolbarSandbox.execute(code)
-    if (button.menu) {
-      button.menu.dismissAnimated(true)
-      return
-    }
-    self.hideAfterDelay()
   },
   /**
    * @param {UIButton} button 
@@ -246,7 +281,9 @@ try {
     let self = getToolbarController()
     // eval("MNUtil.showHUD('123')")
     // return
-    let actionName = button.target ?? toolbarConfig.action[button.index]//这个是key
+    let dynamicOrder = toolbarConfig.getWindowState("dynamicOrder")
+    let useDynamic = dynamicOrder && self.dynamicWindow
+    let actionName = button.target ?? (useDynamic?toolbarConfig.dynamicAction[button.index]:toolbarConfig.action[button.index])//这个是key
     let des = toolbarConfig.getDescriptionByName(actionName)
     if ("doubleClick" in des) {
       button.delay = true //让菜单延迟关闭,保证双击可以被执行
@@ -274,7 +311,7 @@ try {
     let button = param.button
     if (des.action === "menu") {
       self.onClick = true
-      self.checkPopoverController()
+      self.checkPopover()
       if (("autoClose" in des) && des.autoClose) {
         self.hideAfterDelay(0.1)
       }
@@ -292,10 +329,10 @@ try {
       return
     }
     if (!("autoClose" in des) || des.autoClose) {
-      self.checkPopoverController()
+      self.checkPopover()
       self.hideAfterDelay(0.1)
     }else{
-      self.checkPopoverController()
+      self.checkPopover()
     }
     // MNUtil.copyJSON(des)
     // return
@@ -303,7 +340,7 @@ try {
     self.customActionByDes(button,des)
   },
 lastPopover: function (button) {
-      self.checkPopoverController()
+      self.checkPopover()
       self.commandTables.pop()
       let commandTable = self.commandTables.at(-1)
       self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,200,4)
@@ -695,10 +732,10 @@ try {
     self.hideAfterDelay()
   },
   ocr: async function (button) {
-    if (typeof ocrUtils === 'undefined') {
-      MNUtil.showHUD("MN Toolbar: Please install 'MN OCR' first!")
-      return
-    }
+    // if (typeof ocrUtils === 'undefined') {
+    //   MNUtil.showHUD("MN Toolbar: Please install 'MN OCR' first!")
+    //   return
+    // }
     let des = toolbarConfig.getDescriptionByName("ocr")
     des.action = "ocr"
 
@@ -715,26 +752,8 @@ try {
     self.hideAfterDelay()
   },
   setting: function (button) {
-    self.checkPopoverController()
+    self.checkPopover()
     MNUtil.postNotification("openToolbarSetting", {})
-    // let self = getToolbarController()
-    // self.checkPopoverController()
-    // // if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
-    // try {
-    // if (!self.settingController) {
-    //   self.settingController = settingController.new();
-    //   self.settingController.toolbarController = self
-    //   self.settingController.mainPath = toolbarConfig.mainPath;
-    //   self.settingController.action = toolbarConfig.action
-    //   // self.settingController.dynamicToolbar = self.dynamicToolbar
-    //   MNUtil.studyView.addSubview(self.settingController.view)
-    //   // toolbarUtils.studyController().view.addSubview(self.settingController.view)
-    // }
-      
-    // self.settingController.show()
-    // } catch (error) {
-    //   MNUtil.showHUD(error)
-    // }
     if (button.menu) {
       button.menu.dismissAnimated(true)
       return
@@ -819,7 +838,9 @@ try {
       // self.resi
       MNUtil.studyView.bringSubviewToFront(self.view)
       toolbarConfig.windowState.open = true
-      toolbarConfig.windowState.frame = self.view.frame
+      toolbarConfig.windowState.frame.x = self.view.frame.x
+      toolbarConfig.windowState.frame.y = self.view.frame.y
+      // toolbarConfig.windowState.frame = self.view.frame
       toolbarConfig.windowState.splitMode = self.splitMode
       toolbarConfig.windowState.sideMode = self.sideMode
       toolbarConfig.save("MNToolbar_windowState")
@@ -871,7 +892,7 @@ try {
   onLongPressGesture:async function (gesture) {
     if (gesture.state === 1) {
       let button = gesture.view
-      let actionName = button.target ?? toolbarConfig.action[button.index]//这个是key
+      let actionName = button.target ?? (self.dynamicWindow?toolbarConfig.dynamicAction[button.index]:toolbarConfig.action[button.index])//这个是key
       if (actionName) {
         let des = toolbarConfig.getDescriptionByName(actionName)
         if ("onLongPress" in des) {
@@ -955,25 +976,17 @@ try {
     let width = locationInView.x+baseframe.x+baseframe.width*0.5
     self.setFrame(MNUtil.genFrame(frame.x, frame.y, width, height))
     if (gesture.state === 3) {
-      let buttonNumber = Math.floor(height/45)
-      if (toolbarConfig.horizonatl(self.dynamicWindow)) {
-        buttonNumber = Math.floor(width/45)
+      self.view.bringSubviewToFront(self.screenButton)
+      let windowState = toolbarConfig.windowState
+      if (self.dynamicWindow) {
+        windowState.dynamicButton = self.buttonNumber
+        self.hide()
+        // toolbarConfig.save("MNToolbar_windowState",{open:toolbarConfig.windowState.open,frame:self.view.frame})
+      }else{
+        windowState.frame = self.view.frame
+        windowState.open = true
       }
-      //当用户拖拽距离过短时，不触发配置存储
-      if (self.buttonNumber !== buttonNumber) {
-        self.buttonNumber = buttonNumber
-        self.view.bringSubviewToFront(self.screenButton)
-        let windowState = toolbarConfig.windowState
-        if (self.dynamicWindow) {
-          windowState.dynamicButton = buttonNumber
-          self.hide()
-          // toolbarConfig.save("MNToolbar_windowState",{open:toolbarConfig.windowState.open,frame:self.view.frame})
-        }else{
-          windowState.frame = self.view.frame
-          windowState.open = true
-        }
-        toolbarConfig.save("MNToolbar_windowState",windowState)
-      }
+      toolbarConfig.save("MNToolbar_windowState",windowState)
       self.onResize = false
     }
     } catch (error) {
@@ -1023,7 +1036,7 @@ toolbarController.prototype.setColorButtonLayout = function (button,targetAction
  */
 toolbarController.prototype.show = async function (frame) {
   let preFrame = this.view.frame
-  if (toolbarConfig.horizonatl(this.dynamicWindow)) {
+  if (toolbarConfig.horizontal(this.dynamicWindow)) {
     preFrame.width = toolbarUtils.checkHeight(preFrame.width,this.maxButtonNumber)
     preFrame.height = 40
     preFrame.y = toolbarUtils.constrain(preFrame.y, 0, MNUtil.studyView.frame.height-40)
@@ -1046,7 +1059,8 @@ toolbarController.prototype.show = async function (frame) {
   this.view.hidden = false
   // this.moveButton.hidden = true
   this.screenButton.hidden = true
-  this.setToolbarButton(toolbarConfig.action)
+  let useDynamic = toolbarConfig.getWindowState("dynamicOrder") && this.dynamicWindow
+  this.setToolbarButton(useDynamic?toolbarConfig.dynamicAction:toolbarConfig.action)
 
   // showHUD(JSON.stringify(preFrame))
   MNUtil.animate(()=>{
@@ -1117,9 +1131,18 @@ toolbarController.prototype.hide = function (frame) {
       this.view.frame = frame
       this.currentFrame = frame
     }
-  },0.25).then(()=>{
-    this.view.hidden = true;
-    this.view.layer.opacity = preOpacity      
+  },0.2).then(()=>{
+    if (this.notHide) {
+      MNUtil.animate(()=>{
+        this.view.layer.opacity = preOpacity      
+      })
+      this.view.hidden = false;
+      this.onAnimate = false
+      this.notHide = undefined
+    }else{
+      this.view.hidden = true;
+      this.view.layer.opacity = preOpacity      
+    }
     this.view.frame = preFrame
     this.currentFrame = preFrame
     this.onAnimate = false
@@ -1131,17 +1154,18 @@ toolbarController.prototype.hide = function (frame) {
  * @param {number} delay
  * @param {UIButton|undefined} button
  */
-toolbarController.prototype.hideAfterDelay = function (delay = 0.5,button = undefined) {
+toolbarController.prototype.hideAfterDelay = function (delay = 0.5) {
   if (this.view.hidden) {
     return
   }
   if (this.dynamicWindow) {
+    this.onAnimate = true
+    if (this.notHide) {
+      this.onAnimate = false
+      return
+    }
     MNUtil.delay(delay).then(()=>{
-      if (button) {
-        //prevent hide
-      }else{
-        this.hide()
-      }
+      this.hide()
     })
   }
 }
@@ -1153,6 +1177,8 @@ toolbarController.prototype.setToolbarButton = function (actionNames = toolbarCo
 try {
   // MNUtil.showHUD("setToolbarButton")
   let buttonColor = toolbarUtils.getButtonColor()
+  let dynamicOrder = toolbarConfig.getWindowState("dynamicOrder")
+  let useDynamic = dynamicOrder && this.dynamicWindow
   this.view.layer.shadowColor = buttonColor
   
   let actions
@@ -1160,13 +1186,20 @@ try {
     toolbarConfig.actions = newActions
   }
   actions = toolbarConfig.actions
-  let defaultActions = toolbarConfig.getActions()
   let defaultActionNames = toolbarConfig.getDefaultActionKeys()
   if (!actionNames) {
     actionNames = defaultActionNames
-    toolbarConfig.action = actionNames
+    if (useDynamic) {
+      toolbarConfig.dynamicAction = actionNames
+    }else{
+      toolbarConfig.action = actionNames
+    }
   }else{
-    toolbarConfig.action = actionNames
+    if (useDynamic) {
+      toolbarConfig.dynamicAction = actionNames
+    }else{
+      toolbarConfig.action = actionNames
+    }
   }
 
   // MNUtil.copyJSON(actionNames)
@@ -1190,7 +1223,7 @@ try {
           this.addLongPressGesture(colorButton, "onLongPressGesture:")
           // this.addSwipeGesture(colorButton, "onSwipeGesture:")
         // }
-
+  
         // this["moveGesture"+index] = new UIPanGestureRecognizer(this,"onMoveGesture:")
         // colorButton.addGestureRecognizer(this["moveGesture"+index])
         // this["moveGesture"+index].view.hidden = false
@@ -1212,7 +1245,13 @@ try {
     }
   }
   if (this.dynamicToolbar) {
-    this.dynamicToolbar.setToolbarButton(actionNames,newActions)
+    if (dynamicOrder) {
+      // MNUtil.showHUD("useDynamic: "+useDynamic)
+      this.dynamicToolbar.setToolbarButton(toolbarConfig.dynamicAction,newActions)
+    }else{
+      // MNUtil.showHUD("useDynamic: "+useDynamic)
+      this.dynamicToolbar.setToolbarButton(toolbarConfig.action,newActions)
+    }
   }
   this.refresh()
 } catch (error) {
@@ -1237,7 +1276,7 @@ toolbarController.prototype.setToolbarLayout = function () {
     return
   }
   // MNUtil.copyJSON(this.view.frame)
-  if (toolbarConfig.horizonatl(this.dynamicWindow)) {
+  if (toolbarConfig.horizontal(this.dynamicWindow)) {
     var viewFrame = this.view.bounds;
     var xLeft     = viewFrame.x
     var xRight    = xLeft + viewFrame.width
@@ -1278,7 +1317,7 @@ toolbarController.prototype.setToolbarLayout = function () {
   }
 
 }
-toolbarController.prototype.checkPopoverController = function () {
+toolbarController.prototype.checkPopover = function () {
   if (this.popoverController) {this.popoverController.dismissPopoverAnimated(true);}
 }
 /**
@@ -1338,6 +1377,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         toolbarUtils.paste(des)
         await MNUtil.delay(0.1)
         break;
+      case "webSearch":
+        await toolbarUtils.webSearch(des)
+        break;
       case "setTimer":
         toolbarUtils.setTimer(des)
         break;
@@ -1391,14 +1433,12 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         toolbarUtils.searchInDict(des,button)
         break;
       case "insertSnippet":
-        let textView = toolbarUtils.textView
-        if (!textView || textView.hidden) {
-          MNUtil.showHUD("No textView")
-          success = false
-          break;
-        }
-        let textContent = toolbarUtils.detectAndReplace(des.content)
-        success = toolbarUtils.insertSnippetToTextView(textContent,textView)
+        success = toolbarUtils.insertSnippet(des)
+        break;
+      case "importDoc":
+        let docPath = await MNUtil.importFile(["com.adobe.pdf"])
+        let docMd5 = MNUtil.importDocument(docPath)
+        MNUtil.openDoc(docMd5)
         break;
       case "noteHighlight":
         let newNote = await toolbarUtils.noteHighlight(des)
@@ -1420,7 +1460,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         toolbarUtils.moveNote(des)
         await MNUtil.delay(0.1)
         break;
-      case "addChildNote":
+      case "addChildNote"://不支持多选
         if (!des.hideMessage) {
           MNUtil.showHUD("addChildNote")
         }
@@ -1511,7 +1551,6 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         }
         let comment = des.content
         if (comment) {
-          let replacedText = toolbarUtils.detectAndReplace(des.content)
           let focusNotes = MNNote.getFocusNotes()
           let markdown = des.markdown ?? true
           let commentIndex = des.index ?? 999
@@ -1519,12 +1558,17 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           MNUtil.undoGrouping(()=>{
             if (markdown) {
               focusNotes.forEach(note => {
-                // note.appendTextComment(replacedText)
-                note.appendMarkdownComment(replacedText,commentIndex)
+                let replacedText = toolbarUtils.detectAndReplace(comment,undefined,note)
+                if (replacedText.trim()) {
+                  note.appendMarkdownComment(replacedText,commentIndex)
+                }
               })
             }else{
               focusNotes.forEach(note => {
-                note.appendTextComment(replacedText,commentIndex)
+                let replacedText = toolbarUtils.detectAndReplace(comment,undefined,note)
+                if (replacedText.trim()) {
+                  note.appendTextComment(replacedText,commentIndex)
+                }
               })
             }
           })
@@ -1584,9 +1628,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         toolbarUtils.clearContent(des)
         break;
       case "setContent":
-          let content = des.content ?? "content"
-          let replacedText = toolbarUtils.detectAndReplace(content)
-          toolbarUtils.setContent(replacedText, des)
+          toolbarUtils.setContent(des)
         break;
       case "showInFloatWindow":
         toolbarUtils.showInFloatWindow(des)
@@ -5905,13 +5947,12 @@ toolbarController.prototype.tableItem = function (title,selector,param = "",chec
  */
 toolbarController.prototype.setFrame = function (frame,maximize = false) {
   let targetFrame = {x:frame.x,y:frame.y}
-  if(toolbarConfig.horizonatl(this.dynamicWindow)){
+  if(toolbarConfig.horizontal(this.dynamicWindow)){
     let width = Math.max(frame.width,frame.height)
     if (maximize) {
       width = 45*this.buttonNumber+15
-    }
-    if (width > 420 && !toolbarUtils.isSubscribed(false)) {
-      width = 420
+    }else{
+      this.buttonNumber = Math.floor(width/45)
     }
     if (frame.x + width > MNUtil.studyView.bounds.width) {
       width = MNUtil.studyView.bounds.width - frame.x
@@ -5926,6 +5967,8 @@ toolbarController.prototype.setFrame = function (frame,maximize = false) {
     let height = Math.max(frame.width,frame.height)
     if (maximize) {
       height = 45*this.buttonNumber+15
+    }else{
+      this.buttonNumber = Math.floor(height/45)
     }
     if (height > 420 && !toolbarUtils.isSubscribed(false)) {
       height = 420

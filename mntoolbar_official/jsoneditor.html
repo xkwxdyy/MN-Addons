@@ -26,7 +26,7 @@ body {
   <div id="jsoneditor"></div>
   <script>
     // create the editor
-    let actionNames = ['addChildNote','addBrotherNote','addComment','addImageComment','addTags','addMarkdownLink','crash','clearContent','cloneAndMerge','cloneAsChildNote','confirm','chatAI','copy','command','export','focus','insertSnippet','link','moveNote','mergeText','moveComment','menu','noteHighlight','openURL','openWebURL','ocr','paste','redo','replace','removeComment','removeTags','search','searchInDict','setContent','setColor','setTimer','showInFloatWindow','switchTitleOrExcerpt','showMessage','setButtonImage','shortcut','triggerButton','toggleView','toggleTextFirst','toggleMarkdown','undo','userSelect']
+    let actionNames = ['addChildNote','addBrotherNote','addComment','addImageComment','addTags','addMarkdownLink','crash','clearContent','cloneAndMerge','cloneAsChildNote','confirm','chatAI','copy','command','export','focus','insertSnippet','importDoc','link','moveNote','mergeText','moveComment','menu','noteHighlight','openURL','openWebURL','ocr','paste','redo','replace','removeComment','removeTags','search','searchInDict','setContent','setColor','setTimer','showInFloatWindow','switchTitleOrExcerpt','showMessage','setButtonImage','shortcut','triggerButton','toggleView','toggleTextFirst','toggleMarkdown','undo','userSelect','webSearch']
     let commandNames = ['GoNewFeatures','GoUserGuide','GoManual','InAppPurchase','DBVaults','ShareLicenses','SharePackage','GoiCloud','ExportPKG','ExportVault','ExportMapPDF','ExportDocPDF','ExportOmni','ExportWord','ExportMind','ExportAnki','BackupDB','ClearTemp','OpenTrash','OpenExtensions','GoSettings','EditUndo','EditRedo','EditCut','CommonCopy','EditPaste','EditSelAll','EditMarkdown','ToggleDocument','ToggleMindMap','ToggleCards','ToggleReview','ToggleResearch','ToggleMoreSettings','ToggleSidebar','FullTextSearch','DraftList','ManageDocs','ToggleFullDoc','ToggleBookLeft','ToggleBookBottom','ToggleTabsBar','ToggleAddFile','TabNextFile','TabPrevFile','ToggleSplit','BindSplit','EmphasisCloze','ToggleTextLink','SyncMindMapToBook','SyncBookToMindMap','SyncWindowPos','SyncDeletion','SetRefCopyMode','SetCloneCopyMode','UIStatusURL','BookTOC','BookPageList','BookMarkList','BookSketchList','BookCardList','EditDocLayers','ViewDocCardGroup','BookSearch','BookPageFlip','BookPageScroll','ExtendSplit','ExtendMargin','ExtendPopup','PdfCrop','BookPageNumber','GoBack','GoForward','BookMarkAdd','BookMarkRemove','EditPDFPages','AddToTOC','SplitBook','InsertBlank','Translate','FoldHighlight','SourceHighlight','EditTextBox','EditImageBox','ExcerptToolSettings','ExcerptToolSelect','ExcerptToolCustom0','ExcerptToolCustom1','ExcerptToolCustom2','ExcerptToolCustom3','HighlightShortcut1','HighlightShortcut2','HighlightShortcut3','HighlightShortcut4','ExcerptToolSketch','NotebookOutline','ViewMapCardGroup','EditMultiSel','FocusNote','FocusParent','NotebookOutlineEdit','EditOutlineIncLevel','EditOutlineDecLevel','SnippetMode','NewSiblingNote','NewChildNote','NewParentNote','ToggleExpand','EditGroupNotes','EditLinkNotes','EditMergeNotes','SelBranchStyle0','SelBranchStyle1','SelBranchStyle2','SelBranchStyle3','SelBranchStyle4','SelBranchStyle60','SelBranchStyle61','SelBranchStyle64','SelBranchStyle7','SelBranchStyle100','GlobalBranchStyle','ZoomToFit','ViewExpandAll','ViewCollapseAll','ViewExpandLevel0','ViewExpandLevel1','ViewExpandLevel2','ViewExpandLevel3','ViewExpandLevel4','ViewExpandLevel5','ViewExpandLevel6','ViewExpandLevel7','ViewExpandRows','ViewCollapseRows','EditArrangeNotes','MindmapSnippetMode','SelectBranch','ShowSketch','HideSketch','EditCopy','EditReference','EditCopyLink','EditDeleteNote','EditColorNoteIndex0','EditColorNoteIndex1','EditColorNoteIndex2','EditColorNoteIndex3','EditColorNoteIndex4','EditColorNoteIndex5','EditColorNoteIndex6','EditColorNoteIndex7','EditColorNoteIndex8','EditColorNoteIndex9','EditColorNoteIndex10','EditColorNoteIndex11','EditColorNoteIndex12','EditColorNoteIndex13','EditColorNoteIndex14','EditColorNoteIndex15','EditTagNote','EditAddTitle','EditAddText','EditAppendComment','ContinueExcerpt','EditTextMode','EditOcclusion','EditUnmergeNote','TextToTitle','ExpandExtend','CollapseExtend','SendToMap','RemoveFromMap','AddToReview','ClearFormat1','ClearFormat2','FlashcardSpeech','SetTitleHighlight','SetCommentHighlight','SetAsEmphasis','MergeTo','FlashcardsPlay','FlashcardsStop','FlashcardFlip','FlashcardLocal','FlashcardAgain','FlashcardHard','FlashcardGood','FlashcardEasy','FlashcardStarred']
     const container = document.getElementById("jsoneditor")
     const actionProperties = {
@@ -42,6 +42,10 @@ body {
       },
       "annotation": {
         "title": "annotation",
+        "type": "string"
+      },
+      "question": {
+        "title": "question",
         "type": "string"
       },
       "minutes":{
@@ -114,12 +118,12 @@ body {
       "range": {
         "title": "range",
         "type": "string",
-        "enum": ['currentNotes','childNotes','descendants'],
+        "enum": ['currentNote','currentNotes','childNotes','descendants'],
       },
       "target": {
         "title": "target",
         "type": "string",
-        "enum": ['addonBar','appendTitle','appendExcerpt','auto','both','comment','comments','clipboard','currentNote','currentChildMap','currentPrompt','currentNoteInMindMap','clipboardText','chatModeReference','doc','default','editor','eudic','excerpt','excerptText','excerptOCR','file','floatMindmap','MdxDictCollins','MdxDictOxford','menu','mindmap','mainMindMap','mindmapToolbar','newComment','notesText','noteId','noteURL','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown','noteInClipboard','openFloat','parentNote','selectionText','selectionImage','title'],
+        "enum": ['addonBar','appendTitle','appendExcerpt','auto','both','childNote','comment','comments','clipboard','currentNote','currentChildMap','currentPrompt','currentNoteInMindMap','clipboardText','chatModeReference','doc','default','editor','eudic','excerpt','excerptText','excerptOCR','file','floatMindmap','MdxDictCollins','MdxDictOxford','menu','mindmap','mainMindMap','mindmapToolbar','newComment','notesText','noteId','noteURL','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown','noteInClipboard','openFloat','parentNote','selectionText','selectionImage','title'],
       },
       "fillPattern": {
         "title": "fillPattern",
@@ -180,6 +184,15 @@ body {
         "enum": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,'parent','current'],
       },
       "trim": {
+        "type": "boolean",
+        "default": false
+      },
+      ocrSource:{
+        "title": "ocrSource",
+        "type": "string",
+        "enum":["SimpleTex","abab6.5s-chat","MiniMax-Text-01","glm-4v-plus","glm-4v-flash","claude-3-5-sonnet-20241022","gemini-2.0-flash-exp","GPT-4o","GPT-4o-mini","Moonshot-v1"]
+      },
+      "hideMessage": {
         "type": "boolean",
         "default": false
       },
@@ -334,7 +347,6 @@ function copyToClipboard(text) {
       theme: 'ace',
       allowSchemaSuggestions: true,
       onCreateMenu:(items, node)=> {
-        
         let path = node.path
         if (path.length) {
           items.unshift({
@@ -446,6 +458,12 @@ function copyToClipboard(text) {
                 needSet = true
               }
               break;
+            case "webSearch": 
+              if(!("question" in config)){
+                config.question = ""
+                needSet = true
+              }
+              break;
             case "showMessage":
               if(!("content" in config)){
                 config.content = ""
@@ -459,6 +477,12 @@ function copyToClipboard(text) {
               }
               if(!("link" in config)){
                 config.link = ""
+                needSet = true
+              }
+              break;
+            case "toggleView":
+              if (!("target" in config) && !("targets" in config)) {
+                config.target = "123"
                 needSet = true
               }
               break;
@@ -561,7 +585,7 @@ function copyToClipboard(text) {
           //path: array
           // console.log(input);
           if (input === 'field') {
-            return ['mergeToPreviousNote','annotation','timerMode','minutes','selectTitle','selectItems','userSelect','find','delay','noteURL','menuWidth','buttonName','subTitle','onConfirm','onCancel','followAutoStyle','menuTitle','name','input','text','target', 'action', 'description','menu', 'source','color','content','title','markdown','command','commands','OCR','fillPattern','asTitle','tags','tag','find','multi','type','index','removeSource','prompt','user','system','trim','replace','merge','linkType','from','to','steps','range','url','engine','targets','onFinish','onLongPress','doubleClick','menuItems','autoClose','parentNote','mainMindMap','method','paste'];
+            return ['hideMessage','mergeToPreviousNote','annotation','timerMode','minutes','selectTitle','selectItems','userSelect','find','delay','noteURL','menuWidth','buttonName','subTitle','onConfirm','onCancel','followAutoStyle','menuTitle','name','input','text','target', 'action', 'description','menu', 'source','color','content','title','markdown','command','commands','OCR','fillPattern','asTitle','tags','tag','find','multi','type','index','removeSource','prompt','user','system','trim','replace','merge','linkType','from','to','steps','range','url','engine','targets','onFinish','onLongPress','doubleClick','menuItems','autoClose','parentNote','mainMindMap','method','paste'];
           }
           if (input === 'value') {
             let parent = path.at(-1)
@@ -573,7 +597,15 @@ function copyToClipboard(text) {
               case 'method':
                 return ['replace','append']
               case 'content':
-                return ['{{note.title}}','{{note.url}}','{{date.now}}']
+                return [
+                  '{{clipboardText}}','{{selectionText}}','{{currentDocName}}','{{currentDocAttach}}',
+                  '{{note.title}}','{{note.url}}','{{note.id}}','{{note.hashTags}}','{{note.excerptText}}','{{note.allText}}','{{note.docName}}',
+                  '{{note.parent.title}}','{{note.parent.url}}','{{note.parent.id}}','{{note.parent.hashTags}}','{{note.parent.excerptText}}','{{note.parent.allText}}','{{note.parent.docName}}',
+                  '{{note.childMindMap.title}}','{{note.childMindMap.url}}','{{note.childMindMap.id}}','{{note.childMindMap.hashTags}}','{{note.childMindMap.excerptText}}','{{note.childMindMap.allText}}','{{note.childMindMap.docName}}',
+                  '{{note.date.create}}','{{note.date.modify}}',
+                  '{{note.notebook.id}}','{{note.notebook.name}}',
+                  '{{date.now}}','{{date.tomorrow}}','{{date.yesterday}}','{{date.year}}','{{date.month}}','{{date.day}}','{{date.hour}}','{{date.minute}}','{{date.second}}'
+                ]
               case 'targets':
                 return ['addonBar','mindmapToolbar']
               case 'source':
@@ -695,7 +727,6 @@ function copyToClipboard(text) {
 }
 
         editor.set(initialJson)
-
         // get json
         const updatedJson = editor.get()
         function updateContent(data) {

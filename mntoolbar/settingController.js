@@ -60,6 +60,7 @@ try {
     self.resizeGesture.view.hidden = false
     self.resizeGesture.addTargetAction(self,"onResizeGesture:")
     // self.settingController.view.hidden = false
+    // 初始化只显示buttons标签页,不考虑dynamic
     self.selectedItem = toolbarConfig.action[0]
     let allActions = toolbarConfig.action.concat(toolbarConfig.getDefaultActionKeys().slice(toolbarConfig.action.length))
 
@@ -113,52 +114,120 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   },
   moveTopTapped :function () {
     let self = getSettingController()
-    let allActions = toolbarConfig.getAllActions()
+    let isEditingDynamic = self.dynamicButton.selected
+    if (isEditingDynamic && !toolbarUtils.checkSubscribe(true)) {
+      self.showHUD("Please subscribe to use this feature")
+      return
+    }
+    let allActions = toolbarConfig.getAllActions(isEditingDynamic)
     toolbarUtils.moveElement(allActions, self.selectedItem, "top")
     self.setButtonText(allActions,self.selectedItem)
     // MNUtil.postNotification("MNToolbarRefreshLayout",{})
     // NSNotificationCenter.defaultCenter().postNotificationNameObjectUserInfo("MNToolbarRefreshLayout", self.window, {})
-    self.toolbarController.setToolbarButton(allActions)
-    toolbarConfig.save("MNToolbar_action")
+    if (isEditingDynamic) {
+      if (self.toolbarController.dynamicToolbar) {
+        self.toolbarController.dynamicToolbar.setToolbarButton(allActions)
+      }
+      toolbarConfig.dynamicAction = allActions
+      toolbarConfig.save("MNToolbar_dynamicAction")
+    }else{
+      self.toolbarController.setToolbarButton(allActions)
+      toolbarConfig.action = allActions
+      toolbarConfig.save("MNToolbar_action")
+    }
   },
   moveForwardTapped :function () {
     let self = getSettingController()
-    let allActions = toolbarConfig.getAllActions()
+    try {
+    let isEditingDynamic = self.dynamicButton.selected
+    if (isEditingDynamic && !toolbarUtils.checkSubscribe(true)) {
+      self.showHUD("Please subscribe to use this feature")
+      return
+    }
+    let allActions = toolbarConfig.getAllActions(isEditingDynamic)
     toolbarUtils.moveElement(allActions, self.selectedItem, "up")
     self.setButtonText(allActions,self.selectedItem)
-    self.toolbarController.setToolbarButton(allActions)
-    toolbarConfig.save("MNToolbar_action")
+    if (isEditingDynamic) {
+      if (self.toolbarController.dynamicToolbar) {
+        self.toolbarController.dynamicToolbar.setToolbarButton(allActions)
+      }
+      toolbarConfig.dynamicAction = allActions
+      toolbarConfig.save("MNToolbar_dynamicAction")
+    }else{
+      self.toolbarController.setToolbarButton(allActions)
+      toolbarConfig.action = allActions
+      toolbarConfig.save("MNToolbar_action")
+    }
+    } catch (error) {
+      toolbarUtils.addErrorLog(error, "moveForwardTapped")
+    }
   },
   moveBackwardTapped :function () {
-    let allActions = toolbarConfig.action.concat(toolbarConfig.getDefaultActionKeys().slice(toolbarConfig.action.length))
-    toolbarUtils.moveElement(allActions, self.selectedItem, "down")
-    self.setButtonText(allActions,self.selectedItem)
-    self.toolbarController.setToolbarButton(allActions)
-    toolbarConfig.save("MNToolbar_action")
+    let self = getSettingController()
+    try {
 
+    let isEditingDynamic = self.dynamicButton.selected
+    if (isEditingDynamic && !toolbarUtils.checkSubscribe(true)) {
+      self.showHUD("Please subscribe to use this feature")
+      return
+    }
+    let allActions = toolbarConfig.getAllActions(isEditingDynamic)
+    toolbarUtils.moveElement(allActions, self.selectedItem, "down")-0
+    self.setButtonText(allActions,self.selectedItem)
+    if (isEditingDynamic) {
+      if (self.toolbarController.dynamicToolbar) {
+        self.toolbarController.dynamicToolbar.setToolbarButton(allActions)
+      }
+      toolbarConfig.dynamicAction = allActions
+      toolbarConfig.save("MNToolbar_dynamicAction")
+    }else{
+      self.toolbarController.setToolbarButton(allActions)
+      toolbarConfig.action = allActions
+      toolbarConfig.save("MNToolbar_action")
+    }
+    } catch (error) {
+      toolbarUtils.addErrorLog(error, "moveBackwardTapped")
+    }
   },
   resetButtonTapped: async function (button) {
     var commandTable = [
-      {title:'🔄   Reset all button configs',object:self,selector:'resetConfig:',param:"prompts"},
+      {title:'🔄   Reset all button configs',object:self,selector:'resetConfig:',param:"config"},
+      {title:'🔄   Reset fixed button order',object:self,selector:'resetConfig:',param:"order"},
+      {title:'🔄   Reset dynamic button order',object:self,selector:'resetConfig:',param:"dynamicOrder"},
       {title:'🔄   Reset all button images',object:self,selector:'resetConfig:',param:"image"},
     ]
     self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,250,0)
   },
   resetConfig: async function (param) {
   try {
+    let self = getSettingController()
     self.checkPopoverController()
+    let isEditingDynamic = self.dynamicButton.selected
     switch (param) {
-      case "prompts":
-        let confirm = await MNUtil.confirm("Clear all config?", "清除所有配置？")
+      case "config":
+        let confirm = await MNUtil.confirm("MN Toolbar: Clear all configs?", "MN Toolbar: 清除所有配置？")
         if (confirm) {
-          let self = getSettingController()
-          toolbarConfig.reset()
-          self.toolbarController.setToolbarButton(toolbarConfig.action,toolbarConfig.actions)
+          toolbarConfig.reset("config")
+          // self.toolbarController.setToolbarButton(action,toolbarConfig.actions)
           // self.toolbarController.actions = actions
-          self.setButtonText(toolbarConfig.action,toolbarConfig.action[0])
-          self.setTextview(toolbarConfig.action[0])
+          self.setButtonText()
+          self.setTextview()
           MNUtil.showHUD("Reset prompts")
         }
+        break;
+      case "order":
+        toolbarConfig.reset("order")
+        if (!isEditingDynamic) {
+          self.setButtonText()
+        }
+        MNUtil.showHUD("Reset fixed order")
+        break;
+      case "dynamicOrder":
+        toolbarConfig.reset("dynamicOrder")
+        if (isEditingDynamic) {
+          self.setButtonText()
+        }
+        MNUtil.showHUD("Reset dynamic order")
         break;
       case "image":
         toolbarConfig.imageScale = {}
@@ -274,7 +343,6 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     toolbarConfig.save("MNToolbar_popupConfig")
   },
   onMoveGesture:function (gesture) {
-    self.dynamic = false;
     let locationToMN = gesture.locationInView(toolbarUtils.studyController().view)
     if (!self.locationToButton || !self.miniMode && (Date.now() - self.moveDate) > 100) {
       let translation = gesture.translationInView(toolbarUtils.studyController().view)
@@ -311,7 +379,6 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   },
   onResizeGesture:function (gesture) {
     self.custom = false;
-    self.dynamic = false;
     self.customMode = "none"
     let baseframe = gesture.view.frame
     let locationToBrowser = gesture.locationInView(self.view)
@@ -322,28 +389,70 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   },
   advancedButtonTapped: function (params) {
     self.advanceView.hidden = false
+    self.advancedButton.selected = true
     self.configView.hidden = true
+    self.configButton.selected = false
+    self.dynamicButton.selected = false
     self.popupEditView.hidden = true
+    self.popupButton.selected = false
     MNButton.setColor(self.configButton, "#9bb2d6", 0.8)
     MNButton.setColor(self.advancedButton, "#457bd3", 0.8)
     MNButton.setColor(self.popupButton, "#9bb2d6", 0.8)
+    MNButton.setColor(self.dynamicButton, "#9bb2d6", 0.8)
   },
   popupButtonTapped: function (params) {
     self.advanceView.hidden = true
+    self.advancedButton.selected = false
     self.configView.hidden = true
+    self.configButton.selected = false
+    self.dynamicButton.selected = false
     self.popupEditView.hidden = false
+    self.popupButton.selected = true
     MNButton.setColor(self.configButton, "#9bb2d6", 0.8)
     MNButton.setColor(self.advancedButton, "#9bb2d6", 0.8)
     MNButton.setColor(self.popupButton, "#457bd3", 0.8)
+    MNButton.setColor(self.dynamicButton, "#9bb2d6", 0.8)
     self.settingViewLayout()
   },
   configButtonTapped: function (params) {
     self.configView.hidden = false
+    self.configButton.selected = true
+    self.dynamicButton.selected = false
     self.advanceView.hidden = true
+    self.advancedButton.selected = false
     self.popupEditView.hidden = true
+    self.popupButton.selected = false
     MNButton.setColor(self.configButton, "#457bd3", 0.8)
     MNButton.setColor(self.advancedButton, "#9bb2d6", 0.8)
+    MNButton.setColor(self.dynamicButton, "#9bb2d6", 0.8)
     MNButton.setColor(self.popupButton, "#9bb2d6", 0.8)
+    let action = toolbarConfig.action
+    self.setButtonText(action)
+
+  },
+  dynamicButtonTapped: async function (params) {
+    let self = getSettingController()
+    let dynamicOrder = toolbarConfig.getWindowState("dynamicOrder")
+    if (!dynamicOrder) {
+      self.showHUD("Enable Dynamic Order first")
+      return
+    }
+    let dynamicAction = toolbarConfig.dynamicAction
+    if (dynamicAction.length === 0) {
+      toolbarConfig.dynamicAction = toolbarConfig.action
+    }
+    self.configView.hidden = false
+    self.configButton.selected = false
+    self.dynamicButton.selected = true
+    self.advanceView.hidden = true
+    self.advancedButton.selected = false
+    self.popupEditView.hidden = true
+    self.popupButton.selected = false
+    MNButton.setColor(self.configButton, "#9bb2d6", 0.8)
+    MNButton.setColor(self.advancedButton, "#9bb2d6", 0.8)
+    MNButton.setColor(self.dynamicButton, "#457bd3", 0.8)
+    MNButton.setColor(self.popupButton, "#9bb2d6", 0.8)
+    self.setButtonText(dynamicAction)
   },
   chooseTemplate: async function (button) {
     let self = getSettingController()
@@ -424,11 +533,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
           toolbarConfig.showEditorOnNoteEdit = config.showOnNoteEdit
         }
       }
-      if (selected === "execute") {
-        self.setJSContent(input)
-      }else{
-        self.setWebviewContent(input)
-      }
+      self.setWebviewContent(input)
     }else{
       MNUtil.showHUD("Invalid JSON format: "+input)
       MNUtil.copy("Invalid JSON format: "+input)
@@ -438,22 +543,22 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     }
   },
   configSaveTapped: async function (params) {
-    // MNUtil.copy(self.selectedItem)
     let selected = self.selectedItem
     if (!toolbarConfig.checkCouldSave(selected)) {
       return
     }
     try {
+    let actions = toolbarConfig.actions
     let input = await self.getWebviewContent()
     if (selected === "execute" || MNUtil.isValidJSON(input)) {
-      if (!toolbarConfig.actions[selected]) {
-        toolbarConfig.actions[selected] = toolbarConfig.getAction(selected)
+      if (!actions[selected]) {
+        actions[selected] = toolbarConfig.getAction(selected)
       }
-      toolbarConfig.actions[selected].description = input
-      toolbarConfig.actions[selected].name = self.titleInput.text
-      self.toolbarController.actions = toolbarConfig.actions
+      actions[selected].description = input
+      actions[selected].name = self.titleInput.text
+      self.toolbarController.actions = actions
       if (self.toolbarController.dynamicToolbar) {
-        self.toolbarController.dynamicToolbar.actions = toolbarConfig.actions
+        self.toolbarController.dynamicToolbar.actions = actions
       }
       toolbarConfig.save("MNToolbar_actionConfig")
       if (!selected.includes("custom")) {
@@ -706,32 +811,52 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     if (!toolbarUtils.checkSubscribe(false,true,true)) {
       return
     }
-    let iCloudSync = self.iCloudButton.currentTitle === "iCloud Sync ✅"
-    toolbarConfig.syncConfig.iCloudSync = !iCloudSync
-    self.iCloudButton.setTitleForState("iCloud Sync "+(toolbarConfig.syncConfig.iCloudSync? "✅":"❌"),0)
-    MNButton.setColor(self.iCloudButton, toolbarConfig.syncConfig.iCloudSync?"#457bd3":"#9bb2d6",0.8)
-    if (toolbarConfig.syncConfig.iCloudSync) {
-      let shouldUpdate = await toolbarConfig.readCloudConfig(true,true)
-      if (shouldUpdate) {
-        let allActions = toolbarConfig.getAllActions()
-        self.setButtonText(allActions,self.selectedItem)
-        if (self.toolbarController) {
-          self.toolbarController.setToolbarButton(allActions)
-        }else{
-          MNUtil.showHUD("No toolbarController")
-        }
-        MNUtil.postNotification("refreshView",{})
+    let iCloudSync = (self.iCloudButton.currentTitle === "iCloud Sync ✅")
+    if (iCloudSync) {
+      toolbarConfig.syncConfig.iCloudSync = !iCloudSync
+      self.iCloudButton.setTitleForState("iCloud Sync "+(toolbarConfig.syncConfig.iCloudSync? "✅":"❌"),0)
+      MNButton.setColor(self.iCloudButton, toolbarConfig.syncConfig.iCloudSync?"#457bd3":"#9bb2d6",0.8)
+      toolbarConfig.save("MNToolbar_syncConfig",undefined,false)
+    }else{
+      let direction = await MNUtil.userSelect("MN Toolbar\nChoose action", "请选择操作", ["📥 Import / 导入","📤 Export / 导出"])
+      switch (direction) {
+        case 0:
+          //cancel
+          return;
+        case 2:
+          toolbarConfig.writeCloudConfig(true,true)
+          MNUtil.showHUD("Export to iCloud")
+          //export
+          break;
+        case 1:
+          toolbarConfig.readCloudConfig(true,false,true)
+          MNUtil.showHUD("Import from iCloud")
+          let allActions = toolbarConfig.getAllActions()
+          self.setButtonText(allActions,self.selectedItem)
+          if (self.toolbarController) {
+            self.toolbarController.setToolbarButton(allActions)
+          }else{
+            MNUtil.showHUD("No toolbarController")
+          }
+          MNUtil.postNotification("refreshView",{})
+          //import
+          break;
+        default:
+          break;
       }
+      toolbarConfig.syncConfig.iCloudSync = true
+      self.iCloudButton.setTitleForState("iCloud Sync ✅",0)
+      MNButton.setColor(self.iCloudButton, "#457bd3",0.8)
+      toolbarConfig.save("MNToolbar_syncConfig")
     }
-    toolbarConfig.save("MNToolbar_syncConfig")
   },
   exportConfigTapped:function(button){
     var commandTable = [
-      {title:'To iCloud',object:self,selector:'exportConfig:',param:"iCloud"},
-      {title:'To clipborad',object:self,selector:'exportConfig:',param:"clipborad"},
-      {title:'To currentNote',object:self,selector:'exportConfig:',param:"currentNote"},
-      {title:'To file',object:self,selector:'exportConfig:',param:"file"},
-    ]
+      {title:'☁️   to iCloud', object:self, selector:'exportConfig:', param:"iCloud"},
+      {title:'📋   to Clipboard', object:self, selector:'exportConfig:', param:"clipboard"},
+      {title:'📝   to CurrentNote', object:self, selector:'exportConfig:', param:"currentNote"},
+      {title:'📁   to File', object:self, selector:'exportConfig:', param:"file"},
+    ];
     self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,250,2)
   },
   exportConfig:function(param){
@@ -769,10 +894,10 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   },
   importConfigTapped:function(button){
     var commandTable = [
-      {title:'From iCloud',object:self,selector:'importConfig:',param:"iCloud"},
-      {title:'From clipborad',object:self,selector:'importConfig:',param:"clipborad"},
-      {title:'From currentNote',object:self,selector:'importConfig:',param:"currentNote"},
-      {title:'From file',object:self,selector:'importConfig:',param:"file"},
+      {title:'☁️   from iCloud',object:self,selector:'importConfig:',param:"iCloud"},
+      {title:'📋   from Clipborad',object:self,selector:'importConfig:',param:"clipborad"},
+      {title:'📝   from CurrentNote',object:self,selector:'importConfig:',param:"currentNote"},
+      {title:'📁   from File',object:self,selector:'importConfig:',param:"file"},
     ]
     self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,250,2)
   },
@@ -786,6 +911,18 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     switch (param) {
       case "iCloud":
         toolbarConfig.readCloudConfig(true,false,true)
+        let allActions = toolbarConfig.getAllActions()
+        // MNUtil.copyJSON(allActions)
+        self.setButtonText(allActions,self.selectedItem)
+        // self.addonController.view.hidden = true
+        if (self.toolbarController) {
+          self.toolbarController.setFrame(toolbarConfig.getWindowState("frame"))
+          self.toolbarController.setToolbarButton(allActions)
+        }else{
+          MNUtil.showHUD("No addonController")
+        }
+        toolbarConfig.save()
+        MNUtil.postNotification("refreshView",{})
         return;
       case "clipborad":
         if(MNUtil){
@@ -815,6 +952,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     self.setButtonText(allActions,self.selectedItem)
     // self.addonController.view.hidden = true
     if (self.toolbarController) {
+      self.toolbarController.setFrame(toolbarConfig.getWindowState("frame"))
       self.toolbarController.setToolbarButton(allActions)
     }else{
       MNUtil.showHUD("No addonController")
@@ -842,12 +980,21 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   toggleToolbarDirection:function (source) {
     self.checkPopoverController()
     toolbarConfig.toggleToolbarDirection(source)
+  },
+  toggleDynamicOrder:function (params) {
+    if (!toolbarUtils.checkSubscribe(true)) {
+      return
+    }
+    let dynamicOrder = toolbarConfig.getWindowState("dynamicOrder")
+    toolbarConfig.windowState.dynamicOrder = !dynamicOrder
+    MNButton.setTitle(self.dynamicOrderButton, "Enable Dynamic Order: "+(toolbarConfig.getWindowState("dynamicOrder")?"✅":"❌"),undefined,true)
+    toolbarConfig.save("MNToolbar_windowState")
+    MNUtil.postNotification("refreshToolbarButton",{})
   }
 });
 settingController.prototype.init = function () {
   this.custom = false;
   this.customMode = "None"
-  this.dynamic = true;
   this.selectedText = '';
   this.searchedText = '';
 }
@@ -972,8 +1119,9 @@ settingController.prototype.settingViewLayout = function (){
     settingFrame.width = settingFrame.width
     this.tabView.frame = settingFrame
     Frame.set(this.configButton, 5, 5)
-    Frame.set(this.popupButton, 95, 5)
-    Frame.set(this.advancedButton, 175, 5)
+    Frame.set(this.dynamicButton, this.configButton.frame.x + this.configButton.frame.width+5, 5)
+    Frame.set(this.popupButton, this.dynamicButton.frame.x + this.dynamicButton.frame.width+5, 5)
+    Frame.set(this.advancedButton, this.popupButton.frame.x + this.popupButton.frame.width+5, 5)
     Frame.set(this.closeButton, width-35, 5)
     let scrollHeight = 5
     if (MNUtil.appVersion().type === "macOS") {
@@ -1006,6 +1154,7 @@ settingController.prototype.settingViewLayout = function (){
     Frame.set(this.hexButton, width-125, 165, 120,35)
     Frame.set(this.iCloudButton, 5, 205, 160,35)
     Frame.set(this.directionButton, 5, 245, width-10,35)
+    Frame.set(this.dynamicOrderButton, 5, 285, width-10,35)
     Frame.set(this.exportButton, 170, 205, (width-180)/2,35)
     Frame.set(this.importButton, 175+(width-180)/2, 205, (width-180)/2,35)
 }
@@ -1035,18 +1184,27 @@ try {
 
   this.createButton("configButton","configButtonTapped:","tabView")
   MNButton.setConfig(this.configButton, {color:"#457bd3",alpha:0.9,opacity:1.0,title:"Buttons",font:17,radius:10,bold:true})
-  this.configButton.width = 85
+  this.configButton.width = this.configButton.sizeThatFits({width:150,height:30}).width+15
   this.configButton.height = 30
+  this.configButton.selected = true
+
+  this.createButton("dynamicButton","dynamicButtonTapped:","tabView")
+  MNButton.setConfig(this.dynamicButton, {alpha:0.9,opacity:1.0,title:"Dynamic",font:17,radius:10,bold:true})
+  this.dynamicButton.width = this.dynamicButton.sizeThatFits({width:150,height:30}).width+15
+  this.dynamicButton.height = 30
+  this.dynamicButton.selected = false
 
   this.createButton("popupButton","popupButtonTapped:","tabView")
   MNButton.setConfig(this.popupButton, {alpha:0.9,opacity:1.0,title:"Popup",font:17,radius:10,bold:true})
-  this.popupButton.width = 75
+  this.popupButton.width = this.popupButton.sizeThatFits({width:150,height:30}).width+15
   this.popupButton.height = 30
+  this.popupButton.selected = false
 
   this.createButton("advancedButton","advancedButtonTapped:","tabView")
-  MNButton.setConfig(this.advancedButton, {alpha:0.9,opacity:1.0,title:"Advanced",font:17,radius:10,bold:true})
-  this.advancedButton.width = 100
+  MNButton.setConfig(this.advancedButton, {alpha:0.9,opacity:1.0,title:"More",font:17,radius:10,bold:true})
+  this.advancedButton.width = this.advancedButton.sizeThatFits({width:150,height:30}).width+15
   this.advancedButton.height = 30
+  this.advancedButton.selected = false
 
   this.createButton("closeButton","closeButtonTapped:","tabView")
   MNButton.setConfig(this.closeButton, {color:"#e06c75",alpha:0.9,opacity:1.0,radius:10,bold:true})
@@ -1159,7 +1317,11 @@ try {
 
   this.createButton("directionButton","changeToolbarDirection:","advanceView")
   MNButton.setColor(this.directionButton, "#457bd3",0.8)
-  MNButton.setTitle(this.directionButton, "Direction",undefined, true)
+  MNButton.setTitle(this.directionButton, "Toolbar Direction",undefined, true)
+
+  this.createButton("dynamicOrderButton","toggleDynamicOrder:","advanceView")
+  MNButton.setColor(this.dynamicOrderButton, "#457bd3",0.8)
+  MNButton.setTitle(this.dynamicOrderButton, "Enable Dynamic Order: "+(toolbarConfig.getWindowState("dynamicOrder")?"✅":"❌"),undefined,true)
 
   this.createScrollView("scrollview", "configView")
   // this.scrollview = UIScrollView.new()
@@ -1267,11 +1429,9 @@ try {
  */
 settingController.prototype.setButtonText = function (names=toolbarConfig.getAllActions(),highlight=this.selectedItem) {
     this.words = names
-
-    let actions = toolbarConfig.actions
-    let defaultActions = toolbarConfig.getActions()
-    // MNUtil.copyJSON(names)
+    this.selectedItem = highlight
     names.map((word,index)=>{
+      let isHighlight = (word === this.selectedItem)
       let buttonName = "nameButton"+index
       if (!this[buttonName]) {
         this.createButton(buttonName,"toggleSelected:","scrollview")
@@ -1280,30 +1440,23 @@ settingController.prototype.setButtonText = function (names=toolbarConfig.getAll
       }
       this[buttonName].hidden = false
       this[buttonName].id = word
-      this[buttonName].isSelected = (word === highlight)
-      MNButton.setColor(this[buttonName], (word === highlight)?"#9bb2d6":"#ffffff", 0.8)
-      if (word === highlight) {
+      this[buttonName].isSelected =isHighlight
+      MNButton.setColor(this[buttonName],isHighlight?"#9bb2d6":"#ffffff", 0.8)
+      if (isHighlight) {
         this[buttonName].layer.borderWidth = 2
         this[buttonName].layer.borderColor = MNUtil.hexColorAlpha("#457bd3", 0.8)
       }else{
         this[buttonName].layer.borderWidth = 0
       }
       MNButton.setImage(this[buttonName], toolbarConfig.imageConfigs[word])
-
-      // if (word in actions) {
-      //   MNButton.setImage(this[buttonName], this.mainPath+`/${actions[word].image}.png`)
-      // }else{
-      //   MNButton.setImage(this[buttonName], this.mainPath+`/${defaultActions[word].image}.png`)
-      // }
-      // this[buttonName].titleEdgeInsets = {top:0,left:-100,bottom:0,right:-50}
-      // this[buttonName].setTitleForState(this.imagePattern[index]===this.textPattern[index]?` ${this.imagePattern[index]} `:"-1",0) 
     })
     this.refreshLayout()
 }
+
 /**
  * @this {settingController}
  */
-settingController.prototype.setTextview = function (name) {
+settingController.prototype.setTextview = function (name = this.selectedItem) {
       // let entries           =  NSUserDefaults.standardUserDefaults().objectForKey('MNBrowser_entries');
       let actions = toolbarConfig.actions
       let defaultActions = toolbarConfig.getActions()
@@ -1332,28 +1485,6 @@ settingController.prototype.setTextview = function (name) {
           this.setWebviewContent(description)
         }
       }
-      // if (!text.system) {
-      //   text.system = ""
-      // }
-      // this.systemInput.text = text.system
-      // try {
-      //   let normalAttString = NSAttributedString.new()
-      //   normalAttString.string = text.system
-      //   // normalAttString.attributesAtIndexEffectiveRange
-      //   // showHUD(Object.keys(normalAttString))
-      //   let combined = NSMutableAttributedString.new("这是一个示例文本，其中一些文字将会被加粗显示。")
-      //   combined.mutableString = "这是一个示例文本，其中一些文字将会被加粗显示。"
-      //   combined.string = "这是一个示例文本，其中一些文字将会被加粗显示。"
-      //   combined.setAttributedString(normalAttString)
-      //   combined.addAttributeValueRange("NSAttributedString.Key.font",UIFont.systemFontOfSize(15),{location:0,length:2})
-      //   // combined.addAttributeValueRange("NSAttributedString.Key.foregroundColor",UIColor.blackColor(),{location:0,length:2})
-      //   // combined.appendAttributedString(normalAttString)
-      //   this.systemInput.allowsEditingTextAttributes = true
-      //   this.systemInput.attributedText = combined
-      // } catch (error) {
-      //   showHUD(error)
-      // }
-
 }
 /**
  * @this {settingController}
@@ -1470,14 +1601,16 @@ settingController.prototype.show = function (frame) {
     try {
   MNUtil.studyView.bringSubviewToFront(this.view)
   MNUtil.studyView.bringSubviewToFront(this.addonBar)
-  let preFrame = this.currentFrame
-  let preOpacity = this.view.layer.opacity
+  // let preFrame = this.currentFrame
+  // let preOpacity = this.view.layer.opacity
   this.view.layer.opacity = 0.2
   this.view.hidden = false
   this.miniMode = false
   // MNUtil.showHUD("message")
-  let allActions = toolbarConfig.getAllActions()// toolbarConfig.action.concat(toolbarConfig.getDefaultActionKeys().slice(toolbarConfig.action.length))
-  this.setButtonText(allActions,this.selectedItem)
+  // let isEditingDynamic = self.dynamicButton?.selected ?? false
+  // let allActions = toolbarConfig.getAllActions(isEditingDynamic)
+  // let allActions = toolbarConfig.getAllActions()// toolbarConfig.action.concat(toolbarConfig.getDefaultActionKeys().slice(toolbarConfig.action.length))
+  // this.setButtonText(allActions,this.selectedItem)
   this.toolbarController.setToolbarButton(toolbarConfig.action)
   this.hideAllButton()
   MNUtil.animate(()=>{
@@ -1736,6 +1869,15 @@ settingController.prototype.checkPopoverController = function () {
  */
 settingController.prototype.tableItem = function (title,selector,param = "",checked = false) {
   return {title:title,object:this,selector:selector,param:param,checked:checked}
+}
+/**
+ * 
+ * @param {string} title 
+ * @param {number} duration 
+ * @param {UIView} view 
+ */
+settingController.prototype.showHUD = function (title,duration = 1.5,view = this.view) {
+  MNUtil.showHUD(title,duration,view)
 }
 /**
  * 

@@ -162,6 +162,7 @@ class toolbarUtils {
   static currentNoteId
   static currentSelection
   static isSubscribe = false
+  static mainPath
   /**
    * @type {MNNote[]}
    * @static
@@ -440,12 +441,14 @@ class toolbarUtils {
         "target": "currentNoteInMindMap"
       }
     }
-  static init(){
+  static init(mainPath){
   try {
     this.app = Application.sharedInstance()
     this.data = Database.sharedInstance()
     this.focusWindow = this.app.focusWindow
+    this.mainPath = mainPath
     this.version = this.appVersion()
+    this.errorLog = [this.version]
       } catch (error) {
     this.addErrorLog(error, "init")
   }
@@ -459,7 +462,7 @@ class toolbarUtils {
 
   static appVersion() {
     let info = {}
-    let version = parseFloat(this,this.app.appVersion)
+    let version = parseFloat(this.app.appVersion)
     if (version >= 4) {
       info.version = "marginnote4"
     }else{
@@ -477,6 +480,10 @@ class toolbarUtils {
         break;
       default:
         break;
+    }
+    if (this.mainPath) {
+      let toolbarVersion = MNUtil.readJSON(this.mainPath+"/mnaddon.json").version
+      info.toolbarVersion = toolbarVersion
     }
     return info
   }
@@ -590,17 +597,6 @@ static getMNImagesFromMarkdown(markdown) {
     let hash = link.split("markdownimg/png/")[1].slice(0,-1)
     let imageData = MNUtil.getMediaByHash(hash)
     return imageData
-    // let images = []
-    // 处理 Markdown 字符串，替换每个 base64 图片链接
-    // const result = markdown.replace(MNImagePattern, (match, MNImageURL,p2) => {
-    //   // 你可以在这里对 base64Str 进行替换或处理
-    //   // shouldOverWritten = true
-    //   let hash = MNImageURL.split("markdownimg/png/")[1]
-    //   let base64 = MNUtil.getMediaByHash(hash).base64Encoding()
-    //   return match.replace(MNImageURL, `test`);
-    // });
-    // MNUtil.copy(result)
-    // return result;
   } catch (error) {
     toolbarUtils.addErrorLog(error, "replaceBase64ImagesWithR2")
     return undefined
@@ -613,8 +609,6 @@ static getMNImagesFromMarkdown(markdown) {
  */
 static insertSnippetToTextView(text, textView) {
 try {
-  
-
   let textLength = text.length
   let cursorLocation = textLength
   if (/{{cursor}}/.test(text)) {
@@ -897,7 +891,9 @@ try {
       await toolbarUtils.delay(delay)
       if (typeof MNUtil === 'undefined') {
         if (alert) {
-          toolbarUtils.showHUD("MN ChatAI: Please install 'MN Utils' first!",5)
+          toolbarUtils.confirm("MN Toolbar: Install 'MN Utils' first", "MN Toolbar: 请先安装'MN Utils'")
+        }else{
+          toolbarUtils.showHUD("MN Toolbar: Please install 'MN Utils' first!",5)
         }
         return false
       }
@@ -925,7 +921,13 @@ try {
   static postNotification(name,userInfo) {
     NSNotificationCenter.defaultCenter().postNotificationNameObjectUserInfo(name, this.focusWindow, userInfo)
   }
-
+  /**
+   * 
+   * @param {string[]} arr 
+   * @param {string} element 
+   * @param {string} direction 
+   * @returns 
+   */
   static moveElement(arr, element, direction) {
       // 获取元素的索引
       var index = arr.indexOf(element);
@@ -1120,15 +1122,20 @@ try {
    */
   static setNoteContent(note,content,des){
     let target = des.target ?? "title"
+    let replacedText = this.detectAndReplace(content,undefined,note)
     switch (target) {
       case "title":
-        note.noteTitle = content
+        note.noteTitle = replacedText
         break;
       case "excerpt":
       case "excerptText":
-        note.excerptText = content
+        note.excerptText = replacedText
+        break;
+      case "newComment":
+        note.appendTextComment(replacedText)
         break;
       default:
+        MNUtil.showHUD("Invalid target: "+target)
         break;
     }
   }
@@ -1141,14 +1148,13 @@ try {
       })
     })
   }
-  static setContent(content,des){
+  static setContent(des){
     try {
-      
-
-    let range = des.range ?? "currentNote"
+    let range = des.range ?? "currentNotes"
     let targetNotes = this.getNotesByRange(range)
     MNUtil.undoGrouping(()=>{
       targetNotes.forEach(note=>{
+        let content = des.content ?? "content"
         this.setNoteContent(note, content,des)
       })
     })
@@ -1479,6 +1485,75 @@ try {
     return undefined
   }
   }
+  /**
+   * 
+   * @param {string} text 
+   * @param {string} userInput 
+   * @returns 
+   */
+  static checkVariableForNote(text,userInput){//提前写好要退化到的变量
+    let OCR_Enabled = chatAIUtils.OCREnhancedMode
+    let hasUserInput = text.includes("{{userInput}}")
+    let hasCards = text.includes("{{cards}}")
+    let hasCardsOCR = text.includes("{{cardsOCR}}")
+    let replaceVarConfig = {}
+    if (OCR_Enabled) {
+      replaceVarConfig.context = `{{textOCR}}`
+      replaceVarConfig.card = `{{cardOCR}}`
+      replaceVarConfig.parentCard = `{{parentCardOCR}}`
+      replaceVarConfig.cards = `{{cardsOCR}}`
+
+      if (hasUserInput && !userInput) {
+        replaceVarConfig.userInput = `{{textOCR}}`
+      }
+      if (hasCards || hasCardsOCR) {
+        if (this.getFocusNotes().length === 1) {
+          replaceVarConfig.cards = `{{cardOCR}}`
+          replaceVarConfig.cardsOCR = `{{cardOCR}}`
+        }
+      }
+    }else{
+      if (hasUserInput && !userInput) {
+        replaceVarConfig.userInput = `{{context}}`
+      }
+      if (hasCards || hasCardsOCR) {
+        if (this.getFocusNotes().length === 1) {
+          replaceVarConfig.cards = `{{card}}`
+          replaceVarConfig.cardsOCR = `{{carsdOCR}}`
+        }
+      }
+    }
+    return this.replacVar(text, replaceVarConfig)
+  }
+
+  static checkVariableForText(text,userInput){//提前写好要退化到的变量
+    let OCR_Enabled = chatAIUtils.OCREnhancedMode
+    let hasUserInput = text.includes("{{userInput}}")
+    let replaceVarConfig = {}
+    if (OCR_Enabled) {
+      replaceVarConfig.context = `{{textOCR}}`
+      replaceVarConfig.card = `{{textOCR}}`
+      replaceVarConfig.parentCard = `{{textOCR}}`
+      replaceVarConfig.cards = `{{textOCR}}`
+      if (hasUserInput && !userInput) {
+        replaceVarConfig.userInput = `{{textOCR}}`
+      }
+    }else{
+      replaceVarConfig.card = `{{context}}`
+      replaceVarConfig.cards = `{{context}}`
+      replaceVarConfig.parentCard = `{{context}}`
+      if (hasUserInput && !userInput) {
+        replaceVarConfig.userInput = `{{context}}`
+      }
+    }
+    replaceVarConfig.cardOCR = `{{textOCR}}`
+    replaceVarConfig.cardsOCR = `{{textOCR}}`
+    replaceVarConfig.parentCardOCR = `{{textOCR}}`
+    replaceVarConfig.noteDocInfo = `{{currentDocInfo}}`
+    replaceVarConfig.noteDocAttach = `{{currentDocAttach}}`
+    replaceVarConfig.noteDocName = `{{currentDocName}}`
+    return this.replacVar(text, replaceVarConfig)
+  }
   static replacVar(text,varInfo) {
     let vars = Object.keys(varInfo)
     let original = text
@@ -1491,8 +1566,9 @@ try {
     return original
   }
 
-  static detectAndReplace(text,element=undefined) {
-    let noteConfig = this.getNoteObject(MNNote.getFocusNote(),{},{parent:true,child:true})
+  static detectAndReplace(text,element=undefined,note = MNNote.getFocusNote()) {
+    let noteConfig = this.getNoteObject(note,{},{parent:true,child:true,parentLevel:3})
+    // MNUtil.copy(noteConfig)
     let config = {date:this.getDateObject()}
     if (noteConfig) {
       config.note = noteConfig
@@ -1510,6 +1586,13 @@ try {
     }
     if (hasSelectionText) {
       config.selectionText = MNUtil.selectionText
+    }
+    if (MNUtil.currentSelection.onSelection) {
+      config.isSelectionImage = !MNUtil.currentSelection.isText
+      config.isSelectionText = !!MNUtil.currentSelection.text
+    }else{
+      config.isSelectionImage = false
+      config.isSelectionText = false
     }
     if (hasCurrentDocName) {
       config.currentDocName = MNUtil.getFileName(MNUtil.currentDocController.document.pathFile)
@@ -1547,16 +1630,16 @@ try {
   }
   static addErrorLog(error,source,info){
     MNUtil.showHUD("MN Toolbar Error ("+source+"): "+error)
-    let log = {
-      error:error.toString(),
-      source:source,
-      time:(new Date(Date.now())).toString(),
-      mnaddon:"MN Toolbar"
+    let tem = {source:source,time:(new Date(Date.now())).toString()}
+    if (error.detail) {
+      tem.error = {message:error.message,detail:error.detail}
+    }else{
+      tem.error = error.message
     }
     if (info) {
-      log.info = info
+      tem.info = info
     }
-    this.errorLog.push(log)
+    this.errorLog.push(tem)
     MNUtil.copyJSON(this.errorLog)
   }
   static removeComment(des){
@@ -1908,16 +1991,126 @@ try {
       return undefined
     }
   }
+
+/**
+ * Initializes a request for ChatGPT using the provided configuration.
+ * 
+ * @param {Array} history - An array of messages to be included in the request.
+ * @param {string} apikey - The API key for authentication.
+ * @param {string} url - The URL endpoint for the API request.
+ * @param {string} model - The model to be used for the request.
+ * @param {number} temperature - The temperature parameter for the request.
+ * @param {Array<number>} funcIndices - An array of function indices to be included in the request.
+ * @returns {Promise<{content:string,media:string,title:string,link:string,refer:string,icon:string,index:number}[]>}
+ * @throws {Error} If the API key is empty or if there is an error during the request initialization.
+ */
+static async webSearchForZhipu (question,apikey) {
+  if (apikey.trim() === "") {
+    MNUtil.showHUD(model+": No apikey!")
+    return
+  }
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: "Bearer "+apikey,
+    Accept: "text/event-stream"
+  }
+    // copyJSON(headers)
+  let body = {
+    "tool":"web-search-pro",
+    "messages":[{"role": "user", "content": question}],
+    "stream":false
+  }
+  let url = "https://open.bigmodel.cn/api/paas/v4/tools"
+  // copyJSON(body)
+
+  // MNUtil.copyJSON(body)
+  // MNUtil.copy(url)
+  let res = await MNConnection.fetch(url,{
+      method: "POST",
+      headers: headers,
+      timeout: 60,
+      json: body
+    })
+  try {
+    return res.choices[0].message.tool_calls[1].search_result
+  } catch (error) {
+    return res
+  }
+}
+  static async webSearch(des){
+  try {
+    
+
+    let focusNote = MNNote.getFocusNote()
+    if (!focusNote) {
+      return
+    }
+    // let noteConfig = this.getNoteObject(MNNote.getFocusNote(),{},{parent:true,child:true})
+
+    let question = this.detectAndReplace(des.question)
+    // MNUtil.copy(noteConfig)
+    // return
+    MNUtil.waitHUD("Searching for ["+question+"] ")
+    let apikeys = ["449628b94fcac030495890ee542284b8.F23PvJW4XXLJ4Lsu","7a83bf0873d12b99a1f9ab972ee874a1.NULvuYvVrATzI4Uj"]
+    let apikey = MNUtil.getRandomElement(apikeys)
+    let res = await this.webSearchForZhipu(question,apikey)
+    let readCount = 0
+    if (!res.length) {
+      MNUtil.waitHUD("❌ No result")
+      MNUtil.delay(1).then(()=>{
+        MNUtil.stopHUD()
+      })
+      return
+    }
+    MNUtil.waitHUD(`Open URL (0/${res.length})`)
+    let processes = res.map(r=>{
+      if (r.link) {
+        return new Promise((resolve, reject) => {
+          let apikey = MNUtil.getRandomElement(apikeys)
+          this.webSearchForZhipu(r.link,apikey).then(tem=>{
+            readCount++
+            MNUtil.waitHUD(`Open URL (${readCount}/${res.length})`)
+            if ("statusCode" in tem && tem.statusCode >= 400) {
+            }else{
+              if (tem[0].content.length > r.content.length) {
+                r.content = tem[0].content
+              }
+            }
+            resolve(r)
+          })
+        })
+      }else{
+        readCount++
+        return r
+      }
+    })
+    let fullRes = await Promise.all(processes)
+    MNUtil.stopHUD()
+    MNUtil.copy(fullRes)
+
+    MNUtil.undoGrouping(()=>{
+      fullRes.map((r)=>{
+        let content = r.content
+        let markdown = false
+        if (r.link) {
+          content = content+`\n[More](${r.link})`
+          markdown = true
+        }
+        focusNote.createChildNote({title:r.title,excerptText:content,excerptTextMarkdown:markdown})
+      })
+    })
+    // MNUtil.stopHUD()
+    return res
+  } catch (error) {
+    this.addErrorLog(error, "webSearch")
+  }
+  }
   /**
    * 
    * @param {{buffer:boolean,target:string,method:string}} des 
    * @returns 
    */
   static async ocr(des){
-    if (typeof ocrUtils === 'undefined') {
-      MNUtil.showHUD("MN Toolbar: Please install 'MN OCR' first!")
-      return
-    }
 try {
     let focusNote = MNNote.getFocusNote()
     let imageData = MNUtil.getDocImage(true,true)
@@ -1929,20 +2122,16 @@ try {
       return
     }
     let buffer = des.buffer ?? true
+    let source = des.ocrSource ?? des.source
+    let res
+    if (typeof ocrUtils === 'undefined') {
+      // MNUtil.showHUD("MN Toolbar: Please install 'MN OCR' first!")
+      res = await this.freeOCR(imageData)
+    }else{
+      res = await ocrNetwork.OCR(imageData,source,buffer)
+    }
     // let res
-    let res = await ocrNetwork.OCR(imageData,des.source,buffer)
-    // switch (des.source) {
-    //   case "doc2x":
-    //     res = await ocrNetwork.doc2xOCR(imageData)
-    //     break
-    //   case "simpletex":
-    //     res = await ocrNetwork.simpleTexOCR(imageData)
-    //     break
-    //   default:
-    //     res = await ocrNetwork.OCR(imageData)
-    //     break
-    // }
-    let noteTargets = ["comment","excerpt"]
+    let noteTargets = ["comment","excerpt","childNote"]
     if (!focusNote && noteTargets.includes(des.target)) {
       let selection = MNUtil.currentSelection
       if (selection.onSelection) {
@@ -1961,6 +2150,19 @@ try {
             MNUtil.copy(res)
           }
           break;
+        case "childNote":
+          if (focusNote) {
+            MNUtil.undoGrouping(()=>{
+              let config = {
+                excerptTextMarkdown: res
+              }
+              let chlid = focusNote.createChildNote(config)
+              MNUtil.showHUD("Append to child note")
+            })
+          }else{
+            MNUtil.copy(res)
+          }
+        break;
         case "clipboard":
           MNUtil.copy(res)
           MNUtil.showHUD("Save to clipboard")
@@ -1993,6 +2195,8 @@ try {
           )
           break;
         default:
+          MNUtil.copy(res)
+          MNUtil.showHUD("Unkown target: "+target)
           break;
       }
     }
@@ -2002,6 +2206,122 @@ try {
     }
   
   }
+/**
+ * Initializes a request for ChatGPT using the provided configuration.
+ * 
+ * @param {Array} history - An array of messages to be included in the request.
+ * @param {string} apikey - The API key for authentication.
+ * @param {string} url - The URL endpoint for the API request.
+ * @param {string} model - The model to be used for the request.
+ * @param {number} temperature - The temperature parameter for the request.
+ * @param {Array<number>} funcIndices - An array of function indices to be included in the request.
+ * @throws {Error} If the API key is empty or if there is an error during the request initialization.
+ */
+static initRequestForChatGPTWithoutStream (history,apikey,url,model,temperature,funcIndices=[]) {
+  if (apikey.trim() === "") {
+    MNUtil.showHUD(model+": No apikey!")
+    return
+  }
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: "Bearer "+apikey,
+    Accept: "text/event-stream"
+  }
+    // copyJSON(headers)
+  let body = {
+    "model":model,
+    "messages":history
+  }
+  // if (model !== "deepseek-reasoner") {
+    body.temperature = temperature
+    // if (url === "https://api.minimax.chat/v1/text/chatcompletion_v2") {
+    //   let tools = chatAITool.getToolsByIndex(funcIndices,true)
+    //   if (tools.length) {
+    //     body.tools = tools
+    //   }
+    //   body.max_tokens = 8000
+    // }else{
+    //   let tools = chatAITool.getToolsByIndex(funcIndices,false)
+    //   if (tools.length) {
+    //     body.tools = tools
+    //     body.tool_choice = "auto"
+    //   }
+    // }
+  const request = MNConnection.initRequest(url, {
+      method: "POST",
+      headers: headers,
+      timeout: 60,
+      json: body
+    })
+  return request
+}
+/**
+ * 
+ * @returns {Promise<Object>}
+ */
+ static async ChatGPTVision(imageData,model="glm-4v-flash") {
+  try {
+  let key = 'sk-S2rXjj2qB98OiweU46F3BcF2D36e4e5eBfB2C9C269627e44'
+  MNUtil.waitHUD("OCR By "+model)
+  let url = subscriptionConfig.config.url + "/v1/chat/completions"
+  let prompt = `—role—
+Image Text Extraction Specialist
+
+—goal—
+* For the given image, please directly output the text in the image.
+
+* For any formulas, you must enclose them with dollar signs.
+
+—constrain—
+* You are not allowed to output any content other than what is in the image.`
+  let compressedImageData = UIImage.imageWithData(imageData).jpegData(0.0)
+  let history = [
+    {
+      role: "user", 
+      content: [
+        {
+          "type": "text",
+          "text": prompt
+        },
+        {
+          "type": "image_url",
+          "image_url": {
+            "url" : "data:image/jpeg;base64,"+compressedImageData.base64Encoding()
+          }
+        }
+      ]
+    }
+  ]
+  let request = this.initRequestForChatGPTWithoutStream(history,key, url, model, 0.1)
+    let res = await MNConnection.sendRequest(request)
+    let ocrResult
+    if (res.choices && res.choices.length) {
+      ocrResult = res.choices[0].message.content
+    }else{
+      return undefined
+    }
+    let convertedText = ocrResult
+      .replace(/\$\$\n?/g, '$$$\n')
+      .replace(/(\\\[\s*\n?)|(\s*\\\]\n?)/g, '$$$\n')
+      .replace(/(\\\(\s*)|(\s*\\\))/g, '$')
+      .replace(/```/g,'')
+    return convertedText
+    
+  } catch (error) {
+    this.addErrorLog(error, "ChatGPTVision")
+    throw error;
+  }
+}
+  /**
+   * @param {NSData} image 
+   * @returns 
+   */
+  static async freeOCR(image){
+    let res = await this.ChatGPTVision(image)
+    MNUtil.stopHUD()
+    return res
+  }
+  
   static moveComment(des){
     let focusNotes = MNNote.getFocusNotes()
     let commentIndex
@@ -2107,39 +2427,74 @@ try {
    * 
    * @param {MNNote} note 
    */
-  static getNoteObject(note,config={},opt={}) {
+  static getNoteObject(note,config={},opt={first:true}) {
     try {
     if (!note) {
-      return undefined
+      return config
     }
       
     let noteConfig = config
     noteConfig.id = note.noteId
-    noteConfig.notebook = {
-      id:note.notebookId,
-      name:MNUtil.getNoteBookById(note.notebookId).title,
+    if (opt.first) {
+      noteConfig.notebook = {
+        id:note.notebookId,
+        name:MNUtil.getNoteBookById(note.notebookId).title,
+      }
     }
     noteConfig.title = note.noteTitle
     noteConfig.url = note.noteURL
     noteConfig.excerptText = note.excerptText
+    noteConfig.isMarkdownExcerpt = note.excerptTextMarkdown
+    noteConfig.isImageExcerpt = !!note.excerptPic
     noteConfig.date = {
       create:note.createDate.toLocaleString(),
       modify:note.modifiedDate.toLocaleString(),
     }
     noteConfig.allText = note.allNoteText()
     noteConfig.tags = note.tags
-    noteConfig.hashTags = note.tags.map(tag=> ("#"+tag))
+    noteConfig.hashTags = note.tags.map(tag=> ("#"+tag)).join(" ")
+    noteConfig.hasTag = note.tags.length > 0
+    noteConfig.hasComment = note.comments.length > 0
+    noteConfig.hasChild = note.childNotes.length > 0
+    noteConfig.hasText = !!noteConfig.allText
+    if (note.colorIndex !== undefined) {
+      noteConfig.color = {}
+      noteConfig.color.lightYellow = note.colorIndex === 0
+      noteConfig.color.lightGreen = note.colorIndex === 1
+      noteConfig.color.lightBlue = note.colorIndex === 2
+      noteConfig.color.lightRed = note.colorIndex === 3
+      noteConfig.color.yellow = note.colorIndex === 4
+      noteConfig.color.green = note.colorIndex === 5
+      noteConfig.color.blue = note.colorIndex === 6
+      noteConfig.color.red = note.colorIndex === 7
+      noteConfig.color.orange = note.colorIndex === 8
+      noteConfig.color.darkGreen = note.colorIndex === 9
+      noteConfig.color.darkBlue = note.colorIndex === 10
+      noteConfig.color.deepRed = note.colorIndex === 11
+      noteConfig.color.white = note.colorIndex === 12
+      noteConfig.color.lightGray = note.colorIndex === 13
+      noteConfig.color.darkGray = note.colorIndex === 14
+      noteConfig.color.purple = note.colorIndex === 15
+    }
     if (note.docMd5 && MNUtil.getDocById(note.docMd5)) {
       noteConfig.docName = MNUtil.getFileName(MNUtil.getDocById(note.docMd5).pathFile) 
     }
+    noteConfig.hasDoc = !!noteConfig.docName
     if (note.childMindMap) {
-      noteConfig.childMindMap = this.getNoteObject(note.childMindMap)
+      noteConfig.childMindMap = this.getNoteObject(note.childMindMap,{},{first:false})
     }
+    noteConfig.inMainMindMap = !noteConfig.childMindMap
+    noteConfig.inChildMindMap = !!noteConfig.childMindMap
     if ("parent" in opt && opt.parent && note.parentNote) {
-      noteConfig.parent = this.getNoteObject(note.parentNote)
+      if (opt.parentLevel && opt.parentLevel > 0) {
+        noteConfig.parent = this.getNoteObject(note.parentNote,{},{parentLevel:opt.parentLevel-1,parent:true,first:false})
+      }else{
+        noteConfig.parent = this.getNoteObject(note.parentNote,{},{first:false})
+      }
     }
+    noteConfig.hasParent = "parent" in noteConfig
     if ("child" in opt && opt.child && note.childNotes) {
-      noteConfig.child = note.childNotes.map(note=>this.getNoteObject(note))
+      noteConfig.child = note.childNotes.map(note=>this.getNoteObject(note,{},{first:false}))
     }
     return noteConfig
     } catch (error) {
@@ -2677,7 +3032,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       return res
     }else{
       if (msg) {
-        this.showHUD("Please install 'MN Subscription' first!")
+        this.showHUD("Please install 'MN Utils' first!")
       }
       return false
     }
@@ -2687,7 +3042,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       return subscriptionConfig.isSubscribed()
     }else{
       if (msg) {
-        this.showHUD("Please install 'MN Subscription' first!")
+        this.showHUD("Please install 'MN Utils' first!")
       }
       return false
     }
@@ -2842,6 +3197,34 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       })
     })
   }
+  static insertSnippet(des){
+    let target = des.target ?? "textview"
+    let success = true
+    switch (target) {
+      case "textview":
+        let textView = toolbarUtils.textView
+        if (!textView || textView.hidden) {
+          MNUtil.showHUD("No textView")
+          success = false
+          break;
+        }
+        let textContent = toolbarUtils.detectAndReplace(des.content)
+        success = toolbarUtils.insertSnippetToTextView(textContent,textView)
+        break;
+      case "editor":
+        let contents = [
+          {
+            type:"text",
+            content:toolbarUtils.detectAndReplace(des.content)
+          }
+        ]
+        MNUtil.postNotification("editorInsert", {contents:contents})
+        break;
+      default:
+        break;
+    }
+    return success
+  }
   static async moveNote(des){
     let focusNotes = MNNote.getFocusNotes()
     MNUtil.undoGrouping(()=>{
@@ -2864,6 +3247,14 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       }
     })
   }
+  /**
+   *
+   * @param {UIView} view
+   */
+  static isDescendantOfCurrentWindow(view){
+    return view.isDescendantOfView(MNUtil.currentWindow)
+  }
+
   static async setColor(des){
   try {
     let fillIndex = -1
@@ -2875,23 +3266,30 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       let focusNotes
       let selection = MNUtil.currentSelection
       if (selection.onSelection) {
-        focusNotes = MNNote.new(MNUtil.currentDocController.highlightFromSelection())
+        focusNotes = [MNNote.new(MNUtil.currentDocController.highlightFromSelection())]
       }else{
         focusNotes = MNNote.getFocusNotes()
       }
-      MNUtil.showHUD("followAutoStyle")
+      if (!des.hideMessage) {
+        MNUtil.showHUD("followAutoStyle")
+      }
       MNUtil.undoGrouping(()=>{
+        try {
+          
+
         focusNotes.map(note=>{
-          // if (followAutoStyle) {
-            let fillIndex
-            if (note.excerptPic) {
-              fillIndex = autoUtils.getConfig("image")[colorIndex]
-            }else{
-              fillIndex = autoUtils.getConfig("text")[colorIndex]
-            // }
+          let fillIndex
+          if (note.excerptPic) {
+            fillIndex = autoUtils.getConfig("image")[colorIndex]
+          }else{
+            fillIndex = autoUtils.getConfig("text")[colorIndex]
           }
           this.setNoteColor(note,colorIndex,fillIndex)
+
         })
+        } catch (error) {
+          toolbarUtils.addErrorLog(error, "setColor")
+        }
       })
       return
     }
@@ -2908,6 +3306,24 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     MNUtil.undoGrouping(()=>{
       focusNotes.map(note=>{
         this.setNoteColor(note,colorIndex,fillIndex)
+          // let tem = {
+          //   noteId:note.colorIndex}
+          // // MNUtil.copy(note.realGroupNoteIdForTopicId())
+          // // MNUtil.showHUD("123")
+          // if (note.originNoteId) {
+          //   // MNUtil.showHUD("message")
+          //   let originNote = MNNote.new(note.originNoteId)
+          //   tem.originNoteId = originNote.colorIndex
+          //   this.setNoteColor(originNote,colorIndex,fillIndex)
+          // }
+          // tem.realGroupNoteId = note.realGroupNoteIdForTopicId()
+          // MNUtil.copy(tem)
+          // if (note.realGroupNoteIdForTopicId() && note.realGroupNoteIdForTopicId() !== note.noteId) {
+          //   // MNUtil.showHUD("realGroupNoteIdForTopicId")
+          //   let realGroupNote = note.realGroupNoteForTopicId()
+          //   this.setNoteColor(realGroupNote,colorIndex,fillIndex)
+
+          // }
       })
     })
   } catch (error) {
@@ -2975,7 +3391,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * @param {number} fillIndex 
    */
   static setNoteColor(note,colorIndex,fillIndex){
-    if (note.note.groupNoteId) {
+    if (note.note.groupNoteId) {//有合并卡片
       let originNote = MNNote.new(note.note.groupNoteId)
       originNote.notes.forEach(n=>{
         n.colorIndex = colorIndex
@@ -2990,6 +3406,16 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
           n.fillIndex = fillIndex
         }
       })
+      // if (note.originNoteId) {
+      //   let originNote = MNNote.new(note.originNoteId)
+      //   originNote.notes.forEach(n=>{
+      //     n.colorIndex = colorIndex
+      //     if (fillIndex !== -1) {
+      //       n.fillIndex = fillIndex
+      //     }
+      //   })
+      //   // this.setNoteColor(originNote,colorIndex,fillIndex)
+      // }
     }
   }
   /**
@@ -3359,13 +3785,17 @@ static getButtonFrame(button){
     if (des.tags) {
       MNUtil.undoGrouping(()=>{
         focusNotes.forEach(note=>{
-          note.appendTags(des.tags)
+          let tags = des.tags.map(t=>{
+            return this.detectAndReplace(t,undefined,note)
+          })
+          note.appendTags(tags)
         })
       })
     }else{
       MNUtil.undoGrouping(()=>{
         focusNotes.forEach(note=>{
-          note.appendTags([des.tag])
+          let replacedText = this.detectAndReplace(des.tag,undefined,note)
+          note.appendTags([replacedText])
         })
       })
     }
@@ -3424,6 +3854,70 @@ static getButtonFrame(button){
     MNUtil.showHUD("No web url found")
     return false
   }
+  static async render(template,opt={}){
+    try {
+      if (opt.noteId) {
+        return await this.getNoteVarInfo(opt.noteId,template,opt.userInput)
+      }else{
+        return await this.getTextVarInfo(template,opt.userInput)
+      }
+    } catch (error) {
+      this.addErrorLog(error, "render")
+      throw error;
+    }
+  }
+  static async getNoteVarInfo(noteid,text,userInput) {
+    try {
+    let replaceText= text
+    let note = MNNote.new(noteid)
+    let noteConfig = this.getNoteObject(note)
+    let config = this.getVarInfo(text,userInput,{note:noteConfig})
+    let prompt = MNUtil.render(replaceText, config)
+    return prompt
+      
+    } catch (error) {
+      this.addErrorLog(error, "getNoteVarInfo")
+      throw error;
+    }
+  }
+
+static async getTextVarInfo(text,userInput) {
+  try {
+  let replaceText= text
+  let noteConfig = this.getNoteObject(MNNote.getFocusNote())
+  let config = this.getVarInfo(text,userInput,{note:noteConfig})
+  let output = mustache.render(replaceText, config)
+  return output
+  // MNUtil.copy(output)
+  // return this.replacVar(replaceText, config)
+    } catch (error) {
+    this.addErrorLog(error, "getTextVarInfo")
+    throw error;
+    // this.addErrorLog(error, "getTextVarInfo")
+  }
+
+}
+  /**
+   * Displays a confirmation dialog with a main title and a subtitle.
+   * 
+   * This method shows a confirmation dialog with the specified main title and subtitle.
+   * It returns a promise that resolves with the button index of the button clicked by the user.
+   * 
+   * @param {string} mainTitle - The main title of the confirmation dialog.
+   * @param {string} subTitle - The subtitle of the confirmation dialog.
+   * @returns {Promise<number>} A promise that resolves with the button index of the button clicked by the user.
+   */
+  static async confirm(mainTitle,subTitle){
+    return new Promise((resolve, reject) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        mainTitle,subTitle,0,"Cancel",["Confirm"],
+        (alert, buttonIndex) => {
+          // MNUtil.copyJSON({alert:alert,buttonIndex:buttonIndex})
+          resolve(buttonIndex)
+        }
+      )
+    })
+  }
 }
 
 class toolbarConfig {
@@ -3436,6 +3930,7 @@ class toolbarConfig {
   static cloudStore
   static mainPath
   static action = []
+  static dynamicAction = []
   static showEditorOnNoteEdit = false
   static defalutButtonConfig = {color:"#ffffff",alpha:0.85}
   static defaultWindowState = {
@@ -3443,9 +3938,10 @@ class toolbarConfig {
     splitMode:false,//固定工具栏下是否跟随分割线
     open:false,//固定工具栏是否默认常驻
     dynamicButton:9,//跟随模式下的工具栏显示的按钮数量,
+    dynamicOrder:false,
     dynamicDirection:"vertical",//跟随模式下的工具栏默认方向
     frame:{x:0,y:0,width:40,height:415},
-    direction:"vertical"//默认工具栏方向
+    direction:"vertical",//默认工具栏方向
   }
   //非自定义动作的key
   static builtinActionKeys = [
@@ -3633,7 +4129,9 @@ class toolbarConfig {
     "color15":2.4
   }
   static imageConfigs = {}
+  static dynamicImageConfigs = {}
   static imageScale = {}
+  static dynamicImageScale = {}
   static defaultSyncConfig = {
     iCloudSync: false,
     lastSyncTime: 0,
@@ -3664,7 +4162,11 @@ class toolbarConfig {
       }
       return a
     })
-    
+    this.dynamicAction = this.getByDefault("MNToolbar_dynamicAction", this.action)
+    if (this.dynamicAction.length === 0) {
+      this.dynamicAction = this.action
+    }
+
     this.actions = this.getByDefault("MNToolbar_actionConfig", this.getActions())
     if ("excute" in this.actions) {
       let action = this.actions["excute"]
@@ -3699,9 +4201,10 @@ class toolbarConfig {
     this.popupConfig = this.getByDefault("MNToolbar_popupConfig", this.defaultPopupReplaceConfig)
     this.syncConfig = this.getByDefault("MNToolbar_syncConfig", this.defaultSyncConfig)
     this.initImage()
+    this.checkCloudStore(false)
   }
   static checkCloudStore(notification = true){//用于替代initCloudStore
-    if (this.syncConfig.iCloudSync && !this.cloudStore) {
+    if (!this.cloudStore) {
       this.cloudStore = NSUbiquitousKeyValueStore.defaultStore()
       if (notification) {
         MNUtil.postNotification("NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI", {}) 
@@ -3737,7 +4240,11 @@ class toolbarConfig {
         if (!keys2.includes(key)) {
             return false;
         }
-        if (["lastModifyTime","lastSyncTime"].includes(key)) {
+        if (["lastModifyTime","lastSyncTime","iCloudSync"].includes(key)) {
+          continue
+        }
+        if (MNUtil.isIOS() && ["windowState"].includes(key)) {
+          //iOS端不参与"MNToolbar_windowState"的云同步,因此比较时忽略该参数
           continue
         }
         if (!this.deepEqual(obj1[key], obj2[key])) {
@@ -3747,12 +4254,16 @@ class toolbarConfig {
     return true;
   }
   static getAllConfig(){
+    if (this.dynamicAction.length === 0) {
+      this.dynamicAction = this.action
+    }
     let config = {
       windowState: this.windowState,
       syncConfig: this.syncConfig,
       dynamic: this.dynamic,
       addonLogos: this.addonLogos,
       actionKeys: this.action,
+      dynamicActionKeys: this.dynamicAction,
       actions: this.actions,
       buttonConfig:this.buttonConfig,
       popupConfig:this.popupConfig
@@ -3760,7 +4271,11 @@ class toolbarConfig {
     return config
   }
   static importConfig(config){
-    this.windowState = config.windowState
+    try {
+    if (!MNUtil.isIOS()) { //iOS端不参与"MNToolbar_windowState"的云同步
+      this.windowState = config.windowState
+    }
+    let icloudSync = this.syncConfig.iCloudSync
     this.syncConfig = config.syncConfig
     this.dynamic = config.dynamic
     this.addonLogos = config.addonLogos
@@ -3768,19 +4283,45 @@ class toolbarConfig {
     this.actions = config.actions
     this.buttonConfig = config.buttonConfig
     this.popupConfig = config.popupConfig
-  }
-  static async readCloudConfig(msg = true,alert = false,force = false){
-    if(!this.syncConfig.iCloudSync){
+    if (config.dynamicActionKeys && config.dynamicActionKeys.length > 0) {
+      this.dynamicAction = config.dynamicActionKeys
+    }else{
+      this.dynamicAction = this.action
+    }
+    this.syncConfig.iCloudSync = icloudSync
+    return true
+    } catch (error) {
+      toolbarUtils.addErrorLog(error, "importConfig")
       return false
     }
+  }
+  static getLocalLatestTime(){
+    let lastSyncTime = this.syncConfig.lastSyncTime ?? 0
+    let lastModifyTime = this.syncConfig.lastModifyTime ?? 0
+    return Math.max(lastSyncTime,lastModifyTime)
+  }
+  static async readCloudConfig(msg = true,alert = false,force = false){
+    try {
     if (!toolbarUtils.checkSubscribe(false,msg,true)) {
       return false
     }
-    try {
-    this.checkCloudStore(false)
+    if (force) {
+      this.checkCloudStore(false)
+      let cloudConfig = this.cloudStore.objectForKey("MNToolbar_totalConfig")
+      this.importConfig(cloudConfig)
+      this.syncConfig.lastSyncTime = Date.now()
+      this.save(undefined,undefined,false)
+      if (msg) {
+        MNUtil.showHUD("Import from iCloud")
+      }
+      return true
+    }
+    if(!this.syncConfig.iCloudSync){
+      return false
+    }
+      this.checkCloudStore(false)
       // this.cloudStore.removeObjectForKey("MNToolbar_totalConfig")
       let cloudConfig = this.cloudStore.objectForKey("MNToolbar_totalConfig")
-      // MNUtil.copy(cloudConfig)
       if (cloudConfig && cloudConfig.syncConfig) {
         let same = this.deepEqual(cloudConfig, this.getAllConfig())
         if (same && !force) {
@@ -3789,11 +4330,14 @@ class toolbarConfig {
           }
           return false
         }
-        // MNUtil.copyJSON(cloudConfig)
-        if (this.syncConfig.lastSyncTime < cloudConfig.syncConfig.lastSyncTime || force) {
+        let localLatestTime = this.getLocalLatestTime()
+        let localOldestTime = Math.min(this.syncConfig.lastSyncTime,this.syncConfig.lastModifyTime)
+        let cloudLatestTime = Math.max(cloudConfig.syncConfig.lastSyncTime,cloudConfig.syncConfig.lastModifyTime)
+        let cloudOldestTime = Math.min(cloudConfig.syncConfig.lastSyncTime,cloudConfig.syncConfig.lastModifyTime)
+        if (localLatestTime < cloudOldestTime || force) {
           // MNUtil.copy("Import from iCloud")
           if (alert) {
-            let confirm = await MNUtil.confirm("Import from iCloud?","是否导入iCloud配置？")
+            let confirm = await MNUtil.confirm("MN Toolbar: Import from iCloud?","MN Toolbar: 是否导入iCloud配置？")
             if (!confirm) {
               return false
             }
@@ -3801,36 +4345,46 @@ class toolbarConfig {
           if (msg) {
             MNUtil.showHUD("Import from iCloud")
           }
-          this.windowState = cloudConfig.windowState
-          this.syncConfig = cloudConfig.syncConfig
-          this.dynamic = cloudConfig.dynamic
-          this.addonLogos = cloudConfig.addonLogos
-          this.action = cloudConfig.actionKeys
-          this.actions = cloudConfig.actions
-          this.buttonConfig = cloudConfig.buttonConfig
-          this.popupConfig = cloudConfig.popupConfig
+          this.importConfig(cloudConfig)
           this.syncConfig.lastSyncTime = Date.now()
-          this.syncConfig.lastModifyTime = Date.now()
           this.save(undefined,undefined,false)
           return true
-
         }
-        if (this.syncConfig.lastSyncTime > (cloudConfig.syncConfig.lastSyncTime+1000) ) {
+        if (this.syncConfig.lastModifyTime > (cloudConfig.syncConfig.lastModifyTime+1000) ) {
           if (alert) {
-            let confirm = await MNUtil.confirm("Uploading to iCloud?","是否上传配置到iCloud？")
+            let confirm = await MNUtil.confirm("MN Toolbar: Uploading to iCloud?","MN Toolbar: 是否上传配置到iCloud？")
             if (!confirm) {
               return false
             }
           }
           this.writeCloudConfig()
+          return false
         }
-        return false
+        let userSelect = await MNUtil.userSelect("MN Toolbar\nConflict config, import or export?","配置冲突，请选择操作",["📥 Import / 导入","📤 Export / 导出"])
+        switch (userSelect) {
+          case 0:
+            MNUtil.showHUD("User Cancel")
+            return false
+          case 1:
+            let success = this.importConfig(cloudConfig)
+            if (success) {
+              return true
+            }else{
+              MNUtil.showHUD("Invalid config in iCloud!")
+              return false
+            }
+          case 2:
+            this.writeCloudConfig(msg,true)
+            return false
+          default:
+            return false
+        }
       }else{
-        let confirm = await MNUtil.confirm("Empty config in iCloud, uploading?","iCloud配置为空,是否上传？")
+        let confirm = await MNUtil.confirm("MN Toolbar: Empty config in iCloud, uploading?","MN Toolbar: iCloud配置为空,是否上传？")
         if (!confirm) {
           return false
         }
-        this.writeCloudConfig()
+        this.writeCloudConfig(msg)
         if (msg) {
           MNUtil.showHUD("No config in iCloud, uploading...")
         }
@@ -3842,47 +4396,72 @@ class toolbarConfig {
     }
   }
   static writeCloudConfig(msg = true,force = false){
-    if(!this.syncConfig.iCloudSync){
-      return
-    }
+  try {
     if (!toolbarUtils.checkSubscribe(false,msg,true)) {
-      return
+      return false
     }
+    if (force) {
+      this.checkCloudStore()
+      this.syncConfig.lastSyncTime = Date.now()
+      this.syncConfig.lastModifyTime = Date.now()
+      let cloudConfig = this.cloudStore.objectForKey("MNToolbar_totalConfig")
+      let config = this.getAllConfig()
+      if (MNUtil.isIOS() && cloudConfig && cloudConfig.windowState) {
+        //iOS端不参与"MNToolbar_windowState"的云同步
+        config.windowState = cloudConfig.windowState
+      }
+      if (msg) {
+        MNUtil.showHUD("Uploading...")
+      }
+      this.cloudStore.setObjectForKey(config,"MNToolbar_totalConfig")
+      return true
+    }
+    if(!this.syncConfig.iCloudSync){
+      return false
+    }
+    let iCloudSync = this.syncConfig.iCloudSync
     this.checkCloudStore()
     let cloudConfig = this.cloudStore.objectForKey("MNToolbar_totalConfig")
-    if (cloudConfig && cloudConfig.syncConfig && !force) {
+    if (cloudConfig && cloudConfig.syncConfig) {
       let same = this.deepEqual(cloudConfig, this.getAllConfig())
       if (same) {
-        // MNUtil.showHUD("No change")
+        if (msg) {
+          MNUtil.showHUD("No change")
+        }
         return false
       }
-      if (this.syncConfig.lastSyncTime < cloudConfig.syncConfig.lastSyncTime ) {
-        let localTime = Date.parse(this.syncConfig.lastSyncTime).toLocaleString()
-        let cloudTime = Date.parse(cloudConfig.syncConfig.lastSyncTime).toLocaleString()
+      let localLatestTime = this.getLocalLatestTime()
+      let cloudOldestTime = Math.min(cloudConfig.syncConfig.lastSyncTime,cloudConfig.syncConfig.lastModifyTime)
+      if (localLatestTime < cloudOldestTime) {
+        let localTime = Date.parse(localLatestTime).toLocaleString()
+        let cloudTime = Date.parse(cloudOldestTime).toLocaleString()
         MNUtil.showHUD("Conflict config: loca_"+localTime+", cloud_"+cloudTime)
         return false
       }
     }
     this.syncConfig.lastSyncTime = Date.now()
-    this.syncConfig.lastModifyTime = Date.now()
-    let config = {
-      windowState: this.windowState,
-      syncConfig: this.syncConfig,
-      dynamic: this.dynamic,
-      addonLogos: this.addonLogos,
-      actionKeys: this.action,
-      actions: this.actions,
-      buttonConfig:this.buttonConfig,
-      popupConfig:this.popupConfig
+    // this.syncConfig.lastModifyTime = Date.now()
+    if (this.dynamicAction.length === 0) {
+      this.dynamicAction = this.action
+    }
+    let config = this.getAllConfig()
+    if (MNUtil.isIOS() && cloudConfig && cloudConfig.windowState) {
+      //iOS端不参与"MNToolbar_windowState"的云同步
+      config.windowState = cloudConfig.windowState
     }
     // MNUtil.copyJSON(config)
     if (msg) {
       MNUtil.showHUD("Uploading...")
     }
+    config.syncConfig.iCloudSync = iCloudSync
     this.cloudStore.setObjectForKey(config,"MNToolbar_totalConfig")
     this.syncConfig.lastSyncTime = Date.now()
-    this.syncConfig.lastModifyTime = Date.now()
     this.save("MNToolbar_syncConfig",undefined,false)
+    return true
+  } catch (error) {
+    toolbarUtils.addErrorLog(error, "writeCloudConfig")
+    return false
+  }
   }
   static initImage(){
     try {
@@ -4009,11 +4588,23 @@ class toolbarConfig {
     toolbarUtils.addErrorLog(error, "setButtonImage")
   }
   }
-  static getAllActions(){
-    let absentKeys = this.getDefaultActionKeys().filter(key=>!this.action.includes(key))
-    let allActions = this.action.concat(absentKeys)
-    // MNUtil.copyJSON(allActions)
-    return allActions
+  /**
+   * 只是返回数组,代表所有按钮的顺序
+   * @param {boolean} dynamic
+   * @returns {string[]}
+   */
+  static getAllActions(dynamic = false){
+    if (dynamic) {
+      let absentKeys = this.getDefaultActionKeys().filter(key=>!this.dynamicAction.includes(key))
+      let allActions = this.dynamicAction.concat(absentKeys)
+      // MNUtil.copyJSON(allActions)
+      return allActions
+    }else{
+      let absentKeys = this.getDefaultActionKeys().filter(key=>!this.action.includes(key))
+      let allActions = this.action.concat(absentKeys)
+      // MNUtil.copyJSON(allActions)
+      return allActions
+    }
   }
   static getDesByButtonName(targetButtonName){
     let allActions = this.action.concat(this.getDefaultActionKeys().slice(this.action.length))
@@ -4043,7 +4634,7 @@ class toolbarConfig {
       return this.getWindowState("direction")
     }
   }
-  static horizonatl(dynamic = false){
+  static horizontal(dynamic = false){
     if (dynamic) {
       return this.getWindowState("dynamicDirection") === "horizontal"
     }else{
@@ -4247,12 +4838,14 @@ static save(key = undefined,value = undefined,upload = true) {
     defaults.setObjectForKey(this.windowState,"MNToolbar_windowState")
     defaults.setObjectForKey(this.dynamic,"MNToolbar_dynamic")
     defaults.setObjectForKey(this.action,"MNToolbar_action")
+    defaults.setObjectForKey(this.dynamicAction,"MNToolbar_dynamicAction")
     defaults.setObjectForKey(this.actions,"MNToolbar_actionConfig")
     defaults.setObjectForKey(this.addonLogos,"MNToolbar_addonLogos")
     defaults.setObjectForKey(this.buttonConfig,"MNToolbar_buttonConfig")
     defaults.setObjectForKey(this.popupConfig,"MNToolbar_popupConfig")
     defaults.setObjectForKey(this.imageScale,"MNToolbar_imageScale")
     defaults.setObjectForKey(this.syncConfig,"MNToolbar_syncConfig")
+    this.syncConfig.lastModifyTime = Date.now()
     if (upload) {
       this.writeCloudConfig(false)
     }
@@ -4260,14 +4853,24 @@ static save(key = undefined,value = undefined,upload = true) {
   }
   if (value) {
     NSUserDefaults.standardUserDefaults().setObjectForKey(value,key)
+    this.syncConfig.lastModifyTime = Date.now()
+    if (upload) {
+      this.writeCloudConfig(false)
+    }
   }else{
     // showHUD(key)
     switch (key) {
       case "MNToolbar_windowState":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.windowState,key)
+        if (MNUtil.isIOS()) { //iOS端不参与"MNToolbar_windowState"的云同步
+          return
+        }
         break;
       case "MNToolbar_dynamic":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.dynamic,key)
+        break;
+      case "MNToolbar_dynamicAction":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.dynamicAction,key)
         break;
       case "MNToolbar_action":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.action,key)
@@ -4294,6 +4897,7 @@ static save(key = undefined,value = undefined,upload = true) {
         toolbarUtils.showHUD("Not supported")
         break;
     }
+    this.syncConfig.lastModifyTime = Date.now()
     if (upload) {
       this.writeCloudConfig(false)
     }
@@ -4317,11 +4921,23 @@ static getByDefault(key,defaultValue) {
 static remove(key) {
   NSUserDefaults.standardUserDefaults().removeObjectForKey(key)
 }
-static reset(){
-  this.action = this.getDefaultActionKeys()
-  this.actions = this.getActions()
-  this.save("MNToolbar_action")
-  this.save("MNToolbar_actionConfig")
+static reset(target){
+  switch (target) {
+    case "config":
+      this.actions = this.getActions()
+      this.save("MNToolbar_actionConfig")
+      break;
+    case "order":
+      this.action = this.getDefaultActionKeys()
+      this.save("MNToolbar_action")
+      break;  
+    case "dynamicOrder":
+      this.dynamicAction = this.getDefaultActionKeys()
+      this.save("MNToolbar_dynamicAction")
+      break;
+    default:
+      break;
+  }
 }
 static getDescriptionByIndex(index){
   let actionName = toolbarConfig.action[index]

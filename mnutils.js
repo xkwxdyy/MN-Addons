@@ -1033,6 +1033,12 @@ class MNUtil {
   static get studyView() {
     return this.app.studyController(this.currentWindow).view
   }
+  static get studyWidth(){
+    return this.studyView.frame.width
+  }
+  static get studyHeight(){
+    return this.studyView.frame.height
+  }
   /**
    * @returns {{view:UIView}}
    **/
@@ -1273,6 +1279,12 @@ class MNUtil {
   static isIPadOS(){
     return this.appVersion().type == "iPadOS"
   }
+  static isMN4(){
+    return this.appVersion().version == "marginnote4"
+  }
+  static isMN3(){
+    return this.appVersion().version == "marginnote3"
+  }
   static getMNUtilVersion(){
     let res = this.readJSON(this.mainPath+"/mnaddon.json")
     return res.version
@@ -1406,7 +1418,7 @@ class MNUtil {
     })
   }
   /**
-   * 
+   * 0代表用户取消,其他数字代表用户选择的按钮索引
    * @param {string} mainTitle - The main title of the confirmation dialog.
    * @param {string} subTitle - The subtitle of the confirmation dialog.
    * @param {string[]} items - The items to display in the dialog.
@@ -1445,10 +1457,14 @@ class MNUtil {
           this.copy(object.noteId)
           break;
         }
+        if (object instanceof Error) {
+          this.copy(object.toString())
+          break
+        }
         UIPasteboard.generalPasteboard().string = JSON.stringify(object,null,2)
         break;
       default:
-        this.showHUD("Unsupported type")
+        this.showHUD("Unsupported type: "+typeof object)
         break;
     }
   }
@@ -1639,12 +1655,22 @@ class MNUtil {
       })
     })
   }
+  static crash(){
+    this.studyView.frame = {x:undefined}
+  }
   /**
    *
    * @param {UIView} view
    */
   static isDescendantOfStudyView(view){
     return view.isDescendantOfView(this.studyView)
+  }
+  /**
+   *
+   * @param {UIView} view
+   */
+  static isDescendantOfCurrentWindow(view){
+    return view.isDescendantOfView(this.currentWindow)
   }
   static addObserver(observer,selector,name){
     NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, name);
@@ -1784,8 +1810,7 @@ class MNUtil {
          if (json && typeof json === "object") {
              return true;
          }
-     }
-     catch(e){
+     }catch(e){
          return false;
      }
      return false;
@@ -1906,6 +1931,7 @@ class MNUtil {
     let position = preferredPosition
     var menuController = MenuController.new();
     menuController.commandTable = commandTable
+    // menuController.sections = [commandTable,commandTable]
     menuController.rowHeight = 35;
     menuController.preferredContentSize = {
       width: width,
@@ -2568,6 +2594,13 @@ try {
       }
       return arr
   }
+  /**
+   * 
+   * @returns {string}
+   */
+  static UUID() {
+    return NSUUID.UUID().UUIDString()
+  }
 }
 
 class MNConnection{
@@ -3042,6 +3075,13 @@ class MNButton{
   }
   /**
    * 
+   * @returns {number} 
+   */
+  get autoresizingMask(){
+    return this.button.autoresizingMask
+  }
+  /**
+   * 
    * @param {number} opacity 
    */
   set opacity(opacity){
@@ -3049,6 +3089,19 @@ class MNButton{
   }
   get opacity(){
     return this.button.layer.opacity
+  }
+  /**
+   * 
+   * @param {number} radius 
+   */
+  set radius(radius){
+    this.button.layer.cornerRadius = radius
+  }
+  /**
+   * @returns {number}
+   */
+  get radius(){
+    return this.button.layer.cornerRadius
   }
   /**
    * 
@@ -3130,6 +3183,13 @@ class MNButton{
   }
   /**
    * 
+   * @returns {boolean}
+   */
+  get masksToBounds(){
+    return this.button.layer.masksToBounds
+  }
+  /**
+   * 
    * @param {number} x 
    * @param {number} y 
    * @param {number} width 
@@ -3171,6 +3231,24 @@ class MNButton{
       this.button.backgroundColor = MNButton.hexColorAlpha(hexColor, alpha)
     }
   }
+  setImageForState(image,state = 0){
+    this.button.setImageForState(image,state)
+  }
+  setImage(image,state = 0){
+    this.button.setImageForState(image,state)
+  }
+  setTitleColorForState(color,state = 0){
+    this.button.setTitleColorForState(color,state)
+  }
+  setTitleColor(color,state = 0){
+    this.button.setTitleColorForState(color,state)
+  }
+  setTitleForState(title,state = 0){
+    this.button.setTitleForState(title,state)
+  }
+  setTitle(title,state = 0){
+    this.button.setTitleForState(title,state)
+  }
   addSubview(view){
     this.button.addSubview(view)
   }
@@ -3184,20 +3262,27 @@ class MNButton{
   layoutIfNeeded(){this.button.layoutIfNeeded()}
   layoutSubviews(){this.button.layoutSubviews()}
   setNeedsDisplay(){this.button.setNeedsDisplay()}
-  setImageForState(image,state = 0){this.button.setImageForState(image,state)}
-  setImage(image,state = 0){this.button.setImageForState(image,state)}
-  setTitleColorForState(color,state = 0){this.button.setTitleColorForState(color,state)}
-  setTitleColor(color,state = 0){this.button.setTitleColorForState(color,state)}
-  setTitleForState(title,state = 0){this.button.setTitleForState(title,state)}
-  setTitle(title,state = 0){this.button.setTitleForState(title,state)}
+  sizeThatFits(size){
+    return this.button.sizeThatFits(size)
+  }
+
   /**
    * 
    * @param {any} target 
-   * @param {any} controlEvent 
+   * @param {UIControlEvents} controlEvent 
    * @param {string} action 
    */
   addTargetActionForControlEvents(target,action,controlEvent = 1 << 6){
     this.button.addTargetActionForControlEvents(target, action, controlEvent);
+  }
+  /**
+   * 
+   * @param {any} target 
+   * @param {UIControlEvents} controlEvent 
+   * @param {string} action 
+   */
+  removeTargetActionForControlEvents(target,action,controlEvent = 1 << 6){
+    this.button.removeTargetActionForControlEvents(target, action, controlEvent);
   }
   /**
    * 
@@ -3207,8 +3292,19 @@ class MNButton{
   addClickAction (target,selector) {
     this.button.addTargetActionForControlEvents(target, selector, 1 << 6);
   }
+  /**
+   * 
+   * @param {UIGestureRecognizer} gestureRecognizer 
+   */
   addGestureRecognizer(gestureRecognizer){
     this.button.addGestureRecognizer(gestureRecognizer)
+  }
+  /**
+   * 
+   * @param {UIGestureRecognizer} gestureRecognizer 
+   */
+  removeGestureRecognizer(gestureRecognizer){
+    this.button.removeGestureRecognizer(gestureRecognizer)
   }
   /**
    * 
@@ -3518,20 +3614,7 @@ class MNNote{
         return undefined
     }
   }
-  static errorLog = []
-  static addErrorLog(error,source,info){
-    MNUtil.showHUD("MNNote Error ("+source+"): "+error)
-    let log = {
-      error:error.toString(),
-      source:source,
-      time:(new Date(Date.now())).toString()
-    }
-    if (info) {
-      log.info = info
-    }
-    this.errorLog.push(log)
-    MNUtil.copyJSON(this.errorLog)
-  }
+
   get noteId() {
     return this.note.noteId
   }
@@ -8369,6 +8452,20 @@ try {
   copyURL(){
     MNUtil.copy(this.noteURL)
   }
+  static errorLog = []
+  static addErrorLog(error,source,info){
+    MNUtil.showHUD("MNNote Error ("+source+"): "+error)
+    let log = {
+      error:error.toString(),
+      source:source,
+      time:(new Date(Date.now())).toString()
+    }
+    if (info) {
+      log.info = info
+    }
+    this.errorLog.push(log)
+    MNUtil.copyJSON(this.errorLog)
+  }
   /**
    *
    * 
@@ -8487,6 +8584,7 @@ try {
     }
     return undefined
   }
+
     /**
    * 
    * @param {MbBookNote|MNNote} note 
@@ -8665,6 +8763,42 @@ try {
     }
     return undefined
   }
+  /**
+   * Retrieves the image data from the current document controller or other document controllers if the document map split mode is enabled.
+   * 
+   * This method checks for image data in the current document controller's selection. If no image is found, it checks the focused note within the current document controller.
+   * If the document map split mode is enabled, it iterates through all document controllers to find the image data. If a pop-up selection info is available, it also checks the associated document controller.
+   * 
+   * @param {boolean} [checkImageFromNote=false] - Whether to check the focused note for image data.
+   * @param {boolean} [checkDocMapSplitMode=false] - Whether to check other document controllers if the document map split mode is enabled.
+   * @returns {NSData[]|undefined} The image data if found, otherwise undefined.
+   */
+  static getImagesFromNote(note,checkTextFirst = false) {
+    let imageDatas = []
+    if (note.excerptPic) {
+      if (checkTextFirst && note.textFirst) {
+        //检查发现图片已经转为文本，因此略过
+      }else{
+        imageDatas.push(MNUtil.getMediaByHash(note.excerptPic.paint))
+      }
+    }
+    if (note.comments.length) {
+      for (let i = 0; i < note.comments.length; i++) {
+        const comment = note.comments[i];
+        if (comment.type === 'PaintNote' && comment.paint) {
+          imageDatas.push(MNUtil.getMediaByHash(comment.paint))
+        }else if (comment.type === "LinkNote" && comment.q_hpic && comment.q_hpic.paint) {
+          imageDatas.push(MNUtil.getMediaByHash(comment.q_hpic.paint))
+        }
+      }
+    }
+    return imageDatas
+  }
+  /**
+   * 
+   * @param {string} noteId 
+   * @returns {boolean}
+   */
   static exist(noteId){
     if (MNUtil.db.getNoteById(noteId)) {
       return true
@@ -8676,9 +8810,9 @@ try {
 class MNComment {
   /** @type {string} */
   type;
-  /** @type {string} */
+  /** @type {string|undefined} */
   originalNoteId;
-  /** @type {number} */
+  /** @type {number|undefined} */
   index;
   /**
    * 
@@ -8762,6 +8896,14 @@ class MNComment {
       default:
         MNUtil.showHUD("No available note")
         return undefined
+    }
+  }
+  refresh(){
+    if (this.originalNoteId && this.index !== undefined) {
+      let note = MNNote.new(this.originalNoteId)
+      let comment = note.comments[this.index]
+      this.type = MNComment.getCommentType(comment)
+      this.detail = comment
     }
   }
   copyImage(){

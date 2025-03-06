@@ -903,6 +903,11 @@ class MNUtil {
     return false
   }
   /**
+   * 当前激活的文本视图
+   * @type {UITextView|undefined}
+   */
+  static activeTextView = undefined
+  /**
    * 返回选中的内容，如果没有选中，则onSelection属性为false
    * 如果有选中内容，则同时包括text和image，并通过isText属性表明当时是选中的文字还是图片
    * Retrieves the current selection details.
@@ -917,6 +922,9 @@ class MNUtil {
    * @returns {{onSelection: boolean, image: null|undefined|NSData, text: null|undefined|string, isText: null|undefined|boolean,docMd5:string|undefined,pageIndex:number|undefined}} The current selection details.
    */
   static get currentSelection(){
+    if (this.activeTextView) {
+      return {onSelection:true,image:undefined,text:this.activeTextView.text,isText:true,docMd5:undefined,pageIndex:undefined,source:"textview"}
+    }
     if (this.studyController.readerController.view.hidden) {
       return {onSelection:false}
     }
@@ -2698,6 +2706,143 @@ try {
   static UUID() {
     return NSUUID.UUID().UUIDString()
   }
+  static isPureMNImages(markdown) {
+    try {
+      // 匹配 base64 图片链接的正则表达式
+      const MNImagePattern = /!\[.*?\]\((marginnote4app\:\/\/markdownimg\/png\/.*?)(\))/g;
+      let res = markdown.match(MNImagePattern)
+      if (res) {
+        return markdown === res[0]
+      }else{
+        return false
+      }
+    } catch (error) {
+      MNUtil.showHUD(error)
+      return false
+    }
+  }
+  static hasMNImages(markdown) {
+    try {
+      // 匹配 base64 图片链接的正则表达式
+      const MNImagePattern = /!\[.*?\]\((marginnote4app\:\/\/markdownimg\/png\/.*?)(\))/g;
+      let link = markdown.match(MNImagePattern)[0]
+      // MNUtil.copyJSON({"a":link,"b":markdown})
+      return markdown.match(MNImagePattern)?true:false
+    } catch (error) {
+      MNUtil.showHUD(error)
+      return false
+    }
+  }
+  /**
+   * 只返回第一个图片
+   * @param {string} markdown 
+   * @returns {NSData}
+   */
+  static getMNImageFromMarkdown(markdown) {
+    try {
+      const MNImagePattern = /!\[.*?\]\((marginnote4app\:\/\/markdownimg\/png\/.*?)(\))/g;
+      let link = markdown.match(MNImagePattern)[0]
+      // MNUtil.copyJSON(link)
+      let hash = link.split("markdownimg/png/")[1].slice(0,-1)
+      let imageData = MNUtil.getMediaByHash(hash)
+      return imageData
+    } catch (error) {
+      toolbarUtils.addErrorLog(error, "replaceBase64ImagesWithR2")
+      return undefined
+    }
+  }
+  /**
+   * 
+   * @param {MNNote} note 
+   */
+  static getNoteObject(note,config={},opt={first:true}) {
+    try {
+    if (!note) {
+      return config
+    }
+      
+    let noteConfig = config
+    noteConfig.id = note.noteId
+    if (opt.first) {
+      noteConfig.notebook = {
+        id:note.notebookId,
+        name:this.getNoteBookById(note.notebookId).title,
+      }
+    }
+    noteConfig.title = note.noteTitle
+    noteConfig.url = note.noteURL
+    noteConfig.excerptText = note.excerptText
+    noteConfig.isMarkdownExcerpt = note.excerptTextMarkdown
+    noteConfig.isImageExcerpt = !!note.excerptPic
+    noteConfig.date = {
+      create:note.createDate.toLocaleString(),
+      modify:note.modifiedDate.toLocaleString(),
+    }
+    noteConfig.allText = note.allNoteText()
+    noteConfig.tags = note.tags
+    noteConfig.hashTags = note.tags.map(tag=> ("#"+tag)).join(" ")
+    noteConfig.hasTag = note.tags.length > 0
+    noteConfig.hasComment = note.comments.length > 0
+    noteConfig.hasChild = note.childNotes.length > 0
+    if (note.colorIndex !== undefined) {
+      noteConfig.color = {}
+      noteConfig.color.lightYellow = note.colorIndex === 0
+      noteConfig.color.lightGreen = note.colorIndex === 1
+      noteConfig.color.lightBlue = note.colorIndex === 2
+      noteConfig.color.lightRed = note.colorIndex === 3
+      noteConfig.color.yellow = note.colorIndex === 4
+      noteConfig.color.green = note.colorIndex === 5
+      noteConfig.color.blue = note.colorIndex === 6
+      noteConfig.color.red = note.colorIndex === 7
+      noteConfig.color.orange = note.colorIndex === 8
+      noteConfig.color.darkGreen = note.colorIndex === 9
+      noteConfig.color.darkBlue = note.colorIndex === 10
+      noteConfig.color.deepRed = note.colorIndex === 11
+      noteConfig.color.white = note.colorIndex === 12
+      noteConfig.color.lightGray = note.colorIndex === 13
+      noteConfig.color.darkGray = note.colorIndex === 14
+      noteConfig.color.purple = note.colorIndex === 15
+    }
+    if (note.docMd5 && this.getDocById(note.docMd5)) {
+      noteConfig.docName = this.getFileName(this.getDocById(note.docMd5).pathFile) 
+    }
+    noteConfig.hasDoc = !!noteConfig.docName
+    if (note.childMindMap) {
+      noteConfig.childMindMap = this.getNoteObject(note.childMindMap,{},{first:false})
+    }
+    noteConfig.inMainMindMap = !noteConfig.childMindMap
+    noteConfig.inChildMindMap = !!noteConfig.childMindMap
+    if ("parent" in opt && opt.parent && note.parentNote) {
+      if (opt.parentLevel && opt.parentLevel > 0) {
+        noteConfig.parent = this.getNoteObject(note.parentNote,{},{parentLevel:opt.parentLevel-1,parent:true,first:false})
+      }else{
+        noteConfig.parent = this.getNoteObject(note.parentNote,{},{first:false})
+      }
+    }
+    noteConfig.hasParent = "parent" in noteConfig
+    if ("child" in opt && opt.child && note.childNotes) {
+      noteConfig.child = note.childNotes.map(note=>this.getNoteObject(note,{},{first:false}))
+    }
+    return noteConfig
+    } catch (error) {
+      this.showHUD(error)
+      return undefined
+    }
+  }
+  static getDateObject(){
+    let dateObject = {
+      now:new Date(Date.now()).toLocaleString(),
+      tomorrow:new Date(Date.now()+86400000).toLocaleString(),
+      yesterday:new Date(Date.now()-86400000).toLocaleString(),
+      year:new Date().getFullYear(),
+      month:new Date().getMonth()+1,
+      day:new Date().getDate(),
+      hour:new Date().getHours(),
+      minute:new Date().getMinutes(),
+      second:new Date().getSeconds()
+    }
+    return dateObject
+  }
 }
 
 class MNConnection{
@@ -2825,56 +2970,33 @@ class MNConnection{
         request,
         queue,
         (res, data, err) => {
-          // try {
-          //   if (res && res.statusCode) {
-          //     MNUtil.showHUD("message"+res.statusCode())
-          //   }else{
-          //     MNUtil.showHUD("message"+err.localizedDescription)
-          //   }
-          // } catch (error) {
-          //   MNUtil.showHUD(error)
-          // }
-          let error = {}
-          let response = data
-          if (err.localizedDescription){
-            error.message = err.localizedDescription
-            // MNUtil.copy(err.localizedDescription)
-            // MNUtil.showHUD(err.localizedDescription)
-            // reject()
-          }
-          if (!res.statusCode) {
-            error.timeout = true
-            MNUtil.showHUD(err.localizedDescription)
-            // MNUtil.copyJSON(error)
-            resolve(error)
-          }
-          if (res.statusCode && res.statusCode() >= 400) {
-            error.statusCode = res.statusCode()
-          }
-          // if (res.statusCode() === 200) {
-          //   MNUtil.showHUD("OCR success")
-          // }else{
-          //   MNUtil.showHUD("Error in OCR")
-          // }
-          // if (data) {
-          //   MNUtil.copy("hasdata: "+typeof data)
-          // }
           const result = NSJSONSerialization.JSONObjectWithDataOptions(
             data,
             1<<0
           )
-          if (NSJSONSerialization.isValidJSONObject(result)){
-            response = result
-          }
-          if (Object.keys(error).length) {
-            if (NSJSONSerialization.isValidJSONObject(result)){
-              error.body = result
-            }else{
-              error.body = MNUtil.data2string(data)
+          const validJson = NSJSONSerialization.isValidJSONObject(result)
+          if (err.localizedDescription){
+            MNUtil.showHUD(err.localizedDescription)
+            let error = {error:err.localizedDescription}
+            if (validJson) {
+              error.data = result
             }
             resolve(error)
           }
-          resolve(response)
+          if (res.statusCode() === 200) {
+            // MNUtil.showHUD("OCR success")
+          }else{
+            let error = {statusCode:res.statusCode()}
+            if (validJson) {
+              error.data = result
+            }
+            resolve(error)
+            // MNUtil.showHUD("Error in OCR")
+          }
+          if (validJson){
+            resolve(result)
+          }
+          resolve(result)
         }
       )
   })
@@ -2998,6 +3120,106 @@ static async uploadWebDAVFile(url, username, password, fileContent) {
     MNUtil.showHUD("Download failed")
     return undefined
   }
+/**
+ * Initializes a request for ChatGPT using the provided configuration.
+ * 
+ * @param {Array} history - An array of messages to be included in the request.
+ * @param {string} apikey - The API key for authentication.
+ * @param {string} url - The URL endpoint for the API request.
+ * @param {string} model - The model to be used for the request.
+ * @param {number} temperature - The temperature parameter for the request.
+ * @param {Array<number>} funcIndices - An array of function indices to be included in the request.
+ * @throws {Error} If the API key is empty or if there is an error during the request initialization.
+ */
+static initRequestForChatGPT (history,apikey,url,model,temperature,funcIndices=[]) {
+  if (apikey.trim() === "") {
+    MNUtil.showHUD(model+": No apikey!")
+    return
+  }
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: "Bearer "+apikey,
+    Accept: "text/event-stream"
+  }
+    // copyJSON(headers)
+  let body = {
+    "model":model,
+    "messages":history,
+    "stream":true
+  }
+  // if (model !== "deepseek-reasoner") {
+    body.temperature = temperature
+    // if (url === "https://api.minimax.chat/v1/text/chatcompletion_v2") {
+    //   let tools = chatAITool.getToolsByIndex(funcIndices,true)
+    //   if (tools.length) {
+    //     body.tools = tools
+    //   }
+    //   body.max_tokens = 8000
+    // }else{
+    //   let tools = chatAITool.getToolsByIndex(funcIndices,false)
+    //   if (tools.length) {
+    //     body.tools = tools
+    //     body.tool_choice = "auto"
+    //   }
+    // }
+  const request = MNConnection.initRequest(url, {
+      method: "POST",
+      headers: headers,
+      timeout: 60,
+      json: body
+    })
+  return request
+}
+/**
+ * Initializes a request for ChatGPT using the provided configuration.
+ * 
+ * @param {Array} history - An array of messages to be included in the request.
+ * @param {string} apikey - The API key for authentication.
+ * @param {string} url - The URL endpoint for the API request.
+ * @param {string} model - The model to be used for the request.
+ * @param {number} temperature - The temperature parameter for the request.
+ * @param {Array<number>} funcIndices - An array of function indices to be included in the request.
+ * @throws {Error} If the API key is empty or if there is an error during the request initialization.
+ */
+static initRequestForChatGPTWithoutStream (history,apikey,url,model,temperature,funcIndices=[]) {
+  if (apikey.trim() === "") {
+    MNUtil.showHUD(model+": No apikey!")
+    return
+  }
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: "Bearer "+apikey,
+    Accept: "text/event-stream"
+  }
+    // copyJSON(headers)
+  let body = {
+    "model":model,
+    "messages":history
+  }
+  // if (model !== "deepseek-reasoner") {
+    body.temperature = temperature
+    // if (url === "https://api.minimax.chat/v1/text/chatcompletion_v2") {
+    //   let tools = chatAITool.getToolsByIndex(funcIndices,true)
+    //   if (tools.length) {
+    //     body.tools = tools
+    //   }
+    //   body.max_tokens = 8000
+    // }else{
+    //   let tools = chatAITool.getToolsByIndex(funcIndices,false)
+    //   if (tools.length) {
+    //     body.tools = tools
+    //     body.tool_choice = "auto"
+    //   }
+    // }
+  const request = MNConnection.initRequest(url, {
+      method: "POST",
+      headers: headers,
+      timeout: 60,
+      json: body
+    })
+  return request
+}
+
 }
 class MNButton{
   static get highlightColor(){
@@ -3685,10 +3907,14 @@ class MNNote{
         let notebook = MNUtil.currentNotebook
         let title = config.title ?? ""
         // MNUtil.copyJSON(note)
+        if (!MNUtil.currentDocController.document) {
+          MNUtil.confirm("No document in studyset!", "学习集中没有文档！")
+          return undefined
+        }
         let newNote = Note.createWithTitleNotebookDocument(title, notebook, MNUtil.currentDocController.document)
         if (config.excerptText) {
           newNote.excerptText = config.excerptText
-          if (config.excerptTextMarkdown) {
+          if (config.excerptTextMarkdown || config.markdown) {
             newNote.excerptTextMarkdown = true
             if (/!\[.*?\]\((data:image\/.*;base64,.*?)(\))/.test(config.excerptText)) {
               newNote.processMarkdownBase64Images()
@@ -3719,14 +3945,20 @@ class MNNote{
     return this.note.notebookId
   }
   /**
-   * Retrieves the original note ID of a note that has been merged.
-   * 
-   * This method returns the original note ID of a note that has been merged into another note. This is useful for tracking the history of notes that have been combined.
+   * 文档摘录和它在脑图对应的卡片具有不同的id,通过originNoteId可以获得文档摘录的id
    * 
    * @returns {string} The original note ID of the merged note.
    */
   get originNoteId(){
     return this.note.originNoteId
+  }
+  /**
+   * 文档摘录和它在脑图对应的卡片具有不同的id,通过originNoteId可以获得文档摘录的id
+   * 
+   * @returns {MNNote} The original note ID of the merged note.
+   */
+  get originNote(){
+    return MNNote.new(this.note.originNoteId)
   }
   /**
    * Retrieves the note ID of the main note in a group of merged notes.
@@ -3985,6 +4217,22 @@ class MNNote{
   get mediaList(){
     return this.note.mediaList
   }
+  get image(){//第一个图片
+    let imageData = MNNote.getImageFromNote(this,true)
+    let image = imageData?UIImage.imageWithData(imageData):undefined
+    return image
+  }
+  get imageData(){
+    return MNNote.getImageFromNote(this,true)
+  }
+  get images(){//所有图片
+    let imageDatas = MNNote.getImagesFromNote(this)
+    let images = imageDatas?imageDatas.map(imageData=>UIImage.imageWithData(imageData)):undefined
+    return images
+  }
+  get imageDatas(){//所有图片
+    return MNNote.getImagesFromNote(this)
+  }
   /**
    * get all tags, without '#'
    * @returns {string[]}
@@ -4012,6 +4260,13 @@ class MNNote{
    */
   get comments(){
     return this.note.comments
+  }
+  /**
+   *
+   * @returns {MNComment[]}
+   */
+  get MNComments(){
+    return MNComment.from(this)
   }
   /**
    * set tags, will remove all old tags
@@ -4473,6 +4728,9 @@ try {
       MNUtil.undoGrouping(()=>{
         try {
           child = MNNote.new(config)
+          if (!child) {
+            return
+          }
           this.addChild(child)
         } catch (error) {
           MNUtil.showHUD("Error in createChildNote:"+error)
@@ -4481,6 +4739,9 @@ try {
     }else{
       try {
         child = MNNote.new(config)
+        if (!child) {
+          return
+        }
         this.addChild(child)
       } catch (error) {
         MNUtil.showHUD("Error in createChildNote:"+error)
@@ -4517,14 +4778,41 @@ try {
     }
     return child
   }
+  /**
+   * 支持检测摘录图片,markdown摘录中的MN图片,图片评论,合并的图片摘录
+   * @returns {boolean}
+   */
   hasImage(){
-    if (this.excerptPic && !this.textFirst) {
-      return true
+    let note = this
+    if (note.excerptPic) {
+      if (checkTextFirst && note.textFirst) {
+        //检查发现图片已经转为文本，因此略过
+      }else{
+        return true
+      }
+    }else{
+      let text = note.excerptText
+      if (note.excerptTextMarkdown) {
+        if (MNUtil.hasMNImages(text.trim())) {
+          return true
+        }
+      }
     }
-    let comments = this.comments
-    if (comments && comments.length) {
-      let comment = comments.find(c=>c.type==="PaintNote")
-      if (comment) {
+    if (note.comments.length) {
+      let imageData = undefined
+      for (let i = 0; i < note.comments.length; i++) {
+        const comment = note.comments[i];
+        if (comment.type === 'PaintNote' && comment.paint) {
+          imageData = MNUtil.getMediaByHash(comment.paint)
+          break
+        }
+        if (comment.type === "LinkNote" && comment.q_hpic && comment.q_hpic.paint) {
+          imageData = MNUtil.getMediaByHash(comment.q_hpic.paint)
+          break
+        }
+
+      }
+      if (imageData) {
         return true
       }
     }
@@ -4557,6 +4845,10 @@ try {
    * @returns {MNNote}
    */
   appendMarkdownComment(comment,index=undefined){
+    let validComment = comment && comment.trim()
+    if (!validComment) {
+      return this
+    }
     try {
       this.note.appendMarkdownComment(comment)
     } catch (error) {
@@ -4574,6 +4866,10 @@ try {
    * @returns {MNNote}
    */
   appendTextComment(comment,index=undefined){
+    let validComment = comment && comment.trim()
+    if (!validComment) {
+      return this
+    }
     this.note.appendTextComment(comment)
     if (index !== undefined) {
       this.moveComment(this.note.comments.length-1, index)
@@ -8839,6 +9135,13 @@ try {
       }else{
         return MNUtil.getMediaByHash(note.excerptPic.paint)
       }
+    }else{
+      let text = note.excerptText
+      if (note.excerptTextMarkdown) {
+        if (MNUtil.hasMNImages(text.trim())) {
+          return MNUtil.getMNImageFromMarkdown(text)
+        }
+      }
     }
     if (note.comments.length) {
       let imageData = undefined
@@ -8868,6 +9171,54 @@ try {
    * 
    * @param {boolean} [checkImageFromNote=false] - Whether to check the focused note for image data.
    * @param {boolean} [checkDocMapSplitMode=false] - Whether to check other document controllers if the document map split mode is enabled.
+   * @returns {{data:NSData,source:string,index:number}} The image data if found, otherwise undefined.
+   */
+  static getImageInfoFromNote(note,checkTextFirst = false) {
+    let imageInfo = {}
+    if (note.excerptPic) {
+      if (checkTextFirst && note.textFirst) {
+        //检查发现图片已经转为文本，因此略过
+      }else{
+        imageInfo.data = MNUtil.getMediaByHash(note.excerptPic.paint)
+        imageInfo.source = "excerptPic"
+        // return MNUtil.getMediaByHash(note.excerptPic.paint)
+      }
+    }else{
+      let text = note.excerptText
+      if (note.excerptTextMarkdown) {
+        if (MNUtil.hasMNImages(text.trim())) {
+          imageInfo.data = MNUtil.getMNImageFromMarkdown(text)
+          imageInfo.source = "excerptTextMarkdown"
+        }
+      }
+    }
+    if (note.comments.length) {
+      for (let i = 0; i < note.comments.length; i++) {
+        const comment = note.comments[i];
+        if (comment.type === 'PaintNote' && comment.paint) {
+          imageInfo.data = MNUtil.getMediaByHash(comment.paint)
+          imageInfo.source = "PaintNote"
+          imageInfo.index = i
+          break
+        }
+        if (comment.type === "LinkNote" && comment.q_hpic && comment.q_hpic.paint) {
+          imageInfo.data = MNUtil.getMediaByHash(comment.q_hpic.paint)
+          imageInfo.source = "LinkNote"
+          imageInfo.index = i
+          break
+        }
+      }
+    }
+    return imageInfo
+  }
+  /**
+   * Retrieves the image data from the current document controller or other document controllers if the document map split mode is enabled.
+   * 
+   * This method checks for image data in the current document controller's selection. If no image is found, it checks the focused note within the current document controller.
+   * If the document map split mode is enabled, it iterates through all document controllers to find the image data. If a pop-up selection info is available, it also checks the associated document controller.
+   * 
+   * @param {boolean} [checkImageFromNote=false] - Whether to check the focused note for image data.
+   * @param {boolean} [checkDocMapSplitMode=false] - Whether to check other document controllers if the document map split mode is enabled.
    * @returns {NSData[]|undefined} The image data if found, otherwise undefined.
    */
   static getImagesFromNote(note,checkTextFirst = false) {
@@ -8877,6 +9228,13 @@ try {
         //检查发现图片已经转为文本，因此略过
       }else{
         imageDatas.push(MNUtil.getMediaByHash(note.excerptPic.paint))
+      }
+    }else{
+      let text = note.excerptText
+      if (note.excerptTextMarkdown) {
+        if (MNUtil.hasMNImages(text.trim())) {
+          imageDatas.push(MNUtil.getMNImageFromMarkdown(text))
+        }
       }
     }
     if (note.comments.length) {

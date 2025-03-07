@@ -922,8 +922,9 @@ class MNUtil {
    * @returns {{onSelection: boolean, image: null|undefined|NSData, text: null|undefined|string, isText: null|undefined|boolean,docMd5:string|undefined,pageIndex:number|undefined}} The current selection details.
    */
   static get currentSelection(){
-    if (this.activeTextView) {
-      return {onSelection:true,image:undefined,text:this.activeTextView.text,isText:true,docMd5:undefined,pageIndex:undefined,source:"textview"}
+    if (this.activeTextView && this.activeTextView.selectedRange.length>0) {
+      let range = this.activeTextView.selectedRange
+      return {onSelection:true,image:undefined,text:this.activeTextView.text.slice(range.location,range.location+range.length),isText:true,docMd5:undefined,pageIndex:undefined,source:"textview"}
     }
     if (this.studyController.readerController.view.hidden) {
       return {onSelection:false}
@@ -2755,10 +2756,10 @@ try {
    * 
    * @param {MNNote} note 
    */
-  static getNoteObject(note,config={},opt={first:true}) {
+  static getNoteObject(note,opt={first:true}) {
     try {
     if (!note) {
-      return config
+      return undefined
     }
       
     let noteConfig = config
@@ -2808,20 +2809,20 @@ try {
     }
     noteConfig.hasDoc = !!noteConfig.docName
     if (note.childMindMap) {
-      noteConfig.childMindMap = this.getNoteObject(note.childMindMap,{},{first:false})
+      noteConfig.childMindMap = this.getNoteObject(note.childMindMap,{first:false})
     }
     noteConfig.inMainMindMap = !noteConfig.childMindMap
     noteConfig.inChildMindMap = !!noteConfig.childMindMap
     if ("parent" in opt && opt.parent && note.parentNote) {
       if (opt.parentLevel && opt.parentLevel > 0) {
-        noteConfig.parent = this.getNoteObject(note.parentNote,{},{parentLevel:opt.parentLevel-1,parent:true,first:false})
+        noteConfig.parent = this.getNoteObject(note.parentNote,{parentLevel:opt.parentLevel-1,parent:true,first:false})
       }else{
-        noteConfig.parent = this.getNoteObject(note.parentNote,{},{first:false})
+        noteConfig.parent = this.getNoteObject(note.parentNote,{first:false})
       }
     }
     noteConfig.hasParent = "parent" in noteConfig
     if ("child" in opt && opt.child && note.childNotes) {
-      noteConfig.child = note.childNotes.map(note=>this.getNoteObject(note,{},{first:false}))
+      noteConfig.child = note.childNotes.map(note=>this.getNoteObject(note,{first:false}))
     }
     return noteConfig
     } catch (error) {
@@ -4430,6 +4431,9 @@ class MNNote{
       return this.note.docMd5
     }
     return undefined
+  }
+  config(opt={first:true}){
+    return MNUtil.getNoteObject(this,opt)
   }
   /**
    * 当前卡片可能只是文档上的摘录，通过这个方法获取它在指定学习集下的卡片noteId

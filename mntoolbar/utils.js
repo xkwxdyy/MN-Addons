@@ -922,12 +922,10 @@ try {
     NSNotificationCenter.defaultCenter().postNotificationNameObjectUserInfo(name, this.focusWindow, userInfo)
   }
   /**
-  /**
    * 【任务管理】 - begin
    */
   /**
    * 获取卡片的标题
-   */
    * 如果没有【】前缀，就是原标题
    * 如果有【】前缀，则获取去掉【】前缀后的内容
    */

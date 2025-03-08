@@ -8336,6 +8336,8 @@ class toolbarConfig {
     sourceHighlightOfNote:{enabled:false,target:"",name:"sourceHighlightOfNote"},
     paintHighlight:{enabled:false,target:"",name:"paintHighlight"},
     dragDrop:{enabled:false,target:"",name:"dragDrop"},
+    aiFromNote:{enabled:false,target:"",name:"aiFromNote"},
+    insertAI:{enabled:false,target:"",name:"insertAI"},
   }
   static defalutImageScale = {
     "color0":2.4,

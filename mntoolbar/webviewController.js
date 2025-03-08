@@ -5045,6 +5045,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                      * 因为一张单词卡片不会多次点击制卡，只会后续修改评论，所以这样问题不大
                      */
                     let vocabularyLibraryNote = MNNote.new("55C7235C-692E-44B4-BD0E-C1AF2A4AE805")
+                    // TODO：判断卡片是否在单词库里了，在的话就不移动
                     // 通过判断有没有 originNoteId 来判断是否需要复制新卡片
                     if (focusNote.originNoteId) {
                       let newNote = focusNote.createDuplicatedNoteAndDelete()

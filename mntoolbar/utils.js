@@ -927,7 +927,7 @@ try {
    */
   /**
    * 获取卡片的标题
-   * 
+   */
    * 如果没有【】前缀，就是原标题
    * 如果有【】前缀，则获取去掉【】前缀后的内容
    */
@@ -8209,6 +8209,8 @@ class toolbarConfig {
   "toggleTitle",
   "toggleCopyMode",
   "toggleGroupMode",
+  "insertAI",
+  "aiFromNote",
   "moveNoteTo",
   "linkNoteTo",
   "noteHighlight",
@@ -8279,6 +8281,8 @@ class toolbarConfig {
     toggleTitle:{enabled:false,target:"",name:"toggleTitle"},
     moveNoteTo:{enabled:false,target:"",name:"moveNoteTo"},
     toggleCopyMode:{enabled:false,target:"",name:"toggleCopyMode"},
+    insertAI:{enabled:false,target:"",name:"insertAI"},
+    aiFromNote:{enabled:false,target:"",name:"aiFromNote"},
     pasteToNote:{enabled:false,target:"",name:"pasteToNote"},
     linkNoteTo:{enabled:false,target:"",name:"linkNoteTo"},
     goWikiNote:{enabled:false,target:"",name:"goWikiNote"},
@@ -8336,8 +8340,6 @@ class toolbarConfig {
     sourceHighlightOfNote:{enabled:false,target:"",name:"sourceHighlightOfNote"},
     paintHighlight:{enabled:false,target:"",name:"paintHighlight"},
     dragDrop:{enabled:false,target:"",name:"dragDrop"},
-    aiFromNote:{enabled:false,target:"",name:"aiFromNote"},
-    insertAI:{enabled:false,target:"",name:"insertAI"},
   }
   static defalutImageScale = {
     "color0":2.4,

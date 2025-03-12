@@ -2748,7 +2748,7 @@ try {
       let imageData = MNUtil.getMediaByHash(hash)
       return imageData
     } catch (error) {
-      toolbarUtils.addErrorLog(error, "replaceBase64ImagesWithR2")
+      MNUtil.showHUD(error)
       return undefined
     }
   }
@@ -2865,7 +2865,14 @@ class MNConnection{
    * @param {UIWebView} webview - The web view into which the URL should be loaded.
    * @param {string} url - The URL to be loaded into the web view.
    */
-  static loadRequest(webview,url){
+  static loadRequest(webview,url,desktop){
+    if (desktop !== undefined) {
+      if (desktop) {
+        webview.customUserAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15'
+      }else{
+        webview.customUserAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148'
+      }
+    }
     webview.loadRequest(NSURLRequest.requestWithURL(NSURL.URLWithString(url)));
   }
   /**
@@ -9495,7 +9502,7 @@ class MNComment {
       let newComments = note.comments.map((c,ind)=>MNComment.new(c,ind,note))
       return newComments
     } catch (error) {
-      toolbarUtils.addErrorLog(error, "from")
+      MNUtil.showHUD(error)
       return undefined
     }
   }

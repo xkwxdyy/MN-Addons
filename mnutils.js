@@ -6085,8 +6085,10 @@ try {
           break;
         default:
           let noteType = this.getNoteTypeObjByClassificationParentNoteTitle()
-          let colorIndex = MNUtil.getNoteColorIndexByZhType(noteType.zh, preprocess)
-          this.note.colorIndex = colorIndex
+          if (noteType) {
+            let colorIndex = MNUtil.getNoteColorIndexByZhType(noteType.zh, preprocess)
+            this.note.colorIndex = colorIndex
+          }
           break;
       }
     }
@@ -7335,7 +7337,11 @@ try {
           return "顶层"
         } else {
           noteType = this.getNoteTypeObjByClassificationParentNoteTitle()
-          return noteType.zh
+          if (noteType) {
+            return noteType.zh
+          } else {
+            return "独立"
+          }
         }
       }
     }
@@ -7352,7 +7358,7 @@ try {
         return false
       } else {
         let parentNote = this.getClassificationParentNote()
-        if (parentNote === undefined && !(/定义|命题|例子|反例|思想方法/.test(this.parentNote.title))) {
+        if (parentNote === undefined && !(/【定义|【命题|【例子|【反例|【思想方法/.test(this.parentNote.title))) {
           return true
         } else {
           let parentNoteTitle = parentNote.noteTitle
@@ -7402,7 +7408,8 @@ try {
     if (parentNote) {
       while (parentNote) {
         if (
-          (parentNote.colorIndex == 0 || parentNote.colorIndex == 1 || parentNote.colorIndex == 4) && parentNote.title
+          // (parentNote.colorIndex == 0 || parentNote.colorIndex == 1 || parentNote.colorIndex == 4) && parentNote.title
+          (parentNote.colorIndex == 0 || parentNote.colorIndex == 1 || parentNote.colorIndex == 4) && (/相关/.test(parentNote.title))
         ) {
           ifParentNoteChosen = true
           break

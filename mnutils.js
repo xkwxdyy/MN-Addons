@@ -7358,17 +7358,19 @@ try {
         return false
       } else {
         let parentNote = this.getClassificationParentNote()
-        if (parentNote === undefined && !(/【定义|【命题|【例子|【反例|【思想方法/.test(this.parentNote.title))) {
-          return true
-        } else {
-          let parentNoteTitle = parentNote.noteTitle
-          let match = parentNoteTitle.match(/“.*”相关(.*)/)
-          // 如果归类卡片的“相关 xx”的 xx 是空的，此时作为 Inbox 专用归类，此时视为下面的知识类卡片为独立的
-          if (match) {
-            return match[1] == ""
+        if (parentNote === undefined) {
+          if (!(/【定义|【命题|【例子|【反例|【思想方法/.test(this.parentNote.title))) {
+            return true 
           } else {
-            // return true
-            return !(/定义|命题|例子|反例|思想方法/.test(this.parentNote.title))
+            let parentNoteTitle = this.parentNote.noteTitle
+            let match = parentNoteTitle.match(/“.*”相关(.*)/)
+            // 如果归类卡片的“相关 xx”的 xx 是空的，此时作为 Inbox 专用归类，此时视为下面的知识类卡片为独立的
+            if (match) {
+              return match[1] == ""
+            } else {
+              // return true
+              return !(/定义|命题|例子|反例|思想方法/.test(this.parentNote.title))
+            }
           }
         }
       }
@@ -7662,6 +7664,9 @@ try {
    *   - 链接在 this 里的 index
    *   - 单向链接还是双向链接
    *   - 如果是双向链接，还要存 this.noteURL 在被链接的卡片里的 index
+   * 
+   * 不足
+   * - this 出发的单向链接无法处理
    */
   mergeInto(targetNote){
     // 合并之前先更新链接
@@ -7671,22 +7676,24 @@ try {
      * 储存 this 里面的链接信息
      */
     let linksInfoArr = []
-    let handledLinksSet = new Set()  // 防止 this 里面有多个相同链接，造成对 linkedNote 的多次相同处理
-    this.comments.forEach((comment, index) => {
-      if (MNUtil.isCommentLink(comment)) {
-        if (this.LinkIfDouble(comment)) {
-          // 双向链接
-          linksInfoArr.push({
-            linkedNoteId: comment.text.toNoteId(),
-            indexInThisNote: index,
-            indexArrInLinkedNote: MNNote.new(comment.text.toNoteId()).getLinkCommentsIndexArr(this.noteId.toNoteURL())
-          })
-        } else {
-          // 单向链接
-          linksInfoArr.push({
-            linkedNoteId: comment.text.toNoteId(),
-            indexInThisNote: index,
-          })
+    let handledLinksSet = new Set()  // 用集合来处理，防止 this 里面有多个相同链接造成对 linkedNote 的多次相同处理
+    let oldComments = this.MNComments
+    oldComments.forEach((comment, index) => {
+      if (comment.type == "linkComment") {
+        switch (this.LinkGetType(comment.text)) {
+          case "Single":
+            linksInfoArr.push({
+              linkNoteId: comment.text.toNoteId(),
+              indexInThisNote: index,
+            })
+            break;
+          case "Double":
+            linksInfoArr.push({
+              linkedNoteId: comment.text.toNoteId(),
+              indexInThisNote: index,
+              indexArrInLinkedNote: MNNote.new(comment.text).getLinkCommentsIndexArr(this.noteId.toNoteURL())
+            })
+            break;
         }
       }
     })
@@ -7712,18 +7719,19 @@ try {
     handledLinksSet.clear()
 
     // 重新链接
+    let targetNoteCommentOriginalLength = targetNote.comments.length
     linksInfoArr.forEach(
       linkInfo => {
         let linkedNote = MNNote.new(linkInfo.linkedNoteId)
         targetNote.appendNoteLink(linkedNote, "To")
-        targetNote.moveComment(targetNote.comments.length-1, linkInfo.indexInThisNote)
+        targetNote.moveComment(targetNote.comments.length-1, targetNoteCommentOriginalLength + linkInfo.indexInThisNote)
         if (!handledLinksSet.has(linkInfo.linkedNoteId)) {
           if (linkInfo.indexArrInLinkedNote !== undefined) {
             // 双向链接
             linkInfo.indexArrInLinkedNote.forEach(
               index => {
                 linkedNote.appendNoteLink(targetNote, "To")
-                linkedNote.moveComment(linkedNote.comments.length-1, index)
+                linkedNote.moveComment(linkedNote.comments.length-1, index + targetNoteCommentOriginalLength)
               }
             )
           }

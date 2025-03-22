@@ -9885,10 +9885,6 @@ static template(action) {
           "menuTitle": "更新卡片归类情况到选中的卡片中",
         },
         {
-          "action": "mergeInParentAndReappendAllLinks",
-          "menuTitle": "合并卡片到父卡片",
-        },
-        {
           "action": "menu",
           "menuTitle": "➡️ 处理旧卡片",
           "menuWidth":250,
@@ -10152,6 +10148,10 @@ static template(action) {
       config.onLongPress = {
         "action": "menu",
         "menuItems": [
+          {
+            "action": "mergeInParentNote",
+            "menuTitle": "合并卡片到父卡片",
+          },
           {
             "action": "multiTemplateMakeNotes",
             "menuTitle": "批量制卡",

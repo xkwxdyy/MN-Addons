@@ -4718,7 +4718,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           }
         })
         break;
-      case "mergeInParentAndReappendAllLinks":
+      case "mergeInParentNote":
         MNUtil.undoGrouping(()=>{
           try {
             focusNote.mergeInto(focusNote.parentNote)

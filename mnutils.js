@@ -7672,74 +7672,32 @@ try {
     // 合并之前先更新链接
     this.renewLinks()
 
-    /**
-     * 储存 this 里面的链接信息
-     */
-    let linksInfoArr = []
-    let handledLinksSet = new Set()  // 用集合来处理，防止 this 里面有多个相同链接造成对 linkedNote 的多次相同处理
     let oldComments = this.MNComments
     oldComments.forEach((comment, index) => {
       if (comment.type == "linkComment") {
-        switch (this.LinkGetType(comment.text)) {
-          case "Single":
-            linksInfoArr.push({
-              linkNoteId: comment.text.toNoteId(),
-              indexInThisNote: index,
-            })
-            break;
-          case "Double":
-            linksInfoArr.push({
-              linkedNoteId: comment.text.toNoteId(),
-              indexInThisNote: index,
-              indexArrInLinkedNote: MNNote.new(comment.text).getLinkCommentsIndexArr(this.noteId.toNoteURL())
-            })
-            break;
+        if (this.LinkGetType(comment.text) == "Double") {
+          let linkedNote = MNNote.new(comment.text.toNoteId())
+          let linkedNoteComments = linkedNote.MNComments
+          let indexArrInLinkedNote = linkedNote.getLinkCommentsIndexArr(this.noteId.toNoteURL())
+          // 把 this 的链接更新为 targetNote 的链接
+          indexArrInLinkedNote.forEach(index => {
+            linkedNoteComments[index].text = targetNote.noteURL
+          })
         }
       }
-    })
-
-    // 去掉 this 里的链接
-    this.removeCommentsByTypes("link")
-
-    // 合并之前先把 linkedNote 里关于 this 的链接先去掉
-    linksInfoArr.forEach(linkInfo => {
-      if (!handledLinksSet.has(linkInfo.linkedNoteId)) {
-        let linkedNote = MNNote.new(linkInfo.linkedNoteId)
-        if (linkInfo.indexArrInLinkedNote !== undefined) { // 双向链接
-          linkedNote.removeCommentsByIndices(linkInfo.indexArrInLinkedNote)
-        }
-      }
-      handledLinksSet.add(linkInfo.linkedNoteId)
     })
 
     // 合并到目标卡片
     targetNote.merge(this)
 
-    // 清空 handledLinksSet
-    handledLinksSet.clear()
-
-    // 重新链接
-    let targetNoteCommentOriginalLength = targetNote.comments.length
-    linksInfoArr.forEach(
-      linkInfo => {
-        let linkedNote = MNNote.new(linkInfo.linkedNoteId)
-        targetNote.appendNoteLink(linkedNote, "To")
-        targetNote.moveComment(targetNote.comments.length-1, targetNoteCommentOriginalLength + linkInfo.indexInThisNote)
-        if (!handledLinksSet.has(linkInfo.linkedNoteId)) {
-          if (linkInfo.indexArrInLinkedNote !== undefined) {
-            // 双向链接
-            linkInfo.indexArrInLinkedNote.forEach(
-              index => {
-                linkedNote.appendNoteLink(targetNote, "To")
-                linkedNote.moveComment(linkedNote.comments.length-1, index + targetNoteCommentOriginalLength)
-              }
-            )
-          }
-        }
-        handledLinksSet.add(linkInfo.linkedNoteId)
-        linkedNote.clearFailedLinks()
+    // 最后更新一下合并后的链接
+    let targetNoteComments = targetNote.MNComments
+    for (let i = 0; i < targetNoteComments.length; i++) {
+      let targetNotecomment = targetNoteComments[i]
+      if (targetNotecomment.type == "linkComment") {
+        targetNotecomment.text = targetNotecomment.text
       }
-    )
+    }
   }
 
 

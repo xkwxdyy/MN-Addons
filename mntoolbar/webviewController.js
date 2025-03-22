@@ -5288,16 +5288,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         pinnedNote.focusInFloatMindMap()
         break;
       case "splitMarkdownTextInFocusNote": 
-        let ast
-        if (focusNote.excerptText) {
-          ast = chatAIUtils.markdown2AST(focusNote.excerptText)
-        } else {
-          ast = chatAIUtils.markdown2AST(focusNote.comments[0].text)
-        }
-        MNUtil.undoGrouping(()=>{
-          chatAIUtils.AST2Mindmap(focusNote, ast)
-          MNUtil.stopHUD()
-        })
+        toolbarUtils.markdown2Mindmap({source:"currentNote"})
         break;
       /* 夏大鱼羊定制 - end */
       case "chatAI":

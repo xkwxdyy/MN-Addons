@@ -9333,6 +9333,7 @@ class MNComment {
     if (this.originalNoteId) {
       let note = MNNote.new(this.originalNoteId)
       switch (this.type) {
+        case "linkComment":
         case "markdownComment":
           this.detail.text = text
           note.removeCommentByIndex(this.index)

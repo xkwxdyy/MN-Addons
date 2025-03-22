@@ -10147,22 +10147,33 @@ static template(action) {
       }
       config.onLongPress = {
         "action": "menu",
+        "menuWidth": 300,
         "menuItems": [
+          "⬇️ 合并",
           {
             "action": "mergeInParentNote",
-            "menuTitle": "合并到父卡片",
+            "menuTitle": "    合并到父卡片",
           },
           {
             "action": "mergIntoParenNoteAndRenewReplaceholder",
-            "menuTitle": "合并到父卡片，替换占位符",
+            "menuTitle": "    合并到父卡片 & 替换占位符",
           },
+          "⬇️ 制卡",
           {
             "action": "multiTemplateMakeNotes",
-            "menuTitle": "批量制卡",
+            "menuTitle": "    批量制卡",
+          },
+          {
+            "action": "TemplateMakeChildNotes",
+            "menuTitle": "    批量进行子卡片制卡"
+          },
+          {
+            "action": "TemplateMakeDescendantNotes",
+            "menuTitle": "    批量进行子孙卡片制卡"
           },
           {
             "action": "menu",
-            "menuTitle": "️️➡️ 文献制卡",
+            "menuTitle": "️️    ➡️ 文献制卡",
             "menuItems": [
               // {
               //   "menuTitle": "🔽 "
@@ -10193,41 +10204,36 @@ static template(action) {
           //   "action": "undoOKRNoteMake",
           //   "menuTitle": "回退任务卡片状态"
           // },
+          "⬇️ 修改标题",
           {
             "action": "changeChildNotesTitles",
-            "menuTitle": "批量修改子卡片标题"
+            "menuTitle": "    批量修改子卡片标题"
           },
           {
             "action": "changeDescendantNotesTitles",
-            "menuTitle": "批量修改子孙卡片标题"
+            "menuTitle": "    批量修改子孙卡片标题"
           },
-          {
-            "action": "TemplateMakeChildNotes",
-            "menuTitle": "批量进行子卡片制卡"
-          },
-          {
-            "action": "TemplateMakeDescendantNotes",
-            "menuTitle": "批量进行子孙卡片制卡"
-          },
+          "⬇️ 清空评论",
           {
             "action": "clearContentKeepExcerptWithTitle",
-            "menuTitle": "✅ 摘录 ✅ 标题",
+            "menuTitle": "    清空评论 + ✅ 摘录 ✅ 标题",
           },
           {
             "action": "clearContentKeepExcerpt",
-            "menuTitle": "✅ 摘录 ❌ 标题",
+            "menuTitle": "    清空评论 + ✅ 摘录 ❌ 标题",
           },
+          "⬇️ 杂项",
           {
             "action": "convertNoteToNonexcerptVersion",
-            "menuTitle": "➡️ 非摘录版本",
+            "menuTitle": "    转化为非摘录版本",
           },
-          {
-            "action": "AddToReview",
-            "menuTitle": "加入复习",
-          },
+          // {
+          //   "action": "AddToReview",
+          //   "menuTitle": "加入复习",
+          // },
           {
             "action": "splitMarkdownTextInFocusNote",
-            "menuTitle": "拆卡",
+            "menuTitle": "    基于 Markdown 拆卡",
           }
         ]
       }

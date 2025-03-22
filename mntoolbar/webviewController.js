@@ -4727,6 +4727,15 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           }
         })
         break;
+      case "mergIntoParenNoteAndRenewReplaceholder":
+        MNUtil.undoGrouping(()=>{
+          try {
+            focusNote.mergIntoAndRenewReplaceholder(focusNote.parentNote)
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
       case "clearContentKeepExcerptAndHandwritingAndImage":
         try {
           MNUtil.undoGrouping(()=>{

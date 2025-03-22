@@ -10150,7 +10150,11 @@ static template(action) {
         "menuItems": [
           {
             "action": "mergeInParentNote",
-            "menuTitle": "合并卡片到父卡片",
+            "menuTitle": "合并到父卡片",
+          },
+          {
+            "action": "mergIntoParenNoteAndRenewReplaceholder",
+            "menuTitle": "合并到父卡片，替换占位符",
           },
           {
             "action": "multiTemplateMakeNotes",

@@ -5270,6 +5270,18 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         pinnedNote = MNNote.new("D7DEDE97-1B87-4BB6-B607-4FB987F230E4") // Hᵖ(T)
         pinnedNote.focusInFloatMindMap()
         break;
+      case "splitMarkdownTextInFocusNote": 
+        let ast
+        if (focusNote.excerptText) {
+          ast = chatAIUtils.markdown2AST(focusNote.excerptText)
+        } else {
+          ast = chatAIUtils.markdown2AST(focusNote.comments[0].text)
+        }
+        MNUtil.undoGrouping(()=>{
+          chatAIUtils.AST2Mindmap(focusNote, ast)
+          MNUtil.stopHUD()
+        })
+        break;
       /* 夏大鱼羊定制 - end */
       case "chatAI":
         toolbarUtils.chatAI(des,button)

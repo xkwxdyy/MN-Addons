@@ -9820,6 +9820,10 @@ static template(action) {
             "action": "AddToReview",
             "menuTitle": "加入复习",
           },
+          {
+            "action": "splitMarkdownTextInFocusNote",
+            "menuTitle": "拆卡",
+          }
         ]
       }
       break;

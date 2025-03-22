@@ -7307,12 +7307,16 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * @param {MNNote} note 
    * @param {*} des 
    */
-  static async focus(note,des){
-    let targetNote = note
+  static async focus(des){
+    let targetNote = des.noteURL? MNNote.new(des.noteURL):MNNote.getFocusNote()
+    if (!targetNote) {
+      MNUtil.showHUD("No targetNote!")
+      return
+    }
     if (des.source) {
       switch (des.source) {
         case "parentNote":
-          targetNote = note.parentNote
+          targetNote = targetNote.parentNote
           if (!targetNote) {
             MNUtil.showHUD("No parentNote!")
             return
@@ -7332,11 +7336,24 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
           await targetNote.focusInDocument()
           break;
         case "mindmap":
-          await targetNote.focusInMindMap()
+          if (targetNote.notebookId !== MNUtil.currentNotebookId) {
+            if (des.forceToFocus) {
+              MNUtil.openURL(targetNote.noteURL)
+            }else{
+              await targetNote.focusInFloatMindMap()
+            }
+          }else{
+            await targetNote.focusInMindMap()
+          }
           break;
         case "both":
           await targetNote.focusInDocument()
-          await targetNote.focusInMindMap()
+          if (targetNote.notebookId !== MNUtil.currentNotebookId) {
+            await targetNote.focusInFloatMindMap()
+          }else{
+            await targetNote.focusInMindMap()
+          }
+          // await targetNote.focusInMindMap()
           break;
         case "floatMindmap":
           await targetNote.focusInFloatMindMap()
@@ -7489,7 +7506,49 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
   static isDescendantOfCurrentWindow(view){
     return view.isDescendantOfView(MNUtil.currentWindow)
   }
-
+  static toggleSidebar(des){
+    if ("target" in des) {
+      switch (des.target) {
+        case "chatMode":
+          if (typeof chatAIUtils === "undefined") {
+            MNUtil.showHUD("Install MN ChatAI First")
+            return
+          }
+          if (chatAIUtils.isMN3()) {
+            MNUtil.showHUD("Only available in MN4")
+            return
+          }
+          if (!chatAIUtils.sideOutputController) {
+            try {
+              chatAIUtils.sideOutputController = sideOutputController.new();
+              MNUtil.toggleExtensionPanel()
+              MNExtensionPanel.show()
+              MNExtensionPanel.addSubview("chatAISideOutputView", chatAIUtils.sideOutputController.view)
+              let panelView = MNExtensionPanel.view
+              chatAIUtils.sideOutputController.view.hidden = false
+              chatAIUtils.sideOutputController.view.frame = {x:0,y:0,width:panelView.frame.width,height:panelView.frame.height}
+              chatAIUtils.sideOutputController.currentFrame = {x:0,y:0,width:panelView.frame.width,height:panelView.frame.height}
+              // MNUtil.toggleExtensionPanel()
+            } catch (error) {
+              toolbarUtils.addErrorLog(error, "openSideBar")
+            }
+            chatAIUtils.sideOutputController.openChatView(false)
+          }else{
+            if (chatAIUtils.sideOutputController.view.hidden) {
+              MNExtensionPanel.show("chatAISideOutputView")
+              chatAIUtils.sideOutputController.openChatView(false)
+            }else{
+              MNUtil.toggleExtensionPanel()
+            }
+          }
+          break;
+        default:
+          break;
+      }
+    }else{
+      MNUtil.toggleExtensionPanel()
+    }
+  }
   static async setColor(des){
   try {
     let fillIndex = -1
@@ -7985,6 +8044,9 @@ static getButtonFrame(button){
       "🔨 toggle textFirst",
       "🔨 chatAI with menu",
       "🔨 search with menu",
+      "🔨 split note to mindmap",
+      "🔨 import mindmap from markdown file",
+      "🔨 import mindmap from clipboard",
       "🔨 OCR with menu",
       "🔨 OCR to clipboard",
       "🔨 OCR as chat mode reference",
@@ -7996,6 +8058,7 @@ static getButtonFrame(button){
       "🔨 move note to main mindmap",
       "🔨 menu with actions",
       "🔨 focus in float window",
+      "🔨 focus note",
       "🔨 user confirm",
       "🔨 user select",
       "🔨 show message",
@@ -8461,6 +8524,12 @@ class toolbarConfig {
     MNUtil.postNotification("NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI", {})
     // this.readCloudConfig(false)
   }
+  static get iCloudSync(){//同时考虑订阅情况
+    if (toolbarUtils.checkSubscribe(false,false,true)) {
+      return this.syncConfig.iCloudSync
+    }
+    return false
+  }
   static getPopupConfig(key){
     if (this.popupConfig[key] !== undefined) {
       return this.popupConfig[key]
@@ -8549,9 +8618,6 @@ class toolbarConfig {
   }
   static async readCloudConfig(msg = true,alert = false,force = false){
     try {
-    if (!toolbarUtils.checkSubscribe(false,msg,true)) {
-      return false
-    }
     if (force) {
       this.checkCloudStore(false)
       let cloudConfig = this.cloudStore.objectForKey("MNToolbar_totalConfig")
@@ -8563,7 +8629,7 @@ class toolbarConfig {
       }
       return true
     }
-    if(!this.syncConfig.iCloudSync){
+    if(!this.iCloudSync){
       return false
     }
       this.checkCloudStore(false)
@@ -8644,10 +8710,7 @@ class toolbarConfig {
   }
   static writeCloudConfig(msg = true,force = false){
   try {
-    if (!toolbarUtils.checkSubscribe(false,msg,true)) {
-      return false
-    }
-    if (force) {
+    if (force) {//force下不检查订阅(由更上层完成)
       this.checkCloudStore()
       this.syncConfig.lastSyncTime = Date.now()
       this.syncConfig.lastModifyTime = Date.now()
@@ -8663,7 +8726,7 @@ class toolbarConfig {
       this.cloudStore.setObjectForKey(config,"MNToolbar_totalConfig")
       return true
     }
-    if(!this.syncConfig.iCloudSync){
+    if(!this.iCloudSync){
       return false
     }
     let iCloudSync = this.syncConfig.iCloudSync
@@ -9965,7 +10028,7 @@ static save(key = undefined,value = undefined,upload = true) {
         break;
     }
     this.syncConfig.lastModifyTime = Date.now()
-    if (upload) {
+    if (upload && this.iCloudSync) {
       this.writeCloudConfig(false)
     }
   }
@@ -10041,7 +10104,7 @@ static getDescriptionByName(actionName){
     if (actionName.includes("color")) {
       return true
     }
-    let whiteNamelist = ["timer","search","copy","chatglm","ocr","edit","searchInEudic","pasteAsTitle"]
+    let whiteNamelist = ["timer","search","copy","chatglm","ocr","edit","searchInEudic","pasteAsTitle","sidebar"]
     if (whiteNamelist.includes(actionName)) {
       return true
     }

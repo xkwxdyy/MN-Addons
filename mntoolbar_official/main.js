@@ -184,6 +184,7 @@ JSB.newAddon = function (mainPath) {
         }
         // MNUtil.showHUD("message")
         if (testController.view.hidden) {
+          MNUtil.studyView.bringSubviewToFront(testController.view)
           testController.refresh(lastFrame)
           testController.view.layer.opacity = 0
           testController.view.hidden = false
@@ -195,6 +196,7 @@ JSB.newAddon = function (mainPath) {
           testController.setToolbarLayout()
         }else{
           self.onAnimate = true
+          MNUtil.studyView.bringSubviewToFront(testController.view)
           MNUtil.animate(()=>{
             testController.refresh(lastFrame)
             testController.view.hidden = false
@@ -364,6 +366,7 @@ JSB.newAddon = function (mainPath) {
             testController.notHide = true
           }
           self.onAnimate = true
+          MNUtil.studyView.bringSubviewToFront(testController.view)
           testController.refresh(lastFrame)
           testController.view.layer.opacity = 0
           testController.view.hidden = false
@@ -377,6 +380,7 @@ JSB.newAddon = function (mainPath) {
           testController.setToolbarLayout()
         }else{
           // MNUtil.showHUD("show2")
+          MNUtil.studyView.bringSubviewToFront(testController.view)
           MNUtil.animate(()=>{
             testController.refresh(lastFrame)
             testController.view.hidden = false
@@ -520,10 +524,7 @@ JSB.newAddon = function (mainPath) {
             self.addonController.setToolbarButton()
           }
           if (self.settingController) {
-              let iCloudSync = toolbarUtils.checkSubscribe(false,false,true)
-              if (iCloudSync) {
-                iCloudSync = toolbarConfig.syncConfig?.iCloudSync
-              }
+              let iCloudSync = toolbarConfig.iCloudSync
               MNButton.setColor(self.settingController.iCloudButton, iCloudSync?"#457bd3":"#9bb2d6",0.8)
               MNButton.setTitle(self.settingController.iCloudButton, "iCloud Sync "+(iCloudSync? "✅":"❌"),undefined, true)
           }
@@ -645,11 +646,8 @@ JSB.newAddon = function (mainPath) {
         if (self.window !== MNUtil.currentWindow) {
           return
         }
-        if(!toolbarUtils.checkSubscribe(false,false,true)) {
-          return false
-        }
-        if(!toolbarConfig.syncConfig.iCloudSync){
-          return false
+        if (!toolbarConfig.iCloudSync) {
+          return
         }
         self.ensureView()
         self.checkUpdate()
@@ -692,6 +690,7 @@ try {
         }
         let textView = param.object
         toolbarUtils.textView = textView
+        // MNUtil.showHUD("message")
         if (!toolbarConfig.showEditorOnNoteEdit) {
           return
         }
@@ -846,6 +845,54 @@ try {
       try {
         if (typeof MNUtil === 'undefined') return
         let self = getMNToolbarClass()
+
+//         let markdown = `# 关键词：
+// **详细分点**
+
+// # 研究对象/问题：
+
+// 1. 东亚西风急流（EAWJ）强度变化对长江流域夏季降水年际变异的影响。
+// 2. 早夏（6月中旬至7月中旬）与仲夏（7月中旬至8月中旬）EAWJ动力机制的差异。
+// 3. 中层暖平流与垂直运动在降水过程中的作用。
+
+// # 研究方法/理论/视角：
+
+// 1. 使用ERA-Interim再分析数据（1979-2009年）和中国756个气象站降水观测数据。
+// 2. 通过回归分析、相关分析和动力诊断，探讨EAWJ分支（早夏的EAWJEB和EAWJWB）与降水的关系。
+// 3. 基于温度平流方程和垂直运动方程，量化暖平流对垂直速度的驱动作用。
+// 4. 引入太平洋-日本（PJ）型遥相关理论解释仲夏EAWJ与降水的关联。
+
+// # 数据来源：
+
+// 1. **ERA-Interim**：6小时水平风场、垂直速度、温度数据（水平分辨率2.5°×2.5°）。
+// 2. **中国气象局**：756个气象站日降水数据（1951-2009年）。
+// 3. **NOAA地球系统研究实验室**：日平均射出长波辐射（OLR）数据。
+
+// # 重要引用：
+
+// 1. Sampe和Xie（2010）：指出中层暖平流是长江流域降水的主要动力驱动因子。
+// 2. Kosaka等（2011）：提出PJ型遥相关对东亚夏季降水的影响机制。
+// 3. Lu（2004）：发现EAWJ南移通过增强对流活动影响降水。
+// 4. Nitta（1987）：首次提出PJ型遥相关的概念及其与西太平洋对流的关系。
+
+// # 结论：
+
+// 1. **早夏**：
+//    - EAWJ东部分支（EAWJEB）强度增加会通过增强中层暖平流，加速绝热上升运动，触发对流加热反馈，显著增加长江流域降水。
+//    - EAWJ西部分支（EAWJWB）对降水无显著影响。
+// 2. **仲夏**：
+//    - EAWJ整体增强通过激发正位相PJ型，导致长江流域中层西风减弱和经向温度梯度减小，削弱暖平流，抑制垂直运动，减少降水。
+// 3. **机制差异**：早夏以局地平流-对流反馈为主，仲夏依赖大尺度PJ型遥相关。
+// 4. **预测意义**：EAWJ强度变化可作为长江流域旱涝异常的前兆信号。
+// `
+// let res = toolbarUtils.markdown2AST(markdown)
+// // let res = marked.lexer(markdown)
+// MNUtil.copy(res)
+// let focusNote = MNNote.getFocusNote()
+// MNUtil.undoGrouping(()=>{
+//   toolbarUtils.AST2Mindmap(focusNote,res)
+// })
+// return
         if (!self.addonBar) {
           self.addonBar = button.superview.superview
           self.addonController.addonBar = self.addonBar

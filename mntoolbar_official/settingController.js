@@ -633,16 +633,22 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       // toolbarUtils.ocr()
       return
     }
-    if (selected === "execute") {
-      // self.runJavaScript(`document.getElementById('editor').innerHTML = document.body.innerText`)
-      let code = toolbarConfig.getExecuteCode()
-      toolbarSandbox.execute(code)
+    if (selected === "sidebar") {
+      let des = toolbarConfig.getDescriptionByName("sidebar")
+      toolbarUtils.toggleSidebar(des)
       return
     }
+    // if (selected === "execute") {
+    //   // self.runJavaScript(`document.getElementById('editor').innerHTML = document.body.innerText`)
+    //   let code = toolbarConfig.getExecuteCode()
+    //   toolbarSandbox.execute(code)
+    //   return
+    // }
     if (selected === "chatglm") {
       toolbarUtils.chatAI()
       return
     }
+
     MNUtil.showHUD("Not supported")
   } catch (error) {
     toolbarUtils.addErrorLog(error, "configRunTapped", info)
@@ -808,7 +814,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     }
   },
   toggleICloudSync:async function () {
-    if (!toolbarUtils.checkSubscribe(false,true,true)) {
+    if (!toolbarUtils.checkSubscribe(false,true,true)) {//不可以使用免费额度,且未订阅下会提醒
       return
     }
     let iCloudSync = (self.iCloudButton.currentTitle === "iCloud Sync ✅")
@@ -903,7 +909,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   },
   importConfig:async function(param){
     self.checkPopoverController()
-    if (!toolbarUtils.checkSubscribe(true)) {
+    if (!toolbarUtils.checkSubscribe(true)) {//检查订阅,可以使用免费额度
       return
     }
     // MNUtil.showHUD(param)
@@ -1299,10 +1305,7 @@ try {
   MNButton.setColor(this.hexButton, toolbarConfig.checkLogoStatus("MNOCR")?"#457bd3":"#9bb2d6",0.8)
 
   this.createButton("iCloudButton","toggleICloudSync:","advanceView")
-  let iCloudSync = toolbarUtils.checkSubscribe(false,false,true)
-  if (iCloudSync) {
-    iCloudSync = toolbarConfig.syncConfig?.iCloudSync
-  }
+  let iCloudSync = toolbarConfig.iCloudSync
   
   MNButton.setColor(this.iCloudButton, iCloudSync?"#457bd3":"#9bb2d6",0.8)
   MNButton.setTitle(this.iCloudButton, "iCloud Sync "+(iCloudSync? "✅":"❌"),undefined, true)
@@ -1457,34 +1460,37 @@ settingController.prototype.setButtonText = function (names=toolbarConfig.getAll
  * @this {settingController}
  */
 settingController.prototype.setTextview = function (name = this.selectedItem) {
+  try {
       // let entries           =  NSUserDefaults.standardUserDefaults().objectForKey('MNBrowser_entries');
       let actions = toolbarConfig.actions
       let defaultActions = toolbarConfig.getActions()
       let action = (name in actions)?actions[name]:defaultActions[name]
       let text  = action.name
-      let description = action.description
       this.titleInput.text= text
-      if (MNUtil.isValidJSON(description)) {
-        if (this.preAction === "execute") {
-          this.preAction = name
-          this.loadWebviewContent()
-          MNUtil.delay(0.5).then(()=>{
-            this.setWebviewContent(description)
-          })
-        }else{
-          this.preAction = name
-          this.setWebviewContent(description)
+      if (MNUtil.isValidJSON(action.description)) {
+        let des = JSON.parse(action.description)
+        if (name === "sidebar") {
+          des.action = "toggleSidebar"
         }
+        // MNUtil.showHUD(typeof des)
+        // MNUtil.copy(des)
+        this.setWebviewContent(des)
       }else{
-        actions = toolbarConfig.getActions()
-        description = action.description
-        if (name === "execute") {
-          this.setWebviewContent("{}")
-        }else{
-          this.preAction = name
-          this.setWebviewContent(description)
-        }
+        MNUtil.showHUD("Invalid description")
       }
+      // let description = action.description
+      // if (MNUtil.isValidJSON(description)) {
+      //   this.preAction = name
+      //   this.setWebviewContent(description)
+      // }else{
+      //   actions = toolbarConfig.getActions()
+      //   description = action.description
+      //   this.preAction = name
+      //   this.setWebviewContent(description)
+      // }
+  } catch (error) {
+    toolbarUtils.addErrorLog(error, "setTextview")
+  }
 }
 /**
  * @this {settingController}
@@ -1554,10 +1560,7 @@ settingController.prototype.refreshView = function (name) {
         this.hexInput.text = toolbarConfig.buttonConfig.color
         MNButton.setColor(this.hexButton, "#457bd3",0.8)
 
-        let iCloudSync = toolbarUtils.checkSubscribe(false,false,true)
-        if (iCloudSync) {
-          iCloudSync = toolbarConfig.syncConfig?.iCloudSync
-        }
+        let iCloudSync = toolbarConfig.iCloudSync
 
         MNButton.setColor(this.iCloudButton, iCloudSync?"#457bd3":"#9bb2d6",0.8)
         MNButton.setTitle(this.iCloudButton, "iCloud Sync "+(iCloudSync? "✅":"❌"),undefined, true)
@@ -1813,6 +1816,10 @@ settingController.prototype.updateWebviewContent = function (content) {
  * @this {settingController}
  */
 settingController.prototype.setWebviewContent = function (content) {
+  if (typeof content === "object") {
+    this.runJavaScript(`setContent('${encodeURIComponent(JSON.stringify(content))}')`)
+    return
+  }
   if (!MNUtil.isValidJSON(content)) {
     content = "{}"
   }

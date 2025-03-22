@@ -662,12 +662,13 @@ try {
     }
     self.hideAfterDelay()
   },
-  sidebar: function (button) {
-    MNUtil.toggleExtensionPanel()
+  sidebar: async function (button) {
     if (button.menu) {
       button.menu.dismissAnimated(true)
     }
-    // MNUtil.showHUD("sidebar")
+    let des = toolbarConfig.getDescriptionByName("sidebar")
+    des.action = "toggleSidebar"
+    toolbarUtils.toggleSidebar(des)
   },
   /**
    * 
@@ -1356,6 +1357,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         toolbarUtils.paste(des)
         await MNUtil.delay(0.1)
         break;
+      case "markdown2Mindmap":
+        toolbarUtils.markdown2Mindmap(des)
+        break;
       case "webSearch":
         await toolbarUtils.webSearch(des)
         break;
@@ -1415,9 +1419,21 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         success = toolbarUtils.insertSnippet(des)
         break;
       case "importDoc":
-        let docPath = await MNUtil.importFile(["com.adobe.pdf"])
-        let docMd5 = MNUtil.importDocument(docPath)
-        MNUtil.openDoc(docMd5)
+        let docPath = await MNUtil.importFile(["com.adobe.pdf","public.text"])
+        if (docPath.endsWith(".pdf")) {
+          let docMd5 = MNUtil.importDocument(docPath)
+          MNUtil.openDoc(docMd5)
+        }else{
+          let fileName = MNUtil.getFileName(docPath).split(".")[0]
+          let content = MNUtil.readText(docPath)
+          if (focusNote) {
+            let child = focusNote.createChildNote({title:fileName,excerptText:content,excerptTextMarkdown:true})
+            await child.focusInMindMap(0.5)
+          }else{
+            let newNote = toolbarUtils.newNoteInCurrentChildMap({title:fileName,excerptText:content,excerptTextMarkdown:true})
+            await newNote.focusInMindMap(0.5)
+          }
+        }
         break;
       case "noteHighlight":
         let newNote = await toolbarUtils.noteHighlight(des)
@@ -1678,6 +1694,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         })
         await MNUtil.delay(0.1)
         break
+      case "toggleSidebar":
+        toolbarUtils.toggleSidebar(des)
+        break;
       case "replace":
         toolbarUtils.replaceAction(des)
         break;
@@ -1794,7 +1813,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         // present(imagePickerController, animated: true, completion: nil)
         break;
       case "focus":
-        await toolbarUtils.focus(focusNote, des)
+        await toolbarUtils.focus(des)
         break 
       case "showMessage":
         toolbarUtils.showMessage(des)

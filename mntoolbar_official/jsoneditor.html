@@ -25,196 +25,32 @@ body {
 <body>
   <div id="jsoneditor"></div>
   <script>
-    // create the editor
-    let actionNames = ['addChildNote','addBrotherNote','addComment','addImageComment','addTags','addMarkdownLink','crash','clearContent','cloneAndMerge','cloneAsChildNote','confirm','chatAI','copy','command','export','focus','insertSnippet','importDoc','link','moveNote','mergeText','moveComment','menu','noteHighlight','openURL','openWebURL','ocr','paste','redo','replace','removeComment','removeTags','search','searchInDict','setContent','setColor','setTimer','showInFloatWindow','switchTitleOrExcerpt','showMessage','setButtonImage','shortcut','triggerButton','toggleView','toggleTextFirst','toggleMarkdown','undo','userSelect','webSearch']
-    let commandNames = ['GoNewFeatures','GoUserGuide','GoManual','InAppPurchase','DBVaults','ShareLicenses','SharePackage','GoiCloud','ExportPKG','ExportVault','ExportMapPDF','ExportDocPDF','ExportOmni','ExportWord','ExportMind','ExportAnki','BackupDB','ClearTemp','OpenTrash','OpenExtensions','GoSettings','EditUndo','EditRedo','EditCut','CommonCopy','EditPaste','EditSelAll','EditMarkdown','ToggleDocument','ToggleMindMap','ToggleCards','ToggleReview','ToggleResearch','ToggleMoreSettings','ToggleSidebar','FullTextSearch','DraftList','ManageDocs','ToggleFullDoc','ToggleBookLeft','ToggleBookBottom','ToggleTabsBar','ToggleAddFile','TabNextFile','TabPrevFile','ToggleSplit','BindSplit','EmphasisCloze','ToggleTextLink','SyncMindMapToBook','SyncBookToMindMap','SyncWindowPos','SyncDeletion','SetRefCopyMode','SetCloneCopyMode','UIStatusURL','BookTOC','BookPageList','BookMarkList','BookSketchList','BookCardList','EditDocLayers','ViewDocCardGroup','BookSearch','BookPageFlip','BookPageScroll','ExtendSplit','ExtendMargin','ExtendPopup','PdfCrop','BookPageNumber','GoBack','GoForward','BookMarkAdd','BookMarkRemove','EditPDFPages','AddToTOC','SplitBook','InsertBlank','Translate','FoldHighlight','SourceHighlight','EditTextBox','EditImageBox','ExcerptToolSettings','ExcerptToolSelect','ExcerptToolCustom0','ExcerptToolCustom1','ExcerptToolCustom2','ExcerptToolCustom3','HighlightShortcut1','HighlightShortcut2','HighlightShortcut3','HighlightShortcut4','ExcerptToolSketch','NotebookOutline','ViewMapCardGroup','EditMultiSel','FocusNote','FocusParent','NotebookOutlineEdit','EditOutlineIncLevel','EditOutlineDecLevel','SnippetMode','NewSiblingNote','NewChildNote','NewParentNote','ToggleExpand','EditGroupNotes','EditLinkNotes','EditMergeNotes','SelBranchStyle0','SelBranchStyle1','SelBranchStyle2','SelBranchStyle3','SelBranchStyle4','SelBranchStyle60','SelBranchStyle61','SelBranchStyle64','SelBranchStyle7','SelBranchStyle100','GlobalBranchStyle','ZoomToFit','ViewExpandAll','ViewCollapseAll','ViewExpandLevel0','ViewExpandLevel1','ViewExpandLevel2','ViewExpandLevel3','ViewExpandLevel4','ViewExpandLevel5','ViewExpandLevel6','ViewExpandLevel7','ViewExpandRows','ViewCollapseRows','EditArrangeNotes','MindmapSnippetMode','SelectBranch','ShowSketch','HideSketch','EditCopy','EditReference','EditCopyLink','EditDeleteNote','EditColorNoteIndex0','EditColorNoteIndex1','EditColorNoteIndex2','EditColorNoteIndex3','EditColorNoteIndex4','EditColorNoteIndex5','EditColorNoteIndex6','EditColorNoteIndex7','EditColorNoteIndex8','EditColorNoteIndex9','EditColorNoteIndex10','EditColorNoteIndex11','EditColorNoteIndex12','EditColorNoteIndex13','EditColorNoteIndex14','EditColorNoteIndex15','EditTagNote','EditAddTitle','EditAddText','EditAppendComment','ContinueExcerpt','EditTextMode','EditOcclusion','EditUnmergeNote','TextToTitle','ExpandExtend','CollapseExtend','SendToMap','RemoveFromMap','AddToReview','ClearFormat1','ClearFormat2','FlashcardSpeech','SetTitleHighlight','SetCommentHighlight','SetAsEmphasis','MergeTo','FlashcardsPlay','FlashcardsStop','FlashcardFlip','FlashcardLocal','FlashcardAgain','FlashcardHard','FlashcardGood','FlashcardEasy','FlashcardStarred']
-    const container = document.getElementById("jsoneditor")
-    const actionProperties = {
+  let actionNames = ['addChildNote','addBrotherNote','addComment','addImageComment','addTags','addMarkdownLink','crash','clearContent','cloneAndMerge','cloneAsChildNote','confirm','chatAI','copy','command','export','focus','insertSnippet','importDoc','link','markdown2Mindmap','moveNote','mergeText','moveComment','menu','noteHighlight','openURL','openWebURL','ocr','paste','redo','replace','removeComment','removeTags','search','searchInDict','setContent','setColor','setTimer','showInFloatWindow','switchTitleOrExcerpt','showMessage','setButtonImage','shortcut','triggerButton','toggleView','toggleTextFirst','toggleMarkdown','toggleSidebar','undo','userSelect','webSearch']
+  function generalActionProperties(params) {
+    return {
       "action": {
         "title": "Action",
         "type": "string",
         "enum": actionNames,
-      },
-      "timerMode": {
-        "title": "timerMode",
-        "type": "string",
-        "enum": ["clock","pauseOrResume","countUp","countdown"],
-      },
-      "annotation": {
-        "title": "annotation",
-        "type": "string"
-      },
-      "question": {
-        "title": "question",
-        "type": "string"
-      },
-      "minutes":{
-        "title": "minutes",
-        "type": "number",
-        "enum": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60],
-      },
-      "mergeToPreviousNote":{
-        type:"boolean",
-        default:false
-      },
-      "ocr":{
-        type:"boolean",
-        default:false
-      },
-      "commandDelay":{
-        "title": "delay",
-        "type": "number",
-        "enum": [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2,2.3,2.4,2.5,2.6,2.7,2.8,2.9,3.0],
       },
       "delay":{
         "title": "delay",
         "type": "number",
         "enum": [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2,2.3,2.4,2.5,2.6,2.7,2.8,2.9,3.0],
       },
-      "tag": {
-        "title": "tag",
-        "type": "string"
-      },
-      "tags": {
-        "title": "tags",
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
-      },
-      "selectItems": {
-        "title": "selectItems",
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
-      },
-      "targets": {
-        "title": "Targets",
-        "type": "array",
-        "items": {
-          "type": "string",
-          "enum": ['addonBar','mindmapToolbar'],
-        }
-      },
       "menuWidth": {
         "title": "menuWidth",
         "type": "integer",
         "enum": [100,150,200,250,300],
-      },
-      "menuTitle": {
-        "title": "menuTitle",
-        "type": "string",
-      },
-      "selectTitle": {
-        "title": "selectTitle",
-        "type": "string",
-      },
-      "linkType": {
-        "title": "linkType",
-        "type": "string",
-        "enum": ['Both','To','From'],
       },
       "range": {
         "title": "range",
         "type": "string",
         "enum": ['currentNote','currentNotes','childNotes','descendants'],
       },
-      "target": {
-        "title": "target",
-        "type": "string",
-        "enum": ['addonBar','appendTitle','appendExcerpt','auto','both','childNote','comment','comments','clipboard','currentNote','currentChildMap','currentPrompt','currentNoteInMindMap','clipboardText','chatModeReference','doc','default','editor','eudic','excerpt','excerptText','excerptOCR','file','floatMindmap','MdxDictCollins','MdxDictOxford','menu','mindmap','mainMindMap','mindmapToolbar','newComment','notesText','noteId','noteURL','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown','noteInClipboard','openFloat','parentNote','selectionText','selectionImage','title'],
-      },
-      "fillPattern": {
-        "title": "fillPattern",
-        "type": "integer",
-        "enum": [-1,0,1,2],
-      },
-      "type": {
-        "title": "type",
-        "type": "string",
-        "enum":['TextNote','HtmlNote','PaintNote','LinkNote','tagComment','linkComment','markdownComment','textComment','HtmlComment','blankTextComment','blankImageComment','mergedImageCommentWithDrawing','mergedImageComment','mergedTextComment','imageCommentWithDrawing','imageComment','drawingComment'],
-      },
-      "types": {
-        "title": "types",
-        "type": "array",
-        "items": {
-          "type": "string",
-          "enum":['TextNote','HtmlNote','PaintNote','LinkNote','tagComment','linkComment','markdownComment','textComment','HtmlComment','blankTextComment','blankImageComment','mergedImageCommentWithDrawing','mergedImageComment','mergedTextComment','imageCommentWithDrawing','imageComment','drawingComment']
-        }
-      },
-      "find":{
-        "title": "find",
-        "type": "object",
-        "properties": {
-          "include": {
-            "title": "include",
-            "type": "string",
-          },
-          "exclude": {
-            "title": "exclude",
-            "type": "string",
-          },
-          "reg": {
-            "title": "reg",
-            "type": "string",
-          },
-          "type": {
-            "title": "type",
-            "type": "string",
-            "enum":['TextNote','HtmlNote','PaintNote','LinkNote','tagComment','linkComment','markdownComment','textComment','HtmlComment','blankTextComment','blankImageComment','mergedImageCommentWithDrawing','mergedImageComment','mergedTextComment','imageCommentWithDrawing','imageComment','drawingComment']
-          },
-          "types": {
-            "title": "types",
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum":['TextNote','HtmlNote','PaintNote','LinkNote','tagComment','linkComment','markdownComment','textComment','HtmlComment','blankTextComment','blankImageComment','mergedImageCommentWithDrawing','mergedImageComment','mergedTextComment','imageCommentWithDrawing','imageComment','drawingComment']
-            }
-          },
-        }
-      },
-      "command": {
-        "title": "command",
-        "type": "string",
-        "enum": commandNames,
-      },
-      "color": {
-        "title": "linkType",
-        "enum": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,'parent','current'],
-      },
-      "trim": {
-        "type": "boolean",
-        "default": false
-      },
-      ocrSource:{
-        "title": "ocrSource",
-        "type": "string",
-        "enum":["SimpleTex","abab6.5s-chat","MiniMax-Text-01","glm-4v-plus","glm-4v-flash","claude-3-5-sonnet-20241022","gemini-2.0-flash-exp","GPT-4o","GPT-4o-mini","Moonshot-v1"]
-      },
       "hideMessage": {
         "type": "boolean",
         "default": false
-      },
-      "markdown": {
-        "type": "boolean",
-        "default": false
-      },
-      "autoClose": {
-        "type": "boolean",
-        "default": false
-      },
-      "asTitle": {
-        "type": "boolean",
-        "default": false
-      },
-      "mainMindMap": {
-        "type": "boolean",
-        "default": false
-      },
-      "compression": {
-        "type": "boolean",
-        "default": true
       },
       "onFinish": {
         "$ref": "action"
@@ -249,29 +85,112 @@ body {
           }
           ]
         }
-      },
-      "selectItems": {   
-        "type": "array",
-        "items": {
-          "$ref": "selectAction"
-        }
-      },
-      "name":{
-        type:"string",
-      },
-      "steps": {
-        "type": "array",
-      },
-      "commands": {
-        "type": "array",
-        "items": {
-          "enum": commandNames,
-        }
-      },
-      "content": {
-        "type":"string"
       }
     }
+  }
+  function genSchema(properties,title="Action",description="") {
+    return {
+      "title": title,
+      "description": description,
+      "type": "object",
+      "properties": properties
+    }
+  }
+  function stringEnum(enums) {
+    return {
+      "title": "string",
+      "type": "string",
+      "enum": enums,
+    }
+  }
+  function numberEnum(enums) {
+    return {
+      "title": "number",
+      "type": "number",
+      "enum": enums,
+    }
+  }
+  function stringType() {
+    return {
+      "title": "string",
+      "type": "string",
+    }
+  }
+  function booleanType(defaultValue = false) {
+    return {
+      "title": "boolean",
+      "type": "boolean",
+      "default": defaultValue
+    }
+  }
+  function arrayType(type) {
+    if (type === undefined) {
+      return {
+        "title": "array",
+        "type": "array"
+      }
+    }
+    return {
+      "title": "array",
+      "type": "array",
+      "items": type
+    }
+  }
+  function objectType(properties) {
+    return {
+      "title": "object",
+      "type": "object",
+      "properties": properties
+    }
+  }
+  function commentType() {
+    return stringEnum(['TextNote','HtmlNote','PaintNote','LinkNote','tagComment','linkComment','markdownComment','textComment','HtmlComment','blankTextComment','blankImageComment','mergedImageCommentWithDrawing','mergedImageComment','mergedTextComment','imageCommentWithDrawing','imageComment','drawingComment'])
+  }
+    // create the editor
+    let commandNames = ['GoNewFeatures','GoUserGuide','GoManual','InAppPurchase','DBVaults','ShareLicenses','SharePackage','GoiCloud','ExportPKG','ExportVault','ExportMapPDF','ExportDocPDF','ExportOmni','ExportWord','ExportMind','ExportAnki','BackupDB','ClearTemp','OpenTrash','OpenExtensions','GoSettings','EditUndo','EditRedo','EditCut','CommonCopy','EditPaste','EditSelAll','EditMarkdown','ToggleDocument','ToggleMindMap','ToggleCards','ToggleReview','ToggleResearch','ToggleMoreSettings','ToggleSidebar','FullTextSearch','DraftList','ManageDocs','ToggleFullDoc','ToggleBookLeft','ToggleBookBottom','ToggleTabsBar','ToggleAddFile','TabNextFile','TabPrevFile','ToggleSplit','BindSplit','EmphasisCloze','ToggleTextLink','SyncMindMapToBook','SyncBookToMindMap','SyncWindowPos','SyncDeletion','SetRefCopyMode','SetCloneCopyMode','UIStatusURL','BookTOC','BookPageList','BookMarkList','BookSketchList','BookCardList','EditDocLayers','ViewDocCardGroup','BookSearch','BookPageFlip','BookPageScroll','ExtendSplit','ExtendMargin','ExtendPopup','PdfCrop','BookPageNumber','GoBack','GoForward','BookMarkAdd','BookMarkRemove','EditPDFPages','AddToTOC','SplitBook','InsertBlank','Translate','FoldHighlight','SourceHighlight','EditTextBox','EditImageBox','ExcerptToolSettings','ExcerptToolSelect','ExcerptToolCustom0','ExcerptToolCustom1','ExcerptToolCustom2','ExcerptToolCustom3','HighlightShortcut1','HighlightShortcut2','HighlightShortcut3','HighlightShortcut4','ExcerptToolSketch','NotebookOutline','ViewMapCardGroup','EditMultiSel','FocusNote','FocusParent','NotebookOutlineEdit','EditOutlineIncLevel','EditOutlineDecLevel','SnippetMode','NewSiblingNote','NewChildNote','NewParentNote','ToggleExpand','EditGroupNotes','EditLinkNotes','EditMergeNotes','SelBranchStyle0','SelBranchStyle1','SelBranchStyle2','SelBranchStyle3','SelBranchStyle4','SelBranchStyle60','SelBranchStyle61','SelBranchStyle64','SelBranchStyle7','SelBranchStyle100','GlobalBranchStyle','ZoomToFit','ViewExpandAll','ViewCollapseAll','ViewExpandLevel0','ViewExpandLevel1','ViewExpandLevel2','ViewExpandLevel3','ViewExpandLevel4','ViewExpandLevel5','ViewExpandLevel6','ViewExpandLevel7','ViewExpandRows','ViewCollapseRows','EditArrangeNotes','MindmapSnippetMode','SelectBranch','ShowSketch','HideSketch','EditCopy','EditReference','EditCopyLink','EditDeleteNote','EditColorNoteIndex0','EditColorNoteIndex1','EditColorNoteIndex2','EditColorNoteIndex3','EditColorNoteIndex4','EditColorNoteIndex5','EditColorNoteIndex6','EditColorNoteIndex7','EditColorNoteIndex8','EditColorNoteIndex9','EditColorNoteIndex10','EditColorNoteIndex11','EditColorNoteIndex12','EditColorNoteIndex13','EditColorNoteIndex14','EditColorNoteIndex15','EditTagNote','EditAddTitle','EditAddText','EditAppendComment','ContinueExcerpt','EditTextMode','EditOcclusion','EditUnmergeNote','TextToTitle','ExpandExtend','CollapseExtend','SendToMap','RemoveFromMap','AddToReview','ClearFormat1','ClearFormat2','FlashcardSpeech','SetTitleHighlight','SetCommentHighlight','SetAsEmphasis','MergeTo','FlashcardsPlay','FlashcardsStop','FlashcardFlip','FlashcardLocal','FlashcardAgain','FlashcardHard','FlashcardGood','FlashcardEasy','FlashcardStarred']
+    const container = document.getElementById("jsoneditor")
+    let actionProperties = generalActionProperties()
+    actionProperties.timerMode = stringEnum(["clock","pauseOrResume","countUp","countdown"])
+    actionProperties.annotation = stringType()
+    actionProperties.question = stringType()
+    actionProperties.minutes = numberEnum([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60])
+    actionProperties.mergeToPreviousNote = booleanType()
+    actionProperties.ocr = booleanType()
+    actionProperties.commandDelay = numberEnum([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2,2.3,2.4,2.5,2.6,2.7,2.8,2.9,3.0])
+    actionProperties.tag = stringType()
+    actionProperties.tags = arrayType(stringType())
+    actionProperties.targets = arrayType(stringEnum(['addonBar','mindmapToolbar']))
+    actionProperties.menuTitle = stringType()
+    actionProperties.selectTitle = stringType()
+    actionProperties.linkType = stringEnum(['Both','To','From'])
+    actionProperties.target = stringEnum(['addonBar','appendTitle','appendExcerpt','auto','both','childNote','comment','comments','clipboard','currentNote','currentChildMap','currentPrompt','currentNoteInMindMap','clipboardText','chatMode','chatModeReference','doc','default','editor','eudic','excerpt','excerptText','excerptOCR','file','floatMindmap','MdxDictCollins','MdxDictOxford','menu','mindmap','mainMindMap','mindmapToolbar','newComment','notesText','noteId','noteURL','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown','noteInClipboard','openFloat','parentNote','selectionText','selectionImage','title'])
+    actionProperties.fillPattern = numberEnum([-1,0,1,2])
+    actionProperties.type = commentType()
+    actionProperties.types = arrayType(commentType())
+    actionProperties.find = objectType({
+      "include": stringType(),
+      "exclude": stringType(),
+      "reg": stringType(),
+      "type":commentType(),
+      "types":arrayType(commentType())
+    })
+    actionProperties.command = stringEnum(commandNames)
+    actionProperties.color = {
+        "title": "linkType",
+        "enum": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,'parent','current'],
+      }
+    actionProperties.trim = booleanType()
+    actionProperties.markdown = booleanType()
+    actionProperties.autoClose = booleanType()
+    actionProperties.asTitle = booleanType()
+    actionProperties.mainMindMap = booleanType()
+    actionProperties.compression = booleanType()
+    actionProperties.name = stringType()
+    actionProperties.steps = arrayType()
+    actionProperties.selectItems = arrayType({"$ref": "selectAction"})
+    actionProperties.ocrSource = stringEnum(["SimpleTex","abab6.5s-chat","MiniMax-Text-01","glm-4v-plus","glm-4v-flash","claude-3-5-sonnet-20241022","gemini-2.0-flash-exp","GPT-4o","GPT-4o-mini","Moonshot-v1"])
+    actionProperties.commands = arrayType(stringEnum(commandNames))
+    actionProperties.content = stringType()
     const action = {
     "title": "Action",
     "description": "Object containing employee details",
@@ -289,7 +208,6 @@ body {
     "description": "Object containing employee details",
     "type": "object",
     "properties": actionProperties
-
   }
   const selectAction = {
     "title": "Action",
@@ -297,7 +215,6 @@ body {
     "type": "object",
     "properties": actionProperties,
     "required": ["selectTitle"]
-
   }
     function adjustSelectWidth() {
         const selects = document.getElementsByTagName('select');
@@ -308,17 +225,6 @@ body {
         }
     }
  function moveDuplicateAndRemoveToFront(arr) {
-
-    // // // Find the index of the element with className 'jsoneditor-duplicate'
-    // const DuplicateIndex = arr.findIndex(item => item.className === 'jsoneditor-duplicate');
-
-    // // If such an element exists and is not already the first element
-    // if (DuplicateIndex > -1) {
-    //     // Extract the element
-    //     const [duplicateItem] = arr.splice(DuplicateIndex, 1);
-    //     // Move the element to the front
-    //     arr.push(duplicateItem);
-    // }
 
     const removeIndex = arr.findIndex(item => item.className === 'jsoneditor-remove');
 
@@ -340,6 +246,201 @@ body {
 }
 function copyToClipboard(text) {
   window.location.href = "nativeCopy://content="+encodeURIComponent(text);
+}
+function setSchema(schema) {
+  if (schema === undefined) {
+      editor.setSchema(action,{action:action,menuTitle:menuTitle,menuAction:menuAction,selectAction:selectAction})
+  }else{
+    editor.setSchema(schema,{action:action,menuTitle:menuTitle,menuAction:menuAction,selectAction:selectAction})
+  }
+}
+function setSchemaByActionName(actionName) {
+  let properties = generalActionProperties()
+  switch (actionName) {
+    case "command":
+      properties.command = stringEnum(commandNames)
+      properties.commands = arrayType(stringEnum(commandNames))
+      break;
+    case "copy":
+      properties.target = stringEnum(['auto','comment','comments','excerpt','excerptOCR','menu','notesText','noteId','noteURL','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown','selectionText','selectionImage','title'])
+      properties.index = numberEnum([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60])
+      properties.content = stringType()
+      break;
+    case "addComment":
+      properties.content = stringType()
+      properties.markdown = booleanType(true)
+      properties.index = numberEnum([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60])
+      break;
+    case "markdown2Mindmap":
+      properties.source = stringEnum(['currentNote','clipboard','file'])
+      break;
+    case "addMarkdownLink":
+      properties.title = stringType()
+      properties.link = stringType()
+      break;
+    case "addImageComment":
+      properties.target = stringEnum(['menu'])
+      properties.source = stringEnum(['photo','camera','file'])
+      properties.compression = booleanType(true)
+      break;
+    case "addChildNote":
+      properties.title = stringType()
+      properties.content = stringType()
+      properties.markdown = booleanType(true)
+      properties.color = numberEnum([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,'parent','current'])
+      break;
+    case "addBrotherNote":
+      properties.title = stringType()
+      properties.content = stringType()
+      properties.markdown = booleanType(true)
+      properties.color = numberEnum([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,'parent','current'])
+      break;
+    case "addTags":
+      properties.tag = stringType()
+      properties.tags = arrayType(stringType())
+      break;
+    case "mergeText":
+      properties.target = stringEnum(['excerptText','title','newComment','clipboard'])
+      properties.source = stringType()
+      break
+    case "ocr":
+      properties.target = stringEnum(['comment','excerpt','childNote','clipboard','editor','chatModeReference'])
+      properties.ocrSource = stringEnum(["SimpleTex","abab6.5s-chat","MiniMax-Text-01","glm-4v-plus","glm-4v-flash","claude-3-5-sonnet-20241022","gemini-2.0-flash-exp","GPT-4o","GPT-4o-mini","Moonshot-v1"])
+      properties.method = stringEnum(["replace","append"])
+      break;
+    case "toggleSidebar":
+      properties.target = stringEnum(['chatMode'])
+      break;
+    case "toggleView":
+      properties.target = stringEnum(['mindmapToolbar','addonBar'])
+      properties.targets = arrayType(stringEnum(['mindmapToolbar','addonBar']))
+      break;
+    case "menu":
+      properties.menuItems = arrayType({
+          "oneOf":[
+          {
+            "$ref": "menuAction"
+          },
+          {
+            "$ref": "menuTitle"
+          }
+          ]
+        })
+      properties.menuWidth = numberEnum([100,150,200,250,300])
+      break;
+    case "shortcut":
+      properties.name = stringType()
+      break;
+    case "replace":
+      properties.target = stringEnum(['excerpt','title'])
+      properties.content = stringType()
+      properties.from = stringType()
+      properties.to = stringType()
+      properties.reg = stringType()
+      properties.steps = arrayType()
+      break;
+    case "showInFloatWindow":
+      properties.noteURL = stringType()
+      properties.target = stringEnum(['noteInClipboard','currentNote','currentChildMap','parentNote','currentNoteInMindMap','menu'])
+      break;
+    case "export":
+      properties.source = stringEnum(['noteDoc','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown'])
+      properties.target = stringEnum(['clipboard','file'])
+      break;
+    case "removeComment":
+      properties.type = commentType()
+      properties.types = arrayType(commentType())
+      properties.multi = booleanType()
+      break;
+    case "paste":
+      properties.target = stringEnum(["title","excerpt","appendTitle","appendExcerpt"])
+      break;
+    case "setContent":
+      properties.target = stringEnum(['title','excerpt','newComment'])
+      properties.content = stringType()
+      properties.range = stringEnum(['currentNotes','childNotes','descendants'])
+      break;
+    case "clearContent":
+      properties.target = stringEnum(['title','excerptText','comments'])
+      properties.type = commentType()
+      break;
+    case "openURL":
+      properties.url = stringType()
+      break;
+    case "setTimer":
+      properties.target = stringEnum(['menu'])
+      properties.timerMode = stringEnum(["clock","pauseOrResume","countUp","countdown"])
+      properties.minutes = numberEnum([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60])
+      properties.annotation = stringType()
+      break;
+    case "removeTags":
+      properties.target = stringEnum(['menu'])
+      properties.tags = arrayType(stringType())
+      properties.tag = stringType()
+      break;
+    case "searchInDict":
+      properties.target = stringEnum(['eudic','MdxDictOxford','MdxDictCollins'])
+      break;
+    case "setColor":
+      properties.color = numberEnum([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15])
+      properties.fillPattern = numberEnum([-1,0,1,2])
+      properties.followAutoStyle = booleanType()
+      break;
+    case "userSelect":
+      properties.title = stringType()
+      properties.subTitle = stringType()
+      properties.selectItems = arrayType({"$ref": "selectAction"})
+      break;
+    case "showMessage":
+      properties.content = stringType()
+      break;
+    case "confirm":
+      properties.title = stringType()
+      properties.subTitle = stringType()
+      break;
+    case "tirggerButton":
+      properties.buttonName = stringType()
+      break;
+    case "focus":
+      source = stringEnum(['parentNote'])
+      properties.target = stringEnum(['doc','mindmap','both','floatMindmap'])
+      properties.noteURL = stringType()
+      properties.forceToFocus = booleanType()
+      break;
+    case "insertSnippet":
+      properties.content = stringType()
+      properties.target = stringEnum(['textview','menu','editor'])
+      break;
+    case "moveNote":
+      properties.mainMindMap = booleanType()
+      properties.noteURL = stringType()
+      break;
+    case "noteHighlight":
+      properties.color = numberEnum([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15])
+      properties.fillPattern = numberEnum([-1,0,1,2])
+      properties.asTitle = booleanType()
+      properties.title = stringType()
+      properties.ocr = booleanType()
+      properties.tags = arrayType(stringType())
+      properties.tag = stringType()
+      properties.parentNote = stringType()
+      properties.mainMindMap = booleanType()
+      break;
+    case "search":
+      properties.target = stringEnum(['menu'])
+      properties.engine = stringType()
+      break;
+    case "chatAI":
+      properties.target = stringEnum(['menu','openFloat','currentPrompt'])
+      properties.prompt = stringType()
+      properties.user = stringType()
+      properties.system = stringType()
+      break;
+    default:
+      setSchema()
+      return;
+  }
+  setSchema(genSchema(properties))
 }
     const options = {
       schema: action,
@@ -383,124 +484,149 @@ function copyToClipboard(text) {
           return
         }
         if (event.type === 'change') {
+          // if (node.value === '❌ Delete') {
+          //   let config = editor.get();
+          //   let path = node.path;
+          //   if (path.length) {
+          //       // 找到要删除属性的父对象
+          //       const parent = path
+          //           .slice(0, -1)
+          //           .reduce((obj, key) => obj && obj[key], config);
+            
+          //       // 获取要删除的最终属性名
+          //       const lastKey = path[path.length - 1];
+                
+          //       if (parent && lastKey in parent) {
+          //           delete parent[lastKey];
+          //           editor.update(config);
+          //       }
+          //   }
+
+          //   return
+          // }
+          
           // console.log("change");
           // editor.refresh()
           let config = editor.get()
           let needSet = false
-          switch (config.action) {
-            case "copy":
-              if (!("target" in config)) {
-                config.target = "auto"
-                needSet = true
-              } 
-              break;
-            case "addComment":
-              if (!("content" in config)) {
-                config.content = ""
-                needSet = true
-              } 
-              break;
-            case "menu":
-              if (!("menuItems" in config)) {
-                config.menuItems = []
-                needSet = true
-              } 
-              break;
-            case "mergeText":
-              if (!("source" in config)) {
-                config.source = []
-                needSet = true
-              } 
-              if (!("target" in config)) {
-                config.target = "excerptText"
-                needSet = true
-              } 
-              break;
-            case "ocr":
-              if(!("target" in config)){
-                config.target = "excerpt"
-                needSet = true
-              }
-              break;
-            case "shortcut":{
-              if (!("name" in config)) {
-                config.name = ""
-                needSet = true
-              }
-            }
-            case "replace":
-              if(!("target" in config)){
-                config.target = "excerpt"
-                needSet = true
-              }
-              break;
-            case "openURL":
-              if(!("url" in config)){
-                config.url = ""
-                needSet = true
-              }
-              break;
-            case "triggerButton":
-              if(!("buttonName" in config)){
-                config.buttonName = ""
-                needSet = true
-              }
-              break;
-            case "confirm":
-              if(!("title" in config)){
-                config.title = ""
-                needSet = true
-              }
-              if(!("onConfirm" in config)){
-                config.onConfirm = {
-                  "action": "",
+          if ((node.path.length === 1) && "action" in config) {
+            setSchemaByActionName(config.action)
+            switch (config.action) {
+              case "copy":
+                if (!("target" in config)) {
+                  config.target = "auto"
+                  needSet = true
+                } 
+                break;
+              case "addComment":
+                if (!("content" in config)) {
+                  config.content = ""
+                  needSet = true
+                } 
+                break;
+              case "menu":
+                if (!("menuItems" in config)) {
+                  config.menuItems = []
+                  needSet = true
+                } 
+                break;
+              case "mergeText":
+                if (!("source" in config)) {
+                  config.source = []
+                  needSet = true
+                } 
+                if (!("target" in config)) {
+                  config.target = "excerptText"
+                  needSet = true
+                } 
+                break;
+              case "ocr":
+                if(!("target" in config)){
+                  config.target = "excerpt"
+                  needSet = true
                 }
-                needSet = true
+                break;
+              case "shortcut":{
+                if (!("name" in config)) {
+                  config.name = ""
+                  needSet = true
+                }
               }
-              break;
-            case "webSearch": 
-              if(!("question" in config)){
-                config.question = ""
-                needSet = true
-              }
-              break;
-            case "showMessage":
-              if(!("content" in config)){
-                config.content = ""
-                needSet = true
-              }
-              break;
-            case "addMarkdownLink":
-              if(!("title" in config)){
-                config.title = ""
-                needSet = true
-              }
-              if(!("link" in config)){
-                config.link = ""
-                needSet = true
-              }
-              break;
-            case "toggleView":
-              if (!("target" in config) && !("targets" in config)) {
-                config.target = "123"
-                needSet = true
-              }
-              break;
-            case "userSelect":
-              if(!("selectItems" in config)){
-                config.selectItems = [{action:""},{action:""}]
-                needSet = true
-              }
-              if(!("title" in config)){
-                config.title = ""
-                needSet = true
-              }
-              break;
-            default:
-              break;
+              case "replace":
+                if(!("target" in config)){
+                  config.target = "excerpt"
+                  needSet = true
+                }
+                break;
+              case "openURL":
+                if(!("url" in config)){
+                  config.url = ""
+                  needSet = true
+                }
+                break;
+              case "triggerButton":
+                if(!("buttonName" in config)){
+                  config.buttonName = ""
+                  needSet = true
+                }
+                break;
+              case "confirm":
+                if(!("title" in config)){
+                  config.title = ""
+                  needSet = true
+                }
+                if(!("onConfirm" in config)){
+                  config.onConfirm = {
+                    "action": "",
+                  }
+                  needSet = true
+                }
+                break;
+              case "webSearch": 
+                if(!("question" in config)){
+                  config.question = ""
+                  needSet = true
+                }
+                break;
+              case "showMessage":
+                if(!("content" in config)){
+                  config.content = ""
+                  needSet = true
+                }
+                break;
+              case "addMarkdownLink":
+                if(!("title" in config)){
+                  config.title = ""
+                  needSet = true
+                }
+                if(!("link" in config)){
+                  config.link = ""
+                  needSet = true
+                }
+                break;
+              case "toggleView":
+                if (!("target" in config) && !("targets" in config)) {
+                  config.target = "123"
+                  needSet = true
+                }
+                break;
+              case "userSelect":
+                if(!("selectItems" in config)){
+                  config.selectItems = [{action:""},{action:""}]
+                  needSet = true
+                }
+                if(!("title" in config)){
+                  config.title = ""
+                  needSet = true
+                }
+                break;
+              default:
+                break;
+            }
           }
+
           if (needSet) {
-            editor.set(config)
+            editor.update(config)
           }
           removeFocus()
           return
@@ -585,7 +711,7 @@ function copyToClipboard(text) {
           //path: array
           // console.log(input);
           if (input === 'field') {
-            return ['hideMessage','mergeToPreviousNote','annotation','timerMode','minutes','selectTitle','selectItems','userSelect','find','delay','noteURL','menuWidth','buttonName','subTitle','onConfirm','onCancel','followAutoStyle','menuTitle','name','input','text','target', 'action', 'description','menu', 'source','color','content','title','markdown','command','commands','OCR','fillPattern','asTitle','tags','tag','find','multi','type','index','removeSource','prompt','user','system','trim','replace','merge','linkType','from','to','steps','range','url','engine','targets','onFinish','onLongPress','doubleClick','menuItems','autoClose','parentNote','mainMindMap','method','paste'];
+            return ['hideMessage','mergeToPreviousNote','annotation','timerMode','minutes','selectTitle','selectItems','userSelect','find','delay','noteURL','menuWidth','buttonName','subTitle','onConfirm','onCancel','followAutoStyle','menuTitle','name','input','text','target', 'action', 'description','menu', 'source','color','content','title','markdown','command','commands','OCR','fillPattern','asTitle','tags','tag','find','multi','type','index','removeSource','prompt','user','system','trim','replace','merge','linkType','from','to','steps','range','url','engine','targets','onFinish','onLongPress','doubleClick','menuItems','autoClose','parentNote','mainMindMap','method','paste','forceToFocus'];
           }
           if (input === 'value') {
             let parent = path.at(-1)
@@ -625,7 +751,7 @@ function copyToClipboard(text) {
               case 'range':
                 return ['currentNotes','childNotes','descendants'];
               case 'target':
-                return ['addonBar','appendTitle','appendExcerpt','auto','both','comment','comments','clipboard','currentNote','currentChildMap','currentPrompt','currentNoteInMindMap','clipboardText','chatModeReference','doc','default','editor','excerpt','excerptText','excerptOCR','floatMindmap','menu','mindmap','mainMindMap','mindmapToolbar','newComment','notesText','noteId','noteURL','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown','noteInClipboard','openFloat','parentNote','selectionText','selectionImage','title'];
+                return ['addonBar','appendTitle','appendExcerpt','auto','both','comment','comments','clipboard','currentNote','currentChildMap','currentPrompt','currentNoteInMindMap','clipboardText','chatMode','chatModeReference','doc','default','editor','excerpt','excerptText','excerptOCR','floatMindmap','menu','mindmap','mainMindMap','mindmapToolbar','newComment','notesText','noteId','noteURL','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown','noteInClipboard','openFloat','parentNote','selectionText','selectionImage','title'];
               case 'command':
               case 'commands':
                 return commandNames;
@@ -643,10 +769,13 @@ function copyToClipboard(text) {
       }
         }
 
-        const editor = new JSONEditor(container, options)
+    const editor = new JSONEditor(container, options)
 
         // set json
-        const initialJson = {}
+        const initialJson = {
+  "target": "chatMode",
+  "action": "toggleSidebar"
+}
         const initialJson0 = {
   "action": "menu",
   "menuItems": [
@@ -727,33 +856,47 @@ function copyToClipboard(text) {
 }
 
         editor.set(initialJson)
+        if ("action" in initialJson) {
+          let targetAction = initialJson.action
+          setSchemaByActionName(targetAction)
+        }
         // get json
-        const updatedJson = editor.get()
-        function updateContent(data) {
-          let tem = decodeURIComponent(data)
-          // MNUtil.copy(tem)
-          editor.update(JSON.parse(tem))
-          setTimeout(() => {
-            editor.expandAll()
-          }, 100);
+      const updatedJson = editor.get()
+      function updateContent(data) {
+        let tem = JSON.parse(decodeURIComponent(data))
+        // MNUtil.copy(tem)
+        editor.update(tem)
+        if ("action" in tem) {
+          let targetAction = tem.action
+          setSchemaByActionName(targetAction)
         }
-        function setContent(data) {
-          let tem = decodeURIComponent(data)
-          // MNUtil.copy(tem)
-          editor.set(JSON.parse(tem))
+        setTimeout(() => {
           editor.expandAll()
-          adjustSelectWidth()
+        }, 100);
+      }
+      function setContent(data) {
+        let tem = JSON.parse(decodeURIComponent(data))
+        // MNUtil.copy(tem)
+        editor.set(tem)
+        editor.expandAll()
+        adjustSelectWidth()
+        if ("action" in tem) {
+          let targetAction = tem.action
+          setSchemaByActionName(targetAction)
+        }else{
+          setSchema()
         }
-        function getContent() {
-          let tem = JSON.stringify(editor.get(),null,2)
-          removeFocus()
-          return encodeURIComponent(tem)
-        }
-        function removeFocus() {
-          document.activeElement.blur(); // 先尝试失去当前焦点
-          // document.body.focus(); // 将焦点设置到 body
-        }
-        window.addEventListener('resize', adjustSelectWidth);
+      }
+      function getContent() {
+        let tem = JSON.stringify(editor.get(),null,2)
+        removeFocus()
+        return encodeURIComponent(tem)
+      }
+      function removeFocus() {
+        document.activeElement.blur(); // 先尝试失去当前焦点
+        // document.body.focus(); // 将焦点设置到 body
+      }
+      window.addEventListener('resize', adjustSelectWidth);
     </script>
 </body>
 </html>

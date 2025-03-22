@@ -5070,6 +5070,7 @@ try {
       let targetNoteLastComment = MNComment.new(targetNote.comments[targetNote.comments.length - 1], targetNote.comments.length - 1, targetNote.note)
 
       if (
+        targetNoteLastComment &&
         targetNoteLastComment.type == "linkComment" &&
         targetNoteLastComment.text == focusNote.noteURL &&
         (

@@ -7700,6 +7700,36 @@ try {
     }
   }
 
+  mergeIntoAndMove(targetNote, targetIndex){
+    let commentsLength = this.comments.length
+    if (this.excerptText) {
+      commentsLength += 1  // 如果有摘录的话，合并后也会变成评论，所以要加 1
+    }
+
+    this.mergeInto(targetNote)
+
+    // 生成从 targetNote.comments.length - commentsLength 到 targetNote.comments.length - 1 的数组
+    let targetNoteCommentsToMoveArr = [...Array(commentsLength)].map((_, i) => targetNote.comments.length - commentsLength + i)
+
+    targetNote.moveCommentsByIndexArr(targetNoteCommentsToMoveArr, targetIndex)
+  }
+
+  /**
+   * 更新占位符的内容
+   */
+  mergIntoAndRenewReplaceholder(targetNote){
+    let targetIndex = targetNote.getCommentIndex(this.noteURL)
+    if (targetIndex !== -1) {
+      if (this.comments[0].text && this.comments[0].text == targetNote.noteURL) {
+        // 此时表示的情景：从某个命题双向链接到空白处，生成的占位符
+        // 所以合并前把第一条评论删掉
+        this.removeCommentByIndex(0)
+      }
+      this.mergeIntoAndMove(targetNote, targetIndex +1)
+      targetNote.removeCommentByIndex(targetIndex) // 删除占位符
+    }
+  }
+
 
   /**
    * 判断卡片中是否有某个链接

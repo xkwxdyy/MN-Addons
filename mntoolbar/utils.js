@@ -221,6 +221,18 @@ class toolbarUtils {
           "action": "xxx"
         }
       },
+      "🔨 split note to mindmap":{
+        "action": "markdown2Mindmap",
+        "source": "currentNote"
+      },
+      "🔨 import mindmap from clipboard":{
+        "action": "markdown2Mindmap",
+        "source": "clipboard"
+      },
+      "🔨 import mindmap from markdown file":{
+        "action": "markdown2Mindmap",
+        "source": "file"
+      },
       "🔨 empty action with finish action":{
         "description": "空白动作 带结束动作",
         "action": "xxx",

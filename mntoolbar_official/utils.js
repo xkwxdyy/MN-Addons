@@ -4443,6 +4443,7 @@ class toolbarConfig {
   "pasteOnPage",
   "textboxOnPage",
   "imageboxOnPage",
+  "cameraOnPage",
   "moreOperations",
   "dragDrop"
 ]
@@ -4510,6 +4511,7 @@ class toolbarConfig {
     pasteOnPage:{enabled:false,target:"",name:"pasteOnPage"},
     textboxOnPage:{enabled:false,target:"",name:"textboxOnPage"},
     imageboxOnPage:{enabled:false,target:"",name:"imageboxOnPage"},
+    cameraOnPage:{enabled:false,target:"",name:"cameraOnPage"},
     setBlankLayer:{enabled:false,target:"",name:"setBlankLayer"},
     sourceHighlightOfNote:{enabled:false,target:"",name:"sourceHighlightOfNote"},
     paintHighlight:{enabled:false,target:"",name:"paintHighlight"},
@@ -4531,7 +4533,9 @@ class toolbarConfig {
     "color12":2.4,
     "color13":2.4,
     "color14":2.4,
-    "color15":2.4
+    "color15":2.4,
+    "undo":2.2,
+    "redo":2.2
   }
   static imageConfigs = {}
   static dynamicImageConfigs = {}
@@ -5224,6 +5228,8 @@ static getActions() {
     "timer":{name:"timer",image:"timer",description:JSON.stringify({target:"menu"})},
     "execute":{name:"execute",image:"execute",description:"MNUtil.showHUD('Hello world')"},
     "sidebar":{name:"sidebar",image:"sidebar",description:"{}"},
+    "undo":{name:"undo",image:"undo",description:"{}"},
+    "redo":{name:"redo",image:"redo",description:"{}"},
   }
 }
 static execute(){

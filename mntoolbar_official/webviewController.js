@@ -362,6 +362,22 @@ lastPopover: function (button) {
     des.action = "setTimer"
     self.customActionByDes(button,des,false)
   },
+  undo: function (button) {
+    if (UndoManager.sharedInstance().canUndo()) {
+      UndoManager.sharedInstance().undo()
+      MNUtil.app.refreshAfterDBChanged(MNUtil.currentNotebookId)
+    }else{
+      MNUtil.showHUD("No Change to Undo")
+    }
+  },
+  redo: function (button) {
+    if (UndoManager.sharedInstance().canRedo()) {
+      UndoManager.sharedInstance().redo()
+      MNUtil.app.refreshAfterDBChanged(MNUtil.currentNotebookId)
+    }else{
+      MNUtil.showHUD("No Change to Redo")
+    }
+  },
   copy:function (button) {
     let self = getToolbarController()
     self.onClick = true
@@ -1544,7 +1560,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         if (!des.hideMessage) {
           MNUtil.showHUD("addComment")
         }
-        let comment = des.content
+        let comment = des.content?.trim()
         if (comment) {
           let focusNotes = MNNote.getFocusNotes()
           let markdown = des.markdown ?? true

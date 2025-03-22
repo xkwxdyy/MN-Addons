@@ -9910,7 +9910,7 @@ static save(key = undefined,value = undefined,upload = true) {
     defaults.setObjectForKey(this.imageScale,"MNToolbar_imageScale")
     defaults.setObjectForKey(this.syncConfig,"MNToolbar_syncConfig")
     this.syncConfig.lastModifyTime = Date.now()
-    if (upload) {
+    if (upload && this.iCloudSync) {
       this.writeCloudConfig(false)
     }
     return
@@ -9918,7 +9918,7 @@ static save(key = undefined,value = undefined,upload = true) {
   if (value) {
     NSUserDefaults.standardUserDefaults().setObjectForKey(value,key)
     this.syncConfig.lastModifyTime = Date.now()
-    if (upload) {
+    if (upload && this.iCloudSync) {
       this.writeCloudConfig(false)
     }
   }else{

@@ -7711,7 +7711,7 @@ try {
    * 
    * 注意：和 MN 自己的合并不同，this 的标题会处理为评论，而不是添加到 targetNote 的标题
    */
-  mergeInto(targetNote){
+  mergeInto(targetNote, htmlType = "point"){
     // 合并之前先更新链接
     this.renewLinks()
 
@@ -7731,20 +7731,17 @@ try {
     })
 
     if (this.title) {
-      if (this.comments[0].text && (this.comments[0].text == targetNote.noteURL)) {
-        // 有双向链接时默认为占位，处理为 subpoint
-        targetNote.appendMarkdownComment(
-          MNUtil.createHtmlMarkdownText(this.title.toNoBracketPrefixContent(), "subpoint")
-        )
-        this.removeCommentByIndex(0)
-      } else {
-        // 此时为证明拆分后合并，标题处理为 point
-        targetNote.appendMarkdownComment(
-          MNUtil.createHtmlMarkdownText(this.title.toNoBracketPrefixContent(), "point")
-        )
-      }
+      targetNote.appendMarkdownComment(
+        MNUtil.createHtmlMarkdownText(this.title.toNoBracketPrefixContent(), htmlType)
+      )
       this.title = ""
     }
+
+    // 检测 this 的第一条评论对应是否是 targetNote 是的话就去掉
+    if (this.comments[0].text && (this.comments[0].text == targetNote.noteURL)) {
+      this.removeCommentByIndex(0)
+    }
+
 
     // 合并到目标卡片
     targetNote.merge(this)
@@ -7766,7 +7763,7 @@ try {
    * @param {MNNote} targetNote 
    * @param {Number} targetIndex 
    */
-  mergeIntoAndMove(targetNote, targetIndex){
+  mergeIntoAndMove(targetNote, targetIndex, htmlType = "point"){
     // let commentsLength = this.comments.length
     // if (this.title) {
     //   commentsLength += 1  // 如果有标题的话，合并后会处理为评论，所以要加 1
@@ -7774,9 +7771,11 @@ try {
     // if (this.excerptText) {
     //   commentsLength += 1  // 如果有摘录的话，合并后也会变成评论，所以要加 1
     // }
-    let commentsLength = this.comments.length + !!this.title + !!this.excerptText;
 
-    this.mergeInto(targetNote)
+    // 要把 targetNote 的这一条链接去掉，否则会多移动一条评论
+    let commentsLength = this.comments.length + !!this.title + !!this.excerptText - (this.comments && this.comments[0].text && this.comments[0].text == targetNote.noteURL)
+
+    this.mergeInto(targetNote, htmlType)
 
     // 生成从 targetNote.comments.length - commentsLength 到 targetNote.comments.length - 1 的数组
     let targetNoteCommentsToMoveArr = [...Array(commentsLength)].map((_, i) => targetNote.comments.length - commentsLength + i)
@@ -7787,7 +7786,7 @@ try {
   /**
    * 更新占位符的内容
    */
-  mergIntoAndRenewReplaceholder(targetNote){
+  mergIntoAndRenewReplaceholder(targetNote, htmlType = "point"){
     let targetIndex = targetNote.getCommentIndex(this.noteURL)
     if (targetIndex !== -1) {
       // if (this.comments[0].text && this.comments[0].text == targetNote.noteURL) {
@@ -7798,7 +7797,7 @@ try {
       //   /  fix: 把这个删除放到 mergeInto 里
       //   this.removeCommentByIndex(0)
       // }
-      this.mergeIntoAndMove(targetNote, targetIndex +1)
+      this.mergeIntoAndMove(targetNote, targetIndex +1, htmlType)
       targetNote.removeCommentByIndex(targetIndex) // 删除占位符
     }
   }
@@ -8640,14 +8639,15 @@ try {
     return []
   }
 
-  renewProofContentPointsToHtmlType() {
+  renewProofContentPointsToHtmlType(htmlType = "point") {
+    if (htmlType == undefined) { htmlType = "point" }
     let proofContentIndexArr = this.getProofContentIndexArr()
     if (proofContentIndexArr.length > 0) {
       let comments = this.MNComments
       proofContentIndexArr.forEach(index => {
         let comment = comments[index]
         if (comment.type == "markdownComment" && comment.text.startsWith("- ") && !(comment.text.startsWith("- -"))) {
-          comment.text = MNUtil.createHtmlMarkdownText(comment.text.slice(2).trim(), "subpoint")
+          comment.text = MNUtil.createHtmlMarkdownText(comment.text.slice(2).trim(), htmlType)
         }
       })
     }

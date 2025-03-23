@@ -9484,10 +9484,10 @@ static template(action) {
       config.action = "menu"
       config.menuWidth = 330
       config.menuItems = [
-        // {
-        //   "action": "moveLastTwoCommentsInBiLinkNotesToDefinition",
-        //   "menuTitle": "双向🔗定义卡片同时上移到「相关概念」",
-        // },
+        {
+          "action": "renewProofContentPointsToHtmlType",
+          "menuTitle": "🔄更新证明里的注释➡️高亮",
+        },
         {
           "action": "renewLinksBetweenClassificationNoteAndKnowledegeNote",
           "menuTitle": "更新1️⃣次「归类卡片」与「概念or归类卡片」之间的🔗"
@@ -9498,7 +9498,7 @@ static template(action) {
           "menuWidth": 260,
           "menuItems": [
             {
-              "action": "renewCommentsInProofToHtmlType",
+              "action": "renewProofContentPointsToHtmlType",
               "menuTitle": "🔄更新证明里的注释➡️高亮",
             },
             {

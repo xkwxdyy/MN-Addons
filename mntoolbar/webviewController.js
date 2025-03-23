@@ -2131,7 +2131,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
               "然后选择 Html 类型",
               2,
               "取消",
-              ["danger: ❗❗❗", "alert: ⚠️", "key: 🔑", "step: 🚩"],
+              ["danger: ❗❗❗", "alert: ⚠️", "key: 🔑", "step: 🚩", "point: ▸", "subpoint: ▪"],
               (alert, buttonIndex) => {
                 try {
                   MNUtil.undoGrouping(()=>{
@@ -2149,6 +2149,12 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                         break;
                       case 4: // step: 🚩
                         outputCommentText = MNUtil.createHtmlMarkdownText(inputCommentText, "step")
+                        break;
+                      case 5: // point: ▸
+                        outputCommentText = MNUtil.createHtmlMarkdownText(inputCommentText, "point")
+                        break;
+                      case 6: // subpoint: ▪
+                        outputCommentText = MNUtil.createHtmlMarkdownText(inputCommentText, "subpoint")
                         break;
                     }
                     focusNote.appendMarkdownComment(outputCommentText)
@@ -2235,37 +2241,12 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           }
         })
         break;
-      case "renewCommentsInProofToHtmlType":
+      case "renewProofContentPointsToHtmlType":
         MNUtil.undoGrouping(()=>{
           try {
             focusNotes.forEach(
-              focusNote=>{
-                let proofHtmlCommentIndex = focusNote.getCommentIndex("证明：", true)
-                let thoughtHtmlCommentIndex = focusNote.getCommentIndex("相关思考：", true)
-                if (
-                  proofHtmlCommentIndex !== -1 &&
-                  thoughtHtmlCommentIndex !== -1
-                ) {
-                  focusNote.comments.forEach(
-                    (comment, index) => {
-                      if (
-                        proofHtmlCommentIndex < index &&
-                        index < thoughtHtmlCommentIndex &&
-                        comment.type == "TextNote" &&
-                        comment.text.startsWith("- ")
-                      ) {
-                        let commentContent = comment.text.slice(2).trim()
-                        focusNote.removeCommentByIndex(index)
-                        focusNote.appendMarkdownComment(
-                          // '<span style="font-weight: bold; color: #1A6584; background-color: #e8e9eb; font-size: 1.18em; padding-top: 5px; padding-bottom: 5px">'+ commentContent +'</span>',
-                          // '<span style="font-weight: 700; color: #0F4C75;                background: #E8F0FE; font-size: 1.3em; padding: 8px 15px;border-left: 6px solid #FFD700;display: inline-block;transform: skew(-3deg); box-shadow: 2px 2px 5px rgba(0,0,0,0.08);"> 📜 ' +  commentContent + "</span>",
-                          MNUtil.createHtmlMarkdownText(commentContent),
-                          index
-                        )
-                      }
-                    }
-                  )
-                }
+              focusNote => {
+                focusNote.renewProofContentPointsToHtmlType()
               }
             )
           } catch (error) {
@@ -4782,7 +4763,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "mergeInParentNote":
         MNUtil.undoGrouping(()=>{
           try {
-            focusNote.mergeInto(focusNote.parentNote)
+            focusNotes.forEach(focusNote=>{
+              focusNote.mergeInto(focusNote.parentNote)
+            })
           } catch (error) {
             MNUtil.showHUD(error);
           }
@@ -4791,7 +4774,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "mergIntoParenNoteAndRenewReplaceholder":
         MNUtil.undoGrouping(()=>{
           try {
-            focusNote.mergIntoAndRenewReplaceholder(focusNote.parentNote)
+            focusNotes.forEach(focusNote=>{
+              focusNote.mergIntoAndRenewReplaceholder(focusNote.parentNote)
+            })
           } catch (error) {
             MNUtil.showHUD(error);
           }

@@ -1614,6 +1614,25 @@ class MNUtil {
     }
     return link
   }
+
+  static createHtmlMarkdownText(text, type = 'step'){
+    const styles = {
+      // 格外注意
+      danger: 'font-weight:700;color:#6A0C0C;background:#FFC9C9;border-left:6px solid #A93226;font-size:1em;padding:8px 15px;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.1);',
+      // 注意
+      alert: 'background:#FFF;color:#FF8C5A;border:2px solid currentColor;border-radius:3px;padding:6px 12px;font-weight:600;box-shadow:0 1px 3px rgba(255,140,90,0.2);display:inline-block;',
+      // 关键
+      key: 'color: #B33F00;background: #FFF1E6;border-left: 6px solid #FF6B35;',
+      // 步骤
+      step: "font-weight:700;color:#0F4C75;background:linear-gradient(90deg,#E8F0FE 80%,#d3e3fc);font-size:1.3em;padding:8px 15px;border-left:6px solid #1A6584;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.08);"
+    };
+    
+    const icons = { danger: '❗❗❗', alert: '⚠️', key: '🔑', step: '🚩' };
+
+    const prefix = { danger: '', alert: '注意：', key: '', step: '' };
+    
+    return `<span style="${styles[type]} ">${icons[type]} ${prefix[type]}${text}</span>`;
+  }
   /**
    * 夏大鱼羊 - MNUtil - end
    */
@@ -7691,7 +7710,8 @@ try {
 
     if (this.title) {
       targetNote.appendMarkdownComment(
-        '<span style="font-weight: bold; color: #1A6584; background-color: #e8e9eb; font-size: 1.18em; padding-top: 5px; padding-bottom: 5px">'+ this.title.toNoBracketPrefixContent() +'</span>'
+        // '<span style="font-weight: bold; color: #1A6584; background-color: #e8e9eb; font-size: 1.18em; padding-top: 5px; padding-bottom: 5px">'+ this.title.toNoBracketPrefixContent() +'</span>'
+        '<span style="font-weight: 700; color: #0F4C75;                background: #E8F0FE; font-size: 1.3em; padding: 8px 15px;border-left: 6px solid #FFD700;display: inline-block;transform: skew(-3deg); box-shadow: 2px 2px 5px rgba(0,0,0,0.08);"> 📜 ' +  this.title.toNoBracketPrefixContent() + "</span>",
       )
       this.title = ""
     }

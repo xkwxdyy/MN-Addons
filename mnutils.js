@@ -1624,12 +1624,14 @@ class MNUtil {
       // 关键
       key: 'color: #B33F00;background: #FFF1E6;border-left: 6px solid #FF6B35;',
       // 步骤
-      step: "font-weight:700;color:#0F4C75;background:linear-gradient(90deg,#E8F0FE 80%,#d3e3fc);font-size:1.3em;padding:8px 15px;border-left:6px solid #1A6584;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.08);"
+      step: "font-weight:700;color:#0F4C75;background:linear-gradient(90deg,#E8F0FE 80%,#d3e3fc);font-size:1.3em;padding:8px 15px;border-left:6px solid #1A6584;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.08);",
+      point: "font-weight:600;color:#1A6584;background:linear-gradient(90deg,#E8F0FE 50%,#e2ebfb);font-size:1.1em;padding:6px 12px;border-left:4px solid #4F9DBD;transform:skew(-1.5deg);box-shadow:1px 1px 3px rgba(0,0,0,0.05);",
+      subpoint: "font-weight:500;color:#2D6785;background:#E8F0FE;padding:4px 10px;border-radius:12px;border:1px solid #B3D4FF;font-size:0.95em;"
     };
     
-    const icons = { danger: '❗❗❗', alert: '⚠️', key: '🔑', step: '🚩' };
+    const icons = { danger: '❗❗❗', alert: '⚠️', key: '🔑', step: '🚩', point:'▸' ,subpoint: '▪' };
 
-    const prefix = { danger: '', alert: '注意：', key: '', step: '' };
+    const prefix = { danger: '', alert: '注意：', key: '', step: '', point: '', subpoint: '' };
     
     return `<span style="${styles[type]} ">${icons[type]} ${prefix[type]}${text}</span>`;
   }
@@ -6272,6 +6274,26 @@ try {
     return proofHtmlCommentIndex
   }
 
+  getProofNameByType(type){
+    if (MNUtil.isObj(type)) {
+      type = type.zh
+    } 
+    let proofName
+    switch (type) {
+      case "反例":
+        proofName = "反例及证明："
+        break;
+      case "思想方法":
+        proofName = "原理："
+        break;
+      default:
+        proofName = "证明："
+        break;
+    }
+
+    return proofName
+  }
+
   /**
    * 【数学】更新证明的 Html 的 index
    */
@@ -7709,12 +7731,21 @@ try {
     })
 
     if (this.title) {
-      targetNote.appendMarkdownComment(
-        // '<span style="font-weight: bold; color: #1A6584; background-color: #e8e9eb; font-size: 1.18em; padding-top: 5px; padding-bottom: 5px">'+ this.title.toNoBracketPrefixContent() +'</span>'
-        '<span style="font-weight: 700; color: #0F4C75;                background: #E8F0FE; font-size: 1.3em; padding: 8px 15px;border-left: 6px solid #FFD700;display: inline-block;transform: skew(-3deg); box-shadow: 2px 2px 5px rgba(0,0,0,0.08);"> 📜 ' +  this.title.toNoBracketPrefixContent() + "</span>",
-      )
+      if (this.comments[0].text && (this.comments[0].text == targetNote.noteURL)) {
+        // 有双向链接时默认为占位，处理为 subpoint
+        targetNote.appendMarkdownComment(
+          MNUtil.createHtmlMarkdownText(this.title.toNoBracketPrefixContent(), "subpoint")
+        )
+        this.removeCommentByIndex(0)
+      } else {
+        // 此时为证明拆分后合并，标题处理为 point
+        targetNote.appendMarkdownComment(
+          MNUtil.createHtmlMarkdownText(this.title.toNoBracketPrefixContent(), "point")
+        )
+      }
       this.title = ""
     }
+
     // 合并到目标卡片
     targetNote.merge(this)
 
@@ -7759,11 +7790,14 @@ try {
   mergIntoAndRenewReplaceholder(targetNote){
     let targetIndex = targetNote.getCommentIndex(this.noteURL)
     if (targetIndex !== -1) {
-      if (this.comments[0].text && this.comments[0].text == targetNote.noteURL) {
-        // 此时表示的情景：从某个命题双向链接到空白处，生成的占位符
-        // 所以合并前把第一条评论删掉
-        this.removeCommentByIndex(0)
-      }
+      // if (this.comments[0].text && this.comments[0].text == targetNote.noteURL) {
+      //   // 此时表示的情景：从某个命题双向链接到空白处，生成的占位符
+      //   // 所以合并前把第一条评论删掉
+
+      //   // bug: 删掉的话，下一步就无法根据这条评论来改变 point 和 subpoint 了
+      //   /  fix: 把这个删除放到 mergeInto 里
+      //   this.removeCommentByIndex(0)
+      // }
       this.mergeIntoAndMove(targetNote, targetIndex +1)
       targetNote.removeCommentByIndex(targetIndex) // 删除占位符
     }
@@ -8593,6 +8627,29 @@ try {
       } else {
         return undefined
       }
+    }
+  }
+
+  getProofContentIndexArr() {
+    let proofName = this.getProofNameByType(this.getNoteTypeZh())
+    let proofHtmlCommentIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh())
+    if (proofHtmlCommentIndex !== -1) {
+      return this.getHtmlBlockContentIndexArr(proofName)
+    }
+
+    return []
+  }
+
+  renewProofContentPointsToHtmlType() {
+    let proofContentIndexArr = this.getProofContentIndexArr()
+    if (proofContentIndexArr.length > 0) {
+      let comments = this.MNComments
+      proofContentIndexArr.forEach(index => {
+        let comment = comments[index]
+        if (comment.type == "markdownComment" && comment.text.startsWith("- ") && !(comment.text.startsWith("- -"))) {
+          comment.text = MNUtil.createHtmlMarkdownText(comment.text.slice(2).trim(), "subpoint")
+        }
+      })
     }
   }
 

@@ -262,11 +262,18 @@ String.prototype.ifWithBracketPrefix = function () {
 }
 /**
  * 获取无前缀的部分
+ * 并且把开头的分号去掉
  */
+// String.prototype.toNoBracketPrefixContent = function () {
+//   let match = this.match(/^【.*】(.*)/)
+//   return match ? match[1] : this  // 如果匹配不到，返回原字符串
+// }
 String.prototype.toNoBracketPrefixContent = function () {
-  let match = this.match(/^【.*】(.*)/)
-  return match ? match[1] : this  // 如果匹配不到，返回原字符串
-}
+  return this.replace(
+    /^【.*?】(\s*;\s*)?(.*)/, 
+    (_, __, content) => content || ''
+  ).replace(/^\s*/, '') || this;
+};
 String.prototype.toNoBracketPrefixContentFirstTitleLinkWord = function () {
   let regex = /【.*】(.*?);?\s*([^;]*?)(?:;|$)/;
   let matches = this.match(regex);
@@ -7658,15 +7665,10 @@ try {
    * 1. 更新新卡片里的链接（否则会丢失蓝色箭头）
    * 2. 双向链接对应的卡片里的链接要更新，否则合并后会消失
    * 
-   * 思路：
-   * 1. 将 this 的所有链接信息作为对象存到一个数组里：
-   *   - 链接的 URL or ID
-   *   - 链接在 this 里的 index
-   *   - 单向链接还是双向链接
-   *   - 如果是双向链接，还要存 this.noteURL 在被链接的卡片里的 index
-   * 
    * 不足
    * - this 出发的单向链接无法处理
+   * 
+   * 注意：和 MN 自己的合并不同，this 的标题会处理为评论，而不是添加到 targetNote 的标题
    */
   mergeInto(targetNote){
     // 合并之前先更新链接
@@ -7687,6 +7689,12 @@ try {
       }
     })
 
+    if (this.title) {
+      targetNote.appendMarkdownComment(
+        '<span style="font-weight: bold; color: #1A6584; background-color: #e8e9eb; font-size: 1.18em; padding-top: 5px; padding-bottom: 5px">'+ this.title.toNoBracketPrefixContent() +'</span>'
+      )
+      this.title = ""
+    }
     // 合并到目标卡片
     targetNote.merge(this)
 
@@ -7700,11 +7708,22 @@ try {
     }
   }
 
+  /**
+   * 把 this 合并到 targetNote, 然后移动到 targetIndex 位置
+   * 和默认合并不同的是：this 的标题不会合并为标题，而是变成评论
+   * 
+   * @param {MNNote} targetNote 
+   * @param {Number} targetIndex 
+   */
   mergeIntoAndMove(targetNote, targetIndex){
-    let commentsLength = this.comments.length
-    if (this.excerptText) {
-      commentsLength += 1  // 如果有摘录的话，合并后也会变成评论，所以要加 1
-    }
+    // let commentsLength = this.comments.length
+    // if (this.title) {
+    //   commentsLength += 1  // 如果有标题的话，合并后会处理为评论，所以要加 1
+    // }
+    // if (this.excerptText) {
+    //   commentsLength += 1  // 如果有摘录的话，合并后也会变成评论，所以要加 1
+    // }
+    let commentsLength = this.comments.length + !!this.title + !!this.excerptText;
 
     this.mergeInto(targetNote)
 

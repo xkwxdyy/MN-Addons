@@ -2241,12 +2241,25 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           }
         })
         break;
-      case "renewProofContentPointsToHtmlType":
+      case "renewProofContentPointsToPointType":
         MNUtil.undoGrouping(()=>{
           try {
             focusNotes.forEach(
               focusNote => {
-                focusNote.renewProofContentPointsToHtmlType()
+                focusNote.renewProofContentPointsToHtmlType("point")
+              }
+            )
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
+      case "renewProofContentPointsToSubpointType":
+        MNUtil.undoGrouping(()=>{
+          try {
+            focusNotes.forEach(
+              focusNote => {
+                focusNote.renewProofContentPointsToHtmlType("subpoint")
               }
             )
           } catch (error) {
@@ -4760,22 +4773,44 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           }
         })
         break;
-      case "mergeInParentNote":
+      case "mergeInParentNoteToPointType":
         MNUtil.undoGrouping(()=>{
           try {
             focusNotes.forEach(focusNote=>{
-              focusNote.mergeInto(focusNote.parentNote)
+              focusNote.mergeInto(focusNote.parentNote, "point")
             })
           } catch (error) {
             MNUtil.showHUD(error);
           }
         })
         break;
-      case "mergIntoParenNoteAndRenewReplaceholder":
+      case "mergeInParentNoteToSubpointType":
         MNUtil.undoGrouping(()=>{
           try {
             focusNotes.forEach(focusNote=>{
-              focusNote.mergIntoAndRenewReplaceholder(focusNote.parentNote)
+              focusNote.mergeInto(focusNote.parentNote, "subpoint")
+            })
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
+      case "mergIntoParenNoteAndRenewReplaceholderToPointType":
+        MNUtil.undoGrouping(()=>{
+          try {
+            focusNotes.forEach(focusNote=>{
+              focusNote.mergIntoAndRenewReplaceholder(focusNote.parentNote, "point")
+            })
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
+      case "mergIntoParenNoteAndRenewReplaceholderToSubpointType":
+        MNUtil.undoGrouping(()=>{
+          try {
+            focusNotes.forEach(focusNote=>{
+              focusNote.mergIntoAndRenewReplaceholder(focusNote.parentNote, "subpoint")
             })
           } catch (error) {
             MNUtil.showHUD(error);

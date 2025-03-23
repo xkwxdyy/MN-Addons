@@ -9484,9 +9484,14 @@ static template(action) {
       config.action = "menu"
       config.menuWidth = 330
       config.menuItems = [
+        "⬇️ 更新证明",
         {
-          "action": "renewProofContentPointsToHtmlType",
-          "menuTitle": "🔄更新证明里的注释➡️高亮",
+          "action": "renewProofContentPointsToPointType",
+          "menuTitle": '    🔄更新证明"- "为"point ▸"',
+        },
+        {
+          "action": "renewProofContentPointsToSubpointType",
+          "menuTitle": '    🔄更新证明"- "为"subpoint ▪"',
         },
         {
           "action": "renewLinksBetweenClassificationNoteAndKnowledegeNote",
@@ -9497,10 +9502,6 @@ static template(action) {
           "menuTitle": "➡️ 注释",
           "menuWidth": 260,
           "menuItems": [
-            {
-              "action": "renewProofContentPointsToHtmlType",
-              "menuTitle": "🔄更新证明里的注释➡️高亮",
-            },
             {
               "action": "htmlCommentToProofFromClipboard",
               "menuTitle": "从剪切板粘贴到证明中"
@@ -10155,16 +10156,24 @@ static template(action) {
       }
       config.onLongPress = {
         "action": "menu",
-        "menuWidth": 300,
+        "menuWidth": 320,
         "menuItems": [
           "⬇️ 合并",
           {
-            "action": "mergeInParentNote",
-            "menuTitle": "    合并到父卡片",
+            "action": "mergeInParentNoteToPointType",
+            "menuTitle": "    合并到父卡片：point ▸",
           },
           {
-            "action": "mergIntoParenNoteAndRenewReplaceholder",
-            "menuTitle": "    合并到父卡片 & 替换占位符",
+            "action": "mergeInParentNoteToSubpointType",
+            "menuTitle": "    合并到父卡片：subpoint ▪",
+          },
+          {
+            "action": "mergIntoParenNoteAndRenewReplaceholderToPointType",
+            "menuTitle": "    合并到父卡片 & 替换占位符: point ▸",
+          },
+          {
+            "action": "mergIntoParenNoteAndRenewReplaceholderToSubpointType",
+            "menuTitle": "    合并到父卡片 & 替换占位符: subpoint ▪",
           },
           "⬇️ 制卡",
           {

@@ -2121,6 +2121,49 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         })
         break;
       /**
+       * 增加 Html 语法的 Markdown 评论
+       */
+      case "addHtmlMarkdownComment":
+        MNUtil.undoGrouping(()=>{
+          try {
+            UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+              "输入评论内容",
+              "然后选择 Html 类型",
+              2,
+              "取消",
+              ["danger: ❗❗❗", "alert: ⚠️", "key: 🔑", "step: 🚩"],
+              (alert, buttonIndex) => {
+                try {
+                  MNUtil.undoGrouping(()=>{
+                    let inputCommentText = alert.textFieldAtIndex(0).text;
+                    let outputCommentText
+                    switch (buttonIndex) {
+                      case 1: // danger: ❗❗❗
+                        outputCommentText = MNUtil.createHtmlMarkdownText(inputCommentText, "danger")
+                        break;
+                      case 2: // alert: ⚠️
+                        outputCommentText = MNUtil.createHtmlMarkdownText(inputCommentText, "alert")
+                        break;
+                      case 3: // key: 🔑
+                        outputCommentText = MNUtil.createHtmlMarkdownText(inputCommentText, "key")
+                        break;
+                      case 4: // step: 🚩
+                        outputCommentText = MNUtil.createHtmlMarkdownText(inputCommentText, "step")
+                        break;
+                    }
+                    focusNote.appendMarkdownComment(outputCommentText)
+                  })
+                } catch (error) {
+                  MNUtil.showHUD(error);
+                }
+              }
+            )
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
+      /**
        * 复制批量选中的卡片的 ID 到剪贴板
        */
       case "copyFocusNotesIdArr":
@@ -2214,7 +2257,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                         let commentContent = comment.text.slice(2).trim()
                         focusNote.removeCommentByIndex(index)
                         focusNote.appendMarkdownComment(
-                          '<span style="font-weight: bold; color: #1A6584; background-color: #e8e9eb; font-size: 1.18em; padding-top: 5px; padding-bottom: 5px">'+ commentContent +'</span>',
+                          // '<span style="font-weight: bold; color: #1A6584; background-color: #e8e9eb; font-size: 1.18em; padding-top: 5px; padding-bottom: 5px">'+ commentContent +'</span>',
+                          // '<span style="font-weight: 700; color: #0F4C75;                background: #E8F0FE; font-size: 1.3em; padding: 8px 15px;border-left: 6px solid #FFD700;display: inline-block;transform: skew(-3deg); box-shadow: 2px 2px 5px rgba(0,0,0,0.08);"> 📜 ' +  commentContent + "</span>",
+                          MNUtil.createHtmlMarkdownText(commentContent),
                           index
                         )
                       }

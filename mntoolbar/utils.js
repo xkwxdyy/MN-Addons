@@ -9433,6 +9433,10 @@ static template(action) {
           {
             "action": "deleteCommentsByPopup",
             "menuTitle": "删除评论",
+          },
+          {
+            "action": "addHtmlMarkdownComment",
+            "menuTitle": "增加 Html Markdown 评论",
           }
         ]
       }

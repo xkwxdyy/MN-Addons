@@ -1622,16 +1622,33 @@ class MNUtil {
       // 注意
       alert: 'background:#FFF;color:#FF8C5A;border:2px solid currentColor;border-radius:3px;padding:6px 12px;font-weight:600;box-shadow:0 1px 3px rgba(255,140,90,0.2);display:inline-block;',
       // 关键
-      key: 'color: #B33F00;background: #FFF1E6;border-left: 6px solid #FF6B35;',
+      key: 'color: #B33F00;background: #FFF1E6;border-left: 6px solid #FF6B35;padding:16px 12px 1px;line-height:2;position:relative;top:6px;display:inline-block;font-family:monospace;margin-top:-2px;',
       // 步骤
       step: "font-weight:700;color:#0F4C75;background:linear-gradient(90deg,#E8F0FE 80%,#d3e3fc);font-size:1.3em;padding:8px 15px;border-left:6px solid #1A6584;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.08);",
       point: "font-weight:600;color:#1A6584;background:linear-gradient(90deg,#E8F0FE 50%,#e2ebfb);font-size:1.1em;padding:6px 12px;border-left:4px solid #4F9DBD;transform:skew(-1.5deg);box-shadow:1px 1px 3px rgba(0,0,0,0.05);",
-      subpoint: "font-weight:500;color:#2D6785;background:#E8F0FE;padding:4px 10px;border-radius:12px;border:1px solid #B3D4FF;font-size:0.95em;"
+      subpoint: "font-weight:500;color:#2D6785;background:#E8F0FE;padding:4px 10px;border-radius:12px;border:1px solid #B3D4FF;font-size:0.95em;",
+      remark: 'background:#F5E6C9;color:#6d4c41;display:inline-block;border-left:5px solid #D4AF37;padding:2px 8px 3px 12px;border-radius:0 4px 4px 0;box-shadow:1px 1px 3px rgba(0,0,0,0.08);margin:0 2px;line-height:1.3;vertical-align:baseline;position:relative;',
     };
     
-    const icons = { danger: '❗❗❗', alert: '⚠️', key: '🔑', step: '🚩', point:'▸' ,subpoint: '▪' };
+    const icons = {
+      remark: '📝',
+      step: '🚩', 
+      point:'▸' ,
+      subpoint: '▪',
+      key: '🔑', 
+      alert: '⚠️', 
+      danger: '❗❗❗', 
+    };
 
-    const prefix = { danger: '', alert: '注意：', key: '', step: '', point: '', subpoint: '' };
+    const prefix = { 
+      danger: '', 
+      alert: '注意：', 
+      key: '', 
+      step: '', 
+      point: '', 
+      subpoint: '' ,
+      remark: '',
+    };
     
     return `<span style="${styles[type]} ">${icons[type]} ${prefix[type]}${text}</span>`;
   }

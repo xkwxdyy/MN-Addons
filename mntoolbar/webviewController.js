@@ -1370,6 +1370,16 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
     let path, UTI
     let currentDocName
     let pinnedNote
+    let htmlSetting = [
+      { title: "remark: 📝", type: "remark" },
+      { title: "point: ▸", type: "point" },
+      { title: "subpoint: ▪", type: "subpoint" },
+      { title: "key: 🔑", type: "key" },
+      { title: "step: 🚩", type: "step" },
+      { title: "alert: ⚠️", type: "alert" },
+      { title: "danger: ❗❗❗", type: "danger" }
+    ];
+    let htmlSettingTitles = htmlSetting.map(config => config.title);
     switch (des.action) {
       case "undo":
         UndoManager.sharedInstance().undo()
@@ -2126,92 +2136,25 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "addHtmlMarkdownComment":
         MNUtil.undoGrouping(()=>{
           try {
-            // UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-            //   "输入评论内容",
-            //   "然后选择 Html 类型",
-            //   2,
-            //   "取消",
-            //   [
-            //     "danger: ❗❗❗",
-            //     "alert: ⚠️", 
-            //     "key: 🔑", 
-            //     "step: 🚩", 
-            //     "point: ▸", 
-            //     "subpoint: ▪",
-            //     "remark: 📝",
-            //   ],
-            //   (alert, buttonIndex) => {
-            //     try {
-            //       MNUtil.undoGrouping(()=>{
-            //         let inputCommentText = alert.textFieldAtIndex(0).text;
-            //         let outputCommentText
-            //         switch (buttonIndex) {
-            //           case 1: // danger: ❗❗❗
-            //             outputCommentText = MNUtil.createHtmlMarkdownText(inputCommentText, "danger")
-            //             break;
-            //           case 2: // alert: ⚠️
-            //             outputCommentText = MNUtil.createHtmlMarkdownText(inputCommentText, "alert")
-            //             break;
-            //           case 3: // key: 🔑
-            //             outputCommentText = MNUtil.createHtmlMarkdownText(inputCommentText, "key")
-            //             break;
-            //           case 4: // step: 🚩
-            //             outputCommentText = MNUtil.createHtmlMarkdownText(inputCommentText, "step")
-            //             break;
-            //           case 5: // point: ▸
-            //             outputCommentText = MNUtil.createHtmlMarkdownText(inputCommentText, "point")
-            //             break;
-            //           case 6: // subpoint: ▪
-            //             outputCommentText = MNUtil.createHtmlMarkdownText(inputCommentText, "subpoint")
-            //             break;
-            //           case 7: // remark: 📝
-            //             outputCommentText = MNUtil.createHtmlMarkdownText(inputCommentText, "remark")
-            //             break;
-            //         }
-            //         focusNote.appendMarkdownComment(outputCommentText)
-            //       })
-            //     } catch (error) {
-            //       MNUtil.showHUD(error);
-            //     }
-            //   }
-            // )
-            // 按钮配置数组（可自由调整顺序）
-            const buttonConfigs = [
-              { title: "remark: 📝", type: "remark" },
-              { title: "point: ▸", type: "point" },
-              { title: "subpoint: ▪", type: "subpoint" },
-              { title: "key: 🔑", type: "key" },
-              { title: "step: 🚩", type: "step" },
-              { title: "alert: ⚠️", type: "alert" },
-              { title: "danger: ❗❗❗", type: "danger" }
-            ];
-
-            // 生成按钮标题数组
-            const buttonTitles = buttonConfigs.map(config => config.title);
-
             UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
               "输入评论内容",
               "然后选择 Html 类型",
               2,
               "取消",
-              buttonTitles,
+              htmlSettingTitles,
               (alert, buttonIndex) => {
-                try {
-                  MNUtil.undoGrouping(() => {
-                    const inputCommentText = alert.textFieldAtIndex(0).text;
+                MNUtil.undoGrouping(()=>{
+                  const inputCommentText = alert.textFieldAtIndex(0).text;
                     
-                    // 按钮索引从1开始（0是取消按钮）
-                    const selectedIndex = buttonIndex - 1;
-                    
-                    if (selectedIndex >= 0 && selectedIndex < buttonConfigs.length) {
-                      const selectedType = buttonConfigs[selectedIndex].type;
-                      const outputCommentText = MNUtil.createHtmlMarkdownText(inputCommentText, selectedType);
-                      focusNote.appendMarkdownComment(outputCommentText);
-                    }
-                  });
-                } catch (error) {
-                  MNUtil.showHUD(error);
-                }
+                  // 按钮索引从1开始（0是取消按钮）
+                  const selectedIndex = buttonIndex - 1;
+                  
+                  if (selectedIndex >= 0 && selectedIndex < htmlSetting.length) {
+                    const selectedType = htmlSetting[selectedIndex].type;
+                    const outputCommentText = MNUtil.createHtmlMarkdownText(inputCommentText, selectedType);
+                    focusNote.appendMarkdownComment(outputCommentText);
+                  }
+                })
               }
             );
           } catch (error) {
@@ -4823,45 +4766,79 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           }
         })
         break;
-      case "mergeInParentNoteToPointType":
+      case "mergeInParentNoteWithPopup":
         MNUtil.undoGrouping(()=>{
           try {
-            focusNotes.forEach(focusNote=>{
-              focusNote.mergeInto(focusNote.parentNote, "point")
-            })
+            UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+              "选择合并后标题变成评论后的类型",
+              "",
+              0,
+              "取消",
+              htmlSettingTitles,
+              (alert, buttonIndex) => {
+                try {
+                  MNUtil.undoGrouping(() => {
+                    // 按钮索引从1开始（0是取消按钮）
+                    const selectedIndex = buttonIndex - 1;
+                    
+                    if (selectedIndex >= 0 && selectedIndex < htmlSetting.length) {
+                      const selectedType = htmlSetting[selectedIndex].type;
+                      focusNote.mergeInto(focusNote.parentNote, selectedType)
+                    }
+                  });
+                } catch (error) {
+                  MNUtil.showHUD(error);
+                }
+              }
+            );
           } catch (error) {
             MNUtil.showHUD(error);
           }
         })
         break;
-      case "mergeInParentNoteToSubpointType":
+      case "mergeInParentNote":
         MNUtil.undoGrouping(()=>{
           try {
-            focusNotes.forEach(focusNote=>{
-              focusNote.mergeInto(focusNote.parentNote, "subpoint")
-            })
+            focusNote.mergeInto(focusNote.parentNote)
           } catch (error) {
             MNUtil.showHUD(error);
           }
         })
         break;
-      case "mergIntoParenNoteAndRenewReplaceholderToPointType":
+      case "mergIntoParenNoteAndRenewReplaceholder":
         MNUtil.undoGrouping(()=>{
           try {
-            focusNotes.forEach(focusNote=>{
-              focusNote.mergIntoAndRenewReplaceholder(focusNote.parentNote, "point")
-            })
+            focusNote.mergIntoAndRenewReplaceholder(focusNote.parentNote)
           } catch (error) {
             MNUtil.showHUD(error);
           }
         })
         break;
-      case "mergIntoParenNoteAndRenewReplaceholderToSubpointType":
+      case "mergIntoParenNoteAndRenewReplaceholderWithPopup":
         MNUtil.undoGrouping(()=>{
           try {
-            focusNotes.forEach(focusNote=>{
-              focusNote.mergIntoAndRenewReplaceholder(focusNote.parentNote, "subpoint")
-            })
+            UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+              "选择合并后标题变成评论后的类型",
+              "",
+              0,
+              "取消",
+              htmlSettingTitles,
+              (alert, buttonIndex) => {
+                try {
+                  MNUtil.undoGrouping(() => {
+                    // 按钮索引从1开始（0是取消按钮）
+                    const selectedIndex = buttonIndex - 1;
+                    
+                    if (selectedIndex >= 0 && selectedIndex < htmlSetting.length) {
+                      const selectedType = htmlSetting[selectedIndex].type;
+                      focusNote.mergIntoAndRenewReplaceholder(focusNote.parentNote, selectedType)
+                    }
+                  });
+                } catch (error) {
+                  MNUtil.showHUD(error);
+                }
+              }
+            )
           } catch (error) {
             MNUtil.showHUD(error);
           }

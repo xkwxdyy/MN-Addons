@@ -10160,20 +10160,20 @@ static template(action) {
         "menuItems": [
           "⬇️ 合并",
           {
-            "action": "mergeInParentNoteToPointType",
-            "menuTitle": "    合并到父卡片：point ▸",
+            "action": "mergeInParentNote",
+            "menuTitle": "    合并到父卡片",
           },
           {
-            "action": "mergeInParentNoteToSubpointType",
-            "menuTitle": "    合并到父卡片：subpoint ▪",
+            "action": "mergeInParentNoteWithPopup",
+            "menuTitle": "    合并到父卡片：弹窗选择类型",
           },
           {
-            "action": "mergIntoParenNoteAndRenewReplaceholderToPointType",
-            "menuTitle": "    合并到父卡片 & 替换占位符: point ▸",
+            "action": "mergIntoParenNoteAndRenewReplaceholder",
+            "menuTitle": "    合并到父卡片 & 替换占位符",
           },
           {
-            "action": "mergIntoParenNoteAndRenewReplaceholderToSubpointType",
-            "menuTitle": "    合并到父卡片 & 替换占位符: subpoint ▪",
+            "action": "mergIntoParenNoteAndRenewReplaceholderWithPopup",
+            "menuTitle": "    合并到父卡片 & 替换占位符: 弹窗选择类型",
           },
           "⬇️ 制卡",
           {

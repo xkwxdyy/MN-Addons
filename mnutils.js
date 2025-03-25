@@ -7755,7 +7755,7 @@ try {
     }
 
     // 检测 this 的第一条评论对应是否是 targetNote 是的话就去掉
-    if (this.comments[0].text && (this.comments[0].text == targetNote.noteURL)) {
+    if (this.comments[0] && this.comments[0].text && (this.comments[0].text == targetNote.noteURL)) {
       this.removeCommentByIndex(0)
     }
 

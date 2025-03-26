@@ -2643,6 +2643,7 @@ try {
           Name.abbreviateFirstpartAddDotAndRemoveMiddlepart = firstPart[0] + ". " + lastPart // L. Branges
           Name.abbreviateFirstpartRemoveMiddlepartAndReverseAddCommaAndDot = lastPart + ", " + firstPart[0] + "." // Branges, L.
           Name.abbreviateFirstpartAndMiddlepartAndReverseAddDots = lastPart + " " + middlePart[0] + ". " + firstPart[0] + "." // Branges d. L.
+          Name.abbreviateMiddlePartAddDot = firstPart + " " + middlePart[0] + ". " + lastPart  // Louis d. Branges
           break;
         default:
           // Name.language = "English"

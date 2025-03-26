@@ -1625,19 +1625,21 @@ class MNUtil {
       key: 'color: #B33F00;background: #FFF1E6;border-left: 6px solid #FF6B35;padding:16px 12px 1px;line-height:2;position:relative;top:6px;display:inline-block;font-family:monospace;margin-top:-2px;',
       // 步骤
       step: "font-weight:700;color:#2A3B4D;background:linear-gradient(90deg,#E8F0FE 80%,#C2DBFE);font-size:1.3em;padding:8px 15px;border-left:6px solid #4F79A3;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.08);",
-      point: "font-weight:600;color:#4F79A3; background:linear-gradient(90deg,#F3E5F5 50%,#ede0f7);font-size:1.1em;padding:6px 12px;border-left:4px solid #7A9DB7;transform:skew(-1.5deg);box-shadow:1px 1px 3px rgba(0,0,0,0.05); ",
-      subpoint: "font-weight:500;color:#7A9DB7;background:#E8F0FE;padding:4px 10px;border-radius:12px;border:1px solid #B3D4FF;font-size:0.95em;",
+      point: "font-weight:600;color:#4F79A3; background:linear-gradient(90deg,#F3E5F5 50%,#ede0f7);font-size:1.1em;padding:6px 12px;border-left:4px solid #7A9DB7;transform:skew(-1.5deg);box-shadow:1px 1px 3px rgba(0,0,0,0.05);margin-left:40px;position:relative;",
+      subpoint: "font-weight:500;color:#7A9DB7;background:#E8F0FE;padding:4px 10px;border-radius:12px;border:1px solid #B3D4FF;font-size:0.95em;margin-left:80px;position:relative;",
+      subsubpoint: "font-weight:400;color:#9DB7CA;background:#F8FBFF;padding:3px 8px;border-left:2px dashed #B3D4FF;font-size:0.9em;margin-left:120px;position:relative;",
       remark: 'background:#F5E6C9;color:#6d4c41;display:inline-block;border-left:5px solid #D4AF37;padding:2px 8px 3px 12px;border-radius:0 4px 4px 0;box-shadow:1px 1px 3px rgba(0,0,0,0.08);margin:0 2px;line-height:1.3;vertical-align:baseline;position:relative;',
     };
     
     const icons = {
-      remark: '📝',
       step: '🚩', 
       point:'▸' ,
       subpoint: '▪',
+      subsubpoint: '•',
       key: '🔑', 
       alert: '⚠️', 
       danger: '❗❗❗', 
+      remark: '📝',
     };
 
     const prefix = { 
@@ -1647,11 +1649,57 @@ class MNUtil {
       step: '', 
       point: '', 
       subpoint: '' ,
+      subsubpoint: '',
       remark: '',
     };
     
     return `<span style="${styles[type]} ">${icons[type]} ${prefix[type]}${text}</span>`;
   }
+  // static createHtmlMarkdownText(text, type = 'step') {
+  //   // 层级缩进配置系统
+  //   const hierarchyConfig = {
+  //     step:    { indent: 0,  symbol: '🚩', symbolOffset: '0' },
+  //     point:   { indent: 2,  symbol: '▸',  symbolOffset: '-1.2em' },
+  //     subpoint: { indent: 4,  symbol: '▪',  symbolOffset: '-1.5em' },
+  //     subsubpoint: { indent: 6,  symbol: '•',  symbolOffset: '-1.8em' },
+  //     // 保持其他类型原有配置
+  //     danger:  { indent: 0,  symbol: '❗❗❗', symbolOffset: '0' },
+  //     alert:   { indent: 0,  symbol: '⚠️',  symbolOffset: '0' },
+  //     key:     { indent: 0,  symbol: '🔑',  symbolOffset: '0' },
+  //     remark:  { indent: 0,  symbol: '📝',  symbolOffset: '0' }
+  //   };
+  
+  //   const styles = {
+  //     // 原有样式保持不变，追加缩进系统
+  //     step: "font-weight:700;color:#2A3B4D;background:linear-gradient(90deg,#E8F0FE 80%,#C2DBFE);font-size:1.3em;padding:8px 15px;border-left:6px solid #4F79A3;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.08);margin-left:${hierarchyConfig.step.indent}em;",
+  //     point: "font-weight:600;color:#4F79A3; background:linear-gradient(90deg,#F3E5F5 50%,#ede0f7);font-size:1.1em;padding:6px 12px;border-left:4px solid #7A9DB7;transform:skew(-1.5deg);box-shadow:1px 1px 3px rgba(0,0,0,0.05); margin-left:${hierarchyConfig.point.indent}em;",
+  //     subpoint: "font-weight:500;color:#7A9DB7;background:#E8F0FE;padding:4px 10px;border-radius:12px;border:1px solid #B3D4FF;font-size:0.95em; margin-left:${hierarchyConfig.subpoint.indent}em;",
+  //     subsubpoint: "font-weight:400;color:#9DB7CA;background:#F8FBFF;padding:3px 8px;border-left:2px dashed #B3D4FF;font-size:0.9em;position:relative; margin-left:${hierarchyConfig.subsubpoint.indent}em;",
+  //     danger: 'font-weight:700;color:#6A0C0C;background:#FFC9C9;border-left:6px solid #A93226;font-size:1em;padding:8px 15px;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.1);',
+  //     // 注意
+  //     alert: 'background:#FFF;color:#FF8C5A;border:2px solid currentColor;border-radius:3px;padding:6px 12px;font-weight:600;box-shadow:0 1px 3px rgba(255,140,90,0.2);display:inline-block;',
+  //     // 关键
+  //     key: 'color: #B33F00;background: #FFF1E6;border-left: 6px solid #FF6B35;padding:16px 12px 1px;line-height:2;position:relative;top:6px;display:inline-block;font-family:monospace;margin-top:-2px;',
+  //     remark: 'background:#F5E6C9;color:#6d4c41;display:inline-block;border-left:5px solid #D4AF37;padding:2px 8px 3px 12px;border-radius:0 4px 4px 0;box-shadow:1px 1px 3px rgba(0,0,0,0.08);margin:0 2px;line-height:1.3;vertical-align:baseline;position:relative;',
+  //   };
+  
+  //   // 符号定位系统
+  //   const symbolStyle = {
+  //     step: '',
+  //     point: `position:relative; left:${hierarchyConfig.point.symbolOffset};`,
+  //     subpoint: `position:relative; left:${hierarchyConfig.subpoint.symbolOffset};`,
+  //     subsubpoint: `position:relative; left:${hierarchyConfig.subsubpoint.symbolOffset};`,
+  //     // 其他类型不需要偏移
+  //     _default: ''
+  //   };
+  
+  //   // 动态生成符号
+  //   const symbolTemplate = type !== 'step' 
+  //     ? `<span style="${symbolStyle[type] || symbolStyle._default}">${hierarchyConfig[type].symbol}</span>`
+  //     : hierarchyConfig[type].symbol;
+  
+  //   return `<span style="${styles[type]}">${symbolTemplate} ${text}</span>`;
+  // }
   /**
    * 夏大鱼羊 - MNUtil - end
    */

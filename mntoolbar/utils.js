@@ -5167,8 +5167,39 @@ try {
       })
     })
   }
+
   /**
-   * 夏大鱼羊 - end
+   * 更新 focusNote.parentNote 的摘录
+   * 
+   * 学习集溢出引用卡片，删除后会造成原卡片的摘录到文档的定位失效
+   * 一个可行的办法就是重新摘录，但比较麻烦，这里采用克隆引用卡片，然后把摘录更新，最后删除
+   * 
+   * 粗糙的实现就是合并后把摘录区删掉，然后合并内容上移
+   * 但是这个有个风险就是二者不一致，但应该不需要考虑这个问题，因为引用的话摘录应该是一样的
+   * 
+   * TODO：
+   * 1. 合并后要移动的内容，目前是新内容，但其实应该是和 clonedNote.clearAllCommentsButMergedImageComment() 一样长度的末尾 IndexArr
+   * 
+   */
+  static renewExcerptInParentNoteByFocusNote(focusNote){
+    let parentNote = focusNote.parentNote
+    if (parentNote) {
+      let clonedNote = focusNote.clone()
+      parentNote.addChild(clonedNote)
+      clonedNote.clearAllCommentsButMergedImageComment()
+      if (clonedNote.comments.length > 0) {
+        clonedNote.title = ""
+        parentNote.merge(clonedNote)
+        let excerptPartIndexArr = parentNote.getExcerptPartIndexArr()
+        parentNote.removeCommentsByIndices(excerptPartIndexArr)
+        let newContentsIndexArr = parentNote.getNewContentIndexArr()
+        parentNote.moveCommentsByIndexArrTo(newContentsIndexArr, "excerpt")
+        focusNote.delete()
+      }
+    }
+  }
+  /**
+   * 夏大鱼羊 toolbarUtils - end
   */
   static moveElement(arr, element, direction) {
       // 获取元素的索引
@@ -10241,6 +10272,10 @@ static template(action) {
             "menuTitle": "    清空评论 + ✅ 摘录 ❌ 标题",
           },
           "⬇️ 杂项",
+          {
+            "action": "renewExcerptInParentNoteByFocusNote",
+            "menuTitle": "    父卡片的摘录替换为选中卡片的摘录",
+          },
           {
             "action": "convertNoteToNonexcerptVersion",
             "menuTitle": "    转化为非摘录版本",

@@ -5408,6 +5408,15 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "splitMarkdownTextInFocusNote": 
         toolbarUtils.markdown2Mindmap({source:"currentNote"})
         break;
+      case "renewExcerptInParentNoteByFocusNote":
+        MNUtil.undoGrouping(()=>{
+          try {
+            toolbarUtils.renewExcerptInParentNoteByFocusNote(focusNote)
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
       /* 夏大鱼羊定制 - end */
       case "chatAI":
         toolbarUtils.chatAI(des,button)

@@ -8718,6 +8718,16 @@ try {
     }
   }
 
+  clearAllCommentsButMergedImageComment() {
+    let comments = this.MNComments
+    for (let i = comments.length-1; i >= 0; i--) {
+      let comment = comments[i]
+      if (!(comment.type == "mergedImageComment")) {
+        this.removeCommentByIndex(i)
+      }
+    }
+  }
+
   /**
    * 夏大鱼羊定制 - MNNote - end
    */

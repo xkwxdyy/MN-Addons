@@ -1371,11 +1371,12 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
     let currentDocName
     let pinnedNote
     let htmlSetting = [
-      { title: "remark: 📝", type: "remark" },
+      { title: "step: 🚩", type: "step" },
       { title: "point: ▸", type: "point" },
       { title: "subpoint: ▪", type: "subpoint" },
+      { title: "subsubpoint: •", type: "subsubpoint" },
       { title: "key: 🔑", type: "key" },
-      { title: "step: 🚩", type: "step" },
+      { title: "remark: 📝", type: "remark" },
       { title: "alert: ⚠️", type: "alert" },
       { title: "danger: ❗❗❗", type: "danger" }
     ];

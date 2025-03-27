@@ -765,6 +765,21 @@ class MNUtil {
     //   marked.setOptions({ renderer });
     // }
   }
+  static errorLog = []
+  static addErrorLog(error,source,info){
+    MNUtil.showHUD("MN Utils Error ("+source+"): "+error)
+    let tem = {source:source,time:(new Date(Date.now())).toString()}
+    if (error.detail) {
+      tem.error = {message:error.message,detail:error.detail}
+    }else{
+      tem.error = error.message
+    }
+    if (info) {
+      tem.info = info
+    }
+    this.errorLog.push(tem)
+    this.copyJSON(this.errorLog)
+  }
   /**
    * Retrieves the version of the application.
    * 
@@ -2453,6 +2468,9 @@ try {
       if (/^marginnote\dapp:\/\/note\//.test(object.trim())) {
         return "NoteURL"
       }
+      if (/^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/.test(object.trim())) {
+        return "NoteId"
+      }
       return "string"
     }
     if (object instanceof MNNote) {
@@ -2463,6 +2481,9 @@ try {
     }
     if (object instanceof UIImage) {
       return "UIImage"
+    }
+    if (object instanceof MNComment) {
+      return "MNComment"
     }
     if (object.noteId) {
       return "MbBookNote"
@@ -2937,6 +2958,283 @@ try {
     }
     return dateObject
   }
+  /**
+   * 递归解析列表项及其子列表
+   * @param {object[]} items 
+   * @returns 
+   */
+  static processList(items) {
+  return items.map(item => {
+    // 提取当前列表项文本（忽略内部格式如粗体、斜体）
+    const text = item.text.trim();
+    const node = { name: text, children: [] ,type:item.type};
+
+    // 检查列表项内部是否包含子列表（嵌套结构）
+    const subLists = item.tokens.filter(t => t.type === 'list');
+    if (subLists.length) {
+      node.hasList = true
+      node.listText = subLists[0].raw
+      node.listStart = subLists[0].start
+      node.listOrdered = subLists[0].ordered
+      node.name = item.tokens[0].text
+    }
+    subLists.forEach(subList => {
+      // 递归处理子列表的 items
+      node.children.push(...this.processList(subList.items));
+    });
+
+    return node;
+  });
+}
+static getUnformattedText(token) {
+  if ("tokens" in token && token.tokens.length === 1) {
+    return this.getUnformattedText(token.tokens[0])
+  }else{
+    return token.text
+  }
+}
+/**
+ * 构建树结构（整合标题和列表解析）
+ * @param {object[]} tokens 
+ * @returns 
+ */
+  static buildTree(tokens) {
+  const root = { name: '中心主题', children: [] };
+  const stack = [{ node: root, depth: 0 }]; // 用栈跟踪层级
+  let filteredTokens = tokens.filter(token => token.type !== 'space' && token.type !== 'hr')
+
+  filteredTokens.forEach((token,index) => {
+    let current = stack[stack.length - 1];
+
+    if (token.type === 'heading') {
+      // 标题层级比栈顶浅，则回退栈到对应层级
+      while (stack.length > 1 && token.depth <= current.depth) {
+        stack.pop();
+        current = stack[stack.length - 1]
+      }
+      const newNode = { name: this.getUnformattedText(token), children: [] ,type:'heading'};
+      current.node.children.push(newNode);
+      stack.push({ node: newNode, depth: token.depth });
+    } else if (token.type === 'list') {
+      // 处理列表（可能包含多级嵌套）
+      const listNodes = this.processList(token.items);
+      if(index && filteredTokens[index-1].type === 'paragraph'){
+        if (current.node.type === 'paragraph') {
+          stack.pop();
+        }
+        stack.push({ node: current.node.children.at(-1), depth: 100 });
+        current = stack[stack.length - 1];
+        // current.node.children.at(-1).hasList = true;
+        // current.node.children.at(-1).listText = token.raw;
+        // current.node.children.at(-1).listStart = token.start;
+        // current.node.children.at(-1).ordered = token.ordered;
+        // current.node.children.at(-1).children.push(...listNodes)
+      }
+      current.node.hasList = true;
+      current.node.listText = token.raw;
+      current.node.listStart = token.start;
+      current.node.ordered = token.ordered;
+      current.node.children.push(...listNodes);
+      
+    } else {
+      if (token.type === 'paragraph' && current.node.type === 'paragraph') {
+        stack.pop();
+        current = stack[stack.length - 1];
+      }
+      current.node.children.push({ name: token.raw, raw: token.raw, children: [] ,type:token.type});
+    }
+  });
+  return root;
+}
+  static markdown2AST(markdown){
+    let tokens = marked.lexer(markdown)
+    // MNUtil.copy(tokens)
+    return this.buildTree(tokens)
+  }
+static  containsMathFormula(markdownText) {
+    // 正则表达式匹配单美元符号包裹的公式
+    const inlineMathRegex = /\$[^$]+\$/;
+    // 正则表达式匹配双美元符号包裹的公式
+    const blockMathRegex = /\$\$[^$]+\$\$/;
+    // 检查是否包含单美元或双美元符号包裹的公式
+    return inlineMathRegex.test(markdownText) || blockMathRegex.test(markdownText);
+}
+static  containsUrl(markdownText) {
+    // 正则表达式匹配常见的网址格式
+    const urlPattern = /https?:\/\/[^\s]+|www\.[^\s]+/i;
+    
+    // 使用正则表达式测试文本
+    return urlPattern.test(markdownText);
+}
+
+static removeMarkdownFormat(markdownStr) {
+  return markdownStr
+    // 移除加粗 ** ** 和 __ __
+    .replace(/\*\*(\S(.*?\S)?)\*\*/g, '$1')
+    .replace(/__(\S(.*?\S)?)__/g, '$1')
+    // 移除斜体 * * 和 _ _
+    .replace(/\*(\S(.*?\S)?)\*/g, '$1')
+    .replace(/_(\S(.*?\S)?)_/g, '$1')
+    // 移除删除线 ~~ ~~
+    .replace(/~~(\S(.*?\S)?)~~/g, '$1')
+    // 移除内联代码 ` `
+    .replace(/`([^`]+)`/g, '$1')
+    // 移除链接 [text](url)
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    // 移除图片 ![alt](url)
+    .replace(/!\[([^\]]+)\]\([^)]+\)/g, '$1')
+    // 移除标题 # 和 ##
+    .replace(/^#{1,6}\s+/gm, '')
+    // 移除部分列表符号（*、-、+.）
+    .replace(/^[\s\t]*([-*+]\.)\s+/gm, '')
+    // 移除块引用 >
+    .replace(/^>\s+/gm, '')
+    // 移除水平线 ---
+    .replace(/^[-*]{3,}/gm, '')
+    // 移除HTML标签（简单处理）
+    .replace(/<[^>]+>/g, '')
+    // 合并多个空行
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+static getConfig(text){
+  let hasMathFormula = this.containsMathFormula(text)
+  if (hasMathFormula) {
+    if (/\:/.test(text)) {
+      let splitedText = text.split(":")
+      if (this.containsMathFormula(splitedText[0])) {
+        let config = {excerptText:text,excerptTextMarkdown:true}
+        return config
+      }
+      let config = {title:splitedText[0],excerptText:splitedText[1]}
+      return config
+    }
+    if (/\：/.test(text)) {
+      let splitedText = text.split("：")
+      if (this.containsMathFormula(splitedText[0])) {
+        let config = {excerptText:text,excerptTextMarkdown:true}
+        return config
+      }
+      let config = {title:splitedText[0],excerptText:splitedText[1]}
+      return config
+    }
+    let config = {excerptText:text,excerptTextMarkdown:true}
+    return config
+  }
+  if (this.containsUrl(text)) {
+    let config = {excerptText:text,excerptTextMarkdown:true}
+    return config
+  }
+    if (/\:/.test(text)) {
+      let splitedText = text.split(":")
+      if (splitedText[0].length > 50) {
+        let config = {excerptText:text}
+        return config
+      }
+      let config = {title:splitedText[0],excerptText:splitedText[1]}
+      return config
+    }
+    if (/\：/.test(text)) {
+      let splitedText = text.split("：")
+      if (splitedText[0].length > 50) {
+        let config = {excerptText:text}
+        return config
+      }
+      let config = {title:splitedText[0],excerptText:splitedText[1]}
+      return config
+    }
+  if (text.length > 50) {
+    return {excerptText:text}
+  }
+  return {title:text}
+}
+  /**
+ * 
+ * @param {MNNote} note 
+ * @param {Object} ast 
+ */
+static AST2Mindmap(note,ast,level = "all") {
+try {
+  if (ast.children && ast.children.length) {
+    let hasList = ast.hasList
+    let listOrdered = ast.listOrdered || ast.ordered
+    ast.children.forEach((c,index)=>{
+      if (c.type === 'hr') {
+        return
+      }
+      let text = this.removeMarkdownFormat(c.name)
+      // let text = c.name
+      if (text.endsWith(":") || text.endsWith("：")) {
+        text = text.slice(0,-1)
+      }
+      let config = this.getConfig(text)
+      if ((text.startsWith('$') && text.endsWith('$')) || /\:/.test(text) || /：/.test(text)) {
+
+      }else{
+        if (c.children.length === 1 && !(/\:/.test(c.children[0].name) || /：/.test(c.children[0].name))) {
+          if (text.endsWith(":") || text.endsWith("：")) {
+            config = {excerptText:text+"\n"+c.children[0].name}
+          }else{
+            config = {title:text,excerptText:c.children[0].name}
+          }
+          let childNote = note.createChildNote(config)
+          if (c.children[0].children.length) {
+            this.AST2Mindmap(childNote,c.children[0])
+          }
+          return
+        }
+        if (c.children.length > 1 && c.children[0].type === 'paragraph' && c.children[1].type === 'heading') {
+          if (text.endsWith(":") || text.endsWith("：")) {
+            config = {excerptText:text+"\n"+c.children[0].name}
+          }else{
+            config = {title:text,excerptText:c.children[0].name}
+          }
+          c.children.shift()
+        }
+      }
+      if (hasList && listOrdered) {
+        if (ast.listStart == 0) {
+          ast.listStart = 1
+        }
+        if (config.title) {
+          config.title = (ast.listStart+index)+". "+config.title
+        }else{
+          config.excerptText = (ast.listStart+index)+". "+config.excerptText
+        }
+      }
+      // MNUtil.showHUD("message")
+      //继续创建子节点
+      let childNote = note.createChildNote(config)
+      this.AST2Mindmap(childNote,c)
+    })
+  }else{
+    // MNUtil.showHUD("No children found")
+  }
+  } catch (error) {
+  this.addErrorLog(error, "AST2Mindmap")
+}
+}
+static hasBackLink(from,to){
+  let fromNote = MNNote.new(from)
+  let targetNote = MNNote.new(to)//链接到的卡片
+  if (targetNote.linkedNotes && targetNote.linkedNotes.length > 0) {
+    if (targetNote.linkedNotes.some(n=>n.noteid === fromNote.noteId)) {
+      return true
+    }
+  }
+  return false
+}
+static extractMarginNoteLinks(text) {
+    // 正则表达式匹配 marginnote4app://note/ 后面跟着的 UUID 格式的链接
+    const regex = /marginnote4app:\/\/note\/[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}/gi;
+    
+    // 使用 match 方法提取所有符合正则表达式的链接
+    const links = text.match(regex);
+    
+    // 如果找到匹配的链接，返回它们；否则返回空数组
+    return links || [];
+}
+
 }
 
 class MNConnection{
@@ -3988,12 +4286,20 @@ class MNNote{
     // let paramType = MNUtil.typeOf(note)
     // MNUtil.showHUD(paramType)
     switch (MNUtil.typeOf(note)) {
+      case "MNNote":
+        return note;//原地返回
       case 'MbBookNote':
         return new MNNote(note)
       case 'NoteURL':
         let NoteFromURL = MNUtil.getNoteById(MNUtil.getNoteIdByURL(note),alert)
         if (NoteFromURL) {
           return new MNNote(NoteFromURL)
+        }
+        return undefined
+      case "NoteId":
+        let NoteFromId = MNUtil.getNoteById(note,alert)
+        if (NoteFromId) {
+          return new MNNote(NoteFromId)
         }
         return undefined
       case 'string':
@@ -4023,16 +4329,23 @@ class MNNote{
           }
         }
         if (config.content) {
-          if (config.markdown) {
-            newNote.appendMarkdownComment(config.content)
-          }else{
-            newNote.appendTextComment(config.content)
+          newNote.excerptText = config.content
+          if (config.excerptTextMarkdown || config.markdown) {
+            newNote.excerptTextMarkdown = true
+            if (/!\[.*?\]\((data:image\/.*;base64,.*?)(\))/.test(config.content)) {
+              newNote.processMarkdownBase64Images()
+            }
           }
         }
         if (config.color !== undefined) {
           newNote.colorIndex = config.color
         }
-
+        if (config.inCurrentChildMap) {
+          if (this.currentChildMap) {
+            let child = this.currentChildMap.createChildNote(config)
+            return child
+          }
+        }
         return new MNNote(newNote)
       default:
         return undefined
@@ -4959,7 +5272,31 @@ try {
       this.note.appendTextComment(comment)
     }
     if (index !== undefined) {
-      this.moveComment(this.note.comments.length-1, index)
+      this.moveComment(this.note.comments.length-1, index,false)
+    }
+    return this
+  }
+  /**
+   *
+   * @param  {string} comment
+   * @param  {number} index
+   * @returns {MNNote}
+   */
+  replaceWithMarkdownComment(comment,index=undefined){
+    if (index !== undefined) {
+      this.removeCommentByIndex(index)
+    }
+    let validComment = comment && comment.trim()
+    if (!validComment) {
+      return this
+    }
+    try {
+      this.note.appendMarkdownComment(comment)
+    } catch (error) {
+      this.note.appendTextComment(comment)
+    }
+    if (index !== undefined) {
+      this.moveComment(this.note.comments.length-1, index,false)
     }
     return this
   }
@@ -4976,7 +5313,27 @@ try {
     }
     this.note.appendTextComment(comment)
     if (index !== undefined) {
-      this.moveComment(this.note.comments.length-1, index)
+      this.moveComment(this.note.comments.length-1, index,false)
+    }
+    return this
+  }
+  /**
+   *
+   * @param  {string} comment
+   * @param  {number} index
+   * @returns {MNNote}
+   */
+  replaceWithTextComment(comment,index=undefined){
+    if (index !== undefined) {
+      this.removeCommentByIndex(index)
+    }
+    let validComment = comment && comment.trim()
+    if (!validComment) {
+      return this
+    }
+    this.note.appendTextComment(comment)
+    if (index !== undefined) {
+      this.moveComment(this.note.comments.length-1, index,false)
     }
     return this
   }
@@ -5036,7 +5393,7 @@ try {
    * @param {number} toIndex - The target index where the comment should be moved.
    * @returns {MNNote}
    */
-  moveComment(fromIndex, toIndex) {
+  moveComment(fromIndex, toIndex,msg = true) {
   try {
 
     let length = this.comments.length;
@@ -5056,7 +5413,9 @@ try {
       to = arr.length-1
     }
     if (from == to) {
-      // MNUtil.showHUD("No change")
+      if (msg) {
+        MNUtil.showHUD("No change")
+      }
       return
     }
     // 取出要移动的元素
@@ -8942,6 +9301,9 @@ try {
    * @returns {MNNote}
    */
   appendNoteLink(note,type="To"){
+  try {
+    
+
     switch (MNUtil.typeOf(note)) {
       case "MNNote":
         switch (type) {
@@ -8954,6 +9316,24 @@ try {
             break;
           case "From":
             note.note.appendNoteLink(this.note)
+          default:
+            break;
+        }
+        break;
+      case "NoteURL":
+      case "NoteId":
+        let targetNote = MNNote.new(note)
+        switch (type) {
+          case "Both":
+            this.note.appendNoteLink(targetNote.note)
+            targetNote.note.appendNoteLink(this.note)
+            break;
+          case "To":
+            this.note.appendNoteLink(targetNote.note)
+            break;
+          case "From":
+            targetNote.note.appendNoteLink(this.note)
+            break;
           default:
             break;
         }
@@ -8977,6 +9357,10 @@ try {
         break;
     }
     return this
+  } catch (error) {
+    MNUtil.showHUD(error)
+    return this
+  }
   }
   /**
    *
@@ -9125,6 +9509,13 @@ try {
     let noteId = MNUtil.getNoteId(note);
     if (noteId) {
       MNUtil.focusNoteInFloatMindMapById(noteId,delay)
+    }
+  }
+  static get currentChildMap(){
+    if (MNUtil.mindmapView && MNUtil.mindmapView.mindmapNodes[0].note?.childMindMap) {
+      return this.new(MNUtil.mindmapView.mindmapNodes[0].note.childMindMap.noteId)
+    }else{
+      return undefined
     }
   }
   /**
@@ -9492,16 +9883,35 @@ class MNComment {
     if (this.originalNoteId) {
       let note = MNNote.new(this.originalNoteId)
       switch (this.type) {
-        case "linkComment":
         case "markdownComment":
           this.detail.text = text
-          note.removeCommentByIndex(this.index)
-          note.appendMarkdownComment(text, this.index)
+          note.replaceWithMarkdownComment(text,this.index)
+          // note.removeCommentByIndex(this.index)
+          // note.appendMarkdownComment(text, this.index)
           break;
         case "textComment":
           this.detail.text = text
-          note.appendTextComment(this.index)
-          note.appendMarkdownComment(text, this.index)
+          note.replaceWithTextComment(text,this.index)
+          // note.removeCommentByIndex(this.index)
+          // note.appendTextComment(text, this.index)
+          break;
+        case "linkComment":
+          let noteURLs = MNUtil.extractMarginNoteLinks(text)//提取markdown格式链接
+          let targetNote = MNNote.new(noteURLs[0])
+          this.replaceLink(targetNote)
+          // if (noteURLs.length && MNNote.new(noteURLs[0])) {
+          //   if (this.linkDirection === "both") {
+          //     this.removeBackLink()//先去除原反链
+          //     this.detail.text = noteURLs[0]
+          //     note.replaceWithTextComment(noteURLs[0],this.index)
+          //     this.addBackLink(true)
+          //   }else{
+          //     this.detail.text = noteURLs[0]
+          //     note.replaceWithTextComment(noteURLs[0],this.index)
+          //   }
+          // }
+          // note.removeCommentByIndex(this.index)
+          // note.appendTextComment(text, this.index)
           break;
         case "blankTextComment":
         case "mergedImageComment":
@@ -9511,7 +9921,7 @@ class MNComment {
           mergedNote.excerptText = text
           break;
         default:
-          MNUtil.showHUD("Unspported comment type: " + this.type)
+          MNUtil.showHUD("Unsupported comment type: " + this.type)
           break;
       }
     }else{
@@ -9523,6 +9933,27 @@ class MNComment {
       return this.detail.text.split(/\s+/).filter(k => k.startsWith("#"))
     }
     return undefined
+  }
+  get direction(){
+    if (this.type === "linkComment") {
+      return this.linkDirection
+    }
+    return undefined
+  }
+  set direction(direction){
+    if (this.type === "linkComment") {
+      switch (direction) {
+        case "one-way":
+          this.removeBackLink()
+          break;
+        case "both":
+          this.addBackLink()
+          break;
+        default:
+          MNUtil.showHUD("Invalid direction: "+direction)
+          break;
+      }
+    }
   }
   get note(){
     switch (this.type) {
@@ -9581,6 +10012,64 @@ class MNComment {
     }else{
       MNUtil.showHUD("No originalNoteId")
     }
+  }
+  replaceLink(note){
+    try {
+    if (this.type === "linkComment" && note){
+      let targetNote = MNNote.new(note)
+      let currentNote = MNNote.new(this.originalNoteId)
+      if (this.linkDirection === "both") {
+        this.removeBackLink()//先去除原反链
+        this.detail.text = targetNote.noteURL
+        currentNote.replaceWithTextComment(this.detail.text,this.index)
+        this.addBackLink(true)
+      }else{
+        this.detail.text = targetNote.noteURL
+        currentNote.replaceWithTextComment(this.detail.text,this.index)
+      }
+    }
+      } catch (error) {
+      MNUtil.addErrorLog(error, "replaceLink")
+    }
+  }
+  hasBackLink(){
+    if (this.type === "linkComment"){
+      let fromNote = MNNote.new(this.originalNoteId)
+      let toNote = this.note
+      if (toNote.linkedNotes && toNote.linkedNotes.length > 0) {
+        if (toNote.linkedNotes.some(n=>n.noteid === fromNote.noteId)) {
+          return true
+        }
+      }
+      return false
+    }
+    return false
+  }
+  removeBackLink(){
+    if (this.type === "linkComment" && this.linkDirection === "both") {
+      let targetNote = this.note//链接到的卡片
+      if (this.hasBackLink()) {
+        MNComment.from(targetNote).forEach(comment => {
+          if (comment.type === "linkComment" && comment.note.noteId === this.originalNoteId) {
+            comment.remove()
+            this.linkDirection = "one-way"
+          }
+        })
+      }
+    }
+  }
+  addBackLink(force = false){
+  try {
+    if (this.type === "linkComment" && (this.linkDirection === "one-way" || force)) {
+      let targetNote = this.note//链接到的卡片
+      if (!this.hasBackLink()) {
+        targetNote.appendNoteLink(this.originalNoteId,"To")
+        this.linkDirection = "both"
+      }
+    }
+  } catch (error) {
+    MNUtil.showHUD(error)
+  }
   }
   /**
    * 
@@ -9673,6 +10162,10 @@ class MNComment {
    * @returns {MNComment[]}
    */
   static from(note){
+    if (!note) {
+      MNUtil.showHUD("❌ No note found")
+      return undefined
+    }
     try {
       let newComments = note.comments.map((c,ind)=>MNComment.new(c,ind,note))
       return newComments
@@ -9689,15 +10182,31 @@ class MNComment {
    * @returns {MNComment}
    */
   static new(comment,index,note){
+    try {
+      
+
       let newComment = new MNComment(comment)
-      if (index !== undefined) {
-        newComment.index = index
-      }
       if (note) {
         newComment.originalNoteId = note.noteId
       }
+      if (index !== undefined) {
+        newComment.index = index
+      }
+      if (newComment.type === 'linkComment') {
+        if (newComment.hasBackLink()) {
+          newComment.linkDirection = "both"
+        }else{
+          newComment.linkDirection = "one-way"
+        }
+      }
+
       return newComment
+    } catch (error) {
+      MNUtil.showHUD(error)
+      return undefined
+    }
   }
+  
 }
 
 class MNExtensionPanel {

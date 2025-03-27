@@ -1272,7 +1272,7 @@ body[theme-mode=dark] {
 }
 
 .semi-card-bordered {
-  border: 1px solid var(--semi-color-border)
+  border: 0px solid var(--semi-color-border)
 }
 
 .semi-card-header {
@@ -1320,7 +1320,10 @@ body[theme-mode=dark] {
   font-weight: 400;
   letter-spacing: 0;
   line-height: 20px;
-  padding: 20px
+  padding-left: 0px;
+  padding-right: 0px;
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
 .semi-card-body-actions {
@@ -2606,7 +2609,7 @@ p.semi-typography-extended {
 }
 
 .semi-collapse-item {
-  border-bottom: 1px solid var(--semi-color-border)
+  border-bottom: 0px solid var(--semi-color-border)
 }
 
 .semi-collapse-header {
@@ -2626,7 +2629,7 @@ p.semi-typography-extended {
 .semi-collapse-header,
 .semi-collapse-header-right {
   align-items: center;
-  display: flex
+  display: none
 }
 
 .semi-collapse-header-right span {
@@ -2677,7 +2680,7 @@ p.semi-typography-extended {
   font-family: Inter, -apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Hiragino Sans GB, Microsoft YaHei, Helvetica Neue, Helvetica, Arial, sans-serif;
   font-size: 14px;
   line-height: 20px;
-  padding: 4px 16px 8px
+  padding: 4px 0px 8px
 }
 
 .semi-collapse-content p {
@@ -3079,7 +3082,7 @@ p.semi-typography-extended {
 .semi-layout-content {
   flex: auto;
   min-height: auto;
-  padding-top: 0px !important;
+  padding: 0px !important;
 }
 
 .semi-layout-sider {
@@ -3174,7 +3177,8 @@ p.semi-typography-extended {
   outline: none;
   position: relative;
   vertical-align: middle;
-  width: 100%
+  width: calc(100% - 20px);
+  margin-left: 10px;
 }
 
 .semi-input-wrapper,
@@ -5778,7 +5782,12 @@ p.semi-typography-extended {
   min-width: 100%;
   table-layout: fixed
 }
-
+.semi-collapse-content-wrapper{
+  margin-left: 0px;
+}
+.semi-typography{
+  padding-left: 10px;
+}
 .semi-table-fixed>.semi-table-tbody>.semi-table-row-expand>.semi-table-row-cell>.semi-table-expand-inner,
 .semi-table-fixed>.semi-table-tbody>.semi-table-row-section>.semi-table-row-cell>.semi-table-section-inner {
   align-items: center;
@@ -9402,7 +9411,6 @@ p.semi-typography-extended {
   transform: scale(var(--semi-transform_scale-none));
   transition: color var(--semi-transition_duration-none) var(--semi-transition_function-easeIn) var(--semi-transition_delay-none)
 }
-
 .semi-tabs-bar-line.semi-tabs-bar-top .semi-tabs-tab {
   border-bottom: 2px solid transparent;
   padding: 16px 4px 14px;
@@ -9410,7 +9418,8 @@ p.semi-typography-extended {
 }
 
 .semi-tabs-bar-line.semi-tabs-bar-top .semi-tabs-tab:first-of-type {
-  padding-left: 0
+  padding-left: 0;
+  margin-left: 20px;
 }
 
 .semi-tabs-bar-line.semi-tabs-bar-top .semi-tabs-tab:hover {
@@ -43248,7 +43257,8 @@ body {
 }
 
 .semi-card {
-  border-radius: 20px !important
+  border-radius: 20px !important;
+  margin-top: 0px !important;
 }
 
 .semi-button,

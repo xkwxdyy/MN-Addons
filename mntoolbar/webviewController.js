@@ -5469,7 +5469,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         toolbarUtils.showMessage(des)
         break
       case "confirm":
-        let targetDes = await toolbarUtils.confirm(des)
+        let targetDes = await toolbarUtils.userConfirm(des)
         if (targetDes) {
           success = await this.customActionByDes(button, targetDes) 
         }else{

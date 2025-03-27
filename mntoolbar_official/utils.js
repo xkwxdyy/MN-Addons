@@ -1331,18 +1331,13 @@ try {
         break;
       case "{{currentNoteInMindMap}}":
       case "currentNoteInMindMap":
-        MNNote.getFocusNote().realGroupNoteForTopicId().focusInFloatMindMap()
+        let targetNote = MNNote.getFocusNote().realGroupNoteForTopicId()
+        if (targetNote) {
+          targetNote.focusInFloatMindMap()
+        }else{
+          MNUtil.showHUD("No Note found!")
+        }
         return
-        // let notebookController = MNUtil.notebookController
-        // let currentNotebookId = notebookController.notebookId
-        
-        // if (!notebookController.view.hidden && notebookController.mindmapView && notebookController.focusNote) {
-        //   targetNoteid = notebookController.focusNote.noteId
-        // }else{
-        //   let testNote = MNUtil.currentDocController.focusNote
-        //   targetNoteid = testNote.realGroupNoteIdForTopicId(currentNotebookId)
-        // }
-        break;
       default:
         break;
     }
@@ -2185,13 +2180,16 @@ try {
     let content = this.detectAndReplace(des.content)
     MNUtil.showHUD(content)
   }
-  static async confirm(des){
-    if (des.title && "onConfirm" in des) {
-      let confirmTitle = toolbarUtils.detectAndReplace(des.title)
-      let confirmSubTitle = des.subTitle ? toolbarUtils.detectAndReplace(des.subTitle) : ""
+  static async userConfirm(des){
+    if (des.title) {
+      let confirmTitle = this.detectAndReplace(des.title)
+      let confirmSubTitle = des.subTitle ? this.detectAndReplace(des.subTitle) : ""
       let confirm = await MNUtil.confirm(confirmTitle, confirmSubTitle)
       if (confirm) {
-        return des.onConfirm
+        if ("onConfirm" in des) {
+          return des.onConfirm
+        }
+        return undefined
       }else{
         if ("onCancel" in des) {
           return des.onCancel
@@ -2461,6 +2459,7 @@ try {
     }
     let buffer = des.buffer ?? true
     let source = des.ocrSource ?? des.source
+    let target = des.target ?? "comment"
     let res
     if (typeof ocrUtils === 'undefined') {
       // MNUtil.showHUD("MN Toolbar: Please install 'MN OCR' first!")
@@ -2470,14 +2469,14 @@ try {
     }
     // let res
     let noteTargets = ["comment","excerpt","childNote"]
-    if (!focusNote && noteTargets.includes(des.target)) {
+    if (!focusNote && noteTargets.includes(target)) {
       let selection = MNUtil.currentSelection
       if (selection.onSelection) {
         focusNote = MNNote.fromSelection()
       }
     }
     if (res) {
-      switch (des.target) {
+      switch (target) {
         case "comment":
           if (focusNote) {
             MNUtil.undoGrouping(()=>{
@@ -4425,6 +4424,7 @@ class toolbarConfig {
   "draftCurrentNote",
   "collapseBlank",
   "collapseBlankOnPage",
+  "cancelBlankOnPage",
   "setBlankLayer",
   "insertBlank",
   "insertTranslation",
@@ -4442,6 +4442,7 @@ class toolbarConfig {
   "splitBook",
   "pasteOnPage",
   "textboxOnPage",
+  "fullTextOnPage",
   "imageboxOnPage",
   "cameraOnPage",
   "moreOperations",
@@ -4480,6 +4481,7 @@ class toolbarConfig {
     insertBlank:{enabled:false,target:"",name:"insertBlank"},
     collapseBlank:{enabled:false,target:"",name:"collapseBlank"},
     collapseBlankOnPage:{enabled:false,target:"",name:"collapseBlankOnPage"},
+    cancelBlankOnPage:{enabled:false,target:"",name:"cancelBlankOnPage"},
     copyOCR:{enabled:false,target:"",name:"copyOCR"},
     foldHighlight:{enabled:false,target:"",name:"foldHighlight"},
     addToTOC:{enabled:false,target:"",name:"addToTOC"},
@@ -4510,6 +4512,7 @@ class toolbarConfig {
     splitBook:{enabled:false,target:"",name:"splitBook"},
     pasteOnPage:{enabled:false,target:"",name:"pasteOnPage"},
     textboxOnPage:{enabled:false,target:"",name:"textboxOnPage"},
+    fullTextOnPage:{enabled:false,target:"",name:"fullTextOnPage"},
     imageboxOnPage:{enabled:false,target:"",name:"imageboxOnPage"},
     cameraOnPage:{enabled:false,target:"",name:"cameraOnPage"},
     setBlankLayer:{enabled:false,target:"",name:"setBlankLayer"},

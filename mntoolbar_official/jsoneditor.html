@@ -723,6 +723,8 @@ function setSchemaByActionName(actionName) {
               case 'method':
                 return ['replace','append']
               case 'content':
+              case 'title':
+              case 'subTitle':
                 return [
                   '{{clipboardText}}','{{selectionText}}','{{currentDocName}}','{{currentDocAttach}}',
                   '{{note.title}}','{{note.url}}','{{note.id}}','{{note.hashTags}}','{{note.excerptText}}','{{note.allText}}','{{note.docName}}',

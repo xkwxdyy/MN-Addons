@@ -1339,7 +1339,6 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       //如果返回true则表示菜单弹出已执行，则不再执行下面的代码
       return
     }
-    // MNUtil.showHUD("customActionByDes")
     let focusNote = undefined
     let targetNotes = []
     let success = true
@@ -1835,7 +1834,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         toolbarUtils.showMessage(des)
         break
       case "confirm":
-        let targetDes = await toolbarUtils.confirm(des)
+        let targetDes = await toolbarUtils.userConfirm(des)
         if (targetDes) {
           success = await this.customActionByDes(button, targetDes) 
         }else{

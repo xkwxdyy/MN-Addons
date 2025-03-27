@@ -824,7 +824,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       MNButton.setColor(self.iCloudButton, toolbarConfig.syncConfig.iCloudSync?"#457bd3":"#9bb2d6",0.8)
       toolbarConfig.save("MNToolbar_syncConfig",undefined,false)
     }else{
-      let direction = await MNUtil.userSelect("MN Toolbar\nChoose action", "请选择操作", ["📥 Import / 导入","📤 Export / 导出"])
+      let direction = await MNUtil.userSelect("MN Toolbar\nChoose action / 请选择操作", "❗️Back up the configuration before proceeding.\n❗️建议在操作前先备份配置", ["📥 Import / 导入","📤 Export / 导出"])
       switch (direction) {
         case 0:
           //cancel

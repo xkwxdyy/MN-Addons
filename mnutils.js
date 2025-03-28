@@ -2504,6 +2504,7 @@ try {
       case "NoteURL":
         noteId = this.getNoteIdByURL(note)
         break;
+      case "NoteId":
       case 'string':
         noteId = note
         break;
@@ -4988,6 +4989,7 @@ try {
           MNUtil.copy(note)
           MNUtil.showHUD("Note not exist!")
         }
+      case "NoteId":
       case "string":
         let targetNote = MNUtil.getNoteById(note)
         if (targetNote) {
@@ -5059,6 +5061,7 @@ try {
           MNUtil.showHUD("Note not exist!")
         }
         break;
+      case "NoteId":
       case "string":
         let targetNote = MNUtil.getNoteById(note)
         if (targetNote) {
@@ -9675,6 +9678,7 @@ try {
         }
         noteIds = MNUtil.db.cloneNotesToTopic([noteFromURL], notebookId)
         return MNNote.new(noteIds[0])
+      case "NoteId":
       case "string":
         let targetNote = MNUtil.getNoteById(note)
         if (!targetNote) {

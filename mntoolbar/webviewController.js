@@ -2235,14 +2235,32 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           }
         })
         break;
-      case "renewProofContentPointsToPointType":
+      case "renewProofContentPoints":
         MNUtil.undoGrouping(()=>{
           try {
-            focusNotes.forEach(
-              focusNote => {
-                focusNote.renewProofContentPointsToHtmlType("point")
+            UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+              "选择“-“评论修改的类型",
+              "",
+              0,
+              "取消",
+              htmlSettingTitles,
+              (alert, buttonIndex) => {
+                try {
+                  MNUtil.undoGrouping(() => {
+                    // 按钮索引从1开始（0是取消按钮）
+                    const selectedIndex = buttonIndex - 1;
+                    
+                    if (selectedIndex >= 0 && selectedIndex < htmlSetting.length) {
+                      const selectedType = htmlSetting[selectedIndex].type;
+                      // focusNote.mergeInto(focusNote.parentNote, selectedType)
+                      focusNote.renewProofContentPointsToHtmlType(selectedType)
+                    }
+                  });
+                } catch (error) {
+                  MNUtil.showHUD(error);
+                }
               }
-            )
+            );
           } catch (error) {
             MNUtil.showHUD(error);
           }

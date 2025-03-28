@@ -5393,7 +5393,7 @@ try {
    * @param {number} toIndex - The target index where the comment should be moved.
    * @returns {MNNote}
    */
-  moveComment(fromIndex, toIndex,msg = true) {
+  moveComment(fromIndex, toIndex,msg = false) {
   try {
 
     let length = this.comments.length;

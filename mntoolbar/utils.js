@@ -5185,7 +5185,7 @@ try {
     let parentNote = focusNote.parentNote
     if (parentNote) {
       let clonedNote = focusNote.clone()
-      parentNote.addChild(clonedNote)
+      // parentNote.addChild(clonedNote)  // 不能 addChild，否则合并后摘录回文档的定位失效
       clonedNote.clearAllCommentsButMergedImageComment()
       if (clonedNote.comments.length > 0) {
         clonedNote.title = ""

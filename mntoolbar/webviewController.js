@@ -1378,7 +1378,8 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       { title: "key: 🔑", type: "key" },
       { title: "remark: 📝", type: "remark" },
       { title: "alert: ⚠️", type: "alert" },
-      { title: "danger: ❗❗❗", type: "danger" }
+      { title: "danger: ❗❗❗", type: "danger" },
+      { title: "none", type: "none" }
     ];
     let htmlSettingTitles = htmlSetting.map(config => config.title);
     switch (des.action) {

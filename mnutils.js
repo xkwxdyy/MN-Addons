@@ -1630,7 +1630,7 @@ class MNUtil {
     return link
   }
 
-  static createHtmlMarkdownText(text, type = 'step'){
+  static createHtmlMarkdownText(text, type = 'none'){
     const styles = {
       // 格外注意
       danger: 'font-weight:700;color:#6A0C0C;background:#FFC9C9;border-left:6px solid #A93226;font-size:1em;padding:8px 15px;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.1);',
@@ -1667,8 +1667,11 @@ class MNUtil {
       subsubpoint: '',
       remark: '',
     };
-    
-    return `<span style="${styles[type]} ">${icons[type]} ${prefix[type]}${text}</span>`;
+    if (type == 'none') {
+      return text.trim()
+    } else {
+      return `<span style="${styles[type]} ">${icons[type]} ${prefix[type]}${text}</span>`;
+    }
   }
   // static createHtmlMarkdownText(text, type = 'step') {
   //   // 层级缩进配置系统
@@ -8190,7 +8193,7 @@ try {
    * @param {MNNote} targetNote 
    * @param {Number} targetIndex 
    */
-  mergeIntoAndMove(targetNote, targetIndex, htmlType = "point"){
+  mergeIntoAndMove(targetNote, targetIndex, htmlType = "none"){
     // let commentsLength = this.comments.length
     // if (this.title) {
     //   commentsLength += 1  // 如果有标题的话，合并后会处理为评论，所以要加 1
@@ -8213,7 +8216,7 @@ try {
   /**
    * 更新占位符的内容
    */
-  mergIntoAndRenewReplaceholder(targetNote, htmlType = "point"){
+  mergIntoAndRenewReplaceholder(targetNote, htmlType = "none"){
     let targetIndex = targetNote.getCommentIndex(this.noteURL)
     if (targetIndex !== -1) {
       // if (this.comments[0].text && this.comments[0].text == targetNote.noteURL) {

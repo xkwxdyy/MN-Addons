@@ -8138,22 +8138,22 @@ try {
    * 
    * 注意：和 MN 自己的合并不同，this 的标题会处理为评论，而不是添加到 targetNote 的标题
    */
-  mergeInto(targetNote, htmlType = "point"){
+  mergeInto(targetNote, htmlType = "none"){
     // 合并之前先更新链接
     this.renewLinks()
 
     let oldComments = this.MNComments
     oldComments.forEach((comment, index) => {
-      if (comment.type == "linkComment") {
-        if (this.LinkGetType(comment.text) == "Double") {
-          let linkedNote = MNNote.new(comment.text.toNoteId())
-          let linkedNoteComments = linkedNote.MNComments
-          let indexArrInLinkedNote = linkedNote.getLinkCommentsIndexArr(this.noteId.toNoteURL())
-          // 把 this 的链接更新为 targetNote 的链接
-          indexArrInLinkedNote.forEach(index => {
-            linkedNoteComments[index].text = targetNote.noteURL
-          })
-        }
+      if (comment.type == "linkComment" && comment.linkDirection == "both") {
+        let linkedNote = MNNote.new(comment.text.toNoteId())
+        let linkedNoteComments = linkedNote.MNComments
+        let indexArrInLinkedNote = linkedNote.getLinkCommentsIndexArr(this.noteId.toNoteURL())
+        // 把 this 的链接更新为 targetNote 的链接
+        indexArrInLinkedNote.forEach(index => {
+          // linkedNoteComments[index].text = targetNote.noteURL
+          linkedNoteComments[index].detail.text = targetNote.noteURL
+          linkedNote.replaceWithMarkdownComment(targetNote.noteURL,linkedNoteComments[index].index)
+        })
       }
     })
 

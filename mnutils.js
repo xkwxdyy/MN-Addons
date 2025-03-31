@@ -8154,8 +8154,9 @@ try {
         // 把 this 的链接更新为 targetNote 的链接
         indexArrInLinkedNote.forEach(index => {
           // linkedNoteComments[index].text = targetNote.noteURL
-          linkedNoteComments[index].detail.text = targetNote.noteURL
-          linkedNote.replaceWithMarkdownComment(targetNote.noteURL,linkedNoteComments[index].index)
+          // linkedNoteComments[index].detail.text = targetNote.noteURL
+          // linkedNote.replaceWithMarkdownComment(targetNote.noteURL,linkedNoteComments[index].index)
+          linkedNote.replaceWithMarkdownComment(targetNote.noteURL, index)
         })
       }
     })

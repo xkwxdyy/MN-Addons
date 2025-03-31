@@ -8154,8 +8154,9 @@ try {
         // 把 this 的链接更新为 targetNote 的链接
         indexArrInLinkedNote.forEach(index => {
           // linkedNoteComments[index].text = targetNote.noteURL
-          linkedNoteComments[index].detail.text = targetNote.noteURL
-          linkedNote.replaceWithMarkdownComment(targetNote.noteURL,linkedNoteComments[index].index)
+          // linkedNoteComments[index].detail.text = targetNote.noteURL
+          // linkedNote.replaceWithMarkdownComment(targetNote.noteURL,linkedNoteComments[index].index)
+          linkedNote.replaceWithMarkdownComment(targetNote.noteURL, index)
         })
       }
     })
@@ -9890,36 +9891,17 @@ class MNComment {
     if (this.originalNoteId) {
       let note = MNNote.new(this.originalNoteId)
       switch (this.type) {
+        // 夏大鱼羊 - 修改 - begin
+        case "linkComment":
         case "markdownComment":
           this.detail.text = text
           note.replaceWithMarkdownComment(text,this.index)
-          // note.removeCommentByIndex(this.index)
-          // note.appendMarkdownComment(text, this.index)
           break;
         case "textComment":
           this.detail.text = text
           note.replaceWithTextComment(text,this.index)
-          // note.removeCommentByIndex(this.index)
-          // note.appendTextComment(text, this.index)
           break;
-        case "linkComment":
-          let noteURLs = MNUtil.extractMarginNoteLinks(text)//提取markdown格式链接
-          let targetNote = MNNote.new(noteURLs[0])
-          this.replaceLink(targetNote)
-          // if (noteURLs.length && MNNote.new(noteURLs[0])) {
-          //   if (this.linkDirection === "both") {
-          //     this.removeBackLink()//先去除原反链
-          //     this.detail.text = noteURLs[0]
-          //     note.replaceWithTextComment(noteURLs[0],this.index)
-          //     this.addBackLink(true)
-          //   }else{
-          //     this.detail.text = noteURLs[0]
-          //     note.replaceWithTextComment(noteURLs[0],this.index)
-          //   }
-          // }
-          // note.removeCommentByIndex(this.index)
-          // note.appendTextComment(text, this.index)
-          break;
+        // 夏大鱼羊 - 修改 - end
         case "blankTextComment":
         case "mergedImageComment":
         case "mergedTextComment":

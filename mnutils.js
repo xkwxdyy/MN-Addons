@@ -1645,7 +1645,7 @@ class MNUtil {
       subsubpoint: "font-weight:400;color:#9DB7CA;background:#F8FBFF;padding:3px 8px;border-left:2px dashed #B3D4FF;font-size:0.9em;margin-left:120px;position:relative;",
       remark: 'background:#F5E6C9;color:#6d4c41;display:inline-block;border-left:5px solid #D4AF37;padding:2px 8px 3px 12px;border-radius:0 4px 4px 0;box-shadow:1px 1px 3px rgba(0,0,0,0.08);margin:0 2px;line-height:1.3;vertical-align:baseline;position:relative;',
       // 目标
-      goal: 'font-weight:800;color:#FFFFFF;background:#43A047 radial-gradient(circle at 70% 30%, #6BCB77 10%,transparent 95%);padding:12px 24px 12px 24px;border-radius:50px;display:inline-block;position:relative;box-shadow:0 4px 6px rgba(67,160,71,0.3);text-shadow:0 1px 2px rgba(0,0,0,0.2);',
+      goal: 'font-weight:800;color:#FFFFFF;background:#43A047 radial-gradient(circle at 100% 0%, #6BCB77 100%,transparent 90%);padding:12px 24px 12px 24px;border-radius:50px;display:inline-block;position:relative;box-shadow:0 4px 6px rgba(67,160,71,0.3);text-shadow:0 1px 2px rgba(0,0,0,0.2);',
     };
     
     const icons = {

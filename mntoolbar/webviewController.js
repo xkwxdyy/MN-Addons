@@ -1375,6 +1375,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       { title: "point: ▸", type: "point" },
       { title: "subpoint: ▪", type: "subpoint" },
       { title: "subsubpoint: •", type: "subsubpoint" },
+      { title: "goal: 🎯", type: "goal" },
       { title: "key: 🔑", type: "key" },
       { title: "remark: 📝", type: "remark" },
       { title: "alert: ⚠️", type: "alert" },

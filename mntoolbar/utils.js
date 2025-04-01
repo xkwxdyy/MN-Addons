@@ -9472,7 +9472,11 @@ static template(action) {
           {
             "action": "addHtmlMarkdownComment",
             "menuTitle": "增加 Html Markdown 评论",
-          }
+          },
+          {
+            "action": "renewContentPointsToHtmlType",
+            "menuTitle": '🔄更新"-": 弹窗选择',
+          },
         ]
       }
       break;

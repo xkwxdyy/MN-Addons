@@ -4932,7 +4932,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                   }
                 }
 
-                focusNote.title = focusNote.title.toKnowledgeNoteTitle()
+                focusNote.title = focusNote.title.toNoBracketPrefixContent()
               }
             )
           } catch (error) {

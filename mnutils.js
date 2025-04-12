@@ -2,6 +2,17 @@
  * 夏大鱼羊 - Begin
  */
 class HtmlMarkdownUtils {
+  static icons = {
+    step: '🚩',
+    point: '▸',
+    subpoint: '▪',
+    subsubpoint: '•',
+    key: '🔑',
+    alert: '⚠️',
+    danger: '❗❗❗',
+    remark: '📝',
+    goal: '🎯',
+  };
   static createHtmlMarkdownText(text, type = 'none') {
     const styles = {
       // 格外注意
@@ -20,18 +31,6 @@ class HtmlMarkdownUtils {
       goal: 'font-weight:800;color:#FFFFFF;background:#43A047 radial-gradient(circle at 100% 0%, #6BCB77 100%,transparent 90%);padding:12px 24px 12px 24px;border-radius:50px;display:inline-block;position:relative;box-shadow:0 4px 6px rgba(67,160,71,0.3);text-shadow:0 1px 2px rgba(0,0,0,0.2);',
     };
 
-    const icons = {
-      step: '🚩',
-      point: '▸',
-      subpoint: '▪',
-      subsubpoint: '•',
-      key: '🔑',
-      alert: '⚠️',
-      danger: '❗❗❗',
-      remark: '📝',
-      goal: '🎯',
-    };
-
     const prefix = {
       danger: '',
       alert: '注意：',
@@ -46,14 +45,23 @@ class HtmlMarkdownUtils {
     if (type === 'none') {
       return text.trim();
     } else {
-      return `<span id="${type}" style="${styles[type]} ">${icons[type]} ${prefix[type]}${text}</span>`;
+      return `<span id="${type}" style="${styles[type]} ">${this.icons[type]} ${prefix[type]}${text}</span>`;
     }
   }
 
   /**
    * 正则匹配获取 span 标签的内容
    */
-  static getSpanContent(text) {
+  static getSpanContent(comment) {
+    let text
+    switch (MNUtil.typeOf(comment)) {
+      case "string":
+        text = comment
+        break;
+      case "MNComment":
+        text = comment.text
+        break;
+    }
     const regex = /<span[^>]*>(.*?)<\/span>/;
     const match = text.match(regex);
     if (match && match[1]) {
@@ -64,42 +72,152 @@ class HtmlMarkdownUtils {
   }
 
   /**
-   * 正则匹配获取 span 的 id
+   * 正则匹配获取 span 标签的文本内容（不含 emoji）
    */
-  static getSpanId(text) {
-    const regex = /<span\s+id="([^"]*)"/;
+  static getSpanTextContent(comment) {
+    let text
+    switch (MNUtil.typeOf(comment)) {
+      case "string":
+        text = comment
+        break;
+      case "MNComment":
+        text = comment.text
+        break;
+    }
+    const regex = /<span[^>]*>(.*?)<\/span>/;
     const match = text.match(regex);
     if (match && match[1]) {
-      return match[1].trim();
+      text = match[1].trim();
+      Object.values(this.icons).forEach(icon => {
+        text = text.replace(icon, '').trim();
+      });
+      return text
     } else {
       return text;
     }
   }
 
   /**
-   * 获取 id 往下一级
+   * 正则匹配获取 span 的 id（类型）
    */
-  static getSpanNextLevel(id) {
+  static getSpanType(comment) {
+    let span
+    switch (MNUtil.typeOf(comment)) {
+      case "string":
+        span = comment
+        break;
+      case "MNComment":
+        span = comment.text
+        break;
+    }
+    const regex = /<span\s+id="([^"]*)"/;
+    const match = span.match(regex);
+    if (match && match[1]) {
+      return match[1].trim();
+    } else {
+      return span;
+    }
+  }
+
+  /**
+   * 获取 id（类型） 往下一级的类型
+   */
+  static getSpanNextLevelType(type) {
     const levelMap = {
       step: 'point',
       point: 'subpoint',
       subpoint: 'subsubpoint',
       subsubpoint: 'subsubpoint'
     };
-    return levelMap[id] || null;
+    return levelMap[type] || null;
   }
 
   /**
-   * 获取 id 往上一级
+   * 获取 id（类型） 往上一级的类型
    */
-  static getSpanLastLevel(id) {
+  static getSpanLastLevelType(type) {
     const levelMap = {
       point: 'step',
       subpoint: 'point',
       subsubpoint: 'subpoint',
       step: 'step'
     };
-    return levelMap[id] || null;
+    return levelMap[type] || null;
+  }
+
+  /**
+   * 是否属于可升降级类型
+   * 
+   * 防止对 goal 等类型进行处理
+   */
+  static isLevelType(type) {
+    const levelTypes = ['step', 'point', 'subpoint', 'subsubpoint'];
+    return levelTypes.includes(type);
+  }
+
+  /**
+   * 获取 note 的 HtmlMD 评论的 index 和类型
+   */
+  static getHtmlMDCommentIndexAndTypeObjArr(note) {
+    let comments = note.MNComments
+    let htmlMDCommentsObjArr = []
+    comments.forEach(
+      (comment, index) => {
+        if (this.isHtmlMDComment(comment)) {
+          htmlMDCommentsObjArr.push(
+            {
+              index: index,
+              type: this.getSpanType(comment.text)
+            }
+          )
+        }
+      }
+    )
+    return htmlMDCommentsObjArr
+  }
+
+  /**
+   * 判定评论是否是 HtmlMD 评论
+   */
+  static isHtmlMDComment(comment) {
+    let text
+    switch (MNUtil.typeOf(comment)) {
+      case "string":
+        text = comment
+        break;
+      case "MNComment":
+        text = comment.text?comment.text:""
+        break;
+    }
+    return text.startsWith("<span")
+  }
+
+  /**
+   * 将 HtmlMD 评论类型变成下一级
+   */
+  static changeHtmlMDCommentTypeToNextLevel(comment) {
+    if (MNUtil.typeOf(comment) === "MNComment") {
+      let content = this.getSpanTextContent(comment)
+      let type = this.getSpanType(comment)
+      if (this.isHtmlMDComment(comment) && this.isLevelType(type)) {
+        let nextLevelType = this.getSpanNextLevelType(type)
+        comment.text = this.createHtmlMarkdownText(content, nextLevelType)
+      }
+    }
+  }
+
+  /**
+   * 将 HtmlMD 评论类型变成上一级
+   */
+  static changeHtmlMDCommentTypeToLastLevel(comment) {
+    if (MNUtil.typeOf(comment) === "MNComment") {
+      let content = this.getSpanTextContent(comment)
+      let type = this.getSpanType(comment)
+      if (this.isHtmlMDComment(comment) && this.isLevelType(type)) {
+        let lastLevelType = this.getSpanLastLevelType(type)
+        comment.text = this.createHtmlMarkdownText(content, lastLevelType)
+      }
+    }
   }
 }
 // 夏大鱼羊 - end

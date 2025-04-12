@@ -2299,6 +2299,40 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           }
         })
         break;
+      case "htmlMDCommentsToNextLevelType":
+        MNUtil.undoGrouping(()=>{
+          try {
+            let commentsObjArr = HtmlMarkdownUtils.getHtmlMDCommentIndexAndTypeObjArr(focusNote)
+            let comments = focusNote.MNComments
+            commentsObjArr.forEach((commentObj) => {
+              let comment = comments[commentObj.index]
+              let commentType = commentObj.type
+              let commentContent = HtmlMarkdownUtils.getSpanTextContent(comment)
+              let nextCommentType = HtmlMarkdownUtils.getSpanNextLevelType(commentType)
+              comment.text = HtmlMarkdownUtils.createHtmlMarkdownText(commentContent, nextCommentType)
+            })
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
+      case "htmlMDCommentsToLastLevelType":
+        MNUtil.undoGrouping(()=>{
+          try {
+            let commentsObjArr = HtmlMarkdownUtils.getHtmlMDCommentIndexAndTypeObjArr(focusNote)
+            let comments = focusNote.MNComments
+            commentsObjArr.forEach((commentObj) => {
+              let comment = comments[commentObj.index]
+              let commentType = commentObj.type
+              let commentContent = HtmlMarkdownUtils.getSpanTextContent(comment)
+              let lastCommentType = HtmlMarkdownUtils.getSpanLastLevelType(commentType)
+              comment.text = HtmlMarkdownUtils.createHtmlMarkdownText(commentContent, lastCommentType)
+            })
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
       case "renewProofContentPointsToSubpointType":
         MNUtil.undoGrouping(()=>{
           try {

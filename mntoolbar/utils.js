@@ -9452,6 +9452,7 @@ static template(action) {
       // config.doubleClick = "moveOldContentsByPopupTo"  // TODO: 把上面的内容移动下来，类似于移动上去
       config.onLongPress = {
         "action": "menu",
+        "menuWidth": 300,
         "menuItems":[
           {
             "action": "moveLastOneCommentByPopupTo",
@@ -9469,13 +9470,22 @@ static template(action) {
             "action": "deleteCommentsByPopup",
             "menuTitle": "删除评论",
           },
+          "💬 Html Markdown 评论",
           {
             "action": "addHtmlMarkdownComment",
-            "menuTitle": "增加 Html Markdown 评论",
+            "menuTitle": "    增加 Html Markdown 评论",
           },
           {
             "action": "renewContentPointsToHtmlType",
-            "menuTitle": '🔄更新"-": 弹窗选择',
+            "menuTitle": '    🔄更新"-": 弹窗选择',
+          },
+          {
+            "action": "htmlMDCommentsToNextLevelType",
+            "menuTitle": "    ⬇️ HtmlMD 评论降级",
+          },
+          {
+            "action": "htmlMDCommentsToLastLevelType",
+            "menuTitle": "    ⬆️ HtmlMD 评论升级",
           },
         ]
       }

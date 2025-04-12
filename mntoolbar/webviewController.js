@@ -1371,11 +1371,14 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
     let currentDocName
     let pinnedNote
     let htmlSetting = [
+      { title: "= 同级", type: "sameLevel" },
+      { title: "⬇️ 下一级", type: "nextLevel" },
+      { title: "⬆️ 上一级", type: "lastLevel" },
+      { title: "goal: 🎯", type: "goal" },
       { title: "step: 🚩", type: "step" },
       { title: "point: ▸", type: "point" },
       { title: "subpoint: ▪", type: "subpoint" },
       { title: "subsubpoint: •", type: "subsubpoint" },
-      { title: "goal: 🎯", type: "goal" },
       { title: "key: 🔑", type: "key" },
       { title: "remark: 📝", type: "remark" },
       { title: "alert: ⚠️", type: "alert" },
@@ -2148,14 +2151,23 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
               (alert, buttonIndex) => {
                 MNUtil.undoGrouping(()=>{
                   const inputCommentText = alert.textFieldAtIndex(0).text;
-                    
                   // 按钮索引从1开始（0是取消按钮）
                   const selectedIndex = buttonIndex - 1;
-                  
                   if (selectedIndex >= 0 && selectedIndex < htmlSetting.length) {
-                    const selectedType = htmlSetting[selectedIndex].type;
-                    const outputCommentText = HtmlMarkdownUtils.createHtmlMarkdownText(inputCommentText, selectedType);
-                    focusNote.appendMarkdownComment(outputCommentText);
+                    switch (htmlSetting[selectedIndex].type) {
+                      case "sameLevel":
+                        HtmlMarkdownUtils.autoAddLevelHtmlMDComment(focusNote, inputCommentText, "same")
+                        break;
+                      case "nextLevel":
+                        HtmlMarkdownUtils.autoAddLevelHtmlMDComment(focusNote, inputCommentText, "next")
+                        break;
+                      case "lastLevel":
+                        HtmlMarkdownUtils.autoAddLevelHtmlMDComment(focusNote, inputCommentText, "last")
+                        break;
+                      default:
+                        focusNote.appendMarkdownComment(HtmlMarkdownUtils.createHtmlMarkdownText(inputCommentText, htmlSetting[selectedIndex].type));
+                        break;
+                    }
                   }
                 })
               }
@@ -2305,11 +2317,13 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
             let commentsObjArr = HtmlMarkdownUtils.getHtmlMDCommentIndexAndTypeObjArr(focusNote)
             let comments = focusNote.MNComments
             commentsObjArr.forEach((commentObj) => {
-              let comment = comments[commentObj.index]
               let commentType = commentObj.type
-              let commentContent = HtmlMarkdownUtils.getSpanTextContent(comment)
-              let nextCommentType = HtmlMarkdownUtils.getSpanNextLevelType(commentType)
-              comment.text = HtmlMarkdownUtils.createHtmlMarkdownText(commentContent, nextCommentType)
+              if (HtmlMarkdownUtils.isLevelType(commentType)) { // 防止对其它类型进行处理
+                let comment = comments[commentObj.index]
+                let commentContent = HtmlMarkdownUtils.getSpanTextContent(comment)
+                let nextCommentType = HtmlMarkdownUtils.getSpanNextLevelType(commentType)
+                comment.text = HtmlMarkdownUtils.createHtmlMarkdownText(commentContent, nextCommentType)
+              }
             })
           } catch (error) {
             MNUtil.showHUD(error);
@@ -2322,11 +2336,13 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
             let commentsObjArr = HtmlMarkdownUtils.getHtmlMDCommentIndexAndTypeObjArr(focusNote)
             let comments = focusNote.MNComments
             commentsObjArr.forEach((commentObj) => {
-              let comment = comments[commentObj.index]
               let commentType = commentObj.type
-              let commentContent = HtmlMarkdownUtils.getSpanTextContent(comment)
-              let lastCommentType = HtmlMarkdownUtils.getSpanLastLevelType(commentType)
-              comment.text = HtmlMarkdownUtils.createHtmlMarkdownText(commentContent, lastCommentType)
+              if (HtmlMarkdownUtils.isLevelType(commentType)) {
+                let comment = comments[commentObj.index]
+                let commentContent = HtmlMarkdownUtils.getSpanTextContent(comment)
+                let lastCommentType = HtmlMarkdownUtils.getSpanLastLevelType(commentType)
+                comment.text = HtmlMarkdownUtils.createHtmlMarkdownText(commentContent, lastCommentType)
+              }
             })
           } catch (error) {
             MNUtil.showHUD(error);

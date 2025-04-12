@@ -1244,20 +1244,22 @@ try {
       // colorButton.addGestureRecognizer(this["moveGesture"+index])
       // this["moveGesture"+index].view.hidden = false
     }
-    if (actionName.includes("color")) {
-      colorButton.color = parseInt(actionName.slice(5))
-      this.setColorButtonLayout(colorButton,"setColor:",buttonColor)
-    }else if(actionName.includes("custom")){
-      this.setColorButtonLayout(colorButton,"customAction:",buttonColor)
-    }else{
-      this.setColorButtonLayout(colorButton,actionName+":",buttonColor)
+    if (actionName){
+      if (actionName.includes("color")) {
+        colorButton.color = parseInt(actionName.slice(5))
+        this.setColorButtonLayout(colorButton,"setColor:",buttonColor)
+      }else if(actionName.includes("custom")){
+        this.setColorButtonLayout(colorButton,"customAction:",buttonColor)
+      }else{
+        this.setColorButtonLayout(colorButton,actionName+":",buttonColor)
+      }
+      // MNButton.setImage(colorButton, toolbarConfig.imageConfigs[actionName])
+      // let image = (actionName in actions)?actions[actionName].image+".png":defaultActions[actionName].image+".png"
+      // colorButton.setImageForState(MNUtil.getImage(toolbarConfig.mainPath + `/`+image),0)
+      colorButton.setImageForState(toolbarConfig.imageConfigs[actionName],0)
+      // self["ColorButton"+index].setTitleForState("",0) 
+      // self["ColorButton"+index].contentHorizontalAlignment = 1
     }
-    // MNButton.setImage(colorButton, toolbarConfig.imageConfigs[actionName])
-    // let image = (actionName in actions)?actions[actionName].image+".png":defaultActions[actionName].image+".png"
-    // colorButton.setImageForState(MNUtil.getImage(toolbarConfig.mainPath + `/`+image),0)
-    colorButton.setImageForState(toolbarConfig.imageConfigs[actionName],0)
-    // self["ColorButton"+index].setTitleForState("",0) 
-    // self["ColorButton"+index].contentHorizontalAlignment = 1
   }
   if (this.dynamicToolbar) {
     if (dynamicOrder) {

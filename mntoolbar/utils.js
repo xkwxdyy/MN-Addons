@@ -9470,23 +9470,6 @@ static template(action) {
             "action": "deleteCommentsByPopup",
             "menuTitle": "删除评论",
           },
-          "💬 Html Markdown 评论",
-          {
-            "action": "addHtmlMarkdownComment",
-            "menuTitle": "    增加 Html Markdown 评论",
-          },
-          {
-            "action": "renewContentPointsToHtmlType",
-            "menuTitle": '    🔄更新"-": 弹窗选择',
-          },
-          {
-            "action": "htmlMDCommentsToNextLevelType",
-            "menuTitle": "    ⬇️ HtmlMD 评论降级",
-          },
-          {
-            "action": "htmlMDCommentsToLastLevelType",
-            "menuTitle": "    ⬆️ HtmlMD 评论升级",
-          },
         ]
       }
       break;
@@ -10308,6 +10291,27 @@ static template(action) {
         ]
       }
       break;
+    case "menu_htmlmdcomment":
+      config.action = "addHtmlMarkdownComment"
+      config.onLongPress = {
+        "action": "menu",
+        "menuWidth": 280,
+        "menuItems": [
+          {
+            "action": "renewContentPointsToHtmlType",
+            "menuTitle": '🔄 更新"-": 弹窗选择',
+          },
+          {
+            "action": "htmlMDCommentsToNextLevelType",
+            "menuTitle": "⬇️ HtmlMD 评论降级",
+          },
+          {
+            "action": "htmlMDCommentsToLastLevelType",
+            "menuTitle": "⬆️ HtmlMD 评论升级",
+          },
+        ]
+      }
+      break;
     default:
       break;
   }
@@ -10323,6 +10327,7 @@ static getAction(actionKey){
 static getActions() {
   return {
     "custom1":{name:"制卡",image:"makeCards",description: this.template("TemplateMakeNotes")},
+    "custom20":{name:"htmlMarkdown 评论",image:"htmlmdcomment",description: this.template("menu_htmlmdcomment")},
     "custom9":{name:"思考",image:"think",description: this.template("menu_think")},
     "custom10":{name:"评论",image:"comment",description: this.template("menu_comment")},
     "custom2":{name:"学习",image:"study",description: this.template("menu_study")},
@@ -10333,7 +10338,6 @@ static getActions() {
     "snipaste":{name:"Snipaste",image:"snipaste",description:"Snipaste"},
     "custom7":{name:"隐藏插件栏",image:"hideAddonBar",description: this.template("hideAddonBar")},
     "custom11":{name:"工作流",image:"workflow",description: this.template("menu_card_workflow")},
-    "custom8":{name:"测试",image:"test",description: this.template("test")},
     "execute":{name:"execute",image:"execute",description:"let focusNote = MNNote.getFocusNote()\nMNUtil.showHUD(focusNote.noteTitle)"},
     "ocr":{name:"ocr",image:"ocr",description:JSON.stringify({target:"comment",source:"default"})},
     "edit":{name:"edit",image:"edit",description:JSON.stringify({showOnNoteEdit:false})},
@@ -10341,9 +10345,6 @@ static getActions() {
     "search":{name:"Search",image:"search",description:"Search"},
     "bigbang":{name:"Bigbang",image:"bigbang",description:"Bigbang"},
     "chatglm":{name:"ChatAI",image:"ai",description:"ChatAI"},
-    // "setting":{name:"Setting",image:"setting",description:"Setting"}
-    "custom18":{name:"Custom 18",image:"custom18",description: this.template("addComment")},
-    "custom19":{name:"Custom 19",image:"custom19",description: this.template("removeComment")},
     // 专门用于替换原有按钮
     "custom16":{name:"[手型工具弹窗替换]文本",image:"text_white",description: this.template("menu_handtool_text")},
     "custom15":{name:"[卡片弹窗替换]SOP",image:"sop_white",description: this.template("menu_sop")},

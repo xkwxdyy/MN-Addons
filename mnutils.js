@@ -13,39 +13,38 @@ class HtmlMarkdownUtils {
     remark: '📝',
     goal: '🎯',
   };
+  static prefix = {
+    danger: '',
+    alert: '注意：',
+    key: '',
+    step: '',
+    point: '',
+    subpoint: '',
+    subsubpoint: '',
+    remark: '',
+    goal: ''
+  };
+  static styles = {
+    // 格外注意
+    danger: 'font-weight:700;color:#6A0C0C;background:#FFC9C9;border-left:6px solid #A93226;font-size:1em;padding:8px 15px;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.1);',
+    // 注意
+    alert: 'background:#FFF;color:#FF8C5A;border:2px solid currentColor;border-radius:3px;padding:6px 12px;font-weight:600;box-shadow:0 1px 3px rgba(255,140,90,0.2);display:inline-block;',
+    // 关键
+    key: 'color: #B33F00;background: #FFF1E6;border-left: 6px solid #FF6B35;padding:16px 12px 1px;line-height:2;position:relative;top:6px;display:inline-block;font-family:monospace;margin-top:-2px;',
+    // 步骤
+    step: "font-weight:700;color:#2A3B4D;background:linear-gradient(90deg,#E8F0FE 80%,#C2DBFE);font-size:1.3em;padding:8px 15px;border-left:6px solid #4F79A3;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.08);",
+    point: "font-weight:600;color:#4F79A3; background:linear-gradient(90deg,#F3E5F5 50%,#ede0f7);font-size:1.1em;padding:6px 12px;border-left:4px solid #7A9DB7;transform:skew(-1.5deg);box-shadow:1px 1px 3px rgba(0,0,0,0.05);margin-left:40px;position:relative;",
+    subpoint: "font-weight:500;color:#7A9DB7;background:#E8F0FE;padding:4px 10px;border-radius:12px;border:1px solid #B3D4FF;font-size:0.95em;margin-left:80px;position:relative;",
+    subsubpoint: "font-weight:400;color:#9DB7CA;background:#F8FBFF;padding:3px 8px;border-left:2px dashed #B3D4FF;font-size:0.9em;margin-left:120px;position:relative;",
+    remark: 'background:#F5E6C9;color:#6d4c41;display:inline-block;border-left:5px solid #D4AF37;padding:2px 8px 3px 12px;border-radius:0 4px 4px 0;box-shadow:1px 1px 3px rgba(0,0,0,0.08);margin:0 2px;line-height:1.3;vertical-align:baseline;position:relative;',
+    // 目标
+    goal: 'font-weight:800;color:#FFFFFF;background:#43A047 radial-gradient(circle at 100% 0%, #6BCB77 100%,transparent 90%);padding:12px 24px 12px 24px;border-radius:50px;display:inline-block;position:relative;box-shadow:0 4px 6px rgba(67,160,71,0.3);text-shadow:0 1px 2px rgba(0,0,0,0.2);',
+  };
   static createHtmlMarkdownText(text, type = 'none') {
-    const styles = {
-      // 格外注意
-      danger: 'font-weight:700;color:#6A0C0C;background:#FFC9C9;border-left:6px solid #A93226;font-size:1em;padding:8px 15px;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.1);',
-      // 注意
-      alert: 'background:#FFF;color:#FF8C5A;border:2px solid currentColor;border-radius:3px;padding:6px 12px;font-weight:600;box-shadow:0 1px 3px rgba(255,140,90,0.2);display:inline-block;',
-      // 关键
-      key: 'color: #B33F00;background: #FFF1E6;border-left: 6px solid #FF6B35;padding:16px 12px 1px;line-height:2;position:relative;top:6px;display:inline-block;font-family:monospace;margin-top:-2px;',
-      // 步骤
-      step: "font-weight:700;color:#2A3B4D;background:linear-gradient(90deg,#E8F0FE 80%,#C2DBFE);font-size:1.3em;padding:8px 15px;border-left:6px solid #4F79A3;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.08);",
-      point: "font-weight:600;color:#4F79A3; background:linear-gradient(90deg,#F3E5F5 50%,#ede0f7);font-size:1.1em;padding:6px 12px;border-left:4px solid #7A9DB7;transform:skew(-1.5deg);box-shadow:1px 1px 3px rgba(0,0,0,0.05);margin-left:40px;position:relative;",
-      subpoint: "font-weight:500;color:#7A9DB7;background:#E8F0FE;padding:4px 10px;border-radius:12px;border:1px solid #B3D4FF;font-size:0.95em;margin-left:80px;position:relative;",
-      subsubpoint: "font-weight:400;color:#9DB7CA;background:#F8FBFF;padding:3px 8px;border-left:2px dashed #B3D4FF;font-size:0.9em;margin-left:120px;position:relative;",
-      remark: 'background:#F5E6C9;color:#6d4c41;display:inline-block;border-left:5px solid #D4AF37;padding:2px 8px 3px 12px;border-radius:0 4px 4px 0;box-shadow:1px 1px 3px rgba(0,0,0,0.08);margin:0 2px;line-height:1.3;vertical-align:baseline;position:relative;',
-      // 目标
-      goal: 'font-weight:800;color:#FFFFFF;background:#43A047 radial-gradient(circle at 100% 0%, #6BCB77 100%,transparent 90%);padding:12px 24px 12px 24px;border-radius:50px;display:inline-block;position:relative;box-shadow:0 4px 6px rgba(67,160,71,0.3);text-shadow:0 1px 2px rgba(0,0,0,0.2);',
-    };
-
-    const prefix = {
-      danger: '',
-      alert: '注意：',
-      key: '',
-      step: '',
-      point: '',
-      subpoint: '',
-      subsubpoint: '',
-      remark: '',
-      goal: ''
-    };
     if (type === 'none') {
       return text.trim();
     } else {
-      return `<span id="${type}" style="${styles[type]} ">${this.icons[type]} ${prefix[type]}${text}</span>`;
+      return `<span id="${type}" style="${this.styles[type]} ">${this.icons[type]} ${this.prefix[type]}${text}</span>`;
     }
   }
 
@@ -59,7 +58,7 @@ class HtmlMarkdownUtils {
         text = comment
         break;
       case "MNComment":
-        text = comment.text
+        text = comment.text?comment.text:""
         break;
     }
     const regex = /<span[^>]*>(.*?)<\/span>/;
@@ -81,7 +80,7 @@ class HtmlMarkdownUtils {
         text = comment
         break;
       case "MNComment":
-        text = comment.text
+        text = comment.text?comment.text:""
         break;
     }
     const regex = /<span[^>]*>(.*?)<\/span>/;
@@ -107,7 +106,7 @@ class HtmlMarkdownUtils {
         span = comment
         break;
       case "MNComment":
-        span = comment.text
+        span = comment.text?comment.text:""
         break;
     }
     const regex = /<span\s+id="([^"]*)"/;
@@ -124,12 +123,13 @@ class HtmlMarkdownUtils {
    */
   static getSpanNextLevelType(type) {
     const levelMap = {
+      goal: 'step',
       step: 'point',
       point: 'subpoint',
       subpoint: 'subsubpoint',
       subsubpoint: 'subsubpoint'
     };
-    return levelMap[type] || null;
+    return levelMap[type] || undefined;
   }
 
   /**
@@ -140,18 +140,19 @@ class HtmlMarkdownUtils {
       point: 'step',
       subpoint: 'point',
       subsubpoint: 'subpoint',
-      step: 'step'
+      step: 'goal',
+      goal: 'goal'
     };
-    return levelMap[type] || null;
+    return levelMap[type] || undefined;
   }
 
   /**
    * 是否属于可升降级类型
    * 
-   * 防止对 goal 等类型进行处理
+   * 防止对 remark 等类型进行处理
    */
   static isLevelType(type) {
-    const levelTypes = ['step', 'point', 'subpoint', 'subsubpoint'];
+    const levelTypes = ['goal', 'step', 'point', 'subpoint', 'subsubpoint'];
     return levelTypes.includes(type);
   }
 
@@ -217,6 +218,85 @@ class HtmlMarkdownUtils {
         let lastLevelType = this.getSpanLastLevelType(type)
         comment.text = this.createHtmlMarkdownText(content, lastLevelType)
       }
+    }
+  }
+
+
+  /**
+   * 获取评论中最后一个 HtmlMD 评论
+   */
+  static getLastHtmlMDComment(note) {
+    let comments = note.MNComments
+    let lastHtmlMDComment = undefined
+    comments.forEach(
+      comment => {
+        if (this.isHtmlMDComment(comment)) {
+          lastHtmlMDComment = comment
+        }
+      }
+    )
+    return lastHtmlMDComment
+  }
+
+  /**
+   * 增加同级评论
+   */
+  static addSameLevelHtmlMDComment(note, text, type) {
+    note.appendMarkdownComment(
+      this.createHtmlMarkdownText(text, type),
+    )
+  }
+
+  /**
+   * 增加下一级评论
+   */
+  static addNextLevelHtmlMDComment(note, text, type) {
+    let nextLevelType = this.getSpanNextLevelType(type)
+    if (nextLevelType) {
+      note.appendMarkdownComment(
+        this.createHtmlMarkdownText(text, nextLevelType)
+      )
+    }
+  }
+
+  /**
+   * 增加上一级评论
+   */
+  static addLastLevelHtmlMDComment(note, text, type) {
+    let lastLevelType = this.getSpanLastLevelType(type)
+    if (lastLevelType) {
+      note.appendMarkdownComment(
+        this.createHtmlMarkdownText(text, lastLevelType)
+      )
+    }
+  }
+
+  /**
+   * 自动根据最后一个 HtmlMD 评论的类型增加 Level 类型评论
+   */
+  static autoAddLevelHtmlMDComment(note, text, goalLevel = "same") {
+    let lastHtmlMDComment = this.getLastHtmlMDComment(note)
+    if (lastHtmlMDComment) {
+      let lastHtmlMDCommentType = this.getSpanType(lastHtmlMDComment.text)
+      switch (goalLevel) {
+        case "same":
+          this.addSameLevelHtmlMDComment(note, text, lastHtmlMDCommentType)
+          break;
+        case "next":
+          this.addNextLevelHtmlMDComment(note, text, lastHtmlMDCommentType)
+          break;
+        case "last":
+          this.addLastLevelHtmlMDComment(note, text, lastHtmlMDCommentType)
+          break
+        default: 
+          MNUtil.showHUD("No goalLevel: " + goalLevel)
+          break;
+      }
+    } else {
+      // 如果没有 HtmlMD 评论，就添加一个一级
+      note.appendMarkdownComment(
+        this.createHtmlMarkdownText(text, 'goal')
+      )
     }
   }
 }

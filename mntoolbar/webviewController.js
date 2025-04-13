@@ -1382,6 +1382,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       { title: "subpoint: ▪", type: "subpoint" },
       { title: "subsubpoint: •", type: "subsubpoint" },
       { title: "key: 🔑", type: "key" },
+      { title: "question: ❓", type: "question" },
       { title: "remark: 📝", type: "remark" },
       { title: "alert: ⚠️", type: "alert" },
       { title: "danger: ❗❗❗", type: "danger" },
@@ -4887,7 +4888,26 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                     
                     if (selectedIndex >= 0 && selectedIndex < htmlSetting.length) {
                       const selectedType = htmlSetting[selectedIndex].type;
-                      focusNote.mergeInto(focusNote.parentNote, selectedType)
+                      switch (selectedType) {
+                        case "sameLevel":
+                          HtmlMarkdownUtils.autoAddLevelHtmlMDComment(focusNote.parentNote, focusNote.title.toNoBracketPrefixContent(), "same")
+                          focusNote.title = ""
+                          focusNote.mergeInto(focusNote.parentNote)
+                          break;
+                        case "nextLevel":
+                          HtmlMarkdownUtils.autoAddLevelHtmlMDComment(focusNote.parentNote, focusNote.title.toNoBracketPrefixContent(), "next")
+                          focusNote.title = ""
+                          focusNote.mergeInto(focusNote.parentNote)
+                          break;
+                        case "lastLevel":
+                          HtmlMarkdownUtils.autoAddLevelHtmlMDComment(focusNote.parentNote, focusNote.title.toNoBracketPrefixContent(), "last")
+                          focusNote.title = ""
+                          focusNote.mergeInto(focusNote.parentNote)
+                          break;
+                        default:
+                          focusNote.mergeInto(focusNote.parentNote, selectedType)
+                          break;
+                      }
                     }
                   });
                 } catch (error) {
@@ -5346,29 +5366,41 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                       focusNote.refresh()
                       focusNote.focusInMindMap(0.5)
                     } else {
-                      if (!focusNote.excerptText) {
-                        toolbarUtils.TemplateMakeNote(focusNote)
-                        if (!focusNote.ifReferenceNote()) {
-                          focusNote.addToReview()
-                        }
-                        focusNote.focusInMindMap(0.3) 
-                      } else {
-                        focusNote.toNoExceptVersion()
-                        focusNote.focusInMindMap(0.3)             
-                        MNUtil.delay(0.3).then(()=>{
-                          focusNote = MNNote.getFocusNote()
-                          MNUtil.delay(0.3).then(()=>{
-                            toolbarUtils.TemplateMakeNote(focusNote)
-                          })
-                          MNUtil.delay(0.5).then(()=>{
-                            MNUtil.undoGrouping(()=>{
-                              focusNote.refresh()
-                              if (!focusNote.excerptText && !focusNote.ifIndependentNote() && !focusNote.ifReferenceNote()) {
-                                focusNote.addToReview()
-                              }
-                            })
-                          })
-                        })
+                      if (HtmlMarkdownUtils.hasHtmlMDComment(focusNote)) {
+
+                        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+                          "卡片中含有 HtmlMarkdown 评论", "确认要制卡？",0,"点错了",["确认"],
+                          (alert, buttonIndex) => {
+                            if (buttonIndex == 1) {
+                              MNUtil.undoGrouping(()=>{
+                                if (!focusNote.excerptText) {
+                                  toolbarUtils.TemplateMakeNote(focusNote)
+                                  if (!focusNote.ifReferenceNote()) {
+                                    focusNote.addToReview()
+                                  }
+                                  focusNote.focusInMindMap(0.3) 
+                                } else {
+                                  focusNote.toNoExceptVersion()
+                                  focusNote.focusInMindMap(0.3)             
+                                  MNUtil.delay(0.3).then(()=>{
+                                    focusNote = MNNote.getFocusNote()
+                                    MNUtil.delay(0.3).then(()=>{
+                                      toolbarUtils.TemplateMakeNote(focusNote)
+                                    })
+                                    MNUtil.delay(0.5).then(()=>{
+                                      MNUtil.undoGrouping(()=>{
+                                        focusNote.refresh()
+                                        if (!focusNote.excerptText && !focusNote.ifIndependentNote() && !focusNote.ifReferenceNote()) {
+                                          focusNote.addToReview()
+                                        }
+                                      })
+                                    })
+                                  })
+                                }
+                              })
+                            }
+                          }
+                        )
                       }
                     }
                   }

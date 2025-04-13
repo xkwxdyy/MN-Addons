@@ -12,6 +12,7 @@ class HtmlMarkdownUtils {
     danger: '❗❗❗',
     remark: '📝',
     goal: '🎯',
+    question: '❓'
   };
   static prefix = {
     danger: '',
@@ -22,7 +23,8 @@ class HtmlMarkdownUtils {
     subpoint: '',
     subsubpoint: '',
     remark: '',
-    goal: ''
+    goal: '',
+    question: ''
   };
   static styles = {
     // 格外注意
@@ -39,6 +41,8 @@ class HtmlMarkdownUtils {
     remark: 'background:#F5E6C9;color:#6d4c41;display:inline-block;border-left:5px solid #D4AF37;padding:2px 8px 3px 12px;border-radius:0 4px 4px 0;box-shadow:1px 1px 3px rgba(0,0,0,0.08);margin:0 2px;line-height:1.3;vertical-align:baseline;position:relative;',
     // 目标
     goal: 'font-weight:800;color:#FFFFFF;background:#43A047 radial-gradient(circle at 100% 0%, #6BCB77 100%,transparent 90%);padding:12px 24px 12px 24px;border-radius:50px;display:inline-block;position:relative;box-shadow:0 4px 6px rgba(67,160,71,0.3);text-shadow:0 1px 2px rgba(0,0,0,0.2);',
+    // 问题
+    question: 'font-weight:700;color:#3D1A67;background:linear-gradient(15deg,#F8F4FF 30%,#F1E8FF);border:3px double #8B5CF6;border-radius:16px 4px 16px 4px;padding:14px 22px;display:inline-block;box-shadow:4px 4px 0px #DDD6FE,8px 8px 12px rgba(99,102,241,0.12);position:relative;margin:4px 8px;'
   };
   static createHtmlMarkdownText(text, type = 'none') {
     if (type === 'none') {
@@ -239,6 +243,13 @@ class HtmlMarkdownUtils {
   }
 
   /**
+   * 判断是否有 HtmlMD 评论
+   */
+  static hasHtmlMDComment(note) {
+    return !!this.getLastHtmlMDComment(note)
+  }
+
+  /**
    * 增加同级评论
    */
   static addSameLevelHtmlMDComment(note, text, type) {
@@ -256,6 +267,10 @@ class HtmlMarkdownUtils {
       note.appendMarkdownComment(
         this.createHtmlMarkdownText(text, nextLevelType)
       )
+    } else {
+      note.appendMarkdownComment(
+        this.createHtmlMarkdownText(text, type)
+      )
     }
   }
 
@@ -267,6 +282,10 @@ class HtmlMarkdownUtils {
     if (lastLevelType) {
       note.appendMarkdownComment(
         this.createHtmlMarkdownText(text, lastLevelType)
+      )
+    } else {
+      note.appendMarkdownComment(
+        this.createHtmlMarkdownText(text, type)
       )
     }
   }
@@ -298,6 +317,31 @@ class HtmlMarkdownUtils {
         this.createHtmlMarkdownText(text, 'goal')
       )
     }
+  }
+
+  // 解析开头的连字符数量
+  static parseLeadingDashes(str) {
+    let count = 0;
+    let index = 0;
+    const maxDashes = 5;
+    
+    while (count < maxDashes && index < str.trim().length) {
+      if (str[index] === '-') {
+        count++;
+        index++;
+        // 跳过后续空格
+        while (index < str.length && (str[index] === ' ' || str[index] === '\t')) {
+          index++;
+        }
+      } else {
+        break;
+      }
+    }
+    
+    return {
+      count: count > 0 ? Math.min(count, maxDashes) : 0,
+      remaining: str.slice(index).trim()
+    };
   }
 }
 // 夏大鱼羊 - end
@@ -9304,8 +9348,18 @@ try {
     let comments = this.MNComments
     for (let i = this.comments.length-1; i >= 0; i--) {
       let comment = comments[i]
-      if (comment.type == "markdownComment" && comment.text.startsWith("- ") && !(comment.text.startsWith("- -"))) {
-        comment.text = HtmlMarkdownUtils.createHtmlMarkdownText(comment.text.slice(2).trim(), htmlType)
+      // if (comment.type == "markdownComment" && comment.text.startsWith("- ") && !(comment.text.startsWith("- -"))) {
+      //   comment.text = HtmlMarkdownUtils.createHtmlMarkdownText(comment.text.slice(2).trim(), htmlType)
+      // }
+      if (comment.type === "markdownComment") {
+        const { count, remaining } = HtmlMarkdownUtils.parseLeadingDashes(comment.text);
+        if (count >= 1 && count <= 5) {
+          let adjustedType = htmlType;
+          for (let i = 1; i < count; i++) {
+            adjustedType = HtmlMarkdownUtils.getSpanNextLevelType(adjustedType);
+          }
+          comment.text = HtmlMarkdownUtils.createHtmlMarkdownText(remaining, adjustedType);
+        }
       }
     }
   }

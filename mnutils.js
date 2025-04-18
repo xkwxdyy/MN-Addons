@@ -2,6 +2,13 @@
  * 夏大鱼羊 - Begin
  */
 class HtmlMarkdownUtils {
+  static levelTypes = [
+    'goal',
+    'step',
+    'point',
+    'subpoint',
+    'subsubpoint'
+  ]
   static icons = {
     step: '🚩',
     point: '▸',
@@ -151,6 +158,50 @@ class HtmlMarkdownUtils {
   }
 
   /**
+   * 获取当前评论中最顶级类型
+   */
+
+  static getSpanTopestLevelType(note) {
+    let topestLevelType = undefined
+    let arr = this.getHtmlMDCommentsLevelTypeSetArrWithArrangement(note)
+    if (arr.length > 0) {
+      topestLevelType = arr[0]
+    }
+    return topestLevelType
+  }
+
+  static getHtmlMDCommentsLevelTypeArr(note) {
+    let htmlMDCommentsTypeArr = []
+    note.MNComments.forEach(
+      comment => {
+        if (this.isHtmlMDComment(comment)) {
+          if (this.isLevelType(this.getSpanType(comment.text))){
+            htmlMDCommentsTypeArr.push(this.getSpanType(comment.text))
+          }
+        }
+      }
+    )
+    return htmlMDCommentsTypeArr
+  }
+
+  static getHtmlMDCommentsLevelTypeSet(note) {
+    let htmlMDCommentsTypeArr = this.getHtmlMDCommentsLevelTypeArr(note)
+    let htmlMDCommentsTypeSet = new Set(htmlMDCommentsTypeArr)
+    return htmlMDCommentsTypeSet
+  }
+
+
+  // 获取全部 level 类型的评论的类型，去重，并按照 level 类型的顺序排列
+  static getHtmlMDCommentsLevelTypeSetArrWithArrangement(note) {
+    let arr = [...this.getHtmlMDCommentsLevelTypeSet(note)]
+    arr.sort((a, b) => {
+      const indexA = this.levelTypes.indexOf(a);
+      const indexB = this.levelTypes.indexOf(b);
+      return indexA - indexB;
+    });
+    return arr
+  }
+  /**
    * 是否属于可升降级类型
    * 
    * 防止对 remark 等类型进行处理
@@ -298,6 +349,22 @@ class HtmlMarkdownUtils {
   }
 
   /**
+   * 增加已有 HtmlMd 评论的最顶级
+   */
+  static addTopestLevelHtmlMDComment(note, text) {
+    let topestLevelType = this.getSpanTopestLevelType(note)
+    if (topestLevelType) {
+      note.appendMarkdownComment(
+        this.createHtmlMarkdownText(text, topestLevelType)
+      )
+    } else {
+      note.appendMarkdownComment(
+        this.createHtmlMarkdownText(text, "goal")
+      )
+    }
+  }
+
+  /**
    * 自动根据最后一个 HtmlMD 评论的类型增加 Level 类型评论
    */
   static autoAddLevelHtmlMDComment(note, text, goalLevel = "same") {
@@ -314,6 +381,9 @@ class HtmlMarkdownUtils {
         case "last":
           this.addLastLevelHtmlMDComment(note, text, lastHtmlMDCommentType)
           break
+        case "topest": // 这里指的是评论中所包含的
+          this.addTopestLevelHtmlMDComment(note, text)
+          break;
         default: 
           MNUtil.showHUD("No goalLevel: " + goalLevel)
           break;

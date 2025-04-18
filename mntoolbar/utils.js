@@ -10255,6 +10255,10 @@ static template(action) {
           // },
           "⬇️ 修改标题",
           {
+            "action": "changeTitlePrefix",
+            "menuTitle": "    强制修改卡片前缀"
+          },
+          {
             "action": "changeChildNotesTitles",
             "menuTitle": "    批量修改子卡片标题"
           },

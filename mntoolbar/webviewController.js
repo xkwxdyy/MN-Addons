@@ -5366,8 +5366,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                       focusNote.refresh()
                       focusNote.focusInMindMap(0.5)
                     } else {
-                      if (HtmlMarkdownUtils.hasHtmlMDComment(focusNote)) {
-
+                      if (HtmlMarkdownUtils.hasHtmlMDComment(focusNote) && (!focusNote.ifMergedTemplate())) {
                         UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
                           "卡片中含有 HtmlMarkdown 评论", "确认要制卡？",0,"点错了",["确认"],
                           (alert, buttonIndex) => {
@@ -5401,6 +5400,31 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                             }
                           }
                         )
+                      } else {
+                        if (!focusNote.excerptText) {
+                          toolbarUtils.TemplateMakeNote(focusNote)
+                          if (!focusNote.ifReferenceNote()) {
+                            focusNote.addToReview()
+                          }
+                          focusNote.focusInMindMap(0.3) 
+                        } else {
+                          focusNote.toNoExceptVersion()
+                          focusNote.focusInMindMap(0.3)             
+                          MNUtil.delay(0.3).then(()=>{
+                            focusNote = MNNote.getFocusNote()
+                            MNUtil.delay(0.3).then(()=>{
+                              toolbarUtils.TemplateMakeNote(focusNote)
+                            })
+                            MNUtil.delay(0.5).then(()=>{
+                              MNUtil.undoGrouping(()=>{
+                                focusNote.refresh()
+                                if (!focusNote.excerptText && !focusNote.ifIndependentNote() && !focusNote.ifReferenceNote()) {
+                                  focusNote.addToReview()
+                                }
+                              })
+                            })
+                          })
+                        }
                       }
                     }
                   }

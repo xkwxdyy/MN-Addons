@@ -8531,16 +8531,9 @@ try {
    * @param {Number} targetIndex 
    */
   mergeIntoAndMove(targetNote, targetIndex, htmlType = "none"){
-    // let commentsLength = this.comments.length
-    // if (this.title) {
-    //   commentsLength += 1  // 如果有标题的话，合并后会处理为评论，所以要加 1
-    // }
-    // if (this.excerptText) {
-    //   commentsLength += 1  // 如果有摘录的话，合并后也会变成评论，所以要加 1
-    // }
-
     // 要把 targetNote 的这一条链接去掉，否则会多移动一条评论
-    let commentsLength = this.comments.length + !!this.title + !!this.excerptText - (this.comments && this.comments[0].text && this.comments[0].text == targetNote.noteURL)
+    // let commentsLength = this.comments.length + !!this.title + !!this.excerptText - (this.comments && this.comments[0].text && this.comments[0].text == targetNote.noteURL)
+    let commentsLength = this.comments[0]?.text?this.comments.length + !!this.title + !!this.excerptText - (this.comments && this.comments[0].text && this.comments[0].text == targetNote.noteURL):this.comments.length + !!this.title + !!this.excerptText
 
     this.mergeInto(targetNote, htmlType)
 

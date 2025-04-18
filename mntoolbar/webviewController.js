@@ -1376,6 +1376,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       { title: "= 同级", type: "sameLevel" },
       { title: "⬇️ 下一级", type: "nextLevel" },
       { title: "⬆️ 上一级", type: "lastLevel" },
+      { title: "🏆 最高级", type: "topestLevel" },
       { title: "goal: 🎯", type: "goal" },
       { title: "step: 🚩", type: "step" },
       { title: "point: ▸", type: "point" },
@@ -2166,6 +2167,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                         break;
                       case "lastLevel":
                         HtmlMarkdownUtils.autoAddLevelHtmlMDComment(focusNote, inputCommentText, "last")
+                        break;
+                      case "topestLevel":
+                        HtmlMarkdownUtils.autoAddLevelHtmlMDComment(focusNote, inputCommentText, "topest")
                         break;
                       default:
                         focusNote.appendMarkdownComment(HtmlMarkdownUtils.createHtmlMarkdownText(inputCommentText, htmlSetting[selectedIndex].type));
@@ -4901,6 +4905,11 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                           break;
                         case "lastLevel":
                           HtmlMarkdownUtils.autoAddLevelHtmlMDComment(focusNote.parentNote, focusNote.title.toNoBracketPrefixContent(), "last")
+                          focusNote.title = ""
+                          focusNote.mergeInto(focusNote.parentNote)
+                          break;
+                        case "topestLevel":
+                          HtmlMarkdownUtils.autoAddLevelHtmlMDComment(focusNote.parentNote, focusNote.title.toNoBracketPrefixContent(), "topest")
                           focusNote.title = ""
                           focusNote.mergeInto(focusNote.parentNote)
                           break;

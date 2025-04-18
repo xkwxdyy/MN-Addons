@@ -194,7 +194,11 @@ class HtmlMarkdownUtils {
         text = comment.text?comment.text:""
         break;
     }
-    return text.startsWith("<span")
+    if (text == undefined) {
+      return false
+    } else {
+      return !!text.startsWith("<span")
+    }
   }
 
   /**
@@ -232,6 +236,9 @@ class HtmlMarkdownUtils {
   static getLastHtmlMDComment(note) {
     let comments = note.MNComments
     let lastHtmlMDComment = undefined
+    if (comments.length === 2 && comments[0] == undefined && comments[1] == undefined) {
+      return false
+    }
     comments.forEach(
       comment => {
         if (this.isHtmlMDComment(comment)) {
@@ -10164,7 +10171,9 @@ class MNComment {
     if (this.detail.q_htext) {
       return this.detail.q_htext
     }
-    MNUtil.showHUD("No available text")
+    // 夏大鱼羊 - 修改 - begin
+    // MNUtil.showHUD("No available text")
+    // 夏大鱼羊 - 修改 - end
     return undefined
   }
   set text(text){

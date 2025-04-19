@@ -10081,32 +10081,41 @@ static template(action) {
       break;
     case "menu_card_workflow":
       config.action = "menu"
-      config.menuWidth = 250
+      config.menuWidth = 300
       config.menuItems = [
+        "⬇️ 临时",
         {
-          "action": "openTasksFloatMindMap" ,
-          "menuTitle": "打开任务管理脑图",
+          "action": "moveToInbox",
+          "menuTitle": "    加入 Inbox",
         },
         {
-          "action": "updateTimeTag",
-          "menuTitle": "更新卡片时间标签并添加「今日」",
+          "action": "",
+          "menuTitle": "     剪切 + 「浮窗」定位今日 Inbox",
         },
-        {
-          "action": "updateTodayTimeTag",
-          "menuTitle": "时间标签 → 只显示「今日」",
-        },
-        {
-          "action": "moveToInput",
-          "menuTitle": "⇨ 输入",
-        },
-        {
-          "action": "toBeIndependent",
-          "menuTitle": "⇨ 独立",
-        },
-        {
-          "action": "moveToPreparationForExam",
-          "menuTitle": "⇨ 备考",
-        },
+        // {
+        //   "action": "openTasksFloatMindMap" ,
+        //   "menuTitle": "打开任务管理脑图",
+        // },
+        // {
+        //   "action": "updateTimeTag",
+        //   "menuTitle": "更新卡片时间标签并添加「今日」",
+        // },
+        // {
+        //   "action": "updateTodayTimeTag",
+        //   "menuTitle": "时间标签 → 只显示「今日」",
+        // },
+        // {
+        //   "action": "moveToInput",
+        //   "menuTitle": "⇨ 输入",
+        // },
+        // {
+        //   "action": "toBeIndependent",
+        //   "menuTitle": "⇨ 独立",
+        // },
+        // {
+        //   "action": "moveToPreparationForExam",
+        //   "menuTitle": "⇨ 备考",
+        // },
         // {
         //   "action": "toBeProgressNote",
         //   "menuTitle": "⇨ 📍进度标记",
@@ -10336,6 +10345,7 @@ static getActions() {
     "custom10":{name:"评论",image:"comment",description: this.template("menu_comment")},
     "custom2":{name:"学习",image:"study",description: this.template("menu_study")},
     "custom3":{name:"增加模板",image:"addTemplate",description: this.template("addTemplate")},
+    "custom17":{name:"卡片储存",image:"pin_white",description: this.template("menu_card_pin")},
     "custom4":{name:"文献",image:"reference",description: this.template("menu_reference")},
     "custom5":{name:"卡片",image:"card",description: this.template("menu_card")},
     "custom6":{name:"文本",image:"text",description: this.template("menu_text")},
@@ -10351,9 +10361,8 @@ static getActions() {
     "chatglm":{name:"ChatAI",image:"ai",description:"ChatAI"},
     // 专门用于替换原有按钮
     "custom16":{name:"[手型工具弹窗替换]文本",image:"text_white",description: this.template("menu_handtool_text")},
-    "custom15":{name:"[卡片弹窗替换]SOP",image:"sop_white",description: this.template("menu_sop")},
+    // "custom15":{name:"[卡片弹窗替换]SOP",image:"sop_white",description: this.template("menu_sop")},
     "custom12":{name:"[卡片弹窗替换]工作流",image:"workflow_white",description: this.template("menu_card_workflow")},
-    "custom17":{name:"[卡片弹窗替换]卡片储存",image:"pin_white",description: this.template("menu_card_pin")},
     "custom13":{name:"[卡片弹窗替换]摘录",image:"excerpt_white",description: this.template("menu_card_excerpt")},
     "custom14":{name:"MN",image:"MN_white",description: this.template("menu_MN")},
   }

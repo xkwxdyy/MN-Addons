@@ -5559,6 +5559,20 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         OKRNote.focusInFloatMindMap()
         break;
       /**
+       * 把卡片加入 Inbox
+       */
+      case "moveToInbox": // new
+        MNUtil.undoGrouping(()=>{
+          try {
+            focusNotes.forEach(focusNote=>{
+              MNMath.moveNoteToInbox(focusNote)
+            })
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
+      /**
        * 卡片固定和储存
        */
       case "openPinnedNote-1": 

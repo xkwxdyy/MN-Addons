@@ -1,429 +1,4 @@
 /**
- * 夏大鱼羊 - Begin
- */
-class HtmlMarkdownUtils {
-  static levelTypes = [
-    'goal',
-    'step',
-    'point',
-    'subpoint',
-    'subsubpoint'
-  ]
-  static icons = {
-    step: '🚩',
-    point: '▸',
-    subpoint: '▪',
-    subsubpoint: '•',
-    key: '🔑',
-    alert: '⚠️',
-    danger: '❗❗❗',
-    remark: '📝',
-    goal: '🎯',
-    question: '❓'
-  };
-  static prefix = {
-    danger: '',
-    alert: '注意：',
-    key: '',
-    step: '',
-    point: '',
-    subpoint: '',
-    subsubpoint: '',
-    remark: '',
-    goal: '',
-    question: ''
-  };
-  static styles = {
-    // 格外注意
-    danger: 'font-weight:700;color:#6A0C0C;background:#FFC9C9;border-left:6px solid #A93226;font-size:1em;padding:8px 15px;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.1);',
-    // 注意
-    alert: 'background:#FFF;color:#FF8C5A;border:2px solid currentColor;border-radius:3px;padding:6px 12px;font-weight:600;box-shadow:0 1px 3px rgba(255,140,90,0.2);display:inline-block;',
-    // 关键
-    key: 'color: #B33F00;background: #FFF1E6;border-left: 6px solid #FF6B35;padding:16px 12px 1px;line-height:2;position:relative;top:6px;display:inline-block;font-family:monospace;margin-top:-2px;',
-    // 步骤
-    step: "font-weight:700;color:#2A3B4D;background:linear-gradient(90deg,#E8F0FE 80%,#C2DBFE);font-size:1.3em;padding:8px 15px;border-left:6px solid #4F79A3;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.08);",
-    point: "font-weight:600;color:#4F79A3; background:linear-gradient(90deg,#F3E5F5 50%,#ede0f7);font-size:1.1em;padding:6px 12px;border-left:4px solid #7A9DB7;transform:skew(-1.5deg);box-shadow:1px 1px 3px rgba(0,0,0,0.05);margin-left:40px;position:relative;",
-    subpoint: "font-weight:500;color:#7A9DB7;background:#E8F0FE;padding:4px 10px;border-radius:12px;border:1px solid #B3D4FF;font-size:0.95em;margin-left:80px;position:relative;",
-    subsubpoint: "font-weight:400;color:#9DB7CA;background:#F8FBFF;padding:3px 8px;border-left:2px dashed #B3D4FF;font-size:0.9em;margin-left:120px;position:relative;",
-    remark: 'background:#F5E6C9;color:#6d4c41;display:inline-block;border-left:5px solid #D4AF37;padding:2px 8px 3px 12px;border-radius:0 4px 4px 0;box-shadow:1px 1px 3px rgba(0,0,0,0.08);margin:0 2px;line-height:1.3;vertical-align:baseline;position:relative;',
-    // 目标
-    goal: 'font-weight:800;color:#FFFFFF;background:#43A047 radial-gradient(circle at 100% 0%, #6BCB77 100%,transparent 90%);padding:12px 24px 12px 24px;border-radius:50px;display:inline-block;position:relative;box-shadow:0 4px 6px rgba(67,160,71,0.3);text-shadow:0 1px 2px rgba(0,0,0,0.2);',
-    // 问题
-    question: 'font-weight:700;color:#3D1A67;background:linear-gradient(15deg,#F8F4FF 30%,#F1E8FF);border:3px double #8B5CF6;border-radius:16px 4px 16px 4px;padding:14px 22px;display:inline-block;box-shadow:4px 4px 0px #DDD6FE,8px 8px 12px rgba(99,102,241,0.12);position:relative;margin:4px 8px;'
-  };
-  static createHtmlMarkdownText(text, type = 'none') {
-    if (type === 'none') {
-      return text.trim();
-    } else {
-      return `<span id="${type}" style="${this.styles[type]} ">${this.icons[type]} ${this.prefix[type]}${text}</span>`;
-    }
-  }
-
-  /**
-   * 正则匹配获取 span 标签的内容
-   */
-  static getSpanContent(comment) {
-    let text
-    switch (MNUtil.typeOf(comment)) {
-      case "string":
-        text = comment
-        break;
-      case "MNComment":
-        text = comment.text?comment.text:""
-        break;
-    }
-    const regex = /<span[^>]*>(.*?)<\/span>/;
-    const match = text.match(regex);
-    if (match && match[1]) {
-      return match[1].trim();
-    } else {
-      return text;
-    }
-  }
-
-  /**
-   * 正则匹配获取 span 标签的文本内容（不含 emoji）
-   */
-  static getSpanTextContent(comment) {
-    let text
-    switch (MNUtil.typeOf(comment)) {
-      case "string":
-        text = comment
-        break;
-      case "MNComment":
-        text = comment.text?comment.text:""
-        break;
-    }
-    const regex = /<span[^>]*>(.*?)<\/span>/;
-    const match = text.match(regex);
-    if (match && match[1]) {
-      text = match[1].trim();
-      Object.values(this.icons).forEach(icon => {
-        text = text.replace(icon, '').trim();
-      });
-      return text
-    } else {
-      return text;
-    }
-  }
-
-  /**
-   * 正则匹配获取 span 的 id（类型）
-   */
-  static getSpanType(comment) {
-    let span
-    switch (MNUtil.typeOf(comment)) {
-      case "string":
-        span = comment
-        break;
-      case "MNComment":
-        span = comment.text?comment.text:""
-        break;
-    }
-    const regex = /<span\s+id="([^"]*)"/;
-    const match = span.match(regex);
-    if (match && match[1]) {
-      return match[1].trim();
-    } else {
-      return span;
-    }
-  }
-
-  /**
-   * 获取 id（类型） 往下一级的类型
-   */
-  static getSpanNextLevelType(type) {
-    const levelMap = {
-      goal: 'step',
-      step: 'point',
-      point: 'subpoint',
-      subpoint: 'subsubpoint',
-      subsubpoint: 'subsubpoint'
-    };
-    return levelMap[type] || undefined;
-  }
-
-  /**
-   * 获取 id（类型） 往上一级的类型
-   */
-  static getSpanLastLevelType(type) {
-    const levelMap = {
-      point: 'step',
-      subpoint: 'point',
-      subsubpoint: 'subpoint',
-      step: 'goal',
-      goal: 'goal'
-    };
-    return levelMap[type] || undefined;
-  }
-
-  /**
-   * 获取当前评论中最顶级类型
-   */
-
-  static getSpanTopestLevelType(note) {
-    let topestLevelType = undefined
-    let arr = this.getHtmlMDCommentsLevelTypeSetArrWithArrangement(note)
-    if (arr.length > 0) {
-      topestLevelType = arr[0]
-    }
-    return topestLevelType
-  }
-
-  static getHtmlMDCommentsLevelTypeArr(note) {
-    let htmlMDCommentsTypeArr = []
-    note.MNComments.forEach(
-      comment => {
-        if (this.isHtmlMDComment(comment)) {
-          if (this.isLevelType(this.getSpanType(comment.text))){
-            htmlMDCommentsTypeArr.push(this.getSpanType(comment.text))
-          }
-        }
-      }
-    )
-    return htmlMDCommentsTypeArr
-  }
-
-  static getHtmlMDCommentsLevelTypeSet(note) {
-    let htmlMDCommentsTypeArr = this.getHtmlMDCommentsLevelTypeArr(note)
-    let htmlMDCommentsTypeSet = new Set(htmlMDCommentsTypeArr)
-    return htmlMDCommentsTypeSet
-  }
-
-
-  // 获取全部 level 类型的评论的类型，去重，并按照 level 类型的顺序排列
-  static getHtmlMDCommentsLevelTypeSetArrWithArrangement(note) {
-    let arr = [...this.getHtmlMDCommentsLevelTypeSet(note)]
-    arr.sort((a, b) => {
-      const indexA = this.levelTypes.indexOf(a);
-      const indexB = this.levelTypes.indexOf(b);
-      return indexA - indexB;
-    });
-    return arr
-  }
-  /**
-   * 是否属于可升降级类型
-   * 
-   * 防止对 remark 等类型进行处理
-   */
-  static isLevelType(type) {
-    const levelTypes = ['goal', 'step', 'point', 'subpoint', 'subsubpoint'];
-    return levelTypes.includes(type);
-  }
-
-  /**
-   * 获取 note 的 HtmlMD 评论的 index 和类型
-   */
-  static getHtmlMDCommentIndexAndTypeObjArr(note) {
-    let comments = note.MNComments
-    let htmlMDCommentsObjArr = []
-    comments.forEach(
-      (comment, index) => {
-        if (this.isHtmlMDComment(comment)) {
-          htmlMDCommentsObjArr.push(
-            {
-              index: index,
-              type: this.getSpanType(comment.text)
-            }
-          )
-        }
-      }
-    )
-    return htmlMDCommentsObjArr
-  }
-
-  /**
-   * 判定评论是否是 HtmlMD 评论
-   */
-  static isHtmlMDComment(comment) {
-    let text
-    switch (MNUtil.typeOf(comment)) {
-      case "string":
-        text = comment
-        break;
-      case "MNComment":
-        text = comment.text?comment.text:""
-        break;
-    }
-    if (text == undefined) {
-      return false
-    } else {
-      return !!text.startsWith("<span")
-    }
-  }
-
-  /**
-   * 将 HtmlMD 评论类型变成下一级
-   */
-  static changeHtmlMDCommentTypeToNextLevel(comment) {
-    if (MNUtil.typeOf(comment) === "MNComment") {
-      let content = this.getSpanTextContent(comment)
-      let type = this.getSpanType(comment)
-      if (this.isHtmlMDComment(comment) && this.isLevelType(type)) {
-        let nextLevelType = this.getSpanNextLevelType(type)
-        comment.text = this.createHtmlMarkdownText(content, nextLevelType)
-      }
-    }
-  }
-
-  /**
-   * 将 HtmlMD 评论类型变成上一级
-   */
-  static changeHtmlMDCommentTypeToLastLevel(comment) {
-    if (MNUtil.typeOf(comment) === "MNComment") {
-      let content = this.getSpanTextContent(comment)
-      let type = this.getSpanType(comment)
-      if (this.isHtmlMDComment(comment) && this.isLevelType(type)) {
-        let lastLevelType = this.getSpanLastLevelType(type)
-        comment.text = this.createHtmlMarkdownText(content, lastLevelType)
-      }
-    }
-  }
-
-
-  /**
-   * 获取评论中最后一个 HtmlMD 评论
-   */
-  static getLastHtmlMDComment(note) {
-    let comments = note.MNComments
-    let lastHtmlMDComment = undefined
-    if (comments.length === 2 && comments[0] == undefined && comments[1] == undefined) {
-      return false
-    }
-    comments.forEach(
-      comment => {
-        if (this.isHtmlMDComment(comment)) {
-          lastHtmlMDComment = comment
-        }
-      }
-    )
-    return lastHtmlMDComment
-  }
-
-  /**
-   * 判断是否有 HtmlMD 评论
-   */
-  static hasHtmlMDComment(note) {
-    return !!this.getLastHtmlMDComment(note)
-  }
-
-  /**
-   * 增加同级评论
-   */
-  static addSameLevelHtmlMDComment(note, text, type) {
-    note.appendMarkdownComment(
-      this.createHtmlMarkdownText(text, type),
-    )
-  }
-
-  /**
-   * 增加下一级评论
-   */
-  static addNextLevelHtmlMDComment(note, text, type) {
-    let nextLevelType = this.getSpanNextLevelType(type)
-    if (nextLevelType) {
-      note.appendMarkdownComment(
-        this.createHtmlMarkdownText(text, nextLevelType)
-      )
-    } else {
-      note.appendMarkdownComment(
-        this.createHtmlMarkdownText(text, type)
-      )
-    }
-  }
-
-  /**
-   * 增加上一级评论
-   */
-  static addLastLevelHtmlMDComment(note, text, type) {
-    let lastLevelType = this.getSpanLastLevelType(type)
-    if (lastLevelType) {
-      note.appendMarkdownComment(
-        this.createHtmlMarkdownText(text, lastLevelType)
-      )
-    } else {
-      note.appendMarkdownComment(
-        this.createHtmlMarkdownText(text, type)
-      )
-    }
-  }
-
-  /**
-   * 增加已有 HtmlMd 评论的最顶级
-   */
-  static addTopestLevelHtmlMDComment(note, text) {
-    let topestLevelType = this.getSpanTopestLevelType(note)
-    if (topestLevelType) {
-      note.appendMarkdownComment(
-        this.createHtmlMarkdownText(text, topestLevelType)
-      )
-    } else {
-      note.appendMarkdownComment(
-        this.createHtmlMarkdownText(text, "goal")
-      )
-    }
-  }
-
-  /**
-   * 自动根据最后一个 HtmlMD 评论的类型增加 Level 类型评论
-   */
-  static autoAddLevelHtmlMDComment(note, text, goalLevel = "same") {
-    let lastHtmlMDComment = this.getLastHtmlMDComment(note)
-    if (lastHtmlMDComment) {
-      let lastHtmlMDCommentType = this.getSpanType(lastHtmlMDComment.text)
-      switch (goalLevel) {
-        case "same":
-          this.addSameLevelHtmlMDComment(note, text, lastHtmlMDCommentType)
-          break;
-        case "next":
-          this.addNextLevelHtmlMDComment(note, text, lastHtmlMDCommentType)
-          break;
-        case "last":
-          this.addLastLevelHtmlMDComment(note, text, lastHtmlMDCommentType)
-          break
-        case "topest": // 这里指的是评论中所包含的
-          this.addTopestLevelHtmlMDComment(note, text)
-          break;
-        default: 
-          MNUtil.showHUD("No goalLevel: " + goalLevel)
-          break;
-      }
-    } else {
-      // 如果没有 HtmlMD 评论，就添加一个一级
-      note.appendMarkdownComment(
-        this.createHtmlMarkdownText(text, 'goal')
-      )
-    }
-  }
-
-  // 解析开头的连字符数量
-  static parseLeadingDashes(str) {
-    let count = 0;
-    let index = 0;
-    const maxDashes = 5;
-    
-    while (count < maxDashes && index < str.trim().length) {
-      if (str[index] === '-') {
-        count++;
-        index++;
-        // 跳过后续空格
-        while (index < str.length && (str[index] === ' ' || str[index] === '\t')) {
-          index++;
-        }
-      } else {
-        break;
-      }
-    }
-    
-    return {
-      count: count > 0 ? Math.min(count, maxDashes) : 0,
-      remaining: str.slice(index).trim()
-    };
-  }
-}
-// 夏大鱼羊 - end
-    
-/**
  * 夏大鱼羊 - 字符串函数 - begin
  */
 // https://github.com/vinta/pangu.js
@@ -10196,6 +9771,511 @@ try {
   }
 }
 
+
+/**
+ * 夏大鱼羊 - Begin
+ */
+class MNMath {
+  static inboxNoteId = "74785805-661C-4836-AFA6-C85697056B0C"
+  static inboxNote = MNNote.new(MNMath.inboxNoteId)
+  static year = String(MNUtil.getDateObject().year)
+  static month = String(MNUtil.getDateObject().month).padStart(2, '0')
+  static day = String(MNUtil.getDateObject().day).padStart(2, '0')
+  static todayNoteTitle = "📥 " + MNMath.year + "-" + MNMath.month + "-" + MNMath.day 
+
+  static moveNoteToInbox(note) {
+    let todayNote
+    if (this.hasTodayNoteInInbox()) {
+      // 如果 inbox 里有「今日」的 Note，就直接移动
+      todayNote = this.getTodayNoteInInbox()
+    } else {
+      // 否则新建
+      todayNote = this.newTodayNoteInInbox()
+    }
+    todayNote.addChild(note)
+  }
+
+  // inbox 里是否有「今日」的 Note
+  static hasTodayNoteInInbox() {
+    let dateNotesTitleArr = this.getDateNotesTitleArrInInbox()
+    let todayNoteTitle = this.todayNoteTitle()
+    return dateNotesTitleArr.includes(todayNoteTitle)
+  }
+
+  // 获取 inbox 里的「今日」Note
+  static getTodayNoteInInbox() {
+    let todayNote = undefined
+    if (this.hasTodayNoteInInbox()) {
+      let dateNotesArr = this.getDateNotesInInbox()
+      dateNotesArr.forEach(
+        dateNote => {
+          if (dateNote.title == this.todayNoteTitle()) {
+            todayNote = dateNote
+          }
+        }
+      )
+      return todayNote
+    } else {
+      return this.newTodayNoteInInbox()
+    }
+  }
+
+  // 新建 inbox 里的「今日」Note
+  static newTodayNoteInInbox() {
+    let todayNote = MNNote.clone("646EBBB8-F133-41D4-9083-FC6FFCAA9FDA")
+    this.inboxNote.addChild(todayNote)
+    return todayNote
+  }
+
+  /**
+   * 获取 inbox 里所有子卡片
+   * 
+   * 除了 Achieved 不获取，其余都是日期的形式
+   */
+  static getDateNotesInInbox() {
+    let arr = []
+    this.inboxNote.childNotes.forEach(
+      childNote => {
+        if (childNote.title != "Achieved") {
+          arr.push(childNote)
+        }
+      }
+    )
+  }
+
+  static getDateNotesTitleArrInInbox(){
+    let dateNotesArr = this.getDateNotesInInbox()
+    let dateNotesTitleArr = []
+    dateNotesArr.forEach(
+      dateNote => {
+        dateNotesTitleArr.push(dateNote.title)
+      }
+    )
+  }
+}
+class HtmlMarkdownUtils {
+  static levelTypes = [
+    'goal',
+    'step',
+    'point',
+    'subpoint',
+    'subsubpoint'
+  ]
+  static icons = {
+    step: '🚩',
+    point: '▸',
+    subpoint: '▪',
+    subsubpoint: '•',
+    key: '🔑',
+    alert: '⚠️',
+    danger: '❗❗❗',
+    remark: '📝',
+    goal: '🎯',
+    question: '❓'
+  };
+  static prefix = {
+    danger: '',
+    alert: '注意：',
+    key: '',
+    step: '',
+    point: '',
+    subpoint: '',
+    subsubpoint: '',
+    remark: '',
+    goal: '',
+    question: ''
+  };
+  static styles = {
+    // 格外注意
+    danger: 'font-weight:700;color:#6A0C0C;background:#FFC9C9;border-left:6px solid #A93226;font-size:1em;padding:8px 15px;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.1);',
+    // 注意
+    alert: 'background:#FFF;color:#FF8C5A;border:2px solid currentColor;border-radius:3px;padding:6px 12px;font-weight:600;box-shadow:0 1px 3px rgba(255,140,90,0.2);display:inline-block;',
+    // 关键
+    key: 'color: #B33F00;background: #FFF1E6;border-left: 6px solid #FF6B35;padding:16px 12px 1px;line-height:2;position:relative;top:6px;display:inline-block;font-family:monospace;margin-top:-2px;',
+    // 步骤
+    step: "font-weight:700;color:#2A3B4D;background:linear-gradient(90deg,#E8F0FE 80%,#C2DBFE);font-size:1.3em;padding:8px 15px;border-left:6px solid #4F79A3;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.08);",
+    point: "font-weight:600;color:#4F79A3; background:linear-gradient(90deg,#F3E5F5 50%,#ede0f7);font-size:1.1em;padding:6px 12px;border-left:4px solid #7A9DB7;transform:skew(-1.5deg);box-shadow:1px 1px 3px rgba(0,0,0,0.05);margin-left:40px;position:relative;",
+    subpoint: "font-weight:500;color:#7A9DB7;background:#E8F0FE;padding:4px 10px;border-radius:12px;border:1px solid #B3D4FF;font-size:0.95em;margin-left:80px;position:relative;",
+    subsubpoint: "font-weight:400;color:#9DB7CA;background:#F8FBFF;padding:3px 8px;border-left:2px dashed #B3D4FF;font-size:0.9em;margin-left:120px;position:relative;",
+    remark: 'background:#F5E6C9;color:#6d4c41;display:inline-block;border-left:5px solid #D4AF37;padding:2px 8px 3px 12px;border-radius:0 4px 4px 0;box-shadow:1px 1px 3px rgba(0,0,0,0.08);margin:0 2px;line-height:1.3;vertical-align:baseline;position:relative;',
+    // 目标
+    goal: 'font-weight:800;color:#FFFFFF;background:#43A047 radial-gradient(circle at 100% 0%, #6BCB77 100%,transparent 90%);padding:12px 24px 12px 24px;border-radius:50px;display:inline-block;position:relative;box-shadow:0 4px 6px rgba(67,160,71,0.3);text-shadow:0 1px 2px rgba(0,0,0,0.2);',
+    // 问题
+    question: 'font-weight:700;color:#3D1A67;background:linear-gradient(15deg,#F8F4FF 30%,#F1E8FF);border:3px double #8B5CF6;border-radius:16px 4px 16px 4px;padding:14px 22px;display:inline-block;box-shadow:4px 4px 0px #DDD6FE,8px 8px 12px rgba(99,102,241,0.12);position:relative;margin:4px 8px;'
+  };
+  static createHtmlMarkdownText(text, type = 'none') {
+    if (type === 'none') {
+      return text.trim();
+    } else {
+      return `<span id="${type}" style="${this.styles[type]} ">${this.icons[type]} ${this.prefix[type]}${text}</span>`;
+    }
+  }
+
+  /**
+   * 正则匹配获取 span 标签的内容
+   */
+  static getSpanContent(comment) {
+    let text
+    switch (MNUtil.typeOf(comment)) {
+      case "string":
+        text = comment
+        break;
+      case "MNComment":
+        text = comment.text?comment.text:""
+        break;
+    }
+    const regex = /<span[^>]*>(.*?)<\/span>/;
+    const match = text.match(regex);
+    if (match && match[1]) {
+      return match[1].trim();
+    } else {
+      return text;
+    }
+  }
+
+  /**
+   * 正则匹配获取 span 标签的文本内容（不含 emoji）
+   */
+  static getSpanTextContent(comment) {
+    let text
+    switch (MNUtil.typeOf(comment)) {
+      case "string":
+        text = comment
+        break;
+      case "MNComment":
+        text = comment.text?comment.text:""
+        break;
+    }
+    const regex = /<span[^>]*>(.*?)<\/span>/;
+    const match = text.match(regex);
+    if (match && match[1]) {
+      text = match[1].trim();
+      Object.values(this.icons).forEach(icon => {
+        text = text.replace(icon, '').trim();
+      });
+      return text
+    } else {
+      return text;
+    }
+  }
+
+  /**
+   * 正则匹配获取 span 的 id（类型）
+   */
+  static getSpanType(comment) {
+    let span
+    switch (MNUtil.typeOf(comment)) {
+      case "string":
+        span = comment
+        break;
+      case "MNComment":
+        span = comment.text?comment.text:""
+        break;
+    }
+    const regex = /<span\s+id="([^"]*)"/;
+    const match = span.match(regex);
+    if (match && match[1]) {
+      return match[1].trim();
+    } else {
+      return span;
+    }
+  }
+
+  /**
+   * 获取 id（类型） 往下一级的类型
+   */
+  static getSpanNextLevelType(type) {
+    const levelMap = {
+      goal: 'step',
+      step: 'point',
+      point: 'subpoint',
+      subpoint: 'subsubpoint',
+      subsubpoint: 'subsubpoint'
+    };
+    return levelMap[type] || undefined;
+  }
+
+  /**
+   * 获取 id（类型） 往上一级的类型
+   */
+  static getSpanLastLevelType(type) {
+    const levelMap = {
+      point: 'step',
+      subpoint: 'point',
+      subsubpoint: 'subpoint',
+      step: 'goal',
+      goal: 'goal'
+    };
+    return levelMap[type] || undefined;
+  }
+
+  /**
+   * 获取当前评论中最顶级类型
+   */
+
+  static getSpanTopestLevelType(note) {
+    let topestLevelType = undefined
+    let arr = this.getHtmlMDCommentsLevelTypeSetArrWithArrangement(note)
+    if (arr.length > 0) {
+      topestLevelType = arr[0]
+    }
+    return topestLevelType
+  }
+
+  static getHtmlMDCommentsLevelTypeArr(note) {
+    let htmlMDCommentsTypeArr = []
+    note.MNComments.forEach(
+      comment => {
+        if (this.isHtmlMDComment(comment)) {
+          if (this.isLevelType(this.getSpanType(comment.text))){
+            htmlMDCommentsTypeArr.push(this.getSpanType(comment.text))
+          }
+        }
+      }
+    )
+    return htmlMDCommentsTypeArr
+  }
+
+  static getHtmlMDCommentsLevelTypeSet(note) {
+    let htmlMDCommentsTypeArr = this.getHtmlMDCommentsLevelTypeArr(note)
+    let htmlMDCommentsTypeSet = new Set(htmlMDCommentsTypeArr)
+    return htmlMDCommentsTypeSet
+  }
+
+
+  // 获取全部 level 类型的评论的类型，去重，并按照 level 类型的顺序排列
+  static getHtmlMDCommentsLevelTypeSetArrWithArrangement(note) {
+    let arr = [...this.getHtmlMDCommentsLevelTypeSet(note)]
+    arr.sort((a, b) => {
+      const indexA = this.levelTypes.indexOf(a);
+      const indexB = this.levelTypes.indexOf(b);
+      return indexA - indexB;
+    });
+    return arr
+  }
+  /**
+   * 是否属于可升降级类型
+   * 
+   * 防止对 remark 等类型进行处理
+   */
+  static isLevelType(type) {
+    const levelTypes = ['goal', 'step', 'point', 'subpoint', 'subsubpoint'];
+    return levelTypes.includes(type);
+  }
+
+  /**
+   * 获取 note 的 HtmlMD 评论的 index 和类型
+   */
+  static getHtmlMDCommentIndexAndTypeObjArr(note) {
+    let comments = note.MNComments
+    let htmlMDCommentsObjArr = []
+    comments.forEach(
+      (comment, index) => {
+        if (this.isHtmlMDComment(comment)) {
+          htmlMDCommentsObjArr.push(
+            {
+              index: index,
+              type: this.getSpanType(comment.text)
+            }
+          )
+        }
+      }
+    )
+    return htmlMDCommentsObjArr
+  }
+
+  /**
+   * 判定评论是否是 HtmlMD 评论
+   */
+  static isHtmlMDComment(comment) {
+    let text
+    switch (MNUtil.typeOf(comment)) {
+      case "string":
+        text = comment
+        break;
+      case "MNComment":
+        text = comment.text?comment.text:""
+        break;
+    }
+    if (text == undefined) {
+      return false
+    } else {
+      return !!text.startsWith("<span")
+    }
+  }
+
+  /**
+   * 将 HtmlMD 评论类型变成下一级
+   */
+  static changeHtmlMDCommentTypeToNextLevel(comment) {
+    if (MNUtil.typeOf(comment) === "MNComment") {
+      let content = this.getSpanTextContent(comment)
+      let type = this.getSpanType(comment)
+      if (this.isHtmlMDComment(comment) && this.isLevelType(type)) {
+        let nextLevelType = this.getSpanNextLevelType(type)
+        comment.text = this.createHtmlMarkdownText(content, nextLevelType)
+      }
+    }
+  }
+
+  /**
+   * 将 HtmlMD 评论类型变成上一级
+   */
+  static changeHtmlMDCommentTypeToLastLevel(comment) {
+    if (MNUtil.typeOf(comment) === "MNComment") {
+      let content = this.getSpanTextContent(comment)
+      let type = this.getSpanType(comment)
+      if (this.isHtmlMDComment(comment) && this.isLevelType(type)) {
+        let lastLevelType = this.getSpanLastLevelType(type)
+        comment.text = this.createHtmlMarkdownText(content, lastLevelType)
+      }
+    }
+  }
+
+
+  /**
+   * 获取评论中最后一个 HtmlMD 评论
+   */
+  static getLastHtmlMDComment(note) {
+    let comments = note.MNComments
+    let lastHtmlMDComment = undefined
+    if (comments.length === 2 && comments[0] == undefined && comments[1] == undefined) {
+      return false
+    }
+    comments.forEach(
+      comment => {
+        if (this.isHtmlMDComment(comment)) {
+          lastHtmlMDComment = comment
+        }
+      }
+    )
+    return lastHtmlMDComment
+  }
+
+  /**
+   * 判断是否有 HtmlMD 评论
+   */
+  static hasHtmlMDComment(note) {
+    return !!this.getLastHtmlMDComment(note)
+  }
+
+  /**
+   * 增加同级评论
+   */
+  static addSameLevelHtmlMDComment(note, text, type) {
+    note.appendMarkdownComment(
+      this.createHtmlMarkdownText(text, type),
+    )
+  }
+
+  /**
+   * 增加下一级评论
+   */
+  static addNextLevelHtmlMDComment(note, text, type) {
+    let nextLevelType = this.getSpanNextLevelType(type)
+    if (nextLevelType) {
+      note.appendMarkdownComment(
+        this.createHtmlMarkdownText(text, nextLevelType)
+      )
+    } else {
+      note.appendMarkdownComment(
+        this.createHtmlMarkdownText(text, type)
+      )
+    }
+  }
+
+  /**
+   * 增加上一级评论
+   */
+  static addLastLevelHtmlMDComment(note, text, type) {
+    let lastLevelType = this.getSpanLastLevelType(type)
+    if (lastLevelType) {
+      note.appendMarkdownComment(
+        this.createHtmlMarkdownText(text, lastLevelType)
+      )
+    } else {
+      note.appendMarkdownComment(
+        this.createHtmlMarkdownText(text, type)
+      )
+    }
+  }
+
+  /**
+   * 增加已有 HtmlMd 评论的最顶级
+   */
+  static addTopestLevelHtmlMDComment(note, text) {
+    let topestLevelType = this.getSpanTopestLevelType(note)
+    if (topestLevelType) {
+      note.appendMarkdownComment(
+        this.createHtmlMarkdownText(text, topestLevelType)
+      )
+    } else {
+      note.appendMarkdownComment(
+        this.createHtmlMarkdownText(text, "goal")
+      )
+    }
+  }
+
+  /**
+   * 自动根据最后一个 HtmlMD 评论的类型增加 Level 类型评论
+   */
+  static autoAddLevelHtmlMDComment(note, text, goalLevel = "same") {
+    let lastHtmlMDComment = this.getLastHtmlMDComment(note)
+    if (lastHtmlMDComment) {
+      let lastHtmlMDCommentType = this.getSpanType(lastHtmlMDComment.text)
+      switch (goalLevel) {
+        case "same":
+          this.addSameLevelHtmlMDComment(note, text, lastHtmlMDCommentType)
+          break;
+        case "next":
+          this.addNextLevelHtmlMDComment(note, text, lastHtmlMDCommentType)
+          break;
+        case "last":
+          this.addLastLevelHtmlMDComment(note, text, lastHtmlMDCommentType)
+          break
+        case "topest": // 这里指的是评论中所包含的
+          this.addTopestLevelHtmlMDComment(note, text)
+          break;
+        default: 
+          MNUtil.showHUD("No goalLevel: " + goalLevel)
+          break;
+      }
+    } else {
+      // 如果没有 HtmlMD 评论，就添加一个一级
+      note.appendMarkdownComment(
+        this.createHtmlMarkdownText(text, 'goal')
+      )
+    }
+  }
+
+  // 解析开头的连字符数量
+  static parseLeadingDashes(str) {
+    let count = 0;
+    let index = 0;
+    const maxDashes = 5;
+    
+    while (count < maxDashes && index < str.trim().length) {
+      if (str[index] === '-') {
+        count++;
+        index++;
+        // 跳过后续空格
+        while (index < str.length && (str[index] === ' ' || str[index] === '\t')) {
+          index++;
+        }
+      } else {
+        break;
+      }
+    }
+    
+    return {
+      count: count > 0 ? Math.min(count, maxDashes) : 0,
+      remaining: str.slice(index).trim()
+    };
+  }
+}
+/**
+ * 夏大鱼羊 - End
+ */
 class MNComment {
   /** @type {string} */
   type;

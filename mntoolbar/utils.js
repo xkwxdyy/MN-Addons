@@ -5117,7 +5117,7 @@ try {
           newContentsIndexArr = focusNote.getNewContentIndexArr()
           if (newContentsIndexArr.length > 0) {
             newContentsFirstComment = MNComment.new(focusNote.comments[newContentsIndexArr[0]], newContentsIndexArr[0], focusNote.note)
-            if (newContentsFirstComment.type == "markdownComment") {
+            if (newContentsFirstComment.type == "markdownComment" && (!newContentsFirstComment.text.startsWith("<span"))) {
               newContentsFirstComment.text = newContentsFirstComment.text.toDotPrefix()
             }
             focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
@@ -5138,7 +5138,7 @@ try {
           newContentsIndexArr = targetNote.getNewContentIndexArr()
           if (newContentsIndexArr.length > 0) {
             newContentsFirstComment = MNComment.new(targetNote.comments[newContentsIndexArr[0]], newContentsIndexArr[0], targetNote.note)
-            if (newContentsFirstComment.type == "markdownComment") {
+            if (newContentsFirstComment.type == "markdownComment" && (!newContentsFirstComment.text.startsWith("<span"))) {
               newContentsFirstComment.text = newContentsFirstComment.text.toDotPrefix()
             }
             targetNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
@@ -5151,7 +5151,7 @@ try {
         newContentsIndexArr = focusNote.getNewContentIndexArr()
         if (newContentsIndexArr.length > 0) {
           newContentsFirstComment = MNComment.new(focusNote.comments[newContentsIndexArr[0]], newContentsIndexArr[0], focusNote.note)
-          if (newContentsFirstComment.type == "markdownComment") {
+          if (newContentsFirstComment.type == "markdownComment" && (!newContentsFirstComment.text.startsWith("<span"))) {
             newContentsFirstComment.text = newContentsFirstComment.text.toDotPrefix()
           }
           focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")

@@ -1743,7 +1743,7 @@ class MNUtil {
    * @returns
    */
   static genSelection(docController){
-    let selection = {onSelection:true}
+    let selection = {onSelection:true,docController:docController}
     //无论是选中文字还是框选图片，都可以拿到图片。而文字则不一定
     let image = docController.imageFromSelection()
     if (image) {
@@ -2427,6 +2427,14 @@ try {
         return undefined
     }
     return noteId
+  }
+  /**
+   * allMap = 0,
+   * half = 1,
+   * allDoc = 2
+   */
+  static get docMapSplitMode(){
+    return this.studyController.docMapSplitMode
   }
   /**
    * Retrieves the image data from the current document controller or other document controllers if the document map split mode is enabled.
@@ -3309,8 +3317,9 @@ class MNConnection{
           }
           if (validJson){
             resolve(result)
+          }else{
+            resolve(data)
           }
-          resolve(result)
         }
       )
   })
@@ -9460,6 +9469,19 @@ try {
    * 
    * @returns {MNNote|undefined} The currently focused note, or undefined if no note is focused.
    */
+  static get focusNote(){
+    return this.getFocusNote()
+  }
+  /**
+   * Retrieves the currently focused note in the mind map or document.
+   * 
+   * This method checks for the focused note in the following order:
+   * 1. If the notebook controller is visible and has a focused note, it returns that note.
+   * 2. If the document map split mode is enabled, it checks the current document controller and all document controllers for a focused note.
+   * 3. If a pop-up note info is available, it returns the note from the pop-up note info.
+   * 
+   * @returns {MNNote|undefined} The currently focused note, or undefined if no note is focused.
+   */
   static getFocusNote() {
     let notebookController = MNUtil.notebookController
     if (!notebookController.view.hidden && notebookController.mindmapView && notebookController.focusNote) {
@@ -9508,6 +9530,17 @@ try {
       return undefined
     }
     return MNNote.new(docController.highlightFromSelection())
+  }
+  /**
+   * Retrieves the focus notes in the current context.
+   * 
+   * This method checks for focus notes in various contexts such as the mind map, document controllers, and pop-up note info.
+   * It returns an array of MNNote instances representing the focus notes. If no focus notes are found, it returns an empty array.
+   * 
+   * @returns {MNNote[]} An array of MNNote instances representing the focus notes.
+   */
+  static get focusNotes(){
+    return this.getFocusNotes()
   }
   /**
    * Retrieves the focus notes in the current context.
@@ -10537,6 +10570,13 @@ class MNComment {
           return "tagComment"
         }
         if (/^marginnote\dapp:\/\/note\//.test(comment.text)) {
+          //概要卡片的评论链接格式:marginnote4app://note/898B40FE-C388-4F3E-B267-C6606C37046C/summary/0
+          if (/summary/.test(comment.text)) {
+            return "summaryComment"
+          }
+          return "linkComment"
+        }
+        if (/^marginnote\dapp:\/\/note\//.test(comment.text)) {
           return "linkComment"
         }
         if (comment.markdown) {
@@ -10605,7 +10645,6 @@ class MNComment {
   static new(comment,index,note){
     try {
       
-
       let newComment = new MNComment(comment)
       if (note) {
         newComment.originalNoteId = note.noteId
@@ -10620,6 +10659,10 @@ class MNComment {
           newComment.linkDirection = "one-way"
         }
       }
+      if (newComment.type === 'summaryComment') {
+        newComment.fromNoteId = MNUtil.extractMarginNoteLinks(newComment.detail.text)[0].replace("marginnote4app://note/","")
+      }
+        
 
       return newComment
     } catch (error) {

@@ -305,7 +305,8 @@ function setSchemaByActionName(actionName) {
       break
     case "ocr":
       properties.target = stringEnum(['comment','excerpt','childNote','clipboard','editor','chatModeReference'])
-      properties.ocrSource = stringEnum(["SimpleTex","abab6.5s-chat","MiniMax-Text-01","glm-4v-plus","glm-4v-flash","claude-3-5-sonnet-20241022","gemini-2.0-flash-exp","GPT-4o","GPT-4o-mini","Moonshot-v1"])
+      properties.ocrSource = stringEnum(["Doc2X","SimpleTex","GPT-4o","GPT-4o-mini","GPT-4.1","GPT-4.1-mini","GPT-4.1-nano","MiniMax-Text-01","glm-4v-plus","glm-4v-flash","claude-3-5-sonnet-20241022","claude-3-7-sonnet","gemini-2.0-flash","gemini-2.0-flash-lite","gemini-2.5-pro","gemini-2.5-flash","Moonshot-v1"])
+      properties.source = properties.ocrSource
       properties.method = stringEnum(["replace","append"])
       break;
     case "toggleSidebar":
@@ -425,6 +426,9 @@ function setSchemaByActionName(actionName) {
       properties.tag = stringType()
       properties.parentNote = stringType()
       properties.mainMindMap = booleanType()
+      properties.textFirst = booleanType()
+      properties.focusAfterHighlight = booleanType()
+      properties.focusAfterDelay = numberType()
       break;
     case "search":
       properties.target = stringEnum(['menu'])
@@ -711,7 +715,7 @@ function setSchemaByActionName(actionName) {
           //path: array
           // console.log(input);
           if (input === 'field') {
-            return ['hideMessage','mergeToPreviousNote','annotation','timerMode','minutes','selectTitle','selectItems','userSelect','find','delay','noteURL','menuWidth','buttonName','subTitle','onConfirm','onCancel','followAutoStyle','menuTitle','name','input','text','target', 'action', 'description','menu', 'source','color','content','title','markdown','command','commands','OCR','fillPattern','asTitle','tags','tag','find','multi','type','index','removeSource','prompt','user','system','trim','replace','merge','linkType','from','to','steps','range','url','engine','targets','onFinish','onLongPress','doubleClick','menuItems','autoClose','parentNote','mainMindMap','method','paste','forceToFocus'];
+            return ['textFirst','focusAfterDelay','focusAfterHighlight','hideMessage','mergeToPreviousNote','annotation','timerMode','minutes','selectTitle','selectItems','userSelect','find','delay','noteURL','menuWidth','buttonName','subTitle','onConfirm','onCancel','followAutoStyle','menuTitle','name','input','text','target', 'action', 'description','menu', 'source','color','content','title','markdown','command','commands','OCR','fillPattern','asTitle','tags','tag','find','multi','type','index','removeSource','prompt','user','system','trim','replace','merge','linkType','from','to','steps','range','url','engine','targets','onFinish','onLongPress','doubleClick','menuItems','autoClose','parentNote','mainMindMap','method','paste','forceToFocus'];
           }
           if (input === 'value') {
             let parent = path.at(-1)

@@ -1492,8 +1492,16 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         break;
       case "noteHighlight":
         let newNote = await toolbarUtils.noteHighlight(des)
-        if (newNote && newNote.notebookId === MNUtil.currentNotebookId) {
-          await newNote.focusInMindMap(0.5)
+        if (newNote && newNote.notebookId === MNUtil.currentNotebookId && des.focusAfterHighlight) {
+          let focusInFloatWindowForAllDocMode = des.focusInFloatWindowForAllDocMode ?? false
+          let delay = des.focusAfterDelay ?? 0.5
+          if (MNUtil.studyController.docMapSplitMode === 2) {
+            if (focusInFloatWindowForAllDocMode) {
+              await newNote.focusInFloatMindMap(delay)
+            }
+          }else{
+              await newNote.focusInMindMap(delay)
+          }
         }
         // if ("parentNote" in des) {
         //   await MNUtil.delay(5)
@@ -5803,7 +5811,6 @@ toolbarController.prototype.replaceButtonTo = async function (button,target) {
   button.setTitleForState("", 0)
   button.setTitleForState("", 1)
   button.addTargetActionForControlEvents(this, target, 1 << 6);
-  // button.addTargetActionForControlEvents(this, "doubleClick:", 1 << 1);
   this.addLongPressGesture(button, "onLongPressGesture:")
 
 }
@@ -5814,15 +5821,22 @@ toolbarController.prototype.popupReplace = async function (button) {
   await MNUtil.delay(0.01)//需要延迟一下才能拿到当前的popupMenu
   try {
   // MNUtil.showHUD("message")
-
   let menu = PopupMenu.currentMenu()
   if (menu) {
-    let ids = menu.items.map(item=>item.actionString.replace(":", ""))
+    let ids = menu.items.map(item=>{
+      if (item.actionString) {
+        return item.actionString.replace(":", "")
+      }
+      return ""
+    })
     // MNUtil.copyJSON(ids)
     let maxButtonNumber = (ids.length == menu.subviews.length)?ids.length:menu.subviews.length-1
     // MNUtil.showHUD("message"+ids.length+";"+menu.subviews.length)
     // MNUtil.showHUD(message)
     for (let i = 0; i < maxButtonNumber; i++) {
+      if (!ids[i]) {
+        continue
+      }
       let popupButton = menu.subviews[i].subviews[0]
       let popupConfig = toolbarConfig.getPopupConfig(ids[i])
       // MNUtil.showHUD("message"+menu.subviews.length)
@@ -5850,9 +5864,13 @@ toolbarController.prototype.popupReplace = async function (button) {
       }
     }
     for (let i = 0; i < maxButtonNumber; i++) {
+      if (!ids[i]) {
+        continue
+      }
       let popupButton = menu.subviews[i].subviews[0]
       let popupConfig = toolbarConfig.getPopupConfig(ids[i])
       // MNUtil.showHUD("message"+menu.subviews.length)
+
       if (!popupConfig) {
         MNUtil.showHUD("Unknown popup button: "+ids[i])
         continue
@@ -5882,6 +5900,32 @@ toolbarController.prototype.popupReplace = async function (button) {
           MNUtil.showHUD("message"+ids[i])
           // toolbarUtils.addErrorLog(error, "popupReplace", ids[i])
         }
+      }
+    }
+    await MNUtil.delay(0.01)
+
+    // MNUtil.copy("number: "+targetsNumber)
+    for (let i = 0; i < maxButtonNumber; i++) {
+      if (!ids[i]) {
+        continue
+      }
+      let popupButton = menu.subviews[i].subviews[0]
+      let popupConfig = toolbarConfig.getPopupConfig(ids[i])
+      // MNUtil.showHUD("message"+menu.subviews.length)
+      if (!popupConfig) {
+        MNUtil.showHUD("Unknown popup button: "+ids[i])
+        continue
+      }
+      // MNUtil.showHUD("popupReplace:"+ids[i]+":"+toolbarConfig.getPopupConfig(ids[i]).enabled)
+      if (popupConfig.enabled) {
+          // let tem = getAllProperties(temButton)
+          let targetsNumber = popupButton.allTargets().count()
+          // let action = temButton.allControlEvents.length
+          if (targetsNumber === 1) {
+            MNUtil.showHUD("可能存在按钮替换失败: "+i)
+          }else{
+            // MNUtil.showHUD("Number: "+targetsNumber)
+          }
       }
     }
     return menu

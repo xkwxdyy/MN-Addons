@@ -5117,7 +5117,7 @@ try {
           newContentsIndexArr = focusNote.getNewContentIndexArr()
           if (newContentsIndexArr.length > 0) {
             newContentsFirstComment = MNComment.new(focusNote.comments[newContentsIndexArr[0]], newContentsIndexArr[0], focusNote.note)
-            if (newContentsFirstComment.type == "markdownComment") {
+            if (newContentsFirstComment.type == "markdownComment" && (!newContentsFirstComment.text.startsWith("<span"))) {
               newContentsFirstComment.text = newContentsFirstComment.text.toDotPrefix()
             }
             focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
@@ -5138,7 +5138,7 @@ try {
           newContentsIndexArr = targetNote.getNewContentIndexArr()
           if (newContentsIndexArr.length > 0) {
             newContentsFirstComment = MNComment.new(targetNote.comments[newContentsIndexArr[0]], newContentsIndexArr[0], targetNote.note)
-            if (newContentsFirstComment.type == "markdownComment") {
+            if (newContentsFirstComment.type == "markdownComment" && (!newContentsFirstComment.text.startsWith("<span"))) {
               newContentsFirstComment.text = newContentsFirstComment.text.toDotPrefix()
             }
             targetNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
@@ -5151,7 +5151,7 @@ try {
         newContentsIndexArr = focusNote.getNewContentIndexArr()
         if (newContentsIndexArr.length > 0) {
           newContentsFirstComment = MNComment.new(focusNote.comments[newContentsIndexArr[0]], newContentsIndexArr[0], focusNote.note)
-          if (newContentsFirstComment.type == "markdownComment") {
+          if (newContentsFirstComment.type == "markdownComment" && (!newContentsFirstComment.text.startsWith("<span"))) {
             newContentsFirstComment.text = newContentsFirstComment.text.toDotPrefix()
           }
           focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
@@ -7745,6 +7745,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
           let color = des.color
           focusNote.colorIndex = color
         }
+
         if ("fillPattern" in des && des.fillPattern >= 0) {
           let fillPattern = des.fillPattern
           focusNote.fillIndex = fillPattern
@@ -7752,6 +7753,9 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
         if (OCRText) {
           focusNote.excerptText = OCRText
           focusNote.excerptTextMarkdown = true
+          focusNote.textFirst = true
+        }else if ("textFirst" in des && des.textFirst) {
+          focusNote.textFirst = des.textFirst
         }
         if ("asTitle" in des && des.asTitle) {
           focusNote.noteTitle = focusNote.excerptText
@@ -7917,7 +7921,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       let focusNotes
       let selection = MNUtil.currentSelection
       if (selection.onSelection) {
-        focusNotes = [MNNote.new(MNUtil.currentDocController.highlightFromSelection())]
+        focusNotes = [MNNote.new(selection.docController.highlightFromSelection())]
       }else{
         focusNotes = MNNote.getFocusNotes()
       }
@@ -7949,7 +7953,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     let focusNotes
     let selection = MNUtil.currentSelection
     if (selection.onSelection) {
-      focusNotes = [MNNote.new(MNUtil.currentDocController.highlightFromSelection())]
+      focusNotes = [MNNote.new(selection.docController.highlightFromSelection())]
     }else{
       focusNotes = MNNote.getFocusNotes()
     }

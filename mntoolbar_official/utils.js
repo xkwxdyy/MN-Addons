@@ -3490,6 +3490,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
           let color = des.color
           focusNote.colorIndex = color
         }
+
         if ("fillPattern" in des && des.fillPattern >= 0) {
           let fillPattern = des.fillPattern
           focusNote.fillIndex = fillPattern
@@ -3497,6 +3498,9 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
         if (OCRText) {
           focusNote.excerptText = OCRText
           focusNote.excerptTextMarkdown = true
+          focusNote.textFirst = true
+        }else if ("textFirst" in des && des.textFirst) {
+          focusNote.textFirst = des.textFirst
         }
         if ("asTitle" in des && des.asTitle) {
           focusNote.noteTitle = focusNote.excerptText
@@ -3662,7 +3666,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       let focusNotes
       let selection = MNUtil.currentSelection
       if (selection.onSelection) {
-        focusNotes = [MNNote.new(MNUtil.currentDocController.highlightFromSelection())]
+        focusNotes = [MNNote.new(selection.docController.highlightFromSelection())]
       }else{
         focusNotes = MNNote.getFocusNotes()
       }
@@ -3694,7 +3698,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     let focusNotes
     let selection = MNUtil.currentSelection
     if (selection.onSelection) {
-      focusNotes = [MNNote.new(MNUtil.currentDocController.highlightFromSelection())]
+      focusNotes = [MNNote.new(selection.docController.highlightFromSelection())]
     }else{
       focusNotes = MNNote.getFocusNotes()
     }

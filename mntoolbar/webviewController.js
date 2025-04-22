@@ -160,7 +160,7 @@ viewWillLayoutSubviews: function() {
         commandTable.unshift(self.tableItem('🌟  Direction   ↔️', selector,"dynamic"))
       }
       // 夏大鱼羊 - begin
-      commandTable.unshift(self.tableItem('🗂️   卡片预处理模式',"togglePreprocess:", undefined, toolbarConfig.windowState.preprocess))
+      commandTable.unshift(self.tableItem('🗂️   卡片预处理模式',"togglePreprocess:", toolbarConfig.windowState.preprocess))
       // 夏大鱼羊 - end
     }else{
       if (toolbarConfig.vertical()) {
@@ -169,7 +169,7 @@ viewWillLayoutSubviews: function() {
         commandTable.unshift(self.tableItem('🛠️  Direction   ↔️', selector,"fixed"))
       }
       // 夏大鱼羊 - begin
-      commandTable.unshift(self.tableItem('🗂️   卡片预处理模式',"togglePreprocess:", undefined, toolbarConfig.windowState.preprocess))
+      commandTable.unshift(self.tableItem('🗂️   卡片预处理模式',"togglePreprocess:", toolbarConfig.windowState.preprocess))
       // 夏大鱼羊 - end
     }
     commandTable.push()
@@ -178,7 +178,7 @@ viewWillLayoutSubviews: function() {
   // 夏大鱼羊 - begin
   // dynamic 这里还需要再写一次下面的 togglePreprocess 函数
   togglePreprocess: function () {
-    self.checkPopoverController()
+    self.checkPopover()
     toolbarConfig.togglePreprocess()
   },
   // 夏大鱼羊 - end

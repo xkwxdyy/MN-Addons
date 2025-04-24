@@ -1462,9 +1462,10 @@ settingController.prototype.setButtonText = function (names=toolbarConfig.getAll
 settingController.prototype.setTextview = function (name = this.selectedItem) {
   try {
       // let entries           =  NSUserDefaults.standardUserDefaults().objectForKey('MNBrowser_entries');
-      let actions = toolbarConfig.actions
-      let defaultActions = toolbarConfig.getActions()
-      let action = (name in actions)?actions[name]:defaultActions[name]
+      // let actions = toolbarConfig.actions
+      // let defaultActions = toolbarConfig.getActions()
+      let action = toolbarConfig.getAction(name)
+      // let action = (name in actions)?actions[name]:defaultActions[name]
       let text  = action.name
       this.titleInput.text= text
       if (MNUtil.isValidJSON(action.description)) {
@@ -1476,7 +1477,17 @@ settingController.prototype.setTextview = function (name = this.selectedItem) {
         // MNUtil.copy(des)
         this.setWebviewContent(des)
       }else{
+        MNUtil.copy(action.description)
         MNUtil.showHUD("Invalid description")
+        des = {}
+        if (name === "pasteAsTitle") {
+          des = {
+            "action": "setContent",
+            "target": "title",
+            "content": "{{clipboardText}}"
+          }
+        }
+        this.setWebviewContent(des)
       }
       // let description = action.description
       // if (MNUtil.isValidJSON(description)) {

@@ -160,7 +160,7 @@ viewWillLayoutSubviews: function() {
         commandTable.unshift(self.tableItem('🌟  Direction   ↔️', selector,"dynamic"))
       }
       // 夏大鱼羊 - begin
-      commandTable.unshift(self.tableItem('🗂️   卡片预处理模式',"togglePreprocess:", undefined, toolbarConfig.windowState.preprocess))
+      commandTable.unshift(self.tableItem('🗂️   卡片预处理模式',"togglePreprocess:", toolbarConfig.windowState.preprocess))
       // 夏大鱼羊 - end
     }else{
       if (toolbarConfig.vertical()) {
@@ -169,7 +169,7 @@ viewWillLayoutSubviews: function() {
         commandTable.unshift(self.tableItem('🛠️  Direction   ↔️', selector,"fixed"))
       }
       // 夏大鱼羊 - begin
-      commandTable.unshift(self.tableItem('🗂️   卡片预处理模式',"togglePreprocess:", undefined, toolbarConfig.windowState.preprocess))
+      commandTable.unshift(self.tableItem('🗂️   卡片预处理模式',"togglePreprocess:", toolbarConfig.windowState.preprocess))
       // 夏大鱼羊 - end
     }
     commandTable.push()
@@ -178,7 +178,7 @@ viewWillLayoutSubviews: function() {
   // 夏大鱼羊 - begin
   // dynamic 这里还需要再写一次下面的 togglePreprocess 函数
   togglePreprocess: function () {
-    self.checkPopoverController()
+    self.checkPopover()
     toolbarConfig.togglePreprocess()
   },
   // 夏大鱼羊 - end
@@ -1492,15 +1492,13 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         break;
       case "noteHighlight":
         let newNote = await toolbarUtils.noteHighlight(des)
-        if (newNote && newNote.notebookId === MNUtil.currentNotebookId && des.focusAfterHighlight) {
+        if (newNote && newNote.notebookId === MNUtil.currentNotebookId) {
           let focusInFloatWindowForAllDocMode = des.focusInFloatWindowForAllDocMode ?? false
           let delay = des.focusAfterDelay ?? 0.5
           if (MNUtil.studyController.docMapSplitMode === 2) {
             if (focusInFloatWindowForAllDocMode) {
               await newNote.focusInFloatMindMap(delay)
             }
-          }else{
-              await newNote.focusInMindMap(delay)
           }
         }
         // if ("parentNote" in des) {
@@ -5829,7 +5827,6 @@ toolbarController.prototype.popupReplace = async function (button) {
       }
       return ""
     })
-    // MNUtil.copyJSON(ids)
     let maxButtonNumber = (ids.length == menu.subviews.length)?ids.length:menu.subviews.length-1
     // MNUtil.showHUD("message"+ids.length+";"+menu.subviews.length)
     // MNUtil.showHUD(message)

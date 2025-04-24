@@ -429,6 +429,7 @@ function setSchemaByActionName(actionName) {
       properties.textFirst = booleanType()
       properties.focusAfterHighlight = booleanType()
       properties.focusAfterDelay = numberType()
+      properties.focusInFloatWindowForAllDocMode = booleanType()
       break;
     case "search":
       properties.target = stringEnum(['menu'])
@@ -715,7 +716,7 @@ function setSchemaByActionName(actionName) {
           //path: array
           // console.log(input);
           if (input === 'field') {
-            return ['textFirst','focusAfterDelay','focusAfterHighlight','hideMessage','mergeToPreviousNote','annotation','timerMode','minutes','selectTitle','selectItems','userSelect','find','delay','noteURL','menuWidth','buttonName','subTitle','onConfirm','onCancel','followAutoStyle','menuTitle','name','input','text','target', 'action', 'description','menu', 'source','color','content','title','markdown','command','commands','OCR','fillPattern','asTitle','tags','tag','find','multi','type','index','removeSource','prompt','user','system','trim','replace','merge','linkType','from','to','steps','range','url','engine','targets','onFinish','onLongPress','doubleClick','menuItems','autoClose','parentNote','mainMindMap','method','paste','forceToFocus'];
+            return ['textFirst','focusAfterDelay','focusInFloatWindowForAllDocMode','hideMessage','mergeToPreviousNote','annotation','timerMode','minutes','selectTitle','selectItems','userSelect','find','delay','noteURL','menuWidth','buttonName','subTitle','onConfirm','onCancel','followAutoStyle','menuTitle','name','input','text','target', 'action', 'description','menu', 'source','color','content','title','markdown','command','commands','OCR','fillPattern','asTitle','tags','tag','find','multi','type','index','removeSource','prompt','user','system','trim','replace','merge','linkType','from','to','steps','range','url','engine','targets','onFinish','onLongPress','doubleClick','menuItems','autoClose','parentNote','mainMindMap','method','paste','forceToFocus'];
           }
           if (input === 'value') {
             let parent = path.at(-1)

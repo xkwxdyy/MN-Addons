@@ -1492,15 +1492,13 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         break;
       case "noteHighlight":
         let newNote = await toolbarUtils.noteHighlight(des)
-        if (newNote && newNote.notebookId === MNUtil.currentNotebookId && des.focusAfterHighlight) {
+        if (newNote && newNote.notebookId === MNUtil.currentNotebookId) {
           let focusInFloatWindowForAllDocMode = des.focusInFloatWindowForAllDocMode ?? false
           let delay = des.focusAfterDelay ?? 0.5
           if (MNUtil.studyController.docMapSplitMode === 2) {
             if (focusInFloatWindowForAllDocMode) {
               await newNote.focusInFloatMindMap(delay)
             }
-          }else{
-              await newNote.focusInMindMap(delay)
           }
         }
         // if ("parentNote" in des) {
@@ -5829,7 +5827,6 @@ toolbarController.prototype.popupReplace = async function (button) {
       }
       return ""
     })
-    // MNUtil.copyJSON(ids)
     let maxButtonNumber = (ids.length == menu.subviews.length)?ids.length:menu.subviews.length-1
     // MNUtil.showHUD("message"+ids.length+";"+menu.subviews.length)
     // MNUtil.showHUD(message)

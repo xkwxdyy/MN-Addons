@@ -6046,6 +6046,10 @@ static getConfig(text){
         let config = {excerptText:text,excerptTextMarkdown:true}
         return config
       }
+      if (this.containsMathFormula(splitedText[1])) {
+        let config = {title:splitedText[0],excerptText:splitedText[1],excerptTextMarkdown:true}
+        return config
+      }
       let config = {title:splitedText[0],excerptText:splitedText[1]}
       return config
     }
@@ -6053,6 +6057,10 @@ static getConfig(text){
       let splitedText = text.split("：")
       if (this.containsMathFormula(splitedText[0])) {
         let config = {excerptText:text,excerptTextMarkdown:true}
+        return config
+      }
+      if (this.containsMathFormula(splitedText[1])) {
+        let config = {title:splitedText[0],excerptText:splitedText[1],excerptTextMarkdown:true}
         return config
       }
       let config = {title:splitedText[0],excerptText:splitedText[1]}
@@ -6944,7 +6952,7 @@ Image Text Extraction Specialist
       return
     }
     if (des.type && "to" in des) {
-      let type = Array.isArray(des.type) ? des.type : [des.type]
+      let type = des.types ? des.type : [des.type]
       switch (typeof des.to) {
         case "string":
           MNUtil.undoGrouping(()=>{
@@ -7736,7 +7744,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       OCRText = await this.getTextOCR(selection.image)
     }
     let currentNote = MNNote.getFocusNote()
-    let focusNote = MNNote.new(MNUtil.currentDocController.highlightFromSelection())
+    let focusNote = MNNote.new(selection.docController.highlightFromSelection())
     focusNote = focusNote.realGroupNoteForTopicId()
     return new Promise((resolve, reject) => {
       MNUtil.undoGrouping(()=>{
@@ -10518,6 +10526,13 @@ static getDescriptionByName(actionName){
   }
   if (MNUtil.isValidJSON(des)) {
     return JSON.parse(des)
+  }
+  if (actionName === "pasteAsTitle") {
+    return {
+      "action": "paste",
+      "target": "title",
+      "content": "{{clipboardText}}"
+    }
   }
   return {}
 }

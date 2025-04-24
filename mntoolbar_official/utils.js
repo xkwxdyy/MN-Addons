@@ -1791,6 +1791,10 @@ static getConfig(text){
         let config = {excerptText:text,excerptTextMarkdown:true}
         return config
       }
+      if (this.containsMathFormula(splitedText[1])) {
+        let config = {title:splitedText[0],excerptText:splitedText[1],excerptTextMarkdown:true}
+        return config
+      }
       let config = {title:splitedText[0],excerptText:splitedText[1]}
       return config
     }
@@ -1798,6 +1802,10 @@ static getConfig(text){
       let splitedText = text.split("：")
       if (this.containsMathFormula(splitedText[0])) {
         let config = {excerptText:text,excerptTextMarkdown:true}
+        return config
+      }
+      if (this.containsMathFormula(splitedText[1])) {
+        let config = {title:splitedText[0],excerptText:splitedText[1],excerptTextMarkdown:true}
         return config
       }
       let config = {title:splitedText[0],excerptText:splitedText[1]}
@@ -2689,7 +2697,7 @@ Image Text Extraction Specialist
       return
     }
     if (des.type && "to" in des) {
-      let type = Array.isArray(des.type) ? des.type : [des.type]
+      let type = des.types ? des.type : [des.type]
       switch (typeof des.to) {
         case "string":
           MNUtil.undoGrouping(()=>{
@@ -3481,7 +3489,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       OCRText = await this.getTextOCR(selection.image)
     }
     let currentNote = MNNote.getFocusNote()
-    let focusNote = MNNote.new(MNUtil.currentDocController.highlightFromSelection())
+    let focusNote = MNNote.new(selection.docController.highlightFromSelection())
     focusNote = focusNote.realGroupNoteForTopicId()
     return new Promise((resolve, reject) => {
       MNUtil.undoGrouping(()=>{
@@ -5176,8 +5184,13 @@ static template(action) {
   return JSON.stringify(config,null,2)
 }
 static getAction(actionKey){
+  let action = {}
   if (actionKey in this.actions) {
-    return this.actions[actionKey]
+    action = this.actions[actionKey]
+    if (!MNUtil.isValidJSON(action.description)) {//兼容旧版本的description问题
+      action.description = this.getActions()[actionKey].description
+    }
+    return action
   }
   return this.getActions()[actionKey]
 }
@@ -5193,7 +5206,7 @@ static getActions() {
     "snipaste":{name:"Snipaste",image:"snipaste",description:"{}"},
     "chatglm":{name:"ChatAI",image:"ai",description:"{}"},
     "setting":{name:"Setting",image:"setting",description:"{}"},
-    "pasteAsTitle":{name:"Paste As Title",image:"pasteAsTitle",description:"{}"},
+    "pasteAsTitle":{name:"Paste As Title",image:"pasteAsTitle",description:JSON.stringify({"action": "setContent","target": "title","content": "{{clipboardText}}"},null,2)},
     "clearFormat":{name:"Clear Format",image:"clearFormat",description:"{}"},
     "color0":{name:"Set Color 1",image:"color0",description:JSON.stringify({fillPattern:-1},null,2)},
     "color1":{name:"Set Color 2",image:"color1",description:JSON.stringify({fillPattern:-1},null,2)},
@@ -5382,6 +5395,13 @@ static getDescriptionByName(actionName){
   }
   if (MNUtil.isValidJSON(des)) {
     return JSON.parse(des)
+  }
+  if (actionName === "pasteAsTitle") {
+    return {
+      "action": "paste",
+      "target": "title",
+      "content": "{{clipboardText}}"
+    }
   }
   return {}
 }

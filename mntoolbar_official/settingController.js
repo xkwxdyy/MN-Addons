@@ -1473,6 +1473,9 @@ settingController.prototype.setTextview = function (name = this.selectedItem) {
         if (name === "sidebar") {
           des.action = "toggleSidebar"
         }
+        if (name === "ocr") {
+          des.action = "ocr"
+        }
         // MNUtil.showHUD(typeof des)
         // MNUtil.copy(des)
         this.setWebviewContent(des)

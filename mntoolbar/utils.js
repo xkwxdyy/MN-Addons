@@ -6707,9 +6707,10 @@ static async webSearchForZhipu (question,apikey) {
   /**
    * 
    * @param {{buffer:boolean,target:string,method:string}} des 
+   * @param {UIButton} button 
    * @returns 
    */
-  static async ocr(des){
+  static async ocr(des,button){
 try {
     let focusNote = MNNote.getFocusNote()
     let imageData = MNUtil.getDocImage(true,true)
@@ -6740,6 +6741,84 @@ try {
     }
     if (res) {
       switch (target) {
+        case "option":
+          if (focusNote) {
+            let userSelect = await MNUtil.userSelect("OCR Result", res, ["Copy","Comment","Excerpt","Editor","ChildNote"])
+            switch (userSelect) {
+              case 0:
+                return;
+              case 1:
+                MNUtil.copy(res)
+                MNUtil.showHUD("✅ Save to clipboard")
+                return;
+              case 2:
+                MNUtil.undoGrouping(()=>{
+                  focusNote.appendMarkdownComment(res)
+                  MNUtil.showHUD("✅ Append to comment")
+                })
+                MNUtil.postNotification("OCRFinished", {action:"toComment",noteId:focusNote.noteId,result:res})
+                return;
+              case 3:
+                ocrUtils.undoGrouping(()=>{
+                  // focusNote.textFirst = true
+                  focusNote.excerptTextMarkdown = true
+                  focusNote.excerptText =  res
+                  MNUtil.showHUD("✅ Set to excerpt")
+                })
+                MNUtil.postNotification("OCRFinished", {action:"toExcerpt",noteId:focusNote.noteId,result:res})
+                return;
+              case 4:
+                let studyFrame = MNUtil.studyView.bounds
+                let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+                let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+                endFrame.y = toolbarUtils.constrain(endFrame.y, 0, studyFrame.height-500)
+                endFrame.x = toolbarUtils.constrain(endFrame.x, 0, studyFrame.width-500)
+                MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
+                return;
+              case 5:
+                MNUtil.undoGrouping(()=>{
+                  let child = focusNote.createChildNote({excerptText:res,excerptTextMarkdown:true})
+                  child.focusInMindMap(0.5)
+                })
+                MNUtil.showHUD("✅ Create child note")
+                return;
+              default:
+                return;
+            }
+          }else{
+            let userSelect = await MNUtil.userSelect("OCR Result", res, ["Copy","Editor","New Note"])
+            switch (userSelect) {
+              case 0:
+                return;
+              case 1:
+                MNUtil.copy(res)
+                MNUtil.showHUD("✅ Save to clipboard")
+                return;
+              case 2:
+                let studyFrame = MNUtil.studyView.bounds
+                let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+                let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+                endFrame.y = toolbarUtils.constrain(endFrame.y, 0, studyFrame.height-500)
+                endFrame.x = toolbarUtils.constrain(endFrame.x, 0, studyFrame.width-500)
+                MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
+                return;
+              case 3:
+                MNUtil.undoGrouping(()=>{
+                  let childmap = MNUtil.currentChildMap
+                  if (childmap) {
+                    let child = focusNote.createChildNote({excerptText:res,excerptTextMarkdown:true})
+                    child.focusInMindMap(0.5)
+                  }else{
+                    let child = MNNote.new({excerptText:res,excerptTextMarkdown:true})
+                    child.focusInMindMap(0.5)
+                  }
+                })
+                MNUtil.showHUD("✅ Create child note")
+                return;
+              default:
+                return;
+            }
+          }
         case "comment":
           if (focusNote) {
             MNUtil.undoGrouping(()=>{
@@ -6779,8 +6858,13 @@ try {
           }
           break;
         case "editor":
-          MNUtil.postNotification("editorInsert",{contents:[{type:"text",content:res}]})
-          break;
+          let studyFrame = MNUtil.studyView.bounds
+          let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+          let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+          endFrame.y = toolbarUtils.constrain(endFrame.y, 0, studyFrame.height-500)
+          endFrame.x = toolbarUtils.constrain(endFrame.x, 0, studyFrame.width-500)
+          MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
+          return
         case "chatModeReference":
           let method = "append"
           if ("method" in des) {
@@ -8907,6 +8991,17 @@ class toolbarConfig {
     }
     return false
   }
+  static hasPopup(){
+    let popupConfig = this.popupConfig
+    let keys = Object.keys(this.popupConfig)
+    let hasReplace = keys.some((key)=>{
+    if (popupConfig[key].enabled && popupConfig[key].target) {
+      return true
+    }
+    return false
+  })
+  return hasReplace
+  }
   static getPopupConfig(key){
     if (this.popupConfig[key] !== undefined) {
       return this.popupConfig[key]
@@ -10343,8 +10438,13 @@ static template(action) {
   return JSON.stringify(config,null,2)
 }
 static getAction(actionKey){
+  let action = {}
   if (actionKey in this.actions) {
-    return this.actions[actionKey]
+    action = this.actions[actionKey]
+    if (!MNUtil.isValidJSON(action.description)) {//兼容旧版本的description问题
+      action.description = this.getActions()[actionKey].description
+    }
+    return action
   }
   return this.getActions()[actionKey]
 }

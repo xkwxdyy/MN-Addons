@@ -1464,7 +1464,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         toolbarUtils.removeTags(des)
         break;
       case "ocr":
-        await toolbarUtils.ocr(des)
+        await toolbarUtils.ocr(des,button)
         break;
       case "searchInDict":
         // MNUtil.showHUD("searchInDict")
@@ -5816,6 +5816,11 @@ toolbarController.prototype.replaceButtonTo = async function (button,target) {
  * @this {toolbarController}
  */
 toolbarController.prototype.popupReplace = async function (button) {
+
+  let hasReplace = toolbarConfig.hasPopup()
+  if (!hasReplace) {
+    return
+  }
   await MNUtil.delay(0.01)//需要延迟一下才能拿到当前的popupMenu
   try {
   // MNUtil.showHUD("message")
@@ -6026,6 +6031,7 @@ toolbarController.prototype.customActionMenu =  function (button,des) {
           break;
         case "ocr":
           commandTable = [
+            tableItem("option", {action:"ocr",target:"option"}),
             tableItem("clipboard", {action:"ocr",target:"clipboard"}),
             tableItem("comment", {action:"ocr",target:"comment"}),
             tableItem("excerpt", {action:"ocr",target:"excerpt"}),

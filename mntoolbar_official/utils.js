@@ -2521,10 +2521,8 @@ try {
                 MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
                 return;
               case 5:
-                MNUtil.undoGrouping(()=>{
-                  let child = focusNote.createChildNote({excerptText:res,excerptTextMarkdown:true})
-                  child.focusInMindMap(0.5)
-                })
+                let child = focusNote.createChildNote({excerptText:res,excerptTextMarkdown:true})
+                child.focusInMindMap(0.5)
                 MNUtil.showHUD("✅ Create child note")
                 return;
               default:
@@ -2576,13 +2574,17 @@ try {
           break;
         case "childNote":
           if (focusNote) {
-            MNUtil.undoGrouping(()=>{
-              let config = {
-                excerptTextMarkdown: res
-              }
-              let chlid = focusNote.createChildNote(config)
-              MNUtil.showHUD("Append to child note")
-            })
+            let config = {
+              excerptTextMarkdown: true,
+              content: res
+            }
+            if (des.followParentColor) {
+              config.colorIndex = focusNote.colorIndex
+            }
+            // MNUtil.copy(config)
+            let child = focusNote.createChildNote(config)
+            child.focusInMindMap(0.5)
+            MNUtil.showHUD("Append to child note")
           }else{
             MNUtil.copy(res)
           }

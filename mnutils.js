@@ -3112,7 +3112,7 @@ static getConfig(text){
   }
   return {title:text}
 }
-  /**
+/**
  * 
  * @param {MNNote} note 
  * @param {Object} ast 
@@ -3199,6 +3199,45 @@ static extractMarginNoteLinks(text) {
     return links || [];
 }
 
+/**
+ * 
+ * @param {string|number} color 
+ * @returns {number}
+ */
+static getColorIndex(color){
+    if (typeof color === 'string') {
+      let colorMap = {
+        "LIGHTYELLOW":0,
+        "LIGHTGREEN":1,
+        "LIGHTBLUE":2,
+        "LIGHTRED":3,
+        "YELLOW":4,
+        "GREEN":5,
+        "BLUE":6,
+        "RED":7,
+        "ORANGE":8,
+        "LIGHTORANGE":8,
+        "DARKGREEN":9,
+        "DARKBLUE":10,
+        "DARKRED":11,
+        "DEEPRED":11,
+        "WHITE":12,
+        "LIGHTGRAY":13,
+        "DARKGRAY":14,
+        "PURPLE":15,
+        "LIGHTPURPLE":15,
+      }
+      // let colors  = ["LightYellow", "LightGreen", "LightBlue", "LightRed","Yellow", "Green", "Blue", "Red", "Orange", "DarkGreen","DarkBlue", "DeepRed", "White", "LightGray","DarkGray", "Purple"]
+      let index = colorMap[color.toUpperCase()]
+      if (index !== -1) {
+        return index
+      }
+      return -1
+    } else {
+      return color
+    }
+
+  }
 }
 
 class MNConnection{
@@ -4230,18 +4269,13 @@ class MNNote{
           }
         }
         if (config.color !== undefined) {
-          if (typeof config.color === 'string') {
-            let colors  = ["LightYellow", "LightGreen", "LightBlue", "LightRed","Yellow", "Green", "Blue", "Red", "Orange", "DarkGreen","DarkBlue", "DeepRed", "White", "LightGray","DarkGray", "Purple"]
-            let index = colors.indexOf(config.color)
-            if (index !== -1) {
-              this.note.colorIndex = index
-            }
-          } else {
-            this.note.colorIndex = config.color
-          }
+          this.note.colorIndex = MNUtil.getColorIndex(config.color)
+        }
+        if (config.colorIndex !== undefined) {
+          this.note.colorIndex = config.colorIndex
         }
         if ("tags" in config && config.tags.length) {
-          this.note.appendTextComment(config.tags.map(k => '#'+k).join(" "))
+          this.note.appendTextComment(config.tags.map(k => '#'+k.replace(/\s+/g, "_")).join(" "))
         }
         break;
       default:

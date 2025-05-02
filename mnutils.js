@@ -546,6 +546,7 @@ class Pangu {
     newText = newText.replace(/∞\s*】/g, "∞】")
     newText = newText.replace(/∞\s*）/g, "∞）")
     newText = newText.replace(/∞\s*”/g, "∞”")
+    newText = newText.replace(/∞\s*_/g, "∞_")
     // 大求和符号改成小求和符号
     newText = newText.replace(/∑/g, "Σ")
     // 处理一下 弱* w* 这种空格

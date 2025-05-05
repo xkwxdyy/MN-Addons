@@ -556,6 +556,8 @@ class Pangu {
     newText = newText.replace(/\s*\/\s*/g, '/')
     // 处理括号后面的空格
     newText = newText.replace(/\]\s*([A-Za-z])/g, "] $1")
+    // 去掉 ∈ 前面的空格
+    newText = newText.replace(/\s*∈/g, "∈")
     return newText
   }
 }

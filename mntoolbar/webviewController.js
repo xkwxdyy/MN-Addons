@@ -2223,6 +2223,17 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           }
         })
         break;
+      case "copyMarkdownVersionFocusNoteURL":
+        MNUtil.undoGrouping(()=>{
+          try {
+            let content = "["+focusNote.title.toNoBracketPrefixContent()+"](" + focusNote.noteURL + ")"
+            MNUtil.copy(content)
+            MNUtil.showHUD(content)
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
       case "generateCustomTitleLink":
         MNUtil.undoGrouping(()=>{
           toolbarUtils.generateCustomTitleLink()

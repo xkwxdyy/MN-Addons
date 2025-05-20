@@ -10015,6 +10015,10 @@ static template(action) {
       config.menuWidth = 250
       config.menuItems = [
         {
+          "action": "copyMarkdownVersionFocusNoteURL",
+          "menuTitle": "复制 Markdown 类型的卡片 URL",
+        },
+        {
           "action": "toBeIndependent",
           "menuTitle": "⇨ 独立",
         },
@@ -10459,10 +10463,10 @@ static getActions() {
     "custom10":{name:"评论",image:"comment",description: this.template("menu_comment")},
     "custom2":{name:"学习",image:"study",description: this.template("menu_study")},
     "custom3":{name:"增加模板",image:"addTemplate",description: this.template("addTemplate")},
-    "custom17":{name:"卡片储存",image:"pin_white",description: this.template("menu_card_pin")},
-    "custom4":{name:"文献",image:"reference",description: this.template("menu_reference")},
     "custom5":{name:"卡片",image:"card",description: this.template("menu_card")},
+    "custom4":{name:"文献",image:"reference",description: this.template("menu_reference")},
     "custom6":{name:"文本",image:"text",description: this.template("menu_text")},
+    "custom17":{name:"卡片储存",image:"pin_white",description: this.template("menu_card_pin")},
     "snipaste":{name:"Snipaste",image:"snipaste",description:"Snipaste"},
     "custom7":{name:"隐藏插件栏",image:"hideAddonBar",description: this.template("hideAddonBar")},
     "custom11":{name:"工作流",image:"workflow",description: this.template("menu_card_workflow")},

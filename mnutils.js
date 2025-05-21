@@ -8497,6 +8497,9 @@ try {
       //   /  fix: 把这个删除放到 mergeInto 里
       //   this.removeCommentByIndex(0)
       // }
+      if (this.title.startsWith("【占位】")){
+        this.title = ""
+      }
       this.mergeIntoAndMove(targetNote, targetIndex +1, htmlType)
       targetNote.removeCommentByIndex(targetIndex) // 删除占位符
     }

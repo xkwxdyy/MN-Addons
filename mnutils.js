@@ -1027,6 +1027,31 @@ class Menu{
   addMenuItem(title,selector,params = "",checked=false){
     this.commandTable.push({title:title,object:this.delegate,selector:selector,param:params,checked:checked})
   }
+  addMenuItems(items){
+    let fullItems = items.map(item=>{
+      if ("object" in item) {
+        return item
+      }else{
+        item.object = this.delegate
+        return item
+      }
+    })
+    this.commandTable.push(...fullItems)
+  }
+  insertMenuItem(index,title,selector,params = "",checked=false){
+    this.commandTable.splice(index,0,{title:title,object:this.delegate,selector:selector,param:params,checked:checked})
+  }
+  insertMenuItems(index,items){
+    let fullItems = items.map(item=>{
+      if ("object" in item) {
+        return item
+      }else{
+        item.object = this.delegate
+        return item
+      }
+    })
+    this.commandTable.splice(index,0,...fullItems)
+  }
   show(){
   try {
 
@@ -1082,6 +1107,9 @@ class Menu{
       Menu.popover = undefined
     }
   }
+  static item(title,selector,params = "",checked=false){
+    return {title:title,selector:selector,param:params,checked:checked}
+  }
   static popover = undefined
   static dismissCurrentMenu(){
     if (this.popover) {
@@ -1124,6 +1152,7 @@ class MNUtil {
     // }
   }
   static errorLog = []
+  static logs = []
   static addErrorLog(error,source,info){
     MNUtil.showHUD("MN Utils Error ("+source+"): "+error)
     let tem = {source:source,time:(new Date(Date.now())).toString()}
@@ -1137,6 +1166,36 @@ class MNUtil {
     }
     this.errorLog.push(tem)
     this.copyJSON(this.errorLog)
+  }
+  static log(log){
+    if (typeof log == "string") {
+      log = {
+        message:log,
+        level:"INFO",
+        source:"Default",
+        timestamp:Date.now()
+      }
+      this.logs.push(log)
+      subscriptionUtils.subscriptionController.appendLog(log)
+      return
+    }
+    if ("level" in log) {
+      log.level = log.level.toUpperCase();
+    }else{
+      log.level = "INFO";
+    }
+    if (!("source" in log)) {
+      log.source = "Default";
+    }
+    if (!("timestamp" in log)) {
+      log.timestamp = Date.now();
+    }
+    this.logs.push(log)
+    subscriptionUtils.subscriptionController.appendLog(log)
+  }
+  static clearLogs(){
+    this.logs = []
+    subscriptionUtils.subscriptionController.clearLogs()
   }
   /**
    * Retrieves the version of the application.
@@ -2101,7 +2160,7 @@ class MNUtil {
    * @returns
    */
   static genSelection(docController){
-    let selection = {onSelection:true}
+    let selection = {onSelection:true,docController:docController}
     //无论是选中文字还是框选图片，都可以拿到图片。而文字则不一定
     let image = docController.imageFromSelection()
     if (image) {
@@ -2787,6 +2846,14 @@ try {
     return noteId
   }
   /**
+   * allMap = 0,
+   * half = 1,
+   * allDoc = 2
+   */
+  static get docMapSplitMode(){
+    return this.studyController.docMapSplitMode
+  }
+  /**
    * Retrieves the image data from the current document controller or other document controllers if the document map split mode is enabled.
    * 
    * This method checks for image data in the current document controller's selection. If no image is found, it checks the focused note within the current document controller.
@@ -3372,11 +3439,17 @@ static removeMarkdownFormat(markdownStr) {
 }
 static getConfig(text){
   let hasMathFormula = this.containsMathFormula(text)
-  if (hasMathFormula) {
+  if (hasMathFormula) {//存在公式内容
     if (/\:/.test(text)) {
       let splitedText = text.split(":")
+      //冒号前有公式,则直接不设置标题,只设置excerpt且开启markdown
       if (this.containsMathFormula(splitedText[0])) {
         let config = {excerptText:text,excerptTextMarkdown:true}
+        return config
+      }
+      //冒号前无公式,冒号后有公式
+      if (this.containsMathFormula(splitedText[1])) {
+        let config = {title:splitedText[0],excerptText:splitedText[1],excerptTextMarkdown:true}
         return config
       }
       let config = {title:splitedText[0],excerptText:splitedText[1]}
@@ -3384,13 +3457,20 @@ static getConfig(text){
     }
     if (/\：/.test(text)) {
       let splitedText = text.split("：")
+      //冒号前有公式,则直接不设置标题,只设置excerpt且开启markdown
       if (this.containsMathFormula(splitedText[0])) {
         let config = {excerptText:text,excerptTextMarkdown:true}
+        return config
+      }
+      //冒号前无公式,冒号后有公式
+      if (this.containsMathFormula(splitedText[1])) {
+        let config = {title:splitedText[0],excerptText:splitedText[1],excerptTextMarkdown:true}
         return config
       }
       let config = {title:splitedText[0],excerptText:splitedText[1]}
       return config
     }
+    
     let config = {excerptText:text,excerptTextMarkdown:true}
     return config
   }
@@ -3421,7 +3501,7 @@ static getConfig(text){
   }
   return {title:text}
 }
-  /**
+/**
  * 
  * @param {MNNote} note 
  * @param {Object} ast 
@@ -3508,6 +3588,45 @@ static extractMarginNoteLinks(text) {
     return links || [];
 }
 
+/**
+ * 
+ * @param {string|number} color 
+ * @returns {number}
+ */
+static getColorIndex(color){
+    if (typeof color === 'string') {
+      let colorMap = {
+        "LIGHTYELLOW":0,
+        "LIGHTGREEN":1,
+        "LIGHTBLUE":2,
+        "LIGHTRED":3,
+        "YELLOW":4,
+        "GREEN":5,
+        "BLUE":6,
+        "RED":7,
+        "ORANGE":8,
+        "LIGHTORANGE":8,
+        "DARKGREEN":9,
+        "DARKBLUE":10,
+        "DARKRED":11,
+        "DEEPRED":11,
+        "WHITE":12,
+        "LIGHTGRAY":13,
+        "DARKGRAY":14,
+        "PURPLE":15,
+        "LIGHTPURPLE":15,
+      }
+      // let colors  = ["LightYellow", "LightGreen", "LightBlue", "LightRed","Yellow", "Green", "Blue", "Red", "Orange", "DarkGreen","DarkBlue", "DeepRed", "White", "LightGray","DarkGray", "Purple"]
+      let index = colorMap[color.toUpperCase()]
+      if (index !== -1) {
+        return index
+      }
+      return -1
+    } else {
+      return color
+    }
+
+  }
 }
 
 class MNConnection{
@@ -3667,8 +3786,9 @@ class MNConnection{
           }
           if (validJson){
             resolve(result)
+          }else{
+            resolve(data)
           }
-          resolve(result)
         }
       )
   })
@@ -4517,18 +4637,34 @@ class MNNote{
         let config = note
         let notebook = MNUtil.currentNotebook
         let title = config.title ?? ""
+        let content = config.excerptText ?? config.content ?? ""
+        let markdown = config.excerptTextMarkdown ?? config.markdown ?? false
         // MNUtil.showHUD("new note")
         // MNUtil.copyJSON(note)
         this.note = Note.createWithTitleNotebookDocument(title, notebook, MNUtil.currentDocController.document)
-        if (config.content) {
-          if (config.markdown) {
-            this.note.appendMarkdownComment(config.content)
-          }else{
-            this.note.appendTextComment(config.content)
+        if (content.trim()) {//excerptText参数优先级高于content
+          this.note.excerptText = content.trim()
+          if (markdown) {
+            this.note.excerptTextMarkdown = true
+            if (/!\[.*?\]\((data:image\/.*;base64,.*?)(\))/.test(config.excerptText)) {
+              this.note.processMarkdownBase64Images()
+            }
+          }
+        }
+        if (config.inCurrentChildMap) {
+          if (this.currentChildMap) {
+            let child = MNNote.currentChildMap.createChildNote(config)
+            return child
           }
         }
         if (config.color !== undefined) {
-          this.note.colorIndex = config.color
+          this.note.colorIndex = MNUtil.getColorIndex(config.color)
+        }
+        if (config.colorIndex !== undefined) {
+          this.note.colorIndex = config.colorIndex
+        }
+        if ("tags" in config && config.tags.length) {
+          this.note.appendTextComment(config.tags.map(k => '#'+k.replace(/\s+/g, "_")).join(" "))
         }
         break;
       default:
@@ -4584,42 +4720,12 @@ class MNNote{
         return undefined
       case "NoteConfig":
         let config = note
-        let notebook = MNUtil.currentNotebook
-        let title = config.title ?? ""
-        // MNUtil.copyJSON(note)
         if (!MNUtil.currentDocController.document) {
           MNUtil.confirm("No document in studyset!", "学习集中没有文档！")
           return undefined
         }
-        let newNote = Note.createWithTitleNotebookDocument(title, notebook, MNUtil.currentDocController.document)
-        if (config.excerptText) {
-          newNote.excerptText = config.excerptText
-          if (config.excerptTextMarkdown || config.markdown) {
-            newNote.excerptTextMarkdown = true
-            if (/!\[.*?\]\((data:image\/.*;base64,.*?)(\))/.test(config.excerptText)) {
-              newNote.processMarkdownBase64Images()
-            }
-          }
-        }
-        if (config.content) {
-          newNote.excerptText = config.content
-          if (config.excerptTextMarkdown || config.markdown) {
-            newNote.excerptTextMarkdown = true
-            if (/!\[.*?\]\((data:image\/.*;base64,.*?)(\))/.test(config.content)) {
-              newNote.processMarkdownBase64Images()
-            }
-          }
-        }
-        if (config.color !== undefined) {
-          newNote.colorIndex = config.color
-        }
-        if (config.inCurrentChildMap) {
-          if (this.currentChildMap) {
-            let child = this.currentChildMap.createChildNote(config)
-            return child
-          }
-        }
-        return new MNNote(newNote)
+        let newNote = new MNNote(config)
+        return newNote
       default:
         return undefined
     }
@@ -4883,6 +4989,26 @@ class MNNote{
   set colorIndex(index){
     this.note.colorIndex = index
   }
+  /**
+   * @param {string} color
+   */
+  set color(color){
+    let colors  = ["LightYellow", "LightGreen", "LightBlue", "LightRed","Yellow", "Green", "Blue", "Red", "Orange", "DarkGreen","DarkBlue", "DeepRed", "White", "LightGray","DarkGray", "Purple"]
+    let index = colors.indexOf(color)
+    if (index === -1) {
+      return
+    }
+    this.note.colorIndex = index
+    return
+  }
+  get color(){
+    let index = this.colorIndex
+    let colors  = ["LightYellow", "LightGreen", "LightBlue", "LightRed","Yellow", "Green", "Blue", "Red", "Orange", "DarkGreen","DarkBlue", "DeepRed", "White", "LightGray","DarkGray", "Purple"]
+    if (index === -1) {
+      return ""
+    }
+    return colors[index]
+  }
   get fillIndex(){
     return this.note.fillIndex
   }
@@ -4920,6 +5046,21 @@ class MNNote{
   get imageDatas(){//所有图片
     return MNNote.getImagesFromNote(this)
   }
+
+  /**
+   *
+   * @returns {NoteComment[]}
+   */
+  get comments(){
+    return this.note.comments
+  }
+  /**
+   *
+   * @returns {MNComment[]}
+   */
+  get MNComments(){
+    return MNComment.from(this)
+  }
   /**
    * get all tags, without '#'
    * @returns {string[]}
@@ -4935,25 +5076,10 @@ class MNNote{
       return acc
     }, [])
     return tags.map(k => k.slice(1))
-
     } catch (error) {
       MNUtil.showHUD(error)
       return []
     }
-  }
-  /**
-   *
-   * @returns {NoteComment[]}
-   */
-  get comments(){
-    return this.note.comments
-  }
-  /**
-   *
-   * @returns {MNComment[]}
-   */
-  get MNComments(){
-    return MNComment.from(this)
   }
   /**
    * set tags, will remove all old tags
@@ -5432,7 +5558,7 @@ try {
       try {
         child = MNNote.new(config)
         if (!child) {
-          return
+          return undefined
         }
         this.addChild(child)
       } catch (error) {
@@ -5766,6 +5892,7 @@ try {
     }
     let excludeNoneTextComment = false
     if (condition.exclude || condition.include || condition.reg) {
+      //提供特定参数时,不对非文字评论进行筛选
       excludeNoneTextComment = true
     }
     let noneTextCommentTypes = ["PaintNote","blankImageComment","mergedImageCommentWithDrawing","mergedImageComment"]
@@ -5775,6 +5902,7 @@ try {
       }
       let newComment = MNComment.new(comment, commentIndex, this.note)
       if (excludeNoneTextComment && newComment.belongsToType(noneTextCommentTypes)) {
+        //不对非文字评论进行筛选
         return
       }
       if (condition.include && !newComment.text.includes(condition.include)) {//指文字必须包含特定内容
@@ -9405,6 +9533,17 @@ try {
   }
   /**
    *
+   * @returns {MNNote}
+   */
+  removeAllComments(){
+    let commentLength = this.comments.length
+    for (let i = commentLength-1; i >= 0; i--) {
+        this.removeCommentByIndex(i)
+    }
+    return this
+  }
+  /**
+   *
    * @param {number[]} indices
    * @returns {MNNote}
    */
@@ -9828,6 +9967,19 @@ try {
    * 
    * @returns {MNNote|undefined} The currently focused note, or undefined if no note is focused.
    */
+  static get focusNote(){
+    return this.getFocusNote()
+  }
+  /**
+   * Retrieves the currently focused note in the mind map or document.
+   * 
+   * This method checks for the focused note in the following order:
+   * 1. If the notebook controller is visible and has a focused note, it returns that note.
+   * 2. If the document map split mode is enabled, it checks the current document controller and all document controllers for a focused note.
+   * 3. If a pop-up note info is available, it returns the note from the pop-up note info.
+   * 
+   * @returns {MNNote|undefined} The currently focused note, or undefined if no note is focused.
+   */
   static getFocusNote() {
     let notebookController = MNUtil.notebookController
     if (!notebookController.view.hidden && notebookController.mindmapView && notebookController.focusNote) {
@@ -9876,6 +10028,17 @@ try {
       return undefined
     }
     return MNNote.new(docController.highlightFromSelection())
+  }
+  /**
+   * Retrieves the focus notes in the current context.
+   * 
+   * This method checks for focus notes in various contexts such as the mind map, document controllers, and pop-up note info.
+   * It returns an array of MNNote instances representing the focus notes. If no focus notes are found, it returns an empty array.
+   * 
+   * @returns {MNNote[]} An array of MNNote instances representing the focus notes.
+   */
+  static get focusNotes(){
+    return this.getFocusNotes()
   }
   /**
    * Retrieves the focus notes in the current context.
@@ -10177,10 +10340,47 @@ class MNComment {
     if (this.detail.q_htext) {
       return this.detail.q_htext
     }
-    // 夏大鱼羊 - 修改 - begin
-    // MNUtil.showHUD("No available text")
-    // 夏大鱼羊 - 修改 - end
+    MNUtil.showHUD("No available text")
     return undefined
+  }
+  get markdown(){
+    return this.type === "markdownComment"
+  }
+  /**
+   * 
+   * @param {Boolean} markdown 
+   */
+  set markdown(markdown){
+    switch (this.type) {
+        case "blankTextComment":
+        case "mergedImageComment":
+        case "mergedTextComment":
+        case "blankImageComment":
+        case "mergedImageCommentWithDrawing":
+        case "mergedImageComment":
+        case "mergedTextComment":
+        case "drawingComment":
+        case "imageCommentWithDrawing":
+        case "imageComment":
+        case "markdownComment":
+        return
+      default:
+        break;
+    }
+    if (markdown) {
+      if (this.type === "markdownComment") {
+        return
+      }
+      if (this.originalNoteId) {
+        let note = MNNote.new(this.originalNoteId)
+        note.replaceWithMarkdownComment(this.detail.text,this.index)
+      }
+    }else{
+      if (this.type === "markdownComment" && this.originalNoteId) {
+        let note = MNNote.new(this.originalNoteId)
+        note.replaceWithTextComment(this.detail.text,this.index)
+      }
+    }
   }
   set text(text){
     if (this.originalNoteId) {
@@ -10400,6 +10600,13 @@ class MNComment {
           return "tagComment"
         }
         if (/^marginnote\dapp:\/\/note\//.test(comment.text)) {
+          //概要卡片的评论链接格式:marginnote4app://note/898B40FE-C388-4F3E-B267-C6606C37046C/summary/0
+          if (/summary/.test(comment.text)) {
+            return "summaryComment"
+          }
+          return "linkComment"
+        }
+        if (/^marginnote\dapp:\/\/note\//.test(comment.text)) {
           return "linkComment"
         }
         if (comment.markdown) {
@@ -10468,7 +10675,6 @@ class MNComment {
   static new(comment,index,note){
     try {
       
-
       let newComment = new MNComment(comment)
       if (note) {
         newComment.originalNoteId = note.noteId
@@ -10483,6 +10689,10 @@ class MNComment {
           newComment.linkDirection = "one-way"
         }
       }
+      if (newComment.type === 'summaryComment') {
+        newComment.fromNoteId = MNUtil.extractMarginNoteLinks(newComment.detail.text)[0].replace("marginnote4app://note/","")
+      }
+        
 
       return newComment
     } catch (error) {

@@ -10314,6 +10314,10 @@ static template(action) {
         "menuItems": [
           "⬇️ 合并",
           {
+            "action":"upwardMergeWithStyledComments",
+            "menuTitle": "    合并证明要点",
+          },
+          {
             "action": "mergeInParentNote",
             "menuTitle": "    合并到父卡片",
           },

@@ -1390,6 +1390,14 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       { title: "none", type: "none" }
     ];
     let htmlSettingTitles = htmlSetting.map(config => config.title);
+    let levelHtmlSetting = [
+      { title: "goal: 🎯", type: "goal" },
+      { title: "step: 🚩", type: "step" },
+      { title: "point: ▸", type: "point" },
+      { title: "subpoint: ▪", type: "subpoint" },
+      { title: "subsubpoint: •", type: "subsubpoint" },
+    ];
+    let levelHtmlSettingTitles = levelHtmlSetting.map(config => config.title);
     switch (des.action) {
       case "undo":
         UndoManager.sharedInstance().undo()
@@ -4887,6 +4895,39 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
             focusNotes.forEach(focusNote=>{
               toolbarUtils.reappendAllLinksInNote(focusNote)
             })
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
+      /**
+       * 向上合并
+       */
+      case "upwardMergeWithStyledComments":
+        MNUtil.undoGrouping(()=>{
+          try {
+            UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+              "选择「当前卡片」下一层的层级",
+              "然后会依次递减",
+              0,
+              "取消",
+              levelHtmlSettingTitles,
+              (alert, buttonIndex) => {
+                try {
+                  MNUtil.undoGrouping(() => {
+                    // 按钮索引从1开始（0是取消按钮）
+                    const selectedIndex = buttonIndex - 1;
+                    
+                    if (selectedIndex >= 0 && selectedIndex < levelHtmlSetting.length) {
+                      const selectedType = levelHtmlSetting[selectedIndex].type;
+                      HtmlMarkdownUtils.upwardMergeWithStyledComments(focusNote, selectedType)
+                    }
+                  });
+                } catch (error) {
+                  MNUtil.showHUD(error);
+                }
+              }
+            );
           } catch (error) {
             MNUtil.showHUD(error);
           }

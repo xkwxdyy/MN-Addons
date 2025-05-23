@@ -10340,7 +10340,8 @@ class MNComment {
     if (this.detail.q_htext) {
       return this.detail.q_htext
     }
-    MNUtil.showHUD("No available text")
+    // 夏大鱼羊 - 修改
+    // MNUtil.showHUD("No available text")
     return undefined
   }
   get markdown(){

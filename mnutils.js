@@ -350,6 +350,151 @@ class HtmlMarkdownUtils {
       remaining: str.slice(index).trim()
     };
   }
+
+  /**
+   * 执行向上合并操作，将被聚焦笔记的后代笔记合并到其自身。
+   * 子笔记的标题会作为带样式的、独立的评论添加到它们各自的直接父笔记中，
+   * 然后子笔记（清空标题后）的结构内容再合并到父笔记。
+   *
+   * @param {MNNote} rootFocusNote 要处理的主笔记，其后代笔记将被向上合并到此笔记中。
+   * @param {string} firstLevelType rootFocusNote 直接子笔记的 HtmlMarkdownUtils 类型 (例如：'goal', 'step')。
+   */
+  static upwardMergeWithStyledComments(rootFocusNote, firstLevelType) {
+      // 确保 MNUtil 和 HtmlMarkdownUtils 在当前作用域中可用
+      if (typeof MNUtil === 'undefined' || typeof HtmlMarkdownUtils === 'undefined') {
+          console.error("MNUtil 或 HtmlMarkdownUtils 未定义。");
+          if (typeof MNUtil !== 'undefined' && typeof MNUtil.showHUD === 'function') {
+              MNUtil.showHUD("错误：找不到必要的工具库。", 2);
+          }
+          return;
+      }
+
+      // 1. API 名称更正：使用属性访问 rootFocusNote.descendantNodes
+      let allDescendants, treeIndex;
+      try {
+          // 假设 descendantNodes 是一个直接返回所需对象的属性
+          const nodesData = rootFocusNote.descendantNodes;
+          if (!nodesData || typeof nodesData.descendant === 'undefined' || typeof nodesData.treeIndex === 'undefined') {
+              throw new Error("descendantNodes 属性未返回预期的 {descendant, treeIndex} 对象结构。");
+          }
+          allDescendants = nodesData.descendant;
+          treeIndex = nodesData.treeIndex;
+      } catch (e) {
+          console.error("无法获取后代笔记。请确保 rootFocusNote.descendantNodes 属性存在且能正确返回数据。", e);
+          MNUtil.showHUD("错误：无法获取后代笔记数据。", 2);
+          return;
+      }
+
+      if (!allDescendants || allDescendants.length === 0) {
+          MNUtil.showHUD("没有可合并的后代笔记。", 2);
+          return;
+      }
+
+      const nodesWithInfo = allDescendants.map((node, i) => ({
+          node: node,
+          level: treeIndex[i].length // 相对于 rootFocusNote 子笔记的深度 (1 代表直接子笔记)
+      }));
+
+      let maxLevel = 0;
+      if (nodesWithInfo.length > 0) {
+          maxLevel = Math.max(...nodesWithInfo.map(item => item.level));
+      }
+
+      // (移除 aggregatedRawTextFromChildren Map，因为不再需要向上聚合标题文本)
+
+      /**
+       * 根据笔记在 treeIndex 中的层级（相对于 rootFocusNote 子笔记的深度）
+       * 和第一层子笔记的初始类型，来确定该笔记的 HtmlMarkdownUtils 类型。
+       * @param {number} level - 笔记的层级 (1 代表 rootFocusNote 的直接子笔记)
+       * @param {string} initialTypeForLevel1 - 第一层子笔记的初始类型
+       * @returns {string} - 计算得到的 HtmlMarkdownUtils 类型
+       */
+      function getNodeTypeForTreeIndexLevel(level, initialTypeForLevel1) {
+          let currentType = initialTypeForLevel1;
+          if (!HtmlMarkdownUtils.isLevelType(initialTypeForLevel1)) {
+              console.warn(`初始类型 "${initialTypeForLevel1}" 不是一个可识别的层级类型。将为第一层级默认使用 'goal'。`);
+              currentType = 'goal';
+          }
+          if (level === 1) {
+              return currentType;
+          }
+          for (let i = 1; i < level; i++) {
+              const nextType = HtmlMarkdownUtils.getSpanNextLevelType(currentType);
+              if (!nextType || nextType === currentType) {
+                  return currentType;
+              }
+              currentType = nextType;
+          }
+          return currentType;
+      }
+
+      // 从最深层级开始，逐层向上处理
+      for (let currentTreeIndexLevel = maxLevel; currentTreeIndexLevel >= 1; currentTreeIndexLevel--) {
+          const nodesAtThisLevel = nodesWithInfo.filter(item => item.level === currentTreeIndexLevel);
+
+          for (const item of nodesAtThisLevel) {
+              const currentNode = item.node;
+              const parentNode = currentNode.parentNote;
+
+              if (!parentNode) {
+                  console.error(`层级 ${currentTreeIndexLevel} 的笔记 ${currentNode.id || '(无ID)'} 没有父笔记。已跳过。`);
+                  continue;
+              }
+              if (parentNode.id !== rootFocusNote.id && !allDescendants.some(d => d.id === parentNode.id)) {
+                  console.warn(`笔记 ${currentNode.id} 的父笔记 ${parentNode.id} 不在 rootFocusNote 后代笔记的合并范围内。已跳过此笔记的合并。`);
+                  continue;
+              }
+
+              // 1. 确定 currentNode 的标题在添加到 parentNode 的评论中时应采用的 'type'。
+              //    这个 type 是基于 currentNode 相对于 rootFocusNote 的深度来决定的。
+              const typeForCurrentNodeTitleInParentComment = getNodeTypeForTreeIndexLevel(currentTreeIndexLevel, firstLevelType);
+
+              // 2. 准备来自 currentNode 标题的原始文本内容。
+              let rawTextFromTitle;
+              if (typeof currentNode.title === 'string') {
+                  if (typeof currentNode.title.toNoBracketPrefixContent === 'function') { // 您提到的特定方法
+                      rawTextFromTitle = currentNode.title.toNoBracketPrefixContent();
+                  } else if (HtmlMarkdownUtils.isHtmlMDComment(currentNode.title)) {
+                      rawTextFromTitle = HtmlMarkdownUtils.getSpanTextContent(currentNode.title);
+                  } else {
+                      rawTextFromTitle = currentNode.title;
+                  }
+              } else {
+                  rawTextFromTitle = "";
+              }
+              rawTextFromTitle = rawTextFromTitle.trim();
+
+              // 3. 将 currentNode 的 rawTextFromTitle (原始标题文本) 作为一个新的带样式的评论添加到 parentNode。
+              //    评论的类型由 currentNode 自身的层级决定。
+              if (rawTextFromTitle) { // 仅当标题有内容时才添加评论
+                  // HtmlMarkdownUtils.addSameLevelHtmlMDComment(parentNode, rawTextFromTitle, typeForCurrentNodeTitleInParentComment);
+                  // 或者，如果更倾向于直接使用 appendMarkdownComment:
+                  if (typeof parentNode.appendMarkdownComment === 'function') {
+                      parentNode.appendMarkdownComment(
+                          HtmlMarkdownUtils.createHtmlMarkdownText(rawTextFromTitle, typeForCurrentNodeTitleInParentComment)
+                      );
+                  } else {
+                      console.warn(`parentNode ${parentNode.id} 上未找到 appendMarkdownComment 方法。`);
+                  }
+              }
+
+              // 4. 清空 currentNode 的标题。
+              if (typeof currentNode.setTitle === 'function') {
+                  currentNode.setTitle("");
+              } else {
+                  currentNode.title = "";
+              }
+
+              // 5. 执行 currentNode（现在已无标题，但包含其原有评论、子节点等）到 parentNode 的结构性合并。
+              if (typeof currentNode.mergeInto === 'function') {
+                  currentNode.mergeInto(parentNode);
+              } else {
+                  console.warn(`笔记 ${currentNode.id || '(无ID)'} 上未找到 mergeInto 方法。结构性合并已跳过。`);
+              }
+          }
+      }
+      MNUtil.showHUD("向上合并完成！", 2);
+  }
 }
 // 夏大鱼羊 - end
     

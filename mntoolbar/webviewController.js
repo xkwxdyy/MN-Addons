@@ -2234,9 +2234,23 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "copyMarkdownVersionFocusNoteURL":
         MNUtil.undoGrouping(()=>{
           try {
-            let content = "["+focusNote.title.toNoBracketPrefixContent()+"](" + focusNote.noteURL + ")"
-            MNUtil.copy(content)
-            MNUtil.showHUD(content)
+            UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+              "复制 Markdown 类型链接",
+              "输入引用词",
+              2,
+              "取消",
+              ["确定"],
+              (alert, buttonIndex) => {
+                MNUtil.undoGrouping(()=>{
+                  if (buttonIndex == 1) {
+                    let refContent = alert.textFieldAtIndex(0).text?alert.textFieldAtIndex(0).text:focusNote.title.toNoBracketPrefixContent()
+                    let mdLink = "["+ refContent +"](" + focusNote.noteURL + ")"
+                    MNUtil.copy(mdLink)
+                    MNUtil.showHUD(mdLink)
+                  }
+                })
+              }
+            );
           } catch (error) {
             MNUtil.showHUD(error);
           }

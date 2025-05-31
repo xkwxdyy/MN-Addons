@@ -1045,6 +1045,92 @@ String.prototype.splitStringByFourSeparators = function() {
   return arr.filter(Boolean);
 }
 
+/**
+ * 解析评论索引字符串，支持：
+ * - 范围输入（如 "1-4" 表示第1到第4条）
+ * - 特殊字符 X、Y、Z（不区分大小写，分别表示倒数第3、2、1条）
+ * - 1-based 索引（用户输入 1 表示第一条，内部转换为 0）
+ * @param {number} totalComments - 评论总数
+ * @returns {number[]} 0-based 索引数组
+ */
+String.prototype.parseCommentIndices = function(totalComments) {
+  // 先使用四种分隔符分割
+  const parts = this.splitStringByFourSeparators();
+  const indices = [];
+  
+  for (let part of parts) {
+    part = part.trim();
+    if (!part) continue;
+    
+    // 检查是否为范围表达式（如 "1-4" 或 "2-Y"）
+    const rangeMatch = part.match(/^([1-9]\d*|[xyzXYZ])\s*[-－]\s*([1-9]\d*|[xyzXYZ])$/);
+    if (rangeMatch) {
+      const startStr = rangeMatch[1];
+      const endStr = rangeMatch[2];
+      
+      // 解析起始索引
+      let startIndex;
+      if (/^[xyzXYZ]$/i.test(startStr)) {
+        // 特殊字符
+        const char = startStr.toUpperCase();
+        if (char === 'X') startIndex = totalComments - 3;
+        else if (char === 'Y') startIndex = totalComments - 2;
+        else if (char === 'Z') startIndex = totalComments - 1;
+      } else {
+        // 数字，转换为 0-based
+        startIndex = parseInt(startStr) - 1;
+      }
+      
+      // 解析结束索引
+      let endIndex;
+      if (/^[xyzXYZ]$/i.test(endStr)) {
+        // 特殊字符
+        const char = endStr.toUpperCase();
+        if (char === 'X') endIndex = totalComments - 3;
+        else if (char === 'Y') endIndex = totalComments - 2;
+        else if (char === 'Z') endIndex = totalComments - 1;
+      } else {
+        // 数字，转换为 0-based
+        endIndex = parseInt(endStr) - 1;
+      }
+      
+      // 确保索引有效
+      startIndex = Math.max(0, Math.min(startIndex, totalComments - 1));
+      endIndex = Math.max(0, Math.min(endIndex, totalComments - 1));
+      
+      // 添加范围内的所有索引
+      if (startIndex <= endIndex) {
+        for (let i = startIndex; i <= endIndex; i++) {
+          indices.push(i);
+        }
+      }
+    } else {
+      // 单个索引
+      if (/^[xyzXYZ]$/i.test(part)) {
+        // 特殊字符
+        const char = part.toUpperCase();
+        let index;
+        if (char === 'X') index = totalComments - 3;
+        else if (char === 'Y') index = totalComments - 2;
+        else if (char === 'Z') index = totalComments - 1;
+        
+        if (index >= 0 && index < totalComments) {
+          indices.push(index);
+        }
+      } else if (/^[1-9]\d*$/.test(part)) {
+        // 数字，转换为 0-based
+        const index = parseInt(part) - 1;
+        if (index >= 0 && index < totalComments) {
+          indices.push(index);
+        }
+      }
+    }
+  }
+  
+  // 去重并排序
+  return [...new Set(indices)].sort((a, b) => a - b);
+}
+
 String.prototype.toTitleCasePro = function () {
   'use strict'
   let smallWords = /^(a|an|and|as|at|but|by|en|for|if|in|nor|of|on|or|per|the|to|v.?|vs.?|via)$/i;
@@ -2610,7 +2696,7 @@ class MNUtil {
     return image
   }
   /**
-   * 左 0, 下 1，3, 上 2, 右 4
+   * 左 0, 下 1, 3, 上 2, 右 4
    * @param {*} sender
    * @param {object[]} commandTable
    * @param {number} width
@@ -4004,7 +4090,7 @@ static async readWebDAVFile(url, username, password) {
    * Reads a file from a WebDAV server using the provided URL, username, and password.
    * 
    * This method sends a GET request to the specified WebDAV URL with the provided username and password for authentication.
-   * It returns a promise that resolves with the response data if the request is successful, or with an error object if the request fails.
+   * It returns a promise that resolves with the response data or an error object if the request fails.
    * 
    * @param {string} url - The URL of the file on the WebDAV server.
    * @param {string} username - The username for authentication.
@@ -6417,7 +6503,7 @@ try {
   deleteCommentsByPopup(){
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "删除评论",
-      "可以选择，也可以输入 Index \n 注意输入情形从 0 开始\n 若多个评论 Index，用\n- 中文分号；\n- 英文分号;\n- 中文逗号，\n- 西文逗号,\n 之一隔开",
+      "支持:\n- 单个序号: 1,2,3\n- 范围: 1-4 (删除第1到第4条)\n- 特殊字符: X(倒数第3条), Y(倒数第2条), Z(最后一条)\n- 组合使用: 1,3-5,Y,Z\n\n用中文或英文逗号、分号分隔",
       2,
       "取消",
       [
@@ -6427,7 +6513,7 @@ try {
       ],
       (alert, buttonIndex) => {
         let userInput = alert.textFieldAtIndex(0).text;
-        let deleteCommentIndexArr = userInput?userInput.splitStringByFourSeparators():[]
+        let deleteCommentIndexArr = userInput ? userInput.parseCommentIndices(this.comments.length) : []
         switch (buttonIndex) {
           case 1:  // 删除第一条评论
             this.removeCommentByIndex(0)
@@ -6435,7 +6521,7 @@ try {
           case 2:  // 删除最后一条评论
             this.removeCommentByIndex(this.comments.length-1)
             break;
-          case 3:  // 确定删除输入的评论 Index
+          case 3:  // 确定删除输入的评论
             if (deleteCommentIndexArr.length > 0) {
               this.removeCommentsByIndices(deleteCommentIndexArr)
             }
@@ -6458,7 +6544,7 @@ try {
   deleteCommentsByPopupAndMoveNewContentTo(target, toBottom= true){
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "先删除评论",
-      "可以选择，也可以输入 Index \n 注意输入情形从 0 开始\n 若多个评论 Index，用\n- 中文分号；\n- 英文分号;\n- 中文逗号，\n- 西文逗号,\n 之一隔开",
+      "支持:\n- 单个序号: 1,2,3\n- 范围: 1-4 (删除第1到第4条)\n- 特殊字符: X(倒数第3条), Y(倒数第2条), Z(最后一条)\n- 组合使用: 1,3-5,Y,Z\n\n用中文或英文逗号、分号分隔",
       2,
       "取消",
       [
@@ -6468,7 +6554,7 @@ try {
       ],
       (alert, buttonIndex) => {
         let userInput = alert.textFieldAtIndex(0).text;
-        let deleteCommentIndexArr = userInput?userInput.splitStringByFourSeparators():[]
+        let deleteCommentIndexArr = userInput ? userInput.parseCommentIndices(this.comments.length) : []
         switch (buttonIndex) {
           case 1:  // 删除第一条评论
             this.removeCommentByIndex(0)
@@ -6476,7 +6562,7 @@ try {
           case 2:  // 删除最后一条评论
             this.removeCommentByIndex(this.comments.length-1)
             break;
-          case 3:  // 确定删除输入的评论 Index
+          case 3:  // 确定删除输入的评论
             if (deleteCommentIndexArr.length > 0) {
               this.removeCommentsByIndices(deleteCommentIndexArr)
             }

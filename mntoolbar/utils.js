@@ -10381,6 +10381,10 @@ static template(action) {
           // },
           "⬇️ 修改标题",
           {
+            "action": "removeTitlePrefix",
+            "menuTitle": "    去掉卡片前缀"
+          },
+          {
             "action": "changeTitlePrefix",
             "menuTitle": "    强制修改卡片前缀"
           },

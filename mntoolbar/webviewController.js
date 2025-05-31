@@ -5684,6 +5684,18 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           }
         })
         break;
+      case "removeTitlePrefix":
+        MNUtil.undoGrouping(()=>{
+          try {
+            focusNotes.forEach(focusNote=>{
+              focusNote.title = focusNote.title.toNoBracketPrefixContent()
+              focusNote.refreshAll()
+            })
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
       /* 夏大鱼羊定制 - end */
       case "chatAI":
         toolbarUtils.chatAI(des,button)

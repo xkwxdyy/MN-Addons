@@ -6801,6 +6801,8 @@ try {
     }
     // 最后处理一下标题的空格
     this.title = Pangu.spacing(this.title)
+    // 把标题前面的 Summary 去掉
+    this.title = this.title.replace(/Summary/, "");
   }
 
   /**

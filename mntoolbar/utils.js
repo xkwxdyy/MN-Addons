@@ -10119,16 +10119,6 @@ static template(action) {
           "menuTitle": "🔄 刷新卡片及其所有父子卡片",
         },
         {
-          "action": "menu",
-          "menuTitle": "➡️ 链接",
-          "menuItems": [
-            {
-              "action": "linkRemoveDuplicatesAfterApplication",
-              "menuTitle": "“应用”下方的链接去重"
-            }
-          ]
-        },
-        {
           "action": "focusInMindMap",
           "menuTitle": "focus In 主视图",
         },
@@ -10414,10 +10404,10 @@ static template(action) {
             "action": "convertNoteToNonexcerptVersion",
             "menuTitle": "    转化为非摘录版本",
           },
-          // {
-          //   "action": "AddToReview",
-          //   "menuTitle": "加入复习",
-          // },
+          {
+            "action": "linkRemoveDuplicatesAfterApplication",
+            "menuTitle": "    “应用”下方的链接去重"
+          },
           {
             "action": "splitMarkdownTextInFocusNote",
             "menuTitle": "    基于 Markdown 拆卡",

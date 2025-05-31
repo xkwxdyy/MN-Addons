@@ -720,14 +720,13 @@
                 copyButton.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const logText = `[${time}] [${log.level}] [${log.source}] ${log.message}${log.detail ? '\n' + log.detail : ''}`;
-                    navigator.clipboard.writeText(logText).then(() => {
-                        copyButton.textContent = '已复制';
-                        copyButton.classList.add('copied');
-                        setTimeout(() => {
-                            copyButton.textContent = '复制';
-                            copyButton.classList.remove('copied');
-                        }, 2000);
-                    });
+                    copyButton.textContent = '已复制';
+                    copyButton.classList.add('copied');
+                    copyToClipboard(logText)
+                    setTimeout(() => {
+                        copyButton.textContent = '复制';
+                        copyButton.classList.remove('copied');
+                    }, 2000);
                 });
                 
                 this.container.appendChild(logEntry);
@@ -765,6 +764,10 @@ function appendLogFromAddon(encodedLog) {
  */
 function clearLogsFromAddon() {
   logViewer.clearLogs()
+}
+
+function copyToClipboard(text) {
+  window.location.href = "nativeCopy://content="+encodeURIComponent(text);
 }
     </script>
 </body>

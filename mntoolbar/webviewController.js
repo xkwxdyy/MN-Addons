@@ -2243,7 +2243,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
               (alert, buttonIndex) => {
                 MNUtil.undoGrouping(()=>{
                   if (buttonIndex == 1) {
-                    let refContent = alert.textFieldAtIndex(0).text?alert.textFieldAtIndex(0).text:focusNote.title.toNoBracketPrefixContent()
+                    let refContent = alert.textFieldAtIndex(0).text?alert.textFieldAtIndex(0).text:focusNote.getFirstTitleLinkWord()
                     let mdLink = "["+ refContent +"](" + focusNote.noteURL + ")"
                     MNUtil.copy(mdLink)
                     MNUtil.showHUD(mdLink)

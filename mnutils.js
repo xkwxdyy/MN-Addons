@@ -8820,7 +8820,8 @@ try {
 
     let oldComments = this.MNComments
     oldComments.forEach((comment, index) => {
-      if (comment.type == "linkComment" && comment.linkDirection == "both") {
+      // if (comment.type == "linkComment" && comment.linkDirection == "both") {
+      if (comment.type == "linkComment" && this.LinkIfDouble(comment.text)) {
         let linkedNote = MNNote.new(comment.text.toNoteId())
         let linkedNoteComments = linkedNote.MNComments
         let indexArrInLinkedNote = linkedNote.getLinkCommentsIndexArr(this.noteId.toNoteURL())

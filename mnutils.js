@@ -45,10 +45,11 @@ class HtmlMarkdownUtils {
     question: 'font-weight:700;color:#3D1A67;background:linear-gradient(15deg,#F8F4FF 30%,#F1E8FF);border:3px double #8B5CF6;border-radius:16px 4px 16px 4px;padding:14px 22px;display:inline-block;box-shadow:4px 4px 0px #DDD6FE,8px 8px 12px rgba(99,102,241,0.12);position:relative;margin:4px 8px;'
   };
   static createHtmlMarkdownText(text, type = 'none') {
+    let handledText = Pangu.spacing(text)
     if (type === 'none') {
       return text.trim();
     } else {
-      return `<span id="${type}" style="${this.styles[type]} ">${this.icons[type]} ${this.prefix[type]}${text}</span>`;
+      return `<span id="${type}" style="${this.styles[type]} ">${this.icons[type]} ${this.prefix[type]}${handledText}</span>`;
     }
   }
 

@@ -2314,14 +2314,14 @@ class MNUtil {
    * @param {string} noteid 
    * @returns 
    */
-  static getNoteById(noteid,alert = true) {
+  static getNoteById(noteid,alert = false) {
     let note = this.db.getNoteById(noteid)
     if (note) {
       return note
     }else{
       if (alert){
         this.copy(noteid)
-        this.showHUD("Note not exist!")
+        // this.showHUD("Note not exist!")
       }
       return undefined
     }
@@ -9313,11 +9313,22 @@ try {
    * 更新卡片里的链接
    * 1. 将 MN3 链接转化为 MN4 链接
    * 2. 去掉所有失效链接
+   * 3. 修复合并造成的链接失效问题
+   * 4. “应用”下方去重
    */
   LinkRenew(){
     this.convertLinksToNewVersion()
     this.clearFailedLinks()
     this.fixProblemLinks()
+
+    // 应用去重
+    let applicationHtmlCommentIndex = Math.max(
+      this.getIncludingHtmlCommentIndex("应用："),
+      this.getIncludingCommentIndex("的应用")
+    )
+    if (applicationHtmlCommentIndex !== -1) {
+      this.linkRemoveDuplicatesAfterIndex(applicationHtmlCommentIndex)
+    }
   }
 
   renewLink(){
@@ -9353,19 +9364,42 @@ try {
     }
   }
 
+
   // 修复合并造成的链接问题
   fixProblemLinks(){
     let comments = this.MNComments
     comments.forEach((comment) => {
       if (comment.type = "linkComment") {
         let targetNote = MNNote.new(comment.text)
-        if (
-          targetNote.groupNoteId !== comment.text
-        ) {
-          comment.text = targetNote.groupNoteId.toNoteURL()
+        if (targetNote && targetNote.groupNoteId) {
+          if (
+            targetNote.groupNoteId !== comment.text
+          ) {
+            comment.text = targetNote.groupNoteId.toNoteURL()
+          }
         }
       }
     })
+  }
+
+  linkRemoveDuplicatesAfterIndex(startIndex){
+    let links = new Set()
+    if (startIndex < this.comments.length-1) {
+      // 下面先有内容才处理
+      for (let i = this.comments.length-1; i > startIndex; i--){
+        let comment = this.comments[i]
+        if (
+          comment.type = "TextNote" && comment.text &&
+          comment.text.includes("marginnote4app://note/")
+        ) {
+          if (links.has(comment.text)) {
+            this.removeCommentByIndex(i)
+          } else {
+            links.add(comment.text)
+          }
+        }
+      }
+    }
   }
 
   LinkClearFailedLinks(){

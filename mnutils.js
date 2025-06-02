@@ -9317,6 +9317,7 @@ try {
   LinkRenew(){
     this.convertLinksToNewVersion()
     this.clearFailedLinks()
+    this.fixProblemLinks()
   }
 
   renewLink(){
@@ -9350,6 +9351,21 @@ try {
         }
       }
     }
+  }
+
+  // 修复合并造成的链接问题
+  fixProblemLinks(){
+    let comments = this.MNComments
+    comments.forEach((comment) => {
+      if (comment.type = "linkComment") {
+        let targetNote = MNNote.new(comment.text)
+        if (
+          targetNote.groupNoteId !== comment.text
+        ) {
+          comment.text = targetNote.groupNoteId.toNoteURL()
+        }
+      }
+    })
   }
 
   LinkClearFailedLinks(){

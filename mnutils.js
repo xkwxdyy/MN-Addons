@@ -3,10 +3,15 @@
  */
 class HtmlMarkdownUtils {
   static icons = {
-    step: '🚩',
-    point: '▸',
-    subpoint: '▪',
-    subsubpoint: '•',
+    // step: '🚩',
+    // point: '▸',
+    // subpoint: '▪',
+    // subsubpoint: '•',
+    level1: '🚩',
+    level2: '▸',
+    level3: '▪',
+    level4: '•',
+    level5: '',
     key: '🔑',
     alert: '⚠️',
     danger: '❗❗❗',
@@ -18,10 +23,15 @@ class HtmlMarkdownUtils {
     danger: '',
     alert: '注意：',
     key: '',
-    step: '',
-    point: '',
-    subpoint: '',
-    subsubpoint: '',
+    // step: '',
+    // point: '',
+    // subpoint: '',
+    // subsubpoint: '',
+    level1: '',
+    level2: '',
+    level3: '',
+    level4: '',
+    level5: '',
     remark: '',
     goal: '',
     question: ''
@@ -34,10 +44,15 @@ class HtmlMarkdownUtils {
     // 关键
     key: 'color: #B33F00;background: #FFF1E6;border-left: 6px solid #FF6B35;padding:16px 12px 1px;line-height:2;position:relative;top:6px;display:inline-block;font-family:monospace;margin-top:-2px;',
     // 步骤
-    step: "font-weight:700;color:#2A3B4D;background:linear-gradient(90deg,#E8F0FE 80%,#C2DBFE);font-size:1.3em;padding:8px 15px;border-left:6px solid #4F79A3;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.08);",
-    point: "font-weight:600;color:#4F79A3; background:linear-gradient(90deg,#F3E5F5 50%,#ede0f7);font-size:1.1em;padding:6px 12px;border-left:4px solid #7A9DB7;transform:skew(-1.5deg);box-shadow:1px 1px 3px rgba(0,0,0,0.05);margin-left:40px;position:relative;",
-    subpoint: "font-weight:500;color:#7A9DB7;background:#E8F0FE;padding:4px 10px;border-radius:12px;border:1px solid #B3D4FF;font-size:0.95em;margin-left:80px;position:relative;",
-    subsubpoint: "font-weight:400;color:#9DB7CA;background:#F8FBFF;padding:3px 8px;border-left:2px dashed #B3D4FF;font-size:0.9em;margin-left:120px;position:relative;",
+    // step: "font-weight:700;color:#2A3B4D;background:linear-gradient(90deg,#E8F0FE 80%,#C2DBFE);font-size:1.3em;padding:8px 15px;border-left:6px solid #4F79A3;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.08);",
+    // point: "font-weight:600;color:#4F79A3; background:linear-gradient(90deg,#F3E5F5 50%,#ede0f7);font-size:1.1em;padding:6px 12px;border-left:4px solid #7A9DB7;transform:skew(-1.5deg);box-shadow:1px 1px 3px rgba(0,0,0,0.05);margin-left:40px;position:relative;",
+    // subpoint: "font-weight:500;color:#7A9DB7;background:#E8F0FE;padding:4px 10px;border-radius:12px;border:1px solid #B3D4FF;font-size:0.95em;margin-left:80px;position:relative;",
+    // subsubpoint: "font-weight:400;color:#9DB7CA;background:#F8FBFF;padding:3px 8px;border-left:2px dashed #B3D4FF;font-size:0.9em;margin-left:120px;position:relative;",
+    level1: "font-weight:700;color:#2A3B4D;background:linear-gradient(90deg,#E8F0FE 80%,#C2DBFE);font-size:1.3em;padding:8px 15px;border-left:6px solid #4F79A3;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.08);",
+    level2: "font-weight:600;color:#4F79A3; background:linear-gradient(90deg,#F3E5F5 50%,#ede0f7);font-size:1.1em;padding:6px 12px;border-left:4px solid #7A9DB7;transform:skew(-1.5deg);box-shadow:1px 1px 3px rgba(0,0,0,0.05);margin-left:40px;position:relative;",
+    level3: "font-weight:500;color:#7A9DB7;background:#E8F0FE;padding:4px 10px;border-radius:12px;border:1px solid #B3D4FF;font-size:0.95em;margin-left:80px;position:relative;",
+    level4: "font-weight:400;color:#9DB7CA;background:#F8FBFF;padding:3px 8px;border-left:2px dashed #B3D4FF;font-size:0.9em;margin-left:120px;position:relative;",
+    level5: "font-weight:300;color:#B3D4FF;background:#FFFFFF;padding:2px 6px;border-radius:8px;border:1px dashed #B3D4FF;font-size:0.85em;margin-left:160px;position:relative;",
     remark: 'background:#F5E6C9;color:#6d4c41;display:inline-block;border-left:5px solid #D4AF37;padding:2px 8px 3px 12px;border-radius:0 4px 4px 0;box-shadow:1px 1px 3px rgba(0,0,0,0.08);margin:0 2px;line-height:1.3;vertical-align:baseline;position:relative;',
     // 目标
     goal: 'font-weight:800;color:#FFFFFF;background:#43A047 radial-gradient(circle at 100% 0%, #6BCB77 100%,transparent 90%);padding:12px 24px 12px 24px;border-radius:50px;display:inline-block;position:relative;box-shadow:0 4px 6px rgba(67,160,71,0.3);text-shadow:0 1px 2px rgba(0,0,0,0.2);',
@@ -129,10 +144,15 @@ class HtmlMarkdownUtils {
   static getSpanNextLevelType(type) {
     const levelMap = {
       goal: 'step',
-      step: 'point',
-      point: 'subpoint',
-      subpoint: 'subsubpoint',
-      subsubpoint: 'subsubpoint'
+      // step: 'point',
+      // point: 'subpoint',
+      // subpoint: 'subsubpoint',
+      // subsubpoint: 'subsubpoint'
+      level1: 'level2',
+      level2: 'level3',
+      level3: 'level4',
+      level4: 'level5',
+      level5: 'level5',
     };
     return levelMap[type] || undefined;
   }
@@ -142,11 +162,16 @@ class HtmlMarkdownUtils {
    */
   static getSpanLastLevelType(type) {
     const levelMap = {
-      point: 'step',
-      subpoint: 'point',
-      subsubpoint: 'subpoint',
-      step: 'goal',
-      goal: 'goal'
+      // point: 'step',
+      // subpoint: 'point',
+      // subsubpoint: 'subpoint',
+      // step: 'goal',
+      goal: 'goal',
+      level1: 'goal',
+      level2: 'level1',
+      level3: 'level2',
+      level4: 'level3',
+      level5: 'level4',
     };
     return levelMap[type] || undefined;
   }
@@ -157,7 +182,8 @@ class HtmlMarkdownUtils {
    * 防止对 remark 等类型进行处理
    */
   static isLevelType(type) {
-    const levelTypes = ['goal', 'step', 'point', 'subpoint', 'subsubpoint'];
+    // const levelTypes = ['goal', 'step', 'point', 'subpoint', 'subsubpoint'];
+    const levelTypes = ['goal', 'level1', 'level2', 'level3', 'level4', 'level5',];
     return levelTypes.includes(type);
   }
 

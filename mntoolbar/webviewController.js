@@ -1378,10 +1378,15 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       { title: "⬆️ 上一级", type: "lastLevel" },
       { title: "🏆 最高级", type: "topestLevel" },
       { title: "goal: 🎯", type: "goal" },
-      { title: "step: 🚩", type: "step" },
-      { title: "point: ▸", type: "point" },
-      { title: "subpoint: ▪", type: "subpoint" },
-      { title: "subsubpoint: •", type: "subsubpoint" },
+      // { title: "step: 🚩", type: "step" },
+      // { title: "point: ▸", type: "point" },
+      // { title: "subpoint: ▪", type: "subpoint" },
+      // { title: "subsubpoint: •", type: "subsubpoint" },
+      { title: "level1: 🚩", type: "level1" },
+      { title: "level2: ▸", type: "level2" },
+      { title: "level3: ▪", type: "level3" },
+      { title: "level4: •", type: "level4" },
+      { title: "level5: •", type: "level5" },
       { title: "key: 🔑", type: "key" },
       { title: "question: ❓", type: "question" },
       { title: "remark: 📝", type: "remark" },
@@ -1392,10 +1397,14 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
     let htmlSettingTitles = htmlSetting.map(config => config.title);
     let levelHtmlSetting = [
       { title: "goal: 🎯", type: "goal" },
-      { title: "step: 🚩", type: "step" },
-      { title: "point: ▸", type: "point" },
-      { title: "subpoint: ▪", type: "subpoint" },
-      { title: "subsubpoint: •", type: "subsubpoint" },
+      // { title: "step: 🚩", type: "step" },
+      // { title: "point: ▸", type: "point" },
+      // { title: "subpoint: ▪", type: "subpoint" },
+      // { title: "subsubpoint: •", type: "subsubpoint" },
+      { title: "level1: 🚩", type: "level1" },
+      { title: "level2: ▸", type: "level2" },
+      { title: "level3: ▪", type: "level3" },
+      { title: "level4: •", type: "level4" },
     ];
     let levelHtmlSettingTitles = levelHtmlSetting.map(config => config.title);
     switch (des.action) {

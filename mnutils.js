@@ -11,7 +11,7 @@ class HtmlMarkdownUtils {
     level2: '▸',
     level3: '▪',
     level4: '•',
-    level5: '',
+    level5: '·',
     key: '🔑',
     alert: '⚠️',
     danger: '❗❗❗',
@@ -521,6 +521,170 @@ class HtmlMarkdownUtils {
           }
       }
       MNUtil.showHUD("向上合并完成！", 2);
+  }
+
+
+    /**
+   * 添加问答类型的 HTML Markdown 评论
+   * 包含问题、答案和详细解释三个部分
+   * @param {MNNote} note - 要添加评论的笔记
+   * @param {string} placeholder - 占位符，默认为 "[待填写]"
+   */
+  static async addQuestionHtmlMDComment(note, questionPlaceholder = "❓ ",answerPlaceholder = "💡 ", explanationPlaceholder = "✍︎ ") {
+    try {
+      // 收集问题
+      let questionResult = await MNUtil.input(
+        "输入问题", 
+        "请输入您的问题（留空则使用占位符）", 
+        ["确定", "取消"]
+      )
+      
+      if (questionResult.button === 1) {
+        MNUtil.showHUD("已取消")
+        return
+      }
+      
+      let question = questionResult.input.trim() || questionPlaceholder
+      
+      // 收集答案
+      let answerResult = await MNUtil.input(
+        "输入答案",
+        "请输入问题的答案（留空则使用占位符）",
+        ["确定", "取消"]
+      )
+      
+      if (answerResult.button === 1) {
+        MNUtil.showHUD("已取消")
+        return
+      }
+      
+      let answer = answerResult.input.trim() || answerPlaceholder
+      
+      // 收集详细解释
+      let explanationResult = await MNUtil.input(
+        "输入详细解释",
+        "请输入详细解释（留空则使用占位符）",
+        ["确定", "跳过"]
+      )
+      
+      let explanation = explanationResult.input.trim() || explanationPlaceholder
+      
+      // 生成问答HTML
+      let questionHtml = this.createQuestionHtml(question, answer, explanation)
+      
+      // 添加到笔记
+      MNUtil.undoGrouping(()=>{
+        note.appendMarkdownComment(questionHtml)
+      })
+      // MNUtil.showHUD("问答已添加")
+      
+    } catch (error) {
+      MNUtil.showHUD("添加失败：" + error.toString())
+    }
+  }
+
+  /**
+   * 创建问答类型的HTML
+   * @param {string} question - 问题
+   * @param {string} answer - 答案
+   * @param {string} explanation - 详细解释
+   * @returns {string} HTML格式的问答内容
+   */
+  static createQuestionHtml(question, answer, explanation) {
+    // 对内容进行处理，添加中文排版优化
+    question = Pangu.spacing(question)
+    answer = Pangu.spacing(answer)
+    explanation = Pangu.spacing(explanation)
+    
+    return `<div style="background:linear-gradient(15deg,#6366F1,#8B5CF6);color:white;padding:24px;margin:24px 0;border-radius:12px;box-shadow:0 4px 12px rgba(99,102,241,0.3);"><div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;"><div style="width:40px;height:40px;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;">✨</div><div><div style="font-size:1.1em;font-weight:600;">${question}</div><div style="font-size:0.9em;opacity:0.9;">${answer}</div></div></div><div style="line-height:1.7;">${explanation}</div></div>`
+  }
+
+  /**
+   * 更新现有问答评论的某个部分
+   * @param {MNComment} comment - 要更新的评论
+   * @param {string} part - 要更新的部分 ('question' | 'answer' | 'explanation')
+   * @param {string} newContent - 新内容
+   */
+  static updateQuestionPart(comment, part, newContent) {
+    if (!comment || !comment.text) return
+    
+    // 解析现有的问答内容
+    let parsed = this.parseQuestionHtml(comment.text)
+    if (!parsed) {
+      MNUtil.showHUD("这不是一个有效的问答评论")
+      return
+    }
+    
+    // 更新对应部分
+    switch(part) {
+      case 'question':
+        parsed.question = Pangu.spacing(newContent)
+        break
+      case 'answer':
+        parsed.answer = Pangu.spacing(newContent)
+        break
+      case 'explanation':
+        parsed.explanation = Pangu.spacing(newContent)
+        break
+      default:
+        MNUtil.showHUD("无效的部分：" + part)
+        return
+    }
+    
+    // 重新生成HTML并更新评论
+    comment.text = this.createQuestionHtml(parsed.question, parsed.answer, parsed.explanation)
+  }
+
+  /**
+   * 解析问答HTML内容
+   * @param {string} html - HTML内容
+   * @returns {object|null} 包含 question, answer, explanation 的对象，或 null
+   */
+  static parseQuestionHtml(html) {
+    try {
+      // 检查是否是问答格式
+      if (!html.includes('background:linear-gradient(15deg,#6366F1,#8B5CF6)')) {
+        return null
+      }
+      
+      // 使用正则表达式提取内容
+      const questionMatch = html.match(/font-weight:600;">([^<]+)<\/div>/)
+      const answerMatch = html.match(/opacity:0.9;">([^<]+)<\/div>/)
+      const explanationMatch = html.match(/line-height:1.7;">([^<]+)<\/div>/)
+      
+      if (questionMatch && answerMatch && explanationMatch) {
+        return {
+          question: questionMatch[1],
+          answer: answerMatch[1],
+          explanation: explanationMatch[1]
+        }
+      }
+      
+      return null
+    } catch (error) {
+      return null
+    }
+  }
+
+  /**
+   * 检查评论是否是问答类型
+   * @param {MNComment|string} comment - 评论对象或评论文本
+   * @returns {boolean}
+   */
+  static isQuestionComment(comment) {
+    let text
+    switch (MNUtil.typeOf(comment)) {
+      case "string":
+        text = comment
+        break
+      case "MNComment":
+        text = comment.text ? comment.text : ""
+        break
+      default:
+        return false
+    }
+    
+    return text.includes('background:linear-gradient(15deg,#6366F1,#8B5CF6)')
   }
 }
 // 夏大鱼羊 - end

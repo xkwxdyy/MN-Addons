@@ -1386,7 +1386,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       { title: "level2: ▸", type: "level2" },
       { title: "level3: ▪", type: "level3" },
       { title: "level4: •", type: "level4" },
-      { title: "level5: •", type: "level5" },
+      { title: "level5: ·", type: "level5" },
       { title: "key: 🔑", type: "key" },
       { title: "question: ❓", type: "question" },
       { title: "remark: 📝", type: "remark" },
@@ -1405,6 +1405,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       { title: "level2: ▸", type: "level2" },
       { title: "level3: ▪", type: "level3" },
       { title: "level4: •", type: "level4" },
+      { title: "level5: ·", type: "level5" },
     ];
     let levelHtmlSettingTitles = levelHtmlSetting.map(config => config.title);
     switch (des.action) {
@@ -5053,6 +5054,15 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                 }
               }
             )
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
+      case "addHtmlMarkdownQuestion":
+        MNUtil.undoGrouping(()=>{
+          try {
+            HtmlMarkdownUtils.addQuestionHtmlMDComment(focusNote)
           } catch (error) {
             MNUtil.showHUD(error);
           }

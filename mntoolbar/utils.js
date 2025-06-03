@@ -10433,6 +10433,10 @@ static template(action) {
             "action": "htmlMDCommentsToLastLevelType",
             "menuTitle": "⬆️ HtmlMD 评论升级",
           },
+          {
+            "action": "addHtmlMarkdownQuestion",
+            "menuTitle": "❓问题、答案和详细解释"
+          }
         ]
       }
       break;

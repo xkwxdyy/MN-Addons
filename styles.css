@@ -53,11 +53,11 @@ body {
       -webkit-user-select: none; /* Chrome、Safari 浏览器 */
       -moz-user-select: none; /* Firefox 浏览器 */
       -ms-user-select: none; /* Internet Explorer/Edge 浏览器 */
-      width: 300px;
+      width: 100%;
       min-width: 200px;
       background-color: #22252B;
       color: rgb(235, 235, 235);
-      font-size: 20px;
+      font-size: 18px;
       padding: 5px;
       overflow-y: scroll;
   }
@@ -89,6 +89,9 @@ body {
     border-radius: 3px;
 }
 
+#plugin-list{
+  margin-top: 0px;
+}
 .sidebar ul {
     list-style: none;
     padding: 0;
@@ -96,8 +99,8 @@ body {
 
 .sidebar ul li {
     padding-top: 0px;
-    padding-left: 10px;
-    padding-right: 10px;
+    padding-left: 0px;
+    padding-right: 5px;
     padding-bottom: 5px;
     font-weight: bold;
     cursor: pointer;
@@ -111,10 +114,11 @@ body {
     background-color: #208bd2;
     border: none;
     color: white;
-    padding: 5px 5px;
+    padding: 4px 4px;
     margin-top: 10px;
     border-radius: 5px;
     width: 65px;
+    min-width: 65px;
     cursor: pointer;
     font-weight: bold;
     font-size: 15px;
@@ -128,10 +132,11 @@ body {
     background-color: #a1acb4;
     border: none;
     color: white;
-    padding: 5px 5px;
+    padding: 4px 4px;
     margin-top: 10px;
     border-radius: 5px;
     width: 65px;
+    min-width: 65px;
     cursor: pointer;
     font-weight: bold;
     font-size: 15px;
@@ -145,10 +150,11 @@ body {
     background-color: #ee6f6f;
     border: none;
     color: white;
-    padding: 5px 5px;
+    padding: 4px 4px;
     margin-top: 10px;
     border-radius: 5px;
     width: 65px;
+    min-width: 65px;
     cursor: pointer;
     font-weight: bold;
     font-size: 15px;
@@ -158,6 +164,23 @@ body {
     background-color: #c41515;
 }
 
+.import-btn {
+    background-color:rgb(0, 179, 65);
+    border: none;
+    color: white;
+    padding: 4px 4px;
+    margin-top: 10px;
+    border-radius: 5px;
+    width: 65px;
+    min-width: 65px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 15px;
+}
+
+.import-btn:hover {
+    background-color:rgb(13, 117, 2);
+}
 
 #plugin-details {
     white-space: pre-wrap;
@@ -165,11 +188,12 @@ body {
 }
 img{
   max-width: 100%;
+  border-radius: 10px;
 }
 iframe{
   max-width: 100%;
   width: 100%;
   padding: 0px;
   margin: 0px;
-  height: calc(100vh - 5px);
+  height: calc(100vh - 10px);
 }

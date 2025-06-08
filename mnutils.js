@@ -2289,6 +2289,35 @@ class MNUtil {
 
     return chinese + english
   }
+  /**
+   * 
+   * @param {string} path 
+   * @param {boolean} merge 
+   * @returns {MbTopic|undefined}
+   */
+  static importNotebook(path,merge){
+    let res = this.db.importNotebookFromStorePathMerge(path,merge)
+    let notebook = res[0]
+    return notebook
+  }
+  static subpathsOfDirectory(path){
+    return NSFileManager.defaultManager().subpathsOfDirectoryAtPath(path)
+  }
+  static contentsOfDirectory(path){
+    return NSFileManager.defaultManager().contentsOfDirectoryAtPath(path)
+  }
+  static allNotebooks(){
+    return this.db.allNotebooks()
+  }
+  static allNotebookIds(){
+    return this.db.allNotebooks().map(notebook=>notebook.topicId)
+  }
+  static allDocuments(){
+    return this.db.allDocuments()
+  }
+  static allDocumentIds(){
+    return this.db.allDocuments().map(document=>document.docMd5)
+  }
   static getNoteFileById(noteId) {
     let note = this.getNoteById(noteId)
     let docFile = this.getDocById(note.docMd5)
@@ -2322,6 +2351,45 @@ class MNUtil {
   }
   static isNSNull(obj){
     return (obj === NSNull.new())
+  }
+  static createFolder(path){
+    if (!this.isfileExists(path)) {
+      NSFileManager.defaultManager().createDirectoryAtPathAttributes(path, undefined)
+    }
+  }
+  static createFolderDev(path){
+    if (!this.isfileExists(path)) {
+      NSFileManager.defaultManager().createDirectoryAtPathWithIntermediateDirectoriesAttributes(path, true, undefined)
+    }
+  }
+  /**
+   * 
+   * @param {string} path 
+   * @returns 
+   */
+  static getFileFold(path){
+    return path.split("/").slice(0, -1).join("/")
+  }
+  /**
+   * 
+   * @param {string} sourcePath 
+   * @param {string} targetPath 
+   * @returns {boolean}
+   */
+  static copyFile(sourcePath, targetPath){
+    try {
+      if (!this.isfileExists(targetPath)) {
+        let folder = this.getFileFold(targetPath)
+        if (!this.isfileExists(folder)) {
+          this.createFolderDev(folder)
+        }
+        let success = NSFileManager.defaultManager().copyItemAtPathToPath(sourcePath, targetPath)
+        return success
+      }
+    } catch (error) {
+      this.addErrorLog(error, "copyFile")
+      return false
+    }
   }
   /**
    * 
@@ -2377,10 +2445,16 @@ class MNUtil {
     this.app.showHUD(message, view, duration);
   }
   static waitHUD(message, view = this.currentWindow) {
+    // if (this.onWaitHUD) {
+    //   return
+    // }
     this.app.waitHUDOnView(message, view);
     this.onWaitHUD = true
   }
-  static stopHUD(view = this.currentWindow) {
+  static async stopHUD(delay = 0, view = this.currentWindow) {
+    if (typeof delay === "number") {
+      await MNUtil.delay(delay)
+    }
     this.app.stopWaitHUDOnView(view);
     this.onWaitHUD = false
   }
@@ -2483,6 +2557,26 @@ class MNUtil {
    */
   static openURL(url){
     this.app.openURL(NSURL.URLWithString(url));
+  }
+  static async openNotebook(notebook, needConfirm = false){
+    if (!notebook) {
+      this.showHUD("No notebook")
+      return
+    }
+    if (notebook.topicId == this.currentNotebookId) {
+      MNUtil.refreshAfterDBChanged()
+      // this.showHUD("Already in current notebook")
+      return
+    }
+    if (needConfirm) {
+      let confirm = await MNUtil.confirm("是否打开学习集？", notebook.title)
+      MNUtil.refreshAfterDBChanged()
+      if (confirm) {
+        MNUtil.openURL("marginnote4app://notebook/"+notebook.topicId)
+      }
+    }else{
+      MNUtil.openURL("marginnote4app://notebook/"+notebook.topicId)
+    }
   }
   /**
    * 

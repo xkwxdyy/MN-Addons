@@ -3797,10 +3797,18 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                 let focusNoteIndexInTargetJournalNote
                 let singleInfoIndexInTargetJournalNote
                 for (let i = 0; i <= journalLibraryNote.childNotes.length-1; i++) {
-                  if (journalLibraryNote.childNotes[i].noteTitle.includes(journalName)) {
-                    targetJournalNote = journalLibraryNote.childNotes[i]
-                    findJournal = true
-                    break;
+                  if (journalName.toLowerCase()) {
+                    if (journalLibraryNote.childNotes[i].noteTitle.toLowerCase().includes(journalName.toLowerCase())) {
+                      targetJournalNote = journalLibraryNote.childNotes[i]
+                      findJournal = true
+                      break;
+                    }
+                  } else {
+                    if (journalLibraryNote.childNotes[i].noteTitle.includes(journalName)) {
+                      targetJournalNote = journalLibraryNote.childNotes[i]
+                      findJournal = true
+                      break;
+                    }
                   }
                 }
                 if (!findJournal) {

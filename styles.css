@@ -4,6 +4,7 @@ body {
     padding: 0;
     display: flex;
     height: 100vh;
+    background-color: #c6dafd;
 }
 
 
@@ -27,7 +28,7 @@ body {
     color: rgb(0, 0, 0);
     overflow-y: scroll;
     font-size: 20px;
-    padding: 5px;
+    padding: 0px;
 }
 .sidebar ul li:hover {
     background-color: #c6dafd;
@@ -48,6 +49,15 @@ body {
     overflow-x: hidden;
 }
 @media (prefers-color-scheme: dark) {
+body {
+    font-family: "PingFangSC", "Helvetica Neue", "Luxi Sans", "DejaVu Sans", "Hiragino Sans GB", "Microsoft Yahei", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", "Android Emoji", "EmojiSymbols";
+    margin: 0;
+    padding: 0;
+    display: flex;
+    height: 100vh;
+    background-color: #252a37;
+}
+
   .sidebar {
       user-select: none; /* 核心属性：防止文本被选择 */
       -webkit-user-select: none; /* Chrome、Safari 浏览器 */
@@ -98,13 +108,13 @@ body {
 }
 
 .sidebar ul li {
-    padding-top: 0px;
-    padding-left: 0px;
+    padding-top: 5px;
+    padding-left: 5px;
     padding-right: 5px;
     padding-bottom: 5px;
     font-weight: bold;
     cursor: pointer;
-    border-radius: 10px;
+    border-radius: 0px;
     margin-top: 10px;
 }
 

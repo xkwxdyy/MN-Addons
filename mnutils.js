@@ -1831,6 +1831,9 @@ class MNUtil {
   static get currentNotebook() {
     return this.getNoteBookById(this.currentNotebookId)
   }
+  static get currentDoc() {
+    return this.currentDocController.document
+  }
   static get currentDocmd5(){
     try {
       const { docMd5 } = this.currentDocController
@@ -4171,6 +4174,56 @@ static getColorIndex(color){
     }
 
   }
+  /**
+ * NSValue can't be read by JavaScriptCore, so we need to convert it to string.
+ */
+static NSValue2String(v) {
+  return Database.transArrayToJSCompatible([v])[0]
+}
+  /**
+   * 
+   * @param {string} str 
+   * @returns {CGRect}
+   */
+  static CGRectString2CGRect(str) {
+  const arr = str.match(/\d+\.?\d+/g).map(k => Number(k))
+  return {
+    x: arr[0],
+    y: arr[1],
+    height: arr[2],
+    width: arr[3]
+  }
+}
+  /**
+   * 
+   * @param {number} pageNo 
+   * @returns {string}
+   */
+  static getPageContent(pageNo) {
+  const { document } = this.currentDocController
+  if (!document) return ""
+  const data = document.textContentsForPageNo(pageNo)
+  if (!data?.length) return ""
+  return data
+    .reduce((acc, cur) => {
+      const line = cur.reduce((a, c) => {
+        a += String.fromCharCode(Number(c.char))
+        return a
+      }, "")
+      if (line) {
+        const { y } = this.CGRectString2CGRect(this.NSValue2String(cur[0].rect))
+        acc.push({
+          y,
+          line
+        })
+      }
+      return acc
+    }, [])
+    .sort((a, b) => b.y - a.y)
+    .map(k => k.line)
+    .join(" ")
+    .trim()
+}
 }
 
 class MNConnection{
@@ -4221,7 +4274,7 @@ class MNConnection{
    * @param {string} baseURL 
    */
   static loadHTML(webview,html,baseURL){
-    webview.loadFileURLAllowingReadAccessToURL(
+    webview.loadHTMLStringBaseURL(
       html,
       NSURL.fileURLWithPath(baseURL)
     )

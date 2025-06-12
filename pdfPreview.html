@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDF.js 预览示例</title>
+    <!-- 通过 CDN 引入 pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+    <!-- 用于显示 PDF 的容器 -->
+    <canvas id="pdf-canvas"></canvas>
+
+    <script>
+const base64PDF = "JVBERi0xLjUKJdDUxdgK..."; // 完整的Base64字符串
+const rawData = atob(base64PDF); // 解码Base64
+const buffer = new Uint8Array(rawData.length);
+for (let i = 0; i < rawData.length; i++) {
+  buffer[i] = rawData.charCodeAt(i);
+}
+
+        // 获取 Canvas 元素和上下文
+        const canvas = document.getElementById('pdf-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // 在加载 PDF 后循环渲染每一页
+pdfjsLib.getDocument(buffer).promise
+    .then(pdf => {
+        const numPages = pdf.numPages;
+        const renderPage = (pageNum) => {
+            if (pageNum > numPages) return;
+            pdf.getPage(pageNum).then(page => {
+                const viewport = page.getViewport({ scale: 1.5 });
+                const canvas = document.createElement('canvas');
+                document.body.appendChild(canvas);
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                page.render({
+                    canvasContext: canvas.getContext('2d'),
+                    viewport: viewport
+                });
+                renderPage(pageNum + 1); // 递归渲染下一页
+            });
+        };
+        renderPage(1);
+    });
+
+    </script>
+</body>
+</html>

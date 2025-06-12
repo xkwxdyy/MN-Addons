@@ -138,11 +138,11 @@ function update(plugins) {
         const pluginVersion = document.createElement("div");
         pluginVersion.className = "version";
         if (plugin.version) {
-          pluginVersion.textContent = `${plugin.author} | V${plugin.version}`;
+          pluginVersion.textContent = `${plugin.author} | ${plugin.version}`;
         } else {
           pluginVersion.textContent = `${plugin.author}`;
         }
-        pluginVersion.style.fontSize = "0.8em";
+        pluginVersion.style.fontSize = "0.6em";
         pluginVersion.style.color = "#666";
 
         nameContainer.appendChild(pluginName);
@@ -158,7 +158,8 @@ function update(plugins) {
         li.appendChild(contentContainer);
 
         li.addEventListener("click", async() => {
-          window.location.href = plugin.description
+          // window.location.href = plugin.description
+          window.location.href = `mnaddon://action=showDescription?id=${plugin.id}`
           // let ele = document.getElementById(plugin.id)
           // let mnaddon = document.getElementById("mnaddon")
           // if (mnaddon) {

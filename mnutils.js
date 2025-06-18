@@ -1,6 +1,139 @@
 /**
  * 夏大鱼羊 - Begin
  */
+
+class MNMath {
+  /** 
+   * TODO：
+   * - 增加模板功能复制的内容的正则表达式要改
+   * - 制卡时的识别归类卡片的标题的正则表达式要改
+   * - 原来的归类卡片的标题要改成心得格式
+   *   - 要能批量修改
+   * 
+   */
+
+
+
+  /**
+   * 卡片类型
+   * 
+   * refName: “xxx”：“yyy”相关 zz 里的 zz
+   * prefixName: 【xxx：yyyy】zzz 里的 xxx
+   * englishName: 对应的英文翻译
+   * templateNoteId: 对应模板卡片的 ID
+   * ifIndependent: 是否是独立卡片，决定了卡片的标题处理是按照归类卡片还是上一级卡片的标题进行处理
+   * colorIndex: 对应的卡片颜色索引
+   */
+  static types = {
+    定义: {
+      refName: '定义',
+      prefixName: '定义',
+      englishName: 'definition',
+      templateNoteId: '',
+      ifIndependent: false,
+      colorIndex: 0
+    },
+    命题: {
+      refName: '命题',
+      prefixName: '命题',
+      englishName: 'proposition',
+      templateNoteId: '',
+      ifIndependent: false,
+      colorIndex: 0
+    },
+    例子: {
+      refName: '例子',
+      prefixName: '例子',
+      englishName: 'example',
+      templateNoteId: '',
+      ifIndependent: false,
+      colorIndex: 0
+    },
+    反例: {
+      refName: '反例',
+      prefixName: '反例',
+      englishName: 'counterexample',
+      templateNoteId: '',
+      ifIndependent: false,
+      colorIndex: 0
+    },
+    归类: {
+      refName: '归类',
+      prefixName: '归类',
+      englishName: 'classification',
+      templateNoteId: '',
+      ifIndependent: false,
+      colorIndex: 0
+    },
+    思想方法: {
+      refName: '思想方法',
+      prefixName: '思想方法',
+      englishName: 'thoughtMethod',
+      templateNoteId: '',
+      ifIndependent: false,
+      colorIndex: 0
+    },
+    问题: {
+      refName: '问题',
+      prefixName: '问题',
+      englishName: 'question',
+      templateNoteId: '',
+      ifIndependent: true,
+      colorIndex: 0
+    },
+    思路: {
+      refName: '思路',
+      prefixName: '思路',
+      englishName: 'idea',
+      templateNoteId: '',
+      ifIndependent: true,
+      colorIndex: 0
+    },
+    作者: {
+      refName: '作者',
+      prefixName: '作者',
+      englishName: 'author',
+      templateNoteId: '',
+      ifIndependent: false,
+      colorIndex: 0
+    },
+    研究进展: {
+      refName: '研究进展',
+      prefixName: '研究进展',
+      englishName: 'researchProgress',
+      templateNoteId: '',
+      ifIndependent: true,
+      colorIndex: 0
+    },
+    文献: {
+      refName: '文献',
+      prefixName: '文献',
+      englishName: 'literature',
+      templateNoteId: '',
+      ifIndependent: false,
+      colorIndex: 0
+    },
+  }
+
+  /**
+   * 
+   * @param {*} note 对哪一张卡片进行修改
+   * @param {*} content 具体内容
+   * @param {*} type 归类卡片的“类型”
+   */
+
+  static changeClassificationTitle(note, content, type) {
+
+  }
+}
+
+/**
+ * 文献管理与文献阅读
+ */
+class MNLiterature {
+
+}
+
 class HtmlMarkdownUtils {
   static icons = {
     // step: '🚩',

@@ -23,21 +23,26 @@ class MNMath {
    * templateNoteId: 对应模板卡片的 ID
    * ifIndependent: 是否是独立卡片，决定了卡片的标题处理是按照归类卡片还是上一级卡片的标题进行处理
    * colorIndex: 对应的卡片颜色索引
+   * fields: 字段
    */
   static types = {
     定义: {
       refName: '定义',
       prefixName: '定义',
       englishName: 'definition',
-      templateNoteId: '',
+      templateNoteId: '78D28C80-C4AC-48D1-A8E0-BF01908F6B60',
       ifIndependent: false,
-      colorIndex: 0
+      colorIndex: 0,
+      fields: [
+        "相关思考",
+        "相关链接"
+      ]
     },
     命题: {
       refName: '命题',
       prefixName: '命题',
       englishName: 'proposition',
-      templateNoteId: '',
+      templateNoteId: 'DDF06F4F-1371-42B2-94C4-111AE7F56CAB',
       ifIndependent: false,
       colorIndex: 0
     },
@@ -45,7 +50,7 @@ class MNMath {
       refName: '例子',
       prefixName: '例子',
       englishName: 'example',
-      templateNoteId: '',
+      templateNoteId: 'DDF06F4F-1371-42B2-94C4-111AE7F56CAB',
       ifIndependent: false,
       colorIndex: 0
     },
@@ -53,7 +58,7 @@ class MNMath {
       refName: '反例',
       prefixName: '反例',
       englishName: 'counterexample',
-      templateNoteId: '',
+      templateNoteId: '4F85B579-FC0E-4657-B0DE-9557EDEB162A',
       ifIndependent: false,
       colorIndex: 0
     },
@@ -61,15 +66,20 @@ class MNMath {
       refName: '归类',
       prefixName: '归类',
       englishName: 'classification',
-      templateNoteId: '',
+      templateNoteId: '68CFDCBF-5748-448C-91D0-7CE0D98BFE2C',
       ifIndependent: false,
-      colorIndex: 0
+      colorIndex: 0,
+      fields: [
+        "所属",
+        "相关思考",
+        "包含"
+      ]
     },
     思想方法: {
       refName: '思想方法',
       prefixName: '思想方法',
       englishName: 'thoughtMethod',
-      templateNoteId: '',
+      templateNoteId: '38B7FA59-8A23-498D-9954-A389169E5A64',
       ifIndependent: false,
       colorIndex: 0
     },
@@ -77,52 +87,97 @@ class MNMath {
       refName: '问题',
       prefixName: '问题',
       englishName: 'question',
-      templateNoteId: '',
-      ifIndependent: true,
-      colorIndex: 0
+      templateNoteId: 'BED89238-9D63-4150-8EB3-4AAF9179D338',
+      ifIndependent: false,
+      colorIndex: 0,
+      fields: [
+        "问题详情",
+        "研究脉络",
+        "研究思路",
+        "研究结论",
+        "相关链接",
+        "相关思考",
+      ]
     },
     思路: {
       refName: '思路',
       prefixName: '思路',
       englishName: 'idea',
-      templateNoteId: '',
+      templateNoteId: '6FF1D6DB-3349-4617-9972-FC55BFDCB675',
       ifIndependent: true,
-      colorIndex: 0
+      colorIndex: 0,
+      fields: [
+        "思路详情",
+        "具体尝试",
+        "结论",
+        "相关链接",
+        "相关思考",
+      ]
     },
     作者: {
       refName: '作者',
       prefixName: '作者',
       englishName: 'author',
-      templateNoteId: '',
+      templateNoteId: '143B444E-9E4F-4373-B635-EF909248D8BF',
       ifIndependent: false,
-      colorIndex: 0
+      colorIndex: 0,
+      fields: [
+        "个人信息",
+        "研究进展",
+        "文献",
+      ]
     },
     研究进展: {
       refName: '研究进展',
       prefixName: '研究进展',
       englishName: 'researchProgress',
-      templateNoteId: '',
+      templateNoteId: 'C59D8428-68EA-4161-82BE-EA4314C3B5E9',
       ifIndependent: true,
-      colorIndex: 0
+      colorIndex: 0,
+      fields: [
+        "进展详情",
+        "相关思考",
+        "相关作者",
+        "被引用情况",
+      ]
     },
     文献: {
       refName: '文献',
       prefixName: '文献',
       englishName: 'literature',
-      templateNoteId: '',
+      templateNoteId: '032FC61B-37BD-4A90-AE9D-5A946842F49B',
       ifIndependent: false,
-      colorIndex: 0
+      colorIndex: 0,
+      fields: [
+        "文献信息",
+        "相关思考",
+        "符号与约定",
+        "参考文献",
+        "被引用情况",
+      ]
     },
   }
 
   /**
+   * 修改归类卡片的标题
    * 
-   * @param {*} note 对哪一张卡片进行修改
-   * @param {*} content 具体内容
-   * @param {*} type 归类卡片的“类型”
+   * @param {MNNote} note - 归类卡片
+   * @param {string} content - 归类卡片的标题内容
+   * @param {string} type - 归类卡片的类型
    */
 
   static changeClassificationTitle(note, content, type) {
+
+  }
+
+  /**
+   * 自动获取并返回当前卡片的待移动内容的 indexArr
+   * 
+   * 通过识别卡片类型来判断
+   * 
+   * @param {MNNote} note - 当前卡片
+   */
+  static autoGetNoteMoveIndexArr(note) {
 
   }
 }

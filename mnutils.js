@@ -44,7 +44,14 @@ class MNMath {
       englishName: 'proposition',
       templateNoteId: 'DDF06F4F-1371-42B2-94C4-111AE7F56CAB',
       ifIndependent: false,
-      colorIndex: 0
+      colorIndex: 0,
+      fields: [
+        "证明",
+        "相关思考",
+        "关键词： ",
+        "相关链接",
+        "应用",
+      ]
     },
     例子: {
       refName: '例子',
@@ -52,7 +59,14 @@ class MNMath {
       englishName: 'example',
       templateNoteId: 'DDF06F4F-1371-42B2-94C4-111AE7F56CAB',
       ifIndependent: false,
-      colorIndex: 0
+      colorIndex: 0,
+      fields: [
+        "证明",
+        "相关思考",
+        "关键词： ",
+        "相关链接",
+        "应用",
+      ]
     },
     反例: {
       refName: '反例',
@@ -60,7 +74,14 @@ class MNMath {
       englishName: 'counterexample',
       templateNoteId: '4F85B579-FC0E-4657-B0DE-9557EDEB162A',
       ifIndependent: false,
-      colorIndex: 0
+      colorIndex: 0,
+      fields: [
+        "反例",
+        "相关思考",
+        "关键词： ",
+        "相关链接",
+        "应用",
+      ]
     },
     归类: {
       refName: '归类',
@@ -81,7 +102,14 @@ class MNMath {
       englishName: 'thoughtMethod',
       templateNoteId: '38B7FA59-8A23-498D-9954-A389169E5A64',
       ifIndependent: false,
-      colorIndex: 0
+      colorIndex: 0,
+      fields: [
+        "原理",
+        "相关思考",
+        "关键词： ",
+        "相关链接",
+        "应用",
+      ]
     },
     问题: {
       refName: '问题',
@@ -105,7 +133,7 @@ class MNMath {
       englishName: 'idea',
       templateNoteId: '6FF1D6DB-3349-4617-9972-FC55BFDCB675',
       ifIndependent: true,
-      colorIndex: 0,
+      colorIndex: 13,
       fields: [
         "思路详情",
         "具体尝试",
@@ -180,6 +208,135 @@ class MNMath {
   static autoGetNoteMoveIndexArr(note) {
 
   }
+
+
+  /**
+   * 增加思路卡片
+   */
+  static addNewIdeaNote(note, title) {
+    // 生成卡片
+    let ideaNote = MNNote.clone(this.types.思路.templateNoteId)
+    note.addChild(ideaNote)
+    // 处理标题
+    ideaNote.title = this.createTitlePrefix(this.types.思路.prefixName, this.createChildNoteTitlePrefixContent(note)) + title
+    // 处理链接
+  }
+
+  /**
+   * 生成标题前缀
+   */
+  static createTitlePrefix(prefixName, content) {
+    return `【${prefixName} >> ${content}】`;
+  }
+
+  /**
+   * 获取卡片类型
+   * 
+   * 目前是靠卡片标题来判断
+   */
+  static getNoteType(note) {
+    let noteType
+    let title = note.title || "";
+    /**
+     * 如果是
+     * “xxx”：“yyy”相关 zz
+     * 或者是
+     * “yyy”相关 zz
+     * 则是归类卡片
+     */
+    if (/^“[^”]*”：“[^”]*”\s*相关[^“]*$/.test(title) || /^“[^”]+”\s*相关[^“]*$/.test(title)) {
+      noteType = "归类"
+    } else {
+      /**
+       * 如果是
+       * 【xx：yy】zz
+       * 则根据 xx 作为 prefixName 在 types 搜索类型
+       */
+      let match = title.match(/^【(.{2,4})：.*】(.*)/)
+      let matchResult
+      if (match) {
+        matchResult = match[1].trim();
+      } else {
+        match = title.match(/^【(.*)】(.*)/)
+        if (match) {
+          matchResult = match[1].trim();
+        }
+      }
+      for (let typeKey in this.types) {
+        let type = this.types[typeKey];
+        if (type.prefixName === matchResult) {
+          noteType = String(typeKey);
+          break;
+        }
+      }
+    }
+
+    return noteType || undefined;
+  }
+
+  /**
+   * 基于卡片标题生成子卡片前缀内容
+   */
+  static createChildNoteTitlePrefixContent(note) {
+    let titleParts = this.parseNoteTitle(note);
+    switch (this.getNoteType(note)) {
+      case '归类':
+        return titleParts.content
+      default:
+        return titleParts.prefixContent + "｜" + titleParts.content;
+    }
+  }
+
+  /**
+   * 解析卡片标题，拆成几个部分，返回一个对象
+   */
+  static parseNoteTitle(note) {
+    let title = note.title || "";
+    let titleParts = {}
+    let match
+    switch (this.getNoteType(note)) {
+      case "归类":
+        match = title.match(/^“[^”]+”：“([^”]+)”\s*相关\s*(.*)$/);
+        if (match) {
+          titleParts.content = match[1].trim();
+          titleParts.type = match[2].trim();
+        } else {
+          match = title.match(/^“([^”]+)”\s*相关\s*(.*)$/);
+          if (match) {
+            titleParts.content = match[1].trim();
+            titleParts.type = match[2].trim();
+          }
+        }
+        break;
+      default:
+        match = title.match(/^【(.{2,4})：(.*)】(.*)/)
+        if (match) {
+          titleParts.type = match[1].trim();
+          titleParts.prefixContent = match[2].trim();
+          titleParts.content = match[3].trim();
+          // 如果 content 以 `; ` 开头，则去掉
+          if (titleParts.content.startsWith("; ")) {
+            titleParts.content = titleParts.content.slice(2).trim();
+          }
+          titleParts.titleLinkWordsArr = titleParts.content.split(/; /).map(word => word.trim()).filter(word => word.length > 0);
+        } else {
+          match = title.match(/^【(.*)】(.*)/)
+          if (match) {
+            titleParts.type = match[1].trim();
+            titleParts.prefixContent = ""
+            titleParts.content = match[2].trim();
+            // 如果 content 以 `; ` 开头，则去掉
+            if (titleParts.content.startsWith("; ")) {
+              titleParts.content = titleParts.content.slice(2).trim();
+            }
+            titleParts.titleLinkWordsArr = titleParts.content.split(/; /).map(word => word.trim()).filter(word => word.length > 0);
+          }
+        }
+        break;
+    }
+
+    return titleParts
+  }
 }
 
 /**
@@ -205,7 +362,9 @@ class HtmlMarkdownUtils {
     danger: '❗❗❗',
     remark: '📝',
     goal: '🎯',
-    question: '❓'
+    question: '❓',
+    idea: '💡',
+    method: '✔'
   };
   static prefix = {
     danger: '',
@@ -222,7 +381,9 @@ class HtmlMarkdownUtils {
     level5: '',
     remark: '',
     goal: '',
-    question: ''
+    question: '',
+    idea: '思路：',
+    method: '方法：'
   };
   static styles = {
     // 格外注意
@@ -236,16 +397,20 @@ class HtmlMarkdownUtils {
     // point: "font-weight:600;color:#4F79A3; background:linear-gradient(90deg,#F3E5F5 50%,#ede0f7);font-size:1.1em;padding:6px 12px;border-left:4px solid #7A9DB7;transform:skew(-1.5deg);box-shadow:1px 1px 3px rgba(0,0,0,0.05);margin-left:40px;position:relative;",
     // subpoint: "font-weight:500;color:#7A9DB7;background:#E8F0FE;padding:4px 10px;border-radius:12px;border:1px solid #B3D4FF;font-size:0.95em;margin-left:80px;position:relative;",
     // subsubpoint: "font-weight:400;color:#9DB7CA;background:#F8FBFF;padding:3px 8px;border-left:2px dashed #B3D4FF;font-size:0.9em;margin-left:120px;position:relative;",
-    level1: "font-weight:700;color:#2A3B4D;background:linear-gradient(90deg,#E8F0FE 80%,#C2DBFE);font-size:1.3em;padding:8px 15px;border-left:6px solid #4F79A3;display:inline-block;transform:skew(-3deg);box-shadow:2px 2px 5px rgba(0,0,0,0.08);",
+    level1: "font-weight:600;color:#1E40AF;background:linear-gradient(15deg,#EFF6FF 30%,#DBEAFE);border:2px solid #3B82F6;border-radius:12px;padding:10px 18px;display:inline-block;box-shadow:2px 2px 0px #BFDBFE,4px 4px 8px rgba(59,130,246,0.12);position:relative;margin:4px 8px;",
     level2: "font-weight:600;color:#4F79A3; background:linear-gradient(90deg,#F3E5F5 50%,#ede0f7);font-size:1.1em;padding:6px 12px;border-left:4px solid #7A9DB7;transform:skew(-1.5deg);box-shadow:1px 1px 3px rgba(0,0,0,0.05);margin-left:40px;position:relative;",
     level3: "font-weight:500;color:#7A9DB7;background:#E8F0FE;padding:4px 10px;border-radius:12px;border:1px solid #B3D4FF;font-size:0.95em;margin-left:80px;position:relative;",
     level4: "font-weight:400;color:#9DB7CA;background:#F8FBFF;padding:3px 8px;border-left:2px dashed #B3D4FF;font-size:0.9em;margin-left:120px;position:relative;",
     level5: "font-weight:300;color:#B3D4FF;background:#FFFFFF;padding:2px 6px;border-radius:8px;border:1px dashed #B3D4FF;font-size:0.85em;margin-left:160px;position:relative;",
     remark: 'background:#F5E6C9;color:#6d4c41;display:inline-block;border-left:5px solid #D4AF37;padding:2px 8px 3px 12px;border-radius:0 4px 4px 0;box-shadow:1px 1px 3px rgba(0,0,0,0.08);margin:0 2px;line-height:1.3;vertical-align:baseline;position:relative;',
     // 目标
-    goal: 'font-weight:800;color:#FFFFFF;background:#43A047 radial-gradient(circle at 100% 0%, #6BCB77 100%,transparent 90%);padding:12px 24px 12px 24px;border-radius:50px;display:inline-block;position:relative;box-shadow:0 4px 6px rgba(67,160,71,0.3);text-shadow:0 1px 2px rgba(0,0,0,0.2);',
+    goal: 'font-weight:900;font-size:0.7em;color:#F8FDFF;background:#00BFA5 radial-gradient(circle at 100% 0%,#64FFDA 0%,#009688 00%);padding:12px 24px;border-radius:50px;display:inline-block;position:relative;box-shadow:0 4px 8px rgba(0, 191, 166, 0.26);text-shadow:0 1px 3px rgba(0,0,0,0.35);border:2px solid rgba(255,255,255,0.3)',
     // 问题
-    question: 'font-weight:700;color:#3D1A67;background:linear-gradient(15deg,#F8F4FF 30%,#F1E8FF);border:3px double #8B5CF6;border-radius:16px 4px 16px 4px;padding:14px 22px;display:inline-block;box-shadow:4px 4px 0px #DDD6FE,8px 8px 12px rgba(99,102,241,0.12);position:relative;margin:4px 8px;'
+    question: 'font-weight:700;color:#3D1A67;background:linear-gradient(15deg,#F8F4FF 30%,#F1E8FF);border:3px double #8B5CF6;border-radius:16px 4px 16px 4px;padding:14px 22px;display:inline-block;box-shadow:4px 4px 0px #DDD6FE,8px 8px 12px rgba(99,102,241,0.12);position:relative;margin:4px 8px;',
+    // 思路
+    idea: 'font-weight:600;color:#4A4EB2;background:linear-gradient(15deg,#F0F4FF 30%,#E6EDFF);border:2px dashed #7B7FD1;border-radius:12px;padding:10px 18px;display:inline-block;box-shadow:0 0 0 2px rgba(123,127,209,0.2),inset 0 0 10px rgba(123,127,209,0.1);position:relative;margin:4px 8px;',
+    // 方法
+    method: 'display:block;font-weight:700;color:#FFFFFF;background:linear-gradient(135deg,#0D47A1 0%,#082C61 100%);font-size:1.3em;padding:12px 20px 12px 24px;border-left:10px solid #041E42;margin:0 0 12px 0;border-radius:0 6px 6px 0;box-shadow:0 4px 10px rgba(0,0,0,0.25),inset 0 0 10px rgba(255,255,255,0.1);text-shadow:1px 1px 2px rgba(0,0,0,0.35);position:relative;'
   };
   static createHtmlMarkdownText(text, type = 'none') {
     let handledText = Pangu.spacing(text)

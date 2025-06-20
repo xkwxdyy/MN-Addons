@@ -337,6 +337,64 @@ class MNMath {
 
     return titleParts
   }
+
+  /**
+   * 解析卡片评论
+   * 
+   * 返回一个对象数组 commentsObj，包含：
+   * htmlComment(作为评论字段分隔) 的 indexArr
+   * 
+   * TODO: 处理摘录区？（可能这个区域还不放在htmlCommentsArr 这个地方处理）
+   */
+  static parseNoteComments(note) {
+    let commentsObj = {
+      htmlCommentsArr: []
+    }
+    let comments = note.MNComments
+
+    /**
+     * 处理 htmlCommentsArr
+     */
+    // let includingFieldBlockIndexArr = []
+    // let excludingFieldBlockIndexArr = []
+    comments.forEach((comment, index) => {
+      if (comment.type == "HtmlComment") {
+        commentsObj.htmlCommentsArr.push(
+          {
+            index: index, // HtmlComment 所在卡片的评论中的 index
+            text: comment.text, // HtmlComment 的内容
+            includingFieldBlockIndexArr: [], // 包含这个字段本身的下方 Block 的 Index 数组
+            excludingFieldBlockIndexArr: [], // 不包含这个字段本身的下方 Block 的 Index 数组
+          }
+        );
+      }
+    })
+
+    // 因为上面的循环还在遍历所有的 HtmlComments，所以不能获取到下一个，所以要等到先遍历完再处理 Block 
+    switch (commentsObj.htmlCommentsArr.length) {
+      case 0:
+        break;
+      case 1:
+        commentsObj.htmlCommentsArr[0].includingFieldBlockIndexArr = comments.map((comment, index) => index).filter(index => index >= commentsObj.htmlCommentsArr[0].index);
+        commentsObj.htmlCommentsArr[0].excludingFieldBlockIndexArr = comments.map((comment, index) => index).filter(index => index > commentsObj.htmlCommentsArr[0].index);
+        break;
+      default:
+        for (let i = 0; i < commentsObj.htmlCommentsArr.length; i++) {
+          let currentHtmlComment = commentsObj.htmlCommentsArr[i];
+          if (i === commentsObj.htmlCommentsArr.length - 1) {
+            currentHtmlComment.includingFieldBlockIndexArr = comments.map((comment, index) => index).filter(index => index >= currentHtmlComment.index);
+            currentHtmlComment.excludingFieldBlockIndexArr = comments.map((comment, index) => index).filter(index => index > currentHtmlComment.index);
+          } else {
+            let nextHtmlComment = commentsObj.htmlCommentsArr[i + 1];
+            currentHtmlComment.includingFieldBlockIndexArr = comments.map((comment, index) => index).filter(index => index < nextHtmlComment.index && index >= currentHtmlComment.index);
+            currentHtmlComment.excludingFieldBlockIndexArr = comments.map((comment, index) => index).filter(index => index < nextHtmlComment.index && index > currentHtmlComment.index);
+          
+          }
+        }
+        break
+    }
+    return commentsObj
+  }
 }
 
 /**

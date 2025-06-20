@@ -415,7 +415,7 @@ class MNMath {
    * 
    * 摘录区也是放在这个地方处理
    */
-  static getHtmlCommentsTextArrForMove(note) {
+  static getHtmlCommentsTextArrForPopup(note) {
     // let htmlCommentsObjArr = this.parseNoteComments(note).htmlCommentsObjArr;
     let htmlCommentsTextArr = this.parseNoteComments(note).htmlCommentsTextArr;
     let htmlCommentsTextArrForMove = [
@@ -424,15 +424,95 @@ class MNMath {
       "🔝 Top 🔝",
       "⬇️ Bottom ⬇️",
     ]
-    htmlCommentsTextArr.forEach(text => {
-      htmlCommentsTextArrForMove.push(
-        "----------【"+ text.trim() +"区】----------",
-      )
-      htmlCommentsTextArrForMove.push("🔝 Top 🔝")
-      htmlCommentsTextArrForMove.push("⬇️ Bottom ⬇️")
-    })
+    if (htmlCommentsTextArr.length > 1) {
+      htmlCommentsTextArr.forEach(text => {
+        htmlCommentsTextArrForMove.push(
+          "----------【"+ text.trim() +"区】----------",
+        )
+        htmlCommentsTextArrForMove.push("🔝 Top 🔝")
+        htmlCommentsTextArrForMove.push("⬇️ Bottom ⬇️")
+      })
+    }
 
     return htmlCommentsTextArrForMove;
+  }
+  /**
+   * 获取 getHtmlCommentsTextArrForMove 获得的数组所对应要移动的 Index 构成的数组
+   * 
+   * 比如 htmlCommentsTextArrForMove[0] 的 🔝🔝🔝🔝卡片最顶端🔝🔝🔝🔝 对应的 commentsIndexArrToMove[0] 就是 0，因为是移动到卡片最顶端
+   */
+  static getCommentsIndexArrToMoveForPopup(note) {
+    let htmlCommentsObjArr = this.parseNoteComments(note).htmlCommentsObjArr;
+    let commentsIndexArrToMove = [
+      0,  // 对应："🔝🔝🔝🔝卡片最顶端 🔝🔝🔝🔝"
+    ]
+    let excerptBlockIndexArr = this.getExcerptBlockIndexArr(note);
+    if (excerptBlockIndexArr.length == 0) {
+      commentsIndexArrToMove.push(0) // 对应："----------【摘录区】----------"
+      commentsIndexArrToMove.push(0) // 对应："🔝 Top 🔝"
+      commentsIndexArrToMove.push(0) // 对应："⬇️ Bottom ⬇️"
+    } else {
+      commentsIndexArrToMove.push(excerptBlockIndexArr[excerptBlockIndexArr.length - 1]) // 对应："----------【摘录区】----------"
+      commentsIndexArrToMove.push(excerptBlockIndexArr[0]) // 对应："🔝 Top 🔝"
+      commentsIndexArrToMove.push(excerptBlockIndexArr[excerptBlockIndexArr.length - 1]) // 对应："⬇️ Bottom ⬇️"
+    }
+    
+    switch (htmlCommentsObjArr.length) {
+      case 0:
+        break;
+      case 1:
+        commentsIndexArrToMove.push(note.comments.length-1) // 对应："----------【xxx区】----------"
+        commentsIndexArrToMove.push(htmlCommentsObjArr[0].index + 1) // 对应："🔝 Top 🔝"
+        commentsIndexArrToMove.push(note.comments.length-1) // 对应："⬇️ Bottom ⬇️"
+        break;
+      default:
+        for (let i = 0; i < htmlCommentsObjArr.length - 1; i++) {  // 不考虑最后一个 htmlComment 区的移动
+          commentsIndexArrToMove.push(htmlCommentsObjArr[i+1].index) // 对应："----------【xxx区】----------"
+          commentsIndexArrToMove.push(htmlCommentsObjArr[i].index + 1) // 对应："🔝 Top 🔝"
+          commentsIndexArrToMove.push(htmlCommentsObjArr[i+1].index) // 对应："⬇️ Bottom ⬇️"
+        }
+        break;
+    }
+
+    return commentsIndexArrToMove
+  }
+  /**
+   * 获取 Note 的摘录区的 indexArr
+   */
+  static getExcerptBlockIndexArr(note) {
+    let indexArr = []
+    let endIndex = this.parseNoteComments(note).htmlCommentsObjArr[0]?.index? this.parseNoteComments(note).htmlCommentsObjArr[0].index : -1;
+    switch (endIndex) {
+      case 0:
+        break;
+      case -1: // 此时没有 html 评论
+        for (let i = 0; i < note.comments.length-1; i++) {
+          let comment = note.MNComments[i]
+          if (i == 0) {
+            if (comment.type == "mergedImageComment") {
+              indexArr.push(i)
+            } else {
+              return []
+            }
+          } else {
+            // 要保持连续
+            if (comment.type == "mergedImageComment" && note.MNComments[i-1].type == "mergedImageComment") {
+              indexArr.push(i)
+            }
+          }
+        }
+        break;
+      default:
+        for (let i = 0; i < endIndex; i++) {
+          let comment = note.MNComments[i]
+          if (comment.type == "mergedImageComment") {
+            indexArr.push(i)
+          }
+        }
+        break;
+    }
+
+    return indexArr
   }
   /**
    * 获取包含某段文本的 HtmlComment 的 Block

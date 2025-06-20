@@ -476,6 +476,25 @@ class MNMath {
 
     return commentsIndexArrToMove
   }
+  static moveCommentsTo(note, indexArr, field, toBottom = true) {
+    let getHtmlCommentsTextArrForPopup = this.getHtmlCommentsTextArrForPopup(note);
+    let commentsIndexArrToMove = this.getCommentsIndexArrToMoveForPopup(note);
+
+    let targetIndex = -1
+    getHtmlCommentsTextArrForPopup.forEach((text, index) => {
+      if (text.includes(field)) {
+        if (toBottom) {
+          targetIndex = commentsIndexArrToMove[index]
+        } else {
+          targetIndex = commentsIndexArrToMove[index+1]
+        }
+      }
+    })
+
+    if (targetIndex !== -1) {
+      note.moveCommentsByIndexArr(indexArr, targetIndex)
+    }
+  }
   /**
    * 获取 Note 的摘录区的 indexArr
    */

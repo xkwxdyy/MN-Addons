@@ -201,12 +201,17 @@ class MNMath {
   /**
    * 自动获取并返回当前卡片的待移动内容的 indexArr
    * 
-   * 通过识别卡片类型来判断
    * 
    * @param {MNNote} note - 当前卡片
    */
-  static autoGetNoteMoveIndexArr(note) {
+  static autoGetMoveIndexArr(note) {
+    let moveIndexArr = []
+    let lastHtmlCommentText = this.parseNoteComments(note).htmlCommentsTextArr.slice(-1)[0] || "";
+    if (lastHtmlCommentText) {
+      moveIndexArr = this.getHtmlBlockNonLinkContentIndexArr(note, lastHtmlCommentText);
+    }
 
+    return moveIndexArr;
   }
 
 
@@ -409,6 +414,49 @@ class MNMath {
     return commentsObj
   }
 
+  /**
+   * 通过弹窗来选择移动的评论以及移动的位置
+   */
+  static moveCommentsByPopup(note) {
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "输入要移动的评论 Index 数组",
+      "⚠️不输入的话就自动获取\n支持:\n- 单个序号: 1,2,3\n- 范围: 1-4 \n- 特殊字符: X(倒数第3条), Y(倒数第2条), Z(最后一条)\n- 组合使用: 1,3-5,Y,Z\n\n用中文或英文逗号、分号分隔",
+      2,
+      "取消",
+      [
+        "确定"
+      ],
+      (alert, buttonIndex) => {
+        let userInput = alert.textFieldAtIndex(0).text;
+        let moveCommentIndexArr = userInput ? userInput.parseCommentIndices(note.comments.length) : this.autoGetMoveIndexArr(note);
+        let moveCommentTextArr = this.getHtmlCommentsTextArrForPopup(note);
+        if (buttonIndex == 1) {
+          UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+            "选择移动的位置",
+            "如果是选择 xx 区，则默认移动到最底下",
+            0,
+            "不移动",
+            moveCommentTextArr,
+            (alert, buttonIndex) => {
+              MNUtil.undoGrouping(()=>{
+                try {
+                  note.moveCommentsByIndexArr(moveCommentIndexArr, this.getCommentsIndexArrToMoveForPopup(note)[buttonIndex-1])
+                } catch (error) {
+                  MNUtil.showHUD(error);
+                }
+              })
+              // MNUtil.showHUD(buttonIndex)
+            }
+          )
+        }
+
+
+        MNUtil.undoGrouping(()=>{
+          this.refresh()
+        })
+      }
+    )
+  }
 
   /**
    * 获得一个基于 htmlCommentsTextArr 的数组专门用于移动评论
@@ -424,14 +472,22 @@ class MNMath {
       "🔝 Top 🔝",
       "⬇️ Bottom ⬇️",
     ]
-    if (htmlCommentsTextArr.length > 1) {
-      htmlCommentsTextArr.forEach(text => {
-        htmlCommentsTextArrForMove.push(
-          "----------【"+ text.trim() +"区】----------",
-        )
-        htmlCommentsTextArrForMove.push("🔝 Top 🔝")
-        htmlCommentsTextArrForMove.push("⬇️ Bottom ⬇️")
-      })
+    // if (htmlCommentsTextArr.length > 1) {
+    //   htmlCommentsTextArr.forEach(text => {
+    //     htmlCommentsTextArrForMove.push(
+    //       "----------【"+ text.trim() +"区】----------",
+    //     )
+    //     htmlCommentsTextArrForMove.push("🔝 Top 🔝")
+    //     htmlCommentsTextArrForMove.push("⬇️ Bottom ⬇️")
+    //   })
+    // }
+    for (let i = 0; i < htmlCommentsTextArr.length -1; i++) {
+      let text = htmlCommentsTextArr[i].trim();
+      htmlCommentsTextArrForMove.push(
+        "----------【"+ text +"区】----------",
+      )
+      htmlCommentsTextArrForMove.push("🔝 Top 🔝")
+      htmlCommentsTextArrForMove.push("⬇️ Bottom ⬇️")
     }
 
     return htmlCommentsTextArrForMove;
@@ -476,7 +532,7 @@ class MNMath {
 
     return commentsIndexArrToMove
   }
-  static moveCommentsTo(note, indexArr, field, toBottom = true) {
+  static moveCommentsToByField(note, indexArr, field, toBottom = true) {
     let getHtmlCommentsTextArrForPopup = this.getHtmlCommentsTextArrForPopup(note);
     let commentsIndexArrToMove = this.getCommentsIndexArrToMoveForPopup(note);
 
@@ -557,6 +613,9 @@ class MNMath {
     return indexArr
   }
 
+  /**
+   * 获得 Block 下方的第一个非链接到结尾的 IndexArr
+   */
   static getHtmlBlockNonLinkContentIndexArr (note, text) {
     let indexArr = this.getHtmlCommentExcludingFieldBlockIndexArr(note, text)  // 这里不能用 including，否则字段的 htmlComment 本身就不是链接，就会被识别到
     let findNonLink = false

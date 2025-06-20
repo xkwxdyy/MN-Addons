@@ -123,8 +123,8 @@ class MNMath {
         "研究脉络",
         "研究思路",
         "研究结论",
-        "相关链接",
         "相关思考",
+        "相关链接",  // 相关链接放在最后是为了能够自动识别最新的内容，方便后续移动，否则如果是相关思考放在最后的话，就会被“误触”
       ]
     },
     思路: {
@@ -138,8 +138,8 @@ class MNMath {
         "思路详情",
         "具体尝试",
         "结论",
-        "相关链接",
         "相关思考",
+        "相关链接", // 相关链接放在最后是为了能够自动识别最新的内容，方便后续移动，否则如果是相关思考放在最后的话，就会被“误触”
       ]
     },
     作者: {
@@ -342,24 +342,25 @@ class MNMath {
    * 解析卡片评论
    * 
    * 返回一个对象数组 commentsObj，包含：
-   * htmlComment(作为评论字段分隔) 的 indexArr
+   * htmlComment(作为评论字段分隔) 的详细信息 : htmlCommentsObjArr
+   * htmlComment(作为评论字段分隔) 的文本信息 : htmlCommentsTextArr
    * 
-   * TODO: 处理摘录区？（可能这个区域还不放在htmlCommentsArr 这个地方处理）
    */
   static parseNoteComments(note) {
     let commentsObj = {
-      htmlCommentsArr: []
+      htmlCommentsObjArr: [],
+      htmlCommentsTextArr: []
     }
     let comments = note.MNComments
 
     /**
-     * 处理 htmlCommentsArr
+     * 处理 htmlCommentsObjArr
      */
     // let includingFieldBlockIndexArr = []
     // let excludingFieldBlockIndexArr = []
     comments.forEach((comment, index) => {
       if (comment.type == "HtmlComment") {
-        commentsObj.htmlCommentsArr.push(
+        commentsObj.htmlCommentsObjArr.push(
           {
             index: index, // HtmlComment 所在卡片的评论中的 index
             text: comment.text, // HtmlComment 的内容
@@ -371,21 +372,21 @@ class MNMath {
     })
 
     // 因为上面的循环还在遍历所有的 HtmlComments，所以不能获取到下一个，所以要等到先遍历完再处理 Block 
-    switch (commentsObj.htmlCommentsArr.length) {
+    switch (commentsObj.htmlCommentsObjArr.length) {
       case 0:
         break;
       case 1:
-        commentsObj.htmlCommentsArr[0].includingFieldBlockIndexArr = comments.map((comment, index) => index).filter(index => index >= commentsObj.htmlCommentsArr[0].index);
-        commentsObj.htmlCommentsArr[0].excludingFieldBlockIndexArr = comments.map((comment, index) => index).filter(index => index > commentsObj.htmlCommentsArr[0].index);
+        commentsObj.htmlCommentsObjArr[0].includingFieldBlockIndexArr = comments.map((comment, index) => index).filter(index => index >= commentsObj.htmlCommentsObjArr[0].index);
+        commentsObj.htmlCommentsObjArr[0].excludingFieldBlockIndexArr = comments.map((comment, index) => index).filter(index => index > commentsObj.htmlCommentsObjArr[0].index);
         break;
       default:
-        for (let i = 0; i < commentsObj.htmlCommentsArr.length; i++) {
-          let currentHtmlComment = commentsObj.htmlCommentsArr[i];
-          if (i === commentsObj.htmlCommentsArr.length - 1) {
+        for (let i = 0; i < commentsObj.htmlCommentsObjArr.length; i++) {
+          let currentHtmlComment = commentsObj.htmlCommentsObjArr[i];
+          if (i === commentsObj.htmlCommentsObjArr.length - 1) {
             currentHtmlComment.includingFieldBlockIndexArr = comments.map((comment, index) => index).filter(index => index >= currentHtmlComment.index);
             currentHtmlComment.excludingFieldBlockIndexArr = comments.map((comment, index) => index).filter(index => index > currentHtmlComment.index);
           } else {
-            let nextHtmlComment = commentsObj.htmlCommentsArr[i + 1];
+            let nextHtmlComment = commentsObj.htmlCommentsObjArr[i + 1];
             currentHtmlComment.includingFieldBlockIndexArr = comments.map((comment, index) => index).filter(index => index < nextHtmlComment.index && index >= currentHtmlComment.index);
             currentHtmlComment.excludingFieldBlockIndexArr = comments.map((comment, index) => index).filter(index => index < nextHtmlComment.index && index > currentHtmlComment.index);
           
@@ -393,7 +394,96 @@ class MNMath {
         }
         break
     }
+
+    /**
+     * 处理 htmlCommentsTextArr
+     */
+    if (commentsObj.htmlCommentsObjArr.length > 0) {
+      // commentsObj.htmlCommentsTextArr
+      commentsObj.htmlCommentsObjArr.forEach(htmlComment => {
+        commentsObj.htmlCommentsTextArr.push(htmlComment.text)
+      })
+    }
+
+
     return commentsObj
+  }
+
+
+  /**
+   * 获得一个基于 htmlCommentsTextArr 的数组专门用于移动评论
+   * 
+   * 摘录区也是放在这个地方处理
+   */
+  static getHtmlCommentsTextArrForMove(note) {
+    // let htmlCommentsObjArr = this.parseNoteComments(note).htmlCommentsObjArr;
+    let htmlCommentsTextArr = this.parseNoteComments(note).htmlCommentsTextArr;
+    let htmlCommentsTextArrForMove = [
+      "🔝🔝🔝🔝卡片最顶端🔝🔝🔝🔝",
+      "----------【摘录区】----------",
+      "🔝 Top 🔝",
+      "⬇️ Bottom ⬇️",
+    ]
+    htmlCommentsTextArr.forEach(text => {
+      htmlCommentsTextArrForMove.push(
+        "----------【"+ text.trim() +"区】----------",
+      )
+      htmlCommentsTextArrForMove.push("🔝 Top 🔝")
+      htmlCommentsTextArrForMove.push("⬇️ Bottom ⬇️")
+    })
+
+    return htmlCommentsTextArrForMove;
+  }
+  /**
+   * 获取包含某段文本的 HtmlComment 的 Block
+   */
+  static getHtmlCommentIncludingFieldBlockIndexArr(note, text) {
+    let commentsObj = this.parseNoteComments(note);
+    let indexArr = []
+    commentsObj.htmlCommentsObjArr.forEach(htmlComment => {
+      if (htmlComment.text.includes(text)) {
+        indexArr = htmlComment.includingFieldBlockIndexArr;
+      }
+    })
+    return indexArr
+  }
+  static getHtmlCommentExcludingFieldBlockIndexArr(note, text) {
+    let commentsObj = this.parseNoteComments(note);
+    let indexArr = []
+    commentsObj.htmlCommentsObjArr.forEach(htmlComment => {
+      if (htmlComment.text.includes(text)) {
+        indexArr = htmlComment.excludingFieldBlockIndexArr;
+      }
+    })
+    return indexArr
+  }
+
+  static getHtmlBlockNonLinkContentIndexArr (note, text) {
+    let indexArr = this.getHtmlCommentExcludingFieldBlockIndexArr(note, text)  // 这里不能用 including，否则字段的 htmlComment 本身就不是链接，就会被识别到
+    let findNonLink = false
+    if (indexArr.length !== 0) {
+      // 从头开始遍历，检测是否是链接，直到找到第一个非链接就停止
+      for (let i = 0; i < indexArr.length; i++) {
+        let index = indexArr[i]
+        let comment = note.MNComments[index]
+        if (
+          comment.type !== "linkComment"
+        ) {
+          // 不处理 # 开头的文本，因为这种文本一般是用作标题链接，不能被识别为新内容
+          if (comment.text && comment.text.startsWith("#")) {
+            continue
+          }
+          indexArr = indexArr.slice(i)
+          findNonLink = true
+          break
+        }
+      }
+      if (!findNonLink) {
+        // 只有链接时，仍然返回数组
+        return []
+      }
+    }
+    return indexArr
   }
 }
 

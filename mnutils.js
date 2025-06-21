@@ -418,42 +418,54 @@ class MNMath {
    * 通过弹窗来选择移动的评论以及移动的位置
    */
   static moveCommentsByPopup(note) {
+    let htmlCommentsTextArr = this.parseNoteComments(note).htmlCommentsTextArr;
+    // htmlCommentsTextArr 的开头加上 "确定手动输入"
+    htmlCommentsTextArr.unshift("确定手动输入");
+    let moveCommentIndexArr
+
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-      "输入要移动的评论 Index 数组",
-      "⚠️不输入的话就自动获取\n支持:\n- 单个序号: 1,2,3\n- 范围: 1-4 \n- 特殊字符: X(倒数第3条), Y(倒数第2条), Z(最后一条)\n- 组合使用: 1,3-5,Y,Z\n\n用中文或英文逗号、分号分隔",
+      "输入要移动的评论 Index 数组或选择区域",
+      "⚠️不输入的话就自动获取\n❗️从 1 开始\n支持:\n- 单个序号: 1,2,3\n- 范围: 1-4 \n- 特殊字符: X(倒数第3条), Y(倒数第2条), Z(最后一条)\n- 组合使用: 1,3-5,Y,Z\n\n用中文或英文逗号、分号分隔",
       2,
       "取消",
-      [
-        "确定"
-      ],
+      htmlCommentsTextArr,
       (alert, buttonIndex) => {
         let userInput = alert.textFieldAtIndex(0).text;
-        let moveCommentIndexArr = userInput ? userInput.parseCommentIndices(note.comments.length) : this.autoGetMoveIndexArr(note);
-        let moveCommentTextArr = this.getHtmlCommentsTextArrForPopup(note);
-        if (buttonIndex == 1) {
-          UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-            "选择移动的位置",
-            "如果是选择 xx 区，则默认移动到最底下",
-            0,
-            "不移动",
-            moveCommentTextArr,
-            (alert, buttonIndex) => {
-              MNUtil.undoGrouping(()=>{
-                try {
-                  note.moveCommentsByIndexArr(moveCommentIndexArr, this.getCommentsIndexArrToMoveForPopup(note)[buttonIndex-1])
-                } catch (error) {
-                  MNUtil.showHUD(error);
-                }
-              })
-              // MNUtil.showHUD(buttonIndex)
-            }
-          )
+        moveCommentIndexArr = userInput ? userInput.parseCommentIndices(note.comments.length) : this.autoGetMoveIndexArr(note);
+        switch (buttonIndex) {
+          case 0:
+            return; // 取消
+          case 1:
+            break;
+          default:
+            moveCommentIndexArr = this.getHtmlCommentExcludingFieldBlockIndexArr(note, htmlCommentsTextArr[buttonIndex-2])
+            break;
         }
-
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "选择移动的位置",
+          "如果是选择 xx 区，则默认移动到最底下",
+          0,
+          "不移动",
+          this.getHtmlCommentsTextArrForPopup(note),
+          (alert, buttonIndexII) => {
+            MNUtil.undoGrouping(()=>{
+              try {
+                if (buttonIndexII !== 0) {
+                  note.moveCommentsByIndexArr(moveCommentIndexArr, this.getCommentsIndexArrToMoveForPopup(note)[buttonIndexII-1])
+                  MNUtil.showHUD("index" + this.getCommentsIndexArrToMoveForPopup(note)[buttonIndexII-1] + "  text:" + note.comments[this.getCommentsIndexArrToMoveForPopup(note)[buttonIndexII-1]].text)
+                }
+              } catch (error) {
+                MNUtil.showHUD(error);
+              }
+            })
+            
+          }
+        )
 
         MNUtil.undoGrouping(()=>{
-          this.refresh()
+          note.refresh()
         })
+
       }
     )
   }
@@ -469,8 +481,6 @@ class MNMath {
     let htmlCommentsTextArrForMove = [
       "🔝🔝🔝🔝卡片最顶端🔝🔝🔝🔝",
       "----------【摘录区】----------",
-      "🔝 Top 🔝",
-      "⬇️ Bottom ⬇️",
     ]
     // if (htmlCommentsTextArr.length > 1) {
     //   htmlCommentsTextArr.forEach(text => {
@@ -490,12 +500,16 @@ class MNMath {
       htmlCommentsTextArrForMove.push("⬇️ Bottom ⬇️")
     }
 
+    htmlCommentsTextArrForMove.push("⬇️⬇️⬇️⬇️ 卡片最底端 ⬇️⬇️⬇️⬇️")
+
     return htmlCommentsTextArrForMove;
   }
   /**
    * 获取 getHtmlCommentsTextArrForMove 获得的数组所对应要移动的 Index 构成的数组
    * 
    * 比如 htmlCommentsTextArrForMove[0] 的 🔝🔝🔝🔝卡片最顶端🔝🔝🔝🔝 对应的 commentsIndexArrToMove[0] 就是 0，因为是移动到卡片最顶端
+   * 
+   * Bug: 往上正常，往下有偏移
    */
   static getCommentsIndexArrToMoveForPopup(note) {
     let htmlCommentsObjArr = this.parseNoteComments(note).htmlCommentsObjArr;
@@ -505,12 +519,8 @@ class MNMath {
     let excerptBlockIndexArr = this.getExcerptBlockIndexArr(note);
     if (excerptBlockIndexArr.length == 0) {
       commentsIndexArrToMove.push(0) // 对应："----------【摘录区】----------"
-      commentsIndexArrToMove.push(0) // 对应："🔝 Top 🔝"
-      commentsIndexArrToMove.push(0) // 对应："⬇️ Bottom ⬇️"
     } else {
-      commentsIndexArrToMove.push(excerptBlockIndexArr[excerptBlockIndexArr.length - 1]) // 对应："----------【摘录区】----------"
-      commentsIndexArrToMove.push(excerptBlockIndexArr[0]) // 对应："🔝 Top 🔝"
-      commentsIndexArrToMove.push(excerptBlockIndexArr[excerptBlockIndexArr.length - 1]) // 对应："⬇️ Bottom ⬇️"
+      commentsIndexArrToMove.push(excerptBlockIndexArr[excerptBlockIndexArr.length - 1]+1) // 对应："----------【摘录区】----------"
     }
     
     switch (htmlCommentsObjArr.length) {
@@ -530,8 +540,12 @@ class MNMath {
         break;
     }
 
+    commentsIndexArrToMove.push(note.comments.length-1) // 对应："⬇️⬇️⬇️⬇️ 卡片最底端 ⬇️⬇️⬇️⬇️"
+
     return commentsIndexArrToMove
   }
+
+
   static moveCommentsToByField(note, indexArr, field, toBottom = true) {
     let getHtmlCommentsTextArrForPopup = this.getHtmlCommentsTextArrForPopup(note);
     let commentsIndexArrToMove = this.getCommentsIndexArrToMoveForPopup(note);

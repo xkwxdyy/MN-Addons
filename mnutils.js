@@ -539,7 +539,7 @@ class MNMath {
         break;
     }
 
-    commentsIndexArrToMove.push(note.comments.length-1) // 对应："⬇️⬇️⬇️⬇️ 卡片最底端 ⬇️⬇️⬇️⬇️"
+    commentsIndexArrToMove.push(note.comments.length) // 对应："⬇️⬇️⬇️⬇️ 卡片最底端 ⬇️⬇️⬇️⬇️"
 
     return commentsIndexArrToMove
   }

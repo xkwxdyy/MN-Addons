@@ -219,16 +219,36 @@ class MNMath {
   /**
    * 制卡
    */
-  static makeCard(note) {
+  static makeCard(note, reviewEverytime = true) {
     this.renewNote(note) // 处理旧卡片
     this.mergeTemplateAndAutoMoveNoteContent(note) // 合并模板卡片并自动移动内容
     this.changeTitle(note) // 修改卡片标题
     this.changeNoteColor(note) // 修改卡片颜色
     this.linkParentNote(note) // 链接广义的父卡片（可能是链接归类卡片）
     this.refreshNotes(note) // 刷新卡片
-    note.focusInMindMap(0.5)
+    this.addToReview(note, reviewEverytime) // 加入复习
+    MNUtil.undoGrouping(()=>{
+      note.focusInMindMap(0.3)
+    })
   }
 
+  /**
+   * 加入复习
+   */
+  static addToReview(note, reviewEverytime = true) {
+    let includingTypes = ["定义", "命题", "例子", "反例", "思想方法", "问题", "思路"];
+    if (this.getNoteType(note) && includingTypes.includes(this.getNoteType(note))) {
+      if (reviewEverytime) {
+        // 执行一次加入到复习一次
+        MNUtil.excuteCommand("AddToReview")
+      } else {
+        // 执行的时候如果已经加入到复习了，就不加入
+        if (!MNUtil.isNoteInReview(note.noteId)) {  // 2024-09-26 新增的 API
+          MNUtil.excuteCommand("AddToReview")
+        }
+      }
+    }
+  }
   /**
    * 链接广义的父卡片（可能是链接归类卡片）
    * 

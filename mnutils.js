@@ -238,7 +238,7 @@ class MNMath {
    */
   static makeNote(note) {
     this.toNoExceptVersion(note)
-    note.focusInMindMap(0.3)             
+    // note.focusInMindMap(0.3)  // iPad 上会失去焦点      
     MNUtil.delay(0.3).then(()=>{
       note = MNNote.getFocusNote()
       MNUtil.delay(0.3).then(()=>{

@@ -8403,7 +8403,7 @@ try {
               parentNoteTitle = this.parentNote.noteTitle.toClassificationNoteTitle()
             }
             // 修改标题
-            this.title = "“" + parentNoteTitle + "”：“" + title + "”" + "相关" + classificationNoteType
+            this.title = "“" + title + "”" + "相关" + classificationNoteType
           }
         } else {
           /**
@@ -8433,7 +8433,7 @@ try {
             }
             // MNUtil.showHUD(parentNoteType + "+" + parentNoteTitle)
             // 修改标题
-            this.title = "“" + parentNoteTitle + "”：“" + title.toClassificationNoteTitle() + "”" + classificationNoteTitleType
+            this.title = "“" + title.toClassificationNoteTitle() + "”" + classificationNoteTitleType
           }
         }
         break;
@@ -11330,7 +11330,7 @@ try {
   addClassificationNote (title="") {
     // let classificationNote = this.createEmptyChildNote(0,title)
     // classificationNote.mergeClonedNoteFromId("8853B79F-8579-46C6-8ABD-E7DE6F775B8B")
-    let classificationNote = MNNote.clone("8853B79F-8579-46C6-8ABD-E7DE6F775B8B")
+    let classificationNote = MNNote.clone("68CFDCBF-5748-448C-91D0-7CE0D98BFE2C")
     classificationNote.title = title
     MNUtil.undoGrouping(()=>{
       this.addChild(classificationNote)

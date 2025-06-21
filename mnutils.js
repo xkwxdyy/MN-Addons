@@ -231,7 +231,7 @@ class MNMath {
   /**
    * 链接广义的父卡片（可能是链接归类卡片）
    * 
-   * TODO：删除旧的链接
+   * 支持清理旧链接：当卡片移动位置导致父卡片改变时，会自动删除与旧父卡片的链接
    */
   static linkParentNote(note) {
     /**
@@ -295,6 +295,11 @@ class MNMath {
       }
 
       /**
+       * 清理旧链接：删除与其他父卡片的链接
+       */
+      this.cleanupOldParentLinks(note, actualParentNote)
+
+      /**
        * 先保证有链接（在确定目标字段后再添加链接）
        */
       let parentNoteInNoteIndex = this.getNoteIndexInAnotherNote(actualParentNote, note)
@@ -320,6 +325,83 @@ class MNMath {
         this.moveCommentsArrToField(actualParentNote, [noteInParentNoteIndex], noteInParentNoteTargetField, ifNoteInParentNoteTargetFieldToBottom)
       }
     }
+  }
+
+  /**
+   * 清理旧的父卡片链接
+   * 
+   * 删除当前卡片和其他父卡片之间的相互链接（保留与当前父卡片的链接）
+   * 
+   * @param {MNNote} note - 当前卡片
+   * @param {MNNote} currentParentNote - 当前的父卡片，不会被删除
+   */
+  static cleanupOldParentLinks(note, currentParentNote) {
+    // 获取当前卡片中的所有链接
+    let noteCommentsObj = this.parseNoteComments(note)
+    let linksInNote = noteCommentsObj.linksObjArr
+    
+    // 收集需要删除的旧父卡片链接（先收集，后删除，避免索引混乱）
+    let oldParentNotesToCleanup = []
+    
+    linksInNote.forEach(linkObj => {
+      try {
+        // 从链接 URL 中提取 noteId
+        let targetNoteId = linkObj.link.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1]
+        if (targetNoteId && targetNoteId !== currentParentNote.noteId) {
+          // 检查这个链接是否指向一个可能的父卡片
+          let targetNote = MNNote.new(targetNoteId, false) // 不弹出警告
+          if (targetNote && this.isPotentialParentNote(targetNote, note)) {
+            oldParentNotesToCleanup.push({
+              targetNote: targetNote,
+              linkText: linkObj.link
+            })
+          }
+        }
+      } catch (error) {
+        // 忽略解析错误，继续处理其他链接
+        console.log("清理旧链接时出错:", error)
+      }
+    })
+    
+    // 执行清理：删除双向链接
+    oldParentNotesToCleanup.forEach(cleanup => {
+      try {
+        // 删除当前卡片中指向旧父卡片的链接（按文本删除，避免索引问题）
+        note.removeCommentsByText(cleanup.linkText)
+        
+        // 删除旧父卡片中指向当前卡片的链接
+        cleanup.targetNote.removeCommentsByText(note.noteURL)
+      } catch (error) {
+        console.log("执行清理时出错:", error)
+      }
+    })
+  }
+
+  /**
+   * 判断一个卡片是否可能是另一个卡片的父卡片
+   * 
+   * @param {MNNote} potentialParent - 可能的父卡片
+   * @param {MNNote} childNote - 子卡片
+   * @returns {boolean} - 是否是潜在的父卡片
+   */
+  static isPotentialParentNote(potentialParent, childNote) {
+    let potentialParentType = this.getNoteType(potentialParent)
+    let childType = this.getNoteType(childNote)
+    
+    // 归类卡片通常是其他卡片的父卡片
+    if (potentialParentType === "归类") {
+      return true
+    }
+    
+    // 定义卡片可能是归类卡片的父卡片
+    if (potentialParentType === "定义" && childType === "归类") {
+      return true
+    }
+    
+    // 其他可能的父子关系可以在这里添加
+    // 比如：问题 -> 思路，命题 -> 例子 等
+    
+    return false
   }
 
   /**

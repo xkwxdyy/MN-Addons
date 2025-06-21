@@ -225,6 +225,7 @@ class MNMath {
     this.changeTitle(note) // 修改卡片标题
     this.changeNoteColor(note) // 修改卡片颜色
     this.linkParentNote(note) // 链接广义的父卡片（可能是链接归类卡片）
+    // this.refreshNote(note) // 刷新卡片
     this.refreshNotes(note) // 刷新卡片
     this.addToReview(note, reviewEverytime) // 加入复习
     MNUtil.undoGrouping(()=>{
@@ -243,11 +244,10 @@ class MNMath {
       MNUtil.delay(0.3).then(()=>{
         this.makeCard(note)
       })
-      MNUtil.delay(0.5).then(()=>{
-        MNUtil.undoGrouping(()=>{
-          this.refresh(note)
-          // this.addToReview(note, true) // 加入复习
-        })
+      MNUtil.undoGrouping(()=>{
+        // this.refreshNote(note)
+        this.refreshNotes(note)
+        // this.addToReview(note, true) // 加入复习
       })
     })
   }
@@ -507,14 +507,26 @@ class MNMath {
     note.note.removeCommentByIndex(note.note.comments.length-1)
   }
   static refreshNotes(note) {
-    if (note.descendantNodes.descendant.length > 0) {
-      note.descendantNodes.descendant.forEach(descendantNote => {
-        this.refreshNote(descendantNote)
-      })
+    // if (note.descendantNodes.descendant.length > 0) {
+    //   note.descendantNodes.descendant.forEach(descendantNote => {
+    //     this.refreshNote(descendantNote)
+    //   })
+    // }
+    // if (note.ancestorNodes.length > 0) {
+    //   note.ancestorNodes.forEach(ancestorNote => {
+    //     this.refreshNote(ancestorNote)
+    //   })
+    // }
+    if (note.parentNote) {
+      this.refreshNote(note.parentNote)
     }
-    if (note.ancestorNodes.length > 0) {
-      note.ancestorNodes.forEach(ancestorNote => {
-        this.refreshNote(ancestorNote)
+
+    this.refreshNote(note) // 刷新当前卡片
+
+    // 刷新所有子卡片，不需要孙卡片
+    if (note.childNotes.length > 0) {
+      note.childNotes.forEach(childNote => {
+        this.refreshNote(childNote)
       })
     }
   }

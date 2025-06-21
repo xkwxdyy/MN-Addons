@@ -764,7 +764,7 @@ class MNMath {
         }
         break;
       default:
-        match = title.match(/^【(.{2,4})：(.*)】(.*)/)
+        match = title.match(/^【(.{2,4})\s*(?:>>|：)\s*(.*)】(.*)/)
         if (match) {
           titleParts.type = match[1].trim();
           titleParts.prefixContent = match[2].trim();
@@ -1277,6 +1277,321 @@ class MNMath {
       }
     }
     return indexArr
+  }
+
+
+  static addTemplate(note) {
+    let templateNote
+    let type
+    let contentInTitle
+    let titleParts = this.parseNoteTitle(note)
+    switch (this.getNoteType(note)) {
+      case "归类":
+        contentInTitle = titleParts.content
+        break;
+      default:
+        contentInTitle = titleParts.prefixContent + "｜" + titleParts.content;
+        break;
+    }
+    MNUtil.copy(contentInTitle)
+    try {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "增加模板",
+        // "请输入标题并选择类型\n注意向上下层添加模板时\n标题是「增量」输入",
+        "请输入标题并选择类型",
+        2,
+        "取消",
+        // ["向下层增加模板", "增加概念衍生层级","增加兄弟层级模板","向上层增加模板", "最顶层（淡绿色）", "专题"],
+        [
+          "连续向下「顺序」增加模板",  // 1
+          "连续向下「倒序」增加模板",  // 2
+          "增加兄弟层级模板",  // 3
+          "向上层增加模板",  // 4
+        ],
+        (alert, buttonIndex) => {
+          let userInputTitle = alert.textFieldAtIndex(0).text;
+          switch (buttonIndex) {
+            case 4:
+              try {
+                /* 向上增加模板 */
+                
+                // 获取当前卡片类型和父卡片
+                let noteType = this.parseNoteTitle(note).type
+                let parentNote = note.parentNote
+                
+                if (!noteType) {
+                  MNUtil.showHUD("无法识别当前卡片类型");
+                  return;
+                }
+                
+                // 获取对应类型的模板ID
+                let templateNoteId = this.types["归类"].templateNoteId;
+                
+                MNUtil.undoGrouping(() => {
+                  // 1. 创建新的归类卡片
+                  let newClassificationNote = MNNote.clone(templateNoteId);
+                  newClassificationNote.note.noteTitle = `“${userInputTitle}”相关${noteType}`;
+                  
+                  // 3. 建立层级关系：新卡片作为父卡片的子卡片
+                  parentNote.addChild(newClassificationNote.note);
+                  
+                  // 4. 移动选中卡片：从原位置移动到新卡片下
+                  newClassificationNote.addChild(note.note);
+                  
+                  // 5. 使用 this API 处理链接关系
+                  this.linkParentNote(newClassificationNote);
+                  this.linkParentNote(note);
+                  
+                  // 6. 聚焦到新创建的卡片
+                  MNUtil.delay(0.8).then(() => {
+                    newClassificationNote.focusInMindMap();
+                  });
+                });
+                
+              } catch (error) {
+                MNUtil.showHUD(`向上增加模板失败: ${error.message || error}`);
+              }
+              break;
+            case 3:
+              // 增加兄弟层级模板
+              type = this.parseNoteTitle(note).type
+              if (type) {
+                templateNote = MNNote.clone(this.types["归类"].templateNoteId)
+                templateNote.noteTitle = "“" +  userInputTitle + "”相关" + type
+                MNUtil.undoGrouping(()=>{
+                  note.parentNote.addChild(templateNote.note)
+                  this.linkParentNote(templateNote);
+                })
+                templateNote.focusInMindMap(0.5)
+              }
+              break
+            case 2: // 连续向下「倒序」增加模板
+              /**
+               * 通过//来分割标题，增加一连串的归类卡片
+               * 比如：赋范空间上的//有界//线性//算子
+               * 依次增加：赋范空间上的算子、赋范空间上的线性算子、赋范空间上的有界线性算子
+               */
+              try {
+                let titlePartArray = userInputTitle.split("//")
+                let titlePartArrayLength = titlePartArray.length
+                let type
+                let lastNote
+                
+                // 使用 this API 获取卡片类型 
+                let parsedTitle = this.parseNoteTitle(note)
+                if (parsedTitle && parsedTitle.type) { 
+                  // 如果是归类卡片，获取类型
+                  type = parsedTitle.type
+                  switch (titlePartArrayLength) {
+                    case 1:  // 没有输入 //，正常向下添加
+                    case 2:  // 只有1个//，和不分一样
+                      // 创建新的归类卡片
+                      let newNote = MNNote.clone(this.types["归类"].templateNoteId)
+                      newNote.note.noteTitle = `“${userInputTitle.replace("//", "")}”相关${type}`
+                      MNUtil.undoGrouping(() => {
+                        note.addChild(newNote.note)
+                        this.linkParentNote(newNote)
+                      })
+                      lastNote = newNote
+                      lastNote.focusInMindMap(0.3)
+                      break;
+                    default: // 大于等于三个部分才需要处理
+                      // 把 item1+itemn, item1+itemn-1+itemn, item1+itemn-2+itemn-1+itemn, ... , item1+item2+item3+...+itemn 依次加入数组
+                      // 比如 “赋范空间上的//有界//线性//算子” 得到的 titlePartArray 是
+                      // ["赋范空间上的", "有界", "线性", "算子"]
+                      // 则 titleArray = ["赋范空间上的算子", "赋范空间上的线性算子", "赋范空间上的有界线性算子"]
+                      let titleArray = []
+                      const prefix = titlePartArray[0];
+                      let changedTitlePart = titlePartArray[titlePartArray.length-1]
+                      for (let i = titlePartArray.length-1 ; i >= 1 ; i--) {
+                        if  (i < titlePartArray.length-1) {
+                          changedTitlePart = titlePartArray[i] + changedTitlePart
+                        }
+                        titleArray.push(prefix + changedTitlePart)
+                      }
+                      
+                      // 依次创建归类卡片
+                      let currentParent = note
+                      let lastCreatedNote
+                      titleArray.forEach(title => {
+                        let newClassificationNote = MNNote.clone(this.types["归类"].templateNoteId)
+                        newClassificationNote.note.noteTitle = `“${title}”相关${type}`
+                        MNUtil.undoGrouping(() => {
+                          currentParent.addChild(newClassificationNote.note)
+                          this.linkParentNote(newClassificationNote)
+                        })
+                        currentParent = newClassificationNote
+                        lastCreatedNote = newClassificationNote
+                      })
+                      lastNote = lastCreatedNote
+                      lastNote.focusInMindMap(0.3)
+                      break;
+                  }
+                } else {
+                  // 如果不是归类卡片，弹出选择框让用户选择类型
+                  //TODO:这里应该可以用 Promise，或者 delay 来
+                  UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+                    "增加归类卡片",
+                    "选择类型",
+                    0,
+                    "取消",
+                    ["定义","命题","例子","反例","思想方法","问题"],
+                    (alert, buttonIndex) => {
+                      if (buttonIndex == 0) { return }
+                      const typeMap = {1: "定义", 2: "命题", 3: "例子", 4: "反例", 5: "思想方法", 6: "问题"}
+                      type = typeMap[buttonIndex]
+                      switch (titlePartArrayLength) {
+                        case 1:  
+                        case 2:  
+                          // 创建新的归类卡片
+                          let newNote = MNNote.clone(this.types["归类"].templateNoteId)
+                          newNote.note.noteTitle = `"${userInputTitle.replace("//", "")}"相关${type}`
+                          MNUtil.undoGrouping(() => {
+                            note.addChild(newNote.note)
+                            this.linkParentNote(newNote)
+                          })
+                          lastNote = newNote
+                          lastNote.focusInMindMap(0.3)
+                          break;
+                        default: // 大于等于三个部分才需要处理
+                          // 把 item1+itemn, item1+itemn-1+itemn, item1+itemn-2+itemn-1+itemn, ... , item1+item2+item3+...+itemn 依次加入数组
+                          // 比如 “赋范空间上的//有界//线性//算子” 得到的 titlePartArray 是
+                          // ["赋范空间上的", "有界", "线性", "算子"]
+                          // 则 titleArray = ["赋范空间上的算子", "赋范空间上的线性算子", "赋范空间上的有界线性算子"]
+                          let titleArray = []
+                          const prefix = titlePartArray[0];
+                          let changedTitlePart = titlePartArray[titlePartArray.length-1]
+                          for (let i = titlePartArray.length-1 ; i >= 1 ; i--) {
+                            if  (i < titlePartArray.length-1) {
+                              changedTitlePart = titlePartArray[i] + changedTitlePart
+                            }
+                            titleArray.push(prefix + changedTitlePart)
+                          }
+                          
+                          let currentParent = note
+                          let lastCreatedNote
+                          titleArray.forEach(title => {
+                            let newClassificationNote = MNNote.clone(this.types["归类"].templateNoteId)
+                            newClassificationNote.note.noteTitle = `"${title}"相关${type}`
+                            MNUtil.undoGrouping(() => {
+                              currentParent.addChild(newClassificationNote.note)
+                              this.linkParentNote(newClassificationNote)
+                            })
+                            currentParent = newClassificationNote
+                            lastCreatedNote = newClassificationNote
+                          })
+                          lastNote = lastCreatedNote
+                          lastNote.focusInMindMap(0.3)
+                          break;
+                      }
+                    })
+                }
+              } catch (error) {
+                MNUtil.showHUD(`连续向下倒序增加模板失败: ${error.message || error}`);
+              }
+              break;
+            case 1: // 向下增加模板
+              /**
+               * 通过//来分割标题，增加一连串的归类卡片
+               * 比如：赋范空间上的有界线性算子//的判定//：充分条件
+               * -> 赋范空间上的有界线性算子、赋范空间上的有界线性算子的判定、赋范空间上的有界线性算子的判定：充分条件
+               */
+              try {
+                let titlePartArray = userInputTitle.split("//")
+                let titlePartArrayLength = titlePartArray.length
+                let type
+                let classificationNote
+                if (note.title.isClassificationNoteTitle()) { // 如果选中的是归类卡片
+                  // 获取要增加的归类卡片的类型
+                  type = note.title.toClassificationNoteTitle()
+                  switch (titlePartArrayLength) {
+                    case 1:  // 此时表示没有输入 //，这个时候和正常的向下是一样的效果
+                      classificationNote = note.addClassificationNoteByType(type, userInputTitle.replace("//", ""))
+                      classificationNote.focusInMindMap(0.3)
+                      break;
+                    default: // 大于等于三个部分才需要处理
+                      let titleArray = []
+                      let changedTitlePart = titlePartArray[0];
+
+                      // 生成组合
+                      for (let i = 0 ; i < titlePartArray.length ; i++) {
+                        if  (i > 0) {
+                          changedTitlePart = changedTitlePart + titlePartArray[i]
+                        }
+                        titleArray.push(changedTitlePart)
+                      }
+                      classificationNote = note
+                      titleArray.forEach(title => {
+                        classificationNote = classificationNote.addClassificationNoteByType(type, title)
+                      })
+                      classificationNote.focusInMindMap(0.3)
+                      break;
+                  }
+                } else {
+                  UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+                    "增加归类卡片",
+                    "选择类型",
+                    0,
+                    "写错了",
+                    ["定义","命题","例子","反例","思想方法","问题"],
+                    (alert, buttonIndex) => {
+                      if (buttonIndex == 0) { return }
+                      switch (buttonIndex) {
+                        case 1:
+                          type = "定义"
+                          break;
+                        case 2:
+                          type = "命题"
+                          break;
+                        case 3:
+                          type = "例子"
+                          break;
+                        case 4:
+                          type = "反例"
+                          break;
+                        case 4:
+                          type = "思想方法"
+                          break;
+                        case 6:
+                          type = "问题"
+                          break;
+                      }
+                      switch (titlePartArrayLength) {
+                        case 1:  // 此时表示没有输入 //，这个时候和正常的向下是一样的效果
+                        // case 2:  // 此时表示只有 1 个//，这个分隔和不分是一样的
+                          classificationNote = note.addClassificationNoteByType(type, userInputTitle.replace("//", ""))
+                          classificationNote.focusInMindMap(0.3)
+                          break;
+                        default: // 大于等于三个部分才需要处理
+                          let titleArray = []
+                          let changedTitlePart = titlePartArray[0];
+    
+                          // 生成组合
+                          for (let i = 0 ; i < titlePartArray.length ; i++) {
+                            if  (i > 0) {
+                              changedTitlePart = changedTitlePart + titlePartArray[i]
+                            }
+                            titleArray.push(changedTitlePart)
+                          }
+                          classificationNote = note
+                          titleArray.forEach(title => {
+                            classificationNote = classificationNote.addClassificationNoteByType(type, title)
+                          })
+                          classificationNote.focusInMindMap(0.3)
+                          break;
+                      }
+                    })
+                }
+              } catch (error) {
+                MNUtil.showHUD(error);
+              }
+              break;
+          }
+        }
+      )
+    } catch (error) {
+      MNUtil.showHUD(error);
+    }
   }
 }
 

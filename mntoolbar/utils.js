@@ -3834,6 +3834,8 @@ try {
         return "368F2283-FA0C-46AC-816B-1B7BA99B2455"
       case "思想方法":
         return "D1B864F5-DD3A-435E-8D15-49DA219D3895"
+      case "归类":
+        return "68CFDCBF-5748-448C-91D0-7CE0D98BFE2C"
     }
   }
 
@@ -3860,90 +3862,14 @@ try {
         "取消",
         // ["向下层增加模板", "增加概念衍生层级","增加兄弟层级模板","向上层增加模板", "最顶层（淡绿色）", "专题"],
         [
-          // "向下层增加模板",  // 1
           "连续向下「顺序」增加模板",  // 1
           "连续向下「倒序」增加模板",  // 2
           "增加兄弟层级模板",  // 3
           "向上层增加模板",  // 4
-          "最顶层（淡绿色）",  // 5
-          "专题"  // 6
         ],
         (alert, buttonIndex) => {
           let userInputTitle = alert.textFieldAtIndex(0).text;
           switch (buttonIndex) {
-            case 6:
-              /* 专题 */
-              // 因为专题模板卡片比较多，所以增加一个确认界面
-              UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-                "请确认",
-                "确定标题是：「" + userInputTitle + "」吗？",
-                0,
-                "写错了",
-                ["确定"],
-                (alert, buttonIndex) => {
-                  if (buttonIndex == 1) {
-                    let topicParentNote = MNNote.clone("35256174-9EDD-416F-9699-B6D5C1E1F0E6")
-                    topicParentNote.note.noteTitle = userInputTitle
-                    MNUtil.undoGrouping(()=>{
-                      focusNote.addChild(topicParentNote.note)
-                      // MNUtil.showHUD(topicParentNote.childNotes.length);
-                      topicParentNote.descendantNodes.descendant.forEach(
-                        // 把每个子卡片标题中的 “标题” 替换为 userInputTitle
-                        childNote => {
-                          childNote.noteTitle = childNote.noteTitle.replace(/标题/g, userInputTitle)
-                        }
-                      )
-                      topicParentNote.childNotes[0].focusInMindMap()
-                    })
-                  }
-                }
-              )
-              break;
-            case 5: 
-            /* 增加最顶层的淡绿色模板 */
-            try {
-              let parentNote
-              // 先选到第一个白色的父卡片
-              if (focusNoteColorIndex == 12) {
-                // 如果选中的就是白色的（比如刚建立专题的时候）
-                parentNote = focusNote
-              } else {
-                parentNote = focusNote.parentNote
-                while (parentNote.colorIndex !== 12) {
-                  parentNote = parentNote.parentNote
-                }
-              }
-              // MNUtil.showHUD(parentNote.noteTitle)
-                if (parentNote) {
-                  const typeRegex = /^(.*)（/; // 匹配以字母或数字开头的字符直到左括号 '('
-    
-                  const match = parentNote.noteTitle.match(typeRegex);
-                  if (match) {
-                    type = match[1]; // 提取第一个捕获组的内容
-                    // MNUtil.showHUD(type);
-                    templateNote = MNNote.clone("121387A2-740E-4BC6-A184-E4115AFA90C3")
-                    templateNote.note.colorIndex = 1  // 颜色为淡绿色
-                    templateNote.note.noteTitle = "“" + userInputTitle + "”相关" + type
-                    MNUtil.undoGrouping(()=>{
-                      parentNote.addChild(templateNote.note)
-                      parentNote.parentNote.appendNoteLink(templateNote, "Both")
-                      templateNote.moveComment(templateNote.note.comments.length-1, 1)
-                    })
-                    // 林立飞：可能是 MN 底层的原因，数据库还没处理完，所以需要加一个延时
-                    MNUtil.delay(0.5).then(()=>{
-                      templateNote.focusInMindMap()
-                    })
-                  } else {
-                    MNUtil.showHUD("匹配失败，匹配到的标题为" +  parentNote.noteTitle);
-                  }
-                } else {
-                  MNUtil.showHUD("无父卡片");
-                }
-              } catch (error) {
-                MNUtil.showHUD(error);
-              }
-              
-              break;
             case 4:
               try {
                 /* 向上增加模板 */
@@ -4056,7 +3982,7 @@ try {
                       templateNote = MNNote.clone(this.addTemplateAuxGetNoteIdByType(type))
                       templateNote.note.colorIndex = 0  // 颜色为淡黄色
                       // templateNote.note.noteTitle = "“" + parentNote.noteTitle.match(/“(.*)”：“(.*)”相关(.*)/)[2] + "”：“" + parentNote.noteTitle.match(/“(.*)”：“(.*)”相关(.*)/)[2] + userInputTitle + "”相关" + type
-                      templateNote.note.noteTitle = "“" + parentNote.noteTitle.match(/“(.*)”：“(.*)”相关(.*)/)[2] + "”：“"  + userInputTitle + "”相关" + type
+                      templateNote.note.noteTitle = "“"  + userInputTitle + "”相关" + type
                       parentNote.addChild(templateNote.note)
                       parentNote.appendNoteLink(templateNote, "Both")
                       templateNote.moveComment(templateNote.note.comments.length-1, 1)
@@ -4099,7 +4025,7 @@ try {
                           let replacedContent = postContent.replace(preContentBefore, preContent);
                           postContent = replacedContent;
                         }
-                        focusNote.note.noteTitle = "“" + preContent + "”：“" + postContent + "”相关" + type
+                        focusNote.note.noteTitle = "“" + postContent + "”相关" + type
                         focusNote.childNotes.forEach(childNote => {
                           childNote.refresh()
                         })
@@ -4154,7 +4080,7 @@ try {
                 // MNUtil.showHUD(type);
                 templateNote = MNNote.clone(this.addTemplateAuxGetNoteIdByType(type))
                 templateNote.note.colorIndex = focusNote.note.colorIndex 
-                templateNote.note.noteTitle = "“" + focusNote.noteTitle.match(/“(.*)”：“(.*)”相关.*/)[1] + "”：“" +  userInputTitle + "”相关" + type
+                templateNote.note.noteTitle = "“" +  userInputTitle + "”相关" + type
                 MNUtil.undoGrouping(()=>{
                   focusNote.parentNote.addChild(templateNote.note)
                   focusNote.parentNote.appendNoteLink(templateNote, "Both")

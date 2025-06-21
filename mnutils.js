@@ -490,6 +490,84 @@ class MNMath {
   }
 
   /**
+   * 通过弹窗来精准修改单个 HtmlMarkdown 评论的类型
+   */
+  static changeHtmlMarkdownCommentTypeByPopup(note) {
+    let htmlMarkdownCommentsTextArr = this.parseNoteComments(note).htmlMarkdownCommentsTextArr;
+    let htmlMarkdownCommentsObjArr = this.parseNoteComments(note).htmlMarkdownCommentsObjArr;
+    
+    if (htmlMarkdownCommentsTextArr.length === 0) {
+      MNUtil.showHUD("当前笔记没有 HtmlMarkdown 评论");
+      return;
+    }
+
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "选择要修改类型的 HtmlMarkdown 评论",
+      "请选择要修改的评论",
+      0,
+      "取消",
+      htmlMarkdownCommentsTextArr,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) {
+          return; // 取消
+        }
+        
+        let selectedCommentObj = htmlMarkdownCommentsObjArr[buttonIndex - 1];
+        let currentType = selectedCommentObj.type;
+        
+        // 获取所有可用的类型选项
+        let availableTypes = Object.keys(HtmlMarkdownUtils.icons);
+        let typeDisplayTexts = availableTypes.map(type => `${HtmlMarkdownUtils.icons[type]} ${type}`);
+        
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "选择目标类型",
+          `当前类型：${HtmlMarkdownUtils.icons[currentType]} ${currentType}\n\n请选择要转换成的类型：`,
+          0,
+          "取消",
+          typeDisplayTexts,
+          (alert, typeButtonIndex) => {
+            if (typeButtonIndex === 0) {
+              return; // 取消
+            }
+            
+            let targetType = availableTypes[typeButtonIndex - 1];
+            
+            if (targetType === currentType) {
+              MNUtil.showHUD("目标类型与当前类型相同，无需修改");
+              return;
+            }
+            
+            MNUtil.undoGrouping(() => {
+              try {
+                let comments = note.MNComments;
+                let targetComment = comments[selectedCommentObj.index];
+                let content = selectedCommentObj.content;
+                let hasLeadingDash = selectedCommentObj.hasLeadingDash;
+                
+                // 生成新的 HtmlMarkdown 文本
+                let newHtmlMarkdownText = HtmlMarkdownUtils.createHtmlMarkdownText(content, targetType);
+                
+                // 如果原来有前导破折号，保持前导破折号
+                if (hasLeadingDash) {
+                  newHtmlMarkdownText = "- " + newHtmlMarkdownText;
+                }
+                
+                // 更新评论文本
+                targetComment.text = newHtmlMarkdownText;
+                
+                MNUtil.showHUD(`已将类型从 ${currentType} 改为 ${targetType}`);
+                
+              } catch (error) {
+                MNUtil.showHUD("修改失败：" + error.toString());
+              }
+            });
+          }
+        );
+      }
+    );
+  }
+
+  /**
    * 通过弹窗来选择移动的评论以及移动的位置
    */
   static moveCommentsByPopup(note) {

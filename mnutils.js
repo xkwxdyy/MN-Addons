@@ -555,7 +555,7 @@ class MNMath {
                 // 更新评论文本
                 targetComment.text = newHtmlMarkdownText;
                 
-                MNUtil.showHUD(`已将类型从 ${currentType} 改为 ${targetType}`);
+                // MNUtil.showHUD(`已将类型从 ${currentType} 改为 ${targetType}`);
                 
               } catch (error) {
                 MNUtil.showHUD("修改失败：" + error.toString());

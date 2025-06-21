@@ -385,15 +385,36 @@ class MNMath {
    * @returns {boolean} - 是否是潜在的父卡片
    */
   static isPotentialParentNote(potentialParent, childNote) {
+    if (!potentialParent || !childNote) return false
+    
+    // 首先检查是否真的在祖先链中（实际的父子关系）
+    let current = childNote.parentNote
+    while (current) {
+      if (current.noteId === potentialParent.noteId) {
+        return true // 找到了真实的父卡片关系
+      }
+      current = current.parentNote
+    }
+    
+    // 检查是否是子卡片（如果potentialParent是childNote的子卡片，则绝对不是父卡片）
+    let currentChild = potentialParent.parentNote
+    while (currentChild) {
+      if (currentChild.noteId === childNote.noteId) {
+        return false // potentialParent是childNote的后代，不可能是父卡片
+      }
+      currentChild = currentChild.parentNote
+    }
+    
     let potentialParentType = this.getNoteType(potentialParent)
     let childType = this.getNoteType(childNote)
     
-    // 归类卡片通常是其他卡片的父卡片
-    if (potentialParentType === "归类") {
+    // 只有在不是实际父子关系的情况下，才根据类型来判断逻辑父子关系
+    // 归类卡片可能是其他卡片的逻辑父卡片（但不能是其子卡片的父卡片）
+    if (potentialParentType === "归类" && childType !== "归类") {
       return true
     }
     
-    // 定义卡片可能是归类卡片的父卡片
+    // 定义卡片可能是归类卡片的逻辑父卡片
     if (potentialParentType === "定义" && childType === "归类") {
       return true
     }
@@ -538,7 +559,7 @@ class MNMath {
         field = "问题详情"
         break;
       case "思路":
-        field = "思路详情"
+        field = "具体尝试"
         break;
       case "作者":
         field = "个人信息"
@@ -1685,7 +1706,7 @@ class HtmlMarkdownUtils {
     goal: '🎯',
     question: '❓',
     idea: '💡',
-    method: '✔'
+    method: '✨'
   };
   static prefix = {
     danger: '',

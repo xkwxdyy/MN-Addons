@@ -3840,8 +3840,6 @@ try {
   }
 
 
-
-
   /* 
     处理旧卡片 
     1. 去掉“模板：”或者“模版：”及下面的内容
@@ -9652,7 +9650,7 @@ static template(action) {
       ]
       break;
     case "menu_makeCards":
-      config.action = "makeCard"
+      config.action = "makeNote"
       config.onLongPress = {
         "action": "menu",
         "menuWidth": 320,

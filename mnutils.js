@@ -217,6 +217,9 @@ class MNMath {
 
   /**
    * 增加思路卡片
+   * 
+   * @param {MNNote} note - 当前卡片
+   * @param {string} title - 思路卡片的标题
    */
   static addNewIdeaNote(note, title) {
     // 生成卡片
@@ -225,6 +228,28 @@ class MNMath {
     // 处理标题
     ideaNote.title = this.createTitlePrefix(this.types.思路.prefixName, this.createChildNoteTitlePrefixContent(note)) + title
     // 处理链接
+    note.appendMarkdownComment(HtmlMarkdownUtils.createHtmlMarkdownText(title,"idea"))  // 加入思路 htmlMD
+    note.appendNoteLink(ideaNote,"Both")  // 双向链接
+    this.moveCommentsArrToField(note, "Y, Z", this.getIdeaLinkMoveToField(note))  // 移动 note 的两个评论
+  }
+
+  /**
+   * 根据卡片类型确定思路链接内容要移动到哪个字段下
+   */
+  static getIdeaLinkMoveToField(note) {
+    switch (this.getNoteType(note)) {
+      case "命题":
+      case "例子":
+        return "证明"
+      case "反例":
+        return "反例"
+      case "思想方法":
+        return "原理"
+      case "问题":
+        return "研究思路"
+      default:
+        break;
+    }
   }
 
   /**
@@ -545,7 +570,7 @@ class MNMath {
   }
 
 
-  static moveCommentsToByField(note, indexArr, field, toBottom = true) {
+  static moveCommentsArrToField(note, indexArr, field, toBottom = true) {
     let getHtmlCommentsTextArrForPopup = this.getHtmlCommentsTextArrForPopup(note);
     let commentsIndexArrToMove = this.getCommentsIndexArrToMoveForPopup(note);
 
@@ -555,13 +580,20 @@ class MNMath {
         if (toBottom) {
           targetIndex = commentsIndexArrToMove[index]
         } else {
-          targetIndex = commentsIndexArrToMove[index+1]
+          targetIndex = commentsIndexArrToMove[index+1]  // 注意这里的 Arr 是因为 commentsIndexArrToMove 里的内容是 xx 区+top+bottom 组合
         }
       }
     })
 
+    let arr = []
     if (targetIndex !== -1) {
-      note.moveCommentsByIndexArr(indexArr, targetIndex)
+      // 如果是字符串就处理为数组
+      if (typeof indexArr === "string") {
+        arr = indexArr.parseCommentIndices(note.comments.length);
+      } else {
+        arr = indexArr;
+      }
+      note.moveCommentsByIndexArr(arr, targetIndex)
     }
   }
   /**

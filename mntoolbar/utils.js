@@ -3872,114 +3872,54 @@ try {
           switch (buttonIndex) {
             case 4:
               try {
-                /* 向上增加模板 - 使用 MNMath API 重构 */
+                /* 向上增加模板 - 简化版本 */
                 
-                // 使用 MNMath API 获取卡片类型信息
-                let focusNoteType = MNMath.getNoteType(focusNote)
+                // 获取当前卡片类型和父卡片
+                let focusNoteType = MNMath.parseNoteTitle(focusNote).type
                 let parentNote = focusNote.parentNote
-                let parentNoteType = MNMath.getNoteType(parentNote)
                 
-                if (!focusNoteType || !parentNoteType) {
-                  MNUtil.showHUD("无法识别卡片类型，请检查卡片格式");
+                if (!focusNoteType) {
+                  MNUtil.showHUD("无法识别当前卡片类型");
                   return;
                 }
                 
-                // 解析父卡片标题信息
-                let parentTitleInfo = MNMath.parseNoteTitle(parentNote)
-                if (!parentTitleInfo || !parentTitleInfo.content) {
-                  MNUtil.showHUD("无法解析父卡片标题，请检查标题格式");
-                  return;
-                }
-                
-                // 根据父卡片类型判断应该创建的新卡片类型
-                let newNoteType = focusNoteType; // 默认使用当前卡片类型
-                let newNoteColorIndex, templateNoteId;
-                
-                if (parentNote.colorIndex === 1) {
-                  // 父卡片是淡绿色（顶层）
-                  newNoteColorIndex = 4; // 黄色
-                  templateNoteId = MNMath.types[newNoteType]?.templateNoteId;
-                } else if (parentNote.colorIndex === 0 || parentNote.colorIndex === 4) {
-                  // 父卡片是淡黄色或黄色（归类）
-                  newNoteColorIndex = 0; // 淡黄色
-                  templateNoteId = MNMath.types[newNoteType]?.templateNoteId;
-                } else {
-                  MNUtil.showHUD("不支持的父卡片颜色类型");
-                  return;
-                }
-                
-                if (!templateNoteId) {
-                  MNUtil.showHUD(`找不到类型"${newNoteType}"的模板`);
-                  return;
-                }
+                // 获取对应类型的模板ID
+                let templateNoteId = MNMath.types["归类"].templateNoteId;
                 
                 MNUtil.undoGrouping(() => {
-                  // 创建新的模板卡片
-                  templateNote = MNNote.clone(templateNoteId);
-                  templateNote.note.colorIndex = newNoteColorIndex;
+                  // 1. 创建新的归类卡片
+                  let newClassificationNote = MNNote.clone(templateNoteId);
+                  newClassificationNote.note.noteTitle = `“${userInputTitle}”相关${focusNoteType}`;
                   
-                  // 生成新卡片标题
-                  let newTitle;
-                  // 从归类卡片创建：使用用户输入作为主要内容
-                  newTitle = `"${userInputTitle}"相关${newNoteType}`;
-                  templateNote.note.noteTitle = newTitle;
+                  // 3. 建立层级关系：新卡片作为父卡片的子卡片
+                  parentNote.addChild(newClassificationNote.note);
                   
-                  // 建立层级关系
-                  parentNote.addChild(templateNote.note);
+                  // 4. 移动选中卡片：从原位置移动到新卡片下
+                  newClassificationNote.addChild(focusNote.note);
                   
-                  // 使用 MNMath API 处理链接
-                  MNMath.linkParentNote(templateNote);
-                  
-                  // 将选中的卡片移动到新建的模板卡片下
-                  templateNote.addChild(focusNote.note);
-                  
-                  // 调整焦点卡片的颜色（如果需要）
-                  if (focusNoteColorIndex === 4 && newNoteColorIndex === 0) {
-                    focusNote.note.colorIndex = 0; // 变成淡黄色
-                  }
-                  
-                  // 更新焦点卡片的标题和链接关系
-                  let focusTitleInfo = MNMath.parseNoteTitle(focusNote);
-                  if (focusTitleInfo && focusTitleInfo.content) {
-                    // 构建新的焦点卡片标题
-                    let newFocusTitle;
-                    // 从归类创建的情况：简化标题
-                    newFocusTitle = `"${focusTitleInfo.content}"相关${newNoteType}`;
-                    focusNote.note.noteTitle = newFocusTitle;
-                  }
-                  
-                  // 清理和重建链接关系
-                  MNMath.cleanupOldParentLinks(focusNote, templateNote);
+                  // 5. 使用 MNMath API 处理链接关系
+                  MNMath.linkParentNote(newClassificationNote);
                   MNMath.linkParentNote(focusNote);
                   
-                  // 刷新子卡片
-                  focusNote.childNotes.forEach(childNote => {
-                    MNMath.refreshNote(childNote);
-                  });
-                  
-                  // 延时聚焦到新创建的卡片
+                  // 6. 聚焦到新创建的卡片
                   MNUtil.delay(0.8).then(() => {
-                    templateNote.focusInMindMap();
+                    newClassificationNote.focusInMindMap();
                   });
                 });
                 
               } catch (error) {
                 MNUtil.showHUD(`向上增加模板失败: ${error.message || error}`);
-                console.error("向上增加模板错误:", error);
               }
               break;
             case 3:
               // 增加兄弟层级模板
-              type = focusNote.noteTitle.match(/“.+”相关(.*)/)[1]
+              type = MNMath.parseNoteTitle(focusNote).type
               if (type) {
-                // MNUtil.showHUD(type);
-                templateNote = MNNote.clone(this.addTemplateAuxGetNoteIdByType(type))
-                templateNote.note.colorIndex = focusNote.note.colorIndex 
-                templateNote.note.noteTitle = "“" +  userInputTitle + "”相关" + type
+                templateNote = MNNote.clone(MNMath.types["归类"].templateNoteId)
+                templateNote.noteTitle = "“" +  userInputTitle + "”相关" + type
                 MNUtil.undoGrouping(()=>{
-                  focusNote.parentNote.addChild(templateNote.note)
-                  focusNote.parentNote.appendNoteLink(templateNote, "Both")
-                  templateNote.moveComment(templateNote.note.comments.length-1, 1)
+                  focusNote.parentNote.addChild(templateNote)
+                  MNMath.linkParentNote(templateNote);
                 })
                 templateNote.focusInMindMap(0.5)
               }

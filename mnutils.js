@@ -686,35 +686,30 @@ class MNMath {
   static autoGetMoveIndexArr(note) {
     let moveIndexArr = []
     let lastHtmlCommentText = this.parseNoteComments(note).htmlCommentsTextArr.slice(-1)[0] || "";
+    
     if (lastHtmlCommentText) {
+      // 如果有HTML评论，移动HTML评论中的非链接内容
       moveIndexArr = this.getHtmlBlockNonLinkContentIndexArr(note, lastHtmlCommentText);
-        } else {
-      let excerptBlockIndexArr = this.getExcerptBlockIndexArr(note);
+    } else {
+      // 如果没有HTML评论，跳过开头连续的合并图片评论，从第一个非合并图片评论开始移动
+      let firstNonMergedImageIndex = -1;
       
-      if (excerptBlockIndexArr.length === 0) {
-        // 如果没有摘录块，新内容就是所有评论
-        moveIndexArr = Array.from({length: note.MNComments.length}, (_, i) => i);
+      // 从所有评论的开头开始查找第一个非合并图片评论
+      for (let i = 0; i < note.MNComments.length; i++) {
+        let comment = note.MNComments[i];
+        // 检查是否为合并的图片评论类型（包括带绘制和不带绘制的）
+        if (comment.type !== "mergedImageComment" && comment.type !== "mergedImageCommentWithDrawing") {
+          firstNonMergedImageIndex = i;
+          break;
+        }
+      }
+      
+      if (firstNonMergedImageIndex !== -1) {
+        // 从第一个非合并图片评论到所有评论的结尾作为新内容
+        moveIndexArr = Array.from({length: note.MNComments.length - firstNonMergedImageIndex}, (_, i) => i + firstNonMergedImageIndex);
       } else {
-        // 跳过开头连续的合并图片评论，从所有评论中获取新内容
-        let firstNonMergedImageIndex = -1;
-        
-        // 从所有评论的开头开始查找第一个非合并图片评论
-        for (let i = 0; i < note.MNComments.length; i++) {
-          let comment = note.MNComments[i];
-          // 检查是否为合并的图片评论类型（包括带绘制和不带绘制的）
-          if (comment.type !== "mergedImageComment" && comment.type !== "mergedImageCommentWithDrawing") {
-            firstNonMergedImageIndex = i;
-            break;
-          }
-        }
-        
-        if (firstNonMergedImageIndex !== -1) {
-          // 从第一个非合并图片评论到所有评论的结尾作为新内容
-          moveIndexArr = Array.from({length: note.MNComments.length - firstNonMergedImageIndex}, (_, i) => i + firstNonMergedImageIndex);
-        } else {
-          // 如果所有评论都是合并图片评论，则新内容为空
-          moveIndexArr = [];
-        }
+        // 如果所有评论都是合并图片评论，则新内容为空
+        moveIndexArr = [];
       }
     }
 

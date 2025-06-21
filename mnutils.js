@@ -1380,20 +1380,33 @@ class MNMath {
                 // 使用 this API 获取卡片类型 
                 let parsedTitle = this.parseNoteTitle(note)
                 if (parsedTitle && parsedTitle.type) { 
-                  // 如果是归类卡片，获取类型
                   type = parsedTitle.type
                   switch (titlePartArrayLength) {
                     case 1:  // 没有输入 //，正常向下添加
-                    case 2:  // 只有1个//，和不分一样
                       // 创建新的归类卡片
                       let newNote = MNNote.clone(this.types["归类"].templateNoteId)
-                      newNote.note.noteTitle = `“${userInputTitle.replace("//", "")}”相关${type}`
+                      newNote.note.noteTitle = `"${userInputTitle}"相关${type}`
                       MNUtil.undoGrouping(() => {
                         note.addChild(newNote.note)
                         this.linkParentNote(newNote)
                       })
-                      lastNote = newNote
-                      lastNote.focusInMindMap(0.3)
+                      classificationNote = newNote
+                      classificationNote.focusInMindMap(0.3)
+                      break;
+                    case 2:  // 只有1个//，分割为两个卡片
+                      let lastNote
+                      titlePartArray.forEach(title => {
+                        let newClassificationNote = MNNote.clone(this.types["归类"].templateNoteId)
+                        newClassificationNote.note.noteTitle = `“${title}”相关${type}`
+                        MNUtil.undoGrouping(() => {
+                          note.addChild(newClassificationNote.note)
+                          this.linkParentNote(newClassificationNote)
+                        })
+                        note = newClassificationNote
+                        lastNote = newClassificationNote
+                      })
+                      classificationNote = lastNote
+                      classificationNote.focusInMindMap(0.3)
                       break;
                     default: // 大于等于三个部分才需要处理
                       // 把 item1+itemn, item1+itemn-1+itemn, item1+itemn-2+itemn-1+itemn, ... , item1+item2+item3+...+itemn 依次加入数组
@@ -1445,7 +1458,7 @@ class MNMath {
                         case 2:  
                           // 创建新的归类卡片
                           let newNote = MNNote.clone(this.types["归类"].templateNoteId)
-                          newNote.note.noteTitle = `"${userInputTitle.replace("//", "")}"相关${type}`
+                          newNote.note.noteTitle = `“${userInputTitle}”相关${type}`
                           MNUtil.undoGrouping(() => {
                             note.addChild(newNote.note)
                             this.linkParentNote(newNote)
@@ -1472,7 +1485,7 @@ class MNMath {
                           let lastCreatedNote
                           titleArray.forEach(title => {
                             let newClassificationNote = MNNote.clone(this.types["归类"].templateNoteId)
-                            newClassificationNote.note.noteTitle = `"${title}"相关${type}`
+                            newClassificationNote.note.noteTitle = `“${title}”相关${type}`
                             MNUtil.undoGrouping(() => {
                               currentParent.addChild(newClassificationNote.note)
                               this.linkParentNote(newClassificationNote)
@@ -1490,9 +1503,9 @@ class MNMath {
                 MNUtil.showHUD(`连续向下倒序增加模板失败: ${error.message || error}`);
               }
               break;
-            case 1: // 向下增加模板
+            case 1: // 连续向下「顺序」增加模板
               /**
-               * 通过//来分割标题，增加一连串的归类卡片
+               * 通过//来分割标题，增加一连串的归类卡片（顺序，与case2倒序不同）
                * 比如：赋范空间上的有界线性算子//的判定//：充分条件
                * -> 赋范空间上的有界线性算子、赋范空间上的有界线性算子的判定、赋范空间上的有界线性算子的判定：充分条件
                */
@@ -1501,89 +1514,141 @@ class MNMath {
                 let titlePartArrayLength = titlePartArray.length
                 let type
                 let classificationNote
+                
                 if (note.title.isClassificationNoteTitle()) { // 如果选中的是归类卡片
                   // 获取要增加的归类卡片的类型
                   type = note.title.toClassificationNoteTitle()
                   switch (titlePartArrayLength) {
-                    case 1:  // 此时表示没有输入 //，这个时候和正常的向下是一样的效果
-                      classificationNote = note.addClassificationNoteByType(type, userInputTitle.replace("//", ""))
+                    case 1:  // 没有输入 //，正常向下添加
+                      // 创建新的归类卡片
+                      let newNote = MNNote.clone(this.types["归类"].templateNoteId)
+                      newNote.note.noteTitle = `“${userInputTitle}”相关${type}`
+                      MNUtil.undoGrouping(() => {
+                        note.addChild(newNote.note)
+                        this.linkParentNote(newNote)
+                      })
+                      classificationNote = newNote
                       classificationNote.focusInMindMap(0.3)
                       break;
-                    default: // 大于等于三个部分才需要处理
+                    case 2:  // 只有1个//，分割为两个卡片
+                      let lastNote
+                      titlePartArray.forEach(title => {
+                        let newClassificationNote = MNNote.clone(this.types["归类"].templateNoteId)
+                        newClassificationNote.note.noteTitle = `“${title}”相关${type}`
+                        MNUtil.undoGrouping(() => {
+                          note.addChild(newClassificationNote.note)
+                          this.linkParentNote(newClassificationNote)
+                        })
+                        note = newClassificationNote
+                        lastNote = newClassificationNote
+                      })
+                      classificationNote = lastNote
+                      classificationNote.focusInMindMap(0.3)
+                      break;
+                    default: // 大于等于两个部分才需要处理
+                      // 顺序组合：第一个，第一+二个，第一+二+三个...
+                      // 比如 "赋范空间上的有界线性算子//的判定//：充分条件" 得到的 titlePartArray 是
+                      // ["赋范空间上的有界线性算子", "的判定", "：充分条件"]
+                      // 则 titleArray = ["赋范空间上的有界线性算子", "赋范空间上的有界线性算子的判定", "赋范空间上的有界线性算子的判定：充分条件"]
                       let titleArray = []
                       let changedTitlePart = titlePartArray[0];
-
-                      // 生成组合
-                      for (let i = 0 ; i < titlePartArray.length ; i++) {
-                        if  (i > 0) {
-                          changedTitlePart = changedTitlePart + titlePartArray[i]
-                        }
+                      titleArray.push(changedTitlePart) // 添加第一个部分
+                      
+                      // 生成顺序组合
+                      for (let i = 1; i < titlePartArray.length; i++) {
+                        changedTitlePart = changedTitlePart + titlePartArray[i]
                         titleArray.push(changedTitlePart)
                       }
-                      classificationNote = note
+                      
+                      // 依次创建归类卡片
+                      let currentParent = note
+                      let lastCreatedNote
                       titleArray.forEach(title => {
-                        classificationNote = classificationNote.addClassificationNoteByType(type, title)
+                        let newClassificationNote = MNNote.clone(this.types["归类"].templateNoteId)
+                        newClassificationNote.note.noteTitle = `“${title}”相关${type}`
+                        MNUtil.undoGrouping(() => {
+                          currentParent.addChild(newClassificationNote.note)
+                          this.linkParentNote(newClassificationNote)
+                        })
+                        currentParent = newClassificationNote
+                        lastCreatedNote = newClassificationNote
                       })
-                      classificationNote.focusInMindMap(0.3)
+                      lastNote = lastCreatedNote
+                      lastNote.focusInMindMap(0.3)
                       break;
                   }
                 } else {
+                  // 如果不是归类卡片，弹出选择框让用户选择类型
                   UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
                     "增加归类卡片",
                     "选择类型",
                     0,
-                    "写错了",
+                    "取消",
                     ["定义","命题","例子","反例","思想方法","问题"],
                     (alert, buttonIndex) => {
                       if (buttonIndex == 0) { return }
-                      switch (buttonIndex) {
+                      const typeMap = {1: "定义", 2: "命题", 3: "例子", 4: "反例", 5: "思想方法", 6: "问题"}
+                      type = typeMap[buttonIndex]
+                      switch (titlePartArrayLength) {
                         case 1:
-                          type = "定义"
+                          // 创建新的归类卡片
+                          let newNote = MNNote.clone(this.types["归类"].templateNoteId)
+                          newNote.note.noteTitle = `“${userInputTitle}”相关${type}`
+                          MNUtil.undoGrouping(() => {
+                            note.addChild(newNote.note)
+                            this.linkParentNote(newNote)
+                          })
+                          classificationNote = newNote
+                          classificationNote.focusInMindMap(0.3)
                           break;
                         case 2:
-                          type = "命题"
-                          break;
-                        case 3:
-                          type = "例子"
-                          break;
-                        case 4:
-                          type = "反例"
-                          break;
-                        case 4:
-                          type = "思想方法"
-                          break;
-                        case 6:
-                          type = "问题"
-                          break;
-                      }
-                      switch (titlePartArrayLength) {
-                        case 1:  // 此时表示没有输入 //，这个时候和正常的向下是一样的效果
-                        // case 2:  // 此时表示只有 1 个//，这个分隔和不分是一样的
-                          classificationNote = note.addClassificationNoteByType(type, userInputTitle.replace("//", ""))
+                          // 分割为两个卡片
+                          currentParent = note
+                          let lastNote
+                          titlePartArray.forEach(title => {
+                            let newClassificationNote = MNNote.clone(this.types["归类"].templateNoteId)
+                            newClassificationNote.note.noteTitle = `“${title}”相关${type}`
+                            MNUtil.undoGrouping(() => {
+                              currentParent.addChild(newClassificationNote.note)
+                              this.linkParentNote(newClassificationNote)
+                            })
+                            currentParent = newClassificationNote
+                            lastNote = newClassificationNote
+                          })
+                          classificationNote = lastNote
                           classificationNote.focusInMindMap(0.3)
                           break;
                         default: // 大于等于三个部分才需要处理
+                          // 顺序组合逻辑与上面相同
                           let titleArray = []
                           let changedTitlePart = titlePartArray[0];
-    
-                          // 生成组合
-                          for (let i = 0 ; i < titlePartArray.length ; i++) {
-                            if  (i > 0) {
-                              changedTitlePart = changedTitlePart + titlePartArray[i]
-                            }
+                          titleArray.push(changedTitlePart)
+                          
+                          for (let i = 1; i < titlePartArray.length; i++) {
+                            changedTitlePart = changedTitlePart + titlePartArray[i]
                             titleArray.push(changedTitlePart)
                           }
-                          classificationNote = note
+                          
+                          let currentParent = note
+                          let lastCreatedNote
                           titleArray.forEach(title => {
-                            classificationNote = classificationNote.addClassificationNoteByType(type, title)
+                            let newClassificationNote = MNNote.clone(this.types["归类"].templateNoteId)
+                            newClassificationNote.note.noteTitle = `“${title}”相关${type}`
+                            MNUtil.undoGrouping(() => {
+                              currentParent.addChild(newClassificationNote.note)
+                              this.linkParentNote(newClassificationNote)
+                            })
+                            currentParent = newClassificationNote
+                            lastCreatedNote = newClassificationNote
                           })
+                          classificationNote = lastCreatedNote
                           classificationNote.focusInMindMap(0.3)
                           break;
                       }
                     })
                 }
               } catch (error) {
-                MNUtil.showHUD(error);
+                MNUtil.showHUD(`连续向下顺序增加模板失败: ${error.message || error}`);
               }
               break;
           }

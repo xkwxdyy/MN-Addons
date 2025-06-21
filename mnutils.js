@@ -438,7 +438,7 @@ class MNMath {
           case 1:
             break;
           default:
-            moveCommentIndexArr = this.getHtmlCommentExcludingFieldBlockIndexArr(note, htmlCommentsTextArr[buttonIndex-2])
+            moveCommentIndexArr = this.getHtmlCommentExcludingFieldBlockIndexArr(note, htmlCommentsTextArr[buttonIndex-1])
             break;
         }
         UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
@@ -452,7 +452,6 @@ class MNMath {
               try {
                 if (buttonIndexII !== 0) {
                   note.moveCommentsByIndexArr(moveCommentIndexArr, this.getCommentsIndexArrToMoveForPopup(note)[buttonIndexII-1])
-                  MNUtil.showHUD("index" + this.getCommentsIndexArrToMoveForPopup(note)[buttonIndexII-1] + "  text:" + note.comments[this.getCommentsIndexArrToMoveForPopup(note)[buttonIndexII-1]].text)
                 }
               } catch (error) {
                 MNUtil.showHUD(error);

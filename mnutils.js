@@ -32,7 +32,7 @@ class MNMath {
       englishName: 'definition',
       templateNoteId: '78D28C80-C4AC-48D1-A8E0-BF01908F6B60',
       ifIndependent: false,
-      colorIndex: 0,
+      colorIndex: 2,  // 淡蓝色
       fields: [
         "相关思考",
         "相关链接"
@@ -44,7 +44,7 @@ class MNMath {
       englishName: 'proposition',
       templateNoteId: 'DDF06F4F-1371-42B2-94C4-111AE7F56CAB',
       ifIndependent: false,
-      colorIndex: 0,
+      colorIndex: 10, // 深蓝色
       fields: [
         "证明",
         "相关思考",
@@ -59,7 +59,7 @@ class MNMath {
       englishName: 'example',
       templateNoteId: 'DDF06F4F-1371-42B2-94C4-111AE7F56CAB',
       ifIndependent: false,
-      colorIndex: 0,
+      colorIndex: 15,  // 紫色
       fields: [
         "证明",
         "相关思考",
@@ -74,7 +74,7 @@ class MNMath {
       englishName: 'counterexample',
       templateNoteId: '4F85B579-FC0E-4657-B0DE-9557EDEB162A',
       ifIndependent: false,
-      colorIndex: 0,
+      colorIndex: 3,  // 粉色
       fields: [
         "反例",
         "相关思考",
@@ -89,7 +89,7 @@ class MNMath {
       englishName: 'classification',
       templateNoteId: '68CFDCBF-5748-448C-91D0-7CE0D98BFE2C',
       ifIndependent: false,
-      colorIndex: 0,
+      colorIndex: 0,  // 淡黄色
       fields: [
         "所属",
         "相关思考",
@@ -102,7 +102,7 @@ class MNMath {
       englishName: 'thoughtMethod',
       templateNoteId: '38B7FA59-8A23-498D-9954-A389169E5A64',
       ifIndependent: false,
-      colorIndex: 0,
+      colorIndex: 9,  // 深绿色
       fields: [
         "原理",
         "相关思考",
@@ -117,7 +117,7 @@ class MNMath {
       englishName: 'question',
       templateNoteId: 'BED89238-9D63-4150-8EB3-4AAF9179D338',
       ifIndependent: false,
-      colorIndex: 0,
+      colorIndex: 1,  // 淡绿色
       fields: [
         "问题详情",
         "研究脉络",
@@ -133,7 +133,7 @@ class MNMath {
       englishName: 'idea',
       templateNoteId: '6FF1D6DB-3349-4617-9972-FC55BFDCB675',
       ifIndependent: true,
-      colorIndex: 13,
+      colorIndex: 13,  // 淡灰色
       fields: [
         "思路详情",
         "具体尝试",
@@ -148,7 +148,7 @@ class MNMath {
       englishName: 'author',
       templateNoteId: '143B444E-9E4F-4373-B635-EF909248D8BF',
       ifIndependent: false,
-      colorIndex: 0,
+      colorIndex: 2,  // 淡蓝色
       fields: [
         "个人信息",
         "研究进展",
@@ -161,11 +161,41 @@ class MNMath {
       englishName: 'researchProgress',
       templateNoteId: 'C59D8428-68EA-4161-82BE-EA4314C3B5E9',
       ifIndependent: true,
-      colorIndex: 0,
+      colorIndex: 6,  // 蓝色
       fields: [
         "进展详情",
         "相关思考",
         "相关作者",
+        "被引用情况",
+      ]
+    },
+    论文: {
+      refName: '论文',
+      prefixName: '论文',
+      englishName: 'paper',
+      templateNoteId: '032FC61B-37BD-4A90-AE9D-5A946842F49B',
+      ifIndependent: false,
+      colorIndex: 15,  // 紫色
+      fields: [
+        "文献信息",
+        "相关思考",
+        "符号与约定",
+        "参考文献",
+        "被引用情况",
+      ]
+    },
+    书作: {
+      refName: '书作',
+      prefixName: '书作',
+      englishName: 'book',
+      templateNoteId: '032FC61B-37BD-4A90-AE9D-5A946842F49B',
+      ifIndependent: false,
+      colorIndex: 15,  // 紫色
+      fields: [
+        "文献信息",
+        "相关思考",
+        "符号与约定",
+        "参考文献",
         "被引用情况",
       ]
     },
@@ -175,7 +205,7 @@ class MNMath {
       englishName: 'literature',
       templateNoteId: '032FC61B-37BD-4A90-AE9D-5A946842F49B',
       ifIndependent: false,
-      colorIndex: 0,
+      colorIndex: 15,  // 紫色
       fields: [
         "文献信息",
         "相关思考",
@@ -184,6 +214,138 @@ class MNMath {
         "被引用情况",
       ]
     },
+  }
+
+  /**
+   * 制卡
+   */
+  static makeCard(note) {
+    this.renewNote(note) // 处理旧卡片
+    this.mergeTemplateAndAutoMoveNoteContent(note) // 合并模板卡片并自动移动内容
+    this.changeTitle(note) // 修改卡片标题
+    this.changeNoteColor(note) // 修改卡片颜色
+    this.linkParentNote(note) // 链接广义的父卡片（可能是链接归类卡片）
+    this.refreshNotes(note) // 刷新卡片
+  }
+
+  /**
+   * 链接广义的父卡片（可能是链接归类卡片）
+   * 
+   * TODO：删除旧的链接
+   */
+  static linkParentNote(note) {
+    /**
+     * 不处理的类型
+     */
+    let excludingTypes = ["思路"];
+    if (excludingTypes.includes(this.getNoteType(note))) {
+      return; // 不处理
+    }
+
+    let parentNote = note.parentNote
+    if (parentNote) {
+      /**
+       * 先保证有链接
+       */
+      let parentNoteInNoteIndex = this.getNoteIndexInAnotherNote(parentNote, note)
+      let noteInParentNoteIndex = this.getNoteIndexInAnotherNote(note, parentNote)
+      if (parentNoteInNoteIndex == -1) {
+        note.appendNoteLink(parentNote, "To")
+      }
+      if (noteInParentNoteIndex == -1) {
+        parentNote.appendNoteLink(note, "To")
+      }
+      /**
+       * 下面进行链接的移动
+       */
+      let parentNoteInNoteTargetField  // 父卡片在 note 中的链接最终要到的字段
+      let ifParentNoteInNoteTargetFieldToBottom = false // 父卡片在 note 中的链接最终要到的是否是字段的底部
+      let noteInParentNoteTargetField // note 在父卡片中的链接最终要到的字段
+      let ifNoteInParentNoteTargetFieldToBottom = false // note 在父卡片中的链接最终要到的是否是字段的底部
+      switch (this.getNoteType(note)) {
+        case "归类":
+          if (this.getNoteType(parentNote) !== "归类") {
+            switch (this.getNoteType(parentNote)) {
+              case "定义":
+                parentNoteInNoteTargetField = "所属"
+                ifParentNoteInNoteTargetFieldToBottom = false
+                noteInParentNoteTargetField = "相关链接"
+                ifNoteInParentNoteTargetFieldToBottom = true
+                break;
+              default:
+                parentNoteInNoteTargetField = "所属"
+                ifParentNoteInNoteTargetFieldToBottom = false
+                noteInParentNoteTargetField = "相关链接"
+                ifNoteInParentNoteTargetFieldToBottom = true
+                break;
+            }
+          } else {
+            // 父卡片为归类卡片
+            parentNoteInNoteTargetField = "所属"
+            ifParentNoteInNoteTargetFieldToBottom = false
+            noteInParentNoteTargetField = "包含"
+            ifNoteInParentNoteTargetFieldToBottom = true 
+          }
+          break;
+        default:
+          parentNote = this.getFirstClassificationParentNote(note);
+          if (parentNote) {
+            parentNoteInNoteTargetField = "相关链接"
+            ifParentNoteInNoteTargetFieldToBottom = false
+            noteInParentNoteTargetField = "包含"
+            ifNoteInParentNoteTargetFieldToBottom = true 
+          }
+          break;
+      }
+
+      // 最后进行移动
+      this.moveCommentsArrToField(note, [parentNoteInNoteIndex], parentNoteInNoteTargetField, ifParentNoteInNoteTargetFieldToBottom)
+      this.moveCommentsArrToField(parentNote, [noteInParentNoteIndex], noteInParentNoteTargetField, ifNoteInParentNoteTargetFieldToBottom)
+    }
+  }
+
+  /**
+   * 获取一个卡片在另一个卡片中的 index
+   */
+  static getNoteIndexInAnotherNote(note, anotherNote) {
+    return anotherNote.MNComments.findIndex(comment => comment.type === "linkComment" && comment.text === note.noteURL);
+  }
+
+  /**
+   * 刷新卡片
+   */
+  static refreshNote(note) {
+    note.note.appendMarkdownComment("")
+    note.note.removeCommentByIndex(note.note.comments.length-1)
+  }
+  static refreshNotes(note) {
+    if (note.descendantNodes.descendant.length > 0) {
+      note.descendantNodes.descendant.forEach(descendantNote => {
+        this.refreshNote(descendantNote)
+      })
+    }
+    if (note.ancestorNodes.length > 0) {
+      note.ancestorNodes.forEach(ancestorNote => {
+        this.refreshNote(ancestorNote)
+      })
+    }
+  }
+
+  /**
+   * 处理旧卡片
+   */
+  static renewNote(note) {
+    switch (this.getNoteType(note)) {
+      case "归类":
+        /**
+         * 去掉归类卡片的标题中的“xx”：“yy” 里的 xx
+         */
+        let titleParts = this.parseNoteTitle(note);
+        if (/^“[^”]*”：“[^”]*”\s*相关[^“]*$/.test(note.title)) {
+          note.title = `“${titleParts.content}”相关${titleParts.type}`;
+        }
+        break;
+    }
   }
 
   /**
@@ -196,6 +358,134 @@ class MNMath {
 
   static changeClassificationTitle(note, content, type) {
 
+  }
+
+  /**
+   * 修改标题
+   * 
+   * TODO:
+   * []强制修改前缀
+   * []如果有补充内容，则不修改前缀，防止条件内容被清除
+   */
+  static changeTitle(note) {
+    /**
+     * 不在制卡时修改卡片标题的类型
+     * 
+     * 归类：因为取消了以前的“xx”：“yy” 里的 xx，只用链接来考虑所属，所以不需要涉及改变标题
+     */
+    let noteType = this.getNoteType(note)
+    
+    let excludingTypes = ["归类","思路", "作者", "研究进展", "论文", "书作", "文献"];
+    if (!excludingTypes.includes(noteType)) {
+      // 获取归类卡片
+      let classificationNote = this.getFirstClassificationParentNote(note);
+      if (classificationNote) {
+        let classificationNoteTitleParts = this.parseNoteTitle(classificationNote);
+        let prefix = this.createTitlePrefix(classificationNoteTitleParts.type, this.createChildNoteTitlePrefixContent(classificationNote));
+        let noteTitleParts = this.parseNoteTitle(note);
+        // 
+        // 定义类 noteTitleParts.content 前要加 `; `
+        if (noteType === "定义") {
+          note.title = prefix + '; ' + noteTitleParts.content
+        } else {
+          note.title = `${prefix}${noteTitleParts.content}`;
+        }
+      }
+    }
+  }
+
+  /**
+   * 获取第一个归类卡片的父爷卡片
+   */
+  static getFirstClassificationParentNote(note) {
+    let parentNote = note.parentNote;
+    while (parentNote) {
+      if (this.getNoteType(parentNote) === "归类") {
+        return parentNote;
+      }
+      parentNote = parentNote.parentNote;
+    }
+  }
+
+  /**
+   * 【非摘录版本】初始状态合并模板卡片后自动移动卡片的内容
+   */
+  static mergeTemplateAndAutoMoveNoteContent(note) {
+    let moveIndexArr = this.autoGetMoveIndexArr(note);
+    this.mergeTemplate(note)
+
+    let field 
+    switch (this.getNoteType(note)) {
+      case "定义":
+        field = "相关思考"
+        break;
+      case "命题":
+        field = "证明"
+        break;
+      case "反例":
+        field = "反例"
+        break;
+      case "例子":
+        field = "证明"
+        break;
+      case "思想方法":
+        field = "原理"
+        break;
+      case "归类":
+        field = "相关思考"
+        break;
+      case "问题":
+        field = "问题详情"
+        break;
+      case "思路":
+        field = "思路详情"
+        break;
+      case "作者":
+        field = "个人信息"
+        break;
+      case "文献":
+        field = "文献信息"
+        break;
+      case "研究进展":
+        field = "进展详情"
+        break;
+      // case "出版社":
+      //   field = ""
+      //   break;
+      // case "期刊":
+      //   field = ""
+      //   break;
+      // case "":
+      //   field = ""
+      //   break;
+    }
+
+    this.moveCommentsArrToField(note, moveIndexArr, field)
+  }
+
+  /**
+   * 合并模板卡片
+   */
+  static mergeTemplate(note) {
+    // 防止重复制卡：如果里面有 HtmlComment 则不制卡
+    if (!note.MNComments.some(comment => comment.type === "HtmlComment")) {
+      this.cloneAndMergeById(note, this.types[this.getNoteType(note)].templateNoteId);
+    }
+  }
+
+  /**
+   * 修改卡片颜色
+   */
+  static changeNoteColor(note) {
+    note.colorIndex = this.types[this.getNoteType(note)].colorIndex;
+  }
+
+  /**
+   * 克隆并合并
+   */
+  static cloneAndMergeById(note, id){
+    let clonedNote = MNNote.clone(id)
+    note.merge(clonedNote.note)
   }
 
   /**
@@ -310,7 +600,7 @@ class MNMath {
        * 【xx：yy】zz
        * 则根据 xx 作为 prefixName 在 types 搜索类型
        */
-      let match = title.match(/^【(.{2,4})：.*】(.*)/)
+      let match = title.match(/^【(.{2,4})\s*(?:>>|：)\s*.*】(.*)/)
       let matchResult
       if (match) {
         matchResult = match[1].trim();
@@ -318,6 +608,13 @@ class MNMath {
         match = title.match(/^【(.*)】(.*)/)
         if (match) {
           matchResult = match[1].trim();
+        } else {
+          // 从标题判断不了的话，就从卡片的归类卡片来判断
+          let classificationNote = this.getFirstClassificationParentNote(note);
+          if (classificationNote) {
+            let classificationNoteTitleParts = this.parseNoteTitle(classificationNote);
+            matchResult = classificationNoteTitleParts.type;
+          }
         }
       }
       for (let typeKey in this.types) {
@@ -388,6 +685,8 @@ class MNMath {
               titleParts.content = titleParts.content.slice(2).trim();
             }
             titleParts.titleLinkWordsArr = titleParts.content.split(/; /).map(word => word.trim()).filter(word => word.length > 0);
+          } else {
+            titleParts.content = title.trim();
           }
         }
         break;
@@ -409,7 +708,9 @@ class MNMath {
       htmlCommentsObjArr: [],
       htmlCommentsTextArr: [],
       htmlMarkdownCommentsObjArr: [],
-      htmlMarkdownCommentsTextArr: []
+      htmlMarkdownCommentsTextArr: [],
+      linksObjArr: [],
+      linksURLArr: [],
     }
     let comments = note.MNComments
 
@@ -513,6 +814,24 @@ class MNMath {
         commentsObj.htmlMarkdownCommentsTextArr.push(displayText)
       })
     }
+
+
+    /**
+     * 所有的链接（不包含概要）
+     */
+
+    comments.forEach((comment, index) => {
+      if (comment.type === "linkComment") {
+        commentsObj.linksObjArr.push({
+          index: index, // linkComment 所在卡片的评论中的 index
+          link: comment.text, // 具体的 link
+        })
+      }
+    })
+
+    commentsObj.linksObjArr.forEach(linkObj => {
+      commentsObj.linksURLArr.push(linkObj.link)
+    })
 
     return commentsObj
   }
@@ -725,7 +1044,9 @@ class MNMath {
     return commentsIndexArrToMove
   }
 
-
+  /**
+   * 移动评论到指定字段
+   */
   static moveCommentsArrToField(note, indexArr, field, toBottom = true) {
     let getHtmlCommentsTextArrForPopup = this.getHtmlCommentsTextArrForPopup(note);
     let commentsIndexArrToMove = this.getCommentsIndexArrToMoveForPopup(note);
@@ -741,6 +1062,19 @@ class MNMath {
       }
     })
 
+    if (targetIndex === -1) {
+      // 此时要判断是否是最后一个字段，因为最后一个字段没有弄到弹窗里，所以上面的处理排除了最后一个字段
+      let htmlCommentsTextArr = this.parseNoteComments(note).htmlCommentsTextArr;
+      if (htmlCommentsTextArr[htmlCommentsTextArr.length - 1].includes(field)) {
+        if (toBottom) {
+          targetIndex = note.comments.length; // 移动到卡片最底端
+        } else {
+          // 获取最后一个字段的 index
+          let htmlCommentsObjArr = this.parseNoteComments(note).htmlCommentsObjArr;
+          targetIndex = htmlCommentsObjArr[htmlCommentsObjArr.length - 1].index + 1; // 移动到最后一个字段的下方
+        }
+      }
+    }
     let arr = []
     if (targetIndex !== -1) {
       // 如果是字符串就处理为数组

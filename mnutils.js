@@ -1488,7 +1488,7 @@ class MNMath {
                         note.addChild(newNote.note)
                         this.linkParentNote(newNote)
                       })
-                      classificationNote = newNote
+                      let classificationNote = newNote
                       classificationNote.focusInMindMap(0.3)
                       break;
                     case 2:  // 只有1个//，分割为两个卡片

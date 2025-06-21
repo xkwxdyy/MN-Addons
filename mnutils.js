@@ -379,7 +379,9 @@ class MNMath {
   static parseNoteComments(note) {
     let commentsObj = {
       htmlCommentsObjArr: [],
-      htmlCommentsTextArr: []
+      htmlCommentsTextArr: [],
+      htmlMarkdownCommentsObjArr: [],
+      htmlMarkdownCommentsTextArr: []
     }
     let comments = note.MNComments
 
@@ -435,6 +437,54 @@ class MNMath {
       })
     }
 
+    /**
+     * 处理 htmlMarkdownCommentsObjArr
+     */
+    comments.forEach((comment, index) => {
+      let text = comment.text || ""
+      let isHtmlMD = false
+      let hasLeadingDash = false
+      let cleanText = text
+      
+      // 检查是否有前导 "- "
+      if (text.startsWith("- ")) {
+        hasLeadingDash = true
+        cleanText = text.substring(2) // 去掉 "- "
+      }
+      
+      // 检查是否是 HtmlMarkdown 评论
+      if (HtmlMarkdownUtils.isHtmlMDComment(cleanText)) {
+        isHtmlMD = true
+      }
+      
+      if (isHtmlMD) {
+        let type = HtmlMarkdownUtils.getSpanType(cleanText)
+        let content = HtmlMarkdownUtils.getSpanTextContent(cleanText)
+        
+        commentsObj.htmlMarkdownCommentsObjArr.push({
+          index: index, // HtmlMarkdown 评论所在卡片的评论中的 index
+          text: text, // 原始评论文本（包含可能的 "- " 前缀）
+          cleanText: cleanText, // 去掉 "- " 前缀的文本
+          type: type, // 评论的类型（如 'goal', 'level1' 等）
+          content: content, // 评论的纯文本内容（去掉 HTML 标签和图标）
+          hasLeadingDash: hasLeadingDash // 是否有前导 "- "
+        })
+      }
+    })
+
+    /**
+     * 处理 htmlMarkdownCommentsTextArr
+     */
+    if (commentsObj.htmlMarkdownCommentsObjArr.length > 0) {
+      commentsObj.htmlMarkdownCommentsObjArr.forEach(htmlMDComment => {
+        // 创建用于显示的文本，格式：[类型] 内容
+        let displayText = `[${htmlMDComment.type}] ${htmlMDComment.content}`
+        if (htmlMDComment.hasLeadingDash) {
+          displayText = "- " + displayText
+        }
+        commentsObj.htmlMarkdownCommentsTextArr.push(displayText)
+      })
+    }
 
     return commentsObj
   }

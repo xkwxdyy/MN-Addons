@@ -5224,7 +5224,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "addTemplate":
         try {
           MNUtil.undoGrouping(()=>{
-            toolbarUtils.addTemplate(focusNote,focusNoteColorIndex)
+            MNMath.addTemplate(focusNote)
           })
         } catch (error) {
           MNUtil.showHUD(error);

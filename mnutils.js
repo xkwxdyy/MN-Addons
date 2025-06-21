@@ -10594,7 +10594,7 @@ try {
       } else if (toIndex > max) {
         // 此时是往下移动
         for (let i = indexArr.length-1; i >= 0; i--) {
-          this.moveComment(indexArr[i], toIndex-(indexArr.length-1-i))
+          this.moveComment(indexArr[i], toIndex-(indexArr.length-i))
         }
       }
     }

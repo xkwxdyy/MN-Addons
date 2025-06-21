@@ -10294,7 +10294,7 @@ static template(action) {
       ]
       break;
     case "menu_makeCards":
-      config.action = ""
+      config.action = "makeCard"
       config.onLongPress = {
         "action": "menu",
         "menuWidth": 320,

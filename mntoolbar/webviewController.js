@@ -5754,6 +5754,15 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           }
         })
         break;
+      case "makeCard":
+        MNUtil.undoGrouping(()=>{
+          try {
+            MNMath.makeCard(focusNote)
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
       /* 夏大鱼羊定制 - end */
       case "chatAI":
         toolbarUtils.chatAI(des,button)

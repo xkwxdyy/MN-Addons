@@ -923,7 +923,7 @@ class HtmlMarkdownUtils {
   }
 
   /**
-   * 正则匹配获取 span 标签的文本内容（不含 emoji）
+   * 正则匹配获取 span 标签的文本内容（不含 emoji 和前缀）
    */
   static getSpanTextContent(comment) {
     let text
@@ -939,8 +939,15 @@ class HtmlMarkdownUtils {
     const match = text.match(regex);
     if (match && match[1]) {
       text = match[1].trim();
+      // 去掉图标
       Object.values(this.icons).forEach(icon => {
         text = text.replace(icon, '').trim();
+      });
+      // 去掉前缀文本
+      Object.values(this.prefix).forEach(prefix => {
+        if (prefix && text.startsWith(prefix)) {
+          text = text.substring(prefix.length).trim();
+        }
       });
       return text
     } else {

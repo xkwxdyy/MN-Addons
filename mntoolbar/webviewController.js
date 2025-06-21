@@ -5744,6 +5744,15 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
             MNUtil.showHUD(error);
           }
         })
+        break
+      case "changeHtmlMarkdownCommentTypeByPopup":
+        MNUtil.undoGrouping(()=>{
+          try {
+            MNMath.changeHtmlMarkdownCommentTypeByPopup(focusNote)
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
         break;
       /* 夏大鱼羊定制 - end */
       case "chatAI":

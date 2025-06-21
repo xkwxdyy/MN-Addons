@@ -10433,8 +10433,12 @@ static template(action) {
       config.action = "addHtmlMarkdownComment"
       config.onLongPress = {
         "action": "menu",
-        "menuWidth": 280,
+        "menuWidth": 300,
         "menuItems": [
+          {
+            "action": "changeHtmlMarkdownCommentTypeByPopup",
+            "menuTitle": "🔄 修改某条 HtmlMD 评论的类型",
+          },
           {
             "action": "renewContentPointsToHtmlType",
             "menuTitle": '🔄 更新"-": 弹窗选择',

@@ -226,6 +226,7 @@ class MNMath {
     this.changeNoteColor(note) // 修改卡片颜色
     this.linkParentNote(note) // 链接广义的父卡片（可能是链接归类卡片）
     this.refreshNotes(note) // 刷新卡片
+    note.focusInMindMap(0.5)
   }
 
   /**
@@ -556,7 +557,7 @@ class MNMath {
         field = "相关思考"
         break;
       case "问题":
-        field = "问题详情"
+        field = "研究脉络"
         break;
       case "思路":
         field = "具体尝试"

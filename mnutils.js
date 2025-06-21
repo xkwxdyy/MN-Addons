@@ -244,24 +244,15 @@ class MNMath {
 
     let parentNote = note.parentNote
     if (parentNote) {
-      /**
-       * 先保证有链接
-       */
-      let parentNoteInNoteIndex = this.getNoteIndexInAnotherNote(parentNote, note)
-      let noteInParentNoteIndex = this.getNoteIndexInAnotherNote(note, parentNote)
-      if (parentNoteInNoteIndex == -1) {
-        note.appendNoteLink(parentNote, "To")
-      }
-      if (noteInParentNoteIndex == -1) {
-        parentNote.appendNoteLink(note, "To")
-      }
-      /**
-       * 下面进行链接的移动
-       */
+      // 获取卡片类型，确定链接移动的目标字段
       let parentNoteInNoteTargetField  // 父卡片在 note 中的链接最终要到的字段
       let ifParentNoteInNoteTargetFieldToBottom = false // 父卡片在 note 中的链接最终要到的是否是字段的底部
       let noteInParentNoteTargetField // note 在父卡片中的链接最终要到的字段
       let ifNoteInParentNoteTargetFieldToBottom = false // note 在父卡片中的链接最终要到的是否是字段的底部
+      
+      // 用于实际链接操作的父卡片变量
+      let actualParentNote = parentNote
+      
       switch (this.getNoteType(note)) {
         case "归类":
           if (this.getNoteType(parentNote) !== "归类") {
@@ -288,19 +279,46 @@ class MNMath {
           }
           break;
         default:
-          parentNote = this.getFirstClassificationParentNote(note);
-          if (parentNote) {
+          // 对于非归类卡片，使用第一个归类父卡片
+          let classificationParentNote = this.getFirstClassificationParentNote(note);
+          if (classificationParentNote) {
+            actualParentNote = classificationParentNote
             parentNoteInNoteTargetField = "相关链接"
             ifParentNoteInNoteTargetFieldToBottom = false
             noteInParentNoteTargetField = "包含"
             ifNoteInParentNoteTargetFieldToBottom = true 
+          } else {
+            // 如果没有找到归类父卡片，直接返回，不处理
+            return
           }
           break;
       }
 
-      // 最后进行移动
-      this.moveCommentsArrToField(note, [parentNoteInNoteIndex], parentNoteInNoteTargetField, ifParentNoteInNoteTargetFieldToBottom)
-      this.moveCommentsArrToField(parentNote, [noteInParentNoteIndex], noteInParentNoteTargetField, ifNoteInParentNoteTargetFieldToBottom)
+      /**
+       * 先保证有链接（在确定目标字段后再添加链接）
+       */
+      let parentNoteInNoteIndex = this.getNoteIndexInAnotherNote(actualParentNote, note)
+      let noteInParentNoteIndex = this.getNoteIndexInAnotherNote(note, actualParentNote)
+      
+      // 如果没有链接，先添加链接
+      if (parentNoteInNoteIndex == -1) {
+        note.appendNoteLink(actualParentNote, "To")
+        // 重新获取索引（因为添加了链接）
+        parentNoteInNoteIndex = this.getNoteIndexInAnotherNote(actualParentNote, note)
+      }
+      if (noteInParentNoteIndex == -1) {
+        actualParentNote.appendNoteLink(note, "To")
+        // 重新获取索引（因为添加了链接）
+        noteInParentNoteIndex = this.getNoteIndexInAnotherNote(note, actualParentNote)
+      }
+
+      // 最后进行移动（确保索引是最新的）
+      if (parentNoteInNoteIndex !== -1 && parentNoteInNoteTargetField) {
+        this.moveCommentsArrToField(note, [parentNoteInNoteIndex], parentNoteInNoteTargetField, ifParentNoteInNoteTargetFieldToBottom)
+      }
+      if (noteInParentNoteIndex !== -1 && noteInParentNoteTargetField) {
+        this.moveCommentsArrToField(actualParentNote, [noteInParentNoteIndex], noteInParentNoteTargetField, ifNoteInParentNoteTargetFieldToBottom)
+      }
     }
   }
 

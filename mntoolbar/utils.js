@@ -10293,6 +10293,20 @@ static template(action) {
         },
       ]
       break;
+    case "menu_makeCards":
+      config.action = ""
+      config.onLongPress = {
+        "action": "menu",
+        "menuWidth": 320,
+        "menuItems": [
+          "🪄 生成卡片",
+          {
+            "action": "addNewIdeaNote",
+            "menuTitle": "    生成「思路」卡片"
+          }
+        ]
+      }
+      break;
     case "TemplateMakeNotes":
       config.action = "TemplateMakeNotes"
       config.doubleClick = {
@@ -10459,6 +10473,7 @@ static getAction(actionKey){
 
 static getActions() {
   return {
+    "custom15":{name:"制卡",image:"makeCards",description: this.template("menu_makeCards")},
     "custom1":{name:"制卡",image:"makeCards",description: this.template("TemplateMakeNotes")},
     "custom20":{name:"htmlMarkdown 评论",image:"htmlmdcomment",description: this.template("menu_htmlmdcomment")},
     "custom9":{name:"思考",image:"think",description: this.template("menu_think")},

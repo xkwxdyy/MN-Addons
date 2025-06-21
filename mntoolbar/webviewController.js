@@ -2112,7 +2112,8 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "moveNewContentsByPopupTo":  // new
         MNUtil.undoGrouping(()=>{
           try {
-            focusNote.moveCommentsByIndexArrAndButtonTo(focusNote.getNewContentIndexArr(), "移动「新增」评论到", "")
+            // focusNote.moveCommentsByIndexArrAndButtonTo(focusNote.getNewContentIndexArr(), "移动「新增」评论到", "")
+            MNMath.moveCommentsByPopup(focusNote)
           } catch (error) {
             MNUtil.showHUD(error);
           }
@@ -5716,6 +5717,29 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
               focusNote.title = focusNote.title.toNoBracketPrefixContent()
               focusNote.refreshAll()
             })
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
+      case "addNewIdeaNote":
+        MNUtil.undoGrouping(()=>{
+          try {
+            UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+              "输入思路标题",
+              "",
+              2,
+              "取消",
+              ["确定"],
+              (alert, buttonIndex) => {
+                let userInput = alert.textFieldAtIndex(0).text;
+                if (buttonIndex == 1 && userInput) {
+                  MNUtil.undoGrouping(()=>{
+                    MNMath.addNewIdeaNote(focusNote, userInput)
+                  })
+                }
+              }
+            )
           } catch (error) {
             MNUtil.showHUD(error);
           }

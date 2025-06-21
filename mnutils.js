@@ -217,7 +217,7 @@ class MNMath {
   }
 
   /**
-   * 制卡
+   * 制卡（只支持非摘录版本）
    */
   static makeCard(note, reviewEverytime = true) {
     this.renewNote(note) // 处理旧卡片
@@ -229,6 +229,26 @@ class MNMath {
     this.addToReview(note, reviewEverytime) // 加入复习
     MNUtil.undoGrouping(()=>{
       note.focusInMindMap(0.3)
+    })
+  }
+
+  /**
+   * 一键制卡（支持摘录版本）
+   */
+  static makeNote(note) {
+    this.toNoExceptVersion(note)
+    note.focusInMindMap(0.3)             
+    MNUtil.delay(0.3).then(()=>{
+      note = MNNote.getFocusNote()
+      MNUtil.delay(0.3).then(()=>{
+        this.makeCard(note)
+      })
+      MNUtil.delay(0.5).then(()=>{
+        MNUtil.undoGrouping(()=>{
+          this.refresh(note)
+          // this.addToReview(note, true) // 加入复习
+        })
+      })
     })
   }
 
@@ -249,6 +269,32 @@ class MNMath {
       }
     }
   }
+
+  /**
+   * 转化为非摘录版本
+   */
+  static toNoExceptVersion(note){
+    if (note.parentNote) {
+      if (note.excerptText) { // 把摘录内容的检测放到 toNoExceptVersion 的内部
+        let parentNote = note.parentNote
+        let config = {
+          title: note.noteTitle,
+          content: "",
+          markdown: true,
+          color: note.colorIndex
+        }
+        // 创建新兄弟卡片，标题为旧卡片的标题
+        let newNote = parentNote.createChildNote(config)
+        note.noteTitle = ""
+        // 将旧卡片合并到新卡片中
+        note.mergeInto(newNote)
+        newNote.focusInMindMap(0.2)
+      }
+    } else {
+      MNUtil.showHUD("没有父卡片，无法进行非摘录版本的转换！")
+    }
+  }
+
   /**
    * 链接广义的父卡片（可能是链接归类卡片）
    * 
@@ -477,6 +523,7 @@ class MNMath {
    * 处理旧卡片
    */
   static renewNote(note) {
+    this.toNoExceptVersion(note)
     switch (this.getNoteType(note)) {
       case "归类":
         /**
@@ -1207,13 +1254,15 @@ class MNMath {
     if (targetIndex === -1) {
       // 此时要判断是否是最后一个字段，因为最后一个字段没有弄到弹窗里，所以上面的处理排除了最后一个字段
       let htmlCommentsTextArr = this.parseNoteComments(note).htmlCommentsTextArr;
-      if (htmlCommentsTextArr[htmlCommentsTextArr.length - 1].includes(field)) {
-        if (toBottom) {
-          targetIndex = note.comments.length; // 移动到卡片最底端
-        } else {
-          // 获取最后一个字段的 index
-          let htmlCommentsObjArr = this.parseNoteComments(note).htmlCommentsObjArr;
-          targetIndex = htmlCommentsObjArr[htmlCommentsObjArr.length - 1].index + 1; // 移动到最后一个字段的下方
+      if (htmlCommentsTextArr.length>0) {
+        if (htmlCommentsTextArr[htmlCommentsTextArr.length - 1].includes(field)) {
+          if (toBottom) {
+            targetIndex = note.comments.length; // 移动到卡片最底端
+          } else {
+            // 获取最后一个字段的 index
+            let htmlCommentsObjArr = this.parseNoteComments(note).htmlCommentsObjArr;
+            targetIndex = htmlCommentsObjArr[htmlCommentsObjArr.length - 1].index + 1; // 移动到最后一个字段的下方
+          }
         }
       }
     }

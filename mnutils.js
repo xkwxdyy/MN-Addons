@@ -8638,7 +8638,7 @@ try {
       switch (noteType) {
         case "顶层":
           // 绿色的顶层卡片
-          belongHtmlBlockContentIndexArr = this.getHtmlBlockContentIndexArr("所属：")
+          belongHtmlBlockContentIndexArr = this.getHtmlBlockContentIndexArr("所属")
           if (belongHtmlBlockContentIndexArr.length !== 0) {
             // 此时说明有链接，需要先删除
             let oldBelongIndex = belongHtmlBlockContentIndexArr[0]
@@ -8673,9 +8673,9 @@ try {
               // 父卡片链接过来
               if (topestClassificationNoteIndexInThis == -1) {
                 this.appendNoteLink(topestClassificationNote, "To")
-                this.moveComment(this.comments.length-1, this.getHtmlCommentIndex("所属：")+1)
+                this.moveComment(this.comments.length-1, this.getHtmlCommentIndex("所属")+1)
               } else {
-                this.moveComment(topestClassificationNoteIndexInThis, this.getHtmlCommentIndex("所属：")+1)
+                this.moveComment(topestClassificationNoteIndexInThis, this.getHtmlCommentIndex("所属")+1)
               }
             }
           }
@@ -8686,7 +8686,7 @@ try {
            * 然后后续即使已经和定义类卡片链接了，和其他归类卡片链接时，要把链接移动到第一个
            * 这样的话后续更改父卡片时可以进行链接的修改
            */
-          belongHtmlBlockContentIndexArr = this.getHtmlBlockContentIndexArr("所属：")
+          belongHtmlBlockContentIndexArr = this.getHtmlBlockContentIndexArr("所属")
           if (belongHtmlBlockContentIndexArr.length !== 0) {
             // 此时说明有链接，需要先删除
             let oldBelongIndex = belongHtmlBlockContentIndexArr[0]
@@ -8725,9 +8725,9 @@ try {
               // 父卡片链接过来
               if (parentNoteIndexInThis == -1) {
                 this.appendNoteLink(parentNote, "To")
-                this.moveComment(this.comments.length-1, this.getHtmlCommentIndex("所属：")+1)
+                this.moveComment(this.comments.length-1, this.getHtmlCommentIndex("所属")+1)
               } else {
-                this.moveComment(parentNoteIndexInThis, this.getHtmlCommentIndex("所属：")+1)
+                this.moveComment(parentNoteIndexInThis, this.getHtmlCommentIndex("所属")+1)
               }
             }
           }
@@ -9396,7 +9396,7 @@ try {
           switch (this.getNoteTypeZh()) {
             case "顶层":
             case "归类":
-              targetIndex = this.getHtmlCommentIndex("所属：")
+              targetIndex = this.getHtmlCommentIndex("所属")
               break;
             case "定义":
               targetIndex = this.getHtmlCommentIndex("相关概念：")
@@ -9417,7 +9417,7 @@ try {
             switch (this.getNoteTypeZh()) {
               case "顶层":
               case "归类":
-                targetIndex = this.getHtmlCommentIndex("所属：")
+                targetIndex = this.getHtmlCommentIndex("所属")
                 break;
               case "定义":
                 targetIndex = this.getHtmlCommentIndex("相关概念：")
@@ -9547,7 +9547,7 @@ try {
             if (toBottom) {
               targetIndex = this.getHtmlCommentIndex("包含：")
             } else {
-              targetIndex = this.getHtmlCommentIndex("所属：") + 1
+              targetIndex = this.getHtmlCommentIndex("所属") + 1
             }
             this.moveCommentsByIndexArr(indexArr, targetIndex)
             break;
@@ -9555,7 +9555,7 @@ try {
             if (toBottom) {
               targetIndex = this.getHtmlCommentIndex("相关思考：")
             } else {
-              targetIndex = this.getHtmlCommentIndex("所属：") + 1
+              targetIndex = this.getHtmlCommentIndex("所属") + 1
             }
             this.moveCommentsByIndexArr(indexArr, targetIndex)
             break;
@@ -9832,7 +9832,7 @@ try {
     switch (type) {
       case "顶层":
       case "归类":
-        endIndex = this.getHtmlCommentIndex("所属：")
+        endIndex = this.getHtmlCommentIndex("所属")
         break;
       case "定义":
         endIndex = this.getHtmlCommentIndex("相关概念：")
@@ -10232,7 +10232,7 @@ try {
    */
   ifTemplateOldVersion(){
     // let remarkHtmlCommentIndex = this.getHtmlCommentIndex("Remark：")
-    return this.getHtmlCommentIndex("Remark：") !== -1 || (this.getHtmlCommentIndex("所属：") !== -1 && this.getNoteTypeZh()!== "归类" && this.getNoteTypeZh()!== "顶层")
+    return this.getHtmlCommentIndex("Remark：") !== -1 || (this.getHtmlCommentIndex("所属") !== -1 && this.getNoteTypeZh()!== "归类" && this.getNoteTypeZh()!== "顶层")
   }
   ifMadeByOldTemplate(){
     return this.ifTemplateOldVersion()
@@ -10696,7 +10696,7 @@ try {
             this.getCommentIndex("由来/背景：") !== -1 ||
             this.getCommentIndex("- ") !== -1 ||
             this.getCommentIndex("-") !== -1 ||
-            this.getHtmlCommentIndex("所属：") !== -1
+            this.getHtmlCommentIndex("所属") !== -1
           )
         ) {
           this.noteTitle = this.noteTitle.toKnowledgeNoteTitle()
@@ -10715,8 +10715,8 @@ try {
               "四层",
               "五层",
               "由来/背景：",
-              "- 所属：",
-              "所属："
+              "- 所属",
+              "所属"
             ]
           )
         } else {
@@ -10729,7 +10729,7 @@ try {
               "四层",
               "五层",
               "由来/背景：",
-              "- 所属：",
+              "- 所属",
             ]
           )
         }

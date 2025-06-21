@@ -9664,14 +9664,14 @@ static template(action) {
       }
       break;
     case "TemplateMakeNotes":
-      config.action = "TemplateMakeNotes"
       config.doubleClick = {
         "action": "mergeTemplateNotes"
       }
-      config.onLongPress = {
-        "action": "menu",
-        "menuWidth": 320,
-        "menuItems": [
+      config.action = "menu"
+      // config.onLongPress = {
+        // "action": "menu",
+      config.menuWidth= 320,
+      config.menuItems= [
           "⬇️ 合并",
           {
             "action":"upwardMergeWithStyledComments",
@@ -9783,7 +9783,7 @@ static template(action) {
             "menuTitle": "    基于 Markdown 拆卡",
           }
         ]
-      }
+      // }
       break;
     case "menu_htmlmdcomment":
       config.action = "addHtmlMarkdownComment"

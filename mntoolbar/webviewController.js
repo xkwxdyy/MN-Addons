@@ -5766,10 +5766,21 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "makeNote":
         MNUtil.undoGrouping(()=>{
           try {
-            MNMath.makeNote(focusNote)
+            if (toolbarConfig.windowState.preprocess) {
+              MNMath.toNoExceptVersion(focusNote)
+              MNMath.changeTitle(focusNote)
+              focusNote.focusInMindMap(0.2)
+            } else {
+              MNMath.makeNote(focusNote)
+            }
           } catch (error) {
             MNUtil.showHUD(error);
           }
+        })
+        break;
+      case "doubleClickMakeNote":
+        MNUtil.undoGrouping(()=>{
+          MNMath.makeNote(focusNote, false)
         })
         break;
       /* 夏大鱼羊定制 - end */

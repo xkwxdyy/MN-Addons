@@ -219,7 +219,7 @@ class MNMath {
   /**
    * 制卡（只支持非摘录版本）
    */
-  static makeCard(note, reviewEverytime = true) {
+  static makeCard(note, addToReview = true, reviewEverytime = true) {
     this.renewNote(note) // 处理旧卡片
     this.mergeTemplateAndAutoMoveNoteContent(note) // 合并模板卡片并自动移动内容
     this.changeTitle(note) // 修改卡片标题
@@ -227,7 +227,9 @@ class MNMath {
     this.linkParentNote(note) // 链接广义的父卡片（可能是链接归类卡片）
     // this.refreshNote(note) // 刷新卡片
     this.refreshNotes(note) // 刷新卡片
-    this.addToReview(note, reviewEverytime) // 加入复习
+    if (addToReview) {
+      this.addToReview(note, reviewEverytime) // 加入复习
+    }
     MNUtil.undoGrouping(()=>{
       note.focusInMindMap(0.3)
     })
@@ -236,13 +238,13 @@ class MNMath {
   /**
    * 一键制卡（支持摘录版本）
    */
-  static makeNote(note) {
+  static makeNote(note, addToReview = true, reviewEverytime = true) {
     this.toNoExceptVersion(note)
     // note.focusInMindMap(0.3)  // iPad 上会失去焦点      
     MNUtil.delay(0.3).then(()=>{
       note = MNNote.getFocusNote()
       MNUtil.delay(0.3).then(()=>{
-        this.makeCard(note)
+        this.makeCard(note, addToReview, reviewEverytime) // 制卡
       })
       MNUtil.undoGrouping(()=>{
         // this.refreshNote(note)
@@ -1613,9 +1615,11 @@ class MNMath {
                 let type
                 let classificationNote
                 
-                if (note.title.isClassificationNoteTitle()) { // 如果选中的是归类卡片
+                // 使用 parseNoteTitle API 获取卡片类型
+                let parsedTitle = this.parseNoteTitle(note)
+                if (parsedTitle && parsedTitle.type) { 
                   // 获取要增加的归类卡片的类型
-                  type = note.title.toClassificationNoteTitle()
+                  type = parsedTitle.type
                   switch (titlePartArrayLength) {
                     case 1:  // 没有输入 //，正常向下添加
                       // 创建新的归类卡片
@@ -1676,17 +1680,86 @@ class MNMath {
                       break;
                   }
                 } else {
-                  // 如果不是归类卡片，弹出选择框让用户选择类型
-                  UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-                    "增加归类卡片",
-                    "选择类型",
-                    0,
-                    "取消",
-                    ["定义","命题","例子","反例","思想方法","问题"],
-                    (alert, buttonIndex) => {
-                      if (buttonIndex == 0) { return }
-                      const typeMap = {1: "定义", 2: "命题", 3: "例子", 4: "反例", 5: "思想方法", 6: "问题"}
-                      type = typeMap[buttonIndex]
+                  // 如果不是归类卡片，先尝试从原卡片获取类型，否则弹出选择框让用户选择类型
+                  let originalType = this.getNoteType(note)
+                  if (originalType) {
+                    // 如果能获取到原卡片的类型，直接使用
+                    type = originalType
+                    // 继续执行创建归类卡片的逻辑
+                    switch (titlePartArrayLength) {
+                      case 1:
+                        // 创建新的归类卡片
+                        let newNote = MNNote.clone(this.types["归类"].templateNoteId)
+                        newNote.note.noteTitle = `"${userInputTitle}"相关${type}`
+                        MNUtil.undoGrouping(() => {
+                          note.addChild(newNote.note)
+                          this.linkParentNote(newNote)
+                        })
+                        classificationNote = newNote
+                        setTimeout(() => {
+                          classificationNote.focusInMindMap(0.3)
+                        }, 300)
+                        break;
+                      case 2:
+                        // 分割为两个卡片
+                        let currentParent = note
+                        let lastNote
+                        titlePartArray.forEach(title => {
+                          let newClassificationNote = MNNote.clone(this.types["归类"].templateNoteId)
+                          newClassificationNote.note.noteTitle = `"${title}"相关${type}`
+                          MNUtil.undoGrouping(() => {
+                            currentParent.addChild(newClassificationNote.note)
+                            this.linkParentNote(newClassificationNote)
+                          })
+                          currentParent = newClassificationNote
+                          lastNote = newClassificationNote
+                        })
+                        classificationNote = lastNote
+                        setTimeout(() => {
+                          classificationNote.focusInMindMap(0.3)
+                        }, 300)
+                        break;
+                      default: // 大于等于三个部分才需要处理
+                        // 顺序组合逻辑
+                        let titleArray = []
+                        let changedTitlePart = titlePartArray[0];
+                        titleArray.push(changedTitlePart)
+                        
+                        for (let i = 1; i < titlePartArray.length; i++) {
+                          changedTitlePart = changedTitlePart + titlePartArray[i]
+                          titleArray.push(changedTitlePart)
+                        }
+                        
+                        let currentParent2 = note
+                        let lastCreatedNote
+                        titleArray.forEach(title => {
+                          let newClassificationNote = MNNote.clone(this.types["归类"].templateNoteId)
+                          newClassificationNote.note.noteTitle = `"${title}"相关${type}`
+                          MNUtil.undoGrouping(() => {
+                            currentParent2.addChild(newClassificationNote.note)
+                            this.linkParentNote(newClassificationNote)
+                          })
+                          currentParent2 = newClassificationNote
+                          lastCreatedNote = newClassificationNote
+                        })
+                        classificationNote = lastCreatedNote
+                        setTimeout(() => {
+                          classificationNote.focusInMindMap(0.3)
+                        }, 300)
+                        break;
+                    }
+                  } else {
+                    // 如果无法获取原卡片类型，弹出选择框让用户选择类型
+                    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+                      "增加归类卡片",
+                      "选择类型",
+                      0,
+                      "取消",
+                      ["定义","命题","例子","反例","思想方法","问题"],
+                      (alert, buttonIndex) => {
+                        if (buttonIndex == 0) { return }
+                        const typeMap = {1: "定义", 2: "命题", 3: "例子", 4: "反例", 5: "思想方法", 6: "问题"}
+                        type = typeMap[buttonIndex]
                       switch (titlePartArrayLength) {
                         case 1:
                           // 创建新的归类卡片
@@ -1745,6 +1818,7 @@ class MNMath {
                       }
                     })
                 }
+              }
               } catch (error) {
                 MNUtil.showHUD(`连续向下顺序增加模板失败: ${error.message || error}`);
               }

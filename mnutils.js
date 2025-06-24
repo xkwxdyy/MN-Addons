@@ -239,19 +239,24 @@ class MNMath {
    * 一键制卡（支持摘录版本）
    */
   static makeNote(note, addToReview = true, reviewEverytime = true) {
-    let newnote = this.toNoExceptVersion(note)
-    newnote.focusInMindMap(0.5)
-    MNUtil.delay(0.5).then(()=>{
-      note = MNNote.getFocusNote()
+    if (note.excerptText) {
+      let newnote = this.toNoExceptVersion(note)
+      newnote.focusInMindMap(0.5)
       MNUtil.delay(0.5).then(()=>{
-        this.makeCard(note, addToReview, reviewEverytime) // 制卡
+        note = MNNote.getFocusNote()
+        MNUtil.delay(0.5).then(()=>{
+          this.makeCard(note, addToReview, reviewEverytime) // 制卡
+        })
+        MNUtil.undoGrouping(()=>{
+          // this.refreshNote(note)
+          this.refreshNotes(note)
+          // this.addToReview(note, true) // 加入复习
+        })
       })
-      MNUtil.undoGrouping(()=>{
-        // this.refreshNote(note)
-        this.refreshNotes(note)
-        // this.addToReview(note, true) // 加入复习
-      })
-    })
+    } else {
+      this.makeCard(note, addToReview, reviewEverytime) // 制卡
+      this.refreshNotes(note)
+    }
   }
 
   /**

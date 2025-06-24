@@ -239,11 +239,11 @@ class MNMath {
    * 一键制卡（支持摘录版本）
    */
   static makeNote(note, addToReview = true, reviewEverytime = true) {
-    this.toNoExceptVersion(note)
-    // note.focusInMindMap(0.3)  // iPad 上会失去焦点      
-    MNUtil.delay(0.3).then(()=>{
+    let newnote = this.toNoExceptVersion(note)
+    newnote.focusInMindMap(0.5)
+    MNUtil.delay(0.5).then(()=>{
       note = MNNote.getFocusNote()
-      MNUtil.delay(0.3).then(()=>{
+      MNUtil.delay(0.5).then(()=>{
         this.makeCard(note, addToReview, reviewEverytime) // 制卡
       })
       MNUtil.undoGrouping(()=>{
@@ -290,7 +290,10 @@ class MNMath {
         note.noteTitle = ""
         // 将旧卡片合并到新卡片中
         note.mergeInto(newNote)
-        newNote.focusInMindMap(0.2)
+        // newNote.focusInMindMap(0.2)
+        return newNote; // 返回新卡片
+      } else {
+        return note;
       }
     } else {
       MNUtil.showHUD("没有父卡片，无法进行非摘录版本的转换！")

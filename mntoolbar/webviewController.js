@@ -5767,9 +5767,9 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         MNUtil.undoGrouping(()=>{
           try {
             if (toolbarConfig.windowState.preprocess) {
-              MNMath.toNoExceptVersion(focusNote)
-              MNMath.changeTitle(focusNote)
-              focusNote.focusInMindMap(0.2)
+              let newnote = MNMath.toNoExceptVersion(focusNote)
+              MNMath.changeTitle(newnote)
+              newnote.focusInMindMap(0.2)
             } else {
               MNMath.makeNote(focusNote)
             }

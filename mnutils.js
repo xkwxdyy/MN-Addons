@@ -1393,7 +1393,7 @@ class MNMath {
         contentInTitle = titleParts.content
         break;
       default:
-        contentInTitle = titleParts.prefixContent + "｜" + titleParts.content;
+        contentInTitle = titleParts.prefixContent + "｜" + titleParts.titleLinkWordsArr[0];
         break;
     }
     MNUtil.copy(contentInTitle)

@@ -273,6 +273,12 @@ class MNUtil {
     //关闭mn4后再打开，得到的focusWindow会变，所以不能只在init做一遍初始化
     return this.app.focusWindow
   }
+  static get windowWidth(){
+    return this.currentWindow.frame.width
+  }
+  static get windowHeight(){
+    return this.currentWindow.frame.height
+  }
   static get studyController(){
     return this.app.studyController(this.currentWindow)
   }
@@ -495,7 +501,7 @@ class MNUtil {
       return splitLine
     }
   }
-    /**
+  /**
    * Retrieves the version and type of the application.
    * 
    * This method determines the version of the application by parsing the appVersion property.
@@ -590,6 +596,143 @@ class MNUtil {
   static allNotebookIds(){
     return this.db.allNotebooks().map(notebook=>notebook.topicId)
   }
+  static allDocumentNotebooks(option = {}){
+    let exceptNotebookIds = option.exceptNotebookIds ?? []
+    let exceptNotebookNames = option.exceptNotebookNames ?? []
+    let documentNotebooks = this.allNotebooks().filter(notebook=>{
+      let flags = notebook.flags
+      if (flags === 1) {
+        if (exceptNotebookIds.length > 0 || exceptNotebookNames.length > 0) {
+          if (exceptNotebookIds.includes(notebook.topicId)) {
+            return false
+          }
+          if (exceptNotebookNames.includes(notebook.title.trim())) {
+            return false
+          }
+        }
+        return true
+      }
+      return false
+    })
+    return documentNotebooks
+  }
+  static allReviewGroups(option = {}){
+    let exceptNotebookIds = option.exceptNotebookIds ?? []
+    let exceptNotebookNames = option.exceptNotebookNames ?? []
+    let reviewGroups = this.allNotebooks().filter(notebook=>{
+      let flags = notebook.flags
+      if (flags === 3) {
+        if (exceptNotebookIds.length > 0 || exceptNotebookNames.length > 0) {
+          if (exceptNotebookIds.includes(notebook.topicId)) {
+            return false
+          }
+          if (exceptNotebookNames.includes(notebook.title.trim())) {
+            return false
+          }
+        }
+        return true
+      }
+      return false
+    })
+    return reviewGroups
+  }
+  static allStudySets(option = {}){
+  try {
+    let exceptNotebookIds = option.exceptNotebookIds ?? []
+    let exceptNotebookNames = option.exceptNotebookNames ?? []
+    let studySets = this.allNotebooks().filter(notebook=>{
+      let flags = notebook.flags
+      if (flags === 2) {
+        if (exceptNotebookIds.length > 0 || exceptNotebookNames.length > 0) {
+          if (exceptNotebookIds.includes(notebook.topicId)) {
+            return false
+          }
+          if (exceptNotebookNames.includes(notebook.title.trim())) {
+            return false
+          }
+        }
+        return true
+      }
+      return false
+    })
+    return studySets
+    
+  } catch (error) {
+    this.addErrorLog(error, "allStudySets")
+    return []
+  }
+  }
+  /**
+   * 
+   * @param {string|MNNotebook} studySetId 
+   * @returns {MNNote[]}
+   */
+  static notesInStudySet(studySetId = this.currentNotebookId){
+    let allNotes
+    if (typeof studySetId === "string") {
+      allNotes = this.getNoteBookById(studySetId).notes
+    }else{
+      allNotes = studySetId.notes
+    }
+    let filteredNotes = allNotes.filter(note=>!note.docMd5.endsWith("_StudySet"))
+    return filteredNotes
+  }
+  static chatNotesInStudySet(studySetId = MNUtil.currentNotebookId){
+    let allNotes
+    if (typeof studySetId === "string") {
+      allNotes = MNUtil.getNoteBookById(studySetId).notes
+    }else{
+      allNotes = studySetId.notes
+    }
+    return allNotes.filter(note=>note.docMd5.endsWith("_StudySet"))
+  }
+/**
+ * 判断字符串是否包含符合特定语法的搜索内容。
+ * 支持 .AND., .OR. 和括号 ()。
+ *
+ * @param {string} text - 要在其中搜索的完整字符串。
+ * @param {string} query - 基于 .AND. 和 .OR. 语法的搜索查询字符串。
+ * @returns {boolean} - 如果 text 包含符合 query 条件的内容，则返回 true，否则返回 false。
+ */
+static textMatchPhrase(text, query) {
+  // 1. 提取所有独立的搜索关键词。
+  // 通过分割 .AND. .OR. 和括号，然后清理，来获取关键词列表。
+  const terms = query
+    .split(/\s*\.AND\.|\s*\.OR\.|\(|\)/)
+    .map(term => term.trim())
+    .filter(Boolean); // 过滤掉因分割产生的空字符串
+
+  // 按长度降序排序，以防止在替换时，短关键词（如 "TC"）错误地替换了长关键词（如 "TCG"）的一部分。
+  terms.sort((a, b) => b.length - a.length);
+
+  // 辅助函数：用于在最终的表达式中检查单个关键词是否存在（不区分大小写）。
+  const check = (term) => text.toLowerCase().includes(term.toLowerCase());
+
+  // 2. 构建一个标准的 JavaScript 布尔表达式字符串。
+  let jsQuery = query;
+
+  // 将每个关键词替换为一个函数调用。
+  // 例如 "tropical cyclone" -> 'check("tropical cyclone")'
+  terms.forEach(term => {
+    // 使用正则表达式的全局替换，确保所有出现的地方都被替换。
+    // RegExp.escape is not a standard function, so we manually escape special characters.
+    const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    jsQuery = jsQuery.replace(new RegExp(escapedTerm, 'g'), `check("${term}")`);
+  });
+
+  // 将自定义的 .AND. 和 .OR. 替换为 JavaScript 的 && 和 ||。
+  jsQuery = jsQuery.replace(/\s*\.AND\.\s*/g, ' && ').replace(/\s*\.OR\.\s*/g, ' || ');
+
+  // 3. 使用 new Function() 安全地执行构建好的表达式。
+  // 这种方法比 eval() 更安全，因为它在自己的作用域内运行。
+  try {
+    const evaluator = new Function('check', `return ${jsQuery};`);
+    return evaluator(check);
+  } catch (error) {
+    console.error("查询语法无效:", error);
+    return false; // 如果查询语法有误，则返回 false。
+  }
+}
   static allDocuments(){
     return this.db.allDocuments()
   }
@@ -717,9 +860,9 @@ class MNUtil {
    * @param {UIWindow} [window=this.currentWindow] - The window on which the HUD should be displayed.
    */
   static showHUD(message, duration = 2, view = this.currentWindow) {
-    if (this.onWaitHUD) {
-      this.stopHUD(view)
-    }
+    // if (this.onWaitHUD) {
+    //   this.stopHUD(view)
+    // }
     this.app.showHUD(message, view, duration);
   }
   static waitHUD(message, view = this.currentWindow) {
@@ -775,6 +918,47 @@ class MNUtil {
       )
     })
   }
+  static findToc(md5,excludeNotebookId=undefined){
+    let allNotebooks = this.allStudySets({exceptNotebookIds:[excludeNotebookId]}).filter(notebook=>{
+      if (notebook.options && "bookGroupNotes" in notebook.options && notebook.options.bookGroupNotes[md5]) {
+        let target = notebook.options.bookGroupNotes[md5]
+        if ("tocNoteIds" in target) {
+          return true
+        }
+      }
+      return false
+    })
+    if (allNotebooks.length) {
+      let targetNotebook = allNotebooks[0]
+      let target = targetNotebook.options.bookGroupNotes[md5].tocNoteIds
+      let tocNotes = target.map(noteId=>{
+        return MNNote.new(noteId)
+      })
+      return tocNotes
+    }else{
+      return undefined
+    }
+  }
+  /**
+   * 
+   * @param {string} md5 
+   * @param {string} notebookId 
+   * @returns {MNNote[]}
+   */
+  static getDocTocNotes(md5=this.currentDocmd5,notebookId=this.currentNotebookId){
+    let notebook = this.getNoteBookById(notebookId)
+    if (notebook.options && "bookGroupNotes" in notebook.options && notebook.options.bookGroupNotes[md5] && "tocNoteIds" in notebook.options.bookGroupNotes[md5]) {
+      let target = notebook.options.bookGroupNotes[md5]
+      let tocNotes = target.tocNoteIds.map(noteId=>{
+        return MNNote.new(noteId)
+      })
+      // tocNotes[0].focusInDocument()
+      return tocNotes
+    }else{//在其他笔记本中查找
+      return this.findToc(md5,notebookId)
+    }
+
+  }
   /**
    * 自动检测类型并复制
    * @param {string|object|NSData|UIImage} object 
@@ -783,6 +967,15 @@ class MNUtil {
     switch (typeof object) {
       case "string":
         UIPasteboard.generalPasteboard().string = object
+        break;
+      case "undefined":
+        this.showHUD("Undefined")
+        break;
+      case "number":
+        UIPasteboard.generalPasteboard().string = object.toString()
+        break;
+      case "boolean":
+        UIPasteboard.generalPasteboard().string = object.toString()
         break;
       case "object":
         if (object instanceof NSData) {//假设为图片的data
@@ -793,8 +986,54 @@ class MNUtil {
           this.copyImage(object.pngData())
           break;
         }
+        if (object instanceof MNDocument) {
+          let docInfo = {
+            id:object.docMd5,
+            currentNotebookId:object.currentTopicId,
+            title:object.docTitle,
+            pageCount:object.pageCount,
+            path:object.fullPathFileName
+          }
+          this.copy(docInfo)
+          break;
+        }
+        if (object instanceof MNNotebook) {
+          let notebookInfo = {
+            id:object.id,
+            title:object.title,
+            type:object.type,
+            url:object.url,
+            mainDocMd5:object.mainDocMd5
+          }
+          this.copy(notebookInfo)
+          break;
+        }
+        // if (object instanceof MbBookNote) {
+        //   let noteInfo = {
+        //     noteId:object.noteId,
+        //     noteTitle:object.noteTitle,
+        //     excerptText:object.excerptText,
+        //     docMd5:object.docMd5,
+        //     notebookId:object.notebookId,
+        //     comments:object.comments
+        //   }
+        //   this.copy(noteInfo)
+        //   break;
+        // }
         if (object instanceof MNNote) {
-          this.copy(object.noteId)
+          let noteInfo = {
+            noteId:object.noteId,
+            title:object.title,
+            excerptText:object.excerptText,
+            docMd5:object.docMd5,
+            notebookId:object.notebookId,
+            noteURL:object.noteURL,
+            MNComments:object.MNComments
+          }
+          if (object.tags && object.tags.length > 0) {
+            noteInfo.tags = object.tags
+          }
+          this.copy(noteInfo)
           break;
         }
         if (object instanceof Error) {
@@ -836,24 +1075,30 @@ class MNUtil {
   static openURL(url){
     this.app.openURL(NSURL.URLWithString(url));
   }
+  /**
+   * 
+   * @param {string|MNNotebook|MbTopic} notebook 
+   * @param {boolean} needConfirm 
+   */
   static async openNotebook(notebook, needConfirm = false){
-    if (!notebook) {
+    let targetNotebook = MNNotebook.new(notebook)
+    if (!targetNotebook) {
       this.showHUD("No notebook")
       return
     }
-    if (notebook.topicId == this.currentNotebookId) {
+    if (targetNotebook.id == this.currentNotebookId) {
       MNUtil.refreshAfterDBChanged()
       // this.showHUD("Already in current notebook")
       return
     }
     if (needConfirm) {
-      let confirm = await MNUtil.confirm("是否打开学习集？", notebook.title)
+      let confirm = await MNUtil.confirm("是否打开学习集？", targetNotebook.title)
       MNUtil.refreshAfterDBChanged()
       if (confirm) {
-        MNUtil.openURL("marginnote4app://notebook/"+notebook.topicId)
+        MNUtil.openURL("marginnote4app://notebook/"+targetNotebook.id)
       }
     }else{
-      MNUtil.openURL("marginnote4app://notebook/"+notebook.topicId)
+      MNUtil.openURL("marginnote4app://notebook/"+targetNotebook.id)
     }
   }
   /**
@@ -907,6 +1152,18 @@ class MNUtil {
       targetNoteId = targetNoteId.slice(22)
     }
     return targetNoteId
+  }
+  /**
+   *
+   * @param {String} url
+   * @returns {String}
+   */
+  static getNotebookIdByURL(url) {
+    let targetNotebookId = url.trim()
+    if (/^marginnote\dapp:\/\/notebook\//.test(targetNotebookId)) {
+      targetNotebookId = targetNotebookId.slice(22)
+    }
+    return targetNotebookId
   }
   /**
    * 
@@ -1621,6 +1878,9 @@ try {
       if (/^marginnote\dapp:\/\/note\//.test(object.trim())) {
         return "NoteURL"
       }
+      if (/^marginnote\dapp:\/\/notebook\//.test(object.trim())) {
+        return "NotebookURL"
+      }
       if (/^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/.test(object.trim())) {
         return "NoteId"
       }
@@ -1628,6 +1888,9 @@ try {
     }
     if (object instanceof MNNote) {
       return "MNNote"
+    }
+    if (object instanceof MNNotebook) {
+      return "MNNotebook"
     }
     if (object instanceof NSData) {
       return "NSData"
@@ -3468,6 +3731,424 @@ class MNButton{
 
 }
 
+class MNDocument{
+  /** @type {MbBook} */
+  document
+  /**
+   * 
+   * @param {MbBook|string} document 
+   */
+  constructor(document){
+    if (typeof document === "string") {
+      this.document = MNUtil.getDocById(document)
+    }else{
+      this.document = document
+    }
+  }
+  static new(document){
+    return new MNDocument(document)
+  }
+  static get currentDocument() {
+    return MNDocument.new(MNUtil.currentDocmd5)
+  }
+  get docMd5(){
+    return this.document.docMd5
+  }
+  get id(){
+    return this.document.docMd5
+  }
+  get docTitle(){
+    return this.document.docTitle
+  }
+  get title(){
+    return this.document.docTitle
+  }
+  get pageCount(){
+    return this.document.pageCount
+  }
+
+  get fullPathFileName(){
+    return this.document.fullPathFileName
+  }
+  get path(){
+    return this.document.fullPathFileName
+  }
+  get lastVisit(){
+    return this.document.lastVisit
+  }
+  get currentTopicId(){
+    return this.document.currentTopicId
+  }
+  get currentNotebookId(){
+    return this.document.currentTopicId
+  }
+  get currentNotebook(){
+    return MNNotebook.new(this.document.currentTopicId)
+  }
+  textContentsForPageNo(pageNo){
+    return this.document.textContentsForPageNo(pageNo)
+  }
+  open(notebookId){
+    MNUtil.openDoc(this.docMd5,notebookId)
+  }
+  get tocNotes(){
+    return MNUtil.findToc(this.docMd5)
+  }
+
+  get documentNotebooks(){
+    let allDocumentNotebooks = MNUtil.allDocumentNotebooks()
+    return allDocumentNotebooks.filter(notebook=>notebook.mainDocMd5 === this.docMd5).map(notebook=>MNNotebook.new(notebook))
+  }
+  get studySets(){
+    let allStudySets = MNUtil.allStudySets()
+    return allStudySets.filter(notebook=>notebook.documents.some(doc=>doc.docMd5 === this.docMd5)).map(notebook=>MNNotebook.new(notebook))
+  }
+  documentNotebookInStudySet(notebookId = MNUtil.currentNotebookId){
+    let notebook = MNNotebook.new(notebookId)
+    if (notebook.type === "studySet") {//仅在学习集中可用
+      let options = notebook.options
+      if (options && options.bookGroupNotes) {
+        let bookGroupNotes = options.bookGroupNotes
+        if (this.docMd5 in bookGroupNotes) {
+          return MNNotebook.new(bookGroupNotes[this.docMd5].notebookId)
+        }
+      }
+    }
+    if (notebook.type === "documentNotebook") {
+      return notebook
+    }
+    return undefined
+  }
+  notesInDocumentInStudySet(notebookId = MNUtil.currentNotebookId){
+    let notebook = this.documentNotebookInStudySet(notebookId)
+    return notebook.notes
+  }
+  // associatedTopicsInNotebook(notebookId = MNUtil.currentNotebookId){
+  //   let notebook = MNNotebook.new(notebookId)
+  //   let options = notebook.options
+  //   if (options && options.associatedTopics) {
+  //     let associatedTopics = options.associatedTopics
+  //     if (this.docMd5 in associatedTopics) {
+  //       return associatedTopics[this.docMd5].map(topicId=>MNNotebook.new(topicId))
+  //     }
+  //   }
+  //   return []
+  // }
+  mainNoteInNotebook(notebookId = MNUtil.currentNotebookId){
+    let notebook = MNNotebook.new(notebookId)
+    if (notebook.type === "studySet") {
+      return notebook.mainNoteForDoc(this.docMd5)
+    }
+    return undefined
+  }
+  // get reviewGroups(){
+  //   let allReviewGroups = MNUtil.allReviewGroups()
+  //   return allReviewGroups.filter(notebook=>notebook.mainDocMd5 === this.docMd5).map(notebook=>MNNotebook.new(notebook))
+  // }
+  copy(){
+    let docInfo = {
+      id:this.docMd5,
+      currentNotebookId:this.currentTopicId,
+      title:this.docTitle,
+      pageCount:this.pageCount,
+      path:this.fullPathFileName
+    }
+    MNUtil.copy(docInfo)
+  }
+}
+class MNNotebook{
+  /** @type {MbTopic} */
+  notebook
+  /**
+   * 
+   * @param {MbTopic|string} notebook 
+   */
+  constructor(notebook){
+    switch (MNUtil.typeOf(notebook)) {
+      case "NotebookURL":
+        this.notebook = MNUtil.getNoteBookById(MNUtil.getNotebookIdByURL(notebook))
+        break;
+      case "NoteId":
+        this.notebook = MNUtil.getNoteBookById(notebook)
+        break;
+      default:
+        this.notebook = notebook
+        break;
+    }
+  }
+  /**
+   * 
+   * @param {MbTopic} notebook 
+   * @returns {MNNotebook}
+   */
+  static new(notebook){
+    switch (MNUtil.typeOf(notebook)) {
+      case "MNNotebook":
+        return notebook
+      case "NoteId":
+        let temNotebook = MNUtil.getNoteBookById(notebook)
+        if (temNotebook) {
+          return new MNNotebook(temNotebook)
+        }else{
+          if (MNUtil.getNoteById(notebook,false)) {
+            let note = MNUtil.getNoteById(notebook)
+            return new MNNotebook(note.notebookId)
+          }
+        }
+        return undefined
+      default:
+        break
+    }
+    if (notebook.topicId) {
+      return new MNNotebook(notebook)
+    }
+    return undefined
+  }
+  static get currentNotebook() {
+    return MNNotebook.new(MNUtil.currentNotebookId)
+  }
+  static allNotebooks(){
+    return MNUtil.allNotebooks().map(notebook=>MNNotebook.new(notebook))
+  }
+  static allNotebookIds(){
+    return MNUtil.allNotebookIds()
+  }
+  static allDocumentNotebooks(option = {}){
+    let documentNotebooks = MNUtil.allDocumentNotebooks(option)
+    return documentNotebooks.map(notebook=>MNNotebook.new(notebook))
+  }
+  static allReviewGroups(option = {}){
+    let reviewGroups = MNUtil.allReviewGroups(option)
+    return reviewGroups.map(notebook=>MNNotebook.new(notebook))
+  }
+  static allStudySets(option = {}){
+  try {
+    let exceptNotebookIds = option.exceptNotebookIds ?? []
+    let exceptNotebookNames = option.exceptNotebookNames ?? []
+    let studySets = this.allNotebooks().filter(notebook=>{
+      let flags = notebook.flags
+      if (flags === 2) {
+        if (exceptNotebookIds.length > 0 || exceptNotebookNames.length > 0) {
+          if (exceptNotebookIds.includes(notebook.topicId)) {
+            return false
+          }
+          if (exceptNotebookNames.includes(notebook.title.trim())) {
+            return false
+          }
+        }
+        return true
+      }
+      return false
+    })
+    return studySets
+    
+  } catch (error) {
+    this.addErrorLog(error, "allStudySets")
+    return []
+  }
+  }
+  get notebookId(){
+    return this.notebook.topicId
+  }
+  get topicId(){
+    return this.notebook.topicId
+  }
+  get id(){
+    return this.notebook.topicId
+  }
+  get title(){
+    return this.notebook.title
+  }
+  get flags(){
+    return this.notebook.flags
+  }
+  /**
+   * 
+   * @returns {"documentNotebook"|"studySet"|"reviewGroup"|"unknown"}
+   */
+  get type(){
+    switch (this.notebook.flags) {
+      case 1:
+        return "documentNotebook"
+      case 2:
+        return "studySet"
+      case 3:
+        return "reviewGroup"
+      default:
+        return "unknown"
+    }
+  }
+  get url(){
+    return "marginnote4app://notebook/"+this.notebook.topicId
+  }
+  get mainDocMd5(){
+    return this.notebook.mainDocMd5
+  }
+  get mainDoc(){
+    return MNUtil.getDocById(this.notebook.mainDocMd5)
+  }
+  /**
+   * 
+   * @returns {MNNote[]}
+   */
+  get notes(){
+    if (this.type === "studySet") {
+      return this.notebook.notes.filter(note=>!note.docMd5.endsWith("_StudySet")).map(note=>MNNote.new(note))
+    }
+    return this.notebook.notes?.map(note=>MNNote.new(note)) ?? []
+  }
+  /**
+   * 
+   * @returns {MbBook[]}
+   */
+  get documents(){
+    return this.notebook.documents
+  }
+  /**
+   * 
+   * @returns {MbBook[]}
+   */
+  get documentIds(){
+    return this.notebook.docList?.split("|")
+  }
+  /**
+   * 
+   * @returns {DictObj}
+   */
+  get options(){
+    return this.notebook.options
+  }
+  /**
+   * 
+   * @returns {string}
+   */
+  get hashtags(){
+    return this.notebook.hashtags
+  }
+  /**
+   * 
+   * @returns {string[]}
+   */
+  get tags(){
+    return this.notebook.hashtags?.split("#")?.filter(k=>k.trim()) ?? []
+  }
+  /**
+   * 
+   * @param {boolean} hide 
+   */
+  set hideLinksInMindMapNode(hide){
+    this.notebook.hideLinksInMindMapNode = hide
+  }
+  /**
+   * 
+   * @returns {boolean}
+   */
+  get hideLinksInMindMapNode(){
+    return this.notebook.hideLinksInMindMapNode
+  }
+  /**
+   * 
+   * @returns {MNNotebook|undefined}
+   */
+  get reviewGroup(){
+    let options = this.notebook.options
+    if (options && options.reviewTopic) {
+      return MNNotebook.new(options.reviewTopic)
+    }
+    return undefined
+  }
+  /**
+   * 
+   * @returns {MbBook[]}
+   */
+  get tabDocuments(){
+    let options = this.notebook.options
+    if (options) {
+      let md5List = options.tabMd5Lst.split("|")
+      return md5List.map(md5=>MNUtil.getDocById(md5))
+    }
+    return []
+  }
+  /**
+   * 
+   * @returns {MNNote|undefined}
+   */
+  get focusedChat(){
+    let options = this.notebook.options
+    if (options && options.FocusChatId) {
+      return MNNote.new(options.FocusChatId)
+    }
+    return undefined
+  }
+  /**
+   * 
+   * @param {string} docMd5 
+   * @returns {MNNotebook[]|undefined}
+   */
+  notebooksForDoc(docMd5 = MNUtil.currentDocmd5){
+    let options = this.notebook.options
+    if (options && options.associatedTopics) {
+      let associatedTopics = options.associatedTopics
+      if (docMd5 in associatedTopics) {
+        let topicIds = associatedTopics[docMd5]
+        if (topicIds.length) {
+          return topicIds.map(topicId=>MNNotebook.new(topicId))
+        }
+      }
+    }
+    return undefined
+  }
+  /**
+   * 
+   * @param {string} docMd5 
+   * @returns {MNNote|undefined}
+   */
+  mainNoteForDoc(docMd5 = MNUtil.currentDocmd5){
+    let options = this.notebook.options
+    if (options && options.bookGroupNotes) {
+      let bookGroupNotes = options.bookGroupNotes
+      if (docMd5 in bookGroupNotes) {
+        return MNNote.new(bookGroupNotes[docMd5].noteid)
+      }
+      return undefined
+    }
+    return undefined
+  }
+
+  tocNotesForDoc(docMd5 = MNUtil.currentDocmd5){
+    let options = this.notebook.options
+    if (options && options.bookGroupNotes) {
+      let bookGroupNotes = options.bookGroupNotes
+      if (docMd5 in bookGroupNotes) {
+        let tocNoteIds = bookGroupNotes[docMd5].tocNoteIds
+        if (tocNoteIds) {
+          return tocNoteIds.map(noteId=>MNNote.new(noteId))
+        }
+      }
+    }
+    return []
+  }
+  open(){
+    MNUtil.openNotebook(this.id)
+  }
+  openDoc(docMd5){
+    MNUtil.openDoc(docMd5,this.id)
+  }
+  importDoc(){
+    MNUtil.importPDFFromFileAndOpen(this.id)
+  }
+  copy(){
+    let notebookInfo = {
+      id:this.id,
+      title:this.title,
+      type:this.type,
+      url:this.url,
+      mainDocMd5:this.mainDocMd5
+    }
+    MNUtil.copy(notebookInfo)
+  }
+}
+
 class MNNote{
   /** @type {MbBookNote} */
   note
@@ -3612,6 +4293,9 @@ class MNNote{
   get notebookId() {
     return this.note.notebookId
   }
+  get notebook(){
+    return MNNotebook.new(this.notebookId)
+  }
   /**
    * 文档摘录和它在脑图对应的卡片具有不同的id,通过originNoteId可以获得文档摘录的id
    * 
@@ -3680,6 +4364,16 @@ class MNNote{
    * @returns {string} The URL of the current note.
    */
   get noteURL(){
+    return MNUtil.version.version+'app://note/'+this.note.noteId
+  }
+  /**
+   * Retrieves the URL of the current note.
+   * 
+   * This method generates and returns the URL of the current note, which can be used to reference or share the note.
+   * 
+   * @returns {string} The URL of the current note.
+   */
+  get url(){
     return MNUtil.version.version+'app://note/'+this.note.noteId
   }
   /**
@@ -4130,6 +4824,27 @@ class MNNote{
     }
     return undefined
   }
+  get document(){
+    return MNDocument.new(this.note.docMd5)
+  }
+  open(){
+    MNUtil.openURL(this.noteURL)
+  }
+  copy(){
+    let noteInfo = {
+      id:this.noteId,
+      title:this.title,
+      excerptText:this.excerptText,
+      docMd5:this.docMd5,
+      notebookId:this.notebookId,
+      noteURL:this.noteURL,
+      MNComments:this.MNComments
+    }
+    if (this.tags && this.tags.length > 0) {
+      noteInfo.tags = this.tags
+    }
+    MNUtil.copy(noteInfo)
+  }
   config(opt={first:true}){
     return MNUtil.getNoteObject(this,opt)
   }
@@ -4158,6 +4873,11 @@ class MNNote{
   processMarkdownBase64Images(){
     this.note.processMarkdownBase64Images();
   }
+  /**
+   * 包括标题，正文，和评论内容
+   * 不包括链接和标签
+   * @returns {string}
+   */
   allNoteText(){
     return this.note.allNoteText()
   }

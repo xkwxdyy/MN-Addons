@@ -3028,3 +3028,775 @@ String.prototype.toTitleCasePro = function () {
 /**
  * 夏大鱼羊 - 字符串函数 - end
  */
+
+/**
+ * 夏大鱼羊 - MNUtil prototype 扩展 - begin
+ */
+
+/**
+ * 根据 md5 获取学习规划学习集对应的卡片 ID
+ */
+MNUtil.getNoteIdByMd5InPlanNotebook = function(md5){
+  let md5IdPair = {
+    // 刘培德《泛函分析基础》
+    "fccc394d73fd738b364d33e1373a4a7493fafea8c024f3712f63db882e79a1cd":"35B90CB6-5BCC-4AA4-AE24-C6B4CBCB9666",
+    // Jan van Neerven《Functional analysis》
+    "3e68d9f7755163f5aacd5d337bdd7a0b6bd70d0727f721778d24d114010e6d7a":"96F569A4-2B2E-4B8D-B789-56ACE09AA2F1",
+    // Conway《A course in Functional Analysis》
+    "88603c9aa7b3c7605d84c08e0e17527f8ae7de0a323c666a0331cc8e7b616eab":"0B8E664B-BB42-431A-8516-C4CA4CF36F94",
+    // 王凯 《泛函分析》
+    "cb15d5b4e55227a3373bde1dd6f1295b21b561dbec231c91edad50186991fd7d":"C0ED1035-ED3E-4051-A1F6-EDE95CE35370",
+    // Rudin 泛函分析
+    "34c59a3b8af79bb95139756fb2d7c9c115fe8a7c79d4939100558b8bc7420e53":"8F938A8F-58DA-452D-9DE9-905DC77ABF04",
+    // Folland 实分析
+    "5bb47aff3b50e7ec12b0ffc3de8e13a7acb4aa11caffa52c29f9f8a5c9b970d5":"02E775DE-1CA6-4D72-A42C-45ED03FD1251",
+    // Rudin - 实分析与复分析
+    "f45e28950cadc7d1b9d29cd2763b9b6a969c8f38b45efb8cc2ee302115c5e8b4":"9CB204AD-C640-4F97-B62F-E47E2D659C25",
+    // 赵焕光 - 现代分析入门
+    "34f67c3a452118b6f274b8c063b85b0544a5d272081c7fdc1be27b9575b8a6f1":"C877F723-7FA3-4D95-9C87-9C036687782A",
+    // 陆善镇 王昆扬 - 实分析
+    "0bb3627b57dc95b4f4d682c71df34b3df01676b9a6819a1c5928c5ce7cb6cb25":"B73922E2-7036-40FE-BC5D-8F4713616C62",
+    // 楼红卫《数学分析》
+    "320ec3909f6cbd91445a7e76c98a105f50998370f5856be716f704328c11263f":"AA1B5A69-B17E-4B5C-9702-06F3C647C40E",
+    // 李工宝《A first course in real analysis》
+    "d2ec247e78e7517a2fb158e074a90e0bc53c84a57f2777eaa490af57fafd9438":"2D247A3C-559A-473A-83FE-C2A9BD09A74F",
+    // MIRA
+    "7c8f458cf3064fa1daa215ded76980c9aea8624097dbdcf90cca5bb893627621":"198E8FF1-4AAE-42CE-9C0A-1B6A6395804A",
+    // 朱克和 《Operator Theory in Function Spaces》
+    "6a248b6b116e03153af7204b612f93c12a4700ff3de3b3903bb0bcd84e2f6b09":"B32D4EFD-AAF9-44C7-8FDB-E92560F1171F",
+    // 郭坤宇《算子理论基础》
+    "659a6778d0732985b91d72961591a62c21d2d1bfcbd8e78464cc9a9aa6434cf1":"C04668B1-D77A-4495-8972-F028D9F90BFC",
+    // 蹇人宜 安恒斌 《解析函数空间上的算子理论导引》
+    "495ff8e34c20c10fe1244a7b36272e1b8ef8b6c0b92e01793ef2e377bfb90d72":"D35871E8-9F3B-4B95-AD73-48A6DDF27DC4",
+    // The Theory of H(b) Spaces
+    "d86e2e385d353492d9796caacac6353d75351c76968e613539efcaab3f58c8c1":"60F4D62D-D958-4CC7-BD59-511EE1E4312B",
+    // Hoffman - Banach Spaces of Analytic Functions
+    "f2ecc0f4f97eb3907e00746b964ae62a9f378e2cb05f1811aa7b37bce656c025":"CF750547-4BE6-4ABF-BB16-EE6D9321F73F",
+    // Garnett - 有界解析函数
+    "3ec7c103d58eb81e3c4d46022b5736c34d137c905b31053f69fe14ecf8da3606":"15E27BF9-EE52-4C2D-A5FE-0F16C9BC9148",
+    // GTM249
+    "cda554d017af672e87d4261c0463e41893bcb0cf50cb3f2042afaef749297482":"04E7DD41-1DE4-485E-9791-15F7DC067A46",
+    // Stein - Harmonic Analysis: Real-Variable Methods, Orthogonality, and Oscillatory Integrals
+    "4dc6b7188781ebad8c25ad5e9d7635c040ae4a08ddcd196fe2e6e716704851c2":"2E550C5B-88DD-408E-B246-39B293A5910F",
+    // 郝成春 - 调和分析讲义
+    "3805c33987e654ff07ca9ce68cdddeaff965ad544625faaf14c3799e13996ade":"1F47692A-81D2-4890-9E56-0C084D2B622D",
+    // 谢启鸿《高等代数》
+    "32dc18e2e7696064b8da9b14af56dfb54e41b8f08044f2ef00aa21f94885fc08":"8CAA1FAE-2A69-4CBE-A1F0-A02FB1C95C3C",
+    // Krantz - 复变
+    "74f3f034fe67fd4573b33f7c978bb06c2642b892c4b237f2efe9256359935e6e":"1B38D33E-77B7-4391-88F2-2FE3126D6FC4",
+    "06c41fa919b0ec928c31f53e2301f4c9cc9ce1d820dcd5a1750db7144fb8caae":"1B38D33E-77B7-4391-88F2-2FE3126D6FC4",
+    // A first course in complex analysis with applications
+    "4f1fd75b664e8f7c8ee171ba2db11532fd34a3b010edad93fb5b0518243c164a":"7066180E-2430-4A3E-9241-135538474D86",
+    // 邱维元 - 复分析讲义
+    "886469e3d70342159bb554cdaee604fa5a6018e84b6ff04bbb35f69ea764a757":"1BD3CD6C-BDEE-4078-9DF3-BB5C45351356",
+    // 方企勤 - 复变函数
+    "e107e1772dbb53288a9d1c38781d3c77043ee40b68818a16f64c0e8480ed7c7e":"2FDA8616-2BE5-4253-BEE5-FA795AD37999"
+  }
+
+  return md5IdPair[md5]
+}
+
+/**
+ * 根据名称获取 notebookid
+ */
+MNUtil.getNoteBookIdByName = function(name){
+  let notebookId
+  switch (name) {
+    case "数学":
+    case "数学基础":
+      notebookId = "D03C8B94-77CF-46E6-8AAB-CB129EDBCFBC"
+      break;
+    case "数学分析":
+    case "数分":
+      notebookId = "922D2CDF-07CF-4A88-99BA-7AAC60E3C517"
+      break;
+    case "高等代数":
+    case "高代":
+      notebookId = "6E84B815-7BB6-42B0-AE2B-4057279EA163"
+      break;
+    case "实分析":
+    case "实变函数":
+    case "调和分析":
+    case "实变":
+    case "调和":
+    case "实分析与调和分析":
+    case "调和分析与实分析":
+      notebookId = "B051BAC2-576D-4C18-B89E-B65C0E576C7F"
+      break;
+    case "复分析":
+    case "复变函数":
+    case "复变":
+      notebookId = "EAB02DA9-D467-4D7D-B6BA-9244FC326299"
+      break;
+    case "泛函分析":
+    case "泛函":
+    case "泛函分析与算子理论":
+    case "算子理论":
+      notebookId = "98F4FA11-39D3-41A8-845A-F74E2197E111"
+      break;
+    case "学习规划":
+    case "学习安排":
+    case "Inbox":
+    case "学习汇总":
+    case "学习集结":
+    case "规划":
+    case "安排":
+    case "inbox":
+    case "汇总":
+    case "集结":
+      notebookId = "A07420C1-661A-4C7D-BA06-C7035C18DA74"
+      break;
+  }
+
+  return notebookId.toNoteBookId()
+}
+
+/**
+ * 获取学习集里的 inbox 部分的三个顶层的卡片 id
+ */
+MNUtil.getWorkFlowObjByNoteBookId = function(notebookId){
+  let workflow = {}
+  switch (notebookId.toNoteBookId()) {
+    case "marginnote4app://notebook/A07420C1-661A-4C7D-BA06-C7035C18DA74":  // 学习规划 
+      workflow.inputNoteId = "DED2745C-6564-4EFA-86E2-42DAAED3281A"
+      workflow.internalizationNoteId = "796ACA3D-9A28-4DC7-89B4-EA5CC3928AFE"
+      workflow.toClassifyNoteId = "3572E6DC-887A-4376-B715-04B6D8F0C58B"
+      break;
+    case "marginnote4app://notebook/98F4FA11-39D3-41A8-845A-F74E2197E111": // 泛函分析
+      workflow.inputNoteId = "C1E43C94-287A-4324-9480-771815F82803"
+      workflow.internalizationNoteId = "FE4B1142-CE83-4BA7-B0CF-453E07663059"
+      workflow.toClassifyNoteId = "E1EACEC5-3ACD-424B-BD46-797CD8A56629"
+      workflow.preparationNoteId = "339DC957-70B5-4350-9093-36706CEC8CD6"
+      break;
+    case "marginnote4app://notebook/EAB02DA9-D467-4D7D-B6BA-9244FC326299": // 复分析
+      workflow.inputNoteId = "26316838-475B-49D9-9C7C-75AB01D80EDE"
+      workflow.internalizationNoteId = "6FB0CEB6-DC7B-4EE6-AD73-4AA459EBE8D8"
+      workflow.toClassifyNoteId = "B27D8A02-BDC4-4D3F-908B-61AA19CBB861"
+      break;
+    case "marginnote4app://notebook/6E84B815-7BB6-42B0-AE2B-4057279EA163": // 高等代数
+      workflow.inputNoteId = "49E66E70-7249-47C6-869E-5A40448B9B0E"
+      workflow.internalizationNoteId = "FDB5289B-3186-4D93-ADFF-B72B4356CBCD"
+      workflow.toClassifyNoteId = "0164496D-FA35-421A-8A22-649831C83E63"
+      break;
+    case "marginnote4app://notebook/B051BAC2-576D-4C18-B89E-B65C0E576C7F": // 实分析
+      workflow.inputNoteId = "E7538B60-D8E2-4A41-B620-37D1AD48464C"
+      workflow.internalizationNoteId = "C5D44533-6D18-45F6-A010-9F83821F627F"
+      workflow.toClassifyNoteId = "13623BE8-8D26-4FEE-95D8-B704C34E92EC"
+      workflow.preparationNoteId = "832AC695-6014-4936-8CDE-3B2CE3C9BA96"
+      break;
+    case "marginnote4app://notebook/922D2CDF-07CF-4A88-99BA-7AAC60E3C517": // 数学分析
+      workflow.inputNoteId = "E22C7404-A6DE-4DB3-B749-BDF8C742F955"
+      workflow.internalizationNoteId = "BBD9C2C0-CDB5-485E-A338-2C75F1ABE59F"
+      workflow.toClassifyNoteId = "C7768D8F-3BD3-4D9F-BC82-C3F12701E7BF"
+      break;
+    case "marginnote4app://notebook/D03C8B94-77CF-46E6-8AAB-CB129EDBCFBC": // 数学基础 
+      workflow.inputNoteId = "E69B712B-E42C-47F3-ADA4-1CB41A3336BD"
+      workflow.internalizationNoteId = "6F5D6E1D-58C7-4E51-87CA-198607640FBE"
+      workflow.toClassifyNoteId = "F6CE6E2C-4126-4945-BB98-F2437F73C806"
+      break;
+    case "marginnote4app://notebook/0F74EF05-FAA1-493E-9D78-CC84C4C045A6": // 文献库
+      workflow.inputNoteId = ""
+      workflow.internalizationNoteId = ""
+      workflow.toClassifyNoteId = ""
+      break;
+  }
+  return workflow
+}
+
+/**
+ * 生成标题链接
+ */
+MNUtil.generateCustomTitleLink = function(keyword, titlelinkWord) {
+  return `[${keyword}](marginnote4app://titlelink/custom/${titlelinkWord})`
+}
+
+/**
+ * 【数学】根据中文类型获取对应的英文
+ */
+MNUtil.getEnNoteTypeByZhVersion = function(type){
+  let typeMap = {
+    "定义": "definition",
+    "命题": "theorem",
+    "反例": "antiexample",
+    "例子": "example",
+    "思想方法": "method",
+    "问题": "question",
+    "应用": "application",
+    "归类": "classification",
+    "": "temporary",
+    "文献": "reference"
+  }
+  return typeMap[type]
+}
+
+/**
+ * 【数学】根据中文类型获取对应的卡片颜色 index
+ */
+MNUtil.getNoteColorIndexByZhType = function(type, preprocess=false){
+  let typeMap
+  if (preprocess) {
+    typeMap = {  // ? 自己也看不懂了
+      "定义": 2,
+      "命题": 6,
+      "反例": 6,
+      "例子": 6,
+      "思想方法": 9,
+      "问题": 13,
+      "应用": 6
+    }
+  } else {
+    typeMap = {
+      "定义": 2,
+      "命题": 10,
+      "反例": 3,
+      "例子": 15,
+      "思想方法": 9,
+      "问题": 13,
+      "应用": 6
+    }
+  }
+  return typeMap[type]
+}
+
+/**
+ * 【数学】根据颜色 Index 来判断卡片类型
+ */
+MNUtil.getNoteZhTypeByNoteColorIndex = function(index){
+  let typeMap = {
+    2: "定义",
+    10: "命题",
+    3: "反例",
+    15: "例子",
+    9: "思想方法",
+    13: "问题",
+    6: "应用",
+    0: "归类",
+    1: "顶层",
+    4: "归类"
+  }
+  return typeMap[index]
+}
+
+MNUtil.getNoteEnTypeByNoteColorIndex = function(index){
+  let typeMap = {
+    2: "definition",
+    10: "theorem",
+    3: "antiexample",
+    15: "example",
+    9: "method",
+    13: "question",
+    6: "application",
+    0: "classification",
+    1: "classification",
+    4: "classification"
+  }
+  return typeMap[index]
+}
+
+/**
+ * 【数学】根据卡片类型获取对应的模板卡片的 ID
+ */
+MNUtil.getTemplateNoteIdByZhType = function(type){
+  let typeMap = {
+    "定义": "C1052FDA-3343-45C6-93F6-61DCECF31A6D",
+    "命题": "C4B464CD-B8C6-42DE-B459-55B48EB31AD8",
+    "反例": "E64BDC36-DD8D-416D-88F5-0B3FCBE5D151",
+    "例子": "C4B464CD-B8C6-42DE-B459-55B48EB31AD8",
+    "思想方法": "EC68EDFE-580E-4E53-BA1B-875F3BEEFE62",
+    "问题": "C4B464CD-B8C6-42DE-B459-55B48EB31AD8",
+    "应用": "C4B464CD-B8C6-42DE-B459-55B48EB31AD8",
+    "归类": "8853B79F-8579-46C6-8ABD-E7DE6F775B8B",
+    "顶层": "8853B79F-8579-46C6-8ABD-E7DE6F775B8B",
+    "文献": "F09C0EEB-4FB5-476C-8329-8CC5AEFECC43",
+    "文献作者":"782A91F4-421E-456B-80E6-2B34D402911A"
+  }
+  return typeMap[type]
+}
+
+/**
+ * 判断是否是普通对象
+ * @param {Object} obj 
+ * @returns {Boolean}
+ */
+MNUtil.isObj = function(obj) {
+  return typeof obj === "object" && obj !== null && !Array.isArray(obj)
+}
+
+MNUtil.ifObj = function(obj) {
+  return this.isObj(obj)
+}
+
+/**
+ * 判断评论是否是链接
+ */
+MNUtil.isCommentLink = function(comment){
+  if (this.isObj(comment)) {
+    if (comment.type == "TextNote") {
+      return comment.text.isLink()
+    }
+  } else if (typeof comment == "string") {
+    return comment.isLink()
+  }
+}
+
+MNUtil.isLink = function(comment){
+  return this.isCommentLink(comment)
+}
+
+MNUtil.ifLink = function(comment){
+  return this.isCommentLink(comment)
+}
+
+MNUtil.ifCommentLink = function(comment){
+  return this.isCommentLink(comment)
+}
+
+/**
+ * 获取到链接的文本
+ */
+MNUtil.getLinkText = function(link){
+  if (this.isObj(link) && this.isCommentLink(link)) {
+    return link.text
+  }
+  return link
+}
+
+/**
+ * 夏大鱼羊 - MNUtil prototype 扩展 - end
+ */
+
+/**
+ * 夏大鱼羊 - MNNote prototype 扩展 - begin
+ */
+
+/**
+ * 判断卡片是否是文献卡片：论文和书作
+ * 
+ * 依据：是否有"文献信息："的评论问
+ * 注意：标题里带有"文献"二字的不一定，因为【文献：作者】暂时不需要判断为文献卡片
+ */
+MNNote.prototype.ifReferenceNote = function() {
+  // return this.getHtmlCommentIndex("文献信息：") !== -1
+  return this.title.startsWith("【文献") || this.title.startsWith("【参考文献")
+}
+
+/**
+ * 判断是否是旧的文献卡片
+ */
+MNNote.prototype.ifOldReferenceNote = function() {
+  return this.getHtmlCommentIndex("主要内容、摘要：") !== -1 || this.getHtmlCommentIndex("主要内容/摘要：") !== -1
+}
+
+/**
+ * 卡片去掉所有评论
+ */
+MNNote.prototype.clearAllComments = function(){
+  for (let i = this.comments.length -1; i >= 0; i--) {
+    this.removeCommentByIndex(i)
+  }
+}
+
+/**
+ * 【数学】把证明的内容移到最下方
+ * 
+ * 一般用于重新写证明
+ */
+MNNote.prototype.moveProofDown = function() {
+  let proofIndexArr = this.getHtmlBlockContentIndexArr("证明：")
+  if (proofIndexArr.length > 0) {
+    this.moveCommentsByIndexArrTo(proofIndexArr, "bottom")
+  }
+}
+
+/**
+ * 让卡片成为进度卡片
+ * - 在学习规划学习集中，某些卡片起了大头钉的作用，下次能知道从哪里开始看
+ * 
+ * 1. 卡片变成灰色
+ * 2. 找到摘录对应的 md5
+ * 3. 找到学习规划学习集中对应的卡片
+ * 4. 将卡片移动到学习规划学习集中对应的卡片下成为子卡片
+ */
+MNNote.prototype.toBeProgressNote = function(){
+  let docMd5 = MNUtil.currentDocmd5
+  let targetNote = MNNote.new(MNUtil.getNoteIdByMd5InPlanNotebook(docMd5))
+  if (targetNote) {
+    targetNote.addChild(this)
+    this.colorIndex = 13 // 灰色
+    // bug 添加到卡片的兄弟卡片了而不是变成子卡片
+  }
+}
+
+/**
+ * 让卡片独立出来
+ */
+MNNote.prototype.toBeIndependent = function(){
+  let parentNote = this.getClassificationParentNote()
+  parentNote.addChild(this)
+  this.focusInMindMap(0.5)
+}
+
+/**
+ * 将卡片转移到"输入"区
+ */
+MNNote.prototype.moveToInput = function(){
+  let notebookId = MNUtil.currentNotebookId
+  let workflowObj = MNUtil.getWorkFlowObjByNoteBookId(notebookId)
+  if (workflowObj.inputNoteId) {
+    let inputNoteId = workflowObj.inputNoteId
+    let inputNote = MNNote.new(inputNoteId)
+    inputNote.addChild(this)
+    // this.focusInMindMap(0.8)
+  }
+}
+
+/**
+ * 将卡片转移到"备考"区
+ */
+MNNote.prototype.moveToPreparationForExam = function(){
+  let notebookId = MNUtil.currentNotebookId
+  let workflowObj = MNUtil.getWorkFlowObjByNoteBookId(notebookId)
+  if (workflowObj.preparationNoteId) {
+    let preparationNoteId = workflowObj.preparationNoteId
+    let preparationNote = MNNote.new(preparationNoteId)
+    preparationNote.addChild(this)
+    // this.focusInMindMap(0.8)
+  }
+}
+
+/**
+ * 将卡片转移到"内化"区
+ */
+MNNote.prototype.moveToInternalize = function(){
+  let notebookId = MNUtil.currentNotebookId
+  let workflowObj = MNUtil.getWorkFlowObjByNoteBookId(notebookId)
+  if (workflowObj.internalizationNoteId) {
+    let internalizationNoteId = workflowObj.internalizationNoteId
+    let internalizationNote = MNNote.new(internalizationNoteId)
+    internalizationNote.addChild(this)
+    if (this.title.includes("输入")) {
+      this.changeTitle()
+      this.linkParentNote()
+    }
+    this.focusInMindMap(1)
+  }
+}
+
+/**
+ * 将卡片转移到"待归类"区
+ */
+MNNote.prototype.moveToBeClassified = function(targetNoteId){
+  let notebookId = MNUtil.currentNotebookId
+  let workflowObj = MNUtil.getWorkFlowObjByNoteBookId(notebookId)
+  let toClassifyNoteId = (targetNoteId == undefined)?workflowObj.toClassifyNoteId:targetNoteId
+  let toClassifyNote = MNNote.new(toClassifyNoteId)
+  if (toClassifyNote) {
+    toClassifyNote.addChild(this)
+    this.changeTitle()
+    this.linkParentNote()
+    this.addToReview()
+  }
+}
+
+/**
+ * 【数学】加入复习
+ */
+MNNote.prototype.addToReview = function() {
+  if (this.getNoteTypeZh() !== "顶层" && this.getNoteTypeZh() !== "归类") {
+    if (!MNUtil.isNoteInReview(this.noteId)) {  // 2024-09-26 新增的 API
+      MNUtil.excuteCommand("AddToReview")
+    }
+  }
+}
+
+/**
+ * 删除评论
+ * 
+ * 提供一些预设项，并且用户可以自行输入要删除的评论 Index
+ */
+MNNote.prototype.deleteCommentsByPopup = function(){
+  UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+    "删除评论",
+    "支持:\\n- 单个序号: 1,2,3\\n- 范围: 1-4 (删除第1到第4条)\\n- 特殊字符: X(倒数第3条), Y(倒数第2条), Z(最后一条)\\n- 组合使用: 1,3-5,Y,Z\\n\\n用中文或英文逗号、分号分隔",
+    2,
+    "取消",
+    [
+      "第1️⃣条评论",
+      "最后一条评论",
+      "确定删除输入的评论"
+    ],
+    (alert, buttonIndex) => {
+      let userInput = alert.textFieldAtIndex(0).text;
+      let deleteCommentIndexArr = userInput ? userInput.parseCommentIndices(this.comments.length) : []
+      switch (buttonIndex) {
+        case 1:  // 删除第一条评论
+          this.removeCommentByIndex(0)
+          break;
+        case 2:  // 删除最后一条评论
+          this.removeCommentByIndex(this.comments.length-1)
+          break;
+        case 3:  // 确定删除输入的评论
+          if (deleteCommentIndexArr.length > 0) {
+            this.removeCommentsByIndices(deleteCommentIndexArr)
+          }
+          break;
+      }
+
+      MNUtil.undoGrouping(()=>{
+        this.refresh()
+      })
+    }
+  )
+}
+
+/**
+ * 先删除评论再移动新内容
+ * 
+ * 两个参数和 moveNewContentTo 函数的参数相同
+ * @param {String} target 新内容移动的位置
+ * @param {boolean} [toBottom=true] 默认移动到底部
+ */
+MNNote.prototype.deleteCommentsByPopupAndMoveNewContentTo = function(target, toBottom= true){
+  UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+    "先删除评论",
+    "支持:\\n- 单个序号: 1,2,3\\n- 范围: 1-4 (删除第1到第4条)\\n- 特殊字符: X(倒数第3条), Y(倒数第2条), Z(最后一条)\\n- 组合使用: 1,3-5,Y,Z\\n\\n用中文或英文逗号、分号分隔",
+    2,
+    "取消",
+    [
+      "第1️⃣条评论",
+      "最后一条评论",
+      "确定删除输入的评论"
+    ],
+    (alert, buttonIndex) => {
+      let userInput = alert.textFieldAtIndex(0).text;
+      let deleteCommentIndexArr = userInput ? userInput.parseCommentIndices(this.comments.length) : []
+      switch (buttonIndex) {
+        case 1:  // 删除第一条评论
+          this.removeCommentByIndex(0)
+          break;
+        case 2:  // 删除最后一条评论
+          this.removeCommentByIndex(this.comments.length-1)
+          break;
+        case 3:  // 确定删除输入的评论
+          if (deleteCommentIndexArr.length > 0) {
+            this.removeCommentsByIndices(deleteCommentIndexArr)
+          }
+          break;
+      }
+
+      this.moveNewContentTo(target, toBottom)
+
+      MNUtil.undoGrouping(()=>{
+        this.refresh()
+      })
+    }
+  )
+}
+
+/**
+ * 将 IdArr 里的 ID 对应的卡片剪切到 this 作为子卡片
+ */
+MNNote.prototype.pasteChildNotesByIdArr = function(arr) {
+  arr.forEach((id) => {
+    if (id.isNoteIdorURL()) {
+      this.pasteChildNoteById(id.toNoteId())
+    }
+  })
+}
+
+MNNote.prototype.pasteChildNoteById = function(id) {
+  if (typeof id == "string" && id.isNoteIdorURL()) {
+    let targetNote = MNNote.new(id.toNoteId())
+    if (targetNote) {
+      let config = {
+        title: targetNote.noteTitle,
+        content: "",
+        markdown: true,
+        color: targetNote.colorIndex
+      }
+      // 创建新兄弟卡片，标题为旧卡片的标题
+      let newNote = this.createChildNote(config)
+      targetNote.noteTitle = ""
+      // 将旧卡片合并到新卡片中
+      targetNote.mergeInto(newNote)
+    }
+  }
+}
+
+/**
+ * 获取第一个标题链接词并生成标题链接
+ */
+MNNote.prototype.generateCustomTitleLinkFromFirstTitlelinkWord = function(keyword) {
+  let title = this.title
+  if (title.isKnowledgeNoteTitle()) {
+    let firstTitleLinkWord = this.getFirstTitleLinkWord()
+    return MNUtil.generateCustomTitleLink(keyword, firstTitleLinkWord)
+  } else {
+    return MNUtil.generateCustomTitleLink(keyword, title)
+  }
+}
+
+/**
+ * 获取标题的所有标题链接词
+ */
+MNNote.prototype.getTitleLinkWordsArr = function(){
+  let title = this.noteTitle
+  let titleLinkWordsArr = []
+  if (title.isKnowledgeNoteTitle()) {
+    let titlePart = title.toKnowledgeNoteTitle()
+    // titlePart 用 ; 分割，然后以此加入到 titleLinkWordsArr 中
+    titlePart.split(";").forEach((part) => {
+      if (part.trim() !== "") {
+        titleLinkWordsArr.push(part.trim())
+      }
+    })
+  } else {
+    titleLinkWordsArr.push(title)
+  }
+  return titleLinkWordsArr
+}
+
+/**
+ * 获取标题中的第一个标题链接词
+ */
+MNNote.prototype.getFirstTitleLinkWord = function(){
+  let title = this.noteTitle
+  let regex = /【.*】(.*?);?\\s*([^;]*?)(?:;|$)/;
+  let matches = title.match(regex);
+
+  if (matches) {
+    const firstPart = matches[1].trim(); // 提取分号前的内容
+    const secondPart = matches[2].trim(); // 提取第一个分号后的内容
+
+    // 根据第一部分是否为空选择返回内容
+    return firstPart === '' ? secondPart : firstPart;
+  } else {
+    // 如果没有前缀，就获取第一个 ; 前的内容
+    title = title.toNoBracketPrefixContent()
+    regex = /^(.*?);/;
+    matches = title.match(regex);
+  
+    if (matches) {
+      return matches[1].trim().toString()
+    } else {
+      return title.toString()
+    }
+  }
+}
+
+/**
+ * 判断卡片的前缀是否包含
+ * - 输入
+ * - 内化
+ * - 待归类
+ */
+MNNote.prototype.ifNoteTemporary = function(){
+  return ["输入","内化","待归类"].some(keyword => this.title.includes(keyword))
+}
+
+/**
+ * 【数学】移动卡片到某些特定的子卡片后
+ * 
+ * 目前只移动文献
+ * 
+ * 1. 先判断是否需要移动文献
+ * 2. 如果要的话再移动到论文或者书作文献区
+ */
+MNNote.prototype.move = function() {
+  let noteType = this.getNoteTypeZh()
+  let targetNoteId
+  if (noteType == "文献") {
+    if (this.ifReferenceNoteToMove()) {
+      // 此时文献卡片不在"论文"或"书作"文献区
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "选择文献类型",
+        "",
+        0,
+        "取消",
+        ["论文", "书作"],
+        (alert, buttonIndex) => {
+          switch (buttonIndex) {
+            case 1:
+              noteType = "论文"
+              targetNoteId = "785225AC-5A2A-41BA-8760-3FEF10CF4AE0"
+              break;
+            case 2:
+              noteType = "书作"
+              targetNoteId = "49102A3D-7C64-42AD-864D-55EDA5EC3097"
+              break;
+          }
+          // 把修改前缀放在这里
+          this.changeTitle(noteType)
+          let targetNote = MNNote.new(targetNoteId)
+          targetNote.addChild(this)
+        }
+      )
+    } else {
+      // 如果在的话就 change 一下 Title
+      let parentNote = this.parentNote
+      if (parentNote.noteId == "785225AC-5A2A-41BA-8760-3FEF10CF4AE0") {
+        this.changeTitle("论文")
+      } else {
+        this.changeTitle("书作")
+      }
+    }
+  }
+}
+
+/**
+ * 夏大鱼羊 - MNNote prototype 扩展 - end
+ */
+
+/**
+ * 夏大鱼羊 - MNComment prototype 扩展 - begin
+ */
+
+// 修改MNComment的text setter，添加对linkComment和markdownComment的支持
+if (typeof MNComment !== 'undefined' && MNComment.prototype) {
+  const originalTextSetter = Object.getOwnPropertyDescriptor(MNComment.prototype, 'text')?.set;
+  
+  Object.defineProperty(MNComment.prototype, 'text', {
+    get: function() {
+      // 保持原有的getter逻辑
+      return this.detail?.text;
+    },
+    set: function(text) {
+      if (this.originalNoteId) {
+        let note = MNNote.new(this.originalNoteId)
+        switch (this.type) {
+          case "linkComment":
+          case "markdownComment":
+            this.detail.text = text
+            note.replaceWithMarkdownComment(text, this.index)
+            break;
+          case "textComment":
+            this.detail.text = text
+            note.replaceWithTextComment(text, this.index)
+            break;
+          case "blankTextComment":
+          case "mergedImageComment":
+          case "mergedTextComment":
+            this.detail.q_htext = text
+            let mergedNote = this.note
+            mergedNote.excerptText = text
+            break;
+          default:
+            if (originalTextSetter) {
+              originalTextSetter.call(this, text);
+            } else {
+              MNUtil.showHUD("Unsupported comment type: " + this.type)
+            }
+            break;
+        }
+      } else {
+        MNUtil.showHUD("No originalNoteId")
+      }
+    },
+    enumerable: true,
+    configurable: true
+  });
+}
+
+/**
+ * 夏大鱼羊 - MNComment prototype 扩展 - end
+ */

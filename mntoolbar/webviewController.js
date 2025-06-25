@@ -5243,7 +5243,8 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         try {
           MNUtil.undoGrouping(()=>{
             focusNotes.forEach(focusNote=>{
-              toolbarUtils.renewCards(focusNote)
+              // toolbarUtils.renewCards(focusNote)
+              focusNote.renew()
             })
           })
         } catch (error) {

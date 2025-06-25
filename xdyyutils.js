@@ -3800,3 +3800,1971 @@ if (typeof MNComment !== 'undefined' && MNComment.prototype) {
 /**
  * 夏大鱼羊 - MNComment prototype 扩展 - end
  */
+
+/**
+ * 夏大鱼羊 - MNNote prototype 扩展 - 更多方法 - begin
+ */
+
+/**
+ * 依据：是否有"文献信息："的评论问
+ * 注意：标题里带有"文献"二字的不一定，因为【文献：作者】暂时不需要判断为文献卡片
+ */
+MNNote.prototype.ifReferenceNote = function() {
+  // return this.getHtmlCommentIndex("文献信息：") !== -1
+  return this.title.startsWith("【文献") || this.title.startsWith("【参考文献")
+}
+
+/**
+ * 判断是否是旧的文献卡片
+ */
+MNNote.prototype.ifOldReferenceNote = function() {
+  return this.getHtmlCommentIndex("主要内容、摘要：") !== -1 || this.getHtmlCommentIndex("主要内容/摘要：") !== -1
+}
+
+/**
+ * 卡片去掉所有评论
+ */
+MNNote.prototype.clearAllComments = function(){
+  for (let i = this.comments.length -1; i >= 0; i--) {
+    this.removeCommentByIndex(i)
+  }
+}
+
+/**
+ * 【数学】把证明的内容移到最下方
+ * 
+ * 一般用于重新写证明
+ */
+MNNote.prototype.moveProofDown = function() {
+  let proofIndexArr = this.getHtmlBlockContentIndexArr("证明：")
+  if (proofIndexArr.length > 0) {
+    this.moveCommentsByIndexArrTo(proofIndexArr, "bottom")
+  }
+}
+
+/**
+ * 更新卡片学习状态
+ */
+/**
+ * 让卡片成为进度卡片
+ * - 在学习规划学习集中，某些卡片起了大头钉的作用，下次能知道从哪里开始看
+ * 
+ * 1. 卡片变成灰色
+ * 2. 找到摘录对应的 md5
+ * 3. 找到学习规划学习集中对应的卡片
+ * 4. 将卡片移动到学习规划学习集中对应的卡片下成为子卡片
+ */
+MNNote.prototype.toBeProgressNote = function(){
+  let docMd5 = MNUtil.currentDocmd5
+  let targetNote = MNNote.new(MNUtil.getNoteIdByMd5InPlanNotebook(docMd5))
+  if (targetNote) {
+    targetNote.addChild(this)
+    this.colorIndex = 13 // 灰色
+    // bug 添加到卡片的兄弟卡片了而不是变成子卡片
+  }
+}
+
+/**
+ * 让卡片独立出来
+ */
+MNNote.prototype.toBeIndependent = function(){
+  let parentNote = this.getClassificationParentNote()
+  parentNote.addChild(this)
+  this.focusInMindMap(0.5)
+}
+
+/**
+ * 将卡片转移到"输入"区
+ */
+MNNote.prototype.moveToInput = function(){
+  let notebookId = MNUtil.currentNotebookId
+  let workflowObj = MNUtil.getWorkFlowObjByNoteBookId(notebookId)
+  if (workflowObj.inputNoteId) {
+    let inputNoteId = workflowObj.inputNoteId
+    let inputNote = MNNote.new(inputNoteId)
+    inputNote.addChild(this)
+    // this.focusInMindMap(0.8)
+  }
+}
+
+/**
+ * 将卡片转移到"备考"区
+ */
+MNNote.prototype.moveToPreparationForExam = function(){
+  let notebookId = MNUtil.currentNotebookId
+  let workflowObj = MNUtil.getWorkFlowObjByNoteBookId(notebookId)
+  if (workflowObj.preparationNoteId) {
+    let preparationNoteId = workflowObj.preparationNoteId
+    let preparationNote = MNNote.new(preparationNoteId)
+    preparationNote.addChild(this)
+    // this.focusInMindMap(0.8)
+  }
+}
+
+/**
+ * 将卡片转移到"内化"区
+ */
+MNNote.prototype.moveToInternalize = function(){
+  let notebookId = MNUtil.currentNotebookId
+  let workflowObj = MNUtil.getWorkFlowObjByNoteBookId(notebookId)
+  if (workflowObj.internalizationNoteId) {
+    let internalizationNoteId = workflowObj.internalizationNoteId
+    let internalizationNote = MNNote.new(internalizationNoteId)
+    internalizationNote.addChild(this)
+    if (this.title.includes("输入")) {
+      this.changeTitle()
+      this.linkParentNote()
+    }
+    this.focusInMindMap(1)
+  }
+}
+
+/**
+ * 将卡片转移到"待归类"区
+ */
+MNNote.prototype.moveToBeClassified = function(targetNoteId){
+  let notebookId = MNUtil.currentNotebookId
+  let workflowObj = MNUtil.getWorkFlowObjByNoteBookId(notebookId)
+  let toClassifyNoteId = (targetNoteId == undefined)?workflowObj.toClassifyNoteId:targetNoteId
+  let toClassifyNote = MNNote.new(toClassifyNoteId)
+  if (toClassifyNote) {
+    toClassifyNote.addChild(this)
+    this.changeTitle()
+    this.linkParentNote()
+    this.addToReview()
+  }
+}
+
+/**
+ * 【数学】加入复习
+ */
+MNNote.prototype.addToReview = function() {
+  if (this.getNoteTypeZh() !== "顶层" && this.getNoteTypeZh() !== "归类") {
+    if (!MNUtil.isNoteInReview(this.noteId)) {  // 2024-09-26 新增的 API
+      MNUtil.excuteCommand("AddToReview")
+    }
+  }
+}
+
+/**
+ * 删除评论
+ * 
+ * 提供一些预设项，并且用户可以自行输入要删除的评论 Index
+ */
+MNNote.prototype.deleteCommentsByPopup = function(){
+  UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+    "删除评论",
+    "支持:\n- 单个序号: 1,2,3\n- 范围: 1-4 (删除第1到第4条)\n- 特殊字符: X(倒数第3条), Y(倒数第2条), Z(最后一条)\n- 组合使用: 1,3-5,Y,Z\n\n用中文或英文逗号、分号分隔",
+    2,
+    "取消",
+    [
+      "第1️⃣条评论",
+      "最后一条评论",
+      "确定删除输入的评论"
+    ],
+    (alert, buttonIndex) => {
+      let userInput = alert.textFieldAtIndex(0).text;
+      let deleteCommentIndexArr = userInput ? userInput.parseCommentIndices(this.comments.length) : []
+      switch (buttonIndex) {
+        case 1:  // 删除第一条评论
+          this.removeCommentByIndex(0)
+          break;
+        case 2:  // 删除最后一条评论
+          this.removeCommentByIndex(this.comments.length-1)
+          break;
+        case 3:  // 确定删除输入的评论
+          if (deleteCommentIndexArr.length > 0) {
+            this.removeCommentsByIndices(deleteCommentIndexArr)
+          }
+          break;
+      }
+
+      MNUtil.undoGrouping(()=>{
+        this.refresh()
+      })
+    }
+  )
+}
+
+/**
+ * 先删除评论再移动新内容
+ * 
+ * 两个参数和 moveNewContentTo 函数的参数相同
+ * @param {String} target 新内容移动的位置
+ * @param {boolean} [toBottom=true] 默认移动到底部
+ */
+MNNote.prototype.deleteCommentsByPopupAndMoveNewContentTo = function(target, toBottom= true){
+  UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+    "先删除评论",
+    "支持:\n- 单个序号: 1,2,3\n- 范围: 1-4 (删除第1到第4条)\n- 特殊字符: X(倒数第3条), Y(倒数第2条), Z(最后一条)\n- 组合使用: 1,3-5,Y,Z\n\n用中文或英文逗号、分号分隔",
+    2,
+    "取消",
+    [
+      "第1️⃣条评论",
+      "最后一条评论",
+      "确定删除输入的评论"
+    ],
+    (alert, buttonIndex) => {
+      let userInput = alert.textFieldAtIndex(0).text;
+      let deleteCommentIndexArr = userInput ? userInput.parseCommentIndices(this.comments.length) : []
+      switch (buttonIndex) {
+        case 1:  // 删除第一条评论
+          this.removeCommentByIndex(0)
+          break;
+        case 2:  // 删除最后一条评论
+          this.removeCommentByIndex(this.comments.length-1)
+          break;
+        case 3:  // 确定删除输入的评论
+          if (deleteCommentIndexArr.length > 0) {
+            this.removeCommentsByIndices(deleteCommentIndexArr)
+          }
+          break;
+      }
+
+      this.moveNewContentTo(target, toBottom)
+
+      MNUtil.undoGrouping(()=>{
+        this.refresh()
+      })
+    }
+  )
+}
+
+/**
+ * 将 IdArr 里的 ID 对应的卡片剪切到 this 作为子卡片
+ */
+MNNote.prototype.pasteChildNotesByIdArr = function(arr) {
+  arr.forEach((id) => {
+    if (id.isNoteIdorURL()) {
+      this.pasteChildNoteById(id.toNoteId())
+    }
+  })
+}
+
+MNNote.prototype.pasteChildNoteById = function(id) {
+  if (typeof id == "string" && id.isNoteIdorURL()) {
+    let targetNote = MNNote.new(id.toNoteId())
+    if (targetNote) {
+      let config = {
+        title: targetNote.noteTitle,
+        content: "",
+        markdown: true,
+        color: targetNote.colorIndex
+      }
+      // 创建新兄弟卡片，标题为旧卡片的标题
+      let newNote = this.createChildNote(config)
+      targetNote.noteTitle = ""
+      // 将旧卡片合并到新卡片中
+      targetNote.mergeInto(newNote)
+    }
+  }
+}
+
+/**
+ * 获取第一个标题链接词并生成标题链接
+ */
+MNNote.prototype.generateCustomTitleLinkFromFirstTitlelinkWord = function(keyword) {
+  let title = this.title
+  if (title.isKnowledgeNoteTitle()) {
+    let firstTitleLinkWord = this.getFirstTitleLinkWord()
+    return MNUtil.generateCustomTitleLink(keyword, firstTitleLinkWord)
+  } else {
+    return MNUtil.generateCustomTitleLink(keyword, title)
+  }
+}
+
+/**
+ * 获取标题的所有标题链接词
+ */
+MNNote.prototype.getTitleLinkWordsArr = function(){
+  let title = this.noteTitle
+  let titleLinkWordsArr = []
+  if (title.isKnowledgeNoteTitle()) {
+    let titlePart = title.toKnowledgeNoteTitle()
+    // titlePart 用 ; 分割，然后以此加入到 titleLinkWordsArr 中
+    titlePart.split(";").forEach((part) => {
+      if (part.trim() !== "") {
+        titleLinkWordsArr.push(part.trim())
+      }
+    })
+  } else {
+    titleLinkWordsArr.push(title)
+  }
+  return titleLinkWordsArr
+}
+
+/**
+ * 获取标题中的第一个标题链接词
+ */
+MNNote.prototype.getFirstTitleLinkWord = function(){
+  let title = this.noteTitle
+  let regex = /【.*】(.*?);?\s*([^;]*?)(?:;|$)/;
+  let matches = title.match(regex);
+
+  if (matches) {
+    const firstPart = matches[1].trim(); // 提取分号前的内容
+    const secondPart = matches[2].trim(); // 提取第一个分号后的内容
+
+    // 根据第一部分是否为空选择返回内容
+    return firstPart === '' ? secondPart : firstPart;
+  } else {
+    // 如果没有前缀，就获取第一个 ; 前的内容
+    title = title.toNoBracketPrefixContent()
+    regex = /^(.*?);/;
+    matches = title.match(regex);
+  
+    if (matches) {
+      return matches[1].trim().toString()
+    } else {
+      return title.toString()
+    }
+  }
+}
+
+/**
+ * 判断卡片的前缀是否包含
+ * - 输入
+ * - 内化
+ * - 待归类
+ */
+MNNote.prototype.ifNoteTemporary = function(){
+  return ["输入","内化","待归类"].some(keyword => this.title.includes(keyword))
+}
+
+/**
+ * 【数学】移动卡片到某些特定的子卡片后
+ * 
+ * 目前只移动文献
+ * 
+ * 1. 先判断是否需要移动文献
+ * 2. 如果要的话再移动到论文或者书作文献区
+ */
+MNNote.prototype.move = function() {
+  let noteType = this.getNoteTypeZh()
+  let targetNoteId
+  if (noteType == "文献") {
+    if (this.ifReferenceNoteToMove()) {
+      // 此时文献卡片不在"论文"或"书作"文献区
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "选择文献类型",
+        "",
+        0,
+        "取消",
+        ["论文", "书作"],
+        (alert, buttonIndex) => {
+          switch (buttonIndex) {
+            case 1:
+              noteType = "论文"
+              targetNoteId = "785225AC-5A2A-41BA-8760-3FEF10CF4AE0"
+              break;
+            case 2:
+              noteType = "书作"
+              targetNoteId = "49102A3D-7C64-42AD-864D-55EDA5EC3097"
+              break;
+          }
+          // 把修改前缀放在这里
+          this.changeTitle(noteType)
+          let targetNote = MNNote.new(targetNoteId)
+          targetNote.addChild(this)
+        }
+      )
+    } else {
+      // 如果在的话就 change 一下 Title
+      let parentNote = this.parentNote
+      if (parentNote.noteId == "785225AC-5A2A-41BA-8760-3FEF10CF4AE0") {
+        this.changeTitle("论文")
+      } else {
+        this.changeTitle("书作")
+      }
+    }
+  }
+}
+
+/**
+ * 检测 indexArr 对应的评论是否全是链接
+ */
+MNNote.prototype.ifCommentsAllLinksByIndexArr = function(indexArr){
+  let flag = true
+  indexArr.forEach((index) => {
+    if (
+      this.comments[index].type !== "TextNote" ||
+      !this.comments[index].text.isLink()
+    ) {
+      flag = false
+    }
+  })
+
+  return flag
+}
+
+/**
+ * 【数学】获取"证明"系列的 Html 的 index
+ *  因为命题、反例、思想方法的"证明："叫法不同
+ */
+MNNote.prototype.getProofHtmlCommentIndexByNoteType = function(type){
+  if (MNUtil.isObj(type)) {
+    type = type.zh
+  } 
+  let proofHtmlCommentIndex
+  switch (type) {
+    case "反例":
+      proofHtmlCommentIndex = this.getHtmlCommentIndex("反例及证明：")
+      break;
+    case "思想方法":
+      proofHtmlCommentIndex = this.getHtmlCommentIndex("原理：")
+      break;
+    default:
+      proofHtmlCommentIndex = this.getHtmlCommentIndex("证明：")
+      break;
+  }
+
+  return proofHtmlCommentIndex
+}
+
+MNNote.prototype.getProofNameByType = function(type){
+  if (MNUtil.isObj(type)) {
+    type = type.zh
+  } 
+  let proofName
+  switch (type) {
+    case "反例":
+      proofName = "反例及证明："
+      break;
+    case "思想方法":
+      proofName = "原理："
+      break;
+    default:
+      proofName = "证明："
+      break;
+  }
+
+  return proofName
+}
+
+/**
+ * 【数学】更新证明的 Html 的 index
+ */
+MNNote.prototype.getRenewProofHtmlCommentByNoteType = function(type){
+  if (MNUtil.isObj(type)) {
+    type = type.zh
+  } 
+  switch (type) {
+    case "反例":
+      if (this.getHtmlCommentIndex("证明：") !== -1) {
+        this.removeCommentByIndex(this.getHtmlCommentIndex("证明："))
+        this.mergeClonedNoteById("6ED0D29A-F57F-4B89-BFDA-58D5DFEB1F19")
+        this.moveComment(this.comments.length-1, this.getHtmlCommentIndex("证明："))
+      } else if (this.getHtmlCommentIndex("原理：") !== -1) {
+        this.removeCommentByIndex(this.getHtmlCommentIndex("原理："))
+        this.mergeClonedNoteById("6ED0D29A-F57F-4B89-BFDA-58D5DFEB1F19")
+        this.moveComment(this.comments.length-1, this.getHtmlCommentIndex("原理："))
+      }
+      break;
+    case "思想方法":
+      if (this.getHtmlCommentIndex("证明：") !== -1) {
+        this.removeCommentByIndex(this.getHtmlCommentIndex("证明："))
+        this.mergeClonedNoteById("85F0FDF5-E1C7-4B38-80CA-7A3F3266B6A3")
+        this.moveComment(this.comments.length-1, this.getHtmlCommentIndex("证明："))
+      } else if (this.getHtmlCommentIndex("反例及证明：") !== -1) {
+        this.removeCommentByIndex(this.getHtmlCommentIndex("反例及证明："))
+        this.mergeClonedNoteById("85F0FDF5-E1C7-4B38-80CA-7A3F3266B6A3")
+        this.moveComment(this.comments.length-1, this.getHtmlCommentIndex("反例及证明："))
+      }
+      break;
+    default:
+      if (this.getHtmlCommentIndex("反例及证明：") !== -1) {
+        this.removeCommentByIndex(this.getHtmlCommentIndex("反例及证明："))
+        this.mergeClonedNoteById("21D808AE-33D9-494A-9D99-04FFA5D9E455")
+        this.moveComment(this.comments.length-1, this.getHtmlCommentIndex("反例及证明："))
+      } else if (this.getHtmlCommentIndex("原理：") !== -1) {
+        this.removeCommentByIndex(this.getHtmlCommentIndex("原理："))
+        this.mergeClonedNoteById("21D808AE-33D9-494A-9D99-04FFA5D9E455")
+        this.moveComment(this.comments.length-1, this.getHtmlCommentIndex("原理："))
+      }
+  }
+}
+
+/**
+ * 获取除了 LinkNote 以外的 indexArr
+ * 
+ * 注意定义类卡片单独处理
+ * 因为手写不需要移动，一般定义类的手写都是作为定义的摘录的地位
+ */
+MNNote.prototype.getContentWithoutLinkNoteTypeIndexArr = function(){
+  let indexArr = []
+  let type = this.getNoteTypeZh()
+  if (type == "定义") {
+    for (let i = 0; i < this.comments.length; i++) {
+      let comment = this.comments[i]
+      if (comment.type !== "LinkNote" && comment.type !== "PaintNote") {
+        indexArr.push(i)
+      }
+    }
+  } else {
+    for (let i = 0; i < this.comments.length; i++) {
+      let comment = this.comments[i]
+      if (comment.type !== "LinkNote") {
+        indexArr.push(i)
+      }
+    }
+  }
+  return indexArr
+}
+
+/**
+ * 【数学】添加文本到对应的内容的某个地方
+ */
+MNNote.prototype.addMarkdownTextCommentTo = function(text, target, toBottom = true) {
+  let targetIndex
+  switch (target) {
+    /**
+     * 置顶
+     */
+    case "top":
+      targetIndex = 0
+      this.appendMarkdownComment(text, targetIndex)
+      break;
+    /**
+     * 移动到最底下
+     */
+    case "bottom":
+      targetIndex = this.comments.length - 1
+      this.appendMarkdownComment(text, targetIndex)
+      break;
+    /**
+     * 摘录区
+     */
+    case "excerpt":
+    case "excerption":
+      if (toBottom) {
+        switch (this.getNoteTypeZh()) {
+          case "定义":
+            targetIndex = this.getHtmlCommentIndex("相关概念：")
+            break;
+          case "文献":
+            targetIndex = this.getHtmlCommentIndex("文献信息：")
+            break;
+          default:
+            targetIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh())
+            break;
+        }
+      } else {
+        // top 的话要看摘录区有没有摘录内容
+        // - 如果有的话，就放在第一个摘录的前面
+        // - 如果没有的话，就和摘录的 bottom 是一样的
+        let excerptPartIndexArr = this.getExcerptPartIndexArr()
+        if (excerptPartIndexArr.length == 0) {
+          switch (this.getNoteTypeZh()) {
+            case "定义":
+              targetIndex = this.getHtmlCommentIndex("相关概念：")
+              break;
+            case "文献":
+              targetIndex = this.getHtmlCommentIndex("文献信息：")
+              break;
+            default:
+              targetIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh())
+              break;
+          }
+        } else {
+          targetIndex = excerptPartIndexArr[0]
+        }
+      }
+      this.appendMarkdownComment(text, targetIndex)
+      break;
+    /**
+     * 证明
+     */
+    case "proof":
+    case "Proof":
+      if (toBottom) {
+        targetIndex = this.getHtmlCommentIndex("相关思考：")
+      } else {
+        targetIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh()) + 1
+      }
+      this.appendMarkdownComment(text, targetIndex)
+      break;
+
+    /**
+     * 相关思考
+     */
+    case "thought":
+    case "thoughts":
+    case "think":
+    case "thinks":
+    case "thinking":
+    case "idea":
+    case "ideas":
+      if (toBottom) {
+        switch (this.getNoteTypeZh()) {
+          case "定义":
+            targetIndex = this.getHtmlCommentIndex("相关链接：")
+            break;
+          case "归类":
+            targetIndex = this.getHtmlCommentIndex("包含：")
+            break;
+          case "文献":
+            targetIndex = this.getHtmlCommentIndex("参考文献：")
+            break;
+          default:
+            targetIndex = this.getIncludingHtmlCommentIndex("关键词：")
+            break;
+        }
+      } else {
+        targetIndex = this.getHtmlCommentIndex("相关思考：") + 1
+      }
+      this.appendMarkdownComment(text, targetIndex)
+      break;
+
+    
+    /**
+     * 相关概念
+     */
+    case "def":
+    case "definition":
+    case "concept":
+    case "concepts":
+      if (this.getNoteTypeZh() == "定义") {
+        if (toBottom) {
+          targetIndex = this.getHtmlCommentIndex("相关思考：")
+        } else {
+          targetIndex = this.getHtmlCommentIndex("相关概念：") + 1
+        }
+        this.appendMarkdownComment(text, targetIndex)
+      }
+      break;
+
+    /**
+     * 相关链接
+     */
+    case "link":
+    case "links":
+    case "Link":
+    case "Links":
+      if (toBottom) {
+        if (this.getNoteTypeZh() == "定义") {
+          targetIndex = this.comments.length - 1
+        } else {
+          targetIndex = this.getHtmlCommentIndex("应用：")
+        }
+      } else {
+        targetIndex = this.getHtmlCommentIndex("相关链接：") + 1
+      }
+      this.appendMarkdownComment(text, targetIndex)
+      break;
+
+
+    /**
+     * 应用
+     */
+    case "application":
+    case "applications":
+      if (!["定义", "归类", "顶层"].includes(this.getNoteTypeZh())) {
+        if (toBottom) {
+          targetIndex = this.comments.length - 1
+        } else {
+          targetIndex = this.getHtmlCommentIndex("应用：") + 1
+        }
+        this.appendMarkdownComment(text, targetIndex)
+      }
+      break;
+
+    /**
+     * 参考文献
+     */
+    case "ref":
+    case "refs":
+    case "Ref":
+    case "Refs":
+    case "reference":
+    case "references":
+    case "Reference":
+    case "References":
+      if (toBottom) {
+        targetIndex = this.getHtmlCommentIndex("被引用情况：")
+      } else {
+        targetIndex = this.getHtmlCommentIndex("参考文献：") + 1
+      }
+      this.appendMarkdownComment(text, targetIndex)
+      break;
+
+    /**
+     * 文献信息
+     */
+    case "literature":
+      if (toBottom) {
+        targetIndex = this.getHtmlCommentIndex("相关思考：")
+      } else {
+        targetIndex = this.getHtmlCommentIndex("文献信息：") + 1
+      }
+      this.appendMarkdownComment(text, targetIndex)
+      break;
+
+    /**
+     * 【文献作者卡片】个人信息区
+     */
+    case "info":
+    case "infos":
+    case "information":
+    case "informations":
+      if (toBottom) {
+        targetIndex = this.getHtmlCommentIndex("文献：")
+      } else {
+        targetIndex = this.getHtmlCommentIndex("个人信息：") + 1
+      }
+      this.appendMarkdownComment(text, targetIndex)
+      break;
+  }
+}
+
+/**
+ * 【数学】是否是独立卡片，即没有归类父卡片的卡片
+ */
+MNNote.prototype.ifIndependentNote = function(){
+  if (this.note.colorIndex == 1) {
+    // 绿色卡片单独处理，始终作为非独立卡片
+    return false
+  } else {
+    if (this.ifReferenceNote()) {
+      return false
+    } else {
+      let parentNote = this.getClassificationParentNote()
+      if (parentNote === undefined) {
+        if (!(/【定义|【命题|【例子|【反例|【思想方法/.test(this.parentNote.title))) {
+          return true 
+        } else {
+          let parentNoteTitle = this.parentNote.noteTitle
+          let match = parentNoteTitle.match(/".*"相关(.*)/)
+          // 如果归类卡片的"相关 xx"的 xx 是空的，此时作为 Inbox 专用归类，此时视为下面的知识类卡片为独立的
+          if (match) {
+            return match[1] == ""
+          } else {
+            // return true
+            return !(/定义|命题|例子|反例|思想方法/.test(this.parentNote.title))
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * 判断卡片是不是旧模板制作的
+ */
+MNNote.prototype.ifTemplateOldVersion = function(){
+  // let remarkHtmlCommentIndex = this.getHtmlCommentIndex("Remark：")
+  return this.getHtmlCommentIndex("Remark：") !== -1 || (this.getHtmlCommentIndex("所属") !== -1 && this.getNoteTypeZh()!== "归类" && this.getNoteTypeZh()!== "顶层")
+}
+
+/**
+ * 根据类型去掉评论
+ */
+MNNote.prototype.removeCommentsByTypes = function(types){
+  if (typeof types == "string") {
+    // 兼容 types 本身是字符串的情形
+    this.removeCommentsByOneType(types)
+  } else {
+    if (Array.isArray(types)) {
+      types.forEach(type => {
+        this.removeCommentsByOneType(type)
+      });
+    }
+  }
+}
+
+MNNote.prototype.removeCommentsByType = function(type){
+  this.removeCommentsByTypes(type)
+}
+
+/**
+ * @param {String} type
+ */
+MNNote.prototype.removeCommentsByOneType = function(type){
+  if (typeof type == "string") {
+    switch (type) {
+      /**
+       * 链接
+       */
+      case "link":
+      case "links":
+      case "Link":
+      case "Links":
+      case "alllink":
+      case "alllinks":
+      case "allLink":
+      case "allLinks":
+        for (let i = this.comments.length-1; i >= 0; i--) {
+          let comment = this.comments[i]
+          if (
+            comment.type == "TextNote" &&
+            (
+              comment.text.includes("marginnote3") ||
+              comment.text.includes("marginnote4")
+            )
+          ) {
+            this.removeCommentByIndex(i)
+          }
+        }
+        break;
+      
+      /**
+       * 手写
+       */
+      case "paint":
+      case "painting":
+      case "Paint":
+      case "Painting":
+      case "Handwriting":
+      case "HandWriting":
+      case "handwriting":
+        for (let i = this.comments.length-1; i >= 0; i--) {
+          let comment = this.comments[i]
+          if (
+            comment.type == "PaintNote"
+          ) {
+            this.removeCommentByIndex(i)
+          }
+        }
+        break;
+
+      /**
+       * 所有文本（不包括链接）
+       */
+      case "text":
+      case "Text":
+      case "alltext":
+      case "allText":
+        for (let i = this.comments.length-1; i >= 0; i--) {
+          let comment = this.comments[i]
+          if (
+            comment.type == "HtmlNote" ||
+            (
+              comment.type == "TextNote" &&
+              !(
+                comment.text.includes("marginnote3") ||
+                comment.text.includes("marginnote4")
+              )
+            )
+          ) {
+            this.removeCommentByIndex(i)
+          }
+        }
+        break;
+
+      /**
+       * Markdown 文本
+       */
+      case "markdown":
+      case "Markdown":
+      case "md":
+      case "MD":
+      case "MarkdownText":
+      case "mdtext":
+      case "MdText":
+      case "mdText":
+      case "Mdtext":
+      case "Markdowntext":
+        for (let i = this.comments.length-1; i >= 0; i--) {
+          let comment = this.comments[i]
+          if (
+            comment.type == "TextNote" &&
+            !(
+              comment.text.includes("marginnote3") ||
+              comment.text.includes("marginnote4")
+            )
+          ) {
+            this.removeCommentByIndex(i)
+          }
+        }
+        break;
+
+      /**
+       * Html 文本
+       */
+      case "html":
+      case "Html":
+      case "HTML":
+      case "HtmlText":
+      case "htmltext":
+      case "Htmltext":
+      case "htmlText":
+        for (let i = this.comments.length-1; i >= 0; i--) {
+          let comment = this.comments[i]
+          if (
+            comment.type == "HtmlNote"
+          ) {
+            this.removeCommentByIndex(i)
+          }
+        }
+        break;
+
+      /**
+       * 摘录
+       */
+      case "excerpt":
+      case "excerpts":
+      case "Excerpt":
+      case "Excerpts":
+      case "LinkNote":
+      case "LinkNotes":
+      case "linknote":
+      case "linknotes":
+        for (let i = this.comments.length-1; i >= 0; i--) {
+          let comment = this.comments[i]
+          if (
+            comment.type == "LinkNote"
+          ) {
+            this.removeCommentByIndex(i)
+          }
+        }
+        break;
+
+      default:
+        MNUtil.showHUD('No "' + type + '" type!')
+        break;
+    }
+  }
+}
+
+/**
+ * 合并到目标卡片并更新链接
+ * 1. 更新新卡片里的链接（否则会丢失蓝色箭头）
+ * 2. 双向链接对应的卡片里的链接要更新，否则合并后会消失
+ * 
+ * 不足
+ * - this 出发的单向链接无法处理
+ * 
+ * 注意：和 MN 自己的合并不同，this 的标题会处理为评论，而不是添加到 targetNote 的标题
+ */
+MNNote.prototype.mergeInto = function(targetNote, htmlType = "none"){
+  // 合并之前先更新链接
+  this.renewLinks()
+
+  let oldComments = this.MNComments
+  oldComments.forEach((comment, index) => {
+    // if (comment.type == "linkComment" && comment.linkDirection == "both") {
+    if (comment.type == "linkComment" && this.LinkIfDouble(comment.text)) {
+      let linkedNote = MNNote.new(comment.text.toNoteId())
+      let linkedNoteComments = linkedNote.MNComments
+      let indexArrInLinkedNote = linkedNote.getLinkCommentsIndexArr(this.noteId.toNoteURL())
+      // 把 this 的链接更新为 targetNote 的链接
+      indexArrInLinkedNote.forEach(index => {
+        // linkedNoteComments[index].text = targetNote.noteURL
+        // linkedNoteComments[index].detail.text = targetNote.noteURL
+        // linkedNote.replaceWithMarkdownComment(targetNote.noteURL,linkedNoteComments[index].index)
+        linkedNote.replaceWithMarkdownComment(targetNote.noteURL, index)
+      })
+    }
+  })
+
+  if (this.title) {
+    targetNote.appendMarkdownComment(
+      HtmlMarkdownUtils.createHtmlMarkdownText(this.title.toNoBracketPrefixContent(), htmlType)
+    )
+    this.title = ""
+  }
+
+  // 检测 this 的第一条评论对应是否是 targetNote 是的话就去掉
+  if (this.comments[0] && this.comments[0].text && (this.comments[0].text == targetNote.noteURL)) {
+    this.removeCommentByIndex(0)
+  }
+
+
+  // 合并到目标卡片
+  targetNote.merge(this)
+
+  // 最后更新一下合并后的链接
+  let targetNoteComments = targetNote.MNComments
+  for (let i = 0; i < targetNoteComments.length; i++) {
+    let targetNotecomment = targetNoteComments[i]
+    if (targetNotecomment.type == "linkComment") {
+      targetNotecomment.text = targetNotecomment.text
+    }
+  }
+}
+
+/**
+ * 把 this 合并到 targetNote, 然后移动到 targetIndex 位置
+ * 和默认合并不同的是：this 的标题不会合并为标题，而是变成评论
+ * 
+ * @param {MNNote} targetNote 
+ * @param {Number} targetIndex 
+ */
+MNNote.prototype.mergeIntoAndMove = function(targetNote, targetIndex, htmlType = "none"){
+  // let commentsLength = this.comments.length
+  // if (this.title) {
+  //   commentsLength += 1  // 如果有标题的话，合并后会处理为评论，所以要加 1
+  // }
+  // if (this.excerptText) {
+  //   commentsLength += 1  // 如果有摘录的话，合并后也会变成评论，所以要加 1
+  // }
+
+  // 要把 targetNote 的这一条链接去掉，否则会多移动一条评论
+  let commentsLength = this.comments.length + !!this.title + !!this.excerptText - (this.comments && this.comments[0].text && this.comments[0].text == targetNote.noteURL)
+
+  this.mergeInto(targetNote, htmlType)
+
+  // 生成从 targetNote.comments.length - commentsLength 到 targetNote.comments.length - 1 的数组
+  let targetNoteCommentsToMoveArr = [...Array(commentsLength)].map((_, i) => targetNote.comments.length - commentsLength + i)
+
+  targetNote.moveCommentsByIndexArr(targetNoteCommentsToMoveArr, targetIndex)
+}
+
+/**
+ * 更新占位符的内容
+ */
+MNNote.prototype.mergIntoAndRenewReplaceholder = function(targetNote, htmlType = "none"){
+  let targetIndex = targetNote.getCommentIndex(this.noteURL)
+  if (targetIndex !== -1) {
+    // if (this.comments[0].text && this.comments[0].text == targetNote.noteURL) {
+    //   // 此时表示的情景：从某个命题双向链接到空白处，生成的占位符
+    //   // 所以合并前把第一条评论删掉
+
+    //   // bug: 删掉的话，下一步就无法根据这条评论来改变 point 和 subpoint 了
+    //   /  fix: 把这个删除放到 mergeInto 里
+    //   this.removeCommentByIndex(0)
+    // }
+    if (this.title.startsWith("【占位】")){
+      this.title = ""
+    }
+    this.mergeIntoAndMove(targetNote, targetIndex +1, htmlType)
+    targetNote.removeCommentByIndex(targetIndex) // 删除占位符
+  }
+}
+
+
+/**
+ * 判断卡片中是否有某个链接
+ */
+MNNote.prototype.hasLink = function(link){
+  if (link.ifNoteIdorURL()) {
+    let URL = link.toNoteURL()
+    return this.getCommentIndex(URL) !== -1
+  }
+}
+
+/**
+ * 判断链接的类型：是单向链接还是双向链接
+ * @param {string} link
+ * @returns {String} "Double"|"Single"
+ */
+MNNote.prototype.LinkGetType = function(link){
+  // 兼容一下 link 是卡片 comment 的情形
+  if (MNUtil.isObj(link) && link.type == "TextNote") {
+    link = link.text
+  }
+  if (link.ifNoteIdorURL()) {
+    // 先确保参数是链接的 ID 或者 URL
+    let linkedNoteId = link.toNoteID()
+    let linkedNoteURL = link.toNoteURL()
+    if (this.hasLink(linkedNoteURL)) {
+      let linkedNote = MNNote.new(linkedNoteId)
+      return linkedNote.hasLink(this.noteURL) ? "Double" : "Single"
+    } else {
+      MNUtil.showHUD("卡片中没有此链接！")
+      return "NoLink"
+    }
+  } else {
+    MNUtil.showHUD("参数不是合法的链接 ID 或 URL！")
+  }
+}
+
+/**
+ * 是否是单向链接
+ * @param {string} link
+ * @returns {Boolean}
+ */
+MNNote.prototype.LinkIfSingle = function(link){
+  return this.LinkGetType(link) === "Single"
+}
+
+/**
+ * 是否是双向链接
+ * @param {string} link
+ * @returns {Boolean}
+ */
+MNNote.prototype.LinkIfDouble = function(link){
+  return this.LinkGetType(link) === "Double"
+}
+
+MNNote.prototype.renew = function(){
+  let noteType = this.getNoteTypeZh()
+  /**
+   * 更新链接
+   */
+  this.renewLinks()
+
+  /**
+   * 转换为非摘录版本
+   */
+  if (this.excerptText) {
+    this.toNoExceptVersion()
+  }
+
+  if (noteType == "文献") {
+    if (this.ifOldReferenceNote()) {
+      /**
+       * 重新处理旧文献卡片
+       * 
+       * 只保留
+       * 1. 标题（去掉前面的【】）
+       * 2. 摘录
+       * 
+       * 也就是去掉所有文本
+       */
+
+      // 处理标题
+      // 此处不处理标题，否则后续
+      // this.title = this.title.toReferenceNoteTitle()
+
+      // 去掉文本
+      this.removeCommentsByTypes(["text","link"])
+    }
+  } else {
+    /**
+     * 检测是否是旧模板制作的卡片
+     */
+    if (this.ifTemplateOldVersion()) {
+      /**
+       * 旧模板卡片则只保留
+       * 1. 标题
+       * 2. 摘录
+       * 3. 手写
+       * 4. 图片
+       * 也就是要去掉
+       * 1. 文本
+       * 2. 链接
+       * i.e. 去掉所有的 TextNote
+       * 但是保留原本的部分的链接
+       *   - 原本的证明中相关知识的部分
+       *   - 原本的证明中体现的思想方法的部分
+       * 
+       * 检测标题是否是知识类卡片的标题，如果是的话要把前缀去掉，否则会影响后续的添加到复习
+       */
+      if (this.noteTitle.ifKnowledgeNoteTitle()) {
+        this.noteTitle = this.noteTitle.toKnowledgeNoteTitle()
+      }
+
+      // // 获取"证明过程相关知识："的 block 内容
+      // let proofKnowledgeBlockTextContentArr = this.getHtmlBlockTextContentArr("证明过程相关知识：")
+      
+      // // 获取"证明体现的思想方法："的 block 内容
+      // let proofMethodBlockTextContentArr = this.getHtmlBlockTextContentArr("证明体现的思想方法：")
+
+      // // 获取"应用："的 block 内容
+      // let applicationBlockTextContentArr = this.getHtmlBlockTextContentArr("应用：")
+
+      // 去掉所有的文本评论和链接
+      this.removeCommentsByTypes(["text","link"])
+
+      // // 重新添加两个 block 的内容
+      // proofKnowledgeBlockTextContentArr.forEach(text => {
+      //   this.appendMarkdownComment(text)
+      // })
+
+      // proofMethodBlockTextContentArr.forEach(text => {
+      //   this.appendMarkdownComment(text)
+      // })
+
+      // applicationBlockTextContentArr.forEach(text => {
+      //   this.appendMarkdownComment(text)
+      // })
+    } else {
+      /**
+       * 其它类型的旧卡片
+       */
+
+      if (
+        this.noteTitle.ifKnowledgeNoteTitle() &&
+        (
+          this.getCommentIndex("由来/背景：") !== -1 ||
+          this.getCommentIndex("- ") !== -1 ||
+          this.getCommentIndex("-") !== -1 ||
+          this.getHtmlCommentIndex("所属") !== -1
+        )
+      ) {
+        this.noteTitle = this.noteTitle.toKnowledgeNoteTitle()
+      }
+
+      /**
+       * 删除一些特定的文本
+       */
+      if (noteType!== "归类" && noteType!== "顶层") {
+        this.removeCommentsByText(
+          [
+            "零层",
+            "一层",
+            "两层",
+            "三层",
+            "四层",
+            "五层",
+            "由来/背景：",
+            "- 所属",
+            "所属"
+          ]
+        )
+      } else {
+        this.removeCommentsByText(
+          [
+            "零层",
+            "一层",
+            "两层",
+            "三层",
+            "四层",
+            "五层",
+            "由来/背景：",
+            "- 所属",
+          ]
+        )
+      }
+
+      this.removeCommentsByTrimText(
+        "-"
+      )
+
+      /**
+       * 更新 Html 评论
+       */
+      this.renewHtmlCommentFromId("关键词：", "13D040DD-A662-4EFF-A751-217EE9AB7D2E")
+      this.renewHtmlCommentFromId("相关定义：", "341A7B56-8B5F-42C8-AE50-61F7A1276FA1")
+
+      /**
+       * 根据父卡片或者是卡片颜色（取决于有没有归类的父卡片）来修改 Html 版本
+       */
+      if (noteType !== "归类" && noteType !== "顶层") {
+        // 修改对应 "证明："的版本
+        let proofHtmlCommentIndex = this.getProofHtmlCommentIndexByNoteType(noteType)
+        if (proofHtmlCommentIndex == -1) {
+          // 此时要先找到不正确的 proofHtmlComment 的 Index，然后删除掉
+          this.getRenewProofHtmlCommentByNoteType(noteType)
+        }
+      } else {
+        // 去掉"相关xx：" 改成"相关思考："
+        let oldRelatedHtmlCommentIndex = this.getIncludingHtmlCommentIndex("相关")
+        let includeHtmlCommentIndex = this.getHtmlCommentIndex("包含：")
+        if (includeHtmlCommentIndex !== -1) { // 原本合并过模板的才需要处理
+          if (oldRelatedHtmlCommentIndex == -1) {
+            this.mergeClonedNoteById("B3CAC635-F507-4BCF-943C-B3F9D4BF6D1D")
+            this.moveComment(this.comments.length-1, includeHtmlCommentIndex)
+          } else {
+            this.removeCommentByIndex(oldRelatedHtmlCommentIndex)
+            this.mergeClonedNoteById("B3CAC635-F507-4BCF-943C-B3F9D4BF6D1D")
+            this.moveComment(this.comments.length-1, oldRelatedHtmlCommentIndex)
+          }
+        }
+      }
+
+      /**
+       * 调整 Html Block 的结构
+       */
+      if (this.getNoteTypeZh() == "定义") {
+        /**
+         * 定义类卡片，按照
+         * - 相关概念：
+         * - 相关思考：
+         * - 相关链接：
+         * 的顺序
+         */
+        this.moveHtmlBlockToBottom("相关概念：")
+        this.moveHtmlBlockToBottom("相关思考：")
+        this.moveHtmlBlockToBottom("相关链接：")
+      } else {
+        // 非定义类卡片
+        /**
+         * 将"应用："及下方的内容移动到最下方
+         */
+        if (this.getNoteTypeZh()!== "归类" && this.getNoteTypeZh() !== "顶层"){
+          this.moveHtmlBlockToBottom("相关思考：")
+        }
+        // this.moveHtmlBlockToBottom("关键词：")
+        let keywordHtmlCommentIndex = this.getIncludingHtmlCommentIndex("关键词：")
+        if (keywordHtmlCommentIndex !== -1) {
+          this.moveComment(keywordHtmlCommentIndex, this.comments.length-1)
+        }
+        this.moveHtmlBlockToBottom("相关链接：")
+        this.moveHtmlBlockToBottom("应用：")
+      }
+
+      /**
+       * 刷新卡片
+       */
+      this.refresh()
+    }
+  }
+
+}
+
+MNNote.prototype.renewNote = function(){
+  this.renew()
+}
+
+MNNote.prototype.renewCard = function(){
+  this.renew()
+}
+
+MNNote.prototype.getIncludingHtmlCommentIndex = function(htmlComment){
+  const comments = this.note.comments
+  for (let i = 0; i < comments.length; i++) {
+    const _comment = comments[i]
+    if (
+      typeof htmlComment == "string" &&
+      _comment.type == "HtmlNote" &&
+      _comment.text.includes(htmlComment)
+    ) {
+      return i
+    }
+  }
+  return -1
+}
+
+MNNote.prototype.renewHtmlCommentFromId = function(comment, id) {
+  if (typeof comment == "string") {
+    let index = this.getHtmlCommentIndex(comment)
+    if (index !== -1){
+      this.removeCommentByIndex(index)
+      this.mergeClonedNoteFromId(id)
+      this.moveComment(this.comments.length-1, index)
+    }
+  } else {
+    MNUtil.showHUD("只能更新文本类型的评论！")
+  }
+}
+
+MNNote.prototype.renewHtmlCommentById = function(comment, id) {
+  this.renewHtmlCommentFromId(comment, id)
+}
+
+MNNote.prototype.mergeClonedNoteFromId = function(id){
+  let note = MNNote.clone(id)
+  this.merge(note.note)
+}
+
+MNNote.prototype.mergeClonedNoteById = function(id){
+  this.mergeClonedNoteFromId(id)
+}
+
+/**
+ * 根据内容删除文本评论
+ */
+MNNote.prototype.removeCommentsByContent = function(content){
+  this.removeCommentsByText(content)
+}
+
+MNNote.prototype.removeCommentsByTrimContent = function(content){
+  this.removeCommentsByText(content)
+}
+
+MNNote.prototype.removeCommentsByText = function(text){
+  if (typeof text == "string") {
+    this.removeCommentsByOneText(text)
+  } else {
+    if (Array.isArray(text)) {
+      text.forEach(t => {
+        this.removeCommentsByOneText(t)
+      })
+    }
+  }
+}
+
+MNNote.prototype.removeCommentsByTrimText = function(text){
+  if (typeof text == "string") {
+    this.removeCommentsByOneTrimText(text)
+  } else {
+    if (Array.isArray(text)) {
+      text.forEach(t => {
+        this.removeCommentsByOneTrimText(t)
+      })
+    }
+  }
+}
+
+// aux function
+MNNote.prototype.removeCommentsByOneText = function(text){
+  if (typeof text == "string") {
+    for (let i = this.comments.length-1; i >= 0; i--) {
+      let comment = this.comments[i]
+      if (
+        (
+          comment.type == "TextNote" ||
+          comment.type == "HtmlNote"
+        )
+        &&
+        comment.text == text
+      ) {
+        this.removeCommentByIndex(i)
+      }
+    }
+  }
+}
+
+MNNote.prototype.removeCommentsByOneTrimText = function(text){
+  if (typeof text == "string") {
+    for (let i = this.comments.length-1; i >= 0; i--) {
+      let comment = this.comments[i]
+      if (
+        (
+          comment.type == "TextNote" ||
+          comment.type == "HtmlNote"
+        )
+        &&
+        comment.text.trim() == text
+      ) {
+        this.removeCommentByIndex(i)
+      }
+    }
+  }
+}
+
+/**
+ * 刷新卡片
+ */
+// refresh(){
+//   this.note.appendMarkdownComment("")
+//   this.note.removeCommentByIndex(this.note.comments.length-1)
+// }
+
+MNNote.prototype.refresh = async function(delay = 0){
+  if (delay) {
+    await MNUtil.delay(delay)
+  }
+  this.note.appendMarkdownComment("")
+  this.note.removeCommentByIndex(this.note.comments.length-1)
+}
+
+/**
+ * 更新卡片里的链接
+ * 1. 将 MN3 链接转化为 MN4 链接
+ * 2. 去掉所有失效链接
+ * 3. 修复合并造成的链接失效问题
+ * 4. "应用"下方去重
+ */
+MNNote.prototype.LinkRenew = function(){
+  this.convertLinksToNewVersion()
+  this.clearFailedLinks()
+  this.fixProblemLinks()
+
+  // 应用去重
+  let applicationHtmlCommentIndex = Math.max(
+    this.getIncludingHtmlCommentIndex("应用："),
+    this.getIncludingCommentIndex("的应用")
+  )
+  if (applicationHtmlCommentIndex !== -1) {
+    this.linkRemoveDuplicatesAfterIndex(applicationHtmlCommentIndex)
+  }
+}
+
+MNNote.prototype.renewLink = function(){
+  this.LinkRenew()
+}
+
+MNNote.prototype.renewLinks = function(){
+  this.LinkRenew()
+}
+
+MNNote.prototype.LinksRenew = function(){
+  this.LinkRenew()
+}
+
+MNNote.prototype.clearFailedLinks = function(){
+  for (let i = this.comments.length-1; i >= 0; i--) {
+    let comment = this.comments[i]
+    if  (
+      comment.type == "TextNote" &&
+      (
+        comment.text.startsWith("marginnote3app://note/") ||
+        comment.text.startsWith("marginnote4app://note/") 
+      )
+    ) {
+      let targetNoteId = comment.text.match(/marginnote[34]app:\/\/note\/(.*)/)[1]
+      if (!targetNoteId.includes("/summary/")) {  // 防止把概要的链接删掉了
+        let targetNote = MNNote.new(targetNoteId)
+        if (!targetNote) {
+          this.removeCommentByIndex(i)
+        }
+      }
+    }
+  }
+}
+
+
+// 修复合并造成的链接问题
+MNNote.prototype.fixProblemLinks = function(){
+  let comments = this.MNComments
+  comments.forEach((comment) => {
+    if (comment.type = "linkComment") {
+      let targetNote = MNNote.new(comment.text)
+      if (targetNote && targetNote.groupNoteId) {
+        if (
+          targetNote.groupNoteId !== comment.text
+        ) {
+          comment.text = targetNote.groupNoteId.toNoteURL()
+        }
+      }
+    }
+  })
+}
+
+MNNote.prototype.linkRemoveDuplicatesAfterIndex = function(startIndex){
+  let links = new Set()
+  if (startIndex < this.comments.length-1) {
+    // 下面先有内容才处理
+    for (let i = this.comments.length-1; i > startIndex; i--){
+      let comment = this.comments[i]
+      if (
+        comment.type = "TextNote" && comment.text &&
+        comment.text.includes("marginnote4app://note/")
+      ) {
+        if (links.has(comment.text)) {
+          this.removeCommentByIndex(i)
+        } else {
+          links.add(comment.text)
+        }
+      }
+    }
+  }
+}
+
+MNNote.prototype.LinkClearFailedLinks = function(){
+  this.clearFailedLinks()
+}
+
+MNNote.prototype.LinksConvertToMN4Version = function(){
+  for (let i = this.comments.length-1; i >= 0; i--) {
+    let comment = this.comments[i]
+    if (
+      comment.type == "TextNote" &&
+      comment.text.startsWith("marginnote3app://note/")
+    ) {
+      let targetNoteId = comment.text.match(/marginnote3app:\/\/note\/(.*)/)[1]
+      let targetNote = MNNote.new(targetNoteId)
+      if (targetNote) {
+        this.removeCommentByIndex(i)
+        this.appendNoteLink(targetNote, "To")
+        this.moveComment(this.comments.length-1, i)
+      } else {
+        this.removeCommentByIndex(i)
+      }
+    }
+  }
+}
+
+MNNote.prototype.convertLinksToMN4Version = function(){
+  this.LinksConvertToMN4Version()
+}
+
+MNNote.prototype.LinksConvertToNewVersion = function(){
+  this.LinksConvertToMN4Version()
+}
+
+MNNote.prototype.convertLinksToNewVersion = function(){
+  this.LinksConvertToMN4Version()
+}
+
+
+/**
+ * 将某一个 Html 评论到下一个 Html 评论之前的内容（不包含下一个 Html 评论）进行移动
+ * 将 Html 评论和下方的内容看成一整个块，进行移动
+ * 注意此函数会将 Html 评论和下方的内容一起移动，而不只是下方内容
+ * @param {String} htmltext Html 评论，定位的锚点
+ * @param {Number} toIndex 目标 index
+ */
+MNNote.prototype.moveHtmlBlock = function(htmltext, toIndex) {
+  if (this.getHtmlCommentIndex(htmltext) !== -1) {
+    let htmlBlockIndexArr = this.getHtmlBlockIndexArr(htmltext)
+    this.moveCommentsByIndexArr(htmlBlockIndexArr, toIndex)
+  }
+}
+
+/**
+ * 移动 HtmlBlock 到最下方
+ * @param {String} htmltext Html 评论，定位的锚点
+ */
+MNNote.prototype.moveHtmlBlockToBottom = function(htmltext){
+  this.moveHtmlBlock(htmltext, this.comments.length-1)
+}
+
+/**
+ * 移动 HtmlBlock 到最上方
+ * @param {String} htmltext Html 评论，定位的锚点
+ */
+MNNote.prototype.moveHtmlBlockToTop = function(htmltext){
+  this.moveHtmlBlock(htmltext, 0)
+}
+
+/**
+ * 获取 Html Block 的索引数组
+ */
+MNNote.prototype.getHtmlBlockIndexArr = function(htmltext){
+  let htmlCommentIndex = this.getHtmlCommentIndex(htmltext)
+  let indexArr = []
+  if (htmlCommentIndex !== -1) {
+    // 获取下一个 html 评论的 index
+    let nextHtmlCommentIndex = this.getNextHtmlCommentIndex(htmltext)
+    if (nextHtmlCommentIndex == -1) {
+      // 如果没有下一个 html 评论，则以 htmlCommentIndex 到最后一个评论作为 block
+      for (let i = htmlCommentIndex; i <= this.comments.length-1; i++) {
+        indexArr.push(i)
+      }
+    } else {
+      // 有下一个 html 评论，则以 htmlCommentIndex 到 nextHtmlCommentIndex 之间的评论作为 block
+      for (let i = htmlCommentIndex; i < nextHtmlCommentIndex; i++) {
+        indexArr.push(i)
+      }
+    }
+  }
+  return indexArr
+}
+
+/**
+ * 获取某个 html 评论的下一个 html 评论的索引
+ * 若没有下一个 html 评论，则返回 -1
+ * 思路：
+ *  1. 先获取所有 html 评论的索引 arr
+ *  2. 然后看 htmltext 在 arr 里的 index
+ *  3. 如果 arr 没有 index+1 索引，则返回 -1；否则返回 arr[index+1]
+ * @param {String} htmltext
+ */
+MNNote.prototype.getNextHtmlCommentIndex = function(htmltext){
+  let indexArr = this.getHtmlCommentsIndexArr()
+  let htmlCommentIndex = this.getHtmlCommentIndex(htmltext)
+  let nextHtmlCommentIndex = -1
+  if (htmlCommentIndex !== -1) {
+    let nextIndex = indexArr.indexOf(htmlCommentIndex) + 1
+    if (nextIndex < indexArr.length) {
+      nextHtmlCommentIndex = indexArr[nextIndex]
+    }
+  }
+  return nextHtmlCommentIndex
+}
+
+/**
+ * 获得所有 html 评论的索引列表
+ * @returns {Array}
+ */
+MNNote.prototype.getHtmlCommentsIndexArr = function(){
+  let indexArr = []
+  for (let i = 0; i < this.comments.length; i++) {
+    let comment = this.comments[i]
+    if (comment.type == "HtmlNote") {
+      indexArr.push(i)
+    }
+  }
+
+  return indexArr
+}
+
+/**
+ * 获得某个文本评论的索引列表
+ * @param {String} text 
+ */
+MNNote.prototype.getTextCommentsIndexArr = function(text){
+  let arr = []
+  this.comments.forEach((comment, index) => {
+    if (comment.type == "TextNote" && comment.text == text) {
+      arr.push(index)
+    }
+  })
+  return arr
+}
+
+/**
+ * 获得某个链接评论的索引列表
+ * @param {Object|String} link
+ */
+MNNote.prototype.getLinkCommentsIndexArr = function(link){
+  return this.getTextCommentsIndexArr(MNUtil.getLinkText(link))
+}
+
+/**
+ * 获取某个 html Block 的下方内容的 index arr
+ * 不包含 html 本身
+ */
+MNNote.prototype.getHtmlBlockContentIndexArr = function(htmltext){
+  let arr = this.getHtmlBlockIndexArr(htmltext)
+  if (arr.length > 0) {
+    arr.shift()  // 去掉 html 评论的 index
+  }
+  return arr
+}
+
+/**
+ * 获取 html block 下方的内容 arr
+ * 不包含 html 本身
+ * 但只能获取 TextNote，比如文字和链接
+ */
+MNNote.prototype.getHtmlBlockTextContentArr = function(htmltext){
+  let indexArr = this.getHtmlBlockContentIndexArr(htmltext)
+  let textArr = []
+  indexArr.forEach(index => {
+    let comment = this.comments[index]
+    if (comment.type == "TextNote") {
+      textArr.push(comment.text)
+    }
+  })
+  return textArr
+}
+
+/**
+ * 移动某个数组的评论到某个 index
+ * 注意往上移动和往下移动情况不太一样
+ */
+MNNote.prototype.moveCommentsByIndexArr = function(indexArr, toIndex){
+  if (indexArr.length !== 0) {
+    let max = Math.max(...indexArr)
+    let min = Math.min(...indexArr)
+    if (toIndex < min) {
+      // 此时是往上移动
+      for (let i = 0; i < indexArr.length; i++) {
+        this.moveComment(indexArr[i], toIndex+i)
+      }
+    } else if (toIndex > max) {
+      // 此时是往下移动
+      for (let i = indexArr.length-1; i >= 0; i--) {
+        this.moveComment(indexArr[i], toIndex-(indexArr.length-i))
+      }
+    }
+  }
+}
+
+/**
+ * 获取 Html 评论的索引
+ * @param {String} htmlcomment 
+ */
+MNNote.prototype.getHtmlCommentIndex = function(htmlcomment) {
+  const comments = this.note.comments
+  for (let i = 0; i < comments.length; i++) {
+    const _comment = comments[i]
+    if (
+      typeof htmlcomment == "string" &&
+      _comment.type == "HtmlNote" &&
+      _comment.text == htmlcomment
+    ) {
+      return i
+    }
+  }
+  return -1
+}
+
+/**
+ * 刷新卡片及其父子卡片
+ */
+MNNote.prototype.refreshAll = async function(delay = 0){
+  if (delay) {
+    await MNUtil.delay(delay)
+  }
+  if (this.descendantNodes.descendant.length > 0) {
+    this.descendantNodes.descendant.forEach(descendantNote => {
+      descendantNote.refresh()
+    })
+  }
+  if (this.ancestorNodes.length > 0) {
+    this.ancestorNodes.forEach(ancestorNote => {
+      ancestorNote.refresh()
+    })
+  }
+}
+
+MNNote.prototype.getIncludingCommentIndex = function(comment,includeHtmlComment = false) {
+  const comments = this.note.comments
+  for (let i = 0; i < comments.length; i++) {
+    const _comment = comments[i]
+    if (typeof comment == "string") {
+      if (includeHtmlComment) {
+        if ((_comment.type == "TextNote" || _comment.type == "HtmlNote" )&& _comment.text.includes(comment)) return i
+      }else{
+        if (_comment.type == "TextNote" && _comment.text.includes(comment)) return i
+      }
+    } else if (
+      _comment.type == "LinkNote" &&
+      _comment.noteid == comment.noteId
+    )
+      return i
+  }
+  return -1
+}
+
+/**
+ * 【数学】定义类卡片的增加模板
+ * @param {string} type 需要生成的归类卡片的类型
+ */
+MNNote.prototype.addClassificationNoteByType = function(type, title=""){
+  /**
+   * 生成归类卡片
+   */
+  let classificationNote = this.addClassificationNote(title)
+
+  /**
+   * 修改标题
+   */
+  classificationNote.changeTitle(type)
+
+  /**
+   * [Done：主要的处理]与定义类卡片进行链接，并防止后续归类后重新链接时导致归类卡片中定义卡片的链接被删除
+   * 主要要修改 linkParentNote
+   */
+  classificationNote.linkParentNote()
+
+  classificationNote.focusInMindMap(0.2)
+
+  return classificationNote
+}
+
+/**
+ * 
+ * @returns {MNNote} 生成的归类卡片
+ */
+MNNote.prototype.addClassificationNote = function(title="") {
+  // let classificationNote = this.createEmptyChildNote(0,title)
+  // classificationNote.mergeClonedNoteFromId("8853B79F-8579-46C6-8ABD-E7DE6F775B8B")
+  let classificationNote = MNNote.clone("68CFDCBF-5748-448C-91D0-7CE0D98BFE2C")
+  classificationNote.title = title
+  MNUtil.undoGrouping(()=>{
+    this.addChild(classificationNote)
+  })
+  return classificationNote
+}
+
+
+/**
+ * 
+ * 复制当前卡片
+ * @param {String} title 
+ * @param {Number} colorIndex 
+ * @returns duplicatedNote
+ * 
+ * 但是目前只能复制一般文本、markdown 文本内容
+ */
+MNNote.prototype.createDuplicatedNote = function(title = this.title, colorIndex = this.colorIndex){
+  let config = {
+    title: title,
+    // content: content,
+    markdown: true,
+    color: colorIndex
+  }
+
+  let duplicatedNote = this.parentNote.createChildNote(config)
+
+  let oldComments = MNComment.from(this)
+
+  oldComments.forEach(oldComment => {
+    switch (oldComment.type) {
+      case "linkComment":
+      case "markdownComment":
+        duplicatedNote.appendMarkdownComment(oldComment.text)
+        break;
+      case "textComment":
+        duplicatedNote.appendTextComment(oldComment.text)
+        break;
+    }
+  })
+
+  return duplicatedNote
+}
+
+/**
+ * 复制卡片后删除原卡片
+ * @param {String} title 
+ * @param {Number} colorIndex 
+ * @returns duplicatedNote
+ */
+MNNote.prototype.createDuplicatedNoteAndDelete = function(title = this.title, colorIndex = this.colorIndex) {
+  let duplicatedNote = this.createDuplicatedNote(title, colorIndex)
+  this.delete()
+
+  return duplicatedNote
+}
+
+/**
+ * 判断文献卡片是否需要移动位置
+ */
+MNNote.prototype.ifReferenceNoteToMove = function(){
+  let parentNote = this.parentNote
+  return !["785225AC-5A2A-41BA-8760-3FEF10CF4AE0","49102A3D-7C64-42AD-864D-55EDA5EC3097"].includes(parentNote.noteId)
+}
+
+/**
+ * 最后两个评论的内容类型
+ * 
+ * 1. 文本 + 链接 => "text-link"
+ * 2. 链接 + 链接 => "link-link"
+ */
+MNNote.prototype.lastTwoCommentsType = function(){
+  let comments = this.comments
+  if (comments.length < 2) {
+    return undefined
+  } else {
+    let lastComment = comments[comments.length-1]
+    let secondLastComment = comments[comments.length-2]
+    if (
+      secondLastComment.type == "TextNote" &&
+      !secondLastComment.text.ifLink() &&
+      lastComment.text.ifLink()
+    ) {
+      return "text-link"
+    } else if (
+      lastComment.text.ifLink()
+    ) {
+      return "other-link"
+    } else {
+      return undefined
+    }
+  }
+}
+
+MNNote.prototype.getProofContentIndexArr = function() {
+  let proofName = this.getProofNameByType(this.getNoteTypeZh())
+  let proofHtmlCommentIndex = this.getProofHtmlCommentIndexByNoteType(this.getNoteTypeZh())
+  if (proofHtmlCommentIndex !== -1) {
+    return this.getHtmlBlockContentIndexArr(proofName)
+  }
+
+  return []
+}
+
+MNNote.prototype.renewProofContentPointsToHtmlType = function(htmlType = "point") {
+  if (htmlType == undefined) { htmlType = "point" }
+  let proofContentIndexArr = this.getProofContentIndexArr()
+  if (proofContentIndexArr.length > 0) {
+    let comments = this.MNComments
+    proofContentIndexArr.forEach(index => {
+      let comment = comments[index]
+      if (comment.type == "markdownComment" && comment.text.startsWith("- ") && !(comment.text.startsWith("- -"))) {
+        comment.text = HtmlMarkdownUtils.createHtmlMarkdownText(comment.text.slice(2).trim(), htmlType)
+      }
+    })
+  }
+}
+
+MNNote.prototype.renewContentPointsToHtmlType = function(htmlType = "none") {
+  if (htmlType == undefined) { htmlType = "none" }
+  let comments = this.MNComments
+  for (let i = this.comments.length-1; i >= 0; i--) {
+    let comment = comments[i]
+    // if (comment.type == "markdownComment" && comment.text.startsWith("- ") && !(comment.text.startsWith("- -"))) {
+    //   comment.text = HtmlMarkdownUtils.createHtmlMarkdownText(comment.text.slice(2).trim(), htmlType)
+    // }
+    if (comment.type === "markdownComment") {
+      const { count, remaining } = HtmlMarkdownUtils.parseLeadingDashes(comment.text);
+      if (count >= 1 && count <= 5) {
+        let adjustedType = htmlType;
+        for (let i = 1; i < count; i++) {
+          adjustedType = HtmlMarkdownUtils.getSpanNextLevelType(adjustedType);
+        }
+        comment.text = HtmlMarkdownUtils.createHtmlMarkdownText(remaining, adjustedType);
+      }
+    }
+  }
+}
+
+MNNote.prototype.clearAllCommentsButMergedImageComment = function() {
+  let comments = this.MNComments
+  for (let i = comments.length-1; i >= 0; i--) {
+    let comment = comments[i]
+    if (!(comment.type == "mergedImageComment")) {
+      this.removeCommentByIndex(i)
+    }
+  }
+}
+
+/**
+ * 夏大鱼羊 - MNNote prototype 扩展 - 更多方法 - end
+ */

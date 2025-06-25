@@ -1121,14 +1121,14 @@ static textMatchPhrase(text, query) {
    * @param {string} noteid 
    * @returns 
    */
-  static getNoteById(noteid,alert = false) {
+  static getNoteById(noteid,alert = true) {
     let note = this.db.getNoteById(noteid)
     if (note) {
       return note
     }else{
       if (alert){
         this.copy(noteid)
-        // this.showHUD("Note not exist!")
+        this.showHUD("Note not exist!")
       }
       return undefined
     }
@@ -5400,7 +5400,7 @@ try {
    * @param {number} toIndex - The target index where the comment should be moved.
    * @returns {MNNote}
    */
-  moveComment(fromIndex, toIndex,msg = false) {
+  moveComment(fromIndex, toIndex,msg = true) {
   try {
 
     let length = this.comments.length;
@@ -6352,7 +6352,7 @@ class MNComment {
     if (this.detail.q_htext) {
       return this.detail.q_htext
     }
-    // MNUtil.showHUD("No available text")
+    MNUtil.showHUD("No available text")
     return undefined
   }
   get markdown(){

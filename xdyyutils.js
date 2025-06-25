@@ -5768,3 +5768,95 @@ MNNote.prototype.clearAllCommentsButMergedImageComment = function() {
 /**
  * 夏大鱼羊 - MNNote prototype 扩展 - 更多方法 - end
  */
+
+/**
+ * 夏大鱼羊 - MNUtil 方法重写 - begin
+ */
+
+// 重写 MNUtil.getNoteById 方法：默认不显示提示，alert 默认值改为 false
+MNUtil.getNoteById = function(noteid, alert = false) {
+  let note = this.db.getNoteById(noteid)
+  if (note) {
+    return note
+  } else {
+    if (alert) {
+      this.copy(noteid)
+      // this.showHUD("Note not exist!")  // 注释掉提示
+    }
+    return undefined
+  }
+}
+
+/**
+ * 夏大鱼羊 - MNUtil 方法重写 - end
+ */
+
+/**
+ * 夏大鱼羊 - MNNote 方法重写 - begin
+ */
+
+// 重写 MNNote.prototype.moveComment 方法：msg 默认值改为 false
+MNNote.prototype.moveComment = function(fromIndex, toIndex, msg = false) {
+  try {
+    let length = this.comments.length;
+    let arr = Array.from({ length: length }, (_, i) => i);
+    let from = fromIndex
+    let to = toIndex
+    if (fromIndex < 0) {
+      from = 0
+    }
+    if (fromIndex > (arr.length-1)) {
+      from = arr.length-1
+    }
+    if (toIndex < 0) {
+      to = 0
+    }
+    if (toIndex > (arr.length-1)) {
+      to = arr.length-1
+    }
+    if (from == to) {
+      if (msg) {
+        MNUtil.showHUD("No change")
+      }
+      return
+    }
+    // 取出要移动的元素
+    const element = arr.splice(to, 1)[0];
+    // 将元素插入到目标位置
+    arr.splice(from, 0, element);
+    let targetArr = arr
+    this.sortCommentsByNewIndices(targetArr)
+    return this
+  } catch (error) {
+    MNNote.addErrorLog(error, "moveComment")
+    return this
+  }
+}
+
+/**
+ * 夏大鱼羊 - MNNote 方法重写 - end
+ */
+
+/**
+ * 夏大鱼羊 - MNComment 方法重写 - begin
+ */
+
+// 重写 MNComment text getter：注释掉错误提示
+Object.defineProperty(MNComment.prototype, 'text', {
+  get: function() {
+    if (this.detail.text) {
+      return this.detail.text
+    }
+    if (this.detail.q_htext) {
+      return this.detail.q_htext
+    }
+    // MNUtil.showHUD("No available text")  // 注释掉提示
+    return undefined
+  },
+  configurable: true,
+  enumerable: true
+});
+
+/**
+ * 夏大鱼羊 - MNComment 方法重写 - end
+ */

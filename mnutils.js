@@ -875,10 +875,11 @@ class MNMath {
           titleParts.type = match[1].trim();
           titleParts.prefixContent = match[2].trim();
           titleParts.content = match[3].trim();
-          // 如果 content 以 `; ` 开头，则去掉
-          if (titleParts.content.startsWith("; ")) {
-            titleParts.content = titleParts.content.slice(2).trim();
-          }
+          // 如果 content 以 `; ` 开头，则去掉?
+          // 暂时不去掉，因为制卡会把标题链接的第一个词前面的分号去掉
+          // if (titleParts.content.startsWith("; ")) {
+          //   titleParts.content = titleParts.content.slice(2).trim();
+          // }
           titleParts.titleLinkWordsArr = titleParts.content.split(/; /).map(word => word.trim()).filter(word => word.length > 0);
         } else {
           match = title.match(/^【(.*)】(.*)/)

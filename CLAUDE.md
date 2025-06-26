@@ -1,143 +1,203 @@
-# CLAUDE.md
+# ✅ 开发与协作规范（学习与编程行为指南）
 
-此文件为 Claude Code (claude.ai/code) 提供在本仓库中工作的指导。
+> 本规范适用于你参与的全部开发任务，条款为强制性，除非用户显式豁免，任何条目都不得忽视或删减。
+>
+> - 每次输出前必须深度理解项目背景、用户意图和技术栈特征；
+> - 当回答依赖外部知识或信息不确定时，先查询至少一份权威资料（官方文档、标准或源码）再作结论；
+> - 引用外部资料须在回复中注明来源；可使用链接或版本号，保证可追溯；
+> - 若用户需求含糊，先用一句话复述已知信息，并列出关键澄清问题，待用户确认后再继续；
+> - 同一次回复中的术语、变量名、逻辑描述保持一致；发现冲突必须立即修正；
+> - 仅回答与问题直接相关内容，避免冗余、无关扩展或教程式铺陈；
+> - 面对复杂需求，先拆分为若干可管理子任务，在输出中按子任务顺序呈现，便于用户跟进；
+>
+> 所有技术输出必须建立在准确、思考过的基础之上，拒绝机械生成与无脑填充。
+> 如果你已经了解所有的规范，你需要在用户第一次进行对话时先说明 "我已充分了解开发与写作规范。"，随后再执行用户需求。
 
-## 项目概览
+## MN Toolbar Pro 项目专属规范
 
-MN Toolbar Pro 是一个 MarginNote 4 扩展，提供增强的可自定义工具栏，用于文档批注和笔记管理。它使用 JSB（JavaScript Bridge）与原生 MarginNote 应用程序在 iOS/macOS 上进行交互。
+### 1. JSB 架构最佳实践
 
-## 开发命令
+1. **单例模式获取**：
+   - ✅ 使用 `const getFooController = ()=>self` 模式定义获取器
+   - ✅ 在方法内部通过 `let self = getFooController()` 获取实例
+   - ❌ 避免直接使用 `this` 或全局 `self`
 
-### 构建和打包
-```bash
-# 解包 .mnaddon 文件以进行开发
-mnaddon4 unpack mntoolbar_v0_1_3_alpha0427.mnaddon
-
-# 将当前目录打包成 .mnaddon 格式
-mnaddon4 build
-
-# 更新版本并部署（需要配置）
-python update.py
-```
-
-### 测试
-- 在 MarginNote 4 应用程序中加载插件进行测试
-- 使用 `MNUtil.showHUD()` 显示调试消息
-- 在 MarginNote 开发者模式下查看控制台输出
-
-## 架构
-
-### 核心组件
-
-1. **main.js** - 入口点，包含：
-   - `JSB.newAddon()` - 主插件注册
-   - 生命周期方法（`willOpenNotebook`、`willCloseNotebook`）
-   - 单例实例管理（`getMNToolbarClass()`）
-   - MarginNote 事件的事件观察器
-
-2. **webviewController.js** - UI 管理：
-   - `ToolbarController` 类处理工具栏显示
-   - 按钮配置和动作处理
-   - 窗口状态持久化
-   - 与其他 MN 插件的集成
-
-3. **settingController.js** - 设置界面：
-   - `SettingController` 类用于偏好设置
-   - 基于 TableView 的设置 UI
-   - 配置导出/导入
-
-4. **utils.js** - 工具函数：
-   - `MNUtil` 命名空间，包含框架和颜色工具
-   - `FrameClass` 用于 UI 定位计算
-   - 常用辅助函数
-
-### 配置结构
-
-插件使用 `toolbar_config.json` 存储：
-- 用户偏好设置
-- 窗口状态
-- 自定义工具栏动作
-- 按钮配置
-
-### 关键模式
-
-1. **单例访问**：
+2. **类定义规范**：
    ```javascript
-   const toolbar = Application.sharedInstance().addon.toolbar
-   const controller = getToolbarController()
+   // ✅ 正确示例
+   var FooController = JSB.defineClass('FooController : UIViewController', {
+     viewDidLoad: function() {
+       let self = getFooController()
+       // 初始化逻辑
+     }
+   })
    ```
 
-2. **事件处理**：
+3. **观察者模式**：
+   - 在 `sceneWillConnect` 或 `notebookWillOpen` 中添加观察者
+   - 在 `sceneDidDisconnect` 或 `notebookWillClose` 中必须移除观察者
+   - 使用 `MNUtil.addObserver/removeObserver` 统一管理
+
+### 2. UI 开发规范
+
+1. **Frame 操作**：
+   - 优先使用 `Frame` 工具类而非直接操作 frame
+   - ✅ `Frame.set(view, x, y, width, height)`
+   - ❌ `view.frame = {x: 10, y: 10, width: 100, height: 50}`
+
+2. **手势处理**：
    ```javascript
-   NSNotificationCenter.defaultCenter().addObserverSelectorName(
-     observer, 
-     handler, 
-     notificationName
-   )
+   // ✅ 正确的手势添加方式
+   self.addPanGesture(self.view, "onMoveGesture:")
+   self.addLongPressGesture(button, "onLongPressGesture:")
    ```
 
-3. **动作系统**：
-   - 动作定义在 webviewController.js 的 `availableActionOptions` 中
-   - 每个动作有 `id`、`title`、`group` 和可选的 `callback`
-   - 基于配置的动态动作加载
+3. **颜色与样式**：
+   - 使用 `MNUtil.hexColorAlpha()` 处理颜色
+   - shadow、corner radius 等样式集中在 `viewDidLoad` 中设置
+   - 保持 iOS/macOS 平台一致的视觉体验
 
-## 重要约束
+### 3. 内存与生命周期管理
 
-1. **JSB 限制**：
-   - 不能使用 Node.js API 或 npm 包
-   - 仅限于 JSB 提供的 API 和 MarginNote 框架
-   - UI 必须通过 JavaScript 桥接使用 UIKit 组件
+1. **必须清理的资源**：
+   - NSNotificationCenter 观察者
+   - 定时器（NSTimer）
+   - 手势识别器引用
+   - 控制器强引用
 
-2. **内存管理**：
-   - 在 `dealloc()` 方法中手动清理
-   - 关闭笔记本时移除观察器
-   - 正确的单例生命周期管理
+2. **生命周期方法**：
+   ```javascript
+   notebookWillOpen: async function(notebookid) {
+     // 初始化资源
+     if (!(await toolbarUtils.checkMNUtil(true))) return
+     // 设置状态
+   },
+   
+   notebookWillClose: function(notebookid) {
+     // 保存状态
+     toolbarConfig.windowState.frame = self.view.frame
+     // 清理资源
+   }
+   ```
 
-3. **平台兼容性**：
-   - 必须同时在 iOS 和 macOS 上工作
-   - 考虑 UI 布局的屏幕尺寸差异
-   - 触摸与鼠标交互模式
+### 4. 错误处理规范
 
-## 开发技巧
+1. **try-catch 包装**：
+   - 所有主要方法必须使用 try-catch
+   - 错误日志使用 `toolbarUtils.addErrorLog(error, methodName, info)`
+   
+2. **边界检查**：
+   ```javascript
+   // ✅ 安全检查
+   if (typeof MNUtil === 'undefined') return
+   if (!(await toolbarUtils.checkMNUtil(true))) return
+   ```
 
-1. **调试**：
-   - 使用 `MNUtil.showHUD()` 显示用户可见的调试消息
-   - 控制台日志显示在 MarginNote 开发者控制台中
-   - 在 iPad 和 Mac 上测试兼容性
+### 5. 配置管理
 
-2. **UI 开发**：
-   - 使用 `FrameClass` 工具进行定位
-   - 在配置中持久化窗口状态
-   - 遵循 MarginNote 的 UI 约定
+1. **配置持久化**：
+   - 窗口状态使用 `toolbarConfig.getWindowState/setWindowState`
+   - 用户配置保存在 `toolbar_config.json`
+   - 配置变更需要云同步考虑
 
-3. **集成点**：
-   - 通过 `Application.sharedInstance().addon` 访问其他插件
-   - 使用通知中心进行跨插件通信
-   - 集成前检查插件可用性
+2. **动态配置**：
+   ```javascript
+   // 读取配置
+   let lastFrame = toolbarConfig.getWindowState("frame")
+   // 保存配置
+   toolbarConfig.windowState.frame = self.view.frame
+   ```
 
-## 常见任务
+### 6. 平台兼容性
 
-### 添加新的工具栏动作
-1. 在 webviewController.js 的 `availableActionOptions` 中添加动作定义
-2. 如需要，实现回调函数
-3. 添加到适当的动作组
-4. 必要时更新配置 UI
+1. **平台检测**：
+   ```javascript
+   self.isMac = MNUtil.version.type === "macOS"
+   if (self.isMac) {
+     // macOS 特定逻辑
+   } else {
+     // iOS 特定逻辑
+   }
+   ```
 
-### 修改设置
-1. 为新设置更新 `settingController.js`
-2. 在 `toolbar_config.json` 中添加相应条目
-3. 处理现有配置的迁移
+2. **交互差异**：
+   - macOS：考虑鼠标悬停、右键菜单
+   - iOS：考虑触摸手势、屏幕旋转
 
-### 调试崩溃
-1. 检查对原生对象的 null/undefined 访问
-2. 验证 dealloc 中的观察器清理
-3. 使用大文档测试内存使用
-4. 确保回调中有正确的错误处理
+### 7. 工具栏动作系统
 
-## 代码约定
+1. **动作定义**：
+   - 在 `availableActionOptions` 中集中定义
+   - 每个动作必须有 `id`、`title`、`group`
+   - 复杂动作提供 `callback` 函数
 
-- 代码使用英文，用户界面字符串使用中文
-- 遵循现有的 JSDoc 文档模式
-- 控制器保持单例模式
-- 工具函数保存在 `utils.js` 中
-- 工具命名空间使用 `MNUtil.` 前缀
+2. **按钮创建**：
+   ```javascript
+   self.createButton("buttonName", "selectorName:")
+   self.setButtonLayout(button, "actionSelector:")
+   ```
+
+### 8. 调试与日志
+
+1. **调试输出**：
+   - 用户可见：`MNUtil.showHUD("message")`
+   - 控制台：`console.log()` (仅开发模式)
+   - 错误日志：`toolbarUtils.addErrorLog()`
+
+2. **性能监控**：
+   - 大文档测试内存使用
+   - 动画流畅度检查
+   - 响应时间优化
+
+### 9. 集成规范
+
+1. **插件通信**：
+   ```javascript
+   // 获取其他插件实例
+   const otherAddon = Application.sharedInstance().addon.otherAddon
+   // 检查可用性
+   if (otherAddon && otherAddon.alive) {
+     // 安全调用
+   }
+   ```
+
+2. **通知中心**：
+   - 使用 MarginNote 定义的通知名称
+   - 跨插件通信遵循既定协议
+
+### 10. 代码组织
+
+1. **文件职责**：
+   - `main.js`: 插件入口和生命周期
+   - `webviewController.js`: 工具栏 UI 管理
+   - `settingController.js`: 设置界面
+   - `utils.js`: 通用工具函数
+
+2. **命名空间**：
+   - 工具函数使用 `MNUtil.` 前缀
+   - 配置相关使用 `toolbarConfig.`
+   - 框架操作使用 `Frame.`
+
+### 11. 源码阅读规范
+
+1. **完整阅读原则**：
+   - 【极其重要】必须完整阅读整个文件，不能只读取前面一部分，避免断章取义
+   - 理解上下文依赖和完整的业务逻辑
+   - 注意文件间的引用关系和依赖链
+
+2. **大文件处理策略**：
+   - 超过 500 行的文件应分段阅读
+   - 每段控制在 100-200 行，保持逻辑完整性
+   - 记录段间的关联关系和数据流向
+
+3. **阅读顺序**：
+   - 先读入口文件 `main.js` 理解整体架构
+   - 再读工具类 `utils.js` 了解基础设施
+   - 最后读具体功能模块，理解业务实现
+
+4. **关注要点**：
+   - 类的继承关系和协议实现
+   - 生命周期方法的调用时机
+   - 事件监听器的注册与清理
+   - 单例模式的实现细节
+   - 异步操作的处理方式

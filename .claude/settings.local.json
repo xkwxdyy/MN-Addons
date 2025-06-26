@@ -32,7 +32,10 @@
       "Bash(then echo \"Files are identical\")",
       "Bash(else echo \"Files are different\")",
       "Bash(fi)",
-      "Bash(md5:*)"
+      "Bash(md5:*)",
+      "mcp__promptx__promptx_remember",
+      "Bash(rm:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": []
   }

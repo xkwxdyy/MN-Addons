@@ -1611,13 +1611,13 @@ class MNMath {
 
   /**
    * 通过弹窗选择并替换字段内容
-   * 删除字段A下的内容，并将字段B下的内容移动到字段A下方
+   * 删除字段A下的内容，并将字段B下的内容或自动获取的新内容移动到字段A下方
    */
   static replaceFieldContentByPopup(note) {
     let htmlCommentsTextArr = this.parseNoteComments(note).htmlCommentsTextArr;
     
-    if (htmlCommentsTextArr.length < 2) {
-      MNUtil.showHUD("需要至少两个字段才能执行替换操作");
+    if (htmlCommentsTextArr.length < 1) {
+      MNUtil.showHUD("需要至少一个字段才能执行替换操作");
       return;
     }
 
@@ -1636,27 +1636,97 @@ class MNMath {
         
         let fieldA = fieldOptions[buttonIndex - 1]; // buttonIndex从1开始
         
-        // 创建源字段选择菜单（排除已选的目标字段）
-        let fieldBOptions = fieldOptions.filter((_, index) => index !== buttonIndex - 1);
+        // 创建内容来源选择菜单
+        let sourceOptions = ["自动获取新内容"];
         
-        // 第二个弹窗：选择源字段
+        // 添加其他字段作为选项（排除已选的目标字段）
+        let otherFields = fieldOptions.filter((_, index) => index !== buttonIndex - 1);
+        sourceOptions = sourceOptions.concat(otherFields.map(field => `来自字段：${field}`));
+        
+        // 第二个弹窗：选择内容来源
         UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-          "选择源字段",
-          `选择要移动到"${fieldA}"字段下的内容源字段`,
+          "选择内容来源",
+          `选择要移动到"${fieldA}"字段下的内容来源`,
           0,  // 普通样式
           "取消",
-          fieldBOptions,
+          sourceOptions,
           (_, buttonIndexB) => {
             if (buttonIndexB === 0) return; // 用户取消
             
-            let fieldB = fieldBOptions[buttonIndexB - 1]; // buttonIndex从1开始
-            
-            // 执行字段内容替换
-            this.replaceFieldContent(note, fieldA, fieldB);
+            if (buttonIndexB === 1) {
+              // 选择了"自动获取新内容"
+              this.replaceFieldContentWithAutoContent(note, fieldA);
+            } else {
+              // 选择了某个字段
+              let fieldB = otherFields[buttonIndexB - 2]; // 减去"自动获取新内容"选项
+              this.replaceFieldContent(note, fieldA, fieldB);
+            }
           }
         );
       }
     );
+  }
+
+  /**
+   * 使用自动获取的新内容替换字段内容
+   * @param {MNNote} note - 目标笔记
+   * @param {string} fieldA - 目标字段名称
+   */
+  static replaceFieldContentWithAutoContent(note, fieldA) {
+    let commentsObj = this.parseNoteComments(note);
+    let htmlCommentsObjArr = commentsObj.htmlCommentsObjArr;
+    
+    if (htmlCommentsObjArr.length === 0) {
+      MNUtil.showHUD("未找到字段结构");
+      return;
+    }
+
+    // 通过字段名称找到对应的字段对象
+    let fieldAObj = htmlCommentsObjArr.find(obj => obj.text.includes(fieldA));
+    
+    if (!fieldAObj) {
+      MNUtil.showHUD(`无法找到字段"${fieldA}"`);
+      return;
+    }
+    
+    // 获取自动识别的新内容索引
+    let autoContentIndices = this.autoGetNewContentToMoveIndexArr(note);
+    
+    if (autoContentIndices.length === 0) {
+      MNUtil.showHUD("没有检测到可移动的新内容");
+      return;
+    }
+    
+    // 获取字段A下的内容索引（不包括字段标题本身）
+    let fieldAContentIndices = fieldAObj.excludingFieldBlockIndexArr;
+    
+    // 先删除字段A下的内容（从后往前删除，避免索引变化）
+    if (fieldAContentIndices.length > 0) {
+      let sortedFieldAIndices = fieldAContentIndices.sort((a, b) => b - a);
+      sortedFieldAIndices.forEach(index => {
+        note.removeCommentByIndex(index);
+      });
+    }
+    
+    // 重新解析评论结构（因为删除操作改变了索引）
+    commentsObj = this.parseNoteComments(note);
+    htmlCommentsObjArr = commentsObj.htmlCommentsObjArr;
+    
+    // 重新获取自动内容索引（索引可能已经改变）
+    autoContentIndices = this.autoGetNewContentToMoveIndexArr(note);
+    
+    if (autoContentIndices.length === 0) {
+      MNUtil.showHUD("删除原内容后，没有检测到可移动的新内容");
+      return;
+    }
+    
+    // 移动自动获取的内容到字段A下方
+    this.moveCommentsArrToField(note, autoContentIndices, fieldA, true);
+    
+    // 刷新卡片显示
+    note.refresh();
+    
+    MNUtil.showHUD(`已将自动获取的新内容移动到"${fieldA}"字段下，并删除了原有内容`);
   }
 
   /**

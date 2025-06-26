@@ -654,3 +654,188 @@ MNUtil.undoGrouping(() => {
   }
 });
 ```
+
+## 功能升级：智能内容识别与多源替换
+
+### 升级背景
+在基础字段替换功能基础上，集成了 `autoGetNewContentToMoveIndexArr` 智能内容识别算法，支持自动获取新内容和手动选择字段两种内容来源。
+
+### 智能内容识别机制
+
+#### 1. autoGetNewContentToMoveIndexArr 算法解析
+```javascript
+static autoGetNewContentToMoveIndexArr(note) {
+  let moveIndexArr = []
+  let lastHtmlCommentText = this.parseNoteComments(note).htmlCommentsTextArr.slice(-1)[0] || "";
+  
+  if (lastHtmlCommentText) {
+    // 情况1：有HTML字段 - 获取最后字段的非链接内容
+    moveIndexArr = this.getHtmlBlockNonLinkContentIndexArr(note, lastHtmlCommentText);
+  } else {
+    // 情况2：无HTML字段 - 跳过开头合并图片，获取后续内容
+    let firstNonMergedImageIndex = -1;
+    
+    for (let i = 0; i < note.MNComments.length; i++) {
+      let comment = note.MNComments[i];
+      if (comment.type !== "mergedImageComment" && 
+          comment.type !== "mergedImageCommentWithDrawing") {
+        firstNonMergedImageIndex = i;
+        break;
+      }
+    }
+    
+    if (firstNonMergedImageIndex !== -1) {
+      moveIndexArr = Array.from(
+        {length: note.MNComments.length - firstNonMergedImageIndex}, 
+        (_, i) => i + firstNonMergedImageIndex
+      );
+    }
+  }
+  return moveIndexArr;
+}
+```
+
+#### 2. 非链接内容过滤机制
+```javascript
+static getHtmlBlockNonLinkContentIndexArr(note, text) {
+  let indexArr = this.getHtmlCommentExcludingFieldBlockIndexArr(note, text);
+  
+  // 从头遍历，跳过链接内容，找到第一个非链接内容
+  for (let i = 0; i < indexArr.length; i++) {
+    let comment = note.MNComments[indexArr[i]];
+    if (comment.type !== "linkComment") {
+      // 跳过 # 开头的标题链接文本
+      if (comment.text && comment.text.startsWith("#")) {
+        continue;
+      }
+      return indexArr.slice(i); // 从第一个非链接内容开始返回
+    }
+  }
+  return []; // 全是链接时返回空数组
+}
+```
+
+### 多源内容替换架构
+
+#### 1. 升级后的弹窗交互流程
+```javascript
+// 第一级弹窗：选择目标字段
+"选择目标字段" → fieldA
+
+// 第二级弹窗：选择内容来源  
+sourceOptions = [
+  "自动获取新内容",           // 智能识别算法
+  "来自字段：相关思考",       // 从其他字段获取
+  "来自字段：证明",
+  // ... 其他字段
+]
+```
+
+#### 2. 双路径处理逻辑
+```javascript
+if (buttonIndexB === 1) {
+  // 路径1：自动内容识别
+  this.replaceFieldContentWithAutoContent(note, fieldA);
+} else {
+  // 路径2：字段间内容迁移  
+  let fieldB = otherFields[buttonIndexB - 2];
+  this.replaceFieldContent(note, fieldA, fieldB);
+}
+```
+
+### 智能内容识别的应用场景
+
+#### 场景1: 新摘录内容整理
+**适用情况**: 用户刚从PDF添加了新摘录，需要快速整理到相应字段
+```javascript
+// 卡片状态：有旧的字段内容 + 新添加的摘录内容
+// 算法会自动识别：
+// - 跳过开头的合并图片评论 (mergedImageComment)
+// - 获取后续的文本/图片内容作为"新内容"
+MNMath.replaceFieldContentByPopup(note);
+// 选择目标字段 → "自动获取新内容"
+```
+
+#### 场景2: 字段结构化内容整理
+**适用情况**: 有HTML字段结构，需要移动最后字段的新增内容
+```javascript
+// 卡片状态：
+// [相关思考] ← HTML字段
+//   - 旧的思考内容...
+//   - 新添加的链接: marginnote3app://note/xxx
+//   - 新添加的文本内容 ← 这部分被识别为"新内容"
+// [证明] ← HTML字段  
+//   - ...
+```
+
+### 技术实现要点
+
+#### 1. 评论类型识别表
+```javascript
+// 需要跳过的合并图片类型
+mergedImageComment              // 合并的图片评论
+mergedImageCommentWithDrawing   // 带绘制的合并图片评论
+
+// 需要过滤的链接类型  
+linkComment                     // 链接评论
+text.startsWith("#")           // 标题链接文本
+```
+
+#### 2. 索引管理最佳实践
+```javascript
+// 删除操作：从后往前删除，避免索引变化
+let sortedIndices = fieldAContentIndices.sort((a, b) => b - a);
+sortedIndices.forEach(index => note.removeCommentByIndex(index));
+
+// 移动操作：删除后重新解析，确保索引准确
+commentsObj = this.parseNoteComments(note);
+autoContentIndices = this.autoGetNewContentToMoveIndexArr(note);
+```
+
+#### 3. 错误处理与用户反馈
+```javascript
+// 边界条件检查
+if (autoContentIndices.length === 0) {
+  MNUtil.showHUD("没有检测到可移动的新内容");
+  return;
+}
+
+// 操作完成提示
+MNUtil.showHUD(`已将自动获取的新内容移动到"${fieldA}"字段下，并删除了原有内容`);
+```
+
+### 开发经验总结
+
+#### 1. 算法集成模式
+- **复用现有算法**: 直接调用 `autoGetNewContentToMoveIndexArr`，避免重复实现
+- **保持接口一致**: 新功能与现有 `moveCommentsByPopup` 等函数的调用方式保持一致
+- **渐进式增强**: 在原有字段替换基础上增加智能识别，保持向后兼容
+
+#### 2. 用户交互设计原则
+- **选项优先级**: "自动获取新内容"放在首位，符合用户常用操作习惯
+- **清晰的标识**: `来自字段：[字段名]` 明确标识内容来源
+- **一致的取消逻辑**: 两级弹窗都支持取消操作
+
+#### 3. 代码组织策略
+- **功能分离**: `replaceFieldContentWithAutoContent` 专门处理自动内容
+- **参数简化**: 自动获取模式只需要目标字段参数
+- **错误边界**: 每个关键步骤都有对应的错误检查和用户提示
+
+### 完整调用示例
+```javascript
+// 基础调用保持不变
+let focusNote = MNNote.getFocusNote();
+MNUtil.undoGrouping(() => {
+  try {
+    MNMath.replaceFieldContentByPopup(focusNote);
+    // 用户交互：
+    // 1. 选择目标字段："相关思考"  
+    // 2. 选择内容来源："自动获取新内容" 或 "来自字段：证明"
+  } catch (error) {
+    MNUtil.showHUD(error);
+    MNUtil.addErrorLog(error);
+  }
+});
+```
+
+这次升级展示了如何在现有功能基础上进行智能化改进，通过算法集成和交互优化，显著提升了用户的内容管理效率。

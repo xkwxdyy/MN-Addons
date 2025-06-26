@@ -4124,31 +4124,6 @@ if (typeof MNComment !== 'undefined' && MNComment.prototype) {
  */
 
 /**
- * 依据：是否有"文献信息："的评论问
- * 注意：标题里带有"文献"二字的不一定，因为【文献：作者】暂时不需要判断为文献卡片
- */
-MNNote.prototype.ifReferenceNote = function() {
-  // return this.getHtmlCommentIndex("文献信息：") !== -1
-  return this.title.startsWith("【文献") || this.title.startsWith("【参考文献")
-}
-
-/**
- * 判断是否是旧的文献卡片
- */
-MNNote.prototype.ifOldReferenceNote = function() {
-  return this.getHtmlCommentIndex("主要内容、摘要：") !== -1 || this.getHtmlCommentIndex("主要内容/摘要：") !== -1
-}
-
-/**
- * 卡片去掉所有评论
- */
-MNNote.prototype.clearAllComments = function(){
-  for (let i = this.comments.length -1; i >= 0; i--) {
-    this.removeCommentByIndex(i)
-  }
-}
-
-/**
  * 【数学】把证明的内容移到最下方
  * 
  * 一般用于重新写证明
@@ -4163,33 +4138,6 @@ MNNote.prototype.moveProofDown = function() {
 /**
  * 更新卡片学习状态
  */
-/**
- * 让卡片成为进度卡片
- * - 在学习规划学习集中，某些卡片起了大头钉的作用，下次能知道从哪里开始看
- * 
- * 1. 卡片变成灰色
- * 2. 找到摘录对应的 md5
- * 3. 找到学习规划学习集中对应的卡片
- * 4. 将卡片移动到学习规划学习集中对应的卡片下成为子卡片
- */
-MNNote.prototype.toBeProgressNote = function(){
-  let docMd5 = MNUtil.currentDocmd5
-  let targetNote = MNNote.new(MNUtil.getNoteIdByMd5InPlanNotebook(docMd5))
-  if (targetNote) {
-    targetNote.addChild(this)
-    this.colorIndex = 13 // 灰色
-    // bug 添加到卡片的兄弟卡片了而不是变成子卡片
-  }
-}
-
-/**
- * 让卡片独立出来
- */
-MNNote.prototype.toBeIndependent = function(){
-  let parentNote = this.getClassificationParentNote()
-  parentNote.addChild(this)
-  this.focusInMindMap(0.5)
-}
 
 /**
  * 将卡片转移到"输入"区
@@ -4349,36 +4297,6 @@ MNNote.prototype.deleteCommentsByPopupAndMoveNewContentTo = function(target, toB
 }
 
 /**
- * 将 IdArr 里的 ID 对应的卡片剪切到 this 作为子卡片
- */
-MNNote.prototype.pasteChildNotesByIdArr = function(arr) {
-  arr.forEach((id) => {
-    if (id.isNoteIdorURL()) {
-      this.pasteChildNoteById(id.toNoteId())
-    }
-  })
-}
-
-MNNote.prototype.pasteChildNoteById = function(id) {
-  if (typeof id == "string" && id.isNoteIdorURL()) {
-    let targetNote = MNNote.new(id.toNoteId())
-    if (targetNote) {
-      let config = {
-        title: targetNote.noteTitle,
-        content: "",
-        markdown: true,
-        color: targetNote.colorIndex
-      }
-      // 创建新兄弟卡片，标题为旧卡片的标题
-      let newNote = this.createChildNote(config)
-      targetNote.noteTitle = ""
-      // 将旧卡片合并到新卡片中
-      targetNote.mergeInto(newNote)
-    }
-  }
-}
-
-/**
  * 获取第一个标题链接词并生成标题链接
  */
 MNNote.prototype.generateCustomTitleLinkFromFirstTitlelinkWord = function(keyword) {
@@ -4392,54 +4310,6 @@ MNNote.prototype.generateCustomTitleLinkFromFirstTitlelinkWord = function(keywor
 }
 
 /**
- * 获取标题的所有标题链接词
- */
-MNNote.prototype.getTitleLinkWordsArr = function(){
-  let title = this.noteTitle
-  let titleLinkWordsArr = []
-  if (title.isKnowledgeNoteTitle()) {
-    let titlePart = title.toKnowledgeNoteTitle()
-    // titlePart 用 ; 分割，然后以此加入到 titleLinkWordsArr 中
-    titlePart.split(";").forEach((part) => {
-      if (part.trim() !== "") {
-        titleLinkWordsArr.push(part.trim())
-      }
-    })
-  } else {
-    titleLinkWordsArr.push(title)
-  }
-  return titleLinkWordsArr
-}
-
-/**
- * 获取标题中的第一个标题链接词
- */
-MNNote.prototype.getFirstTitleLinkWord = function(){
-  let title = this.noteTitle
-  let regex = /【.*】(.*?);?\s*([^;]*?)(?:;|$)/;
-  let matches = title.match(regex);
-
-  if (matches) {
-    const firstPart = matches[1].trim(); // 提取分号前的内容
-    const secondPart = matches[2].trim(); // 提取第一个分号后的内容
-
-    // 根据第一部分是否为空选择返回内容
-    return firstPart === '' ? secondPart : firstPart;
-  } else {
-    // 如果没有前缀，就获取第一个 ; 前的内容
-    title = title.toNoBracketPrefixContent()
-    regex = /^(.*?);/;
-    matches = title.match(regex);
-  
-    if (matches) {
-      return matches[1].trim().toString()
-    } else {
-      return title.toString()
-    }
-  }
-}
-
-/**
  * 判断卡片的前缀是否包含
  * - 输入
  * - 内化
@@ -4447,55 +4317,6 @@ MNNote.prototype.getFirstTitleLinkWord = function(){
  */
 MNNote.prototype.ifNoteTemporary = function(){
   return ["输入","内化","待归类"].some(keyword => this.title.includes(keyword))
-}
-
-/**
- * 【数学】移动卡片到某些特定的子卡片后
- * 
- * 目前只移动文献
- * 
- * 1. 先判断是否需要移动文献
- * 2. 如果要的话再移动到论文或者书作文献区
- */
-MNNote.prototype.move = function() {
-  let noteType = this.getNoteTypeZh()
-  let targetNoteId
-  if (noteType == "文献") {
-    if (this.ifReferenceNoteToMove()) {
-      // 此时文献卡片不在"论文"或"书作"文献区
-      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-        "选择文献类型",
-        "",
-        0,
-        "取消",
-        ["论文", "书作"],
-        (alert, buttonIndex) => {
-          switch (buttonIndex) {
-            case 1:
-              noteType = "论文"
-              targetNoteId = "785225AC-5A2A-41BA-8760-3FEF10CF4AE0"
-              break;
-            case 2:
-              noteType = "书作"
-              targetNoteId = "49102A3D-7C64-42AD-864D-55EDA5EC3097"
-              break;
-          }
-          // 把修改前缀放在这里
-          this.changeTitle(noteType)
-          let targetNote = MNNote.new(targetNoteId)
-          targetNote.addChild(this)
-        }
-      )
-    } else {
-      // 如果在的话就 change 一下 Title
-      let parentNote = this.parentNote
-      if (parentNote.noteId == "785225AC-5A2A-41BA-8760-3FEF10CF4AE0") {
-        this.changeTitle("论文")
-      } else {
-        this.changeTitle("书作")
-      }
-    }
-  }
 }
 
 /**

@@ -1608,6 +1608,131 @@ class MNMath {
       note.moveCommentsByIndexArr(arr, targetIndex)
     }
   }
+
+  /**
+   * 通过弹窗选择并替换字段内容
+   * 删除字段A下的内容，并将字段B下的内容移动到字段A下方
+   */
+  static replaceFieldContentByPopup(note) {
+    let htmlCommentsTextArr = this.parseNoteComments(note).htmlCommentsTextArr;
+    
+    if (htmlCommentsTextArr.length < 2) {
+      MNUtil.showHUD("需要至少两个字段才能执行替换操作");
+      return;
+    }
+
+    // 创建字段选择菜单
+    let fieldOptions = htmlCommentsTextArr.map(text => text.trim());
+    
+    // 第一个弹窗：选择目标字段
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "选择目标字段",
+      "选择要被替换内容的字段",
+      0,  // 普通样式
+      "取消",
+      fieldOptions,
+      (_, buttonIndex) => {
+        if (buttonIndex === 0) return; // 用户取消
+        
+        let fieldA = fieldOptions[buttonIndex - 1]; // buttonIndex从1开始
+        
+        // 创建源字段选择菜单（排除已选的目标字段）
+        let fieldBOptions = fieldOptions.filter((_, index) => index !== buttonIndex - 1);
+        
+        // 第二个弹窗：选择源字段
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "选择源字段",
+          `选择要移动到"${fieldA}"字段下的内容源字段`,
+          0,  // 普通样式
+          "取消",
+          fieldBOptions,
+          (_, buttonIndexB) => {
+            if (buttonIndexB === 0) return; // 用户取消
+            
+            let fieldB = fieldBOptions[buttonIndexB - 1]; // buttonIndex从1开始
+            
+            // 执行字段内容替换
+            this.replaceFieldContent(note, fieldA, fieldB);
+          }
+        );
+      }
+    );
+  }
+
+  /**
+   * 替换字段内容的核心方法
+   * @param {MNNote} note - 目标笔记
+   * @param {string} fieldA - 目标字段名称
+   * @param {string} fieldB - 源字段名称
+   */
+  static replaceFieldContent(note, fieldA, fieldB) {
+    let commentsObj = this.parseNoteComments(note);
+    let htmlCommentsObjArr = commentsObj.htmlCommentsObjArr;
+    
+    if (htmlCommentsObjArr.length === 0) {
+      MNUtil.showHUD("未找到字段结构");
+      return;
+    }
+
+    // 通过字段名称找到对应的字段对象
+    let fieldAObj = htmlCommentsObjArr.find(obj => obj.text.includes(fieldA));
+    let fieldBObj = htmlCommentsObjArr.find(obj => obj.text.includes(fieldB));
+    
+    if (!fieldAObj) {
+      MNUtil.showHUD(`无法找到字段"${fieldA}"`);
+      return;
+    }
+    
+    if (!fieldBObj) {
+      MNUtil.showHUD(`无法找到字段"${fieldB}"`);
+      return;
+    }
+    
+    // 获取字段A下的内容索引（不包括字段标题本身）
+    let fieldAContentIndices = fieldAObj.excludingFieldBlockIndexArr;
+    
+    // 获取字段B下的内容索引（不包括字段标题本身）
+    let fieldBContentIndices = fieldBObj.excludingFieldBlockIndexArr;
+    
+    if (fieldBContentIndices.length === 0) {
+      MNUtil.showHUD(`字段"${fieldB}"下没有内容可移动`);
+      return;
+    }
+    
+    // 先删除字段A下的内容（从后往前删除，避免索引变化）
+    if (fieldAContentIndices.length > 0) {
+      let sortedFieldAIndices = fieldAContentIndices.sort((a, b) => b - a);
+      sortedFieldAIndices.forEach(index => {
+        note.removeCommentByIndex(index);
+      });
+    }
+    
+    // 重新解析评论结构（因为删除操作改变了索引）
+    commentsObj = this.parseNoteComments(note);
+    htmlCommentsObjArr = commentsObj.htmlCommentsObjArr;
+    
+    // 重新获取字段B的内容（索引可能已经改变）
+    fieldBObj = htmlCommentsObjArr.find(obj => obj.text.includes(fieldB));
+    if (!fieldBObj) {
+      MNUtil.showHUD(`无法找到字段"${fieldB}"`);
+      return;
+    }
+    
+    fieldBContentIndices = fieldBObj.excludingFieldBlockIndexArr;
+    
+    if (fieldBContentIndices.length === 0) {
+      MNUtil.showHUD(`字段"${fieldB}"下没有内容可移动`);
+      return;
+    }
+    
+    // 移动字段B的内容到字段A下方
+    this.moveCommentsArrToField(note, fieldBContentIndices, fieldA, true);
+    
+    // 刷新卡片显示
+    note.refresh();
+    
+    MNUtil.showHUD(`已将"${fieldB}"字段的内容移动到"${fieldA}"字段下，并删除了"${fieldA}"原有内容`);
+  }
   /**
    * 获取 Note 的摘录区的 indexArr
    */

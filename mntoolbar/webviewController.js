@@ -5281,7 +5281,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         }
         break;
       case "batchChangeClassificationTitles":
-         try {
+        try {
             await MNMath.batchChangeClassificationTitles("descendants");
           } catch (error) {
             MNUtil.showHUD(error);
@@ -5789,6 +5789,15 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "doubleClickMakeNote":
         MNUtil.undoGrouping(()=>{
           MNMath.makeNote(focusNote, false)
+        })
+        break;
+      case "replaceFieldContentByPopup":
+        MNUtil.undoGrouping(()=>{
+          try {
+            MNMath.replaceFieldContentByPopup(focusNote)
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
         })
         break;
       /* 夏大鱼羊定制 - end */

@@ -8920,17 +8920,21 @@ static template(action) {
         "menuWidth": 300,
         "menuItems":[
           {
-            "action": "moveLastOneCommentByPopupTo",
-            "menuTitle": "移动「最后1️⃣条」评论",
+            "action": "replaceFieldContentByPopup",
+            "menuTitle": "替换字段",
           },
-          {
-            "action": "moveLastTwoCommentByPopupTo",
-            "menuTitle": "移动「最后2️⃣条」评论",
-          },
-          {
-            "action": "moveLastThreeCommentByPopupTo",
-            "menuTitle": "移动「最后3️⃣条」评论",
-          },
+          // {
+          //   "action": "moveLastOneCommentByPopupTo",
+          //   "menuTitle": "移动「最后1️⃣条」评论",
+          // },
+          // {
+          //   "action": "moveLastTwoCommentByPopupTo",
+          //   "menuTitle": "移动「最后2️⃣条」评论",
+          // },
+          // {
+          //   "action": "moveLastThreeCommentByPopupTo",
+          //   "menuTitle": "移动「最后3️⃣条」评论",
+          // },
           {
             "action": "deleteCommentsByPopup",
             "menuTitle": "删除评论",

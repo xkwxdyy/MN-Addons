@@ -16,7 +16,12 @@
       "mcp__marginnote4-dev__build_plugin",
       "Bash(ls:*)",
       "Bash(awk:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(echo)",
+      "Bash(for func in clearAllComments getFirstTitleLinkWord getTitleLinkWordsArr ifOldReferenceNote ifReferenceNote move pasteChildNoteById pasteChildNotesByIdArr toBeIndependent toBeProgressNote)",
+      "Bash(do echo \"函数名: $func\")",
+      "Bash(done)",
+      "Bash(echo:*)"
     ],
     "deny": []
   }

@@ -935,7 +935,7 @@ class MNMath {
    * 【非摘录版本】初始状态合并模板卡片后自动移动卡片的内容
    */
   static mergeTemplateAndAutoMoveNoteContent(note) {
-    let moveIndexArr = this.autoGetMoveIndexArr(note);
+    let moveIndexArr = this.autoGetNewContentToMoveIndexArr(note);
     this.mergeTemplate(note)
 
     let field 
@@ -1018,7 +1018,7 @@ class MNMath {
    * 
    * @param {MNNote} note - 当前卡片
    */
-  static autoGetMoveIndexArr(note) {
+  static autoGetNewContentToMoveIndexArr(note) {
     let moveIndexArr = []
     let lastHtmlCommentText = this.parseNoteComments(note).htmlCommentsTextArr.slice(-1)[0] || "";
     
@@ -1451,7 +1451,7 @@ class MNMath {
       htmlCommentsTextArr,
       (alert, buttonIndex) => {
         let userInput = alert.textFieldAtIndex(0).text;
-        moveCommentIndexArr = userInput ? userInput.parseCommentIndices(note.comments.length) : this.autoGetMoveIndexArr(note);
+        moveCommentIndexArr = userInput ? userInput.parseCommentIndices(note.comments.length) : this.autoGetNewContentToMoveIndexArr(note);
         switch (buttonIndex) {
           case 0:
             return; // 取消

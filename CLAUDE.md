@@ -485,3 +485,172 @@ if (NSFileManager.defaultManager().fileExistsAtPath(filePath)) {
 - **版本检查**: 使用 `MNUtil.version` 检查应用版本
 - **API兼容**: 注意 MN3 到 MN4 的 API 变化
 - **链接转换**: 使用 `convertLinksToNewVersion()` 处理版本升级
+
+## 开发案例：字段内容替换功能
+
+### 功能需求
+开发一个字段内容替换功能，能够：
+- 删除字段A下的所有内容
+- 将字段B下的内容移动到字段A下方
+- 通过弹窗交互选择字段
+- 操作完成后自动刷新卡片
+
+### 开发过程中遇到的问题与解决方案
+
+#### 1. 弹窗API调用错误
+**问题**: 
+```javascript
+// ❌ 错误的调用方式
+let buttonIndex = MNUtil.studyController().alert(...)  // TypeError: not a function
+let buttonIndex = MNUtil.studyController.alert(...)   // TypeError: alert is undefined
+```
+
+**解决方案**:
+```javascript
+// ✅ 正确的弹窗调用方式
+UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+  title,           // 弹窗标题
+  message,         // 弹窗消息
+  0,              // style: 0=普通弹窗, 1=安全输入, 2=普通输入
+  "取消",          // cancelButtonTitle
+  fieldOptions,    // otherButtonTitles: 选项数组
+  (_, buttonIndex) => {  // 回调函数，使用 _ 忽略未使用的 alert 参数
+    if (buttonIndex === 0) return; // 取消
+    // buttonIndex >= 1 对应 fieldOptions[buttonIndex-1]
+  }
+)
+```
+
+**关键要点**:
+- `MNUtil.studyController` 是 getter 属性，不是函数
+- `studyController` 对象没有 `alert` 方法
+- 必须使用 `UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock`
+- 按钮索引从1开始，0表示取消
+
+#### 2. 字段索引自动计算
+**问题**: 最初设计需要手动传入字段索引，容易出错且不便使用
+
+**解决方案**:
+```javascript
+// ❌ 手动传入索引，容易出错
+static replaceFieldContent(note, fieldA, fieldB, fieldAIndex, fieldBIndex)
+
+// ✅ 自动计算索引，更安全
+static replaceFieldContent(note, fieldA, fieldB) {
+  let htmlCommentsObjArr = this.parseNoteComments(note).htmlCommentsObjArr;
+  
+  // 通过字段名称自动查找对应的字段对象
+  let fieldAObj = htmlCommentsObjArr.find(obj => obj.text.includes(fieldA));
+  let fieldBObj = htmlCommentsObjArr.find(obj => obj.text.includes(fieldB));
+}
+```
+
+#### 3. 索引变化的处理
+**问题**: 删除字段A内容后，评论索引发生变化，导致后续操作索引错误
+
+**解决方案**:
+```javascript
+// 删除字段A内容后，重新解析评论结构
+if (fieldAContentIndices.length > 0) {
+  // 从后往前删除，避免索引变化影响
+  let sortedFieldAIndices = fieldAContentIndices.sort((a, b) => b - a);
+  sortedFieldAIndices.forEach(index => {
+    note.removeCommentByIndex(index);
+  });
+}
+
+// 重新解析评论结构（因为删除操作改变了索引）
+commentsObj = this.parseNoteComments(note);
+htmlCommentsObjArr = commentsObj.htmlCommentsObjArr;
+
+// 重新获取字段B的内容（索引可能已经改变）
+fieldBObj = htmlCommentsObjArr.find(obj => obj.text.includes(fieldB));
+```
+
+#### 4. TypeScript 未使用变量警告
+**问题**: 
+```javascript
+(alert, buttonIndex) => { ... }  // ★ 已声明"alert"，但从未读取其值
+```
+
+**解决方案**:
+```javascript
+// ✅ 使用下划线表示故意忽略的参数
+(_, buttonIndex) => { ... }
+```
+
+#### 5. 用户体验优化
+**问题**: 
+- 弹窗文案包含技术术语"字段A"、"字段B"
+- 操作完成后界面没有刷新
+
+**解决方案**:
+```javascript
+// ✅ 简化弹窗文案
+"选择目标字段" // 而不是"选择目标字段（字段A）"
+"选择源字段"   // 而不是"选择源字段（字段B）"
+
+// ✅ 操作完成后自动刷新
+this.moveCommentsArrToField(note, fieldBContentIndices, fieldA, true);
+note.refresh(); // 刷新卡片显示
+MNUtil.showHUD("操作完成提示");
+```
+
+### 最终实现
+```javascript
+/**
+ * 通过弹窗选择并替换字段内容
+ * 删除目标字段下的内容，并将源字段下的内容移动过来
+ */
+static replaceFieldContentByPopup(note) {
+  let htmlCommentsTextArr = this.parseNoteComments(note).htmlCommentsTextArr;
+  
+  if (htmlCommentsTextArr.length < 2) {
+    MNUtil.showHUD("需要至少两个字段才能执行替换操作");
+    return;
+  }
+
+  let fieldOptions = htmlCommentsTextArr.map(text => text.trim());
+  
+  // 嵌套弹窗选择字段
+  UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+    "选择目标字段", "选择要被替换内容的字段", 0, "取消", fieldOptions,
+    (_, buttonIndex) => {
+      if (buttonIndex === 0) return;
+      
+      let fieldA = fieldOptions[buttonIndex - 1];
+      let fieldBOptions = fieldOptions.filter((_, index) => index !== buttonIndex - 1);
+      
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "选择源字段", `选择要移动到"${fieldA}"字段下的内容源字段`, 0, "取消", fieldBOptions,
+        (_, buttonIndexB) => {
+          if (buttonIndexB === 0) return;
+          
+          let fieldB = fieldBOptions[buttonIndexB - 1];
+          this.replaceFieldContent(note, fieldA, fieldB);
+        }
+      );
+    }
+  );
+}
+```
+
+### 经验总结
+1. **API 文档的重要性**: MarginNote4 插件开发需要深入理解现有代码中的API使用模式
+2. **错误处理策略**: 通过现有代码搜索找到正确的调用方式，而不是假设API存在
+3. **索引安全**: 删除操作要从后往前，移动操作要重新解析结构
+4. **用户体验**: 简化文案，自动刷新，减少技术术语
+5. **代码质量**: 使用下划线忽略未使用参数，遵循 TypeScript 最佳实践
+
+### 调用示例
+```javascript
+let focusNote = MNNote.getFocusNote();
+MNUtil.undoGrouping(() => {
+  try {
+    MNMath.replaceFieldContentByPopup(focusNote);
+  } catch (error) {
+    MNUtil.showHUD(error);
+    MNUtil.addErrorLog(error);
+  }
+});
+```

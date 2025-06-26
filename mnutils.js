@@ -138,6 +138,11 @@ class Menu{
   }
 }
 class MNUtil {
+  /**
+   * 是否正在显示alert
+   * @type {boolean}
+   */
+  static onAlert = false
   static themeColor = {
     Gray: UIColor.colorWithHexString("#414141"),
     Default: UIColor.colorWithHexString("#FFFFFF"),
@@ -879,7 +884,7 @@ static textMatchPhrase(text, query) {
     this.app.stopWaitHUDOnView(view);
     this.onWaitHUD = false
   }
-  /**
+   /**
    * Displays a confirmation dialog with a main title and a subtitle.
    * 
    * This method shows a confirmation dialog with the specified main title and subtitle.
@@ -887,13 +892,19 @@ static textMatchPhrase(text, query) {
    * 
    * @param {string} mainTitle - The main title of the confirmation dialog.
    * @param {string} subTitle - The subtitle of the confirmation dialog.
-   * @returns {Promise<number>} A promise that resolves with the button index of the button clicked by the user.
+   * @param {string[]} items - The items of the confirmation dialog.
+   * @returns {Promise<number|undefined>} A promise that resolves with the button index of the button clicked by the user.
    */
-  static async confirm(mainTitle,subTitle){
+  static async confirm(mainTitle,subTitle,items = ["Cancel","Confirm"]){
+    if (MNOnAlert) {
+      return
+    }
+    MNOnAlert = true
     return new Promise((resolve, reject) => {
       UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-        mainTitle,subTitle,0,"Cancel",["Confirm"],
+        mainTitle,subTitle,0,items[0],items.slice(1),
         (alert, buttonIndex) => {
+          MNOnAlert = false
           // MNUtil.copyJSON({alert:alert,buttonIndex:buttonIndex})
           resolve(buttonIndex)
         }
@@ -908,11 +919,16 @@ static textMatchPhrase(text, query) {
    * @returns {Promise<number>} A promise that resolves with the button index of the button clicked by the user.
    */
   static async userSelect(mainTitle,subTitle,items){
+    if (MNOnAlert) {
+      return
+    }
+    MNOnAlert = true
     return new Promise((resolve, reject) => {
       UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
         mainTitle,subTitle,0,"Cancel",items,
         (alert, buttonIndex) => {
           // MNUtil.copyJSON({alert:alert,buttonIndex:buttonIndex})
+          MNOnAlert = false
           resolve(buttonIndex)
         }
       )
@@ -2038,11 +2054,16 @@ try {
    * @returns {Promise<{input:string,button:number}>} A promise that resolves with an object containing the input text and the button index.
    */
   static async input(title,subTitle,items) {
+    if (MNOnAlert) {
+      return
+    }
+    MNOnAlert = true
     return new Promise((resolve, reject) => {
       UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
         title,subTitle,2,items[0],items.slice(1),
         (alert, buttonIndex) => {
           let res = {input:alert.textFieldAtIndex(0).text,button:buttonIndex}
+          MNOnAlert = false
           resolve(res)
         }
       )
@@ -3158,7 +3179,7 @@ class MNButton{
   }
   /**
    *
-   * @param {{color:string,title:string,bold:boolean,font:number,opacity:number,radius:number}} config
+   * @param {{color:string,title:string,bold:boolean,font:number,opacity:number,radius:number,alpha:number}} config
    * @param {UIView} superView
    */
   static new(config = {},superView){
@@ -5822,7 +5843,7 @@ try {
   /**
    *
    * @param {number} [delay=0]
-   * @returns {MNNote}
+   * @returns {Promise<MNNote>}
    */
   async focusInMindMap(delay = 0){
     if (this.notebookId && this.notebookId !== MNUtil.currentNotebookId) {
@@ -5838,7 +5859,7 @@ try {
   /**
    *
    * @param {number} [delay=0]
-   * @returns {MNNote}
+   * @returns {Promise<MNNote>}
    */
   async focusInDocument(delay = 0){
     if (delay) {
@@ -5850,7 +5871,7 @@ try {
   /**
    *
    * @param {number} [delay=0]
-   * @returns {MNNote}
+   * @returns {Promise<MNNote>}
    */
   async focusInFloatMindMap(delay = 0){
     if (delay) {

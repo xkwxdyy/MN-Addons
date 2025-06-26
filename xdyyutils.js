@@ -560,18 +560,6 @@ class MNMath {
   }
 
   /**
-   * 修改归类卡片的标题
-   * 
-   * @param {MNNote} note - 归类卡片
-   * @param {string} content - 归类卡片的标题内容
-   * @param {string} type - 归类卡片的类型
-   */
-
-  static changeClassificationTitle(note, content, type) {
-
-  }
-
-  /**
    * 修改标题
    * 
    * TODO:
@@ -586,23 +574,348 @@ class MNMath {
      */
     let noteType = this.getNoteType(note)
     
-    let excludingTypes = ["归类","思路", "作者", "研究进展", "论文", "书作", "文献"];
+    let excludingTypes = ["思路", "作者", "研究进展", "论文", "书作", "文献"];
     if (!excludingTypes.includes(noteType)) {
-      // 获取归类卡片
-      let classificationNote = this.getFirstClassificationParentNote(note);
-      if (classificationNote) {
-        let classificationNoteTitleParts = this.parseNoteTitle(classificationNote);
-        let prefix = this.createTitlePrefix(classificationNoteTitleParts.type, this.createChildNoteTitlePrefixContent(classificationNote));
-        let noteTitleParts = this.parseNoteTitle(note);
-        // 
-        // 定义类 noteTitleParts.content 前要加 `; `
-        if (noteType === "定义") {
-          note.title = prefix + '; ' + noteTitleParts.content
-        } else {
-          note.title = `${prefix}${noteTitleParts.content}`;
-        }
+      switch (noteType) {
+        case "归类":
+          /**
+           * 去掉归类卡片的标题中的“xx”：“yy” 里的 xx
+           */
+          if (this.hasOldClassificationTitle(note)) {
+            note.title = `“${this.parseNoteTitle(note).content}”相关${this.parseNoteTitle(note).type}`;
+          }
+          break;
+        default:
+          // 获取归类卡片
+          let classificationNote = this.getFirstClassificationParentNote(note);
+          if (classificationNote) {
+            let classificationNoteTitleParts = this.parseNoteTitle(classificationNote);
+            let prefix = this.createTitlePrefix(classificationNoteTitleParts.type, this.createChildNoteTitlePrefixContent(classificationNote));
+            let noteTitleParts = this.parseNoteTitle(note);
+            // 
+            // 定义类 noteTitleParts.content 前要加 `; `
+            if (noteType === "定义") {
+              note.title = prefix + '; ' + noteTitleParts.content
+            } else {
+              note.title = `${prefix}${noteTitleParts.content}`;
+            }
+          }
+          break;
       }
     }
+  }
+
+  /**
+   * 批量重新处理归类卡片标题
+   * 
+   * 专门用于处理"归类"类型的卡片，将旧格式标题转换为新格式
+   * 旧格式："xx"："yy"相关 zz -> 新格式："yy"相关 zz
+   * 
+   * @param {string} scope - 处理范围："selected" | "children" | "descendants"
+   * @param {MNNote} [rootNote] - 当 scope 为 "children" 或 "descendants" 时，指定根卡片
+   */
+  static async batchChangeClassificationTitles(scope = "descendants", rootNote = null) {
+    try {
+      let targetNotes = [];
+      let processedCount = 0;
+      let skippedCount = 0;
+
+      // 根据范围获取目标卡片
+      switch (scope) {
+        case "selected":
+          let focusNote = MNNote.focusNote;
+          if (focusNote) {
+            targetNotes = [focusNote];
+          } else {
+            MNUtil.showHUD("请先选择一个卡片");
+            return;
+          }
+          break;
+        case "children":
+          if (!rootNote) {
+            rootNote = MNNote.focusNote;
+          }
+          if (rootNote) {
+            // rootNote.childNotes 返回 MNNote 对象数组，需要转换为原生 note 对象数组
+            targetNotes = (rootNote.childNotes || []).map(mnNote => mnNote.note);
+            targetNotes.push(rootNote)
+          } else {
+            MNUtil.showHUD("请先选择一个根卡片");
+            return;
+          }
+          break;
+        case "descendants":
+          if (!rootNote) {
+            rootNote = MNNote.focusNote;
+          }
+          if (rootNote) {
+            targetNotes = this.getAllDescendantNotes(rootNote);
+            targetNotes.push(rootNote)
+          } else {
+            MNUtil.showHUD("请先选择一个根卡片");
+            return;
+          }
+          break;
+        default:
+          MNUtil.showHUD("无效的处理范围");
+          return;
+      }
+
+      // 筛选出归类卡片
+      let classificationNotes = [];
+      for (let noteObj of targetNotes) {
+        let note = new MNNote(noteObj);
+        if (this.getNoteType(note) === "归类") {
+          classificationNotes.push(note);
+        }
+      }
+
+      if (classificationNotes.length === 0) {
+        MNUtil.showHUD("没有找到归类卡片");
+        return;
+      }
+
+      // 询问用户确认
+      let confirmMessage = `找到 ${classificationNotes.length} 个归类卡片，是否批量更新标题格式？`;
+      let userConfirmed = await MNUtil.confirm("批量修改归类卡片标题", confirmMessage);
+      if (!userConfirmed) {
+        return;
+      }
+
+      // 显示进度提示
+      MNUtil.showHUD(`开始处理 ${classificationNotes.length} 个归类卡片...`);
+
+      // 使用 undoGrouping 包装批量操作
+      MNUtil.undoGrouping(() => {
+        for (let i = 0; i < classificationNotes.length; i++) {
+          let note = classificationNotes[i];
+          let originalTitle = note.title;
+          
+          // 使用现有的解析方法
+          // let titleParts = this.parseNoteTitle(note);
+          
+          // 检查是否解析成功，并且是旧格式
+          if (this.hasOldClassificationTitle(note)) {
+            // 转换为新格式："content"相关 type
+            // note.title = `“${titleParts.content}”相关${titleParts.type}`;
+            this.changeTitle(note)
+
+            processedCount++;
+            MNUtil.log({
+              level: "info",
+              message: `归类卡片标题已更新：${originalTitle} -> ${note.title}`,
+              source: "MNMath.batchChangeClassificationTitles"
+            });
+          } else {
+            skippedCount++;
+            MNUtil.log({
+              level: "info",
+              message: `跳过标题（已是新格式或无法解析）：${originalTitle}`,
+              source: "MNMath.batchChangeClassificationTitles"
+            });
+          }
+        }
+      });
+
+      // 显示进度更新
+      for (let i = 0; i < classificationNotes.length; i++) {
+        if ((i + 1) % 5 === 0) {
+          MNUtil.showHUD(`处理中... ${i + 1}/${classificationNotes.length}`);
+          await MNUtil.delay(0.1);
+        }
+      }
+
+      // 显示处理结果
+      let resultMessage = `归类卡片处理完成！\n已更新：${processedCount} 个\n跳过：${skippedCount} 个`;
+      MNUtil.showHUD(resultMessage);
+      
+      // 记录处理结果
+      MNUtil.log({
+        level: "info",
+        message: `批量归类卡片标题处理完成 - 范围：${scope}，处理：${processedCount}，跳过：${skippedCount}`,
+        source: "MNMath.batchChangeClassificationTitles"
+      });
+
+    } catch (error) {
+      MNUtil.showHUD("批量处理归类卡片标题时出错：" + error.message);
+      MNUtil.log({
+        level: "error",
+        message: "批量处理归类卡片标题失败：" + error.message,
+        source: "MNMath.batchChangeClassificationTitles"
+      });
+    }
+  }
+
+  static hasOldClassificationTitle(note) {
+    // 检查标题是否符合旧格式："xx"："yy"相关 zz
+    return /^“[^”]*”：“[^”]*”\s*相关[^“]*$/.test(note.title);
+  }
+
+  /**
+   * 批量重新处理卡片标题
+   * 
+   * 可以选择处理当前文档的所有卡片或指定范围的卡片
+   * 
+   * @param {string} scope - 处理范围："all" | "selected" | "children" | "descendants"
+   * @param {MNNote} [rootNote] - 当 scope 为 "children" 或 "descendants" 时，指定根卡片
+   */
+  static async batchChangeTitles(scope = "all", rootNote = null) {
+    try {
+      let targetNotes = [];
+      let processedCount = 0;
+      let skippedCount = 0;
+
+      // 根据范围获取目标卡片
+      switch (scope) {
+        case "all":
+          // 获取当前笔记本的所有卡片
+          let currentNotebook = MNUtil.currentNotebook;
+          if (currentNotebook) {
+            targetNotes = currentNotebook.notes || [];
+          } else {
+            MNUtil.showHUD("请先打开一个笔记本");
+            return;
+          }
+          break;
+          
+        case "selected":
+          // 获取当前选中的卡片
+          let focusNote = MNNote.focusNote;
+          if (focusNote) {
+            targetNotes = [focusNote.note];
+          } else {
+            MNUtil.showHUD("请先选择一个卡片");
+            return;
+          }
+          break;
+          
+        case "children":
+          // 获取指定卡片的直接子卡片
+          if (!rootNote) {
+            rootNote = MNNote.focusNote;
+          }
+          if (rootNote) {
+            // rootNote.childNotes 返回 MNNote 对象数组，需要转换为原生 note 对象数组
+            targetNotes = (rootNote.childNotes || []).map(mnNote => mnNote.note);
+          } else {
+            MNUtil.showHUD("请先选择一个根卡片");
+            return;
+          }
+          break;
+          
+        case "descendants":
+          // 获取指定卡片的所有后代卡片
+          if (!rootNote) {
+            rootNote = MNNote.focusNote;
+          }
+          if (rootNote) {
+            targetNotes = this.getAllDescendantNotes(rootNote);
+          } else {
+            MNUtil.showHUD("请先选择一个根卡片");
+            return;
+          }
+          break;
+          
+        default:
+          MNUtil.showHUD("无效的处理范围");
+          return;
+      }
+
+      if (targetNotes.length === 0) {
+        MNUtil.showHUD("没有找到需要处理的卡片");
+        return;
+      }
+
+      // 询问用户确认
+      let confirmMessage = `即将批量处理 ${targetNotes.length} 个卡片的标题，是否继续？`;
+      let userConfirmed = await MNUtil.confirm("批量修改标题", confirmMessage);
+      if (!userConfirmed) {
+        return;
+      }
+
+      // 显示进度提示
+      MNUtil.showHUD(`开始处理 ${targetNotes.length} 个卡片...`);
+
+      // 使用 undoGrouping 包装批量操作
+      MNUtil.undoGrouping(() => {
+        for (let i = 0; i < targetNotes.length; i++) {
+          let note = new MNNote(targetNotes[i]);
+          
+          // 记录处理前的标题
+          let originalTitle = note.title;
+          
+          // 调用 changeTitle 方法
+          this.changeTitle(note);
+          
+          // 检查标题是否发生变化
+          if (note.title !== originalTitle) {
+            processedCount++;
+            MNUtil.log({
+              level: "info",
+              message: `标题已更新：${originalTitle} -> ${note.title}`,
+              source: "MNMath.batchChangeTitles"
+            });
+          } else {
+            skippedCount++;
+          }
+        }
+      });
+
+      // 显示进度更新
+      for (let i = 0; i < targetNotes.length; i++) {
+        if ((i + 1) % 10 === 0) {
+          MNUtil.showHUD(`处理中... ${i + 1}/${targetNotes.length}`);
+          await MNUtil.delay(0.1);
+        }
+      }
+
+      // 显示处理结果
+      let resultMessage = `处理完成！\n已更新：${processedCount} 个\n跳过：${skippedCount} 个`;
+      MNUtil.showHUD(resultMessage);
+      
+      // 记录处理结果
+      MNUtil.log({
+        level: "info",
+        message: `批量标题处理完成 - 范围：${scope}，处理：${processedCount}，跳过：${skippedCount}`,
+        source: "MNMath.batchChangeTitles"
+      });
+
+    } catch (error) {
+      MNUtil.showHUD("批量处理标题时出错：" + error.message);
+      MNUtil.log({
+        level: "error",
+        message: "批量处理标题失败：" + error.message,
+        source: "MNMath.batchChangeTitles"
+      });
+    }
+  }
+
+  /**
+   * 获取指定卡片的所有后代卡片（包括子卡片和子卡片的子卡片等）
+   * 
+   * @param {MNNote} rootNote - 根卡片
+   * @returns {object[]} 所有后代卡片的原生对象数组
+   */
+  static getAllDescendantNotes(rootNote) {
+    let descendants = [];
+    
+    // 确保 rootNote 是 MNNote 对象
+    if (!rootNote || !rootNote.childNotes) {
+      return descendants;
+    }
+    
+    let childNotes = rootNote.childNotes || [];  // 这里返回的是 MNNote 对象数组
+    
+    for (let childMNNote of childNotes) {
+      // childMNNote 已经是 MNNote 对象，不需要再用 new MNNote() 包装
+      descendants.push(childMNNote.note);
+      
+      // 递归获取子卡片的后代
+      let childDescendants = this.getAllDescendantNotes(childMNNote);
+      descendants.push(...childDescendants);
+    }
+    
+    return descendants;
   }
 
   /**

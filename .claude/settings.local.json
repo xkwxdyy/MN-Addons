@@ -26,7 +26,13 @@
       "Bash(grep:*)",
       "Bash(sed:*)",
       "Bash(find:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(python:*)",
+      "Bash(if cmp:*)",
+      "Bash(then echo \"Files are identical\")",
+      "Bash(else echo \"Files are different\")",
+      "Bash(fi)",
+      "Bash(md5:*)"
     ],
     "deny": []
   }

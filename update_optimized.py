@@ -32,11 +32,27 @@ class MNToolbarUpdater:
     
     def __init__(self, work_dir: str = '.'):
         self.work_dir = os.path.abspath(work_dir)
-        self.custom_files = ['xdyytoolbar.js', 'XDYY_README.md', 'XDYY_开发指南.md']
+        # 从配置文件加载，如果没有则使用默认值
+        self.load_config()
         self.file_extensions = ['.js', '.html', '.json', '.css', '.svg']
         self.text_replacements = {
             'foucsNote': 'focusNote',  # 修复拼写错误
         }
+    
+    def load_config(self):
+        """从配置文件加载设置"""
+        config_path = os.path.join(self.work_dir, 'update_config.json')
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                    self.custom_files = config.get('custom_files', ['xdyytoolbar.js', 'pinyin.js', 'XDYY_README.md', 'XDYY_开发指南.md'])
+                    logger.info(f"已加载配置文件，保护文件列表：{self.custom_files}")
+            except Exception as e:
+                logger.warning(f"加载配置文件失败：{e}，使用默认设置")
+                self.custom_files = ['xdyytoolbar.js', 'pinyin.js', 'XDYY_README.md', 'XDYY_开发指南.md']
+        else:
+            self.custom_files = ['xdyytoolbar.js', 'pinyin.js', 'XDYY_README.md', 'XDYY_开发指南.md']
         
     def find_latest_addon(self) -> Optional[str]:
         """查找最新版本的 .mnaddon 文件"""

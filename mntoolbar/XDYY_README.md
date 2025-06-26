@@ -8,9 +8,11 @@
 
 ### 1. 新增文件
 - **xdyytoolbar.js** - 包含所有你的自定义功能
+- **pinyin.js** - 中文拼音处理库（用于名字缩写功能）
 
 ### 2. 修改的文件
 - **main.js**
+  - 添加了 `JSB.require('pinyin')` 加载拼音库
   - 添加了 `JSB.require('xdyytoolbar')` 加载自定义模块
   - 在 init 函数中初始化 XDYYToolbar
   - 移除了 togglePreprocess 方法（已移到 xdyytoolbar.js）

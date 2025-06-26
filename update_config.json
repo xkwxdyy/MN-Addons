@@ -1,6 +1,7 @@
 {
   "custom_files": [
     "xdyytoolbar.js",
+    "pinyin.js",
     "XDYY_README.md",
     "XDYY_开发指南.md"
   ],

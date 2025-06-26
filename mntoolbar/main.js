@@ -1,3 +1,4 @@
+
 JSB.newAddon = function (mainPath) {
   JSB.require('utils')
   JSB.require('pinyin')
@@ -828,8 +829,7 @@ try {
         if (self.testController) {
           self.testController.dynamic = toolbarConfig.dynamic
         }
-        MNUtil.refreshAddonCommands()
-      },
+        MNUtil.refreshAddonCommands()},
       executeCustomAction: function (params) {
         if (typeof MNUtil === 'undefined' || typeof XDYYToolbar === 'undefined') return
         let self = getMNToolbarClass()

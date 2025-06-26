@@ -1373,23 +1373,39 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
     let currentDocName
     let pinnedNote
     let htmlSetting = [
-      { title: "= 同级", type: "sameLevel" },
-      { title: "⬇️ 下一级", type: "nextLevel" },
-      { title: "⬆️ 上一级", type: "lastLevel" },
-      { title: "🏆 最高级", type: "topestLevel" },
-      { title: "goal: 🎯", type: "goal" },
-      { title: "step: 🚩", type: "step" },
-      { title: "point: ▸", type: "point" },
-      { title: "subpoint: ▪", type: "subpoint" },
-      { title: "subsubpoint: •", type: "subsubpoint" },
-      { title: "key: 🔑", type: "key" },
-      { title: "question: ❓", type: "question" },
-      { title: "remark: 📝", type: "remark" },
-      { title: "alert: ⚠️", type: "alert" },
-      { title: "danger: ❗❗❗", type: "danger" },
-      { title: "none", type: "none" }
+      { title: "方法: ✔", type: "method" },
+      { title: "思路: 💡", type: "idea" },
+      { title: "目标: 🎯", type: "goal" },
+      { title: "关键: 🔑", type: "key" },
+      { title: "问题: ❓", type: "question" },
+      { title: "注: 📝", type: "remark" },
+      { title: "注意: ⚠️", type: "alert" },
+      { title: "特别注意: ❗❗❗", type: "danger" },
+      // { title: "level1: 🚩", type: "level1" },
+      // { title: "level2: ▸", type: "level2" },
+      // { title: "level3: ▪", type: "level3" },
+      // { title: "level4: •", type: "level4" },
+      // { title: "level5: ·", type: "level5" },
+      // { title: "none", type: "none" },
+      // { title: "= 同级", type: "sameLevel" },
+      // { title: "⬇️ 下一级", type: "nextLevel" },
+      // { title: "⬆️ 上一级", type: "lastLevel" },
+      // { title: "🏆 最高级", type: "topestLevel" },
     ];
     let htmlSettingTitles = htmlSetting.map(config => config.title);
+    let levelHtmlSetting = [
+      { title: "goal: 🎯", type: "goal" },
+      // { title: "step: 🚩", type: "step" },
+      // { title: "point: ▸", type: "point" },
+      // { title: "subpoint: ▪", type: "subpoint" },
+      // { title: "subsubpoint: •", type: "subsubpoint" },
+      { title: "level1: 🚩", type: "level1" },
+      { title: "level2: ▸", type: "level2" },
+      { title: "level3: ▪", type: "level3" },
+      { title: "level4: •", type: "level4" },
+      { title: "level5: ·", type: "level5" },
+    ];
+    let levelHtmlSettingTitles = levelHtmlSetting.map(config => config.title);
     switch (des.action) {
       case "undo":
         UndoManager.sharedInstance().undo()
@@ -2096,7 +2112,8 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "moveNewContentsByPopupTo":  // new
         MNUtil.undoGrouping(()=>{
           try {
-            focusNote.moveCommentsByIndexArrAndButtonTo(focusNote.getNewContentIndexArr(), "移动「新增」评论到", "")
+            // focusNote.moveCommentsByIndexArrAndButtonTo(focusNote.getNewContentIndexArr(), "移动「新增」评论到", "")
+            MNMath.moveCommentsByPopup(focusNote)
           } catch (error) {
             MNUtil.showHUD(error);
           }
@@ -2218,6 +2235,31 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
             let idsArr = toolbarUtils.getNoteURLArr(focusNotes)
             MNUtil.copy(idsArr)
             MNUtil.showHUD(idsArr)
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
+      case "copyMarkdownVersionFocusNoteURL":
+        MNUtil.undoGrouping(()=>{
+          try {
+            UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+              "复制 Markdown 类型链接",
+              "输入引用词",
+              2,
+              "取消",
+              ["确定"],
+              (alert, buttonIndex) => {
+                MNUtil.undoGrouping(()=>{
+                  if (buttonIndex == 1) {
+                    let refContent = alert.textFieldAtIndex(0).text?alert.textFieldAtIndex(0).text:focusNote.getFirstTitleLinkWord()
+                    let mdLink = "["+ refContent +"](" + focusNote.noteURL + ")"
+                    MNUtil.copy(mdLink)
+                    MNUtil.showHUD(mdLink)
+                  }
+                })
+              }
+            );
           } catch (error) {
             MNUtil.showHUD(error);
           }
@@ -3754,10 +3796,18 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                 let focusNoteIndexInTargetJournalNote
                 let singleInfoIndexInTargetJournalNote
                 for (let i = 0; i <= journalLibraryNote.childNotes.length-1; i++) {
-                  if (journalLibraryNote.childNotes[i].noteTitle.includes(journalName)) {
-                    targetJournalNote = journalLibraryNote.childNotes[i]
-                    findJournal = true
-                    break;
+                  if (journalName.toLowerCase()) {
+                    if (journalLibraryNote.childNotes[i].noteTitle.toLowerCase().includes(journalName.toLowerCase())) {
+                      targetJournalNote = journalLibraryNote.childNotes[i]
+                      findJournal = true
+                      break;
+                    }
+                  } else {
+                    if (journalLibraryNote.childNotes[i].noteTitle.includes(journalName)) {
+                      targetJournalNote = journalLibraryNote.childNotes[i]
+                      findJournal = true
+                      break;
+                    }
                   }
                 }
                 if (!findJournal) {
@@ -4881,6 +4931,39 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           }
         })
         break;
+      /**
+       * 向上合并
+       */
+      case "upwardMergeWithStyledComments":
+        MNUtil.undoGrouping(()=>{
+          try {
+            UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+              "选择「当前卡片」下一层的层级",
+              "然后会依次递减",
+              0,
+              "取消",
+              levelHtmlSettingTitles,
+              (alert, buttonIndex) => {
+                try {
+                  MNUtil.undoGrouping(() => {
+                    // 按钮索引从1开始（0是取消按钮）
+                    const selectedIndex = buttonIndex - 1;
+                    
+                    if (selectedIndex >= 0 && selectedIndex < levelHtmlSetting.length) {
+                      const selectedType = levelHtmlSetting[selectedIndex].type;
+                      HtmlMarkdownUtils.upwardMergeWithStyledComments(focusNote, selectedType)
+                    }
+                  });
+                } catch (error) {
+                  MNUtil.showHUD(error);
+                }
+              }
+            );
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
       case "mergeInParentNoteWithPopup":
         MNUtil.undoGrouping(()=>{
           try {
@@ -4978,6 +5061,15 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
                 }
               }
             )
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
+      case "addHtmlMarkdownQuestion":
+        MNUtil.undoGrouping(()=>{
+          try {
+            HtmlMarkdownUtils.addQuestionHtmlMDComment(focusNote)
           } catch (error) {
             MNUtil.showHUD(error);
           }
@@ -5132,7 +5224,7 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       case "addTemplate":
         try {
           MNUtil.undoGrouping(()=>{
-            toolbarUtils.addTemplate(focusNote,focusNoteColorIndex)
+            MNMath.addTemplate(focusNote)
           })
         } catch (error) {
           MNUtil.showHUD(error);
@@ -5151,7 +5243,8 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         try {
           MNUtil.undoGrouping(()=>{
             focusNotes.forEach(focusNote=>{
-              toolbarUtils.renewCards(focusNote)
+              // toolbarUtils.renewCards(focusNote)
+              focusNote.renew()
             })
           })
         } catch (error) {
@@ -5186,6 +5279,13 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
         } catch (error) {
           MNUtil.showHUD(error);
         }
+        break;
+      case "batchChangeClassificationTitles":
+        try {
+            await MNMath.batchChangeClassificationTitles("descendants");
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
         break;
       case "moveUpLinkNotes":
         try {
@@ -5613,6 +5713,88 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
               focusNote.changeTitle()
               focusNote.refreshAll()
             })
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
+      case "removeTitlePrefix":
+        MNUtil.undoGrouping(()=>{
+          try {
+            focusNotes.forEach(focusNote=>{
+              focusNote.title = focusNote.title.toNoBracketPrefixContent()
+              focusNote.refreshAll()
+            })
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
+      case "addNewIdeaNote":
+        MNUtil.undoGrouping(()=>{
+          try {
+            UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+              "输入思路标题",
+              "",
+              2,
+              "取消",
+              ["确定"],
+              (alert, buttonIndex) => {
+                let userInput = alert.textFieldAtIndex(0).text;
+                if (buttonIndex == 1 && userInput) {
+                  MNUtil.undoGrouping(()=>{
+                    MNMath.addNewIdeaNote(focusNote, userInput)
+                  })
+                }
+              }
+            )
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break
+      case "changeHtmlMarkdownCommentTypeByPopup":
+        MNUtil.undoGrouping(()=>{
+          try {
+            MNMath.changeHtmlMarkdownCommentTypeByPopup(focusNote)
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
+      case "makeCard":
+        MNUtil.undoGrouping(()=>{
+          try {
+            MNMath.makeCard(focusNote)
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
+      case "makeNote":
+        MNUtil.undoGrouping(()=>{
+          try {
+            if (toolbarConfig.windowState.preprocess) {
+              let newnote = MNMath.toNoExceptVersion(focusNote)
+              MNMath.changeTitle(newnote)
+              newnote.focusInMindMap(0.2)
+            } else {
+              MNMath.makeNote(focusNote)
+            }
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
+        break;
+      case "doubleClickMakeNote":
+        MNUtil.undoGrouping(()=>{
+          MNMath.makeNote(focusNote, false)
+        })
+        break;
+      case "replaceFieldContentByPopup":
+        MNUtil.undoGrouping(()=>{
+          try {
+            MNMath.replaceFieldContentByPopup(focusNote)
           } catch (error) {
             MNUtil.showHUD(error);
           }

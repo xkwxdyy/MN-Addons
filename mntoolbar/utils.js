@@ -9662,6 +9662,11 @@ static template(action) {
           {
             "action": "addNewIdeaNote",
             "menuTitle": "    生成「思路」卡片"
+          },
+          "🔄 处理旧卡片",
+          {
+            "action": "batchChangeClassificationTitles",
+            "menuTitle": "    批量更新归类卡片标题"
           }
         ]
       }

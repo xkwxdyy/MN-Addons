@@ -5280,6 +5280,13 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
           MNUtil.showHUD(error);
         }
         break;
+      case "batchChangeClassificationTitles":
+         try {
+            await MNMath.batchChangeClassificationTitles("descendants");
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        break;
       case "moveUpLinkNotes":
         try {
           MNUtil.undoGrouping(()=>{

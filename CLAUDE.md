@@ -240,3 +240,61 @@
    - 测试扩展函数是否可访问：`toolbarUtils.yourFunction()`
    - 验证文件是否加载：在扩展文件中添加 `MNUtil.showHUD("文件已加载")`
    - 检查方法类型：静态方法直接通过类名调用，实例方法需要实例
+
+### 13. 自定义 Actions 解耦经验教训（2025.6.27）
+
+1. **加载顺序问题**：
+   - 问题：扩展文件试图访问 `toolbarController` 时报错 "ReferenceError: Can't find variable"
+   - 原因：扩展文件在 `toolbarController` 定义之前就被加载和执行
+   - 解决方案：
+     - 使用延迟初始化（setTimeout）
+     - 使用 eval 检查变量是否存在，避免直接引用导致错误
+     - 扩展文件必须在 `webviewController.js` 加载之后加载
+
+2. **初始化检查**：
+   - 问题：`self.addonController.popupReplace()` 报错 "undefined is not an object"
+   - 原因：`addonController` 可能还未初始化就被调用
+   - 解决方案：在使用前调用 `self.ensureView()` 确保初始化
+   
+3. **方法重写的错误处理**：
+   - 问题：扩展的 `customActionByDes` 中如果出错，功能会中断
+   - 解决方案：
+     ```javascript
+     try {
+       // 自定义处理逻辑
+     } catch (error) {
+       // 错误时也要调用原始方法，避免功能中断
+       return await originalCustomActionByDes.call(this, button, des, checkSubscribe);
+     }
+     ```
+
+4. **调试技巧**：
+   - 在扩展文件中添加详细的日志输出
+   - 使用计数器跟踪方法调用次数
+   - 在关键位置使用 `MNUtil.showHUD()` 显示调试信息
+   - 检查 action 是否进入 switch 的 default 分支（显示 "Not supported yet..."）
+
+5. **扩展架构最佳实践**：
+   ```javascript
+   // 安全的初始化模式
+   function initializeCustomActions() {
+     // 使用 eval 避免直接引用错误
+     let hasController = false;
+     try {
+       hasController = eval('typeof toolbarController') !== 'undefined';
+     } catch (e) {}
+     
+     if (!hasController) {
+       // 延迟重试
+       setTimeout(initializeCustomActions, 100);
+       return;
+     }
+     
+     // 执行初始化
+   }
+   ```
+
+6. **错误隔离原则**：
+   - 扩展文件的错误不应影响主插件功能
+   - 所有扩展操作都应该有 try-catch 包装
+   - 加载失败时使用 console.error 而不是抛出异常

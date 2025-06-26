@@ -35,7 +35,9 @@
       "Bash(md5:*)",
       "mcp__promptx__promptx_remember",
       "Bash(rm:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(node:*)",
+      "Bash(cp:*)"
     ],
     "deny": []
   }

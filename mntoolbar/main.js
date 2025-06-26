@@ -5,6 +5,24 @@ JSB.newAddon = function (mainPath) {
   JSB.require('webviewController');
   JSB.require('settingController');
   // JSB.require('UIPencilInteraction');
+  
+  // 加载自定义 actions 扩展（必须在 webviewController 之后）
+  try {
+    // 使用注册表方式，真正实现解耦
+    JSB.require('xdyy_custom_actions_registry')
+    
+    // 其他版本（暂时注释）
+    // JSB.require('xdyy_test_actions_debug')
+    // JSB.require('xdyy_test_actions_safe')
+    // JSB.require('xdyy_test_actions')
+    // JSB.require('xdyy_all_custom_actions_clean')
+  } catch (error) {
+    // 加载错误不应该影响插件主功能
+    console.error("加载自定义 Actions 失败:", error)
+    if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+      MNUtil.addErrorLog(error, "加载自定义 Actions")
+    }
+  }
   /** @return {MNToolbarClass} */
   const getMNToolbarClass = ()=>self  
   var MNToolbarClass = JSB.defineClass(
@@ -124,6 +142,7 @@ JSB.newAddon = function (mainPath) {
               self.settingController.blur()
             })
         }
+        self.ensureView() // 确保 addonController 已初始化
         self.addonController.popupReplace()
 
         if (!toolbarConfig.dynamic) {
@@ -247,6 +266,7 @@ JSB.newAddon = function (mainPath) {
           return
         }
         try {
+          self.ensureView() // 确保 addonController 已初始化
           self.addonController.popupReplace()
           if (self.settingController) {
             MNUtil.delay(0.01).then(()=>{

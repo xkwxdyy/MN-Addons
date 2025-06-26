@@ -5756,6 +5756,10 @@ static template(action) {
       config.menuWidth = 250
       config.menuItems = [
         {
+          "action": "test",
+          "menuTitle": "测试",
+        },
+        {
           "action": "copyMarkdownVersionFocusNoteURL",
           "menuTitle": "复制 Markdown 类型的卡片 URL",
         },

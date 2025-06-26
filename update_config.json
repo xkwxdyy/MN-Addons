@@ -1,0 +1,33 @@
+{
+  "custom_files": [
+    "xdyytoolbar.js",
+    "XDYY_README.md",
+    "XDYY_开发指南.md"
+  ],
+  "file_extensions": [
+    ".js",
+    ".html",
+    ".json",
+    ".css",
+    ".svg"
+  ],
+  "text_replacements": {
+    "foucsNote": "focusNote"
+  },
+  "integration_checks": {
+    "main.js": [
+      "JSB.require('xdyytoolbar')",
+      "executeCustomAction:",
+      "XDYYToolbar.init"
+    ],
+    "webviewController.js": [
+      "registerCustomActions",
+      "XDYYToolbar !== 'undefined'"
+    ]
+  },
+  "ignore_patterns": [
+    "custom\\d+\\.png",
+    "\\.DS_Store",
+    "Thumbs\\.db"
+  ]
+}

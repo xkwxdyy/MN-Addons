@@ -4,6 +4,7 @@ JSB.newAddon = function (mainPath) {
   if (!toolbarUtils.checkMNUtilsFolder(mainPath)) {return undefined}
   JSB.require('webviewController');
   JSB.require('settingController');
+  JSB.require('xdyytoolbar');
   // JSB.require('UIPencilInteraction');
   /** @return {MNToolbarClass} */
   const getMNToolbarClass = ()=>self  
@@ -829,13 +830,16 @@ try {
         }
         MNUtil.refreshAddonCommands()
       },
-      // 夏大鱼羊增加：卡片的预处理
-      togglePreprocess: function () {
+      executeCustomAction: function (params) {
+        if (typeof MNUtil === 'undefined' || typeof XDYYToolbar === 'undefined') return
         let self = getMNToolbarClass()
         self.checkPopoverController()
-        toolbarConfig.togglePreprocess()
+        
+        // 执行 XDYYToolbar 中的对应动作
+        if (params && params.action === 'togglePreprocess') {
+          XDYYToolbar.togglePreprocess();
+        }
       },
-      // 夏大鱼羊结束
       openDocument:function (button) {
         if (typeof MNUtil === 'undefined') return
         let self = getMNToolbarClass()
@@ -871,10 +875,15 @@ try {
             self.tableItem('🛠️   Direction   '+(toolbarConfig.vertical()?'↕️':'↔️'), selector,"fixed"),
             self.tableItem('🌟   Dynamic   ', "toggleDynamic",undefined,toolbarConfig.dynamic),
             self.tableItem('🌟   Direction   '+(toolbarConfig.vertical()?'↕️':'↔️'), selector,"dynamic"),
-            self.tableItem('🗂️   卡片预处理模式  ',"togglePreprocess:", undefined, toolbarConfig.windowState.preprocess),
             self.tableItem('📄   Document', 'openDocument:'),
             self.tableItem('🔄   Manual Sync','manualSync:')
         ];
+        
+        // 添加自定义菜单项
+        if (typeof XDYYToolbar !== 'undefined') {
+            commandTable.push(self.tableItem('🗂️   卡片预处理模式  ', 'executeCustomAction:', 
+                {action: 'togglePreprocess'}, toolbarConfig.preprocess));
+        }
         if (self.addonBar.frame.x < 100) {
           self.popoverController = MNUtil.getPopoverAndPresent(button,commandTable,200,4)
         }else{
@@ -922,6 +931,10 @@ try {
     if (!this.initialized) {
       toolbarUtils.init(mainPath)
       toolbarConfig.init(mainPath)
+      // 初始化自定义工具栏功能
+      if (typeof XDYYToolbar !== 'undefined') {
+        XDYYToolbar.init(this);
+      }
       this.initialized = true
     }
   } catch (error) {

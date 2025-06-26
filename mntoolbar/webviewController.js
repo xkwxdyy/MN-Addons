@@ -8,6 +8,12 @@ var toolbarController = JSB.defineClass('toolbarController : UIViewController <U
   try {
     
     let self = getToolbarController()
+    
+    // 注册自定义动作
+    if (typeof XDYYToolbar !== 'undefined') {
+      self.registerCustomActions();
+    }
+    
     self.custom = false;
     self.customMode = "None"
     self.miniMode = false;
@@ -1008,6 +1014,48 @@ try {
     }
     } catch (error) {
       toolbarUtils.addErrorLog(error, "onResizeGesture")
+    }
+  },
+  // 注册自定义动作
+  registerCustomActions: function() {
+    try {
+      if (typeof XDYYToolbar === 'undefined') return;
+      
+      // 获取自定义动作列表
+      const customActions = XDYYToolbar.getCustomActions();
+      
+      // 将自定义动作添加到 toolbarConfig 的动作系统中
+      customActions.forEach((action, index) => {
+        // 使用未使用的 custom 槽位
+        const customSlot = `xdyy_${action.id}`;
+        
+        // 创建动作描述
+        const description = {
+          action: action.id,
+          menuWidth: 330
+        };
+        
+        if (action.callback) {
+          description.callback = action.callback;
+        }
+        
+        // 注册到 toolbarConfig 的动作系统
+        if (!toolbarConfig.actions) {
+          toolbarConfig.actions = {};
+        }
+        
+        toolbarConfig.actions[customSlot] = {
+          name: action.title,
+          image: action.id, // 图标名称，需要对应的图片文件
+          description: JSON.stringify(description)
+        };
+      });
+      
+      // 确保动作可以被使用
+      toolbarConfig.save();
+      
+    } catch (error) {
+      toolbarUtils.addErrorLog(error, "registerCustomActions");
     }
   },
 });

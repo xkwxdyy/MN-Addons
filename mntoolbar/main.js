@@ -10,12 +10,6 @@ JSB.newAddon = function (mainPath) {
   try {
     // 使用注册表方式，真正实现解耦
     JSB.require('xdyy_custom_actions_registry')
-    
-    // 其他版本（暂时注释）
-    // JSB.require('xdyy_test_actions_debug')
-    // JSB.require('xdyy_test_actions_safe')
-    // JSB.require('xdyy_test_actions')
-    // JSB.require('xdyy_all_custom_actions_clean')
   } catch (error) {
     // 加载错误不应该影响插件主功能
     console.error("加载自定义 Actions 失败:", error)

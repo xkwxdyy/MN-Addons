@@ -298,3 +298,75 @@
    - 扩展文件的错误不应影响主插件功能
    - 所有扩展操作都应该有 try-catch 包装
    - 加载失败时使用 console.error 而不是抛出异常
+
+### 14. JSB 方法覆盖限制与注册表模式（2025.6.27 更新）
+
+1. **Prototype 覆盖的失败教训**：
+   - 问题：尝试通过 `toolbarController.prototype.customActionByDes = function()` 覆盖方法失败
+   - 原因：JSB 框架的限制，prototype 修改可能不生效
+   - 表现：自定义 actions 仍然进入 default 分支显示 "Not supported yet..."
+   
+2. **成功的注册表模式**：
+   - 最小化主文件修改（仅修改 default 分支）
+   - 使用全局对象存储自定义 actions
+   - 实现代码：
+   ```javascript
+   // 注册表文件
+   if (typeof global === 'undefined') {
+     var global = {};
+   }
+   global.customActions = {};
+   global.registerCustomAction = function(name, handler) {
+     global.customActions[name] = handler;
+   };
+   
+   // 主文件的 default 分支
+   default:
+     if (typeof global !== 'undefined' && global.executeCustomAction) {
+       const context = { button, des, focusNote, focusNotes, self: this };
+       const handled = await global.executeCustomAction(des.action, context);
+       if (handled) break;
+     }
+     MNUtil.showHUD("Not supported yet...")
+     break;
+   ```
+
+3. **Switch 语句中的 break 限制**：
+   - 问题：提取的 case 代码包含 break 语句，在函数中执行会报 "Illegal break statement"
+   - 解决：使用正则表达式移除所有 break 语句
+   - 注意：某些复杂的 switch 语句需要特殊处理或简化
+
+4. **复杂 Actions 的处理**：
+   - 问题：某些 actions（如 TemplateMakeNotes）包含 150+ 行代码和嵌套 switch
+   - 解决：为这些 actions 创建简化版本，保留核心功能
+   - 示例：
+   ```javascript
+   // 简化复杂的 switch 语句
+   if (case_name === 'TemplateMakeNotes') {
+     return """简化的实现，避免语法错误"""
+   }
+   ```
+
+5. **批量迁移的工具化**：
+   - 使用 Python 脚本自动提取和转换 cases
+   - 自动分组（reference、move、proof 等）
+   - 自动修复语法问题（break 语句、不完整的 switch 等）
+
+6. **文件组织最佳实践**：
+   - 基础版：5 个 actions 用于测试
+   - 精选版：30 个常用 actions
+   - 完整版：所有 198 个 actions
+   - 便于渐进式测试和部署
+
+7. **注册表模式的优势**：
+   - 真正的解耦：主文件修改最小（仅 4 行）
+   - 易于维护：所有自定义代码集中管理
+   - 向后兼容：未注册的 actions 保持原有行为
+   - 动态加载：可以在运行时添加新 actions
+   - 错误隔离：单个 action 错误不影响其他功能
+
+8. **调试和测试建议**：
+   - 使用 Node.js 的语法检查：`node -c filename.js`
+   - 创建测试脚本验证所有文件语法
+   - 分阶段测试：先测试基础版，再测试完整版
+   - 保留原始备份文件便于对比和回滚

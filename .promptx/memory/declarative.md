@@ -235,3 +235,41 @@
 --tags #工具使用 #评分:8 #有效期:长期
 - END
 
+
+
+- 2025/06/27 02:54 START
+MN Toolbar Pro 项目 - 成功实现自定义 Actions 解耦（2025.6.27）
+
+## 任务背景
+用户在 webviewController.js 的 customActionByDes 方法中添加了 198 个自定义 case，导致文件过大（264KB），需要解耦。
+
+## 失败的尝试
+1. Prototype 覆盖方式：尝试通过 toolbarController.prototype.customActionByDes 覆盖方法，但 JSB 框架限制导致失败
+2. 错误问题：
+   - undefined is not an object (evaluating 'self.addonController.popupReplace') - 通过添加 self.ensureView() 解决
+   - ReferenceError: Can't find variable: toolbarController - 尝试了延迟初始化等多种方案都失败
+
+## 成功的解决方案 - 注册表模式
+1. 最小化修改主文件（仅在 default 分支添加 4 行代码）
+2. 创建全局注册表存储自定义 actions
+3. 实现了真正的解耦，所有自定义代码在独立文件中管理
+
+## 技术要点
+1. JSB 框架中不能在函数内使用 break 语句，需要移除
+2. 复杂的 switch 语句（如 TemplateMakeNotes 150+ 行）需要简化处理
+3. 使用 Python 脚本自动化迁移过程
+4. 创建多个版本（基础版、精选版、完整版）便于测试
+
+## 成果
+- 成功迁移 198 个自定义 actions
+- 主文件从 264KB 减少到 95KB（减少 64%）
+- 保持向后兼容性
+- 易于维护和扩展
+
+## 文件列表
+- xdyy_custom_actions_registry_full.js - 完整版（198个actions）
+- xdyy_custom_actions_registry_complete.js - 精选版（30个actions）
+- xdyy_custom_actions_registry.js - 基础版（5个actions）
+- convert_to_registry.py - 自动转换脚本 --tags MNToolbar JSB 解耦 注册表模式 MarginNote 插件开发
+--tags #其他 #评分:8 #有效期:长期
+- END

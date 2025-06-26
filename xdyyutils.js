@@ -3904,17 +3904,6 @@ MNNote.prototype.clearAllComments = function(){
   }
 }
 
-/**
- * 【数学】把证明的内容移到最下方
- * 
- * 一般用于重新写证明
- */
-MNNote.prototype.moveProofDown = function() {
-  let proofIndexArr = this.getHtmlBlockContentIndexArr("证明：")
-  if (proofIndexArr.length > 0) {
-    this.moveCommentsByIndexArrTo(proofIndexArr, "bottom")
-  }
-}
 
 /**
  * 让卡片成为进度卡片
@@ -3942,163 +3931,6 @@ MNNote.prototype.toBeIndependent = function(){
   let parentNote = this.getClassificationParentNote()
   parentNote.addChild(this)
   this.focusInMindMap(0.5)
-}
-
-/**
- * 将卡片转移到"输入"区
- */
-MNNote.prototype.moveToInput = function(){
-  let notebookId = MNUtil.currentNotebookId
-  let workflowObj = MNUtil.getWorkFlowObjByNoteBookId(notebookId)
-  if (workflowObj.inputNoteId) {
-    let inputNoteId = workflowObj.inputNoteId
-    let inputNote = MNNote.new(inputNoteId)
-    inputNote.addChild(this)
-    // this.focusInMindMap(0.8)
-  }
-}
-
-/**
- * 将卡片转移到"备考"区
- */
-MNNote.prototype.moveToPreparationForExam = function(){
-  let notebookId = MNUtil.currentNotebookId
-  let workflowObj = MNUtil.getWorkFlowObjByNoteBookId(notebookId)
-  if (workflowObj.preparationNoteId) {
-    let preparationNoteId = workflowObj.preparationNoteId
-    let preparationNote = MNNote.new(preparationNoteId)
-    preparationNote.addChild(this)
-    // this.focusInMindMap(0.8)
-  }
-}
-
-/**
- * 将卡片转移到"内化"区
- */
-MNNote.prototype.moveToInternalize = function(){
-  let notebookId = MNUtil.currentNotebookId
-  let workflowObj = MNUtil.getWorkFlowObjByNoteBookId(notebookId)
-  if (workflowObj.internalizationNoteId) {
-    let internalizationNoteId = workflowObj.internalizationNoteId
-    let internalizationNote = MNNote.new(internalizationNoteId)
-    internalizationNote.addChild(this)
-    if (this.title.includes("输入")) {
-      this.changeTitle()
-      this.linkParentNote()
-    }
-    this.focusInMindMap(1)
-  }
-}
-
-/**
- * 将卡片转移到"待归类"区
- */
-MNNote.prototype.moveToBeClassified = function(targetNoteId){
-  let notebookId = MNUtil.currentNotebookId
-  let workflowObj = MNUtil.getWorkFlowObjByNoteBookId(notebookId)
-  let toClassifyNoteId = (targetNoteId == undefined)?workflowObj.toClassifyNoteId:targetNoteId
-  let toClassifyNote = MNNote.new(toClassifyNoteId)
-  if (toClassifyNote) {
-    toClassifyNote.addChild(this)
-    this.changeTitle()
-    this.linkParentNote()
-    this.addToReview()
-  }
-}
-
-/**
- * 【数学】加入复习
- */
-MNNote.prototype.addToReview = function() {
-  if (this.getNoteTypeZh() !== "顶层" && this.getNoteTypeZh() !== "归类") {
-    if (!MNUtil.isNoteInReview(this.noteId)) {  // 2024-09-26 新增的 API
-      MNUtil.excuteCommand("AddToReview")
-    }
-  }
-}
-
-/**
- * 删除评论
- * 
- * 提供一些预设项，并且用户可以自行输入要删除的评论 Index
- */
-MNNote.prototype.deleteCommentsByPopup = function(){
-  UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-    "删除评论",
-    "支持:\\n- 单个序号: 1,2,3\\n- 范围: 1-4 (删除第1到第4条)\\n- 特殊字符: X(倒数第3条), Y(倒数第2条), Z(最后一条)\\n- 组合使用: 1,3-5,Y,Z\\n\\n用中文或英文逗号、分号分隔",
-    2,
-    "取消",
-    [
-      "第1️⃣条评论",
-      "最后一条评论",
-      "确定删除输入的评论"
-    ],
-    (alert, buttonIndex) => {
-      let userInput = alert.textFieldAtIndex(0).text;
-      let deleteCommentIndexArr = userInput ? userInput.parseCommentIndices(this.comments.length) : []
-      switch (buttonIndex) {
-        case 1:  // 删除第一条评论
-          this.removeCommentByIndex(0)
-          break;
-        case 2:  // 删除最后一条评论
-          this.removeCommentByIndex(this.comments.length-1)
-          break;
-        case 3:  // 确定删除输入的评论
-          if (deleteCommentIndexArr.length > 0) {
-            this.removeCommentsByIndices(deleteCommentIndexArr)
-          }
-          break;
-      }
-
-      MNUtil.undoGrouping(()=>{
-        this.refresh()
-      })
-    }
-  )
-}
-
-/**
- * 先删除评论再移动新内容
- * 
- * 两个参数和 moveNewContentTo 函数的参数相同
- * @param {String} target 新内容移动的位置
- * @param {boolean} [toBottom=true] 默认移动到底部
- */
-MNNote.prototype.deleteCommentsByPopupAndMoveNewContentTo = function(target, toBottom= true){
-  UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-    "先删除评论",
-    "支持:\\n- 单个序号: 1,2,3\\n- 范围: 1-4 (删除第1到第4条)\\n- 特殊字符: X(倒数第3条), Y(倒数第2条), Z(最后一条)\\n- 组合使用: 1,3-5,Y,Z\\n\\n用中文或英文逗号、分号分隔",
-    2,
-    "取消",
-    [
-      "第1️⃣条评论",
-      "最后一条评论",
-      "确定删除输入的评论"
-    ],
-    (alert, buttonIndex) => {
-      let userInput = alert.textFieldAtIndex(0).text;
-      let deleteCommentIndexArr = userInput ? userInput.parseCommentIndices(this.comments.length) : []
-      switch (buttonIndex) {
-        case 1:  // 删除第一条评论
-          this.removeCommentByIndex(0)
-          break;
-        case 2:  // 删除最后一条评论
-          this.removeCommentByIndex(this.comments.length-1)
-          break;
-        case 3:  // 确定删除输入的评论
-          if (deleteCommentIndexArr.length > 0) {
-            this.removeCommentsByIndices(deleteCommentIndexArr)
-          }
-          break;
-      }
-
-      this.moveNewContentTo(target, toBottom)
-
-      MNUtil.undoGrouping(()=>{
-        this.refresh()
-      })
-    }
-  )
 }
 
 /**
@@ -4131,18 +3963,6 @@ MNNote.prototype.pasteChildNoteById = function(id) {
   }
 }
 
-/**
- * 获取第一个标题链接词并生成标题链接
- */
-MNNote.prototype.generateCustomTitleLinkFromFirstTitlelinkWord = function(keyword) {
-  let title = this.title
-  if (title.isKnowledgeNoteTitle()) {
-    let firstTitleLinkWord = this.getFirstTitleLinkWord()
-    return MNUtil.generateCustomTitleLink(keyword, firstTitleLinkWord)
-  } else {
-    return MNUtil.generateCustomTitleLink(keyword, title)
-  }
-}
 
 /**
  * 获取标题的所有标题链接词
@@ -4190,16 +4010,6 @@ MNNote.prototype.getFirstTitleLinkWord = function(){
       return title.toString()
     }
   }
-}
-
-/**
- * 判断卡片的前缀是否包含
- * - 输入
- * - 内化
- * - 待归类
- */
-MNNote.prototype.ifNoteTemporary = function(){
-  return ["输入","内化","待归类"].some(keyword => this.title.includes(keyword))
 }
 
 /**

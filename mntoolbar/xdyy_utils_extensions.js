@@ -619,24 +619,6 @@ function initXDYYExtensions() {
     }
   }
 
-  /**
-   * 切换卡片预处理模式的开关功能
-   */
-  toolbarUtils.togglePreprocess = function() {
-    if (!toolbarUtils.checkSubscribe(true)) {
-      return
-    }
-    if (toolbarConfig.getWindowState("preprocess") === false) {
-      toolbarConfig.windowState.preprocess = true
-      toolbarConfig.save("MNToolbar_windowState")
-      MNUtil.showHUD("卡片预处理模式：✅ 开启")
-    } else {
-      toolbarConfig.windowState.preprocess = false
-      toolbarConfig.save("MNToolbar_windowState")
-      MNUtil.showHUD("卡片预处理模式：❌ 关闭")
-    }
-    MNUtil.postNotification("refreshToolbarButton", {})
-  }
 
   // ===== 链接相关函数 =====
   
@@ -2049,28 +2031,34 @@ function extendToolbarConfigInit() {
   const originalInit = toolbarConfig.init
   
   // 重写 init 方法
-  toolbarConfig.init = function() {
+  toolbarConfig.init = function(mainPath) {
     // 调用原始的 init 方法
-    originalInit.call(this)
+    originalInit.call(this, mainPath)
     
     // 添加扩展的初始化逻辑
     // 用来存参考文献的数据
-    toolbarConfig.referenceIds = this.getByDefault("MNToolbar_referenceIds", {})
+    toolbarConfig.referenceIds = toolbarConfig.getByDefault("MNToolbar_referenceIds", {})
   }
   
-  // 添加 togglePreprocess 方法
+  // 添加 togglePreprocess 静态方法
   // 夏大鱼羊
   toolbarConfig.togglePreprocess = function() {
-    if (!this.windowState) {
-      this.windowState = {}
+    MNUtil.showHUD("调试：togglePreprocess 函数开始执行")
+    if (!toolbarUtils.checkSubscribe(true)) {
+      MNUtil.showHUD("调试：订阅检查失败")
+      return
     }
-    this.windowState.preprocess = !this.windowState.preprocess
-    toolbarConfig.save("windowState")
-    if (this.windowState.preprocess) {
-      MNUtil.showHUD('✅ 已开启卡片预处理模式')
+    MNUtil.showHUD("调试：订阅检查通过")
+    if (toolbarConfig.getWindowState("preprocess") === false) {
+      toolbarConfig.windowState.preprocess = true
+      toolbarConfig.save("MNToolbar_windowState")
+      MNUtil.showHUD("卡片预处理模式：✅ 开启")
     } else {
-      MNUtil.showHUD('❌ 已关闭卡片预处理模式')
+      toolbarConfig.windowState.preprocess = false
+      toolbarConfig.save("MNToolbar_windowState")
+      MNUtil.showHUD("卡片预处理模式：❌ 关闭")
     }
+    MNUtil.postNotification("refreshToolbarButton", {})
   }
   
   // 扩展 defaultWindowState

@@ -201,3 +201,42 @@
    - 事件监听器的注册与清理
    - 单例模式的实现细节
    - 异步操作的处理方式
+
+### 12. JSB 文件加载与代码解耦规范
+
+1. **文件加载时机**：
+   - JSB.require 必须在被依赖的类定义之后调用
+   - ❌ 错误：在文件开头调用 `JSB.require('extension')`，此时类还未定义
+   - ✅ 正确：在文件末尾、所有类定义完成后调用
+
+2. **文件路径规范**：
+   ```javascript
+   // ✅ 正确
+   JSB.require('xdyy_utils_extensions')
+   // ❌ 错误（不需要 .js 后缀）
+   JSB.require('xdyy_utils_extensions.js')
+   ```
+
+3. **核心功能不宜解耦**：
+   - toolbarConfig 的核心方法（如 togglePreprocess）应保留在 utils.js 中
+   - 配置项（defaultWindowState、referenceIds）应在原始位置初始化
+   - 原因：JSB 架构对作用域和初始化顺序有严格要求
+
+4. **静态方法 vs 实例方法**：
+   ```javascript
+   // ✅ 原始代码使用静态方法
+   static togglePreprocess() { ... }
+   
+   // ❌ 错误地改为实例方法
+   toolbarConfig.togglePreprocess = function() { ... }
+   ```
+
+5. **扩展策略**：
+   - 工具函数可以通过 prototype 扩展（如 toolbarUtils）
+   - 配置类的核心方法不建议通过外部文件扩展
+   - 使用初始化函数模式时，注意调用时机和参数传递
+
+6. **调试建议**：
+   - 测试扩展函数是否可访问：`toolbarUtils.yourFunction()`
+   - 验证文件是否加载：在扩展文件中添加 `MNUtil.showHUD("文件已加载")`
+   - 检查方法类型：静态方法直接通过类名调用，实例方法需要实例

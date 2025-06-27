@@ -41,70 +41,70 @@ function registerAllButtons() {
   global.registerButton("custom15", {
     name: "制卡",
     image: "makeCards",
-    description: toolbarConfig.template("menu_makeCards")
+    templateName: "menu_makeCards"  // 延迟获取template
   });
   
   global.registerButton("custom1", {
     name: "制卡",
     image: "makeCards",
-    description: toolbarConfig.template("TemplateMakeNotes")
+    templateName: "TemplateMakeNotes"
   });
   
   // 评论相关按钮
   global.registerButton("custom20", {
     name: "htmlMarkdown 评论",
     image: "htmlmdcomment",
-    description: toolbarConfig.template("menu_htmlmdcomment")
+    templateName: "menu_htmlmdcomment"
   });
   
   global.registerButton("custom9", {
     name: "思考",
     image: "think",
-    description: toolbarConfig.template("menu_think")
+    templateName: "menu_think"
   });
   
   global.registerButton("custom10", {
     name: "评论",
     image: "comment",
-    description: toolbarConfig.template("menu_comment")
+    templateName: "menu_comment"
   });
   
   // 学习和模板
   global.registerButton("custom2", {
     name: "学习",
     image: "study",
-    description: toolbarConfig.template("menu_study")
+    templateName: "menu_study"
   });
   
   global.registerButton("custom3", {
     name: "增加模板",
     image: "addTemplate",
-    description: toolbarConfig.template("addTemplate")
+    templateName: "addTemplate"
   });
   
   // 卡片操作
   global.registerButton("custom5", {
     name: "卡片",
     image: "card",
-    description: toolbarConfig.template("menu_card")
+    templateName: "menu_card"
   });
   
   global.registerButton("custom4", {
     name: "文献",
     image: "reference",
-    description: toolbarConfig.template("menu_reference")
+    templateName: "menu_reference"
   });
   
   global.registerButton("custom6", {
     name: "文本",
     image: "text",
-    description: toolbarConfig.template("menu_text")
+    templateName: "menu_text"
   });
   
   global.registerButton("custom17", {
     name: "卡片储存",
     image: "pin_white",
-    description: toolbarConfig.template("menu_card_pin")
+    templateName: "menu_card_pin"
   });
   
   // 其他功能
@@ -117,13 +117,13 @@ function registerAllButtons() {
   global.registerButton("custom7", {
     name: "隐藏插件栏",
     image: "hideAddonBar",
-    description: toolbarConfig.template("hideAddonBar")
+    templateName: "hideAddonBar"
   });
   
   global.registerButton("custom11", {
     name: "工作流",
     image: "workflow",
-    description: toolbarConfig.template("menu_card_workflow")
+    templateName: "menu_card_workflow"
   });
   
   global.registerButton("execute", {
@@ -172,7 +172,7 @@ function registerAllButtons() {
   global.registerButton("custom16", {
     name: "[手型工具弹窗替换]文本",
     image: "text_white",
-    description: toolbarConfig.template("menu_handtool_text")
+    templateName: "menu_handtool_text"
   });
   
   // "custom15":{name:"[卡片弹窗替换]SOP",image:"sop_white",description: this.template("menu_sop")},
@@ -180,19 +180,19 @@ function registerAllButtons() {
   global.registerButton("custom12", {
     name: "[卡片弹窗替换]工作流",
     image: "workflow_white",
-    description: toolbarConfig.template("menu_card_workflow")
+    templateName: "menu_card_workflow"
   });
   
   global.registerButton("custom13", {
     name: "[卡片弹窗替换]摘录",
     image: "excerpt_white",
-    description: toolbarConfig.template("menu_card_excerpt")
+    templateName: "menu_card_excerpt"
   });
   
   global.registerButton("custom14", {
     name: "MN",
     image: "MN_white",
-    description: toolbarConfig.template("menu_MN")
+    templateName: "menu_MN"
   });
   
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
@@ -215,7 +215,17 @@ if (typeof toolbarConfig !== 'undefined') {
     
     // 覆盖自定义按钮
     for (const key in global.customButtons) {
-      allActions[key] = global.customButtons[key];
+      const button = Object.assign({}, global.customButtons[key]);
+      
+      // 如果有 templateName，动态获取 description
+      if (button.templateName && !button.description) {
+        button.description = this.template(button.templateName);
+      }
+      
+      // 删除 templateName 属性
+      delete button.templateName;
+      
+      allActions[key] = button;
     }
     
     return allActions;
@@ -226,18 +236,14 @@ if (typeof toolbarConfig !== 'undefined') {
   }
 }
 
-// 延迟注册所有按钮，确保 toolbarConfig.template 已被扩展
-setTimeout(function() {
-  try {
-    if (typeof toolbarConfig !== 'undefined' && toolbarConfig.template) {
-      registerAllButtons();
-    }
-  } catch (error) {
-    if (typeof MNUtil !== "undefined" && MNUtil.log) {
-      MNUtil.log(`❌ 注册按钮时出错: ${error.message}`);
-    }
+// 立即注册所有按钮（不需要延迟，因为我们使用 templateName）
+try {
+  registerAllButtons();
+} catch (error) {
+  if (typeof MNUtil !== "undefined" && MNUtil.log) {
+    MNUtil.log(`❌ 注册按钮时出错: ${error.message}`);
   }
-}, 0);
+}
 
 // 导出注册函数供外部使用
 if (typeof module !== 'undefined' && module.exports) {

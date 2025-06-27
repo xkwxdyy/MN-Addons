@@ -438,22 +438,22 @@ function registerAllMenuTemplates() {
       },
       {
         action: "menu",
-        menuTitle: "→ 摘录的文本",
+        menuTitle: "→ 复制的文本",
         menuItems: [
           {
-            action: "excerptTextToTitleCase",
+            action: "copiedTextToTitleCase",
             menuTitle: "标题规范"
           },
           {
-            action: "excerptTextToLowerCase",
+            action: "copiedTextToLowerCase",
             menuTitle: "转小写"
           },
           {
-            action: "excerptTextHandleSpaces",
+            action: "copiedTextHandleSpaces",
             menuTitle: "处理空格"
           }
         ]
-      }
+      },
     ]
   });
 

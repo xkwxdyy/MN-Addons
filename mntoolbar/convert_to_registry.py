@@ -369,10 +369,10 @@ if __name__ == '__main__':
         registry_file = generate_registry_file(cases)
         
         # 写入文件
-        with open('xdyy_custom_actions_registry_full.js', 'w', encoding='utf-8') as f:
+        with open('xdyy_custom_actions_registry.js', 'w', encoding='utf-8') as f:
             f.write(registry_file)
         
-        print(f"已生成: xdyy_custom_actions_registry_full.js")
+        print(f"已生成: xdyy_custom_actions_registry.js")
         print(f"总计 {len(cases)} 个 actions")
         
         # 输出分组统计

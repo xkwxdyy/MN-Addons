@@ -273,6 +273,12 @@
    - 使用计数器跟踪方法调用次数
    - 在关键位置使用 `MNUtil.showHUD()` 显示调试信息
    - 检查 action 是否进入 switch 的 default 分支（显示 "Not supported yet..."）
+   
+   **调试步骤**：
+   - 启动时检查加载提示（如 "✅ 注册表已加载"）
+   - 查看控制台日志确认初始化流程
+   - 测试时观察是否有错误信息
+   - 必要时增加延迟时间（setTimeout）
 
 5. **扩展架构最佳实践**：
    ```javascript
@@ -305,6 +311,12 @@
    - 问题：尝试通过 `toolbarController.prototype.customActionByDes = function()` 覆盖方法失败
    - 原因：JSB 框架的限制，prototype 修改可能不生效
    - 表现：自定义 actions 仍然进入 default 分支显示 "Not supported yet..."
+   
+   **JSB 框架深入分析**：
+   - JSB 的类定义和方法重写机制与标准 JavaScript 不同
+   - 方法调用可能不通过标准原型链查找
+   - 实例化时机和方法绑定时机难以控制
+   - 框架可能缓存了方法引用，导致运行时修改无效
    
 2. **成功的注册表模式**：
    - 最小化主文件修改（仅修改 default 分支）
@@ -370,3 +382,271 @@
    - 创建测试脚本验证所有文件语法
    - 分阶段测试：先测试基础版，再测试完整版
    - 保留原始备份文件便于对比和回滚
+
+### 15. 注册表模式详解与开发指南（2025.6.27）
+
+#### 1. 注册表模式通俗解释
+
+**原理对比**：
+- **原始方式**：像一个巨大的电话总机，所有线路都直接连在主机上
+- **注册表模式**：像一个电话号码簿，主程序只需查号码簿找到对应功能
+
+```javascript
+// 注册表 = 电话号码簿
+global.customActions = {
+  "test": 处理test的函数,
+  "moveProofDown": 处理moveProofDown的函数,
+  // 所有功能都登记在这里
+}
+```
+
+#### 2. Context 参数机制
+
+**为什么需要 context**：
+- 原始代码中，case 可以直接访问函数作用域内的变量
+- 迁移后的函数独立存在，无法访问原函数的变量
+- 需要把所有必要的变量"打包"传递
+
+```javascript
+// 主文件打包数据
+const context = {
+  button: button,          // 按钮对象
+  des: des,               // 动作描述
+  focusNote: focusNote,   // 当前笔记
+  focusNotes: focusNotes, // 选中的笔记数组
+  self: this              // 控制器实例
+};
+
+// 注册的函数"拆包"使用
+global.registerCustomAction("test", async function(context) {
+  const { focusNote, focusNotes } = context;  // 解构获取需要的变量
+  // 每个函数都有自己独立的作用域，不会相互影响
+});
+```
+
+#### 3. 特殊变量处理方法
+
+**原则**：特殊变量应在函数内部、try 块外部定义
+
+```javascript
+// ✅ 正确做法
+global.registerCustomAction("myAction", async function(context) {
+  const { focusNote } = context;
+  
+  // 特殊变量定义在函数顶部
+  let targetNotes = [];
+  let success = true;
+  
+  MNUtil.undoGrouping(() => {
+    try {
+      targetNotes.push(someNote);
+      if (!success) return;
+    } catch (error) {
+      MNUtil.showHUD(error);
+    }
+  });
+});
+
+// 共享变量的处理
+function registerAllCustomActions() {
+  // 多个 actions 共享的常量
+  const htmlSetting = [
+    { title: "方法: ✔", type: "method" },
+    { title: "思路: 💡", type: "idea" }
+  ];
+  
+  // 注册使用这些常量的 actions
+  global.registerCustomAction("addHtmlComment", async function(context) {
+    // 可以访问上面定义的 htmlSetting
+    UIAlertView.show("选择类型", htmlSetting, ...);
+  });
+}
+```
+
+#### 4. 常用 MarginNote API 参考
+
+**卡片操作**：
+```javascript
+// 获取焦点卡片
+const focusNote = MNNote.getFocusNote();
+const focusNotes = MNNote.getFocusNotes();  // 多选
+
+// 卡片属性
+focusNote.noteId          // ID
+focusNote.noteTitle       // 标题
+focusNote.excerptText     // 摘录文本
+focusNote.comments        // 评论数组
+focusNote.colorIndex      // 颜色索引
+focusNote.parentNote      // 父卡片
+focusNote.childNotes      // 子卡片数组
+
+// 卡片方法
+focusNote.toBeIndependent()     // 独立
+focusNote.addChild(note)        // 添加子卡片
+focusNote.moveToInput()         // 移动到输入区
+focusNote.focusInMindMap(0.3)   // 在脑图中聚焦
+focusNote.refresh()             // 刷新显示
+```
+
+**工具方法**：
+```javascript
+// 显示提示
+MNUtil.showHUD("消息内容");
+
+// 撤销分组
+MNUtil.undoGrouping(() => {
+  // 这里的操作可以一起撤销
+});
+
+// 延迟执行
+await MNUtil.delay(0.5);  // 延迟0.5秒
+
+// 复制到剪贴板
+MNUtil.copy("文本内容");
+
+// 获取当前笔记本
+MNUtil.currentNotebookId
+MNUtil.currentDocmd5
+```
+
+**弹窗交互**：
+```javascript
+// 简单弹窗
+UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+  "标题",
+  "消息",
+  2,  // 输入框数量
+  "取消",
+  ["确定"],
+  (alert, buttonIndex) => {
+    if (buttonIndex == 1) {
+      const input = alert.textFieldAtIndex(0).text;
+      // 处理输入
+    }
+  }
+);
+```
+
+#### 5. 调试技巧
+
+**错误处理模式**：
+```javascript
+global.registerCustomAction("myAction", async function(context) {
+  try {
+    // 边界检查
+    if (typeof MNUtil === 'undefined') return;
+    if (!focusNote) {
+      MNUtil.showHUD("请先选择卡片");
+      return;
+    }
+    
+    // 功能实现
+    
+  } catch (error) {
+    // 用户友好的错误提示
+    MNUtil.showHUD(`执行失败: ${error.message}`);
+    // 记录详细错误
+    toolbarUtils.addErrorLog(error, "myAction");
+  }
+});
+```
+
+**调试输出**：
+```javascript
+// 开发阶段使用
+console.log("调试信息:", data);
+
+// 显示给用户看（谨慎使用）
+MNUtil.showHUD(`卡片ID: ${focusNote.noteId}`);
+
+// 复制复杂对象到剪贴板查看
+MNUtil.copyJSON({
+  noteId: focusNote.noteId,
+  title: focusNote.noteTitle,
+  parentId: focusNote.parentNote?.noteId
+});
+```
+
+#### 6. 添加新功能的标准流程
+
+1. **在注册表文件中添加 action**：
+```javascript
+global.registerCustomAction("myNewFeature", async function(context) {
+  const { focusNote, focusNotes, self } = context;
+  
+  MNUtil.undoGrouping(() => {
+    try {
+      // 实现功能
+      focusNote.noteTitle = "已处理: " + focusNote.noteTitle;
+      MNUtil.showHUD("✅ 处理成功");
+    } catch (error) {
+      MNUtil.showHUD(`❌ 失败: ${error.message}`);
+    }
+  });
+});
+```
+
+2. **在工具栏配置中添加按钮**（如需要）：
+需要修改 `availableActionOptions` 或通过设置界面添加
+
+3. **测试流程**：
+- 重启插件
+- 检查是否正确加载
+- 测试功能是否正常
+- 测试错误处理
+
+#### 7. 最佳实践总结
+
+**代码组织**：
+- 相关功能分组放置
+- 共享常量提取到顶部
+- 复杂逻辑抽取为独立函数
+
+**性能考虑**：
+- 批量操作使用 `undoGrouping`
+- 大量卡片处理考虑分批
+- 避免频繁的 UI 更新
+
+**用户体验**：
+- 操作前检查前置条件
+- 操作后给出明确反馈
+- 危险操作请求确认
+- 错误信息要友好具体
+
+**版本兼容**：
+- 检查 API 可用性
+- 保持向后兼容
+- 记录最低版本要求
+
+#### 8. 注册表文件管理
+
+**切换不同版本的注册表**：
+```javascript
+// 在 main.js 中修改加载的文件（第12行左右）
+JSB.require('xdyy_custom_actions_registry')         // 当前使用版本
+// JSB.require('xdyy_custom_actions_registry_full')    // 完整版（198个）
+// JSB.require('xdyy_custom_actions_registry_complete') // 精选版（30个）
+```
+
+**验证加载状态**：
+- 成功加载后会显示：`✅ 注册表已加载 (X 个 actions)`
+- 测试 "test" action 应显示：`✅ test action (来自注册表)！`
+
+**回滚方案**：
+```bash
+# 如需回滚到原始版本
+mv webviewController.js.backup webviewController.js
+# 然后在 main.js 中注释掉 JSB.require 行
+```
+
+**故障排除清单**：
+1. 确认文件路径正确
+2. 验证 JSB.require 在 webviewController 之后
+3. 检查 Console 中的错误信息
+4. 确认注册表文件语法正确（使用 `node -c filename.js`）
+
+### 16. 项目结构说明（2025.6.27）
+
+#### 目录结构说明
+- **mntoolbar**：用户的开发项目目录，基于官方版本开发
+- **mntoolbar_official**：官方插件目录，仅用于参考对比和开发，不应修改

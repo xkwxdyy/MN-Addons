@@ -273,3 +273,130 @@ MN Toolbar Pro 项目 - 成功实现自定义 Actions 解耦（2025.6.27）
 - convert_to_registry.py - 自动转换脚本 --tags MNToolbar JSB 解耦 注册表模式 MarginNote 插件开发
 --tags #其他 #评分:8 #有效期:长期
 - END
+
+- 2025/06/27 12:57 START
+MN Toolbar Pro - 自定义 Actions 解耦完整经验总结（2025.6.27）
+
+## 项目背景
+用户在 webviewController.js 中添加了 198 个自定义 case，导致文件过大（264KB），需要解耦并改善代码组织。
+
+## 解决方案演进
+
+### 失败的尝试
+1. **Prototype 覆盖方式**
+   - 尝试：toolbarController.prototype.customActionByDes = function() 
+   - 失败原因：JSB 框架限制，prototype 修改不生效
+   - 表现：自定义 actions 进入 default 分支显示 "Not supported yet..."
+
+2. **错误处理经验**
+   - undefined is not an object (evaluating 'self.addonController.popupReplace')
+   - 解决：添加 self.ensureView() 确保初始化
+   - ReferenceError: Can't find variable: toolbarController
+   - 多种尝试均失败，最终放弃 prototype 方式
+
+### 成功的注册表模式
+1. **架构设计**
+   ```javascript
+   // 全局注册表
+   global.customActions = {};
+   
+   // 注册函数
+   global.registerCustomAction = function(name, handler) {
+     global.customActions[name] = handler;
+   };
+   
+   // 主文件仅修改 default 分支
+   default:
+     if (typeof global !== 'undefined' && global.executeCustomAction) {
+       const handled = await global.executeCustomAction(des.action, context);
+       if (handled) break;
+     }
+   ```
+
+2. **Context 机制**
+   - 原因：独立函数无法访问原函数作用域变量
+   - 解决：打包所有需要的变量传递
+   - 包含：button, des, focusNote, focusNotes, self
+
+## 技术要点
+
+### JSB 框架限制
+1. 函数内不能使用 break 语句
+2. 复杂 switch 语句需要简化处理
+3. 方法调用可能不通过标准原型链
+4. 类定义和实例化时机难以控制
+
+### 批量迁移工具
+1. **Python 脚本 (convert_to_registry.py)**
+   - 自动提取 198 个 cases
+   - 移除 break 语句
+   - 处理特殊的 switch 语句
+   - 按功能分组（reference、move、proof 等）
+
+2. **特殊处理的复杂 Actions**
+   - TemplateMakeNotes (150+ 行)
+   - addHtmlMarkdownComment
+   - mergeInParentNoteWithPopup
+   - 这些被简化为核心功能版本
+
+### 代码格式化
+1. **缩进问题**
+   - Python 脚本生成的代码缩进不规范
+   - 创建 fix_indentation.js 修复缩进
+   - 统一使用 2 空格缩进
+
+2. **语法验证**
+   - 使用 node -c filename.js 检查语法
+   - 分阶段测试确保功能正常
+
+## 文件组织策略
+
+### 版本管理
+1. 基础版 (5个 actions) - 用于测试
+2. 精选版 (30个 actions) - 常用功能
+3. 完整版 (198个 actions) - 所有功能
+
+### 文档集中化
+1. 删除中间文档（6个 md 文件）
+2. 所有经验集中到 CLAUDE.md
+3. 保留核心文件：
+   - xdyy_custom_actions_registry.js
+   - convert_to_registry.py
+   - xdyy_utils_extensions.js
+
+## 成果数据
+- 主文件：264KB → 95KB（减少 64%）
+- 代码行数：6555 → 2599（减少 60%）
+- 主文件修改：仅 4 行
+- 成功迁移：198 个 actions
+
+## 最佳实践总结
+
+### 开发流程
+1. 在注册表文件中添加新 action
+2. 特殊变量在函数内部定义
+3. 共享常量在 registerAllCustomActions 顶部定义
+4. 使用 MNUtil.undoGrouping 包装批量操作
+5. 始终包含 try-catch 错误处理
+
+### 调试技巧
+1. 启动时查看加载提示
+2. 使用 MNUtil.showHUD 显示调试信息
+3. 检查 Console 错误信息
+4. 验证 context 变量是否正确传递
+
+### MarginNote API 常用方法
+- MNNote.getFocusNote() - 获取当前卡片
+- MNUtil.undoGrouping() - 批量操作
+- MNUtil.showHUD() - 显示提示
+- UIAlertView.show... - 弹窗交互
+- focusNote.moveToInput() - 移动卡片
+
+## 经验教训
+1. JSB 框架有独特限制，标准 JS 模式可能不适用
+2. 注册表模式比 prototype 覆盖更可靠
+3. 渐进式测试比一次性迁移更安全
+4. 良好的错误处理至关重要
+5. 文档集中管理便于维护 --tags MNToolbar MarginNote JSB 代码解耦 注册表模式 JavaScript 插件开发
+--tags #最佳实践 #流程管理 #工具使用 #评分:8 #有效期:长期
+- END

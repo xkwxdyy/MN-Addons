@@ -1,3 +1,11 @@
 {
+  "compilerOptions": {
+    "target": "ES2015",
+    "module": "commonjs",
+    "lib": ["ES2015", "ES2017", "ES2019", "ES2020"],
+    "checkJs": false,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true
+  },
   "include": ["main.js","webviewController.js","settingController.js","/Users/linlifei/extension/FeliksPro/.out/index.d.ts","utils.js"]
 }

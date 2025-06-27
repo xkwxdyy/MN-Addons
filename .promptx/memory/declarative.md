@@ -400,3 +400,34 @@ MN Toolbar Pro - 自定义 Actions 解耦完整经验总结（2025.6.27）
 5. 文档集中管理便于维护 --tags MNToolbar MarginNote JSB 代码解耦 注册表模式 JavaScript 插件开发
 --tags #最佳实践 #流程管理 #工具使用 #评分:8 #有效期:长期
 - END
+
+- 2025/06/27 15:06 START
+MN Toolbar Pro 注册表解耦实践经验：
+
+1. 解耦架构：
+   - 主文件（webviewController.js）只需添加 4 行代码的钩子
+   - 所有自定义功能在独立的注册表文件（xdyy_custom_actions_registry.js）中管理
+   - 通过 global 对象实现模块间通信
+
+2. 关键问题与解决：
+   - 变量未定义：在 customActionByDes 函数中需要同时声明 focusNote 和 focusNotes
+   - 函数未定义：确保在 main.js 中按正确顺序加载所有依赖文件
+   - 扩展初始化：在扩展文件末尾添加自动初始化代码
+
+3. 调试技巧：
+   - 使用 MNUtil.log() 而不是 console.log()
+   - 渐进式调试：先确认文件加载→再确认对象存在→最后确认功能执行
+   - 使用有意义的日志前缀（🔧初始化、✅成功、❌错误、🔍调试、🚀执行、📦加载）
+
+4. 最佳实践：
+   - 主文件修改最小化
+   - 使用 typeof 检查对象存在性
+   - 错误处理使用 try-catch
+   - 通过 context 对象传递所有必要数据
+
+5. 成果：
+   - 成功注册 198 个自定义 actions
+   - 实现了完全的模块化解耦
+   - 未来添加新功能无需修改主文件 --tags MN-Toolbar 解耦 注册表模式 JSB框架
+--tags #最佳实践 #评分:8 #有效期:长期
+- END

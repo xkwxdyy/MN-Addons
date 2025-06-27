@@ -27,7 +27,8 @@ class MNToolbarUpdater:
         self.user_custom_files = {
             'xdyy_utils_extensions.js',
             'xdyy_custom_actions_registry.js',
-            'xdyy_menu_registry.js'
+            'xdyy_menu_registry.js',
+            'xdyy_button_registry.js'
         }
         
         # 需要保留用户修改的文件及其修改点
@@ -76,6 +77,15 @@ class MNToolbarUpdater:
     // 加载错误不应该影响插件主功能
     if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
       MNUtil.addErrorLog(error, "加载自定义菜单模板")
+    }
+  }
+  // 加载按钮注册表（必须在 utils 之后）
+  try {
+    JSB.require('xdyy_button_registry')
+  } catch (error) {
+    // 加载错误不应该影响插件主功能
+    if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+      MNUtil.addErrorLog(error, "加载按钮注册表")
     }
   }'''
                 },

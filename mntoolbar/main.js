@@ -16,6 +16,15 @@ JSB.newAddon = function (mainPath) {
       MNUtil.addErrorLog(error, "加载自定义菜单模板")
     }
   }
+  // 加载按钮注册表（必须在 utils 之后）
+  try {
+    JSB.require('xdyy_button_registry')
+  } catch (error) {
+    // 加载错误不应该影响插件主功能
+    if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+      MNUtil.addErrorLog(error, "加载按钮注册表")
+    }
+  }
   // JSB.require('UIPencilInteraction');
   
   // 加载自定义 actions 扩展（必须在 webviewController 之后）

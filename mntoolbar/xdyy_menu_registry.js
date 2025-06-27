@@ -1,6 +1,7 @@
 /**
  * 夏大鱼羊自定义菜单注册表
  * 用于解耦菜单模板定义，避免修改 utils.js
+ * 严格按照原始 template 函数的内容
  */
 
 // 创建全局注册表
@@ -34,11 +35,13 @@ global.getMenuTemplate = function(name) {
 
 /**
  * 注册所有自定义菜单模板
+ * 严格按照原始 template(action) 函数中的 case 语句内容
  */
 function registerAllMenuTemplates() {
-  // 评论菜单
+  // menu_comment
   global.registerMenuTemplate("menu_comment", {
     action: "moveNewContentsByPopupTo",
+    // doubleClick: "moveOldContentsByPopupTo",  // TODO: 把上面的内容移动下来，类似于移动上去
     onLongPress: {
       action: "menu",
       menuWidth: 300,
@@ -47,6 +50,18 @@ function registerAllMenuTemplates() {
           action: "replaceFieldContentByPopup",
           menuTitle: "替换字段",
         },
+        // {
+        //   action: "moveLastOneCommentByPopupTo",
+        //   menuTitle: "移动「最后1️⃣条」评论",
+        // },
+        // {
+        //   action: "moveLastTwoCommentByPopupTo",
+        //   menuTitle: "移动「最后2️⃣条」评论",
+        // },
+        // {
+        //   action: "moveLastThreeCommentByPopupTo",
+        //   menuTitle: "移动「最后3️⃣条」评论",
+        // },
         {
           action: "deleteCommentsByPopup",
           menuTitle: "删除评论",
@@ -55,9 +70,11 @@ function registerAllMenuTemplates() {
     }
   });
   
-  // 思考菜单
+  // menu_think
   global.registerMenuTemplate("menu_think", {
     action: "moveUpThoughtPointsToBottom",
+    // 本来想双击变成两张卡片同时上移的，但好像 action 本身会先执行所以失效了
+    // doubleClick: "moveLastTwoCommentsInBiLinkNotesToThought",
     onLongPress: {
       action: "menu",
       menuWidth: 330,
@@ -90,82 +107,813 @@ function registerAllMenuTemplates() {
     }
   });
 
-  // 学习菜单
+  // menu_study
   global.registerMenuTemplate("menu_study", {
     action: "menu",
-    menuWidth: 180,
+    menuWidth: 330,
     menuItems: [
+      "⬇️ 更新证明",
       {
-        action: "openChatAI",
-        menuTitle: "ChatAI"
+        action: "renewProofContentPoints",
+        menuTitle: '    🔄更新证明"-": 弹窗选择 ',
+      },
+      // {
+      //   action: "renewProofContentPointsToSubpointType",
+      //   menuTitle: '    🔄更新证明"- "为"subpoint ▪"',
+      // },
+      {
+        action: "renewLinksBetweenClassificationNoteAndKnowledegeNote",
+        menuTitle: "更新1️⃣次「归类卡片」与「概念or归类卡片」之间的🔗"
       },
       {
-        action: "readSelectedText",
-        menuTitle: "朗读"
-      },
-      {
-        action: "searchInThisBook",
-        menuTitle: "搜索"
-      },
-      {
-        action: "lookUpInDict",
-        menuTitle: "查词典"
-      },
-      {
-        action: "searchInWeb",
-        menuTitle: "搜索网页"
+        action: "menu",
+        menuTitle: "➡️ 注释",
+        menuWidth: 260,
+        menuItems: [
+          {
+            action: "getAbbreviationsOfNote",
+            menuTitle: "获取选中卡片的名词缩写",
+          },
+          {
+            action: "comment_copy_URL_version",
+            menuTitle: "注释：复制含 URL 类型",
+          },
+          {
+            action: "addCommentOnFocusCard",
+            menuTitle: "Anki_复习🏷️"
+          },
+          {
+            action: "renewChildNotes2LinksForKnowledge",
+            menuTitle: "更新概念卡片的子孙卡片为「证明卡片」",
+          },
+          {
+            action: "renewLinkNotes",
+            menuTitle: "更新「链接卡片」",
+          },
+          {
+            action: "toBeIndependent",
+            menuTitle: "⇨ 独立",
+          },
+          // {
+          //   action: "OCR_selection_text",
+          //   menuTitle: "OCR & 合并多张选中的图片",
+          // },
+          {
+            action: "text2Speech",
+            menuTitle: "朗读卡片(按住停止)"
+          },
+          {
+            action: "getCreationTime",
+            menuTitle: "创建时间",
+          },
+          {
+            action: "getModifiedTime",
+            menuTitle: "修改时间",
+          },
+          {
+            action: "getCitationCout",
+            menuTitle: "引用数",
+          },
+          {
+            action: "copyIdToClipboard",
+            menuTitle: "noteId ⇨ 剪贴板",
+          }
+        ]
       }
     ]
   });
 
-  // 文献菜单
+  // menu_reference
   global.registerMenuTemplate("menu_reference", {
     action: "menu",
-    menuWidth: 270,
+    menuItems: [
+      // {
+      //   action: "renewBookSeriesNotes",
+      //   menuTitle: "书作系列卡片更新",
+      // },
+      // {
+      //   action: "renewBookNotes",
+      //   menuTitle: "书作卡片更新",
+      // },
+      {
+        action: "menu",
+        menuTitle: "➡️ 🧠文献学习",
+        menuWidth: 500,
+        menuItems: [
+          "⬇️ ➕引用",
+          // {
+          //   action: "referenceRefByRefNum",
+          //   menuTitle: "选中「具体引用」卡片+输入文献号→ ➕引用"
+          // },
+          {
+            action: "referenceRefByRefNumAndFocusInMindMap",
+            menuTitle: "选中「具体引用」卡片+输入文献号→ ➕引用 + 剪切归类 + 主视图定位"
+          },
+          {
+            action: "referenceRefByRefNumAddFocusInFloatMindMap",
+            menuTitle: "选中「具体引用」卡片+输入文献号→ ➕引用 + 剪切归类 + 浮窗定位"
+          },
+          "⬇️ ➕「具体引用情况」汇总卡片",
+          {
+            action: "referenceCreateClassificationNoteByIdAndFocusNote",
+            menuTitle: "选中「参考文献摘录」卡片+输入文献号→ 「具体引用情况」汇总卡片 + 浮窗定位",
+          },
+          // {
+          //   action: "referenceCreateClassificationNoteById",
+          //   menuTitle: "输入文献号→ ➕引用归类卡片 + 浮窗定位",
+          // }
+        ]
+      },
+      {
+        action: "menu",
+        menuTitle: "➡️ 参考文献 🆔",
+        menuItems: [
+          {
+            action: "menu",
+            menuTitle: "👉 当前文档相关 🆔 录入",
+            menuWidth: 350,
+            menuItems: [
+              {
+                action: "referenceStoreIdForCurrentDocByFocusNote",
+                // menuTitle: "当前文档与选中卡片的🆔绑定",
+                menuTitle: "绑定「选中的卡片」➡️「当前文档」",
+              },
+              {
+                action: "referenceStoreOneIdForCurrentDocByFocusNote",
+                menuTitle: "绑定「选中的卡片」➡️ 文献号"
+              },
+              // {
+              //   action: "referenceStoreOneIdForCurrentDoc",
+              //   menuTitle: "当前文档：手动录入 1 条参考文献卡片🆔"
+              // },
+              // {
+              //   action: "referenceStoreIdsForCurrentDoc",
+              //   menuTitle: "「手动录入」参考文献卡片🆔"
+              // },
+              // {
+              //   action: "referenceStoreIdsForCurrentDocFromClipboard",
+              //   menuTitle: "从剪切板录入当前文档的参考文献卡片🆔"
+              // },
+              // {
+              //   action: "referenceClearIdsForCurrentDoc",
+              //   menuTitle: "清空「当前文档」卡片🆔",
+              // },
+              {
+                action: "referenceTestIfIdInCurrentDoc",
+                menuTitle: "检测文献号的🆔绑定",
+              },
+            ]
+          },
+          {
+            action: "menu",
+            menuTitle: "➡️ 导出 🆔",
+            menuWidth: 250,
+            menuItems: [
+              {
+                action: "referenceExportReferenceIdsToClipboard",
+                menuTitle: "导出参考文献卡片🆔到剪切板"
+              },
+              {
+                action: "referenceExportReferenceIdsToFile",
+                menuTitle: "导出参考文献卡片🆔到文件"
+              },
+            ]
+          },
+          {
+            action: "menu",
+            menuTitle: "⬅️ 导入 🆔",
+            menuWidth: 250,
+            menuItems: [
+              {
+                action: "referenceInputReferenceIdsFromClipboard",
+                menuTitle: "从剪切板导入参考文献卡片🆔"
+              },
+              {
+                action: "referenceInputReferenceIdsFromFile",
+                menuTitle: "从文件导入参考文献卡片🆔"
+              },
+            ]
+          }
+        ]
+      },
+      {
+        action: "menu",
+        menuTitle: "➡️ 🗂️文献卡片",
+        menuItems: [
+          {
+            action: "referenceInfoAuthor",
+            menuTitle: "👨‍🎓 作者"
+          },
+          {
+            action: "referenceInfoYear",
+            menuTitle: "⌛️ 年份",
+          },
+          {
+            action: "referenceInfoJournal",
+            menuTitle: "📄 期刊",
+          },
+          {
+            action: "referenceInfoPublisher",
+            menuTitle: "📚 出版社",
+          },
+          {
+            action: "referenceInfoKeywords",
+            menuTitle: "📌 关键词",
+          },
+          {
+            action: "referenceInfoDoiFromClipboard",
+            menuTitle: "🔢 DOI",
+          },
+          {
+            action: "menu",
+            menuTitle: "➡️ 🔗 引用样式",
+            menuItems: [
+              {
+                action: "referenceInfoRefFromInputRefNum",
+                menuTitle: "输入文献号录入引用样式"
+              },
+              {
+                action: "referenceInfoRefFromFocusNote",
+                menuTitle: "选中摘录自动录入引用样式"
+              },
+              {
+                action: "referenceInfoInputRef",
+                menuTitle: "手动输入引用样式"
+              }
+            ]
+          },
+          {
+            action: "menu",
+            menuTitle: "➡️ .bib 信息",
+            menuItems: [
+              {
+                action: "referenceBibInfoPasteFromClipboard",
+                menuTitle: "从剪切板粘贴 .bib 信息"
+              },
+              {
+                action: "referenceBibInfoCopy",
+                menuTitle: "复制 .bib 信息"
+              },
+              {
+                action: "referenceBibInfoExport",
+                menuTitle: "导出 .bib 信息",
+              }
+            ]
+          }
+        ]
+      },
+      {
+        action: "menu",
+        menuTitle: "➡️ 👨‍🎓作者卡片",
+        menuItems: [
+          {
+            action: "referenceAuthorRenewAbbreviation",
+            menuTitle: "更新作者缩写",
+          },
+          {
+            action: "referenceAuthorInfoFromClipboard",
+            menuTitle: "粘贴个人信息"
+          },
+          {
+            action: "referenceAuthorNoteMake",
+            menuTitle: "作者卡片制卡"
+          }
+        ]
+      },
+      {
+        action: "menu",
+        menuTitle: "➡️ 📄期刊卡片",
+        menuItems: [
+          // {
+          //   menuTitle: "🔽 "
+          // },
+          // {
+          //   action: "",
+          //   menuTitle: "➕出版社"
+          // },
+          // {
+          //   action: "",
+          //   menuTitle: "修改整卷期刊前缀"
+          // }
+        ]
+      },
+      {
+        action: "menu",
+        menuTitle: "➡️ 📌关键词卡片",
+        menuItems: [
+          {
+            action: "referenceKeywordsAddRelatedKeywords",
+            menuTitle: "➕相关关键词"
+          },
+          {
+            action: "referenceGetRelatedReferencesByKeywords",
+            menuTitle: "根据关键词筛选文献"
+          }
+        ]
+      },
+    ]
+  });
+
+  // menu_text
+  global.registerMenuTemplate("menu_text", {
+    action: "menu",
     menuItems: [
       {
-        action: "getReferenceNote",
-        menuTitle: "获取参考文献"
+        action: "menu",
+        menuTitle: "→ 文档中选中的文本",
+        menuItems: [
+          {
+            action: "selectionTextToTitleCase",
+            menuTitle: "标题规范"
+          },
+          {
+            action: "selectionTextToLowerCase",
+            menuTitle: "转小写"
+          },
+          {
+            action: "selectionTextHandleSpaces",
+            menuTitle: "处理空格"
+          }
+        ]
       },
       {
-        action: "addReferenceIdsToAllFilesByPopup",
-        menuTitle: "绑定文献ID到「所有文件」"
-      },
-      {
-        action: "addReferenceIdsToDocByPopup",
-        menuTitle: "绑定文献ID到「当前文档」"
-      },
-      {
-        action: "saveReferenceIdsMapByPopup",
-        menuTitle: "保存文献IDs映射表"
-      },
-      {
-        action: "importReferenceIdsByPopup",
-        menuTitle: "导入文献IDs映射表"
+        action: "menu",
+        menuTitle: "→ 摘录的文本",
+        menuItems: [
+          {
+            action: "excerptTextToTitleCase",
+            menuTitle: "标题规范"
+          },
+          {
+            action: "excerptTextToLowerCase",
+            menuTitle: "转小写"
+          },
+          {
+            action: "excerptTextHandleSpaces",
+            menuTitle: "处理空格"
+          }
+        ]
       }
     ]
   });
 
-  // HTML/Markdown 评论菜单
-  global.registerMenuTemplate("menu_htmlmdcomment", {
-    action: "addHtmlMarkdownComment",
+  // menu_handtool_text
+  global.registerMenuTemplate("menu_handtool_text", {
+    action: "selectionTextToTitleCase",
     onLongPress: {
       action: "menu",
-      menuWidth: 200,
       menuItems: [
         {
-          action: "addHtmlMarkdownComment",
-          menuTitle: "HTML 评论"
+          action: "selectionTextToTitleCase",
+          menuTitle: "标题规范"
         },
         {
-          action: "mdComment",
-          menuTitle: "Markdown 评论"
+          action: "selectionTextToLowerCase",
+          menuTitle: "转小写"
+        },
+        {
+          action: "selectionTextHandleSpaces",
+          menuTitle: "处理空格"
         }
       ]
     }
   });
 
-  // 添加更多菜单模板...
+  // menu_card
+  global.registerMenuTemplate("menu_card", {
+    action: "menu",
+    menuWidth: 250,
+    menuItems: [
+      {
+        action: "test",
+        menuTitle: "测试",
+      },
+      {
+        action: "copyMarkdownVersionFocusNoteURL",
+        menuTitle: "复制 Markdown 类型的卡片 URL",
+      },
+      {
+        action: "toBeIndependent",
+        menuTitle: "⇨ 独立",
+      },
+      {
+        action: "copyFocusNotesIdArr",
+        menuTitle: "复制卡片🆔",
+      },
+      {
+        action: "copyFocusNotesURLArr",
+        menuTitle: "复制卡片 URL",
+      },
+      // {
+      //   action: "pasteAsChildNotesByIdArrFromClipboard",
+      //   menuTitle: "复制卡片🆔后，剪切到选中卡片",
+      // },
+      {
+        action: "getNewClassificationInformation",
+        menuTitle: "更新卡片归类情况到选中的卡片中",
+      },
+      {
+        action: "menu",
+        menuTitle: "➡️ 处理旧卡片",
+        menuWidth: 250,
+        menuItems: [
+          {
+            action: "renewCards",
+            menuTitle: "🔄 更新旧卡片"
+          },
+          {
+            action: "reappendAllLinksInNote",
+            menuTitle: "🔄 卡片的所有链接重新链接",
+          },
+          // {
+          //   action: "linksConvertToMN4Type",
+          //   menuTitle: "mn3 链接 → mn4 链接",
+          // },
+          {
+            action: "clearAllFailedLinks",
+            menuTitle: "清空失效链接",
+          }
+        ]
+      },
+      {
+        action: "menu",
+        menuTitle: "➡️ 清空评论",
+        menuWidth: 260,
+        menuItems: [
+          {
+            action: "clearContentKeepExcerptWithTitle",
+            menuTitle: "✅ 摘录 ✅ 标题",
+          },
+          {
+            action: "clearContentKeepExcerpt",
+            menuTitle: "✅ 摘录 ❌ 标题",
+          },
+          {
+            action: "clearContentKeepExcerptAndImage",
+            menuTitle: "✅ 摘录 ✅ 图片 ❌ 标题",
+          },
+          {
+            action: "clearContentKeepText",
+            menuTitle: "❌ 摘录 ✅ 文字 ❌ 标题",
+          }
+        ]
+      },
+      {
+        action: "menu",
+        menuTitle: "➡️ 剪切、合并",
+        menuWidth: 260,
+        menuItems: [
+          {
+            action: "cutNote",
+            menuTitle: "剪切选中的卡片",
+          },
+          {
+            action: "cutoutSelctionCards",
+            menuTitle: "剪切选中的卡片以及子卡片",
+          },
+          {
+            action: "mergeIntoOneNoteByPopup",
+            menuTitle: "合并到第一张卡片：弹窗选择类型",
+          },
+        ]
+      },
+      {
+        action: "openAsFloatWindow",
+        menuTitle: "作为浮窗打开",
+      },
+      {
+        action: "copyAsReference",
+        menuTitle: "复制含标题的 URL",
+      }
+    ]
+  });
+
+  // menu_card_workflow
+  global.registerMenuTemplate("menu_card_workflow", {
+    action: "menu",
+    menuWidth: 300,
+    menuItems: [
+      "⬇️ 临时",
+      {
+        action: "moveToInbox",
+        menuTitle: "    加入 Inbox",
+      },
+      {
+        action: "",
+        menuTitle: "     剪切 + 「浮窗」定位今日 Inbox",
+      },
+      // {
+      //   action: "openTasksFloatMindMap" ,
+      //   menuTitle: "打开任务管理脑图",
+      // },
+      // {
+      //   action: "updateTimeTag",
+      //   menuTitle: "更新卡片时间标签并添加「今日」",
+      // },
+      {
+        action: "openFloatWindowByInboxNote",
+        menuTitle: "    「浮窗」定位今日 Inbox",
+      },
+      {
+        action: "openFloatWindowByInboxNoteOnDate",
+        menuTitle: "    「浮窗」定位指定日期 Inbox",
+      },
+      // {
+      //   action: "getOKRNotesOnToday",
+      //   menuTitle: "获取今日 OKR 任务",
+      // },
+      "⬇️ 前缀状态机",
+      {
+        action: "OKRNoteMake",
+        menuTitle: "    OKR 制卡流",
+      },
+      // {
+      //   action: "undoOKRNoteMake",
+      //   menuTitle: "撤销 OKR 任务卡片制卡流",
+      // },
+      {
+        action: "achieveCards",
+        menuTitle: "    归档卡片",
+      },
+      {
+        action: "renewCards",
+        menuTitle: "    更新卡片",
+      }
+    ]
+  });
+
+  // menu_card_excerpt
+  global.registerMenuTemplate("menu_card_excerpt", {
+    action: "moveToExcerptPartBottom",
+    onLongPress: {
+      action: "menu",
+      menuWidth: 350,
+      menuItems: [
+        {
+          action: "deleteCommentsByPopupAndMoveNewContentToExcerptAreaTop",
+          menuTitle: "删除某些评论后移动新内容 ⇨ 摘录区「🔝 top」",
+        },
+        {
+          action: "deleteCommentsByPopupAndMoveNewContentToExcerptAreaBottom",
+          menuTitle: "删除某些评论后移动新内容 ⇨ 摘录区「⬇️ bottom」",
+        },
+        {
+          action: "moveToExcerptPartBottom",
+          menuTitle: "⇨ 摘录区「⬇️ bottom」",
+        },
+        {
+          action: "moveToExcerptPartTop",
+          menuTitle: "⇨ 摘录区「🔝 top」",
+        }
+      ]
+    }
+  });
+
+  // menu_MN
+  global.registerMenuTemplate("menu_MN", {
+    action: "menu",
+    menuItems: [
+      {
+        action: "showDocumentController",
+        menuTitle: "📖文档列表"
+      },
+      {
+        action: "showStudyController",
+        menuTitle: "📚笔记本列表"
+      },
+      {
+        action: "showCardListController",
+        menuTitle: "🗂️卡片列表"
+      },
+      {
+        action: "showMindmapController",
+        menuTitle: "🎯脑图"
+      },
+      {
+        action: "showOutlineController",
+        menuTitle: "🌲大纲"
+      },
+      {
+        action: "showDocumentController",
+        menuTitle: "📄文档"
+      },
+      {
+        action: "showReviewController",
+        menuTitle: "♻️复习"
+      },
+      {
+        action: "showSearchController",
+        menuTitle: "🔍搜索"
+      }
+    ]
+  });
+
+  // menu_card_pin
+  global.registerMenuTemplate("menu_card_pin", {
+    action: "menu",
+    menuItems: [
+      {
+        action: "openPinnedNote-1",
+        menuTitle: "Hᵖ(𝔻)",
+      },
+      {
+        action: "openPinnedNote-2",
+        menuTitle: "Lᵖ(𝕋)",
+      },
+      {
+        action: "openPinnedNote-3",
+        menuTitle: "Hᵖ(𝕋)",
+      },
+    ]
+  });
+
+  // menu_makeCards
+  global.registerMenuTemplate("menu_makeCards", {
+    action: "makeNote",
+    doubleClick: {
+      action: "doubleClickMakeNote"
+    },
+    onLongPress: {
+      action: "menu",
+      menuWidth: 320,
+      menuItems: [
+        "🪄 生成卡片",
+        {
+          action: "addNewIdeaNote",
+          menuTitle: "    生成「思路」卡片"
+        },
+        "🔄 处理旧卡片",
+        {
+          action: "batchChangeClassificationTitles",
+          menuTitle: "    批量更新归类卡片标题"
+        }
+      ]
+    }
+  });
+
+  // TemplateMakeNotes
+  global.registerMenuTemplate("TemplateMakeNotes", {
+    doubleClick: {
+      action: "mergeTemplateNotes"
+    },
+    action: "menu",
+    // onLongPress: {
+      // action: "menu",
+    menuWidth: 320,
+    menuItems: [
+      "⬇️ 合并",
+      {
+        action: "upwardMergeWithStyledComments",
+        menuTitle: "    合并证明要点",
+      },
+      {
+        action: "mergeInParentNote",
+        menuTitle: "    合并到父卡片",
+      },
+      {
+        action: "mergeInParentNoteWithPopup",
+        menuTitle: "    合并到父卡片：弹窗选择类型",
+      },
+      {
+        action: "mergIntoParenNoteAndRenewReplaceholder",
+        menuTitle: "    合并到父卡片 & 替换占位符",
+      },
+      {
+        action: "mergIntoParenNoteAndRenewReplaceholderWithPopup",
+        menuTitle: "    合并到父卡片 & 替换占位符: 弹窗选择类型",
+      },
+      "⬇️ 制卡",
+      {
+        action: "multiTemplateMakeNotes",
+        menuTitle: "    批量制卡",
+      },
+      {
+        action: "TemplateMakeChildNotes",
+        menuTitle: "    批量进行子卡片制卡"
+      },
+      {
+        action: "TemplateMakeDescendantNotes",
+        menuTitle: "    批量进行子孙卡片制卡"
+      },
+      {
+        action: "menu",
+        menuTitle: "️️    ➡️ 文献制卡",
+        menuItems: [
+          // {
+          //   menuTitle: "🔽 "
+          // },
+          {
+            action: "referencePaperMakeCards",
+            menuTitle: "📄 论文制卡"
+          },
+          {
+            action: "referenceBookMakeCards",
+            menuTitle: "📚 书作制卡"
+          },
+          {
+            action: "referenceSeriesBookMakeCard",
+            menuTitle: "📚 系列书作制卡"
+          },
+          {
+            action: "referenceOneVolumeJournalMakeCards",
+            menuTitle: "📄 整卷期刊制卡"
+          },
+          {
+            action: "referenceAuthorNoteMake",
+            menuTitle: "作者卡片制卡"
+          },
+        ]
+      },
+      // {
+      //   action: "undoOKRNoteMake",
+      //   menuTitle: "回退任务卡片状态"
+      // },
+      "⬇️ 修改标题",
+      {
+        action: "removeTitlePrefix",
+        menuTitle: "    去掉卡片前缀"
+      },
+      {
+        action: "changeTitlePrefix",
+        menuTitle: "    强制修改卡片前缀"
+      },
+      {
+        action: "changeChildNotesTitles",
+        menuTitle: "    批量修改子卡片标题"
+      },
+      {
+        action: "changeDescendantNotesTitles",
+        menuTitle: "    批量修改子孙卡片标题"
+      },
+      "⬇️ 清空评论",
+      {
+        action: "clearContentKeepExcerptWithTitle",
+        menuTitle: "    清空评论 + ✅ 摘录 ✅ 标题",
+      },
+      {
+        action: "clearContentKeepExcerpt",
+        menuTitle: "    清空评论 + ✅ 摘录 ❌ 标题",
+      },
+      "⬇️ 杂项",
+      {
+        action: "renewExcerptInParentNoteByFocusNote",
+        menuTitle: "    父卡片的摘录替换为选中卡片的摘录",
+      },
+      {
+        action: "convertNoteToNonexcerptVersion",
+        menuTitle: "    转化为非摘录版本",
+      },
+      {
+        action: "linkRemoveDuplicatesAfterApplication",
+        menuTitle: "    \"应用\"下方的链接去重"
+      },
+      {
+        action: "splitMarkdownTextInFocusNote",
+        menuTitle: "    基于 Markdown 拆卡",
+      }
+    ]
+    // }
+  });
+
+  // menu_htmlmdcomment
+  global.registerMenuTemplate("menu_htmlmdcomment", {
+    action: "addHtmlMarkdownComment",
+    onLongPress: {
+      action: "menu",
+      menuWidth: 300,
+      menuItems: [
+        {
+          action: "changeHtmlMarkdownCommentTypeByPopup",
+          menuTitle: "🔄 修改某条 HtmlMD 评论的类型",
+        },
+        {
+          action: "renewContentPointsToHtmlType",
+          menuTitle: '🔄 更新"-": 弹窗选择',
+        },
+        {
+          action: "htmlMDCommentsToNextLevelType",
+          menuTitle: "⬇️ HtmlMD 评论降级",
+        },
+        {
+          action: "htmlMDCommentsToLastLevelType",
+          menuTitle: "⬆️ HtmlMD 评论升级",
+        },
+        {
+          action: "addHtmlMarkdownQuestion",
+          menuTitle: "❓问题、答案和详细解释"
+        }
+      ]
+    }
+  });
+
+  // 特殊模板处理
+  global.registerMenuTemplate("addTemplate", JSON.stringify({
+    action: "paste",
+    target: "title",
+    content: "{{clipboardText}}"
+  }));
+
+  global.registerMenuTemplate("hideAddonBar", JSON.stringify({}));
   
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
     MNUtil.log(`🚀 已注册 ${Object.keys(global.customMenuTemplates).length} 个自定义菜单模板`);
@@ -182,7 +930,12 @@ if (typeof toolbarConfig !== 'undefined') {
     // 先检查自定义菜单模板
     const customTemplate = global.getMenuTemplate(action);
     if (customTemplate) {
-      return customTemplate;
+      // 如果是字符串，直接返回
+      if (typeof customTemplate === 'string') {
+        return customTemplate;
+      }
+      // 如果是对象，转换为JSON字符串
+      return JSON.stringify(customTemplate, null, 2);
     }
     
     // 如果不是自定义模板，调用原始方法

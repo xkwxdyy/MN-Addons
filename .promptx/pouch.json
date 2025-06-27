@@ -1,5 +1,5 @@
 {
-  "currentState": "memory_saved",
+  "currentState": "initialized",
   "stateHistory": [
     {
       "from": "initial",
@@ -114,7 +114,17 @@
         "--tags",
         "MNToolbar update.py 解耦维护 配置管理"
       ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "init",
+      "timestamp": "2025-06-27T08:40:53.996Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/mntoolbar"
+        }
+      ]
     }
   ],
-  "lastUpdated": "2025-06-27T08:34:54.634Z"
+  "lastUpdated": "2025-06-27T08:40:54.009Z"
 }

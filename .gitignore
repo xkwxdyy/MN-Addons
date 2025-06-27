@@ -1,6 +1,30 @@
 
+# 打包文件
 *.mnaddon
 
+# 编辑器配置
 .vscode/
+.idea/
 
+# 旧版本目录
 mntoolbarpro_v0.0.9/
+mntoolbar_v*/
+
+# 备份目录
+backup_*/
+
+# 更新报告
+update_report_*.md
+
+# 发布说明
+release_notes_*.md
+
+# 临时文件
+*.tmp
+*.bak
+.DS_Store
+
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo

@@ -1,10 +1,42 @@
+
 JSB.newAddon = function (mainPath) {
   JSB.require('utils')
+  JSB.require('xdyy_utils_extensions')  // 加载工具函数扩展
   JSB.require('pinyin')
   if (!toolbarUtils.checkMNUtilsFolder(mainPath)) {return undefined}
   JSB.require('webviewController');
   JSB.require('settingController');
+  
+  // 加载自定义菜单注册表（必须在 utils 之后）
+  try {
+    JSB.require('xdyy_menu_registry')
+  } catch (error) {
+    // 加载错误不应该影响插件主功能
+    if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+      MNUtil.addErrorLog(error, "加载自定义菜单模板")
+    }
+  }
+  // 加载按钮注册表（必须在 utils 之后）
+  try {
+    JSB.require('xdyy_button_registry')
+  } catch (error) {
+    // 加载错误不应该影响插件主功能
+    if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+      MNUtil.addErrorLog(error, "加载按钮注册表")
+    }
+  }
   // JSB.require('UIPencilInteraction');
+  
+  // 加载自定义 actions 扩展（必须在 webviewController 之后）
+  try {
+    // 使用注册表方式，真正实现解耦
+    JSB.require('xdyy_custom_actions_registry')
+  } catch (error) {
+    // 加载错误不应该影响插件主功能
+    if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+      MNUtil.addErrorLog(error, "加载自定义 Actions")
+    }
+  }
   /** @return {MNToolbarClass} */
   const getMNToolbarClass = ()=>self  
   var MNToolbarClass = JSB.defineClass(
@@ -124,6 +156,7 @@ JSB.newAddon = function (mainPath) {
               self.settingController.blur()
             })
         }
+        self.ensureView() // 确保 addonController 已初始化
         self.addonController.popupReplace()
 
         if (!toolbarConfig.dynamic) {
@@ -247,6 +280,7 @@ JSB.newAddon = function (mainPath) {
           return
         }
         try {
+          self.ensureView() // 确保 addonController 已初始化
           self.addonController.popupReplace()
           if (self.settingController) {
             MNUtil.delay(0.01).then(()=>{
@@ -836,6 +870,7 @@ try {
         toolbarConfig.togglePreprocess()
       },
       // 夏大鱼羊结束
+
       openDocument:function (button) {
         if (typeof MNUtil === 'undefined') return
         let self = getMNToolbarClass()

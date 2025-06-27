@@ -10,6 +10,7 @@ if (typeof global === "undefined") {
 // 初始化 customActions 对象
 global.customActions = global.customActions || {};
 
+
 /**
  * 注册自定义 action
  * @param {string} actionName - action 名称
@@ -17,7 +18,6 @@ global.customActions = global.customActions || {};
  */
 global.registerCustomAction = function (actionName, handler) {
   global.customActions[actionName] = handler;
-  console.log(`✅ 注册自定义 action: ${actionName}`);
 };
 
 /**
@@ -29,12 +29,10 @@ global.registerCustomAction = function (actionName, handler) {
 global.executeCustomAction = async function (actionName, context) {
   if (actionName in global.customActions) {
     try {
-      console.log(`🚀 执行自定义 action: ${actionName}`);
       await global.customActions[actionName](context);
       return true;
     } catch (error) {
-      console.error(`❌ 执行自定义 action 失败: ${actionName}`, error);
-      MNUtil.showHUD(`执行失败: ${error}`);
+      MNUtil.showHUD(`执行失败: ${error.message || error}`);
       return false;
     }
   }
@@ -3534,9 +3532,17 @@ function registerAllCustomActions() {
   // test
   global.registerCustomAction("test", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
-    const name = "鱼羊";
-    // MNUtil.showHUD(Pinyin.pinyin(name))
-    MNUtil.showHUD(toolbarUtils.getAbbreviationsOfName("Kangwei Xia"));
+    
+    // 简单的测试功能
+    MNUtil.showHUD("✅ 自定义 action 测试成功！");
+    
+    // 如果需要测试具体功能，可以在这里添加
+    // 例如：修改选中卡片的标题
+    if (focusNote) {
+      MNUtil.undoGrouping(() => {
+        focusNote.noteTitle = "测试 - " + (focusNote.noteTitle || "无标题");
+      });
+    }
   });
 
   // getNewClassificationInformation
@@ -4533,15 +4539,11 @@ function registerAllCustomActions() {
     });
   });
 
-  console.log(`✅ 已注册 ${Object.keys(global.customActions).length} 个自定义 actions`);
 }
 
 // 立即注册
 try {
   registerAllCustomActions();
-  if (typeof MNUtil !== "undefined" && MNUtil.showHUD) {
-    MNUtil.showHUD(`✅ 注册表已加载 (${Object.keys(global.customActions).length} 个 actions)`);
-  }
 } catch (error) {
-  console.error("注册自定义 actions 失败:", error);
+  // 静默处理错误，避免影响主功能
 }

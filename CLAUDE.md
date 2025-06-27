@@ -362,6 +362,59 @@ if (self.isMac) {
 2. **错误隔离**：扩展错误不应影响主功能
 3. **延迟初始化**：使用 setTimeout 确保依赖就绪
 
+### 7.3 注册表解耦实践经验（2025.6.27）
+
+**问题与解决方案总结**：
+
+1. **变量未定义错误**：
+   - **问题**：执行自定义 action 时报错 `Can't find variable: focusNotes`
+   - **原因**：`customActionByDes` 函数中只声明了 `focusNote`，未声明 `focusNotes`
+   - **解决**：在函数开头添加变量声明并获取值
+   ```javascript
+   let focusNote = undefined
+   let focusNotes = []  // 添加这行
+   try {
+     focusNote = MNNote.getFocusNote()
+     focusNotes = MNNote.getFocusNotes()  // 添加这行
+   } catch (error) {}
+   ```
+
+2. **函数未定义错误**：
+   - **问题**：`toolbarUtils.getAbbreviationsOfName is not a function`
+   - **原因**：扩展文件 `xdyy_utils_extensions.js` 未被加载
+   - **解决**：在 `main.js` 中添加加载语句
+   ```javascript
+   JSB.require('utils')
+   JSB.require('xdyy_utils_extensions')  // 添加这行
+   JSB.require('pinyin')
+   ```
+
+3. **扩展初始化问题**：
+   - **问题**：扩展文件加载了但函数仍未定义
+   - **原因**：扩展函数需要主动初始化
+   - **解决**：在扩展文件末尾添加自动初始化代码
+   ```javascript
+   // 立即执行初始化
+   try {
+     if (typeof toolbarUtils !== 'undefined') {
+       initXDYYExtensions();
+     }
+   } catch (error) {
+     // 静默处理
+   }
+   ```
+
+4. **调试技巧**：
+   - 使用渐进式调试，先确认文件加载，再确认对象存在，最后确认功能执行
+   - 在关键位置添加日志，快速定位问题
+   - 调试完成后及时清理日志代码，保持代码整洁
+
+**最佳实践**：
+- 主文件修改最小化：只在必要位置添加钩子
+- 依赖检查：使用 `typeof` 检查对象存在性
+- 错误处理：使用 try-catch 包裹，避免影响主功能
+- 上下文传递：通过 context 对象传递所有必要数据
+
 ---
 
 ## 8. 调试与故障排除
@@ -369,9 +422,25 @@ if (self.isMac) {
 ### 8.1 调试工具
 
 1. **用户可见**：`MNUtil.showHUD("message")`
-2. **控制台**：`console.log()` (仅开发模式)
+2. **开发日志**：`MNUtil.log()` （推荐，统一的日志格式）
 3. **错误日志**：`toolbarUtils.addErrorLog()`
 4. **对象检查**：`MNUtil.copyJSON(object)`
+
+**日志使用规范**：
+- **必须使用** `MNUtil.log()` 而不是 `console.log()`
+- 日志前需要检查 MNUtil 是否存在：
+  ```javascript
+  if (typeof MNUtil !== "undefined" && MNUtil.log) {
+    MNUtil.log("日志信息");
+  }
+  ```
+- 使用有意义的前缀标识日志类型：
+  - `🔧` 初始化/配置
+  - `✅` 成功
+  - `❌` 错误
+  - `🔍` 调试/查找
+  - `🚀` 执行动作
+  - `📦` 加载模块
 
 ### 8.2 常见问题
 
@@ -452,6 +521,8 @@ toolbarConfig.save()
 
 ## 附录：版本历史
 
+- **2025.6.27**：添加注册表解耦实践经验，总结常见问题和解决方案
+- **2025.6.27**：添加日志使用规范，统一使用 MNUtil.log 替代 console.log
 - **2025.6.27**：添加缩进规范、重构文档结构、完善注册表模式
 - **2025.6.27**：添加项目结构说明、JSB 解耦经验
 - **2025.6.27**：初始版本，整合开发规范

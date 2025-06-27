@@ -1355,10 +1355,12 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       return
     }
     let focusNote = undefined
+    let focusNotes = []
     let targetNotes = []
     let success = true
     try {
       focusNote = MNNote.getFocusNote()
+      focusNotes = MNNote.getFocusNotes()
     } catch (error) {
     }
     // MNUtil.showHUD("message"+(focusNote instanceof MNNote))

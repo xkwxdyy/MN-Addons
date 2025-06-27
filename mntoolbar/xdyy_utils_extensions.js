@@ -3,6 +3,7 @@
  * 通过 prototype 方式扩展 toolbarUtils 类的功能
  */
 
+
 /**
  * 初始化扩展
  * 需要在 toolbarUtils 定义后调用
@@ -2073,5 +2074,20 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     initXDYYExtensions,
     extendToolbarConfigInit
+  }
+}
+
+// 立即执行初始化
+try {
+  if (typeof toolbarUtils !== 'undefined') {
+    initXDYYExtensions();
+  }
+  
+  if (typeof toolbarConfig !== 'undefined') {
+    extendToolbarConfigInit();
+  }
+} catch (error) {
+  if (typeof MNUtil !== "undefined" && MNUtil.log) {
+    MNUtil.log("❌ 加载扩展失败: " + error);
   }
 }

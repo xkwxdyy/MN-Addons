@@ -1,6 +1,7 @@
 
 JSB.newAddon = function (mainPath) {
   JSB.require('utils')
+  JSB.require('xdyy_utils_extensions')  // 加载工具函数扩展
   JSB.require('pinyin')
   if (!toolbarUtils.checkMNUtilsFolder(mainPath)) {return undefined}
   JSB.require('webviewController');
@@ -13,7 +14,6 @@ JSB.newAddon = function (mainPath) {
     JSB.require('xdyy_custom_actions_registry')
   } catch (error) {
     // 加载错误不应该影响插件主功能
-    console.error("加载自定义 Actions 失败:", error)
     if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
       MNUtil.addErrorLog(error, "加载自定义 Actions")
     }

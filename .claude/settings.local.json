@@ -37,7 +37,8 @@
       "Bash(rm:*)",
       "Bash(git checkout:*)",
       "Bash(node:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(npx prettier:*)"
     ],
     "deny": []
   }

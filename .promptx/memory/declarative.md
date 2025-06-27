@@ -572,3 +572,89 @@ MN Toolbar Pro 解耦工作经验教训（2025.6.27）
 这次的教训深刻，用户的信任很难建立但很容易失去。 --tags MN-Toolbar 解耦 错误教训 开发规范
 --tags #工具使用 #评分:8 #有效期:长期
 - END
+
+- 2025/06/28 01:42 START
+# MN Toolbar Pro 项目完整进展汇总（2025.6.27）
+
+## 项目概述
+- **项目名称**: MN Toolbar Pro
+- **基于**: Feliks 开发的 MN Toolbar 插件
+- **版本**: 0.1.3.alpha0427
+- **平台**: MarginNote 3.7.11+ (iOS/iPadOS/macOS)
+- **GitHub**: https://github.com/xkwxdyy/MN-Toolbar-Pro
+
+## 解耦架构实现（最重要成果）
+
+### 成功方案：注册表模式
+1. **文件结构**（已改为 xkwxdyy_ 前缀）：
+   - xkwxdyy_button_registry.js - 按钮配置注册表
+   - xkwxdyy_menu_registry.js - 菜单模板注册表（14个模板）
+   - xkwxdyy_custom_actions_registry.js - 动作处理注册表（198个actions）
+   - xkwxdyy_utils_extensions.js - 工具函数扩展
+
+2. **主文件修改最小化**：
+   - webviewController.js 仅添加 4 行代码
+   - main.js 按顺序加载扩展文件
+   - 保持向后兼容性
+
+3. **技术要点**：
+   - 使用 global 对象实现模块间通信
+   - templateName 延迟加载解决按钮加载问题
+   - context 机制传递所有必要数据
+   - JSB 框架限制：函数内不能使用 break
+
+### 成果数据
+- 主文件：264KB → 95KB（减少 64%）
+- 代码行数：6555 → 2599（减少 60%）
+- 成功迁移：198 个自定义 actions
+
+## update.py 维护经验
+
+### 问题与解决
+1. **配置管理**：
+   - user_custom_files 包含所有解耦文件
+   - insert_after_once 避免重复插入
+   - 智能清理重复函数定义
+
+2. **关键配置**：
+   ```python
+   self.user_custom_files = {
+       'xkwxdyy_utils_extensions.js',
+       'xkwxdyy_custom_actions_registry.js',
+       'xkwxdyy_menu_registry.js',
+       'xkwxdyy_button_registry.js'
+   }
+   ```
+
+## ⚠️ 开发原则（极其重要）
+
+### 严禁擅自修改用户内容
+1. **必须逐字复制**：保持所有注释、空行、格式完全一致
+2. **禁止简化或优化**：不得删减菜单项、改变参数、删除"无用"代码
+3. **保持完整性**：每个配置都必须完整保留
+4. **有疑必问**：不确定时必须询问用户
+
+### 错误教训
+- 曾擅自将"→ 复制的文本"改成"→ 摘录的文本"，用户非常生气
+- 违反此原则会导致功能丢失，破坏用户信任
+
+## 项目文档
+- **CLAUDE.md**：开发规范和项目说明
+- **README.md**：完整的用户和开发者指南
+- 包含：安装指南、使用说明、开发指南、API参考、故障排除等
+
+## 调试最佳实践
+1. 使用 MNUtil.log() 而非 console.log()
+2. 有意义的日志前缀：🔧初始化、✅成功、❌错误、🔍调试、🚀执行、📦加载
+3. 渐进式调试：文件加载→对象存在→功能执行
+4. try-catch 包装所有主要操作
+
+## 核心功能模块
+- 动态工具栏系统（水平/垂直布局）
+- 制卡系统（模板制卡、批量制卡、文献制卡）
+- OKR任务管理（目标、关键结果、项目、任务）
+- 文献管理系统（参考文献ID、BibTeX、作者信息）
+- 学习辅助（证明管理、思考点、评论分级）
+- 文本处理（OCR、Markdown转换、格式化） --tags MN-Toolbar-Pro 解耦架构 注册表模式 JSB框架 项目总结
+--tags #最佳实践 #工具使用 #评分:8 #有效期:长期
+- END

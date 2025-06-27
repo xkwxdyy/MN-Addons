@@ -1,5 +1,5 @@
 {
-  "currentState": "recall-waiting",
+  "currentState": "memory_saved",
   "stateHistory": [
     {
       "from": "initial",
@@ -140,7 +140,23 @@
       "command": "recall",
       "timestamp": "2025-06-27T09:59:52.516Z",
       "args": []
+    },
+    {
+      "from": "recall-waiting",
+      "command": "recall",
+      "timestamp": "2025-06-27T17:41:33.998Z",
+      "args": []
+    },
+    {
+      "from": "recall-waiting",
+      "command": "remember",
+      "timestamp": "2025-06-27T17:42:29.239Z",
+      "args": [
+        "# MN Toolbar Pro 项目完整进展汇总（2025.6.27）\n\n## 项目概述\n- **项目名称**: MN Toolbar Pro\n- **基于**: Feliks 开发的 MN Toolbar 插件\n- **版本**: 0.1.3.alpha0427\n- **平台**: MarginNote 3.7.11+ (iOS/iPadOS/macOS)\n- **GitHub**: https://github.com/xkwxdyy/MN-Toolbar-Pro\n\n## 解耦架构实现（最重要成果）\n\n### 成功方案：注册表模式\n1. **文件结构**（已改为 xkwxdyy_ 前缀）：\n   - xkwxdyy_button_registry.js - 按钮配置注册表\n   - xkwxdyy_menu_registry.js - 菜单模板注册表（14个模板）\n   - xkwxdyy_custom_actions_registry.js - 动作处理注册表（198个actions）\n   - xkwxdyy_utils_extensions.js - 工具函数扩展\n\n2. **主文件修改最小化**：\n   - webviewController.js 仅添加 4 行代码\n   - main.js 按顺序加载扩展文件\n   - 保持向后兼容性\n\n3. **技术要点**：\n   - 使用 global 对象实现模块间通信\n   - templateName 延迟加载解决按钮加载问题\n   - context 机制传递所有必要数据\n   - JSB 框架限制：函数内不能使用 break\n\n### 成果数据\n- 主文件：264KB → 95KB（减少 64%）\n- 代码行数：6555 → 2599（减少 60%）\n- 成功迁移：198 个自定义 actions\n\n## update.py 维护经验\n\n### 问题与解决\n1. **配置管理**：\n   - user_custom_files 包含所有解耦文件\n   - insert_after_once 避免重复插入\n   - 智能清理重复函数定义\n\n2. **关键配置**：\n   ```python\n   self.user_custom_files = {\n       'xkwxdyy_utils_extensions.js',\n       'xkwxdyy_custom_actions_registry.js',\n       'xkwxdyy_menu_registry.js',\n       'xkwxdyy_button_registry.js'\n   }\n   ```\n\n## ⚠️ 开发原则（极其重要）\n\n### 严禁擅自修改用户内容\n1. **必须逐字复制**：保持所有注释、空行、格式完全一致\n2. **禁止简化或优化**：不得删减菜单项、改变参数、删除\"无用\"代码\n3. **保持完整性**：每个配置都必须完整保留\n4. **有疑必问**：不确定时必须询问用户\n\n### 错误教训\n- 曾擅自将\"→ 复制的文本\"改成\"→ 摘录的文本\"，用户非常生气\n- 违反此原则会导致功能丢失，破坏用户信任\n\n## 项目文档\n- **CLAUDE.md**：开发规范和项目说明\n- **README.md**：完整的用户和开发者指南\n- 包含：安装指南、使用说明、开发指南、API参考、故障排除等\n\n## 调试最佳实践\n1. 使用 MNUtil.log() 而非 console.log()\n2. 有意义的日志前缀：🔧初始化、✅成功、❌错误、🔍调试、🚀执行、📦加载\n3. 渐进式调试：文件加载→对象存在→功能执行\n4. try-catch 包装所有主要操作\n\n## 核心功能模块\n- 动态工具栏系统（水平/垂直布局）\n- 制卡系统（模板制卡、批量制卡、文献制卡）\n- OKR任务管理（目标、关键结果、项目、任务）\n- 文献管理系统（参考文献ID、BibTeX、作者信息）\n- 学习辅助（证明管理、思考点、评论分级）\n- 文本处理（OCR、Markdown转换、格式化）",
+        "--tags",
+        "MN-Toolbar-Pro 解耦架构 注册表模式 JSB框架 项目总结"
+      ]
     }
   ],
-  "lastUpdated": "2025-06-27T09:59:52.519Z"
+  "lastUpdated": "2025-06-27T17:42:29.243Z"
 }

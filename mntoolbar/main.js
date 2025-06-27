@@ -958,11 +958,6 @@ try {
       toolbarUtils.init(mainPath)
       toolbarConfig.init(mainPath)
       this.initialized = true
-      
-      // 发送通知，告知 toolbarConfig 已初始化
-      if (typeof MNUtil !== 'undefined' && MNUtil.postNotification) {
-        MNUtil.postNotification("ToolbarConfigInit", {});
-      }
     }
   } catch (error) {
     toolbarUtils.addErrorLog(error, "init")

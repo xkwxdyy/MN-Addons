@@ -11,18 +11,19 @@
 4. [代码规范](#4-代码规范)
 5. [JSB 框架规范](#5-jsb-框架规范)
 6. [技术实践](#6-技术实践)
-7. [扩展开发](#7-扩展开发)
-8. [调试与故障排除](#8-调试与故障排除)
-9. [API 快速参考](#9-api-快速参考)
+7. [扩展开发快速入门](#7-扩展开发快速入门)
+8. [扩展开发高级指南](#8-扩展开发高级指南)
+9. [调试与故障排除](#9-调试与故障排除)
+10. [API 快速参考](#10-api-快速参考)
 
 ---
 
 ## 1. 项目概述
 
-### 1.1 目录结构说明（2025.6.27）
+### 1.1 目录结构说明
 
 - **mntoolbar**：用户的开发项目目录，基于官方版本开发
-- **mntoolbar_official**：官方插件目录，仅用于参考对比和开发，不应修改
+- **mntoolbar_official**：官方插件目录，仅用于参考对比，不应修改
 
 ### 1.2 核心文件职责
 
@@ -32,10 +33,17 @@
 | `webviewController.js` | 工具栏 UI 管理和交互 | ⭐⭐⭐⭐⭐ |
 | `settingController.js` | 设置界面管理 | ⭐⭐⭐⭐ |
 | `utils.js` | 通用工具函数和配置管理 | ⭐⭐⭐⭐⭐ |
-| `xdyy_utils_extensions.js` | 工具函数扩展 | ⭐⭐⭐ |
-| `xdyy_custom_actions_registry.js` | 自定义动作注册表 | ⭐⭐⭐⭐ |
 
-### 1.3 命名空间约定
+### 1.3 解耦架构文件
+
+| 文件名 | 职责 | 说明 |
+|--------|------|------|
+| `xdyy_button_registry.js` | 按钮配置注册表 | 定义自定义按钮 |
+| `xdyy_menu_registry.js` | 菜单模板注册表 | 定义菜单结构 |
+| `xdyy_custom_actions_registry.js` | 动作处理注册表 | 实现功能逻辑 |
+| `xdyy_utils_extensions.js` | 工具函数扩展 | 扩展 toolbarUtils 和 toolbarConfig |
+
+### 1.4 命名空间约定
 
 - 工具函数：`MNUtil.` 前缀
 - 配置相关：`toolbarConfig.`
@@ -140,6 +148,24 @@ var FooController = JSB.defineClass('FooController : UIViewController', {
 })
 ```
 
+### 3.3 解耦架构数据流
+
+```
+用户点击按钮
+    ↓
+webviewController 解析 description
+    ↓
+获取 action 名称
+    ↓
+查找 global.customActions[action]
+    ↓
+执行注册的处理函数
+    ↓
+传递 context 对象
+    ↓
+返回执行结果
+```
+
 ---
 
 ## 4. 代码规范
@@ -171,7 +197,7 @@ var FooController = JSB.defineClass('FooController : UIViewController', {
    - 优先使用 `.filter()`, `.map()`, `.reduce()`
    - 避免传统 for 循环
 
-### 4.3 缩进规范（2025.6.27 新增）
+### 4.3 缩进规范
 
 1. **自动格式化工具**：
    ```bash
@@ -182,17 +208,7 @@ var FooController = JSB.defineClass('FooController : UIViewController', {
    npx prettier --write "**/*.js" --tab-width 2
    ```
 
-2. **缩进标准**：
-   - 统一使用 2 个空格缩进
-   - 不使用 Tab 字符
-   - 保持括号对齐
-
-3. **常见问题修复**：
-   - 大文件缩进混乱：使用 Prettier 而非手动修复
-   - try-catch 缩进错误：确保 catch 与 try 对齐
-   - 回调函数缩进：保持层级清晰
-
-4. **配置文件**（.prettierrc）：
+2. **配置文件**（.prettierrc）：
    ```json
    {
      "tabWidth": 2,
@@ -328,181 +344,270 @@ if (self.isMac) {
 
 ---
 
-## 7. 扩展开发
+## 7. 扩展开发快速入门
 
-### 7.1 注册表模式（推荐）
+### 7.1 架构概述
 
-**原理**：使用全局注册表管理自定义功能，避免直接修改主文件
+MN Toolbar 采用**注册表模式**的解耦架构：
 
-1. **注册表文件结构**：
-   ```javascript
-   // 创建全局注册表
-   if (typeof global === 'undefined') {
-     var global = {};
-   }
-   
-   // 注册函数
-   global.registerCustomAction = function(name, handler) {
-     global.customActions[name] = handler;
-   };
-   
-   // 执行函数
-   global.executeCustomAction = async function(name, context) {
-     if (name in global.customActions) {
-       await global.customActions[name](context);
-       return true;
-     }
-     return false;
-   };
-   ```
+```
+主程序（不修改）          扩展模块（自定义）
+├── main.js              ├── xdyy_button_registry.js     # 按钮配置
+├── utils.js             ├── xdyy_menu_registry.js       # 菜单模板
+├── webviewController.js ├── xdyy_custom_actions_registry.js # 动作处理
+└── settingController.js └── xdyy_utils_extensions.js    # 工具扩展
+```
 
-2. **主文件集成**（仅需修改 4 行）：
-   ```javascript
-   default:
-     if (typeof global !== 'undefined' && global.executeCustomAction) {
-       const context = { button, des, focusNote, focusNotes, self: this };
-       const handled = await global.executeCustomAction(des.action, context);
-       if (handled) break;
-     }
-     MNUtil.showHUD("Not supported yet...")
-     break;
-   ```
+### 7.2 模块加载顺序
 
-3. **添加新功能**：
-   ```javascript
-   global.registerCustomAction("myFeature", async function(context) {
-     const { focusNote, self } = context;
-     
-     MNUtil.undoGrouping(() => {
-       try {
-         // 实现功能
-         focusNote.noteTitle = "已处理: " + focusNote.noteTitle;
-         MNUtil.showHUD("✅ 处理成功");
-       } catch (error) {
-         MNUtil.showHUD(`❌ 失败: ${error.message}`);
-       }
-     });
-   });
-   ```
+```javascript
+// main.js 中的加载顺序（重要！）
+JSB.require('utils')                    // 1. 核心工具
+JSB.require('xdyy_utils_extensions')    // 2. 扩展工具函数
+JSB.require('pinyin')                   // 3. 拼音库
+// ... 其他初始化 ...
+JSB.require('xdyy_menu_registry')       // 4. 菜单模板
+JSB.require('xdyy_button_registry')     // 5. 按钮配置
+JSB.require('xdyy_custom_actions_registry') // 6. 动作处理
+```
 
-### 7.2 扩展加载注意事项
+### 7.3 添加第一个按钮（三步走）
 
-1. **加载顺序**：扩展文件必须在主文件之后加载
-2. **错误隔离**：扩展错误不应影响主功能
-3. **延迟初始化**：使用 setTimeout 确保依赖就绪
+#### 步骤 1：注册按钮（xdyy_button_registry.js）
 
-### 7.3 注册表解耦实践经验（2025.6.27）
+```javascript
+// 在 registerAllButtons() 函数中添加
+global.registerButton("custom19", {
+  name: "我的功能",          // 按钮显示名称
+  image: "myfunction",      // 图标文件名（不含.png）
+  templateName: "menu_myfunction"  // 关联的菜单模板
+});
+```
 
-**问题与解决方案总结**：
+#### 步骤 2：定义菜单（xdyy_menu_registry.js）
 
-1. **变量未定义错误**：
-   - **问题**：执行自定义 action 时报错 `Can't find variable: focusNotes`
-   - **原因**：`customActionByDes` 函数中只声明了 `focusNote`，未声明 `focusNotes`
-   - **解决**：在函数开头添加变量声明并获取值
-   ```javascript
-   let focusNote = undefined
-   let focusNotes = []  // 添加这行
-   try {
-     focusNote = MNNote.getFocusNote()
-     focusNotes = MNNote.getFocusNotes()  // 添加这行
-   } catch (error) {}
-   ```
+```javascript
+// 简单按钮（直接执行动作）
+global.registerMenuTemplate("menu_myfunction", JSON.stringify({
+  action: "myAction"
+}));
 
-2. **函数未定义错误**：
-   - **问题**：`toolbarUtils.getAbbreviationsOfName is not a function`
-   - **原因**：扩展文件 `xdyy_utils_extensions.js` 未被加载
-   - **解决**：在 `main.js` 中添加加载语句
-   ```javascript
-   JSB.require('utils')
-   JSB.require('xdyy_utils_extensions')  // 添加这行
-   JSB.require('pinyin')
-   ```
+// 或复杂菜单
+global.registerMenuTemplate("menu_myfunction", {
+  action: "menu",
+  menuItems: [
+    {
+      action: "myAction1",
+      menuTitle: "功能一"
+    },
+    {
+      action: "myAction2", 
+      menuTitle: "功能二"
+    }
+  ]
+});
+```
 
-3. **扩展初始化问题**：
-   - **问题**：扩展文件加载了但函数仍未定义
-   - **原因**：扩展函数需要主动初始化
-   - **解决**：在扩展文件末尾添加自动初始化代码
-   ```javascript
-   // 立即执行初始化
-   try {
-     if (typeof toolbarUtils !== 'undefined') {
-       initXDYYExtensions();
-     }
-   } catch (error) {
-     // 静默处理
-   }
-   ```
+#### 步骤 3：实现动作（xdyy_custom_actions_registry.js）
 
-4. **调试技巧**：
-   - 使用渐进式调试，先确认文件加载，再确认对象存在，最后确认功能执行
-   - 在关键位置添加日志，快速定位问题
-   - 调试完成后及时清理日志代码，保持代码整洁
+```javascript
+global.registerCustomAction("myAction", async function(context) {
+  const { button, des, focusNote, focusNotes, self } = context;
+  
+  // 使用撤销分组
+  MNUtil.undoGrouping(() => {
+    try {
+      // 你的功能实现
+      if (focusNote) {
+        focusNote.noteTitle = "已处理: " + focusNote.noteTitle;
+        MNUtil.showHUD("✅ 处理成功");
+      } else {
+        MNUtil.showHUD("❌ 请先选择卡片");
+      }
+    } catch (error) {
+      MNUtil.showHUD(`❌ 错误: ${error.message}`);
+    }
+  });
+});
+```
 
-**最佳实践**：
-- 主文件修改最小化：只在必要位置添加钩子
-- 依赖检查：使用 `typeof` 检查对象存在性
-- 错误处理：使用 try-catch 包裹，避免影响主功能
-- 上下文传递：通过 context 对象传递所有必要数据
+### 7.4 主文件集成（仅需一次）
 
-### 7.4 update.py 配置维护经验（2025.6.27）
+在 `webviewController.js` 的 `customActionByDes` 函数中添加：
 
-**问题背景**：
-使用 `update.py` 脚本更新插件后，之前的解耦工作被撤销，需要正确配置脚本以维护解耦架构。
-
-**主要问题与解决方案**：
-
-1. **togglePreprocess 函数处理**：
-   - **问题**：update.py 会删除必要的函数或添加重复的函数
-   - **解决**：
-     - 在 main.js 配置中添加 togglePreprocess 函数定义
-     - 在 webviewController.js 使用 `insert_after_once` 类型避免重复
-     - 注释掉 utils.js 中的 togglePreprocess 添加配置
-
-2. **重复函数清理**：
-   - **问题**：webviewController.js 中出现多个重复的 togglePreprocess 函数
-   - **解决**：实现智能清理函数
-   ```python
-   def clean_duplicate_togglePreprocess(self, file_path):
-       # 匹配两种模式：带/不带 "dynamic" 注释
-       # 保留最后一个，删除其他的
-       # 按位置排序后处理
-   ```
-
-3. **insert_after_once 类型支持**：
-   - **功能**：避免重复插入相同的代码块
-   - **实现**：在 apply_user_modifications 中检查关键代码是否已存在
-   ```python
-   if mod['type'] == 'insert_after_once':
-       # 提取关键代码检查是否已存在
-       if 'togglePreprocess: function' in key_content:
-           continue  # 跳过插入
-   ```
-
-4. **配置示例**：
-   ```python
-   # 用户自定义文件列表
-   self.user_custom_files = {
-       'xdyy_utils_extensions.js',
-       'xdyy_custom_actions_registry.js', 
-       'xdyy_menu_registry.js'  # 新增菜单注册表
-   }
-   
-   # 在 update_directory 中添加清理调用
-   if modified_file == 'webviewController.js':
-       self.clean_duplicate_togglePreprocess(file_path)
-   ```
-
-**关键要点**：
-- 理解每个文件需要哪些函数定义
-- 使用智能的重复检测和清理逻辑
-- 支持条件插入避免重复修改
-- 在正确的时机调用清理函数
+```javascript
+default:
+  if (typeof global !== 'undefined' && global.executeCustomAction) {
+    const context = { button, des, focusNote, focusNotes, self: this };
+    const handled = await global.executeCustomAction(des.action, context);
+    if (handled) break;
+  }
+  MNUtil.showHUD("Not supported yet...")
+  break;
+```
 
 ---
 
-## 8. 调试与故障排除
+## 8. 扩展开发高级指南
 
-### 8.1 调试工具
+### 8.1 多级菜单
+
+```javascript
+global.registerMenuTemplate("menu_advanced", {
+  action: "menu",
+  menuWidth: 300,  // 菜单宽度
+  menuItems: [
+    "⬇️ 分组标题",  // 纯文本作为分组
+    {
+      action: "subAction1",
+      menuTitle: "    子功能1"  // 缩进表示层级
+    },
+    {
+      action: "menu",  // 嵌套菜单
+      menuTitle: "➡️ 更多选项",
+      menuItems: [
+        {
+          action: "deepAction",
+          menuTitle: "深层功能"
+        }
+      ]
+    }
+  ]
+});
+```
+
+### 8.2 交互模式
+
+#### 长按和双击
+
+```javascript
+global.registerMenuTemplate("menu_interactive", {
+  action: "defaultAction",           // 默认点击动作
+  doubleClick: {                    // 双击动作
+    action: "doubleClickAction"
+  },
+  onLongPress: {                    // 长按菜单
+    action: "menu",
+    menuItems: [
+      {
+        action: "longPressOption1",
+        menuTitle: "长按选项1"
+      }
+    ]
+  }
+});
+```
+
+#### 用户输入
+
+```javascript
+global.registerCustomAction("userInput", async function(context) {
+  UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+    "输入新标题",
+    "请输入卡片的新标题",
+    2,  // 输入框样式
+    "取消",
+    ["确定"],
+    (alert, buttonIndex) => {
+      if (buttonIndex === 1) {
+        const inputText = alert.textFieldAtIndex(0).text;
+        MNUtil.undoGrouping(() => {
+          context.focusNote.noteTitle = inputText;
+          MNUtil.showHUD("✅ 标题已更新");
+        });
+      }
+    }
+  );
+});
+```
+
+### 8.3 常用模式
+
+#### 批量处理
+
+```javascript
+global.registerCustomAction("batchProcess", async function(context) {
+  const { button, des, focusNote, focusNotes, self } = context;
+  
+  MNUtil.undoGrouping(() => {
+    let successCount = 0;
+    
+    focusNotes.forEach(note => {
+      try {
+        // 处理每个卡片
+        note.appendTags(["已处理"]);
+        successCount++;
+      } catch (error) {
+        // 单个失败不影响其他
+      }
+    });
+    
+    MNUtil.showHUD(`✅ 成功处理 ${successCount}/${focusNotes.length} 个卡片`);
+  });
+});
+```
+
+#### 异步操作
+
+```javascript
+global.registerCustomAction("asyncOperation", async function(context) {
+  const { button, des, focusNote, focusNotes, self } = context;
+  
+  try {
+    MNUtil.showHUD("⏳ 处理中...");
+    
+    // 模拟异步操作
+    await MNUtil.delay(0.5);
+    
+    // 执行操作
+    const result = await someAsyncFunction(focusNote);
+    
+    MNUtil.showHUD(`✅ 完成: ${result}`);
+  } catch (error) {
+    MNUtil.showHUD(`❌ 失败: ${error.message}`);
+  }
+});
+```
+
+### 8.4 最佳实践
+
+1. **始终使用撤销分组**
+   ```javascript
+   MNUtil.undoGrouping(() => { /* 你的操作 */ });
+   ```
+
+2. **检查对象存在性**
+   ```javascript
+   if (focusNote && focusNote.noteTitle) {
+     // 安全操作
+   }
+   ```
+
+3. **提供用户反馈**
+   - 操作前：`MNUtil.showHUD("⏳ 处理中...")`
+   - 成功后：`MNUtil.showHUD("✅ 成功")`
+   - 失败时：`MNUtil.showHUD("❌ 失败: " + error.message)`
+
+4. **使用 context 解构**
+   ```javascript
+   const { button, des, focusNote, focusNotes, self } = context;
+   ```
+
+5. **错误处理模式**
+   ```javascript
+   try {
+     // 危险操作
+   } catch (error) {
+     toolbarUtils.addErrorLog(error, "functionName");
+     MNUtil.showHUD("操作失败");
+   }
+   ```
+
+---
+
+## 9. 调试与故障排除
+
+### 9.1 调试工具
 
 1. **用户可见**：`MNUtil.showHUD("message")`
 2. **开发日志**：`MNUtil.log()` （推荐，统一的日志格式）
@@ -525,16 +630,42 @@ if (self.isMac) {
   - `🚀` 执行动作
   - `📦` 加载模块
 
-### 8.2 常见问题
+### 9.2 测试脚本
+
+```javascript
+// test_myfunction.js
+function testMyFunction() {
+  // 模拟点击按钮
+  const context = {
+    button: null,
+    des: { action: "myAction" },
+    focusNote: MNNote.getFocusNote(),
+    focusNotes: MNNote.getFocusNotes(),
+    self: null
+  };
+  
+  if (global.executeCustomAction) {
+    global.executeCustomAction("myAction", context).then(result => {
+      MNUtil.log(`测试结果: ${result}`);
+    });
+  }
+}
+
+// 执行测试
+testMyFunction();
+```
+
+### 9.3 常见问题
 
 | 问题 | 原因 | 解决方案 |
 |------|------|----------|
 | "Can't find variable" | 加载顺序错误 | 调整 JSB.require 位置 |
 | "undefined is not an object" | 未初始化 | 调用 ensureView() |
 | "Not supported yet..." | action 未注册 | 检查注册表加载 |
+| 按钮不显示 | 缓存问题 | 使用 `global.forceRefreshButtons()` |
 | 缩进混乱 | 手动修改错误 | 使用 Prettier 格式化 |
 
-### 8.3 性能优化
+### 9.4 性能优化
 
 - 大文档测试内存使用
 - 使用 `undoGrouping` 批量操作
@@ -543,9 +674,9 @@ if (self.isMac) {
 
 ---
 
-## 9. API 快速参考
+## 10. API 快速参考
 
-### 9.1 卡片操作
+### 10.1 卡片操作
 
 ```javascript
 // 获取
@@ -566,7 +697,7 @@ focusNote.focusInMindMap(0.3)
 focusNote.refresh()
 ```
 
-### 9.2 工具方法
+### 10.2 工具方法
 
 ```javascript
 // UI 反馈
@@ -587,7 +718,7 @@ MNUtil.currentNotebookId
 MNUtil.currentDocmd5
 ```
 
-### 9.3 配置管理
+### 10.3 配置管理
 
 ```javascript
 // 读取
@@ -600,13 +731,14 @@ toolbarConfig.windowState.frame = newFrame
 toolbarConfig.save()
 ```
 
----
+### 10.4 UI 组件
 
-## 附录：版本历史
+```javascript
+// 弹窗输入
+UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+  title, message, style, cancelTitle, otherTitles, callback
+)
 
-- **2025.6.27**：添加 update.py 配置维护经验，解决解耦架构被撤销的问题
-- **2025.6.27**：添加注册表解耦实践经验，总结常见问题和解决方案
-- **2025.6.27**：添加日志使用规范，统一使用 MNUtil.log 替代 console.log
-- **2025.6.27**：添加缩进规范、重构文档结构、完善注册表模式
-- **2025.6.27**：添加项目结构说明、JSB 解耦经验
-- **2025.6.27**：初始版本，整合开发规范
+// 菜单显示
+MNUtil.showMenu(menuItems, menuWidth)
+```

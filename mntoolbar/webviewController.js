@@ -1245,20 +1245,20 @@ try {
       // this["moveGesture"+index].view.hidden = false
     }
     if (actionName){
-      if (actionName.includes("color")) {
-        colorButton.color = parseInt(actionName.slice(5))
-        this.setColorButtonLayout(colorButton,"setColor:",buttonColor)
-      }else if(actionName.includes("custom")){
-        this.setColorButtonLayout(colorButton,"customAction:",buttonColor)
-      }else{
-        this.setColorButtonLayout(colorButton,actionName+":",buttonColor)
-      }
-      // MNButton.setImage(colorButton, toolbarConfig.imageConfigs[actionName])
-      // let image = (actionName in actions)?actions[actionName].image+".png":defaultActions[actionName].image+".png"
-      // colorButton.setImageForState(MNUtil.getImage(toolbarConfig.mainPath + `/`+image),0)
-      colorButton.setImageForState(toolbarConfig.imageConfigs[actionName],0)
-      // self["ColorButton"+index].setTitleForState("",0) 
-      // self["ColorButton"+index].contentHorizontalAlignment = 1
+    if (actionName.includes("color")) {
+      colorButton.color = parseInt(actionName.slice(5))
+      this.setColorButtonLayout(colorButton,"setColor:",buttonColor)
+    }else if(actionName.includes("custom")){
+      this.setColorButtonLayout(colorButton,"customAction:",buttonColor)
+    }else{
+      this.setColorButtonLayout(colorButton,actionName+":",buttonColor)
+    }
+    // MNButton.setImage(colorButton, toolbarConfig.imageConfigs[actionName])
+    // let image = (actionName in actions)?actions[actionName].image+".png":defaultActions[actionName].image+".png"
+    // colorButton.setImageForState(MNUtil.getImage(toolbarConfig.mainPath + `/`+image),0)
+    colorButton.setImageForState(toolbarConfig.imageConfigs[actionName],0)
+    // self["ColorButton"+index].setTitleForState("",0) 
+    // self["ColorButton"+index].contentHorizontalAlignment = 1
     }
   }
   if (this.dynamicToolbar) {
@@ -1354,58 +1354,17 @@ toolbarController.prototype.customActionByDes = async function (button,des,check
       //如果返回true则表示菜单弹出已执行，则不再执行下面的代码
       return
     }
+    let focusNote = undefined
     let targetNotes = []
     let success = true
-    let focusNote = MNNote.getFocusNote() ? MNNote.getFocusNote():undefined
-    let focusNotes = MNNote.getFocusNotes() ? MNNote.getFocusNotes():undefined
+    try {
+      focusNote = MNNote.getFocusNote()
+    } catch (error) {
+    }
     // MNUtil.showHUD("message"+(focusNote instanceof MNNote))
-    let color,config
+    let notebookid = focusNote ? focusNote.notebookId : undefined
+    let title,content,color,config
     let targetNoteId
-    let parentNote
-    let focusNoteType
-    let focusNoteColorIndex = focusNote? focusNote.note.colorIndex : 0
-    let copyTitlePart
-    let userInput
-    let bibTextIndex, bibContent
-    let bibContentArr = []
-    let currentDocmd5
-    let path, UTI
-    let currentDocName
-    let pinnedNote
-    let htmlSetting = [
-      { title: "方法: ✔", type: "method" },
-      { title: "思路: 💡", type: "idea" },
-      { title: "目标: 🎯", type: "goal" },
-      { title: "关键: 🔑", type: "key" },
-      { title: "问题: ❓", type: "question" },
-      { title: "注: 📝", type: "remark" },
-      { title: "注意: ⚠️", type: "alert" },
-      { title: "特别注意: ❗❗❗", type: "danger" },
-      // { title: "level1: 🚩", type: "level1" },
-      // { title: "level2: ▸", type: "level2" },
-      // { title: "level3: ▪", type: "level3" },
-      // { title: "level4: •", type: "level4" },
-      // { title: "level5: ·", type: "level5" },
-      // { title: "none", type: "none" },
-      // { title: "= 同级", type: "sameLevel" },
-      // { title: "⬇️ 下一级", type: "nextLevel" },
-      // { title: "⬆️ 上一级", type: "lastLevel" },
-      // { title: "🏆 最高级", type: "topestLevel" },
-    ];
-    let htmlSettingTitles = htmlSetting.map(config => config.title);
-    let levelHtmlSetting = [
-      { title: "goal: 🎯", type: "goal" },
-      // { title: "step: 🚩", type: "step" },
-      // { title: "point: ▸", type: "point" },
-      // { title: "subpoint: ▪", type: "subpoint" },
-      // { title: "subsubpoint: •", type: "subsubpoint" },
-      { title: "level1: 🚩", type: "level1" },
-      { title: "level2: ▸", type: "level2" },
-      { title: "level3: ▪", type: "level3" },
-      { title: "level4: •", type: "level4" },
-      { title: "level5: ·", type: "level5" },
-    ];
-    let levelHtmlSettingTitles = levelHtmlSetting.map(config => config.title);
     switch (des.action) {
       case "undo":
         UndoManager.sharedInstance().undo()

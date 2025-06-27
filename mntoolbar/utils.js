@@ -1,4 +1,5 @@
 
+
 class Frame{
   static gen(x,y,width,height){
     return MNUtil.genFrame(x, y, width, height)
@@ -938,6 +939,13 @@ try {
   static postNotification(name,userInfo) {
     NSNotificationCenter.defaultCenter().postNotificationNameObjectUserInfo(name, this.focusWindow, userInfo)
   }
+  /**
+   * 
+   * @param {string[]} arr 
+   * @param {string} element 
+   * @param {string} direction 
+   * @returns 
+   */
   static moveElement(arr, element, direction) {
       // 获取元素的索引
       var index = arr.indexOf(element);

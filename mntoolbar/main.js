@@ -1,3 +1,4 @@
+
 JSB.newAddon = function (mainPath) {
   JSB.require('utils')
   JSB.require('pinyin')
@@ -850,6 +851,7 @@ try {
         toolbarConfig.togglePreprocess()
       },
       // 夏大鱼羊结束
+
       openDocument:function (button) {
         if (typeof MNUtil === 'undefined') return
         let self = getMNToolbarClass()

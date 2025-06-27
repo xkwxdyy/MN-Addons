@@ -4539,6 +4539,16 @@ function registerAllCustomActions() {
     });
   });
 
+  // hideAddonBar - 隐藏插件栏
+  global.registerCustomAction("hideAddonBar", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    // 发送通知来切换插件栏的显示/隐藏
+    MNUtil.postNotification("toggleMindmapToolbar", { 
+      target: "addonBar" 
+    });
+  });
+
 }
 
 // 立即注册

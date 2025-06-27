@@ -913,7 +913,9 @@ function registerAllMenuTemplates() {
     content: "{{clipboardText}}"
   }));
 
-  global.registerMenuTemplate("hideAddonBar", JSON.stringify({}));
+  global.registerMenuTemplate("hideAddonBar", JSON.stringify({
+    action: "hideAddonBar"
+  }));
   
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
     MNUtil.log(`🚀 已注册 ${Object.keys(global.customMenuTemplates).length} 个自定义菜单模板`);

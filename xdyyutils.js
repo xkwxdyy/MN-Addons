@@ -3,17 +3,6 @@
  */
 
 class MNMath {
-  /** 
-   * TODO：
-   * - 增加模板功能复制的内容的正则表达式要改
-   * - 制卡时的识别归类卡片的标题的正则表达式要改
-   * - 原来的归类卡片的标题要改成心得格式
-   *   - 要能批量修改
-   * 
-   */
-
-
-
   /**
    * 卡片类型
    * 
@@ -5391,3 +5380,43 @@ Object.defineProperty(MNComment.prototype, 'text', {
 /**
  * 夏大鱼羊 - MNComment 方法重写 - end
  */
+
+
+/**
+ * MNUtils - 方法重写 - begin
+ */
+MNUtil.prototype.log = function(log, copy = false){
+    if (typeof log == "string") {
+      log = {
+        message:log,
+        level:"INFO",
+        source:"Default",
+        timestamp:Date.now()
+      }
+      this.logs.push(log)
+      // MNUtil.copy(this.logs)
+      if (subscriptionUtils.subscriptionController) {
+        subscriptionUtils.subscriptionController.appendLog(log)
+      }
+      return
+    }
+    if ("level" in log) {
+      log.level = log.level.toUpperCase();
+    }else{
+      log.level = "INFO";
+    }
+    if (!("source" in log)) {
+      log.source = "Default";
+    }
+    if (!("timestamp" in log)) {
+      log.timestamp = Date.now();
+    }
+    if ("detail" in log && typeof log.detail == "object") {
+      log.detail = JSON.stringify(log.detail,null,2)
+    }
+    this.logs.push(log)
+    subscriptionUtils.subscriptionController.appendLog(log)
+    if (copy) {
+      this.copy(this.logs)
+    }
+  }

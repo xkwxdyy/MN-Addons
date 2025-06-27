@@ -6,6 +6,16 @@ JSB.newAddon = function (mainPath) {
   if (!toolbarUtils.checkMNUtilsFolder(mainPath)) {return undefined}
   JSB.require('webviewController');
   JSB.require('settingController');
+  
+  // 加载自定义菜单注册表（必须在 utils 之后）
+  try {
+    JSB.require('xdyy_menu_registry')
+  } catch (error) {
+    // 加载错误不应该影响插件主功能
+    if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+      MNUtil.addErrorLog(error, "加载自定义菜单模板")
+    }
+  }
   // JSB.require('UIPencilInteraction');
   
   // 加载自定义 actions 扩展（必须在 webviewController 之后）

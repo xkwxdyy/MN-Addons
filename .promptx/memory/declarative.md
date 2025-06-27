@@ -431,3 +431,111 @@ MN Toolbar Pro 注册表解耦实践经验：
    - 未来添加新功能无需修改主文件 --tags MN-Toolbar 解耦 注册表模式 JSB框架
 --tags #最佳实践 #评分:8 #有效期:长期
 - END
+
+- 2025/06/27 15:40 START
+MN Toolbar Pro 更新脚本问题处理记录（2025-06-27）
+
+## 问题背景
+用户在使用 update.py 更新 MN Toolbar Pro 时，发现脚本没有正确恢复用户的自定义内容。主要涉及的文件是 utils.js，其中包含了大量用户自定义的菜单模板和功能。
+
+## 已识别的用户自定义内容
+1. **preprocess 相关功能**：
+   - defaultWindowState 中的 preprocess: false
+   - togglePreprocess() 方法
+   - 相关的 UI 更新逻辑
+
+2. **referenceIds 相关功能**：
+   - toolbarConfig.referenceIds 的初始化
+   - save 方法中的 case "MNToolbar_referenceIds"
+   - 相关的导入导出功能
+
+3. **大量的菜单模板**（约900行）：
+   - menu_comment（评论菜单）
+   - menu_think（思考菜单）
+   - menu_study（学习菜单）
+   - menu_reference（文献菜单）
+   - menu_text（文本菜单）
+   - menu_card（卡片菜单）
+   - menu_makeCards（制卡菜单）
+   - 等等...
+
+4. **自定义动作**：
+   - custom1-custom20 的动作定义
+   - 包括制卡、思考、评论、学习等功能
+
+5. **文件末尾的扩展加载**：
+   ```javascript
+   JSB.require('xdyy_utils_extensions')
+   if (typeof initXDYYExtensions === 'function') {
+     initXDYYExtensions()
+   }
+   if (typeof extendToolbarConfigInit === 'function') {
+     extendToolbarConfigInit()
+   }
+   ```
+
+## 已完成的修复
+1. 修改了 update.py，添加了 utils.js 的用户修改保留规则
+2. 成功恢复了 preprocess、referenceIds 和扩展文件加载等核心功能
+3. 创建了 user_menu_templates.txt 保存菜单模板内容
+4. 创建了 user_custom_menus.js 作为备用方案
+
+## 当前状态
+- update.py 可以恢复部分用户修改，但菜单模板部分由于内容过多，需要更好的解决方案
+- 用户的自定义菜单功能暂时未能完全恢复
+- 建议使用更解耦的方式管理这些自定义功能
+
+## 待解决问题
+1. 如何优雅地恢复大量的菜单模板内容
+2. 是否应该将菜单模板分离到独立文件
+3. 如何确保更新脚本的健壮性和可维护性 --tags MNToolbar update.py utils.js 自定义菜单 未完成
+--tags #最佳实践 #评分:8 #有效期:长期
+- END
+
+- 2025/06/27 16:34 START
+MN Toolbar Pro - update.py 配置维护经验（2025.6.27）
+
+## 问题背景
+用户在完成代码解耦后，运行 update.py 更新脚本时，之前的解耦工作被撤销了。主要表现为：
+1. main.js 中的 togglePreprocess 函数被错误删除
+2. webviewController.js 中的 togglePreprocess 函数全部被删除（应该保留一个）
+
+## 解决方案
+
+### 1. 修改 update.py 配置
+- 在 main.js 配置中添加 togglePreprocess 函数定义
+- 使用 insert_after_once 类型避免重复插入
+- 注释掉 utils.js 中的 togglePreprocess 添加配置
+
+### 2. 实现智能清理函数
+```python
+def clean_duplicate_togglePreprocess(self, file_path):
+    # 匹配两种模式：带/不带 "dynamic" 注释的函数
+    # 按位置排序，保留最后一个，删除其他的
+```
+
+### 3. 支持 insert_after_once 类型
+在 apply_user_modifications 中添加逻辑，检查关键代码是否已存在，避免重复插入。
+
+### 4. 关键配置示例
+```python
+# 添加菜单注册表到用户自定义文件列表
+self.user_custom_files = {
+    'xdyy_utils_extensions.js',
+    'xdyy_custom_actions_registry.js',
+    'xdyy_menu_registry.js'
+}
+
+# 在 webviewController.js 修改后调用清理
+if modified_file == 'webviewController.js':
+    self.clean_duplicate_togglePreprocess(file_path)
+```
+
+## 关键要点
+1. 理解每个文件需要哪些函数定义
+2. 使用智能的重复检测和清理逻辑
+3. 支持条件插入避免重复修改
+4. 在正确的时机调用清理函数
+5. 测试验证：运行后检查函数数量是否正确 --tags MNToolbar update.py 解耦维护 配置管理
+--tags #其他 #评分:8 #有效期:长期
+- END

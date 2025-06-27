@@ -39,7 +39,11 @@
       "Bash(node:*)",
       "Bash(cp:*)",
       "Bash(npx prettier:*)",
-      "mcp__promptx__promptx_init"
+      "mcp__promptx__promptx_init",
+      "Bash(cat:*)",
+      "mcp__promptx__promptx_recall",
+      "Bash(git restore:*)",
+      "mcp__promptx__promptx_action"
     ],
     "deny": []
   }

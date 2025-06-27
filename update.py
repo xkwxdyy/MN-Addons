@@ -26,7 +26,8 @@ class MNToolbarUpdater:
         # 用户自定义文件列表
         self.user_custom_files = {
             'xdyy_utils_extensions.js',
-            'xdyy_custom_actions_registry.js'
+            'xdyy_custom_actions_registry.js',
+            'xdyy_menu_registry.js'
         }
         
         # 需要保留用户修改的文件及其修改点
@@ -63,6 +64,20 @@ class MNToolbarUpdater:
                     'marker': '          self.addonController.popupReplace()',
                     'content': '          self.ensureView() // 确保 addonController 已初始化',
                     'unique_context': 'onPopupMenuOnNote'
+                },
+                {
+                    'type': 'insert_after',
+                    'marker': '  JSB.require(\'settingController\');',
+                    'content': '''  
+  // 加载自定义菜单注册表（必须在 utils 之后）
+  try {
+    JSB.require('xdyy_menu_registry')
+  } catch (error) {
+    // 加载错误不应该影响插件主功能
+    if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+      MNUtil.addErrorLog(error, "加载自定义菜单模板")
+    }
+  }'''
                 },
                 {
                     'type': 'insert_before',
@@ -120,12 +135,12 @@ class MNToolbarUpdater:
       // 夏大鱼羊 - end
     }'''
                 },
+                # 保留这个配置，webviewController 需要自己的 togglePreprocess 方法来响应菜单
                 {
-                    'type': 'insert_after',
+                    'type': 'insert_after_once',  # 只插入一次，避免重复
                     'marker': '  },',
                     'context': 'self.popoverController = MNUtil.getPopoverAndPresent(sender, commandTable,200)',
                     'content': '''  // 夏大鱼羊 - begin
-  // dynamic 这里还需要再写一次下面的 togglePreprocess 函数
   togglePreprocess: function () {
     self.checkPopover()
     toolbarConfig.togglePreprocess()
@@ -181,6 +196,68 @@ class MNToolbarUpdater:
         }
         MNUtil.showHUD("Not supported yet...")
         break;'''
+                }
+            ],
+            'utils.js': [
+                {
+                    'type': 'insert_after',
+                    'marker': '  static defaultWindowState = {',
+                    'content': '''    // 夏大鱼羊 - begin：add Preprocess
+    preprocess:false,
+    // 夏大鱼羊 - end'''
+                },
+                {
+                    'type': 'insert_after',
+                    'marker': '    this.addonLogos = this.getByDefault("MNToolbar_addonLogos",{})',
+                    'content': '''    // 夏大鱼羊 - begin：用来存参考文献的数据
+    toolbarConfig.referenceIds = this.getByDefault("MNToolbar_referenceIds", {})
+    // 夏大鱼羊 - end'''
+                },
+                {
+                    'type': 'insert_after',
+                    'marker': '      addonLogos: this.addonLogos,',
+                    'content': '      referenceIds:this.referenceIds,'
+                },
+                {
+                    'type': 'insert_after',
+                    'marker': '    this.addonLogos = config.addonLogos',
+                    'content': '    this.referenceIds = config.referenceIds'
+                },
+                # togglePreprocess 已经解耦到 xdyy_utils_extensions.js，不需要再添加到 utils.js
+                {
+                    'type': 'insert_after',
+                    'marker': '    defaults.setObjectForKey(this.addonLogos,"MNToolbar_addonLogos")',
+                    'content': '    defaults.setObjectForKey(this.referenceIds,"MNToolbar_referenceIds")'
+                },
+                {
+                    'type': 'insert_after',
+                    'marker': '    switch (key) {',
+                    'content': '''      case "MNToolbar_referenceIds":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.referenceIds,key)
+        break;'''
+                },
+                {
+                    'type': 'append_to_file',
+                    'content': '''
+
+// 加载夏大鱼羊的扩展文件
+JSB.require('xdyy_utils_extensions')
+
+// 初始化夏大鱼羊的扩展
+if (typeof initXDYYExtensions === 'function') {
+  initXDYYExtensions()
+}
+if (typeof extendToolbarConfigInit === 'function') {
+  extendToolbarConfigInit()
+}'''
+                },
+                {
+                    'type': 'custom_menu_templates',
+                    'description': '保留用户自定义菜单模板'
+                },
+                {
+                    'type': 'custom_actions',
+                    'description': '保留用户自定义动作'
                 }
             ],
             'jsconfig.json': [
@@ -316,7 +393,17 @@ class MNToolbarUpdater:
         
         for mod in modifications:
             try:
-                if mod['type'] == 'insert_after':
+                if mod['type'] == 'insert_after' or mod['type'] == 'insert_after_once':
+                    # 对于 insert_after_once，先检查内容是否已存在
+                    if mod['type'] == 'insert_after_once':
+                        # 提取关键代码来检查是否已存在（去除注释行）
+                        key_content = '\n'.join([line for line in mod['content'].split('\n') 
+                                               if not line.strip().startswith('//') and line.strip()])
+                        if 'togglePreprocess: function' in key_content and 'togglePreprocess: function' in content:
+                            # togglePreprocess 函数已存在，跳过
+                            applied.append(f"togglePreprocess 函数已存在，跳过插入")
+                            continue
+                    
                     # 检查是否需要根据上下文来确定插入位置
                     if 'context' in mod:
                         # 使用上下文查找正确的位置
@@ -383,6 +470,26 @@ class MNToolbarUpdater:
                     # 替换整个文件内容
                     content = mod['content']
                     applied.append(f"替换整个文件内容")
+                    
+                elif mod['type'] == 'append_to_file':
+                    # 添加内容到文件末尾
+                    if mod['content'] not in content:
+                        content = content.rstrip() + mod['content']
+                        applied.append(f"添加内容到文件末尾")
+                        
+                elif mod['type'] == 'custom_menu_templates':
+                    # 保留用户自定义菜单模板
+                    menu_applied = self._apply_custom_menus(content)
+                    if menu_applied:
+                        content = menu_applied
+                        applied.append(f"保留用户自定义菜单模板")
+                        
+                elif mod['type'] == 'custom_actions':
+                    # 保留用户自定义动作
+                    actions_applied = self._apply_custom_actions(content)
+                    if actions_applied:
+                        content = actions_applied
+                        applied.append(f"保留用户自定义动作")
                         
             except Exception as e:
                 self.conflicts.append(f"{filename}: {mod.get('marker', 'unknown')} - {str(e)}")
@@ -450,6 +557,11 @@ class MNToolbarUpdater:
                 if os.path.exists(file_path):
                     if self.apply_user_modifications(file_path):
                         print(f"✅ 已应用修改到：{modified_file}")
+                        
+                        # 清理 webviewController.js 中的重复函数
+                        if modified_file == 'webviewController.js':
+                            print("🔧 检查并清理重复的 togglePreprocess 函数...")
+                            self.clean_duplicate_togglePreprocess(file_path)
                     
         # 应用文本替换（仅在开发目录）
         if is_dev:
@@ -540,6 +652,181 @@ class MNToolbarUpdater:
         # 自动打开报告（macOS）
         if os.name == 'posix':
             subprocess.run(f"open {report_path}", shell=True)
+            
+    def _apply_custom_menus(self, content):
+        """应用用户自定义菜单模板"""
+        try:
+            # 加载用户自定义菜单模板
+            menu_file = os.path.join(self.mntoolbar_dir, 'user_menu_templates.txt')
+            if not os.path.exists(menu_file):
+                # 使用备份文件路径
+                menu_file = os.path.join(self.current_dir, 'user_menu_templates.txt')
+                
+            if not os.path.exists(menu_file):
+                print("⚠️ 未找到用户菜单模板文件")
+                return None
+                
+            # 读取菜单模板内容
+            with open(menu_file, 'r', encoding='utf-8') as f:
+                menu_templates_content = f.read()
+                
+            # 查找 template 方法中的 switch 语句
+            import re
+            
+            # 查找 switch(action) { 的位置
+            switch_pattern = r'(static\s+template\s*\(\s*action\s*\)\s*\{[^}]+switch\s*\(\s*action\s*\)\s*\{)'
+            switch_match = re.search(switch_pattern, content, re.DOTALL)
+            
+            if not switch_match:
+                return None
+                
+            # 查找 default: 的位置
+            default_pattern = r'(static\s+template\s*\(\s*action\s*\)\s*\{[^}]+switch\s*\(\s*action\s*\)\s*\{.*?)(default\s*:)'
+            default_match = re.search(default_pattern, content, re.DOTALL)
+            
+            if not default_match:
+                return None
+                
+            # 检查菜单模板是否已经存在
+            if 'case "menu_comment"' in content and 'case "menu_think"' in content:
+                print("✅ 用户菜单模板已存在")
+                return None
+                
+            # 在 default: 之前插入自定义菜单模板
+            insert_pos = default_match.end(1)
+            new_content = content[:insert_pos] + '\n' + menu_templates_content + '\n    ' + content[insert_pos:]
+            
+            print("✅ 已插入用户自定义菜单模板")
+            return new_content
+                
+        except Exception as e:
+            print(f"⚠️ 应用自定义菜单时出错：{e}")
+            
+        return None
+        
+    def _apply_custom_actions(self, content):
+        """应用用户自定义动作"""
+        try:
+            # 查找 getActions() 方法
+            actions_pattern = r'(static\s+getActions\s*\(\s*\)\s*\{[^{]*return\s*\{)'
+            actions_match = re.search(actions_pattern, content)
+            
+            if not actions_match:
+                return None
+                
+            # 查找 return { 后的内容
+            start_pos = actions_match.end()
+            
+            # 查找对应的闭合 }
+            brace_count = 1
+            current_pos = start_pos
+            while brace_count > 0 and current_pos < len(content):
+                if content[current_pos] == '{':
+                    brace_count += 1
+                elif content[current_pos] == '}':
+                    brace_count -= 1
+                current_pos += 1
+                
+            if brace_count != 0:
+                return None
+                
+            end_pos = current_pos - 1
+            
+            # 获取当前的 actions
+            current_actions = content[start_pos:end_pos]
+            
+            # 用户自定义动作
+            custom_actions = '''    "custom15":{name:"制卡",image:"makeCards",description: this.template("menu_makeCards")},
+    "custom1":{name:"制卡",image:"makeCards",description: this.template("TemplateMakeNotes")},
+    "custom20":{name:"htmlMarkdown 评论",image:"htmlmdcomment",description: this.template("menu_htmlmdcomment")},
+    "custom9":{name:"思考",image:"think",description: this.template("menu_think")},
+    "custom10":{name:"评论",image:"comment",description: this.template("menu_comment")},
+    "custom2":{name:"学习",image:"study",description: this.template("menu_study")},
+    "custom3":{name:"增加模板",image:"addTemplate",description: this.template("addTemplate")},
+    "custom5":{name:"卡片",image:"card",description: this.template("menu_card")},
+    "custom4":{name:"文献",image:"reference",description: this.template("menu_reference")},
+    "custom6":{name:"文本",image:"text",description: this.template("menu_text")},
+    "custom17":{name:"卡片储存",image:"pin_white",description: this.template("menu_card_pin")},
+    "snipaste":{name:"Snipaste",image:"snipaste",description:"Snipaste"},
+    "custom7":{name:"隐藏插件栏",image:"hideAddonBar",description: this.template("hideAddonBar")},
+    "custom11":{name:"工作流",image:"workflow",description: this.template("menu_card_workflow")},
+    "execute":{name:"execute",image:"execute",description:"let focusNote = MNNote.getFocusNote()\\nMNUtil.showHUD(focusNote.noteTitle)"},
+    "custom12":{name:"预处理",image:"preprocess_red",description: this.template("togglePreprocess")},
+    "custom13":{name:"选中文本",image:"handtool_text",description: this.template("menu_handtool_text")},
+    "custom14":{name:"MN 功能",image:"menu_MN",description: this.template("menu_MN")},
+    "custom16":{name:"卡片摘录",image:"card_excerpt",description: this.template("menu_card_excerpt")},'''
+            
+            # 检查是否需要添加自定义动作
+            for action_key in ["custom1", "custom2", "custom3", "custom4", "custom5"]:
+                if f'"{action_key}"' not in current_actions:
+                    # 需要添加自定义动作
+                    # 找到最后一个动作的位置
+                    last_action_pattern = r',([^,}]+)\s*$'
+                    last_match = re.search(last_action_pattern, current_actions.rstrip())
+                    
+                    if last_match:
+                        insert_pos = start_pos + last_match.end(1)
+                        new_content = content[:insert_pos] + ',\n' + custom_actions + content[insert_pos:]
+                        return new_content
+                    break
+                    
+        except Exception as e:
+            print(f"⚠️ 应用自定义动作时出错：{e}")
+            
+        return None
+    
+    def clean_duplicate_togglePreprocess(self, file_path):
+        """清理 webviewController.js 中重复的 togglePreprocess 函数定义"""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # 两种模式：
+            # 1. 带有 "dynamic" 注释的
+            pattern_with_dynamic = r'  // 夏大鱼羊 - begin\n  // dynamic 这里还需要再写一次下面的 togglePreprocess 函数\n  togglePreprocess: function \(\) \{\n    self\.checkPopover\(\)\n    toolbarConfig\.togglePreprocess\(\)\n  \},\n  // 夏大鱼羊 - end\n'
+            
+            # 2. 不带 "dynamic" 注释的
+            pattern_without_dynamic = r'  // 夏大鱼羊 - begin\n  togglePreprocess: function \(\) \{\n    self\.checkPopover\(\)\n    toolbarConfig\.togglePreprocess\(\)\n  \},\n  // 夏大鱼羊 - end\n'
+            
+            # 查找所有匹配
+            matches_with_dynamic = list(re.finditer(pattern_with_dynamic, content))
+            matches_without_dynamic = list(re.finditer(pattern_without_dynamic, content))
+            all_matches = matches_with_dynamic + matches_without_dynamic
+            
+            if len(all_matches) > 0:
+                print(f"🔧 发现 {len(all_matches)} 个 togglePreprocess 函数定义")
+                print(f"   - 带 'dynamic' 注释的: {len(matches_with_dynamic)} 个")
+                print(f"   - 不带 'dynamic' 注释的: {len(matches_without_dynamic)} 个")
+                
+                # 保留最后一个（通常在合适的位置），删除其他的
+                if len(all_matches) > 1:
+                    # 按位置排序
+                    all_matches.sort(key=lambda m: m.start())
+                    
+                    # 删除除最后一个之外的所有匹配
+                    removed_count = 0
+                    for match in all_matches[:-1]:
+                        content = content.replace(match.group(0), '', 1)
+                        removed_count += 1
+                    
+                    print(f"✅ 保留最后一个，删除了 {removed_count} 个重复的 togglePreprocess 函数")
+                    
+                    # 写回文件
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                    
+                    self.update_report.append(f"✅ 清理了 {removed_count} 个重复的 togglePreprocess 函数")
+                    return True
+                else:
+                    print("ℹ️ 只有一个 togglePreprocess 函数定义，保持不变")
+                    return False
+            else:
+                print("ℹ️ 没有发现 togglePreprocess 函数定义")
+                
+        except Exception as e:
+            print(f"⚠️ 清理重复函数时出错：{e}")
+        
+        return False
             
     def run(self):
         """执行更新流程"""

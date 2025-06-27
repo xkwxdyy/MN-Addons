@@ -415,6 +415,60 @@ if (self.isMac) {
 - 错误处理：使用 try-catch 包裹，避免影响主功能
 - 上下文传递：通过 context 对象传递所有必要数据
 
+### 7.4 update.py 配置维护经验（2025.6.27）
+
+**问题背景**：
+使用 `update.py` 脚本更新插件后，之前的解耦工作被撤销，需要正确配置脚本以维护解耦架构。
+
+**主要问题与解决方案**：
+
+1. **togglePreprocess 函数处理**：
+   - **问题**：update.py 会删除必要的函数或添加重复的函数
+   - **解决**：
+     - 在 main.js 配置中添加 togglePreprocess 函数定义
+     - 在 webviewController.js 使用 `insert_after_once` 类型避免重复
+     - 注释掉 utils.js 中的 togglePreprocess 添加配置
+
+2. **重复函数清理**：
+   - **问题**：webviewController.js 中出现多个重复的 togglePreprocess 函数
+   - **解决**：实现智能清理函数
+   ```python
+   def clean_duplicate_togglePreprocess(self, file_path):
+       # 匹配两种模式：带/不带 "dynamic" 注释
+       # 保留最后一个，删除其他的
+       # 按位置排序后处理
+   ```
+
+3. **insert_after_once 类型支持**：
+   - **功能**：避免重复插入相同的代码块
+   - **实现**：在 apply_user_modifications 中检查关键代码是否已存在
+   ```python
+   if mod['type'] == 'insert_after_once':
+       # 提取关键代码检查是否已存在
+       if 'togglePreprocess: function' in key_content:
+           continue  # 跳过插入
+   ```
+
+4. **配置示例**：
+   ```python
+   # 用户自定义文件列表
+   self.user_custom_files = {
+       'xdyy_utils_extensions.js',
+       'xdyy_custom_actions_registry.js', 
+       'xdyy_menu_registry.js'  # 新增菜单注册表
+   }
+   
+   # 在 update_directory 中添加清理调用
+   if modified_file == 'webviewController.js':
+       self.clean_duplicate_togglePreprocess(file_path)
+   ```
+
+**关键要点**：
+- 理解每个文件需要哪些函数定义
+- 使用智能的重复检测和清理逻辑
+- 支持条件插入避免重复修改
+- 在正确的时机调用清理函数
+
 ---
 
 ## 8. 调试与故障排除
@@ -521,6 +575,7 @@ toolbarConfig.save()
 
 ## 附录：版本历史
 
+- **2025.6.27**：添加 update.py 配置维护经验，解决解耦架构被撤销的问题
 - **2025.6.27**：添加注册表解耦实践经验，总结常见问题和解决方案
 - **2025.6.27**：添加日志使用规范，统一使用 MNUtil.log 替代 console.log
 - **2025.6.27**：添加缩进规范、重构文档结构、完善注册表模式

@@ -60,7 +60,61 @@
         "--tags",
         "MN-Toolbar 解耦 注册表模式 JSB框架"
       ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "remember",
+      "timestamp": "2025-06-27T07:40:47.829Z",
+      "args": [
+        "MN Toolbar Pro 更新脚本问题处理记录（2025-06-27）\n\n## 问题背景\n用户在使用 update.py 更新 MN Toolbar Pro 时，发现脚本没有正确恢复用户的自定义内容。主要涉及的文件是 utils.js，其中包含了大量用户自定义的菜单模板和功能。\n\n## 已识别的用户自定义内容\n1. **preprocess 相关功能**：\n   - defaultWindowState 中的 preprocess: false\n   - togglePreprocess() 方法\n   - 相关的 UI 更新逻辑\n\n2. **referenceIds 相关功能**：\n   - toolbarConfig.referenceIds 的初始化\n   - save 方法中的 case \"MNToolbar_referenceIds\"\n   - 相关的导入导出功能\n\n3. **大量的菜单模板**（约900行）：\n   - menu_comment（评论菜单）\n   - menu_think（思考菜单）\n   - menu_study（学习菜单）\n   - menu_reference（文献菜单）\n   - menu_text（文本菜单）\n   - menu_card（卡片菜单）\n   - menu_makeCards（制卡菜单）\n   - 等等...\n\n4. **自定义动作**：\n   - custom1-custom20 的动作定义\n   - 包括制卡、思考、评论、学习等功能\n\n5. **文件末尾的扩展加载**：\n   ```javascript\n   JSB.require('xdyy_utils_extensions')\n   if (typeof initXDYYExtensions === 'function') {\n     initXDYYExtensions()\n   }\n   if (typeof extendToolbarConfigInit === 'function') {\n     extendToolbarConfigInit()\n   }\n   ```\n\n## 已完成的修复\n1. 修改了 update.py，添加了 utils.js 的用户修改保留规则\n2. 成功恢复了 preprocess、referenceIds 和扩展文件加载等核心功能\n3. 创建了 user_menu_templates.txt 保存菜单模板内容\n4. 创建了 user_custom_menus.js 作为备用方案\n\n## 当前状态\n- update.py 可以恢复部分用户修改，但菜单模板部分由于内容过多，需要更好的解决方案\n- 用户的自定义菜单功能暂时未能完全恢复\n- 建议使用更解耦的方式管理这些自定义功能\n\n## 待解决问题\n1. 如何优雅地恢复大量的菜单模板内容\n2. 是否应该将菜单模板分离到独立文件\n3. 如何确保更新脚本的健壮性和可维护性",
+        "--tags",
+        "MNToolbar update.py utils.js 自定义菜单 未完成"
+      ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "recall",
+      "timestamp": "2025-06-27T07:41:52.586Z",
+      "args": []
+    },
+    {
+      "from": "recall-waiting",
+      "command": "init",
+      "timestamp": "2025-06-27T07:45:40.478Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/mntoolbar"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-06-27T07:46:00.168Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/mntoolbar"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "action",
+      "timestamp": "2025-06-27T08:06:17.314Z",
+      "args": [
+        "python-backend-developer"
+      ]
+    },
+    {
+      "from": "role_activated_with_memory",
+      "command": "remember",
+      "timestamp": "2025-06-27T08:34:54.622Z",
+      "args": [
+        "MN Toolbar Pro - update.py 配置维护经验（2025.6.27）\n\n## 问题背景\n用户在完成代码解耦后，运行 update.py 更新脚本时，之前的解耦工作被撤销了。主要表现为：\n1. main.js 中的 togglePreprocess 函数被错误删除\n2. webviewController.js 中的 togglePreprocess 函数全部被删除（应该保留一个）\n\n## 解决方案\n\n### 1. 修改 update.py 配置\n- 在 main.js 配置中添加 togglePreprocess 函数定义\n- 使用 insert_after_once 类型避免重复插入\n- 注释掉 utils.js 中的 togglePreprocess 添加配置\n\n### 2. 实现智能清理函数\n```python\ndef clean_duplicate_togglePreprocess(self, file_path):\n    # 匹配两种模式：带/不带 \"dynamic\" 注释的函数\n    # 按位置排序，保留最后一个，删除其他的\n```\n\n### 3. 支持 insert_after_once 类型\n在 apply_user_modifications 中添加逻辑，检查关键代码是否已存在，避免重复插入。\n\n### 4. 关键配置示例\n```python\n# 添加菜单注册表到用户自定义文件列表\nself.user_custom_files = {\n    'xdyy_utils_extensions.js',\n    'xdyy_custom_actions_registry.js',\n    'xdyy_menu_registry.js'\n}\n\n# 在 webviewController.js 修改后调用清理\nif modified_file == 'webviewController.js':\n    self.clean_duplicate_togglePreprocess(file_path)\n```\n\n## 关键要点\n1. 理解每个文件需要哪些函数定义\n2. 使用智能的重复检测和清理逻辑\n3. 支持条件插入避免重复修改\n4. 在正确的时机调用清理函数\n5. 测试验证：运行后检查函数数量是否正确",
+        "--tags",
+        "MNToolbar update.py 解耦维护 配置管理"
+      ]
     }
   ],
-  "lastUpdated": "2025-06-27T07:06:21.102Z"
+  "lastUpdated": "2025-06-27T08:34:54.634Z"
 }

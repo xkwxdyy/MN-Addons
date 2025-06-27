@@ -141,6 +141,12 @@ viewWillLayoutSubviews: function() {
     self.view.layer.opacity = opacity
     // self.webAppButton.setTitleForState(`${opacity*100}%`, 0);
   },
+  // 夏大鱼羊 - begin
+  togglePreprocess: function () {
+    self.checkPopover()
+    toolbarConfig.togglePreprocess()
+  },
+  // 夏大鱼羊 - end
   changeScreen: function(sender) {
     let self = getToolbarController()
     let clickDate = Date.now()
@@ -175,13 +181,6 @@ viewWillLayoutSubviews: function() {
     commandTable.push()
     self.popoverController = MNUtil.getPopoverAndPresent(sender, commandTable,200)
   },
-  // 夏大鱼羊 - begin
-  // dynamic 这里还需要再写一次下面的 togglePreprocess 函数
-  togglePreprocess: function () {
-    self.checkPopover()
-    toolbarConfig.togglePreprocess()
-  },
-  // 夏大鱼羊 - end
   toggleToolbarDirection: function (source) {
     self.checkPopover()
     toolbarConfig.toggleToolbarDirection(source)

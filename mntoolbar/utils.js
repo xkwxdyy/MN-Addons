@@ -5148,24 +5148,6 @@ class toolbarConfig {
     return actionDes
   
   }
-  // 夏大鱼羊 - begin
-  static togglePreprocess(){
-    if (!toolbarUtils.checkSubscribe(true)) {
-      return
-    }
-    if (toolbarConfig.getWindowState("preprocess") === false) {
-      toolbarConfig.windowState.preprocess = true
-      toolbarConfig.save("MNToolbar_windowState")
-      MNUtil.showHUD("卡片预处理模式：✅ 开启")
-
-    }else{
-      toolbarConfig.windowState.preprocess = false
-      toolbarConfig.save("MNToolbar_windowState")
-      MNUtil.showHUD("卡片预处理模式：❌ 关闭")
-    }
-    MNUtil.postNotification("refreshToolbarButton",{})
-  }
-  // 夏大鱼羊 - end
   static getWindowState(key){
     //用户已有配置可能不包含某些新的key，用这个方法做兼容性处理
     if (this.windowState[key] !== undefined) {

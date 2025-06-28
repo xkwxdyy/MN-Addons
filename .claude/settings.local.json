@@ -22,7 +22,8 @@
       "Bash(do echo \"函数名: $func\")",
       "Bash(done)",
       "Bash(echo:*)",
-      "WebFetch(domain:www.wolai.com)"
+      "WebFetch(domain:www.wolai.com)",
+      "Bash(grep -n \"renewNote\" xdyyutils.js)"
     ],
     "deny": []
   }

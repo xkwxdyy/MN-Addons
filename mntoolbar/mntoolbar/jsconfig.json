@@ -5,7 +5,11 @@
     "lib": ["ES2015", "ES2017", "ES2019", "ES2020"],
     "checkJs": false,
     "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "baseUrl": ".",
+    "paths": {
+      "*": ["./*"]
+    }
   },
   "include": [
     "main.js",
@@ -13,9 +17,12 @@
     "settingController.js",
     "utils.js",
     "xdyy_utils_extensions.js",
-    "xdyy_custom_actions_registry.js"
+    "xdyy_custom_actions_registry.js",
+    "xdyy_button_registry.js",
+    "xdyy_menu_registry.js"
   ],
   "exclude": [
-    "/Users/linlifei/extension/FeliksPro/.out/index.d.ts"
+    "node_modules",
+    "*.mnaddon"
   ]
 }

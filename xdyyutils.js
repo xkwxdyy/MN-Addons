@@ -578,6 +578,11 @@ class MNMath {
    */
   static renewNote(note) {
     this.toNoExceptVersion(note)
+    
+    // 处理链接相关问题
+    this.convertLinksToNewVersion(note)
+    this.cleanupBrokenLinks(note)
+    this.fixMergeProblematicLinks(note)
     switch (this.getNoteType(note)) {
       case "归类":
         /**
@@ -2304,6 +2309,78 @@ class MNMath {
     note.addChild(templateNote.note);
     this.linkParentNote(templateNote);
     return templateNote;
+  }
+
+  /**
+   * 将旧版本的 marginnote3app:// 链接转换为 marginnote4app:// 链接
+   * 
+   * @param {MNNote} note - 要处理的卡片
+   */
+  static convertLinksToNewVersion(note) {
+    for (let i = note.comments.length - 1; i >= 0; i--) {
+      let comment = note.comments[i]
+      if (
+        comment.type === "TextNote" &&
+        comment.text.startsWith("marginnote3app://note/")
+      ) {
+        let targetNoteId = comment.text.match(/marginnote3app:\/\/note\/(.*)/)[1]
+        let targetNote = MNNote.new(targetNoteId, false) // 不弹出警告
+        if (targetNote) {
+          note.removeCommentByIndex(i)
+          note.appendNoteLink(targetNote, "To")
+          note.moveComment(note.comments.length - 1, i)
+        } else {
+          note.removeCommentByIndex(i)
+        }
+      }
+    }
+  }
+
+  /**
+   * 清理失效的链接（目标卡片不存在的链接）
+   * 
+   * @param {MNNote} note - 要清理的卡片
+   */
+  static cleanupBrokenLinks(note) {
+    for (let i = note.comments.length - 1; i >= 0; i--) {
+      let comment = note.comments[i]
+      if (
+        comment.type === "TextNote" &&
+        (
+          comment.text.startsWith("marginnote3app://note/") ||
+          comment.text.startsWith("marginnote4app://note/")
+        )
+      ) {
+        let targetNoteId = comment.text.match(/marginnote[34]app:\/\/note\/(.*)/)[1]
+        if (!targetNoteId.includes("/summary/")) {  // 防止把概要的链接删掉了
+          let targetNote = MNNote.new(targetNoteId, false) // 不弹出警告
+          if (!targetNote) {
+            note.removeCommentByIndex(i)
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * 修复合并造成的链接问题
+   * 当卡片被合并后，链接可能指向旧的 noteId，需要更新为 groupNoteId
+   * 
+   * @param {MNNote} note - 要修复的卡片
+   */
+  static fixMergeProblematicLinks(note) {
+    let comments = note.MNComments
+    comments.forEach((comment) => {
+      if (comment.type === "linkComment") {
+        let targetNote = MNNote.new(comment.text, false) // 不弹出警告
+        if (targetNote && targetNote.groupNoteId) {
+          if (targetNote.groupNoteId !== comment.text) {
+            // 更新链接为正确的 groupNoteId
+            comment.text = `marginnote${MNUtil.isMN4() ? '4' : '3'}app://note/${targetNote.groupNoteId}`
+          }
+        }
+      }
+    })
   }
 }
 

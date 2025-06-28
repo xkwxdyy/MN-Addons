@@ -313,8 +313,194 @@ class MNMath {
       return;
     }
 
+    // 在移动之前先提取 markdown 链接
+    let marginNoteLinks = this.extractMarginNoteLinksFromComments(note, moveIndexArr);
+    MNUtil.log(`🔍 找到 ${marginNoteLinks.length} 个 MarginNote 链接`);
+    
     // 移动内容到默认字段
     this.moveCommentsArrToField(note, moveIndexArr, defaultField);
+    
+    // 处理之前提取的 MarginNote 链接
+    if (marginNoteLinks.length > 0) {
+      MNUtil.log("🔗 开始处理 MarginNote 链接...");
+      this.processExtractedMarginNoteLinks(note, marginNoteLinks);
+    }
+  }
+  
+  /**
+   * 从评论中提取 MarginNote 链接
+   * 
+   * @param {MNNote} note - 当前卡片
+   * @param {number[]} indexArr - 要检查的评论索引数组
+   * @returns {Array<{text: string, url: string}>} - 找到的 MarginNote 链接数组
+   */
+  static extractMarginNoteLinksFromComments(note, indexArr) {
+    let marginNoteLinks = [];
+    
+    MNUtil.log(`📋 检查 ${indexArr.length} 个评论索引: ${indexArr.join(', ')}`);
+    
+    indexArr.forEach(index => {
+      let comment = note.MNComments[index];
+      if (!comment) {
+        MNUtil.log(`❌ 索引 ${index} 处没有评论`);
+        return;
+      }
+      
+      MNUtil.log(`🔍 索引 ${index}: 类型=${comment.type}, 内容=${comment.text ? comment.text.substring(0, 50) + '...' : '无'}`);
+      
+      if (comment.type !== "markdownComment") {
+        MNUtil.log(`⏭️ 跳过非 markdown 评论`);
+        return;
+      }
+      
+      // 提取所有 Markdown 格式的链接 [文本](URL)
+      let markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+      let matches;
+      
+      while ((matches = markdownLinkRegex.exec(comment.text)) !== null) {
+        let linkText = matches[1];
+        let linkUrl = matches[2];
+        
+        MNUtil.log(`🔗 找到链接: [${linkText}](${linkUrl})`);
+        
+        // 检查是否是 MarginNote 链接
+        if (this.isMarginNoteLink(linkUrl)) {
+          marginNoteLinks.push({
+            text: linkText,
+            url: linkUrl
+          });
+          MNUtil.log(`✅ 是 MarginNote 链接，已添加`);
+        } else {
+          MNUtil.log(`❌ 不是 MarginNote 链接，跳过`);
+        }
+      }
+    });
+    
+    MNUtil.log(`📊 总共找到 ${marginNoteLinks.length} 个 MarginNote 链接`);
+    return marginNoteLinks;
+  }
+  
+  /**
+   * 判断是否是 MarginNote 链接
+   * 
+   * @param {string} url - 要检查的 URL
+   * @returns {boolean} - 是否是 MarginNote 链接
+   */
+  static isMarginNoteLink(url) {
+    return /^marginnote[34]app:\/\/note\//.test(url);
+  }
+  
+  /**
+   * 获取卡片的最后一个字段名
+   * 
+   * @param {MNNote} note - 目标卡片
+   * @returns {string|null} - 最后一个字段名，如果没有字段则返回 null
+   */
+  static getLastFieldOfNote(note) {
+    let commentsObj = this.parseNoteComments(note);
+    let htmlComments = commentsObj.htmlCommentsObjArr;
+    
+    if (htmlComments.length === 0) {
+      return null;
+    }
+    
+    // 返回最后一个 HTML 字段的文本
+    return htmlComments[htmlComments.length - 1].text;
+  }
+  
+  /**
+   * 移除卡片最后一个字段中的重复链接
+   * 如果相同的链接在最后一个字段中出现多次，只保留第一个
+   * 
+   * @param {MNNote} note - 要处理的卡片
+   */
+  static removeDuplicateLinksInLastField(note) {
+    let commentsObj = this.parseNoteComments(note);
+    let htmlComments = commentsObj.htmlCommentsObjArr;
+    
+    if (htmlComments.length === 0) return;
+    
+    // 获取最后一个字段的评论索引范围
+    let lastField = htmlComments[htmlComments.length - 1];
+    let fieldIndexRange = lastField.excludingFieldBlockIndexArr;
+    
+    if (fieldIndexRange.length === 0) return;
+    
+    // 收集这个字段范围内的所有链接
+    let linksInField = {};
+    let duplicateIndices = [];
+    
+    fieldIndexRange.forEach(index => {
+      let comment = note.MNComments[index];
+      if (comment && comment.type === "linkComment") {
+        let linkUrl = comment.text;
+        if (linksInField[linkUrl]) {
+          // 这是重复的链接，标记要删除
+          duplicateIndices.push(index);
+        } else {
+          // 第一次出现，记录下来
+          linksInField[linkUrl] = index;
+        }
+      }
+    });
+    
+    // 从后向前删除重复的链接（避免索引混乱）
+    duplicateIndices.sort((a, b) => b - a);
+    duplicateIndices.forEach(index => {
+      note.removeCommentByIndex(index);
+    });
+  }
+  
+  /**
+   * 处理已提取的 MarginNote 链接
+   * 
+   * @param {MNNote} note - 当前卡片
+   * @param {Array<{text: string, url: string}>} marginNoteLinks - 已提取的链接数组
+   */
+  static processExtractedMarginNoteLinks(note, marginNoteLinks) {
+    // 定义允许链接的目标字段
+    const allowedTargetFields =  ["相关链接", "应用"];
+    
+    // 处理每个找到的 MarginNote 链接
+    marginNoteLinks.forEach(linkInfo => {
+      try {
+        MNUtil.log(`📎 处理链接: ${linkInfo.text} -> ${linkInfo.url}`);
+        
+        // 从链接中提取 noteId
+        let targetNoteId = linkInfo.url.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1];
+        if (!targetNoteId) {
+          MNUtil.log("❌ 无法提取 noteId");
+          return;
+        }
+        
+        // 获取目标卡片
+        let targetNote = MNNote.new(targetNoteId, false);
+        if (!targetNote) {
+          MNUtil.log("❌ 找不到目标卡片");
+          return;
+        }
+        
+        // 检查目标卡片的最后一个字段是否在允许列表中
+        let targetLastField = this.getLastFieldOfNote(targetNote);
+        MNUtil.log(`🏷️ 目标卡片最后字段: ${targetLastField || "无"}`);
+        
+        if (!targetLastField || !allowedTargetFields.includes(targetLastField)) {
+          MNUtil.log(`⚠️ 目标卡片最后字段不在允许列表中`);
+          return;
+        }
+        
+        // 添加单向链接（从 note 到 targetNote）
+        targetNote.appendNoteLink(note, "To");
+        MNUtil.log(`✅ 已添加链接到目标卡片`);
+        
+        // 对目标卡片的最后一个字段进行链接去重
+        this.removeDuplicateLinksInLastField(targetNote);
+        MNUtil.log(`🧹 已对目标卡片进行链接去重`);
+        
+      } catch (error) {
+        MNUtil.log("❌ 处理 Markdown 链接时出错: " + error.message);
+      }
+    });
   }
 
   /**

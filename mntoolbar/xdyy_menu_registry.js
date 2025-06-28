@@ -73,8 +73,6 @@ function registerAllMenuTemplates() {
   // menu_think
   global.registerMenuTemplate("menu_think", {
     action: "moveUpThoughtPointsToBottom",
-    // 本来想双击变成两张卡片同时上移的，但好像 action 本身会先执行所以失效了
-    // doubleClick: "moveLastTwoCommentsInBiLinkNotesToThought",
     onLongPress: {
       action: "menu",
       menuWidth: 330,
@@ -83,26 +81,26 @@ function registerAllMenuTemplates() {
           action: "moveUpThoughtPointsToTop",
           menuTitle: "思考点🔝思考区「上方」"
         },
-        {
-          action: "addThoughtPoint",  
-          menuTitle: "➕思考点"
-        },
-        {
-          action: "addThoughtPointAndMoveLastCommentToThought",
-          menuTitle: "➕思考点 & 最后1️⃣💬⬆️思考",
-        },
-        {
-          action: "addThoughtPointAndMoveNewCommentsToThought",
-          menuTitle: "➕思考点 & 新💬⬆️思考",
-        },
-        {
-          action: "moveLastCommentToThought",
-          menuTitle: "最后1️⃣💬⬆️思考"
-        },
-        {
-          action: "moveLastTwoCommentsToThought",
-          menuTitle: "最后2️⃣💬⬆️思考"
-        }
+        // {
+        //   action: "addThoughtPoint",  
+        //   menuTitle: "➕思考点"
+        // },
+        // {
+        //   action: "addThoughtPointAndMoveLastCommentToThought",
+        //   menuTitle: "➕思考点 & 最后1️⃣💬⬆️思考",
+        // },
+        // {
+        //   action: "addThoughtPointAndMoveNewCommentsToThought",
+        //   menuTitle: "➕思考点 & 新💬⬆️思考",
+        // },
+        // {
+        //   action: "moveLastCommentToThought",
+        //   menuTitle: "最后1️⃣💬⬆️思考"
+        // },
+        // {
+        //   action: "moveLastTwoCommentsToThought",
+        //   menuTitle: "最后2️⃣💬⬆️思考"
+        // }
       ]
     }
   });
@@ -642,31 +640,31 @@ function registerAllMenuTemplates() {
     ]
   });
 
-  // menu_card_excerpt
-  global.registerMenuTemplate("menu_card_excerpt", {
+  // menu_excerpt
+  global.registerMenuTemplate("menu_excerpt", {
     action: "moveToExcerptPartBottom",
-    onLongPress: {
-      action: "menu",
-      menuWidth: 350,
-      menuItems: [
-        {
-          action: "deleteCommentsByPopupAndMoveNewContentToExcerptAreaTop",
-          menuTitle: "删除某些评论后移动新内容 ⇨ 摘录区「🔝 top」",
-        },
-        {
-          action: "deleteCommentsByPopupAndMoveNewContentToExcerptAreaBottom",
-          menuTitle: "删除某些评论后移动新内容 ⇨ 摘录区「⬇️ bottom」",
-        },
-        {
-          action: "moveToExcerptPartBottom",
-          menuTitle: "⇨ 摘录区「⬇️ bottom」",
-        },
-        {
-          action: "moveToExcerptPartTop",
-          menuTitle: "⇨ 摘录区「🔝 top」",
-        }
-      ]
-    }
+    // onLongPress: {
+    //   action: "menu",
+    //   menuWidth: 350,
+    //   menuItems: [
+    //     {
+    //       action: "deleteCommentsByPopupAndMoveNewContentToExcerptAreaTop",
+    //       menuTitle: "删除某些评论后移动新内容 ⇨ 摘录区「🔝 top」",
+    //     },
+    //     {
+    //       action: "deleteCommentsByPopupAndMoveNewContentToExcerptAreaBottom",
+    //       menuTitle: "删除某些评论后移动新内容 ⇨ 摘录区「⬇️ bottom」",
+    //     },
+    //     {
+    //       action: "moveToExcerptPartBottom",
+    //       menuTitle: "⇨ 摘录区「⬇️ bottom」",
+    //     },
+    //     {
+    //       action: "moveToExcerptPartTop",
+    //       menuTitle: "⇨ 摘录区「🔝 top」",
+    //     }
+    //   ]
+    // }
   });
 
   // menu_MN
@@ -905,13 +903,6 @@ function registerAllMenuTemplates() {
       ]
     }
   });
-
-  // 特殊模板处理
-  global.registerMenuTemplate("addTemplate", JSON.stringify({
-    action: "paste",
-    target: "title",
-    content: "{{clipboardText}}"
-  }));
 
   global.registerMenuTemplate("hideAddonBar", JSON.stringify({
     action: "hideAddonBar"

@@ -2611,7 +2611,7 @@ function registerAllCustomActions() {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNote.descendantNodes.descendant.forEach((descendantNote) => {
-        toolbarUtils.TemplateMakeNote(descendantNote);
+        MNMath.makeCard(descendantNote);
         descendantNote.refreshAll();
       });
     });
@@ -2632,11 +2632,10 @@ function registerAllCustomActions() {
         MNUtil.undoGrouping(() => {
           try {
             const inputCommentText = alert.textFieldAtIndex(0).text;
+            // 按钮索引从1开始（0是取消按钮）
             const selectedIndex = buttonIndex - 1;
-            if (selectedIndex >= 0 && selectedIndex < htmlSetting.length && inputCommentText) {
-              // 由于原始代码包含复杂的 switch 语句，这里简化处理
-              focusNote.addHtmlComment(htmlSetting[selectedIndex]);
-              focusNote.appendTextComment(inputCommentText);
+            if (selectedIndex >= 0 && selectedIndex < htmlSetting.length) {
+              focusNote.appendMarkdownComment(HtmlMarkdownUtils.createHtmlMarkdownText(inputCommentText, htmlSetting[selectedIndex].type));
             }
           } catch (error) {
             MNUtil.showHUD(error);
@@ -2879,8 +2878,7 @@ function registerAllCustomActions() {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
-        let newContentsIndexArr = focusNote.getNewContentIndexArr();
-        focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "excerpt");
+        MNMath.autoMoveNewContentToField(focusNote,"摘录")
       } catch (error) {
         MNUtil.showHUD(error);
       }
@@ -3110,9 +3108,7 @@ function registerAllCustomActions() {
     MNUtil.undoGrouping(() => {
       try {
         focusNotes.forEach((focusNote) => {
-          // let newContentsIndexArr = focusNote.getNewContentIndexArr()
-          // focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think")
-          toolbarUtils.moveUpThoughtPointsToBottom(focusNote);
+          MNMath.autoMoveNewContentToField(focusNote, "相关思考");
         });
       } catch (error) {
         MNUtil.showHUD(error);
@@ -3126,8 +3122,7 @@ function registerAllCustomActions() {
     MNUtil.undoGrouping(() => {
       try {
         focusNotes.forEach((focusNote) => {
-          let newContentsIndexArr = focusNote.getNewContentIndexArr();
-          focusNote.moveCommentsByIndexArrTo(newContentsIndexArr, "think", false);
+          MNMath.autoMoveNewContentToField(focusNote, "相关思考", false);
         });
       } catch (error) {
         MNUtil.showHUD(error);
@@ -4041,7 +4036,7 @@ function registerAllCustomActions() {
       MNUtil.undoGrouping(() => {
         focusNotes.forEach((focusNote) => {
           if (focusNote.excerptText) {
-            focusNote.toNoExceptVersion();
+            MNMath.toNoExceptVersion(focusNote);
           }
         });
       });
@@ -4177,12 +4172,7 @@ function registerAllCustomActions() {
               MNUtil.undoGrouping(() => {
                 const selectedIndex = buttonIndex - 1;
                 if (selectedIndex >= 0 && selectedIndex < htmlSetting.length) {
-                  // 由于原始代码包含复杂的 switch 语句，这里简化处理
-                  const selectedConfig = htmlSetting[selectedIndex];
-                  focusNote.mergeIntoParentNote();
-                  if (focusNote.parentNote) {
-                    focusNote.parentNote.addHtmlComment(selectedConfig);
-                  }
+                  focusNote.mergeInto(focusNote.parentNote, htmlSetting[selectedIndex].type)
                 }
               });
             } catch (error) {

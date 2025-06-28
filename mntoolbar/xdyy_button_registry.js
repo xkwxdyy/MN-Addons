@@ -55,7 +55,19 @@ function registerAllButtons() {
     image: "makeCards",
     templateName: "TemplateMakeNotes"
   });
+
+  global.registerButton("custom3", {
+    name: "增加模板",
+    image: "addTemplate",
+    templateName: "addTemplate"
+  });
   
+  global.registerButton("custom10", {
+    name: "评论",
+    image: "comment",
+    templateName: "menu_comment"
+  });
+
   // 评论相关按钮
   global.registerButton("custom20", {
     name: "htmlMarkdown 评论",
@@ -63,16 +75,11 @@ function registerAllButtons() {
     templateName: "menu_htmlmdcomment"
   });
   
-  global.registerButton("custom9", {
-    name: "思考",
-    image: "think",
-    templateName: "menu_think"
-  });
-  
-  global.registerButton("custom10", {
-    name: "评论",
-    image: "comment",
-    templateName: "menu_comment"
+    // 卡片操作
+  global.registerButton("custom5", {
+    name: "卡片",
+    image: "card",
+    templateName: "menu_card"
   });
   
   // 学习和模板
@@ -81,24 +88,23 @@ function registerAllButtons() {
     image: "study",
     templateName: "menu_study"
   });
-  
-  global.registerButton("custom3", {
-    name: "增加模板",
-    image: "addTemplate",
-    templateName: "addTemplate"
-  });
-  
-  // 卡片操作
-  global.registerButton("custom5", {
-    name: "卡片",
-    image: "card",
-    templateName: "menu_card"
+
+  global.registerButton("custom9", {
+    name: "思考",
+    image: "think",
+    templateName: "menu_think"
   });
   
   global.registerButton("custom4", {
     name: "文献",
     image: "reference",
     templateName: "menu_reference"
+  });
+
+  global.registerButton("custom7", {
+    name: "隐藏插件栏",
+    image: "hideAddonBar",
+    templateName: "hideAddonBar"
   });
   
   global.registerButton("custom6", {
@@ -118,12 +124,6 @@ function registerAllButtons() {
     name: "Snipaste",
     image: "snipaste",
     description: "Snipaste"
-  });
-  
-  global.registerButton("custom7", {
-    name: "隐藏插件栏",
-    image: "hideAddonBar",
-    templateName: "hideAddonBar"
   });
   
   global.registerButton("custom11", {
@@ -164,7 +164,7 @@ function registerAllButtons() {
   global.registerButton("custom13", {
     name: "[卡片弹窗替换]摘录",
     image: "excerpt_white",
-    templateName: "menu_card_excerpt"
+    templateName: "menu_excerpt"
   });
   
   global.registerButton("custom14", {

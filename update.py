@@ -764,7 +764,7 @@ if (typeof extendToolbarConfigInit === 'function') {
     "custom12":{name:"预处理",image:"preprocess_red",description: this.template("togglePreprocess")},
     "custom13":{name:"选中文本",image:"handtool_text",description: this.template("menu_handtool_text")},
     "custom14":{name:"MN 功能",image:"menu_MN",description: this.template("menu_MN")},
-    "custom16":{name:"卡片摘录",image:"card_excerpt",description: this.template("menu_card_excerpt")},'''
+    "custom16":{name:"卡片摘录",image:"card_excerpt",description: this.template("menu_excerpt")},'''
             
             # 检查是否需要添加自定义动作
             for action_key in ["custom1", "custom2", "custom3", "custom4", "custom5"]:

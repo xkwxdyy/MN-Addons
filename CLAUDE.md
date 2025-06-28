@@ -1541,6 +1541,36 @@ MNUtil.copyJSON({
 // MNUtil.addErrorLog 会自动复制错误信息
 ```
 
+### 5. 常见 API 使用错误
+
+#### 5.1 MNNote 静态方法调用错误
+```javascript
+// ❌ 错误：MNNote.focusNote 不是一个有效的属性
+let focusNote = MNNote.focusNote;  // 报错：undefined is not an object
+
+// ✅ 正确：使用 getFocusNote() 方法
+let focusNote = MNNote.getFocusNote();
+```
+
+#### 5.2 数据类型不一致问题
+```javascript
+// ❌ 错误：混用 MNNote 实例和原生 note 对象
+let focusNote = MNNote.getFocusNote();
+let targetNotes = [focusNote];  // 错误：应该是原生对象数组
+
+// ✅ 正确：使用 .note 属性获取原生对象
+let focusNote = MNNote.getFocusNote();
+let targetNotes = [focusNote.note];  // 正确：原生对象数组
+
+// ✅ 正确：处理子笔记数组
+targetNotes = rootNote.childNotes.map(mnNote => mnNote.note);
+```
+
+**重要提示**：
+- MNNote 类的静态方法返回的是 MNNote 实例（封装对象）
+- 当需要原生 note 对象时，使用 `.note` 属性访问
+- 批量操作时确保数组中的数据类型一致
+
 ## 📚 API 使用示例
 
 ```javascript

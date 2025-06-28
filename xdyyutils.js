@@ -612,9 +612,9 @@ class MNMath {
       // 根据范围获取目标卡片
       switch (scope) {
         case "selected":
-          let focusNote = MNNote.focusNote;
+          let focusNote = MNNote.getFocusNote();
           if (focusNote) {
-            targetNotes = [focusNote];
+            targetNotes = [focusNote.note];
           } else {
             MNUtil.showHUD("请先选择一个卡片");
             return;
@@ -622,12 +622,12 @@ class MNMath {
           break;
         case "children":
           if (!rootNote) {
-            rootNote = MNNote.focusNote;
+            rootNote = MNNote.getFocusNote();
           }
           if (rootNote) {
             // rootNote.childNotes 返回 MNNote 对象数组，需要转换为原生 note 对象数组
             targetNotes = (rootNote.childNotes || []).map(mnNote => mnNote.note);
-            targetNotes.push(rootNote)
+            targetNotes.push(rootNote.note)
           } else {
             MNUtil.showHUD("请先选择一个根卡片");
             return;
@@ -635,11 +635,11 @@ class MNMath {
           break;
         case "descendants":
           if (!rootNote) {
-            rootNote = MNNote.focusNote;
+            rootNote = MNNote.getFocusNote();
           }
           if (rootNote) {
             targetNotes = this.getAllDescendantNotes(rootNote);
-            targetNotes.push(rootNote)
+            targetNotes.push(rootNote.note)
           } else {
             MNUtil.showHUD("请先选择一个根卡片");
             return;
@@ -769,7 +769,7 @@ class MNMath {
           
         case "selected":
           // 获取当前选中的卡片
-          let focusNote = MNNote.focusNote;
+          let focusNote = MNNote.getFocusNote();
           if (focusNote) {
             targetNotes = [focusNote.note];
           } else {
@@ -781,7 +781,7 @@ class MNMath {
         case "children":
           // 获取指定卡片的直接子卡片
           if (!rootNote) {
-            rootNote = MNNote.focusNote;
+            rootNote = MNNote.getFocusNote();
           }
           if (rootNote) {
             // rootNote.childNotes 返回 MNNote 对象数组，需要转换为原生 note 对象数组
@@ -795,7 +795,7 @@ class MNMath {
         case "descendants":
           // 获取指定卡片的所有后代卡片
           if (!rootNote) {
-            rootNote = MNNote.focusNote;
+            rootNote = MNNote.getFocusNote();
           }
           if (rootNote) {
             targetNotes = this.getAllDescendantNotes(rootNote);

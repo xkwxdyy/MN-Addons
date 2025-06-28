@@ -1,0 +1,8 @@
+{
+  "addonid": "marginnote.extension.mntask",
+  "author": "xiakangwei",
+  "title": "MNTask",
+  "version": "1.0.0",
+  "marginnote_version_min": "3.7.11",
+  "cert_key": ""
+}

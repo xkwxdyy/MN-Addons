@@ -456,10 +456,29 @@ class MNMath {
       try {
         // 从链接 URL 中提取 noteId
         let targetNoteId = linkObj.link.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1]
-        if (targetNoteId && targetNoteId !== currentParentNote.noteId) {
+        if (targetNoteId) {
           // 检查这个链接是否指向一个可能的父卡片
           let targetNote = MNNote.new(targetNoteId, false) // 不弹出警告
-          if (targetNote && this.isPotentialParentNote(targetNote, note)) {
+          if (!targetNote) return
+          
+          // 保护规则：
+          // 1. 排除当前要链接的父卡片
+          if (currentParentNote && targetNoteId === currentParentNote.noteId) {
+            return
+          }
+          
+          // 2. 保护直接的父子关系（即使不是归类卡片）
+          if (note.parentNote && targetNoteId === note.parentNote.noteId) {
+            return // 保留与直接父卡片的链接
+          }
+          
+          // 3. 保护子卡片到当前卡片的链接
+          if (targetNote.parentNote && targetNote.parentNote.noteId === note.noteId) {
+            return // 保留与直接子卡片的链接
+          }
+          
+          // 只有当目标卡片是潜在的父卡片时，才考虑清理
+          if (this.isPotentialParentNote(targetNote, note)) {
             oldParentNotesToCleanup.push({
               targetNote: targetNote,
               linkText: linkObj.link

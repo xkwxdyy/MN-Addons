@@ -21,7 +21,8 @@
       "Bash(for func in clearAllComments getFirstTitleLinkWord getTitleLinkWordsArr ifOldReferenceNote ifReferenceNote move pasteChildNoteById pasteChildNotesByIdArr toBeIndependent toBeProgressNote)",
       "Bash(do echo \"函数名: $func\")",
       "Bash(done)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "WebFetch(domain:www.wolai.com)"
     ],
     "deny": []
   }

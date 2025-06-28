@@ -640,6 +640,8 @@ class MNMath {
           break;
       }
     }
+
+    note.title = Pangu.spacing(note.title)
   }
 
   /**

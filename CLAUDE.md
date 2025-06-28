@@ -684,6 +684,29 @@ controller.runJavaScript(`
    - 更新 mnaddon.json 配置
    - 通知用户更新
 
+## 🔄 长期开发计划
+
+### 代码迁移与重构
+MNMath 和 HtmlMarkdownUtils 类是新架构的核心，其他代码（特别是 MNNote.prototype 扩展）需要逐步迁移到这两个类中：
+
+1. **迁移原则**：
+   - 优先将常用功能迁移到 MNMath 类
+   - 保持 API 设计的一致性和合理性
+   - 函数名以合适合理为主，不必与原始完全一致
+   - 充分利用已有的工具方法，避免重复实现
+
+2. **待迁移功能清单**：
+   - ✅ clearFailedLinks - 清理失效链接（已迁移为 cleanupBrokenLinks）
+   - ✅ convertLinksToNewVersion - 转换链接到新版本（已迁移）
+   - ✅ fixProblemLinks - 修复合并造成的链接问题（已迁移为 fixMergeProblematicLinks）
+   - ⏳ linkRemoveDuplicatesAfterIndex - 删除重复链接
+   - ⏳ 其他 MNNote.prototype 扩展方法
+
+3. **迁移时注意事项**：
+   - 使用 MNMath 已有的工具方法（如 parseNoteComments）
+   - 保持错误处理的健壮性
+   - 添加必要的 JSDoc 注释
+
 ## 🔒 安全考虑
 
 1. **APIKey 安全**

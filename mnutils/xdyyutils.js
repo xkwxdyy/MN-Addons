@@ -258,6 +258,7 @@ class MNMath {
     this.changeNoteColor(note) // 修改卡片颜色
     this.linkParentNote(note) // 链接广义的父卡片（可能是链接归类卡片）
     // this.refreshNote(note) // 刷新卡片
+    this.autoMoveNewContent(note) // 自动移动新内容到对应字段
     this.refreshNotes(note) // 刷新卡片
     if (addToReview) {
       this.addToReview(note, reviewEverytime) // 加入复习
@@ -289,6 +290,31 @@ class MNMath {
       this.makeCard(note, addToReview, reviewEverytime) // 制卡
       this.refreshNotes(note)
     }
+  }
+
+  static autoMoveNewContent(note) {
+    // 获取卡片类型
+    let noteType = this.getNoteType(note);
+    // 获取默认字段
+    let defaultField = this.getDefaultFieldForType(noteType);
+    
+    // 如果没有默认字段，则不进行移动
+    if (!defaultField) {
+      MNUtil.showHUD(`未定义 ${noteType} 类型的默认字段，无法自动移动新内容！`);
+      return;
+    }
+
+    // 获取要移动的内容索引
+    let moveIndexArr = this.autoGetNewContentToMoveIndexArr(note);
+
+    // 如果没有要移动的内容，则不进行移动
+    if (moveIndexArr.length === 0) {
+      MNUtil.showHUD(`没有新内容需要移动到 ${defaultField} 字段！`);
+      return;
+    }
+
+    // 移动内容到默认字段
+    this.moveCommentsArrToField(note, moveIndexArr, defaultField);
   }
 
   /**

@@ -263,7 +263,7 @@ class MNMath {
       this.addToReview(note, reviewEverytime) // 加入复习
     }
     MNUtil.undoGrouping(()=>{
-      note.focusInMindMap(0.3)
+      note.focusInMindMap()
     })
   }
 
@@ -967,15 +967,62 @@ class MNMath {
    * 【非摘录版本】初始状态合并模板卡片后自动移动卡片的内容
    */
   static mergeTemplateAndAutoMoveNoteContent(note) {
-    let moveIndexArr = this.autoGetNewContentToMoveIndexArr(note);
+    // 白名单：这些类型的卡片即使只有图片+链接也按正常方式处理
+    const typeWhitelist = []; // 暂时为空，后续可以添加需要排除的卡片类型
+    
+    // 获取卡片类型
+    let noteType = this.getNoteType(note);
+    
+    // 检查是否为特殊情况：只有合并图片和链接
+    let isSpecialCase = false;
+    let linkIndices = [];
+    
+    if (!typeWhitelist.includes(noteType)) {
+      // 检查所有评论是否只包含合并图片和链接
+      let hasOtherContent = false;
+      
+      for (let i = 0; i < note.MNComments.length; i++) {
+        let comment = note.MNComments[i];
+        if (comment.type === "mergedImageComment" || comment.type === "mergedImageCommentWithDrawing") {
+          // 是合并图片，继续
+          continue;
+        } else if (comment.type === "linkComment") {
+          // 是链接，记录索引
+          linkIndices.push(i);
+        } else {
+          // 有其他类型的内容
+          hasOtherContent = true;
+          break;
+        }
+      }
+      
+      // 如果没有其他内容且有链接，则为特殊情况
+      isSpecialCase = !hasOtherContent && linkIndices.length > 0;
+    }
+    
+    let moveIndexArr = [];
+    
+    if (!isSpecialCase) {
+      // 非特殊情况，正常获取要移动的内容
+      moveIndexArr = this.autoGetNewContentToMoveIndexArr(note);
+    }
+    
     this.mergeTemplate(note)
 
     // 使用映射表获取默认字段
-    let noteType = this.getNoteType(note);
     let field = this.getDefaultFieldForType(noteType);
 
-    if (field) {
+    if (field && moveIndexArr.length > 0) {
       this.moveCommentsArrToField(note, moveIndexArr, field);
+    }
+    
+    // 特殊处理：将链接移动到最底下
+    if (isSpecialCase) {
+      // 由于合并模板是在后面添加，原始链接的索引不变
+      // 但需要从后往前移动，避免索引变化影响
+      for (let i = linkIndices.length - 1; i >= 0; i--) {
+        note.moveComment(linkIndices[i], note.comments.length);
+      }
     }
   }
 

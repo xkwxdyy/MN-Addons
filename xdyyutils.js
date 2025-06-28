@@ -206,6 +206,49 @@ class MNMath {
   }
 
   /**
+   * 卡片类型与默认移动字段的映射关系
+   * 
+   * 定义了每种卡片类型的新内容应该移动到哪个字段下
+   * 用于 mergeTemplateAndAutoMoveNoteContent 和 autoMoveNewContentByType 等函数
+   */
+  static typeDefaultFieldMap = {
+    "定义": "相关思考",
+    "命题": "证明",
+    "反例": "反例",
+    "例子": "证明",
+    "思想方法": "原理",
+    "归类": "相关思考",
+    "问题": "研究脉络",
+    "思路": "具体尝试",
+    "作者": "个人信息",
+    "文献": "文献信息",
+    "论文": "文献信息",
+    "书作": "文献信息",
+    "研究进展": "进展详情"
+  }
+
+  /**
+   * 获取卡片类型对应的默认字段
+   * 
+   * @param {string} noteType - 卡片类型
+   * @returns {string} 默认字段名，如果类型未定义则返回空字符串
+   */
+  static getDefaultFieldForType(noteType) {
+    return this.typeDefaultFieldMap[noteType] || "";
+  }
+
+  /**
+   * 思路链接字段映射（部分卡片类型在添加思路链接时使用不同的字段）
+   */
+  static ideaLinkFieldMap = {
+    "命题": "证明",
+    "例子": "证明",
+    "反例": "反例",
+    "思想方法": "原理",
+    "问题": "研究思路"  // 注意：这里是"研究思路"而不是默认的"研究脉络"
+  }
+
+  /**
    * 制卡（只支持非摘录版本）
    */
   static makeCard(note, addToReview = true, reviewEverytime = true) {
@@ -927,53 +970,13 @@ class MNMath {
     let moveIndexArr = this.autoGetNewContentToMoveIndexArr(note);
     this.mergeTemplate(note)
 
-    let field 
-    switch (this.getNoteType(note)) {
-      case "定义":
-        field = "相关思考"
-        break;
-      case "命题":
-        field = "证明"
-        break;
-      case "反例":
-        field = "反例"
-        break;
-      case "例子":
-        field = "证明"
-        break;
-      case "思想方法":
-        field = "原理"
-        break;
-      case "归类":
-        field = "相关思考"
-        break;
-      case "问题":
-        field = "研究脉络"
-        break;
-      case "思路":
-        field = "具体尝试"
-        break;
-      case "作者":
-        field = "个人信息"
-        break;
-      case "文献":
-        field = "文献信息"
-        break;
-      case "研究进展":
-        field = "进展详情"
-        break;
-      // case "出版社":
-      //   field = ""
-      //   break;
-      // case "期刊":
-      //   field = ""
-      //   break;
-      // case "":
-      //   field = ""
-      //   break;
-    }
+    // 使用映射表获取默认字段
+    let noteType = this.getNoteType(note);
+    let field = this.getDefaultFieldForType(noteType);
 
-    this.moveCommentsArrToField(note, moveIndexArr, field)
+    if (field) {
+      this.moveCommentsArrToField(note, moveIndexArr, field);
+    }
   }
 
   /**
@@ -1554,15 +1557,166 @@ class MNMath {
   }
 
   /**
+   * 自动获取新内容并移动到指定字段
+   * 
+   * 此函数是 moveCommentsArrToField 的优化版本，自动获取要移动的内容索引
+   * 并将其移动到指定字段下。适用于快速整理新添加的内容。
+   * 
+   * @param {MNNote} note - 要操作的笔记对象
+   * @param {string} field - 目标字段名称（支持"摘录"/"摘录区"作为特殊字段）
+   * @param {boolean} [toBottom=true] - 是否移动到字段底部，false 则移动到字段顶部
+   * @param {boolean} [showEmptyHUD=true] - 当没有可移动内容时是否显示提示
+   * @returns {Array<number>} 返回已移动的评论索引数组
+   * 
+   * @example
+   * // 将新内容移动到"证明"字段底部
+   * MNMath.autoMoveNewContentToField(note, "证明");
+   * 
+   * @example
+   * // 将新内容移动到"相关思考"字段顶部，不显示空内容提示
+   * let movedIndices = MNMath.autoMoveNewContentToField(note, "相关思考", false, false);
+   * if (movedIndices.length > 0) {
+   *   MNUtil.showHUD(`成功移动 ${movedIndices.length} 条内容`);
+   * }
+   * 
+   * @example
+   * // 将新内容移动到摘录区
+   * MNMath.autoMoveNewContentToField(note, "摘录区");
+   */
+  static autoMoveNewContentToField(note, field, toBottom = true, showEmptyHUD = true) {
+    // 自动获取要移动的内容索引
+    let indexArr = this.autoGetNewContentToMoveIndexArr(note);
+    
+    // 检查是否有内容需要移动
+    if (indexArr.length === 0) {
+      if (showEmptyHUD) {
+        MNUtil.showHUD("没有检测到可移动的新内容");
+      }
+      return [];
+    }
+    
+    // 检查目标字段是否存在
+    let fieldExists = false;
+    
+    // 特殊处理摘录区
+    if (field === "摘录" || field === "摘录区") {
+      fieldExists = true;  // 摘录区始终存在
+    } else {
+      // 检查 HTML 字段
+      let htmlCommentsTextArr = this.parseNoteComments(note).htmlCommentsTextArr;
+      fieldExists = htmlCommentsTextArr.some(text => text.includes(field));
+    }
+    
+    if (!fieldExists) {
+      MNUtil.showHUD(`未找到字段"${field}"，请检查字段名称`);
+      return [];
+    }
+    
+    // 执行移动操作
+    this.moveCommentsArrToField(note, indexArr, field, toBottom);
+    
+    return indexArr;
+  }
+
+  /**
+   * 根据卡片类型自动获取新内容并移动到相应字段
+   * 
+   * 此函数基于 autoMoveNewContentToField，会根据卡片类型自动确定目标字段。
+   * 是最智能的内容整理方法，无需手动指定字段。
+   * 
+   * @param {MNNote} note - 要操作的笔记对象  
+   * @param {boolean} [toBottom=true] - 是否移动到字段底部，false 则移动到字段顶部
+   * @param {boolean} [showEmptyHUD=true] - 当没有可移动内容时是否显示提示
+   * @returns {{field: string, indices: Array<number>}} 返回目标字段和已移动的评论索引数组
+   * 
+   * @example
+   * // 自动根据卡片类型移动内容
+   * let result = MNMath.autoMoveNewContentByType(note);
+   * if (result.indices.length > 0) {
+   *   MNUtil.showHUD(`已将 ${result.indices.length} 条内容移动到"${result.field}"字段`);
+   * }
+   * 
+   * @example  
+   * // 移动到字段顶部，不显示空内容提示
+   * MNMath.autoMoveNewContentByType(note, false, false);
+   */
+  static autoMoveNewContentByType(note, toBottom = true, showEmptyHUD = true) {
+    // 根据卡片类型确定目标字段
+    let noteType = this.getNoteType(note);
+    let field = this.getDefaultFieldForType(noteType);
+    
+    if (!field) {
+      if (showEmptyHUD) {
+        MNUtil.showHUD(`未识别的卡片类型：${noteType || "空"}`);
+      }
+      return {field: "", indices: []};
+    }
+    
+    // 执行移动操作
+    let indices = this.autoMoveNewContentToField(note, field, toBottom, showEmptyHUD);
+    
+    return {field: field, indices: indices};
+  }
+
+  /**
+   * 移动内容到摘录区
+   * 
+   * 专门用于将内容移动到卡片最上方的摘录区域的便捷方法
+   * 
+   * @param {MNNote} note - 要操作的笔记对象
+   * @param {Array|string} indexArr - 要移动的评论索引数组或字符串
+   * @returns {boolean} 是否成功移动
+   * 
+   * @example
+   * // 移动指定索引的内容到摘录区
+   * MNMath.moveToExcerptArea(note, [1,2,3]);
+   * 
+   * @example
+   * // 使用字符串格式
+   * MNMath.moveToExcerptArea(note, "1-3,5");
+   */
+  static moveToExcerptArea(note, indexArr) {
+    try {
+      this.moveCommentsArrToField(note, indexArr, "摘录区", true);
+      return true;
+    } catch (error) {
+      MNUtil.showHUD(`移动到摘录区失败: ${error.message || error}`);
+      return false;
+    }
+  }
+
+  /**
    * 移动评论到指定字段
+   * 
+   * @param {MNNote} note - 要操作的笔记对象
+   * @param {Array|string} indexArr - 要移动的评论索引数组或字符串（支持 "1,3-5,Y,Z" 格式）
+   * @param {string} field - 目标字段名称。特殊字段：
+   *                         - "摘录" 或 "摘录区" - 移动到卡片最上方的摘录区域
+   *                         - 其他字段名 - 移动到对应的 HTML 字段下
+   * @param {boolean} [toBottom=true] - 是否移动到字段底部，false 则移动到字段顶部（摘录区除外）
+   * 
+   * @example
+   * // 移动到摘录区
+   * MNMath.moveCommentsArrToField(note, [1,2,3], "摘录区");
+   * 
+   * @example  
+   * // 移动到"证明"字段顶部
+   * MNMath.moveCommentsArrToField(note, "1-3", "证明", false);
    */
   static moveCommentsArrToField(note, indexArr, field, toBottom = true) {
     let getHtmlCommentsTextArrForPopup = this.getHtmlCommentsTextArrForPopup(note);
     let commentsIndexArrToMove = this.getCommentsIndexArrToMoveForPopup(note);
 
     let targetIndex = -1
+    
+    // 标准化字段名称，支持"摘录"和"摘录区"的简写
+    let normalizedField = field;
+    if (field === "摘录" || field === "摘录区") {
+      normalizedField = "摘录区";  // 统一为"摘录区"以匹配"----------【摘录区】----------"
+    }
+    
     getHtmlCommentsTextArrForPopup.forEach((text, index) => {
-      if (text.includes(field)) {
+      if (text.includes(normalizedField)) {
         if (toBottom) {
           targetIndex = commentsIndexArrToMove[index]
         } else {
@@ -1597,6 +1751,7 @@ class MNMath {
       note.moveCommentsByIndexArr(arr, targetIndex)
     }
   }
+
 
   /**
    * 通过弹窗选择并替换字段内容
@@ -3136,75 +3291,7 @@ String.prototype.toBracketPrefixContentArrowSuffix = function () {
     return "【" + this.toNoBracketPrefixContentFirstTitleLinkWord() + "】"
   }
 }
-/**
- * 判断是否是绿色归类卡片的标题
- * @returns {boolean}
- */
-String.prototype.ifGreenClassificationNoteTitle = function () {
-  return /^“[^”]+”\s*相关[^“]*$/.test(this)
-}
-String.prototype.isGreenClassificationNoteTitle = function () {
-  return this.ifGreenClassificationNoteTitle()
-}
-/**
- * 获取绿色归类卡片的标题
- */
-String.prototype.toGreenClassificationNoteTitle = function () {
-  let match = this.match(/^“([^”]+)”\s*相关[^“]*$/)
-  return match ? match[1] : this  // 如果匹配不到，返回原字符串
-}
-String.prototype.toGreenClassificationNoteTitleType = function () {
-  let match = this.match(/^“[^”]+”\s*(相关[^“]*)$/)
-  return match ? match[1] : this  // 如果匹配不到，返回原字符串
-}
-/**
- * 判断是否是黄色归类卡片的标题
- * @returns {boolean}
- */
-String.prototype.ifYellowClassificationNoteTitle = function () {
-  return /^“[^”]*”：“[^”]*”\s*相关[^“]*$/.test(this)
-}
-String.prototype.isYellowClassificationNoteTitle = function () {
-  return this.ifYellowClassificationNoteTitle()
-}
-String.prototype.isClassificationNoteTitle = function () {
-  return this.ifYellowClassificationNoteTitle() || this.ifGreenClassificationNoteTitle()
-}
-/**
- * 获取黄色归类卡片的标题
- */
-String.prototype.toYellowClassificationNoteTitle = function () {
-  let match = this.match(/^“[^”]*”：“([^”]*)”\s*相关[^“]*$/)
-  return match ? match[1] : this  // 如果匹配不到，返回原字符串
-}
-String.prototype.toYellowClassificationNoteTitleType = function () {
-  let match = this.match(/^“[^”]*”：“[^”]*”\s*(相关[^“]*)$/)
-  return match ? match[1] : this  // 如果匹配不到，返回原字符串
-}
-/**
- * 获取绿色或者黄色归类卡片的标题
- */
-String.prototype.toClassificationNoteTitle = function () {
-  if (this.ifGreenClassificationNoteTitle()) {
-    return this.toGreenClassificationNoteTitle()
-  }
-  if (this.ifYellowClassificationNoteTitle()) {
-    return this.toYellowClassificationNoteTitle()
-  }
-  return ""
-}
-/**
- * 获取绿色或黄色归类卡片引号后的内容
- */
-String.prototype.toClassificationNoteTitleType = function () {
-  if (this.ifGreenClassificationNoteTitle()) {
-    return this.toGreenClassificationNoteTitleType()
-  }
-  if (this.ifYellowClassificationNoteTitle()) {
-    return this.toYellowClassificationNoteTitleType()
-  }
-  return ""
-}
+
 /**
  * 判断输入的字符串是否是卡片 URL 或者卡片 ID
  */
@@ -3675,54 +3762,6 @@ MNNote.prototype.pasteChildNoteById = function(id) {
 
 
 /**
- * 获取标题的所有标题链接词
- */
-MNNote.prototype.getTitleLinkWordsArr = function(){
-  let title = this.noteTitle
-  let titleLinkWordsArr = []
-  if (title.isKnowledgeNoteTitle()) {
-    let titlePart = title.toKnowledgeNoteTitle()
-    // titlePart 用 ; 分割，然后以此加入到 titleLinkWordsArr 中
-    titlePart.split(";").forEach((part) => {
-      if (part.trim() !== "") {
-        titleLinkWordsArr.push(part.trim())
-      }
-    })
-  } else {
-    titleLinkWordsArr.push(title)
-  }
-  return titleLinkWordsArr
-}
-
-/**
- * 获取标题中的第一个标题链接词
- */
-MNNote.prototype.getFirstTitleLinkWord = function(){
-  let title = this.noteTitle
-  let regex = /【.*】(.*?);?\\s*([^;]*?)(?:;|$)/;
-  let matches = title.match(regex);
-
-  if (matches) {
-    const firstPart = matches[1].trim(); // 提取分号前的内容
-    const secondPart = matches[2].trim(); // 提取第一个分号后的内容
-
-    // 根据第一部分是否为空选择返回内容
-    return firstPart === '' ? secondPart : firstPart;
-  } else {
-    // 如果没有前缀，就获取第一个 ; 前的内容
-    title = title.toNoBracketPrefixContent()
-    regex = /^(.*?);/;
-    matches = title.match(regex);
-  
-    if (matches) {
-      return matches[1].trim().toString()
-    } else {
-      return title.toString()
-    }
-  }
-}
-
-/**
  * 【数学】移动卡片到某些特定的子卡片后
  * 
  * 目前只移动文献
@@ -3833,36 +3872,6 @@ if (typeof MNComment !== 'undefined' && MNComment.prototype) {
  * 夏大鱼羊 - MNNote prototype 扩展 - 更多方法 - begin
  */
 
-/**
- * 【数学】把证明的内容移到最下方
- * 
- * 一般用于重新写证明
- */
-MNNote.prototype.moveProofDown = function() {
-  let proofIndexArr = this.getHtmlBlockContentIndexArr("证明：")
-  if (proofIndexArr.length > 0) {
-    this.moveCommentsByIndexArrTo(proofIndexArr, "bottom")
-  }
-}
-
-/**
- * 更新卡片学习状态
- */
-
-/**
- * 将卡片转移到"输入"区
- */
-MNNote.prototype.moveToInput = function(){
-  let notebookId = MNUtil.currentNotebookId
-  let workflowObj = MNUtil.getWorkFlowObjByNoteBookId(notebookId)
-  if (workflowObj.inputNoteId) {
-    let inputNoteId = workflowObj.inputNoteId
-    let inputNote = MNNote.new(inputNoteId)
-    inputNote.addChild(this)
-    // this.focusInMindMap(0.8)
-  }
-}
-
 
 /**
  * 删除评论
@@ -3948,35 +3957,6 @@ MNNote.prototype.deleteCommentsByPopupAndMoveNewContentTo = function(target, toB
   )
 }
 
-/**
- * 获取第一个标题链接词并生成标题链接
- */
-MNNote.prototype.generateCustomTitleLinkFromFirstTitlelinkWord = function(keyword) {
-  let title = this.title
-  if (title.isKnowledgeNoteTitle()) {
-    let firstTitleLinkWord = this.getFirstTitleLinkWord()
-    return MNUtil.generateCustomTitleLink(keyword, firstTitleLinkWord)
-  } else {
-    return MNUtil.generateCustomTitleLink(keyword, title)
-  }
-}
-
-/**
- * 检测 indexArr 对应的评论是否全是链接
- */
-MNNote.prototype.ifCommentsAllLinksByIndexArr = function(indexArr){
-  let flag = true
-  indexArr.forEach((index) => {
-    if (
-      this.comments[index].type !== "TextNote" ||
-      !this.comments[index].text.isLink()
-    ) {
-      flag = false
-    }
-  })
-
-  return flag
-}
 
 /**
  * 【数学】获取"证明"系列的 Html 的 index

@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日志查看器</title>
+    <style>
+        :root {
+            --primary-bg: #ffffff;
+            --sidebar-bg: #f8f9fa;
+            --border-color: #e9ecef;
+            --text-primary: #212529;
+            --text-secondary:rgb(81, 94, 104);
+            --hover-bg: #e9ecef;
+            --error-color: #dc3545;
+            --warn-color:rgb(230, 172, 0);
+            --info-color:rgb(11, 179, 213);
+            --debug-color: #6c757d;
+            --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+            --transition-speed: 0.2s;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        h3{
+          padding-left: 5px;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-primary);
+        }
+
+        .sidebar {
+            user-select: none; /* 核心属性：防止文本被选择 */
+            -webkit-user-select: none; /* Chrome、Safari 浏览器 */
+            -moz-user-select: none; /* Firefox 浏览器 */
+            -ms-user-select: none; /* Internet Explorer/Edge 浏览器 */
+            width: 200px;
+            background-color: var(--sidebar-bg);
+            padding: 10px;
+            height: 100vh;
+            border-right: 1px solid var(--border-color);
+            transition: transform 0.2s ease-out;
+            position: relative;
+            z-index: 1000;
+            flex-shrink: 0;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-200px);
+        }
+
+        .toggle-sidebar {
+            position: absolute;
+            right: 0px;
+            top: 0px;
+            width: 32px;
+            height: 34px;
+            background-color: var(--sidebar-bg);
+            border: 0px solid var(--border-color);
+            border-radius: 0px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+            transition: all 0.2s ease-out;
+            display: none;
+            /* box-shadow: var(--shadow-sm); */
+        }
+
+        .toggle-sidebar:hover {
+            background-color: var(--hover-bg);
+        }
+
+        .sidebar.collapsed .toggle-sidebar {
+            right: -32px;
+            border-radius: 0 5px 5px 0;
+            border-left: none;
+        }
+
+        .toggle-sidebar::before {
+            content: "◀";
+            font-size: 12px;
+            transition: transform 0.2s ease-out;
+            color: var(--text-secondary);
+        }
+
+        .sidebar.collapsed .toggle-sidebar::before {
+            transform: rotate(180deg);
+        }
+
+        .filter-section {
+            margin-bottom: 24px;
+        }
+
+        .filter-section h3 {
+            margin: 0 0 12px 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-option {
+            display: flex;
+            align-items: center;
+            margin: 3px 0;
+            padding: 7px 3px;
+            border-radius: 6px;
+            transition: all var(--transition-speed) ease;
+            cursor: pointer;
+        }
+
+        .filter-option:hover {
+            background-color: var(--hover-bg);
+        }
+
+        .filter-option input[type="checkbox"] {
+            margin-right: 10px;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            border: 2px solid var(--border-color);
+            border-radius: 3px;
+            position: relative;
+            transition: all var(--transition-speed) ease;
+        }
+
+        .filter-option input[type="checkbox"]:checked {
+            background-color: var(--border-color);
+        }
+
+        .filter-option input[type="checkbox"]:checked::after {
+            content: "✓";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgb(67, 67, 67);
+            font-size: 12px;
+        }
+
+        /* 为每个等级设置特定的颜色 */
+        #level-error:checked {
+            background-color: var(--error-color);
+            border-color: var(--error-color);
+        }
+
+        #level-warn:checked {
+            background-color: var(--warn-color);
+            border-color: var(--warn-color);
+        }
+
+        #level-info:checked {
+            background-color: var(--info-color);
+            border-color: var(--info-color);
+        }
+
+        #level-debug:checked {
+            background-color: var(--debug-color);
+            border-color: var(--debug-color);
+        }
+
+        /* 未选中状态的边框颜色 */
+        #level-error {
+            border-color: var(--error-color);
+        }
+
+        #level-warn {
+            border-color: var(--warn-color);
+        }
+
+        #level-info {
+            border-color: var(--info-color);
+        }
+
+        #level-debug {
+            border-color: var(--debug-color);
+        }
+
+        /* 悬停效果 */
+        .filter-option input[type="checkbox"]:hover {
+            opacity: 0.8;
+        }
+
+        .filter-option label {
+            cursor: pointer;
+            flex: 1;
+            font-size: 14px;
+            color: var(--text-primary);
+            padding: 2px 8px;
+            border-radius: 4px;
+            transition: all var(--transition-speed) ease;
+            font-weight: 600;
+        }
+
+        /* 为每个等级标签设置特定的样式 */
+        #level-error + label {
+            background-color: rgba(220, 53, 69, 0.1);
+            color: var(--error-color);
+            line-height: 20px;
+        }
+
+        #level-warn + label {
+            background-color: rgba(255, 193, 7, 0.1);
+            color: var(--warn-color);
+            line-height: 20px;
+        }
+
+        #level-info + label {
+            background-color: rgba(13, 202, 240, 0.1);
+            color: var(--info-color);
+            line-height: 20px;
+        }
+
+        #level-debug + label {
+            background-color: rgba(108, 117, 125, 0.1);
+            color: var(--debug-color);
+            line-height: 20px;
+        }
+
+        /* 悬停效果 */
+        .filter-option:hover label {
+            opacity: 0.8;
+        }
+
+        .main-content {
+            user-select: none; /* 核心属性：防止文本被选择 */
+            -webkit-user-select: none; /* Chrome、Safari 浏览器 */
+            -moz-user-select: none; /* Firefox 浏览器 */
+            -ms-user-select: none; /* Internet Explorer/Edge 浏览器 */
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            min-width: 0;
+            background-color: var(--primary-bg);
+            transition: margin-left var(--transition-speed) ease;
+            margin-left: 0;
+        }
+
+        .sidebar:not(.collapsed) + .main-content {
+            margin-left: 00px;
+        }
+
+        .log-container {
+            flex: 1;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            padding: 0px;
+            overflow-y: auto;
+            width: 100%;
+            font-size: 13px;
+            line-height: 1.5;
+            max-width: 1500px;
+            margin-left: 0;
+            box-sizing: border-box;
+        }
+
+        .log-entry {
+            margin: 4px 0;
+            padding-top: 5px;
+            padding-bottom: 5px;
+            padding-left: 5px;
+            padding-right: 0px;
+            border-radius: 4px;
+            transition: background-color var(--transition-speed) ease;
+            cursor: pointer;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .log-entry:hover {
+            background-color: var(--hover-bg);
+        }
+
+        .log-detail {
+            margin-top: 8px;
+            margin-left: 20px;
+            margin-right: 5px;
+            padding: 8px 12px;
+            background-color: rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+            display: none;
+            border-left: 3px solid var(--border-color);
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+        }
+
+        .log-detail.visible {
+            display: block;
+        }
+
+        .log-entry.expanded {
+            background-color: var(--hover-bg);
+        }
+
+        .log-entry.expanded .log-detail {
+            display: block;
+        }
+
+        .log-entry.expanded .log-expand-icon {
+            transform: rotate(90deg);
+        }
+
+        .log-header {
+            display: flex;
+            align-items: center;
+            min-height: 24px;
+        }
+
+        .log-expand-icon {
+            width: 16px;
+            margin-right: 0px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            transition: transform var(--transition-speed) ease;
+            flex-shrink: 0;
+            text-align: center;
+        }
+
+        .log-expand-placeholder {
+            width: 16px;
+            margin-right: 0px;
+            flex-shrink: 0;
+        }
+
+        .log-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            min-width: 0;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .copy-button {
+            padding: 2px 6px;
+            background-color: var(--border-color);
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--text-secondary);
+            transition: all var(--transition-speed) ease;
+            margin-left: 0px;
+        }
+
+        .copy-button:hover {
+            background-color: var(--text-secondary);
+            color: var(--primary-bg);
+        }
+
+        .copy-button.copied {
+            background-color: var(--info-color);
+            color: var(--primary-bg);
+        }
+
+        .log-time {
+            color: var(--text-secondary);
+            font-size: 12px;
+            flex-shrink: 0;
+            min-width: 75px;
+            text-align: right;
+        }
+
+        .log-level {
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            line-height: 20px;
+            flex-shrink: 0;
+            min-width: 60px;
+            text-align: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        .log-level.error { 
+            color: var(--error-color);
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+        .log-level.warn { 
+            color: var(--warn-color);
+            background-color: rgba(255, 193, 7, 0.1);
+        }
+        .log-level.info { 
+            color: var(--info-color);
+            background-color: rgba(13, 202, 240, 0.1);
+        }
+        .log-level.debug { 
+            color: var(--debug-color);
+            background-color: rgba(108, 117, 125, 0.1);
+        }
+
+        .log-source {
+            color: var(--text-secondary);
+            font-size: 12px;
+            flex-shrink: 0;
+            min-width: 80px;
+            text-align: left;
+        }
+
+        .log-message {
+            color: var(--text-primary);
+            flex: 1;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .clear-filters {
+            margin-top: 16px;
+            padding: 10px 16px;
+            background-color: var(--primary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: all var(--transition-speed) ease;
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .clear-filters:hover {
+            background-color: var(--hover-bg);
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                box-shadow: var(--shadow-md);
+                margin-right: 0;
+            }
+
+            .sidebar.collapsed {
+                transform: translateX(-100%);
+            }
+
+            .toggle-sidebar {
+                right: 0px;
+                width: 30px;
+                height: 34px;
+                display: block;
+            }
+
+            .main-content {
+                margin-left: 0 !important;
+                width: 100%;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .sidebar {
+                transform: none !important;
+            }
+            
+            .toggle-sidebar {
+                display: none;
+            }
+        }
+
+        /* 自定义滚动条样式 */
+        .log-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .log-container::-webkit-scrollbar-track {
+            background: var(--sidebar-bg);
+        }
+
+        .log-container::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .log-container::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar" id="sidebar">
+        <button class="toggle-sidebar" id="toggleSidebar"></button>
+        <div class="filter-section">
+            <h3>Level</h3>
+            <div class="filter-option">
+                <input type="checkbox" id="level-error" checked>
+                <label for="level-error">ERROR</label>
+            </div>
+            <div class="filter-option">
+                <input type="checkbox" id="level-warn" checked>
+                <label for="level-warn">WARN</label>
+            </div>
+            <div class="filter-option">
+                <input type="checkbox" id="level-info" checked>
+                <label for="level-info">INFO</label>
+            </div>
+            <div class="filter-option">
+                <input type="checkbox" id="level-debug" checked>
+                <label for="level-debug">DEBUG</label>
+            </div>
+        </div>
+        <div class="filter-section">
+            <h3>Source</h3>
+            <div id="source-filters">
+                <!-- 动态添加的来源过滤器 -->
+            </div>
+        </div>
+        <button class="clear-filters" onclick="logViewer.clearFilters()">清除过滤</button>
+    </div>
+    <div class="main-content">
+        <div class="log-container" id="logContainer"></div>
+    </div>
+
+    <script>
+        class LogViewer {
+            constructor(containerId) {
+                this.container = document.getElementById(containerId);
+                this.logs = [];
+                this.filters = {
+                    levels: new Set(['ERROR', 'WARN', 'INFO', 'DEBUG']),
+                    sources: new Set()
+                };
+                this.setupEventListeners();
+                this.setupSidebar();
+            }
+
+            setupSidebar() {
+                const sidebar = document.getElementById('sidebar');
+                const toggleBtn = document.getElementById('toggleSidebar');
+                let isCollapsed = false;
+
+                const toggleSidebar = () => {
+                    if (window.innerWidth <= 768) {
+                        isCollapsed = !isCollapsed;
+                        sidebar.classList.toggle('collapsed');
+                    }
+                };
+
+                const handleResize = () => {
+                    if (window.innerWidth <= 768) {
+                        sidebar.classList.add('collapsed');
+                        isCollapsed = true;
+                    } else {
+                        sidebar.classList.remove('collapsed');
+                        isCollapsed = false;
+                    }
+                };
+
+                // 初始检查窗口大小
+                handleResize();
+                
+                toggleBtn.addEventListener('click', toggleSidebar);
+                window.addEventListener('resize', handleResize);
+            }
+
+            setupEventListeners() {
+                ['error', 'warn', 'info', 'debug'].forEach(level => {
+                    document.getElementById(`level-${level}`).addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            this.filters.levels.add(level.toUpperCase());
+                        } else {
+                            this.filters.levels.delete(level.toUpperCase());
+                        }
+                        this.renderLogs();
+                    });
+                });
+            }
+
+            updateSourceFilters() {
+                const sourceFilters = document.getElementById('source-filters');
+                sourceFilters.innerHTML = '';
+                
+                this.filters.sources.forEach(source => {
+                    const div = document.createElement('div');
+                    div.className = 'filter-option';
+                    div.innerHTML = `
+                        <input type="checkbox" id="source-${source}" checked>
+                        <label for="source-${source}">${source}</label>
+                    `;
+                    
+                    div.querySelector('input').addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            this.filters.sources.add(source);
+                        } else {
+                            this.filters.sources.delete(source);
+                        }
+                        this.renderLogs();
+                    });
+                    
+                    sourceFilters.appendChild(div);
+                });
+            }
+
+            clearFilters() {
+                this.filters.levels = new Set(['ERROR', 'WARN', 'INFO', 'DEBUG']);
+                this.filters.sources = new Set([...this.filters.sources]);
+                
+                ['error', 'warn', 'info', 'debug'].forEach(level => {
+                    document.getElementById(`level-${level}`).checked = true;
+                });
+                
+                this.updateSourceFilters();
+                this.renderLogs();
+            }
+
+            loadLogs(logs) {
+                try {
+                    this.clearLogs();
+                    this.logs = logs.map(l=>{
+                      if ("level" in l) {
+                        l.level = l.level.toUpperCase();
+                      }else{
+                        l.level = "INFO";
+                      }
+                      return l;
+                    });
+                    
+                    this.filters.sources = new Set(logs.map(log => log.source));
+                    this.updateSourceFilters();
+                    
+                    this.renderLogs();
+                } catch (error) {
+                    console.error('解析日志JSON失败:', error);
+                }
+            }
+
+            appendLog(log) {
+                this.logs.push(log);
+                if ("level" in log) {
+                  log.level = log.level.toUpperCase();
+                }else{
+                  log.level = "INFO";
+                }
+                if (!this.filters.sources.has(log.source)) {
+                    this.filters.sources.add(log.source);
+                    this.updateSourceFilters();
+                }
+                
+                if (this.shouldShowLog(log)) {
+                    this.renderLog(log);
+                }
+            }
+
+
+            clearLogs() {
+                this.logs = [];
+                this.container.innerHTML = '';
+            }
+
+            shouldShowLog(log) {
+                return this.filters.levels.has(log.level) && 
+                       this.filters.sources.has(log.source);
+            }
+
+            renderLog(log) {
+                const logEntry = document.createElement('div');
+                logEntry.className = 'log-entry';
+                
+                const time = new Date(log.timestamp || Date.now()).toLocaleTimeString();
+                const hasDetail = log.detail !== undefined;
+                
+                logEntry.innerHTML = `
+                    <div class="log-header">
+                        ${hasDetail ? 
+                            '<span class="log-expand-icon">▶</span>' : 
+                            '<span class="log-expand-placeholder"></span>'
+                        }
+                        <div class="log-content">
+                            <span class="log-time">[${time}]</span>
+                            <span class="log-level ${log.level.toLowerCase()}">${log.level}</span>
+                            <span class="log-source">[${log.source}]</span>
+                            <span class="log-message">${log.message}</span>
+                            <button class="copy-button" title="复制日志内容">复制</button>
+                        </div>
+                    </div>
+                    ${hasDetail ? `<div class="log-detail">${log.detail}</div>` : ''}
+                `;
+
+                if (hasDetail) {
+                    logEntry.addEventListener('click', (e) => {
+                        if (!e.target.classList.contains('copy-button')) {
+                            logEntry.classList.toggle('expanded');
+                        }
+                    });
+                }
+
+                // 添加复制功能
+                const copyButton = logEntry.querySelector('.copy-button');
+                copyButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const logText = `[${time}] [${log.level}] [${log.source}] ${log.message}${log.detail ? '\n' + log.detail : ''}`;
+                    copyButton.textContent = '已复制';
+                    copyButton.classList.add('copied');
+                    copyToClipboard(logText)
+                    setTimeout(() => {
+                        copyButton.textContent = '复制';
+                        copyButton.classList.remove('copied');
+                    }, 2000);
+                });
+                
+                this.container.appendChild(logEntry);
+                this.container.scrollTop = this.container.scrollHeight;
+            }
+
+            renderLogs() {
+                this.container.innerHTML = '';
+                this.logs
+                    .filter(log => this.shouldShowLog(log))
+                    .forEach(log => this.renderLog(log));
+            }
+        }
+
+        // 创建全局实例
+        const logViewer = new LogViewer('logContainer');
+        // 加载日志
+logViewer.loadLogs([]);
+
+/**
+ * @param {string} encodedLogs 
+ */
+function showLogsFromAddon(encodedLogs) {
+  let logs = JSON.parse(decodeURIComponent(encodedLogs))
+  logViewer.loadLogs(logs)
+}
+/**
+ * @param {string} log 
+ */
+function appendLogFromAddon(encodedLog) {
+  let log = JSON.parse(decodeURIComponent(encodedLog))
+  logViewer.appendLog(log)
+}
+/**
+ */
+function clearLogsFromAddon() {
+  logViewer.clearLogs()
+}
+
+function copyToClipboard(text) {
+  window.location.href = "nativeCopy://content="+encodeURIComponent(text);
+}
+    </script>
+</body>
+</html> 

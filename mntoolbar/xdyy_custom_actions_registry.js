@@ -3524,21 +3524,6 @@ function registerAllCustomActions() {
 
   // ========== OTHER 相关 (77 个) ==========
 
-  // test
-  global.registerCustomAction("test", async function (context) {
-    const { button, des, focusNote, focusNotes, self } = context;
-    
-    // 简单的测试功能
-    MNUtil.showHUD("✅ 自定义 action 测试成功！");
-    
-    // 如果需要测试具体功能，可以在这里添加
-    // 例如：修改选中卡片的标题
-    if (focusNote) {
-      MNUtil.undoGrouping(() => {
-        focusNote.noteTitle = "测试 - " + (focusNote.noteTitle || "无标题");
-      });
-    }
-  });
 
   // getNewClassificationInformation
   global.registerCustomAction("getNewClassificationInformation", async function (context) {

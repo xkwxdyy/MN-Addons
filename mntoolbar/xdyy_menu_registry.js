@@ -483,10 +483,6 @@ function registerAllMenuTemplates() {
     menuWidth: 250,
     menuItems: [
       {
-        action: "test",
-        menuTitle: "测试",
-      },
-      {
         action: "copyMarkdownVersionFocusNoteURL",
         menuTitle: "复制 Markdown 类型的卡片 URL",
       },

@@ -382,6 +382,320 @@ JSB.defineClass("YourPlugin : JSExtension", {
 - 及时清理定时器、监听器和大对象
 - 保存用户配置和状态
 
+## 🚨 开发踩坑记录与经验教训
+
+### MNTask 插件开发总结 (2025-06-28)
+
+在开发 MNTask 任务管理插件的过程中，我们遇到了多个严重问题。这些经验教训对未来的 MarginNote 插件开发极具参考价值。
+
+### 1. MarginNote 完全卡死问题 ⚠️⚠️⚠️
+
+**问题表现**：
+- 安装插件后 MarginNote 4 完全无响应
+- 重启应用也无法恢复，必须删除插件文件
+
+**原因分析**：
+1. `JSB.newAddon` 函数参数缺失
+   ```javascript
+   // ❌ 错误
+   JSB.newAddon = function() {
+   
+   // ✅ 正确
+   JSB.newAddon = function(mainPath) {
+   ```
+
+2. 错误的类实例化方式
+   ```javascript
+   // ❌ 错误 - 导致卡死
+   const controller = new TaskController();
+   
+   // ✅ 正确 - JSB 框架要求的方式
+   const controller = TaskController.new();
+   ```
+
+3. 模块加载循环依赖
+   ```javascript
+   // ❌ 错误 - 在文件开头立即加载
+   JSB.require('taskModel');
+   JSB.require('taskController');
+   
+   // ✅ 正确 - 延迟加载
+   loadDependencies: function() {
+     try {
+       JSB.require('taskModel');
+     } catch (error) {
+       // 处理错误
+     }
+   }
+   ```
+
+**解决方案**：
+- 始终接收并保存 `mainPath` 参数
+- 使用 JSB 框架的 `.new()` 方法创建对象
+- 延迟加载依赖模块，避免初始化时的循环引用
+
+### 2. 插件不在插件栏显示 📱
+
+**问题表现**：
+- 插件安装成功但插件栏看不到图标
+- 无法通过点击图标启动插件
+
+**原因分析**：
+1. 缺少必需的 `queryAddonCommandStatus` 方法
+2. 缺少静态方法对象（第二个参数）
+3. 图标尺寸不正确
+
+**解决方案**：
+```javascript
+// 必须实现此方法才能在插件栏显示
+queryAddonCommandStatus: function() {
+  return {
+    image: 'logo.png',        // 插件图标
+    object: self,             // 回调对象
+    selector: 'toggleAddon:', // 点击时调用的方法  
+    checked: false            // 是否选中状态
+  };
+}
+
+// JSB.defineClass 需要两个参数
+JSB.defineClass("PluginName : JSExtension", 
+  { /* 实例方法 */ },
+  { /* 静态方法 */ 
+    addonDidConnect: function() {},
+    addonWillDisconnect: function() {}
+  }
+);
+```
+
+**图标要求**：
+- 尺寸：44x44 像素（不是 200x200）
+- 格式：PNG
+- 路径：插件根目录
+
+### 3. toggleAddon 方法无响应 🖱️
+
+**问题表现**：
+- 点击插件栏图标没有任何反应
+- 没有错误提示，但功能不执行
+
+**原因分析**：
+- JavaScript 作用域问题
+- `self` 变量未正确定义或赋值
+- 方法调用时 `this` 指向不正确
+
+**解决方案**：
+```javascript
+// 在文件顶部定义全局 self 变量
+var self = null;
+
+// 在 sceneWillConnect 中保存实例引用
+sceneWillConnect: function() {
+  self = this;  // 关键！保存当前实例
+  self.path = mainPath;
+}
+
+// toggleAddon 中使用 this 或 self
+toggleAddon: function(sender) {
+  // 优先使用 this
+  if (this.showTaskManager) {
+    this.showTaskManager();
+  } else if (self && self.showTaskManager) {
+    // 备用方案使用 self
+    self.showTaskManager();
+  }
+}
+```
+
+### 4. UI 组件兼容性问题 🎨
+
+**问题**：
+- `UIAlertView` 在某些情况下不可用
+- `WKWebView` 初始化复杂
+
+**解决方案**：
+```javascript
+// 使用 MNUtil 提供的跨平台方法
+MNUtil.input("标题", "提示", ["默认值"]).then(function(inputs) {
+  // 处理输入
+});
+
+// 使用 UIWebView 替代 WKWebView
+const webView = UIWebView.new();
+```
+
+### 5. MNUtils 依赖问题 🔧
+
+**问题**：
+- MNUtils 未安装时插件崩溃
+- MNUtil 未定义错误
+
+**解决方案**：
+```javascript
+// 始终检查 MNUtil 是否存在
+if (typeof MNUtil !== "undefined") {
+  MNUtil.showHUD("消息");
+}
+
+// 在插件开始时尝试加载
+try {
+  JSB.require('mnutils');
+} catch (e) {
+  // MNUtils 可能未安装，优雅降级
+}
+```
+
+### 6. 调试技巧总结 🐛
+
+1. **使用 HUD 进行调试**
+   ```javascript
+   MNUtil.showHUD("🔍 调试: " + variable);
+   ```
+
+2. **分步测试**
+   - 先创建最简单的测试版本
+   - 逐步添加功能，每步都测试
+
+3. **错误处理**
+   ```javascript
+   try {
+     // 危险操作
+   } catch (error) {
+     if (typeof MNUtil !== "undefined") {
+       MNUtil.showHUD("❌ " + error.message);
+     }
+   }
+   ```
+
+4. **查看其他插件源码**
+   - mntoolbar 和 mnutils 是很好的参考
+   - 注意它们的初始化模式和结构
+
+### 7. 最佳实践建议 ✅
+
+1. **插件结构**
+   - main.js 保持简洁，只做初始化
+   - 功能模块化，使用单独的文件
+   - 避免在全局作用域执行代码
+
+2. **初始化流程**
+   ```javascript
+   1. 接收 mainPath 参数
+   2. 定义类和方法
+   3. 在 sceneWillConnect 中初始化
+   4. 延迟加载其他模块
+   ```
+
+3. **错误处理**
+   - 每个关键操作都要 try-catch
+   - 提供用户友好的错误提示
+   - 记录错误日志
+
+4. **版本兼容**
+   - 检查 MarginNote 版本
+   - 检查 MNUtils 是否可用
+   - 提供降级方案
+
+### 8. 常见错误速查表 📋
+
+| 错误现象 | 可能原因 | 解决方案 |
+|---------|---------|---------|
+| MN 完全卡死 | JSB.newAddon 参数错误 | 添加 mainPath 参数 |
+| 插件不显示 | 缺少 queryAddonCommandStatus | 实现该方法 |
+| 点击无反应 | self 未定义 | 在 sceneWillConnect 中设置 self = this |
+| undefined is not a function | 错误的实例化方式 | 使用 .new() 而非 new |
+| MNUtil is undefined | MNUtils 未安装 | 添加存在性检查 |
+
+### 9. MarginNote 闪退问题（致命）🚨🚨🚨
+
+**问题表现**（2025-06-28 最新发现）：
+- 安装插件后 MarginNote 4 直接闪退（应用崩溃）
+- 重启 MarginNote 仍然闪退，必须删除插件文件才能恢复
+
+**根本原因 - 模块加载时机错误**：
+
+这是导致闪退的最关键因素！MarginNote 的 JSB 环境对模块加载时机极其敏感。
+
+```javascript
+// ❌❌❌ 错误 - 在 JSB.newAddon 内部加载模块会导致闪退！
+JSB.newAddon = function(mainPath) {
+  JSB.require('taskModel');     // 💥 导致闪退！
+  JSB.require('taskController'); // 💥 导致闪退！
+  
+  var Plugin = JSB.defineClass(...);
+  return Plugin;
+};
+
+// ✅✅✅ 正确 - 必须在文件末尾加载模块
+JSB.newAddon = function(mainPath) {
+  // 只定义类，不加载任何模块
+  var Plugin = JSB.defineClass(...);
+  return Plugin;
+};
+
+// 在文件末尾加载所有依赖
+JSB.require('mnutils');
+JSB.require('taskModel');
+JSB.require('taskController');
+```
+
+**其他相关因素**：
+
+1. **ES6 语法兼容性**
+   ```javascript
+   // ⚠️ 在插件初始化阶段可能有问题
+   class TaskModel {
+     constructor() { }
+   }
+   
+   // ✅ 更安全的传统写法
+   function TaskModel() { }
+   TaskModel.prototype.method = function() { }
+   ```
+
+2. **父类调用问题**
+   ```javascript
+   // ❌ 可能导致问题
+   init: function() {
+     self.super.init();
+   }
+   
+   // ✅ 直接初始化
+   init: function() {
+     // 不调用父类
+   }
+   ```
+
+**解决步骤**：
+1. 将所有 `JSB.require()` 移到文件末尾
+2. 将 ES6 class 改为传统函数式写法
+3. 移除不必要的父类调用
+4. 确保 JSB.newAddon 只返回类定义，不执行任何加载操作
+
+**调试方法**：
+- 使用 macOS Console.app 查看崩溃日志
+- 搜索 "marginnote" 相关的崩溃报告
+- 查看具体的错误堆栈
+
+**关键教训**：
+- **永远不要在 JSB.newAddon 函数内部加载模块**
+- 参考成功运行的插件（如 MNToolbar）的结构
+- JSB 环境在不同阶段对 JavaScript 特性的支持程度不同
+
+### 10. 开发检查清单 ✔️
+
+开发新插件时，请确保：
+- [ ] **模块加载在文件末尾**（最重要！）
+- [ ] JSB.newAddon 接收 mainPath 参数
+- [ ] JSB.newAddon 内部不加载任何模块
+- [ ] 实现 queryAddonCommandStatus 方法
+- [ ] JSB.defineClass 包含静态方法对象
+- [ ] 在 sceneWillConnect 中设置 self = this
+- [ ] 所有 MNUtil 调用都有存在性检查
+- [ ] 使用 .new() 创建 JSB 对象
+- [ ] logo.png 是 44x44 像素
+- [ ] 避免在插件初始化阶段使用 ES6 class
+- [ ] 错误处理和用户提示完善
+
 ## 📄 许可证
 
 本项目采用 MIT 许可证。详见各子项目的许可文件。

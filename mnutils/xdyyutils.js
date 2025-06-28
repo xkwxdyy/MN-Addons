@@ -1007,28 +1007,21 @@ class MNMath {
       isSpecialCase = !hasOtherContent && linkIndices.length > 0;
     }
     
-    let moveIndexArr = [];
+    let moveIndexArr = this.autoGetNewContentToMoveIndexArr(note);
     
-    if (!isSpecialCase) {
-      // 非特殊情况，正常获取要移动的内容
-      moveIndexArr = this.autoGetNewContentToMoveIndexArr(note);
-    }
-    
-    this.mergeTemplate(note)
+    let ifTemplateMerged = this.mergeTemplate(note)
 
-    // 使用映射表获取默认字段
-    let field = this.getDefaultFieldForType(noteType);
-
-    if (field && moveIndexArr.length > 0) {
-      this.moveCommentsArrToField(note, moveIndexArr, field);
-    }
-    
-    // 特殊处理：将链接移动到最底下
-    if (isSpecialCase) {
-      // 由于合并模板是在后面添加，原始链接的索引不变
-      // 但需要从后往前移动，避免索引变化影响
-      for (let i = linkIndices.length - 1; i >= 0; i--) {
-        note.moveComment(linkIndices[i], note.comments.length);
+    if (!ifTemplateMerged) {
+      // 使用映射表获取默认字段
+      let field = this.getDefaultFieldForType(noteType);
+      
+      // 特殊处理：将链接移动到最底下
+      if (isSpecialCase) {
+        note.moveCommentsByIndexArr(moveIndexArr, note.comments.length);
+      } else {
+        if (field && moveIndexArr.length > 0) {
+          this.moveCommentsArrToField(note, moveIndexArr, field);
+        }
       }
     }
   }
@@ -1037,10 +1030,14 @@ class MNMath {
    * 合并模板卡片
    */
   static mergeTemplate(note) {
+    let ifTemplateMerged = note.MNComments.some(comment => comment.type === "HtmlComment"); // 是否已合并模板卡片，要在下面的代码前获取，否则一直是已合并
     // 防止重复制卡：如果里面有 HtmlComment 则不制卡
     if (!note.MNComments.some(comment => comment.type === "HtmlComment")) {
       this.cloneAndMergeById(note, this.types[this.getNoteType(note)].templateNoteId);
     }
+
+    // 返回是否已制卡
+    return ifTemplateMerged
   }
 
   /**

@@ -74,12 +74,15 @@ var SimplePanelController = JSB.defineClass(
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
         MNUtil.log("✅ SimplePanelController: 界面创建完成");
       }
+      
+      // 手动触发布局
+      self.viewWillLayoutSubviews();
     },
     
     // === 创建标题栏 ===
     createTitleBar: function() {
       self.titleBar = UIView.new();
-      self.titleBar.backgroundColor = UIColor.colorWithHexString("#5982c4");
+      self.titleBar.backgroundColor = UIColor.blueColor();
       self.view.addSubview(self.titleBar);
       
       // 标题标签
@@ -95,7 +98,7 @@ var SimplePanelController = JSB.defineClass(
         self.closeButton = MNButton.new({
           title: "✕",
           font: UIFont.systemFontOfSize(20),
-          color: "#00000000",
+          color: UIColor.clearColor(),
           radius: 15,
           highlight: UIColor.redColor().colorWithAlphaComponent(0.3)
         }, self.titleBar);
@@ -106,7 +109,7 @@ var SimplePanelController = JSB.defineClass(
         self.settingsButton = MNButton.new({
           title: "⚙",
           font: 20,
-          color: "#00000000",
+          color: UIColor.clearColor(),
           radius: 15
         }, self.titleBar);
         
@@ -117,7 +120,7 @@ var SimplePanelController = JSB.defineClass(
         self.minimizeButton = MNButton.new({
           title: "−",
           font: UIFont.boldSystemFontOfSize(20),
-          color: "#00000000",
+          color: UIColor.clearColor(),
           radius: 15
         }, self.titleBar);
         
@@ -154,7 +157,7 @@ var SimplePanelController = JSB.defineClass(
     // === 创建底部工具栏 ===
     createToolbar: function() {
       self.toolbar = UIView.new();
-      self.toolbar.backgroundColor = UIColor.colorWithHexString("#f0f0f0");
+      self.toolbar.backgroundColor = UIColor.lightGrayColor();
       self.toolbar.layer.cornerRadius = 8;
       self.view.addSubview(self.toolbar);
       
@@ -172,7 +175,7 @@ var SimplePanelController = JSB.defineClass(
           const btn = MNButton.new({
             title: tool.icon,
             font: 22,
-            color: "#00000000",
+            color: UIColor.clearColor(),
             radius: 18,
             opacity: 0.8
           }, self.toolbar);
@@ -196,7 +199,7 @@ var SimplePanelController = JSB.defineClass(
         self.statusIndicator = MNButton.new({
           title: "•",
           font: 16,
-          color: "#4CAF50",
+          color: UIColor.greenColor(),
           radius: 8,
           opacity: 0.6
         }, self.toolbar);
@@ -212,9 +215,9 @@ var SimplePanelController = JSB.defineClass(
         self.resizeHandle = MNButton.new({
           title: "⋮⋮",
           font: 12,
-          color: "#00000020",
+          color: UIColor.lightGrayColor(),
           radius: 10,
-          opacity: 1.0
+          opacity: 0.3
         }, self.view);
         
         self.resizeHandle.addPanGesture(self, "onResizeGesture:");
@@ -431,9 +434,9 @@ var SimplePanelController = JSB.defineClass(
       
       // 更新状态指示器
       if (self.statusIndicator) {
-        self.statusIndicator.backgroundColor = "#4CAF50";
+        self.statusIndicator.backgroundColor = UIColor.greenColor();
         NSTimer.scheduledTimerWithTimeInterval(0.5, false, () => {
-          self.statusIndicator.backgroundColor = "#00000020";
+          self.statusIndicator.backgroundColor = UIColor.lightGrayColor().colorWithAlphaComponent(0.2);
         });
       }
       
@@ -546,9 +549,9 @@ var SimplePanelController = JSB.defineClass(
     
     highlightResizeHandle: function() {
       if (self.resizeHandle) {
-        self.resizeHandle.backgroundColor = "#00000040";
+        self.resizeHandle.backgroundColor = UIColor.grayColor().colorWithAlphaComponent(0.4);
         NSTimer.scheduledTimerWithTimeInterval(0.1, false, () => {
-          self.resizeHandle.backgroundColor = "#00000020";
+          self.resizeHandle.backgroundColor = UIColor.lightGrayColor().colorWithAlphaComponent(0.2);
         });
       }
     },
@@ -664,7 +667,7 @@ var SimplePanelController = JSB.defineClass(
 SimplePanelController.prototype.setButtonLayout = function(button, action) {
   button.autoresizingMask = (1 << 0 | 1 << 3);
   button.setTitleColorForState(UIColor.whiteColor(), 0);
-  button.backgroundColor = UIColor.colorWithHexString("#5982c4");
+  button.backgroundColor = UIColor.blueColor();
   button.layer.cornerRadius = 8;
   button.layer.masksToBounds = true;
   if (action) {

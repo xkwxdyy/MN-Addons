@@ -1,0 +1,374 @@
+[
+  {
+    "message": "✅ toolbarConfig.template 方法已扩展，支持自定义菜单模板",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663924
+  },
+  {
+    "message": "📦 已注册菜单模板: menu_comment",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册菜单模板: menu_think",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册菜单模板: menu_study",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册菜单模板: menu_reference",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册菜单模板: menu_text",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册菜单模板: menu_handtool_text",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册菜单模板: menu_card",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册菜单模板: menu_card_workflow",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册菜单模板: menu_excerpt",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册菜单模板: menu_MN",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册菜单模板: menu_card_pin",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册菜单模板: menu_makeCards",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册菜单模板: TemplateMakeNotes",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册菜单模板: menu_htmlmdcomment",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册菜单模板: hideAddonBar",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "🚀 已注册 15 个自定义菜单模板",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "🔧 开始加载 xdyy_button_registry.js",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "🔍 toolbarConfig 是否存在: true",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "🚀 开始扩展 toolbarConfig.getActions 方法",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "✅ toolbarConfig.getActions 方法已扩展，支持自定义按钮",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册按钮: custom15",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册按钮: custom1",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册按钮: custom3",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册按钮: custom10",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册按钮: custom20",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册按钮: custom5",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册按钮: custom2",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册按钮: custom9",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册按钮: custom4",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册按钮: custom7",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册按钮: custom6",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册按钮: custom17",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册按钮: snipaste",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册按钮: custom11",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册按钮: edit",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册按钮: copyAsMarkdownLink",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册按钮: custom16",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册按钮: custom12",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册按钮: custom13",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "📦 已注册按钮: custom14",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "🚀 已注册 20 个自定义按钮",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663925
+  },
+  {
+    "message": "🚀 Simple Panel: sceneWillConnect",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169663978
+  },
+  {
+    "message": "❌ SimplePanelController: view is null!",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169665457
+  },
+  {
+    "message": "📖 Simple Panel: notebookWillOpen, studyMode=2",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169665528
+  },
+  {
+    "message": "✅ Simple Panel: 控制面板已添加到视图",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169666330
+  },
+  {
+    "message": "🔄 Simple Panel: togglePanel called",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169695118
+  },
+  {
+    "message": "🔄 Simple Panel: 面板状态 = 显示",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169695119
+  },
+  {
+    "message": "🔄 Simple Panel: togglePanel called",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169699586
+  },
+  {
+    "message": "🔄 Simple Panel: 面板状态 = 隐藏",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169699587
+  },
+  {
+    "message": "🔄 Simple Panel: togglePanel called",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169700002
+  },
+  {
+    "message": "🔄 Simple Panel: 面板状态 = 显示",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169700003
+  },
+  {
+    "message": "🔄 Simple Panel: togglePanel called",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169700485
+  },
+  {
+    "message": "🔄 Simple Panel: 面板状态 = 隐藏",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169700485
+  },
+  {
+    "message": "🔄 Simple Panel: togglePanel called",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169700968
+  },
+  {
+    "message": "🔄 Simple Panel: 面板状态 = 显示",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169700968
+  },
+  {
+    "message": "🔄 Simple Panel: togglePanel called",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169701802
+  },
+  {
+    "message": "🔄 Simple Panel: 面板状态 = 隐藏",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169701803
+  },
+  {
+    "message": "🔄 Simple Panel: togglePanel called",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169703085
+  },
+  {
+    "message": "🔄 Simple Panel: 面板状态 = 显示",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169703086
+  },
+  {
+    "message": "🔄 Simple Panel: togglePanel called",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169703735
+  },
+  {
+    "message": "🔄 Simple Panel: 面板状态 = 隐藏",
+    "level": "INFO",
+    "source": "Default",
+    "timestamp": 1751169703736
+  }
+]

@@ -1,4 +1,4 @@
-// 修复版本 - 基于原始稳定版本，整合优化功能
+// 修复版本 - 基于正常工作的版本
 // 尝试加载 MNUtils（如果可用）
 try {
   JSB.require('mnutils');
@@ -33,19 +33,6 @@ var SimplePanelController = JSB.defineClass(
       // 设置初始大小和位置
       self.view.frame = {x: 100, y: 100, width: 400, height: 350};
       self.currentFrame = self.view.frame;
-      
-      // 初始化配置
-      self.config = {
-        mode: 0,  // 0:转大写 1:转小写 2:首字母大写 3:反转
-        autoProcess: false,
-        saveHistory: true,
-        position: { x: 100, y: 100 },
-        size: { width: 400, height: 350 }
-      };
-      
-      // 处理历史记录
-      self.history = [];
-      self.isMinimized = false;
       
       // === 创建标题栏 ===
       self.titleBar = UIView.new();
@@ -92,16 +79,6 @@ var SimplePanelController = JSB.defineClass(
         }, self.titleBar);
         
         self.minimizeButton.addClickAction(self, "toggleMinimize:");
-        
-        // === 创建固定按钮 ===
-        self.pinButton = MNButton.new({
-          title: "📌",
-          font: 20,
-          color: "#00000000",
-          radius: 15
-        }, self.titleBar);
-        
-        self.pinButton.addClickAction(self, "togglePin:");
       } else {
         // 降级方案
         self.closeButton = UIButton.buttonWithType(0);
@@ -123,7 +100,6 @@ var SimplePanelController = JSB.defineClass(
       self.inputField.backgroundColor = UIColor.grayColor().colorWithAlphaComponent(0.2);
       self.inputField.text = "在这里输入文本...";
       self.inputField.textContainerInset = {top: 8, left: 8, bottom: 8, right: 8};
-      self.inputField.delegate = self;  // 设置代理
       self.view.addSubview(self.inputField);
       
       // === 创建输出框 ===
@@ -136,40 +112,20 @@ var SimplePanelController = JSB.defineClass(
       self.outputField.editable = false;
       self.view.addSubview(self.outputField);
       
-      if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log("✅ 输入输出框创建完成");
-      }
-      
-      // === 添加字数统计标签 ===
-      if (typeof MNUtil !== "undefined") {
-        self.wordCountLabel = UILabel.new();
-        self.wordCountLabel.font = UIFont.systemFontOfSize(12);
-        self.wordCountLabel.textColor = UIColor.grayColor();
-        self.wordCountLabel.textAlignment = 2; // 右对齐
-        self.view.addSubview(self.wordCountLabel);
-        self.updateWordCount();
-      }
-      
       // === 创建底部工具栏 ===
       self.toolbar = UIView.new();
       self.toolbar.backgroundColor = UIColor.colorWithHexString("#f0f0f0");
       self.toolbar.layer.cornerRadius = 8;
       self.view.addSubview(self.toolbar);
       
-      // 调试：检查 MNButton 是否存在
-      if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log("🔍 MNButton 状态: " + (typeof MNButton !== "undefined" ? "已定义" : "未定义"));
-      }
-      
       if (typeof MNButton !== "undefined") {
         // === 创建工具按钮组 ===
         const tools = [
           { icon: "🔄", action: "processText:", tooltip: "处理文本" },
           { icon: "📋", action: "copyOutput:", tooltip: "复制结果" },
-          { icon: "🔧", action: "showModeMenu:", tooltip: "选择模式", badge: "0" },
+          { icon: "🔧", action: "showModeMenu:", tooltip: "选择模式" },
           { icon: "📝", action: "insertToNote:", tooltip: "插入到笔记" },
-          { icon: "🕐", action: "showHistory:", tooltip: "历史记录", badge: "0" },
-          { icon: "🎨", action: "showThemeMenu:", tooltip: "主题设置" }
+          { icon: "🕐", action: "showHistory:", tooltip: "历史记录" }
         ];
         
         self.toolButtons = tools.map((tool, index) => {
@@ -187,7 +143,6 @@ var SimplePanelController = JSB.defineClass(
           btn.addLongPressGesture(self, "showTooltip:", 0.3);
           btn.tooltipText = tool.tooltip;
           btn.toolIndex = index;
-          btn.badge = tool.badge;
           
           return btn;
         });
@@ -202,10 +157,6 @@ var SimplePanelController = JSB.defineClass(
         }, self.toolbar);
       } else {
         // 降级方案：使用普通 UIButton
-        if (typeof MNUtil !== "undefined" && MNUtil.log) {
-          MNUtil.log("⚠️ 使用降级方案创建工具栏按钮");
-        }
-        
         const tools = [
           { icon: "🔄", action: "processText:" },
           { icon: "📋", action: "copyOutput:" },
@@ -225,10 +176,6 @@ var SimplePanelController = JSB.defineClass(
           self.toolbar.addSubview(btn);
           self.toolButtons.push(btn);
         });
-      }
-      
-      if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log("✅ 工具栏创建完成");
       }
       
       // === 创建调整大小手柄 ===
@@ -254,16 +201,20 @@ var SimplePanelController = JSB.defineClass(
         self.resizeHandle.addGestureRecognizer(self.resizeGesture);
       }
       
-      if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log("✅ 调整大小手柄创建完成");
-      }
+      // 初始化配置（放在最后）
+      self.config = {
+        mode: 0,  // 0:转大写 1:转小写 2:首字母大写 3:反转
+        autoProcess: false,
+        saveHistory: true
+      };
+      
+      // 处理历史记录
+      self.history = [];
+      self.isMinimized = false;
       
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
         MNUtil.log("✅ SimplePanelController: 界面创建完成");
       }
-      
-      // 手动调用布局方法确保按钮显示
-      self.viewWillLayoutSubviews();
     },
     
     // === 布局 ===
@@ -285,7 +236,7 @@ var SimplePanelController = JSB.defineClass(
       self.titleLabel.frame = {
         x: 50,
         y: 0,
-        width: frame.width - 200,
+        width: frame.width - 100,
         height: 40
       };
       
@@ -307,15 +258,6 @@ var SimplePanelController = JSB.defineClass(
         };
       }
       
-      if (self.pinButton) {
-        self.pinButton.frame = {
-          x: frame.width - 105,
-          y: 5,
-          width: 30,
-          height: 30
-        };
-      }
-      
       if (self.minimizeButton) {
         self.minimizeButton.frame = {
           x: 5,
@@ -325,12 +267,11 @@ var SimplePanelController = JSB.defineClass(
         };
       }
       
-      // 内容区域（最小化时隐藏）
+      // 内容区域
       if (!self.isMinimized) {
         var contentTop = 50;
         var toolbarHeight = 50;
-        var wordCountHeight = self.wordCountLabel ? 20 : 0;
-        var contentHeight = (frame.height - contentTop - toolbarHeight - wordCountHeight - 10) / 2 - 5;
+        var contentHeight = (frame.height - contentTop - toolbarHeight - 10) / 2 - 5;
         
         // 输入框
         self.inputField.frame = {
@@ -339,16 +280,6 @@ var SimplePanelController = JSB.defineClass(
           width: frame.width - 20,
           height: contentHeight
         };
-        
-        // 字数统计
-        if (self.wordCountLabel) {
-          self.wordCountLabel.frame = {
-            x: 10,
-            y: contentTop + contentHeight - 20,
-            width: frame.width - 30,
-            height: 20
-          };
-        }
         
         // 输出框
         self.outputField.frame = {
@@ -369,7 +300,7 @@ var SimplePanelController = JSB.defineClass(
         // 工具按钮布局
         if (self.toolButtons) {
           var buttonSize = 36;
-          var spacing = 8;
+          var spacing = 10;
           var totalWidth = self.toolButtons.length * buttonSize + (self.toolButtons.length - 1) * spacing;
           var startX = (self.toolbar.frame.width - totalWidth) / 2;
           
@@ -387,7 +318,7 @@ var SimplePanelController = JSB.defineClass(
         if (self.statusIndicator) {
           self.statusIndicator.frame = {
             x: 10,
-            y: (self.toolbar.frame.height - 16) / 2,
+            y: 10,
             width: 16,
             height: 16
           };
@@ -408,34 +339,24 @@ var SimplePanelController = JSB.defineClass(
     // === 事件处理 ===
     
     closePanel: function() {
-      if (typeof MNUtil !== "undefined") {
-        // 使用动画效果
-        MNUtil.animate(() => {
-          self.view.alpha = 0;
-        }, 0.25);
-        
-        NSTimer.scheduledTimerWithTimeInterval(0.25, false, () => {
-          self.view.hidden = true;
-          self.view.alpha = 1;
-          self.appInstance.studyController(self.view.window).refreshAddonCommands();
-        });
-      } else {
-        self.view.hidden = true;
-        self.appInstance.studyController(self.view.window).refreshAddonCommands();
-      }
+      self.view.hidden = true;
+      self.appInstance.studyController(self.view.window).refreshAddonCommands();
     },
     
     showSettings: function(sender) {
       if (typeof Menu !== "undefined") {
         const menu = new Menu(sender, self, 250, 2);
         
-        menu.addMenuItem("自动处理", "toggleAutoProcess:", "", self.config.autoProcess);
-        menu.addMenuItem("保存历史", "toggleSaveHistory:", "", self.config.saveHistory);
-        menu.addMenuItem("────────", "", "", false);
-        menu.addMenuItem("清空历史", "clearHistory:");
-        menu.addMenuItem("导出配置", "exportConfig:");
-        menu.addMenuItem("导入配置", "importConfig:");
+        const menuItems = [
+          { title: "自动处理", selector: "toggleAutoProcess:", checked: self.config.autoProcess },
+          { title: "保存历史", selector: "toggleSaveHistory:", checked: self.config.saveHistory },
+          { title: "────────", selector: "", param: "" },
+          { title: "清空历史", selector: "clearHistory:" },
+          { title: "导出配置", selector: "exportConfig:" },
+          { title: "导入配置", selector: "importConfig:" }
+        ];
         
+        menu.addMenuItems(menuItems);
         menu.rowHeight = 40;
         menu.show();
       }
@@ -468,13 +389,11 @@ var SimplePanelController = JSB.defineClass(
             self.inputField.hidden = true;
             self.outputField.hidden = true;
             self.toolbar.hidden = true;
-            if (self.wordCountLabel) self.wordCountLabel.hidden = true;
           } else {
             self.view.frame = self.currentFrame;
             self.inputField.hidden = false;
             self.outputField.hidden = false;
             self.toolbar.hidden = false;
-            if (self.wordCountLabel) self.wordCountLabel.hidden = false;
           }
         }, 0.25);
       } else {
@@ -498,16 +417,6 @@ var SimplePanelController = JSB.defineClass(
       }
     },
     
-    togglePin: function() {
-      self.config.pinPosition = !self.config.pinPosition;
-      if (self.pinButton) {
-        self.pinButton.opacity = self.config.pinPosition ? 1.0 : 0.6;
-      }
-      if (typeof MNUtil !== "undefined") {
-        MNUtil.showHUD(self.config.pinPosition ? "位置已固定" : "位置已解锁");
-      }
-    },
-    
     processText: function() {
       try {
         var text = self.inputField.text;
@@ -526,9 +435,6 @@ var SimplePanelController = JSB.defineClass(
           case 3: // 反转文本
             result = text.split('').reverse().join('');
             break;
-          case 4: // 删除空白
-            result = text.replace(/\s+/g, ' ').trim();
-            break;
         }
         
         self.outputField.text = result;
@@ -541,16 +447,6 @@ var SimplePanelController = JSB.defineClass(
             mode: self.config.mode,
             time: new Date()
           });
-          
-          // 限制历史记录数量
-          if (self.history.length > 100) {
-            self.history = self.history.slice(-100);
-          }
-          
-          // 更新历史按钮徽章
-          if (self.toolButtons && self.toolButtons[4]) {
-            self.toolButtons[4].badge = String(self.history.length);
-          }
         }
         
         // 更新状态指示器
@@ -566,6 +462,7 @@ var SimplePanelController = JSB.defineClass(
         }
       } catch (error) {
         if (typeof MNUtil !== "undefined") {
+          MNUtil.addErrorLog(error, "processText", {mode: self.config.mode});
           MNUtil.showHUD("处理失败：" + error.message);
         }
       }
@@ -573,19 +470,16 @@ var SimplePanelController = JSB.defineClass(
     
     showModeMenu: function(sender) {
       if (typeof Menu !== "undefined") {
-        const menu = new Menu(sender, self, 220, 2);
+        const menu = new Menu(sender, self, 200, 2);
         
         const modes = [
-          { title: "转大写 (ABC)", value: 0 },
-          { title: "转小写 (abc)", value: 1 },
-          { title: "首字母大写 (Abc)", value: 2 },
-          { title: "反转文本 (⇄)", value: 3 },
-          { title: "删除多余空白", value: 4 }
+          { title: "转大写 (ABC)", selector: "setMode:", param: 0, checked: self.config.mode === 0 },
+          { title: "转小写 (abc)", selector: "setMode:", param: 1, checked: self.config.mode === 1 },
+          { title: "首字母大写 (Abc)", selector: "setMode:", param: 2, checked: self.config.mode === 2 },
+          { title: "反转文本 (⇄)", selector: "setMode:", param: 3, checked: self.config.mode === 3 }
         ];
         
-        modes.forEach(mode => {
-          menu.addMenuItem(mode.title, "setMode:", mode.value, self.config.mode === mode.value);
-        });
+        menu.addMenuItems(modes);
         
         menu.rowHeight = 45;
         menu.fontSize = 16;
@@ -596,9 +490,15 @@ var SimplePanelController = JSB.defineClass(
     setMode: function(mode) {
       self.config.mode = mode;
       
-      // 更新模式按钮的徽章
-      if (self.toolButtons && self.toolButtons[2]) {
-        self.toolButtons[2].badge = String(mode);
+      // 关闭菜单
+      if (typeof Menu !== "undefined") {
+        Menu.dismissCurrentMenu();
+      }
+      
+      // 显示模式名称作为反馈
+      const modeNames = ["转大写", "转小写", "首字母大写", "反转文本"];
+      if (typeof MNUtil !== "undefined") {
+        MNUtil.showHUD("已切换到: " + modeNames[mode]);
       }
       
       // 如果开启了自动处理
@@ -610,7 +510,7 @@ var SimplePanelController = JSB.defineClass(
     copyOutput: function() {
       var text = self.outputField.text;
       
-      if (typeof MNUtil !== "undefined") {
+      if (typeof MNUtil !== "undefined" && MNUtil.copy) {
         MNUtil.copy(text);
         MNUtil.showHUD("已复制到剪贴板");
       } else {
@@ -619,9 +519,9 @@ var SimplePanelController = JSB.defineClass(
     },
     
     insertToNote: function() {
-      if (typeof MNNote === "undefined" || typeof MNUtil === "undefined") {
+      if (typeof MNNote === "undefined") {
         if (typeof MNUtil !== "undefined") {
-          MNUtil.showHUD("MNUtils 未安装");
+          MNUtil.showHUD("需要安装 MNUtils");
         }
         return;
       }
@@ -638,27 +538,28 @@ var SimplePanelController = JSB.defineClass(
     },
     
     showHistory: function(sender) {
-      if (self.history.length === 0) {
-        if (typeof MNUtil !== "undefined") {
-          MNUtil.showHUD("暂无历史记录");
-        }
-        return;
-      }
-      
-      if (typeof Menu !== "undefined") {
-        const menu = new Menu(sender, self, 350, 2);
+      if (typeof Menu !== "undefined" && self.history.length > 0) {
+        const menu = new Menu(sender, self, 300, 2);
         
         // 显示最近10条历史
         const recentHistory = self.history.slice(-10).reverse();
         
         recentHistory.forEach((item, index) => {
           const preview = item.output.substring(0, 30) + (item.output.length > 30 ? "..." : "");
-          const title = `${preview}`;
-          menu.addMenuItem(title, "loadFromHistory:", self.history.length - 1 - index);
+          menu.addMenuItem(preview, "loadFromHistory:", self.history.length - 1 - index);
         });
+        
+        if (self.history.length > 10) {
+          menu.addMenuItem("────────", "", "", false);
+          menu.addMenuItem("查看全部 (" + self.history.length + " 条)", "showAllHistory:");
+        }
         
         menu.rowHeight = 35;
         menu.show();
+      } else {
+        if (typeof MNUtil !== "undefined") {
+          MNUtil.showHUD("暂无历史记录");
+        }
       }
     },
     
@@ -668,39 +569,16 @@ var SimplePanelController = JSB.defineClass(
         self.inputField.text = item.input;
         self.outputField.text = item.output;
         self.config.mode = item.mode;
-        self.setMode(item.mode);
-      }
-      if (typeof Menu !== "undefined") {
-        Menu.dismissCurrentMenu();
-      }
-    },
-    
-    showThemeMenu: function(sender) {
-      if (typeof Menu !== "undefined" && typeof MNUtil !== "undefined") {
-        const menu = new Menu(sender, self, 200, 2);
         
-        const themes = [
-          { name: "默认", color: "#5982c4" },
-          { name: "暗黑", color: "#2c2c2c" },
-          { name: "绿色", color: "#4CAF50" },
-          { name: "橙色", color: "#FF9800" },
-          { name: "紫色", color: "#9C27B0" }
-        ];
+        // 关闭菜单
+        if (typeof Menu !== "undefined") {
+          Menu.dismissCurrentMenu();
+        }
         
-        themes.forEach(theme => {
-          menu.addMenuItem(theme.name, "applyTheme:", theme);
-        });
-        
-        menu.show();
-      }
-    },
-    
-    applyTheme: function(theme) {
-      if (typeof MNUtil !== "undefined") {
-        MNUtil.animate(() => {
-          self.titleBar.backgroundColor = UIColor.colorWithHexString(theme.color);
-        }, 0.3);
-        Menu.dismissCurrentMenu();
+        // 显示反馈
+        if (typeof MNUtil !== "undefined") {
+          MNUtil.showHUD("已加载历史记录");
+        }
       }
     },
     
@@ -710,18 +588,96 @@ var SimplePanelController = JSB.defineClass(
       }
     },
     
+    // === 设置相关 ===
+    
+    toggleAutoProcess: function() {
+      self.config.autoProcess = !self.config.autoProcess;
+      
+      if (typeof Menu !== "undefined") {
+        Menu.dismissCurrentMenu();
+      }
+      
+      if (typeof MNUtil !== "undefined") {
+        MNUtil.showHUD("自动处理: " + (self.config.autoProcess ? "已开启" : "已关闭"));
+      }
+      
+      // 延迟重新显示菜单，让用户看到反馈
+      NSTimer.scheduledTimerWithTimeInterval(0.3, false, () => {
+        self.showSettings(self.settingsButton);
+      });
+    },
+    
+    toggleSaveHistory: function() {
+      self.config.saveHistory = !self.config.saveHistory;
+      
+      if (typeof Menu !== "undefined") {
+        Menu.dismissCurrentMenu();
+      }
+      
+      if (typeof MNUtil !== "undefined") {
+        MNUtil.showHUD("保存历史: " + (self.config.saveHistory ? "已开启" : "已关闭"));
+      }
+      
+      // 延迟重新显示菜单，让用户看到反馈
+      NSTimer.scheduledTimerWithTimeInterval(0.3, false, () => {
+        self.showSettings(self.settingsButton);
+      });
+    },
+    
+    clearHistory: function() {
+      self.history = [];
+      
+      if (typeof Menu !== "undefined") {
+        Menu.dismissCurrentMenu();
+      }
+      
+      if (typeof MNUtil !== "undefined") {
+        MNUtil.showHUD("历史已清空");
+      }
+    },
+    
+    exportConfig: function() {
+      const configStr = JSON.stringify(self.config, null, 2);
+      
+      if (typeof Menu !== "undefined") {
+        Menu.dismissCurrentMenu();
+      }
+      
+      if (typeof MNUtil !== "undefined" && MNUtil.copy) {
+        MNUtil.copy(configStr);
+        MNUtil.showHUD("配置已复制到剪贴板");
+      } else {
+        UIPasteboard.generalPasteboard().string = configStr;
+      }
+    },
+    
+    importConfig: function() {
+      if (typeof Menu !== "undefined") {
+        Menu.dismissCurrentMenu();
+      }
+      
+      try {
+        const configStr = (typeof MNUtil !== "undefined" && MNUtil.clipboardText) ? 
+          MNUtil.clipboardText : UIPasteboard.generalPasteboard().string;
+        const newConfig = JSON.parse(configStr);
+        
+        if (newConfig && typeof newConfig === "object") {
+          self.config = Object.assign(self.config, newConfig);
+          
+          if (typeof MNUtil !== "undefined") {
+            MNUtil.showHUD("配置导入成功");
+          }
+        }
+      } catch (e) {
+        if (typeof MNUtil !== "undefined") {
+          MNUtil.showHUD("配置导入失败");
+        }
+      }
+    },
+    
     // === 手势处理 ===
     
     onDragGesture: function(gesture) {
-      if (self.config && self.config.pinPosition) {
-        if (gesture.state === 1) {
-          if (typeof MNUtil !== "undefined") {
-            MNUtil.showHUD("位置已固定");
-          }
-        }
-        return;
-      }
-      
       if (gesture.state === 1) { // Began
         self.dragOffset = gesture.locationInView(self.view);
       } else if (gesture.state === 2) { // Changed
@@ -767,81 +723,10 @@ var SimplePanelController = JSB.defineClass(
       self.viewWillLayoutSubviews();
     },
     
-    // === TextView 代理方法 ===
-    
-    textViewDidChange: function(textView) {
-      if (textView === self.inputField) {
-        self.updateWordCount();
-        
-        // 自动处理
-        if (self.config.autoProcess) {
-          // 使用延迟避免频繁处理
-          if (self.autoProcessTimer) {
-            self.autoProcessTimer.invalidate();
-          }
-          
-          self.autoProcessTimer = NSTimer.scheduledTimerWithTimeInterval(0.5, false, () => {
-            self.processText();
-          });
-        }
-      }
-    },
-    
-    // === 工具方法 ===
-    
-    updateWordCount: function() {
-      if (!self.wordCountLabel || typeof MNUtil === "undefined") return;
-      
-      let text = self.inputField.text;
-      let count = text.length;
-      self.wordCountLabel.text = `字数: ${count}`;
-    },
-    
-    toggleAutoProcess: function() {
-      self.config.autoProcess = !self.config.autoProcess;
-      if (typeof Menu !== "undefined") {
-        Menu.dismissCurrentMenu();
-      }
-      self.showSettings(self.settingsButton);
-    },
-    
-    toggleSaveHistory: function() {
-      self.config.saveHistory = !self.config.saveHistory;
-      if (typeof Menu !== "undefined") {
-        Menu.dismissCurrentMenu();
-      }
-      self.showSettings(self.settingsButton);
-    },
-    
-    clearHistory: function() {
-      self.history = [];
-      if (self.toolButtons && self.toolButtons[4]) {
-        self.toolButtons[4].badge = "0";
-      }
+    showAllHistory: function() {
+      // 可以在这里实现更完整的历史记录查看界面
       if (typeof MNUtil !== "undefined") {
-        MNUtil.showHUD("历史已清空");
-      }
-      if (typeof Menu !== "undefined") {
-        Menu.dismissCurrentMenu();
-      }
-    },
-    
-    exportConfig: function() {
-      if (typeof MNUtil !== "undefined") {
-        MNUtil.copy(JSON.stringify(self.config, null, 2));
-        MNUtil.showHUD("配置已复制");
-      }
-      if (typeof Menu !== "undefined") {
-        Menu.dismissCurrentMenu();
-      }
-    },
-    
-    importConfig: function() {
-      if (typeof MNUtil !== "undefined") {
-        MNUtil.showHUD("请在剪贴板中准备配置");
-      }
-      if (typeof Menu !== "undefined") {
-        Menu.dismissCurrentMenu();
+        MNUtil.showHUD("共有 " + self.history.length + " 条历史记录");
       }
     }
   }

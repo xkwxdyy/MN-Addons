@@ -736,17 +736,30 @@ var SimplePanelController = JSB.defineClass(
     },
     
     exportConfig: function() {
-      const configStr = JSON.stringify(self.config, null, 2);
+      // 导出配置和历史记录
+      const exportData = {
+        config: self.config,
+        history: self.history,
+        exportTime: new Date().toISOString(),
+        version: "0.0.9"
+      };
+      
+      const exportStr = JSON.stringify(exportData, null, 2);
       
       if (typeof Menu !== "undefined") {
         Menu.dismissCurrentMenu();
       }
       
       if (typeof MNUtil !== "undefined" && MNUtil.copy) {
-        MNUtil.copy(configStr);
-        MNUtil.showHUD("配置已复制到剪贴板");
+        MNUtil.copy(exportStr);
+        MNUtil.showHUD("配置和历史已复制到剪贴板");
+        
+        // 记录导出信息
+        if (MNUtil.log) {
+          MNUtil.log("📤 导出配置: " + self.history.length + " 条历史记录");
+        }
       } else {
-        UIPasteboard.generalPasteboard().string = configStr;
+        UIPasteboard.generalPasteboard().string = exportStr;
       }
     },
     
@@ -756,20 +769,55 @@ var SimplePanelController = JSB.defineClass(
       }
       
       try {
-        const configStr = (typeof MNUtil !== "undefined" && MNUtil.clipboardText) ? 
+        const importStr = (typeof MNUtil !== "undefined" && MNUtil.clipboardText) ? 
           MNUtil.clipboardText : UIPasteboard.generalPasteboard().string;
-        const newConfig = JSON.parse(configStr);
+        const importData = JSON.parse(importStr);
         
-        if (newConfig && typeof newConfig === "object") {
-          self.config = Object.assign(self.config, newConfig);
+        if (importData && typeof importData === "object") {
+          // 处理旧版本格式（只有配置）
+          if (!importData.config && !importData.history) {
+            // 旧格式，直接作为配置导入
+            self.config = Object.assign(self.config, importData);
+          } else {
+            // 新格式，包含配置和历史
+            if (importData.config) {
+              self.config = Object.assign(self.config, importData.config);
+            }
+            if (importData.history && Array.isArray(importData.history)) {
+              self.history = importData.history;
+              
+              // 保存导入的历史记录
+              try {
+                NSUserDefaults.standardUserDefaults().setObjectForKey(self.history, "SimplePanel_History");
+                NSUserDefaults.standardUserDefaults().synchronize();
+              } catch (e) {
+                // 忽略错误
+              }
+            }
+          }
+          
+          // 保存配置
+          try {
+            NSUserDefaults.standardUserDefaults().setObjectForKey(self.config, "SimplePanel_Config");
+            NSUserDefaults.standardUserDefaults().synchronize();
+          } catch (e) {
+            // 忽略错误
+          }
           
           if (typeof MNUtil !== "undefined") {
-            MNUtil.showHUD("配置导入成功");
+            const msg = importData.history ? 
+              "配置和历史导入成功 (" + importData.history.length + " 条记录)" : 
+              "配置导入成功";
+            MNUtil.showHUD(msg);
+            
+            if (MNUtil.log) {
+              MNUtil.log("📥 导入成功: " + msg);
+            }
           }
         }
       } catch (e) {
         if (typeof MNUtil !== "undefined") {
-          MNUtil.showHUD("配置导入失败");
+          MNUtil.showHUD("导入失败: " + e.message);
         }
       }
     },

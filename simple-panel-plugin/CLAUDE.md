@@ -1032,10 +1032,203 @@ if (typeof MNUtil !== "undefined" && MNUtil.log) {
 
 ### 🎆 最终成果
 
-经过 8 个版本的迭代，我们：
+经过 10 个版本的迭代，我们：
 - ✅ 解决了所有已知 Bug
 - ✅ 积累了宝贵的 JSB 框架经验
 - ✅ 形成了成熟的调试方法论
 - ✅ 创建了一个稳定可靠的插件框架
+- ✅ 实现了完整的数据持久化功能
 
 这些经验对未来的 MarginNote 插件开发极其宝贵！
+
+## 🔧 数据持久化完整方案（v0.0.9-v0.0.10）
+
+### 问题与解决
+
+#### 1. JSB 方法调用限制扩展
+
+除了 `viewDidLoad`，在其他方法中也不能调用自定义方法：
+
+```javascript
+// ❌ 错误：在 processText 中调用自定义方法
+processText: function() {
+  // ... 处理逻辑
+  self.saveHistory();  // Error: self.saveHistory is not a function
+}
+
+// ✅ 正确：直接内联保存代码
+processText: function() {
+  // ... 处理逻辑
+  
+  // 直接内联保存历史的代码
+  try {
+    const historyToSave = self.history.slice(-100);
+    NSUserDefaults.standardUserDefaults().setObjectForKey(historyToSave, "SimplePanel_History");
+    NSUserDefaults.standardUserDefaults().synchronize();
+  } catch (e) {
+    // 忽略错误
+  }
+}
+```
+
+#### 2. NSUserDefaults 正确用法
+
+必须在设置值后调用 `synchronize()`，否则数据可能不会立即保存：
+
+```javascript
+// ❌ 不完整的保存
+NSUserDefaults.standardUserDefaults().setObjectForKey(data, key);
+
+// ✅ 完整的保存流程
+NSUserDefaults.standardUserDefaults().setObjectForKey(data, key);
+NSUserDefaults.standardUserDefaults().synchronize();  // 必须调用！
+```
+
+#### 3. 菜单时序问题
+
+菜单关闭和 HUD 显示可能产生冲突，需要正确处理时序：
+
+```javascript
+// ❌ 可能导致菜单不消失
+setMode: function(mode) {
+  self.config.mode = mode;
+  Menu.dismissCurrentMenu();
+  MNUtil.showHUD("已切换");  // 可能干扰菜单关闭
+}
+
+// ✅ 正确的时序处理
+setMode: function(mode) {
+  self.config.mode = mode;
+  
+  // 先关闭菜单
+  if (typeof Menu !== "undefined") {
+    Menu.dismissCurrentMenu();
+  }
+  
+  // 延迟显示 HUD，确保菜单已关闭
+  NSTimer.scheduledTimerWithTimeInterval(0.1, false, () => {
+    if (typeof MNUtil !== "undefined") {
+      MNUtil.showHUD("已切换到: " + modeNames[mode]);
+    }
+  });
+}
+```
+
+### 持久化架构设计
+
+#### 1. 数据结构设计
+
+```javascript
+// 配置数据
+const config = {
+  mode: 0,              // 当前模式
+  saveHistory: true,    // 是否保存历史
+  inputText: "...",     // 输入框内容
+  outputText: "..."     // 输出框内容
+};
+
+// 历史记录
+const history = [
+  {
+    input: "原文本",
+    output: "处理结果",
+    mode: 0,
+    time: "2025-06-29T10:00:00.000Z"
+  }
+];
+```
+
+#### 2. 加载时机
+
+在 `viewDidLoad` 中直接内联加载代码：
+
+```javascript
+viewDidLoad: function() {
+  // 加载配置
+  const savedConfig = NSUserDefaults.standardUserDefaults().objectForKey("SimplePanel_Config");
+  const defaultConfig = {
+    mode: 0,
+    saveHistory: true,
+    inputText: "在这里输入文本...",
+    outputText: "处理结果..."
+  };
+  
+  self.config = savedConfig ? Object.assign({}, defaultConfig, savedConfig) : defaultConfig;
+  
+  // 加载历史
+  self.history = [];
+  try {
+    const savedHistory = NSUserDefaults.standardUserDefaults().objectForKey("SimplePanel_History");
+    if (savedHistory && Array.isArray(savedHistory)) {
+      self.history = savedHistory;
+    }
+  } catch (error) {
+    // 忽略错误
+  }
+  
+  // 恢复文本框内容
+  if (self.config.inputText && self.config.inputText !== "在这里输入文本...") {
+    self.inputField.text = self.config.inputText;
+  }
+}
+```
+
+#### 3. 保存时机
+
+- **配置改变时**：setMode, toggleSaveHistory
+- **文本处理后**：processText（保存历史）
+- **视图关闭时**：viewWillDisappear
+- **清空历史时**：clearHistory
+
+### 导出/导入增强（v0.0.10）
+
+#### 完整导出格式
+
+```javascript
+exportConfig: function() {
+  const exportData = {
+    config: self.config,
+    history: self.history,
+    exportTime: new Date().toISOString(),
+    version: "0.0.9"
+  };
+  
+  const exportStr = JSON.stringify(exportData, null, 2);
+  MNUtil.copy(exportStr);
+  MNUtil.showHUD("配置和历史已复制到剪贴板");
+}
+```
+
+#### 智能导入兼容
+
+```javascript
+importConfig: function() {
+  const importData = JSON.parse(importStr);
+  
+  // 兼容旧格式（只有配置）
+  if (!importData.config && !importData.history) {
+    self.config = Object.assign(self.config, importData);
+  } else {
+    // 新格式（包含配置和历史）
+    if (importData.config) {
+      self.config = Object.assign(self.config, importData.config);
+    }
+    if (importData.history) {
+      self.history = importData.history;
+    }
+  }
+  
+  // 立即保存
+  NSUserDefaults.standardUserDefaults().setObjectForKey(self.config, "SimplePanel_Config");
+  NSUserDefaults.standardUserDefaults().setObjectForKey(self.history, "SimplePanel_History");
+  NSUserDefaults.standardUserDefaults().synchronize();
+}
+```
+
+### 关键要点总结
+
+1. **JSB 框架限制无处不在**：不仅 viewDidLoad，任何方法中都不能调用自定义方法
+2. **持久化必须同步**：NSUserDefaults 操作后必须调用 synchronize()
+3. **UI 操作需要时序控制**：菜单关闭和其他 UI 操作之间需要适当延迟
+4. **数据结构要考虑扩展性**：导出格式包含版本号便于未来兼容
+5. **错误处理要充分**：所有存储操作都应该用 try-catch 保护

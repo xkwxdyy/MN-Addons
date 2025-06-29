@@ -784,3 +784,42 @@ if (MNUtil.isfileExists(path)) {
 最终 v0.0.8 版本稳定运行，所有问题得到解决！ --tags MarginNote 插件开发 JSB框架 MNUtils 调试 陷阱 simple-panel-plugin
 --tags #其他 #评分:8 #有效期:长期
 - END
+
+- 2025/06/29 18:37 START
+## MarginNote 插件开发 - 数据持久化完整解决方案
+
+### 问题汇总（simple-panel-plugin v0.0.9-v0.0.10）
+
+1. **JSB 框架方法调用限制扩展**
+   - 不仅在 viewDidLoad 中不能调用自定义方法
+   - 在 processText、setMode 等任何方法中都不能调用自定义方法
+   - 错误：`self.saveHistory is not a function`
+   - 解决：必须将所有代码内联，不能抽取为方法
+
+2. **NSUserDefaults 持久化要求**
+   - 必须在 setObjectForKey 后调用 synchronize()
+   - 否则数据可能不会立即保存
+   - 正确流程：`setObjectForKey → synchronize`
+
+3. **菜单不消失问题**
+   - Menu.dismissCurrentMenu() 和 MNUtil.showHUD() 可能冲突
+   - 解决：使用 NSTimer.scheduledTimerWithTimeInterval 延迟 0.1 秒显示 HUD
+
+4. **数据结构设计**
+   - config: {mode, saveHistory, inputText, outputText}
+   - history: [{input, output, mode, time}]
+   - 导出格式包含：config + history + exportTime + version
+
+5. **关键实现要点**
+   - 加载时机：viewDidLoad 中直接内联
+   - 保存时机：配置改变、文本处理后、视图关闭、清空历史
+   - 历史限制：最近 100 条
+   - 错误处理：所有存储操作用 try-catch 保护
+
+### 最佳实践
+- 永远不要在 JSB.defineClass 中定义并调用自定义方法
+- 所有逻辑必须内联在生命周期方法中
+- UI 操作要考虑时序，适当使用延迟
+- 导出格式要包含版本号便于未来兼容 --tags MarginNote JSB框架 数据持久化 NSUserDefaults 插件开发 simple-panel-plugin
+--tags #最佳实践 #流程管理 #评分:8 #有效期:长期
+- END

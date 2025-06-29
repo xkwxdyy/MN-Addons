@@ -1,5 +1,5 @@
 {
-  "currentState": "memory_saved",
+  "currentState": "initialized",
   "stateHistory": [
     {
       "from": "initial",
@@ -266,7 +266,33 @@
         "--tags",
         "MarginNote 插件开发 JSB框架 MNUtils 调试 陷阱 simple-panel-plugin"
       ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "recall",
+      "timestamp": "2025-06-29T10:00:34.690Z",
+      "args": []
+    },
+    {
+      "from": "recall-waiting",
+      "command": "remember",
+      "timestamp": "2025-06-29T10:37:10.893Z",
+      "args": [
+        "## MarginNote 插件开发 - 数据持久化完整解决方案\n\n### 问题汇总（simple-panel-plugin v0.0.9-v0.0.10）\n\n1. **JSB 框架方法调用限制扩展**\n   - 不仅在 viewDidLoad 中不能调用自定义方法\n   - 在 processText、setMode 等任何方法中都不能调用自定义方法\n   - 错误：`self.saveHistory is not a function`\n   - 解决：必须将所有代码内联，不能抽取为方法\n\n2. **NSUserDefaults 持久化要求**\n   - 必须在 setObjectForKey 后调用 synchronize()\n   - 否则数据可能不会立即保存\n   - 正确流程：`setObjectForKey → synchronize`\n\n3. **菜单不消失问题**\n   - Menu.dismissCurrentMenu() 和 MNUtil.showHUD() 可能冲突\n   - 解决：使用 NSTimer.scheduledTimerWithTimeInterval 延迟 0.1 秒显示 HUD\n\n4. **数据结构设计**\n   - config: {mode, saveHistory, inputText, outputText}\n   - history: [{input, output, mode, time}]\n   - 导出格式包含：config + history + exportTime + version\n\n5. **关键实现要点**\n   - 加载时机：viewDidLoad 中直接内联\n   - 保存时机：配置改变、文本处理后、视图关闭、清空历史\n   - 历史限制：最近 100 条\n   - 错误处理：所有存储操作用 try-catch 保护\n\n### 最佳实践\n- 永远不要在 JSB.defineClass 中定义并调用自定义方法\n- 所有逻辑必须内联在生命周期方法中\n- UI 操作要考虑时序，适当使用延迟\n- 导出格式要包含版本号便于未来兼容",
+        "--tags",
+        "MarginNote JSB框架 数据持久化 NSUserDefaults 插件开发 simple-panel-plugin"
+      ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "init",
+      "timestamp": "2025-06-29T10:42:46.541Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnai"
+        }
+      ]
     }
   ],
-  "lastUpdated": "2025-06-29T09:52:13.453Z"
+  "lastUpdated": "2025-06-29T10:42:46.553Z"
 }

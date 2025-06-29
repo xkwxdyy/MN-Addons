@@ -24,10 +24,34 @@ var SimplePanelController = JSB.defineClass(
       }
       
       // === 直接初始化配置，避免方法调用问题 ===
-      self.config = {
+      // 从持久化存储加载配置
+      const savedConfig = NSUserDefaults.standardUserDefaults().objectForKey("SimplePanel_Config");
+      const defaultConfig = {
         mode: 0,  // 0:转大写 1:转小写 2:首字母大写 3:反转
-        saveHistory: true
+        saveHistory: true,
+        inputText: "在这里输入文本...",
+        outputText: "处理结果..."
       };
+      
+      if (savedConfig) {
+        // 合并保存的配置和默认配置（确保新增的配置项有默认值）
+        self.config = Object.assign({}, defaultConfig, savedConfig);
+      } else {
+        self.config = defaultConfig;
+      }
+      
+      // 尝试从 iCloud 同步配置（如果支持）
+      if (typeof MNUtil !== "undefined" && MNUtil.readCloudKey) {
+        try {
+          const cloudConfig = MNUtil.readCloudKey("SimplePanel_Config");
+          if (cloudConfig) {
+            const parsedCloudConfig = JSON.parse(cloudConfig);
+            self.config = Object.assign({}, self.config, parsedCloudConfig);
+          }
+        } catch (e) {
+          // 忽略 iCloud 读取错误
+        }
+      }
       
       // === 设置面板样式 ===
       self.view.layer.shadowOffset = {width: 0, height: 0};
@@ -208,13 +232,35 @@ var SimplePanelController = JSB.defineClass(
         self.resizeHandle.addGestureRecognizer(self.resizeGesture);
       }
       
-      // 处理历史记录
-      self.history = [];
+      // 初始化状态
       self.isMinimized = false;
       
-      // 延迟加载历史记录（如果需要）
+      // 加载历史记录
+      self.history = [];
+      try {
+        const savedHistory = NSUserDefaults.standardUserDefaults().objectForKey("SimplePanel_History");
+        if (savedHistory && Array.isArray(savedHistory)) {
+          self.history = savedHistory;
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log("📝 已加载历史记录: " + self.history.length + " 条");
+          }
+        }
+      } catch (error) {
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log("❌ 加载历史记录失败: " + error.message);
+        }
+      }
+      
+      // 根据配置恢复文本框内容
+      if (self.config.inputText && self.config.inputText !== "在这里输入文本...") {
+        self.inputField.text = self.config.inputText;
+      }
+      if (self.config.outputText && self.config.outputText !== "处理结果...") {
+        self.outputField.text = self.config.outputText;
+      }
+      
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log("📋 初始化历史记录");
+        MNUtil.log("📋 已恢复配置和历史记录");
       }
       
       
@@ -343,6 +389,29 @@ var SimplePanelController = JSB.defineClass(
       }
     },
     
+    // 视图将要消失时保存配置
+    viewWillDisappear: function() {
+      // 直接保存配置，不调用方法
+      try {
+        // 更新文本框内容到配置
+        if (self.inputField && self.inputField.text !== "在这里输入文本...") {
+          self.config.inputText = self.inputField.text;
+        }
+        if (self.outputField) {
+          self.config.outputText = self.outputField.text;
+        }
+        
+        NSUserDefaults.standardUserDefaults().setObjectForKey(self.config, "SimplePanel_Config");
+        NSUserDefaults.standardUserDefaults().synchronize();
+        
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log("💾 视图关闭时保存配置");
+        }
+      } catch (e) {
+        // 忽略错误
+      }
+    },
+    
     // === 事件处理 ===
     
     closePanel: function() {
@@ -456,6 +525,15 @@ var SimplePanelController = JSB.defineClass(
             mode: self.config.mode,
             time: new Date()
           });
+          
+          // 直接保存历史记录（避免方法调用问题）
+          try {
+            const historyToSave = self.history.slice(-100);
+            NSUserDefaults.standardUserDefaults().setObjectForKey(historyToSave, "SimplePanel_History");
+            NSUserDefaults.standardUserDefaults().synchronize();
+          } catch (e) {
+            // 忽略错误
+          }
         }
         
         // 更新状态指示器
@@ -500,16 +578,34 @@ var SimplePanelController = JSB.defineClass(
     setMode: function(mode) {
       self.config.mode = mode;
       
-      // 关闭菜单
+      // 直接保存配置（避免方法调用问题）
+      try {
+        // 更新文本框内容到配置
+        if (self.inputField && self.inputField.text !== "在这里输入文本...") {
+          self.config.inputText = self.inputField.text;
+        }
+        if (self.outputField) {
+          self.config.outputText = self.outputField.text;
+        }
+        
+        NSUserDefaults.standardUserDefaults().setObjectForKey(self.config, "SimplePanel_Config");
+        NSUserDefaults.standardUserDefaults().synchronize();
+      } catch (e) {
+        // 忽略错误
+      }
+      
+      // 先关闭菜单，再显示 HUD
       if (typeof Menu !== "undefined") {
         Menu.dismissCurrentMenu();
       }
       
-      // 显示模式名称作为反馈
+      // 延迟显示反馈，确保菜单先关闭
       const modeNames = ["转大写", "转小写", "首字母大写", "反转文本"];
-      if (typeof MNUtil !== "undefined") {
-        MNUtil.showHUD("已切换到: " + modeNames[mode]);
-      }
+      NSTimer.scheduledTimerWithTimeInterval(0.1, false, () => {
+        if (typeof MNUtil !== "undefined") {
+          MNUtil.showHUD("已切换到: " + modeNames[mode]);
+        }
+      });
     },
     
     copyOutput: function() {
@@ -602,6 +698,14 @@ var SimplePanelController = JSB.defineClass(
     toggleSaveHistory: function() {
       self.config.saveHistory = !self.config.saveHistory;
       
+      // 直接保存配置
+      try {
+        NSUserDefaults.standardUserDefaults().setObjectForKey(self.config, "SimplePanel_Config");
+        NSUserDefaults.standardUserDefaults().synchronize();
+      } catch (e) {
+        // 忽略错误
+      }
+      
       if (typeof Menu !== "undefined") {
         Menu.dismissCurrentMenu();
       }
@@ -613,6 +717,14 @@ var SimplePanelController = JSB.defineClass(
     
     clearHistory: function() {
       self.history = [];
+      
+      // 直接保存空历史
+      try {
+        NSUserDefaults.standardUserDefaults().setObjectForKey([], "SimplePanel_History");
+        NSUserDefaults.standardUserDefaults().synchronize();
+      } catch (e) {
+        // 忽略错误
+      }
       
       if (typeof Menu !== "undefined") {
         Menu.dismissCurrentMenu();
@@ -736,7 +848,8 @@ var SimplePanelController = JSB.defineClass(
     },
     
     textViewDidChange: function() {
-      // 目前不需要处理文本变化
+      // 文本变化时不自动保存，避免方法调用问题
+      // 用户可以通过其他操作（如切换模式）来保存
     },
     
     // === 辅助方法 ===

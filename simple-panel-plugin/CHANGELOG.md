@@ -2,6 +2,37 @@
 
 ## 版本历史
 
+### v0.0.9 (2025-06-29) - 数据持久化修复版
+**修复的严重问题**
+- 修复了转换功能失效（`self.saveHistory is not a function` 错误）
+- 修复了菜单点击后不消失的问题
+- 修复了 JSB 框架中方法调用限制导致的问题
+
+**实现的持久化功能**
+- ✅ 保存历史记录的信息
+- ✅ "保存历史"设置的状态
+- ✅ 两个文本框的内容
+- ✅ 工具的默认选择（mode）
+
+**技术改进**
+- 移除了所有自定义方法（saveConfig, saveHistory, loadHistory）
+- 将所有保存逻辑内联到需要的地方
+- 在 NSUserDefaults 操作后正确调用 synchronize()
+- 在 setMode 中使用延迟显示 HUD，确保菜单先关闭
+- 添加了 viewWillDisappear 在视图关闭时保存配置
+
+**关键代码改动**
+1. 在 processText 中直接内联保存历史逻辑
+2. 在 setMode/toggleSaveHistory 中直接内联保存配置逻辑
+3. 在 viewDidLoad 中直接内联加载逻辑
+4. 移除了 textViewDidChange 的自动保存（避免方法调用）
+
+**测试结果**
+- ✅ 转换功能正常工作
+- ✅ 菜单正常关闭
+- ✅ 配置和历史记录成功持久化
+- ✅ 重启 MarginNote 后数据正确恢复
+
 ### v0.0.8 (2025-06-29) - 最终稳定版
 **主要修改**
 - 移除了所有自动处理功能相关代码
@@ -126,9 +157,37 @@
 
 ## 总结
 
-经过 8 个版本的迭代，我们终于得到了一个稳定的插件：
-1. JSB 框架有许多隐藏的限制
-2. MNButton 参数格式要求严格
+经过 9 个版本的迭代，我们终于得到了一个功能完整且稳定的插件：
+1. JSB 框架有许多隐藏的限制（不能调用自定义方法）
+2. MNButton 参数格式要求严格（必须用字符串颜色）
 3. 文件 I/O 需要完善的错误处理
+4. NSUserDefaults 操作后必须调用 synchronize()
+5. 菜单操作需要考虑时序问题
 
-v0.0.8 是目前最稳定的版本！
+v0.0.9 是目前最完整的版本，实现了完整的数据持久化功能！
+
+## 重要经验
+
+### JSB 框架方法调用限制
+```javascript
+// ❌ 错误：会导致 "is not a function" 错误
+viewDidLoad: function() {
+  self.initConfig();  // 不能调用
+}
+
+processText: function() {
+  self.saveHistory(); // 不能调用
+}
+
+// ✅ 正确：直接内联代码
+viewDidLoad: function() {
+  // 直接写初始化代码
+  self.config = { mode: 0 };
+}
+
+processText: function() {
+  // 直接写保存代码
+  NSUserDefaults.standardUserDefaults().setObjectForKey(data, key);
+  NSUserDefaults.standardUserDefaults().synchronize();
+}
+```

@@ -395,6 +395,36 @@ var SimplePanelController = JSB.defineClass(
       }
     },
     
+    // === 显示/隐藏方法 - 参考 mnai 项目 ===
+    
+    show: function() {
+      // 参考 mnai 的 chatglmController.show 实现
+      if (typeof MNUtil !== "undefined") {
+        // 确保视图在最前面
+        MNUtil.studyView.bringSubviewToFront(self.view);
+      }
+      
+      // 显示视图
+      self.view.hidden = false;
+      self.view.alpha = 1;
+      
+      // 确保 layer 正常
+      self.view.layer.opacity = 1.0;
+      
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("🎭 SimplePanelController: show 方法被调用");
+      }
+    },
+    
+    hide: function() {
+      // 参考 mnai 的 chatglmController.hide 实现
+      self.view.hidden = true;
+      
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("🎭 SimplePanelController: hide 方法被调用");
+      }
+    },
+    
     // === 事件处理 ===
     
     closePanel: function() {
@@ -500,71 +530,33 @@ var SimplePanelController = JSB.defineClass(
     toggleMinimize: function() {
       self.isMinimized = !self.isMinimized;
       
-      if (typeof MNUtil !== "undefined" && MNUtil.animate) {
-        // 先隐藏内容，避免动画过程中布局问题
-        if (self.isMinimized) {
-          MNUtil.animate(() => {
-            self.inputField.alpha = 0;
-            self.outputField.alpha = 0;
-            self.toolbar.alpha = 0;
-          }, 0.15).then(() => {
-            self.inputField.hidden = true;
-            self.outputField.hidden = true;
-            self.toolbar.hidden = true;
-            self.inputField.alpha = 1;
-            self.outputField.alpha = 1;
-            self.toolbar.alpha = 1;
-            
-            MNUtil.animate(() => {
-              self.view.frame = {
-                x: self.view.frame.x,
-                y: self.view.frame.y,
-                width: 200,
-                height: 40
-              };
-            }, 0.2);
-          });
-        } else {
-          MNUtil.animate(() => {
-            self.view.frame = self.currentFrame;
-          }, 0.2).then(() => {
-            self.inputField.hidden = false;
-            self.outputField.hidden = false;
-            self.toolbar.hidden = false;
-            self.inputField.alpha = 0;
-            self.outputField.alpha = 0;
-            self.toolbar.alpha = 0;
-            
-            MNUtil.animate(() => {
-              self.inputField.alpha = 1;
-              self.outputField.alpha = 1;
-              self.toolbar.alpha = 1;
-            }, 0.15);
-          });
-        }
-        
-        // 更新按钮图标
-        if (self.minimizeButton) {
-          self.minimizeButton.title = self.isMinimized ? "+" : "−";
-        }
+      // 简化动画 - 参考 mnai 项目
+      if (self.isMinimized) {
+        // 最小化
+        self.view.frame = {
+          x: self.view.frame.x,
+          y: self.view.frame.y,
+          width: 200,
+          height: 40
+        };
+        self.inputField.hidden = true;
+        self.outputField.hidden = true;
+        self.toolbar.hidden = true;
       } else {
-        // 降级方案
-        if (self.isMinimized) {
-          self.view.frame = {
-            x: self.view.frame.x,
-            y: self.view.frame.y,
-            width: 200,
-            height: 40
-          };
-          self.inputField.hidden = true;
-          self.outputField.hidden = true;
-          self.toolbar.hidden = true;
-        } else {
-          self.view.frame = self.currentFrame;
-          self.inputField.hidden = false;
-          self.outputField.hidden = false;
-          self.toolbar.hidden = false;
-        }
+        // 恢复
+        self.view.frame = self.currentFrame;
+        self.inputField.hidden = false;
+        self.outputField.hidden = false;
+        self.toolbar.hidden = false;
+      }
+      
+      // 更新按钮图标
+      if (self.minimizeButton) {
+        self.minimizeButton.title = self.isMinimized ? "+" : "−";
+      }
+      
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("🔄 Simple Panel: " + (self.isMinimized ? "已最小化" : "已恢复"));
       }
     },
     
@@ -847,14 +839,9 @@ var SimplePanelController = JSB.defineClass(
           // 记录开始拖动的 frame
           self.dragStartFrame = self.view.frame;
           
-          // 视觉反馈：轻微放大
-          if (typeof MNUtil !== "undefined" && MNUtil.animate) {
-            MNUtil.animate(() => {
-              self.view.transform = {a: 1.02, b: 0, c: 0, d: 1.02, tx: 0, ty: 0};
-              self.view.layer.shadowRadius = 20;
-              self.view.layer.shadowOpacity = 0.6;
-            }, 0.1);
-          }
+          // 视觉反馈：轻微放大 - 简化版
+          self.view.layer.shadowRadius = 20;
+          self.view.layer.shadowOpacity = 0.6;
           break;
           
         case 2: // Changed
@@ -879,39 +866,26 @@ var SimplePanelController = JSB.defineClass(
           break;
           
         case 3: // Ended
-          // 恢复正常大小
-          if (typeof MNUtil !== "undefined" && MNUtil.animate) {
-            MNUtil.animate(() => {
-              self.view.transform = {a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0};
-              self.view.layer.shadowRadius = 15;
-              self.view.layer.shadowOpacity = 0.5;
-            }, 0.2);
-          }
+          // 恢复正常大小 - 简化版
+          self.view.layer.shadowRadius = 15;
+          self.view.layer.shadowOpacity = 0.5;
           
           // 吸附到边缘效果（如果速度够快）
           if (Math.abs(velocity.x) > 1000) {
             var studyWidth = self.view.superview.bounds.width;
             var targetX = velocity.x > 0 ? studyWidth - self.view.frame.width - 10 : 10;
             
-            if (typeof MNUtil !== "undefined" && MNUtil.animate) {
-              // 使用弹性动画吸附到边缘
-              UIView.animateWithDurationDelayUsingSpringWithDampingInitialSpringVelocityOptionsAnimationsCompletion(
-                0.5,    // 动画时长
-                0,      // 延迟
-                0.7,    // 阻尼系数
-                0.5,    // 初始速度
-                0,      // 选项
-                function() {
-                  self.view.frame = {
-                    x: targetX,
-                    y: self.view.frame.y,
-                    width: self.view.frame.width,
-                    height: self.view.frame.height
-                  };
-                  self.currentFrame = self.view.frame;
-                },
-                null
-              );
+            // 直接设置位置 - 参考 mnai 项目
+            self.view.frame = {
+              x: targetX,
+              y: self.view.frame.y,
+              width: self.view.frame.width,
+              height: self.view.frame.height
+            };
+            self.currentFrame = self.view.frame;
+            
+            if (typeof MNUtil !== "undefined") {
+              MNUtil.showHUD("已吸附到" + (velocity.x > 0 ? "右边" : "左边"));
             }
           }
           break;
@@ -1041,90 +1015,44 @@ var SimplePanelController = JSB.defineClass(
       const modeConfig = self.modes[mode];
       if (!modeConfig) return;
       
-      // 模式切换动画
-      if (typeof MNUtil !== "undefined" && MNUtil.animate) {
-        // 第一步：缩小并淡出当前内容
-        UIView.animateWithDurationDelayUsingSpringWithDampingInitialSpringVelocityOptionsAnimationsCompletion(
-          0.2,    // 动画时长
-          0,      // 延迟
-          1.0,    // 阻尼（无弹性）
-          0,      // 初始速度
-          0,      // 选项
-          function() {
-            // 缩小效果
-            self.view.transform = {a: 0.95, b: 0, c: 0, d: 0.95, tx: 0, ty: 0};
-            
-            // 淡出内容
-            self.titleLabel.alpha = 0;
-            self.inputField.alpha = 0;
-            if (!self.outputField.hidden) {
-              self.outputField.alpha = 0;
-            }
-          },
-          function() {
-            // 第二步：更新内容并恢复
-            self.currentMode = mode;
-            self.titleLabel.text = modeConfig.title;
-            
-            // 更新输入框占位符
-            if (self.inputField.text === "" || self.inputField.text === self.modes[self.lastMode]?.inputPlaceholder) {
-              self.inputField.text = modeConfig.inputPlaceholder;
-            }
-            
-            // 显示/隐藏输出框
-            self.outputField.hidden = !modeConfig.showOutput;
-            
-            // 重新布局
-            self.viewWillLayoutSubviews();
-            
-            // 第三步：放大并淡入新内容
-            UIView.animateWithDurationDelayUsingSpringWithDampingInitialSpringVelocityOptionsAnimationsCompletion(
-              0.3,    // 动画时长
-              0,      // 延迟
-              0.8,    // 阻尼（轻微弹性）
-              0.3,    // 初始速度
-              0,      // 选项
-              function() {
-                // 恢复大小
-                self.view.transform = {a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0};
-                
-                // 淡入内容
-                self.titleLabel.alpha = 1;
-                self.inputField.alpha = 1;
-                if (!self.outputField.hidden) {
-                  self.outputField.alpha = 1;
-                }
-              },
-              function() {
-                // 动画完成
-                self.lastMode = mode;
-                
-                // 更新状态指示器
-                self.updateStatusIndicator(mode);
-                
-                // 震动反馈（iOS）
-                if (typeof MNUtil !== "undefined" && MNUtil.isIOS && MNUtil.isIOS()) {
-                  const generator = UIImpactFeedbackGenerator.alloc().initWithStyle(0); // light
-                  generator.prepare();
-                  generator.impactOccurred();
-                }
-              }
-            );
-          }
-        );
-      } else {
-        // 降级方案
-        self.currentMode = mode;
-        self.titleLabel.text = modeConfig.title;
-        
-        if (self.inputField.text === "" || self.inputField.text === self.modes[self.lastMode]?.inputPlaceholder) {
-          self.inputField.text = modeConfig.inputPlaceholder;
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("🔄 Simple Panel: 切换到模式 " + mode);
+      }
+      
+      // 直接切换，不使用复杂动画 - 参考 mnai 项目
+      self.currentMode = mode;
+      self.titleLabel.text = modeConfig.title;
+      
+      // 更新占位符
+      if (self.inputField.text === "" || 
+          self.inputField.text === self.modes[self.lastMode]?.inputPlaceholder) {
+        self.inputField.text = modeConfig.inputPlaceholder;
+      }
+      
+      // 显示/隐藏输出框
+      self.outputField.hidden = !modeConfig.showOutput;
+      
+      // 重新布局
+      self.viewWillLayoutSubviews();
+      
+      self.lastMode = mode;
+      
+      // 更新状态指示器
+      self.updateStatusIndicator(mode);
+      
+      // 震动反馈（iOS）
+      if (typeof MNUtil !== "undefined" && MNUtil.isIOS && MNUtil.isIOS()) {
+        try {
+          const generator = UIImpactFeedbackGenerator.alloc().initWithStyle(0); // light
+          generator.prepare();
+          generator.impactOccurred();
+        } catch (e) {
+          // 忽略错误
         }
-        
-        self.outputField.hidden = !modeConfig.showOutput;
-        self.viewWillLayoutSubviews();
-        self.lastMode = mode;
-        self.updateStatusIndicator(mode);
+      }
+      
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("✅ Simple Panel: 模式切换完成");
       }
     },
     
@@ -1140,16 +1068,9 @@ var SimplePanelController = JSB.defineClass(
         const newColor = modeColors[mode] || "#5982c4";
         
         if (typeof MNButton !== "undefined") {
-          // 脉冲动画效果
-          MNUtil.animate(() => {
-            self.statusIndicator.transform = {a: 1.5, b: 0, c: 0, d: 1.5, tx: 0, ty: 0};
-            MNButton.setConfig(self.statusIndicator, {
-              color: newColor
-            });
-          }, 0.2).then(() => {
-            MNUtil.animate(() => {
-              self.statusIndicator.transform = {a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0};
-            }, 0.2);
+          // 直接设置颜色 - 参考 mnai 项目
+          MNButton.setConfig(self.statusIndicator, {
+            color: newColor
           });
         } else {
           self.statusIndicator.backgroundColor = UIColor.colorWithHexString(newColor);

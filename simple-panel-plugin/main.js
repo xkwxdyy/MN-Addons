@@ -174,10 +174,15 @@ JSB.newAddon = function (mainPath) {
         }
         
         // 确保面板已初始化
-        self.ensurePanelReady();
+        if (!self.ensurePanelReady()) {
+          if (typeof MNUtil !== "undefined") {
+            MNUtil.showHUD("面板初始化失败");
+          }
+          return;
+        }
         
         // 切换到文本处理模式
-        if (self.panelController.switchToMode) {
+        if (self.panelController && self.panelController.switchToMode) {
           self.panelController.switchToMode("textProcessor");
         }
         
@@ -207,7 +212,12 @@ JSB.newAddon = function (mainPath) {
         }
         
         // 确保面板已初始化
-        self.ensurePanelReady();
+        if (!self.ensurePanelReady()) {
+          if (typeof MNUtil !== "undefined") {
+            MNUtil.showHUD("面板初始化失败");
+          }
+          return;
+        }
         
         // 切换到笔记模式
         if (self.panelController.switchToMode) {
@@ -238,7 +248,12 @@ JSB.newAddon = function (mainPath) {
         }
         
         // 确保面板已初始化
-        self.ensurePanelReady();
+        if (!self.ensurePanelReady()) {
+          if (typeof MNUtil !== "undefined") {
+            MNUtil.showHUD("面板初始化失败");
+          }
+          return;
+        }
         
         // 切换到搜索替换模式
         if (self.panelController.switchToMode) {
@@ -269,7 +284,12 @@ JSB.newAddon = function (mainPath) {
         }
         
         // 确保面板已初始化
-        self.ensurePanelReady();
+        if (!self.ensurePanelReady()) {
+          if (typeof MNUtil !== "undefined") {
+            MNUtil.showHUD("面板初始化失败");
+          }
+          return;
+        }
         
         // 显示面板
         self.showPanelWithAnimation(function() {
@@ -308,36 +328,48 @@ JSB.newAddon = function (mainPath) {
         }
       },
       
-      // 确保面板准备就绪
+      // 确保面板准备就绪 - 参考 mnai 的 ensureView 实现
       ensurePanelReady: function() {
         if (!self.panelController) {
           if (typeof MNUtil !== "undefined" && MNUtil.log) {
             MNUtil.log("❌ Simple Panel: panelController is null!");
           }
-          return;
+          return false;
         }
         
-        // 确保视图已经正确添加
-        if (!self.panelController.view.superview) {
-          var studyView = self.appInstance.studyController(self.window).view;
-          if (studyView) {
-            // 设置正确的 frame 再添加
-            self.panelController.view.frame = {x: 100, y: 100, width: 400, height: 350};
-            studyView.addSubview(self.panelController.view);
-            
-            if (typeof MNUtil !== "undefined" && MNUtil.log) {
-              MNUtil.log("✅ Simple Panel: 面板已添加到 studyView");
+        if (!self.panelController.view) {
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log("❌ Simple Panel: panelController.view is null!");
+          }
+          return false;
+        }
+        
+        // 使用 MNUtil 的 API 确保视图正确添加 - 参考 mnai
+        if (typeof MNUtil !== "undefined") {
+          // 检查视图是否已经是 studyView 的子视图
+          if (!MNUtil.isDescendantOfStudyView(self.panelController.view)) {
+            MNUtil.studyView.addSubview(self.panelController.view);
+            if (MNUtil.log) {
+              MNUtil.log("✅ Simple Panel: 面板已添加到 MNUtil.studyView");
             }
           } else {
-            if (typeof MNUtil !== "undefined" && MNUtil.log) {
-              MNUtil.log("❌ Simple Panel: studyView is null!");
+            if (MNUtil.log) {
+              MNUtil.log("✅ Simple Panel: 面板已经存在于 studyView 中");
             }
           }
         } else {
-          if (typeof MNUtil !== "undefined" && MNUtil.log) {
-            MNUtil.log("✅ Simple Panel: 面板已经存在于视图中");
+          // 降级方案：直接检查 superview
+          if (!self.panelController.view.superview) {
+            var studyView = self.appInstance.studyController(self.window).view;
+            if (studyView) {
+              studyView.addSubview(self.panelController.view);
+            } else {
+              return false;
+            }
           }
         }
+        
+        return true;
       },
       
       // 获取选中文本
@@ -358,54 +390,49 @@ JSB.newAddon = function (mainPath) {
       
       // === 动画和UI辅助方法 ===
       
-      // 统一的面板显示动画
+      // 统一的面板显示方法 - 完全参考 mnai chatController.show 实现
       showPanelWithAnimation: function(completion) {
-        if (!self.panelController || !self.panelController.view) return;
+        if (!self.panelController || !self.panelController.view) {
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log("❌ Simple Panel: panelController 或 view 为空");
+          }
+          return;
+        }
         
         var view = self.panelController.view;
         
-        // 先取消隐藏
-        view.hidden = false;
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log("🎯 Simple Panel: 准备显示面板");
+          MNUtil.log("🔍 Simple Panel: view.hidden = " + view.hidden);
+          MNUtil.log("🔍 Simple Panel: view.alpha = " + view.alpha);
+          MNUtil.log("🔍 Simple Panel: view.frame = " + JSON.stringify(view.frame));
+        }
         
-        if (typeof MNUtil !== "undefined" && MNUtil.animate) {
-          // 设置初始状态 - 缩小并透明
-          view.alpha = 0;
-          view.transform = {a: 0.8, b: 0, c: 0, d: 0.8, tx: 0, ty: 0};
-          
-          // 执行弹性动画
-          NSTimer.scheduledTimerWithTimeInterval(0.01, false, function() {
-            // 使用更高级的弹性动画
-            UIView.animateWithDurationDelayUsingSpringWithDampingInitialSpringVelocityOptionsAnimationsCompletion(
-              0.4,    // 动画时长
-              0,      // 延迟
-              0.8,    // 阻尼系数（0.8 = 轻微弹性）
-              0.5,    // 初始速度
-              0,      // 选项
-              function() {
-                view.alpha = 1;
-                view.transform = {a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0};
-              },
-              function() {
-                // 动画完成回调
-                if (completion) completion();
-              }
-            );
-          });
-        } else {
-          // 降级方案：简单动画
-          view.alpha = 0;
-          NSTimer.scheduledTimerWithTimeInterval(0.01, false, function() {
-            if (typeof MNUtil !== "undefined" && MNUtil.animate) {
-              MNUtil.animate(function() {
-                view.alpha = 1;
-              }, 0.3).then(function() {
-                if (completion) completion();
-              });
-            } else {
-              // 没有动画支持时直接显示
-              view.alpha = 1;
-              if (completion) completion();
-            }
+        // 完全参考 mnai 的 show 方法
+        if (typeof MNUtil !== "undefined" && MNUtil.studyView) {
+          // 确保视图在最前面 - 这是 mnai 的关键步骤！
+          MNUtil.studyView.bringSubviewToFront(view);
+        }
+        
+        // 显示视图
+        view.hidden = false;
+        view.alpha = 1;
+        
+        // 如果有 show 方法，调用它
+        if (self.panelController.show) {
+          self.panelController.show();
+        }
+        
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log("✅ Simple Panel: 面板已显示");
+          MNUtil.log("🔍 Simple Panel: 显示后 view.hidden = " + view.hidden);
+          MNUtil.log("🔍 Simple Panel: 显示后 view.alpha = " + view.alpha);
+        }
+        
+        if (completion) {
+          // 使用定时器确保界面已更新
+          NSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {
+            completion();
           });
         }
       }

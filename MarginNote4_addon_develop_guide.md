@@ -656,21 +656,6 @@ MNUtil.addObserver(self, 'onPopupMenuOnNote:', 'PopupMenuOnNote');
 MNUtil.removeObserver(self, 'PopupMenuOnNote');
 ```
 
-#### 使用原生 NSNotificationCenter
-```javascript
-// 注册事件
-NSNotificationCenter.defaultCenter().addObserverSelectorName(
-  self,
-  "onProcessNewExcerpt:",
-  "ProcessNewExcerpt"
-);
-
-// 移除事件
-NSNotificationCenter.defaultCenter().removeObserverName(
-  self,
-  "ProcessNewExcerpt"
-);
-```
 
 ### 2. 完整事件列表
 

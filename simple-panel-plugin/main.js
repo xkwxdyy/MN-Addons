@@ -142,7 +142,8 @@ JSB.newAddon = function (mainPath) {
           {title: '🔧  文本处理', object: self, selector: 'openTextProcessor', param: null},
           {title: '📝  快速笔记', object: self, selector: 'openQuickNote', param: null},
           {title: '🔍  搜索替换', object: self, selector: 'openSearchReplace', param: null},
-          {title: '⚙️  设置', object: self, selector: 'openSettings', param: null},
+          {title: '——————', object: null, selector: '', param: null},
+          {title: '⚙️  设置', object: self, selector: 'showSettingsMenu', param: button},
           {title: '💡  帮助', object: self, selector: 'showHelp', param: null}
         ];
         
@@ -593,8 +594,179 @@ JSB.newAddon = function (mainPath) {
         }
       },
       
-      // 打开设置 - 添加完整的错误处理
-      openSettings: function() {
+      // 显示设置菜单
+      showSettingsMenu: function(button) {
+        // 关闭主菜单
+        if (typeof Menu !== "undefined" && Menu.dismissCurrentMenu) {
+          Menu.dismissCurrentMenu();
+        }
+        
+        // 小延迟后显示子菜单
+        NSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {
+          if (typeof Menu !== "undefined") {
+            // 获取配置
+            var saveHistory = false;
+            var syncSource = "none";
+            var autoSync = false;
+            
+            if (self.panelController) {
+              // 使用 configManager 或者直接从 config 对象获取
+              if (self.panelController.configManager) {
+                saveHistory = self.panelController.configManager.get("saveHistory", false);
+                syncSource = self.panelController.configManager.get("syncSource", "none");
+                autoSync = self.panelController.configManager.get("autoSync", false);
+              } else if (self.panelController.config) {
+                saveHistory = self.panelController.config.saveHistory || false;
+                syncSource = self.panelController.config.syncSource || "none";
+                autoSync = self.panelController.config.autoSync || false;
+              }
+            }
+            
+            var settingsTable = [
+              {title: saveHistory ? "✓ 保存历史" : "  保存历史", object: self, selector: "toggleSaveHistory", param: null},
+              {title: "——————", object: null, selector: "", param: null},
+              {title: "🔄  云同步设置", object: self, selector: "showSyncSettingsMenu", param: button},
+              {title: "🗑  清空历史", object: self, selector: "clearHistory", param: null},
+              {title: "——————", object: null, selector: "", param: null},
+              {title: "📤  导出配置", object: self, selector: "exportConfig", param: null},
+              {title: "📥  导入配置", object: self, selector: "importConfig", param: null},
+              {title: "——————", object: null, selector: "", param: null},
+              {title: "🔄  重置设置", object: self, selector: "resetSettings", param: null}
+            ];
+            
+            var menu = new Menu(button, self, 250, 2);
+            menu.addMenuItems(settingsTable);
+            menu.show();
+          }
+        });
+      },
+      
+      // 显示云同步设置菜单
+      showSyncSettingsMenu: function(button) {
+        // 关闭当前菜单
+        if (typeof Menu !== "undefined" && Menu.dismissCurrentMenu) {
+          Menu.dismissCurrentMenu();
+        }
+        
+        // 小延迟后显示子菜单
+        NSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {
+          if (typeof Menu !== "undefined") {
+            var syncSource = "none";
+            var autoSync = false;
+            
+            if (self.panelController) {
+              if (self.panelController.configManager) {
+                syncSource = self.panelController.configManager.get("syncSource", "none");
+                autoSync = self.panelController.configManager.get("autoSync", false);
+              } else if (self.panelController.config) {
+                syncSource = self.panelController.config.syncSource || "none";
+                autoSync = self.panelController.config.autoSync || false;
+              }
+            }
+            
+            var syncTable = [
+              {title: autoSync ? "✓ 自动同步" : "  自动同步", object: self, selector: "toggleAutoSync", param: null},
+              {title: "——————", object: null, selector: "", param: null},
+              {title: syncSource === "none" ? "● 不同步" : "○ 不同步", object: self, selector: "setSyncSource:", param: "none"},
+              {title: syncSource === "iCloud" ? "● iCloud" : "○ iCloud", object: self, selector: "setSyncSource:", param: "iCloud"},
+              {title: "——————", object: null, selector: "", param: null},
+              {title: "🔄  立即同步", object: self, selector: "manualSync", param: null}
+            ];
+            
+            var menu = new Menu(button, self, 250, 2);
+            menu.addMenuItems(syncTable);
+            menu.show();
+          }
+        });
+      },
+      
+      // 设置相关操作
+      toggleSaveHistory: function() {
+        if (self.panelController && self.panelController.config) {
+          self.panelController.config.saveHistory = !self.panelController.config.saveHistory;
+          
+          // 保存配置
+          if (self.panelController.configManager) {
+            self.panelController.configManager.set("saveHistory", self.panelController.config.saveHistory);
+          }
+          
+          if (typeof MNUtil !== "undefined") {
+            MNUtil.showHUD("保存历史: " + (self.panelController.config.saveHistory ? "已开启" : "已关闭"));
+          }
+        }
+      },
+      
+      toggleAutoSync: function() {
+        if (self.panelController && self.panelController.configManager) {
+          self.panelController.configManager.update({
+            autoSync: !self.panelController.configManager.get("autoSync")
+          });
+          
+          if (typeof MNUtil !== "undefined") {
+            MNUtil.showHUD("自动同步: " + (self.panelController.configManager.get("autoSync") ? "已开启" : "已关闭"));
+          }
+        }
+      },
+      
+      setSyncSource: function(source) {
+        if (self.panelController && self.panelController.configManager) {
+          self.panelController.configManager.set("syncSource", source);
+          
+          if (source === "iCloud") {
+            self.panelController.configManager.initCloudStore();
+          }
+          
+          if (typeof MNUtil !== "undefined") {
+            MNUtil.showHUD("同步源: " + (source === "iCloud" ? "iCloud" : "本地"));
+          }
+        }
+      },
+      
+      manualSync: function() {
+        if (self.panelController && self.panelController.configManager) {
+          self.panelController.configManager.manualSync();
+        }
+      },
+      
+      clearHistory: function() {
+        if (typeof MNUtil !== "undefined") {
+          MNUtil.confirm("清空历史", "确定要清空所有历史记录吗？", ["取消", "确定"]).then(function(index) {
+            if (index === 1 && self.panelController) {
+              self.panelController.history = [];
+              if (self.panelController.configManager) {
+                self.panelController.configManager.saveHistory();
+              }
+              MNUtil.showHUD("历史记录已清空");
+            }
+          });
+        }
+      },
+      
+      exportConfig: function() {
+        if (self.panelController && self.panelController.configManager) {
+          self.panelController.configManager.exportConfig();
+        }
+      },
+      
+      importConfig: function() {
+        if (self.panelController && self.panelController.configManager) {
+          self.panelController.configManager.importConfig();
+        }
+      },
+      
+      resetSettings: function() {
+        if (typeof MNUtil !== "undefined") {
+          MNUtil.confirm("重置设置", "确定要恢复所有设置到默认值吗？", ["取消", "确定"]).then(function(index) {
+            if (index === 1 && self.panelController && self.panelController.configManager) {
+              self.panelController.configManager.reset();
+              MNUtil.showHUD("设置已重置");
+            }
+          });
+        }
+      },
+      
+      // 原来的 openSettings - 现在不再使用
+      openSettings_deprecated: function() {
         try {
           if (typeof MNUtil !== "undefined" && MNUtil.log) {
             MNUtil.log("⚙️ Simple Panel: 打开设置");

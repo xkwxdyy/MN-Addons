@@ -87,49 +87,32 @@ var SimplePanelController = JSB.defineClass(
       self.titleLabel.textAlignment = 1;
       self.titleBar.addSubview(self.titleLabel);
       
-      if (typeof MNButton !== "undefined") {
-        // === 使用 MNButton 创建关闭按钮 ===
-        self.closeButton = MNButton.new({
-          title: "✕",
-          font: 20,
-          color: "#00000000",
-          radius: 15,
-          highlight: UIColor.redColor().colorWithAlphaComponent(0.3)
-        }, self.titleBar);
-        
-        self.closeButton.addClickAction(self, "closePanel:");
-        
-        // === 创建设置按钮 ===
-        self.settingsButton = MNButton.new({
-          title: "⚙",
-          font: 20,
-          color: "#00000000",
-          radius: 15
-        }, self.titleBar);
-        
-        // 设置点击处理
-        self.settingsButton.addClickAction(self, "showSettings:");
-        // 暂时移除长按手势以避免干扰点击响应
-        // self.settingsButton.addLongPressGesture(self, "resetSettings:", 3.0);
-        
-        // === 创建最小化按钮 ===
-        self.minimizeButton = MNButton.new({
-          title: "−",
-          font: 20,
-          color: "#00000000",
-          radius: 15
-        }, self.titleBar);
-        
-        self.minimizeButton.addClickAction(self, "toggleMinimize:");
-      } else {
-        // 降级方案
-        self.closeButton = UIButton.buttonWithType(0);
-        self.closeButton.setTitleForState("✕", 0);
-        self.closeButton.titleLabel.font = UIFont.systemFontOfSize(20);
-        self.closeButton.backgroundColor = UIColor.clearColor();
-        self.closeButton.addTargetActionForControlEvents(self, "closePanel:", 1 << 6);
-        self.titleBar.addSubview(self.closeButton);
-      }
+      // === 使用原生 UIButton 实现快速响应 ===
+      
+      // 关闭按钮 - 使用原生 UIButton
+      self.closeButton = UIButton.buttonWithType(0); // UIButtonTypeCustom
+      self.closeButton.frame = {x: self.titleBar.frame.width - 35, y: 5, width: 30, height: 30};
+      self.closeButton.setTitleForState("✕", 0);
+      self.closeButton.setTitleColorForState(UIColor.blackColor(), 0);
+      self.closeButton.titleLabel.font = UIFont.systemFontOfSize(20);
+      self.closeButton.layer.cornerRadius = 15;
+      self.closeButton.backgroundColor = UIColor.clearColor();
+      
+      // 使用 TouchDown 事件实现最快响应
+      self.closeButton.addTargetActionForControlEvents(self, "instantClose:", 1 << 0); // UIControlEventTouchDown
+      self.titleBar.addSubview(self.closeButton);
+      
+      // 最小化按钮 - 使用原生 UIButton
+      self.minimizeButton = UIButton.buttonWithType(0);
+      self.minimizeButton.frame = {x: 5, y: 5, width: 30, height: 30};
+      self.minimizeButton.setTitleForState("−", 0);
+      self.minimizeButton.setTitleColorForState(UIColor.blackColor(), 0);
+      self.minimizeButton.titleLabel.font = UIFont.systemFontOfSize(20);
+      self.minimizeButton.layer.cornerRadius = 15;
+      self.minimizeButton.backgroundColor = UIColor.clearColor();
+      
+      self.minimizeButton.addTargetActionForControlEvents(self, "instantMinimize:", 1 << 0);
+      self.titleBar.addSubview(self.minimizeButton);
       
       // 添加拖动手势
       self.dragGesture = new UIPanGestureRecognizer(self, "onDragGesture:");
@@ -369,6 +352,14 @@ var SimplePanelController = JSB.defineClass(
           height: 25
         };
       }
+      
+      // 调整按钮位置
+      if (self.closeButton) {
+        self.closeButton.frame = {x: frame.width - 35, y: 5, width: 30, height: 30};
+      }
+      if (self.minimizeButton) {
+        self.minimizeButton.frame = {x: 5, y: 5, width: 30, height: 30};
+      }
     },
     
     // 视图将要消失时保存配置
@@ -429,17 +420,18 @@ var SimplePanelController = JSB.defineClass(
     
     // === 事件处理 ===
     
-    closePanel: function() {
-      // 立即隐藏，完全无延迟
+    // 使用原生按钮的即时关闭函数
+    instantClose: function() {
+      // 立即隐藏，无任何延迟
       self.view.hidden = true;
       
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log("🚪 SimplePanelController: 面板已关闭");
+        MNUtil.log("🚪 SimplePanelController: 面板已关闭（即时响应）");
       }
       
-      // 刷新状态移到后面异步执行，不影响关闭速度
+      // 完全异步处理刷新
       if (self.appInstance) {
-        NSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {
+        dispatch_after(0.1, function() {
           try {
             self.appInstance.studyController(self.view.window).refreshAddonCommands();
           } catch (e) {}
@@ -447,191 +439,36 @@ var SimplePanelController = JSB.defineClass(
       }
     },
     
-    showSettings: function(sender) {
-      try {
-        // 微小延迟确保 UI 就绪
-        NSTimer.scheduledTimerWithTimeInterval(0.01, false, function() {
-          if (typeof Menu !== "undefined") {
-            // 修复 convertRectToView 错误 - 确保按钮是有效的 UIView
-            let actualButton = self.getActualButton(sender || self.settingsButton);
-            
-            if (!actualButton) {
-              if (typeof MNUtil !== "undefined") {
-                MNUtil.showHUD("按钮引用无效");
-              }
-              return;
-            }
-            
-            const menu = new Menu(actualButton, self, 250, 2);
-        
-        const menuItems = [
-          { title: configManager.get("saveHistory") ? "✓ 保存历史" : "  保存历史", selector: "toggleSaveHistory:" },
-          { title: "────────", selector: "", param: "" },
-          { title: "云同步设置", selector: "showSyncSettings:" },
-          { title: "清空历史", selector: "clearHistory:" },
-          { title: "导出配置", selector: "exportConfig:" },
-          { title: "导入配置", selector: "importConfig:" }
-        ];
-        
-        menu.addMenuItems(menuItems);
-        menu.rowHeight = 40;
-        menu.show();
-          }
-        });
-      } catch (error) {
-        if (typeof MNUtil !== "undefined") {
-          MNUtil.addErrorLog(error, "showSettings", {sender: sender});
-          MNUtil.showHUD("出错: " + error.message);
-        }
-      }
-    },
+    // 设置相关方法已移至 main.js 的菜单中
     
-    // 工具函数：获取实际的 UIButton
-    getActualButton: function(button) {
-      // 处理各种可能的情况
-      if (!button) {
-        if (typeof MNUtil !== "undefined" && MNUtil.log) {
-          MNUtil.log("⚠️ getActualButton: button 为 null");
-        }
-        return null;
-      }
-      
-      // 如果是 MNButton 代理对象
-      if (button.button && typeof button.button.convertRectToView === 'function') {
-        if (typeof MNUtil !== "undefined" && MNUtil.log) {
-          MNUtil.log("✅ getActualButton: 从 MNButton 获取实际按钮");
-        }
-        return button.button;
-      }
-      
-      // 如果已经是 UIButton
-      if (typeof button.convertRectToView === 'function') {
-        if (typeof MNUtil !== "undefined" && MNUtil.log) {
-          MNUtil.log("✅ getActualButton: 已经是 UIButton");
-        }
-        return button;
-      }
-      
-      // 无效的按钮
-      if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log("❌ getActualButton: 无效的按钮对象");
-      }
-      return null;
-    },
+    // 配置操作方法已移至 main.js
     
-    showSyncSettings: function(sender) {
-      try {
-        // 微小延迟确保 UI 就绪
-        NSTimer.scheduledTimerWithTimeInterval(0.01, false, function() {
-          if (typeof Menu !== "undefined") {
-            // 确保按钮是有效的 UIView
-            let actualButton = self.getActualButton(sender);
-            
-            if (!actualButton) {
-              if (typeof MNUtil !== "undefined") {
-                MNUtil.showHUD("按钮引用无效");
-              }
-              return;
-            }
-            
-            const menu = new Menu(actualButton, self, 250, 2);
-        
-        const syncSource = configManager.get("syncSource", "none");
-        const autoSync = configManager.get("autoSync", false);
-        
-        const menuItems = [
-          { title: autoSync ? "✓ 自动同步" : "  自动同步", selector: "toggleAutoSync:" },
-          { title: "────────", selector: "", param: "" },
-          { title: syncSource === "none" ? "● 不同步" : "○ 不同步", selector: "setSyncSource:", param: "none" },
-          { title: syncSource === "iCloud" ? "● iCloud" : "○ iCloud", selector: "setSyncSource:", param: "iCloud" },
-          { title: "────────", selector: "", param: "" },
-          { title: "立即同步", selector: "manualSync:" }
-        ];
-        
-        menu.addMenuItems(menuItems);
-        menu.rowHeight = 40;
-        menu.show();
-          }
-        });
-      } catch (error) {
-        if (typeof MNUtil !== "undefined") {
-          MNUtil.addErrorLog(error, "showSyncSettings", {sender: sender});
-          MNUtil.showHUD("出错: " + error.message);
-        }
-      }
-    },
-    
-    toggleAutoSync: function() {
-      const autoSync = !configManager.get("autoSync");
-      configManager.set("autoSync", autoSync);
-      
-      if (typeof Menu !== "undefined") {
-        Menu.dismissCurrentMenu();
-      }
-      
-      if (typeof MNUtil !== "undefined") {
-        MNUtil.showHUD("自动同步: " + (autoSync ? "已开启" : "已关闭"));
-      }
-    },
-    
-    setSyncSource: function(source) {
-      configManager.set("syncSource", source);
-      
-      if (source === "iCloud") {
-        configManager.initCloudStore();
-      }
-      
-      if (typeof Menu !== "undefined") {
-        Menu.dismissCurrentMenu();
-      }
-      
-      if (typeof MNUtil !== "undefined") {
-        MNUtil.showHUD("同步源: " + configManager.getSyncSourceName());
-      }
-    },
-    
-    manualSync: function() {
-      if (typeof Menu !== "undefined") {
-        Menu.dismissCurrentMenu();
-      }
-      
-      configManager.manualSync();
-    },
-    
-    resetSettings: function() {
-      configManager.reset();
-    },
-    
-    toggleMinimize: function() {
+    // 使用原生按钮的即时最小化函数
+    instantMinimize: function() {
       self.isMinimized = !self.isMinimized;
       
-      // 更新按钮图标 - 先更新UI反馈
-      if (self.minimizeButton) {
-        self.minimizeButton.title = self.isMinimized ? "+" : "−";
-      }
+      // 使用 CATransaction 禁用隐式动画
+      CATransaction.begin();
+      CATransaction.setDisableActions(true);
       
-      // 立即执行，无动画
       if (self.isMinimized) {
-        // 最小化
-        self.view.frame = {
-          x: self.view.frame.x,
-          y: self.view.frame.y,
-          width: 200,
-          height: 40
-        };
+        self.view.frame = {x: self.view.frame.x, y: self.view.frame.y, width: 200, height: 40};
         self.inputField.hidden = true;
         self.outputField.hidden = true;
         self.toolbar.hidden = true;
+        self.minimizeButton.setTitleForState("+", 0);
       } else {
-        // 恢复
         self.view.frame = self.currentFrame;
         self.inputField.hidden = false;
         self.outputField.hidden = false;
         self.toolbar.hidden = false;
+        self.minimizeButton.setTitleForState("−", 0);
       }
       
+      CATransaction.commit();
+      
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log("🔄 Simple Panel: " + (self.isMinimized ? "已最小化" : "已恢复"));
+        MNUtil.log("🔄 Simple Panel: " + (self.isMinimized ? "已最小化" : "已恢复") + "（即时响应）");
       }
     },
     

@@ -224,10 +224,12 @@ var SimplePanelController = JSB.defineClass(
         }, self.titleBar);
         
         self.autoProcessIndicator.addClickAction(self, "toggleAutoProcessQuick:");
+        
+        // 更新自动处理指示器状态
+        if (self.updateAutoProcessIndicator) {
+          self.updateAutoProcessIndicator();
+        }
       }
-      
-      // 更新自动处理指示器状态
-      self.updateAutoProcessIndicator();
       
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
         MNUtil.log("✅ SimplePanelController: 界面创建完成");
@@ -288,7 +290,7 @@ var SimplePanelController = JSB.defineClass(
         self.autoProcessIndicator.frame = {
           x: 40,
           y: 10,
-          width: 60,
+          width: 70,
           height: 20
         };
       }
@@ -620,6 +622,10 @@ var SimplePanelController = JSB.defineClass(
     toggleAutoProcess: function() {
       self.config.autoProcess = !self.config.autoProcess;
       
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("🔧 切换自动处理状态为: " + self.config.autoProcess);
+      }
+      
       if (typeof Menu !== "undefined") {
         Menu.dismissCurrentMenu();
       }
@@ -779,9 +785,22 @@ var SimplePanelController = JSB.defineClass(
     },
     
     textViewDidChange: function(textView) {
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("📝 textViewDidChange 被调用，自动处理状态: " + self.config.autoProcess);
+      }
+      
       if (textView === self.inputField) {
+        // 忽略占位文本
+        if (textView.text === "在这里输入文本..." || textView.text === "") {
+          return;
+        }
+        
         // 自动处理
         if (self.config.autoProcess) {
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log("⚡ 触发自动处理");
+          }
+          
           // 清除之前的定时器
           if (self.autoProcessTimer) {
             self.autoProcessTimer.invalidate();
@@ -811,13 +830,23 @@ var SimplePanelController = JSB.defineClass(
     // === 辅助方法 ===
     
     updateAutoProcessIndicator: function() {
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("🔄 更新自动处理指示器，状态: " + self.config.autoProcess);
+      }
+      
       if (self.autoProcessIndicator) {
         if (self.config.autoProcess) {
           self.autoProcessIndicator.title = "自动: 开";
           self.autoProcessIndicator.backgroundColor = "#4CAF50";
+          self.autoProcessIndicator.opacity = 1.0;
         } else {
           self.autoProcessIndicator.title = "自动: 关";
           self.autoProcessIndicator.backgroundColor = "#00000020";
+          self.autoProcessIndicator.opacity = 0.8;
+        }
+      } else {
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log("⚠️ autoProcessIndicator 不存在");
         }
       }
     },
@@ -833,6 +862,14 @@ var SimplePanelController = JSB.defineClass(
       // 如果开启了自动处理且输入框有内容，立即处理
       if (self.config.autoProcess && self.inputField.text && self.inputField.text !== "在这里输入文本...") {
         self.processText();
+      }
+    },
+    
+    // 清理方法
+    dealloc: function() {
+      // 清理定时器
+      if (self.autoProcessTimer) {
+        self.autoProcessTimer.invalidate();
       }
     }
   }

@@ -56,11 +56,15 @@ JSB.newAddon = function (mainPath) {
         
         // 只在文档/学习模式下显示（不在复习模式）
         if (studyMode < 3) {
-          // 刷新插件栏图标
-          self.appInstance.studyController(self.window).refreshAddonCommands();
-          
           // 延迟添加控制面板到视图，避免阻塞主线程
           NSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {
+            // 刷新插件栏图标
+            if (typeof MNUtil !== "undefined" && MNUtil.refreshAddonCommands) {
+              MNUtil.refreshAddonCommands();
+            } else {
+              self.appInstance.studyController(self.window).refreshAddonCommands();
+            }
+            
             var studyView = self.appInstance.studyController(self.window).view;
             if (studyView && self.panelController && self.panelController.view) {
               // 先设置 frame，确保面板不会铺满整个屏幕
@@ -74,17 +78,12 @@ JSB.newAddon = function (mainPath) {
               }
             }
           });
-          
-          // 监听选择事件（可选）
-          NSNotificationCenter.defaultCenter()
-            .addObserverSelectorName(self, 'onSelectionChanged:', 'PopupMenuOnSelection');
         }
       },
       
       // 笔记本关闭时
       notebookWillClose: function (/* notebookid */) {
-        // 移除观察者
-        NSNotificationCenter.defaultCenter().removeObserver(self);
+        // 清理资源
       },
       
       // 查询插件状态（显示图标）
@@ -155,18 +154,12 @@ JSB.newAddon = function (mainPath) {
         
         // 延迟刷新插件栏图标状态，避免阻塞
         NSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {
-          self.appInstance.studyController(self.window).refreshAddonCommands();
+          if (typeof MNUtil !== "undefined" && MNUtil.refreshAddonCommands) {
+            MNUtil.refreshAddonCommands();
+          } else {
+            self.appInstance.studyController(self.window).refreshAddonCommands();
+          }
         });
-      },
-      
-      // 选择变化时（可选）
-      onSelectionChanged: function (sender) {
-        if (!self.panelController || self.panelController.view.hidden) return;
-        
-        var text = sender.userInfo.documentController.selectionText;
-        if (text) {
-          self.panelController.inputField.text = text;
-        }
       }
     },
     {

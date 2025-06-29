@@ -30,6 +30,34 @@ var SimplePanelController = JSB.defineClass(
       // 从配置管理器获取配置
       self.config = configManager.config;
       
+      // 模式定义
+      self.modes = {
+        textProcessor: {
+          title: "文本处理工具",
+          inputPlaceholder: "在这里输入文本...",
+          outputPlaceholder: "处理结果...",
+          showToolbar: true,
+          showOutput: true
+        },
+        quickNote: {
+          title: "快速笔记",
+          inputPlaceholder: "在这里输入笔记内容...",
+          outputPlaceholder: "笔记预览...",
+          showToolbar: true,
+          showOutput: false
+        },
+        searchReplace: {
+          title: "搜索替换",
+          inputPlaceholder: "搜索内容...",
+          outputPlaceholder: "替换结果...",
+          showToolbar: true,
+          showOutput: true
+        }
+      };
+      
+      // 当前模式
+      self.currentMode = "textProcessor";
+      
       // === 设置面板样式 ===
       self.view.layer.shadowOffset = {width: 0, height: 0};
       self.view.layer.shadowRadius = 15;
@@ -46,9 +74,14 @@ var SimplePanelController = JSB.defineClass(
       self.titleBar.backgroundColor = UIColor.colorWithHexString("#5982c4");
       self.view.addSubview(self.titleBar);
       
+      // 添加双击最小化手势
+      self.doubleTapGesture = new UITapGestureRecognizer(self, "handleDoubleTap:");
+      self.doubleTapGesture.numberOfTapsRequired = 2;
+      self.titleBar.addGestureRecognizer(self.doubleTapGesture);
+      
       // 标题标签
       self.titleLabel = UILabel.new();
-      self.titleLabel.text = "文本处理工具";
+      self.titleLabel.text = self.modes.textProcessor.title;
       self.titleLabel.textColor = UIColor.whiteColor();
       self.titleLabel.font = UIFont.boldSystemFontOfSize(16);
       self.titleLabel.textAlignment = 1;
@@ -105,7 +138,7 @@ var SimplePanelController = JSB.defineClass(
       self.inputField.font = UIFont.systemFontOfSize(16);
       self.inputField.layer.cornerRadius = 8;
       self.inputField.backgroundColor = UIColor.grayColor().colorWithAlphaComponent(0.2);
-      self.inputField.text = configManager.get("inputText", "在这里输入文本...");
+      self.inputField.text = configManager.get("inputText", self.modes.textProcessor.inputPlaceholder);
       self.inputField.textContainerInset = {top: 8, left: 8, bottom: 8, right: 8};
       self.inputField.delegate = self;  // 设置代理以捕获文本变化
       self.view.addSubview(self.inputField);
@@ -115,7 +148,7 @@ var SimplePanelController = JSB.defineClass(
       self.outputField.font = UIFont.systemFontOfSize(16);
       self.outputField.layer.cornerRadius = 8;
       self.outputField.backgroundColor = UIColor.grayColor().colorWithAlphaComponent(0.2);
-      self.outputField.text = configManager.get("outputText", "处理结果...");
+      self.outputField.text = configManager.get("outputText", self.modes.textProcessor.outputPlaceholder);
       self.outputField.textContainerInset = {top: 8, left: 8, bottom: 8, right: 8};
       self.outputField.editable = false;
       self.view.addSubview(self.outputField);
@@ -129,10 +162,10 @@ var SimplePanelController = JSB.defineClass(
       if (typeof MNButton !== "undefined") {
         // === 创建工具按钮组 ===
         const tools = [
-          { icon: "🔄", action: "processText:", tooltip: "处理文本" },
+          { icon: "🔄", action: "processText:", tooltip: "处理/保存" },
           { icon: "📋", action: "copyOutput:", tooltip: "复制结果" },
           { icon: "🔧", action: "showModeMenu:", tooltip: "选择模式" },
-          { icon: "📝", action: "insertToNote:", tooltip: "插入到笔记" },
+          { icon: "📝", action: "insertToNote:", tooltip: "插入笔记" },
           { icon: "🕐", action: "showHistory:", tooltip: "历史记录" }
         ];
         
@@ -353,11 +386,33 @@ var SimplePanelController = JSB.defineClass(
       }
     },
     
+    // 视图出现时
+    viewWillAppear: function() {
+      // 注意：动画现在在 main.js 中处理，避免冲突
+      // 这里只做必要的初始化
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("📱 SimplePanelController: viewWillAppear");
+      }
+    },
+    
     // === 事件处理 ===
     
     closePanel: function() {
-      self.view.hidden = true;
-      self.appInstance.studyController(self.view.window).refreshAddonCommands();
+      // 添加关闭动画
+      if (typeof MNUtil !== "undefined" && MNUtil.animate) {
+        MNUtil.animate(() => {
+          self.view.alpha = 0;
+          self.view.transform = {a: 0.8, b: 0, c: 0, d: 0.8, tx: 0, ty: 0};
+        }, 0.2).then(() => {
+          self.view.hidden = true;
+          self.view.alpha = 1;
+          self.view.transform = {a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0};
+          self.appInstance.studyController(self.view.window).refreshAddonCommands();
+        });
+      } else {
+        self.view.hidden = true;
+        self.appInstance.studyController(self.view.window).refreshAddonCommands();
+      }
     },
     
     showSettings: function(sender) {
@@ -446,24 +501,52 @@ var SimplePanelController = JSB.defineClass(
       self.isMinimized = !self.isMinimized;
       
       if (typeof MNUtil !== "undefined" && MNUtil.animate) {
-        MNUtil.animate(() => {
-          if (self.isMinimized) {
-            self.view.frame = {
-              x: self.view.frame.x,
-              y: self.view.frame.y,
-              width: 200,
-              height: 40
-            };
+        // 先隐藏内容，避免动画过程中布局问题
+        if (self.isMinimized) {
+          MNUtil.animate(() => {
+            self.inputField.alpha = 0;
+            self.outputField.alpha = 0;
+            self.toolbar.alpha = 0;
+          }, 0.15).then(() => {
             self.inputField.hidden = true;
             self.outputField.hidden = true;
             self.toolbar.hidden = true;
-          } else {
+            self.inputField.alpha = 1;
+            self.outputField.alpha = 1;
+            self.toolbar.alpha = 1;
+            
+            MNUtil.animate(() => {
+              self.view.frame = {
+                x: self.view.frame.x,
+                y: self.view.frame.y,
+                width: 200,
+                height: 40
+              };
+            }, 0.2);
+          });
+        } else {
+          MNUtil.animate(() => {
             self.view.frame = self.currentFrame;
+          }, 0.2).then(() => {
             self.inputField.hidden = false;
             self.outputField.hidden = false;
             self.toolbar.hidden = false;
-          }
-        }, 0.25);
+            self.inputField.alpha = 0;
+            self.outputField.alpha = 0;
+            self.toolbar.alpha = 0;
+            
+            MNUtil.animate(() => {
+              self.inputField.alpha = 1;
+              self.outputField.alpha = 1;
+              self.toolbar.alpha = 1;
+            }, 0.15);
+          });
+        }
+        
+        // 更新按钮图标
+        if (self.minimizeButton) {
+          self.minimizeButton.title = self.isMinimized ? "+" : "−";
+        }
       } else {
         // 降级方案
         if (self.isMinimized) {
@@ -491,42 +574,61 @@ var SimplePanelController = JSB.defineClass(
         var result = "";
         
         if (typeof MNUtil !== "undefined" && MNUtil.log) {
-          MNUtil.log("🔄 processText - 输入文本: " + text + ", 模式: " + configManager.get("mode"));
+          MNUtil.log("🔄 processText - 模式: " + self.currentMode);
         }
         
-        switch (configManager.get("mode")) {
-          case 0: // 转大写
-            result = text.toUpperCase();
+        // 根据当前模式处理
+        switch (self.currentMode) {
+          case "textProcessor":
+            // 文本处理模式
+            switch (configManager.get("mode")) {
+              case 0: // 转大写
+                result = text.toUpperCase();
+                break;
+              case 1: // 转小写
+                result = text.toLowerCase();
+                break;
+              case 2: // 首字母大写
+                result = text.replace(/\b\w/g, l => l.toUpperCase());
+                break;
+              case 3: // 反转文本
+                result = text.split('').reverse().join('');
+                break;
+              case 4: // 去除空格
+                result = text.replace(/\s+/g, '');
+                break;
+              case 5: // 统计字数
+                const charCount = text.replace(/\s/g, '').length;
+                const wordCount = text.trim().split(/\s+/).length;
+                result = "字符数：" + charCount + "\n单词数：" + wordCount;
+                break;
+            }
+            self.outputField.text = result;
             break;
-          case 1: // 转小写
-            result = text.toLowerCase();
+            
+          case "quickNote":
+            // 快速笔记模式
+            self.saveQuickNote(text);
             break;
-          case 2: // 首字母大写
-            result = text.replace(/\b\w/g, l => l.toUpperCase());
-            break;
-          case 3: // 反转文本
-            result = text.split('').reverse().join('');
+            
+          case "searchReplace":
+            // 搜索替换模式
+            self.performSearchReplace();
             break;
         }
-        
-        self.outputField.text = result;
         
         // 保存到历史
         if (configManager.get("saveHistory") && result) {
           configManager.saveHistory({
             input: text,
             output: result,
-            mode: configManager.get("mode")
+            mode: self.currentMode,
+            subMode: configManager.get("mode")
           });
         }
         
         // 更新状态指示器
-        if (self.statusIndicator) {
-          self.statusIndicator.backgroundColor = "#4CAF50";
-          NSTimer.scheduledTimerWithTimeInterval(0.5, false, () => {
-            self.statusIndicator.backgroundColor = "#00000020";
-          });
-        }
+        self.updateStatusIndicator("#4CAF50");
         
         // 显示处理完成提示
         if (typeof MNUtil !== "undefined") {
@@ -534,7 +636,7 @@ var SimplePanelController = JSB.defineClass(
         }
       } catch (error) {
         if (typeof MNUtil !== "undefined") {
-          MNUtil.addErrorLog(error, "processText", {mode: configManager.get("mode")});
+          MNUtil.addErrorLog(error, "processText", {mode: self.currentMode});
           MNUtil.showHUD("处理失败：" + error.message);
         }
       }
@@ -542,17 +644,35 @@ var SimplePanelController = JSB.defineClass(
     
     showModeMenu: function(sender) {
       if (typeof Menu !== "undefined") {
-        const menu = new Menu(sender, self, 200, 2);
+        const menu = new Menu(sender, self, 220, 2);
         
-        const currentMode = configManager.get("mode");
-        const modes = [
-          { title: "转大写 (ABC)", selector: "setMode:", param: 0, checked: currentMode === 0 },
-          { title: "转小写 (abc)", selector: "setMode:", param: 1, checked: currentMode === 1 },
-          { title: "首字母大写 (Abc)", selector: "setMode:", param: 2, checked: currentMode === 2 },
-          { title: "反转文本 (⇄)", selector: "setMode:", param: 3, checked: currentMode === 3 }
-        ];
-        
-        menu.addMenuItems(modes);
+        // 根据当前模式显示不同的选项
+        if (self.currentMode === "textProcessor") {
+          const currentMode = configManager.get("mode");
+          const modes = [
+            { title: "转大写 (ABC)", selector: "setMode:", param: 0, checked: currentMode === 0 },
+            { title: "转小写 (abc)", selector: "setMode:", param: 1, checked: currentMode === 1 },
+            { title: "首字母大写 (Abc)", selector: "setMode:", param: 2, checked: currentMode === 2 },
+            { title: "反转文本 (⇄)", selector: "setMode:", param: 3, checked: currentMode === 3 },
+            { title: "去除空格", selector: "setMode:", param: 4, checked: currentMode === 4 },
+            { title: "统计字数", selector: "setMode:", param: 5, checked: currentMode === 5 }
+          ];
+          menu.addMenuItems(modes);
+        } else if (self.currentMode === "quickNote") {
+          const noteOptions = [
+            { title: "保存到当前笔记", selector: "saveToCurrentNote:" },
+            { title: "创建新笔记", selector: "createNewNote:" },
+            { title: "Markdown 预览", selector: "previewMarkdown:" }
+          ];
+          menu.addMenuItems(noteOptions);
+        } else if (self.currentMode === "searchReplace") {
+          const searchOptions = [
+            { title: "大小写敏感", selector: "toggleCaseSensitive:", checked: configManager.get("caseSensitive") },
+            { title: "全词匹配", selector: "toggleWholeWord:", checked: configManager.get("wholeWord") },
+            { title: "正则表达式", selector: "toggleRegex:", checked: configManager.get("useRegex") }
+          ];
+          menu.addMenuItems(searchOptions);
+        }
         
         menu.rowHeight = 45;
         menu.fontSize = 16;
@@ -716,52 +836,161 @@ var SimplePanelController = JSB.defineClass(
       }
     },
     
-    // === 手势处理 ===
+    // === 高级手势处理（基于 mnai 最佳实践） ===
     
     onDragGesture: function(gesture) {
-      if (gesture.state === 1) { // Began
-        self.dragOffset = gesture.locationInView(self.view);
-      } else if (gesture.state === 2) { // Changed
-        var location = gesture.locationInView(self.view.superview);
-        var newX = location.x - self.dragOffset.x;
-        var newY = location.y - self.dragOffset.y;
-        
-        // 限制在屏幕范围内
-        var superBounds = self.view.superview.bounds;
-        newX = Math.max(0, Math.min(newX, superBounds.width - self.view.frame.width));
-        newY = Math.max(0, Math.min(newY, superBounds.height - self.view.frame.height));
-        
-        self.view.frame = {
-          x: newX,
-          y: newY,
-          width: self.view.frame.width,
-          height: self.view.frame.height
-        };
-        
-        if (!self.isMinimized) {
-          self.currentFrame = self.view.frame;
-        }
+      var translation = gesture.translationInView(self.view);
+      var velocity = gesture.velocityInView(self.view);
+      
+      switch (gesture.state) {
+        case 1: // Began
+          // 记录开始拖动的 frame
+          self.dragStartFrame = self.view.frame;
+          
+          // 视觉反馈：轻微放大
+          if (typeof MNUtil !== "undefined" && MNUtil.animate) {
+            MNUtil.animate(() => {
+              self.view.transform = {a: 1.02, b: 0, c: 0, d: 1.02, tx: 0, ty: 0};
+              self.view.layer.shadowRadius = 20;
+              self.view.layer.shadowOpacity = 0.6;
+            }, 0.1);
+          }
+          break;
+          
+        case 2: // Changed
+          var newFrame = self.dragStartFrame;
+          newFrame.x += translation.x;
+          newFrame.y += translation.y;
+          
+          // 边界检查 - 使用 MNUtil.constrain 确保不超出边界
+          var superBounds = self.view.superview.bounds;
+          newFrame.x = typeof MNUtil !== "undefined" ? 
+            MNUtil.constrain(newFrame.x, 0, superBounds.width - newFrame.width) :
+            Math.max(0, Math.min(newFrame.x, superBounds.width - newFrame.width));
+          newFrame.y = typeof MNUtil !== "undefined" ?
+            MNUtil.constrain(newFrame.y, 0, superBounds.height - newFrame.height) :
+            Math.max(0, Math.min(newFrame.y, superBounds.height - newFrame.height));
+          
+          self.view.frame = newFrame;
+          
+          if (!self.isMinimized) {
+            self.currentFrame = newFrame;
+          }
+          break;
+          
+        case 3: // Ended
+          // 恢复正常大小
+          if (typeof MNUtil !== "undefined" && MNUtil.animate) {
+            MNUtil.animate(() => {
+              self.view.transform = {a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0};
+              self.view.layer.shadowRadius = 15;
+              self.view.layer.shadowOpacity = 0.5;
+            }, 0.2);
+          }
+          
+          // 吸附到边缘效果（如果速度够快）
+          if (Math.abs(velocity.x) > 1000) {
+            var studyWidth = self.view.superview.bounds.width;
+            var targetX = velocity.x > 0 ? studyWidth - self.view.frame.width - 10 : 10;
+            
+            if (typeof MNUtil !== "undefined" && MNUtil.animate) {
+              // 使用弹性动画吸附到边缘
+              UIView.animateWithDurationDelayUsingSpringWithDampingInitialSpringVelocityOptionsAnimationsCompletion(
+                0.5,    // 动画时长
+                0,      // 延迟
+                0.7,    // 阻尼系数
+                0.5,    // 初始速度
+                0,      // 选项
+                function() {
+                  self.view.frame = {
+                    x: targetX,
+                    y: self.view.frame.y,
+                    width: self.view.frame.width,
+                    height: self.view.frame.height
+                  };
+                  self.currentFrame = self.view.frame;
+                },
+                null
+              );
+            }
+          }
+          break;
       }
     },
     
+    // 高级调整大小手势处理
     onResizeGesture: function(gesture) {
       if (self.isMinimized) return;
       
-      var location = gesture.locationInView(self.view);
-      var width = Math.max(300, location.x);
-      var height = Math.max(250, location.y);
-      
-      self.view.frame = {
-        x: self.view.frame.x,
-        y: self.view.frame.y,
-        width: width,
-        height: height
-      };
-      
-      self.currentFrame = self.view.frame;
-      
-      // 实时更新布局
-      self.viewWillLayoutSubviews();
+      switch (gesture.state) {
+        case 1: // Began
+          self.resizeStartFrame = self.view.frame;
+          
+          // 视觉反馈：手柄变色
+          if (self.resizeHandle && typeof MNButton !== "undefined") {
+            MNButton.setConfig(self.resizeHandle, {
+              color: "#457bd3",
+              opacity: 0.8
+            });
+          }
+          break;
+          
+        case 2: // Changed
+          var location = gesture.locationInView(self.view);
+          
+          // 智能尺寸约束
+          var minWidth = 300;
+          var minHeight = 250;
+          var maxWidth = self.view.superview.bounds.width - self.view.frame.x - 20;
+          var maxHeight = self.view.superview.bounds.height - self.view.frame.y - 20;
+          
+          var width = typeof MNUtil !== "undefined" ?
+            MNUtil.constrain(location.x, minWidth, maxWidth) :
+            Math.max(minWidth, Math.min(location.x, maxWidth));
+          var height = typeof MNUtil !== "undefined" ?
+            MNUtil.constrain(location.y, minHeight, maxHeight) :
+            Math.max(minHeight, Math.min(location.y, maxHeight));
+          
+          // 按比例调整（如果按住 shift 键）
+          if (gesture.modifierFlags & (1 << 17)) { // Shift key
+            var aspectRatio = self.resizeStartFrame.width / self.resizeStartFrame.height;
+            height = width / aspectRatio;
+          }
+          
+          self.view.frame = {
+            x: self.view.frame.x,
+            y: self.view.frame.y,
+            width: width,
+            height: height
+          };
+          
+          self.currentFrame = self.view.frame;
+          
+          // 实时更新布局
+          self.viewWillLayoutSubviews();
+          break;
+          
+        case 3: // Ended
+          // 恢复手柄颜色
+          if (self.resizeHandle && typeof MNButton !== "undefined") {
+            MNButton.setConfig(self.resizeHandle, {
+              color: "#00000020",
+              opacity: 1.0
+            });
+          }
+          
+          // 保存新尺寸到配置
+          configManager.update({
+            panelWidth: self.view.frame.width,
+            panelHeight: self.view.frame.height
+          });
+          
+          // 显示尺寸提示
+          if (typeof MNUtil !== "undefined") {
+            MNUtil.showHUD(Math.round(self.view.frame.width) + " × " + Math.round(self.view.frame.height));
+          }
+          break;
+      }
     },
     
     showAllHistory: function() {
@@ -801,6 +1030,295 @@ var SimplePanelController = JSB.defineClass(
     // 清理方法
     dealloc: function() {
       // 目前无需清理
+    },
+    
+    // === 新增功能方法 ===
+    
+    // 高级模式切换（基于 mnai 动画系统）
+    switchToMode: function(mode) {
+      if (self.currentMode === mode) return;
+      
+      const modeConfig = self.modes[mode];
+      if (!modeConfig) return;
+      
+      // 模式切换动画
+      if (typeof MNUtil !== "undefined" && MNUtil.animate) {
+        // 第一步：缩小并淡出当前内容
+        UIView.animateWithDurationDelayUsingSpringWithDampingInitialSpringVelocityOptionsAnimationsCompletion(
+          0.2,    // 动画时长
+          0,      // 延迟
+          1.0,    // 阻尼（无弹性）
+          0,      // 初始速度
+          0,      // 选项
+          function() {
+            // 缩小效果
+            self.view.transform = {a: 0.95, b: 0, c: 0, d: 0.95, tx: 0, ty: 0};
+            
+            // 淡出内容
+            self.titleLabel.alpha = 0;
+            self.inputField.alpha = 0;
+            if (!self.outputField.hidden) {
+              self.outputField.alpha = 0;
+            }
+          },
+          function() {
+            // 第二步：更新内容并恢复
+            self.currentMode = mode;
+            self.titleLabel.text = modeConfig.title;
+            
+            // 更新输入框占位符
+            if (self.inputField.text === "" || self.inputField.text === self.modes[self.lastMode]?.inputPlaceholder) {
+              self.inputField.text = modeConfig.inputPlaceholder;
+            }
+            
+            // 显示/隐藏输出框
+            self.outputField.hidden = !modeConfig.showOutput;
+            
+            // 重新布局
+            self.viewWillLayoutSubviews();
+            
+            // 第三步：放大并淡入新内容
+            UIView.animateWithDurationDelayUsingSpringWithDampingInitialSpringVelocityOptionsAnimationsCompletion(
+              0.3,    // 动画时长
+              0,      // 延迟
+              0.8,    // 阻尼（轻微弹性）
+              0.3,    // 初始速度
+              0,      // 选项
+              function() {
+                // 恢复大小
+                self.view.transform = {a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0};
+                
+                // 淡入内容
+                self.titleLabel.alpha = 1;
+                self.inputField.alpha = 1;
+                if (!self.outputField.hidden) {
+                  self.outputField.alpha = 1;
+                }
+              },
+              function() {
+                // 动画完成
+                self.lastMode = mode;
+                
+                // 更新状态指示器
+                self.updateStatusIndicator(mode);
+                
+                // 震动反馈（iOS）
+                if (typeof MNUtil !== "undefined" && MNUtil.isIOS && MNUtil.isIOS()) {
+                  const generator = UIImpactFeedbackGenerator.alloc().initWithStyle(0); // light
+                  generator.prepare();
+                  generator.impactOccurred();
+                }
+              }
+            );
+          }
+        );
+      } else {
+        // 降级方案
+        self.currentMode = mode;
+        self.titleLabel.text = modeConfig.title;
+        
+        if (self.inputField.text === "" || self.inputField.text === self.modes[self.lastMode]?.inputPlaceholder) {
+          self.inputField.text = modeConfig.inputPlaceholder;
+        }
+        
+        self.outputField.hidden = !modeConfig.showOutput;
+        self.viewWillLayoutSubviews();
+        self.lastMode = mode;
+        self.updateStatusIndicator(mode);
+      }
+    },
+    
+    // 更新状态指示器
+    updateStatusIndicator: function(mode) {
+      const modeColors = {
+        textProcessor: "#5982c4",
+        quickNote: "#4CAF50",
+        searchReplace: "#FF9800"
+      };
+      
+      if (self.statusIndicator) {
+        const newColor = modeColors[mode] || "#5982c4";
+        
+        if (typeof MNButton !== "undefined") {
+          // 脉冲动画效果
+          MNUtil.animate(() => {
+            self.statusIndicator.transform = {a: 1.5, b: 0, c: 0, d: 1.5, tx: 0, ty: 0};
+            MNButton.setConfig(self.statusIndicator, {
+              color: newColor
+            });
+          }, 0.2).then(() => {
+            MNUtil.animate(() => {
+              self.statusIndicator.transform = {a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0};
+            }, 0.2);
+          });
+        } else {
+          self.statusIndicator.backgroundColor = UIColor.colorWithHexString(newColor);
+        }
+      }
+    },
+    
+    // 保存快速笔记
+    saveQuickNote: function(text) {
+      if (typeof MNNote === "undefined") {
+        if (typeof MNUtil !== "undefined") {
+          MNUtil.showHUD("需要安装 MNUtils");
+        }
+        return;
+      }
+      
+      const focusNote = MNNote.getFocusNote();
+      if (focusNote) {
+        MNUtil.undoGrouping(() => {
+          // 检测是否是 Markdown 格式
+          if (text.includes("#") || text.includes("*") || text.includes("[")) {
+            focusNote.appendHtmlComment(self.markdownToHtml(text));
+          } else {
+            focusNote.appendTextComment(text);
+          }
+        });
+        
+        // 清空输入框
+        self.inputField.text = "";
+        
+        if (typeof MNUtil !== "undefined") {
+          MNUtil.showHUD("✅ 笔记已保存");
+        }
+      } else {
+        if (typeof MNUtil !== "undefined") {
+          MNUtil.showHUD("请先选择一个笔记");
+        }
+      }
+    },
+    
+    // 执行搜索替换
+    performSearchReplace: function() {
+      // 这里可以实现搜索替换的逻辑
+      if (typeof MNUtil !== "undefined") {
+        MNUtil.showHUD("🔍 搜索替换功能开发中...");
+      }
+    },
+    
+    // 简单的 Markdown 转 HTML
+    markdownToHtml: function(markdown) {
+      var html = markdown;
+      
+      // 标题
+      html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+      html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+      html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+      
+      // 粗体和斜体
+      html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<b><i>$1</i></b>');
+      html = html.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+      html = html.replace(/\*(.+?)\*/g, '<i>$1</i>');
+      
+      // 列表
+      html = html.replace(/^\* (.+)/gim, '<li>$1</li>');
+      html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+      
+      // 换行
+      html = html.replace(/\n/g, '<br>');
+      
+      return html;
+    },
+    
+    // 更新状态指示器
+    updateStatusIndicator: function(color) {
+      if (self.statusIndicator) {
+        // 使用动画效果
+        if (typeof MNUtil !== "undefined" && MNUtil.animate) {
+          MNUtil.animate(() => {
+            self.statusIndicator.backgroundColor = color;
+            self.statusIndicator.transform = {a: 1.5, b: 0, c: 0, d: 1.5, tx: 0, ty: 0};
+          }, 0.1).then(() => {
+            MNUtil.animate(() => {
+              self.statusIndicator.transform = {a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0};
+            }, 0.2);
+            
+            NSTimer.scheduledTimerWithTimeInterval(0.5, false, () => {
+              MNUtil.animate(() => {
+                self.statusIndicator.backgroundColor = "#00000020";
+              }, 0.3);
+            });
+          });
+        } else {
+          self.statusIndicator.backgroundColor = color;
+          NSTimer.scheduledTimerWithTimeInterval(0.5, false, () => {
+            self.statusIndicator.backgroundColor = "#00000020";
+          });
+        }
+      }
+    },
+    
+    // 新增模式相关方法
+    saveToCurrentNote: function() {
+      self.saveQuickNote(self.inputField.text);
+      if (typeof Menu !== "undefined") {
+        Menu.dismissCurrentMenu();
+      }
+    },
+    
+    createNewNote: function() {
+      if (typeof MNNote === "undefined" || typeof MNUtil === "undefined") {
+        MNUtil.showHUD("需要安装 MNUtils");
+        return;
+      }
+      
+      // 创建新笔记
+      const newNote = MNNote.createWithTitleNotebookId("快速笔记", MNUtil.currentNotebookId);
+      if (newNote) {
+        newNote.appendTextComment(self.inputField.text);
+        self.inputField.text = "";
+        MNUtil.showHUD("✅ 新笔记已创建");
+      }
+      
+      if (typeof Menu !== "undefined") {
+        Menu.dismissCurrentMenu();
+      }
+    },
+    
+    previewMarkdown: function() {
+      const html = self.markdownToHtml(self.inputField.text);
+      self.outputField.text = html;
+      self.outputField.hidden = false;
+      self.viewWillLayoutSubviews();
+      
+      if (typeof Menu !== "undefined") {
+        Menu.dismissCurrentMenu();
+      }
+    },
+    
+    toggleCaseSensitive: function() {
+      const value = !configManager.get("caseSensitive");
+      configManager.set("caseSensitive", value);
+      if (typeof Menu !== "undefined") {
+        Menu.dismissCurrentMenu();
+      }
+      if (typeof MNUtil !== "undefined") {
+        MNUtil.showHUD("大小写敏感: " + (value ? "开启" : "关闭"));
+      }
+    },
+    
+    toggleWholeWord: function() {
+      const value = !configManager.get("wholeWord");
+      configManager.set("wholeWord", value);
+      if (typeof Menu !== "undefined") {
+        Menu.dismissCurrentMenu();
+      }
+      if (typeof MNUtil !== "undefined") {
+        MNUtil.showHUD("全词匹配: " + (value ? "开启" : "关闭"));
+      }
+    },
+    
+    toggleRegex: function() {
+      const value = !configManager.get("useRegex");
+      configManager.set("useRegex", value);
+      if (typeof Menu !== "undefined") {
+        Menu.dismissCurrentMenu();
+      }
+      if (typeof MNUtil !== "undefined") {
+        MNUtil.showHUD("正则表达式: " + (value ? "开启" : "关闭"));
+      }
     }
   }
 );

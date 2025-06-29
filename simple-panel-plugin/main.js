@@ -137,13 +137,13 @@ JSB.newAddon = function (mainPath) {
           MNUtil.log("📋 Simple Panel: showMenu called");
         }
         
-        // 定义菜单项
+        // 定义菜单项 - 无参数方法不需要冒号
         var commandTable = [
-          {title: '🔧  文本处理', object: self, selector: 'openTextProcessor:', param: null},
-          {title: '📝  快速笔记', object: self, selector: 'openQuickNote:', param: null},
-          {title: '🔍  搜索替换', object: self, selector: 'openSearchReplace:', param: null},
-          {title: '⚙️  设置', object: self, selector: 'openSettings:', param: null},
-          {title: '💡  帮助', object: self, selector: 'showHelp:', param: null}
+          {title: '🔧  文本处理', object: self, selector: 'openTextProcessor', param: null},
+          {title: '📝  快速笔记', object: self, selector: 'openQuickNote', param: null},
+          {title: '🔍  搜索替换', object: self, selector: 'openSearchReplace', param: null},
+          {title: '⚙️  设置', object: self, selector: 'openSettings', param: null},
+          {title: '💡  帮助', object: self, selector: 'showHelp', param: null}
         ];
         
         // 检查 Menu 类是否存在
@@ -284,10 +284,24 @@ JSB.newAddon = function (mainPath) {
             }
           }
           
-          // 尝试获取选中文本
-          var selectedText = self.getSelectedText();
-          if (selectedText && self.panelController.inputField) {
+          // 内联 getSelectedText 逻辑 - JSB 框架限制
+          var selectedText = null;
+          try {
+            var readerController = self.appInstance.studyController(self.window).readerController;
+            if (readerController && readerController.currentDocumentController) {
+              selectedText = readerController.currentDocumentController.selectionText;
+            }
+          } catch (e) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("⚠️ Simple Panel: 获取选中文本失败");
+            }
+          }
+          
+          if (selectedText && self.panelController && self.panelController.inputField) {
             self.panelController.inputField.text = selectedText;
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("✅ Simple Panel: 已填充选中文本");
+            }
           }
         } catch (error) {
           if (typeof MNUtil !== "undefined") {
@@ -673,10 +687,54 @@ JSB.newAddon = function (mainPath) {
                 MNUtil.log("✅ Simple Panel: 面板已显示");
               }
               
-              // 执行回调 - 动画完成后显示设置菜单
-              NSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {
-                if (self.panelController && self.panelController.settingsButton && self.panelController.showSettings) {
-                  self.panelController.showSettings(self.panelController.settingsButton);
+              // 立即显示设置菜单，不要延迟
+              NSTimer.scheduledTimerWithTimeInterval(0.01, false, function() {
+                try {
+                  if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                    MNUtil.log("⚙️ Simple Panel: 准备显示设置菜单");
+                  }
+                  
+                  if (self.panelController && self.panelController.settingsButton) {
+                    // 内联 showSettings 逻辑 - JSB 框架限制
+                    if (typeof Menu !== "undefined") {
+                      var menu = new Menu(self.panelController.settingsButton, self.panelController, 250, 2);
+                      
+                      // 直接使用 self.panelController.config
+                      var saveHistory = false;
+                      if (self.panelController && self.panelController.config) {
+                        saveHistory = self.panelController.config.saveHistory || false;
+                      }
+                      
+                      var menuItems = [
+                        { title: saveHistory ? "✓ 保存历史" : "  保存历史", object: self.panelController, selector: "toggleSaveHistory", param: null },
+                        { title: "────────", object: null, selector: "", param: null },
+                        { title: "云同步设置", object: self.panelController, selector: "showSyncSettings:", param: self.panelController.settingsButton },
+                        { title: "清空历史", object: self.panelController, selector: "clearHistory", param: null },
+                        { title: "导出配置", object: self.panelController, selector: "exportConfig", param: null },
+                        { title: "导入配置", object: self.panelController, selector: "importConfig", param: null }
+                      ];
+                      
+                      menu.addMenuItems(menuItems);
+                      menu.rowHeight = 40;
+                      menu.show();
+                      
+                      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                        MNUtil.log("✅ Simple Panel: 设置菜单已显示");
+                      }
+                    } else {
+                      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                        MNUtil.log("❌ Simple Panel: Menu 类不存在");
+                      }
+                    }
+                  } else {
+                    if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                      MNUtil.log("❌ Simple Panel: settingsButton 不存在");
+                    }
+                  }
+                } catch (e) {
+                  if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                    MNUtil.log("❌ Simple Panel: 显示设置菜单出错: " + e.message);
+                  }
                 }
               });
             }

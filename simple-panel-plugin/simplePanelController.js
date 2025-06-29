@@ -108,7 +108,8 @@ var SimplePanelController = JSB.defineClass(
         }, self.titleBar);
         
         self.settingsButton.addClickAction(self, "showSettings:");
-        self.settingsButton.addLongPressGesture(self, "resetSettings:", 1.0);
+        // 减少长按时间以避免点击延迟
+        self.settingsButton.addLongPressGesture(self, "resetSettings:", 2.0);
         
         // === 创建最小化按钮 ===
         self.minimizeButton = MNButton.new({
@@ -428,26 +429,28 @@ var SimplePanelController = JSB.defineClass(
     // === 事件处理 ===
     
     closePanel: function() {
-      // 添加关闭动画
-      if (typeof MNUtil !== "undefined" && MNUtil.animate) {
-        MNUtil.animate(() => {
-          self.view.alpha = 0;
-          self.view.transform = {a: 0.8, b: 0, c: 0, d: 0.8, tx: 0, ty: 0};
-        }, 0.2).then(() => {
-          self.view.hidden = true;
-          self.view.alpha = 1;
-          self.view.transform = {a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0};
-          self.appInstance.studyController(self.view.window).refreshAddonCommands();
-        });
-      } else {
-        self.view.hidden = true;
-        self.appInstance.studyController(self.view.window).refreshAddonCommands();
+      // 直接关闭，无动画效果
+      self.view.hidden = true;
+      
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("🚪 SimplePanelController: 面板已关闭");
       }
+      
+      // 异步刷新插件栏图标状态，避免延迟
+      NSTimer.scheduledTimerWithTimeInterval(0.01, false, function() {
+        try {
+          self.appInstance.studyController(self.view.window).refreshAddonCommands();
+        } catch (e) {
+          // 忽略错误
+        }
+      });
     },
     
     showSettings: function(sender) {
       if (typeof Menu !== "undefined") {
-        const menu = new Menu(sender, self, 250, 2);
+        // 修复 convertRectToView 错误 - 使用设置按钮作为 sender
+        const button = self.settingsButton || sender;
+        const menu = new Menu(button, self, 250, 2);
         
         const menuItems = [
           { title: configManager.get("saveHistory") ? "✓ 保存历史" : "  保存历史", selector: "toggleSaveHistory:" },
@@ -619,8 +622,31 @@ var SimplePanelController = JSB.defineClass(
           });
         }
         
-        // 更新状态指示器
-        self.updateStatusIndicator("#4CAF50");
+        // 更新状态指示器 - 内联逻辑，JSB框架限制
+        if (self.statusIndicator) {
+          var indicatorColor = "#4CAF50";
+          if (typeof MNUtil !== "undefined" && MNUtil.animate) {
+            MNUtil.animate(() => {
+              self.statusIndicator.backgroundColor = indicatorColor;
+              self.statusIndicator.transform = {a: 1.5, b: 0, c: 0, d: 1.5, tx: 0, ty: 0};
+            }, 0.1).then(() => {
+              MNUtil.animate(() => {
+                self.statusIndicator.transform = {a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0};
+              }, 0.2);
+              
+              NSTimer.scheduledTimerWithTimeInterval(0.5, false, () => {
+                MNUtil.animate(() => {
+                  self.statusIndicator.backgroundColor = "#00000020";
+                }, 0.3);
+              });
+            });
+          } else {
+            self.statusIndicator.backgroundColor = indicatorColor;
+            NSTimer.scheduledTimerWithTimeInterval(0.5, false, () => {
+              self.statusIndicator.backgroundColor = "#00000020";
+            });
+          }
+        }
         
         // 显示处理完成提示
         if (typeof MNUtil !== "undefined") {
@@ -831,13 +857,13 @@ var SimplePanelController = JSB.defineClass(
     // === 高级手势处理（基于 mnai 最佳实践） ===
     
     onDragGesture: function(gesture) {
-      var translation = gesture.translationInView(self.view);
-      var velocity = gesture.velocityInView(self.view);
+      var translation = gesture.translationInView(self.view.superview);
+      var velocity = gesture.velocityInView(self.view.superview);
       
       switch (gesture.state) {
         case 1: // Began
-          // 记录开始拖动的 frame
-          self.dragStartFrame = self.view.frame;
+          // 记录开始拖动的中心点
+          self.dragStartCenter = self.view.center;
           
           // 视觉反馈：轻微放大 - 简化版
           self.view.layer.shadowRadius = 20;
@@ -845,23 +871,28 @@ var SimplePanelController = JSB.defineClass(
           break;
           
         case 2: // Changed
-          var newFrame = self.dragStartFrame;
-          newFrame.x += translation.x;
-          newFrame.y += translation.y;
+          // 使用 center 而不是 frame，避免计算累积误差
+          var newCenter = {
+            x: self.dragStartCenter.x + translation.x,
+            y: self.dragStartCenter.y + translation.y
+          };
           
-          // 边界检查 - 使用 MNUtil.constrain 确保不超出边界
+          // 边界检查
           var superBounds = self.view.superview.bounds;
-          newFrame.x = typeof MNUtil !== "undefined" ? 
-            MNUtil.constrain(newFrame.x, 0, superBounds.width - newFrame.width) :
-            Math.max(0, Math.min(newFrame.x, superBounds.width - newFrame.width));
-          newFrame.y = typeof MNUtil !== "undefined" ?
-            MNUtil.constrain(newFrame.y, 0, superBounds.height - newFrame.height) :
-            Math.max(0, Math.min(newFrame.y, superBounds.height - newFrame.height));
+          var halfWidth = self.view.frame.width / 2;
+          var halfHeight = self.view.frame.height / 2;
           
-          self.view.frame = newFrame;
+          newCenter.x = typeof MNUtil !== "undefined" ? 
+            MNUtil.constrain(newCenter.x, halfWidth, superBounds.width - halfWidth) :
+            Math.max(halfWidth, Math.min(newCenter.x, superBounds.width - halfWidth));
+          newCenter.y = typeof MNUtil !== "undefined" ?
+            MNUtil.constrain(newCenter.y, halfHeight, superBounds.height - halfHeight) :
+            Math.max(halfHeight, Math.min(newCenter.y, superBounds.height - halfHeight));
+          
+          self.view.center = newCenter;
           
           if (!self.isMinimized) {
-            self.currentFrame = newFrame;
+            self.currentFrame = self.view.frame;
           }
           break;
           
@@ -870,17 +901,16 @@ var SimplePanelController = JSB.defineClass(
           self.view.layer.shadowRadius = 15;
           self.view.layer.shadowOpacity = 0.5;
           
-          // 吸附到边缘效果（如果速度够快）
-          if (Math.abs(velocity.x) > 1000) {
+          // 吸附到边缘效果（只有在速度非常快时才触发）
+          if (Math.abs(velocity.x) > 3000) {
             var studyWidth = self.view.superview.bounds.width;
-            var targetX = velocity.x > 0 ? studyWidth - self.view.frame.width - 10 : 10;
+            var halfWidth = self.view.frame.width / 2;
+            var targetCenterX = velocity.x > 0 ? studyWidth - halfWidth - 10 : halfWidth + 10;
             
-            // 直接设置位置 - 参考 mnai 项目
-            self.view.frame = {
-              x: targetX,
-              y: self.view.frame.y,
-              width: self.view.frame.width,
-              height: self.view.frame.height
+            // 直接设置中心点
+            self.view.center = {
+              x: targetCenterX,
+              y: self.view.center.y
             };
             self.currentFrame = self.view.frame;
             

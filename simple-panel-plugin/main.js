@@ -137,6 +137,16 @@ JSB.newAddon = function (mainPath) {
           MNUtil.log("📋 Simple Panel: showMenu called");
         }
         
+        // 保存按钮引用，供后续使用
+        if (button && typeof button.convertRectToView === 'function') {
+          self.addonButton = button;
+        }
+        
+        // 保存工具栏引用
+        if (button && button.superview && button.superview.superview) {
+          self.addonBar = button.superview.superview;
+        }
+        
         // 定义菜单项 - 无参数方法不需要冒号
         var commandTable = [
           {title: '🔧  文本处理', object: self, selector: 'openTextProcessor', param: null},
@@ -604,6 +614,32 @@ JSB.newAddon = function (mainPath) {
         // 小延迟后显示子菜单
         NSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {
           if (typeof Menu !== "undefined") {
+            // 获取有效的按钮对象
+            var validButton = button;
+            
+            // 如果没有有效按钮，尝试使用工具栏按钮
+            if (!validButton || typeof validButton.convertRectToView !== 'function') {
+              if (self.addonButton && typeof self.addonButton.convertRectToView === 'function') {
+                validButton = self.addonButton;
+              } else if (self.addonBar) {
+                // 如果还是没有，尝试找到工具栏中的第一个按钮
+                var buttons = self.addonBar.subviews.filter(function(v) {
+                  return v && typeof v.convertRectToView === 'function';
+                });
+                if (buttons.length > 0) {
+                  validButton = buttons[0];
+                }
+              }
+            }
+            
+            // 如果还是没有有效按钮，使用默认位置
+            if (!validButton || typeof validButton.convertRectToView !== 'function') {
+              if (typeof MNUtil !== "undefined") {
+                MNUtil.showHUD("无法显示设置菜单");
+              }
+              return;
+            }
+            
             // 获取配置
             var saveHistory = false;
             var syncSource = "none";
@@ -625,7 +661,7 @@ JSB.newAddon = function (mainPath) {
             var settingsTable = [
               {title: saveHistory ? "✓ 保存历史" : "  保存历史", object: self, selector: "toggleSaveHistory", param: null},
               {title: "——————", object: null, selector: "", param: null},
-              {title: "🔄  云同步设置", object: self, selector: "showSyncSettingsMenu", param: button},
+              {title: "🔄  云同步设置", object: self, selector: "showSyncSettingsMenu", param: validButton},
               {title: "🗑  清空历史", object: self, selector: "clearHistory", param: null},
               {title: "——————", object: null, selector: "", param: null},
               {title: "📤  导出配置", object: self, selector: "exportConfig", param: null},
@@ -634,7 +670,7 @@ JSB.newAddon = function (mainPath) {
               {title: "🔄  重置设置", object: self, selector: "resetSettings", param: null}
             ];
             
-            var menu = new Menu(button, self, 250, 2);
+            var menu = new Menu(validButton, self, 250, 2);
             menu.addMenuItems(settingsTable);
             menu.show();
           }
@@ -651,6 +687,32 @@ JSB.newAddon = function (mainPath) {
         // 小延迟后显示子菜单
         NSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {
           if (typeof Menu !== "undefined") {
+            // 获取有效的按钮对象
+            var validButton = button;
+            
+            // 如果没有有效按钮，尝试使用工具栏按钮
+            if (!validButton || typeof validButton.convertRectToView !== 'function') {
+              if (self.addonButton && typeof self.addonButton.convertRectToView === 'function') {
+                validButton = self.addonButton;
+              } else if (self.addonBar) {
+                // 如果还是没有，尝试找到工具栏中的第一个按钮
+                var buttons = self.addonBar.subviews.filter(function(v) {
+                  return v && typeof v.convertRectToView === 'function';
+                });
+                if (buttons.length > 0) {
+                  validButton = buttons[0];
+                }
+              }
+            }
+            
+            // 如果还是没有有效按钮，使用默认位置
+            if (!validButton || typeof validButton.convertRectToView !== 'function') {
+              if (typeof MNUtil !== "undefined") {
+                MNUtil.showHUD("无法显示同步设置菜单");
+              }
+              return;
+            }
+            
             var syncSource = "none";
             var autoSync = false;
             
@@ -673,7 +735,7 @@ JSB.newAddon = function (mainPath) {
               {title: "🔄  立即同步", object: self, selector: "manualSync", param: null}
             ];
             
-            var menu = new Menu(button, self, 250, 2);
+            var menu = new Menu(validButton, self, 250, 2);
             menu.addMenuItems(syncTable);
             menu.show();
           }

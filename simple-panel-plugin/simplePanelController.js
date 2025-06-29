@@ -9,18 +9,6 @@ try {
 var SimplePanelController = JSB.defineClass(
   'SimplePanelController : UIViewController',
   {
-    // 创建视图
-    loadView: function() {
-      // 创建主视图并设置初始 frame
-      self.view = UIView.new();
-      self.view.frame = {x: 100, y: 100, width: 400, height: 350};
-      self.view.autoresizingMask = 0; // 防止自动调整大小
-      
-      if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log("🎨 SimplePanelController: loadView - 创建视图");
-      }
-    },
-    
     // 视图加载完成
     viewDidLoad: function() {
       // 直接使用 self，不要声明 var self = this
@@ -42,47 +30,13 @@ var SimplePanelController = JSB.defineClass(
       self.view.layer.cornerRadius = 11;
       self.view.backgroundColor = UIColor.whiteColor().colorWithAlphaComponent(0.9);
       
-      // === 重要：设置 autoresizingMask 防止视图自动拉伸 ===
-      // 不设置任何自动调整选项，保持固定大小
-      self.view.autoresizingMask = 0;
-      
-      // === 创建标题栏 ===
-      self.createTitleBar();
-      
-      // === 创建内容区域 ===
-      self.createContentArea();
-      
-      // === 创建底部工具栏 ===
-      self.createToolbar();
-      
-      // === 创建调整大小手柄（使用 MNButton）===
-      self.createResizeHandle();
-      
-      // 保存当前 frame（已在 loadView 中设置）
+      // 设置初始大小和位置
+      self.view.frame = {x: 100, y: 100, width: 400, height: 350};
       self.currentFrame = self.view.frame;
       
-      // 初始化配置
-      self.config = {
-        mode: 0,  // 0:转大写 1:转小写 2:首字母大写 3:反转
-        autoProcess: false,
-        saveHistory: true
-      };
-      
-      // 处理历史记录
-      self.history = [];
-      
-      if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log("✅ SimplePanelController: 界面创建完成");
-      }
-      
-      // 手动触发布局
-      self.viewWillLayoutSubviews();
-    },
-    
-    // === 创建标题栏 ===
-    createTitleBar: function() {
+      // === 创建标题栏 ===
       self.titleBar = UIView.new();
-      self.titleBar.backgroundColor = UIColor.blueColor();
+      self.titleBar.backgroundColor = UIColor.colorWithHexString("#5982c4");
       self.view.addSubview(self.titleBar);
       
       // 标题标签
@@ -97,8 +51,8 @@ var SimplePanelController = JSB.defineClass(
         // === 使用 MNButton 创建关闭按钮 ===
         self.closeButton = MNButton.new({
           title: "✕",
-          font: UIFont.systemFontOfSize(20),
-          color: UIColor.clearColor(),
+          font: 20,
+          color: "#00000000",
           radius: 15,
           highlight: UIColor.redColor().colorWithAlphaComponent(0.3)
         }, self.titleBar);
@@ -109,7 +63,7 @@ var SimplePanelController = JSB.defineClass(
         self.settingsButton = MNButton.new({
           title: "⚙",
           font: 20,
-          color: UIColor.clearColor(),
+          color: "#00000000",
           radius: 15
         }, self.titleBar);
         
@@ -119,22 +73,27 @@ var SimplePanelController = JSB.defineClass(
         // === 创建最小化按钮 ===
         self.minimizeButton = MNButton.new({
           title: "−",
-          font: UIFont.boldSystemFontOfSize(20),
-          color: UIColor.clearColor(),
+          font: 20,
+          color: "#00000000",
           radius: 15
         }, self.titleBar);
         
         self.minimizeButton.addClickAction(self, "toggleMinimize:");
+      } else {
+        // 降级方案
+        self.closeButton = UIButton.buttonWithType(0);
+        self.closeButton.setTitleForState("✕", 0);
+        self.closeButton.titleLabel.font = UIFont.systemFontOfSize(20);
+        self.closeButton.backgroundColor = UIColor.clearColor();
+        self.closeButton.addTargetActionForControlEvents(self, "closePanel:", 1 << 6);
+        self.titleBar.addSubview(self.closeButton);
       }
       
       // 添加拖动手势
       self.dragGesture = new UIPanGestureRecognizer(self, "onDragGesture:");
       self.titleBar.addGestureRecognizer(self.dragGesture);
-    },
-    
-    // === 创建内容区域 ===
-    createContentArea: function() {
-      // 输入框
+      
+      // === 创建输入框 ===
       self.inputField = UITextView.new();
       self.inputField.font = UIFont.systemFontOfSize(16);
       self.inputField.layer.cornerRadius = 8;
@@ -143,7 +102,7 @@ var SimplePanelController = JSB.defineClass(
       self.inputField.textContainerInset = {top: 8, left: 8, bottom: 8, right: 8};
       self.view.addSubview(self.inputField);
       
-      // 输出框
+      // === 创建输出框 ===
       self.outputField = UITextView.new();
       self.outputField.font = UIFont.systemFontOfSize(16);
       self.outputField.layer.cornerRadius = 8;
@@ -152,12 +111,10 @@ var SimplePanelController = JSB.defineClass(
       self.outputField.textContainerInset = {top: 8, left: 8, bottom: 8, right: 8};
       self.outputField.editable = false;
       self.view.addSubview(self.outputField);
-    },
-    
-    // === 创建底部工具栏 ===
-    createToolbar: function() {
+      
+      // === 创建底部工具栏 ===
       self.toolbar = UIView.new();
-      self.toolbar.backgroundColor = UIColor.lightGrayColor();
+      self.toolbar.backgroundColor = UIColor.colorWithHexString("#f0f0f0");
       self.toolbar.layer.cornerRadius = 8;
       self.view.addSubview(self.toolbar);
       
@@ -175,7 +132,7 @@ var SimplePanelController = JSB.defineClass(
           const btn = MNButton.new({
             title: tool.icon,
             font: 22,
-            color: UIColor.clearColor(),
+            color: "#00000000",
             radius: 18,
             opacity: 0.8
           }, self.toolbar);
@@ -187,11 +144,6 @@ var SimplePanelController = JSB.defineClass(
           btn.tooltipText = tool.tooltip;
           btn.toolIndex = index;
           
-          // 添加悬停效果（macOS）
-          if (MNUtil.isMacOS()) {
-            btn.addLongPressGesture(self, "highlightButton:", 0.05);
-          }
-          
           return btn;
         });
         
@@ -199,31 +151,24 @@ var SimplePanelController = JSB.defineClass(
         self.statusIndicator = MNButton.new({
           title: "•",
           font: 16,
-          color: UIColor.greenColor(),
+          color: "#4CAF50",
           radius: 8,
           opacity: 0.6
         }, self.toolbar);
-        
-        self.statusIndicator.frame = {x: 10, y: 10, width: 16, height: 16};
       }
-    },
-    
-    // === 创建调整大小手柄 ===
-    createResizeHandle: function() {
+      
+      // === 创建调整大小手柄 ===
       if (typeof MNButton !== "undefined") {
         // 使用 MNButton 创建可视化的调整手柄
         self.resizeHandle = MNButton.new({
           title: "⋮⋮",
           font: 12,
-          color: UIColor.lightGrayColor(),
+          color: "#00000020",
           radius: 10,
-          opacity: 0.3
+          opacity: 1.0
         }, self.view);
         
         self.resizeHandle.addPanGesture(self, "onResizeGesture:");
-        
-        // 鼠标悬停时改变样式
-        self.resizeHandle.addLongPressGesture(self, "highlightResizeHandle:", 0.05);
       } else {
         // 降级方案
         self.resizeHandle = UIView.new();
@@ -233,6 +178,21 @@ var SimplePanelController = JSB.defineClass(
         
         self.resizeGesture = new UIPanGestureRecognizer(self, "onResizeGesture:");
         self.resizeHandle.addGestureRecognizer(self.resizeGesture);
+      }
+      
+      // 初始化配置
+      self.config = {
+        mode: 0,  // 0:转大写 1:转小写 2:首字母大写 3:反转
+        autoProcess: false,
+        saveHistory: true
+      };
+      
+      // 处理历史记录
+      self.history = [];
+      self.isMinimized = false;
+      
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("✅ SimplePanelController: 界面创建完成");
       }
     },
     
@@ -332,6 +292,16 @@ var SimplePanelController = JSB.defineClass(
         });
       }
       
+      // 状态指示器
+      if (self.statusIndicator) {
+        self.statusIndicator.frame = {
+          x: 10,
+          y: 10,
+          width: 16,
+          height: 16
+        };
+      }
+      
       // 调整大小手柄
       if (self.resizeHandle) {
         self.resizeHandle.frame = {
@@ -381,7 +351,27 @@ var SimplePanelController = JSB.defineClass(
     toggleMinimize: function() {
       self.isMinimized = !self.isMinimized;
       
-      MNUtil.animate(() => {
+      if (typeof MNUtil !== "undefined" && MNUtil.animate) {
+        MNUtil.animate(() => {
+          if (self.isMinimized) {
+            self.view.frame = {
+              x: self.view.frame.x,
+              y: self.view.frame.y,
+              width: 200,
+              height: 40
+            };
+            self.inputField.hidden = true;
+            self.outputField.hidden = true;
+            self.toolbar.hidden = true;
+          } else {
+            self.view.frame = self.currentFrame;
+            self.inputField.hidden = false;
+            self.outputField.hidden = false;
+            self.toolbar.hidden = false;
+          }
+        }, 0.25);
+      } else {
+        // 降级方案
         if (self.isMinimized) {
           self.view.frame = {
             x: self.view.frame.x,
@@ -398,7 +388,7 @@ var SimplePanelController = JSB.defineClass(
           self.outputField.hidden = false;
           self.toolbar.hidden = false;
         }
-      }, 0.25);
+      }
     },
     
     processText: function() {
@@ -434,9 +424,9 @@ var SimplePanelController = JSB.defineClass(
       
       // 更新状态指示器
       if (self.statusIndicator) {
-        self.statusIndicator.backgroundColor = UIColor.greenColor();
+        self.statusIndicator.backgroundColor = "#4CAF50";
         NSTimer.scheduledTimerWithTimeInterval(0.5, false, () => {
-          self.statusIndicator.backgroundColor = UIColor.lightGrayColor().colorWithAlphaComponent(0.2);
+          self.statusIndicator.backgroundColor = "#00000020";
         });
       }
       
@@ -536,23 +526,6 @@ var SimplePanelController = JSB.defineClass(
     showTooltip: function(sender) {
       if (sender.tooltipText && typeof MNUtil !== "undefined") {
         MNUtil.showHUD(sender.tooltipText);
-      }
-    },
-    
-    highlightButton: function(sender) {
-      // 简单的悬停效果
-      sender.opacity = 1.0;
-      NSTimer.scheduledTimerWithTimeInterval(0.1, false, () => {
-        sender.opacity = 0.8;
-      });
-    },
-    
-    highlightResizeHandle: function() {
-      if (self.resizeHandle) {
-        self.resizeHandle.backgroundColor = UIColor.grayColor().colorWithAlphaComponent(0.4);
-        NSTimer.scheduledTimerWithTimeInterval(0.1, false, () => {
-          self.resizeHandle.backgroundColor = UIColor.lightGrayColor().colorWithAlphaComponent(0.2);
-        });
       }
     },
     
@@ -662,15 +635,3 @@ var SimplePanelController = JSB.defineClass(
     }
   }
 );
-
-// 辅助方法：设置按钮布局（降级方案）
-SimplePanelController.prototype.setButtonLayout = function(button, action) {
-  button.autoresizingMask = (1 << 0 | 1 << 3);
-  button.setTitleColorForState(UIColor.whiteColor(), 0);
-  button.backgroundColor = UIColor.blueColor();
-  button.layer.cornerRadius = 8;
-  button.layer.masksToBounds = true;
-  if (action) {
-    button.addTargetActionForControlEvents(this, action, 1 << 6);
-  }
-};

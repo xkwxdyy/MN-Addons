@@ -419,3 +419,81 @@ A: 确认：
 1. 正确使用 `addClickAction`
 2. selector 方法名正确（包括冒号）
 3. 方法在控制器中实现
+
+## 调试经验与教训
+
+### 白屏问题排查
+
+如果插件显示白屏，没有任何按钮或内容，请检查以下几点：
+
+#### 1. MNButton color 参数格式（最常见原因）
+
+```javascript
+// ❌ 错误：使用 UIColor 对象
+const button = MNButton.new({
+  color: UIColor.clearColor(),  // 这会导致白屏！
+  color: UIColor.blueColor()     // 这也会导致白屏！
+}, parentView);
+
+// ✅ 正确：使用字符串格式
+const button = MNButton.new({
+  color: "#00000000",  // 透明背景
+  color: "#5982c4"     // 蓝色背景
+}, parentView);
+```
+
+#### 2. 动态设置 backgroundColor
+
+```javascript
+// ❌ 错误：动态设置时使用 UIColor
+button.backgroundColor = UIColor.greenColor();
+
+// ✅ 正确：动态设置也要用字符串
+button.backgroundColor = "#4CAF50";
+button.backgroundColor = "#00000020";  // 半透明
+```
+
+#### 3. 视图创建流程
+
+```javascript
+// ❌ 错误：不要添加 loadView 方法
+loadView: function() {
+  self.view = UIView.new();
+  self.view.frame = {x: 100, y: 100, width: 400, height: 350};
+}
+
+// ✅ 正确：在 viewDidLoad 中设置 frame
+viewDidLoad: function() {
+  // 设置初始大小和位置
+  self.view.frame = {x: 100, y: 100, width: 400, height: 350};
+  // ... 其他初始化代码
+}
+```
+
+### 最佳实践总结
+
+#### 1. 颜色设置规范
+
+- **MNButton 初始化**：color 参数必须使用字符串格式（如 `"#5982c4"`）
+- **动态设置**：backgroundColor 属性也必须使用字符串格式
+- **UIView 颜色**：可以使用 `UIColor.colorWithHexString("#5982c4")`
+
+#### 2. 代码结构建议
+
+- 保持简单：所有 UI 创建都在 `viewDidLoad` 中完成
+- 不要随意覆盖视图生命周期方法（如 `loadView`）
+- 视图布局代码放在 `viewWillLayoutSubviews` 中
+
+#### 3. 调试技巧
+
+当遇到白屏问题时：
+1. 首先检查所有 MNButton 的 color 参数格式
+2. 对比之前正常工作的版本（使用 git diff）
+3. 逐步注释代码，定位问题代码块
+4. 使用 `MNUtil.log()` 打印关键变量状态
+
+#### 4. 版本控制的重要性
+
+- 每次成功的修改都应该提交
+- 遇到问题时可以快速回退到正常版本
+- 使用有意义的 commit 信息记录改动

@@ -552,3 +552,30 @@ floatBtn.addPanGesture(self, "dragFloatButton:");
 MN-Addon 项目打包命令：使用 `mnaddon4 build <name>` 进行插件打包，不要使用 package.sh 脚本。例如：mnaddon4 build simple-panel-plugin --tags MN-Addon 打包 mnaddon4 build
 --tags #工具使用 #评分:8 #有效期:长期
 - END
+
+- 2025/06/29 12:38 START
+MN-Addon 插件开发白屏问题调试经验：
+
+1. **MNButton color 参数格式问题（最常见原因）**
+   - ❌ 错误：使用 UIColor 对象，如 color: UIColor.clearColor()
+   - ✅ 正确：使用字符串格式，如 color: "#00000000"
+   - 动态设置 backgroundColor 也必须用字符串格式
+
+2. **视图创建流程**
+   - 不要添加 loadView 方法覆盖默认行为
+   - 在 viewDidLoad 中设置 view.frame
+   - 保持代码结构简单，所有 UI 创建都在 viewDidLoad 中完成
+
+3. **调试技巧**
+   - 首先检查所有 MNButton 的 color 参数格式
+   - 使用 git diff 对比正常工作版本
+   - 逐步注释代码定位问题
+   - 使用 MNUtil.log() 打印关键状态
+
+4. **最佳实践**
+   - MNButton 初始化的 color 必须用字符串格式
+   - UIView 颜色可以用 UIColor.colorWithHexString()
+   - 视图布局代码放在 viewWillLayoutSubviews 中
+   - 每次成功修改都要及时提交 --tags MN-Addon 白屏 MNButton 调试 color参数
+--tags #最佳实践 #流程管理 #评分:8 #有效期:长期
+- END

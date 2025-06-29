@@ -12,10 +12,30 @@
       ]
     },
     {
+      "from": "initialized",
+      "command": "remember",
+      "timestamp": "2025-06-28T12:35:43.405Z",
+      "args": [
+        "## MarginNote 插件开发踩坑记录 (MNTask 2025-06-28)\n\n### 1. MarginNote 完全卡死问题\n- 原因：JSB.newAddon 缺少 mainPath 参数；使用 new TaskController() 而非 TaskController.new()；模块加载循环依赖\n- 解决：必须接收 mainPath；使用 .new() 创建 JSB 对象；延迟加载依赖模块\n\n### 2. 插件不在插件栏显示  \n- 原因：缺少 queryAddonCommandStatus 方法；缺少静态方法对象；图标尺寸错误\n- 解决：实现 queryAddonCommandStatus 返回图标配置；JSB.defineClass 需要两个参数（实例+静态）；logo.png 必须是 44x44\n\n### 3. toggleAddon 无响应\n- 原因：JavaScript 作用域问题；self 未定义\n- 解决：在文件顶部定义 var self = null；在 sceneWillConnect 中设置 self = this\n\n### 4. 其他重要经验\n- UIAlertView 不可靠，使用 MNUtil.input\n- 始终检查 typeof MNUtil !== \"undefined\"\n- 使用 UIWebView 而非 WKWebView\n- 每个危险操作都要 try-catch\n- 参考 mntoolbar 和 mnutils 的实现模式\n\n### 开发检查清单\n✓ JSB.newAddon(mainPath)\n✓ queryAddonCommandStatus 方法\n✓ JSB.defineClass 两个参数\n✓ sceneWillConnect 中 self = this\n✓ MNUtil 存在性检查\n✓ 使用 .new() 创建对象\n✓ logo.png 44x44 像素",
+        "--tags",
+        "marginnote plugin development mntask troubleshooting jsb"
+      ]
+    },
+    {
       "from": "memory_saved",
       "command": "recall",
       "timestamp": "2025-06-28T12:37:18.579Z",
       "args": []
+    },
+    {
+      "from": "recall-waiting",
+      "command": "remember",
+      "timestamp": "2025-06-28T12:59:27.730Z",
+      "args": [
+        "## MarginNote 插件闪退问题终极解决方案 (MNTask 2025-06-28)\n\n### 问题：安装插件后 MarginNote4 完全闪退，重启仍然闪退\n\n### 根本原因：\n1. **模块加载时机错误** - 在 JSB.newAddon 函数内部加载模块会导致闪退\n2. **ES6 语法兼容性** - 虽然 MNUtils 使用了 class，但在插件初始化阶段使用可能有问题\n\n### 解决方案：\n\n1. **将模块加载移到文件末尾**（最关键）：\n```javascript\n// ❌ 错误 - 在 JSB.newAddon 内部加载\nJSB.newAddon = function(mainPath) {\n  JSB.require('taskModel');  // 导致闪退！\n  // ...\n}\n\n// ✅ 正确 - 在文件末尾加载\nJSB.newAddon = function(mainPath) {\n  // 只定义类，不加载模块\n  return MNTaskMain;\n};\n\n// 文件末尾\nJSB.require('mnutils');\nJSB.require('taskModel');\nJSB.require('taskController');\n```\n\n2. **ES6 class 改为传统函数式**：\n```javascript\n// ❌ 可能有问题\nclass TaskModel { }\n\n// ✅ 更安全\nfunction TaskModel() { }\nTaskModel.prototype.method = function() { }\n```\n\n3. **移除危险的父类调用**：\n```javascript\n// ❌ 错误\nself.super.init();\n\n// ✅ 直接初始化\n// 不调用父类\n```\n\n### 调试技巧：\n- 使用 Console.app 查看崩溃日志\n- 逐步排除法：先创建最简单的插件，逐步添加功能\n- 对比成功运行的插件（如 MNToolbar）的结构\n\n### 关键经验：\n- MarginNote 的 JSB 环境在不同阶段对 JS 特性的支持不同\n- 模块加载顺序极其重要，必须在文件末尾加载\n- 参考成功插件的模式，不要创新",
+        "--tags",
+        "marginnote plugin crash mntask troubleshooting jsb module-loading"
+      ]
     },
     {
       "from": "memory_saved",
@@ -158,7 +178,17 @@
         "--tags",
         "MN-Addon 打包 mnaddon4 build"
       ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "remember",
+      "timestamp": "2025-06-29T04:38:37.328Z",
+      "args": [
+        "MN-Addon 插件开发白屏问题调试经验：\n\n1. **MNButton color 参数格式问题（最常见原因）**\n   - ❌ 错误：使用 UIColor 对象，如 color: UIColor.clearColor()\n   - ✅ 正确：使用字符串格式，如 color: \"#00000000\"\n   - 动态设置 backgroundColor 也必须用字符串格式\n\n2. **视图创建流程**\n   - 不要添加 loadView 方法覆盖默认行为\n   - 在 viewDidLoad 中设置 view.frame\n   - 保持代码结构简单，所有 UI 创建都在 viewDidLoad 中完成\n\n3. **调试技巧**\n   - 首先检查所有 MNButton 的 color 参数格式\n   - 使用 git diff 对比正常工作版本\n   - 逐步注释代码定位问题\n   - 使用 MNUtil.log() 打印关键状态\n\n4. **最佳实践**\n   - MNButton 初始化的 color 必须用字符串格式\n   - UIView 颜色可以用 UIColor.colorWithHexString()\n   - 视图布局代码放在 viewWillLayoutSubviews 中\n   - 每次成功修改都要及时提交",
+        "--tags",
+        "MN-Addon 白屏 MNButton 调试 color参数"
+      ]
     }
   ],
-  "lastUpdated": "2025-06-29T04:24:09.963Z"
+  "lastUpdated": "2025-06-29T04:38:37.338Z"
 }

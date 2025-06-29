@@ -420,6 +420,27 @@ A: 确认：
 2. selector 方法名正确（包括冒号）
 3. 方法在控制器中实现
 
+## MNUtils API 优化示例
+
+本项目包含两个版本的控制器实现：
+
+1. **simplePanelController.js** - 基础版本，展示基本功能实现
+2. **simplePanelControllerOptimized.js** - 优化版本，充分利用 MNUtils API
+
+### 优化版本特性
+
+优化版本展示了如何使用 MNUtils 的高级功能：
+
+- **动画系统**：使用 `MNUtil.animate()` 实现平滑过渡
+- **错误处理**：集成 `MNUtil.addErrorLog()` 日志系统
+- **配置持久化**：使用 `MNUtil.readCloudKey/setCloudKey` 同步配置
+- **平台兼容**：使用 `MNUtil.isMacOS/isIOS/isMN4` 处理平台差异
+- **高级手势**：支持长按、滑动、双击等多种交互方式
+- **批量菜单**：使用 `Menu.item()` 和批量添加提高效率
+- **撤销支持**：使用 `MNUtil.undoGrouping()` 包装可撤销操作
+
+详细的优化说明请查看 [OPTIMIZATION_GUIDE.md](./OPTIMIZATION_GUIDE.md)。
+
 ## 调试经验与教训
 
 ### 白屏问题排查

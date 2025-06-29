@@ -579,3 +579,47 @@ MN-Addon 插件开发白屏问题调试经验：
    - 每次成功修改都要及时提交 --tags MN-Addon 白屏 MNButton 调试 color参数
 --tags #最佳实践 #流程管理 #评分:8 #有效期:长期
 - END
+
+- 2025/06/29 12:47 START
+MN-Addon 插件使用 MNUtils API 优化经验：
+
+1. **动画系统优化**
+   - 使用 MNUtil.animate() 替代直接属性设置
+   - 动画时长：快速反馈 0.1-0.2s，常规过渡 0.25-0.3s，复杂动画 0.4-0.5s
+
+2. **配置持久化**
+   - 使用 MNUtil.readCloudKey/setCloudKey 保存配置
+   - 支持 iCloud 同步，跨设备共享配置
+
+3. **错误处理集成**
+   - try-catch 中使用 MNUtil.addErrorLog(error, source, context)
+   - 自动记录到日志系统，便于调试
+
+4. **平台兼容处理**
+   - MNUtil.isMacOS() - macOS 平台检测
+   - MNUtil.isIOS() - iOS 平台检测  
+   - MNUtil.isMN4() - MarginNote 4 版本检测
+
+5. **MNButton 高级用法**
+   - addLongPressGesture() - 长按手势
+   - addSwipeGesture() - 滑动手势
+   - addPanGesture() - 拖动手势
+   - 支持自定义属性通过 Proxy 模式
+
+6. **Menu 批量操作**
+   - Menu.item() 快速创建菜单项
+   - menu.menuItems = items 批量设置
+   - Menu.dismissCurrentMenu() 关闭当前菜单
+
+7. **笔记操作优化**
+   - MNNote.getFocusNote() 获取焦点笔记
+   - MNNote.getSelectedNotes() 获取选中笔记
+   - MNUtil.undoGrouping() 包装可撤销操作
+
+8. **其他实用 API**
+   - MNUtil.countWords() - 中英文字数统计
+   - MNUtil.constrain() - 数值范围限制
+   - MNUtil.showHUD() - 显示提示信息
+   - MNUtil.confirm() - 确认对话框 --tags MNUtils API 优化 动画 配置持久化 错误处理
+--tags #其他 #评分:8 #有效期:长期
+- END

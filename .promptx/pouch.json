@@ -188,7 +188,17 @@
         "--tags",
         "MN-Addon 白屏 MNButton 调试 color参数"
       ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "remember",
+      "timestamp": "2025-06-29T04:47:45.292Z",
+      "args": [
+        "MN-Addon 插件使用 MNUtils API 优化经验：\n\n1. **动画系统优化**\n   - 使用 MNUtil.animate() 替代直接属性设置\n   - 动画时长：快速反馈 0.1-0.2s，常规过渡 0.25-0.3s，复杂动画 0.4-0.5s\n\n2. **配置持久化**\n   - 使用 MNUtil.readCloudKey/setCloudKey 保存配置\n   - 支持 iCloud 同步，跨设备共享配置\n\n3. **错误处理集成**\n   - try-catch 中使用 MNUtil.addErrorLog(error, source, context)\n   - 自动记录到日志系统，便于调试\n\n4. **平台兼容处理**\n   - MNUtil.isMacOS() - macOS 平台检测\n   - MNUtil.isIOS() - iOS 平台检测  \n   - MNUtil.isMN4() - MarginNote 4 版本检测\n\n5. **MNButton 高级用法**\n   - addLongPressGesture() - 长按手势\n   - addSwipeGesture() - 滑动手势\n   - addPanGesture() - 拖动手势\n   - 支持自定义属性通过 Proxy 模式\n\n6. **Menu 批量操作**\n   - Menu.item() 快速创建菜单项\n   - menu.menuItems = items 批量设置\n   - Menu.dismissCurrentMenu() 关闭当前菜单\n\n7. **笔记操作优化**\n   - MNNote.getFocusNote() 获取焦点笔记\n   - MNNote.getSelectedNotes() 获取选中笔记\n   - MNUtil.undoGrouping() 包装可撤销操作\n\n8. **其他实用 API**\n   - MNUtil.countWords() - 中英文字数统计\n   - MNUtil.constrain() - 数值范围限制\n   - MNUtil.showHUD() - 显示提示信息\n   - MNUtil.confirm() - 确认对话框",
+        "--tags",
+        "MNUtils API 优化 动画 配置持久化 错误处理"
+      ]
     }
   ],
-  "lastUpdated": "2025-06-29T04:38:37.338Z"
+  "lastUpdated": "2025-06-29T04:47:45.307Z"
 }

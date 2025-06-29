@@ -86,20 +86,48 @@ JSB.newAddon = function (mainPath) {
         // 清理资源
       },
       
-      // 查询插件状态（显示图标）
+      // 查询插件状态（显示图标） - 参考 mnai 实现
       queryAddonCommandStatus: function () {
-        
-        if (self.appInstance.studyController(self.window).studyMode < 3) {
-          var result = {
-            image: 'logo.png',
-            object: self,
-            selector: 'showMenu:',
-            checked: false  // 菜单不需要checked状态
-          };
-          
-          return result;
+        try {
+          if (self.appInstance.studyController(self.window).studyMode < 3) {
+            // 关键：确保控制器存在 - 这是 mnai 的核心做法！
+            if (!self.panelController) {
+              if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                MNUtil.log("🔧 Simple Panel: 在 queryAddonCommandStatus 中创建 panelController");
+              }
+              self.panelController = SimplePanelController.new();
+              self.panelController.mainPath = self.mainPath;
+            }
+            
+            // 确保视图已经添加到 studyView
+            if (self.panelController && self.panelController.view) {
+              var studyView = self.appInstance.studyController(self.window).view;
+              if (studyView && !self.panelController.view.superview) {
+                studyView.addSubview(self.panelController.view);
+                self.panelController.view.hidden = true;
+                
+                if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                  MNUtil.log("✅ Simple Panel: 在 queryAddonCommandStatus 中将面板添加到视图");
+                }
+              }
+            }
+            
+            var result = {
+              image: 'logo.png',
+              object: self,
+              selector: 'showMenu:',
+              checked: false  // 菜单不需要checked状态
+            };
+            
+            return result;
+          }
+          return null;
+        } catch (error) {
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log("❌ Simple Panel: queryAddonCommandStatus 出错: " + error.message);
+          }
+          return null;
         }
-        return null;
       },
       
       // 显示主菜单
@@ -158,148 +186,514 @@ JSB.newAddon = function (mainPath) {
         }
       },
       
-      // 打开文本处理面板
+      // 打开文本处理面板 - 添加完善的错误处理
       openTextProcessor: function() {
-        if (typeof MNUtil !== "undefined" && MNUtil.log) {
-          MNUtil.log("🔧 Simple Panel: 打开文本处理面板");
-        }
-        
-        // 关闭菜单
-        if (typeof Menu !== "undefined") {
-          Menu.dismissCurrentMenu();
-        }
-        if (self.popoverController) {
-          self.popoverController.dismissPopoverAnimated(true);
-          self.popoverController = null;
-        }
-        
-        // 确保面板已初始化
-        if (!self.ensurePanelReady()) {
-          if (typeof MNUtil !== "undefined") {
-            MNUtil.showHUD("面板初始化失败");
+        try {
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log("🔧 Simple Panel: 打开文本处理面板");
           }
-          return;
-        }
-        
-        // 切换到文本处理模式
-        if (self.panelController && self.panelController.switchToMode) {
-          self.panelController.switchToMode("textProcessor");
-        }
-        
-        // 显示面板
-        self.showPanelWithAnimation();
-        
-        // 尝试获取选中文本
-        var selectedText = self.getSelectedText();
-        if (selectedText) {
-          self.panelController.inputField.text = selectedText;
-        }
-      },
-      
-      // 打开快速笔记
-      openQuickNote: function() {
-        if (typeof MNUtil !== "undefined" && MNUtil.log) {
-          MNUtil.log("📝 Simple Panel: 打开快速笔记");
-        }
-        
-        // 关闭菜单
-        if (typeof Menu !== "undefined") {
-          Menu.dismissCurrentMenu();
-        }
-        if (self.popoverController) {
-          self.popoverController.dismissPopoverAnimated(true);
-          self.popoverController = null;
-        }
-        
-        // 确保面板已初始化
-        if (!self.ensurePanelReady()) {
-          if (typeof MNUtil !== "undefined") {
-            MNUtil.showHUD("面板初始化失败");
+          
+          // 关闭菜单
+          if (typeof Menu !== "undefined") {
+            Menu.dismissCurrentMenu();
           }
-          return;
-        }
-        
-        // 切换到笔记模式
-        if (self.panelController.switchToMode) {
-          self.panelController.switchToMode("quickNote");
-        }
-        
-        // 显示面板
-        self.showPanelWithAnimation(function() {
-          if (typeof MNUtil !== "undefined") {
-            MNUtil.showHUD("📝 快速笔记模式");
+          if (self.popoverController) {
+            self.popoverController.dismissPopoverAnimated(true);
+            self.popoverController = null;
           }
-        });
-      },
-      
-      // 打开搜索替换
-      openSearchReplace: function() {
-        if (typeof MNUtil !== "undefined" && MNUtil.log) {
-          MNUtil.log("🔍 Simple Panel: 打开搜索替换");
-        }
-        
-        // 关闭菜单
-        if (typeof Menu !== "undefined") {
-          Menu.dismissCurrentMenu();
-        }
-        if (self.popoverController) {
-          self.popoverController.dismissPopoverAnimated(true);
-          self.popoverController = null;
-        }
-        
-        // 确保面板已初始化
-        if (!self.ensurePanelReady()) {
-          if (typeof MNUtil !== "undefined") {
-            MNUtil.showHUD("面板初始化失败");
-          }
-          return;
-        }
-        
-        // 切换到搜索替换模式
-        if (self.panelController.switchToMode) {
-          self.panelController.switchToMode("searchReplace");
-        }
-        
-        // 显示面板
-        self.showPanelWithAnimation(function() {
-          if (typeof MNUtil !== "undefined") {
-            MNUtil.showHUD("🔍 搜索替换模式");
-          }
-        });
-      },
-      
-      // 打开设置
-      openSettings: function() {
-        if (typeof MNUtil !== "undefined" && MNUtil.log) {
-          MNUtil.log("⚙️ Simple Panel: 打开设置");
-        }
-        
-        // 关闭菜单
-        if (typeof Menu !== "undefined") {
-          Menu.dismissCurrentMenu();
-        }
-        if (self.popoverController) {
-          self.popoverController.dismissPopoverAnimated(true);
-          self.popoverController = null;
-        }
-        
-        // 确保面板已初始化
-        if (!self.ensurePanelReady()) {
-          if (typeof MNUtil !== "undefined") {
-            MNUtil.showHUD("面板初始化失败");
-          }
-          return;
-        }
-        
-        // 显示面板
-        self.showPanelWithAnimation(function() {
-          // 动画完成后显示设置菜单
-          NSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {
-            if (self.panelController && self.panelController.settingsButton && self.panelController.showSettings) {
-              self.panelController.showSettings(self.panelController.settingsButton);
+          
+          // 内联 ensurePanelReady 逻辑 - JSB 框架限制，不能调用自定义方法
+          var panelReady = false;
+          try {
+            if (!self.panelController) {
+              if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                MNUtil.log("❌ Simple Panel: panelController is null!");
+              }
+            } else if (!self.panelController.view) {
+              if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                MNUtil.log("❌ Simple Panel: panelController.view is null!");
+              }
+            } else {
+              var view = self.panelController.view;
+              if (!view.superview) {
+                var studyView = null;
+                if (typeof MNUtil !== "undefined" && MNUtil.studyView) {
+                  studyView = MNUtil.studyView;
+                } else {
+                  studyView = self.appInstance.studyController(self.window).view;
+                }
+                
+                if (studyView) {
+                  studyView.addSubview(view);
+                  if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                    MNUtil.log("✅ Simple Panel: 面板已添加到 studyView");
+                  }
+                  panelReady = true;
+                }
+              } else {
+                panelReady = true;
+              }
             }
-          });
-        });
+          } catch (e) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("❌ Simple Panel: 确保面板就绪出错: " + e.message);
+            }
+          }
+          
+          if (!panelReady) {
+            if (typeof MNUtil !== "undefined") {
+              MNUtil.showHUD("面板初始化失败");
+            }
+            return;
+          }
+          
+          // 切换到文本处理模式
+          if (self.panelController && self.panelController.switchToMode) {
+            self.panelController.switchToMode("textProcessor");
+          }
+          
+          // 内联 showPanelWithAnimation 逻辑 - JSB 框架限制
+          try {
+            if (self.panelController && self.panelController.view) {
+              var view = self.panelController.view;
+              
+              // 确保视图在最前面
+              if (typeof MNUtil !== "undefined" && MNUtil.studyView) {
+                MNUtil.studyView.bringSubviewToFront(view);
+              } else if (view.superview) {
+                view.superview.bringSubviewToFront(view);
+              }
+              
+              // 显示视图
+              view.hidden = false;
+              view.alpha = 1;
+              view.layer.opacity = 1.0;
+              
+              // 如果有 show 方法，调用它
+              if (self.panelController.show) {
+                self.panelController.show();
+              }
+              
+              if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                MNUtil.log("✅ Simple Panel: 面板已显示");
+              }
+            }
+          } catch (e) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("❌ Simple Panel: 显示面板出错: " + e.message);
+            }
+          }
+          
+          // 尝试获取选中文本
+          var selectedText = self.getSelectedText();
+          if (selectedText && self.panelController.inputField) {
+            self.panelController.inputField.text = selectedText;
+          }
+        } catch (error) {
+          if (typeof MNUtil !== "undefined") {
+            if (MNUtil.log) {
+              MNUtil.log("❌ Simple Panel: openTextProcessor 出错: " + error.message);
+              MNUtil.log("❌ Simple Panel: 错误堆栈: " + error.stack);
+            }
+            MNUtil.showHUD("打开面板失败: " + error.message);
+          }
+        }
+      },
+      
+      // 打开快速笔记 - 添加完整的错误处理
+      openQuickNote: function() {
+        try {
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log("📝 Simple Panel: 打开快速笔记");
+          }
+          
+          // 关闭菜单 - 添加错误保护
+          try {
+            if (typeof Menu !== "undefined" && Menu.dismissCurrentMenu) {
+              MNUtil.log("📝 Simple Panel: 尝试关闭 Menu");
+              Menu.dismissCurrentMenu();
+            }
+          } catch (menuError) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("⚠️ Simple Panel: 关闭 Menu 失败: " + menuError.message);
+            }
+          }
+          
+          // 关闭 popover
+          try {
+            if (self.popoverController) {
+              MNUtil.log("📝 Simple Panel: 尝试关闭 popover");
+              self.popoverController.dismissPopoverAnimated(true);
+              self.popoverController = null;
+            }
+          } catch (popoverError) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("⚠️ Simple Panel: 关闭 popover 失败: " + popoverError.message);
+            }
+          }
+          
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log("📝 Simple Panel: 准备确保面板就绪");
+          }
+          
+          // 内联 ensurePanelReady 逻辑 - JSB 框架限制
+          var panelReady = false;
+          try {
+            if (!self.panelController) {
+              if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                MNUtil.log("❌ Simple Panel: panelController is null!");
+              }
+            } else if (!self.panelController.view) {
+              if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                MNUtil.log("❌ Simple Panel: panelController.view is null!");
+              }
+            } else {
+              var view = self.panelController.view;
+              if (!view.superview) {
+                var studyView = null;
+                if (typeof MNUtil !== "undefined" && MNUtil.studyView) {
+                  studyView = MNUtil.studyView;
+                } else {
+                  studyView = self.appInstance.studyController(self.window).view;
+                }
+                
+                if (studyView) {
+                  studyView.addSubview(view);
+                  if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                    MNUtil.log("✅ Simple Panel: 面板已添加到 studyView");
+                  }
+                  panelReady = true;
+                }
+              } else {
+                panelReady = true;
+              }
+            }
+          } catch (e) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("❌ Simple Panel: 确保面板就绪出错: " + e.message);
+            }
+          }
+          
+          if (!panelReady) {
+            if (typeof MNUtil !== "undefined") {
+              MNUtil.showHUD("面板初始化失败");
+            }
+            return;
+          }
+          
+          // 切换到笔记模式
+          if (self.panelController && self.panelController.switchToMode) {
+            self.panelController.switchToMode("quickNote");
+          }
+          
+          // 内联 showPanelWithAnimation 逻辑
+          try {
+            if (self.panelController && self.panelController.view) {
+              var view = self.panelController.view;
+              
+              // 确保视图在最前面
+              if (typeof MNUtil !== "undefined" && MNUtil.studyView) {
+                MNUtil.studyView.bringSubviewToFront(view);
+              } else if (view.superview) {
+                view.superview.bringSubviewToFront(view);
+              }
+              
+              // 显示视图
+              view.hidden = false;
+              view.alpha = 1;
+              view.layer.opacity = 1.0;
+              
+              // 如果有 show 方法，调用它
+              if (self.panelController.show) {
+                self.panelController.show();
+              }
+              
+              if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                MNUtil.log("✅ Simple Panel: 面板已显示");
+              }
+              
+              // 执行回调
+              if (typeof MNUtil !== "undefined") {
+                MNUtil.showHUD("📝 快速笔记模式");
+              }
+            }
+          } catch (e) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("❌ Simple Panel: 显示面板出错: " + e.message);
+            }
+          }
+        } catch (error) {
+          if (typeof MNUtil !== "undefined") {
+            if (MNUtil.log) {
+              MNUtil.log("❌ Simple Panel: openQuickNote 出错: " + error.message);
+              MNUtil.log("❌ Simple Panel: 错误堆栈: " + error.stack);
+            }
+            MNUtil.showHUD("打开面板失败: " + error.message);
+          }
+        }
+      },
+      
+      // 打开搜索替换 - 添加完整的错误处理
+      openSearchReplace: function() {
+        try {
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log("🔍 Simple Panel: 打开搜索替换");
+          }
+          
+          // 关闭菜单 - 添加错误保护
+          try {
+            if (typeof Menu !== "undefined" && Menu.dismissCurrentMenu) {
+              MNUtil.log("🔍 Simple Panel: 尝试关闭 Menu");
+              Menu.dismissCurrentMenu();
+            }
+          } catch (menuError) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("⚠️ Simple Panel: 关闭 Menu 失败: " + menuError.message);
+            }
+          }
+          
+          // 关闭 popover
+          try {
+            if (self.popoverController) {
+              MNUtil.log("🔍 Simple Panel: 尝试关闭 popover");
+              self.popoverController.dismissPopoverAnimated(true);
+              self.popoverController = null;
+            }
+          } catch (popoverError) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("⚠️ Simple Panel: 关闭 popover 失败: " + popoverError.message);
+            }
+          }
+          
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log("🔍 Simple Panel: 准备调用 ensurePanelReady");
+          }
+          
+          // 内联 ensurePanelReady 逻辑 - JSB 框架限制
+          var panelReady = false;
+          try {
+            if (!self.panelController) {
+              if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                MNUtil.log("❌ Simple Panel: panelController is null!");
+              }
+            } else if (!self.panelController.view) {
+              if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                MNUtil.log("❌ Simple Panel: panelController.view is null!");
+              }
+            } else {
+              var view = self.panelController.view;
+              if (!view.superview) {
+                var studyView = null;
+                if (typeof MNUtil !== "undefined" && MNUtil.studyView) {
+                  studyView = MNUtil.studyView;
+                } else {
+                  studyView = self.appInstance.studyController(self.window).view;
+                }
+                
+                if (studyView) {
+                  studyView.addSubview(view);
+                  if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                    MNUtil.log("✅ Simple Panel: 面板已添加到 studyView");
+                  }
+                  panelReady = true;
+                }
+              } else {
+                panelReady = true;
+              }
+            }
+          } catch (e) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("❌ Simple Panel: 确保面板就绪出错: " + e.message);
+            }
+          }
+          
+          if (!panelReady) {
+            if (typeof MNUtil !== "undefined") {
+              MNUtil.showHUD("面板初始化失败");
+            }
+            return;
+          }
+          
+          // 切换到搜索替换模式
+          if (self.panelController && self.panelController.switchToMode) {
+            self.panelController.switchToMode("searchReplace");
+          }
+          
+          // 内联 showPanelWithAnimation 逻辑
+          try {
+            if (self.panelController && self.panelController.view) {
+              var view = self.panelController.view;
+              
+              // 确保视图在最前面
+              if (typeof MNUtil !== "undefined" && MNUtil.studyView) {
+                MNUtil.studyView.bringSubviewToFront(view);
+              } else if (view.superview) {
+                view.superview.bringSubviewToFront(view);
+              }
+              
+              // 显示视图
+              view.hidden = false;
+              view.alpha = 1;
+              view.layer.opacity = 1.0;
+              
+              // 如果有 show 方法，调用它
+              if (self.panelController.show) {
+                self.panelController.show();
+              }
+              
+              if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                MNUtil.log("✅ Simple Panel: 面板已显示");
+              }
+              
+              // 执行回调
+              if (typeof MNUtil !== "undefined") {
+                MNUtil.showHUD("🔍 搜索替换模式");
+              }
+            }
+          } catch (e) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("❌ Simple Panel: 显示面板出错: " + e.message);
+            }
+          }
+        } catch (error) {
+          if (typeof MNUtil !== "undefined") {
+            if (MNUtil.log) {
+              MNUtil.log("❌ Simple Panel: openSearchReplace 出错: " + error.message);
+              MNUtil.log("❌ Simple Panel: 错误堆栈: " + error.stack);
+            }
+            MNUtil.showHUD("打开面板失败: " + error.message);
+          }
+        }
+      },
+      
+      // 打开设置 - 添加完整的错误处理
+      openSettings: function() {
+        try {
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log("⚙️ Simple Panel: 打开设置");
+          }
+          
+          // 关闭菜单 - 添加错误保护
+          try {
+            if (typeof Menu !== "undefined" && Menu.dismissCurrentMenu) {
+              MNUtil.log("⚙️ Simple Panel: 尝试关闭 Menu");
+              Menu.dismissCurrentMenu();
+            }
+          } catch (menuError) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("⚠️ Simple Panel: 关闭 Menu 失败: " + menuError.message);
+            }
+          }
+          
+          // 关闭 popover
+          try {
+            if (self.popoverController) {
+              MNUtil.log("⚙️ Simple Panel: 尝试关闭 popover");
+              self.popoverController.dismissPopoverAnimated(true);
+              self.popoverController = null;
+            }
+          } catch (popoverError) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("⚠️ Simple Panel: 关闭 popover 失败: " + popoverError.message);
+            }
+          }
+          
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log("⚙️ Simple Panel: 准备确保面板就绪");
+          }
+          
+          // 内联 ensurePanelReady 逻辑 - JSB 框架限制
+          var panelReady = false;
+          try {
+            if (!self.panelController) {
+              if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                MNUtil.log("❌ Simple Panel: panelController is null!");
+              }
+            } else if (!self.panelController.view) {
+              if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                MNUtil.log("❌ Simple Panel: panelController.view is null!");
+              }
+            } else {
+              var view = self.panelController.view;
+              if (!view.superview) {
+                var studyView = null;
+                if (typeof MNUtil !== "undefined" && MNUtil.studyView) {
+                  studyView = MNUtil.studyView;
+                } else {
+                  studyView = self.appInstance.studyController(self.window).view;
+                }
+                
+                if (studyView) {
+                  studyView.addSubview(view);
+                  if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                    MNUtil.log("✅ Simple Panel: 面板已添加到 studyView");
+                  }
+                  panelReady = true;
+                }
+              } else {
+                panelReady = true;
+              }
+            }
+          } catch (e) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("❌ Simple Panel: 确保面板就绪出错: " + e.message);
+            }
+          }
+          
+          if (!panelReady) {
+            if (typeof MNUtil !== "undefined") {
+              MNUtil.showHUD("面板初始化失败");
+            }
+            return;
+          }
+          
+          // 内联 showPanelWithAnimation 逻辑
+          try {
+            if (self.panelController && self.panelController.view) {
+              var view = self.panelController.view;
+              
+              // 确保视图在最前面
+              if (typeof MNUtil !== "undefined" && MNUtil.studyView) {
+                MNUtil.studyView.bringSubviewToFront(view);
+              } else if (view.superview) {
+                view.superview.bringSubviewToFront(view);
+              }
+              
+              // 显示视图
+              view.hidden = false;
+              view.alpha = 1;
+              view.layer.opacity = 1.0;
+              
+              // 如果有 show 方法，调用它
+              if (self.panelController.show) {
+                self.panelController.show();
+              }
+              
+              if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                MNUtil.log("✅ Simple Panel: 面板已显示");
+              }
+              
+              // 执行回调 - 动画完成后显示设置菜单
+              NSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {
+                if (self.panelController && self.panelController.settingsButton && self.panelController.showSettings) {
+                  self.panelController.showSettings(self.panelController.settingsButton);
+                }
+              });
+            }
+          } catch (e) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("❌ Simple Panel: 显示面板出错: " + e.message);
+            }
+          }
+        } catch (error) {
+          if (typeof MNUtil !== "undefined") {
+            if (MNUtil.log) {
+              MNUtil.log("❌ Simple Panel: openSettings 出错: " + error.message);
+              MNUtil.log("❌ Simple Panel: 错误堆栈: " + error.stack);
+            }
+            MNUtil.showHUD("打开面板失败: " + error.message);
+          }
+        }
       },
       
       // 显示帮助
@@ -328,48 +722,71 @@ JSB.newAddon = function (mainPath) {
         }
       },
       
-      // 确保面板准备就绪 - 参考 mnai 的 ensureView 实现
+      // 确保面板准备就绪 - 简化实现，添加错误处理
       ensurePanelReady: function() {
-        if (!self.panelController) {
+        try {
           if (typeof MNUtil !== "undefined" && MNUtil.log) {
-            MNUtil.log("❌ Simple Panel: panelController is null!");
+            MNUtil.log("🔍 Simple Panel: ensurePanelReady 开始执行");
           }
-          return false;
-        }
-        
-        if (!self.panelController.view) {
-          if (typeof MNUtil !== "undefined" && MNUtil.log) {
-            MNUtil.log("❌ Simple Panel: panelController.view is null!");
-          }
-          return false;
-        }
-        
-        // 使用 MNUtil 的 API 确保视图正确添加 - 参考 mnai
-        if (typeof MNUtil !== "undefined") {
-          // 检查视图是否已经是 studyView 的子视图
-          if (!MNUtil.isDescendantOfStudyView(self.panelController.view)) {
-            MNUtil.studyView.addSubview(self.panelController.view);
-            if (MNUtil.log) {
-              MNUtil.log("✅ Simple Panel: 面板已添加到 MNUtil.studyView");
+          
+          if (!self.panelController) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("❌ Simple Panel: panelController is null!");
             }
-          } else {
-            if (MNUtil.log) {
-              MNUtil.log("✅ Simple Panel: 面板已经存在于 studyView 中");
-            }
+            return false;
           }
-        } else {
-          // 降级方案：直接检查 superview
-          if (!self.panelController.view.superview) {
-            var studyView = self.appInstance.studyController(self.window).view;
-            if (studyView) {
-              studyView.addSubview(self.panelController.view);
+          
+          if (!self.panelController.view) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("❌ Simple Panel: panelController.view is null!");
+            }
+            return false;
+          }
+          
+          // 简化逻辑：直接检查和添加视图
+          var view = self.panelController.view;
+          if (!view.superview) {
+            var studyView = null;
+            
+            // 优先使用 MNUtil.studyView
+            if (typeof MNUtil !== "undefined" && MNUtil.studyView) {
+              studyView = MNUtil.studyView;
+              if (MNUtil.log) {
+                MNUtil.log("🎯 Simple Panel: 使用 MNUtil.studyView");
+              }
             } else {
+              // 降级方案
+              studyView = self.appInstance.studyController(self.window).view;
+              if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                MNUtil.log("🎯 Simple Panel: 使用降级方案获取 studyView");
+              }
+            }
+            
+            if (studyView) {
+              studyView.addSubview(view);
+              if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                MNUtil.log("✅ Simple Panel: 面板已添加到 studyView");
+              }
+            } else {
+              if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                MNUtil.log("❌ Simple Panel: studyView is null!");
+              }
               return false;
             }
+          } else {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("✅ Simple Panel: 面板已经存在于视图中");
+            }
           }
+          
+          return true;
+        } catch (error) {
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log("❌ Simple Panel: ensurePanelReady 出错: " + error.message);
+            MNUtil.log("❌ Simple Panel: 错误堆栈: " + error.stack);
+          }
+          return false;
         }
-        
-        return true;
       },
       
       // 获取选中文本
@@ -392,48 +809,72 @@ JSB.newAddon = function (mainPath) {
       
       // 统一的面板显示方法 - 完全参考 mnai chatController.show 实现
       showPanelWithAnimation: function(completion) {
-        if (!self.panelController || !self.panelController.view) {
-          if (typeof MNUtil !== "undefined" && MNUtil.log) {
-            MNUtil.log("❌ Simple Panel: panelController 或 view 为空");
+        try {
+          if (!self.panelController || !self.panelController.view) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("❌ Simple Panel: panelController 或 view 为空");
+            }
+            return;
           }
-          return;
-        }
-        
-        var view = self.panelController.view;
-        
-        if (typeof MNUtil !== "undefined" && MNUtil.log) {
-          MNUtil.log("🎯 Simple Panel: 准备显示面板");
-          MNUtil.log("🔍 Simple Panel: view.hidden = " + view.hidden);
-          MNUtil.log("🔍 Simple Panel: view.alpha = " + view.alpha);
-          MNUtil.log("🔍 Simple Panel: view.frame = " + JSON.stringify(view.frame));
-        }
-        
-        // 完全参考 mnai 的 show 方法
-        if (typeof MNUtil !== "undefined" && MNUtil.studyView) {
+          
+          var view = self.panelController.view;
+          
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log("🎯 Simple Panel: 准备显示面板");
+            MNUtil.log("🔍 Simple Panel: view.hidden = " + view.hidden);
+            MNUtil.log("🔍 Simple Panel: view.alpha = " + view.alpha);
+            MNUtil.log("🔍 Simple Panel: view.frame = " + JSON.stringify(view.frame));
+            MNUtil.log("🔍 Simple Panel: view.superview = " + (view.superview ? "exists" : "null"));
+          }
+          
           // 确保视图在最前面 - 这是 mnai 的关键步骤！
-          MNUtil.studyView.bringSubviewToFront(view);
-        }
-        
-        // 显示视图
-        view.hidden = false;
-        view.alpha = 1;
-        
-        // 如果有 show 方法，调用它
-        if (self.panelController.show) {
-          self.panelController.show();
-        }
-        
-        if (typeof MNUtil !== "undefined" && MNUtil.log) {
-          MNUtil.log("✅ Simple Panel: 面板已显示");
-          MNUtil.log("🔍 Simple Panel: 显示后 view.hidden = " + view.hidden);
-          MNUtil.log("🔍 Simple Panel: 显示后 view.alpha = " + view.alpha);
-        }
-        
-        if (completion) {
-          // 使用定时器确保界面已更新
-          NSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {
-            completion();
-          });
+          if (typeof MNUtil !== "undefined" && MNUtil.studyView) {
+            MNUtil.studyView.bringSubviewToFront(view);
+            if (MNUtil.log) {
+              MNUtil.log("✅ Simple Panel: 已调用 bringSubviewToFront");
+            }
+          } else if (view.superview) {
+            // 降级方案
+            view.superview.bringSubviewToFront(view);
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("✅ Simple Panel: 使用降级方案 bringSubviewToFront");
+            }
+          }
+          
+          // 显示视图
+          view.hidden = false;
+          view.alpha = 1;
+          view.layer.opacity = 1.0;  // 确保 layer 也是可见的
+          
+          // 如果有 show 方法，调用它
+          if (self.panelController.show) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("🎭 Simple Panel: 调用 panelController.show()");
+            }
+            self.panelController.show();
+          }
+          
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log("✅ Simple Panel: 面板已显示");
+            MNUtil.log("🔍 Simple Panel: 显示后 view.hidden = " + view.hidden);
+            MNUtil.log("🔍 Simple Panel: 显示后 view.alpha = " + view.alpha);
+            MNUtil.log("🔍 Simple Panel: 显示后 view.layer.opacity = " + view.layer.opacity);
+          }
+          
+          if (completion) {
+            // 使用定时器确保界面已更新
+            NSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {
+              completion();
+            });
+          }
+        } catch (error) {
+          if (typeof MNUtil !== "undefined") {
+            if (MNUtil.log) {
+              MNUtil.log("❌ Simple Panel: showPanelWithAnimation 出错: " + error.message);
+              MNUtil.log("❌ Simple Panel: 错误堆栈: " + error.stack);
+            }
+            MNUtil.showHUD("显示面板失败: " + error.message);
+          }
         }
       }
     },

@@ -10,26 +10,38 @@ var SimplePanelController = JSB.defineClass(
   {
     // 视图加载完成
     viewDidLoad: function() {
-      var self = this;
+      // 直接使用 self，不要声明 var self = this
+      
       self.appInstance = Application.sharedInstance();
       
       // 初始化 MNUtil（如果可用）
-      if (typeof MNUtil !== "undefined" && self.mainPath) {
-        MNUtil.init(self.mainPath);
+      if (typeof MNUtil !== "undefined") {
+        if (self.mainPath) {
+          MNUtil.init(self.mainPath);
+        }
+        MNUtil.log("🎭 SimplePanelController: viewDidLoad - view frame = " + JSON.stringify(self.view.frame));
       }
       
       // === 设置面板样式 ===
       self.view.layer.shadowOffset = {width: 0, height: 0};
       self.view.layer.shadowRadius = 15;
       self.view.layer.shadowOpacity = 0.5;
-      self.view.layer.shadowColor = UIColor.colorWithWhiteAlpha(0.5, 1);
+      // 注释掉可能有问题的 shadowColor 设置
+      // self.view.layer.shadowColor = UIColor.colorWithWhiteAlpha(0.5, 1);
       self.view.layer.cornerRadius = 11;
       self.view.backgroundColor = UIColor.whiteColor().colorWithAlphaComponent(0.9);
       
       // === 创建标题栏 ===
-      self.titleBar = UIView.new();
-      self.titleBar.backgroundColor = UIColor.colorWithHexString("#5982c4");
-      self.view.addSubview(self.titleBar);
+      try {
+        self.titleBar = UIView.new();
+        self.titleBar.backgroundColor = UIColor.colorWithHexString("#5982c4");
+        self.view.addSubview(self.titleBar);
+      } catch (e) {
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log("❌ SimplePanelController: 创建标题栏失败 - " + e.message);
+        }
+        return;
+      }
       
       // === 创建标题标签 ===
       self.titleLabel = UILabel.new();
@@ -149,6 +161,11 @@ var SimplePanelController = JSB.defineClass(
       self.view.frame = {x: 100, y: 100, width: 400, height: 300};
       self.currentFrame = self.view.frame;
       
+      // 调试日志
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("✅ SimplePanelController: viewDidLoad 完成");
+      }
+      
       // 保存配置
       self.config = {
         selectedOption: 0
@@ -157,8 +174,13 @@ var SimplePanelController = JSB.defineClass(
     
     // 布局子视图
     viewWillLayoutSubviews: function() {
-      var self = this;
+      // 直接使用 self
+      
+      // 安全检查
+      if (!self.view) return;
+      
       var frame = self.view.bounds;
+      if (!frame || frame.width <= 0 || frame.height <= 0) return;
       
       // 标题栏
       self.titleBar.frame = {
@@ -247,14 +269,12 @@ var SimplePanelController = JSB.defineClass(
     // === 事件处理 ===
     
     closePanel: function() {
-      var self = this;
       self.view.hidden = true;
       // 刷新插件栏图标状态
       self.appInstance.studyController(self.view.window).refreshAddonCommands();
     },
     
     executeAction: function() {
-      var self = this;
       var text = self.inputField.text;
       
       // 示例功能：转换为大写
@@ -279,7 +299,6 @@ var SimplePanelController = JSB.defineClass(
     },
     
     showMenu: function(sender) {
-      var self = this;
       
       if (typeof Menu !== "undefined") {
         // 使用 MNUtils 的 Menu 类
@@ -320,7 +339,6 @@ var SimplePanelController = JSB.defineClass(
     },
     
     menuAction: function(option) {
-      var self = this;
       self.config.selectedOption = option;
       
       // 根据选项处理文本
@@ -360,7 +378,6 @@ var SimplePanelController = JSB.defineClass(
     },
     
     copyOutput: function() {
-      var self = this;
       var text = self.outputField.text;
       
       UIPasteboard.generalPasteboard().string = text;
@@ -374,7 +391,6 @@ var SimplePanelController = JSB.defineClass(
     
     // 清空输出（长按复制按钮触发）
     clearOutput: function() {
-      var self = this;
       self.outputField.text = "";
       self.inputField.text = "";
       
@@ -388,7 +404,6 @@ var SimplePanelController = JSB.defineClass(
     // === 手势处理 ===
     
     onDragGesture: function(gesture) {
-      var self = this;
       
       if (gesture.state === 1) { // Began
         self.dragOffset = gesture.locationInView(self.view);
@@ -414,7 +429,6 @@ var SimplePanelController = JSB.defineClass(
     },
     
     onResizeGesture: function(gesture) {
-      var self = this;
       var location = gesture.locationInView(self.view);
       var width = Math.max(300, location.x);
       var height = Math.max(200, location.y);
@@ -432,7 +446,6 @@ var SimplePanelController = JSB.defineClass(
     // === 辅助方法 ===
     
     showHUD: function(message) {
-      var self = this;
       self.appInstance.showHUD(message, self.view.window, 2);
     }
   }

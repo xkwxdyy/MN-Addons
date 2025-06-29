@@ -1,5 +1,5 @@
 {
-  "currentState": "initialized",
+  "currentState": "memory_saved",
   "stateHistory": [
     {
       "from": "initial",
@@ -16,7 +16,7 @@
       "command": "remember",
       "timestamp": "2025-06-28T12:35:43.405Z",
       "args": [
-        "",
+        "## MarginNote 插件开发踩坑记录 (MNTask 2025-06-28)\n\n### 1. MarginNote 完全卡死问题\n- 原因：JSB.newAddon 缺少 mainPath 参数；使用 new TaskController() 而非 TaskController.new()；模块加载循环依赖\n- 解决：必须接收 mainPath；使用 .new() 创建 JSB 对象；延迟加载依赖模块\n\n### 2. 插件不在插件栏显示  \n- 原因：缺少 queryAddonCommandStatus 方法；缺少静态方法对象；图标尺寸错误\n- 解决：实现 queryAddonCommandStatus 返回图标配置；JSB.defineClass 需要两个参数（实例+静态）；logo.png 必须是 44x44\n\n### 3. toggleAddon 无响应\n- 原因：JavaScript 作用域问题；self 未定义\n- 解决：在文件顶部定义 var self = null；在 sceneWillConnect 中设置 self = this\n\n### 4. 其他重要经验\n- UIAlertView 不可靠，使用 MNUtil.input\n- 始终检查 typeof MNUtil !== \"undefined\"\n- 使用 UIWebView 而非 WKWebView\n- 每个危险操作都要 try-catch\n- 参考 mntoolbar 和 mnutils 的实现模式\n\n### 开发检查清单\n✓ JSB.newAddon(mainPath)\n✓ queryAddonCommandStatus 方法\n✓ JSB.defineClass 两个参数\n✓ sceneWillConnect 中 self = this\n✓ MNUtil 存在性检查\n✓ 使用 .new() 创建对象\n✓ logo.png 44x44 像素",
         "--tags",
         "marginnote plugin development mntask troubleshooting jsb"
       ]
@@ -102,7 +102,63 @@
           "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon"
         }
       ]
+    },
+    {
+      "from": "initialized",
+      "command": "remember",
+      "timestamp": "2025-06-29T03:43:43.100Z",
+      "args": [
+        "## MN-Addon 插件开发框架学习进展 (2025-06-29)\n\n### 完成的任务\n\n1. **分析 mntexthandler 插件框架**\n   - 理解了如何在插件栏显示图标 (queryAddonCommandStatus)\n   - 掌握了点击图标显示控制面板的机制 (toggleAddon)\n   - 学习了 UIViewController 创建浮动面板的方法\n   - 理解了拖动和调整大小的手势处理\n\n2. **创建 mntexthandler/CLAUDE.md 文档**\n   - 详细说明了插件框架的核心结构\n   - 提供了精简的代码示例\n   - 标注了可以用 MNUtils API 优化的部分\n\n3. **开发 simple-panel-plugin 示例插件**\n   - 创建了完整可运行的最小插件框架\n   - 实现了插件栏图标、浮动面板、输入输出框、按钮和菜单\n   - 支持拖动位置和调整大小\n   - 集成了 MNUtils API 并提供降级方案\n\n4. **MNUtils API 优化**\n   - 深入学习了 MNButton 类：\n     * 配置对象创建按钮\n     * Proxy 模式的属性操作\n     * 多种手势支持（点击、长按、拖动、滑动）\n   - 掌握了 Menu 类的使用：\n     * 自动位置调整避免超出屏幕\n     * 自定义行高和字体大小\n     * 批量添加菜单项\n     * dismiss() 方法优雅关闭\n\n### 关键代码模式\n\n```javascript\n// MNButton 创建模式\nconst button = MNButton.new({\n  title: \"按钮\",\n  font: 16,\n  color: \"#5982c4\",\n  radius: 8,\n  opacity: 0.9\n}, parentView);\nbutton.addClickAction(self, \"action:\");\n\n// Menu 创建模式\nconst menu = new Menu(sender, self, 200, 2);\nmenu.rowHeight = 40;\nmenu.addMenuItem(\"选项\", \"action:\", param, checked);\nmenu.show();\n```\n\n### 重要文件位置\n- /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntexthandler/CLAUDE.md\n- /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/simple-panel-plugin/\n\n### 下一步计划\n- 可以基于 simple-panel-plugin 框架开发具体功能插件\n- 深入学习 MNNote、MNDocument 等其他核心类\n- 研究 xdyyutils.js 中的学术扩展功能",
+        "--tags",
+        "MN-Addon MarginNote 插件开发 MNUtils MNButton Menu"
+      ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "recall",
+      "timestamp": "2025-06-29T03:45:36.865Z",
+      "args": []
+    },
+    {
+      "from": "recall-waiting",
+      "command": "remember",
+      "timestamp": "2025-06-29T03:48:07.884Z",
+      "args": [
+        "## MarginNote 插件不在插件栏显示的问题排查\n\n### 问题现象\nsimple-panel-plugin 插件安装后不在插件栏显示图标。\n\n### 问题原因\n在 main.js 中使用了全局 `var self = null;` 声明，这与 MarginNote 的插件框架不兼容。\n\n### 解决方案\n1. **移除全局 self 声明**：删除文件开头的 `var self = null;`\n2. **在每个方法内声明 self**：在每个实例方法开始时使用 `var self = this;`\n\n### 正确的代码模式\n```javascript\nJSB.newAddon = function (mainPath) {\n  var PluginClass = JSB.defineClass('PluginClass : JSExtension', {\n    sceneWillConnect: function() {\n      var self = this;  // 正确：在方法内声明\n      // ...\n    },\n    \n    queryAddonCommandStatus: function() {\n      var self = this;  // 每个方法都需要\n      // ...\n    }\n  });\n  return PluginClass;\n};\n```\n\n### 调试技巧\n1. 在关键方法中添加 HUD 提示：\n   ```javascript\n   self.appInstance.showHUD(\"调试信息\", self.window, 2);\n   ```\n\n2. 在 queryAddonCommandStatus 中使用 NSLog（因为这个方法被频繁调用）：\n   ```javascript\n   if (typeof NSLog !== \"undefined\") {\n     NSLog(\"queryAddonCommandStatus called\");\n   }\n   ```\n\n3. 创建打包脚本自动化测试流程\n\n### 插件显示的必要条件\n1. 正确实现 `queryAddonCommandStatus` 方法\n2. 返回包含 `image`、`object`、`selector` 的对象\n3. 图标文件必须是 44x44 像素的 PNG\n4. 只在 studyMode < 3 时显示（非复习模式）\n5. 在 notebookWillOpen 时调用 refreshAddonCommands()\n\n### 其他注意事项\n- JSB.require 应该在文件末尾\n- 不要在全局作用域声明实例变量\n- 始终检查对象是否存在再使用",
+        "--tags",
+        "MarginNote 插件开发 调试技巧 插件栏显示"
+      ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "remember",
+      "timestamp": "2025-06-29T03:54:01.122Z",
+      "args": [
+        "## MarginNote 插件开发关键教训：JSB 框架中的 self 使用\n\n### 严重错误案例\n在 JSB.defineClass 中错误地重新声明 self 会导致崩溃：\n\n```javascript\n// ❌ 错误用法 - 导致无限递归崩溃\nJSB.defineClass('Plugin : JSExtension', {\n  sceneWillConnect: function() {\n    var self = this;  // 错误！不要重新声明\n  },\n  queryAddonCommandStatus: function() {\n    var self = this;  // 错误！会导致循环引用\n    return { object: self, ... };\n  }\n});\n```\n\n### 正确用法\nJSB 框架自动提供 self 实例引用：\n\n```javascript\n// ✅ 正确用法 - 直接使用 self\nJSB.defineClass('Plugin : JSExtension', {\n  sceneWillConnect: function() {\n    self.appInstance = Application.sharedInstance();  // 直接使用 self\n  },\n  queryAddonCommandStatus: function() {\n    return { \n      object: self,  // 安全使用\n      selector: 'togglePanel:'\n    };\n  }\n});\n```\n\n### 崩溃特征\n- Exception Type: EXC_BAD_ACCESS (SIGSEGV)\n- 堆栈显示大量 `-[NSDictionary isEqualToDictionary:]` 递归调用\n- 原因：重新声明 self 创建了不同的对象引用，导致内部比较时产生循环\n\n### 重要提醒\n1. JSB 框架不同于普通 JavaScript\n2. self 是特殊的自动变量，不需要也不能重新声明\n3. 这是 MarginNote 插件开发的特有陷阱",
+        "--tags",
+        "MarginNote 插件开发 JSB框架 崩溃调试 self变量"
+      ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "remember",
+      "timestamp": "2025-06-29T04:01:14.130Z",
+      "args": [
+        "## MarginNote 插件界面卡死问题排查与修复\n\n### 问题表现\n- 点击插件栏图标后界面完全卡死\n- 只有分割按钮能点击，其他所有控件无响应\n- 插件能正常加载但无法交互\n\n### 问题原因\n1. **主线程阻塞**：在 notebookWillOpen 中立即添加视图可能导致阻塞\n2. **HUD 调试日志**：频繁使用 showHUD 会阻塞主线程\n3. **shadowColor 设置问题**：某些 layer 属性设置可能引起渲染问题\n\n### 解决方案\n\n1. **使用 MNUtil.log 代替 HUD**：\n```javascript\n// ❌ 错误：阻塞主线程\nself.appInstance.showHUD(\"调试信息\", self.window, 2);\n\n// ✅ 正确：使用 MNUtil.log\nif (typeof MNUtil !== \"undefined\" && MNUtil.log) {\n  MNUtil.log(\"🔧 调试信息\");\n}\n```\n\n2. **延迟添加视图**：\n```javascript\n// 使用 NSTimer 延迟添加视图\nNSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {\n  var studyView = self.appInstance.studyController(self.window).view;\n  if (studyView && self.panelController && self.panelController.view) {\n    studyView.addSubview(self.panelController.view);\n  }\n});\n```\n\n3. **延迟刷新插件栏**：\n```javascript\n// 避免立即刷新导致阻塞\nNSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {\n  self.appInstance.studyController(self.window).refreshAddonCommands();\n});\n```\n\n4. **安全检查**：\n```javascript\n// 在操作前进行安全检查\nif (!self.view || !frame || frame.width <= 0) return;\n```\n\n### 查看日志方法\n1. 打开 MNUtils 插件\n2. 进入日志查看器\n3. 可以看到所有 MNUtil.log 输出的内容\n\n### 调试技巧\n- 使用 emoji 标记不同类型的日志：🚀 启动、✅ 成功、❌ 错误、⚠️ 警告\n- 在关键流程节点添加日志\n- 使用 try-catch 捕获异常并记录",
+        "--tags",
+        "MarginNote 插件开发 界面卡死 调试技巧 MNUtil.log"
+      ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "remember",
+      "timestamp": "2025-06-29T04:06:13.211Z",
+      "args": [
+        "## JSB 框架中 self 变量的正确使用 - 完整指南\n\n### 核心原则\n在 JSB.defineClass 中，`self` 是框架自动提供的实例引用，绝对不能重新声明！\n\n### 错误示例导致的问题\n\n1. **主类中重新声明 self 导致崩溃**：\n```javascript\n// ❌ 错误 - 导致无限递归崩溃\nJSB.defineClass('Plugin : JSExtension', {\n  sceneWillConnect: function() {\n    var self = this;  // 崩溃！\n  }\n});\n```\n\n2. **UIViewController 中重新声明 self 导致 view 为 null**：\n```javascript\n// ❌ 错误 - 导致 view 无法创建\nJSB.defineClass('Controller : UIViewController', {\n  viewDidLoad: function() {\n    var self = this;  // view 会是 null！\n    self.view.backgroundColor = ...  // 失败\n  }\n});\n```\n\n### 正确用法\n```javascript\n// ✅ 正确 - 直接使用 self\nJSB.defineClass('Plugin : JSExtension', {\n  sceneWillConnect: function() {\n    self.appInstance = Application.sharedInstance();\n  }\n});\n\nJSB.defineClass('Controller : UIViewController', {\n  viewDidLoad: function() {\n    // 直接使用 self，不要声明\n    self.view.backgroundColor = UIColor.whiteColor();\n    self.view.layer.cornerRadius = 11;\n  }\n});\n```\n\n### 症状对照表\n| 症状 | 原因 | 解决方案 |\n|------|------|----------|\n| 崩溃，无限递归 | 主类中 var self = this | 移除声明 |\n| UIViewController.view 为 null | 控制器中 var self = this | 移除声明 |\n| 界面不显示 | view 创建失败 | 检查所有 self 使用 |\n\n### 调试方法\n```javascript\n// 检查 view 是否存在\nif (self.view) {\n  MNUtil.log(\"✅ view 存在: \" + JSON.stringify(self.view.frame));\n} else {\n  MNUtil.log(\"❌ view 是 null!\");\n}\n```\n\n### 重要提醒\n- JSB 不是标准 JavaScript，有自己的规则\n- self 是特殊变量，类似于 Python 的 self\n- 这是 MarginNote 插件开发最容易犯的错误之一",
+        "--tags",
+        "MarginNote JSB框架 self变量 UIViewController 调试"
+      ]
     }
   ],
-  "lastUpdated": "2025-06-29T03:17:05.823Z"
+  "lastUpdated": "2025-06-29T04:06:13.214Z"
 }

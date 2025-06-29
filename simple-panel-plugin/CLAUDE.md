@@ -1232,3 +1232,140 @@ importConfig: function() {
 3. **UI 操作需要时序控制**：菜单关闭和其他 UI 操作之间需要适当延迟
 4. **数据结构要考虑扩展性**：导出格式包含版本号便于未来兼容
 5. **错误处理要充分**：所有存储操作都应该用 try-catch 保护
+
+## 🚀 高级配置管理系统（v1.0.0）
+
+基于对 mnai 项目的学习，我们实现了一个更加成熟的配置管理系统。
+
+### 系统架构
+
+新的配置管理系统采用了类似 mnai 的设计理念：
+
+```
+ConfigManager（配置管理器）
+├── 本地存储管理
+├── iCloud 同步
+├── 冲突检测与解决
+├── 配置验证
+└── 导入导出功能
+```
+
+### 核心特性
+
+#### 1. 统一的配置管理接口
+
+```javascript
+// 初始化
+configManager.init();
+
+// 获取配置
+const mode = configManager.get("mode", 0);
+
+// 设置配置
+configManager.set("mode", 1);
+
+// 批量更新
+configManager.update({
+  mode: 2,
+  saveHistory: true
+});
+```
+
+#### 2. 智能同步机制
+
+```javascript
+// 时间戳管理
+config: {
+  modifiedTime: 1234567890,  // 最后修改时间
+  lastSyncTime: 1234567890   // 最后同步时间
+}
+
+// 自动冲突检测
+if (cloudConfig.modifiedTime > localConfig.modifiedTime) {
+  // 云端更新，提示导入
+} else if (localConfig.modifiedTime > cloudConfig.modifiedTime) {
+  // 本地更新，自动上传
+} else {
+  // 冲突，让用户选择
+}
+```
+
+#### 3. 多同步源支持（可扩展）
+
+```javascript
+syncSource: "none",    // none, iCloud, webdav, r2, etc.
+autoSync: false,       // 自动同步开关
+```
+
+### 使用新系统
+
+#### 1. 引入改进版控制器
+
+```javascript
+// 在 main.js 中
+// JSB.require('simplePanelController');
+JSB.require('simplePanelController_improved');
+```
+
+#### 2. 配置同步设置
+
+在设置菜单中新增了云同步选项：
+- 自动同步开关
+- 同步源选择（目前支持 iCloud）
+- 手动同步按钮
+
+#### 3. 配置导入导出
+
+支持完整的配置导入导出，包括：
+- 配置数据
+- 历史记录
+- 版本信息
+- 时间戳
+
+### 与 mnai 项目的对比
+
+| 特性 | simple-panel（旧版） | simple-panel（新版） | mnai |
+|------|---------------------|---------------------|------|
+| 配置管理 | 直接操作 NSUserDefaults | ConfigManager 封装 | chatAIConfig 类 |
+| iCloud 同步 | 简单读写 | 智能冲突检测 | 完整冲突解决方案 |
+| 时间戳管理 | 无 | modifiedTime + lastSyncTime | 相同机制 |
+| 同步源 | 仅 iCloud | 可扩展架构 | 多种同步方式 |
+| 配置验证 | 无 | 有 | 有 |
+| 错误处理 | 基础 | 完善 | 完善 |
+
+### 最佳实践
+
+1. **使用配置管理器而非直接操作**
+   ```javascript
+   // ❌ 避免
+   NSUserDefaults.standardUserDefaults().setObjectForKey(value, key);
+   
+   // ✅ 推荐
+   configManager.set(key, value);
+   ```
+
+2. **处理同步冲突**
+   ```javascript
+   // 手动同步会自动处理冲突
+   configManager.manualSync();
+   ```
+
+3. **批量更新配置**
+   ```javascript
+   // 一次更新多个配置项，只触发一次保存
+   configManager.update({
+     mode: 1,
+     saveHistory: true,
+     maxHistoryCount: 200
+   });
+   ```
+
+### 详细文档
+
+查看 [CONFIG_SYSTEM_UPGRADE.md](./CONFIG_SYSTEM_UPGRADE.md) 了解：
+- 完整的系统设计
+- 迁移指南
+- 扩展开发指南
+- API 参考
+
+这个新的配置管理系统提供了更专业、更可靠的配置管理方案，适合插件的长期发展。

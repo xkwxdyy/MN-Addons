@@ -16,7 +16,7 @@
       "command": "remember",
       "timestamp": "2025-06-28T12:35:43.405Z",
       "args": [
-        "## MarginNote 插件开发踩坑记录 (MNTask 2025-06-28)\n\n### 1. MarginNote 完全卡死问题\n- 原因：JSB.newAddon 缺少 mainPath 参数；使用 new TaskController() 而非 TaskController.new()；模块加载循环依赖\n- 解决：必须接收 mainPath；使用 .new() 创建 JSB 对象；延迟加载依赖模块\n\n### 2. 插件不在插件栏显示  \n- 原因：缺少 queryAddonCommandStatus 方法；缺少静态方法对象；图标尺寸错误\n- 解决：实现 queryAddonCommandStatus 返回图标配置；JSB.defineClass 需要两个参数（实例+静态）；logo.png 必须是 44x44\n\n### 3. toggleAddon 无响应\n- 原因：JavaScript 作用域问题；self 未定义\n- 解决：在文件顶部定义 var self = null；在 sceneWillConnect 中设置 self = this\n\n### 4. 其他重要经验\n- UIAlertView 不可靠，使用 MNUtil.input\n- 始终检查 typeof MNUtil !== \"undefined\"\n- 使用 UIWebView 而非 WKWebView\n- 每个危险操作都要 try-catch\n- 参考 mntoolbar 和 mnutils 的实现模式\n\n### 开发检查清单\n✓ JSB.newAddon(mainPath)\n✓ queryAddonCommandStatus 方法\n✓ JSB.defineClass 两个参数\n✓ sceneWillConnect 中 self = this\n✓ MNUtil 存在性检查\n✓ 使用 .new() 创建对象\n✓ logo.png 44x44 像素",
+        "",
         "--tags",
         "marginnote plugin development mntask troubleshooting jsb"
       ]
@@ -92,7 +92,17 @@
           "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon"
         }
       ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-06-29T03:17:05.815Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon"
+        }
+      ]
     }
   ],
-  "lastUpdated": "2025-06-28T15:27:44.988Z"
+  "lastUpdated": "2025-06-29T03:17:05.823Z"
 }

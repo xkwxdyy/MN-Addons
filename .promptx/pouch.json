@@ -168,7 +168,17 @@
         "--tags",
         "MNUtils MNButton Menu MarginNote UI组件 最佳实践"
       ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "remember",
+      "timestamp": "2025-06-29T04:24:09.958Z",
+      "args": [
+        "MN-Addon 项目打包命令：使用 `mnaddon4 build <name>` 进行插件打包，不要使用 package.sh 脚本。例如：mnaddon4 build simple-panel-plugin",
+        "--tags",
+        "MN-Addon 打包 mnaddon4 build"
+      ]
     }
   ],
-  "lastUpdated": "2025-06-29T04:13:35.666Z"
+  "lastUpdated": "2025-06-29T04:24:09.963Z"
 }

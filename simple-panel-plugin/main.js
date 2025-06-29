@@ -63,6 +63,9 @@ JSB.newAddon = function (mainPath) {
           NSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {
             var studyView = self.appInstance.studyController(self.window).view;
             if (studyView && self.panelController && self.panelController.view) {
+              // 先设置 frame，确保面板不会铺满整个屏幕
+              self.panelController.view.frame = {x: 100, y: 100, width: 400, height: 350};
+              
               studyView.addSubview(self.panelController.view);
               self.panelController.view.hidden = true;
               
@@ -119,6 +122,8 @@ JSB.newAddon = function (mainPath) {
         if (!self.panelController.view.superview) {
           var studyView = self.appInstance.studyController(self.window).view;
           if (studyView) {
+            // 设置正确的 frame 再添加
+            self.panelController.view.frame = {x: 100, y: 100, width: 400, height: 350};
             studyView.addSubview(self.panelController.view);
           }
         }

@@ -547,3 +547,8 @@ floatBtn.addPanGesture(self, "dragFloatButton:");
 5. MNButton 的自定义属性会被保存在按钮对象上 --tags MNUtils MNButton Menu MarginNote UI组件 最佳实践
 --tags #最佳实践 #工具使用 #评分:8 #有效期:长期
 - END
+
+- 2025/06/29 12:24 START
+MN-Addon 项目打包命令：使用 `mnaddon4 build <name>` 进行插件打包，不要使用 package.sh 脚本。例如：mnaddon4 build simple-panel-plugin --tags MN-Addon 打包 mnaddon4 build
+--tags #工具使用 #评分:8 #有效期:长期
+- END

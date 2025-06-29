@@ -136,6 +136,10 @@ var SimplePanelController = JSB.defineClass(
       self.outputField.editable = false;
       self.view.addSubview(self.outputField);
       
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("✅ 输入输出框创建完成");
+      }
+      
       // === 添加字数统计标签 ===
       if (typeof MNUtil !== "undefined") {
         self.wordCountLabel = UILabel.new();
@@ -151,6 +155,11 @@ var SimplePanelController = JSB.defineClass(
       self.toolbar.backgroundColor = UIColor.colorWithHexString("#f0f0f0");
       self.toolbar.layer.cornerRadius = 8;
       self.view.addSubview(self.toolbar);
+      
+      // 调试：检查 MNButton 是否存在
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("🔍 MNButton 状态: " + (typeof MNButton !== "undefined" ? "已定义" : "未定义"));
+      }
       
       if (typeof MNButton !== "undefined") {
         // === 创建工具按钮组 ===
@@ -191,6 +200,35 @@ var SimplePanelController = JSB.defineClass(
           radius: 8,
           opacity: 0.6
         }, self.toolbar);
+      } else {
+        // 降级方案：使用普通 UIButton
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log("⚠️ 使用降级方案创建工具栏按钮");
+        }
+        
+        const tools = [
+          { icon: "🔄", action: "processText:" },
+          { icon: "📋", action: "copyOutput:" },
+          { icon: "🔧", action: "showModeMenu:" },
+          { icon: "📝", action: "insertToNote:" },
+          { icon: "🕐", action: "showHistory:" }
+        ];
+        
+        self.toolButtons = [];
+        tools.forEach((tool) => {
+          const btn = UIButton.buttonWithType(0);
+          btn.setTitleForState(tool.icon, 0);
+          btn.titleLabel.font = UIFont.systemFontOfSize(22);
+          btn.backgroundColor = UIColor.clearColor();
+          btn.layer.cornerRadius = 18;
+          btn.addTargetActionForControlEvents(self, tool.action, 1 << 6);
+          self.toolbar.addSubview(btn);
+          self.toolButtons.push(btn);
+        });
+      }
+      
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("✅ 工具栏创建完成");
       }
       
       // === 创建调整大小手柄 ===
@@ -217,8 +255,15 @@ var SimplePanelController = JSB.defineClass(
       }
       
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("✅ 调整大小手柄创建完成");
+      }
+      
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
         MNUtil.log("✅ SimplePanelController: 界面创建完成");
       }
+      
+      // 手动调用布局方法确保按钮显示
+      self.viewWillLayoutSubviews();
     },
     
     // === 布局 ===

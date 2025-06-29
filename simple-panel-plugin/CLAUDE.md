@@ -420,26 +420,78 @@ A: 确认：
 2. selector 方法名正确（包括冒号）
 3. 方法在控制器中实现
 
-## MNUtils API 优化示例
+## MNUtils API 优化
 
-本项目包含两个版本的控制器实现：
+本项目的 `simplePanelController.js` 已经充分利用了 MNUtils API 进行优化，主要特性包括：
 
-1. **simplePanelController.js** - 基础版本，展示基本功能实现
-2. **simplePanelControllerOptimized.js** - 优化版本，充分利用 MNUtils API
+### 核心优化功能
 
-### 优化版本特性
+1. **配置持久化**
+   - 使用 `MNUtil.readCloudKey/setCloudKey` 实现 iCloud 同步
+   - 配置自动保存，跨设备共享
 
-优化版本展示了如何使用 MNUtils 的高级功能：
+2. **历史记录管理**
+   - 使用 `MNUtil.readJSON/writeJSON` 文件持久化
+   - 自动限制存储空间
+   - 支持 ISO 时间戳
 
-- **动画系统**：使用 `MNUtil.animate()` 实现平滑过渡
-- **错误处理**：集成 `MNUtil.addErrorLog()` 日志系统
-- **配置持久化**：使用 `MNUtil.readCloudKey/setCloudKey` 同步配置
-- **平台兼容**：使用 `MNUtil.isMacOS/isIOS/isMN4` 处理平台差异
-- **高级手势**：支持长按、滑动、双击等多种交互方式
-- **批量菜单**：使用 `Menu.item()` 和批量添加提高效率
-- **撤销支持**：使用 `MNUtil.undoGrouping()` 包装可撤销操作
+3. **增强的用户交互**
+   - `MNUtil.confirm()` - 危险操作确认
+   - `MNUtil.input()` - 用户输入对话框
+   - `MNUtil.select()` - 多选项选择器
+   - `MNUtil.showHUD()` - 优雅的提示信息
 
-详细的优化说明请查看 [OPTIMIZATION_GUIDE.md](./OPTIMIZATION_GUIDE.md)。
+4. **动画系统**
+   - `MNUtil.animate()` - 平滑的过渡效果
+   - 视图显示/隐藏动画
+   - 缩放和透明度变换
+
+5. **平台兼容性**
+   - `MNUtil.isMacOS()` - macOS 鼠标悬停效果
+   - `MNUtil.isMN4()` - MarginNote 4 特有功能
+   - 自适应不同平台特性
+
+6. **高级功能**
+   - 用户自定义文本处理模式
+   - 智能笔记插入（HTML/纯文本自适应）
+   - 历史记录统计分析
+   - 导入/导出配置
+
+7. **错误处理与日志**
+   - `MNUtil.addErrorLog()` - 统一错误记录
+   - `MNUtil.log()` - 开发日志输出
+   - 完善的 try-catch 保护
+
+8. **性能优化**
+   - `MNUtil.constrain()` - 数值范围约束
+   - `MNUtil.undoGrouping()` - 撤销操作支持
+   - 降级方案保证兼容性
+
+### 使用示例
+
+```javascript
+// 配置持久化
+const savedConfig = MNUtil.readCloudKey("SimplePanel_Config");
+MNUtil.setCloudKey("SimplePanel_Config", JSON.stringify(config));
+
+// 用户交互
+MNUtil.confirm("确认", "确定执行吗？", ["取消", "确定"]).then(index => {
+  if (index === 1) { /* 执行操作 */ }
+});
+
+// 动画效果
+MNUtil.animate(() => {
+  view.alpha = 0;
+  view.transform = {a: 0.8, b: 0, c: 0, d: 0.8, tx: 0, ty: 0};
+}, 0.2);
+
+// 平台检测
+if (MNUtil.isMacOS()) {
+  // macOS 特有功能
+}
+```
+
+详细的优化说明和对比请查看 [OPTIMIZATION_GUIDE.md](./OPTIMIZATION_GUIDE.md)。
 
 ## 调试经验与教训
 
@@ -518,3 +570,472 @@ viewDidLoad: function() {
 - 每次成功的修改都应该提交
 - 遇到问题时可以快速回退到正常版本
 - 使用有意义的 commit 信息记录改动
+
+### JSB 框架中的方法调用时机问题
+
+这是一个非常隐蔽但严重的问题，可能导致插件完全无响应。
+
+#### 问题描述
+
+在 `JSB.defineClass` 中定义的方法，在某些情况下不能在 `viewDidLoad` 中被调用：
+
+```javascript
+// ❌ 错误：可能导致插件无响应
+var SimplePanelController = JSB.defineClass(
+  'SimplePanelController : UIViewController',
+  {
+    viewDidLoad: function() {
+      // 调用自定义方法可能失败
+      self.initConfig();  // 这可能导致整个插件无响应！
+    },
+    
+    initConfig: function() {
+      self.config = { mode: 0 };
+    }
+  }
+);
+```
+
+#### 解决方案
+
+1. **内联初始化**（推荐）：
+
+```javascript
+// ✅ 正确：直接在 viewDidLoad 中初始化
+viewDidLoad: function() {
+  // 直接初始化，不调用方法
+  self.config = {
+    mode: 0,
+    autoProcess: false,
+    saveHistory: true
+  };
+  
+  // 其他初始化代码...
+}
+```
+
+2. **确保属性先初始化再使用**：
+
+```javascript
+// ❌ 错误：使用未初始化的属性
+viewDidLoad: function() {
+  // 创建按钮时使用了 self.config.autoProcess
+  self.button = MNButton.new({
+    title: self.config.autoProcess ? "开" : "关"  // config 未定义！
+  });
+  
+  self.config = { autoProcess: false };  // 太晚了
+}
+
+// ✅ 正确：先初始化再使用
+viewDidLoad: function() {
+  // 先初始化
+  self.config = { autoProcess: false };
+  
+  // 然后使用
+  self.button = MNButton.new({
+    title: self.config.autoProcess ? "开" : "关"
+  });
+}
+```
+
+#### 调试方法：逐步构建版本
+
+当遇到难以定位的问题时，使用增量式调试：
+
+1. **创建多个版本文件**：
+   ```
+   simplePanelController_v0.0.1.js  // 基础版本
+   simplePanelController_v0.0.2.js  // 添加功能A
+   simplePanelController_v0.0.3.js  // 添加功能B
+   ```
+
+2. **修改 main.js 指向不同版本**：
+   ```javascript
+   JSB.require('simplePanelController_v0.0.1');
+   ```
+
+3. **构建并测试每个版本**：
+   ```bash
+   mnaddon4 build 0.0.1
+   mnaddon4 build 0.0.2
+   mnaddon4 build 0.0.3
+   ```
+
+4. **快速定位问题版本**：
+   - 0.0.1 正常 → 0.0.2 异常 → 问题在 0.0.2 的改动中
+   - 比较两个版本的差异即可快速定位
+
+#### 症状与原因对照表
+
+| 症状 | 可能原因 | 解决方案 |
+|------|----------|----------|
+| 插件点击无响应 | viewDidLoad 中调用了自定义方法 | 内联初始化代码 |
+| 菜单无法弹出 | 使用了未初始化的属性 | 确保先初始化再使用 |
+| 部分功能失效 | 方法定义顺序问题 | 使用内联代码替代方法调用 |
+| 白屏 | MNButton color 参数格式错误 | 使用字符串格式颜色 |
+
+#### 最佳实践
+
+1. **viewDidLoad 中避免调用自定义方法**
+2. **所有初始化代码直接内联**
+3. **属性使用前必须先赋值**
+4. **遇到问题时使用增量调试法**
+5. **保留每个工作版本作为回退点**
+
+### JSON 解析崩溃问题
+
+在 viewDidLoad 中直接使用 MNUtil.readJSON 可能导致应用崩溃。
+
+#### 崩溃原因
+```javascript
+// ❌ 错误：在 viewDidLoad 中直接读取 JSON 文件
+viewDidLoad: function() {
+  const history = MNUtil.readJSON(historyPath);  // 可能崩溃！
+}
+```
+
+崩溃日志特征：
+```
+Exception Type:        EXC_CRASH (SIGABRT)
+Exception Codes:       0x0000000000000000, 0x0000000000000000
+...
+12  Foundation            +[NSJSONSerialization JSONObjectWithData:options:error:] + 184
+```
+
+#### 解决方案
+
+1. **延迟加载**（推荐）：
+```javascript
+// ✅ 正确：延迟加载 JSON 文件
+viewDidLoad: function() {
+  self.history = [];  // 先初始化为空数组
+  
+  // 延迟加载
+  NSTimer.scheduledTimerWithTimeInterval(0.5, false, () => {
+    try {
+      const history = MNUtil.readJSON(historyPath);
+      if (history && Array.isArray(history)) {
+        self.history = history;
+      }
+    } catch (e) {
+      MNUtil.log("加载失败：" + e.message);
+    }
+  });
+}
+```
+
+2. **添加错误处理**：
+```javascript
+// ✅ 保存时也要保护
+saveHistory: function() {
+  try {
+    MNUtil.writeJSON(historyPath, self.history);
+  } catch (e) {
+    MNUtil.log("保存失败：" + e.message);
+  }
+}
+```
+
+#### 根本原因分析
+- MNUtil.readJSON 在文件不存在时可能返回 null 或抛出异常
+- viewDidLoad 执行时机较早，文件系统可能未就绪
+- JSON 解析失败会直接导致应用崩溃
+
+#### 预防措施
+1. 对所有文件 I/O 操作使用 try-catch
+2. 延迟非关键的文件加载操作
+3. 始终验证加载的数据类型
+4. 提供合理的默认值
+
+### MNUtil.readJSON 的安全使用
+
+经过深入调查，发现 `MNUtil.readJSON` 的实现存在安全隐患：
+
+```javascript
+// MNUtil.readJSON 的实现
+static readJSON(path){
+  let data = NSData.dataWithContentsOfFile(path)
+  const res = NSJSONSerialization.JSONObjectWithDataOptions(
+    data,
+    1<<0
+  )
+  return res
+}
+```
+
+#### 问题分析
+- 如果文件不存在，`NSData.dataWithContentsOfFile` 返回 null
+- 将 null 传给 `NSJSONSerialization.JSONObjectWithDataOptions` 导致崩溃
+- MNUtil 没有内置的错误处理
+
+#### 正确的使用方式
+
+1. **必须先检查文件是否存在**：
+```javascript
+// ✅ 安全的方式
+if (MNUtil.isfileExists(path)) {
+  const data = MNUtil.readJSON(path);
+  // 处理数据
+}
+```
+
+2. **完整的安全加载函数**：
+```javascript
+loadHistorySafely: function() {
+  if (typeof MNUtil !== "undefined" && MNUtil.isfileExists && MNUtil.readJSON) {
+    try {
+      const historyPath = self.getHistoryPath();
+      // 先检查文件是否存在
+      if (MNUtil.isfileExists(historyPath)) {
+        const history = MNUtil.readJSON(historyPath);
+        if (history && Array.isArray(history)) {
+          self.history = history;
+          MNUtil.log("📚 加载了 " + self.history.length + " 条历史记录");
+        }
+      } else {
+        MNUtil.log("📄 历史记录文件不存在，使用空历史");
+      }
+    } catch (e) {
+      MNUtil.log("⚠️ 加载历史记录失败：" + e.message);
+    }
+  }
+}
+```
+
+3. **按需加载而非预加载**：
+```javascript
+// ✅ 在需要时才加载
+showHistory: function(sender) {
+  // 在显示历史记录前先尝试加载
+  self.loadHistorySafely();
+  
+  if (self.history.length > 0) {
+    // 显示历史记录菜单
+  }
+}
+```
+
+#### 重要提醒
+- **永远不要**在 viewDidLoad 中直接使用 MNUtil.readJSON
+- **永远要**先用 MNUtil.isfileExists 检查文件存在性
+- **永远要**用 try-catch 包装文件操作
+- **优先考虑**按需加载而非预加载
+
+## 🎯 版本迭代经验总结（v0.0.1 - v0.0.8）
+
+经过 8 个版本的迭代，我们遇到并解决了许多关键问题。以下是每个版本的问题和解决方案总结：
+
+### 版本历史与关键教训
+
+#### v0.0.1 - 初始版本
+**问题**：插件不在插件栏显示
+**原因**：全局声明 `var self = null`
+**教训**：JSB 框架中 self 是自动提供的，绝不要重新声明
+
+#### v0.0.2 - 方法调用问题
+**问题**：插件点击无响应
+**原因**：在 viewDidLoad 中调用自定义方法 `initConfig()`
+**教训**：JSB 框架限制，viewDidLoad 中不能调用自定义方法，必须内联代码
+
+#### v0.0.3 - 属性初始化顺序
+**问题**：功能失效
+**原因**：使用了未初始化的属性
+**教训**：确保属性在使用前已经初始化
+
+#### v0.0.4_safe - 深层问题
+**问题**：整个插件无响应
+**原因**：JSB 框架中方法调用时机问题
+**教训**：viewDidLoad 中的所有初始化必须内联
+
+#### v0.0.5 - iCloud 配置
+**问题**：配置不能持久化
+**解决**：使用 MNUtil.readCloudKey/setCloudKey
+**成果**：实现了跨设备配置同步
+
+#### v0.0.6 - JSON 解析崩溃
+**问题**：应用启动时崩溃
+**原因**：MNUtil.readJSON 没有错误处理，文件不存在时崩溃
+**教训**：必须先用 isfileExists 检查，使用 try-catch 保护
+
+#### v0.0.7_safe - 白屏问题
+**问题**：插件显示白屏
+**原因**：MNButton color 参数使用了 UIColor 对象
+**教训**：MNButton 的 color 必须使用字符串格式（如 "#5982c4"）
+
+#### v0.0.8 - 最终稳定版
+**改进**：
+- 移除了问题较多的自动处理功能
+- 修复了菜单不消失的问题
+- 改进了历史记录菜单显示
+- 添加了详细的调试日志
+
+### 🔥 核心开发陷阱（必读！）
+
+#### 1. JSB 框架的 self 变量陷阱
+
+```javascript
+// ❌❌❌ 绝对禁止 - 导致崩溃或插件不显示
+JSB.defineClass('Plugin : JSExtension', {
+  sceneWillConnect: function() {
+    var self = this;  // 永远不要这样做！
+  }
+});
+
+// ✅✅✅ 正确做法 - 直接使用 self
+JSB.defineClass('Plugin : JSExtension', {
+  sceneWillConnect: function() {
+    self.appInstance = Application.sharedInstance();
+  }
+});
+```
+
+#### 2. viewDidLoad 方法调用陷阱
+
+```javascript
+// ❌❌❌ 会导致插件无响应
+viewDidLoad: function() {
+  self.initConfig();  // 不能调用自定义方法！
+  self.createUI();    // 这也不行！
+}
+
+// ✅✅✅ 必须内联所有代码
+viewDidLoad: function() {
+  // 直接在这里写所有初始化代码
+  self.config = {
+    mode: 0,
+    saveHistory: true
+  };
+  
+  // 直接创建 UI，不要调用方法
+  self.view.backgroundColor = UIColor.whiteColor();
+  // ... 其他代码
+}
+```
+
+#### 3. MNButton color 参数陷阱
+
+```javascript
+// ❌❌❌ 导致白屏！
+MNButton.new({
+  color: UIColor.clearColor(),     // 错误！
+  color: UIColor.blueColor()       // 错误！
+});
+
+// ✅✅✅ 必须使用字符串
+MNButton.new({
+  color: "#00000000",  // 透明
+  color: "#5982c4"     // 蓝色
+});
+
+// 动态设置也一样
+button.backgroundColor = "#4CAF50";  // 必须是字符串！
+```
+
+#### 4. MNUtil.readJSON 崩溃陷阱
+
+```javascript
+// ❌❌❌ 文件不存在时崩溃
+const data = MNUtil.readJSON(path);
+
+// ✅✅✅ 安全的方式
+if (MNUtil.isfileExists(path)) {
+  try {
+    const data = MNUtil.readJSON(path);
+    // 处理数据
+  } catch (e) {
+    MNUtil.log("读取失败：" + e.message);
+  }
+}
+```
+
+### 🛠️ 调试方法论
+
+#### 1. 增量版本调试法
+
+当遇到难以定位的问题时，创建增量版本：
+
+```bash
+# 每个小改动创建一个版本
+simplePanelController_v0.0.1.js  # 基础版本
+simplePanelController_v0.0.2.js  # 添加功能A
+simplePanelController_v0.0.3.js  # 添加功能B
+
+# 快速定位问题
+mnaddon4 build 0.0.1  # 正常
+mnaddon4 build 0.0.2  # 异常 → 问题在 0.0.2 的改动中
+```
+
+#### 2. 症状诊断表
+
+| 症状 | 可能原因 | 解决方案 |
+|------|----------|----------|
+| 插件不显示 | self 重新声明 | 移除 var self = this |
+| 插件无响应 | viewDidLoad 调用方法 | 内联所有代码 |
+| 白屏 | MNButton color 格式错误 | 使用字符串颜色 |
+| 崩溃 | readJSON 文件不存在 | 先检查文件存在性 |
+| 菜单不消失 | 异步重新显示 | 移除延迟显示代码 |
+| 功能失效 | 属性未初始化 | 确保先初始化再使用 |
+
+#### 3. 日志调试技巧
+
+```javascript
+// 在关键位置添加日志
+if (typeof MNUtil !== "undefined" && MNUtil.log) {
+  MNUtil.log("🚀 启动");
+  MNUtil.log("✅ 成功: " + JSON.stringify(data));
+  MNUtil.log("❌ 错误: " + error.message);
+  MNUtil.log("🔧 调试: 变量值 = " + value);
+}
+```
+
+### 🎓 关键经验总结
+
+#### 为什么会有这么多版本？
+
+1. **JSB 框架的特殊性**
+   - 不是标准 JavaScript 环境
+   - 有许多隐藏的限制和规则
+   - 错误信息不明确，难以调试
+
+2. **文档缺失**
+   - MarginNote 插件开发文档有限
+   - 很多陷阱只能通过试错发现
+   - 社区经验分享不足
+
+3. **复杂的依赖关系**
+   - MNUtils API 的使用有特定要求
+   - UI 组件的参数格式严格
+   - 生命周期方法的限制
+
+#### 避免问题的核心原则
+
+1. **保持简单**
+   - viewDidLoad 中直接写代码，不调用方法
+   - 使用基础类型而非对象（如颜色用字符串）
+   - 避免过度抽象和封装
+
+2. **防御性编程**
+   - 所有文件操作加 try-catch
+   - 检查对象存在性再使用
+   - 提供降级方案
+
+3. **渐进式开发**
+   - 每次只改一个功能
+   - 频繁测试和提交
+   - 保留所有版本便于回退
+
+4. **充分利用日志**
+   - 关键操作都要记录
+   - 使用 emoji 区分日志类型
+   - 在 MNUtils 中查看日志
+
+### 🎆 最终成果
+
+经过 8 个版本的迭代，我们：
+- ✅ 解决了所有已知 Bug
+- ✅ 积累了宝贵的 JSB 框架经验
+- ✅ 形成了成熟的调试方法论
+- ✅ 创建了一个稳定可靠的插件框架
+
+这些经验对未来的 MarginNote 插件开发极其宝贵！

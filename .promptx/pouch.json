@@ -198,7 +198,75 @@
         "--tags",
         "MNUtils API 优化 动画 配置持久化 错误处理"
       ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "recall",
+      "timestamp": "2025-06-29T06:38:26.636Z",
+      "args": []
+    },
+    {
+      "from": "recall-waiting",
+      "command": "remember",
+      "timestamp": "2025-06-29T07:58:36.676Z",
+      "args": [
+        "MarginNote 插件调试经验 - Simple Panel Plugin 优化过程\n\n## 问题总结\n1. 尝试优化 simplePanelController.js 后，插件面板变成全白\n2. 通过创建增量版本（0.0.1 到 0.0.7_safe）逐步定位问题\n3. 最终成功添加了 iCloud 配置同步和历史记录持久化功能\n\n## 关键发现\n\n### JSB 框架限制\n- **严重问题**：不能在 viewDidLoad 中调用自定义方法\n- 症状：插件点击无反应或功能失效\n- 解决方案：所有初始化代码必须内联在 viewDidLoad 中\n\n### MNButton 颜色参数\n- 必须使用字符串格式（如 \"#5982c4\"）\n- 不能使用 UIColor 对象，否则导致白屏\n\n### MNUtil.readJSON 安全隐患\n- 没有内置错误处理\n- 文件不存在时会导致应用崩溃\n- 必须先用 MNUtil.isfileExists 检查文件存在性\n- 使用按需加载策略，避免在 viewDidLoad 中读取文件\n\n## 调试方法\n1. 创建增量版本进行二分查找\n2. 每个版本只改动一个功能点\n3. 保留所有版本便于回退\n4. 详细记录每个版本的问题和症状\n\n## 最佳实践\n- viewDidLoad 中避免方法调用，使用内联初始化\n- 文件操作必须有完整的错误处理链\n- 按需加载优于预加载\n- 始终提供合理的默认值",
+        "--tags",
+        "MarginNote MNUtils JSB 调试 插件开发"
+      ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "recall",
+      "timestamp": "2025-06-29T08:04:56.935Z",
+      "args": [
+        "simple-panel-plugin"
+      ]
+    },
+    {
+      "from": "recalled-simple-panel-plugin",
+      "command": "init",
+      "timestamp": "2025-06-29T08:09:15.907Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "recall",
+      "timestamp": "2025-06-29T08:09:27.859Z",
+      "args": [
+        "simple-panel-plugin"
+      ]
+    },
+    {
+      "from": "recalled-simple-panel-plugin",
+      "command": "recall",
+      "timestamp": "2025-06-29T08:09:37.326Z",
+      "args": []
+    },
+    {
+      "from": "recall-waiting",
+      "command": "remember",
+      "timestamp": "2025-06-29T08:20:13.744Z",
+      "args": [
+        "## Simple Panel Plugin v0.0.8 更新记录 (2025-06-29)\n\n### 主要修改\n1. **移除自动处理功能**\n   - 删除了所有自动处理相关代码\n   - 移除了左上角的\"自动处理:关\"指示器\n   - 简化了配置结构\n\n2. **修复已知问题**\n   - 修复菜单点击后重新显示的问题\n   - 改进历史记录菜单，即使没有历史也会显示菜单\n   - 添加了调试日志帮助排查问题\n\n3. **代码优化**\n   - 移除了未使用的代码和变量\n   - 改进了错误处理\n   - 简化了 textViewDidChange 方法\n\n### 注意事项\n- \"[Image #1]\"问题可能是 MarginNote 的显示问题，已添加日志帮助调试\n- 建议在 MNUtils 中查看日志了解详细运行情况",
+        "--tags",
+        "MN-Addon simple-panel-plugin v0.0.8 更新记录"
+      ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "remember",
+      "timestamp": "2025-06-29T09:52:13.437Z",
+      "args": [
+        "## MarginNote 插件开发核心陷阱与解决方案 (Simple Panel Plugin v0.0.1-v0.0.8)\n\n### 🔥 8个版本迭代的血泪教训\n\n经过8个版本的痛苦迭代，终于总结出 MarginNote 插件开发的核心陷阱：\n\n#### 1. JSB 框架 self 变量陷阱（最严重）\n```javascript\n// ❌ 绝对禁止 - 导致崩溃或插件不显示\nJSB.defineClass('Plugin : JSExtension', {\n  sceneWillConnect: function() {\n    var self = this;  // 永远不要这样做！\n  }\n});\n\n// ✅ 正确做法 - 直接使用 self\nJSB.defineClass('Plugin : JSExtension', {\n  sceneWillConnect: function() {\n    self.appInstance = Application.sharedInstance();\n  }\n});\n```\n\n#### 2. viewDidLoad 方法调用陷阱\n```javascript\n// ❌ 会导致插件无响应\nviewDidLoad: function() {\n  self.initConfig();  // 不能调用自定义方法！\n}\n\n// ✅ 必须内联所有代码\nviewDidLoad: function() {\n  // 直接在这里写所有初始化代码\n  self.config = { mode: 0, saveHistory: true };\n  // ... 其他代码\n}\n```\n\n#### 3. MNButton color 参数陷阱（导致白屏）\n```javascript\n// ❌ 导致白屏\nMNButton.new({ color: UIColor.clearColor() });\n\n// ✅ 必须使用字符串\nMNButton.new({ color: \"#00000000\" });\nbutton.backgroundColor = \"#4CAF50\";  // 动态设置也必须是字符串\n```\n\n#### 4. MNUtil.readJSON 崩溃陷阱\n```javascript\n// ❌ 文件不存在时崩溃\nconst data = MNUtil.readJSON(path);\n\n// ✅ 安全的方式\nif (MNUtil.isfileExists(path)) {\n  try {\n    const data = MNUtil.readJSON(path);\n  } catch (e) {\n    MNUtil.log(\"读取失败：\" + e.message);\n  }\n}\n```\n\n### 调试方法论\n\n1. **增量版本调试法**：每个小改动创建一个版本，快速定位问题\n2. **症状诊断表**：\n   - 插件不显示 → self 重新声明\n   - 插件无响应 → viewDidLoad 调用方法\n   - 白屏 → MNButton color 格式错误\n   - 崩溃 → readJSON 文件不存在\n\n3. **日志调试技巧**：\n   ```javascript\n   MNUtil.log(\"🚀 启动\");\n   MNUtil.log(\"✅ 成功: \" + JSON.stringify(data));\n   MNUtil.log(\"❌ 错误: \" + error.message);\n   ```\n\n### 为什么会有这么多版本？\n\n1. **JSB 框架的特殊性**：不是标准 JavaScript，有许多隐藏限制\n2. **文档缺失**：MarginNote 插件开发文档有限，陷阱只能试错发现\n3. **复杂依赖**：MNUtils API 使用有特定要求，参数格式严格\n\n### 核心原则\n\n1. **保持简单**：viewDidLoad 中直接写代码，不调用方法\n2. **防御性编程**：所有文件操作加 try-catch\n3. **渐进式开发**：每次只改一个功能，频繁测试\n4. **充分利用日志**：在 MNUtils 中查看日志\n\n最终 v0.0.8 版本稳定运行，所有问题得到解决！",
+        "--tags",
+        "MarginNote 插件开发 JSB框架 MNUtils 调试 陷阱 simple-panel-plugin"
+      ]
     }
   ],
-  "lastUpdated": "2025-06-29T04:47:45.307Z"
+  "lastUpdated": "2025-06-29T09:52:13.453Z"
 }

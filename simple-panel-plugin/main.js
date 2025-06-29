@@ -176,10 +176,23 @@ JSB.newAddon = function (mainPath) {
           self.popoverController.initWithContentViewController(menuController);
           
           // 计算位置并显示
-          var rect = button.convertRectToView(button.bounds, button.superview.superview);
+          // 处理 MNButton 代理对象 - 获取实际的 UIButton
+          var actualButton = button;
+          if (button && button.button && typeof button.button.convertRectToView === 'function') {
+            actualButton = button.button;
+          }
+          
+          // 确保按钮有效
+          if (!actualButton || typeof actualButton.convertRectToView !== 'function') {
+            MNUtil.showHUD("按钮对象无效");
+            return;
+          }
+          
+          var targetView = actualButton.superview.superview;
+          var rect = actualButton.convertRectToView(actualButton.bounds, targetView);
           self.popoverController.presentPopoverFromRectInViewPermittedArrowDirectionsAnimated(
             rect, 
-            button.superview.superview, 
+            targetView, 
             1 << 2, // 向上箭头
             true
           );
@@ -687,17 +700,39 @@ JSB.newAddon = function (mainPath) {
                 MNUtil.log("✅ Simple Panel: 面板已显示");
               }
               
-              // 立即显示设置菜单，不要延迟
-              NSTimer.scheduledTimerWithTimeInterval(0.01, false, function() {
-                try {
-                  if (typeof MNUtil !== "undefined" && MNUtil.log) {
-                    MNUtil.log("⚙️ Simple Panel: 准备显示设置菜单");
-                  }
-                  
-                  if (self.panelController && self.panelController.settingsButton) {
-                    // 内联 showSettings 逻辑 - JSB 框架限制
+              // 立即显示设置菜单
+              try {
+                if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                  MNUtil.log("⚙️ Simple Panel: 准备显示设置菜单");
+                }
+                
+                if (self.panelController && self.panelController.settingsButton) {
+                  // 使用微小延迟确保 UI 就绪
+                  NSTimer.scheduledTimerWithTimeInterval(0.01, false, function() {
                     if (typeof Menu !== "undefined") {
-                      var menu = new Menu(self.panelController.settingsButton, self.panelController, 250, 2);
+                      // 使用 panelController 的 getActualButton 方法
+                      var actualButton = null;
+                      if (self.panelController.getActualButton) {
+                        actualButton = self.panelController.getActualButton(self.panelController.settingsButton);
+                      } else {
+                        // 备用方案
+                        var button = self.panelController.settingsButton;
+                        if (button && button.button && typeof button.button.convertRectToView === 'function') {
+                          actualButton = button.button;
+                        } else if (button && typeof button.convertRectToView === 'function') {
+                          actualButton = button;
+                        }
+                      }
+                      
+                      if (!actualButton) {
+                        if (typeof MNUtil !== "undefined") {
+                          MNUtil.showHUD("按钮引用无效");
+                          MNUtil.log("❌ Simple Panel: 无法获取有效按钮");
+                        }
+                        return;
+                      }
+                      
+                      var menu = new Menu(actualButton, self.panelController, 250, 2);
                       
                       // 直接使用 self.panelController.config
                       var saveHistory = false;
@@ -726,17 +761,17 @@ JSB.newAddon = function (mainPath) {
                         MNUtil.log("❌ Simple Panel: Menu 类不存在");
                       }
                     }
+                  });
                   } else {
                     if (typeof MNUtil !== "undefined" && MNUtil.log) {
                       MNUtil.log("❌ Simple Panel: settingsButton 不存在");
                     }
-                  }
-                } catch (e) {
-                  if (typeof MNUtil !== "undefined" && MNUtil.log) {
-                    MNUtil.log("❌ Simple Panel: 显示设置菜单出错: " + e.message);
-                  }
                 }
-              });
+              } catch (e) {
+                if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                  MNUtil.log("❌ Simple Panel: 显示设置菜单出错: " + e.message);
+                }
+              }
             }
           } catch (e) {
             if (typeof MNUtil !== "undefined" && MNUtil.log) {

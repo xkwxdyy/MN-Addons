@@ -107,6 +107,7 @@ var SimplePanelController = JSB.defineClass(
           radius: 15
         }, self.titleBar);
         
+        // 设置点击处理
         self.settingsButton.addClickAction(self, "showSettings:");
         // 暂时移除长按手势以避免干扰点击响应
         // self.settingsButton.addLongPressGesture(self, "resetSettings:", 3.0);
@@ -429,28 +430,39 @@ var SimplePanelController = JSB.defineClass(
     // === 事件处理 ===
     
     closePanel: function() {
-      // 立即关闭，无延迟 - 参考 mnai 实现
+      // 立即隐藏，完全无延迟
       self.view.hidden = true;
       
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
         MNUtil.log("🚪 SimplePanelController: 面板已关闭");
       }
       
-      // 刷新插件命令不使用延迟
-      try {
-        if (self.appInstance) {
-          self.appInstance.studyController(self.view.window).refreshAddonCommands();
-        }
-      } catch (e) {
-        // 忽略错误
+      // 刷新状态移到后面异步执行，不影响关闭速度
+      if (self.appInstance) {
+        NSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {
+          try {
+            self.appInstance.studyController(self.view.window).refreshAddonCommands();
+          } catch (e) {}
+        });
       }
     },
     
     showSettings: function(sender) {
-      if (typeof Menu !== "undefined") {
-        // 修复 convertRectToView 错误 - 使用设置按钮作为 sender
-        const button = self.settingsButton || sender;
-        const menu = new Menu(button, self, 250, 2);
+      try {
+        // 微小延迟确保 UI 就绪
+        NSTimer.scheduledTimerWithTimeInterval(0.01, false, function() {
+          if (typeof Menu !== "undefined") {
+            // 修复 convertRectToView 错误 - 确保按钮是有效的 UIView
+            let actualButton = self.getActualButton(sender || self.settingsButton);
+            
+            if (!actualButton) {
+              if (typeof MNUtil !== "undefined") {
+                MNUtil.showHUD("按钮引用无效");
+              }
+              return;
+            }
+            
+            const menu = new Menu(actualButton, self, 250, 2);
         
         const menuItems = [
           { title: configManager.get("saveHistory") ? "✓ 保存历史" : "  保存历史", selector: "toggleSaveHistory:" },
@@ -464,14 +476,65 @@ var SimplePanelController = JSB.defineClass(
         menu.addMenuItems(menuItems);
         menu.rowHeight = 40;
         menu.show();
+          }
+        });
+      } catch (error) {
+        if (typeof MNUtil !== "undefined") {
+          MNUtil.addErrorLog(error, "showSettings", {sender: sender});
+          MNUtil.showHUD("出错: " + error.message);
+        }
       }
     },
     
+    // 工具函数：获取实际的 UIButton
+    getActualButton: function(button) {
+      // 处理各种可能的情况
+      if (!button) {
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log("⚠️ getActualButton: button 为 null");
+        }
+        return null;
+      }
+      
+      // 如果是 MNButton 代理对象
+      if (button.button && typeof button.button.convertRectToView === 'function') {
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log("✅ getActualButton: 从 MNButton 获取实际按钮");
+        }
+        return button.button;
+      }
+      
+      // 如果已经是 UIButton
+      if (typeof button.convertRectToView === 'function') {
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log("✅ getActualButton: 已经是 UIButton");
+        }
+        return button;
+      }
+      
+      // 无效的按钮
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("❌ getActualButton: 无效的按钮对象");
+      }
+      return null;
+    },
+    
     showSyncSettings: function(sender) {
-      if (typeof Menu !== "undefined") {
-        // 确保 sender 是有效的按钮
-        const button = sender || self.settingsButton;
-        const menu = new Menu(button, self, 250, 2);
+      try {
+        // 微小延迟确保 UI 就绪
+        NSTimer.scheduledTimerWithTimeInterval(0.01, false, function() {
+          if (typeof Menu !== "undefined") {
+            // 确保按钮是有效的 UIView
+            let actualButton = self.getActualButton(sender);
+            
+            if (!actualButton) {
+              if (typeof MNUtil !== "undefined") {
+                MNUtil.showHUD("按钮引用无效");
+              }
+              return;
+            }
+            
+            const menu = new Menu(actualButton, self, 250, 2);
         
         const syncSource = configManager.get("syncSource", "none");
         const autoSync = configManager.get("autoSync", false);
@@ -488,6 +551,13 @@ var SimplePanelController = JSB.defineClass(
         menu.addMenuItems(menuItems);
         menu.rowHeight = 40;
         menu.show();
+          }
+        });
+      } catch (error) {
+        if (typeof MNUtil !== "undefined") {
+          MNUtil.addErrorLog(error, "showSyncSettings", {sender: sender});
+          MNUtil.showHUD("出错: " + error.message);
+        }
       }
     },
     
@@ -535,7 +605,12 @@ var SimplePanelController = JSB.defineClass(
     toggleMinimize: function() {
       self.isMinimized = !self.isMinimized;
       
-      // 简化动画 - 参考 mnai 项目
+      // 更新按钮图标 - 先更新UI反馈
+      if (self.minimizeButton) {
+        self.minimizeButton.title = self.isMinimized ? "+" : "−";
+      }
+      
+      // 立即执行，无动画
       if (self.isMinimized) {
         // 最小化
         self.view.frame = {
@@ -553,11 +628,6 @@ var SimplePanelController = JSB.defineClass(
         self.inputField.hidden = false;
         self.outputField.hidden = false;
         self.toolbar.hidden = false;
-      }
-      
-      // 更新按钮图标
-      if (self.minimizeButton) {
-        self.minimizeButton.title = self.isMinimized ? "+" : "−";
       }
       
       if (typeof MNUtil !== "undefined" && MNUtil.log) {

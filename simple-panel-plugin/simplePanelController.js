@@ -108,8 +108,8 @@ var SimplePanelController = JSB.defineClass(
         }, self.titleBar);
         
         self.settingsButton.addClickAction(self, "showSettings:");
-        // 减少长按时间以避免点击延迟
-        self.settingsButton.addLongPressGesture(self, "resetSettings:", 2.0);
+        // 暂时移除长按手势以避免干扰点击响应
+        // self.settingsButton.addLongPressGesture(self, "resetSettings:", 3.0);
         
         // === 创建最小化按钮 ===
         self.minimizeButton = MNButton.new({
@@ -429,21 +429,21 @@ var SimplePanelController = JSB.defineClass(
     // === 事件处理 ===
     
     closePanel: function() {
-      // 直接关闭，无动画效果
+      // 立即关闭，无延迟 - 参考 mnai 实现
       self.view.hidden = true;
       
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
         MNUtil.log("🚪 SimplePanelController: 面板已关闭");
       }
       
-      // 异步刷新插件栏图标状态，避免延迟
-      NSTimer.scheduledTimerWithTimeInterval(0.01, false, function() {
-        try {
+      // 刷新插件命令不使用延迟
+      try {
+        if (self.appInstance) {
           self.appInstance.studyController(self.view.window).refreshAddonCommands();
-        } catch (e) {
-          // 忽略错误
         }
-      });
+      } catch (e) {
+        // 忽略错误
+      }
     },
     
     showSettings: function(sender) {
@@ -469,7 +469,9 @@ var SimplePanelController = JSB.defineClass(
     
     showSyncSettings: function(sender) {
       if (typeof Menu !== "undefined") {
-        const menu = new Menu(sender, self, 250, 2);
+        // 确保 sender 是有效的按钮
+        const button = sender || self.settingsButton;
+        const menu = new Menu(button, self, 250, 2);
         
         const syncSource = configManager.get("syncSource", "none");
         const autoSync = configManager.get("autoSync", false);
@@ -706,13 +708,11 @@ var SimplePanelController = JSB.defineClass(
         Menu.dismissCurrentMenu();
       }
       
-      // 延迟显示反馈，确保菜单先关闭
-      const modeNames = ["转大写", "转小写", "首字母大写", "反转文本"];
-      NSTimer.scheduledTimerWithTimeInterval(0.1, false, () => {
-        if (typeof MNUtil !== "undefined") {
-          MNUtil.showHUD("已切换到: " + modeNames[mode]);
-        }
-      });
+      // 立即显示反馈
+      const modeNames = ["转大写", "转小写", "首字母大写", "反转文本", "去除空格", "统计字数"];
+      if (typeof MNUtil !== "undefined") {
+        MNUtil.showHUD("已切换到: " + modeNames[mode]);
+      }
     },
     
     copyOutput: function() {

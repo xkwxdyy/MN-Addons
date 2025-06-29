@@ -100,6 +100,7 @@ var SimplePanelController = JSB.defineClass(
       self.inputField.backgroundColor = UIColor.grayColor().colorWithAlphaComponent(0.2);
       self.inputField.text = "在这里输入文本...";
       self.inputField.textContainerInset = {top: 8, left: 8, bottom: 8, right: 8};
+      self.inputField.delegate = self;  // 设置代理以捕获文本变化
       self.view.addSubview(self.inputField);
       
       // === 创建输出框 ===
@@ -212,6 +213,22 @@ var SimplePanelController = JSB.defineClass(
       self.history = [];
       self.isMinimized = false;
       
+      // === 创建自动处理指示器 ===
+      if (typeof MNButton !== "undefined") {
+        self.autoProcessIndicator = MNButton.new({
+          title: "自动: 关",
+          font: 12,
+          color: "#00000020",
+          radius: 12,
+          opacity: 0.8
+        }, self.titleBar);
+        
+        self.autoProcessIndicator.addClickAction(self, "toggleAutoProcessQuick:");
+      }
+      
+      // 更新自动处理指示器状态
+      self.updateAutoProcessIndicator();
+      
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
         MNUtil.log("✅ SimplePanelController: 界面创建完成");
       }
@@ -234,9 +251,9 @@ var SimplePanelController = JSB.defineClass(
       
       // 标题栏内的元素
       self.titleLabel.frame = {
-        x: 50,
+        x: 105,
         y: 0,
-        width: frame.width - 100,
+        width: frame.width - 210,
         height: 40
       };
       
@@ -264,6 +281,15 @@ var SimplePanelController = JSB.defineClass(
           y: 5,
           width: 30,
           height: 30
+        };
+      }
+      
+      if (self.autoProcessIndicator) {
+        self.autoProcessIndicator.frame = {
+          x: 40,
+          y: 10,
+          width: 60,
+          height: 20
         };
       }
       
@@ -457,7 +483,8 @@ var SimplePanelController = JSB.defineClass(
           });
         }
         
-        if (typeof MNUtil !== "undefined") {
+        // 只在手动处理时显示 HUD（自动处理时不显示）
+        if (!self.isAutoProcessing && typeof MNUtil !== "undefined") {
           MNUtil.showHUD("处理完成");
         }
       } catch (error) {
@@ -601,6 +628,9 @@ var SimplePanelController = JSB.defineClass(
         MNUtil.showHUD("自动处理: " + (self.config.autoProcess ? "已开启" : "已关闭"));
       }
       
+      // 更新自动处理指示器
+      self.updateAutoProcessIndicator();
+      
       // 延迟重新显示菜单，让用户看到反馈
       NSTimer.scheduledTimerWithTimeInterval(0.3, false, () => {
         self.showSettings(self.settingsButton);
@@ -727,6 +757,82 @@ var SimplePanelController = JSB.defineClass(
       // 可以在这里实现更完整的历史记录查看界面
       if (typeof MNUtil !== "undefined") {
         MNUtil.showHUD("共有 " + self.history.length + " 条历史记录");
+      }
+    },
+    
+    // === TextView 代理方法 ===
+    
+    textViewShouldBeginEditing: function(textView) {
+      // 清除占位文本
+      if (textView === self.inputField && textView.text === "在这里输入文本...") {
+        textView.text = "";
+      }
+      return true;
+    },
+    
+    textViewShouldEndEditing: function(textView) {
+      // 恢复占位文本
+      if (textView === self.inputField && textView.text === "") {
+        textView.text = "在这里输入文本...";
+      }
+      return true;
+    },
+    
+    textViewDidChange: function(textView) {
+      if (textView === self.inputField) {
+        // 自动处理
+        if (self.config.autoProcess) {
+          // 清除之前的定时器
+          if (self.autoProcessTimer) {
+            self.autoProcessTimer.invalidate();
+          }
+          
+          // 显示正在处理的视觉反馈
+          if (self.statusIndicator) {
+            self.statusIndicator.backgroundColor = "#FFA500"; // 橙色表示处理中
+            self.statusIndicator.title = "⚡";
+          }
+          
+          // 设置新的延迟处理（减少延迟到 0.3 秒）
+          self.autoProcessTimer = NSTimer.scheduledTimerWithTimeInterval(0.3, false, () => {
+            self.isAutoProcessing = true;  // 标记为自动处理
+            self.processText();
+            self.isAutoProcessing = false;  // 重置标记
+            
+            // 恢复状态指示器
+            if (self.statusIndicator) {
+              self.statusIndicator.title = "•";
+            }
+          });
+        }
+      }
+    },
+    
+    // === 辅助方法 ===
+    
+    updateAutoProcessIndicator: function() {
+      if (self.autoProcessIndicator) {
+        if (self.config.autoProcess) {
+          self.autoProcessIndicator.title = "自动: 开";
+          self.autoProcessIndicator.backgroundColor = "#4CAF50";
+        } else {
+          self.autoProcessIndicator.title = "自动: 关";
+          self.autoProcessIndicator.backgroundColor = "#00000020";
+        }
+      }
+    },
+    
+    toggleAutoProcessQuick: function() {
+      self.config.autoProcess = !self.config.autoProcess;
+      self.updateAutoProcessIndicator();
+      
+      if (typeof MNUtil !== "undefined") {
+        MNUtil.showHUD("自动处理: " + (self.config.autoProcess ? "已开启" : "已关闭"));
+      }
+      
+      // 如果开启了自动处理且输入框有内容，立即处理
+      if (self.config.autoProcess && self.inputField.text && self.inputField.text !== "在这里输入文本...") {
+        self.processText();
       }
     }
   }

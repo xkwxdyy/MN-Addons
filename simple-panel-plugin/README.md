@@ -2,6 +2,11 @@
 
 这是一个精简的 MarginNote 插件框架示例，展示了如何创建一个点击插件栏图标后显示控制面板的插件。已优化使用 MNUtils 的 MNButton 和 Menu 类。
 
+## 📚 版本说明
+
+- **simplePanelController.js**: 基础版本，展示基本功能和降级处理
+- **simplePanelControllerOptimized.js**: 优化版本，展示 MNButton 和 Menu 类的高级用法
+
 ## 功能特性
 
 - ✅ 在插件栏显示图标
@@ -53,23 +58,30 @@ executeAction: function() {
 
 ### 4. 打包插件
 
-将所有文件打包成 `.mnaddon` 文件：
+使用 mnaddon4 工具打包：
 
 ```bash
-# 在插件目录外执行
-zip -r simple-panel.mnaddon simple-panel-plugin/
+# 在插件目录内执行
+mnaddon4 build mnaddon
 ```
 
 ### 5. 安装测试
 
 将 `.mnaddon` 文件拖入 MarginNote 安装。
 
-## 文件说明
+## 📁 文件说明
 
-- `main.js` - 插件主入口，处理生命周期
-- `simplePanelController.js` - 控制面板的 UI 和逻辑
-- `mnaddon.json` - 插件配置文件
-- `jsconfig.json` - 指定包含的 JS 文件
+```
+simple-panel-plugin/
+├── mnaddon.json       # 插件配置
+├── main.js            # 插件主入口
+├── simplePanelController.js          # 基础版控制面板
+├── simplePanelControllerOptimized.js # 优化版控制面板
+├── logo.png           # 插件图标 (44x44)
+├── jsconfig.json      # JS 文件配置
+├── README.md          # 说明文档
+└── CLAUDE.md          # 开发文档（MNButton/Menu 最佳实践）
+```
 
 ## 主要功能说明
 
@@ -195,8 +207,73 @@ if (typeof MNButton !== "undefined") {
 - 始终检查 MNUtils 是否可用
 - 在 `sceneDidDisconnect` 中清理资源
 
-## 相关资源
+## 🆕 使用优化版本
+
+优化版本展示了更多 MNButton 和 Menu 的高级特性：
+
+### 优化版新增功能
+
+1. **工具栏按钮组**
+   - 使用 MNButton 创建的 emoji 按钮
+   - 支持长按显示提示
+   - 悬停高亮效果
+
+2. **多种菜单示例**
+   - 设置菜单：带选中状态的选项
+   - 模式菜单：动态生成菜单项
+   - 历史菜单：显示最近记录
+
+3. **高级功能**
+   - 状态指示器：显示操作状态
+   - 最小化功能：收起/展开面板
+   - 历史记录：保存处理历史
+   - 配置管理：导入/导出配置
+   - 可视化调整手柄
+
+### 如何切换到优化版
+
+```bash
+# 1. 备份原文件
+cp simplePanelController.js simplePanelController.bak.js
+
+# 2. 使用优化版
+cp simplePanelControllerOptimized.js simplePanelController.js
+
+# 3. 重新打包
+mnaddon4 build mnaddon
+```
+
+### 优化版代码亮点
+
+1. **Emoji 工具栏**
+```javascript
+const tools = [
+  { icon: "🔄", action: "processText:", tooltip: "处理文本" },
+  { icon: "📋", action: "copyOutput:", tooltip: "复制结果" },
+  { icon: "🔧", action: "showModeMenu:", tooltip: "选择模式" }
+];
+```
+
+2. **动态状态更新**
+```javascript
+self.statusIndicator.backgroundColor = "#4CAF50";
+NSTimer.scheduledTimerWithTimeInterval(0.5, false, () => {
+  self.statusIndicator.backgroundColor = "#00000020";
+});
+```
+
+3. **完整的配置管理**
+```javascript
+exportConfig: function() {
+  const configStr = JSON.stringify(self.config, null, 2);
+  UIPasteboard.generalPasteboard().string = configStr;
+  MNUtil.showHUD("配置已复制到剪贴板");
+}
+```
+
+## 📄 相关资源
 
 - [MN-Addon 项目文档](../CLAUDE.md)
 - [MNUtils API 指南](../MNUTILS_API_GUIDE.md)
+- [Simple Panel 开发文档](./CLAUDE.md) - 包含 MNButton 和 Menu 的详细最佳实践
 - [MarginNote 官网](https://www.marginnote.com/)

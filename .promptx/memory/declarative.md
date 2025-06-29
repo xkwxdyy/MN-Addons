@@ -306,3 +306,244 @@ if (self.view) {
 - 这是 MarginNote 插件开发最容易犯的错误之一 --tags MarginNote JSB框架 self变量 UIViewController 调试
 --tags #最佳实践 #评分:8 #有效期:长期
 - END
+
+- 2025/06/29 12:13 START
+## MNUtils 核心 UI 组件 - MNButton 和 Menu 类完整指南
+
+### MNButton 类 - 增强按钮组件
+
+#### 概述
+MNButton 是 MNUtils 提供的增强按钮类，通过 Proxy 模式封装了 UIButton，提供更便捷的配置和操作方式。
+
+#### 核心特性
+1. **配置对象创建** - 一次性配置所有属性
+2. **Proxy 模式** - 直接操作属性，自动同步到 UIButton
+3. **内置手势支持** - 点击、长按、拖动、轻扫
+4. **自动样式管理** - 颜色、圆角、透明度等
+
+#### 创建方式
+```javascript
+// 完整配置示例
+const button = MNButton.new({
+  title: "按钮文字",
+  font: 16,                      // 数字或 UIFont 对象
+  bold: true,                    // 粗体
+  color: "#5982c4",             // 背景色（支持 hex）
+  opacity: 0.9,                 // 透明度 (0-1)
+  radius: 8,                    // 圆角半径
+  alpha: 1.0,                   // 颜色透明度
+  highlight: UIColor.redColor(), // 高亮色
+  image: "icon.png",            // 图标路径
+  scale: 2                      // 图标缩放
+}, parentView);                 // 直接添加到父视图
+```
+
+#### 属性操作（Proxy 特性）
+```javascript
+// 所有属性都可以直接赋值
+button.title = "新标题";
+button.hidden = false;
+button.frame = {x: 10, y: 10, width: 100, height: 40};
+button.backgroundColor = "#ff0000";  // 或 UIColor 对象
+button.opacity = 0.8;
+button.currentTitleColor = "#ffffff";
+button.font = UIFont.boldSystemFontOfSize(18);
+
+// 自定义属性也会被代理到内部 UIButton
+button.customData = "any value";
+button.tooltipText = "提示文字";
+```
+
+#### 事件处理
+```javascript
+// 点击事件
+button.addClickAction(self, "handleClick:");
+
+// 长按手势
+button.addLongPressGesture(self, "handleLongPress:", 0.5); // 0.5秒触发
+
+// 拖动手势
+button.addPanGesture(self, "handlePan:");
+
+// 轻扫手势
+button.addSwipeGesture(self, "handleSwipe:", 1 << 0); // 方向：右
+
+// 移除事件
+button.removeTargetActionForControlEvents(self, "handleClick:", 1 << 6);
+```
+
+#### 常用方法
+```javascript
+// 设置图片
+button.setImage(UIImage.imageNamed("icon.png"));
+button.setImageForState(image, 0);  // 0 = normal state
+
+// 设置标题
+button.setTitle("标题");
+button.setTitleForState("按下时", 1);  // 1 = highlighted
+
+// 设置颜色
+button.setColor("#hexcolor", 0.8);  // hex 颜色 + alpha
+
+// 设置 frame
+button.setFrame(x, y, width, height);
+
+// 视图操作
+button.addSubview(view);
+button.removeFromSuperview();
+button.bringSubviewToFront(view);
+```
+
+#### 静态方法
+```javascript
+// 直接配置 UIButton（不创建 MNButton 实例）
+MNButton.setConfig(uiButton, {
+  title: "标题",
+  color: "#5982c4"
+});
+
+// 添加点击事件到 UIButton
+MNButton.addClickAction(uiButton, target, "selector:");
+```
+
+### Menu 类 - 弹出菜单组件
+
+#### 概述
+Menu 类提供智能的弹出菜单功能，自动调整位置避免超出屏幕，支持自定义样式和选中状态。
+
+#### 核心特性
+1. **智能位置调整** - 根据屏幕边缘自动调整弹出方向
+2. **灵活配置** - 支持批量添加、插入菜单项
+3. **选中状态** - 菜单项可显示勾选状态
+4. **自定义样式** - 行高、字体大小可调
+
+#### 创建方式
+```javascript
+// 参数：触发者, 代理对象, 宽度, 弹出方向
+const menu = new Menu(button, self, 250, 2);
+// 弹出方向：左0, 下1,3, 上2, 右4
+```
+
+#### 添加菜单项
+```javascript
+// 单个添加
+menu.addMenuItem("复制", "copyNote:", note, false);
+menu.addMenuItem("制卡", "makeCard:", note, note.isCard); // 带选中状态
+
+// 批量添加
+menu.addMenuItems([
+  {title: "选项1", selector: "action1:", param: 1, checked: true},
+  {title: "选项2", selector: "action2:", param: 2, checked: false}
+]);
+
+// 插入菜单项
+menu.insertMenuItem(0, "置顶", "topAction:");
+menu.insertMenuItems(2, [{title: "插入项", selector: "insert:"}]);
+```
+
+#### 样式自定义
+```javascript
+menu.rowHeight = 45;     // 默认 35
+menu.fontSize = 18;      // 字体大小
+menu.preferredPosition = 2;  // 优先弹出方向
+```
+
+#### 显示和关闭
+```javascript
+// 显示菜单
+menu.show();
+
+// 关闭当前菜单
+menu.dismiss();
+
+// 静态方法：关闭任何显示的菜单
+Menu.dismissCurrentMenu();
+```
+
+#### 实际应用模式
+
+##### 1. 动态菜单
+```javascript
+showMenu: function(sender) {
+  const menu = new Menu(sender, self, 200);
+  
+  // 根据状态动态生成
+  if (self.isEditing) {
+    menu.addMenuItem("保存", "save:");
+    menu.addMenuItem("取消", "cancel:");
+  } else {
+    menu.addMenuItem("编辑", "edit:");
+    menu.addMenuItem("删除", "delete:");
+  }
+  
+  menu.show();
+}
+```
+
+##### 2. 带分隔线的菜单
+```javascript
+menu.addMenuItem("操作1", "action1:");
+menu.addMenuItem("────────", "", "", false);  // 分隔线
+menu.addMenuItem("操作2", "action2:");
+```
+
+##### 3. 级联菜单效果
+```javascript
+menu.addMenuItem("更多选项 ▸", "showSubMenu:");
+```
+
+### 最佳实践组合
+
+#### 1. 工具栏按钮组
+```javascript
+const tools = ["📝", "📋", "🗑", "⚙️"];
+self.toolButtons = tools.map(icon => {
+  const btn = MNButton.new({
+    title: icon,
+    font: 20,
+    color: "#00000000",
+    radius: 20
+  }, toolbar);
+  
+  btn.addClickAction(self, "toolAction:");
+  btn.addLongPressGesture(self, "showToolTip:", 0.3);
+  return btn;
+});
+```
+
+#### 2. 状态切换按钮
+```javascript
+self.toggleBtn = MNButton.new({
+  title: self.isOn ? "ON" : "OFF",
+  color: self.isOn ? "#4CAF50" : "#f44336"
+}, view);
+
+toggleState: function() {
+  self.isOn = !self.isOn;
+  self.toggleBtn.title = self.isOn ? "ON" : "OFF";
+  self.toggleBtn.backgroundColor = self.isOn ? "#4CAF50" : "#f44336";
+}
+```
+
+#### 3. 可拖动的浮动按钮
+```javascript
+const floatBtn = MNButton.new({
+  title: "📌",
+  font: 24,
+  radius: 25,
+  color: "#5982c4",
+  opacity: 0.8
+}, parentView);
+
+floatBtn.frame = {x: 300, y: 100, width: 50, height: 50};
+floatBtn.addPanGesture(self, "dragFloatButton:");
+```
+
+### 重要提示
+1. MNButton 和 Menu 都需要 MNUtils 插件支持
+2. 始终检查 MNUtil 是否存在再使用这些类
+3. 在 JSB 框架中直接使用 self，不要重新声明
+4. Menu 会自动管理位置，不需要手动计算
+5. MNButton 的自定义属性会被保存在按钮对象上 --tags MNUtils MNButton Menu MarginNote UI组件 最佳实践
+--tags #最佳实践 #工具使用 #评分:8 #有效期:长期
+- END

@@ -23,6 +23,12 @@ var SimplePanelController = JSB.defineClass(
         MNUtil.log("🎨 SimplePanelController: viewDidLoad - 开始创建界面");
       }
       
+      // === 直接初始化配置，避免方法调用问题 ===
+      self.config = {
+        mode: 0,  // 0:转大写 1:转小写 2:首字母大写 3:反转
+        saveHistory: true
+      };
+      
       // === 设置面板样式 ===
       self.view.layer.shadowOffset = {width: 0, height: 0};
       self.view.layer.shadowRadius = 15;
@@ -202,34 +208,15 @@ var SimplePanelController = JSB.defineClass(
         self.resizeHandle.addGestureRecognizer(self.resizeGesture);
       }
       
-      // 初始化配置（放在最后）
-      self.config = {
-        mode: 0,  // 0:转大写 1:转小写 2:首字母大写 3:反转
-        autoProcess: false,
-        saveHistory: true
-      };
-      
       // 处理历史记录
       self.history = [];
       self.isMinimized = false;
       
-      // === 创建自动处理指示器 ===
-      if (typeof MNButton !== "undefined") {
-        self.autoProcessIndicator = MNButton.new({
-          title: "自动: 关",
-          font: 12,
-          color: "#00000020",
-          radius: 12,
-          opacity: 0.8
-        }, self.titleBar);
-        
-        self.autoProcessIndicator.addClickAction(self, "toggleAutoProcessQuick:");
-        
-        // 更新自动处理指示器状态
-        if (self.updateAutoProcessIndicator) {
-          self.updateAutoProcessIndicator();
-        }
+      // 延迟加载历史记录（如果需要）
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("📋 初始化历史记录");
       }
+      
       
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
         MNUtil.log("✅ SimplePanelController: 界面创建完成");
@@ -286,14 +273,6 @@ var SimplePanelController = JSB.defineClass(
         };
       }
       
-      if (self.autoProcessIndicator) {
-        self.autoProcessIndicator.frame = {
-          x: 40,
-          y: 10,
-          width: 70,
-          height: 20
-        };
-      }
       
       // 内容区域
       if (!self.isMinimized) {
@@ -376,7 +355,6 @@ var SimplePanelController = JSB.defineClass(
         const menu = new Menu(sender, self, 250, 2);
         
         const menuItems = [
-          { title: "自动处理", selector: "toggleAutoProcess:", checked: self.config.autoProcess },
           { title: "保存历史", selector: "toggleSaveHistory:", checked: self.config.saveHistory },
           { title: "────────", selector: "", param: "" },
           { title: "清空历史", selector: "clearHistory:" },
@@ -393,7 +371,6 @@ var SimplePanelController = JSB.defineClass(
     resetSettings: function() {
       self.config = {
         mode: 0,
-        autoProcess: false,
         saveHistory: true
       };
       
@@ -450,6 +427,10 @@ var SimplePanelController = JSB.defineClass(
         var text = self.inputField.text;
         var result = "";
         
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log("🔄 processText - 输入文本: " + text + ", 模式: " + self.config.mode);
+        }
+        
         switch (self.config.mode) {
           case 0: // 转大写
             result = text.toUpperCase();
@@ -485,8 +466,8 @@ var SimplePanelController = JSB.defineClass(
           });
         }
         
-        // 只在手动处理时显示 HUD（自动处理时不显示）
-        if (!self.isAutoProcessing && typeof MNUtil !== "undefined") {
+        // 显示处理完成提示
+        if (typeof MNUtil !== "undefined") {
           MNUtil.showHUD("处理完成");
         }
       } catch (error) {
@@ -529,11 +510,6 @@ var SimplePanelController = JSB.defineClass(
       if (typeof MNUtil !== "undefined") {
         MNUtil.showHUD("已切换到: " + modeNames[mode]);
       }
-      
-      // 如果开启了自动处理
-      if (self.config.autoProcess) {
-        self.processText();
-      }
     },
     
     copyOutput: function() {
@@ -567,20 +543,24 @@ var SimplePanelController = JSB.defineClass(
     },
     
     showHistory: function(sender) {
-      if (typeof Menu !== "undefined" && self.history.length > 0) {
+      if (typeof Menu !== "undefined") {
         const menu = new Menu(sender, self, 300, 2);
         
-        // 显示最近10条历史
-        const recentHistory = self.history.slice(-10).reverse();
-        
-        recentHistory.forEach((item, index) => {
-          const preview = item.output.substring(0, 30) + (item.output.length > 30 ? "..." : "");
-          menu.addMenuItem(preview, "loadFromHistory:", self.history.length - 1 - index);
-        });
-        
-        if (self.history.length > 10) {
-          menu.addMenuItem("────────", "", "", false);
-          menu.addMenuItem("查看全部 (" + self.history.length + " 条)", "showAllHistory:");
+        if (self.history.length > 0) {
+          // 显示最近10条历史
+          const recentHistory = self.history.slice(-10).reverse();
+          
+          recentHistory.forEach((item, index) => {
+            const preview = item.output.substring(0, 30) + (item.output.length > 30 ? "..." : "");
+            menu.addMenuItem(preview, "loadFromHistory:", self.history.length - 1 - index);
+          });
+          
+          if (self.history.length > 10) {
+            menu.addMenuItem("────────", "", "", false);
+            menu.addMenuItem("查看全部 (" + self.history.length + " 条)", "showAllHistory:");
+          }
+        } else {
+          menu.addMenuItem("暂无历史记录", "", "", false);
         }
         
         menu.rowHeight = 35;
@@ -619,30 +599,6 @@ var SimplePanelController = JSB.defineClass(
     
     // === 设置相关 ===
     
-    toggleAutoProcess: function() {
-      self.config.autoProcess = !self.config.autoProcess;
-      
-      if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log("🔧 切换自动处理状态为: " + self.config.autoProcess);
-      }
-      
-      if (typeof Menu !== "undefined") {
-        Menu.dismissCurrentMenu();
-      }
-      
-      if (typeof MNUtil !== "undefined") {
-        MNUtil.showHUD("自动处理: " + (self.config.autoProcess ? "已开启" : "已关闭"));
-      }
-      
-      // 更新自动处理指示器
-      self.updateAutoProcessIndicator();
-      
-      // 延迟重新显示菜单，让用户看到反馈
-      NSTimer.scheduledTimerWithTimeInterval(0.3, false, () => {
-        self.showSettings(self.settingsButton);
-      });
-    },
-    
     toggleSaveHistory: function() {
       self.config.saveHistory = !self.config.saveHistory;
       
@@ -653,11 +609,6 @@ var SimplePanelController = JSB.defineClass(
       if (typeof MNUtil !== "undefined") {
         MNUtil.showHUD("保存历史: " + (self.config.saveHistory ? "已开启" : "已关闭"));
       }
-      
-      // 延迟重新显示菜单，让用户看到反馈
-      NSTimer.scheduledTimerWithTimeInterval(0.3, false, () => {
-        self.showSettings(self.settingsButton);
-      });
     },
     
     clearHistory: function() {
@@ -784,93 +735,15 @@ var SimplePanelController = JSB.defineClass(
       return true;
     },
     
-    textViewDidChange: function(textView) {
-      if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log("📝 textViewDidChange 被调用，自动处理状态: " + self.config.autoProcess);
-      }
-      
-      if (textView === self.inputField) {
-        // 忽略占位文本
-        if (textView.text === "在这里输入文本..." || textView.text === "") {
-          return;
-        }
-        
-        // 自动处理
-        if (self.config.autoProcess) {
-          if (typeof MNUtil !== "undefined" && MNUtil.log) {
-            MNUtil.log("⚡ 触发自动处理");
-          }
-          
-          // 清除之前的定时器
-          if (self.autoProcessTimer) {
-            self.autoProcessTimer.invalidate();
-          }
-          
-          // 显示正在处理的视觉反馈
-          if (self.statusIndicator) {
-            self.statusIndicator.backgroundColor = "#FFA500"; // 橙色表示处理中
-            self.statusIndicator.title = "⚡";
-          }
-          
-          // 设置新的延迟处理（减少延迟到 0.3 秒）
-          self.autoProcessTimer = NSTimer.scheduledTimerWithTimeInterval(0.3, false, () => {
-            self.isAutoProcessing = true;  // 标记为自动处理
-            self.processText();
-            self.isAutoProcessing = false;  // 重置标记
-            
-            // 恢复状态指示器
-            if (self.statusIndicator) {
-              self.statusIndicator.title = "•";
-            }
-          });
-        }
-      }
+    textViewDidChange: function() {
+      // 目前不需要处理文本变化
     },
     
     // === 辅助方法 ===
     
-    updateAutoProcessIndicator: function() {
-      if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log("🔄 更新自动处理指示器，状态: " + self.config.autoProcess);
-      }
-      
-      if (self.autoProcessIndicator) {
-        if (self.config.autoProcess) {
-          self.autoProcessIndicator.title = "自动: 开";
-          self.autoProcessIndicator.backgroundColor = "#4CAF50";
-          self.autoProcessIndicator.opacity = 1.0;
-        } else {
-          self.autoProcessIndicator.title = "自动: 关";
-          self.autoProcessIndicator.backgroundColor = "#00000020";
-          self.autoProcessIndicator.opacity = 0.8;
-        }
-      } else {
-        if (typeof MNUtil !== "undefined" && MNUtil.log) {
-          MNUtil.log("⚠️ autoProcessIndicator 不存在");
-        }
-      }
-    },
-    
-    toggleAutoProcessQuick: function() {
-      self.config.autoProcess = !self.config.autoProcess;
-      self.updateAutoProcessIndicator();
-      
-      if (typeof MNUtil !== "undefined") {
-        MNUtil.showHUD("自动处理: " + (self.config.autoProcess ? "已开启" : "已关闭"));
-      }
-      
-      // 如果开启了自动处理且输入框有内容，立即处理
-      if (self.config.autoProcess && self.inputField.text && self.inputField.text !== "在这里输入文本...") {
-        self.processText();
-      }
-    },
-    
     // 清理方法
     dealloc: function() {
-      // 清理定时器
-      if (self.autoProcessTimer) {
-        self.autoProcessTimer.invalidate();
-      }
+      // 目前无需清理
     }
   }
 );

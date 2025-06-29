@@ -149,12 +149,12 @@ JSB.newAddon = function (mainPath) {
         
         // 定义菜单项 - 无参数方法不需要冒号
         var commandTable = [
-          {title: '🔧  文本处理', object: self, selector: 'openTextProcessor', param: null},
-          {title: '📝  快速笔记', object: self, selector: 'openQuickNote', param: null},
-          {title: '🔍  搜索替换', object: self, selector: 'openSearchReplace', param: null},
-          {title: '——————', object: null, selector: '', param: null},
+          {title: '🔧  文本处理', object: self, selector: 'openTextProcessor', param: ""},
+          {title: '📝  快速笔记', object: self, selector: 'openQuickNote', param: ""},
+          {title: '🔍  搜索替换', object: self, selector: 'openSearchReplace', param: ""},
+          {title: '——————', object: self, selector: 'doNothing', param: ""},
           {title: '⚙️  设置', object: self, selector: 'showSettingsMenu', param: button},
-          {title: '💡  帮助', object: self, selector: 'showHelp', param: null}
+          {title: '💡  帮助', object: self, selector: 'showHelp', param: ""}
         ];
         
         // 检查 Menu 类是否存在
@@ -659,15 +659,17 @@ JSB.newAddon = function (mainPath) {
             }
             
             var settingsTable = [
-              {title: saveHistory ? "✓ 保存历史" : "  保存历史", object: self, selector: "toggleSaveHistory", param: null},
-              {title: "——————", object: null, selector: "", param: null},
-              {title: "🔄  云同步设置", object: self, selector: "showSyncSettingsMenu", param: validButton},
-              {title: "🗑  清空历史", object: self, selector: "clearHistory", param: null},
-              {title: "——————", object: null, selector: "", param: null},
-              {title: "📤  导出配置", object: self, selector: "exportConfig", param: null},
-              {title: "📥  导入配置", object: self, selector: "importConfig", param: null},
-              {title: "——————", object: null, selector: "", param: null},
-              {title: "🔄  重置设置", object: self, selector: "resetSettings", param: null}
+              {title: saveHistory ? "✓ 保存历史" : "  保存历史", object: self, selector: "toggleSaveHistory", param: ""},
+              {title: "——————", object: self, selector: "doNothing", param: ""},
+              {title: "🔄  云同步设置 ▸", object: self, selector: "showSyncSettingsMenu", param: validButton},
+              {title: "🗑  清空历史", object: self, selector: "clearHistory", param: ""},
+              {title: "——————", object: self, selector: "doNothing", param: ""},
+              {title: "📤  导出配置", object: self, selector: "exportConfig", param: ""},
+              {title: "📥  导入配置", object: self, selector: "importConfig", param: ""},
+              {title: "——————", object: self, selector: "doNothing", param: ""},
+              {title: "🔄  重置设置", object: self, selector: "resetSettings", param: ""},
+              {title: "——————", object: self, selector: "doNothing", param: ""},
+              {title: "⬅️  返回主菜单", object: self, selector: "showMenu", param: validButton}
             ];
             
             var menu = new Menu(validButton, self, 250, 2);
@@ -727,12 +729,14 @@ JSB.newAddon = function (mainPath) {
             }
             
             var syncTable = [
-              {title: autoSync ? "✓ 自动同步" : "  自动同步", object: self, selector: "toggleAutoSync", param: null},
-              {title: "——————", object: null, selector: "", param: null},
+              {title: autoSync ? "✓ 自动同步" : "  自动同步", object: self, selector: "toggleAutoSync", param: ""},
+              {title: "——————", object: self, selector: "doNothing", param: ""},
               {title: syncSource === "none" ? "● 不同步" : "○ 不同步", object: self, selector: "setSyncSource:", param: "none"},
               {title: syncSource === "iCloud" ? "● iCloud" : "○ iCloud", object: self, selector: "setSyncSource:", param: "iCloud"},
-              {title: "——————", object: null, selector: "", param: null},
-              {title: "🔄  立即同步", object: self, selector: "manualSync", param: null}
+              {title: "——————", object: self, selector: "doNothing", param: ""},
+              {title: "🔄  立即同步", object: self, selector: "manualSync", param: ""},
+              {title: "——————", object: self, selector: "doNothing", param: ""},
+              {title: "⬅️  返回设置", object: self, selector: "showSettingsMenu", param: validButton}
             ];
             
             var menu = new Menu(validButton, self, 250, 2);
@@ -740,6 +744,11 @@ JSB.newAddon = function (mainPath) {
             menu.show();
           }
         });
+      },
+      
+      // 空方法，用于分隔线
+      doNothing: function() {
+        // 不做任何事情，只是为了避免崩溃
       },
       
       // 设置相关操作

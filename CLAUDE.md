@@ -78,6 +78,38 @@ MN-Addon/
 
 **违反此原则会导致功能丢失、用户工作被破坏，是绝对不可接受的错误。**
 
+### ⚠️ JSB 框架 self 引用规范（极其重要）
+
+**绝对禁止在方法内部使用 `var self = this` 或 `let self = this`！**
+
+在 JSB 框架中，`this` 的行为与标准 JavaScript 不同，必须使用以下模式：
+
+1. **正确做法**：
+   ```javascript
+   // 文件顶部定义获取实例函数
+   const getControllerName = () => self
+   
+   // 在方法内部使用
+   viewDidLoad: function() {
+     let self = getControllerName()  // ✅ 正确
+     // ... 使用 self
+   }
+   ```
+
+2. **错误做法**：
+   ```javascript
+   viewDidLoad: function() {
+     var self = this  // ❌ 错误！在 JSB 框架中不起作用
+     let self = this  // ❌ 错误！同样不起作用
+   }
+   ```
+
+3. **参考示例**（来自 mnai）：
+   - webviewController.js: `const getChatglmController = ()=>self`
+   - 所有方法内部都使用：`let self = getChatglmController()`
+
+**记住**：这个错误已经被重复犯了多次，必须彻底避免！每次在 JSB.defineClass 的方法中需要引用实例时，都必须使用获取实例函数的方式。
+
 ## 📚 MarginNote4 核心概念
 
 ### 文档与笔记系统

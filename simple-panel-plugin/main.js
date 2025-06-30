@@ -8,6 +8,255 @@ if (typeof JSB !== 'undefined' && typeof JSB.require === 'function') {
 }
 
 JSB.newAddon = function (mainPath) {
+  // 层级菜单管理器
+  var HierarchicalMenuManager = {
+    activeMenus: [], // 存储当前活动的菜单
+    menuData: {},    // 存储菜单数据结构
+    
+    // 初始化菜单数据
+    init: function() {
+      this.menuData = {
+        main: [
+          {
+            title: '🔧  文本处理',
+            action: { object: 'self', selector: 'openTextProcessor', param: "" }
+          },
+          {
+            title: '📝  快速笔记',
+            action: { object: 'self', selector: 'openQuickNote', param: "" }
+          },
+          {
+            title: '🔍  搜索替换',
+            action: { object: 'self', selector: 'openSearchReplace', param: "" }
+          },
+          {
+            type: 'separator'
+          },
+          {
+            title: '⚙️  设置',
+            submenu: 'settings'
+          },
+          {
+            title: '💡  帮助',
+            action: { object: 'self', selector: 'showHelp', param: "" }
+          }
+        ],
+        settings: [
+          {
+            title: function() { 
+              var saveHistory = false;
+              if (self.panelController && self.panelController.config) {
+                saveHistory = self.panelController.config.saveHistory || false;
+              }
+              return saveHistory ? "✓ 保存历史" : "  保存历史";
+            },
+            action: { object: 'self', selector: 'toggleSaveHistory', param: "" }
+          },
+          {
+            type: 'separator'
+          },
+          {
+            title: '🔄  云同步设置',
+            submenu: 'syncSettings'
+          },
+          {
+            title: '🗑  清空历史',
+            action: { object: 'self', selector: 'clearHistory', param: "" }
+          },
+          {
+            type: 'separator'
+          },
+          {
+            title: '📤  导出配置',
+            action: { object: 'self', selector: 'exportConfig', param: "" }
+          },
+          {
+            title: '📥  导入配置',
+            action: { object: 'self', selector: 'importConfig', param: "" }
+          },
+          {
+            type: 'separator'
+          },
+          {
+            title: '🔄  重置设置',
+            action: { object: 'self', selector: 'resetSettings', param: "" }
+          }
+        ],
+        syncSettings: [
+          {
+            title: function() {
+              var autoSync = false;
+              if (self.panelController && self.panelController.config) {
+                autoSync = self.panelController.config.autoSync || false;
+              }
+              return autoSync ? "✓ 自动同步" : "  自动同步";
+            },
+            action: { object: 'self', selector: 'toggleAutoSync', param: "" }
+          },
+          {
+            type: 'separator'
+          },
+          {
+            title: function() {
+              var syncSource = "none";
+              if (self.panelController && self.panelController.config) {
+                syncSource = self.panelController.config.syncSource || "none";
+              }
+              return syncSource === "none" ? "● 不同步" : "○ 不同步";
+            },
+            action: { object: 'self', selector: 'setSyncSource:', param: "none" }
+          },
+          {
+            title: function() {
+              var syncSource = "none";
+              if (self.panelController && self.panelController.config) {
+                syncSource = self.panelController.config.syncSource || "none";
+              }
+              return syncSource === "iCloud" ? "● iCloud" : "○ iCloud";
+            },
+            action: { object: 'self', selector: 'setSyncSource:', param: "iCloud" }
+          },
+          {
+            type: 'separator'
+          },
+          {
+            title: '🔄  立即同步',
+            action: { object: 'self', selector: 'manualSync', param: "" }
+          }
+        ]
+      };
+    },
+    
+    // 显示菜单
+    showMenu: function(menuId, button, parentMenu) {
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("🎯 HierarchicalMenuManager: 显示菜单 " + menuId);
+      }
+      
+      var menuItems = this.menuData[menuId];
+      if (!menuItems) {
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log("❌ HierarchicalMenuManager: 菜单 " + menuId + " 不存在");
+        }
+        return;
+      }
+      
+      // 如果是主菜单，关闭所有菜单
+      if (menuId === 'main') {
+        this.closeAllMenus();
+      }
+      
+      // 如果有父菜单，只关闭同级和子级菜单
+      if (parentMenu) {
+        var parentIndex = this.activeMenus.indexOf(parentMenu);
+        if (parentIndex !== -1) {
+          // 关闭所有子菜单
+          for (var i = this.activeMenus.length - 1; i > parentIndex; i--) {
+            var menu = this.activeMenus[i];
+            if (menu && menu.dismiss) {
+              menu.dismiss();
+            }
+            this.activeMenus.pop();
+          }
+        }
+      }
+      
+      // 计算菜单方向
+      var direction = 2; // 默认向下
+      if (parentMenu) {
+        direction = 4; // 子菜单向右
+      }
+      
+      // 创建新菜单
+      var menu = new Menu(button, self, 250, direction);
+      var that = this;
+      
+      // 保存当前菜单信息到 self 以便在方法中访问
+      self._currentMenuManager = that;
+      self._currentMenu = menu;
+      self._parentMenu = parentMenu;
+      
+      // 添加菜单项
+      menuItems.forEach(function(item, index) {
+        if (item.type === 'separator') {
+          menu.addMenuItem("——————", "doNothing", "");
+        } else {
+          var title = typeof item.title === 'function' ? item.title() : item.title;
+          
+          if (item.submenu) {
+            // 为子菜单创建一个唯一的方法名
+            var methodName = "showSubmenu_" + item.submenu;
+            
+            // 动态创建方法
+            self[methodName] = function(sender) {
+              // 延迟显示子菜单
+              NSTimer.scheduledTimerWithTimeInterval(0.01, false, function() {
+                self._currentMenuManager.showMenu(item.submenu, sender, self._currentMenu);
+              });
+            };
+            
+            // 添加菜单项
+            menu.addMenuItem(title + " ▸", methodName + ":", button);
+          } else if (item.action) {
+            // 普通菜单项
+            menu.addMenuItem(title, item.action.selector, item.action.param);
+          }
+        }
+      });
+      
+      // 显示菜单
+      menu.show();
+      this.activeMenus.push(menu);
+      
+      // 监听菜单关闭
+      this.watchMenuDismiss(menu);
+    },
+    
+    // 监听菜单关闭
+    watchMenuDismiss: function(menu) {
+      var that = this;
+      // 延迟检查菜单是否已关闭
+      NSTimer.scheduledTimerWithTimeInterval(0.1, true, function(timer) {
+        if (!menu || !menu.view || menu.view.hidden || !menu.view.window) {
+          timer.invalidate();
+          // 从活动菜单列表中移除
+          var index = that.activeMenus.indexOf(menu);
+          if (index !== -1) {
+            that.activeMenus.splice(index, 1);
+            // 如果这个菜单有子菜单，也要关闭
+            that.closeMenusAfterIndex(index);
+          }
+        }
+      });
+    },
+    
+    // 关闭指定索引之后的所有菜单
+    closeMenusAfterIndex: function(index) {
+      for (var i = this.activeMenus.length - 1; i > index; i--) {
+        var menu = this.activeMenus[i];
+        if (menu && menu.dismiss) {
+          menu.dismiss();
+        }
+        this.activeMenus.pop();
+      }
+    },
+    
+    // 关闭所有菜单
+    closeAllMenus: function() {
+      this.activeMenus.forEach(function(menu) {
+        if (menu && menu.dismiss) {
+          menu.dismiss();
+        }
+      });
+      this.activeMenus = [];
+      
+      // 也关闭旧的菜单系统
+      if (typeof Menu !== "undefined" && Menu.dismissCurrentMenu) {
+        Menu.dismissCurrentMenu();
+      }
+    }
+  };
+  
   // 定义插件主类
   var SimplePlugin = JSB.defineClass(
     'SimplePlugin : JSExtension',
@@ -23,6 +272,9 @@ JSB.newAddon = function (mainPath) {
         if (typeof MNUtil !== "undefined" && MNUtil.log) {
           MNUtil.log("🚀 Simple Panel: sceneWillConnect");
         }
+        
+        // 初始化层级菜单管理器
+        HierarchicalMenuManager.init();
         
         // 创建控制面板控制器
         self.panelController = SimplePanelController.new();
@@ -147,30 +399,27 @@ JSB.newAddon = function (mainPath) {
           self.addonBar = button.superview.superview;
         }
         
-        // 定义菜单项 - 无参数方法不需要冒号
-        var commandTable = [
-          {title: '🔧  文本处理', object: self, selector: 'openTextProcessor', param: ""},
-          {title: '📝  快速笔记', object: self, selector: 'openQuickNote', param: ""},
-          {title: '🔍  搜索替换', object: self, selector: 'openSearchReplace', param: ""},
-          {title: '——————', object: self, selector: 'doNothing', param: ""},
-          {title: '⚙️  设置', object: self, selector: 'showSettingsMenu', param: button},
-          {title: '💡  帮助', object: self, selector: 'showHelp', param: ""}
-        ];
-        
-        // 检查 Menu 类是否存在
+        // 使用层级菜单系统
         if (typeof Menu !== "undefined") {
           if (typeof MNUtil !== "undefined" && MNUtil.log) {
-            MNUtil.log("✅ Simple Panel: Menu 类存在，创建菜单");
+            MNUtil.log("✅ Simple Panel: 使用层级菜单系统");
           }
-          
-          var menu = new Menu(button, self, 200, 2);
-          menu.addMenuItems(commandTable);
-          menu.show();
+          HierarchicalMenuManager.showMenu('main', button);
         } else {
           // 使用原生 popover 作为降级方案
           if (typeof MNUtil !== "undefined" && MNUtil.log) {
             MNUtil.log("⚠️ Simple Panel: Menu 类不存在，使用原生 popover");
           }
+          
+          // 定义菜单项作为降级方案
+          var commandTable = [
+            {title: '🔧  文本处理', object: self, selector: 'openTextProcessor', param: ""},
+            {title: '📝  快速笔记', object: self, selector: 'openQuickNote', param: ""},
+            {title: '🔍  搜索替换', object: self, selector: 'openSearchReplace', param: ""},
+            {title: '——————', object: self, selector: 'doNothing', param: ""},
+            {title: '⚙️  设置', object: self, selector: 'showSettingsMenu', param: button},
+            {title: '💡  帮助', object: self, selector: 'showHelp', param: ""}
+          ];
           
           // 创建菜单控制器
           var menuController = MenuController.new();
@@ -749,6 +998,9 @@ JSB.newAddon = function (mainPath) {
       // 空方法，用于分隔线
       doNothing: function() {
         // 不做任何事情，只是为了避免崩溃
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log("🔸 Simple Panel: 分隔线被点击");
+        }
       },
       
       // 设置相关操作

@@ -24,11 +24,11 @@ var SimplePanelController = JSB.defineClass(
       button.layer.masksToBounds = true;
       button.tag = tag;
       
-      // 添加事件处理
-      button.addTargetActionForControlEvents(self, "switchModeByButton:", 1 << 6);
+      // 添加事件处理 - 使用 this 而不是 self
+      button.addTargetActionForControlEvents(this, "switchModeByButton:", 1 << 6);
       
       // 添加触摸开始事件用于调试
-      button.addTargetActionForControlEvents(self, "buttonTouchDown:", 1 << 0);
+      button.addTargetActionForControlEvents(this, "buttonTouchDown:", 1 << 0);
       
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
         MNUtil.log("✅ Simple Panel: 按钮创建完成 - tag=" + tag + ", title=" + title);
@@ -38,14 +38,14 @@ var SimplePanelController = JSB.defineClass(
     },
     
     // 按钮按下时调试
-    'buttonTouchDown:': function(button) {
+    buttonTouchDown: function(button) {
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
         MNUtil.log("👆 Simple Panel: 按钮被按下 - tag=" + button.tag);
       }
     },
     
     // 通过按钮切换模式 - 注意方法名必须与事件绑定时一致
-    'switchModeByButton:': function(button) {
+    switchModeByButton: function(button) {
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
         MNUtil.log("🔘 Simple Panel: switchModeByButton: 被调用");
         MNUtil.log("   - button = " + button);
@@ -561,10 +561,7 @@ var SimplePanelController = JSB.defineClass(
     instantMinimize: function() {
       self.isMinimized = !self.isMinimized;
       
-      // 使用 CATransaction 禁用隐式动画
-      CATransaction.begin();
-      CATransaction.setDisableActions(true);
-      
+      // 直接设置 frame，不使用 CATransaction（避免在 JSBox 环境中出现兼容性问题）
       if (self.isMinimized) {
         self.view.frame = {x: self.view.frame.x, y: self.view.frame.y, width: 200, height: 40};
         self.inputField.hidden = true;
@@ -578,8 +575,6 @@ var SimplePanelController = JSB.defineClass(
         self.toolbar.hidden = false;
         self.minimizeButton.setTitleForState("−", 0);
       }
-      
-      CATransaction.commit();
       
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
         MNUtil.log("🔄 Simple Panel: " + (self.isMinimized ? "已最小化" : "已恢复") + "（即时响应）");

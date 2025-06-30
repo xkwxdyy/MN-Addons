@@ -1339,14 +1339,33 @@ class MNMath {
    */
   static addNewIdeaNote(note, title) {
     // 生成卡片
-    let ideaNote = MNNote.clone(this.types.思路.templateNoteId)
-    note.addChild(ideaNote)
+    let ideaNote = MNNote.clone(this.types.思路.templateNoteId);
+    
     // 处理标题
-    ideaNote.title = this.createTitlePrefix(this.types.思路.prefixName, this.createChildNoteTitlePrefixContent(note)) + title
-    // 处理链接
-    note.appendMarkdownComment(HtmlMarkdownUtils.createHtmlMarkdownText(title,"idea"))  // 加入思路 htmlMD
-    note.appendNoteLink(ideaNote,"Both")  // 双向链接
-    this.moveCommentsArrToField(note, "Y, Z", this.getIdeaLinkMoveToField(note))  // 移动 note 的两个评论
+    let prefixContent = this.createChildNoteTitlePrefixContent(note);
+    
+    // 如果父卡片也是思路卡片，使用 💡 和父卡片内容
+    if (this.getNoteType(note) === "思路") {
+      // 获取父卡片的 content 部分
+      let parentTitleParts = this.parseNoteTitle(note);
+      
+      // 在前缀内容后加入 💡 和父卡片内容
+      prefixContent = prefixContent + "｜💡 " + parentTitleParts.content;
+    }
+    
+    ideaNote.title = this.createTitlePrefix(this.types.思路.prefixName, prefixContent) + title;
+    
+    // 设置完标题后再添加为子卡片
+    note.addChild(ideaNote);
+    
+    // 处理链接和评论 - 评论内容保持原样，不做特殊处理
+    note.appendMarkdownComment(HtmlMarkdownUtils.createHtmlMarkdownText(title, "idea"));  // 加入思路 htmlMD
+    note.appendNoteLink(ideaNote, "Both");  // 双向链接
+    this.moveCommentsArrToField(note, "Y, Z", this.getIdeaLinkMoveToField(note));  // 移动 note 的两个评论
+
+    MNUtil.undoGrouping(()=>{
+      ideaNote.focusInMindMap(0.3)
+    })
   }
 
   /**
@@ -1434,9 +1453,17 @@ class MNMath {
    */
   static createChildNoteTitlePrefixContent(note) {
     let titleParts = this.parseNoteTitle(note);
-    switch (this.getNoteType(note)) {
+    let noteType = this.getNoteType(note);
+    
+    switch (noteType) {
       case '归类':
-        return titleParts.content
+        return titleParts.content;
+      case '问题':
+        // 问题卡片的子思路前面加上 ❓ 强调这是针对问题的思路
+        return titleParts.prefixContent + "｜❓" + titleParts.content;
+      case '思路':
+        // 思路卡片的子思路只返回 prefixContent，具体处理在 addNewIdeaNote 中
+        return titleParts.prefixContent;
       default:
         return titleParts.prefixContent + "｜" + titleParts.content;
     }

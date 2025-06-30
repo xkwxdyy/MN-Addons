@@ -8,309 +8,8 @@ if (typeof JSB !== 'undefined' && typeof JSB.require === 'function') {
 }
 
 JSB.newAddon = function (mainPath) {
-  // 层级菜单管理器
-  var HierarchicalMenuManager = {
-    activeMenus: [], // 存储当前活动的菜单
-    menuData: {},    // 存储菜单数据结构
-    
-    // 初始化菜单数据
-    init: function() {
-      this.menuData = {
-        main: [
-          {
-            title: '🔧  文本处理',
-            selector: 'openTextProcessor',
-            param: ""
-          },
-          {
-            title: '📝  快速笔记',
-            selector: 'openQuickNote',
-            param: ""
-          },
-          {
-            title: '🔍  搜索替换',
-            selector: 'openSearchReplace',
-            param: ""
-          },
-          {
-            type: 'separator'
-          },
-          {
-            title: '⚙️  设置',
-            submenu: 'settings'
-          },
-          {
-            title: '💡  帮助',
-            selector: 'showHelp',
-            param: ""
-          }
-        ],
-        settings: [
-          {
-            title: function() { 
-              var saveHistory = false;
-              // 这里暂时使用 self，在调用时会绑定正确的上下文
-              if (self && self.panelController && self.panelController.config) {
-                saveHistory = self.panelController.config.saveHistory || false;
-              }
-              return saveHistory ? "✓ 保存历史" : "  保存历史";
-            },
-            selector: 'toggleSaveHistory',
-            param: ""
-          },
-          {
-            type: 'separator'
-          },
-          {
-            title: '🔄  云同步设置',
-            submenu: 'syncSettings'
-          },
-          {
-            title: '🗑  清空历史',
-            selector: 'clearHistory',
-            param: ""
-          },
-          {
-            type: 'separator'
-          },
-          {
-            title: '📤  导出配置',
-            selector: 'exportConfig',
-            param: ""
-          },
-          {
-            title: '📥  导入配置',
-            selector: 'importConfig',
-            param: ""
-          },
-          {
-            type: 'separator'
-          },
-          {
-            title: '🔄  重置设置',
-            selector: 'resetSettings',
-            param: ""
-          }
-        ],
-        syncSettings: [
-          {
-            title: function() {
-              var autoSync = false;
-              if (self.panelController && self.panelController.config) {
-                autoSync = self.panelController.config.autoSync || false;
-              }
-              return autoSync ? "✓ 自动同步" : "  自动同步";
-            },
-            selector: 'toggleAutoSync',
-            param: ""
-          },
-          {
-            type: 'separator'
-          },
-          {
-            title: function() {
-              var syncSource = "none";
-              if (self.panelController && self.panelController.config) {
-                syncSource = self.panelController.config.syncSource || "none";
-              }
-              return syncSource === "none" ? "● 不同步" : "○ 不同步";
-            },
-            selector: 'setSyncSource:',
-            param: "none"
-          },
-          {
-            title: function() {
-              var syncSource = "none";
-              if (self.panelController && self.panelController.config) {
-                syncSource = self.panelController.config.syncSource || "none";
-              }
-              return syncSource === "iCloud" ? "● iCloud" : "○ iCloud";
-            },
-            selector: 'setSyncSource:',
-            param: "iCloud"
-          },
-          {
-            type: 'separator'
-          },
-          {
-            title: '🔄  立即同步',
-            selector: 'manualSync',
-            param: ""
-          }
-        ]
-      };
-    },
-    
-    // 显示菜单
-    // pluginInstance: SimplePlugin 实例，必须传入
-    showMenu: function(menuId, button, parentMenu, pluginInstance) {
-      if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log("🎯 HierarchicalMenuManager: 显示菜单 " + menuId);
-      }
-      
-      var menuItems = this.menuData[menuId];
-      if (!menuItems) {
-        if (typeof MNUtil !== "undefined" && MNUtil.log) {
-          MNUtil.log("❌ HierarchicalMenuManager: 菜单 " + menuId + " 不存在");
-        }
-        return;
-      }
-      
-      // 如果是主菜单，关闭所有菜单
-      if (menuId === 'main') {
-        this.closeAllMenus();
-      }
-      
-      // 如果有父菜单，只关闭同级和子级菜单
-      if (parentMenu) {
-        var parentIndex = this.activeMenus.indexOf(parentMenu);
-        if (parentIndex !== -1) {
-          // 关闭所有子菜单
-          for (var i = this.activeMenus.length - 1; i > parentIndex; i--) {
-            var menu = this.activeMenus[i];
-            if (menu && menu.dismiss) {
-              menu.dismiss();
-            }
-            this.activeMenus.pop();
-          }
-        }
-      }
-      
-      // 计算菜单方向
-      var direction = 2; // 默认向下
-      if (parentMenu) {
-        direction = 4; // 子菜单向右
-      }
-      
-      // 创建新菜单
-      // 使用传入的插件实例
-      if (!pluginInstance) {
-        if (typeof MNUtil !== "undefined" && MNUtil.log) {
-          MNUtil.log("❌ HierarchicalMenuManager: pluginInstance 未提供");
-        }
-        return;
-      }
-      
-      if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log("🎯 创建菜单时的 pluginInstance: " + pluginInstance.constructor.name);
-      }
-      var menu = new Menu(button, pluginInstance, 250, direction);
-      var that = this;
-      
-      // 保存当前菜单信息到插件实例以便在方法中访问
-      pluginInstance._currentMenuManager = that;
-      pluginInstance._currentMenu = menu;
-      pluginInstance._parentMenu = parentMenu;
-      
-      // 添加菜单项
-      menuItems.forEach(function(item, index) {
-        if (item.type === 'separator') {
-          menu.addMenuItem("——————", "doNothing", "");
-        } else {
-          // 如果 title 是函数，使用 pluginInstance 作为上下文调用
-          var title = typeof item.title === 'function' ? item.title.call(pluginInstance) : item.title;
-          
-          if (item.submenu) {
-            // 为子菜单创建一个唯一的方法名
-            var methodName = "showSubmenu_" + item.submenu;
-            
-            // 在调试时记录方法创建
-            if (typeof MNUtil !== "undefined" && MNUtil.log) {
-              MNUtil.log("🔨 创建子菜单方法: " + methodName);
-              MNUtil.log("🔍 pluginInstance 对象类型: " + pluginInstance.constructor.name);
-              MNUtil.log("🔍 pluginInstance 是否已有此方法: " + (pluginInstance[methodName] ? "是" : "否"));
-            }
-            
-            // 使用闭包保存 submenu 信息和必要的引用
-            (function(submenuId, manager, currentMenu) {
-              pluginInstance[methodName] = function(sender) {
-                if (typeof MNUtil !== "undefined" && MNUtil.log) {
-                  MNUtil.log("🔸 子菜单方法被调用: " + methodName + ", submenu=" + submenuId);
-                  MNUtil.log("🔸 sender 类型: " + (sender ? sender.constructor.name : "null"));
-                  MNUtil.log("🔸 this 类型: " + (this ? this.constructor.name : "null"));
-                }
-                
-                // 延迟显示子菜单
-                NSTimer.scheduledTimerWithTimeInterval(0.01, false, function() {
-                  // 获取实际的按钮对象（处理 MNButton 代理）
-                  var actualButton = sender;
-                  if (sender && sender.button && typeof sender.button.convertRectToView === 'function') {
-                    actualButton = sender.button;
-                  }
-                  
-                  // 显示子菜单 - 使用闭包中保存的引用
-                  manager.showMenu(submenuId, actualButton || button, currentMenu, pluginInstance);
-                });
-              };
-            })(item.submenu, that, menu);
-            
-            // 验证方法是否创建成功
-            if (typeof MNUtil !== "undefined" && MNUtil.log) {
-              MNUtil.log("🔍 方法创建后验证: " + methodName + " = " + (typeof pluginInstance[methodName]));
-            }
-            
-            // 添加菜单项 - 注意 selector 格式
-            // 根据 mnai 的经验，有参数的方法需要冒号
-            menu.addMenuItem(title + " ▸", methodName + ":", button);
-          } else if (item.selector) {
-            // 普通菜单项
-            menu.addMenuItem(title, item.selector, item.param || "");
-          }
-        }
-      });
-      
-      // 显示菜单
-      menu.show();
-      this.activeMenus.push(menu);
-      
-      // 监听菜单关闭
-      this.watchMenuDismiss(menu);
-    },
-    
-    // 监听菜单关闭
-    watchMenuDismiss: function(menu) {
-      var that = this;
-      // 延迟检查菜单是否已关闭
-      NSTimer.scheduledTimerWithTimeInterval(0.1, true, function(timer) {
-        if (!menu || !menu.view || menu.view.hidden || !menu.view.window) {
-          timer.invalidate();
-          // 从活动菜单列表中移除
-          var index = that.activeMenus.indexOf(menu);
-          if (index !== -1) {
-            that.activeMenus.splice(index, 1);
-            // 如果这个菜单有子菜单，也要关闭
-            that.closeMenusAfterIndex(index);
-          }
-        }
-      });
-    },
-    
-    // 关闭指定索引之后的所有菜单
-    closeMenusAfterIndex: function(index) {
-      for (var i = this.activeMenus.length - 1; i > index; i--) {
-        var menu = this.activeMenus[i];
-        if (menu && menu.dismiss) {
-          menu.dismiss();
-        }
-        this.activeMenus.pop();
-      }
-    },
-    
-    // 关闭所有菜单
-    closeAllMenus: function() {
-      this.activeMenus.forEach(function(menu) {
-        if (menu && menu.dismiss) {
-          menu.dismiss();
-        }
-      });
-      this.activeMenus = [];
-      
-      // 也关闭旧的菜单系统
-      if (typeof Menu !== "undefined" && Menu.dismissCurrentMenu) {
-        Menu.dismissCurrentMenu();
-      }
-    }
-  };
+  // 获取插件实例的辅助函数
+  const getSimplePluginInstance = () => self;
   
   // 定义插件主类
   var SimplePlugin = JSB.defineClass(
@@ -327,9 +26,6 @@ JSB.newAddon = function (mainPath) {
         if (typeof MNUtil !== "undefined" && MNUtil.log) {
           MNUtil.log("🚀 Simple Panel: sceneWillConnect");
         }
-        
-        // 初始化层级菜单管理器
-        HierarchicalMenuManager.init();
         
         // 创建控制面板控制器
         self.panelController = SimplePanelController.new();
@@ -439,6 +135,9 @@ JSB.newAddon = function (mainPath) {
       
       // 显示主菜单
       showMenu: function (button) {
+        // 确保 self 引用正确
+        var self = getSimplePluginInstance();
+        
         // 调试日志
         if (typeof MNUtil !== "undefined" && MNUtil.log) {
           MNUtil.log("📋 Simple Panel: showMenu called");
@@ -454,13 +153,20 @@ JSB.newAddon = function (mainPath) {
           self.addonBar = button.superview.superview;
         }
         
-        // 使用层级菜单系统
+        // 使用 Menu 类（参考 mnai 的实现）
         if (typeof Menu !== "undefined") {
-          if (typeof MNUtil !== "undefined" && MNUtil.log) {
-            MNUtil.log("✅ Simple Panel: 使用层级菜单系统");
-          }
-          // 传入插件实例 self
-          HierarchicalMenuManager.showMenu('main', button, null, self);
+          var commandTable = [
+            {title: '🔧  文本处理', object: self, selector: 'openTextProcessor', param: ""},
+            {title: '📝  快速笔记', object: self, selector: 'openQuickNote', param: ""},
+            {title: '🔍  搜索替换', object: self, selector: 'openSearchReplace', param: ""},
+            {title: '——————', object: self, selector: 'doNothing', param: ""},
+            {title: '⚙️  设置 ▸', object: self, selector: 'showSubmenu_settings:', param: button},
+            {title: '💡  帮助', object: self, selector: 'showHelp', param: ""}
+          ];
+          
+          var menu = new Menu(button, self, 250, 2);
+          menu.addMenuItems(commandTable);
+          menu.show();
         } else {
           // 使用原生 popover 作为降级方案
           if (typeof MNUtil !== "undefined" && MNUtil.log) {
@@ -909,147 +615,99 @@ JSB.newAddon = function (mainPath) {
         }
       },
       
-      // 显示设置菜单
-      showSettingsMenu: function(button) {
-        // 关闭主菜单
-        if (typeof Menu !== "undefined" && Menu.dismissCurrentMenu) {
-          Menu.dismissCurrentMenu();
+      // 显示设置子菜单
+      showSubmenu_settings: function(sender) {
+        var self = getSimplePluginInstance();
+        
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log("🔸 显示设置子菜单");
         }
         
-        // 小延迟后显示子菜单
-        NSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {
-          if (typeof Menu !== "undefined") {
-            // 获取有效的按钮对象
-            var validButton = button;
-            
-            // 如果没有有效按钮，尝试使用工具栏按钮
-            if (!validButton || typeof validButton.convertRectToView !== 'function') {
-              if (self.addonButton && typeof self.addonButton.convertRectToView === 'function') {
-                validButton = self.addonButton;
-              } else if (self.addonBar) {
-                // 如果还是没有，尝试找到工具栏中的第一个按钮
-                var buttons = self.addonBar.subviews.filter(function(v) {
-                  return v && typeof v.convertRectToView === 'function';
-                });
-                if (buttons.length > 0) {
-                  validButton = buttons[0];
-                }
-              }
-            }
-            
-            // 如果还是没有有效按钮，使用默认位置
-            if (!validButton || typeof validButton.convertRectToView !== 'function') {
-              if (typeof MNUtil !== "undefined") {
-                MNUtil.showHUD("无法显示设置菜单");
-              }
-              return;
-            }
-            
-            // 获取配置
-            var saveHistory = false;
-            var syncSource = "none";
-            var autoSync = false;
-            
-            if (self.panelController) {
-              // 使用 configManager 或者直接从 config 对象获取
-              if (self.panelController.configManager) {
-                saveHistory = self.panelController.configManager.get("saveHistory", false);
-                syncSource = self.panelController.configManager.get("syncSource", "none");
-                autoSync = self.panelController.configManager.get("autoSync", false);
-              } else if (self.panelController.config) {
-                saveHistory = self.panelController.config.saveHistory || false;
-                syncSource = self.panelController.config.syncSource || "none";
-                autoSync = self.panelController.config.autoSync || false;
-              }
-            }
-            
-            var settingsTable = [
-              {title: saveHistory ? "✓ 保存历史" : "  保存历史", object: self, selector: "toggleSaveHistory", param: ""},
-              {title: "——————", object: self, selector: "doNothing", param: ""},
-              {title: "🔄  云同步设置 ▸", object: self, selector: "showSyncSettingsMenu", param: validButton},
-              {title: "🗑  清空历史", object: self, selector: "clearHistory", param: ""},
-              {title: "——————", object: self, selector: "doNothing", param: ""},
-              {title: "📤  导出配置", object: self, selector: "exportConfig", param: ""},
-              {title: "📥  导入配置", object: self, selector: "importConfig", param: ""},
-              {title: "——————", object: self, selector: "doNothing", param: ""},
-              {title: "🔄  重置设置", object: self, selector: "resetSettings", param: ""},
-              {title: "——————", object: self, selector: "doNothing", param: ""},
-              {title: "⬅️  返回主菜单", object: self, selector: "showMenu", param: validButton}
-            ];
-            
-            var menu = new Menu(validButton, self, 250, 2);
-            menu.addMenuItems(settingsTable);
-            menu.show();
-          }
-        });
-      },
-      
-      // 显示云同步设置菜单
-      showSyncSettingsMenu: function(button) {
         // 关闭当前菜单
         if (typeof Menu !== "undefined" && Menu.dismissCurrentMenu) {
           Menu.dismissCurrentMenu();
         }
         
-        // 小延迟后显示子菜单
+        // 延迟显示子菜单
         NSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {
-          if (typeof Menu !== "undefined") {
-            // 获取有效的按钮对象
-            var validButton = button;
-            
-            // 如果没有有效按钮，尝试使用工具栏按钮
-            if (!validButton || typeof validButton.convertRectToView !== 'function') {
-              if (self.addonButton && typeof self.addonButton.convertRectToView === 'function') {
-                validButton = self.addonButton;
-              } else if (self.addonBar) {
-                // 如果还是没有，尝试找到工具栏中的第一个按钮
-                var buttons = self.addonBar.subviews.filter(function(v) {
-                  return v && typeof v.convertRectToView === 'function';
-                });
-                if (buttons.length > 0) {
-                  validButton = buttons[0];
-                }
-              }
-            }
-            
-            // 如果还是没有有效按钮，使用默认位置
-            if (!validButton || typeof validButton.convertRectToView !== 'function') {
-              if (typeof MNUtil !== "undefined") {
-                MNUtil.showHUD("无法显示同步设置菜单");
-              }
-              return;
-            }
-            
-            var syncSource = "none";
-            var autoSync = false;
-            
-            if (self.panelController) {
-              if (self.panelController.configManager) {
-                syncSource = self.panelController.configManager.get("syncSource", "none");
-                autoSync = self.panelController.configManager.get("autoSync", false);
-              } else if (self.panelController.config) {
-                syncSource = self.panelController.config.syncSource || "none";
-                autoSync = self.panelController.config.autoSync || false;
-              }
-            }
-            
-            var syncTable = [
-              {title: autoSync ? "✓ 自动同步" : "  自动同步", object: self, selector: "toggleAutoSync", param: ""},
-              {title: "——————", object: self, selector: "doNothing", param: ""},
-              {title: syncSource === "none" ? "● 不同步" : "○ 不同步", object: self, selector: "setSyncSource:", param: "none"},
-              {title: syncSource === "iCloud" ? "● iCloud" : "○ iCloud", object: self, selector: "setSyncSource:", param: "iCloud"},
-              {title: "——————", object: self, selector: "doNothing", param: ""},
-              {title: "🔄  立即同步", object: self, selector: "manualSync", param: ""},
-              {title: "——————", object: self, selector: "doNothing", param: ""},
-              {title: "⬅️  返回设置", object: self, selector: "showSettingsMenu", param: validButton}
-            ];
-            
-            var menu = new Menu(validButton, self, 250, 2);
-            menu.addMenuItems(syncTable);
-            menu.show();
+          var saveHistory = false;
+          if (self.panelController && self.panelController.config) {
+            saveHistory = self.panelController.config.saveHistory || false;
           }
+          
+          var settingsTable = [
+            {title: saveHistory ? "✓ 保存历史" : "  保存历史", object: self, selector: "toggleSaveHistory", param: ""},
+            {title: "——————", object: self, selector: "doNothing", param: ""},
+            {title: "🔄  云同步设置 ▸", object: self, selector: "showSubmenu_syncSettings:", param: sender},
+            {title: "🗑  清空历史", object: self, selector: "clearHistory", param: ""},
+            {title: "——————", object: self, selector: "doNothing", param: ""},
+            {title: "📤  导出配置", object: self, selector: "exportConfig", param: ""},
+            {title: "📥  导入配置", object: self, selector: "importConfig", param: ""},
+            {title: "——————", object: self, selector: "doNothing", param: ""},
+            {title: "🔄  重置设置", object: self, selector: "resetSettings", param: ""}
+          ];
+          
+          // 获取有效的按钮
+          var button = sender;
+          if (!button || typeof button.convertRectToView !== 'function') {
+            button = self.addonButton;
+          }
+          
+          var menu = new Menu(button, self, 250, 2);
+          menu.addMenuItems(settingsTable);
+          menu.show();
         });
       },
+      
+      // 显示同步设置子菜单
+      showSubmenu_syncSettings: function(sender) {
+        var self = getSimplePluginInstance();
+        
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log("🔸 显示同步设置子菜单");
+        }
+        
+        // 关闭当前菜单
+        if (typeof Menu !== "undefined" && Menu.dismissCurrentMenu) {
+          Menu.dismissCurrentMenu();
+        }
+        
+        // 延迟显示子菜单
+        NSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {
+          var syncSource = "none";
+          var autoSync = false;
+          
+          if (self.panelController) {
+            if (self.panelController.configManager) {
+              syncSource = self.panelController.configManager.get("syncSource", "none");
+              autoSync = self.panelController.configManager.get("autoSync", false);
+            } else if (self.panelController.config) {
+              syncSource = self.panelController.config.syncSource || "none";
+              autoSync = self.panelController.config.autoSync || false;
+            }
+          }
+          
+          var syncTable = [
+            {title: autoSync ? "✓ 自动同步" : "  自动同步", object: self, selector: "toggleAutoSync", param: ""},
+            {title: "——————", object: self, selector: "doNothing", param: ""},
+            {title: syncSource === "none" ? "● 不同步" : "○ 不同步", object: self, selector: "setSyncSource:", param: "none"},
+            {title: syncSource === "iCloud" ? "● iCloud" : "○ iCloud", object: self, selector: "setSyncSource:", param: "iCloud"},
+            {title: "——————", object: self, selector: "doNothing", param: ""},
+            {title: "🔄  立即同步", object: self, selector: "manualSync", param: ""}
+          ];
+          
+          // 获取有效的按钮
+          var button = sender;
+          if (!button || typeof button.convertRectToView !== 'function') {
+            button = self.addonButton;
+          }
+          
+          var menu = new Menu(button, self, 250, 2);
+          menu.addMenuItems(syncTable);
+          menu.show();
+        });
+      },
+      
       
       // 空方法，用于分隔线
       doNothing: function() {

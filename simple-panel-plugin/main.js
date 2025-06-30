@@ -644,7 +644,9 @@ JSB.newAddon = function (mainPath) {
             {title: "📤  导出配置", object: self, selector: "exportConfig", param: ""},
             {title: "📥  导入配置", object: self, selector: "importConfig", param: ""},
             {title: "——————", object: self, selector: "doNothing", param: ""},
-            {title: "🔄  重置设置", object: self, selector: "resetSettings", param: ""}
+            {title: "🔄  重置设置", object: self, selector: "resetSettings", param: ""},
+            {title: "——————", object: self, selector: "doNothing", param: ""},
+            {title: "⬅️  返回", object: self, selector: "showMenu:", param: self.addonButton}
           ];
           
           // 获取有效的按钮
@@ -693,7 +695,9 @@ JSB.newAddon = function (mainPath) {
             {title: syncSource === "none" ? "● 不同步" : "○ 不同步", object: self, selector: "setSyncSource:", param: "none"},
             {title: syncSource === "iCloud" ? "● iCloud" : "○ iCloud", object: self, selector: "setSyncSource:", param: "iCloud"},
             {title: "——————", object: self, selector: "doNothing", param: ""},
-            {title: "🔄  立即同步", object: self, selector: "manualSync", param: ""}
+            {title: "🔄  立即同步", object: self, selector: "manualSync", param: ""},
+            {title: "——————", object: self, selector: "doNothing", param: ""},
+            {title: "⬅️  返回设置", object: self, selector: "showSubmenu_settings:", param: self.addonButton}
           ];
           
           // 获取有效的按钮

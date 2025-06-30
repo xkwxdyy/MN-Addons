@@ -1,9 +1,312 @@
 JSB.newAddon = function (mainPath) {
   JSB.require('utils')
   if (!pluginDemoUtils.checkMNUtilsFolder(mainPath)) {return undefined}
+  /**
+   *   用餐厅来理解多个类
+
+    想象你要开一家餐厅，你不会让一个人做所有事情，而是会分工：
+
+    餐厅系统 {
+      总经理    // 负责整体运营
+      前台经理  // 负责接待客人
+      厨房经理  // 负责做菜
+      收银经理  // 负责结账
+    }
+
+    * MNToolbar 的三个类
+
+    在 MNToolbar 项目中，也是这样分工的：
+
+    1. MNToolbar（总经理）- main.js
+
+    var MNToolbarClass = JSB.defineClass('MNToolbar : JSExtension', {
+      // 我是总经理，负责：
+      // - 插件的启动和关闭
+      // - 协调各个部门
+      // - 处理 MarginNote 的通知
+    })
+
+    2. toolbarController（前台经理）- webviewController.js
+
+    var toolbarController = JSB.defineClass('toolbarController : 
+    UIViewController', {
+      // 我是前台经理，负责：
+      // - 管理工具栏界面
+      // - 处理按钮点击
+      // - 显示和隐藏工具栏
+    })
+
+    3. settingController（设置经理）- settingController.js
+
+    var settingController = JSB.defineClass('settingController : 
+    UIViewController', {
+      // 我是设置经理，负责：
+      // - 管理设置界面
+      // - 保存用户配置
+      // - 处理设置选项
+    })
+
+    为什么要分开？
+
+    1. 各司其职
+
+    // ❌ 如果所有代码都放在一个类里
+    MNToolbar {
+      处理插件启动()
+      管理工具栏()
+      处理按钮点击()
+      管理设置界面()
+      保存配置()
+      // ... 1000行代码，太乱了！
+    }
+
+    // ✅ 分开后，每个类职责清晰
+    MNToolbar {
+      处理插件启动()
+    }
+
+    toolbarController {
+      管理工具栏()
+      处理按钮点击()
+    }
+
+    settingController {
+      管理设置界面()
+      保存配置()
+    }
+
+    2. 更容易维护
+
+    // 需要修改工具栏？只需要看 webviewController.js
+    // 需要修改设置？只需要看 settingController.js
+    // 不用在一个巨大的文件里找来找去
+
+    它们如何协作？
+
+    // 1. 主类创建其他类的实例
+    MNToolbar {
+      notebookWillOpen: function() {
+        // 创建工具栏
+        self.addonController = toolbarController.new()
+
+        // 需要设置时，创建设置界面
+        self.settingController = settingController.new()
+      }
+    }
+
+    // 2. 它们之间可以互相调用
+    toolbarController {
+      openSettings: function() {
+        // 工具栏可以打开设置
+        self.settingController.show()
+      }
+    }
+
+    * 用建房子来理解
+
+    想象你要建一栋房子：
+
+    // 总承包商（MNToolbar - main.js）
+    总承包商 {
+      开工: function() {
+        // 我需要各种专业团队
+        this.装修队 = 装修团队.new()     // toolbarController
+        this.水电工 = 水电团队.new()     // settingController
+      }
+    }
+
+    // 装修团队（toolbarController）
+    装修团队 {
+      刷墙: function() { }
+      铺地板: function() { }
+    }
+
+    // 水电团队（settingController）
+    水电团队 {
+      装电线: function() { }
+      装水管: function() { }
+    }
+   */
   JSB.require('webviewController');
   JSB.require('settingController');
   /** @return {MNPluginDemoClass} */
+  /**
+   * self 其实充当了 this 的角色
+   * 
+   * 
+   * 为什么都叫 self？
+
+  这是 JSB 框架的约定：
+  - 每个类被实例化时，JSB 都会在该文件的作用域内创建一个 self 变量
+  - 这个 self 指向当前文件定义的类的实例
+
+  就像每个班级都有"班长"，但每个班的班长是不同的人：
+  - 一班的班长 = 张三
+  - 二班的班长 = 李四
+  - 虽然都叫"班长"，但指的不是同一个人
+
+
+  * 为什么要替代 this？
+
+  正常 JavaScript 中
+
+  class Person {
+    constructor(name) {
+      this.name = name;  // this 指向实例
+    }
+
+    sayHello() {
+      console.log(`我是${this.name}`);  // this 正常工作
+    }
+  }
+
+  const 小明 = new Person("小明");
+  小明.sayHello();  // "我是小明" ✅
+
+  JSB 框架中的问题
+
+  var MNToolbarClass = JSB.defineClass("MNToolbar", {
+    sceneWillConnect: function() {
+      // ❌ 这里的 this 可能不是你想的那个对象！
+      // JSB 框架调用这个方法时，this 的指向可能被改变
+      this.someProperty = "value";  // 可能出错！
+    }
+  })
+
+  self 就是"正确的 this"
+
+  // JSB 框架的解决方案
+  const getMNToolbarClass = ()=>self  // self 是"正确的 this"
+
+  sceneWillConnect: function() {
+    let self = getMNToolbarClass()  // 获取"正确的 this"
+    self.someProperty = "value"      // 相当于正常情况下的 
+  this.someProperty
+  }
+
+
+  对比理解
+
+  标准 JavaScript
+
+  class MyClass {
+    method() {
+      this.property = "value"      // 直接用 this
+      this.doSomething()          // 直接用 this
+    }
+  }
+
+  JSB 框架
+
+  var MyClass = JSB.defineClass("MyClass", {
+    method: function() {
+      let self = getMyClass()      // 先获取"正确的 this"
+      self.property = "value"      // 用 self 代替 this
+      self.doSomething()          // 用 self 代替 this
+    }
+  })
+
+  为什么 JSB 中 this 不可靠？
+
+  JSB 是 JavaScript 和 Objective-C 的桥接框架，当 Objective-C 调用
+  JavaScript 方法时：
+
+  // Objective-C 调用时可能是这样的：
+  [某个对象 performSelector:@selector(sceneWillConnect)]
+
+  // 这时 JavaScript 中的 this 可能指向：
+  // - 桥接对象
+  // - 全局对象
+  // - undefined
+  // 总之不是你的实例！
+
+  * 用演员和角色来理解
+
+  // 正常情况（标准 JavaScript）
+  演员 {
+    台词: function() {
+      console.log(`我是${this.名字}`)  // "我"就是这个演员
+    }
+  }
+
+  // JSB 框架的情况
+  演员 {
+    台词: function() {
+      // 导演："这里的'我'可能指向摄像机、灯光师或其他人..."
+      // 演员："那我怎么说台词？"
+      // 导演："用这个办法..."
+
+      let self = 找到真正的我()  // 确保 self 是这个演员
+      console.log(`我是${self.名字}`)  // 现在肯定是对的
+    }
+  }
+
+
+   *   self vs this
+
+  | 特性   | this         | self (通过函数获取) |
+  |------|--------------|---------------|
+  | 含义   | "谁在调用我"      | "插件实例"        |
+  | 可靠性  | 在 JSB 中不可靠 ❌ | 始终可靠 ✅        |
+  | 使用方式 | 直接使用         | 通过函数获取        |
+
+    记忆口诀
+
+    this 会变，不可靠
+    self 全局，要函数找
+    getMNToolbarClass 是电话
+    打通就能找到真身了
+
+    标准流程
+
+    每当你在 JSB 的方法中需要访问实例时：
+
+    // 1. 不要用 this
+    // 2. 调用对应的 get 函数
+    let self = getXXXController()
+    // 3. 现在可以安全使用 self 了
+    self.属性 = 值
+    self.方法()
+
+    这就像是：
+    - this = "看谁在叫我"（会变）
+    - self = "我的身份证"（不变）
+    - getXXX() = "身份证查询系统"（可靠）
+
+
+   * 为什么不直接用 self？
+
+  你可能会问：为什么不直接写 self.init() 呢？
+
+  // ❌ 可能出问题
+  sceneWillConnect: function() {
+    self.init()  // 如果有多个插件，self 可能被覆盖！
+  }
+
+  // ✅ 更安全
+  sceneWillConnect: function() {
+    let self = getMNToolbarClass()  // 确保获取的是这个插件的实例
+    self.init()
+  }
+
+
+  * 总结 * 
+
+  // self 的角色
+  self = 稳定可靠的 this
+  this = 不稳定不可靠的指向
+
+  // 使用规则
+  在 JSB 框架中：
+  - 永远不要用 this
+  - 永远用 self 来代替 this
+  - self 就是"正确的 this"
+
+  简单记忆：
+  - 标准 JS：用 this
+  - JSB 框架：用 self（通过 getXXX 函数获取）
+  - self = "可靠的 this"
+   */
   const getPluginDemoClass = ()=>self  
   /**
    * JSB.defineClass 接受三个参数：
@@ -93,7 +396,7 @@ JSB.newAddon = function (mainPath) {
       - 退出登录影响所有窗口
    */
   var MNPluginDemoClass = JSB.defineClass(
-    'PluginDemo : JSExtension',
+    'PluginDemo : JSExtension', // 继承插件基类，能接收 MarginNote 事件,   - JSExtension：像是"插件许可证"，有了它才能作为 MarginNote 插件
     { 
       /* Instance members */
       /**

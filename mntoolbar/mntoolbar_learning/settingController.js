@@ -1,40 +1,119 @@
-// JSB.require('utils');
-// JSB.require('base64')
 /** @return {settingController} */
 const getSettingController = ()=>self
-var settingController = JSB.defineClass('settingController : UIViewController <NSURLConnectionDelegate,UIImagePickerControllerDelegate,UIWebViewDelegate>', {
+
+/**
+ * 尖括号 = "我会做这些事"
+
+  想象你去应聘工作：
+
+  // 普通简历
+  张三 : 程序员
+
+  // 带技能的简历  
+  张三 : 程序员 <会开车, 会做饭, 会英语>
+
+  在代码中：
+
+  // 普通的视图控制器
+  toolbarController : UIViewController
+
+  // 带"技能"的视图控制器
+  toolbarController : UIViewController <UIImagePickerControllerDelegate,
+  UINavigationControllerDelegate>
+
+    实际例子：拍照功能
+
+  1. 声明"我会处理照片"
+
+  // 尖括号里声明：我会处理图片选择
+  toolbarController : UIViewController <UIImagePickerControllerDelegate>
+
+  2. 因为有这个"技能"，所以能接收照片
+
+  // 用户选好照片后，系统会调用这个方法
+  imagePickerControllerDidFinishPickingMediaWithInfo: function(picker, 
+  info) {
+    let image = info.UIImagePickerControllerOriginalImage  // 获取照片
+    MNUtil.copyImage(image.pngData())                     // 复制到剪贴板
+    MNNote.new(self.currentNoteId).paste()                 // 粘贴到笔记
+  }
+
+  // 用户取消选择时
+  imagePickerControllerDidCancel: function(picker) {
+    // 关闭相机/相册界面
+  }
+
+  3. 使用这个"技能"
+
+  // 打开相机
+  case "camera":
+    this.imagePickerController = UIImagePickerController.new()
+    this.imagePickerController.delegate = this  // 
+  重要！告诉相机："选好照片后通知我"
+    this.imagePickerController.sourceType = 1   // 1 = 相机
+    break;
+
+  // 打开相册  
+  case "photo":
+    this.imagePickerController = UIImagePickerController.new()
+    this.imagePickerController.delegate = this  // 
+  重要！告诉相册："选好照片后通知我"
+    this.imagePickerController.sourceType = 0   // 0 = 相册
+    break;
+
+  * 为什么需要"技能认证"？
+
+  想象如果没有这个机制：
+
+  // ❌ 错误：相机不知道该通知谁
+  相机拍完照片后：
+    "照片拍好了！可是...该给谁呢？"
+
+  // ✅ 正确：有了技能认证
+  相机拍完照片后：
+    "照片拍好了！我要通知那个有 UIImagePickerControllerDelegate 技能的人"
+    → 调用 imagePickerControllerDidFinishPickingMediaWithInfo
+ */
+ 
+  /**
+   *   UIViewController <NSURLConnectionDelegate,UIImagePickerControllerDelegate,UIWebViewDelegate> 表示 toolbarController：
+  1. 是一个视图控制器（基本身份）
+  2. 还会处理图片选择（UIImagePickerControllerDelegate）
+  3. 还会处理导航（UINavigationControllerDelegate）
+   */
+var settingController = JSB.defineClass('settingController : UIViewController <NSURLConnectionDelegate,UIImagePickerControllerDelegate,UIWebViewDelegate>', {  // 继承视图控制器，能管理界面, UIViewController：像是"界面管理许可证"，有了它才能管理界面
   viewDidLoad: function() {
     let self = getSettingController()
-try {
-    self.init()
-    Frame.set(self.view,50,50,355,500)
-    self.lastFrame = self.view.frame;
-    self.currentFrame = self.view.frame
-    self.isMainWindow = true
-    self.title = "main"
-    self.preAction = ""
-    self.test = [0]
-    self.moveDate = Date.now()
-    self.color = [true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true]
-    self.view.layer.shadowOffset = {width: 0, height: 0};
-    self.view.layer.shadowRadius = 15;
-    self.view.layer.shadowOpacity = 0.5;
-    self.view.layer.shadowColor = UIColor.colorWithWhiteAlpha(0.5, 1);
-    self.view.layer.cornerRadius = 11
-    self.view.layer.opacity = 1.0
-    self.view.layer.borderColor = MNUtil.hexColorAlpha("#9bb2d6",0.8)
-    self.view.layer.borderWidth = 0
-    // self.view.backgroundColor = MNUtil.hexColorAlpha("#9bb2d6",0.8)
-    self.config = {}
-    if (!self.config.delay) {
-      self.config.delay = 0
+    try {
+        self.init()
+        Frame.set(self.view,50,50,355,500)
+        self.lastFrame = self.view.frame;
+        self.currentFrame = self.view.frame
+        self.isMainWindow = true
+        self.title = "main"
+        self.preAction = ""
+        self.test = [0]
+        self.moveDate = Date.now()
+        self.color = [true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true]
+        self.view.layer.shadowOffset = {width: 0, height: 0};
+        self.view.layer.shadowRadius = 15;
+        self.view.layer.shadowOpacity = 0.5;
+        self.view.layer.shadowColor = UIColor.colorWithWhiteAlpha(0.5, 1);
+        self.view.layer.cornerRadius = 11
+        self.view.layer.opacity = 1.0
+        self.view.layer.borderColor = MNUtil.hexColorAlpha("#9bb2d6",0.8)
+        self.view.layer.borderWidth = 0
+        // self.view.backgroundColor = MNUtil.hexColorAlpha("#9bb2d6",0.8)
+        self.config = {}
+        if (!self.config.delay) {
+          self.config.delay = 0
+        }
+        if (!self.settingView) {
+          self.createSettingView()
+        }
+    } catch (error) {
+      MNUtil.showHUD(error)
     }
-    if (!self.settingView) {
-      self.createSettingView()
-    }
-} catch (error) {
-  MNUtil.showHUD(error)
-}
     self.createButton("maxButton","maxButtonTapped:")
     self.maxButton.setTitleForState('➕', 0);
     self.maxButton.titleLabel.font = UIFont.systemFontOfSize(10);
@@ -78,7 +157,7 @@ try {
   },
   viewWillDisappear: function(animated) {
   },
-viewWillLayoutSubviews: function() {
+  viewWillLayoutSubviews: function() {
     let buttonHeight = 25
     // self.view.frame = self.currentFrame
     var viewFrame = self.view.bounds;
@@ -90,7 +169,7 @@ viewWillLayoutSubviews: function() {
     self.refreshLayout()
 
   },
-webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
+  webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     try {
     let self = getSettingController()
     let requestURL = request.URL().absoluteString()
@@ -199,52 +278,52 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,250,0)
   },
   resetConfig: async function (param) {
-  try {
-    let self = getSettingController()
-    self.checkPopoverController()
-    let isEditingDynamic = self.dynamicButton.selected
-    switch (param) {
-      case "config":
-        let confirm = await MNUtil.confirm("MN Toolbar: Clear all configs?", "MN Toolbar: 清除所有配置？")
-        if (confirm) {
-          pluginDemoConfig.reset("config")
-          // self.pluginDemoController.setToolbarButton(action,pluginDemoConfig.actions)
-          // self.pluginDemoController.actions = actions
-          self.setButtonText()
-          self.setTextview()
-          MNUtil.showHUD("Reset prompts")
-        }
-        break;
-      case "order":
-        pluginDemoConfig.reset("order")
-        if (!isEditingDynamic) {
-          self.setButtonText()
-        }
-        MNUtil.showHUD("Reset fixed order")
-        break;
-      case "dynamicOrder":
-        pluginDemoConfig.reset("dynamicOrder")
-        if (isEditingDynamic) {
-          self.setButtonText()
-        }
-        MNUtil.showHUD("Reset dynamic order")
-        break;
-      case "image":
-        pluginDemoConfig.imageScale = {}
-        pluginDemoConfig.save("MNToolbar_imageScale")
-        let keys = pluginDemoConfig.getDefaultActionKeys()
-        keys.forEach((key)=>{
-          pluginDemoConfig.imageConfigs[key] = MNUtil.getImage(pluginDemoConfig.mainPath+"/"+pluginDemoConfig.getAction(key).image+".png")
-        })
-        MNUtil.postNotification("refreshToolbarButton", {})
-        MNUtil.showHUD("Reset button image")
-        break
-      default:
-        break;
+    try {
+      let self = getSettingController()
+      self.checkPopoverController()
+      let isEditingDynamic = self.dynamicButton.selected
+      switch (param) {
+        case "config":
+          let confirm = await MNUtil.confirm("MN Toolbar: Clear all configs?", "MN Toolbar: 清除所有配置？")
+          if (confirm) {
+            pluginDemoConfig.reset("config")
+            // self.pluginDemoController.setToolbarButton(action,pluginDemoConfig.actions)
+            // self.pluginDemoController.actions = actions
+            self.setButtonText()
+            self.setTextview()
+            MNUtil.showHUD("Reset prompts")
+          }
+          break;
+        case "order":
+          pluginDemoConfig.reset("order")
+          if (!isEditingDynamic) {
+            self.setButtonText()
+          }
+          MNUtil.showHUD("Reset fixed order")
+          break;
+        case "dynamicOrder":
+          pluginDemoConfig.reset("dynamicOrder")
+          if (isEditingDynamic) {
+            self.setButtonText()
+          }
+          MNUtil.showHUD("Reset dynamic order")
+          break;
+        case "image":
+          pluginDemoConfig.imageScale = {}
+          pluginDemoConfig.save("MNToolbar_imageScale")
+          let keys = pluginDemoConfig.getDefaultActionKeys()
+          keys.forEach((key)=>{
+            pluginDemoConfig.imageConfigs[key] = MNUtil.getImage(pluginDemoConfig.mainPath+"/"+pluginDemoConfig.getAction(key).image+".png")
+          })
+          MNUtil.postNotification("refreshToolbarButton", {})
+          MNUtil.showHUD("Reset button image")
+          break
+        default:
+          break;
+      }
+    } catch (error) {
+      MNUtil.showHUD("Error in resetConfig: "+error)
     }
-  } catch (error) {
-    MNUtil.showHUD("Error in resetConfig: "+error)
-  }
   },
   closeButtonTapped: async function() {
     self.blur()
@@ -998,6 +1077,8 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     MNUtil.postNotification("refreshToolbarButton",{})
   }
 });
+
+
 settingController.prototype.init = function () {
   this.custom = false;
   this.customMode = "None"
@@ -1005,164 +1086,162 @@ settingController.prototype.init = function () {
   this.searchedText = '';
 }
 
-
 settingController.prototype.changeButtonOpacity = function(opacity) {
-    this.moveButton.layer.opacity = opacity
-    this.maxButton.layer.opacity = opacity
-    // this.closeButton.layer.opacity = opacity
+  this.moveButton.layer.opacity = opacity
+  this.maxButton.layer.opacity = opacity
+  // this.closeButton.layer.opacity = opacity
 }
 settingController.prototype.setButtonLayout = function (button,targetAction) {
-    button.autoresizingMask = (1 << 0 | 1 << 3);
-    button.setTitleColorForState(UIColor.whiteColor(),0);
-    button.setTitleColorForState(pluginDemoConfig.highlightColor, 1);
-    MNButton.setColor(button, "#9bb2d6", 0.8)
-    button.layer.cornerRadius = 8;
-    button.layer.masksToBounds = true;
-    if (targetAction) {
-      button.addTargetActionForControlEvents(this, targetAction, 1 << 6);
-    }
-    this.view.addSubview(button);
+  button.autoresizingMask = (1 << 0 | 1 << 3);
+  button.setTitleColorForState(UIColor.whiteColor(),0);
+  button.setTitleColorForState(pluginDemoConfig.highlightColor, 1);
+  MNButton.setColor(button, "#9bb2d6", 0.8)
+  button.layer.cornerRadius = 8;
+  button.layer.masksToBounds = true;
+  if (targetAction) {
+    button.addTargetActionForControlEvents(this, targetAction, 1 << 6);
+  }
+  this.view.addSubview(button);
 }
-
 
 settingController.prototype.createButton = function (buttonName,targetAction,superview) {
-    this[buttonName] = UIButton.buttonWithType(0);
-    this[buttonName].autoresizingMask = (1 << 0 | 1 << 3);
-    this[buttonName].setTitleColorForState(UIColor.whiteColor(),0);
-    this[buttonName].setTitleColorForState(pluginDemoConfig.highlightColor, 1);
-    MNButton.setColor(this[buttonName], "#9bb2d6", 0.8)
-    this[buttonName].layer.cornerRadius = 8;
-    this[buttonName].layer.masksToBounds = true;
-    this[buttonName].titleLabel.font = UIFont.systemFontOfSize(16);
+  this[buttonName] = UIButton.buttonWithType(0);
+  this[buttonName].autoresizingMask = (1 << 0 | 1 << 3);
+  this[buttonName].setTitleColorForState(UIColor.whiteColor(),0);
+  this[buttonName].setTitleColorForState(pluginDemoConfig.highlightColor, 1);
+  MNButton.setColor(this[buttonName], "#9bb2d6", 0.8)
+  this[buttonName].layer.cornerRadius = 8;
+  this[buttonName].layer.masksToBounds = true;
+  this[buttonName].titleLabel.font = UIFont.systemFontOfSize(16);
 
-    if (targetAction) {
-      this[buttonName].addTargetActionForControlEvents(this, targetAction, 1 << 6);
-    }
-    if (superview) {
-      this[superview].addSubview(this[buttonName])
-    }else{
-      this.view.addSubview(this[buttonName]);
-    }
-}
-
-settingController.prototype.createSwitch = function (switchName,targetAction,superview) {
-    this[switchName] = UISwitch.new()
-    this.popupEditView.addSubview(this[switchName])
-    this[switchName].on = false
-    this[switchName].hidden = false
-    if (targetAction) {
-      this[switchName].addTargetActionForControlEvents(this, targetAction, 1 << 12);
-    }
-    if (superview) {
-      this[superview].addSubview(this[switchName])
-    }else{
-      this.view.addSubview(this[switchName]);
-    }
-}
-
-settingController.prototype.createScrollView = function (scrollName,superview) {
-  this[scrollName] = UIScrollView.new()
-  this[scrollName].hidden = false
-  this[scrollName].autoresizingMask = (1 << 1 | 1 << 4);
-  this[scrollName].delegate = this
-  this[scrollName].bounces = true
-  this[scrollName].alwaysBounceVertical = true
-  this[scrollName].layer.cornerRadius = 8
-  this[scrollName].backgroundColor = MNUtil.hexColorAlpha("#c0bfbf",0.8)
+  if (targetAction) {
+    this[buttonName].addTargetActionForControlEvents(this, targetAction, 1 << 6);
+  }
   if (superview) {
-    this[superview].addSubview(this[scrollName])
+    this[superview].addSubview(this[buttonName])
   }else{
-    this.view.addSubview(this[scrollName]);
+    this.view.addSubview(this[buttonName]);
   }
 }
 
+settingController.prototype.createSwitch = function (switchName,targetAction,superview) {
+  this[switchName] = UISwitch.new()
+  this.popupEditView.addSubview(this[switchName])
+  this[switchName].on = false
+  this[switchName].hidden = false
+  if (targetAction) {
+    this[switchName].addTargetActionForControlEvents(this, targetAction, 1 << 12);
+  }
+  if (superview) {
+    this[superview].addSubview(this[switchName])
+  }else{
+    this.view.addSubview(this[switchName]);
+  }
+}
+
+settingController.prototype.createScrollView = function (scrollName,superview) {
+this[scrollName] = UIScrollView.new()
+this[scrollName].hidden = false
+this[scrollName].autoresizingMask = (1 << 1 | 1 << 4);
+this[scrollName].delegate = this
+this[scrollName].bounces = true
+this[scrollName].alwaysBounceVertical = true
+this[scrollName].layer.cornerRadius = 8
+this[scrollName].backgroundColor = MNUtil.hexColorAlpha("#c0bfbf",0.8)
+if (superview) {
+  this[superview].addSubview(this[scrollName])
+}else{
+  this.view.addSubview(this[scrollName]);
+}
+}
+
 settingController.prototype.settingViewLayout = function (){
-    let viewFrame = this.view.bounds
-    let width = viewFrame.width
-    let height = viewFrame.height
-    Frame.set(this.maxButton,width*0.5+80,0)
-    Frame.set(this.moveButton,width*0.5-75, 0)
-    Frame.set(this.settingView,0,55,width,height-55)
-    Frame.set(this.configView,0,0,width-2,height-60)
-    Frame.set(this.advanceView,0,0,width-2,height-60)
-    Frame.set(this.popupEditView,0,0,width-2,height-60)
-    Frame.set(this.resizeButton,width-25,height-80)
-    if (width < 650) {
-      Frame.set(this.webviewInput, 5, 195, width-10, height-255)
-      Frame.set(this.titleInput,5,155,width-80,35)
-      Frame.set(this.saveButton,width-70,155)
-      Frame.set(this.templateButton,width-188,199.5)
-      Frame.set(this.runButton,width-35,199.5)
-      Frame.set(this.copyButton,width-158,199.5)
-      Frame.set(this.pasteButton,width-99,199.5)
-      Frame.set(this.scrollview,5,5,width-10,145)
-      // this.scrollview.contentSize = {width:width-20,height:height};
-      Frame.set(this.moveTopButton, width-40, 10)
-      Frame.set(this.moveUpButton, width-40, 45)
-      Frame.set(this.moveDownButton, width-40, 80)
-      Frame.set(this.configReset, width-40, 115)
-    }else{
-      Frame.set(this.webviewInput,305,45,width-310,height-105)
-      Frame.set(this.titleInput,305,5,width-380,35)
-      Frame.set(this.saveButton,width-70,5)
-      Frame.set(this.templateButton,width-188,49.5)
-      Frame.set(this.runButton,width-35,49.5)
-      Frame.set(this.copyButton,width-158,49.5)
-      Frame.set(this.pasteButton,width-99,49.5)
-      Frame.set(this.scrollview,5,5,295,height-65)
-      // this.scrollview.contentSize = {width:295,height:height};
-      Frame.set(this.moveTopButton, 263, 15)
-      Frame.set(this.moveUpButton, 263, 50)
-      Frame.set(this.moveDownButton, 263, 85)
-      Frame.set(this.configReset, 263, 120)
-    }
+  let viewFrame = this.view.bounds
+  let width = viewFrame.width
+  let height = viewFrame.height
+  Frame.set(this.maxButton,width*0.5+80,0)
+  Frame.set(this.moveButton,width*0.5-75, 0)
+  Frame.set(this.settingView,0,55,width,height-55)
+  Frame.set(this.configView,0,0,width-2,height-60)
+  Frame.set(this.advanceView,0,0,width-2,height-60)
+  Frame.set(this.popupEditView,0,0,width-2,height-60)
+  Frame.set(this.resizeButton,width-25,height-80)
+  if (width < 650) {
+    Frame.set(this.webviewInput, 5, 195, width-10, height-255)
+    Frame.set(this.titleInput,5,155,width-80,35)
+    Frame.set(this.saveButton,width-70,155)
+    Frame.set(this.templateButton,width-188,199.5)
+    Frame.set(this.runButton,width-35,199.5)
+    Frame.set(this.copyButton,width-158,199.5)
+    Frame.set(this.pasteButton,width-99,199.5)
+    Frame.set(this.scrollview,5,5,width-10,145)
+    // this.scrollview.contentSize = {width:width-20,height:height};
+    Frame.set(this.moveTopButton, width-40, 10)
+    Frame.set(this.moveUpButton, width-40, 45)
+    Frame.set(this.moveDownButton, width-40, 80)
+    Frame.set(this.configReset, width-40, 115)
+  }else{
+    Frame.set(this.webviewInput,305,45,width-310,height-105)
+    Frame.set(this.titleInput,305,5,width-380,35)
+    Frame.set(this.saveButton,width-70,5)
+    Frame.set(this.templateButton,width-188,49.5)
+    Frame.set(this.runButton,width-35,49.5)
+    Frame.set(this.copyButton,width-158,49.5)
+    Frame.set(this.pasteButton,width-99,49.5)
+    Frame.set(this.scrollview,5,5,295,height-65)
+    // this.scrollview.contentSize = {width:295,height:height};
+    Frame.set(this.moveTopButton, 263, 15)
+    Frame.set(this.moveUpButton, 263, 50)
+    Frame.set(this.moveDownButton, 263, 85)
+    Frame.set(this.configReset, 263, 120)
+  }
 
 
-    let settingFrame = this.settingView.bounds
-    settingFrame.x = 0
-    settingFrame.y = 15
-    settingFrame.height = 40
-    settingFrame.width = settingFrame.width
-    this.tabView.frame = settingFrame
-    Frame.set(this.configButton, 5, 5)
-    Frame.set(this.dynamicButton, this.configButton.frame.x + this.configButton.frame.width+5, 5)
-    Frame.set(this.popupButton, this.dynamicButton.frame.x + this.dynamicButton.frame.width+5, 5)
-    Frame.set(this.advancedButton, this.popupButton.frame.x + this.popupButton.frame.width+5, 5)
-    Frame.set(this.closeButton, width-35, 5)
-    let scrollHeight = 5
-    if (MNUtil.appVersion().type === "macOS") {
-      for (let i = 0; i < pluginDemoConfig.allPopupButtons.length; i++) {
-        let replaceButtonName = "replacePopupButton_"+pluginDemoConfig.allPopupButtons[i]
-        let replaceSwtichName = "replacePopupSwtich_"+pluginDemoConfig.allPopupButtons[i]
-        Frame.set(this[replaceButtonName], 5, 5+i*40, width-10)
-        Frame.set(this[replaceSwtichName], width-33, 5+i*40)
-        scrollHeight = (i+1)*40+5
-      }
-    }else{
-      for (let i = 0; i < pluginDemoConfig.allPopupButtons.length; i++) {
-        let replaceButtonName = "replacePopupButton_"+pluginDemoConfig.allPopupButtons[i]
-        let replaceSwtichName = "replacePopupSwtich_"+pluginDemoConfig.allPopupButtons[i]
-        Frame.set(this[replaceButtonName], 5, 5+i*40, width-65)
-        Frame.set(this[replaceSwtichName], width-55, 6.5+i*40)
-        scrollHeight = (i+1)*40+5
-      }
+  let settingFrame = this.settingView.bounds
+  settingFrame.x = 0
+  settingFrame.y = 15
+  settingFrame.height = 40
+  settingFrame.width = settingFrame.width
+  this.tabView.frame = settingFrame
+  Frame.set(this.configButton, 5, 5)
+  Frame.set(this.dynamicButton, this.configButton.frame.x + this.configButton.frame.width+5, 5)
+  Frame.set(this.popupButton, this.dynamicButton.frame.x + this.dynamicButton.frame.width+5, 5)
+  Frame.set(this.advancedButton, this.popupButton.frame.x + this.popupButton.frame.width+5, 5)
+  Frame.set(this.closeButton, width-35, 5)
+  let scrollHeight = 5
+  if (MNUtil.appVersion().type === "macOS") {
+    for (let i = 0; i < pluginDemoConfig.allPopupButtons.length; i++) {
+      let replaceButtonName = "replacePopupButton_"+pluginDemoConfig.allPopupButtons[i]
+      let replaceSwtichName = "replacePopupSwtich_"+pluginDemoConfig.allPopupButtons[i]
+      Frame.set(this[replaceButtonName], 5, 5+i*40, width-10)
+      Frame.set(this[replaceSwtichName], width-33, 5+i*40)
+      scrollHeight = (i+1)*40+5
     }
-    Frame.set(this.popupScroll, 0, 0, width, height-55)
-    this.popupScroll.contentSize = {width:width,height:scrollHeight}
-    Frame.set(this.editorButton, 5, 5, (width-15)/2,35)
-    Frame.set(this.chatAIButton, 10+(width-15)/2, 5, (width-15)/2,35)
-    Frame.set(this.snipasteButton, 5, 45, (width-15)/2,35)
-    Frame.set(this.autoStyleButton, 10+(width-15)/2, 45, (width-15)/2,35)
-    Frame.set(this.browserButton, 5, 85, (width-15)/2,35)
-    Frame.set(this.OCRButton, 10+(width-15)/2, 85, (width-15)/2,35)
-    Frame.set(this.timerButton, 5, 125, (width-15)/2,35)
-    Frame.set(this.hexInput, 5, 165, width-135,35)
-    Frame.set(this.hexButton, width-125, 165, 120,35)
-    Frame.set(this.iCloudButton, 5, 205, 160,35)
-    Frame.set(this.directionButton, 5, 245, width-10,35)
-    Frame.set(this.dynamicOrderButton, 5, 285, width-10,35)
-    Frame.set(this.exportButton, 170, 205, (width-180)/2,35)
-    Frame.set(this.importButton, 175+(width-180)/2, 205, (width-180)/2,35)
+  }else{
+    for (let i = 0; i < pluginDemoConfig.allPopupButtons.length; i++) {
+      let replaceButtonName = "replacePopupButton_"+pluginDemoConfig.allPopupButtons[i]
+      let replaceSwtichName = "replacePopupSwtich_"+pluginDemoConfig.allPopupButtons[i]
+      Frame.set(this[replaceButtonName], 5, 5+i*40, width-65)
+      Frame.set(this[replaceSwtichName], width-55, 6.5+i*40)
+      scrollHeight = (i+1)*40+5
+    }
+  }
+  Frame.set(this.popupScroll, 0, 0, width, height-55)
+  this.popupScroll.contentSize = {width:width,height:scrollHeight}
+  Frame.set(this.editorButton, 5, 5, (width-15)/2,35)
+  Frame.set(this.chatAIButton, 10+(width-15)/2, 5, (width-15)/2,35)
+  Frame.set(this.snipasteButton, 5, 45, (width-15)/2,35)
+  Frame.set(this.autoStyleButton, 10+(width-15)/2, 45, (width-15)/2,35)
+  Frame.set(this.browserButton, 5, 85, (width-15)/2,35)
+  Frame.set(this.OCRButton, 10+(width-15)/2, 85, (width-15)/2,35)
+  Frame.set(this.timerButton, 5, 125, (width-15)/2,35)
+  Frame.set(this.hexInput, 5, 165, width-135,35)
+  Frame.set(this.hexButton, width-125, 165, 120,35)
+  Frame.set(this.iCloudButton, 5, 205, 160,35)
+  Frame.set(this.directionButton, 5, 245, width-10,35)
+  Frame.set(this.dynamicOrderButton, 5, 285, width-10,35)
+  Frame.set(this.exportButton, 170, 205, (width-180)/2,35)
+  Frame.set(this.importButton, 175+(width-180)/2, 205, (width-180)/2,35)
 }
 
 
@@ -1170,262 +1249,260 @@ settingController.prototype.settingViewLayout = function (){
  * @this {settingController}
  */
 settingController.prototype.createSettingView = function (){
-try {
-  
-
-  this.creatView("settingView","view","#ffffff",0.8)
-  this.settingView.hidden = true
-  // this.settingView.layer.opacity = 0.8
-  this.creatView("tabView","view","#9bb2d6",0.0)
-  this.creatView("configView","settingView","#9bb2d6",0.0)
-
-  this.creatView("popupEditView","settingView","#9bb2d6",0.0)
-  this.popupEditView.hidden = true
-  this.createScrollView("popupScroll", "popupEditView")
-  this.popupScroll.layer.backgroundColor = MNUtil.hexColorAlpha("#c0bfbf",0.0)
-
-  this.creatView("advanceView","settingView","#9bb2d6",0.0)
-  this.advanceView.hidden = true
-
-
-  this.createButton("configButton","configButtonTapped:","tabView")
-  MNButton.setConfig(this.configButton, {color:"#457bd3",alpha:0.9,opacity:1.0,title:"Buttons",font:17,radius:10,bold:true})
-  this.configButton.width = this.configButton.sizeThatFits({width:150,height:30}).width+15
-  this.configButton.height = 30
-  this.configButton.selected = true
-
-  this.createButton("dynamicButton","dynamicButtonTapped:","tabView")
-  MNButton.setConfig(this.dynamicButton, {alpha:0.9,opacity:1.0,title:"Dynamic",font:17,radius:10,bold:true})
-  this.dynamicButton.width = this.dynamicButton.sizeThatFits({width:150,height:30}).width+15
-  this.dynamicButton.height = 30
-  this.dynamicButton.selected = false
-
-  this.createButton("popupButton","popupButtonTapped:","tabView")
-  MNButton.setConfig(this.popupButton, {alpha:0.9,opacity:1.0,title:"Popup",font:17,radius:10,bold:true})
-  this.popupButton.width = this.popupButton.sizeThatFits({width:150,height:30}).width+15
-  this.popupButton.height = 30
-  this.popupButton.selected = false
-
-  this.createButton("advancedButton","advancedButtonTapped:","tabView")
-  MNButton.setConfig(this.advancedButton, {alpha:0.9,opacity:1.0,title:"More",font:17,radius:10,bold:true})
-  this.advancedButton.width = this.advancedButton.sizeThatFits({width:150,height:30}).width+15
-  this.advancedButton.height = 30
-  this.advancedButton.selected = false
-
-  this.createButton("closeButton","closeButtonTapped:","tabView")
-  MNButton.setConfig(this.closeButton, {color:"#e06c75",alpha:0.9,opacity:1.0,radius:10,bold:true})
-  MNButton.setImage(this.closeButton, MNUtil.getImage(pluginDemoConfig.mainPath+"/stop.png"))
-  this.closeButton.width = 30
-  this.closeButton.height = 30
-
-  // this.createButton("editorButton","toggleAddonLogo:","advanceView")
   try {
-    pluginDemoConfig.allPopupButtons.forEach(buttonName=>{
-      let replaceButtonName = "replacePopupButton_"+buttonName
-      let replaceSwtichName = "replacePopupSwtich_"+buttonName
-      this.createButton(replaceButtonName,"changePopupReplace:","popupScroll")
-      let replaceButton = this[replaceButtonName]
-      replaceButton.height = 35
-      replaceButton.id = buttonName
-      let target = pluginDemoConfig.getPopupConfig(buttonName).target
-      if (target) {
-        let actionName = pluginDemoConfig.getAction(pluginDemoConfig.getPopupConfig(buttonName).target).name
-        MNButton.setConfig(replaceButton, {color:"#558fed",alpha:0.9,opacity:1.0,title:buttonName+": "+actionName,font:17,radius:10,bold:true})
-      }else{
-        MNButton.setConfig(replaceButton, {color:"#558fed",alpha:0.9,opacity:1.0,title:buttonName+": ",font:17,radius:10,bold:true})
-      }
-      this.createSwitch(replaceSwtichName, "togglePopupReplace:", "popupScroll")
-      let replaceSwtich = this[replaceSwtichName]
-      replaceSwtich.id = buttonName
-      replaceSwtich.on = pluginDemoConfig.getPopupConfig(buttonName).enabled
-      replaceSwtich.hidden = false
-      replaceSwtich.width = 20
-      replaceSwtich.height = 35
-    })
+    this.creatView("settingView","view","#ffffff",0.8)
+    this.settingView.hidden = true
+    // this.settingView.layer.opacity = 0.8
+    this.creatView("tabView","view","#9bb2d6",0.0)
+    this.creatView("configView","settingView","#9bb2d6",0.0)
+
+    this.creatView("popupEditView","settingView","#9bb2d6",0.0)
+    this.popupEditView.hidden = true
+    this.createScrollView("popupScroll", "popupEditView")
+    this.popupScroll.layer.backgroundColor = MNUtil.hexColorAlpha("#c0bfbf",0.0)
+
+    this.creatView("advanceView","settingView","#9bb2d6",0.0)
+    this.advanceView.hidden = true
+
+
+    this.createButton("configButton","configButtonTapped:","tabView")
+    MNButton.setConfig(this.configButton, {color:"#457bd3",alpha:0.9,opacity:1.0,title:"Buttons",font:17,radius:10,bold:true})
+    this.configButton.width = this.configButton.sizeThatFits({width:150,height:30}).width+15
+    this.configButton.height = 30
+    this.configButton.selected = true
+
+    this.createButton("dynamicButton","dynamicButtonTapped:","tabView")
+    MNButton.setConfig(this.dynamicButton, {alpha:0.9,opacity:1.0,title:"Dynamic",font:17,radius:10,bold:true})
+    this.dynamicButton.width = this.dynamicButton.sizeThatFits({width:150,height:30}).width+15
+    this.dynamicButton.height = 30
+    this.dynamicButton.selected = false
+
+    this.createButton("popupButton","popupButtonTapped:","tabView")
+    MNButton.setConfig(this.popupButton, {alpha:0.9,opacity:1.0,title:"Popup",font:17,radius:10,bold:true})
+    this.popupButton.width = this.popupButton.sizeThatFits({width:150,height:30}).width+15
+    this.popupButton.height = 30
+    this.popupButton.selected = false
+
+    this.createButton("advancedButton","advancedButtonTapped:","tabView")
+    MNButton.setConfig(this.advancedButton, {alpha:0.9,opacity:1.0,title:"More",font:17,radius:10,bold:true})
+    this.advancedButton.width = this.advancedButton.sizeThatFits({width:150,height:30}).width+15
+    this.advancedButton.height = 30
+    this.advancedButton.selected = false
+
+    this.createButton("closeButton","closeButtonTapped:","tabView")
+    MNButton.setConfig(this.closeButton, {color:"#e06c75",alpha:0.9,opacity:1.0,radius:10,bold:true})
+    MNButton.setImage(this.closeButton, MNUtil.getImage(pluginDemoConfig.mainPath+"/stop.png"))
+    this.closeButton.width = 30
+    this.closeButton.height = 30
+
+    // this.createButton("editorButton","toggleAddonLogo:","advanceView")
+    try {
+      pluginDemoConfig.allPopupButtons.forEach(buttonName=>{
+        let replaceButtonName = "replacePopupButton_"+buttonName
+        let replaceSwtichName = "replacePopupSwtich_"+buttonName
+        this.createButton(replaceButtonName,"changePopupReplace:","popupScroll")
+        let replaceButton = this[replaceButtonName]
+        replaceButton.height = 35
+        replaceButton.id = buttonName
+        let target = pluginDemoConfig.getPopupConfig(buttonName).target
+        if (target) {
+          let actionName = pluginDemoConfig.getAction(pluginDemoConfig.getPopupConfig(buttonName).target).name
+          MNButton.setConfig(replaceButton, {color:"#558fed",alpha:0.9,opacity:1.0,title:buttonName+": "+actionName,font:17,radius:10,bold:true})
+        }else{
+          MNButton.setConfig(replaceButton, {color:"#558fed",alpha:0.9,opacity:1.0,title:buttonName+": ",font:17,radius:10,bold:true})
+        }
+        this.createSwitch(replaceSwtichName, "togglePopupReplace:", "popupScroll")
+        let replaceSwtich = this[replaceSwtichName]
+        replaceSwtich.id = buttonName
+        replaceSwtich.on = pluginDemoConfig.getPopupConfig(buttonName).enabled
+        replaceSwtich.hidden = false
+        replaceSwtich.width = 20
+        replaceSwtich.height = 35
+      })
+    } catch (error) {
+      // pluginDemoUtils.addErrorLog(error, "replacePopupEditSwtich")
+    }
+
+    this.createButton("editorButton","toggleAddonLogo:","advanceView")
+    this.editorButton.layer.opacity = 1.0
+    this.editorButton.addon = "MNEditor"
+    this.editorButton.setTitleForState("MNEditor: "+(pluginDemoConfig.checkLogoStatus("MNEditor")?"✅":"❌"),0)
+    this.editorButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
+    MNButton.setColor(this.editorButton, pluginDemoConfig.checkLogoStatus("MNEditor")?"#457bd3":"#9bb2d6",0.8)
+
+    this.createButton("chatAIButton","toggleAddonLogo:","advanceView")
+    this.chatAIButton.layer.opacity = 1.0
+    this.chatAIButton.addon = "MNChatAI"
+    this.chatAIButton.setTitleForState("MNChatAI: "+(pluginDemoConfig.checkLogoStatus("MNChatAI")?"✅":"❌"),0)
+    this.chatAIButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
+    MNButton.setColor(this.chatAIButton, pluginDemoConfig.checkLogoStatus("MNChatAI")?"#457bd3":"#9bb2d6",0.8)
+
+    this.createButton("snipasteButton","toggleAddonLogo:","advanceView")
+    this.snipasteButton.layer.opacity = 1.0
+    this.snipasteButton.addon = "MNSnipaste"
+    this.snipasteButton.setTitleForState("MNSnipaste: "+(pluginDemoConfig.checkLogoStatus("MNSnipaste")?"✅":"❌"),0)
+    this.snipasteButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
+    MNButton.setColor(this.snipasteButton, pluginDemoConfig.checkLogoStatus("MNSnipaste")?"#457bd3":"#9bb2d6",0.8)
+
+    this.createButton("autoStyleButton","toggleAddonLogo:","advanceView")
+    this.autoStyleButton.layer.opacity = 1.0
+    this.autoStyleButton.addon = "MNAutoStyle"
+    this.autoStyleButton.setTitleForState("MNAutoStyle: "+(pluginDemoConfig.checkLogoStatus("MNAutoStyle")?"✅":"❌"),0)
+    this.autoStyleButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
+    MNButton.setColor(this.autoStyleButton, pluginDemoConfig.checkLogoStatus("MNAutoStyle")?"#457bd3":"#9bb2d6",0.8)
+    
+    this.createButton("browserButton","toggleAddonLogo:","advanceView")
+    this.browserButton.layer.opacity = 1.0
+    this.browserButton.addon = "MNBrowser"
+    this.browserButton.setTitleForState("MNBrowser: "+(pluginDemoConfig.checkLogoStatus("MNBrowser")?"✅":"❌"),0)
+    this.browserButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
+    MNButton.setColor(this.browserButton, pluginDemoConfig.checkLogoStatus("MNBrowser")?"#457bd3":"#9bb2d6",0.8)
+
+    this.createButton("OCRButton","toggleAddonLogo:","advanceView")
+    this.OCRButton.layer.opacity = 1.0
+    this.OCRButton.addon = "MNOCR"
+    this.OCRButton.setTitleForState("MNOCR: "+(pluginDemoConfig.checkLogoStatus("MNOCR")?"✅":"❌"),0)
+    this.OCRButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
+    MNButton.setColor(this.OCRButton, pluginDemoConfig.checkLogoStatus("MNOCR")?"#457bd3":"#9bb2d6",0.8)
+
+    this.createButton("timerButton","toggleAddonLogo:","advanceView")
+    this.timerButton.layer.opacity = 1.0
+    this.timerButton.addon = "MNTimer"
+    this.timerButton.setTitleForState("MNTimer: "+(pluginDemoConfig.checkLogoStatus("MNTimer")?"✅":"❌"),0)
+    this.timerButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
+    MNButton.setColor(this.timerButton, pluginDemoConfig.checkLogoStatus("MNTimer")?"#457bd3":"#9bb2d6",0.8)
+
+    this.creatTextView("hexInput","advanceView","#9bb2d6")
+    this.createButton("hexButton","saveButtonColor:","advanceView")
+    this.hexButton.layer.opacity = 1.0
+    this.hexButton.addon = "MNOCR"
+    this.hexButton.setTitleForState("Save Color",0)
+    this.hexButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
+    this.hexInput.text = pluginDemoConfig.buttonConfig.color
+    MNButton.setColor(this.hexButton, pluginDemoConfig.checkLogoStatus("MNOCR")?"#457bd3":"#9bb2d6",0.8)
+
+    this.createButton("iCloudButton","toggleICloudSync:","advanceView")
+    let iCloudSync = pluginDemoConfig.iCloudSync
+    
+    MNButton.setColor(this.iCloudButton, iCloudSync?"#457bd3":"#9bb2d6",0.8)
+    MNButton.setTitle(this.iCloudButton, "iCloud Sync "+(iCloudSync? "✅":"❌"),undefined, true)
+
+    this.createButton("exportButton","exportConfigTapped:","advanceView")
+    MNButton.setTitle(this.exportButton, "Export",undefined, true)
+    MNButton.setColor(this.exportButton, "#457bd3",0.8)
+
+    this.createButton("importButton","importConfigTapped:","advanceView")
+    MNButton.setColor(this.importButton, "#457bd3",0.8)
+    MNButton.setTitle(this.importButton, "Import",undefined, true)
+
+    this.createButton("directionButton","changeToolbarDirection:","advanceView")
+    MNButton.setColor(this.directionButton, "#457bd3",0.8)
+    MNButton.setTitle(this.directionButton, "Toolbar Direction",undefined, true)
+
+    this.createButton("dynamicOrderButton","toggleDynamicOrder:","advanceView")
+    MNButton.setColor(this.dynamicOrderButton, "#457bd3",0.8)
+    MNButton.setTitle(this.dynamicOrderButton, "Enable Dynamic Order: "+(pluginDemoConfig.getWindowState("dynamicOrder")?"✅":"❌"),undefined,true)
+
+    this.createScrollView("scrollview", "configView")
+    // this.scrollview = UIScrollView.new()
+    // this.configView.addSubview(this.scrollview)
+    // this.scrollview.hidden = false
+    // this.scrollview.delegate = this
+    // this.scrollview.bounces = true
+    // this.scrollview.alwaysBounceVertical = true
+    // this.scrollview.layer.cornerRadius = 8
+    // this.scrollview.backgroundColor = MNUtil.hexColorAlpha("#c0bfbf",0.8)
+
+    this.createWebviewInput("configView")
+    this.creatTextView("systemInput","configView")
+    this.systemInput.hidden = true
+
+    this.creatTextView("titleInput","configView","#9bb2d6")
+
+    let text  = "{}"
+    this.setWebviewContent(text)
+
+    this.titleInput.text = text.title
+    // this.titleInput.textColor = MNUtil.hexColorAlpha("#444444", 1.0)
+    this.titleInput.textColor = MNUtil.hexColorAlpha("#ffffff", 1.0)
+    this.titleInput.font = UIFont.boldSystemFontOfSize(16);
+    this.titleInput.contentInset = {top: 0,left: 0,bottom: 0,right: 0}
+    this.titleInput.textContainerInset = {top: 0,left: 0,bottom: 0,right: 0}
+    this.titleInput.layer.backgroundColor = MNUtil.hexColorAlpha("#457bd3", 0.8)
+
+    this.createButton("configReset","resetButtonTapped:","configView")
+    this.configReset.layer.opacity = 1.0
+    this.configReset.setTitleForState("🔄",0)
+    this.configReset.width = 30
+    this.configReset.height = 30
+
+    this.createButton("moveUpButton","moveForwardTapped:","configView")
+    this.moveUpButton.layer.opacity = 1.0
+    this.moveUpButton.setTitleForState("🔼",0)
+    this.moveUpButton.width = 30
+    this.moveUpButton.height = 30
+
+    this.createButton("moveDownButton","moveBackwardTapped:","configView")
+    this.moveDownButton.layer.opacity = 1.0
+    this.moveDownButton.setTitleForState("🔽",0)
+    this.moveDownButton.width = 30
+    this.moveDownButton.height = 30
+
+    this.createButton("moveTopButton","moveTopTapped:","configView")
+    this.moveTopButton.layer.opacity = 1.0
+    this.moveTopButton.setTitleForState("🔝",0)
+    this.moveTopButton.width = 30 //写入属性而不是写入frame中,作为固定参数使用,配合Frame.setLoc可以方便锁死按钮大小
+    this.moveTopButton.height = 30
+
+    this.createButton("templateButton","chooseTemplate:","configView")
+    MNButton.setConfig(this.templateButton, {opacity:0.8,color:"#457bd3"})
+    this.templateButton.layer.cornerRadius = 6
+    this.templateButton.setImageForState(pluginDemoConfig.templateImage,0)
+    this.templateButton.width = 26
+    this.templateButton.height = 26
+
+    this.createButton("copyButton","configCopyTapped:","configView")
+    MNButton.setConfig(this.copyButton, {opacity:0.8,color:"#457bd3",title:"Copy",bold:true})
+    this.copyButton.layer.cornerRadius = 6
+    this.copyButton.width = 55
+    this.copyButton.height = 26
+    // this.copyButton.layer.opacity = 1.0
+    // this.copyButton.setTitleForState("Copy",0)
+
+    this.createButton("pasteButton","configPasteTapped:","configView")
+    MNButton.setConfig(this.pasteButton, {opacity:0.8,color:"#457bd3",title:"Paste",bold:true})
+    this.pasteButton.layer.cornerRadius = 6
+    this.pasteButton.width = 60
+    this.pasteButton.height = 26
+    // this.pasteButton.layer.opacity = 1.0
+    // this.pasteButton.setTitleForState("Paste",0)
+
+    this.createButton("saveButton","configSaveTapped:","configView")
+    // this.saveButton.layer.opacity = 1.0
+    // this.saveButton.setTitleForState("Save",0)
+    MNButton.setConfig(this.saveButton, {opacity:0.8,color:"#e06c75",title:"Save","font":18,bold:true})
+    this.saveButton.width = 65
+    this.saveButton.height = 35
+
+    this.createButton("resizeButton",undefined,"settingView")
+    this.resizeButton.setImageForState(pluginDemoConfig.curveImage,0)
+    MNButton.setConfig(this.resizeButton, {cornerRadius:20,color:"#ffffff",alpha:0.})
+    this.resizeButton.width = 25
+    this.resizeButton.height = 25
+
+
+    this.createButton("runButton","configRunTapped:","configView")
+    MNButton.setConfig(this.runButton, {opacity:0.8,color:"#e06c75"})
+    this.runButton.layer.cornerRadius = 6
+    // MNButton.setConfig(this.runButton, {opacity:1.0,title:"▶️",font:25,color:"#ffffff",alpha:0.})
+    this.runButton.setImageForState(pluginDemoConfig.runImage,0)
+    this.runButton.width = 26
+    this.runButton.height = 26
+
+    let color = ["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9fdc"]
   } catch (error) {
-    // pluginDemoUtils.addErrorLog(error, "replacePopupEditSwtich")
+    pluginDemoUtils.addErrorLog(error, "createSettingView")
   }
-
-  this.createButton("editorButton","toggleAddonLogo:","advanceView")
-  this.editorButton.layer.opacity = 1.0
-  this.editorButton.addon = "MNEditor"
-  this.editorButton.setTitleForState("MNEditor: "+(pluginDemoConfig.checkLogoStatus("MNEditor")?"✅":"❌"),0)
-  this.editorButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
-  MNButton.setColor(this.editorButton, pluginDemoConfig.checkLogoStatus("MNEditor")?"#457bd3":"#9bb2d6",0.8)
-
-  this.createButton("chatAIButton","toggleAddonLogo:","advanceView")
-  this.chatAIButton.layer.opacity = 1.0
-  this.chatAIButton.addon = "MNChatAI"
-  this.chatAIButton.setTitleForState("MNChatAI: "+(pluginDemoConfig.checkLogoStatus("MNChatAI")?"✅":"❌"),0)
-  this.chatAIButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
-  MNButton.setColor(this.chatAIButton, pluginDemoConfig.checkLogoStatus("MNChatAI")?"#457bd3":"#9bb2d6",0.8)
-
-  this.createButton("snipasteButton","toggleAddonLogo:","advanceView")
-  this.snipasteButton.layer.opacity = 1.0
-  this.snipasteButton.addon = "MNSnipaste"
-  this.snipasteButton.setTitleForState("MNSnipaste: "+(pluginDemoConfig.checkLogoStatus("MNSnipaste")?"✅":"❌"),0)
-  this.snipasteButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
-  MNButton.setColor(this.snipasteButton, pluginDemoConfig.checkLogoStatus("MNSnipaste")?"#457bd3":"#9bb2d6",0.8)
-
-  this.createButton("autoStyleButton","toggleAddonLogo:","advanceView")
-  this.autoStyleButton.layer.opacity = 1.0
-  this.autoStyleButton.addon = "MNAutoStyle"
-  this.autoStyleButton.setTitleForState("MNAutoStyle: "+(pluginDemoConfig.checkLogoStatus("MNAutoStyle")?"✅":"❌"),0)
-  this.autoStyleButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
-  MNButton.setColor(this.autoStyleButton, pluginDemoConfig.checkLogoStatus("MNAutoStyle")?"#457bd3":"#9bb2d6",0.8)
-  
-  this.createButton("browserButton","toggleAddonLogo:","advanceView")
-  this.browserButton.layer.opacity = 1.0
-  this.browserButton.addon = "MNBrowser"
-  this.browserButton.setTitleForState("MNBrowser: "+(pluginDemoConfig.checkLogoStatus("MNBrowser")?"✅":"❌"),0)
-  this.browserButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
-  MNButton.setColor(this.browserButton, pluginDemoConfig.checkLogoStatus("MNBrowser")?"#457bd3":"#9bb2d6",0.8)
-
-  this.createButton("OCRButton","toggleAddonLogo:","advanceView")
-  this.OCRButton.layer.opacity = 1.0
-  this.OCRButton.addon = "MNOCR"
-  this.OCRButton.setTitleForState("MNOCR: "+(pluginDemoConfig.checkLogoStatus("MNOCR")?"✅":"❌"),0)
-  this.OCRButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
-  MNButton.setColor(this.OCRButton, pluginDemoConfig.checkLogoStatus("MNOCR")?"#457bd3":"#9bb2d6",0.8)
-
-  this.createButton("timerButton","toggleAddonLogo:","advanceView")
-  this.timerButton.layer.opacity = 1.0
-  this.timerButton.addon = "MNTimer"
-  this.timerButton.setTitleForState("MNTimer: "+(pluginDemoConfig.checkLogoStatus("MNTimer")?"✅":"❌"),0)
-  this.timerButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
-  MNButton.setColor(this.timerButton, pluginDemoConfig.checkLogoStatus("MNTimer")?"#457bd3":"#9bb2d6",0.8)
-
-  this.creatTextView("hexInput","advanceView","#9bb2d6")
-  this.createButton("hexButton","saveButtonColor:","advanceView")
-  this.hexButton.layer.opacity = 1.0
-  this.hexButton.addon = "MNOCR"
-  this.hexButton.setTitleForState("Save Color",0)
-  this.hexButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
-  this.hexInput.text = pluginDemoConfig.buttonConfig.color
-  MNButton.setColor(this.hexButton, pluginDemoConfig.checkLogoStatus("MNOCR")?"#457bd3":"#9bb2d6",0.8)
-
-  this.createButton("iCloudButton","toggleICloudSync:","advanceView")
-  let iCloudSync = pluginDemoConfig.iCloudSync
-  
-  MNButton.setColor(this.iCloudButton, iCloudSync?"#457bd3":"#9bb2d6",0.8)
-  MNButton.setTitle(this.iCloudButton, "iCloud Sync "+(iCloudSync? "✅":"❌"),undefined, true)
-
-  this.createButton("exportButton","exportConfigTapped:","advanceView")
-  MNButton.setTitle(this.exportButton, "Export",undefined, true)
-  MNButton.setColor(this.exportButton, "#457bd3",0.8)
-
-  this.createButton("importButton","importConfigTapped:","advanceView")
-  MNButton.setColor(this.importButton, "#457bd3",0.8)
-  MNButton.setTitle(this.importButton, "Import",undefined, true)
-
-  this.createButton("directionButton","changeToolbarDirection:","advanceView")
-  MNButton.setColor(this.directionButton, "#457bd3",0.8)
-  MNButton.setTitle(this.directionButton, "Toolbar Direction",undefined, true)
-
-  this.createButton("dynamicOrderButton","toggleDynamicOrder:","advanceView")
-  MNButton.setColor(this.dynamicOrderButton, "#457bd3",0.8)
-  MNButton.setTitle(this.dynamicOrderButton, "Enable Dynamic Order: "+(pluginDemoConfig.getWindowState("dynamicOrder")?"✅":"❌"),undefined,true)
-
-  this.createScrollView("scrollview", "configView")
-  // this.scrollview = UIScrollView.new()
-  // this.configView.addSubview(this.scrollview)
-  // this.scrollview.hidden = false
-  // this.scrollview.delegate = this
-  // this.scrollview.bounces = true
-  // this.scrollview.alwaysBounceVertical = true
-  // this.scrollview.layer.cornerRadius = 8
-  // this.scrollview.backgroundColor = MNUtil.hexColorAlpha("#c0bfbf",0.8)
-
-  this.createWebviewInput("configView")
-  this.creatTextView("systemInput","configView")
-  this.systemInput.hidden = true
-
-  this.creatTextView("titleInput","configView","#9bb2d6")
-
-  let text  = "{}"
-  this.setWebviewContent(text)
-
-  this.titleInput.text = text.title
-  // this.titleInput.textColor = MNUtil.hexColorAlpha("#444444", 1.0)
-  this.titleInput.textColor = MNUtil.hexColorAlpha("#ffffff", 1.0)
-  this.titleInput.font = UIFont.boldSystemFontOfSize(16);
-  this.titleInput.contentInset = {top: 0,left: 0,bottom: 0,right: 0}
-  this.titleInput.textContainerInset = {top: 0,left: 0,bottom: 0,right: 0}
-  this.titleInput.layer.backgroundColor = MNUtil.hexColorAlpha("#457bd3", 0.8)
-
-  this.createButton("configReset","resetButtonTapped:","configView")
-  this.configReset.layer.opacity = 1.0
-  this.configReset.setTitleForState("🔄",0)
-  this.configReset.width = 30
-  this.configReset.height = 30
-
-  this.createButton("moveUpButton","moveForwardTapped:","configView")
-  this.moveUpButton.layer.opacity = 1.0
-  this.moveUpButton.setTitleForState("🔼",0)
-  this.moveUpButton.width = 30
-  this.moveUpButton.height = 30
-
-  this.createButton("moveDownButton","moveBackwardTapped:","configView")
-  this.moveDownButton.layer.opacity = 1.0
-  this.moveDownButton.setTitleForState("🔽",0)
-  this.moveDownButton.width = 30
-  this.moveDownButton.height = 30
-
-  this.createButton("moveTopButton","moveTopTapped:","configView")
-  this.moveTopButton.layer.opacity = 1.0
-  this.moveTopButton.setTitleForState("🔝",0)
-  this.moveTopButton.width = 30 //写入属性而不是写入frame中,作为固定参数使用,配合Frame.setLoc可以方便锁死按钮大小
-  this.moveTopButton.height = 30
-
-  this.createButton("templateButton","chooseTemplate:","configView")
-  MNButton.setConfig(this.templateButton, {opacity:0.8,color:"#457bd3"})
-  this.templateButton.layer.cornerRadius = 6
-  this.templateButton.setImageForState(pluginDemoConfig.templateImage,0)
-  this.templateButton.width = 26
-  this.templateButton.height = 26
-
-  this.createButton("copyButton","configCopyTapped:","configView")
-  MNButton.setConfig(this.copyButton, {opacity:0.8,color:"#457bd3",title:"Copy",bold:true})
-  this.copyButton.layer.cornerRadius = 6
-  this.copyButton.width = 55
-  this.copyButton.height = 26
-  // this.copyButton.layer.opacity = 1.0
-  // this.copyButton.setTitleForState("Copy",0)
-
-  this.createButton("pasteButton","configPasteTapped:","configView")
-  MNButton.setConfig(this.pasteButton, {opacity:0.8,color:"#457bd3",title:"Paste",bold:true})
-  this.pasteButton.layer.cornerRadius = 6
-  this.pasteButton.width = 60
-  this.pasteButton.height = 26
-  // this.pasteButton.layer.opacity = 1.0
-  // this.pasteButton.setTitleForState("Paste",0)
-
-  this.createButton("saveButton","configSaveTapped:","configView")
-  // this.saveButton.layer.opacity = 1.0
-  // this.saveButton.setTitleForState("Save",0)
-  MNButton.setConfig(this.saveButton, {opacity:0.8,color:"#e06c75",title:"Save","font":18,bold:true})
-  this.saveButton.width = 65
-  this.saveButton.height = 35
-
-  this.createButton("resizeButton",undefined,"settingView")
-  this.resizeButton.setImageForState(pluginDemoConfig.curveImage,0)
-  MNButton.setConfig(this.resizeButton, {cornerRadius:20,color:"#ffffff",alpha:0.})
-  this.resizeButton.width = 25
-  this.resizeButton.height = 25
-
-
-  this.createButton("runButton","configRunTapped:","configView")
-  MNButton.setConfig(this.runButton, {opacity:0.8,color:"#e06c75"})
-  this.runButton.layer.cornerRadius = 6
-  // MNButton.setConfig(this.runButton, {opacity:1.0,title:"▶️",font:25,color:"#ffffff",alpha:0.})
-  this.runButton.setImageForState(pluginDemoConfig.runImage,0)
-  this.runButton.width = 26
-  this.runButton.height = 26
-
-  let color = ["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9fdc"]
-} catch (error) {
-  pluginDemoUtils.addErrorLog(error, "createSettingView")
-}
 }
 /**
  * @this {settingController}

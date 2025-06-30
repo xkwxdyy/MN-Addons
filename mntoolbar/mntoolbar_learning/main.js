@@ -10,22 +10,16 @@ JSB.newAddon = function (mainPath) {
     { /* Instance members */
       sceneWillConnect: async function () { //Window initialize
       },
-
       sceneDidDisconnect: function () { // Window disconnect 在插件页面关闭插件（不是删除）
       },
-
       sceneWillResignActive: function () { // Window resign active
       },
-
       sceneDidBecomeActive: function () { // Window become active
       },
-
       notebookWillOpen: async function (notebookid) {
       },
-
       notebookWillClose: function (notebookid) {
       },
-
       onProcessNewExcerpt:function (sender) {
       },
       onPopupMenuOnSelection: async function (sender) { // Clicking note
@@ -38,13 +32,10 @@ JSB.newAddon = function (mainPath) {
       },
       documentDidOpen: function (docmd5) {
       },
-
       documentWillClose: function (docmd5) {
       },
-
       controllerWillLayoutSubviews: function (controller) {
       },
-
       queryAddonCommandStatus: function () {
       },
       onNewIconImage: function (sender) {
@@ -61,16 +52,8 @@ JSB.newAddon = function (mainPath) {
       },
       manualSync: async function (sender) {
       },
-      /**
-       * 
-       * @param {{object:UITextView}} param 
-       */
       onTextDidBeginEditing:function (param) {
       },
-      /**
-       * 
-       * @param {{object:UITextView}} param 
-       */
       onTextDidEndEditing: function (param) {
       },
       onRefreshToolbarButton: function (sender) {
@@ -91,16 +74,12 @@ JSB.newAddon = function (mainPath) {
     { /* Class members */
       addonDidConnect: function () {
       },
-
       addonWillDisconnect: async function () {
       },
-
       applicationWillEnterForeground: function () {
       },
-
       applicationDidEnterBackground: function () {
       },
-
       applicationDidReceiveLocalNotification: function (notify) {
       }
     }

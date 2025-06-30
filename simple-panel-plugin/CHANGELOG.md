@@ -2,6 +2,49 @@
 
 ## 版本历史
 
+### v0.0.11 (2025-06-30) - 菜单系统修复版
+**核心问题修复**
+- 修复了"设置"菜单点击无响应的严重问题
+- 根本原因：`self` 在 `showMenu` 方法中是 `undefined`
+- 问题分析：参考 mnai 项目发现 JSB 框架不支持动态添加方法
+
+**技术改进**
+- 添加了 `getSimplePluginInstance()` 辅助函数确保 `self` 引用正确
+- 移除了复杂的 `HierarchicalMenuManager` 层级菜单管理器
+- 改用直接预定义方法方式（showSubmenu_settings, showSubmenu_syncSettings）
+- 简化菜单系统，直接使用 Menu 类，参考 mnai 实现
+
+**菜单导航优化**
+- 在设置菜单添加了"⬅️ 返回"选项，返回主菜单
+- 在云同步设置菜单添加了"⬅️ 返回设置"选项
+- 形成完整的多级菜单导航体系
+
+**关键代码改动**
+```javascript
+// 修复前：self 是 undefined
+showMenu: function (button) {
+  HierarchicalMenuManager.showMenu('main', button, null, self); // self 未定义
+}
+
+// 修复后：确保 self 引用正确
+showMenu: function (button) {
+  var self = getSimplePluginInstance();
+  var commandTable = [
+    {title: '⚙️  设置 ▸', object: self, selector: 'showSubmenu_settings:', param: button},
+    // ...
+  ];
+  var menu = new Menu(button, self, 250, 2);
+  menu.addMenuItems(commandTable);
+  menu.show();
+}
+```
+
+**经验教训**
+1. JSB 框架不支持运行时动态添加实例方法
+2. 所有菜单处理方法必须在 `JSB.defineClass` 时预定义
+3. 使用 `object: self` 明确指定方法所属对象
+4. 参考成熟项目（如 mnai）的实现方式可以避免踩坑
+
 ### v0.0.10 (2025-06-29) - 完整导出功能版
 **新功能**
 - 导出配置时包含历史记录

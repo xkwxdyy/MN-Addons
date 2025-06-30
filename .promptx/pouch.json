@@ -1,5 +1,5 @@
 {
-  "currentState": "initialized",
+  "currentState": "memory_saved",
   "stateHistory": [
     {
       "from": "initial",
@@ -292,7 +292,57 @@
           "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnai"
         }
       ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-06-30T02:06:36.478Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnai"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-06-30T02:28:53.262Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnai"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-06-30T02:33:32.745Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/simple-panel-plugin"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-06-30T02:54:25.307Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnai"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "remember",
+      "timestamp": "2025-06-30T04:11:13.666Z",
+      "args": [
+        "JSBox/JSB 框架语法支持重要发现\n\n经过深入分析 mnutils、mntoolbar、mnai 源码，确认 JSBox/JSB 完全支持现代 ES6+ JavaScript 语法：\n\n支持的特性：\n- const/let 变量声明\n- 箭头函数 () => {}\n- 模板字符串 `${}`\n- class 语法和 static 属性\n- async/await 异步编程\n- 解构赋值 {a, b} = obj\n- 扩展运算符 [...array]\n- 默认参数\n- 现代数组方法（map、filter、find、includes等）\n- 现代对象方法（Object.assign、Object.keys等）\n\n重要教训：\n1. 遇到\"语法错误\"时，先查看权威项目源码确认，不要盲目假设\n2. JSBox 环境的问题通常不是语法兼容性，而是 API 使用问题\n3. CATransaction 在 JSBox 中可能有兼容性问题，应避免使用\n4. 按钮事件绑定时，在实例方法内应使用 this 而非 self",
+        "--tags",
+        "JSBox JavaScript ES6 语法支持 MarginNote 插件开发"
+      ]
     }
   ],
-  "lastUpdated": "2025-06-29T10:42:46.553Z"
+  "lastUpdated": "2025-06-30T04:11:13.675Z"
 }

@@ -571,21 +571,20 @@ viewDidLoad: function() {
 - 遇到问题时可以快速回退到正常版本
 - 使用有意义的 commit 信息记录改动
 
-### JSB 框架中的方法调用时机问题
+### JSB 框架中的方法调用限制（极其重要！）
 
-这是一个非常隐蔽但严重的问题，可能导致插件完全无响应。
+这是 JSB 框架最严重的限制之一，会导致各种 "is not a function" 错误。
 
 #### 问题描述
 
-在 `JSB.defineClass` 中定义的方法，在某些情况下不能在 `viewDidLoad` 中被调用：
+在 `JSB.defineClass` 中定义的方法，在很多情况下无法通过 `self` 调用其他自定义方法：
 
 ```javascript
-// ❌ 错误：可能导致插件无响应
+// ❌ 错误示例 1：viewDidLoad 中调用方法
 var SimplePanelController = JSB.defineClass(
   'SimplePanelController : UIViewController',
   {
     viewDidLoad: function() {
-      // 调用自定义方法可能失败
       self.initConfig();  // 这可能导致整个插件无响应！
     },
     
@@ -594,6 +593,25 @@ var SimplePanelController = JSB.defineClass(
     }
   }
 );
+
+// ❌ 错误示例 2：实例方法之间相互调用
+var SimplePlugin = JSB.defineClass('SimplePlugin : JSExtension', {
+  openTextProcessor: function() {
+    if (!self.ensurePanelReady()) {  // self.ensurePanelReady is not a function!
+      return;
+    }
+    self.showPanelWithAnimation();   // self.showPanelWithAnimation is not a function!
+  },
+  
+  ensurePanelReady: function() {
+    // 这个方法存在，但无法被调用
+    return true;
+  },
+  
+  showPanelWithAnimation: function() {
+    // 这个方法也存在，但无法被调用
+  }
+});
 ```
 
 #### 解决方案
@@ -672,6 +690,7 @@ viewDidLoad: function() {
 |------|----------|----------|
 | 插件点击无响应 | viewDidLoad 中调用了自定义方法 | 内联初始化代码 |
 | 菜单无法弹出 | 使用了未初始化的属性 | 确保先初始化再使用 |
+| "is not a function" 错误 | 实例方法之间相互调用 | 内联所有方法逻辑 |
 | 部分功能失效 | 方法定义顺序问题 | 使用内联代码替代方法调用 |
 | 白屏 | MNButton color 参数格式错误 | 使用字符串格式颜色 |
 
@@ -680,8 +699,10 @@ viewDidLoad: function() {
 1. **viewDidLoad 中避免调用自定义方法**
 2. **所有初始化代码直接内联**
 3. **属性使用前必须先赋值**
-4. **遇到问题时使用增量调试法**
-5. **保留每个工作版本作为回退点**
+4. **避免实例方法之间相互调用** - 如果需要共享逻辑，直接复制代码
+5. **遇到 "is not a function" 错误时，首先考虑内联代码**
+6. **遇到问题时使用增量调试法**
+7. **保留每个工作版本作为回退点**
 
 ### JSON 解析崩溃问题
 
@@ -1369,3 +1390,319 @@ JSB.require('simplePanelController_improved');
 - API 参考
 
 这个新的配置管理系统提供了更专业、更可靠的配置管理方案，适合插件的长期发展。
+
+## 🎯 UI 响应性优化与层级菜单系统（v1.1.0）
+
+本节记录了在优化 UI 响应性和实现层级菜单系统过程中遇到的问题及解决方案。
+
+### 按钮响应延迟问题
+
+#### 问题描述
+使用 MNButton 创建的关闭和最小化按钮存在明显的响应延迟（约 0.5-1 秒），严重影响用户体验。
+
+#### 原因分析
+1. **MNButton 内置延迟**：MNButton 的 `addClickAction` 方法可能为了防止误触而有内置延迟
+2. **事件传递链过长**：从按钮点击到实际执行经过多层传递
+3. **UI 动画干扰**：隐式动画可能导致视觉上的延迟
+
+#### 解决方案：使用原生 UIButton + TouchDown 事件
+
+```javascript
+// ❌ 有延迟的 MNButton 实现
+self.closeButton = MNButton.new({
+  title: "✕",
+  font: 20,
+  color: "#00000000",
+  radius: 15
+}, self.titleBar);
+self.closeButton.addClickAction(self, "closePanel:");
+
+// ✅ 即时响应的原生 UIButton 实现
+self.closeButton = UIButton.buttonWithType(0);
+self.closeButton.frame = {x: self.titleBar.frame.width - 35, y: 5, width: 30, height: 30};
+self.closeButton.setTitleForState("✕", 0);
+self.closeButton.setTitleColorForState(UIColor.blackColor(), 0);
+self.closeButton.titleLabel.font = UIFont.systemFontOfSize(20);
+self.closeButton.layer.cornerRadius = 15;
+self.closeButton.backgroundColor = UIColor.clearColor();
+
+// 关键：使用 TouchDown 事件而不是 TouchUpInside
+self.closeButton.addTargetActionForControlEvents(self, "instantClose:", 1 << 0);
+self.titleBar.addSubview(self.closeButton);
+
+// 即时关闭函数
+instantClose: function() {
+  self.view.hidden = true;
+  
+  // 异步处理非关键操作
+  if (self.appInstance) {
+    dispatch_after(0.1, function() {
+      try {
+        self.appInstance.studyController(self.view.window).refreshAddonCommands();
+      } catch (e) {}
+    });
+  }
+}
+```
+
+#### 关键技术点
+1. **TouchDown vs TouchUpInside**：
+   - `1 << 0` = TouchDown：手指触摸时立即触发
+   - `1 << 6` = TouchUpInside：手指抬起时触发（默认）
+   
+2. **异步处理非关键操作**：使用 `dispatch_after` 延迟执行刷新操作，不影响关闭速度
+
+3. **禁用隐式动画**（可选）：
+   ```javascript
+   CATransaction.begin();
+   CATransaction.setDisableActions(true);
+   // UI 操作
+   CATransaction.commit();
+   ```
+
+### Menu 类 convertRectToView 错误
+
+#### 问题描述
+点击设置菜单时报错：`TypeError: undefined is not an object (evaluating 'this.sender.convertRectToView')`
+
+#### 原因分析
+1. **参数传递问题**：菜单项配置中的 `param` 可能是 undefined
+2. **按钮对象失效**：在菜单显示时原始按钮可能已经不可用
+3. **MNButton 代理问题**：MNButton 是 Proxy 对象，不直接支持 `convertRectToView`
+
+#### 解决方案：按钮验证与备用方案
+
+```javascript
+// 在 showMenu 中保存按钮引用
+showMenu: function (button) {
+  // 保存按钮引用，供后续使用
+  if (button && typeof button.convertRectToView === 'function') {
+    self.addonButton = button;
+  }
+  
+  // 保存工具栏引用
+  if (button && button.superview && button.superview.superview) {
+    self.addonBar = button.superview.superview;
+  }
+  // ...
+}
+
+// 在子菜单方法中验证按钮
+showSettingsMenu: function(button) {
+  NSTimer.scheduledTimerWithTimeInterval(0.1, false, function() {
+    // 获取有效的按钮对象
+    var validButton = button;
+    
+    // 如果没有有效按钮，尝试使用工具栏按钮
+    if (!validButton || typeof validButton.convertRectToView !== 'function') {
+      if (self.addonButton && typeof self.addonButton.convertRectToView === 'function') {
+        validButton = self.addonButton;
+      } else if (self.addonBar) {
+        // 尝试找到工具栏中的第一个按钮
+        var buttons = self.addonBar.subviews.filter(function(v) {
+          return v && typeof v.convertRectToView === 'function';
+        });
+        if (buttons.length > 0) {
+          validButton = buttons[0];
+        }
+      }
+    }
+    
+    // 如果还是没有有效按钮，显示错误
+    if (!validButton || typeof validButton.convertRectToView !== 'function') {
+      if (typeof MNUtil !== "undefined") {
+        MNUtil.showHUD("无法显示设置菜单");
+      }
+      return;
+    }
+    
+    // 使用验证后的按钮创建菜单
+    var menu = new Menu(validButton, self, 250, 2);
+    // ...
+  });
+}
+```
+
+### 菜单分隔线点击导致闪退
+
+#### 问题描述
+点击菜单中的分隔线（"——————"）导致应用闪退。
+
+#### 崩溃原因
+```
+-[NSNull (dynamic selector)]: unrecognized selector sent to instance 0x2019b4d18
+```
+
+在菜单配置中，分隔线的 `object` 设置为 `null`：
+```javascript
+{title: "——————", object: null, selector: "", param: null}
+```
+
+在 Objective-C 桥接中，JavaScript 的 `null` 会被转换为 `NSNull`，而 `NSNull` 不能响应任何选择器。
+
+#### 解决方案：替换所有 null 值
+
+```javascript
+// ❌ 导致崩溃的配置
+var commandTable = [
+  {title: '⚙️  设置', object: self, selector: 'showSettingsMenu', param: button},
+  {title: "——————", object: null, selector: "", param: null},  // 危险！
+  {title: '💡  帮助', object: self, selector: 'showHelp', param: null}
+];
+
+// ✅ 安全的配置
+var commandTable = [
+  {title: '⚙️  设置', object: self, selector: 'showSettingsMenu', param: button},
+  {title: "——————", object: self, selector: "doNothing", param: ""},  // 安全
+  {title: '💡  帮助', object: self, selector: 'showHelp', param: ""}
+];
+
+// 添加空方法处理分隔线点击
+doNothing: function() {
+  // 不做任何事情，只是为了避免崩溃
+}
+```
+
+#### 重要原则
+1. **永远不要在菜单配置中使用 `null`**
+2. **使用空字符串 `""` 代替 `null`**
+3. **为分隔线提供一个空方法**
+
+### 层级菜单系统实现
+
+#### 需求背景
+原始菜单系统是"替换式"的——点击子菜单会替换当前菜单。用户希望实现真正的层级菜单，子菜单在父菜单旁边弹出。
+
+#### 实现方案：HierarchicalMenuManager
+
+```javascript
+var HierarchicalMenuManager = {
+  activeMenus: [], // 存储当前活动的菜单
+  menuData: {},    // 存储菜单数据结构
+  
+  // 初始化菜单数据
+  init: function() {
+    this.menuData = {
+      main: [
+        {
+          title: '🔧  文本处理',
+          action: { object: 'self', selector: 'openTextProcessor', param: "" }
+        },
+        {
+          title: '⚙️  设置',
+          submenu: 'settings'  // 有子菜单
+        }
+      ],
+      settings: [
+        {
+          title: function() {  // 动态标题
+            var saveHistory = self.panelController.config.saveHistory;
+            return saveHistory ? "✓ 保存历史" : "  保存历史";
+          },
+          action: { object: 'self', selector: 'toggleSaveHistory', param: "" }
+        },
+        {
+          title: '🔄  云同步设置',
+          submenu: 'syncSettings'  // 第三级菜单
+        }
+      ]
+    };
+  },
+  
+  // 显示菜单
+  showMenu: function(menuId, button, parentMenu) {
+    var menuItems = this.menuData[menuId];
+    if (!menuItems) return;
+    
+    // 计算菜单方向
+    var direction = 2; // 默认向下
+    if (parentMenu) {
+      direction = 4; // 子菜单向右
+    }
+    
+    // 创建新菜单
+    var menu = new Menu(button, self, 250, direction);
+    var that = this;
+    
+    // 保存菜单管理器引用
+    self._currentMenuManager = that;
+    self._currentMenu = menu;
+    
+    // 添加菜单项
+    menuItems.forEach(function(item, index) {
+      if (item.type === 'separator') {
+        menu.addMenuItem("——————", "doNothing", "");
+      } else {
+        var title = typeof item.title === 'function' ? item.title() : item.title;
+        
+        if (item.submenu) {
+          // 为子菜单创建动态方法
+          var methodName = "showSubmenu_" + item.submenu;
+          
+          self[methodName] = function(sender) {
+            NSTimer.scheduledTimerWithTimeInterval(0.01, false, function() {
+              self._currentMenuManager.showMenu(item.submenu, sender, self._currentMenu);
+            });
+          };
+          
+          menu.addMenuItem(title + " ▸", methodName + ":", button);
+        } else if (item.action) {
+          menu.addMenuItem(title, item.action.selector, item.action.param);
+        }
+      }
+    });
+    
+    menu.show();
+    this.activeMenus.push(menu);
+  }
+};
+```
+
+#### 关键技术点
+
+1. **菜单方向控制**：
+   - 主菜单：`direction = 2`（向下）
+   - 子菜单：`direction = 4`（向右）
+
+2. **动态方法创建**：
+   由于 Menu 类只能调用已存在的方法，需要动态创建方法处理子菜单：
+   ```javascript
+   self[methodName] = function(sender) {
+     // 显示子菜单
+   };
+   ```
+
+3. **菜单层级管理**：
+   - 维护 `activeMenus` 数组跟踪所有打开的菜单
+   - 智能关闭不需要的菜单（同级或子级）
+
+4. **动态标题支持**：
+   ```javascript
+   title: function() {
+     return condition ? "✓ 选项" : "  选项";
+   }
+   ```
+
+### 最佳实践总结
+
+1. **UI 响应性优先**：
+   - 关键操作使用原生 UIButton + TouchDown
+   - 非关键操作使用 MNButton（功能更丰富）
+   - 异步处理非必要的刷新操作
+
+2. **防御性编程**：
+   - 始终验证按钮对象的有效性
+   - 提供备用方案（如工具栏按钮）
+   - 避免使用 `null`，使用空字符串代替
+
+3. **菜单系统设计**：
+   - 使用数据驱动的菜单结构
+   - 支持动态标题和多级嵌套
+   - 智能的菜单生命周期管理
+
+4. **调试技巧**：
+   - 使用详细的日志追踪菜单操作
+   - 检查崩溃日志中的 NSNull 相关错误
+   - 测试所有菜单项，包括分隔线
+
+这些优化显著提升了插件的用户体验，使界面响应更加迅速，菜单系统更加专业。

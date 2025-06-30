@@ -159,6 +159,7 @@ JSB.newAddon = function (mainPath) {
             {title: '🎯  打开面板', object: self, selector: 'openPanel', param: ""},
             {title: '——————', object: self, selector: 'doNothing', param: ""},
             {title: '⚙️  设置 ▸', object: self, selector: 'showSubmenu_settings:', param: button},
+            {title: '🐛  调试 ▸', object: self, selector: 'showSubmenu_debug:', param: button},
             {title: '💡  帮助', object: self, selector: 'showHelp', param: ""}
           ];
           

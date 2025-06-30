@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-cmn-Hans" style="height: 0px;">
+<head>
+  <meta charset="utf-8"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"/>
+  <title>Vditor</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <script src="veditor.min.js" defer></script>
+  <script src="veditor.func.js"></script>
+  <script src="pdf.js"></script>
+  <script src="pdf.worker.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script> -->
+  <link rel="stylesheet" href="veditor.css" />
+  <!-- <script src="https://unpkg.com/vditor/dist/index.min.js"></script> -->
+  <style>
+    body{
+      margin: 0px;
+      background-color: #ffffff;
+    }
+   .vditor {
+  --border-color: rgba(180, 142, 142, 0);
+  --second-color: rgba(88, 96, 105, 0.36);
+  --panel-background-color: #fff;
+  --panel-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --toolbar-background-color: #f6f8fa;
+  --toolbar-icon-color: #586069;
+  --toolbar-icon-hover-color: #4285f4;
+  --toolbar-height: 35px;
+  --toolbar-divider-margin-top: 0px;
+  --textarea-background-color: #fafbfc;
+  --textarea-text-color: #24292e;
+  --resize-icon-color: var(--toolbar-icon-color);
+  --resize-background-color: var(--toolbar-background-color);
+  --resize-hover-icon-color: var(--panel-background-color);
+  --resize-hover-background-color: var(--toolbar-icon-hover-color);
+  --count-background-color: rgba(27, 31, 35, 0.05);
+  --heading-border-color: #eaecef;
+  --blockquote-color: #6a737d;
+  --ir-heading-color: #660e7a;
+  --ir-title-color: #808080;
+  --ir-bi-color: #0033b3;
+  --ir-link-color: #008000;
+  --ir-bracket-color: #0000ff;
+  --ir-paren-color: #008000;
+}
+.vditor-reset table tr {
+  background-color: #fafbfc !important;
+  border-top: 1px solid #c6cbd1;
+}
+.vditor-reset table tbody tr:nth-child(2n) {
+  background-color: #fff !important;
+}
+    .vditor-reset {
+      color: #24292e;
+      font-variant-ligatures: no-common-ligatures;
+      font-family: "PingFang SC","Helvetica Neue", "Luxi Sans", "DejaVu Sans", "Hiragino Sans GB", "Microsoft Yahei",  sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", "Android Emoji", "EmojiSymbols";
+      word-wrap: break-word;
+      overflow: auto;
+      line-height: 1.5;
+      font-size: 16px;
+      word-break: break-word;
+      padding: 5px !important;
+      padding-top: 0 !important;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="other">
+    <!-- <div class="collapsible-header" onclick="toggleCollapse(this)">
+        <span class="thinkingTitle">🤔 Thinking...</span>
+        <span class="toggle-icon" onclick="copyReasoningContent(this)">Copy</span></div><div class="collapsible-content">test</div> -->
+    </div>
+    <!-- <div id="funcResponse"></div>
+    <div id="reasoningResponse"></div>
+    <div id="search-results"></div> -->
+    <div id="vditor"></div>
+<script>
+
+let editor
+let preContent = `I'm thinking...`
+let preHtml = ""
+let preFunc = ""
+let preReasoning = ""
+let reasoningBegin
+let option = {
+      theme:"light",
+      math:{
+        engine:"MathJax",
+        mathJaxOptions:{
+          tex: {
+              inlineMath: [ ['$','$'], ["\\(","\\)"] ]
+          }
+        },
+        inlineDigit: true
+      },
+      cdn:"https://unpkg.com/vditor@3.11.0",
+      after: notifyRefreshHeight
+    }
+const logElement = document.getElementById('funcResponse')
+let tem = document.getElementById('vditor')
+document.addEventListener('DOMContentLoaded', function () {
+    Vditor.preview(tem,preContent,option)
+})
+
+    function openEdit(allowEdit) {
+      if (!preContent) {
+        return
+      }
+      editor = new Vditor('vditor', {
+      cache: {
+        enable: false,
+      },
+      theme:"light",
+      preview:{
+        math:{
+          engine:"MathJax",
+          mathJaxOptions:{
+            tex: {
+                inlineMath: [ ['$','$'], ["\\(","\\)"] ]
+            }
+          },
+          inlineDigit: true
+        }
+      },
+      image:{
+        isPreview:false,
+        preview:(element)=>{
+          window.location.href = "chataction://copyimage="+encodeURIComponent(element.src)
+        }
+      },
+      toolbar:[],
+      mode: "wysiwyg",
+      i18n:{
+        'alignCenter': '居中',
+        'alignLeft': '居左',
+        'alignRight': '居右',
+        'alternateText': '替代文本',
+        'bold': '粗体',
+        'both': '编辑 & 预览',
+        'check': '任务列表',
+        'close': '关闭',
+        'code': '代码块',
+        'code-theme': '代码块主题预览',
+        'column': '列',
+        'comment': '评论',
+        'confirm': '确定',
+        'content-theme': '内容主题预览',
+        'copied': '已复制',
+        'copy': '复制',
+        'delete-column': '删除列',
+        'delete-row': '删除行',
+        'devtools': '开发者工具',
+        'down': '下',
+        'downloadTip': '该浏览器不支持下载功能',
+        'edit': '编辑',
+        'edit-mode': '切换编辑模式',
+        'emoji': '表情',
+        'export': '导出',
+        'fileTypeError': '文件类型不允许上传，请压缩后再试',
+        'footnoteRef': '脚注标识',
+        'fullscreen': '全屏切换',
+        'generate': '生成中',
+        'headings': '标题',
+        'heading1': '一级标题',
+        'heading2': '二级标题',
+        'heading3': '三级标题',
+        'heading4': '四级标题',
+        'heading5': '五级标题',
+        'heading6': '六级标题',
+        'help': '帮助',
+        'imageURL': '图片地址',
+        'indent': '列表缩进',
+        'info': '关于',
+        'inline-code': '行内代码',
+        'insert-after': '末尾插入行',
+        'insert-before': '起始插入行',
+        'insertColumnLeft': '在左边插入一列',
+        'insertColumnRight': '在右边插入一列',
+        'insertRowAbove': '在上方插入一行',
+        'insertRowBelow': '在下方插入一行',
+        'instantRendering': '即时渲染',
+        'italic': '斜体',
+        'language': '语言',
+        'line': '分隔线',
+        'link': '链接',
+        'linkRef': '引用标识',
+        'list': '无序列表',
+        'more': '更多',
+        'nameEmpty': '文件名不能为空',
+        'ordered-list': '有序列表',
+        'outdent': '列表反向缩进',
+        'outline': '大纲',
+        'over': '超过',
+        'performanceTip': '实时预览需 ${x}ms，可点击编辑 & 预览按钮进行关闭',
+        'preview': '预览',
+        'quote': '引用',
+        'record': '开始录音/结束录音',
+        'record-tip': '该设备不支持录音功能',
+        'recording': '录音中...',
+        'redo': '重做',
+        'remove': '删除',
+        'row': '行',
+        'spin': '旋转',
+        'splitView': '分屏预览',
+        'strike': '删除线',
+        'table': '表格',
+        'textIsNotEmpty': '文本（不能为空）',
+        'title': '标题',
+        'tooltipText': '提示文本',
+        'undo': '撤销',
+        'up': '上',
+        'update': '更新',
+        'upload': '上传图片或文件',
+        'uploadError': '上传错误',
+        'uploading': '上传中...',
+        'wysiwyg': '所见即所得',
+      },
+      after:()=>{
+        editor.setValue(preContent,true)
+        if (!allowEdit) {
+          editor.disabled()
+        }
+        setTimeout(() => {
+
+        const mermaidElements = document.querySelectorAll('.language-mermaid');
+    
+    mermaidElements.forEach(element => {
+        // 创建容器div
+        // const container = document.createElement('div');
+        // container.className = 'mermaid-container';
+        
+        // 将元素包裹在容器中
+        // element.parentNode.insertBefore(container, element);
+        // container.appendChild(element);
+        
+        // 创建复制按钮
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-btn';
+        copyBtn.textContent = 'Copy';
+        copyBtn.title = 'Copy to clipboard'
+        const element2Draw = element.children[0]
+        
+        // 添加点击事件
+        copyBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            // 使用 html2canvas 截取整个 body
+            // 你可以根据需要调整截图的配置参数
+            copyBtn.style.display = "none"
+            let scale = 6
+            if (element.scrollHeight < 500) {
+              scale = 12
+            }
+            // console.log(element.scrollHeight);
+            
+            html2canvas(element, {
+                scale: scale,
+                allowTaint: true, // 允许跨域图片，但可能会污染 canvas
+                useCORS: true,    // 尝试使用 CORS 加载图片，避免污染
+            }).then(canvas => {
+                console.log('截图完成！');
+                
+                // 将 canvas 转换为图片
+                const image = canvas.toDataURL('image/png'); // 也可以是 'image/jpeg'
+                // console.log(image);
+                copyBtn.style.display = "block"
+                window.location.href = 'chataction://copyimage='+encodeURIComponent(image)
+            }).catch(error => {
+                console.error('截图失败:', error);
+            });
+        });
+        
+        // 添加按钮到容器
+        // element.appendChild(copyBtn);
+        element.insertBefore(copyBtn, element2Draw);
+    });
+
+          notifyRefreshHeight()
+        }, 1000);
+      }
+    })
+    }
+</script>
+<script src="./es5/tex-svg-full.js"></script>
+
+<!-- <script src="./es5/tex-chtml.js"></script> -->
+</body>
+</html>

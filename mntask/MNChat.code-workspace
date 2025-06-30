@@ -1,0 +1,18 @@
+{
+	"folders": [
+    {
+      "name": "MNChat",
+      "path": "."
+    },
+    {
+      "name": "mnaddonStore",
+      "path": "../../mnaddonStore"
+    },
+    {
+      "name": "FeliksPro",
+      "path": "../FeliksPro"
+    }
+  ],
+  "settings": {
+  }
+}

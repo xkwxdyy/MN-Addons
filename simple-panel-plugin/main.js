@@ -49,7 +49,8 @@ JSB.newAddon = function (mainPath) {
           {
             title: function() { 
               var saveHistory = false;
-              if (self.panelController && self.panelController.config) {
+              // 这里暂时使用 self，在调用时会绑定正确的上下文
+              if (self && self.panelController && self.panelController.config) {
                 saveHistory = self.panelController.config.saveHistory || false;
               }
               return saveHistory ? "✓ 保存历史" : "  保存历史";
@@ -141,7 +142,8 @@ JSB.newAddon = function (mainPath) {
     },
     
     // 显示菜单
-    showMenu: function(menuId, button, parentMenu) {
+    // pluginInstance: SimplePlugin 实例，必须传入
+    showMenu: function(menuId, button, parentMenu, pluginInstance) {
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
         MNUtil.log("🎯 HierarchicalMenuManager: 显示菜单 " + menuId);
       }
@@ -181,20 +183,32 @@ JSB.newAddon = function (mainPath) {
       }
       
       // 创建新菜单
-      var menu = new Menu(button, self, 250, direction);
+      // 使用传入的插件实例
+      if (!pluginInstance) {
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log("❌ HierarchicalMenuManager: pluginInstance 未提供");
+        }
+        return;
+      }
+      
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("🎯 创建菜单时的 pluginInstance: " + pluginInstance.constructor.name);
+      }
+      var menu = new Menu(button, pluginInstance, 250, direction);
       var that = this;
       
-      // 保存当前菜单信息到 self 以便在方法中访问
-      self._currentMenuManager = that;
-      self._currentMenu = menu;
-      self._parentMenu = parentMenu;
+      // 保存当前菜单信息到插件实例以便在方法中访问
+      pluginInstance._currentMenuManager = that;
+      pluginInstance._currentMenu = menu;
+      pluginInstance._parentMenu = parentMenu;
       
       // 添加菜单项
       menuItems.forEach(function(item, index) {
         if (item.type === 'separator') {
           menu.addMenuItem("——————", "doNothing", "");
         } else {
-          var title = typeof item.title === 'function' ? item.title() : item.title;
+          // 如果 title 是函数，使用 pluginInstance 作为上下文调用
+          var title = typeof item.title === 'function' ? item.title.call(pluginInstance) : item.title;
           
           if (item.submenu) {
             // 为子菜单创建一个唯一的方法名
@@ -203,13 +217,17 @@ JSB.newAddon = function (mainPath) {
             // 在调试时记录方法创建
             if (typeof MNUtil !== "undefined" && MNUtil.log) {
               MNUtil.log("🔨 创建子菜单方法: " + methodName);
+              MNUtil.log("🔍 pluginInstance 对象类型: " + pluginInstance.constructor.name);
+              MNUtil.log("🔍 pluginInstance 是否已有此方法: " + (pluginInstance[methodName] ? "是" : "否"));
             }
             
-            // 使用闭包保存 submenu 信息
-            (function(submenuId) {
-              self[methodName] = function(sender) {
+            // 使用闭包保存 submenu 信息和必要的引用
+            (function(submenuId, manager, currentMenu) {
+              pluginInstance[methodName] = function(sender) {
                 if (typeof MNUtil !== "undefined" && MNUtil.log) {
                   MNUtil.log("🔸 子菜单方法被调用: " + methodName + ", submenu=" + submenuId);
+                  MNUtil.log("🔸 sender 类型: " + (sender ? sender.constructor.name : "null"));
+                  MNUtil.log("🔸 this 类型: " + (this ? this.constructor.name : "null"));
                 }
                 
                 // 延迟显示子菜单
@@ -220,14 +238,20 @@ JSB.newAddon = function (mainPath) {
                     actualButton = sender.button;
                   }
                   
-                  // 显示子菜单
-                  self._currentMenuManager.showMenu(submenuId, actualButton || button, self._currentMenu);
+                  // 显示子菜单 - 使用闭包中保存的引用
+                  manager.showMenu(submenuId, actualButton || button, currentMenu, pluginInstance);
                 });
               };
-            })(item.submenu);
+            })(item.submenu, that, menu);
+            
+            // 验证方法是否创建成功
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("🔍 方法创建后验证: " + methodName + " = " + (typeof pluginInstance[methodName]));
+            }
             
             // 添加菜单项 - 注意 selector 格式
-            menu.addMenuItem(title + " ▸", methodName + ":", self);
+            // 根据 mnai 的经验，有参数的方法需要冒号
+            menu.addMenuItem(title + " ▸", methodName + ":", button);
           } else if (item.selector) {
             // 普通菜单项
             menu.addMenuItem(title, item.selector, item.param || "");
@@ -435,7 +459,8 @@ JSB.newAddon = function (mainPath) {
           if (typeof MNUtil !== "undefined" && MNUtil.log) {
             MNUtil.log("✅ Simple Panel: 使用层级菜单系统");
           }
-          HierarchicalMenuManager.showMenu('main', button);
+          // 传入插件实例 self
+          HierarchicalMenuManager.showMenu('main', button, null, self);
         } else {
           // 使用原生 popover 作为降级方案
           if (typeof MNUtil !== "undefined" && MNUtil.log) {

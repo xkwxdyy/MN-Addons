@@ -309,7 +309,7 @@ class MNMath {
 
     // 如果没有要移动的内容，则不进行移动
     if (moveIndexArr.length === 0) {
-      MNUtil.showHUD(`没有新内容需要移动到 ${defaultField} 字段！`);
+      // MNUtil.showHUD(`没有新内容需要移动到 ${defaultField} 字段！`);
       return;
     }
 
@@ -459,7 +459,12 @@ class MNMath {
    */
   static processExtractedMarginNoteLinks(note, marginNoteLinks) {
     // 定义允许链接的目标字段
-    const allowedTargetFields =  ["相关链接", "应用"];
+    const allowedTargetFields = [
+      "相关链接",
+      "相关链接：",
+      "应用：",
+      "应用"
+    ];
     
     // 处理每个找到的 MarginNote 链接
     marginNoteLinks.forEach(linkInfo => {

@@ -515,5 +515,44 @@ JSB.defineClass("YourPlugin : JSExtension", {
 - 及时清理定时器、监听器和大对象
 - 保存用户配置和状态
 
+## 🐛 常见问题与解决方案
+
+### 插件无法正常加载（插件列表中未勾选）
+
+当插件出现在列表中但未自动勾选时，通常是因为以下原因：
+
+1. **MNUtils 检查失败**
+   - 错误做法：在插件开始就直接 `JSB.require('mnutils')` 或进行文件系统检查
+   - 正确做法：让 MarginNote 自动加载 MNUtils，在生命周期方法中进行运行时检查
+
+2. **self 引用错误**
+   - 错误做法：在方法内使用 `let self = this` 或 `var self = this`
+   - 正确做法：定义 `const getInstanceName = () => self`，然后使用 `let self = getInstanceName()`
+
+3. **作用域问题**
+   - 错误：在工具类中直接引用其他控制器类（如 `panelController.new()`）
+   - 正确：将控制器管理方法放在插件主类中，或确保引用时类已加载
+
+4. **生命周期方法错误**
+   - 错误：在 `JSB.defineClass` 内部定义 `init` 方法
+   - 正确：使用 `prototype.init` 扩展原型方法
+
+5. **菜单处理错误**
+   - 始终检查 `sender.userInfo.menuController` 是否存在
+   - 对所有外部输入进行防御性编程
+
+### 调试技巧
+
+1. **查看日志**
+   - 使用 `MNUtil.log()` 输出调试信息
+   - 检查 MNUtils 的错误日志
+
+2. **错误处理**
+   - 在所有生命周期方法中使用 try-catch
+   - 使用 `MNUtil.addErrorLog()` 记录错误
+
+3. **版本管理**
+   - 每次修改都更新 `mnaddon.json` 中的版本号
+   - 便于识别加载的是哪个版本
 
 > 💡 **提示**：开发前请先仔细阅读对应子项目的 CLAUDE.md 文件，它们包含了更详细的技术实现和规范要求。

@@ -83,6 +83,7 @@ var SimplePanelController = JSB.defineClass(
     
     // 视图加载完成
     viewDidLoad: function() {
+      var self = this;  // 重要：定义 self 为 this
       self.appInstance = Application.sharedInstance();
       
       // 初始化 MNUtil（如果可用）
@@ -181,7 +182,7 @@ var SimplePanelController = JSB.defineClass(
       self.minimizeButton.layer.cornerRadius = 15;
       self.minimizeButton.backgroundColor = UIColor.clearColor();
       
-      self.minimizeButton.addTargetActionForControlEvents(self, "instantMinimize:", 1 << 0);
+      self.minimizeButton.addTargetActionForControlEvents(self, "instantMinimize:", 1 << 6);  // 使用 TouchUpInside 而非 TouchDown
       self.titleBar.addSubview(self.minimizeButton);
       
       // 添加拖动手势
@@ -332,6 +333,7 @@ var SimplePanelController = JSB.defineClass(
     
     // === 布局 ===
     viewWillLayoutSubviews: function() {
+      var self = this;
       if (!self.view) return;
       
       var frame = self.view.bounds;
@@ -478,6 +480,7 @@ var SimplePanelController = JSB.defineClass(
     
     // 视图将要消失时保存配置
     viewWillDisappear: function() {
+      var self = this;
       // 使用配置管理器保存
       if (self.inputField && self.inputField.text !== "在这里输入文本...") {
         configManager.set("inputText", self.inputField.text, false);
@@ -505,6 +508,7 @@ var SimplePanelController = JSB.defineClass(
     // === 显示/隐藏方法 - 参考 mnai 项目 ===
     
     show: function() {
+      var self = this;
       // 参考 mnai 的 chatglmController.show 实现
       if (typeof MNUtil !== "undefined") {
         // 确保视图在最前面
@@ -524,6 +528,7 @@ var SimplePanelController = JSB.defineClass(
     },
     
     hide: function() {
+      var self = this;
       // 参考 mnai 的 chatglmController.hide 实现
       self.view.hidden = true;
       
@@ -536,6 +541,7 @@ var SimplePanelController = JSB.defineClass(
     
     // 使用原生按钮的即时关闭函数
     instantClose: function() {
+      var self = this;
       // 立即隐藏，无任何延迟
       self.view.hidden = true;
       
@@ -582,6 +588,7 @@ var SimplePanelController = JSB.defineClass(
     },
     
     processText: function() {
+      var self = this;
       try {
         var text = self.inputField.text;
         var result = "";
@@ -873,6 +880,7 @@ var SimplePanelController = JSB.defineClass(
     // === 高级手势处理（基于 mnai 最佳实践） ===
     
     onDragGesture: function(gesture) {
+      var self = this;
       var translation = gesture.translationInView(self.view.superview);
       var velocity = gesture.velocityInView(self.view.superview);
       
@@ -1054,6 +1062,7 @@ var SimplePanelController = JSB.defineClass(
     
     // 高级模式切换（基于 mnai 动画系统）
     switchToMode: function(mode) {
+      var self = this;
       if (self.currentMode === mode) return;
       
       const modeConfig = self.modes[mode];

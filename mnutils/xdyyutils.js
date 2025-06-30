@@ -2612,6 +2612,17 @@ class MNMath {
       }
     })
   }
+
+  /**
+   * 获取第一个标题链接词
+   */
+  static getFirstTitleLinkWord(note) {
+    let titleParts = this.parseNoteTitle(note);
+    if (titleParts.titleLinkWordsArr.length > 0) {
+      return titleParts.titleLinkWordsArr[0];
+    }
+    return "";
+  }
 }
 
 /**

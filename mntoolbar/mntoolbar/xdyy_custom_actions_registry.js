@@ -2661,7 +2661,7 @@ function registerAllCustomActions() {
               if (buttonIndex == 1) {
                 let refContent = alert.textFieldAtIndex(0).text
                   ? alert.textFieldAtIndex(0).text
-                  : focusNote.getFirstTitleLinkWord();
+                  : MNMath.getFirstTitleLinkWord(focusNote);
                 let mdLink = "[" + refContent + "](" + focusNote.noteURL + ")";
                 MNUtil.copy(mdLink);
                 MNUtil.showHUD(mdLink);

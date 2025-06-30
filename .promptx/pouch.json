@@ -342,6 +342,16 @@
         "--tags",
         "JSBox JavaScript ES6 语法支持 MarginNote 插件开发"
       ]
+    },
+    {
+      "from": "initialized",
+      "command": "remember",
+      "timestamp": "2025-06-30T10:09:11.517Z",
+      "args": [
+        "MarginNote 插件打包关键经验：\n\n1. **错误的打包方式会导致插件无法加载甚至闪退**\n   - ❌ 错误：`zip ../plugin.mnaddon ../plugin/*` \n   - ❌ 错误：`zip -r plugin.mnaddon plugin-folder/`\n   - 这些方式会在压缩包内包含文件夹路径（如 `../plugin/main.js`），MarginNote 无法正确解析\n\n2. **正确的打包方式**\n   - ✅ 使用 mnaddon4 工具：`cd plugin-folder && mnaddon4 build plugin-name`\n   - ✅ 在插件目录内直接压缩：`cd plugin-folder && zip plugin.mnaddon main.js mnaddon.json logo.png`\n\n3. **验证打包结果**\n   - 使用 `unzip -l plugin.mnaddon` 检查\n   - 确保文件名前面没有任何路径前缀\n   - 正确的结构应该是文件直接在根目录，如：`main.js`、`mnaddon.json`、`logo.png`\n\n4. **症状识别**\n   - 插件出现在列表但无法勾选\n   - 双击 .mnaddon 文件后 MarginNote 闪退\n   - 崩溃日志显示 NSJSONSerialization 异常\n\n这是一个非常容易犯的错误，但影响严重。记住：永远不要压缩文件夹，而是进入文件夹后压缩文件。",
+        "--tags",
+        "marginnote plugin mnaddon 打包 packaging 错误 闪退 crash"
+      ]
     }
   ],
   "lastUpdated": "2025-06-30T04:11:13.675Z"

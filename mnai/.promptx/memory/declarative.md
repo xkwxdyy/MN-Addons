@@ -64,3 +64,29 @@ JSBox/JSB 框架语法支持重要发现
 4. 按钮事件绑定时，在实例方法内应使用 this 而非 self --tags JSBox JavaScript ES6 语法支持 MarginNote 插件开发
 --tags #其他 #评分:8 #有效期:长期
 - END
+
+- 2025/06/30 18:09 START
+MarginNote 插件打包关键经验：
+
+1. **错误的打包方式会导致插件无法加载甚至闪退**
+   - ❌ 错误：`zip ../plugin.mnaddon ../plugin/*` 
+   - ❌ 错误：`zip -r plugin.mnaddon plugin-folder/`
+   - 这些方式会在压缩包内包含文件夹路径（如 `../plugin/main.js`），MarginNote 无法正确解析
+
+2. **正确的打包方式**
+   - ✅ 使用 mnaddon4 工具：`cd plugin-folder && mnaddon4 build plugin-name`
+   - ✅ 在插件目录内直接压缩：`cd plugin-folder && zip plugin.mnaddon main.js mnaddon.json logo.png`
+
+3. **验证打包结果**
+   - 使用 `unzip -l plugin.mnaddon` 检查
+   - 确保文件名前面没有任何路径前缀
+   - 正确的结构应该是文件直接在根目录，如：`main.js`、`mnaddon.json`、`logo.png`
+
+4. **症状识别**
+   - 插件出现在列表但无法勾选
+   - 双击 .mnaddon 文件后 MarginNote 闪退
+   - 崩溃日志显示 NSJSONSerialization 异常
+
+这是一个非常容易犯的错误，但影响严重。记住：永远不要压缩文件夹，而是进入文件夹后压缩文件。 --tags marginnote plugin mnaddon 打包 packaging 错误 闪退 crash
+--tags #工具使用 #评分:8 #有效期:长期
+- END

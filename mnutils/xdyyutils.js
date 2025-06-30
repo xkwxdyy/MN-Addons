@@ -1363,6 +1363,8 @@ class MNMath {
         return "原理"
       case "问题":
         return "研究思路"
+      case "思路":
+        return "具体尝试"
       default:
         break;
     }

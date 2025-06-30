@@ -12,6 +12,75 @@ JSB.require('configManager');
 var SimplePanelController = JSB.defineClass(
   'SimplePanelController : UIViewController',
   {
+    // === 辅助方法 - 创建模式按钮（参考 mnai） ===
+    createModeButton: function(title, tag) {
+      var button = UIButton.buttonWithType(0);  // 自定义按钮
+      
+      // 基础设置
+      button.setTitleForState(title, 0);  // 正常状态
+      button.setTitleColorForState(UIColor.whiteColor(), 0);
+      button.titleLabel.font = UIFont.systemFontOfSize(18);
+      button.layer.cornerRadius = 15;
+      button.layer.masksToBounds = true;
+      button.tag = tag;
+      
+      // 添加事件处理
+      button.addTargetActionForControlEvents(self, "switchModeByButton:", 1 << 6);
+      
+      // 添加触摸开始事件用于调试
+      button.addTargetActionForControlEvents(self, "buttonTouchDown:", 1 << 0);
+      
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("✅ Simple Panel: 按钮创建完成 - tag=" + tag + ", title=" + title);
+      }
+      
+      return button;
+    },
+    
+    // 按钮按下时调试
+    'buttonTouchDown:': function(button) {
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("👆 Simple Panel: 按钮被按下 - tag=" + button.tag);
+      }
+    },
+    
+    // 通过按钮切换模式 - 注意方法名必须与事件绑定时一致
+    'switchModeByButton:': function(button) {
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("🔘 Simple Panel: switchModeByButton: 被调用");
+        MNUtil.log("   - button = " + button);
+        MNUtil.log("   - button.tag = " + button.tag);
+        MNUtil.log("   - self.modeKeys = " + JSON.stringify(self.modeKeys));
+        MNUtil.log("   - self.currentMode = " + self.currentMode);
+      }
+      
+      // 使用 tag 获取对应的模式
+      var mode = self.modeKeys[button.tag];
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log("   - 选择的模式 = " + mode);
+      }
+      
+      if (mode && mode !== self.currentMode) {
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log("🔄 Simple Panel: 准备切换到模式 " + mode);
+        }
+        
+        self.switchToMode(mode);
+        
+        // 保存用户选择的模式
+        if (configManager) {
+          configManager.set("lastMode", mode);
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log("💾 Simple Panel: 已保存 lastMode = " + mode);
+          }
+        }
+      } else {
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log("⚠️ Simple Panel: 模式相同或无效，不切换");
+        }
+      }
+    },
+    
     // 视图加载完成
     viewDidLoad: function() {
       self.appInstance = Application.sharedInstance();
@@ -119,35 +188,30 @@ var SimplePanelController = JSB.defineClass(
       self.dragGesture = new UIPanGestureRecognizer(self, "onDragGesture:");
       self.titleBar.addGestureRecognizer(self.dragGesture);
       
-      // === 创建模式切换按钮（类似 mnai） ===
+      // === 创建模式切换按钮（按照 mnai 的标准实现） ===
       self.modeButtons = [];
-      const modes = [
-        { key: 'textProcessor', icon: '🔧', title: '文本处理' },
-        { key: 'quickNote', icon: '📝', title: '快速笔记' },
-        { key: 'searchReplace', icon: '🔍', title: '搜索替换' }
-      ];
+      self.modeKeys = ['textProcessor', 'quickNote', 'searchReplace'];  // 存储模式键
+      var modeIcons = ['🔧', '📝', '🔍'];
       
-      modes.forEach((mode, index) => {
-        const btn = UIButton.buttonWithType(0);
-        btn.setTitleForState(mode.icon, 0);
-        btn.titleLabel.font = UIFont.systemFontOfSize(18);
-        btn.layer.cornerRadius = 15;
-        btn.tag = index;
-        btn.modeKey = mode.key;
+      // 使用统一的方法创建按钮
+      for (var i = 0; i < self.modeKeys.length; i++) {
+        // 注意：必须在 viewDidLoad 内调用，确保 self 指向正确
+        var btn = self.createModeButton(modeIcons[i], i);
         
-        // 设置初始颜色（第一个按钮选中）
-        if (index === 0) {
+        // 设置初始状态
+        if (i === 0) {
           btn.backgroundColor = UIColor.whiteColor().colorWithAlphaComponent(0.3);
-          btn.setTitleColorForState(UIColor.whiteColor(), 0);
+          btn.isSelected = true;
         } else {
           btn.backgroundColor = UIColor.clearColor();
           btn.setTitleColorForState(UIColor.whiteColor().colorWithAlphaComponent(0.7), 0);
+          btn.isSelected = false;
         }
         
-        btn.addTargetActionForControlEvents(self, "switchModeByButton:", 1 << 6);
+        // 添加到标题栏
         self.titleBar.addSubview(btn);
         self.modeButtons.push(btn);
-      });
+      }
       
       // === 创建输入框 ===
       self.inputField = UITextView.new();
@@ -400,14 +464,15 @@ var SimplePanelController = JSB.defineClass(
         const totalWidth = self.modeButtons.length * buttonWidth + (self.modeButtons.length - 1) * spacing;
         const startX = (frame.width - totalWidth) / 2;
         
-        self.modeButtons.forEach((btn, index) => {
+        for (var j = 0; j < self.modeButtons.length; j++) {
+          var btn = self.modeButtons[j];
           btn.frame = {
-            x: startX + index * (buttonWidth + spacing),
+            x: startX + j * (buttonWidth + spacing),
             y: 7.5,  // (45 - 30) / 2 = 7.5，垂直居中
             width: buttonWidth,
             height: buttonHeight
           };
-        });
+        }
       }
     },
     
@@ -992,21 +1057,6 @@ var SimplePanelController = JSB.defineClass(
       // 目前无需清理
     },
     
-    // === 新增功能方法 ===
-    
-    // 通过按钮切换模式
-    switchModeByButton: function(button) {
-      const mode = button.modeKey;
-      if (mode && mode !== self.currentMode) {
-        self.switchToMode(mode);
-        
-        // 保存用户选择的模式
-        if (configManager) {
-          configManager.set("lastMode", mode);
-        }
-      }
-    },
-    
     // 高级模式切换（基于 mnai 动画系统）
     switchToMode: function(mode) {
       if (self.currentMode === mode) return;
@@ -1035,19 +1085,24 @@ var SimplePanelController = JSB.defineClass(
       
       self.lastMode = mode;
       
-      // 更新模式按钮状态
-      if (self.modeButtons) {
-        self.modeButtons.forEach((btn) => {
-          if (btn.modeKey === mode) {
+      // 更新模式按钮状态（按照 mnai 的方式）
+      if (self.modeButtons && self.modeKeys) {
+        var modeIndex = self.modeKeys.indexOf(mode);
+        
+        for (var k = 0; k < self.modeButtons.length; k++) {
+          var btn = self.modeButtons[k];
+          if (k === modeIndex) {
             // 选中状态
             btn.backgroundColor = UIColor.whiteColor().colorWithAlphaComponent(0.3);
             btn.setTitleColorForState(UIColor.whiteColor(), 0);
+            btn.isSelected = true;
           } else {
             // 未选中状态
             btn.backgroundColor = UIColor.clearColor();
             btn.setTitleColorForState(UIColor.whiteColor().colorWithAlphaComponent(0.7), 0);
+            btn.isSelected = false;
           }
-        });
+        }
       }
       
       // 更新状态指示器

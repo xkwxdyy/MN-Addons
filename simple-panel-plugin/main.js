@@ -19,15 +19,18 @@ JSB.newAddon = function (mainPath) {
         main: [
           {
             title: '🔧  文本处理',
-            action: { object: 'self', selector: 'openTextProcessor', param: "" }
+            selector: 'openTextProcessor',
+            param: ""
           },
           {
             title: '📝  快速笔记',
-            action: { object: 'self', selector: 'openQuickNote', param: "" }
+            selector: 'openQuickNote',
+            param: ""
           },
           {
             title: '🔍  搜索替换',
-            action: { object: 'self', selector: 'openSearchReplace', param: "" }
+            selector: 'openSearchReplace',
+            param: ""
           },
           {
             type: 'separator'
@@ -38,7 +41,8 @@ JSB.newAddon = function (mainPath) {
           },
           {
             title: '💡  帮助',
-            action: { object: 'self', selector: 'showHelp', param: "" }
+            selector: 'showHelp',
+            param: ""
           }
         ],
         settings: [
@@ -50,7 +54,8 @@ JSB.newAddon = function (mainPath) {
               }
               return saveHistory ? "✓ 保存历史" : "  保存历史";
             },
-            action: { object: 'self', selector: 'toggleSaveHistory', param: "" }
+            selector: 'toggleSaveHistory',
+            param: ""
           },
           {
             type: 'separator'
@@ -61,25 +66,29 @@ JSB.newAddon = function (mainPath) {
           },
           {
             title: '🗑  清空历史',
-            action: { object: 'self', selector: 'clearHistory', param: "" }
+            selector: 'clearHistory',
+            param: ""
           },
           {
             type: 'separator'
           },
           {
             title: '📤  导出配置',
-            action: { object: 'self', selector: 'exportConfig', param: "" }
+            selector: 'exportConfig',
+            param: ""
           },
           {
             title: '📥  导入配置',
-            action: { object: 'self', selector: 'importConfig', param: "" }
+            selector: 'importConfig',
+            param: ""
           },
           {
             type: 'separator'
           },
           {
             title: '🔄  重置设置',
-            action: { object: 'self', selector: 'resetSettings', param: "" }
+            selector: 'resetSettings',
+            param: ""
           }
         ],
         syncSettings: [
@@ -91,7 +100,8 @@ JSB.newAddon = function (mainPath) {
               }
               return autoSync ? "✓ 自动同步" : "  自动同步";
             },
-            action: { object: 'self', selector: 'toggleAutoSync', param: "" }
+            selector: 'toggleAutoSync',
+            param: ""
           },
           {
             type: 'separator'
@@ -104,7 +114,8 @@ JSB.newAddon = function (mainPath) {
               }
               return syncSource === "none" ? "● 不同步" : "○ 不同步";
             },
-            action: { object: 'self', selector: 'setSyncSource:', param: "none" }
+            selector: 'setSyncSource:',
+            param: "none"
           },
           {
             title: function() {
@@ -114,14 +125,16 @@ JSB.newAddon = function (mainPath) {
               }
               return syncSource === "iCloud" ? "● iCloud" : "○ iCloud";
             },
-            action: { object: 'self', selector: 'setSyncSource:', param: "iCloud" }
+            selector: 'setSyncSource:',
+            param: "iCloud"
           },
           {
             type: 'separator'
           },
           {
             title: '🔄  立即同步',
-            action: { object: 'self', selector: 'manualSync', param: "" }
+            selector: 'manualSync',
+            param: ""
           }
         ]
       };
@@ -187,19 +200,37 @@ JSB.newAddon = function (mainPath) {
             // 为子菜单创建一个唯一的方法名
             var methodName = "showSubmenu_" + item.submenu;
             
-            // 动态创建方法
-            self[methodName] = function(sender) {
-              // 延迟显示子菜单
-              NSTimer.scheduledTimerWithTimeInterval(0.01, false, function() {
-                self._currentMenuManager.showMenu(item.submenu, sender, self._currentMenu);
-              });
-            };
+            // 在调试时记录方法创建
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("🔨 创建子菜单方法: " + methodName);
+            }
             
-            // 添加菜单项
-            menu.addMenuItem(title + " ▸", methodName + ":", button);
-          } else if (item.action) {
+            // 使用闭包保存 submenu 信息
+            (function(submenuId) {
+              self[methodName] = function(sender) {
+                if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                  MNUtil.log("🔸 子菜单方法被调用: " + methodName + ", submenu=" + submenuId);
+                }
+                
+                // 延迟显示子菜单
+                NSTimer.scheduledTimerWithTimeInterval(0.01, false, function() {
+                  // 获取实际的按钮对象（处理 MNButton 代理）
+                  var actualButton = sender;
+                  if (sender && sender.button && typeof sender.button.convertRectToView === 'function') {
+                    actualButton = sender.button;
+                  }
+                  
+                  // 显示子菜单
+                  self._currentMenuManager.showMenu(submenuId, actualButton || button, self._currentMenu);
+                });
+              };
+            })(item.submenu);
+            
+            // 添加菜单项 - 注意 selector 格式
+            menu.addMenuItem(title + " ▸", methodName + ":", self);
+          } else if (item.selector) {
             // 普通菜单项
-            menu.addMenuItem(title, item.action.selector, item.action.param);
+            menu.addMenuItem(title, item.selector, item.param || "");
           }
         }
       });

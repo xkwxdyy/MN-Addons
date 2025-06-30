@@ -1,5 +1,3 @@
-
-
 class Frame{
   static gen(x,y,width,height){
     return MNUtil.genFrame(x, y, width, height)
@@ -138,18 +136,18 @@ class Frame{
 }
 
 
-
 // 获取UITextView实例的所有属性
 function getAllProperties(obj) {
-    var props = [];
-    var proto = obj;
-    while (proto) {
-        props = props.concat(Object.getOwnPropertyNames(proto));
-        proto = Object.getPrototypeOf(proto);
-    }
-    return props;
+  var props = [];
+  var proto = obj;
+  while (proto) {
+    props = props.concat(Object.getOwnPropertyNames(proto));
+    proto = Object.getPrototypeOf(proto);
+  }
+  return props;
 }
-// 定义一个类
+
+
 class pluginDemoUtils {
   // 构造器方法，用于初始化新创建的对象
   constructor(name) {
@@ -544,107 +542,107 @@ class pluginDemoUtils {
       // 再将其它的空白符（除了换行符）替换为单个空格
       return tempStr.replace(/[\r\t\f\v ]+/g, ' ').trim();
   }
-static replaceAction(des){
-try {
+  static replaceAction(des){
+    try {
 
-  let range = des.range ?? "currentNotes"
-  let targetNotes = this.getNotesByRange(range)
-  if ("steps" in des) {//如果有steps则表示是多步替换,优先执行
-    let nSteps = des.steps.length
-    MNUtil.undoGrouping(()=>{
-      targetNotes.forEach(note=>{
-        let content= this._replace_get_content_(note, des)
-        for (let i = 0; i < nSteps; i++) {
-          let step = des.steps[i]
-          let ptt = this._replace_get_ptt_(step)
-          content = content.replace(ptt, step.to)
-        }
-        this._replace_set_content_(note, des, content)
+      let range = des.range ?? "currentNotes"
+      let targetNotes = this.getNotesByRange(range)
+      if ("steps" in des) {//如果有steps则表示是多步替换,优先执行
+        let nSteps = des.steps.length
+        MNUtil.undoGrouping(()=>{
+          targetNotes.forEach(note=>{
+            let content= this._replace_get_content_(note, des)
+            for (let i = 0; i < nSteps; i++) {
+              let step = des.steps[i]
+              let ptt = this._replace_get_ptt_(step)
+              content = content.replace(ptt, step.to)
+            }
+            this._replace_set_content_(note, des, content)
+          })
+        })
+        return;
+      }
+      //如果没有steps则直接执行
+      let ptt = this._replace_get_ptt_(des)
+      MNUtil.undoGrouping(()=>{
+        targetNotes.forEach(note=>{
+          this.replace(note, ptt, des)
+        })
       })
-    })
-    return;
-  }
-  //如果没有steps则直接执行
-  let ptt = this._replace_get_ptt_(des)
-  MNUtil.undoGrouping(()=>{
-    targetNotes.forEach(note=>{
-      this.replace(note, ptt, des)
-    })
-  })
-  } catch (error) {
-  this.addErrorLog(error, "replace")
-}
-}
-static isPureMNImages(markdown) {
-  try {
-    // 匹配 base64 图片链接的正则表达式
-    const MNImagePattern = /!\[.*?\]\((marginnote4app\:\/\/markdownimg\/png\/.*?)(\))/g;
-    let res = markdown.match(MNImagePattern)
-    if (res) {
-      return markdown === res[0]
-    }else{
+      } catch (error) {
+      this.addErrorLog(error, "replace")
+    }
+    }
+  static isPureMNImages(markdown) {
+    try {
+      // 匹配 base64 图片链接的正则表达式
+      const MNImagePattern = /!\[.*?\]\((marginnote4app\:\/\/markdownimg\/png\/.*?)(\))/g;
+      let res = markdown.match(MNImagePattern)
+      if (res) {
+        return markdown === res[0]
+      }else{
+        return false
+      }
+    } catch (error) {
+      pluginDemoUtils.addErrorLog(error, "isPureMNImages")
       return false
     }
-  } catch (error) {
-    pluginDemoUtils.addErrorLog(error, "isPureMNImages")
-    return false
   }
-}
-static hasMNImages(markdown) {
-  try {
-    // 匹配 base64 图片链接的正则表达式
-    const MNImagePattern = /!\[.*?\]\((marginnote4app\:\/\/markdownimg\/png\/.*?)(\))/g;
-    let link = markdown.match(MNImagePattern)[0]
-    // MNUtil.copyJSON({"a":link,"b":markdown})
-    return markdown.match(MNImagePattern)?true:false
-  } catch (error) {
-    pluginDemoUtils.addErrorLog(error, "hasMNImages")
-    return false
+  static hasMNImages(markdown) {
+    try {
+      // 匹配 base64 图片链接的正则表达式
+      const MNImagePattern = /!\[.*?\]\((marginnote4app\:\/\/markdownimg\/png\/.*?)(\))/g;
+      let link = markdown.match(MNImagePattern)[0]
+      // MNUtil.copyJSON({"a":link,"b":markdown})
+      return markdown.match(MNImagePattern)?true:false
+    } catch (error) {
+      pluginDemoUtils.addErrorLog(error, "hasMNImages")
+      return false
+    }
   }
-}
+    /**
+     * 
+     * @param {string} markdown 
+     * @returns {NSData}
+     */
+  static getMNImagesFromMarkdown(markdown) {
+    try {
+      const MNImagePattern = /!\[.*?\]\((marginnote4app\:\/\/markdownimg\/png\/.*?)(\))/g;
+      let link = markdown.match(MNImagePattern)[0]
+      // MNUtil.copyJSON(link)
+      let hash = link.split("markdownimg/png/")[1].slice(0,-1)
+      let imageData = MNUtil.getMediaByHash(hash)
+      return imageData
+    } catch (error) {
+      pluginDemoUtils.addErrorLog(error, "replaceBase64ImagesWithR2")
+      return undefined
+    }
+  }
   /**
    * 
-   * @param {string} markdown 
-   * @returns {NSData}
+   * @param {string} text 
+   * @param {UITextView} textView
    */
-static getMNImagesFromMarkdown(markdown) {
+  static insertSnippetToTextView(text, textView) {
   try {
-    const MNImagePattern = /!\[.*?\]\((marginnote4app\:\/\/markdownimg\/png\/.*?)(\))/g;
-    let link = markdown.match(MNImagePattern)[0]
-    // MNUtil.copyJSON(link)
-    let hash = link.split("markdownimg/png/")[1].slice(0,-1)
-    let imageData = MNUtil.getMediaByHash(hash)
-    return imageData
-  } catch (error) {
-    pluginDemoUtils.addErrorLog(error, "replaceBase64ImagesWithR2")
-    return undefined
+    let textLength = text.length
+    let cursorLocation = textLength
+    if (/{{cursor}}/.test(text)) {
+      cursorLocation = text.indexOf("{{cursor}}")
+      text = text.replace(/{{cursor}}/g, "")
+      textLength = text.length
+    }
+    let selectedRange = textView.selectedRange
+    let pre = textView.text.slice(0,selectedRange.location)
+    let post = textView.text.slice(selectedRange.location+selectedRange.length)
+    textView.text = pre+text+post
+    textView.selectedRange = {location:selectedRange.location+cursorLocation,length:0}
+    return true
+    } catch (error) {
+      this.addErrorLog(error, "insertSnippetToTextView")
+      return false
+    }
   }
-}
-/**
- * 
- * @param {string} text 
- * @param {UITextView} textView
- */
-static insertSnippetToTextView(text, textView) {
-try {
-  let textLength = text.length
-  let cursorLocation = textLength
-  if (/{{cursor}}/.test(text)) {
-    cursorLocation = text.indexOf("{{cursor}}")
-    text = text.replace(/{{cursor}}/g, "")
-    textLength = text.length
-  }
-  let selectedRange = textView.selectedRange
-  let pre = textView.text.slice(0,selectedRange.location)
-  let post = textView.text.slice(selectedRange.location+selectedRange.length)
-  textView.text = pre+text+post
-  textView.selectedRange = {location:selectedRange.location+cursorLocation,length:0}
-  return true
-  } catch (error) {
-    this.addErrorLog(error, "insertSnippetToTextView")
-    return false
-  }
-}
   static smartCopy(){
     MNUtil.showHUD("smartcopy")
     let selection = MNUtil.currentSelection
@@ -5518,6 +5516,8 @@ static getDescriptionByName(actionName){
   }
 
 }
+
+
 class pluginDemoSandbox{
   static async execute(code){
     'use strict';

@@ -156,9 +156,7 @@ JSB.newAddon = function (mainPath) {
         // 使用 Menu 类（参考 mnai 的实现）
         if (typeof Menu !== "undefined") {
           var commandTable = [
-            {title: '🔧  文本处理', object: self, selector: 'openTextProcessor', param: ""},
-            {title: '📝  快速笔记', object: self, selector: 'openQuickNote', param: ""},
-            {title: '🔍  搜索替换', object: self, selector: 'openSearchReplace', param: ""},
+            {title: '🎯  打开面板', object: self, selector: 'openPanel', param: ""},
             {title: '——————', object: self, selector: 'doNothing', param: ""},
             {title: '⚙️  设置 ▸', object: self, selector: 'showSubmenu_settings:', param: button},
             {title: '💡  帮助', object: self, selector: 'showHelp', param: ""}
@@ -175,9 +173,7 @@ JSB.newAddon = function (mainPath) {
           
           // 定义菜单项作为降级方案
           var commandTable = [
-            {title: '🔧  文本处理', object: self, selector: 'openTextProcessor', param: ""},
-            {title: '📝  快速笔记', object: self, selector: 'openQuickNote', param: ""},
-            {title: '🔍  搜索替换', object: self, selector: 'openSearchReplace', param: ""},
+            {title: '🎯  打开面板', object: self, selector: 'openPanel', param: ""},
             {title: '——————', object: self, selector: 'doNothing', param: ""},
             {title: '⚙️  设置', object: self, selector: 'showSettingsMenu', param: button},
             {title: '💡  帮助', object: self, selector: 'showHelp', param: ""}
@@ -218,6 +214,142 @@ JSB.newAddon = function (mainPath) {
             1 << 2, // 向上箭头
             true
           );
+        }
+      },
+      
+      // 统一的面板入口
+      openPanel: function() {
+        try {
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log("🎯 Simple Panel: 打开面板");
+          }
+          
+          // 关闭菜单
+          if (typeof Menu !== "undefined") {
+            Menu.dismissCurrentMenu();
+          }
+          if (self.popoverController) {
+            self.popoverController.dismissPopoverAnimated(true);
+            self.popoverController = null;
+          }
+          
+          // 内联 ensurePanelReady 逻辑
+          var panelReady = false;
+          try {
+            if (!self.panelController) {
+              if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                MNUtil.log("❌ Simple Panel: panelController is null!");
+              }
+            } else if (!self.panelController.view) {
+              if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                MNUtil.log("❌ Simple Panel: panelController.view is null!");
+              }
+            } else {
+              var view = self.panelController.view;
+              if (!view.superview) {
+                var studyView = null;
+                if (typeof MNUtil !== "undefined" && MNUtil.studyView) {
+                  studyView = MNUtil.studyView;
+                } else {
+                  studyView = self.appInstance.studyController(self.window).view;
+                }
+                
+                if (studyView) {
+                  studyView.addSubview(view);
+                  if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                    MNUtil.log("✅ Simple Panel: 面板已添加到 studyView");
+                  }
+                  panelReady = true;
+                }
+              } else {
+                panelReady = true;
+              }
+            }
+          } catch (e) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("❌ Simple Panel: 确保面板就绪出错: " + e.message);
+            }
+          }
+          
+          if (!panelReady) {
+            if (typeof MNUtil !== "undefined") {
+              MNUtil.showHUD("面板初始化失败");
+            }
+            return;
+          }
+          
+          // 获取上次使用的模式，默认为 textProcessor
+          var lastMode = "textProcessor";
+          if (self.panelController && self.panelController.configManager) {
+            lastMode = self.panelController.configManager.get("lastMode", "textProcessor");
+          }
+          
+          // 切换到上次使用的模式
+          if (self.panelController && self.panelController.switchToMode) {
+            self.panelController.switchToMode(lastMode);
+          }
+          
+          // 显示面板
+          try {
+            if (self.panelController && self.panelController.view) {
+              var view = self.panelController.view;
+              
+              // 确保视图在最前面
+              if (typeof MNUtil !== "undefined" && MNUtil.studyView) {
+                MNUtil.studyView.bringSubviewToFront(view);
+              } else if (view.superview) {
+                view.superview.bringSubviewToFront(view);
+              }
+              
+              // 显示视图
+              view.hidden = false;
+              view.alpha = 1;
+              view.layer.opacity = 1.0;
+              
+              // 如果有 show 方法，调用它
+              if (self.panelController.show) {
+                self.panelController.show();
+              }
+              
+              if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                MNUtil.log("✅ Simple Panel: 面板已显示");
+              }
+              
+              // 获取选中文本并填充（如果在文本处理模式）
+              if (lastMode === "textProcessor") {
+                var selectedText = null;
+                try {
+                  var readerController = self.appInstance.studyController(self.window).readerController;
+                  if (readerController && readerController.currentDocumentController) {
+                    selectedText = readerController.currentDocumentController.selectionText;
+                  }
+                } catch (e) {
+                  if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                    MNUtil.log("⚠️ Simple Panel: 获取选中文本失败");
+                  }
+                }
+                
+                if (selectedText && self.panelController && self.panelController.inputField) {
+                  self.panelController.inputField.text = selectedText;
+                  if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                    MNUtil.log("✅ Simple Panel: 已填充选中文本");
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log("❌ Simple Panel: 显示面板出错: " + e.message);
+            }
+          }
+        } catch (error) {
+          if (typeof MNUtil !== "undefined") {
+            if (MNUtil.log) {
+              MNUtil.log("❌ Simple Panel: openPanel 出错: " + error.message);
+              MNUtil.log("❌ Simple Panel: 错误堆栈: " + error.stack);
+            }
+            MNUtil.showHUD("打开面板失败: " + error.message);
+          }
         }
       },
       

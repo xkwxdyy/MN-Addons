@@ -79,19 +79,20 @@ var SimplePanelController = JSB.defineClass(
       self.doubleTapGesture.numberOfTapsRequired = 2;
       self.titleBar.addGestureRecognizer(self.doubleTapGesture);
       
-      // 标题标签
+      // 标题标签 - 隐藏，因为有模式按钮了
       self.titleLabel = UILabel.new();
       self.titleLabel.text = self.modes.textProcessor.title;
       self.titleLabel.textColor = UIColor.whiteColor();
       self.titleLabel.font = UIFont.boldSystemFontOfSize(16);
       self.titleLabel.textAlignment = 1;
+      self.titleLabel.hidden = true;  // 隐藏标题
       self.titleBar.addSubview(self.titleLabel);
       
       // === 使用原生 UIButton 实现快速响应 ===
       
       // 关闭按钮 - 使用原生 UIButton
       self.closeButton = UIButton.buttonWithType(0); // UIButtonTypeCustom
-      self.closeButton.frame = {x: self.titleBar.frame.width - 35, y: 5, width: 30, height: 30};
+      self.closeButton.frame = {x: self.titleBar.frame.width - 35, y: 7.5, width: 30, height: 30};
       self.closeButton.setTitleForState("✕", 0);
       self.closeButton.setTitleColorForState(UIColor.blackColor(), 0);
       self.closeButton.titleLabel.font = UIFont.systemFontOfSize(20);
@@ -104,7 +105,7 @@ var SimplePanelController = JSB.defineClass(
       
       // 最小化按钮 - 使用原生 UIButton
       self.minimizeButton = UIButton.buttonWithType(0);
-      self.minimizeButton.frame = {x: 5, y: 5, width: 30, height: 30};
+      self.minimizeButton.frame = {x: 5, y: 7.5, width: 30, height: 30};
       self.minimizeButton.setTitleForState("−", 0);
       self.minimizeButton.setTitleColorForState(UIColor.blackColor(), 0);
       self.minimizeButton.titleLabel.font = UIFont.systemFontOfSize(20);
@@ -117,6 +118,36 @@ var SimplePanelController = JSB.defineClass(
       // 添加拖动手势
       self.dragGesture = new UIPanGestureRecognizer(self, "onDragGesture:");
       self.titleBar.addGestureRecognizer(self.dragGesture);
+      
+      // === 创建模式切换按钮（类似 mnai） ===
+      self.modeButtons = [];
+      const modes = [
+        { key: 'textProcessor', icon: '🔧', title: '文本处理' },
+        { key: 'quickNote', icon: '📝', title: '快速笔记' },
+        { key: 'searchReplace', icon: '🔍', title: '搜索替换' }
+      ];
+      
+      modes.forEach((mode, index) => {
+        const btn = UIButton.buttonWithType(0);
+        btn.setTitleForState(mode.icon, 0);
+        btn.titleLabel.font = UIFont.systemFontOfSize(18);
+        btn.layer.cornerRadius = 15;
+        btn.tag = index;
+        btn.modeKey = mode.key;
+        
+        // 设置初始颜色（第一个按钮选中）
+        if (index === 0) {
+          btn.backgroundColor = UIColor.whiteColor().colorWithAlphaComponent(0.3);
+          btn.setTitleColorForState(UIColor.whiteColor(), 0);
+        } else {
+          btn.backgroundColor = UIColor.clearColor();
+          btn.setTitleColorForState(UIColor.whiteColor().colorWithAlphaComponent(0.7), 0);
+        }
+        
+        btn.addTargetActionForControlEvents(self, "switchModeByButton:", 1 << 6);
+        self.titleBar.addSubview(btn);
+        self.modeButtons.push(btn);
+      });
       
       // === 创建输入框 ===
       self.inputField = UITextView.new();
@@ -247,7 +278,7 @@ var SimplePanelController = JSB.defineClass(
         x: 0,
         y: 0,
         width: frame.width,
-        height: 40
+        height: 45
       };
       
       // 标题栏内的元素
@@ -287,7 +318,7 @@ var SimplePanelController = JSB.defineClass(
       
       // 内容区域
       if (!self.isMinimized) {
-        var contentTop = 50;
+        var contentTop = 55;  // 标题栏45 + 间距10
         var toolbarHeight = 50;
         var contentHeight = (frame.height - contentTop - toolbarHeight - 10) / 2 - 5;
         
@@ -355,10 +386,28 @@ var SimplePanelController = JSB.defineClass(
       
       // 调整按钮位置
       if (self.closeButton) {
-        self.closeButton.frame = {x: frame.width - 35, y: 5, width: 30, height: 30};
+        self.closeButton.frame = {x: frame.width - 35, y: 7.5, width: 30, height: 30};
       }
       if (self.minimizeButton) {
-        self.minimizeButton.frame = {x: 5, y: 5, width: 30, height: 30};
+        self.minimizeButton.frame = {x: 5, y: 7.5, width: 30, height: 30};
+      }
+      
+      // 布局模式切换按钮
+      if (self.modeButtons) {
+        const buttonWidth = 30;
+        const buttonHeight = 30;
+        const spacing = 5;
+        const totalWidth = self.modeButtons.length * buttonWidth + (self.modeButtons.length - 1) * spacing;
+        const startX = (frame.width - totalWidth) / 2;
+        
+        self.modeButtons.forEach((btn, index) => {
+          btn.frame = {
+            x: startX + index * (buttonWidth + spacing),
+            y: 7.5,  // (45 - 30) / 2 = 7.5，垂直居中
+            width: buttonWidth,
+            height: buttonHeight
+          };
+        });
       }
     },
     
@@ -945,6 +994,19 @@ var SimplePanelController = JSB.defineClass(
     
     // === 新增功能方法 ===
     
+    // 通过按钮切换模式
+    switchModeByButton: function(button) {
+      const mode = button.modeKey;
+      if (mode && mode !== self.currentMode) {
+        self.switchToMode(mode);
+        
+        // 保存用户选择的模式
+        if (configManager) {
+          configManager.set("lastMode", mode);
+        }
+      }
+    },
+    
     // 高级模式切换（基于 mnai 动画系统）
     switchToMode: function(mode) {
       if (self.currentMode === mode) return;
@@ -958,7 +1020,6 @@ var SimplePanelController = JSB.defineClass(
       
       // 直接切换，不使用复杂动画 - 参考 mnai 项目
       self.currentMode = mode;
-      self.titleLabel.text = modeConfig.title;
       
       // 更新占位符
       if (self.inputField.text === "" || 
@@ -973,6 +1034,21 @@ var SimplePanelController = JSB.defineClass(
       self.viewWillLayoutSubviews();
       
       self.lastMode = mode;
+      
+      // 更新模式按钮状态
+      if (self.modeButtons) {
+        self.modeButtons.forEach((btn) => {
+          if (btn.modeKey === mode) {
+            // 选中状态
+            btn.backgroundColor = UIColor.whiteColor().colorWithAlphaComponent(0.3);
+            btn.setTitleColorForState(UIColor.whiteColor(), 0);
+          } else {
+            // 未选中状态
+            btn.backgroundColor = UIColor.clearColor();
+            btn.setTitleColorForState(UIColor.whiteColor().colorWithAlphaComponent(0.7), 0);
+          }
+        });
+      }
       
       // 更新状态指示器
       self.updateStatusIndicator(mode);

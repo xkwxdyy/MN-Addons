@@ -123,6 +123,107 @@ MarginNote4 使用 16 色索引系统（0-15），从淡黄色到紫色的完整
 - UIKit/AppKit
 - WebView (HTML/CSS)
 
+### JavaScript 语法支持
+
+基于对 mnutils、mntoolbar 和 mnai 源码的深入分析，JSBox/JSB 框架完全支持现代 ES6+ 语法特性：
+
+#### 支持的语法特性
+
+**变量声明**
+```javascript
+const note = MNNote.getFocusNote()  // 常量声明
+let cache = {}                       // 可变变量
+```
+
+**箭头函数**
+```javascript
+// 单行箭头函数
+const doubled = arr.map(x => x * 2)
+
+// 多行箭头函数
+const processNote = (note) => {
+  note.colorIndex = 2
+  return note
+}
+```
+
+**模板字符串**
+```javascript
+MNUtil.log(`笔记标题: ${note.noteTitle}`)
+const message = `处理了 ${count} 个笔记`
+```
+
+**类语法**
+```javascript
+class MNMath {
+  static types = {
+    定义: { colorIndex: 2 }
+  }
+  
+  constructor() {
+    this.name = "MNMath"
+  }
+}
+```
+
+**异步编程**
+```javascript
+// async/await
+notebookWillOpen: async function(notebookId) {
+  await chatAIUtils.checkMNUtil(true)
+  const result = await fetchData()
+}
+
+// Promise
+MNUtil.delay(1).then(() => {
+  // 延迟执行
+})
+```
+
+**解构赋值**
+```javascript
+const {title, content} = note
+const [first, second] = array
+```
+
+**扩展运算符**
+```javascript
+const newArray = [...oldArray]
+const merged = {...obj1, ...obj2}
+const unique = [...new Set(array)]
+```
+
+**默认参数**
+```javascript
+function createNote(title = "未命名", color = 0) {
+  // 函数体
+}
+```
+
+**现代数组方法**
+```javascript
+notes.filter(n => n.colorIndex === 2)
+     .map(n => n.noteTitle)
+     .forEach(title => console.log(title))
+
+const found = notes.find(n => n.noteId === id)
+const hasNote = notes.includes(targetNote)
+```
+
+**现代对象方法**
+```javascript
+Object.keys(obj).forEach(key => {})
+Object.values(obj)
+Object.entries(obj)
+Object.assign(target, source)
+```
+
+#### 注意事项
+
+1. **不要因为语法报错而盲目修改**：如果遇到看似"语法错误"，先检查是否是 API 使用问题
+2. **优先使用现代语法**：既然支持 ES6+，应该充分利用这些特性来编写更简洁的代码
+3. **与原生 API 结合**：虽然支持现代 JS，但仍需要通过 JSB 桥接调用原生 API
+
 ## 📋 子项目规范
 
 ### MNToolbar 项目

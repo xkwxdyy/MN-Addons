@@ -240,7 +240,17 @@
         "--tags",
         "marginnote plugin mnaddon 打包 packaging 错误 闪退 crash"
       ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "remember",
+      "timestamp": "2025-07-01T03:42:24.604Z",
+      "args": [
+        "【重要教训】JSDoc 注释中的语法陷阱\n\n问题：在 JSDoc 或多行注释的示例代码中包含 `*/` 会导致注释提前结束，引发大量语法错误（如 270 个错误）\n\n错误示例：\n```javascript\n/**\n * @example\n * let template = \"/**\\n * {{cursor}}\\n */\\nfunction name() {\\n\\n}\"\n */\n```\n\n正确做法：\n```javascript\n/**\n * @example  \n * let template = \"/**\\\\n * {{cursor}}\\\\n *\\\\/\\\\nfunction name() {\\\\n\\\\n}\"\n */\n```\n\n解决方法：\n1. 将 `*/` 替换为 `*\\/` 进行转义\n2. 避免在注释示例中使用包含注释符号的字符串\n3. 使用 `node -c filename.js` 验证语法\n\n症状：编辑器突然报告大量语法错误，错误集中在某个注释块之后",
+        "--tags",
+        "错误 注释 JSDoc 语法 MN-Addon utils.js"
+      ]
     }
   ],
-  "lastUpdated": "2025-06-30T10:09:11.534Z"
+  "lastUpdated": "2025-07-01T03:42:24.615Z"
 }

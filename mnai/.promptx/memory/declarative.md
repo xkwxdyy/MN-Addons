@@ -90,3 +90,33 @@ MarginNote 插件打包关键经验：
 这是一个非常容易犯的错误，但影响严重。记住：永远不要压缩文件夹，而是进入文件夹后压缩文件。 --tags marginnote plugin mnaddon 打包 packaging 错误 闪退 crash
 --tags #工具使用 #评分:8 #有效期:长期
 - END
+
+- 2025/07/01 11:42 START
+【重要教训】JSDoc 注释中的语法陷阱
+
+问题：在 JSDoc 或多行注释的示例代码中包含 `*/` 会导致注释提前结束，引发大量语法错误（如 270 个错误）
+
+错误示例：
+```javascript
+/**
+ * @example
+ * let template = "/**\n * {{cursor}}\n */\nfunction name() {\n\n}"
+ */
+```
+
+正确做法：
+```javascript
+/**
+ * @example  
+ * let template = "/**\\n * {{cursor}}\\n *\\/\\nfunction name() {\\n\\n}"
+ */
+```
+
+解决方法：
+1. 将 `*/` 替换为 `*\/` 进行转义
+2. 避免在注释示例中使用包含注释符号的字符串
+3. 使用 `node -c filename.js` 验证语法
+
+症状：编辑器突然报告大量语法错误，错误集中在某个注释块之后 --tags 错误 注释 JSDoc 语法 MN-Addon utils.js
+--tags #其他 #评分:8 #有效期:长期
+- END

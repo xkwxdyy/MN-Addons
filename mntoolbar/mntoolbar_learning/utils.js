@@ -1,48 +1,118 @@
 /**
- * UIView Frame 管理工具类
+ * 🎯 UIView Frame 管理工具类 - 控制界面元素的位置和大小
  * 
- * 这是一个专门用于管理 UIView（iOS 视图）位置和大小的工具类。
- * 虽然 MNUtil 提供了基础的 genFrame 和 setFrame 方法，但本类提供了更多便利的操作方法。
+ * 【什么是 Frame？】
+ * Frame 是 iOS/macOS 中描述界面元素位置和大小的概念，包含 4 个属性：
+ * - x: 元素左边缘到父视图左边缘的距离
+ * - y: 元素上边缘到父视图上边缘的距离  
+ * - width: 元素的宽度
+ * - height: 元素的高度
  * 
- * 注意：这个类是对 MNUtil 的补充，不是重复。MNUtil 只提供了基础的 frame 操作，
- * 而这个类提供了更多细粒度的控制方法（如单独设置 x/y/width/height，相对移动等）。
+ * 【坐标系统说明】
+ * iOS/macOS 的坐标系统：
+ * (0,0) ┌─────────────────────► X 轴（向右为正）
+ *       │
+ *       │   ┌─────────┐
+ *       │   │ 按钮    │ (x=50, y=100)
+ *       │   │         │ width=100
+ *       │   └─────────┘ height=40
+ *       │
+ *       ▼ Y 轴（向下为正）
  * 
- * 主要功能：
- * 1. 创建新的 frame 对象 - gen(x, y, width, height)
- * 2. 单独设置位置 - setX(), setY(), setLoc()
- * 3. 单独设置大小 - setWidth(), setHeight(), setSize()
- * 4. 相对移动 - moveX(), moveY()
- * 5. 智能设置 - set() 只修改指定的属性，undefined 的参数会保持原值
+ * 【为什么需要这个类？】
+ * 虽然 MNUtil 提供了基础的 genFrame 和 setFrame 方法，但本类提供了更多便利的操作方法：
+ * - MNUtil.genFrame(): 只能创建新的 frame 对象
+ * - MNUtil.setFrame(): 必须一次性设置所有属性
+ * - 本类的方法：可以单独修改某个属性，更加灵活
  * 
- * 使用示例：
+ * 【主要功能分类】
+ * 1. 创建 Frame：gen() - 创建新的 frame 对象
+ * 2. 位置操作：setX(), setY(), setLoc() - 设置元素位置
+ * 3. 大小操作：setWidth(), setHeight(), setSize() - 设置元素大小
+ * 4. 相对移动：moveX(), moveY() - 相对当前位置移动
+ * 5. 智能设置：set() - 只修改指定的属性
+ * 6. 比较工具：sameFrame() - 判断两个 frame 是否相同
+ * 
+ * 【常见使用场景】
  * ```javascript
- * // 创建一个新的 frame
+ * // 场景1：创建新按钮并设置位置
+ * let button = UIButton.new()
  * let frame = pluginDemoFrame.gen(10, 20, 100, 50)
+ * button.frame = frame
  * 
- * // 移动按钮到指定位置
- * pluginDemoFrame.setLoc(button, 100, 200)
+ * // 场景2：调整已存在按钮的位置
+ * pluginDemoFrame.setLoc(button, 100, 200)  // 移动到 (100, 200)
  * 
- * // 只修改宽度
- * pluginDemoFrame.setWidth(button, 200)
+ * // 场景3：响应式调整大小
+ * let screenWidth = UIScreen.mainScreen.bounds.width
+ * pluginDemoFrame.setWidth(button, screenWidth - 20)  // 宽度适应屏幕
  * 
- * // 相对移动
- * pluginDemoFrame.moveX(button, 10)  // 向右移动 10 像素
+ * // 场景4：动画效果 - 按钮向右滑动
+ * for (let i = 0; i < 10; i++) {
+ *   pluginDemoFrame.moveX(button, 5)  // 每次向右移动 5 像素
+ *   await MNUtil.delay(0.1)  // 延迟 0.1 秒
+ * }
  * 
- * // 智能设置 - 只修改 x 和 width
+ * // 场景5：只想改变部分属性
+ * // 只改变 x 坐标和宽度，y 和高度保持不变
  * pluginDemoFrame.set(button, 50, undefined, 200, undefined)
  * ```
  */
 class pluginDemoFrame{
+  /**
+   * 🏗️ 创建一个新的 frame 对象
+   * 
+   * 这个方法用于创建一个新的位置和大小信息对象，通常用于：
+   * - 创建新的界面元素时设置初始位置和大小
+   * - 需要一个 frame 对象作为参数传递时
+   * 
+   * @param {number} x - 水平位置（左边缘到父视图左边缘的距离）
+   * @param {number} y - 垂直位置（上边缘到父视图上边缘的距离）
+   * @param {number} width - 宽度（元素的水平尺寸）
+   * @param {number} height - 高度（元素的垂直尺寸）
+   * @returns {CGRect} 返回一个 frame 对象 {x, y, width, height}
+   * 
+   * @example
+   * // 创建一个位于 (10, 20)，大小为 100x50 的 frame
+   * let frame = pluginDemoFrame.gen(10, 20, 100, 50)
+   * // frame = {x: 10, y: 20, width: 100, height: 50}
+   * 
+   * // 应用到按钮上
+   * let button = UIButton.new()
+   * button.frame = frame
+   */
   static gen(x,y,width,height){
     return MNUtil.genFrame(x, y, width, height)
   }
   /**
+   * 🎛️ 智能设置 frame 的任意属性（最灵活的方法）
    * 
-   * @param {UIView} view 
-   * @param {number} x 
-   * @param {number} y 
-   * @param {number} width 
-   * @param {number} height 
+   * 这是最强大的设置方法，允许你只修改需要的属性，其他属性保持不变。
+   * 传入 undefined 的参数会被忽略，保持原值。
+   * 
+   * 【特点】
+   * - 性能优化：只有当 frame 真正改变时才会更新视图
+   * - 灵活性高：可以只修改部分属性
+   * - 智能处理：会检查 view 对象上的临时属性（view.x, view.y 等）
+   * 
+   * @param {UIView} view - 要修改的视图对象
+   * @param {number|undefined} x - 新的 x 坐标（传 undefined 保持原值）
+   * @param {number|undefined} y - 新的 y 坐标（传 undefined 保持原值）
+   * @param {number|undefined} width - 新的宽度（传 undefined 保持原值）
+   * @param {number|undefined} height - 新的高度（传 undefined 保持原值）
+   * 
+   * @example
+   * // 只修改 x 坐标
+   * pluginDemoFrame.set(button, 100, undefined, undefined, undefined)
+   * 
+   * // 只修改位置，不改变大小
+   * pluginDemoFrame.set(button, 50, 80, undefined, undefined)
+   * 
+   * // 只修改大小，不改变位置
+   * pluginDemoFrame.set(button, undefined, undefined, 200, 60)
+   * 
+   * // 修改所有属性
+   * pluginDemoFrame.set(button, 10, 20, 100, 50)
    */
   static set(view,x,y,width,height){
     let oldFrame = view.frame
@@ -71,6 +141,24 @@ class pluginDemoFrame{
       view.frame = frame
     }
   }
+  /**
+   * 🔍 比较两个 frame 是否完全相同
+   * 
+   * 用于判断两个 frame 的所有属性（x, y, width, height）是否都相等。
+   * 主要用于性能优化，避免不必要的视图更新。
+   * 
+   * @param {CGRect} frame1 - 第一个 frame 对象
+   * @param {CGRect} frame2 - 第二个 frame 对象
+   * @returns {boolean} 如果所有属性都相同返回 true，否则返回 false
+   * 
+   * @example
+   * let frame1 = {x: 10, y: 20, width: 100, height: 50}
+   * let frame2 = {x: 10, y: 20, width: 100, height: 50}
+   * let frame3 = {x: 10, y: 20, width: 100, height: 60}
+   * 
+   * pluginDemoFrame.sameFrame(frame1, frame2)  // true - 完全相同
+   * pluginDemoFrame.sameFrame(frame1, frame3)  // false - height 不同
+   */
   static sameFrame(frame1,frame2){
     if (frame1.x === frame2.x && frame1.y === frame2.y && frame1.width === frame2.width && frame1.height === frame2.height) {
       return true
@@ -78,9 +166,25 @@ class pluginDemoFrame{
     return false
   }
   /**
+   * ↔️ 设置元素的水平位置（只修改 x 坐标）
    * 
-   * @param {UIView} view 
-   * @param {number} x
+   * 保持元素的 y 坐标、宽度和高度不变，只改变水平位置。
+   * 适用于水平对齐、水平移动等场景。
+   * 
+   * @param {UIView} view - 要修改的视图对象
+   * @param {number} x - 新的 x 坐标值
+   * 
+   * @example
+   * // 将按钮移动到屏幕左边缘
+   * pluginDemoFrame.setX(button, 0)
+   * 
+   * // 将按钮移动到距离左边 20 像素的位置
+   * pluginDemoFrame.setX(button, 20)
+   * 
+   * // 居中对齐示例
+   * let screenWidth = UIScreen.mainScreen.bounds.width
+   * let buttonWidth = button.frame.width
+   * pluginDemoFrame.setX(button, (screenWidth - buttonWidth) / 2)
    */
   static setX(view,x){
     let frame = view.frame
@@ -88,9 +192,25 @@ class pluginDemoFrame{
     view.frame = frame
   }
   /**
+   * ↕️ 设置元素的垂直位置（只修改 y 坐标）
    * 
-   * @param {UIView} view 
-   * @param {number} y
+   * 保持元素的 x 坐标、宽度和高度不变，只改变垂直位置。
+   * 适用于垂直对齐、上下移动等场景。
+   * 
+   * @param {UIView} view - 要修改的视图对象
+   * @param {number} y - 新的 y 坐标值
+   * 
+   * @example
+   * // 将按钮移动到屏幕顶部
+   * pluginDemoFrame.setY(button, 0)
+   * 
+   * // 将按钮移动到距离顶部 50 像素的位置
+   * pluginDemoFrame.setY(button, 50)
+   * 
+   * // 垂直居中示例
+   * let screenHeight = UIScreen.mainScreen.bounds.height
+   * let buttonHeight = button.frame.height
+   * pluginDemoFrame.setY(button, (screenHeight - buttonHeight) / 2)
    */
   static setY(view,y){
     let frame = view.frame
@@ -98,15 +218,33 @@ class pluginDemoFrame{
     view.frame = frame
   }
   /**
+   * 📍 设置元素的位置（同时设置 x 和 y）
    * 
-   * @param {UIView} view
-   * @param {number} x 
-   * @param {number} y 
+   * 一次性设置元素的位置，保持大小不变。
+   * 注意：如果 view 对象上有临时的 width/height 属性，会优先使用这些值。
+   * 
+   * @param {UIView} view - 要修改的视图对象
+   * @param {number} x - 新的 x 坐标
+   * @param {number} y - 新的 y 坐标
+   * 
+   * @example
+   * // 移动按钮到指定位置
+   * pluginDemoFrame.setLoc(button, 100, 200)
+   * 
+   * // 移动到屏幕左上角
+   * pluginDemoFrame.setLoc(button, 0, 0)
+   * 
+   * // 根据其他元素定位
+   * let label = getLabel()
+   * // 将按钮放在标签下方 10 像素处，左对齐
+   * pluginDemoFrame.setLoc(button, label.frame.x, label.frame.y + label.frame.height + 10)
    */
   static setLoc(view,x,y){
     let frame = view.frame
     frame.x = x
     frame.y = y
+    // 特殊处理：如果 view 对象上临时存储了宽高值，使用这些值
+    // 这种情况通常出现在动画或临时调整时
     if (view.width) {
       frame.width = view.width
     }
@@ -116,10 +254,25 @@ class pluginDemoFrame{
     view.frame = frame
   }
   /**
+   * 📐 设置元素的大小（同时设置宽度和高度）
    * 
-   * @param {UIView} view 
-   * @param {number} width 
-   * @param {number} height 
+   * 保持元素位置不变，只改变大小。
+   * 适用于调整按钮大小、适配不同屏幕等场景。
+   * 
+   * @param {UIView} view - 要修改的视图对象
+   * @param {number} width - 新的宽度
+   * @param {number} height - 新的高度
+   * 
+   * @example
+   * // 设置按钮为标准大小
+   * pluginDemoFrame.setSize(button, 100, 44)  // iOS 标准按钮高度是 44
+   * 
+   * // 设置为正方形
+   * pluginDemoFrame.setSize(imageView, 80, 80)
+   * 
+   * // 根据内容动态调整
+   * let textWidth = calculateTextWidth(button.title)
+   * pluginDemoFrame.setSize(button, textWidth + 20, 44)  // 加 20 像素边距
    */
   static setSize(view,width,height){
     let frame = view.frame
@@ -128,9 +281,25 @@ class pluginDemoFrame{
     view.frame = frame
   }
   /**
+   * ↔️ 设置元素的宽度（只修改宽度）
    * 
-   * @param {UIView} view 
-   * @param {number} width
+   * 保持位置和高度不变，只改变宽度。
+   * 常用于响应式布局、文本框宽度调整等。
+   * 
+   * @param {UIView} view - 要修改的视图对象
+   * @param {number} width - 新的宽度值
+   * 
+   * @example
+   * // 设置固定宽度
+   * pluginDemoFrame.setWidth(button, 120)
+   * 
+   * // 适配屏幕宽度（留出边距）
+   * let screenWidth = UIScreen.mainScreen.bounds.width
+   * pluginDemoFrame.setWidth(textField, screenWidth - 40)  // 左右各留 20 像素
+   * 
+   * // 根据父视图调整
+   * let parentWidth = button.superview.frame.width
+   * pluginDemoFrame.setWidth(button, parentWidth * 0.8)  // 占父视图 80% 宽度
    */
   static setWidth(view,width){
     let frame = view.frame
@@ -138,9 +307,28 @@ class pluginDemoFrame{
     view.frame = frame
   }
   /**
+   * ↕️ 设置元素的高度（只修改高度）
    * 
-   * @param {UIView} view 
-   * @param {number} height
+   * 保持位置和宽度不变，只改变高度。
+   * 常用于展开/收起动画、内容自适应等。
+   * 
+   * @param {UIView} view - 要修改的视图对象
+   * @param {number} height - 新的高度值
+   * 
+   * @example
+   * // 设置标准高度
+   * pluginDemoFrame.setHeight(button, 44)  // iOS 标准按钮高度
+   * 
+   * // 展开/收起动画
+   * let isExpanded = false
+   * function toggleExpand() {
+   *   isExpanded = !isExpanded
+   *   pluginDemoFrame.setHeight(contentView, isExpanded ? 200 : 50)
+   * }
+   * 
+   * // 根据内容自适应高度
+   * let contentHeight = calculateContentHeight()
+   * pluginDemoFrame.setHeight(scrollView, Math.min(contentHeight, 300))  // 最大 300
    */
   static setHeight(view,height){
     let frame = view.frame
@@ -148,9 +336,35 @@ class pluginDemoFrame{
     view.frame = frame
   }
   /**
+   * ➡️ 水平移动元素（相对于当前位置）
    * 
-   * @param {UIView} view 
-   * @param {number} xDiff
+   * 基于元素当前位置进行水平移动，正值向右，负值向左。
+   * 适用于滑动动画、手势拖动等场景。
+   * 
+   * @param {UIView} view - 要移动的视图对象
+   * @param {number} xDiff - 水平移动距离（正值向右，负值向左）
+   * 
+   * @example
+   * // 向右移动 20 像素
+   * pluginDemoFrame.moveX(button, 20)
+   * 
+   * // 向左移动 30 像素
+   * pluginDemoFrame.moveX(button, -30)
+   * 
+   * // 简单的滑动动画
+   * async function slideRight() {
+   *   for (let i = 0; i < 10; i++) {
+   *     pluginDemoFrame.moveX(button, 5)  // 每次移动 5 像素
+   *     await MNUtil.delay(0.05)  // 延迟 50 毫秒
+   *   }
+   * }
+   * 
+   * // 响应手势拖动
+   * function onPanGesture(gesture) {
+   *   let translation = gesture.translationInView(view)
+   *   pluginDemoFrame.moveX(dragView, translation.x)
+   *   gesture.setTranslationInView({x: 0, y: 0}, view)  // 重置手势位移
+   * }
    */
   static moveX(view,xDiff){
     let frame = view.frame
@@ -158,9 +372,41 @@ class pluginDemoFrame{
     view.frame = frame
   }
   /**
+   * ⬇️ 垂直移动元素（相对于当前位置）
    * 
-   * @param {UIView} view 
-   * @param {number} yDiff
+   * 基于元素当前位置进行垂直移动，正值向下，负值向上。
+   * 适用于下拉刷新、滚动效果等场景。
+   * 
+   * @param {UIView} view - 要移动的视图对象
+   * @param {number} yDiff - 垂直移动距离（正值向下，负值向上）
+   * 
+   * @example
+   * // 向下移动 30 像素
+   * pluginDemoFrame.moveY(button, 30)
+   * 
+   * // 向上移动 50 像素
+   * pluginDemoFrame.moveY(button, -50)
+   * 
+   * // 弹跳动画效果
+   * async function bounce() {
+   *   // 向上弹起
+   *   for (let i = 0; i < 10; i++) {
+   *     pluginDemoFrame.moveY(button, -3)
+   *     await MNUtil.delay(0.02)
+   *   }
+   *   // 落下
+   *   for (let i = 0; i < 10; i++) {
+   *     pluginDemoFrame.moveY(button, 3)
+   *     await MNUtil.delay(0.02)
+   *   }
+   * }
+   * 
+   * // 下拉效果
+   * function onPullDown(distance) {
+   *   if (distance > 0 && distance < 100) {
+   *     pluginDemoFrame.moveY(refreshView, distance * 0.5)  // 阻尼效果
+   *   }
+   * }
    */
   static moveY(view,yDiff){
     let frame = view.frame

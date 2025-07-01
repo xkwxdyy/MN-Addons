@@ -1,5 +1,5 @@
 {
-  "currentState": "memory_saved",
+  "currentState": "initialized",
   "stateHistory": [
     {
       "from": "initial",
@@ -250,7 +250,37 @@
         "--tags",
         "错误 注释 JSDoc 语法 MN-Addon utils.js"
       ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "init",
+      "timestamp": "2025-07-01T06:26:14.581Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntoolbar/mntoolbar_learning"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-07-01T06:34:49.355Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntoolbar/mntoolbar_learning"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-07-01T06:39:25.975Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntoolbar/mntoolbar_learning"
+        }
+      ]
     }
   ],
-  "lastUpdated": "2025-07-01T03:42:24.615Z"
+  "lastUpdated": "2025-07-01T06:39:25.984Z"
 }

@@ -662,6 +662,15 @@ class pluginDemoUtils {
       return false
     }
   }
+  /**
+   * 智能复制功能
+   * 根据当前的选择状态智能判断要复制的内容：
+   * - 如果有文本/图片选择，复制选择内容
+   * - 如果有焦点笔记，按优先级复制：摘录图片 > 摘录文本 > 首条评论 > 标题
+   * 
+   * 注意：这是业务逻辑方法，内部使用 MNUtil.copy() 和 MNUtil.copyImage()
+   * @returns {boolean} 复制是否成功
+   */
   static smartCopy(){
     MNUtil.showHUD("smartcopy")
     let selection = MNUtil.currentSelection
@@ -734,6 +743,15 @@ class pluginDemoUtils {
     MNUtil.showHUD('标题已复制')
     return true
   }
+  /**
+   * 高级复制功能
+   * 根据描述对象 des 的 target 属性决定复制什么内容
+   * 支持的 target 包括：auto、selectionText、selectionImage、title、excerptText、noteId 等
+   * 
+   * 注意：这是业务逻辑方法，不是 MNUtil.copy() 的重复实现
+   * @param {Object} des - 描述对象，包含 target、content 等属性
+   * @returns {Promise<boolean>} 复制是否成功
+   */
   static async copy(des) {
   try {
     let focusNote = MNNote.getFocusNote()
@@ -957,39 +975,7 @@ class pluginDemoUtils {
    * @returns 
    */
   static moveElement(arr, element, direction) {
-      // 获取元素的索引
-      var index = arr.indexOf(element);
-      if (index === -1) {
-        MNUtil.showHUD('Element not found in array');
-        return;
-      }
-      switch (direction) {
-          case 'up':
-              if (index === 0) {
-                  MNUtil.showHUD('Element is already at the top');
-                  return;
-              }
-              // 交换元素位置
-              [arr[index], arr[index - 1]] = [arr[index - 1], arr[index]];
-              break;
-          case 'down':
-              if (index === arr.length - 1) {
-                MNUtil.showHUD('Element is already at the bottom');
-                return;
-              }
-              // 交换元素位置
-              [arr[index], arr[index + 1]] = [arr[index + 1], arr[index]];
-              break;
-          case 'top':
-              // 移除元素
-              arr.splice(index, 1);
-              // 添加到顶部
-              arr.unshift(element);
-              break;
-          default:
-              MNUtil.showHUD('Invalid direction');
-              break;
-      }
+    return MNUtil.moveElement(arr, element, direction)
   }
 /**
  * 
@@ -1358,11 +1344,7 @@ class pluginDemoUtils {
     }
   }
   static async delay (seconds) {
-    return new Promise((resolve, reject) => {
-      NSTimer.scheduledTimerWithTimeInterval(seconds, false, function () {
-        resolve()
-      })
-    })
+    return MNUtil.delay(seconds)  // 使用 MNUtil API
   }
   static currentChildMap() {
     if (MNUtil.mindmapView && MNUtil.mindmapView.mindmapNodes[0].note?.childMindMap) {
@@ -2516,8 +2498,8 @@ try {
                 let studyFrame = MNUtil.studyView.bounds
                 let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
                 let endFrame = pluginDemoFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
-                endFrame.y = pluginDemoUtils.constrain(endFrame.y, 0, studyFrame.height-500)
-                endFrame.x = pluginDemoUtils.constrain(endFrame.x, 0, studyFrame.width-500)
+                endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
+                endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
                 MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
                 return;
               case 5:
@@ -2541,8 +2523,8 @@ try {
                 let studyFrame = MNUtil.studyView.bounds
                 let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
                 let endFrame = pluginDemoFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
-                endFrame.y = pluginDemoUtils.constrain(endFrame.y, 0, studyFrame.height-500)
-                endFrame.x = pluginDemoUtils.constrain(endFrame.x, 0, studyFrame.width-500)
+                endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
+                endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
                 MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
                 return;
               case 3:
@@ -2608,8 +2590,8 @@ try {
           let studyFrame = MNUtil.studyView.bounds
           let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
           let endFrame = pluginDemoFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
-          endFrame.y = pluginDemoUtils.constrain(endFrame.y, 0, studyFrame.height-500)
-          endFrame.x = pluginDemoUtils.constrain(endFrame.x, 0, studyFrame.width-500)
+          endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
+          endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
           MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
           return
         case "chatModeReference":
@@ -2840,6 +2822,18 @@ Image Text Extraction Specialist
     }
   
   }
+  /**
+   * 获取日期对象
+   * 
+   * 注意：虽然 MNUtil 也有 getDateObject() 方法，但本方法提供了更多的日期格式：
+   * - now: 当前时间的本地化字符串
+   * - tomorrow: 明天的日期
+   * - yesterday: 昨天的日期
+   * - year/month/day/hour/minute/second: 各个时间单位
+   * 
+   * 这些额外的格式在模板渲染时非常有用，所以保留此扩展实现
+   * @returns {Object} 包含多种日期格式的对象
+   */
   static getDateObject(){
     let dateObject = {
       now:new Date(Date.now()).toLocaleString(),
@@ -3483,11 +3477,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * @returns {string}
    */
   static getExtensionFolder(fullPath) {
-    // 找到最后一个'/'的位置
-    let lastSlashIndex = fullPath.lastIndexOf('/');
-    // 从最后一个'/'之后截取字符串，得到文件名
-    let fileName = fullPath.substring(0,lastSlashIndex);
-    return fileName;
+    return MNUtil.getFileFold(fullPath)  // 使用 MNUtil API 获取文件夹路径
   }
   static checkMNUtilsFolder(fullPath){
     let extensionFolder = this.getExtensionFolder(fullPath)
@@ -4156,7 +4146,7 @@ try {
       return markdown.replace(/<mark>(.+?)<\/mark>/g, '==\$1==');
   }
   static constrain(value, min, max) {
-    return Math.min(Math.max(value, min), max);
+    return MNUtil.constrain(value, min, max)
   }
 /**
  * 
@@ -4741,6 +4731,18 @@ class pluginDemoConfig {
       return this.defaultPopupReplaceConfig[key]
     }
   }
+  /**
+   * 深度比较两个配置对象是否相等
+   * 
+   * 注意：这不是通用的 deepEqual 实现，而是专门为配置同步设计的：
+   * - 忽略 lastModifyTime、lastSyncTime、iCloudSync 字段（同步时间相关）
+   * - iOS 端忽略 windowState 字段（窗口状态不同步）
+   * 
+   * 因此保留此自定义实现，不使用 MNUtil.deepEqual()
+   * @param {Object} obj1 - 第一个对象
+   * @param {Object} obj2 - 第二个对象
+   * @returns {boolean} 是否相等
+   */
   static deepEqual(obj1, obj2) {
     if (obj1 === obj2) return true;
 

@@ -2881,6 +2881,46 @@ class pluginDemoUtils {
       MNUtil.showHUD("No Note found!")
     }
   }
+  /**
+   * ⏱️ 延迟执行（异步等待）
+   * 
+   * 在代码中创建指定时间的延迟，返回一个 Promise。
+   * 这是 MNUtil.delay() 的封装，用于在异步函数中创建暂停效果。
+   * 
+   * @param {number} seconds - 延迟的秒数（支持小数）
+   * @returns {Promise<void>} 延迟指定时间后 resolve 的 Promise
+   * 
+   * @example
+   * // 延迟 1 秒
+   * await pluginDemoUtils.delay(1)
+   * console.log("1 秒后执行")
+   * 
+   * // 延迟 0.5 秒（500毫秒）
+   * await pluginDemoUtils.delay(0.5)
+   * 
+   * // 在动画中使用
+   * for (let i = 0; i < 10; i++) {
+   *   button.frame.x += 10
+   *   await pluginDemoUtils.delay(0.1)  // 每次移动后等待 100ms
+   * }
+   * 
+   * // 显示提示后延迟关闭
+   * MNUtil.showHUD("操作成功！")
+   * await pluginDemoUtils.delay(2)  // 给用户 2 秒时间查看
+   * menu.dismiss()
+   * 
+   * // 错误重试机制
+   * let retries = 3
+   * while (retries > 0) {
+   *   try {
+   *     await someAsyncOperation()
+   *     break
+   *   } catch (error) {
+   *     retries--
+   *     await pluginDemoUtils.delay(1)  // 等待 1 秒后重试
+   *   }
+   * }
+   */
   static async delay (seconds) {
     return MNUtil.delay(seconds)  // 使用 MNUtil API
   }
@@ -6949,14 +6989,77 @@ try {
     return MNUtil.constrain(value, min, max)
   }
 /**
+ * 📐 获取按钮在 Study View 中的位置
  * 
- * @param {UIButton} button 
- * @returns {CGRect}
+ * 将按钮的局部坐标转换为在 Study View（学习界面）中的全局坐标。
+ * 常用于计算弹出菜单、浮动窗口等 UI 元素的显示位置。
+ * 
+ * @param {UIButton} button - 要获取位置的按钮对象
+ * @returns {CGRect} 按钮在 Study View 中的 frame
+ * 
+ * CGRect 包含：
+ * - x: 左边缘的 X 坐标
+ * - y: 上边缘的 Y 坐标  
+ * - width: 宽度
+ * - height: 高度
+ * 
+ * @example
+ * // 在按钮旁边显示菜单
+ * let buttonFrame = pluginDemoUtils.getButtonFrame(myButton)
+ * let menuFrame = {
+ *   x: buttonFrame.x + buttonFrame.width + 10,  // 按钮右侧 10 像素
+ *   y: buttonFrame.y,
+ *   width: 200,
+ *   height: 300
+ * }
+ * menu.show(menuFrame)
+ * 
+ * // 在按钮下方显示浮窗
+ * let frame = pluginDemoUtils.getButtonFrame(button)
+ * let popupY = frame.y + frame.height + 5
+ * showPopup(frame.x, popupY)
+ * 
+ * // 计算是否靠近屏幕边缘
+ * let btnFrame = pluginDemoUtils.getButtonFrame(button)
+ * let screenWidth = MNUtil.studyView.bounds.width
+ * if (btnFrame.x + 200 > screenWidth) {
+ *   // 菜单显示在按钮左侧
+ * }
  */
 static getButtonFrame(button){
   let buttonFrame = button.convertRectToView(button.frame, MNUtil.studyView)
   return buttonFrame
 }
+  /**
+   * 🎨 获取模板名称列表
+   * 
+   * 根据指定的按钮类型返回预定义的模板名称列表。
+   * 用于在设置界面为不同的按钮提供快速模板选择。
+   * 
+   * @param {string} item - 按钮类型标识
+   * @returns {string[]|undefined} 模板名称数组，如果不能保存则返回 undefined
+   * 
+   * 支持的按钮类型：
+   * - "ocr" - OCR 相关模板
+   * - "search" - 搜索相关模板
+   * - "chatglm" - AI 聊天相关模板
+   * - "copy" - 复制相关模板
+   * - "color0-15" - 颜色标记相关模板
+   * - 其他 - 返回通用模板列表
+   * 
+   * @example
+   * // 获取 OCR 按钮的模板
+   * let ocrTemplates = pluginDemoUtils.getTempelateNames("ocr")
+   * // ["🔨 OCR to clipboard", "🔨 OCR as chat mode reference", ...]
+   * 
+   * // 获取颜色按钮的模板
+   * let colorTemplates = pluginDemoUtils.getTempelateNames("color1")
+   * // ["🔨 setColor default", "🔨 with fillpattern: both", ...]
+   * 
+   * // 获取通用模板
+   * let generalTemplates = pluginDemoUtils.getTempelateNames("custom")
+   * // ["🔨 empty action", "🔨 insert snippet", ...]
+   */
   static getTempelateNames(item){
     if (!pluginDemoConfig.checkCouldSave(item)) {
       return undefined
@@ -7046,6 +7149,40 @@ static getButtonFrame(button){
       "🔨 trigger button"
     ]
   }
+  /**
+   * 📄 从 Markdown 中提取 JSON
+   * 
+   * 从 Markdown 文本中提取被 ```JSON``` 代码块包裹的 JSON 内容。
+   * 常用于处理 AI 返回的格式化结果或配置文件。
+   * 
+   * @param {string} markdown - 包含 JSON 代码块的 Markdown 文本
+   * @returns {Object|undefined} 解析后的 JSON 对象，未找到则返回 undefined
+   * 
+   * @example
+   * // 提取 JSON 数据
+   * let markdown = `
+   * 这是一些说明文字
+   * \`\`\`JSON
+   * {
+   *   "name": "示例",
+   *   "value": 123,
+   *   "items": ["a", "b", "c"]
+   * }
+   * \`\`\`
+   * 这是后续内容
+   * `
+   * 
+   * let data = pluginDemoUtils.extractJSONFromMarkdown(markdown)
+   * console.log(data.name)  // "示例"
+   * console.log(data.value) // 123
+   * 
+   * // 处理 AI 返回的结构化数据
+   * let aiResponse = await chatWithAI("请用 JSON 格式返回...")
+   * let result = pluginDemoUtils.extractJSONFromMarkdown(aiResponse)
+   * if (result) {
+   *   // 使用提取的数据
+   * }
+   */
   static extractJSONFromMarkdown(markdown) {
     // 使用正则表达式匹配被```JSON```包裹的内容
     const regex = /```JSON([\s\S]*?)```/g;
@@ -7059,6 +7196,42 @@ static getButtonFrame(button){
         return undefined;
     }
   }
+  /**
+   * 🏷️ 添加标签
+   * 
+   * 为当前选中的笔记批量添加标签。
+   * 支持单个标签或多个标签，支持模板变量。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {string} [des.tag] - 单个标签（与 tags 二选一）
+   * @param {string[]} [des.tags] - 标签数组（与 tag 二选一）
+   * 
+   * 特性：
+   * - 支持模板变量替换（如 {{date.year}}）
+   * - 使用撤销分组，可一键撤销
+   * - 批量处理选中的所有笔记
+   * 
+   * @example
+   * // 添加单个标签
+   * pluginDemoUtils.addTags({
+   *   tag: "重要"
+   * })
+   * 
+   * // 添加多个标签
+   * pluginDemoUtils.addTags({
+   *   tags: ["待复习", "第一章", "概念"]
+   * })
+   * 
+   * // 使用模板变量
+   * pluginDemoUtils.addTags({
+   *   tags: ["{{date.year}}-{{date.month}}", "{{note.notebook.name}}"]
+   * })
+   * 
+   * // 动态标签
+   * pluginDemoUtils.addTags({
+   *   tag: "已处理-{{date.month}}/{{date.day}}"
+   * })
+   */
   static addTags(des){
     let focusNotes = MNNote.getFocusNotes()
     if (des.tags) {
@@ -7079,6 +7252,46 @@ static getButtonFrame(button){
       })
     }
   }
+  /**
+   * 🏷️ 移除标签
+   * 
+   * 从当前选中的笔记批量移除指定标签。
+   * 支持单个标签或多个标签的移除。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {string} [des.tag] - 要移除的单个标签（与 tags 二选一）
+   * @param {string[]} [des.tags] - 要移除的标签数组（与 tag 二选一）
+   * 
+   * 特性：
+   * - 精确匹配标签名称
+   * - 使用撤销分组，可一键撤销
+   * - 批量处理选中的所有笔记
+   * - 不存在的标签会被忽略
+   * 
+   * @example
+   * // 移除单个标签
+   * pluginDemoUtils.removeTags({
+   *   tag: "已完成"
+   * })
+   * 
+   * // 移除多个标签
+   * pluginDemoUtils.removeTags({
+   *   tags: ["临时", "草稿", "待审核"]
+   * })
+   * 
+   * // 条件性移除
+   * let notesToClean = MNNote.getFocusNotes()
+   * if (notesToClean.length > 0) {
+   *   pluginDemoUtils.removeTags({
+   *     tags: ["过期", "旧版本"]
+   *   })
+   * }
+   * 
+   * // 清理特定标签
+   * pluginDemoUtils.removeTags({
+   *   tag: "2023-临时"
+   * })
+   */
   static removeTags(des){
     let focusNotes = MNNote.getFocusNotes()
     // MNUtil.showHUD("removeTags")
@@ -7096,6 +7309,43 @@ static getButtonFrame(button){
       })
     }
   }
+  /**
+   * 🔗 提取文本中的 URL
+   * 
+   * 从文本中提取所有的 HTTP/HTTPS URL 链接。
+   * 使用正则表达式匹配标准的网址格式。
+   * 
+   * @param {string} text - 要搜索的文本
+   * @returns {string[]} URL 数组，没有找到则返回空数组
+   * 
+   * 匹配规则：
+   * - 必须以 http:// 或 https:// 开头
+   * - 包含有效的域名和路径
+   * - 自动识别到空格或文本结束
+   * 
+   * @example
+   * // 提取单个 URL
+   * let text = "查看文档：https://example.com/docs"
+   * let urls = pluginDemoUtils.extractUrls(text)
+   * console.log(urls)  // ["https://example.com/docs"]
+   * 
+   * // 提取多个 URL
+   * let content = `
+   *   官网：https://marginnote.com
+   *   文档：https://docs.marginnote.com/guide
+   *   论坛：http://bbs.marginnote.com
+   * `
+   * let allUrls = pluginDemoUtils.extractUrls(content)
+   * console.log(allUrls.length)  // 3
+   * 
+   * // 从笔记中提取链接
+   * let noteText = focusNote.allNoteText()
+   * let links = pluginDemoUtils.extractUrls(noteText)
+   * if (links.length > 0) {
+   *   // 打开第一个链接
+   *   MNUtil.openURL(links[0])
+   * }
+   */
   static extractUrls(text) {
   // 定义匹配URL的正则表达式
   const urlRegex = /https?:\/\/[^\s/$.?#].[^\s]*/g;
@@ -7105,13 +7355,81 @@ static getButtonFrame(button){
   return urls ? urls : [];
 }
   /**
+   * 🔍 检查笔记是否包含 URL
    * 
-   * @param {MNNote} note 
+   * 扫描笔记的所有文本内容，检查是否包含网址链接。
+   * 包括标题、摘录和所有评论中的文本。
+   * 
+   * @param {MNNote} note - 要检查的笔记对象
+   * @returns {string[]} 找到的所有 URL 数组，没有则返回空数组
+   * 
+   * @example
+   * // 检查单个笔记
+   * let focusNote = MNNote.getFocusNote()
+   * let urls = pluginDemoUtils.noteHasWebURL(focusNote)
+   * if (urls.length > 0) {
+   *   console.log(`找到 ${urls.length} 个链接`)
+   *   urls.forEach(url => console.log(url))
+   * }
+   * 
+   * // 批量检查笔记
+   * let notesWithLinks = []
+   * MNNote.getFocusNotes().forEach(note => {
+   *   let urls = pluginDemoUtils.noteHasWebURL(note)
+   *   if (urls.length > 0) {
+   *     notesWithLinks.push({
+   *       note: note,
+   *       urls: urls
+   *     })
+   *   }
+   * })
+   * 
+   * // 打开笔记中的第一个链接
+   * let urls = pluginDemoUtils.noteHasWebURL(focusNote)
+   * if (urls.length > 0) {
+   *   MNUtil.openURL(urls[0])
+   * }
    */
   static noteHasWebURL(note){
     let content = note.allNoteText()
     return this.extractUrls(content)
   }
+  /**
+   * 🌐 打开网页链接
+   * 
+   * 智能识别并打开笔记或选中文本中的第一个 URL。
+   * 优先级：笔记内容 > 选中文本。
+   * 
+   * @param {Object} des - 描述对象（保留参数，目前未使用）
+   * @returns {boolean} 是否成功找到并打开了 URL
+   * 
+   * 搜索顺序：
+   * 1. 当前焦点笔记的所有文本
+   * 2. 当前选中的文本
+   * 3. 如果都没有找到，显示提示
+   * 
+   * @example
+   * // 打开笔记中的链接
+   * pluginDemoUtils.openWebURL({})
+   * 
+   * // 通常用于按钮动作
+   * {
+   *   action: "openWebURL",
+   *   menuTitle: "打开网页链接"
+   * }
+   * 
+   * // 判断是否成功
+   * if (pluginDemoUtils.openWebURL({})) {
+   *   console.log("已打开链接")
+   * } else {
+   *   console.log("未找到链接")
+   * }
+   * 
+   * // 典型使用场景
+   * // 1. 笔记包含参考链接，快速打开
+   * // 2. 选中带链接的文本，直接访问
+   * // 3. 作为工具栏按钮的快捷操作
+   */
   static openWebURL(des){
     let focusNote = MNNote.getFocusNote()
     if (focusNote) {
@@ -7133,6 +7451,43 @@ static getButtonFrame(button){
     MNUtil.showHUD("No web url found")
     return false
   }
+  /**
+   * 🎨 渲染模板
+   * 
+   * 使用 Mustache 模板引擎渲染文本，替换其中的变量。
+   * 支持笔记相关变量和用户输入变量。
+   * 
+   * @param {string} template - 模板字符串，包含 {{variable}} 格式的变量
+   * @param {Object} [opt={}] - 选项对象
+   * @param {string} [opt.noteId] - 指定笔记 ID，用于获取笔记相关变量
+   * @param {string} [opt.userInput] - 用户输入的文本
+   * @returns {Promise<string>} 渲染后的文本
+   * @throws {Error} 渲染过程中的错误
+   * 
+   * 模板变量类型：
+   * - 笔记变量：{{note.title}}, {{note.tags}} 等
+   * - 日期变量：{{date.year}}, {{date.month}} 等
+   * - 用户输入：{{userInput}}
+   * - 系统变量：{{clipboardText}}, {{selectionText}} 等
+   * 
+   * @example
+   * // 基础模板渲染
+   * let template = "今天是 {{date.year}} 年 {{date.month}} 月"
+   * let result = await pluginDemoUtils.render(template)
+   * console.log(result)  // "今天是 2024 年 1 月"
+   * 
+   * // 使用笔记变量
+   * let noteTemplate = "# {{note.title}}\n标签：{{note.hashTags}}"
+   * let rendered = await pluginDemoUtils.render(noteTemplate, {
+   *   noteId: focusNote.noteId
+   * })
+   * 
+   * // 包含用户输入
+   * let inputTemplate = "用户说：{{userInput}}\n时间：{{date.now}}"
+   * let output = await pluginDemoUtils.render(inputTemplate, {
+   *   userInput: "这是一个测试"
+   * })
+   */
   static async render(template,opt={}){
     try {
       if (opt.noteId) {
@@ -7145,6 +7500,33 @@ static getButtonFrame(button){
       throw error;
     }
   }
+  /**
+   * 📝 获取笔记变量信息并渲染
+   * 
+   * 内部方法：根据指定笔记 ID 获取变量信息，并渲染模板。
+   * 结合笔记信息、系统变量和用户输入进行模板渲染。
+   * 
+   * @private
+   * @param {string} noteid - 笔记 ID
+   * @param {string} text - 包含模板变量的文本
+   * @param {string} [userInput] - 用户输入的文本
+   * @returns {Promise<string>} 渲染后的文本
+   * @throws {Error} 渲染过程中的错误
+   * 
+   * 内部流程：
+   * 1. 根据 noteId 获取笔记对象
+   * 2. 转换为笔记配置对象（包含所有属性）
+   * 3. 收集系统变量（剪贴板、日期等）
+   * 4. 使用 MNUtil.render 进行渲染
+   * 
+   * @example
+   * // 通常不直接调用，而是通过 render() 方法
+   * let result = await pluginDemoUtils.getNoteVarInfo(
+   *   "12345678-1234-1234-1234-123456789012",
+   *   "笔记：{{note.title}}\n创建于：{{note.date.create}}",
+   *   "用户输入内容"
+   * )
+   */
   static async getNoteVarInfo(noteid,text,userInput) {
     try {
     let replaceText= text
@@ -7160,6 +7542,34 @@ static getButtonFrame(button){
     }
   }
 
+/**
+   * 📄 获取文本变量信息并渲染
+   * 
+   * 内部方法：渲染包含变量的文本模板。
+   * 使用当前焦点笔记（如果有）和系统变量进行渲染。
+   * 
+   * @private
+   * @param {string} text - 包含模板变量的文本
+   * @param {string} [userInput] - 用户输入的文本
+   * @returns {Promise<string>} 渲染后的文本
+   * @throws {Error} 渲染过程中的错误
+   * 
+   * 与 getNoteVarInfo 的区别：
+   * - 使用当前焦点笔记，而非指定的笔记
+   * - 如果没有焦点笔记，仍然可以渲染系统变量
+   * 
+   * 内部流程：
+   * 1. 获取当前焦点笔记（可选）
+   * 2. 收集所有可用变量
+   * 3. 使用 Mustache 模板引擎渲染
+   * 
+   * @example
+   * // 通常不直接调用，而是通过 render() 方法
+   * let result = await pluginDemoUtils.getTextVarInfo(
+   *   "当前时间：{{date.now}}\n剪贴板：{{clipboardText}}",
+   *   "用户输入"
+   * )
+   */
 static async getTextVarInfo(text,userInput) {
   try {
   let replaceText= text
@@ -7177,25 +7587,45 @@ static async getTextVarInfo(text,userInput) {
 
 }
   /**
-   * Displays a confirmation dialog with a main title and a subtitle.
+   * ✅ 显示确认对话框
    * 
-   * This method shows a confirmation dialog with the specified main title and subtitle.
-   * It returns a promise that resolves with the button index of the button clicked by the user.
+   * 显示一个带有标题和副标题的确认对话框。
+   * 返回用户点击的按钮索引。
    * 
-   * @param {string} mainTitle - The main title of the confirmation dialog.
-   * @param {string} subTitle - The subtitle of the confirmation dialog.
-   * @returns {Promise<number>} A promise that resolves with the button index of the button clicked by the user.
+   * @param {string} mainTitle - 对话框主标题
+   * @param {string} subTitle - 对话框副标题
+   * @returns {Promise<number>} 用户点击的按钮索引
+   *   - 0: 取消按钮
+   *   - 1: 确认按钮
+   * 
+   * @example
+   * // 简单确认
+   * let result = await pluginDemoUtils.confirm(
+   *   "删除笔记",
+   *   "确定要删除这个笔记吗？此操作不可撤销。"
+   * )
+   * if (result === 1) {
+   *   // 用户点击了确认
+   *   note.delete()
+   * }
+   * 
+   * // 操作前确认
+   * let shouldContinue = await pluginDemoUtils.confirm(
+   *   "批量操作",
+   *   `即将处理 ${notes.length} 个笔记，是否继续？`
+   * )
+   * if (shouldContinue === 0) {
+   *   return  // 用户取消
+   * }
+   * 
+   * // 危险操作警告
+   * let confirmed = await pluginDemoUtils.confirm(
+   *   "⚠️ 警告",
+   *   "这将清空所有标签，确定继续吗？"
+   * )
    */
   static async confirm(mainTitle,subTitle){
     return MNUtil.confirm(mainTitle, subTitle, ["Cancel", "Confirm"])
-  }
-  /**
-   * 延迟执行
-   * @param {number} seconds - 延迟的秒数
-   * @returns {Promise<void>}
-   */
-  static async delay(seconds) {
-    return MNUtil.delay(seconds)
   }
 }
 

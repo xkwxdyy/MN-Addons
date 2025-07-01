@@ -355,8 +355,29 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
   scrollViewDidScroll: function() {
   },
   /**
-   * 改变工具栏透明度的菜单
-   * @param {UIButton} sender - 触发事件的按钮
+   * 🎨 改变工具栏透明度 - 让工具栏半透明以减少视觉干扰
+   * 
+   * 【功能说明】
+   * 允许用户调整工具栏的透明度，从 50% 到 100%：
+   * - 100%：完全不透明，适合需要清晰看到按钮时
+   * - 50%：半透明，减少对文档内容的遮挡
+   * 
+   * 【使用场景】
+   * - 📖 阅读模式：降低透明度，专注于文档内容
+   * - ✏️ 编辑模式：提高透明度，方便操作按钮
+   * - 🎬 演示模式：调整到合适的透明度，不影响展示
+   * 
+   * 【实现原理】
+   * ```
+   * 用户点击 → 弹出菜单 → 选择透明度
+   *    ↓
+   * changeOpacityTo: → view.layer.opacity = 新值
+   * ```
+   * 
+   * @param {UIButton} sender - 触发透明度调整的按钮
+   * @example
+   * // 用户点击设置按钮后，选择透明度
+   * // 菜单显示：100% / 90% / 80% / 70% / 60% / 50%
    */
   changeOpacity: function(sender) {
     self.checkPopover()  // 检查并关闭已存在的弹出菜单
@@ -387,15 +408,50 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
     // presentPopoverFromRect: 显示弹出菜单，1 << 1 表示箭头向下
     self.popoverController.presentPopoverFromRect(r, studyView, 1 << 1, true);
   },
+  /**
+   * 🔧 设置具体的透明度值
+   * 
+   * @param {number} opacity - 透明度值 (0.0-1.0)
+   *                          0.0 = 完全透明
+   *                          1.0 = 完全不透明
+   */
   changeOpacityTo:function (opacity) {
     self.view.layer.opacity = opacity
-    // self.webAppButton.setTitleForState(`${opacity*100}%`, 0);
+    // self.webAppButton.setTitleForState(`${opacity*100}%`, 0);  // 可选：在按钮上显示当前透明度
   },
+  /**
+   * 🔄 屏幕方向切换菜单 - 改变工具栏的排列方向
+   * 
+   * 【功能说明】
+   * 点击屏幕按钮后弹出的菜单，包含两个选项：
+   * 1. 🔄 Direction：切换工具栏方向（横向 ↔️ / 纵向 ↕️）
+   * 2. ⚙️ Setting：打开设置界面
+   * 
+   * 【方向切换逻辑】
+   * ```
+   * 横向工具栏 (↔️)           纵向工具栏 (↕️)
+   * ┌─┬─┬─┬─┬─┬─┐            ┌─┐
+   * │1│2│3│4│5│➕│            │1│
+   * └─┴─┴─┴─┴─┴─┘            ├─┤
+   *                           │2│
+   *                           ├─┤
+   *                           │3│
+   *                           ├─┤
+   *                           │➕│
+   *                           └─┘
+   * ```
+   * 
+   * 【图标说明】
+   * - 🌟 动态窗口：工具栏会自动隐藏
+   * - 🛠️ 固定窗口：工具栏始终显示
+   * 
+   * @param {UIButton} sender - 屏幕切换按钮
+   */
   changeScreen: function(sender) {
     let self = getToolbarController()
-    let clickDate = Date.now()
+    let clickDate = Date.now()  // 记录点击时间（可用于防抖）
     // if (self.dynamicWindow) {
-    //   return
+    //   return  // 动态窗口模式下禁用（已注释）
     // }
     self.checkPopover()
     let selector = "toggleToolbarDirection:"
@@ -419,10 +475,37 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
     commandTable.push()
     self.popoverController = MNUtil.getPopoverAndPresent(sender, commandTable,200)
   },
+  /**
+   * 🔄 执行工具栏方向切换
+   * 
+   * @param {string} source - 来源标识（"dynamic" 或 "fixed"）
+   *                         用于区分是从动态窗口还是固定窗口触发
+   */
   toggleToolbarDirection: function (source) {
-    self.checkPopover()
-    pluginDemoConfig.toggleToolbarDirection(source)
+    self.checkPopover()  // 关闭菜单
+    pluginDemoConfig.toggleToolbarDirection(source)  // 调用配置管理器执行切换
   },
+  /**
+   * 🌟 切换动态/固定模式 - 改变工具栏的显示行为
+   * 
+   * 【模式说明】
+   * 1. 🌟 动态模式 (Dynamic)：
+   *    - 工具栏像 macOS 的 Dock 一样自动显示/隐藏
+   *    - 操作完成后自动消失
+   *    - 适合专注阅读，减少干扰
+   * 
+   * 2. 🛠️ 固定模式 (Fixed)：
+   *    - 工具栏始终显示在屏幕上
+   *    - 可以自由拖动位置
+   *    - 适合频繁操作，方便随时使用
+   * 
+   * 【操作流程】
+   * ```
+   * 切换模式 → 更新配置 → 保存状态 → 显示提示
+   *     ↓                              ↓
+   * 通知所有插件            “Dynamic ✅” 或 “Dynamic ❌”
+   * ```
+   */
   toggleDynamic: function () {
 try {
   
@@ -454,8 +537,31 @@ try {
 }
   },
   /**
+   * 🎨 设置卡片颜色 - 为选中的卡片应用指定颜色
    * 
-   * @param {UIButton} button 
+   * 【颜色索引说明】
+   * MarginNote 提供 16 种预设颜色（0-15）：
+   * 0 = 🟡 淡黄色  1 = 🟢 淡绿色  2 = 🔵 淡蓝色  3 = 🔴 淡红色
+   * 4 = 🟣 淡紫色  5 = 🟠 橙色    6 = ⚪ 灰色    7 = 🟤 深蓝色
+   * 8 = 🟨 黄色    9 = 🟩 绿色    10 = 🔶 蓝色   11 = 🔴 红色
+   * 12 = 🟣 紫色   13 = 🟤 棕色   14 = ⚫ 黑色   15 = ⭕ 粉色
+   * 
+   * 【交互设计】
+   * - 单击：设置选中卡片为该颜色
+   * - 双击：执行自定义的双击动作（如筛选该颜色的卡片）
+   * 
+   * 【延迟机制】
+   * 使用 0.1 秒延迟来区分单击和双击：
+   * ```
+   * 第一次点击 → 等待 0.1秒 → 没有第二次点击 → 执行单击
+   *      ↓
+   * 第二次点击 → 取消单击 → 执行双击
+   * ```
+   * 
+   * @param {UIButton} button - 颜色按钮，包含 color 属性（0-15）
+   * @example
+   * // 按钮的 color 属性由 actionName 解析得来
+   * // "color5" → button.color = 5
    */
   setColor: async function (button) {
     let self = getToolbarController()
@@ -507,12 +613,50 @@ try {
       self.hide()
     }
   },
+  /**
+   * ⛔ 禁用的执行方法 - 占位函数
+   * 
+   * 【说明】
+   * 这个方法可能用于：
+   * - 临时禁用某些功能
+   * - 作为开发中的占位符
+   * - 处理未实现的按钮动作
+   * 
+   * @param {UIButton} button - 触发执行的按钮
+   */
   execute: async function (button) {
-    MNUtil.showHUD("Action disabled")
+    MNUtil.showHUD("Action disabled")  // 显示“动作已禁用”提示
   },
   /**
-   * @param {UIButton} button 
-   * @returns 
+   * 🚀 自定义动作处理器 - 工具栏核心业务逻辑入口
+   * 
+   * 【核心功能】
+   * 这是所有按钮点击事件的统一入口，负责：
+   * 1. 🔍 查找按钮对应的动作名称
+   * 2. 📝 获取动作的详细配置
+   * 3. 👆👆 处理双击事件
+   * 4. 🎯 执行对应的动作
+   * 
+   * 【按钮索引系统】
+   * ```
+   * button.index → actionNames[index] → actionName
+   *                        ↓
+   *               pluginDemoConfig.descriptions
+   *                        ↓
+   *                   动作配置 (des)
+   * ```
+   * 
+   * 【双击处理机制】
+   * 如果动作配置中包含 doubleClick：
+   * 1. 设置 button.delay = true （延迟关闭菜单）
+   * 2. 第一次点击：等待双击
+   * 3. 第二次点击：执行 doubleClick 动作
+   * 
+   * @param {UIButton} button - 被点击的按钮对象
+   *                           button.index - 按钮在工具栏中的索引
+   *                           button.target - 可选，直接指定的动作名
+   *                           button.doubleClick - 标记是否为双击
+   * @returns {void}
    */
   customAction: async function (button) {
     let self = getToolbarController()
@@ -540,10 +684,36 @@ try {
     }
     self.customActionByDes(button,des)
   },
+  /**
+   * 🗋️ 菜单项点击处理器 - 处理弹出菜单中的选项点击
+   * 
+   * 【调用时机】
+   * 当用户点击弹出菜单中的某个选项时调用
+   * 
+   * 【参数结构】
+   * ```javascript
+   * param = {
+   *   des: {           // 菜单项配置
+   *     action: "...", // 动作名称
+   *     menuTitle: "...",  // 菜单显示文本
+   *     menuItems: [...], // 子菜单项
+   *     autoClose: true   // 是否自动关闭
+   *   },
+   *   button: UIButton // 触发菜单的原始按钮
+   * }
+   * ```
+   * 
+   * 【特殊处理】
+   * 1. 🗋️ 嵌套菜单：如果 action="menu"，则显示子菜单
+   * 2. 🔙 返回按钮：第一个菜单项显示返回上级
+   * 3. 🚀 自动关闭：根据 autoClose 决定是否自动隐藏工具栏
+   * 
+   * @param {Object} param - 包含菜单项配置和按钮的参数对象
+   */
   customActionByMenu: async function (param) {
     let des = param.des
     if (typeof des === "string" || !("action" in des)) {
-      return
+      return  // 纯文本项或无动作项，不处理
     }
     let button = param.button
     if (des.action === "menu") {
@@ -576,62 +746,201 @@ try {
     self.commandTables = []
     self.customActionByDes(button,des)
   },
-lastPopover: function (button) {
-      self.checkPopover()
-      self.commandTables.pop()
-      let commandTable = self.commandTables.at(-1)
-      self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,200,4)
+  /**
+   * 🔙 返回上一级菜单 - 实现多级菜单的回退功能
+   * 
+   * 【栈结构管理】
+   * ```
+   * commandTables = [
+   *   [一级菜单],  ← 最底层
+   *   [二级菜单],
+   *   [三级菜单]   ← 当前显示
+   * ]
+   * 
+   * pop() 后：
+   * commandTables = [
+   *   [一级菜单],
+   *   [二级菜单]   ← 回到这一级
+   * ]
+   * ```
+   * 
+   * @param {UIButton} button - 用于定位新菜单显示位置的按钮
+   */
+  lastPopover: function (button) {
+      self.checkPopover()                // 关闭当前菜单
+      self.commandTables.pop()           // 移除最后一级菜单
+      let commandTable = self.commandTables.at(-1)  // 获取上一级菜单
+      self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,200,4)  // 显示上一级
 },
+  /**
+   * 🖼️ 图片选择器完成回调 - 处理用户选择的图片
+   * 
+   * 【功能说明】
+   * 用户从系统相册选择图片后，自动：
+   * 1. 📎 复制图片到剪贴板
+   * 2. 📋 粘贴到当前卡片
+   * 
+   * 【图片格式处理】
+   * - self.compression = true：使用 JPEG 压缩（节省空间）
+   * - self.compression = false：使用 PNG 无损（保持质量）
+   * 
+   * 【代码流程】
+   * ```
+   * 获取图片 → 关闭选择器 → 复制到剪贴板 → 延迟 0.1秒 → 粘贴到卡片
+   * ```
+   * 
+   * @param {UIImagePickerController} UIImagePickerController - 图片选择器控制器
+   * @param {Object} info - 图片信息字典
+   *                       info.UIImagePickerControllerOriginalImage - 原始图片
+   * 
+   * 【iOS 委托方法】
+   * 这是 UIImagePickerControllerDelegate 的标准回调方法
+   */
   imagePickerControllerDidFinishPickingMediaWithInfo:async function (UIImagePickerController,info) {
     try {
       
-    let image = info.UIImagePickerControllerOriginalImage
-    // MNUtil.copy(image.pngData().base64Encoding())
-    // MNUtil.copyJSON(info)
-    MNUtil.studyController.dismissViewControllerAnimatedCompletion(true,undefined)
+    let image = info.UIImagePickerControllerOriginalImage  // 获取原始图片
+    // MNUtil.copy(image.pngData().base64Encoding())  // 调试：base64 编码
+    // MNUtil.copyJSON(info)                          // 调试：查看完整信息
+    MNUtil.studyController.dismissViewControllerAnimatedCompletion(true,undefined)  // 关闭选择器
+    
+    // 🖼️ 根据压缩设置选择格式
     if (self.compression) {
-      MNUtil.copyImage(image.jpegData(0.0))
+      MNUtil.copyImage(image.jpegData(0.0))  // JPEG 压缩（参数 0.0 代表最高压缩）
     }else{
-      MNUtil.copyImage(image.pngData())
+      MNUtil.copyImage(image.pngData())      // PNG 无损
     }
-    await MNUtil.delay(0.1)
-    MNNote.new(self.currentNoteId).paste()
-    // MNNote.getFocusNote().paste()
+    
+    await MNUtil.delay(0.1)  // 等待剪贴板就绪
+    MNNote.new(self.currentNoteId).paste()  // 粘贴到指定卡片
+    // MNNote.getFocusNote().paste()  // 备选：粘贴到当前焦点卡片
+    
     } catch (error) {
       MNUtil.showHUD(error)
     }
   },
+  /**
+   * 🙅 图片选择器取消回调 - 用户取消选择图片
+   * 
+   * @param {Object} params - 取消参数（通常不使用）
+   */
   imagePickerControllerDidCancel:function (params) {
-    // MNUtil.copy("text")
-    MNUtil.studyController.dismissViewControllerAnimatedCompletion(true,undefined)
+    // MNUtil.copy("text")  // 调试代码
+    MNUtil.studyController.dismissViewControllerAnimatedCompletion(true,undefined)  // 关闭选择器
     
   },
+  /**
+   * ⏱️ 计时器功能 - 设置专注时间或番茄钟
+   * 
+   * 【使用场景】
+   * - 🍅 番茄工作法：25分钟工作 + 5分钟休息
+   * - 🎯 专注模式：设定时间段专注学习
+   * - ⏰ 提醒功能：定时提醒休息或切换任务
+   * 
+   * @param {UIButton} button - 计时器按钮
+   */
   timer: function (button) {
     self.onClick = true
-    let des = pluginDemoConfig.getDescriptionByName("timer")
-    des.action = "setTimer"
-    self.customActionByDes(button,des,false)
+    let des = pluginDemoConfig.getDescriptionByName("timer")  // 获取计时器配置
+    des.action = "setTimer"  // 设置动作为计时器
+    self.customActionByDes(button,des,false)  // 执行计时器设置
   },
+  /**
+   * ↩️ 撤销操作 - 撤销上一步对卡片的修改
+   * 
+   * 【功能说明】
+   * 使用 MarginNote 的全局撤销管理器，支持撤销：
+   * - ✏️ 文本编辑
+   * - 🎨 颜色修改
+   * - 🔗 链接操作
+   * - 📋 笔记复制/粘贴
+   * - 📝 评论添加/删除
+   * 
+   * 【实现原理】
+   * ```
+   * UndoManager 记录所有操作
+   *     ↓
+   * canUndo() 检查是否有可撤销的操作
+   *     ↓
+   * undo() 执行撤销
+   *     ↓
+   * refreshAfterDBChanged() 刷新界面
+   * ```
+   * 
+   * @param {UIButton} button - 撤销按钮
+   */
   undo: function (button) {
-    if (UndoManager.sharedInstance().canUndo()) {
-      UndoManager.sharedInstance().undo()
-      MNUtil.app.refreshAfterDBChanged(MNUtil.currentNotebookId)
+    if (UndoManager.sharedInstance().canUndo()) {  // 检查是否有可撤销的操作
+      UndoManager.sharedInstance().undo()          // 执行撤销
+      MNUtil.app.refreshAfterDBChanged(MNUtil.currentNotebookId)  // 刷新笔记本显示
     }else{
-      MNUtil.showHUD("No Change to Undo")
+      MNUtil.showHUD("No Change to Undo")         // 无可撤销操作
     }
   },
+  /**
+   * ↪️ 重做操作 - 恢复被撤销的操作
+   * 
+   * 【功能说明】
+   * 与撤销(Undo)相对，重新执行之前被撤销的操作
+   * 
+   * 【使用场景】
+   * ```
+   * 操作 A → 操作 B → 撤销 B → 重做 B
+   *                       ↑        ↑
+   *                     回到 A    恢复到 B
+   * ```
+   * 
+   * 【注意事项】
+   * - 只有在执行过撤销后才能重做
+   * - 新的操作会清空重做历史
+   * 
+   * @param {UIButton} button - 重做按钮
+   */
   redo: function (button) {
-    if (UndoManager.sharedInstance().canRedo()) {
-      UndoManager.sharedInstance().redo()
-      MNUtil.app.refreshAfterDBChanged(MNUtil.currentNotebookId)
+    if (UndoManager.sharedInstance().canRedo()) {  // 检查是否有可重做的操作
+      UndoManager.sharedInstance().redo()          // 执行重做
+      MNUtil.app.refreshAfterDBChanged(MNUtil.currentNotebookId)  // 刷新界面
     }else{
-      MNUtil.showHUD("No Change to Redo")
+      MNUtil.showHUD("No Change to Redo")         // 无可重做操作
     }
   },
+  /**
+   * 📋 复制功能 - 智能复制卡片内容或选中文本
+   * 
+   * 【复制策略】
+   * 1. 📑 双击复制：仅复制卡片标题
+   * 2. 📝 单击复制：智能选择复制内容
+   *    - 有选中文本 → 复制选中文本
+   *    - 有聚焦卡片 → 复制卡片内容
+   *    - 都没有 → 提示用户
+   * 
+   * 【配置选项】
+   * 可以在设置中配置复制的具体行为：
+   * - 复制格式：Markdown、纯文本、HTML
+   * - 复制内容：摘录、标题、评论、组合
+   * - 分隔符：换行、空格、自定义
+   * 
+   * 【代码流程】
+   * ```
+   * 按钮点击
+   *     ↓
+   * 检查配置 (des)
+   *     ↓
+   * 判断是否双击
+   *  │     │
+   *  是     否
+   *  ↓     ↓
+   * 复制标题  智能复制
+   * ```
+   * 
+   * @param {UIButton} button - 复制按钮
+   *                           button.doubleClick - 标记是否为双击
+   *                           button.menu - 关联的弹出菜单
+   */
   copy:function (button) {
     let self = getToolbarController()
     self.onClick = true
-    let des = pluginDemoConfig.getDescriptionByName("copy")
+    let des = pluginDemoConfig.getDescriptionByName("copy")  // 获取复制配置
     if (button.doubleClick) {
       // self.onClick = true
       button.doubleClick = false
@@ -677,8 +986,29 @@ lastPopover: function (button) {
     self.hideAfterDelay()
     pluginDemoUtils.dismissPopupMenu(button.menu,self.onClick)
   },
+  /**
+   * 🔗 复制为 Markdown 链接 - 将卡片转换为可点击的链接格式
+   * 
+   * 【功能说明】
+   * 将选中的卡片转换为 Markdown 链接格式，方便在其他应用中使用
+   * 
+   * 【输出格式】
+   * - 单击：`[卡片标题](marginnote4app://note/卡片ID)`
+   * - 双击：`marginnote4app://note/卡片ID`
+   * 
+   * 【使用场景】
+   * - 📝 在 Obsidian/Notion 中引用 MarginNote 卡片
+   * - 📱 在其他应用中快速跳转到指定卡片
+   * - 🔗 创建卡片间的外部链接
+   * 
+   * 【批量处理】
+   * 支持同时选中多个卡片，每个卡片一行
+   * 
+   * @param {UIButton} button - 复制链接按钮
+   *                           button.doubleClick - 双击时仅复制 URL
+   */
   copyAsMarkdownLink(button) {
-    MNUtil.currentWindow.becomeFirstResponder()
+    MNUtil.currentWindow.becomeFirstResponder()  // 确保窗口获得焦点
     self.onClick = true
 try {
 
@@ -710,12 +1040,35 @@ try {
     self.hideAfterDelay()
   },
 
+  /**
+   * 🔍 在欧路词典中查课 - 快速查询单词或文本
+   * 
+   * 【支持的词典】
+   * - 📘 欧路词典 (Eudic) - 默认
+   * - 📕 有道词典 (YoudaoDict)
+   * - 📗 金山词霸 (iCIBA)
+   * - 📙 搜狗词典 (SogouDict)
+   * - 📓 必应词典 (BingDict)
+   * 
+   * 【智能选择文本】
+   * 按以下优先级自动选择要查询的内容：
+   * 1. 🔖 当前选中的文本
+   * 2. 📑 焦点卡片的摘录文本
+   * 3. 🏷️ 焦点卡片的标题
+   * 4. 📝 焦点卡片的第一个文本评论
+   * 
+   * 【打开方式】
+   * - 外部应用：通过 URL Scheme 跳转到词典 App
+   * - 内置浮窗：在 MarginNote 内显示查询结果（部分词典）
+   * 
+   * @param {UIButton} button - 查词按钮
+   */
   searchInEudic:async function (button) {
   try {
     self.onClick = true
-    let des = pluginDemoConfig.getDescriptionByName("searchInEudic")
-    des.action = "searchInDict"
-    await self.customActionByDes(button, des, false)
+    let des = pluginDemoConfig.getDescriptionByName("searchInEudic")  // 获取词典配置
+    des.action = "searchInDict"  // 设置动作为查词
+    await self.customActionByDes(button, des, false)  // 执行查词动作
     // let target = des.target ?? "eudic"
     // let textSelected = MNUtil.selectionText
     // if (!textSelected) {
@@ -818,14 +1171,38 @@ try {
     pluginDemoUtils.addErrorLog(error, "searchInEudic")
   }
   },
+  /**
+   * 🔄 标题/摘录互换 - 快速交换卡片的标题和摘录内容
+   * 
+   * 【功能说明】
+   * 将当前卡片的标题和摘录内容互换位置
+   * 
+   * 【使用场景】
+   * - 📝 摘录内容更适合做标题时
+   * - 🏷️ 需要将简短标题放到摘录中
+   * - 🔄 调整卡片的展示方式
+   * 
+   * 【操作效果】
+   * ```
+   * 操作前：
+   * 标题："短标题"
+   * 摘录："这是一段很长的摘录内容..."
+   * 
+   * 操作后：
+   * 标题："这是一段很长的摘录内容..."
+   * 摘录："短标题"
+   * ```
+   * 
+   * @param {UIButton} button - 交换按钮
+   */
   switchTitleorExcerpt(button) {
     self.onClick = true
-    pluginDemoUtils.switchTitleOrExcerpt()
+    pluginDemoUtils.switchTitleOrExcerpt()  // 调用工具方法执行交换
     if (button.menu) {
-      button.menu.dismissAnimated(true)
+      button.menu.dismissAnimated(true)     // 关闭菜单
       return
     }
-    self.hideAfterDelay()
+    self.hideAfterDelay()                   // 动态窗口自动隐藏
   },
   bigbang: function (button) {
     self.onClick = true
@@ -1727,7 +2104,43 @@ pluginDemoController.prototype.hideAfterDelay = function (delay = 0.5) {
 }
 
 /**
+ * 🎮 设置工具栏按钮 - 初始化或更新工具栏上的所有按钮
+ * 
+ * 【核心功能】
+ * 这是工具栏按钮系统的核心方法，负责：
+ * 1. 🎨 创建或更新按钮的外观（颜色、图标）
+ * 2. 🔗 绑定按钮的点击事件和手势
+ * 3. 🔢 管理按钮的顺序和索引
+ * 4. 🔄 同步动态/固定窗口的按钮配置
+ * 
+ * 【按钮类型识别】
+ * ```javascript
+ * actionName = "color5"   → 颜色按钮，设置颜色为 5
+ * actionName = "custom1"  → 自定义按钮 1
+ * actionName = "copy"     → 系统功能按钮
+ * ```
+ * 
+ * 【动态顺序机制】
+ * - dynamicOrder = true：使用用户自定义的按钮顺序
+ * - dynamicOrder = false：使用默认顺序
+ * 
+ * 【性能优化】
+ * - 按钮对象复用：如果按钮已存在，只更新属性而不重新创建
+ * - 手势绑定一次：避免重复添加手势识别器
+ * 
+ * @param {Array<string>} actionNames - 按钮动作名称数组，如 ["copy", "paste", "color1", ...]
+ * @param {Object} newActions - 可选，新的动作配置对象
  * @this {pluginDemoController}
+ * 
+ * @example
+ * // 使用默认配置
+ * setToolbarButton()
+ * 
+ * // 使用自定义顺序
+ * setToolbarButton(["copy", "paste", "undo", "redo"])
+ * 
+ * // 更新动作配置
+ * setToolbarButton(undefined, newActionsConfig)
  */
 pluginDemoController.prototype.setToolbarButton = function (actionNames = pluginDemoConfig.action,newActions=undefined) {
 try {
@@ -1817,19 +2230,60 @@ try {
  * @param {*} frame 
  * @this {pluginDemoController}
  */
+/**
+ * 🔄 刷新工具栏 - 重新计算并更新工具栏布局
+ * 
+ * 【使用场景】
+ * - 🔄 按钮配置变更后
+ * - 📱 屏幕方向改变后
+ * - 🔧 工具栏大小调整后
+ * 
+ * @param {CGRect} frame - 可选，新的 frame，不传则使用当前 frame
+ * @this {pluginDemoController}
+ */
 pluginDemoController.prototype.refresh = function (frame) {
   if (!frame) {
-    frame = this.view.frame
+    frame = this.view.frame  // 使用当前 frame
   }
-  this.setFrame(frame,true)
-  this.setToolbarLayout()
+  this.setFrame(frame,true)   // 更新 frame
+  this.setToolbarLayout()      // 重新布局按钮
 }
 
+/**
+ * 🖼️ 设置工具栏布局 - 根据方向排列按钮
+ * 
+ * 【布局策略】
+ * 1. ↔️ 横向布局：按钮从左到右排列
+ *    ```
+ *    [按钮1][按钮2][按钮3]...[屏幕按钮]
+ *    ```
+ * 
+ * 2. ↕️ 纵向布局：按钮从上到下排列
+ *    ```
+ *    [按钮1]
+ *    [按钮2]
+ *    [按钮3]
+ *       ...
+ *    [屏幕按钮]
+ *    ```
+ * 
+ * 【布局计算】
+ * - 按钮大小：40x40 像素
+ * - 按钮间距：5 像素
+ * - 总占用：45 像素/按钮
+ * - 超出范围的按钮会被隐藏
+ * 
+ * 【特殊处理】
+ * - 屏幕按钮始终保持在最上层
+ * - 动画过程中不更新布局（避免抖动）
+ * 
+ * @this {pluginDemoController}
+ */
 pluginDemoController.prototype.setToolbarLayout = function () {
   if (this.onAnimate) {
-    return
+    return  // 动画过程中，跳过布局更新
   }
-  // MNUtil.copyJSON(this.view.frame)
+  // MNUtil.copyJSON(this.view.frame)  // 调试：输出 frame 信息
   if (pluginDemoConfig.horizontal(this.dynamicWindow)) {
     var viewFrame = this.view.bounds;
     var xLeft     = viewFrame.x
@@ -1871,16 +2325,69 @@ pluginDemoController.prototype.setToolbarLayout = function () {
   }
 
 }
+/**
+ * ❌ 检查并关闭弹出菜单 - 确保只有一个菜单显示
+ * 
+ * 【使用时机】
+ * 在显示新菜单之前调用，避免多个菜单重叠
+ * 
+ * @this {pluginDemoController}
+ */
 pluginDemoController.prototype.checkPopover = function () {
   if (this.popoverController) {this.popoverController.dismissPopoverAnimated(true);}
 }
 /**
+ * 🎯 执行自定义动作 - 根据动作描述执行相应操作
+ * 
+ * 【核心业务逻辑】
+ * 这是工具栏所有功能的最终执行器，负责：
+ * 1. 🔐 订阅验证：检查用户是否有权限使用该功能
+ * 2. 🗋️ 菜单处理：如果是菜单动作，显示弹出菜单
+ * 3. 🎯 动作分发：根据 action 类型执行对应的功能
+ * 4. 📝 笔记获取：获取当前焦点卡片供动作使用
+ * 
+ * 【动作类型分发】
+ * ```javascript
+ * switch(des.action) {
+ *   case "setColor":     // 设置卡片颜色
+ *   case "copy":         // 复制操作
+ *   case "paste":        // 粘贴操作
+ *   case "menu":         // 显示子菜单
+ *   case "custom":       // 自定义动作
+ *   // ... 更多动作类型
+ * }
+ * ```
+ * 
+ * 【参数说明】
+ * @param {UIButton} button - 触发动作的按钮
+ * @param {Object} des - 动作描述对象
+ *   des.action - 动作类型
+ *   des.target - 目标参数
+ *   des.option - 额外选项
+ *   des.menuItems - 菜单项（当 action="menu" 时）
+ * @param {boolean} checkSubscribe - 是否检查订阅状态，默认 true
+ * @returns {void}
+ * 
  * @this {pluginDemoController}
- * @param {UIButton} button 
- * @param {object} des 
- * @returns 
+ * 
+ * @example
+ * // 执行复制动作
+ * customActionByDes(button, {
+ *   action: "copy",
+ *   target: "title",
+ *   option: "markdown"
+ * })
+ * 
+ * // 显示菜单
+ * customActionByDes(button, {
+ *   action: "menu",
+ *   menuItems: [{
+ *     menuTitle: "选项 1",
+ *     action: "option1"
+ *   }]
+ * })
  */
-pluginDemoController.prototype.customActionByDes = async function (button,des,checkSubscribe = true) {//这里actionName指的是key
+pluginDemoController.prototype.customActionByDes = async function (button,des,checkSubscribe = true) {
   try {
     if (checkSubscribe && !pluginDemoUtils.checkSubscribe(true)) {
       return

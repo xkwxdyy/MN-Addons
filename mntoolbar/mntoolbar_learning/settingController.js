@@ -1568,33 +1568,135 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       )
     }
   },
+  /**
+   * 📄 从文件选择新图标
+   * 
+   * 【功能说明】
+   * 打开系统文件选择器，让用户从 iCloud Drive、本地文件等位置
+   * 选择一个图片文件作为按钮的新图标。
+   * 
+   * 【支持的文件类型】
+   * - PNG、JPG、JPEG、GIF 等所有系统支持的图片格式
+   * - 通过 UTI (Uniform Type Identifier) "public.image" 指定
+   * 
+   * 【工作流程】
+   * 1. 检查订阅状态（高级功能）
+   * 2. 显示文件选择器
+   * 3. 用户选择图片文件
+   * 4. 读取图片并设置为按钮图标
+   * 
+   * 【与照片库选择的区别】
+   * - 照片库：只能选择相册中的图片
+   * - 文件选择：可以选择任何位置的图片文件，包括 iCloud、其他应用共享的文件等
+   * 
+   * @param {string} buttonName - 要更换图标的按钮名称
+   */
   changeIconFromFile:async function (buttonName) {
-    self.checkPopoverController()
+    self.checkPopoverController()  // 关闭弹出菜单
+    
     if (pluginDemoUtils.checkSubscribe(true)) {
       self.checkPopoverController()
+      
+      // 设置允许选择的文件类型（所有图片格式）
       let UTI = ["public.image"]
+      
+      // 显示文件选择器并等待用户选择
       let path = await MNUtil.importFile(UTI)
+      
+      // 从文件路径读取图片（scale = 1）
       let image = MNUtil.getImage(path,1)
+      
+      // 设置为按钮图标（true 表示是自定义图标）
       pluginDemoConfig.setButtonImage(buttonName, image,true)
     }
   },
+  /**
+   * 🌐 从网站下载新图标
+   * 
+   * 【功能说明】
+   * 打开内置浏览器访问图标网站，让用户下载并选择新图标。
+   * 支持的网站包括：
+   * - Appicon Forge：应用图标生成器
+   * - Icon Font：阿里巴巴图标库
+   * 
+   * 【使用场景】
+   * - 需要专业的图标设计
+   * - 想要统一的图标风格
+   * - 寻找特定主题的图标
+   * 
+   * 【窗口大小调整】
+   * 如果设置窗口太小，会自动放大到合适的浏览尺寸：
+   * - 最小宽度：800 像素
+   * - 最小高度：600 像素
+   * 
+   * 【工作流程】
+   * 1. 关闭当前弹出菜单
+   * 2. 检查订阅状态
+   * 3. 计算合适的窗口大小
+   * 4. 通过通知系统打开内置浏览器
+   * 5. 用户在网站下载图标后，通过其他方式导入
+   * 
+   * @param {string} url - 要访问的图标网站 URL
+   */
   changeIconFromWeb: function (url) {
-    self.checkPopoverController()
+    self.checkPopoverController()  // 关闭弹出菜单
+    
     if (pluginDemoUtils.checkSubscribe(false)) {
+      // 记录当前窗口大小，用于动画过渡
       let beginFrame = self.view.frame
       let endFrame = self.view.frame
+      
+      // 确保浏览器窗口足够大
       if (endFrame.width < 800) {
         endFrame.width = 800
       }
       if (endFrame.height < 600) {
         endFrame.height = 600
       }
-      MNUtil.postNotification("openInBrowser", {url:url,beginFrame:beginFrame,endFrame:endFrame})
+      
+      // 通知系统打开内置浏览器
+      MNUtil.postNotification("openInBrowser", {
+        url: url,
+        beginFrame: beginFrame,  // 动画起始位置
+        endFrame: endFrame       // 动画结束位置
+      })
     }
   }, 
+  /**
+   * 🔍 调整图标缩放比例
+   * 
+   * 【功能说明】
+   * 允许用户调整按钮图标的显示大小。有些图标可能太大或太小，
+   * 通过调整缩放比例可以让图标在按钮中显示得更合适。
+   * 
+   * 【缩放选项】
+   * - 1：原始大小（1x）
+   * - 2：放大两倍（2x）
+   * - 3：放大三倍（3x）
+   * - 自定义：输入任意数值（如 0.5、1.5、2.5 等）
+   * 
+   * 【使用场景】
+   * - 图标太小看不清：增大缩放比例
+   * - 图标太大超出按钮：减小缩放比例
+   * - 不同来源的图标需要统一大小
+   * 
+   * 【注意事项】
+   * - 缩放比例过大可能导致图标模糊
+   * - 缩放比例过小可能导致图标难以识别
+   * - 建议在 0.5-3 之间调整
+   * 
+   * @param {string} buttonName - 要调整图标的按钮名称
+   */
   changeIconScale:async function (buttonName) {
-    self.checkPopoverController()
-    let res = await MNUtil.input("Custom scale","自定义图片缩放比例",["cancel","1","2","3","confirm"])
+    self.checkPopoverController()  // 关闭弹出菜单
+    
+    // 显示选择对话框
+    let res = await MNUtil.input(
+      "Custom scale",
+      "自定义图片缩放比例",
+      ["cancel","1","2","3","confirm"]
+    )
+    
     if (res.button === 0) {
       MNUtil.showHUD("Cancel")
       return
@@ -1624,106 +1726,340 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     pluginDemoConfig.imageConfigs[buttonName] = UIImage.imageWithDataScale(image.pngData(), scale)
     MNUtil.postNotification("refreshToolbarButton", {})
   },
+  /**
+   * 🔄 重置按钮图标
+   * 
+   * 【功能说明】
+   * 将按钮图标恢复为默认图标。当用户对自定义图标不满意时，
+   * 可以使用此功能恢复到插件自带的原始图标。
+   * 
+   * 【工作流程】
+   * 1. 清除图标缩放比例设置
+   * 2. 从插件目录加载默认图标
+   * 3. 通知工具栏刷新按钮显示
+   * 4. 显示重置成功提示
+   * 
+   * 【注意事项】
+   * - 重置后无法恢复之前的自定义图标
+   * - 重置不会影响按钮的功能配置
+   * - 只是恢复视觉显示
+   * 
+   * 【被注释的代码】
+   * 原本还会删除本地保存的自定义图标文件，
+   * 但目前这部分功能被暂时禁用了。
+   * 
+   * @param {string} buttonName - 要重置图标的按钮名称
+   */
   resetIcon:function (buttonName) {
     try {
-    self.checkPopoverController()
+      self.checkPopoverController()  // 关闭弹出菜单
       
-
-    // let filePath = pluginDemoConfig.imageScale[buttonName].path
-    pluginDemoConfig.imageScale[buttonName] = undefined
-    pluginDemoConfig.save("MNToolbar_imageScale")
-    pluginDemoConfig.imageConfigs[buttonName] = MNUtil.getImage(pluginDemoConfig.mainPath+"/"+pluginDemoConfig.getAction(buttonName).image+".png")
-    MNUtil.postNotification("refreshToolbarButton", {})
-    MNUtil.showHUD("Reset button image")
-    // if (MNUtil.isfileExists(pluginDemoConfig.buttonImageFolder+"/"+filePath)) {
-    //   NSFileManager.defaultManager().removeItemAtPath(pluginDemoConfig.buttonImageFolder+"/"+filePath)
-    // }
+      // 清除图标缩放比例配置
+      pluginDemoConfig.imageScale[buttonName] = undefined
+      pluginDemoConfig.save("MNToolbar_imageScale")
+      
+      // 加载默认图标
+      let defaultImage = pluginDemoConfig.getAction(buttonName).image
+      let imagePath = pluginDemoConfig.mainPath + "/" + defaultImage + ".png"
+      pluginDemoConfig.imageConfigs[buttonName] = MNUtil.getImage(imagePath)
+      
+      // 通知工具栏刷新按钮
+      MNUtil.postNotification("refreshToolbarButton", {})
+      MNUtil.showHUD("Reset button image")
+      
+      // 曾经的功能：删除本地保存的自定义图标文件
+      // let filePath = pluginDemoConfig.imageScale[buttonName].path
+      // if (MNUtil.isfileExists(pluginDemoConfig.buttonImageFolder+"/"+filePath)) {
+      //   NSFileManager.defaultManager().removeItemAtPath(pluginDemoConfig.buttonImageFolder+"/"+filePath)
+      // }
     } catch (error) {
       pluginDemoUtils.addErrorLog(error, "resetIcon")
     }
   },
+  /**
+   * 🖼️ 图片选择器完成回调
+   * 
+   * 【功能说明】
+   * 这是 UIImagePickerControllerDelegate 协议的回调方法。
+   * 当用户在照片库中选择完图片后，系统会调用此方法。
+   * 
+   * 【回调时机】
+   * - 用户在照片库中选择了一张图片
+   * - 用户拍摄了一张新照片（如果是从相机启动）
+   * - 用户编辑完成（如果启用了编辑功能）
+   * 
+   * 【info 字典内容】
+   * - UIImagePickerControllerOriginalImage: 原始图片
+   * - UIImagePickerControllerEditedImage: 编辑后的图片（如果启用编辑）
+   * - UIImagePickerControllerMediaType: 媒体类型
+   * - UIImagePickerControllerCropRect: 裁剪区域
+   * 
+   * 【工作流程】
+   * 1. 从 info 字典获取用户选择的原始图片
+   * 2. 关闭图片选择器界面
+   * 3. 将图片设置为按钮图标
+   * 
+   * @param {UIImagePickerController} ImagePickerController - 图片选择器实例
+   * @param {NSDictionary} info - 包含选择结果的信息字典
+   */
   imagePickerControllerDidFinishPickingMediaWithInfo:async function (ImagePickerController,info) {
     try {
+      // 获取用户选择的原始图片
+      let image = info.UIImagePickerControllerOriginalImage
       
-    let image = info.UIImagePickerControllerOriginalImage
-    MNUtil.studyController.dismissViewControllerAnimatedCompletion(true,undefined)
-    pluginDemoConfig.setButtonImage(ImagePickerController.buttonName, image,true)
+      // 关闭图片选择器（动画显示）
+      MNUtil.studyController.dismissViewControllerAnimatedCompletion(true,undefined)
+      
+      // 设置为按钮图标
+      // buttonName 之前在 changeIconFromPhoto 中保存到 ImagePickerController 上
+      pluginDemoConfig.setButtonImage(ImagePickerController.buttonName, image,true)
     } catch (error) {
       MNUtil.showHUD(error)
     }
   },
+  /**
+   * ❌ 图片选择器取消回调
+   * 
+   * 【功能说明】
+   * 当用户在图片选择器中点击“取消”按钮时，
+   * 系统会调用此方法。只需要关闭选择器界面即可。
+   * 
+   * @param {*} params - 参数（未使用）
+   */
   imagePickerControllerDidCancel:function (params) {
+    // 关闭图片选择器，返回到设置界面
     MNUtil.studyController.dismissViewControllerAnimatedCompletion(true,undefined)
-    
   },
+  /**
+   * 🤝 切换插件协作状态
+   * 
+   * 【功能说明】
+   * 控制是否在工具栏中显示其他插件的快捷按钮。
+   * MN Toolbar 可以与其他插件协作，显示它们的功能按钮。
+   * 
+   * 【支持的插件】
+   * - MNEditor：文本编辑器
+   * - MNChatAI：AI 对话助手
+   * - 其他支持协作的插件
+   * 
+   * 【工作原理】
+   * 1. 每个插件可以注册自己的快捷操作到 MN Toolbar
+   * 2. 用户可以选择启用/禁用某个插件的按钮
+   * 3. 启用后，该插件的按钮会出现在工具栏中
+   * 
+   * 【UI 更新】
+   * - 启用：按钮变蓝色，显示 ✅
+   * - 禁用：按钮变灰色，显示 ❌
+   * 
+   * @param {UIButton} button - 触发的按钮，其 addon 属性包含插件名
+   */
   toggleAddonLogo:function (button) {
     if (pluginDemoUtils.checkSubscribe(true)) {
       let addonName = button.addon
+      
+      // 切换状态
       pluginDemoConfig.addonLogos[addonName] = !pluginDemoConfig.checkLogoStatus(addonName)
-      button.setTitleForState(addonName+": "+(pluginDemoConfig.checkLogoStatus(addonName)?"✅":"❌"),0)
-      MNButton.setColor(button, pluginDemoConfig.checkLogoStatus(addonName)?"#457bd3":"#9bb2d6",0.8)
+      
+      // 更新按钮显示
+      let isEnabled = pluginDemoConfig.checkLogoStatus(addonName)
+      button.setTitleForState(
+        addonName + ": " + (isEnabled ? "✅" : "❌"),
+        0
+      )
+      
+      // 更新按钮颜色
+      MNButton.setColor(
+        button, 
+        isEnabled ? "#457bd3" : "#9bb2d6",  // 启用时蓝色，禁用时灰色
+        0.8
+      )
+      
+      // 保存配置
       pluginDemoConfig.save("MNToolbar_addonLogos")
+      
+      // 刷新插件命令，重新加载按钮
       MNUtil.refreshAddonCommands()
     }
   },
+  /**
+   * 🎨 保存按钮颜色
+   * 
+   * 【功能说明】
+   * 保存用户自定义的按钮颜色。支持两种格式：
+   * 1. 十六进制颜色值（如 #FF5733）
+   * 2. 系统预定义变量（如 defaultTintColor）
+   * 
+   * 【支持的系统变量】
+   * - defaultBookPageColor: 书页颜色
+   * - defaultHighlightBlendColor: 高亮混合颜色
+   * - defaultDisableColor: 禁用颜色
+   * - defaultTextColor: 文本颜色
+   * - defaultNotebookColor: 笔记本颜色
+   * - defaultTintColor: 主题色
+   * - defaultTintColorForSelected: 选中状态主题色
+   * - defaultTintColorForDarkBackground: 深色背景主题色
+   * 
+   * 【颜色格式验证】
+   * - 十六进制：#RRGGBB 或 #RGB
+   * - 必须是有效的颜色值
+   * - 大小写不敏感
+   * 
+   * 【工作流程】
+   * 1. 检查订阅状态
+   * 2. 获取输入的颜色值
+   * 3. 验证颜色格式
+   * 4. 保存配置
+   * 5. 刷新工具栏按钮
+   * 
+   * @param {UIButton} button - 触发保存的按钮
+   */
   saveButtonColor:function (button) {
     if (!pluginDemoUtils.checkSubscribe(true)) {
       return
     }
+    
     let color = self.hexInput.text
-    let varColors = ["defaultBookPageColor","defaultHighlightBlendColor","defaultDisableColor","defaultTextColor","defaultNotebookColor","defaultTintColor","defaultTintColorForSelected","defaultTintColorForDarkBackground"]
+    
+    // 系统预定义颜色变量列表
+    let varColors = [
+      "defaultBookPageColor",
+      "defaultHighlightBlendColor",
+      "defaultDisableColor",
+      "defaultTextColor",
+      "defaultNotebookColor",
+      "defaultTintColor",
+      "defaultTintColorForSelected",
+      "defaultTintColorForDarkBackground"
+    ]
+    
+    // 验证颜色格式
     if (varColors.includes(color) || pluginDemoUtils.isHexColor(color)) {
+      // 保存颜色配置
       pluginDemoConfig.buttonConfig.color = color
       pluginDemoConfig.save("MNToolbar_buttonConfig")
+      
+      // 立即应用新颜色
       self.pluginDemoController.setToolbarButton()
-      MNUtil.showHUD("Save color: "+color)
-    }else{
+      
+      MNUtil.showHUD("Save color: " + color)
+    } else {
       MNUtil.showHUD("Invalid hex color")
     }
   },
+  /**
+   * ☁️ 切换 iCloud 同步
+   * 
+   * 【功能说明】
+   * 管理配置的 iCloud 同步功能。可以：
+   * - 开启/关闭自动同步
+   * - 手动导入/导出配置到 iCloud
+   * - 在多设备间同步插件配置
+   * 
+   * 【工作模式】
+   * 1. 已开启同步时：点击会关闭同步
+   * 2. 未开启同步时：弹出菜单选择导入或导出
+   * 
+   * 【同步内容】
+   * - 按钮配置
+   * - 动作配置
+   * - 窗口位置和大小
+   * - 自定义图标
+   * - 所有个性化设置
+   * 
+   * 【使用场景】
+   * - 在 iPad 和 Mac 之间同步配置
+   * - 备份配置到云端
+   * - 恢复之前的配置
+   * - 分享配置给他人
+   * 
+   * 【注意事项】
+   * - 需要订阅才能使用（不支持免费额度）
+   * - 导入会覆盖当前配置
+   * - 建议在操作前先备份
+   * 
+   * 【UI 状态】
+   * - 开启：按钮显示 ✅，蓝色背景
+   * - 关闭：按钮显示 ❌，灰色背景
+   */
   toggleICloudSync:async function () {
-    if (!pluginDemoUtils.checkSubscribe(false,true,true)) {//不可以使用免费额度,且未订阅下会提醒
+    // 检查订阅（不允许免费额度，未订阅会提醒）
+    if (!pluginDemoUtils.checkSubscribe(false,true,true)) {
       return
     }
+    
+    // 检查当前同步状态
     let iCloudSync = (self.iCloudButton.currentTitle === "iCloud Sync ✅")
+    
     if (iCloudSync) {
+      // 如果已开启，则关闭同步
       pluginDemoConfig.syncConfig.iCloudSync = !iCloudSync
       self.iCloudButton.setTitleForState("iCloud Sync "+(pluginDemoConfig.syncConfig.iCloudSync? "✅":"❌"),0)
       MNButton.setColor(self.iCloudButton, pluginDemoConfig.syncConfig.iCloudSync?"#457bd3":"#9bb2d6",0.8)
       pluginDemoConfig.save("MNToolbar_syncConfig",undefined,false)
-    }else{
-      let direction = await MNUtil.userSelect("MN Toolbar\nChoose action / 请选择操作", "❗️Back up the configuration before proceeding.\n❗️建议在操作前先备份配置", ["📥 Import / 导入","📤 Export / 导出"])
+    } else {
+      // 如果未开启，显示导入/导出选项
+      let direction = await MNUtil.userSelect(
+        "MN Toolbar\nChoose action / 请选择操作", 
+        "❗️Back up the configuration before proceeding.\n❗️建议在操作前先备份配置", 
+        ["📥 Import / 导入","📤 Export / 导出"]
+      )
+      
       switch (direction) {
         case 0:
-          //cancel
+          // 用户取消
           return;
+          
         case 2:
+          // 导出到 iCloud
           pluginDemoConfig.writeCloudConfig(true,true)
           MNUtil.showHUD("Export to iCloud")
-          //export
           break;
+          
         case 1:
+          // 从 iCloud 导入
           pluginDemoConfig.readCloudConfig(true,false,true)
           MNUtil.showHUD("Import from iCloud")
+          
+          // 更新 UI
           let allActions = pluginDemoConfig.getAllActions()
           self.setButtonText(allActions,self.selectedItem)
+          
+          // 更新工具栏
           if (self.pluginDemoController) {
             self.pluginDemoController.setToolbarButton(allActions)
           }else{
             MNUtil.showHUD("No pluginDemoController")
           }
+          
+          // 通知其他组件刷新
           MNUtil.postNotification("refreshView",{})
-          //import
           break;
+          
         default:
           break;
       }
+      
+      // 操作完成后开启同步
       pluginDemoConfig.syncConfig.iCloudSync = true
       self.iCloudButton.setTitleForState("iCloud Sync ✅",0)
       MNButton.setColor(self.iCloudButton, "#457bd3",0.8)
       pluginDemoConfig.save("MNToolbar_syncConfig")
     }
   },
+  /**
+   * 📤 导出配置菜单
+   * 
+   * 【功能说明】
+   * 显示配置导出选项菜单，让用户选择导出目标。
+   * 
+   * 【导出选项】
+   * - ☁️ to iCloud：导出到 iCloud 云端
+   * - 📋 to Clipboard：复制到剪贴板
+   * - 📝 to CurrentNote：保存到当前笔记
+   * - 📁 to File：导出为文件
+   * 
+   * @param {UIButton} button - 触发菜单的按钮
+   */
   exportConfigTapped:function(button){
     var commandTable = [
       {title:'☁️   to iCloud', object:self, selector:'exportConfig:', param:"iCloud"},
@@ -1731,138 +2067,345 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       {title:'📝   to CurrentNote', object:self, selector:'exportConfig:', param:"currentNote"},
       {title:'📁   to File', object:self, selector:'exportConfig:', param:"file"},
     ];
+    
+    // 显示弹出菜单（向上弹出）
     self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,250,2)
   },
+  /**
+   * 💾 执行配置导出
+   * 
+   * 【功能说明】
+   * 根据用户选择的导出方式，将所有配置导出到指定位置。
+   * 导出的配置包含所有按钮、动作、窗口状态等信息。
+   * 
+   * 【导出格式】
+   * JSON 格式，包含以下内容：
+   * - actions: 所有按钮的功能配置
+   * - windowState: 窗口位置和大小
+   * - buttonConfig: 按钮颜色等设置
+   * - addonLogos: 插件协作设置
+   * - popupConfig: 弹出菜单替换配置
+   * 
+   * 【导出方式详解】
+   * 
+   * 1️⃣ iCloud
+   *    - 保存到 iCloud Drive
+   *    - 可在其他设备上导入
+   *    - 自动同步
+   * 
+   * 2️⃣ Clipboard
+   *    - 复制 JSON 到剪贴板
+   *    - 方便分享给他人
+   *    - 可以粘贴到文本编辑器查看
+   * 
+   * 3️⃣ CurrentNote
+   *    - 将配置保存到当前选中的笔记
+   *    - 标题设为 "MNToolbar_Config"
+   *    - 内容为格式化的 JSON 代码块
+   *    - 支持 Markdown 渲染
+   * 
+   * 4️⃣ File
+   *    - 导出为 .json 文件
+   *    - 保存到用户选择的位置
+   *    - 文件名：pluginDemo_config.json
+   * 
+   * @param {string} param - 导出方式（"iCloud", "clipboard", "currentNote", "file"）
+   */
   exportConfig:function(param){
-    self.checkPopoverController()
+    self.checkPopoverController()  // 关闭弹出菜单
+    
+    // 检查订阅状态
     if (!pluginDemoUtils.checkSubscribe(true)) {
       return
     }
+    
+    // 获取所有配置
     let allConfig = pluginDemoConfig.getAllConfig()
+    
     switch (param) {
       case "iCloud":
+        // 写入 iCloud
         pluginDemoConfig.writeCloudConfig(true,true)
         break;
-      case "clipborad":
+        
+      case "clipborad":  // 注意：这里有拼写错误，但保持原样以兼容
+        // 复制到剪贴板
         MNUtil.copyJSON(allConfig)
         break;
+        
       case "currentNote":
+        // 保存到当前笔记
         let focusNote = MNNote.getFocusNote()
         if(focusNote){
           MNUtil.undoGrouping(()=>{
             focusNote.noteTitle = "MNToolbar_Config"
+            // 使用 Markdown 代码块格式，便于阅读
             focusNote.excerptText = "```JSON\n"+JSON.stringify(allConfig,null,2)+"\n```"
-            focusNote.excerptTextMarkdown = true
+            focusNote.excerptTextMarkdown = true  // 启用 Markdown 渲染
           })
         }else{
           MNUtil.showHUD("Invalid note")
         }
         break;
+        
       case "file":
-        MNUtil.writeJSON(pluginDemoConfig.mainPath+"/pluginDemo_config.json",allConfig)
-        MNUtil.saveFile(pluginDemoConfig.mainPath+"/pluginDemo_config.json",["public.json"])
+        // 导出为文件
+        let filePath = pluginDemoConfig.mainPath+"/pluginDemo_config.json"
+        MNUtil.writeJSON(filePath,allConfig)
+        // 让用户选择保存位置
+        MNUtil.saveFile(filePath,["public.json"])
         break;
+        
       default:
         break;
     }
   },
+  /**
+   * 📥 导入配置菜单
+   * 
+   * 【功能说明】
+   * 显示配置导入选项菜单，让用户选择导入来源。
+   * 
+   * 【导入选项】
+   * - ☁️ from iCloud：从 iCloud 云端导入
+   * - 📋 from Clipboard：从剪贴板粘贴
+   * - 📝 from CurrentNote：从当前笔记读取
+   * - 📁 from File：从文件导入
+   * 
+   * @param {UIButton} button - 触发菜单的按钮
+   */
   importConfigTapped:function(button){
     var commandTable = [
       {title:'☁️   from iCloud',object:self,selector:'importConfig:',param:"iCloud"},
-      {title:'📋   from Clipborad',object:self,selector:'importConfig:',param:"clipborad"},
+      {title:'📋   from Clipborad',object:self,selector:'importConfig:',param:"clipborad"},  // 注意拼写错误
       {title:'📝   from CurrentNote',object:self,selector:'importConfig:',param:"currentNote"},
       {title:'📁   from File',object:self,selector:'importConfig:',param:"file"},
     ]
+    
+    // 显示弹出菜单（向上弹出）
     self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,250,2)
   },
+  /**
+   * 📲 执行配置导入
+   * 
+   * 【功能说明】
+   * 根据用户选择的导入方式，从指定位置读取配置并应用。
+   * 导入会覆盖当前所有配置，建议先备份。
+   * 
+   * 【导入流程】
+   * 1. 从指定来源读取配置
+   * 2. 验证配置格式
+   * 3. 应用配置到系统
+   * 4. 更新 UI 显示
+   * 5. 刷新工具栏
+   * 6. 保存到本地
+   * 
+   * 【导入方式详解】
+   * 
+   * 1️⃣ iCloud
+   *    - 从 iCloud Drive 读取
+   *    - 自动应用所有配置
+   *    - 特殊处理：直接调用专用方法
+   * 
+   * 2️⃣ Clipboard
+   *    - 从剪贴板读取 JSON
+   *    - 需要是有效的 JSON 格式
+   *    - 适合接收他人分享的配置
+   * 
+   * 3️⃣ CurrentNote
+   *    - 从当前笔记读取
+   *    - 笔记标题必须是 "MNToolbar_Config"
+   *    - 支持从 Markdown 代码块提取 JSON
+   * 
+   * 4️⃣ File
+   *    - 选择 .json 文件导入
+   *    - 支持从任何位置选择文件
+   *    - 自动解析 JSON 内容
+   * 
+   * 【错误处理】
+   * - 无效的 JSON 格式会提示错误
+   * - 笔记标题不匹配会提示 "Invalid note"
+   * - 文件读取失败会自动处理
+   * 
+   * @param {string} param - 导入方式（"iCloud", "clipborad", "currentNote", "file"）
+   */
   importConfig:async function(param){
-    self.checkPopoverController()
-    if (!pluginDemoUtils.checkSubscribe(true)) {//检查订阅,可以使用免费额度
+    self.checkPopoverController()  // 关闭弹出菜单
+    
+    // 检查订阅（可以使用免费额度）
+    if (!pluginDemoUtils.checkSubscribe(true)) {
       return
     }
-    // MNUtil.showHUD(param)
+    
     let config = undefined
+    
     switch (param) {
       case "iCloud":
+        // iCloud 导入有特殊处理流程
         pluginDemoConfig.readCloudConfig(true,false,true)
         let allActions = pluginDemoConfig.getAllActions()
-        // MNUtil.copyJSON(allActions)
         self.setButtonText(allActions,self.selectedItem)
-        // self.addonController.view.hidden = true
+        
+        // 更新工具栏
         if (self.pluginDemoController) {
           self.pluginDemoController.setFrame(pluginDemoConfig.getWindowState("frame"))
           self.pluginDemoController.setToolbarButton(allActions)
         }else{
           MNUtil.showHUD("No addonController")
         }
+        
         pluginDemoConfig.save()
         MNUtil.postNotification("refreshView",{})
-        return;
-      case "clipborad":
+        return;  // iCloud 处理完成，直接返回
+        
+      case "clipborad":  // 注意拼写错误
+        // 从剪贴板读取
         if(MNUtil){
           config = JSON.parse(MNUtil.clipboardText)
         }
         break;
+        
       case "currentNote":
+        // 从当前笔记读取
         let focusNote = MNNote.getFocusNote()
         if(focusNote && focusNote.noteTitle == "MNToolbar_Config"){
+          // 从 Markdown 代码块中提取 JSON
           config = pluginDemoUtils.extractJSONFromMarkdown(focusNote.excerptText)
-          // config = focusNote.excerptText
-          // MNUtil.copy(config)
         }else{
           MNUtil.showHUD("Invalid note")
         }
         break;
+        
       case "file":
+        // 从文件导入
         let path = await MNUtil.importFile(["public.json"])
         config = MNUtil.readJSON(path)
         break;
+        
       default:
         break;
     }
+    
+    // 应用导入的配置
     pluginDemoConfig.importConfig(config)
+    
+    // 更新 UI
     let allActions = pluginDemoConfig.getAllActions()
-    // MNUtil.copyJSON(allActions)
     self.setButtonText(allActions,self.selectedItem)
-    // self.addonController.view.hidden = true
+    
+    // 更新工具栏
     if (self.pluginDemoController) {
       self.pluginDemoController.setFrame(pluginDemoConfig.getWindowState("frame"))
       self.pluginDemoController.setToolbarButton(allActions)
     }else{
       MNUtil.showHUD("No addonController")
     }
+    
+    // 保存配置并通知刷新
     pluginDemoConfig.save()
     MNUtil.postNotification("refreshView",{})
-    // MNUtil.copyJSON(config)
   },
+  /**
+   * 🔄 工具栏方向菜单
+   * 
+   * 【功能说明】
+   * 显示工具栏方向设置菜单，可以切换固定工具栏和动态工具栏的方向。
+   * 
+   * 【方向选项】
+   * - ↕️ Vertical：垂直方向（从上到下排列按钮）
+   * - ↔️ Horizontal：水平方向（从左到右排列按钮）
+   * 
+   * 【工具栏类型】
+   * - 🛠️ Toolbar Direction：固定工具栏的方向
+   * - 🌟 Dynamic Direction：动态工具栏的方向
+   * 
+   * 【使用场景】
+   * - 竖屏时使用垂直布局
+   * - 横屏时使用水平布局
+   * - 根据个人习惯选择
+   * 
+   * @param {UIButton} button - 触发菜单的按钮
+   */
   changeToolbarDirection:async function (button) {
     let self = getSettingController()
     var commandTable = []
     let selector = "toggleToolbarDirection:"
+    
+    // 添加固定工具栏方向选项
     if (pluginDemoConfig.vertical()) {
       commandTable.push(self.tableItem('🛠️  Toolbar Direction: ↕️ Vertical', selector,"fixed"))
     }else{
       commandTable.push(self.tableItem('🛠️  Toolbar Direction: ↔️ Horizontal', selector,"fixed"))
     }
+    
+    // 添加动态工具栏方向选项
     if (pluginDemoConfig.vertical(true)) {
       commandTable.push(self.tableItem('🌟  Dynamic Direction: ↕️ Vertical', selector,"dynamic"))
     }else{
       commandTable.push(self.tableItem('🌟  Dynamic Direction: ↔️ Horizontal', selector,"dynamic"))
     }
+    
+    // 显示弹出菜单
     self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,300,2)
   },
+  /**
+   * 🔀 切换工具栏方向
+   * 
+   * 【功能说明】
+   * 切换指定工具栏的方向（垂直/水平）。
+   * 
+   * @param {string} source - 工具栏类型（"fixed" 或 "dynamic"）
+   */
   toggleToolbarDirection:function (source) {
-    self.checkPopoverController()
-    pluginDemoConfig.toggleToolbarDirection(source)
+    self.checkPopoverController()  // 关闭弹出菜单
+    pluginDemoConfig.toggleToolbarDirection(source)  // 执行方向切换
   },
+  /**
+   * 🌟 切换动态顺序
+   * 
+   * 【功能说明】
+   * 启用或禁用动态工具栏功能。动态工具栏允许用户：
+   * - 拥有与固定工具栏不同的按钮顺序
+   * - 快速切换不同的工作模式
+   * - 根据场景使用不同的按钮组合
+   * 
+   * 【使用场景】
+   * - 阅读模式：显示标注相关按钮
+   * - 整理模式：显示卡片操作按钮
+   * - 复习模式：显示记忆相关按钮
+   * 
+   * 【UI 状态】
+   * - 启用：显示 ✅
+   * - 禁用：显示 ❌
+   * 
+   * 【注意事项】
+   * - 需要订阅才能使用
+   * - 启用后才能编辑动态工具栏
+   * 
+   * @param {*} params - 未使用的参数
+   */
   toggleDynamicOrder:function (params) {
+    // 检查订阅状态
     if (!pluginDemoUtils.checkSubscribe(true)) {
       return
     }
+    
+    // 切换状态
     let dynamicOrder = pluginDemoConfig.getWindowState("dynamicOrder")
     pluginDemoConfig.windowState.dynamicOrder = !dynamicOrder
-    MNButton.setTitle(self.dynamicOrderButton, "Enable Dynamic Order: "+(pluginDemoConfig.getWindowState("dynamicOrder")?"✅":"❌"),undefined,true)
+    
+    // 更新按钮显示
+    MNButton.setTitle(
+      self.dynamicOrderButton, 
+      "Enable Dynamic Order: "+(pluginDemoConfig.getWindowState("dynamicOrder")?"✅":"❌"),
+      undefined,
+      true  // 立即更新
+    )
+    
+    // 保存配置
     pluginDemoConfig.save("MNToolbar_windowState")
+    
+    // 通知工具栏刷新
     MNUtil.postNotification("refreshToolbarButton",{})
   }
 });

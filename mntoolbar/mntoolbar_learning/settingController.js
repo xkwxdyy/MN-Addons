@@ -1,4 +1,14 @@
-/** @return {settingController} */
+/**
+ * 获取 settingController 实例的工具函数
+ * 这是 JSB 框架中获取单例的标准模式
+ * 
+ * 为什么需要这个函数？
+ * - JSB 框架中，this 的行为与标准 JavaScript 不同
+ * - 在方法内部不能使用 var self = this 或 let self = this
+ * - 必须使用这种函数方式来获取正确的实例引用
+ * 
+ * @return {settingController} 返回 settingController 的单例实例
+ */
 const getSettingController = ()=>self
 
 /**
@@ -81,135 +91,261 @@ const getSettingController = ()=>self
   2. 还会处理图片选择（UIImagePickerControllerDelegate）
   3. 还会处理导航（UINavigationControllerDelegate）
    */
+/**
+ * settingController 类定义
+ * 这是 MN Toolbar 的设置界面控制器，负责管理所有设置相关的 UI 和逻辑
+ * 
+ * 继承关系：
+ * - UIViewController: iOS 的视图控制器基类，负责管理一个屏幕的内容
+ * 
+ * 实现的协议（尖括号内的内容）：
+ * - NSURLConnectionDelegate: 处理网络连接（虽然这里未使用）
+ * - UIImagePickerControllerDelegate: 处理图片选择（用于自定义按钮图标）
+ * - UIWebViewDelegate: 处理 WebView 交互（用于显示和编辑 JSON 配置）
+ * 
+ * 主要功能：
+ * 1. 管理工具栏按钮的配置（顺序、显示/隐藏）
+ * 2. 提供 JSON 编辑器来配置按钮功能
+ * 3. 管理插件间的协作（如 MNEditor、MNChatAI 等）
+ * 4. 处理配置的导入/导出
+ * 5. 管理动态工具栏和弹出菜单设置
+ */
 var settingController = JSB.defineClass('settingController : UIViewController <NSURLConnectionDelegate,UIImagePickerControllerDelegate,UIWebViewDelegate>', {  // 继承视图控制器，能管理界面, UIViewController：像是"界面管理许可证"，有了它才能管理界面
+  /**
+   * 视图加载完成后调用的生命周期方法
+   * 这是 iOS 开发中的重要方法，当视图控制器的视图被加载到内存后调用
+   * 类似于网页的 DOMContentLoaded 事件
+   */
   viewDidLoad: function() {
+    // 获取当前实例（必须使用这种方式，不能用 this）
     let self = getSettingController()
     try {
+        // 初始化基本属性
         self.init()
+        
+        // 设置窗口初始位置和大小
+        // pluginDemoFrame 是一个工具类，用于设置视图的位置和大小
+        // 参数：(视图, x坐标, y坐标, 宽度, 高度)
         pluginDemoFrame.set(self.view,50,50,355,500)
+        
+        // 保存初始尺寸，用于窗口最大化/还原功能
         self.lastFrame = self.view.frame;
         self.currentFrame = self.view.frame
+        
+        // 标记这是主窗口
         self.isMainWindow = true
         self.title = "main"
-        self.preAction = ""
-        self.test = [0]
-        self.moveDate = Date.now()
+        self.preAction = ""  // 上一个选中的动作
+        self.test = [0]      // 测试用数组
+        self.moveDate = Date.now()  // 记录移动时间，用于防抖
+        
+        // 颜色数组，对应 MarginNote 的 16 种颜色
+        // true 表示该颜色被选中/启用
         self.color = [true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true]
-        self.view.layer.shadowOffset = {width: 0, height: 0};
-        self.view.layer.shadowRadius = 15;
-        self.view.layer.shadowOpacity = 0.5;
-        self.view.layer.shadowColor = UIColor.colorWithWhiteAlpha(0.5, 1);
-        self.view.layer.cornerRadius = 11
-        self.view.layer.opacity = 1.0
-        self.view.layer.borderColor = MNUtil.hexColorAlpha("#9bb2d6",0.8)
-        self.view.layer.borderWidth = 0
-        // self.view.backgroundColor = MNUtil.hexColorAlpha("#9bb2d6",0.8)
+        
+        // 设置窗口阴影效果，让窗口看起来有立体感
+        self.view.layer.shadowOffset = {width: 0, height: 0};  // 阴影偏移
+        self.view.layer.shadowRadius = 15;     // 阴影模糊半径
+        self.view.layer.shadowOpacity = 0.5;   // 阴影透明度
+        // 设置窗口外观
+        self.view.layer.shadowColor = UIColor.colorWithWhiteAlpha(0.5, 1);  // 阴影颜色
+        self.view.layer.cornerRadius = 11      // 圆角半径，让窗口看起来更柔和
+        self.view.layer.opacity = 1.0          // 窗口不透明度（1.0 = 完全不透明）
+        
+        // MNUtil 提供的颜色工具函数，将十六进制颜色转换为 UIColor
+        // hexColorAlpha(颜色值, 透明度)
+        self.view.layer.borderColor = MNUtil.hexColorAlpha("#9bb2d6",0.8)  // 边框颜色
+        self.view.layer.borderWidth = 0        // 边框宽度，0 表示无边框
+        // self.view.backgroundColor = MNUtil.hexColorAlpha("#9bb2d6",0.8)  // 背景色（已注释）
+        
+        // 初始化配置对象
         self.config = {}
         if (!self.config.delay) {
-          self.config.delay = 0
+          self.config.delay = 0  // 设置默认延迟为 0
         }
+        
+        // 如果设置视图还没创建，则创建它
+        // settingView 包含所有设置相关的 UI 元素
         if (!self.settingView) {
           self.createSettingView()
         }
     } catch (error) {
+      // 如果初始化过程中出错，显示错误提示
+      // MNUtil.showHUD 显示一个短暂的悬浮提示
       MNUtil.showHUD(error)
     }
+    
+    // 创建最大化按钮
     self.createButton("maxButton","maxButtonTapped:")
-    self.maxButton.setTitleForState('➕', 0);
-    self.maxButton.titleLabel.font = UIFont.systemFontOfSize(10);
-    MNButton.setColor(self.maxButton, "#3a81fb",0.5)
-    self.maxButton.width = 18
+    self.maxButton.setTitleForState('➕', 0);  // 设置按钮文字为 ➕ 符号，状态 0 = 正常状态
+    self.maxButton.titleLabel.font = UIFont.systemFontOfSize(10);  // 设置字体大小
+    
+    // MNButton 是对 UIButton 的封装，提供更简便的 API
+    MNButton.setColor(self.maxButton, "#3a81fb",0.5)  // 设置按钮颜色和透明度
+    self.maxButton.width = 18   // 设置按钮大小
     self.maxButton.height = 18
 
 
+    // 创建移动按钮（拖动窗口的手柄）
     self.createButton("moveButton")
     MNButton.setColor(self.moveButton, "#3a81fb",0.5)
-    self.moveButton.width = 150
+    self.moveButton.width = 150   // 移动按钮比较宽，方便拖动
     self.moveButton.height = 17
-    // self.moveButton.showsTouchWhenHighlighted = true
+    // self.moveButton.showsTouchWhenHighlighted = true  // 触摸时高亮（已注释）
+    
+    // 布局设置视图中的所有元素
     self.settingViewLayout()
 
+    // 为移动按钮添加拖动手势
+    // UIPanGestureRecognizer 是 iOS 的拖动手势识别器
     self.moveGesture = new UIPanGestureRecognizer(self,"onMoveGesture:")
-    self.moveButton.addGestureRecognizer(self.moveGesture)
+    self.moveButton.addGestureRecognizer(self.moveGesture)  // 将手势添加到按钮上
     self.moveGesture.view.hidden = false
-    self.moveGesture.addTargetAction(self,"onMoveGesture:")
+    self.moveGesture.addTargetAction(self,"onMoveGesture:")  // 设置手势的回调方法
 
+    // 为调整大小按钮添加拖动手势
     self.resizeGesture = new UIPanGestureRecognizer(self,"onResizeGesture:")
     self.resizeButton.addGestureRecognizer(self.resizeGesture)
     self.resizeGesture.view.hidden = false
     self.resizeGesture.addTargetAction(self,"onResizeGesture:")
     // self.settingController.view.hidden = false
-    // 初始化只显示buttons标签页,不考虑dynamic
+    
+    // 初始化时默认选中第一个按钮
+    // pluginDemoConfig.action 是当前配置的按钮列表
     self.selectedItem = pluginDemoConfig.action[0]
+    
+    // 获取所有可用的动作（按钮）
+    // 将用户配置的按钮和默认按钮合并
     let allActions = pluginDemoConfig.action.concat(pluginDemoConfig.getDefaultActionKeys().slice(pluginDemoConfig.action.length))
 
     try {
+      // 设置按钮列表的显示
       self.setButtonText(allActions,self.selectedItem)
+      
+      // 延迟 0.5 秒后显示选中按钮的详细配置
+      // MNUtil.delay 返回一个 Promise，可以用 then 链式调用
       MNUtil.delay(0.5).then(()=>{
         self.setTextview(self.selectedItem)
       })
+      
+      // 显示设置视图
       self.settingView.hidden = false
     } catch (error) {  
+      // 记录错误日志
+      // pluginDemoUtils.addErrorLog 会将错误保存到文件中，方便调试
       pluginDemoUtils.addErrorLog(error, "viewDidLoad.setButtonText", info)
     }
   },
+  /**
+   * 视图将要显示时调用
+   * @param {boolean} animated - 是否以动画形式显示
+   */
   viewWillAppear: function(animated) {
+    // 可以在这里做一些显示前的准备工作
   },
+  
+  /**
+   * 视图将要消失时调用
+   * @param {boolean} animated - 是否以动画形式消失
+   */
   viewWillDisappear: function(animated) {
+    // 可以在这里做一些清理工作
   },
+  /**
+   * 视图将要重新布局子视图时调用
+   * 这是处理屏幕旋转、窗口大小改变的好地方
+   */
   viewWillLayoutSubviews: function() {
     let buttonHeight = 25
     // self.view.frame = self.currentFrame
+    
+    // 获取当前视图的边界（bounds 是相对于自身的坐标系统）
     var viewFrame = self.view.bounds;
     var width    = viewFrame.width
     var height   = viewFrame.height
 
-    height = height-36
+    height = height-36  // 减去顶部标题栏高度
+    
+    // 重新布局所有子视图
     self.settingViewLayout()
     self.refreshLayout()
-
   },
+  /**
+   * WebView 即将加载请求时的委托方法
+   * 这里可以拦截和处理特殊的 URL scheme
+   * 
+   * @param {UIWebView} webView - 发起请求的 WebView
+   * @param {NSURLRequest} request - 请求对象
+   * @param {number} type - 导航类型
+   * @returns {boolean} - 返回 true 允许加载，返回 false 阻止加载
+   */
   webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     try {
     let self = getSettingController()
-    let requestURL = request.URL().absoluteString()
+    let requestURL = request.URL().absoluteString()  // 获取请求的 URL 字符串
+    
     if (!requestURL) {
       MNUtil.showHUD("Empty URL")
       return false
     }
+    
+    // 处理自定义的 URL scheme
+    // nativecopy:// 是一个自定义协议，用于从 WebView 复制内容到剪贴板
     if (/^nativecopy\:\/\//.test(requestURL)) {
+      // 从 URL 中提取要复制的内容
       let text = decodeURIComponent(requestURL.split("content=")[1])
-      MNUtil.copy(text)
-      return false
+      MNUtil.copy(text)  // 使用 MNUtil 的复制功能
+      return false  // 阻止 WebView 加载这个 URL
     }
-    return true;
+    
+    return true;  // 其他 URL 正常加载
     } catch (error) {
       pluginDemoUtils.addErrorLog(error, "webViewShouldStartLoadWithRequestNavigationType")
       return false
     }
   },
+  /**
+   * 改变窗口的透明度
+   * @param {number} opacity - 透明度值 (0.0 完全透明 - 1.0 完全不透明)
+   */
   changeOpacityTo:function (opacity) {
     self.view.layer.opacity = opacity
   },
+  /**
+   * 将选中的按钮移动到最顶部
+   * 这是按钮排序功能的一部分
+   */
   moveTopTapped :function () {
     let self = getSettingController()
+    
+    // 检查是否正在编辑动态工具栏
     let isEditingDynamic = self.dynamicButton.selected
+    
+    // 动态工具栏需要订阅才能使用
     if (isEditingDynamic && !pluginDemoUtils.checkSubscribe(true)) {
       self.showHUD("Please subscribe to use this feature")
       return
     }
+    
+    // 获取所有按钮（根据是否编辑动态工具栏）
     let allActions = pluginDemoConfig.getAllActions(isEditingDynamic)
+    
+    // 将选中的按钮移动到顶部
     pluginDemoUtils.moveElement(allActions, self.selectedItem, "top")
+    
+    // 更新显示
     self.setButtonText(allActions,self.selectedItem)
-    // MNUtil.postNotification("MNToolbarRefreshLayout",{})
-    // NSNotificationCenter.defaultCenter().postNotificationNameObjectUserInfo("MNToolbarRefreshLayout", self.window, {})
+    
+    // 保存配置并更新工具栏
     if (isEditingDynamic) {
+      // 更新动态工具栏
       if (self.pluginDemoController.dynamicToolbar) {
         self.pluginDemoController.dynamicToolbar.setToolbarButton(allActions)
       }
       pluginDemoConfig.dynamicAction = allActions
       pluginDemoConfig.save("MNToolbar_dynamicAction")
     }else{
+      // 更新固定工具栏
       self.pluginDemoController.setToolbarButton(allActions)
       pluginDemoConfig.action = allActions
       pluginDemoConfig.save("MNToolbar_action")
@@ -335,43 +471,58 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     }
     self.searchedText = ""
   },
+  /**
+   * 最大化/还原按钮的点击事件
+   * 切换窗口在最大化和正常大小之间
+   */
   maxButtonTapped: function() {
+    // 如果当前已经是全屏模式，则还原到原来的大小
     if (self.customMode === "full") {
       self.customMode = "none"
       self.custom = false;
       // self.hideAllButton()
+      
+      // 设置动画标记，防止动画过程中的其他操作
       self.onAnimate = true
+      
+      // 使用 MNUtil.animate 执行动画
+      // 参数：(动画回调函数, 动画时长秒)
       MNUtil.animate(()=>{
-        self.view.frame = self.lastFrame
+        self.view.frame = self.lastFrame  // 还原到之前保存的尺寸
         self.currentFrame = self.lastFrame
         self.settingViewLayout()
       },0.3).then(()=>{
+        // 动画完成后的回调
         self.onAnimate = false
         // self.showAllButton()
         self.settingViewLayout()
         self.editorAdjustSelectWidth()
-
       })
       return
     }
-    const frame = MNUtil.studyView.bounds
-    self.lastFrame = self.view.frame
+    
+    // 如果当前不是全屏，则最大化
+    const frame = MNUtil.studyView.bounds  // 获取学习视图的大小
+    self.lastFrame = self.view.frame       // 保存当前尺寸
     self.customMode = "full"
     self.custom = true;
     self.dynamic = false;
     self.onAnimate = true
+    
+    // 计算目标尺寸
+    // macOS 上留一些边距，iOS 上全屏
     let targetFrame = pluginDemoFrame.gen(40, 0, frame.width-80, frame.height)
     if (MNUtil.isIOS) {
       targetFrame = pluginDemoFrame.gen(0, 0, frame.width, frame.height)
     }
-    // self.hideAllButton()
+    
+    // 执行最大化动画
     MNUtil.animate(()=>{
       self.currentFrame = targetFrame
       self.view.frame = targetFrame
       self.settingViewLayout()
     },0.3).then(()=>{
       self.onAnimate = false
-      // self.showAllButton()
       self.settingViewLayout()
     })
   },
@@ -421,48 +572,92 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     pluginDemoConfig.popupConfig[button.id] = popupConfig
     pluginDemoConfig.save("MNToolbar_popupConfig")
   },
+  /**
+   * 处理拖动手势，实现窗口移动
+   * 这是一个复杂的方法，需要处理坐标转换和边界限制
+   * 
+   * @param {UIPanGestureRecognizer} gesture - 拖动手势识别器
+   */
   onMoveGesture:function (gesture) {
+    // 获取手指在学习视图中的位置
     let locationToMN = gesture.locationInView(pluginDemoUtils.studyController().view)
+    
+    // 防抖处理：避免过于频繁的更新
     if (!self.locationToButton || !self.miniMode && (Date.now() - self.moveDate) > 100) {
+      // 获取手势的移动量
       let translation = gesture.translationInView(pluginDemoUtils.studyController().view)
-      let locationToBrowser = gesture.locationInView(self.view)
-      let locationToButton = gesture.locationInView(gesture.view)
+      
+      // 获取手指在不同坐标系中的位置
+      let locationToBrowser = gesture.locationInView(self.view)  // 相对于设置窗口
+      let locationToButton = gesture.locationInView(gesture.view) // 相对于按钮
+      
+      // 计算初始点击位置
       let newY = locationToButton.y-translation.y 
       let newX = locationToButton.x-translation.x
+      
+      // 手势状态 1 = UIGestureRecognizerStateBegan (开始)
       if (gesture.state === 1) {
+        // 记录初始点击位置
         self.locationToBrowser = {x:locationToBrowser.x-translation.x,y:locationToBrowser.y-translation.y}
         self.locationToButton = {x:newX,y:newY}
       }
     }
-    self.moveDate = Date.now()
-    // let location = {x:locationToMN.x - self.locationToBrowser.x,y:locationToMN.y -self.locationToBrowser.y}
-    let location = {x:locationToMN.x - self.locationToButton.x-gesture.view.frame.x,y:locationToMN.y -self.locationToButton.y-gesture.view.frame.y}
+    
+    self.moveDate = Date.now()  // 更新移动时间
+    
+    // 计算窗口新位置
+    let location = {x:locationToMN.x - self.locationToButton.x-gesture.view.frame.x,
+                    y:locationToMN.y -self.locationToButton.y-gesture.view.frame.y}
 
+    // 获取学习视图的边界，用于限制窗口位置
     let studyFrame = MNUtil.studyView.bounds
+    
+    // 使用 constrain 函数限制窗口位置，防止移出屏幕
     let y = pluginDemoUtils.constrain(location.y, 0, studyFrame.height-15)
     let x = pluginDemoUtils.constrain(location.x, 0, studyFrame.width-15)
     
+    // 如果之前是全屏模式，拖动时还原到原来大小
     if (self.custom) {
-      // Application.sharedInstance().showHUD(self.custom, self.view.window, 2);
       self.customMode = "None"
       MNUtil.animate(()=>{
         pluginDemoFrame.set(self.view,x,y,self.lastFrame.width,self.lastFrame.height)
         self.currentFrame  = self.view.frame
         self.settingViewLayout()
-      },0.1)
+      },0.1)  // 0.1秒的快速动画
     }else{
+      // 正常拖动，直接设置位置
       pluginDemoFrame.set(self.view,x,y)
       self.currentFrame  = self.view.frame
     }
     self.custom = false;
   },
+  /**
+   * 处理调整大小的手势
+   * 通过拖动右下角的按钮来调整窗口大小
+   * 
+   * @param {UIPanGestureRecognizer} gesture - 拖动手势识别器
+   */
   onResizeGesture:function (gesture) {
     self.custom = false;
     self.customMode = "none"
+    
+    // 获取调整大小按钮的位置
     let baseframe = gesture.view.frame
+    
+    // 获取手指在设置窗口中的位置
     let locationToBrowser = gesture.locationInView(self.view)
-    let width = pluginDemoUtils.constrain(locationToBrowser.x+baseframe.width*0.3, 355, MNUtil.studyView.frame.width)
-    let height = pluginDemoUtils.constrain(locationToBrowser.y+baseframe.height*0.3, 475, MNUtil.studyView.frame.height)
+    
+    // 计算新的宽度和高度
+    // 加上 0.3 倍的按钮大小作为边距
+    // constrain 函数确保尺寸在最小值和最大值之间
+    let width = pluginDemoUtils.constrain(locationToBrowser.x+baseframe.width*0.3, 
+                                          355,  // 最小宽度
+                                          MNUtil.studyView.frame.width)  // 最大宽度
+    let height = pluginDemoUtils.constrain(locationToBrowser.y+baseframe.height*0.3, 
+                                           475,  // 最小高度
+                                           MNUtil.studyView.frame.height) // 最大高度
+    
+    // 设置新的窗口大小
     pluginDemoFrame.setSize(self.view,width,height)
     self.currentFrame  = self.view.frame
   },
@@ -1079,11 +1274,18 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
 });
 
 
+/**
+ * 初始化方法
+ * 设置一些基本属性的初始值
+ * 
+ * 注意：这里使用 prototype 来扩展类
+ * 这是因为 JSB.defineClass 中不能直接定义 init 方法
+ */
 settingController.prototype.init = function () {
-  this.custom = false;
-  this.customMode = "None"
-  this.selectedText = '';
-  this.searchedText = '';
+  this.custom = false;          // 是否处于自定义模式
+  this.customMode = "None"      // 自定义模式类型（"full" = 全屏，"None" = 正常）
+  this.selectedText = '';       // 当前选中的文本
+  this.searchedText = '';       // 搜索的文本
 }
 
 settingController.prototype.changeButtonOpacity = function(opacity) {
@@ -1104,19 +1306,44 @@ settingController.prototype.setButtonLayout = function (button,targetAction) {
   this.view.addSubview(button);
 }
 
+/**
+ * 通用的按钮创建方法
+ * 这个方法封装了创建按钮的常见步骤
+ * 
+ * @param {string} buttonName - 按钮的属性名，会作为 this[buttonName] 保存
+ * @param {string} targetAction - 点击事件的回调方法名，如 "buttonTapped:"
+ * @param {string} superview - 父视图名称，如果不提供则添加到 self.view
+ */
 settingController.prototype.createButton = function (buttonName,targetAction,superview) {
+  // 创建一个标准按钮（buttonWithType:0 = UIButtonTypeCustom）
   this[buttonName] = UIButton.buttonWithType(0);
+  
+  // 设置自动布局遮罩
+  // 1 << 0 = UIViewAutoresizingFlexibleLeftMargin (左边距灵活)
+  // 1 << 3 = UIViewAutoresizingFlexibleBottomMargin (下边距灵活)
   this[buttonName].autoresizingMask = (1 << 0 | 1 << 3);
-  this[buttonName].setTitleColorForState(UIColor.whiteColor(),0);
-  this[buttonName].setTitleColorForState(pluginDemoConfig.highlightColor, 1);
+  
+  // 设置按钮文字颜色
+  this[buttonName].setTitleColorForState(UIColor.whiteColor(),0);  // 正常状态为白色
+  this[buttonName].setTitleColorForState(pluginDemoConfig.highlightColor, 1);  // 高亮状态
+  
+  // 使用 MNButton 工具类设置颜色
   MNButton.setColor(this[buttonName], "#9bb2d6", 0.8)
+  
+  // 设置圆角和裁剪
   this[buttonName].layer.cornerRadius = 8;
-  this[buttonName].layer.masksToBounds = true;
+  this[buttonName].layer.masksToBounds = true;  // 裁剪超出圆角的部分
+  
+  // 设置默认字体
   this[buttonName].titleLabel.font = UIFont.systemFontOfSize(16);
 
+  // 如果提供了点击事件，添加事件监听
   if (targetAction) {
+    // 1 << 6 = UIControlEventTouchUpInside (手指在按钮内部抬起)
     this[buttonName].addTargetActionForControlEvents(this, targetAction, 1 << 6);
   }
+  
+  // 添加到指定的父视图
   if (superview) {
     this[superview].addSubview(this[buttonName])
   }else{
@@ -1155,7 +1382,13 @@ if (superview) {
 }
 }
 
+/**
+ * 布局设置视图中的所有元素
+ * 这个方法会根据窗口大小调整所有子视图的位置
+ * 支持响应式布局，在不同尺寸下有不同的布局方式
+ */
 settingController.prototype.settingViewLayout = function (){
+  // 获取当前视图的大小
   let viewFrame = this.view.bounds
   let width = viewFrame.width
   let height = viewFrame.height
@@ -1246,30 +1479,59 @@ settingController.prototype.settingViewLayout = function (){
 
 
 /**
+ * 创建整个设置界面的 UI
+ * 这是一个核心方法，创建了所有的 UI 元素
+ * 
+ * UI 结构：
+ * - settingView：主容器
+ *   - tabView：顶部标签栏（Buttons, Dynamic, Popup, More）
+ *   - configView：按钮配置页面
+ *   - advanceView：高级设置页面
+ *   - popupEditView：弹出菜单编辑页面
+ * 
  * @this {settingController}
  */
 settingController.prototype.createSettingView = function (){
   try {
-    this.creatView("settingView","view","#ffffff",0.8)
-    this.settingView.hidden = true
-    // this.settingView.layer.opacity = 0.8
-    this.creatView("tabView","view","#9bb2d6",0.0)
+    // 创建主容器视图
+    this.creatView("settingView","view","#ffffff",0.8)  // 白色背景，0.8 透明度
+    this.settingView.hidden = true  // 初始状态隐藏
+    
+    // 创建顶部标签栏容器
+    this.creatView("tabView","view","#9bb2d6",0.0)  // 透明背景
+    
+    // 创建按钮配置页面（默认显示的页面）
     this.creatView("configView","settingView","#9bb2d6",0.0)
 
+    // 创建弹出菜单编辑页面
     this.creatView("popupEditView","settingView","#9bb2d6",0.0)
-    this.popupEditView.hidden = true
+    this.popupEditView.hidden = true  // 默认隐藏
+    
+    // 为弹出菜单页面创建滚动视图（因为可能有很多选项）
     this.createScrollView("popupScroll", "popupEditView")
     this.popupScroll.layer.backgroundColor = MNUtil.hexColorAlpha("#c0bfbf",0.0)
 
+    // 创建高级设置页面
     this.creatView("advanceView","settingView","#9bb2d6",0.0)
-    this.advanceView.hidden = true
+    this.advanceView.hidden = true  // 默认隐藏
 
 
+    // 创建“Buttons”标签按钮
     this.createButton("configButton","configButtonTapped:","tabView")
-    MNButton.setConfig(this.configButton, {color:"#457bd3",alpha:0.9,opacity:1.0,title:"Buttons",font:17,radius:10,bold:true})
+    // MNButton.setConfig 是一个便捷方法，可以一次设置多个属性
+    MNButton.setConfig(this.configButton, {
+      color:"#457bd3",    // 蓝色背景
+      alpha:0.9,          // 透明度
+      opacity:1.0,        // 不透明度
+      title:"Buttons",    // 按钮文字
+      font:17,            // 字体大小
+      radius:10,          // 圆角
+      bold:true           // 粗体
+    })
+    // sizeThatFits 计算按钮需要的大小，+15 是为了留一些边距
     this.configButton.width = this.configButton.sizeThatFits({width:150,height:30}).width+15
     this.configButton.height = 30
-    this.configButton.selected = true
+    this.configButton.selected = true  // 默认选中
 
     this.createButton("dynamicButton","dynamicButtonTapped:","tabView")
     MNButton.setConfig(this.dynamicButton, {alpha:0.9,opacity:1.0,title:"Dynamic",font:17,radius:10,bold:true})
@@ -1295,31 +1557,42 @@ settingController.prototype.createSettingView = function (){
     this.closeButton.width = 30
     this.closeButton.height = 30
 
-    // this.createButton("editorButton","toggleAddonLogo:","advanceView")
+    // 为每个弹出菜单按钮创建配置项
+    // 这里遍历所有可用的弹出菜单按钮，为每个创建一个配置行
     try {
       pluginDemoConfig.allPopupButtons.forEach(buttonName=>{
-        let replaceButtonName = "replacePopupButton_"+buttonName
-        let replaceSwtichName = "replacePopupSwtich_"+buttonName
+        // 为每个弹出菜单创建一个按钮和一个开关
+        let replaceButtonName = "replacePopupButton_"+buttonName  // 如：replacePopupButton_card
+        let replaceSwtichName = "replacePopupSwtich_"+buttonName  // 如：replacePopupSwtich_card
+        
+        // 创建按钮（点击可以选择替换的目标动作）
         this.createButton(replaceButtonName,"changePopupReplace:","popupScroll")
         let replaceButton = this[replaceButtonName]
         replaceButton.height = 35
-        replaceButton.id = buttonName
+        replaceButton.id = buttonName  // 保存按钮名称作为 ID
+        
+        // 获取当前配置的目标动作
         let target = pluginDemoConfig.getPopupConfig(buttonName).target
         if (target) {
+          // 如果已配置目标，显示目标名称
           let actionName = pluginDemoConfig.getAction(pluginDemoConfig.getPopupConfig(buttonName).target).name
           MNButton.setConfig(replaceButton, {color:"#558fed",alpha:0.9,opacity:1.0,title:buttonName+": "+actionName,font:17,radius:10,bold:true})
         }else{
+          // 未配置目标，只显示按钮名
           MNButton.setConfig(replaceButton, {color:"#558fed",alpha:0.9,opacity:1.0,title:buttonName+": ",font:17,radius:10,bold:true})
         }
+        
+        // 创建开关（启用/禁用该弹出菜单）
         this.createSwitch(replaceSwtichName, "togglePopupReplace:", "popupScroll")
         let replaceSwtich = this[replaceSwtichName]
         replaceSwtich.id = buttonName
-        replaceSwtich.on = pluginDemoConfig.getPopupConfig(buttonName).enabled
+        replaceSwtich.on = pluginDemoConfig.getPopupConfig(buttonName).enabled  // 设置开关状态
         replaceSwtich.hidden = false
         replaceSwtich.width = 20
         replaceSwtich.height = 35
       })
     } catch (error) {
+      // 错误不影响整体初始化
       // pluginDemoUtils.addErrorLog(error, "replacePopupEditSwtich")
     }
 
@@ -1413,22 +1686,27 @@ settingController.prototype.createSettingView = function (){
     // this.scrollview.layer.cornerRadius = 8
     // this.scrollview.backgroundColor = MNUtil.hexColorAlpha("#c0bfbf",0.8)
 
+    // 创建 WebView 输入区域（用于编辑 JSON 配置）
     this.createWebviewInput("configView")
+    
+    // 创建系统输入框（备用，默认隐藏）
     this.creatTextView("systemInput","configView")
     this.systemInput.hidden = true
 
+    // 创建标题输入框（用于编辑按钮名称）
     this.creatTextView("titleInput","configView","#9bb2d6")
 
+    // 初始化 WebView 内容为空 JSON
     let text  = "{}"
     this.setWebviewContent(text)
 
+    // 设置标题输入框的样式
     this.titleInput.text = text.title
-    // this.titleInput.textColor = MNUtil.hexColorAlpha("#444444", 1.0)
-    this.titleInput.textColor = MNUtil.hexColorAlpha("#ffffff", 1.0)
-    this.titleInput.font = UIFont.boldSystemFontOfSize(16);
-    this.titleInput.contentInset = {top: 0,left: 0,bottom: 0,right: 0}
-    this.titleInput.textContainerInset = {top: 0,left: 0,bottom: 0,right: 0}
-    this.titleInput.layer.backgroundColor = MNUtil.hexColorAlpha("#457bd3", 0.8)
+    this.titleInput.textColor = MNUtil.hexColorAlpha("#ffffff", 1.0)  // 白色文字
+    this.titleInput.font = UIFont.boldSystemFontOfSize(16);          // 16号粗体
+    this.titleInput.contentInset = {top: 0,left: 0,bottom: 0,right: 0}         // 内容边距
+    this.titleInput.textContainerInset = {top: 0,left: 0,bottom: 0,right: 0}   // 文本容器边距
+    this.titleInput.layer.backgroundColor = MNUtil.hexColorAlpha("#457bd3", 0.8) // 蓝色背景
 
     this.createButton("configReset","resetButtonTapped:","configView")
     this.configReset.layer.opacity = 1.0
@@ -1505,31 +1783,49 @@ settingController.prototype.createSettingView = function (){
   }
 }
 /**
+ * 设置按钮列表的显示
+ * 这个方法会在左侧的滚动视图中显示所有可用的按钮
+ * 
+ * @param {Array<string>} names - 按钮名称数组，默认为所有可用按钮
+ * @param {string} highlight - 要高亮显示的按钮名，默认为当前选中项
  * @this {settingController}
  */
 settingController.prototype.setButtonText = function (names=pluginDemoConfig.getAllActions(),highlight=this.selectedItem) {
-    this.words = names
-    this.selectedItem = highlight
+    this.words = names  // 保存按钮列表
+    this.selectedItem = highlight  // 保存选中项
+    
+    // 遍历所有按钮名称
     names.map((word,index)=>{
-      let isHighlight = (word === this.selectedItem)
-      let buttonName = "nameButton"+index
+      let isHighlight = (word === this.selectedItem)  // 判断是否是选中项
+      let buttonName = "nameButton"+index  // 按钮属性名，如 nameButton0, nameButton1...
+      
+      // 如果按钮不存在，创建它
       if (!this[buttonName]) {
         this.createButton(buttonName,"toggleSelected:","scrollview")
-        // this[buttonName].index = index
         this[buttonName].titleLabel.font = UIFont.systemFontOfSize(16);
       }
+      
+      // 设置按钮属性
       this[buttonName].hidden = false
-      this[buttonName].id = word
-      this[buttonName].isSelected =isHighlight
+      this[buttonName].id = word  // 保存按钮名称作为 ID
+      this[buttonName].isSelected = isHighlight
+      
+      // 设置颜色：选中的为蓝色，未选中的为白色
       MNButton.setColor(this[buttonName],isHighlight?"#9bb2d6":"#ffffff", 0.8)
+      
+      // 选中的按钮添加边框
       if (isHighlight) {
         this[buttonName].layer.borderWidth = 2
         this[buttonName].layer.borderColor = MNUtil.hexColorAlpha("#457bd3", 0.8)
       }else{
         this[buttonName].layer.borderWidth = 0
       }
+      
+      // 设置按钮图标
       MNButton.setImage(this[buttonName], pluginDemoConfig.imageConfigs[word])
     })
+    
+    // 刷新布局
     this.refreshLayout()
 }
 

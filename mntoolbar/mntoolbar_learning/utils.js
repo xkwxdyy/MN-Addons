@@ -416,14 +416,79 @@ class pluginDemoFrame{
 }
 
 
-// 获取UITextView实例的所有属性
+/**
+ * 🔍 获取对象的所有属性（包括原型链上的）
+ * 
+ * 【为什么这是一个独立函数，而不是类的静态方法？】
+ * 
+ * 一、独立函数 vs 类静态方法
+ * 
+ * 📦 类静态方法                    🌐 独立函数
+ * pluginDemoUtils.someMethod()      getAllProperties(obj)
+ * 属于某个类                        不属于任何类
+ * 有命名空间                        全局可访问
+ * 相关功能的组织                    独立的工具函数
+ * 
+ * 二、什么时候用独立函数？
+ * 
+ * 1. 🔧 通用工具函数
+ *    - 不属于任何特定的业务逻辑
+ *    - 可能被多个不同的类使用
+ * 
+ * 2. 🎯 辅助/调试函数
+ *    - 主要用于开发和调试
+ *    - 不是主要业务逻辑的一部分
+ * 
+ * 3. 🐍 JavaScript 传统风格
+ *    - 在 ES6 类出现之前，JS 都是用函数
+ *    - 简单的工具函数没必要强行放入类中
+ * 
+ * 三、这个函数的作用
+ * 
+ * 获取一个对象的所有属性，包括：
+ * - 自身属性
+ * - 继承的属性（原型链上的）
+ * 
+ * 主要用于调试和探索未知对象的结构。
+ * 
+ * 四、实际使用场景
+ * 
+ * // 探索 iOS 原生对象的属性
+ * let button = UIButton.new()
+ * let allProps = getAllProperties(button)
+ * console.log(allProps)  // ["frame", "backgroundColor", "title", ...]
+ * 
+ * // 调试时查看 MarginNote 提供的 API
+ * let note = MNNote.getFocusNote()
+ * let noteProps = getAllProperties(note)
+ * // 可以看到所有可用的属性和方法
+ * 
+ * 五、为什么不放在 pluginDemoUtils 中？
+ * 
+ * 1. 这不是插件的核心业务逻辑
+ * 2. 主要用于开发时的调试
+ * 3. 可能在任何地方使用，不仅限于 pluginDemoUtils
+ * 
+ * 💡 总结：
+ * - 独立函数 = 全局工具/辅助函数
+ * - 适合简单、通用、不属于特定类的功能
+ * - 在这里主要用于调试和探索对象结构
+ * 
+ * @param {Object} obj - 要获取属性的对象
+ * @returns {string[]} 返回包含所有属性名的数组
+ */
 function getAllProperties(obj) {
   var props = [];
   var proto = obj;
+  
+  // 沿着原型链向上遍历
   while (proto) {
+    // 获取当前对象的所有属性名
     props = props.concat(Object.getOwnPropertyNames(proto));
+    // 移动到原型链的下一层
     proto = Object.getPrototypeOf(proto);
   }
+  
   return props;
 }
 
@@ -505,14 +570,92 @@ function getAllProperties(obj) {
 class pluginDemoUtils {
   // 注意：这个类不需要 constructor，因为所有方法都是静态的
   // 我们永远不会使用 new pluginDemoUtils()，而是直接使用 pluginDemoUtils.methodName()
+  
+  /**
+   * 📦 【静态变量（静态属性）的理解】
+   * 
+   * 一、什么是静态变量？
+   * 
+   * 静态变量就是属于“类”本身的变量，而不是属于某个具体对象的。
+   * 
+   * 🏢 通俗理解：公司的公告板
+   * ```javascript
+   * class 公司 {
+   *   static 公告板 = "今天放假";        // 静态变量 - 整个公司共享
+   *   constructor(name) {
+   *     this.name = name;               // 实例变量 - 每个员工有自己的名字
+   *   }
+   * }
+   * 
+   * // 静态变量：所有人看到的都是同一个公告板
+   * console.log(公司.公告板);  // "今天放假"
+   * 公司.公告板 = "明天加班";    // 修改后所有人都看到新内容
+   * 
+   * // 实例变量：每个员工有自己的名字
+   * let 员工1 = new 公司("张三");
+   * let 员工2 = new 公司("李四");
+   * console.log(员工1.name);  // "张三"
+   * console.log(员工2.name);  // "李四"
+   * ```
+   * 
+   * 二、静态变量 vs 实例变量
+   * 
+   * 🟢 静态变量（共享的）        🔴 实例变量（私有的）
+   * 属于类                       属于对象
+   * 只有一份                     每个对象一份
+   * 类名.变量名 访问               对象.变量名 访问
+   * 所有对象共享                 每个对象独立
+   * 
+   * 三、在 pluginDemoUtils 中的应用
+   * 
+   * 这些静态变量就像是插件的“全局记忆”：
+   * - previousNoteId: 记住上一个操作的笔记 ID
+   * - errorLog[]: 收集所有错误日志
+   * - currentNoteId: 当前正在处理的笔记
+   * - isSubscribe: 用户是否订阅（全局状态）
+   * 
+   * 这些信息需要在整个插件运行期间保持，所以用静态变量。
+   * 
+   * 四、为什么要用静态变量？
+   * 
+   * 1. 🌐 全局状态管理
+   * pluginDemoUtils.isSubscribe = true;  // 在任何地方都能访问
+   * 
+   * 2. 📇 数据共享
+   * pluginDemoUtils.errorLog.push(error);  // 所有错误都收集到一个地方
+   * 
+   * 3. 🛡️ 保持单例
+   * pluginDemoUtils.mainPath  // 全局只有一个主路径
+   * 
+   * 五、实际例子
+   * 
+   * // 错误日志收集器
+   * pluginDemoUtils.errorLog = [];  // 初始化为空数组
+   * 
+   * // 在任何地方添加错误
+   * pluginDemoUtils.errorLog.push({
+   *   time: Date.now(),
+   *   error: "Something went wrong",
+   *   location: "smartCopy"
+   * });
+   * 
+   * // 在任何地方查看所有错误
+   * console.log("总共有 " + pluginDemoUtils.errorLog.length + " 个错误");
+   * 
+   * 💡 总结：
+   * - 静态变量 = 类的共享数据
+   * - 适合存储全局状态、配置、缓存
+   * - 在 MN Toolbar 中用于管理插件的全局信息
+   */
+  
   /**@type {string} */
-  static previousNoteId
-  static errorLog = []
-  static version
-  static currentNoteId
-  static currentSelection
-  static isSubscribe = false
-  static mainPath
+  static previousNoteId        // 🔄 记录上一个操作的笔记 ID
+  static errorLog = []         // 📦 错误日志收集器（数组）
+  static version               // 🏷️ 插件版本号
+  static currentNoteId         // 📌 当前正在处理的笔记 ID
+  static currentSelection      // 🔖 当前选中的内容
+  static isSubscribe = false   // 💳 用户是否订阅（默认 false）
+  static mainPath              // 📁 插件主路径
   /**
    * @type {MNNote[]}
    * @static
@@ -524,6 +667,33 @@ class pluginDemoUtils {
    * @static
    */
   static textView
+  
+  /**
+   * 📃 实际使用例子：错误日志系统
+   * 
+   * // 在插件启动时初始化
+   * pluginDemoUtils.init = function(mainPath) {
+   *   this.errorLog = [this.version];  // 初始化错误日志，第一项是版本号
+   * }
+   * 
+   * // 在任何地方记录错误
+   * try {
+   *   // ... 一些可能出错的代码
+   * } catch (error) {
+   *   pluginDemoUtils.addErrorLog(error, "smartCopy");
+   * }
+   * 
+   * // 查看所有错误
+   * if (pluginDemoUtils.errorLog.length > 1) {
+   *   MNUtil.copyJSON(pluginDemoUtils.errorLog);  // 复制所有错误到剪贴板
+   * }
+   * 
+   * 🎯 这样做的好处：
+   * 1. 不管在哪里发生错误，都能统一收集
+   * 2. 方便调试和问题排查
+   * 3. 可以一次性查看所有错误历史
+   */
+  
   static template = {
       "🔨 trigger button":{
         "action": "triggerButton",
@@ -809,30 +979,107 @@ class pluginDemoUtils {
         "target": "floatMindmap"
       }
     }
-  static init(mainPath){
+  /**
+   * 🚀 初始化插件工具类
+   * 
+   * 这是插件启动时的第一个调用，负责初始化所有必要的全局变量和状态。
+   * 
+   * @param {string} mainPath - 插件的主路径（通常是 self.path）
+   * 
+   * 主要功能：
+   * 1. 获取 MarginNote 应用实例
+   * 2. 获取数据库实例
+   * 3. 保存插件路径
+   * 4. 获取版本信息
+   * 5. 初始化错误日志
+   * 
+   * @example
+   * // 在插件启动时调用
+   * pluginDemoUtils.init(self.path)
+   * 
+   * // 之后就可以使用这些全局变量
+   * console.log(pluginDemoUtils.version)  // 查看版本信息
+   * console.log(pluginDemoUtils.mainPath) // 查看插件路径
+   */
+  static init(mainPath) {
     try {
-      this.app = Application.sharedInstance()
-      this.data = Database.sharedInstance()
-      this.focusWindow = this.app.focusWindow
-      this.mainPath = mainPath
-      this.version = this.appVersion()
-      this.errorLog = [this.version]
+      this.app = Application.sharedInstance()      // MarginNote 应用实例
+      this.data = Database.sharedInstance()        // 数据库实例
+      this.focusWindow = this.app.focusWindow      // 当前焦点窗口
+      this.mainPath = mainPath                     // 插件路径
+      this.version = this.appVersion()             // 获取版本信息
+      this.errorLog = [this.version]               // 初始化错误日志，第一项是版本
     } catch (error) {
       this.addErrorLog(error, "init")
     }
   }
-  static refreshSubscriptionStatus(){
-    this.isSubscribe = this.checkSubscribe(false,false,true)
+  /**
+   * 🔄 刷新订阅状态
+   * 
+   * 检查并更新用户的订阅状态，将结果保存在静态变量 isSubscribe 中。
+   * 
+   * 使用场景：
+   * - 插件启动时检查一次
+   * - 用户购买后刷新状态
+   * - 定期检查订阅是否过期
+   * 
+   * @example
+   * // 刷新订阅状态
+   * pluginDemoUtils.refreshSubscriptionStatus()
+   * 
+   * // 使用订阅状态
+   * if (pluginDemoUtils.isSubscribe) {
+   *   // 付费功能
+   * } else {
+   *   // 免费功能
+   * }
+   */
+  static refreshSubscriptionStatus() {
+    this.isSubscribe = this.checkSubscribe(false, false, true)
   }
 
+  /**
+   * 🏷️ 获取完整的版本信息
+   * 
+   * 收集并返回 MarginNote 应用版本、操作系统类型和插件版本信息。
+   * 这些信息对于调试、兼容性处理和错误报告非常重要。
+   * 
+   * @returns {Object} 版本信息对象
+   * @returns {string} info.version - MarginNote 版本："marginnote3" 或 "marginnote4"
+   * @returns {string} info.type - 操作系统类型："iPadOS", "iPhoneOS" 或 "macOS"
+   * @returns {string} info.pluginDemoVersion - 插件版本号（从 mnaddon.json 读取）
+   * 
+   * @example
+   * let versionInfo = pluginDemoUtils.appVersion()
+   * console.log(versionInfo)
+   * // 输出：{
+   * //   version: "marginnote4",
+   * //   type: "macOS",
+   * //   pluginDemoVersion: "1.0.0"
+   * // }
+   * 
+   * // 根据版本做不同处理
+   * if (versionInfo.version === "marginnote4") {
+   *   // MN4 特有功能
+   * }
+   * 
+   * // 根据平台做不同处理
+   * if (versionInfo.type === "macOS") {
+   *   // macOS 特有功能（如鼠标悬停）
+   * }
+   */
   static appVersion() {
     let info = {}
     let version = parseFloat(this.app.appVersion)
+    
+    // 判断 MarginNote 版本
     if (version >= 4) {
       info.version = "marginnote4"
-    }else{
+    } else {
       info.version = "marginnote3"
     }
+    
+    // 判断操作系统类型
     switch (this.app.osType) {
       case 0:
         info.type = "iPadOS"
@@ -846,40 +1093,236 @@ class pluginDemoUtils {
       default:
         break;
     }
+    
+    // 读取插件版本
     if (this.mainPath) {
-      let pluginDemoVersion = MNUtil.readJSON(this.mainPath+"/mnaddon.json").version
+      let pluginDemoVersion = MNUtil.readJSON(this.mainPath + "/mnaddon.json").version
       info.pluginDemoVersion = pluginDemoVersion
     }
+    
     return info
   }
-  static  getNoteColors() {
-    return ["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9fdc"]
+  /**
+   * 🎨 获取笔记颜色列表
+   * 
+   * 返回 MarginNote 中所有可用的笔记颜色的十六进制值。
+   * 这 16 种颜色对应 colorIndex 0-15。
+   * 
+   * @returns {string[]} 包含 16 个颜色十六进制值的数组
+   * 
+   * 颜色索引对应关系：
+   * 0:  #ffffb4 - 淡黄色
+   * 1:  #ccfdc4 - 淡绿色
+   * 2:  #b4d1fb - 淡蓝色
+   * 3:  #f3aebe - 粉色
+   * 4:  #ffff54 - 黄色
+   * 5:  #75fb4c - 绿色
+   * 6:  #55bbf9 - 蓝色
+   * 7:  #ea3323 - 红色
+   * 8:  #ef8733 - 橙色
+   * 9:  #377e47 - 深绿色
+   * 10: #173dac - 深蓝色
+   * 11: #be3223 - 深红色
+   * 12: #ffffff - 白色
+   * 13: #dadada - 浅灰色
+   * 14: #b4b4b4 - 灰色
+   * 15: #bd9fdc - 紫色
+   * 
+   * @example
+   * // 获取所有颜色
+   * let colors = pluginDemoUtils.getNoteColors()
+   * 
+   * // 获取淡黄色
+   * let yellowColor = colors[0]  // "#ffffb4"
+   * 
+   * // 设置笔记颜色为红色
+   * note.colorIndex = 7  // 红色对应索引 7
+   */
+  static getNoteColors() {
+    return [
+      "#ffffb4",  // 0:  淡黄色
+      "#ccfdc4",  // 1:  淡绿色
+      "#b4d1fb",  // 2:  淡蓝色
+      "#f3aebe",  // 3:  粉色
+      "#ffff54",  // 4:  黄色
+      "#75fb4c",  // 5:  绿色
+      "#55bbf9",  // 6:  蓝色
+      "#ea3323",  // 7:  红色
+      "#ef8733",  // 8:  橙色
+      "#377e47",  // 9:  深绿色
+      "#173dac",  // 10: 深蓝色
+      "#be3223",  // 11: 深红色
+      "#ffffff",  // 12: 白色
+      "#dadada",  // 13: 浅灰色
+      "#b4b4b4",  // 14: 灰色
+      "#bd9fdc"   // 15: 紫色
+    ]
   }
+  /**
+   * 📎 根据 ID 获取笔记对象
+   * 
+   * 通过笔记 ID 获取对应的 MNNote 对象。
+   * 这是一个包装方法，内部调用 MNUtil.getNoteById。
+   * 
+   * @param {string} noteid - 笔记的唯一 ID
+   * @returns {MNNote|null} 笔记对象，如果找不到则返回 null
+   * 
+   * @example
+   * // 获取笔记
+   * let note = pluginDemoUtils.getNoteById("12345678-1234-1234-1234-123456789012")
+   * if (note) {
+   *   console.log(note.noteTitle)
+   *   note.colorIndex = 7  // 设置为红色
+   * }
+   */
   static getNoteById(noteid) {
     return MNUtil.getNoteById(noteid, false)  // 使用 MNUtil API，不显示错误提示
   }
+  
+  /**
+   * 📓 根据 ID 获取笔记本对象
+   * 
+   * 通过笔记本 ID 获取对应的 MNNotebook 对象。
+   * 
+   * @param {string} notebookId - 笔记本的唯一 ID
+   * @returns {MNNotebook|null} 笔记本对象，如果找不到则返回 null
+   * 
+   * @example
+   * // 获取当前笔记本
+   * let notebook = pluginDemoUtils.getNoteBookById(MNUtil.currentNotebookId)
+   * if (notebook) {
+   *   console.log(notebook.title)  // 笔记本标题
+   *   console.log(notebook.notes.length)  // 笔记数量
+   * }
+   */
   static getNoteBookById(notebookId) {
     return MNUtil.getNoteBookById(notebookId)
   }
+  /**
+   * 🔗 根据笔记 ID 生成笔记的 URL
+   * 
+   * 将笔记 ID 转换为 MarginNote 的 URL 格式，可以用于跳转到指定笔记。
+   * URL 格式根据 MarginNote 版本不同而不同：
+   * - MN3: marginnote3app://note/xxxxx
+   * - MN4: marginnote4app://note/xxxxx
+   * 
+   * @param {string} noteid - 笔记的唯一 ID
+   * @returns {string} 笔记的 URL，可用于 openURL 跳转
+   * 
+   * @example
+   * // 获取笔记 URL
+   * let noteUrl = pluginDemoUtils.getUrlByNoteId("12345678-1234-1234-1234-123456789012")
+   * // 返回: "marginnote4app://note/12345678-1234-1234-1234-123456789012"
+   * 
+   * // 跳转到该笔记
+   * MNUtil.openURL(noteUrl)
+   */
   static getUrlByNoteId(noteid) {
     let ver = this.appVersion()
-    return ver.version+'app://note/'+noteid
+    return ver.version + 'app://note/' + noteid
   }
   /**
+   * 🆔 从 URL 中提取笔记 ID
    * 
-   * @param {String} url 
-   * @returns {String}
+   * 将 MarginNote 的笔记 URL 解析出笔记 ID。
+   * 支持的 URL 格式：
+   * - marginnote3app://note/xxxxx
+   * - marginnote4app://note/xxxxx
+   * 
+   * @param {string} url - 笔记的 URL
+   * @returns {string} 笔记 ID，如果 URL 格式不正确则返回 null
+   * 
+   * @example
+   * // 从 URL 获取笔记 ID
+   * let noteId = pluginDemoUtils.getNoteIdByURL("marginnote4app://note/12345678-1234-1234-1234-123456789012")
+   * // 返回: "12345678-1234-1234-1234-123456789012"
+   * 
+   * // 使用场景：处理链接评论
+   * if (comment.type === "LinkNote") {
+   *   let linkedNoteId = pluginDemoUtils.getNoteIdByURL(comment.noteLinkURL)
+   *   let linkedNote = pluginDemoUtils.getNoteById(linkedNoteId)
+   * }
    */
   static getNoteIdByURL(url) {
     return MNUtil.getNoteIdByURL(url)
   }
+  /**
+   * 📋 获取剪贴板中的文本内容
+   * 
+   * 读取系统剪贴板中的纯文本内容。
+   * 注意：这是一个包装方法，内部调用 MNUtil.clipboardText 属性。
+   * 
+   * @returns {string} 剪贴板中的文本，如果为空则返回空字符串
+   * 
+   * @example
+   * // 获取剪贴板文本
+   * let text = pluginDemoUtils.clipboardText()
+   * if (text) {
+   *   console.log("剪贴板内容：" + text)
+   * }
+   * 
+   * // 常见用法：粘贴到笔记
+   * let clipText = pluginDemoUtils.clipboardText()
+   * if (clipText && focusNote) {
+   *   focusNote.appendTextComment(clipText)
+   * }
+   */
   static clipboardText() {
     return MNUtil.clipboardText
   }
+  /**
+   * 🔀 合并连续的空白字符
+   * 
+   * 将字符串中连续的空格、制表符、换行符等空白字符合并为单个空格。
+   * 这对于处理从 PDF 复制的文本特别有用，因为 PDF 文本常常包含多余的空白。
+   * 
+   * @param {string} str - 要处理的字符串
+   * @returns {string} 处理后的字符串，连续空白被合并
+   * 
+   * @example
+   * // 处理 PDF 复制的文本
+   * let messyText = "这是   一段\n\n包含  很多\t\t空白的   文本"
+   * let cleanText = pluginDemoUtils.mergeWhitespace(messyText)
+   * // 返回: "这是 一段 包含 很多 空白的 文本"
+   * 
+   * // 处理摘录文本
+   * let excerptText = focusNote.excerptText
+   * let cleanExcerpt = pluginDemoUtils.mergeWhitespace(excerptText)
+   * focusNote.excerptText = cleanExcerpt
+   */
   static mergeWhitespace(str) {
     return MNUtil.mergeWhitespace(str)
   }
-  static replaceAction(des){
+  /**
+   * 🔄 执行文本替换操作
+   * 
+   * 根据描述对象（des）执行复杂的文本替换操作。
+   * 支持单步替换和多步替换，可以针对不同范围的笔记进行操作。
+   * 
+   * @param {Object} des - 替换操作的描述对象
+   * @param {string} [des.range="currentNotes"] - 操作范围
+   * @param {Array} [des.steps] - 多步替换的步骤数组
+   * @param {string} des.from - 要替换的文本（支持正则表达式）
+   * @param {string} des.to - 替换为的文本
+   * 
+   * @example
+   * // 单步替换
+   * pluginDemoUtils.replaceAction({
+   *   range: "currentNotes",
+   *   from: "old text",
+   *   to: "new text"
+   * })
+   * 
+   * // 多步替换
+   * pluginDemoUtils.replaceAction({
+   *   range: "currentNotes",
+   *   steps: [
+   *     { from: "step1", to: "result1" },
+   *     { from: "step2", to: "result2" }
+   *   ]
+   * })
+   */
+  static replaceAction(des) {
     try {
 
       let range = des.range ?? "currentNotes"
@@ -906,18 +1349,41 @@ class pluginDemoUtils {
           this.replace(note, ptt, des)
         })
       })
-      } catch (error) {
+    } catch (error) {
       this.addErrorLog(error, "replace")
     }
-    }
+  }
+  /**
+   * 🖼️ 检查 Markdown 是否只包含 MN 图片
+   * 
+   * 判断一段 Markdown 文本是否只包含 MarginNote 的内部图片链接，
+   * 没有其他文本内容。MN 图片格式：![](marginnote4app://markdownimg/png/xxx)
+   * 
+   * @param {string} markdown - 要检查的 Markdown 文本
+   * @returns {boolean} 如果只包含 MN 图片返回 true，否则返回 false
+   * 
+   * @example
+   * // 纯图片
+   * let md1 = "![](marginnote4app://markdownimg/png/abc123)"
+   * pluginDemoUtils.isPureMNImages(md1)  // true
+   * 
+   * // 包含文字
+   * let md2 = "文字 ![](marginnote4app://markdownimg/png/abc123)"
+   * pluginDemoUtils.isPureMNImages(md2)  // false
+   * 
+   * // 使用场景：智能复制时判断是否复制图片
+   * if (pluginDemoUtils.isPureMNImages(note.excerptText)) {
+   *   // 复制图片而不是文本
+   * }
+   */
   static isPureMNImages(markdown) {
     try {
-      // 匹配 base64 图片链接的正则表达式
+      // 匹配 MN 图片链接的正则表达式
       const MNImagePattern = /!\[.*?\]\((marginnote4app\:\/\/markdownimg\/png\/.*?)(\))/g;
       let res = markdown.match(MNImagePattern)
       if (res) {
         return markdown === res[0]
-      }else{
+      } else {
         return false
       }
     } catch (error) {
@@ -925,29 +1391,70 @@ class pluginDemoUtils {
       return false
     }
   }
+  /**
+   * 🔍 检查 Markdown 中是否包含 MN 图片
+   * 
+   * 判断一段 Markdown 文本中是否包含 MarginNote 的内部图片链接。
+   * 与 isPureMNImages 不同，这个方法只要包含图片就返回 true，不管是否有其他内容。
+   * 
+   * @param {string} markdown - 要检查的 Markdown 文本
+   * @returns {boolean} 如果包含 MN 图片返回 true，否则返回 false
+   * 
+   * @example
+   * // 只有图片
+   * let md1 = "![](marginnote4app://markdownimg/png/abc123)"
+   * pluginDemoUtils.hasMNImages(md1)  // true
+   * 
+   * // 图片加文字
+   * let md2 = "这是说明文字 ![](marginnote4app://markdownimg/png/abc123) 更多文字"
+   * pluginDemoUtils.hasMNImages(md2)  // true
+   * 
+   * // 没有图片
+   * let md3 = "只有文字没有图片"
+   * pluginDemoUtils.hasMNImages(md3)  // false
+   */
   static hasMNImages(markdown) {
     try {
-      // 匹配 base64 图片链接的正则表达式
+      // 匹配 MN 图片链接的正则表达式
       const MNImagePattern = /!\[.*?\]\((marginnote4app\:\/\/markdownimg\/png\/.*?)(\))/g;
       let link = markdown.match(MNImagePattern)[0]
       // MNUtil.copyJSON({"a":link,"b":markdown})
-      return markdown.match(MNImagePattern)?true:false
+      return markdown.match(MNImagePattern) ? true : false
     } catch (error) {
       pluginDemoUtils.addErrorLog(error, "hasMNImages")
       return false
     }
   }
-    /**
-     * 
-     * @param {string} markdown 
-     * @returns {NSData}
-     */
+  /**
+   * 📷 从 Markdown 中提取 MN 图片数据
+   * 
+   * 解析 Markdown 文本中的 MarginNote 图片链接，并获取实际的图片数据。
+   * MN 图片链接格式：![](marginnote4app://markdownimg/png/hash)
+   * 
+   * @param {string} markdown - 包含 MN 图片链接的 Markdown 文本
+   * @returns {NSData|undefined} 图片的二进制数据，如果提取失败返回 undefined
+   * 
+   * @example
+   * // 提取图片数据
+   * let markdown = "![图片](marginnote4app://markdownimg/png/abc123def456)"
+   * let imageData = pluginDemoUtils.getMNImagesFromMarkdown(markdown)
+   * if (imageData) {
+   *   // 复制图片到剪贴板
+   *   MNUtil.copyImage(imageData)
+   * }
+   * 
+   * // 处理摘录中的图片
+   * if (pluginDemoUtils.hasMNImages(note.excerptText)) {
+   *   let imgData = pluginDemoUtils.getMNImagesFromMarkdown(note.excerptText)
+   *   // 导出或显示图片
+   * }
+   */
   static getMNImagesFromMarkdown(markdown) {
     try {
       const MNImagePattern = /!\[.*?\]\((marginnote4app\:\/\/markdownimg\/png\/.*?)(\))/g;
       let link = markdown.match(MNImagePattern)[0]
       // MNUtil.copyJSON(link)
-      let hash = link.split("markdownimg/png/")[1].slice(0,-1)
+      let hash = link.split("markdownimg/png/")[1].slice(0, -1)
       let imageData = MNUtil.getMediaByHash(hash)
       return imageData
     } catch (error) {
@@ -956,25 +1463,44 @@ class pluginDemoUtils {
     }
   }
   /**
+   * ✏️ 在文本视图中插入代码片段
    * 
-   * @param {string} text 
-   * @param {UITextView} textView
+   * 在 UITextView 的当前光标位置或选中区域插入文本片段。
+   * 支持 {{cursor}} 占位符来指定插入后的光标位置。
+   * 
+   * @param {string} text - 要插入的文本，可包含 {{cursor}} 占位符
+   * @param {UITextView} textView - 目标文本视图对象
+   * @returns {boolean} 插入是否成功
+   * 
+   * @example
+   * // 简单插入
+   * pluginDemoUtils.insertSnippetToTextView("Hello World", textView)
+   * // 光标会在 "Hello World" 后面
+   * 
+   * // 使用光标占位符
+   * pluginDemoUtils.insertSnippetToTextView("function {{cursor}}() {\n\n}", textView)
+   * // 光标会定位在函数名位置
+   * 
+   * // 插入模板
+   * let template = "/**\\n * {{cursor}}\\n *\\/\\nfunction name() {\\n\\n}"
+   * pluginDemoUtils.insertSnippetToTextView(template, textView)
+   * // 光标会定位在注释内容位置
    */
   static insertSnippetToTextView(text, textView) {
-  try {
-    let textLength = text.length
-    let cursorLocation = textLength
-    if (/{{cursor}}/.test(text)) {
-      cursorLocation = text.indexOf("{{cursor}}")
-      text = text.replace(/{{cursor}}/g, "")
-      textLength = text.length
-    }
-    let selectedRange = textView.selectedRange
-    let pre = textView.text.slice(0,selectedRange.location)
-    let post = textView.text.slice(selectedRange.location+selectedRange.length)
-    textView.text = pre+text+post
-    textView.selectedRange = {location:selectedRange.location+cursorLocation,length:0}
-    return true
+    try {
+      let textLength = text.length
+      let cursorLocation = textLength
+      if (/{{cursor}}/.test(text)) {
+        cursorLocation = text.indexOf("{{cursor}}")
+        text = text.replace(/{{cursor}}/g, "")
+        textLength = text.length
+      }
+      let selectedRange = textView.selectedRange
+      let pre = textView.text.slice(0, selectedRange.location)
+      let post = textView.text.slice(selectedRange.location + selectedRange.length)
+      textView.text = pre + text + post
+      textView.selectedRange = {location: selectedRange.location + cursorLocation, length: 0}
+      return true
     } catch (error) {
       this.addErrorLog(error, "insertSnippetToTextView")
       return false
@@ -1221,43 +1747,231 @@ class pluginDemoUtils {
       return false
     }
   }
+  /**
+   * 📋 复制对象的 JSON 字符串到剪贴板
+   * 
+   * 将任意 JavaScript 对象转换为格式化的 JSON 字符串并复制到剪贴板。
+   * 主要用于调试和数据导出。
+   * 
+   * @param {*} object - 要复制的对象或数据
+   * @returns {boolean} 复制是否成功
+   * 
+   * @example
+   * // 复制笔记信息
+   * let noteInfo = {
+   *   id: focusNote.noteId,
+   *   title: focusNote.noteTitle,
+   *   color: focusNote.colorIndex
+   * }
+   * pluginDemoUtils.copyJSON(noteInfo)
+   * 
+   * // 复制错误日志
+   * pluginDemoUtils.copyJSON(pluginDemoUtils.errorLog)
+   * 
+   * // 调试时查看对象结构
+   * pluginDemoUtils.copyJSON(getAllProperties(someObject))
+   */
   static copyJSON(object) {
     return MNUtil.copyJSON(object)
   }
   /**
+   * 🖼️ 复制图片到剪贴板
    * 
-   * @param {NSData} imageData 
+   * 将图片的二进制数据复制到系统剪贴板。
+   * 
+   * @param {NSData} imageData - 图片的二进制数据
+   * @returns {boolean} 复制是否成功
+   * 
+   * @example
+   * // 复制摘录图片
+   * if (focusNote.excerptPic) {
+   *   let imageData = MNUtil.getMediaByHash(focusNote.excerptPic.paint)
+   *   pluginDemoUtils.copyImage(imageData)
+   * }
+   * 
+   * // 复制评论中的图片
+   * if (comment.type === "PaintNote") {
+   *   let imageData = MNUtil.getMediaByHash(comment.paint)
+   *   pluginDemoUtils.copyImage(imageData)
+   * }
    */
   static copyImage(imageData) {
     return MNUtil.copyImage(imageData)
   }
+  /**
+   * 📚 获取学习模式控制器
+   * 
+   * 返回 MarginNote 的学习模式控制器，用于访问和控制学习模式相关功能。
+   * 学习模式是文档阅读和脑图编辑的组合界面。
+   * 
+   * @returns {Object} 学习模式控制器对象
+   * 
+   * @example
+   * // 获取学习控制器
+   * let studyCtrl = pluginDemoUtils.studyController()
+   * 
+   * // 使用控制器操作
+   * if (studyCtrl) {
+   *   // 获取当前笔记本
+   *   let notebook = studyCtrl.notebookController.notebook
+   * }
+   */
   static studyController() {
     return MNUtil.studyController
   }
+  /**
+   * 📱 获取学习模式视图
+   * 
+   * 返回 MarginNote 的学习模式主视图，可用于添加自定义 UI 元素。
+   * 
+   * @returns {UIView} 学习模式的主视图对象
+   * 
+   * @example
+   * // 获取学习视图
+   * let studyView = pluginDemoUtils.studyView()
+   * 
+   * // 在学习视图上添加自定义按钮
+   * if (studyView) {
+   *   let button = UIButton.new()
+   *   button.frame = {x: 10, y: 10, width: 100, height: 44}
+   *   studyView.addSubview(button)
+   * }
+   */
   static studyView() {
     return MNUtil.studyView
   }
+  /**
+   * 📄 获取当前文档控制器
+   * 
+   * 返回当前打开的文档（PDF/ePub）的控制器，用于访问文档相关信息和操作。
+   * 
+   * @returns {Object} 文档控制器对象
+   * 
+   * @example
+   * // 获取当前文档信息
+   * let docCtrl = pluginDemoUtils.currentDocController()
+   * if (docCtrl) {
+   *   let docPath = docCtrl.document.pathFile
+   *   let docName = MNUtil.getFileName(docPath)
+   *   console.log("当前文档：" + docName)
+   *   
+   *   // 获取文档 MD5
+   *   let docMd5 = docCtrl.document.docMd5
+   * }
+   */
   static currentDocController() {
     return MNUtil.currentDocController
   }
+  /**
+   * 🆔 获取当前笔记本 ID
+   * 
+   * 获取当前打开的笔记本的唯一标识符。
+   * 注意：这是一个 getter 属性，不是方法。
+   * 
+   * @returns {string} 笔记本的唯一 ID
+   * 
+   * @example
+   * // 获取当前笔记本 ID
+   * let notebookId = pluginDemoUtils.currentNotebookId
+   * console.log("当前笔记本 ID：" + notebookId)
+   * 
+   * // 用于操作当前笔记本
+   * if (pluginDemoUtils.currentNotebookId) {
+   *   let notebook = pluginDemoUtils.getNoteBookById(pluginDemoUtils.currentNotebookId)
+   * }
+   */
   static get currentNotebookId() {
     return MNUtil.currentNotebookId
   }
+  /**
+   * 📓 获取当前笔记本对象
+   * 
+   * 直接返回当前打开的笔记本对象，而不仅仅是 ID。
+   * 这是一个便捷方法，内部调用 getNoteBookById。
+   * 
+   * @returns {MNNotebook|null} 笔记本对象，如果没有打开笔记本则返回 null
+   * 
+   * @example
+   * // 获取当前笔记本
+   * let notebook = pluginDemoUtils.currentNotebook()
+   * if (notebook) {
+   *   console.log("笔记本标题：" + notebook.title)
+   *   console.log("笔记数量：" + notebook.notes.length)
+   *   
+   *   // 遍历所有笔记
+   *   notebook.notes.forEach(note => {
+   *     console.log(note.noteTitle)
+   *   })
+   * }
+   */
   static currentNotebook() {
     return this.getNoteBookById(this.currentNotebookId)
   }
-  static undoGrouping(f,notebookId = this.currentNotebookId){
+  /**
+   * ♾️ 执行可撤销的操作组
+   * 
+   * 将一系列操作分组为一个可撤销的单元。用户按一次撤销就可以撤销整组操作。
+   * 这对于批量修改非常重要，避免用户需要多次撤销。
+   * 
+   * @param {Function} f - 要执行的操作函数
+   * @param {string} [notebookId=this.currentNotebookId] - 笔记本 ID（通常不需要传）
+   * @returns {*} 返回函数 f 的执行结果
+   * 
+   * @example
+   * // 批量修改笔记颜色
+   * pluginDemoUtils.undoGrouping(() => {
+   *   let notes = MNNote.getFocusNotes()
+   *   notes.forEach(note => {
+   *     note.colorIndex = 7  // 设置为红色
+   *     note.noteTitle = "[重要] " + note.noteTitle
+   *   })
+   *   MNUtil.showHUD(`已修改 ${notes.length} 个笔记`)
+   * })
+   * // 用户只需撤销一次就能恢复所有修改
+   * 
+   * // 重要：在所有修改笔记的操作中都应该使用
+   * pluginDemoUtils.undoGrouping(() => {
+   *   // 你的修改操作
+   * })
+   */
+  static undoGrouping(f, notebookId = this.currentNotebookId) {
     return MNUtil.undoGrouping(f)  // MNUtil 会自动处理 notebookId 和刷新
   }
-  static async checkMNUtil(alert = false,delay = 0.01){
-    if (typeof MNUtil === 'undefined') {//如果MNUtil未被加载，则执行一次延时，然后再检测一次
-      //仅在MNUtil未被完全加载时执行delay
+  /**
+   * ✅ 检查 MNUtils 是否已安装
+   * 
+   * 检查 MNUtils 插件是否已经安装并加载。MNUtils 是很多插件的依赖项。
+   * 如果未安装，会提示用户安装。
+   * 
+   * @param {boolean} [alert=false] - 是否显示弹窗提示（true）还是 HUD 提示（false）
+   * @param {number} [delay=0.01] - 检查前的延迟时间（秒）
+   * @returns {Promise<boolean>} MNUtils 是否可用
+   * 
+   * @example
+   * // 在插件启动时检查
+   * async function sceneWillConnect() {
+   *   if (!await pluginDemoUtils.checkMNUtil(true)) {
+   *     // MNUtils 未安装，停止初始化
+   *     return
+   *   }
+   *   // 继续初始化...
+   * }
+   * 
+   * // 在使用 MNUtil API 前检查
+   * if (await pluginDemoUtils.checkMNUtil()) {
+   *   // 可以安全使用 MNUtil API
+   *   MNUtil.showHUD("开始执行")
+   * }
+   */
+  static async checkMNUtil(alert = false, delay = 0.01) {
+    if (typeof MNUtil === 'undefined') {  // 如果 MNUtil 未被加载，则执行一次延时，然后再检测一次
+      // 仅在 MNUtil 未被完全加载时执行 delay
       await pluginDemoUtils.delay(delay)
       if (typeof MNUtil === 'undefined') {
         if (alert) {
           pluginDemoUtils.confirm("MN Toolbar: Install 'MN Utils' first", "MN Toolbar: 请先安装'MN Utils'")
-        }else{
-          pluginDemoUtils.showHUD("MN Toolbar: Please install 'MN Utils' first!",5)
+        } else {
+          pluginDemoUtils.showHUD("MN Toolbar: Please install 'MN Utils' first!", 5)
         }
         return false
       }
@@ -1265,43 +1979,146 @@ class pluginDemoUtils {
     return true
   }
   /**
+   * 📦 克隆并合并笔记
    * 
-   * @param {MbBookNote|MNNote} currentNote 
-   * @param {string} targetNoteId 
+   * 克隆一个指定的笔记，然后将其合并到当前笔记中。
+   * 合并后，目标笔记的内容会成为当前笔记的一部分。
+   * 
+   * @param {MbBookNote|MNNote} currentNote - 要合并到的目标笔记
+   * @param {string} targetNoteId - 要克隆的笔记 ID
+   * 
+   * @example
+   * // 将另一个笔记合并到当前笔记
+   * let focusNote = MNNote.getFocusNote()
+   * if (focusNote) {
+   *   // 将 ID 为 xxx 的笔记克隆并合并到当前笔记
+   *   pluginDemoUtils.cloneAndMerge(focusNote, "12345678-1234-1234-1234-123456789012")
+   *   MNUtil.showHUD("笔记已合并")
+   * }
+   * 
+   * // 常见场景：合并相似内容的笔记
+   * // 比如同一个概念在不同地方的摘录
    */
-  static cloneAndMerge(currentNote,targetNoteId) {
+  static cloneAndMerge(currentNote, targetNoteId) {
     let cloneNote = MNNote.clone(targetNoteId)
     currentNote.merge(cloneNote.note)
   }
   /**
+   * 🐶 克隆为子笔记
    * 
-   * @param {MbBookNote|MNNote} currentNote 
-   * @param {string} targetNoteId 
+   * 克隆一个指定的笔记，并将其作为子笔记添加到当前笔记下。
+   * 这样可以在不移动原笔记的情况下，创建笔记之间的关联。
+   * 
+   * @param {MbBookNote|MNNote} currentNote - 父笔记
+   * @param {string} targetNoteId - 要克隆的笔记 ID
+   * 
+   * @example
+   * // 将另一个笔记克隆为当前笔记的子笔记
+   * let focusNote = MNNote.getFocusNote()
+   * if (focusNote) {
+   *   // 克隆并添加为子笔记
+   *   pluginDemoUtils.cloneAsChildNote(focusNote, "12345678-1234-1234-1234-123456789012")
+   *   MNUtil.showHUD("已添加子笔记")
+   * }
+   * 
+   * // 常见场景：构建知识体系
+   * // 将相关概念组织在主题笔记下
    */
-  static cloneAsChildNote(currentNote,targetNoteId) {
+  static cloneAsChildNote(currentNote, targetNoteId) {
     let cloneNote = MNNote.clone(targetNoteId)
     currentNote.addChild(cloneNote.note)
   }
-  static postNotification(name,userInfo) {
+  /**
+   * 📢 发送系统通知
+   * 
+   * 通过 iOS/macOS 的通知中心发送自定义通知。
+   * 可以用于插件间通信或触发系统事件。
+   * 
+   * @param {string} name - 通知名称
+   * @param {Object} userInfo - 附带的信息对象
+   * 
+   * @example
+   * // 发送简单通知
+   * pluginDemoUtils.postNotification("MyPluginDidUpdate", {})
+   * 
+   * // 发送带数据的通知
+   * pluginDemoUtils.postNotification("NoteColorChanged", {
+   *   noteId: focusNote.noteId,
+   *   oldColor: 0,
+   *   newColor: 7
+   * })
+   * 
+   * // 在其他地方监听通知
+   * NSNotificationCenter.defaultCenter().addObserverSelectorNameObject(
+   *   self,
+   *   "onNoteColorChanged:",
+   *   "NoteColorChanged",
+   *   null
+   * )
+   */
+  static postNotification(name, userInfo) {
     NSNotificationCenter.defaultCenter().postNotificationNameObjectUserInfo(name, this.focusWindow, userInfo)
   }
   /**
+   * 🔄 在数组中移动元素位置
    * 
-   * @param {string[]} arr 
-   * @param {string} element 
-   * @param {string} direction 
-   * @returns 
+   * 将数组中的某个元素向上或向下移动一个位置。
+   * 常用于调整列表顺序、排序等场景。
+   * 
+   * @param {string[]} arr - 要操作的数组
+   * @param {string} element - 要移动的元素
+   * @param {string} direction - 移动方向："up" 或 "down"
+   * @returns {string[]} 移动后的新数组
+   * 
+   * @example
+   * // 移动按钮顺序
+   * let buttons = ["Button1", "Button2", "Button3", "Button4"]
+   * 
+   * // 将 Button3 向上移动
+   * let newOrder = pluginDemoUtils.moveElement(buttons, "Button3", "up")
+   * // 结果: ["Button1", "Button3", "Button2", "Button4"]
+   * 
+   * // 将 Button1 向下移动
+   * let newOrder2 = pluginDemoUtils.moveElement(buttons, "Button1", "down")
+   * // 结果: ["Button2", "Button1", "Button3", "Button4"]
+   * 
+   * // 保存新顺序
+   * toolbarConfig.buttonOrder = newOrder
+   * toolbarConfig.save()
    */
   static moveElement(arr, element, direction) {
     return MNUtil.moveElement(arr, element, direction)
   }
-/**
- * 
- * @param {string} text 
- * @param {MNNote|MbBookNote|undefined} note 
- * @returns 
- */
-  static getVarInfo(text) {//对通用的部分先写好对应的值
+  /**
+   * 📦 获取模板变量信息
+   * 
+   * 解析文本中的模板变量（如 {{clipboardText}}），并返回对应的实际值。
+   * 这个方法不依赖特定的笔记，只处理全局变量。
+   * 
+   * @param {string} text - 包含模板变量的文本
+   * @returns {Object} 变量名和对应值的对象
+   * 
+   * 支持的变量：
+   * - {{clipboardText}} - 剪贴板文本
+   * - {{selectionText}} - 当前选中的文本
+   * - {{currentDocName}} - 当前文档名称
+   * - {{currentDocAttach}} - 当前文档的附件内容
+   * 
+   * @example
+   * // 解析模板文本
+   * let template = "文档：{{currentDocName}}\n选中：{{selectionText}}"
+   * let vars = pluginDemoUtils.getVarInfo(template)
+   * // 返回: {
+   * //   currentDocName: "MyBook.pdf",
+   * //   selectionText: "选中的文字"
+   * // }
+   * 
+   * // 替换模板变量
+   * Object.keys(vars).forEach(key => {
+   *   template = template.replace(`{{${key}}}`, vars[key])
+   * })
+   */
+  static getVarInfo(text) {  // 对通用的部分先写好对应的值
     let config = {}
     let hasClipboardText = text.includes("{{clipboardText}}")
     let hasSelectionText = text.includes("{{selectionText}}")
@@ -1322,12 +2139,36 @@ class pluginDemoUtils {
     return config
   }
   /**
+   * 📄 获取包含笔记信息的模板变量
    * 
-   * @param {string} text 
-   * @param {MbBookNote|MNNote} note 
-   * @returns 
+   * 解析文本中的模板变量，并结合特定笔记的信息返回实际值。
+   * 与 getVarInfo 不同，这个方法可以处理笔记相关的变量。
+   * 
+   * @param {string} text - 包含模板变量的文本
+   * @param {MbBookNote|MNNote} note - 相关的笔记对象
+   * @returns {Object} 变量名和对应值的对象
+   * 
+   * 支持的变量：
+   * - {{title}} - 笔记标题
+   * - {{noteId}} - 笔记 ID
+   * - {{clipboardText}} - 剪贴板文本
+   * - {{selectionText}} - 当前选中的文本
+   * - {{currentDocName}} - 当前文档名称
+   * 
+   * @example
+   * // 使用笔记信息生成文本
+   * let template = "## {{title}}\nID: {{noteId}}\n来源：{{currentDocName}}"
+   * let focusNote = MNNote.getFocusNote()
+   * let vars = pluginDemoUtils.getVarInfoWithNote(template, focusNote)
+   * 
+   * // 替换所有变量
+   * Object.keys(vars).forEach(key => {
+   *   template = template.replace(`{{${key}}}`, vars[key])
+   * })
+   * 
+   * // 结果: "## 我的笔记\nID: 12345678-...\n来源：MyBook.pdf"
    */
-  static getVarInfoWithNote(text,note) {
+  static getVarInfoWithNote(text, note) {
     let config = {}
     let hasClipboardText = text.includes("{{clipboardText}}")
     let hasSelectionText = text.includes("{{selectionText}}")
@@ -1351,9 +2192,58 @@ class pluginDemoUtils {
     }
     return config
   }
+  /**
+   * 🔒 转义正则表达式特殊字符
+   * 
+   * 将字符串中的正则表达式特殊字符进行转义，
+   * 使其可以在正则表达式中作为普通字符使用。
+   * 
+   * @param {string} str - 要转义的字符串
+   * @returns {string} 转义后的字符串
+   * 
+   * @example
+   * // 转义包含特殊字符的字符串
+   * let userInput = "1+1=2"
+   * let escaped = pluginDemoUtils.escapeStringRegexp(userInput)
+   * // 返回: "1\\+1=2"
+   * 
+   * // 安全地使用用户输入创建正则
+   * let regex = new RegExp(escaped)  // 不会把 + 当作量词
+   * 
+   * // 在替换操作中使用
+   * let searchText = "[note]"
+   * let safePattern = pluginDemoUtils.escapeStringRegexp(searchText)
+   * text.replace(new RegExp(safePattern, "g"), "[card]")
+   */
   static escapeStringRegexp(str) {
     return str.replace(/[|\\{}()[\]^$+*?.]/g, "\\$&").replace(/-/g, "\\x2d")
   }
+  /**
+   * 🔄 将字符串转换为正则表达式
+   * 
+   * 智能地将字符串转换为正则表达式对象。
+   * - 如果字符串以 / 开头，解析为正则表达式字面量
+   * - 否则作为普通字符串，转义后创建正则
+   * 
+   * @param {string} str - 要转换的字符串
+   * @returns {RegExp} 正则表达式对象
+   * @throws {string} 如果正则格式不正确抛出空字符串
+   * 
+   * @example
+   * // 普通字符串
+   * let reg1 = pluginDemoUtils.string2Reg("hello")
+   * // 等价于: new RegExp("hello")
+   * 
+   * // 正则字面量
+   * let reg2 = pluginDemoUtils.string2Reg("/\\d+/g")
+   * // 等价于: /\d+/g
+   * 
+   * // 使用案例
+   * let pattern = pluginDemoUtils.string2Reg("/note.*title/i")
+   * if (pattern.test(text)) {
+   *   console.log("匹配成功")
+   * }
+   */
   static string2Reg(str) {
     str = str.trim()
     if (!str.startsWith("/")) return new RegExp(pluginDemoUtils.escapeStringRegexp(str))
@@ -1362,11 +2252,36 @@ class pluginDemoUtils {
     return new RegExp(regParts[1], regParts[2])
   }
   /**
+   * 📦 根据范围获取笔记数组
    * 
-   * @param {*} range 
-   * @returns {MNNote[]}
+   * 根据指定的范围参数，返回不同的笔记集合。
+   * 这对于批量操作非常有用。
+   * 
+   * @param {string} [range] - 笔记范围
+   * @returns {MNNote[]} 笔记数组
+   * 
+   * 支持的范围：
+   * - undefined - 返回当前焦点笔记（单个）
+   * - "currentNotes" - 返回所有选中的笔记
+   * - "childNotes" - 返回选中笔记的所有子笔记
+   * - "descendants" - 返回选中笔记的所有后代笔记
+   * 
+   * @example
+   * // 获取当前选中的所有笔记
+   * let notes = pluginDemoUtils.getNotesByRange("currentNotes")
+   * console.log(`选中了 ${notes.length} 个笔记`)
+   * 
+   * // 处理所有子笔记
+   * let childNotes = pluginDemoUtils.getNotesByRange("childNotes")
+   * childNotes.forEach(note => {
+   *   note.colorIndex = 5  // 统一设置颜色
+   * })
+   * 
+   * // 处理整个分支
+   * let allDescendants = pluginDemoUtils.getNotesByRange("descendants")
+   * console.log(`包含 ${allDescendants.length} 个后代笔记`)
    */
-  static getNotesByRange(range){
+  static getNotesByRange(range) {
     if (range === undefined) {
       return [MNNote.getFocusNote()]
     }
@@ -1375,13 +2290,13 @@ class pluginDemoUtils {
         return MNNote.getFocusNotes()
       case "childNotes":
         let childNotes = []
-        MNNote.getFocusNotes().map(note=>{
+        MNNote.getFocusNotes().map(note => {
           childNotes = childNotes.concat(note.childNotes)
         })
         return childNotes
       case "descendants":
         let descendantNotes = []
-        MNNote.getFocusNotes().map(note=>{
+        MNNote.getFocusNotes().map(note => {
           descendantNotes = descendantNotes.concat(note.descendantNodes.descendant)
         })
         return descendantNotes
@@ -1390,11 +2305,34 @@ class pluginDemoUtils {
     }
   }
   /**
+   * 🧹 清空笔记内容
    * 
-   * @param {MNNote|MbBookNote} note 
-   * @param {{target:string,type:string,index:number}} des 
+   * 根据指定的目标和类型，清空笔记的某部分内容。
+   * 可以清空标题、摘录文本或删除特定类型的评论。
+   * 
+   * @param {MNNote|MbBookNote} note - 要清空内容的笔记
+   * @param {{target:string,type:string,index:number}} des - 描述对象
+   * @param {string} [des.target="title"] - 目标内容："title", "excerptText", "comments"
+   * @param {string} [des.type] - 评论类型："TextNote", "LinkNote", "PaintNote", "HtmlNote"
+   * @param {number} [des.index] - 评论索引（未使用）
+   * 
+   * @example
+   * // 清空标题
+   * pluginDemoUtils.clearNoteContent(note, { target: "title" })
+   * 
+   * // 清空摘录文本
+   * pluginDemoUtils.clearNoteContent(note, { target: "excerptText" })
+   * 
+   * // 删除所有文本评论
+   * pluginDemoUtils.clearNoteContent(note, { 
+   *   target: "comments", 
+   *   type: "TextNote" 
+   * })
+   * 
+   * // 删除所有评论
+   * pluginDemoUtils.clearNoteContent(note, { target: "comments" })
    */
-  static clearNoteContent(note,des){
+  static clearNoteContent(note, des) {
     let target = des.target ?? "title"
     switch (target) {
       case "title":
@@ -1403,11 +2341,11 @@ class pluginDemoUtils {
       case "excerptText":
         note.excerptText = ""
         break;
-      case "comments"://todo: 改进type检测,支持未添加index参数时移除所有评论
+      case "comments":  // todo: 改进 type 检测,支持未添加 index 参数时移除所有评论
         // this.removeComment(des)
         let commentLength = note.comments.length
         let comment
-        for (let i = commentLength-1; i >= 0; i--) {
+        for (let i = commentLength - 1; i >= 0; i--) {
           if ("type" in des) {
             switch (des.type) {
               case "TextNote":
@@ -1437,7 +2375,7 @@ class pluginDemoUtils {
               default:
                 break;
             }
-          }else{
+          } else {
             note.removeCommentByIndex(i)
           }
           break;
@@ -1448,13 +2386,38 @@ class pluginDemoUtils {
     }
   }
   /**
+   * 🖊️ 设置笔记内容
    * 
-   * @param {MNNote|MbBookNote} note 
-   * @param {{target:string,type:string,index:number}} des 
+   * 根据指定的目标，设置笔记的某部分内容。
+   * 支持模板变量替换，会自动调用 detectAndReplace 处理内容。
+   * 
+   * @param {MNNote|MbBookNote} note - 要设置内容的笔记
+   * @param {string} content - 要设置的内容，可含模板变量
+   * @param {{target:string}} des - 描述对象
+   * @param {string} [des.target="title"] - 目标："title", "excerpt", "excerptText", "newComment"
+   * 
+   * @example
+   * // 设置标题
+   * pluginDemoUtils.setNoteContent(note, "新标题", { target: "title" })
+   * 
+   * // 设置摘录文本
+   * pluginDemoUtils.setNoteContent(note, "新的摘录内容", { 
+   *   target: "excerptText" 
+   * })
+   * 
+   * // 添加新评论
+   * pluginDemoUtils.setNoteContent(note, "这是一条评论", { 
+   *   target: "newComment" 
+   * })
+   * 
+   * // 使用模板变量
+   * pluginDemoUtils.setNoteContent(note, "[摘自 {{currentDocName}}]", {
+   *   target: "newComment"
+   * })
    */
-  static setNoteContent(note,content,des){
+  static setNoteContent(note, content, des) {
     let target = des.target ?? "title"
-    let replacedText = this.detectAndReplace(content,undefined,note)
+    let replacedText = this.detectAndReplace(content, undefined, note)
     switch (target) {
       case "title":
         note.noteTitle = replacedText
@@ -1467,33 +2430,124 @@ class pluginDemoUtils {
         note.appendTextComment(replacedText)
         break;
       default:
-        MNUtil.showHUD("Invalid target: "+target)
+        MNUtil.showHUD("Invalid target: " + target)
         break;
     }
   }
-  static clearContent(des){
+  /**
+   * 🧹 批量清空笔记内容
+   * 
+   * 根据指定的范围和目标，批量清空多个笔记的内容。
+   * 所有操作会被分组为一个可撤销单元。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {string} [des.range="currentNotes"] - 笔记范围
+   * @param {string} [des.target="title"] - 目标内容
+   * @param {string} [des.type] - 评论类型（仅当 target 为 "comments" 时）
+   * 
+   * @example
+   * // 清空所有选中笔记的标题
+   * pluginDemoUtils.clearContent({
+   *   range: "currentNotes",
+   *   target: "title"
+   * })
+   * 
+   * // 清空所有子笔记的摘录
+   * pluginDemoUtils.clearContent({
+   *   range: "childNotes",
+   *   target: "excerptText"
+   * })
+   * 
+   * // 删除所有后代笔记的文本评论
+   * pluginDemoUtils.clearContent({
+   *   range: "descendants",
+   *   target: "comments",
+   *   type: "TextNote"
+   * })
+   */
+  static clearContent(des) {
     let range = des.range ?? "currentNotes"
     let targetNotes = this.getNotesByRange(range)
-    MNUtil.undoGrouping(()=>{
-      targetNotes.forEach(note=>{
+    MNUtil.undoGrouping(() => {
+      targetNotes.forEach(note => {
         this.clearNoteContent(note, des)
       })
     })
   }
+  /**
+   * 📝 批量设置笔记内容
+   * 
+   * 根据指定的范围和目标，批量设置多个笔记的内容。
+   * 这是 setNoteContent 的批量版本，所有操作会被分组为一个可撤销单元。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {string} [des.range="currentNotes"] - 笔记范围
+   * @param {string} [des.content="content"] - 要设置的内容
+   * @param {string} [des.target] - 目标："title", "excerpt", "newComment"
+   * 
+   * @example
+   * // 为所有选中笔记添加前缀
+   * pluginDemoUtils.setContent({
+   *   range: "currentNotes",
+   *   target: "title",
+   *   content: "[重要] {{title}}"  // 使用模板变量
+   * })
+   * 
+   * // 为所有子笔记添加评论
+   * pluginDemoUtils.setContent({
+   *   range: "childNotes",
+   *   target: "newComment",
+   *   content: "来自父笔记：{{parentNote.title}}"
+   * })
+   * 
+   * // 统一设置摘录文本
+   * pluginDemoUtils.setContent({
+   *   range: "descendants",
+   *   target: "excerptText",
+   *   content: "请查看原文"
+   * })
+   */
   static setContent(des){
     try {
-    let range = des.range ?? "currentNotes"
-    let targetNotes = this.getNotesByRange(range)
-    MNUtil.undoGrouping(()=>{
-      targetNotes.forEach(note=>{
-        let content = des.content ?? "content"
-        this.setNoteContent(note, content,des)
+      let range = des.range ?? "currentNotes"
+      let targetNotes = this.getNotesByRange(range)
+      MNUtil.undoGrouping(()=>{
+        targetNotes.forEach(note=>{
+          let content = des.content ?? "content"
+          this.setNoteContent(note, content,des)
+        })
       })
-    })
     } catch (error) {
       pluginDemoUtils.addErrorLog(error, "setContent")
     }
   }
+  /**
+   * 🔄 替换单个笔记的内容
+   * 
+   * 使用正则表达式或字符串模式替换笔记的标题或摘录文本。
+   * 这是内部方法，通常由其他批量替换方法调用。
+   * 
+   * @param {MNNote|MbBookNote} note - 要替换内容的笔记
+   * @param {RegExp} ptt - 正则表达式模式
+   * @param {Object} des - 描述对象
+   * @param {string} des.target - 目标："title" 或 "excerpt"
+   * @param {string} des.to - 替换后的文本
+   * 
+   * @example
+   * // 替换标题中的文本
+   * let pattern = /旧文本/g
+   * pluginDemoUtils.replace(note, pattern, {
+   *   target: "title",
+   *   to: "新文本"
+   * })
+   * 
+   * // 替换摘录中的空行
+   * let emptyLinePattern = /\n\n+/g
+   * pluginDemoUtils.replace(note, emptyLinePattern, {
+   *   target: "excerpt",
+   *   to: "\n"
+   * })
+   */
   static replace(note,ptt,des){
     let content
     switch (des.target) {
@@ -1509,6 +2563,29 @@ class pluginDemoUtils {
         break;
     }
   }
+  /**
+   * 🔧 【内部方法】获取替换模式
+   * 
+   * 根据描述对象生成正则表达式模式。
+   * - 如果提供了 reg 参数，直接使用正则表达式
+   * - 否则将 from 参数转义后创建正则表达式
+   * 
+   * @private
+   * @param {Object} des - 描述对象
+   * @param {string} [des.reg] - 正则表达式字符串
+   * @param {string} [des.from] - 要替换的普通文本
+   * @param {string} [des.mod="g"] - 正则修饰符
+   * @returns {RegExp} 正则表达式对象
+   * 
+   * @example
+   * // 使用正则表达式
+   * let ptt1 = _replace_get_ptt_({ reg: "\\d+", mod: "gi" })
+   * // 返回: /\d+/gi
+   * 
+   * // 使用普通文本
+   * let ptt2 = _replace_get_ptt_({ from: "[note]" })
+   * // 返回: /\[note\]/g （自动转义特殊字符）
+   */
   static _replace_get_ptt_(des) {
     let mod= des.mod ?? "g"
     let ptt
@@ -1519,6 +2596,18 @@ class pluginDemoUtils {
     }
     return ptt
   }
+  /**
+   * 🔧 【内部方法】获取笔记内容
+   * 
+   * 根据目标类型获取笔记的相应内容。
+   * 这是替换操作的辅助方法。
+   * 
+   * @private
+   * @param {MNNote|MbBookNote} note - 笔记对象
+   * @param {Object} des - 描述对象
+   * @param {string} des.target - 目标："title" 或 "excerpt"
+   * @returns {string} 对应的内容文本
+   */
   static _replace_get_content_(note,des) {
     let content = ""
     switch (des.target) {
@@ -1533,6 +2622,18 @@ class pluginDemoUtils {
     }
     return content
   }
+  /**
+   * 🔧 【内部方法】设置笔记内容
+   * 
+   * 根据目标类型设置笔记的相应内容。
+   * 这是替换操作的辅助方法。
+   * 
+   * @private
+   * @param {MNNote|MbBookNote} note - 笔记对象
+   * @param {Object} des - 描述对象
+   * @param {string} des.target - 目标："title" 或 "excerpt"
+   * @param {string} content - 要设置的内容
+   */
   static _replace_set_content_(note,des,content) {
     switch (des.target) {
       case "title":
@@ -1546,10 +2647,27 @@ class pluginDemoUtils {
     }
   }
   /**
-   * 关闭弹出菜单,如果delay为true则延迟0.5秒后关闭
-   * @param {PopupMenu} menu 
-   * @param {boolean} delay 
-   * @returns 
+   * ❌ 关闭弹出菜单
+   * 
+   * 用于程序化地关闭弹出菜单。支持立即关闭或延迟关闭。
+   * 延迟关闭常用于给用户足够的时间看到反馈信息。
+   * 
+   * @param {PopupMenu} menu - 要关闭的菜单对象
+   * @param {boolean} [delay=false] - 是否延迟 0.5 秒后关闭
+   * @returns {void}
+   * 
+   * @example
+   * // 立即关闭菜单
+   * pluginDemoUtils.dismissPopupMenu(currentMenu)
+   * 
+   * // 延迟关闭（例如：显示成功提示后）
+   * MNUtil.showHUD("✅ 操作成功")
+   * pluginDemoUtils.dismissPopupMenu(currentMenu, true)
+   * 
+   * // 条件性关闭
+   * if (operationSuccess && menu) {
+   *   pluginDemoUtils.dismissPopupMenu(menu, true)
+   * }
    */
   static dismissPopupMenu(menu,delay = false){
     if (!menu) {
@@ -1565,6 +2683,34 @@ class pluginDemoUtils {
     }
     menu.dismissAnimated(true)
   }
+  /**
+   * 🎯 判断是否应该显示菜单
+   * 
+   * 根据描述对象判断是否应该显示菜单。
+   * 这个方法用于处理按钮的不同行为模式。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {string} [des.target] - 目标行为
+   * @returns {boolean} 是否显示菜单
+   * 
+   * 逻辑说明：
+   * - 如果 des.target === "menu"，返回 true（显示菜单）
+   * - 如果 des.target 是其他值，返回 false（执行动作）
+   * - 如果没有提供 target 参数，默认返回 true（显示菜单）
+   * 
+   * @example
+   * // 明确指定显示菜单
+   * let des1 = { target: "menu", menuItems: [...] }
+   * pluginDemoUtils.shouldShowMenu(des1)  // true
+   * 
+   * // 明确指定执行动作
+   * let des2 = { target: "copy" }
+   * pluginDemoUtils.shouldShowMenu(des2)  // false
+   * 
+   * // 默认行为（显示菜单）
+   * let des3 = { menuItems: [...] }
+   * pluginDemoUtils.shouldShowMenu(des3)  // true
+   */
   static shouldShowMenu(des){
     if ( des && "target" in des) {
       //des里提供了target参数的时候，如果target为menu则显示menu
@@ -1576,6 +2722,42 @@ class pluginDemoUtils {
     //des里不提供target参数的时候默认为menu
     return true
   }
+  /**
+   * 📋 智能粘贴功能
+   * 
+   * 根据目标将剪贴板内容粘贴到笔记的不同位置。
+   * 支持替换和追加两种模式，以及 Markdown 格式。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {string} [des.target="default"] - 粘贴目标
+   * @param {boolean} [des.hideMessage=false] - 是否隐藏提示信息
+   * @param {boolean} [des.markdown=false] - 是否启用 Markdown 格式
+   * 
+   * 支持的目标：
+   * - "default" - 使用系统默认粘贴（支持图片等）
+   * - "title" - 替换标题
+   * - "excerpt" - 替换摘录
+   * - "appendTitle" - 追加到标题（用分号分隔）
+   * - "appendExcerpt" - 追加到摘录（新行）
+   * 
+   * @example
+   * // 默认粘贴（保留格式）
+   * pluginDemoUtils.paste({ target: "default" })
+   * 
+   * // 替换标题
+   * pluginDemoUtils.paste({ target: "title" })
+   * 
+   * // 追加到摘录（Markdown 格式）
+   * pluginDemoUtils.paste({ 
+   *   target: "appendExcerpt",
+   *   markdown: true,
+   *   hideMessage: true
+   * })
+   * 
+   * // 追加到标题（用于多个关键词）
+   * pluginDemoUtils.paste({ target: "appendTitle" })
+   * // 结果：原标题;新内容
+   */
   static paste(des){
     if (!des.hideMessage) {
       MNUtil.showHUD("paste")
@@ -1617,6 +2799,44 @@ class pluginDemoUtils {
         break;
     }
   }
+  /**
+   * 🪟 在浮动窗口中显示笔记
+   * 
+   * 在 MarginNote 的浮动脑图窗口中打开指定的笔记。
+   * 支持多种目标来源，方便快速导航和查看关联笔记。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {string} [des.noteURL] - 笔记的 URL
+   * @param {string} [des.target] - 目标笔记类型
+   * 
+   * 支持的目标：
+   * - "noteInClipboard" - 剪贴板中的笔记链接
+   * - "currentNote" - 当前焦点笔记
+   * - "currentChildMap" - 当前子脑图
+   * - "parentNote" - 父笔记
+   * - "currentNoteInMindMap" - 当前笔记在脑图中的位置
+   * 
+   * @example
+   * // 打开剪贴板中的笔记
+   * pluginDemoUtils.showInFloatWindow({ 
+   *   target: "noteInClipboard" 
+   * })
+   * 
+   * // 打开当前笔记的父笔记
+   * pluginDemoUtils.showInFloatWindow({ 
+   *   target: "parentNote" 
+   * })
+   * 
+   * // 通过 URL 打开特定笔记
+   * pluginDemoUtils.showInFloatWindow({ 
+   *   noteURL: "marginnote4app://note/12345..." 
+   * })
+   * 
+   * // 在脑图中定位当前笔记
+   * pluginDemoUtils.showInFloatWindow({ 
+   *   target: "currentNoteInMindMap" 
+   * })
+   */
   static showInFloatWindow(des){
     let targetNoteid
     if (des.noteURL) {
@@ -1664,6 +2884,30 @@ class pluginDemoUtils {
   static async delay (seconds) {
     return MNUtil.delay(seconds)  // 使用 MNUtil API
   }
+  /**
+   * 🗺️ 获取当前子脑图
+   * 
+   * 获取当前脑图视图中根节点的子脑图（如果存在）。
+   * 子脑图是 MarginNote 中用于组织层级结构的特殊笔记。
+   * 
+   * @returns {MNNote|undefined} 子脑图笔记对象，如果不存在返回 undefined
+   * 
+   * @example
+   * // 检查是否有子脑图
+   * let childMap = pluginDemoUtils.currentChildMap()
+   * if (childMap) {
+   *   console.log("子脑图标题：" + childMap.noteTitle)
+   *   console.log("子笔记数量：" + childMap.childNotes.length)
+   * } else {
+   *   console.log("当前没有子脑图")
+   * }
+   * 
+   * // 在子脑图中添加笔记
+   * let childMap = pluginDemoUtils.currentChildMap()
+   * if (childMap) {
+   *   childMap.createChildNote({ title: "新笔记" })
+   * }
+   */
   static currentChildMap() {
     if (MNUtil.mindmapView && MNUtil.mindmapView.mindmapNodes[0].note?.childMindMap) {
       return MNNote.new(MNUtil.mindmapView.mindmapNodes[0].note.childMindMap.noteId)
@@ -1671,6 +2915,36 @@ class pluginDemoUtils {
       return undefined
     }
   }
+  /**
+   * 📝 在当前子脑图中创建新笔记
+   * 
+   * 优先在当前子脑图中创建笔记，如果没有子脑图则创建独立笔记。
+   * 这样可以保持笔记的层级组织结构。
+   * 
+   * @param {Object|string} config - 笔记配置对象或标题字符串
+   * @param {string} [config.title] - 笔记标题
+   * @param {number} [config.colorIndex] - 颜色索引
+   * @returns {MNNote} 创建的笔记对象
+   * 
+   * @example
+   * // 在子脑图中创建简单笔记
+   * let note = pluginDemoUtils.newNoteInCurrentChildMap("新想法")
+   * 
+   * // 创建带配置的笔记
+   * let note = pluginDemoUtils.newNoteInCurrentChildMap({
+   *   title: "重要概念",
+   *   colorIndex: 7  // 红色
+   * })
+   * 
+   * // 条件创建
+   * if (needsOrganization) {
+   *   // 会自动判断是否有子脑图
+   *   let note = pluginDemoUtils.newNoteInCurrentChildMap({
+   *     title: "待整理内容"
+   *   })
+   *   note.appendTextComment("需要进一步研究")
+   * }
+   */
   static newNoteInCurrentChildMap(config){
     let childMap = this.currentChildMap()
     if (childMap) {
@@ -1681,6 +2955,30 @@ class pluginDemoUtils {
       return newNote
     }
   }
+  /**
+   * 🔢 替换笔记索引占位符
+   * 
+   * 将文本中的 {{noteIndex}} 占位符替换为对应的索引值。
+   * 用于批量处理笔记时给每个笔记编号。
+   * 
+   * @param {string} text - 包含占位符的文本
+   * @param {number} index - 索引位置（从 0 开始）
+   * @param {Object} des - 描述对象
+   * @param {string[]} [des.noteIndices] - 自定义索引数组
+   * @returns {string} 替换后的文本
+   * 
+   * @example
+   * // 默认数字索引
+   * let text = "第 {{noteIndex}} 章"
+   * pluginDemoUtils.replaceNoteIndex(text, 0, {})  // "第 1 章"
+   * pluginDemoUtils.replaceNoteIndex(text, 5, {})  // "第 6 章"
+   * 
+   * // 自定义索引
+   * let customText = "{{noteIndex}}. 内容"
+   * pluginDemoUtils.replaceNoteIndex(customText, 2, {
+   *   noteIndices: ["一", "二", "三", "四", "五"]
+   * })  // "三. 内容"
+   */
   static replaceNoteIndex(text,index,des){ 
     let noteIndices = ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30'] 
     if (des.noteIndices && des.noteIndices.length) {
@@ -1690,6 +2988,45 @@ class pluginDemoUtils {
     return tem
   
   }
+  /**
+   * 🔢 替换多种索引占位符
+   * 
+   * 将文本中的多种索引占位符替换为对应的格式化索引。
+   * 支持数字、圆圈数字、emoji 数字和字母索引。
+   * 
+   * @param {string} text - 包含占位符的文本
+   * @param {number} index - 索引位置（从 0 开始）
+   * @param {Object} des - 描述对象
+   * @param {string[]} [des.customIndices] - 自定义索引数组（替换 {{index}}）
+   * @returns {string} 替换后的文本
+   * 
+   * 支持的占位符：
+   * - {{index}} - 普通数字（1, 2, 3...）
+   * - {{circleIndex}} - 圆圈数字（①, ②, ③...）
+   * - {{emojiIndex}} - Emoji 数字（1️⃣, 2️⃣, 3️⃣...）
+   * - {{alphabetIndex}} - 字母索引（a, b, c...）
+   * 
+   * @example
+   * // 使用不同格式的索引
+   * let template = "{{circleIndex}} {{index}}. {{alphabetIndex}}"
+   * pluginDemoUtils.replaceIndex(template, 0, {})
+   * // 返回: "① 1. a"
+   * 
+   * // 批量生成列表
+   * let items = ["苹果", "香蕉", "橙子"]
+   * items.forEach((item, i) => {
+   *   let text = pluginDemoUtils.replaceIndex(
+   *     "{{emojiIndex}} {{index}}. " + item, 
+   *     i, 
+   *     {}
+   *   )
+   *   console.log(text)
+   * })
+   * // 输出:
+   * // 1️⃣ 1. 苹果
+   * // 2️⃣ 2. 香蕉
+   * // 3️⃣ 3. 橙子
+   */
   static replaceIndex(text,index,des){
     let circleIndices = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩","⑪","⑫","⑬","⑭","⑮","⑯","⑰","⑱","⑲","⑳","㉑","㉒","㉓","㉔","㉕","㉖","㉗","㉘","㉙","㉚","㉛","㉜","㉝","㉞","㉟","㊱","㊲","㊳"]
     let emojiIndices = ["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"]
@@ -1704,16 +3041,73 @@ class pluginDemoUtils {
                   .replace("{{alphabetIndex}}",alphabetIndices[index])
     return tem
   }
+  /**
+   * 🔢 获取 Emoji 数字
+   * 
+   * 将数字转换为对应的 Emoji 表示形式。
+   * 
+   * @param {number} index - 数字（0-10）
+   * @returns {string} Emoji 数字
+   * 
+   * @example
+   * pluginDemoUtils.emojiNumber(0)   // "0️⃣"
+   * pluginDemoUtils.emojiNumber(5)   // "5️⃣"
+   * pluginDemoUtils.emojiNumber(10)  // "🔟"
+   * 
+   * // 在标题中使用
+   * let title = pluginDemoUtils.emojiNumber(3) + " 第三章"
+   * // "3️⃣ 第三章"
+   */
   static emojiNumber(index){
     let emojiIndices = ["0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"]
     return emojiIndices[index]
   }
 
   /**
+   * 🔗 合并文本模板
    * 
-   * @param {MNNote} note 
-   * @param {*} des 
-   * @returns 
+   * 根据描述对象的配置，从笔记中提取内容并合并成文本。
+   * 支持多种模板变量和格式化选项，用于批量生成格式化文本。
+   * 
+   * @param {MNNote} note - 笔记对象
+   * @param {Object} des - 描述对象
+   * @param {string[]} des.source - 模板数组，支持的变量：
+   *   - {{title}} - 笔记标题
+   *   - {{tags}} - 标签（会展开为多项）
+   *   - {{textComments}} - 文本评论（会展开为多项）
+   *   - {{htmlComments}} - HTML 评论（会展开为多项）
+   *   - {{excerptText}} - 摘录文本
+   *   - {{excerptTexts}} - 多个摘录文本（会展开为多项）
+   * @param {string} [des.join=""] - 连接符
+   * @param {string} [des.format] - 格式化模板，使用 {{element}} 占位符
+   * @param {boolean} [des.trim=false] - 是否去除首尾空白
+   * @param {boolean} [des.removeSource=false] - 是否标记源内容为待删除
+   * @param {string[]} [des.replace] - 替换规则 [pattern, replacement]
+   * @param {number} noteIndex - 笔记索引（用于编号）
+   * @returns {string} 合并后的文本
+   * 
+   * @example
+   * // 提取所有文本评论
+   * let text = pluginDemoUtils.getMergedText(note, {
+   *   source: ["{{textComments}}"],
+   *   join: "\n",
+   *   trim: true
+   * }, 0)
+   * 
+   * // 格式化标签
+   * let tags = pluginDemoUtils.getMergedText(note, {
+   *   source: ["{{tags}}"],
+   *   format: "#{{element}}",
+   *   join: " "
+   * }, 0)
+   * // 结果: "#标签1 #标签2 #标签3"
+   * 
+   * // 复杂模板
+   * let summary = pluginDemoUtils.getMergedText(note, {
+   *   source: ["标题：{{title}}", "摘录：{{excerptText}}", "评论：{{textComments}}"],
+   *   join: "\n",
+   *   format: "- {{element}}"
+   * }, 0)
    */
   static getMergedText(note,des,noteIndex){
   try {
@@ -1826,10 +3220,31 @@ class pluginDemoUtils {
   }
   }
   /**
+   * 🔄 检查并退化笔记相关的模板变量
    * 
-   * @param {string} text 
-   * @param {string} userInput 
-   * @returns 
+   * 根据 OCR 模式和用户输入状态，将模板变量退化到合适的替代变量。
+   * 主要用于 AI 聊天功能，根据不同情况智能选择最合适的变量。
+   * 
+   * @param {string} text - 包含模板变量的文本
+   * @param {string} userInput - 用户输入的内容
+   * @returns {string} 处理后的文本
+   * 
+   * 退化逻辑：
+   * - OCR 启用时：优先使用 OCR 版本的变量
+   * - 无用户输入时：{{userInput}} 退化为上下文
+   * - 单个笔记时：{{cards}} 退化为 {{card}}
+   * 
+   * @example
+   * // OCR 模式下
+   * let text = "分析 {{cards}} 中的 {{userInput}}"
+   * let result = pluginDemoUtils.checkVariableForNote(text, "")
+   * // OCR 启用且无用户输入：
+   * // "分析 {{cardsOCR}} 中的 {{textOCR}}"
+   * 
+   * // 单个笔记时
+   * MNNote.getFocusNotes().length === 1
+   * let result = pluginDemoUtils.checkVariableForNote("{{cards}}", "")
+   * // 退化为: "{{cardOCR}}"
    */
   static checkVariableForNote(text,userInput){//提前写好要退化到的变量
     let OCR_Enabled = chatAIUtils.OCREnhancedMode
@@ -1866,6 +3281,28 @@ class pluginDemoUtils {
     return this.replacVar(text, replaceVarConfig)
   }
 
+  /**
+   * 🔄 检查并退化文本相关的模板变量
+   * 
+   * 类似于 checkVariableForNote，但用于处理纯文本场景（非笔记）。
+   * 主要用于处理选中文本或剪贴板文本的 AI 分析。
+   * 
+   * @param {string} text - 包含模板变量的文本
+   * @param {string} userInput - 用户输入的内容
+   * @returns {string} 处理后的文本
+   * 
+   * 退化逻辑：
+   * - OCR 模式：所有卡片变量退化为 {{textOCR}}
+   * - 非 OCR 模式：所有卡片变量退化为 {{context}}
+   * - 文档相关变量保持不变
+   * 
+   * @example
+   * // 处理选中文本
+   * let template = "翻译 {{card}} 中的内容"
+   * let result = pluginDemoUtils.checkVariableForText(template, "")
+   * // OCR 模式: "翻译 {{textOCR}} 中的内容"
+   * // 普通模式: "翻译 {{context}} 中的内容"
+   */
   static checkVariableForText(text,userInput){//提前写好要退化到的变量
     let OCR_Enabled = chatAIUtils.OCREnhancedMode
     let hasUserInput = text.includes("{{userInput}}")
@@ -1894,6 +3331,35 @@ class pluginDemoUtils {
     replaceVarConfig.noteDocName = `{{currentDocName}}`
     return this.replacVar(text, replaceVarConfig)
   }
+  /**
+   * 🔀 替换模板变量
+   * 
+   * 将文本中的模板变量替换为实际值。
+   * 这是一个通用的变量替换引擎，支持 {{variable}} 格式。
+   * 
+   * @param {string} text - 包含模板变量的文本
+   * @param {Object} varInfo - 变量名到值的映射对象
+   * @returns {string} 替换后的文本
+   * 
+   * @example
+   * // 简单替换
+   * let template = "Hello {{name}}, today is {{date}}"
+   * let vars = {
+   *   name: "张三",
+   *   date: "2024-01-01"
+   * }
+   * let result = pluginDemoUtils.replacVar(template, vars)
+   * // "Hello 张三, today is 2024-01-01"
+   * 
+   * // 复杂模板
+   * let noteTemplate = "{{title}}\n作者：{{author}}\n标签：{{tags}}"
+   * let noteVars = {
+   *   title: "JavaScript 高级编程",
+   *   author: "Nicholas C. Zakas",
+   *   tags: "#编程 #JavaScript"
+   * }
+   * let noteText = pluginDemoUtils.replacVar(noteTemplate, noteVars)
+   */
   static replacVar(text,varInfo) {
     let vars = Object.keys(varInfo)
     let original = text
@@ -1906,6 +3372,44 @@ class pluginDemoUtils {
     return original
   }
 
+  /**
+   * 🔮 智能检测并替换模板变量
+   * 
+   * 自动检测文本中的模板变量并替换为实际值。
+   * 这是一个高级的模板引擎，支持笔记信息、系统信息、日期等多种变量。
+   * 
+   * @param {string} text - 包含模板变量的文本
+   * @param {*} [element=undefined] - 额外的元素数据
+   * @param {MNNote} [note=MNNote.getFocusNote()] - 相关笔记
+   * @returns {string} 处理后的文本
+   * 
+   * 支持的变量：
+   * - {{note.*}} - 笔记相关信息（通过 getNoteObject 获取）
+   * - {{date.*}} - 日期相关信息（通过 getDateObject 获取）
+   * - {{clipboardText}} - 剪贴板文本
+   * - {{selectionText}} - 当前选中的文本
+   * - {{currentDocName}} - 当前文档名称
+   * - {{currentDocAttach}} - 当前文档附件
+   * - {{element}} - 传入的元素数据
+   * - {{cursor}} - 光标位置占位符
+   * - {{isSelectionImage}} - 是否选中图片
+   * - {{isSelectionText}} - 是否选中文本
+   * 
+   * @example
+   * // 使用笔记信息
+   * let template = "标题：{{note.title}}\n日期：{{date.year}}-{{date.month}}-{{date.day}}"
+   * let result = pluginDemoUtils.detectAndReplace(template)
+   * // "标题：我的笔记\n日期：2024-01-01"
+   * 
+   * // 使用系统信息
+   * let sysTemplate = "从 {{currentDocName}} 复制：{{selectionText}}"
+   * let sysResult = pluginDemoUtils.detectAndReplace(sysTemplate)
+   * 
+   * // 传入额外元素
+   * let customTemplate = "处理结果：{{element}}"
+   * let customResult = pluginDemoUtils.detectAndReplace(customTemplate, "成功")
+   * // "处理结果：成功"
+   */
   static detectAndReplace(text,element=undefined,note = MNNote.getFocusNote()) {
     let noteConfig = this.getNoteObject(note,{},{parent:true,child:true,parentLevel:3})
     // MNUtil.copy(noteConfig)
@@ -1944,19 +3448,68 @@ class pluginDemoUtils {
     return output
   }
   /**
+   * 🔮 使用笔记信息替换模板变量
    * 
-   * @param {string} text 
-   * @param {MbBookNote|MNNote} note 
-   * @returns 
+   * detectAndReplace 的简化版本，专门用于处理笔记相关的变量替换。
+   * 内部调用 getVarInfoWithNote 获取变量值。
+   * 
+   * @param {string} text - 包含模板变量的文本
+   * @param {MbBookNote|MNNote} note - 相关笔记
+   * @returns {string} 替换后的文本
+   * 
+   * @example
+   * // 生成笔记摘要
+   * let template = "《{{title}}》\nID: {{noteId}}\n来源：{{currentDocName}}"
+   * let note = MNNote.getFocusNote()
+   * let summary = pluginDemoUtils.detectAndReplaceWithNote(template, note)
+   * 
+   * // 批量处理
+   * let notes = MNNote.getFocusNotes()
+   * notes.forEach(note => {
+   *   let text = pluginDemoUtils.detectAndReplaceWithNote(
+   *     "- [ ] {{title}} ({{noteId}})",
+   *     note
+   *   )
+   *   console.log(text)
+   * })
    */
   static detectAndReplaceWithNote(text,note) {
     let config = this.getVarInfoWithNote(text,note)
     return this.replacVar(text,config)
   }
   /**
-   * 递归解析列表项及其子列表
-   * @param {object[]} items 
-   * @returns 
+   * 📝 递归解析列表项及其子列表
+   * 
+   * 将 Markdown 解析器生成的列表项数组转换为树形结构。
+   * 支持多级嵌套列表，保留列表类型信息。
+   * 
+   * @param {object[]} items - Markdown 列表项数组（来自 marked.js）
+   * @returns {object[]} 树形结构的节点数组
+   * 
+   * 返回的节点结构：
+   * - name: 列表项文本
+   * - children: 子节点数组
+   * - type: 节点类型
+   * - hasList: 是否包含子列表
+   * - listText: 子列表的原始文本
+   * - listStart: 有序列表的起始编号
+   * - listOrdered: 是否为有序列表
+   * 
+   * @example
+   * // 输入的列表项
+   * let items = [
+   *   { text: "第一项", tokens: [...] },
+   *   { text: "第二项", tokens: [
+   *     { type: 'list', items: [...] }  // 包含子列表
+   *   ]}
+   * ]
+   * 
+   * // 解析结果
+   * let nodes = pluginDemoUtils.processList(items)
+   * // [
+   * //   { name: "第一项", children: [], type: "list_item" },
+   * //   { name: "第二项", children: [...], type: "list_item", hasList: true }
+   * // ]
    */
   static processList(items) {
   return items.map(item => {
@@ -1981,18 +3534,74 @@ class pluginDemoUtils {
     return node;
   });
 }
-static getUnformattedText(token) {
-  if ("tokens" in token && token.tokens.length === 1) {
-    return this.getUnformattedText(token.tokens[0])
-  }else{
-    return token.text
+  /**
+   * 📄 获取无格式的纯文本
+   * 
+   * 递归提取 token 中的纯文本内容，忽略格式标记。
+   * 用于从 Markdown 解析结果中获取干净的文本。
+   * 
+   * @param {Object} token - Markdown token 对象
+   * @returns {string} 纯文本内容
+   * 
+   * @example
+   * // 处理带格式的标题
+   * let token = {
+   *   type: "heading",
+   *   tokens: [{
+   *     type: "strong",
+   *     text: "重要标题"
+   *   }]
+   * }
+   * let text = pluginDemoUtils.getUnformattedText(token)
+   * // "重要标题"（去除了加粗格式）
+   */
+  static getUnformattedText(token) {
+    if ("tokens" in token && token.tokens.length === 1) {
+      return this.getUnformattedText(token.tokens[0])
+    }else{
+      return token.text
+    }
   }
-}
-/**
- * 构建树结构（整合标题和列表解析）
- * @param {object[]} tokens 
- * @returns 
- */
+  /**
+   * 🌳 构建树结构（整合标题和列表解析）
+   * 
+   * 将 Markdown tokens 转换为层级树结构。
+   * 根据标题级别和列表嵌套关系构建完整的文档大纲。
+   * 
+   * @param {object[]} tokens - Markdown 解析后的 token 数组
+   * @returns {Object} 树形结构的根节点
+   * 
+   * 构建规则：
+   * - 标题根据深度（h1-h6）形成层级
+   * - 列表作为当前节点的子节点
+   * - 段落文本附加到当前节点
+   * - 忽略空格和分隔线
+   * 
+   * @example
+   * // Markdown 文本
+   * let markdown = `
+   * # 第一章
+   * ## 1.1 简介
+   * - 要点一
+   * - 要点二
+   * ## 1.2 详情
+   * # 第二章
+   * `
+   * 
+   * // 构建树
+   * let tokens = marked.lexer(markdown)
+   * let tree = pluginDemoUtils.buildTree(tokens)
+   * // tree = {
+   * //   name: '中心主题',
+   * //   children: [
+   * //     { name: '第一章', children: [
+   * //       { name: '1.1 简介', children: [...] },
+   * //       { name: '1.2 详情', children: [] }
+   * //     ]},
+   * //     { name: '第二章', children: [] }
+   * //   ]
+   * // }
+   */
   static buildTree(tokens) {
   const root = { name: '中心主题', children: [] };
   const stack = [{ node: root, depth: 0 }]; // 用栈跟踪层级
@@ -2041,58 +3650,191 @@ static getUnformattedText(token) {
   });
   return root;
 }
+  /**
+   * 🌲 Markdown 转抽象语法树（AST）
+   * 
+   * 将 Markdown 文本解析为树形结构的 AST。
+   * 这是构建脑图、大纲等功能的基础。
+   * 
+   * @param {string} markdown - Markdown 格式的文本
+   * @returns {Object} 抽象语法树的根节点
+   * 
+   * @example
+   * let markdown = `
+   * # 主题
+   * ## 子主题1
+   * - 内容1
+   * - 内容2
+   * ## 子主题2
+   * `
+   * 
+   * let ast = pluginDemoUtils.markdown2AST(markdown)
+   * // 可以用于生成脑图
+   * pluginDemoUtils.AST2Mindmap(focusNote, ast)
+   */
   static markdown2AST(markdown){
     let tokens = marked.lexer(markdown)
     // MNUtil.copy(tokens)
     return this.buildTree(tokens)
   }
-static  containsMathFormula(markdownText) {
+  /**
+   * 🧮 检查文本是否包含数学公式
+   * 
+   * 检测 Markdown 文本中是否包含 LaTeX 数学公式。
+   * 支持行内公式（$...$）和块级公式（$$...$$）。
+   * 
+   * @param {string} markdownText - 要检查的文本
+   * @returns {boolean} 是否包含数学公式
+   * 
+   * @example
+   * pluginDemoUtils.containsMathFormula("这是公式：$E=mc^2$")     // true
+   * pluginDemoUtils.containsMathFormula("$$\\int_0^1 x dx$$")     // true
+   * pluginDemoUtils.containsMathFormula("普通文本")               // false
+   * 
+   * // 用于决定是否启用 Markdown 模式
+   * if (pluginDemoUtils.containsMathFormula(text)) {
+   *   note.excerptTextMarkdown = true
+   * }
+   */
+  static  containsMathFormula(markdownText) {
     // 正则表达式匹配单美元符号包裹的公式
     const inlineMathRegex = /\$[^$]+\$/;
     // 正则表达式匹配双美元符号包裹的公式
     const blockMathRegex = /\$\$[^$]+\$\$/;
     // 检查是否包含单美元或双美元符号包裹的公式
     return inlineMathRegex.test(markdownText) || blockMathRegex.test(markdownText);
-}
-static  containsUrl(markdownText) {
+  }
+  /**
+   * 🔗 检查文本是否包含 URL
+   * 
+   * 检测文本中是否包含网址链接。
+   * 支持 http/https 协议和 www 开头的网址。
+   * 
+   * @param {string} markdownText - 要检查的文本
+   * @returns {boolean} 是否包含 URL
+   * 
+   * @example
+   * pluginDemoUtils.containsUrl("访问 https://example.com")    // true
+   * pluginDemoUtils.containsUrl("查看 www.example.com")        // true
+   * pluginDemoUtils.containsUrl("普通文本")                     // false
+   * 
+   * // 用于决定是否保留 Markdown 格式
+   * if (pluginDemoUtils.containsUrl(text)) {
+   *   config.excerptTextMarkdown = true
+   * }
+   */
+  static  containsUrl(markdownText) {
     // 正则表达式匹配常见的网址格式
     const urlPattern = /https?:\/\/[^\s]+|www\.[^\s]+/i;
     
     // 使用正则表达式测试文本
     return urlPattern.test(markdownText);
-}
+  }
 
-static removeMarkdownFormat(markdownStr) {
-  return markdownStr
-    // 移除加粗 ** ** 和 __ __
-    .replace(/\*\*(\S(.*?\S)?)\*\*/g, '$1')
-    .replace(/__(\S(.*?\S)?)__/g, '$1')
-    // 移除斜体 * * 和 _ _
-    .replace(/\*(\S(.*?\S)?)\*/g, '$1')
-    .replace(/_(\S(.*?\S)?)_/g, '$1')
-    // 移除删除线 ~~ ~~
-    .replace(/~~(\S(.*?\S)?)~~/g, '$1')
-    // 移除内联代码 ` `
-    .replace(/`([^`]+)`/g, '$1')
-    // 移除链接 [text](url)
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    // 移除图片 ![alt](url)
-    .replace(/!\[([^\]]+)\]\([^)]+\)/g, '$1')
-    // 移除标题 # 和 ##
-    .replace(/^#{1,6}\s+/gm, '')
-    // 移除部分列表符号（*、-、+.）
-    .replace(/^[\s\t]*([-*+]\.)\s+/gm, '')
-    // 移除块引用 >
-    .replace(/^>\s+/gm, '')
-    // 移除水平线 ---
-    .replace(/^[-*]{3,}/gm, '')
-    // 移除HTML标签（简单处理）
-    .replace(/<[^>]+>/g, '')
-    // 合并多个空行
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-static getConfig(text){
+  /**
+   * 🧹 移除 Markdown 格式标记
+   * 
+   * 将 Markdown 格式的文本转换为纯文本。
+   * 移除所有格式标记，保留实际内容。
+   * 
+   * @param {string} markdownStr - Markdown 格式的文本
+   * @returns {string} 纯文本
+   * 
+   * 移除的格式：
+   * - 加粗：`**text**` 和 `__text__`
+   * - 斜体：`*text*` 和 `_text_`
+   * - 删除线：`~~text~~`
+   * - 内联代码：`code`
+   * - 链接：`[text](url)`
+   * - 图片：`![alt](url)`
+   * - 标题：`# Title`
+   * - 列表符号：`- item`
+   * - 引用：`> quote`
+   * - 分隔线：`---`
+   * - HTML 标签：`<tag>`
+   * 
+   * @example
+   * let markdown = "**重要**：请查看 [文档](http://example.com)"
+   * let plainText = pluginDemoUtils.removeMarkdownFormat(markdown)
+   * // "重要：请查看 文档"
+   * 
+   * let complex = "# 标题\n- **列表项1**\n- *列表项2*\n> 引用"
+   * let plain = pluginDemoUtils.removeMarkdownFormat(complex)
+   * // "标题\n列表项1\n列表项2\n引用"
+   */
+  static removeMarkdownFormat(markdownStr) {
+    return markdownStr
+      // 移除加粗 ** ** 和 __ __
+      .replace(/\*\*(\S(.*?\S)?)\*\*/g, '$1')
+      .replace(/__(\S(.*?\S)?)__/g, '$1')
+      // 移除斜体 * * 和 _ _
+      .replace(/\*(\S(.*?\S)?)\*/g, '$1')
+      .replace(/_(\S(.*?\S)?)_/g, '$1')
+      // 移除删除线 ~~ ~~
+      .replace(/~~(\S(.*?\S)?)~~/g, '$1')
+      // 移除内联代码 ` `
+      .replace(/`([^`]+)`/g, '$1')
+      // 移除链接 [text](url)
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      // 移除图片 ![alt](url)
+      .replace(/!\[([^\]]+)\]\([^)]+\)/g, '$1')
+      // 移除标题 # 和 ##
+      .replace(/^#{1,6}\s+/gm, '')
+      // 移除部分列表符号（*、-、+.）
+      .replace(/^[\s\t]*([-*+]\.)\s+/gm, '')
+      // 移除块引用 >
+      .replace(/^>\s+/gm, '')
+      // 移除水平线 ---
+      .replace(/^[-*]{3,}/gm, '')
+      // 移除HTML标签（简单处理）
+      .replace(/<[^>]+>/g, '')
+      // 合并多个空行
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+  /**
+   * 🎯 智能解析文本生成笔记配置
+   * 
+   * 根据文本内容智能判断应该如何创建笔记。
+   * 支持识别数学公式、URL、标题与内容的分隔等。
+   * 
+   * @param {string} text - 要解析的文本
+   * @returns {Object} 笔记配置对象
+   * 
+   * 解析规则：
+   * 1. 包含数学公式 → 启用 Markdown 模式
+   * 2. 包含 URL → 启用 Markdown 模式
+   * 3. 包含冒号分隔 → 前半部分为标题，后半部分为摘录
+   * 4. 长度超过 50 字符 → 作为摘录
+   * 5. 其他情况 → 作为标题
+   * 
+   * 返回的配置：
+   * - title: 笔记标题
+   * - excerptText: 摘录文本
+   * - excerptTextMarkdown: 是否启用 Markdown
+   * 
+   * @example
+   * // 数学公式
+   * let config1 = pluginDemoUtils.getConfig("定理：$a^2 + b^2 = c^2$")
+   * // { title: "定理", excerptText: "$a^2 + b^2 = c^2$", excerptTextMarkdown: true }
+   * 
+   * // URL
+   * let config2 = pluginDemoUtils.getConfig("参考：https://example.com")
+   * // { excerptText: "参考：https://example.com", excerptTextMarkdown: true }
+   * 
+   * // 标题与内容
+   * let config3 = pluginDemoUtils.getConfig("重要：这是一个重要的概念")
+   * // { title: "重要", excerptText: "这是一个重要的概念" }
+   * 
+   * // 短文本
+   * let config4 = pluginDemoUtils.getConfig("简短标题")
+   * // { title: "简短标题" }
+   * 
+   * // 长文本
+   * let config5 = pluginDemoUtils.getConfig("这是一段很长的文本..." + "x".repeat(50))
+   * // { excerptText: "这是一段很长的文本...xxx..." }
+   */
+  static getConfig(text){
   let hasMathFormula = this.containsMathFormula(text)
   if (hasMathFormula) {
     if (/\:/.test(text)) {
@@ -2152,11 +3894,40 @@ static getConfig(text){
   return {title:text}
 }
   /**
- * 
- * @param {MNNote} note 
- * @param {Object} ast 
- */
-static AST2Mindmap(note,ast,level = "all") {
+   * 🗺️ 将抽象语法树转换为脑图
+   * 
+   * 递归地将 AST 结构转换为 MarginNote 的脑图笔记。
+   * 自动处理标题层级、列表结构，智能识别标题与内容。
+   * 
+   * @param {MNNote} note - 父笔记节点
+   * @param {Object} ast - 抽象语法树节点
+   * @param {string} [level="all"] - 处理层级（保留参数）
+   * 
+   * 转换规则：
+   * 1. 根据文本内容智能判断标题和摘录
+   * 2. 保留列表的编号（有序列表）
+   * 3. 处理嵌套的子节点
+   * 4. 跳过分隔线（hr）
+   * 5. 智能合并标题与后续内容
+   * 
+   * @example
+   * // 从 Markdown 创建脑图
+   * let markdown = `
+   * # 主题
+   * ## 概念1
+   * 定义：这是概念1的定义
+   * ## 概念2
+   * - 要点A
+   * - 要点B
+   * `
+   * 
+   * let ast = pluginDemoUtils.markdown2AST(markdown)
+   * let rootNote = MNNote.getFocusNote()
+   * pluginDemoUtils.AST2Mindmap(rootNote, ast)
+   * 
+   * // 结果：在 rootNote 下创建对应的脑图结构
+   */
+  static AST2Mindmap(note,ast,level = "all") {
 try {
   if (ast.children && ast.children.length) {
     let hasList = ast.hasList

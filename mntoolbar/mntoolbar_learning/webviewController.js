@@ -1,56 +1,103 @@
 // JSB.require('utils')
 // JSB.require('settingController');
-/** @return {pluginDemoController} */
+
+/**
+ * 【重要】获取工具栏控制器的单例实例
+ * 
+ * 在 JSB 框架中，不能在方法内部使用 let self = this，因为 this 的行为不同于标准 JS
+ * 必须使用这种方式：先定义获取实例的函数，然后在方法内部调用
+ * 
+ * @return {pluginDemoController} 返回当前控制器的单例实例
+ */
 const getToolbarController = ()=>self
 
+/**
+ * 工具栏主控制器类
+ * 
+ * 这是整个插件的核心控制器，负责：
+ * 1. 管理工具栏的 UI 界面（按钮、布局、动画等）
+ * 2. 处理用户交互（点击、长按、拖动等手势）
+ * 3. 与其他插件模块通信（通过通知机制）
+ * 
+ * 继承关系：
+ * - UIViewController: iOS 的视图控制器基类
+ * - UIImagePickerControllerDelegate: 图片选择器代理（用于 OCR 等功能）
+ * - UINavigationControllerDelegate: 导航控制器代理
+ */
 var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewController <UIImagePickerControllerDelegate,UINavigationControllerDelegate>', {
+  /**
+   * 视图加载完成后的初始化方法
+   * 
+   * 这是 iOS 生命周期方法，当视图控制器的视图加载到内存后调用
+   * 在这里进行所有的初始化设置
+   */
   viewDidLoad: function() {
   try {
     
+    // 【重要】获取控制器实例，后续所有操作都基于这个 self
     let self = getToolbarController()
-    self.custom = false;
-    self.customMode = "None"
-    self.miniMode = false;
-    self.isLoading = false;
-    self.lastFrame = self.view.frame;
-    self.currentFrame = self.view.frame
-    self.maxButtonNumber = 30
-    self.buttonNumber = 9
-    self.isMac = MNUtil.version.type === "macOS"
+    // ========== 初始化控制器状态属性 ==========
+    self.custom = false;              // 是否自定义模式
+    self.customMode = "None"          // 自定义模式类型
+    self.miniMode = false;            // 是否迷你模式
+    self.isLoading = false;           // 是否正在加载
+    self.lastFrame = self.view.frame;    // 记录上一次的视图框架（用于动画）
+    self.currentFrame = self.view.frame  // 当前视图框架
+    self.maxButtonNumber = 30         // 工具栏最多可显示的按钮数量
+    self.buttonNumber = 9             // 当前显示的按钮数量
+    self.isMac = MNUtil.version.type === "macOS"  // 判断是否 macOS（用于平台差异处理）
+    // ========== 根据窗口类型设置按钮数量 ==========
     if (self.dynamicWindow) {
+      // 动态窗口模式：从配置中读取按钮数量
       // self.maxButtonNumber = 9
       self.buttonNumber = pluginDemoConfig.getWindowState("dynamicButton");
     }else{
+      // 固定窗口模式：根据上次保存的框架计算按钮数量
       let lastFrame = pluginDemoConfig.getWindowState("frame")
       if (lastFrame) {
-        // MNUtil.copyJSON(lastFrame)
-        //兼容两个方向的工具栏
+        // MNUtil.copyJSON(lastFrame)  // 调试用：复制框架信息到剪贴板
+        // 兼容两个方向的工具栏（横向和纵向）
+        // 每个按钮占 45 像素，根据工具栏尺寸计算能容纳多少按钮
         self.buttonNumber = Math.floor(Math.max(lastFrame.width,lastFrame.height)/45)
       }
     }
-    // self.buttonNumber = 9
-    self.mode = 0
-    self.sideMode = pluginDemoConfig.getWindowState("sideMode")
-    self.splitMode = pluginDemoConfig.getWindowState("splitMode")
-    self.moveDate = Date.now()
-    self.settingMode = false
-    self.view.layer.shadowOffset = {width: 0, height: 0};
-    self.view.layer.shadowRadius = 15;
-    self.view.layer.shadowOpacity = 0.5;
+    // self.buttonNumber = 9  // 可以强制设置按钮数量（调试用）
+    
+    // ========== 工具栏模式和状态 ==========
+    self.mode = 0         // 工具栏模式（0：默认模式）
+    self.sideMode = pluginDemoConfig.getWindowState("sideMode")   // 侧边模式（left/right/空）
+    self.splitMode = pluginDemoConfig.getWindowState("splitMode") // 分屏模式（true/false）
+    self.moveDate = Date.now()  // 记录移动时间（用于防抖）
+    self.settingMode = false    // 是否在设置模式
+    // ========== 设置工具栏视图的外观 ==========
+    // 阴影效果设置
+    self.view.layer.shadowOffset = {width: 0, height: 0};  // 阴影偏移
+    self.view.layer.shadowRadius = 15;                     // 阴影模糊半径
+    self.view.layer.shadowOpacity = 0.5;                   // 阴影不透明度
+    // 使用配置中的颜色和透明度设置阴影颜色
     self.view.layer.shadowColor = MNUtil.hexColorAlpha(pluginDemoConfig.buttonConfig.color, pluginDemoConfig.buttonConfig.alpha)
-    self.view.layer.opacity = 1.0
-    self.view.layer.cornerRadius = 5
-    self.view.backgroundColor = UIColor.whiteColor().colorWithAlphaComponent(0)
-    self.view.mnpluginDemo = true
+    
+    // 视图基本样式
+    self.view.layer.opacity = 1.0         // 视图不透明度
+    self.view.layer.cornerRadius = 5      // 圆角半径
+    self.view.backgroundColor = UIColor.whiteColor().colorWithAlphaComponent(0)  // 透明背景
+    self.view.mnpluginDemo = true         // 标记这是插件的视图（用于识别）
+    // ========== 配置工具栏按钮 ==========
+    // 检查是否使用动态排序（用户可以自定义按钮顺序）
     let dynamicOrder = pluginDemoConfig.getWindowState("dynamicOrder")
     let useDynamic = dynamicOrder && self.dynamicWindow
 
     if (self.dynamicWindow) {
+      // 动态窗口模式
+      // 兼容旧版本：如果按钮数组只有 27 个，添加 9 个自定义按钮槽位
       if (pluginDemoConfig.dynamicAction.length == 27) {
         pluginDemoConfig.dynamicAction = pluginDemoConfig.dynamicAction.concat(["custom1","custom2","custom3","custom4","custom5","custom6","custom7","custom8","custom9"])
       }
+      // 根据是否使用动态排序来设置按钮
       self.setToolbarButton(useDynamic ? pluginDemoConfig.dynamicAction:pluginDemoConfig.action)
     }else{
+      // 固定窗口模式
+      // 同样添加自定义按钮槽位
       if (pluginDemoConfig.action.length == 27) {
         pluginDemoConfig.action = pluginDemoConfig.action.concat(["custom1","custom2","custom3","custom4","custom5","custom6","custom7","custom8","custom9"])
       }
@@ -58,83 +105,130 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
     }
     
 
+    // ========== 创建最大化按钮 ==========
     // >>> max button >>>
-    self.maxButton = UIButton.buttonWithType(0);
-    // self.setButtonLayout(self.maxButton,"maxButtonTapped:")
-    self.maxButton.setTitleForState('➕', 0);
-    self.maxButton.titleLabel.font = UIFont.systemFontOfSize(10);
+    self.maxButton = UIButton.buttonWithType(0);  // 创建自定义类型的按钮（0 表示 custom）
+    // self.setButtonLayout(self.maxButton,"maxButtonTapped:")  // 设置按钮布局（暂时注释）
+    self.maxButton.setTitleForState('➕', 0);  // 设置按钮标题，0 表示 normal 状态
+    self.maxButton.titleLabel.font = UIFont.systemFontOfSize(10);  // 设置字体大小
     // <<< max button <<<
 
 
+    // ========== 创建控制按钮（已注释的按钮） ==========
     // <<< search button <<<
     // >>> move button >>>
-    // self.moveButton = UIButton.buttonWithType(0);
+    // self.moveButton = UIButton.buttonWithType(0);  // 移动按钮（已弃用）
     // self.setButtonLayout(self.moveButton)
     // <<< move button <<<
-    // self.imageModeButton.setTitleForState('🔍', 0);
-    // self.tabButton      = UIButton.buttonWithType(0);
-        // >>> screen button >>>
+    // self.imageModeButton.setTitleForState('🔍', 0);  // 图片模式按钮（已弃用）
+    // self.tabButton      = UIButton.buttonWithType(0);  // 标签按钮（已弃用）
+    
+    // ========== 创建屏幕切换按钮（用于改变工具栏方向） ==========
+    // >>> screen button >>>
     self.screenButton = UIButton.buttonWithType(0);
-    self.setButtonLayout(self.screenButton,"changeScreen:")
-    self.screenButton.layer.cornerRadius = 7;
-    self.screenButton.width = 40//竖向下的宽度
-    self.screenButton.height = 15//竖向下的高度
+    self.setButtonLayout(self.screenButton,"changeScreen:")  // 绑定点击事件到 changeScreen: 方法
+    self.screenButton.layer.cornerRadius = 7;  // 设置圆角
+    self.screenButton.width = 40   // 竖向模式下的宽度
+    self.screenButton.height = 15  // 竖向模式下的高度
+    // 键盘快捷键相关（已注释，可能用于 macOS）
     // let command = self.keyCommandWithInputModifierFlagsAction('d',1 << 0,'test:')
     // let command = UIKeyCommand.keyCommandWithInputModifierFlagsAction('d',1 << 0,'test:')
     // <<< screen button <<<
-    // if (self.isMac) {
-      self.addPanGesture(self.view, "onMoveGesture:")
+    
+    // ========== 添加手势识别器 ==========
+    // 拖动手势：用于移动整个工具栏
+    // if (self.isMac) {  // 原本只在 Mac 上启用，现在所有平台都启用
+      self.addPanGesture(self.view, "onMoveGesture:")  // 给整个视图添加拖动手势
     // }else{
-      // self.addLongPressGesture(self.screenButton, "onLongPressGesture:")
+      // self.addLongPressGesture(self.screenButton, "onLongPressGesture:")  // iOS 上的长按手势（已弃用）
     // }
+    
+    // 调整大小手势：通过拖动屏幕按钮来调整工具栏大小
     self.addPanGesture(self.screenButton, "onResizeGesture:")
-    // self.addSwipeGesture(self.screenButton, "onSwipeGesture:")
+    // self.addSwipeGesture(self.screenButton, "onSwipeGesture:")  // 滑动手势（已弃用）
 
-    // self.resizeGesture.addTargetAction(self,"onResizeGesture:")
+    // self.resizeGesture.addTargetAction(self,"onResizeGesture:")  // 另一种添加手势的方式（已弃用）
+    
   } catch (error) {
+    // 错误处理：记录错误日志，防止插件崩溃
     pluginDemoUtils.addErrorLog(error, "viewDidLoad")
   }
   },
+  /**
+   * 视图即将显示时调用
+   * @param {boolean} animated - 是否使用动画
+   */
   viewWillAppear: function(animated) {
+    // 暂时没有实现内容
   },
+  
+  /**
+   * 视图即将消失时调用
+   * @param {boolean} animated - 是否使用动画
+   */
   viewWillDisappear: function(animated) {
+    // 暂时没有实现内容
   },
-// onPencilDoubleTap(){
-//   MNUtil.showHUD("message")
-// },
-// onPencilDoubleTapPerform(perform){
-//   MNUtil.showHUD("message")
-// },
-viewWillLayoutSubviews: function() {
-  let self = getToolbarController()
-  if (self.onAnimate) {
-    return
-  }
-  self.setToolbarLayout()
-
+  // ========== Apple Pencil 双击手势处理（已注释，可能用于 iPad） ==========
+  // onPencilDoubleTap(){
+  //   MNUtil.showHUD("message")
+  // },
+  // onPencilDoubleTapPerform(perform){
+  //   MNUtil.showHUD("message")
+  // },
+  
+  /**
+   * 视图即将布局子视图时调用
+   * 
+   * 这是 iOS 布局系统的回调，当视图的 bounds 改变时会触发
+   * 在这里重新计算和设置工具栏按钮的布局
+   */
+  viewWillLayoutSubviews: function() {
+    let self = getToolbarController()
+    // 如果正在执行动画，跳过布局更新（避免动画被打断）
+    if (self.onAnimate) {
+      return
+    }
+    // 更新工具栏布局
+    self.setToolbarLayout()
   },
+  /**
+   * 滚动视图滚动时的回调
+   * 目前未使用，可能预留给未来功能
+   */
   scrollViewDidScroll: function() {
   },
+  /**
+   * 改变工具栏透明度的菜单
+   * @param {UIButton} sender - 触发事件的按钮
+   */
   changeOpacity: function(sender) {
-    self.checkPopover()
-    // if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
+    self.checkPopover()  // 检查并关闭已存在的弹出菜单
+    
+    // 创建菜单控制器
     var menuController = MenuController.new();
+    // 定义透明度选项菜单
     menuController.commandTable = [
-      {title:'100%',object:self,selector:'changeOpacityTo:',param:1.0},
+      {title:'100%',object:self,selector:'changeOpacityTo:',param:1.0},  // 完全不透明
       {title:'90%',object:self,selector:'changeOpacityTo:',param:0.9},
       {title:'80%',object:self,selector:'changeOpacityTo:',param:0.8},
       {title:'70%',object:self,selector:'changeOpacityTo:',param:0.7},
       {title:'60%',object:self,selector:'changeOpacityTo:',param:0.6},
-      {title:'50%',object:self,selector:'changeOpacityTo:',param:0.5}
+      {title:'50%',object:self,selector:'changeOpacityTo:',param:0.5}   // 半透明
     ];
-    menuController.rowHeight = 35;
+    menuController.rowHeight = 35;  // 每行高度
+    // 设置菜单大小
     menuController.preferredContentSize = {
       width: 100,
       height: menuController.rowHeight * menuController.commandTable.length
     };
-    var studyView = MNUtil.studyView
+    
+    // 在 studyView 中显示弹出菜单
+    var studyView = MNUtil.studyView  // 获取学习视图（MarginNote 的主视图）
     self.popoverController = new UIPopoverController(menuController);
+    // 将按钮坐标转换到 studyView 坐标系
     var r = sender.convertRectToView(sender.bounds,studyView);
+    // presentPopoverFromRect: 显示弹出菜单，1 << 1 表示箭头向下
     self.popoverController.presentPopoverFromRect(r, studyView, 1 << 1, true);
   },
   changeOpacityTo:function (opacity) {

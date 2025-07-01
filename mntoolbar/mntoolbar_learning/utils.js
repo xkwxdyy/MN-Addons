@@ -7629,6 +7629,37 @@ static async getTextVarInfo(text,userInput) {
   }
 }
 
+/**
+ * ⚙️ 插件配置管理类
+ * 
+ * 管理 MN Toolbar 插件的所有配置项，包括：
+ * - 按钮配置和动作映射
+ * - 窗口状态和界面设置
+ * - 云同步配置
+ * - 弹出菜单替换配置
+ * 
+ * 本类使用静态属性和方法，不需要实例化。
+ * 所有配置都存储在本地，支持 iCloud 同步。
+ * 
+ * @class
+ * 
+ * @example
+ * // 初始化配置（在插件启动时）
+ * pluginDemoConfig.init(self.path)
+ * 
+ * // 读取配置
+ * let buttons = pluginDemoConfig.action
+ * let windowState = pluginDemoConfig.windowState
+ * 
+ * // 保存配置
+ * pluginDemoConfig.windowState.frame = newFrame
+ * pluginDemoConfig.save()
+ * 
+ * // 检查云同步
+ * if (pluginDemoConfig.iCloudSync) {
+ *   pluginDemoConfig.syncToCloud()
+ * }
+ */
 class pluginDemoConfig {
   // 构造器方法，用于初始化新创建的对象
   constructor(name) {
@@ -7867,6 +7898,33 @@ class pluginDemoConfig {
    */
   static cloudStore
   // static defaultConfig = {showEditorWhenEditingNote:false}
+  /**
+   * 🚀 初始化配置系统
+   * 
+   * 加载所有配置项，设置默认值，初始化必要的资源。
+   * 这是插件启动时必须调用的方法。
+   * 
+   * @param {string} mainPath - 插件主目录路径
+   * 
+   * 初始化内容：
+   * - 加载窗口状态配置
+   * - 加载按钮和动作配置
+   * - 设置高亮颜色
+   * - 创建按钮图片目录
+   * - 初始化弹出菜单配置
+   * - 检查云存储状态
+   * 
+   * @example
+   * // 在插件启动时调用
+   * sceneWillConnect: function() {
+   *   pluginDemoConfig.init(self.path)
+   *   // 后续初始化...
+   * }
+   * 
+   * // 初始化后可以访问配置
+   * let buttons = pluginDemoConfig.action
+   * let windowState = pluginDemoConfig.windowState
+   */
   static init(mainPath){
     // this.config = this.getByDefault("MNToolbar_config",this.defaultConfig)
     try {
@@ -7924,6 +7982,31 @@ class pluginDemoConfig {
     this.initImage()
     this.checkCloudStore(false)
   }
+  /**
+   * ☁️ 检查并初始化云存储
+   * 
+   * 检查 iCloud 键值存储是否已初始化，如果未初始化则进行初始化。
+   * 用于替代旧的 initCloudStore 方法，提供更灵活的控制。
+   * 
+   * @param {boolean} [notification=true] - 是否发送云存储变更通知
+   * 
+   * 特性：
+   * - 单例模式，避免重复初始化
+   * - 可选的通知发送，避免不必要的同步
+   * - 自动获取系统默认的 iCloud 存储
+   * 
+   * @example
+   * // 初始化时检查云存储（不发送通知）
+   * pluginDemoConfig.checkCloudStore(false)
+   * 
+   * // 准备同步时检查（发送通知）
+   * pluginDemoConfig.checkCloudStore(true)
+   * 
+   * // 之后可以使用云存储
+   * if (pluginDemoConfig.cloudStore) {
+   *   pluginDemoConfig.cloudStore.setObjectForKey(config, "key")
+   * }
+   */
   static checkCloudStore(notification = true){//用于替代initCloudStore
     if (!this.cloudStore) {
       this.cloudStore = NSUbiquitousKeyValueStore.defaultStore()
@@ -7932,17 +8015,78 @@ class pluginDemoConfig {
       }
     }
   }
+  /**
+   * ☁️ 初始化云存储（已弃用）
+   * 
+   * @deprecated 请使用 checkCloudStore() 代替
+   * 旧版本的云存储初始化方法，总是发送通知。
+   * 保留此方法是为了向后兼容。
+   * 
+   * @example
+   * // 不推荐
+   * pluginDemoConfig.initCloudStore()
+   * 
+   * // 推荐
+   * pluginDemoConfig.checkCloudStore(true)
+   */
   static initCloudStore(){
     this.cloudStore = NSUbiquitousKeyValueStore.defaultStore()
     MNUtil.postNotification("NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI", {})
     // this.readCloudConfig(false)
   }
+  /**
+   * ☁️ 获取 iCloud 同步状态
+   * 
+   * 智能判断是否启用 iCloud 同步。
+   * 不仅检查用户设置，还会验证订阅状态。
+   * 
+   * @returns {boolean} 是否启用 iCloud 同步
+   * 
+   * 判断逻辑：
+   * 1. 检查用户是否有有效订阅
+   * 2. 检查用户是否在设置中启用了同步
+   * 3. 两者都满足才返回 true
+   * 
+   * @example
+   * // 检查同步状态
+   * if (pluginDemoConfig.iCloudSync) {
+   *   // 执行同步操作
+   *   pluginDemoConfig.syncToCloud()
+   * } else {
+   *   // 提示用户需要订阅或启用同步
+   *   MNUtil.showHUD("需要订阅才能使用云同步")
+   * }
+   * 
+   * // 在设置界面显示
+   * let syncEnabled = pluginDemoConfig.iCloudSync
+   * syncSwitch.on = syncEnabled
+   */
   static get iCloudSync(){//同时考虑订阅情况
     if (pluginDemoUtils.checkSubscribe(false,false,true)) {
       return this.syncConfig.iCloudSync
     }
     return false
   }
+  /**
+   * 🔍 检查是否有弹出菜单替换配置
+   * 
+   * 扫描所有弹出菜单配置，判断是否有任何一个被启用并设置了替换目标。
+   * 用于决定是否需要拦截系统的弹出菜单。
+   * 
+   * @returns {boolean} 是否有活动的弹出菜单替换
+   * 
+   * @example
+   * // 在弹出菜单处理中使用
+   * if (pluginDemoConfig.hasPopup()) {
+   *   // 拦截系统菜单，显示自定义菜单
+   *   event.preventDefault()
+   *   showCustomMenu()
+   * }
+   * 
+   * // 在设置界面提示
+   * let hasCustomPopup = pluginDemoConfig.hasPopup()
+   * statusLabel.text = hasCustomPopup ? "已启用自定义菜单" : "使用系统默认菜单"
+   */
   static hasPopup(){
     let popupConfig = this.popupConfig
     let keys = Object.keys(this.popupConfig)
@@ -7954,6 +8098,30 @@ class pluginDemoConfig {
   })
   return hasReplace
   }
+  /**
+   * 📋 获取指定弹出菜单项的配置
+   * 
+   * 获取特定菜单项的替换配置。
+   * 如果用户有自定义配置则返回用户配置，否则返回默认配置。
+   * 
+   * @param {string} key - 菜单项标识符（如 "copy", "noteHighlight" 等）
+   * @returns {Object} 弹出菜单配置对象
+   * @returns {boolean} returns.enabled - 是否启用替换
+   * @returns {string} returns.target - 替换的目标动作
+   * @returns {string} returns.name - 菜单项名称
+   * 
+   * @example
+   * // 获取复制菜单的配置
+   * let copyConfig = pluginDemoConfig.getPopupConfig("copy")
+   * if (copyConfig.enabled && copyConfig.target) {
+   *   // 执行自定义复制动作
+   *   performAction(copyConfig.target)
+   * }
+   * 
+   * // 检查某个菜单是否被替换
+   * let config = pluginDemoConfig.getPopupConfig("noteHighlight")
+   * console.log(`笔记高亮：${config.enabled ? "已自定义" : "系统默认"}`)
+   */
   static getPopupConfig(key){
     if (this.popupConfig[key] !== undefined) {
       return this.popupConfig[key]
@@ -8003,6 +8171,38 @@ class pluginDemoConfig {
     }
     return true;
   }
+  /**
+   * 📦 获取所有配置
+   * 
+   * 打包所有配置项为一个对象，用于导出、同步或备份。
+   * 包含工具栏的所有设置和状态信息。
+   * 
+   * @returns {Object} 完整的配置对象
+   * @returns {Object} returns.windowState - 窗口状态
+   * @returns {Object} returns.syncConfig - 同步配置
+   * @returns {boolean} returns.dynamic - 是否为动态模式
+   * @returns {Object} returns.addonLogos - 插件图标
+   * @returns {string[]} returns.actionKeys - 按钮动作列表
+   * @returns {string[]} returns.dynamicActionKeys - 动态按钮列表
+   * @returns {Object} returns.actions - 动作配置
+   * @returns {Object} returns.buttonConfig - 按钮样式配置
+   * @returns {Object} returns.popupConfig - 弹出菜单配置
+   * 
+   * @example
+   * // 导出配置到剪贴板
+   * let config = pluginDemoConfig.getAllConfig()
+   * MNUtil.copyJSON(config)
+   * MNUtil.showHUD("配置已复制")
+   * 
+   * // 保存配置到文件
+   * let configData = pluginDemoConfig.getAllConfig()
+   * let json = JSON.stringify(configData, null, 2)
+   * MNUtil.writeFile(path, json)
+   * 
+   * // 同步到云端
+   * let allConfig = pluginDemoConfig.getAllConfig()
+   * cloudStore.setObjectForKey(allConfig, "MNToolbar_config")
+   */
   static getAllConfig(){
     if (this.dynamicAction.length === 0) {
       this.dynamicAction = this.action
@@ -8020,6 +8220,41 @@ class pluginDemoConfig {
     }
     return config
   }
+  /**
+   * 📥 导入配置
+   * 
+   * 从配置对象中恢复所有设置。
+   * 支持部分导入和平台差异处理。
+   * 
+   * @param {Object} config - 要导入的配置对象（通常来自 getAllConfig()）
+   * @returns {boolean} 导入是否成功
+   * 
+   * 特殊处理：
+   * - iOS 设备不导入窗口状态（界面布局不同）
+   * - 保留本地的 iCloud 同步设置
+   * - 自动处理空的动态按钮列表
+   * 
+   * @example
+   * // 从剪贴板导入配置
+   * try {
+   *   let configText = MNUtil.clipboardText
+   *   let config = JSON.parse(configText)
+   *   if (pluginDemoConfig.importConfig(config)) {
+   *     MNUtil.showHUD("✅ 配置导入成功")
+   *     pluginDemoConfig.save()
+   *   }
+   * } catch (error) {
+   *   MNUtil.showHUD("❌ 配置格式错误")
+   * }
+   * 
+   * // 从云端同步配置
+   * let cloudConfig = cloudStore.objectForKey("MNToolbar_config")
+   * if (cloudConfig && pluginDemoConfig.importConfig(cloudConfig)) {
+   *   // 更新本地配置
+   *   pluginDemoConfig.syncConfig.lastSyncTime = Date.now()
+   *   pluginDemoConfig.save()
+   * }
+   */
   static importConfig(config){
     try {
     if (!MNUtil.isIOS()) { //iOS端不参与"MNToolbar_windowState"的云同步
@@ -8045,11 +8280,66 @@ class pluginDemoConfig {
       return false
     }
   }
+  /**
+   * 🕐 获取本地配置的最新时间
+   * 
+   * 返回本地配置的最新时间戳，用于云同步冲突检测。
+   * 取同步时间和修改时间中的较大值。
+   * 
+   * @returns {number} 最新时间戳（毫秒）
+   * 
+   * @example
+   * // 检查本地是否有更新
+   * let localTime = pluginDemoConfig.getLocalLatestTime()
+   * let cloudTime = cloudConfig.lastModifyTime || 0
+   * 
+   * if (localTime > cloudTime) {
+   *   // 本地配置更新，需要上传
+   *   pluginDemoConfig.syncToCloud()
+   * } else if (cloudTime > localTime) {
+   *   // 云端配置更新，需要下载
+   *   pluginDemoConfig.readCloudConfig()
+   * }
+   */
   static getLocalLatestTime(){
     let lastSyncTime = this.syncConfig.lastSyncTime ?? 0
     let lastModifyTime = this.syncConfig.lastModifyTime ?? 0
     return Math.max(lastSyncTime,lastModifyTime)
   }
+  /**
+   * 📥 从云端读取配置
+   * 
+   * 从 iCloud 下载并应用配置。
+   * 支持强制覆盖和智能冲突处理。
+   * 
+   * @param {boolean} [msg=true] - 是否显示提示消息
+   * @param {boolean} [alert=false] - 是否显示确认对话框
+   * @param {boolean} [force=false] - 是否强制覆盖本地配置
+   * @returns {Promise<boolean>} 是否成功读取
+   * 
+   * 工作流程：
+   * 1. 检查云同步权限
+   * 2. 获取云端配置
+   * 3. 比较时间戳（非强制模式）
+   * 4. 处理冲突（如需要）
+   * 5. 导入配置
+   * 6. 更新同步时间
+   * 
+   * @example
+   * // 强制从云端恢复
+   * await pluginDemoConfig.readCloudConfig(true, false, true)
+   * 
+   * // 静默检查更新
+   * await pluginDemoConfig.readCloudConfig(false, false, false)
+   * 
+   * // 用户手动同步（带确认）
+   * await pluginDemoConfig.readCloudConfig(true, true, false)
+   * 
+   * // 自动同步检查
+   * if (pluginDemoConfig.iCloudSync) {
+   *   await pluginDemoConfig.readCloudConfig(false)
+   * }
+   */
   static async readCloudConfig(msg = true,alert = false,force = false){
     try {
     if (force) {
@@ -8142,6 +8432,47 @@ class pluginDemoConfig {
       return false
     }
   }
+  /**
+   * 📤 写入配置到云端
+   * 
+   * 将本地配置上传到 iCloud。
+   * 支持强制覆盖和智能冲突检测。
+   * 
+   * @param {boolean} [msg=true] - 是否显示提示消息
+   * @param {boolean} [force=false] - 是否强制覆盖云端配置
+   * @returns {boolean} 是否成功写入
+   * 
+   * 工作流程：
+   * 1. 检查云同步权限（非强制模式）
+   * 2. 比较本地和云端配置
+   * 3. 检测时间戳冲突
+   * 4. 上传配置
+   * 5. 更新同步时间
+   * 
+   * 特殊处理：
+   * - iOS 设备不上传窗口状态
+   * - 自动处理空的动态按钮列表
+   * - 保留云端的 iOS 窗口状态
+   * 
+   * @example
+   * // 强制上传（覆盖云端）
+   * pluginDemoConfig.writeCloudConfig(true, true)
+   * 
+   * // 静默上传（有冲突时不上传）
+   * pluginDemoConfig.writeCloudConfig(false, false)
+   * 
+   * // 用户保存时触发
+   * if (pluginDemoConfig.save()) {
+   *   pluginDemoConfig.writeCloudConfig()
+   * }
+   * 
+   * // 定期自动同步
+   * setInterval(() => {
+   *   if (pluginDemoConfig.iCloudSync) {
+   *     pluginDemoConfig.writeCloudConfig(false)
+   *   }
+   * }, 300000) // 5分钟
+   */
   static writeCloudConfig(msg = true,force = false){
   try {
     if (force) {//force下不检查订阅(由更上层完成)

@@ -2405,31 +2405,43 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
       focusNote = MNNote.getFocusNote()
     } catch (error) {
     }
-    // MNUtil.showHUD("message"+(focusNote instanceof MNNote))
+    // MNUtil.showHUD("message"+(focusNote instanceof MNNote))  // 调试：检查焦点卡片类型
     let notebookid = focusNote ? focusNote.notebookId : undefined
-    let title,content,color,config
+    let title,content,color,config  // 声明常用变量
     let targetNoteId
+    
+    // ========== 🎯 核心动作分发器 ==========
+    /**
+     * 这是工具栏的核心业务逻辑，根据 des.action 执行对应的功能
+     * 每个 case 对应一种具体的操作
+     */
     switch (des.action) {
+      // ========== ↩️ 撤销/重做操作 ==========
       case "undo":
-        UndoManager.sharedInstance().undo()
-        MNUtil.app.refreshAfterDBChanged(MNUtil.currentNotebookId)
-        await MNUtil.delay(0.1)
+        UndoManager.sharedInstance().undo()  // 执行撤销
+        MNUtil.app.refreshAfterDBChanged(MNUtil.currentNotebookId)  // 刷新界面
+        await MNUtil.delay(0.1)  // 短暂延迟确保UI更新
         break;
+        
       case "redo":
-        UndoManager.sharedInstance().redo()
-        MNUtil.app.refreshAfterDBChanged(MNUtil.currentNotebookId)
+        UndoManager.sharedInstance().redo()  // 执行重做
+        MNUtil.app.refreshAfterDBChanged(MNUtil.currentNotebookId)  // 刷新界面
         await MNUtil.delay(0.1)
         break;
+      // ========== 📋 复制/粘贴操作 ==========
       case "copy":
         if (des.target || des.content) {
+          // 有指定复制目标或内容
           success = await pluginDemoUtils.copy(des)
         }else{
+          // 智能复制：自动判断复制什么内容
           success = pluginDemoUtils.smartCopy()
         }
         break;
+        
       case "paste":
-        pluginDemoUtils.paste(des)
-        await MNUtil.delay(0.1)
+        pluginDemoUtils.paste(des)  // 执行粘贴操作
+        await MNUtil.delay(0.1)     // 等待粘贴完成
         break;
       case "markdown2Mindmap":
         pluginDemoUtils.markdown2Mindmap(des)
@@ -2535,28 +2547,34 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
         pluginDemoUtils.moveNote(des)
         await MNUtil.delay(0.1)
         break;
-      case "addChildNote"://不支持多选
+      // ========== 📝 添加子卡片 ==========
+      case "addChildNote":  // 注意：不支持多选
         if (!des.hideMessage) {
-          MNUtil.showHUD("addChildNote")
+          MNUtil.showHUD("addChildNote")  // 显示操作提示
         }
-        config = {}
+        config = {}  // 配置对象
+        // 📝 设置标题
         if (des.title) {
-          config.title = pluginDemoUtils.detectAndReplace(des.title)
+          config.title = pluginDemoUtils.detectAndReplace(des.title)  // 支持变量替换
         }
+        // 📄 设置内容
         if (des.content) {
           config.content = pluginDemoUtils.detectAndReplace(des.content)
         }
+        // 🎯 Markdown 支持
         if (des.markdown) {
-          config.markdown = des.content
+          config.markdown = des.content  // 将内容作为 Markdown 处理
         }
+        // 🎨 设置颜色
         color = undefined
         if (des.color) {
           switch (des.color) {
-            case "{{parent}}":
+            case "{{parent}}":  // 使用父卡片颜色
             case "parent":
               color = focusNote.colorIndex
               break;
             default:
+              // 解析颜色值（支持数字或字符串）
               if (typeof des.color === "number") {
                 color = des.color
               }else{
@@ -2566,8 +2584,9 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
           }
           config.color = color
         }
-        let childNote = focusNote.createChildNote(config)
-        await childNote.focusInMindMap(0.5)
+        // 🎯 创建子卡片并聚焦
+        let childNote = focusNote.createChildNote(config)  // 创建子卡片
+        await childNote.focusInMindMap(0.5)                // 0.5秒后在脑图中聚焦
         break;
       case "file2base64":
         let file = await MNUtil.importFile(["public.data"])

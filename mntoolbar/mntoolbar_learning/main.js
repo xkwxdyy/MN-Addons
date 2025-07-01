@@ -1,2197 +1,2391 @@
+/**
+ * 🚀 插件工厂函数 - MarginNote 插件系统的入口
+ * 
+ * 【核心概念】
+ * 这是整个插件的起点，当 MarginNote 加载插件时会调用这个函数。
+ * 函数名必须是 JSB.newAddon，这是 MarginNote 插件系统的约定。
+ * 
+ * 【执行流程】
+ * ```
+ * MarginNote 启动
+ *      ↓
+ * 扫描插件目录
+ *      ↓
+ * 发现 .mnaddon 文件
+ *      ↓
+ * 解压并读取 main.js
+ *      ↓
+ * 调用 JSB.newAddon(插件路径)  ← 我们在这里
+ *      ↓
+ * 返回插件类
+ *      ↓
+ * MarginNote 管理插件生命周期
+ * ```
+ * 
+ * 【参数说明】
+ * @param {string} mainPath - 插件的安装路径
+ *                           例如：/Users/xxx/Library/Containers/QReader.MarginNoteApp/Data/Library/MarginNote Extensions/MNTask
+ *                           这个路径用于：
+ *                           1. 加载插件资源（图片、配置文件等）
+ *                           2. 存储插件数据
+ *                           3. 定位插件文件
+ * 
+ * @returns {MNTaskClass} 返回插件主类，供 MarginNote 管理
+ */
 JSB.newAddon = function (mainPath) {
+  // 📦 第一步：加载核心工具模块
+  // utils.js 包含了工具函数、配置管理等基础功能
   JSB.require('utils')
-  if (!pluginDemoUtils.checkMNUtilsFolder(mainPath)) {return undefined}
+  
+  // 🔍 第二步：检查 MNUtils 插件是否已安装
+  // MNUtils 是 MNTask 的依赖，提供了大量的 API
+  // 如果未安装，返回 undefined，插件不会被加载
+  if (!taskUtils.checkMNUtilsFolder(mainPath)) {return undefined}
+  
+  // 📦 第三步：加载界面控制器
+  JSB.require('webviewController');  // 工具栏主界面控制器
+  JSB.require('settingController');   // 设置界面控制器
+  
+  // 🎯 获取插件类单例的辅助函数
+  // 在 JSB 框架中，self 指向类的单例实例
+  // 这个函数用于在任何地方获取插件主类的实例
+  /** @return {MNTaskClass} */
+  const getMNTaskClass = ()=>self  
   /**
-   *   用餐厅来理解多个类
-
-    想象你要开一家餐厅，你不会让一个人做所有事情，而是会分工：
-
-    餐厅系统 {
-      总经理    // 负责整体运营
-      前台经理  // 负责接待客人
-      厨房经理  // 负责做菜
-      收银经理  // 负责结账
-    }
-
-    * MNToolbar 的三个类
-
-    在 MNToolbar 项目中，也是这样分工的：
-
-    1. MNToolbar（总经理）- main.js
-
-    var MNToolbarClass = JSB.defineClass('MNToolbar : JSExtension', {
-      // 我是总经理，负责：
-      // - 插件的启动和关闭
-      // - 协调各个部门
-      // - 处理 MarginNote 的通知
-    })
-
-    2. toolbarController（前台经理）- webviewController.js
-
-    var toolbarController = JSB.defineClass('toolbarController : 
-    UIViewController', {
-      // 我是前台经理，负责：
-      // - 管理工具栏界面
-      // - 处理按钮点击
-      // - 显示和隐藏工具栏
-    })
-
-    3. settingController（设置经理）- settingController.js
-
-    var settingController = JSB.defineClass('settingController : 
-    UIViewController', {
-      // 我是设置经理，负责：
-      // - 管理设置界面
-      // - 保存用户配置
-      // - 处理设置选项
-    })
-
-    为什么要分开？
-
-    1. 各司其职
-
-    // ❌ 如果所有代码都放在一个类里
-    MNToolbar {
-      处理插件启动()
-      管理工具栏()
-      处理按钮点击()
-      管理设置界面()
-      保存配置()
-      // ... 1000行代码，太乱了！
-    }
-
-    // ✅ 分开后，每个类职责清晰
-    MNToolbar {
-      处理插件启动()
-    }
-
-    toolbarController {
-      管理工具栏()
-      处理按钮点击()
-    }
-
-    settingController {
-      管理设置界面()
-      保存配置()
-    }
-
-    2. 更容易维护
-
-    // 需要修改工具栏？只需要看 webviewController.js
-    // 需要修改设置？只需要看 settingController.js
-    // 不用在一个巨大的文件里找来找去
-
-    它们如何协作？
-
-    // 1. 主类创建其他类的实例
-    MNToolbar {
-      notebookWillOpen: function() {
-        // 创建工具栏
-        self.addonController = toolbarController.new()
-
-        // 需要设置时，创建设置界面
-        self.settingController = settingController.new()
-      }
-    }
-
-    // 2. 它们之间可以互相调用
-    toolbarController {
-      openSettings: function() {
-        // 工具栏可以打开设置
-        self.settingController.show()
-      }
-    }
-
-    * 用建房子来理解
-
-    想象你要建一栋房子：
-
-    // 总承包商（MNToolbar - main.js）
-    总承包商 {
-      开工: function() {
-        // 我需要各种专业团队
-        this.装修队 = 装修团队.new()     // toolbarController
-        this.水电工 = 水电团队.new()     // settingController
-      }
-    }
-
-    // 装修团队（toolbarController）
-    装修团队 {
-      刷墙: function() { }
-      铺地板: function() { }
-    }
-
-    // 水电团队（settingController）
-    水电团队 {
-      装电线: function() { }
-      装水管: function() { }
-    }
-   */
-  JSB.require('webviewController');
-  JSB.require('settingController');
-  /** @return {MNPluginDemoClass} */
-  /**
-   * self 其实充当了 this 的角色
+   * 📱 定义插件主类 - MNTask
    * 
+   * 【类继承说明】
+   * MNTask : JSExtension
+   * - MNTask: 我们的插件类名
+   * - JSExtension: MarginNote 插件基类，提供生命周期方法
    * 
-   * 为什么都叫 self？
-
-  这是 JSB 框架的约定：
-  - 每个类被实例化时，JSB 都会在该文件的作用域内创建一个 self 变量
-  - 这个 self 指向当前文件定义的类的实例
-
-  就像每个班级都有"班长"，但每个班的班长是不同的人：
-  - 一班的班长 = 张三
-  - 二班的班长 = 李四
-  - 虽然都叫"班长"，但指的不是同一个人
-
-
-  * 为什么要替代 this？
-
-  正常 JavaScript 中
-
-  class Person {
-    constructor(name) {
-      this.name = name;  // this 指向实例
-    }
-
-    sayHello() {
-      console.log(`我是${this.name}`);  // this 正常工作
-    }
-  }
-
-  const 小明 = new Person("小明");
-  小明.sayHello();  // "我是小明" ✅
-
-  JSB 框架中的问题
-
-  var MNToolbarClass = JSB.defineClass("MNToolbar", {
-    sceneWillConnect: function() {
-      // ❌ 这里的 this 可能不是你想的那个对象！
-      // JSB 框架调用这个方法时，this 的指向可能被改变
-      this.someProperty = "value";  // 可能出错！
-    }
-  })
-
-  self 就是"正确的 this"
-
-  // JSB 框架的解决方案
-  const getMNToolbarClass = ()=>self  // self 是"正确的 this"
-
-  sceneWillConnect: function() {
-    let self = getMNToolbarClass()  // 获取"正确的 this"
-    self.someProperty = "value"      // 相当于正常情况下的 
-  this.someProperty
-  }
-
-
-  对比理解
-
-  标准 JavaScript
-
-  class MyClass {
-    method() {
-      this.property = "value"      // 直接用 this
-      this.doSomething()          // 直接用 this
-    }
-  }
-
-  JSB 框架
-
-  var MyClass = JSB.defineClass("MyClass", {
-    method: function() {
-      let self = getMyClass()      // 先获取"正确的 this"
-      self.property = "value"      // 用 self 代替 this
-      self.doSomething()          // 用 self 代替 this
-    }
-  })
-
-  为什么 JSB 中 this 不可靠？
-
-  JSB 是 JavaScript 和 Objective-C 的桥接框架，当 Objective-C 调用
-  JavaScript 方法时：
-
-  // Objective-C 调用时可能是这样的：
-  [某个对象 performSelector:@selector(sceneWillConnect)]
-
-  // 这时 JavaScript 中的 this 可能指向：
-  // - 桥接对象
-  // - 全局对象
-  // - undefined
-  // 总之不是你的实例！
-
-  * 用演员和角色来理解
-
-  // 正常情况（标准 JavaScript）
-  演员 {
-    台词: function() {
-      console.log(`我是${this.名字}`)  // "我"就是这个演员
-    }
-  }
-
-  // JSB 框架的情况
-  演员 {
-    台词: function() {
-      // 导演："这里的'我'可能指向摄像机、灯光师或其他人..."
-      // 演员："那我怎么说台词？"
-      // 导演："用这个办法..."
-
-      let self = 找到真正的我()  // 确保 self 是这个演员
-      console.log(`我是${self.名字}`)  // 现在肯定是对的
-    }
-  }
-
-
-   *   self vs this
-
-  | 特性   | this         | self (通过函数获取) |
-  |------|--------------|---------------|
-  | 含义   | "谁在调用我"      | "插件实例"        |
-  | 可靠性  | 在 JSB 中不可靠 ❌ | 始终可靠 ✅        |
-  | 使用方式 | 直接使用         | 通过函数获取        |
-
-    记忆口诀
-
-    this 会变，不可靠
-    self 全局，要函数找
-    getMNToolbarClass 是电话
-    打通就能找到真身了
-
-    标准流程
-
-    每当你在 JSB 的方法中需要访问实例时：
-
-    // 1. 不要用 this
-    // 2. 调用对应的 get 函数
-    let self = getXXXController()
-    // 3. 现在可以安全使用 self 了
-    self.属性 = 值
-    self.方法()
-
-    这就像是：
-    - this = "看谁在叫我"（会变）
-    - self = "我的身份证"（不变）
-    - getXXX() = "身份证查询系统"（可靠）
-
-
-   * 为什么不直接用 self？
-
-  你可能会问：为什么不直接写 self.init() 呢？
-
-  // ❌ 可能出问题
-  sceneWillConnect: function() {
-    self.init()  // 如果有多个插件，self 可能被覆盖！
-  }
-
-  // ✅ 更安全
-  sceneWillConnect: function() {
-    let self = getMNToolbarClass()  // 确保获取的是这个插件的实例
-    self.init()
-  }
-
-
-  * 总结 * 
-
-  // self 的角色
-  self = 稳定可靠的 this
-  this = 不稳定不可靠的指向
-
-  // 使用规则
-  在 JSB 框架中：
-  - 永远不要用 this
-  - 永远用 self 来代替 this
-  - self 就是"正确的 this"
-
-  简单记忆：
-  - 标准 JS：用 this
-  - JSB 框架：用 self（通过 getXXX 函数获取）
-  - self = "可靠的 this"
+   * 【JSB.defineClass 说明】
+   * 这是 JSB 框架定义类的方式，类似于 ES6 的 class，但语法不同：
+   * - 第一个参数：类名和继承关系
+   * - 第二个参数：实例方法（生命周期方法、事件处理等）
+   * - 第三个参数：类方法（静态方法）
+   * 
+   * 【生命周期概览】
+   * ```
+   * 插件安装 → addonDidConnect
+   *    ↓
+   * 打开窗口 → sceneWillConnect     ← 初始化 UI
+   *    ↓
+   * 打开笔记本 → notebookWillOpen   ← 准备工具栏
+   *    ↓
+   * 用户使用插件...
+   *    ↓
+   * 关闭笔记本 → notebookWillClose  ← 保存状态
+   *    ↓
+   * 关闭窗口 → sceneDidDisconnect   ← 清理资源
+   *    ↓
+   * 卸载插件 → addonWillDisconnect
+   * ```
    */
-  const getPluginDemoClass = ()=>self  
-  /**
-   * JSB.defineClass 接受三个参数：
-    1. 类名
-    2. Instance members（实例成员）
-    3. Class members（类成员）
-     
-    * 用班级来理解
-
-      想象一个学校班级：
-
-      Instance members = 每个学生自己的东西
-
-      // 每个学生都有自己的：
-      - 姓名（张三、李四、王五...）
-      - 座位（第1排、第2排...）
-      - 书包（自己的书包）
-      - 作业（自己写的作业）
-
-      Class members = 整个班级共享的东西
-
-      // 整个班级共同拥有的：
-      - 教室（只有一间）
-      - 黑板（大家共用）
-      - 班规（统一的规定）
-      - 班主任电话（都是同一个）
-
-      在代码中的体现
-
-      var MNToolbarClass = JSB.defineClass(
-        'MNToolbar : JSExtension',
-
-        { //Instance members - 每个插件实例自己的方法
-          sceneWillConnect: function() {
-            // 这个插件窗口连接时
-          },
-          notebookWillOpen: function(notebookid) {
-            // 这个插件打开笔记本时
-          },
-          toggleDynamic: function() {
-            // 这个插件切换动态模式
-          }
-        },
-
-        { //Class members - 所有插件共享的方法
-          addonDidConnect: function() {
-            // 插件类被加载时（只执行一次）
-          },
-          addonWillDisconnect: function() {
-            // 插件类被卸载时（只执行一次）
-          }
-        }
-      );
-
-      * 具体例子
-
-      Instance members（每个窗口都有自己的）
-
-      // 假设你打开了3个 MarginNote 窗口
-      窗口1：self.notebookid = "笔记本A"
-      窗口2：self.notebookid = "笔记本B"
-      窗口3：self.notebookid = "笔记本C"
-
-      // 每个窗口的 toggleDynamic 只影响自己
-      窗口1.toggleDynamic() // 只影响窗口1
-      窗口2.toggleDynamic() // 只影响窗口2
-
-      Class members（所有窗口共享）
-
-      // addonWillDisconnect 删除配置时
-      // 会影响所有窗口，因为配置是共享的
-      addonWillDisconnect: function() {
-        // 删除的配置对所有窗口都生效
-        toolbarConfig.remove("MNToolbar_dynamic")
-      }
-
-      * 手机 APP 的例子
-
-      // Instance members = 每个微信窗口
-      - 你可以同时打开多个聊天窗口
-      - 每个窗口显示不同的聊天内容
-      - 关闭一个窗口不影响其他窗口
-
-      // Class members = 微信 APP 本身
-      - 卸载微信 APP 会删除所有数据
-      - 微信的版本号是统一的
-      - 退出登录影响所有窗口
-   */
-  var MNPluginDemoClass = JSB.defineClass(
-    'PluginDemo : JSExtension', // 继承插件基类，能接收 MarginNote 事件,   - JSExtension：像是"插件许可证"，有了它才能作为 MarginNote 插件
-    { 
-      /* Instance members */
+  var MNTaskClass = JSB.defineClass(
+    'MNTask : JSExtension',
+    { /* Instance members - 实例方法 */
       /**
-       *   JSB.defineClass 可以定义的方法类型
-       * 实际上，JSB.defineClass 内部可以定义三种类型的方法：
-      1. MarginNote 生命周期方法（插件框架调用）
-
-      // 这些是 MarginNote 插件框架定义的标准方法
-      sceneWillConnect: function() { },
-      notebookWillOpen: function(notebookid) { },
-      notebookWillClose: function(notebookid) { },
-
-        什么是生命周期？
-
-        想象一个学生的一天：
-
-        起床 → 吃早餐 → 上学 → 放学 → 做作业 → 睡觉
-
-        这就是一个"生命周期"！每个阶段都会发生特定的事情。
-
-        插件的生命周期就像这样：
-
-        // 插件的"一天"
-        sceneWillConnect()      // "起床" - 插件被打开
-        notebookWillOpen()      // "上学" - 笔记本被打开
-        notebookWillClose()     // "放学" - 笔记本被关闭  
-        sceneDidDisconnect()    // "睡觉" - 插件被关闭
-
-      2. 通知回调方法（通过观察者模式调用）
-
-      // 这些是用来响应通知的方法
-      onPopupMenuOnNote: function(sender) { },
-      onToggleDynamic: function() { },
-      onRefreshView: function(sender) { },
-
-      * 什么是观察者模式？
-
-      想象你订阅了外卖平台的通知：
-
-      外卖平台："你的外卖到了！" → 你收到通知 → 下楼取外卖
-      外卖平台："有优惠券！" → 你收到通知 → 打开看看
-
-      这就是观察者模式！你"观察"（订阅）了外卖平台，当有事情发生时，它会通知你
-      。
-
-      在代码中：
-
-      // 订阅通知（就像订阅外卖通知）
-      MNUtil.addObserver(self, 'onPopupMenuOnNote:', 'PopupMenuOnNote')
-
-      // 当用户点击笔记时，MarginNote 会"通知"你
-      onPopupMenuOnNote: function(sender) {
-        // 收到通知后要做的事（就像收到外卖通知后下楼）
-        MNUtil.showHUD("有人点击了笔记！")
-      }
-
-
-      * 回调函数 = "做完了通知我"的函数
-
-      - 你先告诉系统："发生这件事的时候，调用这个函数"
-      - 然后你就可以去做别的事了
-      - 当那件事真的发生时，系统会自动调用你的函数
-
-      就像：
-      - 设置闹钟 = 设置回调
-      - 闹钟响了 = 执行回调
-      - 你起床 = 回调函数里的代码
-
-      3. 命令方法（通过命令系统调用）
-
-      // 这些是注册到命令系统的方法
-      toggleDynamic: function() { },
-      openDocument: function(button) { },
-      toggleToolbarDirection: function(source) { },
-
-      * 什么是命令方法？
-
-      想象电视遥控器：
-
-      按"开机"键 → 电视执行"开机"命令
-      按"换台"键 → 电视执行"换台"命令
-      按"音量+"键 → 电视执行"增加音量"命令
-
-      命令方法就像遥控器按键，用户点击界面上的按钮时，会执行对应的命令。
-
-      // 这些都是"遥控器按键"（命令）
-      toggleDynamic: function() {    // "切换动态模式"按键
-        // 执行切换操作
-      },
-      openDocument: function() {     // "打开文档"按键
-        // 执行打开操作
-      }
-
-      * 为什么 toggleDynamic 可以放在里面？
-
-      看第 32 行的代码：
-      MNUtil.addObserver(self, 'onToggleDynamic:', 'toggleDynamic')
-
-      这行代码的含义是：
-      - 监听名为 'toggleDynamic' 的通知
-      - 当收到通知时，调用 self 的 onToggleDynamic: 方法
-
-      但实际上，因为 JSB 框架的特殊性，当你在 JSB.defineClass 中定义了 toggleDynamic
-      方法，系统会自动为它生成一个选择器（selector）。这个选择器可以被：
-      1. 命令系统调用（通过 queryAddonCommandStatus 和 handleAddonCommand）
-      2. 通知系统调用（通过 MNUtil.addObserver）
-      3. 直接调用（self.toggleDynamic()）
-
-      那么如何判断哪些方法可以放在 JSB.defineClass 内部呢？
-
-      ✅ 可以放在内部的：
-
-      1. 生命周期方法：MarginNote 定义的标准接口
-      2. 命令方法：会被 handleAddonCommand 调用的
-      3. 通知回调方法：通过 MNUtil.addObserver 注册的
-      4. 被框架直接调用的方法：如 queryAddonCommandStatus
-
-      ❌ 必须通过 prototype 添加的：
-
-      1. 纯业务逻辑方法：如 ensureView、checkUpdate
-      2. 工具方法：如 getImage、parseFrame
-      3. 不被框架调用的辅助方法
-
-      实际例子对比
-
-      var MNToolbarClass = JSB.defineClass("MNToolbar: JSExtension", {
-        // ✅ 可以放在内部：生命周期方法
-        sceneWillConnect: function() { },
-
-        // ✅ 可以放在内部：命令方法（被 handleAddonCommand 调用）
-        toggleDynamic: function() { },
-
-        // ✅ 可以放在内部：通知回调
-        onPopupMenuOnNote: function(sender) { }
-        });
-
-        // ❌ 必须用 prototype：纯业务逻辑
-        MNToolbarClass.prototype.ensureView = function() { }
-
-        // ❌ 必须用 prototype：工具方法
-        MNToolbarClass.prototype.getImage = function() { }
-
-        总结
-
-        JSB.defineClass 不仅仅能定义生命周期方法，还能定义：
-        - 会被 MarginNote 框架调用的方法（通过命令系统）
-        - 会被通知系统调用的方法
-        - 任何需要与 Objective-C 运行时交互的方法
-
-        而必须使用 prototype 的是那些纯 JavaScript 的业务逻辑方法，这些方法不需要与原生框架交互。
-       */
-      /**
-       * 🚀 插件场景连接时调用 - 插件生命周期的开始
+       * 🌟 场景即将连接 - 插件生命周期的开始
        * 
-       * 【生命周期位置】
-       * 这是插件生命周期的第一个方法，在以下时机被调用：
-       * 1. 用户首次启用插件
-       * 2. MarginNote 启动时自动加载已启用的插件
-       * 3. 用户在设置中重新启用插件
+       * 【核心概念】
+       * Scene（场景）是 iOS 13+ 引入的概念，代表一个应用窗口。
+       * 在 MarginNote 中，每个学习窗口就是一个 Scene。
        * 
-       * 【主要职责】
-       * 1. 🏗️ 初始化插件基础设施
-       * 2. 📦 加载必要的依赖模块
-       * 3. 🔧 设置全局配置
-       * 4. 🎨 准备 UI 资源
+       * 【调用时机】
+       * 1. 打开 MarginNote 应用时
+       * 2. 创建新的学习窗口时
+       * 3. 从后台恢复应用时
        * 
-       * 【典型初始化内容】
-       * ```javascript
-       * sceneWillConnect: async function() {
-       *   // 1. 初始化工具函数
-       *   MNUtil.init(self.path)
-       *   
-       *   // 2. 加载配置
-       *   await toolbarConfig.loadConfig()
-       *   
-       *   // 3. 创建控制器
-       *   self.webviewController = new WebViewController()
-       *   
-       *   // 4. 注册通知监听
-       *   self.registerNotifications()
-       * }
+       * 【主要任务】
+       * 1. 检查依赖（MNUtils）
+       * 2. 初始化插件实例
+       * 3. 设置初始状态
+       * 4. 注册事件监听器
+       * 
+       * 【执行流程图】
+       * ```
+       * sceneWillConnect
+       *      |
+       *      ├─ 检查 MNUtils 是否可用
+       *      |    └─ 不可用则退出
+       *      |
+       *      ├─ 初始化插件核心
+       *      |    ├─ 获取插件实例 (self)
+       *      |    └─ 调用 init() 初始化
+       *      |
+       *      ├─ 设置应用级别属性
+       *      |    ├─ appInstance - 应用实例
+       *      |    ├─ isNewWindow - 窗口标记
+       *      |    └─ 其他状态变量
+       *      |
+       *      └─ 注册所有事件监听器
+       *           ├─ 笔记菜单事件
+       *           ├─ 选择文本事件
+       *           ├─ 界面刷新事件
+       *           └─ 编辑状态事件
        * ```
        * 
-       * 【注意事项】
-       * - ⚡ 使用 async 支持异步操作（如加载配置文件）
-       * - 🚫 避免在此处创建 UI，应等到 notebookWillOpen
-       * - ⏱️ 保持快速执行，避免阻塞插件加载
-       * - 🛡️ 使用 try-catch 处理初始化错误
-       * 
-       * @async
-       * @returns {Promise<void>}
+       * @async 异步方法，允许使用 await
        */
       sceneWillConnect: async function () { //Window initialize
+        // 🔍 步骤1：检查 MNUtils 插件是否可用
+        // checkMNUtil(true) 会显示提示信息告诉用户需要安装 MNUtils
+        // 如果检查失败，直接返回，插件不会继续初始化
+        if (!(await taskUtils.checkMNUtil(true))) return
+        
+        // 🎯 步骤2：获取插件类的单例实例
+        // 在 JSB 框架中，self 是类的全局实例
+        // getMNTaskClass() 函数返回这个实例，供后续使用
+        let self = getMNTaskClass()
+        
+        // 🚀 步骤3：初始化插件核心功能
+        // init() 方法会：
+        // - 初始化工具类 (taskUtils)
+        // - 初始化配置管理器 (taskConfig)
+        // - 设置 initialized 标志为 true
+        self.init(mainPath)
+        // 🔧 步骤4：设置应用实例和初始状态变量
+        
+        // 获取 MarginNote 应用的共享实例
+        // 这个实例用于访问应用级别的功能和状态
+        self.appInstance = Application.sharedInstance();
+        
+        // 窗口状态标记：是否是新创建的窗口
+        self.isNewWindow = false;
+        
+        // 监视模式标记：用于特定的监控功能
+        self.watchMode = false;
+        
+        // 文本选择相关状态
+        self.textSelected = ""      // 当前选中的文本内容
+        self.textProcessed = false;  // 文本是否已处理的标记
+        
+        // 时间戳记录
+        self.dateGetText = Date.now();  // 获取文本的时间
+        self.dateNow = Date.now();      // 当前时间
+        
+        // 弹出菜单的位置和箭头方向
+        self.rect = '{{0, 0}, {10, 10}}';  // 初始矩形区域
+        self.arrow = 1;                     // 箭头方向（1=向上）
+
+        
+        // 📡 步骤5：注册事件监听器（观察者模式）
+        // MNUtil.addObserver 的参数说明：
+        // - self: 观察者对象（插件实例）
+        // - 'onXXX:': 当事件触发时调用的方法名
+        // - 'XXX': 要监听的通知名称
+        
+        // 📝 笔记相关事件
+        // 当用户点击笔记卡片，弹出菜单时触发
+        MNUtil.addObserver(self, 'onPopupMenuOnNote:', 'PopupMenuOnNote')
+        
+        // 当用户选择文本，弹出菜单时触发
+        MNUtil.addObserver(self, 'onPopupMenuOnSelection:', 'PopupMenuOnSelection')
+        
+        // 当选择文本的弹出菜单关闭时触发
+        MNUtil.addObserver(self, 'onClosePopupMenuOnSelection:', 'ClosePopupMenuOnSelection')
+        
+        // 🔄 工具栏控制事件
+        // 切换动态/固定模式
+        MNUtil.addObserver(self, 'onToggleDynamic:', 'toggleDynamic')
+        
+        // 当笔记弹出菜单关闭时触发
+        MNUtil.addObserver(self, 'onClosePopupMenuOnNote:', 'ClosePopupMenuOnNote')
+        
+        // 🎨 界面更新事件
+        // 刷新视图
+        MNUtil.addObserver(self, 'onRefreshView:', 'refreshView')
+        
+        // 切换脑图工具栏显示/隐藏
+        MNUtil.addObserver(self, 'onToggleMindmapTask:', 'toggleMindmapTask')
+        
+        // 刷新工具栏按钮
+        MNUtil.addObserver(self, 'onRefreshTaskButton:', 'refreshTaskButton')
+        
+        // ⚙️ 设置相关事件
+        // 打开工具栏设置界面
+        MNUtil.addObserver(self, 'onOpenTaskSetting:', 'openTaskSetting')
+        
+        // 接收新的图标图片（用于自定义按钮图标）
+        MNUtil.addObserver(self, 'onNewIconImage:', 'newIconImage')
+        
+        // ✏️ 文本编辑事件
+        // 文本开始编辑（系统通知）
+        MNUtil.addObserver(self, 'onTextDidBeginEditing:', 'UITextViewTextDidBeginEditingNotification')
+        
+        // 文本结束编辑（系统通知）
+        MNUtil.addObserver(self, 'onTextDidEndEditing:', 'UITextViewTextDidEndEditingNotification')
+        
+        // ☁️ iCloud 同步事件
+        // iCloud 配置发生变化时触发
+        MNUtil.addObserver(self, 'onCloudConfigChange:', 'NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI')
       },
+
       /**
-       * 👋 插件场景断开连接时调用 - 插件生命周期的结束
+       * 🌅 场景已断开连接 - 清理资源和保存状态
        * 
        * 【调用时机】
-       * 1. 🔌 用户在插件管理页面关闭插件（取消勾选）
-       * 2. 🔄 MarginNote 准备重新加载插件
-       * 3. 🚪 应用退出前的清理阶段
+       * 1. 用户在插件管理页面关闭插件（非删除）
+       * 2. 关闭 MarginNote 窗口
+       * 3. 应用进入后台时（某些情况下）
        * 
-       * 【重要说明】
-       * 这是关闭插件，而不是删除插件。插件的文件和配置都会保留。
-       * 
-       * 【主要职责】
-       * 1. 💾 保存用户数据和状态
-       * 2. 🧹 清理资源（定时器、监听器等）
-       * 3. 🔓 释放内存占用
-       * 4. 📤 同步未保存的更改
-       * 
-       * 【典型清理操作】
-       * ```javascript
-       * sceneDidDisconnect: function() {
-       *   // 1. 保存配置
-       *   toolbarConfig.save()
-       *   
-       *   // 2. 清理定时器
-       *   if (self.autoSaveTimer) {
-       *     clearInterval(self.autoSaveTimer)
-       *   }
-       *   
-       *   // 3. 移除通知监听
-       *   NSNotificationCenter.defaultCenter.removeObserver(self)
-       *   
-       *   // 4. 清理 UI 资源
-       *   if (self.webviewController) {
-       *     self.webviewController.cleanup()
-       *   }
-       * }
-       * ```
-       * 
-       * 【最佳实践】
-       * - ✅ 确保所有异步操作已完成
-       * - ✅ 保存用户的工作状态
-       * - ✅ 清理所有创建的对象引用
-       * - ❌ 不要在此处显示 UI 提示（用户可能看不到）
-       * 
-       * @returns {void}
-       */
-      sceneDidDisconnect: function () { // Window disconnect 在插件页面关闭插件（不是删除）
-      },
-      /**
-       * 😴 窗口即将失去活跃状态时调用
-       * 
-       * 【调用时机】
-       * 1. 🔄 用户切换到其他应用
-       * 2. 📱 设备进入后台（iOS）
-       * 3. 🖥️ 窗口最小化（macOS）
-       * 4. 🔒 设备即将锁屏
-       * 
-       * 【使用场景】
-       * 1. ⏸️ 暂停正在进行的动画或计时器
-       * 2. 💾 保存临时状态（轻量级保存）
-       * 3. 🔇 暂停音频/视频播放
-       * 4. 📊 记录用户活动统计
-       * 
-       * 【与 sceneDidDisconnect 的区别】
-       * - sceneWillResignActive：临时失去焦点，插件仍在运行
-       * - sceneDidDisconnect：插件完全关闭
+       * 【重要任务】
+       * 1. 🧪 移除所有事件监听器（防止内存泄漏）
+       * 2. 💾 保存当前状态（下次恢复用）
+       * 3. 🗑️ 释放资源（视图、控制器等）
        * 
        * 【注意事项】
-       * - ⚡ 快速执行，系统可能会强制终止耗时操作
-       * - 🔄 准备好在 sceneDidBecomeActive 中恢复状态
-       * - 💾 只做必要的保存，避免大量 I/O 操作
+       * - 这不是卸载插件，只是暂时关闭
+       * - 用户可能会重新打开插件
+       * - 需要保存必要的状态以便恢复
        * 
-       * @returns {void}
+       * 【执行流程】
+       * ```
+       * sceneDidDisconnect
+       *      |
+       *      ├─ 检查 MNUtil 是否存在
+       *      |    └─ 不存在则直接返回
+       *      |
+       *      └─ 移除所有监听器
+       *           ├─ PopupMenuOnNote
+       *           ├─ toggleDynamic
+       *           ├─ ClosePopupMenuOnNote
+       *           ├─ UITextView 相关
+       *           └─ 其他事件
+       * ```
+       */
+      sceneDidDisconnect: function () { // Window disconnect 在插件页面关闭插件（不是删除）
+        // 🔍 首先检查 MNUtil 是否存在
+        // 在某些异常情况下，MNUtil 可能已经被卸载
+        if (typeof MNUtil === 'undefined') return
+        
+        // 📡 移除所有事件监听器
+        // 这是非常重要的步骤，防止内存泄漏和异常行为
+        // 每个 addObserver 都应该有对应的 removeObserver
+        
+        // 笔记菜单相关
+        MNUtil.removeObserver(self,'PopupMenuOnNote')
+        MNUtil.removeObserver(self,'ClosePopupMenuOnNote')
+        MNUtil.removeObserver(self,'ClosePopupMenuOnSelection')
+        
+        // 工具栏控制相关
+        MNUtil.removeObserver(self,'toggleDynamic')
+        MNUtil.removeObserver(self,'refreshTaskButton')
+        MNUtil.removeObserver(self,'openTaskSetting')
+        
+        // 文本编辑相关
+        MNUtil.removeObserver(self,'UITextViewTextDidBeginEditingNotification')
+        MNUtil.removeObserver(self,'UITextViewTextDidEndEditingNotification')
+        
+        // iCloud 同步相关
+        MNUtil.removeObserver(self,'NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI')
+      },
+
+      /**
+       * 📱 场景即将失去活跃状态
+       * 
+       * 【调用时机】
+       * - 应用进入后台
+       * - 切换到其他应用
+       * - 系统弹窗覆盖（如来电）
+       * 
+       * 【常见用途】
+       * - 暂停动画或定时器
+       * - 保存临时状态
+       * - 释放不必要的资源
        */
       sceneWillResignActive: function () { // Window resign active
       },
+
       /**
-       * 🌟 窗口变为活跃状态时调用
+       * 🌟 场景已变为活跃状态
        * 
        * 【调用时机】
-       * 1. 🔄 用户切换回 MarginNote
-       * 2. 📱 应用从后台返回前台（iOS）
-       * 3. 🖥️ 窗口从最小化恢复（macOS）
-       * 4. 🔓 设备解锁后
+       * - 应用从后台返回前台
+       * - 从其他应用切换回来
+       * - 系统弹窗消失后
        * 
-       * 【使用场景】
-       * 1. ▶️ 恢复暂停的动画或计时器
-       * 2. 🔄 刷新可能过期的数据
-       * 3. 📡 检查网络状态变化
-       * 4. 🎨 更新 UI 显示状态
-       * 
-       * 【典型恢复操作】
-       * ```javascript
-       * sceneDidBecomeActive: function() {
-       *   // 1. 恢复动画
-       *   if (self.animationPaused) {
-       *     self.resumeAnimations()
-       *   }
-       *   
-       *   // 2. 刷新数据
-       *   self.checkForUpdates()
-       *   
-       *   // 3. 更新 UI
-       *   self.updateToolbarDisplay()
-       * }
-       * ```
-       * 
-       * 【最佳实践】
-       * - ✅ 检查并恢复在 sceneWillResignActive 中暂停的操作
-       * - ✅ 刷新可能已经改变的外部数据
-       * - ❌ 避免重复初始化已存在的资源
-       * 
-       * @returns {void}
+       * 【常见用途】
+       * - 恢复动画或定时器
+       * - 刷新界面内容
+       * - 检查并更新数据
        */
       sceneDidBecomeActive: function () { // Window become active
       },
+
       /**
-       * 📖 笔记本即将打开时调用 - 插件的主要工作开始
+       * 📚 笔记本即将打开 - 准备工具栏界面
+       * 
+       * 【核心概念】
+       * 这是用户开始真正使用插件的时刻。当用户打开一个笔记本（学习集）时，
+       * 插件需要创建并显示工具栏界面。
        * 
        * 【调用时机】
-       * 1. 📚 用户打开一个笔记本
-       * 2. 🔄 切换到另一个笔记本
-       * 3. 🌟 MarginNote 启动后恢复上次打开的笔记本
+       * - 用户打开笔记本
+       * - 切换到不同的笔记本
+       * - 从文档模式切换到学习模式
        * 
-       * 【重要性】
-       * 这是插件最重要的生命周期方法之一！大部分插件功能都在这里初始化。
+       * 【主要任务】
+       * 1. 再次检查 MNUtils（确保可用）
+       * 2. 检查学习模式（仅在特定模式下显示）
+       * 3. 创建工具栏控制器
+       * 4. 初始化配置和状态
+       * 5. 处理键盘相关设置
        * 
-       * 【主要职责】
-       * 1. 🎨 创建和显示 UI 界面（工具栏、按钮等）
-       * 2. 📡 注册事件监听器和通知
-       * 3. 📋 加载笔记本特定的配置
-       * 4. 🔗 建立与其他插件的连接
-       * 
-       * 【典型初始化流程】
-       * ```javascript
-       * notebookWillOpen: async function(notebookid) {
-       *   // 1. 保存笔记本 ID
-       *   self.notebookId = notebookid
-       *   
-       *   // 2. 加载笔记本配置
-       *   await self.loadNotebookConfig(notebookid)
-       *   
-       *   // 3. 创建工具栏 UI
-       *   self.createToolbar()
-       *   
-       *   // 4. 注册监听器
-       *   self.registerNotebookListeners()
-       *   
-       *   // 5. 显示欢迎提示
-       *   MNUtil.showHUD("工具栏已加载")
-       * }
+       * 【执行流程】
+       * ```
+       * notebookWillOpen(notebookid)
+       *      |
+       *      ├─ 检查 MNUtils（0.1秒延迟）
+       *      |
+       *      ├─ 检查学习模式
+       *      │   └─ studyMode < 3 才继续
+       *      |
+       *      ├─ 初始化插件实例
+       *      │   ├─ 获取 self 实例
+       *      │   └─ 调用 init()
+       *      |
+       *      ├─ 创建工具栏视图
+       *      │   ├─ 延迟 0.5 秒
+       *      │   └─ ensureView(true)
+       *      |
+       *      ├─ 设置工具栏属性
+       *      │   ├─ dynamic 模式
+       *      │   └─ notebookid
+       *      |
+       *      └─ 处理键盘
+       *          └─ 0.2秒后关闭键盘
        * ```
        * 
-       * 【参数说明】
-       * @param {string} notebookid - 笔记本的唯一标识符
-       *                              可以用来：
-       *                              - 加载笔记本特定配置
-       *                              - 获取笔记本信息
-       *                              - 保存笔记本相关数据
-       * 
-       * 【注意事项】
-       * - ⚡ 使用 async 支持异步加载
-       * - 🛡️ 处理好笔记本不存在或损坏的情况
-       * - 🔄 如果切换笔记本，要先调用 notebookWillClose
-       * - 🎨 UI 创建应在此处进行，而不是 sceneWillConnect
-       * 
+       * @param {string} notebookid - 打开的笔记本ID
        * @async
-       * @returns {Promise<void>}
        */
       notebookWillOpen: async function (notebookid) {
+        // 🔍 步骤1：检查 MNUtils 是否可用
+        // 第二个参数 0.1 表示延迟 0.1 秒再检查
+        // 这个延迟给系统一些时间来完成初始化
+        if (!(await taskUtils.checkMNUtil(true,0.1))) return
+        
+        // 📖 步骤2：检查学习模式
+        // MNUtil.studyMode 的值：
+        // 0 = 文档模式
+        // 1 = 学习模式（文档+脑图）
+        // 2 = 复习模式
+        // 3 = 其他模式
+        // 只在模式 0、1、2 中显示工具栏
+        if (MNUtil.studyMode < 3) {
+          // 🎯 步骤3：获取插件实例并初始化
+          let self = getMNTaskClass()
+          self.init(mainPath)  // 确保插件核心已初始化
+          
+          // ⏱️ 步骤4：延迟创建视图
+          // 延迟 0.5 秒，确保笔记本界面完全加载
+          await MNUtil.delay(0.5)
+          
+          // 🖼️ 步骤5：确保工具栏视图存在
+          // ensureView(true) 会：
+          // - 创建 addonController（如果不存在）
+          // - 添加视图到 studyView
+          // - 刷新插件命令（true 参数）
+          self.ensureView(true)
+          
+          // 🔄 步骤6：刷新插件命令菜单
+          // 这会更新 MarginNote 的插件菜单项
+          MNUtil.refreshAddonCommands();
+          
+          // ⚙️ 步骤7：设置工具栏控制器属性
+          self.addonController.dynamic = taskConfig.dynamic      // 动态/固定模式
+          self.addonController.notebookid = notebookid             // 当前笔记本ID
+          
+          // 💾 步骤8：保存笔记本ID到多个位置
+          // 这样在不同的地方都能访问到当前笔记本ID
+          self.notebookid = notebookid              // 插件实例
+          taskUtils.notebookId = notebookid      // 工具类
+          
+          // ☁️ 步骤9：检查 iCloud 存储
+          // 如果启用了 iCloud 同步，读取云端配置
+          taskConfig.checkCloudStore()
+        }
+        
+        // ⌨️ 步骤10：处理 iOS 键盘
+        // 延迟 0.2 秒后让 studyView 成为第一响应者
+        // 这会自动关闭任何打开的键盘
+        MNUtil.delay(0.2).then(()=>{
+          MNUtil.studyView.becomeFirstResponder(); //For dismiss keyboard on iOS
+        })
+          
       },
+
       /**
-       * 📕 笔记本即将关闭时调用 - 清理和保存
+       * 📚 笔记本即将关闭 - 保存状态和清理资源
        * 
        * 【调用时机】
-       * 1. 🔄 用户切换到其他笔记本
-       * 2. 📴 用户关闭当前笔记本
-       * 3. 🚪 MarginNote 准备退出
+       * - 用户关闭笔记本
+       * - 切换到其他笔记本
+       * - 退出学习模式
        * 
-       * 【主要职责】
-       * 1. 💾 保存笔记本特定的状态和配置
-       * 2. 🧹 清理笔记本相关的资源
-       * 3. 📡 移除笔记本级别的监听器
-       * 4. 🎨 隐藏或销毁 UI 元素
+       * 【主要任务】
+       * 1. 💾 保存工具栏位置和状态
+       * 2. 👁️ 隐藏相关视图
+       * 3. 📋 记录最终状态
        * 
-       * 【清理流程示例】
-       * ```javascript
-       * notebookWillClose: function(notebookid) {
-       *   // 1. 保存状态
-       *   self.saveToolbarState(notebookid)
-       *   
-       *   // 2. 保存用户偏好
-       *   self.saveUserPreferences(notebookid)
-       *   
-       *   // 3. 清理 UI
-       *   if (self.toolbar) {
-       *     self.toolbar.hide()
-       *   }
-       *   
-       *   // 4. 移除监听器
-       *   self.removeNotebookListeners()
-       *   
-       *   // 5. 释放内存
-       *   self.notebookData = null
-       * }
-       * ```
-       * 
-       * 【与 notebookWillOpen 的关系】
-       * - 切换笔记本时：先调用旧笔记本的 close，再调用新笔记本的 open
-       * - 在 close 中保存的数据，可以在下次 open 时恢复
-       * 
-       * 【注意事项】
-       * - ✅ 确保保存所有重要数据
-       * - ✅ 清理特定于该笔记本的资源
-       * - ❌ 不要清理全局资源（可能即将打开新笔记本）
-       * - 🛡️ 处理好异步保存失败的情况
-       * 
-       * @param {string} notebookid - 即将关闭的笔记本 ID
-       * @returns {void}
+       * @param {string} notebookid - 关闭的笔记本ID
        */
       notebookWillClose: function (notebookid) {
+        // 🔍 检查 MNUtil 是否存在
+        if (typeof MNUtil === 'undefined') return
+        
+        // 💾 步骤1：保存工具栏当前位置
+        // lastFrame 用于下次打开时恢复位置
+        self.lastFrame = self.addonController.view.frame
+        
+        // 👁️ 步骤2：隐藏动态工具栏
+        // testController 是动态模式下的浮动工具栏
+        if (self.testController) {
+          self.testController.view.hidden = true
+        }
+        
+        // ⚙️ 步骤3：隐藏设置界面
+        // 如果设置界面正在显示，关闭它
+        if (self.addonController.settingController) {
+          self.addonController.settingController.hide()
+        }
+        
+        // 📋 步骤4：保存窗口状态到配置
+        // open: 工具栏是否显示（通过 hidden 属性的反值判断）
+        // frame: 工具栏的位置和大小
+        taskConfig.windowState.open  = !self.addonController.view.hidden
+        taskConfig.windowState.frame = self.addonController.view.frame
+        
+        // 💾 步骤5：持久化保存到本地
+        // "MNTask_windowState" 是存储的键名
+        taskConfig.save("MNTask_windowState")
       },
       /**
-       * ✏️ 处理新摘录时调用 - 自动处理刚创建的摘录
+       * 📝 选择文本弹出菜单事件 - 处理文本选择后的工具栏显示
        * 
-       * 【调用时机】
-       * 当用户创建新摘录后立即触发：
-       * 1. 📝 选中文本或图片创建摘录
-       * 2. 📸 截图创建摘录
-       * 3. 🎨 手写创建摘录
+       * 【触发场景】
+       * 用户在文档中选择文本后，MarginNote 会弹出一个浮动菜单，
+       * 包含“高亮”、“下划线”、“复制”等选项。这个事件在菜单弹出时触发。
        * 
-       * 【使用场景】
-       * 1. 🏷️ 自动添加标签或分类
-       * 2. 🎨 根据内容自动设置颜色
-       * 3. 🔗 自动关联相关笔记
-       * 4. 🤖 AI 分析和增强
+       * 【主要功能】
+       * 1. 🔄 替换系统菜单按钮（根据配置）
+       * 2. 🌟 在动态模式下显示浮动工具栏
+       * 3. 📍 计算工具栏显示位置
        * 
-       * 【sender 参数结构】
-       * ```javascript
-       * sender = {
-       *   userInfo: {
-       *     noteid: "xxx",      // 新创建的摘录 ID
-       *     note: MNNote,        // 摘录对象
-       *     excerptText: "...",  // 摘录文本
-       *     documentPath: "..."  // 源文档路径
-       *   }
-       * }
+       * 【执行流程】
+       * ```
+       * onPopupMenuOnSelection(sender)
+       *      |
+       *      ├─ 检查是否当前窗口
+       *      |
+       *      ├─ 处理设置界面焦点
+       *      |
+       *      ├─ 替换弹出菜单按钮
+       *      |
+       *      ├─ 检查动态模式
+       *      │   └─ 不是动态模式则返回
+       *      |
+       *      ├─ 创建/更新动态工具栏
+       *      |
+       *      ├─ 计算显示位置
+       *      │   ├─ 获取菜单位置
+       *      │   └─ 根据箭头方向调整
+       *      |
+       *      └─ 显示工具栏动画
        * ```
        * 
-       * 【典型处理示例】
-       * ```javascript
-       * onProcessNewExcerpt: function(sender) {
-       *   let noteId = sender.userInfo.noteid
-       *   let note = MNNote.new(noteId)
-       *   
-       *   // 1. 根据内容自动分类
-       *   if (note.excerptText.includes("定义")) {
-       *     note.appendTags(["概念"])
-       *     note.colorIndex = 2  // 蓝色
-       *   }
-       *   
-       *   // 2. 自动添加时间戳
-       *   note.appendTextComment(new Date().toLocaleDateString())
-       * }
-       * ```
-       * 
-       * 【最佳实践】
-       * - ✅ 使用 MNUtil.undoGrouping 保证操作可撤销
-       * - ✅ 快速处理，避免阻塞用户操作
-       * - ✅ 提供用户设置选项来开启/关闭此功能
-       * - ❌ 避免复杂耗时的操作
-       * 
-       * @param {Object} sender - 事件发送者，包含摘录信息
-       * @returns {void}
-       */
-      onProcessNewExcerpt:function (sender) {
-      },
-      /**
-       * 📝 选中区域弹出菜单时调用 - 扩展选中文本的操作菜单
-       * 
-       * 【调用时机】
-       * 用户在文档中选中文本或图片后：
-       * 1. 🖱️ iOS: 长按弹出菜单
-       * 2. 🖱️ macOS: 右键点击弹出菜单
-       * 3. 📱 触控栏上的菜单按钮
-       * 
-       * 【使用场景】
-       * 1. 🏠 添加自定义菜单项（快速翻译、搜索等）
-       * 2. 🤖 AI 处理选中内容（总结、解释等）
-       * 3. 🔗 创建特殊类型的摘录
-       * 4. 🎨 自定义文本处理
-       * 
-       * 【sender 参数结构】
-       * ```javascript
-       * sender = {
-       *   userInfo: {
-       *     documentController: controller,  // 文档控制器
-       *     selection: {                    // 选中信息
-       *       text: "选中的文本",
-       *       range: NSRange,
-       *       rects: [CGRect],             // 选中区域矩形
-       *       image: UIImage               // 如果选中的是图片
-       *     },
-       *     menuController: controller      // 菜单控制器
-       *   }
-       * }
-       * ```
-       * 
-       * 【添加菜单项示例】
-       * ```javascript
-       * onPopupMenuOnSelection: async function(sender) {
-       *   if (!sender.userInfo.menuController) return
-       *   
-       *   let menuController = sender.userInfo.menuController
-       *   let selectedText = sender.userInfo.selection.text
-       *   
-       *   // 添加翻译菜单
-       *   menuController.commandTable.push({
-       *     title: "🌍 翻译",
-       *     object: self,
-       *     selector: "translateSelection:",
-       *     param: {text: selectedText}
-       *   })
-       *   
-       *   // 添加搜索菜单
-       *   menuController.commandTable.push({
-       *     title: "🔍 搜索",
-       *     object: self,
-       *     selector: "searchSelection:",
-       *     param: {text: selectedText}
-       *   })
-       * }
-       * ```
-       * 
-       * 【注意事项】
-       * - ✅ 检查 menuController 是否存在
-       * - ✅ 使用 async 支持异步操作
-       * - ✅ 保持菜单项简洁明了
-       * - ❌ 不要添加太多菜单项（影响用户体验）
-       * 
+       * @param {Object} sender - 事件发送者
        * @async
-       * @param {Object} sender - 事件发送者，包含选中信息和菜单控制器
-       * @returns {Promise<void>}
        */
       onPopupMenuOnSelection: async function (sender) { // Clicking note
+        // 🔍 步骤1：检查 MNUtil 是否存在
+        if (typeof MNUtil === 'undefined') return
+        
+        // 🎯 步骤2：获取插件实例
+        let self = getMNTaskClass()
+        
+        // 🪟 步骤3：检查是否是当前窗口的事件
+        // 在多窗口场景下，确保只响应当前窗口的事件
+        if (self.window !== MNUtil.currentWindow) {
+          return
+        }
+        
+        // 💱 步骤4：处理设置界面的焦点
+        // 如果设置界面正在显示，延迟 0.01 秒后失去焦点
+        // 这样可以避免输入框和弹出菜单的冲突
+        if (self.settingController) {
+            MNUtil.delay(0.01).then(()=>{
+              self.settingController.blur()
+            })
+        }
+        
+        // 🔄 步骤5：替换弹出菜单中的按钮
+        // popupReplace() 会根据配置替换系统菜单中的某些按钮
+        // 例如：把“链接”按钮替换成自定义功能
+        self.addonController.popupReplace()
+
+        // 🌟 步骤6：检查动态模式
+        // 只有在动态模式下才显示浮动工具栏
+        // 固定模式下工具栏始终显示，不需要额外处理
+        if (!taskConfig.dynamic) {
+          return
+        }
+        
+        // 🛡️ 开始处理动态工具栏显示逻辑
+        try {
+          
+
+        // 📍 步骤7：创建或更新动态工具栏
+        let lastFrame 
+        
+        if (!self.testController) {
+          // 🆕 首次创建动态工具栏
+          self.testController = taskController.new();
+          
+          // 设置动态工具栏属性
+          self.testController.dynamicWindow = true              // 标记为动态窗口
+          self.testController.mainPath = mainPath;              // 插件路径
+          self.testController.dynamic = taskConfig.dynamic   // 动态模式配置
+          self.testController.view.hidden = true                // 初始隐藏
+          
+          // 设置关联关系
+          self.testController.addonController = self.addonController      // 关联主控制器
+          self.addonController.dynamicTask = self.testController       // 反向关联
+          
+          // 添加到学习视图
+          MNUtil.studyView.addSubview(self.testController.view);
+          
+          // 使用主工具栏的位置作为初始位置
+          lastFrame = self.addonController.view.frame
+        }else{
+          // 🔄 工具栏已存在，刷新它
+          self.testController.refresh()
+          
+          // 使用动态工具栏自己的位置
+          lastFrame = self.testController.view.frame
+        }
+        // 👀 步骤8：竖向工具栏的特殊处理
+        // 这里有个小细节：如果工具栏是竖着的（就像手机侧边的音量键）
+        // 在选择文本时就不显示动态工具栏了
+        // 为啥？因为竖着的工具栏和文本选择菜单会打架！
+        if (taskConfig.vertical(true)){
+          self.testController.view.hidden = true
+          return
+        }
+        // 🛠️ 步骤9：设置一些状态和变量
+        self.testController.onClick = false         // 标记：用户还没点击过
+        self.onPopupMenuOnNoteTime = Date.now()     // 记住现在的时间，后面要用
+        let yOffset = 0                             // Y轴偏移量，用来调整位置
+        
+        // ⏳ 等一下！等 0.01 秒
+        // 为啥要等？因为系统需要一点点时间来创建菜单
+        // 就像你点外卖 APP，得等页面加载完才能看到菜单
+        await MNUtil.delay(0.01)
+        
+        // 🍳 获取当前的弹出菜单
+        let menu = PopupMenu.currentMenu()
+        let menuFrame = menu.frame  // 菜单的位置和大小
+        // 🎯 步骤10：根据菜单箭头方向调整位置
+        // 弹出菜单有个小箭头，指向你选中的文字
+        // 箭头可能在上、下、左、右，我们要根据这个来调整工具栏位置
+        switch (menu.arrowDirection) {
+          case 0:           // 箭头在上面 ↑
+            yOffset = 45    // 工具栏要往下移 45 像素
+            break;
+          case 1:           // 箭头在下面 ↓
+            yOffset = -50   // 工具栏要往上移 50 像素
+            break;
+          case 2:           // 箭头在左边 ←
+            yOffset = 45    // 也往下移一点
+            break;
+          default:          // 其他情况（不常见）
+            MNUtil.showHUD("箭头方向: "+menu.arrowDirection)
+            break;
+        }
+        // 📍 步骤11：计算工具栏的最终位置
+        lastFrame.y = menuFrame.y - yOffset   // 菜单位置 减去 偏移量 = 工具栏 Y 坐标
+        lastFrame.x = menuFrame.x             // X 坐标直接用菜单的
+        
+        // 给工具栏起个短名，方便使用
+        let testController = self.testController
+        
+        // 🙅 步骤12：检查是不是“不要显示”的情况
+        // 有时候用户快速操作，我们要避免工具栏闪来闪去
+        // 如果刚刚关闭了菜单（500毫秒内），就不显示了
+        if (self.notShow && 
+            Date.now()-self.onClosePopupMenuOnNoteTime > 0 && 
+            Date.now()-self.onClosePopupMenuOnNoteTime < 500) {
+          return  // 不显示，直接走人
+        }
+        // ✨ 步骤13：显示工具栏（带动画效果！）
+        if (testController.view.hidden) {
+          // 🎆 情况1：工具栏现在是隐藏的，要让它华丽登场！
+          
+          // 1. 把工具栏移到最前面（就像把卡片放到牌堆最上面）
+          MNUtil.studyView.bringSubviewToFront(testController.view)
+          
+          // 2. 刷新位置和大小
+          testController.refresh(lastFrame)
+          
+          // 3. 先设置透明（看不见）
+          testController.view.layer.opacity = 0
+          
+          // 4. 取消隐藏状态
+          testController.view.hidden = false
+          testController.screenButton.hidden = false
+          
+          // 5. 来个淡入动画！从透明到不透明
+          await MNUtil.animate(()=>{
+            testController.view.layer.opacity = 1.0  // 慢慢变成完全不透明
+          })
+          
+          // 6. 重新排列按钮
+          testController.setTaskLayout()
+          
+        }else{
+          // 🔄 情况2：工具栏已经显示了，只需要移动位置
+          
+          self.onAnimate = true  // 标记：正在播放动画
+          
+          // 移到最前面
+          MNUtil.studyView.bringSubviewToFront(testController.view)
+          
+          // 平滑移动到新位置
+          MNUtil.animate(()=>{
+            testController.refresh(lastFrame)
+            testController.view.hidden = false
+            testController.screenButton.hidden = false
+          }).then(()=>{
+            // 动画完成后
+            testController.view.hidden = false
+            self.onAnimate = false  // 标记：动画结束
+          })
+        }
+        } catch (error) {
+          // 😨 如果出错了，记录下来
+          // 这样我们就知道哪里出问题了
+          taskUtils.addErrorLog(error, "onPopupMenuOnSelection")
+        }
       },
       /**
-       * 🚪 选中区域弹出菜单关闭时调用
+       * 🚪 选择文本的菜单关闭了 - 决定是否隐藏工具栏
        * 
-       * 【调用时机】
-       * 1. ✅ 用户选择了菜单项
-       * 2. ❌ 用户取消了菜单
-       * 3. 🔄 用户点击了菜单外的区域
+       * 【什么时候触发？】
+       * 当你选中文本后弹出的菜单消失时，比如：
+       * - 点击了菜单中的某个选项
+       * - 点击了菜单外面的区域
+       * - 按了 ESC 键
        * 
-       * 【使用场景】
-       * 1. 🧹 清理临时资源
-       * 2. 📋 记录用户操作统计
-       * 3. 🔄 恢复 UI 状态
-       * 4. 💾 保存用户选择
+       * 【主要任务】
+       * 决定动态工具栏是否该隐藏。就像你家的客人走了，
+       * 你要决定是否关门一样。
        * 
-       * 【与 onPopupMenuOnSelection 的关系】
-       * - onPopupMenuOnSelection: 菜单显示前，用于添加菜单项
-       * - onClosePopupMenuOnSelection: 菜单关闭后，用于清理
-       * 
-       * 【注意事项】
-       * - 🔄 此方法总是会被调用，无论用户是否选择了菜单项
-       * - ⚡ 避免执行耗时操作
-       * - 🧠 可以通过全局变量跟踪用户选择了什么
-       * 
-       * @async
        * @param {Object} sender - 事件发送者
-       * @returns {Promise<void>}
        */
       onClosePopupMenuOnSelection: async function (sender) {
+        // 🔍 还是先检查一下 MNUtil 有没有
+        if (typeof MNUtil === 'undefined') return
+        
+        try {
+          
+
+        // ⏰ 记录关闭菜单的时间
+        self.onClosePopupMenuOnNoteTime = Date.now()
+        
+        // 🤔 判断：是不是同一个笔记，而且时间很短？
+        // 如果是同一个笔记，而且从打开到关闭不到 0.5 秒
+        // 这通常意味着用户只是误点了一下，或者快速操作
+        if (self.noteid === sender.userInfo.noteid && 
+            Date.now()-self.onPopupMenuOnNoteTime < 500) {
+          self.notShow = true  // 标记：下次不要显示工具栏
+        }
+        // 🎭 决定是否隐藏工具栏
+        // 条件：
+        // 1. 关闭时间 比 打开时间 晚 250 毫秒以上（说明不是误点）
+        // 2. 用户没有点击过工具栏按钮
+        if (self.onClosePopupMenuOnNoteTime > self.onPopupMenuOnNoteTime + 250 && 
+            !self.testController.onClick) {
+          
+          // 保存当前透明度
+          let preOpacity = self.testController.view.layer.opacity
+          
+          // 如果正在播放动画，就不要打断了
+          if (self.onAnimate) {
+            MNUtil.showHUD("正在播放动画")
+            return
+          }
+          
+          // 🎆 淡出动画：0.1秒内变透明
+          MNUtil.animate(()=>{
+            self.testController.view.layer.opacity = 0
+          }, 0.1).then(()=>{
+            // 动画完成后
+            self.testController.view.layer.opacity = preOpacity  // 恢复透明度
+            self.testController.view.hidden = true               // 真正隐藏
+          })
+          return
+        }
+        } catch (error) {
+          // 😵 哎呀，出错了！
+          taskUtils.addErrorLog(error, "onClosePopupMenuOnSelection")
+        }
       },
       /**
-       * 📄 笔记弹出菜单时调用 - 扩展笔记操作菜单
+       * 📄 点击笔记卡片弹出菜单 - 显示动态工具栏
        * 
-       * 【调用时机】
-       * 用户在笔记上操作时：
-       * 1. 🖱️ iOS: 长按笔记卡片
-       * 2. 🖱️ macOS: 右键点击笔记
-       * 3. 📂 在脑图或大纲视图中操作笔记
+       * 【什么时候触发？】
+       * 当你在脑图中点击一个笔记卡片时，MarginNote 会弹出一个菜单，
+       * 里面有“合并”、“删除”、“复制”等选项。这个事件在菜单弹出时触发。
        * 
-       * 【使用场景】
-       * 1. 🎨 添加笔记处理功能（制卡、分类等）
-       * 2. 🔗 创建笔记关联操作
-       * 3. 📊 笔记统计和分析
-       * 4. 🎯 批量处理操作
+       * 【核心功能】
+       * 1. 🔄 替换系统菜单中的某些按钮（根据配置）
+       * 2. 🌟 在动态模式下，显示浮动工具栏
+       * 3. 📍 智能计算工具栏位置，避免遮挡卡片
        * 
-       * 【sender 参数结构】
-       * ```javascript
-       * sender = {
-       *   userInfo: {
-       *     note: MNNote,                  // 当前操作的笔记
-       *     notes: [MNNote],               // 选中的所有笔记（多选）
-       *     menuController: controller,    // 菜单控制器
-       *     documentController: controller // 文档控制器
-       *   }
-       * }
-       * ```
+       * 【实现思路】
+       * 这个方法和 onPopupMenuOnSelection 很像，但它处理的是笔记卡片，
+       * 而不是选中的文本。主要区别在于位置计算的逻辑不同。
        * 
-       * 【添加菜单项示例】
-       * ```javascript
-       * onPopupMenuOnNote: async function(sender) {
-       *   if (!sender.userInfo.menuController) return
-       *   
-       *   let menuController = sender.userInfo.menuController
-       *   let note = sender.userInfo.note
-       *   let notes = sender.userInfo.notes || [note]
-       *   
-       *   // 添加制卡功能
-       *   menuController.commandTable.push({
-       *     title: "🃏 制作卡片",
-       *     object: self,
-       *     selector: "makeFlashcard:",
-       *     param: {notes: notes}
-       *   })
-       *   
-       *   // 添加 AI 总结
-       *   menuController.commandTable.push({
-       *     title: "🤖 AI 总结",
-       *     object: self,
-       *     selector: "aiSummarize:",
-       *     param: {note: note}
-       *   })
-       *   
-       *   // 如果是多选，添加批量操作
-       *   if (notes.length > 1) {
-       *     menuController.commandTable.push({
-       *       title: `📦 批量处理 (${notes.length})个`,
-       *       object: self,
-       *       selector: "batchProcess:",
-       *       param: {notes: notes}
-       *     })
-       *   }
-       * }
-       * ```
-       * 
-       * 【高级技巧】
-       * 1. 🎯 根据笔记类型添加不同菜单
-       * 2. 🔢 支持多选操作
-       * 3. 🎭 根据用户权限显示不同菜单
-       * 4. 📈 添加菜单项排序
-       * 
+       * @param {Object} sender - 事件发送者，包含笔记信息
        * @async
-       * @param {Object} sender - 事件发送者，包含笔记信息和菜单控制器
-       * @returns {Promise<void>}
        */
       onPopupMenuOnNote: async function (sender) { // Clicking note
+        // 🔍 步骤1：基本检查
+        if (typeof MNUtil === 'undefined') return
+        
+        // 🎯 步骤2：获取插件实例
+        let self = getMNTaskClass()
+        
+        // 🪟 步骤3：检查是否是当前窗口的事件
+        if (self.window !== MNUtil.currentWindow) {
+          return
+        }
+        
+        try {
+          // 🔄 步骤4：替换弹出菜单中的按钮
+          // 比如把“链接”按钮换成你的自定义功能
+          self.addonController.popupReplace()
+          
+          // 💱 步骤5：处理设置界面的焦点
+          if (self.settingController) {
+            MNUtil.delay(0.01).then(()=>{
+              self.settingController.blur()  // 让设置界面失去焦点
+              
+              // 📝 下面这些被注释的代码是尝试不同的失焦方法
+              // self.settingController.webviewInput.resignFirstResponder()  // 让输入框失焦
+              // MNUtil.studyView.becomeFirstResponder()                     // 让学习视图获得焦点
+              // MNUtil.currentWindow.becomeFirstResponder()                 // 让当前窗口获得焦点
+              // MNUtil.mindmapView.becomeFirstResponder()                   // 让脑图视图获得焦点
+            })
+          }
+
+        // 🌟 步骤6：检查是否开启了动态模式
+        if (!taskConfig.dynamic) {
+          return  // 没开动态模式就不显示浮动工具栏
+        }
+        
+        // ⏰ 记录弹出菜单的时间（后面要用）
+        self.onPopupMenuOnNoteTime = Date.now()
+        
+        // 📍 步骤7：创建或获取动态工具栏
+        let lastFrame 
+        
+        if (!self.testController) {
+          // 🆕 第一次创建动态工具栏
+          // 就像买了一个新的遥控器，需要初始化设置
+          
+          self.testController = taskController.new();           // 创建新的工具栏控制器
+          self.testController.dynamicWindow = true                 // 告诉它：你是动态的！
+          self.testController.mainPath = mainPath;                 // 设置插件路径
+          self.testController.dynamic = taskConfig.dynamic      // 同步动态模式配置
+          self.testController.view.hidden = true                   // 先隐藏起来
+          
+          // 建立关系：主工具栏 ⇄ 动态工具栏
+          self.testController.addonController = self.addonController      // 动态→主
+          self.addonController.dynamicTask = self.testController       // 主→动态
+          
+          // 把动态工具栏添加到学习视图上
+          MNUtil.studyView.addSubview(self.testController.view);
+          
+          // 使用主工具栏的位置作为参考
+          lastFrame = self.addonController.view.frame
+        }else{
+          // 🔄 动态工具栏已经存在，直接用
+          lastFrame = self.testController.view.frame
+        }
+        
+        // 📝 步骤8：保存当前笔记的信息
+        self.noteid = sender.userInfo.note.noteId                    // 记住哪个笔记触发的
+        taskUtils.currentNoteId = sender.userInfo.note.noteId     // 全局也保存一份
+        self.notShow = false                                         // 重置"不显示"标记
+        
+        // 📐 步骤9：获取笔记卡片的位置信息
+        // winRect 是笔记卡片在屏幕上的矩形区域
+        let winRect = MNUtil.parseWinRect(sender.userInfo.winRect)
+        
+        // 🖼️ 步骤10：检查文档/脑图的分屏模式
+        // MarginNote 支持三种模式：
+        // 0: 只显示脑图
+        // 1: 文档和脑图并排显示
+        // 2: 只显示文档
+        let docMapSplitMode = MNUtil.studyController.docMapSplitMode
+        
+        // 🚫 步骤11：智能隐藏逻辑（仅在竖向工具栏时）
+        // 为什么要这么做？
+        // 当笔记卡片在文档那一侧时，显示竖向工具栏会很奇怪
+        if (taskConfig.vertical(true) && winRect.height <=11 && winRect.width <=11) {
+          switch (docMapSplitMode) {
+            case 1:  // 📏 文档和脑图并排显示的情况
+              // 获取分割线的位置（文档和脑图的分界线）
+              let splitLine = MNUtil.splitLine
+              
+              // 检查脑图是在左边还是右边
+              if (MNUtil.studyController.rightMapMode) {
+                // 🎯 脑图在右边的情况
+                if (winRect.x < splitLine) {
+                  // 笔记在左边（文档区域），隐藏工具栏
+                  self.testController.view.hidden = true
+                  return
+                }
+              }else{
+                // 🎯 脑图在左边的情况
+                if (winRect.x > splitLine) {
+                  // 笔记在右边（文档区域），隐藏工具栏
+                  self.testController.view.hidden = true
+                  return
+                }
+              }
+              break;
+            case 2:  // 📃 只显示文档，没有脑图
+              // 这种情况下肯定不需要显示工具栏
+              self.testController.view.hidden = true
+              return
+            default:  // 🗺️ 只显示脑图（case 0）
+              // 继续正常显示工具栏
+              break;
+          }
+        }
+        
+        // 📏 步骤12：获取学习视图的尺寸信息
+        let studyFrame = MNUtil.studyView.frame          // 整个学习区域的框架
+        let studyFrameX = studyFrame.x                   // 学习区域的 X 坐标
+        let studyHeight = studyFrame.height              // 学习区域的高度
+        
+        // 🎮 步骤13：重置点击状态
+        self.testController.onClick = false               // 标记还没有点击过
+        
+        // 🧭 步骤14：计算工具栏的位置
+        if (taskConfig.horizontal(true)) {
+          // 🔄 横向工具栏的位置计算
+          let yOffset  // Y 轴偏移量
+          
+          // 稍微等一下，让弹出菜单完全显示
+          await MNUtil.delay(0.01)
+          
+          // 获取当前的弹出菜单
+          let menu = PopupMenu.currentMenu()
+          if (!menu) {
+            return  // 没找到菜单就算了
+          }
+          
+          let menuFrame = menu.frame
+          
+          // 🎯 根据菜单箭头方向调整位置
+          // 箭头方向决定了菜单相对于笔记的位置
+          switch (menu.arrowDirection) {
+            case 0:  // ⬆️ 箭头向上（菜单在笔记下方）
+              yOffset = 45
+              break;
+            case 1:  // ⬇️ 箭头向下（菜单在笔记上方）
+              yOffset = -50
+              break;
+            case 2:  // ➡️ 箭头向右（菜单在笔记左侧）
+              yOffset = 45
+              break;
+            default:
+              break;
+          }
+          lastFrame.y = menuFrame.y - yOffset  // 相对于菜单调整 Y 坐标
+          lastFrame.x = menuFrame.x            // X 坐标跟随菜单
+        }else{
+          // 📍 竖向工具栏的位置计算
+          // 计算逻辑更复杂，需要考虑边界情况
+          
+          // 📌 X 轴位置计算
+          if (winRect.x - 43 < 0) {
+            // 太靠左了，放在笔记右边
+            lastFrame.x = winRect.x + winRect.width - studyFrameX
+          }else{
+            // 正常情况，放在笔记左边（留 43 像素间距）
+            lastFrame.x = winRect.x - 43 - studyFrameX
+          }
+          
+          // 📌 Y 轴位置计算
+          if (winRect.y - 15 < 0) {
+            // 太靠上了，贴着顶部
+            lastFrame.y = 0
+          }else{
+            // 正常情况，比笔记高一点（上移 25 像素）
+            lastFrame.y = winRect.y - 25
+          }
+          
+          // 📌 防止工具栏超出底部
+          if (winRect.y + lastFrame.height > studyHeight) {
+            // 调整位置，确保完全显示
+            lastFrame.y = studyHeight - lastFrame.height
+          }
+        }
+
+        // 🎬 步骤15：准备显示动画
+        let testController = self.testController  // 简化变量名
+        
+        // 🚫 检查是否需要显示
+        if (self.notShow) {
+          // 用户可能快速关闭了菜单，不需要显示了
+          return
+        }
+
+        // 🎨 步骤16：显示工具栏（带动画效果）
+        if (testController.view.hidden) {
+          // 🌟 情况1：工具栏是隐藏的，需要淡入显示
+          
+          // 如果正在播放其他动画，标记不要隐藏
+          if (testController.onAnimate) {
+            testController.notHide = true
+          }
+          
+          self.onAnimate = true  // 标记：正在播放动画
+          
+          // 把工具栏移到最前面（不被其他视图遮挡）
+          MNUtil.studyView.bringSubviewToFront(testController.view)
+          
+          // 设置新位置并刷新内容
+          testController.refresh(lastFrame)
+          
+          // 准备淡入效果：先设为完全透明
+          testController.view.layer.opacity = 0
+          testController.view.hidden = false
+          testController.screenButton.hidden = false
+          
+          // 🎆 执行淡入动画（从透明到不透明）
+          await MNUtil.animate(()=>{
+            testController.view.layer.opacity = 1.0
+          })
+          
+          // 动画完成后的收尾工作
+          testController.view.hidden = false    // 确保真的显示了
+          self.onAnimate = false                // 标记：动画结束了
+          testController.setTaskLayout()     // 设置工具栏布局
+        }else{
+          // 🔄 情况2：工具栏已经显示，只需要调整位置
+          
+          // 把工具栏移到最前面
+          MNUtil.studyView.bringSubviewToFront(testController.view)
+          
+          // 🎯 动画移动到新位置
+          MNUtil.animate(()=>{
+            testController.refresh(lastFrame)
+            testController.view.hidden = false
+            testController.screenButton.hidden = false
+          }).then(()=>{
+            // 确保动画后还是显示状态
+            testController.view.hidden = false
+          })
+        }
+        } catch (error) {
+          // 😵 出错了！记录错误信息
+          taskUtils.addErrorLog(error, "onPopupMenuOnNote")
+        }
       },
+      
       /**
-       * 🚪 笔记弹出菜单关闭时调用
+       * 🚪 笔记菜单关闭事件 - 决定是否隐藏动态工具栏
        * 
-       * 【调用时机】
-       * 与 onClosePopupMenuOnSelection 类似，在笔记菜单关闭时触发：
-       * 1. ✅ 用户选择了菜单项
-       * 2. ❌ 用户取消了菜单
-       * 3. 🔄 用户点击了菜单外的区域
+       * 【触发时机】
+       * 当点击笔记卡片弹出的菜单关闭时触发。
        * 
-       * 【使用场景】
-       * 1. 🧹 清理笔记操作的临时数据
-       * 2. 📊 记录用户对笔记的操作统计
-       * 3. 🔄 恢复笔记显示状态
-       * 4. 🛡️ 取消未完成的操作
+       * 【主要功能】
+       * 和 onClosePopupMenuOnSelection 类似，根据时间判断是否要隐藏工具栏。
+       * 如果用户只是快速点击（误操作），就不隐藏工具栏。
        * 
-       * 【与 onPopupMenuOnNote 的配合】
-       * ```javascript
-       * // 在 onPopupMenuOnNote 中设置临时状态
-       * self.tempNoteData = {noteId: note.noteId, action: "pending"}
-       * 
-       * // 在 onClosePopupMenuOnNote 中清理
-       * if (self.tempNoteData && self.tempNoteData.action === "pending") {
-       *   // 用户没有选择任何操作
-       *   self.tempNoteData = null
-       * }
-       * ```
-       * 
-       * 【注意事项】
-       * - 🔄 此方法总是会被调用
-       * - ⚡ 保持快速执行
-       * - 🧠 可以用于跟踪用户行为
-       * 
-       * @async
        * @param {Object} sender - 事件发送者
-       * @returns {Promise<void>}
+       * @async
        */
       onClosePopupMenuOnNote: async function (sender) {
+        // 🔍 基本检查
+        if (typeof MNUtil === 'undefined') return
+        // await MNUtil.delay(0.1)
+        // ⏰ 记录关闭菜单的时间
+        self.onClosePopupMenuOnNoteTime = Date.now()
+        
+        // 🤔 判断：是不是同一个笔记，而且时间很短？
+        // 如果是同一个笔记，而且从打开到关闭不到 0.5 秒
+        // 这通常意味着用户只是误点了一下，或者快速操作
+        if (self.noteid === sender.userInfo.noteid && 
+            Date.now()-self.onPopupMenuOnNoteTime < 500) {
+          self.notShow = true  // 标记：下次不要显示工具栏
+        }
+        
+        // 🎭 决定是否隐藏工具栏
+        // 条件：
+        // 1. 关闭时间 比 打开时间 晚 250 毫秒以上（说明不是误点）
+        // 2. 用户没有点击过工具栏按钮
+        if (self.onClosePopupMenuOnNoteTime > self.onPopupMenuOnNoteTime + 250 && 
+            !self.testController.onClick) {
+          
+          // 保存当前透明度
+          let preOpacity = self.testController.view.layer.opacity
+          
+          // 如果正在播放动画，就不要打断了
+          if (self.onAnimate) {
+            return
+          }
+          
+          self.onAnimate = true  // 标记：开始播放动画
+          
+          // 🎆 淡出动画：0.1秒内变透明
+          MNUtil.animate(()=>{
+            self.testController.view.layer.opacity = 0
+          }, 0.1).then(()=>{
+            // 动画完成后
+            self.testController.view.layer.opacity = preOpacity  // 恢复透明度
+            self.onAnimate = false                               // 标记：动画结束
+            self.testController.view.hidden = true               // 真正隐藏
+          })
+          return
+        }
       },
+      
       /**
-       * 📄 文档打开时调用 - 处理文档级别的初始化
+       * 📄 文档打开事件
        * 
-       * 【调用时机】
-       * 1. 📚 用户打开 PDF/ePub 文档
-       * 2. 🔄 在笔记本中切换文档
-       * 3. 📥 从外部打开文档链接
+       * 【触发时机】
+       * 当用户在 MarginNote 中打开一个新文档（PDF/EPUB）时触发。
        * 
-       * 【使用场景】
-       * 1. 📑 加载文档特定的设置
-       * 2. 📢 显示文档信息提示
-       * 3. 📋 恢复上次的阅读位置
-       * 4. 🔍 预加载文档关联数据
-       * 
-       * 【docmd5 参数说明】
-       * docmd5 是文档的唯一标识符，可以用来：
-       * ```javascript
-       * // 获取文档信息
-       * let doc = MNUtil.getDocById(docmd5)
-       * let docPath = doc.fullPathFileName
-       * let docTitle = doc.docTitle
-       * 
-       * // 保存文档特定设置
-       * self.docSettings[docmd5] = {
-       *   lastPage: 1,
-       *   zoom: 1.0
-       * }
-       * ```
-       * 
-       * 【与 notebookWillOpen 的区别】
-       * - notebookWillOpen: 整个笔记本级别
-       * - documentDidOpen: 单个文档级别
-       * - 一个笔记本可以包含多个文档
-       * 
-       * 【注意事项】
-       * - 💾 文档可能很大，避免加载过多数据
-       * - 🔄 同一文档可能被多次打开
-       * - 🧠 使用 docmd5 作为缓存键值
-       * 
+       * 【参数说明】
        * @param {string} docmd5 - 文档的 MD5 标识符
-       * @returns {void}
+       * 
+       * 【注意】
+       * 目前这个方法是空的，但你可以在这里添加文档相关的初始化逻辑。
        */
       documentDidOpen: function (docmd5) {
+        // 可以在这里添加文档打开时的处理逻辑
+        // 比如：记录文档信息、调整工具栏等
       },
+
       /**
-       * 🔓 文档即将关闭时调用 - 保存文档状态
+       * 📄 文档即将关闭事件
        * 
-       * 【调用时机】
-       * 1. 🔄 用户切换到其他文档
-       * 2. 📕 用户关闭当前文档
-       * 3. 📋 笔记本关闭时所有文档都会关闭
+       * 【触发时机】
+       * 当用户关闭文档时，在文档真正关闭前触发。
        * 
-       * 【主要职责】
-       * 1. 💾 保存阅读进度和位置
-       * 2. 📋 保存文档特定设置
-       * 3. 🧹 清理文档相关缓存
-       * 4. 📈 记录阅读统计
+       * 【参数说明】
+       * @param {string} docmd5 - 即将关闭的文档的 MD5 标识符
        * 
-       * 【保存状态示例】
-       * ```javascript
-       * documentWillClose: function(docmd5) {
-       *   // 1. 保存阅读位置
-       *   let currentPage = MNUtil.currentDocumentPage
-       *   self.saveReadingProgress(docmd5, currentPage)
-       *   
-       *   // 2. 保存视图设置
-       *   let zoom = MNUtil.currentZoomLevel
-       *   self.saveViewSettings(docmd5, {zoom: zoom})
-       *   
-       *   // 3. 清理缓存
-       *   delete self.documentCache[docmd5]
-       * }
-       * ```
-       * 
-       * 【与 documentDidOpen 的配合】
-       * - 在 close 中保存的数据
-       * - 可以在下次 open 时恢复
-       * 
-       * @param {string} docmd5 - 即将关闭的文档 MD5 标识符
-       * @returns {void}
+       * 【使用场景】
+       * - 保存文档相关的设置
+       * - 清理文档相关的缓存
+       * - 提醒用户保存未完成的工作
        */
       documentWillClose: function (docmd5) {
+        // 可以在这里添加文档关闭前的清理逻辑
       },
+
       /**
-       * 📜 视图将要重新布局时调用 - 响应界面变化
+       * 🎨 控制器即将布局子视图 - 调整工具栏位置和大小
        * 
-       * 【调用时机】
-       * 1. 📱 设备旋转（横竖屏切换）
-       * 2. 🗔️ 分屏模式改变
-       * 3. 🖼️ 窗口大小调整
-       * 4. 📏 隐藏/显示工具栏
+       * 【触发时机】
+       * 当视图需要重新布局时触发，比如：
+       * - 窗口大小改变
+       * - 分屏模式切换
+       * - 设备旋转（iPad）
        * 
-       * 【使用场景】
-       * 1. 📀 调整工具栏位置和大小
-       * 2. 🎨 更新按钮布局
-       * 3. 🔄 重新计算元素位置
-       * 4. 📰 适配不同屏幕尺寸
-       * 
-       * 【布局处理示例】
-       * ```javascript
-       * controllerWillLayoutSubviews: function(controller) {
-       *   // 1. 获取新的屏幕尺寸
-       *   let bounds = controller.view.bounds
-       *   let isLandscape = bounds.width > bounds.height
-       *   
-       *   // 2. 调整工具栏位置
-       *   if (self.toolbar) {
-       *     if (isLandscape) {
-       *       // 横屏布局
-       *       self.toolbar.frame = {x: bounds.width - 60, y: 50, width: 50, height: 400}
-       *     } else {
-       *       // 竖屏布局
-       *       self.toolbar.frame = {x: 10, y: bounds.height - 60, width: 300, height: 50}
-       *     }
-       *   }
-       * }
-       * ```
-       * 
-       * 【注意事项】
-       * - 🔄 可能被频繁调用，要注意性能
-       * - 🛡️ 避免在此处做复杂计算
-       * - 🎨 只调整必要的元素
-       * - 📏 使用缓存避免重复计算
+       * 【主要功能】
+       * 根据当前的布局情况，智能调整工具栏的位置和大小，
+       * 确保工具栏始终在合适的位置，不遮挡重要内容。
        * 
        * @param {UIViewController} controller - 触发布局的控制器
-       * @returns {void}
        */
       controllerWillLayoutSubviews: function (controller) {
+        // 🔍 步骤1：基本检查
+        if (typeof MNUtil === 'undefined') return
+        
+        // 🎯 步骤2：只处理学习控制器的布局
+        // 为什么要这个判断？MarginNote 中有很多控制器，
+        // 我们只关心学习界面（studyController）的布局变化
+        if (controller !== MNUtil.studyController) {
+          return;
+        };
+        
+        // 📏 步骤3：调整主工具栏的布局
+        if (!self.addonController.view.hidden) {
+          // 工具栏是显示状态，需要调整位置
+          
+          // 🚫 如果正在动画或调整大小中，就不要打断
+          if (self.addonController.onAnimate || self.addonController.onResize) {
+            // 等动画完成后再说
+          }else{
+            // 🔄 根据工具栏方向进行不同的调整
+            if (taskConfig.horizontal()) {
+              // 📐 横向工具栏的调整逻辑
+              let currentFrame = self.addonController.currentFrame
+              
+              // 保持位置不变，只调整高度
+              // 40 是固定宽度，高度根据按钮数量动态计算
+              self.addonController.setFrame(
+                MNUtil.genFrame(
+                  currentFrame.x, 
+                  currentFrame.y, 
+                  40,  // 固定宽度
+                  taskUtils.checkHeight(currentFrame.width, self.addonController.maxButtonNumber)  // 动态高度
+                ),
+                true  // 不触发动画
+              )
+            } else {
+              // 📏 竖向工具栏的调整逻辑（更复杂）
+              
+              // 获取分割线位置（文档和脑图的分界）
+              let splitLine = MNUtil.splitLine
+              
+              // 获取学习视图的边界
+              let studyFrame = MNUtil.studyView.bounds
+              let currentFrame = self.addonController.currentFrame
+              
+              // 🚫 防止工具栏跑到屏幕外面（右边界检查）
+              if (currentFrame.x + currentFrame.width * 0.5 >= studyFrame.width) {
+                // 太靠右了，拉回来
+                currentFrame.x = studyFrame.width - currentFrame.width * 0.5              
+              }
+              
+              // 🚫 防止工具栏跑到屏幕外面（下边界检查）
+              if (currentFrame.y >= studyFrame.height) {
+                // 太靠下了，往上提一点
+                currentFrame.y = studyFrame.height - 20              
+              }
+              
+              // 🎯 分屏模式下的特殊处理
+              if (self.addonController.splitMode) {
+                if (splitLine) {
+                  // 有分割线，贴着分割线放置（左侧留20像素）
+                  currentFrame.x = splitLine - 20
+                }else{
+                  // 没有分割线，根据当前位置决定贴哪边
+                  if (currentFrame.x < studyFrame.width * 0.5) {
+                    currentFrame.x = 0              // 贴左边
+                  }else{
+                    currentFrame.x = studyFrame.width - 40  // 贴右边（留出工具栏宽度）
+                  }
+                }
+              }
+              
+              // 📌 侧边模式的处理
+              // 用户可以指定工具栏贴在哪一边
+              if (self.addonController.sideMode) {
+                switch (self.addonController.sideMode) {
+                  case "left":   // 📍 贴左边
+                    currentFrame.x = 0
+                    break;
+                  case "right":  // 📍 贴右边
+                    currentFrame.x = studyFrame.width - 40
+                    break;
+                  default:
+                    break;
+                }
+              }
+              
+              // 🚫 最后的边界检查，确保不会超出屏幕
+              if (currentFrame.x > (studyFrame.width - 40)) {
+                currentFrame.x = studyFrame.width - 40
+              }
+              
+              // 应用新的位置和大小
+              // 注意：竖向工具栏的高度是根据按钮数量计算的，宽度固定为40
+              self.addonController.setFrame(
+                MNUtil.genFrame(
+                  currentFrame.x, 
+                  currentFrame.y, 
+                  taskUtils.checkHeight(currentFrame.height, self.addonController.maxButtonNumber),  // 动态高度
+                  40  // 固定宽度
+                ),
+                true  // 不触发动画
+              )
+            }
+          }
+        }
+        // 📏 步骤4：调整动态工具栏（浮动工具栏）的布局
+        if (self.testController && !self.testController.view.hidden) {
+          // 动态工具栏是显示状态
+          
+          if (self.testController.onAnimate || self.testController.onResize) {
+            // 正在动画中，不处理
+          }else{
+            // 🕐 超时自动隐藏逻辑
+            // 如果菜单已经关闭超过1秒，并且关闭时间比打开时间晚100毫秒以上
+            // 说明用户已经不需要工具栏了，自动隐藏它
+            if ((self.onClosePopupMenuOnNoteTime > (self.onPopupMenuOnNoteTime + 100) && 
+                 Date.now() - self.onClosePopupMenuOnNoteTime > 1000)) {
+              
+              // 保存当前透明度
+              let preOpacity = self.testController.view.layer.opacity
+              
+              // 🎆 淡出动画
+              MNUtil.animate(()=>{
+                self.testController.view.layer.opacity = 0
+              }).then(()=>{
+                self.testController.view.layer.opacity = preOpacity  // 恢复透明度
+                self.testController.view.hidden = true               // 真正隐藏
+              })
+            }
+            
+            // 📐 调整动态工具栏的大小
+            let currentFrame = self.testController.currentFrame
+            let buttonNumber = taskConfig.getWindowState("dynamicButton");  // 获取动态工具栏的按钮数量
+            
+            // 根据按钮数量调整高度
+            currentFrame.height = taskUtils.checkHeight(currentFrame.height, buttonNumber)
+            
+            // 应用新的 frame
+            self.testController.view.frame = currentFrame
+            self.testController.currentFrame = currentFrame
+          }
+        }
+        
+        // 📏 步骤5：调整设置界面的布局
+        if (self.settingController && !self.settingController.onAnimate) {
+          // 设置界面存在且不在动画中
+          
+          let currentFrame = self.settingController.currentFrame
+          
+          // 直接应用当前的 frame（设置界面大小通常是固定的）
+          self.settingController.view.frame = currentFrame
+          self.settingController.currentFrame = currentFrame
+        }
       },
+
       /**
-       * 🎯 查询插件命令状态 - 动态管理插件功能
+       * 🔍 查询插件命令状态 - 更新UI状态
        * 
-       * 【调用时机】
-       * MarginNote 需要更新插件菜单或工具栏状态时：
-       * 1. 🔄 用户点击插件菜单
-       * 2. 📋 上下文环境改变
-       * 3. ⏰ 定期状态检查
+       * 【触发时机】
+       * MarginNote 会定期调用这个方法，询问插件的当前状态。
+       * 这是一个同步UI状态的好时机。
        * 
-       * 【返回值结构】
-       * ```javascript
-       * return {
-       *   // 命令状态字典
-       *   commands: {
-       *     "openToolbar": {
-       *       enabled: true,      // 是否启用
-       *       checked: false,     // 是否选中
-       *       hidden: false       // 是否隐藏
-       *     },
-       *     "toggleDynamic": {
-       *       enabled: true,
-       *       checked: self.dynamicMode,  // 根据当前状态
-       *       hidden: false
-       *     }
-       *   }
-       * }
-       * ```
+       * 【主要功能】
+       * 1. 更新工具栏按钮的显示状态
+       * 2. 更新设置界面的同步状态
+       * 3. 返回插件的功能清单
        * 
-       * 【使用场景】
-       * 1. ✅/❌ 启用/禁用特定功能
-       * 2. ☑️ 显示功能开关状态
-       * 3. 👁️ 隐藏不适用的功能
-       * 4. 🎯 根据权限控制功能
-       * 
-       * 【实际应用示例】
-       * ```javascript
-       * queryAddonCommandStatus: function() {
-       *   let hasNotebook = MNUtil.currentNotebookId !== null
-       *   let hasSelection = MNUtil.currentSelection.onSelection
-       *   
-       *   return {
-       *     "openToolbar": {
-       *       enabled: hasNotebook,  // 有笔记本才能打开
-       *       checked: self.toolbarVisible
-       *     },
-       *     "processSelection": {
-       *       enabled: hasSelection,  // 有选中才能处理
-       *       hidden: !hasNotebook
-       *     }
-       *   }
-       * }
-       * ```
-       * 
-       * @returns {{commands: Object.<string, {enabled: boolean, checked: boolean, hidden: boolean}>}} 
-       *          返回命令状态字典
+       * @returns {Object} 插件支持的命令列表
        */
       queryAddonCommandStatus: function () {
+        // 🔍 基本检查
+        if (typeof MNUtil === 'undefined') return null
+        
+        // 确保视图已创建
+        self.ensureView(false)
+        
+        // 🎨 更新主工具栏的按钮状态
+        if (self.addonController) {
+          self.addonController.setTaskButton()
+        }
+        
+        // ☁️ 更新设置界面的 iCloud 同步按钮
+        if (self.settingController) {
+          let iCloudSync = taskConfig.iCloudSync  // 获取当前同步状态
+          
+          // 根据状态设置不同的颜色
+          // 开启：蓝色 #457bd3
+          // 关闭：浅蓝色 #9bb2d6
+          MNButton.setColor(
+            self.settingController.iCloudButton, 
+            iCloudSync ? "#457bd3" : "#9bb2d6",
+            0.8  // 透明度
+          )
+          
+          // 更新按钮文字，显示当前状态
+          MNButton.setTitle(
+            self.settingController.iCloudButton, 
+            "iCloud Sync " + (iCloudSync ? "✅" : "❌"),
+            undefined, 
+            true
+          )
+        }
+        
+        // 🎯 返回插件支持的命令
+        // 🎯 返回插件支持的命令
+        return {
+            image: 'logo.png',        // 插件图标
+            object: self,             // 处理命令的对象
+            selector: 'toggleAddon:', // 处理命令的方法
+            checked: taskConfig.dynamic  // 当前状态（用于显示勾选）
+          };
       },
+      
       /**
-       * 🎨 新图标图片事件 - 处理自定义图标
+       * 🖼️ 新图标事件 - 更换按钮图标
        * 
-       * 【调用时机】
-       * 1. 🖼️ 用户上传自定义按钮图标
-       * 2. 🔄 动态更换按钮图标
-       * 3. 🎨 主题切换时更新图标
+       * 【触发时机】
+       * 当用户在设置界面选择了新的图标时触发。
        * 
-       * 【sender 参数结构】
-       * ```javascript
-       * sender = {
-       *   userInfo: {
-       *     iconName: "custom_icon",    // 图标名称
-       *     imageData: NSData,           // 图片数据
-       *     buttonId: "button_12",       // 目标按钮 ID
-       *     source: "user_upload"        // 图标来源
-       *   }
-       * }
-       * ```
+       * 【实现原理】
+       * 1. 接收 base64 编码的图片数据
+       * 2. 转换为 UIImage 对象
+       * 3. 更新选中按钮的图标
        * 
-       * 【处理流程示例】
-       * ```javascript
-       * onNewIconImage: function(sender) {
-       *   let info = sender.userInfo
-       *   
-       *   // 1. 保存图标数据
-       *   self.saveIconData(info.iconName, info.imageData)
-       *   
-       *   // 2. 更新按钮图标
-       *   if (info.buttonId) {
-       *     let button = self.getButtonById(info.buttonId)
-       *     button.setImage(UIImage.imageWithData(info.imageData))
-       *   }
-       *   
-       *   // 3. 刷新工具栏
-       *   self.refreshToolbar()
-       * }
-       * ```
-       * 
-       * 【使用场景】
-       * 1. 🎨 用户自定义按钮外观
-       * 2. 🎭 不同主题的图标切换
-       * 3. 📂 按钮状态的视觉反馈
-       * 4. 🏅 VIP 用户专属图标
-       * 
-       * @param {Object} sender - 事件发送者，包含图标信息
-       * @returns {void}
+       * @param {Object} sender - 包含图片数据的事件对象
        */
       onNewIconImage: function (sender) {
+        // 🔍 基本检查
+        if (typeof MNUtil === 'undefined') return
+        
+        // 🪟 只处理当前窗口的事件
+        if (self.window !== MNUtil.currentWindow) {
+          return
+        }
+        
+        // 📷 处理新图标
+        if (sender.userInfo.imageBase64) {
+          // 从 base64 数据创建 NSData
+          let imageData = NSData.dataWithContentsOfURL(MNUtil.genNSURL(sender.userInfo.imageBase64))
+          
+          // 转换为 UIImage
+          let image = UIImage.imageWithData(imageData)
+          
+          // 获取当前选中的按钮
+          let selected = self.settingController.selectedItem
+
+          // 更新按钮图标
+          taskConfig.setButtonImage(selected, image, true)
+        }
       },
+      
       /**
-       * ⚙️ 打开工具栏设置 - 响应设置请求
+       * ⚙️ 打开工具栏设置
        * 
-       * 【调用时机】
-       * 1. 🔘 用户点击设置按钮
-       * 2. 📡 其他插件发送设置请求
-       * 3. ⌨️ 快捷键触发
-       * 4. 📱 从通知中心打开
+       * 【触发时机】
+       * 当用户点击设置按钮或通过快捷键触发时调用。
        * 
-       * 【params 参数结构】
-       * ```javascript
-       * params = {
-       *   section: "buttons",     // 指定打开的设置页面
-       *   buttonId: "custom_1",   // 特定按钮设置
-       *   animated: true          // 是否动画显示
-       * }
-       * ```
-       * 
-       * 【实现示例】
-       * ```javascript
-       * onOpenToolbarSetting: function(params) {
-       *   // 1. 创建或获取设置控制器
-       *   if (!self.settingController) {
-       *     self.settingController = new SettingController()
-       *   }
-       *   
-       *   // 2. 配置初始页面
-       *   if (params && params.section) {
-       *     self.settingController.initialSection = params.section
-       *   }
-       *   
-       *   // 3. 显示设置界面
-       *   self.settingController.show(params.animated)
-       * }
-       * ```
-       * 
-       * 【设置页面类型】
-       * - "general": 常规设置
-       * - "buttons": 按钮管理
-       * - "appearance": 外观设置
-       * - "advanced": 高级设置
-       * 
-       * @param {Object} params - 设置参数，指定打开的页面或配置
-       * @returns {void}
+       * @param {Object} params - 参数（当前未使用）
        */
-      onOpenToolbarSetting:function (params) {
+      onOpenTaskSetting: function (params) {
+        // 🔍 基本检查
+        if (typeof MNUtil === 'undefined') return
+        
+        // 🪟 只处理当前窗口的事件
+        if (self.window !== MNUtil.currentWindow) {
+          return
+        }
+        
+        // 打开设置界面
+        self.openSetting()
       },
+      
       /**
-       * 🔀 切换动态模式 - 控制工具栏显示行为
-       * 
-       * 【动态模式说明】
-       * - 启用：工具栏仅在需要时显示，操作后自动隐藏
-       * - 禁用：工具栏始终显示
-       * 
-       * 【调用时机】
-       * 1. 🔘 用户点击动态模式开关
-       * 2. 📡 通过通知切换
-       * 3. ⌨️ 快捷键触发
-       * 4. 📱 手势操作
-       * 
-       * 【实现流程】
-       * ```javascript
-       * onToggleDynamic: function(sender) {
-       *   // 1. 切换状态
-       *   self.dynamicMode = !self.dynamicMode
-       *   
-       *   // 2. 更新 UI
-       *   if (self.dynamicMode) {
-       *     // 动态模式：设置自动隐藏
-       *     self.toolbar.alpha = 0.8
-       *     self.setupAutoHide()
-       *   } else {
-       *     // 普通模式：显示并停止自动隐藏
-       *     self.toolbar.alpha = 1.0
-       *     self.cancelAutoHide()
-       *   }
-       *   
-       *   // 3. 保存状态
-       *   toolbarConfig.dynamicMode = self.dynamicMode
-       *   toolbarConfig.save()
-       *   
-       *   // 4. 显示提示
-       *   let message = self.dynamicMode ? "动态模式已启用" : "动态模式已关闭"
-       *   MNUtil.showHUD(message)
-       * }
-       * ```
-       * 
-       * 【动态模式特性】
-       * 1. 👁️ 智能隐藏：操作后 3 秒自动隐藏
-       * 2. 🔍 悬停显示：鼠标悬停时显示（macOS）
-       * 3. 👆 触摸唤醒：点击特定区域显示（iOS）
-       * 4. 🎨 半透明效果：减少视觉干扰
-       * 
-       * @param {Object} sender - 事件发送者
-       * @returns {void}
-       */
-      onToggleDynamic:function (sender) {
-      },
-      /**
-       * 🧠 切换脑图工具栏 - 控制脑图模式下的工具栏
+       * 🔄 切换动态模式 - 开启/关闭浮动工具栏
        * 
        * 【功能说明】
-       * 在脑图视图和文档视图中，工具栏可能有不同的显示需求：
-       * - 文档视图：需要摘录、标注等工具
-       * - 脑图视图：需要节点编辑、关联等工具
-       * 
-       * 【sender 参数结构】
-       * ```javascript
-       * sender = {
-       *   userInfo: {
-       *     target: "mindmap",      // 目标视图
-       *     visible: true,          // 是否显示
-       *     position: "right"       // 工具栏位置
-       *   }
-       * }
-       * ```
-       * 
-       * 【实现流程】
-       * ```javascript
-       * onToggleMindmapToolbar: function(sender) {
-       *   let info = sender.userInfo
-       *   
-       *   // 1. 判断当前视图
-       *   let isMindmapView = (info.target === "mindmap")
-       *   
-       *   // 2. 切换工具栏状态
-       *   if (isMindmapView) {
-       *     // 显示脑图专用工具
-       *     self.switchToMindmapTools()
-       *   } else {
-       *     // 显示文档专用工具
-       *     self.switchToDocumentTools()
-       *   }
-       *   
-       *   // 3. 调整位置
-       *   if (info.position) {
-       *     self.moveToolbarTo(info.position)
-       *   }
-       * }
-       * ```
-       * 
-       * 【工具栏差异】
-       * - 📑 文档模式：高亮、摘录、搜索
-       * - 🧠 脑图模式：节点、连线、层级
-       * - 🔄 混合模式：同时显示两种工具
-       * 
-       * @param {Object} sender - 事件发送者，包含视图切换信息
-       * @returns {void}
-       */
-      onToggleMindmapToolbar:function (sender) {
-      },
-      /**
-       * 🔄 刷新视图 - 更新插件界面
-       * 
-       * 【调用时机】
-       * 1. 📡 其他插件请求刷新
-       * 2. 🔄 数据更新后需要刷新 UI
-       * 3. 🎭 主题或样式改变
-       * 4. ⏰ 定时刷新
-       * 
-       * 【刷新内容】
-       * 1. 🎨 重绘按钮和控件
-       * 2. 📋 更新数据显示
-       * 3. 🔄 重新加载配置
-       * 4. 📀 调整布局
-       * 
-       * 【实现示例】
-       * ```javascript
-       * onRefreshView: function(sender) {
-       *   // 1. 刷新工具栏
-       *   if (self.toolbar) {
-       *     self.toolbar.refreshButtons()
-       *     self.toolbar.updateLayout()
-       *   }
-       *   
-       *   // 2. 刷新设置界面
-       *   if (self.settingController && self.settingController.isVisible) {
-       *     self.settingController.refreshContent()
-       *   }
-       *   
-       *   // 3. 发送完成通知
-       *   MNUtil.postNotification("refreshCompleted", {})
-       * }
-       * ```
-       * 
-       * 【性能优化】
-       * - 🔄 避免不必要的全局刷新
-       * - 🎯 只刷新变化的部分
-       * - ⚡ 使用增量更新
+       * 动态模式是 MN Task 的核心功能之一：
+       * - 开启时：点击笔记会显示浮动工具栏
+       * - 关闭时：只有固定工具栏，没有浮动工具栏
        * 
        * @param {Object} sender - 事件发送者
-       * @returns {void}
+       */
+      onToggleDynamic: function (sender) {
+        // 🔍 基本检查
+        if (typeof MNUtil === 'undefined') return
+        
+        // 🎯 切换状态（取反）
+        taskConfig.dynamic = !taskConfig.dynamic
+        
+        // 同步状态到控制器
+        self.addonController.dynamic = taskConfig.dynamic
+        
+        // 🎨 根据新状态进行处理
+        if (taskConfig.dynamic) {
+          // ✅ 开启动态模式
+          MNUtil.showHUD("Dynamic ✅")
+        }else{
+          // ❌ 关闭动态模式，隐藏浮动工具栏
+          self.testController.view.hidden = true
+        }
+        
+        // 💾 保存配置
+        taskConfig.save("MNTask_dynamic")
+        
+        // 同步到动态工具栏控制器
+        self.testController.dynamic = taskConfig.dynamic
+      },
+      /**
+       * 🎨 切换脑图工具栏 - 隐藏/显示系统工具栏
+       * 
+       * 【功能说明】
+       * 这是一个"黑科技"功能，可以隐藏 MarginNote 原生的工具栏，
+       * 让界面更加简洁。支持两种目标：
+       * 1. addonBar - 插件栏（通常在左侧或右侧）
+       * 2. mindmapTask - 脑图工具栏（底部的工具栏）
+       * 
+       * 【实现原理】
+       * 通过查找视图层级，找到系统工具栏，然后移除或添加它们。
+       * 
+       * @param {Object} sender - 包含目标信息的事件对象
+       */
+      onToggleMindmapTask: function (sender) {
+        // 检查要操作哪个工具栏
+        if ("target" in sender.userInfo) {
+          switch (sender.userInfo.target) {
+            case "addonBar":  // 🎯 处理插件栏
+              // 第一次需要找到插件栏
+              if (!self.addonBar) {
+                // 🔍 在学习视图的子视图中查找插件栏
+                // 判断条件：
+                // - 不是隐藏的
+                // - Y 坐标大于 100（不在顶部）
+                // - 宽度是 40（竖向工具栏的典型宽度）
+                // - X 坐标在左边或右边附近
+                self.addonBar = MNUtil.studyView.subviews.find(subview => {
+                  let frame = subview.frame
+                  if (!subview.hidden && 
+                      frame.y > 100 && 
+                      frame.width === 40 && 
+                      (frame.x < 100 || frame.x > MNUtil.studyView.bounds.width - 150)) {
+                    
+                    // 排除我们自己的工具栏
+                    if (self.addonController.view && subview === self.addonController.view) {
+                      return false
+                    }
+                    return true
+                  }
+                  return false
+                })
+              }
+              
+              // 🔄 切换显示/隐藏状态
+              if (self.isAddonBarRemoved) {
+                // 恢复显示：把视图加回去
+                MNUtil.studyView.addSubview(self.addonBar)
+                self.isAddonBarRemoved = false
+              }else{
+                // 隐藏：从父视图中移除
+                self.addonBar.removeFromSuperview()
+                self.isAddonBarRemoved = true
+              }
+              break;
+              
+            case "mindmapTask":  // 🎯 处理脑图工具栏
+              // 第一次需要找到脑图工具栏的各个组件
+              if (!self.view0) {
+                self.isRemoved = false
+                
+                // 🔍 通过相对位置找到工具栏组件
+                // at(-4) 表示倒数第4个子视图
+                // 这些视图通常是：
+                // view0: 工具栏主体
+                // view1: 工具栏背景
+                // view2: 工具栏容器
+                self.view0 = MNUtil.mindmapView.superview.subviews.at(-4)
+                self.view1 = MNUtil.mindmapView.superview.subviews.at(-6)
+                self.view2 = MNUtil.mindmapView.superview.subviews.at(-1)
+              }
+              
+              // 🔄 切换显示/隐藏状态
+              if (!self.isRemoved) {
+                // 隐藏：移除所有工具栏组件
+                self.isRemoved = true
+                self.view0.removeFromSuperview()
+                self.view1.removeFromSuperview()
+                self.view2.removeFromSuperview()
+              }else{
+                // 恢复显示：按顺序加回去
+                self.isRemoved = false
+                MNUtil.mindmapView.superview.addSubview(self.view1)
+                MNUtil.mindmapView.superview.addSubview(self.view0)
+                MNUtil.mindmapView.superview.addSubview(self.view2)
+              }
+              break;
+            default:
+              break;
+          }
+        }
+      },
+      
+      /**
+       * 🔄 刷新视图 - 更新设置界面
+       * 
+       * 【触发时机】
+       * 当配置发生变化，需要刷新设置界面的显示时调用。
+       * 
+       * @param {Object} sender - 事件发送者
        */
       onRefreshView: function (sender) {
+        let self = getMNTaskClass()
+        
+        // 🔍 基本检查
+        if (typeof MNUtil === 'undefined') return 
+        
+        // 🪟 只处理当前窗口的事件
+        if (self.window !== MNUtil.currentWindow) {
+          return
+        } 
+        
+        // 🎨 刷新设置界面的两个主要视图
+        self.settingController.refreshView("popupEditView")  // 弹出编辑视图
+        self.settingController.refreshView("advanceView")    // 高级设置视图
       },
+      
       /**
-       * ☁️ 云配置变化时调用 - 同步设置更新
+       * ☁️ iCloud 配置变化事件
        * 
-       * 【调用时机】
-       * 1. 📤 云端配置更新
-       * 2. 📱 其他设备修改了配置
-       * 3. 🔄 用户手动同步
-       * 4. 🌐 网络恢复后自动同步
+       * 【触发时机】
+       * 当 iCloud 上的配置发生变化时触发，用于同步配置。
        * 
-       * 【云配置内容】
-       * - 🎨 工具栏外观设置
-       * - 🔘 按钮配置和顺序
-       * - ⚙️ 用户偏好设置
-       * - 🔑 授权和订阅信息
-       * 
-       * 【sender 参数结构】
-       * ```javascript
-       * sender = {
-       *   userInfo: {
-       *     configKey: "toolbar_settings",  // 配置键
-       *     oldValue: {...},                 // 旧值
-       *     newValue: {...},                 // 新值
-       *     source: "cloud",                 // 来源
-       *     timestamp: 1234567890            // 时间戳
-       *   }
-       * }
-       * ```
-       * 
-       * 【处理流程】
-       * ```javascript
-       * onCloudConfigChange: async function(sender) {
-       *   let info = sender.userInfo
-       *   
-       *   // 1. 验证配置有效性
-       *   if (!self.validateConfig(info.newValue)) {
-       *     return
-       *   }
-       *   
-       *   // 2. 备份当前配置
-       *   self.backupCurrentConfig()
-       *   
-       *   // 3. 应用新配置
-       *   await self.applyConfig(info.newValue)
-       *   
-       *   // 4. 刷新 UI
-       *   self.refreshAllViews()
-       *   
-       *   // 5. 显示同步提示
-       *   MNUtil.showHUD("☁️ 配置已同步")
-       * }
-       * ```
-       * 
-       * 【冲突处理】
-       * - 🔄 检测本地修改与云端冲突
-       * - 🤝 提供合并选项
-       * - 💾 保留冲突备份
-       * 
+       * @param {Object} sender - 事件发送者
        * @async
-       * @param {Object} sender - 事件发送者，包含配置变化信息
-       * @returns {Promise<void>}
        */
       onCloudConfigChange: async function (sender) {
+        let self = getMNTaskClass()
+        
+        // 🔍 基本检查
+        if (typeof MNUtil === 'undefined') return
+        
+        // 🪟 只处理当前窗口的事件
+        if (self.window !== MNUtil.currentWindow) {
+          return
+        }
+        
+        // ☁️ 只有开启了 iCloud 同步才处理
+        if (!taskConfig.iCloudSync) {
+          return
+        }
+        
+        // 确保视图已创建
+        self.ensureView()
+        
+        // 检查更新
+        self.checkUpdate()
       },
+      
       /**
-       * 🔄 手动同步 - 用户主动触发的同步操作
+       * 🔄 手动同步 - 用户主动触发同步
        * 
-       * 【调用时机】
-       * 1. 🔘 用户点击同步按钮
-       * 2. 📡 外部通知触发
-       * 3. ⌨️ 快捷键同步
-       * 4. 📱 下拉刷新手势
+       * 【功能说明】
+       * 用户点击同步按钮时触发，立即检查并同步配置。
        * 
-       * 【同步内容】
-       * 1. ⚙️ 用户设置和偏好
-       * 2. 🎨 工具栏配置
-       * 3. 🔘 按钮布局
-       * 4. 📋 使用统计数据
-       * 
-       * 【同步流程】
-       * ```javascript
-       * manualSync: async function(sender) {
-       *   try {
-       *     // 1. 显示同步进度
-       *     MNUtil.showHUD("同步中...")
-       *     
-       *     // 2. 保存本地更改
-       *     await self.saveLocalChanges()
-       *     
-       *     // 3. 上传本地配置
-       *     let uploadResult = await self.uploadConfig()
-       *     
-       *     // 4. 下载云端配置
-       *     let cloudConfig = await self.downloadConfig()
-       *     
-       *     // 5. 合并配置
-       *     let mergedConfig = await self.mergeConfigs(uploadResult, cloudConfig)
-       *     
-       *     // 6. 应用合并后的配置
-       *     await self.applyConfig(mergedConfig)
-       *     
-       *     // 7. 显示成功提示
-       *     MNUtil.showHUD("✅ 同步成功")
-       *     
-       *   } catch (error) {
-       *     MNUtil.showHUD(`❌ 同步失败: ${error.message}`)
-       *   }
-       * }
-       * ```
-       * 
-       * 【错误处理】
-       * - 🌐 网络连接失败
-       * - 🔒 认证过期
-       * - 📦 存储空间不足
-       * - 🔄 版本冲突
-       * 
-       * 【性能优化】
-       * - 📤 增量同步
-       * - 🗜️ 压缩数据
-       * - 🕰️ 避免频繁同步
-       * 
-       * @async
        * @param {Object} sender - 事件发送者
-       * @returns {Promise<void>}
+       * @async
        */
       manualSync: async function (sender) {
+        let self = getMNTaskClass()
+        
+        // 🚪 关闭弹出窗口（如果有）
+        if (self.popoverController) {
+          self.popoverController.dismissPopoverAnimated(true);
+        }
+        
+        // 🔍 基本检查
+        if (typeof MNUtil === 'undefined') return
+        
+        // 🪟 只处理当前窗口的事件
+        if (self.window !== MNUtil.currentWindow) {
+          return
+        }
+        
+        // 执行更新检查
+        self.checkUpdate()
       },
+      
       /**
-       * ✏️ 文本开始编辑时调用 - 管理编辑状态
+       * ✏️ 文本开始编辑事件 - 处理笔记编辑
        * 
-       * 【调用时机】
-       * 1. 🖊️ 用户开始编辑笔记标题
-       * 2. 📝 用户开始编辑评论
-       * 3. 📋 用户开始编辑摘录
-       * 4. 🏷️ 用户开始编辑标签
+       * 【触发时机】
+       * 当用户开始编辑笔记内容时触发。
        * 
-       * 【作用】
-       * 1. 👁️ 隐藏可能遮挡键盘的 UI
-       * 2. 🔒 禁用某些手势和快捷键
-       * 3. 💾 保存编辑前的状态
-       * 4. 🎨 调整界面布局
+       * 【主要功能】
+       * 1. 隐藏动态工具栏（避免遮挡）
+       * 2. 检测是否需要打开扩展编辑器
+       * 3. 处理空笔记的占位符
        * 
-       * 【param 参数结构】
-       * ```javascript
-       * param = {
-       *   textField: UITextField,      // 正在编辑的文本字段
-       *   type: "title",               // 编辑类型
-       *   noteId: "xxx",               // 相关笔记 ID
-       *   originalText: "..."          // 原始文本
-       * }
-       * ```
-       * 
-       * 【实现示例】
-       * ```javascript
-       * onTextDidBeginEditing: function(param) {
-       *   // 1. 保存编辑状态
-       *   self.isEditing = true
-       *   self.editingField = param.textField
-       *   self.originalText = param.originalText
-       *   
-       *   // 2. 调整 UI
-       *   if (self.toolbar) {
-       *     // 移动工具栏避免遮挡键盘
-       *     let keyboardHeight = 300  // 预估键盘高度
-       *     self.toolbar.moveUp(keyboardHeight)
-       *   }
-       *   
-       *   // 3. 暂停手势识别
-       *   self.pauseGestureRecognizers()
-       * }
-       * ```
-       * 
-       * 【最佳实践】
-       * - ✅ 保存原始文本以便取消编辑
-       * - ✅ 灵活调整 UI 布局
-       * - ❌ 不要在此时修改文本内容
-       * 
-       * @param {Object} param - 编辑参数，包含文本字段和相关信息
-       * @returns {void}
+       * @param {{object:UITextView}} param - 包含 UITextView 的参数对象
        */
-      onTextDidBeginEditing:function (param) {
+      onTextDidBeginEditing: function (param) {
+        try {
+          // 🪟 只处理当前窗口的事件
+          if (self.window !== MNUtil.currentWindow) {
+            return
+          }
+          
+          // 📖 如果是文档模式（studyMode === 3），不处理
+          if (MNUtil.studyMode === 3) {
+            return
+          }
+          
+          // 🎯 步骤1：隐藏动态工具栏（如果正在显示）
+          // 为什么要隐藏？编辑时工具栏会遮挡输入界面
+          if (self.testController && !self.testController.view.hidden) {
+            // 保存当前透明度
+            let preOpacity = self.testController.view.layer.opacity
+            
+            // 🎆 淡出动画
+            MNUtil.animate(()=>{
+              self.testController.view.layer.opacity = 0
+            }).then(()=>{
+              self.testController.view.layer.opacity = preOpacity  // 恢复透明度
+              self.testController.view.hidden = true               // 真正隐藏
+            })
+          }
+          
+          // 📝 步骤2：保存当前编辑的文本视图
+          let textView = param.object
+          taskUtils.textView = textView  // 全局保存，其他地方可能需要
+          
+          // 🚫 如果没有开启"编辑时显示编辑器"功能，就到此为止
+          if (!taskConfig.showEditorOnNoteEdit) {
+            return
+          }
+          
+          // 🗺️ 步骤3：获取脑图视图
+          let mindmapView = taskUtils.getMindmapview(textView)
+          
+          // 🔍 步骤4：检查是否是扩展视图（特殊的编辑器）
+          if (taskUtils.checkExtendView(textView)) {
+            // 处理空内容的情况
+            if (textView.text && textView.text.trim()) {
+              // 有内容，不做处理
+            }else{
+              // 没有内容，添加占位符并结束编辑
+              textView.text = "placeholder"
+              textView.endEditing(true)
+            }
+            
+            // 获取焦点笔记
+            let focusNote = MNNote.getFocusNote()
+            if (focusNote) {
+              // 📢 发送通知，在扩展编辑器中打开
+              MNUtil.postNotification("openInEditor", {noteId: focusNote.noteId})
+            }
+            return
+          }
+          
+          // 🎯 步骤5：处理普通的笔记编辑
+          if (mindmapView) {
+            // 获取笔记视图和笔记对象
+            let noteView = mindmapView.selViewLst[0].view
+            let foucsNote = MNNote.new(mindmapView.selViewLst[0].note.note)
+            
+            // 获取笔记在学习视图中的位置
+            let beginFrame = noteView.convertRectToView(noteView.bounds, MNUtil.studyView)
+            
+            // 🆕 处理空笔记（没有标题、摘录和评论）
+            if (!foucsNote.noteTitle && !foucsNote.excerptText && !foucsNote.comments.length) {
+              // 添加占位符，避免空笔记
+              param.object.text = "placeholder"
+            }
+            
+            // 📐 步骤6：决定编辑器的位置
+            if (foucsNote) {
+              let noteId = foucsNote.noteId
+              let studyFrame = MNUtil.studyView.bounds
+              
+              // 检查是否有足够空间在右边显示编辑器（450像素宽）
+              if (beginFrame.x + 450 > studyFrame.width) {
+                // 🔄 空间不够，编辑器放在左边
+                let endFrame = Frame.gen(studyFrame.width - 450, beginFrame.y - 10, 450, 500)
+                
+                // 检查下边界
+                if (beginFrame.y + 490 > studyFrame.height) {
+                  endFrame.y = studyFrame.height - 500
+                }
+                
+                // 📢 发送通知，打开编辑器
+                MNUtil.postNotification("openInEditor", {
+                  noteId: noteId,
+                  beginFrame: beginFrame,  // 笔记原始位置
+                  endFrame: endFrame       // 编辑器目标位置
+                })
+              }else{
+                // ✅ 空间足够，编辑器放在右边
+                let endFrame = Frame.gen(beginFrame.x, beginFrame.y - 10, 450, 500)
+                
+                // 检查下边界
+                if (beginFrame.y + 490 > studyFrame.height) {
+                  endFrame.y = studyFrame.height - 500
+                }
+                
+                // 📢 发送通知，打开编辑器
+                MNUtil.postNotification("openInEditor", {
+                  noteId: noteId,
+                  beginFrame: beginFrame,  // 笔记原始位置
+                  endFrame: endFrame       // 编辑器目标位置
+                })
+              }
+            }
+          }
+        } catch (error) {
+          // 😵 出错了！记录错误信息
+          taskUtils.addErrorLog(error, "onTextDidBeginEditing")
+        }
       },
+      
       /**
-       * ✅ 文本结束编辑时调用 - 保存和恢复
+       * ✏️ 文本结束编辑事件
        * 
-       * 【调用时机】
-       * 1. ✅ 用户完成编辑点击完成
-       * 2. ❌ 用户取消编辑
-       * 3. 🔄 用户切换到其他输入框
-       * 4. 👁️ 键盘收起
+       * 【触发时机】
+       * 当用户结束编辑笔记内容时触发。
        * 
-       * 【主要任务】
-       * 1. 💾 保存编辑后的内容
-       * 2. 🔄 恢复 UI 布局
-       * 3. ✅ 重新启用手势
-       * 4. 📊 记录编辑统计
+       * 【主要功能】
+       * 清理编辑状态，释放文本视图引用。
        * 
-       * 【param 参数结构】
-       * ```javascript
-       * param = {
-       *   textField: UITextField,      // 结束编辑的文本字段
-       *   type: "title",               // 编辑类型
-       *   noteId: "xxx",               // 相关笔记 ID
-       *   newText: "...",              // 新文本
-       *   originalText: "...",         // 原始文本
-       *   cancelled: false             // 是否取消
-       * }
-       * ```
-       * 
-       * 【实现示例】
-       * ```javascript
-       * onTextDidEndEditing: function(param) {
-       *   // 1. 重置编辑状态
-       *   self.isEditing = false
-       *   self.editingField = null
-       *   
-       *   // 2. 保存更改（如果未取消）
-       *   if (!param.cancelled && param.newText !== param.originalText) {
-       *     MNUtil.undoGrouping(() => {
-       *       let note = MNNote.new(param.noteId)
-       *       if (param.type === "title") {
-       *         note.noteTitle = param.newText
-       *       }
-       *     })
-       *   }
-       *   
-       *   // 3. 恢复 UI
-       *   if (self.toolbar) {
-       *     self.toolbar.restorePosition()
-       *   }
-       *   
-       *   // 4. 恢复手势
-       *   self.resumeGestureRecognizers()
-       * }
-       * ```
-       * 
-       * 【编辑验证】
-       * - 🔍 检查文本有效性
-       * - 🚫 过滤敏感词
-       * - 📏 限制文本长度
-       * 
-       * @param {Object} param - 编辑结束参数，包含新旧文本等信息
-       * @returns {void}
+       * @param {{object:UITextView}} param - 包含 UITextView 的参数对象
        */
       onTextDidEndEditing: function (param) {
+        // 🪟 只处理当前窗口的事件
+        if (self.window !== MNUtil.currentWindow) {
+          return
+        }
+        
+        // 📖 如果是文档模式，不处理
+        if (MNUtil.studyMode === 3) {
+          return
+        }
+        
+        // 🧹 清理文本视图引用
+        let textView = param.object
+        if (textView === taskUtils.textView) {
+          // 这是我们之前保存的文本视图，现在可以清理了
+          taskUtils.textView = undefined
+        }
       },
+      
       /**
-       * 🔄 刷新工具栏按钮 - 更新按钮状态和外观
+       * 🔄 刷新工具栏按钮
        * 
-       * 【调用时机】
-       * 1. 🎨 按钮配置更改
-       * 2. 🎭 主题切换
-       * 3. 🔄 状态更新（启用/禁用）
-       * 4. 🖼️ 图标更换
+       * 【触发时机】
+       * 当需要更新工具栏按钮的显示状态时调用。
        * 
-       * 【刷新内容】
-       * 1. 🖼️ 按钮图标和标签
-       * 2. 🎨 颜色和样式
-       * 3. ✅/❌ 启用和禁用状态
-       * 4. 📦 按钮布局和顺序
-       * 
-       * 【sender 参数结构】
-       * ```javascript
-       * sender = {
-       *   userInfo: {
-       *     buttonIds: ["btn1", "btn2"],    // 要刷新的按钮 ID
-       *     refreshAll: false,               // 是否刷新全部
-       *     animated: true,                  // 是否动画
-       *     reason: "config_change"          // 刷新原因
-       *   }
-       * }
-       * ```
-       * 
-       * 【实现流程】
-       * ```javascript
-       * onRefreshToolbarButton: function(sender) {
-       *   let info = sender.userInfo || {}
-       *   
-       *   // 1. 确定刷新范围
-       *   let buttonsToRefresh = info.refreshAll ? 
-       *     self.getAllButtons() : 
-       *     self.getButtonsByIds(info.buttonIds)
-       *   
-       *   // 2. 刷新每个按钮
-       *   buttonsToRefresh.forEach(button => {
-       *     // 更新图标
-       *     button.updateImage()
-       *     
-       *     // 更新状态
-       *     button.updateEnabledState()
-       *     
-       *     // 更新样式
-       *     button.updateAppearance()
-       *   })
-       *   
-       *   // 3. 重新布局（如果需要）
-       *   if (info.reason === "layout_change") {
-       *     self.toolbar.updateButtonLayout()
-       *   }
-       * }
-       * ```
-       * 
-       * 【性能优化】
-       * - 🎯 只刷新必要的按钮
-       * - 🕰️ 使用节流避免频繁刷新
-       * - 🎨 批量处理 UI 更新
-       * 
-       * @param {Object} sender - 事件发送者，包含刷新信息
-       * @returns {void}
+       * @param {Object} sender - 事件发送者
        */
-      onRefreshToolbarButton: function (sender) {
+      onRefreshTaskButton: function (sender) {
+        try {
+          // 🎨 更新主工具栏的按钮
+          self.addonController.setTaskButton()
+          
+          // 📝 更新设置界面的按钮文字
+          if (self.settingController) {
+            self.settingController.setButtonText()
+          }
+        } catch (error) {
+          // 😵 出错了！记录错误信息
+          taskUtils.addErrorLog(error, "onRefreshTaskButton")
+        }
       },
       /**
-       * ⚙️ 打开设置界面 - 便捷方法
+       * ⚙️ 打开设置界面（内部方法）
        * 
        * 【功能说明】
-       * 这是一个便捷方法，直接打开插件的设置界面。
-       * 通常绑定到快捷键或菜单项上。
-       * 
-       * 【使用场景】
-       * 1. 🔘 从插件菜单打开设置
-       * 2. ⌨️ 从快捷键打开设置
-       * 3. 📱 从手势打开设置
-       * 
-       * @returns {void}
+       * 检查弹出控制器并打开设置界面。
        */
-      openSetting:function () {
+      openSetting: function () {
+        let self = getMNTaskClass()
+        
+        // 检查并关闭已有的弹出窗口
+        self.checkPopoverController()
+        
+        // 打开设置界面
+        self.openSetting()
       },
+      
       /**
-       * 🔄 切换工具栏显示/隐藏 - 便捷开关
+       * 🛠️ 切换工具栏显示/隐藏
        * 
        * 【功能说明】
-       * 快速切换工具栏的显示状态，不影响其他设置。
-       * 
-       * 【使用场景】
-       * 1. 👁️ 临时隐藏工具栏以获得更大阅读空间
-       * 2. 🔄 快速显示/隐藏工具栏
-       * 3. ⌨️ 通过快捷键切换
-       * 
-       * @returns {void}
+       * 这是显示或隐藏主工具栏的方法。
+       * 第一次显示时，会根据插件栏的位置智能设置工具栏位置。
        */
-      toggleToolbar:function () {
+      toggleTask: function () {
+        let self = getMNTaskClass()
+        
+        // 检查并关闭已有的弹出窗口
+        self.checkPopoverController()
+        
+        // 初始化
+        self.init(mainPath)
+        self.ensureView(true)
+        
+        // 🆕 第一次显示工具栏的特殊处理
+        if (taskConfig.isFirst) {
+          let buttonFrame = self.addonBar.frame
+          
+          // 根据插件栏的位置决定工具栏位置
+          if (buttonFrame.x === 0) {
+            // 插件栏在左边，工具栏放在右边
+            Frame.set(self.addonController.view, 40, buttonFrame.y, 40, 290)
+          }else{
+            // 插件栏在右边，工具栏放在左边
+            Frame.set(self.addonController.view, buttonFrame.x - 40, buttonFrame.y, 40, 290)
+          }
+          
+          // 保存当前位置
+          self.addonController.currentFrame = self.addonController.view.frame
+          taskConfig.isFirst = false;
+        }
+        
+        // 🔄 切换显示/隐藏状态
+        if (self.addonController.view.hidden) {
+          // 显示工具栏
+          taskConfig.windowState.open = true
+          taskConfig.windowState.frame = self.addonController.view.frame
+          self.addonController.show()
+          taskConfig.save("MNTask_windowState")
+        }else{
+          // 隐藏工具栏
+          taskConfig.windowState.open = false
+          taskConfig.windowState.frame = self.addonController.view.frame
+          self.addonController.hide()
+          taskConfig.save("MNTask_windowState")
+        }
       },
+      
       /**
-       * 🔀 切换动态模式 - 便捷开关
+       * 🌟 切换动态模式（内部方法）
        * 
        * 【功能说明】
-       * 这是 onToggleDynamic 的便捷版本，直接切换动态模式。
-       * 
-       * @returns {void}
+       * 开启或关闭动态工具栏功能。
+       * 这个方法和 onToggleDynamic 类似，但用于内部调用。
        */
-      toggleDynamic:function () {
+      toggleDynamic: function () {
+        let self = getMNTaskClass()
+        
+        // 检查并关闭已有的弹出窗口
+        self.checkPopoverController()
+        
+        // 🔍 基本检查
+        if (typeof MNUtil === 'undefined') return
+        
+        // 🎯 切换状态
+        taskConfig.dynamic = !taskConfig.dynamic
+        
+        // 🎨 显示状态提示
+        if (taskConfig.dynamic) {
+          MNUtil.showHUD("Dynamic ✅")
+        }else{
+          MNUtil.showHUD("Dynamic ❌")
+          // 关闭时隐藏动态工具栏
+          if (self.testController) {
+            self.testController.view.hidden = true
+          }
+        }
+        
+        // 💾 保存配置
+        taskConfig.save("MNTask_dynamic")
+        
+        // 同步状态
+        if (self.testController) {
+          self.testController.dynamic = taskConfig.dynamic
+        }
+        
+        // 刷新命令状态
+        MNUtil.refreshAddonCommands()
       },
+      
       /**
-       * 📄 打开文档 - 快速访问文档
+       * 📄 打开文档
        * 
        * 【功能说明】
-       * 打开指定的文档或最近使用的文档。
+       * 在浏览器中打开 MN Task 的在线文档。
        * 
-       * 【使用场景】
-       * 1. 📖 快速打开常用文档
-       * 2. 🔄 切换文档
-       * 3. 📁 打开文档列表
-       * 
-       * @param {UIButton} button - 触发按钮
-       * @returns {void}
+       * @param {Object} button - 触发的按钮
        */
-      openDocument:function (button) {
+      openDocument: function (button) {
+        // 🔍 基本检查
+        if (typeof MNUtil === 'undefined') return
+        
+        let self = getMNTaskClass()
+        
+        // 检查并关闭已有的弹出窗口
+        self.checkPopoverController()
+        
+        // 📢 发送通知，在浏览器中打开文档
+        MNUtil.postNotification("openInBrowser", {
+          url: "https://mnaddon.craft.me/task"
+        })
       },
+      
       /**
-       * 🔄 切换工具栏方向 - 横竖布局切换
+       * 🔄 切换工具栏方向（内部方法）
+       * 
+       * @param {string} source - 来源（"fixed" 或 "dynamic"）
+       */
+      toggleTaskDirection: function (source) {
+        let self = getMNTaskClass()
+        
+        // 检查并关闭已有的弹出窗口
+        self.checkPopoverController()
+        
+        // 切换方向
+        taskConfig.toggleTaskDirection(source)
+      },
+      
+      /**
+       * 🎛️ 切换插件 - 显示主菜单
+       * 
+       * 【触发时机】
+       * 用户点击 MN Task 的插件图标时触发。
        * 
        * 【功能说明】
-       * 在横向和纵向布局之间切换工具栏。
+       * 显示一个包含所有主要功能的弹出菜单。
        * 
-       * 【布局选项】
-       * 1. ↔️ 横向：适合屏幕较宽的情况
-       * 2. ↕️ 纵向：适合屏幕较窄的情况
-       * 
-       * @param {string} source - 触发来源
-       * @returns {void}
+       * @param {UIButton} button - 插件图标按钮
        */
-      toggleToolbarDirection: function (source) {
-      },
-      /**
-       * 🔌 切换插件状态 - 启用/禁用插件
-       * 
-       * 【功能说明】
-       * 动态启用或禁用其他插件，实现插件间的协作。
-       * 
-       * 【使用场景】
-       * 1. 🤝 插件互斥管理
-       * 2. 🔄 按需加载插件
-       * 3. 📋 批量管理插件
-       * 
-       * @param {UIButton} button - 触发按钮
-       * @returns {void}
-       */
-      toggleAddon:function (button) {
+      toggleAddon: function (button) {
+      try {
+        // 🔍 基本检查
+        if (typeof MNUtil === 'undefined') return
+        
+        let self = getMNTaskClass()
+        
+        // 🎯 获取插件栏的引用
+        // addonBar 是 MarginNote 原生的插件栏（左侧或右侧的竖条）
+        if (!self.addonBar) {
+          // button 是插件图标
+          // superview 是包含按钮的视图
+          // superview.superview 就是插件栏本身
+          self.addonBar = button.superview.superview
+          self.addonController.addonBar = self.addonBar
+        }
+        
+        // 📋 构建菜单项列表
+        let selector = "toggleTaskDirection:"  // 切换方向的方法名
+        
+        var commandTable = [
+          // ⚙️ 设置
+          self.tableItem('⚙️   Setting', 'openSetting:'),
+          
+          // 🛠️ 主工具栏相关
+          self.tableItem(
+            '🛠️   Task',  // 显示文本
+            'toggleTask:',  // 点击时调用的方法
+            undefined,         // 参数
+            !self.addonController.view.hidden  // 是否打勾（工具栏显示时打勾）
+          ),
+          
+          // 🛠️ 主工具栏方向
+          self.tableItem(
+            '🛠️   Direction   ' + (taskConfig.vertical() ? '↕️' : '↔️'),  // 显示当前方向
+            selector,
+            "fixed"  // 参数：表示是固定工具栏
+          ),
+          
+          // 🌟 动态工具栏开关
+          self.tableItem(
+            '🌟   Dynamic   ',
+            "toggleDynamic",
+            undefined,
+            taskConfig.dynamic  // 是否打勾（动态模式开启时打勾）
+          ),
+          
+          // 🌟 动态工具栏方向
+          self.tableItem(
+            '🌟   Direction   ' + (taskConfig.vertical() ? '↕️' : '↔️'),
+            selector,
+            "dynamic"  // 参数：表示是动态工具栏
+          ),
+          
+          // 📄 文档
+          self.tableItem('📄   Document', 'openDocument:'),
+          
+          // 🔄 手动同步
+          self.tableItem('🔄   Manual Sync', 'manualSync:')
+        ];
+        
+        // 🎯 显示弹出菜单
+        // 根据插件栏的位置决定菜单的弹出方向
+        if (self.addonBar.frame.x < 100) {
+          // 插件栏在左边，菜单向右弹出（箭头方向 = 4）
+          self.popoverController = MNUtil.getPopoverAndPresent(
+            button,         // 触发按钮
+            commandTable,   // 菜单项
+            200,           // 菜单宽度
+            4              // 箭头方向（向左）
+          )
+        }else{
+          // 插件栏在右边，菜单向左弹出（箭头方向 = 0）
+          self.popoverController = MNUtil.getPopoverAndPresent(
+            button, 
+            commandTable, 
+            200, 
+            0              // 箭头方向（向右）
+          )
+        }
+      } catch (error) {
+        // 😵 出错了！记录错误信息
+        taskUtils.addErrorLog(error, "toggleAddon")
+      }
+        return
       }
     },
-    { /* Class members */
+    { /* 静态方法 - 插件级别的生命周期方法 */
+      
       /**
-       * 🔌 插件连接完成 - 类级别初始化
+       * 🔌 插件已连接
        * 
-       * 【调用时机】
-       * 插件类被加载到内存并完成初始化后调用。
-       * 这是最早的生命周期方法，优先于 sceneWillConnect。
+       * 【触发时机】
+       * 当插件被安装并成功连接到 MarginNote 时调用。
+       * 这是插件的最早期生命周期方法。
        * 
-       * 【主要用途】
-       * 1. 🏆 注册插件信息
-       * 2. 🔧 设置全局变量
-       * 3. 📦 加载必要资源
-       * 4. 📋 初始化配置
-       * 
-       * 【注意事项】
-       * - ✨ 这是类方法，不是实例方法
-       * - 🚫 此时还没有视图和笔记本
-       * - 💾 只做轻量级初始化
-       * 
-       * @returns {void}
+       * 【注意】
+       * 目前这个方法是空的，但你可以在这里添加插件安装时的初始化逻辑。
        */
       addonDidConnect: function () {
+        // 可以在这里添加插件首次安装的初始化逻辑
       },
+
       /**
-       * 👋 插件将要断开连接 - 类级别清理
+       * 🔌 插件即将断开
        * 
-       * 【调用时机】
-       * 插件被完全卸载前调用，这是最后的清理机会。
+       * 【触发时机】
+       * 当用户卸载插件时，在插件真正被移除前调用。
        * 
-       * 【主要任务】
-       * 1. 💾 保存全局状态
-       * 2. 🧹 清理全局资源
-       * 3. 📡 取消所有通知
-       * 4. 🔓 释放内存占用
-       * 
-       * 【与 sceneDidDisconnect 的区别】
-       * - sceneDidDisconnect: 关闭插件窗口
-       * - addonWillDisconnect: 卸载插件类
+       * 【主要功能】
+       * 询问用户是否要删除所有配置数据。
        * 
        * @async
-       * @returns {Promise<void>}
        */
       addonWillDisconnect: async function () {
+        // 🤔 询问用户是否要删除配置
+        let confirm = await MNUtil.confirm(
+          "MN Task: Remove all config?",    // 英文提示
+          "MN Task: 删除所有配置？"           // 中文提示
+        )
+        
+        if (confirm) {
+          // 🗑️ 用户确认，删除所有配置
+          taskConfig.remove("MNTask_dynamic")      // 动态模式设置
+          taskConfig.remove("MNTask_windowState")  // 窗口状态
+          taskConfig.remove("MNTask_action")       // 按钮动作配置
+          taskConfig.remove("MNTask_actionConfig") // 动作详细配置
+        }
       },
+
       /**
-       * 🌅 应用将要进入前台 - iOS 生命周期
+       * 📱 应用即将进入前台
        * 
-       * 【调用时机】
-       * 1. 📱 用户从后台切换回应用
-       * 2. 🔓 设备解锁后返回应用
-       * 3. 📨 从通知中心打开应用
+       * 【触发时机】
+       * 当 MarginNote 从后台切换到前台时调用。
        * 
-       * 【典型操作】
-       * 1. 🔄 刷新数据
-       * 2. ▶️ 恢复动画
-       * 3. 🌐 检查网络状态
-       * 4. 📋 更新状态显示
-       * 
-       * 【注意事项】
-       * - 📱 主要用于 iOS 平台
-       * - ⚡ 快速执行，避免阻塞 UI
-       * 
-       * @returns {void}
+       * 【主要功能】
+       * 发送通知，触发 iCloud 同步检查。
        */
       applicationWillEnterForeground: function () {
+        // 🔍 基本检查
+        if (typeof MNUtil === 'undefined') return
+        
+        // 📢 发送 iCloud 变化通知
+        // 这会触发配置同步检查
+        MNUtil.postNotification("NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI", {})
       },
+
       /**
-       * 🌃 应用已进入后台 - iOS 生命周期
+       * 📱 应用已进入后台
        * 
-       * 【调用时机】
-       * 1. 🏠 用户按 Home 键
-       * 2. 🔄 切换到其他应用
-       * 3. 🔒 设备锁屏
+       * 【触发时机】
+       * 当用户切换到其他应用，MarginNote 进入后台时调用。
        * 
-       * 【主要任务】
-       * 1. 💾 保存重要数据
-       * 2. ⏸️ 暂停动画和定时器
-       * 3. 📋 记录用户位置
-       * 4. 🔇 停止音频播放
-       * 
-       * 【背景运行限制】
-       * iOS 在后台有严格限制：
-       * - ⛱️ 有限的执行时间
-       * - 🚫 禁止 UI 更新
-       * - 🔋 限制网络请求
-       * 
-       * @returns {void}
+       * 【注意】
+       * 目前这个方法是空的，但你可以在这里添加进入后台时的清理逻辑。
        */
       applicationDidEnterBackground: function () {
+        // 可以在这里添加进入后台时的清理或保存逻辑
       },
+
       /**
-       * 🔔 接收本地通知 - 处理应用内通知
+       * 📬 收到本地通知
        * 
-       * 【调用时机】
-       * 1. 📨 应用在前台时收到本地通知
-       * 2. 🔔 用户点击通知进入应用
-       * 3. ⏰ 定时通知触发
+       * 【触发时机】
+       * 当应用收到本地通知时调用。
        * 
-       * 【notify 参数结构】
-       * ```javascript
-       * notify = {
-       *   alertBody: "通知内容",
-       *   alertTitle: "通知标题",
-       *   userInfo: {
-       *     type: "reminder",      // 通知类型
-       *     noteId: "xxx",         // 相关数据
-       *     action: "review"       // 要执行的动作
-       *   },
-       *   fireDate: Date,          // 触发时间
-       *   soundName: "default"     // 声音
-       * }
-       * ```
-       * 
-       * 【处理流程】
-       * ```javascript
-       * applicationDidReceiveLocalNotification: function(notify) {
-       *   let info = notify.userInfo
-       *   
-       *   switch(info.type) {
-       *     case "reminder":
-       *       // 处理提醒
-       *       self.handleReminder(info)
-       *       break
-       *       
-       *     case "sync":
-       *       // 处理同步
-       *       self.handleSync(info)
-       *       break
-       *       
-       *     default:
-       *       // 默认处理
-       *       MNUtil.showHUD(notify.alertBody)
-       *   }
-       * }
-       * ```
-       * 
-       * 【常见通知类型】
-       * 1. 📝 复习提醒
-       * 2. 🔄 同步完成
-       * 3. 🎁 新功能提示
-       * 4. ⚠️ 重要更新
-       * 
-       * @param {Object} notify - 本地通知对象
-       * @returns {void}
+       * @param {Object} notify - 通知对象
        */
       applicationDidReceiveLocalNotification: function (notify) {
+        // 可以在这里处理本地通知
       }
     }
   );
-
+  
   /**
+   * 🚀 初始化插件（原型方法）
    * 
-    什么是 prototype？
-
-    prototype 是 JavaScript 中实现面向对象编程的核心机制。每个函数都有一个 prototype
-    属性，当这个函数作为构造函数使用时，由它创建的所有实例都会共享这个 prototype 上的方法和属性。
-
-    为什么要使用 prototype？
-
-    让我用一个简单的例子来说明：
-
-    方式一：直接在构造函数中定义（不推荐）
-
-    function Person(name) {
-      this.name = name;
-
-      // 每次创建实例都会创建新的函数
-      this.sayHello = function() {
-        console.log("Hello, I'm " + this.name);
+   * 【功能说明】
+   * 初始化插件的基础设施，包括工具函数和配置管理。
+   * 这个方法只会执行一次（通过 initialized 标志控制）。
+   * 
+   * @param {string} mainPath - 插件主路径
+   * @this {MNTaskClass}
+   */
+  MNTaskClass.prototype.init = function(mainPath){ 
+    try {
+      // 🔄 确保只初始化一次
+      if (!this.initialized) {
+        // 初始化工具函数模块
+        taskUtils.init(mainPath)
+        
+        // 初始化配置管理模块
+        taskConfig.init(mainPath)
+        
+        // 标记已初始化
+        this.initialized = true
       }
+    } catch (error) {
+      // 😵 出错了！记录错误信息
+      taskUtils.addErrorLog(error, "init")
     }
-
-    const person1 = new Person("小明");
-    const person2 = new Person("小红");
-
-    // 问题：person1.sayHello !== person2.sayHello
-    // 每个实例都有自己的 sayHello 函数副本，浪费内存
-
-    方式二：使用 prototype（推荐）
-
-    function Person(name) {
-      this.name = name;
-    }
-
-    // 所有实例共享同一个函数
-    Person.prototype.sayHello = function() {
-      console.log("Hello, I'm " + this.name);
-    }
-
-    const person1 = new Person("小明");
-    const person2 = new Person("小红");
-
-    // person1.sayHello === person2.sayHello
-    // 所有实例共享同一个函数，节省内存
-
-    在 MNToolbar 项目中的应用
-
-    在 MNToolbar 中，JSB.defineClass 创建类时，只能定义部分方法：
-
-    var MNToolbarClass = JSB.defineClass("MNToolbar: JSExtension", {
-      // 这里只能定义 MarginNote 生命周期方法
-      sceneWillConnect: function() { },
-      notebookWillOpen: function(notebookid) { },
-      // ...
-    });
-
-    // 其他自定义方法必须通过 prototype 添加
-    MNToolbarClass.prototype.ensureView = function() {
-      // 确保视图已创建
-    }
-
-    MNToolbarClass.prototype.showToolbar = function() {
-      // 显示工具栏
-    }
-
-    使用 prototype 的好处
-
-    1. 内存效率：所有实例共享同一个方法，而不是每个实例都复制一份
-    2. 性能优化：函数只定义一次，创建实例时不需要重复创建函数
-    3. 灵活扩展：可以在任何时候给已存在的类添加新方法
-    // 后续可以随时添加新方法
-    MNToolbarClass.prototype.newMethod = function() {
-      // 新功能
-    }
-    4. 继承支持：JavaScript 的原型链机制支持继承
-
-
-    * 用一个餐厅来比喻：
-
-    var 餐厅 = JSB.defineClass("Restaurant", {
-      // 这些是"对外服务窗口"
-      开门营业: function() { },      // 生命周期
-      接待客人: function() { },      // 通知回调
-      接受点餐: function() { },      // 命令方法
-
-      // 这些也是"对外服务"
-      外卖订单: function() { },      // 虽然不是生命周期，但对外
-      团购活动: function() { }       // 虽然不是生命周期，但对外
-    })
-
-    // 这些是"内部运作"
-    餐厅.prototype.切菜 = function() { }
-    餐厅.prototype.炒菜 = function() { }
-    餐厅.prototype.算账 = function() { }
-
-    记住：
-    - JSB.defineClass 内 = 对外的窗口（MarginNote会调用）
-    - prototype = 内部的功能（自己使用）
-   */
-  MNPluginDemoClass.prototype.foo = function(bar){ 
   }
-
+  
   /**
-   *   MarginNote 的加载流程
-
-  // 1. MarginNote 调用 JSB.newAddon
-  let 插件类 = JSB.newAddon(插件路径)  // 需要返回值！
-
-  // 2. 使用返回的类创建插件实例
-  let 插件实例 = 插件类.new()
-
-  // 3. 调用生命周期方法
-  插件实例.sceneWillConnect()
-
-  具体的区别
-
-  main.js（特殊的入口文件）
-
-  // 整个文件是一个函数
-  JSB.newAddon = function (mainPath) {
-    // 1. 加载依赖
-    JSB.require('webviewController')
-    JSB.require('settingController')
-
-    // 2. 定义主类
-    var MNToolbarClass = JSB.defineClass(...)
-
-    // 3. 必须返回主类！
-    return MNToolbarClass;  // MarginNote 需要这个返回值
-  }
+   * 🎨 确保视图已创建（原型方法）
+   * 
+   * 【功能说明】
+   * 确保主工具栏视图已经创建并添加到正确的父视图中。
+   * 如果视图不存在会创建它，如果位置不对会重新添加。
+   * 
+   * @param {boolean} refresh - 是否刷新插件命令（默认 true）
+   * @this {MNTaskClass}
    */
-  return MNPluginDemoClass;
+  MNTaskClass.prototype.ensureView = function (refresh = true) {
+    try {
+      // 🆕 如果控制器不存在，创建它
+      if (!this.addonController) {
+        this.addonController = taskController.new();
+        this.addonController.view.hidden = true;  // 先隐藏
+        MNUtil.studyView.addSubview(this.addonController.view);  // 添加到学习视图
+      }
+      
+      // 🔍 检查视图是否在正确的位置
+      // 必须满足两个条件：
+      // 1. 在当前窗口中
+      // 2. 是学习视图的子视图
+      if (taskUtils.isDescendantOfCurrentWindow(this.addonController.view) && 
+          !MNUtil.isDescendantOfStudyView(this.addonController.view)) {
+        // 位置不对，重新添加
+        MNUtil.studyView.addSubview(this.addonController.view)
+        this.addonController.view.hidden = true
+        
+        // 刷新插件命令状态
+        if (refresh) {
+          MNUtil.refreshAddonCommands()
+        }
+      }
+      
+      // 📐 设置工具栏的位置和大小
+      let targetFrame  // 这个变量好像没用到
+      
+      if (this.lastFrame) {
+        // 使用上次的位置
+        this.addonController.setFrame(this.lastFrame)
+      }else{
+        // 使用默认位置（左上角）
+        this.addonController.setFrame(MNUtil.genFrame(10, 10, 40, 200))
+      }
+      
+      // 💾 从配置中恢复窗口状态
+      if (taskConfig.windowState.frame) {
+        // 恢复保存的位置
+        this.addonController.setFrame(taskConfig.windowState.frame)
+        
+        // 恢复显示/隐藏状态
+        this.addonController.view.hidden = !taskConfig.getWindowState("open");
+        
+        // 不是第一次了
+        taskConfig.isFirst = false
+      }else{
+        // 没有保存的状态，初始化空对象
+        taskConfig.windowState = {}
+      }
+    } catch (error) {
+      // 😵 出错了！显示错误信息
+      taskUtils.showHUD(error, 5)
+    }
+  }
+  
+  /**
+   * ⚙️ 打开设置界面（原型方法）
+   * 
+   * 【功能说明】
+   * 创建或显示设置界面控制器。
+   * 
+   * @this {MNTaskClass} 
+   */
+  MNTaskClass.prototype.openSetting = function () {
+    try {
+      // 🆕 如果设置控制器不存在，创建它
+      if (!this.settingController) {
+        this.settingController = settingController.new();
+        
+        // 建立关联关系
+        this.settingController.taskController = this.addonController
+        this.settingController.mainPath = taskConfig.mainPath;
+        this.settingController.action = taskConfig.action
+        
+        // 添加到学习视图
+        MNUtil.studyView.addSubview(this.settingController.view)
+      }
+      
+      // 🎨 显示设置界面
+      this.settingController.show()
+    } catch (error) {
+      // 😵 出错了！记录错误信息
+      taskUtils.addErrorLog(error, "openSetting")
+    }
+  }
+  /**
+   * 🔄 检查并应用配置更新（原型方法）
+   * 
+   * 【功能说明】
+   * 这个方法会检查云端配置是否有更新，如果有就应用到插件中。
+   * 想象一下，就像手机应用会自动更新一样，这个方法让插件能自动更新配置。
+   * 
+   * 【执行流程】
+   * ```
+   * 检查更新
+   *     ↓
+   * 读取云端配置
+   *     ↓
+   * 有更新吗？
+   *     ├─ 是 → 获取所有按钮动作
+   *     │      ↓
+   *     │    更新设置界面（如果打开的话）
+   *     │      ↓
+   *     │    更新工具栏界面
+   *     │      ↓
+   *     │    发送刷新通知
+   *     │
+   *     └─ 否 → 什么都不做
+   * ```
+   * 
+   * @async 异步方法，会等待云端数据
+   * @this {MNTaskClass}
+   */
+  MNTaskClass.prototype.checkUpdate = async function () {
+    try {
+      // 🌐 第一步：检查云端配置是否有更新
+      // 参数 false 表示不强制更新，只检查
+      let shouldUpdate = await taskConfig.readCloudConfig(false)
+      
+      // 🔍 第二步：如果有更新，应用新配置
+      if (shouldUpdate) {
+        // 📋 获取所有按钮的动作配置
+        let allActions = taskConfig.getAllActions()
+        
+        // 🎨 第三步：更新设置界面（如果它正在显示的话）
+        if (this.settingController) {
+          // 更新按钮列表和当前选中项
+          this.settingController.setButtonText(allActions,this.settingController.selectedItem)
+        }
+        
+        // 🎯 第四步：更新工具栏界面
+        if (this.addonController) {
+          // 恢复窗口位置（可能配置中改变了位置）
+          this.addonController.setFrame(taskConfig.getWindowState("frame"))
+          
+          // 更新所有按钮（可能新增或修改了按钮）
+          this.addonController.setTaskButton(allActions)
+        }else{
+          // 🚫 异常情况：工具栏控制器不存在
+          MNUtil.showHUD("No addonController")
+        }
+        
+        // 📢 第五步：发送刷新通知
+        // 其他监听这个通知的组件也会刷新自己
+        MNUtil.postNotification("refreshView",{})
+      }
+      // 如果没有更新，什么都不做，静悄悄的~
+      
+    } catch (error) {
+      // 😵 出错了！记录错误信息
+      taskUtils.addErrorLog(error, "checkUpdate")
+    }
+  }
+  /**
+   * 🎯 检查并关闭弹出控制器（原型方法）
+   * 
+   * 【功能说明】
+   * 这个方法用于关闭当前显示的弹出窗口（如果有的话）。
+   * 就像你点击空白处关闭右键菜单一样，这个方法确保没有残留的弹出窗口。
+   * 
+   * 【什么是 PopoverController？】
+   * 在 iOS/macOS 中，Popover 是一种弹出式界面，通常用于：
+   * - 显示更多选项菜单
+   * - 显示详细信息
+   * - 显示小型设置界面
+   * 
+   * 【使用场景】
+   * - 切换工具栏状态前，先关闭可能存在的弹出菜单
+   * - 隐藏工具栏前，确保相关的弹出窗口也被关闭
+   * - 避免弹出窗口"漂浮"在空中的尴尬情况
+   * 
+   * @this {MNTaskClass}
+   */
+  MNTaskClass.prototype.checkPopoverController = function () {
+    // 🔍 检查是否有弹出控制器存在
+    if (this.popoverController) {
+      // ✨ 使用动画方式优雅地关闭弹出窗口
+      // 参数 true 表示带动画效果，窗口会淡出消失
+      this.popoverController.dismissPopoverAnimated(true);
+    }
+    // 如果没有弹出窗口，什么都不做
+  }
+  /**
+   * 📋 创建表格菜单项对象（原型方法）
+   * 
+   * 【功能说明】
+   * 这是一个工具方法，用于创建符合 iOS 表格视图要求的菜单项对象。
+   * 就像餐厅的菜单，每道菜都有名字、价格、说明一样，
+   * 这个方法创建的对象包含了菜单项需要的所有信息。
+   * 
+   * 【返回对象结构】
+   * ```javascript
+   * {
+   *   title: "菜单项名称",      // 显示给用户看的文字
+   *   object: this,            // 谁来处理点击（通常是插件主类）
+   *   selector: "方法名:",      // 点击后调用哪个方法
+   *   param: "参数",           // 传给方法的参数
+   *   checked: true/false      // 是否显示勾选标记
+   * }
+   * ```
+   * 
+   * 【使用场景】
+   * 通常用在创建右键菜单或设置菜单时：
+   * ```javascript
+   * let menuItems = [
+   *   this.tableItem("打开工具栏", "toggleTask:", "", this.addonController.view.hidden),
+   *   this.tableItem("设置", "openSetting:", "", false),
+   *   this.tableItem("检查更新", "checkUpdate:", "", false)
+   * ]
+   * ```
+   * 
+   * @param {string} title - 菜单项的显示文字（比如"复制"、"粘贴"）
+   * @param {string} selector - 要调用的方法名（必须以冒号结尾，如"copy:"）
+   * @param {any} param - 传递给方法的参数（默认空字符串）
+   * @param {boolean|undefined} checked - 是否显示勾选标记（默认 false）
+   * @this {MNTaskClass} - 插件主类实例
+   * @returns {{title:string, object:MNTaskClass, selector:string, param:any, checked:boolean}} 菜单项对象
+   * 
+   * @example
+   * // 创建一个简单菜单项
+   * let copyItem = this.tableItem("复制", "copyNote:", note)
+   * 
+   * // 创建一个带勾选的菜单项
+   * let toggleItem = this.tableItem("显示工具栏", "toggleTask:", "", true)
+   */
+  MNTaskClass.prototype.tableItem = function (title,selector,param = "",checked = false) {
+    // 🏗️ 构建并返回菜单项对象
+    // 这个对象格式是 iOS 系统要求的标准格式
+    return {
+      title: title,        // 菜单项显示的文字
+      object: this,        // 响应者对象（谁来处理点击事件）
+      selector: selector,  // 选择器（点击后调用的方法名）
+      param: param,        // 参数（传给方法的数据）
+      checked: checked     // 勾选状态（是否在前面显示✓）
+    }
+  }
+  return MNTaskClass;
 };

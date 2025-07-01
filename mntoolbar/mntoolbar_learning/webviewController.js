@@ -7,7 +7,7 @@
  * 【为什么需要这个函数？】
  * 在 JSB 框架中，this 的行为与标准 JavaScript 不同：
  * ❌ 错误做法：let self = this  // 在 JSB 中无法正确获取实例
- * ✅ 正确做法：let self = getToolbarController()  // 通过函数获取
+ * ✅ 正确做法：let self = getTaskController()  // 通过函数获取
  * 
  * 【JSB 框架背景】
  * JSB (JavaScript Bridge) 是 MarginNote 插件使用的框架，它：
@@ -19,7 +19,7 @@
  * 在 JSB.defineClass 定义的任何方法内部，都需要：
  * ```javascript
  * methodName: function() {
- *   let self = getToolbarController()  // 第一行获取实例
+ *   let self = getTaskController()  // 第一行获取实例
  *   // 后续使用 self 而不是 this
  *   self.someProperty = value
  *   self.someMethod()
@@ -28,10 +28,10 @@
  * 
  * @return {pluginDemoController} 返回工具栏控制器的单例实例
  */
-const getToolbarController = ()=>self
+const getTaskController = ()=>self
 
 /**
- * 🚀 MN Toolbar 工具栏主控制器 - 插件的核心大脑
+ * 🚀 MN Task 工具栏主控制器 - 插件的核心大脑
  * 
  * 【这个类是做什么的？】
  * 想象一下，这个控制器就像一个智能遥控器，控制着工具栏的一切：
@@ -86,7 +86,7 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
    * ```
    * viewDidLoad
    *     │
-   *     ├─ 1. 获取控制器实例 (getToolbarController)
+   *     ├─ 1. 获取控制器实例 (getTaskController)
    *     ├─ 2. 初始化状态属性
    *     ├─ 3. 设置界面外观
    *     ├─ 4. 创建按钮和控件
@@ -103,7 +103,7 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
   try {
     
     // 🔑 获取控制器实例（JSB 框架要求，必须第一行执行）
-    let self = getToolbarController()
+    let self = getTaskController()
     // ========== 🏗️ 初始化控制器状态属性 ==========
     
     // 📋 基础状态管理
@@ -207,7 +207,7 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
     
     // 🏷️ 视图标记
     self.view.mnpluginDemo = true  // 自定义属性，用于：
-    // 1. 识别这是 MN Toolbar 的视图
+    // 1. 识别这是 MN Task 的视图
     // 2. 避免与其他插件冲突
     // 3. 调试时快速定位
     // ========== 🎯 配置工具栏按钮数组 ==========
@@ -243,7 +243,7 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
       // 应用按钮配置
       // useDynamic=true：使用用户自定义顺序
       // useDynamic=false：使用默认顺序
-      self.setToolbarButton(useDynamic ? pluginDemoConfig.dynamicAction : pluginDemoConfig.action)
+      self.setTaskButton(useDynamic ? pluginDemoConfig.dynamicAction : pluginDemoConfig.action)
       
     }else{
       // 📌 固定窗口模式配置
@@ -257,7 +257,7 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
       }
       
       // 固定窗口始终使用标准配置
-      self.setToolbarButton(pluginDemoConfig.action)
+      self.setTaskButton(pluginDemoConfig.action)
     }
     
 
@@ -427,7 +427,7 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
    * @this {pluginDemoController}
    */
   viewWillLayoutSubviews: function() {
-    let self = getToolbarController()
+    let self = getTaskController()
     
     // 🚫 动画保护：如果正在执行动画，跳过布局更新
     // 原因：动画过程中会不断触发此方法，如果每次都重新布局会导致：
@@ -439,9 +439,9 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
     }
     
     // 📐 执行布局更新
-    // setToolbarLayout 会根据当前方向（横向/纵向）和尺寸
+    // setTaskLayout 会根据当前方向（横向/纵向）和尺寸
     // 重新计算每个按钮的位置，确保它们正确排列
-    self.setToolbarLayout()
+    self.setTaskLayout()
   },
   
   /**
@@ -577,13 +577,13 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
    * @param {UIButton} sender - 屏幕切换按钮
    */
   changeScreen: function(sender) {
-    let self = getToolbarController()
+    let self = getTaskController()
     let clickDate = Date.now()  // 记录点击时间（可用于防抖）
     // if (self.dynamicWindow) {
     //   return  // 动态窗口模式下禁用（已注释）
     // }
     self.checkPopover()
-    let selector = "toggleToolbarDirection:"
+    let selector = "toggleTaskDirection:"
     // if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
     var commandTable = [
       self.tableItem('⚙️  Setting', 'setting:')
@@ -610,9 +610,9 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
    * @param {string} source - 来源标识（"dynamic" 或 "fixed"）
    *                         用于区分是从动态窗口还是固定窗口触发
    */
-  toggleToolbarDirection: function (source) {
+  toggleTaskDirection: function (source) {
     self.checkPopover()  // 关闭菜单
-    pluginDemoConfig.toggleToolbarDirection(source)  // 调用配置管理器执行切换
+    pluginDemoConfig.toggleTaskDirection(source)  // 调用配置管理器执行切换
   },
   /**
    * 🌟 切换动态/固定模式 - 改变工具栏的显示行为
@@ -650,15 +650,15 @@ try {
       MNUtil.showHUD("Dynamic ✅")
     }else{
       MNUtil.showHUD("Dynamic ❌")
-      if (self.dynamicToolbar) {
-        self.dynamicToolbar.view.hidden = true
+      if (self.dynamicTask) {
+        self.dynamicTask.view.hidden = true
       }
       // self.testController.view.hidden = true
     }
-    pluginDemoConfig.save("MNToolbar_dynamic")
-    // NSUserDefaults.standardUserDefaults().setObjectForKey(pluginDemoConfig.dynamic,"MNToolbar_dynamic")
-    if (self.dynamicToolbar) {
-      self.dynamicToolbar.dynamic = pluginDemoConfig.dynamic
+    pluginDemoConfig.save("MNTask_dynamic")
+    // NSUserDefaults.standardUserDefaults().setObjectForKey(pluginDemoConfig.dynamic,"MNTask_dynamic")
+    if (self.dynamicTask) {
+      self.dynamicTask.dynamic = pluginDemoConfig.dynamic
     }
     MNUtil.refreshAddonCommands()
 } catch (error) {
@@ -693,7 +693,7 @@ try {
    * // "color5" → button.color = 5
    */
   setColor: async function (button) {
-    let self = getToolbarController()
+    let self = getTaskController()
     // let tem = {
     // }
     // let note = MNNote.getFocusNote()
@@ -788,7 +788,7 @@ try {
    * @returns {void}
    */
   customAction: async function (button) {
-    let self = getToolbarController()
+    let self = getTaskController()
     // eval("MNUtil.showHUD('123')")
     // return
     let dynamicOrder = pluginDemoConfig.getWindowState("dynamicOrder")
@@ -1067,7 +1067,7 @@ try {
    *                           button.menu - 关联的弹出菜单
    */
   copy:function (button) {
-    let self = getToolbarController()
+    let self = getTaskController()
     self.onClick = true
     let des = pluginDemoConfig.getDescriptionByName("copy")  // 获取复制配置
     if (button.doubleClick) {
@@ -1512,7 +1512,7 @@ try {
    * @param {UIButton} button - 触发按钮
    */
   search: function (button) {
-    let self = getToolbarController()
+    let self = getTaskController()
     let des = pluginDemoConfig.getDescriptionByName("search")
     if (des) {
       des.action = "search"
@@ -1724,7 +1724,7 @@ try {
    */
   ocr: async function (button) {
     // if (typeof ocrUtils === 'undefined') {
-    //   MNUtil.showHUD("MN Toolbar: Please install 'MN OCR' first!")
+    //   MNUtil.showHUD("MN Task: Please install 'MN OCR' first!")
     //   return
     // }
     let des = pluginDemoConfig.getDescriptionByName("ocr")
@@ -1746,7 +1746,7 @@ try {
    * ⚙️ 设置功能 - 打开工具栏设置界面
    * 
    * 【功能说明】
-   * 打开 MN Toolbar 的设置界面，允许用户自定义工具栏的各种配置。
+   * 打开 MN Task 的设置界面，允许用户自定义工具栏的各种配置。
    * 这是工具栏的控制中心，可以管理按钮、配置功能、调整外观等。
    * 
    * 【设置内容】
@@ -1770,7 +1770,7 @@ try {
    */
   setting: function (button) {
     self.checkPopover()
-    MNUtil.postNotification("openToolbarSetting", {})
+    MNUtil.postNotification("openTaskSetting", {})
     if (button.menu) {
       button.menu.dismissAnimated(true)
       return
@@ -1816,7 +1816,7 @@ try {
    * @param {UIButton} button - 触发按钮
    */
   pasteAsTitle:function (button) {
-    let self = getToolbarController()
+    let self = getTaskController()
     let des = pluginDemoConfig.getDescriptionByName("pasteAsTitle")
     if (des && "doubleClick" in des) {
       self.onClick = true
@@ -1891,7 +1891,7 @@ try {
    * @param {UIButton} button - 触发按钮
    */
   clearFormat:function (button) {
-    let self = getToolbarController()
+    let self = getTaskController()
     self.onClick = true
     let focusNotes = MNNote.getFocusNotes()
     MNUtil.undoGrouping(()=>{
@@ -1966,7 +1966,7 @@ try {
    */
   onMoveGesture:function (gesture) {
   try {
-    let self = getToolbarController()
+    let self = getTaskController()
     
     // 🌟 动态窗口特殊处理
     if (self.dynamicWindow) {
@@ -1998,10 +1998,10 @@ try {
       pluginDemoConfig.windowState.frame.y = self.view.frame.y
       pluginDemoConfig.windowState.splitMode = self.splitMode
       pluginDemoConfig.windowState.sideMode = self.sideMode
-      pluginDemoConfig.save("MNToolbar_windowState")
+      pluginDemoConfig.save("MNTask_windowState")
       
       // 重新布局工具栏
-      self.setToolbarLayout()
+      self.setTaskLayout()
       return
     }
     
@@ -2222,7 +2222,7 @@ try {
    * @param {UIPanGestureRecognizer} gesture - 拖动手势识别器
    */
   onResizeGesture:function (gesture) {
-    let self = getToolbarController()
+    let self = getTaskController()
     try {
       self.onClick = true     // 设置点击标记
       self.custom = false     // 重置自定义模式
@@ -2260,7 +2260,7 @@ try {
         }
         
         // 持久化配置
-        pluginDemoConfig.save("MNToolbar_windowState", windowState)
+        pluginDemoConfig.save("MNTask_windowState", windowState)
         self.onResize = false  // 重置调整标记
       }
     } catch (error) {
@@ -2430,7 +2430,7 @@ pluginDemoController.prototype.show = async function (frame) {
   
   // 🔄 刷新按钮配置
   let useDynamic = pluginDemoConfig.getWindowState("dynamicOrder") && this.dynamicWindow
-  this.setToolbarButton(useDynamic ? pluginDemoConfig.dynamicAction : pluginDemoConfig.action)
+  this.setTaskButton(useDynamic ? pluginDemoConfig.dynamicAction : pluginDemoConfig.action)
   
   // ========== 🎯 执行动画 ==========
   MNUtil.animate(() => {
@@ -2452,7 +2452,7 @@ pluginDemoController.prototype.show = async function (frame) {
       }
       
       this.onAnimate = false  // 动画结束
-      this.setToolbarLayout() // 更新布局
+      this.setTaskLayout() // 更新布局
     } catch (error) {
       MNUtil.showHUD("Error in show: " + error)
     }
@@ -2478,7 +2478,7 @@ pluginDemoController.prototype.show = async function (frame) {
   //     this["ColorButton"+index].hidden = false
   //   }
   //   this.onAnimate = false
-  //   this.setToolbarLayout()
+  //   this.setTaskLayout()
   // } catch (error) {
   //   MNUtil.showHUD(error)
   // }
@@ -2631,17 +2631,17 @@ pluginDemoController.prototype.hideAfterDelay = function (delay = 0.5) {
  * 
  * @example
  * // 使用默认配置
- * setToolbarButton()
+ * setTaskButton()
  * 
  * // 使用自定义顺序
- * setToolbarButton(["copy", "paste", "undo", "redo"])
+ * setTaskButton(["copy", "paste", "undo", "redo"])
  * 
  * // 更新动作配置
- * setToolbarButton(undefined, newActionsConfig)
+ * setTaskButton(undefined, newActionsConfig)
  */
-pluginDemoController.prototype.setToolbarButton = function (actionNames = pluginDemoConfig.action,newActions=undefined) {
+pluginDemoController.prototype.setTaskButton = function (actionNames = pluginDemoConfig.action,newActions=undefined) {
 try {
-  // MNUtil.showHUD("setToolbarButton")
+  // MNUtil.showHUD("setTaskButton")
   let buttonColor = pluginDemoUtils.getButtonColor()
   let dynamicOrder = pluginDemoConfig.getWindowState("dynamicOrder")
   let useDynamic = dynamicOrder && this.dynamicWindow
@@ -2708,18 +2708,18 @@ try {
     // self["ColorButton"+index].setTitleForState("",0) 
     // self["ColorButton"+index].contentHorizontalAlignment = 1
   }
-  if (this.dynamicToolbar) {
+  if (this.dynamicTask) {
     if (dynamicOrder) {
       // MNUtil.showHUD("useDynamic: "+useDynamic)
-      this.dynamicToolbar.setToolbarButton(pluginDemoConfig.dynamicAction,newActions)
+      this.dynamicTask.setTaskButton(pluginDemoConfig.dynamicAction,newActions)
     }else{
       // MNUtil.showHUD("useDynamic: "+useDynamic)
-      this.dynamicToolbar.setToolbarButton(pluginDemoConfig.action,newActions)
+      this.dynamicTask.setTaskButton(pluginDemoConfig.action,newActions)
     }
   }
   this.refresh()
 } catch (error) {
-  MNUtil.showHUD("Error in setToolbarButton: "+error)
+  MNUtil.showHUD("Error in setTaskButton: "+error)
 }
 }
 /**
@@ -2768,7 +2768,7 @@ pluginDemoController.prototype.refresh = function (frame) {
     frame = this.view.frame  // 使用当前 frame
   }
   this.setFrame(frame,true)   // 更新 frame
-  this.setToolbarLayout()      // 重新布局按钮
+  this.setTaskLayout()      // 重新布局按钮
 }
 
 /**
@@ -2801,7 +2801,7 @@ pluginDemoController.prototype.refresh = function (frame) {
  * 
  * @this {pluginDemoController}
  */
-pluginDemoController.prototype.setToolbarLayout = function () {
+pluginDemoController.prototype.setTaskLayout = function () {
   if (this.onAnimate) {
     return  // 动画过程中，跳过布局更新
   }
@@ -3460,10 +3460,10 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
       case "toggleView":
         if ("targets" in des) {
           des.targets.map(target=>{
-            MNUtil.postNotification("toggleMindmapToolbar", {target:target})
+            MNUtil.postNotification("toggleMindmapTask", {target:target})
           })
         }else{
-          MNUtil.postNotification("toggleMindmapToolbar", {target:des.target})
+          MNUtil.postNotification("toggleMindmapTask", {target:des.target})
         }
         break
       case "export":
@@ -3487,7 +3487,7 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
             pluginDemoConfig.setImageByURL(keys[i], url,false,scale)
           }
           // await Promise.all(asyncActions)
-          MNUtil.postNotification("refreshToolbarButton", {})
+          MNUtil.postNotification("refreshTaskButton", {})
         }else{
           MNUtil.showHUD("Missing imageConfig")
         }
@@ -3618,7 +3618,7 @@ pluginDemoController.prototype.replaceButtonTo = async function (button,target) 
  * 🔄 弹出菜单替换 - 自定义系统弹出菜单中的按钮
  * 
  * 【核心功能】
- * 这是 MN Toolbar 的一个强大特性，允许替换 MarginNote 系统弹出菜单中的按钮：
+ * 这是 MN Task 的一个强大特性，允许替换 MarginNote 系统弹出菜单中的按钮：
  * - 🎯 替换图标：使用自定义图标替换系统图标
  * - 🔗 替换动作：将系统动作替换为自定义功能
  * - 🔍 保留原功能：可以选择性地替换部分按钮

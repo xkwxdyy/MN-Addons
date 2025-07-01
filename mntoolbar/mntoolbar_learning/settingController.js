@@ -25,10 +25,10 @@ const getSettingController = ()=>self
   在代码中：
 
   // 普通的视图控制器
-  toolbarController : UIViewController
+  taskController : UIViewController
 
   // 带"技能"的视图控制器
-  toolbarController : UIViewController <UIImagePickerControllerDelegate,
+  taskController : UIViewController <UIImagePickerControllerDelegate,
   UINavigationControllerDelegate>
 
     实际例子：拍照功能
@@ -36,7 +36,7 @@ const getSettingController = ()=>self
   1. 声明"我会处理照片"
 
   // 尖括号里声明：我会处理图片选择
-  toolbarController : UIViewController <UIImagePickerControllerDelegate>
+  taskController : UIViewController <UIImagePickerControllerDelegate>
 
   2. 因为有这个"技能"，所以能接收照片
 
@@ -86,14 +86,14 @@ const getSettingController = ()=>self
  */
  
   /**
-   *   UIViewController <NSURLConnectionDelegate,UIImagePickerControllerDelegate,UIWebViewDelegate> 表示 toolbarController：
+   *   UIViewController <NSURLConnectionDelegate,UIImagePickerControllerDelegate,UIWebViewDelegate> 表示 taskController：
   1. 是一个视图控制器（基本身份）
   2. 还会处理图片选择（UIImagePickerControllerDelegate）
   3. 还会处理导航（UINavigationControllerDelegate）
    */
 /**
  * settingController 类定义
- * 这是 MN Toolbar 的设置界面控制器，负责管理所有设置相关的 UI 和逻辑
+ * 这是 MN Task 的设置界面控制器，负责管理所有设置相关的 UI 和逻辑
  * 
  * 继承关系：
  * - UIViewController: iOS 的视图控制器基类，负责管理一个屏幕的内容
@@ -339,16 +339,16 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     // 保存配置并更新工具栏
     if (isEditingDynamic) {
       // 更新动态工具栏
-      if (self.pluginDemoController.dynamicToolbar) {
-        self.pluginDemoController.dynamicToolbar.setToolbarButton(allActions)
+      if (self.pluginDemoController.dynamicTask) {
+        self.pluginDemoController.dynamicTask.setTaskButton(allActions)
       }
       pluginDemoConfig.dynamicAction = allActions
-      pluginDemoConfig.save("MNToolbar_dynamicAction")
+      pluginDemoConfig.save("MNTask_dynamicAction")
     }else{
       // 更新固定工具栏
-      self.pluginDemoController.setToolbarButton(allActions)
+      self.pluginDemoController.setTaskButton(allActions)
       pluginDemoConfig.action = allActions
-      pluginDemoConfig.save("MNToolbar_action")
+      pluginDemoConfig.save("MNTask_action")
     }
   },
   /**
@@ -394,16 +394,16 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     // 根据编辑模式保存配置
     if (isEditingDynamic) {
       // 更新动态工具栏
-      if (self.pluginDemoController.dynamicToolbar) {
-        self.pluginDemoController.dynamicToolbar.setToolbarButton(allActions)
+      if (self.pluginDemoController.dynamicTask) {
+        self.pluginDemoController.dynamicTask.setTaskButton(allActions)
       }
       pluginDemoConfig.dynamicAction = allActions
-      pluginDemoConfig.save("MNToolbar_dynamicAction")
+      pluginDemoConfig.save("MNTask_dynamicAction")
     }else{
       // 更新固定工具栏
-      self.pluginDemoController.setToolbarButton(allActions)
+      self.pluginDemoController.setTaskButton(allActions)
       pluginDemoConfig.action = allActions
-      pluginDemoConfig.save("MNToolbar_action")
+      pluginDemoConfig.save("MNTask_action")
     }
     } catch (error) {
       pluginDemoUtils.addErrorLog(error, "moveForwardTapped")
@@ -449,15 +449,15 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     
     // 同步更新工具栏显示
     if (isEditingDynamic) {
-      if (self.pluginDemoController.dynamicToolbar) {
-        self.pluginDemoController.dynamicToolbar.setToolbarButton(allActions)
+      if (self.pluginDemoController.dynamicTask) {
+        self.pluginDemoController.dynamicTask.setTaskButton(allActions)
       }
       pluginDemoConfig.dynamicAction = allActions
-      pluginDemoConfig.save("MNToolbar_dynamicAction")
+      pluginDemoConfig.save("MNTask_dynamicAction")
     }else{
-      self.pluginDemoController.setToolbarButton(allActions)
+      self.pluginDemoController.setTaskButton(allActions)
       pluginDemoConfig.action = allActions
-      pluginDemoConfig.save("MNToolbar_action")
+      pluginDemoConfig.save("MNTask_action")
     }
     } catch (error) {
       pluginDemoUtils.addErrorLog(error, "moveBackwardTapped")
@@ -536,7 +536,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       switch (param) {
         case "config":
           // 最危险的操作，需要用户确认
-          let confirm = await MNUtil.confirm("MN Toolbar: Clear all configs?", "MN Toolbar: 清除所有配置？")
+          let confirm = await MNUtil.confirm("MN Task: Clear all configs?", "MN Task: 清除所有配置？")
           if (confirm) {
             pluginDemoConfig.reset("config")
             self.setButtonText()  // 刷新按钮列表
@@ -566,7 +566,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
         case "image":
           // 重置所有按钮图标
           pluginDemoConfig.imageScale = {}  // 清除缩放设置
-          pluginDemoConfig.save("MNToolbar_imageScale")
+          pluginDemoConfig.save("MNTask_imageScale")
           
           // 重新加载所有默认图标
           let keys = pluginDemoConfig.getDefaultActionKeys()
@@ -576,7 +576,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
           })
           
           // 通知工具栏刷新显示
-          MNUtil.postNotification("refreshToolbarButton", {})
+          MNUtil.postNotification("refreshTaskButton", {})
           MNUtil.showHUD("Reset button image")
           break
           
@@ -758,7 +758,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       })
       
       // 保存配置到本地存储
-      pluginDemoConfig.save("MNToolbar_popupConfig")
+      pluginDemoConfig.save("MNTask_popupConfig")
     } catch (error) {
       pluginDemoUtils.addErrorLog(error, "setPopupReplace")
     }
@@ -790,7 +790,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     
     // 保存配置
     pluginDemoConfig.popupConfig[button.id] = popupConfig
-    pluginDemoConfig.save("MNToolbar_popupConfig")
+    pluginDemoConfig.save("MNTask_popupConfig")
   },
   /**
    * 处理拖动手势，实现窗口移动
@@ -1234,12 +1234,12 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
         
         // 同步到工具栏
         self.pluginDemoController.actions = pluginDemoConfig.actions
-        if (self.pluginDemoController.dynamicToolbar) {
-          self.pluginDemoController.dynamicToolbar.actions = pluginDemoConfig.actions
+        if (self.pluginDemoController.dynamicTask) {
+          self.pluginDemoController.dynamicTask.actions = pluginDemoConfig.actions
         }
         
         // 保存到本地
-        pluginDemoConfig.save("MNToolbar_actionConfig")
+        pluginDemoConfig.save("MNTask_actionConfig")
         
         // 显示不同的提示
         if (!selected.includes("custom")) {
@@ -1325,12 +1325,12 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       
       // 同步更新到工具栏
       self.pluginDemoController.actions = actions
-      if (self.pluginDemoController.dynamicToolbar) {
-        self.pluginDemoController.dynamicToolbar.actions = actions
+      if (self.pluginDemoController.dynamicTask) {
+        self.pluginDemoController.dynamicTask.actions = actions
       }
       
       // 保存到本地
-      pluginDemoConfig.save("MNToolbar_actionConfig")
+      pluginDemoConfig.save("MNTask_actionConfig")
       
       // 显示不同的提示信息
       if (!selected.includes("custom")) {
@@ -1405,10 +1405,10 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       pluginDemoConfig.actions[selected].description = input
       pluginDemoConfig.actions[selected].name = self.titleInput.text
       self.pluginDemoController.actions = pluginDemoConfig.actions
-      if (self.pluginDemoController.dynamicToolbar) {
-        self.pluginDemoController.dynamicToolbar.actions = pluginDemoConfig.actions
+      if (self.pluginDemoController.dynamicTask) {
+        self.pluginDemoController.dynamicTask.actions = pluginDemoConfig.actions
       }
-      pluginDemoConfig.save("MNToolbar_actionConfig")
+      pluginDemoConfig.save("MNTask_actionConfig")
     }else{
       MNUtil.showHUD("Invalid JSON format!")
       return
@@ -1724,7 +1724,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     }
     let image = pluginDemoConfig.imageConfigs[buttonName]
     pluginDemoConfig.imageConfigs[buttonName] = UIImage.imageWithDataScale(image.pngData(), scale)
-    MNUtil.postNotification("refreshToolbarButton", {})
+    MNUtil.postNotification("refreshTaskButton", {})
   },
   /**
    * 🔄 重置按钮图标
@@ -1756,7 +1756,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       
       // 清除图标缩放比例配置
       pluginDemoConfig.imageScale[buttonName] = undefined
-      pluginDemoConfig.save("MNToolbar_imageScale")
+      pluginDemoConfig.save("MNTask_imageScale")
       
       // 加载默认图标
       let defaultImage = pluginDemoConfig.getAction(buttonName).image
@@ -1764,7 +1764,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       pluginDemoConfig.imageConfigs[buttonName] = MNUtil.getImage(imagePath)
       
       // 通知工具栏刷新按钮
-      MNUtil.postNotification("refreshToolbarButton", {})
+      MNUtil.postNotification("refreshTaskButton", {})
       MNUtil.showHUD("Reset button image")
       
       // 曾经的功能：删除本地保存的自定义图标文件
@@ -1835,7 +1835,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
    * 
    * 【功能说明】
    * 控制是否在工具栏中显示其他插件的快捷按钮。
-   * MN Toolbar 可以与其他插件协作，显示它们的功能按钮。
+   * MN Task 可以与其他插件协作，显示它们的功能按钮。
    * 
    * 【支持的插件】
    * - MNEditor：文本编辑器
@@ -1843,7 +1843,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
    * - 其他支持协作的插件
    * 
    * 【工作原理】
-   * 1. 每个插件可以注册自己的快捷操作到 MN Toolbar
+   * 1. 每个插件可以注册自己的快捷操作到 MN Task
    * 2. 用户可以选择启用/禁用某个插件的按钮
    * 3. 启用后，该插件的按钮会出现在工具栏中
    * 
@@ -1875,7 +1875,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       )
       
       // 保存配置
-      pluginDemoConfig.save("MNToolbar_addonLogos")
+      pluginDemoConfig.save("MNTask_addonLogos")
       
       // 刷新插件命令，重新加载按钮
       MNUtil.refreshAddonCommands()
@@ -1936,10 +1936,10 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     if (varColors.includes(color) || pluginDemoUtils.isHexColor(color)) {
       // 保存颜色配置
       pluginDemoConfig.buttonConfig.color = color
-      pluginDemoConfig.save("MNToolbar_buttonConfig")
+      pluginDemoConfig.save("MNTask_buttonConfig")
       
       // 立即应用新颜色
-      self.pluginDemoController.setToolbarButton()
+      self.pluginDemoController.setTaskButton()
       
       MNUtil.showHUD("Save color: " + color)
     } else {
@@ -1995,11 +1995,11 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       pluginDemoConfig.syncConfig.iCloudSync = !iCloudSync
       self.iCloudButton.setTitleForState("iCloud Sync "+(pluginDemoConfig.syncConfig.iCloudSync? "✅":"❌"),0)
       MNButton.setColor(self.iCloudButton, pluginDemoConfig.syncConfig.iCloudSync?"#457bd3":"#9bb2d6",0.8)
-      pluginDemoConfig.save("MNToolbar_syncConfig",undefined,false)
+      pluginDemoConfig.save("MNTask_syncConfig",undefined,false)
     } else {
       // 如果未开启，显示导入/导出选项
       let direction = await MNUtil.userSelect(
-        "MN Toolbar\nChoose action / 请选择操作", 
+        "MN Task\nChoose action / 请选择操作", 
         "❗️Back up the configuration before proceeding.\n❗️建议在操作前先备份配置", 
         ["📥 Import / 导入","📤 Export / 导出"]
       )
@@ -2026,7 +2026,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
           
           // 更新工具栏
           if (self.pluginDemoController) {
-            self.pluginDemoController.setToolbarButton(allActions)
+            self.pluginDemoController.setTaskButton(allActions)
           }else{
             MNUtil.showHUD("No pluginDemoController")
           }
@@ -2043,7 +2043,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       pluginDemoConfig.syncConfig.iCloudSync = true
       self.iCloudButton.setTitleForState("iCloud Sync ✅",0)
       MNButton.setColor(self.iCloudButton, "#457bd3",0.8)
-      pluginDemoConfig.save("MNToolbar_syncConfig")
+      pluginDemoConfig.save("MNTask_syncConfig")
     }
   },
   /**
@@ -2100,7 +2100,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
    * 
    * 3️⃣ CurrentNote
    *    - 将配置保存到当前选中的笔记
-   *    - 标题设为 "MNToolbar_Config"
+   *    - 标题设为 "MNTask_Config"
    *    - 内容为格式化的 JSON 代码块
    *    - 支持 Markdown 渲染
    * 
@@ -2138,7 +2138,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
         let focusNote = MNNote.getFocusNote()
         if(focusNote){
           MNUtil.undoGrouping(()=>{
-            focusNote.noteTitle = "MNToolbar_Config"
+            focusNote.noteTitle = "MNTask_Config"
             // 使用 Markdown 代码块格式，便于阅读
             focusNote.excerptText = "```JSON\n"+JSON.stringify(allConfig,null,2)+"\n```"
             focusNote.excerptTextMarkdown = true  // 启用 Markdown 渲染
@@ -2214,7 +2214,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
    * 
    * 3️⃣ CurrentNote
    *    - 从当前笔记读取
-   *    - 笔记标题必须是 "MNToolbar_Config"
+   *    - 笔记标题必须是 "MNTask_Config"
    *    - 支持从 Markdown 代码块提取 JSON
    * 
    * 4️⃣ File
@@ -2249,7 +2249,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
         // 更新工具栏
         if (self.pluginDemoController) {
           self.pluginDemoController.setFrame(pluginDemoConfig.getWindowState("frame"))
-          self.pluginDemoController.setToolbarButton(allActions)
+          self.pluginDemoController.setTaskButton(allActions)
         }else{
           MNUtil.showHUD("No addonController")
         }
@@ -2268,7 +2268,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       case "currentNote":
         // 从当前笔记读取
         let focusNote = MNNote.getFocusNote()
-        if(focusNote && focusNote.noteTitle == "MNToolbar_Config"){
+        if(focusNote && focusNote.noteTitle == "MNTask_Config"){
           // 从 Markdown 代码块中提取 JSON
           config = pluginDemoUtils.extractJSONFromMarkdown(focusNote.excerptText)
         }else{
@@ -2296,7 +2296,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     // 更新工具栏
     if (self.pluginDemoController) {
       self.pluginDemoController.setFrame(pluginDemoConfig.getWindowState("frame"))
-      self.pluginDemoController.setToolbarButton(allActions)
+      self.pluginDemoController.setTaskButton(allActions)
     }else{
       MNUtil.showHUD("No addonController")
     }
@@ -2316,7 +2316,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
    * - ↔️ Horizontal：水平方向（从左到右排列按钮）
    * 
    * 【工具栏类型】
-   * - 🛠️ Toolbar Direction：固定工具栏的方向
+   * - 🛠️ Task Direction：固定工具栏的方向
    * - 🌟 Dynamic Direction：动态工具栏的方向
    * 
    * 【使用场景】
@@ -2326,16 +2326,16 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
    * 
    * @param {UIButton} button - 触发菜单的按钮
    */
-  changeToolbarDirection:async function (button) {
+  changeTaskDirection:async function (button) {
     let self = getSettingController()
     var commandTable = []
-    let selector = "toggleToolbarDirection:"
+    let selector = "toggleTaskDirection:"
     
     // 添加固定工具栏方向选项
     if (pluginDemoConfig.vertical()) {
-      commandTable.push(self.tableItem('🛠️  Toolbar Direction: ↕️ Vertical', selector,"fixed"))
+      commandTable.push(self.tableItem('🛠️  Task Direction: ↕️ Vertical', selector,"fixed"))
     }else{
-      commandTable.push(self.tableItem('🛠️  Toolbar Direction: ↔️ Horizontal', selector,"fixed"))
+      commandTable.push(self.tableItem('🛠️  Task Direction: ↔️ Horizontal', selector,"fixed"))
     }
     
     // 添加动态工具栏方向选项
@@ -2356,9 +2356,9 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
    * 
    * @param {string} source - 工具栏类型（"fixed" 或 "dynamic"）
    */
-  toggleToolbarDirection:function (source) {
+  toggleTaskDirection:function (source) {
     self.checkPopoverController()  // 关闭弹出菜单
-    pluginDemoConfig.toggleToolbarDirection(source)  // 执行方向切换
+    pluginDemoConfig.toggleTaskDirection(source)  // 执行方向切换
   },
   /**
    * 🌟 切换动态顺序
@@ -2403,10 +2403,10 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     )
     
     // 保存配置
-    pluginDemoConfig.save("MNToolbar_windowState")
+    pluginDemoConfig.save("MNTask_windowState")
     
     // 通知工具栏刷新
-    MNUtil.postNotification("refreshToolbarButton",{})
+    MNUtil.postNotification("refreshTaskButton",{})
   }
 });
 
@@ -2958,9 +2958,9 @@ settingController.prototype.createSettingView = function (){
     MNButton.setColor(this.importButton, "#457bd3",0.8)
     MNButton.setTitle(this.importButton, "Import",undefined, true)
 
-    this.createButton("directionButton","changeToolbarDirection:","advanceView")
+    this.createButton("directionButton","changeTaskDirection:","advanceView")
     MNButton.setColor(this.directionButton, "#457bd3",0.8)
-    MNButton.setTitle(this.directionButton, "Toolbar Direction",undefined, true)
+    MNButton.setTitle(this.directionButton, "Task Direction",undefined, true)
 
     this.createButton("dynamicOrderButton","toggleDynamicOrder:","advanceView")
     MNButton.setColor(this.dynamicOrderButton, "#457bd3",0.8)
@@ -3369,7 +3369,7 @@ settingController.prototype.show = function (frame) {
   // let allActions = pluginDemoConfig.getAllActions(isEditingDynamic)
   // let allActions = pluginDemoConfig.getAllActions()// pluginDemoConfig.action.concat(pluginDemoConfig.getDefaultActionKeys().slice(pluginDemoConfig.action.length))
   // this.setButtonText(allActions,this.selectedItem)
-  this.pluginDemoController.setToolbarButton(pluginDemoConfig.action)
+  this.pluginDemoController.setTaskButton(pluginDemoConfig.action)
   this.hideAllButton()
   MNUtil.animate(()=>{
     this.view.layer.opacity = 1.0

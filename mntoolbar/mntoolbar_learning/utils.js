@@ -37,28 +37,28 @@
  * ```javascript
  * // 场景1：创建新按钮并设置位置
  * let button = UIButton.new()
- * let frame = pluginDemoFrame.gen(10, 20, 100, 50)
+ * let frame = taskFrame.gen(10, 20, 100, 50)
  * button.frame = frame
  * 
  * // 场景2：调整已存在按钮的位置
- * pluginDemoFrame.setLoc(button, 100, 200)  // 移动到 (100, 200)
+ * taskFrame.setLoc(button, 100, 200)  // 移动到 (100, 200)
  * 
  * // 场景3：响应式调整大小
  * let screenWidth = UIScreen.mainScreen.bounds.width
- * pluginDemoFrame.setWidth(button, screenWidth - 20)  // 宽度适应屏幕
+ * taskFrame.setWidth(button, screenWidth - 20)  // 宽度适应屏幕
  * 
  * // 场景4：动画效果 - 按钮向右滑动
  * for (let i = 0; i < 10; i++) {
- *   pluginDemoFrame.moveX(button, 5)  // 每次向右移动 5 像素
+ *   taskFrame.moveX(button, 5)  // 每次向右移动 5 像素
  *   await MNUtil.delay(0.1)  // 延迟 0.1 秒
  * }
  * 
  * // 场景5：只想改变部分属性
  * // 只改变 x 坐标和宽度，y 和高度保持不变
- * pluginDemoFrame.set(button, 50, undefined, 200, undefined)
+ * taskFrame.set(button, 50, undefined, 200, undefined)
  * ```
  */
-class pluginDemoFrame{
+class taskFrame{
   /**
    * 🏗️ 创建一个新的 frame 对象
    * 
@@ -74,7 +74,7 @@ class pluginDemoFrame{
    * 
    * @example
    * // 创建一个位于 (10, 20)，大小为 100x50 的 frame
-   * let frame = pluginDemoFrame.gen(10, 20, 100, 50)
+   * let frame = taskFrame.gen(10, 20, 100, 50)
    * // frame = {x: 10, y: 20, width: 100, height: 50}
    * 
    * // 应用到按钮上
@@ -103,16 +103,16 @@ class pluginDemoFrame{
    * 
    * @example
    * // 只修改 x 坐标
-   * pluginDemoFrame.set(button, 100, undefined, undefined, undefined)
+   * taskFrame.set(button, 100, undefined, undefined, undefined)
    * 
    * // 只修改位置，不改变大小
-   * pluginDemoFrame.set(button, 50, 80, undefined, undefined)
+   * taskFrame.set(button, 50, 80, undefined, undefined)
    * 
    * // 只修改大小，不改变位置
-   * pluginDemoFrame.set(button, undefined, undefined, 200, 60)
+   * taskFrame.set(button, undefined, undefined, 200, 60)
    * 
    * // 修改所有属性
-   * pluginDemoFrame.set(button, 10, 20, 100, 50)
+   * taskFrame.set(button, 10, 20, 100, 50)
    */
   static set(view,x,y,width,height){
     let oldFrame = view.frame
@@ -156,8 +156,8 @@ class pluginDemoFrame{
    * let frame2 = {x: 10, y: 20, width: 100, height: 50}
    * let frame3 = {x: 10, y: 20, width: 100, height: 60}
    * 
-   * pluginDemoFrame.sameFrame(frame1, frame2)  // true - 完全相同
-   * pluginDemoFrame.sameFrame(frame1, frame3)  // false - height 不同
+   * taskFrame.sameFrame(frame1, frame2)  // true - 完全相同
+   * taskFrame.sameFrame(frame1, frame3)  // false - height 不同
    */
   static sameFrame(frame1,frame2){
     if (frame1.x === frame2.x && frame1.y === frame2.y && frame1.width === frame2.width && frame1.height === frame2.height) {
@@ -176,15 +176,15 @@ class pluginDemoFrame{
    * 
    * @example
    * // 将按钮移动到屏幕左边缘
-   * pluginDemoFrame.setX(button, 0)
+   * taskFrame.setX(button, 0)
    * 
    * // 将按钮移动到距离左边 20 像素的位置
-   * pluginDemoFrame.setX(button, 20)
+   * taskFrame.setX(button, 20)
    * 
    * // 居中对齐示例
    * let screenWidth = UIScreen.mainScreen.bounds.width
    * let buttonWidth = button.frame.width
-   * pluginDemoFrame.setX(button, (screenWidth - buttonWidth) / 2)
+   * taskFrame.setX(button, (screenWidth - buttonWidth) / 2)
    */
   static setX(view,x){
     let frame = view.frame
@@ -202,15 +202,15 @@ class pluginDemoFrame{
    * 
    * @example
    * // 将按钮移动到屏幕顶部
-   * pluginDemoFrame.setY(button, 0)
+   * taskFrame.setY(button, 0)
    * 
    * // 将按钮移动到距离顶部 50 像素的位置
-   * pluginDemoFrame.setY(button, 50)
+   * taskFrame.setY(button, 50)
    * 
    * // 垂直居中示例
    * let screenHeight = UIScreen.mainScreen.bounds.height
    * let buttonHeight = button.frame.height
-   * pluginDemoFrame.setY(button, (screenHeight - buttonHeight) / 2)
+   * taskFrame.setY(button, (screenHeight - buttonHeight) / 2)
    */
   static setY(view,y){
     let frame = view.frame
@@ -229,15 +229,15 @@ class pluginDemoFrame{
    * 
    * @example
    * // 移动按钮到指定位置
-   * pluginDemoFrame.setLoc(button, 100, 200)
+   * taskFrame.setLoc(button, 100, 200)
    * 
    * // 移动到屏幕左上角
-   * pluginDemoFrame.setLoc(button, 0, 0)
+   * taskFrame.setLoc(button, 0, 0)
    * 
    * // 根据其他元素定位
    * let label = getLabel()
    * // 将按钮放在标签下方 10 像素处，左对齐
-   * pluginDemoFrame.setLoc(button, label.frame.x, label.frame.y + label.frame.height + 10)
+   * taskFrame.setLoc(button, label.frame.x, label.frame.y + label.frame.height + 10)
    */
   static setLoc(view,x,y){
     let frame = view.frame
@@ -265,14 +265,14 @@ class pluginDemoFrame{
    * 
    * @example
    * // 设置按钮为标准大小
-   * pluginDemoFrame.setSize(button, 100, 44)  // iOS 标准按钮高度是 44
+   * taskFrame.setSize(button, 100, 44)  // iOS 标准按钮高度是 44
    * 
    * // 设置为正方形
-   * pluginDemoFrame.setSize(imageView, 80, 80)
+   * taskFrame.setSize(imageView, 80, 80)
    * 
    * // 根据内容动态调整
    * let textWidth = calculateTextWidth(button.title)
-   * pluginDemoFrame.setSize(button, textWidth + 20, 44)  // 加 20 像素边距
+   * taskFrame.setSize(button, textWidth + 20, 44)  // 加 20 像素边距
    */
   static setSize(view,width,height){
     let frame = view.frame
@@ -291,15 +291,15 @@ class pluginDemoFrame{
    * 
    * @example
    * // 设置固定宽度
-   * pluginDemoFrame.setWidth(button, 120)
+   * taskFrame.setWidth(button, 120)
    * 
    * // 适配屏幕宽度（留出边距）
    * let screenWidth = UIScreen.mainScreen.bounds.width
-   * pluginDemoFrame.setWidth(textField, screenWidth - 40)  // 左右各留 20 像素
+   * taskFrame.setWidth(textField, screenWidth - 40)  // 左右各留 20 像素
    * 
    * // 根据父视图调整
    * let parentWidth = button.superview.frame.width
-   * pluginDemoFrame.setWidth(button, parentWidth * 0.8)  // 占父视图 80% 宽度
+   * taskFrame.setWidth(button, parentWidth * 0.8)  // 占父视图 80% 宽度
    */
   static setWidth(view,width){
     let frame = view.frame
@@ -317,18 +317,18 @@ class pluginDemoFrame{
    * 
    * @example
    * // 设置标准高度
-   * pluginDemoFrame.setHeight(button, 44)  // iOS 标准按钮高度
+   * taskFrame.setHeight(button, 44)  // iOS 标准按钮高度
    * 
    * // 展开/收起动画
    * let isExpanded = false
    * function toggleExpand() {
    *   isExpanded = !isExpanded
-   *   pluginDemoFrame.setHeight(contentView, isExpanded ? 200 : 50)
+   *   taskFrame.setHeight(contentView, isExpanded ? 200 : 50)
    * }
    * 
    * // 根据内容自适应高度
    * let contentHeight = calculateContentHeight()
-   * pluginDemoFrame.setHeight(scrollView, Math.min(contentHeight, 300))  // 最大 300
+   * taskFrame.setHeight(scrollView, Math.min(contentHeight, 300))  // 最大 300
    */
   static setHeight(view,height){
     let frame = view.frame
@@ -346,15 +346,15 @@ class pluginDemoFrame{
    * 
    * @example
    * // 向右移动 20 像素
-   * pluginDemoFrame.moveX(button, 20)
+   * taskFrame.moveX(button, 20)
    * 
    * // 向左移动 30 像素
-   * pluginDemoFrame.moveX(button, -30)
+   * taskFrame.moveX(button, -30)
    * 
    * // 简单的滑动动画
    * async function slideRight() {
    *   for (let i = 0; i < 10; i++) {
-   *     pluginDemoFrame.moveX(button, 5)  // 每次移动 5 像素
+   *     taskFrame.moveX(button, 5)  // 每次移动 5 像素
    *     await MNUtil.delay(0.05)  // 延迟 50 毫秒
    *   }
    * }
@@ -362,7 +362,7 @@ class pluginDemoFrame{
    * // 响应手势拖动
    * function onPanGesture(gesture) {
    *   let translation = gesture.translationInView(view)
-   *   pluginDemoFrame.moveX(dragView, translation.x)
+   *   taskFrame.moveX(dragView, translation.x)
    *   gesture.setTranslationInView({x: 0, y: 0}, view)  // 重置手势位移
    * }
    */
@@ -382,21 +382,21 @@ class pluginDemoFrame{
    * 
    * @example
    * // 向下移动 30 像素
-   * pluginDemoFrame.moveY(button, 30)
+   * taskFrame.moveY(button, 30)
    * 
    * // 向上移动 50 像素
-   * pluginDemoFrame.moveY(button, -50)
+   * taskFrame.moveY(button, -50)
    * 
    * // 弹跳动画效果
    * async function bounce() {
    *   // 向上弹起
    *   for (let i = 0; i < 10; i++) {
-   *     pluginDemoFrame.moveY(button, -3)
+   *     taskFrame.moveY(button, -3)
    *     await MNUtil.delay(0.02)
    *   }
    *   // 落下
    *   for (let i = 0; i < 10; i++) {
-   *     pluginDemoFrame.moveY(button, 3)
+   *     taskFrame.moveY(button, 3)
    *     await MNUtil.delay(0.02)
    *   }
    * }
@@ -404,7 +404,7 @@ class pluginDemoFrame{
    * // 下拉效果
    * function onPullDown(distance) {
    *   if (distance > 0 && distance < 100) {
-   *     pluginDemoFrame.moveY(refreshView, distance * 0.5)  // 阻尼效果
+   *     taskFrame.moveY(refreshView, distance * 0.5)  // 阻尼效果
    *   }
    * }
    */
@@ -424,7 +424,7 @@ class pluginDemoFrame{
  * 一、独立函数 vs 类静态方法
  * 
  * 📦 类静态方法                    🌐 独立函数
- * pluginDemoUtils.someMethod()      getAllProperties(obj)
+ * taskUtils.someMethod()      getAllProperties(obj)
  * 属于某个类                        不属于任何类
  * 有命名空间                        全局可访问
  * 相关功能的组织                    独立的工具函数
@@ -463,11 +463,11 @@ class pluginDemoFrame{
  * let noteProps = getAllProperties(note)
  * // 可以看到所有可用的属性和方法
  * 
- * 五、为什么不放在 pluginDemoUtils 中？
+ * 五、为什么不放在 taskUtils 中？
  * 
  * 1. 这不是插件的核心业务逻辑
  * 2. 主要用于开发时的调试
- * 3. 可能在任何地方使用，不仅限于 pluginDemoUtils
+ * 3. 可能在任何地方使用，不仅限于 taskUtils
  * 
  * 💡 总结：
  * - 独立函数 = 全局工具/辅助函数
@@ -526,7 +526,7 @@ function getAllProperties(obj) {
  * let result = Calculator.add(5, 3);  // 8 - 不需要 new
  * ```
  * 
- * 二、为什么 pluginDemoUtils 全是静态方法？
+ * 二、为什么 taskUtils 全是静态方法？
  * 
  * 这个类是一个【工具箱】，不是一个“东西”：
  * - 它不需要保存状态（没有实例属性）
@@ -540,12 +540,12 @@ function getAllProperties(obj) {
  * 工具箱.螺丝刀(螺丝)      我的车.加油(50)
  *                           我的车.开车()
  * 
- * 四、在 MN Toolbar 项目中的应用
+ * 四、在 MN Task 项目中的应用
  * 
  * ✅ 好的设计 - 工具类用静态方法
- * pluginDemoUtils.smartCopy()      // 直接使用
- * pluginDemoUtils.getTextOCR()     // 不需要 new
- * pluginDemoConfig.save()          // 全局只有一份配置
+ * taskUtils.smartCopy()      // 直接使用
+ * taskUtils.getTextOCR()     // 不需要 new
+ * taskConfig.save()          // 全局只有一份配置
  * 
  * 五、什么时候用静态，什么时候用实例？
  * 
@@ -559,7 +559,7 @@ function getAllProperties(obj) {
  * - 每个对象有自己的数据
  * - 需要创建多个相似对象
  * 
- * 🎯 总结：在 MN Toolbar 项目中使用静态方法是因为：
+ * 🎯 总结：在 MN Task 项目中使用静态方法是因为：
  * 1. 工具性质：这些类都是工具集合，不是具体对象
  * 2. 无状态：不需要保存每个实例的数据
  * 3. 使用方便：直接调用，不需要 new
@@ -567,9 +567,9 @@ function getAllProperties(obj) {
  * 
  * 就像你不需要“制造一把锤子”才能敲钉子，你只需要“使用锤子这个工具”就行了！
  */
-class pluginDemoUtils {
+class taskUtils {
   // 注意：这个类不需要 constructor，因为所有方法都是静态的
-  // 我们永远不会使用 new pluginDemoUtils()，而是直接使用 pluginDemoUtils.methodName()
+  // 我们永远不会使用 new taskUtils()，而是直接使用 taskUtils.methodName()
   
   /**
    * 📦 【静态变量（静态属性）的理解】
@@ -606,7 +606,7 @@ class pluginDemoUtils {
    * 类名.变量名 访问               对象.变量名 访问
    * 所有对象共享                 每个对象独立
    * 
-   * 三、在 pluginDemoUtils 中的应用
+   * 三、在 taskUtils 中的应用
    * 
    * 这些静态变量就像是插件的“全局记忆”：
    * - previousNoteId: 记住上一个操作的笔记 ID
@@ -619,33 +619,33 @@ class pluginDemoUtils {
    * 四、为什么要用静态变量？
    * 
    * 1. 🌐 全局状态管理
-   * pluginDemoUtils.isSubscribe = true;  // 在任何地方都能访问
+   * taskUtils.isSubscribe = true;  // 在任何地方都能访问
    * 
    * 2. 📇 数据共享
-   * pluginDemoUtils.errorLog.push(error);  // 所有错误都收集到一个地方
+   * taskUtils.errorLog.push(error);  // 所有错误都收集到一个地方
    * 
    * 3. 🛡️ 保持单例
-   * pluginDemoUtils.mainPath  // 全局只有一个主路径
+   * taskUtils.mainPath  // 全局只有一个主路径
    * 
    * 五、实际例子
    * 
    * // 错误日志收集器
-   * pluginDemoUtils.errorLog = [];  // 初始化为空数组
+   * taskUtils.errorLog = [];  // 初始化为空数组
    * 
    * // 在任何地方添加错误
-   * pluginDemoUtils.errorLog.push({
+   * taskUtils.errorLog.push({
    *   time: Date.now(),
    *   error: "Something went wrong",
    *   location: "smartCopy"
    * });
    * 
    * // 在任何地方查看所有错误
-   * console.log("总共有 " + pluginDemoUtils.errorLog.length + " 个错误");
+   * console.log("总共有 " + taskUtils.errorLog.length + " 个错误");
    * 
    * 💡 总结：
    * - 静态变量 = 类的共享数据
    * - 适合存储全局状态、配置、缓存
-   * - 在 MN Toolbar 中用于管理插件的全局信息
+   * - 在 MN Task 中用于管理插件的全局信息
    */
   
   /**@type {string} */
@@ -672,7 +672,7 @@ class pluginDemoUtils {
    * 📃 实际使用例子：错误日志系统
    * 
    * // 在插件启动时初始化
-   * pluginDemoUtils.init = function(mainPath) {
+   * taskUtils.init = function(mainPath) {
    *   this.errorLog = [this.version];  // 初始化错误日志，第一项是版本号
    * }
    * 
@@ -680,12 +680,12 @@ class pluginDemoUtils {
    * try {
    *   // ... 一些可能出错的代码
    * } catch (error) {
-   *   pluginDemoUtils.addErrorLog(error, "smartCopy");
+   *   taskUtils.addErrorLog(error, "smartCopy");
    * }
    * 
    * // 查看所有错误
-   * if (pluginDemoUtils.errorLog.length > 1) {
-   *   MNUtil.copyJSON(pluginDemoUtils.errorLog);  // 复制所有错误到剪贴板
+   * if (taskUtils.errorLog.length > 1) {
+   *   MNUtil.copyJSON(taskUtils.errorLog);  // 复制所有错误到剪贴板
    * }
    * 
    * 🎯 这样做的好处：
@@ -959,7 +959,7 @@ class pluginDemoUtils {
             {
                 "action": "toggleView",
                 "targets": [
-                    "mindmapToolbar",
+                    "mindmapTask",
                     "addonBar"
                 ],
                 "autoClose": false,
@@ -995,11 +995,11 @@ class pluginDemoUtils {
    * 
    * @example
    * // 在插件启动时调用
-   * pluginDemoUtils.init(self.path)
+   * taskUtils.init(self.path)
    * 
    * // 之后就可以使用这些全局变量
-   * console.log(pluginDemoUtils.version)  // 查看版本信息
-   * console.log(pluginDemoUtils.mainPath) // 查看插件路径
+   * console.log(taskUtils.version)  // 查看版本信息
+   * console.log(taskUtils.mainPath) // 查看插件路径
    */
   static init(mainPath) {
     try {
@@ -1025,10 +1025,10 @@ class pluginDemoUtils {
    * 
    * @example
    * // 刷新订阅状态
-   * pluginDemoUtils.refreshSubscriptionStatus()
+   * taskUtils.refreshSubscriptionStatus()
    * 
    * // 使用订阅状态
-   * if (pluginDemoUtils.isSubscribe) {
+   * if (taskUtils.isSubscribe) {
    *   // 付费功能
    * } else {
    *   // 免费功能
@@ -1047,15 +1047,15 @@ class pluginDemoUtils {
    * @returns {Object} 版本信息对象
    * @returns {string} info.version - MarginNote 版本："marginnote3" 或 "marginnote4"
    * @returns {string} info.type - 操作系统类型："iPadOS", "iPhoneOS" 或 "macOS"
-   * @returns {string} info.pluginDemoVersion - 插件版本号（从 mnaddon.json 读取）
+   * @returns {string} info.taskVersion - 插件版本号（从 mnaddon.json 读取）
    * 
    * @example
-   * let versionInfo = pluginDemoUtils.appVersion()
+   * let versionInfo = taskUtils.appVersion()
    * console.log(versionInfo)
    * // 输出：{
    * //   version: "marginnote4",
    * //   type: "macOS",
-   * //   pluginDemoVersion: "1.0.0"
+   * //   taskVersion: "1.0.0"
    * // }
    * 
    * // 根据版本做不同处理
@@ -1096,8 +1096,8 @@ class pluginDemoUtils {
     
     // 读取插件版本
     if (this.mainPath) {
-      let pluginDemoVersion = MNUtil.readJSON(this.mainPath + "/mnaddon.json").version
-      info.pluginDemoVersion = pluginDemoVersion
+      let taskVersion = MNUtil.readJSON(this.mainPath + "/mnaddon.json").version
+      info.taskVersion = taskVersion
     }
     
     return info
@@ -1130,7 +1130,7 @@ class pluginDemoUtils {
    * 
    * @example
    * // 获取所有颜色
-   * let colors = pluginDemoUtils.getNoteColors()
+   * let colors = taskUtils.getNoteColors()
    * 
    * // 获取淡黄色
    * let yellowColor = colors[0]  // "#ffffb4"
@@ -1169,7 +1169,7 @@ class pluginDemoUtils {
    * 
    * @example
    * // 获取笔记
-   * let note = pluginDemoUtils.getNoteById("12345678-1234-1234-1234-123456789012")
+   * let note = taskUtils.getNoteById("12345678-1234-1234-1234-123456789012")
    * if (note) {
    *   console.log(note.noteTitle)
    *   note.colorIndex = 7  // 设置为红色
@@ -1189,7 +1189,7 @@ class pluginDemoUtils {
    * 
    * @example
    * // 获取当前笔记本
-   * let notebook = pluginDemoUtils.getNoteBookById(MNUtil.currentNotebookId)
+   * let notebook = taskUtils.getNoteBookById(MNUtil.currentNotebookId)
    * if (notebook) {
    *   console.log(notebook.title)  // 笔记本标题
    *   console.log(notebook.notes.length)  // 笔记数量
@@ -1211,7 +1211,7 @@ class pluginDemoUtils {
    * 
    * @example
    * // 获取笔记 URL
-   * let noteUrl = pluginDemoUtils.getUrlByNoteId("12345678-1234-1234-1234-123456789012")
+   * let noteUrl = taskUtils.getUrlByNoteId("12345678-1234-1234-1234-123456789012")
    * // 返回: "marginnote4app://note/12345678-1234-1234-1234-123456789012"
    * 
    * // 跳转到该笔记
@@ -1234,13 +1234,13 @@ class pluginDemoUtils {
    * 
    * @example
    * // 从 URL 获取笔记 ID
-   * let noteId = pluginDemoUtils.getNoteIdByURL("marginnote4app://note/12345678-1234-1234-1234-123456789012")
+   * let noteId = taskUtils.getNoteIdByURL("marginnote4app://note/12345678-1234-1234-1234-123456789012")
    * // 返回: "12345678-1234-1234-1234-123456789012"
    * 
    * // 使用场景：处理链接评论
    * if (comment.type === "LinkNote") {
-   *   let linkedNoteId = pluginDemoUtils.getNoteIdByURL(comment.noteLinkURL)
-   *   let linkedNote = pluginDemoUtils.getNoteById(linkedNoteId)
+   *   let linkedNoteId = taskUtils.getNoteIdByURL(comment.noteLinkURL)
+   *   let linkedNote = taskUtils.getNoteById(linkedNoteId)
    * }
    */
   static getNoteIdByURL(url) {
@@ -1256,13 +1256,13 @@ class pluginDemoUtils {
    * 
    * @example
    * // 获取剪贴板文本
-   * let text = pluginDemoUtils.clipboardText()
+   * let text = taskUtils.clipboardText()
    * if (text) {
    *   console.log("剪贴板内容：" + text)
    * }
    * 
    * // 常见用法：粘贴到笔记
-   * let clipText = pluginDemoUtils.clipboardText()
+   * let clipText = taskUtils.clipboardText()
    * if (clipText && focusNote) {
    *   focusNote.appendTextComment(clipText)
    * }
@@ -1282,12 +1282,12 @@ class pluginDemoUtils {
    * @example
    * // 处理 PDF 复制的文本
    * let messyText = "这是   一段\n\n包含  很多\t\t空白的   文本"
-   * let cleanText = pluginDemoUtils.mergeWhitespace(messyText)
+   * let cleanText = taskUtils.mergeWhitespace(messyText)
    * // 返回: "这是 一段 包含 很多 空白的 文本"
    * 
    * // 处理摘录文本
    * let excerptText = focusNote.excerptText
-   * let cleanExcerpt = pluginDemoUtils.mergeWhitespace(excerptText)
+   * let cleanExcerpt = taskUtils.mergeWhitespace(excerptText)
    * focusNote.excerptText = cleanExcerpt
    */
   static mergeWhitespace(str) {
@@ -1307,14 +1307,14 @@ class pluginDemoUtils {
    * 
    * @example
    * // 单步替换
-   * pluginDemoUtils.replaceAction({
+   * taskUtils.replaceAction({
    *   range: "currentNotes",
    *   from: "old text",
    *   to: "new text"
    * })
    * 
    * // 多步替换
-   * pluginDemoUtils.replaceAction({
+   * taskUtils.replaceAction({
    *   range: "currentNotes",
    *   steps: [
    *     { from: "step1", to: "result1" },
@@ -1365,14 +1365,14 @@ class pluginDemoUtils {
    * @example
    * // 纯图片
    * let md1 = "![](marginnote4app://markdownimg/png/abc123)"
-   * pluginDemoUtils.isPureMNImages(md1)  // true
+   * taskUtils.isPureMNImages(md1)  // true
    * 
    * // 包含文字
    * let md2 = "文字 ![](marginnote4app://markdownimg/png/abc123)"
-   * pluginDemoUtils.isPureMNImages(md2)  // false
+   * taskUtils.isPureMNImages(md2)  // false
    * 
    * // 使用场景：智能复制时判断是否复制图片
-   * if (pluginDemoUtils.isPureMNImages(note.excerptText)) {
+   * if (taskUtils.isPureMNImages(note.excerptText)) {
    *   // 复制图片而不是文本
    * }
    */
@@ -1387,7 +1387,7 @@ class pluginDemoUtils {
         return false
       }
     } catch (error) {
-      pluginDemoUtils.addErrorLog(error, "isPureMNImages")
+      taskUtils.addErrorLog(error, "isPureMNImages")
       return false
     }
   }
@@ -1403,15 +1403,15 @@ class pluginDemoUtils {
    * @example
    * // 只有图片
    * let md1 = "![](marginnote4app://markdownimg/png/abc123)"
-   * pluginDemoUtils.hasMNImages(md1)  // true
+   * taskUtils.hasMNImages(md1)  // true
    * 
    * // 图片加文字
    * let md2 = "这是说明文字 ![](marginnote4app://markdownimg/png/abc123) 更多文字"
-   * pluginDemoUtils.hasMNImages(md2)  // true
+   * taskUtils.hasMNImages(md2)  // true
    * 
    * // 没有图片
    * let md3 = "只有文字没有图片"
-   * pluginDemoUtils.hasMNImages(md3)  // false
+   * taskUtils.hasMNImages(md3)  // false
    */
   static hasMNImages(markdown) {
     try {
@@ -1421,7 +1421,7 @@ class pluginDemoUtils {
       // MNUtil.copyJSON({"a":link,"b":markdown})
       return markdown.match(MNImagePattern) ? true : false
     } catch (error) {
-      pluginDemoUtils.addErrorLog(error, "hasMNImages")
+      taskUtils.addErrorLog(error, "hasMNImages")
       return false
     }
   }
@@ -1437,15 +1437,15 @@ class pluginDemoUtils {
    * @example
    * // 提取图片数据
    * let markdown = "![图片](marginnote4app://markdownimg/png/abc123def456)"
-   * let imageData = pluginDemoUtils.getMNImagesFromMarkdown(markdown)
+   * let imageData = taskUtils.getMNImagesFromMarkdown(markdown)
    * if (imageData) {
    *   // 复制图片到剪贴板
    *   MNUtil.copyImage(imageData)
    * }
    * 
    * // 处理摘录中的图片
-   * if (pluginDemoUtils.hasMNImages(note.excerptText)) {
-   *   let imgData = pluginDemoUtils.getMNImagesFromMarkdown(note.excerptText)
+   * if (taskUtils.hasMNImages(note.excerptText)) {
+   *   let imgData = taskUtils.getMNImagesFromMarkdown(note.excerptText)
    *   // 导出或显示图片
    * }
    */
@@ -1458,7 +1458,7 @@ class pluginDemoUtils {
       let imageData = MNUtil.getMediaByHash(hash)
       return imageData
     } catch (error) {
-      pluginDemoUtils.addErrorLog(error, "replaceBase64ImagesWithR2")
+      taskUtils.addErrorLog(error, "replaceBase64ImagesWithR2")
       return undefined
     }
   }
@@ -1474,16 +1474,16 @@ class pluginDemoUtils {
    * 
    * @example
    * // 简单插入
-   * pluginDemoUtils.insertSnippetToTextView("Hello World", textView)
+   * taskUtils.insertSnippetToTextView("Hello World", textView)
    * // 光标会在 "Hello World" 后面
    * 
    * // 使用光标占位符
-   * pluginDemoUtils.insertSnippetToTextView("function {{cursor}}() {\n\n}", textView)
+   * taskUtils.insertSnippetToTextView("function {{cursor}}() {\n\n}", textView)
    * // 光标会定位在函数名位置
    * 
    * // 插入模板
    * let template = "/**\\n * {{cursor}}\\n *\\/\\nfunction name() {\\n\\n}"
-   * pluginDemoUtils.insertSnippetToTextView(template, textView)
+   * taskUtils.insertSnippetToTextView(template, textView)
    * // 光标会定位在注释内容位置
    */
   static insertSnippetToTextView(text, textView) {
@@ -1604,7 +1604,7 @@ class pluginDemoUtils {
     if (target) {
       switch (target) {
         case "auto":
-          pluginDemoUtils.smartCopy()
+          taskUtils.smartCopy()
           return
         case "selectionText":
           if (MNUtil.currentSelection.onSelection) {
@@ -1743,7 +1743,7 @@ class pluginDemoUtils {
       }
     }
     } catch (error) {
-      pluginDemoUtils.addErrorLog(error, "copy")
+      taskUtils.addErrorLog(error, "copy")
       return false
     }
   }
@@ -1763,13 +1763,13 @@ class pluginDemoUtils {
    *   title: focusNote.noteTitle,
    *   color: focusNote.colorIndex
    * }
-   * pluginDemoUtils.copyJSON(noteInfo)
+   * taskUtils.copyJSON(noteInfo)
    * 
    * // 复制错误日志
-   * pluginDemoUtils.copyJSON(pluginDemoUtils.errorLog)
+   * taskUtils.copyJSON(taskUtils.errorLog)
    * 
    * // 调试时查看对象结构
-   * pluginDemoUtils.copyJSON(getAllProperties(someObject))
+   * taskUtils.copyJSON(getAllProperties(someObject))
    */
   static copyJSON(object) {
     return MNUtil.copyJSON(object)
@@ -1786,13 +1786,13 @@ class pluginDemoUtils {
    * // 复制摘录图片
    * if (focusNote.excerptPic) {
    *   let imageData = MNUtil.getMediaByHash(focusNote.excerptPic.paint)
-   *   pluginDemoUtils.copyImage(imageData)
+   *   taskUtils.copyImage(imageData)
    * }
    * 
    * // 复制评论中的图片
    * if (comment.type === "PaintNote") {
    *   let imageData = MNUtil.getMediaByHash(comment.paint)
-   *   pluginDemoUtils.copyImage(imageData)
+   *   taskUtils.copyImage(imageData)
    * }
    */
   static copyImage(imageData) {
@@ -1808,7 +1808,7 @@ class pluginDemoUtils {
    * 
    * @example
    * // 获取学习控制器
-   * let studyCtrl = pluginDemoUtils.studyController()
+   * let studyCtrl = taskUtils.studyController()
    * 
    * // 使用控制器操作
    * if (studyCtrl) {
@@ -1828,7 +1828,7 @@ class pluginDemoUtils {
    * 
    * @example
    * // 获取学习视图
-   * let studyView = pluginDemoUtils.studyView()
+   * let studyView = taskUtils.studyView()
    * 
    * // 在学习视图上添加自定义按钮
    * if (studyView) {
@@ -1849,7 +1849,7 @@ class pluginDemoUtils {
    * 
    * @example
    * // 获取当前文档信息
-   * let docCtrl = pluginDemoUtils.currentDocController()
+   * let docCtrl = taskUtils.currentDocController()
    * if (docCtrl) {
    *   let docPath = docCtrl.document.pathFile
    *   let docName = MNUtil.getFileName(docPath)
@@ -1872,12 +1872,12 @@ class pluginDemoUtils {
    * 
    * @example
    * // 获取当前笔记本 ID
-   * let notebookId = pluginDemoUtils.currentNotebookId
+   * let notebookId = taskUtils.currentNotebookId
    * console.log("当前笔记本 ID：" + notebookId)
    * 
    * // 用于操作当前笔记本
-   * if (pluginDemoUtils.currentNotebookId) {
-   *   let notebook = pluginDemoUtils.getNoteBookById(pluginDemoUtils.currentNotebookId)
+   * if (taskUtils.currentNotebookId) {
+   *   let notebook = taskUtils.getNoteBookById(taskUtils.currentNotebookId)
    * }
    */
   static get currentNotebookId() {
@@ -1893,7 +1893,7 @@ class pluginDemoUtils {
    * 
    * @example
    * // 获取当前笔记本
-   * let notebook = pluginDemoUtils.currentNotebook()
+   * let notebook = taskUtils.currentNotebook()
    * if (notebook) {
    *   console.log("笔记本标题：" + notebook.title)
    *   console.log("笔记数量：" + notebook.notes.length)
@@ -1919,7 +1919,7 @@ class pluginDemoUtils {
    * 
    * @example
    * // 批量修改笔记颜色
-   * pluginDemoUtils.undoGrouping(() => {
+   * taskUtils.undoGrouping(() => {
    *   let notes = MNNote.getFocusNotes()
    *   notes.forEach(note => {
    *     note.colorIndex = 7  // 设置为红色
@@ -1930,7 +1930,7 @@ class pluginDemoUtils {
    * // 用户只需撤销一次就能恢复所有修改
    * 
    * // 重要：在所有修改笔记的操作中都应该使用
-   * pluginDemoUtils.undoGrouping(() => {
+   * taskUtils.undoGrouping(() => {
    *   // 你的修改操作
    * })
    */
@@ -1950,7 +1950,7 @@ class pluginDemoUtils {
    * @example
    * // 在插件启动时检查
    * async function sceneWillConnect() {
-   *   if (!await pluginDemoUtils.checkMNUtil(true)) {
+   *   if (!await taskUtils.checkMNUtil(true)) {
    *     // MNUtils 未安装，停止初始化
    *     return
    *   }
@@ -1958,7 +1958,7 @@ class pluginDemoUtils {
    * }
    * 
    * // 在使用 MNUtil API 前检查
-   * if (await pluginDemoUtils.checkMNUtil()) {
+   * if (await taskUtils.checkMNUtil()) {
    *   // 可以安全使用 MNUtil API
    *   MNUtil.showHUD("开始执行")
    * }
@@ -1966,12 +1966,12 @@ class pluginDemoUtils {
   static async checkMNUtil(alert = false, delay = 0.01) {
     if (typeof MNUtil === 'undefined') {  // 如果 MNUtil 未被加载，则执行一次延时，然后再检测一次
       // 仅在 MNUtil 未被完全加载时执行 delay
-      await pluginDemoUtils.delay(delay)
+      await taskUtils.delay(delay)
       if (typeof MNUtil === 'undefined') {
         if (alert) {
-          pluginDemoUtils.confirm("MN Toolbar: Install 'MN Utils' first", "MN Toolbar: 请先安装'MN Utils'")
+          taskUtils.confirm("MN Task: Install 'MN Utils' first", "MN Task: 请先安装'MN Utils'")
         } else {
-          pluginDemoUtils.showHUD("MN Toolbar: Please install 'MN Utils' first!", 5)
+          taskUtils.showHUD("MN Task: Please install 'MN Utils' first!", 5)
         }
         return false
       }
@@ -1992,7 +1992,7 @@ class pluginDemoUtils {
    * let focusNote = MNNote.getFocusNote()
    * if (focusNote) {
    *   // 将 ID 为 xxx 的笔记克隆并合并到当前笔记
-   *   pluginDemoUtils.cloneAndMerge(focusNote, "12345678-1234-1234-1234-123456789012")
+   *   taskUtils.cloneAndMerge(focusNote, "12345678-1234-1234-1234-123456789012")
    *   MNUtil.showHUD("笔记已合并")
    * }
    * 
@@ -2017,7 +2017,7 @@ class pluginDemoUtils {
    * let focusNote = MNNote.getFocusNote()
    * if (focusNote) {
    *   // 克隆并添加为子笔记
-   *   pluginDemoUtils.cloneAsChildNote(focusNote, "12345678-1234-1234-1234-123456789012")
+   *   taskUtils.cloneAsChildNote(focusNote, "12345678-1234-1234-1234-123456789012")
    *   MNUtil.showHUD("已添加子笔记")
    * }
    * 
@@ -2039,10 +2039,10 @@ class pluginDemoUtils {
    * 
    * @example
    * // 发送简单通知
-   * pluginDemoUtils.postNotification("MyPluginDidUpdate", {})
+   * taskUtils.postNotification("MyPluginDidUpdate", {})
    * 
    * // 发送带数据的通知
-   * pluginDemoUtils.postNotification("NoteColorChanged", {
+   * taskUtils.postNotification("NoteColorChanged", {
    *   noteId: focusNote.noteId,
    *   oldColor: 0,
    *   newColor: 7
@@ -2075,16 +2075,16 @@ class pluginDemoUtils {
    * let buttons = ["Button1", "Button2", "Button3", "Button4"]
    * 
    * // 将 Button3 向上移动
-   * let newOrder = pluginDemoUtils.moveElement(buttons, "Button3", "up")
+   * let newOrder = taskUtils.moveElement(buttons, "Button3", "up")
    * // 结果: ["Button1", "Button3", "Button2", "Button4"]
    * 
    * // 将 Button1 向下移动
-   * let newOrder2 = pluginDemoUtils.moveElement(buttons, "Button1", "down")
+   * let newOrder2 = taskUtils.moveElement(buttons, "Button1", "down")
    * // 结果: ["Button2", "Button1", "Button3", "Button4"]
    * 
    * // 保存新顺序
-   * toolbarConfig.buttonOrder = newOrder
-   * toolbarConfig.save()
+   * taskConfig.buttonOrder = newOrder
+   * taskConfig.save()
    */
   static moveElement(arr, element, direction) {
     return MNUtil.moveElement(arr, element, direction)
@@ -2107,7 +2107,7 @@ class pluginDemoUtils {
    * @example
    * // 解析模板文本
    * let template = "文档：{{currentDocName}}\n选中：{{selectionText}}"
-   * let vars = pluginDemoUtils.getVarInfo(template)
+   * let vars = taskUtils.getVarInfo(template)
    * // 返回: {
    * //   currentDocName: "MyBook.pdf",
    * //   selectionText: "选中的文字"
@@ -2159,7 +2159,7 @@ class pluginDemoUtils {
    * // 使用笔记信息生成文本
    * let template = "## {{title}}\nID: {{noteId}}\n来源：{{currentDocName}}"
    * let focusNote = MNNote.getFocusNote()
-   * let vars = pluginDemoUtils.getVarInfoWithNote(template, focusNote)
+   * let vars = taskUtils.getVarInfoWithNote(template, focusNote)
    * 
    * // 替换所有变量
    * Object.keys(vars).forEach(key => {
@@ -2204,7 +2204,7 @@ class pluginDemoUtils {
    * @example
    * // 转义包含特殊字符的字符串
    * let userInput = "1+1=2"
-   * let escaped = pluginDemoUtils.escapeStringRegexp(userInput)
+   * let escaped = taskUtils.escapeStringRegexp(userInput)
    * // 返回: "1\\+1=2"
    * 
    * // 安全地使用用户输入创建正则
@@ -2212,7 +2212,7 @@ class pluginDemoUtils {
    * 
    * // 在替换操作中使用
    * let searchText = "[note]"
-   * let safePattern = pluginDemoUtils.escapeStringRegexp(searchText)
+   * let safePattern = taskUtils.escapeStringRegexp(searchText)
    * text.replace(new RegExp(safePattern, "g"), "[card]")
    */
   static escapeStringRegexp(str) {
@@ -2231,22 +2231,22 @@ class pluginDemoUtils {
    * 
    * @example
    * // 普通字符串
-   * let reg1 = pluginDemoUtils.string2Reg("hello")
+   * let reg1 = taskUtils.string2Reg("hello")
    * // 等价于: new RegExp("hello")
    * 
    * // 正则字面量
-   * let reg2 = pluginDemoUtils.string2Reg("/\\d+/g")
+   * let reg2 = taskUtils.string2Reg("/\\d+/g")
    * // 等价于: /\d+/g
    * 
    * // 使用案例
-   * let pattern = pluginDemoUtils.string2Reg("/note.*title/i")
+   * let pattern = taskUtils.string2Reg("/note.*title/i")
    * if (pattern.test(text)) {
    *   console.log("匹配成功")
    * }
    */
   static string2Reg(str) {
     str = str.trim()
-    if (!str.startsWith("/")) return new RegExp(pluginDemoUtils.escapeStringRegexp(str))
+    if (!str.startsWith("/")) return new RegExp(taskUtils.escapeStringRegexp(str))
     const regParts = str.match(/^\/(.+?)\/([gimsuy]*)$/)
     if (!regParts) throw ""
     return new RegExp(regParts[1], regParts[2])
@@ -2268,17 +2268,17 @@ class pluginDemoUtils {
    * 
    * @example
    * // 获取当前选中的所有笔记
-   * let notes = pluginDemoUtils.getNotesByRange("currentNotes")
+   * let notes = taskUtils.getNotesByRange("currentNotes")
    * console.log(`选中了 ${notes.length} 个笔记`)
    * 
    * // 处理所有子笔记
-   * let childNotes = pluginDemoUtils.getNotesByRange("childNotes")
+   * let childNotes = taskUtils.getNotesByRange("childNotes")
    * childNotes.forEach(note => {
    *   note.colorIndex = 5  // 统一设置颜色
    * })
    * 
    * // 处理整个分支
-   * let allDescendants = pluginDemoUtils.getNotesByRange("descendants")
+   * let allDescendants = taskUtils.getNotesByRange("descendants")
    * console.log(`包含 ${allDescendants.length} 个后代笔记`)
    */
   static getNotesByRange(range) {
@@ -2318,19 +2318,19 @@ class pluginDemoUtils {
    * 
    * @example
    * // 清空标题
-   * pluginDemoUtils.clearNoteContent(note, { target: "title" })
+   * taskUtils.clearNoteContent(note, { target: "title" })
    * 
    * // 清空摘录文本
-   * pluginDemoUtils.clearNoteContent(note, { target: "excerptText" })
+   * taskUtils.clearNoteContent(note, { target: "excerptText" })
    * 
    * // 删除所有文本评论
-   * pluginDemoUtils.clearNoteContent(note, { 
+   * taskUtils.clearNoteContent(note, { 
    *   target: "comments", 
    *   type: "TextNote" 
    * })
    * 
    * // 删除所有评论
-   * pluginDemoUtils.clearNoteContent(note, { target: "comments" })
+   * taskUtils.clearNoteContent(note, { target: "comments" })
    */
   static clearNoteContent(note, des) {
     let target = des.target ?? "title"
@@ -2398,20 +2398,20 @@ class pluginDemoUtils {
    * 
    * @example
    * // 设置标题
-   * pluginDemoUtils.setNoteContent(note, "新标题", { target: "title" })
+   * taskUtils.setNoteContent(note, "新标题", { target: "title" })
    * 
    * // 设置摘录文本
-   * pluginDemoUtils.setNoteContent(note, "新的摘录内容", { 
+   * taskUtils.setNoteContent(note, "新的摘录内容", { 
    *   target: "excerptText" 
    * })
    * 
    * // 添加新评论
-   * pluginDemoUtils.setNoteContent(note, "这是一条评论", { 
+   * taskUtils.setNoteContent(note, "这是一条评论", { 
    *   target: "newComment" 
    * })
    * 
    * // 使用模板变量
-   * pluginDemoUtils.setNoteContent(note, "[摘自 {{currentDocName}}]", {
+   * taskUtils.setNoteContent(note, "[摘自 {{currentDocName}}]", {
    *   target: "newComment"
    * })
    */
@@ -2447,19 +2447,19 @@ class pluginDemoUtils {
    * 
    * @example
    * // 清空所有选中笔记的标题
-   * pluginDemoUtils.clearContent({
+   * taskUtils.clearContent({
    *   range: "currentNotes",
    *   target: "title"
    * })
    * 
    * // 清空所有子笔记的摘录
-   * pluginDemoUtils.clearContent({
+   * taskUtils.clearContent({
    *   range: "childNotes",
    *   target: "excerptText"
    * })
    * 
    * // 删除所有后代笔记的文本评论
-   * pluginDemoUtils.clearContent({
+   * taskUtils.clearContent({
    *   range: "descendants",
    *   target: "comments",
    *   type: "TextNote"
@@ -2487,21 +2487,21 @@ class pluginDemoUtils {
    * 
    * @example
    * // 为所有选中笔记添加前缀
-   * pluginDemoUtils.setContent({
+   * taskUtils.setContent({
    *   range: "currentNotes",
    *   target: "title",
    *   content: "[重要] {{title}}"  // 使用模板变量
    * })
    * 
    * // 为所有子笔记添加评论
-   * pluginDemoUtils.setContent({
+   * taskUtils.setContent({
    *   range: "childNotes",
    *   target: "newComment",
    *   content: "来自父笔记：{{parentNote.title}}"
    * })
    * 
    * // 统一设置摘录文本
-   * pluginDemoUtils.setContent({
+   * taskUtils.setContent({
    *   range: "descendants",
    *   target: "excerptText",
    *   content: "请查看原文"
@@ -2518,7 +2518,7 @@ class pluginDemoUtils {
         })
       })
     } catch (error) {
-      pluginDemoUtils.addErrorLog(error, "setContent")
+      taskUtils.addErrorLog(error, "setContent")
     }
   }
   /**
@@ -2536,14 +2536,14 @@ class pluginDemoUtils {
    * @example
    * // 替换标题中的文本
    * let pattern = /旧文本/g
-   * pluginDemoUtils.replace(note, pattern, {
+   * taskUtils.replace(note, pattern, {
    *   target: "title",
    *   to: "新文本"
    * })
    * 
    * // 替换摘录中的空行
    * let emptyLinePattern = /\n\n+/g
-   * pluginDemoUtils.replace(note, emptyLinePattern, {
+   * taskUtils.replace(note, emptyLinePattern, {
    *   target: "excerpt",
    *   to: "\n"
    * })
@@ -2658,15 +2658,15 @@ class pluginDemoUtils {
    * 
    * @example
    * // 立即关闭菜单
-   * pluginDemoUtils.dismissPopupMenu(currentMenu)
+   * taskUtils.dismissPopupMenu(currentMenu)
    * 
    * // 延迟关闭（例如：显示成功提示后）
    * MNUtil.showHUD("✅ 操作成功")
-   * pluginDemoUtils.dismissPopupMenu(currentMenu, true)
+   * taskUtils.dismissPopupMenu(currentMenu, true)
    * 
    * // 条件性关闭
    * if (operationSuccess && menu) {
-   *   pluginDemoUtils.dismissPopupMenu(menu, true)
+   *   taskUtils.dismissPopupMenu(menu, true)
    * }
    */
   static dismissPopupMenu(menu,delay = false){
@@ -2701,15 +2701,15 @@ class pluginDemoUtils {
    * @example
    * // 明确指定显示菜单
    * let des1 = { target: "menu", menuItems: [...] }
-   * pluginDemoUtils.shouldShowMenu(des1)  // true
+   * taskUtils.shouldShowMenu(des1)  // true
    * 
    * // 明确指定执行动作
    * let des2 = { target: "copy" }
-   * pluginDemoUtils.shouldShowMenu(des2)  // false
+   * taskUtils.shouldShowMenu(des2)  // false
    * 
    * // 默认行为（显示菜单）
    * let des3 = { menuItems: [...] }
-   * pluginDemoUtils.shouldShowMenu(des3)  // true
+   * taskUtils.shouldShowMenu(des3)  // true
    */
   static shouldShowMenu(des){
     if ( des && "target" in des) {
@@ -2742,20 +2742,20 @@ class pluginDemoUtils {
    * 
    * @example
    * // 默认粘贴（保留格式）
-   * pluginDemoUtils.paste({ target: "default" })
+   * taskUtils.paste({ target: "default" })
    * 
    * // 替换标题
-   * pluginDemoUtils.paste({ target: "title" })
+   * taskUtils.paste({ target: "title" })
    * 
    * // 追加到摘录（Markdown 格式）
-   * pluginDemoUtils.paste({ 
+   * taskUtils.paste({ 
    *   target: "appendExcerpt",
    *   markdown: true,
    *   hideMessage: true
    * })
    * 
    * // 追加到标题（用于多个关键词）
-   * pluginDemoUtils.paste({ target: "appendTitle" })
+   * taskUtils.paste({ target: "appendTitle" })
    * // 结果：原标题;新内容
    */
   static paste(des){
@@ -2818,22 +2818,22 @@ class pluginDemoUtils {
    * 
    * @example
    * // 打开剪贴板中的笔记
-   * pluginDemoUtils.showInFloatWindow({ 
+   * taskUtils.showInFloatWindow({ 
    *   target: "noteInClipboard" 
    * })
    * 
    * // 打开当前笔记的父笔记
-   * pluginDemoUtils.showInFloatWindow({ 
+   * taskUtils.showInFloatWindow({ 
    *   target: "parentNote" 
    * })
    * 
    * // 通过 URL 打开特定笔记
-   * pluginDemoUtils.showInFloatWindow({ 
+   * taskUtils.showInFloatWindow({ 
    *   noteURL: "marginnote4app://note/12345..." 
    * })
    * 
    * // 在脑图中定位当前笔记
-   * pluginDemoUtils.showInFloatWindow({ 
+   * taskUtils.showInFloatWindow({ 
    *   target: "currentNoteInMindMap" 
    * })
    */
@@ -2892,21 +2892,21 @@ class pluginDemoUtils {
    * 
    * @example
    * // 延迟 1 秒
-   * await pluginDemoUtils.delay(1)
+   * await taskUtils.delay(1)
    * console.log("1 秒后执行")
    * 
    * // 延迟 0.5 秒（500毫秒）
-   * await pluginDemoUtils.delay(0.5)
+   * await taskUtils.delay(0.5)
    * 
    * // 在动画中使用
    * for (let i = 0; i < 10; i++) {
    *   button.frame.x += 10
-   *   await pluginDemoUtils.delay(0.1)  // 每次移动后等待 100ms
+   *   await taskUtils.delay(0.1)  // 每次移动后等待 100ms
    * }
    * 
    * // 显示提示后延迟关闭
    * MNUtil.showHUD("操作成功！")
-   * await pluginDemoUtils.delay(2)  // 给用户 2 秒时间查看
+   * await taskUtils.delay(2)  // 给用户 2 秒时间查看
    * menu.dismiss()
    * 
    * // 错误重试机制
@@ -2917,7 +2917,7 @@ class pluginDemoUtils {
    *     break
    *   } catch (error) {
    *     retries--
-   *     await pluginDemoUtils.delay(1)  // 等待 1 秒后重试
+   *     await taskUtils.delay(1)  // 等待 1 秒后重试
    *   }
    * }
    */
@@ -2934,7 +2934,7 @@ class pluginDemoUtils {
    * 
    * @example
    * // 检查是否有子脑图
-   * let childMap = pluginDemoUtils.currentChildMap()
+   * let childMap = taskUtils.currentChildMap()
    * if (childMap) {
    *   console.log("子脑图标题：" + childMap.noteTitle)
    *   console.log("子笔记数量：" + childMap.childNotes.length)
@@ -2943,7 +2943,7 @@ class pluginDemoUtils {
    * }
    * 
    * // 在子脑图中添加笔记
-   * let childMap = pluginDemoUtils.currentChildMap()
+   * let childMap = taskUtils.currentChildMap()
    * if (childMap) {
    *   childMap.createChildNote({ title: "新笔记" })
    * }
@@ -2968,10 +2968,10 @@ class pluginDemoUtils {
    * 
    * @example
    * // 在子脑图中创建简单笔记
-   * let note = pluginDemoUtils.newNoteInCurrentChildMap("新想法")
+   * let note = taskUtils.newNoteInCurrentChildMap("新想法")
    * 
    * // 创建带配置的笔记
-   * let note = pluginDemoUtils.newNoteInCurrentChildMap({
+   * let note = taskUtils.newNoteInCurrentChildMap({
    *   title: "重要概念",
    *   colorIndex: 7  // 红色
    * })
@@ -2979,7 +2979,7 @@ class pluginDemoUtils {
    * // 条件创建
    * if (needsOrganization) {
    *   // 会自动判断是否有子脑图
-   *   let note = pluginDemoUtils.newNoteInCurrentChildMap({
+   *   let note = taskUtils.newNoteInCurrentChildMap({
    *     title: "待整理内容"
    *   })
    *   note.appendTextComment("需要进一步研究")
@@ -3010,12 +3010,12 @@ class pluginDemoUtils {
    * @example
    * // 默认数字索引
    * let text = "第 {{noteIndex}} 章"
-   * pluginDemoUtils.replaceNoteIndex(text, 0, {})  // "第 1 章"
-   * pluginDemoUtils.replaceNoteIndex(text, 5, {})  // "第 6 章"
+   * taskUtils.replaceNoteIndex(text, 0, {})  // "第 1 章"
+   * taskUtils.replaceNoteIndex(text, 5, {})  // "第 6 章"
    * 
    * // 自定义索引
    * let customText = "{{noteIndex}}. 内容"
-   * pluginDemoUtils.replaceNoteIndex(customText, 2, {
+   * taskUtils.replaceNoteIndex(customText, 2, {
    *   noteIndices: ["一", "二", "三", "四", "五"]
    * })  // "三. 内容"
    */
@@ -3049,13 +3049,13 @@ class pluginDemoUtils {
    * @example
    * // 使用不同格式的索引
    * let template = "{{circleIndex}} {{index}}. {{alphabetIndex}}"
-   * pluginDemoUtils.replaceIndex(template, 0, {})
+   * taskUtils.replaceIndex(template, 0, {})
    * // 返回: "① 1. a"
    * 
    * // 批量生成列表
    * let items = ["苹果", "香蕉", "橙子"]
    * items.forEach((item, i) => {
-   *   let text = pluginDemoUtils.replaceIndex(
+   *   let text = taskUtils.replaceIndex(
    *     "{{emojiIndex}} {{index}}. " + item, 
    *     i, 
    *     {}
@@ -3090,12 +3090,12 @@ class pluginDemoUtils {
    * @returns {string} Emoji 数字
    * 
    * @example
-   * pluginDemoUtils.emojiNumber(0)   // "0️⃣"
-   * pluginDemoUtils.emojiNumber(5)   // "5️⃣"
-   * pluginDemoUtils.emojiNumber(10)  // "🔟"
+   * taskUtils.emojiNumber(0)   // "0️⃣"
+   * taskUtils.emojiNumber(5)   // "5️⃣"
+   * taskUtils.emojiNumber(10)  // "🔟"
    * 
    * // 在标题中使用
-   * let title = pluginDemoUtils.emojiNumber(3) + " 第三章"
+   * let title = taskUtils.emojiNumber(3) + " 第三章"
    * // "3️⃣ 第三章"
    */
   static emojiNumber(index){
@@ -3128,14 +3128,14 @@ class pluginDemoUtils {
    * 
    * @example
    * // 提取所有文本评论
-   * let text = pluginDemoUtils.getMergedText(note, {
+   * let text = taskUtils.getMergedText(note, {
    *   source: ["{{textComments}}"],
    *   join: "\n",
    *   trim: true
    * }, 0)
    * 
    * // 格式化标签
-   * let tags = pluginDemoUtils.getMergedText(note, {
+   * let tags = taskUtils.getMergedText(note, {
    *   source: ["{{tags}}"],
    *   format: "#{{element}}",
    *   join: " "
@@ -3143,7 +3143,7 @@ class pluginDemoUtils {
    * // 结果: "#标签1 #标签2 #标签3"
    * 
    * // 复杂模板
-   * let summary = pluginDemoUtils.getMergedText(note, {
+   * let summary = taskUtils.getMergedText(note, {
    *   source: ["标题：{{title}}", "摘录：{{excerptText}}", "评论：{{textComments}}"],
    *   join: "\n",
    *   format: "- {{element}}"
@@ -3154,10 +3154,10 @@ class pluginDemoUtils {
     let textList = []
     des.source.map(text=>{
       if (text.includes("{{title}}") && des.removeSource) {
-        if (note.noteId in pluginDemoUtils.commentToRemove) {
-          pluginDemoUtils.commentToRemove[note.noteId].push(-1)
+        if (note.noteId in taskUtils.commentToRemove) {
+          taskUtils.commentToRemove[note.noteId].push(-1)
         }else{
-          pluginDemoUtils.commentToRemove[note.noteId] = [-1]
+          taskUtils.commentToRemove[note.noteId] = [-1]
         }
       }
       if (text.includes("{{tags}}")) {
@@ -3176,10 +3176,10 @@ class pluginDemoUtils {
             textList.push(tem)
             elementIndex = elementIndex+1
             if (des.removeSource) {
-              if (note.noteId in pluginDemoUtils.commentToRemove) {
-                pluginDemoUtils.commentToRemove[note.noteId].push(index)
+              if (note.noteId in taskUtils.commentToRemove) {
+                taskUtils.commentToRemove[note.noteId].push(index)
               }else{
-                pluginDemoUtils.commentToRemove[note.noteId] = [index]
+                taskUtils.commentToRemove[note.noteId] = [index]
               }
             }
           }
@@ -3196,10 +3196,10 @@ class pluginDemoUtils {
             textList.push(tem)
             elementIndex = elementIndex+1
             if (des.removeSource) {
-              if (note.noteId in pluginDemoUtils.commentToRemove) {
-                pluginDemoUtils.commentToRemove[note.noteId].push(index)
+              if (note.noteId in taskUtils.commentToRemove) {
+                taskUtils.commentToRemove[note.noteId].push(index)
               }else{
-                pluginDemoUtils.commentToRemove[note.noteId] = [index]
+                taskUtils.commentToRemove[note.noteId] = [index]
               }
             }
           }
@@ -3277,13 +3277,13 @@ class pluginDemoUtils {
    * @example
    * // OCR 模式下
    * let text = "分析 {{cards}} 中的 {{userInput}}"
-   * let result = pluginDemoUtils.checkVariableForNote(text, "")
+   * let result = taskUtils.checkVariableForNote(text, "")
    * // OCR 启用且无用户输入：
    * // "分析 {{cardsOCR}} 中的 {{textOCR}}"
    * 
    * // 单个笔记时
    * MNNote.getFocusNotes().length === 1
-   * let result = pluginDemoUtils.checkVariableForNote("{{cards}}", "")
+   * let result = taskUtils.checkVariableForNote("{{cards}}", "")
    * // 退化为: "{{cardOCR}}"
    */
   static checkVariableForNote(text,userInput){//提前写好要退化到的变量
@@ -3339,7 +3339,7 @@ class pluginDemoUtils {
    * @example
    * // 处理选中文本
    * let template = "翻译 {{card}} 中的内容"
-   * let result = pluginDemoUtils.checkVariableForText(template, "")
+   * let result = taskUtils.checkVariableForText(template, "")
    * // OCR 模式: "翻译 {{textOCR}} 中的内容"
    * // 普通模式: "翻译 {{context}} 中的内容"
    */
@@ -3388,7 +3388,7 @@ class pluginDemoUtils {
    *   name: "张三",
    *   date: "2024-01-01"
    * }
-   * let result = pluginDemoUtils.replacVar(template, vars)
+   * let result = taskUtils.replacVar(template, vars)
    * // "Hello 张三, today is 2024-01-01"
    * 
    * // 复杂模板
@@ -3398,7 +3398,7 @@ class pluginDemoUtils {
    *   author: "Nicholas C. Zakas",
    *   tags: "#编程 #JavaScript"
    * }
-   * let noteText = pluginDemoUtils.replacVar(noteTemplate, noteVars)
+   * let noteText = taskUtils.replacVar(noteTemplate, noteVars)
    */
   static replacVar(text,varInfo) {
     let vars = Object.keys(varInfo)
@@ -3438,16 +3438,16 @@ class pluginDemoUtils {
    * @example
    * // 使用笔记信息
    * let template = "标题：{{note.title}}\n日期：{{date.year}}-{{date.month}}-{{date.day}}"
-   * let result = pluginDemoUtils.detectAndReplace(template)
+   * let result = taskUtils.detectAndReplace(template)
    * // "标题：我的笔记\n日期：2024-01-01"
    * 
    * // 使用系统信息
    * let sysTemplate = "从 {{currentDocName}} 复制：{{selectionText}}"
-   * let sysResult = pluginDemoUtils.detectAndReplace(sysTemplate)
+   * let sysResult = taskUtils.detectAndReplace(sysTemplate)
    * 
    * // 传入额外元素
    * let customTemplate = "处理结果：{{element}}"
-   * let customResult = pluginDemoUtils.detectAndReplace(customTemplate, "成功")
+   * let customResult = taskUtils.detectAndReplace(customTemplate, "成功")
    * // "处理结果：成功"
    */
   static detectAndReplace(text,element=undefined,note = MNNote.getFocusNote()) {
@@ -3501,12 +3501,12 @@ class pluginDemoUtils {
    * // 生成笔记摘要
    * let template = "《{{title}}》\nID: {{noteId}}\n来源：{{currentDocName}}"
    * let note = MNNote.getFocusNote()
-   * let summary = pluginDemoUtils.detectAndReplaceWithNote(template, note)
+   * let summary = taskUtils.detectAndReplaceWithNote(template, note)
    * 
    * // 批量处理
    * let notes = MNNote.getFocusNotes()
    * notes.forEach(note => {
-   *   let text = pluginDemoUtils.detectAndReplaceWithNote(
+   *   let text = taskUtils.detectAndReplaceWithNote(
    *     "- [ ] {{title}} ({{noteId}})",
    *     note
    *   )
@@ -3545,7 +3545,7 @@ class pluginDemoUtils {
    * ]
    * 
    * // 解析结果
-   * let nodes = pluginDemoUtils.processList(items)
+   * let nodes = taskUtils.processList(items)
    * // [
    * //   { name: "第一项", children: [], type: "list_item" },
    * //   { name: "第二项", children: [...], type: "list_item", hasList: true }
@@ -3592,7 +3592,7 @@ class pluginDemoUtils {
    *     text: "重要标题"
    *   }]
    * }
-   * let text = pluginDemoUtils.getUnformattedText(token)
+   * let text = taskUtils.getUnformattedText(token)
    * // "重要标题"（去除了加粗格式）
    */
   static getUnformattedText(token) {
@@ -3630,7 +3630,7 @@ class pluginDemoUtils {
    * 
    * // 构建树
    * let tokens = marked.lexer(markdown)
-   * let tree = pluginDemoUtils.buildTree(tokens)
+   * let tree = taskUtils.buildTree(tokens)
    * // tree = {
    * //   name: '中心主题',
    * //   children: [
@@ -3708,9 +3708,9 @@ class pluginDemoUtils {
    * ## 子主题2
    * `
    * 
-   * let ast = pluginDemoUtils.markdown2AST(markdown)
+   * let ast = taskUtils.markdown2AST(markdown)
    * // 可以用于生成脑图
-   * pluginDemoUtils.AST2Mindmap(focusNote, ast)
+   * taskUtils.AST2Mindmap(focusNote, ast)
    */
   static markdown2AST(markdown){
     let tokens = marked.lexer(markdown)
@@ -3727,12 +3727,12 @@ class pluginDemoUtils {
    * @returns {boolean} 是否包含数学公式
    * 
    * @example
-   * pluginDemoUtils.containsMathFormula("这是公式：$E=mc^2$")     // true
-   * pluginDemoUtils.containsMathFormula("$$\\int_0^1 x dx$$")     // true
-   * pluginDemoUtils.containsMathFormula("普通文本")               // false
+   * taskUtils.containsMathFormula("这是公式：$E=mc^2$")     // true
+   * taskUtils.containsMathFormula("$$\\int_0^1 x dx$$")     // true
+   * taskUtils.containsMathFormula("普通文本")               // false
    * 
    * // 用于决定是否启用 Markdown 模式
-   * if (pluginDemoUtils.containsMathFormula(text)) {
+   * if (taskUtils.containsMathFormula(text)) {
    *   note.excerptTextMarkdown = true
    * }
    */
@@ -3754,12 +3754,12 @@ class pluginDemoUtils {
    * @returns {boolean} 是否包含 URL
    * 
    * @example
-   * pluginDemoUtils.containsUrl("访问 https://example.com")    // true
-   * pluginDemoUtils.containsUrl("查看 www.example.com")        // true
-   * pluginDemoUtils.containsUrl("普通文本")                     // false
+   * taskUtils.containsUrl("访问 https://example.com")    // true
+   * taskUtils.containsUrl("查看 www.example.com")        // true
+   * taskUtils.containsUrl("普通文本")                     // false
    * 
    * // 用于决定是否保留 Markdown 格式
-   * if (pluginDemoUtils.containsUrl(text)) {
+   * if (taskUtils.containsUrl(text)) {
    *   config.excerptTextMarkdown = true
    * }
    */
@@ -3795,11 +3795,11 @@ class pluginDemoUtils {
    * 
    * @example
    * let markdown = "**重要**：请查看 [文档](http://example.com)"
-   * let plainText = pluginDemoUtils.removeMarkdownFormat(markdown)
+   * let plainText = taskUtils.removeMarkdownFormat(markdown)
    * // "重要：请查看 文档"
    * 
    * let complex = "# 标题\n- **列表项1**\n- *列表项2*\n> 引用"
-   * let plain = pluginDemoUtils.removeMarkdownFormat(complex)
+   * let plain = taskUtils.removeMarkdownFormat(complex)
    * // "标题\n列表项1\n列表项2\n引用"
    */
   static removeMarkdownFormat(markdownStr) {
@@ -3855,23 +3855,23 @@ class pluginDemoUtils {
    * 
    * @example
    * // 数学公式
-   * let config1 = pluginDemoUtils.getConfig("定理：$a^2 + b^2 = c^2$")
+   * let config1 = taskUtils.getConfig("定理：$a^2 + b^2 = c^2$")
    * // { title: "定理", excerptText: "$a^2 + b^2 = c^2$", excerptTextMarkdown: true }
    * 
    * // URL
-   * let config2 = pluginDemoUtils.getConfig("参考：https://example.com")
+   * let config2 = taskUtils.getConfig("参考：https://example.com")
    * // { excerptText: "参考：https://example.com", excerptTextMarkdown: true }
    * 
    * // 标题与内容
-   * let config3 = pluginDemoUtils.getConfig("重要：这是一个重要的概念")
+   * let config3 = taskUtils.getConfig("重要：这是一个重要的概念")
    * // { title: "重要", excerptText: "这是一个重要的概念" }
    * 
    * // 短文本
-   * let config4 = pluginDemoUtils.getConfig("简短标题")
+   * let config4 = taskUtils.getConfig("简短标题")
    * // { title: "简短标题" }
    * 
    * // 长文本
-   * let config5 = pluginDemoUtils.getConfig("这是一段很长的文本..." + "x".repeat(50))
+   * let config5 = taskUtils.getConfig("这是一段很长的文本..." + "x".repeat(50))
    * // { excerptText: "这是一段很长的文本...xxx..." }
    */
   static getConfig(text){
@@ -3961,9 +3961,9 @@ class pluginDemoUtils {
    * - 要点B
    * `
    * 
-   * let ast = pluginDemoUtils.markdown2AST(markdown)
+   * let ast = taskUtils.markdown2AST(markdown)
    * let rootNote = MNNote.getFocusNote()
-   * pluginDemoUtils.AST2Mindmap(rootNote, ast)
+   * taskUtils.AST2Mindmap(rootNote, ast)
    * 
    * // 结果：在 rootNote 下创建对应的脑图结构
    */
@@ -4043,15 +4043,15 @@ try {
    * 
    * @example
    * // 从当前笔记创建脑图
-   * await pluginDemoUtils.markdown2Mindmap({ source: "currentNote" })
+   * await taskUtils.markdown2Mindmap({ source: "currentNote" })
    * 
    * // 从文件导入
-   * await pluginDemoUtils.markdown2Mindmap({ source: "file" })
+   * await taskUtils.markdown2Mindmap({ source: "file" })
    * // 会弹出文件选择器，选择 .md 文件
    * 
    * // 从剪贴板创建
    * // 先复制 Markdown 内容
-   * await pluginDemoUtils.markdown2Mindmap({ source: "clipboard" })
+   * await taskUtils.markdown2Mindmap({ source: "clipboard" })
    * 
    * // Markdown 格式示例：
    * // # 主题
@@ -4092,14 +4092,14 @@ try {
     // let markdown = des.markdown
     MNUtil.showHUD("Creating Mindmap...")
     await MNUtil.delay(0.1)
-    let res = pluginDemoUtils.markdown2AST(markdown)
+    let res = taskUtils.markdown2AST(markdown)
     // MNUtil.copy(res)
     MNUtil.undoGrouping(()=>{
       if (!focusNote) {
         focusNote = this.newNoteInCurrentChildMap({title:newNoteTitle})
         focusNote.focusInFloatMindMap(0.5)
       }
-      pluginDemoUtils.AST2Mindmap(focusNote,res)
+      taskUtils.AST2Mindmap(focusNote,res)
     })
     return
  } catch (error) {
@@ -4126,13 +4126,13 @@ try {
    * 
    * @example
    * // 检查高度
-   * let adjustedHeight = pluginDemoUtils.checkHeight(300)  // 返回对齐后的高度
+   * let adjustedHeight = taskUtils.checkHeight(300)  // 返回对齐后的高度
    * 
    * // 设置最大20个按钮
-   * let maxHeight = pluginDemoUtils.checkHeight(1000, 20)  // 返回 915 (45*20+15)
+   * let maxHeight = taskUtils.checkHeight(1000, 20)  // 返回 915 (45*20+15)
    * 
    * // 未订阅用户限制
-   * let limitedHeight = pluginDemoUtils.checkHeight(500)  // 返回 420（如果未订阅）
+   * let limitedHeight = taskUtils.checkHeight(500)  // 返回 420（如果未订阅）
    */
   static checkHeight(height,maxButtons = 20){
     if (height > 420 && !this.isSubscribed(false)) {
@@ -4165,22 +4165,22 @@ try {
    *   // 危险操作
    *   someRiskyOperation()
    * } catch (error) {
-   *   pluginDemoUtils.addErrorLog(error, "someFunction", { 
+   *   taskUtils.addErrorLog(error, "someFunction", { 
    *     noteId: focusNote.noteId,
    *     action: "delete" 
    *   })
    * }
    * 
    * // 手动记录错误
-   * pluginDemoUtils.addErrorLog(
+   * taskUtils.addErrorLog(
    *   "Invalid parameter", 
    *   "validateInput",
    *   { received: value, expected: "string" }
    * )
    */
   static addErrorLog(error,source,info){
-    MNUtil.showHUD("MN Toolbar Error ("+source+"): "+error)  // 保留特定的错误提示
-    return MNUtil.addErrorLog(error, "MNToolbar:" + source, info)  // 使用 MNUtil 的错误日志系统
+    MNUtil.showHUD("MN Task Error ("+source+"): "+error)  // 保留特定的错误提示
+    return MNUtil.addErrorLog(error, "MNTask:" + source, info)  // 使用 MNUtil 的错误日志系统
   }
   /**
    * 🗑️ 删除评论
@@ -4203,23 +4203,23 @@ try {
    * 
    * @example
    * // 删除第一个文本评论
-   * pluginDemoUtils.removeComment({ 
+   * taskUtils.removeComment({ 
    *   type: "TextNote" 
    * })
    * 
    * // 删除所有链接评论
-   * pluginDemoUtils.removeComment({ 
+   * taskUtils.removeComment({ 
    *   type: "LinkNote", 
    *   multi: true 
    * })
    * 
    * // 按索引删除（第3个评论）
-   * pluginDemoUtils.removeComment({ 
+   * taskUtils.removeComment({ 
    *   index: 2 
    * })
    * 
    * // 按条件查找并删除
-   * pluginDemoUtils.removeComment({ 
+   * taskUtils.removeComment({ 
    *   find: { text: "TODO" },
    *   multi: true 
    * })
@@ -4334,14 +4334,14 @@ try {
    * 
    * @example
    * // 设置 25 分钟倒计时（番茄钟）
-   * pluginDemoUtils.setTimer({
+   * taskUtils.setTimer({
    *   timerMode: "countdown",
    *   minutes: 25,
    *   annotation: "专注学习"
    * })
    * 
    * // 设置自定义定时器
-   * pluginDemoUtils.setTimer({
+   * taskUtils.setTimer({
    *   timerMode: "reminder",
    *   annotation: "休息一下"
    * })
@@ -4376,10 +4376,10 @@ try {
    * 
    * @example
    * // 在欧路词典中查词
-   * pluginDemoUtils.searchInDict({}, button)
+   * taskUtils.searchInDict({}, button)
    * 
    * // 使用内置查词界面
-   * pluginDemoUtils.searchInDict({ 
+   * taskUtils.searchInDict({ 
    *   target: "builtin" 
    * }, button)
    */
@@ -4412,7 +4412,7 @@ try {
         if (button.menu) {
           button.menu.dismissAnimated(true)
           let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-          let endFrame = pluginDemoFrame.gen(beginFrame.x-225, beginFrame.y-50, 500, 500)
+          let endFrame = taskFrame.gen(beginFrame.x-225, beginFrame.y-50, 500, 500)
           endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
           endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
           MNUtil.postNotification("lookupText"+target,{text:textSelected,beginFrame:beginFrame,endFrame:endFrame})
@@ -4421,7 +4421,7 @@ try {
         let endFrame
         beginFrame.y = beginFrame.y-10
         if (beginFrame.x+490 > studyFrame.width) {
-          endFrame = pluginDemoFrame.gen(beginFrame.x-450, beginFrame.y-10, 500, 500)
+          endFrame = taskFrame.gen(beginFrame.x-450, beginFrame.y-10, 500, 500)
           if (beginFrame.y+490 > studyFrame.height) {
             endFrame.y = studyFrame.height-500
           }
@@ -4432,7 +4432,7 @@ try {
             endFrame.y = 0
           }
         }else{
-          endFrame = pluginDemoFrame.gen(beginFrame.x+40, beginFrame.y-10, 500, 500)
+          endFrame = taskFrame.gen(beginFrame.x+40, beginFrame.y-10, 500, 500)
           if (beginFrame.y+490 > studyFrame.height) {
             endFrame.y = studyFrame.height-500
           }
@@ -4447,7 +4447,7 @@ try {
       }
 
 
-      // let des = pluginDemoConfig.getDescriptionByName("searchInEudic")
+      // let des = taskConfig.getDescriptionByName("searchInEudic")
       // if (des && des.source) {
       //   // MNUtil.copyJSON(des)
       //   switch (des.source) {
@@ -4490,17 +4490,17 @@ try {
    * 
    * @example
    * // 显示简单消息
-   * pluginDemoUtils.showMessage({
+   * taskUtils.showMessage({
    *   content: "操作完成！"
    * })
    * 
    * // 使用模板变量
-   * pluginDemoUtils.showMessage({
+   * taskUtils.showMessage({
    *   content: "已处理笔记：{{note.title}}"
    * })
    * 
    * // 显示日期信息
-   * pluginDemoUtils.showMessage({
+   * taskUtils.showMessage({
    *   content: "今天是 {{date.year}}-{{date.month}}-{{date.day}}"
    * })
    */
@@ -4523,7 +4523,7 @@ try {
    * 
    * @example
    * // 简单确认
-   * let result = await pluginDemoUtils.userConfirm({
+   * let result = await taskUtils.userConfirm({
    *   title: "确定删除这个笔记吗？",
    *   subTitle: "此操作不可撤销"
    * })
@@ -4532,7 +4532,7 @@ try {
    * }
    * 
    * // 带返回值的确认
-   * let action = await pluginDemoUtils.userConfirm({
+   * let action = await taskUtils.userConfirm({
    *   title: "选择操作方式",
    *   subTitle: "{{note.title}}",
    *   onConfirm: "delete",
@@ -4577,7 +4577,7 @@ try {
    * 
    * @example
    * // 选择颜色
-   * let colorDes = await pluginDemoUtils.userSelect({
+   * let colorDes = await taskUtils.userSelect({
    *   title: "选择标记颜色",
    *   subTitle: "为 {{note.title}} 设置颜色",
    *   selectItems: [
@@ -4593,7 +4593,7 @@ try {
    * }
    * 
    * // 选择操作
-   * let actionDes = await pluginDemoUtils.userSelect({
+   * let actionDes = await taskUtils.userSelect({
    *   title: "选择操作",
    *   selectItems: [
    *     { selectTitle: "复制", action: "copy" },
@@ -4605,10 +4605,10 @@ try {
    */
   static async userSelect(des){
     if (des.title && des.selectItems) {
-      let confirmTitle = pluginDemoUtils.detectAndReplace(des.title)
-      let confirmSubTitle = des.subTitle ? pluginDemoUtils.detectAndReplace(des.subTitle) : ""
+      let confirmTitle = taskUtils.detectAndReplace(des.title)
+      let confirmSubTitle = des.subTitle ? taskUtils.detectAndReplace(des.subTitle) : ""
       let selectTitles = des.selectItems.map(item=>{
-        return pluginDemoUtils.detectAndReplace(item.selectTitle)
+        return taskUtils.detectAndReplace(item.selectTitle)
       })
       let select = await MNUtil.userSelect(confirmTitle, confirmSubTitle, selectTitles)
       if (select) {
@@ -4641,23 +4641,23 @@ try {
    * 
    * @example
    * // 打开浮动聊天窗口
-   * pluginDemoUtils.chatAI({ 
+   * taskUtils.chatAI({ 
    *   target: "openFloat" 
    * }, button)
    * 
    * // 使用预设提示词
-   * pluginDemoUtils.chatAI({ 
+   * taskUtils.chatAI({ 
    *   prompt: "请帮我总结这段内容的要点" 
    * }, button)
    * 
    * // 自定义问答
-   * pluginDemoUtils.chatAI({ 
+   * taskUtils.chatAI({ 
    *   user: "什么是量子力学？",
    *   system: "你是一位物理学教授，请用简单的语言解释。" 
    * }, button)
    * 
    * // 使用当前配置的提示词
-   * pluginDemoUtils.chatAI({ 
+   * taskUtils.chatAI({ 
    *   target: "currentPrompt" 
    * }, button)
    */
@@ -4707,10 +4707,10 @@ try {
    * 
    * @example
    * // 使用默认搜索引擎
-   * pluginDemoUtils.search({}, button)
+   * taskUtils.search({}, button)
    * 
    * // 指定搜索引擎
-   * pluginDemoUtils.search({ 
+   * taskUtils.search({ 
    *   engine: "google" 
    * }, button)
    * 
@@ -4734,7 +4734,7 @@ try {
     if (button.menu) {
       button.menu.dismissAnimated(true)
       let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-      let endFrame = pluginDemoFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+      let endFrame = taskFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
       endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
       endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
       if (selectionText) {
@@ -4752,12 +4752,12 @@ try {
     let endFrame
     beginFrame.y = beginFrame.y-10
     if (beginFrame.x+490 > studyFrame.width) {
-      endFrame = pluginDemoFrame.gen(beginFrame.x-450, beginFrame.y-10, 450, 500)
+      endFrame = taskFrame.gen(beginFrame.x-450, beginFrame.y-10, 450, 500)
       if (beginFrame.y+490 > studyFrame.height) {
         endFrame.y = studyFrame.height-500
       }
     }else{
-      endFrame = pluginDemoFrame.gen(beginFrame.x+40, beginFrame.y-10, 450, 500)
+      endFrame = taskFrame.gen(beginFrame.x+40, beginFrame.y-10, 450, 500)
       if (beginFrame.y+490 > studyFrame.height) {
         endFrame.y = studyFrame.height-500
       }
@@ -4793,7 +4793,7 @@ try {
    * // 获取选中区域的文字
    * let imageData = MNUtil.getDocImage(true, true)
    * if (imageData) {
-   *   let text = await pluginDemoUtils.getTextOCR(imageData)
+   *   let text = await taskUtils.getTextOCR(imageData)
    *   if (text) {
    *     console.log("识别的文字：", text)
    *   }
@@ -4802,7 +4802,7 @@ try {
    * // 从笔记图片获取文字
    * let noteImage = MNNote.getImageFromNote(focusNote)
    * if (noteImage) {
-   *   let text = await pluginDemoUtils.getTextOCR(noteImage)
+   *   let text = await taskUtils.getTextOCR(noteImage)
    * }
    */
   static async getTextOCR (image) {
@@ -4840,7 +4840,7 @@ try {
    * 
    * @example
    * let apikey = "your-zhipu-api-key"
-   * let results = await pluginDemoUtils.webSearchForZhipu(
+   * let results = await taskUtils.webSearchForZhipu(
    *   "MarginNote 4 使用技巧",
    *   apikey
    * )
@@ -4901,12 +4901,12 @@ try {
    * 
    * @example
    * // 搜索并创建笔记
-   * await pluginDemoUtils.webSearch({
+   * await taskUtils.webSearch({
    *   question: "{{note.title}} 的相关研究"
    * })
    * 
    * // 搜索特定主题
-   * await pluginDemoUtils.webSearch({
+   * await taskUtils.webSearch({
    *   question: "量子计算最新进展 2024"
    * })
    * 
@@ -5007,17 +5007,17 @@ try {
    * 
    * @example
    * // 识别并添加为评论
-   * await pluginDemoUtils.ocr({
+   * await taskUtils.ocr({
    *   target: "comment"
    * }, button)
    * 
    * // 识别并让用户选择
-   * await pluginDemoUtils.ocr({
+   * await taskUtils.ocr({
    *   target: "option"
    * }, button)
    * 
    * // 创建子笔记并继承颜色
-   * await pluginDemoUtils.ocr({
+   * await taskUtils.ocr({
    *   target: "childNote",
    *   followParentColor: true
    * }, button)
@@ -5038,7 +5038,7 @@ try {
     let target = des.target ?? "comment"
     let res
     if (typeof ocrUtils === 'undefined') {
-      // MNUtil.showHUD("MN Toolbar: Please install 'MN OCR' first!")
+      // MNUtil.showHUD("MN Task: Please install 'MN OCR' first!")
       res = await this.freeOCR(imageData)
     }else{
       res = await ocrNetwork.OCR(imageData,source,buffer)
@@ -5082,7 +5082,7 @@ try {
               case 4:
                 let studyFrame = MNUtil.studyView.bounds
                 let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-                let endFrame = pluginDemoFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+                let endFrame = taskFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
                 endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
                 endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
                 MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
@@ -5107,7 +5107,7 @@ try {
               case 2:
                 let studyFrame = MNUtil.studyView.bounds
                 let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-                let endFrame = pluginDemoFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+                let endFrame = taskFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
                 endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
                 endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
                 MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
@@ -5174,7 +5174,7 @@ try {
         case "editor":
           let studyFrame = MNUtil.studyView.bounds
           let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-          let endFrame = pluginDemoFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+          let endFrame = taskFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
           endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
           endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
           MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
@@ -5225,7 +5225,7 @@ try {
    *   { role: "user", content: "什么是 JavaScript？" }
    * ]
    * 
-   * let request = pluginDemoUtils.initRequestForChatGPTWithoutStream(
+   * let request = taskUtils.initRequestForChatGPTWithoutStream(
    *   history,
    *   "sk-...",
    *   "https://api.openai.com/v1/chat/completions",
@@ -5292,14 +5292,14 @@ try {
    * @example
    * let imageData = MNUtil.getDocImage(true, true)
    * if (imageData) {
-   *   let text = await pluginDemoUtils.ChatGPTVision(imageData)
+   *   let text = await taskUtils.ChatGPTVision(imageData)
    *   console.log("识别结果：", text)
    *   // 如果包含公式，会是这样的格式：
    *   // "根据勾股定理，$a^2 + b^2 = c^2$"
    * }
    * 
    * // 使用其他模型
-   * let text = await pluginDemoUtils.ChatGPTVision(
+   * let text = await taskUtils.ChatGPTVision(
    *   imageData, 
    *   "gpt-4-vision-preview"
    * )
@@ -5369,7 +5369,7 @@ Image Text Extraction Specialist
    * @example
    * // 简单使用
    * let imageData = MNUtil.getDocImage(true, true)
-   * let text = await pluginDemoUtils.freeOCR(imageData)
+   * let text = await taskUtils.freeOCR(imageData)
    * if (text) {
    *   MNUtil.copy(text)
    *   MNUtil.showHUD("文字已复制")
@@ -5400,25 +5400,25 @@ Image Text Extraction Specialist
    * 
    * @example
    * // 将第一个评论移到最后
-   * pluginDemoUtils.moveComment({
+   * taskUtils.moveComment({
    *   index: 0,
    *   to: "bottom"
    * })
    * 
    * // 将文本评论移到最前
-   * pluginDemoUtils.moveComment({
+   * taskUtils.moveComment({
    *   type: "TextNote",
    *   to: "top"
    * })
    * 
    * // 按条件查找并上移
-   * pluginDemoUtils.moveComment({
+   * taskUtils.moveComment({
    *   find: { text: "重要" },
    *   to: "up"
    * })
    * 
    * // 移动到指定位置
-   * pluginDemoUtils.moveComment({
+   * taskUtils.moveComment({
    *   index: 2,
    *   to: 0  // 移到第一个位置
    * })
@@ -5528,7 +5528,7 @@ Image Text Extraction Specialist
    *   - second: 秒（0-59）
    * 
    * @example
-   * let date = pluginDemoUtils.getDateObject()
+   * let date = taskUtils.getDateObject()
    * console.log(date.now)       // "2024/1/1 下午3:30:45"
    * console.log(date.year)      // 2024
    * console.log(date.month)     // 1
@@ -5536,7 +5536,7 @@ Image Text Extraction Specialist
    * 
    * // 在模板中使用
    * let template = "创建于 {{date.year}}-{{date.month}}-{{date.day}}"
-   * let result = pluginDemoUtils.detectAndReplace(template)
+   * let result = taskUtils.detectAndReplace(template)
    */
   static getDateObject(){
     let dateObject = {
@@ -5578,12 +5578,12 @@ Image Text Extraction Specialist
    * 
    * @example
    * // 获取基本信息
-   * let noteObj = pluginDemoUtils.getNoteObject(focusNote)
+   * let noteObj = taskUtils.getNoteObject(focusNote)
    * console.log(noteObj.title)
    * console.log(noteObj.tags)
    * 
    * // 包含父子关系
-   * let fullObj = pluginDemoUtils.getNoteObject(focusNote, {}, {
+   * let fullObj = taskUtils.getNoteObject(focusNote, {}, {
    *   parent: true,
    *   child: true,
    *   parentLevel: 2  // 获取两层父笔记
@@ -5684,7 +5684,7 @@ Image Text Extraction Specialist
    * - 支持中文输入法
    * 
    * @example
-   * let html = pluginDemoUtils.htmlDev(
+   * let html = taskUtils.htmlDev(
    *   JSON.stringify({name: "test", value: 123}, null, 2)
    * )
    * // 可以在 WebView 中加载这个 HTML
@@ -5856,7 +5856,7 @@ function setCaretPosition(element, offset) {
    *   MNUtil.showHUD("Hello " + note.noteTitle)
    * }
    * `
-   * let html = pluginDemoUtils.JShtml(code)
+   * let html = taskUtils.JShtml(code)
    * // 在 WebView 中显示带高亮的代码
    */
   static JShtml(content){
@@ -5932,7 +5932,7 @@ hljs.registerLanguage('javascript', function(hljs) {
                  'instanceof with throw case default try this switch continue typeof delete ' +
                  'let yield const export super debugger as await static import from as async await';
   var LITERALS = 'true false null undefined NaN Infinity';
-  var TYPES = 'Object Function Boolean Symbol MNUtil MNNote pluginDemoUtils pluginDemoConfig';
+  var TYPES = 'Object Function Boolean Symbol MNUtil MNNote taskUtils taskConfig';
 
   return {
     keywords: {
@@ -6049,7 +6049,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * - getContent() - 获取内容
    * 
    * @example
-   * let editorHTML = pluginDemoUtils.jsonEditor()
+   * let editorHTML = taskUtils.jsonEditor()
    * // 在 WebView 中加载
    * webView.loadHTMLString(editorHTML)
    * 
@@ -6127,7 +6127,7 @@ body {
    * 
    * @example
    * let jsonData = { name: "测试", items: [1, 2, 3] }
-   * let html = pluginDemoUtils.html(
+   * let html = taskUtils.html(
    *   JSON.stringify(jsonData, null, 2)
    * )
    * // 适合在浮动窗口中显示
@@ -6306,17 +6306,17 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * 
    * @example
    * // 消耗一次免费额度
-   * if (pluginDemoUtils.checkSubscribe()) {
+   * if (taskUtils.checkSubscribe()) {
    *   // 执行付费功能
    * }
    * 
    * // 仅检查状态，不消耗额度
-   * if (pluginDemoUtils.checkSubscribe(false)) {
+   * if (taskUtils.checkSubscribe(false)) {
    *   MNUtil.showHUD("您还有免费额度可用")
    * }
    * 
    * // 忽略免费额度，仅检查订阅
-   * if (pluginDemoUtils.checkSubscribe(true, true, true)) {
+   * if (taskUtils.checkSubscribe(true, true, true)) {
    *   // 只有订阅用户才能使用
    * }
    */
@@ -6343,7 +6343,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * 
    * @example
    * // 检查订阅状态
-   * if (pluginDemoUtils.isSubscribed()) {
+   * if (taskUtils.isSubscribed()) {
    *   // 显示订阅用户专属功能
    *   MNUtil.showHUD("欢迎订阅用户！")
    * } else {
@@ -6352,10 +6352,10 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * }
    * 
    * // 静默检查（不显示错误提示）
-   * let subscribed = pluginDemoUtils.isSubscribed(false)
+   * let subscribed = taskUtils.isSubscribed(false)
    * 
    * // 根据订阅状态显示不同界面
-   * if (pluginDemoUtils.isSubscribed()) {
+   * if (taskUtils.isSubscribed()) {
    *   // 解锁全部功能
    *   showAllFeatures()
    * } else {
@@ -6385,19 +6385,19 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * 
    * @example
    * // 获取当前插件的文件夹
-   * let pluginPath = "/path/to/marginnote.extension.mntoolbar/main.js"
-   * let folder = pluginDemoUtils.getExtensionFolder(pluginPath)
-   * // 返回: "/path/to/marginnote.extension.mntoolbar"
+   * let pluginPath = "/path/to/marginnote.extension.mntask/main.js"
+   * let folder = taskUtils.getExtensionFolder(pluginPath)
+   * // 返回: "/path/to/marginnote.extension.mntask"
    * 
    * // 用于检查其他插件是否存在
-   * let extensionDir = pluginDemoUtils.getExtensionFolder(self.path)
+   * let extensionDir = taskUtils.getExtensionFolder(self.path)
    * let mnUtilsPath = extensionDir + "/marginnote.extension.mnutils/main.js"
    * if (NSFileManager.defaultManager().fileExistsAtPath(mnUtilsPath)) {
    *   console.log("MN Utils 已安装")
    * }
    * 
    * // 获取资源文件路径
-   * let folder = pluginDemoUtils.getExtensionFolder(self.path)
+   * let folder = taskUtils.getExtensionFolder(self.path)
    * let imagePath = folder + "/resources/images/icon.png"
    */
   static getExtensionFolder(fullPath) {
@@ -6419,7 +6419,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * 
    * @example
    * // 在插件初始化时检查依赖
-   * if (!pluginDemoUtils.checkMNUtilsFolder(self.path)) {
+   * if (!taskUtils.checkMNUtilsFolder(self.path)) {
    *   // MN Utils 未安装，禁用高级功能
    *   disableAdvancedFeatures()
    *   return
@@ -6427,14 +6427,14 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * 
    * // 在使用高级功能前检查
    * function useAdvancedFeature() {
-   *   if (!pluginDemoUtils.checkMNUtilsFolder(self.path)) {
+   *   if (!taskUtils.checkMNUtilsFolder(self.path)) {
    *     return
    *   }
    *   // 继续执行高级功能
    * }
    * 
    * // 检查并引导安装
-   * if (!pluginDemoUtils.checkMNUtilsFolder(self.path)) {
+   * if (!taskUtils.checkMNUtilsFolder(self.path)) {
    *   MNUtil.showHUD("请先安装 MN Utils 插件")
    *   // 可以打开插件商店或提供下载链接
    * }
@@ -6443,7 +6443,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     let extensionFolder = this.getExtensionFolder(fullPath)
     let folderExists = NSFileManager.defaultManager().fileExistsAtPath(extensionFolder+"/marginnote.extension.mnutils/main.js")
     if (!folderExists) {
-      MNUtil.showHUD("MN Toolbar: Please install 'MN Utils' first!")
+      MNUtil.showHUD("MN Task: Please install 'MN Utils' first!")
     }
     return folderExists
   }
@@ -6471,24 +6471,24 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * 
    * @example
    * // 聚焦当前笔记到文档
-   * await pluginDemoUtils.focus({
+   * await taskUtils.focus({
    *   target: "doc"
    * })
    * 
    * // 聚焦特定笔记到脑图
-   * await pluginDemoUtils.focus({
+   * await taskUtils.focus({
    *   noteURL: "marginnote4app://note/xxxxx",
    *   target: "mindmap"
    * })
    * 
    * // 聚焦父笔记到文档和脑图
-   * await pluginDemoUtils.focus({
+   * await taskUtils.focus({
    *   source: "parentNote",
    *   target: "both"
    * })
    * 
    * // 强制聚焦跨笔记本的笔记
-   * await pluginDemoUtils.focus({
+   * await taskUtils.focus({
    *   noteURL: otherNotebookNoteURL,
    *   target: "mindmap",
    *   forceToFocus: true  // 会打开新窗口
@@ -6579,25 +6579,25 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * 
    * @example
    * // 创建带颜色的高亮
-   * let note = await pluginDemoUtils.noteHighlight({
+   * let note = await taskUtils.noteHighlight({
    *   color: 2,  // 淡蓝色
    *   tags: ["重要", "待复习"]
    * })
    * 
    * // 创建并进行 OCR
-   * let note = await pluginDemoUtils.noteHighlight({
+   * let note = await taskUtils.noteHighlight({
    *   OCR: true,
    *   textFirst: true
    * })
    * 
    * // 合并到上一个笔记
-   * let note = await pluginDemoUtils.noteHighlight({
+   * let note = await taskUtils.noteHighlight({
    *   mergeToPreviousNote: true,
    *   color: 3  // 继承上一个笔记的颜色
    * })
    * 
    * // 创建并设置为某个笔记的子笔记
-   * let note = await pluginDemoUtils.noteHighlight({
+   * let note = await taskUtils.noteHighlight({
    *   parentNote: parentNote.noteURL,
    *   asTitle: true  // 摘录作为标题
    * })
@@ -6681,7 +6681,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
         }
         resolve(focusNote)
         } catch (error) {
-          pluginDemoUtils.addErrorLog(error, "noteHighlight")
+          taskUtils.addErrorLog(error, "noteHighlight")
           resolve(undefined)
         }
       })
@@ -6708,23 +6708,23 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * 
    * @example
    * // 插入简单文本
-   * pluginDemoUtils.insertSnippet({
+   * taskUtils.insertSnippet({
    *   content: "Hello World"
    * })
    * 
    * // 插入带模板变量的内容
-   * pluginDemoUtils.insertSnippet({
+   * taskUtils.insertSnippet({
    *   content: "创建于：{{date.year}}-{{date.month}}-{{date.day}}\n标题：{{note.title}}"
    * })
    * 
    * // 插入到编辑器
-   * pluginDemoUtils.insertSnippet({
+   * taskUtils.insertSnippet({
    *   target: "editor",
    *   content: "// TODO: {{cursor}}"  // 光标会定位到 {{cursor}} 位置
    * })
    * 
    * // 插入代码模板
-   * pluginDemoUtils.insertSnippet({
+   * taskUtils.insertSnippet({
    *   content: "function {{note.title}}() {\n  {{cursor}}\n}"
    * })
    */
@@ -6733,20 +6733,20 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     let success = true
     switch (target) {
       case "textview":
-        let textView = pluginDemoUtils.textView
+        let textView = taskUtils.textView
         if (!textView || textView.hidden) {
           MNUtil.showHUD("No textView")
           success = false
           break;
         }
-        let textContent = pluginDemoUtils.detectAndReplace(des.content)
-        success = pluginDemoUtils.insertSnippetToTextView(textContent,textView)
+        let textContent = taskUtils.detectAndReplace(des.content)
+        success = taskUtils.insertSnippetToTextView(textContent,textView)
         break;
       case "editor":
         let contents = [
           {
             type:"text",
-            content:pluginDemoUtils.detectAndReplace(des.content)
+            content:taskUtils.detectAndReplace(des.content)
           }
         ]
         MNUtil.postNotification("editorInsert", {contents:contents})
@@ -6774,25 +6774,25 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * 
    * @example
    * // 移到主脑图（顶层）
-   * await pluginDemoUtils.moveNote({
+   * await taskUtils.moveNote({
    *   mainMindMap: true
    * })
    * 
    * // 移到特定父笔记下
    * let parentNote = MNNote.getFocusNote()
-   * await pluginDemoUtils.moveNote({
+   * await taskUtils.moveNote({
    *   noteURL: parentNote.noteURL
    * })
    * 
    * // 批量移动多个笔记
    * // 先选中多个笔记，然后执行
-   * await pluginDemoUtils.moveNote({
+   * await taskUtils.moveNote({
    *   noteURL: targetParent.noteURL
    * })
    * 
    * // 整理笔记结构
    * let chapterNote = findChapterNote()
-   * await pluginDemoUtils.moveNote({
+   * await taskUtils.moveNote({
    *   noteURL: chapterNote.noteURL  // 将选中的笔记移到章节下
    * })
    */
@@ -6836,7 +6836,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * @example
    * // 检查按钮是否在当前窗口
    * let button = sender
-   * if (pluginDemoUtils.isDescendantOfCurrentWindow(button)) {
+   * if (taskUtils.isDescendantOfCurrentWindow(button)) {
    *   // 按钮在当前窗口，可以安全操作
    *   showMenuAtButton(button)
    * } else {
@@ -6845,15 +6845,15 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * }
    * 
    * // 验证工具栏是否可见
-   * if (pluginDemoUtils.isDescendantOfCurrentWindow(self.view)) {
+   * if (taskUtils.isDescendantOfCurrentWindow(self.view)) {
    *   // 工具栏在当前窗口中
-   *   updateToolbarPosition()
+   *   updateTaskPosition()
    * }
    * 
    * // 多窗口支持检查
-   * let views = getAllToolbarViews()
+   * let views = getAllTaskViews()
    * let currentWindowViews = views.filter(view => 
-   *   pluginDemoUtils.isDescendantOfCurrentWindow(view)
+   *   taskUtils.isDescendantOfCurrentWindow(view)
    * )
    */
   static isDescendantOfCurrentWindow(view){
@@ -6878,21 +6878,21 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * 
    * @example
    * // 切换通用侧边栏
-   * pluginDemoUtils.toggleSidebar({})
+   * taskUtils.toggleSidebar({})
    * 
    * // 打开 ChatAI 侧边栏
-   * pluginDemoUtils.toggleSidebar({
+   * taskUtils.toggleSidebar({
    *   target: "chatMode"
    * })
    * 
    * // 在按钮点击时切换
    * onButtonClick: function() {
-   *   pluginDemoUtils.toggleSidebar({})
+   *   taskUtils.toggleSidebar({})
    * }
    * 
    * // 条件切换
    * if (needSidebar) {
-   *   pluginDemoUtils.toggleSidebar({
+   *   taskUtils.toggleSidebar({
    *     target: "chatMode"
    *   })
    * } else {
@@ -6924,7 +6924,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
               chatAIUtils.sideOutputController.currentFrame = {x:0,y:0,width:panelView.frame.width,height:panelView.frame.height}
               // MNUtil.toggleExtensionPanel()
             } catch (error) {
-              pluginDemoUtils.addErrorLog(error, "openSideBar")
+              taskUtils.addErrorLog(error, "openSideBar")
             }
             chatAIUtils.sideOutputController.openChatView(false)
           }else{
@@ -6964,25 +6964,25 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * 
    * @example
    * // 设置为蓝色
-   * await pluginDemoUtils.setColor({
+   * await taskUtils.setColor({
    *   color: 6
    * })
    * 
    * // 设置颜色和填充样式
-   * await pluginDemoUtils.setColor({
+   * await taskUtils.setColor({
    *   color: 2,      // 淡蓝色
    *   fillPattern: 1 // 填充样式
    * })
    * 
    * // 跟随自动样式（需要 AutoStyle 插件）
-   * await pluginDemoUtils.setColor({
+   * await taskUtils.setColor({
    *   color: 3,
    *   followAutoStyle: true  // 图片和文本使用不同的填充样式
    * })
    * 
    * // 批量设置多个笔记颜色
    * // 先选中多个笔记，然后：
-   * await pluginDemoUtils.setColor({
+   * await taskUtils.setColor({
    *   color: 5,  // 全部设为绿色
    *   hideMessage: true  // 不显示提示
    * })
@@ -7020,7 +7020,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
 
         })
         } catch (error) {
-          pluginDemoUtils.addErrorLog(error, "setColor")
+          taskUtils.addErrorLog(error, "setColor")
         }
       })
       return
@@ -7059,7 +7059,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       })
     })
   } catch (error) {
-    pluginDemoUtils.addErrorLog(error, "setColor")
+    taskUtils.addErrorLog(error, "setColor")
   }
   }
   /**
@@ -7079,26 +7079,26 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * 
    * @example
    * // 基本使用
-   * let success = pluginDemoUtils.switchTitleOrExcerpt()
+   * let success = taskUtils.switchTitleOrExcerpt()
    * if (success) {
    *   MNUtil.showHUD("✅ 切换成功")
    * }
    * 
    * // 常见场景：
    * // 场景1：只有标题 "重要概念"
-   * pluginDemoUtils.switchTitleOrExcerpt()
+   * taskUtils.switchTitleOrExcerpt()
    * // 结果：标题变空，摘录变为 "重要概念"
    * 
    * // 场景2：标题 "第一章"，摘录 "介绍内容"
-   * pluginDemoUtils.switchTitleOrExcerpt()
+   * taskUtils.switchTitleOrExcerpt()
    * // 结果：标题变空，摘录变为 "第一章"，原摘录变为评论
    * 
    * // 场景3：标题和摘录都为空，第一个评论是 "待整理"
-   * pluginDemoUtils.switchTitleOrExcerpt()
+   * taskUtils.switchTitleOrExcerpt()
    * // 结果：标题变为 "待整理"，评论被移除
    * 
    * // 场景4：摘录中有划重点标记 "这是**重点**内容"
-   * pluginDemoUtils.switchTitleOrExcerpt()
+   * taskUtils.switchTitleOrExcerpt()
    * // 结果：标题变为 "这是重点内容"（自动去除**）
    */
   static switchTitleOrExcerpt() {
@@ -7174,18 +7174,18 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * @example
    * // 设置单个笔记颜色
    * let note = MNNote.getFocusNote()
-   * pluginDemoUtils.setNoteColor(note, 2, 1)  // 淡蓝色，填充样式1
+   * taskUtils.setNoteColor(note, 2, 1)  // 淡蓝色，填充样式1
    * 
    * // 只改变颜色，不改变填充样式
-   * pluginDemoUtils.setNoteColor(note, 5, -1)  // 绿色，保持原填充
+   * taskUtils.setNoteColor(note, 5, -1)  // 绿色，保持原填充
    * 
    * // 处理合并笔记
    * // 如果 note 是合并笔记的一部分，所有相关笔记都会被设置
-   * pluginDemoUtils.setNoteColor(mergedNote, 7, 2)
+   * taskUtils.setNoteColor(mergedNote, 7, 2)
    * 
    * // 批量处理时的内部调用
    * focusNotes.forEach(note => {
-   *   pluginDemoUtils.setNoteColor(note, colorIndex, fillIndex)
+   *   taskUtils.setNoteColor(note, colorIndex, fillIndex)
    * })
    */
   static setNoteColor(note,colorIndex,fillIndex){
@@ -7234,14 +7234,14 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * @example
    * // 获取当前编辑文本框所在的脑图
    * let textView = self.textView
-   * let mindmapView = pluginDemoUtils.getMindmapview(textView)
+   * let mindmapView = taskUtils.getMindmapview(textView)
    * if (mindmapView) {
    *   console.log("找到脑图视图")
    *   // 可以进行脑图相关操作
    * }
    * 
    * // 判断是主脑图还是浮动脑图
-   * let mindmap = pluginDemoUtils.getMindmapview(textView)
+   * let mindmap = taskUtils.getMindmapview(textView)
    * if (mindmap === MNUtil.mindmapView) {
    *   console.log("在主脑图中")
    * } else if (mindmap === MNUtil.floatMindMapView) {
@@ -7290,7 +7290,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * @example
    * // 在处理文本视图前检查模式
    * let textView = note.textView
-   * if (pluginDemoUtils.checkExtendView(textView)) {
+   * if (taskUtils.checkExtendView(textView)) {
    *   // 在扩展模式中，可能需要特殊处理
    *   MNUtil.showHUD("当前处于扩展模式")
    * } else {
@@ -7298,7 +7298,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * }
    * 
    * // 根据模式调整 UI 布局
-   * if (pluginDemoUtils.checkExtendView(textView)) {
+   * if (taskUtils.checkExtendView(textView)) {
    *   // 扩展模式下可能需要更多空间
    *   menuWidth = 300
    * } else {
@@ -7345,19 +7345,19 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * 
    * @example
    * // ✅ 有效的颜色格式
-   * pluginDemoUtils.isHexColor("#FF0000")  // true - 红色
-   * pluginDemoUtils.isHexColor("#00ff00")  // true - 绿色（小写也可以）
-   * pluginDemoUtils.isHexColor("#0080FF")  // true - 天蓝色
+   * taskUtils.isHexColor("#FF0000")  // true - 红色
+   * taskUtils.isHexColor("#00ff00")  // true - 绿色（小写也可以）
+   * taskUtils.isHexColor("#0080FF")  // true - 天蓝色
    * 
    * // ❌ 无效的颜色格式
-   * pluginDemoUtils.isHexColor("FF0000")   // false - 缺少 #
-   * pluginDemoUtils.isHexColor("#FFF")     // false - 只有 3 位
-   * pluginDemoUtils.isHexColor("#GGHHII")  // false - 包含无效字符
-   * pluginDemoUtils.isHexColor("red")      // false - 颜色名称
+   * taskUtils.isHexColor("FF0000")   // false - 缺少 #
+   * taskUtils.isHexColor("#FFF")     // false - 只有 3 位
+   * taskUtils.isHexColor("#GGHHII")  // false - 包含无效字符
+   * taskUtils.isHexColor("red")      // false - 颜色名称
    * 
    * // 在设置颜色前验证
    * let userColor = "#FF5733"
-   * if (pluginDemoUtils.isHexColor(userColor)) {
+   * if (taskUtils.isHexColor(userColor)) {
    *   button.backgroundColor = MNUtil.hexColor(userColor)
    * } else {
    *   MNUtil.showHUD("请输入有效的颜色代码，如 #FF0000")
@@ -7388,19 +7388,19 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * @example
    * // 解析存储的窗口位置
    * let savedRect = "{{100, 50}, {300, 400}}"
-   * let frame = pluginDemoUtils.parseWinRect(savedRect)
+   * let frame = taskUtils.parseWinRect(savedRect)
    * // frame = {x: 100, y: 50, width: 300, height: 400}
    * 
    * // 恢复窗口位置
    * let lastPosition = config.get("windowPosition")
    * if (lastPosition) {
-   *   let frame = pluginDemoUtils.parseWinRect(lastPosition)
+   *   let frame = taskUtils.parseWinRect(lastPosition)
    *   window.frame = frame
    * }
    * 
    * // 配合其他方法使用
    * let rectString = "{{0, 0}, {500, 600}}"
-   * let rect = pluginDemoUtils.parseWinRect(rectString)
+   * let rect = taskUtils.parseWinRect(rectString)
    * Frame.set(view, rect.x, rect.y, rect.width, rect.height)
    * 
    * 💡 提示：
@@ -7438,17 +7438,17 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * @example
    * // 设置按钮颜色
    * let button = UIButton.new()
-   * button.backgroundColor = pluginDemoUtils.getButtonColor()
+   * button.backgroundColor = taskUtils.getButtonColor()
    * 
    * // 动态更新按钮颜色
    * function updateButtonStyle() {
    *   allButtons.forEach(btn => {
-   *     btn.backgroundColor = pluginDemoUtils.getButtonColor()
+   *     btn.backgroundColor = taskUtils.getButtonColor()
    *   })
    * }
    * 
    * // 配置示例
-   * pluginDemoConfig.buttonConfig = {
+   * taskConfig.buttonConfig = {
    *   color: "defaultTintColor",  // 或 "#FF6B6B"
    *   alpha: 0.9                   // 透明度 0-1
    * }
@@ -7465,13 +7465,13 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     // let color = MNUtil.app.defaultBookPageColor.hexStringValue
     // MNUtil.copy(color)
     let varColors = ["defaultBookPageColor","defaultHighlightBlendColor","defaultDisableColor","defaultTextColor","defaultNotebookColor","defaultTintColor","defaultTintColorForSelected","defaultTintColorForDarkBackground"]
-    if (varColors.includes(pluginDemoConfig.buttonConfig.color)) {
-      return MNUtil.app[pluginDemoConfig.buttonConfig.color].colorWithAlphaComponent(pluginDemoConfig.buttonConfig.alpha)
+    if (varColors.includes(taskConfig.buttonConfig.color)) {
+      return MNUtil.app[taskConfig.buttonConfig.color].colorWithAlphaComponent(taskConfig.buttonConfig.alpha)
     }
     // if () {
       
     // }
-    return MNUtil.hexColorAlpha(pluginDemoConfig.buttonConfig.color, pluginDemoConfig.buttonConfig.alpha)
+    return MNUtil.hexColorAlpha(taskConfig.buttonConfig.color, taskConfig.buttonConfig.alpha)
   }
   /**
    * 🌐 从 URL 下载图片
@@ -7491,19 +7491,19 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * @example
    * // 下载并设置按钮图标
    * let iconURL = "https://example.com/icon.png"
-   * let image = pluginDemoUtils.getOnlineImage(iconURL)
+   * let image = taskUtils.getOnlineImage(iconURL)
    * if (image) {
    *   button.setImageForState(image, 0)  // 0 = UIControlStateNormal
    * }
    * 
    * // 下载高清图片（指定缩放）
-   * let hdImage = pluginDemoUtils.getOnlineImage(imageURL, 2)
+   * let hdImage = taskUtils.getOnlineImage(imageURL, 2)
    * 
    * // 异步下载多张图片
    * async function downloadImages(urls) {
    *   let images = []
    *   for (let url of urls) {
-   *     let img = pluginDemoUtils.getOnlineImage(url)
+   *     let img = taskUtils.getOnlineImage(url)
    *     if (img) images.push(img)
    *     await MNUtil.delay(0.1)  // 避免过快请求
    *   }
@@ -7544,22 +7544,22 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * 
    * @example
    * // 简单运行快捷指令
-   * pluginDemoUtils.shortcut("整理笔记")
+   * taskUtils.shortcut("整理笔记")
    * 
    * // 传递输入参数
-   * pluginDemoUtils.shortcut("翻译文本", {
+   * taskUtils.shortcut("翻译文本", {
    *   input: "Hello World"
    * })
    * 
    * // 传递带变量的文本
-   * pluginDemoUtils.shortcut("创建任务", {
+   * taskUtils.shortcut("创建任务", {
    *   text: "阅读笔记: {{noteTitle}}"
    * })
    * 
    * // 处理选中的笔记
    * let note = MNNote.getFocusNote()
    * if (note) {
-   *   pluginDemoUtils.shortcut("导出到 Notion", {
+   *   taskUtils.shortcut("导出到 Notion", {
    *     input: note.noteTitle,
    *     text: note.excerptText
    *   })
@@ -7568,7 +7568,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * // 批量处理
    * function processNotes(notes) {
    *   let titles = notes.map(n => n.noteTitle).join("\n")
-   *   pluginDemoUtils.shortcut("批量处理", {
+   *   taskUtils.shortcut("批量处理", {
    *     text: titles
    *   })
    * }
@@ -7605,22 +7605,22 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * @example
    * // 导出到剪贴板（默认）
    * let markdown = "# 标题\n\n这是内容"
-   * pluginDemoUtils.exportMD(markdown)
+   * taskUtils.exportMD(markdown)
    * 
    * // 保存为文件
    * let content = "# 笔记总结\n\n..."
-   * pluginDemoUtils.exportMD(content, "file")
+   * taskUtils.exportMD(content, "file")
    * 
    * // 导出笔记内容
    * let note = MNNote.getFocusNote()
-   * let md = await pluginDemoUtils.getMDFromNote(note)
-   * pluginDemoUtils.exportMD(md, "clipboard")
+   * let md = await taskUtils.getMDFromNote(note)
+   * taskUtils.exportMD(md, "clipboard")
    * 
    * // 批量导出
    * let allMarkdown = notes.map(note => {
    *   return `## ${note.noteTitle}\n${note.excerptText}`
    * }).join("\n\n---\n\n")
-   * pluginDemoUtils.exportMD(allMarkdown, "file")
+   * taskUtils.exportMD(allMarkdown, "file")
    * 
    * 💡 提示：
    * - 文件保存时会使用 export.md 作为默认文件名
@@ -7630,8 +7630,8 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
   static exportMD(content,target = "auto"){
     switch (target) {
       case "file":
-        MNUtil.writeText(pluginDemoConfig.mainPath+"/export.md",content)
-        MNUtil.saveFile(pluginDemoConfig.mainPath+"/export.md", ["public.md"])
+        MNUtil.writeText(taskConfig.mainPath+"/export.md",content)
+        MNUtil.saveFile(taskConfig.mainPath+"/export.md", ["public.md"])
         break;
       case "auto":
       case "clipboard":
@@ -7661,30 +7661,30 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * 
    * @example
    * // 导出笔记对应的 PDF
-   * await pluginDemoUtils.export({
+   * await taskUtils.export({
    *   source: "noteDoc"
    * })
    * 
    * // 导出笔记为 Markdown 到剪贴板
-   * await pluginDemoUtils.export({
+   * await taskUtils.export({
    *   source: "noteMarkdown",
    *   target: "clipboard"
    * })
    * 
    * // 导出笔记及子笔记（包含 OCR）
-   * await pluginDemoUtils.export({
+   * await taskUtils.export({
    *   source: "noteMarkdownOCR",
    *   target: "file"
    * })
    * 
    * // 导出整个笔记树
-   * await pluginDemoUtils.export({
+   * await taskUtils.export({
    *   source: "noteWithDecendentsMarkdown",
    *   target: "file"
    * })
    * 
    * // 导出当前文档
-   * await pluginDemoUtils.export({
+   * await taskUtils.export({
    *   source: "currentDoc"
    * })
    * 
@@ -7743,7 +7743,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     }
       
   } catch (error) {
-      pluginDemoUtils.addErrorLog(error, "export")
+      taskUtils.addErrorLog(error, "export")
   }
   }
   /**
@@ -7771,21 +7771,21 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * @example
    * // 基本转换
    * let note = MNNote.getFocusNote()
-   * let markdown = await pluginDemoUtils.getMDFromNote(note)
+   * let markdown = await taskUtils.getMDFromNote(note)
    * console.log(markdown)
    * // 输出: "# 笔记标题\n这是摘录内容"
    * 
    * // 启用 OCR
-   * let mdWithOCR = await pluginDemoUtils.getMDFromNote(note, 0, true)
+   * let mdWithOCR = await taskUtils.getMDFromNote(note, 0, true)
    * 
    * // 处理子笔记（增加标题级别）
-   * let childMd = await pluginDemoUtils.getMDFromNote(childNote, 2)
+   * let childMd = await taskUtils.getMDFromNote(childNote, 2)
    * // 原本 # 标题会变成 ### 标题
    * 
    * // 批量转换
    * let notes = MNNote.getFocusNotes()
    * let markdowns = await Promise.all(
-   *   notes.map(n => pluginDemoUtils.getMDFromNote(n))
+   *   notes.map(n => taskUtils.getMDFromNote(n))
    * )
    * let fullDoc = markdowns.join("\n\n---\n\n")
    * 
@@ -7887,13 +7887,13 @@ try {
    * 
    * @example
    * let html = "这是<mark>重要内容</mark>和<mark>关键词</mark>"
-   * let md = pluginDemoUtils.highlightEqualsContentReverse(html)
+   * let md = taskUtils.highlightEqualsContentReverse(html)
    * console.log(md)
    * // 输出: "这是==重要内容==和==关键词=="
    * 
    * // 在导出流程中使用
    * let noteText = note.excerptText  // 可能包含 <mark> 标签
-   * let markdownText = pluginDemoUtils.highlightEqualsContentReverse(noteText)
+   * let markdownText = taskUtils.highlightEqualsContentReverse(noteText)
    * 
    * 💡 说明：
    * - 使用非贪婪匹配 (.+?) 确保正确处理多个标签
@@ -7917,23 +7917,23 @@ try {
    * 
    * @example
    * // 基本使用
-   * pluginDemoUtils.constrain(50, 0, 100)   // 50 - 在范围内
-   * pluginDemoUtils.constrain(150, 0, 100)  // 100 - 超过最大值
-   * pluginDemoUtils.constrain(-10, 0, 100)  // 0 - 低于最小值
+   * taskUtils.constrain(50, 0, 100)   // 50 - 在范围内
+   * taskUtils.constrain(150, 0, 100)  // 100 - 超过最大值
+   * taskUtils.constrain(-10, 0, 100)  // 0 - 低于最小值
    * 
    * // 限制 UI 元素位置
    * let x = event.locationInView(view).x
-   * x = pluginDemoUtils.constrain(x, 0, view.bounds.width)
+   * x = taskUtils.constrain(x, 0, view.bounds.width)
    * button.frame = {x: x, y: 0, width: 50, height: 30}
    * 
    * // 限制缩放比例
    * let scale = userScale
-   * scale = pluginDemoUtils.constrain(scale, 0.5, 3.0)
+   * scale = taskUtils.constrain(scale, 0.5, 3.0)
    * view.transform = {a: scale, d: scale}
    * 
    * // 限制透明度
    * let alpha = calculateAlpha()
-   * view.alpha = pluginDemoUtils.constrain(alpha, 0, 1)
+   * view.alpha = taskUtils.constrain(alpha, 0, 1)
    * 
    * 💡 使用场景：
    * - UI 元素位置限制（防止超出屏幕）
@@ -7961,7 +7961,7 @@ try {
  * 
  * @example
  * // 在按钮旁边显示菜单
- * let buttonFrame = pluginDemoUtils.getButtonFrame(myButton)
+ * let buttonFrame = taskUtils.getButtonFrame(myButton)
  * let menuFrame = {
  *   x: buttonFrame.x + buttonFrame.width + 10,  // 按钮右侧 10 像素
  *   y: buttonFrame.y,
@@ -7971,12 +7971,12 @@ try {
  * menu.show(menuFrame)
  * 
  * // 在按钮下方显示浮窗
- * let frame = pluginDemoUtils.getButtonFrame(button)
+ * let frame = taskUtils.getButtonFrame(button)
  * let popupY = frame.y + frame.height + 5
  * showPopup(frame.x, popupY)
  * 
  * // 计算是否靠近屏幕边缘
- * let btnFrame = pluginDemoUtils.getButtonFrame(button)
+ * let btnFrame = taskUtils.getButtonFrame(button)
  * let screenWidth = MNUtil.studyView.bounds.width
  * if (btnFrame.x + 200 > screenWidth) {
  *   // 菜单显示在按钮左侧
@@ -8005,19 +8005,19 @@ static getButtonFrame(button){
    * 
    * @example
    * // 获取 OCR 按钮的模板
-   * let ocrTemplates = pluginDemoUtils.getTempelateNames("ocr")
+   * let ocrTemplates = taskUtils.getTempelateNames("ocr")
    * // ["🔨 OCR to clipboard", "🔨 OCR as chat mode reference", ...]
    * 
    * // 获取颜色按钮的模板
-   * let colorTemplates = pluginDemoUtils.getTempelateNames("color1")
+   * let colorTemplates = taskUtils.getTempelateNames("color1")
    * // ["🔨 setColor default", "🔨 with fillpattern: both", ...]
    * 
    * // 获取通用模板
-   * let generalTemplates = pluginDemoUtils.getTempelateNames("custom")
+   * let generalTemplates = taskUtils.getTempelateNames("custom")
    * // ["🔨 empty action", "🔨 insert snippet", ...]
    */
   static getTempelateNames(item){
-    if (!pluginDemoConfig.checkCouldSave(item)) {
+    if (!taskConfig.checkCouldSave(item)) {
       return undefined
     }
     switch (item) {
@@ -8128,13 +8128,13 @@ static getButtonFrame(button){
    * 这是后续内容
    * `
    * 
-   * let data = pluginDemoUtils.extractJSONFromMarkdown(markdown)
+   * let data = taskUtils.extractJSONFromMarkdown(markdown)
    * console.log(data.name)  // "示例"
    * console.log(data.value) // 123
    * 
    * // 处理 AI 返回的结构化数据
    * let aiResponse = await chatWithAI("请用 JSON 格式返回...")
-   * let result = pluginDemoUtils.extractJSONFromMarkdown(aiResponse)
+   * let result = taskUtils.extractJSONFromMarkdown(aiResponse)
    * if (result) {
    *   // 使用提取的数据
    * }
@@ -8169,22 +8169,22 @@ static getButtonFrame(button){
    * 
    * @example
    * // 添加单个标签
-   * pluginDemoUtils.addTags({
+   * taskUtils.addTags({
    *   tag: "重要"
    * })
    * 
    * // 添加多个标签
-   * pluginDemoUtils.addTags({
+   * taskUtils.addTags({
    *   tags: ["待复习", "第一章", "概念"]
    * })
    * 
    * // 使用模板变量
-   * pluginDemoUtils.addTags({
+   * taskUtils.addTags({
    *   tags: ["{{date.year}}-{{date.month}}", "{{note.notebook.name}}"]
    * })
    * 
    * // 动态标签
-   * pluginDemoUtils.addTags({
+   * taskUtils.addTags({
    *   tag: "已处理-{{date.month}}/{{date.day}}"
    * })
    */
@@ -8226,25 +8226,25 @@ static getButtonFrame(button){
    * 
    * @example
    * // 移除单个标签
-   * pluginDemoUtils.removeTags({
+   * taskUtils.removeTags({
    *   tag: "已完成"
    * })
    * 
    * // 移除多个标签
-   * pluginDemoUtils.removeTags({
+   * taskUtils.removeTags({
    *   tags: ["临时", "草稿", "待审核"]
    * })
    * 
    * // 条件性移除
    * let notesToClean = MNNote.getFocusNotes()
    * if (notesToClean.length > 0) {
-   *   pluginDemoUtils.removeTags({
+   *   taskUtils.removeTags({
    *     tags: ["过期", "旧版本"]
    *   })
    * }
    * 
    * // 清理特定标签
-   * pluginDemoUtils.removeTags({
+   * taskUtils.removeTags({
    *   tag: "2023-临时"
    * })
    */
@@ -8282,7 +8282,7 @@ static getButtonFrame(button){
    * @example
    * // 提取单个 URL
    * let text = "查看文档：https://example.com/docs"
-   * let urls = pluginDemoUtils.extractUrls(text)
+   * let urls = taskUtils.extractUrls(text)
    * console.log(urls)  // ["https://example.com/docs"]
    * 
    * // 提取多个 URL
@@ -8291,12 +8291,12 @@ static getButtonFrame(button){
    *   文档：https://docs.marginnote.com/guide
    *   论坛：http://bbs.marginnote.com
    * `
-   * let allUrls = pluginDemoUtils.extractUrls(content)
+   * let allUrls = taskUtils.extractUrls(content)
    * console.log(allUrls.length)  // 3
    * 
    * // 从笔记中提取链接
    * let noteText = focusNote.allNoteText()
-   * let links = pluginDemoUtils.extractUrls(noteText)
+   * let links = taskUtils.extractUrls(noteText)
    * if (links.length > 0) {
    *   // 打开第一个链接
    *   MNUtil.openURL(links[0])
@@ -8322,7 +8322,7 @@ static getButtonFrame(button){
    * @example
    * // 检查单个笔记
    * let focusNote = MNNote.getFocusNote()
-   * let urls = pluginDemoUtils.noteHasWebURL(focusNote)
+   * let urls = taskUtils.noteHasWebURL(focusNote)
    * if (urls.length > 0) {
    *   console.log(`找到 ${urls.length} 个链接`)
    *   urls.forEach(url => console.log(url))
@@ -8331,7 +8331,7 @@ static getButtonFrame(button){
    * // 批量检查笔记
    * let notesWithLinks = []
    * MNNote.getFocusNotes().forEach(note => {
-   *   let urls = pluginDemoUtils.noteHasWebURL(note)
+   *   let urls = taskUtils.noteHasWebURL(note)
    *   if (urls.length > 0) {
    *     notesWithLinks.push({
    *       note: note,
@@ -8341,7 +8341,7 @@ static getButtonFrame(button){
    * })
    * 
    * // 打开笔记中的第一个链接
-   * let urls = pluginDemoUtils.noteHasWebURL(focusNote)
+   * let urls = taskUtils.noteHasWebURL(focusNote)
    * if (urls.length > 0) {
    *   MNUtil.openURL(urls[0])
    * }
@@ -8366,7 +8366,7 @@ static getButtonFrame(button){
    * 
    * @example
    * // 打开笔记中的链接
-   * pluginDemoUtils.openWebURL({})
+   * taskUtils.openWebURL({})
    * 
    * // 通常用于按钮动作
    * {
@@ -8375,7 +8375,7 @@ static getButtonFrame(button){
    * }
    * 
    * // 判断是否成功
-   * if (pluginDemoUtils.openWebURL({})) {
+   * if (taskUtils.openWebURL({})) {
    *   console.log("已打开链接")
    * } else {
    *   console.log("未找到链接")
@@ -8429,18 +8429,18 @@ static getButtonFrame(button){
    * @example
    * // 基础模板渲染
    * let template = "今天是 {{date.year}} 年 {{date.month}} 月"
-   * let result = await pluginDemoUtils.render(template)
+   * let result = await taskUtils.render(template)
    * console.log(result)  // "今天是 2024 年 1 月"
    * 
    * // 使用笔记变量
    * let noteTemplate = "# {{note.title}}\n标签：{{note.hashTags}}"
-   * let rendered = await pluginDemoUtils.render(noteTemplate, {
+   * let rendered = await taskUtils.render(noteTemplate, {
    *   noteId: focusNote.noteId
    * })
    * 
    * // 包含用户输入
    * let inputTemplate = "用户说：{{userInput}}\n时间：{{date.now}}"
-   * let output = await pluginDemoUtils.render(inputTemplate, {
+   * let output = await taskUtils.render(inputTemplate, {
    *   userInput: "这是一个测试"
    * })
    */
@@ -8477,7 +8477,7 @@ static getButtonFrame(button){
    * 
    * @example
    * // 通常不直接调用，而是通过 render() 方法
-   * let result = await pluginDemoUtils.getNoteVarInfo(
+   * let result = await taskUtils.getNoteVarInfo(
    *   "12345678-1234-1234-1234-123456789012",
    *   "笔记：{{note.title}}\n创建于：{{note.date.create}}",
    *   "用户输入内容"
@@ -8521,7 +8521,7 @@ static getButtonFrame(button){
    * 
    * @example
    * // 通常不直接调用，而是通过 render() 方法
-   * let result = await pluginDemoUtils.getTextVarInfo(
+   * let result = await taskUtils.getTextVarInfo(
    *   "当前时间：{{date.now}}\n剪贴板：{{clipboardText}}",
    *   "用户输入"
    * )
@@ -8556,7 +8556,7 @@ static async getTextVarInfo(text,userInput) {
    * 
    * @example
    * // 简单确认
-   * let result = await pluginDemoUtils.confirm(
+   * let result = await taskUtils.confirm(
    *   "删除笔记",
    *   "确定要删除这个笔记吗？此操作不可撤销。"
    * )
@@ -8566,7 +8566,7 @@ static async getTextVarInfo(text,userInput) {
    * }
    * 
    * // 操作前确认
-   * let shouldContinue = await pluginDemoUtils.confirm(
+   * let shouldContinue = await taskUtils.confirm(
    *   "批量操作",
    *   `即将处理 ${notes.length} 个笔记，是否继续？`
    * )
@@ -8575,7 +8575,7 @@ static async getTextVarInfo(text,userInput) {
    * }
    * 
    * // 危险操作警告
-   * let confirmed = await pluginDemoUtils.confirm(
+   * let confirmed = await taskUtils.confirm(
    *   "⚠️ 警告",
    *   "这将清空所有标签，确定继续吗？"
    * )
@@ -8588,7 +8588,7 @@ static async getTextVarInfo(text,userInput) {
 /**
  * ⚙️ 插件配置管理类
  * 
- * 管理 MN Toolbar 插件的所有配置项，包括：
+ * 管理 MN Task 插件的所有配置项，包括：
  * - 按钮配置和动作映射
  * - 窗口状态和界面设置
  * - 云同步配置
@@ -8601,22 +8601,22 @@ static async getTextVarInfo(text,userInput) {
  * 
  * @example
  * // 初始化配置（在插件启动时）
- * pluginDemoConfig.init(self.path)
+ * taskConfig.init(self.path)
  * 
  * // 读取配置
- * let buttons = pluginDemoConfig.action
- * let windowState = pluginDemoConfig.windowState
+ * let buttons = taskConfig.action
+ * let windowState = taskConfig.windowState
  * 
  * // 保存配置
- * pluginDemoConfig.windowState.frame = newFrame
- * pluginDemoConfig.save()
+ * taskConfig.windowState.frame = newFrame
+ * taskConfig.save()
  * 
  * // 检查云同步
- * if (pluginDemoConfig.iCloudSync) {
- *   pluginDemoConfig.syncToCloud()
+ * if (taskConfig.iCloudSync) {
+ *   taskConfig.syncToCloud()
  * }
  */
-class pluginDemoConfig {
+class taskConfig {
   // 构造器方法，用于初始化新创建的对象
   constructor(name) {
     this.name = name;
@@ -8873,36 +8873,36 @@ class pluginDemoConfig {
    * @example
    * // 在插件启动时调用
    * sceneWillConnect: function() {
-   *   pluginDemoConfig.init(self.path)
+   *   taskConfig.init(self.path)
    *   // 后续初始化...
    * }
    * 
    * // 初始化后可以访问配置
-   * let buttons = pluginDemoConfig.action
-   * let windowState = pluginDemoConfig.windowState
+   * let buttons = taskConfig.action
+   * let windowState = taskConfig.windowState
    */
   static init(mainPath){
-    // this.config = this.getByDefault("MNToolbar_config",this.defaultConfig)
+    // this.config = this.getByDefault("MNTask_config",this.defaultConfig)
     try {
     this.mainPath = mainPath
-    this.dynamic = this.getByDefault("MNToolbar_dynamic",false)
-    this.addonLogos = this.getByDefault("MNToolbar_addonLogos",{})
-    this.windowState = this.getByDefault("MNToolbar_windowState",this.defaultWindowState)
+    this.dynamic = this.getByDefault("MNTask_dynamic",false)
+    this.addonLogos = this.getByDefault("MNTask_addonLogos",{})
+    this.windowState = this.getByDefault("MNTask_windowState",this.defaultWindowState)
     this.buttonNumber = this.getDefaultActionKeys().length
     //数组格式,存的是每个action的key
-    this.action = this.getByDefault("MNToolbar_action", this.getDefaultActionKeys())
+    this.action = this.getByDefault("MNTask_action", this.getDefaultActionKeys())
     this.action = this.action.map(a=>{
       if (a === "excute") {
         return "execute"
       }
       return a
     })
-    this.dynamicAction = this.getByDefault("MNToolbar_dynamicAction", this.action)
+    this.dynamicAction = this.getByDefault("MNTask_dynamicAction", this.action)
     if (this.dynamicAction.length === 0) {
       this.dynamicAction = this.action
     }
 
-    this.actions = this.getByDefault("MNToolbar_actionConfig", this.getActions())
+    this.actions = this.getByDefault("MNTask_actionConfig", this.getActions())
     if ("excute" in this.actions) {
       let action = this.actions["excute"]
       action.image = "execute"
@@ -8914,11 +8914,11 @@ class pluginDemoConfig {
         this.actions["execute"].image = "execute"
       }
     }
-    this.buttonConfig = this.getByDefault("MNToolbar_buttonConfig", this.defalutButtonConfig)
+    this.buttonConfig = this.getByDefault("MNTask_buttonConfig", this.defalutButtonConfig)
     // MNUtil.copyJSON(this.buttonConfig)
     this.highlightColor = UIColor.blendedColor(
       UIColor.colorWithHexString("#2c4d81").colorWithAlphaComponent(0.8),
-      pluginDemoUtils.app.defaultTextColor,
+      taskUtils.app.defaultTextColor,
       0.8
     );
       let editorConfig = this.getDescriptionByName("edit")
@@ -8927,14 +8927,14 @@ class pluginDemoConfig {
       }
       
     } catch (error) {
-      pluginDemoUtils.addErrorLog(error, "init")
+      taskUtils.addErrorLog(error, "init")
     }
     this.buttonImageFolder = MNUtil.dbFolder+"/buttonImage"
     NSFileManager.defaultManager().createDirectoryAtPathAttributes(this.buttonImageFolder, undefined)
-    // this.popupConfig = this.getByDefault("MNToolbar_popupConfig", this.defaultPopupReplaceConfig)
+    // this.popupConfig = this.getByDefault("MNTask_popupConfig", this.defaultPopupReplaceConfig)
     // this.popupConfig = this.defaultPopupReplaceConfig
-    this.popupConfig = this.getByDefault("MNToolbar_popupConfig", this.defaultPopupReplaceConfig)
-    this.syncConfig = this.getByDefault("MNToolbar_syncConfig", this.defaultSyncConfig)
+    this.popupConfig = this.getByDefault("MNTask_popupConfig", this.defaultPopupReplaceConfig)
+    this.syncConfig = this.getByDefault("MNTask_syncConfig", this.defaultSyncConfig)
     this.initImage()
     this.checkCloudStore(false)
   }
@@ -8953,14 +8953,14 @@ class pluginDemoConfig {
    * 
    * @example
    * // 初始化时检查云存储（不发送通知）
-   * pluginDemoConfig.checkCloudStore(false)
+   * taskConfig.checkCloudStore(false)
    * 
    * // 准备同步时检查（发送通知）
-   * pluginDemoConfig.checkCloudStore(true)
+   * taskConfig.checkCloudStore(true)
    * 
    * // 之后可以使用云存储
-   * if (pluginDemoConfig.cloudStore) {
-   *   pluginDemoConfig.cloudStore.setObjectForKey(config, "key")
+   * if (taskConfig.cloudStore) {
+   *   taskConfig.cloudStore.setObjectForKey(config, "key")
    * }
    */
   static checkCloudStore(notification = true){//用于替代initCloudStore
@@ -8980,10 +8980,10 @@ class pluginDemoConfig {
    * 
    * @example
    * // 不推荐
-   * pluginDemoConfig.initCloudStore()
+   * taskConfig.initCloudStore()
    * 
    * // 推荐
-   * pluginDemoConfig.checkCloudStore(true)
+   * taskConfig.checkCloudStore(true)
    */
   static initCloudStore(){
     this.cloudStore = NSUbiquitousKeyValueStore.defaultStore()
@@ -9005,20 +9005,20 @@ class pluginDemoConfig {
    * 
    * @example
    * // 检查同步状态
-   * if (pluginDemoConfig.iCloudSync) {
+   * if (taskConfig.iCloudSync) {
    *   // 执行同步操作
-   *   pluginDemoConfig.syncToCloud()
+   *   taskConfig.syncToCloud()
    * } else {
    *   // 提示用户需要订阅或启用同步
    *   MNUtil.showHUD("需要订阅才能使用云同步")
    * }
    * 
    * // 在设置界面显示
-   * let syncEnabled = pluginDemoConfig.iCloudSync
+   * let syncEnabled = taskConfig.iCloudSync
    * syncSwitch.on = syncEnabled
    */
   static get iCloudSync(){//同时考虑订阅情况
-    if (pluginDemoUtils.checkSubscribe(false,false,true)) {
+    if (taskUtils.checkSubscribe(false,false,true)) {
       return this.syncConfig.iCloudSync
     }
     return false
@@ -9033,14 +9033,14 @@ class pluginDemoConfig {
    * 
    * @example
    * // 在弹出菜单处理中使用
-   * if (pluginDemoConfig.hasPopup()) {
+   * if (taskConfig.hasPopup()) {
    *   // 拦截系统菜单，显示自定义菜单
    *   event.preventDefault()
    *   showCustomMenu()
    * }
    * 
    * // 在设置界面提示
-   * let hasCustomPopup = pluginDemoConfig.hasPopup()
+   * let hasCustomPopup = taskConfig.hasPopup()
    * statusLabel.text = hasCustomPopup ? "已启用自定义菜单" : "使用系统默认菜单"
    */
   static hasPopup(){
@@ -9068,14 +9068,14 @@ class pluginDemoConfig {
    * 
    * @example
    * // 获取复制菜单的配置
-   * let copyConfig = pluginDemoConfig.getPopupConfig("copy")
+   * let copyConfig = taskConfig.getPopupConfig("copy")
    * if (copyConfig.enabled && copyConfig.target) {
    *   // 执行自定义复制动作
    *   performAction(copyConfig.target)
    * }
    * 
    * // 检查某个菜单是否被替换
-   * let config = pluginDemoConfig.getPopupConfig("noteHighlight")
+   * let config = taskConfig.getPopupConfig("noteHighlight")
    * console.log(`笔记高亮：${config.enabled ? "已自定义" : "系统默认"}`)
    */
   static getPopupConfig(key){
@@ -9118,7 +9118,7 @@ class pluginDemoConfig {
           continue
         }
         if (MNUtil.isIOS() && ["windowState"].includes(key)) {
-          //iOS端不参与"MNToolbar_windowState"的云同步,因此比较时忽略该参数
+          //iOS端不参与"MNTask_windowState"的云同步,因此比较时忽略该参数
           continue
         }
         if (!this.deepEqual(obj1[key], obj2[key])) {
@@ -9146,18 +9146,18 @@ class pluginDemoConfig {
    * 
    * @example
    * // 导出配置到剪贴板
-   * let config = pluginDemoConfig.getAllConfig()
+   * let config = taskConfig.getAllConfig()
    * MNUtil.copyJSON(config)
    * MNUtil.showHUD("配置已复制")
    * 
    * // 保存配置到文件
-   * let configData = pluginDemoConfig.getAllConfig()
+   * let configData = taskConfig.getAllConfig()
    * let json = JSON.stringify(configData, null, 2)
    * MNUtil.writeFile(path, json)
    * 
    * // 同步到云端
-   * let allConfig = pluginDemoConfig.getAllConfig()
-   * cloudStore.setObjectForKey(allConfig, "MNToolbar_config")
+   * let allConfig = taskConfig.getAllConfig()
+   * cloudStore.setObjectForKey(allConfig, "MNTask_config")
    */
   static getAllConfig(){
     if (this.dynamicAction.length === 0) {
@@ -9195,25 +9195,25 @@ class pluginDemoConfig {
    * try {
    *   let configText = MNUtil.clipboardText
    *   let config = JSON.parse(configText)
-   *   if (pluginDemoConfig.importConfig(config)) {
+   *   if (taskConfig.importConfig(config)) {
    *     MNUtil.showHUD("✅ 配置导入成功")
-   *     pluginDemoConfig.save()
+   *     taskConfig.save()
    *   }
    * } catch (error) {
    *   MNUtil.showHUD("❌ 配置格式错误")
    * }
    * 
    * // 从云端同步配置
-   * let cloudConfig = cloudStore.objectForKey("MNToolbar_config")
-   * if (cloudConfig && pluginDemoConfig.importConfig(cloudConfig)) {
+   * let cloudConfig = cloudStore.objectForKey("MNTask_config")
+   * if (cloudConfig && taskConfig.importConfig(cloudConfig)) {
    *   // 更新本地配置
-   *   pluginDemoConfig.syncConfig.lastSyncTime = Date.now()
-   *   pluginDemoConfig.save()
+   *   taskConfig.syncConfig.lastSyncTime = Date.now()
+   *   taskConfig.save()
    * }
    */
   static importConfig(config){
     try {
-    if (!MNUtil.isIOS()) { //iOS端不参与"MNToolbar_windowState"的云同步
+    if (!MNUtil.isIOS()) { //iOS端不参与"MNTask_windowState"的云同步
       this.windowState = config.windowState
     }
     let icloudSync = this.syncConfig.iCloudSync
@@ -9232,7 +9232,7 @@ class pluginDemoConfig {
     this.syncConfig.iCloudSync = icloudSync
     return true
     } catch (error) {
-      pluginDemoUtils.addErrorLog(error, "importConfig")
+      taskUtils.addErrorLog(error, "importConfig")
       return false
     }
   }
@@ -9246,15 +9246,15 @@ class pluginDemoConfig {
    * 
    * @example
    * // 检查本地是否有更新
-   * let localTime = pluginDemoConfig.getLocalLatestTime()
+   * let localTime = taskConfig.getLocalLatestTime()
    * let cloudTime = cloudConfig.lastModifyTime || 0
    * 
    * if (localTime > cloudTime) {
    *   // 本地配置更新，需要上传
-   *   pluginDemoConfig.syncToCloud()
+   *   taskConfig.syncToCloud()
    * } else if (cloudTime > localTime) {
    *   // 云端配置更新，需要下载
-   *   pluginDemoConfig.readCloudConfig()
+   *   taskConfig.readCloudConfig()
    * }
    */
   static getLocalLatestTime(){
@@ -9283,24 +9283,24 @@ class pluginDemoConfig {
    * 
    * @example
    * // 强制从云端恢复
-   * await pluginDemoConfig.readCloudConfig(true, false, true)
+   * await taskConfig.readCloudConfig(true, false, true)
    * 
    * // 静默检查更新
-   * await pluginDemoConfig.readCloudConfig(false, false, false)
+   * await taskConfig.readCloudConfig(false, false, false)
    * 
    * // 用户手动同步（带确认）
-   * await pluginDemoConfig.readCloudConfig(true, true, false)
+   * await taskConfig.readCloudConfig(true, true, false)
    * 
    * // 自动同步检查
-   * if (pluginDemoConfig.iCloudSync) {
-   *   await pluginDemoConfig.readCloudConfig(false)
+   * if (taskConfig.iCloudSync) {
+   *   await taskConfig.readCloudConfig(false)
    * }
    */
   static async readCloudConfig(msg = true,alert = false,force = false){
     try {
     if (force) {
       this.checkCloudStore(false)
-      let cloudConfig = this.cloudStore.objectForKey("MNToolbar_totalConfig")
+      let cloudConfig = this.cloudStore.objectForKey("MNTask_totalConfig")
       this.importConfig(cloudConfig)
       this.syncConfig.lastSyncTime = Date.now()
       this.save(undefined,undefined,false)
@@ -9313,8 +9313,8 @@ class pluginDemoConfig {
       return false
     }
       this.checkCloudStore(false)
-      // this.cloudStore.removeObjectForKey("MNToolbar_totalConfig")
-      let cloudConfig = this.cloudStore.objectForKey("MNToolbar_totalConfig")
+      // this.cloudStore.removeObjectForKey("MNTask_totalConfig")
+      let cloudConfig = this.cloudStore.objectForKey("MNTask_totalConfig")
       if (cloudConfig && cloudConfig.syncConfig) {
         let same = this.deepEqual(cloudConfig, this.getAllConfig())
         if (same && !force) {
@@ -9330,7 +9330,7 @@ class pluginDemoConfig {
         if (localLatestTime < cloudOldestTime || force) {
           // MNUtil.copy("Import from iCloud")
           if (alert) {
-            let confirm = await MNUtil.confirm("MN Toolbar: Import from iCloud?","MN Toolbar: 是否导入iCloud配置？")
+            let confirm = await MNUtil.confirm("MN Task: Import from iCloud?","MN Task: 是否导入iCloud配置？")
             if (!confirm) {
               return false
             }
@@ -9345,7 +9345,7 @@ class pluginDemoConfig {
         }
         if (this.syncConfig.lastModifyTime > (cloudConfig.syncConfig.lastModifyTime+1000) ) {
           if (alert) {
-            let confirm = await MNUtil.confirm("MN Toolbar: Uploading to iCloud?","MN Toolbar: 是否上传配置到iCloud？")
+            let confirm = await MNUtil.confirm("MN Task: Uploading to iCloud?","MN Task: 是否上传配置到iCloud？")
             if (!confirm) {
               return false
             }
@@ -9353,7 +9353,7 @@ class pluginDemoConfig {
           this.writeCloudConfig()
           return false
         }
-        let userSelect = await MNUtil.userSelect("MN Toolbar\nConflict config, import or export?","配置冲突，请选择操作",["📥 Import / 导入","📤 Export / 导出"])
+        let userSelect = await MNUtil.userSelect("MN Task\nConflict config, import or export?","配置冲突，请选择操作",["📥 Import / 导入","📤 Export / 导出"])
         switch (userSelect) {
           case 0:
             MNUtil.showHUD("User Cancel")
@@ -9373,7 +9373,7 @@ class pluginDemoConfig {
             return false
         }
       }else{
-        let confirm = await MNUtil.confirm("MN Toolbar: Empty config in iCloud, uploading?","MN Toolbar: iCloud配置为空,是否上传？")
+        let confirm = await MNUtil.confirm("MN Task: Empty config in iCloud, uploading?","MN Task: iCloud配置为空,是否上传？")
         if (!confirm) {
           return false
         }
@@ -9384,7 +9384,7 @@ class pluginDemoConfig {
         return false
       }
     } catch (error) {
-      pluginDemoUtils.addErrorLog(error, "readCloudConfig")
+      taskUtils.addErrorLog(error, "readCloudConfig")
       return false
     }
   }
@@ -9412,20 +9412,20 @@ class pluginDemoConfig {
    * 
    * @example
    * // 强制上传（覆盖云端）
-   * pluginDemoConfig.writeCloudConfig(true, true)
+   * taskConfig.writeCloudConfig(true, true)
    * 
    * // 静默上传（有冲突时不上传）
-   * pluginDemoConfig.writeCloudConfig(false, false)
+   * taskConfig.writeCloudConfig(false, false)
    * 
    * // 用户保存时触发
-   * if (pluginDemoConfig.save()) {
-   *   pluginDemoConfig.writeCloudConfig()
+   * if (taskConfig.save()) {
+   *   taskConfig.writeCloudConfig()
    * }
    * 
    * // 定期自动同步
    * setInterval(() => {
-   *   if (pluginDemoConfig.iCloudSync) {
-   *     pluginDemoConfig.writeCloudConfig(false)
+   *   if (taskConfig.iCloudSync) {
+   *     taskConfig.writeCloudConfig(false)
    *   }
    * }, 300000) // 5分钟
    */
@@ -9435,16 +9435,16 @@ class pluginDemoConfig {
       this.checkCloudStore()
       this.syncConfig.lastSyncTime = Date.now()
       this.syncConfig.lastModifyTime = Date.now()
-      let cloudConfig = this.cloudStore.objectForKey("MNToolbar_totalConfig")
+      let cloudConfig = this.cloudStore.objectForKey("MNTask_totalConfig")
       let config = this.getAllConfig()
       if (MNUtil.isIOS() && cloudConfig && cloudConfig.windowState) {
-        //iOS端不参与"MNToolbar_windowState"的云同步
+        //iOS端不参与"MNTask_windowState"的云同步
         config.windowState = cloudConfig.windowState
       }
       if (msg) {
         MNUtil.showHUD("Uploading...")
       }
-      this.cloudStore.setObjectForKey(config,"MNToolbar_totalConfig")
+      this.cloudStore.setObjectForKey(config,"MNTask_totalConfig")
       return true
     }
     if(!this.iCloudSync){
@@ -9452,7 +9452,7 @@ class pluginDemoConfig {
     }
     let iCloudSync = this.syncConfig.iCloudSync
     this.checkCloudStore()
-    let cloudConfig = this.cloudStore.objectForKey("MNToolbar_totalConfig")
+    let cloudConfig = this.cloudStore.objectForKey("MNTask_totalConfig")
     if (cloudConfig && cloudConfig.syncConfig) {
       let same = this.deepEqual(cloudConfig, this.getAllConfig())
       if (same) {
@@ -9477,7 +9477,7 @@ class pluginDemoConfig {
     }
     let config = this.getAllConfig()
     if (MNUtil.isIOS() && cloudConfig && cloudConfig.windowState) {
-      //iOS端不参与"MNToolbar_windowState"的云同步
+      //iOS端不参与"MNTask_windowState"的云同步
       config.windowState = cloudConfig.windowState
     }
     // MNUtil.copyJSON(config)
@@ -9485,12 +9485,12 @@ class pluginDemoConfig {
       MNUtil.showHUD("Uploading...")
     }
     config.syncConfig.iCloudSync = iCloudSync
-    this.cloudStore.setObjectForKey(config,"MNToolbar_totalConfig")
+    this.cloudStore.setObjectForKey(config,"MNTask_totalConfig")
     this.syncConfig.lastSyncTime = Date.now()
-    this.save("MNToolbar_syncConfig",undefined,false)
+    this.save("MNTask_syncConfig",undefined,false)
     return true
   } catch (error) {
-    pluginDemoUtils.addErrorLog(error, "writeCloudConfig")
+    taskUtils.addErrorLog(error, "writeCloudConfig")
     return false
   }
   }
@@ -9512,7 +9512,7 @@ class pluginDemoConfig {
    * 
    * @example
    * // 在初始化时调用
-   * pluginDemoConfig.init(mainPath)
+   * taskConfig.init(mainPath)
    * // init 方法内部会调用 initImage()
    * 
    * // 自定义图片存储位置
@@ -9532,7 +9532,7 @@ class pluginDemoConfig {
   static initImage(){
     try {
     let keys = this.getDefaultActionKeys()
-    this.imageScale = pluginDemoConfig.getByDefault("MNToolbar_imageScale",{})
+    this.imageScale = taskConfig.getByDefault("MNTask_imageScale",{})
     // MNUtil.copyJSON(this.imageScale)
     // let images = keys.map(key=>this.mainPath+"/"+this.getAction(key).image+".png")
     // MNUtil.copyJSON(images)
@@ -9543,8 +9543,8 @@ class pluginDemoConfig {
         this.imageConfigs[key] = MNUtil.getImage(this.buttonImageFolder+"/"+tem.path,scale)
       }else{
         let scale = 2
-        if (key in pluginDemoConfig.defalutImageScale) {
-          scale = pluginDemoConfig.defalutImageScale[key]
+        if (key in taskConfig.defalutImageScale) {
+          scale = taskConfig.defalutImageScale[key]
         }
         this.imageConfigs[key] = MNUtil.getImage(this.mainPath+"/"+this.getAction(key).image+".png",scale)
       }
@@ -9554,13 +9554,13 @@ class pluginDemoConfig {
     this.templateImage = MNUtil.getImage(this.mainPath+"/template.png",2.2)
     // MNUtil.copyJSON(this.imageConfigs)
       } catch (error) {
-      pluginDemoUtils.addErrorLog(error, "initImage")
+      taskUtils.addErrorLog(error, "initImage")
     }
   }
   // static setImageByURL(action,url,refresh = false) {
-  //   this.imageConfigs[action] = pluginDemoUtils.getOnlineImage(url)
+  //   this.imageConfigs[action] = taskUtils.getOnlineImage(url)
   //   if (refresh) {
-  //     MNUtil.postNotification("refreshToolbarButton", {})
+  //     MNUtil.postNotification("refreshTaskButton", {})
   //   }
   // }
   /**
@@ -9584,7 +9584,7 @@ class pluginDemoConfig {
    * 
    * @example
    * // 设置网络图片
-   * pluginDemoConfig.setImageByURL(
+   * taskConfig.setImageByURL(
    *   "custom1", 
    *   "https://example.com/icon.png",
    *   true,  // 立即刷新
@@ -9593,12 +9593,12 @@ class pluginDemoConfig {
    * 
    * // 使用笔记中的图片
    * let noteURL = "marginnote4app://note/ABC123"
-   * pluginDemoConfig.setImageByURL("custom2", noteURL, true)
+   * taskConfig.setImageByURL("custom2", noteURL, true)
    * 
    * // 批量设置图片（最后才刷新）
-   * pluginDemoConfig.setImageByURL("btn1", url1, false)
-   * pluginDemoConfig.setImageByURL("btn2", url2, false)
-   * pluginDemoConfig.setImageByURL("btn3", url3, true) // 最后一个刷新
+   * taskConfig.setImageByURL("btn1", url1, false)
+   * taskConfig.setImageByURL("btn2", url2, false)
+   * taskConfig.setImageByURL("btn3", url3, true) // 最后一个刷新
    * 
    * // 在设置界面中使用
    * UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
@@ -9610,7 +9610,7 @@ class pluginDemoConfig {
    *   (alert, buttonIndex) => {
    *     if (buttonIndex === 1) {
    *       let url = alert.textFieldAtIndex(0).text
-   *       pluginDemoConfig.setImageByURL(action, url, true)
+   *       taskConfig.setImageByURL(action, url, true)
    *     }
    *   }
    * )
@@ -9621,7 +9621,7 @@ class pluginDemoConfig {
     // MNUtil.getImage(this.mainPath+"/"+this.getAction(key).image+".png",scale)
     let localPath = this.buttonImageFolder+"/"+md5+".png"
     this.imageScale[action] = {path:md5+".png",scale:scale}
-    this.save("MNToolbar_imageScale")
+    this.save("MNTask_imageScale")
     let image = undefined
     let imageData = undefined
     if (MNUtil.isfileExists(localPath)) {
@@ -9629,7 +9629,7 @@ class pluginDemoConfig {
       // image.pngData().writeToFileAtomically(imagePath, false)
       this.imageConfigs[action] = image
       if (refresh) {
-        MNUtil.postNotification("refreshToolbarButton", {})
+        MNUtil.postNotification("refreshTaskButton", {})
       }
       return
     }
@@ -9642,25 +9642,25 @@ class pluginDemoConfig {
         imageData.writeToFileAtomically(localPath, false)
         this.imageConfigs[action] = image
         if (refresh) {
-          MNUtil.postNotification("refreshToolbarButton", {})
+          MNUtil.postNotification("refreshTaskButton", {})
         }
       }
       return
     }
     if (/^https?:\/\//.test(url)) {
-      image = pluginDemoUtils.getOnlineImage(url,scale)
+      image = taskUtils.getOnlineImage(url,scale)
       this.imageConfigs[action] = image
       imageData = image.pngData()
       // imageData.writeToFileAtomically(imagePath, false)
       imageData.writeToFileAtomically(localPath, false)
       if (refresh) {
-        MNUtil.postNotification("refreshToolbarButton", {})
+        MNUtil.postNotification("refreshTaskButton", {})
       }
       return
     }
     // }
     if (refresh) {
-      MNUtil.postNotification("refreshToolbarButton", {})
+      MNUtil.postNotification("refreshTaskButton", {})
     }
   }
   /**
@@ -9688,14 +9688,14 @@ class pluginDemoConfig {
    * // 从剪贴板设置图片
    * let image = MNUtil.getImageFromPasteboard()
    * if (image) {
-   *   pluginDemoConfig.setButtonImage("custom1", image, true)
+   *   taskConfig.setButtonImage("custom1", image, true)
    * }
    * 
    * // 使用截图
    * let screenshot = MNUtil.getDocImage(true, true)
    * if (screenshot) {
    *   let image = UIImage.imageWithData(screenshot)
-   *   pluginDemoConfig.setButtonImage("custom2", image, true)
+   *   taskConfig.setButtonImage("custom2", image, true)
    * }
    * 
    * // 生成纯色图片
@@ -9707,11 +9707,11 @@ class pluginDemoConfig {
    * context.fillRect(CGRectMake(0, 0, size.width, size.height))
    * let colorImage = UIGraphicsGetImageFromCurrentImageContext()
    * UIGraphicsEndImageContext()
-   * pluginDemoConfig.setButtonImage("custom3", colorImage, true)
+   * taskConfig.setButtonImage("custom3", colorImage, true)
    * 
    * // 错误处理
    * let largeImage = getSomeLargeImage()
-   * pluginDemoConfig.setButtonImage("custom4", largeImage, true)
+   * taskConfig.setButtonImage("custom4", largeImage, true)
    * // 如果图片太大，会显示 "Image size is too large"
    */
   static setButtonImage(action,image,refresh = false,scale = 3) {
@@ -9727,26 +9727,26 @@ class pluginDemoConfig {
     // MNUtil.getImage(this.mainPath+"/"+this.getAction(key).image+".png",scale)
     let localPath = this.buttonImageFolder+"/"+md5+".png"
     this.imageScale[action] = {path:md5+".png",scale:1}
-    this.save("MNToolbar_imageScale")
+    this.save("MNTask_imageScale")
     if (MNUtil.isfileExists(localPath)) {
       this.imageConfigs[action] = image
       if (refresh) {
-        MNUtil.postNotification("refreshToolbarButton", {})
+        MNUtil.postNotification("refreshTaskButton", {})
       }
       return
     }else{
       this.imageConfigs[action] = image
       image.pngData().writeToFileAtomically(localPath, false)
       if (refresh) {
-        MNUtil.postNotification("refreshToolbarButton", {})
+        MNUtil.postNotification("refreshTaskButton", {})
       }
     }
     // }
     if (refresh) {
-      MNUtil.postNotification("refreshToolbarButton", {})
+      MNUtil.postNotification("refreshTaskButton", {})
     }
   } catch (error) {
-    pluginDemoUtils.addErrorLog(error, "setButtonImage")
+    taskUtils.addErrorLog(error, "setButtonImage")
   }
   }
   /**
@@ -9766,27 +9766,27 @@ class pluginDemoConfig {
    * 
    * @example
    * // 获取固定工具栏的所有按钮
-   * let allButtons = pluginDemoConfig.getAllActions()
+   * let allButtons = taskConfig.getAllActions()
    * // ["copy", "search", "custom1", ..., "setting", "undo", "redo"]
    * 
    * // 获取动态工具栏的所有按钮
-   * let dynamicButtons = pluginDemoConfig.getAllActions(true)
+   * let dynamicButtons = taskConfig.getAllActions(true)
    * 
    * // 在设置界面使用
-   * let allActions = pluginDemoConfig.getAllActions()
+   * let allActions = taskConfig.getAllActions()
    * allActions.forEach((action, index) => {
-   *   let actionConfig = pluginDemoConfig.getAction(action)
+   *   let actionConfig = taskConfig.getAction(action)
    *   let cell = createCell(actionConfig.name, actionConfig.image)
    *   
    *   // 标记已选择的按钮
-   *   if (index < pluginDemoConfig.action.length) {
+   *   if (index < taskConfig.action.length) {
    *     cell.accessoryType = UITableViewCellAccessoryCheckmark
    *   }
    * })
    * 
    * // 查找未使用的按钮
-   * let allActions = pluginDemoConfig.getAllActions()
-   * let unusedActions = allActions.slice(pluginDemoConfig.action.length)
+   * let allActions = taskConfig.getAllActions()
+   * let unusedActions = allActions.slice(taskConfig.action.length)
    * console.log("未使用的按钮：", unusedActions)
    */
   static getAllActions(dynamic = false){
@@ -9817,29 +9817,29 @@ class pluginDemoConfig {
    * 
    * @example
    * // 通过名称执行按钮动作
-   * let des = pluginDemoConfig.getDesByButtonName("Copy")
+   * let des = taskConfig.getDesByButtonName("Copy")
    * if (des) {
    *   // des = { action: "copy", target: "title", ... }
-   *   pluginDemoUtils.customActionByDes(button, des)
+   *   taskUtils.customActionByDes(button, des)
    * }
    * 
    * // 在快捷方式中使用
    * function executeButtonByName(name) {
-   *   let des = pluginDemoConfig.getDesByButtonName(name)
+   *   let des = taskConfig.getDesByButtonName(name)
    *   if (des) {
    *     webviewController.customActionByDes(null, des)
    *   }
    * }
    * 
    * // 处理找不到的情况
-   * let des = pluginDemoConfig.getDesByButtonName("不存在的按钮")
+   * let des = taskConfig.getDesByButtonName("不存在的按钮")
    * // 显示 HUD: "Button not found: 不存在的按钮"
    * // 返回 undefined
    * 
    * // 获取所有按钮名称
-   * let allActions = pluginDemoConfig.getAllActions()
+   * let allActions = taskConfig.getAllActions()
    * let allNames = allActions.map(action => {
-   *   return pluginDemoConfig.getAction(action).name
+   *   return taskConfig.getAction(action).name
    * })
    * console.log("所有可用按钮：", allNames)
    */
@@ -9852,7 +9852,7 @@ class pluginDemoConfig {
       return undefined
     }
     let action = allActions[buttonIndex]
-    let actionDes = pluginDemoConfig.getDescriptionByName(action)
+    let actionDes = taskConfig.getDescriptionByName(action)
     return actionDes
   
   }
@@ -9875,24 +9875,24 @@ class pluginDemoConfig {
    * 
    * @example
    * // 获取工具栏方向
-   * let direction = pluginDemoConfig.getWindowState("direction")
+   * let direction = taskConfig.getWindowState("direction")
    * // "vertical" 或 "horizontal"
    * 
    * // 获取动态按钮数量
-   * let buttonCount = pluginDemoConfig.getWindowState("dynamicButton")
+   * let buttonCount = taskConfig.getWindowState("dynamicButton")
    * // 默认值: 9
    * 
    * // 获取窗口 frame
-   * let frame = pluginDemoConfig.getWindowState("frame")
+   * let frame = taskConfig.getWindowState("frame")
    * // {x: 0, y: 0, width: 40, height: 415}
    * 
    * // 在版本升级后的兼容处理
    * // 假设新版本添加了 "newFeature" 字段
-   * let newFeature = pluginDemoConfig.getWindowState("newFeature")
+   * let newFeature = taskConfig.getWindowState("newFeature")
    * // 老用户会获得 defaultWindowState 中的默认值
    * 
    * // 检查是否为分屏模式
-   * if (pluginDemoConfig.getWindowState("splitMode")) {
+   * if (taskConfig.getWindowState("splitMode")) {
    *   // 工具栏跟随分割线移动
    * }
    */
@@ -9916,14 +9916,14 @@ class pluginDemoConfig {
    * 
    * @example
    * // 获取固定工具栏方向
-   * let fixedDir = pluginDemoConfig.direction()
+   * let fixedDir = taskConfig.direction()
    * // "vertical" 或 "horizontal"
    * 
    * // 获取动态工具栏方向
-   * let dynamicDir = pluginDemoConfig.direction(true)
+   * let dynamicDir = taskConfig.direction(true)
    * 
    * // 根据方向调整布局
-   * if (pluginDemoConfig.direction() === "vertical") {
+   * if (taskConfig.direction() === "vertical") {
    *   // 垂直布局：按钮从上到下排列
    *   frame.height = buttonCount * buttonHeight
    *   frame.width = buttonWidth
@@ -9951,19 +9951,19 @@ class pluginDemoConfig {
    * 
    * @example
    * // 检查固定工具栏
-   * if (pluginDemoConfig.horizontal()) {
+   * if (taskConfig.horizontal()) {
    *   // 水平布局特定逻辑
    *   button.frame = {x: index * 50, y: 0, width: 45, height: 40}
    * }
    * 
    * // 检查动态工具栏
-   * if (pluginDemoConfig.horizontal(true)) {
+   * if (taskConfig.horizontal(true)) {
    *   // 调整动态工具栏的水平布局
    * }
    * 
    * // 在手势处理中使用
    * onPanGesture: function(gesture) {
-   *   if (pluginDemoConfig.horizontal()) {
+   *   if (taskConfig.horizontal()) {
    *     // 水平方向只允许左右移动
    *     frame.x += gesture.translationX
    *   } else {
@@ -9990,19 +9990,19 @@ class pluginDemoConfig {
    * 
    * @example
    * // 检查固定工具栏
-   * if (pluginDemoConfig.vertical()) {
+   * if (taskConfig.vertical()) {
    *   // 垂直布局特定逻辑
    *   button.frame = {x: 0, y: index * 50, width: 40, height: 45}
    * }
    * 
    * // 计算工具栏尺寸
-   * let toolbarSize = {
-   *   width: pluginDemoConfig.vertical() ? 40 : buttonCount * 40,
-   *   height: pluginDemoConfig.vertical() ? buttonCount * 40 : 40
+   * let taskSize = {
+   *   width: taskConfig.vertical() ? 40 : buttonCount * 40,
+   *   height: taskConfig.vertical() ? buttonCount * 40 : 40
    * }
    * 
    * // 贴边判断
-   * if (pluginDemoConfig.vertical()) {
+   * if (taskConfig.vertical()) {
    *   // 垂直布局可以贴左边或右边
    *   if (frame.x < 50) {
    *     // 吸附到左边
@@ -10033,62 +10033,62 @@ class pluginDemoConfig {
    * 
    * @example
    * // 切换固定工具栏方向
-   * pluginDemoConfig.toggleToolbarDirection("fixed")
+   * taskConfig.toggleTaskDirection("fixed")
    * // 如果当前是垂直，切换为水平
    * // 显示 HUD: "Set fixed direction to horizontal"
    * 
    * // 切换动态工具栏方向
-   * pluginDemoConfig.toggleToolbarDirection("dynamic")
+   * taskConfig.toggleTaskDirection("dynamic")
    * 
    * // 在按钮动作中使用
    * {
    *   action: "toggleDirection",
    *   handler: function() {
-   *     pluginDemoConfig.toggleToolbarDirection("fixed")
+   *     taskConfig.toggleTaskDirection("fixed")
    *   }
    * }
    * 
    * // 双击切换方向
    * onDoubleClick: function() {
    *   let source = isDynamicMode ? "dynamic" : "fixed"
-   *   pluginDemoConfig.toggleToolbarDirection(source)
+   *   taskConfig.toggleTaskDirection(source)
    * }
    * 
    * // 检查订阅状态
    * // 如果未订阅，会自动处理并返回
    */
-  static toggleToolbarDirection(source){
-    if (!pluginDemoUtils.checkSubscribe(true)) {
+  static toggleTaskDirection(source){
+    if (!taskUtils.checkSubscribe(true)) {
       return
     }
     switch (source) {
       case "fixed":
-        if (pluginDemoConfig.getWindowState("direction") === "vertical") {
-          pluginDemoConfig.windowState.direction = "horizontal"
-          pluginDemoConfig.save("MNToolbar_windowState")
+        if (taskConfig.getWindowState("direction") === "vertical") {
+          taskConfig.windowState.direction = "horizontal"
+          taskConfig.save("MNTask_windowState")
           MNUtil.showHUD("Set fixed direction to horizontal")
 
         }else{
-          pluginDemoConfig.windowState.direction = "vertical"
-          pluginDemoConfig.save("MNToolbar_windowState")
+          taskConfig.windowState.direction = "vertical"
+          taskConfig.save("MNTask_windowState")
           MNUtil.showHUD("Set fixed direction to vertical")
         }
         break;
       case "dynamic":
-        if (pluginDemoConfig.getWindowState("dynamicDirection") === "vertical") {
-          pluginDemoConfig.windowState.dynamicDirection = "horizontal"
-          pluginDemoConfig.save("MNToolbar_windowState")
+        if (taskConfig.getWindowState("dynamicDirection") === "vertical") {
+          taskConfig.windowState.dynamicDirection = "horizontal"
+          taskConfig.save("MNTask_windowState")
           MNUtil.showHUD("Set dynamic direction to horizontal")
         }else{
-          pluginDemoConfig.windowState.dynamicDirection = "vertical"
-          pluginDemoConfig.save("MNToolbar_windowState")
+          taskConfig.windowState.dynamicDirection = "vertical"
+          taskConfig.save("MNTask_windowState")
           MNUtil.showHUD("Set dynamic direction to vertical")
         }
         break;
       default:
         break;
     }
-    MNUtil.postNotification("refreshToolbarButton",{})
+    MNUtil.postNotification("refreshTaskButton",{})
   }
   /**
    * 🌳 展开配置为脑图结构
@@ -10117,7 +10117,7 @@ class pluginDemoConfig {
    *     target: "title"
    *   }
    * }
-   * pluginDemoConfig.expandesConfig(rootNote, buttonConfig)
+   * taskConfig.expandesConfig(rootNote, buttonConfig)
    * // 生成的脑图结构：
    * // rootNote
    * // ├── name: Copy
@@ -10128,7 +10128,7 @@ class pluginDemoConfig {
    * 
    * // 按指定顺序展开
    * let orderedKeys = ["action", "name", "image"]
-   * pluginDemoConfig.expandesConfig(rootNote, buttonConfig, orderedKeys)
+   * taskConfig.expandesConfig(rootNote, buttonConfig, orderedKeys)
    * 
    * // 排除某些敏感信息
    * let userConfig = {
@@ -10136,12 +10136,12 @@ class pluginDemoConfig {
    *   password: "secret",
    *   settings: { theme: "dark" }
    * }
-   * pluginDemoConfig.expandesConfig(rootNote, userConfig, null, "password")
+   * taskConfig.expandesConfig(rootNote, userConfig, null, "password")
    * // password 字段不会被展开
    * 
    * // 调试整个插件配置
-   * let allConfig = pluginDemoConfig.getAllConfig()
-   * pluginDemoConfig.expandesConfig(rootNote, allConfig)
+   * let allConfig = taskConfig.getAllConfig()
+   * taskConfig.expandesConfig(rootNote, allConfig)
    */
   static expandesConfig(note,config,orderedKeys=undefined,exclude=undefined) {
     let mnnote = MNNote.new(note)
@@ -10154,15 +10154,15 @@ class pluginDemoConfig {
     keys.forEach((key)=>{
       let subConfig = config[key]
       if (typeof subConfig === "object") {
-        let child = pluginDemoUtils.createChildNote(note,key)
+        let child = taskUtils.createChildNote(note,key)
         this.expandesConfig(child, subConfig,undefined,exclude)
       }else{
         if (exclude) {
           if (key !== exclude) {
-            pluginDemoUtils.createChildNote(note,key,config[key])
+            taskUtils.createChildNote(note,key,config[key])
           }
         }else{
-          pluginDemoUtils.createChildNote(note,key,config[key])
+          taskUtils.createChildNote(note,key,config[key])
         }
       }
     })
@@ -10180,7 +10180,7 @@ class pluginDemoConfig {
    * 
    * @example
    * // 检查是否显示 MNUtils 的 Logo
-   * if (pluginDemoConfig.checkLogoStatus("MNUtils")) {
+   * if (taskConfig.checkLogoStatus("MNUtils")) {
    *   // 在工具栏或设置界面显示 MNUtils 推广图标
    *   showPromoLogo("MNUtils")
    * }
@@ -10188,16 +10188,16 @@ class pluginDemoConfig {
    * // 在设置界面中使用
    * let addons = ["MNUtils", "MNChatAI", "MNSearch"]
    * addons.forEach(addon => {
-   *   let showLogo = pluginDemoConfig.checkLogoStatus(addon)
+   *   let showLogo = taskConfig.checkLogoStatus(addon)
    *   let switchCell = createSwitchCell(addon + " Logo", showLogo)
    *   switchCell.onSwitch = (isOn) => {
-   *     pluginDemoConfig.addonLogos[addon] = isOn
-   *     pluginDemoConfig.save()
+   *     taskConfig.addonLogos[addon] = isOn
+   *     taskConfig.save()
    *   }
    * })
    * 
    * // 条件显示推广内容
-   * if (pluginDemoConfig.checkLogoStatus("MNChatAI") && !isChatAIInstalled()) {
+   * if (taskConfig.checkLogoStatus("MNChatAI") && !isChatAIInstalled()) {
    *   // 显示安装提示
    *   showInstallHint("MNChatAI")
    * }
@@ -10210,7 +10210,7 @@ class pluginDemoConfig {
       return true
     }
   // } catch (error) {
-  //   pluginDemoUtils.addErrorLog(error, "checkLogoStatus")
+  //   taskUtils.addErrorLog(error, "checkLogoStatus")
   //   return true
   // }
   }
@@ -10236,7 +10236,7 @@ class pluginDemoConfig {
  * 
  * @example
  * // 生成复制动作的模板
- * let copyTemplate = pluginDemoConfig.template("copy")
+ * let copyTemplate = taskConfig.template("copy")
  * console.log(copyTemplate)
  * // {
  * //   "action": "copy",
@@ -10244,7 +10244,7 @@ class pluginDemoConfig {
  * // }
  * 
  * // 生成链接动作的模板
- * let linkTemplate = pluginDemoConfig.template("link")
+ * let linkTemplate = taskConfig.template("link")
  * // {
  * //   "action": "link",
  * //   "target": "marginnote4app://note/xxxx",
@@ -10257,14 +10257,14 @@ class pluginDemoConfig {
  *   let templates = actions.map(action => {
  *     return {
  *       title: action,
- *       template: pluginDemoConfig.template(action)
+ *       template: taskConfig.template(action)
  *     }
  *   })
  *   // 显示模板选择菜单
  * }
  * 
  * // 帮助用户创建自定义动作
- * let template = pluginDemoConfig.template("addChildNote")
+ * let template = taskConfig.template("addChildNote")
  * // 用户可以基于这个模板修改
  * let customConfig = JSON.parse(template)
  * customConfig.title = "我的笔记"
@@ -10274,10 +10274,10 @@ static template(action) {
   let config = {action:action}
   switch (action) {
     case "cloneAndMerge":
-      config.target = pluginDemoUtils.version.version+"app://note/xxxx"
+      config.target = taskUtils.version.version+"app://note/xxxx"
       break
     case "link":
-      config.target = pluginDemoUtils.version.version+"app://note/xxxx"
+      config.target = taskUtils.version.version+"app://note/xxxx"
       config.type = "Both"
       break
     case "clearContent":
@@ -10297,7 +10297,7 @@ static template(action) {
       config.target = "title"
       break
     case "showInFloatWindow":
-      config.target = pluginDemoUtils.version+"app://note/xxxx"
+      config.target = taskUtils.version+"app://note/xxxx"
       break
     case "addChildNote":
       config.title = "title"
@@ -10327,7 +10327,7 @@ static template(action) {
  * 
  * @example
  * // 获取复制按钮的配置
- * let copyAction = pluginDemoConfig.getAction("copy")
+ * let copyAction = taskConfig.getAction("copy")
  * // {
  * //   name: "Copy",
  * //   image: "copyExcerptPic",
@@ -10335,7 +10335,7 @@ static template(action) {
  * // }
  * 
  * // 获取自定义按钮配置
- * let customAction = pluginDemoConfig.getAction("custom1")
+ * let customAction = taskConfig.getAction("custom1")
  * // {
  * //   name: "我的功能",
  * //   image: "myicon",
@@ -10344,12 +10344,12 @@ static template(action) {
  * 
  * // 在创建按钮时使用
  * function createButton(actionKey) {
- *   let config = pluginDemoConfig.getAction(actionKey)
+ *   let config = taskConfig.getAction(actionKey)
  *   let button = UIButton.new()
  *   button.setTitle(config.name, UIControlStateNormal)
  *   
  *   // 设置图标
- *   let image = pluginDemoConfig.imageConfigs[actionKey]
+ *   let image = taskConfig.imageConfigs[actionKey]
  *   button.setImage(image, UIControlStateNormal)
  *   
  *   // 解析动作描述
@@ -10446,7 +10446,7 @@ static execute(){
  * 
  * @example
  * // 获取所有默认按钮
- * let defaultKeys = pluginDemoConfig.getDefaultActionKeys()
+ * let defaultKeys = taskConfig.getDefaultActionKeys()
  * // ["copy", "searchInEudic", "switchTitleorExcerpt", "copyAsMarkdownLink", 
  * //  "search", "bigbang", "snipaste", "chatglm", "setting", "edit", 
  * //  "ocr", "execute", "pasteAsTitle", "clearFormat", 
@@ -10455,14 +10455,14 @@ static execute(){
  * //  "timer", "sidebar", "undo", "redo"]
  * 
  * // 重置按钮顺序到默认值
- * pluginDemoConfig.action = pluginDemoConfig.getDefaultActionKeys()
- * pluginDemoConfig.save("MNToolbar_action")
+ * taskConfig.action = taskConfig.getDefaultActionKeys()
+ * taskConfig.save("MNTask_action")
  * 
  * // 检查某个按钮是否为默认按钮
- * let isDefault = pluginDemoConfig.getDefaultActionKeys().includes("myButton")
+ * let isDefault = taskConfig.getDefaultActionKeys().includes("myButton")
  * 
  * // 获取所有自定义按钮
- * let customButtons = pluginDemoConfig.getDefaultActionKeys()
+ * let customButtons = taskConfig.getDefaultActionKeys()
  *   .filter(key => key.startsWith("custom"))
  */
 static getDefaultActionKeys() {
@@ -10482,58 +10482,58 @@ static getDefaultActionKeys() {
  * @param {boolean} [upload=true] - 是否同步到云端
  * 
  * 支持的配置键：
- * - "MNToolbar_windowState": 窗口状态（iOS 不同步）
- * - "MNToolbar_dynamic": 动态模式开关
- * - "MNToolbar_action": 固定工具栏按钮顺序
- * - "MNToolbar_dynamicAction": 动态工具栏按钮顺序
- * - "MNToolbar_actionConfig": 按钮动作配置
- * - "MNToolbar_addonLogos": 插件 Logo 显示状态
- * - "MNToolbar_buttonConfig": 按钮样式配置
- * - "MNToolbar_popupConfig": 弹出菜单配置
- * - "MNToolbar_imageScale": 图片缩放配置
- * - "MNToolbar_syncConfig": 同步配置
+ * - "MNTask_windowState": 窗口状态（iOS 不同步）
+ * - "MNTask_dynamic": 动态模式开关
+ * - "MNTask_action": 固定工具栏按钮顺序
+ * - "MNTask_dynamicAction": 动态工具栏按钮顺序
+ * - "MNTask_actionConfig": 按钮动作配置
+ * - "MNTask_addonLogos": 插件 Logo 显示状态
+ * - "MNTask_buttonConfig": 按钮样式配置
+ * - "MNTask_popupConfig": 弹出菜单配置
+ * - "MNTask_imageScale": 图片缩放配置
+ * - "MNTask_syncConfig": 同步配置
  * 
  * @example
  * // 保存所有配置
- * pluginDemoConfig.save()
+ * taskConfig.save()
  * 
  * // 保存单个配置项（使用类属性值）
- * pluginDemoConfig.windowState.frame = newFrame
- * pluginDemoConfig.save("MNToolbar_windowState")
+ * taskConfig.windowState.frame = newFrame
+ * taskConfig.save("MNTask_windowState")
  * 
  * // 保存自定义值
- * pluginDemoConfig.save("MNToolbar_action", ["copy", "search", "custom1"])
+ * taskConfig.save("MNTask_action", ["copy", "search", "custom1"])
  * 
  * // 保存但不同步到云端
- * pluginDemoConfig.save("MNToolbar_syncConfig", null, false)
+ * taskConfig.save("MNTask_syncConfig", null, false)
  * 
  * // 在设置变更后保存
  * function onButtonOrderChanged(newOrder) {
- *   pluginDemoConfig.action = newOrder
- *   pluginDemoConfig.save("MNToolbar_action")
- *   MNUtil.postNotification("refreshToolbarButton", {})
+ *   taskConfig.action = newOrder
+ *   taskConfig.save("MNTask_action")
+ *   MNUtil.postNotification("refreshTaskButton", {})
  * }
  * 
  * // 批量修改后一次性保存
- * pluginDemoConfig.buttonConfig.color = "#ff0000"
- * pluginDemoConfig.buttonConfig.alpha = 0.9
- * pluginDemoConfig.windowState.direction = "horizontal"
- * pluginDemoConfig.save() // 保存所有更改
+ * taskConfig.buttonConfig.color = "#ff0000"
+ * taskConfig.buttonConfig.alpha = 0.9
+ * taskConfig.windowState.direction = "horizontal"
+ * taskConfig.save() // 保存所有更改
  */
 static save(key = undefined,value = undefined,upload = true) {
   // MNUtil.showHUD("save")
   if(key === undefined){
     let defaults = NSUserDefaults.standardUserDefaults()
-    defaults.setObjectForKey(this.windowState,"MNToolbar_windowState")
-    defaults.setObjectForKey(this.dynamic,"MNToolbar_dynamic")
-    defaults.setObjectForKey(this.action,"MNToolbar_action")
-    defaults.setObjectForKey(this.dynamicAction,"MNToolbar_dynamicAction")
-    defaults.setObjectForKey(this.actions,"MNToolbar_actionConfig")
-    defaults.setObjectForKey(this.addonLogos,"MNToolbar_addonLogos")
-    defaults.setObjectForKey(this.buttonConfig,"MNToolbar_buttonConfig")
-    defaults.setObjectForKey(this.popupConfig,"MNToolbar_popupConfig")
-    defaults.setObjectForKey(this.imageScale,"MNToolbar_imageScale")
-    defaults.setObjectForKey(this.syncConfig,"MNToolbar_syncConfig")
+    defaults.setObjectForKey(this.windowState,"MNTask_windowState")
+    defaults.setObjectForKey(this.dynamic,"MNTask_dynamic")
+    defaults.setObjectForKey(this.action,"MNTask_action")
+    defaults.setObjectForKey(this.dynamicAction,"MNTask_dynamicAction")
+    defaults.setObjectForKey(this.actions,"MNTask_actionConfig")
+    defaults.setObjectForKey(this.addonLogos,"MNTask_addonLogos")
+    defaults.setObjectForKey(this.buttonConfig,"MNTask_buttonConfig")
+    defaults.setObjectForKey(this.popupConfig,"MNTask_popupConfig")
+    defaults.setObjectForKey(this.imageScale,"MNTask_imageScale")
+    defaults.setObjectForKey(this.syncConfig,"MNTask_syncConfig")
     this.syncConfig.lastModifyTime = Date.now()
     if (upload && this.iCloudSync) {
       this.writeCloudConfig(false)
@@ -10549,41 +10549,41 @@ static save(key = undefined,value = undefined,upload = true) {
   }else{
     // showHUD(key)
     switch (key) {
-      case "MNToolbar_windowState":
+      case "MNTask_windowState":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.windowState,key)
-        if (MNUtil.isIOS()) { //iOS端不参与"MNToolbar_windowState"的云同步
+        if (MNUtil.isIOS()) { //iOS端不参与"MNTask_windowState"的云同步
           return
         }
         break;
-      case "MNToolbar_dynamic":
+      case "MNTask_dynamic":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.dynamic,key)
         break;
-      case "MNToolbar_dynamicAction":
+      case "MNTask_dynamicAction":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.dynamicAction,key)
         break;
-      case "MNToolbar_action":
+      case "MNTask_action":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.action,key)
         break;
-      case "MNToolbar_actionConfig":
+      case "MNTask_actionConfig":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.actions,key)
         break;
-      case "MNToolbar_addonLogos":
+      case "MNTask_addonLogos":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.addonLogos,key)
         break;
-      case "MNToolbar_buttonConfig":
+      case "MNTask_buttonConfig":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.buttonConfig,key)
         break;
-      case "MNToolbar_popupConfig":
+      case "MNTask_popupConfig":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.popupConfig,key)
         break;
-      case "MNToolbar_imageScale":
+      case "MNTask_imageScale":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.imageScale,key)
         break;
-      case "MNToolbar_syncConfig":
+      case "MNTask_syncConfig":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.syncConfig,key)
         break;
       default:
-        pluginDemoUtils.showHUD("Not supported")
+        taskUtils.showHUD("Not supported")
         break;
     }
     this.syncConfig.lastModifyTime = Date.now()
@@ -10605,10 +10605,10 @@ static save(key = undefined,value = undefined,upload = true) {
  * 
  * @example
  * // 获取原始配置值
- * let windowState = pluginDemoConfig.get("MNToolbar_windowState")
+ * let windowState = taskConfig.get("MNTask_windowState")
  * 
  * // 检查某个配置是否存在
- * if (pluginDemoConfig.get("MNToolbar_customKey") !== undefined) {
+ * if (taskConfig.get("MNTask_customKey") !== undefined) {
  *   // 配置存在
  * }
  */
@@ -10633,15 +10633,15 @@ static get(key) {
  * 
  * @example
  * // 获取配置，不存在时使用默认值
- * let theme = pluginDemoConfig.getByDefault("MNToolbar_theme", "light")
+ * let theme = taskConfig.getByDefault("MNTask_theme", "light")
  * // 第一次调用返回 "light" 并保存
  * // 后续调用返回已保存的值
  * 
  * // 初始化数组配置
- * let favorites = pluginDemoConfig.getByDefault("MNToolbar_favorites", [])
+ * let favorites = taskConfig.getByDefault("MNTask_favorites", [])
  * 
  * // 初始化对象配置
- * let shortcuts = pluginDemoConfig.getByDefault("MNToolbar_shortcuts", {
+ * let shortcuts = taskConfig.getByDefault("MNTask_shortcuts", {
  *   copy: "Cmd+C",
  *   paste: "Cmd+V"
  * })
@@ -10665,15 +10665,15 @@ static getByDefault(key,defaultValue) {
  * 
  * @example
  * // 删除单个配置
- * pluginDemoConfig.remove("MNToolbar_tempData")
+ * taskConfig.remove("MNTask_tempData")
  * 
  * // 清理过期配置
- * let oldKeys = ["MNToolbar_v1", "MNToolbar_legacy"]
- * oldKeys.forEach(key => pluginDemoConfig.remove(key))
+ * let oldKeys = ["MNTask_v1", "MNTask_legacy"]
+ * oldKeys.forEach(key => taskConfig.remove(key))
  * 
  * // 重置前先删除
- * pluginDemoConfig.remove("MNToolbar_cache")
- * pluginDemoConfig.getByDefault("MNToolbar_cache", {})
+ * taskConfig.remove("MNTask_cache")
+ * taskConfig.getByDefault("MNTask_cache", {})
  */
 static remove(key) {
   NSUserDefaults.standardUserDefaults().removeObjectForKey(key)
@@ -10691,15 +10691,15 @@ static remove(key) {
  * 
  * @example
  * // 重置按钮配置
- * pluginDemoConfig.reset("config")
+ * taskConfig.reset("config")
  * // 所有按钮恢复默认动作
  * 
  * // 重置按钮顺序
- * pluginDemoConfig.reset("order")
+ * taskConfig.reset("order")
  * // 固定工具栏恢复默认顺序
  * 
  * // 重置动态工具栏顺序
- * pluginDemoConfig.reset("dynamicOrder")
+ * taskConfig.reset("dynamicOrder")
  * 
  * // 在设置界面使用
  * function showResetMenu() {
@@ -10711,9 +10711,9 @@ static remove(key) {
  *   // 显示选择菜单
  *   let selected = await showMenu(options)
  *   if (selected) {
- *     pluginDemoConfig.reset(selected.action)
+ *     taskConfig.reset(selected.action)
  *     MNUtil.showHUD("已重置")
- *     MNUtil.postNotification("refreshToolbarButton", {})
+ *     MNUtil.postNotification("refreshTaskButton", {})
  *   }
  * }
  */
@@ -10721,15 +10721,15 @@ static reset(target){
   switch (target) {
     case "config":
       this.actions = this.getActions()
-      this.save("MNToolbar_actionConfig")
+      this.save("MNTask_actionConfig")
       break;
     case "order":
       this.action = this.getDefaultActionKeys()
-      this.save("MNToolbar_action")
+      this.save("MNTask_action")
       break;  
     case "dynamicOrder":
       this.dynamicAction = this.getDefaultActionKeys()
-      this.save("MNToolbar_dynamicAction")
+      this.save("MNTask_dynamicAction")
       break;
     default:
       break;
@@ -10748,21 +10748,21 @@ static reset(target){
  * // 处理按钮点击
  * onButtonClick: function(button) {
  *   let index = this.buttons.indexOf(button)
- *   let des = pluginDemoConfig.getDescriptionByIndex(index)
+ *   let des = taskConfig.getDescriptionByIndex(index)
  *   // des = { action: "copy", target: "title" }
  *   this.performAction(des)
  * }
  * 
  * // 获取第一个按钮的配置
- * let firstButtonDes = pluginDemoConfig.getDescriptionByIndex(0)
+ * let firstButtonDes = taskConfig.getDescriptionByIndex(0)
  * console.log("第一个按钮:", firstButtonDes)
  */
 static getDescriptionByIndex(index){
-  let actionName = pluginDemoConfig.action[index]
-  if (actionName in pluginDemoConfig.actions) {
-    return JSON.parse(pluginDemoConfig.actions[actionName].description)
+  let actionName = taskConfig.action[index]
+  if (actionName in taskConfig.actions) {
+    return JSON.parse(taskConfig.actions[actionName].description)
   }else{
-    return JSON.parse(pluginDemoConfig.getActions()[actionName].description)
+    return JSON.parse(taskConfig.getActions()[actionName].description)
   }
 }
 /**
@@ -10775,7 +10775,7 @@ static getDescriptionByIndex(index){
  * 
  * @example
  * // 获取并执行代码
- * let code = pluginDemoConfig.getExecuteCode()
+ * let code = taskConfig.getExecuteCode()
  * // code = "MNUtil.showHUD('Hello world')"
  * 
  * // 在沙箱中执行
@@ -10786,18 +10786,18 @@ static getDescriptionByIndex(index){
  * }
  * 
  * // 显示代码编辑器
- * let currentCode = pluginDemoConfig.getExecuteCode()
+ * let currentCode = taskConfig.getExecuteCode()
  * showCodeEditor(currentCode, (newCode) => {
- *   pluginDemoConfig.actions.execute.description = newCode
- *   pluginDemoConfig.save("MNToolbar_actionConfig")
+ *   taskConfig.actions.execute.description = newCode
+ *   taskConfig.save("MNTask_actionConfig")
  * })
  */
 static getExecuteCode(){
   let actionName = "execute"
-  if (actionName in pluginDemoConfig.actions) {
-    return pluginDemoConfig.actions[actionName].description
+  if (actionName in taskConfig.actions) {
+    return taskConfig.actions[actionName].description
   }else{
-    return pluginDemoConfig.getActions()[actionName].description
+    return taskConfig.getActions()[actionName].description
   }
 }
 /**
@@ -10816,15 +10816,15 @@ static getExecuteCode(){
  * 
  * @example
  * // 获取复制按钮的描述
- * let copyDes = pluginDemoConfig.getDescriptionByName("copy")
+ * let copyDes = taskConfig.getDescriptionByName("copy")
  * // {} 或 { action: "copy", target: "title" }
  * 
  * // 获取自定义按钮描述
- * let customDes = pluginDemoConfig.getDescriptionByName("custom1")
+ * let customDes = taskConfig.getDescriptionByName("custom1")
  * // { action: "cloneAndMerge", target: "marginnote4app://note/xxxx" }
  * 
  * // 安全使用
- * let des = pluginDemoConfig.getDescriptionByName(actionName)
+ * let des = taskConfig.getDescriptionByName(actionName)
  * if (des.action) {
  *   // 有效的动作描述
  *   this.performAction(des)
@@ -10833,15 +10833,15 @@ static getExecuteCode(){
  * }
  * 
  * // 特殊情况：pasteAsTitle
- * let pasteDes = pluginDemoConfig.getDescriptionByName("pasteAsTitle")
+ * let pasteDes = taskConfig.getDescriptionByName("pasteAsTitle")
  * // 即使 JSON 无效，也会返回兼容的描述对象
  */
 static getDescriptionByName(actionName){
   let des
-  if (actionName in pluginDemoConfig.actions) {
-    des = pluginDemoConfig.actions[actionName].description
+  if (actionName in taskConfig.actions) {
+    des = taskConfig.actions[actionName].description
   }else{
-    des = pluginDemoConfig.getActions()[actionName].description
+    des = taskConfig.getActions()[actionName].description
   }
   if (MNUtil.isValidJSON(des)) {
     return JSON.parse(des)
@@ -10871,25 +10871,25 @@ static getDescriptionByName(actionName){
  * 
  * @example
  * // 检查是否可以修改
- * if (pluginDemoConfig.checkCouldSave("custom1")) {
+ * if (taskConfig.checkCouldSave("custom1")) {
  *   // 允许用户编辑配置
  *   showConfigEditor("custom1")
  * }
  * 
  * // 在保存前检查
  * function saveButtonConfig(actionName, newConfig) {
- *   if (!pluginDemoConfig.checkCouldSave(actionName)) {
+ *   if (!taskConfig.checkCouldSave(actionName)) {
  *     // 显示 HUD: "Only available for Custom Action!"
  *     return false
  *   }
- *   pluginDemoConfig.actions[actionName].description = JSON.stringify(newConfig)
- *   pluginDemoConfig.save("MNToolbar_actionConfig")
+ *   taskConfig.actions[actionName].description = JSON.stringify(newConfig)
+ *   taskConfig.save("MNTask_actionConfig")
  *   return true
  * }
  * 
  * // 批量检查
  * let editableButtons = allButtons.filter(name => 
- *   pluginDemoConfig.checkCouldSave(name)
+ *   taskConfig.checkCouldSave(name)
  * )
  */
   static checkCouldSave(actionName){
@@ -10926,7 +10926,7 @@ static getDescriptionByName(actionName){
  * 
  * @example
  * // 执行简单代码
- * await pluginDemoSandbox.execute('MNUtil.showHUD("Hello World")')
+ * await taskSandbox.execute('MNUtil.showHUD("Hello World")')
  * 
  * // 执行复杂操作
  * let code = `
@@ -10936,15 +10936,15 @@ static getDescriptionByName(actionName){
  *     MNUtil.showHUD("标题已更新")
  *   }
  * `
- * await pluginDemoSandbox.execute(code)
+ * await taskSandbox.execute(code)
  * 
  * // 在 execute 按钮中使用
  * case "execute":
- *   let executeCode = pluginDemoConfig.getExecuteCode()
- *   await pluginDemoSandbox.execute(executeCode)
+ *   let executeCode = taskConfig.getExecuteCode()
+ *   await taskSandbox.execute(executeCode)
  *   break
  */
-class pluginDemoSandbox{
+class taskSandbox{
   /**
    * 🚀 执行代码
    * 
@@ -10969,7 +10969,7 @@ class pluginDemoSandbox{
    * 
    * @example
    * // 基础使用
-   * await pluginDemoSandbox.execute('MNUtil.showHUD("执行成功")')
+   * await taskSandbox.execute('MNUtil.showHUD("执行成功")')
    * 
    * // 处理笔记
    * let code = `
@@ -10979,12 +10979,12 @@ class pluginDemoSandbox{
    *   })
    *   MNUtil.showHUD(\`处理了 \${notes.length} 个笔记\`)
    * `
-   * await pluginDemoSandbox.execute(code)
+   * await taskSandbox.execute(code)
    * 
    * // 带错误处理
    * let userCode = getUserInput()
    * try {
-   *   await pluginDemoSandbox.execute(userCode)
+   *   await taskSandbox.execute(userCode)
    * } catch (error) {
    *   // 错误已被内部记录，这里通常不会触发
    * }
@@ -11003,7 +11003,7 @@ class pluginDemoSandbox{
    */
   static async execute(code){
     'use strict';
-    if (!pluginDemoUtils.checkSubscribe(true)) {
+    if (!taskUtils.checkSubscribe(true)) {
       return
     }
     try {
@@ -11016,7 +11016,7 @@ class pluginDemoSandbox{
       // MNUtil.showHUD("message"+MNUtil.mindmapView.minimumZoomScale)
       // MNUtil.copyJSON(getAllProperties(MNUtil.mindmapView))
     } catch (error) {
-      pluginDemoUtils.addErrorLog(error, "executeInSandbox",code)
+      taskUtils.addErrorLog(error, "executeInSandbox",code)
     }
   }
 }

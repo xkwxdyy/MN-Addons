@@ -1245,6 +1245,13 @@ class MNMath {
     
     let moveIndexArr = this.autoGetNewContentToMoveIndexArr(note);
     
+    // 在合并模板前，如果卡片已经有文字评论了，先提取 Markdown 链接
+    let marginNoteLinks = [];
+    if (moveIndexArr.length > 0) {
+      marginNoteLinks = this.extractMarginNoteLinksFromComments(note, moveIndexArr);
+      MNUtil.log(`🔍 在合并模板前找到 ${marginNoteLinks.length} 个 MarginNote 链接`);
+    }
+    
     let ifTemplateMerged = this.mergeTemplate(note)
 
     if (!ifTemplateMerged) {
@@ -1259,6 +1266,12 @@ class MNMath {
           this.moveCommentsArrToField(note, moveIndexArr, field);
         }
       }
+    }
+    
+    // 处理之前提取的 MarginNote 链接
+    if (marginNoteLinks.length > 0) {
+      MNUtil.log("🔗 开始处理合并模板前提取的 MarginNote 链接...");
+      this.processExtractedMarginNoteLinks(note, marginNoteLinks);
     }
   }
 

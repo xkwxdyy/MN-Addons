@@ -583,13 +583,7 @@ try {
 }
 ```
 
-### 3. WebView 调试
-```javascript
-// 执行 JavaScript
-controller.runJavaScript(`
-  console.log("调试信息");
-`, "webview");
-```
+
 
 ## 📝 开发规范
 

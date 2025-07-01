@@ -1027,7 +1027,7 @@ MNMath.moveCommentsArrToField(note, [1,2,3], "证明", true);
 
 // 6. 解析卡片信息
 let titleParts = MNMath.parseNoteTitle(note);
-console.log(titleParts);  // {type: "命题", prefixContent: "xxx", content: "yyy"}
+MNUtil.log(titleParts);  // {type: "命题", prefixContent: "xxx", content: "yyy"}
 
 // 7. 批量转换旧格式归类卡片
 await MNMath.batchChangeClassificationTitles("all");
@@ -1371,7 +1371,7 @@ note.moveHtmlBlockToBottom("证明：");  // 移动证明块到底部
 // 3. 链接管理
 if (note.hasLink(targetNote.noteURL)) {
   if (note.LinkIfDouble(targetNote.noteURL)) {
-    console.log("双向链接");
+    MNUtil.log("双向链接");
   }
 }
 

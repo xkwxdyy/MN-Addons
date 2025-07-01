@@ -696,28 +696,71 @@ class MNMath {
           
           // 只有当目标卡片是潜在的父卡片时，才考虑清理
           if (this.isPotentialParentNote(targetNote, note)) {
+            // 4. 重要保护：检查链接是否在 linkParentNote 使用的特定字段下
+            // 只清理那些通过 linkParentNote 创建的链接（在"所属"、"包含"、"相关链接"字段下）
+            let isInParentNoteField = this.isLinkInParentNoteFields(linkObj.index, noteCommentsObj)
+            
+            if (!isInParentNoteField) {
+              // 如果链接不在 linkParentNote 的特定字段下，说明可能是用户手动创建的
+              MNUtil.log(`保护非特定字段的链接: ${note.noteTitle} -> ${targetNote.noteTitle}（不在"所属/包含/相关链接"字段下）`)
+              return // 不清理这个链接
+            }
+            
+            // 额外检查：如果对方也有链接回来，且也不在特定字段下，这是用户创建的双向链接
+            let targetHasLinkBack = false
+            let targetLinkInParentField = false
+            try {
+              let targetNoteCommentsObj = this.parseNoteComments(targetNote)
+              let targetLinks = targetNoteCommentsObj.linksObjArr
+              let targetLinkObj = targetLinks.find(link => {
+                let linkId = link.link.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1]
+                return linkId === note.noteId
+              })
+              
+              if (targetLinkObj) {
+                targetHasLinkBack = true
+                targetLinkInParentField = this.isLinkInParentNoteFields(targetLinkObj.index, targetNoteCommentsObj)
+              }
+            } catch (e) {
+              // 忽略错误
+            }
+            
+            // 如果双方都有链接但都不在特定字段下，保护这个双向链接
+            if (targetHasLinkBack && !targetLinkInParentField) {
+              MNUtil.log(`保护用户创建的双向链接: ${note.noteTitle} <-> ${targetNote.noteTitle}`)
+              return // 不清理这个链接
+            }
+            
+            // 只有在特定字段下的链接才会被清理
+            MNUtil.log(`准备清理 linkParentNote 创建的链接: ${note.noteTitle || note.noteId} -> ${targetNote.noteTitle || targetNote.noteId}（在特定字段下）`)
             oldParentNotesToCleanup.push({
               targetNote: targetNote,
-              linkText: linkObj.link
+              linkText: linkObj.link,
+              linkIndex: linkObj.index
             })
           }
         }
       } catch (error) {
         // 忽略解析错误，继续处理其他链接
-        console.log("清理旧链接时出错:", error)
+        MNUtil.log("清理旧链接时出错:", error)
       }
     })
     
     // 执行清理：删除双向链接
+    MNUtil.log(`准备清理 ${oldParentNotesToCleanup.length} 个旧父卡片链接`)
     oldParentNotesToCleanup.forEach(cleanup => {
       try {
+        MNUtil.log(`清理链接: ${note.noteTitle || note.noteId} <-> ${cleanup.targetNote.noteTitle || cleanup.targetNote.noteId}`)
+        
         // 删除当前卡片中指向旧父卡片的链接（按文本删除，避免索引问题）
         note.removeCommentsByText(cleanup.linkText)
+        MNUtil.log(`已删除 ${note.noteTitle} 中的链接: ${cleanup.linkText}`)
         
         // 删除旧父卡片中指向当前卡片的链接
         cleanup.targetNote.removeCommentsByText(note.noteURL)
+        MNUtil.log(`已删除 ${cleanup.targetNote.noteTitle} 中的链接: ${note.noteURL}`)
       } catch (error) {
-        console.log("执行清理时出错:", error)
+        MNUtil.log("执行清理时出错:", error)
       }
     })
   }
@@ -754,19 +797,36 @@ class MNMath {
     let childType = this.getNoteType(childNote)
     
     // 只有在不是实际父子关系的情况下，才根据类型来判断逻辑父子关系
-    // 归类卡片可能是其他卡片的逻辑父卡片（但不能是其子卡片的父卡片）
+    // 简化判断逻辑：基于类型的组合来决定
+    
+    // 1. 归类卡片可能是其他非归类卡片的逻辑父卡片
     if (potentialParentType === "归类" && childType !== "归类") {
+      // 归类卡片对于命题、例子、定义等卡片都可能是逻辑父卡片
       return true
     }
     
-    // 定义卡片可能是归类卡片的逻辑父卡片
+    // 2. 定义卡片可能是归类卡片的逻辑父卡片
     if (potentialParentType === "定义" && childType === "归类") {
       return true
     }
     
-    // 其他可能的父子关系可以在这里添加
-    // 比如：问题 -> 思路，命题 -> 例子 等
+    // 3. 其他类型的父子关系
+    // 问题 -> 思路
+    if (potentialParentType === "问题" && childType === "思路") {
+      return true
+    }
     
+    // 命题 -> 例子
+    if (potentialParentType === "命题" && childType === "例子") {
+      return true
+    }
+    
+    // 命题 -> 反例
+    if (potentialParentType === "命题" && childType === "反例") {
+      return true
+    }
+    
+    // 如果没有匹配的类型组合，不认为是潜在的父卡片
     return false
   }
 
@@ -775,6 +835,40 @@ class MNMath {
    */
   static getNoteIndexInAnotherNote(note, anotherNote) {
     return anotherNote.MNComments.findIndex(comment => comment.type === "linkComment" && comment.text === note.noteURL);
+  }
+
+  /**
+   * 判断链接是否在 linkParentNote 使用的特定字段下
+   * 
+   * @param {number} linkIndex - 链接在评论数组中的索引
+   * @param {Object} noteCommentsObj - parseNoteComments 的返回结果
+   * @returns {boolean} - 如果链接在"所属"、"包含"或"相关链接"字段下返回 true
+   */
+  static isLinkInParentNoteFields(linkIndex, noteCommentsObj) {
+    const parentNoteFields = ["所属", "包含", "相关链接"];
+    
+    MNUtil.log(`检查链接索引 ${linkIndex} 是否在特定字段下`)
+    MNUtil.log(`HTML 字段数量: ${noteCommentsObj.htmlCommentsObjArr.length}`)
+    
+    // 遍历所有 HTML 字段
+    for (let htmlObj of noteCommentsObj.htmlCommentsObjArr) {
+      // 检查字段名称是否包含 linkParentNote 使用的字段
+      let isParentNoteField = parentNoteFields.some(field => htmlObj.text.includes(field));
+      
+      MNUtil.log(`字段 "${htmlObj.text}" 是特定字段: ${isParentNoteField}`)
+      MNUtil.log(`字段的评论索引范围: ${JSON.stringify(htmlObj.excludingFieldBlockIndexArr)}`)
+      
+      if (isParentNoteField) {
+        // 检查链接是否在这个字段下（使用 excludingFieldBlockIndexArr）
+        if (htmlObj.excludingFieldBlockIndexArr.includes(linkIndex)) {
+          MNUtil.log(`找到！链接在 "${htmlObj.text}" 字段下`)
+          return true;
+        }
+      }
+    }
+    
+    MNUtil.log(`链接不在任何特定字段下`)
+    return false;
   }
 
   /**
@@ -3082,7 +3176,7 @@ class HtmlMarkdownUtils {
   static upwardMergeWithStyledComments(rootFocusNote, firstLevelType) {
       // 确保 MNUtil 和 HtmlMarkdownUtils 在当前作用域中可用
       if (typeof MNUtil === 'undefined' || typeof HtmlMarkdownUtils === 'undefined') {
-          console.error("MNUtil 或 HtmlMarkdownUtils 未定义。");
+          MNUtil.error("MNUtil 或 HtmlMarkdownUtils 未定义。");
           if (typeof MNUtil !== 'undefined' && typeof MNUtil.showHUD === 'function') {
               MNUtil.showHUD("错误：找不到必要的工具库。", 2);
           }
@@ -3100,7 +3194,7 @@ class HtmlMarkdownUtils {
           allDescendants = nodesData.descendant;
           treeIndex = nodesData.treeIndex;
       } catch (e) {
-          console.error("无法获取后代笔记。请确保 rootFocusNote.descendantNodes 属性存在且能正确返回数据。", e);
+          MNUtil.error("无法获取后代笔记。请确保 rootFocusNote.descendantNodes 属性存在且能正确返回数据。", e);
           MNUtil.showHUD("错误：无法获取后代笔记数据。", 2);
           return;
       }
@@ -3132,7 +3226,7 @@ class HtmlMarkdownUtils {
       function getNodeTypeForTreeIndexLevel(level, initialTypeForLevel1) {
           let currentType = initialTypeForLevel1;
           if (!HtmlMarkdownUtils.isLevelType(initialTypeForLevel1)) {
-              console.warn(`初始类型 "${initialTypeForLevel1}" 不是一个可识别的层级类型。将为第一层级默认使用 'goal'。`);
+              MNUtil.warn(`初始类型 "${initialTypeForLevel1}" 不是一个可识别的层级类型。将为第一层级默认使用 'goal'。`);
               currentType = 'goal';
           }
           if (level === 1) {
@@ -3157,11 +3251,11 @@ class HtmlMarkdownUtils {
               const parentNode = currentNode.parentNote;
 
               if (!parentNode) {
-                  console.error(`层级 ${currentTreeIndexLevel} 的笔记 ${currentNode.id || '(无ID)'} 没有父笔记。已跳过。`);
+                  MNUtil.error(`层级 ${currentTreeIndexLevel} 的笔记 ${currentNode.id || '(无ID)'} 没有父笔记。已跳过。`);
                   continue;
               }
               if (parentNode.id !== rootFocusNote.id && !allDescendants.some(d => d.id === parentNode.id)) {
-                  console.warn(`笔记 ${currentNode.id} 的父笔记 ${parentNode.id} 不在 rootFocusNote 后代笔记的合并范围内。已跳过此笔记的合并。`);
+                  MNUtil.warn(`笔记 ${currentNode.id} 的父笔记 ${parentNode.id} 不在 rootFocusNote 后代笔记的合并范围内。已跳过此笔记的合并。`);
                   continue;
               }
 
@@ -3194,7 +3288,7 @@ class HtmlMarkdownUtils {
                           HtmlMarkdownUtils.createHtmlMarkdownText(rawTextFromTitle, typeForCurrentNodeTitleInParentComment)
                       );
                   } else {
-                      console.warn(`parentNode ${parentNode.id} 上未找到 appendMarkdownComment 方法。`);
+                      MNUtil.warn(`parentNode ${parentNode.id} 上未找到 appendMarkdownComment 方法。`);
                   }
               }
 
@@ -3209,7 +3303,7 @@ class HtmlMarkdownUtils {
               if (typeof currentNode.mergeInto === 'function') {
                   currentNode.mergeInto(parentNode);
               } else {
-                  console.warn(`笔记 ${currentNode.id || '(无ID)'} 上未找到 mergeInto 方法。结构性合并已跳过。`);
+                  MNUtil.warn(`笔记 ${currentNode.id || '(无ID)'} 上未找到 mergeInto 方法。结构性合并已跳过。`);
               }
           }
       }

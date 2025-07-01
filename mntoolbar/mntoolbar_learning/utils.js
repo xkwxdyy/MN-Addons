@@ -6285,9 +6285,40 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
 `
   }
   /**
-   * count为true代表本次check会消耗一次免费额度（如果当天未订阅），如果为false则表示只要当天免费额度没用完，check就会返回true
-   * 开启ignoreFree则代表本次check只会看是否订阅，不管是否还有免费额度
-   * @returns {Boolean}
+   * 💳 检查订阅状态
+   * 
+   * 检查用户是否有权限使用付费功能。
+   * 支持免费额度和付费订阅两种模式。
+   * 
+   * @param {boolean} [count=true] - 是否消耗免费额度
+   *   - true: 本次调用会消耗一次免费额度（如果当天未订阅）
+   *   - false: 仅检查是否还有免费额度，不消耗
+   * @param {boolean} [msg=true] - 是否显示提示信息
+   * @param {boolean} [ignoreFree=false] - 是否忽略免费额度
+   *   - true: 只检查订阅状态，不考虑免费额度
+   *   - false: 同时考虑订阅状态和免费额度
+   * @returns {boolean} 是否有权限使用功能
+   * 
+   * 工作原理：
+   * 1. 未订阅用户每天有一定的免费使用额度
+   * 2. 订阅用户无限制使用
+   * 3. 需要安装 MN Utils 插件才能使用
+   * 
+   * @example
+   * // 消耗一次免费额度
+   * if (pluginDemoUtils.checkSubscribe()) {
+   *   // 执行付费功能
+   * }
+   * 
+   * // 仅检查状态，不消耗额度
+   * if (pluginDemoUtils.checkSubscribe(false)) {
+   *   MNUtil.showHUD("您还有免费额度可用")
+   * }
+   * 
+   * // 忽略免费额度，仅检查订阅
+   * if (pluginDemoUtils.checkSubscribe(true, true, true)) {
+   *   // 只有订阅用户才能使用
+   * }
    */
   static checkSubscribe(count = true, msg = true,ignoreFree = false){
     // return true
@@ -6301,6 +6332,38 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       return false
     }
   }
+  /**
+   * 💎 检查是否已订阅
+   * 
+   * 简单检查用户是否已经订阅付费功能。
+   * 与 checkSubscribe 不同，本方法只返回订阅状态，不涉及免费额度。
+   * 
+   * @param {boolean} [msg=true] - 是否显示错误提示（当 MN Utils 未安装时）
+   * @returns {boolean} 是否已订阅
+   * 
+   * @example
+   * // 检查订阅状态
+   * if (pluginDemoUtils.isSubscribed()) {
+   *   // 显示订阅用户专属功能
+   *   MNUtil.showHUD("欢迎订阅用户！")
+   * } else {
+   *   // 显示免费版功能
+   *   MNUtil.showHUD("您正在使用免费版")
+   * }
+   * 
+   * // 静默检查（不显示错误提示）
+   * let subscribed = pluginDemoUtils.isSubscribed(false)
+   * 
+   * // 根据订阅状态显示不同界面
+   * if (pluginDemoUtils.isSubscribed()) {
+   *   // 解锁全部功能
+   *   showAllFeatures()
+   * } else {
+   *   // 显示基础功能 + 升级提示
+   *   showBasicFeatures()
+   *   showUpgradeButton()
+   * }
+   */
   static isSubscribed(msg = true){
     if (typeof subscriptionConfig !== 'undefined') {
       return subscriptionConfig.isSubscribed()
@@ -6312,13 +6375,70 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     }
   }
   /**
+   * 📁 获取插件文件夹路径
    * 
-   * @param {string} fullPath 
-   * @returns {string}
+   * 从完整路径中提取所在文件夹的路径。
+   * 这是一个包装方法，内部调用 MNUtil.getFileFold()。
+   * 
+   * @param {string} fullPath - 文件的完整路径
+   * @returns {string} 文件所在文件夹的路径
+   * 
+   * @example
+   * // 获取当前插件的文件夹
+   * let pluginPath = "/path/to/marginnote.extension.mntoolbar/main.js"
+   * let folder = pluginDemoUtils.getExtensionFolder(pluginPath)
+   * // 返回: "/path/to/marginnote.extension.mntoolbar"
+   * 
+   * // 用于检查其他插件是否存在
+   * let extensionDir = pluginDemoUtils.getExtensionFolder(self.path)
+   * let mnUtilsPath = extensionDir + "/marginnote.extension.mnutils/main.js"
+   * if (NSFileManager.defaultManager().fileExistsAtPath(mnUtilsPath)) {
+   *   console.log("MN Utils 已安装")
+   * }
+   * 
+   * // 获取资源文件路径
+   * let folder = pluginDemoUtils.getExtensionFolder(self.path)
+   * let imagePath = folder + "/resources/images/icon.png"
    */
   static getExtensionFolder(fullPath) {
     return MNUtil.getFileFold(fullPath)  // 使用 MNUtil API 获取文件夹路径
   }
+  /**
+   * 🔍 检查 MN Utils 插件是否已安装
+   * 
+   * 检查系统中是否存在 MN Utils 插件。
+   * MN Utils 是许多高级功能的基础依赖。
+   * 
+   * @param {string} fullPath - 当前插件的完整路径（通常是 self.path）
+   * @returns {boolean} MN Utils 是否已安装
+   * 
+   * 检查逻辑：
+   * 1. 获取插件文件夹的父目录
+   * 2. 查找 marginnote.extension.mnutils/main.js 文件
+   * 3. 如果不存在，显示提示信息
+   * 
+   * @example
+   * // 在插件初始化时检查依赖
+   * if (!pluginDemoUtils.checkMNUtilsFolder(self.path)) {
+   *   // MN Utils 未安装，禁用高级功能
+   *   disableAdvancedFeatures()
+   *   return
+   * }
+   * 
+   * // 在使用高级功能前检查
+   * function useAdvancedFeature() {
+   *   if (!pluginDemoUtils.checkMNUtilsFolder(self.path)) {
+   *     return
+   *   }
+   *   // 继续执行高级功能
+   * }
+   * 
+   * // 检查并引导安装
+   * if (!pluginDemoUtils.checkMNUtilsFolder(self.path)) {
+   *   MNUtil.showHUD("请先安装 MN Utils 插件")
+   *   // 可以打开插件商店或提供下载链接
+   * }
+   */
   static checkMNUtilsFolder(fullPath){
     let extensionFolder = this.getExtensionFolder(fullPath)
     let folderExists = NSFileManager.defaultManager().fileExistsAtPath(extensionFolder+"/marginnote.extension.mnutils/main.js")
@@ -6328,9 +6448,51 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     return folderExists
   }
   /**
+   * 🎯 聚焦到笔记
    * 
-   * @param {MNNote} note 
-   * @param {*} des 
+   * 将指定笔记聚焦到文档或脑图中。
+   * 支持多种聚焦模式和来源选择。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {string} [des.noteURL] - 目标笔记的 URL（可选，默认使用当前焦点笔记）
+   * @param {string} [des.source] - 目标来源
+   *   - "parentNote" - 使用父笔记作为目标
+   * @param {string} des.target - 聚焦目标（必需）
+   *   - "doc" - 聚焦到文档中
+   *   - "mindmap" - 聚焦到脑图中
+   *   - "both" - 同时聚焦到文档和脑图
+   *   - "floatMindmap" - 聚焦到浮动脑图
+   * @param {boolean} [des.forceToFocus] - 强制聚焦（跨笔记本时）
+   * @returns {Promise<void>}
+   * 
+   * 聚焦策略：
+   * - 同笔记本：直接在当前窗口聚焦
+   * - 跨笔记本：默认使用浮动窗口，forceToFocus 时打开新窗口
+   * 
+   * @example
+   * // 聚焦当前笔记到文档
+   * await pluginDemoUtils.focus({
+   *   target: "doc"
+   * })
+   * 
+   * // 聚焦特定笔记到脑图
+   * await pluginDemoUtils.focus({
+   *   noteURL: "marginnote4app://note/xxxxx",
+   *   target: "mindmap"
+   * })
+   * 
+   * // 聚焦父笔记到文档和脑图
+   * await pluginDemoUtils.focus({
+   *   source: "parentNote",
+   *   target: "both"
+   * })
+   * 
+   * // 强制聚焦跨笔记本的笔记
+   * await pluginDemoUtils.focus({
+   *   noteURL: otherNotebookNoteURL,
+   *   target: "mindmap",
+   *   forceToFocus: true  // 会打开新窗口
+   * })
    */
   static async focus(des){
     let targetNote = des.noteURL? MNNote.new(des.noteURL):MNNote.getFocusNote()
@@ -6389,9 +6551,56 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       }
     }
   /**
+   * 🖍️ 创建高亮笔记
    * 
-   * @param {*} des 
-   * @returns {Promise<MNNote|undefined>}
+   * 从当前选中的文本或图片创建高亮笔记。
+   * 支持 OCR、颜色设置、标签添加、合并等高级功能。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {boolean} [des.OCR] - 是否对选中的图片进行 OCR
+   * @param {number} [des.color] - 笔记颜色索引（0-15）
+   * @param {number} [des.fillPattern] - 填充样式索引
+   * @param {boolean} [des.textFirst] - 是否文本优先显示
+   * @param {boolean} [des.asTitle] - 是否将摘录文本作为标题
+   * @param {string} [des.title] - 自定义标题
+   * @param {string[]} [des.tags] - 要添加的标签数组
+   * @param {string} [des.tag] - 要添加的单个标签
+   * @param {boolean} [des.mergeToPreviousNote] - 是否合并到之前的笔记
+   * @param {boolean} [des.mainMindMap] - 是否移到主脑图
+   * @param {string} [des.parentNote] - 父笔记的 URL
+   * @returns {Promise<MNNote|undefined>} 创建或修改的笔记对象
+   * 
+   * 工作流程：
+   * 1. 检查是否有选中内容
+   * 2. 如果需要 OCR，对图片进行文字识别
+   * 3. 创建高亮笔记
+   * 4. 应用各种属性和设置
+   * 5. 处理合并或层级关系
+   * 
+   * @example
+   * // 创建带颜色的高亮
+   * let note = await pluginDemoUtils.noteHighlight({
+   *   color: 2,  // 淡蓝色
+   *   tags: ["重要", "待复习"]
+   * })
+   * 
+   * // 创建并进行 OCR
+   * let note = await pluginDemoUtils.noteHighlight({
+   *   OCR: true,
+   *   textFirst: true
+   * })
+   * 
+   * // 合并到上一个笔记
+   * let note = await pluginDemoUtils.noteHighlight({
+   *   mergeToPreviousNote: true,
+   *   color: 3  // 继承上一个笔记的颜色
+   * })
+   * 
+   * // 创建并设置为某个笔记的子笔记
+   * let note = await pluginDemoUtils.noteHighlight({
+   *   parentNote: parentNote.noteURL,
+   *   asTitle: true  // 摘录作为标题
+   * })
    */
   static async noteHighlight(des){
     let selection = MNUtil.currentSelection
@@ -6478,6 +6687,47 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       })
     })
   }
+  /**
+   * 📝 插入代码片段
+   * 
+   * 在文本视图或编辑器中插入文本片段。
+   * 支持模板变量替换，自动检测光标位置。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {string} [des.target="textview"] - 插入目标
+   *   - "textview" - 插入到当前文本视图
+   *   - "editor" - 插入到编辑器
+   * @param {string} des.content - 要插入的内容，支持模板变量
+   * @returns {boolean} 是否插入成功
+   * 
+   * 支持的模板变量：
+   * - {{note.*}} - 笔记相关信息
+   * - {{date.*}} - 日期相关信息
+   * - {{cursor}} - 光标位置标记
+   * - 其他通过 detectAndReplace 支持的变量
+   * 
+   * @example
+   * // 插入简单文本
+   * pluginDemoUtils.insertSnippet({
+   *   content: "Hello World"
+   * })
+   * 
+   * // 插入带模板变量的内容
+   * pluginDemoUtils.insertSnippet({
+   *   content: "创建于：{{date.year}}-{{date.month}}-{{date.day}}\n标题：{{note.title}}"
+   * })
+   * 
+   * // 插入到编辑器
+   * pluginDemoUtils.insertSnippet({
+   *   target: "editor",
+   *   content: "// TODO: {{cursor}}"  // 光标会定位到 {{cursor}} 位置
+   * })
+   * 
+   * // 插入代码模板
+   * pluginDemoUtils.insertSnippet({
+   *   content: "function {{note.title}}() {\n  {{cursor}}\n}"
+   * })
+   */
   static insertSnippet(des){
     let target = des.target ?? "textview"
     let success = true
@@ -6506,6 +6756,46 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     }
     return success
   }
+  /**
+   * 📦 移动笔记
+   * 
+   * 将焦点笔记移动到指定位置。
+   * 支持移到主脑图或指定的父笔记下。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {boolean} [des.mainMindMap] - 是否移到主脑图（最顶层）
+   * @param {string} [des.noteURL] - 目标父笔记的 URL
+   * @returns {Promise<void>}
+   * 
+   * 移动规则：
+   * - mainMindMap: 将笔记移到最顶层，从任何父笔记中移除
+   * - noteURL: 将笔记作为子笔记添加到指定父笔记
+   * - 只能在同一笔记本内移动
+   * 
+   * @example
+   * // 移到主脑图（顶层）
+   * await pluginDemoUtils.moveNote({
+   *   mainMindMap: true
+   * })
+   * 
+   * // 移到特定父笔记下
+   * let parentNote = MNNote.getFocusNote()
+   * await pluginDemoUtils.moveNote({
+   *   noteURL: parentNote.noteURL
+   * })
+   * 
+   * // 批量移动多个笔记
+   * // 先选中多个笔记，然后执行
+   * await pluginDemoUtils.moveNote({
+   *   noteURL: targetParent.noteURL
+   * })
+   * 
+   * // 整理笔记结构
+   * let chapterNote = findChapterNote()
+   * await pluginDemoUtils.moveNote({
+   *   noteURL: chapterNote.noteURL  // 将选中的笔记移到章节下
+   * })
+   */
   static async moveNote(des){
     let focusNotes = MNNote.getFocusNotes()
     MNUtil.undoGrouping(()=>{
@@ -6529,12 +6819,87 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     })
   }
   /**
+   * 🪟 检查视图是否在当前窗口中
+   * 
+   * 判断指定的视图是否是当前窗口的子视图。
+   * 用于确定视图的层级关系和可见性。
    *
-   * @param {UIView} view
+   * @param {UIView} view - 要检查的视图对象
+   * @returns {boolean} 视图是否在当前窗口中
+   * 
+   * 使用场景：
+   * - 判断按钮是否在当前窗口
+   * - 检查弹出菜单的归属
+   * - 处理多窗口场景
+   * - 防止跨窗口操作
+   * 
+   * @example
+   * // 检查按钮是否在当前窗口
+   * let button = sender
+   * if (pluginDemoUtils.isDescendantOfCurrentWindow(button)) {
+   *   // 按钮在当前窗口，可以安全操作
+   *   showMenuAtButton(button)
+   * } else {
+   *   // 按钮不在当前窗口，需要特殊处理
+   *   MNUtil.showHUD("请在当前窗口操作")
+   * }
+   * 
+   * // 验证工具栏是否可见
+   * if (pluginDemoUtils.isDescendantOfCurrentWindow(self.view)) {
+   *   // 工具栏在当前窗口中
+   *   updateToolbarPosition()
+   * }
+   * 
+   * // 多窗口支持检查
+   * let views = getAllToolbarViews()
+   * let currentWindowViews = views.filter(view => 
+   *   pluginDemoUtils.isDescendantOfCurrentWindow(view)
+   * )
    */
   static isDescendantOfCurrentWindow(view){
     return view.isDescendantOfView(MNUtil.currentWindow)
   }
+  /**
+   * 📐 切换侧边栏
+   * 
+   * 打开或关闭插件侧边栏面板。
+   * 支持通用侧边栏和特定插件（如 ChatAI）的侧边栏。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {string} [des.target] - 特定的侧边栏目标
+   *   - "chatMode" - ChatAI 聊天模式侧边栏
+   *   - 不指定则切换通用侧边栏
+   * 
+   * 工作原理：
+   * - 使用 MNExtensionPanel 管理侧边栏
+   * - 支持多个插件共享侧边栏空间
+   * - 自动处理视图的显示/隐藏
+   * - 记住上次的状态
+   * 
+   * @example
+   * // 切换通用侧边栏
+   * pluginDemoUtils.toggleSidebar({})
+   * 
+   * // 打开 ChatAI 侧边栏
+   * pluginDemoUtils.toggleSidebar({
+   *   target: "chatMode"
+   * })
+   * 
+   * // 在按钮点击时切换
+   * onButtonClick: function() {
+   *   pluginDemoUtils.toggleSidebar({})
+   * }
+   * 
+   * // 条件切换
+   * if (needSidebar) {
+   *   pluginDemoUtils.toggleSidebar({
+   *     target: "chatMode"
+   *   })
+   * } else {
+   *   // 关闭侧边栏
+   *   MNUtil.toggleExtensionPanel()
+   * }
+   */
   static toggleSidebar(des){
     if ("target" in des) {
       switch (des.target) {
@@ -6578,6 +6943,50 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       MNUtil.toggleExtensionPanel()
     }
   }
+  /**
+   * 🎨 设置笔记颜色
+   * 
+   * 为选中的笔记或高亮设置颜色和填充样式。
+   * 支持自动样式跟随和批量设置。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {number} des.color - 颜色索引（0-15）
+   * @param {number} [des.fillPattern] - 填充样式索引
+   * @param {boolean} [des.followAutoStyle] - 是否跟随自动样式（需要 AutoStyle 插件）
+   * @param {boolean} [des.hideMessage] - 是否隐藏提示信息
+   * @returns {Promise<void>}
+   * 
+   * 颜色索引对应：
+   * - 0: 淡黄色  1: 淡绿色  2: 淡蓝色  3: 淡红色
+   * - 4: 黄色    5: 绿色    6: 蓝色    7: 红色
+   * - 8: 橙色    9: 深绿色  10: 深蓝色 11: 深红色
+   * - 12: 白色   13: 浅灰色 14: 深灰色 15: 紫色
+   * 
+   * @example
+   * // 设置为蓝色
+   * await pluginDemoUtils.setColor({
+   *   color: 6
+   * })
+   * 
+   * // 设置颜色和填充样式
+   * await pluginDemoUtils.setColor({
+   *   color: 2,      // 淡蓝色
+   *   fillPattern: 1 // 填充样式
+   * })
+   * 
+   * // 跟随自动样式（需要 AutoStyle 插件）
+   * await pluginDemoUtils.setColor({
+   *   color: 3,
+   *   followAutoStyle: true  // 图片和文本使用不同的填充样式
+   * })
+   * 
+   * // 批量设置多个笔记颜色
+   * // 先选中多个笔记，然后：
+   * await pluginDemoUtils.setColor({
+   *   color: 5,  // 全部设为绿色
+   *   hideMessage: true  // 不显示提示
+   * })
+   */
   static async setColor(des){
   try {
     let fillIndex = -1
@@ -6653,6 +7062,45 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     pluginDemoUtils.addErrorLog(error, "setColor")
   }
   }
+  /**
+   * 🔄 切换标题和摘录
+   * 
+   * 智能切换笔记的标题和摘录内容。
+   * 支持多种切换逻辑，包括从评论提取标题。
+   * 
+   * @returns {boolean} 操作是否成功
+   * 
+   * 切换逻辑：
+   * 1. 如果标题和摘录都为空，尝试从第一个评论提取标题
+   * 2. 如果标题和摘录都存在且不同，将标题移到摘录，摘录变为评论
+   * 3. 如果只有一个存在，则互换位置
+   * 4. 如果标题和摘录相同，清空标题（MN 只显示标题的情况）
+   * 5. 自动去除摘录中的加粗标记（**）
+   * 
+   * @example
+   * // 基本使用
+   * let success = pluginDemoUtils.switchTitleOrExcerpt()
+   * if (success) {
+   *   MNUtil.showHUD("✅ 切换成功")
+   * }
+   * 
+   * // 常见场景：
+   * // 场景1：只有标题 "重要概念"
+   * pluginDemoUtils.switchTitleOrExcerpt()
+   * // 结果：标题变空，摘录变为 "重要概念"
+   * 
+   * // 场景2：标题 "第一章"，摘录 "介绍内容"
+   * pluginDemoUtils.switchTitleOrExcerpt()
+   * // 结果：标题变空，摘录变为 "第一章"，原摘录变为评论
+   * 
+   * // 场景3：标题和摘录都为空，第一个评论是 "待整理"
+   * pluginDemoUtils.switchTitleOrExcerpt()
+   * // 结果：标题变为 "待整理"，评论被移除
+   * 
+   * // 场景4：摘录中有划重点标记 "这是**重点**内容"
+   * pluginDemoUtils.switchTitleOrExcerpt()
+   * // 结果：标题变为 "这是重点内容"（自动去除**）
+   */
   static switchTitleOrExcerpt() {
     let focusNotes = MNNote.getFocusNotes()
     let success = true
@@ -6708,10 +7156,37 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     return success
   }
   /**
+   * 🎨 设置单个笔记的颜色（内部方法）
    * 
-   * @param {MNNote} note 
-   * @param {number} colorIndex 
-   * @param {number} fillIndex 
+   * 为指定笔记设置颜色和填充样式。
+   * 自动处理合并笔记的情况，确保所有相关笔记颜色一致。
+   * 
+   * @param {MNNote} note - 要设置颜色的笔记对象
+   * @param {number} colorIndex - 颜色索引（0-15）
+   * @param {number} fillIndex - 填充样式索引（-1 表示不设置）
+   * 
+   * 处理逻辑：
+   * 1. 检查是否有合并的笔记组
+   * 2. 如果有合并组，设置所有相关笔记
+   * 3. 如果没有，只设置当前笔记及其链接
+   * 4. fillIndex 为 -1 时保持原有填充样式
+   * 
+   * @example
+   * // 设置单个笔记颜色
+   * let note = MNNote.getFocusNote()
+   * pluginDemoUtils.setNoteColor(note, 2, 1)  // 淡蓝色，填充样式1
+   * 
+   * // 只改变颜色，不改变填充样式
+   * pluginDemoUtils.setNoteColor(note, 5, -1)  // 绿色，保持原填充
+   * 
+   * // 处理合并笔记
+   * // 如果 note 是合并笔记的一部分，所有相关笔记都会被设置
+   * pluginDemoUtils.setNoteColor(mergedNote, 7, 2)
+   * 
+   * // 批量处理时的内部调用
+   * focusNotes.forEach(note => {
+   *   pluginDemoUtils.setNoteColor(note, colorIndex, fillIndex)
+   * })
    */
   static setNoteColor(note,colorIndex,fillIndex){
     if (note.note.groupNoteId) {//有合并卡片
@@ -6742,8 +7217,36 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     }
   }
   /**
+   * 🗺️ 获取脑图视图
    * 
-   * @param {UITextView} textView 
+   * 从文本视图获取其所属的脑图视图。
+   * 支持主脑图和浮动脑图的识别。
+   * 
+   * @param {UITextView} textView - 文本视图对象（通常是笔记编辑框）
+   * @returns {UIView|undefined} 脑图视图对象，找不到返回 undefined
+   * 
+   * 查找逻辑：
+   * 1. 先检查是否在主脑图视图中
+   * 2. 如果不在，尝试通过视图层级查找浮动脑图
+   * 3. 验证找到的视图确实是脑图视图
+   * 4. 缓存浮动脑图视图引用
+   * 
+   * @example
+   * // 获取当前编辑文本框所在的脑图
+   * let textView = self.textView
+   * let mindmapView = pluginDemoUtils.getMindmapview(textView)
+   * if (mindmapView) {
+   *   console.log("找到脑图视图")
+   *   // 可以进行脑图相关操作
+   * }
+   * 
+   * // 判断是主脑图还是浮动脑图
+   * let mindmap = pluginDemoUtils.getMindmapview(textView)
+   * if (mindmap === MNUtil.mindmapView) {
+   *   console.log("在主脑图中")
+   * } else if (mindmap === MNUtil.floatMindMapView) {
+   *   console.log("在浮动脑图中")
+   * }
    */
   static getMindmapview(textView){
     let mindmapView
@@ -6765,6 +7268,48 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       }
     }
   }
+  /**
+   * 📄 检查文本视图是否在扩展模式中
+   * 
+   * 【什么是扩展模式？】
+   * MarginNote 支持多种笔记显示模式：
+   * - 嵌入模式：笔记直接嵌入在文档中
+   * - 折叠模式：笔记可以折叠/展开
+   * - 页边模式：笔记显示在页面边缘
+   * 
+   * 【工作原理】
+   * 通过检查视图的层级关系来判断当前模式。
+   * 不同模式下，textView 到 readerController.view 的层级深度不同：
+   * - 嵌入模式：8 层
+   * - 折叠模式：9 层
+   * - 页边模式：13 层
+   * 
+   * @param {UITextView} textView - 要检查的文本视图
+   * @returns {boolean} 如果在扩展模式中返回 true，否则返回 false
+   * 
+   * @example
+   * // 在处理文本视图前检查模式
+   * let textView = note.textView
+   * if (pluginDemoUtils.checkExtendView(textView)) {
+   *   // 在扩展模式中，可能需要特殊处理
+   *   MNUtil.showHUD("当前处于扩展模式")
+   * } else {
+   *   // 正常模式
+   * }
+   * 
+   * // 根据模式调整 UI 布局
+   * if (pluginDemoUtils.checkExtendView(textView)) {
+   *   // 扩展模式下可能需要更多空间
+   *   menuWidth = 300
+   * } else {
+   *   menuWidth = 200
+   * }
+   * 
+   * 💡 提示：
+   * - 该方法通过链式访问 superview 来判断层级
+   * - 使用 try-catch 防止视图层级不完整时出错
+   * - 不同版本的 MarginNote 可能层级结构有差异
+   */
   static checkExtendView(textView) {
     try {
       if (textView.superview.superview.superview.superview.superview.superview.superview.superview === MNUtil.readerController.view) {
@@ -6783,14 +7328,136 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       return false
     }
   }
+  /**
+   * 🎨 验证十六进制颜色格式
+   * 
+   * 检查字符串是否为有效的 6 位十六进制颜色代码。
+   * 只接受标准的 #RRGGBB 格式。
+   * 
+   * 【颜色格式说明】
+   * - # 开头
+   * - 后跟 6 位十六进制字符（0-9, A-F, a-f）
+   * - 每两位代表一个颜色通道：RR（红）GG（绿）BB（蓝）
+   * - 每个通道的值范围：00-FF（0-255）
+   * 
+   * @param {string} str - 要验证的字符串
+   * @returns {boolean} 如果是有效的十六进制颜色返回 true，否则返回 false
+   * 
+   * @example
+   * // ✅ 有效的颜色格式
+   * pluginDemoUtils.isHexColor("#FF0000")  // true - 红色
+   * pluginDemoUtils.isHexColor("#00ff00")  // true - 绿色（小写也可以）
+   * pluginDemoUtils.isHexColor("#0080FF")  // true - 天蓝色
+   * 
+   * // ❌ 无效的颜色格式
+   * pluginDemoUtils.isHexColor("FF0000")   // false - 缺少 #
+   * pluginDemoUtils.isHexColor("#FFF")     // false - 只有 3 位
+   * pluginDemoUtils.isHexColor("#GGHHII")  // false - 包含无效字符
+   * pluginDemoUtils.isHexColor("red")      // false - 颜色名称
+   * 
+   * // 在设置颜色前验证
+   * let userColor = "#FF5733"
+   * if (pluginDemoUtils.isHexColor(userColor)) {
+   *   button.backgroundColor = MNUtil.hexColor(userColor)
+   * } else {
+   *   MNUtil.showHUD("请输入有效的颜色代码，如 #FF0000")
+   * }
+   * 
+   * 💡 注意：
+   * - 目前只支持 6 位格式，不支持 3 位简写（如 #FFF）
+   * - 不支持 RGB、RGBA 或颜色名称
+   * - 大小写不敏感
+   */
   static isHexColor(str) {
     // 正则表达式匹配 3 位或 6 位的十六进制颜色代码
     const hexColorPattern = /^#([A-Fa-f0-9]{6})$/;
     return hexColorPattern.test(str);
   }
+  /**
+   * 📐 解析窗口矩形字符串
+   * 
+   * 将 WinRect 格式的字符串解析为 frame 对象。
+   * WinRect 是 MarginNote 用于存储窗口位置和大小的格式。
+   * 
+   * 【WinRect 格式】
+   * "{{x, y}, {width, height}}" - 类似于 iOS 的 CGRect 描述
+   * 
+   * @param {string} winRect - WinRect 格式的字符串
+   * @returns {CGRect} 解析后的 frame 对象 {x, y, width, height}
+   * 
+   * @example
+   * // 解析存储的窗口位置
+   * let savedRect = "{{100, 50}, {300, 400}}"
+   * let frame = pluginDemoUtils.parseWinRect(savedRect)
+   * // frame = {x: 100, y: 50, width: 300, height: 400}
+   * 
+   * // 恢复窗口位置
+   * let lastPosition = config.get("windowPosition")
+   * if (lastPosition) {
+   *   let frame = pluginDemoUtils.parseWinRect(lastPosition)
+   *   window.frame = frame
+   * }
+   * 
+   * // 配合其他方法使用
+   * let rectString = "{{0, 0}, {500, 600}}"
+   * let rect = pluginDemoUtils.parseWinRect(rectString)
+   * Frame.set(view, rect.x, rect.y, rect.width, rect.height)
+   * 
+   * 💡 提示：
+   * - 该方法直接调用 MNUtil.parseWinRect
+   * - 通常用于解析配置文件中保存的位置信息
+   * - 格式错误时可能返回 undefined 或抛出异常
+   */
   static parseWinRect(winRect){
     return MNUtil.parseWinRect(winRect)
   }
+  /**
+   * 🎨 获取按钮颜色
+   * 
+   * 根据订阅状态和配置返回适当的按钮颜色。
+   * 支持系统预定义颜色和自定义十六进制颜色。
+   * 
+   * 【颜色策略】
+   * 1. 未订阅：返回白色半透明 (#ffffff, 85%)
+   * 2. 已订阅：
+   *    - 系统颜色：使用 MarginNote 的预定义颜色
+   *    - 自定义颜色：使用配置中的十六进制颜色
+   * 
+   * 【支持的系统颜色】
+   * - defaultBookPageColor: 默认书页颜色
+   * - defaultHighlightBlendColor: 默认高亮混合颜色
+   * - defaultDisableColor: 默认禁用颜色
+   * - defaultTextColor: 默认文本颜色
+   * - defaultNotebookColor: 默认笔记本颜色
+   * - defaultTintColor: 默认主题色
+   * - defaultTintColorForSelected: 默认选中主题色
+   * - defaultTintColorForDarkBackground: 深色背景主题色
+   * 
+   * @returns {UIColor} 按钮颜色对象（包含透明度）
+   * 
+   * @example
+   * // 设置按钮颜色
+   * let button = UIButton.new()
+   * button.backgroundColor = pluginDemoUtils.getButtonColor()
+   * 
+   * // 动态更新按钮颜色
+   * function updateButtonStyle() {
+   *   allButtons.forEach(btn => {
+   *     btn.backgroundColor = pluginDemoUtils.getButtonColor()
+   *   })
+   * }
+   * 
+   * // 配置示例
+   * pluginDemoConfig.buttonConfig = {
+   *   color: "defaultTintColor",  // 或 "#FF6B6B"
+   *   alpha: 0.9                   // 透明度 0-1
+   * }
+   * 
+   * 💡 提示：
+   * - 透明度由 buttonConfig.alpha 控制
+   * - 颜色会根据系统主题自动适应
+   * - 未订阅时使用固定颜色以示区分
+   */
   static getButtonColor(){
     if (!this.isSubscribed(false)) {
       return MNUtil.hexColorAlpha("#ffffff", 0.85)
@@ -6806,6 +7473,49 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     // }
     return MNUtil.hexColorAlpha(pluginDemoConfig.buttonConfig.color, pluginDemoConfig.buttonConfig.alpha)
   }
+  /**
+   * 🌐 从 URL 下载图片
+   * 
+   * 从网络下载图片并返回 UIImage 对象。
+   * 下载过程中会显示 HUD 提示。
+   * 
+   * 【使用场景】
+   * - 下载用户头像
+   * - 获取在线按钮图标
+   * - 加载远程图片资源
+   * 
+   * @param {string} url - 图片的完整 URL 地址
+   * @param {number} [scale=3] - 图片缩放比例（默认 3x，适合 Retina 显示）
+   * @returns {UIImage|undefined} 成功返回 UIImage 对象，失败返回 undefined
+   * 
+   * @example
+   * // 下载并设置按钮图标
+   * let iconURL = "https://example.com/icon.png"
+   * let image = pluginDemoUtils.getOnlineImage(iconURL)
+   * if (image) {
+   *   button.setImageForState(image, 0)  // 0 = UIControlStateNormal
+   * }
+   * 
+   * // 下载高清图片（指定缩放）
+   * let hdImage = pluginDemoUtils.getOnlineImage(imageURL, 2)
+   * 
+   * // 异步下载多张图片
+   * async function downloadImages(urls) {
+   *   let images = []
+   *   for (let url of urls) {
+   *     let img = pluginDemoUtils.getOnlineImage(url)
+   *     if (img) images.push(img)
+   *     await MNUtil.delay(0.1)  // 避免过快请求
+   *   }
+   *   return images
+   * }
+   * 
+   * ⚠️ 注意事项：
+   * - 该方法是同步的，会阻塞 UI
+   * - 下载大图片时可能造成卡顿
+   * - 建议在后台线程或使用异步方式
+   * - 没有缓存机制，每次调用都会重新下载
+   */
   static getOnlineImage(url,scale=3){
     MNUtil.showHUD("Downloading image")
     let imageData = NSData.dataWithContentsOfURL(MNUtil.genNSURL(url))
@@ -6816,6 +7526,59 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     MNUtil.showHUD("Download failed")
     return undefined
   }
+  /**
+   * 🎯 运行 iOS 快捷指令
+   * 
+   * 调用 iOS/iPadOS 的快捷指令应用执行指定的快捷指令。
+   * 可以传递输入参数给快捷指令。
+   * 
+   * 【快捷指令是什么？】
+   * - Apple 的自动化工具，可以创建多步骤的自动化流程
+   * - 通过 URL Scheme 可以从其他应用启动快捷指令
+   * - 支持传递参数和接收返回值
+   * 
+   * @param {string} name - 快捷指令的名称（需要与快捷指令应用中的名称完全匹配）
+   * @param {Object} [des] - 可选参数对象
+   * @param {string} [des.input] - 传递给快捷指令的输入参数
+   * @param {string} [des.text] - 传递给快捷指令的文本参数（会进行变量替换）
+   * 
+   * @example
+   * // 简单运行快捷指令
+   * pluginDemoUtils.shortcut("整理笔记")
+   * 
+   * // 传递输入参数
+   * pluginDemoUtils.shortcut("翻译文本", {
+   *   input: "Hello World"
+   * })
+   * 
+   * // 传递带变量的文本
+   * pluginDemoUtils.shortcut("创建任务", {
+   *   text: "阅读笔记: {{noteTitle}}"
+   * })
+   * 
+   * // 处理选中的笔记
+   * let note = MNNote.getFocusNote()
+   * if (note) {
+   *   pluginDemoUtils.shortcut("导出到 Notion", {
+   *     input: note.noteTitle,
+   *     text: note.excerptText
+   *   })
+   * }
+   * 
+   * // 批量处理
+   * function processNotes(notes) {
+   *   let titles = notes.map(n => n.noteTitle).join("\n")
+   *   pluginDemoUtils.shortcut("批量处理", {
+   *     text: titles
+   *   })
+   * }
+   * 
+   * 💡 提示：
+   * - 快捷指令名称必须与快捷指令 app 中的名称完全一致
+   * - text 参数会调用 detectAndReplace 进行变量替换
+   * - URL 会自动进行 URI 编码
+   * - 仅在 iOS/iPadOS 上可用
+   */
   static shortcut(name,des){
     let url = "shortcuts://run-shortcut?name="+encodeURIComponent(name)
     if (des && des.input) {
@@ -6828,8 +7591,41 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     MNUtil.openURL(url)
   }
   /**
+   * 📝 导出 Markdown 内容
    * 
-   * @param {string} content 
+   * 将 Markdown 格式的内容导出到文件或剪贴板。
+   * 支持多种导出方式，可以根据用户需求选择。
+   * 
+   * @param {string} content - 要导出的 Markdown 内容
+   * @param {string} [target="auto"] - 导出目标
+   *   - "file": 保存为文件（弹出文件保存对话框）
+   *   - "clipboard": 复制到剪贴板
+   *   - "auto": 自动选择（默认为剪贴板）
+   * 
+   * @example
+   * // 导出到剪贴板（默认）
+   * let markdown = "# 标题\n\n这是内容"
+   * pluginDemoUtils.exportMD(markdown)
+   * 
+   * // 保存为文件
+   * let content = "# 笔记总结\n\n..."
+   * pluginDemoUtils.exportMD(content, "file")
+   * 
+   * // 导出笔记内容
+   * let note = MNNote.getFocusNote()
+   * let md = await pluginDemoUtils.getMDFromNote(note)
+   * pluginDemoUtils.exportMD(md, "clipboard")
+   * 
+   * // 批量导出
+   * let allMarkdown = notes.map(note => {
+   *   return `## ${note.noteTitle}\n${note.excerptText}`
+   * }).join("\n\n---\n\n")
+   * pluginDemoUtils.exportMD(allMarkdown, "file")
+   * 
+   * 💡 提示：
+   * - 文件保存时会使用 export.md 作为默认文件名
+   * - 用户可以在保存对话框中修改文件名和保存位置
+   * - 剪贴板方式更适合快速分享
    */
   static exportMD(content,target = "auto"){
     switch (target) {
@@ -6845,6 +7641,59 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
         break;
     }
   }
+  /**
+   * 📤 导出功能主入口
+   * 
+   * 根据配置导出不同类型的内容，支持 PDF 文档和 Markdown 笔记。
+   * 可以导出单个笔记、笔记和子笔记、或整个文档。
+   * 
+   * 【导出源类型】
+   * - noteDoc: 笔记对应的 PDF 文档
+   * - noteMarkdown: 笔记转换为 Markdown
+   * - noteMarkdownOCR: 笔记转 Markdown（包含 OCR 识别）
+   * - noteWithDecendentsMarkdown: 笔记及其所有子笔记转 Markdown
+   * - currentDoc: 当前浏览的 PDF 文档
+   * 
+   * @param {Object} des - 导出配置对象
+   * @param {string} [des.source="noteDoc"] - 导出源类型
+   * @param {string} [des.target="auto"] - 导出目标 ("file", "clipboard", "auto")
+   * @returns {Promise<void>}
+   * 
+   * @example
+   * // 导出笔记对应的 PDF
+   * await pluginDemoUtils.export({
+   *   source: "noteDoc"
+   * })
+   * 
+   * // 导出笔记为 Markdown 到剪贴板
+   * await pluginDemoUtils.export({
+   *   source: "noteMarkdown",
+   *   target: "clipboard"
+   * })
+   * 
+   * // 导出笔记及子笔记（包含 OCR）
+   * await pluginDemoUtils.export({
+   *   source: "noteMarkdownOCR",
+   *   target: "file"
+   * })
+   * 
+   * // 导出整个笔记树
+   * await pluginDemoUtils.export({
+   *   source: "noteWithDecendentsMarkdown",
+   *   target: "file"
+   * })
+   * 
+   * // 导出当前文档
+   * await pluginDemoUtils.export({
+   *   source: "currentDoc"
+   * })
+   * 
+   * 💡 使用技巧：
+   * - OCR 选项适用于包含图片摘录的笔记
+   * - 导出子笔记时会保持层级结构
+   * - PDF 导出会弹出系统文件保存对话框
+   * - 没有选中笔记时，某些选项会默认导出当前文档
+   */
   static async export(des){
     try {
 
@@ -6898,10 +7747,53 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
   }
   }
   /**
+   * 📄 将笔记转换为 Markdown 格式
    * 
-   * @param {MNNote} note 
-   * @param {number} level 
-   * @returns {Promise<string>}
+   * 将 MarginNote 笔记对象转换为格式化的 Markdown 文本。
+   * 支持标题、摘录、评论和 OCR 识别。
+   * 
+   * 【处理内容】
+   * 1. 笔记标题 → Markdown 标题（# 开头）
+   * 2. 摘录内容：
+   *    - 文本摘录：直接转换
+   *    - 图片摘录：可选 OCR 识别
+   * 3. 评论内容：
+   *    - 文本评论：附加到摘录后
+   *    - HTML 评论：保留格式
+   *    - 链接评论：提取链接文本
+   *    - 手写评论：可 OCR 识别
+   * 
+   * @param {MNNote} note - 要转换的笔记对象
+   * @param {number} [level=0] - 标题级别偏移（用于子笔记层级）
+   * @param {boolean} [OCR_enabled=false] - 是否启用 OCR 识别图片
+   * @returns {Promise<string>} 转换后的 Markdown 字符串
+   * 
+   * @example
+   * // 基本转换
+   * let note = MNNote.getFocusNote()
+   * let markdown = await pluginDemoUtils.getMDFromNote(note)
+   * console.log(markdown)
+   * // 输出: "# 笔记标题\n这是摘录内容"
+   * 
+   * // 启用 OCR
+   * let mdWithOCR = await pluginDemoUtils.getMDFromNote(note, 0, true)
+   * 
+   * // 处理子笔记（增加标题级别）
+   * let childMd = await pluginDemoUtils.getMDFromNote(childNote, 2)
+   * // 原本 # 标题会变成 ### 标题
+   * 
+   * // 批量转换
+   * let notes = MNNote.getFocusNotes()
+   * let markdowns = await Promise.all(
+   *   notes.map(n => pluginDemoUtils.getMDFromNote(n))
+   * )
+   * let fullDoc = markdowns.join("\n\n---\n\n")
+   * 
+   * ⚠️ 注意事项：
+   * - 会自动过滤掉标题中的变量标记 {{...}}
+   * - 会过滤掉 MarginNote 内部链接（marginnote3app://）
+   * - OCR 需要时间，大量图片时可能较慢
+   * - 高亮标记 <mark> 会转换为 ==...==
    */
   static async getMDFromNote(note,level = 0,OCR_enabled = false){
     if (note) {
@@ -6981,10 +7873,74 @@ try {
   return ""
 }
   }
+  /**
+   * 🔄 转换高亮标记格式
+   * 
+   * 将 HTML 的 <mark> 标签转换为 Markdown 的 == 高亮语法。
+   * 这是 getMDFromNote 方法的辅助函数。
+   * 
+   * 【转换规则】
+   * <mark>高亮文本</mark> → ==高亮文本==
+   * 
+   * @param {string} markdown - 包含 <mark> 标签的文本
+   * @returns {string} 转换后的 Markdown 文本
+   * 
+   * @example
+   * let html = "这是<mark>重要内容</mark>和<mark>关键词</mark>"
+   * let md = pluginDemoUtils.highlightEqualsContentReverse(html)
+   * console.log(md)
+   * // 输出: "这是==重要内容==和==关键词=="
+   * 
+   * // 在导出流程中使用
+   * let noteText = note.excerptText  // 可能包含 <mark> 标签
+   * let markdownText = pluginDemoUtils.highlightEqualsContentReverse(noteText)
+   * 
+   * 💡 说明：
+   * - 使用非贪婪匹配 (.+?) 确保正确处理多个标签
+   * - Markdown 中 == 语法在某些解析器中表示高亮
+   * - 与 highlightEqualsContent 方法互为反向操作
+   */
   static highlightEqualsContentReverse(markdown) {
       // 使用正则表达式匹配==xxx==的内容并替换为<mark>xxx</mark>
       return markdown.replace(/<mark>(.+?)<\/mark>/g, '==\$1==');
   }
+  /**
+   * 📢 限制数值范围
+   * 
+   * 将数值限制在指定的最小值和最大值之间。
+   * 超出范围的值会被截断到边界值。
+   * 
+   * @param {number} value - 要限制的数值
+   * @param {number} min - 最小值
+   * @param {number} max - 最大值
+   * @returns {number} 限制后的数值
+   * 
+   * @example
+   * // 基本使用
+   * pluginDemoUtils.constrain(50, 0, 100)   // 50 - 在范围内
+   * pluginDemoUtils.constrain(150, 0, 100)  // 100 - 超过最大值
+   * pluginDemoUtils.constrain(-10, 0, 100)  // 0 - 低于最小值
+   * 
+   * // 限制 UI 元素位置
+   * let x = event.locationInView(view).x
+   * x = pluginDemoUtils.constrain(x, 0, view.bounds.width)
+   * button.frame = {x: x, y: 0, width: 50, height: 30}
+   * 
+   * // 限制缩放比例
+   * let scale = userScale
+   * scale = pluginDemoUtils.constrain(scale, 0.5, 3.0)
+   * view.transform = {a: scale, d: scale}
+   * 
+   * // 限制透明度
+   * let alpha = calculateAlpha()
+   * view.alpha = pluginDemoUtils.constrain(alpha, 0, 1)
+   * 
+   * 💡 使用场景：
+   * - UI 元素位置限制（防止超出屏幕）
+   * - 参数值验证（确保在有效范围内）
+   * - 动画值计算（防止异常值）
+   * - 用户输入限制
+   */
   static constrain(value, min, max) {
     return MNUtil.constrain(value, min, max)
   }
@@ -8538,6 +9494,41 @@ class pluginDemoConfig {
     return false
   }
   }
+  /**
+   * 🖼️ 初始化按钮图片
+   * 
+   * 加载所有按钮的图片资源，支持自定义图片和默认图片。
+   * 这是插件启动时的重要步骤，确保所有按钮都有正确的图标。
+   * 
+   * 工作流程：
+   * 1. 加载已保存的图片缩放配置
+   * 2. 遍历所有按钮，优先使用自定义图片
+   * 3. 如果没有自定义图片，使用默认图片
+   * 4. 加载特殊图标（曲线、运行、模板）
+   * 
+   * 图片来源优先级：
+   * 1. 用户自定义图片（buttonImageFolder 目录）
+   * 2. 默认图片（主目录下的 PNG 文件）
+   * 
+   * @example
+   * // 在初始化时调用
+   * pluginDemoConfig.init(mainPath)
+   * // init 方法内部会调用 initImage()
+   * 
+   * // 自定义图片存储位置
+   * // ~/Library/MarginNote 3/buttonImage/[md5].png
+   * 
+   * // 默认图片位置
+   * // [插件目录]/copy.png
+   * // [插件目录]/search.png
+   * // 等等...
+   * 
+   * // 图片缩放配置示例
+   * // imageScale = {
+   * //   "copy": { path: "a1b2c3.png", scale: 2.5 },
+   * //   "custom1": { path: "d4e5f6.png", scale: 3 }
+   * // }
+   */
   static initImage(){
     try {
     let keys = this.getDefaultActionKeys()
@@ -8572,6 +9563,58 @@ class pluginDemoConfig {
   //     MNUtil.postNotification("refreshToolbarButton", {})
   //   }
   // }
+  /**
+   * 🌐 通过 URL 设置按钮图片
+   * 
+   * 支持从多种来源设置按钮图片：网络图片、笔记图片或本地图片。
+   * 使用 MD5 缓存机制避免重复下载。
+   * 
+   * @param {string} action - 按钮动作标识（如 "copy", "custom1" 等）
+   * @param {string} url - 图片来源 URL，支持的格式：
+   *   - 网络图片：https://example.com/image.png
+   *   - 笔记图片：marginnote4app://note/[noteId]
+   *   - 本地文件：file:///path/to/image.png
+   * @param {boolean} [refresh=false] - 是否立即刷新工具栏显示
+   * @param {number} [scale=3] - 图片缩放比例（影响显示清晰度）
+   * 
+   * 缓存机制：
+   * - 使用 URL 的 MD5 作为文件名
+   * - 缓存位置：~/Library/MarginNote 3/buttonImage/[md5].png
+   * - 如果缓存存在，直接使用缓存
+   * 
+   * @example
+   * // 设置网络图片
+   * pluginDemoConfig.setImageByURL(
+   *   "custom1", 
+   *   "https://example.com/icon.png",
+   *   true,  // 立即刷新
+   *   2.5    // 缩放比例
+   * )
+   * 
+   * // 使用笔记中的图片
+   * let noteURL = "marginnote4app://note/ABC123"
+   * pluginDemoConfig.setImageByURL("custom2", noteURL, true)
+   * 
+   * // 批量设置图片（最后才刷新）
+   * pluginDemoConfig.setImageByURL("btn1", url1, false)
+   * pluginDemoConfig.setImageByURL("btn2", url2, false)
+   * pluginDemoConfig.setImageByURL("btn3", url3, true) // 最后一个刷新
+   * 
+   * // 在设置界面中使用
+   * UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+   *   "输入图片URL",
+   *   "支持网络图片或笔记图片",
+   *   2,  // 输入框样式
+   *   "取消",
+   *   ["确定"],
+   *   (alert, buttonIndex) => {
+   *     if (buttonIndex === 1) {
+   *       let url = alert.textFieldAtIndex(0).text
+   *       pluginDemoConfig.setImageByURL(action, url, true)
+   *     }
+   *   }
+   * )
+   */
   static setImageByURL(action,url,refresh = false,scale = 3) {
     let md5 = MNUtil.MD5(url)
     // let imagePath = this.mainPath+"/"+this.getAction(action).image+".png"
@@ -8621,12 +9664,55 @@ class pluginDemoConfig {
     }
   }
   /**
+   * 🖼️ 直接设置按钮图片
    * 
-   * @param {string} action 
-   * @param {UIImage} image 
-   * @param {boolean} refresh 
-   * @param {number} scale 
-   * @returns 
+   * 使用 UIImage 对象直接设置按钮图片。
+   * 适用于从相册选择、截图或程序生成的图片。
+   * 
+   * @param {string} action - 按钮动作标识（如 "copy", "custom1" 等）
+   * @param {UIImage} image - iOS 图片对象
+   * @param {boolean} [refresh=false] - 是否立即刷新工具栏显示
+   * @param {number} [scale=3] - 图片缩放比例（此参数实际未使用，保持为 1）
+   * @returns {void}
+   * 
+   * 限制条件：
+   * - 图片尺寸不能超过 500x500 像素
+   * - 过大的图片会影响性能和内存使用
+   * 
+   * 缓存机制：
+   * - 使用图片数据的 MD5 作为文件名
+   * - 自动保存到 buttonImage 目录
+   * - 如果相同图片已存在，直接使用缓存
+   * 
+   * @example
+   * // 从剪贴板设置图片
+   * let image = MNUtil.getImageFromPasteboard()
+   * if (image) {
+   *   pluginDemoConfig.setButtonImage("custom1", image, true)
+   * }
+   * 
+   * // 使用截图
+   * let screenshot = MNUtil.getDocImage(true, true)
+   * if (screenshot) {
+   *   let image = UIImage.imageWithData(screenshot)
+   *   pluginDemoConfig.setButtonImage("custom2", image, true)
+   * }
+   * 
+   * // 生成纯色图片
+   * let color = UIColor.redColor()
+   * let size = CGSizeMake(100, 100)
+   * UIGraphicsBeginImageContext(size)
+   * let context = UIGraphicsGetCurrentContext()
+   * color.setFill()
+   * context.fillRect(CGRectMake(0, 0, size.width, size.height))
+   * let colorImage = UIGraphicsGetImageFromCurrentImageContext()
+   * UIGraphicsEndImageContext()
+   * pluginDemoConfig.setButtonImage("custom3", colorImage, true)
+   * 
+   * // 错误处理
+   * let largeImage = getSomeLargeImage()
+   * pluginDemoConfig.setButtonImage("custom4", largeImage, true)
+   * // 如果图片太大，会显示 "Image size is too large"
    */
   static setButtonImage(action,image,refresh = false,scale = 3) {
   try {
@@ -8664,9 +9750,44 @@ class pluginDemoConfig {
   }
   }
   /**
-   * 只是返回数组,代表所有按钮的顺序
-   * @param {boolean} dynamic
-   * @returns {string[]}
+   * 📋 获取所有按钮动作列表
+   * 
+   * 返回完整的按钮动作数组，包括用户选择的和未选择的。
+   * 用于设置界面显示所有可用按钮。
+   * 
+   * @param {boolean} [dynamic=false] - 是否获取动态工具栏的按钮列表
+   *   - false: 获取固定工具栏的按钮列表
+   *   - true: 获取动态（跟随）工具栏的按钮列表
+   * @returns {string[]} 按钮动作标识数组
+   * 
+   * 返回顺序：
+   * 1. 用户已选择的按钮（保持用户排序）
+   * 2. 未选择的默认按钮（按默认顺序）
+   * 
+   * @example
+   * // 获取固定工具栏的所有按钮
+   * let allButtons = pluginDemoConfig.getAllActions()
+   * // ["copy", "search", "custom1", ..., "setting", "undo", "redo"]
+   * 
+   * // 获取动态工具栏的所有按钮
+   * let dynamicButtons = pluginDemoConfig.getAllActions(true)
+   * 
+   * // 在设置界面使用
+   * let allActions = pluginDemoConfig.getAllActions()
+   * allActions.forEach((action, index) => {
+   *   let actionConfig = pluginDemoConfig.getAction(action)
+   *   let cell = createCell(actionConfig.name, actionConfig.image)
+   *   
+   *   // 标记已选择的按钮
+   *   if (index < pluginDemoConfig.action.length) {
+   *     cell.accessoryType = UITableViewCellAccessoryCheckmark
+   *   }
+   * })
+   * 
+   * // 查找未使用的按钮
+   * let allActions = pluginDemoConfig.getAllActions()
+   * let unusedActions = allActions.slice(pluginDemoConfig.action.length)
+   * console.log("未使用的按钮：", unusedActions)
    */
   static getAllActions(dynamic = false){
     if (dynamic) {
@@ -8681,6 +9802,47 @@ class pluginDemoConfig {
       return allActions
     }
   }
+  /**
+   * 🔍 通过按钮名称获取描述对象
+   * 
+   * 根据按钮的显示名称查找对应的配置描述。
+   * 用于通过用户可见的名称来执行对应的动作。
+   * 
+   * @param {string} targetButtonName - 按钮的显示名称（如 "Copy", "Search" 等）
+   * @returns {Object|undefined} 按钮的描述对象，找不到时返回 undefined
+   * 
+   * 搜索范围：
+   * - 用户当前选择的按钮
+   * - 所有默认可用的按钮
+   * 
+   * @example
+   * // 通过名称执行按钮动作
+   * let des = pluginDemoConfig.getDesByButtonName("Copy")
+   * if (des) {
+   *   // des = { action: "copy", target: "title", ... }
+   *   pluginDemoUtils.customActionByDes(button, des)
+   * }
+   * 
+   * // 在快捷方式中使用
+   * function executeButtonByName(name) {
+   *   let des = pluginDemoConfig.getDesByButtonName(name)
+   *   if (des) {
+   *     webviewController.customActionByDes(null, des)
+   *   }
+   * }
+   * 
+   * // 处理找不到的情况
+   * let des = pluginDemoConfig.getDesByButtonName("不存在的按钮")
+   * // 显示 HUD: "Button not found: 不存在的按钮"
+   * // 返回 undefined
+   * 
+   * // 获取所有按钮名称
+   * let allActions = pluginDemoConfig.getAllActions()
+   * let allNames = allActions.map(action => {
+   *   return pluginDemoConfig.getAction(action).name
+   * })
+   * console.log("所有可用按钮：", allNames)
+   */
   static getDesByButtonName(targetButtonName){
     let allActions = this.action.concat(this.getDefaultActionKeys().slice(this.action.length))
     let allButtonNames = allActions.map(action=>this.getAction(action).name)
@@ -8694,6 +9856,46 @@ class pluginDemoConfig {
     return actionDes
   
   }
+  /**
+   * 🪟 获取窗口状态配置
+   * 
+   * 安全地获取窗口状态配置，自动处理版本兼容性。
+   * 当用户的旧配置缺少新增字段时，返回默认值。
+   * 
+   * @param {string} key - 窗口状态键名，支持的键：
+   *   - "sideMode": 贴边模式（左/右）
+   *   - "splitMode": 是否跟随分割线
+   *   - "open": 是否默认常驻
+   *   - "dynamicButton": 动态工具栏按钮数量
+   *   - "dynamicOrder": 动态按钮是否按使用频率排序
+   *   - "dynamicDirection": 动态工具栏方向
+   *   - "frame": 窗口位置和大小
+   *   - "direction": 固定工具栏方向
+   * @returns {*} 配置值
+   * 
+   * @example
+   * // 获取工具栏方向
+   * let direction = pluginDemoConfig.getWindowState("direction")
+   * // "vertical" 或 "horizontal"
+   * 
+   * // 获取动态按钮数量
+   * let buttonCount = pluginDemoConfig.getWindowState("dynamicButton")
+   * // 默认值: 9
+   * 
+   * // 获取窗口 frame
+   * let frame = pluginDemoConfig.getWindowState("frame")
+   * // {x: 0, y: 0, width: 40, height: 415}
+   * 
+   * // 在版本升级后的兼容处理
+   * // 假设新版本添加了 "newFeature" 字段
+   * let newFeature = pluginDemoConfig.getWindowState("newFeature")
+   * // 老用户会获得 defaultWindowState 中的默认值
+   * 
+   * // 检查是否为分屏模式
+   * if (pluginDemoConfig.getWindowState("splitMode")) {
+   *   // 工具栏跟随分割线移动
+   * }
+   */
   static getWindowState(key){
     //用户已有配置可能不包含某些新的key，用这个方法做兼容性处理
     if (this.windowState[key] !== undefined) {
@@ -8702,6 +9904,35 @@ class pluginDemoConfig {
       return this.defaultWindowState[key]
     }
   }
+  /**
+   * 📐 获取工具栏方向
+   * 
+   * 获取工具栏的布局方向（垂直或水平）。
+   * 
+   * @param {boolean} [dynamic=false] - 是否获取动态工具栏的方向
+   *   - false: 获取固定工具栏方向
+   *   - true: 获取动态（跟随）工具栏方向
+   * @returns {string} "vertical" 或 "horizontal"
+   * 
+   * @example
+   * // 获取固定工具栏方向
+   * let fixedDir = pluginDemoConfig.direction()
+   * // "vertical" 或 "horizontal"
+   * 
+   * // 获取动态工具栏方向
+   * let dynamicDir = pluginDemoConfig.direction(true)
+   * 
+   * // 根据方向调整布局
+   * if (pluginDemoConfig.direction() === "vertical") {
+   *   // 垂直布局：按钮从上到下排列
+   *   frame.height = buttonCount * buttonHeight
+   *   frame.width = buttonWidth
+   * } else {
+   *   // 水平布局：按钮从左到右排列
+   *   frame.width = buttonCount * buttonWidth
+   *   frame.height = buttonHeight
+   * }
+   */
   static direction(dynamic = false){
     if (dynamic) {
       return this.getWindowState("dynamicDirection")
@@ -8709,6 +9940,38 @@ class pluginDemoConfig {
       return this.getWindowState("direction")
     }
   }
+  
+  /**
+   * ➡️ 检查是否为水平布局
+   * 
+   * 判断工具栏是否使用水平布局（按钮从左到右排列）。
+   * 
+   * @param {boolean} [dynamic=false] - 是否检查动态工具栏
+   * @returns {boolean} 是否为水平布局
+   * 
+   * @example
+   * // 检查固定工具栏
+   * if (pluginDemoConfig.horizontal()) {
+   *   // 水平布局特定逻辑
+   *   button.frame = {x: index * 50, y: 0, width: 45, height: 40}
+   * }
+   * 
+   * // 检查动态工具栏
+   * if (pluginDemoConfig.horizontal(true)) {
+   *   // 调整动态工具栏的水平布局
+   * }
+   * 
+   * // 在手势处理中使用
+   * onPanGesture: function(gesture) {
+   *   if (pluginDemoConfig.horizontal()) {
+   *     // 水平方向只允许左右移动
+   *     frame.x += gesture.translationX
+   *   } else {
+   *     // 垂直方向只允许上下移动
+   *     frame.y += gesture.translationY
+   *   }
+   * }
+   */
   static horizontal(dynamic = false){
     if (dynamic) {
       return this.getWindowState("dynamicDirection") === "horizontal"
@@ -8716,6 +9979,37 @@ class pluginDemoConfig {
       return this.getWindowState("direction") === "horizontal"
     }
   }
+  
+  /**
+   * ⬇️ 检查是否为垂直布局
+   * 
+   * 判断工具栏是否使用垂直布局（按钮从上到下排列）。
+   * 
+   * @param {boolean} [dynamic=false] - 是否检查动态工具栏
+   * @returns {boolean} 是否为垂直布局
+   * 
+   * @example
+   * // 检查固定工具栏
+   * if (pluginDemoConfig.vertical()) {
+   *   // 垂直布局特定逻辑
+   *   button.frame = {x: 0, y: index * 50, width: 40, height: 45}
+   * }
+   * 
+   * // 计算工具栏尺寸
+   * let toolbarSize = {
+   *   width: pluginDemoConfig.vertical() ? 40 : buttonCount * 40,
+   *   height: pluginDemoConfig.vertical() ? buttonCount * 40 : 40
+   * }
+   * 
+   * // 贴边判断
+   * if (pluginDemoConfig.vertical()) {
+   *   // 垂直布局可以贴左边或右边
+   *   if (frame.x < 50) {
+   *     // 吸附到左边
+   *     frame.x = 0
+   *   }
+   * }
+   */
   static vertical(dynamic = false){
     if (dynamic) {
       return this.getWindowState("dynamicDirection") === "vertical"
@@ -8723,6 +10017,46 @@ class pluginDemoConfig {
       return this.getWindowState("direction") === "vertical"
     }
   }
+  /**
+   * 🔄 切换工具栏方向
+   * 
+   * 在垂直和水平布局之间切换工具栏方向。
+   * 需要订阅才能使用此功能。
+   * 
+   * @param {string} source - 要切换的工具栏类型
+   *   - "fixed": 切换固定工具栏方向
+   *   - "dynamic": 切换动态工具栏方向
+   * 
+   * 切换逻辑：
+   * - 垂直 → 水平
+   * - 水平 → 垂直
+   * 
+   * @example
+   * // 切换固定工具栏方向
+   * pluginDemoConfig.toggleToolbarDirection("fixed")
+   * // 如果当前是垂直，切换为水平
+   * // 显示 HUD: "Set fixed direction to horizontal"
+   * 
+   * // 切换动态工具栏方向
+   * pluginDemoConfig.toggleToolbarDirection("dynamic")
+   * 
+   * // 在按钮动作中使用
+   * {
+   *   action: "toggleDirection",
+   *   handler: function() {
+   *     pluginDemoConfig.toggleToolbarDirection("fixed")
+   *   }
+   * }
+   * 
+   * // 双击切换方向
+   * onDoubleClick: function() {
+   *   let source = isDynamicMode ? "dynamic" : "fixed"
+   *   pluginDemoConfig.toggleToolbarDirection(source)
+   * }
+   * 
+   * // 检查订阅状态
+   * // 如果未订阅，会自动处理并返回
+   */
   static toggleToolbarDirection(source){
     if (!pluginDemoUtils.checkSubscribe(true)) {
       return
@@ -8757,8 +10091,57 @@ class pluginDemoConfig {
     MNUtil.postNotification("refreshToolbarButton",{})
   }
   /**
+   * 🌳 展开配置为脑图结构
    * 
-   * @param {MbBookNote} note
+   * 将配置对象递归展开为脑图笔记结构。
+   * 常用于可视化配置、调试或教学目的。
+   * 
+   * @param {MbBookNote} note - 根笔记对象
+   * @param {Object} config - 要展开的配置对象
+   * @param {string[]} [orderedKeys=undefined] - 指定键的顺序，不指定则按对象默认顺序
+   * @param {string} [exclude=undefined] - 要排除的键名
+   * 
+   * 展开规则：
+   * - 对象类型：创建子笔记并递归展开
+   * - 基本类型：创建子笔记，值作为摘录
+   * - 支持嵌套对象的深度展开
+   * 
+   * @example
+   * // 展开按钮配置到脑图
+   * let rootNote = MNNote.getFocusNote()
+   * let buttonConfig = {
+   *   name: "Copy",
+   *   image: "copy.png",
+   *   action: {
+   *     type: "copy",
+   *     target: "title"
+   *   }
+   * }
+   * pluginDemoConfig.expandesConfig(rootNote, buttonConfig)
+   * // 生成的脑图结构：
+   * // rootNote
+   * // ├── name: Copy
+   * // ├── image: copy.png
+   * // └── action
+   * //     ├── type: copy
+   * //     └── target: title
+   * 
+   * // 按指定顺序展开
+   * let orderedKeys = ["action", "name", "image"]
+   * pluginDemoConfig.expandesConfig(rootNote, buttonConfig, orderedKeys)
+   * 
+   * // 排除某些敏感信息
+   * let userConfig = {
+   *   username: "user123",
+   *   password: "secret",
+   *   settings: { theme: "dark" }
+   * }
+   * pluginDemoConfig.expandesConfig(rootNote, userConfig, null, "password")
+   * // password 字段不会被展开
+   * 
+   * // 调试整个插件配置
+   * let allConfig = pluginDemoConfig.getAllConfig()
+   * pluginDemoConfig.expandesConfig(rootNote, allConfig)
    */
   static expandesConfig(note,config,orderedKeys=undefined,exclude=undefined) {
     let mnnote = MNNote.new(note)
@@ -8784,6 +10167,41 @@ class pluginDemoConfig {
       }
     })
   }
+  /**
+   * 🎨 检查插件 Logo 显示状态
+   * 
+   * 检查特定插件的 Logo 是否应该显示。
+   * 用于控制插件推广图标的显示/隐藏。
+   * 
+   * @param {string} addon - 插件标识符（如 "MNUtils", "MNChatAI" 等）
+   * @returns {boolean} 是否显示该插件的 Logo
+   *   - true: 显示 Logo（默认值）
+   *   - false: 隐藏 Logo
+   * 
+   * @example
+   * // 检查是否显示 MNUtils 的 Logo
+   * if (pluginDemoConfig.checkLogoStatus("MNUtils")) {
+   *   // 在工具栏或设置界面显示 MNUtils 推广图标
+   *   showPromoLogo("MNUtils")
+   * }
+   * 
+   * // 在设置界面中使用
+   * let addons = ["MNUtils", "MNChatAI", "MNSearch"]
+   * addons.forEach(addon => {
+   *   let showLogo = pluginDemoConfig.checkLogoStatus(addon)
+   *   let switchCell = createSwitchCell(addon + " Logo", showLogo)
+   *   switchCell.onSwitch = (isOn) => {
+   *     pluginDemoConfig.addonLogos[addon] = isOn
+   *     pluginDemoConfig.save()
+   *   }
+   * })
+   * 
+   * // 条件显示推广内容
+   * if (pluginDemoConfig.checkLogoStatus("MNChatAI") && !isChatAIInstalled()) {
+   *   // 显示安装提示
+   *   showInstallHint("MNChatAI")
+   * }
+   */
   static checkLogoStatus(addon){
   // try {
     if (this.addonLogos && (addon in this.addonLogos)) {
@@ -8796,6 +10214,62 @@ class pluginDemoConfig {
   //   return true
   // }
   }
+/**
+ * 📄 生成动作配置模板
+ * 
+ * 为指定的动作生成默认配置模板。
+ * 用于帮助用户快速创建自定义动作配置。
+ * 
+ * @param {string} action - 动作类型
+ * @returns {string} 格式化的 JSON 配置字符串
+ * 
+ * 支持的动作类型：
+ * - "cloneAndMerge": 克隆并合并笔记
+ * - "link": 链接笔记
+ * - "clearContent": 清除内容
+ * - "setContent": 设置内容
+ * - "addComment": 添加评论
+ * - "removeComment": 移除评论
+ * - "copy": 复制内容
+ * - "showInFloatWindow": 在浮窗显示
+ * - "addChildNote": 添加子笔记
+ * 
+ * @example
+ * // 生成复制动作的模板
+ * let copyTemplate = pluginDemoConfig.template("copy")
+ * console.log(copyTemplate)
+ * // {
+ * //   "action": "copy",
+ * //   "target": "title"
+ * // }
+ * 
+ * // 生成链接动作的模板
+ * let linkTemplate = pluginDemoConfig.template("link")
+ * // {
+ * //   "action": "link",
+ * //   "target": "marginnote4app://note/xxxx",
+ * //   "type": "Both"
+ * // }
+ * 
+ * // 在设置界面中使用
+ * function showTemplateMenu() {
+ *   let actions = ["copy", "link", "addComment", "setContent"]
+ *   let templates = actions.map(action => {
+ *     return {
+ *       title: action,
+ *       template: pluginDemoConfig.template(action)
+ *     }
+ *   })
+ *   // 显示模板选择菜单
+ * }
+ * 
+ * // 帮助用户创建自定义动作
+ * let template = pluginDemoConfig.template("addChildNote")
+ * // 用户可以基于这个模板修改
+ * let customConfig = JSON.parse(template)
+ * customConfig.title = "我的笔记"
+ * customConfig.content = "自定义内容"
+ */
 static template(action) {
   let config = {action:action}
   switch (action) {
@@ -8834,6 +10308,61 @@ static template(action) {
   }
   return JSON.stringify(config,null,2)
 }
+/**
+ * 🔧 获取按钮动作配置
+ * 
+ * 获取指定按钮的完整配置信息。
+ * 智能处理用户自定义配置和默认配置的合并。
+ * 
+ * @param {string} actionKey - 按钮动作标识（如 "copy", "search", "custom1" 等）
+ * @returns {Object} 按钮配置对象
+ * @returns {string} returns.name - 按钮显示名称
+ * @returns {string} returns.image - 按钮图标文件名
+ * @returns {string} returns.description - 按钮动作描述（JSON 字符串）
+ * 
+ * 配置优先级：
+ * 1. 用户自定义配置（this.actions）
+ * 2. 默认配置（getActions() 返回的配置）
+ * 3. 自动修复无效的 description
+ * 
+ * @example
+ * // 获取复制按钮的配置
+ * let copyAction = pluginDemoConfig.getAction("copy")
+ * // {
+ * //   name: "Copy",
+ * //   image: "copyExcerptPic",
+ * //   description: "{}"
+ * // }
+ * 
+ * // 获取自定义按钮配置
+ * let customAction = pluginDemoConfig.getAction("custom1")
+ * // {
+ * //   name: "我的功能",
+ * //   image: "myicon",
+ * //   description: '{"action":"myAction","target":"title"}'
+ * // }
+ * 
+ * // 在创建按钮时使用
+ * function createButton(actionKey) {
+ *   let config = pluginDemoConfig.getAction(actionKey)
+ *   let button = UIButton.new()
+ *   button.setTitle(config.name, UIControlStateNormal)
+ *   
+ *   // 设置图标
+ *   let image = pluginDemoConfig.imageConfigs[actionKey]
+ *   button.setImage(image, UIControlStateNormal)
+ *   
+ *   // 解析动作描述
+ *   let des = JSON.parse(config.description)
+ *   button.des = des
+ *   
+ *   return button
+ * }
+ * 
+ * // 兼容性处理示例
+ * // 如果用户的 description 是旧格式或损坏的
+ * // 会自动使用默认的 description
+ */
 static getAction(actionKey){
   let action = {}
   if (actionKey in this.actions) {
@@ -8907,12 +10436,90 @@ static execute(){
 
 
 }
+/**
+ * 🔑 获取默认按钮动作键列表
+ * 
+ * 返回所有可用按钮的动作键数组。
+ * 这些键是按钮的唯一标识符。
+ * 
+ * @returns {string[]} 默认的按钮动作键数组
+ * 
+ * @example
+ * // 获取所有默认按钮
+ * let defaultKeys = pluginDemoConfig.getDefaultActionKeys()
+ * // ["copy", "searchInEudic", "switchTitleorExcerpt", "copyAsMarkdownLink", 
+ * //  "search", "bigbang", "snipaste", "chatglm", "setting", "edit", 
+ * //  "ocr", "execute", "pasteAsTitle", "clearFormat", 
+ * //  "color0", "color1", ..., "color15", 
+ * //  "custom1", "custom2", ..., "custom19", 
+ * //  "timer", "sidebar", "undo", "redo"]
+ * 
+ * // 重置按钮顺序到默认值
+ * pluginDemoConfig.action = pluginDemoConfig.getDefaultActionKeys()
+ * pluginDemoConfig.save("MNToolbar_action")
+ * 
+ * // 检查某个按钮是否为默认按钮
+ * let isDefault = pluginDemoConfig.getDefaultActionKeys().includes("myButton")
+ * 
+ * // 获取所有自定义按钮
+ * let customButtons = pluginDemoConfig.getDefaultActionKeys()
+ *   .filter(key => key.startsWith("custom"))
+ */
 static getDefaultActionKeys() {
   let actions = this.getActions()
   // MNUtil.copyJSON(actions)
   // MNUtil.copyJSON(Object.keys(actions))
   return Object.keys(actions)
 }
+/**
+ * 💾 保存配置到本地存储
+ * 
+ * 灵活的配置保存方法，支持保存单个配置项或所有配置。
+ * 自动处理云同步和修改时间更新。
+ * 
+ * @param {string} [key=undefined] - 要保存的配置键名，不传则保存所有配置
+ * @param {*} [value=undefined] - 要保存的值，不传则使用类中对应的属性值
+ * @param {boolean} [upload=true] - 是否同步到云端
+ * 
+ * 支持的配置键：
+ * - "MNToolbar_windowState": 窗口状态（iOS 不同步）
+ * - "MNToolbar_dynamic": 动态模式开关
+ * - "MNToolbar_action": 固定工具栏按钮顺序
+ * - "MNToolbar_dynamicAction": 动态工具栏按钮顺序
+ * - "MNToolbar_actionConfig": 按钮动作配置
+ * - "MNToolbar_addonLogos": 插件 Logo 显示状态
+ * - "MNToolbar_buttonConfig": 按钮样式配置
+ * - "MNToolbar_popupConfig": 弹出菜单配置
+ * - "MNToolbar_imageScale": 图片缩放配置
+ * - "MNToolbar_syncConfig": 同步配置
+ * 
+ * @example
+ * // 保存所有配置
+ * pluginDemoConfig.save()
+ * 
+ * // 保存单个配置项（使用类属性值）
+ * pluginDemoConfig.windowState.frame = newFrame
+ * pluginDemoConfig.save("MNToolbar_windowState")
+ * 
+ * // 保存自定义值
+ * pluginDemoConfig.save("MNToolbar_action", ["copy", "search", "custom1"])
+ * 
+ * // 保存但不同步到云端
+ * pluginDemoConfig.save("MNToolbar_syncConfig", null, false)
+ * 
+ * // 在设置变更后保存
+ * function onButtonOrderChanged(newOrder) {
+ *   pluginDemoConfig.action = newOrder
+ *   pluginDemoConfig.save("MNToolbar_action")
+ *   MNUtil.postNotification("refreshToolbarButton", {})
+ * }
+ * 
+ * // 批量修改后一次性保存
+ * pluginDemoConfig.buttonConfig.color = "#ff0000"
+ * pluginDemoConfig.buttonConfig.alpha = 0.9
+ * pluginDemoConfig.windowState.direction = "horizontal"
+ * pluginDemoConfig.save() // 保存所有更改
+ */
 static save(key = undefined,value = undefined,upload = true) {
   // MNUtil.showHUD("save")
   if(key === undefined){
@@ -8987,10 +10594,58 @@ static save(key = undefined,value = undefined,upload = true) {
   NSUserDefaults.standardUserDefaults().synchronize()
 }
 
+/**
+ * 📖 获取配置值
+ * 
+ * 从本地存储中直接获取指定键的值。
+ * 这是一个低级方法，通常使用更高级的方法如 getAction()。
+ * 
+ * @param {string} key - 配置键名
+ * @returns {*} 存储的值，不存在时返回 undefined
+ * 
+ * @example
+ * // 获取原始配置值
+ * let windowState = pluginDemoConfig.get("MNToolbar_windowState")
+ * 
+ * // 检查某个配置是否存在
+ * if (pluginDemoConfig.get("MNToolbar_customKey") !== undefined) {
+ *   // 配置存在
+ * }
+ */
 static get(key) {
   return NSUserDefaults.standardUserDefaults().objectForKey(key)
 }
 
+/**
+ * 📖 获取配置值（带默认值）
+ * 
+ * 安全地获取配置值，如果不存在则使用默认值并保存。
+ * 这是推荐的配置读取方式，确保总有有效值返回。
+ * 
+ * @param {string} key - 配置键名
+ * @param {*} defaultValue - 配置不存在时的默认值
+ * @returns {*} 存储的值或默认值
+ * 
+ * 特性：
+ * - 如果键不存在，自动保存默认值
+ * - 保证返回值永不为 undefined
+ * - 适合初始化配置项
+ * 
+ * @example
+ * // 获取配置，不存在时使用默认值
+ * let theme = pluginDemoConfig.getByDefault("MNToolbar_theme", "light")
+ * // 第一次调用返回 "light" 并保存
+ * // 后续调用返回已保存的值
+ * 
+ * // 初始化数组配置
+ * let favorites = pluginDemoConfig.getByDefault("MNToolbar_favorites", [])
+ * 
+ * // 初始化对象配置
+ * let shortcuts = pluginDemoConfig.getByDefault("MNToolbar_shortcuts", {
+ *   copy: "Cmd+C",
+ *   paste: "Cmd+V"
+ * })
+ */
 static getByDefault(key,defaultValue) {
   let value = NSUserDefaults.standardUserDefaults().objectForKey(key)
   if (value === undefined) {
@@ -9000,9 +10655,68 @@ static getByDefault(key,defaultValue) {
   return value
 }
 
+/**
+ * 🗑️ 删除配置项
+ * 
+ * 从本地存储中完全删除指定的配置项。
+ * 谨慎使用，删除后无法恢复。
+ * 
+ * @param {string} key - 要删除的配置键名
+ * 
+ * @example
+ * // 删除单个配置
+ * pluginDemoConfig.remove("MNToolbar_tempData")
+ * 
+ * // 清理过期配置
+ * let oldKeys = ["MNToolbar_v1", "MNToolbar_legacy"]
+ * oldKeys.forEach(key => pluginDemoConfig.remove(key))
+ * 
+ * // 重置前先删除
+ * pluginDemoConfig.remove("MNToolbar_cache")
+ * pluginDemoConfig.getByDefault("MNToolbar_cache", {})
+ */
 static remove(key) {
   NSUserDefaults.standardUserDefaults().removeObjectForKey(key)
 }
+/**
+ * 🔄 重置配置到默认值
+ * 
+ * 将指定类型的配置重置为默认值。
+ * 支持重置按钮配置、按钮顺序等。
+ * 
+ * @param {string} target - 要重置的目标类型
+ *   - "config": 重置所有按钮的动作配置
+ *   - "order": 重置固定工具栏的按钮顺序
+ *   - "dynamicOrder": 重置动态工具栏的按钮顺序
+ * 
+ * @example
+ * // 重置按钮配置
+ * pluginDemoConfig.reset("config")
+ * // 所有按钮恢复默认动作
+ * 
+ * // 重置按钮顺序
+ * pluginDemoConfig.reset("order")
+ * // 固定工具栏恢复默认顺序
+ * 
+ * // 重置动态工具栏顺序
+ * pluginDemoConfig.reset("dynamicOrder")
+ * 
+ * // 在设置界面使用
+ * function showResetMenu() {
+ *   let options = [
+ *     { title: "重置按钮配置", action: "config" },
+ *     { title: "重置按钮顺序", action: "order" },
+ *     { title: "重置动态顺序", action: "dynamicOrder" }
+ *   ]
+ *   // 显示选择菜单
+ *   let selected = await showMenu(options)
+ *   if (selected) {
+ *     pluginDemoConfig.reset(selected.action)
+ *     MNUtil.showHUD("已重置")
+ *     MNUtil.postNotification("refreshToolbarButton", {})
+ *   }
+ * }
+ */
 static reset(target){
   switch (target) {
     case "config":
@@ -9021,6 +10735,28 @@ static reset(target){
       break;
   }
 }
+/**
+ * 📍 通过索引获取按钮描述
+ * 
+ * 根据按钮在工具栏中的位置索引获取其动作描述。
+ * 用于处理按钮点击事件。
+ * 
+ * @param {number} index - 按钮在工具栏中的索引（从 0 开始）
+ * @returns {Object} 解析后的动作描述对象
+ * 
+ * @example
+ * // 处理按钮点击
+ * onButtonClick: function(button) {
+ *   let index = this.buttons.indexOf(button)
+ *   let des = pluginDemoConfig.getDescriptionByIndex(index)
+ *   // des = { action: "copy", target: "title" }
+ *   this.performAction(des)
+ * }
+ * 
+ * // 获取第一个按钮的配置
+ * let firstButtonDes = pluginDemoConfig.getDescriptionByIndex(0)
+ * console.log("第一个按钮:", firstButtonDes)
+ */
 static getDescriptionByIndex(index){
   let actionName = pluginDemoConfig.action[index]
   if (actionName in pluginDemoConfig.actions) {
@@ -9029,6 +10765,33 @@ static getDescriptionByIndex(index){
     return JSON.parse(pluginDemoConfig.getActions()[actionName].description)
   }
 }
+/**
+ * 💻 获取执行代码
+ * 
+ * 获取 execute 按钮的代码内容。
+ * execute 按钮允许用户自定义 JavaScript 代码。
+ * 
+ * @returns {string} JavaScript 代码字符串
+ * 
+ * @example
+ * // 获取并执行代码
+ * let code = pluginDemoConfig.getExecuteCode()
+ * // code = "MNUtil.showHUD('Hello world')"
+ * 
+ * // 在沙箱中执行
+ * try {
+ *   eval(code)
+ * } catch (error) {
+ *   MNUtil.showHUD("代码错误: " + error.message)
+ * }
+ * 
+ * // 显示代码编辑器
+ * let currentCode = pluginDemoConfig.getExecuteCode()
+ * showCodeEditor(currentCode, (newCode) => {
+ *   pluginDemoConfig.actions.execute.description = newCode
+ *   pluginDemoConfig.save("MNToolbar_actionConfig")
+ * })
+ */
 static getExecuteCode(){
   let actionName = "execute"
   if (actionName in pluginDemoConfig.actions) {
@@ -9037,6 +10800,42 @@ static getExecuteCode(){
     return pluginDemoConfig.getActions()[actionName].description
   }
 }
+/**
+ * 📋 通过名称获取按钮描述
+ * 
+ * 根据按钮动作名称获取其描述对象。
+ * 智能处理 JSON 格式和特殊情况。
+ * 
+ * @param {string} actionName - 按钮动作名称（如 "copy", "search", "custom1" 等）
+ * @returns {Object} 解析后的动作描述对象，解析失败返回空对象
+ * 
+ * 特殊处理：
+ * - 自动解析 JSON 字符串
+ * - 兼容旧版 "pasteAsTitle" 格式
+ * - 无效 JSON 返回空对象而非抛出错误
+ * 
+ * @example
+ * // 获取复制按钮的描述
+ * let copyDes = pluginDemoConfig.getDescriptionByName("copy")
+ * // {} 或 { action: "copy", target: "title" }
+ * 
+ * // 获取自定义按钮描述
+ * let customDes = pluginDemoConfig.getDescriptionByName("custom1")
+ * // { action: "cloneAndMerge", target: "marginnote4app://note/xxxx" }
+ * 
+ * // 安全使用
+ * let des = pluginDemoConfig.getDescriptionByName(actionName)
+ * if (des.action) {
+ *   // 有效的动作描述
+ *   this.performAction(des)
+ * } else {
+ *   // 空描述，使用默认行为
+ * }
+ * 
+ * // 特殊情况：pasteAsTitle
+ * let pasteDes = pluginDemoConfig.getDescriptionByName("pasteAsTitle")
+ * // 即使 JSON 无效，也会返回兼容的描述对象
+ */
 static getDescriptionByName(actionName){
   let des
   if (actionName in pluginDemoConfig.actions) {
@@ -9056,6 +10855,43 @@ static getDescriptionByName(actionName){
   }
   return {}
 }
+/**
+ * ✅ 检查按钮是否可保存配置
+ * 
+ * 判断指定的按钮是否允许用户自定义配置。
+ * 某些系统按钮的行为是固定的，不允许修改。
+ * 
+ * @param {string} actionName - 按钮动作名称
+ * @returns {boolean} 是否允许保存自定义配置
+ * 
+ * 可保存的按钮类型：
+ * - 所有 custom 按钮（custom1-19）
+ * - 所有颜色按钮（color0-15）
+ * - 白名单中的特定按钮
+ * 
+ * @example
+ * // 检查是否可以修改
+ * if (pluginDemoConfig.checkCouldSave("custom1")) {
+ *   // 允许用户编辑配置
+ *   showConfigEditor("custom1")
+ * }
+ * 
+ * // 在保存前检查
+ * function saveButtonConfig(actionName, newConfig) {
+ *   if (!pluginDemoConfig.checkCouldSave(actionName)) {
+ *     // 显示 HUD: "Only available for Custom Action!"
+ *     return false
+ *   }
+ *   pluginDemoConfig.actions[actionName].description = JSON.stringify(newConfig)
+ *   pluginDemoConfig.save("MNToolbar_actionConfig")
+ *   return true
+ * }
+ * 
+ * // 批量检查
+ * let editableButtons = allButtons.filter(name => 
+ *   pluginDemoConfig.checkCouldSave(name)
+ * )
+ */
   static checkCouldSave(actionName){
     if (actionName.includes("custom")) {
       return true
@@ -9074,7 +10910,97 @@ static getDescriptionByName(actionName){
 }
 
 
+/**
+ * 🏖️ 代码沙箱执行类
+ * 
+ * 提供受限的代码执行环境，用于运行用户自定义的 JavaScript 代码。
+ * 主要用于 execute 按钮的功能实现。
+ * 
+ * 特性：
+ * - 需要订阅才能使用
+ * - 使用严格模式执行代码
+ * - 自动捕获和记录错误
+ * - 访问完整的 MNUtil API
+ * 
+ * @class
+ * 
+ * @example
+ * // 执行简单代码
+ * await pluginDemoSandbox.execute('MNUtil.showHUD("Hello World")')
+ * 
+ * // 执行复杂操作
+ * let code = `
+ *   let note = MNNote.getFocusNote()
+ *   if (note) {
+ *     note.noteTitle = "已处理: " + note.noteTitle
+ *     MNUtil.showHUD("标题已更新")
+ *   }
+ * `
+ * await pluginDemoSandbox.execute(code)
+ * 
+ * // 在 execute 按钮中使用
+ * case "execute":
+ *   let executeCode = pluginDemoConfig.getExecuteCode()
+ *   await pluginDemoSandbox.execute(executeCode)
+ *   break
+ */
 class pluginDemoSandbox{
+  /**
+   * 🚀 执行代码
+   * 
+   * 在沙箱环境中执行用户提供的 JavaScript 代码。
+   * 需要有效订阅才能使用此功能。
+   * 
+   * @param {string} code - 要执行的 JavaScript 代码字符串
+   * @returns {Promise<void>}
+   * 
+   * 安全限制：
+   * - 代码在严格模式下执行
+   * - 错误会被捕获并记录
+   * - 需要订阅验证
+   * 
+   * 可用的全局对象：
+   * - MNUtil: 核心工具类
+   * - MNNote: 笔记操作类
+   * - MNNotebook: 笔记本操作类
+   * - MNDocument: 文档操作类
+   * - UIKit 组件（如 UIButton, UIView 等）
+   * - 其他 MarginNote 插件 API
+   * 
+   * @example
+   * // 基础使用
+   * await pluginDemoSandbox.execute('MNUtil.showHUD("执行成功")')
+   * 
+   * // 处理笔记
+   * let code = `
+   *   let notes = MNNote.getFocusNotes()
+   *   notes.forEach(note => {
+   *     note.colorIndex = 2  // 设置为蓝色
+   *   })
+   *   MNUtil.showHUD(\`处理了 \${notes.length} 个笔记\`)
+   * `
+   * await pluginDemoSandbox.execute(code)
+   * 
+   * // 带错误处理
+   * let userCode = getUserInput()
+   * try {
+   *   await pluginDemoSandbox.execute(userCode)
+   * } catch (error) {
+   *   // 错误已被内部记录，这里通常不会触发
+   * }
+   * 
+   * // 访问脑图视图（注释中的示例）
+   * let advancedCode = `
+   *   // 可以访问高级 API
+   *   let mindmapView = MNUtil.mindmapView
+   *   console.log("缩放级别:", mindmapView.zoomScale)
+   * `
+   * 
+   * ⚠️ 注意：
+   * - 代码执行是同步的，避免长时间运行
+   * - 无法访问外部作用域的变量
+   * - 错误会记录到错误日志中
+   */
   static async execute(code){
     'use strict';
     if (!pluginDemoUtils.checkSubscribe(true)) {

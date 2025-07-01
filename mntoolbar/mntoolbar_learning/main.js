@@ -548,78 +548,1515 @@ JSB.newAddon = function (mainPath) {
 
         而必须使用 prototype 的是那些纯 JavaScript 的业务逻辑方法，这些方法不需要与原生框架交互。
        */
+      /**
+       * 🚀 插件场景连接时调用 - 插件生命周期的开始
+       * 
+       * 【生命周期位置】
+       * 这是插件生命周期的第一个方法，在以下时机被调用：
+       * 1. 用户首次启用插件
+       * 2. MarginNote 启动时自动加载已启用的插件
+       * 3. 用户在设置中重新启用插件
+       * 
+       * 【主要职责】
+       * 1. 🏗️ 初始化插件基础设施
+       * 2. 📦 加载必要的依赖模块
+       * 3. 🔧 设置全局配置
+       * 4. 🎨 准备 UI 资源
+       * 
+       * 【典型初始化内容】
+       * ```javascript
+       * sceneWillConnect: async function() {
+       *   // 1. 初始化工具函数
+       *   MNUtil.init(self.path)
+       *   
+       *   // 2. 加载配置
+       *   await toolbarConfig.loadConfig()
+       *   
+       *   // 3. 创建控制器
+       *   self.webviewController = new WebViewController()
+       *   
+       *   // 4. 注册通知监听
+       *   self.registerNotifications()
+       * }
+       * ```
+       * 
+       * 【注意事项】
+       * - ⚡ 使用 async 支持异步操作（如加载配置文件）
+       * - 🚫 避免在此处创建 UI，应等到 notebookWillOpen
+       * - ⏱️ 保持快速执行，避免阻塞插件加载
+       * - 🛡️ 使用 try-catch 处理初始化错误
+       * 
+       * @async
+       * @returns {Promise<void>}
+       */
       sceneWillConnect: async function () { //Window initialize
       },
+      /**
+       * 👋 插件场景断开连接时调用 - 插件生命周期的结束
+       * 
+       * 【调用时机】
+       * 1. 🔌 用户在插件管理页面关闭插件（取消勾选）
+       * 2. 🔄 MarginNote 准备重新加载插件
+       * 3. 🚪 应用退出前的清理阶段
+       * 
+       * 【重要说明】
+       * 这是关闭插件，而不是删除插件。插件的文件和配置都会保留。
+       * 
+       * 【主要职责】
+       * 1. 💾 保存用户数据和状态
+       * 2. 🧹 清理资源（定时器、监听器等）
+       * 3. 🔓 释放内存占用
+       * 4. 📤 同步未保存的更改
+       * 
+       * 【典型清理操作】
+       * ```javascript
+       * sceneDidDisconnect: function() {
+       *   // 1. 保存配置
+       *   toolbarConfig.save()
+       *   
+       *   // 2. 清理定时器
+       *   if (self.autoSaveTimer) {
+       *     clearInterval(self.autoSaveTimer)
+       *   }
+       *   
+       *   // 3. 移除通知监听
+       *   NSNotificationCenter.defaultCenter.removeObserver(self)
+       *   
+       *   // 4. 清理 UI 资源
+       *   if (self.webviewController) {
+       *     self.webviewController.cleanup()
+       *   }
+       * }
+       * ```
+       * 
+       * 【最佳实践】
+       * - ✅ 确保所有异步操作已完成
+       * - ✅ 保存用户的工作状态
+       * - ✅ 清理所有创建的对象引用
+       * - ❌ 不要在此处显示 UI 提示（用户可能看不到）
+       * 
+       * @returns {void}
+       */
       sceneDidDisconnect: function () { // Window disconnect 在插件页面关闭插件（不是删除）
       },
+      /**
+       * 😴 窗口即将失去活跃状态时调用
+       * 
+       * 【调用时机】
+       * 1. 🔄 用户切换到其他应用
+       * 2. 📱 设备进入后台（iOS）
+       * 3. 🖥️ 窗口最小化（macOS）
+       * 4. 🔒 设备即将锁屏
+       * 
+       * 【使用场景】
+       * 1. ⏸️ 暂停正在进行的动画或计时器
+       * 2. 💾 保存临时状态（轻量级保存）
+       * 3. 🔇 暂停音频/视频播放
+       * 4. 📊 记录用户活动统计
+       * 
+       * 【与 sceneDidDisconnect 的区别】
+       * - sceneWillResignActive：临时失去焦点，插件仍在运行
+       * - sceneDidDisconnect：插件完全关闭
+       * 
+       * 【注意事项】
+       * - ⚡ 快速执行，系统可能会强制终止耗时操作
+       * - 🔄 准备好在 sceneDidBecomeActive 中恢复状态
+       * - 💾 只做必要的保存，避免大量 I/O 操作
+       * 
+       * @returns {void}
+       */
       sceneWillResignActive: function () { // Window resign active
       },
+      /**
+       * 🌟 窗口变为活跃状态时调用
+       * 
+       * 【调用时机】
+       * 1. 🔄 用户切换回 MarginNote
+       * 2. 📱 应用从后台返回前台（iOS）
+       * 3. 🖥️ 窗口从最小化恢复（macOS）
+       * 4. 🔓 设备解锁后
+       * 
+       * 【使用场景】
+       * 1. ▶️ 恢复暂停的动画或计时器
+       * 2. 🔄 刷新可能过期的数据
+       * 3. 📡 检查网络状态变化
+       * 4. 🎨 更新 UI 显示状态
+       * 
+       * 【典型恢复操作】
+       * ```javascript
+       * sceneDidBecomeActive: function() {
+       *   // 1. 恢复动画
+       *   if (self.animationPaused) {
+       *     self.resumeAnimations()
+       *   }
+       *   
+       *   // 2. 刷新数据
+       *   self.checkForUpdates()
+       *   
+       *   // 3. 更新 UI
+       *   self.updateToolbarDisplay()
+       * }
+       * ```
+       * 
+       * 【最佳实践】
+       * - ✅ 检查并恢复在 sceneWillResignActive 中暂停的操作
+       * - ✅ 刷新可能已经改变的外部数据
+       * - ❌ 避免重复初始化已存在的资源
+       * 
+       * @returns {void}
+       */
       sceneDidBecomeActive: function () { // Window become active
       },
+      /**
+       * 📖 笔记本即将打开时调用 - 插件的主要工作开始
+       * 
+       * 【调用时机】
+       * 1. 📚 用户打开一个笔记本
+       * 2. 🔄 切换到另一个笔记本
+       * 3. 🌟 MarginNote 启动后恢复上次打开的笔记本
+       * 
+       * 【重要性】
+       * 这是插件最重要的生命周期方法之一！大部分插件功能都在这里初始化。
+       * 
+       * 【主要职责】
+       * 1. 🎨 创建和显示 UI 界面（工具栏、按钮等）
+       * 2. 📡 注册事件监听器和通知
+       * 3. 📋 加载笔记本特定的配置
+       * 4. 🔗 建立与其他插件的连接
+       * 
+       * 【典型初始化流程】
+       * ```javascript
+       * notebookWillOpen: async function(notebookid) {
+       *   // 1. 保存笔记本 ID
+       *   self.notebookId = notebookid
+       *   
+       *   // 2. 加载笔记本配置
+       *   await self.loadNotebookConfig(notebookid)
+       *   
+       *   // 3. 创建工具栏 UI
+       *   self.createToolbar()
+       *   
+       *   // 4. 注册监听器
+       *   self.registerNotebookListeners()
+       *   
+       *   // 5. 显示欢迎提示
+       *   MNUtil.showHUD("工具栏已加载")
+       * }
+       * ```
+       * 
+       * 【参数说明】
+       * @param {string} notebookid - 笔记本的唯一标识符
+       *                              可以用来：
+       *                              - 加载笔记本特定配置
+       *                              - 获取笔记本信息
+       *                              - 保存笔记本相关数据
+       * 
+       * 【注意事项】
+       * - ⚡ 使用 async 支持异步加载
+       * - 🛡️ 处理好笔记本不存在或损坏的情况
+       * - 🔄 如果切换笔记本，要先调用 notebookWillClose
+       * - 🎨 UI 创建应在此处进行，而不是 sceneWillConnect
+       * 
+       * @async
+       * @returns {Promise<void>}
+       */
       notebookWillOpen: async function (notebookid) {
       },
+      /**
+       * 📕 笔记本即将关闭时调用 - 清理和保存
+       * 
+       * 【调用时机】
+       * 1. 🔄 用户切换到其他笔记本
+       * 2. 📴 用户关闭当前笔记本
+       * 3. 🚪 MarginNote 准备退出
+       * 
+       * 【主要职责】
+       * 1. 💾 保存笔记本特定的状态和配置
+       * 2. 🧹 清理笔记本相关的资源
+       * 3. 📡 移除笔记本级别的监听器
+       * 4. 🎨 隐藏或销毁 UI 元素
+       * 
+       * 【清理流程示例】
+       * ```javascript
+       * notebookWillClose: function(notebookid) {
+       *   // 1. 保存状态
+       *   self.saveToolbarState(notebookid)
+       *   
+       *   // 2. 保存用户偏好
+       *   self.saveUserPreferences(notebookid)
+       *   
+       *   // 3. 清理 UI
+       *   if (self.toolbar) {
+       *     self.toolbar.hide()
+       *   }
+       *   
+       *   // 4. 移除监听器
+       *   self.removeNotebookListeners()
+       *   
+       *   // 5. 释放内存
+       *   self.notebookData = null
+       * }
+       * ```
+       * 
+       * 【与 notebookWillOpen 的关系】
+       * - 切换笔记本时：先调用旧笔记本的 close，再调用新笔记本的 open
+       * - 在 close 中保存的数据，可以在下次 open 时恢复
+       * 
+       * 【注意事项】
+       * - ✅ 确保保存所有重要数据
+       * - ✅ 清理特定于该笔记本的资源
+       * - ❌ 不要清理全局资源（可能即将打开新笔记本）
+       * - 🛡️ 处理好异步保存失败的情况
+       * 
+       * @param {string} notebookid - 即将关闭的笔记本 ID
+       * @returns {void}
+       */
       notebookWillClose: function (notebookid) {
       },
+      /**
+       * ✏️ 处理新摘录时调用 - 自动处理刚创建的摘录
+       * 
+       * 【调用时机】
+       * 当用户创建新摘录后立即触发：
+       * 1. 📝 选中文本或图片创建摘录
+       * 2. 📸 截图创建摘录
+       * 3. 🎨 手写创建摘录
+       * 
+       * 【使用场景】
+       * 1. 🏷️ 自动添加标签或分类
+       * 2. 🎨 根据内容自动设置颜色
+       * 3. 🔗 自动关联相关笔记
+       * 4. 🤖 AI 分析和增强
+       * 
+       * 【sender 参数结构】
+       * ```javascript
+       * sender = {
+       *   userInfo: {
+       *     noteid: "xxx",      // 新创建的摘录 ID
+       *     note: MNNote,        // 摘录对象
+       *     excerptText: "...",  // 摘录文本
+       *     documentPath: "..."  // 源文档路径
+       *   }
+       * }
+       * ```
+       * 
+       * 【典型处理示例】
+       * ```javascript
+       * onProcessNewExcerpt: function(sender) {
+       *   let noteId = sender.userInfo.noteid
+       *   let note = MNNote.new(noteId)
+       *   
+       *   // 1. 根据内容自动分类
+       *   if (note.excerptText.includes("定义")) {
+       *     note.appendTags(["概念"])
+       *     note.colorIndex = 2  // 蓝色
+       *   }
+       *   
+       *   // 2. 自动添加时间戳
+       *   note.appendTextComment(new Date().toLocaleDateString())
+       * }
+       * ```
+       * 
+       * 【最佳实践】
+       * - ✅ 使用 MNUtil.undoGrouping 保证操作可撤销
+       * - ✅ 快速处理，避免阻塞用户操作
+       * - ✅ 提供用户设置选项来开启/关闭此功能
+       * - ❌ 避免复杂耗时的操作
+       * 
+       * @param {Object} sender - 事件发送者，包含摘录信息
+       * @returns {void}
+       */
       onProcessNewExcerpt:function (sender) {
       },
+      /**
+       * 📝 选中区域弹出菜单时调用 - 扩展选中文本的操作菜单
+       * 
+       * 【调用时机】
+       * 用户在文档中选中文本或图片后：
+       * 1. 🖱️ iOS: 长按弹出菜单
+       * 2. 🖱️ macOS: 右键点击弹出菜单
+       * 3. 📱 触控栏上的菜单按钮
+       * 
+       * 【使用场景】
+       * 1. 🏠 添加自定义菜单项（快速翻译、搜索等）
+       * 2. 🤖 AI 处理选中内容（总结、解释等）
+       * 3. 🔗 创建特殊类型的摘录
+       * 4. 🎨 自定义文本处理
+       * 
+       * 【sender 参数结构】
+       * ```javascript
+       * sender = {
+       *   userInfo: {
+       *     documentController: controller,  // 文档控制器
+       *     selection: {                    // 选中信息
+       *       text: "选中的文本",
+       *       range: NSRange,
+       *       rects: [CGRect],             // 选中区域矩形
+       *       image: UIImage               // 如果选中的是图片
+       *     },
+       *     menuController: controller      // 菜单控制器
+       *   }
+       * }
+       * ```
+       * 
+       * 【添加菜单项示例】
+       * ```javascript
+       * onPopupMenuOnSelection: async function(sender) {
+       *   if (!sender.userInfo.menuController) return
+       *   
+       *   let menuController = sender.userInfo.menuController
+       *   let selectedText = sender.userInfo.selection.text
+       *   
+       *   // 添加翻译菜单
+       *   menuController.commandTable.push({
+       *     title: "🌍 翻译",
+       *     object: self,
+       *     selector: "translateSelection:",
+       *     param: {text: selectedText}
+       *   })
+       *   
+       *   // 添加搜索菜单
+       *   menuController.commandTable.push({
+       *     title: "🔍 搜索",
+       *     object: self,
+       *     selector: "searchSelection:",
+       *     param: {text: selectedText}
+       *   })
+       * }
+       * ```
+       * 
+       * 【注意事项】
+       * - ✅ 检查 menuController 是否存在
+       * - ✅ 使用 async 支持异步操作
+       * - ✅ 保持菜单项简洁明了
+       * - ❌ 不要添加太多菜单项（影响用户体验）
+       * 
+       * @async
+       * @param {Object} sender - 事件发送者，包含选中信息和菜单控制器
+       * @returns {Promise<void>}
+       */
       onPopupMenuOnSelection: async function (sender) { // Clicking note
       },
+      /**
+       * 🚪 选中区域弹出菜单关闭时调用
+       * 
+       * 【调用时机】
+       * 1. ✅ 用户选择了菜单项
+       * 2. ❌ 用户取消了菜单
+       * 3. 🔄 用户点击了菜单外的区域
+       * 
+       * 【使用场景】
+       * 1. 🧹 清理临时资源
+       * 2. 📋 记录用户操作统计
+       * 3. 🔄 恢复 UI 状态
+       * 4. 💾 保存用户选择
+       * 
+       * 【与 onPopupMenuOnSelection 的关系】
+       * - onPopupMenuOnSelection: 菜单显示前，用于添加菜单项
+       * - onClosePopupMenuOnSelection: 菜单关闭后，用于清理
+       * 
+       * 【注意事项】
+       * - 🔄 此方法总是会被调用，无论用户是否选择了菜单项
+       * - ⚡ 避免执行耗时操作
+       * - 🧠 可以通过全局变量跟踪用户选择了什么
+       * 
+       * @async
+       * @param {Object} sender - 事件发送者
+       * @returns {Promise<void>}
+       */
       onClosePopupMenuOnSelection: async function (sender) {
       },
+      /**
+       * 📄 笔记弹出菜单时调用 - 扩展笔记操作菜单
+       * 
+       * 【调用时机】
+       * 用户在笔记上操作时：
+       * 1. 🖱️ iOS: 长按笔记卡片
+       * 2. 🖱️ macOS: 右键点击笔记
+       * 3. 📂 在脑图或大纲视图中操作笔记
+       * 
+       * 【使用场景】
+       * 1. 🎨 添加笔记处理功能（制卡、分类等）
+       * 2. 🔗 创建笔记关联操作
+       * 3. 📊 笔记统计和分析
+       * 4. 🎯 批量处理操作
+       * 
+       * 【sender 参数结构】
+       * ```javascript
+       * sender = {
+       *   userInfo: {
+       *     note: MNNote,                  // 当前操作的笔记
+       *     notes: [MNNote],               // 选中的所有笔记（多选）
+       *     menuController: controller,    // 菜单控制器
+       *     documentController: controller // 文档控制器
+       *   }
+       * }
+       * ```
+       * 
+       * 【添加菜单项示例】
+       * ```javascript
+       * onPopupMenuOnNote: async function(sender) {
+       *   if (!sender.userInfo.menuController) return
+       *   
+       *   let menuController = sender.userInfo.menuController
+       *   let note = sender.userInfo.note
+       *   let notes = sender.userInfo.notes || [note]
+       *   
+       *   // 添加制卡功能
+       *   menuController.commandTable.push({
+       *     title: "🃏 制作卡片",
+       *     object: self,
+       *     selector: "makeFlashcard:",
+       *     param: {notes: notes}
+       *   })
+       *   
+       *   // 添加 AI 总结
+       *   menuController.commandTable.push({
+       *     title: "🤖 AI 总结",
+       *     object: self,
+       *     selector: "aiSummarize:",
+       *     param: {note: note}
+       *   })
+       *   
+       *   // 如果是多选，添加批量操作
+       *   if (notes.length > 1) {
+       *     menuController.commandTable.push({
+       *       title: `📦 批量处理 (${notes.length})个`,
+       *       object: self,
+       *       selector: "batchProcess:",
+       *       param: {notes: notes}
+       *     })
+       *   }
+       * }
+       * ```
+       * 
+       * 【高级技巧】
+       * 1. 🎯 根据笔记类型添加不同菜单
+       * 2. 🔢 支持多选操作
+       * 3. 🎭 根据用户权限显示不同菜单
+       * 4. 📈 添加菜单项排序
+       * 
+       * @async
+       * @param {Object} sender - 事件发送者，包含笔记信息和菜单控制器
+       * @returns {Promise<void>}
+       */
       onPopupMenuOnNote: async function (sender) { // Clicking note
       },
+      /**
+       * 🚪 笔记弹出菜单关闭时调用
+       * 
+       * 【调用时机】
+       * 与 onClosePopupMenuOnSelection 类似，在笔记菜单关闭时触发：
+       * 1. ✅ 用户选择了菜单项
+       * 2. ❌ 用户取消了菜单
+       * 3. 🔄 用户点击了菜单外的区域
+       * 
+       * 【使用场景】
+       * 1. 🧹 清理笔记操作的临时数据
+       * 2. 📊 记录用户对笔记的操作统计
+       * 3. 🔄 恢复笔记显示状态
+       * 4. 🛡️ 取消未完成的操作
+       * 
+       * 【与 onPopupMenuOnNote 的配合】
+       * ```javascript
+       * // 在 onPopupMenuOnNote 中设置临时状态
+       * self.tempNoteData = {noteId: note.noteId, action: "pending"}
+       * 
+       * // 在 onClosePopupMenuOnNote 中清理
+       * if (self.tempNoteData && self.tempNoteData.action === "pending") {
+       *   // 用户没有选择任何操作
+       *   self.tempNoteData = null
+       * }
+       * ```
+       * 
+       * 【注意事项】
+       * - 🔄 此方法总是会被调用
+       * - ⚡ 保持快速执行
+       * - 🧠 可以用于跟踪用户行为
+       * 
+       * @async
+       * @param {Object} sender - 事件发送者
+       * @returns {Promise<void>}
+       */
       onClosePopupMenuOnNote: async function (sender) {
       },
+      /**
+       * 📄 文档打开时调用 - 处理文档级别的初始化
+       * 
+       * 【调用时机】
+       * 1. 📚 用户打开 PDF/ePub 文档
+       * 2. 🔄 在笔记本中切换文档
+       * 3. 📥 从外部打开文档链接
+       * 
+       * 【使用场景】
+       * 1. 📑 加载文档特定的设置
+       * 2. 📢 显示文档信息提示
+       * 3. 📋 恢复上次的阅读位置
+       * 4. 🔍 预加载文档关联数据
+       * 
+       * 【docmd5 参数说明】
+       * docmd5 是文档的唯一标识符，可以用来：
+       * ```javascript
+       * // 获取文档信息
+       * let doc = MNUtil.getDocById(docmd5)
+       * let docPath = doc.fullPathFileName
+       * let docTitle = doc.docTitle
+       * 
+       * // 保存文档特定设置
+       * self.docSettings[docmd5] = {
+       *   lastPage: 1,
+       *   zoom: 1.0
+       * }
+       * ```
+       * 
+       * 【与 notebookWillOpen 的区别】
+       * - notebookWillOpen: 整个笔记本级别
+       * - documentDidOpen: 单个文档级别
+       * - 一个笔记本可以包含多个文档
+       * 
+       * 【注意事项】
+       * - 💾 文档可能很大，避免加载过多数据
+       * - 🔄 同一文档可能被多次打开
+       * - 🧠 使用 docmd5 作为缓存键值
+       * 
+       * @param {string} docmd5 - 文档的 MD5 标识符
+       * @returns {void}
+       */
       documentDidOpen: function (docmd5) {
       },
+      /**
+       * 🔓 文档即将关闭时调用 - 保存文档状态
+       * 
+       * 【调用时机】
+       * 1. 🔄 用户切换到其他文档
+       * 2. 📕 用户关闭当前文档
+       * 3. 📋 笔记本关闭时所有文档都会关闭
+       * 
+       * 【主要职责】
+       * 1. 💾 保存阅读进度和位置
+       * 2. 📋 保存文档特定设置
+       * 3. 🧹 清理文档相关缓存
+       * 4. 📈 记录阅读统计
+       * 
+       * 【保存状态示例】
+       * ```javascript
+       * documentWillClose: function(docmd5) {
+       *   // 1. 保存阅读位置
+       *   let currentPage = MNUtil.currentDocumentPage
+       *   self.saveReadingProgress(docmd5, currentPage)
+       *   
+       *   // 2. 保存视图设置
+       *   let zoom = MNUtil.currentZoomLevel
+       *   self.saveViewSettings(docmd5, {zoom: zoom})
+       *   
+       *   // 3. 清理缓存
+       *   delete self.documentCache[docmd5]
+       * }
+       * ```
+       * 
+       * 【与 documentDidOpen 的配合】
+       * - 在 close 中保存的数据
+       * - 可以在下次 open 时恢复
+       * 
+       * @param {string} docmd5 - 即将关闭的文档 MD5 标识符
+       * @returns {void}
+       */
       documentWillClose: function (docmd5) {
       },
+      /**
+       * 📜 视图将要重新布局时调用 - 响应界面变化
+       * 
+       * 【调用时机】
+       * 1. 📱 设备旋转（横竖屏切换）
+       * 2. 🗔️ 分屏模式改变
+       * 3. 🖼️ 窗口大小调整
+       * 4. 📏 隐藏/显示工具栏
+       * 
+       * 【使用场景】
+       * 1. 📀 调整工具栏位置和大小
+       * 2. 🎨 更新按钮布局
+       * 3. 🔄 重新计算元素位置
+       * 4. 📰 适配不同屏幕尺寸
+       * 
+       * 【布局处理示例】
+       * ```javascript
+       * controllerWillLayoutSubviews: function(controller) {
+       *   // 1. 获取新的屏幕尺寸
+       *   let bounds = controller.view.bounds
+       *   let isLandscape = bounds.width > bounds.height
+       *   
+       *   // 2. 调整工具栏位置
+       *   if (self.toolbar) {
+       *     if (isLandscape) {
+       *       // 横屏布局
+       *       self.toolbar.frame = {x: bounds.width - 60, y: 50, width: 50, height: 400}
+       *     } else {
+       *       // 竖屏布局
+       *       self.toolbar.frame = {x: 10, y: bounds.height - 60, width: 300, height: 50}
+       *     }
+       *   }
+       * }
+       * ```
+       * 
+       * 【注意事项】
+       * - 🔄 可能被频繁调用，要注意性能
+       * - 🛡️ 避免在此处做复杂计算
+       * - 🎨 只调整必要的元素
+       * - 📏 使用缓存避免重复计算
+       * 
+       * @param {UIViewController} controller - 触发布局的控制器
+       * @returns {void}
+       */
       controllerWillLayoutSubviews: function (controller) {
       },
+      /**
+       * 🎯 查询插件命令状态 - 动态管理插件功能
+       * 
+       * 【调用时机】
+       * MarginNote 需要更新插件菜单或工具栏状态时：
+       * 1. 🔄 用户点击插件菜单
+       * 2. 📋 上下文环境改变
+       * 3. ⏰ 定期状态检查
+       * 
+       * 【返回值结构】
+       * ```javascript
+       * return {
+       *   // 命令状态字典
+       *   commands: {
+       *     "openToolbar": {
+       *       enabled: true,      // 是否启用
+       *       checked: false,     // 是否选中
+       *       hidden: false       // 是否隐藏
+       *     },
+       *     "toggleDynamic": {
+       *       enabled: true,
+       *       checked: self.dynamicMode,  // 根据当前状态
+       *       hidden: false
+       *     }
+       *   }
+       * }
+       * ```
+       * 
+       * 【使用场景】
+       * 1. ✅/❌ 启用/禁用特定功能
+       * 2. ☑️ 显示功能开关状态
+       * 3. 👁️ 隐藏不适用的功能
+       * 4. 🎯 根据权限控制功能
+       * 
+       * 【实际应用示例】
+       * ```javascript
+       * queryAddonCommandStatus: function() {
+       *   let hasNotebook = MNUtil.currentNotebookId !== null
+       *   let hasSelection = MNUtil.currentSelection.onSelection
+       *   
+       *   return {
+       *     "openToolbar": {
+       *       enabled: hasNotebook,  // 有笔记本才能打开
+       *       checked: self.toolbarVisible
+       *     },
+       *     "processSelection": {
+       *       enabled: hasSelection,  // 有选中才能处理
+       *       hidden: !hasNotebook
+       *     }
+       *   }
+       * }
+       * ```
+       * 
+       * @returns {{commands: Object.<string, {enabled: boolean, checked: boolean, hidden: boolean}>}} 
+       *          返回命令状态字典
+       */
       queryAddonCommandStatus: function () {
       },
+      /**
+       * 🎨 新图标图片事件 - 处理自定义图标
+       * 
+       * 【调用时机】
+       * 1. 🖼️ 用户上传自定义按钮图标
+       * 2. 🔄 动态更换按钮图标
+       * 3. 🎨 主题切换时更新图标
+       * 
+       * 【sender 参数结构】
+       * ```javascript
+       * sender = {
+       *   userInfo: {
+       *     iconName: "custom_icon",    // 图标名称
+       *     imageData: NSData,           // 图片数据
+       *     buttonId: "button_12",       // 目标按钮 ID
+       *     source: "user_upload"        // 图标来源
+       *   }
+       * }
+       * ```
+       * 
+       * 【处理流程示例】
+       * ```javascript
+       * onNewIconImage: function(sender) {
+       *   let info = sender.userInfo
+       *   
+       *   // 1. 保存图标数据
+       *   self.saveIconData(info.iconName, info.imageData)
+       *   
+       *   // 2. 更新按钮图标
+       *   if (info.buttonId) {
+       *     let button = self.getButtonById(info.buttonId)
+       *     button.setImage(UIImage.imageWithData(info.imageData))
+       *   }
+       *   
+       *   // 3. 刷新工具栏
+       *   self.refreshToolbar()
+       * }
+       * ```
+       * 
+       * 【使用场景】
+       * 1. 🎨 用户自定义按钮外观
+       * 2. 🎭 不同主题的图标切换
+       * 3. 📂 按钮状态的视觉反馈
+       * 4. 🏅 VIP 用户专属图标
+       * 
+       * @param {Object} sender - 事件发送者，包含图标信息
+       * @returns {void}
+       */
       onNewIconImage: function (sender) {
       },
+      /**
+       * ⚙️ 打开工具栏设置 - 响应设置请求
+       * 
+       * 【调用时机】
+       * 1. 🔘 用户点击设置按钮
+       * 2. 📡 其他插件发送设置请求
+       * 3. ⌨️ 快捷键触发
+       * 4. 📱 从通知中心打开
+       * 
+       * 【params 参数结构】
+       * ```javascript
+       * params = {
+       *   section: "buttons",     // 指定打开的设置页面
+       *   buttonId: "custom_1",   // 特定按钮设置
+       *   animated: true          // 是否动画显示
+       * }
+       * ```
+       * 
+       * 【实现示例】
+       * ```javascript
+       * onOpenToolbarSetting: function(params) {
+       *   // 1. 创建或获取设置控制器
+       *   if (!self.settingController) {
+       *     self.settingController = new SettingController()
+       *   }
+       *   
+       *   // 2. 配置初始页面
+       *   if (params && params.section) {
+       *     self.settingController.initialSection = params.section
+       *   }
+       *   
+       *   // 3. 显示设置界面
+       *   self.settingController.show(params.animated)
+       * }
+       * ```
+       * 
+       * 【设置页面类型】
+       * - "general": 常规设置
+       * - "buttons": 按钮管理
+       * - "appearance": 外观设置
+       * - "advanced": 高级设置
+       * 
+       * @param {Object} params - 设置参数，指定打开的页面或配置
+       * @returns {void}
+       */
       onOpenToolbarSetting:function (params) {
       },
+      /**
+       * 🔀 切换动态模式 - 控制工具栏显示行为
+       * 
+       * 【动态模式说明】
+       * - 启用：工具栏仅在需要时显示，操作后自动隐藏
+       * - 禁用：工具栏始终显示
+       * 
+       * 【调用时机】
+       * 1. 🔘 用户点击动态模式开关
+       * 2. 📡 通过通知切换
+       * 3. ⌨️ 快捷键触发
+       * 4. 📱 手势操作
+       * 
+       * 【实现流程】
+       * ```javascript
+       * onToggleDynamic: function(sender) {
+       *   // 1. 切换状态
+       *   self.dynamicMode = !self.dynamicMode
+       *   
+       *   // 2. 更新 UI
+       *   if (self.dynamicMode) {
+       *     // 动态模式：设置自动隐藏
+       *     self.toolbar.alpha = 0.8
+       *     self.setupAutoHide()
+       *   } else {
+       *     // 普通模式：显示并停止自动隐藏
+       *     self.toolbar.alpha = 1.0
+       *     self.cancelAutoHide()
+       *   }
+       *   
+       *   // 3. 保存状态
+       *   toolbarConfig.dynamicMode = self.dynamicMode
+       *   toolbarConfig.save()
+       *   
+       *   // 4. 显示提示
+       *   let message = self.dynamicMode ? "动态模式已启用" : "动态模式已关闭"
+       *   MNUtil.showHUD(message)
+       * }
+       * ```
+       * 
+       * 【动态模式特性】
+       * 1. 👁️ 智能隐藏：操作后 3 秒自动隐藏
+       * 2. 🔍 悬停显示：鼠标悬停时显示（macOS）
+       * 3. 👆 触摸唤醒：点击特定区域显示（iOS）
+       * 4. 🎨 半透明效果：减少视觉干扰
+       * 
+       * @param {Object} sender - 事件发送者
+       * @returns {void}
+       */
       onToggleDynamic:function (sender) {
       },
+      /**
+       * 🧠 切换脑图工具栏 - 控制脑图模式下的工具栏
+       * 
+       * 【功能说明】
+       * 在脑图视图和文档视图中，工具栏可能有不同的显示需求：
+       * - 文档视图：需要摘录、标注等工具
+       * - 脑图视图：需要节点编辑、关联等工具
+       * 
+       * 【sender 参数结构】
+       * ```javascript
+       * sender = {
+       *   userInfo: {
+       *     target: "mindmap",      // 目标视图
+       *     visible: true,          // 是否显示
+       *     position: "right"       // 工具栏位置
+       *   }
+       * }
+       * ```
+       * 
+       * 【实现流程】
+       * ```javascript
+       * onToggleMindmapToolbar: function(sender) {
+       *   let info = sender.userInfo
+       *   
+       *   // 1. 判断当前视图
+       *   let isMindmapView = (info.target === "mindmap")
+       *   
+       *   // 2. 切换工具栏状态
+       *   if (isMindmapView) {
+       *     // 显示脑图专用工具
+       *     self.switchToMindmapTools()
+       *   } else {
+       *     // 显示文档专用工具
+       *     self.switchToDocumentTools()
+       *   }
+       *   
+       *   // 3. 调整位置
+       *   if (info.position) {
+       *     self.moveToolbarTo(info.position)
+       *   }
+       * }
+       * ```
+       * 
+       * 【工具栏差异】
+       * - 📑 文档模式：高亮、摘录、搜索
+       * - 🧠 脑图模式：节点、连线、层级
+       * - 🔄 混合模式：同时显示两种工具
+       * 
+       * @param {Object} sender - 事件发送者，包含视图切换信息
+       * @returns {void}
+       */
       onToggleMindmapToolbar:function (sender) {
       },
+      /**
+       * 🔄 刷新视图 - 更新插件界面
+       * 
+       * 【调用时机】
+       * 1. 📡 其他插件请求刷新
+       * 2. 🔄 数据更新后需要刷新 UI
+       * 3. 🎭 主题或样式改变
+       * 4. ⏰ 定时刷新
+       * 
+       * 【刷新内容】
+       * 1. 🎨 重绘按钮和控件
+       * 2. 📋 更新数据显示
+       * 3. 🔄 重新加载配置
+       * 4. 📀 调整布局
+       * 
+       * 【实现示例】
+       * ```javascript
+       * onRefreshView: function(sender) {
+       *   // 1. 刷新工具栏
+       *   if (self.toolbar) {
+       *     self.toolbar.refreshButtons()
+       *     self.toolbar.updateLayout()
+       *   }
+       *   
+       *   // 2. 刷新设置界面
+       *   if (self.settingController && self.settingController.isVisible) {
+       *     self.settingController.refreshContent()
+       *   }
+       *   
+       *   // 3. 发送完成通知
+       *   MNUtil.postNotification("refreshCompleted", {})
+       * }
+       * ```
+       * 
+       * 【性能优化】
+       * - 🔄 避免不必要的全局刷新
+       * - 🎯 只刷新变化的部分
+       * - ⚡ 使用增量更新
+       * 
+       * @param {Object} sender - 事件发送者
+       * @returns {void}
+       */
       onRefreshView: function (sender) {
       },
+      /**
+       * ☁️ 云配置变化时调用 - 同步设置更新
+       * 
+       * 【调用时机】
+       * 1. 📤 云端配置更新
+       * 2. 📱 其他设备修改了配置
+       * 3. 🔄 用户手动同步
+       * 4. 🌐 网络恢复后自动同步
+       * 
+       * 【云配置内容】
+       * - 🎨 工具栏外观设置
+       * - 🔘 按钮配置和顺序
+       * - ⚙️ 用户偏好设置
+       * - 🔑 授权和订阅信息
+       * 
+       * 【sender 参数结构】
+       * ```javascript
+       * sender = {
+       *   userInfo: {
+       *     configKey: "toolbar_settings",  // 配置键
+       *     oldValue: {...},                 // 旧值
+       *     newValue: {...},                 // 新值
+       *     source: "cloud",                 // 来源
+       *     timestamp: 1234567890            // 时间戳
+       *   }
+       * }
+       * ```
+       * 
+       * 【处理流程】
+       * ```javascript
+       * onCloudConfigChange: async function(sender) {
+       *   let info = sender.userInfo
+       *   
+       *   // 1. 验证配置有效性
+       *   if (!self.validateConfig(info.newValue)) {
+       *     return
+       *   }
+       *   
+       *   // 2. 备份当前配置
+       *   self.backupCurrentConfig()
+       *   
+       *   // 3. 应用新配置
+       *   await self.applyConfig(info.newValue)
+       *   
+       *   // 4. 刷新 UI
+       *   self.refreshAllViews()
+       *   
+       *   // 5. 显示同步提示
+       *   MNUtil.showHUD("☁️ 配置已同步")
+       * }
+       * ```
+       * 
+       * 【冲突处理】
+       * - 🔄 检测本地修改与云端冲突
+       * - 🤝 提供合并选项
+       * - 💾 保留冲突备份
+       * 
+       * @async
+       * @param {Object} sender - 事件发送者，包含配置变化信息
+       * @returns {Promise<void>}
+       */
       onCloudConfigChange: async function (sender) {
       },
+      /**
+       * 🔄 手动同步 - 用户主动触发的同步操作
+       * 
+       * 【调用时机】
+       * 1. 🔘 用户点击同步按钮
+       * 2. 📡 外部通知触发
+       * 3. ⌨️ 快捷键同步
+       * 4. 📱 下拉刷新手势
+       * 
+       * 【同步内容】
+       * 1. ⚙️ 用户设置和偏好
+       * 2. 🎨 工具栏配置
+       * 3. 🔘 按钮布局
+       * 4. 📋 使用统计数据
+       * 
+       * 【同步流程】
+       * ```javascript
+       * manualSync: async function(sender) {
+       *   try {
+       *     // 1. 显示同步进度
+       *     MNUtil.showHUD("同步中...")
+       *     
+       *     // 2. 保存本地更改
+       *     await self.saveLocalChanges()
+       *     
+       *     // 3. 上传本地配置
+       *     let uploadResult = await self.uploadConfig()
+       *     
+       *     // 4. 下载云端配置
+       *     let cloudConfig = await self.downloadConfig()
+       *     
+       *     // 5. 合并配置
+       *     let mergedConfig = await self.mergeConfigs(uploadResult, cloudConfig)
+       *     
+       *     // 6. 应用合并后的配置
+       *     await self.applyConfig(mergedConfig)
+       *     
+       *     // 7. 显示成功提示
+       *     MNUtil.showHUD("✅ 同步成功")
+       *     
+       *   } catch (error) {
+       *     MNUtil.showHUD(`❌ 同步失败: ${error.message}`)
+       *   }
+       * }
+       * ```
+       * 
+       * 【错误处理】
+       * - 🌐 网络连接失败
+       * - 🔒 认证过期
+       * - 📦 存储空间不足
+       * - 🔄 版本冲突
+       * 
+       * 【性能优化】
+       * - 📤 增量同步
+       * - 🗜️ 压缩数据
+       * - 🕰️ 避免频繁同步
+       * 
+       * @async
+       * @param {Object} sender - 事件发送者
+       * @returns {Promise<void>}
+       */
       manualSync: async function (sender) {
       },
+      /**
+       * ✏️ 文本开始编辑时调用 - 管理编辑状态
+       * 
+       * 【调用时机】
+       * 1. 🖊️ 用户开始编辑笔记标题
+       * 2. 📝 用户开始编辑评论
+       * 3. 📋 用户开始编辑摘录
+       * 4. 🏷️ 用户开始编辑标签
+       * 
+       * 【作用】
+       * 1. 👁️ 隐藏可能遮挡键盘的 UI
+       * 2. 🔒 禁用某些手势和快捷键
+       * 3. 💾 保存编辑前的状态
+       * 4. 🎨 调整界面布局
+       * 
+       * 【param 参数结构】
+       * ```javascript
+       * param = {
+       *   textField: UITextField,      // 正在编辑的文本字段
+       *   type: "title",               // 编辑类型
+       *   noteId: "xxx",               // 相关笔记 ID
+       *   originalText: "..."          // 原始文本
+       * }
+       * ```
+       * 
+       * 【实现示例】
+       * ```javascript
+       * onTextDidBeginEditing: function(param) {
+       *   // 1. 保存编辑状态
+       *   self.isEditing = true
+       *   self.editingField = param.textField
+       *   self.originalText = param.originalText
+       *   
+       *   // 2. 调整 UI
+       *   if (self.toolbar) {
+       *     // 移动工具栏避免遮挡键盘
+       *     let keyboardHeight = 300  // 预估键盘高度
+       *     self.toolbar.moveUp(keyboardHeight)
+       *   }
+       *   
+       *   // 3. 暂停手势识别
+       *   self.pauseGestureRecognizers()
+       * }
+       * ```
+       * 
+       * 【最佳实践】
+       * - ✅ 保存原始文本以便取消编辑
+       * - ✅ 灵活调整 UI 布局
+       * - ❌ 不要在此时修改文本内容
+       * 
+       * @param {Object} param - 编辑参数，包含文本字段和相关信息
+       * @returns {void}
+       */
       onTextDidBeginEditing:function (param) {
       },
+      /**
+       * ✅ 文本结束编辑时调用 - 保存和恢复
+       * 
+       * 【调用时机】
+       * 1. ✅ 用户完成编辑点击完成
+       * 2. ❌ 用户取消编辑
+       * 3. 🔄 用户切换到其他输入框
+       * 4. 👁️ 键盘收起
+       * 
+       * 【主要任务】
+       * 1. 💾 保存编辑后的内容
+       * 2. 🔄 恢复 UI 布局
+       * 3. ✅ 重新启用手势
+       * 4. 📊 记录编辑统计
+       * 
+       * 【param 参数结构】
+       * ```javascript
+       * param = {
+       *   textField: UITextField,      // 结束编辑的文本字段
+       *   type: "title",               // 编辑类型
+       *   noteId: "xxx",               // 相关笔记 ID
+       *   newText: "...",              // 新文本
+       *   originalText: "...",         // 原始文本
+       *   cancelled: false             // 是否取消
+       * }
+       * ```
+       * 
+       * 【实现示例】
+       * ```javascript
+       * onTextDidEndEditing: function(param) {
+       *   // 1. 重置编辑状态
+       *   self.isEditing = false
+       *   self.editingField = null
+       *   
+       *   // 2. 保存更改（如果未取消）
+       *   if (!param.cancelled && param.newText !== param.originalText) {
+       *     MNUtil.undoGrouping(() => {
+       *       let note = MNNote.new(param.noteId)
+       *       if (param.type === "title") {
+       *         note.noteTitle = param.newText
+       *       }
+       *     })
+       *   }
+       *   
+       *   // 3. 恢复 UI
+       *   if (self.toolbar) {
+       *     self.toolbar.restorePosition()
+       *   }
+       *   
+       *   // 4. 恢复手势
+       *   self.resumeGestureRecognizers()
+       * }
+       * ```
+       * 
+       * 【编辑验证】
+       * - 🔍 检查文本有效性
+       * - 🚫 过滤敏感词
+       * - 📏 限制文本长度
+       * 
+       * @param {Object} param - 编辑结束参数，包含新旧文本等信息
+       * @returns {void}
+       */
       onTextDidEndEditing: function (param) {
       },
+      /**
+       * 🔄 刷新工具栏按钮 - 更新按钮状态和外观
+       * 
+       * 【调用时机】
+       * 1. 🎨 按钮配置更改
+       * 2. 🎭 主题切换
+       * 3. 🔄 状态更新（启用/禁用）
+       * 4. 🖼️ 图标更换
+       * 
+       * 【刷新内容】
+       * 1. 🖼️ 按钮图标和标签
+       * 2. 🎨 颜色和样式
+       * 3. ✅/❌ 启用和禁用状态
+       * 4. 📦 按钮布局和顺序
+       * 
+       * 【sender 参数结构】
+       * ```javascript
+       * sender = {
+       *   userInfo: {
+       *     buttonIds: ["btn1", "btn2"],    // 要刷新的按钮 ID
+       *     refreshAll: false,               // 是否刷新全部
+       *     animated: true,                  // 是否动画
+       *     reason: "config_change"          // 刷新原因
+       *   }
+       * }
+       * ```
+       * 
+       * 【实现流程】
+       * ```javascript
+       * onRefreshToolbarButton: function(sender) {
+       *   let info = sender.userInfo || {}
+       *   
+       *   // 1. 确定刷新范围
+       *   let buttonsToRefresh = info.refreshAll ? 
+       *     self.getAllButtons() : 
+       *     self.getButtonsByIds(info.buttonIds)
+       *   
+       *   // 2. 刷新每个按钮
+       *   buttonsToRefresh.forEach(button => {
+       *     // 更新图标
+       *     button.updateImage()
+       *     
+       *     // 更新状态
+       *     button.updateEnabledState()
+       *     
+       *     // 更新样式
+       *     button.updateAppearance()
+       *   })
+       *   
+       *   // 3. 重新布局（如果需要）
+       *   if (info.reason === "layout_change") {
+       *     self.toolbar.updateButtonLayout()
+       *   }
+       * }
+       * ```
+       * 
+       * 【性能优化】
+       * - 🎯 只刷新必要的按钮
+       * - 🕰️ 使用节流避免频繁刷新
+       * - 🎨 批量处理 UI 更新
+       * 
+       * @param {Object} sender - 事件发送者，包含刷新信息
+       * @returns {void}
+       */
       onRefreshToolbarButton: function (sender) {
       },
+      /**
+       * ⚙️ 打开设置界面 - 便捷方法
+       * 
+       * 【功能说明】
+       * 这是一个便捷方法，直接打开插件的设置界面。
+       * 通常绑定到快捷键或菜单项上。
+       * 
+       * 【使用场景】
+       * 1. 🔘 从插件菜单打开设置
+       * 2. ⌨️ 从快捷键打开设置
+       * 3. 📱 从手势打开设置
+       * 
+       * @returns {void}
+       */
       openSetting:function () {
       },
+      /**
+       * 🔄 切换工具栏显示/隐藏 - 便捷开关
+       * 
+       * 【功能说明】
+       * 快速切换工具栏的显示状态，不影响其他设置。
+       * 
+       * 【使用场景】
+       * 1. 👁️ 临时隐藏工具栏以获得更大阅读空间
+       * 2. 🔄 快速显示/隐藏工具栏
+       * 3. ⌨️ 通过快捷键切换
+       * 
+       * @returns {void}
+       */
       toggleToolbar:function () {
       },
+      /**
+       * 🔀 切换动态模式 - 便捷开关
+       * 
+       * 【功能说明】
+       * 这是 onToggleDynamic 的便捷版本，直接切换动态模式。
+       * 
+       * @returns {void}
+       */
       toggleDynamic:function () {
       },
+      /**
+       * 📄 打开文档 - 快速访问文档
+       * 
+       * 【功能说明】
+       * 打开指定的文档或最近使用的文档。
+       * 
+       * 【使用场景】
+       * 1. 📖 快速打开常用文档
+       * 2. 🔄 切换文档
+       * 3. 📁 打开文档列表
+       * 
+       * @param {UIButton} button - 触发按钮
+       * @returns {void}
+       */
       openDocument:function (button) {
       },
+      /**
+       * 🔄 切换工具栏方向 - 横竖布局切换
+       * 
+       * 【功能说明】
+       * 在横向和纵向布局之间切换工具栏。
+       * 
+       * 【布局选项】
+       * 1. ↔️ 横向：适合屏幕较宽的情况
+       * 2. ↕️ 纵向：适合屏幕较窄的情况
+       * 
+       * @param {string} source - 触发来源
+       * @returns {void}
+       */
       toggleToolbarDirection: function (source) {
       },
+      /**
+       * 🔌 切换插件状态 - 启用/禁用插件
+       * 
+       * 【功能说明】
+       * 动态启用或禁用其他插件，实现插件间的协作。
+       * 
+       * 【使用场景】
+       * 1. 🤝 插件互斥管理
+       * 2. 🔄 按需加载插件
+       * 3. 📋 批量管理插件
+       * 
+       * @param {UIButton} button - 触发按钮
+       * @returns {void}
+       */
       toggleAddon:function (button) {
       }
     },
     { /* Class members */
+      /**
+       * 🔌 插件连接完成 - 类级别初始化
+       * 
+       * 【调用时机】
+       * 插件类被加载到内存并完成初始化后调用。
+       * 这是最早的生命周期方法，优先于 sceneWillConnect。
+       * 
+       * 【主要用途】
+       * 1. 🏆 注册插件信息
+       * 2. 🔧 设置全局变量
+       * 3. 📦 加载必要资源
+       * 4. 📋 初始化配置
+       * 
+       * 【注意事项】
+       * - ✨ 这是类方法，不是实例方法
+       * - 🚫 此时还没有视图和笔记本
+       * - 💾 只做轻量级初始化
+       * 
+       * @returns {void}
+       */
       addonDidConnect: function () {
       },
+      /**
+       * 👋 插件将要断开连接 - 类级别清理
+       * 
+       * 【调用时机】
+       * 插件被完全卸载前调用，这是最后的清理机会。
+       * 
+       * 【主要任务】
+       * 1. 💾 保存全局状态
+       * 2. 🧹 清理全局资源
+       * 3. 📡 取消所有通知
+       * 4. 🔓 释放内存占用
+       * 
+       * 【与 sceneDidDisconnect 的区别】
+       * - sceneDidDisconnect: 关闭插件窗口
+       * - addonWillDisconnect: 卸载插件类
+       * 
+       * @async
+       * @returns {Promise<void>}
+       */
       addonWillDisconnect: async function () {
       },
+      /**
+       * 🌅 应用将要进入前台 - iOS 生命周期
+       * 
+       * 【调用时机】
+       * 1. 📱 用户从后台切换回应用
+       * 2. 🔓 设备解锁后返回应用
+       * 3. 📨 从通知中心打开应用
+       * 
+       * 【典型操作】
+       * 1. 🔄 刷新数据
+       * 2. ▶️ 恢复动画
+       * 3. 🌐 检查网络状态
+       * 4. 📋 更新状态显示
+       * 
+       * 【注意事项】
+       * - 📱 主要用于 iOS 平台
+       * - ⚡ 快速执行，避免阻塞 UI
+       * 
+       * @returns {void}
+       */
       applicationWillEnterForeground: function () {
       },
+      /**
+       * 🌃 应用已进入后台 - iOS 生命周期
+       * 
+       * 【调用时机】
+       * 1. 🏠 用户按 Home 键
+       * 2. 🔄 切换到其他应用
+       * 3. 🔒 设备锁屏
+       * 
+       * 【主要任务】
+       * 1. 💾 保存重要数据
+       * 2. ⏸️ 暂停动画和定时器
+       * 3. 📋 记录用户位置
+       * 4. 🔇 停止音频播放
+       * 
+       * 【背景运行限制】
+       * iOS 在后台有严格限制：
+       * - ⛱️ 有限的执行时间
+       * - 🚫 禁止 UI 更新
+       * - 🔋 限制网络请求
+       * 
+       * @returns {void}
+       */
       applicationDidEnterBackground: function () {
       },
+      /**
+       * 🔔 接收本地通知 - 处理应用内通知
+       * 
+       * 【调用时机】
+       * 1. 📨 应用在前台时收到本地通知
+       * 2. 🔔 用户点击通知进入应用
+       * 3. ⏰ 定时通知触发
+       * 
+       * 【notify 参数结构】
+       * ```javascript
+       * notify = {
+       *   alertBody: "通知内容",
+       *   alertTitle: "通知标题",
+       *   userInfo: {
+       *     type: "reminder",      // 通知类型
+       *     noteId: "xxx",         // 相关数据
+       *     action: "review"       // 要执行的动作
+       *   },
+       *   fireDate: Date,          // 触发时间
+       *   soundName: "default"     // 声音
+       * }
+       * ```
+       * 
+       * 【处理流程】
+       * ```javascript
+       * applicationDidReceiveLocalNotification: function(notify) {
+       *   let info = notify.userInfo
+       *   
+       *   switch(info.type) {
+       *     case "reminder":
+       *       // 处理提醒
+       *       self.handleReminder(info)
+       *       break
+       *       
+       *     case "sync":
+       *       // 处理同步
+       *       self.handleSync(info)
+       *       break
+       *       
+       *     default:
+       *       // 默认处理
+       *       MNUtil.showHUD(notify.alertBody)
+       *   }
+       * }
+       * ```
+       * 
+       * 【常见通知类型】
+       * 1. 📝 复习提醒
+       * 2. 🔄 同步完成
+       * 3. 🎁 新功能提示
+       * 4. ⚠️ 重要更新
+       * 
+       * @param {Object} notify - 本地通知对象
+       * @returns {void}
+       */
       applicationDidReceiveLocalNotification: function (notify) {
       }
     }

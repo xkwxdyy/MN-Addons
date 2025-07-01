@@ -311,19 +311,71 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
   }
   },
   /**
-   * 视图即将显示时调用
-   * @param {boolean} animated - 是否使用动画
+   * 📱 视图即将显示时调用 - iOS 生命周期方法
+   * 
+   * 【生命周期位置】
+   * ```
+   * viewDidLoad → viewWillAppear → viewDidAppear
+   *     ↓              ↓                ↓
+   * 视图加载完成    即将显示          已经显示
+   * ```
+   * 
+   * 【调用时机】
+   * 1. 🔄 工具栏第一次显示时
+   * 2. 🔀 从其他视图返回时
+   * 3. 📱 应用从后台回到前台时
+   * 
+   * 【典型用途】
+   * - 🔄 刷新界面数据
+   * - 🎬 启动动画
+   * - 📡 注册通知观察者
+   * - 🔧 更新UI状态
+   * 
+   * 【注意事项】
+   * - 此时视图还未显示在屏幕上
+   * - 不要在这里做耗时操作
+   * - 可能会被多次调用
+   * 
+   * @param {boolean} animated - 是否使用动画显示视图
+   * @this {pluginDemoController}
    */
   viewWillAppear: function(animated) {
-    // 暂时没有实现内容
+    // 🔧 预留接口：未来可能需要在显示前更新状态
+    // 例如：刷新按钮配置、检查订阅状态、同步设置等
   },
   
   /**
-   * 视图即将消失时调用
-   * @param {boolean} animated - 是否使用动画
+   * 📱 视图即将消失时调用 - iOS 生命周期方法
+   * 
+   * 【生命周期位置】
+   * ```
+   * viewWillDisappear → viewDidDisappear → (可能) dealloc
+   *        ↓                    ↓                   ↓
+   *    即将消失            已经消失            释放内存
+   * ```
+   * 
+   * 【调用时机】
+   * 1. 🔄 切换到其他视图时
+   * 2. 📱 应用进入后台时
+   * 3. ❌ 工具栏被关闭时
+   * 
+   * 【典型用途】
+   * - 💾 保存当前状态
+   * - 🛑 停止动画或定时器
+   * - 📡 移除通知观察者
+   * - 🧹 清理临时资源
+   * 
+   * 【重要提醒】
+   * - 此时视图还在屏幕上
+   * - 不要在这里释放重要资源
+   * - 视图可能会再次显示
+   * 
+   * @param {boolean} animated - 是否使用动画隐藏视图
+   * @this {pluginDemoController}
    */
   viewWillDisappear: function(animated) {
-    // 暂时没有实现内容
+    // 🔧 预留接口：未来可能需要在消失前保存状态
+    // 例如：保存工具栏位置、记录使用习惯、同步配置等
   },
   // ========== Apple Pencil 双击手势处理（已注释，可能用于 iPad） ==========
   // onPencilDoubleTap(){
@@ -334,25 +386,102 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
   // },
   
   /**
-   * 视图即将布局子视图时调用
+   * 📐 视图即将布局子视图时调用 - 响应布局变化
    * 
-   * 这是 iOS 布局系统的回调，当视图的 bounds 改变时会触发
-   * 在这里重新计算和设置工具栏按钮的布局
+   * 【核心作用】
+   * 这是 iOS 自动布局系统的关键回调，负责在视图尺寸变化时重新排列所有子视图。
+   * 对于工具栏来说，这意味着需要重新计算和调整所有按钮的位置。
+   * 
+   * 【调用时机】
+   * 1. 📱 设备旋转（横屏 ↔ 竖屏）
+   * 2. 🖼️ 分屏模式改变（iPad）
+   * 3. 📏 工具栏大小调整
+   * 4. 🔄 父视图布局更新
+   * 5. 🎬 动画过程中的每一帧
+   * 
+   * 【布局流程】
+   * ```
+   * 触发条件（旋转/调整大小）
+   *         ↓
+   * setNeedsLayout() 标记需要布局
+   *         ↓
+   * layoutIfNeeded() 触发布局
+   *         ↓
+   * viewWillLayoutSubviews() ← 我们在这里
+   *         ↓
+   * layoutSubviews() 执行布局
+   *         ↓
+   * viewDidLayoutSubviews() 布局完成
+   * ```
+   * 
+   * 【性能优化】
+   * - 🚫 动画期间跳过布局：避免破坏动画流畅性
+   * - 🔄 批量更新：一次性调整所有按钮位置
+   * - 📏 智能计算：只在必要时重新计算
+   * 
+   * 【注意事项】
+   * - ⚠️ 不要在这里修改 bounds 或 frame，会导致无限循环
+   * - 🎯 只做布局相关的操作
+   * - 🚀 保持代码高效，此方法可能频繁调用
+   * 
+   * @this {pluginDemoController}
    */
   viewWillLayoutSubviews: function() {
     let self = getToolbarController()
-    // 如果正在执行动画，跳过布局更新（避免动画被打断）
+    
+    // 🚫 动画保护：如果正在执行动画，跳过布局更新
+    // 原因：动画过程中会不断触发此方法，如果每次都重新布局会导致：
+    // 1. 动画卡顿或跳动
+    // 2. 布局计算浪费性能
+    // 3. 可能破坏动画的连续性
     if (self.onAnimate) {
       return
     }
-    // 更新工具栏布局
+    
+    // 📐 执行布局更新
+    // setToolbarLayout 会根据当前方向（横向/纵向）和尺寸
+    // 重新计算每个按钮的位置，确保它们正确排列
     self.setToolbarLayout()
   },
+  
   /**
-   * 滚动视图滚动时的回调
-   * 目前未使用，可能预留给未来功能
+   * 📜 滚动视图滚动时的回调 - UIScrollViewDelegate 方法
+   * 
+   * 【方法来源】
+   * 这是 UIScrollViewDelegate 协议的方法，通常用于监听滚动事件。
+   * 虽然工具栏本身不是滚动视图，但可能包含滚动元素。
+   * 
+   * 【可能的用途】
+   * 1. 📜 未来功能：可滚动的按钮列表（当按钮超过屏幕时）
+   * 2. 🎯 滚动联动：根据文档滚动自动显示/隐藏工具栏
+   * 3. 📊 滚动统计：记录用户滚动行为
+   * 4. 🎨 视差效果：创建滚动相关的视觉效果
+   * 
+   * 【典型实现示例】
+   * ```javascript
+   * scrollViewDidScroll: function(scrollView) {
+   *   let offset = scrollView.contentOffset.y
+   *   if (offset > 100) {
+   *     // 滚动超过 100 像素，隐藏工具栏
+   *     this.hide()
+   *   } else {
+   *     // 显示工具栏
+   *     this.show()
+   *   }
+   * }
+   * ```
+   * 
+   * 【性能考虑】
+   * - ⚡ 此方法在滚动时频繁调用（每秒可能 60 次）
+   * - 🚫 避免在此方法中做复杂计算
+   * - 🎯 使用节流（throttle）技术限制执行频率
+   * 
+   * @param {UIScrollView} scrollView - 正在滚动的滚动视图（如果实现）
+   * @this {pluginDemoController}
    */
   scrollViewDidScroll: function() {
+    // 🔧 预留接口：当前未实现
+    // 未来可能用于实现滚动相关的交互功能
   },
   /**
    * 🎨 改变工具栏透明度 - 让工具栏半透明以减少视觉干扰
@@ -1204,6 +1333,32 @@ try {
     }
     self.hideAfterDelay()                   // 动态窗口自动隐藏
   },
+  /**
+   * 💥 BigBang 文本分词功能
+   * 
+   * 【功能说明】
+   * BigBang 是一种创新的文本处理方式，灵感来自锤子手机的 BigBang 功能。
+   * 它可以将一段文本"炸开"成独立的词汇单元，方便用户进行选择、编辑和操作。
+   * 
+   * 【使用场景】
+   * 1. 📝 长文本编辑：快速选择和编辑长段落中的特定词汇
+   * 2. 🔍 关键词提取：从笔记中提取重要关键词
+   * 3. 🌐 多语言处理：支持中英文混合文本的智能分词
+   * 4. 📋 快速复制：选择性复制文本片段
+   * 
+   * 【工作原理】
+   * 1. 获取当前焦点笔记
+   * 2. 发送通知给 BigBang 插件
+   * 3. BigBang 插件接收通知后显示分词界面
+   * 4. 用户可以点选需要的词汇进行操作
+   * 
+   * 【插件协作】
+   * 这个功能需要配合 "MN BigBang" 插件使用：
+   * - 本插件负责：触发 BigBang 功能
+   * - BigBang 插件负责：显示分词界面和处理用户操作
+   * 
+   * @param {UIButton} button - 触发按钮
+   */
   bigbang: function (button) {
     self.onClick = true
     let focusNote = MNNote.getFocusNote()
@@ -1214,6 +1369,40 @@ try {
     }
     self.hideAfterDelay()
   },
+  /**
+   * ✂️ Snipaste 截图贴图功能
+   * 
+   * 【功能说明】
+   * Snipaste 是一个强大的截图和贴图工具，这个功能集成了 Snipaste 到 MarginNote 中。
+   * 可以快速截取屏幕内容或将笔记内容发送到 Snipaste 进行悬浮显示。
+   * 
+   * 【使用场景】
+   * 1. 📸 快速截图：截取文档、网页、视频等内容到笔记
+   * 2. 🖼️ 悬浮参考：将重要内容悬浮在屏幕上作为参考
+   * 3. 🎨 图片标注：截图后可以进行标注和编辑
+   * 4. 📚 对比学习：将多个内容并排显示对比
+   * 
+   * 【工作模式】
+   * 1. **选中图片模式**：
+   *    - 检测到选中图片时，将图片发送到 Snipaste
+   *    - 适用于：保存文档中的图表、公式等
+   * 
+   * 2. **笔记模式**：
+   *    - 没有选中内容时，将整个笔记发送到 Snipaste
+   *    - 适用于：悬浮显示重要笔记内容
+   * 
+   * 【插件协作】
+   * 需要配合 "MN Snipaste" 插件使用：
+   * - 本插件负责：检测内容类型并发送通知
+   * - Snipaste 插件负责：接收内容并调用 Snipaste 应用
+   * 
+   * 【技术细节】
+   * - selection.onSelection：判断是否有选中内容
+   * - selection.isText：判断选中的是文本还是图片
+   * - selection.image：获取选中的图片数据
+   * 
+   * @param {UIButton} button - 触发按钮
+   */
   snipaste: function (button) {
     self.onClick = true
     let selection = MNUtil.currentSelection
@@ -1230,6 +1419,41 @@ try {
     }
     self.hideAfterDelay()
   },
+  /**
+   * 🤖 ChatGLM AI 对话功能
+   * 
+   * 【功能说明】
+   * ChatGLM 是清华大学开发的中文对话大模型，这个功能将 AI 对话能力集成到 MarginNote 中。
+   * 可以对笔记内容进行智能分析、总结、翻译、问答等操作。
+   * 
+   * 【使用场景】
+   * 1. 📖 内容总结：让 AI 总结长篇文档或复杂笔记
+   * 2. 🌍 智能翻译：支持多语言互译，保持学术准确性
+   * 3. 💡 概念解释：解释专业术语和复杂概念
+   * 4. 🎯 问题解答：基于笔记内容回答问题
+   * 5. ✍️ 写作辅助：续写、改写、润色文本
+   * 
+   * 【工作流程】
+   * 1. 检查是否有自定义配置（des）
+   * 2. 如果有配置：
+   *    - 设置 action 为 "chatAI"
+   *    - 调用 customActionByDes 执行配置的 AI 动作
+   * 3. 如果没有配置：
+   *    - 发送通知给 ChatAI 插件，使用默认设置
+   * 
+   * 【配置说明】
+   * 可以在设置中自定义 ChatGLM 按钮的行为：
+   * - prompt：自定义提示词
+   * - target：输出目标（新评论、替换等）
+   * - model：选择不同的 AI 模型
+   * 
+   * 【插件协作】
+   * 需要配合 "MN ChatAI" 插件使用：
+   * - 本插件负责：触发 AI 对话功能
+   * - ChatAI 插件负责：管理 AI 连接和对话界面
+   * 
+   * @param {UIButton} button - 触发按钮
+   */
   chatglm: function (button) {
     let des = pluginDemoConfig.getDescriptionByName("chatglm")
     if (des) {
@@ -1245,6 +1469,48 @@ try {
     }
     self.hideAfterDelay()
   },
+  /**
+   * 🔍 搜索功能 - 在浏览器中搜索选中文本或笔记内容
+   * 
+   * 【功能说明】
+   * 这是一个智能搜索功能，可以将选中的文本或当前笔记内容发送到内置浏览器进行搜索。
+   * 支持自定义搜索引擎和智能窗口定位。
+   * 
+   * 【使用场景】
+   * 1. 📚 学术搜索：搜索论文、定义、相关资料
+   * 2. 🌐 网络查询：快速查询不熟悉的概念
+   * 3. 🔗 延伸阅读：查找相关内容深入学习
+   * 4. 🎯 事实核查：验证笔记中的信息
+   * 
+   * 【搜索优先级】
+   * 1. 自定义配置：如果用户配置了搜索行为，优先使用
+   * 2. 选中文本：如果有选中文本，搜索该文本
+   * 3. 焦点笔记：如果没有选中文本，搜索当前笔记内容
+   * 
+   * 【窗口定位算法】
+   * 搜索窗口会智能定位，避免遮挡内容：
+   * ```
+   * 触发位置判断：
+   * ├─ 从菜单触发：
+   * │  └─ 搜索窗口显示在按钮附近
+   * └─ 从工具栏触发：
+   *    ├─ 右侧空间充足：显示在工具栏右侧
+   *    └─ 右侧空间不足：显示在工具栏左侧
+   * ```
+   * 
+   * 【坐标计算说明】
+   * - beginFrame：起始位置（动画起点）
+   * - endFrame：目标位置（搜索窗口最终位置）
+   * - studyFrame：学习视图边界（用于限制窗口位置）
+   * - MNUtil.constrain：确保窗口不超出屏幕边界
+   * 
+   * 【插件协作】
+   * 需要配合搜索插件使用：
+   * - 本插件负责：确定搜索内容和窗口位置
+   * - 搜索插件负责：显示浏览器界面并执行搜索
+   * 
+   * @param {UIButton} button - 触发按钮
+   */
   search: function (button) {
     let self = getToolbarController()
     let des = pluginDemoConfig.getDescriptionByName("search")
@@ -1305,6 +1571,37 @@ try {
     }
     self.hideAfterDelay()
   },
+  /**
+   * 📱 侧边栏切换功能
+   * 
+   * 【功能说明】
+   * 控制 MarginNote 侧边栏的显示和隐藏。侧边栏通常包含文档目录、笔记本列表、
+   * 搜索功能等重要工具，这个功能可以快速切换侧边栏状态。
+   * 
+   * 【使用场景】
+   * 1. 📖 专注阅读：隐藏侧边栏获得更大阅读空间
+   * 2. 🗂️ 快速导航：显示侧边栏查看文档结构
+   * 3. 🔍 内容搜索：打开侧边栏使用搜索功能
+   * 4. 📚 切换文档：通过侧边栏快速切换不同文档
+   * 
+   * 【技术实现】
+   * 1. 获取侧边栏的配置描述（des）
+   * 2. 设置动作类型为 "toggleSidebar"
+   * 3. 调用工具函数执行切换操作
+   * 
+   * 【配置扩展】
+   * 用户可以在设置中配置侧边栏按钮的额外行为：
+   * - 目标侧边栏：左侧栏、右侧栏
+   * - 切换模式：显示/隐藏/自动
+   * - 动画效果：滑动、淡入淡出
+   * 
+   * 【与其他功能的配合】
+   * - 与全屏模式配合：全屏时自动隐藏侧边栏
+   * - 与分屏模式配合：调整侧边栏宽度适应分屏
+   * - 与 ChatAI 配合：AI 对话窗口可能显示在侧边栏
+   * 
+   * @param {UIButton} button - 触发按钮
+   */
   sidebar: async function (button) {
     if (button.menu) {
       button.menu.dismissAnimated(true)
@@ -1314,9 +1611,36 @@ try {
     pluginDemoUtils.toggleSidebar(des)
   },
   /**
+   * ✏️ 编辑功能 - 在 MN Editor 中打开笔记
    * 
-   * @param {UIButton} button 
-   * @returns 
+   * 【功能说明】
+   * 这个功能集成了 MN Editor 插件，提供更强大的笔记编辑能力。
+   * 可以在专门的编辑器窗口中编辑笔记，支持 Markdown、代码高亮等高级功能。
+   * 
+   * 【使用场景】
+   * 1. 📝 长文编辑：编辑大段文字内容
+   * 2. 💻 代码笔记：编写带语法高亮的代码片段
+   * 3. 📊 表格编辑：创建和编辑复杂表格
+   * 4. 🎨 格式调整：使用富文本编辑功能
+   * 
+   * 【获取笔记的优先级】
+   * 1. 动态窗口模式：使用缓存的当前笔记 ID
+   * 2. 焦点笔记：获取当前选中的笔记
+   * 3. 选区笔记：如果有选中内容，获取对应的笔记
+   * 
+   * 【窗口定位策略】
+   * 编辑器窗口会根据触发位置智能定位：
+   * - 从菜单触发：编辑器显示在按钮附近
+   * - 从工具栏触发：根据屏幕空间自动选择左侧或右侧
+   * - 自动避免超出屏幕边界
+   * 
+   * 【插件协作】
+   * 需要配合 "MN Editor" 插件使用：
+   * - 本插件负责：确定要编辑的笔记和窗口位置
+   * - Editor 插件负责：提供编辑界面和保存功能
+   * 
+   * @param {UIButton} button - 触发按钮
+   * @returns {void} 如果没有找到笔记则提前返回
    */
   edit: function (button) {
     let noteId = undefined
@@ -1362,6 +1686,42 @@ try {
     }
     self.hideAfterDelay()
   },
+  /**
+   * 👁️ OCR 文字识别功能
+   * 
+   * 【功能说明】
+   * OCR (Optical Character Recognition) 光学字符识别功能，可以将图片中的文字提取出来。
+   * 支持多种 OCR 引擎和识别场景，特别优化了学术内容的识别。
+   * 
+   * 【使用场景】
+   * 1. 📷 扫描文档：将纸质文档拍照后提取文字
+   * 2. 📐 公式识别：识别数学公式并转换为 LaTeX
+   * 3. 📊 表格提取：从图片中提取表格数据
+   * 4. 🌍 多语言识别：支持中英日韩等多种语言
+   * 5. 📜 古籍识别：识别繁体字和古文
+   * 
+   * 【OCR 引擎选择】
+   * - SimpleTex：专门识别数学公式
+   * - GPT-4V：智能识别，理解上下文
+   * - 通用 OCR：快速识别普通文本
+   * 
+   * 【工作流程】
+   * 1. 获取 OCR 按钮的配置
+   * 2. 设置 action 为 "ocr"
+   * 3. 调用 customActionByDes 执行 OCR
+   * 4. 根据配置将结果输出到指定位置
+   * 
+   * 【配置选项】
+   * - source：OCR 引擎选择
+   * - target：输出目标（评论、摘录、剪贴板等）
+   * - method：处理方式（替换、追加）
+   * 
+   * 【历史兼容】
+   * 注释掉的代码显示之前需要检查 ocrUtils，
+   * 现在已经集成到核心功能中，不再需要单独的 OCR 插件。
+   * 
+   * @param {UIButton} button - 触发按钮
+   */
   ocr: async function (button) {
     // if (typeof ocrUtils === 'undefined') {
     //   MNUtil.showHUD("MN Toolbar: Please install 'MN OCR' first!")
@@ -1382,6 +1742,32 @@ try {
     }
     self.hideAfterDelay()
   },
+  /**
+   * ⚙️ 设置功能 - 打开工具栏设置界面
+   * 
+   * 【功能说明】
+   * 打开 MN Toolbar 的设置界面，允许用户自定义工具栏的各种配置。
+   * 这是工具栏的控制中心，可以管理按钮、配置功能、调整外观等。
+   * 
+   * 【设置内容】
+   * 1. 🎨 按钮管理：调整按钮顺序、显示/隐藏
+   * 2. 🛠️ 功能配置：自定义每个按钮的具体行为
+   * 3. 🎭 外观设置：颜色、透明度、大小等
+   * 4. 🔗 插件协作：配置与其他插件的联动
+   * 5. 💾 配置管理：导入/导出配置文件
+   * 
+   * 【技术实现】
+   * 1. 检查并关闭当前的弹出窗口（避免界面重叠）
+   * 2. 发送通知打开设置界面
+   * 3. 设置界面由 settingController 管理
+   * 
+   * 【用户体验优化】
+   * - 设置界面会记住上次的位置
+   * - 支持实时预览更改效果
+   * - 提供重置默认设置选项
+   * 
+   * @param {UIButton} button - 触发按钮
+   */
   setting: function (button) {
     self.checkPopover()
     MNUtil.postNotification("openToolbarSetting", {})
@@ -1391,6 +1777,44 @@ try {
     }
     self.hideAfterDelay()
   },
+  /**
+   * 📋 粘贴为标题功能
+   * 
+   * 【功能说明】
+   * 将剪贴板中的文本粘贴为笔记的标题。这是一个常用的快速编辑功能，
+   * 支持单击和双击两种操作模式，可以配置不同的粘贴行为。
+   * 
+   * 【使用场景】
+   * 1. 📝 快速命名：从其他地方复制标题快速设置
+   * 2. 🔄 标题更新：替换现有笔记的标题
+   * 3. 📚 批量整理：配合其他功能批量设置标题
+   * 4. 🎯 精确粘贴：根据配置粘贴到不同位置
+   * 
+   * 【功能特性】
+   * 1. **双击支持**：
+   *    - 可以配置双击时的特殊行为
+   *    - 双击可能粘贴到不同位置（如评论）
+   * 
+   * 2. **配置模式**：
+   *    - 如果有配置，使用配置的粘贴行为
+   *    - 支持粘贴到标题、摘录、评论等位置
+   * 
+   * 3. **默认模式**：
+   *    - 没有配置时，直接粘贴为标题
+   *    - 使用撤销分组确保可以撤销
+   * 
+   * 【技术细节】
+   * - button.doubleClick：检测是否为双击操作
+   * - button.menu.stopHide：阻止菜单自动关闭
+   * - MNUtil.undoGrouping：确保操作可撤销
+   * - des.target：配置的粘贴目标位置
+   * 
+   * 【动态窗口特殊处理】
+   * 在动态窗口模式下，粘贴后会自动隐藏工具栏，
+   * 避免遮挡编辑后的内容。
+   * 
+   * @param {UIButton} button - 触发按钮
+   */
   pasteAsTitle:function (button) {
     let self = getToolbarController()
     let des = pluginDemoConfig.getDescriptionByName("pasteAsTitle")
@@ -1428,6 +1852,44 @@ try {
     self.hideAfterDelay()
     pluginDemoUtils.dismissPopupMenu(button.menu,self.onClick)
   },
+  /**
+   * 🧹 清除格式功能
+   * 
+   * 【功能说明】
+   * 清除笔记中的所有格式化样式，将内容恢复为纯文本状态。
+   * 这个功能可以批量处理多个选中的笔记，去除所有富文本格式。
+   * 
+   * 【使用场景】
+   * 1. 📝 格式混乱：从网页复制的内容带有杂乱格式
+   * 2. 🎨 样式重置：清除之前应用的颜色、字体等样式
+   * 3. 📊 统一格式：批量处理笔记使格式一致
+   * 4. 🔄 重新排版：清除后重新应用统一的格式
+   * 
+   * 【清除内容】
+   * - 字体样式（粗体、斜体、下划线等）
+   * - 字体大小和颜色
+   * - 段落格式（缩进、对齐等）
+   * - 超链接样式
+   * - 其他富文本格式
+   * 
+   * 【技术实现】
+   * 1. 获取所有选中的笔记（支持多选）
+   * 2. 使用撤销分组包裹操作
+   * 3. 对每个笔记调用 clearFormat() 方法
+   * 4. 使用 map 函数批量处理
+   * 
+   * 【代码演进】
+   * 注释掉的代码显示了功能的演进：
+   * - 旧版本：只处理单个焦点笔记
+   * - 新版本：支持批量处理多个笔记
+   * 
+   * 【注意事项】
+   * - 清除格式是不可逆的（但可以撤销）
+   * - 不会影响笔记的内容，只影响格式
+   * - 批量操作时注意性能影响
+   * 
+   * @param {UIButton} button - 触发按钮
+   */
   clearFormat:function (button) {
     let self = getToolbarController()
     self.onClick = true
@@ -1447,6 +1909,41 @@ try {
     }
     self.hideAfterDelay()
   },
+  /**
+   * 👆👆 双击标记功能
+   * 
+   * 【功能说明】
+   * 这是一个辅助函数，用于标记按钮被双击。
+   * 当检测到双击事件时，会设置按钮的 doubleClick 属性为 true。
+   * 
+   * 【使用场景】
+   * 这个函数通常不直接使用，而是作为双击检测机制的一部分：
+   * 1. 🎯 双击检测：识别用户的双击操作
+   * 2. 🔄 状态标记：为后续处理提供双击状态
+   * 3. ⚡ 快捷操作：某些按钮支持双击触发不同功能
+   * 
+   * 【工作原理】
+   * 1. 用户快速点击两次按钮
+   * 2. 系统检测到双击事件
+   * 3. 调用此函数设置标记
+   * 4. 其他函数（如 pasteAsTitle）检查这个标记
+   * 5. 根据标记执行不同的操作
+   * 
+   * 【配合使用】
+   * 许多按钮函数会检查 button.doubleClick：
+   * ```javascript
+   * if (button.doubleClick) {
+   *   // 执行双击特定的操作
+   *   button.doubleClick = false  // 重置标记
+   * }
+   * ```
+   * 
+   * 【设计模式】
+   * 这是一个简单的标记模式（Flag Pattern），
+   * 通过设置对象属性来传递状态信息。
+   * 
+   * @param {UIButton} button - 被双击的按钮
+   */
   doubleClick:function (button) {
     button.doubleClick = true
   },
@@ -2241,6 +2738,31 @@ try {
  * @param {CGRect} frame - 可选，新的 frame，不传则使用当前 frame
  * @this {pluginDemoController}
  */
+/**
+ * 🔄 刷新工具栏 - 更新位置和布局
+ * 
+ * 【功能说明】
+ * 刷新工具栏的显示状态，包括更新位置和重新布局所有按钮。
+ * 这是一个常用的维护方法，确保工具栏正确显示。
+ * 
+ * 【使用场景】
+ * 1. 📱 屏幕旋转后重新定位
+ * 2. 🖼️ 分屏模式变化后调整
+ * 3. 🔧 配置更改后更新显示
+ * 4. 🐛 修复显示异常
+ * 
+ * 【刷新内容】
+ * - 工具栏位置（frame）
+ * - 按钮布局（横向/纵向）
+ * - 显示状态同步
+ * 
+ * 【参数说明】
+ * - 如果提供了 frame，使用新位置
+ * - 如果没有提供，使用当前位置
+ * 
+ * @param {CGRect} frame - 可选，新的位置和大小
+ * @this {pluginDemoController}
+ */
 pluginDemoController.prototype.refresh = function (frame) {
   if (!frame) {
     frame = this.view.frame  // 使用当前 frame
@@ -3026,12 +3548,30 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
 }
 
 /**
+ * 🔘 通过按钮名称触发动作 - 实现按钮间的联动
+ * 
+ * 【功能说明】
+ * 允许一个按钮触发另一个按钮的动作，实现：
+ * - 🔗 按钮联动：一个按钮可以触发多个按钮的动作
+ * - 🎯 工作流：组合多个按钮动作形成工作流
+ * - 🔄 动态调用：根据条件触发不同的按钮
+ * 
+ * 【应用场景】
+ * ```javascript
+ * // 在动作配置中：
+ * {
+ *   action: "triggerButton",
+ *   buttonName: "copy"  // 触发复制按钮
+ * }
+ * ```
+ * 
+ * @param {UIButton} button - 当前触发的按钮
+ * @param {string} targetButtonName - 目标按钮名称（如 "copy", "paste", "color1" 等）
+ * @param {boolean} checkSubscribe - 是否检查订阅状态，默认 true
+ * @returns {Promise<boolean>} 返回是否成功执行
  * @this {pluginDemoController}
- * @param {UIButton} button 
- * @param {object} des 
- * @returns {Promise<boolean>}
  */
-pluginDemoController.prototype.customActionByButton = async function (button,targetButtonName,checkSubscribe = true) {//这里actionName指的是key
+pluginDemoController.prototype.customActionByButton = async function (button,targetButtonName,checkSubscribe = true) {
   try {
     
 
@@ -3048,9 +3588,23 @@ pluginDemoController.prototype.customActionByButton = async function (button,tar
   }
 }
 /**
+ * 🔄 替换按钮的目标动作 - 动态修改按钮功能
+ * 
+ * 【功能说明】
+ * 将按钮的点击动作替换为新的目标动作，常用于：
+ * - 🎯 弹出菜单替换：将系统菜单按钮替换为自定义功能
+ * - 🔄 动态按钮：根据上下文改变按钮功能
+ * - 🎮 模式切换：同一个按钮在不同模式下有不同功能
+ * 
+ * 【实现步骤】
+ * 1. 🔓 移除所有旧的点击事件
+ * 2. 🗋️ 清空按钮文本（使用图标代替）
+ * 3. 🎯 添加新的点击事件
+ * 4. 👆 重新添加长按手势
+ * 
+ * @param {UIButton} button - 要替换动作的按钮
+ * @param {string} target - 新的目标动作名称（如 "copy:", "setColor:" 等）
  * @this {pluginDemoController}
- * @param {UIButton} button 
- * @param {string} target 
  */
 pluginDemoController.prototype.replaceButtonTo = async function (button,target) {
   button.removeTargetActionForControlEvents(undefined, undefined, 1 << 6);
@@ -3061,6 +3615,45 @@ pluginDemoController.prototype.replaceButtonTo = async function (button,target) 
 
 }
 /**
+ * 🔄 弹出菜单替换 - 自定义系统弹出菜单中的按钮
+ * 
+ * 【核心功能】
+ * 这是 MN Toolbar 的一个强大特性，允许替换 MarginNote 系统弹出菜单中的按钮：
+ * - 🎯 替换图标：使用自定义图标替换系统图标
+ * - 🔗 替换动作：将系统动作替换为自定义功能
+ * - 🔍 保留原功能：可以选择性地替换部分按钮
+ * 
+ * 【实现流程】
+ * ```
+ * 获取当前弹出菜单
+ *     ↓
+ * 遍历菜单中的所有按钮
+ *     ↓
+ * 根据配置决定是否替换
+ *     ↓
+ * 替换图标和动作
+ *     ↓
+ * 验证替换结果
+ * ```
+ * 
+ * 【配置示例】
+ * ```javascript
+ * // 在 pluginDemoConfig 中配置：
+ * {
+ *   "makeLink": {           // 系统按钮 ID
+ *     enabled: true,        // 是否启用替换
+ *     target: "customLink" // 替换为的动作
+ *   }
+ * }
+ * ```
+ * 
+ * 【注意事项】
+ * - 需要延迟 0.01 秒才能获取到弹出菜单
+ * - 会分三个阶段执行：图标替换 → 动作替换 → 结果验证
+ * - 如果替换失败会显示警告
+ * 
+ * @param {UIButton} button - 触发弹出菜单的按钮
+ * @returns {PopupMenu|undefined} 返回弹出菜单对象，或 undefined
  * @this {pluginDemoController}
  */
 pluginDemoController.prototype.popupReplace = async function (button) {
@@ -3188,17 +3781,93 @@ pluginDemoController.prototype.popupReplace = async function (button) {
   }
 }
 /**
- * 检测是否需要弹出菜单,如果需要弹出菜单则返回true,否则返回false
+ * 🗋️ 处理自定义菜单动作 - 检测并显示弹出菜单
+ * 
+ * 【核心功能】
+ * 这是菜单系统的入口，负责：
+ * 1. 🔍 检测动作是否需要显示菜单
+ * 2. 🎭 构建菜单项列表
+ * 3. 📍 决定菜单显示位置（左侧/右侧）
+ * 4. 🎯 处理特殊类型的菜单
+ * 
+ * 【菜单类型】
+ * 1. 🗋️ 通用菜单：action="menu"，显示自定义菜单项
+ * 2. 🚀 AI 菜单：action="chatAI" + target="menu"
+ * 3. 📋 粘贴菜单：action="paste" + target="menu"
+ * 4. 🔍 OCR 菜单：action="ocr" + target="menu"
+ * 5. ⏱️ 计时器菜单：action="setTimer" + target="menu"
+ * 
+ * 【菜单配置示例】
+ * ```javascript
+ * {
+ *   action: "menu",
+ *   menuWidth: 250,        // 菜单宽度
+ *   autoClose: false,      // 是否自动关闭工具栏
+ *   menuItems: [
+ *     {
+ *       menuTitle: "选项 1",
+ *       action: "option1"
+ *     },
+ *     "分隔线文本"        // 纯文本作为分组标题
+ *   ]
+ * }
+ * ```
+ * 
+ * 【位置算法】
+ * - 如果按钮靠近屏幕右边缘：菜单显示在左侧
+ * - 否则：菜单显示在右侧
+ * 
+ * @param {UIButton} button - 触发菜单的按钮
+ * @param {Object} des - 动作描述对象
+ * @returns {boolean} true 表示已处理菜单，false 表示不是菜单动作
  * @this {pluginDemoController}
- * @param {UIButton} button 
- * @param {object} des 
- * @returns {boolean}
  */
 pluginDemoController.prototype.customActionMenu =  function (button,des) {
   let buttonX = pluginDemoUtils.getButtonFrame(button).x//转化成相对于studyview的
   try {
     let selector = "customActionByMenu:"
     let object = this
+    /**
+     * 📋 创建菜单项对象 - 内部辅助函数
+     * 
+     * 【功能说明】
+     * 这是一个工厂函数，用于创建符合 iOS 菜单系统要求的菜单项对象。
+     * 每个菜单项包含了显示文本、回调对象、选择器和参数等必要信息。
+     * 
+     * 【使用场景】
+     * 在 customActionMenu 方法内部使用，用于：
+     * 1. 📱 创建弹出菜单的选项
+     * 2. 🎯 将用户配置转换为 iOS 菜单格式
+     * 3. ✅ 支持带选中状态的菜单项
+     * 
+     * 【iOS 菜单项结构】
+     * iOS 的菜单系统需要特定格式的对象：
+     * - title: 菜单项显示的文本
+     * - object: 处理菜单点击的对象（通常是控制器）
+     * - selector: 要调用的方法名（Objective-C 选择器）
+     * - param: 传递给方法的参数
+     * - checked: 是否显示选中标记
+     * 
+     * 【参数封装】
+     * 将原始参数和按钮引用封装在一起：
+     * - des: 包含原始参数和按钮引用
+     * - des.des: 菜单项的配置参数
+     * - des.button: 触发菜单的按钮
+     * 
+     * @param {string} title - 菜单项显示的标题文本
+     * @param {Object} params - 菜单项的配置参数，包含 action、menuTitle 等
+     * @param {boolean} [checked=false] - 是否在菜单项前显示选中标记（✓）
+     * @returns {{title: string, object: Object, selector: string, param: Object, checked: boolean}} 
+     *          返回符合 iOS 菜单系统要求的菜单项对象
+     * 
+     * @example
+     * // 创建一个普通菜单项
+     * let item1 = tableItem("复制", {action: "copy"})
+     * 
+     * @example
+     * // 创建一个带选中标记的菜单项
+     * let item2 = tableItem("自动保存", {action: "toggleAutoSave"}, true)
+     */
     function tableItem(title,params,checked=false) {
       let des = {des:params,button:button}
       return {title:title,object:object,selector:"customActionByMenu:",param:des,checked:checked}
@@ -3528,10 +4197,52 @@ pluginDemoController.prototype.customActionMenu =  function (button,des) {
 }
 
 /**
+ * 👋 添加拖动手势 - 让界面元素可以自由拖动
  * 
- * @param {UIView} view 
- * @param {string} selector 
+ * 【功能说明】
+ * 为指定的视图添加拖动（Pan）手势识别器，使其可以响应用户的拖动操作。
+ * 这是实现工具栏拖动、按钮拖拽排序等功能的基础方法。
+ * 
+ * 【手势工作流程】
+ * ```
+ * 用户按下并拖动
+ *      ↓
+ * UIPanGestureRecognizer 识别手势
+ *      ↓
+ * 调用 selector 指定的处理方法
+ *      ↓
+ * 在处理方法中：
+ *   - gesture.state === 1：开始拖动
+ *   - gesture.state === 2：拖动中（持续触发）
+ *   - gesture.state === 3：结束拖动
+ * ```
+ * 
+ * 【使用场景】
+ * 1. 📱 工具栏移动：拖动整个工具栏到新位置
+ * 2. 🔄 按钮重排：拖动按钮改变顺序
+ * 3. 📏 调整大小：拖动边缘调整视图大小
+ * 4. 🎯 手势导航：通过拖动切换页面
+ * 
+ * 【技术细节】
+ * - UIPanGestureRecognizer：iOS 原生拖动手势类
+ * - selector：处理方法必须接收一个参数（手势对象）
+ * - this：作为 target，指定处理方法所在的对象
+ * 
+ * 【常见 selector 方法】
+ * - "onMoveGesture:"：处理视图移动
+ * - "onResizeGesture:"：处理大小调整
+ * - "onDragGesture:"：处理拖拽操作
+ * 
+ * @param {UIView} view - 要添加手势的视图对象
+ * @param {string} selector - 手势触发时调用的方法名（必须包含冒号）
  * @this {pluginDemoController}
+ * 
+ * @example
+ * // 为工具栏添加拖动功能
+ * this.addPanGesture(this.view, "onMoveGesture:")
+ * 
+ * // 为按钮添加拖动重排功能
+ * this.addPanGesture(button, "onButtonDrag:")
  */
 pluginDemoController.prototype.addPanGesture = function (view,selector) {
   let gestureRecognizer = new UIPanGestureRecognizer(this,selector)
@@ -3539,27 +4250,135 @@ pluginDemoController.prototype.addPanGesture = function (view,selector) {
 }
 
 /**
+ * 👆⏳ 添加长按手势 - 实现长按触发的交互功能
  * 
- * @param {UIView} view 
- * @param {string} selector 
+ * 【功能说明】
+ * 为视图添加长按手势识别器，允许用户通过长按触发特定操作。
+ * 这是实现上下文菜单、快捷操作、预览功能等的基础方法。
+ * 
+ * 【手势时序】
+ * ```
+ * 用户按下 → 等待 0.3 秒 → 触发长按
+ *    ↓         ↓               ↓
+ * state=0   计时中         state=1 (开始)
+ *                             ↓
+ *                          执行操作
+ *                             ↓
+ *                          state=3 (结束)
+ * ```
+ * 
+ * 【使用场景】
+ * 1. 🗋️ 弹出菜单：长按按钮显示更多选项
+ * 2. 🔍 预览功能：长按预览内容
+ * 3. 🔄 模式切换：长按进入编辑模式
+ * 4. 🎯 快捷操作：长按触发特定功能
+ * 
+ * 【参数说明】
+ * - minimumPressDuration = 0.3：最小按压时间（秒）
+ *   - 0.3 秒是经过优化的时长，既不会误触，又不会太久
+ *   - 可以根据需要调整（0.5 秒更保守，0.2 秒更灵敏）
+ * 
+ * 【扩展属性】（已注释）
+ * 注释的代码显示了如何为手势添加自定义属性：
+ * - target：存储关联的目标对象
+ * - index：存储按钮索引或其他标识
+ * 这些属性可以在手势处理方法中通过 gesture.target 访问
+ * 
+ * 【与其他手势的配合】
+ * - 可以与点击手势共存：短按执行主功能，长按显示菜单
+ * - 与拖动手势互斥：需要设置手势代理来处理冲突
+ * 
+ * @param {UIView} view - 要添加长按手势的视图
+ * @param {string} selector - 长按触发时调用的方法名
  * @this {pluginDemoController}
+ * 
+ * @example
+ * // 为按钮添加长按菜单
+ * this.addLongPressGesture(button, "onLongPressGesture:")
+ * 
+ * // 处理方法示例
+ * onLongPressGesture: function(gesture) {
+ *   if (gesture.state === 1) {  // 长按开始
+ *     this.showContextMenu(gesture.view)
+ *   }
+ * }
  */
 pluginDemoController.prototype.addLongPressGesture = function (view,selector) {
   let gestureRecognizer = new UILongPressGestureRecognizer(this,selector)
-  gestureRecognizer.minimumPressDuration = 0.3
+  gestureRecognizer.minimumPressDuration = 0.3  // 设置最小按压时间为 0.3 秒
+  
+  // 💡 扩展属性示例（当前已注释）
+  // 这些代码展示了如何为手势添加自定义数据
+  // 在手势处理方法中可以通过 gesture.target 或 gesture.index 访问
   // if (view.target !== undefined) {
   //   gestureRecognizer.target = view.target
   // }
   // if (view.index !== undefined) {
   //   gestureRecognizer.index = view.index
   // }
+  
   view.addGestureRecognizer(gestureRecognizer)
 }
+
 /**
+ * 👆➡️ 添加滑动手势 - 实现快速滑动交互
  * 
- * @param {UIView} view 
- * @param {string} selector 
+ * 【功能说明】
+ * 为视图添加滑动（Swipe）手势识别器，检测用户的快速滑动动作。
+ * 与拖动手势不同，滑动手势关注的是快速、直线的移动。
+ * 
+ * 【手势特征】
+ * ```
+ * 拖动手势 vs 滑动手势：
+ * 
+ * 拖动（Pan）：慢速 ～～～～> 持续跟踪
+ * 滑动（Swipe）：快速 ———→ 一次性触发
+ * ```
+ * 
+ * 【滑动方向】
+ * 默认可以识别四个方向：
+ * - ⬆️ 向上滑动（UISwipeGestureRecognizerDirectionUp）
+ * - ⬇️ 向下滑动（UISwipeGestureRecognizerDirectionDown）
+ * - ⬅️ 向左滑动（UISwipeGestureRecognizerDirectionLeft）
+ * - ➡️ 向右滑动（UISwipeGestureRecognizerDirectionRight）
+ * 
+ * 【使用场景】
+ * 1. 🔄 切换功能：左右滑动切换工具栏页面
+ * 2. ❌ 快速关闭：向上滑动隐藏工具栏
+ * 3. 📱 手势导航：滑动返回上一级
+ * 4. 🎯 快捷操作：不同方向触发不同功能
+ * 
+ * 【配置扩展】
+ * 虽然这里使用默认配置，但可以扩展：
+ * ```javascript
+ * gestureRecognizer.direction = 1 << 0  // 只识别向右滑动
+ * gestureRecognizer.numberOfTouchesRequired = 2  // 需要两指滑动
+ * ```
+ * 
+ * 【与其他手势的区别】
+ * - Pan（拖动）：持续跟踪手指位置，适合精确控制
+ * - Swipe（滑动）：只检测快速移动，适合触发动作
+ * - Tap（点击）：检测轻触，不关心移动
+ * 
+ * 【注意事项】
+ * - 滑动手势要求一定的速度和直线性
+ * - 太慢或路径弯曲会识别失败
+ * - 可能与拖动手势冲突，需要合理设计交互
+ * 
+ * @param {UIView} view - 要添加滑动手势的视图
+ * @param {string} selector - 滑动触发时调用的方法名
  * @this {pluginDemoController}
+ * 
+ * @example
+ * // 为工具栏添加滑动隐藏功能
+ * this.addSwipeGesture(this.view, "onSwipeGesture:")
+ * 
+ * // 处理方法示例
+ * onSwipeGesture: function(gesture) {
+ *   if (gesture.direction === 1 << 2) {  // 向上滑动
+ *     this.hide()
+ *   }
+ * }
  */
 pluginDemoController.prototype.addSwipeGesture = function (view,selector) {
   let gestureRecognizer = new UISwipeGestureRecognizer(this,selector)
@@ -3567,56 +4386,183 @@ pluginDemoController.prototype.addSwipeGesture = function (view,selector) {
 }
 
 /**
+ * 📋 创建菜单项 - 快速构建符合 iOS 规范的菜单项对象
  * 
- * @param {string} title 
- * @param {string} selector 
- * @param {any} param 
- * @param {boolean|undefined} checked 
- * @this {pluginDemoController}
- * @returns 
+ * 【功能说明】
+ * 这是一个便捷的工厂方法，用于创建符合 iOS UITableView 菜单系统要求的菜单项对象。
+ * 主要用在弹出菜单、设置列表等需要显示选项列表的场景。
+ * 
+ * 【iOS 菜单系统背景】
+ * 在 iOS 中，菜单通常使用 UITableView 实现，每个菜单项需要包含：
+ * - 显示文本（title）
+ * - 响应对象（object）  
+ * - 响应方法（selector）
+ * - 传递参数（param）
+ * - 选中状态（checked）
+ * 
+ * 【使用场景】
+ * 1. 🗋️ 右键菜单：创建弹出式选项菜单
+ * 2. ⚙️ 设置界面：构建设置选项列表
+ * 3. 🎯 动作选择：提供多个操作选项
+ * 4. ✅ 状态切换：带选中标记的选项
+ * 
+ * 【参数说明】
+ * @param {string} title - 菜单项显示的文本
+ *                        例如："复制"、"粘贴"、"设置颜色"
+ * @param {string} selector - 点击菜单项时调用的方法名（Objective-C 选择器）
+ *                           必须包含冒号，如 "copyAction:"、"pasteAction:"
+ * @param {any} param - 传递给 selector 方法的参数，可以是任意类型
+ *                     默认为空字符串，可以传递对象、数字、字符串等
+ * @param {boolean} checked - 是否在菜单项前显示选中标记（✓）
+ *                           默认 false，true 时显示勾选状态
+ * 
+ * @returns {{title: string, object: Object, selector: string, param: any, checked: boolean}} 
+ *          返回标准的 iOS 菜单项对象
+ * 
+ * @this {pluginDemoController} - 绑定到当前控制器实例
+ * 
+ * @example
+ * // 创建简单菜单项
+ * let copyItem = this.tableItem("复制", "copyAction:")
+ * 
+ * @example
+ * // 创建带参数的菜单项
+ * let colorItem = this.tableItem("设置为红色", "setColor:", {color: 11})
+ * 
+ * @example
+ * // 创建带选中状态的菜单项
+ * let autoSaveItem = this.tableItem("自动保存", "toggleAutoSave:", "", true)
+ * 
+ * @example
+ * // 在菜单中使用
+ * let menuItems = [
+ *   this.tableItem("复制", "copy:"),
+ *   this.tableItem("粘贴", "paste:"),
+ *   this.tableItem("删除", "delete:", noteId)
+ * ]
+ * MNUtil.getPopoverAndPresent(button, menuItems, 200)
  */
 pluginDemoController.prototype.tableItem = function (title,selector,param = "",checked = false) {
   return {title:title,object:this,selector:selector,param:param,checked:checked}
 }
 /**
- * 根据工具栏的方向,对frame做调整
+ * 📐 设置工具栏框架 - 智能调整工具栏的位置和大小
+ * 
+ * 【核心功能】
+ * 这是工具栏布局系统的核心方法，负责：
+ * 1. 🔄 方向适配：根据横向/纵向模式调整尺寸
+ * 2. 📏 智能计算：自动计算按钮数量和工具栏大小
+ * 3. 🛡️ 边界保护：确保工具栏不超出屏幕范围
+ * 4. 💎 订阅限制：未订阅用户的高度限制（420像素）
+ * 
+ * 【布局计算原理】
+ * ```
+ * 横向工具栏 (↔️)：
+ * [按钮1][按钮2][按钮3]...[按钮N][屏幕按钮]
+ * 宽度 = 按钮数量 × 45 + 15
+ * 高度 = 40（固定）
+ * 
+ * 纵向工具栏 (↕️)：
+ * [按钮1]
+ * [按钮2]
+ * [按钮3]
+ *   ...
+ * [按钮N]
+ * [屏幕按钮]
+ * 宽度 = 40（固定）
+ * 高度 = 按钮数量 × 45 + 15
+ * ```
+ * 
+ * 【参数说明】
+ * @param {CGRect} frame - 目标框架位置和大小
+ *                        frame.x, frame.y - 位置坐标
+ *                        frame.width, frame.height - 尺寸（会被重新计算）
+ * @param {boolean} maximize - 是否最大化显示
+ *                            true: 根据当前按钮数量计算最大尺寸
+ *                            false: 根据传入的尺寸计算按钮数量
+ * 
+ * 【智能调整策略】
+ * 1. **尺寸计算**：
+ *    - maximize=true：使用 this.buttonNumber 计算尺寸
+ *    - maximize=false：从 frame 尺寸反推按钮数量
+ * 
+ * 2. **边界检测**：
+ *    - 右边界/底边界：自动缩小尺寸避免超出
+ *    - 左边界/顶边界：限制最小位置为 0
+ * 
+ * 3. **订阅限制**：
+ *    - 未订阅用户纵向高度限制为 420 像素（约 9 个按钮）
+ *    - 横向模式无限制
+ * 
+ * 【使用场景】
+ * 1. 🔄 窗口调整：响应屏幕旋转或分屏变化
+ * 2. 📏 手动调整：用户拖动调整工具栏大小
+ * 3. 🎯 初始化：设置工具栏初始位置和大小
+ * 4. 🔧 刷新布局：更新按钮后重新计算
+ * 
  * @this {pluginDemoController}
- * @returns 
+ * 
+ * @example
+ * // 设置到指定位置并自动计算大小
+ * this.setFrame({x: 100, y: 200, width: 200, height: 200})
+ * 
+ * @example
+ * // 最大化显示当前按钮数量
+ * this.setFrame(this.view.frame, true)
+ * 
+ * 【实现细节】
+ * - 按钮尺寸：40×40 像素
+ * - 按钮间距：5 像素
+ * - 总占用：45 像素/按钮
+ * - 屏幕按钮额外空间：15 像素
  */
 pluginDemoController.prototype.setFrame = function (frame,maximize = false) {
   let targetFrame = {x:frame.x,y:frame.y}
   if(pluginDemoConfig.horizontal(this.dynamicWindow)){
-    let width = Math.max(frame.width,frame.height)
+    // ========== ↔️ 横向工具栏布局 ==========
+    let width = Math.max(frame.width,frame.height)  // 取较大值作为宽度
     if (maximize) {
+      // 🔢 最大化模式：根据按钮数量计算宽度
       width = 45*this.buttonNumber+15
     }else{
+      // 📏 自适应模式：根据宽度计算按钮数量
       this.buttonNumber = Math.floor(width/45)
     }
+    // 🛡️ 右边界保护：防止超出屏幕
     if (frame.x + width > MNUtil.studyView.bounds.width) {
       width = MNUtil.studyView.bounds.width - frame.x
     }
+    // 🔧 检查最大按钮数量限制
     width = pluginDemoUtils.checkHeight(width,this.maxButtonNumber)
     targetFrame.width = width
-    targetFrame.height = 40
+    targetFrame.height = 40  // 横向固定高度
+    // 📍 位置约束：确保完全在屏幕内
     targetFrame.x = pluginDemoUtils.constrain(targetFrame.x, 0, MNUtil.studyView.bounds.width-width)
     targetFrame.y = pluginDemoUtils.constrain(targetFrame.y, 0, MNUtil.studyView.bounds.height-40)
   }else{
-    targetFrame.width = 40
-    let height = Math.max(frame.width,frame.height)
+    // ========== ↕️ 纵向工具栏布局 ==========
+    targetFrame.width = 40  // 纵向固定宽度
+    let height = Math.max(frame.width,frame.height)  // 取较大值作为高度
     if (maximize) {
+      // 🔢 最大化模式：根据按钮数量计算高度
       height = 45*this.buttonNumber+15
     }else{
+      // 📏 自适应模式：根据高度计算按钮数量
       this.buttonNumber = Math.floor(height/45)
     }
+    // 💎 订阅限制：未订阅用户最多 420 像素高度
     if (height > 420 && !pluginDemoUtils.isSubscribed(false)) {
       height = 420
     }
+    // 🛡️ 底边界保护：防止超出屏幕
     if (frame.y + height > MNUtil.studyView.bounds.height) {
       height = MNUtil.studyView.bounds.height - frame.y
     }
+    // 🔧 检查最大按钮数量限制
     height = pluginDemoUtils.checkHeight(height,this.maxButtonNumber)
     targetFrame.height = height
   }
+  // 📐 应用新的框架
   this.view.frame = targetFrame
-  this.currentFrame = targetFrame
+  this.currentFrame = targetFrame  // 保存当前框架，用于动画等场景
 }

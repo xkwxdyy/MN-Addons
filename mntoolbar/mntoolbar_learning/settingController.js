@@ -351,24 +351,56 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       pluginDemoConfig.save("MNToolbar_action")
     }
   },
+  /**
+   * 🔼 将选中的按钮向上移动一个位置
+   * 
+   * 【功能说明】
+   * 这个方法用于调整工具栏按钮的顺序，将选中的按钮向前（左）移动一个位置。
+   * 
+   * 【按钮顺序示意图】
+   * 移动前: [A] [B] [C*] [D] [E]  （* 表示选中）
+   * 移动后: [A] [C*] [B] [D] [E]
+   * 
+   * 【使用场景】
+   * - 用户想要调整工具栏按钮的显示顺序
+   * - 将常用按钮移动到更方便的位置
+   * - 根据使用频率优化按钮布局
+   * 
+   * 【订阅限制】
+   * - 固定工具栏：免费使用
+   * - 动态工具栏：需要订阅
+   */
   moveForwardTapped :function () {
     let self = getSettingController()
     try {
+    // 检查是否在编辑动态工具栏
     let isEditingDynamic = self.dynamicButton.selected
+    
+    // 动态工具栏功能需要订阅
     if (isEditingDynamic && !pluginDemoUtils.checkSubscribe(true)) {
       self.showHUD("Please subscribe to use this feature")
       return
     }
+    
+    // 获取当前所有按钮列表
     let allActions = pluginDemoConfig.getAllActions(isEditingDynamic)
+    
+    // 执行移动操作：将选中项向上（向前）移动一位
     pluginDemoUtils.moveElement(allActions, self.selectedItem, "up")
+    
+    // 更新界面显示
     self.setButtonText(allActions,self.selectedItem)
+    
+    // 根据编辑模式保存配置
     if (isEditingDynamic) {
+      // 更新动态工具栏
       if (self.pluginDemoController.dynamicToolbar) {
         self.pluginDemoController.dynamicToolbar.setToolbarButton(allActions)
       }
       pluginDemoConfig.dynamicAction = allActions
       pluginDemoConfig.save("MNToolbar_dynamicAction")
     }else{
+      // 更新固定工具栏
       self.pluginDemoController.setToolbarButton(allActions)
       pluginDemoConfig.action = allActions
       pluginDemoConfig.save("MNToolbar_action")
@@ -377,6 +409,26 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       pluginDemoUtils.addErrorLog(error, "moveForwardTapped")
     }
   },
+  /**
+   * 🔽 将选中的按钮向下移动一个位置
+   * 
+   * 【功能说明】
+   * 这个方法用于调整工具栏按钮的顺序，将选中的按钮向后（右）移动一个位置。
+   * 
+   * 【按钮顺序示意图】
+   * 移动前: [A] [B] [C*] [D] [E]  （* 表示选中）
+   * 移动后: [A] [B] [D] [C*] [E]
+   * 
+   * 【使用场景】
+   * - 用户想要将不常用的按钮移到后面
+   * - 调整按钮顺序以符合工作流程
+   * - 根据个人偏好自定义布局
+   * 
+   * 【实现细节】
+   * - 使用 moveElement 工具函数进行数组元素交换
+   * - 移动后立即更新 UI 和保存配置
+   * - 支持固定工具栏和动态工具栏两种模式
+   */
   moveBackwardTapped :function () {
     let self = getSettingController()
     try {
@@ -386,9 +438,16 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       self.showHUD("Please subscribe to use this feature")
       return
     }
+    
     let allActions = pluginDemoConfig.getAllActions(isEditingDynamic)
+    
+    // 执行移动操作：将选中项向下（向后）移动一位
+    // 注意：这里有个 -0，可能是之前的代码遗留，实际没有作用
     pluginDemoUtils.moveElement(allActions, self.selectedItem, "down")-0
+    
     self.setButtonText(allActions,self.selectedItem)
+    
+    // 同步更新工具栏显示
     if (isEditingDynamic) {
       if (self.pluginDemoController.dynamicToolbar) {
         self.pluginDemoController.dynamicToolbar.setToolbarButton(allActions)
@@ -404,56 +463,123 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       pluginDemoUtils.addErrorLog(error, "moveBackwardTapped")
     }
   },
+  /**
+   * 🔄 重置按钮配置菜单
+   * 
+   * 【功能说明】
+   * 显示一个弹出菜单，让用户选择要重置的配置项。
+   * 这是一个危险操作，会清除用户的自定义设置。
+   * 
+   * 【重置选项说明】
+   * 1. Reset all button configs - 重置所有按钮的自定义配置（名称、功能等）
+   * 2. Reset fixed button order - 重置固定工具栏的按钮顺序
+   * 3. Reset dynamic button order - 重置动态工具栏的按钮顺序
+   * 4. Reset all button images - 重置所有自定义按钮图标
+   * 
+   * 【使用场景】
+   * - 配置混乱时恢复默认设置
+   * - 想要重新开始自定义
+   * - 排除配置问题
+   * 
+   * @param {UIButton} button - 触发菜单的按钮，用于定位弹出菜单
+   */
   resetButtonTapped: async function (button) {
+    // 构建菜单项数组
     var commandTable = [
       {title:'🔄   Reset all button configs',object:self,selector:'resetConfig:',param:"config"},
       {title:'🔄   Reset fixed button order',object:self,selector:'resetConfig:',param:"order"},
       {title:'🔄   Reset dynamic button order',object:self,selector:'resetConfig:',param:"dynamicOrder"},
       {title:'🔄   Reset all button images',object:self,selector:'resetConfig:',param:"image"},
     ]
+    
+    // 显示弹出菜单
+    // 参数：触发按钮，菜单项，宽度，方向（0=自动）
     self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,250,0)
   },
+  /**
+   * 🔧 执行具体的重置操作
+   * 
+   * 【功能说明】
+   * 根据用户选择的重置类型，执行相应的重置操作。
+   * 每种重置都有不同的影响范围和恢复方式。
+   * 
+   * 【重置类型详解】
+   * 
+   * 1️⃣ "config" - 重置所有配置
+   *    - 清除所有自定义按钮配置
+   *    - 恢复按钮默认名称和功能
+   *    - 需要用户二次确认（因为影响最大）
+   * 
+   * 2️⃣ "order" - 重置固定工具栏顺序
+   *    - 恢复默认按钮排列顺序
+   *    - 只影响固定工具栏
+   *    - 自定义配置保留
+   * 
+   * 3️⃣ "dynamicOrder" - 重置动态工具栏顺序
+   *    - 恢复动态工具栏默认顺序
+   *    - 只影响动态工具栏
+   *    - 需要订阅才能使用动态工具栏
+   * 
+   * 4️⃣ "image" - 重置按钮图标
+   *    - 删除所有自定义图标
+   *    - 恢复默认图标
+   *    - 清除图标缩放设置
+   * 
+   * @param {string} param - 重置类型参数
+   */
   resetConfig: async function (param) {
     try {
       let self = getSettingController()
-      self.checkPopoverController()
+      self.checkPopoverController()  // 关闭弹出菜单
       let isEditingDynamic = self.dynamicButton.selected
+      
       switch (param) {
         case "config":
+          // 最危险的操作，需要用户确认
           let confirm = await MNUtil.confirm("MN Toolbar: Clear all configs?", "MN Toolbar: 清除所有配置？")
           if (confirm) {
             pluginDemoConfig.reset("config")
-            // self.pluginDemoController.setToolbarButton(action,pluginDemoConfig.actions)
-            // self.pluginDemoController.actions = actions
-            self.setButtonText()
-            self.setTextview()
+            self.setButtonText()  // 刷新按钮列表
+            self.setTextview()    // 刷新配置显示
             MNUtil.showHUD("Reset prompts")
           }
           break;
+          
         case "order":
+          // 重置固定工具栏的按钮顺序
           pluginDemoConfig.reset("order")
           if (!isEditingDynamic) {
-            self.setButtonText()
+            self.setButtonText()  // 只在查看固定工具栏时刷新
           }
           MNUtil.showHUD("Reset fixed order")
           break;
+          
         case "dynamicOrder":
+          // 重置动态工具栏的按钮顺序
           pluginDemoConfig.reset("dynamicOrder")
           if (isEditingDynamic) {
-            self.setButtonText()
+            self.setButtonText()  // 只在查看动态工具栏时刷新
           }
           MNUtil.showHUD("Reset dynamic order")
           break;
+          
         case "image":
-          pluginDemoConfig.imageScale = {}
+          // 重置所有按钮图标
+          pluginDemoConfig.imageScale = {}  // 清除缩放设置
           pluginDemoConfig.save("MNToolbar_imageScale")
+          
+          // 重新加载所有默认图标
           let keys = pluginDemoConfig.getDefaultActionKeys()
           keys.forEach((key)=>{
+            // 从插件目录加载默认图标
             pluginDemoConfig.imageConfigs[key] = MNUtil.getImage(pluginDemoConfig.mainPath+"/"+pluginDemoConfig.getAction(key).image+".png")
           })
+          
+          // 通知工具栏刷新显示
           MNUtil.postNotification("refreshToolbarButton", {})
           MNUtil.showHUD("Reset button image")
           break
+          
         default:
           break;
       }
@@ -461,14 +587,32 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       MNUtil.showHUD("Error in resetConfig: "+error)
     }
   },
+  /**
+   * ❌ 关闭按钮点击事件
+   * 
+   * 【功能说明】
+   * 关闭设置窗口，保存当前状态并清理临时数据。
+   * 
+   * 【执行步骤】
+   * 1. 移除焦点（blur）- 确保输入框等失去焦点
+   * 2. 隐藏窗口 - 支持两种隐藏方式
+   * 3. 清理搜索文本 - 重置临时状态
+   * 
+   * 【隐藏方式说明】
+   * - 如果有 addonBar：隐藏到指定位置（可能是缩小到工具栏）
+   * - 如果没有 addonBar：直接隐藏窗口
+   */
   closeButtonTapped: async function() {
-    self.blur()
-    // self.getWebviewContent()
+    self.blur()  // 移除键盘焦点
+    
+    // 根据是否有 addonBar 选择不同的隐藏方式
     if (self.addonBar) {
-      self.hide(self.addonBar.frame)
+      self.hide(self.addonBar.frame)  // 隐藏到工具栏位置
     }else{
-      self.hide()
+      self.hide()  // 直接隐藏
     }
+    
+    // 清理临时状态
     self.searchedText = ""
   },
   /**
@@ -526,49 +670,125 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       self.settingViewLayout()
     })
   },
+  /**
+   * 🔄 更改弹出菜单的替换目标
+   * 
+   * 【功能说明】
+   * 当用户点击弹出菜单配置按钮时，显示一个包含所有可用动作的菜单，
+   * 让用户选择这个弹出菜单应该触发哪个动作。
+   * 
+   * 【弹出菜单替换机制】
+   * MarginNote 在某些情况下会显示系统弹出菜单（如选中文本时）。
+   * 这个功能允许用户将弹出菜单中的默认按钮替换为自己想要的动作。
+   * 
+   * 例如：
+   * - 原本：选中文本 → 弹出菜单显示"复制"按钮
+   * - 配置后：选中文本 → 弹出菜单显示"制卡"按钮
+   * 
+   * 【平台差异】
+   * - macOS：弹出方向为 4（右侧）
+   * - iOS：弹出方向为 1（上方）
+   * 
+   * @param {UIButton} button - 被点击的配置按钮，其 id 属性包含要配置的弹出按钮名
+   */
   changePopupReplace: function (button) {
+    // 获取所有可用的动作列表
     let allActions = pluginDemoConfig.getAllActions()
-    // MNUtil.copyJSON(allActions)
+    
+    // 将每个动作转换为菜单项
     var commandTable = allActions.map(actionKey=>{
       let actionName = pluginDemoConfig.getAction(actionKey).name
-      return {title:actionName,object:self,selector:'setPopupReplace:',param:{id:button.id,name:actionName,target:actionKey}}
+      return {
+        title:actionName,                    // 菜单项显示的文字
+        object:self,                         // 回调对象
+        selector:'setPopupReplace:',         // 回调方法
+        param:{                              // 传递的参数
+          id:button.id,                      // 要配置的弹出按钮 ID
+          name:actionName,                   // 动作显示名称
+          target:actionKey                   // 目标动作键名
+        }
+      }
     })
+    
+    // 根据平台显示不同方向的弹出菜单
     if (MNUtil.appVersion().type === "macOS") {
-      self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,200,4)
+      self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,200,4)  // 右侧弹出
     }else{
-      self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,200,1)
+      self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,200,1)  // 上方弹出
     }
-    // MNUtil.showHUD("replacePopupEditTapped")
   },
+  /**
+   * 🎯 设置弹出菜单的替换目标
+   * 
+   * 【功能说明】
+   * 当用户从菜单中选择一个动作后，此方法会：
+   * 1. 更新弹出菜单配置
+   * 2. 更新 UI 显示
+   * 3. 保存配置到本地
+   * 
+   * 【数据结构】
+   * config = {
+   *   id: "card",           // 弹出按钮 ID
+   *   name: "制作卡片",    // 动作显示名称
+   *   target: "makeCard"    // 目标动作键名
+   * }
+   * 
+   * @param {Object} config - 配置对象，包含 id、name 和 target
+   */
   setPopupReplace: function (config) {
-    self.checkPopoverController()
+    self.checkPopoverController()  // 关闭弹出菜单
+    
     try {
-      // MNUtil.copyJSON(config)
-      // MNUtil.copyJSON(pluginDemoConfig.popupConfig)
-    let popupConfig = pluginDemoConfig.getPopupConfig(config.id)
-    popupConfig.target = config.target
-    pluginDemoConfig.popupConfig[config.id] = popupConfig
-    // MNUtil.copyJSON(pluginDemoConfig.popupConfig)
-    // MNUtil.showHUD("Set target: "+config.target)
-    let buttonName = "replacePopupButton_"+config.id
-    MNButton.setConfig(self[buttonName], {title:config.id+": "+config.name,font:17,radius:10,bold:true})
-    pluginDemoConfig.save("MNToolbar_popupConfig")
+      // 获取当前弹出按钮的配置
+      let popupConfig = pluginDemoConfig.getPopupConfig(config.id)
+      
+      // 更新目标动作
+      popupConfig.target = config.target
+      
+      // 保存到配置对象
+      pluginDemoConfig.popupConfig[config.id] = popupConfig
+      
+      // 更新 UI 显示
+      let buttonName = "replacePopupButton_"+config.id
+      MNButton.setConfig(self[buttonName], {
+        title:config.id+": "+config.name,  // 显示格式："card: 制作卡片"
+        font:17,
+        radius:10,
+        bold:true
+      })
+      
+      // 保存配置到本地存储
+      pluginDemoConfig.save("MNToolbar_popupConfig")
     } catch (error) {
       pluginDemoUtils.addErrorLog(error, "setPopupReplace")
     }
   },
   /**
+   * 🔄 切换弹出菜单替换功能的启用状态
    * 
-   * @param {UISwitch} button 
+   * 【功能说明】
+   * 通过开关控制某个弹出菜单替换配置是否生效。
+   * 关闭后，该弹出按钮会恢复默认行为。
+   * 
+   * 【使用场景】
+   * - 临时禁用某个替换配置
+   * - 测试原生功能 vs 自定义功能
+   * - 根据不同工作流程切换配置
+   * 
+   * @param {UISwitch} button - 开关控件，其 id 属性包含弹出按钮名
    */
   togglePopupReplace: function (button) {
-    // MNUtil.showHUD("togglePopupReplace:"+button.id)
+    // 获取当前弹出按钮的配置
     let popupConfig = pluginDemoConfig.getPopupConfig(button.id)
+    
+    // 根据开关状态更新启用状态
     if (button.on) {
-      popupConfig.enabled = true
+      popupConfig.enabled = true   // 开启替换
     }else{
-      popupConfig.enabled = false
+      popupConfig.enabled = false  // 关闭替换，恢复默认
     }
+    
+    // 保存配置
     pluginDemoConfig.popupConfig[button.id] = popupConfig
     pluginDemoConfig.save("MNToolbar_popupConfig")
   },
@@ -661,195 +881,471 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     pluginDemoFrame.setSize(self.view,width,height)
     self.currentFrame  = self.view.frame
   },
+  /**
+   * 🔧 “More”标签页点击事件
+   * 
+   * 【功能说明】
+   * 切换到高级设置页面，这里包含一些高级功能和插件协作设置。
+   * 
+   * 【高级设置内容】
+   * - 插件协作开关（MNEditor、MNChatAI 等）
+   * - 按钮颜色自定义
+   * - iCloud 同步设置
+   * - 工具栏方向切换
+   * - 动态顺序启用
+   * - 配置导入/导出
+   * 
+   * 【UI 状态管理】
+   * - 显示高级设置视图
+   * - 高亮“More”按钮
+   * - 隐藏其他所有页面
+   * - 重置其他标签按钮颜色
+   * 
+   * @param {*} params - 未使用的参数
+   */
   advancedButtonTapped: function (params) {
+    // 显示高级设置视图
     self.advanceView.hidden = false
     self.advancedButton.selected = true
+    
+    // 隐藏其他视图
     self.configView.hidden = true
     self.configButton.selected = false
     self.dynamicButton.selected = false
     self.popupEditView.hidden = true
     self.popupButton.selected = false
-    MNButton.setColor(self.configButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.advancedButton, "#457bd3", 0.8)
-    MNButton.setColor(self.popupButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.dynamicButton, "#9bb2d6", 0.8)
+    
+    // 更新标签按钮颜色
+    MNButton.setColor(self.configButton, "#9bb2d6", 0.8)    // 正常颜色
+    MNButton.setColor(self.advancedButton, "#457bd3", 0.8)  // 选中颜色
+    MNButton.setColor(self.popupButton, "#9bb2d6", 0.8)     // 正常颜色
+    MNButton.setColor(self.dynamicButton, "#9bb2d6", 0.8)   // 正常颜色
   },
+  /**
+   * 🎯 "Popup"标签页点击事件
+   * 
+   * 【功能说明】
+   * 切换到弹出菜单配置页面，用于管理系统弹出菜单的按钮替换。
+   * 
+   * 【弹出菜单说明】
+   * MarginNote 在以下情况会显示弹出菜单：
+   * - 选中文本时
+   * - 点击卡片时
+   * - 点击链接时
+   * 
+   * 这个页面允许用户：
+   * - 替换弹出菜单中的默认按钮为自定义动作
+   * - 启用/禁用替换配置
+   * 
+   * 【UI 状态管理】
+   * - 显示弹出菜单编辑视图
+   * - 高亮 "Popup" 按钮
+   * - 隐藏其他所有页面
+   * - 重新布局以适应内容
+   * 
+   * @param {*} params - 未使用的参数
+   */
   popupButtonTapped: function (params) {
+    // 隐藏其他视图
     self.advanceView.hidden = true
     self.advancedButton.selected = false
     self.configView.hidden = true
     self.configButton.selected = false
     self.dynamicButton.selected = false
+    
+    // 显示弹出菜单编辑视图
     self.popupEditView.hidden = false
     self.popupButton.selected = true
-    MNButton.setColor(self.configButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.advancedButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.popupButton, "#457bd3", 0.8)
-    MNButton.setColor(self.dynamicButton, "#9bb2d6", 0.8)
+    
+    // 更新标签按钮颜色
+    MNButton.setColor(self.configButton, "#9bb2d6", 0.8)    // 正常颜色
+    MNButton.setColor(self.advancedButton, "#9bb2d6", 0.8)  // 正常颜色
+    MNButton.setColor(self.popupButton, "#457bd3", 0.8)     // 选中颜色
+    MNButton.setColor(self.dynamicButton, "#9bb2d6", 0.8)   // 正常颜色
+    
+    // 重新布局以显示弹出菜单配置列表
     self.settingViewLayout()
   },
+  /**
+   * 🏛️ "Buttons"标签页点击事件
+   * 
+   * 【功能说明】
+   * 切换到主按钮配置页面，这是设置窗口的默认页面。
+   * 
+   * 【按钮配置页面功能】
+   * - 查看和编辑工具栏按钮
+   * - 调整按钮顺序
+   * - 修改按钮名称和功能
+   * - 自定义按钮图标
+   * - 测试按钮功能
+   * 
+   * 【UI 状态管理】
+   * - 显示按钮配置视图
+   * - 高亮 "Buttons" 按钮
+   * - 隐藏其他所有页面
+   * - 加载当前固定工具栏的按钮列表
+   * 
+   * @param {*} params - 未使用的参数
+   */
   configButtonTapped: function (params) {
+    // 显示按钮配置视图
     self.configView.hidden = false
     self.configButton.selected = true
+    
+    // 隐藏其他视图
     self.dynamicButton.selected = false
     self.advanceView.hidden = true
     self.advancedButton.selected = false
     self.popupEditView.hidden = true
     self.popupButton.selected = false
-    MNButton.setColor(self.configButton, "#457bd3", 0.8)
-    MNButton.setColor(self.advancedButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.dynamicButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.popupButton, "#9bb2d6", 0.8)
+    
+    // 更新标签按钮颜色
+    MNButton.setColor(self.configButton, "#457bd3", 0.8)    // 选中颜色
+    MNButton.setColor(self.advancedButton, "#9bb2d6", 0.8)  // 正常颜色
+    MNButton.setColor(self.dynamicButton, "#9bb2d6", 0.8)   // 正常颜色
+    MNButton.setColor(self.popupButton, "#9bb2d6", 0.8)     // 正常颜色
+    
+    // 加载并显示固定工具栏的按钮列表
     let action = pluginDemoConfig.action
     self.setButtonText(action)
-
   },
+  /**
+   * 🌟 "Dynamic"标签页点击事件
+   * 
+   * 【功能说明】
+   * 切换到动态工具栏配置页面。动态工具栏是一个高级功能，
+   * 允许用户根据不同的场景使用不同的按钮组合。
+   * 
+   * 【动态工具栏特点】
+   * - 可以有与固定工具栏不同的按钮顺序
+   * - 支持快速切换不同的工作模式
+   * - 需要订阅才能使用
+   * 
+   * 【前置条件】
+   * - 必须先启用 "Enable Dynamic Order"
+   * - 如果没有配置过，会复制固定工具栏的配置作为初始值
+   * 
+   * 【UI 状态管理】
+   * - 显示按钮配置视图（复用 configView）
+   * - 高亮 "Dynamic" 按钮
+   * - 加载动态工具栏的按钮列表
+   * 
+   * @param {*} params - 未使用的参数
+   */
   dynamicButtonTapped: async function (params) {
     let self = getSettingController()
+    
+    // 检查是否启用了动态顺序功能
     let dynamicOrder = pluginDemoConfig.getWindowState("dynamicOrder")
     if (!dynamicOrder) {
-      self.showHUD("Enable Dynamic Order first")
+      self.showHUD("Enable Dynamic Order first")  // 提示用户先启用
       return
     }
+    
+    // 获取动态工具栏配置
     let dynamicAction = pluginDemoConfig.dynamicAction
     if (dynamicAction.length === 0) {
+      // 如果还没有配置过，复制固定工具栏的配置
       pluginDemoConfig.dynamicAction = pluginDemoConfig.action
     }
+    
+    // 显示配置视图
     self.configView.hidden = false
     self.configButton.selected = false
     self.dynamicButton.selected = true
+    
+    // 隐藏其他视图
     self.advanceView.hidden = true
     self.advancedButton.selected = false
     self.popupEditView.hidden = true
     self.popupButton.selected = false
-    MNButton.setColor(self.configButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.advancedButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.dynamicButton, "#457bd3", 0.8)
-    MNButton.setColor(self.popupButton, "#9bb2d6", 0.8)
+    
+    // 更新标签按钮颜色
+    MNButton.setColor(self.configButton, "#9bb2d6", 0.8)    // 正常颜色
+    MNButton.setColor(self.advancedButton, "#9bb2d6", 0.8)  // 正常颜色
+    MNButton.setColor(self.dynamicButton, "#457bd3", 0.8)   // 选中颜色
+    MNButton.setColor(self.popupButton, "#9bb2d6", 0.8)     // 正常颜色
+    
+    // 加载动态工具栏的按钮列表
     self.setButtonText(dynamicAction)
   },
+  /**
+   * 📃 选择模板菜单
+   * 
+   * 【功能说明】
+   * 显示一个模板选择菜单，让用户可以快速应用预定义的配置模板。
+   * 模板是一些常用的按钮配置，可以帮助用户快速设置复杂的功能。
+   * 
+   * 【模板类型】
+   * - 多级菜单模板
+   * - 快捷操作模板
+   * - 自定义动作模板
+   * 
+   * 【智能定位】
+   * 根据按钮位置和屏幕剩余空间，自动决定菜单弹出方向：
+   * - 空间不足：向左弹出（方向 0）
+   * - 空间充足：向右弹出（方向 4）
+   * 
+   * @param {UIButton} button - 触发菜单的模板按钮
+   */
   chooseTemplate: async function (button) {
     let self = getSettingController()
-    let buttonX = pluginDemoUtils.getButtonFrame(button).x//转化成相对于studyview的
+    
+    // 获取按钮的 X 坐标（相对于 studyView）
+    let buttonX = pluginDemoUtils.getButtonFrame(button).x
+    
+    // 获取当前选中的按钮
     let selected = self.selectedItem
+    
+    // 获取该按钮可用的模板列表
     let templateNames = pluginDemoUtils.getTempelateNames(selected)
     if (!templateNames) {
-      return
+      return  // 没有可用模板
     }
+    
+    // 构建菜单项
     var templates = pluginDemoUtils.template
     var commandTable = templateNames.map((templateName,index)=>{
       return {
-        title:templateName,
-        object:self,
-        selector:'setTemplate:',
-        param:templates[templateName]
+        title:templateName,              // 模板名称
+        object:self,                     // 回调对象
+        selector:'setTemplate:',         // 回调方法
+        param:templates[templateName]    // 模板内容
       }
     })
+    
+    // 添加标题项
     commandTable.unshift({
       title:"⬇️ Choose a template:",
       object:self,
       selector:'hideTemplateChooser:',
       param:undefined
     })
+    
+    // 智能决定弹出方向
     let width = 300
     if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
+      // 右侧空间不足，向左弹出
       self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
     }else{
+      // 右侧空间充足，向右弹出
       self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
     }
-    // self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,300,4)
   },
+  /**
+   * 📄 应用选中的模板
+   * 
+   * 【功能说明】
+   * 将选中的模板配置应用到当前按钮上。
+   * 模板包含预定义的 JSON 配置，可以快速设置复杂的功能。
+   * 
+   * @param {Object} config - 模板配置对象
+   */
   setTemplate: async function (config) {
-    self.checkPopoverController()
+    self.checkPopoverController()  // 关闭弹出菜单
+    
+    // 将模板配置更新到 WebView 编辑器中
     self.updateWebviewContent(JSON.stringify(config))
   },
+  /**
+   * 📋 复制按钮配置
+   * 
+   * 【功能说明】
+   * 将当前按钮的 JSON 配置复制到剪贴板。
+   * 这个功能方便用户：
+   * - 备份配置
+   * - 分享配置给他人
+   * - 在不同按钮间复制配置
+   * 
+   * 【工作流程】
+   * 1. 检查按钮是否可编辑
+   * 2. 从 WebView 获取当前配置
+   * 3. 复制到剪贴板
+   * 4. 显示成功提示
+   * 
+   * @param {*} params - 未使用的参数
+   */
   configCopyTapped: async function (params) {
-    // MNUtil.copy(self.selectedItem)
     let selected = self.selectedItem
+    
+    // 检查是否可以编辑这个按钮
     if (!pluginDemoConfig.checkCouldSave(selected)) {
       return
     }
+    
     try {
-    let input = await self.getWebviewContent()
-    MNUtil.copy(input)
-    MNUtil.showHUD("Copy config")
+      // 从 WebView 编辑器获取当前配置
+      let input = await self.getWebviewContent()
+      
+      // 复制到剪贴板
+      MNUtil.copy(input)
+      
+      // 显示成功提示
+      MNUtil.showHUD("Copy config")
     } catch (error) {
       pluginDemoUtils.addErrorLog(error, "configCopyTapped", info)
     }
   },
+  /**
+   * 📋 粘贴按钮配置
+   * 
+   * 【功能说明】
+   * 从剪贴板粘贴 JSON 配置到当前按钮。
+   * 这个功能可以用于：
+   * - 恢复备份的配置
+   * - 应用他人分享的配置
+   * - 在不同按钮间复制配置
+   * 
+   * 【工作流程】
+   * 1. 检查按钮是否可编辑
+   * 2. 从剪贴板获取内容
+   * 3. 验证 JSON 格式
+   * 4. 保存配置
+   * 5. 更新 UI 显示
+   * 
+   * 【特殊处理】
+   * - execute 类型可以粘贴非 JSON 内容
+   * - edit 类型可以设置 showOnNoteEdit 属性
+   * 
+   * @param {*} params - 未使用的参数
+   */
   configPasteTapped: async function (params) {
-    // MNUtil.copy(self.selectedItem)
     let selected = self.selectedItem
+    
+    // 检查是否可以编辑
     if (!pluginDemoConfig.checkCouldSave(selected)) {
       return
     }
+    
     try {
-    let input = MNUtil.clipboardText
-    if (selected === "execute" || MNUtil.isValidJSON(input)) {
-      if (!pluginDemoConfig.actions[selected]) {
-        pluginDemoConfig.actions[selected] = pluginDemoConfig.getAction(selected)
-      }
-      pluginDemoConfig.actions[selected].description = input
-      pluginDemoConfig.actions[selected].name = self.titleInput.text
-      self.pluginDemoController.actions = pluginDemoConfig.actions
-      if (self.pluginDemoController.dynamicToolbar) {
-        self.pluginDemoController.dynamicToolbar.actions = pluginDemoConfig.actions
-      }
-      pluginDemoConfig.save("MNToolbar_actionConfig")
-      if (!selected.includes("custom")) {
-        MNUtil.showHUD("Save Action: "+self.titleInput.text)
-      }else{
-        MNUtil.showHUD("Save Custom Action: "+self.titleInput.text)
-      }
-      if (selected === "edit") {
-        let config = JSON.parse(input)
-        if ("showOnNoteEdit" in config) {
-          pluginDemoConfig.showEditorOnNoteEdit = config.showOnNoteEdit
+      // 从剪贴板获取内容
+      let input = MNUtil.clipboardText
+      
+      // 验证格式：execute 类型或有效的 JSON
+      if (selected === "execute" || MNUtil.isValidJSON(input)) {
+        // 初始化配置对象（如果不存在）
+        if (!pluginDemoConfig.actions[selected]) {
+          pluginDemoConfig.actions[selected] = pluginDemoConfig.getAction(selected)
         }
+        
+        // 更新配置
+        pluginDemoConfig.actions[selected].description = input
+        pluginDemoConfig.actions[selected].name = self.titleInput.text
+        
+        // 同步到工具栏
+        self.pluginDemoController.actions = pluginDemoConfig.actions
+        if (self.pluginDemoController.dynamicToolbar) {
+          self.pluginDemoController.dynamicToolbar.actions = pluginDemoConfig.actions
+        }
+        
+        // 保存到本地
+        pluginDemoConfig.save("MNToolbar_actionConfig")
+        
+        // 显示不同的提示
+        if (!selected.includes("custom")) {
+          MNUtil.showHUD("Save Action: "+self.titleInput.text)
+        }else{
+          MNUtil.showHUD("Save Custom Action: "+self.titleInput.text)
+        }
+        
+        // edit 类型的特殊处理
+        if (selected === "edit") {
+          let config = JSON.parse(input)
+          if ("showOnNoteEdit" in config) {
+            pluginDemoConfig.showEditorOnNoteEdit = config.showOnNoteEdit
+          }
+        }
+        
+        // 更新 WebView 显示
+        self.setWebviewContent(input)
+      }else{
+        // 无效格式，复制错误信息方便调试
+        MNUtil.showHUD("Invalid JSON format: "+input)
+        MNUtil.copy("Invalid JSON format: "+input)
       }
-      self.setWebviewContent(input)
-    }else{
-      MNUtil.showHUD("Invalid JSON format: "+input)
-      MNUtil.copy("Invalid JSON format: "+input)
-    }
     } catch (error) {
       pluginDemoUtils.addErrorLog(error, "configSaveTapped", info)
     }
   },
+  /**
+   * 💾 保存按钮配置
+   * 
+   * 【功能说明】
+   * 保存用户对按钮的自定义配置，包括：
+   * - 按钮名称（显示文字）
+   * - 按钮功能（JSON 配置）
+   * 
+   * 【配置格式】
+   * 每个按钮的功能由 JSON 格式定义，例如：
+   * ```json
+   * {
+   *   "action": "menu",        // 动作类型
+   *   "menuItems": [...]       // 菜单项
+   * }
+   * ```
+   * 
+   * 【特殊处理】
+   * - execute 类型：可以保存纯文本代码
+   * - edit 类型：可设置 showOnNoteEdit 属性
+   * - custom 类型：自定义按钮，会有不同的提示
+   * 
+   * 【数据流】
+   * 1. 从 WebView 获取 JSON 配置
+   * 2. 验证 JSON 格式
+   * 3. 更新内存中的配置
+   * 4. 同步到工具栏显示
+   * 5. 持久化到本地存储
+   * 
+   * @param {*} params - 未使用的参数
+   */
   configSaveTapped: async function (params) {
     let selected = self.selectedItem
+    
+    // 检查是否可以保存（某些系统按钮可能不允许修改）
     if (!pluginDemoConfig.checkCouldSave(selected)) {
       return
     }
+    
     try {
     let actions = pluginDemoConfig.actions
+    
+    // 从 WebView 获取用户编辑的 JSON 配置
     let input = await self.getWebviewContent()
+    
+    // 验证格式：execute 类型可以不是 JSON，其他必须是有效 JSON
     if (selected === "execute" || MNUtil.isValidJSON(input)) {
+      // 如果是新配置，先获取默认配置
       if (!actions[selected]) {
         actions[selected] = pluginDemoConfig.getAction(selected)
       }
-      actions[selected].description = input
-      actions[selected].name = self.titleInput.text
+      
+      // 更新配置
+      actions[selected].description = input                     // 功能配置
+      actions[selected].name = self.titleInput.text            // 显示名称
+      
+      // 同步更新到工具栏
       self.pluginDemoController.actions = actions
       if (self.pluginDemoController.dynamicToolbar) {
         self.pluginDemoController.dynamicToolbar.actions = actions
       }
+      
+      // 保存到本地
       pluginDemoConfig.save("MNToolbar_actionConfig")
+      
+      // 显示不同的提示信息
       if (!selected.includes("custom")) {
         MNUtil.showHUD("Save Action: "+self.titleInput.text)
       }else{
         MNUtil.showHUD("Save Custom Action: "+self.titleInput.text)
       }
+      
+      // 特殊处理：edit 类型可以设置是否在编辑笔记时显示
       if (selected === "edit") {
         let config = JSON.parse(input)
         if ("showOnNoteEdit" in config) {
           pluginDemoConfig.showEditorOnNoteEdit = config.showOnNoteEdit
         }
       }
-      // if (selected === "excute") {
-      //   // self.setJSContent(selected)
-      //   self.runJavaScript(`document.getElementById('editor').innerHTML = document.body.innerText`)
-      // }
     }else{
       MNUtil.showHUD("Invalid JSON format!")
     }
@@ -857,17 +1353,52 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       pluginDemoUtils.addErrorLog(error, "configSaveTapped", info)
     }
   },
+  /**
+   * ▶️ 运行/测试按钮配置
+   * 
+   * 【功能说明】
+   * 这是一个“试运行”功能，让用户在保存前测试配置是否正确。
+   * 点击后会：
+   * 1. 临时保存当前配置
+   * 2. 立即执行该按钮的功能
+   * 3. 让用户看到效果
+   * 
+   * 【支持的按钮类型】
+   * 
+   * 1️⃣ custom 系列 - 自定义按钮
+   *    直接调用 customActionByDes 执行
+   * 
+   * 2️⃣ color 系列 - 颜色按钮
+   *    解析按钮名中的颜色索引，设置卡片颜色
+   * 
+   * 3️⃣ 特殊按钮：
+   *    - ocr: OCR 识别功能
+   *    - timer: 计时器功能
+   *    - sidebar: 侧边栏切换
+   *    - chatglm: AI 对话功能
+   * 
+   * 【执行流程】
+   * 1. 验证配置格式
+   * 2. 临时保存配置
+   * 3. 根据按钮类型调用不同的处理逻辑
+   * 4. 如果不支持，显示提示
+   * 
+   * @param {UIButton} button - 触发运行的按钮
+   */
   configRunTapped: async function (button) {
     let self = getSettingController()
   try {
-    // self.runJavaScript(`editor.setMode("code")`)
-    // return
     let selected = self.selectedItem
+    
+    // 检查是否可以保存
     if (!pluginDemoConfig.checkCouldSave(selected)) {
       return
     }
+    
+    // 获取并验证配置
     let input = await self.getWebviewContent()
     if (self.selectedItem === "execute" || MNUtil.isValidJSON(input)) {
+      // 临时保存配置（同 configSaveTapped 的逻辑）
       if (!pluginDemoConfig.actions[selected]) {
         pluginDemoConfig.actions[selected] = pluginDemoConfig.getAction(selected)
       }
@@ -882,54 +1413,81 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       MNUtil.showHUD("Invalid JSON format!")
       return
     }
+    
+    // 根据按钮类型执行不同的操作
+    
+    // 自定义按钮
     if (selected.includes("custom")) {
       let des = pluginDemoConfig.getDescriptionByName(selected)
-      // MNUtil.copyJSON(des)
       self.pluginDemoController.customActionByDes(button,des)
       return
     }
+    
+    // 颜色按钮
     if (selected.includes("color")) {
-      let colorIndex = parseInt(selected.split("color")[1])
+      let colorIndex = parseInt(selected.split("color")[1])  // 提取颜色索引
       pluginDemoUtils.setColor(colorIndex)
       return
     }
+    
+    // OCR 功能
     if (selected === "ocr") {
       let des = pluginDemoConfig.getDescriptionByName("ocr")
       des.action = "ocr"
       self.pluginDemoController.customActionByDes(button,des)
-      // pluginDemoUtils.ocr()
       return
     }
+    
+    // 计时器功能
     if (selected === "timer") {
       let des = pluginDemoConfig.getDescriptionByName("timer")
       des.action = "setTimer"
       self.pluginDemoController.customActionByDes(button,des)
-      // pluginDemoUtils.ocr()
       return
     }
+    
+    // 侧边栏切换
     if (selected === "sidebar") {
       let des = pluginDemoConfig.getDescriptionByName("sidebar")
       pluginDemoUtils.toggleSidebar(des)
       return
     }
-    // if (selected === "execute") {
-    //   // self.runJavaScript(`document.getElementById('editor').innerHTML = document.body.innerText`)
-    //   let code = pluginDemoConfig.getExecuteCode()
-    //   pluginDemoSandbox.execute(code)
-    //   return
-    // }
+    
+    // AI 对话
     if (selected === "chatglm") {
       pluginDemoUtils.chatAI()
       return
     }
 
+    // 如果不是以上任何类型，显示不支持
     MNUtil.showHUD("Not supported")
   } catch (error) {
     pluginDemoUtils.addErrorLog(error, "configRunTapped", info)
-
   }
   },
+  /**
+   * 🎯 按钮选中/图标管理事件
+   * 
+   * 【功能说明】
+   * 这个方法处理两种情况：
+   * 1. 选中新按钮：切换到该按钮的配置
+   * 2. 再次点击已选中按钮：显示图标管理菜单
+   * 
+   * 【图标管理菜单】
+   * - 从照片库选择新图标
+   * - 从文件导入新图标
+   * - 从网站下载图标（Appicon Forge、Icon Font）
+   * - 调整图标缩放比例
+   * - 重置为默认图标
+   * 
+   * 【视觉反馈】
+   * - 选中的按钮：蓝色背景 + 蓝色边框
+   * - 未选中的按钮：白色背景 + 无边框
+   * 
+   * @param {UIButton} button - 被点击的按钮
+   */
   toggleSelected:function (button) {
+    // 如果点击的是已选中的按钮，显示图标管理菜单
     if (self.selectedItem === button.id) {
       let selected = self.selectedItem
       var commandTable = [
@@ -943,35 +1501,71 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,300,1)
       return
     }
+    
+    // 如果是新选择的按钮，处理选中状态
     button.isSelected = !button.isSelected
     let title = button.id
     self.selectedItem = title
+    
+    // 重置所有其他按钮的选中状态
     self.words.forEach((entryName,index)=>{
       if (entryName !== title) {
         self["nameButton"+index].isSelected = false
-        MNButton.setColor(self["nameButton"+index], "#ffffff", 0.8)
-        self["nameButton"+index].layer.borderWidth = 0
+        MNButton.setColor(self["nameButton"+index], "#ffffff", 0.8)  // 白色背景
+        self["nameButton"+index].layer.borderWidth = 0               // 无边框
       }
     })
+    
+    // 设置当前按钮的选中状态
     if (button.isSelected) {
-      self.setTextview(title)
-      MNButton.setColor(button, "#9bb2d6", 0.8)
-      button.layer.borderWidth = 2
-      button.layer.borderColor = MNUtil.hexColorAlpha("#457bd3", 0.8)
+      self.setTextview(title)  // 显示该按钮的配置
+      MNButton.setColor(button, "#9bb2d6", 0.8)  // 蓝色背景
+      button.layer.borderWidth = 2                // 2像素边框
+      button.layer.borderColor = MNUtil.hexColorAlpha("#457bd3", 0.8)  // 深蓝色边框
     }else{
-      MNButton.setColor(button, "#ffffff", 0.8)
+      MNButton.setColor(button, "#ffffff", 0.8)  // 白色背景
     }
   },
+  /**
+   * 🖼️ 从照片库选择新图标
+   * 
+   * 【功能说明】
+   * 打开系统照片库，让用户选择一张图片作为按钮的新图标。
+   * 这是自定义按钮图标的主要方式之一。
+   * 
+   * 【工作流程】
+   * 1. 检查订阅状态（这是高级功能）
+   * 2. 创建图片选择器
+   * 3. 显示照片库
+   * 4. 用户选择后会调用 imagePickerControllerDidFinishPickingMediaWithInfo
+   * 
+   * 【技术细节】
+   * - sourceType = 0：照片库
+   * - sourceType = 1：相机
+   * - sourceType = 2：相册
+   * 
+   * @param {string} buttonName - 要更换图标的按钮名称
+   */
   changeIconFromPhoto:function (buttonName) {
-    self.checkPopoverController()
+    self.checkPopoverController()  // 关闭弹出菜单
+    
+    // 检查订阅状态
     if (pluginDemoUtils.checkSubscribe(true)) {
       self.checkPopoverController()
+      
+      // 创建图片选择器
       self.imagePickerController = UIImagePickerController.new()
-      self.imagePickerController.buttonName = buttonName
-      self.imagePickerController.delegate = self  // 设置代理
-      self.imagePickerController.sourceType = 0  // 设置图片源为相册
-      // self.imagePickerController.allowsEditing = true  // 允许裁剪
-      MNUtil.studyController.presentViewControllerAnimatedCompletion(self.imagePickerController,true,undefined)
+      self.imagePickerController.buttonName = buttonName  // 保存按钮名，方便回调时使用
+      self.imagePickerController.delegate = self          // 设置代理，接收选择结果
+      self.imagePickerController.sourceType = 0           // 0 = 照片库
+      // self.imagePickerController.allowsEditing = true  // 允许裁剪（已禁用）
+      
+      // 以模态方式显示图片选择器
+      MNUtil.studyController.presentViewControllerAnimatedCompletion(
+        self.imagePickerController,
+        true,      // 动画
+        undefined  // 完成回调
+      )
     }
   },
   changeIconFromFile:async function (buttonName) {
@@ -1351,14 +1945,40 @@ settingController.prototype.createButton = function (buttonName,targetAction,sup
   }
 }
 
+/**
+ * 🔄 通用的开关创建方法
+ * 
+ * 【功能说明】
+ * 创建一个 iOS 标准的开关控件（UISwitch）。
+ * 开关用于启用/禁用某些功能，提供二元选择。
+ * 
+ * 【使用场景】
+ * - 启用/禁用弹出菜单替换
+ * - 开启/关闭插件协作
+ * - 切换功能状态
+ * 
+ * @param {string} switchName - 开关的属性名，会作为 this[switchName] 保存
+ * @param {string} targetAction - 状态改变时的回调方法名
+ * @param {string} superview - 父视图名称，如果不提供则添加到 self.view
+ */
 settingController.prototype.createSwitch = function (switchName,targetAction,superview) {
+  // 创建开关控件
   this[switchName] = UISwitch.new()
+  
+  // 注意：这里默认添加到 popupEditView，可能是个 bug
   this.popupEditView.addSubview(this[switchName])
-  this[switchName].on = false
-  this[switchName].hidden = false
+  
+  // 设置初始状态
+  this[switchName].on = false      // 默认关闭
+  this[switchName].hidden = false  // 默认显示
+  
+  // 添加事件监听
   if (targetAction) {
+    // 1 << 12 = UIControlEventValueChanged (值改变事件)
     this[switchName].addTargetActionForControlEvents(this, targetAction, 1 << 12);
   }
+  
+  // 添加到指定的父视图（会覆盖上面的默认添加）
   if (superview) {
     this[superview].addSubview(this[switchName])
   }else{
@@ -1366,20 +1986,48 @@ settingController.prototype.createSwitch = function (switchName,targetAction,sup
   }
 }
 
+/**
+ * 📜 通用的滚动视图创建方法
+ * 
+ * 【功能说明】
+ * 创建一个可滚动的容器视图（UIScrollView）。
+ * 当内容超出可视区域时，用户可以通过滚动查看全部内容。
+ * 
+ * 【应用场景】
+ * - 按钮列表（可能有很多按钮）
+ * - 弹出菜单配置列表
+ * - 任何需要滚动的内容
+ * 
+ * @param {string} scrollName - 滚动视图的属性名
+ * @param {string} superview - 父视图名称
+ */
 settingController.prototype.createScrollView = function (scrollName,superview) {
-this[scrollName] = UIScrollView.new()
-this[scrollName].hidden = false
-this[scrollName].autoresizingMask = (1 << 1 | 1 << 4);
-this[scrollName].delegate = this
-this[scrollName].bounces = true
-this[scrollName].alwaysBounceVertical = true
-this[scrollName].layer.cornerRadius = 8
-this[scrollName].backgroundColor = MNUtil.hexColorAlpha("#c0bfbf",0.8)
-if (superview) {
-  this[superview].addSubview(this[scrollName])
-}else{
-  this.view.addSubview(this[scrollName]);
-}
+  // 创建滚动视图
+  this[scrollName] = UIScrollView.new()
+  this[scrollName].hidden = false
+  
+  // 设置自动布局遮罩
+  // 1 << 1 = UIViewAutoresizingFlexibleWidth (宽度灵活)
+  // 1 << 4 = UIViewAutoresizingFlexibleHeight (高度灵活)
+  this[scrollName].autoresizingMask = (1 << 1 | 1 << 4);
+  
+  // 设置代理，以便接收滚动事件
+  this[scrollName].delegate = this
+  
+  // 滚动行为设置
+  this[scrollName].bounces = true              // 开启弹性效果
+  this[scrollName].alwaysBounceVertical = true // 始终允许垂直弹性
+  
+  // 外观设置
+  this[scrollName].layer.cornerRadius = 8  // 圆角
+  this[scrollName].backgroundColor = MNUtil.hexColorAlpha("#c0bfbf",0.8)  // 灰色背景
+  
+  // 添加到父视图
+  if (superview) {
+    this[superview].addSubview(this[scrollName])
+  }else{
+    this.view.addSubview(this[scrollName]);
+  }
 }
 
 /**
@@ -1783,8 +2431,32 @@ settingController.prototype.createSettingView = function (){
   }
 }
 /**
- * 设置按钮列表的显示
- * 这个方法会在左侧的滚动视图中显示所有可用的按钮
+ * 🎞️ 设置按钮列表的显示
+ * 
+ * 【功能说明】
+ * 这个方法负责在左侧滚动视图中显示所有可用的工具栏按钮。
+ * 每个按钮显示为一个带图标的小方块，点击可以查看/编辑其配置。
+ * 
+ * 【视觉设计】
+ * ```
+ * ┌─────────────────┐
+ * │  ┌───┐ ┌───┐  │
+ * │  │ 🔍 │ │ 📋 │  │  按钮列表
+ * │  └───┘ └───┘  │
+ * │  ┌───┐ ┌───┐  │
+ * │  │ 🎨 │ │ 📑 │  │  选中的有蓝色边框
+ * │  └───┘ └───┘  │
+ * └─────────────────┘
+ * ```
+ * 
+ * 【动态创建机制】
+ * - 按需创建：只有当需要显示时才创建按钮对象
+ * - 重用机制：已创建的按钮会被重用，只更新属性
+ * - 索引命名：nameButton0, nameButton1... 方便管理
+ * 
+ * 【交互逻辑】
+ * - 单击：选中该按钮，显示其配置
+ * - 再次单击：显示图标管理菜单
  * 
  * @param {Array<string>} names - 按钮名称数组，默认为所有可用按钮
  * @param {string} highlight - 要高亮显示的按钮名，默认为当前选中项
@@ -1830,69 +2502,123 @@ settingController.prototype.setButtonText = function (names=pluginDemoConfig.get
 }
 
 /**
+ * 📝 显示选中按钮的详细配置
+ * 
+ * 【功能说明】
+ * 当用户选中一个按钮后，这个方法会：
+ * 1. 在标题输入框显示按钮名称
+ * 2. 在 WebView 编辑器中显示 JSON 配置
+ * 
+ * 【配置解析流程】
+ * ```
+ * 按钮名称
+ *    ↓
+ * 获取按钮配置对象
+ *    ↓
+ * 解析 description 字段
+ *    ↓
+ * 转换为 JSON 对象
+ *    ↓
+ * 显示在 WebView 中
+ * ```
+ * 
+ * 【特殊处理】
+ * - sidebar：添加 action: "toggleSidebar"
+ * - ocr：添加 action: "ocr"
+ * - pasteAsTitle：如果配置无效，提供默认配置
+ * 
+ * 【错误处理】
+ * - 无效的 JSON：复制到剪贴板便于调试
+ * - 显示提示信息
+ * - 提供空配置作为备用
+ * 
+ * @param {string} name - 要显示的按钮名称，默认为当前选中项
  * @this {settingController}
  */
 settingController.prototype.setTextview = function (name = this.selectedItem) {
   try {
-      // let entries           =  NSUserDefaults.standardUserDefaults().objectForKey('MNBrowser_entries');
-      // let actions = pluginDemoConfig.actions
-      // let defaultActions = pluginDemoConfig.getActions()
+      // 获取按钮配置
       let action = pluginDemoConfig.getAction(name)
-      // let action = (name in actions)?actions[name]:defaultActions[name]
+      
+      // 显示按钮名称
       let text  = action.name
       this.titleInput.text= text
+      
+      // 解析并显示 JSON 配置
       if (MNUtil.isValidJSON(action.description)) {
         let des = JSON.parse(action.description)
+        
+        // 特殊按钮的额外处理
         if (name === "sidebar") {
-          des.action = "toggleSidebar"
+          des.action = "toggleSidebar"  // 侧边栏切换动作
         }
         if (name === "ocr") {
-          des.action = "ocr"
+          des.action = "ocr"  // OCR 识别动作
         }
-        // MNUtil.showHUD(typeof des)
-        // MNUtil.copy(des)
+        
+        // 在 WebView 中显示配置
         this.setWebviewContent(des)
       }else{
-        MNUtil.copy(action.description)
+        // 配置无效时的处理
+        MNUtil.copy(action.description)  // 复制到剪贴板便于调试
         MNUtil.showHUD("Invalid description")
+        
+        // 提供默认配置
         des = {}
         if (name === "pasteAsTitle") {
+          // pasteAsTitle 的默认配置
           des = {
-            "action": "setContent",
-            "target": "title",
-            "content": "{{clipboardText}}"
+            "action": "setContent",      // 设置内容
+            "target": "title",            // 目标是标题
+            "content": "{{clipboardText}}" // 内容来自剪贴板
           }
         }
         this.setWebviewContent(des)
       }
-      // let description = action.description
-      // if (MNUtil.isValidJSON(description)) {
-      //   this.preAction = name
-      //   this.setWebviewContent(description)
-      // }else{
-      //   actions = pluginDemoConfig.getActions()
-      //   description = action.description
-      //   this.preAction = name
-      //   this.setWebviewContent(description)
-      // }
   } catch (error) {
     pluginDemoUtils.addErrorLog(error, "setTextview")
   }
 }
 /**
+ * 🔄 刷新按钮列表的布局
+ * 
+ * 【功能说明】
+ * 这个方法负责重新计算和排列左侧按钮列表中的所有按钮。
+ * 按钮以网格形式排列，从左到右、从上到下。
+ * 
+ * 【布局算法】
+ * ```
+ * 按钮排列示意（每行 6 个）：
+ * +---+---+---+---+---+---+
+ * | 1 | 2 | 3 | 4 | 5 | 6 |
+ * +---+---+---+---+---+---+
+ * | 7 | 8 | 9 |10 |11 |12 |
+ * +---+---+---+---+---+---+
+ * ```
+ * 
+ * 【自适应设计】
+ * - 宽度 < 500px：每行 5 个按钮
+ * - 宽度 >= 500px：每行 6 个按钮
+ * 
+ * 【参数说明】
+ * - initX, initY: 起始位置（10,10）
+ * - buttonWidth, buttonHeight: 按钮尺寸（40x40）
+ * - 按钮间距：10px
+ * 
  * @this {settingController}
  */
 settingController.prototype.refreshLayout = function () {
-  if (!this.settingView) {return}
-  if (!this.configView.hidden) {
+  if (!this.settingView) {return}  // 如果设置视图不存在，直接返回
+  
+  if (!this.configView.hidden) {  // 只在配置视图显示时刷新
     var viewFrame = this.scrollview.bounds;
     var xLeft     = 0
-    let initX = 10
-    let initY = 10
-    let initL = 0
-    let buttonWidth = 40
-    let buttonHeight = 40
-    this.locs = [];
+    let initX = 10      // 左边距
+    let initY = 10      // 上边距
+    let initL = 0       // 当前行的按钮数
+    let buttonWidth = 40   // 按钮宽度
+    let buttonHeight = 40  // 按钮高度
+    this.locs = [];       // 保存按钮位置（可能用于其他功能）
     this.words.map((word,index)=>{
       // let title = word
       if (xLeft+initX+buttonWidth > viewFrame.width-10) {

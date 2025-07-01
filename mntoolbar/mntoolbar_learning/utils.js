@@ -3988,7 +3988,39 @@ try {
   this.addErrorLog(error, "AST2Mindmap")
 }
 }
- static async markdown2Mindmap(des){
+  /**
+   * 📑 Markdown 转脑图
+   * 
+   * 将 Markdown 文本转换为 MarginNote 脑图结构。
+   * 支持从当前笔记、文件或剪贴板读取 Markdown 内容。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {string} [des.source="currentNote"] - Markdown 来源
+   *   - "currentNote" - 从当前笔记获取
+   *   - "file" - 从文件导入
+   *   - "clipboard" - 从剪贴板获取
+   * @returns {Promise<void>}
+   * 
+   * @example
+   * // 从当前笔记创建脑图
+   * await pluginDemoUtils.markdown2Mindmap({ source: "currentNote" })
+   * 
+   * // 从文件导入
+   * await pluginDemoUtils.markdown2Mindmap({ source: "file" })
+   * // 会弹出文件选择器，选择 .md 文件
+   * 
+   * // 从剪贴板创建
+   * // 先复制 Markdown 内容
+   * await pluginDemoUtils.markdown2Mindmap({ source: "clipboard" })
+   * 
+   * // Markdown 格式示例：
+   * // # 主题
+   * // ## 子主题1
+   * // - 要点1
+   * // - 要点2
+   * // ## 子主题2
+   */
+  static async markdown2Mindmap(des){
  try {
   
 
@@ -4035,6 +4067,33 @@ try {
   return
  }
   }
+  /**
+   * 📏 检查并调整高度
+   * 
+   * 根据订阅状态和按钮数量，计算工具栏的合适高度。
+   * 用于确保工具栏高度符合限制并对齐到按钮行。
+   * 
+   * @param {number} height - 期望的高度
+   * @param {number} [maxButtons=20] - 最大按钮数量
+   * @returns {number} 调整后的高度
+   * 
+   * 高度计算规则：
+   * - 每个按钮高度：45px
+   * - 顶部/底部边距：15px
+   * - 未订阅最大高度：420px
+   * - 最小高度：60px
+   * - 高度对齐到按钮行
+   * 
+   * @example
+   * // 检查高度
+   * let adjustedHeight = pluginDemoUtils.checkHeight(300)  // 返回对齐后的高度
+   * 
+   * // 设置最大20个按钮
+   * let maxHeight = pluginDemoUtils.checkHeight(1000, 20)  // 返回 915 (45*20+15)
+   * 
+   * // 未订阅用户限制
+   * let limitedHeight = pluginDemoUtils.checkHeight(500)  // 返回 420（如果未订阅）
+   */
   static checkHeight(height,maxButtons = 20){
     if (height > 420 && !this.isSubscribed(false)) {
       return 420
@@ -4050,10 +4109,81 @@ try {
       return newHeight
     }
   }
+  /**
+   * 🚨 记录错误日志
+   * 
+   * 记录错误信息并显示给用户。
+   * 同时使用 MNUtil 的错误日志系统进行持久化记录。
+   * 
+   * @param {Error|string} error - 错误对象或错误信息
+   * @param {string} source - 错误来源（函数名）
+   * @param {*} [info] - 额外的调试信息
+   * @returns {void}
+   * 
+   * @example
+   * try {
+   *   // 危险操作
+   *   someRiskyOperation()
+   * } catch (error) {
+   *   pluginDemoUtils.addErrorLog(error, "someFunction", { 
+   *     noteId: focusNote.noteId,
+   *     action: "delete" 
+   *   })
+   * }
+   * 
+   * // 手动记录错误
+   * pluginDemoUtils.addErrorLog(
+   *   "Invalid parameter", 
+   *   "validateInput",
+   *   { received: value, expected: "string" }
+   * )
+   */
   static addErrorLog(error,source,info){
     MNUtil.showHUD("MN Toolbar Error ("+source+"): "+error)  // 保留特定的错误提示
     return MNUtil.addErrorLog(error, "MNToolbar:" + source, info)  // 使用 MNUtil 的错误日志系统
   }
+  /**
+   * 🗑️ 删除评论
+   * 
+   * 根据不同的条件删除笔记中的评论。
+   * 支持按索引、类型或查找条件删除单个或多个评论。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {Object} [des.find] - 查找条件对象
+   * @param {string|string[]} [des.type] - 评论类型
+   * @param {string|string[]} [des.types] - 评论类型（别名）
+   * @param {number|number[]} [des.index] - 评论索引
+   * @param {boolean} [des.multi=false] - 是否删除多个匹配项
+   * 
+   * 支持的类型：
+   * - "TextNote" - 文本评论
+   * - "LinkNote" - 链接评论
+   * - "PaintNote" - 手写评论
+   * - "HtmlNote" - HTML评论
+   * 
+   * @example
+   * // 删除第一个文本评论
+   * pluginDemoUtils.removeComment({ 
+   *   type: "TextNote" 
+   * })
+   * 
+   * // 删除所有链接评论
+   * pluginDemoUtils.removeComment({ 
+   *   type: "LinkNote", 
+   *   multi: true 
+   * })
+   * 
+   * // 按索引删除（第3个评论）
+   * pluginDemoUtils.removeComment({ 
+   *   index: 2 
+   * })
+   * 
+   * // 按条件查找并删除
+   * pluginDemoUtils.removeComment({ 
+   *   find: { text: "TODO" },
+   *   multi: true 
+   * })
+   */
   static removeComment(des){
     // MNUtil.copyJSON(des)
     let focusNotes = MNNote.getFocusNotes()
@@ -4149,6 +4279,33 @@ try {
     }
   
   }
+  /**
+   * ⏰ 设置定时器
+   * 
+   * 通过系统通知设置定时器功能。
+   * 支持倒计时和其他定时模式。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {string} des.timerMode - 定时器模式
+   *   - "countdown" - 倒计时模式
+   *   - 其他自定义模式
+   * @param {number} [des.minutes] - 倒计时分钟数（仅倒计时模式需要）
+   * @param {string} [des.annotation] - 定时器注释说明
+   * 
+   * @example
+   * // 设置 25 分钟倒计时（番茄钟）
+   * pluginDemoUtils.setTimer({
+   *   timerMode: "countdown",
+   *   minutes: 25,
+   *   annotation: "专注学习"
+   * })
+   * 
+   * // 设置自定义定时器
+   * pluginDemoUtils.setTimer({
+   *   timerMode: "reminder",
+   *   annotation: "休息一下"
+   * })
+   */
   static setTimer(des){
     let userInfo = {timerMode:des.timerMode}
     if (des.timerMode === "countdown") {
@@ -4159,6 +4316,33 @@ try {
     }
     MNUtil.postNotification("setTimer", userInfo)
   }
+  /**
+   * 📖 在词典中搜索
+   * 
+   * 在指定的词典应用中搜索选中的文本或笔记内容。
+   * 支持欧路词典和其他词典应用。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {string} [des.target="eudic"] - 目标词典应用
+   *   - "eudic" - 欧路词典（通过 URL Scheme）
+   *   - 其他值 - 使用内置查词界面
+   * @param {UIButton} button - 触发按钮对象
+   * 
+   * 搜索优先级：
+   * 1. 当前选中的文本
+   * 2. 焦点笔记的摘录文本
+   * 3. 焦点笔记的标题
+   * 4. 焦点笔记的第一个文本评论
+   * 
+   * @example
+   * // 在欧路词典中查词
+   * pluginDemoUtils.searchInDict({}, button)
+   * 
+   * // 使用内置查词界面
+   * pluginDemoUtils.searchInDict({ 
+   *   target: "builtin" 
+   * }, button)
+   */
   static searchInDict(des,button){
     let target = des.target ?? "eudic"
     let textSelected = MNUtil.selectionText
@@ -4255,10 +4439,69 @@ try {
 
 
   }
+  /**
+   * 💬 显示消息
+   * 
+   * 显示支持模板变量的消息提示。
+   * 会自动替换消息中的模板变量。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {string} des.content - 消息内容，支持模板变量
+   * 
+   * @example
+   * // 显示简单消息
+   * pluginDemoUtils.showMessage({
+   *   content: "操作完成！"
+   * })
+   * 
+   * // 使用模板变量
+   * pluginDemoUtils.showMessage({
+   *   content: "已处理笔记：{{note.title}}"
+   * })
+   * 
+   * // 显示日期信息
+   * pluginDemoUtils.showMessage({
+   *   content: "今天是 {{date.year}}-{{date.month}}-{{date.day}}"
+   * })
+   */
   static showMessage(des){
     let content = this.detectAndReplace(des.content)
     MNUtil.showHUD(content)
   }
+  /**
+   * ✅ 用户确认对话框
+   * 
+   * 显示确认对话框，等待用户选择。
+   * 支持模板变量，可根据用户选择返回不同的操作。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {string} des.title - 对话框标题，支持模板变量
+   * @param {string} [des.subTitle] - 副标题，支持模板变量
+   * @param {*} [des.onConfirm] - 用户确认时返回的值
+   * @param {*} [des.onCancel] - 用户取消时返回的值
+   * @returns {Promise<*>} 根据用户选择返回对应的值
+   * 
+   * @example
+   * // 简单确认
+   * let result = await pluginDemoUtils.userConfirm({
+   *   title: "确定删除这个笔记吗？",
+   *   subTitle: "此操作不可撤销"
+   * })
+   * if (result === undefined) {
+   *   // 用户取消或确认（没有指定返回值）
+   * }
+   * 
+   * // 带返回值的确认
+   * let action = await pluginDemoUtils.userConfirm({
+   *   title: "选择操作方式",
+   *   subTitle: "{{note.title}}",
+   *   onConfirm: "delete",
+   *   onCancel: "keep"
+   * })
+   * if (action === "delete") {
+   *   // 执行删除
+   * }
+   */
   static async userConfirm(des){
     if (des.title) {
       let confirmTitle = this.detectAndReplace(des.title)
@@ -4278,6 +4521,48 @@ try {
     }
     return undefined
   }
+  /**
+   * 🔘 用户选择对话框
+   * 
+   * 显示多选项对话框，让用户从列表中选择。
+   * 支持模板变量，可根据选择返回对应的描述对象。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {string} des.title - 对话框标题，支持模板变量
+   * @param {string} [des.subTitle] - 副标题，支持模板变量
+   * @param {Object[]} des.selectItems - 选项数组
+   * @param {string} des.selectItems[].selectTitle - 选项显示文本，支持模板变量
+   * @param {*} [des.onCancel] - 用户取消时返回的值
+   * @returns {Promise<Object|*>} 选中的选项对象或取消值
+   * 
+   * @example
+   * // 选择颜色
+   * let colorDes = await pluginDemoUtils.userSelect({
+   *   title: "选择标记颜色",
+   *   subTitle: "为 {{note.title}} 设置颜色",
+   *   selectItems: [
+   *     { selectTitle: "🟡 黄色", colorIndex: 0 },
+   *     { selectTitle: "🟢 绿色", colorIndex: 1 },
+   *     { selectTitle: "🔵 蓝色", colorIndex: 2 },
+   *     { selectTitle: "🔴 红色", colorIndex: 3 }
+   *   ]
+   * })
+   * 
+   * if (colorDes && colorDes.colorIndex !== undefined) {
+   *   focusNote.colorIndex = colorDes.colorIndex
+   * }
+   * 
+   * // 选择操作
+   * let actionDes = await pluginDemoUtils.userSelect({
+   *   title: "选择操作",
+   *   selectItems: [
+   *     { selectTitle: "复制", action: "copy" },
+   *     { selectTitle: "移动", action: "move" },
+   *     { selectTitle: "删除", action: "delete" }
+   *   ],
+   *   onCancel: { action: "none" }
+   * })
+   */
   static async userSelect(des){
     if (des.title && des.selectItems) {
       let confirmTitle = pluginDemoUtils.detectAndReplace(des.title)
@@ -4298,6 +4583,44 @@ try {
     }
     return undefined
   }
+  /**
+   * 🤖 AI 聊天接口
+   * 
+   * 触发 AI 聊天功能，支持多种交互模式。
+   * 通过系统通知与 AI 聊天模块通信。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {string} [des.target] - 目标操作
+   *   - "openFloat" - 打开浮动聊天窗口
+   *   - "currentPrompt" - 使用当前提示词
+   * @param {string} [des.prompt] - 预设的提示词
+   * @param {string} [des.user] - 用户问题
+   * @param {string} [des.system] - 系统提示（与 user 配合使用）
+   * @param {UIButton} button - 触发按钮对象
+   * @returns {boolean|void}
+   * 
+   * @example
+   * // 打开浮动聊天窗口
+   * pluginDemoUtils.chatAI({ 
+   *   target: "openFloat" 
+   * }, button)
+   * 
+   * // 使用预设提示词
+   * pluginDemoUtils.chatAI({ 
+   *   prompt: "请帮我总结这段内容的要点" 
+   * }, button)
+   * 
+   * // 自定义问答
+   * pluginDemoUtils.chatAI({ 
+   *   user: "什么是量子力学？",
+   *   system: "你是一位物理学教授，请用简单的语言解释。" 
+   * }, button)
+   * 
+   * // 使用当前配置的提示词
+   * pluginDemoUtils.chatAI({ 
+   *   target: "currentPrompt" 
+   * }, button)
+   */
   static chatAI(des,button){
     if (des.target === "openFloat") {
       MNUtil.postNotification("chatAIOpenFloat", {beginFrame:button.convertRectToView(button.bounds,MNUtil.studyView)})
@@ -4328,6 +4651,35 @@ try {
     MNUtil.postNotification("customChat",{})
     // MNUtil.showHUD("No valid argument!")
   }
+  /**
+   * 🔍 网页搜索
+   * 
+   * 在内置浏览器中搜索选中的文本或笔记内容。
+   * 支持指定搜索引擎，在浮动窗口中显示结果。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {string} [des.engine] - 搜索引擎
+   * @param {UIButton} button - 触发按钮对象
+   * 
+   * 搜索内容优先级：
+   * 1. 当前选中的文本
+   * 2. 焦点笔记的内容
+   * 
+   * @example
+   * // 使用默认搜索引擎
+   * pluginDemoUtils.search({}, button)
+   * 
+   * // 指定搜索引擎
+   * pluginDemoUtils.search({ 
+   *   engine: "google" 
+   * }, button)
+   * 
+   * // 搜索流程：
+   * // 1. 获取选中文本或笔记
+   * // 2. 计算浮动窗口位置
+   * // 3. 发送搜索通知
+   * // 4. 在浮动窗口显示结果
+   */
   static search(des,button){
     // MNUtil.copyJSON(des)
     // MNUtil.showHUD("Search")
@@ -4389,8 +4741,29 @@ try {
     }
   }
   /**
-   * @param {NSData} image 
-   * @returns 
+   * 📷 获取图片文字（OCR）
+   * 
+   * 使用 OCR 技术从图片中提取文字。
+   * 需要安装 MN OCR 插件才能使用。
+   * 
+   * @param {NSData} image - 图片数据
+   * @returns {Promise<string|undefined>} OCR 识别的文本，失败返回 undefined
+   * 
+   * @example
+   * // 获取选中区域的文字
+   * let imageData = MNUtil.getDocImage(true, true)
+   * if (imageData) {
+   *   let text = await pluginDemoUtils.getTextOCR(imageData)
+   *   if (text) {
+   *     console.log("识别的文字：", text)
+   *   }
+   * }
+   * 
+   * // 从笔记图片获取文字
+   * let noteImage = MNNote.getImageFromNote(focusNote)
+   * if (noteImage) {
+   *   let text = await pluginDemoUtils.getTextOCR(noteImage)
+   * }
    */
   static async getTextOCR (image) {
     if (typeof ocrNetwork === 'undefined') {
@@ -4407,19 +4780,37 @@ try {
     }
   }
 
-/**
- * Initializes a request for ChatGPT using the provided configuration.
- * 
- * @param {Array} history - An array of messages to be included in the request.
- * @param {string} apikey - The API key for authentication.
- * @param {string} url - The URL endpoint for the API request.
- * @param {string} model - The model to be used for the request.
- * @param {number} temperature - The temperature parameter for the request.
- * @param {Array<number>} funcIndices - An array of function indices to be included in the request.
- * @returns {Promise<{content:string,media:string,title:string,link:string,refer:string,icon:string,index:number}[]>}
- * @throws {Error} If the API key is empty or if there is an error during the request initialization.
- */
-static async webSearchForZhipu (question,apikey) {
+  /**
+   * 🔎 智谱 AI 网络搜索
+   * 
+   * 使用智谱 AI 的网络搜索工具搜索问题答案。
+   * 返回搜索结果的结构化数据。
+   * 
+   * @param {string} question - 搜索问题
+   * @param {string} apikey - 智谱 AI API 密钥
+   * @returns {Promise<Array>} 搜索结果数组，每个结果包含：
+   *   - content: 内容摘要
+   *   - title: 标题
+   *   - link: 原文链接
+   *   - media: 媒体来源
+   *   - refer: 引用信息
+   *   - icon: 图标
+   *   - index: 索引
+   * @throws {Error} 如果 API 密钥为空或请求失败
+   * 
+   * @example
+   * let apikey = "your-zhipu-api-key"
+   * let results = await pluginDemoUtils.webSearchForZhipu(
+   *   "MarginNote 4 使用技巧",
+   *   apikey
+   * )
+   * 
+   * results.forEach(result => {
+   *   console.log(`${result.title}: ${result.content}`)
+   *   console.log(`来源: ${result.link}`)
+   * })
+   */
+  static async webSearchForZhipu (question,apikey) {
   if (apikey.trim() === "") {
     MNUtil.showHUD(model+": No apikey!")
     return
@@ -4452,6 +4843,38 @@ static async webSearchForZhipu (question,apikey) {
     return res
   }
 }
+  /**
+   * 🌐 网络搜索并创建笔记
+   * 
+   * 搜索指定问题，并将搜索结果创建为子笔记。
+   * 会尝试获取每个结果的完整内容。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {string} des.question - 搜索问题，支持模板变量
+   * @returns {Promise<Array|void>} 搜索结果数组
+   * 
+   * 工作流程：
+   * 1. 解析问题中的模板变量
+   * 2. 使用智谱 AI 搜索
+   * 3. 尝试获取每个结果的完整内容
+   * 4. 为每个结果创建子笔记
+   * 
+   * @example
+   * // 搜索并创建笔记
+   * await pluginDemoUtils.webSearch({
+   *   question: "{{note.title}} 的相关研究"
+   * })
+   * 
+   * // 搜索特定主题
+   * await pluginDemoUtils.webSearch({
+   *   question: "量子计算最新进展 2024"
+   * })
+   * 
+   * // 结果会自动创建为当前笔记的子笔记
+   * // 每个子笔记包含：
+   * // - 标题：搜索结果的标题
+   * // - 摘录：内容摘要 + 原文链接
+   */
   static async webSearch(des){
   try {
     
@@ -4521,10 +4944,43 @@ static async webSearchForZhipu (question,apikey) {
   }
   }
   /**
+   * 📸 图片文字识别（OCR）
    * 
-   * @param {{buffer:boolean,target:string,method:string}} des 
-   * @param {UIButton} button 
-   * @returns 
+   * 对选中的图片或笔记中的图片进行文字识别。
+   * 支持多种输出方式和 OCR 引擎。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {boolean} [des.buffer=true] - 是否使用缓冲
+   * @param {string} [des.target="comment"] - 输出目标
+   *   - "comment" - 添加为评论
+   *   - "excerpt" - 设置为摘录
+   *   - "childNote" - 创建子笔记
+   *   - "clipboard" - 复制到剪贴板
+   *   - "editor" - 在编辑器中打开
+   *   - "option" - 让用户选择
+   *   - "chatModeReference" - 插入到聊天模式
+   * @param {string} [des.source] - OCR 引擎来源
+   * @param {string} [des.method] - 插入方法（用于 chatModeReference）
+   * @param {boolean} [des.followParentColor] - 子笔记是否继承父笔记颜色
+   * @param {UIButton} button - 触发按钮对象
+   * @returns {Promise<void>}
+   * 
+   * @example
+   * // 识别并添加为评论
+   * await pluginDemoUtils.ocr({
+   *   target: "comment"
+   * }, button)
+   * 
+   * // 识别并让用户选择
+   * await pluginDemoUtils.ocr({
+   *   target: "option"
+   * }, button)
+   * 
+   * // 创建子笔记并继承颜色
+   * await pluginDemoUtils.ocr({
+   *   target: "childNote",
+   *   followParentColor: true
+   * }, button)
    */
   static async ocr(des,button){
 try {
@@ -4708,18 +5164,38 @@ try {
     }
   
   }
-/**
- * Initializes a request for ChatGPT using the provided configuration.
- * 
- * @param {Array} history - An array of messages to be included in the request.
- * @param {string} apikey - The API key for authentication.
- * @param {string} url - The URL endpoint for the API request.
- * @param {string} model - The model to be used for the request.
- * @param {number} temperature - The temperature parameter for the request.
- * @param {Array<number>} funcIndices - An array of function indices to be included in the request.
- * @throws {Error} If the API key is empty or if there is an error during the request initialization.
- */
-static initRequestForChatGPTWithoutStream (history,apikey,url,model,temperature,funcIndices=[]) {
+  /**
+   * 🤖 初始化 ChatGPT 请求（无流式）
+   * 
+   * 创建一个 ChatGPT API 请求对象，不使用流式传输。
+   * 这是一个底层方法，通常由其他方法调用。
+   * 
+   * @param {Array} history - 对话历史数组，格式：[{role: "user"|"assistant"|"system", content: "..."}]
+   * @param {string} apikey - API 密钥
+   * @param {string} url - API 端点 URL
+   * @param {string} model - 使用的模型名称
+   * @param {number} temperature - 温度参数（0-2），控制回复的随机性
+   * @param {Array<number>} [funcIndices=[]] - 函数索引数组（用于函数调用）
+   * @returns {NSURLRequest} 请求对象
+   * @throws {Error} 如果 API 密钥为空
+   * 
+   * @example
+   * let history = [
+   *   { role: "system", content: "你是一个有帮助的助手" },
+   *   { role: "user", content: "什么是 JavaScript？" }
+   * ]
+   * 
+   * let request = pluginDemoUtils.initRequestForChatGPTWithoutStream(
+   *   history,
+   *   "sk-...",
+   *   "https://api.openai.com/v1/chat/completions",
+   *   "gpt-3.5-turbo",
+   *   0.7
+   * )
+   * 
+   * let response = await MNConnection.sendRequest(request)
+   */
+  static initRequestForChatGPTWithoutStream (history,apikey,url,model,temperature,funcIndices=[]) {
   if (apikey.trim() === "") {
     MNUtil.showHUD(model+": No apikey!")
     return
@@ -4757,11 +5233,38 @@ static initRequestForChatGPTWithoutStream (history,apikey,url,model,temperature,
     })
   return request
 }
-/**
- * 
- * @returns {Promise<Object>}
- */
- static async ChatGPTVision(imageData,model="glm-4v-flash") {
+  /**
+   * 👁️ ChatGPT 视觉识别
+   * 
+   * 使用支持视觉的 AI 模型进行图片文字识别。
+   * 专门优化用于提取图片中的文本，包括公式。
+   * 
+   * @param {NSData} imageData - 图片数据
+   * @param {string} [model="glm-4v-flash"] - 使用的视觉模型
+   * @returns {Promise<string|undefined>} 识别的文本，失败返回 undefined
+   * 
+   * 特点：
+   * - 自动识别并用 $ 符号包裹数学公式
+   * - 压缩图片以优化传输
+   * - 使用专门的提示词优化识别效果
+   * - 支持 LaTeX 公式格式
+   * 
+   * @example
+   * let imageData = MNUtil.getDocImage(true, true)
+   * if (imageData) {
+   *   let text = await pluginDemoUtils.ChatGPTVision(imageData)
+   *   console.log("识别结果：", text)
+   *   // 如果包含公式，会是这样的格式：
+   *   // "根据勾股定理，$a^2 + b^2 = c^2$"
+   * }
+   * 
+   * // 使用其他模型
+   * let text = await pluginDemoUtils.ChatGPTVision(
+   *   imageData, 
+   *   "gpt-4-vision-preview"
+   * )
+   */
+  static async ChatGPTVision(imageData,model="glm-4v-flash") {
   try {
   let key = 'sk-S2rXjj2qB98OiweU46F3BcF2D36e4e5eBfB2C9C269627e44'
   MNUtil.waitHUD("OCR By "+model)
@@ -4815,15 +5318,71 @@ Image Text Extraction Specialist
   }
 }
   /**
-   * @param {NSData} image 
-   * @returns 
+   * 🆓 免费 OCR 服务
+   * 
+   * 使用内置的免费 OCR 服务识别图片文字。
+   * 实际上是 ChatGPTVision 的封装，提供更简单的接口。
+   * 
+   * @param {NSData} image - 图片数据
+   * @returns {Promise<string|undefined>} 识别的文本
+   * 
+   * @example
+   * // 简单使用
+   * let imageData = MNUtil.getDocImage(true, true)
+   * let text = await pluginDemoUtils.freeOCR(imageData)
+   * if (text) {
+   *   MNUtil.copy(text)
+   *   MNUtil.showHUD("文字已复制")
+   * }
    */
   static async freeOCR(image){
     let res = await this.ChatGPTVision(image)
     MNUtil.stopHUD()
     return res
   }
-  
+  /**
+   * 🔄 移动评论位置
+   * 
+   * 根据不同的条件移动笔记中评论的位置。
+   * 支持按索引、类型或查找条件移动评论。
+   * 
+   * @param {Object} des - 描述对象
+   * @param {Object} [des.find] - 查找条件
+   * @param {string} [des.type] - 评论类型
+   * @param {string[]} [des.types] - 评论类型数组
+   * @param {number} [des.index] - 评论索引
+   * @param {string|number} des.to - 目标位置
+   *   - 数字：移动到指定索引
+   *   - "top" - 移到最前
+   *   - "bottom" - 移到最后
+   *   - "up" - 上移一位
+   *   - "down" - 下移一位
+   * 
+   * @example
+   * // 将第一个评论移到最后
+   * pluginDemoUtils.moveComment({
+   *   index: 0,
+   *   to: "bottom"
+   * })
+   * 
+   * // 将文本评论移到最前
+   * pluginDemoUtils.moveComment({
+   *   type: "TextNote",
+   *   to: "top"
+   * })
+   * 
+   * // 按条件查找并上移
+   * pluginDemoUtils.moveComment({
+   *   find: { text: "重要" },
+   *   to: "up"
+   * })
+   * 
+   * // 移动到指定位置
+   * pluginDemoUtils.moveComment({
+   *   index: 2,
+   *   to: 0  // 移到第一个位置
+   * })
+   */
   static moveComment(des){
     let focusNotes = MNNote.getFocusNotes()
     let commentIndex
@@ -4912,16 +5471,32 @@ Image Text Extraction Specialist
   
   }
   /**
-   * 获取日期对象
+   * 📅 获取日期对象（扩展版）
    * 
-   * 注意：虽然 MNUtil 也有 getDateObject() 方法，但本方法提供了更多的日期格式：
-   * - now: 当前时间的本地化字符串
-   * - tomorrow: 明天的日期
-   * - yesterday: 昨天的日期
-   * - year/month/day/hour/minute/second: 各个时间单位
+   * 获取包含多种日期格式的对象，用于模板变量替换。
+   * 虽然 MNUtil 也有 getDateObject() 方法，但本方法提供了更多的日期格式。
    * 
-   * 这些额外的格式在模板渲染时非常有用，所以保留此扩展实现
-   * @returns {Object} 包含多种日期格式的对象
+   * @returns {Object} 日期对象，包含：
+   *   - now: 当前时间的本地化字符串
+   *   - tomorrow: 明天的日期字符串
+   *   - yesterday: 昨天的日期字符串
+   *   - year: 年份（数字）
+   *   - month: 月份（1-12）
+   *   - day: 日期（1-31）
+   *   - hour: 小时（0-23）
+   *   - minute: 分钟（0-59）
+   *   - second: 秒（0-59）
+   * 
+   * @example
+   * let date = pluginDemoUtils.getDateObject()
+   * console.log(date.now)       // "2024/1/1 下午3:30:45"
+   * console.log(date.year)      // 2024
+   * console.log(date.month)     // 1
+   * console.log(date.tomorrow)  // "2024/1/2 下午3:30:45"
+   * 
+   * // 在模板中使用
+   * let template = "创建于 {{date.year}}-{{date.month}}-{{date.day}}"
+   * let result = pluginDemoUtils.detectAndReplace(template)
    */
   static getDateObject(){
     let dateObject = {
@@ -4938,8 +5513,44 @@ Image Text Extraction Specialist
     return dateObject
   }
   /**
+   * 📝 获取笔记对象（用于模板）
    * 
-   * @param {MNNote} note 
+   * 将 MNNote 对象转换为包含各种属性的普通对象。
+   * 用于模板渲染和数据导出，提供丰富的笔记信息。
+   * 
+   * @param {MNNote} note - 笔记对象
+   * @param {Object} [config={}] - 初始配置对象
+   * @param {Object} [opt={first:true}] - 选项
+   * @param {boolean} [opt.first=true] - 是否为第一层（包含笔记本信息）
+   * @param {boolean} [opt.parent] - 是否包含父笔记信息
+   * @param {boolean} [opt.child] - 是否包含子笔记信息
+   * @param {number} [opt.parentLevel] - 递归获取父笔记的层数
+   * @returns {Object|undefined} 笔记信息对象
+   * 
+   * 返回对象包含：
+   * - 基本信息：id, title, url, excerptText, tags
+   * - 时间信息：date.create, date.modify
+   * - 状态信息：hasTag, hasComment, hasChild, hasText
+   * - 颜色信息：color.lightYellow, color.green 等
+   * - 关系信息：parent（可选）, child（可选）
+   * - 文档信息：docName, hasDoc
+   * - 位置信息：inMainMindMap, inChildMindMap
+   * 
+   * @example
+   * // 获取基本信息
+   * let noteObj = pluginDemoUtils.getNoteObject(focusNote)
+   * console.log(noteObj.title)
+   * console.log(noteObj.tags)
+   * 
+   * // 包含父子关系
+   * let fullObj = pluginDemoUtils.getNoteObject(focusNote, {}, {
+   *   parent: true,
+   *   child: true,
+   *   parentLevel: 2  // 获取两层父笔记
+   * })
+   * 
+   * // 在模板中使用
+   * let template = "标题：{{note.title}}\n创建时间：{{note.date.create}}"
    */
   static getNoteObject(note,config={},opt={first:true}) {
     try {
@@ -5016,6 +5627,28 @@ Image Text Extraction Specialist
       return undefined
     }
   }
+  /**
+   * 🛠️ 开发版 HTML 编辑器
+   * 
+   * 生成一个带语法高亮的 JSON 编辑器 HTML。
+   * 支持实时编辑和语法高亮，用于开发调试。
+   * 
+   * @param {string} content - 初始内容
+   * @returns {string} 完整的 HTML 页面代码
+   * 
+   * 特性：
+   * - JSON 语法高亮
+   * - 实时编辑
+   * - 自动格式化
+   * - 保持光标位置
+   * - 支持中文输入法
+   * 
+   * @example
+   * let html = pluginDemoUtils.htmlDev(
+   *   JSON.stringify({name: "test", value: 123}, null, 2)
+   * )
+   * // 可以在 WebView 中加载这个 HTML
+   */
   static htmlDev(content){
     return `<!DOCTYPE html>
 <html lang="en">
@@ -5160,6 +5793,32 @@ function setCaretPosition(element, offset) {
 
 `
   }
+  /**
+   * 💻 JavaScript 代码编辑器
+   * 
+   * 生成一个带语法高亮的 JavaScript 代码编辑器 HTML。
+   * 使用 highlight.js 提供专业的代码高亮。
+   * 
+   * @param {string} content - JavaScript 代码内容
+   * @returns {string} 完整的 HTML 页面代码
+   * 
+   * 特性：
+   * - JavaScript 语法高亮
+   * - 自定义 MN 相关类高亮
+   * - 实时编辑
+   * - 保持光标位置
+   * - 响应式布局
+   * 
+   * @example
+   * let code = `
+   * function hello() {
+   *   let note = MNNote.getFocusNote()
+   *   MNUtil.showHUD("Hello " + note.noteTitle)
+   * }
+   * `
+   * let html = pluginDemoUtils.JShtml(code)
+   * // 在 WebView 中显示带高亮的代码
+   */
   static JShtml(content){
     return `<!DOCTYPE html>
 <html lang="en">
@@ -5329,6 +5988,36 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
 </html>
 `
   }
+  /**
+   * 📋 专业 JSON 编辑器
+   * 
+   * 生成一个功能完整的 JSON 编辑器页面。
+   * 基于 JSONEditor 库，提供树形和代码视图。
+   * 
+   * @returns {string} JSON 编辑器的 HTML 页面
+   * 
+   * 特性：
+   * - 树形视图编辑
+   * - 代码视图编辑
+   * - 语法验证
+   * - 格式化功能
+   * - 搜索功能
+   * - 撤销/重做
+   * 
+   * API 方法：
+   * - updateContent(data) - 更新内容
+   * - getContent() - 获取内容
+   * 
+   * @example
+   * let editorHTML = pluginDemoUtils.jsonEditor()
+   * // 在 WebView 中加载
+   * webView.loadHTMLString(editorHTML)
+   * 
+   * // 通过 JavaScript 交互
+   * webView.evaluateJavaScript(
+   *   `updateContent('${encodeURIComponent(jsonStr)}')`
+   * )
+   */
   static jsonEditor(){
     return `
 <!DOCTYPE HTML>
@@ -5381,6 +6070,28 @@ body {
 </body>
 </html>`
   }
+  /**
+   * 📄 通用 JSON 高亮编辑器
+   * 
+   * 生成一个简洁的 JSON 编辑器，带有语法高亮。
+   * 适合在小窗口或移动设备上使用。
+   * 
+   * @param {string} content - JSON 内容
+   * @returns {string} 完整的 HTML 页面
+   * 
+   * 特性：
+   * - JSON 语法高亮
+   * - 自适应布局
+   * - 实时编辑
+   * - 轻量级实现
+   * 
+   * @example
+   * let jsonData = { name: "测试", items: [1, 2, 3] }
+   * let html = pluginDemoUtils.html(
+   *   JSON.stringify(jsonData, null, 2)
+   * )
+   * // 适合在浮动窗口中显示
+   */
   static html(content){
     return `<!DOCTYPE html>
 <html lang="en">

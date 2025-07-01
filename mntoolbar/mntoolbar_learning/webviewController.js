@@ -2,105 +2,261 @@
 // JSB.require('settingController');
 
 /**
- * 【重要】获取工具栏控制器的单例实例
+ * 🎯 获取工具栏控制器的单例实例（JSB 框架的特殊要求）
  * 
- * 在 JSB 框架中，不能在方法内部使用 let self = this，因为 this 的行为不同于标准 JS
- * 必须使用这种方式：先定义获取实例的函数，然后在方法内部调用
+ * 【为什么需要这个函数？】
+ * 在 JSB 框架中，this 的行为与标准 JavaScript 不同：
+ * ❌ 错误做法：let self = this  // 在 JSB 中无法正确获取实例
+ * ✅ 正确做法：let self = getToolbarController()  // 通过函数获取
  * 
- * @return {pluginDemoController} 返回当前控制器的单例实例
+ * 【JSB 框架背景】
+ * JSB (JavaScript Bridge) 是 MarginNote 插件使用的框架，它：
+ * - 桥接 JavaScript 和 Objective-C
+ * - 允许 JS 调用原生 iOS/macOS API
+ * - 有特殊的类定义和实例管理机制
+ * 
+ * 【使用场景】
+ * 在 JSB.defineClass 定义的任何方法内部，都需要：
+ * ```javascript
+ * methodName: function() {
+ *   let self = getToolbarController()  // 第一行获取实例
+ *   // 后续使用 self 而不是 this
+ *   self.someProperty = value
+ *   self.someMethod()
+ * }
+ * ```
+ * 
+ * @return {pluginDemoController} 返回工具栏控制器的单例实例
  */
 const getToolbarController = ()=>self
 
 /**
- * 工具栏主控制器类
+ * 🚀 MN Toolbar 工具栏主控制器 - 插件的核心大脑
  * 
- * 这是整个插件的核心控制器，负责：
- * 1. 管理工具栏的 UI 界面（按钮、布局、动画等）
- * 2. 处理用户交互（点击、长按、拖动等手势）
- * 3. 与其他插件模块通信（通过通知机制）
+ * 【这个类是做什么的？】
+ * 想象一下，这个控制器就像一个智能遥控器，控制着工具栏的一切：
+ * - 🎨 界面管理：创建按钮、设置颜色、调整布局
+ * - 👆 交互处理：响应点击、长按、拖动等手势
+ * - 📡 通信中心：与其他插件模块交流信息
+ * - 🎬 动画控制：显示/隐藏的平滑过渡效果
  * 
- * 继承关系：
- * - UIViewController: iOS 的视图控制器基类
- * - UIImagePickerControllerDelegate: 图片选择器代理（用于 OCR 等功能）
- * - UINavigationControllerDelegate: 导航控制器代理
+ * 【控制器架构图】
+ * ```
+ * pluginDemoController (主控制器)
+ *         │
+ *         ├─── 视图层 (UIView)
+ *         │     ├── 工具栏按钮 (ColorButton0-29)
+ *         │     ├── 屏幕切换按钮 (screenButton)
+ *         │     └── 最大化按钮 (maxButton)
+ *         │
+ *         ├─── 手势识别层
+ *         │     ├── 拖动手势 (移动工具栏)
+ *         │     ├── 长按手势 (触发额外功能)
+ *         │     └── 调整大小手势 (改变工具栏尺寸)
+ *         │
+ *         └─── 业务逻辑层
+ *               ├── 动作处理 (customActionByDes)
+ *               ├── 菜单管理 (popoverController)
+ *               └── 状态管理 (配置保存/恢复)
+ * ```
+ * 
+ * 【继承关系说明】
+ * - UIViewController：iOS 标准视图控制器，提供生命周期管理
+ * - UIImagePickerControllerDelegate：处理图片选择（OCR、图片插入等）
+ * - UINavigationControllerDelegate：处理导航相关操作
+ * 
+ * 【核心属性预览】
+ * - self.view：工具栏的主视图
+ * - self.dynamicWindow：是否为动态窗口模式
+ * - self.buttonNumber：当前显示的按钮数量
+ * - self.ColorButton[0-29]：30个可配置的功能按钮
  */
 var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewController <UIImagePickerControllerDelegate,UINavigationControllerDelegate>', {
   /**
-   * 视图加载完成后的初始化方法
+   * 🎬 视图加载完成后的初始化方法（生命周期入口）
    * 
-   * 这是 iOS 生命周期方法，当视图控制器的视图加载到内存后调用
-   * 在这里进行所有的初始化设置
+   * 【iOS 生命周期说明】
+   * 这是 UIViewController 的标准生命周期方法，调用时机：
+   * 1. 控制器被创建
+   * 2. 视图（self.view）第一次被访问
+   * 3. 视图加载到内存中
+   * → viewDidLoad 被调用（只调用一次）
+   * 
+   * 【初始化流程】
+   * ```
+   * viewDidLoad
+   *     │
+   *     ├─ 1. 获取控制器实例 (getToolbarController)
+   *     ├─ 2. 初始化状态属性
+   *     ├─ 3. 设置界面外观
+   *     ├─ 4. 创建按钮和控件
+   *     ├─ 5. 添加手势识别器
+   *     └─ 6. 配置初始布局
+   * ```
+   * 
+   * 【注意事项】
+   * - 这里只做初始化，不要做耗时操作
+   * - 视图可能还没有正确的 frame，布局相关操作放在 viewWillLayoutSubviews
+   * - 使用 try-catch 包裹，防止初始化错误导致插件崩溃
    */
   viewDidLoad: function() {
   try {
     
-    // 【重要】获取控制器实例，后续所有操作都基于这个 self
+    // 🔑 获取控制器实例（JSB 框架要求，必须第一行执行）
     let self = getToolbarController()
-    // ========== 初始化控制器状态属性 ==========
-    self.custom = false;              // 是否自定义模式
-    self.customMode = "None"          // 自定义模式类型
-    self.miniMode = false;            // 是否迷你模式
-    self.isLoading = false;           // 是否正在加载
-    self.lastFrame = self.view.frame;    // 记录上一次的视图框架（用于动画）
-    self.currentFrame = self.view.frame  // 当前视图框架
-    self.maxButtonNumber = 30         // 工具栏最多可显示的按钮数量
-    self.buttonNumber = 9             // 当前显示的按钮数量
-    self.isMac = MNUtil.version.type === "macOS"  // 判断是否 macOS（用于平台差异处理）
-    // ========== 根据窗口类型设置按钮数量 ==========
+    // ========== 🏗️ 初始化控制器状态属性 ==========
+    
+    // 📋 基础状态管理
+    self.custom = false;              // 是否为自定义模式（预留功能）
+    self.customMode = "None"          // 自定义模式类型（预留功能）
+    self.miniMode = false;            // 是否迷你模式（精简界面）
+    self.isLoading = false;           // 加载状态标记（防止重复初始化）
+    
+    // 📐 视图框架管理
+    self.lastFrame = self.view.frame;    // 上一帧的位置和大小（用于动画过渡）
+    self.currentFrame = self.view.frame  // 当前帧的位置和大小
+    
+    // 🔢 按钮数量配置
+    self.maxButtonNumber = 30         // 最大支持 30 个按钮（硬件限制）
+    self.buttonNumber = 9             // 默认显示 9 个按钮
+    
+    // 🖥️ 平台检测
+    self.isMac = MNUtil.version.type === "macOS"  // 平台差异处理
+    // macOS 特性：鼠标悬停、右键菜单、键盘快捷键
+    // iOS 特性：触摸手势、屏幕旋转、3D Touch
+    // ========== 🎛️ 智能按钮数量配置 ==========
+    /**
+     * 【窗口模式说明】
+     * 动态窗口：工具栏会自动显示/隐藏，像 macOS 的 Dock
+     * 固定窗口：工具栏始终显示在屏幕上
+     * 
+     * 【按钮布局计算】
+     * 每个按钮的标准尺寸：40x40 像素
+     * 按钮间距：5 像素
+     * 总占用空间：40 + 5 = 45 像素/按钮
+     */
     if (self.dynamicWindow) {
-      // 动态窗口模式：从配置中读取按钮数量
-      // self.maxButtonNumber = 9
+      // 🌟 动态窗口模式
+      // 从用户配置中读取上次设置的按钮数量
       self.buttonNumber = pluginDemoConfig.getWindowState("dynamicButton");
     }else{
-      // 固定窗口模式：根据上次保存的框架计算按钮数量
+      // 📌 固定窗口模式
+      // 根据上次窗口大小自动计算合适的按钮数量
       let lastFrame = pluginDemoConfig.getWindowState("frame")
       if (lastFrame) {
-        // MNUtil.copyJSON(lastFrame)  // 调试用：复制框架信息到剪贴板
-        // 兼容两个方向的工具栏（横向和纵向）
-        // 每个按钮占 45 像素，根据工具栏尺寸计算能容纳多少按钮
+        // 智能计算：无论横向还是纵向，取最大边计算
+        // 横向工具栏：width > height，按宽度计算
+        // 纵向工具栏：height > width，按高度计算
         self.buttonNumber = Math.floor(Math.max(lastFrame.width,lastFrame.height)/45)
+        
+        // 示例：
+        // 横向 450x40 → 450/45 = 10 个按钮
+        // 纵向 40x450 → 450/45 = 10 个按钮
       }
     }
-    // self.buttonNumber = 9  // 可以强制设置按钮数量（调试用）
+    // self.buttonNumber = 9  // 🔧 调试：可以强制设置按钮数量
     
-    // ========== 工具栏模式和状态 ==========
-    self.mode = 0         // 工具栏模式（0：默认模式）
-    self.sideMode = pluginDemoConfig.getWindowState("sideMode")   // 侧边模式（left/right/空）
-    self.splitMode = pluginDemoConfig.getWindowState("splitMode") // 分屏模式（true/false）
-    self.moveDate = Date.now()  // 记录移动时间（用于防抖）
-    self.settingMode = false    // 是否在设置模式
-    // ========== 设置工具栏视图的外观 ==========
-    // 阴影效果设置
-    self.view.layer.shadowOffset = {width: 0, height: 0};  // 阴影偏移
-    self.view.layer.shadowRadius = 15;                     // 阴影模糊半径
-    self.view.layer.shadowOpacity = 0.5;                   // 阴影不透明度
-    // 使用配置中的颜色和透明度设置阴影颜色
-    self.view.layer.shadowColor = MNUtil.hexColorAlpha(pluginDemoConfig.buttonConfig.color, pluginDemoConfig.buttonConfig.alpha)
+    // ========== 🎮 工具栏模式和状态管理 ==========
     
-    // 视图基本样式
-    self.view.layer.opacity = 1.0         // 视图不透明度
-    self.view.layer.cornerRadius = 5      // 圆角半径
-    self.view.backgroundColor = UIColor.whiteColor().colorWithAlphaComponent(0)  // 透明背景
-    self.view.mnpluginDemo = true         // 标记这是插件的视图（用于识别）
-    // ========== 配置工具栏按钮 ==========
-    // 检查是否使用动态排序（用户可以自定义按钮顺序）
+    // 📊 显示模式
+    self.mode = 0  // 工具栏模式（预留扩展：0=默认，1=精简，2=扩展）
+    
+    // 📍 位置模式
+    self.sideMode = pluginDemoConfig.getWindowState("sideMode")   
+    // "left"：吸附在左边缘
+    // "right"：吸附在右边缘  
+    // ""：自由位置
+    
+    // 🖼️ 分屏适配
+    self.splitMode = pluginDemoConfig.getWindowState("splitMode") 
+    // true：工具栏吸附在文档和脑图的分割线上
+    // false：普通模式
+    
+    // ⏱️ 性能优化
+    self.moveDate = Date.now()  // 记录上次移动时间，用于：
+    // 1. 防抖处理（避免频繁更新）
+    // 2. 手势冲突解决
+    // 3. 动画流畅度优化
+    
+    // ⚙️ 功能状态
+    self.settingMode = false    // 是否打开设置界面（互斥状态）
+    // ========== 🎨 工具栏视觉效果设计 ==========
+    
+    // 🌟 阴影效果（让工具栏有悬浮感）
+    self.view.layer.shadowOffset = {width: 0, height: 0};  // 四周均匀阴影
+    self.view.layer.shadowRadius = 15;                     // 阴影扩散范围
+    self.view.layer.shadowOpacity = 0.5;                   // 50% 阴影强度
+    
+    // 🎨 阴影颜色（使用按钮主题色）
+    // pluginDemoConfig.buttonConfig.color: 主题色十六进制值（如 "#9bb2d6"）
+    // pluginDemoConfig.buttonConfig.alpha: 透明度（0.0-1.0）
+    self.view.layer.shadowColor = MNUtil.hexColorAlpha(
+      pluginDemoConfig.buttonConfig.color, 
+      pluginDemoConfig.buttonConfig.alpha
+    )
+    
+    // 📐 视图基础样式
+    self.view.layer.opacity = 1.0      // 整体不透明度（可通过菜单调整）
+    self.view.layer.cornerRadius = 5   // 圆角效果（像素）
+    
+    // 🎭 背景设置
+    // UIColor.whiteColor(): 白色
+    // colorWithAlphaComponent(0): 完全透明
+    // 结果：透明背景，只显示按钮和阴影
+    self.view.backgroundColor = UIColor.whiteColor().colorWithAlphaComponent(0)
+    
+    // 🏷️ 视图标记
+    self.view.mnpluginDemo = true  // 自定义属性，用于：
+    // 1. 识别这是 MN Toolbar 的视图
+    // 2. 避免与其他插件冲突
+    // 3. 调试时快速定位
+    // ========== 🎯 配置工具栏按钮数组 ==========
+    
+    /**
+     * 【按钮系统说明】
+     * 工具栏支持 30 个按钮位置，分为两类：
+     * 1. 预定义按钮（0-26）：内置功能如复制、粘贴、颜色等
+     * 2. 自定义按钮（27-35）：custom1-custom9，用户可自由配置
+     * 
+     * 【动态排序功能】
+     * 用户可以在设置中自定义按钮顺序，实现个性化工具栏
+     */
+    
+    // 🔄 检查是否启用动态排序
     let dynamicOrder = pluginDemoConfig.getWindowState("dynamicOrder")
     let useDynamic = dynamicOrder && self.dynamicWindow
 
     if (self.dynamicWindow) {
-      // 动态窗口模式
-      // 兼容旧版本：如果按钮数组只有 27 个，添加 9 个自定义按钮槽位
+      // 🌟 动态窗口模式配置
+      
+      // 版本兼容性处理：
+      // 旧版本：27 个预定义按钮
+      // 新版本：27 个预定义 + 9 个自定义 = 36 个按钮
       if (pluginDemoConfig.dynamicAction.length == 27) {
-        pluginDemoConfig.dynamicAction = pluginDemoConfig.dynamicAction.concat(["custom1","custom2","custom3","custom4","custom5","custom6","custom7","custom8","custom9"])
+        // 自动升级到新版本，添加 custom1-custom9
+        pluginDemoConfig.dynamicAction = pluginDemoConfig.dynamicAction.concat([
+          "custom1","custom2","custom3","custom4","custom5",
+          "custom6","custom7","custom8","custom9"
+        ])
       }
-      // 根据是否使用动态排序来设置按钮
-      self.setToolbarButton(useDynamic ? pluginDemoConfig.dynamicAction:pluginDemoConfig.action)
+      
+      // 应用按钮配置
+      // useDynamic=true：使用用户自定义顺序
+      // useDynamic=false：使用默认顺序
+      self.setToolbarButton(useDynamic ? pluginDemoConfig.dynamicAction : pluginDemoConfig.action)
+      
     }else{
-      // 固定窗口模式
-      // 同样添加自定义按钮槽位
+      // 📌 固定窗口模式配置
+      
+      // 同样的版本兼容处理
       if (pluginDemoConfig.action.length == 27) {
-        pluginDemoConfig.action = pluginDemoConfig.action.concat(["custom1","custom2","custom3","custom4","custom5","custom6","custom7","custom8","custom9"])
+        pluginDemoConfig.action = pluginDemoConfig.action.concat([
+          "custom1","custom2","custom3","custom4","custom5",
+          "custom6","custom7","custom8","custom9"
+        ])
       }
+      
+      // 固定窗口始终使用标准配置
       self.setToolbarButton(pluginDemoConfig.action)
     }
     
@@ -917,115 +1073,217 @@ try {
   doubleClick:function (button) {
     button.doubleClick = true
   },
+  /**
+   * 👋 拖动手势处理器 - 实现工具栏的自由移动
+   * 
+   * 【手势状态说明】
+   * iOS/macOS 手势有 6 个状态，其中主要使用：
+   * - state === 1：开始 (UIGestureRecognizerStateBegan)
+   * - state === 2：移动中 (UIGestureRecognizerStateChanged)
+   * - state === 3：结束 (UIGestureRecognizerStateEnded)
+   * 
+   * 【功能特性】
+   * 1. ✂️ 边缘吸附：拖动到边缘 20 像素内自动吸附
+   * 2. 🗒️ 分屏适配：自动吸附到文档/脑图分割线
+   * 3. 📏 位置记忆：自动保存位置，下次启动恢复
+   * 4. 🚀 动态窗口：动态模式下拖动会自动隐藏
+   * 
+   * @param {UIPanGestureRecognizer} gesture - 拖动手势识别器
+   */
   onMoveGesture:function (gesture) {
   try {
     let self = getToolbarController()
+    
+    // 🌟 动态窗口特殊处理
     if (self.dynamicWindow) {
-      // self.hideAfterDelay()
+      // 动态窗口移动后自动隐藏，避免遮挡内容
       self.hide()
       return
     }
-    self.onAnimate = false
-    self.onClick = true
-    if (gesture.state === 1) {//触发
+    
+    self.onAnimate = false  // 关闭动画标记
+    self.onClick = true     // 设置点击标记（防止误触）
+    
+    // ========== 🎬 手势开始：记录初始位置 ==========
+    if (gesture.state === 1) {
+      // 记录手指按下的位置（在学习视图坐标系中）
       self.initLocation = gesture.locationInView(MNUtil.studyView)
+      // 记录工具栏当前的 frame
       self.initFrame = self.view.frame
       return
     }
+    
+    // ========== ✅ 手势结束：保存位置 ==========
     if (gesture.state === 3) {
-      // self.resi
+      // 将工具栏置于最上层（避免被其他视图遮挡）
       MNUtil.studyView.bringSubviewToFront(self.view)
+      
+      // 💾 保存工具栏状态
       pluginDemoConfig.windowState.open = true
       pluginDemoConfig.windowState.frame.x = self.view.frame.x
       pluginDemoConfig.windowState.frame.y = self.view.frame.y
-      // pluginDemoConfig.windowState.frame = self.view.frame
       pluginDemoConfig.windowState.splitMode = self.splitMode
       pluginDemoConfig.windowState.sideMode = self.sideMode
       pluginDemoConfig.save("MNToolbar_windowState")
+      
+      // 重新布局工具栏
       self.setToolbarLayout()
       return
     }
+    
+    // ========== 🏃 手势移动中：计算新位置 ==========
     if (gesture.state === 2) {
       let studyFrame = MNUtil.studyView.bounds
       let locationInView = gesture.locationInView(MNUtil.studyView)
-      let y = MNUtil.constrain(self.initFrame.y+locationInView.y - self.initLocation.y, 0, studyFrame.height-15)
-      let x = self.initFrame.x+locationInView.x - self.initLocation.x
-      self.sideMode = ""
+      
+      // 📏 计算移动后的位置
+      // 公式：新位置 = 原始位置 + (当前手指位置 - 初始手指位置)
+      let y = MNUtil.constrain(
+        self.initFrame.y + locationInView.y - self.initLocation.y, 
+        0,                        // 最小值：顶部
+        studyFrame.height - 15    // 最大值：底部留 15 像素
+      )
+      let x = self.initFrame.x + locationInView.x - self.initLocation.x
+      
+      self.sideMode = ""  // 重置侧边模式
+      
+      // 📐 竖向工具栏的特殊处理
       if (pluginDemoConfig.vertical()) {
-        let splitLine = MNUtil.splitLine
+        let splitLine = MNUtil.splitLine  // 获取文档/脑图分割线位置
         let docMapSplitMode = MNUtil.studyController.docMapSplitMode
-        if (x<20) {
+        
+        // ✂️ 左边缘吸附
+        if (x < 20) {  // 距离左边小于 20 像素
           x = 0
           self.sideMode = "left"
           self.splitMode = false
         }
-        if (x>studyFrame.width-60) {
-          x = studyFrame.width-40
+        
+        // ✂️ 右边缘吸附
+        if (x > studyFrame.width - 60) {  // 距离右边小于 60 像素
+          x = studyFrame.width - 40
           self.sideMode = "right"
           self.splitMode = false
         }
-        if (splitLine && docMapSplitMode===1) {
-          if (x<splitLine && x>splitLine-40) {
-            x = splitLine-20
+        
+        // 🗒️ 分割线吸附（只在分屏模式下生效）
+        if (splitLine && docMapSplitMode === 1) {
+          // 如果工具栏中心距离分割线小于 20 像素
+          if (x < splitLine && x > splitLine - 40) {
+            x = splitLine - 20  // 吸附到分割线上
             self.splitMode = true
             self.sideMode = ""
-          }else{
+          } else {
             self.splitMode = false
           }
-        }else{
+        } else {
           self.splitMode = false
         }
-      }else{
+      } else {
+        // 🔄 横向工具栏不支持分屏吸附
         self.splitMode = false
       }
-      let height = 45*self.buttonNumber+15
-      self.setFrame(MNUtil.genFrame(x, y, 40, pluginDemoUtils.checkHeight(height,self.maxButtonNumber)))
-
+      
+      // 📐 更新工具栏 frame
+      let height = 45 * self.buttonNumber + 15  // 计算高度
+      self.setFrame(MNUtil.genFrame(
+        x, y, 40, 
+        pluginDemoUtils.checkHeight(height, self.maxButtonNumber)
+      ))
+      
       self.custom = false;
     }
   } catch (error) {
     pluginDemoUtils.addErrorLog(error, "onMoveGesture")
   }
   },
+  /**
+   * 👆 长按手势处理器 - 为按钮添加更多功能
+   * 
+   * 【长按交互设计】
+   * 每个按钮都可以配置长按动作，实现：
+   * - 单击：执行主要功能
+   * - 长按：执行次要功能或显示更多选项
+   * 
+   * 【常见用法】
+   * - 复制按钮：单击复制摘录，长按复制标题
+   * - 颜色按钮：单击设置颜色，长按显示颜色选择器
+   * - 自定义按钮：单击执行动作，长按显示菜单
+   * 
+   * @param {UILongPressGestureRecognizer} gesture - 长按手势识别器
+   */
   onLongPressGesture:async function (gesture) {
-    if (gesture.state === 1) {
-      let button = gesture.view
-      let actionName = button.target ?? (self.dynamicWindow?pluginDemoConfig.dynamicAction[button.index]:pluginDemoConfig.action[button.index])//这个是key
+    // 🎬 只处理手势开始状态
+    if (gesture.state === 1) {  // UIGestureRecognizerStateBegan
+      let button = gesture.view  // 获取被长按的按钮
+      
+      // 🔍 查找按钮对应的动作名称
+      let actionName = button.target ?? (
+        self.dynamicWindow 
+          ? pluginDemoConfig.dynamicAction[button.index] 
+          : pluginDemoConfig.action[button.index]
+      )
+      
       if (actionName) {
+        // 📝 获取动作配置
         let des = pluginDemoConfig.getDescriptionByName(actionName)
+        
+        // ✅ 检查是否有长按配置
         if ("onLongPress" in des) {
           let onLongPress = des.onLongPress
+          
+          // 🔧 如果长按配置没有指定 action，使用主 action
           if (!("action" in onLongPress)) {
             onLongPress.action = des.action
           }
+          
+          // 🚀 执行长按动作
           await self.customActionByDes(button, onLongPress)
           return
-        }else{
+        } else {
+          // ❌ 没有配置长按动作
           MNUtil.showHUD("No long press action")
         }
       }
     }
+    
+    // ========== 📦 备用代码：长按移动模式 ==========
+    /**
+     * 【备用功能说明】
+     * 这段被注释的代码实现了另一种交互方式：
+     * 1. 长按屏幕按钮进入移动模式
+     * 2. 在移动模式下拖动整个工具栏
+     * 3. 松开退出移动模式
+     * 
+     * 这种设计适合：
+     * - 需要区分普通拖动和精确定位的场景
+     * - 避免误触移动操作
+     * - 提供视觉反馈（改变按钮颜色）
+     */
     // if (gesture.state === 1) {//触发
     //   self.initLocation = gesture.locationInView(MNUtil.studyView)
     //   self.initFrame = self.view.frame
-    //   MNUtil.showHUD("Move mode ✅")
-    //   MNButton.setColor(self.screenButton, "#9898ff",1.0)
+    //   MNUtil.showHUD("Move mode ✅")  // 提示进入移动模式
+    //   MNButton.setColor(self.screenButton, "#9898ff",1.0)  // 改变按钮颜色
     //   // self.view.layer.backgroundColor = MNUtil.hexColorAlpha("#b5b5f5",1.0)
     //   // self.view.layer.borderWidth = 2
     //   return
     // }
     // if (gesture.state === 3) {//停止
-    //   MNUtil.showHUD("Move mode ❌")
-    //   MNButton.setColor(self.screenButton, "#9bb2d6",0.8)
+    //   MNUtil.showHUD("Move mode ❌")  // 提示退出移动模式
+    //   MNButton.setColor(self.screenButton, "#9bb2d6",0.8)  // 恢复按钮颜色
     //   return
     // }
     // if (gesture.state === 2) {
+    //   // 移动逻辑与 onMoveGesture 类似
     //   let studyFrame = MNUtil.studyView.bounds
     //   let locationInView = gesture.locationInView(MNUtil.studyView)
     //   let y = MNUtil.constrain(self.initFrame.y+locationInView.y - self.initLocation.y, 0, studyFrame.height-15)
     //   let x = self.initFrame.x+locationInView.x - self.initLocation.x
     //   let splitLine = MNUtil.splitLine
     //   let docMapSplitMode = MNUtil.studyController.docMapSplitMode
+    //   
+    //   // 边缘吸附逻辑...
     //   if (x<20) {
     //     x = 0
     //     self.sideMode = "left"
@@ -1036,6 +1294,8 @@ try {
     //     self.sideMode = "right"
     //     self.splitMode = false
     //   }
+    //   
+    //   // 分屏吸附逻辑...
     //   if (splitLine && docMapSplitMode===1) {
     //     if (x<splitLine && x>splitLine-40) {
     //       x = splitLine-20
@@ -1047,140 +1307,285 @@ try {
     //   }else{
     //     self.splitMode = false
     //   }
+    //   
+    //   // 更新 frame
     //   let frame = {x:x,y:y,width:self.initFrame.width,height:self.initFrame.height}
     //   pluginDemoFrame.set(self.view,frame.x,frame.y,frame.width,frame.height)
     // }
-    // MNUtil.showHUD("message"+gesture.state)
+    // MNUtil.showHUD("message"+gesture.state)  // 调试：显示手势状态
 
   },
+  /**
+   * 👆 滑动手势处理器（未完全实现）
+   * 
+   * 【潜在用途】
+   * - 快速切换工具栏方向
+   * - 快速显示/隐藏工具栏
+   * - 切换上一个/下一个卡片
+   * 
+   * @param {UISwipeGestureRecognizer} gesture - 滑动手势识别器
+   */
   onSwipeGesture:function (gesture) {
     if (gesture.state === 1) {
-      MNUtil.showHUD("Swipe mode ✅")
+      MNUtil.showHUD("Swipe mode ✅")  // 仅显示提示，未实现实际功能
     }
-    // MNUtil.showHUD("message"+gesture.state)
+    // MNUtil.showHUD("message"+gesture.state)  // 调试代码
   },
+  /**
+   * 📏 调整大小手势处理器 - 动态改变工具栏尺寸
+   * 
+   * 【交互设计】
+   * 通过拖动屏幕按钮（screenButton）来调整工具栏大小：
+   * - 横向工具栏：拖动改变宽度（增减按钮数量）
+   * - 纵向工具栏：拖动改变高度（增减按钮数量）
+   * 
+   * 【计算公式】
+   * ```
+   * 新大小 = 手指位置 + 按钮位置 + 按钮大小/2
+   * ```
+   * 这样可以确保拖动感觉自然，不会跳跃
+   * 
+   * @param {UIPanGestureRecognizer} gesture - 拖动手势识别器
+   */
   onResizeGesture:function (gesture) {
     let self = getToolbarController()
     try {
+      self.onClick = true     // 设置点击标记
+      self.custom = false     // 重置自定义模式
+      self.onResize = true    // 标记正在调整大小
       
-
-    self.onClick = true
-    self.custom = false;
-    self.onResize = true
-    let baseframe = gesture.view.frame
-    let locationInView = gesture.locationInView(gesture.view)
-    let frame = self.view.frame
-    let height = locationInView.y+baseframe.y+baseframe.height*0.5
-    let width = locationInView.x+baseframe.x+baseframe.width*0.5
-    self.setFrame(MNUtil.genFrame(frame.x, frame.y, width, height))
-    if (gesture.state === 3) {
-      self.view.bringSubviewToFront(self.screenButton)
-      let windowState = pluginDemoConfig.windowState
-      if (self.dynamicWindow) {
-        windowState.dynamicButton = self.buttonNumber
-        self.hide()
-        // pluginDemoConfig.save("MNToolbar_windowState",{open:pluginDemoConfig.windowState.open,frame:self.view.frame})
-      }else{
-        windowState.frame = self.view.frame
-        windowState.open = true
+      // 📐 获取基础数据
+      let baseframe = gesture.view.frame           // 屏幕按钮的 frame
+      let locationInView = gesture.locationInView(gesture.view)  // 手指在按钮内的位置
+      let frame = self.view.frame                  // 工具栏当前 frame
+      
+      // 📏 计算新的大小
+      // 为什么加 0.5 倍？让拖动中心在按钮中间，体验更好
+      let height = locationInView.y + baseframe.y + baseframe.height * 0.5
+      let width = locationInView.x + baseframe.x + baseframe.width * 0.5
+      
+      // 🎬 实时更新工具栏大小
+      self.setFrame(MNUtil.genFrame(frame.x, frame.y, width, height))
+      
+      // ========== ✅ 手势结束：保存新尺寸 ==========
+      if (gesture.state === 3) {  // UIGestureRecognizerStateEnded
+        // 确保屏幕按钮在最上层（不被其他按钮遮挡）
+        self.view.bringSubviewToFront(self.screenButton)
+        
+        // 💾 保存状态
+        let windowState = pluginDemoConfig.windowState
+        
+        if (self.dynamicWindow) {
+          // 🌟 动态窗口：保存按钮数量后隐藏
+          windowState.dynamicButton = self.buttonNumber
+          self.hide()
+        } else {
+          // 📌 固定窗口：保存完整 frame
+          windowState.frame = self.view.frame
+          windowState.open = true
+        }
+        
+        // 持久化配置
+        pluginDemoConfig.save("MNToolbar_windowState", windowState)
+        self.onResize = false  // 重置调整标记
       }
-      pluginDemoConfig.save("MNToolbar_windowState",windowState)
-      self.onResize = false
-    }
     } catch (error) {
       pluginDemoUtils.addErrorLog(error, "onResizeGesture")
     }
   },
 });
-pluginDemoController.prototype.setButtonLayout = function (button,targetAction) {
+
+// ==================== 🔧 工具方法扩展 ====================
+
+/**
+ * 🎨 设置按钮基础布局 - 统一按钮外观
+ * 
+ * 【作用】
+ * 为所有系统按钮（屏幕按钮、最大化按钮等）设置统一的外观样式
+ * 
+ * 【样式特点】
+ * - 背景色：#9bb2d6（淡蓝色），80% 透明度
+ * - 文字颜色：白色（正常），高亮色（按下）
+ * - 圆角：5 像素
+ * - 自动布局：随父视图调整
+ * 
+ * @param {UIButton} button - 要设置样式的按钮
+ * @param {string} targetAction - 点击事件的方法名（如 "changeScreen:"）
+ */
+pluginDemoController.prototype.setButtonLayout = function (button, targetAction) {
+    // 📦 自动布局遮罩
+    // 1 << 0: UIViewAutoresizingFlexibleWidth (宽度自适应)
+    // 1 << 3: UIViewAutoresizingFlexibleHeight (高度自适应)
     button.autoresizingMask = (1 << 0 | 1 << 3);
-    button.setTitleColorForState(UIColor.whiteColor(),0);
-    button.setTitleColorForState(pluginDemoConfig.highlightColor, 1);
+    
+    // 🎨 设置文字颜色
+    button.setTitleColorForState(UIColor.whiteColor(), 0);              // 正常状态：白色
+    button.setTitleColorForState(pluginDemoConfig.highlightColor, 1);   // 高亮状态：主题色
+    
+    // 🎭 设置背景样式
     button.backgroundColor = UIColor.colorWithHexString("#9bb2d6").colorWithAlphaComponent(0.8);
-    button.layer.cornerRadius = 5;
-    button.layer.masksToBounds = true;
+    button.layer.cornerRadius = 5;          // 圆角半径
+    button.layer.masksToBounds = true;      // 裁剪超出圆角的内容
+    
+    // 👆 绑定点击事件
     if (targetAction) {
+      // 1 << 6: UIControlEventTouchUpInside (手指抬起时触发)
       button.addTargetActionForControlEvents(this, targetAction, 1 << 6);
     }
+    
+    // ➕ 添加到工具栏视图
     this.view.addSubview(button);
 }
 
 /**
+ * 🎨 设置颜色按钮/功能按钮的布局 - 定制按钮外观
  * 
- * @param {UIButton} button 
- * @param {*} targetAction 
- * @param {*} color 
+ * 【与 setButtonLayout 的区别】
+ * - setButtonLayout：用于系统按钮，淡蓝色背景，白色文字
+ * - setColorButtonLayout：用于功能按钮，可自定义背景色，黑色图标
+ * 
+ * 【特殊功能】
+ * 1. 支持双击检测（UIControlEventTouchDownRepeat）
+ * 2. 圆角更大（10 像素），更加圆润
+ * 3. 同一个 targetAction 会先移除再添加，避免重复绑定
+ * 
+ * 【事件触发时机】
+ * ```
+ * 用户按下 → 用户抬起 → 触发 targetAction
+ *    ↓
+ * 如果快速点击两次 → 触发 doubleClick:
+ * ```
+ * 
+ * @param {UIButton} button - 要设置样式的按钮
+ * @param {string} targetAction - 主要动作的方法名（如 "customAction:"）
+ * @param {UIColor} color - 按钮背景色（通常根据按钮功能设置）
  */
-pluginDemoController.prototype.setColorButtonLayout = function (button,targetAction,color) {
+pluginDemoController.prototype.setColorButtonLayout = function (button, targetAction, color) {
+    // 📦 自动布局（与 setButtonLayout 相同）
     button.autoresizingMask = (1 << 0 | 1 << 3);
-    button.setTitleColorForState(UIColor.blackColor(),0);
-    button.setTitleColorForState(pluginDemoConfig.highlightColor, 1);
-    button.backgroundColor = color
-    button.layer.cornerRadius = 10;
-    button.layer.masksToBounds = true;
+    
+    // 🎨 文字/图标颜色
+    button.setTitleColorForState(UIColor.blackColor(), 0);              // 正常状态：黑色
+    button.setTitleColorForState(pluginDemoConfig.highlightColor, 1);   // 高亮状态：主题色
+    
+    // 🎭 背景样式
+    button.backgroundColor = color          // 使用传入的颜色
+    button.layer.cornerRadius = 10;         // 更大的圆角（更圆润）
+    button.layer.masksToBounds = true;      // 裁剪超出部分
+    
+    // 👆 事件绑定
     if (targetAction) {
-      //1，3，4按下就触发，不用抬起
-      //64按下再抬起
-      let number = 64
+      // 事件类型说明：
+      // 1：UIControlEventTouchDown (按下立即触发)
+      // 3：UIControlEventTouchDownRepeat (双击)
+      // 4：UIControlEventTouchDragInside (按下后拖动)
+      // 64：UIControlEventTouchUpInside (按下后抬起)
+      
+      let number = 64  // 使用最常见的“抬起触发”模式
+      
+      // 先移除旧的事件处理器（避免重复绑定）
       button.removeTargetActionForControlEvents(this, targetAction, number)
+      // 添加新的事件处理器
       button.addTargetActionForControlEvents(this, targetAction, number);
+      
+      // 👆👆 添加双击检测
+      // 1 << 1: UIControlEventTouchDownRepeat
       button.addTargetActionForControlEvents(this, "doubleClick:", 1 << 1);
     }
+    
+    // ➕ 添加到工具栏视图
     this.view.addSubview(button);
 }
 
 /**
+ * 🎬 显示工具栏动画 - 优雅地展示工具栏
+ * 
+ * 【动画流程】
+ * ```
+ * 隐藏状态             半透明状态           完全显示
+ *    │                    │                  │
+ *    └──── opacity 0 ────┴── opacity 0.2 ───┴── opacity 1.0
+ *                        启动动画            动画完成
+ * ```
+ * 
+ * 【特性】
+ * 1. 🌐 智能边界检测：确保工具栏不会超出屏幕
+ * 2. 🎭 平滑动画：使用 MNUtil.animate 提供流畅体验
+ * 3. 🔄 动态刷新：重新加载按钮配置
+ * 4. 🚫 防抖处理：通过 onAnimate 标记避免重复动画
+ * 
+ * @param {CGRect} frame - 可选，指定初始位置（通常用于动态窗口）
  * @this {pluginDemoController}
  */
 pluginDemoController.prototype.show = async function (frame) {
+  // 📐 获取当前 frame 并调整到合适大小
   let preFrame = this.view.frame
+  
   if (pluginDemoConfig.horizontal(this.dynamicWindow)) {
-    preFrame.width = pluginDemoUtils.checkHeight(preFrame.width,this.maxButtonNumber)
-    preFrame.height = 40
-    preFrame.y = pluginDemoUtils.constrain(preFrame.y, 0, MNUtil.studyView.frame.height-40)
-  }else{
-    preFrame.width = 40
-    preFrame.height = pluginDemoUtils.checkHeight(preFrame.height,this.maxButtonNumber)
-    preFrame.x = pluginDemoUtils.constrain(preFrame.x, 0, MNUtil.studyView.frame.width-40)
+    // ↔️ 横向工具栏调整
+    preFrame.width = pluginDemoUtils.checkHeight(preFrame.width, this.maxButtonNumber)
+    preFrame.height = 40  // 固定高度 40
+    // 确保不超出屏幕底部
+    preFrame.y = pluginDemoUtils.constrain(preFrame.y, 0, MNUtil.studyView.frame.height - 40)
+  } else {
+    // ↕️ 纵向工具栏调整
+    preFrame.width = 40  // 固定宽度 40
+    preFrame.height = pluginDemoUtils.checkHeight(preFrame.height, this.maxButtonNumber)
+    // 确保不超出屏幕右边
+    preFrame.x = pluginDemoUtils.constrain(preFrame.x, 0, MNUtil.studyView.frame.width - 40)
   }
-  this.onAnimate = true
-  // preFrame.width = 40
-  let yBottom = preFrame.y+preFrame.height
-  let preOpacity = this.view.layer.opacity
-  this.view.layer.opacity = 0.2
+  
+  // 🎬 动画准备
+  this.onAnimate = true  // 标记正在执行动画
+  let yBottom = preFrame.y + preFrame.height  // 计算底部位置（未使用）
+  let preOpacity = this.view.layer.opacity    // 保存原始透明度
+  this.view.layer.opacity = 0.2                // 设置初始透明度（20%
+  
+  // 📏 如果指定了初始 frame
   if (frame) {
     frame.width = 40
-    frame.height = pluginDemoUtils.checkHeight(frame.height,this.maxButtonNumber)
+    frame.height = pluginDemoUtils.checkHeight(frame.height, this.maxButtonNumber)
     this.view.frame = frame
     this.currentFrame = frame
   }
+  
+  // 👁️ 显示视图但隐藏控制按钮
   this.view.hidden = false
-  // this.moveButton.hidden = true
-  this.screenButton.hidden = true
+  // this.moveButton.hidden = true  // 移动按钮（已弃用）
+  this.screenButton.hidden = true   // 暂时隐藏屏幕按钮
+  
+  // 🔄 刷新按钮配置
   let useDynamic = pluginDemoConfig.getWindowState("dynamicOrder") && this.dynamicWindow
-  this.setToolbarButton(useDynamic?pluginDemoConfig.dynamicAction:pluginDemoConfig.action)
-
-  // showHUD(JSON.stringify(preFrame))
-  MNUtil.animate(()=>{
+  this.setToolbarButton(useDynamic ? pluginDemoConfig.dynamicAction : pluginDemoConfig.action)
+  
+  // ========== 🎯 执行动画 ==========
+  MNUtil.animate(() => {
+    // 动画中：恢复透明度和 frame
     this.view.layer.opacity = preOpacity
     this.view.frame = preFrame
     this.currentFrame = preFrame
-  }).then(()=>{
+  }).then(() => {
+    // 动画完成后的处理
     try {
-      this.view.layer.borderWidth = 0
-      // this.moveButton.hidden = false
-      this.screenButton.hidden = false
-      let number = preFrame.height/40
+      this.view.layer.borderWidth = 0      // 清除边框
+      // this.moveButton.hidden = false    // 显示移动按钮（已弃用）
+      this.screenButton.hidden = false     // 显示屏幕按钮
+      
+      // 🔢 计算显示的按钮数量
+      let number = preFrame.height / 40
       if (number > 9) {
-        number = 9
+        number = 9  // 限制最多 9 个
       }
-      this.onAnimate = false
-      this.setToolbarLayout()
+      
+      this.onAnimate = false  // 动画结束
+      this.setToolbarLayout() // 更新布局
     } catch (error) {
-      MNUtil.showHUD("Error in show: "+error)
-
+      MNUtil.showHUD("Error in show: " + error)
     }
   })
+  
+  // ========== 📦 备用代码：原生 UIView 动画 ==========
+  // 这是使用 iOS 原生动画 API 的实现，功能相同
   // UIView.animateWithDurationAnimationsCompletion(0.2,()=>{
   //   this.view.layer.opacity = preOpacity
   //   this.view.frame = preFrame
@@ -1188,7 +1593,6 @@ pluginDemoController.prototype.show = async function (frame) {
   // },
   // ()=>{
   // try {
-    
   //   this.view.layer.borderWidth = 0
   //   this.moveButton.hidden = false
   //   this.screenButton.hidden = false
@@ -1196,7 +1600,6 @@ pluginDemoController.prototype.show = async function (frame) {
   //   if (number > 9) {
   //     number = 9
   //   }
-  //   // showHUD("number:"+number)
   //   for (let index = 0; index < number-1; index++) {
   //     this["ColorButton"+index].hidden = false
   //   }
@@ -1208,64 +1611,119 @@ pluginDemoController.prototype.show = async function (frame) {
   // })
 }
 /**
+ * 🎭 隐藏工具栏动画 - 优雅地隐藏工具栏
+ * 
+ * 【动画流程】
+ * ```
+ * 完全显示             半透明状态           完全隐藏
+ *    │                    │                  │
+ *    └── opacity 1.0 ────┴── opacity 0.2 ───┴── hidden=true
+ *                        启动动画            动画完成
+ * ```
+ * 
+ * 【特殊机制】
+ * - notHide 标记：如果设置为 true，动画后不会真正隐藏，而是恢复透明度
+ * - 这个机制用于处理用户快速操作的情况，避免频繁显示/隐藏
+ * 
+ * @param {CGRect} frame - 可选，指定隐藏时的目标位置
  * @this {pluginDemoController}
  */
 pluginDemoController.prototype.hide = function (frame) {
+  // 💾 保存当前状态
   let preFrame = this.currentFrame
-  this.onAnimate = true
-  this.view.frame = this.currentFrame
-  // copy(JSON.stringify(preFrame))
-  let preOpacity = 1.0
+  this.onAnimate = true  // 标记正在执行动画
+  this.view.frame = this.currentFrame  // 确保 frame 是最新的
+  
+  let preOpacity = 1.0  // 保存原始透明度（通常是 1.0）
+  
+  // 👁️ 立即隐藏控制按钮
+  // 这样用户看到的是按钮先消失，然后整个工具栏淡出
+  this.screenButton.hidden = true
+  
+  // ========== 🌐 旧代码：逐个隐藏按钮 ==========
+  // 这种方式效率较低，已被优化
   // for (let index = 0; index < this.buttonNumber; index++) {
   //   this["ColorButton"+index].hidden = true
   // }
   // this.moveButton.hidden = true
-  this.screenButton.hidden = true
-  // return
-  // showHUD("frame:"+JSON.stringify(this.currentFrame))
-  MNUtil.animate(()=>{
+  
+  // ========== 🎯 执行隐藏动画 ==========
+  MNUtil.animate(() => {
+    // 动画中：降低透明度到 20%
     this.view.layer.opacity = 0.2
+    
+    // 如果指定了目标 frame，同时移动到该位置
     if (frame) {
       this.view.frame = frame
       this.currentFrame = frame
     }
-  },0.2).then(()=>{
+  }, 0.2).then(() => {  // 0.2 秒动画时长
+    
+    // ========== 🎀 特殊处理：notHide 机制 ==========
     if (this.notHide) {
-      MNUtil.animate(()=>{
-        this.view.layer.opacity = preOpacity      
+      // 用户可能在隐藏过程中又触发了显示
+      // 这种情况下，恢复透明度而不隐藏
+      MNUtil.animate(() => {
+        this.view.layer.opacity = preOpacity
       })
-      this.view.hidden = false;
+      this.view.hidden = false
       this.onAnimate = false
-      this.notHide = undefined
-    }else{
-      this.view.hidden = true;
-      this.view.layer.opacity = preOpacity      
+      this.notHide = undefined  // 重置标记
+    } else {
+      // 正常隐藏流程
+      this.view.hidden = true               // 完全隐藏视图
+      this.view.layer.opacity = preOpacity  // 恢复透明度（为下次显示做准备）
     }
+    
+    // 🔄 恢复 frame 和状态
     this.view.frame = preFrame
     this.currentFrame = preFrame
-    this.onAnimate = false
+    this.onAnimate = false  // 动画结束
   })
 }
 
 /**
+ * ⏱️ 延迟隐藏工具栏 - 动态窗口的自动隐藏机制
+ * 
+ * 【使用场景】
+ * 在动态窗口模式下，用户操作完成后自动隐藏工具栏：
+ * - 点击按钮后
+ * - 拖动工具栏后
+ * - 执行完动作后
+ * 
+ * 【机制说明】
+ * ```
+ * 用户操作 → 等待 delay 秒 → 自动隐藏
+ *    ↓
+ * 如果设置 notHide=true → 取消隐藏
+ * ```
+ * 
+ * @param {number} delay - 延迟时间（秒），默认 0.5 秒
  * @this {pluginDemoController}
- * @param {number} delay
- * @param {UIButton|undefined} button
  */
 pluginDemoController.prototype.hideAfterDelay = function (delay = 0.5) {
+  // ⁉️ 如果已经隐藏，直接返回
   if (this.view.hidden) {
     return
   }
+  
+  // 🌟 只在动态窗口模式下生效
   if (this.dynamicWindow) {
-    this.onAnimate = true
+    this.onAnimate = true  // 预先设置动画标记
+    
+    // 🚫 检查 notHide 标记
+    // 这个机制允许其他代码取消自动隐藏
     if (this.notHide) {
       this.onAnimate = false
       return
     }
-    MNUtil.delay(delay).then(()=>{
+    
+    // ⏳ 延迟执行隐藏
+    MNUtil.delay(delay).then(() => {
       this.hide()
     })
   }
+  // 📌 固定窗口模式不会自动隐藏
 }
 
 /**

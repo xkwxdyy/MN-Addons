@@ -1,42 +1,36 @@
 /**
- * 这是一个工具类，专门用于管理 
-  UIView（iOS 视图）的位置和大小
-
- *   1. 创建一个新位置 - gen(x, y, width, height)
-
-  // 就像在纸上画一个矩形框
-  let frame = Frame.gen(10, 20, 100, 50)
-  // 意思是：左边10，上边20，宽100，高50的框
-
-  2. 移动视图 - setX(), setY(), setLoc()
-
-  // 把按钮向右移动到 x=50 的位置
-  Frame.setX(button, 50)
-
-  // 把按钮移到屏幕的 (100, 200) 位置
-  Frame.setLoc(button, 100, 200)
-
-  3. 调整大小 - setWidth(), setHeight(), setSize()
-
-  // 把按钮变宽一点
-  Frame.setWidth(button, 200)
-
-  // 同时设置宽高
-  Frame.setSize(button, 200, 60)
-
-  4. 相对移动 - moveX(), moveY()
-
-  // 把按钮向右移动 10 个像素
-  Frame.moveX(button, 10)
-
-  // 把按钮向下移动 20 个像素
-  Frame.moveY(button, 20)
-
-  5. 智能设置 - set()
-
-  // 只改变想要改变的属性，其他保持不变
-  Frame.set(button, 50, undefined, 200, undefined)
-  // 只改变 x 和 width，y 和 height 保持原样
+ * UIView Frame 管理工具类
+ * 
+ * 这是一个专门用于管理 UIView（iOS 视图）位置和大小的工具类。
+ * 虽然 MNUtil 提供了基础的 genFrame 和 setFrame 方法，但本类提供了更多便利的操作方法。
+ * 
+ * 注意：这个类是对 MNUtil 的补充，不是重复。MNUtil 只提供了基础的 frame 操作，
+ * 而这个类提供了更多细粒度的控制方法（如单独设置 x/y/width/height，相对移动等）。
+ * 
+ * 主要功能：
+ * 1. 创建新的 frame 对象 - gen(x, y, width, height)
+ * 2. 单独设置位置 - setX(), setY(), setLoc()
+ * 3. 单独设置大小 - setWidth(), setHeight(), setSize()
+ * 4. 相对移动 - moveX(), moveY()
+ * 5. 智能设置 - set() 只修改指定的属性，undefined 的参数会保持原值
+ * 
+ * 使用示例：
+ * ```javascript
+ * // 创建一个新的 frame
+ * let frame = pluginDemoFrame.gen(10, 20, 100, 50)
+ * 
+ * // 移动按钮到指定位置
+ * pluginDemoFrame.setLoc(button, 100, 200)
+ * 
+ * // 只修改宽度
+ * pluginDemoFrame.setWidth(button, 200)
+ * 
+ * // 相对移动
+ * pluginDemoFrame.moveX(button, 10)  // 向右移动 10 像素
+ * 
+ * // 智能设置 - 只修改 x 和 width
+ * pluginDemoFrame.set(button, 50, undefined, 200, undefined)
+ * ```
  */
 class pluginDemoFrame{
   static gen(x,y,width,height){
@@ -544,12 +538,10 @@ class pluginDemoUtils {
     return ["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9fdc"]
   }
   static getNoteById(noteid) {
-    let note = this.data.getNoteById(noteid)
-    return note
+    return MNUtil.getNoteById(noteid, false)  // 使用 MNUtil API，不显示错误提示
   }
   static getNoteBookById(notebookId) {
-    let notebook = this.data.getNotebookById(notebookId)
-    return notebook
+    return MNUtil.getNoteBookById(notebookId)
   }
   static getUrlByNoteId(noteid) {
     let ver = this.appVersion()
@@ -561,23 +553,13 @@ class pluginDemoUtils {
    * @returns {String}
    */
   static getNoteIdByURL(url) {
-    let targetNoteId = url.trim()
-    if (/^marginnote\dapp:\/\/note\//.test(targetNoteId)) {
-      targetNoteId = targetNoteId.slice(22)
-    }
-    return targetNoteId
+    return MNUtil.getNoteIdByURL(url)
   }
   static clipboardText() {
-    return UIPasteboard.generalPasteboard().string
+    return MNUtil.clipboardText
   }
   static mergeWhitespace(str) {
-      if (!str) {
-        return ""
-      }
-      // 先将多个连续的换行符替换为双换行符
-      var tempStr = str.replace(/\n+/g, '\n\n');
-      // 再将其它的空白符（除了换行符）替换为单个空格
-      return tempStr.replace(/[\r\t\f\v ]+/g, ' ').trim();
+    return MNUtil.mergeWhitespace(str)
   }
   static replaceAction(des){
     try {
@@ -904,37 +886,32 @@ class pluginDemoUtils {
     }
   }
   static copyJSON(object) {
-    UIPasteboard.generalPasteboard().string = JSON.stringify(object,null,2)
+    return MNUtil.copyJSON(object)
   }
   /**
    * 
    * @param {NSData} imageData 
    */
   static copyImage(imageData) {
-    UIPasteboard.generalPasteboard().setDataForPasteboardType(imageData,"public.png")
+    return MNUtil.copyImage(imageData)
   }
   static studyController() {
-    return this.app.studyController(this.focusWindow)
+    return MNUtil.studyController
   }
   static studyView() {
-    return this.app.studyController(this.focusWindow).view
+    return MNUtil.studyView
   }
   static currentDocController() {
-    return this.studyController().readerController.currentDocumentController
+    return MNUtil.currentDocController
   }
   static get currentNotebookId() {
-    return this.studyController().notebookController.notebookId
+    return MNUtil.currentNotebookId
   }
   static currentNotebook() {
     return this.getNoteBookById(this.currentNotebookId)
   }
   static undoGrouping(f,notebookId = this.currentNotebookId){
-    UndoManager.sharedInstance().undoGrouping(
-      String(Date.now()),
-      notebookId,
-      f
-    )
-    this.app.refreshAfterDBChanged(notebookId)
+    return MNUtil.undoGrouping(f)  // MNUtil 会自动处理 notebookId 和刷新
   }
   static async checkMNUtil(alert = false,delay = 0.01){
     if (typeof MNUtil === 'undefined') {//如果MNUtil未被加载，则执行一次延时，然后再检测一次
@@ -2003,18 +1980,8 @@ try {
     }
   }
   static addErrorLog(error,source,info){
-    MNUtil.showHUD("MN Toolbar Error ("+source+"): "+error)
-    let tem = {source:source,time:(new Date(Date.now())).toString()}
-    if (error.detail) {
-      tem.error = {message:error.message,detail:error.detail}
-    }else{
-      tem.error = error.message
-    }
-    if (info) {
-      tem.info = info
-    }
-    this.errorLog.push(tem)
-    MNUtil.copyJSON(this.errorLog)
+    MNUtil.showHUD("MN Toolbar Error ("+source+"): "+error)  // 保留特定的错误提示
+    return MNUtil.addErrorLog(error, "MNToolbar:" + source, info)  // 使用 MNUtil 的错误日志系统
   }
   static removeComment(des){
     // MNUtil.copyJSON(des)
@@ -3992,15 +3959,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     return hexColorPattern.test(str);
   }
   static parseWinRect(winRect){
-    let rectArr = winRect.replace(/{/g, '').replace(/}/g, '').replace(/\s/g, '').split(',')
-    let X = Number(rectArr[0])
-    let Y = Number(rectArr[1])
-    let H = Number(rectArr[3])
-    let W = Number(rectArr[2])
-    let studyFrame = MNUtil.studyView.frame
-    let studyFrameX = studyFrame.x
-    let frame = pluginDemoFrame.gen(X-studyFrameX, Y, W, H)
-    return frame
+    return MNUtil.parseWinRect(winRect)
   }
   static getButtonColor(){
     if (!this.isSubscribed(false)) {
@@ -4438,15 +4397,15 @@ static async getTextVarInfo(text,userInput) {
    * @returns {Promise<number>} A promise that resolves with the button index of the button clicked by the user.
    */
   static async confirm(mainTitle,subTitle){
-    return new Promise((resolve, reject) => {
-      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-        mainTitle,subTitle,0,"Cancel",["Confirm"],
-        (alert, buttonIndex) => {
-          // MNUtil.copyJSON({alert:alert,buttonIndex:buttonIndex})
-          resolve(buttonIndex)
-        }
-      )
-    })
+    return MNUtil.confirm(mainTitle, subTitle, ["Cancel", "Confirm"])
+  }
+  /**
+   * 延迟执行
+   * @param {number} seconds - 延迟的秒数
+   * @returns {Promise<void>}
+   */
+  static async delay(seconds) {
+    return MNUtil.delay(seconds)
   }
 }
 

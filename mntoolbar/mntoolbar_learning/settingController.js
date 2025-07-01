@@ -86,7 +86,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     let self = getSettingController()
     try {
         self.init()
-        Frame.set(self.view,50,50,355,500)
+        pluginDemoFrame.set(self.view,50,50,355,500)
         self.lastFrame = self.view.frame;
         self.currentFrame = self.view.frame
         self.isMainWindow = true
@@ -360,9 +360,9 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     self.custom = true;
     self.dynamic = false;
     self.onAnimate = true
-    let targetFrame = Frame.gen(40, 0, frame.width-80, frame.height)
+    let targetFrame = pluginDemoFrame.gen(40, 0, frame.width-80, frame.height)
     if (MNUtil.isIOS) {
-      targetFrame = Frame.gen(0, 0, frame.width, frame.height)
+      targetFrame = pluginDemoFrame.gen(0, 0, frame.width, frame.height)
     }
     // self.hideAllButton()
     MNUtil.animate(()=>{
@@ -446,12 +446,12 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       // Application.sharedInstance().showHUD(self.custom, self.view.window, 2);
       self.customMode = "None"
       MNUtil.animate(()=>{
-        Frame.set(self.view,x,y,self.lastFrame.width,self.lastFrame.height)
+        pluginDemoFrame.set(self.view,x,y,self.lastFrame.width,self.lastFrame.height)
         self.currentFrame  = self.view.frame
         self.settingViewLayout()
       },0.1)
     }else{
-      Frame.set(self.view,x,y)
+      pluginDemoFrame.set(self.view,x,y)
       self.currentFrame  = self.view.frame
     }
     self.custom = false;
@@ -463,7 +463,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     let locationToBrowser = gesture.locationInView(self.view)
     let width = pluginDemoUtils.constrain(locationToBrowser.x+baseframe.width*0.3, 355, MNUtil.studyView.frame.width)
     let height = pluginDemoUtils.constrain(locationToBrowser.y+baseframe.height*0.3, 475, MNUtil.studyView.frame.height)
-    Frame.setSize(self.view,width,height)
+    pluginDemoFrame.setSize(self.view,width,height)
     self.currentFrame  = self.view.frame
   },
   advancedButtonTapped: function (params) {
@@ -1159,41 +1159,41 @@ settingController.prototype.settingViewLayout = function (){
   let viewFrame = this.view.bounds
   let width = viewFrame.width
   let height = viewFrame.height
-  Frame.set(this.maxButton,width*0.5+80,0)
-  Frame.set(this.moveButton,width*0.5-75, 0)
-  Frame.set(this.settingView,0,55,width,height-55)
-  Frame.set(this.configView,0,0,width-2,height-60)
-  Frame.set(this.advanceView,0,0,width-2,height-60)
-  Frame.set(this.popupEditView,0,0,width-2,height-60)
-  Frame.set(this.resizeButton,width-25,height-80)
+  pluginDemoFrame.set(this.maxButton,width*0.5+80,0)
+  pluginDemoFrame.set(this.moveButton,width*0.5-75, 0)
+  pluginDemoFrame.set(this.settingView,0,55,width,height-55)
+  pluginDemoFrame.set(this.configView,0,0,width-2,height-60)
+  pluginDemoFrame.set(this.advanceView,0,0,width-2,height-60)
+  pluginDemoFrame.set(this.popupEditView,0,0,width-2,height-60)
+  pluginDemoFrame.set(this.resizeButton,width-25,height-80)
   if (width < 650) {
-    Frame.set(this.webviewInput, 5, 195, width-10, height-255)
-    Frame.set(this.titleInput,5,155,width-80,35)
-    Frame.set(this.saveButton,width-70,155)
-    Frame.set(this.templateButton,width-188,199.5)
-    Frame.set(this.runButton,width-35,199.5)
-    Frame.set(this.copyButton,width-158,199.5)
-    Frame.set(this.pasteButton,width-99,199.5)
-    Frame.set(this.scrollview,5,5,width-10,145)
+    pluginDemoFrame.set(this.webviewInput, 5, 195, width-10, height-255)
+    pluginDemoFrame.set(this.titleInput,5,155,width-80,35)
+    pluginDemoFrame.set(this.saveButton,width-70,155)
+    pluginDemoFrame.set(this.templateButton,width-188,199.5)
+    pluginDemoFrame.set(this.runButton,width-35,199.5)
+    pluginDemoFrame.set(this.copyButton,width-158,199.5)
+    pluginDemoFrame.set(this.pasteButton,width-99,199.5)
+    pluginDemoFrame.set(this.scrollview,5,5,width-10,145)
     // this.scrollview.contentSize = {width:width-20,height:height};
-    Frame.set(this.moveTopButton, width-40, 10)
-    Frame.set(this.moveUpButton, width-40, 45)
-    Frame.set(this.moveDownButton, width-40, 80)
-    Frame.set(this.configReset, width-40, 115)
+    pluginDemoFrame.set(this.moveTopButton, width-40, 10)
+    pluginDemoFrame.set(this.moveUpButton, width-40, 45)
+    pluginDemoFrame.set(this.moveDownButton, width-40, 80)
+    pluginDemoFrame.set(this.configReset, width-40, 115)
   }else{
-    Frame.set(this.webviewInput,305,45,width-310,height-105)
-    Frame.set(this.titleInput,305,5,width-380,35)
-    Frame.set(this.saveButton,width-70,5)
-    Frame.set(this.templateButton,width-188,49.5)
-    Frame.set(this.runButton,width-35,49.5)
-    Frame.set(this.copyButton,width-158,49.5)
-    Frame.set(this.pasteButton,width-99,49.5)
-    Frame.set(this.scrollview,5,5,295,height-65)
+    pluginDemoFrame.set(this.webviewInput,305,45,width-310,height-105)
+    pluginDemoFrame.set(this.titleInput,305,5,width-380,35)
+    pluginDemoFrame.set(this.saveButton,width-70,5)
+    pluginDemoFrame.set(this.templateButton,width-188,49.5)
+    pluginDemoFrame.set(this.runButton,width-35,49.5)
+    pluginDemoFrame.set(this.copyButton,width-158,49.5)
+    pluginDemoFrame.set(this.pasteButton,width-99,49.5)
+    pluginDemoFrame.set(this.scrollview,5,5,295,height-65)
     // this.scrollview.contentSize = {width:295,height:height};
-    Frame.set(this.moveTopButton, 263, 15)
-    Frame.set(this.moveUpButton, 263, 50)
-    Frame.set(this.moveDownButton, 263, 85)
-    Frame.set(this.configReset, 263, 120)
+    pluginDemoFrame.set(this.moveTopButton, 263, 15)
+    pluginDemoFrame.set(this.moveUpButton, 263, 50)
+    pluginDemoFrame.set(this.moveDownButton, 263, 85)
+    pluginDemoFrame.set(this.configReset, 263, 120)
   }
 
 
@@ -1203,45 +1203,45 @@ settingController.prototype.settingViewLayout = function (){
   settingFrame.height = 40
   settingFrame.width = settingFrame.width
   this.tabView.frame = settingFrame
-  Frame.set(this.configButton, 5, 5)
-  Frame.set(this.dynamicButton, this.configButton.frame.x + this.configButton.frame.width+5, 5)
-  Frame.set(this.popupButton, this.dynamicButton.frame.x + this.dynamicButton.frame.width+5, 5)
-  Frame.set(this.advancedButton, this.popupButton.frame.x + this.popupButton.frame.width+5, 5)
-  Frame.set(this.closeButton, width-35, 5)
+  pluginDemoFrame.set(this.configButton, 5, 5)
+  pluginDemoFrame.set(this.dynamicButton, this.configButton.frame.x + this.configButton.frame.width+5, 5)
+  pluginDemoFrame.set(this.popupButton, this.dynamicButton.frame.x + this.dynamicButton.frame.width+5, 5)
+  pluginDemoFrame.set(this.advancedButton, this.popupButton.frame.x + this.popupButton.frame.width+5, 5)
+  pluginDemoFrame.set(this.closeButton, width-35, 5)
   let scrollHeight = 5
   if (MNUtil.appVersion().type === "macOS") {
     for (let i = 0; i < pluginDemoConfig.allPopupButtons.length; i++) {
       let replaceButtonName = "replacePopupButton_"+pluginDemoConfig.allPopupButtons[i]
       let replaceSwtichName = "replacePopupSwtich_"+pluginDemoConfig.allPopupButtons[i]
-      Frame.set(this[replaceButtonName], 5, 5+i*40, width-10)
-      Frame.set(this[replaceSwtichName], width-33, 5+i*40)
+      pluginDemoFrame.set(this[replaceButtonName], 5, 5+i*40, width-10)
+      pluginDemoFrame.set(this[replaceSwtichName], width-33, 5+i*40)
       scrollHeight = (i+1)*40+5
     }
   }else{
     for (let i = 0; i < pluginDemoConfig.allPopupButtons.length; i++) {
       let replaceButtonName = "replacePopupButton_"+pluginDemoConfig.allPopupButtons[i]
       let replaceSwtichName = "replacePopupSwtich_"+pluginDemoConfig.allPopupButtons[i]
-      Frame.set(this[replaceButtonName], 5, 5+i*40, width-65)
-      Frame.set(this[replaceSwtichName], width-55, 6.5+i*40)
+      pluginDemoFrame.set(this[replaceButtonName], 5, 5+i*40, width-65)
+      pluginDemoFrame.set(this[replaceSwtichName], width-55, 6.5+i*40)
       scrollHeight = (i+1)*40+5
     }
   }
-  Frame.set(this.popupScroll, 0, 0, width, height-55)
+  pluginDemoFrame.set(this.popupScroll, 0, 0, width, height-55)
   this.popupScroll.contentSize = {width:width,height:scrollHeight}
-  Frame.set(this.editorButton, 5, 5, (width-15)/2,35)
-  Frame.set(this.chatAIButton, 10+(width-15)/2, 5, (width-15)/2,35)
-  Frame.set(this.snipasteButton, 5, 45, (width-15)/2,35)
-  Frame.set(this.autoStyleButton, 10+(width-15)/2, 45, (width-15)/2,35)
-  Frame.set(this.browserButton, 5, 85, (width-15)/2,35)
-  Frame.set(this.OCRButton, 10+(width-15)/2, 85, (width-15)/2,35)
-  Frame.set(this.timerButton, 5, 125, (width-15)/2,35)
-  Frame.set(this.hexInput, 5, 165, width-135,35)
-  Frame.set(this.hexButton, width-125, 165, 120,35)
-  Frame.set(this.iCloudButton, 5, 205, 160,35)
-  Frame.set(this.directionButton, 5, 245, width-10,35)
-  Frame.set(this.dynamicOrderButton, 5, 285, width-10,35)
-  Frame.set(this.exportButton, 170, 205, (width-180)/2,35)
-  Frame.set(this.importButton, 175+(width-180)/2, 205, (width-180)/2,35)
+  pluginDemoFrame.set(this.editorButton, 5, 5, (width-15)/2,35)
+  pluginDemoFrame.set(this.chatAIButton, 10+(width-15)/2, 5, (width-15)/2,35)
+  pluginDemoFrame.set(this.snipasteButton, 5, 45, (width-15)/2,35)
+  pluginDemoFrame.set(this.autoStyleButton, 10+(width-15)/2, 45, (width-15)/2,35)
+  pluginDemoFrame.set(this.browserButton, 5, 85, (width-15)/2,35)
+  pluginDemoFrame.set(this.OCRButton, 10+(width-15)/2, 85, (width-15)/2,35)
+  pluginDemoFrame.set(this.timerButton, 5, 125, (width-15)/2,35)
+  pluginDemoFrame.set(this.hexInput, 5, 165, width-135,35)
+  pluginDemoFrame.set(this.hexButton, width-125, 165, 120,35)
+  pluginDemoFrame.set(this.iCloudButton, 5, 205, 160,35)
+  pluginDemoFrame.set(this.directionButton, 5, 245, width-10,35)
+  pluginDemoFrame.set(this.dynamicOrderButton, 5, 285, width-10,35)
+  pluginDemoFrame.set(this.exportButton, 170, 205, (width-180)/2,35)
+  pluginDemoFrame.set(this.importButton, 175+(width-180)/2, 205, (width-180)/2,35)
 }
 
 
@@ -1974,7 +1974,7 @@ settingController.prototype.tableItem = function (title,selector,param = "",chec
  * @param {number} duration 
  * @param {UIView} view 
  */
-settingController.prototype.showHUD = function (title,duration = 1.5,view = this.view) {
+settingController.prototype.showHUD = function (title, duration = 1.5,view = this.view) {
   MNUtil.showHUD(title,duration,view)
 }
 /**

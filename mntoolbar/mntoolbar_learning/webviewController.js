@@ -494,7 +494,7 @@ try {
     //     if (button.menu) {
     //       button.menu.dismissAnimated(true)
     //       let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-    //       let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 500, 500)
+    //       let endFrame = pluginDemoFrame.gen(beginFrame.x-225, beginFrame.y-50, 500, 500)
     //       endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
     //       endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
     //       MNUtil.postNotification("lookupText"+target,{text:textSelected,beginFrame:beginFrame,endFrame:endFrame})
@@ -503,7 +503,7 @@ try {
     //     let endFrame
     //     beginFrame.y = beginFrame.y-10
     //     if (beginFrame.x+490 > studyFrame.width) {
-    //       endFrame = Frame.gen(beginFrame.x-450, beginFrame.y-10, 500, 500)
+    //       endFrame = pluginDemoFrame.gen(beginFrame.x-450, beginFrame.y-10, 500, 500)
     //       if (beginFrame.y+490 > studyFrame.height) {
     //         endFrame.y = studyFrame.height-500
     //       }
@@ -514,7 +514,7 @@ try {
     //         endFrame.y = 0
     //       }
     //     }else{
-    //       endFrame = Frame.gen(beginFrame.x+40, beginFrame.y-10, 500, 500)
+    //       endFrame = pluginDemoFrame.gen(beginFrame.x+40, beginFrame.y-10, 500, 500)
     //       if (beginFrame.y+490 > studyFrame.height) {
     //         endFrame.y = studyFrame.height-500
     //       }
@@ -640,7 +640,7 @@ try {
     if (button.menu) {
       button.menu.dismissAnimated(true)
       let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-      let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+      let endFrame = pluginDemoFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
       endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
       endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
       if (selectionText) {
@@ -655,12 +655,12 @@ try {
     let endFrame
     beginFrame.y = beginFrame.y-10
     if (beginFrame.x+490 > studyFrame.width) {
-      endFrame = Frame.gen(beginFrame.x-450, beginFrame.y-10, 450, 500)
+      endFrame = pluginDemoFrame.gen(beginFrame.x-450, beginFrame.y-10, 450, 500)
       if (beginFrame.y+490 > studyFrame.height) {
         endFrame.y = studyFrame.height-500
       }
     }else{
-      endFrame = Frame.gen(beginFrame.x+40, beginFrame.y-10, 450, 500)
+      endFrame = pluginDemoFrame.gen(beginFrame.x+40, beginFrame.y-10, 450, 500)
       if (beginFrame.y+490 > studyFrame.height) {
         endFrame.y = studyFrame.height-500
       }
@@ -712,7 +712,7 @@ try {
     if (button.menu) {
       button.menu.dismissAnimated(true)
       let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-      let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+      let endFrame = pluginDemoFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
       endFrame.y = pluginDemoUtils.constrain(endFrame.y, 0, studyFrame.height-500)
       endFrame.x = pluginDemoUtils.constrain(endFrame.x, 0, studyFrame.width-500)
       MNUtil.postNotification("openInEditor",{noteId:noteId,beginFrame:beginFrame,endFrame:endFrame})
@@ -721,13 +721,13 @@ try {
     let beginFrame = self.view.frame
     beginFrame.y = beginFrame.y-10
     if (beginFrame.x+490 > studyFrame.width) {
-      let endFrame = Frame.gen(beginFrame.x-450, beginFrame.y-10, 450, 500)
+      let endFrame = pluginDemoFrame.gen(beginFrame.x-450, beginFrame.y-10, 450, 500)
       if (beginFrame.y+490 > studyFrame.height) {
         endFrame.y = studyFrame.height-500
       }
       MNUtil.postNotification("openInEditor",{noteId:noteId,beginFrame:beginFrame,endFrame:endFrame})
     }else{
-      let endFrame = Frame.gen(beginFrame.x+40, beginFrame.y-10, 450, 500)
+      let endFrame = pluginDemoFrame.gen(beginFrame.x+40, beginFrame.y-10, 450, 500)
       if (beginFrame.y+490 > studyFrame.height) {
         endFrame.y = studyFrame.height-500
       }
@@ -954,7 +954,7 @@ try {
     //     self.splitMode = false
     //   }
     //   let frame = {x:x,y:y,width:self.initFrame.width,height:self.initFrame.height}
-    //   Frame.set(self.view,frame.x,frame.y,frame.width,frame.height)
+    //   pluginDemoFrame.set(self.view,frame.x,frame.y,frame.width,frame.height)
     // }
     // MNUtil.showHUD("message"+gesture.state)
 
@@ -1286,14 +1286,14 @@ pluginDemoController.prototype.setToolbarLayout = function () {
     var yBottom   = yTop + 40
     // this.moveButton.frame = {x: 0 ,y: 0,width: 40,height: 15};
     if (this.screenButton) {
-      Frame.set(this.screenButton, xRight-15, 0,this.screenButton.height,this.screenButton.width)
+      pluginDemoFrame.set(this.screenButton, xRight-15, 0,this.screenButton.height,this.screenButton.width)
       this.view.bringSubviewToFront(this.screenButton)
     }
     let initX = 0
     let initY = 0
     for (let index = 0; index < this.maxButtonNumber; index++) {
       initY = 0
-      Frame.set(this["ColorButton"+index], xLeft+initX, initY)
+      pluginDemoFrame.set(this["ColorButton"+index], xLeft+initX, initY)
       initX = initX+45
       this["ColorButton"+index].hidden = (initX > xRight+5)
     }
@@ -1305,14 +1305,14 @@ pluginDemoController.prototype.setToolbarLayout = function () {
     var yBottom   = yTop + viewFrame.height
     // this.moveButton.frame = {x: 0 ,y: 0,width: 40,height: 15};
     if (this.screenButton) {
-      Frame.set(this.screenButton, 0, yBottom-15,this.screenButton.width,this.screenButton.height)
+      pluginDemoFrame.set(this.screenButton, 0, yBottom-15,this.screenButton.width,this.screenButton.height)
       this.view.bringSubviewToFront(this.screenButton)
     }
     let initX = 0
     let initY = 0
     for (let index = 0; index < this.maxButtonNumber; index++) {
       initX = 0
-      Frame.set(this["ColorButton"+index], xLeft+initX, initY)
+      pluginDemoFrame.set(this["ColorButton"+index], xLeft+initX, initY)
       initY = initY+45
       this["ColorButton"+index].hidden = (initY > yBottom+5)
     }

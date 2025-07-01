@@ -1,4 +1,44 @@
-class Frame{
+/**
+ * 这是一个工具类，专门用于管理 
+  UIView（iOS 视图）的位置和大小
+
+ *   1. 创建一个新位置 - gen(x, y, width, height)
+
+  // 就像在纸上画一个矩形框
+  let frame = Frame.gen(10, 20, 100, 50)
+  // 意思是：左边10，上边20，宽100，高50的框
+
+  2. 移动视图 - setX(), setY(), setLoc()
+
+  // 把按钮向右移动到 x=50 的位置
+  Frame.setX(button, 50)
+
+  // 把按钮移到屏幕的 (100, 200) 位置
+  Frame.setLoc(button, 100, 200)
+
+  3. 调整大小 - setWidth(), setHeight(), setSize()
+
+  // 把按钮变宽一点
+  Frame.setWidth(button, 200)
+
+  // 同时设置宽高
+  Frame.setSize(button, 200, 60)
+
+  4. 相对移动 - moveX(), moveY()
+
+  // 把按钮向右移动 10 个像素
+  Frame.moveX(button, 10)
+
+  // 把按钮向下移动 20 个像素
+  Frame.moveY(button, 20)
+
+  5. 智能设置 - set()
+
+  // 只改变想要改变的属性，其他保持不变
+  Frame.set(button, 50, undefined, 200, undefined)
+  // 只改变 x 和 width，y 和 height 保持原样
+ */
+class pluginDemoFrame{
   static gen(x,y,width,height){
     return MNUtil.genFrame(x, y, width, height)
   }
@@ -458,19 +498,16 @@ class pluginDemoUtils {
       }
     }
   static init(mainPath){
-  try {
-    this.app = Application.sharedInstance()
-    this.data = Database.sharedInstance()
-    this.focusWindow = this.app.focusWindow
-    this.mainPath = mainPath
-    this.version = this.appVersion()
-    this.errorLog = [this.version]
-      } catch (error) {
-    this.addErrorLog(error, "init")
-  }
-  }
-  static showHUD(message,duration=2) {
-    this.app.showHUD(message,this.focusWindow,2)
+    try {
+      this.app = Application.sharedInstance()
+      this.data = Database.sharedInstance()
+      this.focusWindow = this.app.focusWindow
+      this.mainPath = mainPath
+      this.version = this.appVersion()
+      this.errorLog = [this.version]
+    } catch (error) {
+      this.addErrorLog(error, "init")
+    }
   }
   static refreshSubscriptionStatus(){
     this.isSubscribe = this.checkSubscribe(false,false,true)
@@ -716,9 +753,7 @@ class pluginDemoUtils {
     return true
   }
   static async copy(des) {
-    try {
-      
-
+  try {
     let focusNote = MNNote.getFocusNote()
     let target = des.target
     let element = undefined
@@ -948,13 +983,13 @@ class pluginDemoUtils {
       // 获取元素的索引
       var index = arr.indexOf(element);
       if (index === -1) {
-          this.showHUD('Element not found in array');
-          return;
+        MNUtil.showHUD('Element not found in array');
+        return;
       }
       switch (direction) {
           case 'up':
               if (index === 0) {
-                  this.showHUD('Element is already at the top');
+                  MNUtil.showHUD('Element is already at the top');
                   return;
               }
               // 交换元素位置
@@ -962,8 +997,8 @@ class pluginDemoUtils {
               break;
           case 'down':
               if (index === arr.length - 1) {
-                  this.showHUD('Element is already at the bottom');
-                  return;
+                MNUtil.showHUD('Element is already at the bottom');
+                return;
               }
               // 交换元素位置
               [arr[index], arr[index + 1]] = [arr[index + 1], arr[index]];
@@ -975,7 +1010,7 @@ class pluginDemoUtils {
               arr.unshift(element);
               break;
           default:
-              this.showHUD('Invalid direction');
+              MNUtil.showHUD('Invalid direction');
               break;
       }
   }
@@ -2115,7 +2150,7 @@ try {
         if (button.menu) {
           button.menu.dismissAnimated(true)
           let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-          let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 500, 500)
+          let endFrame = pluginDemoFrame.gen(beginFrame.x-225, beginFrame.y-50, 500, 500)
           endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
           endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
           MNUtil.postNotification("lookupText"+target,{text:textSelected,beginFrame:beginFrame,endFrame:endFrame})
@@ -2124,7 +2159,7 @@ try {
         let endFrame
         beginFrame.y = beginFrame.y-10
         if (beginFrame.x+490 > studyFrame.width) {
-          endFrame = Frame.gen(beginFrame.x-450, beginFrame.y-10, 500, 500)
+          endFrame = pluginDemoFrame.gen(beginFrame.x-450, beginFrame.y-10, 500, 500)
           if (beginFrame.y+490 > studyFrame.height) {
             endFrame.y = studyFrame.height-500
           }
@@ -2135,7 +2170,7 @@ try {
             endFrame.y = 0
           }
         }else{
-          endFrame = Frame.gen(beginFrame.x+40, beginFrame.y-10, 500, 500)
+          endFrame = pluginDemoFrame.gen(beginFrame.x+40, beginFrame.y-10, 500, 500)
           if (beginFrame.y+490 > studyFrame.height) {
             endFrame.y = studyFrame.height-500
           }
@@ -2269,7 +2304,7 @@ try {
     if (button.menu) {
       button.menu.dismissAnimated(true)
       let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-      let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+      let endFrame = pluginDemoFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
       endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
       endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
       if (selectionText) {
@@ -2287,12 +2322,12 @@ try {
     let endFrame
     beginFrame.y = beginFrame.y-10
     if (beginFrame.x+490 > studyFrame.width) {
-      endFrame = Frame.gen(beginFrame.x-450, beginFrame.y-10, 450, 500)
+      endFrame = pluginDemoFrame.gen(beginFrame.x-450, beginFrame.y-10, 450, 500)
       if (beginFrame.y+490 > studyFrame.height) {
         endFrame.y = studyFrame.height-500
       }
     }else{
-      endFrame = Frame.gen(beginFrame.x+40, beginFrame.y-10, 450, 500)
+      endFrame = pluginDemoFrame.gen(beginFrame.x+40, beginFrame.y-10, 450, 500)
       if (beginFrame.y+490 > studyFrame.height) {
         endFrame.y = studyFrame.height-500
       }
@@ -2513,7 +2548,7 @@ try {
               case 4:
                 let studyFrame = MNUtil.studyView.bounds
                 let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-                let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+                let endFrame = pluginDemoFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
                 endFrame.y = pluginDemoUtils.constrain(endFrame.y, 0, studyFrame.height-500)
                 endFrame.x = pluginDemoUtils.constrain(endFrame.x, 0, studyFrame.width-500)
                 MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
@@ -2538,7 +2573,7 @@ try {
               case 2:
                 let studyFrame = MNUtil.studyView.bounds
                 let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-                let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+                let endFrame = pluginDemoFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
                 endFrame.y = pluginDemoUtils.constrain(endFrame.y, 0, studyFrame.height-500)
                 endFrame.x = pluginDemoUtils.constrain(endFrame.x, 0, studyFrame.width-500)
                 MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
@@ -2605,7 +2640,7 @@ try {
         case "editor":
           let studyFrame = MNUtil.studyView.bounds
           let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-          let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+          let endFrame = pluginDemoFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
           endFrame.y = pluginDemoUtils.constrain(endFrame.y, 0, studyFrame.height-500)
           endFrame.x = pluginDemoUtils.constrain(endFrame.x, 0, studyFrame.width-500)
           MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
@@ -3455,13 +3490,12 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    */
   static checkSubscribe(count = true, msg = true,ignoreFree = false){
     // return true
-
     if (typeof subscriptionConfig !== 'undefined') {
       let res = subscriptionConfig.checkSubscribed(count,ignoreFree,msg)
       return res
     }else{
       if (msg) {
-        this.showHUD("Please install 'MN Utils' first!")
+        MNUtil.showHUD("Please install 'MN Utils' first!")
       }
       return false
     }
@@ -3471,7 +3505,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       return subscriptionConfig.isSubscribed()
     }else{
       if (msg) {
-        this.showHUD("Please install 'MN Utils' first!")
+        MNUtil.showHUD("Please install 'MN Utils' first!")
       }
       return false
     }
@@ -3482,17 +3516,17 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
    * @returns {string}
    */
   static getExtensionFolder(fullPath) {
-      // 找到最后一个'/'的位置
-      let lastSlashIndex = fullPath.lastIndexOf('/');
-      // 从最后一个'/'之后截取字符串，得到文件名
-      let fileName = fullPath.substring(0,lastSlashIndex);
-      return fileName;
+    // 找到最后一个'/'的位置
+    let lastSlashIndex = fullPath.lastIndexOf('/');
+    // 从最后一个'/'之后截取字符串，得到文件名
+    let fileName = fullPath.substring(0,lastSlashIndex);
+    return fileName;
   }
   static checkMNUtilsFolder(fullPath){
     let extensionFolder = this.getExtensionFolder(fullPath)
     let folderExists = NSFileManager.defaultManager().fileExistsAtPath(extensionFolder+"/marginnote.extension.mnutils/main.js")
     if (!folderExists) {
-      this.showHUD("MN Toolbar: Please install 'MN Utils' first!")
+      MNUtil.showHUD("MN Toolbar: Please install 'MN Utils' first!")
     }
     return folderExists
   }
@@ -3965,7 +3999,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     let W = Number(rectArr[2])
     let studyFrame = MNUtil.studyView.frame
     let studyFrameX = studyFrame.x
-    let frame = Frame.gen(X-studyFrameX, Y, W, H)
+    let frame = pluginDemoFrame.gen(X-studyFrameX, Y, W, H)
     return frame
   }
   static getButtonColor(){

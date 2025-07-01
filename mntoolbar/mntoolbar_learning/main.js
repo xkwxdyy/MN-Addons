@@ -726,5 +726,35 @@ JSB.newAddon = function (mainPath) {
    */
   MNPluginDemoClass.prototype.foo = function(bar){ 
   }
+
+  /**
+   *   MarginNote 的加载流程
+
+  // 1. MarginNote 调用 JSB.newAddon
+  let 插件类 = JSB.newAddon(插件路径)  // 需要返回值！
+
+  // 2. 使用返回的类创建插件实例
+  let 插件实例 = 插件类.new()
+
+  // 3. 调用生命周期方法
+  插件实例.sceneWillConnect()
+
+  具体的区别
+
+  main.js（特殊的入口文件）
+
+  // 整个文件是一个函数
+  JSB.newAddon = function (mainPath) {
+    // 1. 加载依赖
+    JSB.require('webviewController')
+    JSB.require('settingController')
+
+    // 2. 定义主类
+    var MNToolbarClass = JSB.defineClass(...)
+
+    // 3. 必须返回主类！
+    return MNToolbarClass;  // MarginNote 需要这个返回值
+  }
+   */
   return MNPluginDemoClass;
 };

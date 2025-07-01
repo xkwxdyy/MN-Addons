@@ -428,11 +428,83 @@ function getAllProperties(obj) {
 }
 
 
+/**
+ * 🛠️ 插件核心工具类 - 提供各种实用功能
+ * 
+ * 【为什么全部使用静态方法？】
+ * 
+ * 一、静态方法 vs 实例方法的核心区别
+ * 
+ * 1. 🔴 实例方法：需要先创建对象
+ * ```javascript
+ * class Dog {
+ *   constructor(name) {
+ *     this.name = name;  // 每只狗都有自己的名字
+ *   }
+ *   bark() {
+ *     console.log(`${this.name} 汪汪叫`);
+ *   }
+ * }
+ * 
+ * let myDog = new Dog("小白");  // 先创建一只狗
+ * myDog.bark();  // "小白 汪汪叫"
+ * ```
+ * 
+ * 2. 🟢 静态方法：直接通过类名调用
+ * ```javascript
+ * class Calculator {
+ *   static add(a, b) {
+ *     return a + b;
+ *   }
+ * }
+ * 
+ * let result = Calculator.add(5, 3);  // 8 - 不需要 new
+ * ```
+ * 
+ * 二、为什么 pluginDemoUtils 全是静态方法？
+ * 
+ * 这个类是一个【工具箱】，不是一个“东西”：
+ * - 它不需要保存状态（没有实例属性）
+ * - 它只是提供一组相关的功能
+ * - 就像数学函数一样，输入参数，返回结果
+ * 
+ * 三、通俗理解：静态 = 工具，实例 = 对象
+ * 
+ * 🔧 工具箱（静态）          🚗 汽车（实例）
+ * 工具箱.锤子(钉子)        我的车 = new 汽车("特斯拉", "白色")
+ * 工具箱.螺丝刀(螺丝)      我的车.加油(50)
+ *                           我的车.开车()
+ * 
+ * 四、在 MN Toolbar 项目中的应用
+ * 
+ * ✅ 好的设计 - 工具类用静态方法
+ * pluginDemoUtils.smartCopy()      // 直接使用
+ * pluginDemoUtils.getTextOCR()     // 不需要 new
+ * pluginDemoConfig.save()          // 全局只有一份配置
+ * 
+ * 五、什么时候用静态，什么时候用实例？
+ * 
+ * 用静态方法当：
+ * - 不需要保存状态
+ * - 工具函数（如数学计算、格式化）
+ * - 单例模式（全局只需要一个）
+ * 
+ * 用实例方法当：
+ * - 需要保存状态（如用户信息）
+ * - 每个对象有自己的数据
+ * - 需要创建多个相似对象
+ * 
+ * 🎯 总结：在 MN Toolbar 项目中使用静态方法是因为：
+ * 1. 工具性质：这些类都是工具集合，不是具体对象
+ * 2. 无状态：不需要保存每个实例的数据
+ * 3. 使用方便：直接调用，不需要 new
+ * 4. 性能更好：不需要创建对象，节省内存
+ * 
+ * 就像你不需要“制造一把锤子”才能敲钉子，你只需要“使用锤子这个工具”就行了！
+ */
 class pluginDemoUtils {
-  // 构造器方法，用于初始化新创建的对象
-  constructor(name) {
-    this.name = name;
-  }
+  // 注意：这个类不需要 constructor，因为所有方法都是静态的
+  // 我们永远不会使用 new pluginDemoUtils()，而是直接使用 pluginDemoUtils.methodName()
   /**@type {string} */
   static previousNoteId
   static errorLog = []

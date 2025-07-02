@@ -2482,9 +2482,11 @@ class MNMath {
     this.moveCommentsArrToField(note, autoContentIndices, fieldA, true);
     
     // 刷新卡片显示
-    note.refresh();
+    MNUtil.undoGrouping(()=>{
+      note.refresh();
+    })
     
-    MNUtil.showHUD(`已将自动获取的新内容移动到"${fieldA}"字段下，并删除了原有内容`);
+    // MNUtil.showHUD(`已将自动获取的新内容移动到"${fieldA}"字段下，并删除了原有内容`);
   }
 
   /**
@@ -2557,9 +2559,11 @@ class MNMath {
     this.moveCommentsArrToField(note, fieldBContentIndices, fieldA, true);
     
     // 刷新卡片显示
-    note.refresh();
+    MNUtil.undoGrouping(()=>{
+      note.refresh();
+    })
     
-    MNUtil.showHUD(`已将"${fieldB}"字段的内容移动到"${fieldA}"字段下，并删除了"${fieldA}"原有内容`);
+    // MNUtil.showHUD(`已将"${fieldB}"字段的内容移动到"${fieldA}"字段下，并删除了"${fieldA}"原有内容`);
   }
   /**
    * 获取 Note 的摘录区的 indexArr

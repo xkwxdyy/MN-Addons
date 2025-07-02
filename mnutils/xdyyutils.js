@@ -875,6 +875,148 @@ class MNMath {
   }
 
   /**
+   * 智能链接排列
+   * 
+   * 自动识别手动创建的双向链接并根据卡片类型移动到相应字段
+   * 
+   * 支持两种场景：
+   * 1. 归类卡片与知识点卡片：将链接移动到"相关链接"（知识点卡片）和"所属"（归类卡片）
+   * 2. 定义卡片之间：在"相关思考"字段下先添加 "- " 再移动链接
+   * 
+   * @param {MNNote} note - 要处理的卡片
+   * @returns {boolean} - 是否成功处理
+   */
+  static smartLinkArrangement(note) {
+    try {
+      // 获取卡片评论
+      let comments = note.MNComments;
+      
+      // 检查最后一条评论是否是链接
+      if (comments.length === 0) {
+        MNUtil.showHUD("卡片没有评论");
+        return false;
+      }
+      
+      let lastComment = comments[comments.length - 1];
+      if (lastComment.type !== "linkComment") {
+        MNUtil.showHUD("最后一条评论不是链接");
+        return false;
+      }
+      
+      // 获取链接的目标卡片
+      let targetNoteId = lastComment.text.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1];
+      if (!targetNoteId) {
+        MNUtil.showHUD("无法解析链接 ID");
+        return false;
+      }
+      
+      let targetNote = MNNote.new(targetNoteId, false);
+      if (!targetNote) {
+        MNUtil.showHUD("找不到链接的目标卡片");
+        return false;
+      }
+      
+      // 判断是否是双向链接
+      let isBidirectional = false;
+      if (note.LinkIfDouble) {
+        // 如果有 LinkIfDouble 方法，直接使用
+        isBidirectional = note.LinkIfDouble(lastComment.text);
+      } else {
+        // 否则手动检查
+        let targetHasLinkBack = targetNote.MNComments.some(comment => {
+          if (comment.type === "linkComment") {
+            let linkId = comment.text.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1];
+            return linkId === note.noteId;
+          }
+          return false;
+        });
+        isBidirectional = targetHasLinkBack;
+      }
+      
+      if (!isBidirectional) {
+        MNUtil.showHUD("这不是双向链接");
+        return false;
+      }
+      
+      // 获取两个卡片的类型
+      let noteType = this.getNoteType(note);
+      let targetNoteType = this.getNoteType(targetNote);
+      
+      // MNUtil.log(`智能链接排列：${noteType} <-> ${targetNoteType}`);
+      
+      // 场景1：归类卡片与知识点卡片
+      if (noteType === "归类" && !["归类", "定义"].includes(targetNoteType)) {
+        // note 是归类卡片，targetNote 是知识点卡片
+        // 知识点卡片的链接移动到"相关链接"
+        let targetLinkIndex = targetNote.MNComments.findIndex(comment => {
+          if (comment.type === "linkComment") {
+            let linkId = comment.text.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1];
+            return linkId === note.noteId;
+          }
+          return false;
+        });
+        
+        if (targetLinkIndex !== -1) {
+          this.moveCommentsArrToField(targetNote, [targetLinkIndex], "相关链接", false);
+        }
+        
+        // 归类卡片的链接已经在最后，默认就在"所属"字段下，不需要移动
+        // MNUtil.showHUD("已将知识点卡片中的链接移动到\"相关链接\"字段");
+        return true;
+        
+      } else if (!["归类", "定义"].includes(noteType) && targetNoteType === "归类") {
+        // note 是知识点卡片，targetNote 是归类卡片
+        // 知识点卡片的链接移动到"相关链接"
+        let linkIndex = comments.length - 1;
+        this.moveCommentsArrToField(note, [linkIndex], "相关链接", false);
+        
+        // 归类卡片的链接保持在最后（"所属"字段下）
+        MNUtil.showHUD("已将链接移动到\"相关链接\"字段");
+        return true;
+        
+      } else if (noteType === "定义" && targetNoteType === "定义") {
+        // 场景2：定义卡片之间的链接
+        // 两个定义卡片都需要处理
+        
+        // 处理当前卡片
+        note.appendMarkdownComment("- ");
+        this.moveCommentsArrToField(note, [note.MNComments.length - 1], "相关思考");
+        this.moveCommentsArrToField(note, [note.MNComments.length - 1], "相关思考");
+        
+        // 处理目标卡片
+        let targetLinkIndex = targetNote.MNComments.findIndex(comment => {
+          if (comment.type === "linkComment") {
+            let linkId = comment.text.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1];
+            return linkId === note.noteId;
+          }
+          return false;
+        });
+        
+        if (targetLinkIndex !== -1) {
+          targetNote.appendMarkdownComment("- ");
+          this.moveCommentsArrToField(targetNote, [targetNote.MNComments.length - 1], "相关思考");
+          this.moveCommentsArrToField(targetNote, [targetNote.MNComments.length - 1], "相关思考");
+        }
+        
+        // MNUtil.showHUD("已将两个定义卡片的链接移动到\"相关思考\"字段");
+        return true;
+        
+      } else {
+        MNUtil.showHUD(`不支持的卡片类型组合：${noteType} <-> ${targetNoteType}`);
+        return false;
+      }
+      
+    } catch (error) {
+      MNUtil.addErrorLog(error, "smartLinkArrangement", {
+        noteId: note?.noteId,
+        noteTitle: note?.noteTitle
+      });
+      MNUtil.showHUD("处理链接时出错：" + error.message);
+      return false;
+    }
+  }
+
+  /**
    * 刷新卡片
    */
   static refreshNote(note) {

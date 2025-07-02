@@ -3778,6 +3778,208 @@ class HtmlMarkdownUtils {
     
     return text.includes('background:linear-gradient(15deg,#6366F1,#8B5CF6)')
   }
+
+  /**
+   * 通过弹窗选择字段并将其内容转换为 HtmlMarkdown 评论
+   * @param {MNNote} note - 要操作的笔记
+   */
+  static convertFieldContentToHtmlMDByPopup(note) {
+    let htmlCommentsTextArr = MNMath.parseNoteComments(note).htmlCommentsTextArr;
+    
+    if (htmlCommentsTextArr.length === 0) {
+      MNUtil.showHUD("当前笔记没有字段");
+      return;
+    }
+
+    // 第一个弹窗：选择字段
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "选择要转换内容的字段",
+      "请选择一个字段，将其内容转换为 HtmlMarkdown 格式",
+      0,
+      "取消",
+      htmlCommentsTextArr,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) return; // 用户取消
+        
+        let selectedField = htmlCommentsTextArr[buttonIndex - 1];
+        let contents = this.getFieldNonHtmlMDContents(note, selectedField);
+        
+        if (contents.length === 0) {
+          MNUtil.showHUD("该字段下没有可转换的内容");
+          return;
+        }
+        
+        // 显示内容选择弹窗
+        this.showFieldContentSelectionPopup(note, contents, selectedField);
+      }
+    );
+  }
+
+  /**
+   * 获取指定字段下的非 HtmlMarkdown 内容
+   * @param {MNNote} note - 笔记对象
+   * @param {string} fieldName - 字段名称
+   * @returns {Array} 包含内容信息的数组
+   */
+  static getFieldNonHtmlMDContents(note, fieldName) {
+    let commentsObj = MNMath.parseNoteComments(note);
+    let htmlCommentsObjArr = commentsObj.htmlCommentsObjArr;
+    
+    // 找到对应字段
+    let fieldObj = htmlCommentsObjArr.find(obj => obj.text.includes(fieldName));
+    if (!fieldObj) return [];
+    
+    let contents = [];
+    let excludingIndices = fieldObj.excludingFieldBlockIndexArr;
+    
+    excludingIndices.forEach(index => {
+      let comment = note.MNComments[index];
+      
+      // 只处理文本评论和 Markdown 评论（非 HtmlMarkdown）
+      if (comment.type === "textComment" || 
+          (comment.type === "markdownComment" && !this.isHtmlMDComment(comment.text))) {
+        
+        let text = comment.text || "";
+        let displayText = text;
+        let hasLeadingDash = false;
+        
+        // 检查是否有 "- " 前缀
+        if (text.startsWith("- ")) {
+          hasLeadingDash = true;
+          displayText = text; // 显示时保留 "- "
+        }
+        
+        contents.push({
+          index: index,
+          text: text,
+          displayText: displayText,
+          type: comment.type,
+          hasLeadingDash: hasLeadingDash
+        });
+      }
+    });
+    
+    return contents;
+  }
+
+  /**
+   * 显示内容选择弹窗
+   * @param {MNNote} note - 笔记对象
+   * @param {Array} contents - 可转换的内容数组
+   * @param {string} fieldName - 字段名称
+   */
+  static showFieldContentSelectionPopup(note, contents, fieldName) {
+    // 准备显示选项
+    let options = contents.map((content, idx) => {
+      return `${idx + 1}. ${content.displayText.substring(0, 50)}${content.displayText.length > 50 ? '...' : ''}`;
+    });
+    
+    // 添加"全部转换"选项
+    options.unshift("转换全部内容");
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "选择要转换的内容",
+      `字段"${fieldName}"下共有 ${contents.length} 条可转换内容`,
+      0,
+      "取消",
+      options,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) return; // 用户取消
+        
+        let selectedContents = [];
+        
+        if (buttonIndex === 1) {
+          // 选择了"转换全部内容"
+          selectedContents = contents;
+        } else {
+          // 选择了单个内容
+          selectedContents = [contents[buttonIndex - 2]];
+        }
+        
+        // 显示类型选择弹窗
+        this.showTypeSelectionPopup(note, selectedContents);
+      }
+    );
+  }
+
+  /**
+   * 显示类型选择弹窗
+   * @param {MNNote} note - 笔记对象
+   * @param {Array} contents - 要转换的内容数组
+   */
+  static showTypeSelectionPopup(note, contents) {
+    // 定义可选的类型
+    let typeOptions = [
+      "goal - 🎯 目标",
+      "level1 - 🚩 一级",
+      "level2 - ▸ 二级",
+      "level3 - ▪ 三级",
+      "level4 - • 四级",
+      "level5 - · 五级",
+      "key - 🔑 关键",
+      "alert - ⚠️ 警告",
+      "danger - ❗❗❗ 危险",
+      "remark - 📝 备注",
+      "question - ❓ 问题",
+      "idea - 💡 想法",
+      "method - ✨ 方法"
+    ];
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "选择转换类型",
+      "请选择要转换成的 HtmlMarkdown 类型",
+      0,
+      "取消",
+      typeOptions,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) return; // 用户取消
+        
+        // 提取类型名
+        let selectedType = typeOptions[buttonIndex - 1].split(" - ")[0];
+        
+        // 执行转换
+        this.convertContentsToHtmlMD(note, contents, selectedType);
+      }
+    );
+  }
+
+  /**
+   * 执行内容转换
+   * @param {MNNote} note - 笔记对象
+   * @param {Array} contents - 要转换的内容数组
+   * @param {string} type - 目标类型
+   */
+  static convertContentsToHtmlMD(note, contents, type) {
+    MNUtil.undoGrouping(() => {
+      // 按索引从大到小排序，避免删除时索引变化
+      let sortedContents = contents.sort((a, b) => b.index - a.index);
+      
+      sortedContents.forEach(content => {
+        let textToConvert = content.text;
+        
+        // 如果有 "- " 前缀，去掉它
+        if (content.hasLeadingDash) {
+          textToConvert = textToConvert.substring(2).trim();
+        }
+        
+        // 创建 HtmlMarkdown 文本
+        let htmlMdText = this.createHtmlMarkdownText(textToConvert, type);
+        
+        // 获取原评论
+        let comment = note.MNComments[content.index];
+        
+        // 替换原评论的文本
+        if (comment) {
+          comment.text = htmlMdText;
+        }
+      });
+      
+      // 刷新笔记显示
+      note.refresh();
+    });
+    
+    MNUtil.showHUD(`成功转换 ${contents.length} 条内容`);
+  }
 }
 // 夏大鱼羊 - end
     

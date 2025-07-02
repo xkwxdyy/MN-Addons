@@ -61,7 +61,7 @@ function registerAllCustomActions() {
   // HTML 设置
   const htmlSetting = [
     { title: "方法: ✔", type: "method" },
-    { title: "思路: 💡", type: "idea" },
+    // { title: "思路: 💡", type: "idea" },
     { title: "目标: 🎯", type: "goal" },
     { title: "关键: 🔑", type: "key" },
     { title: "问题: ❓", type: "question" },

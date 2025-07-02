@@ -317,14 +317,12 @@ class MNMath {
 
     // 在移动之前先提取 markdown 链接
     let marginNoteLinks = this.extractMarginNoteLinksFromComments(note, moveIndexArr);
-    MNUtil.log(`🔍 找到 ${marginNoteLinks.length} 个 MarginNote 链接`);
     
     // 移动内容到默认字段
     this.moveCommentsArrToField(note, moveIndexArr, defaultField);
     
     // 处理之前提取的 MarginNote 链接
     if (marginNoteLinks.length > 0) {
-      MNUtil.log("🔗 开始处理 MarginNote 链接...");
       this.processExtractedMarginNoteLinks(note, marginNoteLinks);
     }
   }
@@ -339,19 +337,9 @@ class MNMath {
   static extractMarginNoteLinksFromComments(note, indexArr) {
     let marginNoteLinks = [];
     
-    MNUtil.log(`📋 检查 ${indexArr.length} 个评论索引: ${indexArr.join(', ')}`);
-    
     indexArr.forEach(index => {
       let comment = note.MNComments[index];
-      if (!comment) {
-        MNUtil.log(`❌ 索引 ${index} 处没有评论`);
-        return;
-      }
-      
-      MNUtil.log(`🔍 索引 ${index}: 类型=${comment.type}, 内容=${comment.text ? comment.text.substring(0, 50) + '...' : '无'}`);
-      
-      if (comment.type !== "markdownComment") {
-        MNUtil.log(`⏭️ 跳过非 markdown 评论`);
+      if (!comment || comment.type !== "markdownComment") {
         return;
       }
       
@@ -363,22 +351,16 @@ class MNMath {
         let linkText = matches[1];
         let linkUrl = matches[2];
         
-        MNUtil.log(`🔗 找到链接: [${linkText}](${linkUrl})`);
-        
         // 检查是否是 MarginNote 链接
         if (this.isMarginNoteLink(linkUrl)) {
           marginNoteLinks.push({
             text: linkText,
             url: linkUrl
           });
-          MNUtil.log(`✅ 是 MarginNote 链接，已添加`);
-        } else {
-          MNUtil.log(`❌ 不是 MarginNote 链接，跳过`);
         }
       }
     });
     
-    MNUtil.log(`📊 总共找到 ${marginNoteLinks.length} 个 MarginNote 链接`);
     return marginNoteLinks;
   }
   
@@ -471,41 +453,33 @@ class MNMath {
     // 处理每个找到的 MarginNote 链接
     marginNoteLinks.forEach(linkInfo => {
       try {
-        MNUtil.log(`📎 处理链接: ${linkInfo.text} -> ${linkInfo.url}`);
-        
         // 从链接中提取 noteId
         let targetNoteId = linkInfo.url.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1];
         if (!targetNoteId) {
-          MNUtil.log("❌ 无法提取 noteId");
           return;
         }
         
         // 获取目标卡片
         let targetNote = MNNote.new(targetNoteId, false);
         if (!targetNote) {
-          MNUtil.log("❌ 找不到目标卡片");
           return;
         }
         
         // 检查目标卡片的最后一个字段是否在允许列表中
         let targetLastField = this.getLastFieldOfNote(targetNote);
-        MNUtil.log(`🏷️ 目标卡片最后字段: ${targetLastField || "无"}`);
         
         if (!targetLastField || !allowedTargetFields.includes(targetLastField)) {
-          MNUtil.log(`⚠️ 目标卡片最后字段不在允许列表中`);
           return;
         }
         
         // 添加单向链接（从 note 到 targetNote）
         targetNote.appendNoteLink(note, "To");
-        MNUtil.log(`✅ 已添加链接到目标卡片`);
         
         // 对目标卡片的最后一个字段进行链接去重
         this.removeDuplicateLinksInLastField(targetNote);
-        MNUtil.log(`🧹 已对目标卡片进行链接去重`);
         
       } catch (error) {
-        MNUtil.log("❌ 处理 Markdown 链接时出错: " + error.message);
+        // 忽略错误
       }
     });
   }
@@ -668,10 +642,44 @@ class MNMath {
     let noteCommentsObj = this.parseNoteComments(note)
     let linksInNote = noteCommentsObj.linksObjArr
     
+    // 性能优化：先过滤出可能需要清理的链接
+    // 跳过在"应用"字段下的链接，因为它们不太可能是父卡片链接
+    let htmlCommentsObjArr = noteCommentsObj.htmlCommentsObjArr
+    let applicationFieldObj = null
+    
+    // 查找"应用"字段
+    for (let i = 0; i < htmlCommentsObjArr.length; i++) {
+      if (htmlCommentsObjArr[i].text === "应用" || htmlCommentsObjArr[i].text === "应用：") {
+        applicationFieldObj = htmlCommentsObjArr[i]
+        break
+      }
+    }
+    
+    // 过滤链接：排除"应用"字段下的链接
+    let potentialParentLinks = linksInNote
+    if (applicationFieldObj) {
+      let applicationFieldRange = applicationFieldObj.excludingFieldBlockIndexArr
+      potentialParentLinks = linksInNote.filter(linkObj => {
+        // 如果链接在"应用"字段的范围内，则跳过
+        return !applicationFieldRange.includes(linkObj.index)
+      })
+    }
+    
+    // 如果过滤后没有链接需要检查，直接返回
+    if (potentialParentLinks.length === 0) {
+      return
+    }
+    
+    // 性能优化：如果链接太多，只处理前20个
+    const MAX_LINKS_TO_CHECK = 20
+    if (potentialParentLinks.length > MAX_LINKS_TO_CHECK) {
+      potentialParentLinks = potentialParentLinks.slice(0, MAX_LINKS_TO_CHECK)
+    }
+    
     // 收集需要删除的旧父卡片链接（先收集，后删除，避免索引混乱）
     let oldParentNotesToCleanup = []
     
-    linksInNote.forEach(linkObj => {
+    potentialParentLinks.forEach(linkObj => {
       try {
         // 从链接 URL 中提取 noteId
         let targetNoteId = linkObj.link.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1]
@@ -704,7 +712,6 @@ class MNMath {
             
             if (!isInParentNoteField) {
               // 如果链接不在 linkParentNote 的特定字段下，说明可能是用户手动创建的
-              MNUtil.log(`保护非特定字段的链接: ${note.noteTitle} -> ${targetNote.noteTitle}（不在"所属/包含/相关链接"字段下）`)
               return // 不清理这个链接
             }
             
@@ -729,12 +736,10 @@ class MNMath {
             
             // 如果双方都有链接但都不在特定字段下，保护这个双向链接
             if (targetHasLinkBack && !targetLinkInParentField) {
-              MNUtil.log(`保护用户创建的双向链接: ${note.noteTitle} <-> ${targetNote.noteTitle}`)
               return // 不清理这个链接
             }
             
             // 只有在特定字段下的链接才会被清理
-            MNUtil.log(`准备清理 linkParentNote 创建的链接: ${note.noteTitle || note.noteId} -> ${targetNote.noteTitle || targetNote.noteId}（在特定字段下）`)
             oldParentNotesToCleanup.push({
               targetNote: targetNote,
               linkText: linkObj.link,
@@ -744,27 +749,23 @@ class MNMath {
         }
       } catch (error) {
         // 忽略解析错误，继续处理其他链接
-        MNUtil.log("清理旧链接时出错:", error)
       }
     })
     
     // 执行清理：删除双向链接
-    MNUtil.log(`准备清理 ${oldParentNotesToCleanup.length} 个旧父卡片链接`)
-    oldParentNotesToCleanup.forEach(cleanup => {
-      try {
-        MNUtil.log(`清理链接: ${note.noteTitle || note.noteId} <-> ${cleanup.targetNote.noteTitle || cleanup.targetNote.noteId}`)
-        
-        // 删除当前卡片中指向旧父卡片的链接（按文本删除，避免索引问题）
-        note.removeCommentsByText(cleanup.linkText)
-        MNUtil.log(`已删除 ${note.noteTitle} 中的链接: ${cleanup.linkText}`)
-        
-        // 删除旧父卡片中指向当前卡片的链接
-        cleanup.targetNote.removeCommentsByText(note.noteURL)
-        MNUtil.log(`已删除 ${cleanup.targetNote.noteTitle} 中的链接: ${note.noteURL}`)
-      } catch (error) {
-        MNUtil.log("执行清理时出错:", error)
-      }
-    })
+    if (oldParentNotesToCleanup.length > 0) {
+      oldParentNotesToCleanup.forEach(cleanup => {
+        try {
+          // 删除当前卡片中指向旧父卡片的链接（按文本删除，避免索引问题）
+          note.removeCommentsByText(cleanup.linkText)
+          
+          // 删除旧父卡片中指向当前卡片的链接
+          cleanup.targetNote.removeCommentsByText(note.noteURL)
+        } catch (error) {
+          // 忽略错误，继续处理
+        }
+      })
+    }
   }
 
   /**
@@ -849,27 +850,19 @@ class MNMath {
   static isLinkInParentNoteFields(linkIndex, noteCommentsObj) {
     const parentNoteFields = ["所属", "包含", "相关链接"];
     
-    MNUtil.log(`检查链接索引 ${linkIndex} 是否在特定字段下`)
-    MNUtil.log(`HTML 字段数量: ${noteCommentsObj.htmlCommentsObjArr.length}`)
-    
     // 遍历所有 HTML 字段
     for (let htmlObj of noteCommentsObj.htmlCommentsObjArr) {
       // 检查字段名称是否包含 linkParentNote 使用的字段
       let isParentNoteField = parentNoteFields.some(field => htmlObj.text.includes(field));
       
-      MNUtil.log(`字段 "${htmlObj.text}" 是特定字段: ${isParentNoteField}`)
-      MNUtil.log(`字段的评论索引范围: ${JSON.stringify(htmlObj.excludingFieldBlockIndexArr)}`)
-      
       if (isParentNoteField) {
         // 检查链接是否在这个字段下（使用 excludingFieldBlockIndexArr）
         if (htmlObj.excludingFieldBlockIndexArr.includes(linkIndex)) {
-          MNUtil.log(`找到！链接在 "${htmlObj.text}" 字段下`)
           return true;
         }
       }
     }
     
-    MNUtil.log(`链接不在任何特定字段下`)
     return false;
   }
 

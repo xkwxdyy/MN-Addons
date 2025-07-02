@@ -1852,6 +1852,195 @@ class MNMath {
   }
 
   /**
+   * 通过弹窗选择并仅保留某个字段下的内容
+   * 删除其他所有内容（包括字段本身）
+   * 
+   * @param {MNNote} note - 要操作的笔记对象
+   * 
+   * @example
+   * // 弹窗让用户选择要保留的字段内容
+   * MNMath.retainFieldContentOnly(note);
+   */
+  static retainFieldContentOnly(note, keepTitle = false) {
+    let commentsObj = this.parseNoteComments(note);
+    let htmlCommentsObjArr = commentsObj.htmlCommentsObjArr;
+    let htmlCommentsTextArr = commentsObj.htmlCommentsTextArr;
+    
+    if (htmlCommentsTextArr.length === 0) {
+      MNUtil.showHUD("当前卡片没有字段结构");
+      return;
+    }
+    
+    // 创建字段选择菜单
+    let fieldOptions = htmlCommentsTextArr.map(text => text.trim());
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "选择要保留内容的字段",
+      "仅保留该字段下的内容，删除其他所有内容（包括字段本身）",
+      0,  // 普通样式
+      "取消",
+      fieldOptions,
+      (_, buttonIndex) => {
+        if (buttonIndex === 0) return; // 用户取消
+        
+        let selectedFieldIndex = buttonIndex - 1; // buttonIndex从1开始
+        let selectedFieldObj = htmlCommentsObjArr[selectedFieldIndex];
+        let selectedField = fieldOptions[selectedFieldIndex];
+        
+        // 获取要保留的内容索引（不包括字段本身）
+        let retainIndices = selectedFieldObj.excludingFieldBlockIndexArr;
+        
+        if (retainIndices.length === 0) {
+          MNUtil.showHUD(`字段"${selectedField}"下没有内容`);
+          return;
+        }
+        
+        // 确认对话框
+        let confirmMessage = `确定只保留"${selectedField}"字段下的 ${retainIndices.length} 条内容吗？\n\n⚠️ 此操作将删除其他所有内容（包括字段标题）`;
+        
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "确认操作",
+          confirmMessage,
+          0,  // 普通样式
+          "取消",
+          ["确定删除"],
+          (_, confirmButtonIndex) => {
+            if (confirmButtonIndex === 0) return; // 用户取消
+            
+            MNUtil.undoGrouping(() => {
+              try {
+                // 获取所有评论的索引
+                let allIndices = Array.from({length: note.comments.length}, (_, i) => i);
+                
+                // 计算要删除的索引（所有索引减去要保留的索引）
+                let deleteIndices = allIndices.filter(index => !retainIndices.includes(index));
+                
+                // 从后向前删除（避免索引变化问题）
+                deleteIndices.sort((a, b) => b - a);
+                
+                let deletedCount = 0;
+                deleteIndices.forEach(index => {
+                  note.removeCommentByIndex(index);
+                  deletedCount++;
+                });
+                
+                // 刷新卡片显示
+                MNUtil.undoGrouping(()=>{
+                  note.refresh();
+                })
+
+                if (!keepTitle) {
+                  note.title = ""
+                }
+                
+                MNUtil.showHUD(`已删除 ${deletedCount} 条内容，保留了"${selectedField}"字段下的 ${retainIndices.length} 条内容`);
+                
+                MNUtil.log({
+                  level: "info",
+                  message: `保留字段内容操作完成 - 字段：${selectedField}，保留：${retainIndices.length} 条，删除：${deletedCount} 条`,
+                  source: "MNMath.retainFieldContentOnly"
+                });
+                
+              } catch (error) {
+                MNUtil.showHUD("操作失败：" + error.toString());
+                MNUtil.log({
+                  level: "error",
+                  message: "保留字段内容失败：" + error.message,
+                  source: "MNMath.retainFieldContentOnly"
+                });
+              }
+            });
+          }
+        );
+      }
+    );
+  }
+
+  /**
+   * 仅保留指定字段下的内容（不通过弹窗）
+   * 删除其他所有内容（包括字段本身）
+   * 
+   * @param {MNNote} note - 要操作的笔记对象
+   * @param {string} fieldName - 要保留内容的字段名称
+   * @returns {boolean} 操作是否成功
+   * 
+   * @example
+   * // 仅保留"证明"字段下的内容
+   * let success = MNMath.retainFieldContentByName(note, "证明");
+   * 
+   * @example
+   * // 仅保留"相关链接"字段下的内容
+   * MNMath.retainFieldContentByName(note, "相关链接");
+   */
+  static retainFieldContentByName(note, fieldName) {
+    let commentsObj = this.parseNoteComments(note);
+    let htmlCommentsObjArr = commentsObj.htmlCommentsObjArr;
+    
+    // 查找指定名称的字段
+    let targetFieldObj = null;
+    for (let fieldObj of htmlCommentsObjArr) {
+      if (fieldObj.text.includes(fieldName)) {
+        targetFieldObj = fieldObj;
+        break;
+      }
+    }
+    
+    if (!targetFieldObj) {
+      MNUtil.showHUD(`未找到字段"${fieldName}"`);
+      return false;
+    }
+    
+    // 获取要保留的内容索引（不包括字段本身）
+    let retainIndices = targetFieldObj.excludingFieldBlockIndexArr;
+    
+    if (retainIndices.length === 0) {
+      MNUtil.showHUD(`字段"${fieldName}"下没有内容`);
+      return false;
+    }
+    
+    MNUtil.undoGrouping(() => {
+      try {
+        // 获取所有评论的索引
+        let allIndices = Array.from({length: note.comments.length}, (_, i) => i);
+        
+        // 计算要删除的索引（所有索引减去要保留的索引）
+        let deleteIndices = allIndices.filter(index => !retainIndices.includes(index));
+        
+        // 从后向前删除（避免索引变化问题）
+        deleteIndices.sort((a, b) => b - a);
+        
+        let deletedCount = 0;
+        deleteIndices.forEach(index => {
+          note.removeCommentByIndex(index);
+          deletedCount++;
+        });
+        
+        // 刷新卡片显示
+        note.refresh();
+        
+        MNUtil.showHUD(`已删除 ${deletedCount} 条内容，保留了"${fieldName}"字段下的 ${retainIndices.length} 条内容`);
+        
+        MNUtil.log({
+          level: "info",
+          message: `保留字段内容操作完成 - 字段：${fieldName}，保留：${retainIndices.length} 条，删除：${deletedCount} 条`,
+          source: "MNMath.retainFieldContentByName"
+        });
+        
+      } catch (error) {
+        MNUtil.showHUD("操作失败：" + error.toString());
+        MNUtil.log({
+          level: "error",
+          message: "保留字段内容失败：" + error.message,
+          source: "MNMath.retainFieldContentByName"
+        });
+        return false;
+      }
+    });
+    
+    return true;
+  }
+
+  /**
    * 通过弹窗来选择移动的评论以及移动的位置
    */
   static moveCommentsByPopup(note) {

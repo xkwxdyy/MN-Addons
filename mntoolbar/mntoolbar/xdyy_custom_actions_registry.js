@@ -4535,6 +4535,17 @@ function registerAllCustomActions() {
     });
   })
 
+  global.registerCustomAction("retainFieldContentOnly", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    MNUtil.undoGrouping(() => {
+      try {
+        MNMath.retainFieldContentOnly(focusNote);
+      } catch (error) {
+        MNUtil.showHUD(error);
+      }
+    });
+  })
+
 }
 
 // 立即注册

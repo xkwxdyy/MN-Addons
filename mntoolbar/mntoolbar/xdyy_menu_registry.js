@@ -746,6 +746,10 @@ function registerAllMenuTemplates() {
         },
         "🔄 处理旧卡片",
         {
+          action: "retainFieldContentOnly",
+          menuTitle: "    保留某个字段内容",
+        },
+        {
           action: "batchChangeClassificationTitles",
           menuTitle: "    批量更新归类卡片标题"
         }

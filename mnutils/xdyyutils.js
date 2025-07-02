@@ -2980,7 +2980,6 @@ class MNMath {
     try {
       // 获取标题中的类型（当前类型）
       let titleType = this.getNoteType(note);
-      MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 标题类型: ${titleType}`);
       
       // 获取归类卡片，确定目标类型
       let classificationNote = this.getFirstClassificationParentNote(note);
@@ -2989,20 +2988,16 @@ class MNMath {
       if (classificationNote) {
         let classificationTitleParts = this.parseNoteTitle(classificationNote);
         targetType = classificationTitleParts.type;
-        MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 归类卡片标题: ${classificationNote.title}`);
-        MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 目标类型: ${targetType}`);
       }
       
       // 如果没有归类卡片，或者目标类型与标题类型相同，不需要处理
       if (!targetType || targetType === titleType) {
-        MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 不需要处理: 目标类型(${targetType}) === 标题类型(${titleType})`);
         return;
       }
       
       // 如果不是需要处理的类型，直接返回
       let targetTypes = ["命题", "例子", "反例", "思想方法"];
       if (!targetTypes.includes(targetType) || !targetTypes.includes(titleType)) {
-        MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 类型不在处理范围内`);
         return;
       }
       
@@ -3019,7 +3014,6 @@ class MNMath {
       let htmlCommentsObjArr = commentsObj.htmlCommentsObjArr;
       
       if (htmlCommentsObjArr.length === 0) {
-        MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 没有 HtmlComment 字段`);
         return; // 没有字段，不需要处理
       }
       
@@ -3027,29 +3021,23 @@ class MNMath {
       let firstFieldObj = htmlCommentsObjArr[0];
       let firstFieldIndex = firstFieldObj.index; // 使用 index 而不是 fieldIndex
       let firstFieldText = firstFieldObj.text; // 字段的文本内容
-      MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 第一个字段内容: ${firstFieldText}, 索引: ${firstFieldIndex}`);
       
       // 命题和例子的字段相同，不需要替换
       if ((titleType === "命题" && targetType === "例子") || 
           (titleType === "例子" && targetType === "命题")) {
-        MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 命题和例子之间不需要替换字段`);
         return;
       }
       
       // 检查第一个字段是否已经是目标字段
       if (firstFieldText === fieldMapping[targetType]) {
-        MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 第一个字段已经是目标字段，不需要替换`);
         return;
       }
       
       let currentField = fieldMapping[titleType];
       let targetField = fieldMapping[targetType];
       
-      MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 当前字段: ${currentField}, 目标字段: ${targetField}`);
-      
       // 如果字段相同，不需要替换
       if (currentField === targetField) {
-        MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 字段相同，不需要替换`);
         return;
       }
       
@@ -3071,8 +3059,6 @@ class MNMath {
           // 新字段被添加到最后，需要移动到第一个位置（原字段的位置）
           let newFieldIndex = note.comments.length - 1; // 新字段在最后
           note.moveComment(newFieldIndex, firstFieldIndex);
-          
-          MNUtil.log(`已将第一个字段从"${currentField}"替换为"${targetField}"`);
           
         } catch (error) {
           MNUtil.log("替换字段时出错: " + error.toString());

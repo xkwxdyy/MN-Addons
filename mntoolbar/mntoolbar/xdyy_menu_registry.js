@@ -888,8 +888,8 @@ function registerAllMenuTemplates() {
           menuTitle: "🔄 修改某条 HtmlMD 评论的类型",
         },
         {
-          action: "renewContentPointsToHtmlType",
-          menuTitle: '🔄 更新"-": 弹窗选择',
+          action: "renewContentsToHtmlMarkdownCommentType",
+          menuTitle: '🔄 更新文本内容为 HtmlMD 评论',
         },
         {
           action: "htmlMDCommentsToNextLevelType",

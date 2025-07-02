@@ -2676,33 +2676,11 @@ function registerAllCustomActions() {
   });
 
   // renewContentPointsToHtmlType
-  global.registerCustomAction("renewContentPointsToHtmlType", async function (context) {
+  global.registerCustomAction("renewContentsToHtmlMarkdownCommentType", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
-        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-          "选择“-“评论修改的类型",
-          "",
-          0,
-          "取消",
-          htmlSettingTitles,
-          (alert, buttonIndex) => {
-            try {
-              MNUtil.undoGrouping(() => {
-                // 按钮索引从1开始（0是取消按钮）
-                const selectedIndex = buttonIndex - 1;
-
-                if (selectedIndex >= 0 && selectedIndex < htmlSetting.length) {
-                  const selectedType = htmlSetting[selectedIndex].type;
-                  // focusNote.mergeInto(focusNote.parentNote, selectedType)
-                  focusNote.renewContentPointsToHtmlType(selectedType);
-                }
-              });
-            } catch (error) {
-              MNUtil.showHUD(error);
-            }
-          },
-        );
+        HtmlMarkdownUtils.convertFieldContentToHtmlMDByPopup(focusNote);
       } catch (error) {
         MNUtil.showHUD(error);
       }

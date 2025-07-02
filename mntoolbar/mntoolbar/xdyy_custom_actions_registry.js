@@ -3786,10 +3786,10 @@ function registerAllCustomActions() {
   });
 
   // renewLinksBetweenClassificationNoteAndKnowledegeNote
-  global.registerCustomAction("renewLinksBetweenClassificationNoteAndKnowledegeNote", async function (context) {
+  global.registerCustomAction("autoMoveLinksBetweenCards", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
-      toolbarUtils.renewLinksBetweenClassificationNoteAndKnowledegeNote(focusNote);
+      MNMath.smartLinkArrangement(focusNote);
     } catch (error) {
       MNUtil.showHUD(error);
     }

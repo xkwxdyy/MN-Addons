@@ -110,18 +110,18 @@ function registerAllMenuTemplates() {
     action: "menu",
     menuWidth: 330,
     menuItems: [
-      "⬇️ 更新证明",
-      {
-        action: "renewProofContentPoints",
-        menuTitle: '    🔄更新证明"-": 弹窗选择 ',
-      },
+      // "⬇️ 更新证明",
+      // {
+      //   action: "renewProofContentPoints",
+      //   menuTitle: '    🔄更新证明"-": 弹窗选择 ',
+      // },
       // {
       //   action: "renewProofContentPointsToSubpointType",
       //   menuTitle: '    🔄更新证明"- "为"subpoint ▪"',
       // },
       {
-        action: "renewLinksBetweenClassificationNoteAndKnowledegeNote",
-        menuTitle: "更新1️⃣次「归类卡片」与「概念or归类卡片」之间的🔗"
+        action: "autoMoveLinksBetweenCards",
+        menuTitle: "自动移动卡片之间的链接"
       },
       {
         action: "menu",

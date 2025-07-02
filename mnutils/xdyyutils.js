@@ -6,7 +6,7 @@ class MNMath {
   /**
    * 单条 HtmlComment 的模板卡片 id
    */
-  static singleHtmlCommentTemplateNoteId = {
+  static singleHtmlCommentTemplateNoteIds = {
     "证明": "749B2770-77A9-4D3D-9F6F-8B2EE21615AB",
     "原理": "86F237E5-7BA3-4182-A9B9-A135D34CDC3A",
     "反例": "C33F6700-747F-48FF-999E-3783D596B0CF",
@@ -916,6 +916,10 @@ class MNMath {
     this.convertLinksToNewVersion(note)
     this.cleanupBrokenLinks(note)
     this.fixMergeProblematicLinks(note)
+    
+    // 处理不同类型转换时的第一个字段替换
+    this.replaceFirstFieldIfNeeded(note)
+    
     switch (this.getNoteType(note)) {
       case "归类":
         /**
@@ -2959,6 +2963,125 @@ class MNMath {
       return titleParts.titleLinkWordsArr[0];
     }
     return "";
+  }
+
+  /**
+   * 根据卡片类型转换需要，替换第一个 HtmlComment 字段
+   * 当卡片被移动到不同的归类卡片下方时，需要更新第一个字段以匹配新类型
+   * 
+   * 需要替换的情况：
+   * 1. 命题/例子 ↔ 反例
+   * 2. 命题/例子 ↔ 思想方法
+   * 3. 反例 ↔ 思想方法
+   * 
+   * @param {MNNote} note - 要处理的卡片
+   */
+  static replaceFirstFieldIfNeeded(note) {
+    try {
+      // 获取标题中的类型（当前类型）
+      let titleType = this.getNoteType(note);
+      MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 标题类型: ${titleType}`);
+      
+      // 获取归类卡片，确定目标类型
+      let classificationNote = this.getFirstClassificationParentNote(note);
+      let targetType = null;
+      
+      if (classificationNote) {
+        let classificationTitleParts = this.parseNoteTitle(classificationNote);
+        targetType = classificationTitleParts.type;
+        MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 归类卡片标题: ${classificationNote.title}`);
+        MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 目标类型: ${targetType}`);
+      }
+      
+      // 如果没有归类卡片，或者目标类型与标题类型相同，不需要处理
+      if (!targetType || targetType === titleType) {
+        MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 不需要处理: 目标类型(${targetType}) === 标题类型(${titleType})`);
+        return;
+      }
+      
+      // 如果不是需要处理的类型，直接返回
+      let targetTypes = ["命题", "例子", "反例", "思想方法"];
+      if (!targetTypes.includes(targetType) || !targetTypes.includes(titleType)) {
+        MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 类型不在处理范围内`);
+        return;
+      }
+      
+      // 确定需要替换的字段名
+      let fieldMapping = {
+        "命题": "证明",
+        "例子": "证明", 
+        "反例": "反例",
+        "思想方法": "原理"
+      };
+      
+      // 解析评论，找到第一个 HtmlComment 字段
+      let commentsObj = this.parseNoteComments(note);
+      let htmlCommentsObjArr = commentsObj.htmlCommentsObjArr;
+      
+      if (htmlCommentsObjArr.length === 0) {
+        MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 没有 HtmlComment 字段`);
+        return; // 没有字段，不需要处理
+      }
+      
+      // 获取第一个字段的信息
+      let firstFieldObj = htmlCommentsObjArr[0];
+      let firstFieldIndex = firstFieldObj.index; // 使用 index 而不是 fieldIndex
+      let firstFieldText = firstFieldObj.text; // 字段的文本内容
+      MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 第一个字段内容: ${firstFieldText}, 索引: ${firstFieldIndex}`);
+      
+      // 命题和例子的字段相同，不需要替换
+      if ((titleType === "命题" && targetType === "例子") || 
+          (titleType === "例子" && targetType === "命题")) {
+        MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 命题和例子之间不需要替换字段`);
+        return;
+      }
+      
+      // 检查第一个字段是否已经是目标字段
+      if (firstFieldText === fieldMapping[targetType]) {
+        MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 第一个字段已经是目标字段，不需要替换`);
+        return;
+      }
+      
+      let currentField = fieldMapping[titleType];
+      let targetField = fieldMapping[targetType];
+      
+      MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 当前字段: ${currentField}, 目标字段: ${targetField}`);
+      
+      // 如果字段相同，不需要替换
+      if (currentField === targetField) {
+        MNUtil.log(`🔍 replaceFirstFieldIfNeeded - 字段相同，不需要替换`);
+        return;
+      }
+      
+      MNUtil.undoGrouping(() => {
+        try {
+          // 获取新字段的模板内容
+          let templateNoteId = this.singleHtmlCommentTemplateNoteIds[targetField];
+          if (!templateNoteId) {
+            MNUtil.log("未找到目标字段的模板卡片 ID: " + targetField);
+            return;
+          }
+          
+          // 先删除原来的第一个字段
+          note.removeCommentByIndex(firstFieldIndex);
+          
+          // 克隆并合并只包含新字段的模板卡片
+          this.cloneAndMergeById(note, templateNoteId);
+          
+          // 新字段被添加到最后，需要移动到第一个位置（原字段的位置）
+          let newFieldIndex = note.comments.length - 1; // 新字段在最后
+          note.moveComment(newFieldIndex, firstFieldIndex);
+          
+          MNUtil.log(`已将第一个字段从"${currentField}"替换为"${targetField}"`);
+          
+        } catch (error) {
+          MNUtil.log("替换字段时出错: " + error.toString());
+        }
+      });
+      
+    } catch (error) {
+      MNUtil.log("replaceFirstFieldIfNeeded 出错: " + error.toString());
+    }
   }
 }
 

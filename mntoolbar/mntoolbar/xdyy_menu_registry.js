@@ -479,107 +479,110 @@ function registerAllMenuTemplates() {
 
   // menu_card
   global.registerMenuTemplate("menu_card", {
-    action: "menu",
-    menuWidth: 250,
-    menuItems: [
-      {
-        action: "copyMarkdownVersionFocusNoteURL",
-        menuTitle: "复制 Markdown 类型的卡片 URL",
-      },
-      {
-        action: "toBeIndependent",
-        menuTitle: "⇨ 独立",
-      },
-      {
-        action: "copyFocusNotesIdArr",
-        menuTitle: "复制卡片🆔",
-      },
-      {
-        action: "copyFocusNotesURLArr",
-        menuTitle: "复制卡片 URL",
-      },
-      // {
-      //   action: "pasteAsChildNotesByIdArrFromClipboard",
-      //   menuTitle: "复制卡片🆔后，剪切到选中卡片",
-      // },
-      {
-        action: "getNewClassificationInformation",
-        menuTitle: "更新卡片归类情况到选中的卡片中",
-      },
-      {
-        action: "menu",
-        menuTitle: "➡️ 处理旧卡片",
-        menuWidth: 250,
-        menuItems: [
-          {
-            action: "renewCards",
-            menuTitle: "🔄 更新旧卡片"
-          },
-          {
-            action: "reappendAllLinksInNote",
-            menuTitle: "🔄 卡片的所有链接重新链接",
-          },
-          // {
-          //   action: "linksConvertToMN4Type",
-          //   menuTitle: "mn3 链接 → mn4 链接",
-          // },
-          {
-            action: "clearAllFailedLinks",
-            menuTitle: "清空失效链接",
-          }
-        ]
-      },
-      {
-        action: "menu",
-        menuTitle: "➡️ 清空评论",
-        menuWidth: 260,
-        menuItems: [
-          {
-            action: "clearContentKeepExcerptWithTitle",
-            menuTitle: "✅ 摘录 ✅ 标题",
-          },
-          {
-            action: "clearContentKeepExcerpt",
-            menuTitle: "✅ 摘录 ❌ 标题",
-          },
-          {
-            action: "clearContentKeepExcerptAndImage",
-            menuTitle: "✅ 摘录 ✅ 图片 ❌ 标题",
-          },
-          {
-            action: "clearContentKeepText",
-            menuTitle: "❌ 摘录 ✅ 文字 ❌ 标题",
-          }
-        ]
-      },
-      {
-        action: "menu",
-        menuTitle: "➡️ 剪切、合并",
-        menuWidth: 260,
-        menuItems: [
-          {
-            action: "cutNote",
-            menuTitle: "剪切选中的卡片",
-          },
-          {
-            action: "cutoutSelctionCards",
-            menuTitle: "剪切选中的卡片以及子卡片",
-          },
-          {
-            action: "mergeIntoOneNoteByPopup",
-            menuTitle: "合并到第一张卡片：弹窗选择类型",
-          },
-        ]
-      },
-      {
-        action: "openAsFloatWindow",
-        menuTitle: "作为浮窗打开",
-      },
-      {
-        action: "copyAsReference",
-        menuTitle: "复制含标题的 URL",
-      }
-    ]
+    action: "copyMarkdownVersionFocusNoteURL",
+    onLongPress: {
+      action: "menu",
+      menuWidth: 250,
+      menuItems: [
+        // {
+        //   action: "copyMarkdownVersionFocusNoteURL",
+        //   menuTitle: "复制 Markdown 类型的卡片 URL",
+        // },
+        {
+          action: "toBeIndependent",
+          menuTitle: "⇨ 独立",
+        },
+        {
+          action: "copyFocusNotesIdArr",
+          menuTitle: "复制卡片🆔",
+        },
+        {
+          action: "copyFocusNotesURLArr",
+          menuTitle: "复制卡片 URL",
+        },
+        // {
+        //   action: "pasteAsChildNotesByIdArrFromClipboard",
+        //   menuTitle: "复制卡片🆔后，剪切到选中卡片",
+        // },
+        {
+          action: "getNewClassificationInformation",
+          menuTitle: "更新卡片归类情况到选中的卡片中",
+        },
+        {
+          action: "menu",
+          menuTitle: "➡️ 处理旧卡片",
+          menuWidth: 250,
+          menuItems: [
+            {
+              action: "renewCards",
+              menuTitle: "🔄 更新旧卡片"
+            },
+            {
+              action: "reappendAllLinksInNote",
+              menuTitle: "🔄 卡片的所有链接重新链接",
+            },
+            // {
+            //   action: "linksConvertToMN4Type",
+            //   menuTitle: "mn3 链接 → mn4 链接",
+            // },
+            {
+              action: "clearAllFailedLinks",
+              menuTitle: "清空失效链接",
+            }
+          ]
+        },
+        {
+          action: "menu",
+          menuTitle: "➡️ 清空评论",
+          menuWidth: 260,
+          menuItems: [
+            {
+              action: "clearContentKeepExcerptWithTitle",
+              menuTitle: "✅ 摘录 ✅ 标题",
+            },
+            {
+              action: "clearContentKeepExcerpt",
+              menuTitle: "✅ 摘录 ❌ 标题",
+            },
+            {
+              action: "clearContentKeepExcerptAndImage",
+              menuTitle: "✅ 摘录 ✅ 图片 ❌ 标题",
+            },
+            {
+              action: "clearContentKeepText",
+              menuTitle: "❌ 摘录 ✅ 文字 ❌ 标题",
+            }
+          ]
+        },
+        {
+          action: "menu",
+          menuTitle: "➡️ 剪切、合并",
+          menuWidth: 260,
+          menuItems: [
+            {
+              action: "cutNote",
+              menuTitle: "剪切选中的卡片",
+            },
+            {
+              action: "cutoutSelctionCards",
+              menuTitle: "剪切选中的卡片以及子卡片",
+            },
+            {
+              action: "mergeIntoOneNoteByPopup",
+              menuTitle: "合并到第一张卡片：弹窗选择类型",
+            },
+          ]
+        },
+        {
+          action: "openAsFloatWindow",
+          menuTitle: "作为浮窗打开",
+        },
+        {
+          action: "copyAsReference",
+          menuTitle: "复制含标题的 URL",
+        }
+      ]
+    }
   });
 
   // menu_card_workflow
@@ -752,12 +755,7 @@ function registerAllMenuTemplates() {
 
   // TemplateMakeNotes
   global.registerMenuTemplate("TemplateMakeNotes", {
-    doubleClick: {
-      action: "mergeTemplateNotes"
-    },
     action: "menu",
-    // onLongPress: {
-      // action: "menu",
     menuWidth: 320,
     menuItems: [
       "⬇️ 合并",

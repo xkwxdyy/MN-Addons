@@ -638,4 +638,43 @@ JSB.defineClass("YourPlugin : JSExtension", {
 2. 或者避免在注释示例中使用包含注释符号的字符串
 3. 使用 `node -c filename.js` 验证语法正确性
 
+### MNMath 类开发陷阱（卡片类型转换）
+
+在实现卡片类型转换时的字段替换功能时，要特别注意以下问题：
+
+#### 场景说明
+当卡片通过移动到不同归类卡片下方来改变类型时（如从"例子"转换为"反例"），需要替换第一个 HtmlComment 字段以匹配新类型。
+
+#### 常见错误
+
+1. **错误理解类型转换机制**
+   - ❌ 错误：认为是通过修改标题来转换类型
+   - ✅ 正确：通过移动卡片到不同归类卡片下方，`getNoteType` 会根据归类卡片返回新类型
+
+2. **错误使用 API**
+   - ❌ 错误：`note.note.insertCommentToIndex(comment, index)` - 此方法不存在
+   - ✅ 正确：使用 `cloneAndMergeById` + `moveComment` 的组合
+
+3. **错误访问属性**
+   - ❌ 错误：`firstFieldObj.fieldIndex`、`firstFieldObj.field` - 这些属性不存在
+   - ✅ 正确：使用 `firstFieldObj.index` 和 `firstFieldObj.text`
+
+#### 正确实现方式
+```javascript
+// 1. 删除原字段
+note.removeCommentByIndex(firstFieldIndex);
+
+// 2. 克隆并合并新字段模板
+this.cloneAndMergeById(note, templateNoteId);
+
+// 3. 将新字段移动到原位置
+let newFieldIndex = note.comments.length - 1;
+note.moveComment(newFieldIndex, firstFieldIndex);
+```
+
+#### 调试建议
+- 使用 `MNUtil.log()` 输出关键信息，便于追踪执行流程
+- 检查 `parseNoteComments` 返回的数据结构，了解可用属性
+- 参考现有的类似实现（如 `mergeTemplate` 方法）
+
 > 💡 **提示**：开发前请先仔细阅读对应子项目的 CLAUDE.md 文件，它们包含了更详细的技术实现和规范要求。

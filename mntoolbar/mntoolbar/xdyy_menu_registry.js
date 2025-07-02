@@ -731,6 +731,11 @@ function registerAllMenuTemplates() {
       action: "menu",
       menuWidth: 320,
       menuItems: [
+        "🪄 制卡",
+        {
+          action: "makeCardWithoutFocus",
+          menuTitle: "    不定位制卡"
+        },
         "🪄 生成卡片",
         {
           action: "addNewIdeaNote",

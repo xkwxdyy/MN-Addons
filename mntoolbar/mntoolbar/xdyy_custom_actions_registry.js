@@ -4524,6 +4524,17 @@ function registerAllCustomActions() {
     });
   });
 
+  global.registerCustomAction("makeCardWithoutFocus", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    MNUtil.undoGrouping(() => {
+      try {
+        MNMath.makeCard(focusNote, true, true, false);
+      } catch (error) {
+        MNUtil.showHUD(error);
+      }
+    });
+  })
+
 }
 
 // 立即注册

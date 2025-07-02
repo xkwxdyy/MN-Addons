@@ -251,7 +251,7 @@ class MNMath {
   /**
    * 制卡（只支持非摘录版本）
    */
-  static makeCard(note, addToReview = true, reviewEverytime = true) {
+  static makeCard(note, addToReview = true, reviewEverytime = true, focusInMindMap = true) {
     this.renewNote(note) // 处理旧卡片
     this.mergeTemplateAndAutoMoveNoteContent(note) // 合并模板卡片并自动移动内容
     this.changeTitle(note) // 修改卡片标题
@@ -263,22 +263,24 @@ class MNMath {
     if (addToReview) {
       this.addToReview(note, reviewEverytime) // 加入复习
     }
-    MNUtil.undoGrouping(()=>{
-      note.focusInMindMap()
-    })
+    if (focusInMindMap) {
+      MNUtil.undoGrouping(()=>{
+        note.focusInMindMap()
+      })
+    }
   }
 
   /**
    * 一键制卡（支持摘录版本）
    */
-  static makeNote(note, addToReview = true, reviewEverytime = true) {
+  static makeNote(note, addToReview = true, reviewEverytime = true, focusInMindMap = true) {
     if (note.excerptText) {
       let newnote = this.toNoExceptVersion(note)
       newnote.focusInMindMap(0.5)
       MNUtil.delay(0.5).then(()=>{
         note = MNNote.getFocusNote()
         MNUtil.delay(0.5).then(()=>{
-          this.makeCard(note, addToReview, reviewEverytime) // 制卡
+          this.makeCard(note, addToReview, reviewEverytime, focusInMindMap) // 制卡
         })
         MNUtil.undoGrouping(()=>{
           // this.refreshNote(note)

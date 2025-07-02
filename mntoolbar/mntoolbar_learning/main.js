@@ -2153,6 +2153,7 @@ JSB.newAddon = function (mainPath) {
   MNTaskClass.prototype.ensureView = function (refresh = true) {
     try {
       // 🆕 如果控制器不存在，创建它
+      // 注：这个在 toolbar 里就是跟随卡片的那个工具条
       if (!this.addonController) {
         this.addonController = taskController.new();
         this.addonController.view.hidden = true;  // 先隐藏
@@ -2176,7 +2177,6 @@ JSB.newAddon = function (mainPath) {
       }
       
       // 📐 设置工具栏的位置和大小
-      let targetFrame  // 这个变量好像没用到
       
       if (this.lastFrame) {
         // 使用上次的位置
@@ -2192,6 +2192,7 @@ JSB.newAddon = function (mainPath) {
         this.addonController.setFrame(taskConfig.windowState.frame)
         
         // 恢复显示/隐藏状态
+        // 注：这里是 hidden，所以后面取反
         this.addonController.view.hidden = !taskConfig.getWindowState("open");
         
         // 不是第一次了

@@ -124,9 +124,9 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
         self.init()
         
         // 设置窗口初始位置和大小
-        // pluginDemoFrame 是一个工具类，用于设置视图的位置和大小
+        // taskFrame 是一个工具类，用于设置视图的位置和大小
         // 参数：(视图, x坐标, y坐标, 宽度, 高度)
-        pluginDemoFrame.set(self.view,50,50,355,500)
+        taskFrame.set(self.view,50,50,355,500)
         
         // 保存初始尺寸，用于窗口最大化/还原功能
         self.lastFrame = self.view.frame;
@@ -211,12 +211,12 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     // self.settingController.view.hidden = false
     
     // 初始化时默认选中第一个按钮
-    // pluginDemoConfig.action 是当前配置的按钮列表
-    self.selectedItem = pluginDemoConfig.action[0]
+    // taskConfig.action 是当前配置的按钮列表
+    self.selectedItem = taskConfig.action[0]
     
     // 获取所有可用的动作（按钮）
     // 将用户配置的按钮和默认按钮合并
-    let allActions = pluginDemoConfig.action.concat(pluginDemoConfig.getDefaultActionKeys().slice(pluginDemoConfig.action.length))
+    let allActions = taskConfig.action.concat(taskConfig.getDefaultActionKeys().slice(taskConfig.action.length))
 
     try {
       // 设置按钮列表的显示
@@ -232,8 +232,8 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       self.settingView.hidden = false
     } catch (error) {  
       // 记录错误日志
-      // pluginDemoUtils.addErrorLog 会将错误保存到文件中，方便调试
-      pluginDemoUtils.addErrorLog(error, "viewDidLoad.setButtonText", info)
+      // taskUtils.addErrorLog 会将错误保存到文件中，方便调试
+      taskUtils.addErrorLog(error, "viewDidLoad.setButtonText", info)
     }
   },
   /**
@@ -300,7 +300,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     
     return true;  // 其他 URL 正常加载
     } catch (error) {
-      pluginDemoUtils.addErrorLog(error, "webViewShouldStartLoadWithRequestNavigationType")
+      taskUtils.addErrorLog(error, "webViewShouldStartLoadWithRequestNavigationType")
       return false
     }
   },
@@ -322,16 +322,16 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     let isEditingDynamic = self.dynamicButton.selected
     
     // 动态工具栏需要订阅才能使用
-    if (isEditingDynamic && !pluginDemoUtils.checkSubscribe(true)) {
+    if (isEditingDynamic && !taskUtils.checkSubscribe(true)) {
       self.showHUD("Please subscribe to use this feature")
       return
     }
     
     // 获取所有按钮（根据是否编辑动态工具栏）
-    let allActions = pluginDemoConfig.getAllActions(isEditingDynamic)
+    let allActions = taskConfig.getAllActions(isEditingDynamic)
     
     // 将选中的按钮移动到顶部
-    pluginDemoUtils.moveElement(allActions, self.selectedItem, "top")
+    taskUtils.moveElement(allActions, self.selectedItem, "top")
     
     // 更新显示
     self.setButtonText(allActions,self.selectedItem)
@@ -339,16 +339,16 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     // 保存配置并更新工具栏
     if (isEditingDynamic) {
       // 更新动态工具栏
-      if (self.pluginDemoController.dynamicTask) {
-        self.pluginDemoController.dynamicTask.setTaskButton(allActions)
+      if (self.taskController.dynamicTask) {
+        self.taskController.dynamicTask.setTaskButton(allActions)
       }
-      pluginDemoConfig.dynamicAction = allActions
-      pluginDemoConfig.save("MNTask_dynamicAction")
+      taskConfig.dynamicAction = allActions
+      taskConfig.save("MNTask_dynamicAction")
     }else{
       // 更新固定工具栏
-      self.pluginDemoController.setTaskButton(allActions)
-      pluginDemoConfig.action = allActions
-      pluginDemoConfig.save("MNTask_action")
+      self.taskController.setTaskButton(allActions)
+      taskConfig.action = allActions
+      taskConfig.save("MNTask_action")
     }
   },
   /**
@@ -377,16 +377,16 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     let isEditingDynamic = self.dynamicButton.selected
     
     // 动态工具栏功能需要订阅
-    if (isEditingDynamic && !pluginDemoUtils.checkSubscribe(true)) {
+    if (isEditingDynamic && !taskUtils.checkSubscribe(true)) {
       self.showHUD("Please subscribe to use this feature")
       return
     }
     
     // 获取当前所有按钮列表
-    let allActions = pluginDemoConfig.getAllActions(isEditingDynamic)
+    let allActions = taskConfig.getAllActions(isEditingDynamic)
     
     // 执行移动操作：将选中项向上（向前）移动一位
-    pluginDemoUtils.moveElement(allActions, self.selectedItem, "up")
+    taskUtils.moveElement(allActions, self.selectedItem, "up")
     
     // 更新界面显示
     self.setButtonText(allActions,self.selectedItem)
@@ -394,19 +394,19 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     // 根据编辑模式保存配置
     if (isEditingDynamic) {
       // 更新动态工具栏
-      if (self.pluginDemoController.dynamicTask) {
-        self.pluginDemoController.dynamicTask.setTaskButton(allActions)
+      if (self.taskController.dynamicTask) {
+        self.taskController.dynamicTask.setTaskButton(allActions)
       }
-      pluginDemoConfig.dynamicAction = allActions
-      pluginDemoConfig.save("MNTask_dynamicAction")
+      taskConfig.dynamicAction = allActions
+      taskConfig.save("MNTask_dynamicAction")
     }else{
       // 更新固定工具栏
-      self.pluginDemoController.setTaskButton(allActions)
-      pluginDemoConfig.action = allActions
-      pluginDemoConfig.save("MNTask_action")
+      self.taskController.setTaskButton(allActions)
+      taskConfig.action = allActions
+      taskConfig.save("MNTask_action")
     }
     } catch (error) {
-      pluginDemoUtils.addErrorLog(error, "moveForwardTapped")
+      taskUtils.addErrorLog(error, "moveForwardTapped")
     }
   },
   /**
@@ -434,33 +434,33 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     try {
 
     let isEditingDynamic = self.dynamicButton.selected
-    if (isEditingDynamic && !pluginDemoUtils.checkSubscribe(true)) {
+    if (isEditingDynamic && !taskUtils.checkSubscribe(true)) {
       self.showHUD("Please subscribe to use this feature")
       return
     }
     
-    let allActions = pluginDemoConfig.getAllActions(isEditingDynamic)
+    let allActions = taskConfig.getAllActions(isEditingDynamic)
     
     // 执行移动操作：将选中项向下（向后）移动一位
     // 注意：这里有个 -0，可能是之前的代码遗留，实际没有作用
-    pluginDemoUtils.moveElement(allActions, self.selectedItem, "down")-0
+    taskUtils.moveElement(allActions, self.selectedItem, "down")-0
     
     self.setButtonText(allActions,self.selectedItem)
     
     // 同步更新工具栏显示
     if (isEditingDynamic) {
-      if (self.pluginDemoController.dynamicTask) {
-        self.pluginDemoController.dynamicTask.setTaskButton(allActions)
+      if (self.taskController.dynamicTask) {
+        self.taskController.dynamicTask.setTaskButton(allActions)
       }
-      pluginDemoConfig.dynamicAction = allActions
-      pluginDemoConfig.save("MNTask_dynamicAction")
+      taskConfig.dynamicAction = allActions
+      taskConfig.save("MNTask_dynamicAction")
     }else{
-      self.pluginDemoController.setTaskButton(allActions)
-      pluginDemoConfig.action = allActions
-      pluginDemoConfig.save("MNTask_action")
+      self.taskController.setTaskButton(allActions)
+      taskConfig.action = allActions
+      taskConfig.save("MNTask_action")
     }
     } catch (error) {
-      pluginDemoUtils.addErrorLog(error, "moveBackwardTapped")
+      taskUtils.addErrorLog(error, "moveBackwardTapped")
     }
   },
   /**
@@ -538,7 +538,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
           // 最危险的操作，需要用户确认
           let confirm = await MNUtil.confirm("MN Task: Clear all configs?", "MN Task: 清除所有配置？")
           if (confirm) {
-            pluginDemoConfig.reset("config")
+            taskConfig.reset("config")
             self.setButtonText()  // 刷新按钮列表
             self.setTextview()    // 刷新配置显示
             MNUtil.showHUD("Reset prompts")
@@ -547,7 +547,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
           
         case "order":
           // 重置固定工具栏的按钮顺序
-          pluginDemoConfig.reset("order")
+          taskConfig.reset("order")
           if (!isEditingDynamic) {
             self.setButtonText()  // 只在查看固定工具栏时刷新
           }
@@ -556,7 +556,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
           
         case "dynamicOrder":
           // 重置动态工具栏的按钮顺序
-          pluginDemoConfig.reset("dynamicOrder")
+          taskConfig.reset("dynamicOrder")
           if (isEditingDynamic) {
             self.setButtonText()  // 只在查看动态工具栏时刷新
           }
@@ -565,14 +565,14 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
           
         case "image":
           // 重置所有按钮图标
-          pluginDemoConfig.imageScale = {}  // 清除缩放设置
-          pluginDemoConfig.save("MNTask_imageScale")
+          taskConfig.imageScale = {}  // 清除缩放设置
+          taskConfig.save("MNTask_imageScale")
           
           // 重新加载所有默认图标
-          let keys = pluginDemoConfig.getDefaultActionKeys()
+          let keys = taskConfig.getDefaultActionKeys()
           keys.forEach((key)=>{
             // 从插件目录加载默认图标
-            pluginDemoConfig.imageConfigs[key] = MNUtil.getImage(pluginDemoConfig.mainPath+"/"+pluginDemoConfig.getAction(key).image+".png")
+            taskConfig.imageConfigs[key] = MNUtil.getImage(taskConfig.mainPath+"/"+taskConfig.getAction(key).image+".png")
           })
           
           // 通知工具栏刷新显示
@@ -655,9 +655,9 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     
     // 计算目标尺寸
     // macOS 上留一些边距，iOS 上全屏
-    let targetFrame = pluginDemoFrame.gen(40, 0, frame.width-80, frame.height)
+    let targetFrame = taskFrame.gen(40, 0, frame.width-80, frame.height)
     if (MNUtil.isIOS) {
-      targetFrame = pluginDemoFrame.gen(0, 0, frame.width, frame.height)
+      targetFrame = taskFrame.gen(0, 0, frame.width, frame.height)
     }
     
     // 执行最大化动画
@@ -693,11 +693,11 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
    */
   changePopupReplace: function (button) {
     // 获取所有可用的动作列表
-    let allActions = pluginDemoConfig.getAllActions()
+    let allActions = taskConfig.getAllActions()
     
     // 将每个动作转换为菜单项
     var commandTable = allActions.map(actionKey=>{
-      let actionName = pluginDemoConfig.getAction(actionKey).name
+      let actionName = taskConfig.getAction(actionKey).name
       return {
         title:actionName,                    // 菜单项显示的文字
         object:self,                         // 回调对象
@@ -740,13 +740,13 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     
     try {
       // 获取当前弹出按钮的配置
-      let popupConfig = pluginDemoConfig.getPopupConfig(config.id)
+      let popupConfig = taskConfig.getPopupConfig(config.id)
       
       // 更新目标动作
       popupConfig.target = config.target
       
       // 保存到配置对象
-      pluginDemoConfig.popupConfig[config.id] = popupConfig
+      taskConfig.popupConfig[config.id] = popupConfig
       
       // 更新 UI 显示
       let buttonName = "replacePopupButton_"+config.id
@@ -758,9 +758,9 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       })
       
       // 保存配置到本地存储
-      pluginDemoConfig.save("MNTask_popupConfig")
+      taskConfig.save("MNTask_popupConfig")
     } catch (error) {
-      pluginDemoUtils.addErrorLog(error, "setPopupReplace")
+      taskUtils.addErrorLog(error, "setPopupReplace")
     }
   },
   /**
@@ -779,7 +779,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
    */
   togglePopupReplace: function (button) {
     // 获取当前弹出按钮的配置
-    let popupConfig = pluginDemoConfig.getPopupConfig(button.id)
+    let popupConfig = taskConfig.getPopupConfig(button.id)
     
     // 根据开关状态更新启用状态
     if (button.on) {
@@ -789,8 +789,8 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     }
     
     // 保存配置
-    pluginDemoConfig.popupConfig[button.id] = popupConfig
-    pluginDemoConfig.save("MNTask_popupConfig")
+    taskConfig.popupConfig[button.id] = popupConfig
+    taskConfig.save("MNTask_popupConfig")
   },
   /**
    * 处理拖动手势，实现窗口移动
@@ -800,12 +800,12 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
    */
   onMoveGesture:function (gesture) {
     // 获取手指在学习视图中的位置
-    let locationToMN = gesture.locationInView(pluginDemoUtils.studyController().view)
+    let locationToMN = gesture.locationInView(taskUtils.studyController().view)
     
     // 防抖处理：避免过于频繁的更新
     if (!self.locationToButton || !self.miniMode && (Date.now() - self.moveDate) > 100) {
       // 获取手势的移动量
-      let translation = gesture.translationInView(pluginDemoUtils.studyController().view)
+      let translation = gesture.translationInView(taskUtils.studyController().view)
       
       // 获取手指在不同坐标系中的位置
       let locationToBrowser = gesture.locationInView(self.view)  // 相对于设置窗口
@@ -833,20 +833,20 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     let studyFrame = MNUtil.studyView.bounds
     
     // 使用 constrain 函数限制窗口位置，防止移出屏幕
-    let y = pluginDemoUtils.constrain(location.y, 0, studyFrame.height-15)
-    let x = pluginDemoUtils.constrain(location.x, 0, studyFrame.width-15)
+    let y = taskUtils.constrain(location.y, 0, studyFrame.height-15)
+    let x = taskUtils.constrain(location.x, 0, studyFrame.width-15)
     
     // 如果之前是全屏模式，拖动时还原到原来大小
     if (self.custom) {
       self.customMode = "None"
       MNUtil.animate(()=>{
-        pluginDemoFrame.set(self.view,x,y,self.lastFrame.width,self.lastFrame.height)
+        taskFrame.set(self.view,x,y,self.lastFrame.width,self.lastFrame.height)
         self.currentFrame  = self.view.frame
         self.settingViewLayout()
       },0.1)  // 0.1秒的快速动画
     }else{
       // 正常拖动，直接设置位置
-      pluginDemoFrame.set(self.view,x,y)
+      taskFrame.set(self.view,x,y)
       self.currentFrame  = self.view.frame
     }
     self.custom = false;
@@ -870,15 +870,15 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     // 计算新的宽度和高度
     // 加上 0.3 倍的按钮大小作为边距
     // constrain 函数确保尺寸在最小值和最大值之间
-    let width = pluginDemoUtils.constrain(locationToBrowser.x+baseframe.width*0.3, 
+    let width = taskUtils.constrain(locationToBrowser.x+baseframe.width*0.3, 
                                           355,  // 最小宽度
                                           MNUtil.studyView.frame.width)  // 最大宽度
-    let height = pluginDemoUtils.constrain(locationToBrowser.y+baseframe.height*0.3, 
+    let height = taskUtils.constrain(locationToBrowser.y+baseframe.height*0.3, 
                                            475,  // 最小高度
                                            MNUtil.studyView.frame.height) // 最大高度
     
     // 设置新的窗口大小
-    pluginDemoFrame.setSize(self.view,width,height)
+    taskFrame.setSize(self.view,width,height)
     self.currentFrame  = self.view.frame
   },
   /**
@@ -1006,7 +1006,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     MNButton.setColor(self.popupButton, "#9bb2d6", 0.8)     // 正常颜色
     
     // 加载并显示固定工具栏的按钮列表
-    let action = pluginDemoConfig.action
+    let action = taskConfig.action
     self.setButtonText(action)
   },
   /**
@@ -1036,17 +1036,17 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     let self = getSettingController()
     
     // 检查是否启用了动态顺序功能
-    let dynamicOrder = pluginDemoConfig.getWindowState("dynamicOrder")
+    let dynamicOrder = taskConfig.getWindowState("dynamicOrder")
     if (!dynamicOrder) {
       self.showHUD("Enable Dynamic Order first")  // 提示用户先启用
       return
     }
     
     // 获取动态工具栏配置
-    let dynamicAction = pluginDemoConfig.dynamicAction
+    let dynamicAction = taskConfig.dynamicAction
     if (dynamicAction.length === 0) {
       // 如果还没有配置过，复制固定工具栏的配置
-      pluginDemoConfig.dynamicAction = pluginDemoConfig.action
+      taskConfig.dynamicAction = taskConfig.action
     }
     
     // 显示配置视图
@@ -1092,19 +1092,19 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     let self = getSettingController()
     
     // 获取按钮的 X 坐标（相对于 studyView）
-    let buttonX = pluginDemoUtils.getButtonFrame(button).x
+    let buttonX = taskUtils.getButtonFrame(button).x
     
     // 获取当前选中的按钮
     let selected = self.selectedItem
     
     // 获取该按钮可用的模板列表
-    let templateNames = pluginDemoUtils.getTempelateNames(selected)
+    let templateNames = taskUtils.getTempelateNames(selected)
     if (!templateNames) {
       return  // 没有可用模板
     }
     
     // 构建菜单项
-    var templates = pluginDemoUtils.template
+    var templates = taskUtils.template
     var commandTable = templateNames.map((templateName,index)=>{
       return {
         title:templateName,              // 模板名称
@@ -1169,7 +1169,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     let selected = self.selectedItem
     
     // 检查是否可以编辑这个按钮
-    if (!pluginDemoConfig.checkCouldSave(selected)) {
+    if (!taskConfig.checkCouldSave(selected)) {
       return
     }
     
@@ -1183,7 +1183,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       // 显示成功提示
       MNUtil.showHUD("Copy config")
     } catch (error) {
-      pluginDemoUtils.addErrorLog(error, "configCopyTapped", info)
+      taskUtils.addErrorLog(error, "configCopyTapped", info)
     }
   },
   /**
@@ -1213,7 +1213,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     let selected = self.selectedItem
     
     // 检查是否可以编辑
-    if (!pluginDemoConfig.checkCouldSave(selected)) {
+    if (!taskConfig.checkCouldSave(selected)) {
       return
     }
     
@@ -1224,22 +1224,22 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       // 验证格式：execute 类型或有效的 JSON
       if (selected === "execute" || MNUtil.isValidJSON(input)) {
         // 初始化配置对象（如果不存在）
-        if (!pluginDemoConfig.actions[selected]) {
-          pluginDemoConfig.actions[selected] = pluginDemoConfig.getAction(selected)
+        if (!taskConfig.actions[selected]) {
+          taskConfig.actions[selected] = taskConfig.getAction(selected)
         }
         
         // 更新配置
-        pluginDemoConfig.actions[selected].description = input
-        pluginDemoConfig.actions[selected].name = self.titleInput.text
+        taskConfig.actions[selected].description = input
+        taskConfig.actions[selected].name = self.titleInput.text
         
         // 同步到工具栏
-        self.pluginDemoController.actions = pluginDemoConfig.actions
-        if (self.pluginDemoController.dynamicTask) {
-          self.pluginDemoController.dynamicTask.actions = pluginDemoConfig.actions
+        self.taskController.actions = taskConfig.actions
+        if (self.taskController.dynamicTask) {
+          self.taskController.dynamicTask.actions = taskConfig.actions
         }
         
         // 保存到本地
-        pluginDemoConfig.save("MNTask_actionConfig")
+        taskConfig.save("MNTask_actionConfig")
         
         // 显示不同的提示
         if (!selected.includes("custom")) {
@@ -1252,7 +1252,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
         if (selected === "edit") {
           let config = JSON.parse(input)
           if ("showOnNoteEdit" in config) {
-            pluginDemoConfig.showEditorOnNoteEdit = config.showOnNoteEdit
+            taskConfig.showEditorOnNoteEdit = config.showOnNoteEdit
           }
         }
         
@@ -1264,7 +1264,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
         MNUtil.copy("Invalid JSON format: "+input)
       }
     } catch (error) {
-      pluginDemoUtils.addErrorLog(error, "configSaveTapped", info)
+      taskUtils.addErrorLog(error, "configSaveTapped", info)
     }
   },
   /**
@@ -1302,12 +1302,12 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     let selected = self.selectedItem
     
     // 检查是否可以保存（某些系统按钮可能不允许修改）
-    if (!pluginDemoConfig.checkCouldSave(selected)) {
+    if (!taskConfig.checkCouldSave(selected)) {
       return
     }
     
     try {
-    let actions = pluginDemoConfig.actions
+    let actions = taskConfig.actions
     
     // 从 WebView 获取用户编辑的 JSON 配置
     let input = await self.getWebviewContent()
@@ -1316,7 +1316,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     if (selected === "execute" || MNUtil.isValidJSON(input)) {
       // 如果是新配置，先获取默认配置
       if (!actions[selected]) {
-        actions[selected] = pluginDemoConfig.getAction(selected)
+        actions[selected] = taskConfig.getAction(selected)
       }
       
       // 更新配置
@@ -1324,13 +1324,13 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       actions[selected].name = self.titleInput.text            // 显示名称
       
       // 同步更新到工具栏
-      self.pluginDemoController.actions = actions
-      if (self.pluginDemoController.dynamicTask) {
-        self.pluginDemoController.dynamicTask.actions = actions
+      self.taskController.actions = actions
+      if (self.taskController.dynamicTask) {
+        self.taskController.dynamicTask.actions = actions
       }
       
       // 保存到本地
-      pluginDemoConfig.save("MNTask_actionConfig")
+      taskConfig.save("MNTask_actionConfig")
       
       // 显示不同的提示信息
       if (!selected.includes("custom")) {
@@ -1343,14 +1343,14 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       if (selected === "edit") {
         let config = JSON.parse(input)
         if ("showOnNoteEdit" in config) {
-          pluginDemoConfig.showEditorOnNoteEdit = config.showOnNoteEdit
+          taskConfig.showEditorOnNoteEdit = config.showOnNoteEdit
         }
       }
     }else{
       MNUtil.showHUD("Invalid JSON format!")
     }
     } catch (error) {
-      pluginDemoUtils.addErrorLog(error, "configSaveTapped", info)
+      taskUtils.addErrorLog(error, "configSaveTapped", info)
     }
   },
   /**
@@ -1391,7 +1391,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     let selected = self.selectedItem
     
     // 检查是否可以保存
-    if (!pluginDemoConfig.checkCouldSave(selected)) {
+    if (!taskConfig.checkCouldSave(selected)) {
       return
     }
     
@@ -1399,16 +1399,16 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     let input = await self.getWebviewContent()
     if (self.selectedItem === "execute" || MNUtil.isValidJSON(input)) {
       // 临时保存配置（同 configSaveTapped 的逻辑）
-      if (!pluginDemoConfig.actions[selected]) {
-        pluginDemoConfig.actions[selected] = pluginDemoConfig.getAction(selected)
+      if (!taskConfig.actions[selected]) {
+        taskConfig.actions[selected] = taskConfig.getAction(selected)
       }
-      pluginDemoConfig.actions[selected].description = input
-      pluginDemoConfig.actions[selected].name = self.titleInput.text
-      self.pluginDemoController.actions = pluginDemoConfig.actions
-      if (self.pluginDemoController.dynamicTask) {
-        self.pluginDemoController.dynamicTask.actions = pluginDemoConfig.actions
+      taskConfig.actions[selected].description = input
+      taskConfig.actions[selected].name = self.titleInput.text
+      self.taskController.actions = taskConfig.actions
+      if (self.taskController.dynamicTask) {
+        self.taskController.dynamicTask.actions = taskConfig.actions
       }
-      pluginDemoConfig.save("MNTask_actionConfig")
+      taskConfig.save("MNTask_actionConfig")
     }else{
       MNUtil.showHUD("Invalid JSON format!")
       return
@@ -1418,51 +1418,51 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     
     // 自定义按钮
     if (selected.includes("custom")) {
-      let des = pluginDemoConfig.getDescriptionByName(selected)
-      self.pluginDemoController.customActionByDes(button,des)
+      let des = taskConfig.getDescriptionByName(selected)
+      self.taskController.customActionByDes(button,des)
       return
     }
     
     // 颜色按钮
     if (selected.includes("color")) {
       let colorIndex = parseInt(selected.split("color")[1])  // 提取颜色索引
-      pluginDemoUtils.setColor(colorIndex)
+      taskUtils.setColor(colorIndex)
       return
     }
     
     // OCR 功能
     if (selected === "ocr") {
-      let des = pluginDemoConfig.getDescriptionByName("ocr")
+      let des = taskConfig.getDescriptionByName("ocr")
       des.action = "ocr"
-      self.pluginDemoController.customActionByDes(button,des)
+      self.taskController.customActionByDes(button,des)
       return
     }
     
     // 计时器功能
     if (selected === "timer") {
-      let des = pluginDemoConfig.getDescriptionByName("timer")
+      let des = taskConfig.getDescriptionByName("timer")
       des.action = "setTimer"
-      self.pluginDemoController.customActionByDes(button,des)
+      self.taskController.customActionByDes(button,des)
       return
     }
     
     // 侧边栏切换
     if (selected === "sidebar") {
-      let des = pluginDemoConfig.getDescriptionByName("sidebar")
-      pluginDemoUtils.toggleSidebar(des)
+      let des = taskConfig.getDescriptionByName("sidebar")
+      taskUtils.toggleSidebar(des)
       return
     }
     
     // AI 对话
     if (selected === "chatglm") {
-      pluginDemoUtils.chatAI()
+      taskUtils.chatAI()
       return
     }
 
     // 如果不是以上任何类型，显示不支持
     MNUtil.showHUD("Not supported")
   } catch (error) {
-    pluginDemoUtils.addErrorLog(error, "configRunTapped", info)
+    taskUtils.addErrorLog(error, "configRunTapped", info)
   }
   },
   /**
@@ -1550,7 +1550,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     self.checkPopoverController()  // 关闭弹出菜单
     
     // 检查订阅状态
-    if (pluginDemoUtils.checkSubscribe(true)) {
+    if (taskUtils.checkSubscribe(true)) {
       self.checkPopoverController()
       
       // 创建图片选择器
@@ -1594,7 +1594,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
   changeIconFromFile:async function (buttonName) {
     self.checkPopoverController()  // 关闭弹出菜单
     
-    if (pluginDemoUtils.checkSubscribe(true)) {
+    if (taskUtils.checkSubscribe(true)) {
       self.checkPopoverController()
       
       // 设置允许选择的文件类型（所有图片格式）
@@ -1607,7 +1607,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       let image = MNUtil.getImage(path,1)
       
       // 设置为按钮图标（true 表示是自定义图标）
-      pluginDemoConfig.setButtonImage(buttonName, image,true)
+      taskConfig.setButtonImage(buttonName, image,true)
     }
   },
   /**
@@ -1641,7 +1641,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
   changeIconFromWeb: function (url) {
     self.checkPopoverController()  // 关闭弹出菜单
     
-    if (pluginDemoUtils.checkSubscribe(false)) {
+    if (taskUtils.checkSubscribe(false)) {
       // 记录当前窗口大小，用于动画过渡
       let beginFrame = self.view.frame
       let endFrame = self.view.frame
@@ -1705,25 +1705,25 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     switch (res.button) {
       case 1:
         scale = 1
-        pluginDemoConfig.imageScale[buttonName].scale = 1
+        taskConfig.imageScale[buttonName].scale = 1
         break;
       case 2:
         scale = 2
-        pluginDemoConfig.imageScale[buttonName].scale = 2
+        taskConfig.imageScale[buttonName].scale = 2
         break;
       case 3:
         scale = 3
-        pluginDemoConfig.imageScale[buttonName].scale = 3
+        taskConfig.imageScale[buttonName].scale = 3
         break;
       default:
         break;
     }
     if (res.button === 4 && res.input.trim()) {
       scale = parseFloat(res.input.trim())
-      pluginDemoConfig.imageScale[buttonName].scale = scale
+      taskConfig.imageScale[buttonName].scale = scale
     }
-    let image = pluginDemoConfig.imageConfigs[buttonName]
-    pluginDemoConfig.imageConfigs[buttonName] = UIImage.imageWithDataScale(image.pngData(), scale)
+    let image = taskConfig.imageConfigs[buttonName]
+    taskConfig.imageConfigs[buttonName] = UIImage.imageWithDataScale(image.pngData(), scale)
     MNUtil.postNotification("refreshTaskButton", {})
   },
   /**
@@ -1755,25 +1755,25 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       self.checkPopoverController()  // 关闭弹出菜单
       
       // 清除图标缩放比例配置
-      pluginDemoConfig.imageScale[buttonName] = undefined
-      pluginDemoConfig.save("MNTask_imageScale")
+      taskConfig.imageScale[buttonName] = undefined
+      taskConfig.save("MNTask_imageScale")
       
       // 加载默认图标
-      let defaultImage = pluginDemoConfig.getAction(buttonName).image
-      let imagePath = pluginDemoConfig.mainPath + "/" + defaultImage + ".png"
-      pluginDemoConfig.imageConfigs[buttonName] = MNUtil.getImage(imagePath)
+      let defaultImage = taskConfig.getAction(buttonName).image
+      let imagePath = taskConfig.mainPath + "/" + defaultImage + ".png"
+      taskConfig.imageConfigs[buttonName] = MNUtil.getImage(imagePath)
       
       // 通知工具栏刷新按钮
       MNUtil.postNotification("refreshTaskButton", {})
       MNUtil.showHUD("Reset button image")
       
       // 曾经的功能：删除本地保存的自定义图标文件
-      // let filePath = pluginDemoConfig.imageScale[buttonName].path
-      // if (MNUtil.isfileExists(pluginDemoConfig.buttonImageFolder+"/"+filePath)) {
-      //   NSFileManager.defaultManager().removeItemAtPath(pluginDemoConfig.buttonImageFolder+"/"+filePath)
+      // let filePath = taskConfig.imageScale[buttonName].path
+      // if (MNUtil.isfileExists(taskConfig.buttonImageFolder+"/"+filePath)) {
+      //   NSFileManager.defaultManager().removeItemAtPath(taskConfig.buttonImageFolder+"/"+filePath)
       // }
     } catch (error) {
-      pluginDemoUtils.addErrorLog(error, "resetIcon")
+      taskUtils.addErrorLog(error, "resetIcon")
     }
   },
   /**
@@ -1812,7 +1812,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       
       // 设置为按钮图标
       // buttonName 之前在 changeIconFromPhoto 中保存到 ImagePickerController 上
-      pluginDemoConfig.setButtonImage(ImagePickerController.buttonName, image,true)
+      taskConfig.setButtonImage(ImagePickerController.buttonName, image,true)
     } catch (error) {
       MNUtil.showHUD(error)
     }
@@ -1854,14 +1854,14 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
    * @param {UIButton} button - 触发的按钮，其 addon 属性包含插件名
    */
   toggleAddonLogo:function (button) {
-    if (pluginDemoUtils.checkSubscribe(true)) {
+    if (taskUtils.checkSubscribe(true)) {
       let addonName = button.addon
       
       // 切换状态
-      pluginDemoConfig.addonLogos[addonName] = !pluginDemoConfig.checkLogoStatus(addonName)
+      taskConfig.addonLogos[addonName] = !taskConfig.checkLogoStatus(addonName)
       
       // 更新按钮显示
-      let isEnabled = pluginDemoConfig.checkLogoStatus(addonName)
+      let isEnabled = taskConfig.checkLogoStatus(addonName)
       button.setTitleForState(
         addonName + ": " + (isEnabled ? "✅" : "❌"),
         0
@@ -1875,7 +1875,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       )
       
       // 保存配置
-      pluginDemoConfig.save("MNTask_addonLogos")
+      taskConfig.save("MNTask_addonLogos")
       
       // 刷新插件命令，重新加载按钮
       MNUtil.refreshAddonCommands()
@@ -1914,7 +1914,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
    * @param {UIButton} button - 触发保存的按钮
    */
   saveButtonColor:function (button) {
-    if (!pluginDemoUtils.checkSubscribe(true)) {
+    if (!taskUtils.checkSubscribe(true)) {
       return
     }
     
@@ -1933,13 +1933,13 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     ]
     
     // 验证颜色格式
-    if (varColors.includes(color) || pluginDemoUtils.isHexColor(color)) {
+    if (varColors.includes(color) || taskUtils.isHexColor(color)) {
       // 保存颜色配置
-      pluginDemoConfig.buttonConfig.color = color
-      pluginDemoConfig.save("MNTask_buttonConfig")
+      taskConfig.buttonConfig.color = color
+      taskConfig.save("MNTask_buttonConfig")
       
       // 立即应用新颜色
-      self.pluginDemoController.setTaskButton()
+      self.taskController.setTaskButton()
       
       MNUtil.showHUD("Save color: " + color)
     } else {
@@ -1983,7 +1983,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
    */
   toggleICloudSync:async function () {
     // 检查订阅（不允许免费额度，未订阅会提醒）
-    if (!pluginDemoUtils.checkSubscribe(false,true,true)) {
+    if (!taskUtils.checkSubscribe(false,true,true)) {
       return
     }
     
@@ -1992,10 +1992,10 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     
     if (iCloudSync) {
       // 如果已开启，则关闭同步
-      pluginDemoConfig.syncConfig.iCloudSync = !iCloudSync
-      self.iCloudButton.setTitleForState("iCloud Sync "+(pluginDemoConfig.syncConfig.iCloudSync? "✅":"❌"),0)
-      MNButton.setColor(self.iCloudButton, pluginDemoConfig.syncConfig.iCloudSync?"#457bd3":"#9bb2d6",0.8)
-      pluginDemoConfig.save("MNTask_syncConfig",undefined,false)
+      taskConfig.syncConfig.iCloudSync = !iCloudSync
+      self.iCloudButton.setTitleForState("iCloud Sync "+(taskConfig.syncConfig.iCloudSync? "✅":"❌"),0)
+      MNButton.setColor(self.iCloudButton, taskConfig.syncConfig.iCloudSync?"#457bd3":"#9bb2d6",0.8)
+      taskConfig.save("MNTask_syncConfig",undefined,false)
     } else {
       // 如果未开启，显示导入/导出选项
       let direction = await MNUtil.userSelect(
@@ -2011,24 +2011,24 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
           
         case 2:
           // 导出到 iCloud
-          pluginDemoConfig.writeCloudConfig(true,true)
+          taskConfig.writeCloudConfig(true,true)
           MNUtil.showHUD("Export to iCloud")
           break;
           
         case 1:
           // 从 iCloud 导入
-          pluginDemoConfig.readCloudConfig(true,false,true)
+          taskConfig.readCloudConfig(true,false,true)
           MNUtil.showHUD("Import from iCloud")
           
           // 更新 UI
-          let allActions = pluginDemoConfig.getAllActions()
+          let allActions = taskConfig.getAllActions()
           self.setButtonText(allActions,self.selectedItem)
           
           // 更新工具栏
-          if (self.pluginDemoController) {
-            self.pluginDemoController.setTaskButton(allActions)
+          if (self.taskController) {
+            self.taskController.setTaskButton(allActions)
           }else{
-            MNUtil.showHUD("No pluginDemoController")
+            MNUtil.showHUD("No taskController")
           }
           
           // 通知其他组件刷新
@@ -2040,10 +2040,10 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
       }
       
       // 操作完成后开启同步
-      pluginDemoConfig.syncConfig.iCloudSync = true
+      taskConfig.syncConfig.iCloudSync = true
       self.iCloudButton.setTitleForState("iCloud Sync ✅",0)
       MNButton.setColor(self.iCloudButton, "#457bd3",0.8)
-      pluginDemoConfig.save("MNTask_syncConfig")
+      taskConfig.save("MNTask_syncConfig")
     }
   },
   /**
@@ -2107,7 +2107,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
    * 4️⃣ File
    *    - 导出为 .json 文件
    *    - 保存到用户选择的位置
-   *    - 文件名：pluginDemo_config.json
+   *    - 文件名：task_config.json
    * 
    * @param {string} param - 导出方式（"iCloud", "clipboard", "currentNote", "file"）
    */
@@ -2115,17 +2115,17 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     self.checkPopoverController()  // 关闭弹出菜单
     
     // 检查订阅状态
-    if (!pluginDemoUtils.checkSubscribe(true)) {
+    if (!taskUtils.checkSubscribe(true)) {
       return
     }
     
     // 获取所有配置
-    let allConfig = pluginDemoConfig.getAllConfig()
+    let allConfig = taskConfig.getAllConfig()
     
     switch (param) {
       case "iCloud":
         // 写入 iCloud
-        pluginDemoConfig.writeCloudConfig(true,true)
+        taskConfig.writeCloudConfig(true,true)
         break;
         
       case "clipborad":  // 注意：这里有拼写错误，但保持原样以兼容
@@ -2150,7 +2150,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
         
       case "file":
         // 导出为文件
-        let filePath = pluginDemoConfig.mainPath+"/pluginDemo_config.json"
+        let filePath = taskConfig.mainPath+"/task_config.json"
         MNUtil.writeJSON(filePath,allConfig)
         // 让用户选择保存位置
         MNUtil.saveFile(filePath,["public.json"])
@@ -2233,7 +2233,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     self.checkPopoverController()  // 关闭弹出菜单
     
     // 检查订阅（可以使用免费额度）
-    if (!pluginDemoUtils.checkSubscribe(true)) {
+    if (!taskUtils.checkSubscribe(true)) {
       return
     }
     
@@ -2242,19 +2242,19 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     switch (param) {
       case "iCloud":
         // iCloud 导入有特殊处理流程
-        pluginDemoConfig.readCloudConfig(true,false,true)
-        let allActions = pluginDemoConfig.getAllActions()
+        taskConfig.readCloudConfig(true,false,true)
+        let allActions = taskConfig.getAllActions()
         self.setButtonText(allActions,self.selectedItem)
         
         // 更新工具栏
-        if (self.pluginDemoController) {
-          self.pluginDemoController.setFrame(pluginDemoConfig.getWindowState("frame"))
-          self.pluginDemoController.setTaskButton(allActions)
+        if (self.taskController) {
+          self.taskController.setFrame(taskConfig.getWindowState("frame"))
+          self.taskController.setTaskButton(allActions)
         }else{
           MNUtil.showHUD("No addonController")
         }
         
-        pluginDemoConfig.save()
+        taskConfig.save()
         MNUtil.postNotification("refreshView",{})
         return;  // iCloud 处理完成，直接返回
         
@@ -2270,7 +2270,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
         let focusNote = MNNote.getFocusNote()
         if(focusNote && focusNote.noteTitle == "MNTask_Config"){
           // 从 Markdown 代码块中提取 JSON
-          config = pluginDemoUtils.extractJSONFromMarkdown(focusNote.excerptText)
+          config = taskUtils.extractJSONFromMarkdown(focusNote.excerptText)
         }else{
           MNUtil.showHUD("Invalid note")
         }
@@ -2287,22 +2287,22 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     }
     
     // 应用导入的配置
-    pluginDemoConfig.importConfig(config)
+    taskConfig.importConfig(config)
     
     // 更新 UI
-    let allActions = pluginDemoConfig.getAllActions()
+    let allActions = taskConfig.getAllActions()
     self.setButtonText(allActions,self.selectedItem)
     
     // 更新工具栏
-    if (self.pluginDemoController) {
-      self.pluginDemoController.setFrame(pluginDemoConfig.getWindowState("frame"))
-      self.pluginDemoController.setTaskButton(allActions)
+    if (self.taskController) {
+      self.taskController.setFrame(taskConfig.getWindowState("frame"))
+      self.taskController.setTaskButton(allActions)
     }else{
       MNUtil.showHUD("No addonController")
     }
     
     // 保存配置并通知刷新
-    pluginDemoConfig.save()
+    taskConfig.save()
     MNUtil.postNotification("refreshView",{})
   },
   /**
@@ -2332,14 +2332,14 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
     let selector = "toggleTaskDirection:"
     
     // 添加固定工具栏方向选项
-    if (pluginDemoConfig.vertical()) {
+    if (taskConfig.vertical()) {
       commandTable.push(self.tableItem('🛠️  Task Direction: ↕️ Vertical', selector,"fixed"))
     }else{
       commandTable.push(self.tableItem('🛠️  Task Direction: ↔️ Horizontal', selector,"fixed"))
     }
     
     // 添加动态工具栏方向选项
-    if (pluginDemoConfig.vertical(true)) {
+    if (taskConfig.vertical(true)) {
       commandTable.push(self.tableItem('🌟  Dynamic Direction: ↕️ Vertical', selector,"dynamic"))
     }else{
       commandTable.push(self.tableItem('🌟  Dynamic Direction: ↔️ Horizontal', selector,"dynamic"))
@@ -2358,7 +2358,7 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
    */
   toggleTaskDirection:function (source) {
     self.checkPopoverController()  // 关闭弹出菜单
-    pluginDemoConfig.toggleTaskDirection(source)  // 执行方向切换
+    taskConfig.toggleTaskDirection(source)  // 执行方向切换
   },
   /**
    * 🌟 切换动态顺序
@@ -2386,24 +2386,24 @@ var settingController = JSB.defineClass('settingController : UIViewController <N
    */
   toggleDynamicOrder:function (params) {
     // 检查订阅状态
-    if (!pluginDemoUtils.checkSubscribe(true)) {
+    if (!taskUtils.checkSubscribe(true)) {
       return
     }
     
     // 切换状态
-    let dynamicOrder = pluginDemoConfig.getWindowState("dynamicOrder")
-    pluginDemoConfig.windowState.dynamicOrder = !dynamicOrder
+    let dynamicOrder = taskConfig.getWindowState("dynamicOrder")
+    taskConfig.windowState.dynamicOrder = !dynamicOrder
     
     // 更新按钮显示
     MNButton.setTitle(
       self.dynamicOrderButton, 
-      "Enable Dynamic Order: "+(pluginDemoConfig.getWindowState("dynamicOrder")?"✅":"❌"),
+      "Enable Dynamic Order: "+(taskConfig.getWindowState("dynamicOrder")?"✅":"❌"),
       undefined,
       true  // 立即更新
     )
     
     // 保存配置
-    pluginDemoConfig.save("MNTask_windowState")
+    taskConfig.save("MNTask_windowState")
     
     // 通知工具栏刷新
     MNUtil.postNotification("refreshTaskButton",{})
@@ -2498,7 +2498,7 @@ settingController.prototype.changeButtonOpacity = function(opacity) {
 settingController.prototype.setButtonLayout = function (button,targetAction) {
   button.autoresizingMask = (1 << 0 | 1 << 3);
   button.setTitleColorForState(UIColor.whiteColor(),0);
-  button.setTitleColorForState(pluginDemoConfig.highlightColor, 1);
+  button.setTitleColorForState(taskConfig.highlightColor, 1);
   MNButton.setColor(button, "#9bb2d6", 0.8)
   button.layer.cornerRadius = 8;
   button.layer.masksToBounds = true;
@@ -2527,7 +2527,7 @@ settingController.prototype.createButton = function (buttonName,targetAction,sup
   
   // 设置按钮文字颜色
   this[buttonName].setTitleColorForState(UIColor.whiteColor(),0);  // 正常状态为白色
-  this[buttonName].setTitleColorForState(pluginDemoConfig.highlightColor, 1);  // 高亮状态
+  this[buttonName].setTitleColorForState(taskConfig.highlightColor, 1);  // 高亮状态
   
   // 使用 MNButton 工具类设置颜色
   MNButton.setColor(this[buttonName], "#9bb2d6", 0.8)
@@ -2682,41 +2682,41 @@ settingController.prototype.settingViewLayout = function (){
   let viewFrame = this.view.bounds
   let width = viewFrame.width
   let height = viewFrame.height
-  pluginDemoFrame.set(this.maxButton,width*0.5+80,0)
-  pluginDemoFrame.set(this.moveButton,width*0.5-75, 0)
-  pluginDemoFrame.set(this.settingView,0,55,width,height-55)
-  pluginDemoFrame.set(this.configView,0,0,width-2,height-60)
-  pluginDemoFrame.set(this.advanceView,0,0,width-2,height-60)
-  pluginDemoFrame.set(this.popupEditView,0,0,width-2,height-60)
-  pluginDemoFrame.set(this.resizeButton,width-25,height-80)
+  taskFrame.set(this.maxButton,width*0.5+80,0)
+  taskFrame.set(this.moveButton,width*0.5-75, 0)
+  taskFrame.set(this.settingView,0,55,width,height-55)
+  taskFrame.set(this.configView,0,0,width-2,height-60)
+  taskFrame.set(this.advanceView,0,0,width-2,height-60)
+  taskFrame.set(this.popupEditView,0,0,width-2,height-60)
+  taskFrame.set(this.resizeButton,width-25,height-80)
   if (width < 650) {
-    pluginDemoFrame.set(this.webviewInput, 5, 195, width-10, height-255)
-    pluginDemoFrame.set(this.titleInput,5,155,width-80,35)
-    pluginDemoFrame.set(this.saveButton,width-70,155)
-    pluginDemoFrame.set(this.templateButton,width-188,199.5)
-    pluginDemoFrame.set(this.runButton,width-35,199.5)
-    pluginDemoFrame.set(this.copyButton,width-158,199.5)
-    pluginDemoFrame.set(this.pasteButton,width-99,199.5)
-    pluginDemoFrame.set(this.scrollview,5,5,width-10,145)
+    taskFrame.set(this.webviewInput, 5, 195, width-10, height-255)
+    taskFrame.set(this.titleInput,5,155,width-80,35)
+    taskFrame.set(this.saveButton,width-70,155)
+    taskFrame.set(this.templateButton,width-188,199.5)
+    taskFrame.set(this.runButton,width-35,199.5)
+    taskFrame.set(this.copyButton,width-158,199.5)
+    taskFrame.set(this.pasteButton,width-99,199.5)
+    taskFrame.set(this.scrollview,5,5,width-10,145)
     // this.scrollview.contentSize = {width:width-20,height:height};
-    pluginDemoFrame.set(this.moveTopButton, width-40, 10)
-    pluginDemoFrame.set(this.moveUpButton, width-40, 45)
-    pluginDemoFrame.set(this.moveDownButton, width-40, 80)
-    pluginDemoFrame.set(this.configReset, width-40, 115)
+    taskFrame.set(this.moveTopButton, width-40, 10)
+    taskFrame.set(this.moveUpButton, width-40, 45)
+    taskFrame.set(this.moveDownButton, width-40, 80)
+    taskFrame.set(this.configReset, width-40, 115)
   }else{
-    pluginDemoFrame.set(this.webviewInput,305,45,width-310,height-105)
-    pluginDemoFrame.set(this.titleInput,305,5,width-380,35)
-    pluginDemoFrame.set(this.saveButton,width-70,5)
-    pluginDemoFrame.set(this.templateButton,width-188,49.5)
-    pluginDemoFrame.set(this.runButton,width-35,49.5)
-    pluginDemoFrame.set(this.copyButton,width-158,49.5)
-    pluginDemoFrame.set(this.pasteButton,width-99,49.5)
-    pluginDemoFrame.set(this.scrollview,5,5,295,height-65)
+    taskFrame.set(this.webviewInput,305,45,width-310,height-105)
+    taskFrame.set(this.titleInput,305,5,width-380,35)
+    taskFrame.set(this.saveButton,width-70,5)
+    taskFrame.set(this.templateButton,width-188,49.5)
+    taskFrame.set(this.runButton,width-35,49.5)
+    taskFrame.set(this.copyButton,width-158,49.5)
+    taskFrame.set(this.pasteButton,width-99,49.5)
+    taskFrame.set(this.scrollview,5,5,295,height-65)
     // this.scrollview.contentSize = {width:295,height:height};
-    pluginDemoFrame.set(this.moveTopButton, 263, 15)
-    pluginDemoFrame.set(this.moveUpButton, 263, 50)
-    pluginDemoFrame.set(this.moveDownButton, 263, 85)
-    pluginDemoFrame.set(this.configReset, 263, 120)
+    taskFrame.set(this.moveTopButton, 263, 15)
+    taskFrame.set(this.moveUpButton, 263, 50)
+    taskFrame.set(this.moveDownButton, 263, 85)
+    taskFrame.set(this.configReset, 263, 120)
   }
 
 
@@ -2726,45 +2726,45 @@ settingController.prototype.settingViewLayout = function (){
   settingFrame.height = 40
   settingFrame.width = settingFrame.width
   this.tabView.frame = settingFrame
-  pluginDemoFrame.set(this.configButton, 5, 5)
-  pluginDemoFrame.set(this.dynamicButton, this.configButton.frame.x + this.configButton.frame.width+5, 5)
-  pluginDemoFrame.set(this.popupButton, this.dynamicButton.frame.x + this.dynamicButton.frame.width+5, 5)
-  pluginDemoFrame.set(this.advancedButton, this.popupButton.frame.x + this.popupButton.frame.width+5, 5)
-  pluginDemoFrame.set(this.closeButton, width-35, 5)
+  taskFrame.set(this.configButton, 5, 5)
+  taskFrame.set(this.dynamicButton, this.configButton.frame.x + this.configButton.frame.width+5, 5)
+  taskFrame.set(this.popupButton, this.dynamicButton.frame.x + this.dynamicButton.frame.width+5, 5)
+  taskFrame.set(this.advancedButton, this.popupButton.frame.x + this.popupButton.frame.width+5, 5)
+  taskFrame.set(this.closeButton, width-35, 5)
   let scrollHeight = 5
   if (MNUtil.appVersion().type === "macOS") {
-    for (let i = 0; i < pluginDemoConfig.allPopupButtons.length; i++) {
-      let replaceButtonName = "replacePopupButton_"+pluginDemoConfig.allPopupButtons[i]
-      let replaceSwtichName = "replacePopupSwtich_"+pluginDemoConfig.allPopupButtons[i]
-      pluginDemoFrame.set(this[replaceButtonName], 5, 5+i*40, width-10)
-      pluginDemoFrame.set(this[replaceSwtichName], width-33, 5+i*40)
+    for (let i = 0; i < taskConfig.allPopupButtons.length; i++) {
+      let replaceButtonName = "replacePopupButton_"+taskConfig.allPopupButtons[i]
+      let replaceSwtichName = "replacePopupSwtich_"+taskConfig.allPopupButtons[i]
+      taskFrame.set(this[replaceButtonName], 5, 5+i*40, width-10)
+      taskFrame.set(this[replaceSwtichName], width-33, 5+i*40)
       scrollHeight = (i+1)*40+5
     }
   }else{
-    for (let i = 0; i < pluginDemoConfig.allPopupButtons.length; i++) {
-      let replaceButtonName = "replacePopupButton_"+pluginDemoConfig.allPopupButtons[i]
-      let replaceSwtichName = "replacePopupSwtich_"+pluginDemoConfig.allPopupButtons[i]
-      pluginDemoFrame.set(this[replaceButtonName], 5, 5+i*40, width-65)
-      pluginDemoFrame.set(this[replaceSwtichName], width-55, 6.5+i*40)
+    for (let i = 0; i < taskConfig.allPopupButtons.length; i++) {
+      let replaceButtonName = "replacePopupButton_"+taskConfig.allPopupButtons[i]
+      let replaceSwtichName = "replacePopupSwtich_"+taskConfig.allPopupButtons[i]
+      taskFrame.set(this[replaceButtonName], 5, 5+i*40, width-65)
+      taskFrame.set(this[replaceSwtichName], width-55, 6.5+i*40)
       scrollHeight = (i+1)*40+5
     }
   }
-  pluginDemoFrame.set(this.popupScroll, 0, 0, width, height-55)
+  taskFrame.set(this.popupScroll, 0, 0, width, height-55)
   this.popupScroll.contentSize = {width:width,height:scrollHeight}
-  pluginDemoFrame.set(this.editorButton, 5, 5, (width-15)/2,35)
-  pluginDemoFrame.set(this.chatAIButton, 10+(width-15)/2, 5, (width-15)/2,35)
-  pluginDemoFrame.set(this.snipasteButton, 5, 45, (width-15)/2,35)
-  pluginDemoFrame.set(this.autoStyleButton, 10+(width-15)/2, 45, (width-15)/2,35)
-  pluginDemoFrame.set(this.browserButton, 5, 85, (width-15)/2,35)
-  pluginDemoFrame.set(this.OCRButton, 10+(width-15)/2, 85, (width-15)/2,35)
-  pluginDemoFrame.set(this.timerButton, 5, 125, (width-15)/2,35)
-  pluginDemoFrame.set(this.hexInput, 5, 165, width-135,35)
-  pluginDemoFrame.set(this.hexButton, width-125, 165, 120,35)
-  pluginDemoFrame.set(this.iCloudButton, 5, 205, 160,35)
-  pluginDemoFrame.set(this.directionButton, 5, 245, width-10,35)
-  pluginDemoFrame.set(this.dynamicOrderButton, 5, 285, width-10,35)
-  pluginDemoFrame.set(this.exportButton, 170, 205, (width-180)/2,35)
-  pluginDemoFrame.set(this.importButton, 175+(width-180)/2, 205, (width-180)/2,35)
+  taskFrame.set(this.editorButton, 5, 5, (width-15)/2,35)
+  taskFrame.set(this.chatAIButton, 10+(width-15)/2, 5, (width-15)/2,35)
+  taskFrame.set(this.snipasteButton, 5, 45, (width-15)/2,35)
+  taskFrame.set(this.autoStyleButton, 10+(width-15)/2, 45, (width-15)/2,35)
+  taskFrame.set(this.browserButton, 5, 85, (width-15)/2,35)
+  taskFrame.set(this.OCRButton, 10+(width-15)/2, 85, (width-15)/2,35)
+  taskFrame.set(this.timerButton, 5, 125, (width-15)/2,35)
+  taskFrame.set(this.hexInput, 5, 165, width-135,35)
+  taskFrame.set(this.hexButton, width-125, 165, 120,35)
+  taskFrame.set(this.iCloudButton, 5, 205, 160,35)
+  taskFrame.set(this.directionButton, 5, 245, width-10,35)
+  taskFrame.set(this.dynamicOrderButton, 5, 285, width-10,35)
+  taskFrame.set(this.exportButton, 170, 205, (width-180)/2,35)
+  taskFrame.set(this.importButton, 175+(width-180)/2, 205, (width-180)/2,35)
 }
 
 
@@ -2843,14 +2843,14 @@ settingController.prototype.createSettingView = function (){
 
     this.createButton("closeButton","closeButtonTapped:","tabView")
     MNButton.setConfig(this.closeButton, {color:"#e06c75",alpha:0.9,opacity:1.0,radius:10,bold:true})
-    MNButton.setImage(this.closeButton, MNUtil.getImage(pluginDemoConfig.mainPath+"/stop.png"))
+    MNButton.setImage(this.closeButton, MNUtil.getImage(taskConfig.mainPath+"/stop.png"))
     this.closeButton.width = 30
     this.closeButton.height = 30
 
     // 为每个弹出菜单按钮创建配置项
     // 这里遍历所有可用的弹出菜单按钮，为每个创建一个配置行
     try {
-      pluginDemoConfig.allPopupButtons.forEach(buttonName=>{
+      taskConfig.allPopupButtons.forEach(buttonName=>{
         // 为每个弹出菜单创建一个按钮和一个开关
         let replaceButtonName = "replacePopupButton_"+buttonName  // 如：replacePopupButton_card
         let replaceSwtichName = "replacePopupSwtich_"+buttonName  // 如：replacePopupSwtich_card
@@ -2862,10 +2862,10 @@ settingController.prototype.createSettingView = function (){
         replaceButton.id = buttonName  // 保存按钮名称作为 ID
         
         // 获取当前配置的目标动作
-        let target = pluginDemoConfig.getPopupConfig(buttonName).target
+        let target = taskConfig.getPopupConfig(buttonName).target
         if (target) {
           // 如果已配置目标，显示目标名称
-          let actionName = pluginDemoConfig.getAction(pluginDemoConfig.getPopupConfig(buttonName).target).name
+          let actionName = taskConfig.getAction(taskConfig.getPopupConfig(buttonName).target).name
           MNButton.setConfig(replaceButton, {color:"#558fed",alpha:0.9,opacity:1.0,title:buttonName+": "+actionName,font:17,radius:10,bold:true})
         }else{
           // 未配置目标，只显示按钮名
@@ -2876,64 +2876,64 @@ settingController.prototype.createSettingView = function (){
         this.createSwitch(replaceSwtichName, "togglePopupReplace:", "popupScroll")
         let replaceSwtich = this[replaceSwtichName]
         replaceSwtich.id = buttonName
-        replaceSwtich.on = pluginDemoConfig.getPopupConfig(buttonName).enabled  // 设置开关状态
+        replaceSwtich.on = taskConfig.getPopupConfig(buttonName).enabled  // 设置开关状态
         replaceSwtich.hidden = false
         replaceSwtich.width = 20
         replaceSwtich.height = 35
       })
     } catch (error) {
       // 错误不影响整体初始化
-      // pluginDemoUtils.addErrorLog(error, "replacePopupEditSwtich")
+      // taskUtils.addErrorLog(error, "replacePopupEditSwtich")
     }
 
     this.createButton("editorButton","toggleAddonLogo:","advanceView")
     this.editorButton.layer.opacity = 1.0
     this.editorButton.addon = "MNEditor"
-    this.editorButton.setTitleForState("MNEditor: "+(pluginDemoConfig.checkLogoStatus("MNEditor")?"✅":"❌"),0)
+    this.editorButton.setTitleForState("MNEditor: "+(taskConfig.checkLogoStatus("MNEditor")?"✅":"❌"),0)
     this.editorButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
-    MNButton.setColor(this.editorButton, pluginDemoConfig.checkLogoStatus("MNEditor")?"#457bd3":"#9bb2d6",0.8)
+    MNButton.setColor(this.editorButton, taskConfig.checkLogoStatus("MNEditor")?"#457bd3":"#9bb2d6",0.8)
 
     this.createButton("chatAIButton","toggleAddonLogo:","advanceView")
     this.chatAIButton.layer.opacity = 1.0
     this.chatAIButton.addon = "MNChatAI"
-    this.chatAIButton.setTitleForState("MNChatAI: "+(pluginDemoConfig.checkLogoStatus("MNChatAI")?"✅":"❌"),0)
+    this.chatAIButton.setTitleForState("MNChatAI: "+(taskConfig.checkLogoStatus("MNChatAI")?"✅":"❌"),0)
     this.chatAIButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
-    MNButton.setColor(this.chatAIButton, pluginDemoConfig.checkLogoStatus("MNChatAI")?"#457bd3":"#9bb2d6",0.8)
+    MNButton.setColor(this.chatAIButton, taskConfig.checkLogoStatus("MNChatAI")?"#457bd3":"#9bb2d6",0.8)
 
     this.createButton("snipasteButton","toggleAddonLogo:","advanceView")
     this.snipasteButton.layer.opacity = 1.0
     this.snipasteButton.addon = "MNSnipaste"
-    this.snipasteButton.setTitleForState("MNSnipaste: "+(pluginDemoConfig.checkLogoStatus("MNSnipaste")?"✅":"❌"),0)
+    this.snipasteButton.setTitleForState("MNSnipaste: "+(taskConfig.checkLogoStatus("MNSnipaste")?"✅":"❌"),0)
     this.snipasteButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
-    MNButton.setColor(this.snipasteButton, pluginDemoConfig.checkLogoStatus("MNSnipaste")?"#457bd3":"#9bb2d6",0.8)
+    MNButton.setColor(this.snipasteButton, taskConfig.checkLogoStatus("MNSnipaste")?"#457bd3":"#9bb2d6",0.8)
 
     this.createButton("autoStyleButton","toggleAddonLogo:","advanceView")
     this.autoStyleButton.layer.opacity = 1.0
     this.autoStyleButton.addon = "MNAutoStyle"
-    this.autoStyleButton.setTitleForState("MNAutoStyle: "+(pluginDemoConfig.checkLogoStatus("MNAutoStyle")?"✅":"❌"),0)
+    this.autoStyleButton.setTitleForState("MNAutoStyle: "+(taskConfig.checkLogoStatus("MNAutoStyle")?"✅":"❌"),0)
     this.autoStyleButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
-    MNButton.setColor(this.autoStyleButton, pluginDemoConfig.checkLogoStatus("MNAutoStyle")?"#457bd3":"#9bb2d6",0.8)
+    MNButton.setColor(this.autoStyleButton, taskConfig.checkLogoStatus("MNAutoStyle")?"#457bd3":"#9bb2d6",0.8)
     
     this.createButton("browserButton","toggleAddonLogo:","advanceView")
     this.browserButton.layer.opacity = 1.0
     this.browserButton.addon = "MNBrowser"
-    this.browserButton.setTitleForState("MNBrowser: "+(pluginDemoConfig.checkLogoStatus("MNBrowser")?"✅":"❌"),0)
+    this.browserButton.setTitleForState("MNBrowser: "+(taskConfig.checkLogoStatus("MNBrowser")?"✅":"❌"),0)
     this.browserButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
-    MNButton.setColor(this.browserButton, pluginDemoConfig.checkLogoStatus("MNBrowser")?"#457bd3":"#9bb2d6",0.8)
+    MNButton.setColor(this.browserButton, taskConfig.checkLogoStatus("MNBrowser")?"#457bd3":"#9bb2d6",0.8)
 
     this.createButton("OCRButton","toggleAddonLogo:","advanceView")
     this.OCRButton.layer.opacity = 1.0
     this.OCRButton.addon = "MNOCR"
-    this.OCRButton.setTitleForState("MNOCR: "+(pluginDemoConfig.checkLogoStatus("MNOCR")?"✅":"❌"),0)
+    this.OCRButton.setTitleForState("MNOCR: "+(taskConfig.checkLogoStatus("MNOCR")?"✅":"❌"),0)
     this.OCRButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
-    MNButton.setColor(this.OCRButton, pluginDemoConfig.checkLogoStatus("MNOCR")?"#457bd3":"#9bb2d6",0.8)
+    MNButton.setColor(this.OCRButton, taskConfig.checkLogoStatus("MNOCR")?"#457bd3":"#9bb2d6",0.8)
 
     this.createButton("timerButton","toggleAddonLogo:","advanceView")
     this.timerButton.layer.opacity = 1.0
     this.timerButton.addon = "MNTimer"
-    this.timerButton.setTitleForState("MNTimer: "+(pluginDemoConfig.checkLogoStatus("MNTimer")?"✅":"❌"),0)
+    this.timerButton.setTitleForState("MNTimer: "+(taskConfig.checkLogoStatus("MNTimer")?"✅":"❌"),0)
     this.timerButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
-    MNButton.setColor(this.timerButton, pluginDemoConfig.checkLogoStatus("MNTimer")?"#457bd3":"#9bb2d6",0.8)
+    MNButton.setColor(this.timerButton, taskConfig.checkLogoStatus("MNTimer")?"#457bd3":"#9bb2d6",0.8)
 
     this.creatTextView("hexInput","advanceView","#9bb2d6")
     this.createButton("hexButton","saveButtonColor:","advanceView")
@@ -2941,11 +2941,11 @@ settingController.prototype.createSettingView = function (){
     this.hexButton.addon = "MNOCR"
     this.hexButton.setTitleForState("Save Color",0)
     this.hexButton.titleLabel.font = UIFont.boldSystemFontOfSize(16)
-    this.hexInput.text = pluginDemoConfig.buttonConfig.color
-    MNButton.setColor(this.hexButton, pluginDemoConfig.checkLogoStatus("MNOCR")?"#457bd3":"#9bb2d6",0.8)
+    this.hexInput.text = taskConfig.buttonConfig.color
+    MNButton.setColor(this.hexButton, taskConfig.checkLogoStatus("MNOCR")?"#457bd3":"#9bb2d6",0.8)
 
     this.createButton("iCloudButton","toggleICloudSync:","advanceView")
-    let iCloudSync = pluginDemoConfig.iCloudSync
+    let iCloudSync = taskConfig.iCloudSync
     
     MNButton.setColor(this.iCloudButton, iCloudSync?"#457bd3":"#9bb2d6",0.8)
     MNButton.setTitle(this.iCloudButton, "iCloud Sync "+(iCloudSync? "✅":"❌"),undefined, true)
@@ -2964,7 +2964,7 @@ settingController.prototype.createSettingView = function (){
 
     this.createButton("dynamicOrderButton","toggleDynamicOrder:","advanceView")
     MNButton.setColor(this.dynamicOrderButton, "#457bd3",0.8)
-    MNButton.setTitle(this.dynamicOrderButton, "Enable Dynamic Order: "+(pluginDemoConfig.getWindowState("dynamicOrder")?"✅":"❌"),undefined,true)
+    MNButton.setTitle(this.dynamicOrderButton, "Enable Dynamic Order: "+(taskConfig.getWindowState("dynamicOrder")?"✅":"❌"),undefined,true)
 
     this.createScrollView("scrollview", "configView")
     // this.scrollview = UIScrollView.new()
@@ -3025,7 +3025,7 @@ settingController.prototype.createSettingView = function (){
     this.createButton("templateButton","chooseTemplate:","configView")
     MNButton.setConfig(this.templateButton, {opacity:0.8,color:"#457bd3"})
     this.templateButton.layer.cornerRadius = 6
-    this.templateButton.setImageForState(pluginDemoConfig.templateImage,0)
+    this.templateButton.setImageForState(taskConfig.templateImage,0)
     this.templateButton.width = 26
     this.templateButton.height = 26
 
@@ -3053,7 +3053,7 @@ settingController.prototype.createSettingView = function (){
     this.saveButton.height = 35
 
     this.createButton("resizeButton",undefined,"settingView")
-    this.resizeButton.setImageForState(pluginDemoConfig.curveImage,0)
+    this.resizeButton.setImageForState(taskConfig.curveImage,0)
     MNButton.setConfig(this.resizeButton, {cornerRadius:20,color:"#ffffff",alpha:0.})
     this.resizeButton.width = 25
     this.resizeButton.height = 25
@@ -3063,13 +3063,13 @@ settingController.prototype.createSettingView = function (){
     MNButton.setConfig(this.runButton, {opacity:0.8,color:"#e06c75"})
     this.runButton.layer.cornerRadius = 6
     // MNButton.setConfig(this.runButton, {opacity:1.0,title:"▶️",font:25,color:"#ffffff",alpha:0.})
-    this.runButton.setImageForState(pluginDemoConfig.runImage,0)
+    this.runButton.setImageForState(taskConfig.runImage,0)
     this.runButton.width = 26
     this.runButton.height = 26
 
     let color = ["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9fdc"]
   } catch (error) {
-    pluginDemoUtils.addErrorLog(error, "createSettingView")
+    taskUtils.addErrorLog(error, "createSettingView")
   }
 }
 /**
@@ -3104,7 +3104,7 @@ settingController.prototype.createSettingView = function (){
  * @param {string} highlight - 要高亮显示的按钮名，默认为当前选中项
  * @this {settingController}
  */
-settingController.prototype.setButtonText = function (names=pluginDemoConfig.getAllActions(),highlight=this.selectedItem) {
+settingController.prototype.setButtonText = function (names=taskConfig.getAllActions(),highlight=this.selectedItem) {
     this.words = names  // 保存按钮列表
     this.selectedItem = highlight  // 保存选中项
     
@@ -3136,7 +3136,7 @@ settingController.prototype.setButtonText = function (names=pluginDemoConfig.get
       }
       
       // 设置按钮图标
-      MNButton.setImage(this[buttonName], pluginDemoConfig.imageConfigs[word])
+      MNButton.setImage(this[buttonName], taskConfig.imageConfigs[word])
     })
     
     // 刷新布局
@@ -3180,7 +3180,7 @@ settingController.prototype.setButtonText = function (names=pluginDemoConfig.get
 settingController.prototype.setTextview = function (name = this.selectedItem) {
   try {
       // 获取按钮配置
-      let action = pluginDemoConfig.getAction(name)
+      let action = taskConfig.getAction(name)
       
       // 显示按钮名称
       let text  = action.name
@@ -3218,7 +3218,7 @@ settingController.prototype.setTextview = function (name = this.selectedItem) {
         this.setWebviewContent(des)
       }
   } catch (error) {
-    pluginDemoUtils.addErrorLog(error, "setTextview")
+    taskUtils.addErrorLog(error, "setTextview")
   }
 }
 /**
@@ -3291,51 +3291,51 @@ settingController.prototype.refreshLayout = function () {
 settingController.prototype.refreshView = function (name) {
   switch (name) {
     case "advanceView":
-        this.editorButton.setTitleForState("MNEditor: "+(pluginDemoConfig.checkLogoStatus("MNEditor")?"✅":"❌"),0)
-        MNButton.setColor(this.editorButton, pluginDemoConfig.checkLogoStatus("MNEditor")?"#457bd3":"#9bb2d6",0.8)
+        this.editorButton.setTitleForState("MNEditor: "+(taskConfig.checkLogoStatus("MNEditor")?"✅":"❌"),0)
+        MNButton.setColor(this.editorButton, taskConfig.checkLogoStatus("MNEditor")?"#457bd3":"#9bb2d6",0.8)
 
-        this.chatAIButton.setTitleForState("MNChatAI: "+(pluginDemoConfig.checkLogoStatus("MNChatAI")?"✅":"❌"),0)
-        MNButton.setColor(this.chatAIButton, pluginDemoConfig.checkLogoStatus("MNChatAI")?"#457bd3":"#9bb2d6",0.8)
+        this.chatAIButton.setTitleForState("MNChatAI: "+(taskConfig.checkLogoStatus("MNChatAI")?"✅":"❌"),0)
+        MNButton.setColor(this.chatAIButton, taskConfig.checkLogoStatus("MNChatAI")?"#457bd3":"#9bb2d6",0.8)
 
-        this.snipasteButton.setTitleForState("MNSnipaste: "+(pluginDemoConfig.checkLogoStatus("MNSnipaste")?"✅":"❌"),0)
-        MNButton.setColor(this.snipasteButton, pluginDemoConfig.checkLogoStatus("MNSnipaste")?"#457bd3":"#9bb2d6",0.8)
+        this.snipasteButton.setTitleForState("MNSnipaste: "+(taskConfig.checkLogoStatus("MNSnipaste")?"✅":"❌"),0)
+        MNButton.setColor(this.snipasteButton, taskConfig.checkLogoStatus("MNSnipaste")?"#457bd3":"#9bb2d6",0.8)
 
-        this.autoStyleButton.setTitleForState("MNAutoStyle: "+(pluginDemoConfig.checkLogoStatus("MNAutoStyle")?"✅":"❌"),0)
-        MNButton.setColor(this.autoStyleButton, pluginDemoConfig.checkLogoStatus("MNAutoStyle")?"#457bd3":"#9bb2d6",0.8)
+        this.autoStyleButton.setTitleForState("MNAutoStyle: "+(taskConfig.checkLogoStatus("MNAutoStyle")?"✅":"❌"),0)
+        MNButton.setColor(this.autoStyleButton, taskConfig.checkLogoStatus("MNAutoStyle")?"#457bd3":"#9bb2d6",0.8)
 
-        this.browserButton.setTitleForState("MNBrowser: "+(pluginDemoConfig.checkLogoStatus("MNBrowser")?"✅":"❌"),0)
-        MNButton.setColor(this.browserButton, pluginDemoConfig.checkLogoStatus("MNBrowser")?"#457bd3":"#9bb2d6",0.8)
+        this.browserButton.setTitleForState("MNBrowser: "+(taskConfig.checkLogoStatus("MNBrowser")?"✅":"❌"),0)
+        MNButton.setColor(this.browserButton, taskConfig.checkLogoStatus("MNBrowser")?"#457bd3":"#9bb2d6",0.8)
 
-        this.OCRButton.setTitleForState("MNOCR: "+(pluginDemoConfig.checkLogoStatus("MNOCR")?"✅":"❌"),0)
-        MNButton.setColor(this.OCRButton, pluginDemoConfig.checkLogoStatus("MNOCR")?"#457bd3":"#9bb2d6",0.8)
+        this.OCRButton.setTitleForState("MNOCR: "+(taskConfig.checkLogoStatus("MNOCR")?"✅":"❌"),0)
+        MNButton.setColor(this.OCRButton, taskConfig.checkLogoStatus("MNOCR")?"#457bd3":"#9bb2d6",0.8)
 
-        this.timerButton.setTitleForState("MNTimer: "+(pluginDemoConfig.checkLogoStatus("MNTimer")?"✅":"❌"),0)
-        MNButton.setColor(this.timerButton, pluginDemoConfig.checkLogoStatus("MNTimer")?"#457bd3":"#9bb2d6",0.8)
+        this.timerButton.setTitleForState("MNTimer: "+(taskConfig.checkLogoStatus("MNTimer")?"✅":"❌"),0)
+        MNButton.setColor(this.timerButton, taskConfig.checkLogoStatus("MNTimer")?"#457bd3":"#9bb2d6",0.8)
 
-        this.hexInput.text = pluginDemoConfig.buttonConfig.color
+        this.hexInput.text = taskConfig.buttonConfig.color
         MNButton.setColor(this.hexButton, "#457bd3",0.8)
 
-        let iCloudSync = pluginDemoConfig.iCloudSync
+        let iCloudSync = taskConfig.iCloudSync
 
         MNButton.setColor(this.iCloudButton, iCloudSync?"#457bd3":"#9bb2d6",0.8)
         MNButton.setTitle(this.iCloudButton, "iCloud Sync "+(iCloudSync? "✅":"❌"),undefined, true)
       break;
     case "popupEditView":
-      pluginDemoConfig.allPopupButtons.forEach(buttonName=>{
+      taskConfig.allPopupButtons.forEach(buttonName=>{
         let replaceButtonName = "replacePopupButton_"+buttonName
         let replaceSwtichName = "replacePopupSwtich_"+buttonName
         let replaceButton = this[replaceButtonName]
         replaceButton.id = buttonName
-        let target = pluginDemoConfig.getPopupConfig(buttonName).target
+        let target = taskConfig.getPopupConfig(buttonName).target
         if (target) {
-          let actionName = pluginDemoConfig.getAction(pluginDemoConfig.getPopupConfig(buttonName).target).name
+          let actionName = taskConfig.getAction(taskConfig.getPopupConfig(buttonName).target).name
           MNButton.setConfig(replaceButton, {color:"#558fed",alpha:0.9,opacity:1.0,title:buttonName+": "+actionName,font:17,radius:10,bold:true})
         }else{
           MNButton.setConfig(replaceButton, {color:"#558fed",alpha:0.9,opacity:1.0,title:buttonName+": ",font:17,radius:10,bold:true})
         }
         let replaceSwtich = this[replaceSwtichName]
         replaceSwtich.id = buttonName
-        replaceSwtich.on = pluginDemoConfig.getPopupConfig(buttonName).enabled
+        replaceSwtich.on = taskConfig.getPopupConfig(buttonName).enabled
       })
     default:
       break;
@@ -3366,10 +3366,10 @@ settingController.prototype.show = function (frame) {
   this.miniMode = false
   // MNUtil.showHUD("message")
   // let isEditingDynamic = self.dynamicButton?.selected ?? false
-  // let allActions = pluginDemoConfig.getAllActions(isEditingDynamic)
-  // let allActions = pluginDemoConfig.getAllActions()// pluginDemoConfig.action.concat(pluginDemoConfig.getDefaultActionKeys().slice(pluginDemoConfig.action.length))
+  // let allActions = taskConfig.getAllActions(isEditingDynamic)
+  // let allActions = taskConfig.getAllActions()// taskConfig.action.concat(taskConfig.getDefaultActionKeys().slice(taskConfig.action.length))
   // this.setButtonText(allActions,this.selectedItem)
-  this.pluginDemoController.setTaskButton(pluginDemoConfig.action)
+  this.taskController.setTaskButton(taskConfig.action)
   this.hideAllButton()
   MNUtil.animate(()=>{
     this.view.layer.opacity = 1.0
@@ -3399,7 +3399,7 @@ settingController.prototype.show = function (frame) {
   // })
 }
 settingController.prototype.hide = function (frame) {
-  pluginDemoUtils.studyController().view.bringSubviewToFront(this.addonBar)
+  taskUtils.studyController().view.bringSubviewToFront(this.addonBar)
   let preFrame = this.view.frame
   let preOpacity = this.view.layer.opacity
   let preCustom = this.custom
@@ -3584,7 +3584,7 @@ settingController.prototype.setWebviewContent = function (content) {
  * @this {settingController}
  */
 settingController.prototype.setJSContent = function (content) {
-  this.webviewInput.loadHTMLStringBaseURL(pluginDemoUtils.JShtml(content))
+  this.webviewInput.loadHTMLStringBaseURL(taskUtils.JShtml(content))
 }
 
 /**
@@ -3643,6 +3643,6 @@ settingController.prototype.showHUD = function (title, duration = 1.5,view = thi
 }
 /**
  * 
- * @type {pluginDemoController}
+ * @type {taskController}
  */
-settingController.prototype.pluginDemoController
+settingController.prototype.taskController

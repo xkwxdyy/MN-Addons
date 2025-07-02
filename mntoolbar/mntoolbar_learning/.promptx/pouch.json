@@ -1,0 +1,16 @@
+{
+  "currentState": "initialized",
+  "stateHistory": [
+    {
+      "from": "initial",
+      "command": "init",
+      "timestamp": "2025-07-02T01:58:08.231Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntoolbar/mntoolbar_learning"
+        }
+      ]
+    }
+  ],
+  "lastUpdated": "2025-07-02T01:58:08.237Z"
+}

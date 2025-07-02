@@ -26,7 +26,7 @@
  * }
  * ```
  * 
- * @return {pluginDemoController} 返回工具栏控制器的单例实例
+ * @return {taskController} 返回工具栏控制器的单例实例
  */
 const getTaskController = ()=>self
 
@@ -42,7 +42,7 @@ const getTaskController = ()=>self
  * 
  * 【控制器架构图】
  * ```
- * pluginDemoController (主控制器)
+ * taskController (主控制器)
  *         │
  *         ├─── 视图层 (UIView)
  *         │     ├── 工具栏按钮 (ColorButton0-29)
@@ -71,7 +71,7 @@ const getTaskController = ()=>self
  * - self.buttonNumber：当前显示的按钮数量
  * - self.ColorButton[0-29]：30个可配置的功能按钮
  */
-var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewController <UIImagePickerControllerDelegate,UINavigationControllerDelegate>', {
+var taskController = JSB.defineClass('taskController : UIViewController <UIImagePickerControllerDelegate,UINavigationControllerDelegate>', {
   /**
    * 🎬 视图加载完成后的初始化方法（生命周期入口）
    * 
@@ -138,11 +138,11 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
     if (self.dynamicWindow) {
       // 🌟 动态窗口模式
       // 从用户配置中读取上次设置的按钮数量
-      self.buttonNumber = pluginDemoConfig.getWindowState("dynamicButton");
+      self.buttonNumber = taskConfig.getWindowState("dynamicButton");
     }else{
       // 📌 固定窗口模式
       // 根据上次窗口大小自动计算合适的按钮数量
-      let lastFrame = pluginDemoConfig.getWindowState("frame")
+      let lastFrame = taskConfig.getWindowState("frame")
       if (lastFrame) {
         // 智能计算：无论横向还是纵向，取最大边计算
         // 横向工具栏：width > height，按宽度计算
@@ -162,13 +162,13 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
     self.mode = 0  // 工具栏模式（预留扩展：0=默认，1=精简，2=扩展）
     
     // 📍 位置模式
-    self.sideMode = pluginDemoConfig.getWindowState("sideMode")   
+    self.sideMode = taskConfig.getWindowState("sideMode")   
     // "left"：吸附在左边缘
     // "right"：吸附在右边缘  
     // ""：自由位置
     
     // 🖼️ 分屏适配
-    self.splitMode = pluginDemoConfig.getWindowState("splitMode") 
+    self.splitMode = taskConfig.getWindowState("splitMode") 
     // true：工具栏吸附在文档和脑图的分割线上
     // false：普通模式
     
@@ -188,11 +188,11 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
     self.view.layer.shadowOpacity = 0.5;                   // 50% 阴影强度
     
     // 🎨 阴影颜色（使用按钮主题色）
-    // pluginDemoConfig.buttonConfig.color: 主题色十六进制值（如 "#9bb2d6"）
-    // pluginDemoConfig.buttonConfig.alpha: 透明度（0.0-1.0）
+    // taskConfig.buttonConfig.color: 主题色十六进制值（如 "#9bb2d6"）
+    // taskConfig.buttonConfig.alpha: 透明度（0.0-1.0）
     self.view.layer.shadowColor = MNUtil.hexColorAlpha(
-      pluginDemoConfig.buttonConfig.color, 
-      pluginDemoConfig.buttonConfig.alpha
+      taskConfig.buttonConfig.color, 
+      taskConfig.buttonConfig.alpha
     )
     
     // 📐 视图基础样式
@@ -206,7 +206,7 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
     self.view.backgroundColor = UIColor.whiteColor().colorWithAlphaComponent(0)
     
     // 🏷️ 视图标记
-    self.view.mnpluginDemo = true  // 自定义属性，用于：
+    self.view.mntask = true  // 自定义属性，用于：
     // 1. 识别这是 MN Task 的视图
     // 2. 避免与其他插件冲突
     // 3. 调试时快速定位
@@ -223,7 +223,7 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
      */
     
     // 🔄 检查是否启用动态排序
-    let dynamicOrder = pluginDemoConfig.getWindowState("dynamicOrder")
+    let dynamicOrder = taskConfig.getWindowState("dynamicOrder")
     let useDynamic = dynamicOrder && self.dynamicWindow
 
     if (self.dynamicWindow) {
@@ -232,9 +232,9 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
       // 版本兼容性处理：
       // 旧版本：27 个预定义按钮
       // 新版本：27 个预定义 + 9 个自定义 = 36 个按钮
-      if (pluginDemoConfig.dynamicAction.length == 27) {
+      if (taskConfig.dynamicAction.length == 27) {
         // 自动升级到新版本，添加 custom1-custom9
-        pluginDemoConfig.dynamicAction = pluginDemoConfig.dynamicAction.concat([
+        taskConfig.dynamicAction = taskConfig.dynamicAction.concat([
           "custom1","custom2","custom3","custom4","custom5",
           "custom6","custom7","custom8","custom9"
         ])
@@ -243,21 +243,21 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
       // 应用按钮配置
       // useDynamic=true：使用用户自定义顺序
       // useDynamic=false：使用默认顺序
-      self.setTaskButton(useDynamic ? pluginDemoConfig.dynamicAction : pluginDemoConfig.action)
+      self.setTaskButton(useDynamic ? taskConfig.dynamicAction : taskConfig.action)
       
     }else{
       // 📌 固定窗口模式配置
       
       // 同样的版本兼容处理
-      if (pluginDemoConfig.action.length == 27) {
-        pluginDemoConfig.action = pluginDemoConfig.action.concat([
+      if (taskConfig.action.length == 27) {
+        taskConfig.action = taskConfig.action.concat([
           "custom1","custom2","custom3","custom4","custom5",
           "custom6","custom7","custom8","custom9"
         ])
       }
       
       // 固定窗口始终使用标准配置
-      self.setTaskButton(pluginDemoConfig.action)
+      self.setTaskButton(taskConfig.action)
     }
     
 
@@ -307,7 +307,7 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
     
   } catch (error) {
     // 错误处理：记录错误日志，防止插件崩溃
-    pluginDemoUtils.addErrorLog(error, "viewDidLoad")
+    taskUtils.addErrorLog(error, "viewDidLoad")
   }
   },
   /**
@@ -337,7 +337,7 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
    * - 可能会被多次调用
    * 
    * @param {boolean} animated - 是否使用动画显示视图
-   * @this {pluginDemoController}
+   * @this {taskController}
    */
   viewWillAppear: function(animated) {
     // 🔧 预留接口：未来可能需要在显示前更新状态
@@ -371,7 +371,7 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
    * - 视图可能会再次显示
    * 
    * @param {boolean} animated - 是否使用动画隐藏视图
-   * @this {pluginDemoController}
+   * @this {taskController}
    */
   viewWillDisappear: function(animated) {
     // 🔧 预留接口：未来可能需要在消失前保存状态
@@ -424,7 +424,7 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
    * - 🎯 只做布局相关的操作
    * - 🚀 保持代码高效，此方法可能频繁调用
    * 
-   * @this {pluginDemoController}
+   * @this {taskController}
    */
   viewWillLayoutSubviews: function() {
     let self = getTaskController()
@@ -477,7 +477,7 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
    * - 🎯 使用节流（throttle）技术限制执行频率
    * 
    * @param {UIScrollView} scrollView - 正在滚动的滚动视图（如果实现）
-   * @this {pluginDemoController}
+   * @this {taskController}
    */
   scrollViewDidScroll: function() {
     // 🔧 预留接口：当前未实现
@@ -589,13 +589,13 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
       self.tableItem('⚙️  Setting', 'setting:')
     ];
     if (self.dynamicWindow) {
-      if (pluginDemoConfig.vertical(true)) {
+      if (taskConfig.vertical(true)) {
         commandTable.unshift(self.tableItem('🌟  Direction   ↕️', selector,"dynamic"))
       }else{
         commandTable.unshift(self.tableItem('🌟  Direction   ↔️', selector,"dynamic"))
       }
     }else{
-      if (pluginDemoConfig.vertical()) {
+      if (taskConfig.vertical()) {
         commandTable.unshift(self.tableItem('🛠️  Direction   ↕️', selector,"fixed"))
       }else{
         commandTable.unshift(self.tableItem('🛠️  Direction   ↔️', selector,"fixed"))
@@ -612,7 +612,7 @@ var pluginDemoController = JSB.defineClass('pluginDemoController : UIViewControl
    */
   toggleTaskDirection: function (source) {
     self.checkPopover()  // 关闭菜单
-    pluginDemoConfig.toggleTaskDirection(source)  // 调用配置管理器执行切换
+    taskConfig.toggleTaskDirection(source)  // 调用配置管理器执行切换
   },
   /**
    * 🌟 切换动态/固定模式 - 改变工具栏的显示行为
@@ -645,8 +645,8 @@ try {
     // if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
     // MNUtil.postNotification('toggleDynamic', {test:123})
     if (typeof MNUtil === 'undefined') return
-    pluginDemoConfig.dynamic = !pluginDemoConfig.dynamic
-    if (pluginDemoConfig.dynamic) {
+    taskConfig.dynamic = !taskConfig.dynamic
+    if (taskConfig.dynamic) {
       MNUtil.showHUD("Dynamic ✅")
     }else{
       MNUtil.showHUD("Dynamic ❌")
@@ -655,10 +655,10 @@ try {
       }
       // self.testController.view.hidden = true
     }
-    pluginDemoConfig.save("MNTask_dynamic")
-    // NSUserDefaults.standardUserDefaults().setObjectForKey(pluginDemoConfig.dynamic,"MNTask_dynamic")
+    taskConfig.save("MNTask_dynamic")
+    // NSUserDefaults.standardUserDefaults().setObjectForKey(taskConfig.dynamic,"MNTask_dynamic")
     if (self.dynamicTask) {
-      self.dynamicTask.dynamic = pluginDemoConfig.dynamic
+      self.dynamicTask.dynamic = taskConfig.dynamic
     }
     MNUtil.refreshAddonCommands()
 } catch (error) {
@@ -705,7 +705,7 @@ try {
     // return
     let actionName = "color"+button.color
     let delay = false
-    let des = pluginDemoConfig.getDescriptionByName(actionName)
+    let des = taskConfig.getDescriptionByName(actionName)
     if ("doubleClick" in des) {
       delay = true
       self.onClick = true
@@ -770,7 +770,7 @@ try {
    * ```
    * button.index → actionNames[index] → actionName
    *                        ↓
-   *               pluginDemoConfig.descriptions
+   *               taskConfig.descriptions
    *                        ↓
    *                   动作配置 (des)
    * ```
@@ -791,10 +791,10 @@ try {
     let self = getTaskController()
     // eval("MNUtil.showHUD('123')")
     // return
-    let dynamicOrder = pluginDemoConfig.getWindowState("dynamicOrder")
+    let dynamicOrder = taskConfig.getWindowState("dynamicOrder")
     let useDynamic = dynamicOrder && self.dynamicWindow
-    let actionName = button.target ?? (useDynamic?pluginDemoConfig.dynamicAction[button.index]:pluginDemoConfig.action[button.index])//这个是key
-    let des = pluginDemoConfig.getDescriptionByName(actionName)
+    let actionName = button.target ?? (useDynamic?taskConfig.dynamicAction[button.index]:taskConfig.action[button.index])//这个是key
+    let des = taskConfig.getDescriptionByName(actionName)
     if ("doubleClick" in des) {
       button.delay = true //让菜单延迟关闭,保证双击可以被执行
       self.onClick = true
@@ -858,7 +858,7 @@ try {
           let title = (typeof item === "string")?item:(item.menuTitle ?? item.action)
           return {title:title,object:self,selector:'customActionByMenu:',param:{des:item,button:button}}
         })
-        commandTable.unshift({title:pluginDemoUtils.emojiNumber(self.commandTables.length)+" 🔙",object:self,selector:'lastPopover:',param:button})
+        commandTable.unshift({title:taskUtils.emojiNumber(self.commandTables.length)+" 🔙",object:self,selector:'lastPopover:',param:button})
         self.commandTables.push(commandTable)
         self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
       }
@@ -970,7 +970,7 @@ try {
    */
   timer: function (button) {
     self.onClick = true
-    let des = pluginDemoConfig.getDescriptionByName("timer")  // 获取计时器配置
+    let des = taskConfig.getDescriptionByName("timer")  // 获取计时器配置
     des.action = "setTimer"  // 设置动作为计时器
     self.customActionByDes(button,des,false)  // 执行计时器设置
   },
@@ -1069,7 +1069,7 @@ try {
   copy:function (button) {
     let self = getTaskController()
     self.onClick = true
-    let des = pluginDemoConfig.getDescriptionByName("copy")  // 获取复制配置
+    let des = taskConfig.getDescriptionByName("copy")  // 获取复制配置
     if (button.doubleClick) {
       // self.onClick = true
       button.doubleClick = false
@@ -1111,9 +1111,9 @@ try {
       }
       return
     }
-    pluginDemoUtils.smartCopy()
+    taskUtils.smartCopy()
     self.hideAfterDelay()
-    pluginDemoUtils.dismissPopupMenu(button.menu,self.onClick)
+    taskUtils.dismissPopupMenu(button.menu,self.onClick)
   },
   /**
    * 🔗 复制为 Markdown 链接 - 将卡片转换为可点击的链接格式
@@ -1195,7 +1195,7 @@ try {
   searchInEudic:async function (button) {
   try {
     self.onClick = true
-    let des = pluginDemoConfig.getDescriptionByName("searchInEudic")  // 获取词典配置
+    let des = taskConfig.getDescriptionByName("searchInEudic")  // 获取词典配置
     des.action = "searchInDict"  // 设置动作为查词
     await self.customActionByDes(button, des, false)  // 执行查词动作
     // let target = des.target ?? "eudic"
@@ -1226,7 +1226,7 @@ try {
     //     if (button.menu) {
     //       button.menu.dismissAnimated(true)
     //       let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-    //       let endFrame = pluginDemoFrame.gen(beginFrame.x-225, beginFrame.y-50, 500, 500)
+    //       let endFrame = taskFrame.gen(beginFrame.x-225, beginFrame.y-50, 500, 500)
     //       endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
     //       endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
     //       MNUtil.postNotification("lookupText"+target,{text:textSelected,beginFrame:beginFrame,endFrame:endFrame})
@@ -1235,7 +1235,7 @@ try {
     //     let endFrame
     //     beginFrame.y = beginFrame.y-10
     //     if (beginFrame.x+490 > studyFrame.width) {
-    //       endFrame = pluginDemoFrame.gen(beginFrame.x-450, beginFrame.y-10, 500, 500)
+    //       endFrame = taskFrame.gen(beginFrame.x-450, beginFrame.y-10, 500, 500)
     //       if (beginFrame.y+490 > studyFrame.height) {
     //         endFrame.y = studyFrame.height-500
     //       }
@@ -1246,7 +1246,7 @@ try {
     //         endFrame.y = 0
     //       }
     //     }else{
-    //       endFrame = pluginDemoFrame.gen(beginFrame.x+40, beginFrame.y-10, 500, 500)
+    //       endFrame = taskFrame.gen(beginFrame.x+40, beginFrame.y-10, 500, 500)
     //       if (beginFrame.y+490 > studyFrame.height) {
     //         endFrame.y = studyFrame.height-500
     //       }
@@ -1261,7 +1261,7 @@ try {
     //   }
 
 
-    //   // let des = pluginDemoConfig.getDescriptionByName("searchInEudic")
+    //   // let des = taskConfig.getDescriptionByName("searchInEudic")
     //   // if (des && des.source) {
     //   //   // MNUtil.copyJSON(des)
     //   //   switch (des.source) {
@@ -1297,7 +1297,7 @@ try {
     self.hideAfterDelay()
     
   } catch (error) {
-    pluginDemoUtils.addErrorLog(error, "searchInEudic")
+    taskUtils.addErrorLog(error, "searchInEudic")
   }
   },
   /**
@@ -1326,7 +1326,7 @@ try {
    */
   switchTitleorExcerpt(button) {
     self.onClick = true
-    pluginDemoUtils.switchTitleOrExcerpt()  // 调用工具方法执行交换
+    taskUtils.switchTitleOrExcerpt()  // 调用工具方法执行交换
     if (button.menu) {
       button.menu.dismissAnimated(true)     // 关闭菜单
       return
@@ -1455,14 +1455,14 @@ try {
    * @param {UIButton} button - 触发按钮
    */
   chatglm: function (button) {
-    let des = pluginDemoConfig.getDescriptionByName("chatglm")
+    let des = taskConfig.getDescriptionByName("chatglm")
     if (des) {
       des.action = "chatAI"
       self.customActionByDes(button, des,false)
     }else{
       MNUtil.postNotification("customChat",{})
     }
-    // pluginDemoUtils.chatAI(des)
+    // taskUtils.chatAI(des)
     if (button.menu && !self.onClick) {
       button.menu.dismissAnimated(true)
       return
@@ -1513,7 +1513,7 @@ try {
    */
   search: function (button) {
     let self = getTaskController()
-    let des = pluginDemoConfig.getDescriptionByName("search")
+    let des = taskConfig.getDescriptionByName("search")
     if (des) {
       des.action = "search"
       self.customActionByDes(button, des,false)
@@ -1533,7 +1533,7 @@ try {
     if (button.menu) {
       button.menu.dismissAnimated(true)
       let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-      let endFrame = pluginDemoFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+      let endFrame = taskFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
       endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
       endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
       if (selectionText) {
@@ -1548,12 +1548,12 @@ try {
     let endFrame
     beginFrame.y = beginFrame.y-10
     if (beginFrame.x+490 > studyFrame.width) {
-      endFrame = pluginDemoFrame.gen(beginFrame.x-450, beginFrame.y-10, 450, 500)
+      endFrame = taskFrame.gen(beginFrame.x-450, beginFrame.y-10, 450, 500)
       if (beginFrame.y+490 > studyFrame.height) {
         endFrame.y = studyFrame.height-500
       }
     }else{
-      endFrame = pluginDemoFrame.gen(beginFrame.x+40, beginFrame.y-10, 450, 500)
+      endFrame = taskFrame.gen(beginFrame.x+40, beginFrame.y-10, 450, 500)
       if (beginFrame.y+490 > studyFrame.height) {
         endFrame.y = studyFrame.height-500
       }
@@ -1606,9 +1606,9 @@ try {
     if (button.menu) {
       button.menu.dismissAnimated(true)
     }
-    let des = pluginDemoConfig.getDescriptionByName("sidebar")
+    let des = taskConfig.getDescriptionByName("sidebar")
     des.action = "toggleSidebar"
-    pluginDemoUtils.toggleSidebar(des)
+    taskUtils.toggleSidebar(des)
   },
   /**
    * ✏️ 编辑功能 - 在 MN Editor 中打开笔记
@@ -1644,8 +1644,8 @@ try {
    */
   edit: function (button) {
     let noteId = undefined
-    if (self.dynamicWindow && pluginDemoUtils.currentNoteId) {
-      noteId = pluginDemoUtils.currentNoteId
+    if (self.dynamicWindow && taskUtils.currentNoteId) {
+      noteId = taskUtils.currentNoteId
     }else{
       let foucsNote = MNNote.getFocusNote()
       if (foucsNote) {
@@ -1663,22 +1663,22 @@ try {
     if (button.menu) {
       button.menu.dismissAnimated(true)
       let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-      let endFrame = pluginDemoFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
-      endFrame.y = pluginDemoUtils.constrain(endFrame.y, 0, studyFrame.height-500)
-      endFrame.x = pluginDemoUtils.constrain(endFrame.x, 0, studyFrame.width-500)
+      let endFrame = taskFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+      endFrame.y = taskUtils.constrain(endFrame.y, 0, studyFrame.height-500)
+      endFrame.x = taskUtils.constrain(endFrame.x, 0, studyFrame.width-500)
       MNUtil.postNotification("openInEditor",{noteId:noteId,beginFrame:beginFrame,endFrame:endFrame})
       return
     }
     let beginFrame = self.view.frame
     beginFrame.y = beginFrame.y-10
     if (beginFrame.x+490 > studyFrame.width) {
-      let endFrame = pluginDemoFrame.gen(beginFrame.x-450, beginFrame.y-10, 450, 500)
+      let endFrame = taskFrame.gen(beginFrame.x-450, beginFrame.y-10, 450, 500)
       if (beginFrame.y+490 > studyFrame.height) {
         endFrame.y = studyFrame.height-500
       }
       MNUtil.postNotification("openInEditor",{noteId:noteId,beginFrame:beginFrame,endFrame:endFrame})
     }else{
-      let endFrame = pluginDemoFrame.gen(beginFrame.x+40, beginFrame.y-10, 450, 500)
+      let endFrame = taskFrame.gen(beginFrame.x+40, beginFrame.y-10, 450, 500)
       if (beginFrame.y+490 > studyFrame.height) {
         endFrame.y = studyFrame.height-500
       }
@@ -1727,10 +1727,10 @@ try {
     //   MNUtil.showHUD("MN Task: Please install 'MN OCR' first!")
     //   return
     // }
-    let des = pluginDemoConfig.getDescriptionByName("ocr")
+    let des = taskConfig.getDescriptionByName("ocr")
     des.action = "ocr"
 
-    // await pluginDemoUtils.ocr(des)
+    // await taskUtils.ocr(des)
     self.customActionByDes(button, des,false)
     // if ("onFinish" in des) {
     //   let finishAction = des.onFinish
@@ -1817,7 +1817,7 @@ try {
    */
   pasteAsTitle:function (button) {
     let self = getTaskController()
-    let des = pluginDemoConfig.getDescriptionByName("pasteAsTitle")
+    let des = taskConfig.getDescriptionByName("pasteAsTitle")
     if (des && "doubleClick" in des) {
       self.onClick = true
     }
@@ -1850,7 +1850,7 @@ try {
       focusNote.noteTitle = text
     })
     self.hideAfterDelay()
-    pluginDemoUtils.dismissPopupMenu(button.menu,self.onClick)
+    taskUtils.dismissPopupMenu(button.menu,self.onClick)
   },
   /**
    * 🧹 清除格式功能
@@ -1993,12 +1993,12 @@ try {
       MNUtil.studyView.bringSubviewToFront(self.view)
       
       // 💾 保存工具栏状态
-      pluginDemoConfig.windowState.open = true
-      pluginDemoConfig.windowState.frame.x = self.view.frame.x
-      pluginDemoConfig.windowState.frame.y = self.view.frame.y
-      pluginDemoConfig.windowState.splitMode = self.splitMode
-      pluginDemoConfig.windowState.sideMode = self.sideMode
-      pluginDemoConfig.save("MNTask_windowState")
+      taskConfig.windowState.open = true
+      taskConfig.windowState.frame.x = self.view.frame.x
+      taskConfig.windowState.frame.y = self.view.frame.y
+      taskConfig.windowState.splitMode = self.splitMode
+      taskConfig.windowState.sideMode = self.sideMode
+      taskConfig.save("MNTask_windowState")
       
       // 重新布局工具栏
       self.setTaskLayout()
@@ -2022,7 +2022,7 @@ try {
       self.sideMode = ""  // 重置侧边模式
       
       // 📐 竖向工具栏的特殊处理
-      if (pluginDemoConfig.vertical()) {
+      if (taskConfig.vertical()) {
         let splitLine = MNUtil.splitLine  // 获取文档/脑图分割线位置
         let docMapSplitMode = MNUtil.studyController.docMapSplitMode
         
@@ -2062,13 +2062,13 @@ try {
       let height = 45 * self.buttonNumber + 15  // 计算高度
       self.setFrame(MNUtil.genFrame(
         x, y, 40, 
-        pluginDemoUtils.checkHeight(height, self.maxButtonNumber)
+        taskUtils.checkHeight(height, self.maxButtonNumber)
       ))
       
       self.custom = false;
     }
   } catch (error) {
-    pluginDemoUtils.addErrorLog(error, "onMoveGesture")
+    taskUtils.addErrorLog(error, "onMoveGesture")
   }
   },
   /**
@@ -2094,13 +2094,13 @@ try {
       // 🔍 查找按钮对应的动作名称
       let actionName = button.target ?? (
         self.dynamicWindow 
-          ? pluginDemoConfig.dynamicAction[button.index] 
-          : pluginDemoConfig.action[button.index]
+          ? taskConfig.dynamicAction[button.index] 
+          : taskConfig.action[button.index]
       )
       
       if (actionName) {
         // 📝 获取动作配置
-        let des = pluginDemoConfig.getDescriptionByName(actionName)
+        let des = taskConfig.getDescriptionByName(actionName)
         
         // ✅ 检查是否有长按配置
         if ("onLongPress" in des) {
@@ -2184,7 +2184,7 @@ try {
     //   
     //   // 更新 frame
     //   let frame = {x:x,y:y,width:self.initFrame.width,height:self.initFrame.height}
-    //   pluginDemoFrame.set(self.view,frame.x,frame.y,frame.width,frame.height)
+    //   taskFrame.set(self.view,frame.x,frame.y,frame.width,frame.height)
     // }
     // MNUtil.showHUD("message"+gesture.state)  // 调试：显示手势状态
 
@@ -2247,7 +2247,7 @@ try {
         self.view.bringSubviewToFront(self.screenButton)
         
         // 💾 保存状态
-        let windowState = pluginDemoConfig.windowState
+        let windowState = taskConfig.windowState
         
         if (self.dynamicWindow) {
           // 🌟 动态窗口：保存按钮数量后隐藏
@@ -2260,11 +2260,11 @@ try {
         }
         
         // 持久化配置
-        pluginDemoConfig.save("MNTask_windowState", windowState)
+        taskConfig.save("MNTask_windowState", windowState)
         self.onResize = false  // 重置调整标记
       }
     } catch (error) {
-      pluginDemoUtils.addErrorLog(error, "onResizeGesture")
+      taskUtils.addErrorLog(error, "onResizeGesture")
     }
   },
 });
@@ -2286,7 +2286,7 @@ try {
  * @param {UIButton} button - 要设置样式的按钮
  * @param {string} targetAction - 点击事件的方法名（如 "changeScreen:"）
  */
-pluginDemoController.prototype.setButtonLayout = function (button, targetAction) {
+taskController.prototype.setButtonLayout = function (button, targetAction) {
     // 📦 自动布局遮罩
     // 1 << 0: UIViewAutoresizingFlexibleWidth (宽度自适应)
     // 1 << 3: UIViewAutoresizingFlexibleHeight (高度自适应)
@@ -2294,7 +2294,7 @@ pluginDemoController.prototype.setButtonLayout = function (button, targetAction)
     
     // 🎨 设置文字颜色
     button.setTitleColorForState(UIColor.whiteColor(), 0);              // 正常状态：白色
-    button.setTitleColorForState(pluginDemoConfig.highlightColor, 1);   // 高亮状态：主题色
+    button.setTitleColorForState(taskConfig.highlightColor, 1);   // 高亮状态：主题色
     
     // 🎭 设置背景样式
     button.backgroundColor = UIColor.colorWithHexString("#9bb2d6").colorWithAlphaComponent(0.8);
@@ -2334,13 +2334,13 @@ pluginDemoController.prototype.setButtonLayout = function (button, targetAction)
  * @param {string} targetAction - 主要动作的方法名（如 "customAction:"）
  * @param {UIColor} color - 按钮背景色（通常根据按钮功能设置）
  */
-pluginDemoController.prototype.setColorButtonLayout = function (button, targetAction, color) {
+taskController.prototype.setColorButtonLayout = function (button, targetAction, color) {
     // 📦 自动布局（与 setButtonLayout 相同）
     button.autoresizingMask = (1 << 0 | 1 << 3);
     
     // 🎨 文字/图标颜色
     button.setTitleColorForState(UIColor.blackColor(), 0);              // 正常状态：黑色
-    button.setTitleColorForState(pluginDemoConfig.highlightColor, 1);   // 高亮状态：主题色
+    button.setTitleColorForState(taskConfig.highlightColor, 1);   // 高亮状态：主题色
     
     // 🎭 背景样式
     button.backgroundColor = color          // 使用传入的颜色
@@ -2389,24 +2389,24 @@ pluginDemoController.prototype.setColorButtonLayout = function (button, targetAc
  * 4. 🚫 防抖处理：通过 onAnimate 标记避免重复动画
  * 
  * @param {CGRect} frame - 可选，指定初始位置（通常用于动态窗口）
- * @this {pluginDemoController}
+ * @this {taskController}
  */
-pluginDemoController.prototype.show = async function (frame) {
+taskController.prototype.show = async function (frame) {
   // 📐 获取当前 frame 并调整到合适大小
   let preFrame = this.view.frame
   
-  if (pluginDemoConfig.horizontal(this.dynamicWindow)) {
+  if (taskConfig.horizontal(this.dynamicWindow)) {
     // ↔️ 横向工具栏调整
-    preFrame.width = pluginDemoUtils.checkHeight(preFrame.width, this.maxButtonNumber)
+    preFrame.width = taskUtils.checkHeight(preFrame.width, this.maxButtonNumber)
     preFrame.height = 40  // 固定高度 40
     // 确保不超出屏幕底部
-    preFrame.y = pluginDemoUtils.constrain(preFrame.y, 0, MNUtil.studyView.frame.height - 40)
+    preFrame.y = taskUtils.constrain(preFrame.y, 0, MNUtil.studyView.frame.height - 40)
   } else {
     // ↕️ 纵向工具栏调整
     preFrame.width = 40  // 固定宽度 40
-    preFrame.height = pluginDemoUtils.checkHeight(preFrame.height, this.maxButtonNumber)
+    preFrame.height = taskUtils.checkHeight(preFrame.height, this.maxButtonNumber)
     // 确保不超出屏幕右边
-    preFrame.x = pluginDemoUtils.constrain(preFrame.x, 0, MNUtil.studyView.frame.width - 40)
+    preFrame.x = taskUtils.constrain(preFrame.x, 0, MNUtil.studyView.frame.width - 40)
   }
   
   // 🎬 动画准备
@@ -2418,7 +2418,7 @@ pluginDemoController.prototype.show = async function (frame) {
   // 📏 如果指定了初始 frame
   if (frame) {
     frame.width = 40
-    frame.height = pluginDemoUtils.checkHeight(frame.height, this.maxButtonNumber)
+    frame.height = taskUtils.checkHeight(frame.height, this.maxButtonNumber)
     this.view.frame = frame
     this.currentFrame = frame
   }
@@ -2429,8 +2429,8 @@ pluginDemoController.prototype.show = async function (frame) {
   this.screenButton.hidden = true   // 暂时隐藏屏幕按钮
   
   // 🔄 刷新按钮配置
-  let useDynamic = pluginDemoConfig.getWindowState("dynamicOrder") && this.dynamicWindow
-  this.setTaskButton(useDynamic ? pluginDemoConfig.dynamicAction : pluginDemoConfig.action)
+  let useDynamic = taskConfig.getWindowState("dynamicOrder") && this.dynamicWindow
+  this.setTaskButton(useDynamic ? taskConfig.dynamicAction : taskConfig.action)
   
   // ========== 🎯 执行动画 ==========
   MNUtil.animate(() => {
@@ -2500,9 +2500,9 @@ pluginDemoController.prototype.show = async function (frame) {
  * - 这个机制用于处理用户快速操作的情况，避免频繁显示/隐藏
  * 
  * @param {CGRect} frame - 可选，指定隐藏时的目标位置
- * @this {pluginDemoController}
+ * @this {taskController}
  */
-pluginDemoController.prototype.hide = function (frame) {
+taskController.prototype.hide = function (frame) {
   // 💾 保存当前状态
   let preFrame = this.currentFrame
   this.onAnimate = true  // 标记正在执行动画
@@ -2573,9 +2573,9 @@ pluginDemoController.prototype.hide = function (frame) {
  * ```
  * 
  * @param {number} delay - 延迟时间（秒），默认 0.5 秒
- * @this {pluginDemoController}
+ * @this {taskController}
  */
-pluginDemoController.prototype.hideAfterDelay = function (delay = 0.5) {
+taskController.prototype.hideAfterDelay = function (delay = 0.5) {
   // ⁉️ 如果已经隐藏，直接返回
   if (this.view.hidden) {
     return
@@ -2627,7 +2627,7 @@ pluginDemoController.prototype.hideAfterDelay = function (delay = 0.5) {
  * 
  * @param {Array<string>} actionNames - 按钮动作名称数组，如 ["copy", "paste", "color1", ...]
  * @param {Object} newActions - 可选，新的动作配置对象
- * @this {pluginDemoController}
+ * @this {taskController}
  * 
  * @example
  * // 使用默认配置
@@ -2639,32 +2639,32 @@ pluginDemoController.prototype.hideAfterDelay = function (delay = 0.5) {
  * // 更新动作配置
  * setTaskButton(undefined, newActionsConfig)
  */
-pluginDemoController.prototype.setTaskButton = function (actionNames = pluginDemoConfig.action,newActions=undefined) {
+taskController.prototype.setTaskButton = function (actionNames = taskConfig.action,newActions=undefined) {
 try {
   // MNUtil.showHUD("setTaskButton")
-  let buttonColor = pluginDemoUtils.getButtonColor()
-  let dynamicOrder = pluginDemoConfig.getWindowState("dynamicOrder")
+  let buttonColor = taskUtils.getButtonColor()
+  let dynamicOrder = taskConfig.getWindowState("dynamicOrder")
   let useDynamic = dynamicOrder && this.dynamicWindow
   this.view.layer.shadowColor = buttonColor
   
   let actions
   if (newActions) {
-    pluginDemoConfig.actions = newActions
+    taskConfig.actions = newActions
   }
-  actions = pluginDemoConfig.actions
-  let defaultActionNames = pluginDemoConfig.getDefaultActionKeys()
+  actions = taskConfig.actions
+  let defaultActionNames = taskConfig.getDefaultActionKeys()
   if (!actionNames) {
     actionNames = defaultActionNames
     if (useDynamic) {
-      pluginDemoConfig.dynamicAction = actionNames
+      taskConfig.dynamicAction = actionNames
     }else{
-      pluginDemoConfig.action = actionNames
+      taskConfig.action = actionNames
     }
   }else{
     if (useDynamic) {
-      pluginDemoConfig.dynamicAction = actionNames
+      taskConfig.dynamicAction = actionNames
     }else{
-      pluginDemoConfig.action = actionNames
+      taskConfig.action = actionNames
     }
   }
 
@@ -2701,20 +2701,20 @@ try {
     }else{
       this.setColorButtonLayout(colorButton,actionName+":",buttonColor)
     }
-    // MNButton.setImage(colorButton, pluginDemoConfig.imageConfigs[actionName])
+    // MNButton.setImage(colorButton, taskConfig.imageConfigs[actionName])
     // let image = (actionName in actions)?actions[actionName].image+".png":defaultActions[actionName].image+".png"
-    // colorButton.setImageForState(MNUtil.getImage(pluginDemoConfig.mainPath + `/`+image),0)
-    colorButton.setImageForState(pluginDemoConfig.imageConfigs[actionName],0)
+    // colorButton.setImageForState(MNUtil.getImage(taskConfig.mainPath + `/`+image),0)
+    colorButton.setImageForState(taskConfig.imageConfigs[actionName],0)
     // self["ColorButton"+index].setTitleForState("",0) 
     // self["ColorButton"+index].contentHorizontalAlignment = 1
   }
   if (this.dynamicTask) {
     if (dynamicOrder) {
       // MNUtil.showHUD("useDynamic: "+useDynamic)
-      this.dynamicTask.setTaskButton(pluginDemoConfig.dynamicAction,newActions)
+      this.dynamicTask.setTaskButton(taskConfig.dynamicAction,newActions)
     }else{
       // MNUtil.showHUD("useDynamic: "+useDynamic)
-      this.dynamicTask.setTaskButton(pluginDemoConfig.action,newActions)
+      this.dynamicTask.setTaskButton(taskConfig.action,newActions)
     }
   }
   this.refresh()
@@ -2725,7 +2725,7 @@ try {
 /**
  * 
  * @param {*} frame 
- * @this {pluginDemoController}
+ * @this {taskController}
  */
 /**
  * 🔄 刷新工具栏 - 重新计算并更新工具栏布局
@@ -2736,7 +2736,7 @@ try {
  * - 🔧 工具栏大小调整后
  * 
  * @param {CGRect} frame - 可选，新的 frame，不传则使用当前 frame
- * @this {pluginDemoController}
+ * @this {taskController}
  */
 /**
  * 🔄 刷新工具栏 - 更新位置和布局
@@ -2761,9 +2761,9 @@ try {
  * - 如果没有提供，使用当前位置
  * 
  * @param {CGRect} frame - 可选，新的位置和大小
- * @this {pluginDemoController}
+ * @this {taskController}
  */
-pluginDemoController.prototype.refresh = function (frame) {
+taskController.prototype.refresh = function (frame) {
   if (!frame) {
     frame = this.view.frame  // 使用当前 frame
   }
@@ -2799,14 +2799,14 @@ pluginDemoController.prototype.refresh = function (frame) {
  * - 屏幕按钮始终保持在最上层
  * - 动画过程中不更新布局（避免抖动）
  * 
- * @this {pluginDemoController}
+ * @this {taskController}
  */
-pluginDemoController.prototype.setTaskLayout = function () {
+taskController.prototype.setTaskLayout = function () {
   if (this.onAnimate) {
     return  // 动画过程中，跳过布局更新
   }
   // MNUtil.copyJSON(this.view.frame)  // 调试：输出 frame 信息
-  if (pluginDemoConfig.horizontal(this.dynamicWindow)) {
+  if (taskConfig.horizontal(this.dynamicWindow)) {
     var viewFrame = this.view.bounds;
     var xLeft     = viewFrame.x
     var xRight    = xLeft + viewFrame.width
@@ -2814,14 +2814,14 @@ pluginDemoController.prototype.setTaskLayout = function () {
     var yBottom   = yTop + 40
     // this.moveButton.frame = {x: 0 ,y: 0,width: 40,height: 15};
     if (this.screenButton) {
-      pluginDemoFrame.set(this.screenButton, xRight-15, 0,this.screenButton.height,this.screenButton.width)
+      taskFrame.set(this.screenButton, xRight-15, 0,this.screenButton.height,this.screenButton.width)
       this.view.bringSubviewToFront(this.screenButton)
     }
     let initX = 0
     let initY = 0
     for (let index = 0; index < this.maxButtonNumber; index++) {
       initY = 0
-      pluginDemoFrame.set(this["ColorButton"+index], xLeft+initX, initY)
+      taskFrame.set(this["ColorButton"+index], xLeft+initX, initY)
       initX = initX+45
       this["ColorButton"+index].hidden = (initX > xRight+5)
     }
@@ -2833,14 +2833,14 @@ pluginDemoController.prototype.setTaskLayout = function () {
     var yBottom   = yTop + viewFrame.height
     // this.moveButton.frame = {x: 0 ,y: 0,width: 40,height: 15};
     if (this.screenButton) {
-      pluginDemoFrame.set(this.screenButton, 0, yBottom-15,this.screenButton.width,this.screenButton.height)
+      taskFrame.set(this.screenButton, 0, yBottom-15,this.screenButton.width,this.screenButton.height)
       this.view.bringSubviewToFront(this.screenButton)
     }
     let initX = 0
     let initY = 0
     for (let index = 0; index < this.maxButtonNumber; index++) {
       initX = 0
-      pluginDemoFrame.set(this["ColorButton"+index], xLeft+initX, initY)
+      taskFrame.set(this["ColorButton"+index], xLeft+initX, initY)
       initY = initY+45
       this["ColorButton"+index].hidden = (initY > yBottom+5)
     }
@@ -2853,9 +2853,9 @@ pluginDemoController.prototype.setTaskLayout = function () {
  * 【使用时机】
  * 在显示新菜单之前调用，避免多个菜单重叠
  * 
- * @this {pluginDemoController}
+ * @this {taskController}
  */
-pluginDemoController.prototype.checkPopover = function () {
+taskController.prototype.checkPopover = function () {
   if (this.popoverController) {this.popoverController.dismissPopoverAnimated(true);}
 }
 /**
@@ -2890,7 +2890,7 @@ pluginDemoController.prototype.checkPopover = function () {
  * @param {boolean} checkSubscribe - 是否检查订阅状态，默认 true
  * @returns {void}
  * 
- * @this {pluginDemoController}
+ * @this {taskController}
  * 
  * @example
  * // 执行复制动作
@@ -2909,9 +2909,9 @@ pluginDemoController.prototype.checkPopover = function () {
  *   }]
  * })
  */
-pluginDemoController.prototype.customActionByDes = async function (button,des,checkSubscribe = true) {
+taskController.prototype.customActionByDes = async function (button,des,checkSubscribe = true) {
   try {
-    if (checkSubscribe && !pluginDemoUtils.checkSubscribe(true)) {
+    if (checkSubscribe && !taskUtils.checkSubscribe(true)) {
       return
     }
     // MNUtil.copyJSON(des)
@@ -2954,28 +2954,28 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
       case "copy":
         if (des.target || des.content) {
           // 有指定复制目标或内容
-          success = await pluginDemoUtils.copy(des)
+          success = await taskUtils.copy(des)
         }else{
           // 智能复制：自动判断复制什么内容
-          success = pluginDemoUtils.smartCopy()
+          success = taskUtils.smartCopy()
         }
         break;
         
       case "paste":
-        pluginDemoUtils.paste(des)  // 执行粘贴操作
+        taskUtils.paste(des)  // 执行粘贴操作
         await MNUtil.delay(0.1)     // 等待粘贴完成
         break;
       case "markdown2Mindmap":
-        pluginDemoUtils.markdown2Mindmap(des)
+        taskUtils.markdown2Mindmap(des)
         break;
       case "webSearch":
-        await pluginDemoUtils.webSearch(des)
+        await taskUtils.webSearch(des)
         break;
       case "setTimer":
-        pluginDemoUtils.setTimer(des)
+        taskUtils.setTimer(des)
         break;
       case "switchTitleOrExcerpt":
-        pluginDemoUtils.switchTitleOrExcerpt()
+        taskUtils.switchTitleOrExcerpt()
         await MNUtil.delay(0.1)
         break;
       case "cloneAndMerge":
@@ -2987,7 +2987,7 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
         MNUtil.undoGrouping(()=>{
           try {
           MNNote.getFocusNotes().forEach(focusNote=>{
-            pluginDemoUtils.cloneAndMerge(focusNote.note, targetNoteId)
+            taskUtils.cloneAndMerge(focusNote.note, targetNoteId)
           })
           } catch (error) {
             MNUtil.showHUD(error)
@@ -3005,26 +3005,26 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
         targetNoteId= MNUtil.getNoteIdByURL(des.target)
         MNUtil.undoGrouping(()=>{
           MNNote.getFocusNotes().forEach(focusNote=>{
-            pluginDemoUtils.cloneAsChildNote(focusNote, targetNoteId)
+            taskUtils.cloneAsChildNote(focusNote, targetNoteId)
           })
         })
         await MNUtil.delay(0.1)
         break;
       case "addTags":
-        pluginDemoUtils.addTags(des)
+        taskUtils.addTags(des)
         break;
       case "removeTags":
-        pluginDemoUtils.removeTags(des)
+        taskUtils.removeTags(des)
         break;
       case "ocr":
-        await pluginDemoUtils.ocr(des,button)
+        await taskUtils.ocr(des,button)
         break;
       case "searchInDict":
         // MNUtil.showHUD("searchInDict")
-        pluginDemoUtils.searchInDict(des,button)
+        taskUtils.searchInDict(des,button)
         break;
       case "insertSnippet":
-        success = pluginDemoUtils.insertSnippet(des)
+        success = taskUtils.insertSnippet(des)
         break;
       case "importDoc":
         let docPath = await MNUtil.importFile(["com.adobe.pdf","public.text"])
@@ -3038,13 +3038,13 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
             let child = focusNote.createChildNote({title:fileName,excerptText:content,excerptTextMarkdown:true})
             await child.focusInMindMap(0.5)
           }else{
-            let newNote = pluginDemoUtils.newNoteInCurrentChildMap({title:fileName,excerptText:content,excerptTextMarkdown:true})
+            let newNote = taskUtils.newNoteInCurrentChildMap({title:fileName,excerptText:content,excerptTextMarkdown:true})
             await newNote.focusInMindMap(0.5)
           }
         }
         break;
       case "noteHighlight":
-        let newNote = await pluginDemoUtils.noteHighlight(des)
+        let newNote = await taskUtils.noteHighlight(des)
         if (newNote && newNote.notebookId === MNUtil.currentNotebookId) {
           let focusInFloatWindowForAllDocMode = des.focusInFloatWindowForAllDocMode ?? false
           let delay = des.focusAfterDelay ?? 0.5
@@ -3066,7 +3066,7 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
 
         break;
       case "moveNote":
-        pluginDemoUtils.moveNote(des)
+        taskUtils.moveNote(des)
         await MNUtil.delay(0.1)
         break;
       // ========== 📝 添加子卡片 ==========
@@ -3077,11 +3077,11 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
         config = {}  // 配置对象
         // 📝 设置标题
         if (des.title) {
-          config.title = pluginDemoUtils.detectAndReplace(des.title)  // 支持变量替换
+          config.title = taskUtils.detectAndReplace(des.title)  // 支持变量替换
         }
         // 📄 设置内容
         if (des.content) {
-          config.content = pluginDemoUtils.detectAndReplace(des.content)
+          config.content = taskUtils.detectAndReplace(des.content)
         }
         // 🎯 Markdown 支持
         if (des.markdown) {
@@ -3121,10 +3121,10 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
         }
         config = {}
         if (des.title) {
-          config.title = pluginDemoUtils.detectAndReplace(des.title)
+          config.title = taskUtils.detectAndReplace(des.title)
         }
         if (des.content) {
-          config.content = pluginDemoUtils.detectAndReplace(des.content)
+          config.content = taskUtils.detectAndReplace(des.content)
         }
         if (des.markdown) {
           config.markdown = des.markdown
@@ -3174,14 +3174,14 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
           MNUtil.undoGrouping(()=>{
             if (markdown) {
               focusNotes.forEach(note => {
-                let replacedText = pluginDemoUtils.detectAndReplace(comment,undefined,note)
+                let replacedText = taskUtils.detectAndReplace(comment,undefined,note)
                 if (replacedText.trim()) {
                   note.appendMarkdownComment(replacedText,commentIndex)
                 }
               })
             }else{
               focusNotes.forEach(note => {
-                let replacedText = pluginDemoUtils.detectAndReplace(comment,undefined,note)
+                let replacedText = taskUtils.detectAndReplace(comment,undefined,note)
                 if (replacedText.trim()) {
                   note.appendTextComment(replacedText,commentIndex)
                 }
@@ -3198,8 +3198,8 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
         let title = des.title
         let link = des.link
         if (title && link) {
-          let replacedTitle = pluginDemoUtils.detectAndReplace(title)
-          let replacedLink = pluginDemoUtils.detectAndReplace(link)
+          let replacedTitle = taskUtils.detectAndReplace(title)
+          let replacedLink = taskUtils.detectAndReplace(link)
           // MNUtil.copy("text"+focusNotes.length)
           MNUtil.undoGrouping(()=>{
             focusNote.appendMarkdownComment(`[${replacedTitle}](${replacedLink})`)
@@ -3211,14 +3211,14 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
         if (!des.hideMessage) {
           MNUtil.showHUD("removeComment")
         }
-        pluginDemoUtils.removeComment(des)
+        taskUtils.removeComment(des)
         await MNUtil.delay(0.1)
         break;
       case "moveComment":
         if (!des.hideMessage) {
           MNUtil.showHUD("moveComment")
         }
-        pluginDemoUtils.moveComment(des)
+        taskUtils.moveComment(des)
         await MNUtil.delay(0.1)
         break;
       case "link":
@@ -3241,19 +3241,19 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
         await MNUtil.delay(0.1)
         break;
       case "clearContent":
-        pluginDemoUtils.clearContent(des)
+        taskUtils.clearContent(des)
         break;
       case "setContent":
-          pluginDemoUtils.setContent(des)
+          taskUtils.setContent(des)
         break;
       case "showInFloatWindow":
-        pluginDemoUtils.showInFloatWindow(des)
+        taskUtils.showInFloatWindow(des)
         // MNUtil.copy(focusNote.noteId)
         await MNUtil.delay(0.1)
         break;
       case "openURL":
         if (des.url) {
-          let url = pluginDemoUtils.detectAndReplace(des.url)
+          let url = taskUtils.detectAndReplace(des.url)
           MNUtil.openURL(url)
           break;
           // MNUtil.showHUD("message")
@@ -3286,7 +3286,7 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
           url = url+"&input="+encodeURIComponent(des.input)
         }
         if (des.text) {
-          let text = pluginDemoUtils.detectAndReplace(des.text)
+          let text = taskUtils.detectAndReplace(des.text)
           url = url+"&text="+encodeURIComponent(text)
         }
         MNUtil.openURL(url)
@@ -3295,7 +3295,7 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
         if (!des.hideMessage) {
           MNUtil.showHUD("toggleTextFirst")
         }
-        targetNotes = pluginDemoUtils.getNotesByRange(des.range ?? "currentNotes")
+        targetNotes = taskUtils.getNotesByRange(des.range ?? "currentNotes")
         MNUtil.undoGrouping(()=>{
           targetNotes.forEach(note=>{
             note.textFirst = !note.textFirst
@@ -3307,7 +3307,7 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
         if (!des.hideMessage) {
           MNUtil.showHUD("toggleMarkdown")
         }
-        targetNotes = pluginDemoUtils.getNotesByRange(des.range ?? "currentNotes")
+        targetNotes = taskUtils.getNotesByRange(des.range ?? "currentNotes")
         MNUtil.undoGrouping(()=>{
           targetNotes.forEach(note=>{
             note.excerptTextMarkdown = !note.excerptTextMarkdown
@@ -3316,17 +3316,17 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
         await MNUtil.delay(0.1)
         break
       case "toggleSidebar":
-        pluginDemoUtils.toggleSidebar(des)
+        taskUtils.toggleSidebar(des)
         break;
       case "replace":
-        pluginDemoUtils.replaceAction(des)
+        taskUtils.replaceAction(des)
         break;
       case "mergeText":
         let noteRange = des.range ?? "currentNotes"
-        targetNotes = pluginDemoUtils.getNotesByRange(noteRange)
+        targetNotes = taskUtils.getNotesByRange(noteRange)
         MNUtil.undoGrouping(()=>{
           targetNotes.forEach((note,index)=>{
-            let mergedText = pluginDemoUtils.getMergedText(note, des, index)
+            let mergedText = taskUtils.getMergedText(note, des, index)
             if (mergedText === undefined) {
               return new Promise((resolve, reject) => {
                 resolve()
@@ -3357,23 +3357,23 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
             }
           })
         })
-        if (pluginDemoUtils.sourceToRemove.length) {
+        if (taskUtils.sourceToRemove.length) {
           MNUtil.undoGrouping(()=>{
             // MNUtil.showHUD("remove")
-            pluginDemoUtils.sourceToRemove.forEach(note=>{
+            taskUtils.sourceToRemove.forEach(note=>{
               note.excerptText = ""
             })
             MNUtil.delay(1).then(()=>{
-              pluginDemoUtils.sourceToRemove = []
+              taskUtils.sourceToRemove = []
             })
           })
         }
-        if (Object.keys(pluginDemoUtils.commentToRemove).length) {
+        if (Object.keys(taskUtils.commentToRemove).length) {
           MNUtil.undoGrouping(()=>{
-            let commentInfos = Object.keys(pluginDemoUtils.commentToRemove)
+            let commentInfos = Object.keys(taskUtils.commentToRemove)
             commentInfos.forEach(noteId => {
               let note = MNNote.new(noteId)
-              let sortedIndex = MNUtil.sort(pluginDemoUtils.commentToRemove[noteId],"decrement")
+              let sortedIndex = MNUtil.sort(taskUtils.commentToRemove[noteId],"decrement")
               sortedIndex.forEach(commentIndex=>{
                 if (commentIndex < 0) {
                   note.noteTitle = ""
@@ -3383,20 +3383,20 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
               })
             })
             MNUtil.delay(1).then(()=>{
-              pluginDemoUtils.commentToRemove = {}
+              taskUtils.commentToRemove = {}
             })
           })
         }
         await MNUtil.delay(0.1)
         break;
       case "chatAI":
-        pluginDemoUtils.chatAI(des,button)
+        taskUtils.chatAI(des,button)
         break
       case "search":
-        pluginDemoUtils.search(des,button)
+        taskUtils.search(des,button)
         break;
       case "openWebURL":
-        pluginDemoUtils.openWebURL(des)
+        taskUtils.openWebURL(des)
         break;
       case "addImageComment":
         let source = des.source ?? "photo"
@@ -3434,13 +3434,13 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
         // present(imagePickerController, animated: true, completion: nil)
         break;
       case "focus":
-        await pluginDemoUtils.focus(des)
+        await taskUtils.focus(des)
         break 
       case "showMessage":
-        pluginDemoUtils.showMessage(des)
+        taskUtils.showMessage(des)
         break
       case "confirm":
-        let targetDes = await pluginDemoUtils.userConfirm(des)
+        let targetDes = await taskUtils.userConfirm(des)
         if (targetDes) {
           success = await this.customActionByDes(button, targetDes) 
         }else{
@@ -3449,7 +3449,7 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
         }
         break
       case "userSelect":
-        let selectDes = await pluginDemoUtils.userSelect(des)
+        let selectDes = await taskUtils.userSelect(des)
         if (selectDes) {
           success = await this.customActionByDes(button, selectDes) 
         }else{
@@ -3467,7 +3467,7 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
         }
         break
       case "export":
-        pluginDemoUtils.export(des)
+        taskUtils.export(des)
         // let exportTarget = des.target ?? "auto"
         // let docPath = MNUtil.getDocById(focusNote.note.docMd5).fullPathFileName
         // MNUtil.saveFile(docPath, ["public.pdf"])
@@ -3484,7 +3484,7 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
             let url = config[keys[i]].url
             let scale = config[keys[i]].scale??3
             MNUtil.showHUD("setButtonImage: "+keys[i])
-            pluginDemoConfig.setImageByURL(keys[i], url,false,scale)
+            taskConfig.setImageByURL(keys[i], url,false,scale)
           }
           // await Promise.all(asyncActions)
           MNUtil.postNotification("refreshTaskButton", {})
@@ -3493,7 +3493,7 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
         }
         break;
       case "setColor":
-        await pluginDemoUtils.setColor(des)
+        await taskUtils.setColor(des)
         break;
       case "triggerButton":
         let targetButtonName = des.buttonName
@@ -3505,9 +3505,9 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
     }
     if (button.delay) {
       this.hideAfterDelay()
-      pluginDemoUtils.dismissPopupMenu(button.menu,true)
+      taskUtils.dismissPopupMenu(button.menu,true)
     }else{
-      pluginDemoUtils.dismissPopupMenu(button.menu)
+      taskUtils.dismissPopupMenu(button.menu)
     }
     let delay = des.delay ?? 0.5
     if (success && "onSuccess" in des) {
@@ -3542,7 +3542,7 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
     // }
     // copyJSON(des)
   } catch (error) {
-    pluginDemoUtils.addErrorLog(error, "customActionByDes")
+    taskUtils.addErrorLog(error, "customActionByDes")
     // MNUtil.showHUD(error)
   }
 }
@@ -3569,13 +3569,13 @@ pluginDemoController.prototype.customActionByDes = async function (button,des,ch
  * @param {string} targetButtonName - 目标按钮名称（如 "copy", "paste", "color1" 等）
  * @param {boolean} checkSubscribe - 是否检查订阅状态，默认 true
  * @returns {Promise<boolean>} 返回是否成功执行
- * @this {pluginDemoController}
+ * @this {taskController}
  */
-pluginDemoController.prototype.customActionByButton = async function (button,targetButtonName,checkSubscribe = true) {
+taskController.prototype.customActionByButton = async function (button,targetButtonName,checkSubscribe = true) {
   try {
     
 
-  let des = pluginDemoConfig.getDesByButtonName(targetButtonName)
+  let des = taskConfig.getDesByButtonName(targetButtonName)
   if (des) {
     await this.customActionByDes(button, des)
     return true
@@ -3583,7 +3583,7 @@ pluginDemoController.prototype.customActionByButton = async function (button,tar
     return false
   }
     } catch (error) {
-    pluginDemoUtils.addErrorLog(error, "customActionByButton")
+    taskUtils.addErrorLog(error, "customActionByButton")
     return false
   }
 }
@@ -3604,9 +3604,9 @@ pluginDemoController.prototype.customActionByButton = async function (button,tar
  * 
  * @param {UIButton} button - 要替换动作的按钮
  * @param {string} target - 新的目标动作名称（如 "copy:", "setColor:" 等）
- * @this {pluginDemoController}
+ * @this {taskController}
  */
-pluginDemoController.prototype.replaceButtonTo = async function (button,target) {
+taskController.prototype.replaceButtonTo = async function (button,target) {
   button.removeTargetActionForControlEvents(undefined, undefined, 1 << 6);
   button.setTitleForState("", 0)
   button.setTitleForState("", 1)
@@ -3638,7 +3638,7 @@ pluginDemoController.prototype.replaceButtonTo = async function (button,target) 
  * 
  * 【配置示例】
  * ```javascript
- * // 在 pluginDemoConfig 中配置：
+ * // 在 taskConfig 中配置：
  * {
  *   "makeLink": {           // 系统按钮 ID
  *     enabled: true,        // 是否启用替换
@@ -3654,11 +3654,11 @@ pluginDemoController.prototype.replaceButtonTo = async function (button,target) 
  * 
  * @param {UIButton} button - 触发弹出菜单的按钮
  * @returns {PopupMenu|undefined} 返回弹出菜单对象，或 undefined
- * @this {pluginDemoController}
+ * @this {taskController}
  */
-pluginDemoController.prototype.popupReplace = async function (button) {
+taskController.prototype.popupReplace = async function (button) {
 
-  let hasReplace = pluginDemoConfig.hasPopup()
+  let hasReplace = taskConfig.hasPopup()
   if (!hasReplace) {
     return
   }
@@ -3681,28 +3681,28 @@ pluginDemoController.prototype.popupReplace = async function (button) {
         continue
       }
       let popupButton = menu.subviews[i].subviews[0]
-      let popupConfig = pluginDemoConfig.getPopupConfig(ids[i])
+      let popupConfig = taskConfig.getPopupConfig(ids[i])
       // MNUtil.showHUD("message"+menu.subviews.length)
       if (!popupConfig) {
         // MNUtil.showHUD("Unknown popup button: "+ids[i])
         continue
       }
-      // MNUtil.showHUD("popupReplace:"+ids[i]+":"+pluginDemoConfig.getPopupConfig(ids[i]).enabled)
+      // MNUtil.showHUD("popupReplace:"+ids[i]+":"+taskConfig.getPopupConfig(ids[i]).enabled)
       if (popupConfig.enabled) {
-        // MNUtil.showHUD(pluginDemoConfig.getPopupConfig(ids[i]).target)
+        // MNUtil.showHUD(taskConfig.getPopupConfig(ids[i]).target)
         let target = popupConfig.target
         if (target) {
         try {
           popupButton.menu = menu
           popupButton.target = target
-          popupButton.setImageForState(pluginDemoConfig.imageConfigs[target],0)
-          popupButton.setImageForState(pluginDemoConfig.imageConfigs[target],1)
+          popupButton.setImageForState(taskConfig.imageConfigs[target],0)
+          popupButton.setImageForState(taskConfig.imageConfigs[target],1)
         } catch (error) {
-          pluginDemoUtils.addErrorLog(error, "popupReplaceImage", ids[i])
+          taskUtils.addErrorLog(error, "popupReplaceImage", ids[i])
         }
         }else{
           // MNUtil.showHUD("message"+ids[i])
-          // pluginDemoUtils.addErrorLog(error, "popupReplace", ids[i])
+          // taskUtils.addErrorLog(error, "popupReplace", ids[i])
         }
       }
     }
@@ -3711,22 +3711,22 @@ pluginDemoController.prototype.popupReplace = async function (button) {
         continue
       }
       let popupButton = menu.subviews[i].subviews[0]
-      let popupConfig = pluginDemoConfig.getPopupConfig(ids[i])
+      let popupConfig = taskConfig.getPopupConfig(ids[i])
       // MNUtil.showHUD("message"+menu.subviews.length)
 
       if (!popupConfig) {
         MNUtil.showHUD("Unknown popup button: "+ids[i])
         continue
       }
-      // MNUtil.showHUD("popupReplace:"+ids[i]+":"+pluginDemoConfig.getPopupConfig(ids[i]).enabled)
+      // MNUtil.showHUD("popupReplace:"+ids[i]+":"+taskConfig.getPopupConfig(ids[i]).enabled)
       if (popupConfig.enabled) {
-        // MNUtil.showHUD(pluginDemoConfig.getPopupConfig(ids[i]).target)
+        // MNUtil.showHUD(taskConfig.getPopupConfig(ids[i]).target)
         let target = popupConfig.target
         if (target) {
         try {
           popupButton.menu = menu
           popupButton.target = target
-          if (pluginDemoConfig.builtinActionKeys.includes(target)) {
+          if (taskConfig.builtinActionKeys.includes(target)) {
             if (target.includes("color")) {
               popupButton.color = parseInt(target.slice(5))
               this.replaceButtonTo(popupButton, "setColor:")
@@ -3737,11 +3737,11 @@ pluginDemoController.prototype.popupReplace = async function (button) {
             this.replaceButtonTo(popupButton, "customAction:")
           }
         } catch (error) {
-          pluginDemoUtils.addErrorLog(error, "popupReplaceSelector", ids[i])
+          taskUtils.addErrorLog(error, "popupReplaceSelector", ids[i])
         }
         }else{
           MNUtil.showHUD("message"+ids[i])
-          // pluginDemoUtils.addErrorLog(error, "popupReplace", ids[i])
+          // taskUtils.addErrorLog(error, "popupReplace", ids[i])
         }
       }
     }
@@ -3753,13 +3753,13 @@ pluginDemoController.prototype.popupReplace = async function (button) {
         continue
       }
       let popupButton = menu.subviews[i].subviews[0]
-      let popupConfig = pluginDemoConfig.getPopupConfig(ids[i])
+      let popupConfig = taskConfig.getPopupConfig(ids[i])
       // MNUtil.showHUD("message"+menu.subviews.length)
       if (!popupConfig) {
         MNUtil.showHUD("Unknown popup button: "+ids[i])
         continue
       }
-      // MNUtil.showHUD("popupReplace:"+ids[i]+":"+pluginDemoConfig.getPopupConfig(ids[i]).enabled)
+      // MNUtil.showHUD("popupReplace:"+ids[i]+":"+taskConfig.getPopupConfig(ids[i]).enabled)
       if (popupConfig.enabled) {
           // let tem = getAllProperties(temButton)
           let targetsNumber = popupButton.allTargets().count()
@@ -3777,7 +3777,7 @@ pluginDemoController.prototype.popupReplace = async function (button) {
     // MNUtil.showHUD("popupReplaceError")
   }
   } catch (error) {
-    pluginDemoUtils.addErrorLog(error, "popupReplace")
+    taskUtils.addErrorLog(error, "popupReplace")
   }
 }
 /**
@@ -3820,10 +3820,10 @@ pluginDemoController.prototype.popupReplace = async function (button) {
  * @param {UIButton} button - 触发菜单的按钮
  * @param {Object} des - 动作描述对象
  * @returns {boolean} true 表示已处理菜单，false 表示不是菜单动作
- * @this {pluginDemoController}
+ * @this {taskController}
  */
-pluginDemoController.prototype.customActionMenu =  function (button,des) {
-  let buttonX = pluginDemoUtils.getButtonFrame(button).x//转化成相对于studyview的
+taskController.prototype.customActionMenu =  function (button,des) {
+  let buttonX = taskUtils.getButtonFrame(button).x//转化成相对于studyview的
   try {
     let selector = "customActionByMenu:"
     let object = this
@@ -4191,7 +4191,7 @@ pluginDemoController.prototype.customActionMenu =  function (button,des) {
     // MNUtil.showHUD("shouldShowMenu: false")
     return false
   } catch (error) {
-    // pluginDemoUtils.addErrorLog(error, "customActionMenu")
+    // taskUtils.addErrorLog(error, "customActionMenu")
     return false
   }
 }
@@ -4235,7 +4235,7 @@ pluginDemoController.prototype.customActionMenu =  function (button,des) {
  * 
  * @param {UIView} view - 要添加手势的视图对象
  * @param {string} selector - 手势触发时调用的方法名（必须包含冒号）
- * @this {pluginDemoController}
+ * @this {taskController}
  * 
  * @example
  * // 为工具栏添加拖动功能
@@ -4244,7 +4244,7 @@ pluginDemoController.prototype.customActionMenu =  function (button,des) {
  * // 为按钮添加拖动重排功能
  * this.addPanGesture(button, "onButtonDrag:")
  */
-pluginDemoController.prototype.addPanGesture = function (view,selector) {
+taskController.prototype.addPanGesture = function (view,selector) {
   let gestureRecognizer = new UIPanGestureRecognizer(this,selector)
   view.addGestureRecognizer(gestureRecognizer)
 }
@@ -4290,7 +4290,7 @@ pluginDemoController.prototype.addPanGesture = function (view,selector) {
  * 
  * @param {UIView} view - 要添加长按手势的视图
  * @param {string} selector - 长按触发时调用的方法名
- * @this {pluginDemoController}
+ * @this {taskController}
  * 
  * @example
  * // 为按钮添加长按菜单
@@ -4303,7 +4303,7 @@ pluginDemoController.prototype.addPanGesture = function (view,selector) {
  *   }
  * }
  */
-pluginDemoController.prototype.addLongPressGesture = function (view,selector) {
+taskController.prototype.addLongPressGesture = function (view,selector) {
   let gestureRecognizer = new UILongPressGestureRecognizer(this,selector)
   gestureRecognizer.minimumPressDuration = 0.3  // 设置最小按压时间为 0.3 秒
   
@@ -4367,7 +4367,7 @@ pluginDemoController.prototype.addLongPressGesture = function (view,selector) {
  * 
  * @param {UIView} view - 要添加滑动手势的视图
  * @param {string} selector - 滑动触发时调用的方法名
- * @this {pluginDemoController}
+ * @this {taskController}
  * 
  * @example
  * // 为工具栏添加滑动隐藏功能
@@ -4380,7 +4380,7 @@ pluginDemoController.prototype.addLongPressGesture = function (view,selector) {
  *   }
  * }
  */
-pluginDemoController.prototype.addSwipeGesture = function (view,selector) {
+taskController.prototype.addSwipeGesture = function (view,selector) {
   let gestureRecognizer = new UISwipeGestureRecognizer(this,selector)
   view.addGestureRecognizer(gestureRecognizer)
 }
@@ -4419,7 +4419,7 @@ pluginDemoController.prototype.addSwipeGesture = function (view,selector) {
  * @returns {{title: string, object: Object, selector: string, param: any, checked: boolean}} 
  *          返回标准的 iOS 菜单项对象
  * 
- * @this {pluginDemoController} - 绑定到当前控制器实例
+ * @this {taskController} - 绑定到当前控制器实例
  * 
  * @example
  * // 创建简单菜单项
@@ -4442,7 +4442,7 @@ pluginDemoController.prototype.addSwipeGesture = function (view,selector) {
  * ]
  * MNUtil.getPopoverAndPresent(button, menuItems, 200)
  */
-pluginDemoController.prototype.tableItem = function (title,selector,param = "",checked = false) {
+taskController.prototype.tableItem = function (title,selector,param = "",checked = false) {
   return {title:title,object:this,selector:selector,param:param,checked:checked}
 }
 /**
@@ -4500,7 +4500,7 @@ pluginDemoController.prototype.tableItem = function (title,selector,param = "",c
  * 3. 🎯 初始化：设置工具栏初始位置和大小
  * 4. 🔧 刷新布局：更新按钮后重新计算
  * 
- * @this {pluginDemoController}
+ * @this {taskController}
  * 
  * @example
  * // 设置到指定位置并自动计算大小
@@ -4516,9 +4516,9 @@ pluginDemoController.prototype.tableItem = function (title,selector,param = "",c
  * - 总占用：45 像素/按钮
  * - 屏幕按钮额外空间：15 像素
  */
-pluginDemoController.prototype.setFrame = function (frame,maximize = false) {
+taskController.prototype.setFrame = function (frame,maximize = false) {
   let targetFrame = {x:frame.x,y:frame.y}
-  if(pluginDemoConfig.horizontal(this.dynamicWindow)){
+  if(taskConfig.horizontal(this.dynamicWindow)){
     // ========== ↔️ 横向工具栏布局 ==========
     let width = Math.max(frame.width,frame.height)  // 取较大值作为宽度
     if (maximize) {
@@ -4533,12 +4533,12 @@ pluginDemoController.prototype.setFrame = function (frame,maximize = false) {
       width = MNUtil.studyView.bounds.width - frame.x
     }
     // 🔧 检查最大按钮数量限制
-    width = pluginDemoUtils.checkHeight(width,this.maxButtonNumber)
+    width = taskUtils.checkHeight(width,this.maxButtonNumber)
     targetFrame.width = width
     targetFrame.height = 40  // 横向固定高度
     // 📍 位置约束：确保完全在屏幕内
-    targetFrame.x = pluginDemoUtils.constrain(targetFrame.x, 0, MNUtil.studyView.bounds.width-width)
-    targetFrame.y = pluginDemoUtils.constrain(targetFrame.y, 0, MNUtil.studyView.bounds.height-40)
+    targetFrame.x = taskUtils.constrain(targetFrame.x, 0, MNUtil.studyView.bounds.width-width)
+    targetFrame.y = taskUtils.constrain(targetFrame.y, 0, MNUtil.studyView.bounds.height-40)
   }else{
     // ========== ↕️ 纵向工具栏布局 ==========
     targetFrame.width = 40  // 纵向固定宽度
@@ -4551,7 +4551,7 @@ pluginDemoController.prototype.setFrame = function (frame,maximize = false) {
       this.buttonNumber = Math.floor(height/45)
     }
     // 💎 订阅限制：未订阅用户最多 420 像素高度
-    if (height > 420 && !pluginDemoUtils.isSubscribed(false)) {
+    if (height > 420 && !taskUtils.isSubscribed(false)) {
       height = 420
     }
     // 🛡️ 底边界保护：防止超出屏幕
@@ -4559,7 +4559,7 @@ pluginDemoController.prototype.setFrame = function (frame,maximize = false) {
       height = MNUtil.studyView.bounds.height - frame.y
     }
     // 🔧 检查最大按钮数量限制
-    height = pluginDemoUtils.checkHeight(height,this.maxButtonNumber)
+    height = taskUtils.checkHeight(height,this.maxButtonNumber)
     targetFrame.height = height
   }
   // 📐 应用新的框架

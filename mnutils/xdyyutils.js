@@ -4,6 +4,14 @@
 
 class MNMath {
   /**
+   * 单条 HtmlComment 的模板卡片 id
+   */
+  static singleHtmlCommentTemplateNoteId = {
+    "证明": "749B2770-77A9-4D3D-9F6F-8B2EE21615AB",
+    "原理": "86F237E5-7BA3-4182-A9B9-A135D34CDC3A",
+    "反例": "C33F6700-747F-48FF-999E-3783D596B0CF",
+  }
+  /**
    * 卡片类型
    * 
    * refName: “xxx”：“yyy”相关 zz 里的 zz

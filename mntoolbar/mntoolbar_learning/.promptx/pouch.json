@@ -10,7 +10,17 @@
           "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntoolbar/mntoolbar_learning"
         }
       ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-07-03T04:24:01.443Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnutils"
+        }
+      ]
     }
   ],
-  "lastUpdated": "2025-07-02T01:58:08.237Z"
+  "lastUpdated": "2025-07-03T04:24:01.452Z"
 }

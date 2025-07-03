@@ -962,6 +962,9 @@ class MNMath {
         
         // 归类卡片的链接已经在最后，默认就在"所属"字段下，不需要移动
         // MNUtil.showHUD("已将知识点卡片中的链接移动到\"相关链接\"字段");
+        MNUtil.undoGrouping(() => {
+          targetNote.refresh();
+        });
         return true;
         
       } else if (!["归类", "定义"].includes(noteType) && targetNoteType === "归类") {
@@ -972,6 +975,9 @@ class MNMath {
         
         // 归类卡片的链接保持在最后（"所属"字段下）
         MNUtil.showHUD("已将链接移动到\"相关链接\"字段");
+        MNUtil.undoGrouping(() => {
+          note.refresh();
+        });
         return true;
         
       } else if (noteType === "定义" && targetNoteType === "定义") {
@@ -999,6 +1005,40 @@ class MNMath {
         }
         
         // MNUtil.showHUD("已将两个定义卡片的链接移动到\"相关思考\"字段");
+        MNUtil.undoGrouping(() => {
+          note.refresh();
+          targetNote.refresh();
+        });
+        return true;
+        
+      } else if (noteType === "归类" && targetNoteType === "归类") {
+        // 场景3：归类卡片之间的链接
+        // 两个归类卡片都需要处理
+        
+        // 处理当前卡片
+        note.appendMarkdownComment("- ");
+        this.moveCommentsArrToField(note, [note.MNComments.length - 1], "相关思考");
+        this.moveCommentsArrToField(note, [note.MNComments.length - 1], "相关思考");
+        
+        // 处理目标卡片
+        let targetLinkIndex = targetNote.MNComments.findIndex(comment => {
+          if (comment.type === "linkComment") {
+            let linkId = comment.text.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1];
+            return linkId === note.noteId;
+          }
+          return false;
+        });
+        
+        if (targetLinkIndex !== -1) {
+          targetNote.appendMarkdownComment("- ");
+          this.moveCommentsArrToField(targetNote, [targetNote.MNComments.length - 1], "相关思考");
+          this.moveCommentsArrToField(targetNote, [targetNote.MNComments.length - 1], "相关思考");
+        }
+        
+        MNUtil.undoGrouping(()=>{
+          note.refresh();
+          targetNote.refresh();
+        })
         return true;
         
       } else {

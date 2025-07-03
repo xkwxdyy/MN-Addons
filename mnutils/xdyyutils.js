@@ -214,6 +214,19 @@ class MNMath {
   }
 
   /**
+   * 知识点卡片类型
+   */
+  static knowledgeNoteTypes = [
+    "定义",
+    "命题",
+    "例子",
+    "反例",
+    "思想方法",
+    "问题",
+    "思路"
+  ]
+
+  /**
    * 卡片类型与默认移动字段的映射关系
    * 
    * 定义了每种卡片类型的新内容应该移动到哪个字段下
@@ -1781,6 +1794,191 @@ class MNMath {
 
     // 返回是否已制卡
     return ifTemplateMerged
+  }
+
+  /**
+   * 合并知识卡片
+   * 将 sourceNote (B) 的内容按字段合并到 targetNote (A) 中
+   * 
+   * 注意：
+   * - "相关链接"字段的内容会被删除，不参与合并
+   * - 支持特殊字段映射（如思想方法的"原理"→命题的"证明"）
+   * - 会自动处理字段名中的多余冒号
+   * 
+   * @param {MNNote} targetNote - 目标卡片 (A)，保留的卡片
+   * @param {MNNote} sourceNote - 源卡片 (B)，将被合并的卡片
+   */
+  static renewKnowledgeNotes(targetNote, sourceNote) {
+    try {
+      MNUtil.log("🔀 开始合并知识卡片...");
+      
+      // 1. 获取两个卡片的类型
+      const targetType = this.getNoteType(targetNote);
+      const sourceType = this.getNoteType(sourceNote);
+      
+      MNUtil.log(`📋 目标卡片类型: ${targetType || '未知'}, 源卡片类型: ${sourceType || '未知'}`);
+      
+      // 2. 解析源卡片的评论结构
+      const sourceCommentsObj = this.parseNoteComments(sourceNote);
+      const sourceHtmlComments = sourceCommentsObj.htmlCommentsObjArr;
+      
+      if (sourceHtmlComments.length === 0) {
+        MNUtil.showHUD("源卡片没有字段结构，无法进行字段合并");
+        return;
+      }
+      
+      // 3. 建立字段映射关系
+      const fieldMapping = this.buildFieldMapping(sourceType, targetType);
+      
+      // 4. 使用 undoGrouping 包装所有修改操作
+      MNUtil.undoGrouping(() => {
+        // 先删除"相关链接"字段（包括字段标记和内容）
+        const relatedLinkField = sourceHtmlComments.find(htmlComment => {
+          const fieldName = this.normalizeFieldName(htmlComment.text);
+          return fieldName === "相关链接";
+        });
+        
+        if (relatedLinkField) {
+          // 获取"相关链接"字段的完整索引范围（包括字段本身）
+          const indicesToDelete = relatedLinkField.includingFieldBlockIndexArr;
+          
+          MNUtil.log(`🗑️ 将删除"相关链接"字段及其 ${indicesToDelete.length - 1} 条内容`);
+          
+          // 从后往前删除，避免索引变化
+          const sortedIndices = indicesToDelete.sort((a, b) => b - a);
+          sortedIndices.forEach(index => {
+            sourceNote.removeCommentByIndex(index);
+          });
+          
+          // 重新解析评论结构（因为删除操作改变了结构）
+          const updatedCommentsObj = this.parseNoteComments(sourceNote);
+          sourceHtmlComments.length = 0;
+          sourceHtmlComments.push(...updatedCommentsObj.htmlCommentsObjArr);
+        }
+        
+        // 5. 记录剩余字段的内容信息
+        const fieldContentInfo = [];
+        
+        sourceHtmlComments.forEach(htmlComment => {
+          // 标准化字段名（去除多余的冒号）
+          const fieldName = this.normalizeFieldName(htmlComment.text);
+          const contentIndices = htmlComment.excludingFieldBlockIndexArr;
+          
+          if (contentIndices.length > 0) {
+            // 获取目标字段名
+            const targetFieldName = fieldMapping[fieldName] || fieldName;
+            
+            fieldContentInfo.push({
+              sourceField: fieldName,
+              targetField: targetFieldName,
+              contentCount: contentIndices.length,
+              startIndex: contentIndices[0],
+              endIndex: contentIndices[contentIndices.length - 1]
+            });
+            
+            MNUtil.log(`📌 字段 "${fieldName}" → "${targetFieldName}": ${contentIndices.length} 条内容`);
+          }
+        });
+        
+        // 清除源卡片的标题
+        sourceNote.noteTitle = "";
+        
+        // 移除源卡片的所有字段标记（从后往前删除）
+        const htmlCommentIndices = sourceHtmlComments.map(obj => obj.index).sort((a, b) => b - a);
+        htmlCommentIndices.forEach(index => {
+          sourceNote.removeCommentByIndex(index);
+        });
+        
+        // 7. 记录合并前目标卡片的评论数量
+        const targetCommentsCountBefore = targetNote.comments.length;
+        
+        // 8. 执行合并
+        sourceNote.mergeInto(targetNote);
+        
+        // 9. 计算新增评论的起始位置
+        const newCommentsStartIndex = targetCommentsCountBefore;
+        
+        // 10. 按字段移动内容到正确位置
+        // 注意：每次移动后，后续内容的索引会发生变化
+        // 因此我们需要从后往前处理，或者每次都使用最新的索引
+        fieldContentInfo.forEach((info, fieldIndex) => {
+          // 获取当前要移动的评论索引
+          // 由于之前的移动可能改变了索引，我们需要重新计算
+          const indicesToMove = [];
+          
+          // 计算这个字段的内容在当前评论数组中的起始位置
+          // 新增的内容总是在评论数组的末尾
+          const remainingNewComments = targetNote.comments.length - targetCommentsCountBefore;
+          const startOffset = fieldContentInfo.slice(0, fieldIndex).reduce((sum, field) => sum + field.contentCount, 0);
+          
+          for (let i = 0; i < info.contentCount; i++) {
+            // 新内容在当前评论数组中的位置
+            const currentPos = targetNote.comments.length - remainingNewComments + startOffset + i;
+            indicesToMove.push(currentPos);
+          }
+          
+          MNUtil.log(`🔄 移动 ${indicesToMove.length} 条内容到字段 "${info.targetField}"`);
+          
+          // 移动到目标字段
+          this.moveCommentsArrToField(targetNote, indicesToMove, info.targetField, true);
+        });
+        
+        // 11. 刷新卡片显示
+        targetNote.refresh();
+      });
+      
+      MNUtil.showHUD("✅ 知识卡片合并完成");
+      MNUtil.log("✅ 知识卡片合并完成");
+      
+    } catch (error) {
+      MNUtil.showHUD("❌ 合并知识卡片时出错: " + error.message);
+      MNUtil.log({
+        level: "error",
+        message: "合并知识卡片失败: " + error.message,
+        source: "MNMath.renewKnowledgeNotes"
+      });
+    }
+  }
+  
+  /**
+   * 标准化字段名，去除多余的冒号和空格
+   * 
+   * @param {string} fieldText - 原始字段文本
+   * @returns {string} 标准化后的字段名
+   */
+  static normalizeFieldName(fieldText) {
+    // 去除开头和结尾的空格
+    let normalized = fieldText.trim();
+    
+    // 处理多个连续的中文冒号
+    normalized = normalized.replace(/：+/g, '：');
+    
+    // 如果以冒号结尾，去掉它
+    if (normalized.endsWith('：') || normalized.endsWith(':')) {
+      normalized = normalized.slice(0, -1);
+    }
+    
+    return normalized;
+  }
+  
+  /**
+   * 建立字段映射关系
+   * 
+   * @param {string} sourceType - 源卡片类型
+   * @param {string} targetType - 目标卡片类型
+   * @returns {Object} 字段映射表
+   */
+  static buildFieldMapping(sourceType, targetType) {
+    const mapping = {};
+    
+    // 特殊处理：思想方法 -> 命题
+    if (sourceType === '思想方法' && targetType === '命题') {
+      mapping['原理'] = '证明';
+    }
+    
+    // 后续可以添加更多特殊映射规则
+    
+    return mapping;
   }
 
   /**

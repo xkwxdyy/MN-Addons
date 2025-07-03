@@ -752,6 +752,10 @@ function registerAllMenuTemplates() {
         {
           action: "batchChangeClassificationTitles",
           menuTitle: "    批量更新归类卡片标题"
+        },
+        {
+          action: "renewKnowledgeNoteIntoParentNote",
+          menuTitle: "    更新知识点卡片到父卡片中"
         }
       ]
     }

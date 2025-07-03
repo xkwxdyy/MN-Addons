@@ -5,7 +5,7 @@ JSB.newAddon = function (mainPath) {
   JSB.require('pinyin')
   if (!taskUtils.checkMNUtilsFolder(mainPath)) {return undefined}
   JSB.require('webviewController');
-  JSB.require('settingController');
+  JSB.require('settingController'); // 文件名保持不变，只是类名改变了
   
   // 加载自定义菜单注册表（必须在 utils 之后）
   try {
@@ -1002,7 +1002,7 @@ try {
   MNTaskClass.prototype.openSetting = function () {
     try {
     if (!this.settingController) {
-      this.settingController = settingController.new();
+      this.settingController = taskSettingController.new();
       this.settingController.taskController = this.addonController
       this.settingController.mainPath = taskConfig.mainPath;
       this.settingController.action = taskConfig.action

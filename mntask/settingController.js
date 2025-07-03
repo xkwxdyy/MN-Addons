@@ -1,10 +1,10 @@
 // JSB.require('utils');
 // JSB.require('base64')
-/** @return {settingController} */
-const getSettingController = ()=>self
-var settingController = JSB.defineClass('settingController : UIViewController <NSURLConnectionDelegate,UIImagePickerControllerDelegate,UIWebViewDelegate>', {
+/** @return {taskSettingController} */
+const getTaskSettingController = ()=>self
+var taskSettingController = JSB.defineClass('taskSettingController : UIViewController <NSURLConnectionDelegate,UIImagePickerControllerDelegate,UIWebViewDelegate>', {
   viewDidLoad: function() {
-    let self = getSettingController()
+    let self = getTaskSettingController()
 try {
     self.init()
     taskFrame.set(self.view,50,50,355,500)
@@ -92,7 +92,7 @@ viewWillLayoutSubviews: function() {
   },
 webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     try {
-    let self = getSettingController()
+    let self = getTaskSettingController()
     let requestURL = request.URL().absoluteString()
     if (!requestURL) {
       MNUtil.showHUD("Empty URL")
@@ -113,7 +113,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     self.view.layer.opacity = opacity
   },
   moveTopTapped :function () {
-    let self = getSettingController()
+    let self = getTaskSettingController()
     let isEditingDynamic = self.dynamicButton.selected
     if (isEditingDynamic && !taskUtils.checkSubscribe(true)) {
       self.showHUD("Please subscribe to use this feature")
@@ -137,7 +137,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     }
   },
   moveForwardTapped :function () {
-    let self = getSettingController()
+    let self = getTaskSettingController()
     try {
     let isEditingDynamic = self.dynamicButton.selected
     if (isEditingDynamic && !taskUtils.checkSubscribe(true)) {
@@ -163,7 +163,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     }
   },
   moveBackwardTapped :function () {
-    let self = getSettingController()
+    let self = getTaskSettingController()
     try {
 
     let isEditingDynamic = self.dynamicButton.selected
@@ -200,7 +200,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   },
   resetConfig: async function (param) {
   try {
-    let self = getSettingController()
+    let self = getTaskSettingController()
     self.checkPopoverController()
     let isEditingDynamic = self.dynamicButton.selected
     switch (param) {
@@ -431,7 +431,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
 
   },
   dynamicButtonTapped: async function (params) {
-    let self = getSettingController()
+    let self = getTaskSettingController()
     let dynamicOrder = taskConfig.getWindowState("dynamicOrder")
     if (!dynamicOrder) {
       self.showHUD("Enable Dynamic Order first")
@@ -455,7 +455,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     self.setButtonText(dynamicAction)
   },
   chooseTemplate: async function (button) {
-    let self = getSettingController()
+    let self = getTaskSettingController()
     let buttonX = taskUtils.getButtonFrame(button).x//转化成相对于studyview的
     let selected = self.selectedItem
     let templateNames = taskUtils.getTempelateNames(selected)
@@ -584,7 +584,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     }
   },
   configRunTapped: async function (button) {
-    let self = getSettingController()
+    let self = getTaskSettingController()
   try {
     // self.runJavaScript(`editor.setMode("code")`)
     // return
@@ -968,7 +968,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     // MNUtil.copyJSON(config)
   },
   changeTaskDirection:async function (button) {
-    let self = getSettingController()
+    let self = getTaskSettingController()
     var commandTable = []
     let selector = "toggleTaskDirection:"
     if (taskConfig.vertical()) {
@@ -998,7 +998,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     MNUtil.postNotification("refreshTaskButton",{})
   }
 });
-settingController.prototype.init = function () {
+taskSettingController.prototype.init = function () {
   this.custom = false;
   this.customMode = "None"
   this.selectedText = '';
@@ -1006,12 +1006,12 @@ settingController.prototype.init = function () {
 }
 
 
-settingController.prototype.changeButtonOpacity = function(opacity) {
+taskSettingController.prototype.changeButtonOpacity = function(opacity) {
     this.moveButton.layer.opacity = opacity
     this.maxButton.layer.opacity = opacity
     // this.closeButton.layer.opacity = opacity
 }
-settingController.prototype.setButtonLayout = function (button,targetAction) {
+taskSettingController.prototype.setButtonLayout = function (button,targetAction) {
     button.autoresizingMask = (1 << 0 | 1 << 3);
     button.setTitleColorForState(UIColor.whiteColor(),0);
     button.setTitleColorForState(taskConfig.highlightColor, 1);
@@ -1025,7 +1025,7 @@ settingController.prototype.setButtonLayout = function (button,targetAction) {
 }
 
 
-settingController.prototype.createButton = function (buttonName,targetAction,superview) {
+taskSettingController.prototype.createButton = function (buttonName,targetAction,superview) {
     this[buttonName] = UIButton.buttonWithType(0);
     this[buttonName].autoresizingMask = (1 << 0 | 1 << 3);
     this[buttonName].setTitleColorForState(UIColor.whiteColor(),0);
@@ -1045,7 +1045,7 @@ settingController.prototype.createButton = function (buttonName,targetAction,sup
     }
 }
 
-settingController.prototype.createSwitch = function (switchName,targetAction,superview) {
+taskSettingController.prototype.createSwitch = function (switchName,targetAction,superview) {
     this[switchName] = UISwitch.new()
     this.popupEditView.addSubview(this[switchName])
     this[switchName].on = false
@@ -1060,7 +1060,7 @@ settingController.prototype.createSwitch = function (switchName,targetAction,sup
     }
 }
 
-settingController.prototype.createScrollView = function (scrollName,superview) {
+taskSettingController.prototype.createScrollView = function (scrollName,superview) {
   this[scrollName] = UIScrollView.new()
   this[scrollName].hidden = false
   this[scrollName].autoresizingMask = (1 << 1 | 1 << 4);
@@ -1076,7 +1076,7 @@ settingController.prototype.createScrollView = function (scrollName,superview) {
   }
 }
 
-settingController.prototype.settingViewLayout = function (){
+taskSettingController.prototype.settingViewLayout = function (){
     let viewFrame = this.view.bounds
     let width = viewFrame.width
     let height = viewFrame.height
@@ -1169,7 +1169,7 @@ settingController.prototype.settingViewLayout = function (){
 /**
  * @this {settingController}
  */
-settingController.prototype.createSettingView = function (){
+taskSettingController.prototype.createSettingView = function (){
 try {
   
 
@@ -1430,7 +1430,7 @@ try {
 /**
  * @this {settingController}
  */
-settingController.prototype.setButtonText = function (names=taskConfig.getAllActions(),highlight=this.selectedItem) {
+taskSettingController.prototype.setButtonText = function (names=taskConfig.getAllActions(),highlight=this.selectedItem) {
     this.words = names
     this.selectedItem = highlight
     names.map((word,index)=>{
@@ -1459,7 +1459,7 @@ settingController.prototype.setButtonText = function (names=taskConfig.getAllAct
 /**
  * @this {settingController}
  */
-settingController.prototype.setTextview = function (name = this.selectedItem) {
+taskSettingController.prototype.setTextview = function (name = this.selectedItem) {
   try {
       // let entries           =  NSUserDefaults.standardUserDefaults().objectForKey('MNBrowser_entries');
       // let actions = taskConfig.actions
@@ -1509,7 +1509,7 @@ settingController.prototype.setTextview = function (name = this.selectedItem) {
 /**
  * @this {settingController}
  */
-settingController.prototype.refreshLayout = function () {
+taskSettingController.prototype.refreshLayout = function () {
   if (!this.settingView) {return}
   if (!this.configView.hidden) {
     var viewFrame = this.scrollview.bounds;
@@ -1547,7 +1547,7 @@ settingController.prototype.refreshLayout = function () {
   }
 }
 
-settingController.prototype.refreshView = function (name) {
+taskSettingController.prototype.refreshView = function (name) {
   switch (name) {
     case "advanceView":
         this.editorButton.setTitleForState("MNEditor: "+(taskConfig.checkLogoStatus("MNEditor")?"✅":"❌"),0)
@@ -1601,12 +1601,12 @@ settingController.prototype.refreshView = function (name) {
   }
 }
 
-settingController.prototype.hideAllButton = function (frame) {
+taskSettingController.prototype.hideAllButton = function (frame) {
   this.moveButton.hidden = true
   // this.closeButton.hidden = true
   this.maxButton.hidden = true
 }
-settingController.prototype.showAllButton = function (frame) {
+taskSettingController.prototype.showAllButton = function (frame) {
   this.moveButton.hidden = false
   // this.closeButton.hidden = false
   this.maxButton.hidden = false
@@ -1614,7 +1614,7 @@ settingController.prototype.showAllButton = function (frame) {
 /**
  * @this {settingController}
  */
-settingController.prototype.show = function (frame) {
+taskSettingController.prototype.show = function (frame) {
     try {
   MNUtil.studyView.bringSubviewToFront(this.view)
   MNUtil.studyView.bringSubviewToFront(this.addonBar)
@@ -1657,7 +1657,7 @@ settingController.prototype.show = function (frame) {
   //   }
   // })
 }
-settingController.prototype.hide = function (frame) {
+taskSettingController.prototype.hide = function (frame) {
   taskUtils.studyController().view.bringSubviewToFront(this.addonBar)
   let preFrame = this.view.frame
   let preOpacity = this.view.layer.opacity
@@ -1684,14 +1684,14 @@ settingController.prototype.hide = function (frame) {
   })
 }
 
-settingController.prototype.creatView = function (viewName,superview="view",color="#9bb2d6",alpha=0.8) {
+taskSettingController.prototype.creatView = function (viewName,superview="view",color="#9bb2d6",alpha=0.8) {
   this[viewName] = UIView.new()
   MNButton.setColor(this[viewName], color, alpha)
   this[viewName].layer.cornerRadius = 12
   this[superview].addSubview(this[viewName])
 }
 
-settingController.prototype.creatTextView = function (viewName,superview="view",color="#c0bfbf",alpha=0.8) {
+taskSettingController.prototype.creatTextView = function (viewName,superview="view",color="#c0bfbf",alpha=0.8) {
   this[viewName] = UITextView.new()
   this[viewName].font = UIFont.systemFontOfSize(15);
   this[viewName].layer.cornerRadius = 8
@@ -1706,7 +1706,7 @@ settingController.prototype.creatTextView = function (viewName,superview="view",
 /**
  * @this {settingController}
  */
-settingController.prototype.fetch = async function (url,options = {}){
+taskSettingController.prototype.fetch = async function (url,options = {}){
   return new Promise((resolve, reject) => {
     // UIApplication.sharedApplication().networkActivityIndicatorVisible = true
     const queue = NSOperationQueue.mainQueue()
@@ -1728,7 +1728,7 @@ settingController.prototype.fetch = async function (url,options = {}){
   })
 }
 
-settingController.prototype.initRequest = function (url,options) {
+taskSettingController.prototype.initRequest = function (url,options) {
   const request = NSMutableURLRequest.requestWithURL(genNSURL(url))
   request.setHTTPMethod(options.method ?? "GET")
   request.setTimeoutInterval(options.timeout ?? 10)
@@ -1776,7 +1776,7 @@ settingController.prototype.initRequest = function (url,options) {
 /**
  * @this {settingController}
  */
-settingController.prototype.createWebviewInput = function (superView) {
+taskSettingController.prototype.createWebviewInput = function (superView) {
   try {
   // this.webviewInput = MNUtil.createJsonEditor(this.mainPath + '/jsoneditor.html')
   this.webviewInput = new UIWebView(this.view.bounds);
@@ -1811,7 +1811,7 @@ settingController.prototype.createWebviewInput = function (superView) {
 /**
  * @this {settingController}
  */
-settingController.prototype.loadWebviewContent = function () {
+taskSettingController.prototype.loadWebviewContent = function () {
   this.webviewInput.loadFileURLAllowingReadAccessToURL(
     NSURL.fileURLWithPath(this.mainPath + '/jsoneditor.html'),
     NSURL.fileURLWithPath(this.mainPath + '/')
@@ -1820,7 +1820,7 @@ settingController.prototype.loadWebviewContent = function () {
 /**
  * @this {settingController}
  */
-settingController.prototype.updateWebviewContent = function (content) {
+taskSettingController.prototype.updateWebviewContent = function (content) {
   if (!MNUtil.isValidJSON(content)) {
     content = "{}"
   }
@@ -1829,7 +1829,7 @@ settingController.prototype.updateWebviewContent = function (content) {
 /**
  * @this {settingController}
  */
-settingController.prototype.setWebviewContent = function (content) {
+taskSettingController.prototype.setWebviewContent = function (content) {
   if (typeof content === "object") {
     this.runJavaScript(`setContent('${encodeURIComponent(JSON.stringify(content))}')`)
     return
@@ -1842,14 +1842,14 @@ settingController.prototype.setWebviewContent = function (content) {
 /**
  * @this {settingController}
  */
-settingController.prototype.setJSContent = function (content) {
+taskSettingController.prototype.setJSContent = function (content) {
   this.webviewInput.loadHTMLStringBaseURL(taskUtils.JShtml(content))
 }
 
 /**
  * @this {settingController}
  */
-settingController.prototype.blur = async function () {
+taskSettingController.prototype.blur = async function () {
   this.runJavaScript(`removeFocus()`)
   this.webviewInput.endEditing(true)
 }
@@ -1857,7 +1857,7 @@ settingController.prototype.blur = async function () {
 /**
  * @this {settingController}
  */
-settingController.prototype.getWebviewContent = async function () {
+taskSettingController.prototype.getWebviewContent = async function () {
   // let content = await this.runJavaScript(`updateContent(); document.body.innerText`)
   let content = await this.runJavaScript(`getContent()`)
   let tem = decodeURIComponent(content)
@@ -1866,17 +1866,17 @@ settingController.prototype.getWebviewContent = async function () {
 }
 
 /** @this {settingController} */
-settingController.prototype.runJavaScript = async function(script) {
+taskSettingController.prototype.runJavaScript = async function(script) {
   // if(!this.webviewResponse || !this.webviewResponse.window)return;
   return new Promise((resolve, reject) => {
       this.webviewInput.evaluateJavaScript(script,(result) => {resolve(result)});
   })
 };
 /** @this {settingController} */
-settingController.prototype.editorAdjustSelectWidth = function (){
+taskSettingController.prototype.editorAdjustSelectWidth = function (){
   this.webviewInput.evaluateJavaScript(`adjustSelectWidth()`)
 }
-settingController.prototype.checkPopoverController = function () {
+taskSettingController.prototype.checkPopoverController = function () {
   if (this.popoverController) {this.popoverController.dismissPopoverAnimated(true);}
 }
 /**
@@ -1888,7 +1888,7 @@ settingController.prototype.checkPopoverController = function () {
  * @this {settingController}
  * @returns 
  */
-settingController.prototype.tableItem = function (title,selector,param = "",checked = false) {
+taskSettingController.prototype.tableItem = function (title,selector,param = "",checked = false) {
   return {title:title,object:this,selector:selector,param:param,checked:checked}
 }
 /**
@@ -1897,11 +1897,11 @@ settingController.prototype.tableItem = function (title,selector,param = "",chec
  * @param {number} duration 
  * @param {UIView} view 
  */
-settingController.prototype.showHUD = function (title,duration = 1.5,view = this.view) {
+taskSettingController.prototype.showHUD = function (title,duration = 1.5,view = this.view) {
   MNUtil.showHUD(title,duration,view)
 }
 /**
  * 
  * @type {taskController}
  */
-settingController.prototype.taskController
+taskSettingController.prototype.taskController

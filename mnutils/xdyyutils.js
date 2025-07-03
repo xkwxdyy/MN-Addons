@@ -1265,7 +1265,65 @@ class MNMath {
           note.title = `“${titleParts.content}”相关${titleParts.type}`;
         }
         break;
+      case "定义":
+        this.moveRelatedConceptsToRelatedThoughts(note);
+        break;
     }
+  }
+
+  /**
+   * 处理定义类卡片的"相关概念："字段
+   * 将"相关概念："字段下的内容移动到"相关思考"字段下方，并删除"相关概念："字段
+   * 
+   * @param {MNNote} note - 要处理的卡片
+   */
+  static moveRelatedConceptsToRelatedThoughts(note) {
+    let commentsObj = this.parseNoteComments(note);
+    let htmlCommentsObjArr = commentsObj.htmlCommentsObjArr;
+    
+    // 查找"相关概念："字段（使用中文引号）
+    let relatedConceptsFieldObj = null;
+    let relatedConceptsFieldIndex = -1;
+    
+    for (let i = 0; i < htmlCommentsObjArr.length; i++) {
+      let fieldObj = htmlCommentsObjArr[i];
+      if (fieldObj.text.includes("相关概念")) {
+        relatedConceptsFieldObj = fieldObj;
+        relatedConceptsFieldIndex = i;
+        break;
+      }
+    }
+    
+    // 如果没有找到"相关概念："字段，直接返回
+    if (!relatedConceptsFieldObj) {
+      return;
+    }
+    
+    // 获取"相关概念："字段下的内容索引（不包括字段本身）
+    let contentIndices = relatedConceptsFieldObj.excludingFieldBlockIndexArr;
+    
+    // 如果该字段下没有内容，只删除字段本身
+    if (contentIndices.length === 0) {
+      note.removeCommentByIndex(relatedConceptsFieldObj.index);
+      return;
+    }
+    
+    // 将内容移动到"相关思考"字段下方
+    this.moveCommentsArrToField(note, contentIndices, "相关思考", true);
+    
+    // 删除"相关概念："字段本身
+    // 注意：移动内容后，原字段的索引可能已经改变，需要重新计算
+    let updatedCommentsObj = this.parseNoteComments(note);
+    let updatedHtmlCommentsObjArr = updatedCommentsObj.htmlCommentsObjArr;
+    
+    for (let fieldObj of updatedHtmlCommentsObjArr) {
+      if (fieldObj.text.includes("相关概念：")) {
+        note.removeCommentByIndex(fieldObj.index);
+        break;
+      }
+    }
+    
+    // MNUtil.log(`✅ 已将"相关概念："字段下的 ${contentIndices.length} 条内容移动到"相关思考"字段下方`);
   }
 
   /**

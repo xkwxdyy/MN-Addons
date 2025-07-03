@@ -1,3 +1,0 @@
-{
-  "include": ["main.js","webviewController.js","/Users/linlifei/extension/FeliksPro/.out/index.d.ts","utils.js","notificationController.js","sideOutputController.js","dynamicController.js","/Users/linlifei/extension/FeliksPro/.out/mnutils.js"]
-}

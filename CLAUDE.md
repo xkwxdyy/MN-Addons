@@ -677,4 +677,45 @@ note.moveComment(newFieldIndex, firstFieldIndex);
 - 检查 `parseNoteComments` 返回的数据结构，了解可用属性
 - 参考现有的类似实现（如 `mergeTemplate` 方法）
 
+### 数组索引管理陷阱（评论移动操作）
+
+在处理 MNNote 评论数组的移动操作时，要特别注意索引变化带来的问题：
+
+#### 场景说明
+实现智能链接排列功能（`smartLinkArrangement`）时，需要在评论数组中添加新元素并移动到指定位置。
+
+#### 错误的复杂方案
+```javascript
+// ❌ 过度复杂：试图管理所有索引变化
+// 1. 记录原始链接索引
+let linkIndex = comments.length - 1;
+// 2. 添加新元素
+note.appendMarkdownComment("- ");
+// 3. 计算新索引（容易出错）
+let dashIndex = note.MNComments.length - 1;
+// 4. 移动操作（索引可能已经变化）
+this.moveCommentsArrToField(note, [dashIndex], "相关思考", true);
+this.moveCommentsArrToField(note, [linkIndex], "相关思考", true);
+```
+
+#### 正确的简洁方案
+```javascript
+// ✅ 简洁优雅：利用数组动态变化
+// 1. 添加新元素
+note.appendMarkdownComment("- ");
+// 2. 连续两次移动最后一个元素
+this.moveCommentsArrToField(note, [note.MNComments.length - 1], "相关思考");  // 移动 "- "
+this.moveCommentsArrToField(note, [note.MNComments.length - 1], "相关思考");  // 移动链接
+```
+
+#### 关键洞察
+- **避免预先计算索引**：数组操作会改变后续元素的位置
+- **利用动态特性**：每次操作后重新获取"最后一个元素"
+- **保持代码简洁**：越简单的方案越不容易出错
+
+#### 经验总结
+1. **动态获取索引**：使用 `array.length - 1` 而不是预存索引值
+2. **顺序操作**：利用元素移走后数组自动调整的特性
+3. **避免过度设计**：简单问题用简单方法解决
+
 > 💡 **提示**：开发前请先仔细阅读对应子项目的 CLAUDE.md 文件，它们包含了更详细的技术实现和规范要求。

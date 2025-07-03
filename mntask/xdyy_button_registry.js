@@ -9,23 +9,23 @@ if (typeof MNUtil !== "undefined" && MNUtil.log) {
   MNUtil.log(`🔍 taskConfig 是否存在: ${typeof taskConfig !== 'undefined'}`);
 }
 
-// 创建全局注册表
-if (typeof global === 'undefined') {
-  var global = {};
+// 创建 MNTask 专用命名空间，避免与 MNToolbar 冲突
+if (typeof MNTaskGlobal === 'undefined') {
+  var MNTaskGlobal = {};
 }
 
 // 初始化按钮注册表
-global.customButtons = {};
+MNTaskGlobal.customButtons = {};
 
 /**
  * 注册自定义按钮
  * @param {string} key - 按钮键名
  * @param {Object} config - 按钮配置对象
  */
-global.registerButton = function(key, config) {
-  global.customButtons[key] = config;
+MNTaskGlobal.registerButton = function(key, config) {
+  MNTaskGlobal.customButtons[key] = config;
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
-    MNUtil.log(`📦 已注册按钮: ${key}`);
+    MNUtil.log(`📦 [MNTask] 已注册按钮: ${key}`);
   }
 };
 
@@ -34,9 +34,17 @@ global.registerButton = function(key, config) {
  * @param {string} key - 按钮键名
  * @returns {Object|null} 按钮配置对象
  */
-global.getButton = function(key) {
-  return global.customButtons[key] || null;
+MNTaskGlobal.getButton = function(key) {
+  return MNTaskGlobal.customButtons[key] || null;
 };
+
+// 保持向后兼容（但带警告）
+if (typeof global === 'undefined') {
+  var global = MNTaskGlobal;
+} else if (!global.customButtons) {
+  // 如果 global 存在但没有 customButtons，说明可能是其他插件创建的
+  global = MNTaskGlobal;
+}
 
 /**
  * 注册所有自定义按钮
@@ -44,102 +52,102 @@ global.getButton = function(key) {
  */
 function registerAllButtons() {
   // 制卡相关按钮
-  global.registerButton("custom15", {
+  MNTaskGlobal.registerButton("custom15", {
     name: "制卡",
     image: "makeCards",
     templateName: "menu_makeCards"  // 延迟获取template
   });
   
-  global.registerButton("custom1", {
+  MNTaskGlobal.registerButton("custom1", {
     name: "制卡",
     image: "makeCards",
     templateName: "TemplateMakeNotes"
   });
 
-  global.registerButton("custom3", {
+  MNTaskGlobal.registerButton("custom3", {
     name: "增加模板",
     image: "addTemplate",
     templateName: "addTemplate"
   });
   
-  global.registerButton("custom10", {
+  MNTaskGlobal.registerButton("custom10", {
     name: "评论",
     image: "comment",
     templateName: "menu_comment"
   });
 
   // 评论相关按钮
-  global.registerButton("custom20", {
+  MNTaskGlobal.registerButton("custom20", {
     name: "htmlMarkdown 评论",
     image: "htmlmdcomment",
     templateName: "menu_htmlmdcomment"
   });
   
     // 卡片操作
-  global.registerButton("custom5", {
+  MNTaskGlobal.registerButton("custom5", {
     name: "卡片",
     image: "card",
     templateName: "menu_card"
   });
   
   // 学习和模板
-  global.registerButton("custom2", {
+  MNTaskGlobal.registerButton("custom2", {
     name: "学习",
     image: "study",
     templateName: "menu_study"
   });
 
-  global.registerButton("custom9", {
+  MNTaskGlobal.registerButton("custom9", {
     name: "思考",
     image: "think",
     templateName: "menu_think"
   });
   
-  global.registerButton("custom4", {
+  MNTaskGlobal.registerButton("custom4", {
     name: "文献",
     image: "reference",
     templateName: "menu_reference"
   });
 
-  global.registerButton("custom7", {
+  MNTaskGlobal.registerButton("custom7", {
     name: "隐藏插件栏",
     image: "hideAddonBar",
     templateName: "hideAddonBar"
   });
   
-  global.registerButton("custom6", {
+  MNTaskGlobal.registerButton("custom6", {
     name: "文本",
     image: "text",
     templateName: "menu_text"
   });
   
-  global.registerButton("custom17", {
+  MNTaskGlobal.registerButton("custom17", {
     name: "卡片储存",
     image: "pin_white",
     templateName: "menu_card_pin"
   });
   
   // 其他功能
-  global.registerButton("snipaste", {
+  MNTaskGlobal.registerButton("snipaste", {
     name: "Snipaste",
     image: "snipaste",
     description: "Snipaste"
   });
   
-  global.registerButton("custom11", {
+  MNTaskGlobal.registerButton("custom11", {
     name: "工作流",
     image: "workflow",
     templateName: "menu_card_workflow"
   });
   
   
-  global.registerButton("edit", {
+  MNTaskGlobal.registerButton("edit", {
     name: "edit",
     image: "edit",
     description: JSON.stringify({showOnNoteEdit:false})
   });
   
-  global.registerButton("copyAsMarkdownLink", {
+  MNTaskGlobal.registerButton("copyAsMarkdownLink", {
     name: "Copy md link",
     image: "copyAsMarkdownLink",
     description: "Copy md link"
@@ -147,7 +155,7 @@ function registerAllButtons() {
   
   
   // 专门用于替换原有按钮
-  global.registerButton("custom16", {
+  MNTaskGlobal.registerButton("custom16", {
     name: "[手型工具弹窗替换]文本",
     image: "text_white",
     templateName: "menu_handtool_text"
@@ -155,19 +163,19 @@ function registerAllButtons() {
   
   // "custom15":{name:"[卡片弹窗替换]SOP",image:"sop_white",description: this.template("menu_sop")},
   
-  global.registerButton("custom12", {
+  MNTaskGlobal.registerButton("custom12", {
     name: "[卡片弹窗替换]工作流",
     image: "workflow_white",
     templateName: "menu_card_workflow"
   });
   
-  global.registerButton("custom13", {
+  MNTaskGlobal.registerButton("custom13", {
     name: "[卡片弹窗替换]摘录",
     image: "excerpt_white",
     templateName: "menu_excerpt"
   });
   
-  global.registerButton("custom14", {
+  MNTaskGlobal.registerButton("custom14", {
     name: "MN",
     image: "MN_white",
     templateName: "menu_MN"
@@ -303,8 +311,8 @@ global.extendTaskConfig = extendTaskConfig;
 // 导出注册函数供外部使用
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    registerButton: global.registerButton,
-    getButton: global.getButton,
+    registerButton: MNTaskGlobal.registerButton,
+    getButton: MNTaskGlobal.getButton,
     registerAllButtons: registerAllButtons,
     forceRefreshButtons: forceRefreshButtons,
     extendTaskConfig: extendTaskConfig

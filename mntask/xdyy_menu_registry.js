@@ -4,23 +4,23 @@
  * 严格按照原始 template 函数的内容
  */
 
-// 创建全局注册表
-if (typeof global === 'undefined') {
-  var global = {};
+// 使用 MNTask 专用命名空间，避免与 MNToolbar 冲突
+if (typeof MNTaskGlobal === 'undefined') {
+  var MNTaskGlobal = {};
 }
 
 // 初始化菜单注册表
-global.customMenuTemplates = {};
+MNTaskGlobal.customMenuTemplates = {};
 
 /**
  * 注册自定义菜单模板
  * @param {string} name - 菜单名称
  * @param {Object} template - 菜单模板对象
  */
-global.registerMenuTemplate = function(name, template) {
-  global.customMenuTemplates[name] = template;
+MNTaskGlobal.registerMenuTemplate = function(name, template) {
+  MNTaskGlobal.customMenuTemplates[name] = template;
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
-    MNUtil.log(`📦 已注册菜单模板: ${name}`);
+    MNUtil.log(`📦 [MNTask] 已注册菜单模板: ${name}`);
   }
 };
 
@@ -29,9 +29,14 @@ global.registerMenuTemplate = function(name, template) {
  * @param {string} name - 菜单名称
  * @returns {Object|null} 菜单模板对象
  */
-global.getMenuTemplate = function(name) {
-  return global.customMenuTemplates[name] || null;
+MNTaskGlobal.getMenuTemplate = function(name) {
+  return MNTaskGlobal.customMenuTemplates[name] || null;
 };
+
+// 保持向后兼容
+if (typeof global === 'undefined') {
+  var global = MNTaskGlobal;
+}
 
 /**
  * 注册所有自定义菜单模板
@@ -39,7 +44,7 @@ global.getMenuTemplate = function(name) {
  */
 function registerAllMenuTemplates() {
   // menu_comment
-  global.registerMenuTemplate("menu_comment", {
+  MNTaskGlobal.registerMenuTemplate("menu_comment", {
     action: "moveNewContentsByPopupTo",
     // doubleClick: "moveOldContentsByPopupTo",  // TODO: 把上面的内容移动下来，类似于移动上去
     onLongPress: {
@@ -71,7 +76,7 @@ function registerAllMenuTemplates() {
   });
   
   // menu_think
-  global.registerMenuTemplate("menu_think", {
+  MNTaskGlobal.registerMenuTemplate("menu_think", {
     action: "moveUpThoughtPointsToBottom",
     onLongPress: {
       action: "menu",
@@ -106,7 +111,7 @@ function registerAllMenuTemplates() {
   });
 
   // menu_study
-  global.registerMenuTemplate("menu_study", {
+  MNTaskGlobal.registerMenuTemplate("menu_study", {
     action: "menu",
     menuWidth: 330,
     menuItems: [
@@ -182,7 +187,7 @@ function registerAllMenuTemplates() {
   });
 
   // menu_reference
-  global.registerMenuTemplate("menu_reference", {
+  MNTaskGlobal.registerMenuTemplate("menu_reference", {
     action: "menu",
     menuItems: [
       // {
@@ -413,7 +418,7 @@ function registerAllMenuTemplates() {
   });
 
   // menu_text
-  global.registerMenuTemplate("menu_text", {
+  MNTaskGlobal.registerMenuTemplate("menu_text", {
     action: "menu",
     menuItems: [
       {
@@ -456,7 +461,7 @@ function registerAllMenuTemplates() {
   });
 
   // menu_handtool_text
-  global.registerMenuTemplate("menu_handtool_text", {
+  MNTaskGlobal.registerMenuTemplate("menu_handtool_text", {
     action: "selectionTextToTitleCase",
     onLongPress: {
       action: "menu",
@@ -478,7 +483,7 @@ function registerAllMenuTemplates() {
   });
 
   // menu_card
-  global.registerMenuTemplate("menu_card", {
+  MNTaskGlobal.registerMenuTemplate("menu_card", {
     action: "copyMarkdownVersionFocusNoteURL",
     onLongPress: {
       action: "menu",
@@ -586,7 +591,7 @@ function registerAllMenuTemplates() {
   });
 
   // menu_card_workflow
-  global.registerMenuTemplate("menu_card_workflow", {
+  MNTaskGlobal.registerMenuTemplate("menu_card_workflow", {
     action: "menu",
     menuWidth: 300,
     menuItems: [
@@ -640,7 +645,7 @@ function registerAllMenuTemplates() {
   });
 
   // menu_excerpt
-  global.registerMenuTemplate("menu_excerpt", {
+  MNTaskGlobal.registerMenuTemplate("menu_excerpt", {
     action: "moveToExcerptPartBottom",
     // onLongPress: {
     //   action: "menu",
@@ -667,7 +672,7 @@ function registerAllMenuTemplates() {
   });
 
   // menu_MN
-  global.registerMenuTemplate("menu_MN", {
+  MNTaskGlobal.registerMenuTemplate("menu_MN", {
     action: "menu",
     menuItems: [
       {
@@ -706,7 +711,7 @@ function registerAllMenuTemplates() {
   });
 
   // menu_card_pin
-  global.registerMenuTemplate("menu_card_pin", {
+  MNTaskGlobal.registerMenuTemplate("menu_card_pin", {
     action: "menu",
     menuItems: [
       {
@@ -725,7 +730,7 @@ function registerAllMenuTemplates() {
   });
 
   // menu_makeCards
-  global.registerMenuTemplate("menu_makeCards", {
+  MNTaskGlobal.registerMenuTemplate("menu_makeCards", {
     action: "makeNote",
     doubleClick: {
       action: "doubleClickMakeNote"
@@ -758,7 +763,7 @@ function registerAllMenuTemplates() {
   });
 
   // TemplateMakeNotes
-  global.registerMenuTemplate("TemplateMakeNotes", {
+  MNTaskGlobal.registerMenuTemplate("TemplateMakeNotes", {
     action: "menu",
     menuWidth: 320,
     menuItems: [
@@ -877,7 +882,7 @@ function registerAllMenuTemplates() {
   });
 
   // menu_htmlmdcomment
-  global.registerMenuTemplate("menu_htmlmdcomment", {
+  MNTaskGlobal.registerMenuTemplate("menu_htmlmdcomment", {
     action: "addHtmlMarkdownComment",
     onLongPress: {
       action: "menu",
@@ -907,7 +912,7 @@ function registerAllMenuTemplates() {
     }
   });
 
-  global.registerMenuTemplate("hideAddonBar", JSON.stringify({
+  MNTaskGlobal.registerMenuTemplate("hideAddonBar", JSON.stringify({
     action: "hideAddonBar"
   }));
   
@@ -924,7 +929,7 @@ if (typeof taskConfig !== 'undefined') {
   // 重写 template 方法
   taskConfig.template = function(action) {
     // 先检查自定义菜单模板
-    const customTemplate = global.getMenuTemplate(action);
+    const customTemplate = MNTaskGlobal.getMenuTemplate(action);
     if (customTemplate) {
       // 如果是字符串，直接返回
       if (typeof customTemplate === 'string') {
@@ -960,7 +965,7 @@ try {
 // 导出注册函数供外部使用
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    registerMenuTemplate: global.registerMenuTemplate,
-    getMenuTemplate: global.getMenuTemplate
+    registerMenuTemplate: MNTaskGlobal.registerMenuTemplate,
+    getMenuTemplate: MNTaskGlobal.getMenuTemplate
   };
 }

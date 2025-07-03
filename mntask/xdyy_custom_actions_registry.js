@@ -2,13 +2,13 @@
  * task 的 Actions 注册表
  */
 
-// 创建全局注册表
-if (typeof global === "undefined") {
-  var global = {};
+// 使用 MNTask 专用命名空间，避免与 MNToolbar 冲突
+if (typeof MNTaskGlobal === "undefined") {
+  var MNTaskGlobal = {};
 }
 
 // 初始化 customActions 对象
-global.customActions = global.customActions || {};
+MNTaskGlobal.customActions = MNTaskGlobal.customActions || {};
 
 
 /**
@@ -16,8 +16,8 @@ global.customActions = global.customActions || {};
  * @param {string} actionName - action 名称
  * @param {Function} handler - 处理函数
  */
-global.registerCustomAction = function (actionName, handler) {
-  global.customActions[actionName] = handler;
+MNTaskGlobal.registerCustomAction = function (actionName, handler) {
+  MNTaskGlobal.customActions[actionName] = handler;
 };
 
 /**
@@ -26,10 +26,10 @@ global.registerCustomAction = function (actionName, handler) {
  * @param {Object} context - 执行上下文
  * @returns {boolean} - 是否成功执行
  */
-global.executeCustomAction = async function (actionName, context) {
-  if (actionName in global.customActions) {
+MNTaskGlobal.executeCustomAction = async function (actionName, context) {
+  if (actionName in MNTaskGlobal.customActions) {
     try {
-      await global.customActions[actionName](context);
+      await MNTaskGlobal.customActions[actionName](context);
       return true;
     } catch (error) {
       MNUtil.showHUD(`执行失败: ${error.message || error}`);
@@ -38,6 +38,11 @@ global.executeCustomAction = async function (actionName, context) {
   }
   return false;
 };
+
+// 保持向后兼容
+if (typeof global === 'undefined') {
+  var global = MNTaskGlobal;
+}
 
 // 注册所有自定义 actions
 function registerAllCustomActions() {
@@ -84,7 +89,7 @@ function registerAllCustomActions() {
   // ========== REFERENCE 相关 (43 个) ==========
 
   // referenceRefByRefNumAddFocusInFloatMindMap
-  global.registerCustomAction("referenceRefByRefNumAddFocusInFloatMindMap", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceRefByRefNumAddFocusInFloatMindMap", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "输入文献号",
@@ -111,7 +116,7 @@ function registerAllCustomActions() {
   });
 
   // referenceRefByRefNumAndFocusInMindMap
-  global.registerCustomAction("referenceRefByRefNumAndFocusInMindMap", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceRefByRefNumAndFocusInMindMap", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "输入文献号",
@@ -138,7 +143,7 @@ function registerAllCustomActions() {
   });
 
   // referenceRefByRefNum
-  global.registerCustomAction("referenceRefByRefNum", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceRefByRefNum", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "输入文献号",
@@ -162,7 +167,7 @@ function registerAllCustomActions() {
   });
 
   // referenceCreateClassificationNoteByIdAndFocusNote
-  global.registerCustomAction("referenceCreateClassificationNoteByIdAndFocusNote", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceCreateClassificationNoteByIdAndFocusNote", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "输入文献号",
@@ -329,7 +334,7 @@ function registerAllCustomActions() {
   });
 
   // referenceCreateClassificationNoteById
-  global.registerCustomAction("referenceCreateClassificationNoteById", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceCreateClassificationNoteById", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "输入文献号",
@@ -473,7 +478,7 @@ function registerAllCustomActions() {
   });
 
   // referenceTestIfIdInCurrentDoc
-  global.registerCustomAction("referenceTestIfIdInCurrentDoc", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceTestIfIdInCurrentDoc", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "输入文献号",
@@ -512,7 +517,7 @@ function registerAllCustomActions() {
   });
 
   // referenceStoreOneIdForCurrentDocByFocusNote
-  global.registerCustomAction("referenceStoreOneIdForCurrentDocByFocusNote", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceStoreOneIdForCurrentDocByFocusNote", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "输入文献号",
@@ -545,7 +550,7 @@ function registerAllCustomActions() {
   });
 
   // referenceStoreOneIdForCurrentDoc
-  global.registerCustomAction("referenceStoreOneIdForCurrentDoc", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceStoreOneIdForCurrentDoc", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "绑定参考文献号和对应文献卡片 ID",
@@ -569,7 +574,7 @@ function registerAllCustomActions() {
   });
 
   // referenceStoreIdsForCurrentDoc
-  global.registerCustomAction("referenceStoreIdsForCurrentDoc", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceStoreIdsForCurrentDoc", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "绑定参考文献号和对应文献卡片 ID",
@@ -595,7 +600,7 @@ function registerAllCustomActions() {
   });
 
   // referenceStoreIdsForCurrentDocFromClipboard
-  global.registerCustomAction("referenceStoreIdsForCurrentDocFromClipboard", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceStoreIdsForCurrentDocFromClipboard", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "确定要从剪切板导入所有参考文献 ID 吗？",
@@ -621,14 +626,14 @@ function registerAllCustomActions() {
   });
 
   // referenceExportReferenceIdsToClipboard
-  global.registerCustomAction("referenceExportReferenceIdsToClipboard", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceExportReferenceIdsToClipboard", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.copy(JSON.stringify(taskConfig.referenceIds, null, 2));
     MNUtil.showHUD("Copy successfully!");
   });
 
   // referenceExportReferenceIdsToFile
-  global.registerCustomAction("referenceExportReferenceIdsToFile", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceExportReferenceIdsToFile", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     // 导出到 .JSON 文件
     path = MNUtil.cacheFolder + "/exportReferenceIds.json";
@@ -638,7 +643,7 @@ function registerAllCustomActions() {
   });
 
   // referenceInputReferenceIdsFromClipboard
-  global.registerCustomAction("referenceInputReferenceIdsFromClipboard", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceInputReferenceIdsFromClipboard", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     // MNUtil.copy(
     //   JSON.stringify(taskConfig.referenceIds, null, 2)
@@ -665,7 +670,7 @@ function registerAllCustomActions() {
   });
 
   // referenceInputReferenceIdsFromFile
-  global.registerCustomAction("referenceInputReferenceIdsFromFile", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceInputReferenceIdsFromFile", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       // MNUtil.undoGrouping(()=>{
@@ -683,7 +688,7 @@ function registerAllCustomActions() {
   });
 
   // referenceClearIdsForCurrentDoc
-  global.registerCustomAction("referenceClearIdsForCurrentDoc", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceClearIdsForCurrentDoc", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       // MNUtil.undoGrouping(()=>{
@@ -702,7 +707,7 @@ function registerAllCustomActions() {
   });
 
   // referenceStoreIdForCurrentDocByFocusNote
-  global.registerCustomAction("referenceStoreIdForCurrentDocByFocusNote", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceStoreIdForCurrentDocByFocusNote", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       // MNUtil.undoGrouping(()=>{
@@ -728,7 +733,7 @@ function registerAllCustomActions() {
   });
 
   // referenceAuthorInfoFromClipboard
-  global.registerCustomAction("referenceAuthorInfoFromClipboard", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceAuthorInfoFromClipboard", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       // let infoHtmlCommentIndex = focusNote.getCommentIndex("个人信息：", true)
@@ -738,7 +743,7 @@ function registerAllCustomActions() {
   });
 
   // referenceAuthorRenewAbbreviation
-  global.registerCustomAction("referenceAuthorRenewAbbreviation", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceAuthorRenewAbbreviation", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -754,7 +759,7 @@ function registerAllCustomActions() {
   });
 
   // referencePaperMakeCards
-  global.registerCustomAction("referencePaperMakeCards", async function (context) {
+  MNTaskGlobal.registerCustomAction("referencePaperMakeCards", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -781,7 +786,7 @@ function registerAllCustomActions() {
   });
 
   // referenceBookMakeCards
-  global.registerCustomAction("referenceBookMakeCards", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceBookMakeCards", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -808,7 +813,7 @@ function registerAllCustomActions() {
   });
 
   // referenceSeriesBookMakeCard
-  global.registerCustomAction("referenceSeriesBookMakeCard", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceSeriesBookMakeCard", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -848,7 +853,7 @@ function registerAllCustomActions() {
   });
 
   // referenceOneVolumeJournalMakeCards
-  global.registerCustomAction("referenceOneVolumeJournalMakeCards", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceOneVolumeJournalMakeCards", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -958,7 +963,7 @@ function registerAllCustomActions() {
   });
 
   // referenceAuthorNoteMake
-  global.registerCustomAction("referenceAuthorNoteMake", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceAuthorNoteMake", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -973,7 +978,7 @@ function registerAllCustomActions() {
   });
 
   // referenceBibInfoCopy
-  global.registerCustomAction("referenceBibInfoCopy", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceBibInfoCopy", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     bibContentArr = [];
     focusNotes.forEach((focusNote) => {
@@ -995,7 +1000,7 @@ function registerAllCustomActions() {
   });
 
   // referenceBibInfoExport
-  global.registerCustomAction("referenceBibInfoExport", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceBibInfoExport", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     bibContentArr = [];
     focusNotes.forEach((focusNote) => {
@@ -1022,7 +1027,7 @@ function registerAllCustomActions() {
   });
 
   // referenceBibInfoPasteFromClipboard
-  global.registerCustomAction("referenceBibInfoPasteFromClipboard", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceBibInfoPasteFromClipboard", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       bibTextIndex = focusNote.getIncludingCommentIndex("- `.bib`");
@@ -1040,7 +1045,7 @@ function registerAllCustomActions() {
   });
 
   // referenceInfoDoiFromClipboard
-  global.registerCustomAction("referenceInfoDoiFromClipboard", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceInfoDoiFromClipboard", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -1060,7 +1065,7 @@ function registerAllCustomActions() {
   });
 
   // referenceInfoDoiFromTyping
-  global.registerCustomAction("referenceInfoDoiFromTyping", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceInfoDoiFromTyping", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "增加 Doi",
@@ -1092,7 +1097,7 @@ function registerAllCustomActions() {
   });
 
   // referenceInfoJournal
-  global.registerCustomAction("referenceInfoJournal", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceInfoJournal", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "增加期刊",
@@ -1178,7 +1183,7 @@ function registerAllCustomActions() {
   });
 
   // referenceInfoPublisher
-  global.registerCustomAction("referenceInfoPublisher", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceInfoPublisher", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "增加出版社",
@@ -1261,7 +1266,7 @@ function registerAllCustomActions() {
   });
 
   // referenceInfoKeywords
-  global.registerCustomAction("referenceInfoKeywords", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceInfoKeywords", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "增加关键词",
@@ -1404,7 +1409,7 @@ function registerAllCustomActions() {
   });
 
   // referenceInfoYear
-  global.registerCustomAction("referenceInfoYear", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceInfoYear", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "增加年份",
@@ -1428,7 +1433,7 @@ function registerAllCustomActions() {
   });
 
   // referenceGetRelatedReferencesByKeywords
-  global.registerCustomAction("referenceGetRelatedReferencesByKeywords", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceGetRelatedReferencesByKeywords", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "根据关键词进行文献筛选",
@@ -1540,7 +1545,7 @@ function registerAllCustomActions() {
   });
 
   // referenceKeywordsAddRelatedKeywords
-  global.registerCustomAction("referenceKeywordsAddRelatedKeywords", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceKeywordsAddRelatedKeywords", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "增加相关关键词",
@@ -1675,7 +1680,7 @@ function registerAllCustomActions() {
   });
 
   // referenceInfoAuthor
-  global.registerCustomAction("referenceInfoAuthor", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceInfoAuthor", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "增加文献作者",
@@ -1810,7 +1815,7 @@ function registerAllCustomActions() {
   });
 
   // referenceInfoInputRef
-  global.registerCustomAction("referenceInfoInputRef", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceInfoInputRef", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "增加引用样式",
@@ -1842,7 +1847,7 @@ function registerAllCustomActions() {
   });
 
   // referenceInfoRefFromInputRefNum
-  global.registerCustomAction("referenceInfoRefFromInputRefNum", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceInfoRefFromInputRefNum", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "输入文献号",
@@ -1898,7 +1903,7 @@ function registerAllCustomActions() {
   });
 
   // referenceInfoRefFromFocusNote
-  global.registerCustomAction("referenceInfoRefFromFocusNote", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceInfoRefFromFocusNote", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -1943,7 +1948,7 @@ function registerAllCustomActions() {
   });
 
   // referenceMoveLastCommentToThought
-  global.registerCustomAction("referenceMoveLastCommentToThought", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceMoveLastCommentToThought", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -1953,7 +1958,7 @@ function registerAllCustomActions() {
   });
 
   // referenceMoveLastTwoCommentsToThought
-  global.registerCustomAction("referenceMoveLastTwoCommentsToThought", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceMoveLastTwoCommentsToThought", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -1963,7 +1968,7 @@ function registerAllCustomActions() {
   });
 
   // referenceAddThoughtPointAndMoveLastCommentToThought
-  global.registerCustomAction("referenceAddThoughtPointAndMoveLastCommentToThought", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceAddThoughtPointAndMoveLastCommentToThought", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -1978,7 +1983,7 @@ function registerAllCustomActions() {
   });
 
   // referenceAddThoughtPoint
-  global.registerCustomAction("referenceAddThoughtPoint", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceAddThoughtPoint", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -1992,7 +1997,7 @@ function registerAllCustomActions() {
   });
 
   // referenceMoveUpThoughtPoints
-  global.registerCustomAction("referenceMoveUpThoughtPoints", async function (context) {
+  MNTaskGlobal.registerCustomAction("referenceMoveUpThoughtPoints", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2008,7 +2013,7 @@ function registerAllCustomActions() {
   // ========== PROOF 相关 (20 个) ==========
 
   // moveProofDown
-  global.registerCustomAction("moveProofDown", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveProofDown", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2020,7 +2025,7 @@ function registerAllCustomActions() {
   });
 
   // moveLastCommentToProofStart
-  global.registerCustomAction("moveLastCommentToProofStart", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveLastCommentToProofStart", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2033,7 +2038,7 @@ function registerAllCustomActions() {
   });
 
   // moveProofToStart
-  global.registerCustomAction("moveProofToStart", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveProofToStart", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2046,7 +2051,7 @@ function registerAllCustomActions() {
   });
 
   // renewProofContentPoints
-  global.registerCustomAction("renewProofContentPoints", async function (context) {
+  MNTaskGlobal.registerCustomAction("renewProofContentPoints", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2080,7 +2085,7 @@ function registerAllCustomActions() {
   });
 
   // renewProofContentPointsToSubpointType
-  global.registerCustomAction("renewProofContentPointsToSubpointType", async function (context) {
+  MNTaskGlobal.registerCustomAction("renewProofContentPointsToSubpointType", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2094,7 +2099,7 @@ function registerAllCustomActions() {
   });
 
   // htmlCommentToProofTop
-  global.registerCustomAction("htmlCommentToProofTop", async function (context) {
+  MNTaskGlobal.registerCustomAction("htmlCommentToProofTop", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "输入注释",
@@ -2124,7 +2129,7 @@ function registerAllCustomActions() {
   });
 
   // htmlCommentToProofFromClipboard
-  global.registerCustomAction("htmlCommentToProofFromClipboard", async function (context) {
+  MNTaskGlobal.registerCustomAction("htmlCommentToProofFromClipboard", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2153,7 +2158,7 @@ function registerAllCustomActions() {
   });
 
   // htmlCommentToProofBottom
-  global.registerCustomAction("htmlCommentToProofBottom", async function (context) {
+  MNTaskGlobal.registerCustomAction("htmlCommentToProofBottom", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "输入注释",
@@ -2183,7 +2188,7 @@ function registerAllCustomActions() {
   });
 
   // addProofToStartFromClipboard
-  global.registerCustomAction("addProofToStartFromClipboard", async function (context) {
+  MNTaskGlobal.registerCustomAction("addProofToStartFromClipboard", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -2199,7 +2204,7 @@ function registerAllCustomActions() {
   });
 
   // addProofFromClipboard
-  global.registerCustomAction("addProofFromClipboard", async function (context) {
+  MNTaskGlobal.registerCustomAction("addProofFromClipboard", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -2214,7 +2219,7 @@ function registerAllCustomActions() {
   });
 
   // proofAddMethodComment
-  global.registerCustomAction("proofAddMethodComment", async function (context) {
+  MNTaskGlobal.registerCustomAction("proofAddMethodComment", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "输入方法数",
@@ -2284,7 +2289,7 @@ function registerAllCustomActions() {
   });
 
   // proofAddNewAntiexampleWithComment
-  global.registerCustomAction("proofAddNewAntiexampleWithComment", async function (context) {
+  MNTaskGlobal.registerCustomAction("proofAddNewAntiexampleWithComment", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "输入此反例的注释",
@@ -2327,7 +2332,7 @@ function registerAllCustomActions() {
   });
 
   // proofAddNewMethodWithComment
-  global.registerCustomAction("proofAddNewMethodWithComment", async function (context) {
+  MNTaskGlobal.registerCustomAction("proofAddNewMethodWithComment", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "输入此方法的注释",
@@ -2370,7 +2375,7 @@ function registerAllCustomActions() {
   });
 
   // proofAddNewAntiexample
-  global.registerCustomAction("proofAddNewAntiexample", async function (context) {
+  MNTaskGlobal.registerCustomAction("proofAddNewAntiexample", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -2396,7 +2401,7 @@ function registerAllCustomActions() {
   });
 
   // proofAddNewMethod
-  global.registerCustomAction("proofAddNewMethod", async function (context) {
+  MNTaskGlobal.registerCustomAction("proofAddNewMethod", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -2422,7 +2427,7 @@ function registerAllCustomActions() {
   });
 
   // moveLastLinkToProof
-  global.registerCustomAction("moveLastLinkToProof", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveLastLinkToProof", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     let thoughtHtmlCommentIndex = focusNote.getCommentIndex("相关思考：", true);
     MNUtil.undoGrouping(() => {
@@ -2431,7 +2436,7 @@ function registerAllCustomActions() {
   });
 
   // moveLastCommentToProof
-  global.registerCustomAction("moveLastCommentToProof", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveLastCommentToProof", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -2441,7 +2446,7 @@ function registerAllCustomActions() {
   });
 
   // moveLastTwoCommentsToProof
-  global.registerCustomAction("moveLastTwoCommentsToProof", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveLastTwoCommentsToProof", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -2451,7 +2456,7 @@ function registerAllCustomActions() {
   });
 
   // renewProof
-  global.registerCustomAction("renewProof", async function (context) {
+  MNTaskGlobal.registerCustomAction("renewProof", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -2463,7 +2468,7 @@ function registerAllCustomActions() {
   });
 
   // moveProofToMethod
-  global.registerCustomAction("moveProofToMethod", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveProofToMethod", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "输入方法数",
@@ -2504,7 +2509,7 @@ function registerAllCustomActions() {
   // ========== TEMPLATE 相关 (6 个) ==========
 
   // addTemplate
-  global.registerCustomAction("addTemplate", async function (context) {
+  MNTaskGlobal.registerCustomAction("addTemplate", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -2516,7 +2521,7 @@ function registerAllCustomActions() {
   });
 
   // mergeTemplateNotes
-  global.registerCustomAction("mergeTemplateNotes", async function (context) {
+  MNTaskGlobal.registerCustomAction("mergeTemplateNotes", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     if (MNUtil.currentNotebookId !== "9BA894B4-3509-4894-A05C-1B4BA0A9A4AE") {
       MNUtil.undoGrouping(() => {
@@ -2562,7 +2567,7 @@ function registerAllCustomActions() {
   });
 
   // multiTemplateMakeNotes
-  global.registerCustomAction("multiTemplateMakeNotes", async function (context) {
+  MNTaskGlobal.registerCustomAction("multiTemplateMakeNotes", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -2575,7 +2580,7 @@ function registerAllCustomActions() {
   });
 
   // TemplateMakeNotes
-  global.registerCustomAction("TemplateMakeNotes", async function (context) {
+  MNTaskGlobal.registerCustomAction("TemplateMakeNotes", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2596,7 +2601,7 @@ function registerAllCustomActions() {
   });
 
   // TemplateMakeChildNotes
-  global.registerCustomAction("TemplateMakeChildNotes", async function (context) {
+  MNTaskGlobal.registerCustomAction("TemplateMakeChildNotes", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNote.childNotes.forEach((childNote) => {
@@ -2607,7 +2612,7 @@ function registerAllCustomActions() {
   });
 
   // TemplateMakeDescendantNotes
-  global.registerCustomAction("TemplateMakeDescendantNotes", async function (context) {
+  MNTaskGlobal.registerCustomAction("TemplateMakeDescendantNotes", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNote.descendantNodes.descendant.forEach((descendantNote) => {
@@ -2620,7 +2625,7 @@ function registerAllCustomActions() {
   // ========== HTML 相关 (12 个) ==========
 
   // addHtmlMarkdownComment
-  global.registerCustomAction("addHtmlMarkdownComment", async function (context) {
+  MNTaskGlobal.registerCustomAction("addHtmlMarkdownComment", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "添加 Html 或 Markdown 评论",
@@ -2646,7 +2651,7 @@ function registerAllCustomActions() {
   });
 
   // copyMarkdownVersionFocusNoteURL
-  global.registerCustomAction("copyMarkdownVersionFocusNoteURL", async function (context) {
+  MNTaskGlobal.registerCustomAction("copyMarkdownVersionFocusNoteURL", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2676,7 +2681,7 @@ function registerAllCustomActions() {
   });
 
   // renewContentPointsToHtmlType
-  global.registerCustomAction("renewContentsToHtmlMarkdownCommentType", async function (context) {
+  MNTaskGlobal.registerCustomAction("renewContentsToHtmlMarkdownCommentType", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2688,7 +2693,7 @@ function registerAllCustomActions() {
   });
 
   // htmlMDCommentsToNextLevelType
-  global.registerCustomAction("htmlMDCommentsToNextLevelType", async function (context) {
+  MNTaskGlobal.registerCustomAction("htmlMDCommentsToNextLevelType", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2711,7 +2716,7 @@ function registerAllCustomActions() {
   });
 
   // htmlMDCommentsToLastLevelType
-  global.registerCustomAction("htmlMDCommentsToLastLevelType", async function (context) {
+  MNTaskGlobal.registerCustomAction("htmlMDCommentsToLastLevelType", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2733,7 +2738,7 @@ function registerAllCustomActions() {
   });
 
   // htmlCommentToBottom
-  global.registerCustomAction("htmlCommentToBottom", async function (context) {
+  MNTaskGlobal.registerCustomAction("htmlCommentToBottom", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "输入注释",
@@ -2761,7 +2766,7 @@ function registerAllCustomActions() {
   });
 
   // convetHtmlToMarkdown
-  global.registerCustomAction("convetHtmlToMarkdown", async function (context) {
+  MNTaskGlobal.registerCustomAction("convetHtmlToMarkdown", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -2773,7 +2778,7 @@ function registerAllCustomActions() {
   });
 
   // clearContentKeepMarkdownText
-  global.registerCustomAction("clearContentKeepMarkdownText", async function (context) {
+  MNTaskGlobal.registerCustomAction("clearContentKeepMarkdownText", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -2785,7 +2790,7 @@ function registerAllCustomActions() {
   });
 
   // addHtmlMarkdownQuestion
-  global.registerCustomAction("addHtmlMarkdownQuestion", async function (context) {
+  MNTaskGlobal.registerCustomAction("addHtmlMarkdownQuestion", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2797,7 +2802,7 @@ function registerAllCustomActions() {
   });
 
   // clearContentKeepHtmlText
-  global.registerCustomAction("clearContentKeepHtmlText", async function (context) {
+  MNTaskGlobal.registerCustomAction("clearContentKeepHtmlText", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2819,13 +2824,13 @@ function registerAllCustomActions() {
   });
 
   // splitMarkdownTextInFocusNote
-  global.registerCustomAction("splitMarkdownTextInFocusNote", async function (context) {
+  MNTaskGlobal.registerCustomAction("splitMarkdownTextInFocusNote", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     taskUtils.markdown2Mindmap({ source: "currentNote" });
   });
 
   // changeHtmlMarkdownCommentTypeByPopup
-  global.registerCustomAction("changeHtmlMarkdownCommentTypeByPopup", async function (context) {
+  MNTaskGlobal.registerCustomAction("changeHtmlMarkdownCommentTypeByPopup", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2839,7 +2844,7 @@ function registerAllCustomActions() {
   // ========== MOVE 相关 (19 个) ==========
 
   // moveToExcerptPartTop
-  global.registerCustomAction("moveToExcerptPartTop", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveToExcerptPartTop", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2852,7 +2857,7 @@ function registerAllCustomActions() {
   });
 
   // moveToExcerptPartBottom
-  global.registerCustomAction("moveToExcerptPartBottom", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveToExcerptPartBottom", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2864,7 +2869,7 @@ function registerAllCustomActions() {
   });
 
   // moveToInput
-  global.registerCustomAction("moveToInput", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveToInput", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2878,7 +2883,7 @@ function registerAllCustomActions() {
   });
 
   // moveToPreparationForExam
-  global.registerCustomAction("moveToPreparationForExam", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveToPreparationForExam", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2892,7 +2897,7 @@ function registerAllCustomActions() {
   });
 
   // moveToInternalize
-  global.registerCustomAction("moveToInternalize", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveToInternalize", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2906,7 +2911,7 @@ function registerAllCustomActions() {
   });
 
   // moveToBeClassified
-  global.registerCustomAction("moveToBeClassified", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveToBeClassified", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2952,7 +2957,7 @@ function registerAllCustomActions() {
   });
 
   // moveLastThreeCommentByPopupTo
-  global.registerCustomAction("moveLastThreeCommentByPopupTo", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveLastThreeCommentByPopupTo", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2969,7 +2974,7 @@ function registerAllCustomActions() {
   });
 
   // moveLastTwoCommentByPopupTo
-  global.registerCustomAction("moveLastTwoCommentByPopupTo", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveLastTwoCommentByPopupTo", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2982,7 +2987,7 @@ function registerAllCustomActions() {
   });
 
   // moveLastOneCommentByPopupTo
-  global.registerCustomAction("moveLastOneCommentByPopupTo", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveLastOneCommentByPopupTo", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -2995,7 +3000,7 @@ function registerAllCustomActions() {
   });
 
   // moveNewContentsByPopupTo
-  global.registerCustomAction("moveNewContentsByPopupTo", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveNewContentsByPopupTo", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3008,7 +3013,7 @@ function registerAllCustomActions() {
   });
 
   // moveOneCommentToLinkNote
-  global.registerCustomAction("moveOneCommentToLinkNote", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveOneCommentToLinkNote", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3027,7 +3032,7 @@ function registerAllCustomActions() {
   });
 
   // moveLastCommentToThought
-  global.registerCustomAction("moveLastCommentToThought", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveLastCommentToThought", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -3037,7 +3042,7 @@ function registerAllCustomActions() {
   });
 
   // moveLastTwoCommentsToThought
-  global.registerCustomAction("moveLastTwoCommentsToThought", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveLastTwoCommentsToThought", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -3047,7 +3052,7 @@ function registerAllCustomActions() {
   });
 
   // moveLastTwoCommentsInBiLinkNotesToThought
-  global.registerCustomAction("moveLastTwoCommentsInBiLinkNotesToThought", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveLastTwoCommentsInBiLinkNotesToThought", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -3064,7 +3069,7 @@ function registerAllCustomActions() {
   });
 
   // moveLastTwoCommentsInBiLinkNotesToDefinition
-  global.registerCustomAction("moveLastTwoCommentsInBiLinkNotesToDefinition", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveLastTwoCommentsInBiLinkNotesToDefinition", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -3081,7 +3086,7 @@ function registerAllCustomActions() {
   });
 
   // moveUpThoughtPointsToBottom
-  global.registerCustomAction("moveUpThoughtPointsToBottom", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveUpThoughtPointsToBottom", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3095,7 +3100,7 @@ function registerAllCustomActions() {
   });
 
   // moveUpThoughtPointsToTop
-  global.registerCustomAction("moveUpThoughtPointsToTop", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveUpThoughtPointsToTop", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3109,7 +3114,7 @@ function registerAllCustomActions() {
   });
 
   // moveUpLinkNotes
-  global.registerCustomAction("moveUpLinkNotes", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveUpLinkNotes", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -3121,7 +3126,7 @@ function registerAllCustomActions() {
   });
 
   // moveToInbox
-  global.registerCustomAction("moveToInbox", async function (context) {
+  MNTaskGlobal.registerCustomAction("moveToInbox", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3137,7 +3142,7 @@ function registerAllCustomActions() {
   // ========== CLEAR 相关 (8 个) ==========
 
   // clearAllLinks
-  global.registerCustomAction("clearAllLinks", async function (context) {
+  MNTaskGlobal.registerCustomAction("clearAllLinks", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -3160,7 +3165,7 @@ function registerAllCustomActions() {
   });
 
   // clearAllFailedMN3Links
-  global.registerCustomAction("clearAllFailedMN3Links", async function (context) {
+  MNTaskGlobal.registerCustomAction("clearAllFailedMN3Links", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3181,7 +3186,7 @@ function registerAllCustomActions() {
   });
 
   // clearAllFailedLinks
-  global.registerCustomAction("clearAllFailedLinks", async function (context) {
+  MNTaskGlobal.registerCustomAction("clearAllFailedLinks", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3195,7 +3200,7 @@ function registerAllCustomActions() {
   });
 
   // clearContentKeepExcerptAndHandwritingAndImage
-  global.registerCustomAction("clearContentKeepExcerptAndHandwritingAndImage", async function (context) {
+  MNTaskGlobal.registerCustomAction("clearContentKeepExcerptAndHandwritingAndImage", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -3215,7 +3220,7 @@ function registerAllCustomActions() {
   });
 
   // clearContentKeepExcerptWithTitle
-  global.registerCustomAction("clearContentKeepExcerptWithTitle", async function (context) {
+  MNTaskGlobal.registerCustomAction("clearContentKeepExcerptWithTitle", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3237,7 +3242,7 @@ function registerAllCustomActions() {
   });
 
   // clearContentKeepExcerpt
-  global.registerCustomAction("clearContentKeepExcerpt", async function (context) {
+  MNTaskGlobal.registerCustomAction("clearContentKeepExcerpt", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3259,7 +3264,7 @@ function registerAllCustomActions() {
   });
 
   // clearContentKeepHandwritingAndImage
-  global.registerCustomAction("clearContentKeepHandwritingAndImage", async function (context) {
+  MNTaskGlobal.registerCustomAction("clearContentKeepHandwritingAndImage", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3281,7 +3286,7 @@ function registerAllCustomActions() {
   });
 
   // clearContentKeepText
-  global.registerCustomAction("clearContentKeepText", async function (context) {
+  MNTaskGlobal.registerCustomAction("clearContentKeepText", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3305,7 +3310,7 @@ function registerAllCustomActions() {
   // ========== COPY 相关 (8 个) ==========
 
   // copyFocusNotesIdArr
-  global.registerCustomAction("copyFocusNotesIdArr", async function (context) {
+  MNTaskGlobal.registerCustomAction("copyFocusNotesIdArr", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3324,7 +3329,7 @@ function registerAllCustomActions() {
   });
 
   // copyFocusNotesURLArr
-  global.registerCustomAction("copyFocusNotesURLArr", async function (context) {
+  MNTaskGlobal.registerCustomAction("copyFocusNotesURLArr", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3338,14 +3343,14 @@ function registerAllCustomActions() {
   });
 
   // cardCopyNoteId
-  global.registerCustomAction("cardCopyNoteId", async function (context) {
+  MNTaskGlobal.registerCustomAction("cardCopyNoteId", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.copy(focusNote.noteId);
     MNUtil.showHUD(focusNote.noteId);
   });
 
   // copyWholeTitle
-  global.registerCustomAction("copyWholeTitle", async function (context) {
+  MNTaskGlobal.registerCustomAction("copyWholeTitle", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     copyTitlePart = focusNote.noteTitle;
     MNUtil.copy(copyTitlePart);
@@ -3353,7 +3358,7 @@ function registerAllCustomActions() {
   });
 
   // copyTitleSecondPart
-  global.registerCustomAction("copyTitleSecondPart", async function (context) {
+  MNTaskGlobal.registerCustomAction("copyTitleSecondPart", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     if ([2, 3, 9, 10, 15].includes(focusNoteColorIndex)) {
       copyTitlePart = focusNote.noteTitle.match(/【.*】(.*)/)[1];
@@ -3363,7 +3368,7 @@ function registerAllCustomActions() {
   });
 
   // copyTitleFirstKeyword
-  global.registerCustomAction("copyTitleFirstKeyword", async function (context) {
+  MNTaskGlobal.registerCustomAction("copyTitleFirstKeyword", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     if ([2, 3, 9, 10, 15].includes(focusNoteColorIndex)) {
       copyTitlePart = focusNote.noteTitle.match(/【.*】;\s*([^;]*?)(?:;|$)/)[1];
@@ -3373,7 +3378,7 @@ function registerAllCustomActions() {
   });
 
   // copyTitleFirstQuoteContent
-  global.registerCustomAction("copyTitleFirstQuoteContent", async function (context) {
+  MNTaskGlobal.registerCustomAction("copyTitleFirstQuoteContent", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     if ([0, 1, 4].includes(focusNoteColorIndex)) {
       if (focusNoteColorIndex == 1) {
@@ -3387,7 +3392,7 @@ function registerAllCustomActions() {
   });
 
   // copyTitleSecondQuoteContent
-  global.registerCustomAction("copyTitleSecondQuoteContent", async function (context) {
+  MNTaskGlobal.registerCustomAction("copyTitleSecondQuoteContent", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     if ([0, 1, 4].includes(focusNoteColorIndex)) {
       if (focusNoteColorIndex == 1) {
@@ -3403,7 +3408,7 @@ function registerAllCustomActions() {
   // ========== CHANGE 相关 (5 个) ==========
 
   // changeChildNotesPrefix
-  global.registerCustomAction("changeChildNotesPrefix", async function (context) {
+  MNTaskGlobal.registerCustomAction("changeChildNotesPrefix", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -3426,7 +3431,7 @@ function registerAllCustomActions() {
   });
 
   // batchChangeClassificationTitles
-  global.registerCustomAction("batchChangeClassificationTitles", async function (context) {
+  MNTaskGlobal.registerCustomAction("batchChangeClassificationTitles", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       await MNMath.batchChangeClassificationTitles("descendants");
@@ -3436,7 +3441,7 @@ function registerAllCustomActions() {
   });
 
   // changeChildNotesTitles
-  global.registerCustomAction("changeChildNotesTitles", async function (context) {
+  MNTaskGlobal.registerCustomAction("changeChildNotesTitles", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNote.childNotes.forEach((childNote) => {
@@ -3459,7 +3464,7 @@ function registerAllCustomActions() {
   });
 
   // changeDescendantNotesTitles
-  global.registerCustomAction("changeDescendantNotesTitles", async function (context) {
+  MNTaskGlobal.registerCustomAction("changeDescendantNotesTitles", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNote.descendantNodes.descendant.forEach((descendantNote) => {
@@ -3485,7 +3490,7 @@ function registerAllCustomActions() {
   });
 
   // changeTitlePrefix
-  global.registerCustomAction("changeTitlePrefix", async function (context) {
+  MNTaskGlobal.registerCustomAction("changeTitlePrefix", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3504,7 +3509,7 @@ function registerAllCustomActions() {
 
 
   // getNewClassificationInformation
-  global.registerCustomAction("getNewClassificationInformation", async function (context) {
+  MNTaskGlobal.registerCustomAction("getNewClassificationInformation", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3519,13 +3524,13 @@ function registerAllCustomActions() {
   });
 
   // MNFocusNote
-  global.registerCustomAction("MNFocusNote", async function (context) {
+  MNTaskGlobal.registerCustomAction("MNFocusNote", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.excuteCommand("FocusNote");
   });
 
   // MNEditDeleteNote
-  global.registerCustomAction("MNEditDeleteNote", async function (context) {
+  MNTaskGlobal.registerCustomAction("MNEditDeleteNote", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     let confirm = await MNUtil.confirm("删除卡片", "确定要删除这张卡片吗？");
     if (confirm) {
@@ -3534,7 +3539,7 @@ function registerAllCustomActions() {
   });
 
   // toBeProgressNote
-  global.registerCustomAction("toBeProgressNote", async function (context) {
+  MNTaskGlobal.registerCustomAction("toBeProgressNote", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3549,7 +3554,7 @@ function registerAllCustomActions() {
   });
 
   // toBeIndependent
-  global.registerCustomAction("toBeIndependent", async function (context) {
+  MNTaskGlobal.registerCustomAction("toBeIndependent", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3563,7 +3568,7 @@ function registerAllCustomActions() {
   });
 
   // AddToReview
-  global.registerCustomAction("AddToReview", async function (context) {
+  MNTaskGlobal.registerCustomAction("AddToReview", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -3573,7 +3578,7 @@ function registerAllCustomActions() {
   });
 
   // deleteCommentsByPopup
-  global.registerCustomAction("deleteCommentsByPopup", async function (context) {
+  MNTaskGlobal.registerCustomAction("deleteCommentsByPopup", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3585,7 +3590,7 @@ function registerAllCustomActions() {
   });
 
   // deleteCommentsByPopupAndMoveNewContentToExcerptAreaBottom
-  global.registerCustomAction("deleteCommentsByPopupAndMoveNewContentToExcerptAreaBottom", async function (context) {
+  MNTaskGlobal.registerCustomAction("deleteCommentsByPopupAndMoveNewContentToExcerptAreaBottom", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3597,7 +3602,7 @@ function registerAllCustomActions() {
   });
 
   // deleteCommentsByPopupAndMoveNewContentToExcerptAreaTop
-  global.registerCustomAction("deleteCommentsByPopupAndMoveNewContentToExcerptAreaTop", async function (context) {
+  MNTaskGlobal.registerCustomAction("deleteCommentsByPopupAndMoveNewContentToExcerptAreaTop", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3609,7 +3614,7 @@ function registerAllCustomActions() {
   });
 
   // sameLevel
-  global.registerCustomAction("sameLevel", async function (context) {
+  MNTaskGlobal.registerCustomAction("sameLevel", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     HtmlMarkdownUtils.autoAddLevelHtmlMDComment(
       focusNote.parentNote,
@@ -3621,7 +3626,7 @@ function registerAllCustomActions() {
   });
 
   // nextLevel
-  global.registerCustomAction("nextLevel", async function (context) {
+  MNTaskGlobal.registerCustomAction("nextLevel", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     HtmlMarkdownUtils.autoAddLevelHtmlMDComment(
       focusNote.parentNote,
@@ -3633,7 +3638,7 @@ function registerAllCustomActions() {
   });
 
   // lastLevel
-  global.registerCustomAction("lastLevel", async function (context) {
+  MNTaskGlobal.registerCustomAction("lastLevel", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     HtmlMarkdownUtils.autoAddLevelHtmlMDComment(
       focusNote.parentNote,
@@ -3645,7 +3650,7 @@ function registerAllCustomActions() {
   });
 
   // topestLevel
-  global.registerCustomAction("topestLevel", async function (context) {
+  MNTaskGlobal.registerCustomAction("topestLevel", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     HtmlMarkdownUtils.autoAddLevelHtmlMDComment(
       focusNote.parentNote,
@@ -3657,7 +3662,7 @@ function registerAllCustomActions() {
   });
 
   // generateCustomTitleLink
-  global.registerCustomAction("generateCustomTitleLink", async function (context) {
+  MNTaskGlobal.registerCustomAction("generateCustomTitleLink", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       taskUtils.generateCustomTitleLink();
@@ -3665,7 +3670,7 @@ function registerAllCustomActions() {
   });
 
   // generateCustomTitleLinkFromFocusNote
-  global.registerCustomAction("generateCustomTitleLinkFromFocusNote", async function (context) {
+  MNTaskGlobal.registerCustomAction("generateCustomTitleLinkFromFocusNote", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       taskUtils.generateCustomTitleLinkFromFocusNote(focusNote);
@@ -3673,7 +3678,7 @@ function registerAllCustomActions() {
   });
 
   // pasteNoteAsChildNote
-  global.registerCustomAction("pasteNoteAsChildNote", async function (context) {
+  MNTaskGlobal.registerCustomAction("pasteNoteAsChildNote", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3685,7 +3690,7 @@ function registerAllCustomActions() {
   });
 
   // linkRemoveDuplicatesAfterApplication
-  global.registerCustomAction("linkRemoveDuplicatesAfterApplication", async function (context) {
+  MNTaskGlobal.registerCustomAction("linkRemoveDuplicatesAfterApplication", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -3703,7 +3708,7 @@ function registerAllCustomActions() {
   });
 
   // addOldNoteKeyword
-  global.registerCustomAction("addOldNoteKeyword", async function (context) {
+  MNTaskGlobal.registerCustomAction("addOldNoteKeyword", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       let keywordsHtmlCommentIndex = focusNote.getCommentIndex("关键词：", true);
@@ -3712,21 +3717,21 @@ function registerAllCustomActions() {
   });
 
   // selectionTextHandleSpaces
-  global.registerCustomAction("selectionTextHandleSpaces", async function (context) {
+  MNTaskGlobal.registerCustomAction("selectionTextHandleSpaces", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.showHUD(Pangu.spacing(MNUtil.selectionText));
     MNUtil.copy(Pangu.spacing(MNUtil.selectionText));
   });
 
   // copiedTextHandleSpaces
-  global.registerCustomAction("copiedTextHandleSpaces", async function (context) {
+  MNTaskGlobal.registerCustomAction("copiedTextHandleSpaces", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.showHUD(Pangu.spacing(MNUtil.clipboardText));
     MNUtil.copy(Pangu.spacing(MNUtil.clipboardText));
   });
 
   // handleTitleSpaces
-  global.registerCustomAction("handleTitleSpaces", async function (context) {
+  MNTaskGlobal.registerCustomAction("handleTitleSpaces", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -3742,7 +3747,7 @@ function registerAllCustomActions() {
   });
 
   // focusInMindMap
-  global.registerCustomAction("focusInMindMap", async function (context) {
+  MNTaskGlobal.registerCustomAction("focusInMindMap", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNote.focusInMindMap();
@@ -3750,7 +3755,7 @@ function registerAllCustomActions() {
   });
 
   // focusInFloatMindMap
-  global.registerCustomAction("focusInFloatMindMap", async function (context) {
+  MNTaskGlobal.registerCustomAction("focusInFloatMindMap", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNote.focusInFloatMindMap();
@@ -3758,35 +3763,35 @@ function registerAllCustomActions() {
   });
 
   // selectionTextToLowerCase
-  global.registerCustomAction("selectionTextToLowerCase", async function (context) {
+  MNTaskGlobal.registerCustomAction("selectionTextToLowerCase", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.showHUD(MNUtil.selectionText.toLowerCase());
     MNUtil.copy(MNUtil.selectionText.toLowerCase());
   });
 
   // selectionTextToTitleCase
-  global.registerCustomAction("selectionTextToTitleCase", async function (context) {
+  MNTaskGlobal.registerCustomAction("selectionTextToTitleCase", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.showHUD(MNUtil.selectionText.toTitleCasePro());
     MNUtil.copy(MNUtil.selectionText.toTitleCasePro());
   });
 
   // copiedTextToTitleCase
-  global.registerCustomAction("copiedTextToTitleCase", async function (context) {
+  MNTaskGlobal.registerCustomAction("copiedTextToTitleCase", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.showHUD(MNUtil.clipboardText.toTitleCasePro());
     MNUtil.copy(MNUtil.clipboardText.toTitleCasePro());
   });
 
   // copiedTextToLowerCase
-  global.registerCustomAction("copiedTextToLowerCase", async function (context) {
+  MNTaskGlobal.registerCustomAction("copiedTextToLowerCase", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.showHUD(MNUtil.clipboardText.toLowerCase());
     MNUtil.copy(MNUtil.clipboardText.toLowerCase());
   });
 
   // renewLinksBetweenClassificationNoteAndKnowledegeNote
-  global.registerCustomAction("autoMoveLinksBetweenCards", async function (context) {
+  MNTaskGlobal.registerCustomAction("autoMoveLinksBetweenCards", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNMath.smartLinkArrangement(focusNote);
@@ -3796,7 +3801,7 @@ function registerAllCustomActions() {
   });
 
   // refreshNotes
-  global.registerCustomAction("refreshNotes", async function (context) {
+  MNTaskGlobal.registerCustomAction("refreshNotes", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -3810,7 +3815,7 @@ function registerAllCustomActions() {
   });
 
   // refreshCardsAndAncestorsAndDescendants
-  global.registerCustomAction("refreshCardsAndAncestorsAndDescendants", async function (context) {
+  MNTaskGlobal.registerCustomAction("refreshCardsAndAncestorsAndDescendants", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -3824,7 +3829,7 @@ function registerAllCustomActions() {
   });
 
   // renewAuthorNotes
-  global.registerCustomAction("renewAuthorNotes", async function (context) {
+  MNTaskGlobal.registerCustomAction("renewAuthorNotes", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -3844,7 +3849,7 @@ function registerAllCustomActions() {
   });
 
   // renewJournalNotes
-  global.registerCustomAction("renewJournalNotes", async function (context) {
+  MNTaskGlobal.registerCustomAction("renewJournalNotes", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -3863,7 +3868,7 @@ function registerAllCustomActions() {
   });
 
   // renewPublisherNotes
-  global.registerCustomAction("renewPublisherNotes", async function (context) {
+  MNTaskGlobal.registerCustomAction("renewPublisherNotes", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -3882,7 +3887,7 @@ function registerAllCustomActions() {
   });
 
   // renewBookSeriesNotes
-  global.registerCustomAction("renewBookSeriesNotes", async function (context) {
+  MNTaskGlobal.registerCustomAction("renewBookSeriesNotes", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -3896,7 +3901,7 @@ function registerAllCustomActions() {
   });
 
   // renewBookNotes
-  global.registerCustomAction("renewBookNotes", async function (context) {
+  MNTaskGlobal.registerCustomAction("renewBookNotes", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -3913,7 +3918,7 @@ function registerAllCustomActions() {
   });
 
   // findDuplicateTitles
-  global.registerCustomAction("findDuplicateTitles", async function (context) {
+  MNTaskGlobal.registerCustomAction("findDuplicateTitles", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     const repeatedTitles = taskUtils.findDuplicateTitles(focusNote.childNotes);
     MNUtil.showHUD(repeatedTitles);
@@ -3923,7 +3928,7 @@ function registerAllCustomActions() {
   });
 
   // addThoughtPointAndMoveLastCommentToThought
-  global.registerCustomAction("addThoughtPointAndMoveLastCommentToThought", async function (context) {
+  MNTaskGlobal.registerCustomAction("addThoughtPointAndMoveLastCommentToThought", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -3938,7 +3943,7 @@ function registerAllCustomActions() {
   });
 
   // addThoughtPointAndMoveNewCommentsToThought
-  global.registerCustomAction("addThoughtPointAndMoveNewCommentsToThought", async function (context) {
+  MNTaskGlobal.registerCustomAction("addThoughtPointAndMoveNewCommentsToThought", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -3953,7 +3958,7 @@ function registerAllCustomActions() {
   });
 
   // pasteInTitle
-  global.registerCustomAction("pasteInTitle", async function (context) {
+  MNTaskGlobal.registerCustomAction("pasteInTitle", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     // MNUtil.undoGrouping(()=>{
     //   focusNote.noteTitle = MNUtil.clipboardText
@@ -3968,7 +3973,7 @@ function registerAllCustomActions() {
   });
 
   // pasteAfterTitle
-  global.registerCustomAction("pasteAfterTitle", async function (context) {
+  MNTaskGlobal.registerCustomAction("pasteAfterTitle", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     // MNUtil.undoGrouping(()=>{
     //   focusNote.noteTitle = focusNote.noteTitle + "; " + MNUtil.clipboardText
@@ -3983,7 +3988,7 @@ function registerAllCustomActions() {
   });
 
   // extractTitle
-  global.registerCustomAction("extractTitle", async function (context) {
+  MNTaskGlobal.registerCustomAction("extractTitle", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     if (focusNote.noteTitle.match(/【.*】.*/)) {
       MNUtil.copy(focusNote.noteTitle.match(/【.*】;?(.*)/)[1]);
@@ -3992,7 +3997,7 @@ function registerAllCustomActions() {
   });
 
   // convertNoteToNonexcerptVersion
-  global.registerCustomAction("convertNoteToNonexcerptVersion", async function (context) {
+  MNTaskGlobal.registerCustomAction("convertNoteToNonexcerptVersion", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     // MNUtil.showHUD("卡片转化为非摘录版本")
     try {
@@ -4009,7 +4014,7 @@ function registerAllCustomActions() {
   });
 
   // ifExceptVersion
-  global.registerCustomAction("ifExceptVersion", async function (context) {
+  MNTaskGlobal.registerCustomAction("ifExceptVersion", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     if (focusNote.excerptText) {
       MNUtil.showHUD("摘录版本");
@@ -4019,13 +4024,13 @@ function registerAllCustomActions() {
   });
 
   // showColorIndex
-  global.registerCustomAction("showColorIndex", async function (context) {
+  MNTaskGlobal.registerCustomAction("showColorIndex", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.showHUD("ColorIndex: " + focusNote.note.colorIndex);
   });
 
   // showCommentType
-  global.registerCustomAction("showCommentType", async function (context) {
+  MNTaskGlobal.registerCustomAction("showCommentType", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     let focusNoteComments = focusNote.comments;
     let chosenComment = focusNoteComments[des.index - 1];
@@ -4033,7 +4038,7 @@ function registerAllCustomActions() {
   });
 
   // linksConvertToMN4Type
-  global.registerCustomAction("linksConvertToMN4Type", async function (context) {
+  MNTaskGlobal.registerCustomAction("linksConvertToMN4Type", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -4047,7 +4052,7 @@ function registerAllCustomActions() {
   });
 
   // addThought
-  global.registerCustomAction("addThought", async function (context) {
+  MNTaskGlobal.registerCustomAction("addThought", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -4059,7 +4064,7 @@ function registerAllCustomActions() {
   });
 
   // addThoughtPoint
-  global.registerCustomAction("addThoughtPoint", async function (context) {
+  MNTaskGlobal.registerCustomAction("addThoughtPoint", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -4073,7 +4078,7 @@ function registerAllCustomActions() {
   });
 
   // reappendAllLinksInNote
-  global.registerCustomAction("reappendAllLinksInNote", async function (context) {
+  MNTaskGlobal.registerCustomAction("reappendAllLinksInNote", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -4087,7 +4092,7 @@ function registerAllCustomActions() {
   });
 
   // upwardMergeWithStyledComments
-  global.registerCustomAction("upwardMergeWithStyledComments", async function (context) {
+  MNTaskGlobal.registerCustomAction("upwardMergeWithStyledComments", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -4120,7 +4125,7 @@ function registerAllCustomActions() {
   });
 
   // mergeInParentNoteWithPopup
-  global.registerCustomAction("mergeInParentNoteWithPopup", async function (context) {
+  MNTaskGlobal.registerCustomAction("mergeInParentNoteWithPopup", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -4150,7 +4155,7 @@ function registerAllCustomActions() {
   });
 
   // mergeInParentNote
-  global.registerCustomAction("mergeInParentNote", async function (context) {
+  MNTaskGlobal.registerCustomAction("mergeInParentNote", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -4162,7 +4167,7 @@ function registerAllCustomActions() {
   });
 
   // mergIntoParenNoteAndRenewReplaceholder
-  global.registerCustomAction("mergIntoParenNoteAndRenewReplaceholder", async function (context) {
+  MNTaskGlobal.registerCustomAction("mergIntoParenNoteAndRenewReplaceholder", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -4174,7 +4179,7 @@ function registerAllCustomActions() {
   });
 
   // mergIntoParenNoteAndRenewReplaceholderWithPopup
-  global.registerCustomAction("mergIntoParenNoteAndRenewReplaceholderWithPopup", async function (context) {
+  MNTaskGlobal.registerCustomAction("mergIntoParenNoteAndRenewReplaceholderWithPopup", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -4207,7 +4212,7 @@ function registerAllCustomActions() {
   });
 
   // addTopic
-  global.registerCustomAction("addTopic", async function (context) {
+  MNTaskGlobal.registerCustomAction("addTopic", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -4219,7 +4224,7 @@ function registerAllCustomActions() {
   });
 
   // achieveCards
-  global.registerCustomAction("achieveCards", async function (context) {
+  MNTaskGlobal.registerCustomAction("achieveCards", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -4231,7 +4236,7 @@ function registerAllCustomActions() {
   });
 
   // renewCards
-  global.registerCustomAction("renewCards", async function (context) {
+  MNTaskGlobal.registerCustomAction("renewCards", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -4246,7 +4251,7 @@ function registerAllCustomActions() {
   });
 
   // renewChildNotesPrefix
-  global.registerCustomAction("renewChildNotesPrefix", async function (context) {
+  MNTaskGlobal.registerCustomAction("renewChildNotesPrefix", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
       MNUtil.undoGrouping(() => {
@@ -4258,13 +4263,13 @@ function registerAllCustomActions() {
   });
 
   // hideAddonBar
-  global.registerCustomAction("hideAddonBar", async function (context) {
+  MNTaskGlobal.registerCustomAction("hideAddonBar", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.postNotification("toggleMindmapTask", { target: "addonBar" });
   });
 
   // 9BA894B4-3509-4894-A05C-1B4BA0A9A4AE
-  global.registerCustomAction("9BA894B4-3509-4894-A05C-1B4BA0A9A4AE", async function (context) {
+  MNTaskGlobal.registerCustomAction("9BA894B4-3509-4894-A05C-1B4BA0A9A4AE", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -4274,7 +4279,7 @@ function registerAllCustomActions() {
   });
 
   // 014E76CA-94D6-48D5-82D2-F98A2F017219
-  global.registerCustomAction("014E76CA-94D6-48D5-82D2-F98A2F017219", async function (context) {
+  MNTaskGlobal.registerCustomAction("014E76CA-94D6-48D5-82D2-F98A2F017219", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -4322,7 +4327,7 @@ function registerAllCustomActions() {
   });
 
   // undoOKRNoteMake
-  global.registerCustomAction("undoOKRNoteMake", async function (context) {
+  MNTaskGlobal.registerCustomAction("undoOKRNoteMake", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -4332,7 +4337,7 @@ function registerAllCustomActions() {
   });
 
   // updateTodayTimeTag
-  global.registerCustomAction("updateTodayTimeTag", async function (context) {
+  MNTaskGlobal.registerCustomAction("updateTodayTimeTag", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -4342,7 +4347,7 @@ function registerAllCustomActions() {
   });
 
   // addTodayTimeTag
-  global.registerCustomAction("addTodayTimeTag", async function (context) {
+  MNTaskGlobal.registerCustomAction("addTodayTimeTag", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -4352,7 +4357,7 @@ function registerAllCustomActions() {
   });
 
   // updateTimeTag
-  global.registerCustomAction("updateTimeTag", async function (context) {
+  MNTaskGlobal.registerCustomAction("updateTimeTag", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       focusNotes.forEach((focusNote) => {
@@ -4362,35 +4367,35 @@ function registerAllCustomActions() {
   });
 
   // openTasksFloatMindMap
-  global.registerCustomAction("openTasksFloatMindMap", async function (context) {
+  MNTaskGlobal.registerCustomAction("openTasksFloatMindMap", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     let OKRNote = MNNote.new("690ABF82-339C-4AE1-8BDB-FA6796204B27");
     OKRNote.focusInFloatMindMap();
   });
 
   // openPinnedNote-1
-  global.registerCustomAction("openPinnedNote-1", async function (context) {
+  MNTaskGlobal.registerCustomAction("openPinnedNote-1", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     pinnedNote = MNNote.new("1346BDF1-7F58-430F-874E-B814E7162BDF"); // Hᵖ(D)
     pinnedNote.focusInFloatMindMap();
   });
 
   // openPinnedNote-2
-  global.registerCustomAction("openPinnedNote-2", async function (context) {
+  MNTaskGlobal.registerCustomAction("openPinnedNote-2", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     pinnedNote = MNNote.new("89042A37-CC80-4FFC-B24F-F8E86CB764DC"); // Lᵖ(T)
     pinnedNote.focusInFloatMindMap();
   });
 
   // openPinnedNote-3
-  global.registerCustomAction("openPinnedNote-3", async function (context) {
+  MNTaskGlobal.registerCustomAction("openPinnedNote-3", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     pinnedNote = MNNote.new("D7DEDE97-1B87-4BB6-B607-4FB987F230E4"); // Hᵖ(T)
     pinnedNote.focusInFloatMindMap();
   });
 
   // renewExcerptInParentNoteByFocusNote
-  global.registerCustomAction("renewExcerptInParentNoteByFocusNote", async function (context) {
+  MNTaskGlobal.registerCustomAction("renewExcerptInParentNoteByFocusNote", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -4402,7 +4407,7 @@ function registerAllCustomActions() {
   });
 
   // removeTitlePrefix
-  global.registerCustomAction("removeTitlePrefix", async function (context) {
+  MNTaskGlobal.registerCustomAction("removeTitlePrefix", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -4417,7 +4422,7 @@ function registerAllCustomActions() {
   });
 
   // addNewIdeaNote
-  global.registerCustomAction("addNewIdeaNote", async function (context) {
+  MNTaskGlobal.registerCustomAction("addNewIdeaNote", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -4443,7 +4448,7 @@ function registerAllCustomActions() {
   });
 
   // makeCard
-  global.registerCustomAction("makeCard", async function (context) {
+  MNTaskGlobal.registerCustomAction("makeCard", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -4455,7 +4460,7 @@ function registerAllCustomActions() {
   });
 
   // makeNote
-  global.registerCustomAction("makeNote", async function (context) {
+  MNTaskGlobal.registerCustomAction("makeNote", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -4473,7 +4478,7 @@ function registerAllCustomActions() {
   });
 
   // doubleClickMakeNote
-  global.registerCustomAction("doubleClickMakeNote", async function (context) {
+  MNTaskGlobal.registerCustomAction("doubleClickMakeNote", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       MNMath.makeNote(focusNote, false);
@@ -4481,7 +4486,7 @@ function registerAllCustomActions() {
   });
 
   // replaceFieldContentByPopup
-  global.registerCustomAction("replaceFieldContentByPopup", async function (context) {
+  MNTaskGlobal.registerCustomAction("replaceFieldContentByPopup", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -4493,7 +4498,7 @@ function registerAllCustomActions() {
   });
 
   // hideAddonBar - 隐藏插件栏
-  global.registerCustomAction("hideAddonBar", async function(context) {
+  MNTaskGlobal.registerCustomAction("hideAddonBar", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
     
     // 发送通知来切换插件栏的显示/隐藏
@@ -4502,7 +4507,7 @@ function registerAllCustomActions() {
     });
   });
 
-  global.registerCustomAction("makeCardWithoutFocus", async function(context) {
+  MNTaskGlobal.registerCustomAction("makeCardWithoutFocus", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
@@ -4513,7 +4518,7 @@ function registerAllCustomActions() {
     });
   })
 
-  global.registerCustomAction("retainFieldContentOnly", async function(context) {
+  MNTaskGlobal.registerCustomAction("retainFieldContentOnly", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {

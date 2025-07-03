@@ -1917,7 +1917,7 @@ taskController.prototype.customActionByDes = async function (button,des,checkSub
         break;
       default:
         // 检查是否是自定义 action
-        if (typeof global !== 'undefined' && global.executeCustomAction) {
+        if (typeof MNTaskGlobal !== 'undefined' && MNTaskGlobal.executeCustomAction) {
           const context = {
             button: button,
             des: des,
@@ -1925,7 +1925,7 @@ taskController.prototype.customActionByDes = async function (button,des,checkSub
             focusNotes: focusNotes,
             self: this
           };
-          const handled = await global.executeCustomAction(des.action, context);
+          const handled = await MNTaskGlobal.executeCustomAction(des.action, context);
           if (handled) {
             // 自定义 action 已处理
             break;

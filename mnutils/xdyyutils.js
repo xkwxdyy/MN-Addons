@@ -1096,33 +1096,41 @@ class MNMath {
         continue;
       }
       
-      // 跳过摘录和手写
-      if (comment.type === "TextExcerpt" || comment.type === "HandWriting") {
-        continue;
-      }
-      
-      // 收集文本评论
-      if (comment.type === "TextNote" && currentField) {
-        // 检查是否是链接格式
-        if (comment.text.startsWith("marginnote3app://note/") || 
-            comment.text.startsWith("marginnote4app://note/")) {
-          // 验证链接有效性
-          let targetNoteId = comment.text.match(/marginnote[34]app:\/\/note\/(.*)/)[1];
-          if (!targetNoteId.includes("/summary/")) {
-            let targetNote = MNNote.new(targetNoteId, false);
-            if (targetNote) {
-              fieldContents[currentField].links.push(comment.text);
-            }
-          }
-        } else {
-          // 普通文本
-          fieldContents[currentField].texts.push(comment.text);
+      // 跳过图片摘录和手写/绘图
+      if (comment.type === "PaintNote" || comment.type === "LinkNote") {
+        // PaintNote 包括图片、手写、绘图
+        // LinkNote 可能包含 mergedImageComment
+        let commentType = MNComment.getCommentType(comment);
+        if (commentType.toLowerCase().includes("image") || commentType.toLowerCase().includes("drawing")) {
+          continue;  // 保留这些内容
         }
       }
       
-      // 收集链接评论
-      if (comment.type === "LinkNote" && currentField) {
-        fieldContents[currentField].links.push(comment.text);
+      // 收集文本和链接评论
+      if (currentField) {
+        if (comment.type === "TextNote") {
+          // 检查是否是链接格式
+          if (comment.text.startsWith("marginnote3app://note/") || 
+              comment.text.startsWith("marginnote4app://note/")) {
+            // 验证链接有效性
+            let targetNoteId = comment.text.match(/marginnote[34]app:\/\/note\/(.*)/)[1];
+            if (!targetNoteId.includes("/summary/")) {
+              let targetNote = MNNote.new(targetNoteId, false);
+              if (targetNote) {
+                fieldContents[currentField].links.push(comment.text);
+              }
+            }
+          } else {
+            // 普通文本
+            fieldContents[currentField].texts.push(comment.text);
+          }
+        } else if (comment.type === "LinkNote") {
+          // LinkNote 可能是 mergedTextComment 或其他链接
+          let commentType = MNComment.getCommentType(comment);
+          if (commentType === "mergedTextComment" || commentType === "linkComment") {
+            fieldContents[currentField].links.push(comment.text);
+          }
+        }
       }
     }
     
@@ -1165,11 +1173,21 @@ class MNMath {
       });
     }
     
-    // 清理原卡片：删除除摘录和手写外的所有评论
+    // 清理原卡片：删除除图片摘录和手写/绘图外的所有评论
     MNUtil.undoGrouping(() => {
       for (let i = comments.length - 1; i >= 0; i--) {
         let comment = comments[i];
-        if (comment.type !== "TextExcerpt" && comment.type !== "HandWriting") {
+        let shouldKeep = false;
+        
+        // 判断是否应该保留
+        if (comment.type === "PaintNote" || comment.type === "LinkNote") {
+          let commentType = MNComment.getCommentType(comment);
+          if (commentType.toLowerCase().includes("image") || commentType.toLowerCase().includes("drawing")) {
+            shouldKeep = true;
+          }
+        }
+        
+        if (!shouldKeep) {
           note.removeCommentByIndex(i);
         }
       }

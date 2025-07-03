@@ -1049,9 +1049,144 @@ class MNMath {
   }
 
   /**
+   * 判断是否为旧模板卡片
+   * 判断标准：存在 "Remark" 的 HtmlComment
+   * 
+   * @param {MNNote} note - 要判断的卡片
+   * @returns {boolean} 是否为旧模板卡片
+   */
+  static isOldTemplateCard(note) {
+    let commentsObj = this.parseNoteComments(note);
+    let htmlCommentsTextArr = commentsObj.htmlCommentsTextArr;
+    
+    // 检查是否有 "Remark" 字段
+    return htmlCommentsTextArr.some(text => text.includes("Remark"));
+  }
+
+  /**
+   * 处理旧模板卡片
+   * - 保留摘录和手写
+   * - 收集文本和有效链接
+   * - 创建子卡片存放文本和链接
+   * - 清理原卡片的其他评论
+   * 
+   * @param {MNNote} note - 要处理的旧模板卡片
+   */
+  static processOldTemplateCard(note) {
+    let commentsObj = this.parseNoteComments(note);
+    let htmlCommentsObjArr = commentsObj.htmlCommentsObjArr;
+    let comments = note.comments;
+    
+    // 收集文本和链接，按字段分组
+    let fieldContents = {}; // { fieldName: { texts: [], links: [] } }
+    let currentField = null;
+    
+    // 遍历所有评论
+    for (let i = 0; i < comments.length; i++) {
+      let comment = comments[i];
+      
+      // 检查是否是 HtmlComment（字段标记）
+      let isHtmlComment = htmlCommentsObjArr.some(obj => obj.index === i);
+      if (isHtmlComment) {
+        let fieldObj = htmlCommentsObjArr.find(obj => obj.index === i);
+        currentField = fieldObj.text.trim();
+        if (!fieldContents[currentField]) {
+          fieldContents[currentField] = { texts: [], links: [] };
+        }
+        continue;
+      }
+      
+      // 跳过摘录和手写
+      if (comment.type === "TextExcerpt" || comment.type === "HandWriting") {
+        continue;
+      }
+      
+      // 收集文本评论
+      if (comment.type === "TextNote" && currentField) {
+        // 检查是否是链接格式
+        if (comment.text.startsWith("marginnote3app://note/") || 
+            comment.text.startsWith("marginnote4app://note/")) {
+          // 验证链接有效性
+          let targetNoteId = comment.text.match(/marginnote[34]app:\/\/note\/(.*)/)[1];
+          if (!targetNoteId.includes("/summary/")) {
+            let targetNote = MNNote.new(targetNoteId, false);
+            if (targetNote) {
+              fieldContents[currentField].links.push(comment.text);
+            }
+          }
+        } else {
+          // 普通文本
+          fieldContents[currentField].texts.push(comment.text);
+        }
+      }
+      
+      // 收集链接评论
+      if (comment.type === "LinkNote" && currentField) {
+        fieldContents[currentField].links.push(comment.text);
+      }
+    }
+    
+    // 检查是否有需要迁移的内容
+    let hasContent = Object.values(fieldContents).some(field => 
+      field.texts.length > 0 || field.links.length > 0
+    );
+    
+    if (hasContent) {
+      // 创建子卡片
+      let config = {
+        title: "旧模板内容",
+        content: "",
+        markdown: false,
+        color: note.colorIndex
+      };
+      let childNote = note.createChildNote(config);
+      
+      // 按字段添加内容到子卡片
+      MNUtil.undoGrouping(() => {
+        Object.keys(fieldContents).forEach(fieldName => {
+          let field = fieldContents[fieldName];
+          
+          // 只添加有内容的字段
+          if (field.texts.length > 0 || field.links.length > 0) {
+            // 添加字段标题
+            childNote.appendMarkdownComment(`- ${fieldName}`);
+            
+            // 添加文本
+            field.texts.forEach(text => {
+              childNote.appendMarkdownComment(text);
+            });
+            
+            // 添加链接
+            field.links.forEach(link => {
+              childNote.appendTextComment(link);
+            });
+          }
+        });
+      });
+    }
+    
+    // 清理原卡片：删除除摘录和手写外的所有评论
+    MNUtil.undoGrouping(() => {
+      for (let i = comments.length - 1; i >= 0; i--) {
+        let comment = comments[i];
+        if (comment.type !== "TextExcerpt" && comment.type !== "HandWriting") {
+          note.removeCommentByIndex(i);
+        }
+      }
+    });
+  }
+
+  /**
    * 处理旧卡片
    */
   static renewNote(note) {
+    // 首先判断并处理旧模板卡片
+    if (this.isOldTemplateCard(note)) {
+      this.processOldTemplateCard(note);
+      // 旧模板卡片处理完成后，不再执行后续处理
+      return;
+    }
+    
     this.toNoExceptVersion(note)
     
     // 处理链接相关问题

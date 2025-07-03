@@ -52,133 +52,42 @@ if (typeof global === 'undefined') {
  */
 function registerAllButtons() {
   // 制卡相关按钮
+  // 任务管理相关按钮
+  MNTaskGlobal.registerButton("custom1", {
+    name: "任务管理",
+    image: "checkbox",
+    templateName: "menu_task_manage"
+  });
+
+  MNTaskGlobal.registerButton("custom2", {
+    name: "进度追踪",
+    image: "progress",
+    templateName: "menu_task_progress"
+  });
+
+  MNTaskGlobal.registerButton("custom3", {
+    name: "今日任务",
+    image: "today",
+    templateName: "menu_today_tasks"
+  });
+
+  MNTaskGlobal.registerButton("custom4", {
+    name: "任务拆分",
+    image: "split",
+    templateName: "menu_task_split"
+  });
+
+  MNTaskGlobal.registerButton("custom5", {
+    name: "任务看板",
+    image: "dashboard",
+    templateName: "menu_task_dashboard"
+  });
+
+  // 原有按钮
   MNTaskGlobal.registerButton("custom15", {
     name: "制卡",
     image: "makeCards",
     templateName: "menu_makeCards"  // 延迟获取template
-  });
-  
-  MNTaskGlobal.registerButton("custom1", {
-    name: "制卡",
-    image: "makeCards",
-    templateName: "TemplateMakeNotes"
-  });
-
-  MNTaskGlobal.registerButton("custom3", {
-    name: "增加模板",
-    image: "addTemplate",
-    templateName: "addTemplate"
-  });
-  
-  MNTaskGlobal.registerButton("custom10", {
-    name: "评论",
-    image: "comment",
-    templateName: "menu_comment"
-  });
-
-  // 评论相关按钮
-  MNTaskGlobal.registerButton("custom20", {
-    name: "htmlMarkdown 评论",
-    image: "htmlmdcomment",
-    templateName: "menu_htmlmdcomment"
-  });
-  
-    // 卡片操作
-  MNTaskGlobal.registerButton("custom5", {
-    name: "卡片",
-    image: "card",
-    templateName: "menu_card"
-  });
-  
-  // 学习和模板
-  MNTaskGlobal.registerButton("custom2", {
-    name: "学习",
-    image: "study",
-    templateName: "menu_study"
-  });
-
-  MNTaskGlobal.registerButton("custom9", {
-    name: "思考",
-    image: "think",
-    templateName: "menu_think"
-  });
-  
-  MNTaskGlobal.registerButton("custom4", {
-    name: "文献",
-    image: "reference",
-    templateName: "menu_reference"
-  });
-
-  MNTaskGlobal.registerButton("custom7", {
-    name: "隐藏插件栏",
-    image: "hideAddonBar",
-    templateName: "hideAddonBar"
-  });
-  
-  MNTaskGlobal.registerButton("custom6", {
-    name: "文本",
-    image: "text",
-    templateName: "menu_text"
-  });
-  
-  MNTaskGlobal.registerButton("custom17", {
-    name: "卡片储存",
-    image: "pin_white",
-    templateName: "menu_card_pin"
-  });
-  
-  // 其他功能
-  MNTaskGlobal.registerButton("snipaste", {
-    name: "Snipaste",
-    image: "snipaste",
-    description: "Snipaste"
-  });
-  
-  MNTaskGlobal.registerButton("custom11", {
-    name: "工作流",
-    image: "workflow",
-    templateName: "menu_card_workflow"
-  });
-  
-  
-  MNTaskGlobal.registerButton("edit", {
-    name: "edit",
-    image: "edit",
-    description: JSON.stringify({showOnNoteEdit:false})
-  });
-  
-  MNTaskGlobal.registerButton("copyAsMarkdownLink", {
-    name: "Copy md link",
-    image: "copyAsMarkdownLink",
-    description: "Copy md link"
-  });
-  
-  
-  // 专门用于替换原有按钮
-  MNTaskGlobal.registerButton("custom16", {
-    name: "[手型工具弹窗替换]文本",
-    image: "text_white",
-    templateName: "menu_handtool_text"
-  });
-  
-  // "custom15":{name:"[卡片弹窗替换]SOP",image:"sop_white",description: this.template("menu_sop")},
-  
-  MNTaskGlobal.registerButton("custom12", {
-    name: "[卡片弹窗替换]工作流",
-    image: "workflow_white",
-    templateName: "menu_card_workflow"
-  });
-  
-  MNTaskGlobal.registerButton("custom13", {
-    name: "[卡片弹窗替换]摘录",
-    image: "excerpt_white",
-    templateName: "menu_excerpt"
-  });
-  
-  MNTaskGlobal.registerButton("custom14", {
-    name: "MN",
-    image: "MN_white",
-    templateName: "menu_MN"
   });
   
   if (typeof MNUtil !== "undefined" && MNUtil.log) {

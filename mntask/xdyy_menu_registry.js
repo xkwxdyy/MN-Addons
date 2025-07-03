@@ -74,847 +74,327 @@ function registerAllMenuTemplates() {
       ]
     }
   });
-  
-  // menu_think
-  MNTaskGlobal.registerMenuTemplate("menu_think", {
-    action: "moveUpThoughtPointsToBottom",
-    onLongPress: {
-      action: "menu",
-      menuWidth: 330,
-      menuItems: [
-        {
-          action: "moveUpThoughtPointsToTop",
-          menuTitle: "思考点🔝思考区「上方」"
-        },
-        // {
-        //   action: "addThoughtPoint",  
-        //   menuTitle: "➕思考点"
-        // },
-        // {
-        //   action: "addThoughtPointAndMoveLastCommentToThought",
-        //   menuTitle: "➕思考点 & 最后1️⃣💬⬆️思考",
-        // },
-        // {
-        //   action: "addThoughtPointAndMoveNewCommentsToThought",
-        //   menuTitle: "➕思考点 & 新💬⬆️思考",
-        // },
-        // {
-        //   action: "moveLastCommentToThought",
-        //   menuTitle: "最后1️⃣💬⬆️思考"
-        // },
-        // {
-        //   action: "moveLastTwoCommentsToThought",
-        //   menuTitle: "最后2️⃣💬⬆️思考"
-        // }
-      ]
-    }
-  });
 
-  // menu_study
-  MNTaskGlobal.registerMenuTemplate("menu_study", {
-    action: "menu",
-    menuWidth: 330,
-    menuItems: [
-      // "⬇️ 更新证明",
-      // {
-      //   action: "renewProofContentPoints",
-      //   menuTitle: '    🔄更新证明"-": 弹窗选择 ',
-      // },
-      // {
-      //   action: "renewProofContentPointsToSubpointType",
-      //   menuTitle: '    🔄更新证明"- "为"subpoint ▪"',
-      // },
-      {
-        action: "autoMoveLinksBetweenCards",
-        menuTitle: "自动移动卡片之间的链接"
-      },
-      {
-        action: "menu",
-        menuTitle: "➡️ 注释",
-        menuWidth: 260,
-        menuItems: [
-          {
-            action: "getAbbreviationsOfNote",
-            menuTitle: "获取选中卡片的名词缩写",
-          },
-          {
-            action: "comment_copy_URL_version",
-            menuTitle: "注释：复制含 URL 类型",
-          },
-          {
-            action: "addCommentOnFocusCard",
-            menuTitle: "Anki_复习🏷️"
-          },
-          {
-            action: "renewChildNotes2LinksForKnowledge",
-            menuTitle: "更新概念卡片的子孙卡片为「证明卡片」",
-          },
-          {
-            action: "renewLinkNotes",
-            menuTitle: "更新「链接卡片」",
-          },
-          {
-            action: "toBeIndependent",
-            menuTitle: "⇨ 独立",
-          },
-          // {
-          //   action: "OCR_selection_text",
-          //   menuTitle: "OCR & 合并多张选中的图片",
-          // },
-          {
-            action: "text2Speech",
-            menuTitle: "朗读卡片(按住停止)"
-          },
-          {
-            action: "getCreationTime",
-            menuTitle: "创建时间",
-          },
-          {
-            action: "getModifiedTime",
-            menuTitle: "修改时间",
-          },
-          {
-            action: "getCitationCout",
-            menuTitle: "引用数",
-          },
-          {
-            action: "copyIdToClipboard",
-            menuTitle: "noteId ⇨ 剪贴板",
-          }
-        ]
-      }
-    ]
-  });
-
-  // menu_reference
-  MNTaskGlobal.registerMenuTemplate("menu_reference", {
-    action: "menu",
-    menuItems: [
-      // {
-      //   action: "renewBookSeriesNotes",
-      //   menuTitle: "书作系列卡片更新",
-      // },
-      // {
-      //   action: "renewBookNotes",
-      //   menuTitle: "书作卡片更新",
-      // },
-      {
-        action: "menu",
-        menuTitle: "➡️ 🧠文献学习",
-        menuWidth: 500,
-        menuItems: [
-          "⬇️ ➕引用",
-          // {
-          //   action: "referenceRefByRefNum",
-          //   menuTitle: "选中「具体引用」卡片+输入文献号→ ➕引用"
-          // },
-          {
-            action: "referenceRefByRefNumAndFocusInMindMap",
-            menuTitle: "选中「具体引用」卡片+输入文献号→ ➕引用 + 剪切归类 + 主视图定位"
-          },
-          {
-            action: "referenceRefByRefNumAddFocusInFloatMindMap",
-            menuTitle: "选中「具体引用」卡片+输入文献号→ ➕引用 + 剪切归类 + 浮窗定位"
-          },
-          "⬇️ ➕「具体引用情况」汇总卡片",
-          {
-            action: "referenceCreateClassificationNoteByIdAndFocusNote",
-            menuTitle: "选中「参考文献摘录」卡片+输入文献号→ 「具体引用情况」汇总卡片 + 浮窗定位",
-          },
-          // {
-          //   action: "referenceCreateClassificationNoteById",
-          //   menuTitle: "输入文献号→ ➕引用归类卡片 + 浮窗定位",
-          // }
-        ]
-      },
-      {
-        action: "menu",
-        menuTitle: "➡️ 参考文献 🆔",
-        menuItems: [
-          {
-            action: "menu",
-            menuTitle: "👉 当前文档相关 🆔 录入",
-            menuWidth: 350,
-            menuItems: [
-              {
-                action: "referenceStoreIdForCurrentDocByFocusNote",
-                // menuTitle: "当前文档与选中卡片的🆔绑定",
-                menuTitle: "绑定「选中的卡片」➡️「当前文档」",
-              },
-              {
-                action: "referenceStoreOneIdForCurrentDocByFocusNote",
-                menuTitle: "绑定「选中的卡片」➡️ 文献号"
-              },
-              // {
-              //   action: "referenceStoreOneIdForCurrentDoc",
-              //   menuTitle: "当前文档：手动录入 1 条参考文献卡片🆔"
-              // },
-              // {
-              //   action: "referenceStoreIdsForCurrentDoc",
-              //   menuTitle: "「手动录入」参考文献卡片🆔"
-              // },
-              // {
-              //   action: "referenceStoreIdsForCurrentDocFromClipboard",
-              //   menuTitle: "从剪切板录入当前文档的参考文献卡片🆔"
-              // },
-              // {
-              //   action: "referenceClearIdsForCurrentDoc",
-              //   menuTitle: "清空「当前文档」卡片🆔",
-              // },
-              {
-                action: "referenceTestIfIdInCurrentDoc",
-                menuTitle: "检测文献号的🆔绑定",
-              },
-            ]
-          },
-          {
-            action: "menu",
-            menuTitle: "➡️ 导出 🆔",
-            menuWidth: 250,
-            menuItems: [
-              {
-                action: "referenceExportReferenceIdsToClipboard",
-                menuTitle: "导出参考文献卡片🆔到剪切板"
-              },
-              {
-                action: "referenceExportReferenceIdsToFile",
-                menuTitle: "导出参考文献卡片🆔到文件"
-              },
-            ]
-          },
-          {
-            action: "menu",
-            menuTitle: "⬅️ 导入 🆔",
-            menuWidth: 250,
-            menuItems: [
-              {
-                action: "referenceInputReferenceIdsFromClipboard",
-                menuTitle: "从剪切板导入参考文献卡片🆔"
-              },
-              {
-                action: "referenceInputReferenceIdsFromFile",
-                menuTitle: "从文件导入参考文献卡片🆔"
-              },
-            ]
-          }
-        ]
-      },
-      {
-        action: "menu",
-        menuTitle: "➡️ 🗂️文献卡片",
-        menuItems: [
-          {
-            action: "referenceInfoAuthor",
-            menuTitle: "👨‍🎓 作者"
-          },
-          {
-            action: "referenceInfoYear",
-            menuTitle: "⌛️ 年份",
-          },
-          {
-            action: "referenceInfoJournal",
-            menuTitle: "📄 期刊",
-          },
-          {
-            action: "referenceInfoPublisher",
-            menuTitle: "📚 出版社",
-          },
-          {
-            action: "referenceInfoKeywords",
-            menuTitle: "📌 关键词",
-          },
-          {
-            action: "referenceInfoDoiFromClipboard",
-            menuTitle: "🔢 DOI",
-          },
-          {
-            action: "menu",
-            menuTitle: "➡️ 🔗 引用样式",
-            menuItems: [
-              {
-                action: "referenceInfoRefFromInputRefNum",
-                menuTitle: "输入文献号录入引用样式"
-              },
-              {
-                action: "referenceInfoRefFromFocusNote",
-                menuTitle: "选中摘录自动录入引用样式"
-              },
-              {
-                action: "referenceInfoInputRef",
-                menuTitle: "手动输入引用样式"
-              }
-            ]
-          },
-          {
-            action: "menu",
-            menuTitle: "➡️ .bib 信息",
-            menuItems: [
-              {
-                action: "referenceBibInfoPasteFromClipboard",
-                menuTitle: "从剪切板粘贴 .bib 信息"
-              },
-              {
-                action: "referenceBibInfoCopy",
-                menuTitle: "复制 .bib 信息"
-              },
-              {
-                action: "referenceBibInfoExport",
-                menuTitle: "导出 .bib 信息",
-              }
-            ]
-          }
-        ]
-      },
-      {
-        action: "menu",
-        menuTitle: "➡️ 👨‍🎓作者卡片",
-        menuItems: [
-          {
-            action: "referenceAuthorRenewAbbreviation",
-            menuTitle: "更新作者缩写",
-          },
-          {
-            action: "referenceAuthorInfoFromClipboard",
-            menuTitle: "粘贴个人信息"
-          },
-          {
-            action: "referenceAuthorNoteMake",
-            menuTitle: "作者卡片制卡"
-          }
-        ]
-      },
-      {
-        action: "menu",
-        menuTitle: "➡️ 📄期刊卡片",
-        menuItems: [
-          // {
-          //   menuTitle: "🔽 "
-          // },
-          // {
-          //   action: "",
-          //   menuTitle: "➕出版社"
-          // },
-          // {
-          //   action: "",
-          //   menuTitle: "修改整卷期刊前缀"
-          // }
-        ]
-      },
-      {
-        action: "menu",
-        menuTitle: "➡️ 📌关键词卡片",
-        menuItems: [
-          {
-            action: "referenceKeywordsAddRelatedKeywords",
-            menuTitle: "➕相关关键词"
-          },
-          {
-            action: "referenceGetRelatedReferencesByKeywords",
-            menuTitle: "根据关键词筛选文献"
-          }
-        ]
-      },
-    ]
-  });
-
-  // menu_text
-  MNTaskGlobal.registerMenuTemplate("menu_text", {
-    action: "menu",
-    menuItems: [
-      {
-        action: "menu",
-        menuTitle: "→ 文档中选中的文本",
-        menuItems: [
-          {
-            action: "selectionTextToTitleCase",
-            menuTitle: "标题规范"
-          },
-          {
-            action: "selectionTextToLowerCase",
-            menuTitle: "转小写"
-          },
-          {
-            action: "selectionTextHandleSpaces",
-            menuTitle: "处理空格"
-          }
-        ]
-      },
-      {
-        action: "menu",
-        menuTitle: "→ 复制的文本",
-        menuItems: [
-          {
-            action: "copiedTextToTitleCase",
-            menuTitle: "标题规范"
-          },
-          {
-            action: "copiedTextToLowerCase",
-            menuTitle: "转小写"
-          },
-          {
-            action: "copiedTextHandleSpaces",
-            menuTitle: "处理空格"
-          }
-        ]
-      },
-    ]
-  });
-
-  // menu_handtool_text
-  MNTaskGlobal.registerMenuTemplate("menu_handtool_text", {
-    action: "selectionTextToTitleCase",
-    onLongPress: {
-      action: "menu",
-      menuItems: [
-        {
-          action: "selectionTextToTitleCase",
-          menuTitle: "标题规范"
-        },
-        {
-          action: "selectionTextToLowerCase",
-          menuTitle: "转小写"
-        },
-        {
-          action: "selectionTextHandleSpaces",
-          menuTitle: "处理空格"
-        }
-      ]
-    }
-  });
-
-  // menu_card
-  MNTaskGlobal.registerMenuTemplate("menu_card", {
-    action: "copyMarkdownVersionFocusNoteURL",
-    onLongPress: {
-      action: "menu",
-      menuWidth: 250,
-      menuItems: [
-        // {
-        //   action: "copyMarkdownVersionFocusNoteURL",
-        //   menuTitle: "复制 Markdown 类型的卡片 URL",
-        // },
-        {
-          action: "toBeIndependent",
-          menuTitle: "⇨ 独立",
-        },
-        {
-          action: "copyFocusNotesIdArr",
-          menuTitle: "复制卡片🆔",
-        },
-        {
-          action: "copyFocusNotesURLArr",
-          menuTitle: "复制卡片 URL",
-        },
-        // {
-        //   action: "pasteAsChildNotesByIdArrFromClipboard",
-        //   menuTitle: "复制卡片🆔后，剪切到选中卡片",
-        // },
-        {
-          action: "getNewClassificationInformation",
-          menuTitle: "更新卡片归类情况到选中的卡片中",
-        },
-        {
-          action: "menu",
-          menuTitle: "➡️ 处理旧卡片",
-          menuWidth: 250,
-          menuItems: [
-            {
-              action: "renewCards",
-              menuTitle: "🔄 更新旧卡片"
-            },
-            {
-              action: "reappendAllLinksInNote",
-              menuTitle: "🔄 卡片的所有链接重新链接",
-            },
-            // {
-            //   action: "linksConvertToMN4Type",
-            //   menuTitle: "mn3 链接 → mn4 链接",
-            // },
-            {
-              action: "clearAllFailedLinks",
-              menuTitle: "清空失效链接",
-            }
-          ]
-        },
-        {
-          action: "menu",
-          menuTitle: "➡️ 清空评论",
-          menuWidth: 260,
-          menuItems: [
-            {
-              action: "clearContentKeepExcerptWithTitle",
-              menuTitle: "✅ 摘录 ✅ 标题",
-            },
-            {
-              action: "clearContentKeepExcerpt",
-              menuTitle: "✅ 摘录 ❌ 标题",
-            },
-            {
-              action: "clearContentKeepExcerptAndImage",
-              menuTitle: "✅ 摘录 ✅ 图片 ❌ 标题",
-            },
-            {
-              action: "clearContentKeepText",
-              menuTitle: "❌ 摘录 ✅ 文字 ❌ 标题",
-            }
-          ]
-        },
-        {
-          action: "menu",
-          menuTitle: "➡️ 剪切、合并",
-          menuWidth: 260,
-          menuItems: [
-            {
-              action: "cutNote",
-              menuTitle: "剪切选中的卡片",
-            },
-            {
-              action: "cutoutSelctionCards",
-              menuTitle: "剪切选中的卡片以及子卡片",
-            },
-            {
-              action: "mergeIntoOneNoteByPopup",
-              menuTitle: "合并到第一张卡片：弹窗选择类型",
-            },
-          ]
-        },
-        {
-          action: "openAsFloatWindow",
-          menuTitle: "作为浮窗打开",
-        },
-        {
-          action: "copyAsReference",
-          menuTitle: "复制含标题的 URL",
-        }
-      ]
-    }
-  });
-
-  // menu_card_workflow
-  MNTaskGlobal.registerMenuTemplate("menu_card_workflow", {
-    action: "menu",
-    menuWidth: 300,
-    menuItems: [
-      "⬇️ 临时",
-      {
-        action: "moveToInbox",
-        menuTitle: "    加入 Inbox",
-      },
-      {
-        action: "",
-        menuTitle: "     剪切 + 「浮窗」定位今日 Inbox",
-      },
-      // {
-      //   action: "openTasksFloatMindMap" ,
-      //   menuTitle: "打开任务管理脑图",
-      // },
-      // {
-      //   action: "updateTimeTag",
-      //   menuTitle: "更新卡片时间标签并添加「今日」",
-      // },
-      {
-        action: "openFloatWindowByInboxNote",
-        menuTitle: "    「浮窗」定位今日 Inbox",
-      },
-      {
-        action: "openFloatWindowByInboxNoteOnDate",
-        menuTitle: "    「浮窗」定位指定日期 Inbox",
-      },
-      // {
-      //   action: "getOKRNotesOnToday",
-      //   menuTitle: "获取今日 OKR 任务",
-      // },
-      "⬇️ 前缀状态机",
-      {
-        action: "OKRNoteMake",
-        menuTitle: "    OKR 制卡流",
-      },
-      // {
-      //   action: "undoOKRNoteMake",
-      //   menuTitle: "撤销 OKR 任务卡片制卡流",
-      // },
-      {
-        action: "achieveCards",
-        menuTitle: "    归档卡片",
-      },
-      {
-        action: "renewCards",
-        menuTitle: "    更新卡片",
-      }
-    ]
-  });
-
-  // menu_excerpt
-  MNTaskGlobal.registerMenuTemplate("menu_excerpt", {
-    action: "moveToExcerptPartBottom",
-    // onLongPress: {
-    //   action: "menu",
-    //   menuWidth: 350,
-    //   menuItems: [
-    //     {
-    //       action: "deleteCommentsByPopupAndMoveNewContentToExcerptAreaTop",
-    //       menuTitle: "删除某些评论后移动新内容 ⇨ 摘录区「🔝 top」",
-    //     },
-    //     {
-    //       action: "deleteCommentsByPopupAndMoveNewContentToExcerptAreaBottom",
-    //       menuTitle: "删除某些评论后移动新内容 ⇨ 摘录区「⬇️ bottom」",
-    //     },
-    //     {
-    //       action: "moveToExcerptPartBottom",
-    //       menuTitle: "⇨ 摘录区「⬇️ bottom」",
-    //     },
-    //     {
-    //       action: "moveToExcerptPartTop",
-    //       menuTitle: "⇨ 摘录区「🔝 top」",
-    //     }
-    //   ]
-    // }
-  });
-
-  // menu_MN
-  MNTaskGlobal.registerMenuTemplate("menu_MN", {
-    action: "menu",
-    menuItems: [
-      {
-        action: "showDocumentController",
-        menuTitle: "📖文档列表"
-      },
-      {
-        action: "showStudyController",
-        menuTitle: "📚笔记本列表"
-      },
-      {
-        action: "showCardListController",
-        menuTitle: "🗂️卡片列表"
-      },
-      {
-        action: "showMindmapController",
-        menuTitle: "🎯脑图"
-      },
-      {
-        action: "showOutlineController",
-        menuTitle: "🌲大纲"
-      },
-      {
-        action: "showDocumentController",
-        menuTitle: "📄文档"
-      },
-      {
-        action: "showReviewController",
-        menuTitle: "♻️复习"
-      },
-      {
-        action: "showSearchController",
-        menuTitle: "🔍搜索"
-      }
-    ]
-  });
-
-  // menu_card_pin
-  MNTaskGlobal.registerMenuTemplate("menu_card_pin", {
-    action: "menu",
-    menuItems: [
-      {
-        action: "openPinnedNote-1",
-        menuTitle: "Hᵖ(𝔻)",
-      },
-      {
-        action: "openPinnedNote-2",
-        menuTitle: "Lᵖ(𝕋)",
-      },
-      {
-        action: "openPinnedNote-3",
-        menuTitle: "Hᵖ(𝕋)",
-      },
-    ]
-  });
-
-  // menu_makeCards
-  MNTaskGlobal.registerMenuTemplate("menu_makeCards", {
-    action: "makeNote",
-    doubleClick: {
-      action: "doubleClickMakeNote"
-    },
-    onLongPress: {
-      action: "menu",
-      menuWidth: 320,
-      menuItems: [
-        "🪄 制卡",
-        {
-          action: "makeCardWithoutFocus",
-          menuTitle: "    不定位制卡"
-        },
-        "🪄 生成卡片",
-        {
-          action: "addNewIdeaNote",
-          menuTitle: "    生成「思路」卡片"
-        },
-        "🔄 处理旧卡片",
-        {
-          action: "retainFieldContentOnly",
-          menuTitle: "    保留某个字段内容",
-        },
-        {
-          action: "batchChangeClassificationTitles",
-          menuTitle: "    批量更新归类卡片标题"
-        }
-      ]
-    }
-  });
-
-  // TemplateMakeNotes
-  MNTaskGlobal.registerMenuTemplate("TemplateMakeNotes", {
+  // menu_task_manage - 任务管理菜单
+  MNTaskGlobal.registerMenuTemplate("menu_task_manage", {
     action: "menu",
     menuWidth: 320,
     menuItems: [
-      "⬇️ 合并",
+      "⬇️ 创建任务",
       {
-        action: "upwardMergeWithStyledComments",
-        menuTitle: "    合并证明要点",
+        action: "createOKRTaskFromNote",
+        menuTitle: "    📝 从当前卡片创建 OKR 任务"
       },
       {
-        action: "mergeInParentNote",
-        menuTitle: "    合并到父卡片",
+        action: "OKRNoteMake",
+        menuTitle: "    🎯 OKR 制卡流"
       },
       {
-        action: "mergeInParentNoteWithPopup",
-        menuTitle: "    合并到父卡片：弹窗选择类型",
+        action: "createSubTask",
+        menuTitle: "    📊 创建子任务"
+      },
+      "⬇️ 任务状态",
+      {
+        action: "toggleTaskStatus",
+        menuTitle: "    ✅ 切换任务状态（未开始→进行中→已完成）"
       },
       {
-        action: "mergIntoParenNoteAndRenewReplaceholder",
-        menuTitle: "    合并到父卡片 & 替换占位符",
-      },
-      {
-        action: "mergIntoParenNoteAndRenewReplaceholderWithPopup",
-        menuTitle: "    合并到父卡片 & 替换占位符: 弹窗选择类型",
-      },
-      "⬇️ 制卡",
-      {
-        action: "multiTemplateMakeNotes",
-        menuTitle: "    批量制卡",
-      },
-      {
-        action: "TemplateMakeChildNotes",
-        menuTitle: "    批量进行子卡片制卡"
-      },
-      {
-        action: "TemplateMakeDescendantNotes",
-        menuTitle: "    批量进行子孙卡片制卡"
+        action: "undoOKRNoteMake",
+        menuTitle: "    ↩️ 回退任务状态"
       },
       {
         action: "menu",
-        menuTitle: "️️    ➡️ 文献制卡",
+        menuTitle: "    ➡️ 设置任务状态",
         menuItems: [
-          // {
-          //   menuTitle: "🔽 "
-          // },
           {
-            action: "referencePaperMakeCards",
-            menuTitle: "📄 论文制卡"
+            action: "setTaskNotStarted",
+            menuTitle: "📋 未开始"
           },
           {
-            action: "referenceBookMakeCards",
-            menuTitle: "📚 书作制卡"
+            action: "setTaskInProgress",
+            menuTitle: "🚀 进行中"
           },
           {
-            action: "referenceSeriesBookMakeCard",
-            menuTitle: "📚 系列书作制卡"
-          },
-          {
-            action: "referenceOneVolumeJournalMakeCards",
-            menuTitle: "📄 整卷期刊制卡"
-          },
-          {
-            action: "referenceAuthorNoteMake",
-            menuTitle: "作者卡片制卡"
-          },
+            action: "setTaskCompleted",
+            menuTitle: "✅ 已完成"
+          }
         ]
       },
-      // {
-      //   action: "undoOKRNoteMake",
-      //   menuTitle: "回退任务卡片状态"
-      // },
-      "⬇️ 修改标题",
+      "⬇️ 任务类型",
       {
-        action: "removeTitlePrefix",
-        menuTitle: "    去掉卡片前缀"
+        action: "menu",
+        menuTitle: "    ➡️ 设置任务类型",
+        menuItems: [
+          {
+            action: "setAsObjective",
+            menuTitle: "🎯 目标 (Objective)"
+          },
+          {
+            action: "setAsKeyResult",
+            menuTitle: "📊 关键结果 (Key Result)"
+          },
+          {
+            action: "setAsProject",
+            menuTitle: "📁 项目 (Project)"
+          },
+          {
+            action: "setAsTask",
+            menuTitle: "📋 任务 (Task)"
+          }
+        ]
+      },
+      "⬇️ 任务关联",
+      {
+        action: "linkToParentTask",
+        menuTitle: "    🔗 链接到父任务"
       },
       {
-        action: "changeTitlePrefix",
-        menuTitle: "    强制修改卡片前缀"
+        action: "focusParentTask",
+        menuTitle: "    🎯 定位到父任务"
       },
       {
-        action: "changeChildNotesTitles",
-        menuTitle: "    批量修改子卡片标题"
-      },
-      {
-        action: "changeDescendantNotesTitles",
-        menuTitle: "    批量修改子孙卡片标题"
-      },
-      "⬇️ 清空评论",
-      {
-        action: "clearContentKeepExcerptWithTitle",
-        menuTitle: "    清空评论 + ✅ 摘录 ✅ 标题",
-      },
-      {
-        action: "clearContentKeepExcerpt",
-        menuTitle: "    清空评论 + ✅ 摘录 ❌ 标题",
-      },
-      "⬇️ 杂项",
-      {
-        action: "renewExcerptInParentNoteByFocusNote",
-        menuTitle: "    父卡片的摘录替换为选中卡片的摘录",
-      },
-      {
-        action: "convertNoteToNonexcerptVersion",
-        menuTitle: "    转化为非摘录版本",
-      },
-      {
-        action: "linkRemoveDuplicatesAfterApplication",
-        menuTitle: "    \"应用\"下方的链接去重"
-      },
-      {
-        action: "splitMarkdownTextInFocusNote",
-        menuTitle: "    基于 Markdown 拆卡",
+        action: "viewTaskPath",
+        menuTitle: "    📍 查看任务路径"
       }
     ]
-    // }
   });
 
-  // menu_htmlmdcomment
-  MNTaskGlobal.registerMenuTemplate("menu_htmlmdcomment", {
-    action: "addHtmlMarkdownComment",
-    onLongPress: {
-      action: "menu",
-      menuWidth: 300,
-      menuItems: [
-        {
-          action: "changeHtmlMarkdownCommentTypeByPopup",
-          menuTitle: "🔄 修改某条 HtmlMD 评论的类型",
-        },
-        {
-          action: "renewContentsToHtmlMarkdownCommentType",
-          menuTitle: '🔄 更新文本内容为 HtmlMD 评论',
-        },
-        {
-          action: "htmlMDCommentsToNextLevelType",
-          menuTitle: "⬇️ HtmlMD 评论降级",
-        },
-        {
-          action: "htmlMDCommentsToLastLevelType",
-          menuTitle: "⬆️ HtmlMD 评论升级",
-        },
-        {
-          action: "addHtmlMarkdownQuestion",
-          menuTitle: "❓问题、答案和详细解释"
-        }
-      ]
-    }
+  // menu_task_progress - 进度追踪菜单
+  MNTaskGlobal.registerMenuTemplate("menu_task_progress", {
+    action: "menu",
+    menuWidth: 350,
+    menuItems: [
+      "⬇️ 进度更新",
+      {
+        action: "updateTaskProgress",
+        menuTitle: "    📊 更新任务进度百分比"
+      },
+      {
+        action: "updateReadingProgress",
+        menuTitle: "    📖 更新阅读进度（页数/章节）"
+      },
+      {
+        action: "addProgressNote",
+        menuTitle: "    📝 添加进度备注"
+      },
+      {
+        action: "recordTimeSpent",
+        menuTitle: "    ⏱️ 记录花费时间"
+      },
+      "⬇️ 进度查看",
+      {
+        action: "viewTaskProgress",
+        menuTitle: "    📈 查看当前进度"
+      },
+      {
+        action: "viewProgressHistory",
+        menuTitle: "    📜 查看进度历史"
+      },
+      {
+        action: "viewChildTasksProgress",
+        menuTitle: "    📊 查看子任务进度"
+      },
+      "⬇️ 统计分析",
+      {
+        action: "calculateCompletionRate",
+        menuTitle: "    📈 计算完成率"
+      },
+      {
+        action: "estimateCompletionTime",
+        menuTitle: "    ⏰ 预估完成时间"
+      },
+      {
+        action: "generateProgressReport",
+        menuTitle: "    📊 生成进度报告"
+      }
+    ]
   });
 
-  MNTaskGlobal.registerMenuTemplate("hideAddonBar", JSON.stringify({
-    action: "hideAddonBar"
-  }));
+  // menu_today_tasks - 今日任务菜单
+  MNTaskGlobal.registerMenuTemplate("menu_today_tasks", {
+    action: "menu",
+    menuWidth: 320,
+    menuItems: [
+      {
+        action: "viewTodayTasks",
+        menuTitle: "📅 查看今日任务"
+      },
+      {
+        action: "openFloatWindowByInboxNote",
+        menuTitle: "📌 浮窗定位今日 Inbox"
+      },
+      {
+        action: "openFloatWindowByInboxNoteOnDate",
+        menuTitle: "📆 浮窗定位指定日期 Inbox"
+      },
+      "⬇️ 时间标签管理",
+      {
+        action: "addTodayTimeTag",
+        menuTitle: "    ➕ 添加今日时间标签"
+      },
+      {
+        action: "updateTimeTag",
+        menuTitle: "    🔄 更新时间标签并添加「今日」"
+      },
+      {
+        action: "updateTodayTimeTag",
+        menuTitle: "    📅 更新为今日时间标签"
+      },
+      {
+        action: "clearTimeTag",
+        menuTitle: "    🗑️ 清除所有时间标签"
+      },
+      "⬇️ 任务筛选",
+      {
+        action: "filterByTimeTag",
+        menuTitle: "    🏷️ 按时间标签筛选"
+      },
+      {
+        action: "filterByStatus",
+        menuTitle: "    📊 按状态筛选（进行中/未开始）"
+      },
+      {
+        action: "filterByType",
+        menuTitle: "    🎯 按类型筛选（任务/项目/关键结果）"
+      },
+      "⬇️ 批量操作",
+      {
+        action: "moveToInbox",
+        menuTitle: "    📥 加入 Inbox"
+      },
+      {
+        action: "batchUpdateTodayTasks",
+        menuTitle: "    🔄 批量更新今日任务"
+      },
+      {
+        action: "postponeToTomorrow",
+        menuTitle: "    📆 推迟到明天"
+      }
+    ]
+  });
+
+  // menu_task_split - 任务拆分菜单
+  MNTaskGlobal.registerMenuTemplate("menu_task_split", {
+    action: "menu",
+    menuWidth: 330,
+    menuItems: [
+      "⬇️ 任务拆分",
+      {
+        action: "splitTaskByChapters",
+        menuTitle: "    📚 按章节拆分（阅读任务）"
+      },
+      {
+        action: "splitTaskByPages",
+        menuTitle: "    📄 按页数拆分"
+      },
+      {
+        action: "splitTaskByTimeBlocks",
+        menuTitle: "    ⏱️ 按时间块拆分（番茄钟）"
+      },
+      {
+        action: "splitTaskByMilestones",
+        menuTitle: "    🏁 按里程碑拆分"
+      },
+      {
+        action: "customSplitTask",
+        menuTitle: "    ✂️ 自定义拆分"
+      },
+      "⬇️ OKR 层级管理",
+      {
+        action: "convertToObjective",
+        menuTitle: "    🎯 转换为目标 (Objective)"
+      },
+      {
+        action: "convertToKeyResult",
+        menuTitle: "    📊 转换为关键结果"
+      },
+      {
+        action: "convertToProject",
+        menuTitle: "    📁 转换为项目"
+      },
+      {
+        action: "createKeyResultsFromObjective",
+        menuTitle: "    📊 为目标创建关键结果"
+      },
+      "⬇️ 批量操作",
+      {
+        action: "batchCreateSubtasks",
+        menuTitle: "    ➕ 批量创建子任务"
+      },
+      {
+        action: "batchUpdateTaskTypes",
+        menuTitle: "    🔄 批量更新任务类型"
+      },
+      {
+        action: "batchLinkToParent",
+        menuTitle: "    🔗 批量链接到父任务"
+      }
+    ]
+  });
+
+  // menu_task_dashboard - 任务看板菜单
+  MNTaskGlobal.registerMenuTemplate("menu_task_dashboard", {
+    action: "menu",
+    menuWidth: 340,
+    menuItems: [
+      "⬇️ 看板视图",
+      {
+        action: "openTasksFloatMindMap",
+        menuTitle: "    📊 打开任务管理脑图"
+      },
+      {
+        action: "openOKRDashboard",
+        menuTitle: "    🎯 打开 OKR 看板"
+      },
+      {
+        action: "openCalendarView",
+        menuTitle: "    📅 打开日历视图"
+      },
+      "⬇️ 任务统计",
+      {
+        action: "getOKRNotesOnToday",
+        menuTitle: "    📋 获取今日 OKR 任务"
+      },
+      {
+        action: "viewTaskStatistics",
+        menuTitle: "    📊 查看任务统计"
+      },
+      {
+        action: "viewCompletionRate",
+        menuTitle: "    ✅ 查看完成率"
+      },
+      {
+        action: "viewTimeDistribution",
+        menuTitle: "    ⏱️ 查看时间分布"
+      },
+      "⬇️ 任务整理",
+      {
+        action: "achieveCards",
+        menuTitle: "    📦 归档已完成任务"
+      },
+      {
+        action: "renewCards",
+        menuTitle: "    🔄 更新任务卡片"
+      },
+      {
+        action: "cleanupExpiredTasks",
+        menuTitle: "    🗑️ 清理过期任务"
+      },
+      "⬇️ 导入导出",
+      {
+        action: "exportTasksToJSON",
+        menuTitle: "    💾 导出任务数据 (JSON)"
+      },
+      {
+        action: "exportTasksToMarkdown",
+        menuTitle: "    📝 导出任务报告 (Markdown)"
+      },
+      {
+        action: "importTasksFromJSON",
+        menuTitle: "    📥 导入任务数据"
+      }
+    ]
+  });
   
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
     MNUtil.log(`🚀 已注册 ${Object.keys(global.customMenuTemplates).length} 个自定义菜单模板`);

@@ -15,21 +15,27 @@ var taskDashboardController = JSB.defineClass(
      */
     initDashboard: function(rootNoteId) {
       let self = getTaskDashboardController()
+      MNUtil.log(`🎯 taskDashboardController.initDashboard - 开始初始化，rootNoteId: ${rootNoteId || 'null'}`);
       
       // 获取根卡片
       let rootNote
       if (rootNoteId) {
         // 使用指定的卡片作为根目录
+        MNUtil.log(`📝 尝试创建 MNNote 实例，ID: ${rootNoteId}`);
         rootNote = MNNote.new(rootNoteId)
         if (!rootNote) {
+          MNUtil.log("❌ MNNote.new() 返回 null");
           MNUtil.showHUD("❌ 无效的卡片 ID")
           return null
         }
+        MNUtil.log("✅ MNNote 实例创建成功");
       } else {
         // 使用当前焦点卡片
+        MNUtil.log("📝 没有指定 ID，尝试获取焦点卡片");
         rootNote = MNNote.getFocusNote()
         if (!rootNote) {
           // 如果没有焦点卡片，提示用户
+          MNUtil.log("❌ 没有焦点卡片");
           MNUtil.showHUD("请先选择一个卡片作为任务管理根目录")
           return null
         }
@@ -37,10 +43,13 @@ var taskDashboardController = JSB.defineClass(
       
       // 设置任务管理根目录
       self.rootNote = rootNote
+      MNUtil.log(`✅ 根卡片设置成功: ${rootNote.noteTitle || rootNote.noteId}`);
       
       // 初始化看板结构
+      MNUtil.log("🏗️ 开始设置看板结构");
       self.setupDashboardStructure(rootNote)
       
+      MNUtil.log("✅ initDashboard 完成，返回 rootNote");
       return rootNote
     },
     

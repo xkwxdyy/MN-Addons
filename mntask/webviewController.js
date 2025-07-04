@@ -1916,8 +1916,10 @@ taskController.prototype.customActionByDes = async function (button,des,checkSub
         success = await this.customActionByButton(button, targetButtonName)
         break;
       default:
+        MNUtil.log(`🔍 webviewController - 处理未知 action: ${des.action}`);
         // 检查是否是自定义 action
         if (typeof MNTaskGlobal !== 'undefined' && MNTaskGlobal.executeCustomAction) {
+          MNUtil.log(`✅ MNTaskGlobal 存在，尝试执行自定义 action: ${des.action}`);
           const context = {
             button: button,
             des: des,
@@ -1925,11 +1927,17 @@ taskController.prototype.customActionByDes = async function (button,des,checkSub
             focusNotes: focusNotes,
             self: this
           };
+          MNUtil.log(`📋 传递的 context: focusNote=${focusNote ? focusNote.noteId : 'null'}, self=${this ? 'exists' : 'null'}`);
           const handled = await MNTaskGlobal.executeCustomAction(des.action, context);
+          MNUtil.log(`🔄 executeCustomAction 返回: ${handled}`);
           if (handled) {
             // 自定义 action 已处理
+            MNUtil.log(`✅ 自定义 action ${des.action} 处理成功`);
             break;
           }
+          MNUtil.log(`❌ 自定义 action ${des.action} 未被处理 (handled=false)`);
+        } else {
+          MNUtil.log(`❌ MNTaskGlobal 不存在或 executeCustomAction 未定义`);
         }
         MNUtil.showHUD("Not supported yet...")
         break;

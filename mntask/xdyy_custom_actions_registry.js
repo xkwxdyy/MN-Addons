@@ -27,15 +27,26 @@ MNTaskGlobal.registerCustomAction = function (actionName, handler) {
  * @returns {boolean} - 是否成功执行
  */
 MNTaskGlobal.executeCustomAction = async function (actionName, context) {
+  MNUtil.log(`🚀 MNTaskGlobal.executeCustomAction - 执行自定义 action: ${actionName}`);
+  MNUtil.log(`📋 注册的 actions: ${Object.keys(MNTaskGlobal.customActions).join(', ')}`);
+  
   if (actionName in MNTaskGlobal.customActions) {
+    MNUtil.log(`✅ 找到 action: ${actionName}`);
     try {
+      MNUtil.log(`⏳ 开始执行 ${actionName}...`);
       await MNTaskGlobal.customActions[actionName](context);
+      MNUtil.log(`✅ ${actionName} 执行成功`);
       return true;
     } catch (error) {
+      MNUtil.log(`❌ 执行 ${actionName} 失败: ${error.message || error}`);
+      MNUtil.log(`📍 错误堆栈: ${error.stack || 'no stack'}`);
       MNUtil.showHUD(`执行失败: ${error.message || error}`);
       return false;
     }
   }
+  
+  MNUtil.log(`❌ 未找到自定义 action: ${actionName}`);
+  MNUtil.log(`📋 可用的 actions: ${Object.keys(MNTaskGlobal.customActions).join(', ')}`);
   return false;
 };
 
@@ -43,6 +54,8 @@ MNTaskGlobal.executeCustomAction = async function (actionName, context) {
 
 // 注册所有自定义 actions
 function registerAllCustomActions() {
+  MNUtil.log("🔧 开始注册所有自定义 actions");
+  
   // updateTodayTimeTag
   MNTaskGlobal.registerCustomAction("updateTodayTimeTag", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
@@ -77,42 +90,72 @@ function registerAllCustomActions() {
   MNTaskGlobal.registerCustomAction("openTasksFloatMindMap", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     
-    // 检查是否需要创建控制器实例
-    if (!self.taskDashboardController) {
-      self.taskDashboardController = taskDashboardController.new();
-    }
+    MNUtil.log("🔍 openTasksFloatMindMap - 开始执行");
+    MNUtil.log(`📋 context 信息: focusNote=${focusNote ? focusNote.noteId : 'null'}, self=${self ? 'exists' : 'null'}`);
+    
+    try {
+      // 检查是否需要创建控制器实例
+      if (!self.taskDashboardController) {
+        MNUtil.log("🔨 taskDashboardController 不存在，需要创建");
+        // 检查 taskDashboardController 是否存在
+        if (typeof taskDashboardController === 'undefined') {
+          MNUtil.log("❌ taskDashboardController 类未定义");
+          MNUtil.showHUD("❌ taskDashboardController 未定义");
+          return;
+        }
+        MNUtil.log("✅ taskDashboardController 类存在，开始创建实例");
+        self.taskDashboardController = taskDashboardController.new();
+        MNUtil.log("✅ taskDashboardController 实例创建成功");
+      } else {
+        MNUtil.log("✅ taskDashboardController 已存在");
+      }
     
     // 首先尝试使用保存的 rootNote ID
     const savedRootNoteId = taskConfig.getRootNoteId();
+    MNUtil.log(`📌 保存的根目录 ID: ${savedRootNoteId || 'null'}`);
+    
     if (savedRootNoteId) {
       try {
+        MNUtil.log("🔄 尝试使用保存的根目录初始化");
         const rootNote = self.taskDashboardController.initDashboard(savedRootNoteId);
         if (rootNote) {
+          MNUtil.log("✅ 根目录初始化成功，准备打开浮动脑图");
           rootNote.focusInFloatMindMap(0.5);
+          MNUtil.log("✅ 浮动脑图已打开");
           return; // 成功使用保存的 ID，直接返回
         } else {
           // 保存的 ID 无效，清除它
+          MNUtil.log("❌ 根目录初始化失败 - rootNote 为 null");
           taskConfig.clearRootNoteId();
           MNUtil.showHUD("保存的根目录无效，请重新选择");
         }
       } catch (error) {
+        MNUtil.log(`❌ 加载根目录时出错: ${error.message || error}`);
         taskConfig.clearRootNoteId();
         MNUtil.showHUD("加载根目录失败，请重新选择");
       }
+    } else {
+      MNUtil.log("ℹ️ 没有保存的根目录 ID");
     }
     
     // 没有保存的 ID 或保存的 ID 无效，显示选择对话框
     // 如果有焦点卡片，询问是否使用它作为根目录
     if (focusNote) {
+      MNUtil.log("📱 显示选择对话框");
       const buttons = ["使用当前选中的卡片", "输入卡片ID", "清除已保存的根目录"];
       const result = await MNUtil.userSelect("选择任务管理根目录", `当前选中：${focusNote.noteTitle || "无标题"}`, buttons);
+      MNUtil.log(`🔘 用户选择: ${result} (0=取消, 1=使用当前卡片, 2=输入ID, 3=清除)`);
       
       if (result === 1) {
         // 使用当前焦点卡片
+        MNUtil.log(`🎯 使用当前焦点卡片: ${focusNote.noteId}`);
         const rootNote = self.taskDashboardController.initDashboard(focusNote.noteId);
         if (rootNote) {
+          MNUtil.log("✅ 根目录初始化成功，保存 ID 并打开脑图");
           taskConfig.saveRootNoteId(focusNote.noteId); // 保存选择的 ID
           rootNote.focusInFloatMindMap(0.5);
+        } else {
+          MNUtil.log("❌ 使用焦点卡片初始化失败");
         }
       } else if (result === 2) {
         // 输入卡片 ID
@@ -139,6 +182,10 @@ function registerAllCustomActions() {
           rootNote.focusInFloatMindMap(0.5);
         }
       }
+    }
+    } catch (error) {
+      MNUtil.showHUD("❌ 错误: " + error.message);
+      MNUtil.log("openTasksFloatMindMap error: " + error);
     }
   });
 
@@ -1983,7 +2030,11 @@ function registerAllCustomActions() {
 
 // 立即注册
 try {
+  MNUtil.log("🚀 xdyy_custom_actions_registry.js - 开始执行");
   registerAllCustomActions();
+  MNUtil.log(`✅ 自定义 actions 注册完成，共注册 ${Object.keys(MNTaskGlobal.customActions).length} 个 actions`);
+  MNUtil.log(`📋 已注册的 actions: ${Object.keys(MNTaskGlobal.customActions).join(', ')}`);
 } catch (error) {
   // 静默处理错误，避免影响主功能
+  MNUtil.log(`❌ 注册自定义 actions 时出错: ${error.message || error}`);
 }

@@ -5635,21 +5635,25 @@ class MNTaskManager {
    */
   static parseTaskTitle(title) {
     let titleParts = {}
-    // 匹配格式：【类型 >> 路径｜状态】内容
-    let match = title.match(/^【([^｜]+)(?:\s*>>\s*(.+?))?｜([^】]+)】(.*)/)
+    // 匹配格式：【类型 >> 路径｜状态】内容 或 【类型｜状态】内容
+    let match = title.match(/^【([^｜】]+)｜([^】]+)】(.*)/)
     
     if (match) {
-      titleParts.typeAndPath = match[1].trim()  // "类型" 或 "类型 >> 路径"
-      titleParts.path = match[2] ? match[2].trim() : ""  // 路径部分（可能为空）
-      titleParts.status = match[3].trim()  // 状态
-      titleParts.content = match[4].trim()  // 内容
+      const typeAndPath = match[1].trim()  // "类型" 或 "类型 >> 路径"
+      titleParts.status = match[2].trim()  // 状态
+      titleParts.content = match[3].trim()  // 内容
       
-      // 从 typeAndPath 中分离类型
-      if (titleParts.path) {
-        titleParts.type = titleParts.typeAndPath.replace(` >> ${titleParts.path}`, '').trim()
+      // 分离类型和路径
+      if (typeAndPath.includes(' >> ')) {
+        const parts = typeAndPath.split(' >> ')
+        titleParts.type = parts[0].trim()
+        titleParts.path = parts.slice(1).join(' >> ').trim()  // 处理多层路径
       } else {
-        titleParts.type = titleParts.typeAndPath
+        titleParts.type = typeAndPath
+        titleParts.path = ""
       }
+      
+      titleParts.typeAndPath = typeAndPath  // 保留完整的类型和路径
     }
     
     return titleParts
@@ -5703,8 +5707,15 @@ class MNTaskManager {
       newPath = parentParts.content
     }
     
-    // 重构标题
-    const newTitle = `【${titleParts.type} >> ${newPath}｜${titleParts.status}】${titleParts.content}`
+    // 重构标题，正确包含新路径
+    let newTitle
+    if (newPath) {
+      // 有路径的情况
+      newTitle = `【${titleParts.type} >> ${newPath}｜${titleParts.status}】${titleParts.content}`
+    } else {
+      // 无路径的情况（不应该发生，但以防万一）
+      newTitle = `【${titleParts.type}｜${titleParts.status}】${titleParts.content}`
+    }
     
     MNUtil.undoGrouping(() => {
       note.noteTitle = newTitle

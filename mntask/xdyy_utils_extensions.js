@@ -343,6 +343,39 @@ class MNTaskManager {
   }
 
   /**
+   * 获取笔记的任务状态
+   * @param {MNNote} note - 任务笔记
+   * @returns {string|null} 状态 key (notStarted/inProgress/completed/blocked/cancelled)
+   */
+  static getNoteStatus(note) {
+    // 根据颜色索引判断状态
+    switch(note.colorIndex) {
+      case 0:  // 淡黄色
+        return 'notStarted';
+      case 6:  // 蓝色
+        return 'inProgress';
+      case 5:  // 绿色
+        return 'completed';
+      case 3:  // 粉色
+        return 'blocked';
+      case 14: // 深灰色
+        return 'cancelled';
+      default:
+        // 尝试从标签判断
+        const statusTags = Object.values(this.taskStatus).map(s => s.tag);
+        const noteTags = note.tags || [];
+        
+        for (let status of Object.keys(this.taskStatus)) {
+          if (noteTags.includes(this.taskStatus[status].tag)) {
+            return status;
+          }
+        }
+        
+        return 'notStarted'; // 默认未开始
+    }
+  }
+
+  /**
    * 添加进度信息
    * @param {MNNote} note - 任务笔记
    * @param {number} percentage - 进度百分比 (0-100)

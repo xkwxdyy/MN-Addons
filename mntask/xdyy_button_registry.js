@@ -77,6 +77,12 @@ function registerAllButtons() {
     templateName: "menu_task_dashboard"
   });
 
+  MNTaskGlobal.registerButton("custom6", {
+    name: "快速筛选",
+    image: "custom6",
+    templateName: "menu_quick_filter"
+  });
+
   
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
     MNUtil.log(`🚀 已注册 ${Object.keys(MNTaskGlobal.customButtons).length} 个自定义按钮`);

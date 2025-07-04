@@ -215,11 +215,11 @@ function registerAllMenuTemplates() {
         menuTitle: "    🏷️ 按时间标签筛选"
       },
       {
-        action: "filterByStatus",
+        action: "filterByTaskStatus",
         menuTitle: "    📊 按状态筛选（进行中/未开始）"
       },
       {
-        action: "filterByType",
+        action: "filterByTaskType",
         menuTitle: "    🎯 按类型筛选（任务/项目/关键结果）"
       },
       "⬇️ 批量操作",
@@ -293,6 +293,71 @@ function registerAllMenuTemplates() {
       {
         action: "batchLinkToParent",
         menuTitle: "    🔗 批量链接到父任务"
+      }
+    ]
+  });
+
+  // menu_quick_filter - 快速筛选菜单
+  MNTaskGlobal.registerMenuTemplate("menu_quick_filter", {
+    action: "menu",
+    menuWidth: 340,
+    menuItems: [
+      "⬇️ 按属性筛选",
+      {
+        action: "filterByTaskType",
+        menuTitle: "    🎯 按任务类型筛选"
+      },
+      {
+        action: "filterByTaskStatus",
+        menuTitle: "    📊 按任务状态筛选"
+      },
+      {
+        action: "filterByProgress",
+        menuTitle: "    📈 按进度筛选"
+      },
+      {
+        action: "filterByTag",
+        menuTitle: "    🏷️ 按标签筛选"
+      },
+      "⬇️ 按时间筛选",
+      {
+        action: "filterByTimeTag",
+        menuTitle: "    📅 按时间标签筛选"
+      },
+      {
+        action: "filterOverdueTasks",
+        menuTitle: "    ⚠️ 筛选逾期任务"
+      },
+      "⬇️ 预设筛选",
+      {
+        action: "quickFilter",
+        menuTitle: "    ⚡ 快速组合筛选"
+      },
+      {
+        action: "menu",
+        menuTitle: "    ➡️ 常用筛选",
+        menuItems: [
+          {
+            action: "quickFilter",
+            menuTitle: "📅 今日未完成的任务"
+          },
+          {
+            action: "quickFilter",
+            menuTitle: "📅 本周进行中的任务"
+          },
+          {
+            action: "quickFilter",
+            menuTitle: "🚨 高优先级未开始任务"
+          },
+          {
+            action: "quickFilter",
+            menuTitle: "🎯 即将完成的任务(75%+)"
+          },
+          {
+            action: "quickFilter",
+            menuTitle: "🚫 已阻塞的任务"
+          }
+        ]
       }
     ]
   });

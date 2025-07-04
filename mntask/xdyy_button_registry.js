@@ -38,13 +38,7 @@ MNTaskGlobal.getButton = function(key) {
   return MNTaskGlobal.customButtons[key] || null;
 };
 
-// 保持向后兼容（但带警告）
-if (typeof global === 'undefined') {
-  var global = MNTaskGlobal;
-} else if (!global.customButtons) {
-  // 如果 global 存在但没有 customButtons，说明可能是其他插件创建的
-  global = MNTaskGlobal;
-}
+// 不再需要全局 global 对象，避免与 MNToolbar 冲突
 
 /**
  * 注册所有自定义按钮
@@ -55,43 +49,37 @@ function registerAllButtons() {
   // 任务管理相关按钮
   MNTaskGlobal.registerButton("custom1", {
     name: "任务管理",
-    image: "checkbox",
+    image: "makeCards",  // 使用已存在的图标
     templateName: "menu_task_manage"
   });
 
   MNTaskGlobal.registerButton("custom2", {
     name: "进度追踪",
-    image: "progress",
+    image: "updateCards",  // 使用已存在的图标
     templateName: "menu_task_progress"
   });
 
   MNTaskGlobal.registerButton("custom3", {
     name: "今日任务",
-    image: "today",
+    image: "todayTime",  // 使用已存在的图标
     templateName: "menu_today_tasks"
   });
 
   MNTaskGlobal.registerButton("custom4", {
     name: "任务拆分",
-    image: "split",
+    image: "export",  // 使用已存在的图标
     templateName: "menu_task_split"
   });
 
   MNTaskGlobal.registerButton("custom5", {
     name: "任务看板",
-    image: "dashboard",
+    image: "view",  // 使用已存在的图标
     templateName: "menu_task_dashboard"
   });
 
-  // 原有按钮
-  MNTaskGlobal.registerButton("custom15", {
-    name: "制卡",
-    image: "makeCards",
-    templateName: "menu_makeCards"  // 延迟获取template
-  });
   
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
-    MNUtil.log(`🚀 已注册 ${Object.keys(global.customButtons).length} 个自定义按钮`);
+    MNUtil.log(`🚀 已注册 ${Object.keys(MNTaskGlobal.customButtons).length} 个自定义按钮`);
   }
 }
 
@@ -119,7 +107,7 @@ function extendTaskConfig() {
     const defaultActions = taskConfig._originalGetActions ? taskConfig._originalGetActions.call(this) : {};
     
     // 如果自定义按钮为空，返回默认按钮
-    if (Object.keys(global.customButtons).length === 0) {
+    if (Object.keys(MNTaskGlobal.customButtons).length === 0) {
       return defaultActions;
     }
     
@@ -127,8 +115,8 @@ function extendTaskConfig() {
     const allActions = {};
     
     // 添加所有自定义按钮
-    for (const key in global.customButtons) {
-      const button = Object.assign({}, global.customButtons[key]);
+    for (const key in MNTaskGlobal.customButtons) {
+      const button = Object.assign({}, MNTaskGlobal.customButtons[key]);
       
       // 如果有 templateName，动态获取 description
       if (button.templateName && !button.description && this.template) {
@@ -169,7 +157,7 @@ function forceRefreshButtons() {
   taskConfig.actions = newActions;
   
   // 创建自定义按钮的键名数组
-  const customKeys = Object.keys(global.customButtons);
+  const customKeys = Object.keys(MNTaskGlobal.customButtons);
   
   // 更新 action 数组：替换所有 custom 按钮
   if (taskConfig.action && Array.isArray(taskConfig.action)) {
@@ -213,9 +201,9 @@ try {
   }
 }
 
-// 导出全局函数
-global.forceRefreshButtons = forceRefreshButtons;
-global.extendTaskConfig = extendTaskConfig;
+// 导出全局函数（使用 MNTaskGlobal）
+MNTaskGlobal.forceRefreshButtons = forceRefreshButtons;
+MNTaskGlobal.extendTaskConfig = extendTaskConfig;
 
 // 导出注册函数供外部使用
 if (typeof module !== 'undefined' && module.exports) {
@@ -266,3 +254,24 @@ if (typeof setTimeout !== 'undefined') {
     }
   }, 2000);
 }
+
+// 立即强制刷新一次（解决缓存问题）
+if (typeof taskConfig !== 'undefined' && taskConfig.getActions) {
+  try {
+    forceRefreshButtons();
+    if (typeof MNUtil !== "undefined" && MNUtil.log) {
+      MNUtil.log("🔄 立即强制刷新按钮配置");
+    }
+  } catch (error) {
+    // 静默处理
+  }
+}
+
+// 提供全局访问点（用于控制台调试）
+if (typeof global === 'undefined') {
+  var global = {};
+}
+global.MNTaskForceRefresh = function() {
+  forceRefreshButtons();
+  MNUtil.showHUD("🔄 MNTask 按钮已刷新");
+};

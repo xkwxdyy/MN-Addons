@@ -39,10 +39,7 @@ MNTaskGlobal.executeCustomAction = async function (actionName, context) {
   return false;
 };
 
-// 保持向后兼容
-if (typeof global === 'undefined') {
-  var global = MNTaskGlobal;
-}
+// 不再需要全局 global 对象
 
 // 注册所有自定义 actions
 function registerAllCustomActions() {
@@ -238,6 +235,62 @@ function registerAllCustomActions() {
       }
     });
   })
+
+  // OKRNoteMake - OKR 制卡流
+  MNTaskGlobal.registerCustomAction("OKRNoteMake", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    MNUtil.undoGrouping(() => {
+      focusNotes.forEach((focusNote) => {
+        taskUtils.OKRNoteMake(focusNote);
+      });
+    });
+  });
+
+  // undoOKRNoteMake - 回退任务状态
+  MNTaskGlobal.registerCustomAction("undoOKRNoteMake", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    MNUtil.undoGrouping(() => {
+      focusNotes.forEach((focusNote) => {
+        taskUtils.OKRNoteMake(focusNote, true);  // undoStatus = true
+      });
+    });
+  });
+
+  // moveToInbox - 加入 Inbox
+  MNTaskGlobal.registerCustomAction("moveToInbox", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    MNUtil.showHUD("功能开发中：加入 Inbox");
+  });
+
+  // openFloatWindowByInboxNote - 浮窗定位今日 Inbox
+  MNTaskGlobal.registerCustomAction("openFloatWindowByInboxNote", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    MNUtil.showHUD("功能开发中：浮窗定位今日 Inbox");
+  });
+
+  // openFloatWindowByInboxNoteOnDate - 浮窗定位指定日期 Inbox
+  MNTaskGlobal.registerCustomAction("openFloatWindowByInboxNoteOnDate", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    MNUtil.showHUD("功能开发中：浮窗定位指定日期 Inbox");
+  });
+
+  // achieveCards - 归档卡片
+  MNTaskGlobal.registerCustomAction("achieveCards", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    MNUtil.showHUD("功能开发中：归档卡片");
+  });
+
+  // renewCards - 更新卡片
+  MNTaskGlobal.registerCustomAction("renewCards", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    MNUtil.showHUD("功能开发中：更新卡片");
+  });
+
+  // getOKRNotesOnToday - 获取今日 OKR 任务
+  MNTaskGlobal.registerCustomAction("getOKRNotesOnToday", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    MNUtil.showHUD("功能开发中：获取今日 OKR 任务");
+  });
 
 }
 

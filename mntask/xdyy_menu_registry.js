@@ -33,10 +33,7 @@ MNTaskGlobal.getMenuTemplate = function(name) {
   return MNTaskGlobal.customMenuTemplates[name] || null;
 };
 
-// 保持向后兼容
-if (typeof global === 'undefined') {
-  var global = MNTaskGlobal;
-}
+// 不再需要全局 global 对象
 
 /**
  * 注册所有自定义菜单模板
@@ -397,7 +394,7 @@ function registerAllMenuTemplates() {
   });
   
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
-    MNUtil.log(`🚀 已注册 ${Object.keys(global.customMenuTemplates).length} 个自定义菜单模板`);
+    MNUtil.log(`🚀 已注册 ${Object.keys(MNTaskGlobal.customMenuTemplates).length} 个自定义菜单模板`);
   }
 }
 

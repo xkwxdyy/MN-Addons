@@ -104,8 +104,8 @@ function registerAllCustomActions() {
     // 没有保存的 ID 或保存的 ID 无效，显示选择对话框
     // 如果有焦点卡片，询问是否使用它作为根目录
     if (focusNote) {
-      const buttons = ["使用焦点卡片", "输入卡片ID", "清除已保存的根目录"];
-      const result = await MNUtil.userSelect("选择任务管理根目录", "", buttons);
+      const buttons = ["使用当前选中的卡片", "输入卡片ID", "清除已保存的根目录"];
+      const result = await MNUtil.userSelect("选择任务管理根目录", `当前选中：${focusNote.noteTitle || "无标题"}`, buttons);
       
       if (result === 1) {
         // 使用当前焦点卡片
@@ -217,8 +217,22 @@ function registerAllCustomActions() {
     
     // 检查是否已初始化看板控制器
     if (!self.taskDashboardController || !self.taskDashboardController.rootNote) {
-      MNUtil.showHUD("请先初始化任务管理看板");
-      return;
+      const savedRootNoteId = taskConfig.getRootNoteId();
+      if (savedRootNoteId) {
+        // 尝试使用保存的根目录ID初始化
+        if (!self.taskDashboardController) {
+          self.taskDashboardController = taskDashboardController.new();
+        }
+        const rootNote = self.taskDashboardController.initDashboard(savedRootNoteId);
+        if (!rootNote) {
+          taskConfig.clearRootNoteId();
+          MNUtil.showHUD("保存的根目录无效，请打开任务管理视图重新设置");
+          return;
+        }
+      } else {
+        MNUtil.showHUD("请先打开任务管理视图并设置根目录");
+        return;
+      }
     }
     
     // 移动到 Inbox
@@ -235,8 +249,22 @@ function registerAllCustomActions() {
     
     // 检查是否已初始化看板控制器
     if (!self.taskDashboardController || !self.taskDashboardController.rootNote) {
-      MNUtil.showHUD("请先初始化任务管理看板");
-      return;
+      const savedRootNoteId = taskConfig.getRootNoteId();
+      if (savedRootNoteId) {
+        // 尝试使用保存的根目录ID初始化
+        if (!self.taskDashboardController) {
+          self.taskDashboardController = taskDashboardController.new();
+        }
+        const rootNote = self.taskDashboardController.initDashboard(savedRootNoteId);
+        if (!rootNote) {
+          taskConfig.clearRootNoteId();
+          MNUtil.showHUD("保存的根目录无效，请打开任务管理视图重新设置");
+          return;
+        }
+      } else {
+        MNUtil.showHUD("请先打开任务管理视图并设置根目录");
+        return;
+      }
     }
     
     // 查找 Inbox 分区

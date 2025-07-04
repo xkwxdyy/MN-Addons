@@ -3256,8 +3256,8 @@ function extendTaskConfigInit() {
   
   // 重写 init 方法
   taskConfig.init = function(mainPath) {
-    // 调用原始的 init 方法
-    originalInit.call(this, mainPath)
+    // 调用原始的 init 方法（taskConfig.init 是静态方法，应该使用 taskConfig 作为上下文）
+    originalInit.call(taskConfig, mainPath)
     
     // 添加扩展的初始化逻辑
     // 用来存参考文献的数据

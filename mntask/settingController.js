@@ -921,19 +921,50 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     
     // 验证卡片是否存在
     let note = MNNote.new(noteId)
-    if (note) {
-      self.rootNoteIdInput.text = note.noteId
-      taskConfig.saveRootNoteId(note.noteId)
-      self.showHUD("✅ 已保存根目录卡片 ID")
-    } else {
+    if (!note) {
       self.showHUD("❌ 卡片不存在")
+      return
     }
+    
+    // 如果已经有绑定，显示确认对话框
+    if (taskConfig.getRootNoteId()) {
+      const result = await MNUtil.confirm(
+        "确认替换",
+        "已经设置了根目录卡片，是否要替换为新的卡片？",
+        ["取消", "替换"]
+      )
+      
+      if (result !== 1) {  // 用户取消了
+        return
+      }
+    }
+    
+    // 保存新的根目录卡片
+    taskConfig.saveRootNoteId(note.noteId)
+    self.updateRootNoteLabel()
+    self.showHUD("✅ 已保存根目录卡片")
   },
-  clearRootNoteId: function () {
+  clearRootNoteId: async function () {
     let self = getTaskSettingController()
-    self.rootNoteIdInput.text = ""
-    taskConfig.clearRootNoteId()
-    self.showHUD("✅ 已清除根目录卡片 ID")
+    
+    // 如果没有设置根目录，直接返回
+    if (!taskConfig.getRootNoteId()) {
+      self.showHUD("❌ 未设置根目录卡片")
+      return
+    }
+    
+    // 显示确认对话框
+    const result = await MNUtil.confirm(
+      "确认清除",
+      "确定要清除 Task Board 根目录卡片吗？",
+      ["取消", "清除"]
+    )
+    
+    if (result === 1) {  // 用户点击了"清除"
+      taskConfig.clearRootNoteId()
+      self.updateRootNoteLabel()
+      self.showHUD("✅ 已清除根目录卡片")
+    }
   },
   focusRootNoteId: function () {
     let self = getTaskSettingController()
@@ -950,7 +981,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       self.showHUD("❌ 卡片不存在")
       // 清除无效的 ID
       taskConfig.clearRootNoteId()
-      self.rootNoteIdInput.text = ""
+      self.updateRootNoteLabel()
     }
   },
   importConfigTapped:function(button){
@@ -1126,6 +1157,7 @@ taskSettingController.prototype.initViewManager = function() {
         selectedColor: '#457bd3',
         normalColor: '#9bb2d6',
         onShow: function(self) {
+          self.updateRootNoteLabel()
           self.settingViewLayout()
         }
       }
@@ -1355,11 +1387,10 @@ taskSettingController.prototype.settingViewLayout = function (){
     taskFrame.set(this.importButton, 175+(width-180)/2, 205, (width-180)/2,35)
     
     // Task Board View 布局
-    taskFrame.set(this.rootNoteLabel, 10, 10, width-20, 30)
-    taskFrame.set(this.rootNoteIdInput, 10, 45, width-20, 80)
-    taskFrame.set(this.focusRootNoteButton, 10, 130, (width-30)/3, 35)
-    taskFrame.set(this.clearRootNoteButton, 15+(width-30)/3, 130, (width-30)/3, 35)
-    taskFrame.set(this.pasteRootNoteButton, 20+2*(width-30)/3, 130, (width-30)/3, 35)
+    taskFrame.set(this.rootNoteLabel, 10, 10, width-20, 35)
+    taskFrame.set(this.focusRootNoteButton, 10, 55, (width-30)/3, 35)
+    taskFrame.set(this.clearRootNoteButton, 15+(width-30)/3, 55, (width-30)/3, 35)
+    taskFrame.set(this.pasteRootNoteButton, 20+2*(width-30)/3, 55, (width-30)/3, 35)
 }
 
 
@@ -1639,10 +1670,6 @@ try {
   let color = ["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9fdc"]
 
   // Task Board 视图内容
-  this.creatTextView("rootNoteIdInput","taskBoardView")
-  this.rootNoteIdInput.editable = false
-  this.rootNoteIdInput.text = taskConfig.getRootNoteId() || ""
-  
   this.createButton("focusRootNoteButton","focusRootNoteId:","taskBoardView")
   MNButton.setConfig(this.focusRootNoteButton, {title:"Focus",color:"#457bd3",alpha:0.8})
   
@@ -1655,7 +1682,7 @@ try {
   // 添加说明文本
   this.createButton("rootNoteLabel","","taskBoardView")
   MNButton.setConfig(this.rootNoteLabel, {
-    title:"Task Board Root Note ID:",
+    title:"Task Board Root Note:",
     color:"#457bd3",
     alpha:0.3,
     font:16,
@@ -1663,9 +1690,24 @@ try {
   })
   this.rootNoteLabel.userInteractionEnabled = false
   
+  // 更新标签显示
+  this.updateRootNoteLabel()
+  
 } catch (error) {
   taskUtils.addErrorLog(error, "createSettingView")
 }
+}
+
+/**
+ * 更新根目录标签显示
+ * @this {settingController}
+ */
+taskSettingController.prototype.updateRootNoteLabel = function() {
+  let rootNoteId = taskConfig.getRootNoteId()
+  let title = rootNoteId ? "Task Board Root Note: ✅" : "Task Board Root Note: ❌"
+  MNButton.setConfig(this.rootNoteLabel, {
+    title: title
+  })
 }
 /**
  * @this {settingController}

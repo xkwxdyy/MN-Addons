@@ -120,3 +120,33 @@ MarginNote 插件打包关键经验：
 症状：编辑器突然报告大量语法错误，错误集中在某个注释块之后 --tags 错误 注释 JSDoc 语法 MN-Addon utils.js
 --tags #其他 #评分:8 #有效期:长期
 - END
+
+- 2025/07/04 22:08 START
+## MNTask 开发经验总结 - UI 布局陷阱
+
+### 1. ScrollView 布局与固定元素
+**问题**：关闭按钮随 ScrollView 内容移动
+**解决**：
+- 将 ScrollView 和关闭按钮放在同一父视图中
+- 缩短 ScrollView 宽度（width - 45）为关闭按钮预留空间
+- 关闭按钮定位：x = tabView.width + 5
+
+### 2. ScrollView 方向锁定
+**问题**：横向滚动视图也能垂直移动
+**解决**：
+```javascript
+tabView.alwaysBounceVertical = false
+tabView.directionalLockEnabled = true
+tabView.contentSize.height = tabView.frame.height
+```
+
+### 3. iOS 颜色值陷阱
+**错误**：color:"transparent"
+**正确**：color:"#ffffff", alpha:0.0
+
+### 4. 视图层级与坐标系统
+- 子视图坐标相对于直接父视图
+- 要对齐的元素必须在同一父视图中
+- 典型层级：view → [moveButton, tabView, closeButton, settingView] --tags MNTask UI布局 ScrollView iOS开发 MarginNote插件
+--tags #其他 #评分:8 #有效期:长期
+- END

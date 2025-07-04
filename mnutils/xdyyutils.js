@@ -3828,7 +3828,7 @@ class HtmlMarkdownUtils {
    */
   static getSpanNextLevelType(type) {
     const levelMap = {
-      goal: 'step',
+      goal: 'level1',
       // step: 'point',
       // point: 'subpoint',
       // subpoint: 'subsubpoint',
@@ -4069,7 +4069,7 @@ class HtmlMarkdownUtils {
    * 然后子笔记（清空标题后）的结构内容再合并到父笔记。
    *
    * @param {MNNote} rootFocusNote 要处理的主笔记，其后代笔记将被向上合并到此笔记中。
-   * @param {string} firstLevelType rootFocusNote 直接子笔记的 HtmlMarkdownUtils 类型 (例如：'goal', 'step')。
+   * @param {string} firstLevelType rootFocusNote 直接子笔记的 HtmlMarkdownUtils 类型 (例如：'goal', 'level1')。
    */
   static upwardMergeWithStyledComments(rootFocusNote, firstLevelType) {
       // 确保 MNUtil 和 HtmlMarkdownUtils 在当前作用域中可用
@@ -6826,8 +6826,8 @@ MNNote.prototype.getProofContentIndexArr = function() {
   return []
 }
 
-MNNote.prototype.renewProofContentPointsToHtmlType = function(htmlType = "point") {
-  if (htmlType == undefined) { htmlType = "point" }
+MNNote.prototype.renewProofContentPointsToHtmlType = function(htmlType = "level2") {
+  if (htmlType == undefined) { htmlType = "level2" }
   let proofContentIndexArr = this.getProofContentIndexArr()
   if (proofContentIndexArr.length > 0) {
     let comments = this.MNComments

@@ -4668,6 +4668,9 @@ class taskConfig {
     // 夏大鱼羊 - begin：用来存参考文献的数据
     taskConfig.referenceIds = this.getByDefault("MNTask_referenceIds", {})
     // 夏大鱼羊 - end
+    // 任务管理根节点和分区卡片存储
+    this.rootNoteId = this.getByDefault("MNTask_rootNoteId", null)
+    this.partitionCards = this.getByDefault("MNTask_partitionCards", {})
     this.windowState = this.getByDefault("MNTask_windowState",this.defaultWindowState)
     this.buttonNumber = this.getDefaultActionKeys().length
     //数组格式,存的是每个action的key
@@ -4796,6 +4799,8 @@ class taskConfig {
       dynamic: this.dynamic,
       addonLogos: this.addonLogos,
       referenceIds:this.referenceIds,
+      rootNoteId: this.rootNoteId,
+      partitionCards: this.partitionCards,
       actionKeys: this.action,
       dynamicActionKeys: this.dynamicAction,
       actions: this.actions,
@@ -4814,6 +4819,8 @@ class taskConfig {
     this.dynamic = config.dynamic
     this.addonLogos = config.addonLogos
     this.referenceIds = config.referenceIds
+    this.rootNoteId = config.rootNoteId
+    this.partitionCards = config.partitionCards
     this.action = config.actionKeys
     this.actions = config.actions
     this.buttonConfig = config.buttonConfig
@@ -5378,6 +5385,8 @@ static save(key = undefined,value = undefined,upload = true) {
     defaults.setObjectForKey(this.actions,"MNTask_actionConfig")
     defaults.setObjectForKey(this.addonLogos,"MNTask_addonLogos")
     defaults.setObjectForKey(this.referenceIds,"MNTask_referenceIds")
+    defaults.setObjectForKey(this.rootNoteId,"MNTask_rootNoteId")
+    defaults.setObjectForKey(this.partitionCards,"MNTask_partitionCards")
     defaults.setObjectForKey(this.buttonConfig,"MNTask_buttonConfig")
     defaults.setObjectForKey(this.popupConfig,"MNTask_popupConfig")
     defaults.setObjectForKey(this.imageScale,"MNTask_imageScale")
@@ -5399,6 +5408,12 @@ static save(key = undefined,value = undefined,upload = true) {
     switch (key) {
       case "MNTask_referenceIds":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.referenceIds,key)
+        break;
+      case "MNTask_rootNoteId":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.rootNoteId,key)
+        break;
+      case "MNTask_partitionCards":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.partitionCards,key)
         break;
       case "MNTask_windowState":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.windowState,key)
@@ -5527,6 +5542,36 @@ static getDescriptionByName(actionName){
     }
     MNUtil.showHUD("Only available for Custom Action!")
     return false
+  }
+
+  // 根节点管理方法
+  static saveRootNoteId(noteId) {
+    this.rootNoteId = noteId
+    this.save("MNTask_rootNoteId", noteId)
+  }
+  
+  static getRootNoteId() {
+    return this.rootNoteId
+  }
+  
+  static clearRootNoteId() {
+    this.rootNoteId = null
+    this.save("MNTask_rootNoteId", null)
+  }
+  
+  // 分区卡片管理方法
+  static getPartitionCard(partitionName) {
+    return this.partitionCards[partitionName] || null
+  }
+  
+  static savePartitionCard(partitionName, cardId) {
+    this.partitionCards[partitionName] = cardId
+    this.save("MNTask_partitionCards", this.partitionCards)
+  }
+  
+  static clearPartitionCards() {
+    this.partitionCards = {}
+    this.save("MNTask_partitionCards", {})
   }
 
 }

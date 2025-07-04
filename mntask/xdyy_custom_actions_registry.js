@@ -82,15 +82,36 @@ function registerAllCustomActions() {
       self.taskDashboardController = taskDashboardController.new();
     }
     
+    // 首先尝试使用保存的 rootNote ID
+    const savedRootNoteId = taskConfig.getRootNoteId();
+    if (savedRootNoteId) {
+      try {
+        const rootNote = self.taskDashboardController.initDashboard(savedRootNoteId);
+        if (rootNote) {
+          rootNote.focusInFloatMindMap(0.5);
+          return; // 成功使用保存的 ID，直接返回
+        } else {
+          // 保存的 ID 无效，清除它
+          taskConfig.clearRootNoteId();
+          MNUtil.showHUD("保存的根目录无效，请重新选择");
+        }
+      } catch (error) {
+        taskConfig.clearRootNoteId();
+        MNUtil.showHUD("加载根目录失败，请重新选择");
+      }
+    }
+    
+    // 没有保存的 ID 或保存的 ID 无效，显示选择对话框
     // 如果有焦点卡片，询问是否使用它作为根目录
     if (focusNote) {
-      const buttons = ["使用焦点卡片", "输入卡片ID"];
+      const buttons = ["使用焦点卡片", "输入卡片ID", "清除已保存的根目录"];
       const result = await MNUtil.userSelect("选择任务管理根目录", "", buttons);
       
       if (result === 1) {
         // 使用当前焦点卡片
         const rootNote = self.taskDashboardController.initDashboard(focusNote.noteId);
         if (rootNote) {
+          taskConfig.saveRootNoteId(focusNote.noteId); // 保存选择的 ID
           rootNote.focusInFloatMindMap(0.5);
         }
       } else if (result === 2) {
@@ -99,9 +120,14 @@ function registerAllCustomActions() {
         if (input && input[0]) {
           const rootNote = self.taskDashboardController.initDashboard(input[0]);
           if (rootNote) {
+            taskConfig.saveRootNoteId(input[0]); // 保存输入的 ID
             rootNote.focusInFloatMindMap(0.5);
           }
         }
+      } else if (result === 3) {
+        // 清除已保存的根目录
+        taskConfig.clearRootNoteId();
+        MNUtil.showHUD("已清除保存的根目录");
       }
     } else {
       // 没有焦点卡片，提示输入 ID
@@ -109,6 +135,7 @@ function registerAllCustomActions() {
       if (input && input[0]) {
         const rootNote = self.taskDashboardController.initDashboard(input[0]);
         if (rootNote) {
+          taskConfig.saveRootNoteId(input[0]); // 保存输入的 ID
           rootNote.focusInFloatMindMap(0.5);
         }
       }
@@ -870,22 +897,8 @@ function registerAllCustomActions() {
         return note.tags && note.tags.includes(`#${tag}`);
       });
       
-      if (filteredNotes.length > 0) {
-        // 创建汇总笔记
-        const summaryNote = MNNote.new({
-          title: `#${tag} 任务汇总 (${filteredNotes.length}个)`,
-          colorIndex: 13
-        });
-        
-        filteredNotes.forEach(note => {
-          summaryNote.appendNoteLink(note, "task");
-        });
-        
-        summaryNote.focusInFloatMindMap();
-        MNUtil.showHUD(`找到 ${filteredNotes.length} 个任务`);
-      } else {
-        MNUtil.showHUD("没有找到匹配的任务");
-      }
+      // 使用分区管理系统处理筛选结果
+      MNTaskManager.executeFilterWithPartition(`#${tag} 任务`, filteredNotes, context);
     }
   });
 
@@ -1463,53 +1476,9 @@ function registerAllCustomActions() {
         return type && (targetType === null || type.key === targetType);
       });
       
-      if (filteredNotes.length > 0) {
-        // 创建汇总笔记
-        const typeName = targetType ? MNTaskManager.taskTypes[targetType].zhName : "所有类型";
-        const summaryNote = MNNote.new({
-          title: `📋 ${typeName}任务汇总 (${filteredNotes.length}个)`,
-          colorIndex: 13
-        });
-        
-        // 按状态分组显示
-        const byStatus = {
-          notStarted: [],
-          inProgress: [],
-          completed: [],
-          blocked: [],
-          cancelled: []
-        };
-        
-        filteredNotes.forEach(note => {
-          const status = MNTaskManager.getNoteStatus(note);
-          if (byStatus[status]) {
-            byStatus[status].push(note);
-          }
-        });
-        
-        // 添加状态分组
-        Object.entries(byStatus).forEach(([status, notes]) => {
-          if (notes.length > 0) {
-            const statusNames = {
-              notStarted: "⬜ 未开始",
-              inProgress: "🔵 进行中",
-              completed: "✅ 已完成",
-              blocked: "🔴 已阻塞",
-              cancelled: "❌ 已取消"
-            };
-            
-            summaryNote.appendTextComment(statusNames[status] + ` (${notes.length}个)`);
-            notes.forEach(note => {
-              summaryNote.appendNoteLink(note, "task");
-            });
-          }
-        });
-        
-        summaryNote.focusInFloatMindMap();
-        MNUtil.showHUD(`找到 ${filteredNotes.length} 个${typeName}任务`);
-      } else {
-        MNUtil.showHUD("没有找到匹配的任务");
-      }
+      // 使用分区管理系统处理筛选结果
+      const typeName = targetType ? MNTaskManager.taskTypes[targetType].zhName : "所有类型";
+      MNTaskManager.executeFilterWithPartition(typeName + "任务", filteredNotes, context);
   });
 
   // filterByTaskStatus - 按任务状态筛选
@@ -1544,45 +1513,9 @@ function registerAllCustomActions() {
       return targetStatus === null || status === targetStatus;
     });
     
-    if (filteredNotes.length > 0) {
-      // 创建汇总笔记
-      const statusName = options[selectedIndex];
-      const summaryNote = MNNote.new({
-        title: `📋 ${statusName}任务汇总 (${filteredNotes.length}个)`,
-        colorIndex: targetStatus === 'completed' ? 5 : (targetStatus === 'inProgress' ? 6 : 13)
-      });
-      
-      // 按类型分组显示
-      const byType = {
-        objective: [],
-        keyResult: [],
-        project: [],
-        task: []
-      };
-      
-      filteredNotes.forEach(note => {
-        const type = MNTaskManager.getTaskType(note);
-        if (byType[type.key]) {
-          byType[type.key].push(note);
-        }
-      });
-      
-      // 添加类型分组
-      Object.entries(byType).forEach(([typeKey, notes]) => {
-        if (notes.length > 0) {
-          const typeName = MNTaskManager.taskTypes[typeKey].zhName;
-          summaryNote.appendTextComment(`【${typeName}】(${notes.length}个)`);
-          notes.forEach(note => {
-            summaryNote.appendNoteLink(note, "task");
-          });
-        }
-      });
-      
-      summaryNote.focusInFloatMindMap();
-      MNUtil.showHUD(`找到 ${filteredNotes.length} 个${statusName}任务`);
-    } else {
-      MNUtil.showHUD("没有找到匹配的任务");
-    }
+    // 使用分区管理系统处理筛选结果
+    const statusName = options[selectedIndex - 1];
+    MNTaskManager.executeFilterWithPartition(statusName + "任务", filteredNotes, context);
   });
 
   // filterByProgress - 按进度筛选
@@ -1629,34 +1562,22 @@ function registerAllCustomActions() {
       return progress >= minProgress && progress <= maxProgress;
     });
     
-    if (filteredNotes.length > 0) {
-      const summaryNote = MNNote.new({
-        title: `📋 进度${options[selectedIndex]}的任务 (${filteredNotes.length}个)`,
-        colorIndex: 9
-      });
-      
-      // 按进度排序
-      filteredNotes.sort((a, b) => {
-        const getProgress = (note) => {
-          const tags = note.tags.filter(tag => tag.includes("%进度"));
-          if (tags.length > 0) {
-            const match = tags[0].match(/(\d+)%进度/);
-            return match ? parseInt(match[1]) : 0;
-          }
-          return note.colorIndex === 5 ? 100 : 0;
-        };
-        return getProgress(b) - getProgress(a);
-      });
-      
-      filteredNotes.forEach(note => {
-        summaryNote.appendNoteLink(note, "task");
-      });
-      
-      summaryNote.focusInFloatMindMap();
-      MNUtil.showHUD(`找到 ${filteredNotes.length} 个任务`);
-    } else {
-      MNUtil.showHUD("没有找到匹配的任务");
-    }
+    // 按进度排序
+    filteredNotes.sort((a, b) => {
+      const getProgress = (note) => {
+        const tags = note.tags.filter(tag => tag.includes("%进度"));
+        if (tags.length > 0) {
+          const match = tags[0].match(/(\d+)%进度/);
+          return match ? parseInt(match[1]) : 0;
+        }
+        return note.colorIndex === 5 ? 100 : 0;
+      };
+      return getProgress(b) - getProgress(a);
+    });
+    
+    // 使用分区管理系统处理筛选结果
+    const progressName = `进度${options[selectedIndex - 1]}`;
+    MNTaskManager.executeFilterWithPartition(progressName, filteredNotes, context);
   });
 
   // filterByTag - 按标签筛选
@@ -1702,22 +1623,9 @@ function registerAllCustomActions() {
       return selectedTags.every(tag => note.tags.includes(tag));
     });
     
-    if (filteredNotes.length > 0) {
-      const tagText = selectedTags.join(", ");
-      const summaryNote = MNNote.new({
-        title: `📋 标签筛选结果 [${tagText}] (${filteredNotes.length}个)`,
-        colorIndex: 15
-      });
-      
-      filteredNotes.forEach(note => {
-        summaryNote.appendNoteLink(note, "task");
-      });
-      
-      summaryNote.focusInFloatMindMap();
-      MNUtil.showHUD(`找到 ${filteredNotes.length} 个任务`);
-    } else {
-      MNUtil.showHUD("没有找到匹配的任务");
-    }
+    // 使用分区管理系统处理筛选结果
+    const tagText = selectedTags.join(", ");
+    MNTaskManager.executeFilterWithPartition(`标签[${tagText}]`, filteredNotes, context);
   });
 
   // filterOverdueTasks - 筛选逾期任务
@@ -1755,37 +1663,18 @@ function registerAllCustomActions() {
       return taskDate < today;
     });
     
-    if (filteredNotes.length > 0) {
-      const summaryNote = MNNote.new({
-        title: `⚠️ 逾期任务 (${filteredNotes.length}个)`,
-        colorIndex: 3 // 红色
-      });
-      
-      // 按逾期天数排序
-      filteredNotes.sort((a, b) => {
-        const getDate = (note) => {
-          const tag = note.tags.find(t => t.match(/^\d{4}\/\d{2}\/\d{2}$/));
-          const [y, m, d] = tag.split('/').map(n => parseInt(n));
-          return new Date(y, m - 1, d);
-        };
-        return getDate(a) - getDate(b);
-      });
-      
-      filteredNotes.forEach(note => {
-        const dateTag = note.tags.find(t => t.match(/^\d{4}\/\d{2}\/\d{2}$/));
-        const [year, month, day] = dateTag.split('/').map(n => parseInt(n));
-        const taskDate = new Date(year, month - 1, day);
-        const daysOverdue = Math.floor((today - taskDate) / (1000 * 60 * 60 * 24));
-        
-        summaryNote.appendTextComment(`逾期 ${daysOverdue} 天`);
-        summaryNote.appendNoteLink(note, "task");
-      });
-      
-      summaryNote.focusInFloatMindMap();
-      MNUtil.showHUD(`⚠️ 找到 ${filteredNotes.length} 个逾期任务`);
-    } else {
-      MNUtil.showHUD("✅ 没有逾期任务");
-    }
+    // 按逾期天数排序
+    filteredNotes.sort((a, b) => {
+      const getDate = (note) => {
+        const tag = note.tags.find(t => t.match(/^\d{4}\/\d{2}\/\d{2}$/));
+        const [y, m, d] = tag.split('/').map(n => parseInt(n));
+        return new Date(y, m - 1, d);
+      };
+      return getDate(a) - getDate(b);
+    });
+    
+    // 使用分区管理系统处理筛选结果
+    MNTaskManager.executeFilterWithPartition("逾期任务", filteredNotes, context);
   });
 
   // quickFilter - 快速组合筛选
@@ -1890,21 +1779,8 @@ function registerAllCustomActions() {
           return;
     }
     
-    if (filteredNotes.length > 0) {
-      const summaryNote = MNNote.new({
-        title: `${title} (${filteredNotes.length}个)`,
-        colorIndex: 13
-      });
-      
-      filteredNotes.forEach(note => {
-        summaryNote.appendNoteLink(note, "task");
-      });
-      
-      summaryNote.focusInFloatMindMap();
-      MNUtil.showHUD(`找到 ${filteredNotes.length} 个任务`);
-    } else {
-      MNUtil.showHUD("没有找到匹配的任务");
-    }
+    // 使用分区管理系统处理筛选结果
+    MNTaskManager.executeFilterWithPartition(title, filteredNotes, context);
   });
 
   // exportTasksToMarkdown - 导出任务报告 (Markdown)

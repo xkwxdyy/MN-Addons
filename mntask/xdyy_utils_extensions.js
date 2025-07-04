@@ -1045,6 +1045,166 @@ class MNTaskManager {
     
     return subtasks;
   }
+
+  /**
+   * 分区管理功能
+   */
+  static getOrCreatePartitionCard(rootNote, partitionName, partitionEmoji = "📁") {
+    if (!rootNote) {
+      MNUtil.showHUD("错误：未找到根节点");
+      return null;
+    }
+
+    // 尝试从配置中获取已保存的分区卡片 ID
+    const savedPartitionId = taskConfig.getPartitionCard(partitionName);
+    if (savedPartitionId) {
+      try {
+        const partitionNote = MNNote.new(savedPartitionId);
+        if (partitionNote && partitionNote.parentNote?.noteId === rootNote.noteId) {
+          // 分区卡片存在且父节点正确
+          return partitionNote;
+        }
+      } catch (error) {
+        // 保存的 ID 无效，清除它
+        taskConfig.savePartitionCard(partitionName, null);
+      }
+    }
+
+    // 在根节点的子卡片中查找分区卡片
+    const childNotes = rootNote.childNotes || [];
+    for (let i = 0; i < childNotes.length; i++) {
+      const child = childNotes[i];
+      if (child.noteTitle && child.noteTitle.includes(partitionName)) {
+        // 找到分区卡片，保存其 ID
+        taskConfig.savePartitionCard(partitionName, child.noteId);
+        return child;
+      }
+    }
+
+    // 创建新的分区卡片
+    const partitionNote = MNNote.new({
+      title: `${partitionEmoji} ${partitionName}`,
+      colorIndex: 12 // 淡紫色
+    });
+
+    // 添加分区说明
+    this.addFieldComment(partitionNote, `分区：${partitionName}`, partitionEmoji);
+    partitionNote.appendTextComment(`创建时间：${new Date().toLocaleString('zh-CN')}`);
+
+    // 将分区卡片添加为根节点的子卡片
+    rootNote.addChild(partitionNote);
+
+    // 保存分区卡片 ID
+    taskConfig.savePartitionCard(partitionName, partitionNote.noteId);
+
+    MNUtil.showHUD(`已创建分区：${partitionName}`);
+    return partitionNote;
+  }
+
+  /**
+   * 创建筛选结果卡片
+   */
+  static createFilterResultCard(partitionNote, filterName, filteredNotes) {
+    if (!partitionNote || !filteredNotes || filteredNotes.length === 0) {
+      return null;
+    }
+
+    // 创建筛选结果卡片
+    const resultNote = MNNote.new({
+      title: `📋 ${filterName} (${filteredNotes.length}个)`,
+      colorIndex: 13 // 浅黄色
+    });
+
+    // 添加筛选信息
+    this.addFieldComment(resultNote, `筛选：${filterName}`, "🔍");
+    resultNote.appendTextComment(`筛选时间：${new Date().toLocaleString('zh-CN')}`);
+    resultNote.appendTextComment(`任务数量：${filteredNotes.length}`);
+
+    // 添加一个分隔符
+    resultNote.appendMarkdownComment("---");
+
+    // 添加所有筛选出的任务链接
+    filteredNotes.forEach((note, index) => {
+      // 获取任务标题和状态
+      const title = note.noteTitle || "未命名任务";
+      const status = this.getTaskStatus(note) || "未知";
+      
+      // 添加带序号的任务链接
+      resultNote.appendNoteLink(note, `${index + 1}. ${title} [${status}]`);
+    });
+
+    // 将结果卡片添加到分区卡片下
+    partitionNote.addChild(resultNote);
+
+    return resultNote;
+  }
+
+  /**
+   * 获取任务状态
+   */
+  static getTaskStatus(note) {
+    if (!note || !note.comments) return null;
+    
+    // 查找状态评论
+    const statusIndex = note.getIncludingCommentIndex("状态：");
+    if (statusIndex !== -1) {
+      const statusComment = note.comments[statusIndex];
+      if (statusComment.text) {
+        // 提取状态文本
+        const match = statusComment.text.match(/状态：(.+)/);
+        if (match) {
+          return match[1].trim();
+        }
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * 执行筛选并将结果保存到分区
+   * @param {string} filterName - 筛选名称
+   * @param {Array} filteredNotes - 筛选出的笔记数组
+   * @param {Object} context - 执行上下文，包含 self 等信息
+   * @returns {MNNote} 创建的筛选结果卡片
+   */
+  static executeFilterWithPartition(filterName, filteredNotes, context) {
+    if (!filteredNotes || filteredNotes.length === 0) {
+      MNUtil.showHUD("没有找到匹配的任务");
+      return null;
+    }
+
+    // 获取根节点
+    const rootNoteId = taskConfig.getRootNoteId();
+    if (!rootNoteId) {
+      MNUtil.showHUD("请先设置任务管理根目录");
+      return null;
+    }
+
+    const rootNote = MNNote.new(rootNoteId);
+    if (!rootNote) {
+      MNUtil.showHUD("任务管理根目录无效");
+      taskConfig.clearRootNoteId();
+      return null;
+    }
+
+    // 获取或创建筛选结果分区
+    const partitionNote = this.getOrCreatePartitionCard(rootNote, "筛选结果", "🔍");
+    if (!partitionNote) {
+      return null;
+    }
+
+    // 创建筛选结果卡片
+    const resultCard = this.createFilterResultCard(partitionNote, filterName, filteredNotes);
+    
+    if (resultCard) {
+      // 在浮动脑图中显示结果
+      resultCard.focusInFloatMindMap(0.5);
+      MNUtil.showHUD(`找到 ${filteredNotes.length} 个${filterName}`);
+    }
+
+    return resultCard;
+  }
 }
 
 

@@ -1191,18 +1191,28 @@ taskSettingController.prototype.settingViewLayout = function (){
     }
 
 
-    let settingFrame = this.settingView.bounds
-    settingFrame.x = 0
-    settingFrame.y = 15
-    settingFrame.height = 40
-    settingFrame.width = settingFrame.width
-    this.tabView.frame = settingFrame
-    taskFrame.set(this.configButton, 5, 5)
-    taskFrame.set(this.dynamicButton, this.configButton.frame.x + this.configButton.frame.width+5, 5)
-    taskFrame.set(this.popupButton, this.dynamicButton.frame.x + this.dynamicButton.frame.width+5, 5)
-    taskFrame.set(this.advancedButton, this.popupButton.frame.x + this.popupButton.frame.width+5, 5)
-    taskFrame.set(this.taskBoardButton, this.advancedButton.frame.x + this.advancedButton.frame.width+5, 5)
-    taskFrame.set(this.closeButton, width-35, 5)
+    // tabView 在顶部工具栏区域
+    let tabViewFrame = {
+      x: 0,
+      y: 20,  // 在 moveButton 下方
+      width: width - 45,  // 为关闭按钮预留45像素空间
+      height: 30
+    }
+    this.tabView.frame = tabViewFrame
+    
+    // 设置 tabView 内部的按钮
+    taskFrame.set(this.configButton, 5, 0)
+    taskFrame.set(this.dynamicButton, this.configButton.frame.x + this.configButton.frame.width+5, 0)
+    taskFrame.set(this.popupButton, this.dynamicButton.frame.x + this.dynamicButton.frame.width+5, 0)
+    taskFrame.set(this.advancedButton, this.popupButton.frame.x + this.popupButton.frame.width+5, 0)
+    taskFrame.set(this.taskBoardButton, this.advancedButton.frame.x + this.advancedButton.frame.width+5, 0)
+    
+    // 关闭按钮与 tabView 对齐
+    taskFrame.set(this.closeButton, tabViewFrame.width + 5, tabViewFrame.y)
+    
+    // 设置 tabView 的 contentSize，使按钮可以横向滚动
+    const tabContentWidth = this.taskBoardButton.frame.x + this.taskBoardButton.frame.width + 10;
+    this.tabView.contentSize = {width: tabContentWidth, height: 30}
     let scrollHeight = 5
     if (MNUtil.appVersion().type === "macOS") {
       for (let i = 0; i < taskConfig.allPopupButtons.length; i++) {
@@ -1257,7 +1267,15 @@ try {
   this.creatView("settingView","view","#ffffff",0.8)
   this.settingView.hidden = true
   // this.settingView.layer.opacity = 0.8
-  this.creatView("tabView","view","#9bb2d6",0.0)
+  this.createScrollView("tabView","view")
+  this.tabView.layer.backgroundColor = MNUtil.hexColorAlpha("#9bb2d6",0.0)
+  this.tabView.alwaysBounceHorizontal = true
+  this.tabView.alwaysBounceVertical = false  // 禁用垂直滚动
+  this.tabView.bounces = true  // 保持弹性效果
+  this.tabView.scrollEnabled = true  // 启用滚动
+  this.tabView.directionalLockEnabled = true  // 锁定滚动方向
+  this.tabView.showsHorizontalScrollIndicator = false
+  this.tabView.showsVerticalScrollIndicator = false
   this.creatView("configView","settingView","#9bb2d6",0.0)
 
   this.creatView("popupEditView","settingView","#9bb2d6",0.0)
@@ -1302,7 +1320,7 @@ try {
   this.taskBoardButton.height = 30
   this.taskBoardButton.selected = false
 
-  this.createButton("closeButton","closeButtonTapped:","tabView")
+  this.createButton("closeButton","closeButtonTapped:","view")
   MNButton.setConfig(this.closeButton, {color:"#e06c75",alpha:0.9,opacity:1.0,radius:10,bold:true})
   MNButton.setImage(this.closeButton, MNUtil.getImage(taskConfig.mainPath+"/stop.png"))
   this.closeButton.width = 30
@@ -1532,7 +1550,8 @@ try {
   this.createButton("rootNoteLabel","","taskBoardView")
   MNButton.setConfig(this.rootNoteLabel, {
     title:"Task Board Root Note ID:",
-    color:"transparent",
+    color:"#ffffff",
+    alpha:0.0,
     font:16,
     bold:true
   })

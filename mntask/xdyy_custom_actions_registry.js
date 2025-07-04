@@ -989,26 +989,37 @@ function registerAllCustomActions() {
       return;
     }
     
-    // 两步输入：先输入总页数，再输入每个任务的页数
+    // 两步输入：先输入页码范围，再输入每个任务的页数
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "按页数拆分任务",
-      "请输入总页数",
+      "请输入页码范围（例如：51-100）",
       2,
       "取消",
       ["下一步"],
       (alert, buttonIndex) => {
         if (buttonIndex === 1) {
-          const totalPages = parseInt(alert.textFieldAtIndex(0).text);
+          const rangeText = alert.textFieldAtIndex(0).text;
+          const match = rangeText.match(/^(\d+)\s*-\s*(\d+)$/);
           
-          if (isNaN(totalPages) || totalPages <= 0) {
-            MNUtil.showHUD("请输入有效的页数");
+          if (!match) {
+            MNUtil.showHUD("格式错误，请输入如 51-100 的格式");
             return;
           }
+          
+          const startPage = parseInt(match[1]);
+          const endPage = parseInt(match[2]);
+          
+          if (startPage <= 0 || endPage <= 0 || startPage > endPage) {
+            MNUtil.showHUD("页码范围无效");
+            return;
+          }
+          
+          const totalPages = endPage - startPage + 1;
           
           // 第二步：输入每个任务的页数
           UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
             "设置任务页数",
-            "每个任务包含多少页？",
+            `页码范围：${startPage}-${endPage}（共${totalPages}页）\n每个任务包含多少页？`,
             2,
             "取消",
             ["确定"],
@@ -1023,7 +1034,7 @@ function registerAllCustomActions() {
                 
                 MNUtil.undoGrouping(() => {
                   try {
-                    const subtasks = MNTaskManager.splitTaskByPages(focusNote, totalPages, pagesPerTask);
+                    const subtasks = MNTaskManager.splitTaskByPages(focusNote, startPage, endPage, pagesPerTask);
                     MNUtil.showHUD(`✅ 已创建 ${subtasks.length} 个页数任务`);
                     focusNote.refresh();
                   } catch (error) {

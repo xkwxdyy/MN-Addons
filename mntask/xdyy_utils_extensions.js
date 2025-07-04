@@ -786,18 +786,20 @@ class MNTaskManager {
   /**
    * 按页数拆分任务
    * @param {MNNote} parentNote - 父任务笔记
-   * @param {number} totalPages - 总页数
+   * @param {number} startPageNum - 起始页数
+   * @param {number} endPageNum - 结束页数
    * @param {number} pagesPerTask - 每个任务的页数
    * @returns {Array<MNNote>} 创建的子任务数组
    */
-  static splitTaskByPages(parentNote, totalPages, pagesPerTask) {
+  static splitTaskByPages(parentNote, startPageNum, endPageNum, pagesPerTask) {
     const subtasks = [];
+    const totalPages = endPageNum - startPageNum + 1;
     const taskCount = Math.ceil(totalPages / pagesPerTask);
     
     MNUtil.undoGrouping(() => {
       for (let i = 0; i < taskCount; i++) {
-        const startPage = i * pagesPerTask + 1;
-        const endPage = Math.min((i + 1) * pagesPerTask, totalPages);
+        const startPage = startPageNum + (i * pagesPerTask);
+        const endPage = Math.min(startPage + pagesPerTask - 1, endPageNum);
         
         const childNote = MNNote.new({
           title: `第${startPage}-${endPage}页`,
@@ -823,7 +825,7 @@ class MNTaskManager {
       }
       
       // 更新父任务信息
-      parentNote.appendTextComment(`总页数：${totalPages}页`);
+      parentNote.appendTextComment(`页码范围：${startPageNum}-${endPageNum}页 (共${totalPages}页)`);
       parentNote.appendTextComment(`子任务数量：${subtasks.length}`);
     });
     

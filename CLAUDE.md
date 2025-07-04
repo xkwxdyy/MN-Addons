@@ -155,6 +155,34 @@ MarginNote4 使用 16 色索引系统（0-15），从淡黄色到紫色的完整
 - UIKit/AppKit
 - WebView (HTML/CSS)
 
+### API 使用注意事项
+
+#### ⚠️ API 使用以源码为准（极其重要）
+
+**虽然 `mnutils/MNUTILS_API_GUIDE.md` 文档很有参考价值，但一切以实际源码 `mnutils.js` 和 `xdyyutils.js` 为准！**
+
+文档可能存在以下情况：
+- 遗漏某些方法（如 `getIncludingCommentIndex`）
+- 方法名称或参数有误
+- 版本更新后文档未及时同步
+
+正确的 API 使用流程：
+1. 先查阅文档了解大概
+2. **在源码中搜索确认方法是否存在**
+3. 查看方法的实际实现和参数
+
+示例：查找包含特定文本的评论
+```javascript
+// 文档中可能没有提到，但 xdyyutils.js 中存在
+const index = note.getIncludingCommentIndex("状态：");  // ✅ 正确
+
+// 其他可用的方法（在 xdyyutils.js 中）
+note.getIncludingHtmlCommentIndex("字段名")  // 查找包含文本的 HTML 评论
+note.getTextCommentsIndexArr("完整文本")     // 获取所有匹配的文本评论索引数组
+```
+
+**记住**：源码是最终的真相！遇到问题时直接在 `mnutils.js` 和 `xdyyutils.js` 中搜索。
+
 ### JavaScript 语法支持
 
 基于对 mnutils、mntoolbar 和 mnai 源码的深入分析，JSBox/JSB 框架完全支持现代 ES6+ 语法特性：

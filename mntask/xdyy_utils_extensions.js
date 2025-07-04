@@ -1710,8 +1710,6 @@ function initXDYYExtensions() {
           parentNote.moveComment(noteIdInParentNote, parentNote.comments.length - 1)
         }
       }
-    } else {
-      MNUtil.log("⚠️ 笔记没有父卡片，跳过链接处理");
     }
 
     note.refresh()
@@ -3310,7 +3308,5 @@ try {
     extendTaskConfigInit();
   }
 } catch (error) {
-  if (typeof MNUtil !== "undefined" && MNUtil.log) {
-    MNUtil.log("❌ 加载扩展失败: " + error);
-  }
+  // 静默处理错误
 }

@@ -88,10 +88,8 @@ const getTaskSettingController = ()=>self
 var taskSettingController = JSB.defineClass('taskSettingController : UIViewController <NSURLConnectionDelegate,UIImagePickerControllerDelegate,UIWebViewDelegate>', {
   viewDidLoad: function() {
     let self = getTaskSettingController()
-    MNUtil.log("🔍 viewDidLoad called")
 try {
     self.init()
-    MNUtil.log("🔍 After init, self.viewManager = ", self.viewManager)
     taskFrame.set(self.view,50,50,355,500)
     self.lastFrame = self.view.frame;
     self.currentFrame = self.view.frame
@@ -486,15 +484,9 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     self.viewManager.switchTo('popup')
   },
   configButtonTapped: function (params) {
-    MNUtil.log("🔍 configButtonTapped called")
     let self = getTaskSettingController()
-    MNUtil.log("🔍 self = ", self)
-    MNUtil.log("🔍 self.viewManager = ", self.viewManager)
     if (self.viewManager) {
-      MNUtil.log("🔍 Calling viewManager.switchTo('config')")
       self.viewManager.switchTo('config')
-    } else {
-      MNUtil.log("❌ viewManager is undefined!")
     }
   },
   dynamicButtonTapped: async function (params) {
@@ -1190,7 +1182,6 @@ taskSettingController.prototype.init = function () {
   this.searchedText = '';
   
   // 初始化 viewManager
-  MNUtil.log("🔍 Initializing viewManager...")
   this.initViewManager();
 }
 
@@ -1200,7 +1191,6 @@ taskSettingController.prototype.init = function () {
  * @this {taskSettingController}
  */
 taskSettingController.prototype.initViewManager = function() {
-  MNUtil.log("🔍 Creating viewManager on instance...")
   const self = this;
   
   this.viewManager = {
@@ -1268,14 +1258,11 @@ taskSettingController.prototype.initViewManager = function() {
     
     // 切换到指定视图
     switchTo: function(viewName) {
-      MNUtil.log("🔍 viewManager.switchTo called with: " + viewName)
       const viewConfig = self.viewManager.views[viewName]
       
       if (!viewConfig) {
-        MNUtil.log("❌ Unknown view: " + viewName)
         return
       }
-      MNUtil.log("🔍 Found viewConfig for " + viewName + ": ", viewConfig)
       
       // 如果有前置检查，执行并判断是否继续
       if (viewConfig.onShow) {
@@ -1315,8 +1302,6 @@ taskSettingController.prototype.initViewManager = function() {
       delete self.viewManager.views[name]
     }
   }
-  
-  MNUtil.log("🔍 viewManager created successfully: ", this.viewManager)
 }
 
 taskSettingController.prototype.changeButtonOpacity = function(opacity) {

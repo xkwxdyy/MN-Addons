@@ -19,9 +19,6 @@ MNTaskGlobal.customMenuTemplates = {};
  */
 MNTaskGlobal.registerMenuTemplate = function(name, template) {
   MNTaskGlobal.customMenuTemplates[name] = template;
-  if (typeof MNUtil !== "undefined" && MNUtil.log) {
-    MNUtil.log(`📦 [MNTask] 已注册菜单模板: ${name}`);
-  }
 };
 
 /**
@@ -595,10 +592,6 @@ function registerAllMenuTemplates() {
       }
     ]
   });
-  
-  if (typeof MNUtil !== "undefined" && MNUtil.log) {
-    MNUtil.log(`🚀 已注册 ${Object.keys(MNTaskGlobal.customMenuTemplates).length} 个自定义菜单模板`);
-  }
 }
 
 // 扩展 taskConfig.template 方法
@@ -627,10 +620,6 @@ if (typeof taskConfig !== 'undefined') {
     // 默认返回
     return undefined;
   };
-  
-  if (typeof MNUtil !== "undefined" && MNUtil.log) {
-    MNUtil.log("✅ taskConfig.template 方法已扩展，支持自定义菜单模板");
-  }
 }
 
 // 立即注册所有菜单模板

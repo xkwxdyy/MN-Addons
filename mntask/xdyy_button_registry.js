@@ -3,12 +3,6 @@
  * 用于解耦按钮配置，避免修改 utils.js
  */
 
-// 调试：检查加载状态
-if (typeof MNUtil !== "undefined" && MNUtil.log) {
-  MNUtil.log("🔧 开始加载 xdyy_button_registry.js");
-  MNUtil.log(`🔍 taskConfig 是否存在: ${typeof taskConfig !== 'undefined'}`);
-}
-
 // 创建 MNTask 专用命名空间，避免与 MNToolbar 冲突
 if (typeof MNTaskGlobal === 'undefined') {
   var MNTaskGlobal = {};
@@ -24,9 +18,6 @@ MNTaskGlobal.customButtons = {};
  */
 MNTaskGlobal.registerButton = function(key, config) {
   MNTaskGlobal.customButtons[key] = config;
-  if (typeof MNUtil !== "undefined" && MNUtil.log) {
-    MNUtil.log(`📦 [MNTask] 已注册按钮: ${key}`);
-  }
 };
 
 /**
@@ -95,23 +86,12 @@ function registerAllButtons() {
     templateName: "menu_action_board"
   });
 
-  
-  if (typeof MNUtil !== "undefined" && MNUtil.log) {
-    MNUtil.log(`🚀 已注册 ${Object.keys(MNTaskGlobal.customButtons).length} 个自定义按钮`);
-  }
 }
 
 // 扩展 taskConfig 的函数
 function extendTaskConfig() {
   if (typeof taskConfig === 'undefined') {
-    if (typeof MNUtil !== "undefined" && MNUtil.log) {
-      MNUtil.log("⚠️ taskConfig 还未定义，等待初始化");
-    }
     return false;
-  }
-  
-  if (typeof MNUtil !== "undefined" && MNUtil.log) {
-    MNUtil.log("🚀 开始扩展 taskConfig.getActions 方法");
   }
   
   // 保存原始的 getActions 方法（如果还没保存）
@@ -157,10 +137,6 @@ function extendTaskConfig() {
     return allActions;
   };
   
-  if (typeof MNUtil !== "undefined" && MNUtil.log) {
-    MNUtil.log("✅ taskConfig.getActions 方法已扩展，支持自定义按钮");
-  }
-  
   return true;
 }
 
@@ -193,12 +169,6 @@ function forceRefreshButtons() {
     taskConfig.dynamicAction = customKeys.concat(taskConfig.dynamicAction);
   }
   
-  if (typeof MNUtil !== "undefined" && MNUtil.log) {
-    MNUtil.log(`🔄 强制刷新按钮配置完成，共 ${Object.keys(newActions).length} 个按钮`);
-    MNUtil.log(`📍 action 数组: ${taskConfig.action.slice(0, 10).join(', ')}...`);
-    MNUtil.log(`📍 dynamicAction 数组: ${taskConfig.dynamicAction.slice(0, 10).join(', ')}...`);
-  }
-  
   // 发送刷新通知
   if (typeof MNUtil !== "undefined" && MNUtil.postNotification) {
     MNUtil.postNotification("refreshTaskButton", {});
@@ -214,9 +184,7 @@ extendTaskConfig();
 try {
   registerAllButtons();
 } catch (error) {
-  if (typeof MNUtil !== "undefined" && MNUtil.log) {
-    MNUtil.log(`❌ 注册按钮时出错: ${error.message}`);
-  }
+  // 静默处理错误
 }
 
 // 导出全局函数（使用 MNTaskGlobal）
@@ -239,10 +207,6 @@ if (typeof MNUtil !== 'undefined' && MNUtil.addObserver) {
   // 创建一个临时对象来接收通知
   const observer = {
     onTaskConfigInit: function() {
-      if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log("📢 收到 taskConfig 初始化通知");
-      }
-      
       // 延迟一点确保初始化完成
       setTimeout(function() {
         if (extendTaskConfig()) {
@@ -277,9 +241,6 @@ if (typeof setTimeout !== 'undefined') {
 if (typeof taskConfig !== 'undefined' && taskConfig.getActions) {
   try {
     forceRefreshButtons();
-    if (typeof MNUtil !== "undefined" && MNUtil.log) {
-      MNUtil.log("🔄 立即强制刷新按钮配置");
-    }
   } catch (error) {
     // 静默处理
   }

@@ -5742,7 +5742,6 @@ class MNTaskManager {
           }
         } catch (e) {
           // 如果还是不行，使用简单的处理方式
-          MNUtil.log("MNMath 不可用，使用简单处理方式")
         }
       }
     }
@@ -5877,6 +5876,33 @@ class MNTaskManager {
       note.noteTitle = newTitle
       note.colorIndex = colorIndex
     })
+  }
+
+  /**
+   * 移动卡片到指定父卡片下
+   * @param {MNNote} sourceNote - 要移动的卡片
+   * @param {MNNote} targetNote - 目标父卡片
+   */
+  static moveTo(sourceNote, targetNote) {
+    if (!sourceNote || !targetNote) {
+      return false
+    }
+    
+    try {
+      MNUtil.undoGrouping(() => {
+        // 将源卡片添加为目标卡片的子卡片
+        targetNote.addChild(sourceNote)
+        
+        // 如果是任务卡片，更新路径
+        if (this.isTaskCard(sourceNote)) {
+          this.updateTaskPath(sourceNote)
+        }
+      })
+      
+      return true
+    } catch (error) {
+      return false
+    }
   }
 }
 

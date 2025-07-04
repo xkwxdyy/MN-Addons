@@ -30,34 +30,24 @@ MNTaskGlobal.registerCustomAction = function (actionName, handler) {
  * @returns {boolean} - 是否成功执行
  */
 MNTaskGlobal.executeCustomAction = async function (actionName, context) {
-  MNUtil.log(`🚀 MNTaskGlobal.executeCustomAction - 执行自定义 action: ${actionName}`);
-  MNUtil.log(`📋 注册的 actions: ${Object.keys(MNTaskGlobal.customActions).join(', ')}`);
-  
   if (actionName in MNTaskGlobal.customActions) {
-    MNUtil.log(`✅ 找到 action: ${actionName}`);
     try {
-      MNUtil.log(`⏳ 开始执行 ${actionName}...`);
       await MNTaskGlobal.customActions[actionName](context);
-      MNUtil.log(`✅ ${actionName} 执行成功`);
       return true;
     } catch (error) {
       MNUtil.log(`❌ 执行 ${actionName} 失败: ${error.message || error}`);
-      MNUtil.log(`📍 错误堆栈: ${error.stack || 'no stack'}`);
       MNUtil.showHUD(`执行失败: ${error.message || error}`);
       return false;
     }
   }
   
   MNUtil.log(`❌ 未找到自定义 action: ${actionName}`);
-  MNUtil.log(`📋 可用的 actions: ${Object.keys(MNTaskGlobal.customActions).join(', ')}`);
   return false;
 };
 
 
 // 注册所有自定义 actions
 function registerAllCustomActions() {
-  MNUtil.log("🔧 开始注册所有自定义 actions");
-  
   // taskCardMake - 智能任务制卡
   MNTaskGlobal.registerCustomAction("taskCardMake", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
@@ -110,8 +100,42 @@ function registerAllCustomActions() {
         newStatus = "已完成";
         break;
       case "已完成":
-        // 暂时保持不变
-        MNUtil.showHUD("任务已完成");
+        // 询问是否归档
+        try {
+          const buttonIndex = await MNUtil.confirm("任务归档", "是否将已完成的任务归档？");
+          
+          if (buttonIndex !== 1) {
+            // 用户点击取消（buttonIndex === 0）
+            return;
+          }
+          
+          // 用户点击确认（buttonIndex === 1），执行归档
+          const completedBoardId = taskConfig.getBoardNoteId('completed');
+          
+          if (!completedBoardId) {
+            MNUtil.showHUD("请先在设置中配置已完成归档区");
+            return;
+          }
+          
+          // 获取归档区笔记
+          const completedBoardNote = MNNote.new(completedBoardId);
+          if (!completedBoardNote) {
+            MNUtil.showHUD("无法找到已完成归档区");
+            return;
+          }
+          
+          // 移动到归档区
+          MNUtil.undoGrouping(() => {
+            const success = MNTaskManager.moveTo(focusNote, completedBoardNote);
+            if (success) {
+              MNUtil.showHUD("✅ 任务已归档");
+            } else {
+              MNUtil.showHUD("❌ 归档失败");
+            }
+          });
+        } catch (error) {
+          MNUtil.showHUD(`归档失败: ${error.message || error}`);
+        }
         return;
       default:
         MNUtil.showHUD("未知的任务状态");
@@ -205,17 +229,13 @@ function registerAllCustomActions() {
   MNTaskGlobal.registerCustomAction("openTasksFloatMindMap", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     
-    MNUtil.log("🔍 openTasksFloatMindMap - 开始执行");
-    
     // 获取保存的根目录 ID
     const savedRootNoteId = taskConfig.getRootNoteId();
-    MNUtil.log(`📌 保存的根目录 ID: ${savedRootNoteId || 'null'}`);
     
     if (savedRootNoteId) {
       // 验证卡片是否存在
       const rootNote = MNNote.new(savedRootNoteId);
       if (rootNote) {
-        MNUtil.log("✅ 根目录卡片存在，打开浮动脑图");
         // 设置任务管理看板样式
         MNUtil.undoGrouping(() => {
           rootNote.noteTitle = rootNote.noteTitle || "📊 任务管理看板";
@@ -225,14 +245,11 @@ function registerAllCustomActions() {
           }
         });
         rootNote.focusInFloatMindMap(0.5);
-        MNUtil.log("✅ 浮动脑图已打开");
       } else {
-        MNUtil.log("❌ 保存的根目录卡片不存在");
         taskConfig.clearRootNoteId();
         MNUtil.showHUD("❌ 根目录卡片不存在，请在设置中重新配置");
       }
     } else {
-      MNUtil.log("ℹ️ 未设置根目录");
       MNUtil.showHUD("请先在设置中配置任务管理根目录\n设置 → Task Board → Paste");
     }
   });
@@ -242,8 +259,6 @@ function registerAllCustomActions() {
     const { button, des, focusNote, focusNotes, self } = context;
     
     try {
-      MNUtil.log("🎯 开始执行 OKR 制卡流");
-      
       if (!focusNotes || focusNotes.length === 0) {
         MNUtil.showHUD("请先选择一个笔记");
         return;
@@ -252,18 +267,13 @@ function registerAllCustomActions() {
       MNUtil.undoGrouping(() => {
         focusNotes.forEach((focusNote) => {
           try {
-            MNUtil.log(`处理笔记: ${focusNote.noteTitle || "无标题"}`);
             taskUtils.OKRNoteMake(focusNote);
           } catch (error) {
-            MNUtil.log(`❌ OKR 制卡失败: ${error.message}`);
             MNUtil.showHUD(`制卡失败: ${error.message}`);
           }
         });
       });
-      
-      MNUtil.log("✅ OKR 制卡流执行完成");
     } catch (error) {
-      MNUtil.log(`❌ OKR 制卡流执行失败: ${error.message}`);
       MNUtil.addErrorLog(error, "OKRNoteMake", context);
       MNUtil.showHUD(`执行失败: ${error.message}`);
     }
@@ -274,7 +284,6 @@ function registerAllCustomActions() {
     const { button, des, focusNote, focusNotes, self } = context;
     
     try {
-      MNUtil.log("🔙 开始执行 OKR 任务回退");
       
       if (!focusNotes || focusNotes.length === 0) {
         MNUtil.showHUD("请先选择一个笔记");
@@ -284,18 +293,13 @@ function registerAllCustomActions() {
       MNUtil.undoGrouping(() => {
         focusNotes.forEach((focusNote) => {
           try {
-            MNUtil.log(`回退笔记: ${focusNote.noteTitle || "无标题"}`);
             taskUtils.OKRNoteMake(focusNote, true);  // undoStatus = true
           } catch (error) {
-            MNUtil.log(`❌ OKR 回退失败: ${error.message}`);
             MNUtil.showHUD(`回退失败: ${error.message}`);
           }
         });
       });
-      
-      MNUtil.log("✅ OKR 任务回退完成");
     } catch (error) {
-      MNUtil.log(`❌ OKR 任务回退失败: ${error.message}`);
       MNUtil.addErrorLog(error, "undoOKRNoteMake", context);
       MNUtil.showHUD(`回退失败: ${error.message}`);
     }
@@ -2325,10 +2329,7 @@ function registerAllCustomActions() {
 
 // 立即注册
 try {
-  MNUtil.log("🚀 xdyy_custom_actions_registry.js - 开始执行");
   registerAllCustomActions();
-  MNUtil.log(`✅ 自定义 actions 注册完成，共注册 ${Object.keys(MNTaskGlobal.customActions).length} 个 actions`);
-  MNUtil.log(`📋 已注册的 actions: ${Object.keys(MNTaskGlobal.customActions).join(', ')}`);
 } catch (error) {
   // 静默处理错误，避免影响主功能
   MNUtil.log(`❌ 注册自定义 actions 时出错: ${error.message || error}`);

@@ -1,5 +1,5 @@
 {
-  "currentState": "memory_saved",
+  "currentState": "recalled-JSB框架",
   "stateHistory": [
     {
       "from": "initial",
@@ -40,7 +40,25 @@
         "--tags",
         "MNTask UI布局 ScrollView iOS开发 MarginNote插件"
       ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "remember",
+      "timestamp": "2025-07-04T14:44:39.873Z",
+      "args": [
+        "JSB 框架类定义陷阱 - MN-Addon 项目重要经验\n\n问题：在 JSB.defineClass 中直接定义对象属性会导致该属性成为\"类属性\"而非\"实例属性\"，导致实例无法访问。\n\n症状：\n- self.viewManager 显示为 undefined\n- 按钮点击没有反应\n- 大型对象属性无法访问\n\n错误示例：\n```javascript\nvar Controller = JSB.defineClass('Controller', {\n  viewManager: {  // ❌ 错误：成为类属性\n    switchTo: function() {}\n  }\n})\n```\n\n正确做法：\n```javascript\n// 1. 在 prototype 上定义初始化方法\nController.prototype.initViewManager = function() {\n  this.viewManager = {  // ✅ 创建实例属性\n    switchTo: function() {}\n  }\n}\n\n// 2. 在 init 中调用\nController.prototype.init = function() {\n  this.initViewManager()\n}\n```\n\n重要规则：在 JSB.defineClass 中，只能定义方法（函数），不能定义对象属性！所有对象属性必须在实例初始化时创建。\n\n相关文件：\n- /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask/settingController.js\n- /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask/VIEWMANAGER_GUIDE.md\n- /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/CLAUDE.md",
+        "--tags",
+        "JSB框架 MarginNote 类定义 实例属性 viewManager 调试经验"
+      ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "recall",
+      "timestamp": "2025-07-04T14:44:58.308Z",
+      "args": [
+        "JSB框架"
+      ]
     }
   ],
-  "lastUpdated": "2025-07-04T14:08:05.713Z"
+  "lastUpdated": "2025-07-04T14:44:58.316Z"
 }

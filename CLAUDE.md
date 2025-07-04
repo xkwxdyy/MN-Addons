@@ -610,15 +610,20 @@ JSB.defineClass("YourPlugin : JSExtension", {
    - 错误做法：在方法内使用 `let self = this` 或 `var self = this`
    - 正确做法：定义 `const getInstanceName = () => self`，然后使用 `let self = getInstanceName()`
 
-3. **作用域问题**
+3. **类定义 vs 实例属性陷阱（极其重要）**
+   - 问题：在 JSB.defineClass 中直接定义对象属性导致该属性成为"类属性"而非"实例属性"
+   - 症状：属性显示为 undefined，特别是大型对象如 viewManager
+   - 解决：必须在 prototype 上定义初始化方法，在实例化后创建对象属性
+
+4. **作用域问题**
    - 错误：在工具类中直接引用其他控制器类（如 `panelController.new()`）
    - 正确：将控制器管理方法放在插件主类中，或确保引用时类已加载
 
-4. **生命周期方法错误**
+5. **生命周期方法错误**
    - 错误：在 `JSB.defineClass` 内部定义 `init` 方法
    - 正确：使用 `prototype.init` 扩展原型方法
 
-5. **菜单处理错误**
+6. **菜单处理错误**
    - 始终检查 `sender.userInfo.menuController` 是否存在
    - 对所有外部输入进行防御性编程
 
@@ -635,6 +640,57 @@ JSB.defineClass("YourPlugin : JSExtension", {
 3. **版本管理**
    - 每次修改都更新 `mnaddon.json` 中的版本号
    - 便于识别加载的是哪个版本
+
+### JSB 框架类定义陷阱（极其重要）
+
+在 JSB.defineClass 中直接定义对象属性会导致意外的问题。
+
+#### ❌ 错误示例（导致属性 undefined）
+```javascript
+var MyController = JSB.defineClass('MyController', {
+  viewDidLoad: function() {
+    let self = getInstance()
+    self.manager.doSomething()  // ❌ self.manager 是 undefined！
+  },
+  
+  // ❌ 错误：这会成为类属性，不是实例属性
+  manager: {
+    doSomething: function() { /* ... */ }
+  }
+})
+```
+
+#### ✅ 正确做法
+```javascript
+// 1. 在 prototype 上定义初始化方法
+MyController.prototype.init = function() {
+  this.initManager()  // 初始化实例属性
+}
+
+MyController.prototype.initManager = function() {
+  this.manager = {  // 创建实例属性
+    doSomething: function() { /* ... */ }
+  }
+}
+
+// 2. 在 viewDidLoad 中调用 init
+var MyController = JSB.defineClass('MyController', {
+  viewDidLoad: function() {
+    let self = getInstance()
+    self.init()  // 初始化
+    self.manager.doSomething()  // ✅ 现在可以正常工作
+  }
+})
+```
+
+#### 💡 重要规则
+**在 JSB.defineClass 中，只能定义方法（函数），不能定义对象属性！所有对象属性必须在实例初始化时创建。**
+
+#### 常见应用场景
+- viewManager（视图管理器）
+- dataManager（数据管理器）
+- eventHandlers（事件处理器集合）
+- config（配置对象）
 
 ### 注释中的语法陷阱（极其重要）
 

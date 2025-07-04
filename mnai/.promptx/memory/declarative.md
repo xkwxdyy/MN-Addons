@@ -150,3 +150,46 @@ tabView.contentSize.height = tabView.frame.height
 - 典型层级：view → [moveButton, tabView, closeButton, settingView] --tags MNTask UI布局 ScrollView iOS开发 MarginNote插件
 --tags #其他 #评分:8 #有效期:长期
 - END
+
+- 2025/07/04 22:44 START
+JSB 框架类定义陷阱 - MN-Addon 项目重要经验
+
+问题：在 JSB.defineClass 中直接定义对象属性会导致该属性成为"类属性"而非"实例属性"，导致实例无法访问。
+
+症状：
+- self.viewManager 显示为 undefined
+- 按钮点击没有反应
+- 大型对象属性无法访问
+
+错误示例：
+```javascript
+var Controller = JSB.defineClass('Controller', {
+  viewManager: {  // ❌ 错误：成为类属性
+    switchTo: function() {}
+  }
+})
+```
+
+正确做法：
+```javascript
+// 1. 在 prototype 上定义初始化方法
+Controller.prototype.initViewManager = function() {
+  this.viewManager = {  // ✅ 创建实例属性
+    switchTo: function() {}
+  }
+}
+
+// 2. 在 init 中调用
+Controller.prototype.init = function() {
+  this.initViewManager()
+}
+```
+
+重要规则：在 JSB.defineClass 中，只能定义方法（函数），不能定义对象属性！所有对象属性必须在实例初始化时创建。
+
+相关文件：
+- /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask/settingController.js
+- /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask/VIEWMANAGER_GUIDE.md
+- /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/CLAUDE.md --tags JSB框架 MarginNote 类定义 实例属性 viewManager 调试经验
+--tags #最佳实践 #评分:8 #有效期:长期
+- END

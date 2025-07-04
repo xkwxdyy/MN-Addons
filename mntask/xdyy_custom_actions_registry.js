@@ -248,7 +248,7 @@ function registerAllCustomActions() {
         
         // 使用 MNTaskManager 创建任务
         const taskNote = MNTaskManager.createTask(focusNote, 'task', taskContent, {
-          tags: ["#今日"]
+          tags: ["今日"]
         });
         
         // 添加今日时间标签
@@ -295,13 +295,13 @@ function registerAllCustomActions() {
               
               // 使用 MNTaskManager 创建子任务
               const subtask = MNTaskManager.createTask(focusNote, taskType, subtaskName, {
-                tags: ["#子任务"]
+                tags: ["子任务"]
               });
               
               // 继承父任务的时间标签
               const parentTags = focusNote.tags || [];
               const timeTags = parentTags.filter(tag => 
-                tag.match(/^#\d{4}\/\d{2}\/\d{2}$/) || tag === "#今日"
+                tag.match(/^\d{4}\/\d{2}\/\d{2}$/) || tag === "今日"
               );
               if (timeTags.length > 0) {
                 subtask.appendTags(timeTags);
@@ -819,7 +819,7 @@ function registerAllCustomActions() {
         try {
           // 移除所有日期格式的标签和今日标签
           const timeTags = note.tags.filter(tag => 
-            tag.match(/^#\d{4}\/\d{2}\/\d{2}$/) || tag === "#今日" || tag === "#明日" || tag === "#本周"
+            tag.match(/^\d{4}\/\d{2}\/\d{2}$/) || tag === "今日" || tag === "明日" || tag === "本周"
           );
           
           if (timeTags.length > 0) {
@@ -894,11 +894,11 @@ function registerAllCustomActions() {
       }
       
       const filteredNotes = notebook.notes.filter(note => {
-        return note.tags && note.tags.includes(`#${tag}`);
+        return note.tags && note.tags.includes(tag);
       });
       
       // 使用分区管理系统处理筛选结果
-      MNTaskManager.executeFilterWithPartition(`#${tag} 任务`, filteredNotes, context);
+      MNTaskManager.executeFilterWithPartition(`${tag} 任务`, filteredNotes, context);
     }
   });
 

@@ -37,7 +37,7 @@ class MNTaskManager {
         "进度",
         "备注"
       ],
-      tags: ["#目标", "#OKR"]
+      tags: ["目标", "OKR"]
     },
     keyResult: {
       prefixName: 'KR',
@@ -56,7 +56,7 @@ class MNTaskManager {
         "截止日期",
         "相关任务"
       ],
-      tags: ["#关键结果", "#OKR"]
+      tags: ["关键结果", "OKR"]
     },
     project: {
       prefixName: 'P',
@@ -75,7 +75,7 @@ class MNTaskManager {
         "风险",
         "子任务"
       ],
-      tags: ["#项目"]
+      tags: ["项目"]
     },
     task: {
       prefixName: 'T',
@@ -94,7 +94,7 @@ class MNTaskManager {
         "实际时间",
         "阻塞因素"
       ],
-      tags: ["#任务"]
+      tags: ["任务"]
     }
   };
 
@@ -163,7 +163,7 @@ class MNTaskManager {
     if (options.addFields) {
       typeConfig.fields.forEach(field => {
         const fieldHtml = HtmlMarkdownUtils.createHtmlMarkdownText(field, "level2");
-        taskNote.appendHtmlComment(fieldHtml, field, 16, "level2");
+        taskNote.appendHtmlComment(fieldHtml, fieldHtml, 16, "level2");
       });
     }
 
@@ -338,7 +338,7 @@ class MNTaskManager {
     if (progressTags.length > 0) {
       note.removeTags(progressTags);
     }
-    note.appendTags([`#${percentage}%进度`]);
+    note.appendTags([`${percentage}%进度`]);
     
     // 如果进度达到100%，考虑自动更新状态
     if (percentage === 100 && note.colorIndex !== 5) {
@@ -364,7 +364,7 @@ class MNTaskManager {
     note.appendTags([dateTag]);
     
     if (isToday) {
-      note.appendTags(["#今日"]);
+      note.appendTags(["今日"]);
     }
   }
 
@@ -394,7 +394,7 @@ class MNTaskManager {
     MNUtil.undoGrouping(() => {
       subtaskNames.forEach((name, index) => {
         const subtask = this.createTask(parentNote, taskType, name, {
-          tags: ["#子任务"]
+          tags: ["子任务"]
         });
         
         // 继承父任务的时间标签
@@ -485,7 +485,7 @@ class MNTaskManager {
     MNUtil.undoGrouping(() => {
       keyResults.forEach((kr, index) => {
         const krNote = this.createTask(objectiveNote, 'keyResult', kr.name, {
-          tags: ["#OKR", "#关键结果"]
+          tags: ["OKR", "关键结果"]
         });
         
         // 添加衡量指标
@@ -863,7 +863,7 @@ class MNTaskManager {
         
         // 如果是番茄钟（25分钟），添加特殊标记
         if (minutes === 25) {
-          childNote.appendTags(['#番茄钟']);
+          childNote.appendTags(['番茄钟']);
         }
         
         // 添加到父任务

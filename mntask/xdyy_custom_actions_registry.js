@@ -776,7 +776,7 @@ function registerAllCustomActions() {
                 focusNote.removeTags(timeTags);
               }
               
-              focusNote.appendTags([`#${totalHours}小时`]);
+              focusNote.appendTags([`${totalHours}小时`]);
               focusNote.refresh();
               
               MNUtil.showHUD(`✅ 已记录 ${hours} 小时，累计 ${totalHours} 小时`);
@@ -829,18 +829,18 @@ function registerAllCustomActions() {
       
       switch(selectedIndex) {
         case 0: // 今日
-          targetTag = `#${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+          targetTag = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
           break;
         case 1: // 昨日
           const yesterday = new Date(today);
           yesterday.setDate(yesterday.getDate() - 1);
-          targetTag = `#${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+          targetTag = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
           break;
         case 2: // 本周
-          targetTag = "#本周";
+          targetTag = "本周";
           break;
         case 3: // 本月
-          targetTag = "#本月";
+          targetTag = "本月";
           break;
         case 4: // 自定义
           UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
@@ -853,7 +853,7 @@ function registerAllCustomActions() {
               if (buttonIndex === 1) {
                 const dateText = alert.textFieldAtIndex(0).text;
                 if (dateText.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                  targetTag = `#${dateText}`;
+                  targetTag = `${dateText}`;
                   performFilter(targetTag);
                 } else {
                   MNUtil.showHUD("日期格式错误");
@@ -875,13 +875,13 @@ function registerAllCustomActions() {
       }
       
       const filteredNotes = notebook.notes.filter(note => {
-        return note.tags && note.tags.includes(tag);
+        return note.tags && note.tags.includes(`#${tag}`);
       });
       
       if (filteredNotes.length > 0) {
         // 创建汇总笔记
         const summaryNote = MNNote.new({
-          title: `${tag} 任务汇总 (${filteredNotes.length}个)`,
+          title: `#${tag} 任务汇总 (${filteredNotes.length}个)`,
           colorIndex: 13
         });
         
@@ -906,16 +906,16 @@ function registerAllCustomActions() {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
       
-      const todayTag = `#${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      const tomorrowTag = `#${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+      const todayTag = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      const tomorrowTag = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
       
       focusNotes.forEach((note) => {
         try {
           // 移除今日相关标签
-          note.removeTags([todayTag, "#今日"]);
+          note.removeTags([todayTag, "今日"]);
           
           // 添加明天的标签
-          note.appendTags([tomorrowTag, "#明日"]);
+          note.appendTags([tomorrowTag, "明日"]);
           
           // 添加推迟记录
           note.appendTextComment(`推迟记录：从 ${today.toLocaleDateString()} 推迟到 ${tomorrow.toLocaleDateString()}`);

@@ -1,5 +1,5 @@
 {
-  "currentState": "recalled-JSB框架",
+  "currentState": "memory_saved",
   "stateHistory": [
     {
       "from": "initial",
@@ -58,7 +58,17 @@
       "args": [
         "JSB框架"
       ]
+    },
+    {
+      "from": "recalled-JSB框架",
+      "command": "remember",
+      "timestamp": "2025-07-04T16:23:04.142Z",
+      "args": [
+        "JSB 框架中的方法定义陷阱：事件处理方法必须在 JSB.defineClass 中定义，用于响应 UI 事件；通用/可复用方法应该定义在 prototype 上。在 JSB.defineClass 内部调用原型方法时，需要先获取实例（let self = getInstance()）。多看板管理架构：1. 通用组件创建函数在 prototype 上；2. 每个看板的事件处理方法在 JSB.defineClass 中；3. 通用操作逻辑在 prototype 上。",
+        "--tags",
+        "JSB框架 MarginNote 事件处理 原型方法 mntask 架构设计"
+      ]
     }
   ],
-  "lastUpdated": "2025-07-04T14:44:58.316Z"
+  "lastUpdated": "2025-07-04T16:23:04.153Z"
 }

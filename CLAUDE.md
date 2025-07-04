@@ -980,3 +980,91 @@ view (主视图, 坐标系原点)
 3. **预留空间**：固定元素需要在布局时预留空间
 
 > 💡 **提示**：开发前请先仔细阅读对应子项目的 CLAUDE.md 文件，它们包含了更详细的技术实现和规范要求。
+
+### JSB 框架中的方法定义陷阱（事件处理 vs 原型方法）
+
+在开发多看板绑定功能时发现的重要问题：JSB.defineClass 中定义的方法和 prototype 上定义的方法有本质区别。
+
+#### 问题描述
+使用通用函数创建的目标看板按钮点击无响应，而根目录看板的按钮正常工作。
+
+#### 错误示例
+```javascript
+// ❌ 错误：在 JSB.defineClass 中定义的对象内部调用其他方法
+JSB.defineClass('SettingController : UIViewController', {
+  // 事件处理方法
+  focusTargetBoard: function() {
+    this.focusBoard('target')  // ❌ this.focusBoard is not a function
+  },
+  
+  // 试图在同一个对象中定义通用方法
+  focusBoard: function(boardKey) {
+    // 通用逻辑
+  }
+})
+```
+
+#### 正确实现
+```javascript
+// ✅ 正确：分离事件处理和通用逻辑
+JSB.defineClass('SettingController : UIViewController', {
+  // 事件处理方法（响应按钮点击）
+  focusTargetBoard: function() {
+    let self = getSettingController()
+    self.focusBoard('target')  // 调用原型方法
+  },
+  
+  clearTargetBoard: async function() {
+    let self = getSettingController()
+    await self.clearBoard('target')
+  }
+})
+
+// 通用方法定义在原型上
+SettingController.prototype.focusBoard = function(boardKey) {
+  // 通用逻辑
+  let noteId = taskConfig.getBoardNoteId(boardKey)
+  // ...
+}
+
+SettingController.prototype.clearBoard = async function(boardKey) {
+  // 通用逻辑
+  // ...
+}
+```
+
+#### 关键原则
+1. **事件处理方法**：必须在 JSB.defineClass 中定义，用于响应 UI 事件
+2. **通用/可复用方法**：应该定义在 prototype 上，便于内部调用
+3. **方法调用**：在 JSB.defineClass 内部调用原型方法时，需要先获取实例（`let self = getInstance()`）
+
+#### 最佳实践：多看板管理架构
+
+当需要管理多个相似的 UI 组件（如多个看板）时，推荐以下架构：
+
+```javascript
+// 1. 通用组件创建函数（prototype）
+SettingController.prototype.createBoardBinding = function(config) {
+  const {key, title, parent} = config
+  // 创建标签、按钮等 UI 元素
+  // 按钮的 action 指向 JSB.defineClass 中的方法
+  this.createButton(buttonName, `focus${Key}Board:`, parent)
+}
+
+// 2. 事件处理方法（JSB.defineClass）
+// 每个看板都需要对应的三个方法
+focusRootBoard: function() { /* ... */ },
+clearRootBoard: function() { /* ... */ },
+pasteRootBoard: function() { /* ... */ },
+
+focusTargetBoard: function() { /* ... */ },
+clearTargetBoard: function() { /* ... */ },
+pasteTargetBoard: function() { /* ... */ },
+
+// 3. 通用操作逻辑（prototype）
+SettingController.prototype.focusBoard = function(boardKey) { /* ... */ }
+SettingController.prototype.clearBoard = function(boardKey) { /* ... */ }
+SettingController.prototype.pasteBoard = function(boardKey) { /* ... */ }
+```
+
+这种架构确保了代码的可维护性和扩展性，同时符合 JSB 框架的要求。

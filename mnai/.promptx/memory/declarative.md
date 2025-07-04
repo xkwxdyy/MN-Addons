@@ -193,3 +193,8 @@ Controller.prototype.init = function() {
 - /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/CLAUDE.md --tags JSB框架 MarginNote 类定义 实例属性 viewManager 调试经验
 --tags #最佳实践 #评分:8 #有效期:长期
 - END
+
+- 2025/07/05 00:23 START
+JSB 框架中的方法定义陷阱：事件处理方法必须在 JSB.defineClass 中定义，用于响应 UI 事件；通用/可复用方法应该定义在 prototype 上。在 JSB.defineClass 内部调用原型方法时，需要先获取实例（let self = getInstance()）。多看板管理架构：1. 通用组件创建函数在 prototype 上；2. 每个看板的事件处理方法在 JSB.defineClass 中；3. 通用操作逻辑在 prototype 上。 --tags JSB框架 MarginNote 事件处理 原型方法 mntask 架构设计
+--tags #其他 #评分:8 #有效期:长期
+- END

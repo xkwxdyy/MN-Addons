@@ -2253,7 +2253,7 @@ class MNMath {
     // let includingFieldBlockIndexArr = []
     // let excludingFieldBlockIndexArr = []
     comments.forEach((comment, index) => {
-      if (comment.type == "HtmlComment") {
+      if (comment && comment.type == "HtmlComment") {
         commentsObj.htmlCommentsObjArr.push(
           {
             index: index, // HtmlComment 所在卡片的评论中的 index
@@ -2303,6 +2303,7 @@ class MNMath {
      * 处理 htmlMarkdownCommentsObjArr
      */
     comments.forEach((comment, index) => {
+      if (!comment) return; // 跳过 undefined 或 null 的评论
       let text = comment.text || ""
       let isHtmlMD = false
       let hasLeadingDash = false
@@ -2354,7 +2355,7 @@ class MNMath {
      */
 
     comments.forEach((comment, index) => {
-      if (comment.type === "linkComment") {
+      if (comment && comment.type === "linkComment") {
         commentsObj.linksObjArr.push({
           index: index, // linkComment 所在卡片的评论中的 index
           link: comment.text, // 具体的 link
@@ -3507,6 +3508,7 @@ class MNMath {
     for (let i = note.comments.length - 1; i >= 0; i--) {
       let comment = note.comments[i]
       if (
+        comment &&
         comment.type === "TextNote" &&
         (
           comment.text.startsWith("marginnote3app://note/") ||
@@ -3533,7 +3535,7 @@ class MNMath {
   static fixMergeProblematicLinks(note) {
     let comments = note.MNComments
     comments.forEach((comment) => {
-      if (comment.type === "linkComment") {
+      if (comment && comment.type === "linkComment") {
         let targetNote = MNNote.new(comment.text, false) // 不弹出警告
         if (targetNote && targetNote.groupNoteId) {
           if (targetNote.groupNoteId !== comment.text) {

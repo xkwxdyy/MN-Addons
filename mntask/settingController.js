@@ -1067,6 +1067,22 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     await self.pasteBoard('action')
   },
   
+  // 已完成存档区看板处理方法
+  focusCompletedBoard: function() {
+    let self = getTaskSettingController()
+    self.focusBoard('completed')
+  },
+  
+  clearCompletedBoard: async function() {
+    let self = getTaskSettingController()
+    await self.clearBoard('completed')
+  },
+  
+  pasteCompletedBoard: async function() {
+    let self = getTaskSettingController()
+    await self.pasteBoard('completed')
+  },
+  
   importConfigTapped:function(button){
     var commandTable = [
       {title:'☁️   from iCloud',object:self,selector:'importConfig:',param:"iCloud"},
@@ -1244,6 +1260,7 @@ taskSettingController.prototype.initViewManager = function() {
           self.updateBoardLabel('target')
           self.updateBoardLabel('project')
           self.updateBoardLabel('action')
+          self.updateBoardLabel('completed')
           self.settingViewLayout()
         }
       }
@@ -1497,8 +1514,14 @@ taskSettingController.prototype.settingViewLayout = function (){
     taskFrame.set(this.clearActionBoardButton, 15+(width-30)/3, 355, (width-30)/3, 35)
     taskFrame.set(this.pasteActionBoardButton, 20+2*(width-30)/3, 355, (width-30)/3, 35)
     
+    // 已完成存档区
+    taskFrame.set(this.completedBoardLabel, 10, 410, width-20, 35)
+    taskFrame.set(this.focusCompletedBoardButton, 10, 455, (width-30)/3, 35)
+    taskFrame.set(this.clearCompletedBoardButton, 15+(width-30)/3, 455, (width-30)/3, 35)
+    taskFrame.set(this.pasteCompletedBoardButton, 20+2*(width-30)/3, 455, (width-30)/3, 35)
+    
     // 设置 ScrollView 的 contentSize，为多个看板预留空间
-    this.taskBoardView.contentSize = {width: width-2, height: 500}
+    this.taskBoardView.contentSize = {width: width-2, height: 600}
 }
 
 
@@ -1823,6 +1846,13 @@ try {
     parent: 'taskBoardView'
   })
   
+  // 创建已完成存档区看板
+  this.createBoardBinding({
+    key: 'completed',
+    title: '已完成存档区:',
+    parent: 'taskBoardView'
+  })
+  
 } catch (error) {
   taskUtils.addErrorLog(error, "createSettingView")
 }
@@ -1915,6 +1945,8 @@ taskSettingController.prototype.updateBoardLabel = function(key) {
     baseTitle = "项目看板:"
   } else if (key === 'action') {
     baseTitle = "动作看板:"
+  } else if (key === 'completed') {
+    baseTitle = "已完成存档区:"
   } else {
     baseTitle = `${key} 看板:`
   }
@@ -2102,7 +2134,10 @@ taskSettingController.prototype.pasteBoard = async function(boardKey) {
 taskSettingController.prototype.getBoardDisplayName = function(boardKey) {
   const boardNames = {
     'root': '根目录卡片',
-    'target': '目标看板'
+    'target': '目标看板',
+    'project': '项目看板',
+    'action': '动作看板',
+    'completed': '已完成存档区'
   }
   return boardNames[boardKey] || `${boardKey}看板`
 }

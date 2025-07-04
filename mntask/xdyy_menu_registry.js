@@ -62,7 +62,7 @@ function registerAllMenuTemplates() {
         },
         "⬇️ 任务状态",
       {
-        action: "toggleTaskStatus",
+        action: "toggleTaskStatusForward",
         menuTitle: "    ✅ 切换任务状态（未开始→进行中→已完成）"
       },
       {
@@ -129,14 +129,21 @@ function registerAllMenuTemplates() {
 
   // menu_task_progress - 进度追踪菜单
   MNTaskGlobal.registerMenuTemplate("menu_task_progress", {
-    action: "menu",
-    menuWidth: 350,
-    menuItems: [
-      "⬇️ 进度更新",
-      {
-        action: "updateTaskProgress",
-        menuTitle: "    📊 更新任务进度百分比"
-      },
+    action: "toggleTaskStatusForward",  // 单击切换任务状态（向前）
+    onLongPress: {                      // 长按显示完整菜单
+      action: "menu",
+      menuWidth: 350,
+      menuItems: [
+        "⬇️ 状态切换",
+        {
+          action: "toggleTaskStatusBackward",
+          menuTitle: "    ↩️ 退回上一个状态"
+        },
+        "⬇️ 进度更新",
+        {
+          action: "updateTaskProgress",
+          menuTitle: "    📊 更新任务进度百分比"
+        },
       {
         action: "updateReadingProgress",
         menuTitle: "    📖 更新阅读进度（页数/章节）"
@@ -175,7 +182,8 @@ function registerAllMenuTemplates() {
         action: "generateProgressReport",
         menuTitle: "    📊 生成进度报告"
       }
-    ]
+      ]
+    }
   });
 
   // menu_today_tasks - 今日任务菜单

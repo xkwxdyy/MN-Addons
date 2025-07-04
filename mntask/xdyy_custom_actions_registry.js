@@ -81,6 +81,96 @@ function registerAllCustomActions() {
     }
   });
   
+  // toggleTaskStatusForward - 向前切换任务状态（单击）
+  MNTaskGlobal.registerCustomAction("toggleTaskStatusForward", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    if (!focusNote) {
+      MNUtil.showHUD("请先选择一个任务");
+      return;
+    }
+    
+    // 判断是否是任务卡片
+    if (!MNTaskManager.isTaskCard(focusNote)) {
+      MNUtil.showHUD("请选择一个任务卡片");
+      return;
+    }
+    
+    // 解析当前状态
+    const titleParts = MNTaskManager.parseTaskTitle(focusNote.noteTitle);
+    const currentStatus = titleParts.status;
+    
+    // 确定新状态
+    let newStatus = currentStatus;
+    switch (currentStatus) {
+      case "未开始":
+        newStatus = "进行中";
+        break;
+      case "进行中":
+        newStatus = "已完成";
+        break;
+      case "已完成":
+        // 暂时保持不变
+        MNUtil.showHUD("任务已完成");
+        return;
+      default:
+        MNUtil.showHUD("未知的任务状态");
+        return;
+    }
+    
+    // 更新状态
+    MNUtil.undoGrouping(() => {
+      MNTaskManager.updateTaskStatus(focusNote, newStatus);
+    });
+    
+    MNUtil.showHUD(`✅ 状态已更新：${currentStatus} → ${newStatus}`);
+  });
+  
+  // toggleTaskStatusBackward - 退回上一个状态（长按菜单）
+  MNTaskGlobal.registerCustomAction("toggleTaskStatusBackward", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    if (!focusNote) {
+      MNUtil.showHUD("请先选择一个任务");
+      return;
+    }
+    
+    // 判断是否是任务卡片
+    if (!MNTaskManager.isTaskCard(focusNote)) {
+      MNUtil.showHUD("请选择一个任务卡片");
+      return;
+    }
+    
+    // 解析当前状态
+    const titleParts = MNTaskManager.parseTaskTitle(focusNote.noteTitle);
+    const currentStatus = titleParts.status;
+    
+    // 确定新状态
+    let newStatus = currentStatus;
+    switch (currentStatus) {
+      case "未开始":
+        // 保持不变
+        MNUtil.showHUD("任务尚未开始");
+        return;
+      case "进行中":
+        newStatus = "未开始";
+        break;
+      case "已完成":
+        newStatus = "进行中";
+        break;
+      default:
+        MNUtil.showHUD("未知的任务状态");
+        return;
+    }
+    
+    // 更新状态
+    MNUtil.undoGrouping(() => {
+      MNTaskManager.updateTaskStatus(focusNote, newStatus);
+    });
+    
+    MNUtil.showHUD(`↩️ 状态已退回：${currentStatus} → ${newStatus}`);
+  });
+  
   // updateTodayTimeTag
   MNTaskGlobal.registerCustomAction("updateTodayTimeTag", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
@@ -420,23 +510,6 @@ function registerAllCustomActions() {
 
   // ==================== 任务状态管理相关 ====================
   
-  // toggleTaskStatus - 切换任务状态
-  MNTaskGlobal.registerCustomAction("toggleTaskStatus", async function(context) {
-    const { button, des, focusNote, focusNotes, self } = context;
-    
-    MNUtil.undoGrouping(() => {
-      focusNotes.forEach((note) => {
-        try {
-          MNTaskManager.toggleTaskStatus(note);
-        } catch (error) {
-          MNUtil.log("切换状态失败：" + error);
-        }
-      });
-      
-      MNUtil.showHUD("✅ 状态已更新");
-    });
-  });
-
   // setTaskNotStarted - 设置为未开始
   MNTaskGlobal.registerCustomAction("setTaskNotStarted", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;

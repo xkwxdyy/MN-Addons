@@ -42,23 +42,25 @@ MNTaskGlobal.getMenuTemplate = function(name) {
 function registerAllMenuTemplates() {
   // menu_task_manage - 任务管理菜单
   MNTaskGlobal.registerMenuTemplate("menu_task_manage", {
-    action: "menu",
-    menuWidth: 320,
-    menuItems: [
-      "⬇️ 创建任务",
-      {
-        action: "createOKRTaskFromNote",
-        menuTitle: "    📝 从当前卡片创建 OKR 任务"
-      },
-      {
-        action: "OKRNoteMake",
-        menuTitle: "    🎯 OKR 制卡流"
-      },
-      {
-        action: "createSubTask",
-        menuTitle: "    📊 创建子任务"
-      },
-      "⬇️ 任务状态",
+    action: "taskCardMake",  // 单击直接触发智能任务制卡
+    onLongPress: {           // 长按显示完整菜单
+      action: "menu",
+      menuWidth: 320,
+      menuItems: [
+        "⬇️ 创建任务",
+        {
+          action: "createOKRTaskFromNote",
+          menuTitle: "    🎯 从当前卡片创建 OKR 任务"
+        },
+        {
+          action: "OKRNoteMake",
+          menuTitle: "    📊 OKR 制卡流"
+        },
+        {
+          action: "createSubTask",
+          menuTitle: "    ➕ 创建子任务"
+        },
+        "⬇️ 任务状态",
       {
         action: "toggleTaskStatus",
         menuTitle: "    ✅ 切换任务状态（未开始→进行中→已完成）"
@@ -121,7 +123,8 @@ function registerAllMenuTemplates() {
         action: "viewTaskPath",
         menuTitle: "    📍 查看任务路径"
       }
-    ]
+      ]
+    }
   });
 
   // menu_task_progress - 进度追踪菜单

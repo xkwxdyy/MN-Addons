@@ -58,6 +58,29 @@ MNTaskGlobal.executeCustomAction = async function (actionName, context) {
 function registerAllCustomActions() {
   MNUtil.log("🔧 开始注册所有自定义 actions");
   
+  // taskCardMake - 智能任务制卡
+  MNTaskGlobal.registerCustomAction("taskCardMake", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    if (!focusNote) {
+      MNUtil.showHUD("请先选择一个笔记");
+      return;
+    }
+    
+    // 判断是否已经是任务卡片
+    if (MNTaskManager.isTaskCard(focusNote)) {
+      // 已经是任务卡片，只更新路径
+      MNUtil.undoGrouping(() => {
+        MNTaskManager.updateTaskPath(focusNote);
+      });
+      MNUtil.showHUD("✅ 任务路径已更新");
+    } else {
+      // 不是任务卡片，需要转换
+      await MNTaskManager.convertToTaskCard(focusNote);
+      MNUtil.showHUD("✅ 已转换为任务卡片");
+    }
+  });
+  
   // updateTodayTimeTag
   MNTaskGlobal.registerCustomAction("updateTodayTimeTag", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;

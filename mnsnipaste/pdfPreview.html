@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>优化版PDF预览</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+    <style>
+        .page-container { 
+          margin: 0px auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.0.375/pdf.min.mjs" type="module"></script> -->
+    <script src="https://vip.123pan.cn/1836303614/dl/cdn/pdf.js" type="module"></script>
+    <!-- <script src="pdf.js" type="module"></script> -->
+    <script type="module">
+      const workerSrc = 'https://vip.123pan.cn/1836303614/dl/cdn/pdf.worker.js';
+      // const workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.0.375/pdf.worker.min.mjs';
+      // const workerSrc = 'pdf.worker.js';
+      pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+      let parsePDF
+
+        let pdfDoc = null;
+        let pageNum = 1;
+        let pageRendering = false;
+        let pageNumPending = null;
+      const scale = 1.5;
+      const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+      const notyf = new Notyf({position: {x: 'center', y: 'top'}, duration: 1000,ripple:false});
+              /**
+         * 渲染指定页码
+         */
+        async function renderPage(pageNum) {
+          const numPages = parsePDF.numPages;
+        if (pageNum > numPages) {
+          notyf.error("Already at the last page")
+          return
+        }else{
+          notyf.success("Render page "+pageNum)
+          await delay(10)
+        }
+        // 获取页面
+        const page = await parsePDF.getPage(pageNum);
+
+        const baseScale = 1; // 基础缩放级别
+        const pixelRatio = window.devicePixelRatio || 1;
+        
+        // const viewport = page.getViewport({ 
+        //     scale: baseScale * pixelRatio 
+        // });
+
+        const viewport = page.getViewport({ scale: baseScale * pixelRatio  });
+        const canvas = document.createElement('canvas');
+
+        // 设置canvas物理像素
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+                    
+        // 设置CSS显示尺寸
+        canvas.style.width = (viewport.width / pixelRatio)+"px";
+        canvas.style.height = (viewport.height / pixelRatio)+"px";
+        // 配置渲染上下文
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.mozImageSmoothingEnabled = false;
+          // 高质量渲染参数
+          const renderContext = {
+              canvasContext: ctx,
+              viewport: viewport,
+              enableWebGL: true,
+          };
+          await page.render(renderContext).promise;
+          pageRendering = false;
+          const pngDataURL = canvas.toDataURL('image/png');
+          const preImg = document.querySelector('img')
+
+          const img = document.createElement('img');
+          img.src = pngDataURL;
+          img.style.width = '100%';
+          document.body.appendChild(img);
+          await delay(10)
+          if (preImg) {
+            preImg.remove()
+          }
+            // if (pageNumPending !== null) {
+            //     renderPage(pageNumPending);
+            //     pageNumPending = null;
+            // }
+        }
+/**
+ * 根据安全的最大画布面积计算PDF页面的最大缩放比例。
+ * @param {PDFPageProxy} page - PDF.js的页面对象.
+ * @returns {number} - 计算出的最大安全scale值.
+ */
+function calculateMaxScale(page) {
+    // 1. 定义一个在所有主流浏览器中都相对安全的最大画布面积常量。
+    // 16,777,216 是 4096 * 4096，这是iOS Safari的一个常见限制，非常安全。
+    const SAFE_MAX_CANVAS_AREA = 16777216;
+    // 2. 获取页面在 scale: 1 时的原始尺寸
+    const viewport = page.getViewport({ scale: 1.0 });
+    const originalWidth = viewport.width;
+    const originalHeight = viewport.height;
+    const originalArea = originalWidth * originalHeight;
+
+    // 3. 计算最大缩放比例
+    // scale^2 * originalArea <= SAFE_MAX_CANVAS_AREA
+    // scale <= sqrt(SAFE_MAX_CANVAS_AREA / originalArea)
+    const maxScale = Math.sqrt(SAFE_MAX_CANVAS_AREA / originalArea);
+
+    // 返回一个稍微向下取整的值以增加保险系数，比如保留两位小数
+    return Math.floor(maxScale * 100) / 100;
+}
+      const renderPageDev = async (pageNum) => {
+
+        const numPages = parsePDF.numPages;
+        if (pageNum > numPages) {
+          notyf.error("Already at the last page")
+          return
+        }else{
+          notyf.success("Render page "+pageNum)
+          await delay(10)
+        }
+        const page = await parsePDF.getPage(pageNum);
+        const maxScale = calculateMaxScale(page);
+        // console.log(maxScale);
+        
+        let baseScale = 2; // 基础缩放级别
+        const pixelRatio = window.devicePixelRatio || 1;
+        if (baseScale * pixelRatio > maxScale) {
+          baseScale = maxScale / pixelRatio;
+        }
+        const viewport = page.getViewport({ 
+            scale: baseScale*pixelRatio
+        });
+
+        const canvas = document.createElement('canvas');
+
+        // 设置canvas物理像素
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+                    
+        // 设置CSS显示尺寸
+        canvas.style.width = (viewport.width / pixelRatio)+"px";
+        canvas.style.height = (viewport.height / pixelRatio)+"px";
+
+        // 配置渲染上下文
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.mozImageSmoothingEnabled = false;
+
+          // 高质量渲染参数
+          const renderContext = {
+              canvasContext: ctx,
+              viewport: viewport,
+              enableWebGL: true,
+          };
+          await page.render(renderContext).promise;
+          const pngDataURL = canvas.toDataURL('image/png');
+          const preImg = document.querySelector('img')
+
+          const img = document.createElement('img');
+          img.src = pngDataURL;
+          img.style.width = '100%';
+          document.body.appendChild(img);
+          await delay(10)
+          if (preImg) {
+            preImg.remove()
+          }
+          // document.body.innerHTML = \`<img class="body" width="100%" src="\${pngDataURL}"/>\`
+      };
+      window.renderPageDev = renderPageDev;
+        // 数据加载部分保持不变...
+setTimeout(()=>{
+          pdfjsLib.getDocument('https://vip.123pan.cn/1836303614/dl/test.pdf').promise
+              .then(async(pdf)=>{
+                  parsePDF = pdf
+                  const numPages = pdf.numPages;
+                  const maxPages = 50;
+                  // for (let i = 1; i <= numPages; i++) {
+                  //   await renderPageDev(i);
+                  // }
+                  await renderPageDev(1);
+              });
+},1)
+    </script>
+</body>
+</html>

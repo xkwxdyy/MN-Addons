@@ -509,13 +509,6 @@ class MNComment {
   // === 静态方法 ===
   static from(note)     // 从笔记获取所有评论
   static getCommentType(comment) // 根据评论对象判断类型
-  
-  // === 类型判断 ===
-  get isTextComment()      // 是否文本评论
-  get isMarkdownComment()  // 是否 Markdown 评论
-  get isImageComment()     // 是否图片评论
-  get isLinkComment()      // 是否链接评论
-  get isHtmlComment()      // 是否 HTML 评论
 }
 ```
 
@@ -676,7 +669,6 @@ class MNNotebook {
   
   // === 静态工具方法 ===
   static new(notebookId)    // 创建笔记本对象
-  static getByTitle(title)  // 根据标题获取笔记本
   
   // === 其他属性 ===
   get createDate()      // 创建日期

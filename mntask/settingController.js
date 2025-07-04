@@ -1035,6 +1035,38 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     await self.pasteBoard('target')
   },
   
+  // 项目看板处理方法
+  focusProjectBoard: function() {
+    let self = getTaskSettingController()
+    self.focusBoard('project')
+  },
+  
+  clearProjectBoard: async function() {
+    let self = getTaskSettingController()
+    await self.clearBoard('project')
+  },
+  
+  pasteProjectBoard: async function() {
+    let self = getTaskSettingController()
+    await self.pasteBoard('project')
+  },
+  
+  // 动作看板处理方法
+  focusActionBoard: function() {
+    let self = getTaskSettingController()
+    self.focusBoard('action')
+  },
+  
+  clearActionBoard: async function() {
+    let self = getTaskSettingController()
+    await self.clearBoard('action')
+  },
+  
+  pasteActionBoard: async function() {
+    let self = getTaskSettingController()
+    await self.pasteBoard('action')
+  },
+  
   importConfigTapped:function(button){
     var commandTable = [
       {title:'☁️   from iCloud',object:self,selector:'importConfig:',param:"iCloud"},
@@ -1210,6 +1242,8 @@ taskSettingController.prototype.initViewManager = function() {
         onShow: function(self) {
           self.updateRootNoteLabel()
           self.updateBoardLabel('target')
+          self.updateBoardLabel('project')
+          self.updateBoardLabel('action')
           self.settingViewLayout()
         }
       }
@@ -1450,6 +1484,18 @@ taskSettingController.prototype.settingViewLayout = function (){
     taskFrame.set(this.focusTargetBoardButton, 10, 155, (width-30)/3, 35)
     taskFrame.set(this.clearTargetBoardButton, 15+(width-30)/3, 155, (width-30)/3, 35)
     taskFrame.set(this.pasteTargetBoardButton, 20+2*(width-30)/3, 155, (width-30)/3, 35)
+    
+    // 项目看板
+    taskFrame.set(this.projectBoardLabel, 10, 210, width-20, 35)
+    taskFrame.set(this.focusProjectBoardButton, 10, 255, (width-30)/3, 35)
+    taskFrame.set(this.clearProjectBoardButton, 15+(width-30)/3, 255, (width-30)/3, 35)
+    taskFrame.set(this.pasteProjectBoardButton, 20+2*(width-30)/3, 255, (width-30)/3, 35)
+    
+    // 动作看板
+    taskFrame.set(this.actionBoardLabel, 10, 310, width-20, 35)
+    taskFrame.set(this.focusActionBoardButton, 10, 355, (width-30)/3, 35)
+    taskFrame.set(this.clearActionBoardButton, 15+(width-30)/3, 355, (width-30)/3, 35)
+    taskFrame.set(this.pasteActionBoardButton, 20+2*(width-30)/3, 355, (width-30)/3, 35)
     
     // 设置 ScrollView 的 contentSize，为多个看板预留空间
     this.taskBoardView.contentSize = {width: width-2, height: 500}
@@ -1745,7 +1791,7 @@ try {
   // 添加说明文本
   this.createButton("rootNoteLabel","","taskBoardView")
   MNButton.setConfig(this.rootNoteLabel, {
-    title:"Task Board Root Note:",
+    title:"任务管理总看板:",
     color:"#457bd3",
     alpha:0.3,
     font:16,
@@ -1763,6 +1809,20 @@ try {
     parent: 'taskBoardView'
   })
   
+  // 创建项目看板
+  this.createBoardBinding({
+    key: 'project',
+    title: '项目看板:',
+    parent: 'taskBoardView'
+  })
+  
+  // 创建动作看板
+  this.createBoardBinding({
+    key: 'action',
+    title: '动作看板:',
+    parent: 'taskBoardView'
+  })
+  
 } catch (error) {
   taskUtils.addErrorLog(error, "createSettingView")
 }
@@ -1774,7 +1834,7 @@ try {
  */
 taskSettingController.prototype.updateRootNoteLabel = function() {
   let rootNoteId = taskConfig.getRootNoteId()
-  let title = rootNoteId ? "Task Board Root Note: ✅" : "Task Board Root Note: ❌"
+  let title = rootNoteId ? "任务管理总看板: ✅" : "任务管理总看板: ❌"
   MNButton.setConfig(this.rootNoteLabel, {
     title: title
   })
@@ -1843,15 +1903,18 @@ taskSettingController.prototype.createBoardBinding = function(config) {
  */
 taskSettingController.prototype.updateBoardLabel = function(key) {
   const labelName = `${key}BoardLabel`
-  const noteId = taskConfig.getBoardNoteId ? taskConfig.getBoardNoteId(key) : 
-                 (key === 'root' ? taskConfig.getRootNoteId() : null)
+  const noteId = taskConfig.getBoardNoteId(key)
   
   // 获取标签的基础标题
   let baseTitle = ""
   if (key === 'root') {
-    baseTitle = "Task Board Root Note:"
+    baseTitle = "任务管理总看板:"
   } else if (key === 'target') {
     baseTitle = "目标看板:"
+  } else if (key === 'project') {
+    baseTitle = "项目看板:"
+  } else if (key === 'action') {
+    baseTitle = "动作看板:"
   } else {
     baseTitle = `${key} 看板:`
   }
@@ -1862,6 +1925,108 @@ taskSettingController.prototype.updateBoardLabel = function(key) {
       title: title
     })
   }
+}
+
+/**
+ * 通用看板 Focus 处理
+ * @this {settingController}
+ * @param {string} key - 看板唯一标识
+ */
+taskSettingController.prototype.focusBoard = function(key) {
+  const noteId = taskConfig.getBoardNoteId(key)
+  if (!noteId) {
+    this.showHUD(`❌ 未设置${key}看板`)
+    return
+  }
+  
+  const note = MNNote.new(noteId)
+  if (note) {
+    note.focusInFloatMindMap()
+  } else {
+    this.showHUD("❌ 卡片不存在")
+    // 清除无效的 ID
+    taskConfig.clearBoardNoteId(key)
+    this.updateBoardLabel(key)
+  }
+}
+
+/**
+ * 通用看板 Clear 处理
+ * @this {settingController}
+ * @param {string} key - 看板唯一标识
+ */
+taskSettingController.prototype.clearBoard = async function(key) {
+  const hasNote = !!taskConfig.getBoardNoteId(key)
+  
+  if (!hasNote) {
+    this.showHUD("❌ 看板未设置")
+    return
+  }
+  
+  const confirmed = await MNUtil.confirm(
+    "清除看板",
+    `确定要清除${key}看板吗？`,
+    ["取消", "确定"]
+  )
+  
+  if (confirmed === 1) {
+    taskConfig.clearBoardNoteId(key)
+    taskConfig.save()
+    this.updateBoardLabel(key)
+    this.showHUD(`✅ 已清除${key}看板`)
+  }
+}
+
+/**
+ * 通用看板 Paste 处理
+ * @this {settingController}
+ * @param {string} key - 看板唯一标识
+ */
+taskSettingController.prototype.pasteBoard = async function(key) {
+  const selectedNotes = MNNote.getSelectedNotes()
+  
+  if (!selectedNotes || selectedNotes.length === 0) {
+    this.showHUD("❌ 请先选择一个卡片")
+    return
+  }
+  
+  const note = selectedNotes[0]
+  
+  // 设置看板样式
+  MNUtil.undoGrouping(() => {
+    let boardTitle = ""
+    let colorIndex = 0
+    let tags = []
+    
+    if (key === 'target') {
+      boardTitle = "🎯 目标看板"
+      colorIndex = 10  // 深蓝色
+      tags = ["目标", "看板"]
+    } else if (key === 'project') {
+      boardTitle = "📁 项目看板"
+      colorIndex = 15  // 紫色
+      tags = ["项目", "看板"]
+    } else if (key === 'action') {
+      boardTitle = "✨ 动作看板"
+      colorIndex = 6   // 蓝色
+      tags = ["动作", "看板", "GTD"]
+    }
+    
+    if (!note.noteTitle || note.noteTitle.trim() === "") {
+      note.noteTitle = boardTitle
+    }
+    note.colorIndex = colorIndex
+    if (!note.tags || note.tags.length === 0) {
+      note.appendTags(tags)
+    }
+  })
+  
+  // 保存看板 ID
+  taskConfig.saveBoardNoteId(key, note.noteId)
+  taskConfig.save()
+  
+  this.updateBoardLabel(key)
+  this.showHUD(`✅ 已设置${key}看板`)
 }
 
 /**

@@ -425,6 +425,165 @@ function registerAllMenuTemplates() {
       }
     ]
   });
+
+  // menu_project_board - 项目看板菜单
+  MNTaskGlobal.registerMenuTemplate("menu_project_board", {
+    action: "menu",
+    menuWidth: 350,
+    menuItems: [
+      "⬇️ 项目管理",
+      {
+        action: "createProjectFromNote",
+        menuTitle: "    📁 从当前卡片创建项目"
+      },
+      {
+        action: "openProjectBoard",
+        menuTitle: "    📊 打开项目看板"
+      },
+      {
+        action: "viewProjectTimeline",
+        menuTitle: "    📈 查看项目时间线"
+      },
+      "⬇️ 项目状态",
+      {
+        action: "updateProjectStatus",
+        menuTitle: "    🔄 更新项目状态"
+      },
+      {
+        action: "viewProjectHealth",
+        menuTitle: "    💓 查看项目健康度"
+      },
+      {
+        action: "viewProjectRisks",
+        menuTitle: "    ⚠️ 查看项目风险"
+      },
+      "⬇️ 里程碑管理",
+      {
+        action: "createMilestone",
+        menuTitle: "    🏁 创建里程碑"
+      },
+      {
+        action: "updateMilestone",
+        menuTitle: "    ✏️ 更新里程碑进度"
+      },
+      {
+        action: "viewMilestones",
+        menuTitle: "    📍 查看所有里程碑"
+      },
+      "⬇️ 资源分配",
+      {
+        action: "assignProjectOwner",
+        menuTitle: "    👤 分配项目负责人"
+      },
+      {
+        action: "viewProjectResources",
+        menuTitle: "    👥 查看项目资源"
+      },
+      {
+        action: "updateProjectBudget",
+        menuTitle: "    💰 更新项目预算"
+      },
+      "⬇️ 项目分析",
+      {
+        action: "generateProjectReport",
+        menuTitle: "    📊 生成项目报告"
+      },
+      {
+        action: "viewProjectDependencies",
+        menuTitle: "    🔗 查看项目依赖关系"
+      },
+      {
+        action: "exportProjectGantt",
+        menuTitle: "    📅 导出甘特图"
+      }
+    ]
+  });
+
+  // menu_action_board - 动作看板菜单
+  MNTaskGlobal.registerMenuTemplate("menu_action_board", {
+    action: "menu",
+    menuWidth: 340,
+    menuItems: [
+      "⬇️ 动作管理",
+      {
+        action: "createActionItem",
+        menuTitle: "    ✨ 创建行动项"
+      },
+      {
+        action: "openActionBoard",
+        menuTitle: "    📋 打开动作看板"
+      },
+      {
+        action: "viewNextActions",
+        menuTitle: "    ➡️ 查看下一步行动"
+      },
+      "⬇️ GTD 处理",
+      {
+        action: "processInbox",
+        menuTitle: "    📥 处理收件箱"
+      },
+      {
+        action: "clarifyAction",
+        menuTitle: "    🔍 澄清行动意图"
+      },
+      {
+        action: "organizeActions",
+        menuTitle: "    📂 组织行动清单"
+      },
+      "⬇️ 上下文管理",
+      {
+        action: "setActionContext",
+        menuTitle: "    🏷️ 设置执行场景"
+      },
+      {
+        action: "filterByContext",
+        menuTitle: "    🔍 按场景筛选"
+      },
+      {
+        action: "viewContextMap",
+        menuTitle: "    🗺️ 查看场景地图"
+      },
+      "⬇️ 优先级管理",
+      {
+        action: "setActionPriority",
+        menuTitle: "    🎯 设置优先级"
+      },
+      {
+        action: "sortByPriority",
+        menuTitle: "    📊 按优先级排序"
+      },
+      {
+        action: "viewEisenhowerMatrix",
+        menuTitle: "    ⚡ 查看四象限矩阵"
+      },
+      "⬇️ 执行跟踪",
+      {
+        action: "startPomodoro",
+        menuTitle: "    🍅 开始番茄钟"
+      },
+      {
+        action: "logActionTime",
+        menuTitle: "    ⏱️ 记录执行时间"
+      },
+      {
+        action: "reviewDailyActions",
+        menuTitle: "    📝 回顾今日行动"
+      },
+      "⬇️ 批量操作",
+      {
+        action: "batchDeferActions",
+        menuTitle: "    📆 批量推迟"
+      },
+      {
+        action: "batchDelegateActions",
+        menuTitle: "    👥 批量委派"
+      },
+      {
+        action: "archiveCompletedActions",
+        menuTitle: "    📦 归档已完成"
+      }
+    ]
+  });
   
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
     MNUtil.log(`🚀 已注册 ${Object.keys(MNTaskGlobal.customMenuTemplates).length} 个自定义菜单模板`);

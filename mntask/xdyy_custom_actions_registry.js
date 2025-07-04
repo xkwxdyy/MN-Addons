@@ -1979,6 +1979,252 @@ function registerAllCustomActions() {
     }
   });
 
+  // ==================== 项目看板相关 ====================
+  
+  // openProjectBoard - 打开项目看板
+  MNTaskGlobal.registerCustomAction("openProjectBoard", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    const projectBoardId = taskConfig.getBoardNoteId('project');
+    if (!projectBoardId) {
+      MNUtil.showHUD("请先在设置中配置项目看板\n设置 → Task Board → 项目看板 → Paste");
+      return;
+    }
+    
+    const projectBoard = MNNote.new(projectBoardId);
+    if (projectBoard) {
+      // 设置项目看板样式
+      MNUtil.undoGrouping(() => {
+        projectBoard.noteTitle = projectBoard.noteTitle || "📁 项目看板";
+        projectBoard.colorIndex = 15;  // 紫色
+        if (!projectBoard.tags || !projectBoard.tags.includes("项目")) {
+          projectBoard.appendTags(["项目", "看板"]);
+        }
+      });
+      projectBoard.focusInFloatMindMap(0.5);
+    } else {
+      taskConfig.clearBoardNoteId('project');
+      MNUtil.showHUD("❌ 项目看板卡片不存在，请重新配置");
+    }
+  });
+
+  // createProjectFromNote - 从当前卡片创建项目
+  MNTaskGlobal.registerCustomAction("createProjectFromNote", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    if (!focusNote) {
+      MNUtil.showHUD("请先选择一个笔记");
+      return;
+    }
+    
+    MNUtil.undoGrouping(() => {
+      try {
+        const projectContent = focusNote.noteTitle || "新项目";
+        const projectNote = MNTaskManager.createTask(focusNote, 'project', projectContent, {
+          tags: ["项目", "进行中"],
+          addFields: true
+        });
+        
+        // 添加项目起始时间
+        projectNote.appendTextComment(`起始时间：${new Date().toLocaleString()}`);
+        
+        projectNote.focusInMindMap(0.2);
+        MNUtil.showHUD("✅ 已创建项目");
+      } catch (error) {
+        MNUtil.showHUD("创建项目失败：" + error.message);
+      }
+    });
+  });
+
+  // createMilestone - 创建里程碑
+  MNTaskGlobal.registerCustomAction("createMilestone", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    if (!focusNote) {
+      MNUtil.showHUD("请先选择一个项目");
+      return;
+    }
+    
+    const type = MNTaskManager.getTaskType(focusNote);
+    if (!type || type.key !== 'project') {
+      MNUtil.showHUD("请选择一个项目类型的任务");
+      return;
+    }
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "创建里程碑",
+      "请输入里程碑名称",
+      2,
+      "取消",
+      ["确定"],
+      (alert, buttonIndex) => {
+        if (buttonIndex === 1) {
+          const milestoneName = alert.textFieldAtIndex(0).text;
+          if (!milestoneName || milestoneName.trim() === "") {
+            MNUtil.showHUD("里程碑名称不能为空");
+            return;
+          }
+          
+          MNUtil.undoGrouping(() => {
+            const milestone = focusNote.createChildNote({
+              title: `🏁 ${milestoneName}`,
+              colorIndex: 7  // 橙色
+            });
+            milestone.appendTags(["里程碑", "未完成"]);
+            milestone.appendTextComment("截止日期：待定");
+            milestone.appendTextComment("负责人：待定");
+            
+            focusNote.refresh();
+            MNUtil.showHUD("✅ 已创建里程碑");
+          });
+        }
+      }
+    );
+  });
+
+  // ==================== 动作看板相关 ====================
+  
+  // openActionBoard - 打开动作看板
+  MNTaskGlobal.registerCustomAction("openActionBoard", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    const actionBoardId = taskConfig.getBoardNoteId('action');
+    if (!actionBoardId) {
+      MNUtil.showHUD("请先在设置中配置动作看板\n设置 → Task Board → 动作看板 → Paste");
+      return;
+    }
+    
+    const actionBoard = MNNote.new(actionBoardId);
+    if (actionBoard) {
+      // 设置动作看板样式
+      MNUtil.undoGrouping(() => {
+        actionBoard.noteTitle = actionBoard.noteTitle || "✨ 动作看板";
+        actionBoard.colorIndex = 6;  // 蓝色
+        if (!actionBoard.tags || !actionBoard.tags.includes("动作")) {
+          actionBoard.appendTags(["动作", "看板", "GTD"]);
+        }
+      });
+      actionBoard.focusInFloatMindMap(0.5);
+    } else {
+      taskConfig.clearBoardNoteId('action');
+      MNUtil.showHUD("❌ 动作看板卡片不存在，请重新配置");
+    }
+  });
+
+  // createActionItem - 创建行动项
+  MNTaskGlobal.registerCustomAction("createActionItem", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "创建行动项",
+      "下一步要做什么？",
+      2,
+      "取消",
+      ["确定"],
+      (alert, buttonIndex) => {
+        if (buttonIndex === 1) {
+          const actionName = alert.textFieldAtIndex(0).text;
+          if (!actionName || actionName.trim() === "") {
+            MNUtil.showHUD("行动项不能为空");
+            return;
+          }
+          
+          MNUtil.undoGrouping(() => {
+            try {
+              // 获取动作看板
+              const actionBoardId = taskConfig.getBoardNoteId('action');
+              let parentNote = focusNote;
+              
+              if (actionBoardId) {
+                const actionBoard = MNNote.new(actionBoardId);
+                if (actionBoard) {
+                  parentNote = actionBoard;
+                }
+              }
+              
+              const actionNote = parentNote.createChildNote({
+                title: `✨ ${actionName}`,
+                colorIndex: 0  // 淡黄色（待处理）
+              });
+              
+              actionNote.appendTags(["行动项", "待处理"]);
+              actionNote.appendTextComment("场景：未设置");
+              actionNote.appendTextComment("预计时间：未设置");
+              actionNote.appendTextComment(`创建时间：${new Date().toLocaleString()}`);
+              
+              parentNote.refresh();
+              MNUtil.showHUD("✅ 已创建行动项");
+            } catch (error) {
+              MNUtil.showHUD("创建行动项失败：" + error.message);
+            }
+          });
+        }
+      }
+    );
+  });
+
+  // setActionContext - 设置执行场景
+  MNTaskGlobal.registerCustomAction("setActionContext", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    if (!focusNote) {
+      MNUtil.showHUD("请先选择一个行动项");
+      return;
+    }
+    
+    const contexts = ["🏠 在家", "🏢 办公室", "🚗 路上", "💻 电脑前", "📱 手机", "👥 会议", "🛒 外出", "📚 图书馆"];
+    const selectedIndex = await MNUtil.userSelect("选择执行场景", "", contexts);
+    
+    if (selectedIndex > 0) { // 0 是取消按钮
+      const selectedContext = contexts[selectedIndex - 1];
+      
+      MNUtil.undoGrouping(() => {
+        // 查找并更新场景评论
+        const contextIndex = focusNote.getIncludingCommentIndex("场景：");
+        if (contextIndex !== -1) {
+          focusNote.removeCommentByIndex(contextIndex);
+        }
+        focusNote.appendTextComment(`场景：${selectedContext}`);
+        
+        // 添加场景标签
+        const contextTag = selectedContext.split(' ')[1];
+        focusNote.appendTags([contextTag]);
+        
+        focusNote.refresh();
+        MNUtil.showHUD(`✅ 已设置场景：${selectedContext}`);
+      });
+    }
+  });
+
+  // processInbox - 处理收件箱
+  MNTaskGlobal.registerCustomAction("processInbox", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    // 获取动作看板
+    const actionBoardId = taskConfig.getBoardNoteId('action');
+    if (!actionBoardId) {
+      MNUtil.showHUD("请先配置动作看板");
+      return;
+    }
+    
+    const actionBoard = MNNote.new(actionBoardId);
+    if (!actionBoard) {
+      MNUtil.showHUD("动作看板不存在");
+      return;
+    }
+    
+    // 查找待处理的行动项
+    const pendingActions = actionBoard.childNotes.filter(note => 
+      note.tags && note.tags.includes("待处理")
+    );
+    
+    if (pendingActions.length === 0) {
+      MNUtil.showHUD("收件箱为空");
+      return;
+    }
+    
+    // 聚焦到第一个待处理项
+    pendingActions[0].focusInMindMap(0.3);
+    MNUtil.showHUD(`收件箱中有 ${pendingActions.length} 个待处理项`);
+  });
+
 }
 
 // 立即注册

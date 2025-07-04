@@ -72,7 +72,7 @@ function registerAllButtons() {
   });
 
   MNTaskGlobal.registerButton("custom5", {
-    name: "任务看板",
+    name: "动作看板",
     image: "custom5",
     templateName: "menu_task_dashboard"
   });
@@ -81,6 +81,18 @@ function registerAllButtons() {
     name: "快速筛选",
     image: "custom6",
     templateName: "menu_quick_filter"
+  });
+
+  MNTaskGlobal.registerButton("custom7", {
+    name: "项目看板",
+    image: "custom7",
+    templateName: "menu_project_board"
+  });
+
+  MNTaskGlobal.registerButton("custom8", {
+    name: "动作看板",
+    image: "custom8",
+    templateName: "menu_action_board"
   });
 
   

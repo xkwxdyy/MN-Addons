@@ -382,8 +382,8 @@ class MNNote {
   appendTags(tags)                       // 添加标签
   removeTags(tagsToRemove)               // 删除标签
   appendNoteLink(note, type)             // 添加笔记链接
-  getCommentIndex(comment)               // 获取评论索引
-  getTextCommentIndex(text)              // 获取文本评论索引
+  getCommentIndex(comment)               // 获取评论索引（完全匹配）
+  getIncludingCommentIndex(text)         // 获取包含文本的评论索引（xdyyutils扩展）
   getCommentIndicesByCondition(condition) // 根据条件获取评论索引数组
   removeCommentsByIndices(indices)       // 批量删除评论
   removeCommentByCondition(condition)    // 根据条件删除评论

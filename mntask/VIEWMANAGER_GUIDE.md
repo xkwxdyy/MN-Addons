@@ -258,3 +258,175 @@ MNUtil.log("🔍 viewDidLoad called")
 MNUtil.log("🔍 self.viewManager = ", self.viewManager)
 MNUtil.log("🔍 Calling switchTo:", viewName)
 ```
+
+## 多看板管理架构
+
+### 概述
+
+MNTask 支持多个看板（如根目录看板、目标看板等）的统一管理，通过组合 JSB.defineClass 和 prototype 方法实现代码复用。
+
+### 架构设计
+
+#### 方法分层
+1. **事件处理层**（JSB.defineClass）：响应按钮点击
+2. **通用逻辑层**（prototype）：可复用的业务逻辑
+3. **UI 创建层**（prototype）：统一的组件创建函数
+
+### 实现步骤
+
+#### 1. 创建通用的看板 UI 组件
+
+```javascript
+/**
+ * 创建统一的看板绑定组件
+ * @param {Object} config - 看板配置
+ * @param {string} config.key - 看板唯一标识 (如 'root', 'target')
+ * @param {string} config.title - 显示标题 (如 '根目录看板:', '目标看板:')
+ * @param {string} config.parent - 父视图名称
+ */
+taskSettingController.prototype.createBoardBinding = function(config) {
+  const {key, title, parent} = config
+  const keyCapitalized = key.charAt(0).toUpperCase() + key.slice(1)
+  
+  // 创建标签
+  const labelName = `${key}BoardLabel`
+  this.createButton(labelName, "", parent)
+  MNButton.setConfig(this[labelName], {
+    title: title,
+    color: "#457bd3",
+    alpha: 0.3,
+    font: 16,
+    bold: true
+  })
+  this[labelName].userInteractionEnabled = false
+  
+  // 创建三个操作按钮
+  this.createButton(`focus${keyCapitalized}BoardButton`, `focus${keyCapitalized}Board:`, parent)
+  this.createButton(`clear${keyCapitalized}BoardButton`, `clear${keyCapitalized}Board:`, parent)
+  this.createButton(`paste${keyCapitalized}BoardButton`, `paste${keyCapitalized}Board:`, parent)
+  
+  // 更新标签显示
+  this.updateBoardLabel(key)
+}
+```
+
+#### 2. 在 JSB.defineClass 中添加事件处理方法
+
+```javascript
+// 每个看板都需要三个事件处理方法
+JSB.defineClass('taskSettingController', {
+  // ... 其他方法
+  
+  // 目标看板的事件处理
+  focusTargetBoard: function() {
+    let self = getTaskSettingController()  // 必须获取实例！
+    self.focusBoard('target')
+  },
+  
+  clearTargetBoard: async function() {
+    let self = getTaskSettingController()
+    await self.clearBoard('target')
+  },
+  
+  pasteTargetBoard: async function() {
+    let self = getTaskSettingController()
+    await self.pasteBoard('target')
+  }
+})
+```
+
+#### 3. 在 prototype 上实现通用逻辑
+
+```javascript
+// 通用的 Focus 操作
+taskSettingController.prototype.focusBoard = function(boardKey) {
+  let noteId = taskConfig.getBoardNoteId(boardKey)
+  if (!noteId) {
+    this.showHUD(`❌ 未设置${this.getBoardDisplayName(boardKey)}`)
+    return
+  }
+  
+  let note = MNNote.new(noteId)
+  if (note) {
+    note.focusInFloatMindMap()
+  } else {
+    this.showHUD("❌ 卡片不存在")
+    taskConfig.clearBoardNoteId(boardKey)
+    this.updateBoardLabel(boardKey)
+  }
+}
+
+// 通用的 Clear 操作
+taskSettingController.prototype.clearBoard = async function(boardKey) {
+  // 确认对话框和清除逻辑
+}
+
+// 通用的 Paste 操作
+taskSettingController.prototype.pasteBoard = async function(boardKey) {
+  // 粘贴和验证逻辑
+}
+```
+
+### 添加新看板的完整流程
+
+1. **在 createSettingView 中创建 UI**
+   ```javascript
+   this.createBoardBinding({
+     key: 'weekly',
+     title: '周计划看板:',
+     parent: 'taskBoardView'
+   })
+   ```
+
+2. **在 JSB.defineClass 中添加事件处理**
+   ```javascript
+   focusWeeklyBoard: function() {
+     let self = getTaskSettingController()
+     self.focusBoard('weekly')
+   },
+   clearWeeklyBoard: async function() {
+     let self = getTaskSettingController()
+     await self.clearBoard('weekly')
+   },
+   pasteWeeklyBoard: async function() {
+     let self = getTaskSettingController()
+     await self.pasteBoard('weekly')
+   }
+   ```
+
+3. **更新布局**
+   ```javascript
+   // 在 settingViewLayout 中添加
+   taskFrame.set(this.weeklyBoardLabel, 10, 210, width-20, 35)
+   taskFrame.set(this.focusWeeklyBoardButton, 10, 255, (width-30)/3, 35)
+   taskFrame.set(this.clearWeeklyBoardButton, 15+(width-30)/3, 255, (width-30)/3, 35)
+   taskFrame.set(this.pasteWeeklyBoardButton, 20+2*(width-30)/3, 255, (width-30)/3, 35)
+   ```
+
+4. **更新显示名称映射**
+   ```javascript
+   // 在 getBoardDisplayName 中添加
+   const boardNames = {
+     'root': '根目录卡片',
+     'target': '目标看板',
+     'weekly': '周计划看板'  // 新增
+   }
+   ```
+
+### 常见问题
+
+#### 按钮点击无响应
+- 确保事件处理方法定义在 JSB.defineClass 中
+- 确保使用 `let self = getTaskSettingController()` 获取实例
+- 检查方法名是否与按钮 action 匹配（如 `focusTargetBoard:` 对应 `focusTargetBoard` 方法）
+
+#### 方法调用错误
+- JSB.defineClass 中的方法不能直接调用同级别的其他方法
+- 必须通过 `self.methodName()` 调用 prototype 上的方法
+
+### 最佳实践
+
+1. **保持命名一致性**：使用 `${key}Board` 的命名模式
+2. **代码复用最大化**：将所有通用逻辑抽取到 prototype 方法
+3. **错误处理统一**：在通用方法中统一处理错误和用户反馈
+4. **配置集中管理**：看板信息通过 taskConfig 统一存储

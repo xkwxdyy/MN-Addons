@@ -49,6 +49,40 @@
 
 // JSB.require('utils');
 // JSB.require('base64')
+
+/**
+ * MNTask 设置控制器 - 采用 JSB 框架的事件驱动架构
+ * 
+ * ## 架构说明
+ * 
+ * ### 方法定义规则
+ * 1. **事件处理方法** - 在 JSB.defineClass 中定义
+ *    - 响应 UI 事件（按钮点击、手势等）
+ *    - 必须通过 `let self = getTaskSettingController()` 获取实例
+ *    - 示例：`focusTargetBoard`, `clearTargetBoard` 等
+ * 
+ * 2. **通用/可复用方法** - 在 prototype 上定义
+ *    - 业务逻辑和工具函数
+ *    - 可以被事件处理方法调用
+ *    - 示例：`focusBoard`, `clearBoard`, `createBoardBinding` 等
+ * 
+ * ### 多看板管理架构
+ * - 使用 `createBoardBinding` 创建统一的看板 UI
+ * - 每个看板需要三个事件处理方法：focus、clear、paste
+ * - 通用操作逻辑抽象到 prototype 方法中
+ * 
+ * @example
+ * // 添加新看板
+ * // 1. 在 createSettingView 中创建 UI
+ * this.createBoardBinding({key: 'newBoard', title: '新看板:', parent: 'taskBoardView'})
+ * 
+ * // 2. 在 JSB.defineClass 中添加事件处理
+ * focusNewBoardBoard: function() {
+ *   let self = getTaskSettingController()
+ *   self.focusBoard('newBoard')
+ * }
+ */
+
 /** @return {taskSettingController} */
 const getTaskSettingController = ()=>self
 var taskSettingController = JSB.defineClass('taskSettingController : UIViewController <NSURLConnectionDelegate,UIImagePickerControllerDelegate,UIWebViewDelegate>', {
@@ -987,100 +1021,18 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   
   // 通用看板处理方法
   focusTargetBoard: function() {
-    this.focusBoard('target')
+    let self = getTaskSettingController()
+    self.focusBoard('target')
   },
   
   clearTargetBoard: async function() {
-    await this.clearBoard('target')
+    let self = getTaskSettingController()
+    await self.clearBoard('target')
   },
   
   pasteTargetBoard: async function() {
-    await this.pasteBoard('target')
-  },
-  
-  // 通用看板操作方法
-  focusBoard: function(boardKey) {
     let self = getTaskSettingController()
-    let noteId = taskConfig.getBoardNoteId(boardKey)
-    if (!noteId) {
-      self.showHUD(`❌ 未设置${this.getBoardDisplayName(boardKey)}`)
-      return
-    }
-    
-    let note = MNNote.new(noteId)
-    if (note) {
-      note.focusInFloatMindMap()
-    } else {
-      self.showHUD("❌ 卡片不存在")
-      // 清除无效的 ID
-      taskConfig.clearBoardNoteId(boardKey)
-      self.updateBoardLabel(boardKey)
-    }
-  },
-  
-  clearBoard: async function(boardKey) {
-    let self = getTaskSettingController()
-    
-    // 如果没有设置看板，直接返回
-    if (!taskConfig.getBoardNoteId(boardKey)) {
-      self.showHUD(`❌ 未设置${this.getBoardDisplayName(boardKey)}`)
-      return
-    }
-    
-    // 显示确认对话框
-    const result = await MNUtil.confirm(
-      "确认清除",
-      `确定要清除${this.getBoardDisplayName(boardKey)}吗？`,
-      ["取消", "清除"]
-    )
-    
-    if (result === 1) {  // 用户点击了"清除"
-      taskConfig.clearBoardNoteId(boardKey)
-      self.updateBoardLabel(boardKey)
-      self.showHUD(`✅ 已清除${this.getBoardDisplayName(boardKey)}`)
-    }
-  },
-  
-  pasteBoard: async function(boardKey) {
-    let self = getTaskSettingController()
-    let noteId = MNUtil.clipboardText
-    if (!noteId) {
-      self.showHUD("剪贴板为空")
-      return
-    }
-    
-    // 验证卡片是否存在
-    let note = MNNote.new(noteId)
-    if (!note) {
-      self.showHUD("❌ 卡片不存在")
-      return
-    }
-    
-    // 如果已经有绑定，显示确认对话框
-    if (taskConfig.getBoardNoteId(boardKey)) {
-      const result = await MNUtil.confirm(
-        "确认替换",
-        `已经设置了${this.getBoardDisplayName(boardKey)}，是否要替换为新的卡片？`,
-        ["取消", "替换"]
-      )
-      
-      if (result !== 1) {  // 用户取消了
-        return
-      }
-    }
-    
-    // 保存新的看板卡片
-    taskConfig.saveBoardNoteId(boardKey, note.noteId)
-    self.updateBoardLabel(boardKey)
-    self.showHUD(`✅ 已保存${this.getBoardDisplayName(boardKey)}`)
-  },
-  
-  getBoardDisplayName: function(boardKey) {
-    const boardNames = {
-      'root': '根目录卡片',
-      'target': '目标看板'
-    }
-    return boardNames[boardKey] || `${boardKey}看板`
+    await self.pasteBoard('target')
   },
   
   importConfigTapped:function(button){
@@ -1854,7 +1806,8 @@ taskSettingController.prototype.createBoardBinding = function(config) {
   
   // 创建 Focus 按钮
   const focusButtonName = `focus${keyCapitalized}BoardButton`
-  this.createButton(focusButtonName, `focus${keyCapitalized}Board:`, parent)
+  const focusSelector = `focus${keyCapitalized}Board:`
+  this.createButton(focusButtonName, focusSelector, parent)
   MNButton.setConfig(this[focusButtonName], {
     title: "Focus",
     color: "#457bd3",
@@ -1990,6 +1943,106 @@ taskSettingController.prototype.setTextview = function (name = this.selectedItem
     taskUtils.addErrorLog(error, "setTextview")
   }
 }
+/**
+ * 通用看板操作方法 - Focus
+ * @this {settingController}
+ * @param {string} boardKey - 看板唯一标识
+ */
+taskSettingController.prototype.focusBoard = function(boardKey) {
+  let noteId = taskConfig.getBoardNoteId(boardKey)
+  if (!noteId) {
+    this.showHUD(`❌ 未设置${this.getBoardDisplayName(boardKey)}`)
+    return
+  }
+  
+  let note = MNNote.new(noteId)
+  if (note) {
+    note.focusInFloatMindMap()
+  } else {
+    this.showHUD("❌ 卡片不存在")
+    // 清除无效的 ID
+    taskConfig.clearBoardNoteId(boardKey)
+    this.updateBoardLabel(boardKey)
+  }
+}
+
+/**
+ * 通用看板操作方法 - Clear
+ * @this {settingController}
+ * @param {string} boardKey - 看板唯一标识
+ */
+taskSettingController.prototype.clearBoard = async function(boardKey) {
+  // 如果没有设置看板，直接返回
+  if (!taskConfig.getBoardNoteId(boardKey)) {
+    this.showHUD(`❌ 未设置${this.getBoardDisplayName(boardKey)}`)
+    return
+  }
+  
+  // 显示确认对话框
+  const result = await MNUtil.confirm(
+    "确认清除",
+    `确定要清除${this.getBoardDisplayName(boardKey)}吗？`,
+    ["取消", "清除"]
+  )
+  
+  if (result === 1) {  // 用户点击了"清除"
+    taskConfig.clearBoardNoteId(boardKey)
+    this.updateBoardLabel(boardKey)
+    this.showHUD(`✅ 已清除${this.getBoardDisplayName(boardKey)}`)
+  }
+}
+
+/**
+ * 通用看板操作方法 - Paste
+ * @this {settingController}
+ * @param {string} boardKey - 看板唯一标识
+ */
+taskSettingController.prototype.pasteBoard = async function(boardKey) {
+  let noteId = MNUtil.clipboardText
+  if (!noteId) {
+    this.showHUD("剪贴板为空")
+    return
+  }
+  
+  // 验证卡片是否存在
+  let note = MNNote.new(noteId)
+  if (!note) {
+    this.showHUD("❌ 卡片不存在")
+    return
+  }
+  
+  // 如果已经有绑定，显示确认对话框
+  if (taskConfig.getBoardNoteId(boardKey)) {
+    const result = await MNUtil.confirm(
+      "确认替换",
+      `已经设置了${this.getBoardDisplayName(boardKey)}，是否要替换为新的卡片？`,
+      ["取消", "替换"]
+    )
+    
+    if (result !== 1) {  // 用户取消了
+      return
+    }
+  }
+  
+  // 保存新的看板卡片
+  taskConfig.saveBoardNoteId(boardKey, note.noteId)
+  this.updateBoardLabel(boardKey)
+  this.showHUD(`✅ 已保存${this.getBoardDisplayName(boardKey)}`)
+}
+
+/**
+ * 获取看板显示名称
+ * @this {settingController}
+ * @param {string} boardKey - 看板唯一标识
+ */
+taskSettingController.prototype.getBoardDisplayName = function(boardKey) {
+  const boardNames = {
+    'root': '根目录卡片',
+    'target': '目标看板'
+  }
+  return boardNames[boardKey] || `${boardKey}看板`
+}
+
 /**
  * @this {settingController}
  */

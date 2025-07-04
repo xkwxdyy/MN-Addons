@@ -400,7 +400,7 @@ class MNTaskManager {
         // 继承父任务的时间标签
         const parentTags = parentNote.tags || [];
         const timeTags = parentTags.filter(tag => 
-          tag.match(/^#\d{4}-\d{2}-\d{2}$/) || tag === "#今日"
+          tag.match(/^#\d{4}\/\d{2}\/\d{2}$/) || tag === "#今日"
         );
         if (timeTags.length > 0) {
           subtask.appendTags(timeTags);

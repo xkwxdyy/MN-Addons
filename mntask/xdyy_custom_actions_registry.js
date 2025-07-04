@@ -362,7 +362,7 @@ function registerAllCustomActions() {
               // 继承父任务的时间标签
               const parentTags = focusNote.tags || [];
               const timeTags = parentTags.filter(tag => 
-                tag.match(/^#\d{4}-\d{2}-\d{2}$/) || tag === "#今日"
+                tag.match(/^#\d{4}\/\d{2}\/\d{2}$/) || tag === "#今日"
               );
               if (timeTags.length > 0) {
                 subtask.appendTags(timeTags);
@@ -800,7 +800,7 @@ function registerAllCustomActions() {
         try {
           // 移除所有日期格式的标签和今日标签
           const timeTags = note.tags.filter(tag => 
-            tag.match(/^#\d{4}-\d{2}-\d{2}$/) || tag === "#今日" || tag === "#明日" || tag === "#本周"
+            tag.match(/^#\d{4}\/\d{2}\/\d{2}$/) || tag === "#今日" || tag === "#明日" || tag === "#本周"
           );
           
           if (timeTags.length > 0) {
@@ -829,12 +829,12 @@ function registerAllCustomActions() {
       
       switch(selectedIndex) {
         case 0: // 今日
-          targetTag = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+          targetTag = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
           break;
         case 1: // 昨日
           const yesterday = new Date(today);
           yesterday.setDate(yesterday.getDate() - 1);
-          targetTag = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+          targetTag = `${yesterday.getFullYear()}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${String(yesterday.getDate()).padStart(2, '0')}`;
           break;
         case 2: // 本周
           targetTag = "本周";
@@ -845,14 +845,14 @@ function registerAllCustomActions() {
         case 4: // 自定义
           UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
             "输入日期",
-            "格式：YYYY-MM-DD",
+            "格式：YYYY/MM/DD",
             2,
             "取消",
             ["确定"],
             (alert, buttonIndex) => {
               if (buttonIndex === 1) {
                 const dateText = alert.textFieldAtIndex(0).text;
-                if (dateText.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                if (dateText.match(/^\d{4}\/\d{2}\/\d{2}$/)) {
                   targetTag = `${dateText}`;
                   performFilter(targetTag);
                 } else {
@@ -906,8 +906,8 @@ function registerAllCustomActions() {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
       
-      const todayTag = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      const tomorrowTag = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+      const todayTag = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
+      const tomorrowTag = `${tomorrow.getFullYear()}/${String(tomorrow.getMonth() + 1).padStart(2, '0')}/${String(tomorrow.getDate()).padStart(2, '0')}`;
       
       focusNotes.forEach((note) => {
         try {

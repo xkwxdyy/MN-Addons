@@ -3,6 +3,929 @@
  * 通过 prototype 方式扩展 taskUtils 类的功能
  */
 
+/**
+ * MNTaskManager - 任务管理系统核心类
+ * 参考 MNMath 的设计模式，定义任务类型预设和管理 API
+ */
+class MNTaskManager {
+  /**
+   * 任务类型定义
+   * 
+   * @property {string} prefixName - 标题前缀 【O >> 】
+   * @property {string} englishName - 英文名称
+   * @property {string} zhName - 中文名称
+   * @property {number} colorIndex - 默认颜色索引
+   * @property {number} statusColorMap - 状态对应的颜色映射
+   * @property {Array} fields - 默认字段列表
+   * @property {Array} tags - 默认标签
+   */
+  static taskTypes = {
+    objective: {
+      prefixName: 'O',
+      englishName: 'Objective',
+      zhName: '目标',
+      colorIndex: 10,  // 深蓝色
+      statusColorMap: {
+        notStarted: 0,   // 淡黄色
+        inProgress: 6,   // 蓝色
+        completed: 5     // 绿色
+      },
+      fields: [
+        "关键结果",
+        "截止日期",
+        "负责人",
+        "进度",
+        "备注"
+      ],
+      tags: ["#目标", "#OKR"]
+    },
+    keyResult: {
+      prefixName: 'KR',
+      englishName: 'Key Result',
+      zhName: '关键结果',
+      colorIndex: 15,  // 紫色
+      statusColorMap: {
+        notStarted: 0,
+        inProgress: 6,
+        completed: 5
+      },
+      fields: [
+        "衡量指标",
+        "当前进度",
+        "目标值",
+        "截止日期",
+        "相关任务"
+      ],
+      tags: ["#关键结果", "#OKR"]
+    },
+    project: {
+      prefixName: 'P',
+      englishName: 'Project',
+      zhName: '项目',
+      colorIndex: 9,   // 深绿色
+      statusColorMap: {
+        notStarted: 0,
+        inProgress: 6,
+        completed: 5
+      },
+      fields: [
+        "项目描述",
+        "里程碑",
+        "资源",
+        "风险",
+        "子任务"
+      ],
+      tags: ["#项目"]
+    },
+    task: {
+      prefixName: 'T',
+      englishName: 'Task',
+      zhName: '任务',
+      colorIndex: 2,   // 淡蓝色
+      statusColorMap: {
+        notStarted: 0,
+        inProgress: 6,
+        completed: 5
+      },
+      fields: [
+        "任务描述",
+        "优先级",
+        "预计时间",
+        "实际时间",
+        "阻塞因素"
+      ],
+      tags: ["#任务"]
+    }
+  };
+
+  /**
+   * 任务状态定义
+   */
+  static taskStatus = {
+    notStarted: {
+      zhName: '未开始',
+      colorIndex: 0,  // 淡黄色
+      tag: '#未开始'
+    },
+    inProgress: {
+      zhName: '进行中',
+      colorIndex: 6,  // 蓝色
+      tag: '#进行中'
+    },
+    completed: {
+      zhName: '已完成',
+      colorIndex: 5,  // 绿色
+      tag: '#已完成'
+    },
+    blocked: {
+      zhName: '已阻塞',
+      colorIndex: 3,  // 粉色
+      tag: '#已阻塞'
+    },
+    cancelled: {
+      zhName: '已取消',
+      colorIndex: 14, // 深灰色
+      tag: '#已取消'
+    }
+  };
+
+  /**
+   * 创建任务笔记
+   * @param {MNNote} parentNote - 父笔记
+   * @param {string} taskType - 任务类型 (objective/keyResult/project/task)
+   * @param {string} title - 任务标题
+   * @param {Object} options - 额外选项
+   * @returns {MNNote} 创建的任务笔记
+   */
+  static createTask(parentNote, taskType, title, options = {}) {
+    const typeConfig = this.taskTypes[taskType] || this.taskTypes.task;
+    
+    // 创建任务笔记
+    const taskNote = parentNote.createChildNote({
+      title: `【${typeConfig.prefixName} >> ${title}】`,
+      colorIndex: options.colorIndex || typeConfig.statusColorMap.notStarted,
+      content: options.content || ""
+    });
+
+    // 添加默认标签
+    const tags = [...typeConfig.tags, this.taskStatus.notStarted.tag];
+    if (options.tags) {
+      tags.push(...options.tags);
+    }
+    taskNote.appendTags(tags);
+
+    // 添加时间信息
+    const now = new Date();
+    taskNote.appendTextComment(`创建时间：${now.toLocaleString()}`);
+    taskNote.appendTextComment(`状态：${this.taskStatus.notStarted.zhName}`);
+
+    // 添加默认字段（如果指定）
+    if (options.addFields) {
+      typeConfig.fields.forEach(field => {
+        const fieldHtml = HtmlMarkdownUtils.createHtmlMarkdownText(field, "level2");
+        taskNote.appendHtmlComment(fieldHtml, field, 16, "level2");
+      });
+    }
+
+    return taskNote;
+  }
+
+  /**
+   * 更新任务状态
+   * @param {MNNote} note - 任务笔记
+   * @param {string} newStatus - 新状态 (notStarted/inProgress/completed/blocked/cancelled)
+   */
+  static updateTaskStatus(note, newStatus) {
+    const statusConfig = this.taskStatus[newStatus];
+    if (!statusConfig) {
+      throw new Error(`未知的任务状态: ${newStatus}`);
+    }
+
+    // 更新颜色
+    note.colorIndex = statusConfig.colorIndex;
+
+    // 更新标签
+    const statusTags = Object.values(this.taskStatus).map(s => s.tag);
+    note.removeTags(statusTags);
+    note.appendTags([statusConfig.tag]);
+
+    // 更新状态评论
+    const statusCommentIndex = note.getTextCommentIndex("状态：");
+    if (statusCommentIndex !== -1) {
+      note.removeCommentByIndex(statusCommentIndex);
+    }
+    note.appendTextComment(`状态：${statusConfig.zhName}`);
+
+    // 记录状态变更时间
+    const now = new Date();
+    switch(newStatus) {
+      case 'inProgress':
+        note.appendTextComment(`开始时间：${now.toLocaleString()}`);
+        break;
+      case 'completed':
+        note.appendTextComment(`完成时间：${now.toLocaleString()}`);
+        break;
+      case 'blocked':
+        note.appendTextComment(`阻塞时间：${now.toLocaleString()}`);
+        break;
+      case 'cancelled':
+        note.appendTextComment(`取消时间：${now.toLocaleString()}`);
+        break;
+    }
+
+    note.refresh();
+  }
+
+  /**
+   * 切换任务状态（循环切换）
+   * @param {MNNote} note - 任务笔记
+   */
+  static toggleTaskStatus(note) {
+    const currentColor = note.colorIndex;
+    let newStatus;
+
+    // 根据当前颜色判断状态并切换到下一个
+    switch(currentColor) {
+      case 0:  // 未开始
+        newStatus = 'inProgress';
+        break;
+      case 6:  // 进行中
+        newStatus = 'completed';
+        break;
+      case 5:  // 已完成
+        newStatus = 'notStarted';
+        break;
+      case 3:  // 已阻塞
+        newStatus = 'inProgress';
+        break;
+      default:
+        newStatus = 'notStarted';
+    }
+
+    this.updateTaskStatus(note, newStatus);
+  }
+
+  /**
+   * 更改任务类型
+   * @param {MNNote} note - 任务笔记
+   * @param {string} newType - 新类型 (objective/keyResult/project/task)
+   */
+  static changeTaskType(note, newType) {
+    const typeConfig = this.taskTypes[newType];
+    if (!typeConfig) {
+      throw new Error(`未知的任务类型: ${newType}`);
+    }
+
+    // 解析当前标题内容
+    let content = note.noteTitle;
+    const match = content.match(/【[^】]+>>\s*(.+?)】\s*(.*)$/);
+    if (match) {
+      content = match[1] + (match[2] || "");
+    } else {
+      const altMatch = content.match(/【[^】]+>>\s*(.+)$/);
+      if (altMatch) {
+        content = altMatch[1];
+      }
+    }
+
+    // 更新标题
+    note.noteTitle = `【${typeConfig.prefixName} >> ${content}】`;
+    
+    // 更新颜色（如果不是特定状态）
+    if (![0, 6, 5, 3, 14].includes(note.colorIndex)) {
+      note.colorIndex = typeConfig.colorIndex;
+    }
+
+    // 更新标签
+    const typeTags = ["#目标", "#关键结果", "#项目", "#任务", "#OKR"];
+    note.removeTags(typeTags);
+    note.appendTags(typeConfig.tags);
+
+    note.refresh();
+  }
+
+  /**
+   * 获取任务类型
+   * @param {MNNote} note - 任务笔记
+   * @returns {Object|null} 任务类型配置
+   */
+  static getTaskType(note) {
+    const title = note.noteTitle;
+    const match = title.match(/【(\w+)\s*>>/);
+    
+    if (match) {
+      const prefix = match[1];
+      for (const [key, config] of Object.entries(this.taskTypes)) {
+        if (config.prefixName === prefix) {
+          return { key, ...config };
+        }
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * 添加进度信息
+   * @param {MNNote} note - 任务笔记
+   * @param {number} percentage - 进度百分比 (0-100)
+   */
+  static updateProgress(note, percentage) {
+    // 确保百分比在有效范围内
+    percentage = Math.max(0, Math.min(100, percentage));
+    
+    // 创建进度条可视化
+    const filled = Math.floor(percentage / 10);
+    const empty = 10 - filled;
+    const progressBar = '█'.repeat(filled) + '░'.repeat(empty);
+    
+    // 创建进度 HTML 评论
+    const progressHtml = HtmlMarkdownUtils.createHtmlMarkdownText(
+      `进度: ${percentage}% ${progressBar}`,
+      "level2"
+    );
+    
+    // 查找并更新现有进度评论
+    const progressIndex = note.getIncludingHtmlCommentIndex("进度:");
+    if (progressIndex !== -1) {
+      note.removeCommentByIndex(progressIndex);
+    }
+    
+    note.appendHtmlComment(progressHtml, `进度: ${percentage}%`, 16, "level2");
+    
+    // 更新进度标签
+    const progressTags = note.tags.filter(tag => tag.includes("%进度"));
+    if (progressTags.length > 0) {
+      note.removeTags(progressTags);
+    }
+    note.appendTags([`#${percentage}%进度`]);
+    
+    // 如果进度达到100%，考虑自动更新状态
+    if (percentage === 100 && note.colorIndex !== 5) {
+      MNUtil.confirm("任务进度已达100%", "是否将任务状态设置为已完成？", ["取消", "确定"])
+        .then(result => {
+          if (result === 1) {
+            this.updateTaskStatus(note, 'completed');
+          }
+        });
+    }
+    
+    note.refresh();
+  }
+
+  /**
+   * 添加时间标签
+   * @param {MNNote} note - 任务笔记
+   * @param {Date} date - 日期对象
+   * @param {boolean} isToday - 是否添加今日标签
+   */
+  static addTimeTag(note, date = new Date(), isToday = false) {
+    const dateTag = `#${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    note.appendTags([dateTag]);
+    
+    if (isToday) {
+      note.appendTags(["#今日"]);
+    }
+  }
+
+  /**
+   * 创建任务链接关系
+   * @param {MNNote} childNote - 子任务
+   * @param {MNNote} parentNote - 父任务
+   */
+  static linkTasks(childNote, parentNote) {
+    // 添加双向链接
+    childNote.appendNoteLink(parentNote, "parent");
+    parentNote.appendNoteLink(childNote, "child");
+    
+    // 在子任务中记录父任务信息
+    childNote.appendTextComment(`父任务：${parentNote.noteTitle}`);
+  }
+
+  /**
+   * 批量创建子任务
+   * @param {MNNote} parentNote - 父任务
+   * @param {Array<string>} subtaskNames - 子任务名称数组
+   * @param {string} taskType - 任务类型
+   */
+  static batchCreateSubtasks(parentNote, subtaskNames, taskType = 'task') {
+    const subtasks = [];
+    
+    MNUtil.undoGrouping(() => {
+      subtaskNames.forEach((name, index) => {
+        const subtask = this.createTask(parentNote, taskType, name, {
+          tags: ["#子任务"]
+        });
+        
+        // 继承父任务的时间标签
+        const parentTags = parentNote.tags || [];
+        const timeTags = parentTags.filter(tag => 
+          tag.match(/^#\d{4}-\d{2}-\d{2}$/) || tag === "#今日"
+        );
+        if (timeTags.length > 0) {
+          subtask.appendTags(timeTags);
+        }
+        
+        this.linkTasks(subtask, parentNote);
+        subtasks.push(subtask);
+      });
+    });
+    
+    return subtasks;
+  }
+
+  /**
+   * 按章节拆分任务（适用于阅读任务）
+   * @param {MNNote} parentNote - 父任务
+   * @param {number} startChapter - 起始章节
+   * @param {number} endChapter - 结束章节
+   */
+  static splitTaskByChapters(parentNote, startChapter, endChapter) {
+    const subtaskNames = [];
+    
+    for (let i = startChapter; i <= endChapter; i++) {
+      subtaskNames.push(`第${i}章`);
+    }
+    
+    return this.batchCreateSubtasks(parentNote, subtaskNames, 'task');
+  }
+
+  /**
+   * 按页数拆分任务
+   * @param {MNNote} parentNote - 父任务
+   * @param {number} totalPages - 总页数
+   * @param {number} pagesPerTask - 每个任务的页数
+   */
+  static splitTaskByPages(parentNote, totalPages, pagesPerTask) {
+    const subtaskNames = [];
+    let currentPage = 1;
+    
+    while (currentPage <= totalPages) {
+      const endPage = Math.min(currentPage + pagesPerTask - 1, totalPages);
+      subtaskNames.push(`第${currentPage}-${endPage}页`);
+      currentPage = endPage + 1;
+    }
+    
+    return this.batchCreateSubtasks(parentNote, subtaskNames, 'task');
+  }
+
+  /**
+   * 按时间块拆分任务（番茄钟）
+   * @param {MNNote} parentNote - 父任务
+   * @param {number} totalHours - 总小时数
+   * @param {number} hoursPerBlock - 每个时间块的小时数
+   */
+  static splitTaskByTimeBlocks(parentNote, totalHours, hoursPerBlock = 0.5) {
+    const subtaskNames = [];
+    const totalBlocks = Math.ceil(totalHours / hoursPerBlock);
+    
+    for (let i = 1; i <= totalBlocks; i++) {
+      const blockMinutes = hoursPerBlock * 60;
+      subtaskNames.push(`时间块${i} (${blockMinutes}分钟)`);
+    }
+    
+    const subtasks = this.batchCreateSubtasks(parentNote, subtaskNames, 'task');
+    
+    // 为每个子任务添加预计时间
+    subtasks.forEach(subtask => {
+      subtask.appendTextComment(`预计时间：${hoursPerBlock}小时`);
+    });
+    
+    return subtasks;
+  }
+
+  /**
+   * 为目标创建关键结果
+   * @param {MNNote} objectiveNote - 目标笔记
+   * @param {Array<Object>} keyResults - 关键结果配置数组
+   */
+  static createKeyResultsFromObjective(objectiveNote, keyResults) {
+    const krNotes = [];
+    
+    MNUtil.undoGrouping(() => {
+      keyResults.forEach((kr, index) => {
+        const krNote = this.createTask(objectiveNote, 'keyResult', kr.name, {
+          tags: ["#OKR", "#关键结果"]
+        });
+        
+        // 添加衡量指标
+        if (kr.metric) {
+          const metricHtml = HtmlMarkdownUtils.createHtmlMarkdownText("衡量指标", "level2");
+          krNote.appendHtmlComment(metricHtml, "衡量指标", 16, "level2");
+          krNote.appendTextComment(`目标值：${kr.metric}`);
+        }
+        
+        // 添加截止日期
+        if (kr.deadline) {
+          krNote.appendTextComment(`截止日期：${kr.deadline}`);
+        }
+        
+        // 链接到目标
+        this.linkTasks(krNote, objectiveNote);
+        krNotes.push(krNote);
+      });
+    });
+    
+    return krNotes;
+  }
+
+  /**
+   * 计算任务及其子任务的总体进度
+   * @param {MNNote} note - 任务笔记
+   * @returns {number} 总体进度百分比
+   */
+  static calculateOverallProgress(note) {
+    // 获取当前任务的进度
+    const progressTags = note.tags.filter(tag => tag.includes("%进度"));
+    let selfProgress = 0;
+    
+    if (progressTags.length > 0) {
+      const match = progressTags[0].match(/(\d+)%进度/);
+      if (match) {
+        selfProgress = parseInt(match[1]);
+      }
+    }
+    
+    // 如果没有子任务，返回自身进度
+    if (!note.childNotes || note.childNotes.length === 0) {
+      return selfProgress;
+    }
+    
+    // 递归计算所有子任务的进度
+    let totalProgress = 0;
+    let taskCount = 0;
+    
+    function calculateSubtasks(parentNote) {
+      parentNote.childNotes.forEach(child => {
+        const childType = MNTaskManager.getTaskType(child);
+        if (childType) {
+          const childProgressTags = child.tags.filter(tag => tag.includes("%进度"));
+          let childProgress = 0;
+          
+          if (childProgressTags.length > 0) {
+            const match = childProgressTags[0].match(/(\d+)%进度/);
+            if (match) {
+              childProgress = parseInt(match[1]);
+            }
+          }
+          
+          // 检查状态
+          if (child.colorIndex === 5) { // 已完成
+            childProgress = 100;
+          }
+          
+          totalProgress += childProgress;
+          taskCount++;
+          
+          // 递归处理子任务的子任务
+          if (child.childNotes && child.childNotes.length > 0) {
+            calculateSubtasks(child);
+          }
+        }
+      });
+    }
+    
+    calculateSubtasks(note);
+    
+    // 计算平均进度
+    if (taskCount > 0) {
+      return Math.round(totalProgress / taskCount);
+    }
+    
+    return selfProgress;
+  }
+
+  /**
+   * 生成任务统计报告
+   * @param {Array<MNNote>} notes - 任务笔记数组
+   * @returns {Object} 统计报告
+   */
+  static generateTaskStatistics(notes) {
+    const stats = {
+      total: 0,
+      byStatus: {
+        notStarted: 0,
+        inProgress: 0,
+        completed: 0,
+        blocked: 0,
+        cancelled: 0
+      },
+      byType: {
+        objective: 0,
+        keyResult: 0,
+        project: 0,
+        task: 0
+      },
+      totalHours: 0,
+      averageProgress: 0
+    };
+    
+    let totalProgress = 0;
+    
+    notes.forEach(note => {
+      const type = this.getTaskType(note);
+      if (!type) return;
+      
+      stats.total++;
+      
+      // 统计类型
+      stats.byType[type.key]++;
+      
+      // 统计状态
+      switch(note.colorIndex) {
+        case 0:
+          stats.byStatus.notStarted++;
+          break;
+        case 6:
+          stats.byStatus.inProgress++;
+          break;
+        case 5:
+          stats.byStatus.completed++;
+          break;
+        case 3:
+          stats.byStatus.blocked++;
+          break;
+        case 14:
+          stats.byStatus.cancelled++;
+          break;
+      }
+      
+      // 统计时间
+      const timeTags = note.tags.filter(tag => tag.includes("小时"));
+      if (timeTags.length > 0) {
+        const match = timeTags[0].match(/([\d.]+)小时/);
+        if (match) {
+          stats.totalHours += parseFloat(match[1]);
+        }
+      }
+      
+      // 统计进度
+      const progressTags = note.tags.filter(tag => tag.includes("%进度"));
+      if (progressTags.length > 0) {
+        const match = progressTags[0].match(/(\d+)%进度/);
+        if (match) {
+          totalProgress += parseInt(match[1]);
+        }
+      } else if (note.colorIndex === 5) { // 已完成
+        totalProgress += 100;
+      }
+    });
+    
+    // 计算平均进度
+    if (stats.total > 0) {
+      stats.averageProgress = Math.round(totalProgress / stats.total);
+    }
+    
+    return stats;
+  }
+
+  /**
+   * 导出任务数据为 JSON
+   * @param {Array<MNNote>} notes - 要导出的任务笔记
+   * @returns {Object} JSON 数据
+   */
+  static exportTasksToJSON(notes) {
+    const tasks = [];
+    
+    notes.forEach(note => {
+      const type = this.getTaskType(note);
+      if (!type) return;
+      
+      const taskData = {
+        id: note.noteId,
+        title: note.noteTitle,
+        type: type.key,
+        status: this.getNoteStatus(note),
+        colorIndex: note.colorIndex,
+        tags: note.tags || [],
+        createDate: note.createDate,
+        modifiedDate: note.modifiedDate,
+        progress: 0,
+        timeSpent: 0,
+        comments: []
+      };
+      
+      // 获取进度
+      const progressTags = note.tags.filter(tag => tag.includes("%进度"));
+      if (progressTags.length > 0) {
+        const match = progressTags[0].match(/(\d+)%进度/);
+        if (match) {
+          taskData.progress = parseInt(match[1]);
+        }
+      }
+      
+      // 获取时间
+      const timeTags = note.tags.filter(tag => tag.includes("小时"));
+      if (timeTags.length > 0) {
+        const match = timeTags[0].match(/([\d.]+)小时/);
+        if (match) {
+          taskData.timeSpent = parseFloat(match[1]);
+        }
+      }
+      
+      // 获取文本评论
+      note.comments.forEach(comment => {
+        if (MNComment.getCommentType(comment) === 'textComment') {
+          taskData.comments.push(comment.text);
+        }
+      });
+      
+      tasks.push(taskData);
+    });
+    
+    return {
+      exportDate: new Date().toISOString(),
+      version: "1.0",
+      tasks: tasks
+    };
+  }
+
+  /**
+   * 获取笔记的状态
+   * @param {MNNote} note - 任务笔记
+   * @returns {string} 状态标识
+   */
+  static getNoteStatus(note) {
+    switch(note.colorIndex) {
+      case 0:
+        return 'notStarted';
+      case 6:
+        return 'inProgress';
+      case 5:
+        return 'completed';
+      case 3:
+        return 'blocked';
+      case 14:
+        return 'cancelled';
+      default:
+        return 'unknown';
+    }
+  }
+
+  /**
+   * 按章节拆分任务
+   * @param {MNNote} parentNote - 父任务笔记
+   * @param {number} startChapter - 起始章节
+   * @param {number} endChapter - 结束章节
+   * @returns {Array<MNNote>} 创建的子任务数组
+   */
+  static splitTaskByChapters(parentNote, startChapter, endChapter) {
+    const subtasks = [];
+    
+    MNUtil.undoGrouping(() => {
+      for (let i = startChapter; i <= endChapter; i++) {
+        const childNote = MNNote.new({
+          title: `第${i}章`,
+          colorIndex: 2  // 淡蓝色，任务类型
+        });
+        
+        // 添加任务类型前缀
+        childNote.noteTitle = `【T >> 】第${i}章`;
+        
+        // 添加字段
+        childNote.appendHtmlComment('<p style="font-size: 16px; color: #333;">📋 任务详情</p>', '任务详情', 16, '📋');
+        childNote.appendHtmlComment('<p style="font-size: 14px; color: #666;">预计阅读时间：</p>', '预计阅读时间：', 14, '⏱️');
+        childNote.appendHtmlComment('<p style="font-size: 14px; color: #666;">实际阅读时间：</p>', '实际阅读时间：', 14, '⏰');
+        
+        // 添加到父任务
+        parentNote.addChild(childNote);
+        
+        // 链接到父任务
+        this.linkTasks(childNote, parentNote);
+        
+        subtasks.push(childNote);
+      }
+      
+      // 更新父任务进度字段
+      parentNote.appendTextComment(`子任务数量：${subtasks.length}`);
+    });
+    
+    return subtasks;
+  }
+
+  /**
+   * 按页数拆分任务
+   * @param {MNNote} parentNote - 父任务笔记
+   * @param {number} totalPages - 总页数
+   * @param {number} pagesPerTask - 每个任务的页数
+   * @returns {Array<MNNote>} 创建的子任务数组
+   */
+  static splitTaskByPages(parentNote, totalPages, pagesPerTask) {
+    const subtasks = [];
+    const taskCount = Math.ceil(totalPages / pagesPerTask);
+    
+    MNUtil.undoGrouping(() => {
+      for (let i = 0; i < taskCount; i++) {
+        const startPage = i * pagesPerTask + 1;
+        const endPage = Math.min((i + 1) * pagesPerTask, totalPages);
+        
+        const childNote = MNNote.new({
+          title: `第${startPage}-${endPage}页`,
+          colorIndex: 2  // 淡蓝色，任务类型
+        });
+        
+        // 添加任务类型前缀
+        childNote.noteTitle = `【T >> 】第${startPage}-${endPage}页`;
+        
+        // 添加字段
+        childNote.appendHtmlComment(`<p style="font-size: 16px; color: #333;">📄 页码范围：${startPage}-${endPage}</p>`, 
+          `页码范围：${startPage}-${endPage}`, 16, '📄');
+        childNote.appendHtmlComment(`<p style="font-size: 14px; color: #666;">页数：${endPage - startPage + 1}页</p>`, 
+          `页数：${endPage - startPage + 1}页`, 14, '📊');
+        
+        // 添加到父任务
+        parentNote.addChild(childNote);
+        
+        // 链接到父任务
+        this.linkTasks(childNote, parentNote);
+        
+        subtasks.push(childNote);
+      }
+      
+      // 更新父任务信息
+      parentNote.appendTextComment(`总页数：${totalPages}页`);
+      parentNote.appendTextComment(`子任务数量：${subtasks.length}`);
+    });
+    
+    return subtasks;
+  }
+
+  /**
+   * 按时间块拆分任务
+   * @param {MNNote} parentNote - 父任务笔记
+   * @param {number} totalHours - 总小时数
+   * @param {number} hoursPerBlock - 每个时间块的小时数
+   * @returns {Array<MNNote>} 创建的子任务数组
+   */
+  static splitTaskByTimeBlocks(parentNote, totalHours, hoursPerBlock) {
+    const subtasks = [];
+    const blockCount = Math.ceil(totalHours / hoursPerBlock);
+    
+    MNUtil.undoGrouping(() => {
+      for (let i = 0; i < blockCount; i++) {
+        const blockNumber = i + 1;
+        const minutes = Math.round(hoursPerBlock * 60);
+        
+        const childNote = MNNote.new({
+          title: `时间块 #${blockNumber} (${minutes}分钟)`,
+          colorIndex: 2  // 淡蓝色，任务类型
+        });
+        
+        // 添加任务类型前缀
+        childNote.noteTitle = `【T >> 】时间块 #${blockNumber}`;
+        
+        // 添加字段
+        childNote.appendHtmlComment(`<p style="font-size: 16px; color: #333;">⏱️ 时长：${minutes}分钟</p>`, 
+          `时长：${minutes}分钟`, 16, '⏱️');
+        childNote.appendHtmlComment('<p style="font-size: 14px; color: #666;">开始时间：</p>', '开始时间：', 14, '🕐');
+        childNote.appendHtmlComment('<p style="font-size: 14px; color: #666;">结束时间：</p>', '结束时间：', 14, '🕑');
+        childNote.appendHtmlComment('<p style="font-size: 14px; color: #666;">完成情况：</p>', '完成情况：', 14, '✅');
+        
+        // 如果是番茄钟（25分钟），添加特殊标记
+        if (minutes === 25) {
+          childNote.appendTags(['#番茄钟']);
+        }
+        
+        // 添加到父任务
+        parentNote.addChild(childNote);
+        
+        // 链接到父任务
+        this.linkTasks(childNote, parentNote);
+        
+        subtasks.push(childNote);
+      }
+      
+      // 更新父任务信息
+      parentNote.appendTextComment(`预计总时间：${totalHours}小时`);
+      parentNote.appendTextComment(`时间块数量：${subtasks.length}`);
+      parentNote.appendTextComment(`每块时长：${Math.round(hoursPerBlock * 60)}分钟`);
+    });
+    
+    return subtasks;
+  }
+
+  /**
+   * 批量创建子任务
+   * @param {MNNote} parentNote - 父任务笔记
+   * @param {Array<string>} subtaskNames - 子任务名称数组
+   * @returns {Array<MNNote>} 创建的子任务数组
+   */
+  static batchCreateSubtasks(parentNote, subtaskNames) {
+    const subtasks = [];
+    
+    MNUtil.undoGrouping(() => {
+      subtaskNames.forEach((name, index) => {
+        const childNote = MNNote.new({
+          title: name,
+          colorIndex: 2  // 淡蓝色，任务类型
+        });
+        
+        // 添加任务类型前缀
+        childNote.noteTitle = `【T >> 】${name}`;
+        
+        // 添加基本字段
+        childNote.appendHtmlComment('<p style="font-size: 16px; color: #333;">📋 任务描述</p>', '任务描述', 16, '📋');
+        childNote.appendHtmlComment('<p style="font-size: 14px; color: #666;">优先级：中</p>', '优先级：中', 14, '🏷️');
+        childNote.appendHtmlComment(`<p style="font-size: 14px; color: #666;">序号：${index + 1}</p>`, 
+          `序号：${index + 1}`, 14, '#️⃣');
+        
+        // 添加到父任务
+        parentNote.addChild(childNote);
+        
+        // 链接到父任务
+        this.linkTasks(childNote, parentNote);
+        
+        subtasks.push(childNote);
+      });
+      
+      // 更新父任务信息
+      parentNote.appendTextComment(`子任务数量：${subtasks.length}`);
+    });
+    
+    return subtasks;
+  }
+}
+
 
 /**
  * 初始化扩展

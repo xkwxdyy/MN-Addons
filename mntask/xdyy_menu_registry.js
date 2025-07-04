@@ -40,38 +40,6 @@ MNTaskGlobal.getMenuTemplate = function(name) {
  * 严格按照原始 template(action) 函数中的 case 语句内容
  */
 function registerAllMenuTemplates() {
-  // menu_comment
-  MNTaskGlobal.registerMenuTemplate("menu_comment", {
-    action: "moveNewContentsByPopupTo",
-    // doubleClick: "moveOldContentsByPopupTo",  // TODO: 把上面的内容移动下来，类似于移动上去
-    onLongPress: {
-      action: "menu",
-      menuWidth: 300,
-      menuItems: [
-        {
-          action: "replaceFieldContentByPopup",
-          menuTitle: "替换字段",
-        },
-        // {
-        //   action: "moveLastOneCommentByPopupTo",
-        //   menuTitle: "移动「最后1️⃣条」评论",
-        // },
-        // {
-        //   action: "moveLastTwoCommentByPopupTo",
-        //   menuTitle: "移动「最后2️⃣条」评论",
-        // },
-        // {
-        //   action: "moveLastThreeCommentByPopupTo",
-        //   menuTitle: "移动「最后3️⃣条」评论",
-        // },
-        {
-          action: "deleteCommentsByPopup",
-          menuTitle: "删除评论",
-        },
-      ]
-    }
-  });
-
   // menu_task_manage - 任务管理菜单
   MNTaskGlobal.registerMenuTemplate("menu_task_manage", {
     action: "menu",

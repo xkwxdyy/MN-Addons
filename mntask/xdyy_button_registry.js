@@ -49,31 +49,31 @@ function registerAllButtons() {
   // 任务管理相关按钮
   MNTaskGlobal.registerButton("custom1", {
     name: "任务管理",
-    image: "makeCards",  // 使用已存在的图标
+    image: "custom1",
     templateName: "menu_task_manage"
   });
 
   MNTaskGlobal.registerButton("custom2", {
     name: "进度追踪",
-    image: "updateCards",  // 使用已存在的图标
+    image: "custom2",
     templateName: "menu_task_progress"
   });
 
   MNTaskGlobal.registerButton("custom3", {
     name: "今日任务",
-    image: "todayTime",  // 使用已存在的图标
+    image: "custom3",
     templateName: "menu_today_tasks"
   });
 
   MNTaskGlobal.registerButton("custom4", {
     name: "任务拆分",
-    image: "export",  // 使用已存在的图标
+    image: "custom4",
     templateName: "menu_task_split"
   });
 
   MNTaskGlobal.registerButton("custom5", {
     name: "任务看板",
-    image: "view",  // 使用已存在的图标
+    image: "custom5",
     templateName: "menu_task_dashboard"
   });
 

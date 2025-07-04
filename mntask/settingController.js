@@ -1,3 +1,46 @@
+/**
+ * settingController.js - MNTask 设置面板控制器
+ * 
+ * ⚠️ 重要开发经验与常见陷阱 ⚠️
+ * 
+ * 1. JSB 框架 self 引用问题（极其重要）
+ *    ❌ 错误：在方法内使用 self = this 或 let self = this
+ *    ✅ 正确：使用工厂函数 const getTaskSettingController = ()=>self
+ *    原因：JSB 框架的 Objective-C 桥接特性导致 this 行为异常
+ * 
+ * 2. ScrollView 布局与关闭按钮定位
+ *    问题：关闭按钮随 ScrollView 内容移动
+ *    解决方案：
+ *    - 将 tabView 宽度设为 width - 45，为关闭按钮预留空间
+ *    - 关闭按钮放在父视图中，位置为 tabView.width + 5
+ *    - 确保两者在同一父视图中以保持坐标系一致
+ * 
+ * 3. ScrollView 方向锁定
+ *    问题：标签栏 ScrollView 可以垂直移动
+ *    解决方案：
+ *    - alwaysBounceVertical = false
+ *    - directionalLockEnabled = true
+ *    - contentSize.height = frame.height
+ * 
+ * 4. 颜色值设置陷阱
+ *    ❌ 错误：color:"transparent"
+ *    ✅ 正确：color:"#ffffff", alpha:0.0
+ *    原因：iOS 不支持 "transparent" 字符串，需使用 alpha 通道
+ * 
+ * 5. 坐标系统理解
+ *    - view (主视图)
+ *      ├── moveButton (y=0)
+ *      ├── maxButton (y=0)
+ *      ├── tabView (y=20, 横向滚动区域)
+ *      │   ├── configButton
+ *      │   ├── dynamicButton
+ *      │   └── ...其他标签按钮
+ *      ├── closeButton (y=20, x=tabView.width+5)
+ *      └── settingView (y=55, 主内容区域)
+ * 
+ * @module settingController
+ */
+
 // JSB.require('utils');
 // JSB.require('base64')
 /** @return {taskSettingController} */

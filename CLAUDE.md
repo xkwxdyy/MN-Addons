@@ -819,4 +819,108 @@ MNUtil.userSelect("请选择", "", options).then(selectedIndex => {
 3. **注意参数差异**：`userSelect` 需要三个参数（mainTitle, subTitle, items）
 4. **测试边界情况**：特别是取消按钮的处理
 
+### UI 布局陷阱（ScrollView 与固定元素）
+
+在开发设置面板等复杂 UI 时，经常需要处理可滚动区域与固定元素的布局关系。
+
+#### 场景说明
+实现类似 mnai 的标签栏布局，需要横向滚动的标签按钮和固定的关闭按钮。
+
+#### 常见错误
+
+1. **关闭按钮随内容滚动**
+   ```javascript
+   // ❌ 错误：将关闭按钮放在 ScrollView 内
+   this.createButton("closeButton","closeButtonTapped:","tabView")
+   ```
+
+2. **坐标系混乱**
+   ```javascript
+   // ❌ 错误：不同父视图导致坐标系不一致
+   this.createScrollView("tabView","view")
+   this.createButton("closeButton","closeButtonTapped:","settingView")
+   // tabView 在 view 中，closeButton 在 settingView 中，坐标系不同
+   ```
+
+#### 正确实现
+```javascript
+// ✅ 正确：缩短 ScrollView 宽度，为固定元素预留空间
+// 1. 创建 ScrollView 和关闭按钮在同一父视图中
+this.createScrollView("tabView","view")
+this.createButton("closeButton","closeButtonTapped:","view")
+
+// 2. 布局时为关闭按钮预留空间
+let tabViewFrame = {
+  x: 0,
+  y: 20,
+  width: width - 45,  // 预留 45 像素给关闭按钮
+  height: 30
+}
+this.tabView.frame = tabViewFrame
+
+// 3. 关闭按钮定位在 ScrollView 右侧
+taskFrame.set(this.closeButton, tabViewFrame.width + 5, tabViewFrame.y)
+```
+
+### ScrollView 方向锁定
+
+#### 问题描述
+横向滚动的 ScrollView 也能垂直移动，影响用户体验。
+
+#### 解决方案
+```javascript
+// 创建只能横向滚动的 ScrollView
+this.tabView.alwaysBounceHorizontal = true
+this.tabView.alwaysBounceVertical = false    // 禁用垂直弹性
+this.tabView.directionalLockEnabled = true   // 锁定滚动方向
+this.tabView.showsHorizontalScrollIndicator = false
+this.tabView.showsVerticalScrollIndicator = false
+
+// 确保 contentSize 高度与 frame 高度相同
+this.tabView.contentSize = {width: contentWidth, height: 30}
+this.tabView.frame = {x: 0, y: 20, width: width - 45, height: 30}
+```
+
+### iOS 颜色值设置陷阱
+
+#### 错误用法
+```javascript
+// ❌ 错误：iOS 不支持 "transparent" 字符串
+MNButton.setConfig(button, {color:"transparent"})
+```
+
+#### 正确用法
+```javascript
+// ✅ 正确：使用 alpha 通道实现透明
+MNButton.setConfig(button, {color:"#ffffff", alpha:0.0})
+
+// 或者使用 MNUtil 的颜色方法
+button.backgroundColor = MNUtil.hexColorAlpha("#ffffff", 0.0)
+```
+
+### 视图层级与坐标系统
+
+理解视图层级对于正确布局至关重要。每个视图都有自己的坐标系统，子视图的坐标是相对于父视图的。
+
+#### 典型的设置面板层级结构
+```
+view (主视图, 坐标系原点)
+├── moveButton (y=0, 顶部移动手柄)
+├── maxButton (y=0, 最大化按钮)
+├── tabView (y=20, ScrollView 容器)
+│   ├── configButton (y=0, 相对于 tabView)
+│   ├── dynamicButton (y=0)
+│   └── ...其他标签按钮
+├── closeButton (y=20, 与 tabView 同级同高度)
+└── settingView (y=55, 主内容区域)
+    ├── configView (y=0, 相对于 settingView)
+    ├── advanceView (y=0)
+    └── ...其他内容视图
+```
+
+#### 坐标计算要点
+1. **相对坐标**：子视图的坐标是相对于直接父视图的
+2. **同级对齐**：要对齐的元素应该在同一父视图中
+3. **预留空间**：固定元素需要在布局时预留空间
+
 > 💡 **提示**：开发前请先仔细阅读对应子项目的 CLAUDE.md 文件，它们包含了更详细的技术实现和规范要求。

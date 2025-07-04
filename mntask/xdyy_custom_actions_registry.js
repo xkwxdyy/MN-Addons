@@ -145,21 +145,65 @@ function registerAllCustomActions() {
   // OKRNoteMake - OKR 制卡流
   MNTaskGlobal.registerCustomAction("OKRNoteMake", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
-    MNUtil.undoGrouping(() => {
-      focusNotes.forEach((focusNote) => {
-        taskUtils.OKRNoteMake(focusNote);
+    
+    try {
+      MNUtil.log("🎯 开始执行 OKR 制卡流");
+      
+      if (!focusNotes || focusNotes.length === 0) {
+        MNUtil.showHUD("请先选择一个笔记");
+        return;
+      }
+      
+      MNUtil.undoGrouping(() => {
+        focusNotes.forEach((focusNote) => {
+          try {
+            MNUtil.log(`处理笔记: ${focusNote.noteTitle || "无标题"}`);
+            taskUtils.OKRNoteMake(focusNote);
+          } catch (error) {
+            MNUtil.log(`❌ OKR 制卡失败: ${error.message}`);
+            MNUtil.showHUD(`制卡失败: ${error.message}`);
+          }
+        });
       });
-    });
+      
+      MNUtil.log("✅ OKR 制卡流执行完成");
+    } catch (error) {
+      MNUtil.log(`❌ OKR 制卡流执行失败: ${error.message}`);
+      MNUtil.addErrorLog(error, "OKRNoteMake", context);
+      MNUtil.showHUD(`执行失败: ${error.message}`);
+    }
   });
 
   // undoOKRNoteMake - 回退任务状态
   MNTaskGlobal.registerCustomAction("undoOKRNoteMake", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
-    MNUtil.undoGrouping(() => {
-      focusNotes.forEach((focusNote) => {
-        taskUtils.OKRNoteMake(focusNote, true);  // undoStatus = true
+    
+    try {
+      MNUtil.log("🔙 开始执行 OKR 任务回退");
+      
+      if (!focusNotes || focusNotes.length === 0) {
+        MNUtil.showHUD("请先选择一个笔记");
+        return;
+      }
+      
+      MNUtil.undoGrouping(() => {
+        focusNotes.forEach((focusNote) => {
+          try {
+            MNUtil.log(`回退笔记: ${focusNote.noteTitle || "无标题"}`);
+            taskUtils.OKRNoteMake(focusNote, true);  // undoStatus = true
+          } catch (error) {
+            MNUtil.log(`❌ OKR 回退失败: ${error.message}`);
+            MNUtil.showHUD(`回退失败: ${error.message}`);
+          }
+        });
       });
-    });
+      
+      MNUtil.log("✅ OKR 任务回退完成");
+    } catch (error) {
+      MNUtil.log(`❌ OKR 任务回退失败: ${error.message}`);
+      MNUtil.addErrorLog(error, "undoOKRNoteMake", context);
+      MNUtil.showHUD(`回退失败: ${error.message}`);
+    }
   });
 
   // moveToInbox - 加入 Inbox

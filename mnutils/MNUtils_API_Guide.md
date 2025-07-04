@@ -282,6 +282,15 @@ class MNUtil {
   // === 选择的点击信息 ===
   static get popUpNoteInfo()      // 弹出菜单的笔记信息
   static get popUpSelectionInfo() // 弹出菜单的选择区域信息
+  
+  // === 其他实用方法 ===
+  static readFile(path)          // 读取文件内容
+  static writeFile(path, data)   // 写入文件
+  static removeFile(path)        // 删除文件
+  static moveFile(from, to)      // 移动文件
+  static getExcerptNotes(docMd5, notebookId) // 获取文档的摘录笔记
+  static getNotebookNotes(notebookId) // 获取笔记本中的所有笔记
+  static refreshNoteInNotebook(noteId, notebookId) // 刷新笔记本中的特定笔记
 }
 ```
 
@@ -296,7 +305,6 @@ static popUpSelectionInfo  // 弹出选择信息
 
 // 全局状态
 static onAlert            // 是否正在显示 alert
-static onWaitHUD         // 是否正在显示等待 HUD
 
 // 日志系统
 static errorLog = []      // 错误日志数组
@@ -304,14 +312,6 @@ static logs = []          // 通用日志数组
 
 // 版本信息缓存
 static mnVersion          // MarginNote 版本信息缓存
-
-// 颜色常量映射
-static colorOption = [
-  "light yellow", "light green", "light blue", "light red",
-  "yellow", "green", "blue", "red",
-  "orange", "dark green", "dark blue", "deep red",
-  "white", "light gray", "dark gray", "purple"
-]
 ```
 
 **常用方法示例**:
@@ -380,13 +380,13 @@ class MNNote {
   // === 层级关系管理 ===
   addChild(note)         // 添加子笔记
   removeFromParent()     // 从父笔记移除
-  createChildNote(config) // 创建子笔记
+  createChildNote(config, undoGrouping = true) // 创建子笔记
   
   // === 评论系统 (50+ 方法) ===
   appendTextComment(comment, index)      // 添加文本评论
   appendMarkdownComment(comment, index)  // 添加 Markdown 评论
   appendHtmlComment(html, text, size, tag, index)  // 添加 HTML 评论
-  moveComment(fromIndex, toIndex, msg = false)     // 移动评论（xdyyutils 中默认值已改为 false）
+  moveComment(fromIndex, toIndex, msg = true)      // 移动评论（注意：xdyyutils 中默认值改为 false）
   removeCommentByIndex(index)            // 删除指定评论
   removeCommentsByIndices(indices)       // 批量删除评论
   sortCommentsByNewIndices(arr)          // 重新排序评论
@@ -404,6 +404,16 @@ class MNNote {
   removeCommentButLinkTag(filter, f)     // 删除评论但保留链接和标签
   tidyupTags()                           // 整理标签（确保在最后）
   clearFormat()                          // 清除格式
+  
+  // === 批量评论操作 ===
+  appendTextComments(...comments)        // 批量添加文本评论
+  appendMarkdownComments(...comments)    // 批量添加 Markdown 评论
+  
+  // === 卡片相关操作 ===
+  get isCard()                           // 是否是卡片
+  set isCard(value)                      // 设置卡片状态
+  toCard()                               // 转为卡片
+  removeFromCard()                       // 从卡片移除
   
   // === 更多属性 (getter) ===
   get allText()          // 所有文本
@@ -423,6 +433,12 @@ class MNNote {
   get currentChildMap()  // 当前子脑图
   get groupNoteId()      // 组笔记 ID
   get summaryLinks()     // 摘要链接
+  get tags()             // 标签数组（不含 # 前缀）
+  get excerptPic()       // 摘录图片
+  get modifiedDate()     // 修改日期
+  get createDate()       // 创建日期
+  get docMd5()           // 文档 MD5
+  get notebookId()       // 笔记本 ID
   
   // === 静态方法 ===
   static new(note, alert = true)         // 智能创建笔记对象
@@ -493,7 +509,6 @@ class MNComment {
   // === 静态方法 ===
   static from(note)     // 从笔记获取所有评论
   static getCommentType(comment) // 根据评论对象判断类型
-  static getTypeByIndex(note, index) // 获取指定索引的评论类型
   
   // === 类型判断 ===
   get isTextComment()      // 是否文本评论
@@ -623,6 +638,13 @@ class MNDocument {
   documentNotebookInStudySet(notebookId)  // 获取学习集中的文档笔记本
   notesInDocumentInStudySet(notebookId)   // 获取文档在学习集中的笔记
   mainNoteInNotebook(notebookId)          // 获取主笔记
+  
+  // === 静态方法 ===
+  static new(docMd5)     // 创建文档对象
+  
+  // === 其他属性 ===
+  get pathFile()         // 文件路径
+  get fileName()         // 文件名
 }
 ```
 
@@ -651,6 +673,15 @@ class MNNotebook {
   open()                // 打开笔记本
   openDoc(docMd5)       // 在笔记本中打开文档
   importDoc()           // 导入新文档
+  
+  // === 静态工具方法 ===
+  static new(notebookId)    // 创建笔记本对象
+  static getByTitle(title)  // 根据标题获取笔记本
+  
+  // === 其他属性 ===
+  get createDate()      // 创建日期
+  get modifiedDate()    // 修改日期
+  get colorIndex()      // 颜色索引
 }
 ```
 
@@ -838,7 +869,7 @@ static makeCard(note, addToReview = true, reviewEverytime = true)
 
 // 转化为非摘录版本
 static toNoExceptVersion(note)
-```
+```toNoExcerptVersion
 
 ##### 制卡工作流（8个步骤）
 
@@ -1009,6 +1040,24 @@ static getHtmlCommentsTextArrForPopup(note)
 
 // 获取评论移动的目标索引数组
 static getCommentsIndexArrToMoveForPopup(note)
+
+// 智能链接排列（整理相关思考字段下的链接）
+static smartLinkArrangement(note)
+
+// 合并模板并自动移动内容（重要：制卡工作流的核心步骤）
+static mergeTemplateAndAutoMoveNoteContent(note)
+
+// 自动移动新内容到合适的字段
+static autoMoveNewContent(note)
+
+// 检查笔记是否是模板笔记
+static ifTemplateNote(note)
+
+// 获取指定字段下的内容索引数组
+static getFieldContentIndexArr(note, field)
+
+// 移动内容到指定字段（高级版本，支持更多选项）
+static moveContentToField(note, content, field, options)
 ```
 
 #### 使用示例
@@ -1091,8 +1140,10 @@ note.appendHtmlComment(html, "重要内容", 16, "danger");
 class Pangu {
   // === 主要方法 ===
   static spacing(text)              // 自动添加空格优化排版
-  static spacingText(text)          // 同 spacing
   static autoSpacingPage()          // 自动优化整个页面
+  static spacingPageBody()          // 优化页面主体内容
+  static addSpaceAtNode(node)       // 为指定节点添加空格
+  static canIgnoreNode(node)        // 判断节点是否可忽略
   
   // === 转换规则 ===
   // 1. CJK 字符与英文/数字之间添加空格
@@ -1194,9 +1245,12 @@ class HtmlMarkdownUtils {
   static getSpanNextLevelType(currentType)
   static getSpanLastLevelType(type)      // 获取上一级类型
   static parseLeadingDashes(text)        // 解析前导短横线数量
+  static extractSpanContent(html)         // 从 HTML 中提取 span 内容
+  static removeSpanTags(html)            // 移除 span 标签保留内容
+  static updateSpanContent(html, newContent) // 更新 span 内容
+  static changeSpanType(html, newType)   // 改变 span 类型
   
   // === 问答功能 ===
-  static async addQuestionHtmlMDComment(note, questionPlaceholder = "❓ ", answerPlaceholder = "💡 ", explanationPlaceholder = "✍︎ ")
   static createQuestionHtml(question, answer, explanation)  // 创建问答HTML
   static updateQuestionPart(comment, part, newContent)      // 更新问答部分
   static parseQuestionHtml(html)                           // 解析问答HTML
@@ -1212,7 +1266,6 @@ let level1 = HtmlMarkdownUtils.createHtmlMarkdownText("第一级", "level1");
 let level2 = HtmlMarkdownUtils.createHtmlMarkdownText("第二级", "level2");
 
 // 问答功能示例
-await HtmlMarkdownUtils.addQuestionHtmlMDComment(note);  // 弹窗收集问答内容
 let qHtml = HtmlMarkdownUtils.createQuestionHtml("什么是函数？", "函数是...", "详细解释...");
 ```
 

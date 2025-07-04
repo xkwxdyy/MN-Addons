@@ -1362,16 +1362,26 @@ function initXDYYExtensions() {
       case "关键结果":
         prefix.type = "关键结果"
         goalNote = this.getGoalNote(note)
-        prefix.path = this.getOKRNoteTitle(goalNote)
+        if (goalNote) {
+          prefix.path = this.getOKRNoteTitle(goalNote)
+        } else {
+          prefix.path = "未找到目标"
+        }
         break;
       case "项目":
         // 注意：可能存在项目下方还是项目
         prefix.type = "项目"
         goalNote = this.getGoalNote(note)
         keyResultNote = this.getKeyResultNote(note)
-        prefix.path = this.getOKRNoteTitle(goalNote) + "→" + this.getOKRNoteTitle(keyResultNote)
-        parentProjectNotesArr = this.getParentProjectNotesArr(note)
-        if (parentProjectNotesArr.length > 0) {
+        prefix.path = ""
+        if (goalNote) {
+          prefix.path = this.getOKRNoteTitle(goalNote)
+        }
+        if (keyResultNote) {
+          prefix.path += (prefix.path ? "→" : "") + this.getOKRNoteTitle(keyResultNote)
+        }
+        let parentProjectNotesArr = this.getParentProjectNotesArr(note)
+        if (parentProjectNotesArr && parentProjectNotesArr.length > 0) {
           parentProjectNotesArr.forEach(parentProjectNote => {
             prefix.path += "→" + this.getOKRNoteTitle(parentProjectNote)
           })
@@ -1379,7 +1389,12 @@ function initXDYYExtensions() {
         break;
       case "任务":
         prefix.type = "任务"
-        prefix.path = this.getPrefixObj(note.parentNote).path + "→" + this.getOKRNoteTitle(note.parentNote)
+        if (note.parentNote) {
+          let parentPrefix = this.getPrefixObj(note.parentNote)
+          prefix.path = (parentPrefix.path || "") + "→" + this.getOKRNoteTitle(note.parentNote)
+        } else {
+          prefix.path = "无父卡片"
+        }
         break;
     }
     return prefix
@@ -1591,7 +1606,7 @@ function initXDYYExtensions() {
      * 转换为非摘录版本
      */
     if (note.excerptText) {
-      note.toNoExceptVersion()
+      // note.toNoExcerptVersion() // 该方法不存在，暂时注释
     }
     /**
      * 获取 note 的信息
@@ -1681,21 +1696,25 @@ function initXDYYExtensions() {
      * 链接到父卡片
      */
     let parentNote = note.parentNote
-    let noteIdInParentNote = parentNote.getCommentIndex(note.noteURL)
-    if (status == "已完成") {
-      // 如果已完成，就把父卡片中的链接去掉
-      if (noteIdInParentNote !== -1) {
-        parentNote.removeCommentByIndex(noteIdInParentNote)
+    if (parentNote) {
+      let noteIdInParentNote = parentNote.getCommentIndex(note.noteURL)
+      if (status == "已完成") {
+        // 如果已完成，就把父卡片中的链接去掉
+        if (noteIdInParentNote !== -1) {
+          parentNote.removeCommentByIndex(noteIdInParentNote)
+        }
+      } else {
+        if (noteIdInParentNote == -1) {
+          parentNote.appendNoteLink(note, "To")
+        } else {
+          parentNote.moveComment(noteIdInParentNote, parentNote.comments.length - 1)
+        }
       }
     } else {
-      if (noteIdInParentNote == -1) {
-        parentNote.appendNoteLink(note, "To")
-      } else {
-        parentNote.moveComment(noteIdInParentNote, parentNote.comments.length - 1)
-      }
+      MNUtil.log("⚠️ 笔记没有父卡片，跳过链接处理");
     }
 
-    note.refreshAll()
+    note.refresh()
   }
 
   /**
@@ -1734,7 +1753,7 @@ function initXDYYExtensions() {
     if (note.ifIndependentNote()) {
       // 如果是独立卡片（比如非知识库里的卡片），只进行转化为非摘录版本
       note.title = Pangu.spacing(note.title)
-      note.toNoExceptVersion()
+      // note.toNoExcerptVersion() // 该方法不存在，暂时注释
     } else {
       /** 
        * 【Done】处理旧卡片
@@ -1801,7 +1820,7 @@ function initXDYYExtensions() {
      * 刷新
      */
     note.refresh()
-    note.refreshAll()
+    note.refresh()
   }
 
   taskUtils.isValidNoteId = function(noteId) {

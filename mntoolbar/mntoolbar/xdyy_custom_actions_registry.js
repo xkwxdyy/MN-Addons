@@ -3999,7 +3999,7 @@ function registerAllCustomActions() {
       MNUtil.undoGrouping(() => {
         focusNotes.forEach((focusNote) => {
           if (focusNote.excerptText) {
-            MNMath.toNoExceptVersion(focusNote);
+            MNMath.toNoExcerptVersion(focusNote);
           }
         });
       });
@@ -4311,7 +4311,7 @@ function registerAllCustomActions() {
                 focusNote.title.toNoBracketPrefixContent();
             }
             if (focusNote.excerptText) {
-              focusNote.toNoExceptVersion();
+              focusNote.toNoExcerptVersion();
             }
           }
         });
@@ -4460,7 +4460,7 @@ function registerAllCustomActions() {
     MNUtil.undoGrouping(() => {
       try {
         if (toolbarConfig.windowState.preprocess) {
-          let newnote = MNMath.toNoExceptVersion(focusNote);
+          let newnote = MNMath.toNoExcerptVersion(focusNote);
           MNMath.changeTitle(newnote);
           newnote.focusInMindMap(0.2);
         } else {

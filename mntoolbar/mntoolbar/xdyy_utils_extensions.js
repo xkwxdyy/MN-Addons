@@ -387,7 +387,7 @@ function initXDYYExtensions() {
      * 转换为非摘录版本
      */
     if (note.excerptText) {
-      note.toNoExceptVersion()
+      note.toNoExcerptVersion()
     }
     /**
      * 获取 note 的信息
@@ -530,7 +530,7 @@ function initXDYYExtensions() {
     if (note.ifIndependentNote()) {
       // 如果是独立卡片（比如非知识库里的卡片），只进行转化为非摘录版本
       note.title = Pangu.spacing(note.title)
-      note.toNoExceptVersion()
+      note.toNoExcerptVersion()
     } else {
       /** 
        * 【Done】处理旧卡片

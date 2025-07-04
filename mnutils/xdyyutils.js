@@ -296,7 +296,7 @@ class MNMath {
    */
   static makeNote(note, addToReview = true, reviewEverytime = true, focusInMindMap = true) {
     if (note.excerptText) {
-      let newnote = this.toNoExceptVersion(note)
+      let newnote = this.toNoExcerptVersion(note)
       newnote.focusInMindMap(0.5)
       MNUtil.delay(0.5).then(()=>{
         note = MNNote.getFocusNote()
@@ -526,9 +526,9 @@ class MNMath {
   /**
    * 转化为非摘录版本
    */
-  static toNoExceptVersion(note){
+  static toNoExcerptVersion(note){
     if (note.parentNote) {
-      if (note.excerptText) { // 把摘录内容的检测放到 toNoExceptVersion 的内部
+      if (note.excerptText) { // 把摘录内容的检测放到 toNoExcerptVersion 的内部
         let parentNote = note.parentNote
         let config = {
           title: note.noteTitle,
@@ -1258,7 +1258,7 @@ class MNMath {
       return;
     }
     
-    this.toNoExceptVersion(note)
+    this.toNoExcerptVersion(note)
     
     // 处理链接相关问题
     this.convertLinksToNewVersion(note)
@@ -6003,7 +6003,7 @@ MNNote.prototype.renew = function(){
    * 转换为非摘录版本
    */
   if (this.excerptText) {
-    this.toNoExceptVersion()
+    this.toNoExcerptVersion()
   }
 
   if (noteType == "文献") {

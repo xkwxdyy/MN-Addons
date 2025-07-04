@@ -84,16 +84,16 @@ function registerAllCustomActions() {
     
     // 如果有焦点卡片，询问是否使用它作为根目录
     if (focusNote) {
-      const buttons = ["使用焦点卡片", "输入卡片ID", "取消"];
-      const result = await MNUtil.selectIndex("选择任务管理根目录", buttons, false);
+      const buttons = ["使用焦点卡片", "输入卡片ID"];
+      const result = await MNUtil.userSelect("选择任务管理根目录", "", buttons);
       
-      if (result === 0) {
+      if (result === 1) {
         // 使用当前焦点卡片
         const rootNote = self.taskDashboardController.initDashboard(focusNote.noteId);
         if (rootNote) {
           rootNote.focusInFloatMindMap(0.5);
         }
-      } else if (result === 1) {
+      } else if (result === 2) {
         // 输入卡片 ID
         const input = await MNUtil.input("任务管理根目录", "请输入要作为任务管理根目录的卡片 ID:", ["卡片 ID"]);
         if (input && input[0]) {
@@ -459,16 +459,15 @@ function registerAllCustomActions() {
       return `[${type.zhName}] ${note.noteTitle}`;
     });
     
-    MNUtil.select("选择父任务", options, false).then(selectedIndex => {
-      if (selectedIndex !== null && selectedIndex >= 0) {
-        const parentNote = potentialParents[selectedIndex];
-        
-        MNUtil.undoGrouping(() => {
-          MNTaskManager.linkTasks(focusNote, parentNote);
-          MNUtil.showHUD("✅ 已链接到父任务");
-        });
-      }
-    });
+    const selectedIndex = await MNUtil.userSelect("选择父任务", "", options);
+    if (selectedIndex > 0) { // 0 是取消按钮
+      const parentNote = potentialParents[selectedIndex - 1];
+      
+      MNUtil.undoGrouping(() => {
+        MNTaskManager.linkTasks(focusNote, parentNote);
+        MNUtil.showHUD("✅ 已链接到父任务");
+      });
+    }
   });
 
   // focusParentTask - 定位到父任务
@@ -814,28 +813,28 @@ function registerAllCustomActions() {
     const { button, des, focusNote, focusNotes, self } = context;
     
     const options = ["今日", "昨日", "本周", "本月", "自定义日期"];
-    MNUtil.select("选择筛选条件", options, false).then(selectedIndex => {
-      if (selectedIndex === null) return;
+    MNUtil.userSelect("选择筛选条件", "", options).then(selectedIndex => {
+      if (selectedIndex === 0) return; // 0 是取消按钮
       
       let targetTag;
       const today = new Date();
       
       switch(selectedIndex) {
-        case 0: // 今日
+        case 1: // 今日
           targetTag = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
           break;
-        case 1: // 昨日
+        case 2: // 昨日
           const yesterday = new Date(today);
           yesterday.setDate(yesterday.getDate() - 1);
           targetTag = `${yesterday.getFullYear()}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${String(yesterday.getDate()).padStart(2, '0')}`;
           break;
-        case 2: // 本周
+        case 3: // 本周
           targetTag = "本周";
           break;
-        case 3: // 本月
+        case 4: // 本月
           targetTag = "本月";
           break;
-        case 4: // 自定义
+        case 5: // 自定义
           UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
             "输入日期",
             "格式：YYYY/MM/DD",
@@ -1068,24 +1067,24 @@ function registerAllCustomActions() {
           
           // 选择时间块大小
           const options = ["25分钟（番茄钟）", "30分钟", "45分钟", "1小时", "自定义"];
-          MNUtil.select("选择时间块大小", options, false).then(selectedIndex => {
-            if (selectedIndex === null) return;
+          MNUtil.userSelect("选择时间块大小", "", options).then(selectedIndex => {
+            if (selectedIndex === 0) return; // 0 是取消按钮
             
             let hoursPerBlock;
             switch(selectedIndex) {
-              case 0:
+              case 1:
                 hoursPerBlock = 25 / 60;
                 break;
-              case 1:
+              case 2:
                 hoursPerBlock = 0.5;
                 break;
-              case 2:
+              case 3:
                 hoursPerBlock = 0.75;
                 break;
-              case 3:
+              case 4:
                 hoursPerBlock = 1;
                 break;
-              case 4:
+              case 5:
                 // 自定义
                 UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
                   "自定义时间块",
@@ -1441,16 +1440,16 @@ function registerAllCustomActions() {
     const { button, des, focusNote, focusNotes, self } = context;
     
     const options = ["目标 (Objective)", "关键结果 (Key Result)", "项目 (Project)", "任务 (Task)", "全部类型"];
-    MNUtil.select("选择任务类型", options, false).then(selectedIndex => {
-      if (selectedIndex === null) return;
+    const selectedIndex = await MNUtil.userSelect("选择任务类型", "", options);
+      if (selectedIndex === 0) return; // 0 是取消按钮
       
       let targetType = null;
       switch(selectedIndex) {
-        case 0: targetType = 'objective'; break;
-        case 1: targetType = 'keyResult'; break;
-        case 2: targetType = 'project'; break;
-        case 3: targetType = 'task'; break;
-        case 4: targetType = null; break; // 全部
+        case 1: targetType = 'objective'; break;
+        case 2: targetType = 'keyResult'; break;
+        case 3: targetType = 'project'; break;
+        case 4: targetType = 'task'; break;
+        case 5: targetType = null; break; // 全部
       }
       
       const notebook = MNNotebook.currentNotebook;
@@ -1511,7 +1510,6 @@ function registerAllCustomActions() {
       } else {
         MNUtil.showHUD("没有找到匹配的任务");
       }
-    });
   });
 
   // filterByTaskStatus - 按任务状态筛选
@@ -1519,73 +1517,72 @@ function registerAllCustomActions() {
     const { button, des, focusNote, focusNotes, self } = context;
     
     const options = ["⬜ 未开始", "🔵 进行中", "✅ 已完成", "🔴 已阻塞", "❌ 已取消", "全部状态"];
-    MNUtil.select("选择任务状态", options, false).then(selectedIndex => {
-      if (selectedIndex === null) return;
+    const selectedIndex = await MNUtil.userSelect("选择任务状态", "", options);
+    if (selectedIndex === 0) return; // 0 是取消按钮
+    
+    let targetStatus = null;
+    switch(selectedIndex) {
+      case 1: targetStatus = 'notStarted'; break;
+      case 2: targetStatus = 'inProgress'; break;
+      case 3: targetStatus = 'completed'; break;
+      case 4: targetStatus = 'blocked'; break;
+      case 5: targetStatus = 'cancelled'; break;
+      case 6: targetStatus = null; break; // 全部
+    }
+    
+    const notebook = MNNotebook.currentNotebook;
+    if (!notebook) {
+      MNUtil.showHUD("无法获取当前笔记本");
+      return;
+    }
+    
+    const filteredNotes = notebook.notes.filter(note => {
+      const type = MNTaskManager.getTaskType(note);
+      if (!type) return false;
       
-      let targetStatus = null;
-      switch(selectedIndex) {
-        case 0: targetStatus = 'notStarted'; break;
-        case 1: targetStatus = 'inProgress'; break;
-        case 2: targetStatus = 'completed'; break;
-        case 3: targetStatus = 'blocked'; break;
-        case 4: targetStatus = 'cancelled'; break;
-        case 5: targetStatus = null; break; // 全部
-      }
-      
-      const notebook = MNNotebook.currentNotebook;
-      if (!notebook) {
-        MNUtil.showHUD("无法获取当前笔记本");
-        return;
-      }
-      
-      const filteredNotes = notebook.notes.filter(note => {
-        const type = MNTaskManager.getTaskType(note);
-        if (!type) return false;
-        
-        const status = MNTaskManager.getNoteStatus(note);
-        return targetStatus === null || status === targetStatus;
+      const status = MNTaskManager.getNoteStatus(note);
+      return targetStatus === null || status === targetStatus;
+    });
+    
+    if (filteredNotes.length > 0) {
+      // 创建汇总笔记
+      const statusName = options[selectedIndex];
+      const summaryNote = MNNote.new({
+        title: `📋 ${statusName}任务汇总 (${filteredNotes.length}个)`,
+        colorIndex: targetStatus === 'completed' ? 5 : (targetStatus === 'inProgress' ? 6 : 13)
       });
       
-      if (filteredNotes.length > 0) {
-        // 创建汇总笔记
-        const statusName = options[selectedIndex];
-        const summaryNote = MNNote.new({
-          title: `📋 ${statusName}任务汇总 (${filteredNotes.length}个)`,
-          colorIndex: targetStatus === 'completed' ? 5 : (targetStatus === 'inProgress' ? 6 : 13)
-        });
-        
-        // 按类型分组显示
-        const byType = {
-          objective: [],
-          keyResult: [],
-          project: [],
-          task: []
-        };
-        
-        filteredNotes.forEach(note => {
-          const type = MNTaskManager.getTaskType(note);
-          if (byType[type.key]) {
-            byType[type.key].push(note);
-          }
-        });
-        
-        // 添加类型分组
-        Object.entries(byType).forEach(([typeKey, notes]) => {
-          if (notes.length > 0) {
-            const typeName = MNTaskManager.taskTypes[typeKey].zhName;
-            summaryNote.appendTextComment(`【${typeName}】(${notes.length}个)`);
-            notes.forEach(note => {
-              summaryNote.appendNoteLink(note, "task");
-            });
-          }
-        });
-        
-        summaryNote.focusInFloatMindMap();
-        MNUtil.showHUD(`找到 ${filteredNotes.length} 个${statusName}任务`);
-      } else {
-        MNUtil.showHUD("没有找到匹配的任务");
-      }
-    });
+      // 按类型分组显示
+      const byType = {
+        objective: [],
+        keyResult: [],
+        project: [],
+        task: []
+      };
+      
+      filteredNotes.forEach(note => {
+        const type = MNTaskManager.getTaskType(note);
+        if (byType[type.key]) {
+          byType[type.key].push(note);
+        }
+      });
+      
+      // 添加类型分组
+      Object.entries(byType).forEach(([typeKey, notes]) => {
+        if (notes.length > 0) {
+          const typeName = MNTaskManager.taskTypes[typeKey].zhName;
+          summaryNote.appendTextComment(`【${typeName}】(${notes.length}个)`);
+          notes.forEach(note => {
+            summaryNote.appendNoteLink(note, "task");
+          });
+        }
+      });
+      
+      summaryNote.focusInFloatMindMap();
+      MNUtil.showHUD(`找到 ${filteredNotes.length} 个${statusName}任务`);
+    } else {
+      MNUtil.showHUD("没有找到匹配的任务");
+    }
   });
 
   // filterByProgress - 按进度筛选
@@ -1593,74 +1590,73 @@ function registerAllCustomActions() {
     const { button, des, focusNote, focusNotes, self } = context;
     
     const options = ["0% (未开始)", "1-25% (刚开始)", "26-50% (进行中)", "51-75% (过半)", "76-99% (即将完成)", "100% (已完成)"];
-    MNUtil.select("选择进度范围", options, false).then(selectedIndex => {
-      if (selectedIndex === null) return;
+    const selectedIndex = await MNUtil.userSelect("选择进度范围", "", options);
+    if (selectedIndex === 0) return; // 0 是取消按钮
+    
+    let minProgress, maxProgress;
+    switch(selectedIndex) {
+      case 1: minProgress = 0; maxProgress = 0; break;
+      case 2: minProgress = 1; maxProgress = 25; break;
+      case 3: minProgress = 26; maxProgress = 50; break;
+      case 4: minProgress = 51; maxProgress = 75; break;
+      case 5: minProgress = 76; maxProgress = 99; break;
+      case 6: minProgress = 100; maxProgress = 100; break;
+    }
+    
+    const notebook = MNNotebook.currentNotebook;
+    if (!notebook) {
+      MNUtil.showHUD("无法获取当前笔记本");
+      return;
+    }
+    
+    const filteredNotes = notebook.notes.filter(note => {
+      const type = MNTaskManager.getTaskType(note);
+      if (!type) return false;
       
-      let minProgress, maxProgress;
-      switch(selectedIndex) {
-        case 0: minProgress = 0; maxProgress = 0; break;
-        case 1: minProgress = 1; maxProgress = 25; break;
-        case 2: minProgress = 26; maxProgress = 50; break;
-        case 3: minProgress = 51; maxProgress = 75; break;
-        case 4: minProgress = 76; maxProgress = 99; break;
-        case 5: minProgress = 100; maxProgress = 100; break;
-      }
-      
-      const notebook = MNNotebook.currentNotebook;
-      if (!notebook) {
-        MNUtil.showHUD("无法获取当前笔记本");
-        return;
-      }
-      
-      const filteredNotes = notebook.notes.filter(note => {
-        const type = MNTaskManager.getTaskType(note);
-        if (!type) return false;
-        
-        // 获取进度
-        let progress = 0;
-        const progressTags = note.tags.filter(tag => tag.includes("%进度"));
-        if (progressTags.length > 0) {
-          const match = progressTags[0].match(/(\d+)%进度/);
-          if (match) {
-            progress = parseInt(match[1]);
-          }
-        } else if (note.colorIndex === 5) {
-          // 已完成状态默认100%
-          progress = 100;
+      // 获取进度
+      let progress = 0;
+      const progressTags = note.tags.filter(tag => tag.includes("%进度"));
+      if (progressTags.length > 0) {
+        const match = progressTags[0].match(/(\d+)%进度/);
+        if (match) {
+          progress = parseInt(match[1]);
         }
-        
-        return progress >= minProgress && progress <= maxProgress;
+      } else if (note.colorIndex === 5) {
+        // 已完成状态默认100%
+        progress = 100;
+      }
+      
+      return progress >= minProgress && progress <= maxProgress;
+    });
+    
+    if (filteredNotes.length > 0) {
+      const summaryNote = MNNote.new({
+        title: `📋 进度${options[selectedIndex]}的任务 (${filteredNotes.length}个)`,
+        colorIndex: 9
       });
       
-      if (filteredNotes.length > 0) {
-        const summaryNote = MNNote.new({
-          title: `📋 进度${options[selectedIndex]}的任务 (${filteredNotes.length}个)`,
-          colorIndex: 9
-        });
-        
-        // 按进度排序
-        filteredNotes.sort((a, b) => {
-          const getProgress = (note) => {
-            const tags = note.tags.filter(tag => tag.includes("%进度"));
-            if (tags.length > 0) {
-              const match = tags[0].match(/(\d+)%进度/);
-              return match ? parseInt(match[1]) : 0;
-            }
-            return note.colorIndex === 5 ? 100 : 0;
-          };
-          return getProgress(b) - getProgress(a);
-        });
-        
-        filteredNotes.forEach(note => {
-          summaryNote.appendNoteLink(note, "task");
-        });
-        
-        summaryNote.focusInFloatMindMap();
-        MNUtil.showHUD(`找到 ${filteredNotes.length} 个任务`);
-      } else {
-        MNUtil.showHUD("没有找到匹配的任务");
-      }
-    });
+      // 按进度排序
+      filteredNotes.sort((a, b) => {
+        const getProgress = (note) => {
+          const tags = note.tags.filter(tag => tag.includes("%进度"));
+          if (tags.length > 0) {
+            const match = tags[0].match(/(\d+)%进度/);
+            return match ? parseInt(match[1]) : 0;
+          }
+          return note.colorIndex === 5 ? 100 : 0;
+        };
+        return getProgress(b) - getProgress(a);
+      });
+      
+      filteredNotes.forEach(note => {
+        summaryNote.appendNoteLink(note, "task");
+      });
+      
+      summaryNote.focusInFloatMindMap();
+      MNUtil.showHUD(`找到 ${filteredNotes.length} 个任务`);
+    } else {
+      MNUtil.showHUD("没有找到匹配的任务");
+    }
   });
 
   // filterByTag - 按标签筛选
@@ -1693,36 +1689,35 @@ function registerAllCustomActions() {
     }
     
     const tags = Array.from(tagSet).sort();
-    MNUtil.select("选择标签", tags, true).then(selectedIndices => {
-      if (!selectedIndices || selectedIndices.length === 0) return;
+    const selectedIndex = await MNUtil.userSelect("选择标签", "只能选择单个标签进行筛选", tags);
+    if (selectedIndex === 0) return; // 0 是取消按钮
+    
+    const selectedTags = [tags[selectedIndex - 1]]; // 转换为数组以保持后续代码兼容
+    
+    const filteredNotes = notebook.notes.filter(note => {
+      const type = MNTaskManager.getTaskType(note);
+      if (!type || !note.tags) return false;
       
-      const selectedTags = selectedIndices.map(i => tags[i]);
-      
-      const filteredNotes = notebook.notes.filter(note => {
-        const type = MNTaskManager.getTaskType(note);
-        if (!type || !note.tags) return false;
-        
-        // 检查是否包含所有选中的标签
-        return selectedTags.every(tag => note.tags.includes(tag));
+      // 检查是否包含所有选中的标签
+      return selectedTags.every(tag => note.tags.includes(tag));
+    });
+    
+    if (filteredNotes.length > 0) {
+      const tagText = selectedTags.join(", ");
+      const summaryNote = MNNote.new({
+        title: `📋 标签筛选结果 [${tagText}] (${filteredNotes.length}个)`,
+        colorIndex: 15
       });
       
-      if (filteredNotes.length > 0) {
-        const tagText = selectedTags.join(", ");
-        const summaryNote = MNNote.new({
-          title: `📋 标签筛选结果 [${tagText}] (${filteredNotes.length}个)`,
-          colorIndex: 15
-        });
-        
-        filteredNotes.forEach(note => {
-          summaryNote.appendNoteLink(note, "task");
-        });
-        
-        summaryNote.focusInFloatMindMap();
-        MNUtil.showHUD(`找到 ${filteredNotes.length} 个任务`);
-      } else {
-        MNUtil.showHUD("没有找到匹配的任务");
-      }
-    });
+      filteredNotes.forEach(note => {
+        summaryNote.appendNoteLink(note, "task");
+      });
+      
+      summaryNote.focusInFloatMindMap();
+      MNUtil.showHUD(`找到 ${filteredNotes.length} 个任务`);
+    } else {
+      MNUtil.showHUD("没有找到匹配的任务");
+    }
   });
 
   // filterOverdueTasks - 筛选逾期任务
@@ -1806,20 +1801,20 @@ function registerAllCustomActions() {
       "自定义筛选..."
     ];
     
-    MNUtil.select("选择筛选预设", presets, false).then(selectedIndex => {
-      if (selectedIndex === null) return;
-      
-      const notebook = MNNotebook.currentNotebook;
-      if (!notebook) {
-        MNUtil.showHUD("无法获取当前笔记本");
-        return;
-      }
-      
-      let filteredNotes = [];
-      let title = "";
-      
-      switch(selectedIndex) {
-        case 0: // 今日未完成
+    const selectedIndex = await MNUtil.userSelect("选择筛选预设", "", presets);
+    if (selectedIndex === 0) return; // 0 是取消按钮
+    
+    const notebook = MNNotebook.currentNotebook;
+    if (!notebook) {
+      MNUtil.showHUD("无法获取当前笔记本");
+      return;
+    }
+    
+    let filteredNotes = [];
+    let title = "";
+    
+    switch(selectedIndex) {
+        case 1: // 今日未完成
           const today = new Date();
           const todayTag = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
           
@@ -1835,7 +1830,7 @@ function registerAllCustomActions() {
           title = "📅 今日未完成的任务";
           break;
           
-        case 1: // 本周进行中
+        case 2: // 本周进行中
           filteredNotes = notebook.notes.filter(note => {
             const type = MNTaskManager.getTaskType(note);
             if (!type) return false;
@@ -1848,7 +1843,7 @@ function registerAllCustomActions() {
           title = "📅 本周进行中的任务";
           break;
           
-        case 2: // 高优先级未开始
+        case 3: // 高优先级未开始
           filteredNotes = notebook.notes.filter(note => {
             const type = MNTaskManager.getTaskType(note);
             if (!type) return false;
@@ -1861,7 +1856,7 @@ function registerAllCustomActions() {
           title = "🚨 高优先级未开始任务";
           break;
           
-        case 3: // 即将完成 75%+
+        case 4: // 即将完成 75%+
           filteredNotes = notebook.notes.filter(note => {
             const type = MNTaskManager.getTaskType(note);
             if (!type) return false;
@@ -1879,7 +1874,7 @@ function registerAllCustomActions() {
           title = "🎯 即将完成的任务(75%+)";
           break;
           
-        case 4: // 已阻塞
+        case 5: // 已阻塞
           filteredNotes = notebook.notes.filter(note => {
             const type = MNTaskManager.getTaskType(note);
             if (!type) return false;
@@ -1890,27 +1885,26 @@ function registerAllCustomActions() {
           title = "🚫 已阻塞的任务";
           break;
           
-        case 5: // 自定义
+        case 6: // 自定义
           MNUtil.showHUD("请使用其他筛选功能组合");
           return;
-      }
+    }
+    
+    if (filteredNotes.length > 0) {
+      const summaryNote = MNNote.new({
+        title: `${title} (${filteredNotes.length}个)`,
+        colorIndex: 13
+      });
       
-      if (filteredNotes.length > 0) {
-        const summaryNote = MNNote.new({
-          title: `${title} (${filteredNotes.length}个)`,
-          colorIndex: 13
-        });
-        
-        filteredNotes.forEach(note => {
-          summaryNote.appendNoteLink(note, "task");
-        });
-        
-        summaryNote.focusInFloatMindMap();
-        MNUtil.showHUD(`找到 ${filteredNotes.length} 个任务`);
-      } else {
-        MNUtil.showHUD("没有找到匹配的任务");
-      }
-    });
+      filteredNotes.forEach(note => {
+        summaryNote.appendNoteLink(note, "task");
+      });
+      
+      summaryNote.focusInFloatMindMap();
+      MNUtil.showHUD(`找到 ${filteredNotes.length} 个任务`);
+    } else {
+      MNUtil.showHUD("没有找到匹配的任务");
+    }
   });
 
   // exportTasksToMarkdown - 导出任务报告 (Markdown)

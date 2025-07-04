@@ -319,7 +319,7 @@ MNUtil.focusNoteInMindMapById(noteId, delay)
 MNUtil.showHUD(message, duration)
 MNUtil.confirm(title, message, buttons)
 MNUtil.input(title, subTitle, items)
-MNUtil.select(title, options, allowMulti)
+MNUtil.userSelect(title, options, allowMulti)
 
 // 5. 错误处理与日志
 MNUtil.addErrorLog(error, source, info)

@@ -1,0 +1,26 @@
+{
+  "currentState": "memory_saved",
+  "stateHistory": [
+    {
+      "from": "initial",
+      "command": "init",
+      "timestamp": "2025-07-04T07:13:56.658Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnutils"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "remember",
+      "timestamp": "2025-07-04T08:41:50.700Z",
+      "args": [
+        "MNUtil.select() 方法不存在陷阱：在 MN-Addon 开发中，文档记载的 MNUtil.select() 方法实际不存在。正确的方法是 MNUtil.userSelect(mainTitle, subTitle, items)，返回 Promise<number>。注意：0 是取消按钮，实际选项从 1 开始（而不是文档中说的从 0 开始）。已修复 mntask 项目中 9 个使用错误 API 的筛选函数。教训：始终以源码为准，使用 grep 验证方法是否存在。",
+        "--tags",
+        "MN-Addon MNUtils API错误 文档问题"
+      ]
+    }
+  ],
+  "lastUpdated": "2025-07-04T08:41:50.708Z"
+}

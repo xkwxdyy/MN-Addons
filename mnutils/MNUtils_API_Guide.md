@@ -1,5 +1,21 @@
 # MNUtils API 参考指南
 
+## ⚠️ 重要说明
+
+1. **本文档仅供参考，一切以源码为准**
+   - 使用 API 前请在 `mnutils.js` 或 `xdyyutils.js` 中搜索确认方法是否存在
+   - 文档可能存在遗漏或版本更新后未及时同步的情况
+   
+2. **API 来源区分**
+   - `mnutils.js`：核心 API，所有插件都可使用
+   - `xdyyutils.js`：学术扩展 API，需要额外加载
+   - 部分方法在 xdyyutils.js 中作为原型扩展实现
+   
+3. **xdyyutils.js 的重要改动**
+   - `MNUtil.getNoteById(noteId, alert)` 的 alert 参数默认值从 true 改为 **false**
+   - `MNNote.prototype.moveComment(from, to, msg)` 的 msg 参数默认值从 true 改为 **false**
+   - 使用时请注意这些默认值的变化
+
 ### 核心文件说明
 | 文件 | 规模 | 作用 | 重要性 |
 |------|------|------|--------|
@@ -31,7 +47,7 @@
 | **MNNotebook** | 3880-4172 | 笔记本/学习集管理 | 35 |
 | **MNNote** | 4173-6337 | 笔记核心类 | 149+ |
 | **MNComment** | 6338-6757 | 评论/内容管理 | 20+ |
-| **MNExtensionPanel** | 6758-6841 | 插件面板控制 | 11 |
+| **MNExtensionPanel** | 6758-6878 | 插件面板控制 | 11 |
 
 ### 📌 Menu 类 - 弹出菜单组件
 
@@ -188,8 +204,6 @@ class MNUtil {
   // === 弹窗与用户交互 ===
   static confirm(title, message, buttons)     // 确认弹窗
   static input(title, subTitle, items)       // 输入弹窗
-  static select(title, options, allowMulti)   // 选择弹窗
-  static selectIndex(title, options, allowMulti) // 选择并返回索引
   static waitHUD(message)       // 显示等待提示
   static stopHUD(delay, view)   // 停止等待提示
   
@@ -383,7 +397,6 @@ class MNNote {
   removeTags(tagsToRemove)               // 删除标签
   appendNoteLink(note, type)             // 添加笔记链接
   getCommentIndex(comment)               // 获取评论索引（完全匹配）
-  getIncludingCommentIndex(text)         // 获取包含文本的评论索引（xdyyutils扩展）
   getCommentIndicesByCondition(condition) // 根据条件获取评论索引数组
   removeCommentsByIndices(indices)       // 批量删除评论
   removeCommentByCondition(condition)    // 根据条件删除评论
@@ -393,35 +406,29 @@ class MNNote {
   clearFormat()                          // 清除格式
   
   // === 更多属性 (getter) ===
-  get allNoteText()      // 所有笔记文本
-  get allMarkdownText()  // 所有 Markdown 文本
   get allText()          // 所有文本
+  get allTextPic()       // 所有文本和图片
   get ancestorNodes()    // 祖先节点数组
   get descendantNodes()  // 后代节点对象
-  get siblingNotes()     // 兄弟笔记数组
   get startPage()        // 起始页
   get endPage()          // 结束页
   get docTitle()         // 文档标题
   get noteBook()         // 所属笔记本
   get isOCR()            // 是否 OCR 笔记
-  get hasInk()           // 是否有手写
-  get hasComments()      // 是否有评论
-  get hasTags()          // 是否有标签
-  get hasChildren()      // 是否有子笔记
   get mindmapBranchColor() // 脑图分支颜色
   
   // === 辅助属性 ===
   get MNComments()       // 评论对象数组 (MNComment 实例)
-  get pic()              // 图片数据
-  get childMap()         // 子脑图
+  get childMindMap()     // 子脑图
   get currentChildMap()  // 当前子脑图
   get groupNoteId()      // 组笔记 ID
   get summaryLinks()     // 摘要链接
   
   // === 静态方法 ===
-  static clone(noteIdOrConfig)           // 克隆笔记
-  static getByNoteId(noteId)             // 根据 ID 获取
-  static getByNoteIdFromURL(url)         // 从 URL 获取
+  static new(note, alert = true)         // 智能创建笔记对象
+  static getFocusNote()                  // 获取当前焦点笔记
+  static getFocusNotes()                 // 获取当前焦点笔记（数组形式）
+  static getSelectedNotes()              // 获取选中的笔记数组
 }
 ```
 
@@ -671,13 +678,14 @@ class MNExtensionPanel {
 
 ### 核心模块概览
 
-| 模块 | 功能 | 使用场景 |
-|------|------|----------|
-| **MNMath** | 数学卡片管理系统 | 知识结构化、学术笔记 |
-| **HtmlMarkdownUtils** | HTML 样式工具 | 富文本展示、层级管理 |
-| **Pangu** | 中文排版优化 | 中英文混排、数学符号 |
-| **String.prototype** | 字符串扩展 (85+ 方法) | 文本处理、格式转换 |
-| **MNNote.prototype** | 笔记扩展 (30+ 方法) | 工作流、批量操作 |
+| 模块 | 功能 | 使用场景 | 代码位置 |
+|------|------|----------|----------|
+| **MNMath** | 数学卡片管理系统 | 知识结构化、学术笔记 | 第 5 行开始 |
+| **MNLiterature** | 文献管理（占位符） | 未实现 | 第 3670 行 |
+| **HtmlMarkdownUtils** | HTML 样式工具 | 富文本展示、层级管理 | 第 3674 行开始 |
+| **Pangu** | 中文排版优化 | 中英文混排、数学符号 | 第 4680 行开始 |
+| **String.prototype** | 字符串扩展 (85+ 方法) | 文本处理、格式转换 | 多处扩展 |
+| **MNNote.prototype** | 笔记扩展 (30+ 方法) | 工作流、批量操作 | 多处扩展 |
 
 ### MNMath 类 - 数学卡片管理系统 ⭐⭐⭐⭐⭐
 
@@ -1208,6 +1216,18 @@ await HtmlMarkdownUtils.addQuestionHtmlMDComment(note);  // 弹窗收集问答�
 let qHtml = HtmlMarkdownUtils.createQuestionHtml("什么是函数？", "函数是...", "详细解释...");
 ```
 
+### MNLiterature 类
+
+**注意**：该类在 xdyyutils.js 的第 3670 行定义，但目前是空实现，仅作为占位符存在。
+
+```javascript
+class MNLiterature {
+  // 目前无实现
+}
+```
+
+未来可能会用于文献管理相关功能。
+
 ### String.prototype 扩展 
 
 xdyyutils.js 为 String 原型添加了以下方法：
@@ -1315,6 +1335,9 @@ note.getIncludingHtmlCommentIndex(htmlComment) // 获取包含特定文本的 HT
 note.getNextHtmlCommentIndex(htmltext)     // 获取下一个 HTML 评论索引
 note.getHtmlCommentsIndexArr()             // 获取所有 HTML 评论索引数组
 
+// === 评论查找 ===
+note.getIncludingCommentIndex(text, includeHtmlComment = false) // 获取包含指定文本的评论索引
+
 // === 链接管理 ===
 note.hasLink(link)              // 是否有指定链接
 note.LinkGetType(link)          // 获取链接类型（"Double"/"Single"/"NoLink"）
@@ -1325,7 +1348,7 @@ note.clearFailedLinks()         // 清理失效链接
 note.fixProblemLinks()          // 修复问题链接
 note.linkRemoveDuplicatesAfterIndex(startIndex) // 去重指定索引后的链接
 note.convertLinksToMN4Version() // 转换链接到 MN4 版本
-note.getTextCommentsIndexArr(text) // 获取文本评论索引数组
+note.getTextCommentsIndexArr(text) // 获取指定文本的所有评论索引数组
 note.getLinkCommentsIndexArr(link) // 获取链接评论索引数组
 
 // === 内容合并 ===

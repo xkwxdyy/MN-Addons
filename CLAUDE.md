@@ -746,4 +746,77 @@ this.moveCommentsArrToField(note, [note.MNComments.length - 1], "相关思考");
 2. **顺序操作**：利用元素移走后数组自动调整的特性
 3. **避免过度设计**：简单问题用简单方法解决
 
+### MNUtil.select() 方法不存在陷阱（API 文档错误）
+
+在开发过程中发现文档中记载的 `MNUtil.select()` 方法实际上不存在，这是一个典型的文档与源码不同步的问题。
+
+#### 问题描述
+当使用文档中提到的 `MNUtil.select()` 方法时，会遇到 "Not supported yet" 或方法未定义的错误。
+
+#### 错误示例
+```javascript
+// ❌ 错误：MNUtil.select() 不存在
+const selectedIndex = await MNUtil.select("选择任务类型", options, false);
+if (selectedIndex === null) return;
+
+// ❌ 错误：MNUtil.selectIndex() 也不存在
+const index = await MNUtil.selectIndex("选择", ["选项1", "选项2"]);
+```
+
+#### 正确的 API
+通过查看 `mnutils.js` 源码（第 921 行），正确的方法是 `MNUtil.userSelect()`：
+
+```javascript
+// ✅ 正确：使用 MNUtil.userSelect()
+const selectedIndex = await MNUtil.userSelect("选择任务类型", "", options);
+if (selectedIndex === 0) return; // 0 是取消按钮
+
+// API 签名
+static async userSelect(mainTitle, subTitle, items) {
+  // 返回 Promise<number>
+  // 0: 取消按钮
+  // 1+: 实际选项（从 1 开始）
+}
+```
+
+#### 按钮索引差异
+1. **取消按钮**：
+   - 文档描述：返回 `null`
+   - 实际情况：返回 `0`
+
+2. **选项索引**：
+   - 文档描述：从 `0` 开始
+   - 实际情况：从 `1` 开始
+
+#### 正确的使用方式
+```javascript
+// 同步方式（使用 async/await）
+const options = ["选项1", "选项2", "选项3"];
+const selectedIndex = await MNUtil.userSelect("请选择", "", options);
+
+switch(selectedIndex) {
+  case 0:  // 用户点击取消
+    return;
+  case 1:  // 用户选择了"选项1"
+    handleOption1();
+    break;
+  case 2:  // 用户选择了"选项2"
+    handleOption2();
+    break;
+  // ...
+}
+
+// 异步方式（使用 .then()）
+MNUtil.userSelect("请选择", "", options).then(selectedIndex => {
+  if (selectedIndex === 0) return; // 取消
+  // 处理选择...
+});
+```
+
+#### 经验教训
+1. **始终以源码为准**：当文档中的 API 不工作时，直接在源码中搜索
+2. **使用 grep 工具验证**：`grep -n "methodName" mnutils.js`
+3. **注意参数差异**：`userSelect` 需要三个参数（mainTitle, subTitle, items）
+4. **测试边界情况**：特别是取消按钮的处理
+
 > 💡 **提示**：开发前请先仔细阅读对应子项目的 CLAUDE.md 文件，它们包含了更详细的技术实现和规范要求。

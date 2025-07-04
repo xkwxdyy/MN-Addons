@@ -395,10 +395,31 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     self.dynamicButton.selected = false
     self.popupEditView.hidden = true
     self.popupButton.selected = false
+    self.taskBoardView.hidden = true
+    self.taskBoardButton.selected = false
     MNButton.setColor(self.configButton, "#9bb2d6", 0.8)
     MNButton.setColor(self.advancedButton, "#457bd3", 0.8)
     MNButton.setColor(self.popupButton, "#9bb2d6", 0.8)
     MNButton.setColor(self.dynamicButton, "#9bb2d6", 0.8)
+    MNButton.setColor(self.taskBoardButton, "#9bb2d6", 0.8)
+  },
+  taskBoardButtonTapped: function (params) {
+    let self = getTaskSettingController()
+    self.taskBoardView.hidden = false
+    self.taskBoardButton.selected = true
+    self.configView.hidden = true
+    self.configButton.selected = false
+    self.dynamicButton.selected = false
+    self.popupEditView.hidden = true
+    self.popupButton.selected = false
+    self.advanceView.hidden = true
+    self.advancedButton.selected = false
+    MNButton.setColor(self.configButton, "#9bb2d6", 0.8)
+    MNButton.setColor(self.advancedButton, "#9bb2d6", 0.8)
+    MNButton.setColor(self.popupButton, "#9bb2d6", 0.8)
+    MNButton.setColor(self.dynamicButton, "#9bb2d6", 0.8)
+    MNButton.setColor(self.taskBoardButton, "#457bd3", 0.8)
+    self.settingViewLayout()
   },
   popupButtonTapped: function (params) {
     self.advanceView.hidden = true
@@ -408,10 +429,13 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     self.dynamicButton.selected = false
     self.popupEditView.hidden = false
     self.popupButton.selected = true
+    self.taskBoardView.hidden = true
+    self.taskBoardButton.selected = false
     MNButton.setColor(self.configButton, "#9bb2d6", 0.8)
     MNButton.setColor(self.advancedButton, "#9bb2d6", 0.8)
     MNButton.setColor(self.popupButton, "#457bd3", 0.8)
     MNButton.setColor(self.dynamicButton, "#9bb2d6", 0.8)
+    MNButton.setColor(self.taskBoardButton, "#9bb2d6", 0.8)
     self.settingViewLayout()
   },
   configButtonTapped: function (params) {
@@ -422,10 +446,13 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     self.advancedButton.selected = false
     self.popupEditView.hidden = true
     self.popupButton.selected = false
+    self.taskBoardView.hidden = true
+    self.taskBoardButton.selected = false
     MNButton.setColor(self.configButton, "#457bd3", 0.8)
     MNButton.setColor(self.advancedButton, "#9bb2d6", 0.8)
     MNButton.setColor(self.dynamicButton, "#9bb2d6", 0.8)
     MNButton.setColor(self.popupButton, "#9bb2d6", 0.8)
+    MNButton.setColor(self.taskBoardButton, "#9bb2d6", 0.8)
     let action = taskConfig.action
     self.setButtonText(action)
 
@@ -448,10 +475,13 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     self.advancedButton.selected = false
     self.popupEditView.hidden = true
     self.popupButton.selected = false
+    self.taskBoardView.hidden = true
+    self.taskBoardButton.selected = false
     MNButton.setColor(self.configButton, "#9bb2d6", 0.8)
     MNButton.setColor(self.advancedButton, "#9bb2d6", 0.8)
     MNButton.setColor(self.dynamicButton, "#457bd3", 0.8)
     MNButton.setColor(self.popupButton, "#9bb2d6", 0.8)
+    MNButton.setColor(self.taskBoardButton, "#9bb2d6", 0.8)
     self.setButtonText(dynamicAction)
   },
   chooseTemplate: async function (button) {
@@ -898,6 +928,48 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
         break;
     }
   },
+  pasteRootNoteId: async function () {
+    let self = getTaskSettingController()
+    let noteId = MNUtil.clipboardText
+    if (!noteId) {
+      self.showHUD("剪贴板为空")
+      return
+    }
+    
+    // 验证卡片是否存在
+    let note = MNNote.new(noteId)
+    if (note) {
+      self.rootNoteIdInput.text = note.noteId
+      taskConfig.saveRootNoteId(note.noteId)
+      self.showHUD("✅ 已保存根目录卡片 ID")
+    } else {
+      self.showHUD("❌ 卡片不存在")
+    }
+  },
+  clearRootNoteId: function () {
+    let self = getTaskSettingController()
+    self.rootNoteIdInput.text = ""
+    taskConfig.clearRootNoteId()
+    self.showHUD("✅ 已清除根目录卡片 ID")
+  },
+  focusRootNoteId: function () {
+    let self = getTaskSettingController()
+    let noteId = taskConfig.getRootNoteId()
+    if (!noteId) {
+      self.showHUD("❌ 未设置根目录卡片")
+      return
+    }
+    
+    let note = MNNote.new(noteId)
+    if (note) {
+      note.focusInFloatMindMap()
+    } else {
+      self.showHUD("❌ 卡片不存在")
+      // 清除无效的 ID
+      taskConfig.clearRootNoteId()
+      self.rootNoteIdInput.text = ""
+    }
+  },
   importConfigTapped:function(button){
     var commandTable = [
       {title:'☁️   from iCloud',object:self,selector:'importConfig:',param:"iCloud"},
@@ -1086,6 +1158,7 @@ taskSettingController.prototype.settingViewLayout = function (){
     taskFrame.set(this.configView,0,0,width-2,height-60)
     taskFrame.set(this.advanceView,0,0,width-2,height-60)
     taskFrame.set(this.popupEditView,0,0,width-2,height-60)
+    taskFrame.set(this.taskBoardView,0,0,width-2,height-60)
     taskFrame.set(this.resizeButton,width-25,height-80)
     if (width < 650) {
       taskFrame.set(this.webviewInput, 5, 195, width-10, height-255)
@@ -1128,6 +1201,7 @@ taskSettingController.prototype.settingViewLayout = function (){
     taskFrame.set(this.dynamicButton, this.configButton.frame.x + this.configButton.frame.width+5, 5)
     taskFrame.set(this.popupButton, this.dynamicButton.frame.x + this.dynamicButton.frame.width+5, 5)
     taskFrame.set(this.advancedButton, this.popupButton.frame.x + this.popupButton.frame.width+5, 5)
+    taskFrame.set(this.taskBoardButton, this.advancedButton.frame.x + this.advancedButton.frame.width+5, 5)
     taskFrame.set(this.closeButton, width-35, 5)
     let scrollHeight = 5
     if (MNUtil.appVersion().type === "macOS") {
@@ -1163,6 +1237,13 @@ taskSettingController.prototype.settingViewLayout = function (){
     taskFrame.set(this.dynamicOrderButton, 5, 285, width-10,35)
     taskFrame.set(this.exportButton, 170, 205, (width-180)/2,35)
     taskFrame.set(this.importButton, 175+(width-180)/2, 205, (width-180)/2,35)
+    
+    // Task Board View 布局
+    taskFrame.set(this.rootNoteLabel, 10, 10, width-20, 30)
+    taskFrame.set(this.rootNoteIdInput, 10, 45, width-20, 80)
+    taskFrame.set(this.focusRootNoteButton, 10, 130, (width-30)/3, 35)
+    taskFrame.set(this.clearRootNoteButton, 15+(width-30)/3, 130, (width-30)/3, 35)
+    taskFrame.set(this.pasteRootNoteButton, 20+2*(width-30)/3, 130, (width-30)/3, 35)
 }
 
 
@@ -1186,6 +1267,9 @@ try {
 
   this.creatView("advanceView","settingView","#9bb2d6",0.0)
   this.advanceView.hidden = true
+
+  this.creatView("taskBoardView","settingView","#9bb2d6",0.0)
+  this.taskBoardView.hidden = true
 
 
   this.createButton("configButton","configButtonTapped:","tabView")
@@ -1211,6 +1295,12 @@ try {
   this.advancedButton.width = this.advancedButton.sizeThatFits({width:150,height:30}).width+15
   this.advancedButton.height = 30
   this.advancedButton.selected = false
+
+  this.createButton("taskBoardButton","taskBoardButtonTapped:","tabView")
+  MNButton.setConfig(this.taskBoardButton, {alpha:0.9,opacity:1.0,title:"Task Board",font:17,radius:10,bold:true})
+  this.taskBoardButton.width = this.taskBoardButton.sizeThatFits({width:150,height:30}).width+15
+  this.taskBoardButton.height = 30
+  this.taskBoardButton.selected = false
 
   this.createButton("closeButton","closeButtonTapped:","tabView")
   MNButton.setConfig(this.closeButton, {color:"#e06c75",alpha:0.9,opacity:1.0,radius:10,bold:true})
@@ -1423,6 +1513,31 @@ try {
   this.runButton.height = 26
 
   let color = ["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9fdc"]
+
+  // Task Board 视图内容
+  this.creatTextView("rootNoteIdInput","taskBoardView")
+  this.rootNoteIdInput.editable = false
+  this.rootNoteIdInput.text = taskConfig.getRootNoteId() || ""
+  
+  this.createButton("focusRootNoteButton","focusRootNoteId:","taskBoardView")
+  MNButton.setConfig(this.focusRootNoteButton, {title:"Focus",color:"#457bd3",alpha:0.8})
+  
+  this.createButton("clearRootNoteButton","clearRootNoteId:","taskBoardView")
+  MNButton.setConfig(this.clearRootNoteButton, {title:"Clear",color:"#9bb2d6",alpha:0.8})
+  
+  this.createButton("pasteRootNoteButton","pasteRootNoteId:","taskBoardView")
+  MNButton.setConfig(this.pasteRootNoteButton, {title:"Paste",color:"#9bb2d6",alpha:0.8})
+
+  // 添加说明文本
+  this.createButton("rootNoteLabel","","taskBoardView")
+  MNButton.setConfig(this.rootNoteLabel, {
+    title:"Task Board Root Note ID:",
+    color:"transparent",
+    font:16,
+    bold:true
+  })
+  this.rootNoteLabel.userInteractionEnabled = false
+  
 } catch (error) {
   taskUtils.addErrorLog(error, "createSettingView")
 }

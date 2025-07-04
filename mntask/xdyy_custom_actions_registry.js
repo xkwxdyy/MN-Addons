@@ -53,7 +53,6 @@ MNTaskGlobal.executeCustomAction = async function (actionName, context) {
   return false;
 };
 
-// 不再需要全局 global 对象
 
 // 注册所有自定义 actions
 function registerAllCustomActions() {
@@ -94,133 +93,34 @@ function registerAllCustomActions() {
     const { button, des, focusNote, focusNotes, self } = context;
     
     MNUtil.log("🔍 openTasksFloatMindMap - 开始执行");
-    MNUtil.log(`📋 context 信息: focusNote=${focusNote ? focusNote.noteId : 'null'}, self=${self ? 'exists' : 'null'}`);
     
-    // 获取主插件实例 - 尝试多种方式
-    let mainPlugin = null;
-    
-    // 方式1：使用全局 MNTaskInstance
-    if (typeof MNTaskInstance !== 'undefined' && MNTaskInstance) {
-      mainPlugin = MNTaskInstance;
-      MNUtil.log("✅ 通过 MNTaskInstance 获取主插件实例");
-    }
-    // 方式2：使用 MNTaskGlobal.mainPlugin
-    else if (MNTaskGlobal.mainPlugin) {
-      mainPlugin = MNTaskGlobal.mainPlugin;
-      MNUtil.log("✅ 通过 MNTaskGlobal.mainPlugin 获取主插件实例");
-    }
-    
-    if (!mainPlugin) {
-      MNUtil.log("❌ 主插件实例未找到");
-      MNUtil.showHUD("❌ 插件未正确初始化");
-      return;
-    }
-    MNUtil.log("✅ 获取主插件实例成功");
-    
-    try {
-      // 检查是否需要创建控制器实例
-      if (!mainPlugin.taskDashboardController) {
-        MNUtil.log("🔨 taskDashboardController 不存在，需要创建");
-        // 检查 taskDashboardController 是否存在
-        if (typeof taskDashboardController === 'undefined') {
-          MNUtil.log("❌ taskDashboardController 类未定义");
-          MNUtil.showHUD("❌ taskDashboardController 未定义");
-          return;
-        }
-        MNUtil.log("✅ taskDashboardController 类存在，开始创建实例");
-        const newController = taskDashboardController.new();
-        MNUtil.log("📝 新控制器实例：" + (newController ? "创建成功" : "创建失败"));
-        mainPlugin.taskDashboardController = newController;
-        MNUtil.log("📝 赋值后的 mainPlugin.taskDashboardController: " + (mainPlugin.taskDashboardController ? "存在" : "不存在"));
-      } else {
-        MNUtil.log("✅ taskDashboardController 已存在");
-      }
-    
-    // 首先尝试使用保存的 rootNote ID
+    // 获取保存的根目录 ID
     const savedRootNoteId = taskConfig.getRootNoteId();
     MNUtil.log(`📌 保存的根目录 ID: ${savedRootNoteId || 'null'}`);
     
     if (savedRootNoteId) {
-      try {
-        MNUtil.log("🔄 尝试使用保存的根目录初始化");
-        const rootNote = mainPlugin.taskDashboardController.initDashboard(savedRootNoteId);
-        if (rootNote) {
-          MNUtil.log("✅ 根目录初始化成功，准备打开浮动脑图");
-          rootNote.focusInFloatMindMap(0.5);
-          MNUtil.log("✅ 浮动脑图已打开");
-          return; // 成功使用保存的 ID，直接返回
-        } else {
-          // 保存的 ID 无效，清除它
-          MNUtil.log("❌ 根目录初始化失败 - rootNote 为 null");
-          taskConfig.clearRootNoteId();
-          MNUtil.showHUD("保存的根目录无效，请重新选择");
-        }
-      } catch (error) {
-        MNUtil.log(`❌ 加载根目录时出错: ${error.message || error}`);
-        taskConfig.clearRootNoteId();
-        MNUtil.showHUD("加载根目录失败，请重新选择");
-      }
-    } else {
-      MNUtil.log("ℹ️ 没有保存的根目录 ID");
-    }
-    
-    // 没有保存的 ID 或保存的 ID 无效，显示选择对话框
-    // 如果有焦点卡片，询问是否使用它作为根目录
-    if (focusNote) {
-      MNUtil.log("📱 显示选择对话框");
-      const buttons = ["使用当前选中的卡片", "输入卡片ID", "清除已保存的根目录"];
-      const result = await MNUtil.userSelect("选择任务管理根目录", `当前选中：${focusNote.noteTitle || "无标题"}`, buttons);
-      MNUtil.log(`🔘 用户选择: ${result} (0=取消, 1=使用当前卡片, 2=输入ID, 3=清除)`);
-      
-      if (result === 1) {
-        // 使用当前焦点卡片
-        MNUtil.log(`🎯 使用当前焦点卡片: ${focusNote.noteId}`);
-        MNUtil.log("📝 mainPlugin 状态：" + (mainPlugin ? "存在" : "不存在"));
-        MNUtil.log("📝 mainPlugin.taskDashboardController 状态：" + (mainPlugin.taskDashboardController ? "存在" : "不存在"));
-        
-        if (!mainPlugin.taskDashboardController) {
-          MNUtil.log("❌ taskDashboardController 在选择后丢失了！");
-          MNUtil.showHUD("❌ 控制器初始化失败");
-          return;
-        }
-        
-        const rootNote = mainPlugin.taskDashboardController.initDashboard(focusNote.noteId);
-        if (rootNote) {
-          MNUtil.log("✅ 根目录初始化成功，保存 ID 并打开脑图");
-          taskConfig.saveRootNoteId(focusNote.noteId); // 保存选择的 ID
-          rootNote.focusInFloatMindMap(0.5);
-        } else {
-          MNUtil.log("❌ 使用焦点卡片初始化失败");
-        }
-      } else if (result === 2) {
-        // 输入卡片 ID
-        const input = await MNUtil.input("任务管理根目录", "请输入要作为任务管理根目录的卡片 ID:", ["卡片 ID"]);
-        if (input && input[0]) {
-          const rootNote = mainPlugin.taskDashboardController.initDashboard(input[0]);
-          if (rootNote) {
-            taskConfig.saveRootNoteId(input[0]); // 保存输入的 ID
-            rootNote.focusInFloatMindMap(0.5);
+      // 验证卡片是否存在
+      const rootNote = MNNote.new(savedRootNoteId);
+      if (rootNote) {
+        MNUtil.log("✅ 根目录卡片存在，打开浮动脑图");
+        // 设置任务管理看板样式
+        MNUtil.undoGrouping(() => {
+          rootNote.noteTitle = rootNote.noteTitle || "📊 任务管理看板";
+          rootNote.colorIndex = 11;  // 深紫色
+          if (!rootNote.tags || !rootNote.tags.includes("任务管理")) {
+            rootNote.appendTags(["任务管理", "看板"]);
           }
-        }
-      } else if (result === 3) {
-        // 清除已保存的根目录
+        });
+        rootNote.focusInFloatMindMap(0.5);
+        MNUtil.log("✅ 浮动脑图已打开");
+      } else {
+        MNUtil.log("❌ 保存的根目录卡片不存在");
         taskConfig.clearRootNoteId();
-        MNUtil.showHUD("已清除保存的根目录");
+        MNUtil.showHUD("❌ 根目录卡片不存在，请在设置中重新配置");
       }
     } else {
-      // 没有焦点卡片，提示输入 ID
-      const input = await MNUtil.input("任务管理根目录", "请输入要作为任务管理根目录的卡片 ID:", ["卡片 ID"]);
-      if (input && input[0]) {
-        const rootNote = mainPlugin.taskDashboardController.initDashboard(input[0]);
-        if (rootNote) {
-          taskConfig.saveRootNoteId(input[0]); // 保存输入的 ID
-          rootNote.focusInFloatMindMap(0.5);
-        }
-      }
-    }
-    } catch (error) {
-      MNUtil.showHUD("❌ 错误: " + error.message);
-      MNUtil.log("openTasksFloatMindMap error: " + error);
+      MNUtil.log("ℹ️ 未设置根目录");
+      MNUtil.showHUD("请先在设置中配置任务管理根目录\n设置 → Task Board → Paste");
     }
   });
 
@@ -292,86 +192,90 @@ function registerAllCustomActions() {
   MNTaskGlobal.registerCustomAction("moveToInbox", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
     
-    // 获取主插件实例
-    const mainPlugin = MNTaskGlobal.mainPlugin;
-    if (!mainPlugin) {
-      MNUtil.showHUD("❌ 插件未正确初始化");
-      return;
-    }
-    
     if (!focusNote) {
       MNUtil.showHUD("请先选择要移动的任务");
       return;
     }
     
-    // 检查是否已初始化看板控制器
-    if (!mainPlugin.taskDashboardController || !mainPlugin.taskDashboardController.rootNote) {
-      const savedRootNoteId = taskConfig.getRootNoteId();
-      if (savedRootNoteId) {
-        // 尝试使用保存的根目录ID初始化
-        if (!mainPlugin.taskDashboardController) {
-          mainPlugin.taskDashboardController = taskDashboardController.new();
-        }
-        const rootNote = mainPlugin.taskDashboardController.initDashboard(savedRootNoteId);
-        if (!rootNote) {
-          taskConfig.clearRootNoteId();
-          MNUtil.showHUD("保存的根目录无效，请打开任务管理视图重新设置");
-          return;
-        }
-      } else {
-        MNUtil.showHUD("请先打开任务管理视图并设置根目录");
-        return;
-      }
+    // 获取根目录 ID
+    const savedRootNoteId = taskConfig.getRootNoteId();
+    if (!savedRootNoteId) {
+      MNUtil.showHUD("请先在设置中配置任务管理根目录");
+      return;
     }
     
-    // 移动到 Inbox
-    MNUtil.undoGrouping(() => {
-      focusNotes.forEach(note => {
-        mainPlugin.taskDashboardController.moveToInbox(note);
+    // 获取根目录卡片
+    const rootNote = MNNote.new(savedRootNoteId);
+    if (!rootNote) {
+      taskConfig.clearRootNoteId();
+      MNUtil.showHUD("根目录卡片不存在，请重新配置");
+      return;
+    }
+    
+    // 查找 Inbox 分区
+    const inbox = rootNote.childNotes.find(child =>
+      child.tags && child.tags.includes("Inbox")
+    );
+    
+    if (!inbox) {
+      // 如果没有 Inbox，创建一个
+      MNUtil.undoGrouping(() => {
+        const newInbox = rootNote.createChildNote({
+          title: "📌 今日聚焦 / Inbox",
+          colorIndex: 7  // 橙色
+        });
+        newInbox.appendTags(["今日聚焦", "Inbox"]);
+        newInbox.appendTextComment("待处理任务和今日必做事项");
+        
+        // 移动任务到新创建的 Inbox
+        focusNotes.forEach(note => {
+          note.removeFromParent();
+          newInbox.addChild(note);
+          note.appendTags(["今日"]);
+        });
       });
-    });
+      MNUtil.showHUD("✅ 已创建 Inbox 并添加任务");
+    } else {
+      // 移动到现有的 Inbox
+      MNUtil.undoGrouping(() => {
+        focusNotes.forEach(note => {
+          note.removeFromParent();
+          inbox.addChild(note);
+          note.appendTags(["今日"]);
+        });
+      });
+      MNUtil.showHUD("✅ 已加入今日聚焦");
+    }
   });
 
   // openFloatWindowByInboxNote - 浮窗定位今日 Inbox
   MNTaskGlobal.registerCustomAction("openFloatWindowByInboxNote", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
     
-    // 获取主插件实例
-    const mainPlugin = MNTaskGlobal.mainPlugin;
-    if (!mainPlugin) {
-      MNUtil.showHUD("❌ 插件未正确初始化");
+    // 获取根目录 ID
+    const savedRootNoteId = taskConfig.getRootNoteId();
+    if (!savedRootNoteId) {
+      MNUtil.showHUD("请先在设置中配置任务管理根目录");
       return;
     }
     
-    // 检查是否已初始化看板控制器
-    if (!mainPlugin.taskDashboardController || !mainPlugin.taskDashboardController.rootNote) {
-      const savedRootNoteId = taskConfig.getRootNoteId();
-      if (savedRootNoteId) {
-        // 尝试使用保存的根目录ID初始化
-        if (!mainPlugin.taskDashboardController) {
-          mainPlugin.taskDashboardController = taskDashboardController.new();
-        }
-        const rootNote = mainPlugin.taskDashboardController.initDashboard(savedRootNoteId);
-        if (!rootNote) {
-          taskConfig.clearRootNoteId();
-          MNUtil.showHUD("保存的根目录无效，请打开任务管理视图重新设置");
-          return;
-        }
-      } else {
-        MNUtil.showHUD("请先打开任务管理视图并设置根目录");
-        return;
-      }
+    // 获取根目录卡片
+    const rootNote = MNNote.new(savedRootNoteId);
+    if (!rootNote) {
+      taskConfig.clearRootNoteId();
+      MNUtil.showHUD("根目录卡片不存在，请重新配置");
+      return;
     }
     
     // 查找 Inbox 分区
-    const inbox = mainPlugin.taskDashboardController.rootNote.childNotes.find(child =>
+    const inbox = rootNote.childNotes.find(child =>
       child.tags && child.tags.includes("Inbox")
     );
     
     if (inbox) {
       inbox.focusInFloatMindMap(0.5);
     } else {
-      MNUtil.showHUD("找不到 Inbox 分区");
+      MNUtil.showHUD("找不到 Inbox 分区，请先使用「加入 Inbox」功能创建");
     }
   });
 

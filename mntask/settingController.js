@@ -299,6 +299,116 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     }
     self.searchedText = ""
   },
+
+  /**
+   * 统一的视图管理系统
+   */
+  viewManager: {
+    // 所有视图配置
+    views: {
+      config: {
+        view: 'configView',
+        button: 'configButton',
+        selectedColor: '#457bd3',
+        normalColor: '#9bb2d6',
+        onShow: function(self) {
+          let action = taskConfig.action
+          self.setButtonText(action)
+        }
+      },
+      advanced: {
+        view: 'advanceView',
+        button: 'advancedButton',
+        selectedColor: '#457bd3',
+        normalColor: '#9bb2d6'
+      },
+      popup: {
+        view: 'popupEditView',
+        button: 'popupButton',
+        selectedColor: '#457bd3',
+        normalColor: '#9bb2d6',
+        onShow: function(self) {
+          self.settingViewLayout()
+        }
+      },
+      dynamic: {
+        view: 'configView',  // 复用configView
+        button: 'dynamicButton',
+        selectedColor: '#457bd3',
+        normalColor: '#9bb2d6',
+        onShow: function(self) {
+          let dynamicOrder = taskConfig.getWindowState("dynamicOrder")
+          if (!dynamicOrder) {
+            self.showHUD("Enable Dynamic Order first")
+            return false
+          }
+          let dynamicAction = taskConfig.dynamicAction
+          if (dynamicAction.length === 0) {
+            taskConfig.dynamicAction = taskConfig.action
+            dynamicAction = taskConfig.action
+          }
+          self.setButtonText(dynamicAction)
+        }
+      },
+      taskBoard: {
+        view: 'taskBoardView',
+        button: 'taskBoardButton',
+        selectedColor: '#457bd3',
+        normalColor: '#9bb2d6',
+        onShow: function(self) {
+          self.settingViewLayout()
+        }
+      }
+    },
+    
+    // 切换到指定视图
+    switchTo: function(viewName) {
+      let self = getTaskSettingController()
+      const viewConfig = this.views[viewName]
+      
+      if (!viewConfig) {
+        MNUtil.log("❌ Unknown view: " + viewName)
+        return
+      }
+      
+      // 如果有前置检查，执行并判断是否继续
+      if (viewConfig.onShow) {
+        const shouldContinue = viewConfig.onShow(self)
+        if (shouldContinue === false) return
+      }
+      
+      // 隐藏所有视图并重置按钮状态
+      Object.keys(this.views).forEach(key => {
+        const config = this.views[key]
+        if (self[config.view]) {
+          self[config.view].hidden = true
+        }
+        if (self[config.button]) {
+          self[config.button].selected = false
+          MNButton.setColor(self[config.button], config.normalColor, 0.8)
+        }
+      })
+      
+      // 显示当前视图
+      if (self[viewConfig.view]) {
+        self[viewConfig.view].hidden = false
+      }
+      if (self[viewConfig.button]) {
+        self[viewConfig.button].selected = true
+        MNButton.setColor(self[viewConfig.button], viewConfig.selectedColor, 0.8)
+      }
+    },
+    
+    // 注册新视图（为将来扩展预留）
+    registerView: function(name, config) {
+      this.views[name] = config
+    },
+    
+    // 移除视图
+    unregisterView: function(name) {
+      delete this.views[name]
+    }
+  },
   maxButtonTapped: function() {
     if (self.customMode === "full") {
       self.customMode = "none"
@@ -431,101 +541,19 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     self.currentFrame  = self.view.frame
   },
   advancedButtonTapped: function (params) {
-    self.advanceView.hidden = false
-    self.advancedButton.selected = true
-    self.configView.hidden = true
-    self.configButton.selected = false
-    self.dynamicButton.selected = false
-    self.popupEditView.hidden = true
-    self.popupButton.selected = false
-    self.taskBoardView.hidden = true
-    self.taskBoardButton.selected = false
-    MNButton.setColor(self.configButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.advancedButton, "#457bd3", 0.8)
-    MNButton.setColor(self.popupButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.dynamicButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.taskBoardButton, "#9bb2d6", 0.8)
+    self.viewManager.switchTo('advanced')
   },
   taskBoardButtonTapped: function (params) {
-    let self = getTaskSettingController()
-    self.taskBoardView.hidden = false
-    self.taskBoardButton.selected = true
-    self.configView.hidden = true
-    self.configButton.selected = false
-    self.dynamicButton.selected = false
-    self.popupEditView.hidden = true
-    self.popupButton.selected = false
-    self.advanceView.hidden = true
-    self.advancedButton.selected = false
-    MNButton.setColor(self.configButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.advancedButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.popupButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.dynamicButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.taskBoardButton, "#457bd3", 0.8)
-    self.settingViewLayout()
+    self.viewManager.switchTo('taskBoard')
   },
   popupButtonTapped: function (params) {
-    self.advanceView.hidden = true
-    self.advancedButton.selected = false
-    self.configView.hidden = true
-    self.configButton.selected = false
-    self.dynamicButton.selected = false
-    self.popupEditView.hidden = false
-    self.popupButton.selected = true
-    self.taskBoardView.hidden = true
-    self.taskBoardButton.selected = false
-    MNButton.setColor(self.configButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.advancedButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.popupButton, "#457bd3", 0.8)
-    MNButton.setColor(self.dynamicButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.taskBoardButton, "#9bb2d6", 0.8)
-    self.settingViewLayout()
+    self.viewManager.switchTo('popup')
   },
   configButtonTapped: function (params) {
-    self.configView.hidden = false
-    self.configButton.selected = true
-    self.dynamicButton.selected = false
-    self.advanceView.hidden = true
-    self.advancedButton.selected = false
-    self.popupEditView.hidden = true
-    self.popupButton.selected = false
-    self.taskBoardView.hidden = true
-    self.taskBoardButton.selected = false
-    MNButton.setColor(self.configButton, "#457bd3", 0.8)
-    MNButton.setColor(self.advancedButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.dynamicButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.popupButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.taskBoardButton, "#9bb2d6", 0.8)
-    let action = taskConfig.action
-    self.setButtonText(action)
-
+    self.viewManager.switchTo('config')
   },
   dynamicButtonTapped: async function (params) {
-    let self = getTaskSettingController()
-    let dynamicOrder = taskConfig.getWindowState("dynamicOrder")
-    if (!dynamicOrder) {
-      self.showHUD("Enable Dynamic Order first")
-      return
-    }
-    let dynamicAction = taskConfig.dynamicAction
-    if (dynamicAction.length === 0) {
-      taskConfig.dynamicAction = taskConfig.action
-    }
-    self.configView.hidden = false
-    self.configButton.selected = false
-    self.dynamicButton.selected = true
-    self.advanceView.hidden = true
-    self.advancedButton.selected = false
-    self.popupEditView.hidden = true
-    self.popupButton.selected = false
-    self.taskBoardView.hidden = true
-    self.taskBoardButton.selected = false
-    MNButton.setColor(self.configButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.advancedButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.dynamicButton, "#457bd3", 0.8)
-    MNButton.setColor(self.popupButton, "#9bb2d6", 0.8)
-    MNButton.setColor(self.taskBoardButton, "#9bb2d6", 0.8)
-    self.setButtonText(dynamicAction)
+    self.viewManager.switchTo('dynamic')
   },
   chooseTemplate: async function (button) {
     let self = getTaskSettingController()

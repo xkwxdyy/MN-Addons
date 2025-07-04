@@ -5385,7 +5385,10 @@ static save(key = undefined,value = undefined,upload = true) {
     defaults.setObjectForKey(this.actions,"MNTask_actionConfig")
     defaults.setObjectForKey(this.addonLogos,"MNTask_addonLogos")
     defaults.setObjectForKey(this.referenceIds,"MNTask_referenceIds")
-    defaults.setObjectForKey(this.rootNoteId,"MNTask_rootNoteId")
+    // 检查 null 值，避免崩溃
+    if (this.rootNoteId !== null && this.rootNoteId !== undefined) {
+      defaults.setObjectForKey(this.rootNoteId,"MNTask_rootNoteId")
+    }
     defaults.setObjectForKey(this.partitionCards,"MNTask_partitionCards")
     defaults.setObjectForKey(this.buttonConfig,"MNTask_buttonConfig")
     defaults.setObjectForKey(this.popupConfig,"MNTask_popupConfig")
@@ -5410,7 +5413,10 @@ static save(key = undefined,value = undefined,upload = true) {
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.referenceIds,key)
         break;
       case "MNTask_rootNoteId":
-        NSUserDefaults.standardUserDefaults().setObjectForKey(this.rootNoteId,key)
+        // 检查 null 值，避免崩溃
+        if (this.rootNoteId !== null && this.rootNoteId !== undefined) {
+          NSUserDefaults.standardUserDefaults().setObjectForKey(this.rootNoteId,key)
+        }
         break;
       case "MNTask_partitionCards":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.partitionCards,key)
@@ -5467,7 +5473,10 @@ static get(key) {
 static getByDefault(key,defaultValue) {
   let value = NSUserDefaults.standardUserDefaults().objectForKey(key)
   if (value === undefined) {
-    NSUserDefaults.standardUserDefaults().setObjectForKey(defaultValue,key)
+    // 检查 defaultValue 是否为 null 或 undefined，避免崩溃
+    if (defaultValue !== null && defaultValue !== undefined) {
+      NSUserDefaults.standardUserDefaults().setObjectForKey(defaultValue,key)
+    }
     return defaultValue
   }
   return value
@@ -5547,7 +5556,13 @@ static getDescriptionByName(actionName){
   // 根节点管理方法
   static saveRootNoteId(noteId) {
     this.rootNoteId = noteId
-    this.save("MNTask_rootNoteId", noteId)
+    // 检查 null 值，避免崩溃
+    if (noteId !== null && noteId !== undefined) {
+      this.save("MNTask_rootNoteId", noteId)
+    } else {
+      // 如果是 null 或 undefined，删除键
+      this.remove("MNTask_rootNoteId")
+    }
   }
   
   static getRootNoteId() {
@@ -5556,7 +5571,8 @@ static getDescriptionByName(actionName){
   
   static clearRootNoteId() {
     this.rootNoteId = null
-    this.save("MNTask_rootNoteId", null)
+    // 使用 remove 方法删除键，避免设置 null 值导致崩溃
+    this.remove("MNTask_rootNoteId")
   }
   
   // 分区卡片管理方法

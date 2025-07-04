@@ -1656,8 +1656,8 @@ try {
   this.createButton("rootNoteLabel","","taskBoardView")
   MNButton.setConfig(this.rootNoteLabel, {
     title:"Task Board Root Note ID:",
-    color:"#ffffff",
-    alpha:0.0,
+    color:"#457bd3",
+    alpha:0.3,
     font:16,
     bold:true
   })

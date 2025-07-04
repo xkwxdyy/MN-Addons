@@ -735,6 +735,87 @@ function registerAllCustomActions() {
     MNUtil.confirm("任务进度", report, ["确定"]);
   });
 
+  // updateReadingProgress - 更新阅读进度
+  MNTaskGlobal.registerCustomAction("updateReadingProgress", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    if (!focusNote) {
+      MNUtil.showHUD("请先选择一个任务");
+      return;
+    }
+    
+    // 检查是否是页码任务
+    const title = focusNote.noteTitle;
+    if (!title.match(/第\d+(-\d+)?页/)) {
+      MNUtil.showHUD("请选择一个页码任务");
+      return;
+    }
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "更新阅读进度",
+      "请输入当前阅读到的页码",
+      2,  // 输入框样式
+      "取消",
+      ["确定"],
+      (alert, buttonIndex) => {
+        if (buttonIndex === 1) {
+          const pageText = alert.textFieldAtIndex(0).text;
+          const currentPage = parseInt(pageText);
+          
+          if (isNaN(currentPage)) {
+            MNUtil.showHUD("请输入有效的页码");
+            return;
+          }
+          
+          MNUtil.undoGrouping(() => {
+            try {
+              MNTaskManager.updatePageProgress(focusNote, currentPage);
+              MNUtil.showHUD(`✅ 已更新到第${currentPage}页`);
+            } catch (error) {
+              MNUtil.showHUD("更新进度失败：" + error.message);
+            }
+          });
+        }
+      }
+    );
+  });
+
+  // addProgressNote - 添加进度备注
+  MNTaskGlobal.registerCustomAction("addProgressNote", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    if (!focusNote) {
+      MNUtil.showHUD("请先选择一个任务");
+      return;
+    }
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "添加进度备注",
+      "请输入进度备注内容",
+      2,  // 输入框样式
+      "取消",
+      ["确定"],
+      (alert, buttonIndex) => {
+        if (buttonIndex === 1) {
+          const note = alert.textFieldAtIndex(0).text;
+          
+          if (!note || note.trim() === "") {
+            MNUtil.showHUD("请输入备注内容");
+            return;
+          }
+          
+          MNUtil.undoGrouping(() => {
+            try {
+              const timestamp = new Date().toLocaleString();
+              focusNote.appendTextComment(`进度备注 [${timestamp}]：${note}`);
+              MNUtil.showHUD("✅ 进度备注已添加");
+            } catch (error) {
+              MNUtil.showHUD("添加备注失败：" + error.message);
+            }
+          });
+        }
+      }
+    );
+  });
+
   // recordTimeSpent - 记录花费时间
   MNTaskGlobal.registerCustomAction("recordTimeSpent", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;

@@ -9,6 +9,44 @@
  */
 class MNTaskManager {
   /**
+   * HTML 评论样式辅助方法
+   */
+  static createBlueFieldHTML(text, emoji = '') {
+    const emojiPrefix = emoji ? `${emoji} ` : '';
+    return `<p style="font-size: 14px; color: white; background-color: #2196F3; padding: 6px 10px; margin: 0; border-radius: 4px;">${emojiPrefix}${text}</p>`;
+  }
+  
+  static createBlueTitleHTML(text, emoji = '') {
+    const emojiPrefix = emoji ? `${emoji} ` : '';
+    return `<p style="font-size: 16px; color: white; background-color: #2196F3; padding: 8px 12px; margin: 0; border-radius: 4px; font-weight: 500;">${emojiPrefix}${text}</p>`;
+  }
+  
+  static createProgressHTML(percentage) {
+    // 使用绿色系配色
+    return `<div style="background-color: #4CAF50; padding: 10px; border-radius: 6px;">
+      <p style="color: white; font-size: 16px; font-weight: bold; margin: 0 0 8px 0;">📊 进度: ${percentage}%</p>
+      <div style="background: #2E7D32; border-radius: 4px; overflow: hidden; height: 20px;">
+        <div style="background: #81C784; width: ${percentage}%; height: 100%; transition: width 0.3s;"></div>
+      </div>
+    </div>`;
+  }
+  
+  static addFieldComment(note, text, emoji = '') {
+    const html = this.createBlueFieldHTML(text, emoji);
+    note.appendHtmlComment(html, text, {width: 400, height: 32}, "");
+  }
+  
+  static addTitleComment(note, text, emoji = '') {
+    const html = this.createBlueTitleHTML(text, emoji);
+    note.appendHtmlComment(html, text, {width: 400, height: 40}, "");
+  }
+  
+  static addProgressComment(note, percentage) {
+    const html = this.createProgressHTML(percentage);
+    note.appendHtmlComment(html, `进度: ${percentage}%`, {width: 500, height: 70}, "");
+  }
+
+  /**
    * 任务类型定义
    * 
    * @property {string} prefixName - 标题前缀 【O >> 】
@@ -162,8 +200,7 @@ class MNTaskManager {
     // 添加默认字段（如果指定）
     if (options.addFields) {
       typeConfig.fields.forEach(field => {
-        const fieldHtml = `<p style="font-size: 14px; color: white; background-color: #2196F3; padding: 6px; margin: 0; border-radius: 4px;">${field}</p>`;
-        taskNote.appendHtmlComment(fieldHtml, field, {width: 400, height: 32}, "");
+        this.addFieldComment(taskNote, field);
       });
     }
 
@@ -190,7 +227,7 @@ class MNTaskManager {
     note.appendTags([statusConfig.tag]);
 
     // 更新状态评论
-    const statusCommentIndex = note.getTextCommentIndex("状态：");
+    const statusCommentIndex = note.getIncludingCommentIndex("状态：");
     if (statusCommentIndex !== -1) {
       note.removeCommentByIndex(statusCommentIndex);
     }
@@ -319,13 +356,61 @@ class MNTaskManager {
     const empty = 10 - filled;
     const progressBar = '█'.repeat(filled) + '░'.repeat(empty);
     
-    // 创建进度 HTML 评论
-    const progressHtml = `<div style="background-color: #2196F3; padding: 10px; border-radius: 4px;">
-      <p style="color: white; font-size: 16px; font-weight: bold; margin: 0 0 8px 0;">📊 进度: ${percentage}%</p>
-      <div style="background: #1565C0; border-radius: 4px; overflow: hidden; height: 20px;">
-        <div style="background: #64B5F6; width: ${percentage}%; height: 100%; transition: width 0.3s;"></div>
-      </div>
-    </div>`;
+    // 查找并更新现有进度评论
+    const progressIndex = note.getIncludingHtmlCommentIndex("进度:");
+    if (progressIndex !== -1) {
+      note.removeCommentByIndex(progressIndex);
+    }
+    
+    this.addProgressComment(note, percentage);
+    
+    // 如果进度达到100%，考虑自动更新状态
+    if (percentage === 100 && note.colorIndex !== 5) {
+      MNUtil.confirm("任务进度已达100%", "是否将任务状态设置为已完成？", ["取消", "确定"])
+        .then(result => {
+          if (result === 1) {
+            this.updateTaskStatus(note, 'completed');
+          }
+        });
+    }
+    
+    note.refresh();
+  }
+
+  /**
+   * 更新页码任务的进度
+   * @param {MNNote} note - 页码任务笔记
+   * @param {number} currentPage - 当前看到的页码
+   */
+  static updatePageProgress(note, currentPage) {
+    // 从标题中提取页码范围
+    const title = note.noteTitle;
+    let startPage, endPage;
+    
+    // 匹配 "第X页" 或 "第X-Y页" 格式
+    const singlePageMatch = title.match(/第(\d+)页/);
+    const rangeMatch = title.match(/第(\d+)-(\d+)页/);
+    
+    if (rangeMatch) {
+      startPage = parseInt(rangeMatch[1]);
+      endPage = parseInt(rangeMatch[2]);
+    } else if (singlePageMatch) {
+      startPage = endPage = parseInt(singlePageMatch[1]);
+    } else {
+      MNUtil.showHUD("无法识别页码任务格式");
+      return;
+    }
+    
+    // 确保当前页码在范围内
+    currentPage = Math.max(startPage, Math.min(currentPage, endPage));
+    
+    // 计算进度百分比
+    const totalPages = endPage - startPage + 1;
+    const pagesRead = currentPage - startPage + 1;
+    const percentage = Math.round((pagesRead / totalPages) * 100);
+    
+    // 创建页码进度 HTML
+    const progressHtml = this.createProgressHTML(percentage);
     
     // 查找并更新现有进度评论
     const progressIndex = note.getIncludingHtmlCommentIndex("进度:");
@@ -333,11 +418,19 @@ class MNTaskManager {
       note.removeCommentByIndex(progressIndex);
     }
     
+    // 添加新的进度评论
     note.appendHtmlComment(progressHtml, `进度: ${percentage}%`, {width: 500, height: 70}, "");
     
-    // 如果进度达到100%，考虑自动更新状态
-    if (percentage === 100 && note.colorIndex !== 5) {
-      MNUtil.confirm("任务进度已达100%", "是否将任务状态设置为已完成？", ["取消", "确定"])
+    // 更新或添加当前页码评论
+    const currentPageIndex = note.getIncludingCommentIndex("当前页码：");
+    if (currentPageIndex !== -1) {
+      note.removeCommentByIndex(currentPageIndex);
+    }
+    note.appendTextComment(`当前页码：第${currentPage}页`);
+    
+    // 如果读完了，询问是否标记为完成
+    if (currentPage === endPage) {
+      MNUtil.confirm("已读到最后一页", "是否将任务状态设置为已完成？", ["取消", "确定"])
         .then(result => {
           if (result === 1) {
             this.updateTaskStatus(note, 'completed');
@@ -485,8 +578,7 @@ class MNTaskManager {
         
         // 添加衡量指标
         if (kr.metric) {
-          const metricHtml = `<p style="font-size: 14px; color: white; background-color: #2196F3; padding: 6px; margin: 0; border-radius: 4px;">🎯 衡量指标</p>`;
-          krNote.appendHtmlComment(metricHtml, "衡量指标", {width: 400, height: 32}, "");
+          this.addFieldComment(krNote, "衡量指标", "🎯");
           krNote.appendTextComment(`目标值：${kr.metric}`);
         }
         
@@ -758,9 +850,9 @@ class MNTaskManager {
         childNote.noteTitle = `【T >> 】第${i}章`;
         
         // 添加字段
-        childNote.appendHtmlComment('<p style="font-size: 16px; color: white; background-color: #2196F3; padding: 8px; margin: 0; border-radius: 4px;">📋 任务详情</p>', '任务详情', {width: 400, height: 40}, "");
-        childNote.appendHtmlComment('<p style="font-size: 14px; color: white; background-color: #2196F3; padding: 6px; margin: 0; border-radius: 4px;">预计阅读时间：</p>', '预计阅读时间：', {width: 400, height: 32}, "");
-        childNote.appendHtmlComment('<p style="font-size: 14px; color: white; background-color: #2196F3; padding: 6px; margin: 0; border-radius: 4px;">实际阅读时间：</p>', '实际阅读时间：', {width: 400, height: 32}, "");
+        this.addTitleComment(childNote, "任务详情", "📋");
+        this.addFieldComment(childNote, "预计阅读时间：");
+        this.addFieldComment(childNote, "实际阅读时间：");
         
         // 添加到父任务
         parentNote.addChild(childNote);
@@ -796,19 +888,20 @@ class MNTaskManager {
         const startPage = startPageNum + (i * pagesPerTask);
         const endPage = Math.min(startPage + pagesPerTask - 1, endPageNum);
         
+        // 处理页码显示格式
+        const pageTitle = startPage === endPage ? `第${startPage}页` : `第${startPage}-${endPage}页`;
+        
         const childNote = MNNote.new({
-          title: `第${startPage}-${endPage}页`,
+          title: pageTitle,
           colorIndex: 2  // 淡蓝色，任务类型
         });
         
         // 添加任务类型前缀
-        childNote.noteTitle = `【T >> 】第${startPage}-${endPage}页`;
+        childNote.noteTitle = `【T >> 】${pageTitle}`;
         
         // 添加字段
-        childNote.appendHtmlComment(`<p style="font-size: 16px; color: white; background-color: #2196F3; padding: 8px; margin: 0; border-radius: 4px;">📄 页码范围：${startPage}-${endPage}</p>`, 
-          `页码范围：${startPage}-${endPage}`, {width: 400, height: 40}, "");
-        childNote.appendHtmlComment(`<p style="font-size: 14px; color: white; background-color: #2196F3; padding: 6px; margin: 0; border-radius: 4px;">页数：${endPage - startPage + 1}页</p>`, 
-          `页数：${endPage - startPage + 1}页`, {width: 400, height: 32}, "");
+        this.addTitleComment(childNote, `页码范围：${startPage}-${endPage}`, "📄");
+        this.addFieldComment(childNote, `页数：${endPage - startPage + 1}页`);
         
         // 添加到父任务
         parentNote.addChild(childNote);
@@ -852,11 +945,10 @@ class MNTaskManager {
         childNote.noteTitle = `【T >> 】时间块 #${blockNumber}`;
         
         // 添加字段
-        childNote.appendHtmlComment(`<p style="font-size: 16px; color: white; background-color: #2196F3; padding: 8px; margin: 0; border-radius: 4px;">⏱️ 时长：${minutes}分钟</p>`, 
-          `时长：${minutes}分钟`, {width: 400, height: 40}, "");
-        childNote.appendHtmlComment('<p style="font-size: 14px; color: white; background-color: #2196F3; padding: 6px; margin: 0; border-radius: 4px;">开始时间：</p>', '开始时间：', {width: 400, height: 32}, "");
-        childNote.appendHtmlComment('<p style="font-size: 14px; color: white; background-color: #2196F3; padding: 6px; margin: 0; border-radius: 4px;">结束时间：</p>', '结束时间：', {width: 400, height: 32}, "");
-        childNote.appendHtmlComment('<p style="font-size: 14px; color: white; background-color: #2196F3; padding: 6px; margin: 0; border-radius: 4px;">完成情况：</p>', '完成情况：', {width: 400, height: 32}, "");
+        this.addTitleComment(childNote, `时长：${minutes}分钟`, "⏱️");
+        this.addFieldComment(childNote, "开始时间：");
+        this.addFieldComment(childNote, "结束时间：");
+        this.addFieldComment(childNote, "完成情况：");
         
         // 如果是番茄钟（25分钟），添加特殊标记
         if (minutes === 25) {
@@ -901,10 +993,9 @@ class MNTaskManager {
         childNote.noteTitle = `【T >> 】${name}`;
         
         // 添加基本字段
-        childNote.appendHtmlComment('<p style="font-size: 16px; color: white; background-color: #2196F3; padding: 8px; margin: 0; border-radius: 4px;">📋 任务描述</p>', '任务描述', {width: 400, height: 40}, "");
-        childNote.appendHtmlComment('<p style="font-size: 14px; color: white; background-color: #2196F3; padding: 6px; margin: 0; border-radius: 4px;">优先级：中</p>', '优先级：中', {width: 400, height: 32}, "");
-        childNote.appendHtmlComment(`<p style="font-size: 14px; color: white; background-color: #2196F3; padding: 6px; margin: 0; border-radius: 4px;">序号：${index + 1}</p>`, 
-          `序号：${index + 1}`, {width: 400, height: 32}, "");
+        this.addTitleComment(childNote, "任务描述", "📋");
+        this.addFieldComment(childNote, "优先级：中");
+        this.addFieldComment(childNote, `序号：${index + 1}`);
         
         // 添加到父任务
         parentNote.addChild(childNote);

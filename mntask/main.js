@@ -39,7 +39,11 @@ JSB.newAddon = function (mainPath) {
     }
   }
   /** @return {MNTaskClass} */
-  const getMNTaskClass = ()=>self  
+  const getMNTaskClass = ()=>self
+  
+  // 全局访问点
+  var MNTaskInstance = null;
+  
   var MNTaskClass = JSB.defineClass(
     'MNTask : JSExtension',
     { /* Instance members */
@@ -49,6 +53,12 @@ JSB.newAddon = function (mainPath) {
         self.init(mainPath)
         // MNUtil.showHUD("mntask")
         self.appInstance = Application.sharedInstance();
+        
+        // 保存主插件实例到多个全局可访问的位置
+        MNTaskInstance = self;
+        if (typeof MNTaskGlobal !== 'undefined') {
+          MNTaskGlobal.mainPlugin = self;
+        }
         // self.popUpNote
         self.isNewWindow = false;
         self.watchMode = false;

@@ -10,6 +10,9 @@ if (typeof MNTaskGlobal === "undefined") {
 // 初始化 customActions 对象
 MNTaskGlobal.customActions = MNTaskGlobal.customActions || {};
 
+// 存储主插件实例的引用
+MNTaskGlobal.mainPlugin = null;
+
 
 /**
  * 注册自定义 action
@@ -93,9 +96,30 @@ function registerAllCustomActions() {
     MNUtil.log("🔍 openTasksFloatMindMap - 开始执行");
     MNUtil.log(`📋 context 信息: focusNote=${focusNote ? focusNote.noteId : 'null'}, self=${self ? 'exists' : 'null'}`);
     
+    // 获取主插件实例 - 尝试多种方式
+    let mainPlugin = null;
+    
+    // 方式1：使用全局 MNTaskInstance
+    if (typeof MNTaskInstance !== 'undefined' && MNTaskInstance) {
+      mainPlugin = MNTaskInstance;
+      MNUtil.log("✅ 通过 MNTaskInstance 获取主插件实例");
+    }
+    // 方式2：使用 MNTaskGlobal.mainPlugin
+    else if (MNTaskGlobal.mainPlugin) {
+      mainPlugin = MNTaskGlobal.mainPlugin;
+      MNUtil.log("✅ 通过 MNTaskGlobal.mainPlugin 获取主插件实例");
+    }
+    
+    if (!mainPlugin) {
+      MNUtil.log("❌ 主插件实例未找到");
+      MNUtil.showHUD("❌ 插件未正确初始化");
+      return;
+    }
+    MNUtil.log("✅ 获取主插件实例成功");
+    
     try {
       // 检查是否需要创建控制器实例
-      if (!self.taskDashboardController) {
+      if (!mainPlugin.taskDashboardController) {
         MNUtil.log("🔨 taskDashboardController 不存在，需要创建");
         // 检查 taskDashboardController 是否存在
         if (typeof taskDashboardController === 'undefined') {
@@ -104,8 +128,10 @@ function registerAllCustomActions() {
           return;
         }
         MNUtil.log("✅ taskDashboardController 类存在，开始创建实例");
-        self.taskDashboardController = taskDashboardController.new();
-        MNUtil.log("✅ taskDashboardController 实例创建成功");
+        const newController = taskDashboardController.new();
+        MNUtil.log("📝 新控制器实例：" + (newController ? "创建成功" : "创建失败"));
+        mainPlugin.taskDashboardController = newController;
+        MNUtil.log("📝 赋值后的 mainPlugin.taskDashboardController: " + (mainPlugin.taskDashboardController ? "存在" : "不存在"));
       } else {
         MNUtil.log("✅ taskDashboardController 已存在");
       }
@@ -117,7 +143,7 @@ function registerAllCustomActions() {
     if (savedRootNoteId) {
       try {
         MNUtil.log("🔄 尝试使用保存的根目录初始化");
-        const rootNote = self.taskDashboardController.initDashboard(savedRootNoteId);
+        const rootNote = mainPlugin.taskDashboardController.initDashboard(savedRootNoteId);
         if (rootNote) {
           MNUtil.log("✅ 根目录初始化成功，准备打开浮动脑图");
           rootNote.focusInFloatMindMap(0.5);
@@ -149,7 +175,16 @@ function registerAllCustomActions() {
       if (result === 1) {
         // 使用当前焦点卡片
         MNUtil.log(`🎯 使用当前焦点卡片: ${focusNote.noteId}`);
-        const rootNote = self.taskDashboardController.initDashboard(focusNote.noteId);
+        MNUtil.log("📝 mainPlugin 状态：" + (mainPlugin ? "存在" : "不存在"));
+        MNUtil.log("📝 mainPlugin.taskDashboardController 状态：" + (mainPlugin.taskDashboardController ? "存在" : "不存在"));
+        
+        if (!mainPlugin.taskDashboardController) {
+          MNUtil.log("❌ taskDashboardController 在选择后丢失了！");
+          MNUtil.showHUD("❌ 控制器初始化失败");
+          return;
+        }
+        
+        const rootNote = mainPlugin.taskDashboardController.initDashboard(focusNote.noteId);
         if (rootNote) {
           MNUtil.log("✅ 根目录初始化成功，保存 ID 并打开脑图");
           taskConfig.saveRootNoteId(focusNote.noteId); // 保存选择的 ID
@@ -161,7 +196,7 @@ function registerAllCustomActions() {
         // 输入卡片 ID
         const input = await MNUtil.input("任务管理根目录", "请输入要作为任务管理根目录的卡片 ID:", ["卡片 ID"]);
         if (input && input[0]) {
-          const rootNote = self.taskDashboardController.initDashboard(input[0]);
+          const rootNote = mainPlugin.taskDashboardController.initDashboard(input[0]);
           if (rootNote) {
             taskConfig.saveRootNoteId(input[0]); // 保存输入的 ID
             rootNote.focusInFloatMindMap(0.5);
@@ -176,7 +211,7 @@ function registerAllCustomActions() {
       // 没有焦点卡片，提示输入 ID
       const input = await MNUtil.input("任务管理根目录", "请输入要作为任务管理根目录的卡片 ID:", ["卡片 ID"]);
       if (input && input[0]) {
-        const rootNote = self.taskDashboardController.initDashboard(input[0]);
+        const rootNote = mainPlugin.taskDashboardController.initDashboard(input[0]);
         if (rootNote) {
           taskConfig.saveRootNoteId(input[0]); // 保存输入的 ID
           rootNote.focusInFloatMindMap(0.5);
@@ -257,20 +292,27 @@ function registerAllCustomActions() {
   MNTaskGlobal.registerCustomAction("moveToInbox", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
     
+    // 获取主插件实例
+    const mainPlugin = MNTaskGlobal.mainPlugin;
+    if (!mainPlugin) {
+      MNUtil.showHUD("❌ 插件未正确初始化");
+      return;
+    }
+    
     if (!focusNote) {
       MNUtil.showHUD("请先选择要移动的任务");
       return;
     }
     
     // 检查是否已初始化看板控制器
-    if (!self.taskDashboardController || !self.taskDashboardController.rootNote) {
+    if (!mainPlugin.taskDashboardController || !mainPlugin.taskDashboardController.rootNote) {
       const savedRootNoteId = taskConfig.getRootNoteId();
       if (savedRootNoteId) {
         // 尝试使用保存的根目录ID初始化
-        if (!self.taskDashboardController) {
-          self.taskDashboardController = taskDashboardController.new();
+        if (!mainPlugin.taskDashboardController) {
+          mainPlugin.taskDashboardController = taskDashboardController.new();
         }
-        const rootNote = self.taskDashboardController.initDashboard(savedRootNoteId);
+        const rootNote = mainPlugin.taskDashboardController.initDashboard(savedRootNoteId);
         if (!rootNote) {
           taskConfig.clearRootNoteId();
           MNUtil.showHUD("保存的根目录无效，请打开任务管理视图重新设置");
@@ -285,7 +327,7 @@ function registerAllCustomActions() {
     // 移动到 Inbox
     MNUtil.undoGrouping(() => {
       focusNotes.forEach(note => {
-        self.taskDashboardController.moveToInbox(note);
+        mainPlugin.taskDashboardController.moveToInbox(note);
       });
     });
   });
@@ -294,15 +336,22 @@ function registerAllCustomActions() {
   MNTaskGlobal.registerCustomAction("openFloatWindowByInboxNote", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
     
+    // 获取主插件实例
+    const mainPlugin = MNTaskGlobal.mainPlugin;
+    if (!mainPlugin) {
+      MNUtil.showHUD("❌ 插件未正确初始化");
+      return;
+    }
+    
     // 检查是否已初始化看板控制器
-    if (!self.taskDashboardController || !self.taskDashboardController.rootNote) {
+    if (!mainPlugin.taskDashboardController || !mainPlugin.taskDashboardController.rootNote) {
       const savedRootNoteId = taskConfig.getRootNoteId();
       if (savedRootNoteId) {
         // 尝试使用保存的根目录ID初始化
-        if (!self.taskDashboardController) {
-          self.taskDashboardController = taskDashboardController.new();
+        if (!mainPlugin.taskDashboardController) {
+          mainPlugin.taskDashboardController = taskDashboardController.new();
         }
-        const rootNote = self.taskDashboardController.initDashboard(savedRootNoteId);
+        const rootNote = mainPlugin.taskDashboardController.initDashboard(savedRootNoteId);
         if (!rootNote) {
           taskConfig.clearRootNoteId();
           MNUtil.showHUD("保存的根目录无效，请打开任务管理视图重新设置");
@@ -315,7 +364,7 @@ function registerAllCustomActions() {
     }
     
     // 查找 Inbox 分区
-    const inbox = self.taskDashboardController.rootNote.childNotes.find(child =>
+    const inbox = mainPlugin.taskDashboardController.rootNote.childNotes.find(child =>
       child.tags && child.tags.includes("Inbox")
     );
     

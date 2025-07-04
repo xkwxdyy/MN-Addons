@@ -425,7 +425,9 @@ var taskDashboardController = JSB.defineClass(
   {
     // 类方法
     new: function() {
+      MNUtil.log("🏗️ taskDashboardController.new() 被调用");
       const controller = taskDashboardController.alloc().init()
+      MNUtil.log("🏗️ controller 创建结果: " + (controller ? "成功" : "失败"));
       return controller
     }
   }

@@ -38,6 +38,12 @@
  *      ├── closeButton (y=20, x=tabView.width+5)
  *      └── settingView (y=55, 主内容区域)
  * 
+ * 6. 视图管理系统
+ *    使用统一的 viewManager 管理所有视图切换
+ *    ❌ 错误：在按钮点击方法中直接使用 self.viewManager.switchTo()
+ *    ✅ 正确：先获取 self 引用：let self = getTaskSettingController()
+ *    详见 VIEWMANAGER_GUIDE.md
+ * 
  * @module settingController
  */
 
@@ -48,8 +54,10 @@ const getTaskSettingController = ()=>self
 var taskSettingController = JSB.defineClass('taskSettingController : UIViewController <NSURLConnectionDelegate,UIImagePickerControllerDelegate,UIWebViewDelegate>', {
   viewDidLoad: function() {
     let self = getTaskSettingController()
+    MNUtil.log("🔍 viewDidLoad called")
 try {
     self.init()
+    MNUtil.log("🔍 After init, self.viewManager = ", self.viewManager)
     taskFrame.set(self.view,50,50,355,500)
     self.lastFrame = self.view.frame;
     self.currentFrame = self.view.frame
@@ -299,117 +307,8 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     }
     self.searchedText = ""
   },
-
-  /**
-   * 统一的视图管理系统
-   */
-  viewManager: {
-    // 所有视图配置
-    views: {
-      config: {
-        view: 'configView',
-        button: 'configButton',
-        selectedColor: '#457bd3',
-        normalColor: '#9bb2d6',
-        onShow: function(self) {
-          let action = taskConfig.action
-          self.setButtonText(action)
-        }
-      },
-      advanced: {
-        view: 'advanceView',
-        button: 'advancedButton',
-        selectedColor: '#457bd3',
-        normalColor: '#9bb2d6'
-      },
-      popup: {
-        view: 'popupEditView',
-        button: 'popupButton',
-        selectedColor: '#457bd3',
-        normalColor: '#9bb2d6',
-        onShow: function(self) {
-          self.settingViewLayout()
-        }
-      },
-      dynamic: {
-        view: 'configView',  // 复用configView
-        button: 'dynamicButton',
-        selectedColor: '#457bd3',
-        normalColor: '#9bb2d6',
-        onShow: function(self) {
-          let dynamicOrder = taskConfig.getWindowState("dynamicOrder")
-          if (!dynamicOrder) {
-            self.showHUD("Enable Dynamic Order first")
-            return false
-          }
-          let dynamicAction = taskConfig.dynamicAction
-          if (dynamicAction.length === 0) {
-            taskConfig.dynamicAction = taskConfig.action
-            dynamicAction = taskConfig.action
-          }
-          self.setButtonText(dynamicAction)
-        }
-      },
-      taskBoard: {
-        view: 'taskBoardView',
-        button: 'taskBoardButton',
-        selectedColor: '#457bd3',
-        normalColor: '#9bb2d6',
-        onShow: function(self) {
-          self.settingViewLayout()
-        }
-      }
-    },
-    
-    // 切换到指定视图
-    switchTo: function(viewName) {
-      let self = getTaskSettingController()
-      const viewConfig = this.views[viewName]
-      
-      if (!viewConfig) {
-        MNUtil.log("❌ Unknown view: " + viewName)
-        return
-      }
-      
-      // 如果有前置检查，执行并判断是否继续
-      if (viewConfig.onShow) {
-        const shouldContinue = viewConfig.onShow(self)
-        if (shouldContinue === false) return
-      }
-      
-      // 隐藏所有视图并重置按钮状态
-      Object.keys(this.views).forEach(key => {
-        const config = this.views[key]
-        if (self[config.view]) {
-          self[config.view].hidden = true
-        }
-        if (self[config.button]) {
-          self[config.button].selected = false
-          MNButton.setColor(self[config.button], config.normalColor, 0.8)
-        }
-      })
-      
-      // 显示当前视图
-      if (self[viewConfig.view]) {
-        self[viewConfig.view].hidden = false
-      }
-      if (self[viewConfig.button]) {
-        self[viewConfig.button].selected = true
-        MNButton.setColor(self[viewConfig.button], viewConfig.selectedColor, 0.8)
-      }
-    },
-    
-    // 注册新视图（为将来扩展预留）
-    registerView: function(name, config) {
-      this.views[name] = config
-    },
-    
-    // 移除视图
-    unregisterView: function(name) {
-      delete this.views[name]
-    }
-  },
   maxButtonTapped: function() {
+    let self = getTaskSettingController()
     if (self.customMode === "full") {
       self.customMode = "none"
       self.custom = false;
@@ -541,18 +440,31 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     self.currentFrame  = self.view.frame
   },
   advancedButtonTapped: function (params) {
+    let self = getTaskSettingController()
     self.viewManager.switchTo('advanced')
   },
   taskBoardButtonTapped: function (params) {
+    let self = getTaskSettingController()
     self.viewManager.switchTo('taskBoard')
   },
   popupButtonTapped: function (params) {
+    let self = getTaskSettingController()
     self.viewManager.switchTo('popup')
   },
   configButtonTapped: function (params) {
-    self.viewManager.switchTo('config')
+    MNUtil.log("🔍 configButtonTapped called")
+    let self = getTaskSettingController()
+    MNUtil.log("🔍 self = ", self)
+    MNUtil.log("🔍 self.viewManager = ", self.viewManager)
+    if (self.viewManager) {
+      MNUtil.log("🔍 Calling viewManager.switchTo('config')")
+      self.viewManager.switchTo('config')
+    } else {
+      MNUtil.log("❌ viewManager is undefined!")
+    }
   },
   dynamicButtonTapped: async function (params) {
+    let self = getTaskSettingController()
     self.viewManager.switchTo('dynamic')
   },
   chooseTemplate: async function (button) {
@@ -1146,8 +1058,131 @@ taskSettingController.prototype.init = function () {
   this.customMode = "None"
   this.selectedText = '';
   this.searchedText = '';
+  
+  // 初始化 viewManager
+  MNUtil.log("🔍 Initializing viewManager...")
+  this.initViewManager();
 }
 
+
+/**
+ * 初始化视图管理器
+ * @this {taskSettingController}
+ */
+taskSettingController.prototype.initViewManager = function() {
+  MNUtil.log("🔍 Creating viewManager on instance...")
+  const self = this;
+  
+  this.viewManager = {
+    // 所有视图配置
+    views: {
+      config: {
+        view: 'configView',
+        button: 'configButton',
+        selectedColor: '#457bd3',
+        normalColor: '#9bb2d6',
+        onShow: function(self) {
+          let action = taskConfig.action
+          self.setButtonText(action)
+        }
+      },
+      advanced: {
+        view: 'advanceView',
+        button: 'advancedButton',
+        selectedColor: '#457bd3',
+        normalColor: '#9bb2d6'
+      },
+      popup: {
+        view: 'popupEditView',
+        button: 'popupButton',
+        selectedColor: '#457bd3',
+        normalColor: '#9bb2d6',
+        onShow: function(self) {
+          self.settingViewLayout()
+        }
+      },
+      dynamic: {
+        view: 'configView',  // 复用configView
+        button: 'dynamicButton',
+        selectedColor: '#457bd3',
+        normalColor: '#9bb2d6',
+        onShow: function(self) {
+          let dynamicOrder = taskConfig.getWindowState("dynamicOrder")
+          if (!dynamicOrder) {
+            self.showHUD("Enable Dynamic Order first")
+            return false
+          }
+          let dynamicAction = taskConfig.dynamicAction
+          if (dynamicAction.length === 0) {
+            taskConfig.dynamicAction = taskConfig.action
+            dynamicAction = taskConfig.action
+          }
+          self.setButtonText(dynamicAction)
+        }
+      },
+      taskBoard: {
+        view: 'taskBoardView',
+        button: 'taskBoardButton',
+        selectedColor: '#457bd3',
+        normalColor: '#9bb2d6',
+        onShow: function(self) {
+          self.settingViewLayout()
+        }
+      }
+    },
+    
+    // 切换到指定视图
+    switchTo: function(viewName) {
+      MNUtil.log("🔍 viewManager.switchTo called with: " + viewName)
+      const viewConfig = self.viewManager.views[viewName]
+      
+      if (!viewConfig) {
+        MNUtil.log("❌ Unknown view: " + viewName)
+        return
+      }
+      MNUtil.log("🔍 Found viewConfig for " + viewName + ": ", viewConfig)
+      
+      // 如果有前置检查，执行并判断是否继续
+      if (viewConfig.onShow) {
+        const shouldContinue = viewConfig.onShow(self)
+        if (shouldContinue === false) return
+      }
+      
+      // 隐藏所有视图并重置按钮状态
+      Object.keys(self.viewManager.views).forEach(key => {
+        const config = self.viewManager.views[key]
+        if (self[config.view]) {
+          self[config.view].hidden = true
+        }
+        if (self[config.button]) {
+          self[config.button].selected = false
+          MNButton.setColor(self[config.button], config.normalColor, 0.8)
+        }
+      })
+      
+      // 显示当前视图
+      if (self[viewConfig.view]) {
+        self[viewConfig.view].hidden = false
+      }
+      if (self[viewConfig.button]) {
+        self[viewConfig.button].selected = true
+        MNButton.setColor(self[viewConfig.button], viewConfig.selectedColor, 0.8)
+      }
+    },
+    
+    // 注册新视图（为将来扩展预留）
+    registerView: function(name, config) {
+      self.viewManager.views[name] = config
+    },
+    
+    // 移除视图
+    unregisterView: function(name) {
+      delete self.viewManager.views[name]
+    }
+  }
+  
+  MNUtil.log("🔍 viewManager created successfully: ", this.viewManager)
+}
 
 taskSettingController.prototype.changeButtonOpacity = function(opacity) {
     this.moveButton.layer.opacity = opacity

@@ -5590,6 +5590,37 @@ static getDescriptionByName(actionName){
     this.save("MNTask_partitionCards", {})
   }
 
+  // 通用看板管理方法
+  static getBoardNoteId(boardKey) {
+    // 为了向后兼容，root 看板特殊处理
+    if (boardKey === 'root') {
+      return this.getRootNoteId()
+    }
+    // 其他看板使用分区卡片存储
+    return this.getPartitionCard(boardKey)
+  }
+  
+  static saveBoardNoteId(boardKey, noteId) {
+    // 为了向后兼容，root 看板特殊处理
+    if (boardKey === 'root') {
+      return this.saveRootNoteId(noteId)
+    }
+    // 其他看板使用分区卡片存储
+    return this.savePartitionCard(boardKey, noteId)
+  }
+  
+  static clearBoardNoteId(boardKey) {
+    // 为了向后兼容，root 看板特殊处理
+    if (boardKey === 'root') {
+      return this.clearRootNoteId()
+    }
+    // 其他看板清除对应的分区卡片
+    if (this.partitionCards[boardKey]) {
+      delete this.partitionCards[boardKey]
+      this.save("MNTask_partitionCards", this.partitionCards)
+    }
+  }
+
 }
 class taskSandbox{
   static async execute(code){

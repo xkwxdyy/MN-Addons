@@ -206,33 +206,39 @@ class MNTaskManager {
     
     MNUtil.undoGrouping(() => {
       note.noteTitle = newTitle
+      note.refreshAll()
     })
   }
 
   /**
    * 转换为任务卡片
-   * @param {MNNote} note - 要转换的卡片
+   * @param {MNNote} note - 要转换的卡片（如果为空则使用焦点卡片）
    */
   static async convertToTaskCard(note) {
-    if (!note) return
+    // 获取要转换的卡片
+    const focusNote = note || MNNote.getFocusNote()
+    if (!focusNote) return
+    
+    // 获取父卡片
+    const parentNote = focusNote.parentNote
     
     // 先使用 MNMath.toNoExcerptVersion 处理摘录卡片
-    let targetNote = note
-    if (note.excerptText) {
+    let noteToConvert = focusNote
+    if (focusNote.excerptText) {
       // 检查是否有 MNMath 类
       if (typeof MNMath !== 'undefined' && MNMath.toNoExcerptVersion) {
-        const converted = MNMath.toNoExcerptVersion(note)
+        const converted = MNMath.toNoExcerptVersion(focusNote)
         if (converted) {
-          targetNote = converted
+          noteToConvert = converted
         }
       } else {
         // 如果没有 MNMath，尝试手动加载 mnutils
         try {
           JSB.require('mnutils')
           if (typeof MNMath !== 'undefined' && MNMath.toNoExcerptVersion) {
-            const converted = MNMath.toNoExcerptVersion(note)
+            const converted = MNMath.toNoExcerptVersion(focusNote)
             if (converted) {
-              targetNote = converted
+              noteToConvert = converted
             }
           }
         } catch (e) {
@@ -242,18 +248,16 @@ class MNTaskManager {
     }
     
     // 检查是否已经是任务格式
-    const isAlreadyTask = this.isTaskCard(targetNote)
+    const isAlreadyTask = this.isTaskCard(noteToConvert)
     
     if (isAlreadyTask) {
       // 已经是任务格式，只需要添加字段
       MNUtil.undoGrouping(() => {
         // 添加任务字段（信息字段和状态字段）
-        this.addTaskFieldsWithStatus(targetNote)
-      })
-      
-      // 延迟执行链接操作，确保字段已经添加
-      MNUtil.delay(0.3).then(() => {
-        this.linkParentTask(targetNote)
+        this.addTaskFieldsWithStatus(noteToConvert)
+        
+        // 直接执行链接操作
+        this.linkParentTask(noteToConvert, parentNote)
       })
     } else {
       // 不是任务格式，需要选择类型并转换
@@ -266,26 +270,24 @@ class MNTaskManager {
       
       MNUtil.undoGrouping(() => {
         // 构建任务路径
-        const path = this.buildTaskPath(targetNote)
+        const path = this.buildTaskPath(noteToConvert)
         
         // 构建新标题
-        const content = targetNote.noteTitle || "未命名任务"
+        const content = noteToConvert.noteTitle || "未命名任务"
         const newTitle = path ? 
           `【${selectedType} >> ${path}｜未开始】${content}` :
           `【${selectedType}｜未开始】${content}`
         
-        targetNote.noteTitle = newTitle
+        noteToConvert.noteTitle = newTitle
         
         // 设置颜色（白色=未开始）
-        targetNote.colorIndex = 12
+        noteToConvert.colorIndex = 12
         
         // 添加任务字段（信息字段和状态字段）
-        this.addTaskFieldsWithStatus(targetNote)
-      })
-      
-      // 延迟执行链接操作，确保字段已经添加
-      MNUtil.delay(0.3).then(() => {
-        this.linkParentTask(targetNote)
+        this.addTaskFieldsWithStatus(noteToConvert)
+        
+        // 直接执行链接操作
+        this.linkParentTask(noteToConvert, parentNote)
       })
     }
   }
@@ -572,7 +574,7 @@ class MNTaskManager {
     const parentParts = this.parseTaskTitle(parentNote.noteTitle)
     
     // 构建所属字段内容
-    const belongsToText = `所属: [${parentParts.content}](${parentNote.noteId})`
+    const belongsToText = `所属: [${parentParts.content}](${parentNote.noteURL})`
     
     // 检查是否已有所属字段
     if (parsed.belongsTo) {
@@ -627,7 +629,7 @@ class MNTaskManager {
       // 5. 在子任务中更新所属字段（这已经包含了父任务的链接）
       // 构建所属字段内容
       const parentParts = this.parseTaskTitle(parent.noteTitle)
-      const belongsToText = `所属: [${parentParts.content}](${parent.noteId})`
+      const belongsToText = `所属: [${parentParts.content}](${parent.noteURL})`
       
       // 检查是否已有所属字段
       const parsed = this.parseTaskComments(note)
@@ -670,6 +672,13 @@ class MNTaskManager {
         MNUtil.log("🔄 更新现有所属字段，索引：" + parsed.belongsTo.index)
         note.replaceWithMarkdownComment(belongsToText, parsed.belongsTo.index)
       }
+      
+      // 强制触发父卡片的界面更新
+      // 通过微小修改父卡片的属性来触发刷新
+      MNUtil.log("🔄 强制触发父卡片更新")
+      const oldParentColor = parent.colorIndex
+      parent.colorIndex = (oldParentColor + 1) % 16  // 临时改变颜色
+      parent.colorIndex = oldParentColor  // 立即恢复原色
     })
   }
 
@@ -786,6 +795,159 @@ class MNTaskManager {
     } catch (error) {
       return false
     }
+  }
+
+  /**
+   * 强制刷新卡片及其父卡片
+   * @param {MNNote} note - 要刷新的卡片
+   * @param {boolean} refreshParent - 是否刷新父卡片
+   */
+  static forceRefreshNote(note, refreshParent = false) {
+    if (!note) return
+    
+    MNUtil.log("🔄 开始强制刷新卡片: " + note.noteId)
+    
+    try {
+      // 方法1：直接调用 refresh
+      note.refresh()
+      
+      // 方法2：通过修改一个临时属性触发刷新
+      MNUtil.delay(0.1).then(() => {
+        MNUtil.undoGrouping(() => {
+          // 临时修改和恢复，触发界面更新
+          const oldTitle = note.noteTitle
+          note.noteTitle = oldTitle + " "
+          note.noteTitle = oldTitle
+        })
+      })
+      
+      // 刷新父卡片
+      if (refreshParent && note.parentNote && this.isTaskCard(note.parentNote)) {
+        MNUtil.log("🔄 刷新父卡片: " + note.parentNote.noteId)
+        const parent = note.parentNote
+        
+        // 延迟刷新父卡片
+        MNUtil.delay(0.2).then(() => {
+          parent.refresh()
+          
+          // 同样的触发机制
+          MNUtil.delay(0.1).then(() => {
+            MNUtil.undoGrouping(() => {
+              const oldParentTitle = parent.noteTitle
+              parent.noteTitle = oldParentTitle + " "
+              parent.noteTitle = oldParentTitle
+            })
+          })
+        })
+      }
+    } catch (e) {
+      MNUtil.log("❌ 刷新卡片失败: " + e.message)
+    }
+  }
+
+  /**
+   * 清除失效的链接（目标卡片不存在的链接）
+   * 参考 MNMath.cleanupBrokenLinks 的实现
+   * 
+   * @param {MNNote} note - 要清理的卡片
+   * @returns {number} 清除的失效链接数量
+   */
+  static cleanupBrokenLinks(note) {
+    if (!note || !note.comments) return 0
+    
+    let removedCount = 0
+    const comments = note.comments
+    
+    MNUtil.log(`🔍 开始清理失效链接，总评论数: ${comments.length}`)
+    
+    // 从后往前遍历，避免删除时索引变化
+    for (let i = comments.length - 1; i >= 0; i--) {
+      const comment = comments[i]
+      if (!comment) continue
+      
+      // 检查是否是纯文本形式的链接（MarginNote 中链接通常是 TextNote 类型）
+      if (
+        comment.type === "TextNote" &&
+        comment.text && 
+        (comment.text.startsWith('marginnote3app://note/') || 
+         comment.text.startsWith('marginnote4app://note/'))
+      ) {
+        try {
+          // 从文本中提取 noteId
+          const match = comment.text.match(/marginnote[34]app:\/\/note\/([A-Z0-9-]+)/)
+          if (match) {
+            const targetNoteId = match[1]
+            
+            // 跳过概要链接
+            if (targetNoteId.includes('/summary/')) {
+              MNUtil.log(`⏭️ 跳过概要链接: ${targetNoteId}`)
+              continue
+            }
+            
+            // 检查目标笔记是否存在，不弹出警告
+            const targetNote = MNNote.new(targetNoteId, false)
+            if (!targetNote) {
+              // 目标不存在，删除此链接
+              note.removeCommentByIndex(i)
+              removedCount++
+              MNUtil.log(`🗑️ 删除失效链接: ${targetNoteId}`)
+            } else {
+              MNUtil.log(`✅ 链接有效: ${targetNoteId}`)
+            }
+          }
+        } catch (e) {
+          MNUtil.log(`⚠️ 处理链接 ${i} 时出错: ${e.message}`)
+        }
+      }
+      // 检查 Markdown 格式的链接
+      else if (
+        comment.type === "TextNote" &&
+        comment.text && 
+        (comment.text.includes('](marginnote3app://note/') ||
+         comment.text.includes('](marginnote4app://note/'))
+      ) {
+        try {
+          // 匹配 Markdown 格式的链接
+          const linkRegex = /\]\(marginnote[34]app:\/\/note\/([A-Z0-9-]+)\)/g
+          let hasInvalidLink = false
+          let invalidNoteId = null
+          let match
+          
+          while ((match = linkRegex.exec(comment.text)) !== null) {
+            const targetNoteId = match[1]
+            
+            // 跳过概要链接
+            if (targetNoteId.includes('/summary/')) {
+              continue
+            }
+            
+            // 检查目标笔记是否存在
+            const targetNote = MNNote.new(targetNoteId, false)
+            if (!targetNote) {
+              hasInvalidLink = true
+              invalidNoteId = targetNoteId
+              break
+            }
+          }
+          
+          // 如果发现失效链接，删除整个评论
+          if (hasInvalidLink) {
+            note.removeCommentByIndex(i)
+            removedCount++
+            MNUtil.log(`🗑️ 删除包含失效链接的 Markdown 文本: ${invalidNoteId}`)
+          }
+        } catch (e) {
+          MNUtil.log(`⚠️ 处理 Markdown 链接 ${i} 时出错: ${e.message}`)
+        }
+      }
+    }
+    
+    if (removedCount > 0) {
+      MNUtil.showHUD(`✅ 已清除 ${removedCount} 个失效链接`)
+    }
+    
+    MNUtil.log(`✅ 清理完成，共删除 ${removedCount} 个失效链接`)
+    return removedCount
   }
 }
 

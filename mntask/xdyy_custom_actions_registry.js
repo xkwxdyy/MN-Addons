@@ -59,11 +59,18 @@ function registerAllCustomActions() {
     
     // 判断是否已经是任务卡片
     if (MNTaskManager.isTaskCard(focusNote)) {
-      // 已经是任务卡片，只更新路径
+      // 已经是任务卡片，更新路径并清除失效链接
       MNUtil.undoGrouping(() => {
         MNTaskManager.updateTaskPath(focusNote);
+        MNUtil.undoGrouping(()=>{
+          try {
+            MNTaskManager.cleanupBrokenLinks(focusNote);
+          } catch (error) {
+            MNUtil.showHUD(error);
+          }
+        })
       });
-      MNUtil.showHUD("✅ 任务路径已更新");
+      // MNUtil.showHUD("✅ 任务路径已更新");
     } else {
       // 不是任务卡片，需要转换
       await MNTaskManager.convertToTaskCard(focusNote);

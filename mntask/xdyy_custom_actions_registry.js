@@ -223,6 +223,7 @@ function registerAllCustomActions() {
     // 更新状态
     MNUtil.undoGrouping(() => {
       MNTaskManager.updateTaskStatus(focusNote, newStatus);
+      focusNote.refreshAll();
     });
     
     MNUtil.showHUD(`✅ 状态已更新：${currentStatus} → ${newStatus}`);
@@ -381,6 +382,85 @@ function registerAllCustomActions() {
       MNUtil.addErrorLog(error, "undoOKRNoteMake", context);
       MNUtil.showHUD(`回退失败: ${error.message}`);
     }
+  });
+
+  // changeTaskType - 修改卡片类型（支持多选）
+  MNTaskGlobal.registerCustomAction("changeTaskType", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    // 获取要处理的卡片
+    const notesToProcess = focusNotes && focusNotes.length > 0 ? focusNotes : (focusNote ? [focusNote] : []);
+    
+    if (notesToProcess.length === 0) {
+      MNUtil.showHUD("请先选择一个或多个卡片");
+      return;
+    }
+    
+    // 筛选出任务卡片
+    const taskNotes = notesToProcess.filter(note => MNTaskManager.isTaskCard(note));
+    
+    if (taskNotes.length === 0) {
+      MNUtil.showHUD("请选择任务卡片");
+      return;
+    }
+    
+    // 显示类型选择弹窗
+    const taskTypes = ["目标", "关键结果", "项目", "动作"];
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "修改卡片类型",
+      `选择新的卡片类型\n当前选中 ${taskNotes.length} 个卡片`,
+      0,  // 普通样式
+      "取消",
+      taskTypes,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) return; // 用户取消
+        
+        const newType = taskTypes[buttonIndex - 1];
+        
+        MNUtil.undoGrouping(() => {
+          let successCount = 0;
+          
+          taskNotes.forEach(note => {
+            try {
+              // 解析当前标题
+              const titleParts = MNTaskManager.parseTaskTitle(note.noteTitle);
+              
+              // 构建新标题
+              let newTitle;
+              if (titleParts.path) {
+                newTitle = `【${newType} >> ${titleParts.path}｜${titleParts.status}】${titleParts.content}`;
+              } else {
+                newTitle = `【${newType}｜${titleParts.status}】${titleParts.content}`;
+              }
+              
+              // 更新标题
+              note.noteTitle = newTitle;
+              
+              // 刷新卡片
+              note.refresh();
+              
+              successCount++;
+            } catch (error) {
+              MNUtil.log(`修改卡片类型失败: ${error.message}`);
+            }
+          });
+          
+          // 刷新父卡片（如果有）
+          taskNotes.forEach(note => {
+            if (note.parentNote && MNTaskManager.isTaskCard(note.parentNote)) {
+              note.parentNote.refresh();
+            }
+          });
+          
+          if (successCount === taskNotes.length) {
+            MNUtil.showHUD(`✅ 已将 ${successCount} 个卡片修改为「${newType}」`);
+          } else {
+            MNUtil.showHUD(`⚠️ ${successCount}/${taskNotes.length} 个卡片修改成功`);
+          }
+        });
+      }
+    );
   });
 
   // moveToInbox - 加入 Inbox

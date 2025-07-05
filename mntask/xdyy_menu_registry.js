@@ -44,86 +44,11 @@ function registerAllMenuTemplates() {
       action: "menu",
       menuWidth: 320,
       menuItems: [
-        "⬇️ 创建任务",
+        "⬇️ 任务类型",
         {
-          action: "createOKRTaskFromNote",
-          menuTitle: "    🎯 从当前卡片创建 OKR 任务"
+          action: "changeTaskType",
+          menuTitle: "    🔄 修改卡片类型（支持多选）"
         },
-        {
-          action: "OKRNoteMake",
-          menuTitle: "    📊 OKR 制卡流"
-        },
-        {
-          action: "createSubTask",
-          menuTitle: "    ➕ 创建子任务"
-        },
-        "⬇️ 任务状态",
-      {
-        action: "toggleTaskStatusForward",
-        menuTitle: "    ✅ 切换任务状态（未开始→进行中→已完成）"
-      },
-      {
-        action: "undoOKRNoteMake",
-        menuTitle: "    ↩️ 回退任务状态"
-      },
-      {
-        action: "menu",
-        menuTitle: "    ➡️ 设置任务状态",
-        menuItems: [
-          {
-            action: "setTaskNotStarted",
-            menuTitle: "📋 未开始"
-          },
-          {
-            action: "setTaskInProgress",
-            menuTitle: "🚀 进行中"
-          },
-          {
-            action: "setTaskCompleted",
-            menuTitle: "✅ 已完成"
-          }
-        ]
-      },
-      "⬇️ 任务类型",
-      {
-        action: "changeTaskType",
-        menuTitle: "    🔄 修改卡片类型（支持多选）"
-      },
-      {
-        action: "menu",
-        menuTitle: "    ➡️ 设置任务类型",
-        menuItems: [
-          {
-            action: "setAsObjective",
-            menuTitle: "🎯 目标 (Objective)"
-          },
-          {
-            action: "setAsKeyResult",
-            menuTitle: "📊 关键结果 (Key Result)"
-          },
-          {
-            action: "setAsProject",
-            menuTitle: "📁 项目 (Project)"
-          },
-          {
-            action: "setAsTask",
-            menuTitle: "📋 任务 (Task)"
-          }
-        ]
-      },
-      "⬇️ 任务关联",
-      {
-        action: "linkToParentTask",
-        menuTitle: "    🔗 链接到父任务"
-      },
-      {
-        action: "focusParentTask",
-        menuTitle: "    🎯 定位到父任务"
-      },
-      {
-        action: "viewTaskPath",
-        menuTitle: "    📍 查看任务路径"
-      }
       ]
     }
   });
@@ -141,56 +66,14 @@ function registerAllMenuTemplates() {
           menuTitle: "    ↩️ 退回上一个状态"
         },
         "⬇️ 字段处理",
-        // {
-        //   action: "updateTaskProgress",
-        //   menuTitle: "    📊 更新任务进度百分比"
-        // },
-      // {
-      //   action: "updateReadingProgress",
-      //   menuTitle: "    📖 更新阅读进度（页数/章节）"
-      // },
-      // {
-      //   action: "addProgressNote",
-      //   menuTitle: "    📝 添加进度备注"
-      // },
-      // {
-      //   action: "recordTimeSpent",
-      //   menuTitle: "    ⏱️ 记录花费时间"
-      // },
-      {
-        action: "addCustomField",
-        menuTitle: "    📝 手动添加自定义字段"
-      },
-      {
-        action: "editCustomField",
-        menuTitle: "    ✏️ 编辑自定义字段"
-      },
-      "⬇️ 进度查看",
-      {
-        action: "viewTaskProgress",
-        menuTitle: "    📈 查看当前进度"
-      },
-      {
-        action: "viewProgressHistory",
-        menuTitle: "    📜 查看进度历史"
-      },
-      {
-        action: "viewChildTasksProgress",
-        menuTitle: "    📊 查看子任务进度"
-      },
-      "⬇️ 统计分析",
-      {
-        action: "calculateCompletionRate",
-        menuTitle: "    📈 计算完成率"
-      },
-      {
-        action: "estimateCompletionTime",
-        menuTitle: "    ⏰ 预估完成时间"
-      },
-      {
-        action: "generateProgressReport",
-        menuTitle: "    📊 生成进度报告"
-      }
+        {
+          action: "addCustomField",
+          menuTitle: "    📝 手动添加自定义字段"
+        },
+        {
+          action: "editCustomField",
+          menuTitle: "    ✏️ 编辑自定义字段"
+        },
       ]
     }
   });

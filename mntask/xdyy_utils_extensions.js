@@ -4,6 +4,113 @@
  */
 
 /**
+ * TaskFieldUtils - 任务字段工具类
+ * 参考 HtmlMarkdownUtils 的设计，处理任务卡片的字段系统
+ */
+class TaskFieldUtils {
+  /**
+   * 字段样式定义
+   */
+  static styles = {
+    // 主字段样式（信息、包含等）
+    mainField: 'font-weight:600;color:#1E40AF;background:linear-gradient(15deg,#EFF6FF 30%,#DBEAFE);border:2px solid #3B82F6;border-radius:12px;padding:10px 18px;display:inline-block;box-shadow:2px 2px 0px #BFDBFE,4px 4px 8px rgba(59,130,246,0.12);position:relative;margin:4px 8px;',
+    // 子字段样式（状态等）
+    subField: 'background:#FFF;color:#FF8C5A;border:2px solid currentColor;border-radius:3px;padding:6px 12px;font-size:0.7em;font-weight:600;box-shadow:0 1px 3px rgba(255,140,90,0.2);display:inline-block;'
+  }
+  
+  /**
+   * 创建带样式的字段 HTML
+   * @param {string} text - 字段文本
+   * @param {string} type - 字段类型 (mainField/subField)
+   * @param {string} id - 字段 ID
+   * @returns {string} 格式化的 HTML 字符串
+   */
+  static createFieldHtml(text, type = 'mainField', id = '') {
+    const style = this.styles[type] || this.styles.mainField
+    const idAttr = id ? `id="${id}"` : `id="${type}"`
+    return `<span ${idAttr} style="${style}">${text}</span>`
+  }
+  
+  /**
+   * 创建状态字段
+   * @param {string} status - 状态文本（未开始/进行中/已完成）
+   * @returns {string} 格式化的状态字段 HTML
+   */
+  static createStatusField(status) {
+    let emoji = ''
+    switch (status) {
+      case '未开始':
+        emoji = '😴 '
+        break
+      case '进行中':
+        emoji = '🔥 '
+        break
+      case '已完成':
+        emoji = '✅ '
+        break
+    }
+    return this.createFieldHtml(`${emoji}${status}`, 'subField', `status-${status}`)
+  }
+  
+  /**
+   * 检查是否是任务字段评论
+   * @param {string|MNComment} comment - 评论内容或评论对象
+   * @returns {boolean} 是否是任务字段
+   */
+  static isTaskField(comment) {
+    let text = ''
+    if (typeof comment === 'string') {
+      text = comment
+    } else if (comment && comment.text) {
+      text = comment.text
+    }
+    
+    // 检查是否包含任务字段特征
+    return text.includes('<span') && (
+      text.includes('id="mainField"') || 
+      text.includes('id="subField"') ||
+      text.includes('id="status-')
+    )
+  }
+  
+  /**
+   * 获取字段类型
+   * @param {string|MNComment} comment - 评论内容或评论对象
+   * @returns {string} 字段类型
+   */
+  static getFieldType(comment) {
+    let text = ''
+    if (typeof comment === 'string') {
+      text = comment
+    } else if (comment && comment.text) {
+      text = comment.text
+    }
+    
+    const regex = /<span\s+id="([^"]*)"/ 
+    const match = text.match(regex)
+    return match ? match[1] : ''
+  }
+  
+  /**
+   * 获取字段内容（不含 HTML 标签）
+   * @param {string|MNComment} comment - 评论内容或评论对象
+   * @returns {string} 纯文本内容
+   */
+  static getFieldContent(comment) {
+    let text = ''
+    if (typeof comment === 'string') {
+      text = comment
+    } else if (comment && comment.text) {
+      text = comment.text
+    }
+    
+    const regex = /<span[^>]*>(.*?)<\/span>/
+    const match = text.match(regex)
+    return match ? match[1].trim() : text
+  }
+}
+
+/**
  * MNTaskManager - 任务管理系统核心类
  * 参考 MNMath 的设计模式，定义任务类型预设和管理 API
  */
@@ -149,8 +256,10 @@ class MNTaskManager {
       // 设置颜色（白色=未开始）
       targetNote.colorIndex = 0
       
-      // 创建空函数供后续实现
-      this.addTaskFields(targetNote, selectedType)
+      // 添加任务字段（信息字段和状态字段）
+      this.addTaskFieldsWithStatus(targetNote)
+      
+      // 处理与父任务的链接关系
       this.linkParentTask(targetNote)
     })
   }
@@ -181,15 +290,243 @@ class MNTaskManager {
    * @param {string} taskType - 任务类型
    */
   static addTaskFields(note, taskType) {
-    // TODO: 根据任务类型添加相应的字段
+    // 现在改为调用新方法
+    this.addTaskFieldsWithStatus(note)
+  }
+  
+  /**
+   * 添加带状态的任务字段
+   * @param {MNNote} note - 要添加字段的卡片
+   */
+  static addTaskFieldsWithStatus(note) {
+    if (!note || this.hasTaskFields(note)) {
+      return // 已经有字段了，不重复添加
+    }
+    
+    MNUtil.undoGrouping(() => {
+      // 添加主字段"信息"
+      const mainFieldHtml = TaskFieldUtils.createFieldHtml('信息', 'mainField')
+      note.appendMarkdownComment(mainFieldHtml)
+      
+      // 添加三个状态子字段
+      const statuses = ['未开始', '进行中', '已完成']
+      statuses.forEach(status => {
+        const statusHtml = TaskFieldUtils.createStatusField(status)
+        note.appendMarkdownComment(statusHtml)
+      })
+    })
+  }
+
+  /**
+   * 检查任务卡片是否已添加字段
+   * @param {MNNote} note - 要检查的卡片
+   * @returns {boolean} 是否已添加任务字段
+   */
+  static hasTaskFields(note) {
+    if (!note || !note.comments) return false
+    
+    // 检查是否有"信息"主字段
+    const comments = note.comments
+    for (let comment of comments) {
+      if (comment && comment.type === 'markdownComment') {
+        const text = comment.text || ''
+        // 检查是否包含主字段"信息"
+        if (TaskFieldUtils.isTaskField(text) && text.includes('信息')) {
+          return true
+        }
+      }
+    }
+    
+    return false
+  }
+
+  /**
+   * 解析任务卡片的评论结构
+   * @param {MNNote} note - 要解析的卡片
+   * @returns {Object} 解析后的评论结构
+   */
+  static parseTaskComments(note) {
+    const result = {
+      taskFields: [],       // 任务字段（主字段和子字段）
+      links: [],            // 链接评论
+      belongsTo: null,      // 所属字段
+      otherComments: []     // 其他评论
+    }
+    
+    if (!note || !note.comments) return result
+    
+    const comments = note.comments
+    comments.forEach((comment, index) => {
+      if (!comment) return
+      
+      const text = comment.text || ''
+      
+      // 检查是否是任务字段
+      if (comment.type === 'markdownComment' && TaskFieldUtils.isTaskField(text)) {
+        const fieldType = TaskFieldUtils.getFieldType(text)
+        const content = TaskFieldUtils.getFieldContent(text)
+        
+        result.taskFields.push({
+          index: index,
+          text: text,
+          fieldType: fieldType,
+          content: content,
+          isMainField: fieldType === 'mainField',
+          isStatusField: fieldType.startsWith('status-')
+        })
+      }
+      // 检查是否是链接
+      else if (comment.type === 'linkedNote') {
+        result.links.push({
+          index: index,
+          linkedNoteId: comment.linkedNoteId,
+          comment: comment
+        })
+      }
+      // 检查是否是"所属"字段
+      else if (comment.type === 'markdownComment' && text.startsWith('所属:')) {
+        result.belongsTo = {
+          index: index,
+          text: text,
+          comment: comment
+        }
+      }
+      // 其他评论
+      else {
+        result.otherComments.push({
+          index: index,
+          comment: comment
+        })
+      }
+    })
+    
+    return result
+  }
+
+  /**
+   * 移动评论到指定字段下方
+   * @param {MNNote} note - 要操作的卡片
+   * @param {number|Array} commentIndices - 要移动的评论索引（单个或数组）
+   * @param {string} fieldText - 目标字段的文本内容（如"未开始"、"进行中"等）
+   * @param {boolean} toBottom - 是否移动到字段的最底部（默认 true）
+   */
+  static moveCommentToField(note, commentIndices, fieldText, toBottom = true) {
+    if (!note || !note.comments) return
+    
+    const parsed = this.parseTaskComments(note)
+    let targetIndex = -1
+    
+    // 查找目标字段
+    for (let field of parsed.taskFields) {
+      if (field.content.includes(fieldText)) {
+        if (toBottom) {
+          // 移动到该字段的最底部
+          // 需要找到下一个字段的位置或卡片末尾
+          const currentFieldIndex = field.index
+          let nextFieldIndex = note.comments.length
+          
+          // 查找下一个字段
+          for (let nextField of parsed.taskFields) {
+            if (nextField.index > currentFieldIndex) {
+              nextFieldIndex = nextField.index
+              break
+            }
+          }
+          
+          targetIndex = nextFieldIndex
+        } else {
+          // 移动到字段的紧下方
+          targetIndex = field.index + 1
+        }
+        break
+      }
+    }
+    
+    if (targetIndex === -1) return
+    
+    // 转换为数组
+    const indices = Array.isArray(commentIndices) ? commentIndices : [commentIndices]
+    
+    // 使用 moveCommentsByIndexArr 方法移动评论
+    if (note.moveCommentsByIndexArr) {
+      note.moveCommentsByIndexArr(indices, targetIndex)
+    } else if (note.moveComment) {
+      // 备用方法：逐个移动
+      indices.forEach(index => {
+        note.moveComment(index, targetIndex)
+      })
+    }
+  }
+
+  /**
+   * 更新或创建"所属"字段
+   * @param {MNNote} note - 要更新的卡片
+   * @param {MNNote} parentNote - 父任务卡片
+   */
+  static updateBelongsToField(note, parentNote) {
+    if (!note || !parentNote) return
+    
+    const parsed = this.parseTaskComments(note)
+    const parentParts = this.parseTaskTitle(parentNote.noteTitle)
+    
+    // 构建所属字段内容
+    const belongsToText = `所属: [${parentParts.content}](${parentNote.noteId})`
+    
+    // 检查是否已有所属字段
+    if (parsed.belongsTo) {
+      // 更新现有字段
+      const index = parsed.belongsTo.index
+      MNUtil.undoGrouping(() => {
+        note.replaceWithMarkdownComment(belongsToText, index)
+      })
+    } else {
+      // 创建新的所属字段
+      MNUtil.undoGrouping(() => {
+        note.appendMarkdownComment(belongsToText)
+        
+        // 移动到"信息"字段下方
+        const lastIndex = note.comments.length - 1
+        this.moveCommentToField(note, lastIndex, '信息', false)
+      })
+    }
   }
 
   /**
    * 链接父任务
    * @param {MNNote} note - 要链接的卡片
+   * @param {MNNote} parentNote - 父任务卡片（可选）
    */
-  static linkParentTask(note) {
-    // TODO: 创建与父任务的链接关系
+  static linkParentTask(note, parentNote = null) {
+    if (!note) return
+    
+    // 如果没有提供父任务，尝试获取当前父卡片
+    const parent = parentNote || note.parentNote
+    
+    // 检查父卡片是否是任务类型
+    if (!parent || !this.isTaskCard(parent)) {
+      return
+    }
+    
+    MNUtil.undoGrouping(() => {
+      // 1. 在子任务中创建到父任务的链接（B 单向链接到 A）
+      note.appendNoteLink(parent, "To")
+      
+      // 2. 在子任务中更新所属字段
+      this.updateBelongsToField(note, parent)
+      
+      // 3. 在父任务中创建到子任务的链接
+      parent.appendNoteLink(note, "To")
+      
+      // 4. 获取父任务中刚添加的链接索引
+      const linkIndexInParent = parent.comments.length - 1
+      
+      // 5. 获取子任务的状态
+      const titleParts = this.parseTaskTitle(note.noteTitle)
+      const status = titleParts.status || '未开始'
+      
+      // 6. 将父任务中的链接移动到对应状态字段下
+      this.moveCommentToField(parent, linkIndexInParent, status, true)
+    })
   }
 
   /**

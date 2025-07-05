@@ -1380,14 +1380,37 @@ class MNMath {
           let classificationNote = this.getFirstClassificationParentNote(note);
           if (classificationNote) {
             let classificationNoteTitleParts = this.parseNoteTitle(classificationNote);
-            let prefix = this.createTitlePrefix(classificationNoteTitleParts.type, this.createChildNoteTitlePrefixContent(classificationNote));
+            // 生成新的前缀内容（不包含【】）
+            let newPrefixContent = this.createChildNoteTitlePrefixContent(classificationNote);
+            
+            // 解析当前笔记的标题
             let noteTitleParts = this.parseNoteTitle(note);
-            // 
+            
+            // 智能前缀比较逻辑
+            let shouldUpdatePrefix = true;
+            if (noteTitleParts.prefixContent) {
+              // 如果现有前缀包含新前缀内容，则保留现有前缀
+              // 例如：现有前缀 "AB" 包含新前缀 "A"，则不更新
+              if (noteTitleParts.prefixContent.includes(newPrefixContent)) {
+                shouldUpdatePrefix = false;
+              }
+            }
+            
+            // 构建最终标题
+            let finalPrefix;
+            if (shouldUpdatePrefix) {
+              // 使用新前缀
+              finalPrefix = this.createTitlePrefix(classificationNoteTitleParts.type, newPrefixContent);
+            } else {
+              // 保留现有前缀
+              finalPrefix = this.createTitlePrefix(noteTitleParts.type || classificationNoteTitleParts.type, noteTitleParts.prefixContent);
+            }
+            
             // 定义类 noteTitleParts.content 前要加 `; `
             if (noteType === "定义") {
-              note.title = prefix + '; ' + noteTitleParts.content
+              note.title = finalPrefix + '; ' + noteTitleParts.content;
             } else {
-              note.title = `${prefix}${noteTitleParts.content}`;
+              note.title = `${finalPrefix}${noteTitleParts.content}`;
             }
           }
           break;

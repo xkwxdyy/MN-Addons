@@ -40,44 +40,56 @@ function initXDYYExtensions() {
   /**
    * 粗读模式制卡函数
    * 特点：
-   * 1. 使用颜色判断卡片类型
-   * 2. 不加入复习
-   * 3. 自动移动到根目录（如果没有归类父卡片）
-   * 4. 特殊处理深蓝色命题卡片
+   * 1. 先处理摘录卡片转换
+   * 2. 使用颜色判断卡片类型
+   * 3. 不加入复习
+   * 4. 自动移动到根目录（如果没有归类父卡片或类型不符）
    */
   toolbarUtils.roughReadingMakeNote = function(note) {
     MNUtil.undoGrouping(() => {
       try {
+        // 0. 如果是摘录卡片，先转换为非摘录版本
+        if (note.excerptText) {
+          note = MNMath.toNoExcerptVersion(note)
+          if (!note) {
+            MNUtil.log("❌ 转换为非摘录版本失败")
+            return
+          }
+        }
+        
         // 1. 先判断是否需要移动到根目录
-        const noteType = MNMath.getNoteType(note, true)  // true = 使用颜色作为后备判断
+        const noteTypeByColor = MNMath.getNoteTypeByColor(note.colorIndex)  // 根据颜色判断类型
+        const noteTypeByTitle = MNMath.getNoteType(note, false)  // 根据标题判断类型（不使用颜色后备）
         const classificationParent = MNMath.getFirstClassificationParentNote(note)
         
-        if (!classificationParent && noteType && MNMath.roughReadingRootNoteIds[noteType]) {
-          const rootNoteId = MNMath.roughReadingRootNoteIds[noteType]
+        // 判断是否需要移动：
+        // 1) 没有归类父卡片
+        // 2) 有归类父卡片，但类型与颜色判断的不符
+        let needMove = false
+        if (!classificationParent) {
+          needMove = true
+        } else {
+          // 从归类父卡片标题解析出类型
+          const classificationTitle = classificationParent.noteTitle
+          const classificationTypeMatch = classificationTitle.match(/相关\s*(.+)$/)
+          if (classificationTypeMatch) {
+            const classificationType = classificationTypeMatch[1].trim()
+            // 如果归类卡片的类型与颜色判断的类型不符，需要移动
+            if (classificationType !== noteTypeByColor) {
+              needMove = true
+            }
+          }
+        }
+        
+        if (needMove && noteTypeByColor && MNMath.roughReadingRootNoteIds[noteTypeByColor]) {
+          const rootNoteId = MNMath.roughReadingRootNoteIds[noteTypeByColor]
           if (rootNoteId && toolbarUtils.isValidNoteId(rootNoteId)) {
             try {
-              // 特殊处理：深蓝色命题卡片
-              if (note.colorIndex === 10) {
-                // 检查当前父卡片是否是定义类根目录
-                const parentNote = note.parentNote
-                if (parentNote && parentNote.noteId === MNMath.roughReadingRootNoteIds["定义"]) {
-                  // 移动到命题根目录
-                  const propRootNoteId = MNMath.roughReadingRootNoteIds["命题"]
-                  if (propRootNoteId && toolbarUtils.isValidNoteId(propRootNoteId)) {
-                    const propRootNote = MNDatabase.getNotebookById(MNUtil.currentNotebookId).getNoteById(propRootNoteId)
-                    if (propRootNote) {
-                      propRootNote.addChild(note)
-                      MNUtil.log("✅ 深蓝色卡片从定义根目录移动到命题根目录")
-                    }
-                  }
-                }
-              } else {
-                // 普通情况：移动到对应类型的根目录
-                const rootNote = MNDatabase.getNotebookById(MNUtil.currentNotebookId).getNoteById(rootNoteId)
-                if (rootNote) {
-                  rootNote.addChild(note)
-                  MNUtil.log(`✅ 卡片移动到 ${noteType} 根目录`)
-                }
+              // 移动到对应类型的根目录
+              const rootNote = MNNote.new(rootNoteId)
+              if (rootNote) {
+                rootNote.addChild(note)
+                MNUtil.log(`✅ 卡片移动到 ${noteTypeByColor} 根目录`)
               }
             } catch (error) {
               MNUtil.log(`❌ 移动到根目录失败: ${error.message}`)
@@ -89,10 +101,13 @@ function initXDYYExtensions() {
         // addToReview = false, reviewEverytime = true, focusInMindMap = true
         MNMath.makeCard(note, false, true, true)
         
-        MNUtil.showHUD("✅ 粗读制卡完成（未加入复习）")
+        // 3. 定位到脑图中，防止移动后找不到
+        note.focusInMindMap(0.5)
+        
+        // MNUtil.showHUD("✅ 粗读制卡完成（未加入复习）")
       } catch (error) {
         toolbarUtils.addErrorLog(error, "roughReadingMakeNote")
-        MNUtil.showHUD(`❌ 粗读制卡失败: ${error.message}`)
+        // MNUtil.showHUD(`❌ 粗读制卡失败: ${error.message}`)
       }
     })
   }

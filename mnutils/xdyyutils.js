@@ -2220,7 +2220,7 @@ class MNMath {
     }
 
     // 粗读模式：如果无法从标题或归类卡片判断，尝试根据颜色判断
-    if (useColorFallback && !noteType && note.colorIndex !== undefined) {
+    if (useColorFallback && note.colorIndex !== undefined) {
       noteType = this.getNoteTypeByColor(note.colorIndex);
     }
 

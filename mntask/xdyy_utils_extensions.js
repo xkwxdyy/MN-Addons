@@ -4,6 +4,19 @@
  */
 
 /**
+ * 安全的文本格式化函数
+ * 如果 Pangu 存在则使用 Pangu.spacing，否则返回原文本
+ * @param {string} text - 要格式化的文本
+ * @returns {string} 格式化后的文本
+ */
+function safeSpacing(text) {
+  if (typeof Pangu !== 'undefined' && Pangu.spacing) {
+    return Pangu.spacing(text)
+  }
+  return text
+}
+
+/**
  * TaskFieldUtils - 任务字段工具类
  * 参考 HtmlMarkdownUtils 的设计，处理任务卡片的字段系统
  */
@@ -62,7 +75,7 @@ class TaskFieldUtils {
    */
   static createBelongsToField(parentTitle, parentURL) {
     const belongsHtml = this.createFieldHtml('所属', 'subField')
-    return `${belongsHtml} [${parentTitle}](${parentURL})`
+    return safeSpacing(`${belongsHtml} [${parentTitle}](${parentURL})`)
   }
   
   /**
@@ -229,7 +242,7 @@ class MNTaskManager {
     // 构建新路径：父级路径 >> 父级内容
     let newPath = ""
     if (parentParts.path) {
-      newPath = `${parentParts.path} >> ${parentParts.content}`
+      newPath = safeSpacing(`${parentParts.path} >> ${parentParts.content}`)
     } else {
       newPath = parentParts.content
     }
@@ -238,10 +251,10 @@ class MNTaskManager {
     let newTitle
     if (newPath) {
       // 有路径的情况
-      newTitle = `【${titleParts.type} >> ${newPath}｜${titleParts.status}】${titleParts.content}`
+      newTitle = safeSpacing(`【${titleParts.type} >> ${newPath}｜${titleParts.status}】${titleParts.content}`)
     } else {
       // 无路径的情况（不应该发生，但以防万一）
-      newTitle = `【${titleParts.type}｜${titleParts.status}】${titleParts.content}`
+      newTitle = safeSpacing(`【${titleParts.type}｜${titleParts.status}】${titleParts.content}`)
     }
     
     MNUtil.undoGrouping(() => {
@@ -315,8 +328,8 @@ class MNTaskManager {
         // 构建新标题
         const content = noteToConvert.noteTitle || "未命名任务"
         const newTitle = path ? 
-          `【${selectedType} >> ${path}｜未开始】${content}` :
-          `【${selectedType}｜未开始】${content}`
+          safeSpacing(`【${selectedType} >> ${path}｜未开始】${content}`) :
+          safeSpacing(`【${selectedType}｜未开始】${content}`)
         
         noteToConvert.noteTitle = newTitle
         
@@ -346,7 +359,7 @@ class MNTaskManager {
     const parentParts = this.parseTaskTitle(parentNote.noteTitle)
     
     if (parentParts.path) {
-      return `${parentParts.path} >> ${parentParts.content}`
+      return safeSpacing(`${parentParts.path} >> ${parentParts.content}`)
     } else {
       return parentParts.content
     }

@@ -2,7 +2,19 @@
 JSB.newAddon = function (mainPath) {
   JSB.require('utils')
   JSB.require('xdyy_utils_extensions')  // 加载工具函数扩展
-  JSB.require('pinyin')
+  
+  // 尝试加载 pinyin.js，提供 Pangu 功能
+  try {
+    JSB.require('pinyin')
+    if (typeof Pangu === 'undefined') {
+      MNUtil.log("⚠️ Pangu 未定义，中英文格式化功能将不可用")
+    }
+  } catch (error) {
+    if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+      MNUtil.log("⚠️ 加载 pinyin.js 失败，中英文格式化功能将不可用")
+    }
+  }
+  
   if (!taskUtils.checkMNUtilsFolder(mainPath)) {return undefined}
   JSB.require('webviewController');
   JSB.require('settingController'); // 文件名保持不变，只是类名改变了

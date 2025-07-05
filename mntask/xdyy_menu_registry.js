@@ -86,6 +86,10 @@ function registerAllMenuTemplates() {
       },
       "⬇️ 任务类型",
       {
+        action: "changeTaskType",
+        menuTitle: "    🔄 修改卡片类型（支持多选）"
+      },
+      {
         action: "menu",
         menuTitle: "    ➡️ 设置任务类型",
         menuItems: [

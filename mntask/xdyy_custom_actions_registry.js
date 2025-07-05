@@ -52,35 +52,100 @@ function registerAllCustomActions() {
   MNTaskGlobal.registerCustomAction("taskCardMake", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     
-    if (!focusNote) {
-      MNUtil.showHUD("请先选择一个笔记");
+    if (!focusNote && (!focusNotes || focusNotes.length === 0)) {
+      MNUtil.showHUD("请先选择一个或多个笔记");
       return;
     }
     
-    // 判断是否已经是任务卡片
-    if (MNTaskManager.isTaskCard(focusNote)) {
-      // 已经是任务卡片，更新链接关系、路径并清除失效链接
-      MNUtil.undoGrouping(() => {
+    // 使用 focusNotes（支持多选）或单个 focusNote
+    const notesToProcess = focusNotes && focusNotes.length > 0 ? focusNotes : [focusNote];
+    
+    // 区分已经是任务卡片和需要转换的卡片
+    const taskCards = [];
+    const notTaskCards = [];
+    
+    notesToProcess.forEach(note => {
+      if (MNTaskManager.isTaskCard(note)) {
+        taskCards.push(note);
+      } else {
+        notTaskCards.push(note);
+      }
+    });
+    
+    // 如果有需要转换的卡片，先统一选择类型
+    let selectedType = null;
+    if (notTaskCards.length > 0) {
+      const taskTypes = ["目标", "关键结果", "项目", "动作"];
+      const selectedIndex = await MNUtil.userSelect("选择任务类型", `将为 ${notTaskCards.length} 个卡片设置相同类型`, taskTypes);
+      
+      if (selectedIndex === 0) return; // 用户取消
+      
+      selectedType = taskTypes[selectedIndex - 1];
+    }
+    
+    // 批量处理
+    MNUtil.undoGrouping(() => {
+      // 处理已经是任务卡片的
+      taskCards.forEach(note => {
         // 首先更新链接关系（如果卡片已经移动）
-        MNTaskManager.updateTaskLinkRelationship(focusNote);
+        MNTaskManager.updateTaskLinkRelationship(note);
         
         // 更新任务路径
-        MNTaskManager.updateTaskPath(focusNote);
+        MNTaskManager.updateTaskPath(note);
         
         // 清除失效链接
-        MNUtil.undoGrouping(()=>{
-          try {
-            MNTaskManager.cleanupBrokenLinks(focusNote);
-          } catch (error) {
-            MNUtil.showHUD(error);
-          }
-        })
+        try {
+          MNTaskManager.cleanupBrokenLinks(note);
+        } catch (error) {
+          MNUtil.log("清理失效链接时出错: " + error);
+        }
       });
-      // MNUtil.showHUD("✅ 任务路径已更新");
+      
+      // 处理需要转换的卡片
+      notTaskCards.forEach(note => {
+        // 获取父卡片
+        const parentNote = note.parentNote;
+        
+        // 先使用 MNMath.toNoExcerptVersion 处理摘录卡片
+        let noteToConvert = note;
+        if (note.excerptText) {
+          // 检查是否有 MNMath 类
+          if (typeof MNMath !== 'undefined' && MNMath.toNoExcerptVersion) {
+            const converted = MNMath.toNoExcerptVersion(note);
+            if (converted) {
+              noteToConvert = converted;
+            }
+          }
+        }
+        
+        // 构建任务路径
+        const path = MNTaskManager.buildTaskPath(noteToConvert);
+        
+        // 构建新标题
+        const content = noteToConvert.noteTitle || "未命名任务";
+        const newTitle = path ? 
+          `【${selectedType} >> ${path}｜未开始】${content}` :
+          `【${selectedType}｜未开始】${content}`;
+        
+        noteToConvert.noteTitle = newTitle;
+        
+        // 设置颜色（白色=未开始）
+        noteToConvert.colorIndex = 12;
+        
+        // 添加任务字段（信息字段和状态字段）
+        MNTaskManager.addTaskFieldsWithStatus(noteToConvert);
+        
+        // 直接执行链接操作
+        MNTaskManager.linkParentTask(noteToConvert, parentNote);
+      });
+    });
+    
+    // 显示完成信息
+    const totalProcessed = taskCards.length + notTaskCards.length;
+    if (notTaskCards.length > 0) {
+      MNUtil.showHUD(`✅ 已批量处理 ${totalProcessed} 个卡片\n新增任务：${notTaskCards.length} 个\n更新任务：${taskCards.length} 个`);
     } else {
-      // 不是任务卡片，需要转换
-      await MNTaskManager.convertToTaskCard(focusNote);
-      MNUtil.showHUD("✅ 已转换为任务卡片");
+      MNUtil.showHUD(`✅ 已更新 ${taskCards.length} 个任务卡片`);
     }
   });
   

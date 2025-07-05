@@ -1037,7 +1037,7 @@ function registerAllCustomActions() {
                 MNUtil.undoGrouping(() => {
                   try {
                     // 创建带样式的字段
-                    const fieldHtml = TaskFieldUtils.createFieldHtml(fieldName.trim(), 'subField', `custom-${fieldName.trim()}`);
+                    const fieldHtml = TaskFieldUtils.createFieldHtml(fieldName.trim(), 'subField');
                     const fullContent = fieldContent.trim() ? `${fieldHtml} ${fieldContent.trim()}` : fieldHtml;
                     
                     // 添加到笔记
@@ -1058,6 +1058,89 @@ function registerAllCustomActions() {
             }
           );
         }
+      }
+    );
+  });
+
+  // editCustomField - 编辑自定义字段
+  MNTaskGlobal.registerCustomAction("editCustomField", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    if (!focusNote) {
+      MNUtil.showHUD("请先选择一个任务");
+      return;
+    }
+    
+    // 检查是否是任务卡片
+    if (!MNTaskManager.isTaskCard(focusNote)) {
+      MNUtil.showHUD("请先将卡片转换为任务卡片");
+      return;
+    }
+    
+    // 获取信息字段下的所有子字段
+    const subFields = MNTaskManager.getSubFieldsUnderInfo(focusNote);
+    
+    if (subFields.length === 0) {
+      MNUtil.showHUD("没有找到可编辑的字段");
+      return;
+    }
+    
+    // 准备字段名列表作为按钮（参考 MNMath 的做法）
+    const fieldButtons = subFields.map(field => `${field.fieldName}: ${field.content || '(空)'}`);
+    
+    // 第一步：使用 UIAlertView 让用户选择字段
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "选择要编辑的字段",
+      "点击下方字段进行编辑",
+      0,  // 普通样式，无输入框
+      "取消",
+      fieldButtons,  // 字段名作为按钮数组
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) return; // 用户点击取消
+        
+        const selectedField = subFields[buttonIndex - 1];
+        
+        // 第二步：弹出输入框编辑内容
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          `编辑字段：${selectedField.fieldName}`,
+          `当前内容：${selectedField.content || '(空)'}`,
+          2,  // 输入框样式
+          "取消",
+          ["确定"],
+          (alert2, buttonIndex2) => {
+            if (buttonIndex2 === 1) {
+              const newContent = alert2.textFieldAtIndex(0).text || "";
+              
+              MNUtil.undoGrouping(() => {
+                try {
+                  // 获取该字段的评论对象
+                  const comment = selectedField.comment;
+                  
+                  // 重新构建字段内容
+                  const fieldHtml = TaskFieldUtils.createFieldHtml(selectedField.fieldName, 'subField');
+                  const fullContent = newContent.trim() ? `${fieldHtml} ${newContent.trim()}` : fieldHtml;
+                  
+                  // 直接修改评论的文本
+                  comment.text = fullContent;
+                  
+                  // 刷新卡片
+                  focusNote.refresh();
+                  
+                  MNUtil.showHUD(`✅ 已更新字段：${selectedField.fieldName}`);
+                } catch (error) {
+                  MNUtil.showHUD("更新字段失败：" + error.message);
+                }
+              });
+            }
+          }
+        );
+        
+        // 延迟后设置输入框的默认值
+        MNUtil.delay(0.1).then(() => {
+          const textField = alert2.textFieldAtIndex(0);
+          if (textField) {
+            textField.text = selectedField.content || "";
+          }
+        });
       }
     );
   });

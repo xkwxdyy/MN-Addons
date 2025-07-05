@@ -157,6 +157,10 @@ function registerAllMenuTemplates() {
         action: "addCustomField",
         menuTitle: "    📝 手动添加自定义字段"
       },
+      {
+        action: "editCustomField",
+        menuTitle: "    ✏️ 编辑自定义字段"
+      },
       "⬇️ 进度查看",
       {
         action: "viewTaskProgress",

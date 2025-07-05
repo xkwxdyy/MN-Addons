@@ -828,6 +828,26 @@ class MNTaskManager {
         note.replaceWithMarkdownComment(belongsToText, parsed.belongsTo.index)
       }
       
+      // 状态同步：建立关系后检查是否需要更新父任务状态
+      const childTitleParts = this.parseTaskTitle(note.noteTitle)
+      const childStatus = childTitleParts.status || '未开始'
+      
+      // 如果子任务是"进行中"，父任务应该也是"进行中"（如果当前是"未开始"）
+      const parentParts = this.parseTaskTitle(parent.noteTitle)
+      if (childStatus === "进行中" && parentParts.status === "未开始") {
+        MNUtil.log("🔄 子任务进行中，更新父任务状态")
+        this.updateTaskStatus(parent, "进行中", true)  // 跳过父任务更新避免循环
+        // 继续向上联动
+        this.updateParentStatus(parent, "进行中")
+      }
+      // 如果父任务是"已完成"但新增了未完成的子任务，父任务应该变回"进行中"
+      else if (parentParts.status === "已完成" && childStatus !== "已完成") {
+        MNUtil.log("🔄 父任务已完成但新增未完成子任务，更新为进行中")
+        this.updateTaskStatus(parent, "进行中", true)  // 跳过父任务更新避免循环
+        // 继续向上联动
+        this.updateParentStatus(parent, "进行中")
+      }
+      
       // 刷新父卡片以确保界面更新
       parent.refresh()
       MNUtil.log("✅ 父任务链接完成")
@@ -869,8 +889,9 @@ class MNTaskManager {
    * 更新任务状态
    * @param {MNNote} note - 要更新的任务卡片
    * @param {string} newStatus - 新状态
+   * @param {boolean} skipParentUpdate - 是否跳过父任务更新（内部使用，避免循环）
    */
-  static updateTaskStatus(note, newStatus) {
+  static updateTaskStatus(note, newStatus, skipParentUpdate = false) {
     if (!this.isTaskCard(note)) return
     
     const titleParts = this.parseTaskTitle(note.noteTitle)
@@ -941,6 +962,11 @@ class MNTaskManager {
           MNUtil.log("❌ 更新父任务链接位置时出错: " + e.message)
           MNUtil.addErrorLog(e, "updateTaskStatus", {noteId: note.noteId, newStatus: newStatus})
         }
+      }
+      
+      // 状态联动：更新父任务的状态（仅在非内部调用时执行）
+      if (!skipParentUpdate) {
+        this.updateParentStatus(note, newStatus)
       }
     })
   }
@@ -1280,6 +1306,99 @@ class MNTaskManager {
     }
     
     return subFields
+  }
+  
+  /**
+   * 获取所有子任务笔记
+   * @param {MNNote} parentNote - 父任务笔记
+   * @returns {Array<MNNote>} 子任务数组
+   */
+  static getChildTaskNotes(parentNote) {
+    if (!parentNote || !parentNote.childNotes) return []
+    
+    const childTaskNotes = []
+    
+    // 遍历所有子笔记
+    for (let childNote of parentNote.childNotes) {
+      if (this.isTaskCard(childNote)) {
+        childTaskNotes.push(childNote)
+      }
+    }
+    
+    MNUtil.log(`📋 获取到 ${childTaskNotes.length} 个子任务`)
+    return childTaskNotes
+  }
+  
+  /**
+   * 判断父任务是否应该自动完成
+   * @param {MNNote} parentNote - 父任务笔记
+   * @returns {boolean} 是否应该自动完成
+   */
+  static shouldAutoComplete(parentNote) {
+    if (!parentNote || !this.isTaskCard(parentNote)) return false
+    
+    // 获取所有子任务
+    const childTasks = this.getChildTaskNotes(parentNote)
+    
+    // 如果没有子任务，不自动完成
+    if (childTasks.length === 0) {
+      MNUtil.log("📋 没有子任务，不自动完成")
+      return false
+    }
+    
+    // 检查所有子任务的状态
+    for (let childTask of childTasks) {
+      const titleParts = this.parseTaskTitle(childTask.noteTitle)
+      if (titleParts.status !== "已完成") {
+        MNUtil.log(`📋 发现未完成的子任务：${childTask.noteTitle}`)
+        return false
+      }
+    }
+    
+    MNUtil.log("✅ 所有子任务已完成，可以自动完成父任务")
+    return true
+  }
+  
+  /**
+   * 更新父任务状态（向上联动）
+   * @param {MNNote} childNote - 子任务笔记
+   * @param {string} childNewStatus - 子任务的新状态
+   */
+  static updateParentStatus(childNote, childNewStatus) {
+    if (!childNote) return
+    
+    const parentNote = childNote.parentNote
+    if (!parentNote || !this.isTaskCard(parentNote)) return
+    
+    const parentTitleParts = this.parseTaskTitle(parentNote.noteTitle)
+    MNUtil.log(`🔄 检查是否需要更新父任务状态：${parentNote.noteTitle}`)
+    
+    // 规则1：如果子任务变为"进行中"，父任务也应该是"进行中"（除非已完成）
+    if (childNewStatus === "进行中" && parentTitleParts.status === "未开始") {
+      MNUtil.log(`📋 子任务进行中，更新父任务为进行中`)
+      this.updateTaskStatus(parentNote, "进行中", true)  // 跳过父任务更新避免循环
+      
+      // 递归向上更新
+      this.updateParentStatus(parentNote, "进行中")
+    }
+    // 规则2：如果子任务变为"已完成"，检查是否所有子任务都完成
+    else if (childNewStatus === "已完成") {
+      if (this.shouldAutoComplete(parentNote)) {
+        MNUtil.log(`📋 所有子任务已完成，更新父任务为已完成`)
+        this.updateTaskStatus(parentNote, "已完成", true)  // 跳过父任务更新避免循环
+        
+        // 递归向上检查
+        this.updateParentStatus(parentNote, "已完成")
+      }
+    }
+    // 规则3：如果子任务从"已完成"变为其他状态，父任务如果是"已完成"应该变回"进行中"
+    else if (parentTitleParts.status === "已完成" && childNewStatus !== "已完成") {
+      MNUtil.log(`📋 子任务未完成，更新父任务为进行中`)
+      this.updateTaskStatus(parentNote, "进行中", true)  // 跳过父任务更新避免循环
+      
+      // 递归向上更新
+      this.updateParentStatus(parentNote, "进行中")
+    }
   }
 }
 

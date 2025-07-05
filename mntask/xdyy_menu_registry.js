@@ -53,6 +53,10 @@ function registerAllMenuTemplates() {
           action: "batchTaskCardMakeByHierarchy",
           menuTitle: "    🏗️ 根据层级批量制卡"
         },
+        {
+          action: "updateChildrenPaths",
+          menuTitle: "    🔄 更新子卡片路径（支持多选）"
+        },
       ]
     }
   });

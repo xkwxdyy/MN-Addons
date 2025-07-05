@@ -1399,6 +1399,105 @@ class MNTaskManager {
       this.updateParentStatus(parentNote, "进行中")
     }
   }
+  
+  /**
+   * 递归更新所有子孙卡片的路径和所属信息
+   * @param {MNNote} parentNote - 父任务笔记
+   * @param {Array<string>} processedIds - 已处理的笔记ID（避免循环）
+   * @returns {number} 更新的卡片数量
+   */
+  static updateChildrenPathsRecursively(parentNote, processedIds = []) {
+    if (!parentNote || !this.isTaskCard(parentNote)) {
+      return 0
+    }
+    
+    // 避免循环处理
+    if (processedIds.includes(parentNote.noteId)) {
+      MNUtil.log("⚠️ 检测到循环引用，跳过：" + parentNote.noteTitle)
+      return 0
+    }
+    processedIds.push(parentNote.noteId)
+    
+    let updatedCount = 0
+    const childNotes = parentNote.childNotes || []
+    
+    MNUtil.log(`🔄 开始更新 "${parentNote.noteTitle}" 的 ${childNotes.length} 个子卡片`)
+    
+    for (let childNote of childNotes) {
+      try {
+        // 只处理任务卡片
+        if (!this.isTaskCard(childNote)) {
+          MNUtil.log(`⏭️ 跳过非任务卡片：${childNote.noteTitle}`)
+          continue
+        }
+        
+        MNUtil.log(`📝 更新子卡片：${childNote.noteTitle}`)
+        
+        // 1. 更新路径信息
+        this.updateTaskPath(childNote)
+        
+        // 2. 更新所属字段
+        this.updateBelongsToField(childNote, parentNote)
+        
+        updatedCount++
+        
+        // 3. 递归更新子卡片的子卡片
+        const subCount = this.updateChildrenPathsRecursively(childNote, processedIds)
+        updatedCount += subCount
+        
+      } catch (error) {
+        MNUtil.log(`❌ 更新子卡片失败：${error.message}`)
+        MNUtil.addErrorLog(error, "updateChildrenPathsRecursively", {
+          parentId: parentNote.noteId,
+          childId: childNote?.noteId
+        })
+      }
+    }
+    
+    return updatedCount
+  }
+  
+  /**
+   * 批量更新选中卡片及其子孙卡片的路径
+   * @param {Array<MNNote>} selectedNotes - 选中的卡片数组
+   */
+  static batchUpdateChildrenPaths(selectedNotes) {
+    if (!selectedNotes || selectedNotes.length === 0) {
+      MNUtil.showHUD("请先选择要更新的任务卡片", 2)
+      return
+    }
+    
+    // 筛选出任务卡片
+    const taskNotes = selectedNotes.filter(note => this.isTaskCard(note))
+    if (taskNotes.length === 0) {
+      MNUtil.showHUD("请选择任务卡片", 2)
+      return
+    }
+    
+    MNUtil.showHUD(`🔄 开始更新 ${taskNotes.length} 个任务的子卡片路径...`, 2)
+    
+    MNUtil.undoGrouping(() => {
+      let totalUpdated = 0
+      const processedIds = []
+      
+      for (let taskNote of taskNotes) {
+        try {
+          MNUtil.log(`\n🎯 处理任务：${taskNote.noteTitle}`)
+          const count = this.updateChildrenPathsRecursively(taskNote, processedIds)
+          totalUpdated += count
+          MNUtil.log(`✅ 完成，更新了 ${count} 个子卡片`)
+        } catch (error) {
+          MNUtil.log(`❌ 处理任务失败：${error.message}`)
+        }
+      }
+      
+      if (totalUpdated > 0) {
+        MNUtil.showHUD(`✅ 成功更新了 ${totalUpdated} 个子卡片的路径`, 3)
+      } else {
+        MNUtil.showHUD("没有需要更新的子卡片", 2)
+      }
+    })
+  }
 }
 
 

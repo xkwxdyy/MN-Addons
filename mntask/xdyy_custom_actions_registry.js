@@ -462,6 +462,22 @@ function registerAllCustomActions() {
     );
   });
 
+  // updateChildrenPaths - 更新子卡片路径
+  MNTaskGlobal.registerCustomAction("updateChildrenPaths", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    // 使用 focusNotes（支持多选）或单个 focusNote
+    const notesToProcess = focusNotes && focusNotes.length > 0 ? focusNotes : (focusNote ? [focusNote] : []);
+    
+    if (notesToProcess.length === 0) {
+      MNUtil.showHUD("请先选择要更新的任务卡片", 2);
+      return;
+    }
+    
+    // 调用 MNTaskManager 的批量更新方法
+    MNTaskManager.batchUpdateChildrenPaths(notesToProcess);
+  });
+
   // batchTaskCardMakeByHierarchy - 根据层级批量制卡
   MNTaskGlobal.registerCustomAction("batchTaskCardMakeByHierarchy", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
@@ -515,8 +531,37 @@ function registerAllCustomActions() {
     
     MNUtil.log(`📊 节点总数：${nodesWithInfo.length}，最大层级：${maxLevel}`);
     
-    // 根据层级深度确定任务类型分配策略
-    function getTaskTypeByLevel(level, maxLevel) {
+    // 根据层级深度确定任务类型分配策略（改进版）
+    function getTaskTypeByLevel(node, parentNode, level, maxLevel) {
+      // 1. 如果节点已经是任务卡片，保持原有类型
+      if (MNTaskManager.isTaskCard(node)) {
+        const titleParts = MNTaskManager.parseTaskTitle(node.noteTitle);
+        MNUtil.log(`📌 保持原有类型：${titleParts.type}`);
+        return titleParts.type;
+      }
+      
+      // 2. 如果节点不是任务卡片，基于父节点类型智能推断
+      if (parentNode && MNTaskManager.isTaskCard(parentNode)) {
+        const parentTitleParts = MNTaskManager.parseTaskTitle(parentNode.noteTitle);
+        const parentType = parentTitleParts.type;
+        
+        // 基于父级类型的智能推断
+        switch(parentType) {
+          case "目标":
+            return "关键结果";  // 目标的子级通常是关键结果
+          case "关键结果":
+            return "项目";      // 关键结果的子级通常是项目
+          case "项目":
+            return "动作";      // 项目的子级通常是动作
+          case "动作":
+            return "动作";      // 动作的子级还是动作
+          default:
+            // 如果无法识别父级类型，使用原有逻辑
+            break;
+        }
+      }
+      
+      // 3. 如果没有父节点或父节点不是任务卡片，使用原有的层级逻辑
       if (maxLevel === 0) return "动作";  // 只有根节点
       
       if (maxLevel === 1) {
@@ -539,13 +584,33 @@ function registerAllCustomActions() {
       return "项目";  // 中间层都是项目
     }
     
-    // 显示预览信息
-    let previewInfo = `将创建 ${nodesWithInfo.length} 个任务卡片：\n\n`;
-    previewInfo += `层级结构：\n`;
+    // 显示预览信息（改进版：统计每个层级的实际类型分布）
+    let previewInfo = `将处理 ${nodesWithInfo.length} 个卡片：\n\n`;
+    previewInfo += `类型分布：\n`;
+    
+    // 统计每个层级的类型分布
+    const typeDistribution = {};
+    nodesWithInfo.forEach(item => {
+      const parentNode = item.node.parentNote;
+      const taskType = getTaskTypeByLevel(item.node, parentNode, item.level, maxLevel);
+      
+      if (!typeDistribution[item.level]) {
+        typeDistribution[item.level] = {};
+      }
+      if (!typeDistribution[item.level][taskType]) {
+        typeDistribution[item.level][taskType] = 0;
+      }
+      typeDistribution[item.level][taskType]++;
+    });
+    
+    // 显示统计结果
     for (let i = 0; i <= maxLevel; i++) {
-      const taskType = getTaskTypeByLevel(i, maxLevel);
-      const count = nodesWithInfo.filter(n => n.level === i).length;
-      previewInfo += `  第${i}层：${taskType}（${count}个）\n`;
+      if (typeDistribution[i]) {
+        const types = Object.entries(typeDistribution[i])
+          .map(([type, count]) => `${type}(${count})`)
+          .join(', ');
+        previewInfo += `  第${i}层：${types}\n`;
+      }
     }
     
     // 确认对话框
@@ -568,7 +633,8 @@ function registerAllCustomActions() {
             
             nodesAtThisLevel.forEach(item => {
               const node = item.node;
-              const taskType = getTaskTypeByLevel(item.level, maxLevel);
+              const parentNode = node.parentNote;
+              const taskType = getTaskTypeByLevel(node, parentNode, item.level, maxLevel);
               
               try {
                 MNUtil.log(`🔨 处理节点：${node.noteTitle}，层级：${item.level}，类型：${taskType}`);
@@ -584,19 +650,21 @@ function registerAllCustomActions() {
                 
                 // 检查是否已经是任务卡片
                 if (MNTaskManager.isTaskCard(noteToConvert)) {
-                  // 已经是任务卡片，更新类型
-                  const titleParts = MNTaskManager.parseTaskTitle(noteToConvert.noteTitle);
-                  const path = MNTaskManager.buildTaskPath(noteToConvert);
+                  // 已经是任务卡片，只更新路径和链接关系，不改变类型
+                  MNUtil.log(`📋 保持原有任务卡片，仅更新路径和链接`);
                   
-                  const newTitle = path ? 
-                    `【${taskType} >> ${path}｜${titleParts.status}】${titleParts.content}` :
-                    `【${taskType}｜${titleParts.status}】${titleParts.content}`;
-                  
-                  noteToConvert.noteTitle = newTitle;
+                  // 更新路径（这会保持原有类型）
+                  MNTaskManager.updateTaskPath(noteToConvert);
                   
                   // 更新链接关系
                   MNTaskManager.updateTaskLinkRelationship(noteToConvert);
-                  MNTaskManager.updateTaskPath(noteToConvert);
+                  
+                  // 清理失效链接
+                  try {
+                    MNTaskManager.cleanupBrokenLinks(noteToConvert);
+                  } catch (e) {
+                    MNUtil.log("清理失效链接时出错: " + e);
+                  }
                 } else {
                   // 不是任务卡片，需要转换
                   const path = MNTaskManager.buildTaskPath(noteToConvert);

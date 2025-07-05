@@ -214,54 +214,80 @@ class MNTaskManager {
    * @param {MNNote} note - 要转换的卡片
    */
   static async convertToTaskCard(note) {
+    if (!note) return
+    
     // 先使用 MNMath.toNoExcerptVersion 处理摘录卡片
     let targetNote = note
     if (note.excerptText) {
       // 检查是否有 MNMath 类
       if (typeof MNMath !== 'undefined' && MNMath.toNoExcerptVersion) {
-        targetNote = MNMath.toNoExcerptVersion(note)
+        const converted = MNMath.toNoExcerptVersion(note)
+        if (converted) {
+          targetNote = converted
+        }
       } else {
         // 如果没有 MNMath，尝试手动加载 mnutils
         try {
           JSB.require('mnutils')
           if (typeof MNMath !== 'undefined' && MNMath.toNoExcerptVersion) {
-            targetNote = MNMath.toNoExcerptVersion(note)
+            const converted = MNMath.toNoExcerptVersion(note)
+            if (converted) {
+              targetNote = converted
+            }
           }
         } catch (e) {
-          // 如果还是不行，使用简单的处理方式
+          // 如果还是不行，继续使用原卡片
         }
       }
     }
     
-    // 弹窗让用户选择类型
-    const taskTypes = ["目标", "关键结果", "项目", "动作"]
-    const selectedIndex = await MNUtil.userSelect("选择任务类型", "", taskTypes)
+    // 检查是否已经是任务格式
+    const isAlreadyTask = this.isTaskCard(targetNote)
     
-    if (selectedIndex === 0) return // 用户取消
-    
-    const selectedType = taskTypes[selectedIndex - 1]
-    
-    MNUtil.undoGrouping(() => {
-      // 构建任务路径
-      const path = this.buildTaskPath(targetNote)
+    if (isAlreadyTask) {
+      // 已经是任务格式，只需要添加字段
+      MNUtil.undoGrouping(() => {
+        // 添加任务字段（信息字段和状态字段）
+        this.addTaskFieldsWithStatus(targetNote)
+      })
       
-      // 构建新标题
-      const content = targetNote.noteTitle || "未命名任务"
-      const newTitle = path ? 
-        `【${selectedType} >> ${path}｜未开始】${content}` :
-        `【${selectedType}｜未开始】${content}`
+      // 延迟执行链接操作，确保字段已经添加
+      MNUtil.delay(0.3).then(() => {
+        this.linkParentTask(targetNote)
+      })
+    } else {
+      // 不是任务格式，需要选择类型并转换
+      const taskTypes = ["目标", "关键结果", "项目", "动作"]
+      const selectedIndex = await MNUtil.userSelect("选择任务类型", "", taskTypes)
       
-      targetNote.noteTitle = newTitle
+      if (selectedIndex === 0) return // 用户取消
       
-      // 设置颜色（白色=未开始）
-      targetNote.colorIndex = 0
+      const selectedType = taskTypes[selectedIndex - 1]
       
-      // 添加任务字段（信息字段和状态字段）
-      this.addTaskFieldsWithStatus(targetNote)
+      MNUtil.undoGrouping(() => {
+        // 构建任务路径
+        const path = this.buildTaskPath(targetNote)
+        
+        // 构建新标题
+        const content = targetNote.noteTitle || "未命名任务"
+        const newTitle = path ? 
+          `【${selectedType} >> ${path}｜未开始】${content}` :
+          `【${selectedType}｜未开始】${content}`
+        
+        targetNote.noteTitle = newTitle
+        
+        // 设置颜色（白色=未开始）
+        targetNote.colorIndex = 12
+        
+        // 添加任务字段（信息字段和状态字段）
+        this.addTaskFieldsWithStatus(targetNote)
+      })
       
-      // 处理与父任务的链接关系
-      this.linkParentTask(targetNote)
-    })
+      // 延迟执行链接操作，确保字段已经添加
+      MNUtil.delay(0.3).then(() => {
+        this.linkParentTask(targetNote)
+      })
+    }
   }
 
   /**
@@ -300,20 +326,35 @@ class MNTaskManager {
    */
   static addTaskFieldsWithStatus(note) {
     if (!note || this.hasTaskFields(note)) {
+      MNUtil.log("⏭️ 跳过添加字段，已存在")
       return // 已经有字段了，不重复添加
     }
     
+    MNUtil.log("🎯 开始添加任务字段")
+    
     MNUtil.undoGrouping(() => {
       // 添加主字段"信息"
-      const mainFieldHtml = TaskFieldUtils.createFieldHtml('信息', 'mainField')
-      note.appendMarkdownComment(mainFieldHtml)
+      const infoFieldHtml = TaskFieldUtils.createFieldHtml('信息', 'mainField')
+      MNUtil.log("📝 信息字段HTML: " + infoFieldHtml)
+      note.appendMarkdownComment(infoFieldHtml)
+      MNUtil.log("✅ 添加信息字段，索引：" + (note.MNComments.length - 1))
+      
+      // 添加主字段"包含"
+      const containsFieldHtml = TaskFieldUtils.createFieldHtml('包含', 'mainField')
+      MNUtil.log("📝 包含字段HTML: " + containsFieldHtml)
+      note.appendMarkdownComment(containsFieldHtml)
+      MNUtil.log("✅ 添加包含字段，索引：" + (note.MNComments.length - 1))
       
       // 添加三个状态子字段
       const statuses = ['未开始', '进行中', '已完成']
       statuses.forEach(status => {
         const statusHtml = TaskFieldUtils.createStatusField(status)
+        MNUtil.log(`📝 ${status}字段HTML: ` + statusHtml)
         note.appendMarkdownComment(statusHtml)
+        MNUtil.log(`✅ 添加${status}字段，索引：` + (note.MNComments.length - 1))
       })
+      
+      MNUtil.log("🎯 任务字段添加完成，总评论数：" + note.MNComments.length)
     })
   }
 
@@ -323,12 +364,12 @@ class MNTaskManager {
    * @returns {boolean} 是否已添加任务字段
    */
   static hasTaskFields(note) {
-    if (!note || !note.comments) return false
+    if (!note || !note.MNComments) return false
     
     // 检查是否有"信息"主字段
-    const comments = note.comments
+    const comments = note.MNComments
     for (let comment of comments) {
-      if (comment && comment.type === 'markdownComment') {
+      if (comment) {
         const text = comment.text || ''
         // 检查是否包含主字段"信息"
         if (TaskFieldUtils.isTaskField(text) && text.includes('信息')) {
@@ -353,18 +394,40 @@ class MNTaskManager {
       otherComments: []     // 其他评论
     }
     
-    if (!note || !note.comments) return result
+    if (!note || !note.MNComments) return result
     
-    const comments = note.comments
+    let comments = []
+    try {
+      comments = note.MNComments || []
+    } catch (e) {
+      MNUtil.log("⚠️ 获取 MNComments 失败: " + e.message)
+      return result
+    }
+    
+    MNUtil.log("📋 总评论数：" + comments.length)
+    
     comments.forEach((comment, index) => {
       if (!comment) return
       
-      const text = comment.text || ''
+      let text = ''
+      let commentType = ''
       
-      // 检查是否是任务字段
-      if (comment.type === 'markdownComment' && TaskFieldUtils.isTaskField(text)) {
+      try {
+        text = comment.text || ''
+        commentType = comment.type || ''
+      } catch (e) {
+        MNUtil.log(`⚠️ 评论 ${index} 属性访问失败: ` + e.message)
+        return
+      }
+      
+      MNUtil.log(`🔍 评论 ${index}: type=${commentType}, text=${text.substring(0, 50) + (text.length > 50 ? '...' : '')}, isTaskField=${TaskFieldUtils.isTaskField(text)}`)
+      
+      // 检查是否是任务字段（MNComment 对象的 type 已经是处理后的类型）
+      if ((commentType === 'textComment' || commentType === 'markdownComment') && TaskFieldUtils.isTaskField(text)) {
         const fieldType = TaskFieldUtils.getFieldType(text)
         const content = TaskFieldUtils.getFieldContent(text)
+        
+        MNUtil.log(`✅ 识别为任务字段: fieldType=${fieldType}, content=${content}`)
         
         result.taskFields.push({
           index: index,
@@ -376,15 +439,33 @@ class MNTaskManager {
         })
       }
       // 检查是否是链接
-      else if (comment.type === 'linkedNote') {
-        result.links.push({
-          index: index,
-          linkedNoteId: comment.linkedNoteId,
-          comment: comment
-        })
+      else if (commentType === 'linkComment') {
+        // 获取链接的目标笔记 ID
+        let linkedNoteId = null
+        try {
+          if (comment.note && comment.note.noteId) {
+            linkedNoteId = comment.note.noteId
+          } else if (comment.detail && comment.detail.text) {
+            // 从 URL 中提取 noteId
+            const match = comment.detail.text.match(/marginnote\dapp:\/\/note\/([A-Z0-9-]+)/)
+            if (match) {
+              linkedNoteId = match[1]
+            }
+          }
+        } catch (e) {
+          MNUtil.log("⚠️ 获取链接目标失败: " + e.message)
+        }
+        
+        if (linkedNoteId) {
+          result.links.push({
+            index: index,
+            linkedNoteId: linkedNoteId,
+            comment: comment
+          })
+        }
       }
       // 检查是否是"所属"字段
-      else if (comment.type === 'markdownComment' && text.startsWith('所属:')) {
+      else if ((commentType === 'textComment' || commentType === 'markdownComment') && text.startsWith('所属:')) {
         result.belongsTo = {
           index: index,
           text: text,
@@ -411,19 +492,23 @@ class MNTaskManager {
    * @param {boolean} toBottom - 是否移动到字段的最底部（默认 true）
    */
   static moveCommentToField(note, commentIndices, fieldText, toBottom = true) {
-    if (!note || !note.comments) return
+    if (!note || !note.MNComments) return
+    
+    MNUtil.log("🚚 moveCommentToField 开始 fieldText=" + fieldText + ", toBottom=" + toBottom + ", commentIndices=" + JSON.stringify(commentIndices))
     
     const parsed = this.parseTaskComments(note)
     let targetIndex = -1
     
     // 查找目标字段
     for (let field of parsed.taskFields) {
+      MNUtil.log("🔍 检查字段：" + field.content + " 是否包含 " + fieldText)
       if (field.content.includes(fieldText)) {
+        MNUtil.log("✅ 找到匹配字段！")
         if (toBottom) {
           // 移动到该字段的最底部
           // 需要找到下一个字段的位置或卡片末尾
           const currentFieldIndex = field.index
-          let nextFieldIndex = note.comments.length
+          let nextFieldIndex = note.MNComments.length
           
           // 查找下一个字段
           for (let nextField of parsed.taskFields) {
@@ -433,29 +518,46 @@ class MNTaskManager {
             }
           }
           
+          // 目标位置就是下一个字段的位置（或卡片末尾）
           targetIndex = nextFieldIndex
+          MNUtil.log("📍 目标索引（底部）：" + targetIndex)
         } else {
           // 移动到字段的紧下方
           targetIndex = field.index + 1
+          MNUtil.log("📍 目标索引（紧下方）：" + targetIndex)
         }
         break
       }
     }
     
-    if (targetIndex === -1) return
+    if (targetIndex === -1) {
+      MNUtil.log("❌ 未找到目标字段")
+      return
+    }
     
     // 转换为数组
     const indices = Array.isArray(commentIndices) ? commentIndices : [commentIndices]
+    MNUtil.log("📝 要移动的索引：" + JSON.stringify(indices))
     
-    // 使用 moveCommentsByIndexArr 方法移动评论
-    if (note.moveCommentsByIndexArr) {
-      note.moveCommentsByIndexArr(indices, targetIndex)
-    } else if (note.moveComment) {
-      // 备用方法：逐个移动
-      indices.forEach(index => {
-        note.moveComment(index, targetIndex)
-      })
-    }
+    // 使用 moveComment 方法移动评论
+    // 参考 MNMath 的实现，需要考虑移动方向
+    indices.forEach(index => {
+      // 判断移动方向
+      if (index < targetIndex) {
+        // 向下移动，目标位置需要减 1
+        const actualTarget = targetIndex - 1
+        MNUtil.log(`🔄 向下移动评论从索引 ${index} 到 ${actualTarget} (原目标 ${targetIndex})`)
+        note.moveComment(index, actualTarget, false)
+      } else if (index > targetIndex) {
+        // 向上移动，直接使用目标位置
+        MNUtil.log(`🔄 向上移动评论从索引 ${index} 到 ${targetIndex}`)
+        note.moveComment(index, targetIndex, false)
+      } else {
+        MNUtil.log(`⚠️ 评论已在目标位置，无需移动`)
+      }
+    })
+    
+    MNUtil.log("✅ moveCommentToField 完成")
   }
 
   /**
@@ -481,13 +583,14 @@ class MNTaskManager {
       })
     } else {
       // 创建新的所属字段
-      MNUtil.undoGrouping(() => {
-        note.appendMarkdownComment(belongsToText)
-        
-        // 移动到"信息"字段下方
-        const lastIndex = note.comments.length - 1
-        this.moveCommentToField(note, lastIndex, '信息', false)
-      })
+      // 先添加所属字段
+      note.appendMarkdownComment(belongsToText)
+      
+      // 获取刚添加的评论索引
+      const lastIndex = note.MNComments.length - 1
+      
+      // 移动到"信息"字段下方（toBottom = false 表示紧贴字段下方）
+      this.moveCommentToField(note, lastIndex, '信息', false)
     }
   }
 
@@ -508,24 +611,65 @@ class MNTaskManager {
     }
     
     MNUtil.undoGrouping(() => {
-      // 1. 在子任务中创建到父任务的链接（B 单向链接到 A）
-      note.appendNoteLink(parent, "To")
-      
-      // 2. 在子任务中更新所属字段
-      this.updateBelongsToField(note, parent)
-      
-      // 3. 在父任务中创建到子任务的链接
+      // 1. 在父任务中创建到子任务的链接
       parent.appendNoteLink(note, "To")
       
-      // 4. 获取父任务中刚添加的链接索引
-      const linkIndexInParent = parent.comments.length - 1
+      // 2. 获取父任务中刚创建的链接索引
+      const linkIndexInParent = parent.MNComments.length - 1
       
-      // 5. 获取子任务的状态
+      // 3. 获取子任务的状态
       const titleParts = this.parseTaskTitle(note.noteTitle)
       const status = titleParts.status || '未开始'
       
-      // 6. 将父任务中的链接移动到对应状态字段下
+      // 4. 将父任务中的链接移动到对应状态字段下
       this.moveCommentToField(parent, linkIndexInParent, status, true)
+      
+      // 5. 在子任务中更新所属字段（这已经包含了父任务的链接）
+      // 构建所属字段内容
+      const parentParts = this.parseTaskTitle(parent.noteTitle)
+      const belongsToText = `所属: [${parentParts.content}](${parent.noteId})`
+      
+      // 检查是否已有所属字段
+      const parsed = this.parseTaskComments(note)
+      MNUtil.log("🔍 解析的任务字段：" + JSON.stringify(parsed.taskFields.map(f => ({content: f.content, index: f.index}))))
+      MNUtil.log("🔍 是否已有所属字段：" + (parsed.belongsTo ? "是" : "否"))
+      
+      if (!parsed.belongsTo) {
+        // 找到"信息"字段的位置
+        let infoFieldIndex = -1
+        for (let i = 0; i < parsed.taskFields.length; i++) {
+          MNUtil.log(`🔍 检查字段 ${i}：` + parsed.taskFields[i].content)
+          if (parsed.taskFields[i].content === '信息') {
+            infoFieldIndex = parsed.taskFields[i].index
+            MNUtil.log("✅ 找到信息字段，索引：" + infoFieldIndex)
+            break
+          }
+        }
+        
+        MNUtil.log("📍 信息字段索引：" + infoFieldIndex)
+        MNUtil.log("📝 评论总数（添加前）：" + note.MNComments.length)
+        
+        if (infoFieldIndex !== -1) {
+          // 在"信息"字段后面插入所属字段
+          MNUtil.log("➕ 尝试在索引 " + (infoFieldIndex + 1) + " 处插入所属字段")
+          // 先添加到末尾
+          note.appendMarkdownComment(belongsToText)
+          // 获取刚添加的评论索引
+          const lastIndex = note.MNComments.length - 1
+          MNUtil.log("📝 评论总数（添加后）：" + note.MNComments.length)
+          MNUtil.log("🔄 手动移动评论从 " + lastIndex + " 到 " + (infoFieldIndex + 1))
+          // 手动移动到正确位置
+          note.moveComment(lastIndex, infoFieldIndex + 1, false)
+        } else {
+          // 如果找不到信息字段，就添加到末尾
+          MNUtil.log("⚠️ 未找到信息字段，添加到末尾")
+          note.appendMarkdownComment(belongsToText)
+        }
+      } else {
+        // 更新现有字段
+        MNUtil.log("🔄 更新现有所属字段，索引：" + parsed.belongsTo.index)
+        note.replaceWithMarkdownComment(belongsToText, parsed.belongsTo.index)
+      }
     })
   }
 
@@ -576,7 +720,7 @@ class MNTaskManager {
     const newTitle = `【${typeWithPath}｜${newStatus}】${titleParts.content}`
     
     // 设置对应的颜色
-    let colorIndex = 0  // 默认白色
+    let colorIndex = 12  // 默认白色
     switch (newStatus) {
       case "已完成":
         colorIndex = 1  // 绿色
@@ -585,13 +729,35 @@ class MNTaskManager {
         colorIndex = 3  // 粉色
         break
       case "未开始":
-        colorIndex = 0  // 白色
+        colorIndex = 12  // 白色
         break
     }
     
     MNUtil.undoGrouping(() => {
       note.noteTitle = newTitle
       note.colorIndex = colorIndex
+      
+      // 如果有父任务，更新父任务中链接的位置
+      const parent = note.parentNote
+      if (parent && this.isTaskCard(parent)) {
+        // 解析父任务的评论，找到指向当前任务的链接
+        const parsed = this.parseTaskComments(parent)
+        
+        // 查找指向当前任务的链接
+        try {
+          for (let link of parsed.links) {
+            if (link.linkedNoteId === note.noteId) {
+              // 找到了链接，将其移动到新状态字段下
+              MNUtil.log("🔄 找到链接，准备移动到 " + newStatus + " 字段")
+              this.moveCommentToField(parent, link.index, newStatus, true)
+              break
+            }
+          }
+        } catch (e) {
+          MNUtil.log("❌ 更新父任务链接位置时出错: " + e.message)
+          MNUtil.addErrorLog(e, "updateTaskStatus", {noteId: note.noteId, newStatus: newStatus})
+        }
+      }
     })
   }
 

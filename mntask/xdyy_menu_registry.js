@@ -136,22 +136,26 @@ function registerAllMenuTemplates() {
           action: "toggleTaskStatusBackward",
           menuTitle: "    ↩️ 退回上一个状态"
         },
-        "⬇️ 进度更新",
-        {
-          action: "updateTaskProgress",
-          menuTitle: "    📊 更新任务进度百分比"
-        },
+        "⬇️ 字段处理",
+        // {
+        //   action: "updateTaskProgress",
+        //   menuTitle: "    📊 更新任务进度百分比"
+        // },
+      // {
+      //   action: "updateReadingProgress",
+      //   menuTitle: "    📖 更新阅读进度（页数/章节）"
+      // },
+      // {
+      //   action: "addProgressNote",
+      //   menuTitle: "    📝 添加进度备注"
+      // },
+      // {
+      //   action: "recordTimeSpent",
+      //   menuTitle: "    ⏱️ 记录花费时间"
+      // },
       {
-        action: "updateReadingProgress",
-        menuTitle: "    📖 更新阅读进度（页数/章节）"
-      },
-      {
-        action: "addProgressNote",
-        menuTitle: "    📝 添加进度备注"
-      },
-      {
-        action: "recordTimeSpent",
-        menuTitle: "    ⏱️ 记录花费时间"
+        action: "addCustomField",
+        menuTitle: "    📝 手动添加自定义字段"
       },
       "⬇️ 进度查看",
       {

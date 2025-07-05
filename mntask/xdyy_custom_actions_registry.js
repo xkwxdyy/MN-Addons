@@ -993,6 +993,75 @@ function registerAllCustomActions() {
     );
   });
 
+  // addCustomField - 手动添加自定义字段
+  MNTaskGlobal.registerCustomAction("addCustomField", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    if (!focusNote) {
+      MNUtil.showHUD("请先选择一个任务");
+      return;
+    }
+    
+    // 检查是否是任务卡片
+    if (!MNTaskManager.isTaskCard(focusNote)) {
+      MNUtil.showHUD("请先将卡片转换为任务卡片");
+      return;
+    }
+    
+    // 第一步：获取字段名
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "添加自定义字段",
+      "请输入字段名称",
+      2,  // 输入框样式
+      "取消",
+      ["下一步"],
+      (alert1, buttonIndex1) => {
+        if (buttonIndex1 === 1) {
+          const fieldName = alert1.textFieldAtIndex(0).text;
+          
+          if (!fieldName || fieldName.trim() === "") {
+            MNUtil.showHUD("字段名不能为空");
+            return;
+          }
+          
+          // 第二步：获取字段内容
+          UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+            "添加自定义字段",
+            "请输入字段内容",
+            2,  // 输入框样式
+            "取消",
+            ["确定"],
+            (alert2, buttonIndex2) => {
+              if (buttonIndex2 === 1) {
+                const fieldContent = alert2.textFieldAtIndex(0).text || "";
+                
+                MNUtil.undoGrouping(() => {
+                  try {
+                    // 创建带样式的字段
+                    const fieldHtml = TaskFieldUtils.createFieldHtml(fieldName.trim(), 'subField', `custom-${fieldName.trim()}`);
+                    const fullContent = fieldContent.trim() ? `${fieldHtml} ${fieldContent.trim()}` : fieldHtml;
+                    
+                    // 添加到笔记
+                    focusNote.appendMarkdownComment(fullContent);
+                    
+                    // 获取刚添加的评论索引
+                    const lastIndex = focusNote.MNComments.length - 1;
+                    
+                    // 移动到"信息"字段的最底部
+                    MNTaskManager.moveCommentToField(focusNote, lastIndex, '信息', true);
+                    
+                    MNUtil.showHUD(`✅ 已添加字段：${fieldName}`);
+                  } catch (error) {
+                    MNUtil.showHUD("添加字段失败：" + error.message);
+                  }
+                });
+              }
+            }
+          );
+        }
+      }
+    );
+  });
+
   // ==================== 今日任务管理相关 ====================
   
   // clearTimeTag - 清除所有时间标签

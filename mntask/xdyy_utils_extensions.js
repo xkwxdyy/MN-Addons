@@ -14,8 +14,10 @@ class TaskFieldUtils {
   static styles = {
     // 主字段样式（信息、包含等）
     mainField: 'font-weight:600;color:#1E40AF;background:linear-gradient(15deg,#EFF6FF 30%,#DBEAFE);border:2px solid #3B82F6;border-radius:12px;padding:10px 18px;display:inline-block;box-shadow:2px 2px 0px #BFDBFE,4px 4px 8px rgba(59,130,246,0.12);position:relative;margin:4px 8px;',
-    // 子字段样式（状态等）
-    subField: 'background:#FFF;color:#FF8C5A;border:2px solid currentColor;border-radius:3px;padding:6px 12px;font-size:0.7em;font-weight:600;box-shadow:0 1px 3px rgba(255,140,90,0.2);display:inline-block;'
+    // 子字段样式（所属等）
+    subField: 'background:#FFF;color:#FF8C5A;border:2px solid currentColor;border-radius:3px;padding:6px 12px;font-size:0.9em;font-weight:600;box-shadow:0 1px 3px rgba(255,140,90,0.2);display:inline-block;',
+    // 状态字段样式（未开始/进行中/已完成）
+    stateField: 'background:#FFF;color:#FF8C5A;border:2px solid currentColor;border-radius:3px;padding:6px 12px;font-size:0.7em;font-weight:600;box-shadow:0 1px 3px rgba(255,140,90,0.2);display:inline-block;'
   }
   
   /**
@@ -49,7 +51,18 @@ class TaskFieldUtils {
         emoji = '✅ '
         break
     }
-    return this.createFieldHtml(`${emoji}${status}`, 'subField', `status-${status}`)
+    return this.createFieldHtml(`${emoji}${status}`, 'stateField', `status-${status}`)
+  }
+  
+  /**
+   * 创建所属字段
+   * @param {string} parentTitle - 父任务标题
+   * @param {string} parentURL - 父任务链接
+   * @returns {string} 格式化的所属字段 HTML
+   */
+  static createBelongsToField(parentTitle, parentURL) {
+    const belongsHtml = this.createFieldHtml('所属', 'subField', 'belongs-to')
+    return `${belongsHtml} [${parentTitle}](${parentURL})`
   }
   
   /**
@@ -69,7 +82,9 @@ class TaskFieldUtils {
     return text.includes('<span') && (
       text.includes('id="mainField"') || 
       text.includes('id="subField"') ||
-      text.includes('id="status-')
+      text.includes('id="status-') ||
+      text.includes('id="stateField"') ||
+      text.includes('id="belongs-to"')
     )
   }
   
@@ -107,6 +122,33 @@ class TaskFieldUtils {
     const regex = /<span[^>]*>(.*?)<\/span>/
     const match = text.match(regex)
     return match ? match[1].trim() : text
+  }
+  
+  /**
+   * 分离字段名和内容
+   * @param {string|MNComment} comment - 评论内容或评论对象
+   * @returns {{fieldName: string, content: string}} 字段名和内容
+   */
+  static getFieldNameAndContent(comment) {
+    let text = ''
+    if (typeof comment === 'string') {
+      text = comment
+    } else if (comment && comment.text) {
+      text = comment.text
+    }
+    
+    // 先提取字段名（span 标签内的内容）
+    const spanRegex = /<span[^>]*>(.*?)<\/span>/
+    const spanMatch = text.match(spanRegex)
+    const fieldName = spanMatch ? spanMatch[1].trim() : ''
+    
+    // 提取字段后面的内容（去掉 span 标签后的剩余部分）
+    const remainingText = text.replace(spanRegex, '').trim()
+    
+    return {
+      fieldName: fieldName,
+      content: remainingText
+    }
   }
 }
 
@@ -466,8 +508,9 @@ class MNTaskManager {
           })
         }
       }
-      // 检查是否是"所属"字段
-      else if ((commentType === 'textComment' || commentType === 'markdownComment') && text.startsWith('所属:')) {
+      // 检查是否是"所属"字段（兼容旧格式和新样式格式）
+      else if ((commentType === 'textComment' || commentType === 'markdownComment') && 
+               (text.startsWith('所属:') || text.includes('id="belongs-to"'))) {
         result.belongsTo = {
           index: index,
           text: text,
@@ -574,7 +617,7 @@ class MNTaskManager {
     const parentParts = this.parseTaskTitle(parentNote.noteTitle)
     
     // 构建所属字段内容
-    const belongsToText = `所属: [${parentParts.content}](${parentNote.noteURL})`
+    const belongsToText = TaskFieldUtils.createBelongsToField(parentParts.content, parentNote.noteURL)
     
     // 检查是否已有所属字段
     if (parsed.belongsTo) {
@@ -629,7 +672,7 @@ class MNTaskManager {
       // 5. 在子任务中更新所属字段（这已经包含了父任务的链接）
       // 构建所属字段内容
       const parentParts = this.parseTaskTitle(parent.noteTitle)
-      const belongsToText = `所属: [${parentParts.content}](${parent.noteURL})`
+      const belongsToText = TaskFieldUtils.createBelongsToField(parentParts.content, parent.noteURL)
       
       // 检查是否已有所属字段
       const parsed = this.parseTaskComments(note)
@@ -865,7 +908,7 @@ class MNTaskManager {
             MNUtil.log(`🔄 更新子卡片的所属字段`)
             const belongsToComment = childNote.MNComments[parsed.belongsTo.index]
             const currentParentParts = this.parseTaskTitle(currentParent.noteTitle)
-            const newBelongsToText = `所属: [${currentParentParts.content}](${currentParent.noteURL})`
+            const newBelongsToText = TaskFieldUtils.createBelongsToField(currentParentParts.content, currentParent.noteURL)
             
             // 使用 MNComment 的 text 属性直接修改
             belongsToComment.text = newBelongsToText
@@ -1036,6 +1079,62 @@ class MNTaskManager {
     
     MNUtil.log(`✅ 清理完成，共删除 ${removedCount} 个失效链接`)
     return removedCount
+  }
+  
+  /**
+   * 获取"信息"字段下的所有子字段
+   * @param {MNNote} note - 要分析的卡片
+   * @returns {Array<{index: number, fieldName: string, content: string, comment: MNComment}>} 子字段数组
+   */
+  static getSubFieldsUnderInfo(note) {
+    if (!note || !note.MNComments) return []
+    
+    const parsed = this.parseTaskComments(note)
+    const subFields = []
+    
+    // 找到"信息"主字段
+    let infoFieldIndex = -1
+    for (let field of parsed.taskFields) {
+      if (field.isMainField && field.content === '信息') {
+        infoFieldIndex = field.index
+        break
+      }
+    }
+    
+    if (infoFieldIndex === -1) {
+      MNUtil.log("❌ 未找到信息字段")
+      return []
+    }
+    
+    // 找到下一个主字段（"包含"）的位置
+    let nextMainFieldIndex = note.MNComments.length
+    for (let field of parsed.taskFields) {
+      if (field.isMainField && field.index > infoFieldIndex) {
+        nextMainFieldIndex = field.index
+        break
+      }
+    }
+    
+    // 收集信息字段和下一个主字段之间的所有子字段
+    for (let i = infoFieldIndex + 1; i < nextMainFieldIndex; i++) {
+      const comment = note.MNComments[i]
+      if (!comment) continue
+      
+      const text = comment.text || ''
+      
+      // 检查是否是任务字段（但不是主字段）
+      if (TaskFieldUtils.isTaskField(text) && !text.includes('id="mainField"')) {
+        const parsed = TaskFieldUtils.getFieldNameAndContent(text)
+        subFields.push({
+          index: i,
+          fieldName: parsed.fieldName,
+          content: parsed.content,
+          comment: comment
+        })
+      }
+    }
+    
+    return subFields
   }
 }
 

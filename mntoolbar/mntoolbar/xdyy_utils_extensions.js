@@ -12,6 +12,7 @@ function initXDYYExtensions() {
   // 扩展 defaultWindowState 配置
   if (toolbarUtils.defaultWindowState) {
     toolbarUtils.defaultWindowState.preprocess = false;
+    toolbarUtils.defaultWindowState.roughReading = false;
   }
 
   /**
@@ -36,88 +37,64 @@ function initXDYYExtensions() {
     return idsArr
   }
 
-  toolbarUtils.TemplateMakeNote = function(note) {
-    /**
-     * 场景：
-     * 1. Inbox 阶段
-     *   - 没有父卡片也能制卡
-     *   - 根据颜色制卡
-     *   - 归类卡片支持单独制卡
-     * 2. 归类卡片阶段
-     *   - 移动知识点卡片归类制卡完成链接操作
-     *   - 移动归类卡片也可完成归类操作
-     */
-    if (note.ifIndependentNote()) {
-      // 如果是独立卡片（比如非知识库里的卡片），只进行转化为非摘录版本
-      note.title = Pangu.spacing(note.title)
-      note.toNoExcerptVersion()
-    } else {
-      /** 
-       * 【Done】处理旧卡片
-       */
-      note.renew()
-
-      if (!note.excerptText) {
-        /**
-         * 【Done】处理标题
-         * - 知识类卡片增加标题前缀
-         * - 黄色归类卡片：""：""相关 xx
-         * - 绿色归类卡片：""相关 xx
-         * - 处理卡片标题空格
-         * 
-         * 需要放在修改链接前，因为可能需要获取到旧归类卡片的标题来对标题修改进行处理
-         */
-
-        note.changeTitle()
-
-        /**
-         * 【Done】合并模板卡片
-         */
-        note.mergeTemplate()
-
-        /**
-         * 【Done】根据卡片类型修改卡片颜色
-         */
-        note.changeColorByType()
-
-        /**
-         * 【Done】自动移动新内容（到固定位置）
-         * 
-         * 放在 linkParentNote 后面，否则会干扰自动链接移动
-         */
-        note.autoMoveNewContent()
-
-        /**
-         * 【Done】与父卡片进行链接
-         */
-        note.linkParentNote()
-
-        /**
-         * 【Done】加入复习
-         * 
-         * 什么时候需要加入复习
-         * - 制卡的那次需要加入
-         * - 后续点击制卡都不需要加入
-         */
-        // note.addToReview()
-        // if (!note.ifReferenceNote()) {
-        //   note.addToReview()
-        // }
-
-        // 移动文献卡片
-        // note.move()
+  /**
+   * 粗读模式制卡函数
+   * 特点：
+   * 1. 使用颜色判断卡片类型
+   * 2. 不加入复习
+   * 3. 自动移动到根目录（如果没有归类父卡片）
+   * 4. 特殊处理深蓝色命题卡片
+   */
+  toolbarUtils.roughReadingMakeNote = function(note) {
+    MNUtil.undoGrouping(() => {
+      try {
+        // 1. 先判断是否需要移动到根目录
+        const noteType = MNMath.getNoteType(note, true)  // true = 使用颜色作为后备判断
+        const classificationParent = MNMath.getFirstClassificationParentNote(note)
+        
+        if (!classificationParent && noteType && MNMath.roughReadingRootNoteIds[noteType]) {
+          const rootNoteId = MNMath.roughReadingRootNoteIds[noteType]
+          if (rootNoteId && toolbarUtils.isValidNoteId(rootNoteId)) {
+            try {
+              // 特殊处理：深蓝色命题卡片
+              if (note.colorIndex === 10) {
+                // 检查当前父卡片是否是定义类根目录
+                const parentNote = note.parentNote
+                if (parentNote && parentNote.noteId === MNMath.roughReadingRootNoteIds["定义"]) {
+                  // 移动到命题根目录
+                  const propRootNoteId = MNMath.roughReadingRootNoteIds["命题"]
+                  if (propRootNoteId && toolbarUtils.isValidNoteId(propRootNoteId)) {
+                    const propRootNote = MNDatabase.getNotebookById(MNUtil.currentNotebookId).getNoteById(propRootNoteId)
+                    if (propRootNote) {
+                      propRootNote.addChild(note)
+                      MNUtil.log("✅ 深蓝色卡片从定义根目录移动到命题根目录")
+                    }
+                  }
+                }
+              } else {
+                // 普通情况：移动到对应类型的根目录
+                const rootNote = MNDatabase.getNotebookById(MNUtil.currentNotebookId).getNoteById(rootNoteId)
+                if (rootNote) {
+                  rootNote.addChild(note)
+                  MNUtil.log(`✅ 卡片移动到 ${noteType} 根目录`)
+                }
+              }
+            } catch (error) {
+              MNUtil.log(`❌ 移动到根目录失败: ${error.message}`)
+            }
+          }
+        }
+        
+        // 2. 使用 MNMath 的制卡体系
+        // addToReview = false, reviewEverytime = true, focusInMindMap = true
+        MNMath.makeCard(note, false, true, true)
+        
+        MNUtil.showHUD("✅ 粗读制卡完成（未加入复习）")
+      } catch (error) {
+        toolbarUtils.addErrorLog(error, "roughReadingMakeNote")
+        MNUtil.showHUD(`❌ 粗读制卡失败: ${error.message}`)
       }
-    }
-    /**
-     * 【Done】聚焦
-     */
-    note.focusInMindMap(0.2)
-
-    /**
-     * 刷新
-     */
-    note.refresh()
-    note.refreshAll()
+    })
   }
 
   toolbarUtils.isValidNoteId = function(noteId) {
@@ -181,204 +158,6 @@ function initXDYYExtensions() {
     return this.getLinkType(note, link) === "Single";
   }
 
-  toolbarUtils.pasteNoteAsChildNote = function(targetNote){
-    // 不足：跨学习集的时候必须要进入到目标学习集里面
-    let cutNoteId = this.getNoteIdFromClipboard()
-    let cutNoteLinksInfoArr = []
-    let handledLinksSet = new Set()  // 防止 cutNote 里面有多个相同链接，造成对 linkedNote 的多次相同处理
-    if (cutNoteId !== undefined){
-      let cutNote = MNNote.new(cutNoteId)
-      if (cutNote) {
-        this.linksConvertToMN4Type(cutNote)
-        cutNote.comments.forEach(
-          (comment, index) => {
-            if (this.isCommentLink(comment)) {
-              if (this.isLinkDouble(cutNote, comment.text)) {
-                // 双向链接
-                cutNoteLinksInfoArr.push(
-                  {
-                    linkedNoteId: MNUtil.getNoteIdByURL(comment.text),
-                    indexInCutNote: index,
-                    indexArrInLinkedNote: MNNote.new(MNUtil.getNoteIdByURL(comment.text)).getCommentIndexArray(cutNote.noteId)
-                  }
-                )
-              } else {
-                // 单向链接
-                cutNoteLinksInfoArr.push(
-                  {
-                    linkedNoteId: MNUtil.getNoteIdByURL(comment.text),
-                    indexInCutNote: index
-                  }
-                )
-              }
-            }
-          }
-        )
-        // 去掉被剪切卡片里的所有链接
-        cutNote.clearAllLinks()
-        // 在目标卡片下新建一个卡片
-        let config = {
-          title: cutNote.title,
-          content: "",
-          markdown: true,
-          color: cutNote.colorIndex,
-        }
-        let newNote = targetNote.createChildNote(config)
-        cutNote.title = ""
-        // 合并之前要把双向链接的卡片里的旧链接删掉
-        cutNoteLinksInfoArr.forEach(
-          cutNoteLinkInfo => {
-            if (!handledLinksSet.has(cutNoteLinkInfo.linkedNoteId)) {
-              let linkedNote = MNNote.new(cutNoteLinkInfo.linkedNoteId)
-              if (linkedNote) {
-                if (cutNoteLinkInfo.indexArrInLinkedNote !== undefined) {
-                  // 双向链接
-                  linkedNote.removeCommentsByIndices(cutNoteLinkInfo.indexArrInLinkedNote)
-                }
-              }
-            }
-            handledLinksSet.add(cutNoteLinkInfo.linkedNoteId)
-          }
-        )
-        // 将被剪切的卡片合并到新卡片中
-        newNote.merge(cutNote)
-
-        try {
-          handledLinksSet.clear()
-          // 重新链接
-          cutNoteLinksInfoArr.forEach(
-            cutNoteLinkInfo => {
-              let linkedNote = MNNote.new(cutNoteLinkInfo.linkedNoteId)
-              newNote.appendNoteLink(linkedNote, "To")
-              newNote.moveComment(newNote.comments.length-1, cutNoteLinkInfo.indexInCutNote)
-              if (!handledLinksSet.has(cutNoteLinkInfo.linkedNoteId)) {
-                if (cutNoteLinkInfo.indexArrInLinkedNote !== undefined) {
-                  // 双向链接
-                  cutNoteLinkInfo.indexArrInLinkedNote.forEach(
-                    index => {
-                      linkedNote.appendNoteLink(newNote, "To")
-                      linkedNote.moveComment(linkedNote.comments.length-1, index)
-                    }
-                  )
-                }
-              }
-              handledLinksSet.add(cutNoteLinkInfo.linkedNoteId)
-              this.clearAllFailedLinks(linkedNote)
-            }
-          )
-        } catch (error) {
-          MNUtil.showHUD(error);
-        }
-      }
-    }
-  }
-
-  toolbarUtils.getProofHtmlCommentIndex = function(focusNote, includeMethod = false, methodNum = 0) {
-    let focusNoteType = this.getKnowledgeNoteTypeByColorIndex(focusNote.colorIndex)
-    let proofHtmlCommentIndex
-    switch (focusNoteType) {
-      case "method":
-        proofHtmlCommentIndex = focusNote.getCommentIndex("原理：", true)
-        break;
-      case "antiexample":
-        proofHtmlCommentIndex = focusNote.getCommentIndex("反例及证明：", true)
-        break;
-      default:
-        if (includeMethod) {
-          proofHtmlCommentIndex = (focusNote.getIncludingCommentIndex('方法'+ this.numberToChinese(methodNum) +'：', true) == -1)?focusNote.getCommentIndex("证明：", true):focusNote.getIncludingCommentIndex('方法'+ this.numberToChinese(methodNum) +'：', true)
-        } else {
-          proofHtmlCommentIndex = focusNote.getCommentIndex("证明：", true)
-        }
-        break;
-    }
-    return proofHtmlCommentIndex
-  }
-
-  // 将证明移动到某个 index
-  toolbarUtils.moveProofToIndex = function(focusNote, targetIndex, includeMethod = false , methodNum = 0) {
-    let focusNoteComments = focusNote.note.comments
-    let focusNoteCommentLength = focusNoteComments.length
-    let nonLinkNoteCommentsIndex = []
-    let focusNoteType
-    switch (focusNote.colorIndex) {
-      case 0: // 淡黄色
-        focusNoteType = "classification"
-        break;
-      case 2: // 淡蓝色：定义类
-        focusNoteType = "definition"
-        break;
-      case 3: // 淡粉色：反例
-        focusNoteType = "antiexample"
-        break;
-      case 4: // 黄色：归类
-        focusNoteType = "classification"
-        break;
-      case 6: // 蓝色：应用
-        focusNoteType = "application"
-        break;
-      case 9: // 深绿色：思想方法
-        focusNoteType = "method"
-        break;
-      case 10: // 深蓝色：定理命题
-        focusNoteType = "theorem"
-        break;
-      case 13: // 淡灰色：问题
-        focusNoteType = "question"
-        break;
-      case 15: // 淡紫色：例子
-        focusNoteType = "example"
-        break;
-    }
-    let proofHtmlCommentIndex
-    switch (focusNoteType) {
-      case "method":
-        proofHtmlCommentIndex = focusNote.getCommentIndex("原理：", true)
-        break;
-      case "antiexample":
-        proofHtmlCommentIndex = focusNote.getCommentIndex("反例及证明：", true)
-        break;
-      default:
-        if (includeMethod) {
-          proofHtmlCommentIndex = (focusNote.getIncludingCommentIndex('方法'+ this.numberToChinese(methodNum) +'：', true) == -1)?focusNote.getCommentIndex("证明：", true):focusNote.getIncludingCommentIndex('方法'+ this.numberToChinese(methodNum) +'：', true)
-        } else {
-          proofHtmlCommentIndex = focusNote.getCommentIndex("证明：", true)
-        }
-        break;
-    }
-    let applicationHtmlCommentIndex = focusNote.getCommentIndex("应用：", true)
-    let applicationHtmlCommentIndexArr = []
-    if (applicationHtmlCommentIndex !== -1) {
-      focusNote.comments.forEach((comment, index) => {
-        if (
-          comment.text &&
-          (
-            comment.text.includes("应用：") ||
-            comment.text.includes("的应用")
-          )
-        ) {
-          applicationHtmlCommentIndexArr.push(index)
-        }
-      })
-      applicationHtmlCommentIndex = applicationHtmlCommentIndexArr[applicationHtmlCommentIndexArr.length-1]
-    }
-    focusNoteComments.forEach((comment, index) => {
-      if (index > applicationHtmlCommentIndex) {
-        if (
-          comment.type == "PaintNote" || comment.type == "LinkNote" ||
-          (
-            comment.text &&
-            !comment.text.includes("marginnote4app") && !comment.text.includes("marginnote3app") 
-          )
-        ) {
-          nonLinkNoteCommentsIndex.push(index)
-        }
-      }
-    })
-
-    for (let i = focusNoteCommentLength-1; i >= nonLinkNoteCommentsIndex[0]; i--) {
-      focusNote.moveComment(focusNoteCommentLength-1, targetIndex);
-    }
-  }
 
   // ===== 链接去重和清理函数 =====
   
@@ -1582,10 +1361,29 @@ function extendToolbarConfigInit() {
     MNUtil.postNotification("refreshToolbarButton", {})
   }
   
+  // 添加 toggleRoughReading 静态方法
+  // 夏大鱼羊
+  toolbarConfig.toggleRoughReading = function() {
+    if (!toolbarUtils.checkSubscribe(true)) {
+      return
+    }
+    if (toolbarConfig.getWindowState("roughReading") === false) {
+      toolbarConfig.windowState.roughReading = true
+      toolbarConfig.save("MNToolbar_windowState")
+      MNUtil.showHUD("粗读模式：✅ 开启")
+    } else {
+      toolbarConfig.windowState.roughReading = false
+      toolbarConfig.save("MNToolbar_windowState")
+      MNUtil.showHUD("粗读模式：❌ 关闭")
+    }
+    MNUtil.postNotification("refreshToolbarButton", {})
+  }
+  
   // 扩展 defaultWindowState
   // 夏大鱼羊
   if (toolbarConfig.defaultWindowState) {
     toolbarConfig.defaultWindowState.preprocess = false
+    toolbarConfig.defaultWindowState.roughReading = false
   }
 }
 

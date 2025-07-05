@@ -4,6 +4,17 @@
 
 class MNMath {
   /**
+   * 粗读根目录
+   */
+  static roughReadingRootNoteIds = {
+    "定义": "38ACB470-803E-4EE8-B7DD-1BF4722AB0FE",
+    "命题": "D6F7EA72-DDD1-495B-8DF5-5E2559C5A982",
+    "例子": "9BAEB3FF-318E-48BD-92E4-66727427EDD5",
+    "反例": "AE530B71-E758-47CA-8C88-A59E5D287CBD",
+    "问题": "C58ED58F-56BE-47F8-8F6B-1D76FF6212F8",
+    "思想方法": "A4A7B09E-D124-4192-9804-C074718E399C",
+  }
+  /**
    * 单条 HtmlComment 的模板卡片 id
    */
   static singleHtmlCommentTemplateNoteIds = {
@@ -277,6 +288,28 @@ class MNMath {
     "反例": "反例",
     "思想方法": "原理",
     "问题": "研究思路"  // 注意：这里是"研究思路"而不是默认的"研究脉络"
+  }
+
+
+  /**
+   * 根据颜色索引获取卡片类型（粗读模式使用）
+   * @param {number} colorIndex - 颜色索引
+   * @returns {string|null} 卡片类型，如果未找到则返回 null
+   */
+  static getNoteTypeByColor(colorIndex) {
+    // 建立颜色到类型的映射
+    const colorTypeMap = {
+      0: "归类",       // 淡黄色
+      1: "问题",       // 淡绿色
+      2: "定义",       // 淡蓝色（作者也是淡蓝色，但粗读模式优先定义）
+      3: "反例",       // 粉色
+      6: "研究进展",   // 蓝色（总结也是蓝色，但粗读模式优先研究进展）
+      9: "思想方法",   // 深绿色
+      10: "命题",      // 深蓝色
+      13: "思路",      // 淡灰色
+      15: "例子"       // 紫色（粗读模式下统一为例子，不考虑文献/论文/书作）
+    }
+    return colorTypeMap[colorIndex] || null
   }
 
   /**
@@ -2138,8 +2171,11 @@ class MNMath {
    * 获取卡片类型
    * 
    * 目前是靠卡片标题来判断
+   * @param {MNNote} note - 要判断类型的卡片
+   * @param {boolean} useColorFallback - 是否在无法从标题/归类卡片判断时使用颜色判断（粗读模式使用）
+   * @returns {string|undefined} 卡片类型
    */
-  static getNoteType(note) {
+  static getNoteType(note, useColorFallback = false) {
     let noteType
     let title = note.title || "";
     /**
@@ -2181,6 +2217,11 @@ class MNMath {
           break;
         }
       }
+    }
+
+    // 粗读模式：如果无法从标题或归类卡片判断，尝试根据颜色判断
+    if (useColorFallback && !noteType && note.colorIndex !== undefined) {
+      noteType = this.getNoteTypeByColor(note.colorIndex);
     }
 
     return noteType || undefined;
@@ -3693,6 +3734,160 @@ class MNMath {
       
     } catch (error) {
       MNUtil.log("replaceFirstFieldIfNeeded 出错: " + error.toString());
+    }
+  }
+
+  /**
+   * 删除双向链接
+   * 解析笔记中任意字段下的链接，并支持双向删除（同时删除对方笔记中的反向链接）
+   * @param {MNNote} note - 要处理的笔记
+   */
+  static async removeBidirectionalLinks(note) {
+    try {
+      // 1. 解析当前笔记的所有字段
+      const commentsObj = this.parseNoteComments(note);
+      const htmlFields = commentsObj.htmlCommentsObjArr;
+      
+      if (htmlFields.length === 0) {
+        MNUtil.showHUD("当前笔记没有字段");
+        return;
+      }
+      
+      // 2. 让用户选择要处理的字段
+      const fieldNames = htmlFields.map(field => field.text);
+      const selectedFieldIndex = await MNUtil.userSelect(
+        "选择要处理链接的字段", 
+        "", 
+        fieldNames
+      );
+      
+      if (selectedFieldIndex === 0) {
+        return; // 用户取消
+      }
+      
+      const selectedField = htmlFields[selectedFieldIndex - 1];
+      
+      // 3. 获取所选字段下的纯链接
+      const fieldCommentIndices = selectedField.excludingFieldBlockIndexArr;
+      const links = [];
+      
+      for (const index of fieldCommentIndices) {
+        const comment = note.MNComments[index];  // 使用 MNComments 而不是 comments
+        if (comment && comment.text) {
+          const commentText = comment.text.trim();
+          
+          // 使用封装的 API 判断是否为有效的笔记链接
+          if (commentText.isValidNoteURL()) {
+            // 检查是否为纯链接（不在 Markdown 格式中）
+            if (!commentText.includes("](") && !commentText.includes("[")) {
+              links.push({
+                index: index,
+                url: commentText,
+                noteId: commentText.toNoteId(), // 使用封装的 API 提取笔记 ID
+                type: comment.type
+              });
+            }
+          }
+        }
+      }
+      
+      if (links.length === 0) {
+        // 调试信息：显示字段下的所有评论
+        MNUtil.log(`字段"${selectedField.text}"的评论索引: ${fieldCommentIndices.join(', ')}`);
+        for (const index of fieldCommentIndices) {
+          const comment = note.MNComments[index];  // 使用 MNComments
+          if (comment) {
+            MNUtil.log(`索引${index}: 类型=${comment.type}, 内容="${comment.text}"`);
+          }
+        }
+        MNUtil.showHUD(`字段"${selectedField.text}"下没有找到纯链接`);
+        return;
+      }
+      
+      // 4. 获取链接对应的笔记标题
+      const linkDisplayNames = [];
+      for (const link of links) {
+        try {
+          const targetNote = MNUtil.getNoteById(link.noteId);
+          if (targetNote) {
+            const title = targetNote.noteTitle || "[无标题]";
+            linkDisplayNames.push(title);
+          } else {
+            linkDisplayNames.push(`[笔记不存在: ${link.noteId.substring(0, 8)}...]`);
+          }
+        } catch (error) {
+          linkDisplayNames.push(`[获取失败: ${link.noteId.substring(0, 8)}...]`);
+        }
+      }
+      
+      // 5. 让用户选择要删除的链接
+      const selectedLinkIndex = await MNUtil.userSelect(
+        "选择要删除的链接",
+        `在"${selectedField.text}"字段下找到 ${links.length} 个链接`,
+        linkDisplayNames
+      );
+      
+      if (selectedLinkIndex === 0) {
+        return; // 用户取消
+      }
+      
+      const selectedLink = links[selectedLinkIndex - 1];
+      
+      // 6. 执行双向删除
+      MNUtil.undoGrouping(() => {
+        // 删除当前笔记中的链接
+        note.removeCommentByIndex(selectedLink.index);
+        
+        // 尝试删除对方笔记中的反向链接
+        try {
+          const targetNote = MNUtil.getNoteById(selectedLink.noteId);
+          if (targetNote) {
+            const targetMNNote = MNNote.new(targetNote);
+            const targetCommentsObj = this.parseNoteComments(targetMNNote);
+            
+            // 查找"应用"或"应用:"字段
+            const applicationField = targetCommentsObj.htmlCommentsObjArr.find(field => {
+              const fieldText = field.text.trim();
+              return fieldText === "应用" || fieldText === "应用:" || fieldText === "应用：";
+            });
+            
+            if (applicationField) {
+              // 查找该字段下指向当前笔记的链接
+              const currentNoteId = note.noteId;
+              const fieldIndices = applicationField.excludingFieldBlockIndexArr;
+              
+              // 从后往前删除，避免索引变化问题
+              for (let i = fieldIndices.length - 1; i >= 0; i--) {
+                const index = fieldIndices[i];
+                const comment = targetMNNote.MNComments[index];  // 使用 MNComments
+                if (comment && comment.text) {
+                  const commentText = comment.text.trim();
+                  // 使用封装的 API 判断链接并提取 ID
+                  if (commentText.isValidNoteURL() && 
+                      commentText.toNoteId() === currentNoteId) {
+                    targetMNNote.removeCommentByIndex(index);
+                    MNUtil.showHUD("已删除双向链接");
+                    return;
+                  }
+                }
+              }
+              
+              MNUtil.showHUD("已删除链接（对方笔记的应用字段下未找到反向链接）");
+            } else {
+              MNUtil.showHUD("已删除链接（对方笔记没有应用字段）");
+            }
+          } else {
+            MNUtil.showHUD("已删除链接（对方笔记不存在）");
+          }
+        } catch (error) {
+          MNUtil.showHUD("已删除链接（处理反向链接时出错）");
+          MNUtil.log("删除反向链接时出错: " + error.toString());
+        }
+      });
+      
+    } catch (error) {
+      MNUtil.showHUD("操作失败：" + error.toString());
+      MNUtil.log("removeBidirectionalLinks 出错: " + error.toString());
     }
   }
 }

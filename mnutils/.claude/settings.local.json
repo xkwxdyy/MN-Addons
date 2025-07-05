@@ -25,7 +25,8 @@
       "WebFetch(domain:www.wolai.com)",
       "Bash(grep -n \"renewNote\" xdyyutils.js)",
       "Bash(chmod:*)",
-      "Bash(/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnutils/check_apis.sh:*)"
+      "Bash(/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnutils/check_apis.sh:*)",
+      "Bash(node:*)"
     ],
     "deny": []
   }

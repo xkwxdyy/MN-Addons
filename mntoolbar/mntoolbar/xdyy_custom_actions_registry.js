@@ -4459,11 +4459,16 @@ function registerAllCustomActions() {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
-        if (toolbarConfig.windowState.preprocess) {
+        if (toolbarConfig.windowState.roughReading) {
+          // 粗读模式：使用颜色判断类型，不加入复习，自动移动到根目录
+          toolbarUtils.roughReadingMakeNote(focusNote);
+        } else if (toolbarConfig.windowState.preprocess) {
+          // 预处理模式：简化处理
           let newnote = MNMath.toNoExcerptVersion(focusNote);
           MNMath.changeTitle(newnote);
           newnote.focusInMindMap(0.2);
         } else {
+          // 正常模式：完整制卡流程
           MNMath.makeNote(focusNote);
         }
       } catch (error) {
@@ -4534,6 +4539,17 @@ function registerAllCustomActions() {
       }
     });
   });
+
+  global.registerCustomAction("removeBidirectionalLinks", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    MNUtil.undoGrouping(() => {
+      try {
+         MNMath.removeBidirectionalLinks(focusNote)
+      } catch (error) {
+        MNUtil.showHUD(error);
+      }
+    });
+  })
 
 }
 

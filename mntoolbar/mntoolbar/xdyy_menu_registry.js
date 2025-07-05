@@ -50,10 +50,10 @@ function registerAllMenuTemplates() {
           action: "replaceFieldContentByPopup",
           menuTitle: "替换字段",
         },
-        // {
-        //   action: "moveLastOneCommentByPopupTo",
-        //   menuTitle: "移动「最后1️⃣条」评论",
-        // },
+        {
+          action: "removeBidirectionalLinks",
+          menuTitle: "删除字段中的双向链接",
+        },
         // {
         //   action: "moveLastTwoCommentByPopupTo",
         //   menuTitle: "移动「最后2️⃣条」评论",

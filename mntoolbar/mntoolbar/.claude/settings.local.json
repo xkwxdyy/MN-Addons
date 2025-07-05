@@ -3,7 +3,9 @@
     "allow": [
       "Bash(npx:*)",
       "Bash(sudo rm:*)",
-      "Bash(npm cache clean:*)"
+      "Bash(npm cache clean:*)",
+      "mcp__promptx__promptx_init",
+      "Bash(rg:*)"
     ],
     "deny": []
   }

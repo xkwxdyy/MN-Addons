@@ -1,5 +1,5 @@
 {
-  "currentState": "memory_saved",
+  "currentState": "initialized",
   "stateHistory": [
     {
       "from": "initial",
@@ -20,7 +20,17 @@
         "--tags",
         "MN-Addon JavaScript 语法错误 调试技巧 MarginNote插件"
       ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "init",
+      "timestamp": "2025-07-05T17:10:58.723Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntoolbar/mntoolbar"
+        }
+      ]
     }
   ],
-  "lastUpdated": "2025-07-05T16:31:21.784Z"
+  "lastUpdated": "2025-07-05T17:10:58.731Z"
 }

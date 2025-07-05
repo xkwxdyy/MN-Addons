@@ -1,0 +1,26 @@
+{
+  "currentState": "memory_saved",
+  "stateHistory": [
+    {
+      "from": "initial",
+      "command": "init",
+      "timestamp": "2025-07-05T15:54:09.194Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "remember",
+      "timestamp": "2025-07-05T16:31:21.771Z",
+      "args": [
+        "MN-Addon 开发陷阱：变量重复声明导致的静默加载失败\n\n问题描述：\n- 插件突然无法找到某个类（如 MNTaskManager），报错 \"Can't find variable: ClassName\"\n- 没有任何语法错误提示，文件似乎没有被成功加载\n\n根本原因：\nJavaScript 文件中存在语法错误（如在同一作用域内重复声明 const 变量），但被文件末尾的 try-catch 静默处理了。\n\n真实案例：\n在 xdyy_utils_extensions.js 的 linkParentTask 方法中，第786行和第836行重复声明了 const parentParts 变量，导致语法错误。\n\n为什么难以发现：\n文件末尾的初始化代码静默处理了所有错误：\n```javascript\n} catch (error) {\n  // 静默处理错误 - 这导致问题难以发现！\n}\n```\n\n诊断方法：\n1. 使用 node -c filename.js 检查语法错误\n2. 查看 git diff 重点检查变量声明\n3. 搜索变量名检查是否重复声明\n\n解决方案：\n1. 修复语法错误（删除重复声明或重命名）\n2. 改进错误处理，在 catch 块中添加日志\n3. 开发时启用语法检查，提交前验证\n4. 使用 ESLint 配置 no-redeclare 规则\n\n经验总结：\n- 当类突然\"消失\"时，首先怀疑文件加载失败\n- 文件加载失败通常是因为语法错误\n- 静默的 try-catch 是调试的大敌\n- 始终使用工具验证语法正确性",
+        "--tags",
+        "MN-Addon JavaScript 语法错误 调试技巧 MarginNote插件"
+      ]
+    }
+  ],
+  "lastUpdated": "2025-07-05T16:31:21.784Z"
+}

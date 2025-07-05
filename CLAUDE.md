@@ -1068,3 +1068,96 @@ SettingController.prototype.pasteBoard = function(boardKey) { /* ... */ }
 ```
 
 这种架构确保了代码的可维护性和扩展性，同时符合 JSB 框架的要求。
+
+### 变量重复声明导致的静默加载失败陷阱（极其重要）
+
+在开发过程中可能遇到文件无法加载但没有任何错误提示的情况，这通常是由于 JavaScript 语法错误被静默处理了。
+
+#### 问题描述
+插件突然无法找到某个类（如 `MNTaskManager`），但之前的版本运行正常，没有任何错误提示。
+
+#### 典型症状
+- 插件无法加载某个类，提示 "Can't find variable: ClassName"
+- 没有任何语法错误提示
+- 文件似乎没有被成功加载
+
+#### 根本原因
+JavaScript 文件中存在语法错误（如重复声明变量），但被 try-catch 静默处理了。
+
+#### 真实案例
+```javascript
+// ❌ 错误：在同一作用域内重复声明 const 变量
+linkParentTask: function(note, parentNote) {
+  // ... 代码 ...
+  
+  // 第786行：首次声明
+  const parentParts = this.parseTaskTitle(parent.noteTitle)
+  const belongsToText = TaskFieldUtils.createBelongsToField(parentParts.content, parent.noteURL)
+  
+  // ... 更多代码 ...
+  
+  // 第836行：重复声明（导致语法错误）
+  const parentParts = this.parseTaskTitle(parent.noteTitle)
+  if (childStatus === "进行中" && parentParts.status === "未开始") {
+    // ...
+  }
+}
+```
+
+#### 为什么难以发现
+文件末尾的初始化代码静默处理了所有错误：
+```javascript
+// 立即执行初始化
+try {
+  if (typeof taskUtils !== 'undefined') {
+    initXDYYExtensions();
+  }
+  
+  if (typeof taskConfig !== 'undefined') {
+    extendTaskConfigInit();
+  }
+} catch (error) {
+  // 静默处理错误 - 这导致问题难以发现！
+}
+```
+
+#### 诊断方法
+1. **使用 node 检查语法**：
+   ```bash
+   node -c filename.js
+   ```
+   这会立即报告语法错误：
+   ```
+   SyntaxError: Identifier 'parentParts' has already been declared
+   ```
+
+2. **查看 git diff**：
+   重点检查新增或修改的变量声明
+
+3. **搜索重复声明**：
+   在编辑器中搜索变量名，检查是否在同一作用域内重复声明
+
+#### 解决方案
+1. **修复语法错误**：删除重复的声明或重命名变量
+2. **改进错误处理**：在 catch 块中添加日志
+   ```javascript
+   } catch (error) {
+     if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+       MNUtil.addErrorLog(error, "文件初始化失败", {filename: "xdyy_utils_extensions.js"})
+     }
+     // 至少在控制台输出
+     console.error("初始化失败:", error)
+   }
+   ```
+
+#### 预防措施
+1. **开发时启用语法检查**：配置编辑器实时检查语法错误
+2. **提交前验证**：使用 `node -c` 检查所有修改的 JS 文件
+3. **避免静默错误处理**：所有 catch 块都应该记录错误信息
+4. **使用 ESLint**：配置 no-redeclare 规则
+
+#### 经验总结
+- 当类突然"消失"时，首先怀疑文件加载失败
+- 文件加载失败通常是因为语法错误
+- 静默的 try-catch 是调试的大敌
+- 始终使用工具验证语法正确性

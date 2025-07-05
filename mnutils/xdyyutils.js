@@ -211,6 +211,16 @@ class MNMath {
         "被引用情况",
       ]
     },
+    总结: {
+      refName: '总结',
+      prefixName: '总结',
+      englishName: 'summary',
+      templateNoteId: '032FC61B-37BD-4A90-AE9D-5A946842F49B',
+      ifIndependent: false,
+      colorIndex: 6,  // 蓝色
+      fields: [
+      ]
+    },
   }
 
   /**

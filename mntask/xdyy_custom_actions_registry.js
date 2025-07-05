@@ -59,9 +59,15 @@ function registerAllCustomActions() {
     
     // 判断是否已经是任务卡片
     if (MNTaskManager.isTaskCard(focusNote)) {
-      // 已经是任务卡片，更新路径并清除失效链接
+      // 已经是任务卡片，更新链接关系、路径并清除失效链接
       MNUtil.undoGrouping(() => {
+        // 首先更新链接关系（如果卡片已经移动）
+        MNTaskManager.updateTaskLinkRelationship(focusNote);
+        
+        // 更新任务路径
         MNTaskManager.updateTaskPath(focusNote);
+        
+        // 清除失效链接
         MNUtil.undoGrouping(()=>{
           try {
             MNTaskManager.cleanupBrokenLinks(focusNote);

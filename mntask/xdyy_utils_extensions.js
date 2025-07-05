@@ -798,6 +798,94 @@ class MNTaskManager {
   }
 
   /**
+   * 更新任务卡片的链接关系
+   * 当卡片从一个父卡片移动到另一个父卡片时，更新所有相关的链接
+   * @param {MNNote} childNote - 已移动的子卡片
+   */
+  static updateTaskLinkRelationship(childNote) {
+    if (!childNote || !this.isTaskCard(childNote)) return
+    
+    // 获取当前父卡片
+    const currentParent = childNote.parentNote
+    if (!currentParent || !this.isTaskCard(currentParent)) return
+    
+    // 解析子卡片的评论，查找"所属"字段
+    const parsed = this.parseTaskComments(childNote)
+    
+    if (parsed.belongsTo) {
+      try {
+        // 从"所属"字段中提取旧父卡片的链接
+        const belongsToText = parsed.belongsTo.text
+        const linkMatch = belongsToText.match(/\[(.*?)\]\(marginnote[34]app:\/\/note\/([A-Z0-9-]+)\)/)
+        
+        if (linkMatch) {
+          const oldParentId = linkMatch[2]
+          
+          // 如果旧父卡片ID与当前父卡片ID不同，说明已经移动
+          if (oldParentId !== currentParent.noteId) {
+            MNUtil.log(`🔄 检测到卡片移动：从 ${oldParentId} 到 ${currentParent.noteId}`)
+            
+            // 1. 删除旧父卡片中的链接
+            const oldParent = MNNote.new(oldParentId, false)
+            if (oldParent && this.isTaskCard(oldParent)) {
+              const oldParentParsed = this.parseTaskComments(oldParent)
+              
+              // 查找并删除指向当前子卡片的链接
+              for (let link of oldParentParsed.links) {
+                if (link.linkedNoteId === childNote.noteId) {
+                  MNUtil.log(`🗑️ 删除旧父卡片中的链接，索引：${link.index}`)
+                  oldParent.removeCommentByIndex(link.index)
+                  break
+                }
+              }
+            }
+            
+            // 2. 在新父卡片中添加链接
+            const childTitleParts = this.parseTaskTitle(childNote.noteTitle)
+            const childStatus = childTitleParts.status || '未开始'
+            
+            // 检查新父卡片中是否已有链接
+            const currentParentParsed = this.parseTaskComments(currentParent)
+            let hasLink = false
+            for (let link of currentParentParsed.links) {
+              if (link.linkedNoteId === childNote.noteId) {
+                hasLink = true
+                break
+              }
+            }
+            
+            if (!hasLink) {
+              MNUtil.log(`➕ 在新父卡片中添加链接`)
+              currentParent.appendNoteLink(childNote, "To")
+              const newLinkIndex = currentParent.MNComments.length - 1
+              this.moveCommentToField(currentParent, newLinkIndex, childStatus, true)
+            }
+            
+            // 3. 更新子卡片的"所属"字段
+            MNUtil.log(`🔄 更新子卡片的所属字段`)
+            const belongsToComment = childNote.MNComments[parsed.belongsTo.index]
+            const currentParentParts = this.parseTaskTitle(currentParent.noteTitle)
+            const newBelongsToText = `所属: [${currentParentParts.content}](${currentParent.noteURL})`
+            
+            // 使用 MNComment 的 text 属性直接修改
+            belongsToComment.text = newBelongsToText
+            MNUtil.log(`✅ 所属字段已更新`)
+          } else {
+            MNUtil.log(`ℹ️ 卡片未移动，无需更新链接关系`)
+          }
+        }
+      } catch (e) {
+        MNUtil.log(`❌ 更新链接关系时出错：${e.message}`)
+        MNUtil.addErrorLog(e, "updateTaskLinkRelationship", {noteId: childNote.noteId})
+      }
+    } else if (currentParent && this.isTaskCard(currentParent)) {
+      // 如果没有"所属"字段，说明是第一次建立链接关系
+      MNUtil.log(`➕ 首次建立链接关系`)
+      this.linkParentTask(childNote, currentParent)
+    }
+  }
+
+  /**
    * 强制刷新卡片及其父卡片
    * @param {MNNote} note - 要刷新的卡片
    * @param {boolean} refreshParent - 是否刷新父卡片

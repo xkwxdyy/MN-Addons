@@ -6667,6 +6667,7 @@ MNNote.prototype.refreshAll = async function(delay = 0){
       ancestorNote.refresh()
     })
   }
+  this.refresh()
 }
 
 MNNote.prototype.getIncludingCommentIndex = function(comment,includeHtmlComment = false) {

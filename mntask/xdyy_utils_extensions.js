@@ -551,19 +551,30 @@ class MNTaskManager {
         MNUtil.log("✅ 找到匹配字段！")
         if (toBottom) {
           // 移动到该字段的最底部
-          // 需要找到下一个字段的位置或卡片末尾
           const currentFieldIndex = field.index
           let nextFieldIndex = note.MNComments.length
           
-          // 查找下一个字段
-          for (let nextField of parsed.taskFields) {
-            if (nextField.index > currentFieldIndex) {
-              nextFieldIndex = nextField.index
-              break
+          // 如果当前字段是主字段，找下一个主字段
+          if (field.isMainField) {
+            // 查找下一个主字段
+            for (let nextField of parsed.taskFields) {
+              if (nextField.isMainField && nextField.index > currentFieldIndex) {
+                nextFieldIndex = nextField.index
+                MNUtil.log("🔍 找到下一个主字段：" + nextField.content + " at index " + nextFieldIndex)
+                break
+              }
+            }
+          } else {
+            // 子字段：查找下一个任意字段
+            for (let nextField of parsed.taskFields) {
+              if (nextField.index > currentFieldIndex) {
+                nextFieldIndex = nextField.index
+                break
+              }
             }
           }
           
-          // 目标位置就是下一个字段的位置（或卡片末尾）
+          // 目标位置就是下一个字段的位置
           targetIndex = nextFieldIndex
           MNUtil.log("📍 目标索引（底部）：" + targetIndex)
         } else {
@@ -1122,8 +1133,10 @@ class MNTaskManager {
       
       const text = comment.text || ''
       
-      // 检查是否是任务字段（但不是主字段）
-      if (TaskFieldUtils.isTaskField(text) && !text.includes('id="mainField"')) {
+      // 检查是否是任务字段（但不是主字段，也不是"所属"字段）
+      if (TaskFieldUtils.isTaskField(text) && 
+          !text.includes('id="mainField"') && 
+          !text.includes('id="belongs-to"')) {
         const parsed = TaskFieldUtils.getFieldNameAndContent(text)
         subFields.push({
           index: i,

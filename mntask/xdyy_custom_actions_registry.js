@@ -139,14 +139,6 @@ function registerAllCustomActions() {
         MNTaskManager.linkParentTask(noteToConvert, parentNote);
       });
     });
-    
-    // 显示完成信息
-    const totalProcessed = taskCards.length + notTaskCards.length;
-    if (notTaskCards.length > 0) {
-      MNUtil.showHUD(`✅ 已批量处理 ${totalProcessed} 个卡片\n新增任务：${notTaskCards.length} 个\n更新任务：${taskCards.length} 个`);
-    } else {
-      MNUtil.showHUD(`✅ 已更新 ${taskCards.length} 个任务卡片`);
-    }
   });
   
   // toggleTaskStatusForward - 向前切换任务状态（单击）

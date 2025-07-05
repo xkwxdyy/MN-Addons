@@ -670,118 +670,6 @@ class MNTaskManager {
     MNUtil.log("✅ moveCommentToField 完成")
   }
 
-  /**
-   * 移动链接到状态字段下方
-   * @param {MNNote} note - 要操作的卡片
-   * @param {number} linkIndex - 要移动的链接索引
-   * @param {string} statusText - 目标状态（未开始/进行中/已完成）
-   */
-  static moveLinkToStatusField(note, linkIndex, statusText) {
-    if (!note || !note.MNComments) return
-    
-    MNUtil.log(`🚚 moveLinkToStatusField 开始: linkIndex=${linkIndex}, status=${statusText}`)
-    MNUtil.log(`📋 卡片标题：${note.noteTitle}`)
-    MNUtil.log(`📋 总评论数：${note.MNComments.length}`)
-    
-    const parsed = this.parseTaskComments(note)
-    
-    // 查找目标状态字段
-    let targetStatusField = null
-    const statusFields = parsed.taskFields.filter(f => f.isStatusField)
-    
-    for (let field of statusFields) {
-      // 去除emoji后匹配
-      const cleanContent = field.content.replace(/[😴🔥✅]\s*/, '')
-      if (cleanContent === statusText) {
-        targetStatusField = field
-        MNUtil.log(`✅ 找到目标状态字段: "${field.content}" at index ${field.index}`)
-        break
-      }
-    }
-    
-    if (!targetStatusField) {
-      MNUtil.log(`❌ 未找到状态字段: ${statusText}`)
-      
-      // 尝试添加任务字段
-      if (!this.hasTaskFields(note)) {
-        MNUtil.log("🔧 卡片缺少任务字段，尝试添加")
-        this.addTaskFieldsWithStatus(note)
-        
-        // 重新解析
-        const newParsed = this.parseTaskComments(note)
-        const newStatusFields = newParsed.taskFields.filter(f => f.isStatusField)
-        
-        for (let field of newStatusFields) {
-          const cleanContent = field.content.replace(/[😴🔥✅]\s*/, '')
-          if (cleanContent === statusText) {
-            targetStatusField = field
-            MNUtil.log(`✅ 添加字段后找到目标状态字段: "${field.content}" at index ${field.index}`)
-            break
-          }
-        }
-      }
-      
-      if (!targetStatusField) {
-        MNUtil.log("❌ 仍然找不到状态字段，放弃")
-        return
-      }
-    }
-    
-    // 计算目标位置：找到该状态字段区域的末尾
-    const statusOrder = ['未开始', '进行中', '已完成']
-    const currentStatusIndex = statusOrder.indexOf(statusText)
-    let targetIndex = note.MNComments.length  // 默认到最后
-    
-    // 找到下一个字段的位置
-    for (let field of parsed.taskFields) {
-      if (field.index > targetStatusField.index) {
-        // 如果是后续的状态字段
-        if (field.isStatusField) {
-          const cleanContent = field.content.replace(/[😴🔥✅]\s*/, '')
-          const nextStatusIndex = statusOrder.indexOf(cleanContent)
-          // 只有后续状态在顺序上大于当前状态时，才认为是边界
-          if (nextStatusIndex > currentStatusIndex) {
-            targetIndex = field.index
-            MNUtil.log(`🔍 找到下一个状态字段: "${field.content}" at index ${field.index}`)
-            break
-          }
-        } else {
-          // 非状态字段，直接作为边界
-          targetIndex = field.index
-          MNUtil.log(`🔍 找到下一个非状态字段: "${field.content}" at index ${field.index}`)
-          break
-        }
-      }
-    }
-    
-    MNUtil.log(`🎯 目标位置: ${targetIndex}`)
-    
-    // 移动链接
-    if (linkIndex < targetIndex) {
-      // 向下移动
-      const actualTarget = targetIndex === note.MNComments.length ? targetIndex - 1 : targetIndex - 1
-      MNUtil.log(`🔄 向下移动链接从索引 ${linkIndex} 到 ${actualTarget}`)
-      try {
-        note.moveComment(linkIndex, actualTarget, false)
-        MNUtil.log(`✅ 链接移动成功`)
-      } catch (e) {
-        MNUtil.log(`❌ 链接移动失败: ${e.message}`)
-      }
-    } else if (linkIndex > targetIndex) {
-      // 向上移动
-      MNUtil.log(`🔄 向上移动链接从索引 ${linkIndex} 到 ${targetIndex}`)
-      try {
-        note.moveComment(linkIndex, targetIndex, false)
-        MNUtil.log(`✅ 链接移动成功`)
-      } catch (e) {
-        MNUtil.log(`❌ 链接移动失败: ${e.message}`)
-      }
-    } else {
-      MNUtil.log(`⚠️ 链接已在目标位置`)
-    }
-    
-    MNUtil.log("✅ moveLinkToStatusField 完成")
-  }
 
   /**
    * 更新或创建"所属"字段
@@ -855,7 +743,7 @@ class MNTaskManager {
       MNUtil.log(`📊 子任务状态：${status}`)
       
       // 4. 将父任务中的链接移动到对应状态字段下
-      this.moveLinkToStatusField(parent, linkIndexInParent, status)
+      this.moveCommentToField(parent, linkIndexInParent, status, true)
       
       // 5. 在子任务中更新所属字段（这已经包含了父任务的链接）
       // 构建所属字段内容
@@ -995,7 +883,7 @@ class MNTaskManager {
             if (link.linkedNoteId === note.noteId) {
               // 找到了链接，将其移动到新状态字段下
               MNUtil.log(`🔄 找到链接 at index ${link.index}，准备移动到 ${newStatus} 字段`)
-              this.moveLinkToStatusField(parent, link.index, newStatus)
+              this.moveCommentToField(parent, link.index, newStatus, true)
               linkFound = true
               break
             }

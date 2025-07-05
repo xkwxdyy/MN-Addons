@@ -223,7 +223,14 @@ function registerAllCustomActions() {
     // 更新状态
     MNUtil.undoGrouping(() => {
       MNTaskManager.updateTaskStatus(focusNote, newStatus);
-      focusNote.refreshAll();
+      
+      // 刷新当前卡片
+      focusNote.refresh();
+      
+      // 刷新父卡片（如果有）
+      if (focusNote.parentNote && MNTaskManager.isTaskCard(focusNote.parentNote)) {
+        focusNote.parentNote.refresh();
+      }
     });
     
     MNUtil.showHUD(`✅ 状态已更新：${currentStatus} → ${newStatus}`);
@@ -458,6 +465,189 @@ function registerAllCustomActions() {
           } else {
             MNUtil.showHUD(`⚠️ ${successCount}/${taskNotes.length} 个卡片修改成功`);
           }
+        });
+      }
+    );
+  });
+
+  // batchTaskCardMakeByHierarchy - 根据层级批量制卡
+  MNTaskGlobal.registerCustomAction("batchTaskCardMakeByHierarchy", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    if (!focusNote) {
+      MNUtil.showHUD("请先选择根卡片");
+      return;
+    }
+    
+    MNUtil.log("🏗️ 开始根据层级批量制卡");
+    MNUtil.log("📌 根卡片：" + focusNote.noteTitle);
+    
+    // 获取所有后代节点和层级信息
+    let allDescendants, treeIndex;
+    try {
+      const nodesData = focusNote.descendantNodes;
+      if (!nodesData || typeof nodesData.descendant === 'undefined' || typeof nodesData.treeIndex === 'undefined') {
+        throw new Error("无法获取后代节点信息");
+      }
+      allDescendants = nodesData.descendant;
+      treeIndex = nodesData.treeIndex;
+    } catch (e) {
+      MNUtil.log("❌ 无法获取后代节点：" + e.message);
+      MNUtil.showHUD("无法获取卡片层级信息");
+      return;
+    }
+    
+    // 计算最大层级深度（根节点为 0）
+    let maxLevel = 0;
+    const nodesWithInfo = [];
+    
+    // 首先添加根节点
+    nodesWithInfo.push({
+      node: focusNote,
+      level: 0,
+      treeIndex: []
+    });
+    
+    // 添加所有后代节点
+    if (allDescendants && allDescendants.length > 0) {
+      allDescendants.forEach((node, i) => {
+        const level = treeIndex[i].length;
+        nodesWithInfo.push({
+          node: node,
+          level: level,
+          treeIndex: treeIndex[i]
+        });
+        maxLevel = Math.max(maxLevel, level);
+      });
+    }
+    
+    MNUtil.log(`📊 节点总数：${nodesWithInfo.length}，最大层级：${maxLevel}`);
+    
+    // 根据层级深度确定任务类型分配策略
+    function getTaskTypeByLevel(level, maxLevel) {
+      if (maxLevel === 0) return "动作";  // 只有根节点
+      
+      if (maxLevel === 1) {
+        return level === 0 ? "项目" : "动作";
+      }
+      
+      if (maxLevel === 2) {
+        switch(level) {
+          case 0: return "目标";
+          case 1: return "关键结果";
+          case 2: return "项目";
+          default: return "动作";
+        }
+      }
+      
+      // maxLevel >= 3
+      if (level === 0) return "目标";
+      if (level === 1) return "关键结果";
+      if (level === maxLevel) return "动作";
+      return "项目";  // 中间层都是项目
+    }
+    
+    // 显示预览信息
+    let previewInfo = `将创建 ${nodesWithInfo.length} 个任务卡片：\n\n`;
+    previewInfo += `层级结构：\n`;
+    for (let i = 0; i <= maxLevel; i++) {
+      const taskType = getTaskTypeByLevel(i, maxLevel);
+      const count = nodesWithInfo.filter(n => n.level === i).length;
+      previewInfo += `  第${i}层：${taskType}（${count}个）\n`;
+    }
+    
+    // 确认对话框
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "批量制卡确认",
+      previewInfo,
+      0,
+      "取消",
+      ["开始制卡"],
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) return; // 用户取消
+        
+        MNUtil.undoGrouping(() => {
+          let successCount = 0;
+          let failCount = 0;
+          
+          // 按层级顺序处理，从根节点开始
+          for (let currentLevel = 0; currentLevel <= maxLevel; currentLevel++) {
+            const nodesAtThisLevel = nodesWithInfo.filter(item => item.level === currentLevel);
+            
+            nodesAtThisLevel.forEach(item => {
+              const node = item.node;
+              const taskType = getTaskTypeByLevel(item.level, maxLevel);
+              
+              try {
+                MNUtil.log(`🔨 处理节点：${node.noteTitle}，层级：${item.level}，类型：${taskType}`);
+                
+                // 处理摘录卡片
+                let noteToConvert = node;
+                if (node.excerptText && typeof MNMath !== 'undefined' && MNMath.toNoExcerptVersion) {
+                  const converted = MNMath.toNoExcerptVersion(node);
+                  if (converted) {
+                    noteToConvert = converted;
+                  }
+                }
+                
+                // 检查是否已经是任务卡片
+                if (MNTaskManager.isTaskCard(noteToConvert)) {
+                  // 已经是任务卡片，更新类型
+                  const titleParts = MNTaskManager.parseTaskTitle(noteToConvert.noteTitle);
+                  const path = MNTaskManager.buildTaskPath(noteToConvert);
+                  
+                  const newTitle = path ? 
+                    `【${taskType} >> ${path}｜${titleParts.status}】${titleParts.content}` :
+                    `【${taskType}｜${titleParts.status}】${titleParts.content}`;
+                  
+                  noteToConvert.noteTitle = newTitle;
+                  
+                  // 更新链接关系
+                  MNTaskManager.updateTaskLinkRelationship(noteToConvert);
+                  MNTaskManager.updateTaskPath(noteToConvert);
+                } else {
+                  // 不是任务卡片，需要转换
+                  const path = MNTaskManager.buildTaskPath(noteToConvert);
+                  const content = noteToConvert.noteTitle || "未命名任务";
+                  const newTitle = path ? 
+                    `【${taskType} >> ${path}｜未开始】${content}` :
+                    `【${taskType}｜未开始】${content}`;
+                  
+                  noteToConvert.noteTitle = newTitle;
+                  noteToConvert.colorIndex = 12;  // 白色=未开始
+                  
+                  // 添加任务字段
+                  MNTaskManager.addTaskFieldsWithStatus(noteToConvert);
+                  
+                  // 如果有父节点且父节点是任务卡片，建立链接
+                  if (noteToConvert.parentNote && MNTaskManager.isTaskCard(noteToConvert.parentNote)) {
+                    MNTaskManager.linkParentTask(noteToConvert, noteToConvert.parentNote);
+                  }
+                }
+                
+                successCount++;
+              } catch (error) {
+                MNUtil.log(`❌ 处理节点失败：${error.message}`);
+                failCount++;
+              }
+            });
+          }
+          
+          // 刷新所有节点
+          nodesWithInfo.forEach(item => {
+            try {
+              item.node.refresh();
+            } catch (e) {
+              // 忽略刷新错误
+            }
+          });
+          
+          // 显示结果
+          const resultMsg = failCount === 0 ? 
+            `✅ 批量制卡完成！\n成功创建/更新 ${successCount} 个任务卡片` :
+            `⚠️ 批量制卡完成\n成功：${successCount} 个\n失败：${failCount} 个`;
+          
+          MNUtil.showHUD(resultMsg);
         });
       }
     );

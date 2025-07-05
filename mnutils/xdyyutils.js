@@ -4205,7 +4205,7 @@ class HtmlMarkdownUtils {
               }
           }
       }
-      MNUtil.showHUD("向上合并完成！", 2);
+      // MNUtil.showHUD("向上合并完成！", 2);
   }
 
 

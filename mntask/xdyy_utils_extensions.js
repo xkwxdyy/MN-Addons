@@ -538,8 +538,12 @@ class MNTaskManager {
     if (!note || !note.MNComments) return
     
     MNUtil.log("🚚 moveCommentToField 开始 fieldText=" + fieldText + ", toBottom=" + toBottom + ", commentIndices=" + JSON.stringify(commentIndices))
+    MNUtil.log("📋 卡片标题：" + note.noteTitle)
+    MNUtil.log("📋 总评论数：" + note.MNComments.length)
     
     const parsed = this.parseTaskComments(note)
+    MNUtil.log("📋 解析到的任务字段：" + JSON.stringify(parsed.taskFields.map(f => ({content: f.content, index: f.index, type: f.fieldType}))))
+    
     let targetIndex = -1
     
     // 查找目标字段
@@ -585,8 +589,34 @@ class MNTaskManager {
     }
     
     if (targetIndex === -1) {
-      MNUtil.log("❌ 未找到目标字段")
-      return
+      MNUtil.log("❌ 未找到目标字段: " + fieldText)
+      MNUtil.log("🔍 可用的字段有：" + parsed.taskFields.map(f => `"${f.content}"`).join(", "))
+      
+      // 特殊处理：如果找不到状态字段，可能是因为卡片结构有问题
+      // 检查是否是状态字段
+      const statusFields = ['未开始', '进行中', '已完成']
+      if (statusFields.includes(fieldText)) {
+        MNUtil.log("⚠️ 这是一个状态字段，但未找到。检查卡片是否已正确初始化任务字段")
+        // 尝试添加任务字段
+        if (!this.hasTaskFields(note)) {
+          MNUtil.log("🔧 卡片缺少任务字段，尝试添加")
+          this.addTaskFieldsWithStatus(note)
+          // 重新解析
+          const newParsed = this.parseTaskComments(note)
+          for (let field of newParsed.taskFields) {
+            if (field.content.trim() === fieldText.trim()) {
+              targetIndex = toBottom ? field.index + 1 : field.index + 1  // 暂时都紧贴字段
+              MNUtil.log(`✅ 添加字段后找到目标字段："${field.content}" at index ${field.index}`)
+              break
+            }
+          }
+        }
+      }
+      
+      // 如果还是找不到，返回
+      if (targetIndex === -1) {
+        return
+      }
     }
     
     // 转换为数组
@@ -596,22 +626,161 @@ class MNTaskManager {
     // 使用 moveComment 方法移动评论
     // 参考 MNMath 的实现，需要考虑移动方向
     indices.forEach(index => {
+      MNUtil.log(`📍 准备移动评论: index=${index}, targetIndex=${targetIndex}, 评论总数=${note.MNComments.length}`)
+      
+      // 获取要移动的评论内容（用于调试）
+      try {
+        const commentToMove = note.MNComments[index]
+        if (commentToMove) {
+          MNUtil.log(`📋 要移动的评论类型: ${commentToMove.type}`)
+          if (commentToMove.type === 'linkComment' && commentToMove.note) {
+            MNUtil.log(`🔗 这是一个链接评论，指向: ${commentToMove.note.noteTitle || commentToMove.note.noteId}`)
+          }
+        }
+      } catch (e) {
+        MNUtil.log(`⚠️ 无法读取评论内容: ${e.message}`)
+      }
+      
       // 判断移动方向
       if (index < targetIndex) {
         // 向下移动，目标位置需要减 1
-        const actualTarget = targetIndex - 1
+        // 但如果目标位置是最后一个位置，则不需要减 1
+        const actualTarget = targetIndex === note.MNComments.length ? targetIndex - 1 : targetIndex - 1
         MNUtil.log(`🔄 向下移动评论从索引 ${index} 到 ${actualTarget} (原目标 ${targetIndex})`)
-        note.moveComment(index, actualTarget, false)
+        try {
+          note.moveComment(index, actualTarget, false)
+          MNUtil.log(`✅ 移动成功`)
+        } catch (e) {
+          MNUtil.log(`❌ 移动失败: ${e.message}`)
+        }
       } else if (index > targetIndex) {
         // 向上移动，直接使用目标位置
         MNUtil.log(`🔄 向上移动评论从索引 ${index} 到 ${targetIndex}`)
-        note.moveComment(index, targetIndex, false)
+        try {
+          note.moveComment(index, targetIndex, false)
+          MNUtil.log(`✅ 移动成功`)
+        } catch (e) {
+          MNUtil.log(`❌ 移动失败: ${e.message}`)
+        }
       } else {
         MNUtil.log(`⚠️ 评论已在目标位置，无需移动`)
       }
     })
     
     MNUtil.log("✅ moveCommentToField 完成")
+  }
+
+  /**
+   * 移动链接到状态字段下方
+   * @param {MNNote} note - 要操作的卡片
+   * @param {number} linkIndex - 要移动的链接索引
+   * @param {string} statusText - 目标状态（未开始/进行中/已完成）
+   */
+  static moveLinkToStatusField(note, linkIndex, statusText) {
+    if (!note || !note.MNComments) return
+    
+    MNUtil.log(`🚚 moveLinkToStatusField 开始: linkIndex=${linkIndex}, status=${statusText}`)
+    MNUtil.log(`📋 卡片标题：${note.noteTitle}`)
+    MNUtil.log(`📋 总评论数：${note.MNComments.length}`)
+    
+    const parsed = this.parseTaskComments(note)
+    
+    // 查找目标状态字段
+    let targetStatusField = null
+    const statusFields = parsed.taskFields.filter(f => f.isStatusField)
+    
+    for (let field of statusFields) {
+      // 去除emoji后匹配
+      const cleanContent = field.content.replace(/[😴🔥✅]\s*/, '')
+      if (cleanContent === statusText) {
+        targetStatusField = field
+        MNUtil.log(`✅ 找到目标状态字段: "${field.content}" at index ${field.index}`)
+        break
+      }
+    }
+    
+    if (!targetStatusField) {
+      MNUtil.log(`❌ 未找到状态字段: ${statusText}`)
+      
+      // 尝试添加任务字段
+      if (!this.hasTaskFields(note)) {
+        MNUtil.log("🔧 卡片缺少任务字段，尝试添加")
+        this.addTaskFieldsWithStatus(note)
+        
+        // 重新解析
+        const newParsed = this.parseTaskComments(note)
+        const newStatusFields = newParsed.taskFields.filter(f => f.isStatusField)
+        
+        for (let field of newStatusFields) {
+          const cleanContent = field.content.replace(/[😴🔥✅]\s*/, '')
+          if (cleanContent === statusText) {
+            targetStatusField = field
+            MNUtil.log(`✅ 添加字段后找到目标状态字段: "${field.content}" at index ${field.index}`)
+            break
+          }
+        }
+      }
+      
+      if (!targetStatusField) {
+        MNUtil.log("❌ 仍然找不到状态字段，放弃")
+        return
+      }
+    }
+    
+    // 计算目标位置：找到该状态字段区域的末尾
+    const statusOrder = ['未开始', '进行中', '已完成']
+    const currentStatusIndex = statusOrder.indexOf(statusText)
+    let targetIndex = note.MNComments.length  // 默认到最后
+    
+    // 找到下一个字段的位置
+    for (let field of parsed.taskFields) {
+      if (field.index > targetStatusField.index) {
+        // 如果是后续的状态字段
+        if (field.isStatusField) {
+          const cleanContent = field.content.replace(/[😴🔥✅]\s*/, '')
+          const nextStatusIndex = statusOrder.indexOf(cleanContent)
+          // 只有后续状态在顺序上大于当前状态时，才认为是边界
+          if (nextStatusIndex > currentStatusIndex) {
+            targetIndex = field.index
+            MNUtil.log(`🔍 找到下一个状态字段: "${field.content}" at index ${field.index}`)
+            break
+          }
+        } else {
+          // 非状态字段，直接作为边界
+          targetIndex = field.index
+          MNUtil.log(`🔍 找到下一个非状态字段: "${field.content}" at index ${field.index}`)
+          break
+        }
+      }
+    }
+    
+    MNUtil.log(`🎯 目标位置: ${targetIndex}`)
+    
+    // 移动链接
+    if (linkIndex < targetIndex) {
+      // 向下移动
+      const actualTarget = targetIndex === note.MNComments.length ? targetIndex - 1 : targetIndex - 1
+      MNUtil.log(`🔄 向下移动链接从索引 ${linkIndex} 到 ${actualTarget}`)
+      try {
+        note.moveComment(linkIndex, actualTarget, false)
+        MNUtil.log(`✅ 链接移动成功`)
+      } catch (e) {
+        MNUtil.log(`❌ 链接移动失败: ${e.message}`)
+      }
+    } else if (linkIndex > targetIndex) {
+      // 向上移动
+      MNUtil.log(`🔄 向上移动链接从索引 ${linkIndex} 到 ${targetIndex}`)
+      try {
+        note.moveComment(linkIndex, targetIndex, false)
+        MNUtil.log(`✅ 链接移动成功`)
+      } catch (e) {
+        MNUtil.log(`❌ 链接移动失败: ${e.message}`)
+      }
+    } else {
+      MNUtil.log(`⚠️ 链接已在目标位置`)
+    }
+    
+    MNUtil.log("✅ moveLinkToStatusField 完成")
   }
 
   /**
@@ -664,19 +833,29 @@ class MNTaskManager {
       return
     }
     
+    MNUtil.log(`🔗 开始链接父任务：${parent.noteTitle}`)
+    
     MNUtil.undoGrouping(() => {
+      // 确保父任务有任务字段
+      if (!this.hasTaskFields(parent)) {
+        MNUtil.log("⚠️ 父任务缺少任务字段，先添加")
+        this.addTaskFieldsWithStatus(parent)
+      }
+      
       // 1. 在父任务中创建到子任务的链接
       parent.appendNoteLink(note, "To")
       
       // 2. 获取父任务中刚创建的链接索引
       const linkIndexInParent = parent.MNComments.length - 1
+      MNUtil.log(`📎 创建链接，索引：${linkIndexInParent}`)
       
       // 3. 获取子任务的状态
       const titleParts = this.parseTaskTitle(note.noteTitle)
       const status = titleParts.status || '未开始'
+      MNUtil.log(`📊 子任务状态：${status}`)
       
       // 4. 将父任务中的链接移动到对应状态字段下
-      this.moveCommentToField(parent, linkIndexInParent, status, true)
+      this.moveLinkToStatusField(parent, linkIndexInParent, status)
       
       // 5. 在子任务中更新所属字段（这已经包含了父任务的链接）
       // 构建所属字段内容
@@ -725,12 +904,9 @@ class MNTaskManager {
         note.replaceWithMarkdownComment(belongsToText, parsed.belongsTo.index)
       }
       
-      // 强制触发父卡片的界面更新
-      // 通过微小修改父卡片的属性来触发刷新
-      MNUtil.log("🔄 强制触发父卡片更新")
-      const oldParentColor = parent.colorIndex
-      parent.colorIndex = (oldParentColor + 1) % 16  // 临时改变颜色
-      parent.colorIndex = oldParentColor  // 立即恢复原色
+      // 刷新父卡片以确保界面更新
+      parent.refresh()
+      MNUtil.log("✅ 父任务链接完成")
     })
   }
 
@@ -801,19 +977,36 @@ class MNTaskManager {
       // 如果有父任务，更新父任务中链接的位置
       const parent = note.parentNote
       if (parent && this.isTaskCard(parent)) {
+        MNUtil.log(`🔄 更新父任务中的链接位置: ${parent.noteTitle}`)
+        
+        // 确保父任务有任务字段
+        if (!this.hasTaskFields(parent)) {
+          MNUtil.log("⚠️ 父任务缺少任务字段，先添加")
+          this.addTaskFieldsWithStatus(parent)
+        }
+        
         // 解析父任务的评论，找到指向当前任务的链接
         const parsed = this.parseTaskComments(parent)
         
         // 查找指向当前任务的链接
         try {
+          let linkFound = false
           for (let link of parsed.links) {
             if (link.linkedNoteId === note.noteId) {
               // 找到了链接，将其移动到新状态字段下
-              MNUtil.log("🔄 找到链接，准备移动到 " + newStatus + " 字段")
-              this.moveCommentToField(parent, link.index, newStatus, true)
+              MNUtil.log(`🔄 找到链接 at index ${link.index}，准备移动到 ${newStatus} 字段`)
+              this.moveLinkToStatusField(parent, link.index, newStatus)
+              linkFound = true
               break
             }
           }
+          
+          if (!linkFound) {
+            MNUtil.log("⚠️ 未在父任务中找到指向当前任务的链接")
+          }
+          
+          // 刷新父卡片
+          parent.refresh()
         } catch (e) {
           MNUtil.log("❌ 更新父任务链接位置时出错: " + e.message)
           MNUtil.addErrorLog(e, "updateTaskStatus", {noteId: note.noteId, newStatus: newStatus})

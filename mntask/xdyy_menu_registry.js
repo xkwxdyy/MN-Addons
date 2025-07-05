@@ -49,6 +49,10 @@ function registerAllMenuTemplates() {
           action: "changeTaskType",
           menuTitle: "    🔄 修改卡片类型（支持多选）"
         },
+        {
+          action: "batchTaskCardMakeByHierarchy",
+          menuTitle: "    🏗️ 根据层级批量制卡"
+        },
       ]
     }
   });

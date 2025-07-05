@@ -78,6 +78,10 @@ function registerAllMenuTemplates() {
           action: "editCustomField",
           menuTitle: "    ✏️ 编辑自定义字段"
         },
+        {
+          action: "addOrUpdateLaunchLink",
+          menuTitle: "    📱 添加/更新启动链接"
+        },
       ]
     }
   });

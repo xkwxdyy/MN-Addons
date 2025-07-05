@@ -1472,6 +1472,61 @@ function registerAllCustomActions() {
     );
   });
 
+  // addOrUpdateLaunchLink - 添加或更新启动链接
+  MNTaskGlobal.registerCustomAction("addOrUpdateLaunchLink", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    if (!focusNote) {
+      MNUtil.showHUD("请先选择一个任务", 2);
+      return;
+    }
+    
+    // 检查是否是任务卡片
+    if (!MNTaskManager.isTaskCard(focusNote)) {
+      MNUtil.showHUD("请先将卡片转换为任务卡片", 2);
+      return;
+    }
+    
+    // 获取剪切板内容
+    const clipboardText = MNUtil.clipboardText;
+    
+    // 检查是否是 MarginNote UI 状态链接
+    if (!clipboardText || !clipboardText.startsWith("marginnote4app://uistatus/")) {
+      MNUtil.showHUD("剪切板中没有有效的 MarginNote UI 状态链接", 2);
+      return;
+    }
+    
+    MNUtil.undoGrouping(() => {
+      try {
+        // 构建特殊的字段内容：字段名即是 Markdown 链接
+        const launchLink = `[启动](${clipboardText})`;
+        const fieldHtml = TaskFieldUtils.createFieldHtml(launchLink, 'subField');
+        
+        // 检查是否已有"启动"字段
+        const existingIndex = focusNote.getIncludingCommentIndex("[启动]");
+        
+        if (existingIndex !== -1) {
+          // 更新现有字段
+          focusNote.replaceWithMarkdownComment(fieldHtml, existingIndex);
+          MNUtil.showHUD("✅ 已更新启动链接", 2);
+        } else {
+          // 添加新字段
+          focusNote.appendMarkdownComment(fieldHtml);
+          const lastIndex = focusNote.MNComments.length - 1;
+          
+          // 移动到"信息"字段下
+          MNTaskManager.moveCommentToField(focusNote, lastIndex, '信息', true);
+          MNUtil.showHUD("✅ 已添加启动链接", 2);
+        }
+        
+        // 刷新卡片
+        focusNote.refresh();
+      } catch (error) {
+        MNUtil.showHUD("操作失败：" + error.message, 2);
+      }
+    });
+  });
+
   // ==================== 今日任务管理相关 ====================
   
   // clearTimeTag - 清除所有时间标签

@@ -374,12 +374,27 @@ class MNTaskManager {
     
     MNUtil.log("🎯 开始添加任务字段")
     
+    // 解析任务类型
+    const titleParts = this.parseTaskTitle(note.noteTitle)
+    const taskType = titleParts.type
+    
+    MNUtil.log(`📋 任务类型：${taskType}`)
+    
     MNUtil.undoGrouping(() => {
       // 添加主字段"信息"
       const infoFieldHtml = TaskFieldUtils.createFieldHtml('信息', 'mainField')
       MNUtil.log("📝 信息字段HTML: " + infoFieldHtml)
       note.appendMarkdownComment(infoFieldHtml)
       MNUtil.log("✅ 添加信息字段，索引：" + (note.MNComments.length - 1))
+      
+      // 如果是"动作"类型，只添加信息字段，跳过其他字段
+      if (taskType === "动作") {
+        MNUtil.log("🎯 动作类型任务，只添加信息字段")
+        MNUtil.log("🎯 任务字段添加完成，总评论数：" + note.MNComments.length)
+        return
+      }
+      
+      // 其他类型（目标、关键结果、项目）继续添加剩余字段
       
       // 添加主字段"包含"
       const containsFieldHtml = TaskFieldUtils.createFieldHtml('包含', 'mainField')
@@ -742,8 +757,16 @@ class MNTaskManager {
       const status = titleParts.status || '未开始'
       MNUtil.log(`📊 子任务状态：${status}`)
       
-      // 4. 将父任务中的链接移动到对应状态字段下
-      this.moveCommentToField(parent, linkIndexInParent, status, true)
+      // 4. 将父任务中的链接移动到对应位置
+      // 检查父任务类型，如果是"动作"类型，移动到"信息"字段下；否则移动到状态字段下
+      const parentTitleParts = this.parseTaskTitle(parent.noteTitle)
+      if (parentTitleParts.type === "动作") {
+        MNUtil.log(`📋 父任务是动作类型，将链接移动到"信息"字段下`)
+        this.moveCommentToField(parent, linkIndexInParent, "信息", true)
+      } else {
+        MNUtil.log(`📋 父任务是${parentTitleParts.type}类型，将链接移动到"${status}"字段下`)
+        this.moveCommentToField(parent, linkIndexInParent, status, true)
+      }
       
       // 5. 在子任务中更新所属字段（这已经包含了父任务的链接）
       // 构建所属字段内容
@@ -881,9 +904,15 @@ class MNTaskManager {
           let linkFound = false
           for (let link of parsed.links) {
             if (link.linkedNoteId === note.noteId) {
-              // 找到了链接，将其移动到新状态字段下
-              MNUtil.log(`🔄 找到链接 at index ${link.index}，准备移动到 ${newStatus} 字段`)
-              this.moveCommentToField(parent, link.index, newStatus, true)
+              // 找到了链接，根据父任务类型决定移动位置
+              const parentTitleParts = this.parseTaskTitle(parent.noteTitle)
+              if (parentTitleParts.type === "动作") {
+                MNUtil.log(`🔄 找到链接 at index ${link.index}，父任务是动作类型，保持在"信息"字段下`)
+                // 动作类型不需要移动链接位置，因为它们都在"信息"字段下
+              } else {
+                MNUtil.log(`🔄 找到链接 at index ${link.index}，准备移动到 ${newStatus} 字段`)
+                this.moveCommentToField(parent, link.index, newStatus, true)
+              }
               linkFound = true
               break
             }
@@ -991,7 +1020,16 @@ class MNTaskManager {
               MNUtil.log(`➕ 在新父卡片中添加链接`)
               currentParent.appendNoteLink(childNote, "To")
               const newLinkIndex = currentParent.MNComments.length - 1
-              this.moveCommentToField(currentParent, newLinkIndex, childStatus, true)
+              
+              // 根据父任务类型决定移动位置
+              const currentParentTitleParts = this.parseTaskTitle(currentParent.noteTitle)
+              if (currentParentTitleParts.type === "动作") {
+                MNUtil.log(`📋 新父任务是动作类型，将链接移动到"信息"字段下`)
+                this.moveCommentToField(currentParent, newLinkIndex, "信息", true)
+              } else {
+                MNUtil.log(`📋 新父任务是${currentParentTitleParts.type}类型，将链接移动到"${childStatus}"字段下`)
+                this.moveCommentToField(currentParent, newLinkIndex, childStatus, true)
+              }
             }
             
             // 3. 更新子卡片的"所属"字段

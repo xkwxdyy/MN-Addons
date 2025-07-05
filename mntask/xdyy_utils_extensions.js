@@ -833,7 +833,6 @@ class MNTaskManager {
       const childStatus = childTitleParts.status || '未开始'
       
       // 如果子任务是"进行中"，父任务应该也是"进行中"（如果当前是"未开始"）
-      const parentParts = this.parseTaskTitle(parent.noteTitle)
       if (childStatus === "进行中" && parentParts.status === "未开始") {
         MNUtil.log("🔄 子任务进行中，更新父任务状态")
         this.updateTaskStatus(parent, "进行中", true)  // 跳过父任务更新避免循环

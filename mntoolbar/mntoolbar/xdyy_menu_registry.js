@@ -744,6 +744,10 @@ function registerAllMenuTemplates() {
           action: "addNewIdeaNote",
           menuTitle: "    生成「思路」卡片"
         },
+        {
+          action: "addNewSummaryNote",
+          menuTitle: "    生成「总结」卡片"
+        },
         "🔄 处理旧卡片",
         {
           action: "retainFieldContentOnly",

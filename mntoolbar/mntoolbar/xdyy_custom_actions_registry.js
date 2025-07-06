@@ -4442,6 +4442,32 @@ function registerAllCustomActions() {
     });
   });
 
+  // addNewSummaryNote
+  global.registerCustomAction("addNewSummaryNote", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    MNUtil.undoGrouping(() => {
+      try {
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "输入总结标题",
+          "",
+          2,
+          "取消",
+          ["确定"],
+          (alert, buttonIndex) => {
+            let userInput = alert.textFieldAtIndex(0).text;
+            if (buttonIndex == 1 && userInput) {
+              MNUtil.undoGrouping(() => {
+                MNMath.addNewSummaryNote(focusNote, userInput);
+              });
+            }
+          },
+        );
+      } catch (error) {
+        MNUtil.showHUD(error);
+      }
+    });
+  });
+
   // makeCard
   global.registerCustomAction("makeCard", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;

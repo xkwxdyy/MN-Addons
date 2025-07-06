@@ -226,10 +226,14 @@ class MNMath {
       refName: '总结',
       prefixName: '总结',
       englishName: 'summary',
-      templateNoteId: '032FC61B-37BD-4A90-AE9D-5A946842F49B',
-      ifIndependent: false,
-      colorIndex: 6,  // 蓝色
+      templateNoteId: 'F6FCB6B6-E40A-4937-8918-D53F332CD2D8',
+      ifIndependent: true,
+      colorIndex: 8,  // 橙色
       fields: [
+        "核心总结",
+        "要点列举",
+        "相关思考",
+        "相关链接"
       ]
     },
   }
@@ -244,7 +248,8 @@ class MNMath {
     "反例",
     "思想方法",
     "问题",
-    "思路"
+    "思路",
+    "总结"
   ]
 
   /**
@@ -266,7 +271,8 @@ class MNMath {
     "文献": "文献信息",
     "论文": "文献信息",
     "书作": "文献信息",
-    "研究进展": "进展详情"
+    "研究进展": "进展详情",
+    "总结": "要点列举"
   }
 
   /**
@@ -603,7 +609,7 @@ class MNMath {
     /**
      * 不处理的类型
      */
-    let excludingTypes = ["思路"];
+    let excludingTypes = ["思路", "总结"];
     if (excludingTypes.includes(this.getNoteType(note))) {
       return; // 不处理
     }
@@ -2136,6 +2142,40 @@ class MNMath {
 
     MNUtil.undoGrouping(()=>{
       ideaNote.focusInMindMap(0.3)
+    })
+  }
+
+  /**
+   * 增加总结卡片
+   * 
+   * @param {MNNote} note - 当前卡片
+   * @param {string} title - 总结卡片的标题
+   */
+  static addNewSummaryNote(note, title) {
+    // 生成卡片
+    let summaryNote = MNNote.clone(this.types.总结.templateNoteId);
+    
+    // 处理标题
+    let prefixContent = this.createChildNoteTitlePrefixContent(note);
+    summaryNote.title = this.createTitlePrefix(this.types.总结.prefixName, prefixContent) + title;
+    
+    // 设置完标题后再添加为子卡片
+    note.addChild(summaryNote);
+    
+    // 处理链接和评论
+    note.appendMarkdownComment(HtmlMarkdownUtils.createHtmlMarkdownText(title, "remark"));  // 使用 remark 样式
+    note.appendNoteLink(summaryNote, "Both");  // 双向链接
+    
+    // 根据父卡片类型决定移动到哪个字段
+    let targetField = this.getNoteType(note) === "总结" ? "要点列举" : "相关思考";
+    this.moveCommentsArrToField(note, "Y, Z", targetField);  // 移动到对应字段
+    
+    // 在总结卡片中，将父卡片的链接移动到"相关链接"字段
+    // 双向链接会在总结卡片的最后位置创建父卡片的链接
+    this.moveCommentsArrToField(summaryNote, "Z", "相关链接");
+    
+    MNUtil.undoGrouping(() => {
+      summaryNote.focusInMindMap(0.5)  // 增加延迟到0.5秒，让定位效果更明显
     })
   }
 

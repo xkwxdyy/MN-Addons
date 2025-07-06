@@ -4025,8 +4025,21 @@ class MNMath {
         try {
           const targetNote = MNUtil.getNoteById(link.noteId);
           if (targetNote) {
-            const title = targetNote.noteTitle || "[无标题]";
-            linkDisplayNames.push(title);
+            // 使用 MNNote 包装以便使用 parseNoteTitle
+            const targetMNNote = MNNote.new(targetNote);
+            const titleParts = this.parseNoteTitle(targetMNNote);
+            
+            // 获取内容部分，并去掉可能的 "; " 前缀
+            let content = titleParts.content || targetNote.noteTitle || "[无标题]";
+            if (content.startsWith("; ")) {
+              content = content.substring(2).trim();
+            }
+            
+            // 格式化显示：[类型] 内容
+            const type = titleParts.type || "";
+            const displayTitle = type ? `[${type}] ${content}` : content;
+            
+            linkDisplayNames.push(displayTitle);
           } else {
             linkDisplayNames.push(`[笔记不存在: ${link.noteId.substring(0, 8)}...]`);
           }

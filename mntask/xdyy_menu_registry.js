@@ -55,7 +55,7 @@ function registerAllMenuTemplates() {
         },
         {
           action: "updateChildrenPaths",
-          menuTitle: "    🔄 更新子卡片路径（支持多选）"
+          menuTitle: "    🔄 更新子卡片（支持多选）"
         },
       ]
     }

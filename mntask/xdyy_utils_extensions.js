@@ -734,6 +734,47 @@ class MNTaskManager {
   }
 
   /**
+   * 检查是否有启动字段
+   * @param {MNNote} note - 要检查的笔记
+   * @returns {boolean} 是否有启动字段
+   */
+  static hasLaunchField(note) {
+    if (!note || !note.MNComments) return false
+    
+    for (let comment of note.MNComments) {
+      if (comment && comment.text) {
+        // 检查是否包含 [启动] 的 Markdown 链接格式
+        if (comment.text.includes('[启动](')) {
+          return true
+        }
+      }
+    }
+    return false
+  }
+
+  /**
+   * 添加默认启动字段
+   * @param {MNNote} note - 要添加启动字段的笔记
+   */
+  static addDefaultLaunchField(note) {
+    if (!note) return
+    
+    const defaultLaunchLink = "marginnote4app://uistatus/H4sIAAAAAAAAE5VSy5LbIBD8F87SFuIp%2BWbJ5VxyyCG3VCqF0LBmg4VKoM06W%2F73AHbiveY2j56mp5l3NHr%2F8zxxtEOGgNbYMNNJGGmHJWAsmRg7wRQIojpDZQtEj5ibpm0apeRI5ahBcKEx4agqZGFxNqIdzlmM%2Fjx5jXZGuQAV0mqdRv9WujmG6Q7Vzv%2BGB8zPEeYYSivNO3WB1U5JI2MDYw0b6l4OtGb7o6h72rY1wU2Hh33Ph%2BMh6YC3ND%2Bd%2FQSFwlgHNzLjvIpntdwSr7cw%2BwiFuj%2F27ND2pO4IYTXjvajbLqf4yEk74D2lXaI2m3MfV0pkn71W0foZ7d6RNyZAzNGPl%2BDnV%2BU2%2BHpZkg40fPri7RwTRzbgibWSck6YbEUjGO1khS6lzgWThLNUo7jlmF8rFLRyeZUnIiiTVGDcsK5JGHEtCgI4F9Kr375XyC%2Bw3uXgD5kfX26FLTo7P7xe1DMkf1O5tBc1gysTRUv6f960mLKOcdJgUqEVAqhVnwp6hVcLv26hfT7dnL0T32D5Iko%2F2AlGtT7a%2BUzsbHz2SvstGbNr0jZRjeFkpwnmf9B4gnM28ABGbS4bGP1i9f8cRJb59zCvfwCp6rmF9QIAAA%3D%3D"
+    
+    const launchLink = `[启动](${defaultLaunchLink})`
+    const fieldHtml = TaskFieldUtils.createFieldHtml(launchLink, 'subField')
+    
+    MNUtil.undoGrouping(() => {
+      // 添加到末尾
+      note.appendMarkdownComment(fieldHtml)
+      const lastIndex = note.MNComments.length - 1
+      
+      // 移动到"信息"字段下（在"所属"字段后面，toBottom = true 表示放在字段最底部）
+      this.moveCommentToField(note, lastIndex, '信息', true)
+    })
+  }
+
+  /**
    * 链接父任务
    * @param {MNNote} note - 要链接的卡片
    * @param {MNNote} parentNote - 父任务卡片（可选）
@@ -828,8 +869,14 @@ class MNTaskManager {
         note.replaceWithMarkdownComment(belongsToText, parsed.belongsTo.index)
       }
       
-      // 状态同步：建立关系后检查是否需要更新父任务状态
+      // 如果是动作类型，还需要检查并添加启动字段
       const childTitleParts = this.parseTaskTitle(note.noteTitle)
+      if (childTitleParts.type === "动作" && !this.hasLaunchField(note)) {
+        MNUtil.log("➕ 为动作类型添加默认启动字段")
+        this.addDefaultLaunchField(note)
+      }
+      
+      // 状态同步：建立关系后检查是否需要更新父任务状态
       const childStatus = childTitleParts.status || '未开始'
       
       // 如果子任务是"进行中"，父任务应该也是"进行中"（如果当前是"未开始"）
@@ -1439,9 +1486,16 @@ class MNTaskManager {
         // 2. 更新所属字段
         this.updateBelongsToField(childNote, parentNote)
         
+        // 3. 如果是动作类型，检查并添加启动字段
+        const childTitleParts = this.parseTaskTitle(childNote.noteTitle)
+        if (childTitleParts.type === "动作" && !this.hasLaunchField(childNote)) {
+          MNUtil.log("➕ 为动作类型添加默认启动字段")
+          this.addDefaultLaunchField(childNote)
+        }
+        
         updatedCount++
         
-        // 3. 递归更新子卡片的子卡片
+        // 4. 递归更新子卡片的子卡片
         const subCount = this.updateChildrenPathsRecursively(childNote, processedIds)
         updatedCount += subCount
         

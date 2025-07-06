@@ -1557,17 +1557,22 @@ function registerAllCustomActions() {
     
     // 获取剪切板内容
     const clipboardText = MNUtil.clipboardText;
+    const defaultLaunchLink = "marginnote4app://uistatus/H4sIAAAAAAAAE5VSy5LbIBD8F87SFuIp%2BWbJ5VxyyCG3VCqF0LBmg4VKoM06W%2F73AHbiveY2j56mp5l3NHr%2F8zxxtEOGgNbYMNNJGGmHJWAsmRg7wRQIojpDZQtEj5ibpm0apeRI5ahBcKEx4agqZGFxNqIdzlmM%2Fjx5jXZGuQAV0mqdRv9WujmG6Q7Vzv%2BGB8zPEeYYSivNO3WB1U5JI2MDYw0b6l4OtGb7o6h72rY1wU2Hh33Ph%2BMh6YC3ND%2Bd%2FQSFwlgHNzLjvIpntdwSr7cw%2BwiFuj%2F27ND2pO4IYTXjvajbLqf4yEk74D2lXaI2m3MfV0pkn71W0foZ7d6RNyZAzNGPl%2BDnV%2BU2%2BHpZkg40fPri7RwTRzbgibWSck6YbEUjGO1khS6lzgWThLNUo7jlmF8rFLRyeZUnIiiTVGDcsK5JGHEtCgI4F9Kr375XyC%2Bw3uXgD5kfX26FLTo7P7xe1DMkf1O5tBc1gysTRUv6f960mLKOcdJgUqEVAqhVnwp6hVcLv26hfT7dnL0T32D5Iko%2F2AlGtT7a%2BUzsbHz2SvstGbNr0jZRjeFkpwnmf9B4gnM28ABGbS4bGP1i9f8cRJb59zCvfwCp6rmF9QIAAA%3D%3D";
     
-    // 检查是否是 MarginNote UI 状态链接
-    if (!clipboardText || !clipboardText.startsWith("marginnote4app://uistatus/")) {
-      MNUtil.showHUD("剪切板中没有有效的 MarginNote UI 状态链接", 2);
-      return;
+    // 检查是否是 MarginNote UI 状态链接，如果不是则使用默认链接
+    let linkToUse;
+    if (clipboardText && clipboardText.startsWith("marginnote4app://uistatus/")) {
+      linkToUse = clipboardText;
+      MNUtil.log("✅ 使用剪切板中的链接");
+    } else {
+      linkToUse = defaultLaunchLink;
+      MNUtil.log("📋 使用默认启动链接");
     }
     
     MNUtil.undoGrouping(() => {
       try {
         // 构建特殊的字段内容：字段名即是 Markdown 链接
-        const launchLink = `[启动](${clipboardText})`;
+        const launchLink = `[启动](${linkToUse})`;
         const fieldHtml = TaskFieldUtils.createFieldHtml(launchLink, 'subField');
         
         // 检查是否已有"启动"字段

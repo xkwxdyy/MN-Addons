@@ -13,6 +13,7 @@ class MNMath {
     "反例": "AE530B71-E758-47CA-8C88-A59E5D287CBD",
     "问题": "C58ED58F-56BE-47F8-8F6B-1D76FF6212F8",
     "思想方法": "A4A7B09E-D124-4192-9804-C074718E399C",
+    "研究进展": "7D37A27B-9964-4552-9F64-684DA0F10270",
   }
   /**
    * 单条 HtmlComment 的模板卡片 id
@@ -169,7 +170,7 @@ class MNMath {
       englishName: 'researchProgress',
       templateNoteId: 'C59D8428-68EA-4161-82BE-EA4314C3B5E9',
       ifIndependent: true,
-      colorIndex: 14,  // 深灰色
+      colorIndex: 6,  // 蓝色
       fields: [
         "进展详情",
         "相关思考",
@@ -609,7 +610,7 @@ class MNMath {
     /**
      * 不处理的类型
      */
-    let excludingTypes = ["思路", "总结"];
+    let excludingTypes = ["思路", "总结", "研究进展"];
     if (excludingTypes.includes(this.getNoteType(note))) {
       return; // 不处理
     }

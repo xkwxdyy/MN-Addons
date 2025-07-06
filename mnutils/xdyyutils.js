@@ -3158,7 +3158,11 @@ class MNMath {
           case 1:
             break;
           default:
-            moveCommentIndexArr = this.getHtmlCommentExcludingFieldBlockIndexArr(note, htmlCommentsTextArr[buttonIndex-1])
+            // 只有在用户没有输入时，才根据选择的字段区获取评论索引
+            if (!userInput) {
+              moveCommentIndexArr = this.getHtmlCommentExcludingFieldBlockIndexArr(note, htmlCommentsTextArr[buttonIndex-1])
+            }
+            // 如果用户已输入，保留用户输入的索引，只是帮助快速跳转到第二步
             break;
         }
         UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(

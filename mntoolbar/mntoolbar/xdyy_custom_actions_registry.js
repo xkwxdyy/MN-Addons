@@ -4587,6 +4587,16 @@ function registerAllCustomActions() {
     });
   })
 
+  // updateBidirectionalLink
+  global.registerCustomAction("updateBidirectionalLink", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    if (typeof MNMath !== 'undefined' && MNMath.updateBidirectionalLink) {
+      await MNMath.updateBidirectionalLink(focusNote);
+    } else {
+      MNUtil.showHUD("需要安装最新版本的 MNUtils");
+    }
+  })
+
 }
 
 // 立即注册

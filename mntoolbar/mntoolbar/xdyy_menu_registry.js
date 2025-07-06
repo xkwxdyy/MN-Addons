@@ -54,6 +54,10 @@ function registerAllMenuTemplates() {
           action: "removeBidirectionalLinks",
           menuTitle: "删除字段中的双向链接",
         },
+        {
+          action: "updateBidirectionalLink",
+          menuTitle: "更新链接",
+        },
         // {
         //   action: "moveLastTwoCommentByPopupTo",
         //   menuTitle: "移动「最后2️⃣条」评论",

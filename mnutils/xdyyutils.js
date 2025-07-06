@@ -1150,19 +1150,22 @@ class MNMath {
       })
     }
     
-    // 刷新所有链接到当前卡片的其他卡片
-    // 这样可以确保"应用"等字段中的链接显示正确的新标题
-    if (note.linkedNotes && note.linkedNotes.length > 0) {
-      note.linkedNotes.forEach(linkedNote => {
-        try {
-          const linkedNoteObj = MNNote.new(linkedNote.noteid)
-          if (linkedNoteObj) {
-            this.refreshNote(linkedNoteObj)
+    // 刷新当前卡片链接到的其他卡片
+    // 这样可以确保双向链接的卡片都能显示正确的新标题
+    if (note.MNComments && note.MNComments.length > 0) {
+      note.MNComments.forEach(comment => {
+        if (comment.type === "linkComment") {
+          try {
+            // 直接使用 URL 获取链接的卡片
+            const linkedNote = MNNote.new(comment.text);
+            if (linkedNote) {
+              this.refreshNote(linkedNote);
+            }
+          } catch (error) {
+            // 忽略无法刷新的链接卡片
           }
-        } catch (error) {
-          // 忽略无法刷新的链接卡片
         }
-      })
+      });
     }
   }
 

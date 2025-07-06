@@ -4222,7 +4222,25 @@ class MNMath {
         return this.truncateText(comment.text, maxTextLength);
         
       case "markdownComment":
-        return "[Markdown] " + this.truncateText(comment.text, maxTextLength - 11);
+        // 检查是否是 HtmlMarkdown 格式
+        let commentText = comment.text;
+        // 去掉可能的 "- " 前缀
+        if (commentText && commentText.startsWith("- ")) {
+          commentText = commentText.substring(2);
+        }
+        
+        if (commentText && HtmlMarkdownUtils.isHtmlMDComment(commentText)) {
+          const type = HtmlMarkdownUtils.getSpanType(commentText);
+          const content = HtmlMarkdownUtils.getSpanTextContent(commentText);
+          const icon = HtmlMarkdownUtils.icons[type] || "";
+          const prefix = HtmlMarkdownUtils.prefix[type] || "";
+          // 格式化显示：[类型图标] 内容
+          const displayText = `[${icon}] ${prefix}${content}`;
+          return this.truncateText(displayText, maxTextLength);
+        } else {
+          // 普通 Markdown 评论
+          return "[Markdown] " + this.truncateText(comment.text, maxTextLength - 11);
+        }
         
       case "tagComment":
         return "[标签] " + comment.text;
@@ -4264,6 +4282,24 @@ class MNMath {
         return "[纯手写]";
         
       default:
+        // 检查是否是 HtmlMarkdown 评论
+        if (comment.text) {
+          let cleanText = comment.text;
+          // 去掉可能的 "- " 前缀
+          if (cleanText.startsWith("- ")) {
+            cleanText = cleanText.substring(2);
+          }
+          
+          if (HtmlMarkdownUtils.isHtmlMDComment(cleanText)) {
+            const type = HtmlMarkdownUtils.getSpanType(cleanText);
+            const content = HtmlMarkdownUtils.getSpanTextContent(cleanText);
+            const icon = HtmlMarkdownUtils.icons[type] || "";
+            const prefix = HtmlMarkdownUtils.prefix[type] || "";
+            // 格式化显示：[类型图标] 内容
+            const displayText = `[${icon}] ${prefix}${content}`;
+            return this.truncateText(displayText, maxTextLength);
+          }
+        }
         return `[${commentType || '未知类型'}]`;
     }
   }
@@ -4286,8 +4322,23 @@ class MNMath {
       // 尝试获取目标笔记
       let targetNote = MNNote.new(noteId, false);
       if (targetNote && targetNote.noteTitle) {
-        let title = this.truncateText(targetNote.noteTitle, 20);
-        return isSummary ? `[概要链接] ${title}` : `[链接] ${title}`;
+        // 使用 parseNoteTitle 解析标题
+        const titleParts = this.parseNoteTitle(targetNote);
+        
+        // 获取内容部分，并去掉可能的 "; " 前缀
+        let content = titleParts.content || targetNote.noteTitle || "";
+        if (content.startsWith("; ")) {
+          content = content.substring(2).trim();
+        }
+        
+        // 格式化显示：[类型] 内容
+        const type = titleParts.type || "";
+        const formattedTitle = type ? `[${type}] ${content}` : content;
+        
+        // 截断处理
+        let truncatedTitle = this.truncateText(formattedTitle, 30);  // 增加长度到30，因为类型标识占用了空间
+        
+        return isSummary ? `[概要链接] ${truncatedTitle}` : `[链接] ${truncatedTitle}`;
       } else {
         return isSummary ? "[概要链接] (笔记不存在)" : "[链接] (笔记不存在)";
       }

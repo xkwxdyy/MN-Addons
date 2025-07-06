@@ -3288,6 +3288,107 @@ class MNMath {
   }
 
   /**
+   * 解析字段内的顶层结构（用于第三层显示）
+   * 
+   * @param {MNNote} note - 笔记对象
+   * @param {Object} fieldObj - 字段对象
+   * @returns {Object} 返回字段内的顶层结构
+   */
+  static parseFieldTopLevelStructure(note, fieldObj) {
+    const structure = {
+      independentComments: [],  // HtmlMarkdown 之前的独立评论
+      htmlMarkdownSections: []  // HtmlMarkdown 区块（包含其标题和范围）
+    };
+    
+    const fieldIndices = fieldObj.excludingFieldBlockIndexArr;
+    const parsedComments = this.parseNoteComments(note);
+    let lastHtmlMarkdownEndIndex = fieldObj.index; // 字段本身的索引作为起始
+    
+    // 遍历字段内的所有内容
+    for (let i = 0; i < fieldIndices.length; i++) {
+      const index = fieldIndices[i];
+      const comment = note.MNComments[index];
+      if (!comment) continue;
+      
+      // 检查是否为 HtmlComment（字段），如果是则跳过
+      if (comment.text && comment.text.includes('<!-- ') && comment.text.includes(' -->')) {
+        continue;
+      }
+      
+      // 检查是否为 HtmlMarkdown 评论
+      const htmlMarkdownObj = parsedComments.htmlMarkdownCommentsObjArr.find(obj => obj.index === index);
+      
+      if (htmlMarkdownObj) {
+        // 找到了 HtmlMarkdown，先处理它之前的独立评论
+        for (let j = lastHtmlMarkdownEndIndex + 1; j < index; j++) {
+          if (fieldIndices.includes(j)) {
+            const prevComment = note.MNComments[j];
+            if (prevComment && !(prevComment.text && prevComment.text.includes('<!-- ') && prevComment.text.includes(' -->'))) {
+              structure.independentComments.push({
+                index: j,
+                comment: prevComment,
+                displayText: this.formatCommentForDisplay(prevComment, j, note)
+              });
+            }
+          }
+        }
+        
+        // 记录 HtmlMarkdown 区块
+        const icon = HtmlMarkdownUtils.icons[htmlMarkdownObj.type] || '📄';
+        structure.htmlMarkdownSections.push({
+          index: index,
+          htmlMarkdownObj: htmlMarkdownObj,
+          displayText: `[${icon}] ${htmlMarkdownObj.content || ''}`,
+          startIndex: index,
+          // 结束索引会在找到下一个 HtmlMarkdown 或到达字段末尾时确定
+          endIndex: null
+        });
+        
+        lastHtmlMarkdownEndIndex = index;
+      }
+    }
+    
+    // 处理最后一个 HtmlMarkdown 之后到字段末尾的独立评论
+    for (let j = lastHtmlMarkdownEndIndex + 1; j <= (fieldIndices[fieldIndices.length - 1] || fieldObj.index); j++) {
+      if (fieldIndices.includes(j)) {
+        const comment = note.MNComments[j];
+        if (comment && !(comment.text && comment.text.includes('<!-- ') && comment.text.includes(' -->'))) {
+          // 检查这个评论是否属于某个 HtmlMarkdown
+          let belongsToHtmlMarkdown = false;
+          for (let section of structure.htmlMarkdownSections) {
+            if (j > section.startIndex) {
+              belongsToHtmlMarkdown = true;
+              break;
+            }
+          }
+          
+          if (!belongsToHtmlMarkdown) {
+            structure.independentComments.push({
+              index: j,
+              comment: comment,
+              displayText: this.formatCommentForDisplay(comment, j, note)
+            });
+          }
+        }
+      }
+    }
+    
+    // 设置每个 HtmlMarkdown 区块的结束索引
+    for (let i = 0; i < structure.htmlMarkdownSections.length; i++) {
+      const section = structure.htmlMarkdownSections[i];
+      if (i < structure.htmlMarkdownSections.length - 1) {
+        // 不是最后一个，结束于下一个 HtmlMarkdown 之前
+        section.endIndex = structure.htmlMarkdownSections[i + 1].startIndex - 1;
+      } else {
+        // 是最后一个，结束于字段末尾
+        section.endIndex = fieldIndices[fieldIndices.length - 1] || section.startIndex;
+      }
+    }
+    
+    return structure;
+  }
+
+  /**
    * 解析字段内的所有内容（包括 HtmlMarkdown 和普通评论）
    * 
    * @param {MNNote} note - 笔记对象
@@ -3349,37 +3450,72 @@ class MNMath {
       return;
     }
     
-    const allContents = this.parseFieldAllContents(note, fieldObj);
+    const structure = this.parseFieldTopLevelStructure(note, fieldObj);
     
-    if (allContents.length === 0) {
+    // 检查字段是否为空
+    if (structure.independentComments.length === 0 && structure.htmlMarkdownSections.length === 0) {
       // 字段内没有内容，直接返回字段底部
       callback(fieldObj.index + 1);
       return;
     }
     
     let options = [`【${fieldName}】字段顶部`];
-    let optionTypes = ['fieldTop']; // 记录每个选项的类型
+    let optionActions = [{type: 'fieldTop'}]; // 记录每个选项的动作
     
-    // 为每个内容生成选项
-    for (let i = 0; i < allContents.length; i++) {
-      const content = allContents[i];
-      
-      if (content.type === 'htmlMarkdown') {
-        // HtmlMarkdown 评论只显示一个选项（可点击进入）
-        options.push(content.displayText);
-        optionTypes.push({type: 'htmlMarkdown', index: i});
-      } else {
-        // 普通评论显示上方和下方选项
-        options.push(`${content.displayText} ↑ 上方`);
-        optionTypes.push({type: 'position', index: i, isAfter: false});
+    // 合并并排序所有元素
+    let allElements = [];
+    
+    // 添加独立评论
+    structure.independentComments.forEach(comment => {
+      allElements.push({
+        type: 'independentComment',
+        index: comment.index,
+        data: comment
+      });
+    });
+    
+    // 添加 HtmlMarkdown 区块
+    structure.htmlMarkdownSections.forEach(section => {
+      allElements.push({
+        type: 'htmlMarkdown',
+        index: section.index,
+        data: section
+      });
+    });
+    
+    // 按索引排序
+    allElements.sort((a, b) => a.index - b.index);
+    
+    // 生成选项
+    for (const element of allElements) {
+      if (element.type === 'independentComment') {
+        // 独立评论显示上方和下方选项
+        const comment = element.data;
+        options.push(`${comment.displayText} ↑ 上方`);
+        optionActions.push({type: 'position', index: comment.index, isAfter: false});
         
-        options.push(`${content.displayText} ↓ 下方`);
-        optionTypes.push({type: 'position', index: i, isAfter: true});
+        options.push(`${comment.displayText} ↓ 下方`);
+        optionActions.push({type: 'position', index: comment.index, isAfter: true});
+        
+      } else if (element.type === 'htmlMarkdown') {
+        // HtmlMarkdown 显示标题（可点击）和 Top/Bottom
+        const section = element.data;
+        
+        // 标题（可点击进入）
+        options.push(`◆ ${section.displayText}`);
+        optionActions.push({type: 'htmlMarkdownDetail', section: section});
+        
+        // Top 和 Bottom
+        options.push(`🔝 ${section.displayText} Top 🔝`);
+        optionActions.push({type: 'position', index: section.index + 1, isAfter: false});
+        
+        options.push(`⬇️ ${section.displayText} Bottom ⬇️`);
+        optionActions.push({type: 'htmlMarkdownBottom', section: section});
       }
     }
     
     options.push(`【${fieldName}】字段底部`);
-    optionTypes.push('fieldBottom');
+    optionActions.push({type: 'fieldBottom'});
     
     // 显示选择对话框
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
@@ -3394,23 +3530,35 @@ class MNMath {
           return;
         }
         
-        const optionType = optionTypes[buttonIndex - 1];
+        const action = optionActions[buttonIndex - 1];
         
-        if (optionType === 'fieldTop') {
+        if (action.type === 'fieldTop') {
           // 字段顶部
           callback(fieldObj.index + 1);
-        } else if (optionType === 'fieldBottom') {
+          
+        } else if (action.type === 'fieldBottom') {
           // 字段底部
           const lastIndex = fieldObj.excludingFieldBlockIndexArr[fieldObj.excludingFieldBlockIndexArr.length - 1] || fieldObj.index;
           callback(lastIndex + 1);
-        } else if (optionType.type === 'htmlMarkdown') {
-          // 用户点击了 HtmlMarkdown 评论，显示其内部位置选择
-          const content = allContents[optionType.index];
-          this.showHtmlMarkdownInternalPositionDialog(note, content.htmlMarkdownObj, callback);
-        } else if (optionType.type === 'position') {
-          // 普通评论的位置
-          const content = allContents[optionType.index];
-          callback(optionType.isAfter ? content.index + 1 : content.index);
+          
+        } else if (action.type === 'position') {
+          // 直接位置
+          callback(action.index);
+          
+        } else if (action.type === 'htmlMarkdownDetail') {
+          // 用户点击了 HtmlMarkdown 标题，显示其内部位置选择
+          this.showHtmlMarkdownInternalPositionDialog(note, action.section.htmlMarkdownObj, callback);
+          
+        } else if (action.type === 'htmlMarkdownBottom') {
+          // HtmlMarkdown 的 Bottom
+          // 需要找到这个 HtmlMarkdown 区块的结束位置
+          const endIndex = action.section.endIndex;
+          if (endIndex !== null && endIndex >= action.section.startIndex) {
+            callback(endIndex + 1);
+          } else {
+            // 如果没有内容，就是 HtmlMarkdown 的下一个位置
+            callback(action.section.startIndex + 1);
+          }
         }
       }
     );
@@ -3690,24 +3838,6 @@ class MNMath {
           }
         }
         
-        // 判断是否点击了 HtmlMarkdown 评论
-        if (selectedOption && selectedOption.startsWith("◆ [")) {
-          // 获取对应的 HtmlMarkdown 评论对象
-          const targetIndex = this.getCommentsIndexArrToMoveForPopup(note)[buttonIndex - 1];
-          const parsedComments = this.parseNoteComments(note);
-          const htmlMarkdownObj = parsedComments.htmlMarkdownCommentsObjArr.find(obj => obj.index === targetIndex);
-          
-          if (htmlMarkdownObj) {
-            // 显示 HtmlMarkdown 内部位置选择对话框
-            this.showHtmlMarkdownInternalPositionDialog(note, htmlMarkdownObj, (finalTargetIndex) => {
-              if (finalTargetIndex !== null) {
-                this.performMove(note, moveCommentIndexArr, finalTargetIndex);
-              }
-            });
-            return;
-          }
-        }
-        
         // 直接移动到选定位置
         const targetIndex = this.getCommentsIndexArrToMoveForPopup(note)[buttonIndex - 1];
         if (targetIndex !== null) {
@@ -3796,11 +3926,9 @@ class MNMath {
         htmlCommentsTextArrForMove.push("⬇️ Bottom ⬇️");
         
       } else if (element.type === 'htmlMarkdown') {
-        // HtmlMarkdown 评论作为可点击的项目显示
-        const mdComment = element.obj;
-        const icon = HtmlMarkdownUtils.icons[mdComment.type] || '📄';
-        const content = mdComment.content || '';
-        htmlCommentsTextArrForMove.push(`◆ [${icon}] ${content}`);
+        // HtmlMarkdown 评论不在第二层显示
+        // 它们会在点击字段区域后的第三层显示
+        continue;
       }
     }
 
@@ -3878,9 +4006,8 @@ class MNMath {
         commentsIndexArrToMove.push(nextFieldIndex); // 对应："⬇️ Bottom ⬇️"
         
       } else if (element.type === 'htmlMarkdown') {
-        // HtmlMarkdown 评论现在在第二层显示，需要添加索引
-        // 点击后会显示第三层对话框
-        commentsIndexArrToMove.push(element.obj.index);
+        // HtmlMarkdown 评论不在第二层显示，不需要添加索引
+        continue;
       }
     }
 

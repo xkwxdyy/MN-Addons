@@ -3020,9 +3020,18 @@ class MNMath {
     if (filteredHtmlCommentsObjArr.length === 0) {
       // 没有字段
     } else if (filteredHtmlCommentsObjArr.length === 1) {
-      commentsIndexArrToMove.push(note.comments.length-1) // 对应："----------【xxx区】----------"
+      // 找到这个唯一字段在原始列表中的下一个字段
+      let currentOriginalIndex = htmlCommentsObjArr.findIndex(obj => obj.index === filteredHtmlCommentsObjArr[0].index);
+      let nextFieldIndex;
+      if (currentOriginalIndex + 1 < htmlCommentsObjArr.length) {
+        nextFieldIndex = htmlCommentsObjArr[currentOriginalIndex + 1].index;
+      } else {
+        nextFieldIndex = note.comments.length;
+      }
+      
+      commentsIndexArrToMove.push(nextFieldIndex) // 对应："----------【xxx区】----------"
       commentsIndexArrToMove.push(filteredHtmlCommentsObjArr[0].index + 1) // 对应："🔝 Top 🔝"
-      commentsIndexArrToMove.push(note.comments.length-1) // 对应："⬇️ Bottom ⬇️"
+      commentsIndexArrToMove.push(nextFieldIndex) // 对应："⬇️ Bottom ⬇️"
     } else {
       // 找到下一个未被过滤的字段索引
       let lastOriginalIndex = htmlCommentsObjArr.length - 1;
@@ -3034,18 +3043,15 @@ class MNMath {
         // 如果是原始列表中的最后一个字段，跳过
         if (originalIndex === lastOriginalIndex) break;
         
-        // 找到下一个字段的索引
+        // 找到下一个字段的索引（使用原始列表中的下一个字段，不管是否被过滤）
         let nextFieldIndex;
-        if (i + 1 < filteredHtmlCommentsObjArr.length) {
-          nextFieldIndex = filteredHtmlCommentsObjArr[i + 1].index;
+        let currentOriginalIndex = htmlCommentsObjArr.findIndex(obj => obj.index === currentFiltered.index);
+        if (currentOriginalIndex + 1 < htmlCommentsObjArr.length) {
+          // 使用原始列表中的下一个字段索引
+          nextFieldIndex = htmlCommentsObjArr[currentOriginalIndex + 1].index;
         } else {
-          // 如果是最后一个过滤后的字段，使用原始列表中的下一个
-          let currentOriginalIndex = htmlCommentsObjArr.findIndex(obj => obj.index === filteredHtmlCommentsObjArr[i].index);
-          if (currentOriginalIndex + 1 < htmlCommentsObjArr.length) {
-            nextFieldIndex = htmlCommentsObjArr[currentOriginalIndex + 1].index;
-          } else {
-            nextFieldIndex = note.comments.length;
-          }
+          // 如果是原始列表的最后一个，使用评论总数
+          nextFieldIndex = note.comments.length;
         }
         
         commentsIndexArrToMove.push(nextFieldIndex) // 对应："----------【xxx区】----------"

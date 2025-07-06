@@ -2784,17 +2784,6 @@ function registerAllCustomActions() {
     }
   });
 
-  // addHtmlMarkdownQuestion
-  global.registerCustomAction("addHtmlMarkdownQuestion", async function (context) {
-    const { button, des, focusNote, focusNotes, self } = context;
-    MNUtil.undoGrouping(() => {
-      try {
-        HtmlMarkdownUtils.addQuestionHtmlMDComment(focusNote);
-      } catch (error) {
-        MNUtil.showHUD(error);
-      }
-    });
-  });
 
   // clearContentKeepHtmlText
   global.registerCustomAction("clearContentKeepHtmlText", async function (context) {

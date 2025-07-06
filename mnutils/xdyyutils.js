@@ -3197,21 +3197,30 @@ class MNMath {
    * 
    * @param {MNNote} note - 笔记对象
    * @param {Object} htmlMarkdownComment - HtmlMarkdown 评论对象
+   * @param {Object} fieldObj - 字段对象，包含字段的边界信息
    * @param {Function} callback - 回调函数
    */
-  static showHtmlMarkdownInternalPositionDialog(note, htmlMarkdownComment, callback) {
-    // 获取该 HtmlMarkdown 评论后面的内容，直到下一个 HtmlMarkdown 或字段
+  static showHtmlMarkdownInternalPositionDialog(note, htmlMarkdownComment, fieldObj, callback) {
+    // 获取该 HtmlMarkdown 评论后面的内容，限制在当前字段范围内
     const comments = note.MNComments;
     const startIndex = htmlMarkdownComment.index;
     const internalComments = [];
     
-    // 从下一个位置开始收集
-    for (let i = startIndex + 1; i < comments.length; i++) {
-      const comment = comments[i];
+    // 获取字段的索引范围
+    const fieldIndices = fieldObj.excludingFieldBlockIndexArr;
+    const maxIndex = Math.max(...fieldIndices);
+    
+    // 从下一个位置开始收集，但限制在字段范围内
+    for (let i = startIndex + 1; i <= maxIndex && i < comments.length; i++) {
+      // 只处理属于当前字段的评论
+      if (!fieldIndices.includes(i)) continue;
       
-      // 如果遇到 HtmlComment（字段）或另一个 HtmlMarkdown，停止
+      const comment = comments[i];
+      if (!comment) continue;
+      
+      // 如果遇到 HtmlComment（字段），跳过
       if (comment.text && comment.text.includes('<!-- ') && comment.text.includes(' -->')) {
-        break;
+        continue;
       }
       
       // 检查是否为 HtmlMarkdown
@@ -3302,9 +3311,9 @@ class MNMath {
     
     const fieldIndices = fieldObj.excludingFieldBlockIndexArr;
     const parsedComments = this.parseNoteComments(note);
-    let lastHtmlMarkdownEndIndex = fieldObj.index; // 字段本身的索引作为起始
+    let lastProcessedIndex = fieldObj.index; // 字段本身的索引作为起始
     
-    // 遍历字段内的所有内容
+    // 遍历字段内的所有内容，找出所有 HtmlMarkdown 的位置
     for (let i = 0; i < fieldIndices.length; i++) {
       const index = fieldIndices[i];
       const comment = note.MNComments[index];
@@ -3320,7 +3329,7 @@ class MNMath {
       
       if (htmlMarkdownObj) {
         // 找到了 HtmlMarkdown，先处理它之前的独立评论
-        for (let j = lastHtmlMarkdownEndIndex + 1; j < index; j++) {
+        for (let j = lastProcessedIndex + 1; j < index; j++) {
           if (fieldIndices.includes(j)) {
             const prevComment = note.MNComments[j];
             if (prevComment && !(prevComment.text && prevComment.text.includes('<!-- ') && prevComment.text.includes(' -->'))) {
@@ -3340,34 +3349,41 @@ class MNMath {
           htmlMarkdownObj: htmlMarkdownObj,
           displayText: `[${icon}] ${htmlMarkdownObj.content || ''}`,
           startIndex: index,
-          // 结束索引会在找到下一个 HtmlMarkdown 或到达字段末尾时确定
-          endIndex: null
+          endIndex: null  // 稍后设置
         });
         
-        lastHtmlMarkdownEndIndex = index;
+        lastProcessedIndex = index;
       }
     }
     
-    // 处理最后一个 HtmlMarkdown 之后到字段末尾的独立评论
-    for (let j = lastHtmlMarkdownEndIndex + 1; j <= (fieldIndices[fieldIndices.length - 1] || fieldObj.index); j++) {
-      if (fieldIndices.includes(j)) {
-        const comment = note.MNComments[j];
+    // 处理最后一个位置之后的独立评论（如果没有 HtmlMarkdown，则处理所有评论）
+    if (structure.htmlMarkdownSections.length === 0) {
+      // 没有 HtmlMarkdown，所有评论都是独立的
+      for (let i = 0; i < fieldIndices.length; i++) {
+        const index = fieldIndices[i];
+        const comment = note.MNComments[index];
         if (comment && !(comment.text && comment.text.includes('<!-- ') && comment.text.includes(' -->'))) {
-          // 检查这个评论是否属于某个 HtmlMarkdown
-          let belongsToHtmlMarkdown = false;
-          for (let section of structure.htmlMarkdownSections) {
-            if (j > section.startIndex) {
-              belongsToHtmlMarkdown = true;
-              break;
+          structure.independentComments.push({
+            index: index,
+            comment: comment,
+            displayText: this.formatCommentForDisplay(comment, index, note)
+          });
+        }
+      }
+    } else {
+      // 有 HtmlMarkdown，处理最后一个 HtmlMarkdown 之前还未处理的独立评论
+      const lastHtmlMarkdownIndex = structure.htmlMarkdownSections[structure.htmlMarkdownSections.length - 1].index;
+      if (lastProcessedIndex < lastHtmlMarkdownIndex) {
+        for (let j = lastProcessedIndex + 1; j < lastHtmlMarkdownIndex; j++) {
+          if (fieldIndices.includes(j)) {
+            const comment = note.MNComments[j];
+            if (comment && !(comment.text && comment.text.includes('<!-- ') && comment.text.includes(' -->'))) {
+              structure.independentComments.push({
+                index: j,
+                comment: comment,
+                displayText: this.formatCommentForDisplay(comment, j, note)
+              });
             }
-          }
-          
-          if (!belongsToHtmlMarkdown) {
-            structure.independentComments.push({
-              index: j,
-              comment: comment,
-              displayText: this.formatCommentForDisplay(comment, j, note)
-            });
           }
         }
       }
@@ -3547,7 +3563,7 @@ class MNMath {
           
         } else if (action.type === 'htmlMarkdownDetail') {
           // 用户点击了 HtmlMarkdown 标题，显示其内部位置选择
-          this.showHtmlMarkdownInternalPositionDialog(note, action.section.htmlMarkdownObj, callback);
+          this.showHtmlMarkdownInternalPositionDialog(note, action.section.htmlMarkdownObj, fieldObj, callback);
           
         } else if (action.type === 'htmlMarkdownBottom') {
           // HtmlMarkdown 的 Bottom
@@ -3855,7 +3871,7 @@ class MNMath {
       try {
         note.moveCommentsByIndexArr(moveCommentIndexArr, targetIndex);
         note.refresh();
-        MNUtil.showHUD(`成功移动 ${moveCommentIndexArr.length} 项内容`);
+        // MNUtil.showHUD(`成功移动 ${moveCommentIndexArr.length} 项内容`);
       } catch (error) {
         MNUtil.showHUD("移动失败: " + error.message);
         MNUtil.addErrorLog(error, "performMove", {noteId: note.noteId});

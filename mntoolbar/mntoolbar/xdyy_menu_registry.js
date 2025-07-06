@@ -743,6 +743,11 @@ function registerAllMenuTemplates() {
           action: "makeCardWithoutFocus",
           menuTitle: "    不定位制卡"
         },
+        "⚙️ 处理卡片",
+        {
+          action: "upwardMergeWithStyledComments",
+          menuTitle: "    将子卡片作为证明要点合并",
+        },
         "🪄 生成卡片",
         {
           action: "addNewIdeaNote",
@@ -775,10 +780,6 @@ function registerAllMenuTemplates() {
     menuWidth: 320,
     menuItems: [
       "⬇️ 合并",
-      {
-        action: "upwardMergeWithStyledComments",
-        menuTitle: "    合并证明要点",
-      },
       {
         action: "mergeInParentNote",
         menuTitle: "    合并到父卡片",

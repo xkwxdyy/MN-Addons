@@ -1161,3 +1161,56 @@ try {
 - 文件加载失败通常是因为语法错误
 - 静默的 try-catch 是调试的大敌
 - 始终使用工具验证语法正确性
+
+### focusInMindMap 定位失效问题（异步执行与焦点管理）
+
+在开发新卡片生成功能（如思路卡片、总结卡片）时，发现 `focusInMindMap` 方法不能正确定位到新创建的卡片。
+
+#### 问题现象
+- 创建新卡片后，焦点仍然停留在原卡片上
+- 即使增加延迟参数（如 0.3、0.5 秒）也无效
+- 在脑图视图中也无法正常定位
+
+#### 根本原因
+`MNUtil.undoGrouping()` 与后续的评论移动操作之间存在冲突：
+1. 评论移动操作（`moveCommentsArrToField`）会改变焦点
+2. 这些操作可能在 `focusInMindMap` 执行时仍在进行
+3. 导致焦点被"抢走"
+
+#### 错误示例
+```javascript
+// ❌ 错误：在 undoGrouping 中执行，焦点会被后续操作抢走
+MNUtil.undoGrouping(() => {
+  if (MNUtil.mindmapView) {
+    summaryNote.focusInMindMap(0.5)
+  }
+})
+```
+
+#### 正确解决方案
+```javascript
+// ✅ 正确：使用 delay 确保所有操作完成后再定位
+// 处理链接和评论
+note.appendMarkdownComment(HtmlMarkdownUtils.createHtmlMarkdownText(title, "remark"));
+note.appendNoteLink(summaryNote, "Both");
+this.moveCommentsArrToField(note, "Y, Z", targetField);
+this.moveCommentsArrToField(summaryNote, "Z", "相关链接");
+
+// 延迟聚焦，确保所有操作完成后再定位
+MNUtil.delay(0.5).then(() => {
+  if (MNUtil.mindmapView) {
+    summaryNote.focusInMindMap(0.3)
+  }
+})
+```
+
+#### 关键要点
+1. **执行顺序很重要**：确保所有可能改变焦点的操作都完成后再调用 `focusInMindMap`
+2. **使用 Promise 延迟**：`MNUtil.delay().then()` 而不是 `MNUtil.undoGrouping()`
+3. **检查视图模式**：确保在脑图视图中才执行定位（`MNUtil.mindmapView`）
+4. **避免焦点竞争**：评论移动、链接创建等操作都可能改变焦点
+
+#### 适用场景
+- 创建新卡片并需要自动定位
+- 批量操作后需要定位到特定卡片
+- 任何涉及多个 UI 操作后的焦点管理

@@ -169,7 +169,7 @@ class MNMath {
       englishName: 'researchProgress',
       templateNoteId: 'C59D8428-68EA-4161-82BE-EA4314C3B5E9',
       ifIndependent: true,
-      colorIndex: 6,  // 蓝色
+      colorIndex: 14,  // 深灰色
       fields: [
         "进展详情",
         "相关思考",
@@ -2140,8 +2140,11 @@ class MNMath {
     note.appendNoteLink(ideaNote, "Both");  // 双向链接
     this.moveCommentsArrToField(note, "Y, Z", this.getIdeaLinkMoveToField(note));  // 移动 note 的两个评论
 
-    MNUtil.undoGrouping(()=>{
-      ideaNote.focusInMindMap(0.3)
+    // 延迟聚焦，确保所有操作完成后再定位
+    MNUtil.delay(0.5).then(() => {
+      if (MNUtil.mindmapView) {
+        ideaNote.focusInMindMap(0.3)
+      }
     })
   }
 
@@ -2174,8 +2177,11 @@ class MNMath {
     // 双向链接会在总结卡片的最后位置创建父卡片的链接
     this.moveCommentsArrToField(summaryNote, "Z", "相关链接");
     
-    MNUtil.undoGrouping(() => {
-      summaryNote.focusInMindMap(0.5)  // 增加延迟到0.5秒，让定位效果更明显
+    // 延迟聚焦，确保所有操作完成后再定位
+    MNUtil.delay(0.5).then(() => {
+      if (MNUtil.mindmapView) {
+        summaryNote.focusInMindMap(0.3)
+      }
     })
   }
 

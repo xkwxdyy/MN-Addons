@@ -1,0 +1,16 @@
+{
+  "currentState": "memory_saved",
+  "stateHistory": [
+    {
+      "from": "initial",
+      "command": "remember",
+      "timestamp": "2025-07-06T05:33:21.736Z",
+      "args": [
+        "## focusInMindMap 定位失效问题解决方案\n\n### 问题描述\n在 MarginNote 插件开发中，创建新卡片后使用 focusInMindMap 方法无法正确定位到新卡片，焦点仍停留在原卡片上。\n\n### 根本原因\nMNUtil.undoGrouping() 与后续的评论移动操作（moveCommentsArrToField）存在冲突，移动操作会改变焦点，导致 focusInMindMap 的定位效果被覆盖。\n\n### 解决方案\n使用 MNUtil.delay().then() 代替 MNUtil.undoGrouping()，确保所有操作完成后再执行定位：\n\n```javascript\n// 先执行所有可能改变焦点的操作\nnote.appendMarkdownComment(...);\nnote.appendNoteLink(...);\nthis.moveCommentsArrToField(...);\n\n// 延迟执行定位\nMNUtil.delay(0.5).then(() => {\n  if (MNUtil.mindmapView) {\n    newNote.focusInMindMap(0.3)\n  }\n})\n```\n\n### 关键点\n1. 执行顺序：所有UI操作完成后再定位\n2. 使用 Promise 延迟而非 undoGrouping\n3. 检查是否在脑图视图中\n4. 避免焦点竞争",
+        "--tags",
+        "MarginNote focusInMindMap 焦点管理 异步执行"
+      ]
+    }
+  ],
+  "lastUpdated": "2025-07-06T05:33:21.743Z"
+}

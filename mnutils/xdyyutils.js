@@ -3937,6 +3937,298 @@ class MNMath {
       MNUtil.log("removeBidirectionalLinks 出错: " + error.toString());
     }
   }
+
+  /**
+   * 通过弹窗选择字段，然后批量删除该字段下的评论
+   * 
+   * @param {MNNote} note - 要处理的笔记
+   */
+  static deleteCommentsByFieldPopup(note) {
+    try {
+      // 1. 获取所有字段
+      let htmlCommentsTextArr = this.parseNoteComments(note).htmlCommentsTextArr;
+      
+      if (htmlCommentsTextArr.length === 0) {
+        MNUtil.showHUD("当前笔记没有字段");
+        return;
+      }
+      
+      // 2. 让用户选择字段
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "选择字段",
+        "选择要查看和删除评论的字段",
+        0,
+        "取消",
+        htmlCommentsTextArr,
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) return; // 用户取消
+          
+          let selectedField = htmlCommentsTextArr[buttonIndex - 1];
+          
+          // 3. 获取该字段下的所有评论
+          let fieldComments = this.getFieldCommentsForDeletion(note, selectedField);
+          
+          if (fieldComments.length === 0) {
+            MNUtil.showHUD(`字段"${selectedField}"下没有评论`);
+            return;
+          }
+          
+          // 4. 开始递归选择流程
+          let selectedIndices = new Set();
+          this.showCommentSelectionDialog(note, selectedField, fieldComments, selectedIndices);
+        }
+      );
+      
+    } catch (error) {
+      MNUtil.showHUD("操作失败：" + error.toString());
+      MNUtil.log("deleteCommentsByFieldPopup 出错: " + error.toString());
+    }
+  }
+
+  /**
+   * 获取指定字段下的所有评论信息
+   * 
+   * @param {MNNote} note - 笔记对象
+   * @param {string} fieldName - 字段名称
+   * @returns {Array} 评论信息数组 [{index, display, comment}]
+   */
+  static getFieldCommentsForDeletion(note, fieldName) {
+    let commentsObj = this.parseNoteComments(note);
+    let htmlCommentsObjArr = commentsObj.htmlCommentsObjArr;
+    
+    // 找到对应字段
+    let fieldObj = htmlCommentsObjArr.find(obj => obj.text === fieldName);
+    if (!fieldObj) {
+      return [];
+    }
+    
+    // 获取该字段下的评论索引（不包括字段本身）
+    let fieldIndices = fieldObj.excludingFieldBlockIndexArr;
+    
+    // 构建评论信息数组
+    let fieldComments = [];
+    for (let index of fieldIndices) {
+      let comment = note.MNComments[index];
+      if (comment) {
+        let displayText = this.formatCommentForDisplay(comment, index, note);
+        fieldComments.push({
+          index: index,
+          display: displayText,
+          comment: comment
+        });
+      }
+    }
+    
+    return fieldComments;
+  }
+
+  /**
+   * 格式化评论内容用于显示
+   * 
+   * @param {MNComment} comment - 评论对象
+   * @param {number} index - 评论索引
+   * @param {MNNote} note - 笔记对象
+   * @returns {string} 格式化后的显示文本
+   */
+  static formatCommentForDisplay(comment, index, note) {
+    // comment 已经是 MNComment 对象，直接使用它的 type 属性
+    const commentType = comment.type;
+    const maxTextLength = 30;
+    
+    switch (commentType) {
+      // TextNote 类型
+      case "textComment":
+        return this.truncateText(comment.text, maxTextLength);
+        
+      case "markdownComment":
+        return "[Markdown] " + this.truncateText(comment.text, maxTextLength - 11);
+        
+      case "tagComment":
+        return "[标签] " + comment.text;
+        
+      case "linkComment":
+        return this.formatLinkComment(comment.text, false);
+        
+      case "summaryComment":
+        return this.formatLinkComment(comment.text, true);
+        
+      // HtmlNote 类型
+      case "HtmlComment":
+        return "[字段] " + comment.text;
+        
+      // LinkNote 类型（合并内容）
+      case "mergedTextComment":
+        return "[摘录-文本] " + this.truncateText(comment.text, maxTextLength - 12);
+        
+      case "mergedImageComment":
+        return "[摘录-图片]";
+        
+      case "mergedImageCommentWithDrawing":
+        return "[摘录-图片+手写]";
+        
+      case "blankTextComment":
+        return "[摘录-空白文本]";
+        
+      case "blankImageComment":
+        return "[摘录-空白图片]";
+        
+      // PaintNote 类型
+      case "imageComment":
+        return "[图片]";
+        
+      case "imageCommentWithDrawing":
+        return "[图片+手写]";
+        
+      case "drawingComment":
+        return "[纯手写]";
+        
+      default:
+        return `[${commentType || '未知类型'}]`;
+    }
+  }
+
+  /**
+   * 格式化链接评论
+   * 
+   * @param {string} linkUrl - 链接URL
+   * @param {boolean} isSummary - 是否是概要链接
+   * @returns {string} 格式化的链接显示
+   */
+  static formatLinkComment(linkUrl, isSummary = false) {
+    try {
+      // 提取 noteId
+      let noteId = linkUrl.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1];
+      if (!noteId) {
+        return isSummary ? "[概要链接] 无效链接" : "[链接] 无效链接";
+      }
+      
+      // 尝试获取目标笔记
+      let targetNote = MNNote.new(noteId, false);
+      if (targetNote && targetNote.noteTitle) {
+        let title = this.truncateText(targetNote.noteTitle, 20);
+        return isSummary ? `[概要链接] ${title}` : `[链接] ${title}`;
+      } else {
+        return isSummary ? "[概要链接] (笔记不存在)" : "[链接] (笔记不存在)";
+      }
+    } catch (error) {
+      return isSummary ? "[概要链接] (获取失败)" : "[链接] (获取失败)";
+    }
+  }
+
+  /**
+   * 截断文本并添加省略号
+   * 
+   * @param {string} text - 原始文本
+   * @param {number} maxLength - 最大长度
+   * @returns {string} 截断后的文本
+   */
+  static truncateText(text, maxLength) {
+    if (!text) return "";
+    text = text.trim();
+    if (text.length <= maxLength) {
+      return text;
+    }
+    return text.substring(0, maxLength) + "...";
+  }
+
+  /**
+   * 显示评论选择对话框（递归）
+   * 
+   * @param {MNNote} note - 笔记对象
+   * @param {string} fieldName - 字段名称
+   * @param {Array} fieldComments - 评论信息数组
+   * @param {Set} selectedIndices - 已选中的索引集合
+   */
+  static showCommentSelectionDialog(note, fieldName, fieldComments, selectedIndices) {
+    // 构建显示选项
+    let displayOptions = fieldComments.map(item => {
+      let prefix = selectedIndices.has(item.index) ? "✅ " : "";
+      return prefix + item.display;
+    });
+    
+    // 添加全选/取消全选选项
+    let allSelected = selectedIndices.size === fieldComments.length;
+    let selectAllText = allSelected ? "⬜ 取消全选" : "☑️ 全选所有评论";
+    displayOptions.unshift(selectAllText);
+    
+    // 添加确定删除选项
+    displayOptions.push("📌 确定删除选中的评论");
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      `字段"${fieldName}"的评论`,
+      `已选中 ${selectedIndices.size}/${fieldComments.length} 条评论`,
+      0,
+      "取消",
+      displayOptions,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) return; // 用户取消
+        
+        if (buttonIndex === 1) {
+          // 用户选择了全选/取消全选
+          if (allSelected) {
+            // 取消全选
+            selectedIndices.clear();
+          } else {
+            // 全选
+            fieldComments.forEach(item => {
+              selectedIndices.add(item.index);
+            });
+          }
+          
+          // 递归显示更新后的对话框
+          this.showCommentSelectionDialog(note, fieldName, fieldComments, selectedIndices);
+          
+        } else if (buttonIndex === displayOptions.length) {
+          // 用户选择了"确定删除"
+          if (selectedIndices.size === 0) {
+            MNUtil.showHUD("没有选中任何评论");
+            return;
+          }
+          
+          // 执行删除
+          this.deleteSelectedComments(note, selectedIndices);
+          
+        } else {
+          // 用户选择了某个评论，切换选中状态
+          let selectedComment = fieldComments[buttonIndex - 2]; // 因为加了全选选项，所以索引要减2
+          
+          if (selectedIndices.has(selectedComment.index)) {
+            selectedIndices.delete(selectedComment.index);
+          } else {
+            selectedIndices.add(selectedComment.index);
+          }
+          
+          // 递归显示更新后的对话框
+          this.showCommentSelectionDialog(note, fieldName, fieldComments, selectedIndices);
+        }
+      }
+    );
+  }
+
+  /**
+   * 删除选中的评论
+   * 
+   * @param {MNNote} note - 笔记对象
+   * @param {Set} selectedIndices - 要删除的评论索引集合
+   */
+  static deleteSelectedComments(note, selectedIndices) {
+    try {
+      // 将索引转为数组并排序（从大到小），避免删除时索引变化
+      let sortedIndices = Array.from(selectedIndices).sort((a, b) => b - a);
+      
+      MNUtil.undoGrouping(() => {
+        for (let index of sortedIndices) {
+          note.removeCommentByIndex(index);
+        }
+      });
+      
+      MNUtil.showHUD(`成功删除 ${selectedIndices.size} 条评论`);
+      
+    } catch (error) {
+      MNUtil.showHUD("删除评论时出错：" + error.toString());
+      MNUtil.log("deleteSelectedComments 出错: " + error.toString());
+    }
+  }
 }
 
 /**

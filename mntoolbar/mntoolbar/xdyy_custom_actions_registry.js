@@ -3575,13 +3575,23 @@ function registerAllCustomActions() {
   // deleteCommentsByPopup
   global.registerCustomAction("deleteCommentsByPopup", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
-    MNUtil.undoGrouping(() => {
-      try {
-        focusNote.deleteCommentsByPopup();
-      } catch (error) {
-        MNUtil.showHUD(error);
+    try {
+      // 使用新实现的批量删除评论功能
+      if (typeof MNMath !== 'undefined' && MNMath.deleteCommentsByFieldPopup) {
+        MNMath.deleteCommentsByFieldPopup(focusNote);
+      } else {
+        // 如果 MNMath 不存在或方法不存在，尝试使用旧方法
+        if (focusNote.deleteCommentsByPopup) {
+          MNUtil.undoGrouping(() => {
+            focusNote.deleteCommentsByPopup();
+          });
+        } else {
+          MNUtil.showHUD("批量删除评论功能不可用，请确保已安装最新版本的 xdyyutils");
+        }
       }
-    });
+    } catch (error) {
+      MNUtil.showHUD("删除评论时出错: " + error.toString());
+    }
   });
 
   // deleteCommentsByPopupAndMoveNewContentToExcerptAreaBottom

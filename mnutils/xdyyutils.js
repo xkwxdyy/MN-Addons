@@ -2774,6 +2774,102 @@ class MNMath {
   }
 
   /**
+   * 获取指定字段内的 HtmlMarkdown 评论
+   * @param {MNNote} note - 笔记对象
+   * @param {string} fieldName - 字段名称
+   * @returns {Array<{index: number, text: string, type: string, content: string}>} HtmlMarkdown 评论数组
+   */
+  static getFieldHtmlMarkdownComments(note, fieldName) {
+    const commentsObj = this.parseNoteComments(note);
+    const htmlCommentsObjArr = commentsObj.htmlCommentsObjArr;
+    const htmlMarkdownCommentsObjArr = commentsObj.htmlMarkdownCommentsObjArr;
+    
+    // 找到该字段的索引范围
+    let fieldObj = htmlCommentsObjArr.find(obj => obj.text.includes(fieldName));
+    if (!fieldObj) return [];
+    
+    // 获取该字段的评论索引范围（不包含字段本身）
+    const fieldIndices = fieldObj.excludingFieldBlockIndexArr;
+    
+    // 筛选出该范围内的 HtmlMarkdown 评论
+    return htmlMarkdownCommentsObjArr.filter(mdComment => 
+      fieldIndices.includes(mdComment.index)
+    );
+  }
+
+  /**
+   * 显示字段内 HtmlMarkdown 子选择对话框
+   * @param {MNNote} note - 笔记对象
+   * @param {string} fieldName - 字段名称
+   * @param {Function} callback - 回调函数，参数为选择的目标索引
+   */
+  static showFieldSubSelectionDialog(note, fieldName, callback) {
+    const htmlMarkdownComments = this.getFieldHtmlMarkdownComments(note, fieldName);
+    
+    if (htmlMarkdownComments.length === 0) {
+      // 如果没有 HtmlMarkdown 评论，直接返回字段底部
+      const fieldObj = this.parseNoteComments(note).htmlCommentsObjArr.find(obj => obj.text.includes(fieldName));
+      if (fieldObj && fieldObj.excludingFieldBlockIndexArr.length > 0) {
+        const lastIndex = fieldObj.excludingFieldBlockIndexArr[fieldObj.excludingFieldBlockIndexArr.length - 1];
+        callback(lastIndex + 1);
+      } else {
+        callback(null);
+      }
+      return;
+    }
+    
+    // 构建选项列表
+    const options = ["🔝 字段顶部"];
+    htmlMarkdownComments.forEach(mdComment => {
+      const icon = HtmlMarkdownUtils.icons[mdComment.type] || "";
+      const prefix = HtmlMarkdownUtils.prefix[mdComment.type] || "";
+      options.push(`${icon} ${prefix}${mdComment.content}`);
+      options.push(`  ↳ 在此之后`);
+    });
+    options.push("⬇️ 字段底部");
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      `选择在【${fieldName}】中的位置`,
+      "选择要移动到的具体位置",
+      0,
+      "取消",
+      options,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) {
+          callback(null);
+          return;
+        }
+        
+        const fieldObj = this.parseNoteComments(note).htmlCommentsObjArr.find(obj => obj.text.includes(fieldName));
+        if (!fieldObj) {
+          callback(null);
+          return;
+        }
+        
+        if (buttonIndex === 1) {
+          // 字段顶部
+          callback(fieldObj.index + 1);
+        } else if (buttonIndex === options.length) {
+          // 字段底部
+          const lastIndex = fieldObj.excludingFieldBlockIndexArr[fieldObj.excludingFieldBlockIndexArr.length - 1] || fieldObj.index;
+          callback(lastIndex + 1);
+        } else {
+          // HtmlMarkdown 评论位置
+          const mdIndex = Math.floor((buttonIndex - 2) / 2);
+          const isAfter = (buttonIndex - 2) % 2 === 1;
+          
+          if (mdIndex < htmlMarkdownComments.length) {
+            const targetIndex = htmlMarkdownComments[mdIndex].index;
+            callback(isAfter ? targetIndex + 1 : targetIndex);
+          } else {
+            callback(null);
+          }
+        }
+      }
+    );
+  }
+
+  /**
    * 通过弹窗来选择移动的评论以及移动的位置
    */
   static moveCommentsByPopup(note) {
@@ -2802,21 +2898,47 @@ class MNMath {
         }
         UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
           "选择移动的位置",
-          "如果是选择 xx 区，则默认移动到最底下",
+          "点击字段区域可选择更精确的位置",
           0,
           "不移动",
           this.getHtmlCommentsTextArrForPopup(note),
           (alert, buttonIndexII) => {
+            if (buttonIndexII === 0) return; // 取消
+            
+            // 获取选中的选项文本
+            let selectedOption = this.getHtmlCommentsTextArrForPopup(note)[buttonIndexII-1];
+            
+            // 判断是否点击了字段区域（包含"区】----------"）
+            if (selectedOption && selectedOption.includes("区】----------") && !selectedOption.includes("摘录区")) {
+              // 提取字段名
+              let matches = selectedOption.match(/【(.+?)区】/);
+              if (matches && matches[1]) {
+                let fieldName = matches[1];
+                
+                // 显示子选择对话框
+                this.showFieldSubSelectionDialog(note, fieldName, (targetIndex) => {
+                  if (targetIndex !== null) {
+                    MNUtil.undoGrouping(() => {
+                      try {
+                        note.moveCommentsByIndexArr(moveCommentIndexArr, targetIndex);
+                      } catch (error) {
+                        MNUtil.showHUD("移动失败: " + error.message);
+                      }
+                    });
+                  }
+                });
+                return; // 提前返回，不执行默认移动
+              }
+            }
+            
+            // 原有的移动逻辑（非字段区域的选项）
             MNUtil.undoGrouping(()=>{
               try {
-                if (buttonIndexII !== 0) {
-                  note.moveCommentsByIndexArr(moveCommentIndexArr, this.getCommentsIndexArrToMoveForPopup(note)[buttonIndexII-1])
-                }
+                note.moveCommentsByIndexArr(moveCommentIndexArr, this.getCommentsIndexArrToMoveForPopup(note)[buttonIndexII-1])
               } catch (error) {
-                MNUtil.showHUD(error);
+                MNUtil.showHUD("移动失败: " + error.message);
               }
             })
-            
           }
         )
 
@@ -2832,25 +2954,31 @@ class MNMath {
    * 获得一个基于 htmlCommentsTextArr 的数组专门用于移动评论
    * 
    * 摘录区也是放在这个地方处理
+   * 过滤掉包含"关键词"的字段
    */
   static getHtmlCommentsTextArrForPopup(note) {
-    // let htmlCommentsObjArr = this.parseNoteComments(note).htmlCommentsObjArr;
-    let htmlCommentsTextArr = this.parseNoteComments(note).htmlCommentsTextArr;
+    let htmlCommentsObjArr = this.parseNoteComments(note).htmlCommentsObjArr;
     let htmlCommentsTextArrForMove = [
       "🔝🔝🔝🔝卡片最顶端🔝🔝🔝🔝",
       "----------【摘录区】----------",
     ]
-    // if (htmlCommentsTextArr.length > 1) {
-    //   htmlCommentsTextArr.forEach(text => {
-    //     htmlCommentsTextArrForMove.push(
-    //       "----------【"+ text.trim() +"区】----------",
-    //     )
-    //     htmlCommentsTextArrForMove.push("🔝 Top 🔝")
-    //     htmlCommentsTextArrForMove.push("⬇️ Bottom ⬇️")
-    //   })
-    // }
-    for (let i = 0; i < htmlCommentsTextArr.length -1; i++) {
-      let text = htmlCommentsTextArr[i].trim();
+    
+    // 过滤掉包含"关键词"的字段
+    let filteredHtmlCommentsObjArr = htmlCommentsObjArr.filter(obj => !obj.text.includes("关键词"));
+    
+    // 只处理过滤后的字段（不包括最后一个原始字段）
+    // 需要判断过滤后的字段是否是原始字段列表中的最后一个
+    let lastOriginalIndex = htmlCommentsObjArr.length - 1;
+    
+    for (let i = 0; i < filteredHtmlCommentsObjArr.length; i++) {
+      let currentFiltered = filteredHtmlCommentsObjArr[i];
+      // 查找这个字段在原始列表中的索引
+      let originalIndex = htmlCommentsObjArr.findIndex(obj => obj.index === currentFiltered.index);
+      
+      // 如果是原始列表中的最后一个字段，跳过
+      if (originalIndex === lastOriginalIndex) break;
+      
+      let text = currentFiltered.text.trim();
       htmlCommentsTextArrForMove.push(
         "----------【"+ text +"区】----------",
       )
@@ -2871,6 +2999,9 @@ class MNMath {
    */
   static getCommentsIndexArrToMoveForPopup(note) {
     let htmlCommentsObjArr = this.parseNoteComments(note).htmlCommentsObjArr;
+    // 过滤掉包含"关键词"的字段，与 getHtmlCommentsTextArrForPopup 保持一致
+    let filteredHtmlCommentsObjArr = htmlCommentsObjArr.filter(obj => !obj.text.includes("关键词"));
+    
     let commentsIndexArrToMove = [
       0,  // 对应："🔝🔝🔝🔝卡片最顶端 🔝🔝🔝🔝"
     ]
@@ -2881,21 +3012,42 @@ class MNMath {
       commentsIndexArrToMove.push(excerptBlockIndexArr[excerptBlockIndexArr.length - 1]+1) // 对应："----------【摘录区】----------"
     }
     
-    switch (htmlCommentsObjArr.length) {
-      case 0:
-        break;
-      case 1:
-        commentsIndexArrToMove.push(note.comments.length-1) // 对应："----------【xxx区】----------"
-        commentsIndexArrToMove.push(htmlCommentsObjArr[0].index + 1) // 对应："🔝 Top 🔝"
-        commentsIndexArrToMove.push(note.comments.length-1) // 对应："⬇️ Bottom ⬇️"
-        break;
-      default:
-        for (let i = 0; i < htmlCommentsObjArr.length - 1; i++) {  // 不考虑最后一个 htmlComment 区的移动
-          commentsIndexArrToMove.push(htmlCommentsObjArr[i+1].index) // 对应："----------【xxx区】----------"
-          commentsIndexArrToMove.push(htmlCommentsObjArr[i].index + 1) // 对应："🔝 Top 🔝"
-          commentsIndexArrToMove.push(htmlCommentsObjArr[i+1].index) // 对应："⬇️ Bottom ⬇️"
+    // 处理过滤后的字段
+    if (filteredHtmlCommentsObjArr.length === 0) {
+      // 没有字段
+    } else if (filteredHtmlCommentsObjArr.length === 1) {
+      commentsIndexArrToMove.push(note.comments.length-1) // 对应："----------【xxx区】----------"
+      commentsIndexArrToMove.push(filteredHtmlCommentsObjArr[0].index + 1) // 对应："🔝 Top 🔝"
+      commentsIndexArrToMove.push(note.comments.length-1) // 对应："⬇️ Bottom ⬇️"
+    } else {
+      // 找到下一个未被过滤的字段索引
+      let lastOriginalIndex = htmlCommentsObjArr.length - 1;
+      for (let i = 0; i < filteredHtmlCommentsObjArr.length; i++) {
+        let currentFiltered = filteredHtmlCommentsObjArr[i];
+        // 查找这个字段在原始列表中的索引
+        let originalIndex = htmlCommentsObjArr.findIndex(obj => obj.index === currentFiltered.index);
+        
+        // 如果是原始列表中的最后一个字段，跳过
+        if (originalIndex === lastOriginalIndex) break;
+        
+        // 找到下一个字段的索引
+        let nextFieldIndex;
+        if (i + 1 < filteredHtmlCommentsObjArr.length) {
+          nextFieldIndex = filteredHtmlCommentsObjArr[i + 1].index;
+        } else {
+          // 如果是最后一个过滤后的字段，使用原始列表中的下一个
+          let currentOriginalIndex = htmlCommentsObjArr.findIndex(obj => obj.index === filteredHtmlCommentsObjArr[i].index);
+          if (currentOriginalIndex + 1 < htmlCommentsObjArr.length) {
+            nextFieldIndex = htmlCommentsObjArr[currentOriginalIndex + 1].index;
+          } else {
+            nextFieldIndex = note.comments.length;
+          }
         }
-        break;
+        
+        commentsIndexArrToMove.push(nextFieldIndex) // 对应："----------【xxx区】----------"
+        commentsIndexArrToMove.push(filteredHtmlCommentsObjArr[i].index + 1) // 对应："🔝 Top 🔝"
+        commentsIndexArrToMove.push(nextFieldIndex) // 对应："⬇️ Bottom ⬇️"
+      }
     }
 
     commentsIndexArrToMove.push(note.comments.length) // 对应："⬇️⬇️⬇️⬇️ 卡片最底端 ⬇️⬇️⬇️⬇️"

@@ -1149,6 +1149,21 @@ class MNMath {
         this.refreshNote(childNote)
       })
     }
+    
+    // 刷新所有链接到当前卡片的其他卡片
+    // 这样可以确保"应用"等字段中的链接显示正确的新标题
+    if (note.linkedNotes && note.linkedNotes.length > 0) {
+      note.linkedNotes.forEach(linkedNote => {
+        try {
+          const linkedNoteObj = MNNote.new(linkedNote.noteid)
+          if (linkedNoteObj) {
+            this.refreshNote(linkedNoteObj)
+          }
+        } catch (error) {
+          // 忽略无法刷新的链接卡片
+        }
+      })
+    }
   }
 
   /**

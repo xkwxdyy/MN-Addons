@@ -1214,3 +1214,85 @@ MNUtil.delay(0.5).then(() => {
 - 创建新卡片并需要自动定位
 - 批量操作后需要定位到特定卡片
 - 任何涉及多个 UI 操作后的焦点管理
+
+### 多层级评论选择对话框开发陷阱（moveCommentsByPopup）
+
+在开发 `moveCommentsByPopup` 功能增强时，遇到了一系列关于多层级文件夹式导航结构的设计和实现问题。
+
+#### 需求背景
+原始的 `moveCommentsByPopup` 只支持 HtmlComment 类型的字段，需要扩展为：
+1. 支持解析所有评论类型（文本、图片、链接、手写等）
+2. 实现真正的多层级文件夹式选择结构
+3. HtmlMarkdown 评论作为"文件夹"，可以包含其他内容
+
+#### 设计的四层结构
+- **第一层**：选择要移动的评论（支持多选）
+- **第二层**：选择目标字段（只显示字段，不显示 HtmlMarkdown）
+- **第三层**：选择字段内的位置（显示独立评论和 HtmlMarkdown "文件夹"）
+- **第四层**：选择 HtmlMarkdown 内部的具体位置
+
+#### 遇到的问题和解决方案
+
+##### 1. HtmlMarkdown 在第二层错误显示
+**问题**：第二层应该只显示字段选择，但 HtmlMarkdown 评论也出现了。
+
+**解决**：修改 `getHtmlCommentsTextArrForPopup` 方法，过滤掉 HtmlMarkdown 类型：
+```javascript
+// 检查是否为 HtmlMarkdown 评论
+let cleanText = comment.text || "";
+if (cleanText.startsWith("- ")) {
+  cleanText = cleanText.substring(2);
+}
+if (HtmlMarkdownUtils.isHtmlMDComment(cleanText)) {
+  continue;  // 跳过 HtmlMarkdown 评论
+}
+```
+
+##### 2. 第三层内容归属逻辑错误
+**问题**：HtmlMarkdown 后面的内容被错误地显示为独立评论，而不是隐藏在 HtmlMarkdown "文件夹"内。
+
+**错误的逻辑**：
+- 遍历时只处理 HtmlMarkdown 之前的内容为独立评论
+- 没有正确处理 HtmlMarkdown 之间的内容归属
+
+**正确的实现**（`parseFieldTopLevelStructure` 方法）：
+```javascript
+// 三步清晰逻辑
+// 1. 找出所有 HtmlMarkdown 的位置
+// 2. 只有第一个 HtmlMarkdown 之前的内容是独立的
+// 3. 设置每个 HtmlMarkdown 的范围（从自身到下一个 HtmlMarkdown 或字段末尾）
+```
+
+##### 3. 第四层内容范围超出字段边界
+**问题**：点击最后一个 HtmlMarkdown 时，显示的内容包含了后续其他字段的内容。
+
+**原因**：`showHtmlMarkdownInternalPositionDialog` 方法没有限制在当前字段范围内。
+
+**解决**：
+1. 添加 `fieldObj` 参数传递字段边界信息
+2. 使用 `fieldObj.excludingFieldBlockIndexArr` 限制遍历范围
+3. 只处理属于当前字段的评论
+
+#### 关键设计原则
+
+##### 内容归属规则
+- HtmlMarkdown 之前的内容是独立的
+- HtmlMarkdown 之后的所有内容都属于该 HtmlMarkdown，直到遇到下一个 HtmlMarkdown
+- 两个 HtmlMarkdown 之间的内容属于前一个 HtmlMarkdown
+
+##### 文件夹式隐藏机制
+- 第三层只显示"文件夹"标题，不暴露内部内容
+- 用户必须点击进入第四层才能看到 HtmlMarkdown 内部的具体内容
+- 提供 Top/Bottom 快速定位选项
+
+#### 实现要点
+1. **正确解析评论类型**：使用 `parseFieldInternalComments` 方法支持所有评论类型
+2. **多选支持**：实现 `showCommentMultiSelectDialog` 方法，支持递归选择
+3. **层级导航**：每层都有明确的职责，避免信息混杂
+4. **边界控制**：始终在字段范围内操作，避免越界
+
+#### 经验总结
+- 复杂的多层级 UI 需要清晰的数据结构设计
+- 内容归属逻辑必须在早期就明确定义
+- 边界检查在每个层级都很重要
+- 用户体验优先：隐藏复杂性，提供直观的导航

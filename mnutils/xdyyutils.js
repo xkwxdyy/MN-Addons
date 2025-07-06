@@ -3311,94 +3311,76 @@ class MNMath {
     
     const fieldIndices = fieldObj.excludingFieldBlockIndexArr;
     const parsedComments = this.parseNoteComments(note);
-    let lastProcessedIndex = fieldObj.index; // 字段本身的索引作为起始
     
-    // 遍历字段内的所有内容，找出所有 HtmlMarkdown 的位置
+    // 第一步：找出所有 HtmlMarkdown 的位置
+    const htmlMarkdownIndices = [];
     for (let i = 0; i < fieldIndices.length; i++) {
       const index = fieldIndices[i];
       const comment = note.MNComments[index];
       if (!comment) continue;
       
-      // 检查是否为 HtmlComment（字段），如果是则跳过
+      // 跳过 HtmlComment（字段）
       if (comment.text && comment.text.includes('<!-- ') && comment.text.includes(' -->')) {
         continue;
       }
       
       // 检查是否为 HtmlMarkdown 评论
       const htmlMarkdownObj = parsedComments.htmlMarkdownCommentsObjArr.find(obj => obj.index === index);
-      
       if (htmlMarkdownObj) {
-        // 找到了 HtmlMarkdown，先处理它之前的独立评论
-        for (let j = lastProcessedIndex + 1; j < index; j++) {
-          if (fieldIndices.includes(j)) {
-            const prevComment = note.MNComments[j];
-            if (prevComment && !(prevComment.text && prevComment.text.includes('<!-- ') && prevComment.text.includes(' -->'))) {
-              structure.independentComments.push({
-                index: j,
-                comment: prevComment,
-                displayText: this.formatCommentForDisplay(prevComment, j, note)
-              });
-            }
-          }
-        }
-        
-        // 记录 HtmlMarkdown 区块
-        const icon = HtmlMarkdownUtils.icons[htmlMarkdownObj.type] || '📄';
-        structure.htmlMarkdownSections.push({
+        htmlMarkdownIndices.push({
           index: index,
-          htmlMarkdownObj: htmlMarkdownObj,
-          displayText: `[${icon}] ${htmlMarkdownObj.content || ''}`,
-          startIndex: index,
-          endIndex: null  // 稍后设置
+          htmlMarkdownObj: htmlMarkdownObj
         });
-        
-        lastProcessedIndex = index;
       }
     }
     
-    // 处理最后一个位置之后的独立评论（如果没有 HtmlMarkdown，则处理所有评论）
-    if (structure.htmlMarkdownSections.length === 0) {
-      // 没有 HtmlMarkdown，所有评论都是独立的
-      for (let i = 0; i < fieldIndices.length; i++) {
-        const index = fieldIndices[i];
-        const comment = note.MNComments[index];
-        if (comment && !(comment.text && comment.text.includes('<!-- ') && comment.text.includes(' -->'))) {
-          structure.independentComments.push({
-            index: index,
-            comment: comment,
-            displayText: this.formatCommentForDisplay(comment, index, note)
-          });
-        }
+    // 第二步：处理独立评论（只有第一个 HtmlMarkdown 之前的内容是独立的）
+    const firstHtmlMarkdownIndex = htmlMarkdownIndices.length > 0 ? htmlMarkdownIndices[0].index : null;
+    
+    for (let i = 0; i < fieldIndices.length; i++) {
+      const index = fieldIndices[i];
+      
+      // 如果有 HtmlMarkdown，且当前索引已经到达或超过第一个 HtmlMarkdown，停止收集独立评论
+      if (firstHtmlMarkdownIndex !== null && index >= firstHtmlMarkdownIndex) {
+        break;
       }
-    } else {
-      // 有 HtmlMarkdown，处理最后一个 HtmlMarkdown 之前还未处理的独立评论
-      const lastHtmlMarkdownIndex = structure.htmlMarkdownSections[structure.htmlMarkdownSections.length - 1].index;
-      if (lastProcessedIndex < lastHtmlMarkdownIndex) {
-        for (let j = lastProcessedIndex + 1; j < lastHtmlMarkdownIndex; j++) {
-          if (fieldIndices.includes(j)) {
-            const comment = note.MNComments[j];
-            if (comment && !(comment.text && comment.text.includes('<!-- ') && comment.text.includes(' -->'))) {
-              structure.independentComments.push({
-                index: j,
-                comment: comment,
-                displayText: this.formatCommentForDisplay(comment, j, note)
-              });
-            }
-          }
-        }
+      
+      const comment = note.MNComments[index];
+      if (!comment) continue;
+      
+      // 跳过 HtmlComment（字段）
+      if (comment.text && comment.text.includes('<!-- ') && comment.text.includes(' -->')) {
+        continue;
       }
+      
+      structure.independentComments.push({
+        index: index,
+        comment: comment,
+        displayText: this.formatCommentForDisplay(comment, index, note)
+      });
     }
     
-    // 设置每个 HtmlMarkdown 区块的结束索引
-    for (let i = 0; i < structure.htmlMarkdownSections.length; i++) {
-      const section = structure.htmlMarkdownSections[i];
-      if (i < structure.htmlMarkdownSections.length - 1) {
+    // 第三步：创建 HtmlMarkdown 区块
+    for (let i = 0; i < htmlMarkdownIndices.length; i++) {
+      const { index, htmlMarkdownObj } = htmlMarkdownIndices[i];
+      const icon = HtmlMarkdownUtils.icons[htmlMarkdownObj.type] || '📄';
+      
+      let endIndex;
+      if (i < htmlMarkdownIndices.length - 1) {
         // 不是最后一个，结束于下一个 HtmlMarkdown 之前
-        section.endIndex = structure.htmlMarkdownSections[i + 1].startIndex - 1;
+        endIndex = htmlMarkdownIndices[i + 1].index - 1;
       } else {
         // 是最后一个，结束于字段末尾
-        section.endIndex = fieldIndices[fieldIndices.length - 1] || section.startIndex;
+        endIndex = fieldIndices[fieldIndices.length - 1] || index;
       }
+      
+      structure.htmlMarkdownSections.push({
+        index: index,
+        htmlMarkdownObj: htmlMarkdownObj,
+        displayText: `[${icon}] ${htmlMarkdownObj.content || ''}`,
+        startIndex: index,
+        endIndex: endIndex
+      });
     }
     
     return structure;

@@ -915,3 +915,38 @@ MarginNote 插件打包关键经验：
 这是一个非常容易犯的错误，但影响严重。记住：永远不要压缩文件夹，而是进入文件夹后压缩文件。 --tags marginnote plugin mnaddon 打包 packaging 错误 闪退 crash
 --tags #工具使用 #评分:8 #有效期:长期
 - END
+
+- 2025/07/07 01:16 START
+MN-Addon 项目：多层级评论选择对话框开发经验
+
+在开发 moveCommentsByPopup 功能增强时的关键经验：
+
+1. 四层结构设计：
+   - 第一层：选择要移动的评论（支持多选）
+   - 第二层：选择目标字段（只显示字段，不显示 HtmlMarkdown）
+   - 第三层：选择字段内的位置（显示独立评论和 HtmlMarkdown "文件夹"）
+   - 第四层：选择 HtmlMarkdown 内部的具体位置
+
+2. 内容归属规则：
+   - HtmlMarkdown 之前的内容是独立的
+   - HtmlMarkdown 之后的所有内容都属于该 HtmlMarkdown
+   - 两个 HtmlMarkdown 之间的内容属于前一个 HtmlMarkdown
+
+3. 关键实现方法：
+   - parseFieldTopLevelStructure：解析字段顶层结构
+   - parseFieldInternalComments：解析所有评论类型
+   - showCommentMultiSelectDialog：多选对话框
+   - showHtmlMarkdownInternalPositionDialog：HtmlMarkdown 内部选择
+
+4. 常见陷阱：
+   - HtmlMarkdown 在第二层显示：需要在 getHtmlCommentsTextArrForPopup 中过滤
+   - 内容归属逻辑错误：使用三步清晰逻辑解决
+   - 字段边界问题：传递 fieldObj 参数限制范围
+
+5. 设计原则：
+   - 文件夹式隐藏机制
+   - 每层职责明确
+   - 边界控制严格
+   - 用户体验优先 --tags MN-Addon mnutils moveCommentsByPopup 多层级导航 HtmlMarkdown 开发经验
+--tags #最佳实践 #评分:8 #有效期:长期
+- END

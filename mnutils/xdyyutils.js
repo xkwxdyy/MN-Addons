@@ -3288,6 +3288,54 @@ class MNMath {
   }
 
   /**
+   * 解析字段内的所有内容（包括 HtmlMarkdown 和普通评论）
+   * 
+   * @param {MNNote} note - 笔记对象
+   * @param {Object} fieldObj - 字段对象
+   * @returns {Array} 返回包含类型信息的内容数组
+   */
+  static parseFieldAllContents(note, fieldObj) {
+    const contents = [];
+    const fieldIndices = fieldObj.excludingFieldBlockIndexArr;
+    const parsedComments = this.parseNoteComments(note);
+    
+    for (const index of fieldIndices) {
+      const comment = note.MNComments[index];
+      if (!comment) continue;
+      
+      // 检查是否为 HtmlComment（字段），如果是则跳过
+      if (comment.text && comment.text.includes('<!-- ') && comment.text.includes(' -->')) {
+        continue;
+      }
+      
+      // 检查是否为 HtmlMarkdown 评论
+      const htmlMarkdownObj = parsedComments.htmlMarkdownCommentsObjArr.find(obj => obj.index === index);
+      
+      if (htmlMarkdownObj) {
+        // HtmlMarkdown 评论
+        const icon = HtmlMarkdownUtils.icons[htmlMarkdownObj.type] || '📄';
+        contents.push({
+          type: 'htmlMarkdown',
+          index: index,
+          comment: comment,
+          displayText: `◆ [${icon}] ${htmlMarkdownObj.content || ''}`,
+          htmlMarkdownObj: htmlMarkdownObj
+        });
+      } else {
+        // 普通评论
+        contents.push({
+          type: 'normal',
+          index: index,
+          comment: comment,
+          displayText: this.formatCommentForDisplay(comment, index, note)
+        });
+      }
+    }
+    
+    return contents;
+  }
+
+  /**
    * 显示字段内部位置选择对话框（第三层）
    * 
    * @param {MNNote} note - 笔记对象
@@ -3301,31 +3349,42 @@ class MNMath {
       return;
     }
     
-    const internalComments = this.parseFieldInternalComments(note, fieldObj);
+    const allContents = this.parseFieldAllContents(note, fieldObj);
     
-    if (internalComments.length === 0) {
-      // 字段内没有评论，直接返回字段底部
+    if (allContents.length === 0) {
+      // 字段内没有内容，直接返回字段底部
       callback(fieldObj.index + 1);
       return;
     }
     
     let options = [`【${fieldName}】字段顶部`];
+    let optionTypes = ['fieldTop']; // 记录每个选项的类型
     
-    // 为每个内部评论生成位置选项
-    for (let i = 0; i < internalComments.length; i++) {
-      const commentInfo = internalComments[i];
-      const displayText = commentInfo.displayText;
+    // 为每个内容生成选项
+    for (let i = 0; i < allContents.length; i++) {
+      const content = allContents[i];
       
-      options.push(`${displayText} ↑ 上方`);
-      options.push(`${displayText} ↓ 下方`);
+      if (content.type === 'htmlMarkdown') {
+        // HtmlMarkdown 评论只显示一个选项（可点击进入）
+        options.push(content.displayText);
+        optionTypes.push({type: 'htmlMarkdown', index: i});
+      } else {
+        // 普通评论显示上方和下方选项
+        options.push(`${content.displayText} ↑ 上方`);
+        optionTypes.push({type: 'position', index: i, isAfter: false});
+        
+        options.push(`${content.displayText} ↓ 下方`);
+        optionTypes.push({type: 'position', index: i, isAfter: true});
+      }
     }
     
     options.push(`【${fieldName}】字段底部`);
+    optionTypes.push('fieldBottom');
     
     // 显示选择对话框
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       `选择【${fieldName}】内的具体位置`,
-      "选择要插入的位置",
+      "点击带 ◆ 的项目可进入更精确的位置选择",
       0,
       "取消",
       options,
@@ -3335,24 +3394,23 @@ class MNMath {
           return;
         }
         
-        if (buttonIndex === 1) {
+        const optionType = optionTypes[buttonIndex - 1];
+        
+        if (optionType === 'fieldTop') {
           // 字段顶部
           callback(fieldObj.index + 1);
-        } else if (buttonIndex === options.length) {
+        } else if (optionType === 'fieldBottom') {
           // 字段底部
           const lastIndex = fieldObj.excludingFieldBlockIndexArr[fieldObj.excludingFieldBlockIndexArr.length - 1] || fieldObj.index;
           callback(lastIndex + 1);
-        } else {
-          // 评论位置
-          const commentIndex = Math.floor((buttonIndex - 2) / 2);
-          const isAfter = (buttonIndex - 2) % 2 === 1;
-          
-          if (commentIndex < internalComments.length) {
-            const targetIndex = internalComments[commentIndex].index;
-            callback(isAfter ? targetIndex + 1 : targetIndex);
-          } else {
-            callback(null);
-          }
+        } else if (optionType.type === 'htmlMarkdown') {
+          // 用户点击了 HtmlMarkdown 评论，显示其内部位置选择
+          const content = allContents[optionType.index];
+          this.showHtmlMarkdownInternalPositionDialog(note, content.htmlMarkdownObj, callback);
+        } else if (optionType.type === 'position') {
+          // 普通评论的位置
+          const content = allContents[optionType.index];
+          callback(optionType.isAfter ? content.index + 1 : content.index);
         }
       }
     );
@@ -3632,30 +3690,21 @@ class MNMath {
           }
         }
         
-        // 判断是否点击了 HtmlMarkdown 区域（有子内容的）
-        if (selectedOption && selectedOption.includes("◆◆◆【")) {
-          // 解析 HtmlMarkdown 评论信息
-          const iconMatch = selectedOption.match(/【(.+?)\s+(.+?)】/);
-          if (iconMatch) {
-            // 查找对应的 HtmlMarkdown 评论
-            const parsedComments = this.parseNoteComments(note);
-            const htmlMarkdownComments = parsedComments.htmlMarkdownCommentsObjArr;
-            
-            // 通过内容匹配找到对应的评论
-            const targetMdComment = htmlMarkdownComments.find(md => {
-              const content = md.content || '';
-              return selectedOption.includes(content);
+        // 判断是否点击了 HtmlMarkdown 评论
+        if (selectedOption && selectedOption.startsWith("◆ [")) {
+          // 获取对应的 HtmlMarkdown 评论对象
+          const targetIndex = this.getCommentsIndexArrToMoveForPopup(note)[buttonIndex - 1];
+          const parsedComments = this.parseNoteComments(note);
+          const htmlMarkdownObj = parsedComments.htmlMarkdownCommentsObjArr.find(obj => obj.index === targetIndex);
+          
+          if (htmlMarkdownObj) {
+            // 显示 HtmlMarkdown 内部位置选择对话框
+            this.showHtmlMarkdownInternalPositionDialog(note, htmlMarkdownObj, (finalTargetIndex) => {
+              if (finalTargetIndex !== null) {
+                this.performMove(note, moveCommentIndexArr, finalTargetIndex);
+              }
             });
-            
-            if (targetMdComment) {
-              // 显示 HtmlMarkdown 的第三层对话框
-              this.showHtmlMarkdownInternalPositionDialog(note, targetMdComment, (targetIndex) => {
-                if (targetIndex !== null) {
-                  this.performMove(note, moveCommentIndexArr, targetIndex);
-                }
-              });
-              return;
-            }
+            return;
           }
         }
         
@@ -3747,36 +3796,11 @@ class MNMath {
         htmlCommentsTextArrForMove.push("⬇️ Bottom ⬇️");
         
       } else if (element.type === 'htmlMarkdown') {
-        // HtmlMarkdown 评论
+        // HtmlMarkdown 评论作为可点击的项目显示
         const mdComment = element.obj;
         const icon = HtmlMarkdownUtils.icons[mdComment.type] || '📄';
         const content = mdComment.content || '';
-        const prefix = mdComment.hasLeadingDash ? '- ' : '';
-        
-        // 检查是否有子内容
-        let hasSubContent = false;
-        const nextElementIndex = i + 1;
-        if (nextElementIndex < allStructuralElements.length) {
-          const nextElement = allStructuralElements[nextElementIndex];
-          // 如果下一个元素的索引不是紧挨着的，说明中间有内容
-          if (nextElement.index > element.index + 1) {
-            hasSubContent = true;
-          }
-        } else if (element.index < note.comments.length - 1) {
-          // 如果这是最后一个结构元素，但不是最后一条评论，说明后面有内容
-          hasSubContent = true;
-        }
-        
-        if (hasSubContent) {
-          htmlCommentsTextArrForMove.push(
-            `◆◆◆【${icon} ${content}】◆◆◆`
-          );
-        } else {
-          // 没有子内容的 HtmlMarkdown，直接作为位置选项
-          htmlCommentsTextArrForMove.push(
-            `● ${prefix}[${icon}] ${content}`
-          );
-        }
+        htmlCommentsTextArrForMove.push(`◆ [${icon}] ${content}`);
       }
     }
 
@@ -3854,25 +3878,9 @@ class MNMath {
         commentsIndexArrToMove.push(nextFieldIndex); // 对应："⬇️ Bottom ⬇️"
         
       } else if (element.type === 'htmlMarkdown') {
-        // 检查是否有子内容
-        let hasSubContent = false;
-        const nextElementIndex = i + 1;
-        if (nextElementIndex < allStructuralElements.length) {
-          const nextElement = allStructuralElements[nextElementIndex];
-          if (nextElement.index > element.index + 1) {
-            hasSubContent = true;
-          }
-        } else if (element.index < note.comments.length - 1) {
-          hasSubContent = true;
-        }
-        
-        if (hasSubContent) {
-          // 有子内容的 HtmlMarkdown，需要第三层对话框处理，这里返回 null
-          commentsIndexArrToMove.push(null);
-        } else {
-          // 没有子内容的 HtmlMarkdown，直接作为位置
-          commentsIndexArrToMove.push(element.index + 1);
-        }
+        // HtmlMarkdown 评论现在在第二层显示，需要添加索引
+        // 点击后会显示第三层对话框
+        commentsIndexArrToMove.push(element.obj.index);
       }
     }
 

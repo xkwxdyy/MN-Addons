@@ -2676,7 +2676,8 @@ try {
 static hasBackLink(from,to){
   let fromNote = MNNote.new(from)
   let targetNote = MNNote.new(to)//链接到的卡片
-  if (targetNote.linkedNotes && targetNote.linkedNotes.length > 0) {
+  // 检查 fromNote 和 targetNote 是否都存在（避免失效链接导致的错误）
+  if (fromNote && targetNote && targetNote.linkedNotes && targetNote.linkedNotes.length > 0) {
     if (targetNote.linkedNotes.some(n=>n.noteid === fromNote.noteId)) {
       return true
     }
@@ -6572,7 +6573,8 @@ class MNComment {
     if (this.type === "linkComment"){
       let fromNote = MNNote.new(this.originalNoteId)
       let toNote = this.note
-      if (toNote.linkedNotes && toNote.linkedNotes.length > 0) {
+      // 检查 toNote 是否存在（避免失效链接导致的错误）
+      if (toNote && toNote.linkedNotes && toNote.linkedNotes.length > 0) {
         if (toNote.linkedNotes.some(n=>n.noteid === fromNote.noteId)) {
           return true
         }
@@ -6584,9 +6586,10 @@ class MNComment {
   removeBackLink(){
     if (this.type === "linkComment" && this.linkDirection === "both") {
       let targetNote = this.note//链接到的卡片
-      if (this.hasBackLink()) {
+      // 检查 targetNote 是否存在（避免失效链接导致的错误）
+      if (targetNote && this.hasBackLink()) {
         MNComment.from(targetNote).forEach(comment => {
-          if (comment.type === "linkComment" && comment.note.noteId === this.originalNoteId) {
+          if (comment.type === "linkComment" && comment.note && comment.note.noteId === this.originalNoteId) {
             comment.remove()
             this.linkDirection = "one-way"
           }
@@ -6598,7 +6601,8 @@ class MNComment {
   try {
     if (this.type === "linkComment" && (this.linkDirection === "one-way" || force)) {
       let targetNote = this.note//链接到的卡片
-      if (!this.hasBackLink()) {
+      // 检查 targetNote 是否存在（避免失效链接导致的错误）
+      if (targetNote && !this.hasBackLink()) {
         targetNote.appendNoteLink(this.originalNoteId,"To")
         this.linkDirection = "both"
       }

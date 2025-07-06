@@ -5,7 +5,8 @@
       "Bash(sudo rm:*)",
       "Bash(npm cache clean:*)",
       "mcp__promptx__promptx_init",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

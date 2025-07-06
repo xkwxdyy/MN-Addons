@@ -48,7 +48,7 @@ class TaskFieldUtils {
   
   /**
    * 创建状态字段
-   * @param {string} status - 状态文本（未开始/进行中/已完成）
+   * @param {string} status - 状态文本（未开始/进行中/已完成/已归档）
    * @returns {string} 格式化的状态字段 HTML
    */
   static createStatusField(status) {
@@ -62,6 +62,9 @@ class TaskFieldUtils {
         break
       case '已完成':
         emoji = '✅ '
+        break
+      case '已归档':
+        emoji = '📦 '
         break
     }
     return this.createFieldHtml(`${emoji}${status}`, 'stateField')
@@ -415,8 +418,8 @@ class MNTaskManager {
       note.appendMarkdownComment(containsFieldHtml)
       MNUtil.log("✅ 添加包含字段，索引：" + (note.MNComments.length - 1))
       
-      // 添加三个状态子字段
-      const statuses = ['未开始', '进行中', '已完成']
+      // 添加四个状态子字段
+      const statuses = ['未开始', '进行中', '已完成', '已归档']
       statuses.forEach(status => {
         const statusHtml = TaskFieldUtils.createStatusField(status)
         MNUtil.log(`📝 ${status}字段HTML: ` + statusHtml)
@@ -958,6 +961,9 @@ class MNTaskManager {
         break
       case "未开始":
         colorIndex = 12  // 白色
+        break
+      case "已归档":
+        colorIndex = 13  // 灰色
         break
     }
     

@@ -170,9 +170,12 @@ function registerAllCustomActions() {
         newStatus = "已完成";
         break;
       case "已完成":
-        // 询问是否归档
+        newStatus = "已归档";
+        break;
+      case "已归档":
+        // 询问是否移动到归档区
         try {
-          const buttonIndex = await MNUtil.confirm("任务归档", "是否将已完成的任务归档？");
+          const buttonIndex = await MNUtil.confirm("任务归档", "是否将已归档的任务移动到归档区？");
           
           if (buttonIndex !== 1) {
             // 用户点击取消（buttonIndex === 0）
@@ -198,13 +201,13 @@ function registerAllCustomActions() {
           MNUtil.undoGrouping(() => {
             const success = MNTaskManager.moveTo(focusNote, completedBoardNote);
             if (success) {
-              MNUtil.showHUD("✅ 任务已归档");
+              MNUtil.showHUD("✅ 任务已移动到归档区");
             } else {
-              MNUtil.showHUD("❌ 归档失败");
+              MNUtil.showHUD("❌ 移动失败");
             }
           });
         } catch (error) {
-          MNUtil.showHUD(`归档失败: ${error.message || error}`);
+          MNUtil.showHUD(`移动失败: ${error.message || error}`);
         }
         return;
       default:
@@ -259,6 +262,9 @@ function registerAllCustomActions() {
         break;
       case "已完成":
         newStatus = "进行中";
+        break;
+      case "已归档":
+        newStatus = "已完成";
         break;
       default:
         MNUtil.showHUD("未知的任务状态");

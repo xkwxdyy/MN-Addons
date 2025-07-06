@@ -2823,8 +2823,9 @@ class MNMath {
     htmlMarkdownComments.forEach(mdComment => {
       const icon = HtmlMarkdownUtils.icons[mdComment.type] || "";
       const prefix = HtmlMarkdownUtils.prefix[mdComment.type] || "";
-      options.push(`${icon} ${prefix}${mdComment.content}`);
-      options.push(`  ↳ 在此之后`);
+      // 明确标示位置关系
+      options.push(`↑ 在此之前：${icon} ${prefix}${mdComment.content}`);
+      options.push(`↓ 在此之后：${icon} ${prefix}${mdComment.content}`);
     });
     options.push("⬇️ 字段底部");
     

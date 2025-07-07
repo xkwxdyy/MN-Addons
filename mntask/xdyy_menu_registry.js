@@ -75,12 +75,16 @@ function registerAllMenuTemplates() {
         },
         "⬇️ 字段处理",
         {
+          action: "manageCustomFields",
+          menuTitle: "    📋 字段管理（添加/编辑/移动/删除）"
+        },
+        {
           action: "addCustomField",
-          menuTitle: "    📝 手动添加自定义字段"
+          menuTitle: "    📝 快速添加自定义字段"
         },
         {
           action: "editCustomField",
-          menuTitle: "    ✏️ 编辑自定义字段"
+          menuTitle: "    ✏️ 快速编辑自定义字段"
         },
         {
           action: "addOrUpdateLaunchLink",

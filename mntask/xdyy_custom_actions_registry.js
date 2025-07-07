@@ -1451,7 +1451,7 @@ function registerAllCustomActions() {
     );
   });
 
-  // addCustomField - 手动添加自定义字段
+  // addCustomField - 手动添加自定义字段（优化版）
   MNTaskGlobal.registerCustomAction("addCustomField", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
     if (!focusNote) {
@@ -1487,31 +1487,65 @@ function registerAllCustomActions() {
             "请输入字段内容",
             2,  // 输入框样式
             "取消",
-            ["确定"],
+            ["下一步"],
             (alert2, buttonIndex2) => {
               if (buttonIndex2 === 1) {
                 const fieldContent = alert2.textFieldAtIndex(0).text || "";
                 
-                MNUtil.undoGrouping(() => {
-                  try {
-                    // 创建带样式的字段
-                    const fieldHtml = TaskFieldUtils.createFieldHtml(fieldName.trim(), 'subField');
-                    const fullContent = fieldContent.trim() ? `${fieldHtml} ${fieldContent.trim()}` : fieldHtml;
-                    
-                    // 添加到笔记
-                    focusNote.appendMarkdownComment(fullContent);
-                    
-                    // 获取刚添加的评论索引
-                    const lastIndex = focusNote.MNComments.length - 1;
-                    
-                    // 移动到"信息"字段的最底部
-                    MNTaskManager.moveCommentToField(focusNote, lastIndex, '信息', true);
-                    
-                    MNUtil.showHUD(`✅ 已添加字段：${fieldName}`);
-                  } catch (error) {
-                    MNUtil.showHUD("添加字段失败：" + error.message);
-                  }
+                // 第三步：选择添加位置
+                const mainFields = MNTaskManager.getMainFields(focusNote);
+                if (mainFields.length === 0) {
+                  MNUtil.showHUD("没有找到可用的目标字段");
+                  return;
+                }
+                
+                // 构建位置选项
+                const positionOptions = [];
+                mainFields.forEach(field => {
+                  positionOptions.push(`字段【${field.fieldName}】的顶部`);
+                  positionOptions.push(`字段【${field.fieldName}】的底部`);
                 });
+                
+                // 设置默认选项（信息字段底部）
+                const infoFieldIndex = mainFields.findIndex(f => f.fieldName === '信息');
+                const defaultIndex = infoFieldIndex >= 0 ? infoFieldIndex * 2 + 1 : 1; // 默认选择信息字段底部
+                
+                UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+                  "选择字段位置",
+                  `将添加字段：${fieldName.trim()}\n默认位置：信息字段底部`,
+                  0,
+                  "取消",
+                  positionOptions,
+                  (alert3, buttonIndex3) => {
+                    if (buttonIndex3 === 0) return;
+                    
+                    const targetIndex = buttonIndex3 - 1;
+                    const fieldIndex = Math.floor(targetIndex / 2);
+                    const isBottom = targetIndex % 2 === 1;
+                    const targetField = mainFields[fieldIndex];
+                    
+                    MNUtil.undoGrouping(() => {
+                      try {
+                        // 创建带样式的字段
+                        const fieldHtml = TaskFieldUtils.createFieldHtml(fieldName.trim(), 'subField');
+                        const fullContent = fieldContent.trim() ? `${fieldHtml} ${fieldContent.trim()}` : fieldHtml;
+                        
+                        // 添加到笔记
+                        focusNote.appendMarkdownComment(fullContent);
+                        
+                        // 获取刚添加的评论索引
+                        const lastIndex = focusNote.MNComments.length - 1;
+                        
+                        // 移动到选定位置
+                        MNTaskManager.moveCommentToField(focusNote, lastIndex, targetField.fieldName, isBottom);
+                        
+                        MNUtil.showHUD(`✅ 已添加字段：${fieldName}`);
+                      } catch (error) {
+                        MNUtil.showHUD("添加字段失败：" + error.message);
+                      }
+                    });
+                  }
+                );
               }
             }
           );
@@ -1599,6 +1633,56 @@ function registerAllCustomActions() {
             textField.text = selectedField.content || "";
           }
         });
+      }
+    );
+  });
+
+  // manageCustomFields - 统一的字段管理入口
+  MNTaskGlobal.registerCustomAction("manageCustomFields", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    if (!focusNote) {
+      MNUtil.showHUD("请先选择一个任务");
+      return;
+    }
+    
+    // 检查是否是任务卡片
+    if (!MNTaskManager.isTaskCard(focusNote)) {
+      MNUtil.showHUD("请先将卡片转换为任务卡片");
+      return;
+    }
+    
+    // 显示主菜单
+    const mainOptions = [
+      "📝 添加新字段",
+      "✏️ 编辑现有字段",
+      "📋 管理字段内容（移动/删除）"
+    ];
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "字段管理",
+      "选择操作类型",
+      0,
+      "取消",
+      mainOptions,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) return;
+        
+        switch (buttonIndex) {
+          case 1: // 添加新字段
+            // 直接调用已有的 addCustomField 功能
+            MNTaskGlobal.executeCustomAction("addCustomField", context);
+            break;
+            
+          case 2: // 编辑现有字段
+            // 直接调用已有的 editCustomField 功能
+            MNTaskGlobal.executeCustomAction("editCustomField", context);
+            break;
+            
+          case 3: // 管理字段内容
+            // 调用新的字段内容管理功能
+            MNTaskManager.manageFieldContents(focusNote);
+            break;
+        }
       }
     );
   });

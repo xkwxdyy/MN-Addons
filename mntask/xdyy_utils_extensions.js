@@ -1399,6 +1399,335 @@ class MNTaskManager {
     
     return subFields
   }
+
+  /**
+   * 获取所有主字段及其位置信息
+   * @param {MNNote} note - 要分析的卡片
+   * @returns {Array<{index: number, fieldName: string, comment: MNComment}>} 主字段数组
+   */
+  static getMainFields(note) {
+    if (!note || !note.MNComments) return []
+    
+    const parsed = this.parseTaskComments(note)
+    const mainFields = []
+    
+    for (let field of parsed.taskFields) {
+      if (field.isMainField) {
+        mainFields.push({
+          index: field.index,
+          fieldName: field.content,
+          comment: note.MNComments[field.index]
+        })
+      }
+    }
+    
+    return mainFields
+  }
+
+  /**
+   * 获取字段结构用于多选对话框
+   * @param {MNNote} note - 要分析的卡片
+   * @returns {Array<{display: string, index: number, type: string, fieldName: string}>} 可选项数组
+   */
+  static getFieldStructureForSelection(note) {
+    if (!note || !note.MNComments) return []
+    
+    const parsed = this.parseTaskComments(note)
+    const options = []
+    
+    // 按主字段分组
+    let currentMainField = null
+    let currentMainFieldIndex = -1
+    
+    for (let field of parsed.taskFields) {
+      if (field.isMainField) {
+        currentMainField = field.content
+        currentMainFieldIndex = field.index
+        // 添加主字段分隔符
+        options.push({
+          display: `----------【${field.content}】----------`,
+          index: -1,
+          type: 'separator',
+          fieldName: field.content
+        })
+      } else if (currentMainField) {
+        // 子字段
+        const parsed = TaskFieldUtils.getFieldNameAndContent(note.MNComments[field.index].text)
+        options.push({
+          display: `    ${parsed.fieldName}: ${parsed.content || '(空)'}`,
+          index: field.index,
+          type: 'subField',
+          fieldName: parsed.fieldName,
+          parentField: currentMainField
+        })
+      }
+    }
+    
+    // 添加其他评论
+    const taskFieldIndices = new Set(parsed.taskFields.map(f => f.index))
+    note.MNComments.forEach((comment, index) => {
+      if (!taskFieldIndices.has(index) && comment) {
+        let display = ''
+        if (comment.type === 'TextNote') {
+          display = comment.text ? comment.text.substring(0, 50) : '(空文本)'
+        } else if (comment.type === 'LinkNote') {
+          display = '🔗 链接'
+        } else if (comment.type === 'ImageNote') {
+          display = '🖼️ 图片'
+        } else if (comment.type === 'PaintNote') {
+          display = '✏️ 手写'
+        } else {
+          display = comment.type
+        }
+        
+        options.push({
+          display: `    ${display}`,
+          index: index,
+          type: 'comment',
+          fieldName: null,
+          parentField: currentMainField
+        })
+      }
+    })
+    
+    return options
+  }
+
+  /**
+   * 显示字段内容多选对话框
+   * @param {MNNote} note - 目标笔记
+   * @param {Array} options - 可选项数组
+   * @param {Set} selectedIndices - 已选中的索引集合
+   * @param {Function} finalCallback - 最终回调函数
+   */
+  static showFieldContentMultiSelectDialog(note, options, selectedIndices, finalCallback) {
+    // 构建显示选项
+    const displayOptions = options.map(opt => {
+      if (opt.type === 'separator') {
+        return opt.display
+      }
+      const isSelected = selectedIndices.has(opt.index)
+      const prefix = isSelected ? '✅ ' : '⬜ '
+      return prefix + opt.display
+    })
+    
+    // 添加操作按钮
+    const selectedCount = selectedIndices.size
+    const actionButtons = [
+      `✅ 全选 (共 ${options.filter(o => o.type !== 'separator').length} 项)`,
+      `❌ 取消全选`,
+      selectedCount > 0 ? `➡️ 确定选择 (已选 ${selectedCount} 项)` : '➡️ 确定选择'
+    ]
+    
+    const allOptions = [...displayOptions, '━━━━━━━━━━', ...actionButtons]
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "选择要管理的内容",
+      "点击项目进行选择/取消选择",
+      0,
+      "取消",
+      allOptions,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) {
+          finalCallback(null)
+          return
+        }
+        
+        const selectedIndex = buttonIndex - 1
+        
+        // 处理分隔线之后的操作按钮
+        const separatorIndex = displayOptions.length
+        if (selectedIndex === separatorIndex) {
+          // 点击了分隔线，重新显示
+          this.showFieldContentMultiSelectDialog(note, options, selectedIndices, finalCallback)
+          return
+        }
+        
+        if (selectedIndex > separatorIndex) {
+          // 操作按钮
+          const actionIndex = selectedIndex - separatorIndex - 1
+          
+          if (actionIndex === 0) {
+            // 全选
+            options.forEach(opt => {
+              if (opt.type !== 'separator' && opt.index >= 0) {
+                selectedIndices.add(opt.index)
+              }
+            })
+            this.showFieldContentMultiSelectDialog(note, options, selectedIndices, finalCallback)
+          } else if (actionIndex === 1) {
+            // 取消全选
+            selectedIndices.clear()
+            this.showFieldContentMultiSelectDialog(note, options, selectedIndices, finalCallback)
+          } else if (actionIndex === 2) {
+            // 确定选择
+            if (selectedIndices.size === 0) {
+              MNUtil.showHUD("请至少选择一项内容")
+              this.showFieldContentMultiSelectDialog(note, options, selectedIndices, finalCallback)
+            } else {
+              finalCallback(Array.from(selectedIndices))
+            }
+          }
+          return
+        }
+        
+        // 处理内容选择
+        const selectedOption = options[selectedIndex]
+        if (selectedOption.type === 'separator') {
+          // 点击分隔符，重新显示
+          this.showFieldContentMultiSelectDialog(note, options, selectedIndices, finalCallback)
+        } else if (selectedOption.index >= 0) {
+          // 切换选中状态
+          if (selectedIndices.has(selectedOption.index)) {
+            selectedIndices.delete(selectedOption.index)
+          } else {
+            selectedIndices.add(selectedOption.index)
+          }
+          // 递归调用以更新显示
+          this.showFieldContentMultiSelectDialog(note, options, selectedIndices, finalCallback)
+        }
+      }
+    )
+  }
+
+  /**
+   * 管理字段内容（移动/删除）
+   * @param {MNNote} note - 目标笔记
+   */
+  static manageFieldContents(note) {
+    if (!note) {
+      MNUtil.showHUD("请先选择一个任务")
+      return
+    }
+    
+    // 获取字段结构
+    const options = this.getFieldStructureForSelection(note)
+    if (options.length === 0) {
+      MNUtil.showHUD("当前笔记没有可管理的内容")
+      return
+    }
+    
+    // 初始化选中集合
+    const selectedIndices = new Set()
+    
+    // 显示多选对话框
+    this.showFieldContentMultiSelectDialog(note, options, selectedIndices, (indices) => {
+      if (!indices || indices.length === 0) return
+      
+      // 显示操作选择对话框
+      const actionOptions = [
+        "➡️ 移动到其他位置",
+        "🗑️ 删除选中内容"
+      ]
+      
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "选择操作类型",
+        `已选择 ${indices.length} 项内容`,
+        0,
+        "取消",
+        actionOptions,
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) return
+          
+          if (buttonIndex === 1) {
+            // 移动操作
+            this.showMoveTargetDialog(note, indices)
+          } else if (buttonIndex === 2) {
+            // 删除操作
+            this.confirmAndDeleteComments(note, indices)
+          }
+        }
+      )
+    })
+  }
+
+  /**
+   * 显示移动目标选择对话框
+   * @param {MNNote} note - 目标笔记
+   * @param {Array<number>} moveIndices - 要移动的索引数组
+   */
+  static showMoveTargetDialog(note, moveIndices) {
+    const mainFields = this.getMainFields(note)
+    if (mainFields.length === 0) {
+      MNUtil.showHUD("没有找到可用的目标字段")
+      return
+    }
+    
+    // 构建目标选项
+    const targetOptions = []
+    mainFields.forEach(field => {
+      targetOptions.push(`字段【${field.fieldName}】的顶部`)
+      targetOptions.push(`字段【${field.fieldName}】的底部`)
+    })
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "选择移动目标位置",
+      `将移动 ${moveIndices.length} 项内容`,
+      0,
+      "取消",
+      targetOptions,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) return
+        
+        const targetIndex = buttonIndex - 1
+        const fieldIndex = Math.floor(targetIndex / 2)
+        const isBottom = targetIndex % 2 === 1
+        const targetField = mainFields[fieldIndex]
+        
+        MNUtil.undoGrouping(() => {
+          try {
+            // 排序索引（从大到小），避免移动时索引变化
+            const sortedIndices = [...moveIndices].sort((a, b) => b - a)
+            
+            sortedIndices.forEach(index => {
+              this.moveCommentToField(note, index, targetField.fieldName, isBottom)
+            })
+            
+            MNUtil.showHUD(`✅ 成功移动 ${moveIndices.length} 项内容`)
+          } catch (error) {
+            MNUtil.showHUD("移动失败: " + error.message)
+            MNUtil.addErrorLog(error, "showMoveTargetDialog")
+          }
+        })
+      }
+    )
+  }
+
+  /**
+   * 确认并删除评论
+   * @param {MNNote} note - 目标笔记
+   * @param {Array<number>} deleteIndices - 要删除的索引数组
+   */
+  static confirmAndDeleteComments(note, deleteIndices) {
+    const message = `确定要删除选中的 ${deleteIndices.length} 项内容吗？\n此操作不可恢复。`
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "确认删除",
+      message,
+      0,
+      "取消",
+      ["🗑️ 确认删除"],
+      (alert, buttonIndex) => {
+        if (buttonIndex === 1) {
+          MNUtil.undoGrouping(() => {
+            try {
+              // 从大到小排序，避免删除时索引变化
+              const sortedIndices = [...deleteIndices].sort((a, b) => b - a)
+              
+              sortedIndices.forEach(index => {
+                note.removeCommentByIndex(index)
+              })
+              
+              MNUtil.showHUD(`✅ 成功删除 ${deleteIndices.length} 项内容`)
+            } catch (error) {
+              MNUtil.showHUD("删除失败: " + error.message)
+              MNUtil.addErrorLog(error, "confirmAndDeleteComments")
+            }
+          })
+        }
+      }
+    )
+  }
   
   /**
    * 获取所有子任务笔记

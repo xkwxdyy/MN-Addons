@@ -1800,48 +1800,66 @@ function registerAllCustomActions() {
       return;
     }
     
-    // 创建输入弹窗
-    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-      "按章节拆分任务",
-      "请输入章节范围（例如：1-10）",
-      2,  // 输入框样式
-      "取消",
-      ["确定"],
-      (alert, buttonIndex) => {
-        if (buttonIndex === 1) {
-          const rangeText = alert.textFieldAtIndex(0).text;
-          const match = rangeText.match(/^(\d+)-(\d+)$/);
-          
-          if (!match) {
-            MNUtil.showHUD("格式错误，请输入如 1-10 的格式");
-            return;
-          }
-          
-          const startChapter = parseInt(match[1]);
-          const endChapter = parseInt(match[2]);
-          
-          if (startChapter > endChapter) {
-            MNUtil.showHUD("起始章节不能大于结束章节");
-            return;
-          }
-          
-          MNUtil.undoGrouping(() => {
-            try {
-              const subtasks = MNTaskManager.splitTaskByChapters(focusNote, startChapter, endChapter);
-              MNUtil.showHUD(`✅ 已创建 ${subtasks.length} 个章节任务`);
-              
-              // 刷新显示
-              focusNote.refresh();
-            } catch (error) {
-              MNUtil.showHUD("拆分任务失败：" + error.message);
-            }
-          });
-        }
-      }
+    // 先询问拆分方式
+    const splitMode = await MNUtil.userSelect(
+      "选择章节拆分方式", 
+      "根据您的需求选择合适的拆分方式",
+      ["简单拆分（指定章节范围）", "输入章节结构（支持子章节）", "使用学习模板"]
     );
+    
+    if (splitMode === 0) return; // 取消
+    
+    if (splitMode === 1) {
+      // 简单拆分
+      const rangeInput = await MNUtil.input("章节范围", "请输入章节范围（例如：1-10）");
+      if (!rangeInput) return;
+      
+      const match = rangeInput.match(/^(\d+)-(\d+)$/);
+      if (!match) {
+        MNUtil.showHUD("格式错误，请输入如 1-10 的格式");
+        return;
+      }
+      
+      const startChapter = parseInt(match[1]);
+      const endChapter = parseInt(match[2]);
+      
+      if (startChapter > endChapter) {
+        MNUtil.showHUD("起始章节不能大于结束章节");
+        return;
+      }
+      
+      const subtasks = MNTaskManager.splitTaskByChapters(focusNote, {
+        startChapter,
+        endChapter
+      });
+      
+    } else if (splitMode === 2) {
+      // 输入章节结构
+      MNUtil.showHUD("章节结构输入功能开发中...");
+      // TODO: 实现章节结构输入界面
+      
+    } else if (splitMode === 3) {
+      // 使用学习模板
+      const templateType = await MNUtil.userSelect(
+        "选择学习模板",
+        "不同类型的学习任务有不同的最佳实践",
+        ["标准学习模板", "技术学习模板", "考试准备模板"]
+      );
+      
+      if (templateType === 0) return;
+      
+      const templateMap = {
+        1: 'standard',
+        2: 'technical', 
+        3: 'exam'
+      };
+      
+      const tasks = MNTaskManager.createLearningTemplate(focusNote, templateMap[templateType]);
+      MNUtil.showHUD(`✅ 已创建 ${tasks.length} 个学习阶段任务`);
+    }
   });
 
-  // splitTaskByPages - 按页数拆分
+  // splitTaskByPages - 按页数拆分（渐进式）
   MNTaskGlobal.registerCustomAction("splitTaskByPages", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
     if (!focusNote) {
@@ -1849,64 +1867,69 @@ function registerAllCustomActions() {
       return;
     }
     
-    // 两步输入：先输入页码范围，再输入每个任务的页数
-    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-      "按页数拆分任务",
-      "请输入页码范围（例如：51-100）",
-      2,
-      "取消",
-      ["下一步"],
-      (alert, buttonIndex) => {
-        if (buttonIndex === 1) {
-          const rangeText = alert.textFieldAtIndex(0).text;
-          const match = rangeText.match(/^(\d+)\s*-\s*(\d+)$/);
-          
-          if (!match) {
-            MNUtil.showHUD("格式错误，请输入如 51-100 的格式");
-            return;
-          }
-          
-          const startPage = parseInt(match[1]);
-          const endPage = parseInt(match[2]);
-          
-          if (startPage <= 0 || endPage <= 0 || startPage > endPage) {
-            MNUtil.showHUD("页码范围无效");
-            return;
-          }
-          
-          const totalPages = endPage - startPage + 1;
-          
-          // 第二步：输入每个任务的页数
-          UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-            "设置任务页数",
-            `页码范围：${startPage}-${endPage}（共${totalPages}页）\n每个任务包含多少页？`,
-            2,
-            "取消",
-            ["确定"],
-            (alert2, buttonIndex2) => {
-              if (buttonIndex2 === 1) {
-                const pagesPerTask = parseInt(alert2.textFieldAtIndex(0).text);
-                
-                if (isNaN(pagesPerTask) || pagesPerTask <= 0) {
-                  MNUtil.showHUD("请输入有效的页数");
-                  return;
-                }
-                
-                MNUtil.undoGrouping(() => {
-                  try {
-                    const subtasks = MNTaskManager.splitTaskByPages(focusNote, startPage, endPage, pagesPerTask);
-                    MNUtil.showHUD(`✅ 已创建 ${subtasks.length} 个页数任务`);
-                    focusNote.refresh();
-                  } catch (error) {
-                    MNUtil.showHUD("拆分任务失败：" + error.message);
-                  }
-                });
-              }
-            }
-          );
+    // 检查是否已有拆分进度
+    const parsed = MNTaskManager.parseTaskComments(focusNote);
+    let currentProgress = 1;
+    
+    if (parsed.fields && parsed.fields['信息']) {
+      const infoText = parsed.fields['信息'].content || '';
+      const progressMatch = infoText.match(/进度: (\d+)\/(\d+)页/);
+      if (progressMatch) {
+        currentProgress = parseInt(progressMatch[1]) + 1;
+      }
+    }
+    
+    // 输入总页数
+    const totalPagesInput = await MNUtil.input("设置总页数", `请输入书籍总页数\n${currentProgress > 1 ? `当前进度：第${currentProgress}页` : ''}`);
+    if (!totalPagesInput) return;
+    
+    const totalPages = parseInt(totalPagesInput);
+    if (isNaN(totalPages) || totalPages <= 0) {
+      MNUtil.showHUD("请输入有效的页数");
+      return;
+    }
+    
+    // 输入每日页数
+    const pagesPerDayInput = await MNUtil.input("每日阅读页数", "建议根据您的阅读速度设置（默认20页）");
+    const pagesPerDay = pagesPerDayInput ? parseInt(pagesPerDayInput) : 20;
+    
+    if (isNaN(pagesPerDay) || pagesPerDay <= 0) {
+      MNUtil.showHUD("请输入有效的每日页数");
+      return;
+    }
+    
+    // 询问创建几天的任务
+    const daysOptions = ["创建3天任务（推荐）", "创建5天任务", "创建7天任务", "创建所有任务"];
+    const daysChoice = await MNUtil.userSelect("选择任务创建策略", "渐进式创建可以根据实际进度调整", daysOptions);
+    
+    if (daysChoice === 0) return;
+    
+    const daysMap = { 1: 3, 2: 5, 3: 7, 4: 999 };
+    const daysToCreate = daysMap[daysChoice];
+    
+    // 执行拆分
+    const tasks = MNTaskManager.splitTaskByPages(focusNote, {
+      totalPages,
+      currentPage: currentProgress,
+      pagesPerDay,
+      daysToCreate,
+      adjustByProgress: true
+    });
+    
+    // 询问是否需要分析调整
+    if (currentProgress > 1) {
+      const adjust = await MNUtil.userSelect("是否分析并调整计划？", "根据历史完成情况优化", ["是", "否"]);
+      if (adjust === 1) {
+        const result = MNTaskManager.adjustReadingPlan(focusNote);
+        if (result.suggestions.length > 0) {
+          let suggestionsText = "📊 分析结果：\n";
+          result.suggestions.forEach(s => {
+            suggestionsText += `• ${s.reason}：${s.action}\n`;
+          });
+          MNUtil.showHUD(suggestionsText);
         }
       }
-    );
+    }
   });
 
   // splitTaskByTimeBlocks - 按时间块拆分（番茄钟）

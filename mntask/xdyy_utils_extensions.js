@@ -2285,6 +2285,23 @@ class MNTaskManager {
       displayText = `${time} ${displayText}`
     }
     
+    // 添加任务类型图标
+    let typeIcon = ''
+    switch (parts.type) {
+      case '目标':
+        typeIcon = '🎯 '
+        break
+      case '关键结果':
+        typeIcon = '📊 '
+        break
+      case '项目':
+        typeIcon = '📁 '
+        break
+      case '动作':
+        typeIcon = '▶️ '
+        break
+    }
+    
     // 添加优先级标记
     let priorityIcon = ''
     if (priority === '高') priorityIcon = '🔴 '
@@ -2295,9 +2312,9 @@ class MNTaskManager {
     let statusIcon = ''
     if (parts.status === '已完成') statusIcon = '✓ '
     
-    // 创建 Markdown 链接
+    // 创建 Markdown 链接（任务类型在最前面，便于识别）
     const url = `marginnote4app://note/${task.noteId}`
-    return `- ${priorityIcon}${statusIcon}[${displayText}](${url})`
+    return `- ${typeIcon}${priorityIcon}${statusIcon}[${displayText}](${url})`
   }
   
   /**
@@ -3239,6 +3256,335 @@ class TaskFilterEngine {
     }
     
     return false
+  }
+  
+  /**
+   * 读书任务拆分系统
+   * @author 夏大鱼羊
+   */
+  
+  /**
+   * 按章节拆分任务（支持多层级）
+   * @param {MNNote} parentNote - 父任务卡片
+   * @param {Object} options - 拆分选项
+   * @returns {Array<MNNote>} 创建的子任务数组
+   */
+  static splitTaskByChapters(parentNote, options = {}) {
+    const {
+      chapters = [],        // 章节结构数组
+      startChapter = 1,     // 起始章节
+      endChapter = null,    // 结束章节
+      includeSubChapters = true,  // 是否包含子章节
+      createNow = true      // 是否立即创建所有章节
+    } = options
+    
+    const createdTasks = []
+    const titleParts = this.parseTaskTitle(parentNote.noteTitle)
+    
+    MNUtil.undoGrouping(() => {
+      // 如果提供了章节结构
+      if (chapters && chapters.length > 0) {
+        chapters.forEach((chapter, index) => {
+          const chapterNum = index + 1
+          if (chapterNum >= startChapter && (!endChapter || chapterNum <= endChapter)) {
+            const taskTitle = `【动作】${chapter.title || `第${chapterNum}章`}`
+            const childNote = MNNote.createChildNote(parentNote, taskTitle)
+            
+            // 添加任务字段
+            this.addTaskFieldsToNote(childNote, {
+              status: "未开始",
+              info: `章节范围: ${chapter.pages ? `${chapter.pages.start}-${chapter.pages.end}页` : '未指定'}`
+            })
+            
+            // 如果有子章节且需要包含
+            if (includeSubChapters && chapter.subChapters) {
+              chapter.subChapters.forEach((subChapter, subIndex) => {
+                const subTaskTitle = `【动作】${subChapter.title || `${chapterNum}.${subIndex + 1}节`}`
+                const subChildNote = MNNote.createChildNote(childNote, subTaskTitle)
+                
+                this.addTaskFieldsToNote(subChildNote, {
+                  status: "未开始",
+                  info: `小节范围: ${subChapter.pages ? `${subChapter.pages.start}-${subChapter.pages.end}页` : '未指定'}`
+                })
+              })
+            }
+            
+            createdTasks.push(childNote)
+          }
+        })
+      } else {
+        // 简单的章节拆分
+        const totalChapters = endChapter || 10
+        for (let i = startChapter; i <= totalChapters; i++) {
+          const taskTitle = `【动作】阅读第${i}章`
+          const childNote = MNNote.createChildNote(parentNote, taskTitle)
+          
+          this.addTaskFieldsToNote(childNote, {
+            status: "未开始",
+            info: `章节: 第${i}章`
+          })
+          
+          createdTasks.push(childNote)
+        }
+      }
+      
+      // 更新父任务状态
+      this.updateTaskField(parentNote, '信息', `已拆分为${createdTasks.length}个章节任务`)
+    })
+    
+    MNUtil.showHUD(`✅ 已创建 ${createdTasks.length} 个章节任务`)
+    return createdTasks
+  }
+  
+  /**
+   * 按页码渐进式拆分
+   * @param {MNNote} parentNote - 父任务卡片
+   * @param {Object} options - 拆分选项
+   * @returns {Array<MNNote>} 创建的子任务数组
+   */
+  static splitTaskByPages(parentNote, options = {}) {
+    const {
+      totalPages,           // 总页数
+      currentPage = 1,      // 当前页码
+      pagesPerDay = 20,     // 每日页数（初始值）
+      daysToCreate = 3,     // 创建几天的任务
+      adjustByProgress = true  // 是否根据进度调整
+    } = options
+    
+    if (!totalPages) {
+      MNUtil.showHUD("❌ 请先设置总页数")
+      return []
+    }
+    
+    const createdTasks = []
+    const remainingPages = totalPages - currentPage + 1
+    
+    MNUtil.undoGrouping(() => {
+      let startPage = currentPage
+      let dailyPages = pagesPerDay
+      
+      // 获取已完成的子任务，用于进度调整
+      if (adjustByProgress) {
+        const completedTasks = this.getChildTaskNotes(parentNote)
+          .filter(task => {
+            const parts = this.parseTaskTitle(task.noteTitle)
+            return parts.status === '已完成'
+          })
+        
+        // 根据历史完成情况调整每日页数
+        if (completedTasks.length > 0) {
+          const avgCompletion = this.calculateAverageCompletion(completedTasks)
+          dailyPages = Math.round(pagesPerDay * avgCompletion)
+        }
+      }
+      
+      // 创建指定天数的任务
+      for (let day = 1; day <= daysToCreate && startPage <= totalPages; day++) {
+        const endPage = Math.min(startPage + dailyPages - 1, totalPages)
+        const taskTitle = `【动作】阅读 P${startPage}-${endPage}`
+        
+        const childNote = MNNote.createChildNote(parentNote, taskTitle)
+        
+        this.addTaskFieldsToNote(childNote, {
+          status: "未开始",
+          info: `页码范围: ${startPage}-${endPage}页，共${endPage - startPage + 1}页`,
+          priority: day === 1 ? "高" : "中"
+        })
+        
+        // 添加今日标记（第一个任务）
+        if (day === 1) {
+          this.markAsToday(childNote, true)
+        }
+        
+        createdTasks.push(childNote)
+        startPage = endPage + 1
+      }
+      
+      // 记录拆分进度
+      const progressInfo = {
+        totalPages,
+        currentPage: startPage,
+        remainingPages: totalPages - startPage + 1,
+        estimatedDays: Math.ceil((totalPages - startPage + 1) / dailyPages)
+      }
+      
+      this.updateTaskField(parentNote, '信息', 
+        `进度: ${startPage - 1}/${totalPages}页 (${Math.round((startPage - 1) / totalPages * 100)}%)\n` +
+        `预计还需 ${progressInfo.estimatedDays} 天完成`
+      )
+    })
+    
+    MNUtil.showHUD(`✅ 已创建 ${createdTasks.length} 个阅读任务`)
+    return createdTasks
+  }
+  
+  /**
+   * 动态调整阅读计划
+   * @param {MNNote} parentNote - 父任务卡片
+   * @returns {Object} 调整结果
+   */
+  static adjustReadingPlan(parentNote) {
+    const childTasks = this.getChildTaskNotes(parentNote)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    // 分析任务完成情况
+    const analysis = {
+      total: childTasks.length,
+      completed: 0,
+      inProgress: 0,
+      notStarted: 0,
+      overdue: 0,
+      todayTasks: []
+    }
+    
+    childTasks.forEach(task => {
+      const parts = this.parseTaskTitle(task.noteTitle)
+      const taskDate = this.getTaskDate(task)
+      
+      switch (parts.status) {
+        case '已完成':
+          analysis.completed++
+          break
+        case '进行中':
+          analysis.inProgress++
+          if (taskDate && taskDate < today) {
+            analysis.overdue++
+          }
+          break
+        case '未开始':
+          analysis.notStarted++
+          if (this.hasToday(task)) {
+            analysis.todayTasks.push(task)
+          }
+          break
+      }
+    })
+    
+    // 生成调整建议
+    const suggestions = []
+    
+    // 如果有逾期任务，建议减少每日任务量
+    if (analysis.overdue > 0) {
+      suggestions.push({
+        type: 'reduce',
+        reason: `有 ${analysis.overdue} 个逾期任务`,
+        action: '建议减少每日阅读量或合并任务'
+      })
+    }
+    
+    // 如果完成率高，可以增加任务量
+    const completionRate = analysis.completed / (analysis.completed + analysis.inProgress + analysis.overdue)
+    if (completionRate > 0.8 && analysis.completed > 3) {
+      suggestions.push({
+        type: 'increase',
+        reason: `完成率高达 ${Math.round(completionRate * 100)}%`,
+        action: '可以适当增加每日阅读量'
+      })
+    }
+    
+    // 如果今日没有任务，自动分配
+    if (analysis.todayTasks.length === 0 && analysis.notStarted > 0) {
+      const nextTask = childTasks.find(task => {
+        const parts = this.parseTaskTitle(task.noteTitle)
+        return parts.status === '未开始'
+      })
+      
+      if (nextTask) {
+        this.markAsToday(nextTask, true)
+        suggestions.push({
+          type: 'auto-assign',
+          reason: '今日没有阅读任务',
+          action: `已自动分配: ${nextTask.noteTitle}`
+        })
+      }
+    }
+    
+    return {
+      analysis,
+      suggestions,
+      needsAdjustment: suggestions.length > 0
+    }
+  }
+  
+  /**
+   * 计算平均完成率
+   * @param {Array<MNNote>} completedTasks - 已完成的任务
+   * @returns {number} 平均完成率（0-1）
+   */
+  static calculateAverageCompletion(completedTasks) {
+    if (completedTasks.length === 0) return 1
+    
+    // 分析每个任务的实际完成时间vs计划时间
+    let totalRate = 0
+    let validCount = 0
+    
+    completedTasks.forEach(task => {
+      const parsed = this.parseTaskComments(task)
+      // 这里可以根据实际的时间字段计算
+      // 简化处理：假设都是按时完成
+      totalRate += 1
+      validCount++
+    })
+    
+    return validCount > 0 ? totalRate / validCount : 1
+  }
+  
+  /**
+   * 创建学习任务模板
+   * @param {MNNote} parentNote - 父任务卡片
+   * @param {string} template - 模板类型
+   * @returns {Array<MNNote>} 创建的任务数组
+   */
+  static createLearningTemplate(parentNote, template = 'standard') {
+    const templates = {
+      standard: [
+        { type: '动作', title: '预读：浏览目录和概要', priority: '中' },
+        { type: '动作', title: '精读：深入理解核心概念', priority: '高' },
+        { type: '动作', title: '总结：整理笔记和要点', priority: '高' },
+        { type: '动作', title: '复习：巩固关键知识', priority: '中' },
+        { type: '动作', title: '应用：完成练习或项目', priority: '高' }
+      ],
+      technical: [
+        { type: '动作', title: '概览：了解技术背景', priority: '低' },
+        { type: '动作', title: '环境：搭建开发环境', priority: '高' },
+        { type: '动作', title: '示例：运行官方示例', priority: '中' },
+        { type: '动作', title: '实践：编写测试代码', priority: '高' },
+        { type: '动作', title: '项目：完成小型项目', priority: '高' },
+        { type: '动作', title: '总结：编写学习笔记', priority: '中' }
+      ],
+      exam: [
+        { type: '动作', title: '诊断：做诊断测试', priority: '高' },
+        { type: '动作', title: '基础：复习基础知识', priority: '高' },
+        { type: '动作', title: '重点：攻克重难点', priority: '高' },
+        { type: '动作', title: '练习：大量刷题', priority: '高' },
+        { type: '动作', title: '模拟：全真模拟考试', priority: '高' },
+        { type: '动作', title: '查漏：补充薄弱环节', priority: '中' }
+      ]
+    }
+    
+    const selectedTemplate = templates[template] || templates.standard
+    const createdTasks = []
+    
+    MNUtil.undoGrouping(() => {
+      selectedTemplate.forEach((item, index) => {
+        const taskTitle = `【${item.type}】${item.title}`
+        const childNote = MNNote.createChildNote(parentNote, taskTitle)
+        
+        this.addTaskFieldsToNote(childNote, {
+          status: "未开始",
+          priority: item.priority,
+          info: `学习阶段 ${index + 1}/${selectedTemplate.length}`
+        })
+        
+        createdTasks.push(childNote)
+      })
+      
+      // 更新父任务
+      this.updateTaskField(parentNote, '信息', `已创建${template}学习模板，共${createdTasks.length}个阶段`)
+    })
+    
+    return createdTasks
   }
 }
 

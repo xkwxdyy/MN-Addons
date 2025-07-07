@@ -3681,8 +3681,8 @@ class MNMath {
     ];
     
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-      "选择移动内容的方式",
-      "选择如何确定要移动的内容",
+      "选择要管理的评论",
+      "选择获取评论的方式",
       0,
       "取消",
       firstOptions,

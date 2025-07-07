@@ -72,15 +72,61 @@ function registerAllCustomActions() {
       }
     });
     
-    // 如果有需要转换的卡片，先统一选择类型
-    let selectedType = null;
+    // 如果有需要转换的卡片，根据父卡片类型智能推断
+    let typeMapping = new Map(); // 存储每个卡片的类型
+    let needManualSelect = []; // 需要手动选择的卡片
+    
     if (notTaskCards.length > 0) {
-      const taskTypes = ["目标", "关键结果", "项目", "动作"];
-      const selectedIndex = await MNUtil.userSelect("选择任务类型", `将为 ${notTaskCards.length} 个卡片设置相同类型`, taskTypes);
+      // 遍历每个卡片，根据父卡片类型自动推断
+      notTaskCards.forEach(note => {
+        const parentNote = note.parentNote;
+        let autoType = null;
+        
+        if (parentNote && MNTaskManager.isTaskCard(parentNote)) {
+          const parentParts = MNTaskManager.parseTaskTitle(parentNote.noteTitle);
+          const parentType = parentParts.type;
+          
+          // 根据层级规则自动推断
+          if (parentType === "目标") {
+            autoType = "关键结果";
+            MNUtil.log(`🎯 自动推断：父卡片是"目标"，子卡片设为"关键结果"`);
+          } else if (parentType === "关键结果") {
+            autoType = "项目";
+            MNUtil.log(`🎯 自动推断：父卡片是"关键结果"，子卡片设为"项目"`);
+          }
+        }
+        
+        if (autoType) {
+          typeMapping.set(note, autoType);
+        } else {
+          needManualSelect.push(note);
+        }
+      });
       
-      if (selectedIndex === 0) return; // 用户取消
+      // 如果有需要手动选择的卡片，弹出选择框
+      if (needManualSelect.length > 0) {
+        const taskTypes = ["目标", "关键结果", "项目", "动作"];
+        const autoCount = notTaskCards.length - needManualSelect.length;
+        let subTitle = `${needManualSelect.length} 个卡片需要手动选择类型`;
+        if (autoCount > 0) {
+          subTitle += `\n(${autoCount} 个卡片已自动推断类型)`;
+        }
+        
+        const selectedIndex = await MNUtil.userSelect("选择任务类型", subTitle, taskTypes);
+        
+        if (selectedIndex === 0) return; // 用户取消
+        
+        const selectedType = taskTypes[selectedIndex - 1];
+        // 为所有需要手动选择的卡片设置相同类型
+        needManualSelect.forEach(note => {
+          typeMapping.set(note, selectedType);
+        });
+      }
       
-      selectedType = taskTypes[selectedIndex - 1];
+      // 显示智能推断的结果
+      if (typeMapping.size > 0 && needManualSelect.length === 0) {
+        MNUtil.showHUD(`✅ 已根据父卡片类型自动设置任务类型`);
+      }
     }
     
     // 批量处理
@@ -103,6 +149,13 @@ function registerAllCustomActions() {
       
       // 处理需要转换的卡片
       notTaskCards.forEach(note => {
+        // 获取该卡片的任务类型
+        const taskType = typeMapping.get(note);
+        if (!taskType) {
+          MNUtil.log(`⚠️ 卡片没有分配类型，跳过: ${note.noteTitle}`);
+          return;
+        }
+        
         // 获取父卡片
         const parentNote = note.parentNote;
         
@@ -124,8 +177,8 @@ function registerAllCustomActions() {
         // 构建新标题
         const content = noteToConvert.noteTitle || "未命名任务";
         const newTitle = path ? 
-          `【${selectedType} >> ${path}｜未开始】${content}` :
-          `【${selectedType}｜未开始】${content}`;
+          `【${taskType} >> ${path}｜未开始】${content}` :
+          `【${taskType}｜未开始】${content}`;
         
         noteToConvert.noteTitle = newTitle;
         
@@ -138,6 +191,19 @@ function registerAllCustomActions() {
         // 直接执行链接操作
         MNTaskManager.linkParentTask(noteToConvert, parentNote);
       });
+      
+      // 显示处理结果
+      if (notTaskCards.length > 0) {
+        const autoCount = notTaskCards.length - needManualSelect.length;
+        let message = `✅ 已创建 ${notTaskCards.length} 个任务卡片`;
+        if (autoCount > 0) {
+          message += `\n🎯 自动推断：${autoCount} 个`;
+        }
+        if (needManualSelect.length > 0) {
+          message += `\n✋ 手动选择：${needManualSelect.length} 个`;
+        }
+        MNUtil.showHUD(message);
+      }
     });
   });
   

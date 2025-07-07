@@ -970,8 +970,8 @@ class MNMath {
       
       // MNUtil.log(`智能链接排列：${noteType} <-> ${targetNoteType}`);
       
-      // 场景1：归类卡片与知识点卡片
-      if (noteType === "归类" && !["归类", "定义"].includes(targetNoteType)) {
+      // 场景1：归类卡片与知识点卡片（不包括定义卡片）
+      if (noteType === "归类" && !["归类"].includes(targetNoteType) && targetNoteType !== "定义") {
         // note 是归类卡片，targetNote 是知识点卡片
         // 知识点卡片的链接移动到"相关链接"
         let targetLinkIndex = targetNote.MNComments.findIndex(comment => {
@@ -983,7 +983,7 @@ class MNMath {
         });
         
         if (targetLinkIndex !== -1) {
-          this.moveCommentsArrToField(targetNote, [targetLinkIndex], "相关链接", false);
+          this.moveCommentsArrToField(targetNote, [targetLinkIndex], "相关链接", true);
         }
         
         // 归类卡片的链接已经在最后，默认就在"所属"字段下，不需要移动
@@ -993,14 +993,14 @@ class MNMath {
         });
         return true;
         
-      } else if (!["归类", "定义"].includes(noteType) && targetNoteType === "归类") {
+      } else if (!["归类"].includes(noteType) && noteType !== "定义" && targetNoteType === "归类") {
         // note 是知识点卡片，targetNote 是归类卡片
         // 知识点卡片的链接移动到"相关链接"
         let linkIndex = comments.length - 1;
-        this.moveCommentsArrToField(note, [linkIndex], "相关链接", false);
+        this.moveCommentsArrToField(note, [linkIndex], "相关链接", true);
         
         // 归类卡片的链接保持在最后（"所属"字段下）
-        MNUtil.showHUD("已将链接移动到\"相关链接\"字段");
+        // MNUtil.showHUD("已将链接移动到\"相关链接\"字段");
         MNUtil.undoGrouping(() => {
           note.refresh();
         });
@@ -1031,6 +1031,40 @@ class MNMath {
         }
         
         // MNUtil.showHUD("已将两个定义卡片的链接移动到\"相关思考\"字段");
+        MNUtil.undoGrouping(() => {
+          note.refresh();
+          targetNote.refresh();
+        });
+        return true;
+        
+      } else if ((noteType === "定义" && targetNoteType === "归类") || (noteType === "归类" && targetNoteType === "定义")) {
+        // 场景4：定义卡片与归类卡片的双向链接
+        if (noteType === "定义") {
+          // note 是定义卡片，targetNote 是归类卡片
+          // 归类卡片中的链接移动到"所属"字段
+          let targetLinkIndex = targetNote.MNComments.findIndex(comment => {
+            if (comment.type === "linkComment") {
+              let linkId = comment.text.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1];
+              return linkId === note.noteId;
+            }
+            return false;
+          });
+          
+          if (targetLinkIndex !== -1) {
+            this.moveCommentsArrToField(targetNote, [targetLinkIndex], "所属", true);
+          }
+          
+          // 定义卡片的链接保持在最后
+          
+        } else {
+          // note 是归类卡片，targetNote 是定义卡片
+          // 归类卡片中的链接移动到"所属"字段
+          let linkIndex = comments.length - 1;
+          this.moveCommentsArrToField(note, [linkIndex], "所属", true);
+          
+          // 定义卡片的链接保持在最后
+        }
+        
         MNUtil.undoGrouping(() => {
           note.refresh();
           targetNote.refresh();

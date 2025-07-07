@@ -108,35 +108,7 @@ function registerAllMenuTemplates() {
         menuTitle: "📆 浮窗定位指定日期 Inbox"
       },
       "⬇️ 时间标签管理",
-      {
-        action: "addTodayTimeTag",
-        menuTitle: "    ➕ 添加今日时间标签"
-      },
-      {
-        action: "updateTimeTag",
-        menuTitle: "    🔄 更新时间标签并添加「今日」"
-      },
-      {
-        action: "updateTodayTimeTag",
-        menuTitle: "    📅 更新为今日时间标签"
-      },
-      {
-        action: "clearTimeTag",
-        menuTitle: "    🗑️ 清除所有时间标签"
-      },
       "⬇️ 任务筛选",
-      {
-        action: "filterByTimeTag",
-        menuTitle: "    🏷️ 按时间标签筛选"
-      },
-      {
-        action: "filterByTaskStatus",
-        menuTitle: "    📊 按状态筛选（进行中/未开始）"
-      },
-      {
-        action: "filterByTaskType",
-        menuTitle: "    🎯 按类型筛选（任务/项目/关键结果）"
-      },
       "⬇️ 批量操作",
       {
         action: "moveToInbox",

@@ -4339,15 +4339,6 @@ function registerAllCustomActions() {
     });
   });
 
-  // addTodayTimeTag
-  global.registerCustomAction("addTodayTimeTag", async function (context) {
-    const { button, des, focusNote, focusNotes, self } = context;
-    MNUtil.undoGrouping(() => {
-      focusNotes.forEach((focusNote) => {
-        toolbarUtils.addTodayTimeTag(focusNote);
-      });
-    });
-  });
 
   // updateTimeTag
   global.registerCustomAction("updateTimeTag", async function (context) {

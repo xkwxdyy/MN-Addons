@@ -63,7 +63,7 @@ function registerAllButtons() {
   });
   
   global.registerButton("custom10", {
-    name: "评论",
+    name: "管理评论",
     image: "comment",
     templateName: "menu_comment"
   });

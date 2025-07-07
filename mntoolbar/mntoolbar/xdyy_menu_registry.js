@@ -40,7 +40,7 @@ global.getMenuTemplate = function(name) {
 function registerAllMenuTemplates() {
   // menu_comment
   global.registerMenuTemplate("menu_comment", {
-    action: "moveNewContentsByPopupTo",
+    action: "manageCommentsByPopup",
     // doubleClick: "moveOldContentsByPopupTo",  // TODO: 把上面的内容移动下来，类似于移动上去
     onLongPress: {
       action: "menu",
@@ -57,18 +57,6 @@ function registerAllMenuTemplates() {
         {
           action: "updateBidirectionalLink",
           menuTitle: "更新链接",
-        },
-        // {
-        //   action: "moveLastTwoCommentByPopupTo",
-        //   menuTitle: "移动「最后2️⃣条」评论",
-        // },
-        // {
-        //   action: "moveLastThreeCommentByPopupTo",
-        //   menuTitle: "移动「最后3️⃣条」评论",
-        // },
-        {
-          action: "deleteCommentsByPopup",
-          menuTitle: "删除评论",
         },
       ]
     }
@@ -646,28 +634,6 @@ function registerAllMenuTemplates() {
   // menu_excerpt
   global.registerMenuTemplate("menu_excerpt", {
     action: "moveToExcerptPartBottom",
-    // onLongPress: {
-    //   action: "menu",
-    //   menuWidth: 350,
-    //   menuItems: [
-    //     {
-    //       action: "deleteCommentsByPopupAndMoveNewContentToExcerptAreaTop",
-    //       menuTitle: "删除某些评论后移动新内容 ⇨ 摘录区「🔝 top」",
-    //     },
-    //     {
-    //       action: "deleteCommentsByPopupAndMoveNewContentToExcerptAreaBottom",
-    //       menuTitle: "删除某些评论后移动新内容 ⇨ 摘录区「⬇️ bottom」",
-    //     },
-    //     {
-    //       action: "moveToExcerptPartBottom",
-    //       menuTitle: "⇨ 摘录区「⬇️ bottom」",
-    //     },
-    //     {
-    //       action: "moveToExcerptPartTop",
-    //       menuTitle: "⇨ 摘录区「🔝 top」",
-    //     }
-    //   ]
-    // }
   });
 
   // menu_MN

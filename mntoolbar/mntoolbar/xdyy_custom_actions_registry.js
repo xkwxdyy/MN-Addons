@@ -2983,13 +2983,12 @@ function registerAllCustomActions() {
     });
   });
 
-  // moveNewContentsByPopupTo
-  global.registerCustomAction("moveNewContentsByPopupTo", async function (context) {
+  // manageCommentsByPopup
+  global.registerCustomAction("manageCommentsByPopup", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
-        // focusNote.moveCommentsByIndexArrAndButtonTo(focusNote.getNewContentIndexArr(), "移动「新增」评论到", "")
-        MNMath.moveCommentsByPopup(focusNote);
+        MNMath.manageCommentsByPopup(focusNote);
       } catch (error) {
         MNUtil.showHUD(error);
       }

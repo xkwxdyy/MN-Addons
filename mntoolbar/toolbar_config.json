@@ -171,9 +171,9 @@
       "description": "{\n  \"action\": \"addHtmlMarkdownComment\",\n  \"onLongPress\": {\n    \"action\": \"menu\",\n    \"menuWidth\": 280,\n    \"menuItems\": [\n      {\n        \"action\": \"renewContentPointsToHtmlType\",\n        \"menuTitle\": \"🔄 更新\\\"-\\\": 弹窗选择\"\n      },\n      {\n        \"action\": \"htmlMDCommentsToNextLevelType\",\n        \"menuTitle\": \"⬇️ HtmlMD 评论降级\"\n      },\n      {\n        \"action\": \"htmlMDCommentsToLastLevelType\",\n        \"menuTitle\": \"⬆️ HtmlMD 评论升级\"\n      }\n    ]\n  }\n}"
     },
     "custom10": {
-      "name": "评论",
+      "name": "管理评论",
       "image": "comment",
-      "description": "{\n  \"action\": \"moveNewContentsByPopupTo\",\n  \"onLongPress\": {\n    \"action\": \"menu\",\n    \"menuWidth\": 300,\n    \"menuItems\": [\n      {\n        \"action\": \"moveLastOneCommentByPopupTo\",\n        \"menuTitle\": \"移动「最后1️⃣条」评论\"\n      },\n      {\n        \"action\": \"moveLastTwoCommentByPopupTo\",\n        \"menuTitle\": \"移动「最后2️⃣条」评论\"\n      },\n      {\n        \"action\": \"moveLastThreeCommentByPopupTo\",\n        \"menuTitle\": \"移动「最后3️⃣条」评论\"\n      },\n      {\n        \"action\": \"deleteCommentsByPopup\",\n        \"menuTitle\": \"删除评论\"\n      }\n    ]\n  }\n}"
+      "description": "{\n  \"action\": \"manageCommentsByPopup\",\n  \"onLongPress\": {\n    \"action\": \"menu\",\n    \"menuWidth\": 300,\n    \"menuItems\": [\n      {\n        \"action\": \"moveLastOneCommentByPopupTo\",\n        \"menuTitle\": \"移动「最后1️⃣条」评论\"\n      },\n      {\n        \"action\": \"moveLastTwoCommentByPopupTo\",\n        \"menuTitle\": \"移动「最后2️⃣条」评论\"\n      },\n      {\n        \"action\": \"moveLastThreeCommentByPopupTo\",\n        \"menuTitle\": \"移动「最后3️⃣条」评论\"\n      }\n    ]\n  }\n}"
     },
     "bigbang": {
       "name": "Bigbang",

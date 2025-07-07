@@ -3668,9 +3668,9 @@ class MNMath {
   }
 
   /**
-   * 通过弹窗来选择移动的评论以及移动的位置
+   * 通过弹窗管理评论（移动或删除）
    */
-  static moveCommentsByPopup(note) {
+  static manageCommentsByPopup(note) {
     // 第一步：选择移动方式
     const firstOptions = [
       "📝 手动输入 Index",
@@ -3696,7 +3696,7 @@ class MNMath {
             this.showManualInputDialog(note, (indices) => {
               if (indices && indices.length > 0) {
                 moveCommentIndexArr = indices;
-                this.showMoveTargetSelectionDialog(note, moveCommentIndexArr);
+                this.showActionSelectionDialog(note, moveCommentIndexArr);
               }
             });
             break;
@@ -3707,7 +3707,7 @@ class MNMath {
             this.showCommentMultiSelectDialog(note, allOptions, selectedIndices, (indices) => {
               if (indices && indices.length > 0) {
                 moveCommentIndexArr = indices;
-                this.showMoveTargetSelectionDialog(note, moveCommentIndexArr);
+                this.showActionSelectionDialog(note, moveCommentIndexArr);
               }
             });
             break;
@@ -3718,19 +3718,19 @@ class MNMath {
               MNUtil.showHUD("没有检测到新内容");
               return;
             }
-            this.showMoveTargetSelectionDialog(note, moveCommentIndexArr);
+            this.showActionSelectionDialog(note, moveCommentIndexArr);
             break;
             
           case 4: // 最后一条
             moveCommentIndexArr = [note.comments.length - 1];
-            this.showMoveTargetSelectionDialog(note, moveCommentIndexArr);
+            this.showActionSelectionDialog(note, moveCommentIndexArr);
             break;
             
           case 5: // 选择字段区域
             this.showFieldSelectionForMove(note, (indices) => {
               if (indices && indices.length > 0) {
                 moveCommentIndexArr = indices;
-                this.showMoveTargetSelectionDialog(note, moveCommentIndexArr);
+                this.showActionSelectionDialog(note, moveCommentIndexArr);
               }
             });
             break;
@@ -3807,6 +3807,36 @@ class MNMath {
   }
 
   /**
+   * 显示操作选择对话框（移动或删除）
+   */
+  static showActionSelectionDialog(note, moveCommentIndexArr) {
+    // 先让用户选择操作类型
+    const actionOptions = [
+      "➡️ 移动评论",
+      "🗑️ 删除评论"
+    ];
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "选择操作类型",
+      `已选择 ${moveCommentIndexArr.length} 项内容`,
+      0,
+      "取消",
+      actionOptions,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) return; // 取消
+        
+        if (buttonIndex === 1) {
+          // 移动评论
+          this.showMoveTargetSelectionDialog(note, moveCommentIndexArr);
+        } else if (buttonIndex === 2) {
+          // 删除评论
+          this.showDeleteConfirmDialog(note, moveCommentIndexArr);
+        }
+      }
+    );
+  }
+  
+  /**
    * 显示移动目标选择对话框（第二层）
    */
   static showMoveTargetSelectionDialog(note, moveCommentIndexArr) {
@@ -3861,6 +3891,58 @@ class MNMath {
       } catch (error) {
         MNUtil.showHUD("移动失败: " + error.message);
         MNUtil.addErrorLog(error, "performMove", {noteId: note.noteId});
+      }
+    });
+  }
+  
+  /**
+   * 显示删除确认对话框
+   */
+  static showDeleteConfirmDialog(note, deleteCommentIndexArr) {
+    // 构建要删除的评论列表
+    let deleteList = [];
+    deleteCommentIndexArr.forEach(index => {
+      const comment = note.MNComments[index];
+      if (comment) {
+        const displayText = this.formatCommentForDisplay(comment, index, note);
+        deleteList.push(`• ${displayText}`);
+      }
+    });
+    
+    const message = `确定要删除以下 ${deleteCommentIndexArr.length} 项评论吗？\n\n${deleteList.join('\n')}`;
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "确认删除",
+      message,
+      0,
+      "取消",
+      ["🗑️ 确认删除"],
+      (alert, buttonIndex) => {
+        if (buttonIndex === 1) {
+          this.performDelete(note, deleteCommentIndexArr);
+        }
+      }
+    );
+  }
+  
+  /**
+   * 执行删除操作
+   */
+  static performDelete(note, deleteCommentIndexArr) {
+    MNUtil.undoGrouping(() => {
+      try {
+        // 从大到小排序，避免删除时索引变化
+        const sortedIndices = [...deleteCommentIndexArr].sort((a, b) => b - a);
+        
+        sortedIndices.forEach(index => {
+          note.removeCommentByIndex(index);
+        });
+        
+        note.refresh();
+        MNUtil.showHUD(`成功删除 ${deleteCommentIndexArr.length} 项评论`);
+      } catch (error) {
+        MNUtil.showHUD("删除失败: " + error.message);
+        MNUtil.addErrorLog(error, "performDelete", {noteId: note.noteId});
       }
     });
   }

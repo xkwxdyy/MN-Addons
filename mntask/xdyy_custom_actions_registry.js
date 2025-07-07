@@ -2977,6 +2977,13 @@ function registerAllCustomActions() {
         MNUtil.showHUD(`✅ 已移除 ${removeCount} 个今日标记`);
       }
     });
+    
+    // 自动刷新今日看板（如果已配置）
+    if (taskConfig.getBoardNoteId('today')) {
+      MNUtil.delay(0.5).then(() => {
+        MNTaskGlobal.executeCustomAction("refreshTodayBoard", context);
+      });
+    }
   });
 
   // setTaskPriority - 设置任务优先级
@@ -3072,7 +3079,7 @@ function registerAllCustomActions() {
     MNUtil.showHUD(`📅 今日任务：${todayTasks.length} 个\n🔥 进行中：${inProgressCount} 个`);
   });
 
-  // refreshTodayBoard - 刷新今日看板
+  // refreshTodayBoard - 刷新今日看板（链接引用模式）
   MNTaskGlobal.registerCustomAction("refreshTodayBoard", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
     
@@ -3094,22 +3101,46 @@ function registerAllCustomActions() {
       // 获取今日任务
       const todayTasks = MNTaskManager.filterTodayTasks();
       
-      // 移动到今日看板
-      let movedCount = 0;
-      todayTasks.forEach(task => {
-        // 检查是否已经在今日看板
-        if (task.parentNote?.noteId !== todayBoardId) {
-          todayBoard.addChild(task);
-          movedCount++;
-        }
-      });
+      // 清理现有的任务链接（保留其他内容）
+      MNTaskManager.clearTaskLinksFromBoard(todayBoard);
       
       // 更新看板标题
       const now = new Date();
       const dateStr = `${now.getMonth() + 1}月${now.getDate()}日`;
       todayBoard.noteTitle = `📅 今日看板 - ${dateStr}`;
       
-      MNUtil.showHUD(`✅ 刷新完成\n📋 今日任务：${todayTasks.length} 个\n➕ 新增：${movedCount} 个`);
+      // 如果没有今日任务，添加提示
+      if (todayTasks.length === 0) {
+        todayBoard.appendMarkdownComment("## 💡 暂无今日任务");
+        todayBoard.appendMarkdownComment("- 使用「今日任务」按钮标记任务");
+        todayBoard.appendMarkdownComment("- 或从任务菜单中选择「标记为今日」");
+        MNUtil.showHUD("📅 暂无今日任务");
+        return;
+      }
+      
+      // 按优先级和状态分组
+      const grouped = MNTaskManager.groupTodayTasks(todayTasks);
+      
+      // 添加任务链接到看板
+      MNTaskManager.addTaskLinksToBoard(todayBoard, grouped);
+      
+      // 添加统计信息
+      MNTaskManager.updateBoardStatistics(todayBoard, todayTasks);
+      
+      // 刷新看板显示
+      todayBoard.refresh();
+      
+      // 显示完成提示
+      const inProgressCount = grouped.inProgress.length;
+      const highPriorityCount = grouped.highPriority.length;
+      let hudMessage = `✅ 刷新完成\n📋 今日任务：${todayTasks.length} 个`;
+      if (inProgressCount > 0) {
+        hudMessage += `\n🔥 进行中：${inProgressCount} 个`;
+      }
+      if (highPriorityCount > 0) {
+        hudMessage += `\n🔴 高优先级：${highPriorityCount} 个`;
+      }
+      MNUtil.showHUD(hudMessage);
     });
   });
 

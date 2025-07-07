@@ -2125,6 +2125,233 @@ class MNTaskManager {
     
     return this.batchOperation(validTasks, operation, name, requireConfirm)
   }
+  
+  /**
+   * 清理看板中的任务链接
+   * @param {MNNote} boardNote - 看板卡片
+   */
+  static clearTaskLinksFromBoard(boardNote) {
+    if (!boardNote || !boardNote.MNComments) return
+    
+    const comments = boardNote.MNComments || []
+    // 从后往前删除，避免索引变化
+    for (let i = comments.length - 1; i >= 0; i--) {
+      const comment = comments[i]
+      if (!comment || !comment.text) continue
+      
+      const text = comment.text
+      
+      // 识别需要清理的内容
+      const shouldRemove = (
+        // 任务链接（包含任务类型标记）
+        text.includes('【目标') || 
+        text.includes('【关键结果') ||
+        text.includes('【项目') || 
+        text.includes('【动作') ||
+        // 分组标题
+        text.includes('## 🔴') ||
+        text.includes('## 🔥') ||
+        text.includes('## 😴') ||
+        text.includes('## ✅') ||
+        text.includes('## 💡') ||
+        // 统计信息条目
+        text.startsWith('- 总任务数：') ||
+        text.startsWith('- 进行中：') ||
+        text.startsWith('- 未开始：') ||
+        text.startsWith('- 已完成：') ||
+        text.startsWith('- 高优先级：') ||
+        text.startsWith('- 完成进度：') ||
+        // 提示信息
+        text.startsWith('- 使用「今日任务」') ||
+        text.startsWith('- 或从任务菜单') ||
+        // 任务链接列表项（包含优先级图标和链接）
+        (text.startsWith('- ') && (
+          text.includes('](marginnote4app://note/') ||
+          text.includes('🔴') ||
+          text.includes('🟡') ||
+          text.includes('🟢') ||
+          text.includes('✓')
+        ))
+      )
+      
+      if (shouldRemove) {
+        boardNote.removeCommentByIndex(i)
+      }
+    }
+  }
+  
+  /**
+   * 分组今日任务
+   * @param {MNNote[]} tasks - 今日任务列表
+   * @returns {Object} 分组后的任务
+   */
+  static groupTodayTasks(tasks) {
+    const grouped = {
+      highPriority: [],
+      inProgress: [],
+      notStarted: [],
+      completed: []
+    }
+    
+    tasks.forEach(task => {
+      const parts = this.parseTaskTitle(task.noteTitle)
+      const priority = this.getTaskPriority(task)
+      
+      // 按状态分组
+      switch (parts.status) {
+        case '进行中':
+          grouped.inProgress.push(task)
+          break
+        case '未开始':
+          // 高优先级未开始的单独分组
+          if (priority === '高') {
+            grouped.highPriority.push(task)
+          } else {
+            grouped.notStarted.push(task)
+          }
+          break
+        case '已完成':
+          grouped.completed.push(task)
+          break
+      }
+    })
+    
+    // 对每组按优先级和时间排序
+    Object.keys(grouped).forEach(key => {
+      grouped[key] = this.sortTodayTasks(grouped[key])
+    })
+    
+    return grouped
+  }
+  
+  /**
+   * 添加任务链接到看板
+   * @param {MNNote} boardNote - 看板卡片
+   * @param {Object} grouped - 分组后的任务
+   */
+  static addTaskLinksToBoard(boardNote, grouped) {
+    // 高优先级任务
+    if (grouped.highPriority.length > 0) {
+      boardNote.appendMarkdownComment("## 🔴 高优先级")
+      grouped.highPriority.forEach(task => {
+        const link = this.createTaskLink(task)
+        boardNote.appendMarkdownComment(link)
+      })
+    }
+    
+    // 进行中任务
+    if (grouped.inProgress.length > 0) {
+      boardNote.appendMarkdownComment("## 🔥 进行中")
+      grouped.inProgress.forEach(task => {
+        const link = this.createTaskLink(task)
+        boardNote.appendMarkdownComment(link)
+      })
+    }
+    
+    // 未开始任务
+    if (grouped.notStarted.length > 0) {
+      boardNote.appendMarkdownComment("## 😴 未开始")
+      grouped.notStarted.forEach(task => {
+        const link = this.createTaskLink(task)
+        boardNote.appendMarkdownComment(link)
+      })
+    }
+    
+    // 已完成任务（可选显示）
+    if (grouped.completed.length > 0) {
+      boardNote.appendMarkdownComment("## ✅ 已完成")
+      grouped.completed.forEach(task => {
+        const link = this.createTaskLink(task)
+        boardNote.appendMarkdownComment(link)
+      })
+    }
+  }
+  
+  /**
+   * 创建任务链接
+   * @param {MNNote} task - 任务卡片
+   * @returns {string} Markdown 格式的任务链接
+   */
+  static createTaskLink(task) {
+    const parts = this.parseTaskTitle(task.noteTitle)
+    const priority = this.getTaskPriority(task)
+    const time = this.getTaskTime(task)
+    
+    // 构建显示文本
+    let displayText = parts.content
+    
+    // 添加时间前缀
+    if (time) {
+      displayText = `${time} ${displayText}`
+    }
+    
+    // 添加优先级标记
+    let priorityIcon = ''
+    if (priority === '高') priorityIcon = '🔴 '
+    else if (priority === '中') priorityIcon = '🟡 '
+    else if (priority === '低') priorityIcon = '🟢 '
+    
+    // 添加状态标记（如果是已完成）
+    let statusIcon = ''
+    if (parts.status === '已完成') statusIcon = '✓ '
+    
+    // 创建 Markdown 链接
+    const url = `marginnote4app://note/${task.noteId}`
+    return `- ${priorityIcon}${statusIcon}[${displayText}](${url})`
+  }
+  
+  /**
+   * 更新看板统计信息
+   * @param {MNNote} boardNote - 看板卡片
+   * @param {MNNote[]} tasks - 任务列表
+   */
+  static updateBoardStatistics(boardNote, tasks) {
+    // 统计各状态任务数
+    const stats = {
+      total: tasks.length,
+      notStarted: 0,
+      inProgress: 0,
+      completed: 0,
+      highPriority: 0
+    }
+    
+    tasks.forEach(task => {
+      const parts = this.parseTaskTitle(task.noteTitle)
+      const priority = this.getTaskPriority(task)
+      
+      switch (parts.status) {
+        case '未开始':
+          stats.notStarted++
+          break
+        case '进行中':
+          stats.inProgress++
+          break
+        case '已完成':
+          stats.completed++
+          break
+      }
+      
+      if (priority === '高') {
+        stats.highPriority++
+      }
+    })
+    
+    // 添加统计信息
+    boardNote.appendMarkdownComment("## ✅ 统计信息")
+    boardNote.appendMarkdownComment(`- 总任务数：${stats.total}`)
+    boardNote.appendMarkdownComment(`- 进行中：${stats.inProgress}`)
+    boardNote.appendMarkdownComment(`- 未开始：${stats.notStarted}`)
+    boardNote.appendMarkdownComment(`- 已完成：${stats.completed}`)
+    if (stats.highPriority > 0) {
+      boardNote.appendMarkdownComment(`- 高优先级：${stats.highPriority}`)
+    }
+    
+    // 添加进度条
+    const progressPercent = stats.total > 0 
+      ? Math.round(stats.completed / stats.total * 100) 
+      : 0
+    boardNote.appendMarkdownComment(`- 完成进度：${progressPercent}%`)
+  }
 }
 
 

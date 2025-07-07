@@ -5295,7 +5295,12 @@ class MNMath {
         
         // 格式化显示：[类型] 内容
         const type = titleParts.type || "";
-        const formattedTitle = type ? `[${type}] ${content}` : content;
+        // 检查是否为归类卡片，如果是则添加"归类"后缀
+        let displayType = type;
+        if (type && this.getNoteType(targetNote) === "归类") {
+          displayType = type + "归类";
+        }
+        const formattedTitle = displayType ? `[${displayType}] ${content}` : content;
         
         // 截断处理
         let truncatedTitle = this.truncateText(formattedTitle, 30);  // 增加长度到30，因为类型标识占用了空间

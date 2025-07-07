@@ -3620,8 +3620,10 @@ class MNMath {
     let selectAllText = allSelected ? "⬜ 取消全选" : "☑️ 全选所有内容";
     displayOptions.unshift(selectAllText);
     
-    // 添加确定选择选项
-    displayOptions.push("📌 确定选择");
+    // 添加分隔线和操作选项
+    displayOptions.push("──────────────");
+    displayOptions.push("➡️ 移动选中项");
+    displayOptions.push("🗑️ 删除选中项");
     
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "选择要移动的内容",
@@ -3648,17 +3650,35 @@ class MNMath {
           }
           
           // 递归显示更新后的对话框
-          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, callback);
+          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null);
           
         } else if (buttonIndex === displayOptions.length) {
-          // 用户选择了"确定选择"
+          // 用户选择了"删除选中项"
           if (selectedIndices.size === 0) {
             MNUtil.showHUD("没有选中任何内容");
+            this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null);
             return;
           }
           
-          // 返回选中的索引数组
-          callback(Array.from(selectedIndices).sort((a, b) => a - b));
+          // 直接调用删除确认对话框
+          const selectedIndicesArray = Array.from(selectedIndices).sort((a, b) => a - b);
+          this.showDeleteConfirmDialog(note, selectedIndicesArray);
+          
+        } else if (buttonIndex === displayOptions.length - 1) {
+          // 用户选择了"移动选中项"
+          if (selectedIndices.size === 0) {
+            MNUtil.showHUD("没有选中任何内容");
+            this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null);
+            return;
+          }
+          
+          // 直接调用移动目标选择对话框
+          const selectedIndicesArray = Array.from(selectedIndices).sort((a, b) => a - b);
+          this.showMoveTargetSelectionDialog(note, selectedIndicesArray);
+          
+        } else if (buttonIndex === displayOptions.length - 2) {
+          // 用户选择了分隔线，忽略并重新显示
+          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null);
           
         } else {
           // 用户选择了某个评论，切换选中状态
@@ -3671,7 +3691,7 @@ class MNMath {
           }
           
           // 递归显示更新后的对话框
-          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, callback);
+          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null);
         }
       }
     );
@@ -3738,12 +3758,7 @@ class MNMath {
           case 2: // 多选评论
             const allOptions = this.getAllCommentOptionsForMove(note);
             const selectedIndices = new Set();
-            this.showCommentMultiSelectDialog(note, allOptions, selectedIndices, (indices) => {
-              if (indices && indices.length > 0) {
-                moveCommentIndexArr = indices;
-                this.showActionSelectionDialog(note, moveCommentIndexArr);
-              }
-            });
+            this.showCommentMultiSelectDialog(note, allOptions, selectedIndices, null);
             break;
             
           case 3: // 自动获取

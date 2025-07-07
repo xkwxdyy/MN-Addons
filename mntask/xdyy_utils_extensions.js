@@ -82,6 +82,46 @@ class TaskFieldUtils {
   }
   
   /**
+   * 创建今日字段
+   * @returns {string} 格式化的今日字段 HTML
+   */
+  static createTodayField() {
+    return this.createFieldHtml('📅 今日', 'subField')
+  }
+  
+  /**
+   * 创建优先级字段
+   * @param {string} priority - 优先级（高/中/低）
+   * @returns {string} 格式化的优先级字段 HTML
+   */
+  static createPriorityField(priority) {
+    let emoji = ''
+    switch (priority) {
+      case '高':
+        emoji = '🔴 '
+        break
+      case '中':
+        emoji = '🟡 '
+        break
+      case '低':
+        emoji = '🟢 '
+        break
+      default:
+        emoji = '⚪ '
+    }
+    return this.createFieldHtml(`🔥 优先级: ${emoji}${priority}`, 'subField')
+  }
+  
+  /**
+   * 创建计划时间字段
+   * @param {string} time - 计划时间（如 "09:00"）
+   * @returns {string} 格式化的计划时间字段 HTML
+   */
+  static createTimeField(time) {
+    return this.createFieldHtml(`⏰ 计划时间: ${time}`, 'subField')
+  }
+  
+  /**
    * 检查是否是任务字段评论
    * @param {string|MNComment} comment - 评论内容或评论对象
    * @returns {boolean} 是否是任务字段
@@ -1557,6 +1597,1421 @@ class MNTaskManager {
         MNUtil.showHUD("没有需要更新的子卡片", 2)
       }
     })
+  }
+  
+  /**
+   * 标记/取消标记为今日任务
+   * @param {MNNote} note - 要标记的任务卡片
+   * @param {boolean} isToday - true 标记为今日，false 取消标记
+   * @returns {boolean} 操作是否成功
+   */
+  static markAsToday(note, isToday = true) {
+    if (!this.isTaskCard(note)) {
+      MNUtil.showHUD("请选择一个任务卡片")
+      return false
+    }
+    
+    const parsed = this.parseTaskComments(note)
+    
+    // 查找是否已有今日标记
+    let todayFieldIndex = -1
+    for (let field of parsed.taskFields) {
+      if (field.content.includes('📅 今日')) {
+        todayFieldIndex = field.index
+        break
+      }
+    }
+    
+    MNUtil.undoGrouping(() => {
+      if (isToday && todayFieldIndex === -1) {
+        // 添加今日标记
+        const todayFieldHtml = TaskFieldUtils.createTodayField()
+        note.appendMarkdownComment(todayFieldHtml)
+        // 移动到信息字段下
+        this.moveCommentToField(note, note.MNComments.length - 1, '信息', false)
+        MNUtil.log("✅ 添加今日标记")
+      } else if (!isToday && todayFieldIndex >= 0) {
+        // 移除今日标记
+        note.removeCommentByIndex(todayFieldIndex)
+        MNUtil.log("✅ 移除今日标记")
+      }
+    })
+    
+    return true
+  }
+  
+  /**
+   * 检查任务是否标记为今日
+   * @param {MNNote} note - 要检查的任务卡片
+   * @returns {boolean} 是否为今日任务
+   */
+  static isToday(note) {
+    if (!this.isTaskCard(note)) return false
+    
+    const comments = note.MNComments || []
+    for (let comment of comments) {
+      if (comment && comment.text && comment.text.includes('📅 今日')) {
+        return true
+      }
+    }
+    
+    return false
+  }
+  
+  /**
+   * 设置任务优先级
+   * @param {MNNote} note - 要设置的任务卡片
+   * @param {string} priority - 优先级（高/中/低）
+   */
+  static setTaskPriority(note, priority) {
+    if (!this.isTaskCard(note)) {
+      MNUtil.showHUD("请选择一个任务卡片")
+      return
+    }
+    
+    const parsed = this.parseTaskComments(note)
+    
+    // 查找现有的优先级字段
+    let priorityFieldIndex = -1
+    for (let field of parsed.taskFields) {
+      if (field.content.includes('🔥 优先级:')) {
+        priorityFieldIndex = field.index
+        break
+      }
+    }
+    
+    MNUtil.undoGrouping(() => {
+      // 移除旧的优先级字段
+      if (priorityFieldIndex >= 0) {
+        note.removeCommentByIndex(priorityFieldIndex)
+      }
+      
+      // 添加新的优先级字段
+      const priorityFieldHtml = TaskFieldUtils.createPriorityField(priority)
+      note.appendMarkdownComment(priorityFieldHtml)
+      // 移动到信息字段下
+      this.moveCommentToField(note, note.MNComments.length - 1, '信息', false)
+      MNUtil.log(`✅ 设置优先级为：${priority}`)
+    })
+  }
+  
+  /**
+   * 设置任务计划时间
+   * @param {MNNote} note - 要设置的任务卡片
+   * @param {string} time - 计划时间（如 "09:00"）
+   */
+  static setTaskTime(note, time) {
+    if (!this.isTaskCard(note)) {
+      MNUtil.showHUD("请选择一个任务卡片")
+      return
+    }
+    
+    const parsed = this.parseTaskComments(note)
+    
+    // 查找现有的时间字段
+    let timeFieldIndex = -1
+    for (let field of parsed.taskFields) {
+      if (field.content.includes('⏰ 计划时间:')) {
+        timeFieldIndex = field.index
+        break
+      }
+    }
+    
+    MNUtil.undoGrouping(() => {
+      // 移除旧的时间字段
+      if (timeFieldIndex >= 0) {
+        note.removeCommentByIndex(timeFieldIndex)
+      }
+      
+      // 添加新的时间字段
+      const timeFieldHtml = TaskFieldUtils.createTimeField(time)
+      note.appendMarkdownComment(timeFieldHtml)
+      // 移动到信息字段下
+      this.moveCommentToField(note, note.MNComments.length - 1, '信息', false)
+      MNUtil.log(`✅ 设置计划时间为：${time}`)
+    })
+  }
+  
+  /**
+   * 获取任务的优先级
+   * @param {MNNote} note - 任务卡片
+   * @returns {string|null} 优先级（高/中/低）或 null
+   */
+  static getTaskPriority(note) {
+    if (!this.isTaskCard(note)) return null
+    
+    const comments = note.MNComments || []
+    for (let comment of comments) {
+      if (comment && comment.text && comment.text.includes('🔥 优先级:')) {
+        if (comment.text.includes('🔴') || comment.text.includes('高')) return '高'
+        if (comment.text.includes('🟡') || comment.text.includes('中')) return '中'
+        if (comment.text.includes('🟢') || comment.text.includes('低')) return '低'
+      }
+    }
+    
+    return null
+  }
+  
+  /**
+   * 获取任务的计划时间
+   * @param {MNNote} note - 任务卡片
+   * @returns {string|null} 计划时间或 null
+   */
+  static getTaskTime(note) {
+    if (!this.isTaskCard(note)) return null
+    
+    const comments = note.MNComments || []
+    for (let comment of comments) {
+      if (comment && comment.text && comment.text.includes('⏰ 计划时间:')) {
+        const match = comment.text.match(/计划时间:\s*(\d{1,2}:\d{2})/)
+        if (match) return match[1]
+      }
+    }
+    
+    return null
+  }
+  
+  /**
+   * 筛选今日任务
+   * @param {string[]} boardKeys - 要筛选的看板（如 ['target', 'project', 'action']）
+   * @returns {MNNote[]} 排序后的今日任务列表
+   */
+  static filterTodayTasks(boardKeys = ['target', 'project', 'action']) {
+    // 使用 TaskFilterEngine 筛选今日任务
+    const todayTasks = TaskFilterEngine.filter({
+      boardKeys,
+      statuses: ['未开始', '进行中'],  // 过滤已完成和已归档
+      customFilter: (task) => this.isToday(task)
+    })
+    
+    // 使用智能排序
+    return TaskFilterEngine.sort(todayTasks, {
+      strategy: 'smart',
+      weights: {
+        priority: 0.4,      // 优先级权重更高
+        urgency: 0.3,       // 紧急度次之
+        importance: 0.2,    // 重要性
+        progress: 0.1       // 进度
+      }
+    })
+  }
+  
+  /**
+   * 排序今日任务
+   * @param {MNNote[]} tasks - 今日任务列表
+   * @returns {MNNote[]} 排序后的任务列表
+   */
+  static sortTodayTasks(tasks) {
+    // 直接使用 TaskFilterEngine 的智能排序
+    return TaskFilterEngine.sort(tasks, {
+      strategy: 'smart',
+      weights: {
+        priority: 0.4,      // 优先级权重更高
+        urgency: 0.3,       // 紧急度次之
+        importance: 0.2,    // 重要性
+        progress: 0.1       // 进度
+      }
+    })
+  }
+  
+  /**
+   * 移动任务到今日看板
+   * @param {MNNote} note - 要移动的任务
+   * @returns {boolean} 是否成功
+   */
+  static moveToTodayBoard(note) {
+    if (!this.isTaskCard(note)) {
+      MNUtil.showHUD("请选择一个任务卡片")
+      return false
+    }
+    
+    const todayBoardId = taskConfig.getBoardNoteId('today')
+    if (!todayBoardId) {
+      MNUtil.showHUD("请先配置今日看板")
+      return false
+    }
+    
+    const todayBoard = MNNote.new(todayBoardId)
+    if (!todayBoard) {
+      MNUtil.showHUD("无法找到今日看板")
+      return false
+    }
+    
+    // 先标记为今日任务
+    this.markAsToday(note, true)
+    
+    // 移动到今日看板
+    return this.moveTo(note, todayBoard)
+  }
+  
+  /**
+   * 批量操作基础方法
+   * @param {MNNote[]} notes - 要操作的笔记列表
+   * @param {Function} operation - 对每个任务执行的操作
+   * @param {string} operationName - 操作名称（用于显示）
+   * @param {boolean} requireConfirm - 是否需要确认
+   * @returns {Object} 操作结果
+   */
+  static async batchOperation(notes, operation, operationName, requireConfirm = false) {
+    if (!notes || notes.length === 0) {
+      MNUtil.showHUD("请先选择要操作的笔记")
+      return { success: 0, failed: 0, errors: [] }
+    }
+    
+    // 筛选有效的任务卡片
+    const taskNotes = notes.filter(note => this.isTaskCard(note))
+    if (taskNotes.length === 0) {
+      MNUtil.showHUD("未找到有效的任务卡片")
+      return { success: 0, failed: 0, errors: [] }
+    }
+    
+    // 确认操作
+    if (requireConfirm) {
+      const confirm = await MNUtil.userConfirm(
+        `确认${operationName}`,
+        `即将对 ${taskNotes.length} 个任务执行${operationName}操作，是否继续？`
+      )
+      if (!confirm) {
+        MNUtil.showHUD("操作已取消")
+        return { success: 0, failed: 0, errors: [] }
+      }
+    }
+    
+    // 执行批量操作
+    const results = { success: 0, failed: 0, errors: [] }
+    
+    MNUtil.undoGrouping(() => {
+      for (let task of taskNotes) {
+        try {
+          operation(task)
+          results.success++
+        } catch (error) {
+          results.failed++
+          results.errors.push({
+            task: task.noteTitle,
+            error: error.message
+          })
+        }
+      }
+    })
+    
+    // 显示结果
+    const message = `${operationName}完成：成功 ${results.success} 个${results.failed > 0 ? `，失败 ${results.failed} 个` : ''}`
+    MNUtil.showHUD(message)
+    
+    return results
+  }
+  
+  /**
+   * 批量更新任务状态
+   * @param {MNNote[]} notes - 要更新的任务列表
+   * @param {string} newStatus - 新状态
+   * @returns {Object} 操作结果
+   */
+  static async batchUpdateStatus(notes, newStatus) {
+    return this.batchOperation(
+      notes,
+      (task) => this.updateTaskStatus(task, newStatus),
+      `更新状态为"${newStatus}"`,
+      true
+    )
+  }
+  
+  /**
+   * 批量设置优先级
+   * @param {MNNote[]} notes - 要设置的任务列表
+   * @param {string} priority - 优先级（高/中/低）
+   * @returns {Object} 操作结果
+   */
+  static async batchSetPriority(notes, priority) {
+    return this.batchOperation(
+      notes,
+      (task) => this.setTaskPriority(task, priority),
+      `设置优先级为"${priority}"`,
+      false
+    )
+  }
+  
+  /**
+   * 批量标记为今日任务
+   * @param {MNNote[]} notes - 要标记的任务列表
+   */
+  static batchMarkAsToday(notes) {
+    if (!notes || notes.length === 0) {
+      MNUtil.showHUD("请先选择要标记的任务")
+      return
+    }
+    
+    const taskNotes = notes.filter(note => this.isTaskCard(note))
+    if (taskNotes.length === 0) {
+      MNUtil.showHUD("请选择任务卡片")
+      return
+    }
+    
+    MNUtil.undoGrouping(() => {
+      let count = 0
+      for (let note of taskNotes) {
+        if (this.markAsToday(note, true)) {
+          count++
+        }
+      }
+      MNUtil.showHUD(`✅ 已将 ${count} 个任务标记为今日任务`)
+    })
+  }
+  
+  /**
+   * 批量移动到指定看板
+   * @param {MNNote[]} notes - 要移动的任务列表
+   * @param {string} boardKey - 目标看板键名
+   * @returns {Object} 操作结果
+   */
+  static async batchMoveToBoard(notes, boardKey) {
+    const boardNoteId = taskConfig.getBoardNoteId(boardKey)
+    if (!boardNoteId) {
+      MNUtil.showHUD(`请先配置${boardKey}看板`)
+      return { success: 0, failed: 0, errors: [] }
+    }
+    
+    const boardNote = MNNote.new(boardNoteId)
+    if (!boardNote) {
+      MNUtil.showHUD(`无法找到${boardKey}看板`)
+      return { success: 0, failed: 0, errors: [] }
+    }
+    
+    return this.batchOperation(
+      notes,
+      (task) => this.moveTo(task, boardNote),
+      `移动到${boardKey}看板`,
+      true
+    )
+  }
+  
+  /**
+   * 批量添加标签
+   * @param {MNNote[]} notes - 要添加标签的任务列表
+   * @param {string} tag - 标签名称
+   * @returns {Object} 操作结果
+   */
+  static async batchAddTag(notes, tag) {
+    return this.batchOperation(
+      notes,
+      (task) => {
+        if (!task.tags) task.tags = []
+        if (!task.tags.includes(tag)) {
+          task.tags.push(tag)
+        }
+      },
+      `添加标签"${tag}"`,
+      false
+    )
+  }
+  
+  /**
+   * 批量设置截止日期
+   * @param {MNNote[]} notes - 要设置的任务列表
+   * @param {Date} date - 截止日期
+   * @returns {Object} 操作结果
+   */
+  static async batchSetDueDate(notes, date) {
+    const dateStr = date.toISOString().split('T')[0]  // YYYY-MM-DD 格式
+    
+    return this.batchOperation(
+      notes,
+      (task) => {
+        const parsed = this.parseTaskComments(task)
+        const dueDateText = `📅 截止日期: ${dateStr}`
+        
+        // 检查是否已有截止日期字段
+        let hasDueDate = false
+        if (parsed.comments) {
+          for (let i = 0; i < parsed.comments.length; i++) {
+            if (parsed.comments[i].text && parsed.comments[i].text.includes('📅 截止日期:')) {
+              task.replaceWithMarkdownComment(dueDateText, i)
+              hasDueDate = true
+              break
+            }
+          }
+        }
+        
+        // 如果没有，添加到信息字段下
+        if (!hasDueDate) {
+          if (parsed.fields['信息']) {
+            const infoIndex = parsed.fields['信息'].index
+            task.insertCommentAtIndex(dueDateText, infoIndex + 1)
+          } else {
+            task.appendMarkdownComment(dueDateText)
+          }
+        }
+      },
+      `设置截止日期为 ${dateStr}`,
+      false
+    )
+  }
+  
+  /**
+   * 批量归档已完成任务
+   * @param {MNNote[]} notes - 要归档的任务列表
+   * @returns {Object} 操作结果
+   */
+  static async batchArchiveCompleted(notes) {
+    // 筛选已完成的任务
+    const completedTasks = notes.filter(note => {
+      if (!this.isTaskCard(note)) return false
+      const titleParts = this.parseTaskTitle(note.noteTitle)
+      return titleParts.status === '已完成'
+    })
+    
+    if (completedTasks.length === 0) {
+      MNUtil.showHUD("没有找到已完成的任务")
+      return { success: 0, failed: 0, errors: [] }
+    }
+    
+    return this.batchOperation(
+      completedTasks,
+      (task) => this.updateTaskStatus(task, '已归档'),
+      `归档已完成任务`,
+      true
+    )
+  }
+  
+  /**
+   * 批量删除任务链接关系
+   * @param {MNNote[]} notes - 要删除链接的任务列表
+   * @returns {Object} 操作结果
+   */
+  static async batchUnlinkFromParent(notes) {
+    return this.batchOperation(
+      notes,
+      (task) => {
+        const parsed = this.parseTaskComments(task)
+        if (parsed.belongsTo) {
+          task.removeCommentByIndex(parsed.belongsTo.index)
+        }
+      },
+      `解除父任务链接`,
+      true
+    )
+  }
+  
+  /**
+   * 批量执行自定义操作
+   * @param {MNNote[]} notes - 要操作的任务列表
+   * @param {Object} options - 操作选项
+   * @returns {Object} 操作结果
+   */
+  static async batchCustomOperation(notes, options) {
+    const {
+      name = "自定义操作",
+      operation,
+      requireConfirm = false,
+      validate = () => true
+    } = options
+    
+    // 验证操作
+    if (!operation || typeof operation !== 'function') {
+      MNUtil.showHUD("无效的操作函数")
+      return { success: 0, failed: 0, errors: [] }
+    }
+    
+    // 筛选符合条件的任务
+    const validTasks = notes.filter(note => {
+      return this.isTaskCard(note) && validate(note)
+    })
+    
+    if (validTasks.length === 0) {
+      MNUtil.showHUD("没有符合条件的任务")
+      return { success: 0, failed: 0, errors: [] }
+    }
+    
+    return this.batchOperation(validTasks, operation, name, requireConfirm)
+  }
+}
+
+
+/**
+ * TaskFilterEngine - 任务筛选引擎
+ * 提供多维度的任务筛选和排序功能
+ */
+class TaskFilterEngine {
+  /**
+   * 通用筛选方法
+   * @param {Object} criteria - 筛选条件
+   * @param {string[]} criteria.boardKeys - 要筛选的看板
+   * @param {Object} criteria.timeRange - 时间范围
+   * @param {string[]} criteria.statuses - 状态列表
+   * @param {string[]} criteria.priorities - 优先级列表
+   * @param {string[]} criteria.tags - 标签列表
+   * @param {boolean} criteria.hasDate - 是否有日期
+   * @param {string} criteria.hierarchyType - 层级类型
+   * @param {Function} criteria.customFilter - 自定义筛选函数
+   * @returns {MNNote[]} 筛选结果
+   */
+  static filter(criteria = {}) {
+    const {
+      boardKeys = ['target', 'project', 'action'],
+      timeRange,
+      statuses,
+      priorities,
+      tags,
+      hasDate,
+      hierarchyType,
+      customFilter
+    } = criteria
+    
+    const results = []
+    const processedIds = new Set()
+    
+    // 从各个看板收集任务
+    for (let boardKey of boardKeys) {
+      const boardNoteId = taskConfig.getBoardNoteId(boardKey)
+      if (!boardNoteId) continue
+      
+      const boardNote = MNNote.new(boardNoteId)
+      if (!boardNote) continue
+      
+      // 递归收集所有任务卡片
+      const collectTasks = (parentNote) => {
+        if (!parentNote || !parentNote.childNotes) return
+        
+        for (let childNote of parentNote.childNotes) {
+          // 避免重复处理
+          if (processedIds.has(childNote.noteId)) continue
+          processedIds.add(childNote.noteId)
+          
+          // 只处理任务卡片
+          if (!MNTaskManager.isTaskCard(childNote)) {
+            collectTasks(childNote)
+            continue
+          }
+          
+          // 应用筛选条件
+          if (this.matchesCriteria(childNote, criteria)) {
+            results.push(childNote)
+          }
+          
+          // 递归处理子卡片
+          collectTasks(childNote)
+        }
+      }
+      
+      collectTasks(boardNote)
+    }
+    
+    return results
+  }
+  
+  /**
+   * 检查任务是否符合筛选条件
+   * @param {MNNote} task - 任务卡片
+   * @param {Object} criteria - 筛选条件
+   * @returns {boolean} 是否符合条件
+   */
+  static matchesCriteria(task, criteria) {
+    const titleParts = MNTaskManager.parseTaskTitle(task.noteTitle)
+    
+    // 状态筛选
+    if (criteria.statuses && criteria.statuses.length > 0) {
+      if (!criteria.statuses.includes(titleParts.status)) {
+        return false
+      }
+    }
+    
+    // 优先级筛选
+    if (criteria.priorities && criteria.priorities.length > 0) {
+      const priority = MNTaskManager.getTaskPriority(task)
+      if (!priority || !criteria.priorities.includes(priority)) {
+        return false
+      }
+    }
+    
+    // 标签筛选
+    if (criteria.tags && criteria.tags.length > 0) {
+      if (!task.tags || !criteria.tags.some(tag => task.tags.includes(tag))) {
+        return false
+      }
+    }
+    
+    // 时间范围筛选
+    if (criteria.timeRange) {
+      const taskDate = this.getTaskDate(task)
+      if (!taskDate) return false
+      
+      if (criteria.timeRange.start && taskDate < criteria.timeRange.start) {
+        return false
+      }
+      if (criteria.timeRange.end && taskDate > criteria.timeRange.end) {
+        return false
+      }
+    }
+    
+    // 是否有日期筛选
+    if (criteria.hasDate !== undefined) {
+      const hasTaskDate = this.getTaskDate(task) !== null
+      if (criteria.hasDate !== hasTaskDate) {
+        return false
+      }
+    }
+    
+    // 层级类型筛选
+    if (criteria.hierarchyType) {
+      switch (criteria.hierarchyType) {
+        case 'top':
+          if (task.parentNote && MNTaskManager.isTaskCard(task.parentNote)) {
+            return false
+          }
+          break
+        case 'leaf':
+          if (task.childNotes && task.childNotes.some(n => MNTaskManager.isTaskCard(n))) {
+            return false
+          }
+          break
+        case 'parent':
+          if (!task.childNotes || !task.childNotes.some(n => MNTaskManager.isTaskCard(n))) {
+            return false
+          }
+          break
+        case 'isolated':
+          const hasParentTask = task.parentNote && MNTaskManager.isTaskCard(task.parentNote)
+          const hasChildTask = task.childNotes && task.childNotes.some(n => MNTaskManager.isTaskCard(n))
+          if (hasParentTask || hasChildTask) {
+            return false
+          }
+          break
+      }
+    }
+    
+    // 自定义筛选函数
+    if (criteria.customFilter && typeof criteria.customFilter === 'function') {
+      if (!criteria.customFilter(task)) {
+        return false
+      }
+    }
+    
+    return true
+  }
+  
+  /**
+   * 获取任务的日期
+   * @param {MNNote} task - 任务卡片
+   * @returns {Date|null} 任务日期
+   */
+  static getTaskDate(task) {
+    // 先尝试获取截止日期字段
+    const comments = task.MNComments || []
+    for (let comment of comments) {
+      if (comment && comment.text) {
+        // 匹配日期格式：📅 截止日期: 2024-01-15
+        const dateMatch = comment.text.match(/📅\s*截止日期:\s*(\d{4}-\d{2}-\d{2})/)
+        if (dateMatch) {
+          return new Date(dateMatch[1])
+        }
+      }
+    }
+    
+    // 如果是今日任务，返回今天的日期
+    if (MNTaskManager.isToday(task)) {
+      return new Date()
+    }
+    
+    return null
+  }
+  
+  /**
+   * 获取本周开始时间
+   * @returns {Date} 本周一的日期
+   */
+  static getStartOfWeek(date = new Date()) {
+    const d = new Date(date)
+    const day = d.getDay()
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1) // 调整到周一
+    return new Date(d.setDate(diff))
+  }
+  
+  /**
+   * 获取本周结束时间
+   * @returns {Date} 本周日的日期
+   */
+  static getEndOfWeek(date = new Date()) {
+    const startOfWeek = this.getStartOfWeek(date)
+    return new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000)
+  }
+  
+  /**
+   * 筛选本周任务
+   * @param {string[]} boardKeys - 要筛选的看板
+   * @returns {MNNote[]} 本周任务列表
+   */
+  static filterThisWeekTasks(boardKeys = ['target', 'project', 'action']) {
+    const startOfWeek = this.getStartOfWeek()
+    const endOfWeek = this.getEndOfWeek()
+    
+    return this.filter({
+      boardKeys,
+      timeRange: { start: startOfWeek, end: endOfWeek },
+      statuses: ['未开始', '进行中']
+    })
+  }
+  
+  /**
+   * 筛选逾期任务
+   * @param {string[]} boardKeys - 要筛选的看板
+   * @returns {MNNote[]} 逾期任务列表
+   */
+  static filterOverdueTasks(boardKeys = ['target', 'project', 'action']) {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    return this.filter({
+      boardKeys,
+      statuses: ['未开始', '进行中'],
+      customFilter: (task) => {
+        const taskDate = this.getTaskDate(task)
+        return taskDate && taskDate < today
+      }
+    })
+  }
+  
+  /**
+   * 筛选高优先级未完成任务
+   * @param {string[]} boardKeys - 要筛选的看板
+   * @returns {MNNote[]} 高优先级未完成任务列表
+   */
+  static filterHighPriorityIncompleteTasks(boardKeys = ['target', 'project', 'action']) {
+    return this.filter({
+      boardKeys,
+      priorities: ['高'],
+      statuses: ['未开始', '进行中']
+    })
+  }
+  
+  /**
+   * 筛选活跃任务（未开始 + 进行中）
+   * @param {string[]} boardKeys - 要筛选的看板
+   * @returns {MNNote[]} 活跃任务列表
+   */
+  static filterActiveTasks(boardKeys = ['target', 'project', 'action']) {
+    return this.filter({
+      boardKeys,
+      statuses: ['未开始', '进行中']
+    })
+  }
+  
+  /**
+   * 筛选待归档任务（已完成但未归档）
+   * @param {string[]} boardKeys - 要筛选的看板
+   * @returns {MNNote[]} 待归档任务列表
+   */
+  static filterPendingArchiveTasks(boardKeys = ['target', 'project', 'action']) {
+    return this.filter({
+      boardKeys,
+      statuses: ['已完成']
+    })
+  }
+  
+  /**
+   * 筛选无日期任务
+   * @param {string[]} boardKeys - 要筛选的看板
+   * @returns {MNNote[]} 无日期任务列表
+   */
+  static filterNoDateTasks(boardKeys = ['target', 'project', 'action']) {
+    return this.filter({
+      boardKeys,
+      hasDate: false,
+      statuses: ['未开始', '进行中']
+    })
+  }
+  
+  /**
+   * 按标签筛选任务
+   * @param {string[]} tags - 标签列表
+   * @param {string[]} boardKeys - 要筛选的看板
+   * @returns {MNNote[]} 符合标签的任务列表
+   */
+  static filterByTags(tags, boardKeys = ['target', 'project', 'action']) {
+    return this.filter({
+      boardKeys,
+      tags
+    })
+  }
+  
+  /**
+   * 按层级类型筛选任务
+   * @param {string} hierarchyType - 层级类型（top/leaf/parent/isolated）
+   * @param {string[]} boardKeys - 要筛选的看板
+   * @returns {MNNote[]} 符合层级类型的任务列表
+   */
+  static filterByHierarchy(hierarchyType, boardKeys = ['target', 'project', 'action']) {
+    return this.filter({
+      boardKeys,
+      hierarchyType
+    })
+  }
+  
+  /**
+   * 智能排序系统
+   * @param {MNNote[]} tasks - 任务列表
+   * @param {Object} sortOptions - 排序选项
+   * @param {string} sortOptions.strategy - 排序策略
+   * @param {boolean} sortOptions.ascending - 是否升序
+   * @param {Object} sortOptions.weights - 权重配置
+   * @returns {MNNote[]} 排序后的任务列表
+   */
+  static sort(tasks, sortOptions = {}) {
+    const {
+      strategy = 'smart',  // smart, priority, date, status, hierarchy, custom
+      ascending = false,
+      weights = {
+        priority: 0.3,
+        urgency: 0.3,
+        importance: 0.2,
+        progress: 0.2
+      },
+      customComparator
+    } = sortOptions
+    
+    // 复制数组避免修改原数组
+    const sortedTasks = [...tasks]
+    
+    // 根据策略选择排序方法
+    switch (strategy) {
+      case 'smart':
+        return this.smartSort(sortedTasks, weights, ascending)
+      case 'priority':
+        return this.sortByPriority(sortedTasks, ascending)
+      case 'date':
+        return this.sortByDate(sortedTasks, ascending)
+      case 'status':
+        return this.sortByStatus(sortedTasks, ascending)
+      case 'hierarchy':
+        return this.sortByHierarchy(sortedTasks, ascending)
+      case 'custom':
+        if (customComparator) {
+          return sortedTasks.sort(customComparator)
+        }
+        return sortedTasks
+      default:
+        return sortedTasks
+    }
+  }
+  
+  /**
+   * 智能排序（多维度综合评分）
+   * @param {MNNote[]} tasks - 任务列表
+   * @param {Object} weights - 权重配置
+   * @param {boolean} ascending - 是否升序
+   * @returns {MNNote[]} 排序后的任务列表
+   */
+  static smartSort(tasks, weights, ascending = false) {
+    return tasks.sort((a, b) => {
+      const scoreA = this.calculateSmartScore(a, weights)
+      const scoreB = this.calculateSmartScore(b, weights)
+      
+      return ascending ? scoreA - scoreB : scoreB - scoreA
+    })
+  }
+  
+  /**
+   * 计算任务的智能评分
+   * @param {MNNote} task - 任务卡片
+   * @param {Object} weights - 权重配置
+   * @returns {number} 任务评分（0-100）
+   */
+  static calculateSmartScore(task, weights) {
+    let score = 0
+    
+    // 1. 优先级评分 (0-100)
+    const priority = MNTaskManager.getTaskPriority(task)
+    const priorityScore = priority === '高' ? 100 : priority === '中' ? 50 : 0
+    score += priorityScore * weights.priority
+    
+    // 2. 紧急度评分 (0-100)
+    const urgencyScore = this.calculateUrgencyScore(task)
+    score += urgencyScore * weights.urgency
+    
+    // 3. 重要性评分 (0-100)
+    const importanceScore = this.calculateImportanceScore(task)
+    score += importanceScore * weights.importance
+    
+    // 4. 进度评分 (0-100)
+    const progressScore = this.calculateProgressScore(task)
+    score += progressScore * weights.progress
+    
+    return score
+  }
+  
+  /**
+   * 计算紧急度评分
+   * @param {MNNote} task - 任务卡片
+   * @returns {number} 紧急度评分（0-100）
+   */
+  static calculateUrgencyScore(task) {
+    const taskDate = this.getTaskDate(task)
+    if (!taskDate) return 50  // 无日期的任务默认中等紧急度
+    
+    const now = new Date()
+    const daysUntil = Math.floor((taskDate - now) / (1000 * 60 * 60 * 24))
+    
+    // 已逾期
+    if (daysUntil < 0) return 100
+    
+    // 今天到期
+    if (daysUntil === 0) return 95
+    
+    // 明天到期
+    if (daysUntil === 1) return 90
+    
+    // 一周内
+    if (daysUntil <= 7) return 70
+    
+    // 两周内
+    if (daysUntil <= 14) return 50
+    
+    // 一个月内
+    if (daysUntil <= 30) return 30
+    
+    // 超过一个月
+    return 10
+  }
+  
+  /**
+   * 计算重要性评分
+   * @param {MNNote} task - 任务卡片
+   * @returns {number} 重要性评分（0-100）
+   */
+  static calculateImportanceScore(task) {
+    let score = 0
+    const titleParts = MNTaskManager.parseTaskTitle(task.noteTitle)
+    
+    // 类型权重
+    const typeWeights = {
+      '目标': 100,
+      '关键结果': 80,
+      '项目': 60,
+      '动作': 40
+    }
+    score += typeWeights[titleParts.type] || 0
+    
+    // 有子任务的任务更重要
+    if (task.childNotes && task.childNotes.some(n => MNTaskManager.isTaskCard(n))) {
+      score = Math.min(100, score + 20)
+    }
+    
+    // 被多个任务依赖的任务更重要
+    const parsed = MNTaskManager.parseTaskComments(task)
+    if (parsed.links && parsed.links.length > 2) {
+      score = Math.min(100, score + 10)
+    }
+    
+    return score
+  }
+  
+  /**
+   * 计算进度评分
+   * @param {MNNote} task - 任务卡片
+   * @returns {number} 进度评分（0-100）
+   */
+  static calculateProgressScore(task) {
+    const titleParts = MNTaskManager.parseTaskTitle(task.noteTitle)
+    
+    // 根据状态评分
+    switch (titleParts.status) {
+      case '进行中':
+        return 100  // 进行中的任务优先级最高
+      case '未开始':
+        return 50
+      case '已完成':
+        return 10
+      case '已归档':
+        return 0
+      default:
+        return 30
+    }
+  }
+  
+  /**
+   * 按优先级排序
+   * @param {MNNote[]} tasks - 任务列表
+   * @param {boolean} ascending - 是否升序
+   * @returns {MNNote[]} 排序后的任务列表
+   */
+  static sortByPriority(tasks, ascending = false) {
+    const priorityOrder = { '高': 3, '中': 2, '低': 1 }
+    
+    return tasks.sort((a, b) => {
+      const priorityA = MNTaskManager.getTaskPriority(a)
+      const priorityB = MNTaskManager.getTaskPriority(b)
+      
+      const orderA = priorityOrder[priorityA] || 0
+      const orderB = priorityOrder[priorityB] || 0
+      
+      const result = orderB - orderA
+      return ascending ? -result : result
+    })
+  }
+  
+  /**
+   * 按日期排序
+   * @param {MNNote[]} tasks - 任务列表
+   * @param {boolean} ascending - 是否升序（true: 最早的在前）
+   * @returns {MNNote[]} 排序后的任务列表
+   */
+  static sortByDate(tasks, ascending = true) {
+    return tasks.sort((a, b) => {
+      const dateA = this.getTaskDate(a)
+      const dateB = this.getTaskDate(b)
+      
+      // 无日期的任务放在最后
+      if (!dateA && !dateB) return 0
+      if (!dateA) return 1
+      if (!dateB) return -1
+      
+      const result = dateA - dateB
+      return ascending ? result : -result
+    })
+  }
+  
+  /**
+   * 按状态排序
+   * @param {MNNote[]} tasks - 任务列表
+   * @param {boolean} ascending - 是否升序
+   * @returns {MNNote[]} 排序后的任务列表
+   */
+  static sortByStatus(tasks, ascending = false) {
+    const statusOrder = {
+      '进行中': 4,
+      '未开始': 3,
+      '已完成': 2,
+      '已归档': 1
+    }
+    
+    return tasks.sort((a, b) => {
+      const titlePartsA = MNTaskManager.parseTaskTitle(a.noteTitle)
+      const titlePartsB = MNTaskManager.parseTaskTitle(b.noteTitle)
+      
+      const orderA = statusOrder[titlePartsA.status] || 0
+      const orderB = statusOrder[titlePartsB.status] || 0
+      
+      const result = orderB - orderA
+      return ascending ? -result : result
+    })
+  }
+  
+  /**
+   * 按层级排序
+   * @param {MNNote[]} tasks - 任务列表
+   * @param {boolean} ascending - 是否升序（true: 顶层在前）
+   * @returns {MNNote[]} 排序后的任务列表
+   */
+  static sortByHierarchy(tasks, ascending = true) {
+    const typeOrder = {
+      '目标': 4,
+      '关键结果': 3,
+      '项目': 2,
+      '动作': 1
+    }
+    
+    return tasks.sort((a, b) => {
+      const titlePartsA = MNTaskManager.parseTaskTitle(a.noteTitle)
+      const titlePartsB = MNTaskManager.parseTaskTitle(b.noteTitle)
+      
+      const orderA = typeOrder[titlePartsA.type] || 0
+      const orderB = typeOrder[titlePartsB.type] || 0
+      
+      const result = orderB - orderA
+      return ascending ? -result : result
+    })
+  }
+  
+  /**
+   * 组合筛选和排序
+   * @param {Object} options - 筛选和排序选项
+   * @returns {MNNote[]} 处理后的任务列表
+   */
+  static filterAndSort(options = {}) {
+    const {
+      filterCriteria = {},
+      sortOptions = {}
+    } = options
+    
+    // 先筛选
+    const filteredTasks = this.filter(filterCriteria)
+    
+    // 再排序
+    return this.sort(filteredTasks, sortOptions)
+  }
+  
+  /**
+   * 获取任务分组
+   * @param {MNNote[]} tasks - 任务列表
+   * @param {string} groupBy - 分组依据（status/priority/date/type）
+   * @returns {Object} 分组后的任务
+   */
+  static groupTasks(tasks, groupBy = 'status') {
+    const groups = {}
+    
+    for (let task of tasks) {
+      let groupKey
+      
+      switch (groupBy) {
+        case 'status':
+          const titleParts = MNTaskManager.parseTaskTitle(task.noteTitle)
+          groupKey = titleParts.status || '未分类'
+          break
+          
+        case 'priority':
+          groupKey = MNTaskManager.getTaskPriority(task) || '无优先级'
+          break
+          
+        case 'date':
+          const taskDate = this.getTaskDate(task)
+          if (!taskDate) {
+            groupKey = '无日期'
+          } else {
+            const today = new Date()
+            const days = Math.floor((taskDate - today) / (1000 * 60 * 60 * 24))
+            if (days < 0) groupKey = '已逾期'
+            else if (days === 0) groupKey = '今天'
+            else if (days === 1) groupKey = '明天'
+            else if (days <= 7) groupKey = '本周'
+            else if (days <= 30) groupKey = '本月'
+            else groupKey = '更晚'
+          }
+          break
+          
+        case 'type':
+          const titleParts2 = MNTaskManager.parseTaskTitle(task.noteTitle)
+          groupKey = titleParts2.type || '未分类'
+          break
+          
+        default:
+          groupKey = '未分类'
+      }
+      
+      if (!groups[groupKey]) {
+        groups[groupKey] = []
+      }
+      groups[groupKey].push(task)
+    }
+    
+    return groups
+  }
+  
+  /**
+   * 获取任务统计信息
+   * @param {MNNote[]} tasks - 任务列表
+   * @returns {Object} 统计信息
+   */
+  static getTaskStatistics(tasks) {
+    const stats = {
+      total: tasks.length,
+      byStatus: {},
+      byPriority: {},
+      byType: {},
+      overdue: 0,
+      dueToday: 0,
+      dueThisWeek: 0,
+      noDueDate: 0
+    }
+    
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const weekEnd = this.getEndOfWeek()
+    
+    for (let task of tasks) {
+      const titleParts = MNTaskManager.parseTaskTitle(task.noteTitle)
+      
+      // 状态统计
+      const status = titleParts.status || '未分类'
+      stats.byStatus[status] = (stats.byStatus[status] || 0) + 1
+      
+      // 优先级统计
+      const priority = MNTaskManager.getTaskPriority(task) || '无优先级'
+      stats.byPriority[priority] = (stats.byPriority[priority] || 0) + 1
+      
+      // 类型统计
+      const type = titleParts.type || '未分类'
+      stats.byType[type] = (stats.byType[type] || 0) + 1
+      
+      // 日期统计
+      const taskDate = this.getTaskDate(task)
+      if (!taskDate) {
+        stats.noDueDate++
+      } else {
+        if (taskDate < today) stats.overdue++
+        else if (taskDate.toDateString() === today.toDateString()) stats.dueToday++
+        else if (taskDate <= weekEnd) stats.dueThisWeek++
+      }
+    }
+    
+    return stats
+  }
+  
+  /**
+   * 快速筛选预设 - 重要且紧急的任务
+   * @param {string[]} boardKeys - 要筛选的看板
+   * @returns {MNNote[]} 任务列表
+   */
+  static filterImportantAndUrgent(boardKeys = ['target', 'project', 'action']) {
+    return this.filterAndSort({
+      filterCriteria: {
+        boardKeys,
+        priorities: ['高'],
+        statuses: ['未开始', '进行中'],
+        customFilter: (task) => {
+          const urgencyScore = this.calculateUrgencyScore(task)
+          return urgencyScore >= 70  // 紧急度70分以上
+        }
+      },
+      sortOptions: {
+        strategy: 'smart',
+        weights: {
+          urgency: 0.5,
+          priority: 0.3,
+          importance: 0.1,
+          progress: 0.1
+        }
+      }
+    })
+  }
+  
+  /**
+   * 快速筛选预设 - 即将到期的任务（3天内）
+   * @param {string[]} boardKeys - 要筛选的看板
+   * @returns {MNNote[]} 任务列表
+   */
+  static filterUpcomingTasks(boardKeys = ['target', 'project', 'action']) {
+    const threeDaysLater = new Date()
+    threeDaysLater.setDate(threeDaysLater.getDate() + 3)
+    
+    return this.filterAndSort({
+      filterCriteria: {
+        boardKeys,
+        statuses: ['未开始', '进行中'],
+        timeRange: {
+          start: new Date(),
+          end: threeDaysLater
+        }
+      },
+      sortOptions: {
+        strategy: 'date',
+        ascending: true
+      }
+    })
+  }
+  
+  /**
+   * 快速筛选预设 - 停滞的任务（超过7天未更新）
+   * @param {string[]} boardKeys - 要筛选的看板
+   * @returns {MNNote[]} 任务列表
+   */
+  static filterStalledTasks(boardKeys = ['target', 'project', 'action']) {
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    
+    return this.filter({
+      boardKeys,
+      statuses: ['进行中'],
+      customFilter: (task) => {
+        // 检查最后修改时间
+        return task.modifiedDate && task.modifiedDate < sevenDaysAgo
+      }
+    })
+  }
+  
+  /**
+   * 获取任务建议（基于当前时间和任务状态）
+   * @param {string[]} boardKeys - 要分析的看板
+   * @returns {Object} 任务建议
+   */
+  static getTaskSuggestions(boardKeys = ['target', 'project', 'action']) {
+    const allTasks = this.filter({ boardKeys })
+    const stats = this.getTaskStatistics(allTasks)
+    
+    const suggestions = {
+      urgentActions: [],      // 紧急需要处理的
+      canStart: [],          // 可以开始的
+      shouldReview: [],      // 需要回顾的
+      canArchive: [],        // 可以归档的
+      needsPlanning: []      // 需要规划的
+    }
+    
+    // 分析任务并生成建议
+    for (let task of allTasks) {
+      const titleParts = MNTaskManager.parseTaskTitle(task.noteTitle)
+      const urgencyScore = this.calculateUrgencyScore(task)
+      
+      // 紧急任务
+      if (urgencyScore >= 90 && titleParts.status !== '已完成') {
+        suggestions.urgentActions.push(task)
+      }
+      
+      // 可以开始的任务
+      if (titleParts.status === '未开始' && !this.hasBlockingDependencies(task)) {
+        suggestions.canStart.push(task)
+      }
+      
+      // 需要回顾的任务（停滞超过7天）
+      const sevenDaysAgo = new Date()
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+      if (titleParts.status === '进行中' && task.modifiedDate < sevenDaysAgo) {
+        suggestions.shouldReview.push(task)
+      }
+      
+      // 可以归档的任务
+      if (titleParts.status === '已完成') {
+        suggestions.canArchive.push(task)
+      }
+      
+      // 需要规划的任务（无日期且为高优先级）
+      if (!this.getTaskDate(task) && MNTaskManager.getTaskPriority(task) === '高') {
+        suggestions.needsPlanning.push(task)
+      }
+    }
+    
+    // 按重要性排序建议
+    Object.keys(suggestions).forEach(key => {
+      suggestions[key] = this.sort(suggestions[key], { strategy: 'smart' })
+    })
+    
+    return {
+      statistics: stats,
+      suggestions,
+      summary: {
+        urgent: suggestions.urgentActions.length,
+        canStart: suggestions.canStart.length,
+        shouldReview: suggestions.shouldReview.length,
+        canArchive: suggestions.canArchive.length,
+        needsPlanning: suggestions.needsPlanning.length
+      }
+    }
+  }
+  
+  /**
+   * 检查任务是否有未完成的依赖
+   * @param {MNNote} task - 任务卡片
+   * @returns {boolean} 是否有阻塞依赖
+   */
+  static hasBlockingDependencies(task) {
+    const parsed = MNTaskManager.parseTaskComments(task)
+    
+    // 检查"前置条件"字段中的任务链接
+    if (parsed.fields && parsed.fields['前置条件']) {
+      for (let link of parsed.links) {
+        try {
+          const linkedNote = MNNote.new(link.linkedNoteId)
+          if (linkedNote && MNTaskManager.isTaskCard(linkedNote)) {
+            const linkedTitleParts = MNTaskManager.parseTaskTitle(linkedNote.noteTitle)
+            if (linkedTitleParts.status !== '已完成' && linkedTitleParts.status !== '已归档') {
+              return true  // 有未完成的依赖
+            }
+          }
+        } catch (e) {
+          // 忽略无效链接
+        }
+      }
+    }
+    
+    return false
   }
 }
 

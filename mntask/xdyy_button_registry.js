@@ -86,6 +86,23 @@ function registerAllButtons() {
     templateName: "menu_action_board"
   });
 
+  // 今日任务快捷按钮
+  MNTaskGlobal.registerButton("custom9", {
+    name: "今日看板",
+    image: "custom9",
+    description: {
+      action: "focusTodayTasks"  // 单击直接聚焦到今日看板
+    }
+  });
+
+  MNTaskGlobal.registerButton("custom10", {
+    name: "标记今日",
+    image: "custom10",
+    description: {
+      action: "toggleTodayMark"  // 单击切换今日任务标记
+    }
+  });
+
 }
 
 // 扩展 taskConfig 的函数

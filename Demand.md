@@ -1,3 +1,5 @@
+请学习 mnai, mntoolbar, mnutils 项目，前两个学习卡片的更多处理的可能性以及一些结合插件实现的操作， mnutils 学习基础 API。请你进一步规划思考任务管理需要的筛选，并且完善今日任务的筛选以及后续处理，并增加其它类型的筛选 ultrathink
+---
 请你阅读 mntask 的 TaskFieldUtils 和 MNTaskManager 两个类，了解目前已经开发的一些功能。基础 API 参见 mnutils 项目
 现在打算开始开发 mntask 的筛选功能了，因为目前只切换状态的话，会有很多进行中的任务
 我们首先解决:

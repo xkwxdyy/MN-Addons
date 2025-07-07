@@ -92,37 +92,48 @@ function registerAllMenuTemplates() {
 
   // menu_today_tasks - 今日任务菜单
   MNTaskGlobal.registerMenuTemplate("menu_today_tasks", {
-    action: "menu",
-    menuWidth: 320,
-    menuItems: [
-      {
-        action: "viewTodayTasks",
-        menuTitle: "📅 查看今日任务"
-      },
-      {
-        action: "openFloatWindowByInboxNote",
-        menuTitle: "📌 浮窗定位今日 Inbox"
-      },
-      {
-        action: "openFloatWindowByInboxNoteOnDate",
-        menuTitle: "📆 浮窗定位指定日期 Inbox"
-      },
-      "⬇️ 时间标签管理",
-      "⬇️ 任务筛选",
-      "⬇️ 批量操作",
-      {
-        action: "moveToInbox",
-        menuTitle: "    📥 加入 Inbox"
-      },
-      {
-        action: "batchUpdateTodayTasks",
-        menuTitle: "    🔄 批量更新今日任务"
-      },
-      {
-        action: "postponeToTomorrow",
-        menuTitle: "    📆 推迟到明天"
-      }
-    ]
+    action: "toggleTodayMark",     // 单击切换今日标记
+    onLongPress: {                 // 长按显示完整菜单
+      action: "menu",
+      menuWidth: 350,
+      menuItems: [
+        "⬇️ 今日任务管理",
+        {
+          action: "toggleTodayMark",
+          menuTitle: "    📅 标记/取消今日任务"
+        },
+        {
+          action: "setTaskPriority",
+          menuTitle: "    🔥 设置任务优先级"
+        },
+        {
+          action: "setTaskTime",
+          menuTitle: "    ⏰ 设置计划时间"
+        },
+        "⬇️ 今日看板",
+        {
+          action: "focusTodayTasks",
+          menuTitle: "    🎯 聚焦今日看板"
+        },
+        {
+          action: "refreshTodayBoard",
+          menuTitle: "    🔄 刷新今日看板"
+        },
+        "⬇️ 时间标签（旧功能）",
+        {
+          action: "updateTodayTimeTag",
+          menuTitle: "    📌 更新今日时间标签"
+        },
+        {
+          action: "addTodayTimeTag",
+          menuTitle: "    ➕ 添加今日时间标签"
+        },
+        {
+          action: "updateTimeTag",
+          menuTitle: "    🔄 更新时间标签"
+        }
+      ]
+    }
   });
 
   // menu_task_split - 任务拆分菜单
@@ -184,69 +195,81 @@ function registerAllMenuTemplates() {
     ]
   });
 
-  // menu_quick_filter - 快速筛选菜单
+  // menu_quick_filter - 快速筛选菜单（升级版）
   MNTaskGlobal.registerMenuTemplate("menu_quick_filter", {
-    action: "menu",
-    menuWidth: 340,
-    menuItems: [
-      "⬇️ 按属性筛选",
-      {
-        action: "filterByTaskType",
-        menuTitle: "    🎯 按任务类型筛选"
-      },
-      {
-        action: "filterByTaskStatus",
-        menuTitle: "    📊 按任务状态筛选"
-      },
-      {
-        action: "filterByProgress",
-        menuTitle: "    📈 按进度筛选"
-      },
-      {
-        action: "filterByTag",
-        menuTitle: "    🏷️ 按标签筛选"
-      },
-      "⬇️ 按时间筛选",
-      {
-        action: "filterByTimeTag",
-        menuTitle: "    📅 按时间标签筛选"
-      },
-      {
-        action: "filterOverdueTasks",
-        menuTitle: "    ⚠️ 筛选逾期任务"
-      },
-      "⬇️ 预设筛选",
-      {
-        action: "quickFilter",
-        menuTitle: "    ⚡ 快速组合筛选"
-      },
-      {
-        action: "menu",
-        menuTitle: "    ➡️ 常用筛选",
-        menuItems: [
-          {
-            action: "quickFilter",
-            menuTitle: "📅 今日未完成的任务"
-          },
-          {
-            action: "quickFilter",
-            menuTitle: "📅 本周进行中的任务"
-          },
-          {
-            action: "quickFilter",
-            menuTitle: "🚨 高优先级未开始任务"
-          },
-          {
-            action: "quickFilter",
-            menuTitle: "🎯 即将完成的任务(75%+)"
-          },
-          {
-            action: "quickFilter",
-            menuTitle: "🚫 已阻塞的任务"
-          }
-        ]
-      }
-    ]
+    action: "filterTasks",  // 单击直接进入筛选
+    onLongPress: {
+      action: "menu",
+      menuWidth: 380,
+      menuItems: [
+        "⬇️ 智能筛选与排序",
+        {
+          action: "filterTasks",
+          menuTitle: "    🔍 任务筛选器"
+        },
+        {
+          action: "sortTasks",
+          menuTitle: "    📊 任务排序"
+        },
+        {
+          action: "taskAnalytics",
+          menuTitle: "    📈 任务分析与建议"
+        },
+        "⬇️ 批量操作",
+        {
+          action: "batchTaskOperation",
+          menuTitle: "    ⚡ 批量任务操作"
+        },
+        {
+          action: "menu",
+          menuTitle: "    ➡️ 快速批量操作",
+          menuItems: [
+            {
+              action: "batchMarkAsToday",
+              menuTitle: "📅 批量标记为今日任务"
+            },
+            {
+              action: "batchArchiveCompleted",
+              menuTitle: "📦 批量归档已完成"
+            },
+            {
+              action: "batchSetHighPriority",
+              menuTitle: "🔥 批量设置高优先级"
+            }
+          ]
+        },
+        "⬇️ 预设筛选",
+        {
+          action: "filterImportantUrgent",
+          menuTitle: "    🔥 重要且紧急"
+        },
+        {
+          action: "filterThisWeek",
+          menuTitle: "    📊 本周任务"
+        },
+        {
+          action: "filterOverdue",
+          menuTitle: "    ⚠️ 已逾期任务"
+        },
+        {
+          action: "filterStalled",
+          menuTitle: "    🔍 停滞任务"
+        },
+        "⬇️ 旧版筛选（兼容）",
+        {
+          action: "filterByTaskType",
+          menuTitle: "    🎯 按任务类型筛选"
+        },
+        {
+          action: "filterByTaskStatus",
+          menuTitle: "    📊 按任务状态筛选"
+        },
+        {
+          action: "filterByTag",
+          menuTitle: "    🏷️ 按标签筛选"
+        }
+      ]
+    }
   });
 
   // menu_task_dashboard - 任务看板菜单
@@ -470,6 +493,60 @@ function registerAllMenuTemplates() {
         menuTitle: "    📦 归档已完成"
       }
     ]
+  });
+
+  // menu_advanced_filter - 高级筛选与视图菜单
+  MNTaskGlobal.registerMenuTemplate("menu_advanced_filter", {
+    action: "taskAnalytics",  // 单击直接进入任务分析
+    onLongPress: {
+      action: "menu", 
+      menuWidth: 400,
+      menuItems: [
+        "⬇️ 任务视图",
+        {
+          action: "viewByStatus",
+          menuTitle: "    📊 按状态分组查看"
+        },
+        {
+          action: "viewByPriority",
+          menuTitle: "    🔥 按优先级分组查看"
+        },
+        {
+          action: "viewByDate",
+          menuTitle: "    📅 按日期分组查看"
+        },
+        {
+          action: "viewByType",
+          menuTitle: "    🏗️ 按类型分组查看"
+        },
+        "⬇️ 组合筛选",
+        {
+          action: "advancedFilter",
+          menuTitle: "    ⚙️ 高级组合筛选"
+        },
+        {
+          action: "saveFilterPreset",
+          menuTitle: "    💾 保存筛选预设"
+        },
+        {
+          action: "loadFilterPreset",
+          menuTitle: "    📂 加载筛选预设"
+        },
+        "⬇️ 任务报告",
+        {
+          action: "weeklyReport",
+          menuTitle: "    📊 生成周报"
+        },
+        {
+          action: "monthlyReport",
+          menuTitle: "    📈 生成月报"
+        },
+        {
+          action: "exportTaskData",
+          menuTitle: "    📤 导出任务数据"
+        }
+      ]
+    }
   });
 }
 

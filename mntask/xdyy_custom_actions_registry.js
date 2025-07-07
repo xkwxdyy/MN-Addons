@@ -2942,6 +2942,595 @@ function registerAllCustomActions() {
     MNUtil.showHUD(`收件箱中有 ${pendingActions.length} 个待处理项`);
   });
 
+  // toggleTodayMark - 切换今日任务标记
+  MNTaskGlobal.registerCustomAction("toggleTodayMark", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    if (!focusNote && (!focusNotes || focusNotes.length === 0)) {
+      MNUtil.showHUD("请先选择一个或多个任务");
+      return;
+    }
+    
+    const notesToProcess = focusNotes && focusNotes.length > 0 ? focusNotes : [focusNote];
+    
+    MNUtil.undoGrouping(() => {
+      let addCount = 0;
+      let removeCount = 0;
+      
+      notesToProcess.forEach(note => {
+        if (MNTaskManager.isTaskCard(note)) {
+          if (MNTaskManager.isToday(note)) {
+            MNTaskManager.markAsToday(note, false);
+            removeCount++;
+          } else {
+            MNTaskManager.markAsToday(note, true);
+            addCount++;
+          }
+        }
+      });
+      
+      if (addCount > 0 && removeCount > 0) {
+        MNUtil.showHUD(`✅ 添加 ${addCount} 个，移除 ${removeCount} 个今日标记`);
+      } else if (addCount > 0) {
+        MNUtil.showHUD(`✅ 已添加 ${addCount} 个今日标记`);
+      } else if (removeCount > 0) {
+        MNUtil.showHUD(`✅ 已移除 ${removeCount} 个今日标记`);
+      }
+    });
+  });
+
+  // setTaskPriority - 设置任务优先级
+  MNTaskGlobal.registerCustomAction("setTaskPriority", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    if (!focusNote) {
+      MNUtil.showHUD("请先选择一个任务");
+      return;
+    }
+    
+    if (!MNTaskManager.isTaskCard(focusNote)) {
+      MNUtil.showHUD("请选择一个任务卡片");
+      return;
+    }
+    
+    const priorities = ["高", "中", "低"];
+    const selectedIndex = await MNUtil.userSelect("设置任务优先级", "", priorities);
+    
+    if (selectedIndex === 0) return; // 用户取消
+    
+    const priority = priorities[selectedIndex - 1];
+    
+    MNUtil.undoGrouping(() => {
+      MNTaskManager.setTaskPriority(focusNote, priority);
+    });
+    
+    MNUtil.showHUD(`✅ 优先级已设置为：${priority}`);
+  });
+
+  // setTaskTime - 设置任务计划时间
+  MNTaskGlobal.registerCustomAction("setTaskTime", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    if (!focusNote) {
+      MNUtil.showHUD("请先选择一个任务");
+      return;
+    }
+    
+    if (!MNTaskManager.isTaskCard(focusNote)) {
+      MNUtil.showHUD("请选择一个任务卡片");
+      return;
+    }
+    
+    // 预设时间选项
+    const timeOptions = ["09:00", "10:00", "11:00", "14:00", "15:00", "16:00", "17:00", "自定义"];
+    const selectedIndex = await MNUtil.userSelect("设置计划时间", "", timeOptions);
+    
+    if (selectedIndex === 0) return; // 用户取消
+    
+    let time = timeOptions[selectedIndex - 1];
+    
+    if (time === "自定义") {
+      time = await MNUtil.input("请输入计划时间", "格式：HH:MM（如 09:30）", "09:00");
+      if (!time || !time.match(/^\d{1,2}:\d{2}$/)) {
+        MNUtil.showHUD("时间格式错误");
+        return;
+      }
+    }
+    
+    MNUtil.undoGrouping(() => {
+      MNTaskManager.setTaskTime(focusNote, time);
+    });
+    
+    MNUtil.showHUD(`✅ 计划时间已设置为：${time}`);
+  });
+
+  // focusTodayTasks - 聚焦到今日看板
+  MNTaskGlobal.registerCustomAction("focusTodayTasks", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    const todayBoardId = taskConfig.getBoardNoteId('today');
+    if (!todayBoardId) {
+      MNUtil.showHUD("请先配置今日看板");
+      return;
+    }
+    
+    const todayBoard = MNNote.new(todayBoardId);
+    if (!todayBoard) {
+      MNUtil.showHUD("今日看板不存在");
+      return;
+    }
+    
+    todayBoard.focusInFloatMindMap(0.5);
+    
+    // 显示今日任务统计
+    const todayTasks = MNTaskManager.filterTodayTasks();
+    const inProgressCount = todayTasks.filter(task => {
+      const status = MNTaskManager.parseTaskTitle(task.noteTitle).status;
+      return status === '进行中';
+    }).length;
+    
+    MNUtil.showHUD(`📅 今日任务：${todayTasks.length} 个\n🔥 进行中：${inProgressCount} 个`);
+  });
+
+  // refreshTodayBoard - 刷新今日看板
+  MNTaskGlobal.registerCustomAction("refreshTodayBoard", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    const todayBoardId = taskConfig.getBoardNoteId('today');
+    if (!todayBoardId) {
+      MNUtil.showHUD("请先配置今日看板");
+      return;
+    }
+    
+    const todayBoard = MNNote.new(todayBoardId);
+    if (!todayBoard) {
+      MNUtil.showHUD("今日看板不存在");
+      return;
+    }
+    
+    MNUtil.showHUD("🔄 正在刷新今日看板...");
+    
+    MNUtil.undoGrouping(() => {
+      // 获取今日任务
+      const todayTasks = MNTaskManager.filterTodayTasks();
+      
+      // 移动到今日看板
+      let movedCount = 0;
+      todayTasks.forEach(task => {
+        // 检查是否已经在今日看板
+        if (task.parentNote?.noteId !== todayBoardId) {
+          todayBoard.addChild(task);
+          movedCount++;
+        }
+      });
+      
+      // 更新看板标题
+      const now = new Date();
+      const dateStr = `${now.getMonth() + 1}月${now.getDate()}日`;
+      todayBoard.noteTitle = `📅 今日看板 - ${dateStr}`;
+      
+      MNUtil.showHUD(`✅ 刷新完成\n📋 今日任务：${todayTasks.length} 个\n➕ 新增：${movedCount} 个`);
+    });
+  });
+
+  // filterTasks - 任务筛选
+  MNTaskGlobal.registerCustomAction("filterTasks", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    // 预设筛选选项
+    const filterOptions = [
+      "🔥 重要且紧急",
+      "📅 今日任务",
+      "⏰ 即将到期（3天内）",
+      "⚠️ 已逾期",
+      "📌 高优先级未完成",
+      "📊 本周任务",
+      "🔍 停滞任务（7天未更新）",
+      "✅ 待归档任务",
+      "🏷️ 按标签筛选",
+      "⚙️ 自定义筛选"
+    ];
+    
+    const selectedIndex = await MNUtil.userSelect("选择筛选类型", "", filterOptions);
+    if (selectedIndex === 0) return;
+    
+    let filteredTasks = [];
+    const boardKeys = ['target', 'project', 'action'];
+    
+    switch (selectedIndex) {
+      case 1: // 重要且紧急
+        filteredTasks = TaskFilterEngine.filterImportantAndUrgent(boardKeys);
+        break;
+        
+      case 2: // 今日任务
+        filteredTasks = MNTaskManager.filterTodayTasks(boardKeys);
+        break;
+        
+      case 3: // 即将到期
+        filteredTasks = TaskFilterEngine.filterUpcomingTasks(boardKeys);
+        break;
+        
+      case 4: // 已逾期
+        filteredTasks = TaskFilterEngine.filterOverdueTasks(boardKeys);
+        break;
+        
+      case 5: // 高优先级未完成
+        filteredTasks = TaskFilterEngine.filterHighPriorityIncompleteTasks(boardKeys);
+        break;
+        
+      case 6: // 本周任务
+        filteredTasks = TaskFilterEngine.filterThisWeekTasks(boardKeys);
+        break;
+        
+      case 7: // 停滞任务
+        filteredTasks = TaskFilterEngine.filterStalledTasks(boardKeys);
+        break;
+        
+      case 8: // 待归档任务
+        filteredTasks = TaskFilterEngine.filterPendingArchiveTasks(boardKeys);
+        break;
+        
+      case 9: // 按标签筛选
+        const tag = await MNUtil.input("输入标签名称", "", "");
+        if (tag) {
+          filteredTasks = TaskFilterEngine.filterByTags([tag], boardKeys);
+        }
+        break;
+        
+      case 10: // 自定义筛选
+        await showCustomFilterDialog(context);
+        return;
+    }
+    
+    // 显示筛选结果
+    if (filteredTasks.length === 0) {
+      MNUtil.showHUD("没有找到符合条件的任务");
+    } else {
+      await showFilterResultsMenu(filteredTasks, filterOptions[selectedIndex - 1]);
+    }
+  });
+
+  // sortTasks - 任务排序
+  MNTaskGlobal.registerCustomAction("sortTasks", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    // 先获取要排序的任务
+    const boardKeys = ['target', 'project', 'action'];
+    const allTasks = TaskFilterEngine.filter({ boardKeys });
+    
+    if (allTasks.length === 0) {
+      MNUtil.showHUD("没有找到任务");
+      return;
+    }
+    
+    // 选择排序策略
+    const sortOptions = [
+      "🤖 智能排序（综合评分）",
+      "🔥 按优先级排序",
+      "📅 按日期排序",
+      "📊 按状态排序",
+      "🏗️ 按层级排序（目标→动作）"
+    ];
+    
+    const selectedIndex = await MNUtil.userSelect("选择排序方式", `共 ${allTasks.length} 个任务`, sortOptions);
+    if (selectedIndex === 0) return;
+    
+    let strategy = 'smart';
+    let ascending = false;
+    
+    switch (selectedIndex) {
+      case 1:
+        strategy = 'smart';
+        break;
+      case 2:
+        strategy = 'priority';
+        break;
+      case 3:
+        strategy = 'date';
+        ascending = true; // 日期默认升序（最早的在前）
+        break;
+      case 4:
+        strategy = 'status';
+        break;
+      case 5:
+        strategy = 'hierarchy';
+        ascending = true; // 层级默认升序（目标在前）
+        break;
+    }
+    
+    // 执行排序
+    const sortedTasks = TaskFilterEngine.sort(allTasks, { strategy, ascending });
+    
+    // 显示排序结果
+    await showSortedTasksMenu(sortedTasks, sortOptions[selectedIndex - 1]);
+  });
+
+  // batchTaskOperation - 批量任务操作
+  MNTaskGlobal.registerCustomAction("batchTaskOperation", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    if (!focusNotes || focusNotes.length === 0) {
+      MNUtil.showHUD("请先选择要批量操作的任务");
+      return;
+    }
+    
+    // 批量操作选项
+    const batchOptions = [
+      "📊 批量更新状态",
+      "🔥 批量设置优先级",
+      "📅 批量标记为今日任务",
+      "📋 批量移动到看板",
+      "🏷️ 批量添加标签",
+      "📆 批量设置截止日期",
+      "📦 批量归档已完成任务",
+      "🔗 批量解除父任务链接"
+    ];
+    
+    const selectedIndex = await MNUtil.userSelect("选择批量操作", `已选择 ${focusNotes.length} 个笔记`, batchOptions);
+    if (selectedIndex === 0) return;
+    
+    switch (selectedIndex) {
+      case 1: // 批量更新状态
+        const statuses = ["未开始", "进行中", "已完成", "已归档"];
+        const statusIndex = await MNUtil.userSelect("选择状态", "", statuses);
+        if (statusIndex > 0) {
+          await MNTaskManager.batchUpdateStatus(focusNotes, statuses[statusIndex - 1]);
+        }
+        break;
+        
+      case 2: // 批量设置优先级
+        const priorities = ["高", "中", "低"];
+        const priorityIndex = await MNUtil.userSelect("选择优先级", "", priorities);
+        if (priorityIndex > 0) {
+          await MNTaskManager.batchSetPriority(focusNotes, priorities[priorityIndex - 1]);
+        }
+        break;
+        
+      case 3: // 批量标记为今日任务
+        MNTaskManager.batchMarkAsToday(focusNotes);
+        break;
+        
+      case 4: // 批量移动到看板
+        const boards = ["target", "project", "action", "completed", "today"];
+        const boardNames = ["目标看板", "项目看板", "动作看板", "已完成看板", "今日看板"];
+        const boardIndex = await MNUtil.userSelect("选择目标看板", "", boardNames);
+        if (boardIndex > 0) {
+          await MNTaskManager.batchMoveToBoard(focusNotes, boards[boardIndex - 1]);
+        }
+        break;
+        
+      case 5: // 批量添加标签
+        const tag = await MNUtil.input("输入标签名称", "", "");
+        if (tag) {
+          await MNTaskManager.batchAddTag(focusNotes, tag);
+        }
+        break;
+        
+      case 6: // 批量设置截止日期
+        const dateStr = await MNUtil.input("输入截止日期", "格式：YYYY-MM-DD", "");
+        if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          const date = new Date(dateStr);
+          await MNTaskManager.batchSetDueDate(focusNotes, date);
+        } else if (dateStr) {
+          MNUtil.showHUD("日期格式错误");
+        }
+        break;
+        
+      case 7: // 批量归档已完成任务
+        await MNTaskManager.batchArchiveCompleted(focusNotes);
+        break;
+        
+      case 8: // 批量解除父任务链接
+        await MNTaskManager.batchUnlinkFromParent(focusNotes);
+        break;
+    }
+  });
+
+  // taskAnalytics - 任务分析与建议
+  MNTaskGlobal.registerCustomAction("taskAnalytics", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    MNUtil.showHUD("🔍 正在分析任务...");
+    
+    const boardKeys = ['target', 'project', 'action'];
+    const analysis = TaskFilterEngine.getTaskSuggestions(boardKeys);
+    
+    // 构建分析报告
+    let report = "📊 任务分析报告\n\n";
+    
+    // 统计信息
+    report += "📈 总体统计：\n";
+    report += `• 任务总数：${analysis.statistics.total}\n`;
+    report += `• 进行中：${analysis.statistics.byStatus['进行中'] || 0}\n`;
+    report += `• 未开始：${analysis.statistics.byStatus['未开始'] || 0}\n`;
+    report += `• 已完成：${analysis.statistics.byStatus['已完成'] || 0}\n`;
+    report += `• 已逾期：${analysis.statistics.overdue}\n`;
+    report += `• 今日到期：${analysis.statistics.dueToday}\n\n`;
+    
+    // 建议摘要
+    report += "💡 行动建议：\n";
+    if (analysis.summary.urgent > 0) {
+      report += `• 🚨 ${analysis.summary.urgent} 个任务需要紧急处理\n`;
+    }
+    if (analysis.summary.canStart > 0) {
+      report += `• ▶️ ${analysis.summary.canStart} 个任务可以开始执行\n`;
+    }
+    if (analysis.summary.shouldReview > 0) {
+      report += `• 🔄 ${analysis.summary.shouldReview} 个任务需要回顾进展\n`;
+    }
+    if (analysis.summary.canArchive > 0) {
+      report += `• 📦 ${analysis.summary.canArchive} 个任务可以归档\n`;
+    }
+    if (analysis.summary.needsPlanning > 0) {
+      report += `• 📅 ${analysis.summary.needsPlanning} 个高优先级任务需要规划日期\n`;
+    }
+    
+    // 显示报告并提供操作选项
+    const options = ["查看紧急任务", "查看可开始任务", "查看需回顾任务", "执行归档建议"];
+    const selectedIndex = await MNUtil.userSelect("任务分析", report, options);
+    
+    switch (selectedIndex) {
+      case 1: // 查看紧急任务
+        if (analysis.suggestions.urgentActions.length > 0) {
+          await showTaskListMenu(analysis.suggestions.urgentActions, "🚨 紧急任务");
+        } else {
+          MNUtil.showHUD("没有紧急任务");
+        }
+        break;
+        
+      case 2: // 查看可开始任务
+        if (analysis.suggestions.canStart.length > 0) {
+          await showTaskListMenu(analysis.suggestions.canStart, "▶️ 可开始任务");
+        } else {
+          MNUtil.showHUD("没有可开始的任务");
+        }
+        break;
+        
+      case 3: // 查看需回顾任务
+        if (analysis.suggestions.shouldReview.length > 0) {
+          await showTaskListMenu(analysis.suggestions.shouldReview, "🔄 需回顾任务");
+        } else {
+          MNUtil.showHUD("没有需要回顾的任务");
+        }
+        break;
+        
+      case 4: // 执行归档建议
+        if (analysis.suggestions.canArchive.length > 0) {
+          await MNTaskManager.batchArchiveCompleted(analysis.suggestions.canArchive);
+        } else {
+          MNUtil.showHUD("没有可归档的任务");
+        }
+        break;
+    }
+  });
+
+  // 辅助函数：显示筛选结果菜单
+  async function showFilterResultsMenu(tasks, filterName) {
+    if (tasks.length === 0) return;
+    
+    const taskTitles = tasks.slice(0, 20).map((task, index) => {
+      const titleParts = MNTaskManager.parseTaskTitle(task.noteTitle);
+      const priority = MNTaskManager.getTaskPriority(task);
+      const priorityIcon = priority === '高' ? '🔴' : priority === '中' ? '🟡' : '⚪';
+      return `${index + 1}. ${priorityIcon} ${titleParts.content.substring(0, 30)}...`;
+    });
+    
+    if (tasks.length > 20) {
+      taskTitles.push(`... 还有 ${tasks.length - 20} 个任务`);
+    }
+    
+    const selectedIndex = await MNUtil.userSelect(
+      filterName,
+      `找到 ${tasks.length} 个任务`,
+      taskTitles
+    );
+    
+    if (selectedIndex > 0 && selectedIndex <= Math.min(tasks.length, 20)) {
+      const selectedTask = tasks[selectedIndex - 1];
+      selectedTask.focusInMindMap(0.3);
+    }
+  }
+
+  // 辅助函数：显示排序后的任务菜单
+  async function showSortedTasksMenu(tasks, sortName) {
+    await showFilterResultsMenu(tasks, sortName);
+  }
+
+  // 辅助函数：显示任务列表菜单
+  async function showTaskListMenu(tasks, title) {
+    await showFilterResultsMenu(tasks, title);
+  }
+
+  // 辅助函数：显示自定义筛选对话框
+  async function showCustomFilterDialog(context) {
+    // 这里可以实现更复杂的自定义筛选界面
+    // 目前简化为组合筛选
+    const statusOptions = ["不限", "未开始", "进行中", "已完成", "已归档"];
+    const priorityOptions = ["不限", "高", "中", "低"];
+    
+    const statusIndex = await MNUtil.userSelect("选择状态", "", statusOptions);
+    if (statusIndex === 0) return;
+    
+    const priorityIndex = await MNUtil.userSelect("选择优先级", "", priorityOptions);
+    if (priorityIndex === 0) return;
+    
+    const criteria = {
+      boardKeys: ['target', 'project', 'action']
+    };
+    
+    if (statusIndex > 1) {
+      criteria.statuses = [statusOptions[statusIndex - 1]];
+    }
+    
+    if (priorityIndex > 1) {
+      criteria.priorities = [priorityOptions[priorityIndex - 1]];
+    }
+    
+    const filteredTasks = TaskFilterEngine.filter(criteria);
+    await showFilterResultsMenu(filteredTasks, "自定义筛选结果");
+  }
+
+  // 快速批量操作 - 批量设置高优先级
+  MNTaskGlobal.registerCustomAction("batchSetHighPriority", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    if (!focusNotes || focusNotes.length === 0) {
+      MNUtil.showHUD("请先选择要设置的任务");
+      return;
+    }
+    
+    await MNTaskManager.batchSetPriority(focusNotes, "高");
+  });
+
+  // 快速批量操作 - 批量归档已完成
+  MNTaskGlobal.registerCustomAction("batchArchiveCompleted", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    const notes = focusNotes && focusNotes.length > 0 ? focusNotes : 
+                  (focusNote ? [focusNote] : []);
+    
+    if (notes.length === 0) {
+      // 如果没有选择，则筛选所有已完成的任务
+      const completedTasks = TaskFilterEngine.filter({
+        boardKeys: ['target', 'project', 'action', 'completed'],
+        statuses: ['已完成']
+      });
+      
+      if (completedTasks.length === 0) {
+        MNUtil.showHUD("没有找到已完成的任务");
+        return;
+      }
+      
+      await MNTaskManager.batchArchiveCompleted(completedTasks);
+    } else {
+      await MNTaskManager.batchArchiveCompleted(notes);
+    }
+  });
+
+  // 预设筛选 - 重要且紧急
+  MNTaskGlobal.registerCustomAction("filterImportantUrgent", async function(context) {
+    const filteredTasks = TaskFilterEngine.filterImportantAndUrgent();
+    await showFilterResultsMenu(filteredTasks, "🔥 重要且紧急的任务");
+  });
+
+  // 预设筛选 - 本周任务
+  MNTaskGlobal.registerCustomAction("filterThisWeek", async function(context) {
+    const filteredTasks = TaskFilterEngine.filterThisWeekTasks();
+    await showFilterResultsMenu(filteredTasks, "📊 本周任务");
+  });
+
+  // 预设筛选 - 已逾期任务
+  MNTaskGlobal.registerCustomAction("filterOverdue", async function(context) {
+    const filteredTasks = TaskFilterEngine.filterOverdueTasks();
+    await showFilterResultsMenu(filteredTasks, "⚠️ 已逾期任务");
+  });
+
+  // 预设筛选 - 停滞任务
+  MNTaskGlobal.registerCustomAction("filterStalled", async function(context) {
+    const filteredTasks = TaskFilterEngine.filterStalledTasks();
+    await showFilterResultsMenu(filteredTasks, "🔍 停滞任务");
+  });
+
 }
 
 // 立即注册

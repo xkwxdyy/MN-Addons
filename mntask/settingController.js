@@ -1075,6 +1075,22 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     await self.pasteBoard('completed')
   },
   
+  // 今日看板处理方法
+  focusTodayBoard: function() {
+    let self = getTaskSettingController()
+    self.focusBoard('today')
+  },
+  
+  clearTodayBoard: async function() {
+    let self = getTaskSettingController()
+    await self.clearBoard('today')
+  },
+  
+  pasteTodayBoard: async function() {
+    let self = getTaskSettingController()
+    await self.pasteBoard('today')
+  },
+  
   importConfigTapped:function(button){
     var commandTable = [
       {title:'☁️   from iCloud',object:self,selector:'importConfig:',param:"iCloud"},
@@ -1505,8 +1521,14 @@ taskSettingController.prototype.settingViewLayout = function (){
     taskFrame.set(this.clearCompletedBoardButton, 15+(width-30)/3, 455, (width-30)/3, 35)
     taskFrame.set(this.pasteCompletedBoardButton, 20+2*(width-30)/3, 455, (width-30)/3, 35)
     
+    // 今日看板
+    taskFrame.set(this.todayBoardLabel, 10, 510, width-20, 35)
+    taskFrame.set(this.focusTodayBoardButton, 10, 555, (width-30)/3, 35)
+    taskFrame.set(this.clearTodayBoardButton, 15+(width-30)/3, 555, (width-30)/3, 35)
+    taskFrame.set(this.pasteTodayBoardButton, 20+2*(width-30)/3, 555, (width-30)/3, 35)
+    
     // 设置 ScrollView 的 contentSize，为多个看板预留空间
-    this.taskBoardView.contentSize = {width: width-2, height: 600}
+    this.taskBoardView.contentSize = {width: width-2, height: 700}
 }
 
 
@@ -1835,6 +1857,13 @@ try {
   this.createBoardBinding({
     key: 'completed',
     title: '已完成存档区:',
+    parent: 'taskBoardView'
+  })
+  
+  // 创建今日看板
+  this.createBoardBinding({
+    key: 'today',
+    title: '今日看板:',
     parent: 'taskBoardView'
   })
   

@@ -3541,7 +3541,11 @@ class MNMath {
           
         } else if (action.type === 'position') {
           // 直接位置
-          callback(action.index);
+          if (action.isAfter) {
+            callback(action.index + 1);  // 下方位置
+          } else {
+            callback(action.index);      // 上方位置
+          }
           
         } else if (action.type === 'htmlMarkdownDetail') {
           // 用户点击了 HtmlMarkdown 标题，显示其内部位置选择

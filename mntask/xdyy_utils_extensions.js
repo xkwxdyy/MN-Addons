@@ -1435,41 +1435,46 @@ class MNTaskManager {
     const parsed = this.parseTaskComments(note)
     const options = []
     
-    // 按主字段分组
-    let currentMainField = null
-    let currentMainFieldIndex = -1
+    // 找到信息字段的位置
+    let infoFieldIndex = -1
+    let nextMainFieldIndex = note.MNComments.length
     
     for (let field of parsed.taskFields) {
-      if (field.isMainField) {
-        currentMainField = field.content
-        currentMainFieldIndex = field.index
-        // 添加主字段分隔符
-        options.push({
-          display: `----------【${field.content}】----------`,
-          index: -1,
-          type: 'separator',
-          fieldName: field.content
-        })
-      } else if (currentMainField) {
-        // 子字段
-        const parsed = TaskFieldUtils.getFieldNameAndContent(note.MNComments[field.index].text)
-        options.push({
-          display: `    ${parsed.fieldName}: ${parsed.content || '(空)'}`,
-          index: field.index,
-          type: 'subField',
-          fieldName: parsed.fieldName,
-          parentField: currentMainField
-        })
+      if (field.isMainField && field.content === '信息') {
+        infoFieldIndex = field.index
+        // 找下一个主字段
+        for (let nextField of parsed.taskFields) {
+          if (nextField.isMainField && nextField.index > infoFieldIndex) {
+            nextMainFieldIndex = nextField.index
+            break
+          }
+        }
+        break
       }
     }
     
-    // 添加其他评论
-    const taskFieldIndices = new Set(parsed.taskFields.map(f => f.index))
+    // 遍历所有评论，只显示信息字段下的内容
     note.MNComments.forEach((comment, index) => {
-      if (!taskFieldIndices.has(index) && comment) {
-        let display = ''
+      if (!comment || index <= infoFieldIndex || index >= nextMainFieldIndex) return
+      
+      const text = comment.text || ''
+      let display = ''
+      
+      // 检查是否是子字段
+      if (TaskFieldUtils.isTaskField(text) && !text.includes('id="mainField"')) {
+        const parsed = TaskFieldUtils.getFieldNameAndContent(text)
+        display = `${parsed.fieldName}: ${parsed.content || '(空)'}`
+        
+        options.push({
+          display: display,
+          index: index,
+          type: 'subField',
+          fieldName: parsed.fieldName
+        })
+      } else {
+        // 其他类型的评论
         if (comment.type === 'TextNote') {
-          display = comment.text ? comment.text.substring(0, 50) : '(空文本)'
+          display = text ? text.substring(0, 50) : '(空文本)'
         } else if (comment.type === 'LinkNote') {
           display = '🔗 链接'
         } else if (comment.type === 'ImageNote') {
@@ -1481,11 +1486,10 @@ class MNTaskManager {
         }
         
         options.push({
-          display: `    ${display}`,
+          display: display,
           index: index,
           type: 'comment',
-          fieldName: null,
-          parentField: currentMainField
+          fieldName: null
         })
       }
     })
@@ -1503,9 +1507,6 @@ class MNTaskManager {
   static showFieldContentMultiSelectDialog(note, options, selectedIndices, finalCallback) {
     // 构建显示选项
     const displayOptions = options.map(opt => {
-      if (opt.type === 'separator') {
-        return opt.display
-      }
       const isSelected = selectedIndices.has(opt.index)
       const prefix = isSelected ? '✅ ' : '⬜ '
       return prefix + opt.display
@@ -1514,7 +1515,7 @@ class MNTaskManager {
     // 添加操作按钮
     const selectedCount = selectedIndices.size
     const actionButtons = [
-      `✅ 全选 (共 ${options.filter(o => o.type !== 'separator').length} 项)`,
+      `✅ 全选 (共 ${options.length} 项)`,
       `❌ 取消全选`,
       selectedCount > 0 ? `➡️ 确定选择 (已选 ${selectedCount} 项)` : '➡️ 确定选择'
     ]
@@ -1550,9 +1551,7 @@ class MNTaskManager {
           if (actionIndex === 0) {
             // 全选
             options.forEach(opt => {
-              if (opt.type !== 'separator' && opt.index >= 0) {
-                selectedIndices.add(opt.index)
-              }
+              selectedIndices.add(opt.index)
             })
             this.showFieldContentMultiSelectDialog(note, options, selectedIndices, finalCallback)
           } else if (actionIndex === 1) {
@@ -1573,19 +1572,14 @@ class MNTaskManager {
         
         // 处理内容选择
         const selectedOption = options[selectedIndex]
-        if (selectedOption.type === 'separator') {
-          // 点击分隔符，重新显示
-          this.showFieldContentMultiSelectDialog(note, options, selectedIndices, finalCallback)
-        } else if (selectedOption.index >= 0) {
-          // 切换选中状态
-          if (selectedIndices.has(selectedOption.index)) {
-            selectedIndices.delete(selectedOption.index)
-          } else {
-            selectedIndices.add(selectedOption.index)
-          }
-          // 递归调用以更新显示
-          this.showFieldContentMultiSelectDialog(note, options, selectedIndices, finalCallback)
+        // 切换选中状态
+        if (selectedIndices.has(selectedOption.index)) {
+          selectedIndices.delete(selectedOption.index)
+        } else {
+          selectedIndices.add(selectedOption.index)
         }
+        // 递归调用以更新显示
+        this.showFieldContentMultiSelectDialog(note, options, selectedIndices, finalCallback)
       }
     )
   }
@@ -1647,21 +1641,31 @@ class MNTaskManager {
    * @param {Array<number>} moveIndices - 要移动的索引数组
    */
   static showMoveTargetDialog(note, moveIndices) {
-    const mainFields = this.getMainFields(note)
-    if (mainFields.length === 0) {
-      MNUtil.showHUD("没有找到可用的目标字段")
+    // 获取信息字段下的所有内容作为移动目标
+    const options = this.getFieldStructureForSelection(note)
+    if (options.length === 0) {
+      MNUtil.showHUD("没有找到可移动的位置")
       return
     }
     
     // 构建目标选项
-    const targetOptions = []
-    mainFields.forEach(field => {
-      targetOptions.push(`字段【${field.fieldName}】的顶部`)
-      targetOptions.push(`字段【${field.fieldName}】的底部`)
+    const targetOptions = ["信息字段最上方（紧挨着信息字段）"]
+    
+    // 添加字段选项
+    options.forEach(opt => {
+      if (opt.type === 'subField') {
+        targetOptions.push(`在【${opt.fieldName}】前面`)
+        targetOptions.push(`在【${opt.fieldName}】后面`)
+      } else {
+        targetOptions.push(`在【${opt.display}】前面`)
+        targetOptions.push(`在【${opt.display}】后面`)
+      }
     })
     
+    targetOptions.push("信息字段最下方")
+    
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-      "选择移动目标位置",
+      "选择移动到的位置",
       `将移动 ${moveIndices.length} 项内容`,
       0,
       "取消",
@@ -1669,19 +1673,45 @@ class MNTaskManager {
       (alert, buttonIndex) => {
         if (buttonIndex === 0) return
         
-        const targetIndex = buttonIndex - 1
-        const fieldIndex = Math.floor(targetIndex / 2)
-        const isBottom = targetIndex % 2 === 1
-        const targetField = mainFields[fieldIndex]
+        const selectedIndex = buttonIndex - 1
         
         MNUtil.undoGrouping(() => {
           try {
             // 排序索引（从大到小），避免移动时索引变化
             const sortedIndices = [...moveIndices].sort((a, b) => b - a)
             
-            sortedIndices.forEach(index => {
-              this.moveCommentToField(note, index, targetField.fieldName, isBottom)
-            })
+            if (selectedIndex === 0) {
+              // 移动到信息字段最上方
+              sortedIndices.forEach(index => {
+                this.moveCommentToField(note, index, '信息', false)
+              })
+            } else if (selectedIndex === targetOptions.length - 1) {
+              // 移动到信息字段最下方
+              sortedIndices.forEach(index => {
+                this.moveCommentToField(note, index, '信息', true)
+              })
+            } else {
+              // 移动到特定位置
+              const optionIndex = Math.floor((selectedIndex - 1) / 2)
+              const isAfter = (selectedIndex - 1) % 2 === 1
+              const targetOption = options[optionIndex]
+              
+              if (targetOption) {
+                // 计算目标位置
+                let targetPosition = targetOption.index
+                if (isAfter) {
+                  targetPosition = targetOption.index + 1
+                }
+                
+                sortedIndices.forEach(index => {
+                  note.moveComment(index, targetPosition)
+                  // 更新目标位置，因为每次移动后索引会变化
+                  if (index < targetPosition) {
+                    targetPosition--
+                  }
+                })
+              }
+            }
             
             MNUtil.showHUD(`✅ 成功移动 ${moveIndices.length} 项内容`)
           } catch (error) {

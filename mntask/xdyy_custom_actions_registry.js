@@ -1484,68 +1484,34 @@ function registerAllCustomActions() {
           // 第二步：获取字段内容
           UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
             "添加自定义字段",
-            "请输入字段内容",
+            "请输入字段内容（可选）",
             2,  // 输入框样式
             "取消",
-            ["下一步"],
+            ["确定"],
             (alert2, buttonIndex2) => {
               if (buttonIndex2 === 1) {
                 const fieldContent = alert2.textFieldAtIndex(0).text || "";
                 
-                // 第三步：选择添加位置
-                const mainFields = MNTaskManager.getMainFields(focusNote);
-                if (mainFields.length === 0) {
-                  MNUtil.showHUD("没有找到可用的目标字段");
-                  return;
-                }
-                
-                // 构建位置选项
-                const positionOptions = [];
-                mainFields.forEach(field => {
-                  positionOptions.push(`字段【${field.fieldName}】的顶部`);
-                  positionOptions.push(`字段【${field.fieldName}】的底部`);
-                });
-                
-                // 设置默认选项（信息字段底部）
-                const infoFieldIndex = mainFields.findIndex(f => f.fieldName === '信息');
-                const defaultIndex = infoFieldIndex >= 0 ? infoFieldIndex * 2 + 1 : 1; // 默认选择信息字段底部
-                
-                UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-                  "选择字段位置",
-                  `将添加字段：${fieldName.trim()}\n默认位置：信息字段底部`,
-                  0,
-                  "取消",
-                  positionOptions,
-                  (alert3, buttonIndex3) => {
-                    if (buttonIndex3 === 0) return;
+                MNUtil.undoGrouping(() => {
+                  try {
+                    // 创建带样式的字段
+                    const fieldHtml = TaskFieldUtils.createFieldHtml(fieldName.trim(), 'subField');
+                    const fullContent = fieldContent.trim() ? `${fieldHtml} ${fieldContent.trim()}` : fieldHtml;
                     
-                    const targetIndex = buttonIndex3 - 1;
-                    const fieldIndex = Math.floor(targetIndex / 2);
-                    const isBottom = targetIndex % 2 === 1;
-                    const targetField = mainFields[fieldIndex];
+                    // 添加到笔记
+                    focusNote.appendMarkdownComment(fullContent);
                     
-                    MNUtil.undoGrouping(() => {
-                      try {
-                        // 创建带样式的字段
-                        const fieldHtml = TaskFieldUtils.createFieldHtml(fieldName.trim(), 'subField');
-                        const fullContent = fieldContent.trim() ? `${fieldHtml} ${fieldContent.trim()}` : fieldHtml;
-                        
-                        // 添加到笔记
-                        focusNote.appendMarkdownComment(fullContent);
-                        
-                        // 获取刚添加的评论索引
-                        const lastIndex = focusNote.MNComments.length - 1;
-                        
-                        // 移动到选定位置
-                        MNTaskManager.moveCommentToField(focusNote, lastIndex, targetField.fieldName, isBottom);
-                        
-                        MNUtil.showHUD(`✅ 已添加字段：${fieldName}`);
-                      } catch (error) {
-                        MNUtil.showHUD("添加字段失败：" + error.message);
-                      }
-                    });
+                    // 获取刚添加的评论索引
+                    const lastIndex = focusNote.MNComments.length - 1;
+                    
+                    // 移动到"信息"字段的最上方（紧挨着信息字段）
+                    MNTaskManager.moveCommentToField(focusNote, lastIndex, '信息', false);
+                    
+                    MNUtil.showHUD(`✅ 已添加字段：${fieldName}`);
+                  } catch (error) {
+                    MNUtil.showHUD("添加字段失败：" + error.message);
                   }
-                );
+                });
               }
             }
           );

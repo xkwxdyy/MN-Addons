@@ -3236,8 +3236,48 @@ function registerAllCustomActions() {
     
     MNUtil.showHUD("🔄 正在刷新今日看板...");
     
+    // 首先检测过期任务
+    const overdueTasks = MNTaskManager.handleOverdueTodayTasks();
+    if (overdueTasks.length > 0) {
+      // 询问用户如何处理过期任务
+      const overdueCount = overdueTasks.length;
+      const options = [
+        "🔄 保持今日标记不变",
+        "⚠️ 标记为过期任务",
+        "📅 更新为今天（刷新日期）",
+        "❌ 移除今日标记",
+        "⏭️ 跳过，仅刷新看板"
+      ];
+      
+      const selectedIndex = await MNUtil.userSelect(
+        `发现 ${overdueCount} 个过期的今日任务`,
+        "请选择处理方式",
+        options
+      );
+      
+      if (selectedIndex > 0 && selectedIndex < 5) {
+        // 处理过期任务
+        let action = '';
+        switch (selectedIndex) {
+          case 1: action = 'keep'; break;
+          case 2: action = 'overdue'; break;
+          case 3: action = 'tomorrow'; break;
+          case 4: action = 'remove'; break;
+        }
+        
+        if (action) {
+          MNUtil.undoGrouping(() => {
+            overdueTasks.forEach(({ task, markDate, overdueDays }) => {
+              MNTaskManager.updateOverdueTask(task, action, markDate, overdueDays);
+            });
+          });
+          MNUtil.showHUD(`✅ 已处理 ${overdueCount} 个过期任务`);
+        }
+      }
+    }
+    
     MNUtil.undoGrouping(() => {
-      // 获取今日任务
+      // 获取今日任务（可能已经更新过了）
       const todayTasks = MNTaskManager.filterTodayTasks();
       
       // 清理现有的任务链接（保留其他内容）
@@ -3266,6 +3306,13 @@ function registerAllCustomActions() {
       // 添加统计信息
       MNTaskManager.updateBoardStatistics(todayBoard, todayTasks);
       
+      // 如果有过期任务，额外添加过期任务提示
+      if (overdueTasks.length > 0) {
+        todayBoard.appendMarkdownComment("## ⚠️ 过期任务提醒");
+        todayBoard.appendMarkdownComment(`- 发现 ${overdueTasks.length} 个过期任务`);
+        todayBoard.appendMarkdownComment("- 使用「处理过期任务」功能管理");
+      }
+      
       // 刷新看板显示
       todayBoard.refresh();
       
@@ -3279,8 +3326,114 @@ function registerAllCustomActions() {
       if (highPriorityCount > 0) {
         hudMessage += `\n🔴 高优先级：${highPriorityCount} 个`;
       }
+      if (overdueTasks.length > 0) {
+        hudMessage += `\n⚠️ 过期任务：${overdueTasks.length} 个`;
+      }
       MNUtil.showHUD(hudMessage);
     });
+  });
+
+  // handleOverdueTasks - 处理过期的今日任务
+  MNTaskGlobal.registerCustomAction("handleOverdueTasks", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    MNUtil.showHUD("🔍 检查过期任务...");
+    
+    // 检测过期任务
+    const overdueTasks = MNTaskManager.handleOverdueTodayTasks();
+    
+    if (overdueTasks.length === 0) {
+      MNUtil.showHUD("✅ 没有过期的今日任务");
+      return;
+    }
+    
+    // 显示过期任务详情
+    const taskList = overdueTasks.map(({ task, markDate, overdueDays }) => {
+      const parts = MNTaskManager.parseTaskTitle(task.noteTitle);
+      const daysText = overdueDays === 1 ? "1天" : `${overdueDays}天`;
+      return `• ${parts.content} (过期${daysText})`;
+    }).join("\n");
+    
+    // 选择处理方式
+    const options = [
+      "🔄 保持今日标记不变",
+      "⚠️ 全部标记为过期任务",
+      "📅 全部更新为今天（刷新日期）",
+      "❌ 全部移除今日标记",
+      "📋 逐个处理每个任务"
+    ];
+    
+    const selectedIndex = await MNUtil.userSelect(
+      `发现 ${overdueTasks.length} 个过期任务`,
+      taskList,
+      options
+    );
+    
+    if (selectedIndex === 0) return; // 用户取消
+    
+    if (selectedIndex === 5) {
+      // 逐个处理
+      for (let { task, markDate, overdueDays } of overdueTasks) {
+        const parts = MNTaskManager.parseTaskTitle(task.noteTitle);
+        const daysText = overdueDays === 1 ? "1天" : `${overdueDays}天`;
+        
+        const singleOptions = [
+          "🔄 保持不变",
+          "⚠️ 标记为过期",
+          "📅 更新为今天",
+          "❌ 移除今日标记",
+          "⏭️ 跳过剩余任务"
+        ];
+        
+        const singleIndex = await MNUtil.userSelect(
+          `${parts.content}`,
+          `过期 ${daysText}`,
+          singleOptions
+        );
+        
+        if (singleIndex === 0 || singleIndex === 5) break; // 取消或跳过
+        
+        let action = '';
+        switch (singleIndex) {
+          case 1: action = 'keep'; break;
+          case 2: action = 'overdue'; break;
+          case 3: action = 'tomorrow'; break;
+          case 4: action = 'remove'; break;
+        }
+        
+        if (action) {
+          MNUtil.undoGrouping(() => {
+            MNTaskManager.updateOverdueTask(task, action, markDate, overdueDays);
+          });
+        }
+      }
+    } else {
+      // 批量处理
+      let action = '';
+      switch (selectedIndex) {
+        case 1: action = 'keep'; break;
+        case 2: action = 'overdue'; break;
+        case 3: action = 'tomorrow'; break;
+        case 4: action = 'remove'; break;
+      }
+      
+      if (action) {
+        MNUtil.undoGrouping(() => {
+          overdueTasks.forEach(({ task, markDate, overdueDays }) => {
+            MNTaskManager.updateOverdueTask(task, action, markDate, overdueDays);
+          });
+        });
+        
+        MNUtil.showHUD(`✅ 已处理 ${overdueTasks.length} 个过期任务`);
+      }
+    }
+    
+    // 刷新今日看板
+    if (taskConfig.getBoardNoteId('today')) {
+      MNUtil.delay(0.5).then(() => {
+        MNTaskGlobal.executeCustomAction("refreshTodayBoard", context);
+      });
+    }
   });
 
   // filterTasks - 任务筛选

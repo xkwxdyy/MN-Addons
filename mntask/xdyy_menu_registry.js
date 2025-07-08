@@ -123,6 +123,10 @@ function registerAllMenuTemplates() {
           action: "refreshTodayBoard",
           menuTitle: "    🔄 刷新今日看板"
         },
+        {
+          action: "handleOverdueTasks",
+          menuTitle: "    ⚠️ 处理过期任务"
+        },
         "⬇️ 时间标签（旧功能）",
         {
           action: "updateTodayTimeTag",

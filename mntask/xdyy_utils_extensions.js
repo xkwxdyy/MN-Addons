@@ -83,10 +83,25 @@ class TaskFieldUtils {
   
   /**
    * 创建今日字段
+   * @param {boolean} includeDate - 是否包含日期信息
    * @returns {string} 格式化的今日字段 HTML
    */
-  static createTodayField() {
-    return this.createFieldHtml('📅 今日', 'subField')
+  static createTodayField(includeDate = true) {
+    const today = new Date()
+    const dateStr = includeDate ? ` (${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')})` : ''
+    return this.createFieldHtml(`📅 今日${dateStr}`, 'subField')
+  }
+  
+  /**
+   * 创建过期字段
+   * @param {Date} originalDate - 原始标记日期
+   * @param {number} overdueDays - 过期天数
+   * @returns {string} 格式化的过期字段 HTML
+   */
+  static createOverdueField(originalDate, overdueDays) {
+    const dateStr = `${originalDate.getFullYear()}-${String(originalDate.getMonth() + 1).padStart(2, '0')}-${String(originalDate.getDate()).padStart(2, '0')}`
+    const daysText = overdueDays === 1 ? '1天' : `${overdueDays}天`
+    return this.createFieldHtml(`⚠️ 过期${daysText} (${dateStr})`, 'subField')
   }
   
   /**
@@ -1983,12 +1998,12 @@ class MNTaskManager {
     
     MNUtil.undoGrouping(() => {
       if (isToday && todayFieldIndex === -1) {
-        // 添加今日标记
-        const todayFieldHtml = TaskFieldUtils.createTodayField()
+        // 添加今日标记（包含日期信息）
+        const todayFieldHtml = TaskFieldUtils.createTodayField(true)
         note.appendMarkdownComment(todayFieldHtml)
         // 移动到信息字段下
         this.moveCommentToField(note, note.MNComments.length - 1, '信息', false)
-        MNUtil.log("✅ 添加今日标记")
+        MNUtil.log("✅ 添加今日标记（含日期）")
       } else if (!isToday && todayFieldIndex >= 0) {
         // 移除今日标记
         note.removeCommentByIndex(todayFieldIndex)
@@ -2015,6 +2030,33 @@ class MNTaskManager {
     }
     
     return false
+  }
+  
+  /**
+   * 获取今日任务的标记日期
+   * @param {MNNote} note - 要检查的任务卡片
+   * @returns {Date|null} 标记日期，如果没有找到则返回 null
+   */
+  static getTodayMarkDate(note) {
+    if (!this.isTaskCard(note)) return null
+    
+    const comments = note.MNComments || []
+    for (let comment of comments) {
+      if (comment && comment.text && comment.text.includes('📅 今日')) {
+        // 尝试提取日期信息 (YYYY-MM-DD)
+        const dateMatch = comment.text.match(/\((\d{4})-(\d{2})-(\d{2})\)/)
+        if (dateMatch) {
+          const year = parseInt(dateMatch[1])
+          const month = parseInt(dateMatch[2]) - 1 // JavaScript 月份从 0 开始
+          const day = parseInt(dateMatch[3])
+          return new Date(year, month, day)
+        }
+        // 如果没有日期信息，说明是旧版本的今日标记
+        return null
+      }
+    }
+    
+    return null
   }
   
   /**
@@ -2201,6 +2243,104 @@ class MNTaskManager {
     
     // 移动到今日看板
     return this.moveTo(note, todayBoard)
+  }
+  
+  /**
+   * 检测并获取所有过期的今日任务
+   * @param {string[]} boardKeys - 要检查的看板
+   * @returns {Array<{task: MNNote, markDate: Date, overdueDays: number}>} 过期任务列表
+   */
+  static handleOverdueTodayTasks(boardKeys = ['target', 'project', 'action']) {
+    // 获取所有今日任务
+    const todayTasks = this.filterTodayTasks(boardKeys)
+    const overdueTasks = []
+    const today = new Date()
+    today.setHours(0, 0, 0, 0) // 设置为今天的开始时间
+    
+    for (let task of todayTasks) {
+      const markDate = this.getTodayMarkDate(task)
+      if (markDate) {
+        markDate.setHours(0, 0, 0, 0) // 设置为标记日期的开始时间
+        
+        // 计算过期天数
+        const timeDiff = today - markDate
+        const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24))
+        
+        if (daysDiff > 0) {
+          overdueTasks.push({
+            task: task,
+            markDate: markDate,
+            overdueDays: daysDiff
+          })
+        }
+      } else {
+        // 没有日期信息的旧版今日标记，也算作过期（假设为1天）
+        overdueTasks.push({
+          task: task,
+          markDate: null,
+          overdueDays: 1
+        })
+      }
+    }
+    
+    return overdueTasks
+  }
+  
+  /**
+   * 更新单个过期任务
+   * @param {MNNote} task - 过期的任务
+   * @param {string} action - 处理方式：'keep'(保持), 'overdue'(标记过期), 'remove'(移除), 'tomorrow'(推迟到明天)
+   * @param {Date} markDate - 原始标记日期
+   * @param {number} overdueDays - 过期天数
+   */
+  static updateOverdueTask(task, action, markDate, overdueDays) {
+    if (!this.isTaskCard(task)) return
+    
+    const parsed = this.parseTaskComments(task)
+    
+    // 查找今日标记的索引
+    let todayFieldIndex = -1
+    for (let field of parsed.taskFields) {
+      if (field.content.includes('📅 今日')) {
+        todayFieldIndex = field.index
+        break
+      }
+    }
+    
+    if (todayFieldIndex === -1) return
+    
+    MNUtil.undoGrouping(() => {
+      switch (action) {
+        case 'keep':
+          // 保持不变，什么都不做
+          MNUtil.log("保持今日标记不变")
+          break
+          
+        case 'overdue':
+          // 替换为过期标记
+          task.removeCommentByIndex(todayFieldIndex)
+          const overdueFieldHtml = TaskFieldUtils.createOverdueField(markDate || new Date(), overdueDays)
+          task.appendMarkdownComment(overdueFieldHtml)
+          this.moveCommentToField(task, task.MNComments.length - 1, '信息', false)
+          MNUtil.log(`✅ 标记为过期 ${overdueDays} 天`)
+          break
+          
+        case 'remove':
+          // 移除今日标记
+          task.removeCommentByIndex(todayFieldIndex)
+          MNUtil.log("✅ 移除今日标记")
+          break
+          
+        case 'tomorrow':
+          // 更新为新的今日标记（明天就是新的今日）
+          task.removeCommentByIndex(todayFieldIndex)
+          const newTodayFieldHtml = TaskFieldUtils.createTodayField(true)
+          task.appendMarkdownComment(newTodayFieldHtml)
+          this.moveCommentToField(task, task.MNComments.length - 1, '信息', false)
+          MNUtil.log("✅ 推迟到今天（更新日期）")
+          break
+      }
+    })
   }
   
   /**

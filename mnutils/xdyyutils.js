@@ -1101,6 +1101,39 @@ class MNMath {
         })
         return true;
         
+      } else if (
+        ["命题", "例子", "反例"].includes(noteType) && 
+        ["命题", "例子", "反例"].includes(targetNoteType)
+      ) {
+        // 场景5：命题、例子、反例之间的链接
+        // 两个卡片都需要处理，类似定义卡片之间的处理
+        
+        // 处理当前卡片
+        note.appendMarkdownComment("- ");
+        this.moveCommentsArrToField(note, [note.MNComments.length - 1], "相关思考");
+        this.moveCommentsArrToField(note, [note.MNComments.length - 1], "相关思考");
+        
+        // 处理目标卡片
+        let targetLinkIndex = targetNote.MNComments.findIndex(comment => {
+          if (comment.type === "linkComment") {
+            let linkId = comment.text.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1];
+            return linkId === note.noteId;
+          }
+          return false;
+        });
+        
+        if (targetLinkIndex !== -1) {
+          targetNote.appendMarkdownComment("- ");
+          this.moveCommentsArrToField(targetNote, [targetNote.MNComments.length - 1], "相关思考");
+          this.moveCommentsArrToField(targetNote, [targetNote.MNComments.length - 1], "相关思考");
+        }
+        
+        MNUtil.undoGrouping(() => {
+          note.refresh();
+          targetNote.refresh();
+        });
+        return true;
+        
       } else {
         MNUtil.showHUD(`不支持的卡片类型组合：${noteType} <-> ${targetNoteType}`);
         return false;
@@ -5561,12 +5594,6 @@ class MNMath {
   }
 }
 
-/**
- * 文献管理与文献阅读
- */
-class MNLiterature {
-
-}
 
 class HtmlMarkdownUtils {
   static icons = {
@@ -5777,7 +5804,7 @@ class HtmlMarkdownUtils {
     let htmlMDCommentsObjArr = []
     comments.forEach(
       (comment, index) => {
-        if (this.isHtmlMDComment(comment)) {
+        if (HtmlMarkdownUtils.isHtmlMDComment(comment)) {
           htmlMDCommentsObjArr.push(
             {
               index: index,
@@ -5817,9 +5844,9 @@ class HtmlMarkdownUtils {
     if (MNUtil.typeOf(comment) === "MNComment") {
       let content = this.getSpanTextContent(comment)
       let type = this.getSpanType(comment)
-      if (this.isHtmlMDComment(comment) && this.isLevelType(type)) {
+      if (HtmlMarkdownUtils.isHtmlMDComment(comment) && this.isLevelType(type)) {
         let nextLevelType = this.getSpanNextLevelType(type)
-        comment.text = this.createHtmlMarkdownText(content, nextLevelType)
+        comment.text = HtmlMarkdownUtils.createHtmlMarkdownText(content, nextLevelType)
       }
     }
   }
@@ -5831,9 +5858,9 @@ class HtmlMarkdownUtils {
     if (MNUtil.typeOf(comment) === "MNComment") {
       let content = this.getSpanTextContent(comment)
       let type = this.getSpanType(comment)
-      if (this.isHtmlMDComment(comment) && this.isLevelType(type)) {
+      if (HtmlMarkdownUtils.isHtmlMDComment(comment) && this.isLevelType(type)) {
         let lastLevelType = this.getSpanLastLevelType(type)
-        comment.text = this.createHtmlMarkdownText(content, lastLevelType)
+        comment.text = HtmlMarkdownUtils.createHtmlMarkdownText(content, lastLevelType)
       }
     }
   }
@@ -5850,7 +5877,7 @@ class HtmlMarkdownUtils {
     }
     comments.forEach(
       comment => {
-        if (this.isHtmlMDComment(comment)) {
+        if (HtmlMarkdownUtils.isHtmlMDComment(comment)) {
           lastHtmlMDComment = comment
         }
       }
@@ -5870,7 +5897,7 @@ class HtmlMarkdownUtils {
    */
   static addSameLevelHtmlMDComment(note, text, type) {
     note.appendMarkdownComment(
-      this.createHtmlMarkdownText(text, type),
+      HtmlMarkdownUtils.createHtmlMarkdownText(text, type),
     )
   }
 
@@ -5881,11 +5908,11 @@ class HtmlMarkdownUtils {
     let nextLevelType = this.getSpanNextLevelType(type)
     if (nextLevelType) {
       note.appendMarkdownComment(
-        this.createHtmlMarkdownText(text, nextLevelType)
+        HtmlMarkdownUtils.createHtmlMarkdownText(text, nextLevelType)
       )
     } else {
       note.appendMarkdownComment(
-        this.createHtmlMarkdownText(text, type)
+        HtmlMarkdownUtils.createHtmlMarkdownText(text, type)
       )
     }
   }
@@ -5897,11 +5924,11 @@ class HtmlMarkdownUtils {
     let lastLevelType = this.getSpanLastLevelType(type)
     if (lastLevelType) {
       note.appendMarkdownComment(
-        this.createHtmlMarkdownText(text, lastLevelType)
+        HtmlMarkdownUtils.createHtmlMarkdownText(text, lastLevelType)
       )
     } else {
       note.appendMarkdownComment(
-        this.createHtmlMarkdownText(text, type)
+        HtmlMarkdownUtils.createHtmlMarkdownText(text, type)
       )
     }
   }
@@ -5930,7 +5957,7 @@ class HtmlMarkdownUtils {
     } else {
       // 如果没有 HtmlMD 评论，就添加一个一级
       note.appendMarkdownComment(
-        this.createHtmlMarkdownText(text, 'goal')
+        HtmlMarkdownUtils.createHtmlMarkdownText(text, 'goal')
       )
     }
   }
@@ -6118,6 +6145,9 @@ class HtmlMarkdownUtils {
       return;
     }
 
+    // 在字段列表前添加特殊选项
+    htmlCommentsTextArr.unshift("📋 从所有评论中选择");
+
     // 第一个弹窗：选择字段
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "选择要转换内容的字段",
@@ -6128,16 +6158,30 @@ class HtmlMarkdownUtils {
       (alert, buttonIndex) => {
         if (buttonIndex === 0) return; // 用户取消
         
-        let selectedField = htmlCommentsTextArr[buttonIndex - 1];
-        let contents = this.getFieldNonHtmlMDContents(note, selectedField);
-        
-        if (contents.length === 0) {
-          MNUtil.showHUD("该字段下没有可转换的内容");
-          return;
+        if (buttonIndex === 1) {
+          // 用户选择了"从所有评论中选择"
+          let contents = this.getAllNonHtmlMDContents(note);
+          
+          if (contents.length === 0) {
+            MNUtil.showHUD("没有可转换的内容");
+            return;
+          }
+          
+          // 直接显示内容选择弹窗
+          this.showFieldContentSelectionPopup(note, contents, "所有评论");
+        } else {
+          // 原有逻辑：选择了特定字段
+          let selectedField = htmlCommentsTextArr[buttonIndex - 2]; // 因为添加了一个选项，索引要减2
+          let contents = this.getFieldNonHtmlMDContents(note, selectedField);
+          
+          if (contents.length === 0) {
+            MNUtil.showHUD("该字段下没有可转换的内容");
+            return;
+          }
+          
+          // 显示内容选择弹窗
+          this.showFieldContentSelectionPopup(note, contents, selectedField);
         }
-        
-        // 显示内容选择弹窗
-        this.showFieldContentSelectionPopup(note, contents, selectedField);
       }
     );
   }
@@ -6164,7 +6208,7 @@ class HtmlMarkdownUtils {
       
       // 只处理文本评论和 Markdown 评论（非 HtmlMarkdown）
       if (comment.type === "textComment" || 
-          (comment.type === "markdownComment" && !this.isHtmlMDComment(comment.text))) {
+          (comment.type === "markdownComment" && !HtmlMarkdownUtils.isHtmlMDComment(comment.text))) {
         
         let text = comment.text || "";
         let displayText = text;
@@ -6190,6 +6234,70 @@ class HtmlMarkdownUtils {
   }
 
   /**
+   * 获取所有评论中的非 HtmlMarkdown 内容
+   * @param {MNNote} note - 笔记对象
+   * @returns {Array} 包含所有可转换内容的数组
+   */
+  static getAllNonHtmlMDContents(note) {
+    let contents = [];
+    let comments = note.MNComments;
+    
+    comments.forEach((comment, index) => {
+      // 只处理文本评论和非 HtmlMarkdown 的 Markdown 评论
+      if (comment.type === "textComment" || 
+          (comment.type === "markdownComment" && !HtmlMarkdownUtils.isHtmlMDComment(comment.text))) {
+        
+        let text = comment.text || "";
+        let displayText = text;
+        let hasLeadingDash = false;
+        
+        // 检查是否有 "- " 前缀
+        if (text.startsWith("- ")) {
+          hasLeadingDash = true;
+          displayText = text; // 显示时保留 "- "
+        }
+        
+        // 添加字段信息以便用户识别
+        let fieldInfo = this.getCommentFieldInfo(note, index);
+        if (fieldInfo) {
+          displayText = `[${fieldInfo}] ${displayText}`;
+        }
+        
+        contents.push({
+          index: index,
+          text: text,
+          displayText: displayText,
+          type: comment.type,
+          hasLeadingDash: hasLeadingDash,
+          fieldName: fieldInfo
+        });
+      }
+    });
+    
+    return contents;
+  }
+
+  /**
+   * 获取评论所属的字段信息
+   * @param {MNNote} note - 笔记对象
+   * @param {number} commentIndex - 评论索引
+   * @returns {string|null} 字段名称，如果不属于任何字段则返回 null
+   */
+  static getCommentFieldInfo(note, commentIndex) {
+    let commentsObj = MNMath.parseNoteComments(note);
+    let htmlCommentsObjArr = commentsObj.htmlCommentsObjArr;
+    
+    // 遍历所有字段，找到包含该评论的字段
+    for (let fieldObj of htmlCommentsObjArr) {
+      if (fieldObj.excludingFieldBlockIndexArr.includes(commentIndex)) {
+        return fieldObj.text;
+      }
+    }
+    
+    return null; // 不属于任何字段
+  }
+
+  /**
    * 显示内容选择弹窗
    * @param {MNNote} note - 笔记对象
    * @param {Array} contents - 可转换的内容数组
@@ -6201,7 +6309,8 @@ class HtmlMarkdownUtils {
       return `${idx + 1}. ${content.displayText.substring(0, 50)}${content.displayText.length > 50 ? '...' : ''}`;
     });
     
-    // 添加"全部转换"选项
+    // 添加多选和全部转换选项
+    options.unshift("✅ 多选内容");
     options.unshift("转换全部内容");
     
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
@@ -6218,13 +6327,106 @@ class HtmlMarkdownUtils {
         if (buttonIndex === 1) {
           // 选择了"转换全部内容"
           selectedContents = contents;
+          // 显示类型选择弹窗
+          this.showTypeSelectionPopup(note, selectedContents);
+        } else if (buttonIndex === 2) {
+          // 选择了"多选内容"
+          let selectedIndices = new Set();
+          this.showFieldContentMultiSelectDialog(note, contents, fieldName, selectedIndices);
         } else {
           // 选择了单个内容
-          selectedContents = [contents[buttonIndex - 2]];
+          selectedContents = [contents[buttonIndex - 3]]; // 因为增加了两个选项，所以索引要减3
+          // 显示类型选择弹窗
+          this.showTypeSelectionPopup(note, selectedContents);
         }
+      }
+    );
+  }
+
+  /**
+   * 显示内容多选对话框
+   * @param {MNNote} note - 笔记对象
+   * @param {Array} contents - 所有可转换的内容
+   * @param {string} fieldName - 字段名称
+   * @param {Set} selectedIndices - 已选中的索引集合
+   */
+  static showFieldContentMultiSelectDialog(note, contents, fieldName, selectedIndices) {
+    // 构建显示选项
+    let displayOptions = contents.map((content, idx) => {
+      let prefix = selectedIndices.has(content.index) ? "✅ " : "";
+      let displayText = content.displayText.substring(0, 50) + (content.displayText.length > 50 ? '...' : '');
+      return prefix + `${idx + 1}. ${displayText}`;
+    });
+    
+    // 添加全选/取消全选选项
+    let allSelected = selectedIndices.size === contents.length;
+    let selectAllText = allSelected ? "⬜ 取消全选" : "☑️ 全选所有内容";
+    displayOptions.unshift(selectAllText);
+    
+    // 添加分隔线和操作选项
+    displayOptions.push("──────────────");
+    displayOptions.push("➡️ 转换选中内容");
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      `多选内容 - ${fieldName}`,
+      `已选中 ${selectedIndices.size}/${contents.length} 项`,
+      0,
+      "取消",
+      displayOptions,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) return; // 用户取消
         
-        // 显示类型选择弹窗
-        this.showTypeSelectionPopup(note, selectedContents);
+        if (buttonIndex === 1) {
+          // 用户选择了全选/取消全选
+          if (allSelected) {
+            // 取消全选
+            selectedIndices.clear();
+          } else {
+            // 全选
+            contents.forEach((content) => {
+              selectedIndices.add(content.index);
+            });
+          }
+          
+          // 递归显示更新后的对话框
+          this.showFieldContentMultiSelectDialog(note, contents, fieldName, selectedIndices);
+          
+        } else if (buttonIndex === displayOptions.length) {
+          // 用户选择了"转换选中内容"
+          if (selectedIndices.size === 0) {
+            MNUtil.showHUD("没有选中任何内容");
+            this.showFieldContentMultiSelectDialog(note, contents, fieldName, selectedIndices);
+            return;
+          }
+          
+          // 获取选中的内容
+          let selectedContents = [];
+          contents.forEach(content => {
+            if (selectedIndices.has(content.index)) {
+              selectedContents.push(content);
+            }
+          });
+          
+          // 显示类型选择弹窗
+          this.showTypeSelectionPopup(note, selectedContents);
+          
+        } else if (buttonIndex === displayOptions.length - 1) {
+          // 用户选择了分隔线，忽略并重新显示
+          this.showFieldContentMultiSelectDialog(note, contents, fieldName, selectedIndices);
+          
+        } else {
+          // 用户选择了某个内容，切换选中状态
+          let selectedContent = contents[buttonIndex - 2]; // 因为加了全选选项，所以索引要减2
+          
+          if (selectedIndices.has(selectedContent.index)) {
+            selectedIndices.delete(selectedContent.index);
+          } else {
+            selectedIndices.add(selectedContent.index);
+          }
+          
+          // 递归显示更新后的对话框
+          this.showFieldContentMultiSelectDialog(note, contents, fieldName, selectedIndices);
+        }
       }
     );
   }
@@ -6290,7 +6492,7 @@ class HtmlMarkdownUtils {
         }
         
         // 创建 HtmlMarkdown 文本
-        let htmlMdText = this.createHtmlMarkdownText(textToConvert, type);
+        let htmlMdText = HtmlMarkdownUtils.createHtmlMarkdownText(textToConvert, type);
         
         // 获取原评论
         let comment = note.MNComments[content.index];

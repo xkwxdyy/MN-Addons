@@ -1,3 +1,35 @@
+请你精简 mnutils/xdyyutils.js 文件里的代码，不需要处理 MNMath 和 HtmlMarkdownUtils 类和 Pangu 类。其余的都需要处理。
+
+精简依据，也就是下面情况的要删除
+1. 没有在 mntask 里用到的
+2. 没有在 mntoolbar 里用到的
+
+尤其是 xdyyutils.js 里面有很多 MNNote 和 MNUtil 类的函数补充，但是很多内容都已经在 MNMath 类里实现了，所以不需要了，但是还是有一部分在 mntoolbar 里有用到，这些暂时保留先。
+
+注意：最后再精简 String 类部分的代码，因为这个有些函数用在了需要删除的函数里，但是你因为这个而没有删除，为了避免这个，所以最后处理。 ultrathink
+---
+我刚更新了 mntoolbar 的按钮菜单（xdyy_menu_registry.js 文件中）
+这个是最新的版本，请你基于这个菜单，查看 xdyy_custom_actions_registry.js 文件里的动作，没有在菜单里的动作全都删除。
+然后查看按钮 xdyy_button_registry.js 文件，删除菜单不在菜单文件里的按钮。
+ultrathink
+
+
+---
+优化一下 convertFieldContentToHtmlMDByPopup 函数，参考 manageCommentsByPopup 函数的处理，支持多选就行。ultrathink
+
+---
+继续开发 MNMath 的 smartLinkArrangement 函数。目前没有命题与命题的情况对吧？
+或者是例子与例子，反例与反例，或者是这三种与这三种其一的情况，都按照下面的处理：和定义与定义的类似。
+
+希望的效果是，假设是卡片 A 和 卡片 B
+1. 检测卡片 A 的最后一条评论是否是 B 的链接，以及 B 的最后一条是否是 A 的链接，两个都是的话进行下一步
+2. 在 A 的“相关思考”字段的 bottom 下方增加一个“- ”，然后把 B 的链接移动到这个“- ”下方，同理处理 B 卡片。其实这个操作和定义与定义的是一样的。
+
+并且把上面说的这几种情况的功能优化到 mntoolbar 里的 moveUpThoughtPointsToBottom 动作，目前这个单击动作只有一个功能：把自动获取的内容移动到“相关思考”，但希望能够把上面的处理进行兼容。ultrathink
+---
+manageCommentsByPopup 需要优化:现在是把移动和删除的确认放在了新的弹窗里，但是这样会有点麻烦，我希望的是如果第一个弹窗里选择了“多选”，那么就把这个选项直接放在了多选的那个选择弹窗的下方（目前只有一个确认）。
+因为弹窗多的话，确认起来就比较繁琐，虽然现在功能很丰富。ultrathink
+---
 今日看板那个功能继续开发：现在看不到任务类型，只能看到状态，这个不太好，因为我们启动任务肯定是做“动作”类型的任务。另外我是学生，很多时间都在读书，所以重点研究一下如何拆解读书任务？目前有的那些拆解是很久之前写的，并不完善！希望基于目前的框架和体系重新写。
 注意一定要灵活，能方便地调整和追踪。 ultrathink
 ---

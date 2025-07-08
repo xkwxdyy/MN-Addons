@@ -33,74 +33,49 @@ MNTaskGlobal.getButton = function(key) {
 
 /**
  * 注册所有自定义按钮
- * 严格按照原始 getActions() 的内容
+ * 精简后的6个核心功能按钮
  */
 function registerAllButtons() {
-  // 制卡相关按钮
-  // 任务管理相关按钮
+  // custom1: 任务制卡 - 单击智能制卡，长按显示任务管理菜单
   MNTaskGlobal.registerButton("custom1", {
-    name: "任务管理",
+    name: "任务制卡",
     image: "custom1",
     templateName: "menu_task_manage"
   });
 
+  // custom2: 状态切换 - 单击向前切换状态，长按显示进度管理菜单
   MNTaskGlobal.registerButton("custom2", {
-    name: "进度追踪",
+    name: "状态切换",
     image: "custom2",
     templateName: "menu_task_progress"
   });
 
+  // custom3: 今日任务 - 单击标记今日，长按显示今日任务菜单
   MNTaskGlobal.registerButton("custom3", {
     name: "今日任务",
     image: "custom3",
     templateName: "menu_today_tasks"
   });
 
+  // custom4: 筛选排序 - 单击快速筛选，长按显示高级筛选菜单
   MNTaskGlobal.registerButton("custom4", {
-    name: "任务拆分",
+    name: "筛选排序",
     image: "custom4",
-    templateName: "menu_task_split"
+    templateName: "menu_filter_sort"
   });
 
+  // custom5: 看板视图 - 单击聚焦今日看板，长按显示看板选项
   MNTaskGlobal.registerButton("custom5", {
-    name: "动作看板",
+    name: "看板视图",
     image: "custom5",
-    templateName: "menu_task_dashboard"
+    templateName: "menu_board_view"
   });
 
+  // custom6: 字段管理 - 单击添加字段，长按显示字段操作菜单
   MNTaskGlobal.registerButton("custom6", {
-    name: "快速筛选",
+    name: "字段管理",
     image: "custom6",
-    templateName: "menu_quick_filter"
-  });
-
-  MNTaskGlobal.registerButton("custom7", {
-    name: "项目看板",
-    image: "custom7",
-    templateName: "menu_project_board"
-  });
-
-  MNTaskGlobal.registerButton("custom8", {
-    name: "动作看板",
-    image: "custom8",
-    templateName: "menu_action_board"
-  });
-
-  // 今日任务快捷按钮
-  MNTaskGlobal.registerButton("custom9", {
-    name: "今日看板",
-    image: "custom9",
-    description: {
-      action: "focusTodayTasks"  // 单击直接聚焦到今日看板
-    }
-  });
-
-  MNTaskGlobal.registerButton("custom10", {
-    name: "标记今日",
-    image: "custom10",
-    description: {
-      action: "toggleTodayMark"  // 单击切换今日任务标记
-    }
+    templateName: "menu_field_manage"
   });
 
 }

@@ -50,17 +50,6 @@ function registerAllButtons() {
     templateName: "menu_makeCards"  // 延迟获取template
   });
   
-  global.registerButton("custom1", {
-    name: "制卡",
-    image: "makeCards",
-    templateName: "TemplateMakeNotes"
-  });
-
-  global.registerButton("custom3", {
-    name: "增加模板",
-    image: "addTemplate",
-    templateName: "addTemplate"
-  });
   
   global.registerButton("custom10", {
     name: "管理评论",
@@ -126,12 +115,6 @@ function registerAllButtons() {
     description: "Snipaste"
   });
   
-  global.registerButton("custom11", {
-    name: "工作流",
-    image: "workflow",
-    templateName: "menu_card_workflow"
-  });
-  
   
   global.registerButton("edit", {
     name: "edit",
@@ -155,23 +138,12 @@ function registerAllButtons() {
   
   // "custom15":{name:"[卡片弹窗替换]SOP",image:"sop_white",description: this.template("menu_sop")},
   
-  global.registerButton("custom12", {
-    name: "[卡片弹窗替换]工作流",
-    image: "workflow_white",
-    templateName: "menu_card_workflow"
-  });
-  
   global.registerButton("custom13", {
     name: "[卡片弹窗替换]摘录",
     image: "excerpt_white",
     templateName: "menu_excerpt"
   });
   
-  global.registerButton("custom14", {
-    name: "MN",
-    image: "MN_white",
-    templateName: "menu_MN"
-  });
   
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
     MNUtil.log(`🚀 已注册 ${Object.keys(global.customButtons).length} 个自定义按钮`);

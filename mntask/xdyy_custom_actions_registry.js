@@ -159,15 +159,12 @@ function registerAllCustomActions() {
         // 获取父卡片
         const parentNote = note.parentNote;
         
-        // 先使用 MNMath.toNoExcerptVersion 处理摘录卡片
+        // 先使用 taskUtils.toNoExcerptVersion 处理摘录卡片
         let noteToConvert = note;
         if (note.excerptText) {
-          // 检查是否有 MNMath 类
-          if (typeof MNMath !== 'undefined' && MNMath.toNoExcerptVersion) {
-            const converted = MNMath.toNoExcerptVersion(note);
-            if (converted) {
-              noteToConvert = converted;
-            }
+          const converted = taskUtils.toNoExcerptVersion(note);
+          if (converted) {
+            noteToConvert = converted;
           }
         }
         
@@ -704,8 +701,8 @@ function registerAllCustomActions() {
                 
                 // 处理摘录卡片
                 let noteToConvert = node;
-                if (node.excerptText && typeof MNMath !== 'undefined' && MNMath.toNoExcerptVersion) {
-                  const converted = MNMath.toNoExcerptVersion(node);
+                if (node.excerptText) {
+                  const converted = taskUtils.toNoExcerptVersion(node);
                   if (converted) {
                     noteToConvert = converted;
                   }

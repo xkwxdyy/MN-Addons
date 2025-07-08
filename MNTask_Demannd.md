@@ -2,6 +2,9 @@
 1. 一旦修改代码，就需要按照修改的内容程度来改 mnaddon.json 的版本号。
 2. 任何更新，尤其是新功能，要在 mntask_guide.md 里详细更新。
 ---
+我发现 MNTask 里用了 MNMath 的 toNoExcerptVersion 函数，并且很多次，但这个其实和 math 无关，我觉得要不就把 toNoExcerptVersion 函数的实现写到 mntask 里的辅助类里，避免对 MNMath 类有依赖，因为 MNMath 是扩展部分，不是官方原生的功能。ultrathink
+
+---
 重新完善一下按钮和菜单功能，支持单击和长按弹出菜单。感觉现在的太多太乱了。有很多内容只有个框架，先暂时去掉。把用到 MNTaskManager 和 TaskFieldUtils 的这些功能留着，其余没用到的先删除，不然现在菜单里东西太多，我不知道哪些已经开发了。ultrathink
 
 ---

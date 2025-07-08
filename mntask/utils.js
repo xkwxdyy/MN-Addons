@@ -512,6 +512,36 @@ class taskUtils {
     let note = this.data.getNoteById(noteid)
     return note
   }
+  /**
+   * 转化为非摘录版本
+   * 将带摘录的笔记转换为非摘录版本，保留所有内容但移除摘录属性
+   * @param {MNNote} note - 要转换的笔记
+   * @returns {MNNote} 转换后的笔记（如果已经是非摘录版本则返回原笔记）
+   */
+  static toNoExcerptVersion(note) {
+    if (note.parentNote) {
+      if (note.excerptText) { // 把摘录内容的检测放到 toNoExcerptVersion 的内部
+        let parentNote = note.parentNote
+        let config = {
+          title: note.noteTitle,
+          content: "",
+          markdown: true,
+          color: note.colorIndex
+        }
+        // 创建新兄弟卡片，标题为旧卡片的标题
+        let newNote = parentNote.createChildNote(config)
+        note.noteTitle = ""
+        // 将旧卡片合并到新卡片中
+        note.mergeInto(newNote)
+        // newNote.focusInMindMap(0.2)
+        return newNote; // 返回新卡片
+      } else {
+        return note;
+      }
+    } else {
+      MNUtil.showHUD("没有父卡片，无法进行非摘录版本的转换！")
+    }
+  }
   static getNoteBookById(notebookId) {
     let notebook = this.data.getNotebookById(notebookId)
     return notebook

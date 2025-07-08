@@ -45,17 +45,36 @@ function registerAllMenuTemplates() {
       action: "menu",
       menuWidth: 300,
       menuItems: [
-        {
-          action: "replaceFieldContentByPopup",
-          menuTitle: "替换字段",
-        },
+        "🔗 链接处理",
         {
           action: "removeBidirectionalLinks",
-          menuTitle: "删除字段中的双向链接",
+          menuTitle: "    删除双向链接",
         },
         {
           action: "updateBidirectionalLink",
-          menuTitle: "更新链接",
+          menuTitle: "    更新链接",
+        },
+        {
+          action: "linkRemoveDuplicatesAfterApplication",
+          menuTitle: "    “应用”下方的链接去重"
+        },
+        "⬇️ 字段处理",
+        {
+          action: "replaceFieldContentByPopup",
+          menuTitle: "    替换字段",
+        },
+        {
+          action: "retainFieldContentOnly",
+          menuTitle: "    保留某个字段内容",
+        },
+        "❌ 删除评论",
+        {
+          action: "clearContentKeepExcerptWithTitle",
+          menuTitle: "    只保留摘录和标题",
+        },
+        {
+          action: "clearContentKeepExcerpt",
+          menuTitle: "    只保留摘录，无标题",
         },
       ]
     }
@@ -342,7 +361,7 @@ function registerAllMenuTemplates() {
     action: "copyMarkdownVersionFocusNoteURL",
     onLongPress: {
       action: "menu",
-      menuWidth: 250,
+      menuWidth: 350,
       menuItems: [
         "⬇️ 卡片处理",
         {
@@ -380,28 +399,12 @@ function registerAllMenuTemplates() {
         },
         "🔄 处理旧卡片",
         {
-          action: "retainFieldContentOnly",
-          menuTitle: "    保留某个字段内容",
-        },
-        {
           action: "batchChangeClassificationTitles",
           menuTitle: "    批量更新归类卡片标题"
         },
         {
           action: "renewKnowledgeNoteIntoParentNote",
           menuTitle: "    更新知识点卡片到父卡片中"
-        },
-        {
-          action: "clearContentKeepExcerptWithTitle",
-          menuTitle: "    清空评论 + ✅ 摘录 ✅ 标题",
-        },
-        {
-          action: "clearContentKeepExcerpt",
-          menuTitle: "    清空评论 + ✅ 摘录 ❌ 标题",
-        },
-        {
-          action: "linkRemoveDuplicatesAfterApplication",
-          menuTitle: "    \"应用\"下方的链接去重"
         },
         "⬇️ 修改标题",
         {

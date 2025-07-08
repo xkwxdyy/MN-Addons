@@ -385,28 +385,12 @@ class MNTaskManager {
     // 获取父卡片
     const parentNote = focusNote.parentNote
     
-    // 先使用 MNMath.toNoExcerptVersion 处理摘录卡片
+    // 先使用 taskUtils.toNoExcerptVersion 处理摘录卡片
     let noteToConvert = focusNote
     if (focusNote.excerptText) {
-      // 检查是否有 MNMath 类
-      if (typeof MNMath !== 'undefined' && MNMath.toNoExcerptVersion) {
-        const converted = MNMath.toNoExcerptVersion(focusNote)
-        if (converted) {
-          noteToConvert = converted
-        }
-      } else {
-        // 如果没有 MNMath，尝试手动加载 mnutils
-        try {
-          JSB.require('mnutils')
-          if (typeof MNMath !== 'undefined' && MNMath.toNoExcerptVersion) {
-            const converted = MNMath.toNoExcerptVersion(focusNote)
-            if (converted) {
-              noteToConvert = converted
-            }
-          }
-        } catch (e) {
-          // 如果还是不行，继续使用原卡片
-        }
+      const converted = taskUtils.toNoExcerptVersion(focusNote)
+      if (converted) {
+        noteToConvert = converted
       }
     }
     

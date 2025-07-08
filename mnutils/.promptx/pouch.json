@@ -78,7 +78,17 @@
           "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask"
         }
       ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-07-08T16:31:58.690Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnutils"
+        }
+      ]
     }
   ],
-  "lastUpdated": "2025-07-07T08:12:43.386Z"
+  "lastUpdated": "2025-07-08T16:31:58.698Z"
 }

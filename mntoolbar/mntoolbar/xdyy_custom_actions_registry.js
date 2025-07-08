@@ -3316,9 +3316,16 @@ function registerAllCustomActions() {
     const { button, des, focusNote, focusNotes, self } = context;
     MNUtil.undoGrouping(() => {
       try {
-        let idsArr = toolbarUtils.getNoteURLArr(focusNotes);
-        MNUtil.copy(idsArr);
-        MNUtil.showHUD(idsArr);
+        let result;
+        if (focusNotes.length === 1) {
+          // 单张卡片时返回字符串
+          result = focusNotes[0].noteURL;
+        } else {
+          // 多张卡片时返回数组
+          result = toolbarUtils.getNoteURLArr(focusNotes);
+        }
+        MNUtil.copy(result);
+        MNUtil.showHUD(result);
       } catch (error) {
         MNUtil.showHUD(error);
       }

@@ -73,6 +73,19 @@ function registerAllMenuTemplates() {
           action: "toggleTaskStatusBackward",
           menuTitle: "    ↩️ 退回上一个状态"
         },
+        "⬇️ 任务记录",
+        {
+          action: "addTaskLogEntry",
+          menuTitle: "    📝 添加任务记录"
+        },
+        {
+          action: "viewTaskLogs",
+          menuTitle: "    📊 查看任务记录"
+        },
+        {
+          action: "quickAddTaskLog",
+          menuTitle: "    ⚡ 快速记录"
+        },
         "⬇️ 字段处理",
         {
           action: "manageCustomFields",

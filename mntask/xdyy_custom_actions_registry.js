@@ -1840,6 +1840,193 @@ function registerAllCustomActions() {
     });
   });
 
+  // ==================== 任务记录系统 ====================
+  
+  // addTaskLogEntry - 添加任务记录
+  MNTaskGlobal.registerCustomAction("addTaskLogEntry", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    if (!focusNote || !MNTaskManager.isTaskCard(focusNote)) {
+      MNUtil.showHUD("请选择一个任务卡片");
+      return;
+    }
+    
+    // 获取当前进度
+    const currentProgress = MNTaskManager.getLatestProgress(focusNote) || 0;
+    
+    // 输入记录内容
+    const content = await MNUtil.input(
+      "添加任务记录",
+      "请输入本次工作内容",
+      ""
+    );
+    
+    if (!content) return;
+    
+    // 输入进度
+    const progressStr = await MNUtil.input(
+      "更新进度",
+      `当前进度: ${currentProgress}%\n请输入新的进度百分比 (0-100)`,
+      String(currentProgress)
+    );
+    
+    let progress = null;
+    if (progressStr) {
+      progress = parseInt(progressStr);
+      if (isNaN(progress) || progress < 0 || progress > 100) {
+        MNUtil.showHUD("进度必须是 0-100 之间的数字");
+        return;
+      }
+    }
+    
+    // 添加记录
+    MNTaskManager.addTaskLog(focusNote, content, progress);
+    
+    // 显示成功提示
+    const progressText = progress !== null ? `，进度: ${progress}%` : "";
+    MNUtil.showHUD(`✅ 已添加任务记录${progressText}`);
+  });
+  
+  // viewTaskLogs - 查看任务记录
+  MNTaskGlobal.registerCustomAction("viewTaskLogs", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    if (!focusNote || !MNTaskManager.isTaskCard(focusNote)) {
+      MNUtil.showHUD("请选择一个任务卡片");
+      return;
+    }
+    
+    // 获取所有记录
+    const logs = MNTaskManager.getTaskLogs(focusNote);
+    
+    if (logs.length === 0) {
+      MNUtil.showHUD("暂无任务记录");
+      return;
+    }
+    
+    // 构建显示内容
+    const taskParts = MNTaskManager.parseTaskTitle(focusNote.noteTitle);
+    let content = [`📝 任务记录 - ${taskParts.content}`, ""];
+    
+    // 添加当前进度
+    const currentProgress = MNTaskManager.getLatestProgress(focusNote);
+    if (currentProgress !== null) {
+      content.push(`📊 当前进度: ${currentProgress}%`);
+      content.push("");
+    }
+    
+    // 添加记录列表
+    content.push("📋 历史记录:");
+    logs.forEach((log, index) => {
+      const progressText = log.progress !== null ? ` | ${log.progress}%` : "";
+      content.push(`${index + 1}. ${log.timestamp}${progressText}`);
+      content.push(`   ${log.content}`);
+    });
+    
+    // 统计信息
+    content.push("");
+    content.push("📊 统计信息:");
+    content.push(`- 总记录数: ${logs.length}`);
+    
+    // 计算时间跨度
+    if (logs.length > 0) {
+      const firstTime = logs[0].timestamp;
+      const lastTime = logs[logs.length - 1].timestamp;
+      content.push(`- 首次记录: ${firstTime}`);
+      content.push(`- 最后记录: ${lastTime}`);
+    }
+    
+    // 显示对话框
+    const options = ["确定", "编辑记录", "导出记录"];
+    const selectedIndex = await MNUtil.userSelect(
+      "任务记录历史",
+      content.join("\n"),
+      options
+    );
+    
+    if (selectedIndex === 2) {
+      // 编辑记录（待实现）
+      MNUtil.showHUD("编辑功能开发中...");
+    } else if (selectedIndex === 3) {
+      // 导出记录
+      const exportContent = logs.map(log => {
+        const progressText = log.progress !== null ? ` | 进度: ${log.progress}%` : "";
+        return `${log.timestamp} | ${log.content}${progressText}`;
+      }).join("\n");
+      
+      MNUtil.copyText(exportContent);
+      MNUtil.showHUD("✅ 已复制到剪贴板");
+    }
+  });
+  
+  // quickAddTaskLog - 快速添加任务记录（简化版）
+  MNTaskGlobal.registerCustomAction("quickAddTaskLog", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    if (!focusNote || !MNTaskManager.isTaskCard(focusNote)) {
+      MNUtil.showHUD("请选择一个任务卡片");
+      return;
+    }
+    
+    // 预设的快速记录选项
+    const options = [
+      "✅ 完成一个步骤",
+      "🚧 遇到问题",
+      "💡 发现新思路",
+      "🔄 切换方案",
+      "⏸️ 暂停工作",
+      "▶️ 继续工作",
+      "🎯 达到里程碑",
+      "📝 自定义记录"
+    ];
+    
+    const selectedIndex = await MNUtil.userSelect("快速添加记录", "", options);
+    if (selectedIndex === 0) return;
+    
+    let content = "";
+    let autoProgress = null;
+    
+    switch (selectedIndex) {
+      case 1:
+        content = "完成一个步骤";
+        break;
+      case 2:
+        content = "遇到问题：";
+        break;
+      case 3:
+        content = "发现新思路：";
+        break;
+      case 4:
+        content = "切换方案：";
+        break;
+      case 5:
+        content = "暂停工作";
+        break;
+      case 6:
+        content = "继续工作";
+        break;
+      case 7:
+        content = "达到里程碑：";
+        break;
+      case 8:
+        // 自定义记录
+        content = await MNUtil.input("自定义记录", "请输入记录内容", "");
+        if (!content) return;
+        break;
+    }
+    
+    // 如果内容以冒号结尾，需要补充详情
+    if (content.endsWith("：")) {
+      const detail = await MNUtil.input("补充详情", content, "");
+      if (!detail) return;
+      content += detail;
+    }
+    
+    // 添加记录
+    MNTaskManager.addTaskLog(focusNote, content, autoProgress);
+    MNUtil.showHUD("✅ 已添加任务记录");
+  });
+
   // ==================== 任务拆分相关 ====================
   
   // splitTaskByChapters - 按章节拆分（阅读任务）

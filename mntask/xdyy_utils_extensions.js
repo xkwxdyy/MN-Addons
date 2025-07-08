@@ -137,6 +137,58 @@ class TaskFieldUtils {
   }
   
   /**
+   * 创建任务记录字段
+   * @returns {string} 格式化的任务记录字段 HTML
+   */
+  static createTaskLogField() {
+    return this.createFieldHtml('📝 任务记录', 'mainField')
+  }
+  
+  /**
+   * 创建单条任务记录
+   * @param {string} content - 记录内容
+   * @param {number} progress - 进度百分比（0-100）
+   * @param {Date} timestamp - 时间戳（默认当前时间）
+   * @returns {string} 格式化的记录条目
+   */
+  static createTaskLogEntry(content, progress, timestamp = new Date()) {
+    const timeStr = this.formatTimestamp(timestamp)
+    const progressText = progress !== undefined ? ` | 进度: ${progress}%` : ''
+    return `- ${timeStr} | ${content}${progressText}`
+  }
+  
+  /**
+   * 格式化时间戳
+   * @param {Date} date - 日期对象
+   * @returns {string} 格式化的时间字符串
+   */
+  static formatTimestamp(date) {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    return `${year}-${month}-${day} ${hours}:${minutes}`
+  }
+  
+  /**
+   * 解析任务记录条目
+   * @param {string} entry - 记录条目文本
+   * @returns {Object|null} 解析后的记录对象 {timestamp, content, progress}
+   */
+  static parseTaskLogEntry(entry) {
+    // 匹配格式：- YYYY-MM-DD HH:MM | 内容 | 进度: XX%
+    const match = entry.match(/^-\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s*\|\s*(.+?)(?:\s*\|\s*进度:\s*(\d+)%)?$/)
+    if (!match) return null
+    
+    return {
+      timestamp: match[1],
+      content: match[2].trim(),
+      progress: match[3] ? parseInt(match[3]) : null
+    }
+  }
+  
+  /**
    * 检查是否是任务字段评论
    * @param {string|MNComment} comment - 评论内容或评论对象
    * @returns {boolean} 是否是任务字段
@@ -2341,6 +2393,170 @@ class MNTaskManager {
           break
       }
     })
+  }
+  
+  /**
+   * 添加任务记录
+   * @param {MNNote} note - 任务卡片
+   * @param {string} content - 记录内容
+   * @param {number} progress - 进度百分比（可选）
+   * @returns {boolean} 是否成功
+   */
+  static addTaskLog(note, content, progress) {
+    if (!this.isTaskCard(note)) {
+      MNUtil.showHUD("请选择一个任务卡片")
+      return false
+    }
+    
+    const parsed = this.parseTaskComments(note)
+    
+    // 查找任务记录字段
+    let logFieldIndex = -1
+    for (let field of parsed.taskFields) {
+      if (field.content.includes('📝 任务记录')) {
+        logFieldIndex = field.index
+        break
+      }
+    }
+    
+    MNUtil.undoGrouping(() => {
+      // 如果没有任务记录字段，先创建
+      if (logFieldIndex === -1) {
+        const logFieldHtml = TaskFieldUtils.createTaskLogField()
+        note.appendMarkdownComment(logFieldHtml)
+        // 移动到信息字段下方
+        this.moveCommentToField(note, note.MNComments.length - 1, '信息', true)
+      }
+      
+      // 添加新的记录条目
+      const logEntry = TaskFieldUtils.createTaskLogEntry(content, progress)
+      note.appendTextComment(logEntry)
+      
+      // 将记录移动到任务记录字段下方
+      this.moveCommentToField(note, note.MNComments.length - 1, '任务记录', true)
+      
+      // 如果指定了进度，更新任务的总体进度
+      if (progress !== undefined) {
+        this.updateTaskProgress(note, progress)
+      }
+    })
+    
+    return true
+  }
+  
+  /**
+   * 获取任务的所有记录
+   * @param {MNNote} note - 任务卡片
+   * @returns {Array<Object>} 任务记录数组
+   */
+  static getTaskLogs(note) {
+    if (!this.isTaskCard(note)) return []
+    
+    const logs = []
+    const comments = note.MNComments || []
+    let inLogSection = false
+    
+    for (let i = 0; i < comments.length; i++) {
+      const comment = comments[i]
+      if (!comment) continue
+      
+      const text = comment.text || ''
+      
+      // 检查是否是任务记录字段
+      if (TaskFieldUtils.isTaskField(text) && text.includes('📝 任务记录')) {
+        inLogSection = true
+        continue
+      }
+      
+      // 检查是否遇到了其他主字段，结束记录收集
+      if (inLogSection && TaskFieldUtils.isTaskField(text)) {
+        break
+      }
+      
+      // 如果在记录区域内，尝试解析记录
+      if (inLogSection && text.startsWith('-')) {
+        const logEntry = TaskFieldUtils.parseTaskLogEntry(text)
+        if (logEntry) {
+          logs.push({
+            ...logEntry,
+            index: i,
+            comment: comment
+          })
+        }
+      }
+    }
+    
+    return logs
+  }
+  
+  /**
+   * 更新任务进度
+   * @param {MNNote} note - 任务卡片
+   * @param {number} progress - 进度百分比（0-100）
+   */
+  static updateTaskProgress(note, progress) {
+    if (!this.isTaskCard(note) || progress < 0 || progress > 100) return
+    
+    const parsed = this.parseTaskComments(note)
+    
+    // 查找现有的进度字段
+    let progressFieldIndex = -1
+    for (let field of parsed.taskFields) {
+      if (field.content.includes('📊 进度:')) {
+        progressFieldIndex = field.index
+        break
+      }
+    }
+    
+    MNUtil.undoGrouping(() => {
+      // 移除旧的进度字段
+      if (progressFieldIndex >= 0) {
+        note.removeCommentByIndex(progressFieldIndex)
+      }
+      
+      // 添加新的进度字段
+      const progressFieldHtml = TaskFieldUtils.createFieldHtml(`📊 进度: ${progress}%`, 'subField')
+      note.appendMarkdownComment(progressFieldHtml)
+      // 移动到信息字段下
+      this.moveCommentToField(note, note.MNComments.length - 1, '信息', false)
+      
+      // 如果进度达到100%，可以考虑自动更新状态
+      if (progress === 100 && this.parseTaskTitle(note.noteTitle).status !== '已完成') {
+        // 可选：自动将任务标记为已完成
+        // this.updateTaskStatus(note, '已完成')
+      }
+    })
+  }
+  
+  /**
+   * 获取任务的最新进度
+   * @param {MNNote} note - 任务卡片
+   * @returns {number|null} 最新进度百分比，如果没有则返回 null
+   */
+  static getLatestProgress(note) {
+    if (!this.isTaskCard(note)) return null
+    
+    // 首先检查进度字段
+    const comments = note.MNComments || []
+    for (let comment of comments) {
+      if (comment && comment.text && comment.text.includes('📊 进度:')) {
+        const match = comment.text.match(/进度:\s*(\d+)%/)
+        if (match) return parseInt(match[1])
+      }
+    }
+    
+    // 如果没有进度字段，检查最新的任务记录
+    const logs = this.getTaskLogs(note)
+    if (logs.length > 0) {
+      // 返回最后一条有进度的记录
+      for (let i = logs.length - 1; i >= 0; i--) {
+        if (logs[i].progress !== null) {
+          return logs[i].progress
+        }
+      }
+    }
+    
+    return null
   }
   
   /**

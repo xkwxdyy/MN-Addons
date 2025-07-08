@@ -40,7 +40,17 @@
           "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntoolbar/mntoolbar"
         }
       ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-07-08T16:02:11.397Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnutils"
+        }
+      ]
     }
   ],
-  "lastUpdated": "2025-07-05T17:19:30.171Z"
+  "lastUpdated": "2025-07-08T16:02:11.469Z"
 }

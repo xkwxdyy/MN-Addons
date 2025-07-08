@@ -69,30 +69,6 @@ function registerAllMenuTemplates() {
       action: "menu",
       menuWidth: 330,
       menuItems: [
-        {
-          action: "moveUpThoughtPointsToTop",
-          menuTitle: "思考点🔝思考区「上方」"
-        },
-        // {
-        //   action: "addThoughtPoint",  
-        //   menuTitle: "➕思考点"
-        // },
-        // {
-        //   action: "addThoughtPointAndMoveLastCommentToThought",
-        //   menuTitle: "➕思考点 & 最后1️⃣💬⬆️思考",
-        // },
-        // {
-        //   action: "addThoughtPointAndMoveNewCommentsToThought",
-        //   menuTitle: "➕思考点 & 新💬⬆️思考",
-        // },
-        // {
-        //   action: "moveLastCommentToThought",
-        //   menuTitle: "最后1️⃣💬⬆️思考"
-        // },
-        // {
-        //   action: "moveLastTwoCommentsToThought",
-        //   menuTitle: "最后2️⃣💬⬆️思考"
-        // }
       ]
     }
   });

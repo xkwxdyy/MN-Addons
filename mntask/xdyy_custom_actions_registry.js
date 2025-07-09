@@ -883,19 +883,435 @@ function registerAllCustomActions() {
   // achieveCards - 归档卡片
   MNTaskGlobal.registerCustomAction("achieveCards", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
-    MNUtil.showHUD("功能开发中：归档卡片");
+    
+    try {
+      // 获取要处理的卡片
+      const notesToProcess = focusNotes && focusNotes.length > 0 ? focusNotes : (focusNote ? [focusNote] : []);
+      
+      if (notesToProcess.length === 0) {
+        MNUtil.showHUD("请先选择要归档的任务卡片");
+        return;
+      }
+      
+      // 筛选出已完成的任务卡片
+      const completedNotes = notesToProcess.filter(note => {
+        if (!MNTaskManager.isTaskCard(note)) return false;
+        const titleParts = MNTaskManager.parseTaskTitle(note.noteTitle);
+        return titleParts.status === "已完成";
+      });
+      
+      if (completedNotes.length === 0) {
+        MNUtil.showHUD("没有已完成的任务可以归档");
+        return;
+      }
+      
+      // 获取已完成归档区ID
+      const completedBoardId = taskConfig.getBoardNoteId('completed');
+      
+      if (!completedBoardId) {
+        MNUtil.showHUD("请先在设置中配置已完成归档区");
+        return;
+      }
+      
+      // 获取归档区笔记
+      const completedBoardNote = MNNote.new(completedBoardId);
+      if (!completedBoardNote) {
+        MNUtil.showHUD("无法找到已完成归档区");
+        return;
+      }
+      
+      // 显示确认对话框
+      const confirmMsg = `确认归档 ${completedNotes.length} 个已完成的任务？\n\n归档后任务将移动到已完成归档区，状态更新为"已归档"。`;
+      
+      const buttonIndex = await MNUtil.confirm("归档任务确认", confirmMsg);
+      
+      if (buttonIndex !== 1) {
+        // 用户点击取消
+        return;
+      }
+      
+      // 执行归档
+      MNUtil.undoGrouping(() => {
+        let successCount = 0;
+        let failCount = 0;
+        
+        completedNotes.forEach(note => {
+          try {
+            // 更新状态为已归档
+            MNTaskManager.updateTaskStatus(note, "已归档");
+            
+            // 移动到归档区
+            const success = MNTaskManager.moveTo(note, completedBoardNote);
+            
+            if (success) {
+              // 添加归档时间记录
+              const archiveTime = new Date().toLocaleString('zh-CN');
+              note.appendMarkdownComment(`📦 归档时间：${archiveTime}`);
+              
+              // 刷新卡片
+              note.refresh();
+              successCount++;
+            } else {
+              failCount++;
+              MNUtil.log(`归档失败：${note.noteTitle}`);
+            }
+          } catch (error) {
+            failCount++;
+            MNUtil.log(`归档出错：${error.message}`);
+          }
+        });
+        
+        // 刷新归档区
+        completedBoardNote.refresh();
+        
+        // 显示结果
+        if (failCount === 0) {
+          MNUtil.showHUD(`✅ 成功归档 ${successCount} 个任务`);
+        } else {
+          MNUtil.showHUD(`⚠️ 归档完成\n成功：${successCount} 个\n失败：${failCount} 个`);
+        }
+      });
+      
+    } catch (error) {
+      MNUtil.log(`❌ achieveCards 执行失败: ${error.message || error}`);
+      MNUtil.showHUD(`归档失败: ${error.message || "未知错误"}`);
+    }
   });
 
   // renewCards - 更新卡片
   MNTaskGlobal.registerCustomAction("renewCards", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
-    MNUtil.showHUD("功能开发中：更新卡片");
+    
+    try {
+      // 获取要处理的卡片
+      const notesToProcess = focusNotes && focusNotes.length > 0 ? focusNotes : (focusNote ? [focusNote] : []);
+      
+      if (notesToProcess.length === 0) {
+        MNUtil.showHUD("请先选择要更新的任务卡片");
+        return;
+      }
+      
+      // 筛选出任务卡片
+      const taskNotes = notesToProcess.filter(note => MNTaskManager.isTaskCard(note));
+      
+      if (taskNotes.length === 0) {
+        MNUtil.showHUD("请选择任务卡片");
+        return;
+      }
+      
+      // 显示更新选项
+      const updateOptions = [
+        "更新任务路径",
+        "更新链接关系",
+        "清理失效链接",
+        "刷新任务字段",
+        "全部更新"
+      ];
+      
+      const selectedIndex = await MNUtil.userSelect("选择更新类型", `将更新 ${taskNotes.length} 个任务卡片`, updateOptions);
+      
+      if (selectedIndex === 0) return; // 用户取消
+      
+      const selectedOption = updateOptions[selectedIndex - 1];
+      
+      MNUtil.undoGrouping(() => {
+        let successCount = 0;
+        let failCount = 0;
+        const errors = [];
+        
+        taskNotes.forEach(note => {
+          try {
+            let updated = false;
+            
+            switch (selectedOption) {
+              case "更新任务路径":
+                MNTaskManager.updateTaskPath(note);
+                updated = true;
+                break;
+                
+              case "更新链接关系":
+                MNTaskManager.updateTaskLinkRelationship(note);
+                updated = true;
+                break;
+                
+              case "清理失效链接":
+                MNTaskManager.cleanupBrokenLinks(note);
+                updated = true;
+                break;
+                
+              case "刷新任务字段":
+                // 重新添加任务字段（保留现有内容）
+                MNTaskManager.refreshTaskFields(note);
+                updated = true;
+                break;
+                
+              case "全部更新":
+                // 执行所有更新操作
+                MNTaskManager.updateTaskPath(note);
+                MNTaskManager.updateTaskLinkRelationship(note);
+                MNTaskManager.cleanupBrokenLinks(note);
+                MNTaskManager.refreshTaskFields(note);
+                updated = true;
+                break;
+            }
+            
+            if (updated) {
+              // 刷新卡片显示
+              note.refresh();
+              successCount++;
+              
+              // 如果有父卡片，也刷新父卡片
+              if (note.parentNote && MNTaskManager.isTaskCard(note.parentNote)) {
+                note.parentNote.refresh();
+              }
+            }
+            
+          } catch (error) {
+            failCount++;
+            errors.push(`${note.noteTitle}: ${error.message}`);
+            MNUtil.log(`更新失败：${error.message}`);
+          }
+        });
+        
+        // 递归更新子卡片（如果选择了更新路径或全部更新）
+        if (selectedOption === "更新任务路径" || selectedOption === "全部更新") {
+          taskNotes.forEach(note => {
+            try {
+              const childNotes = note.childNotes.filter(child => MNTaskManager.isTaskCard(child));
+              if (childNotes.length > 0) {
+                MNTaskManager.batchUpdateChildrenPaths([note]);
+              }
+            } catch (error) {
+              MNUtil.log(`更新子卡片路径失败：${error.message}`);
+            }
+          });
+        }
+        
+        // 显示结果
+        if (failCount === 0) {
+          MNUtil.showHUD(`✅ 成功更新 ${successCount} 个任务卡片`);
+        } else {
+          let errorMsg = `⚠️ 更新完成\n成功：${successCount} 个\n失败：${failCount} 个`;
+          if (errors.length > 0 && errors.length <= 3) {
+            errorMsg += `\n\n错误详情：\n${errors.join('\n')}`;
+          }
+          MNUtil.showHUD(errorMsg);
+        }
+      });
+      
+    } catch (error) {
+      MNUtil.log(`❌ renewCards 执行失败: ${error.message || error}`);
+      MNUtil.showHUD(`更新失败: ${error.message || "未知错误"}`);
+    }
   });
 
   // getOKRNotesOnToday - 获取今日 OKR 任务
   MNTaskGlobal.registerCustomAction("getOKRNotesOnToday", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
-    MNUtil.showHUD("功能开发中：获取今日 OKR 任务");
+    
+    try {
+      // 获取根目录看板
+      const rootNoteId = taskConfig.getRootNoteId();
+      
+      if (!rootNoteId) {
+        MNUtil.showHUD("请先在设置中配置任务管理根目录");
+        return;
+      }
+      
+      const rootNote = MNNote.new(rootNoteId);
+      if (!rootNote) {
+        MNUtil.showHUD("无法找到任务管理根目录");
+        return;
+      }
+      
+      // 获取所有任务卡片
+      const allTasks = MNTaskManager.getAllTaskCardsFromBoard(rootNote);
+      
+      // 筛选今日标记的OKR任务（目标、关键结果）
+      const todayOKRTasks = allTasks.filter(note => {
+        // 检查是否是任务卡片
+        if (!MNTaskManager.isTaskCard(note)) return false;
+        
+        // 解析任务类型
+        const titleParts = MNTaskManager.parseTaskTitle(note.noteTitle);
+        const taskType = titleParts.type;
+        
+        // 只筛选目标和关键结果类型
+        if (taskType !== "目标" && taskType !== "关键结果") return false;
+        
+        // 检查是否有今日标记
+        return MNTaskManager.hasTodayMark(note);
+      });
+      
+      if (todayOKRTasks.length === 0) {
+        MNUtil.showHUD("没有标记为今日的OKR任务");
+        return;
+      }
+      
+      // 组织OKR结构
+      const objectives = [];
+      const keyResults = [];
+      
+      todayOKRTasks.forEach(note => {
+        const titleParts = MNTaskManager.parseTaskTitle(note.noteTitle);
+        if (titleParts.type === "目标") {
+          objectives.push(note);
+        } else if (titleParts.type === "关键结果") {
+          keyResults.push(note);
+        }
+      });
+      
+      // 生成OKR报告
+      let report = "# 今日 OKR 任务\n\n";
+      report += `生成时间：${new Date().toLocaleString('zh-CN')}\n\n`;
+      
+      // 目标部分
+      if (objectives.length > 0) {
+        report += `## 🎯 目标 (${objectives.length})\n\n`;
+        objectives.forEach((obj, index) => {
+          const titleParts = MNTaskManager.parseTaskTitle(obj.noteTitle);
+          report += `### ${index + 1}. ${titleParts.content}\n`;
+          report += `- 状态：${titleParts.status}\n`;
+          
+          // 找出相关的关键结果
+          const relatedKRs = keyResults.filter(kr => {
+            // 检查是否是该目标的子任务
+            let parent = kr.parentNote;
+            while (parent) {
+              if (parent.noteId === obj.noteId) return true;
+              parent = parent.parentNote;
+            }
+            return false;
+          });
+          
+          if (relatedKRs.length > 0) {
+            report += `- 相关关键结果：\n`;
+            relatedKRs.forEach(kr => {
+              const krParts = MNTaskManager.parseTaskTitle(kr.noteTitle);
+              report += `  - ${krParts.content} (${krParts.status})\n`;
+            });
+          }
+          
+          report += "\n";
+        });
+      }
+      
+      // 关键结果部分
+      if (keyResults.length > 0) {
+        report += `## 📊 关键结果 (${keyResults.length})\n\n`;
+        keyResults.forEach((kr, index) => {
+          const titleParts = MNTaskManager.parseTaskTitle(kr.noteTitle);
+          report += `${index + 1}. ${titleParts.content}\n`;
+          report += `   - 状态：${titleParts.status}\n`;
+          
+          // 获取进度信息
+          const progressField = kr.comments.find(comment => 
+            comment.type === "HtmlComment" && comment.text.includes("进度：")
+          );
+          if (progressField) {
+            const progressMatch = progressField.text.match(/进度：(\d+)%/);
+            if (progressMatch) {
+              report += `   - 进度：${progressMatch[1]}%\n`;
+            }
+          }
+          
+          // 获取相关项目和动作数量
+          const childTasks = kr.childNotes.filter(child => MNTaskManager.isTaskCard(child));
+          const projects = childTasks.filter(child => {
+            const parts = MNTaskManager.parseTaskTitle(child.noteTitle);
+            return parts.type === "项目";
+          });
+          const actions = childTasks.filter(child => {
+            const parts = MNTaskManager.parseTaskTitle(child.noteTitle);
+            return parts.type === "动作";
+          });
+          
+          if (projects.length > 0 || actions.length > 0) {
+            report += `   - 执行情况：${projects.length} 个项目，${actions.length} 个动作\n`;
+          }
+          
+          report += "\n";
+        });
+      }
+      
+      // 统计摘要
+      report += "## 📈 统计摘要\n\n";
+      report += `- 今日OKR任务总数：${todayOKRTasks.length}\n`;
+      report += `- 目标：${objectives.length} 个\n`;
+      report += `- 关键结果：${keyResults.length} 个\n`;
+      
+      // 状态分布
+      const statusCount = {};
+      todayOKRTasks.forEach(note => {
+        const titleParts = MNTaskManager.parseTaskTitle(note.noteTitle);
+        statusCount[titleParts.status] = (statusCount[titleParts.status] || 0) + 1;
+      });
+      
+      report += "\n状态分布：\n";
+      Object.entries(statusCount).forEach(([status, count]) => {
+        report += `- ${status}：${count} 个\n`;
+      });
+      
+      // 显示选项
+      const actions = ["复制到剪贴板", "创建报告卡片", "在浮窗显示"];
+      const selectedIndex = await MNUtil.userSelect("OKR报告生成成功", "选择查看方式", actions);
+      
+      if (selectedIndex === 0) return; // 用户取消
+      
+      switch (selectedIndex) {
+        case 1: // 复制到剪贴板
+          MNUtil.copy(report);
+          MNUtil.showHUD("✅ OKR报告已复制到剪贴板");
+          break;
+          
+        case 2: // 创建报告卡片
+          MNUtil.undoGrouping(() => {
+            // 获取今日看板
+            const todayBoardId = taskConfig.getBoardNoteId('today');
+            const todayBoard = todayBoardId ? MNNote.new(todayBoardId) : rootNote;
+            
+            // 创建报告卡片
+            const reportNote = MNNote.createWithTitleColorParent(
+              `📊 OKR执行报告 - ${new Date().toLocaleDateString('zh-CN')}`,
+              11, // 深紫色
+              todayBoard
+            );
+            
+            // 添加报告内容
+            reportNote.appendMarkdownComment(report);
+            reportNote.appendTags(["OKR报告", "今日"]);
+            
+            // 定位到报告卡片
+            reportNote.focusInFloatMindMap(0.5);
+          });
+          MNUtil.showHUD("✅ OKR报告卡片已创建");
+          break;
+          
+        case 3: // 在浮窗显示
+          // 创建临时卡片用于显示
+          const tempNote = MNNote.createWithTitleColorParent(
+            "今日OKR任务报告",
+            11,
+            null
+          );
+          tempNote.appendMarkdownComment(report);
+          
+          // 在浮窗显示
+          tempNote.focusInFloatMindMap(0.3);
+          
+          // 3秒后删除临时卡片
+          MNUtil.delay(3).then(() => {
+            MNUtil.undoGrouping(() => {
+              tempNote.removeFromParent();
+            });
+          });
+          break;
+      }
+      
+    } catch (error) {
+      MNUtil.log(`❌ getOKRNotesOnToday 执行失败: ${error.message || error}`);
+      MNUtil.showHUD(`获取OKR任务失败: ${error.message || "未知错误"}`);
+    }
   });
 
   // ==================== 任务创建相关 ====================

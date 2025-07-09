@@ -59,6 +59,10 @@ function registerAllMenuTemplates() {
         {
           action: "updateChildrenPaths",
           menuTitle: "🔄 更新子卡片路径"
+        },
+        {
+          action: "renewCards",
+          menuTitle: "🔄 更新卡片（路径/链接/字段）"
         }
       ]
     }
@@ -166,9 +170,19 @@ function registerAllMenuTemplates() {
           menuTitle: "📊 打开任务管理脑图"
         },
         {
+          action: "getOKRNotesOnToday",
+          menuTitle: "📊 获取今日OKR任务"
+        },
+        "──────────",
+        {
+          action: "achieveCards",
+          menuTitle: "📦 归档已完成任务"
+        },
+        {
           action: "viewTaskStatistics",
           menuTitle: "📊 查看任务统计"
         },
+        "──────────",
         {
           action: "exportTasksToJSON",
           menuTitle: "💾 导出任务数据 (JSON)"

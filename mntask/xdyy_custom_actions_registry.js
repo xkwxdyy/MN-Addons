@@ -4081,6 +4081,368 @@ function registerAllCustomActions() {
     await showFilterResultsMenu(filteredTasks, "🔍 停滞任务");
   });
 
+  // ================== 快速启动功能 ==================
+  
+  // quickLaunchTask - 单击自动启动第一个进行中任务
+  MNTaskGlobal.registerCustomAction("quickLaunchTask", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    try {
+      // 获取今日看板中的进行中任务
+      const todayBoard = MNTaskManager.getTodayBoard();
+      if (!todayBoard) {
+        MNUtil.showHUD("❌ 未找到今日看板");
+        return;
+      }
+      
+      // 获取今日任务并分组
+      const todayTasks = MNTaskManager.filterTodayTasks();
+      const grouped = MNTaskManager.groupTodayTasks(todayTasks);
+      
+      // 获取进行中的任务
+      const inProgressTasks = grouped.inProgress || [];
+      
+      if (inProgressTasks.length === 0) {
+        MNUtil.showHUD("📝 没有进行中的任务");
+        return;
+      }
+      
+      // 获取第一个进行中的任务
+      const firstTask = inProgressTasks[0];
+      
+      // 获取启动链接
+      const launchField = firstTask.getHTMLCommentFieldText("启动");
+      if (!launchField) {
+        MNUtil.showHUD("🔗 该任务没有启动链接");
+        firstTask.focusInMindMap(0.3);
+        return;
+      }
+      
+      // 解析链接
+      const linkMatch = launchField.match(/\[([^\]]+)\]\(([^)]+)\)/);
+      if (!linkMatch) {
+        MNUtil.showHUD("❌ 启动链接格式错误");
+        return;
+      }
+      
+      const linkText = linkMatch[1];
+      const linkURL = linkMatch[2];
+      
+      // 判断链接类型并处理
+      const linkType = MNTaskManager.getLinkType(linkURL);
+      
+      if (linkType === 'note') {
+        // 卡片链接：直接定位到卡片
+        const noteId = MNUtil.getNoteIdByURL(linkURL);
+        if (noteId) {
+          const targetNote = MNNote.new(noteId);
+          if (targetNote) {
+            targetNote.focusInMindMap(0.3);
+            MNUtil.showHUD(`🎯 已定位到：${linkText}`);
+          } else {
+            MNUtil.showHUD("❌ 找不到目标卡片");
+          }
+        }
+      } else if (linkType === 'uistatus') {
+        // UIStatus链接：在浮窗中显示任务卡片
+        firstTask.focusInFloatMindMap();
+        MNUtil.showHUD(`🚀 已启动任务：${MNTaskManager.parseTaskTitle(firstTask.noteTitle).content}`);
+      } else {
+        // 其他链接：尝试打开
+        MNUtil.openURL(linkURL);
+        MNUtil.showHUD(`🔗 已打开：${linkText}`);
+      }
+      
+    } catch (error) {
+      MNUtil.log(`❌ 快速启动失败: ${error.message || error}`);
+      MNUtil.showHUD("启动失败，请重试");
+    }
+  });
+
+  // selectAndLaunchTask - 选择并启动任务
+  MNTaskGlobal.registerCustomAction("selectAndLaunchTask", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    try {
+      // 获取今日任务
+      const todayTasks = MNTaskManager.filterTodayTasks();
+      const grouped = MNTaskManager.groupTodayTasks(todayTasks);
+      
+      // 获取进行中的任务
+      const inProgressTasks = grouped.inProgress || [];
+      
+      if (inProgressTasks.length === 0) {
+        MNUtil.showHUD("📝 没有进行中的任务");
+        return;
+      }
+      
+      // 构建任务列表
+      const taskOptions = inProgressTasks.map((task, index) => {
+        const parts = MNTaskManager.parseTaskTitle(task.noteTitle);
+        const priority = MNTaskManager.getTaskPriority(task);
+        const priorityIcon = priority === '高' ? '🔴' : priority === '中' ? '🟡' : '⚪';
+        
+        // 检查是否有启动链接
+        const hasLaunch = task.getHTMLCommentFieldText("启动") ? '🔗' : '';
+        
+        return `${index + 1}. ${priorityIcon} ${hasLaunch} ${parts.content.substring(0, 30)}${parts.content.length > 30 ? '...' : ''}`;
+      });
+      
+      // 显示选择对话框
+      const selectedIndex = await MNUtil.userSelect(
+        "选择要启动的任务",
+        `找到 ${inProgressTasks.length} 个进行中任务`,
+        taskOptions
+      );
+      
+      if (selectedIndex === 0) return; // 用户取消
+      
+      const selectedTask = inProgressTasks[selectedIndex - 1];
+      
+      // 获取启动链接
+      const launchField = selectedTask.getHTMLCommentFieldText("启动");
+      if (!launchField) {
+        // 没有启动链接，直接在浮窗显示任务
+        selectedTask.focusInFloatMindMap();
+        MNUtil.showHUD("📋 已在浮窗显示任务");
+        return;
+      }
+      
+      // 解析并处理链接（复用 quickLaunchTask 的逻辑）
+      const linkMatch = launchField.match(/\[([^\]]+)\]\(([^)]+)\)/);
+      if (!linkMatch) {
+        selectedTask.focusInFloatMindMap();
+        MNUtil.showHUD("❌ 启动链接格式错误，已显示任务");
+        return;
+      }
+      
+      const linkText = linkMatch[1];
+      const linkURL = linkMatch[2];
+      const linkType = MNTaskManager.getLinkType(linkURL);
+      
+      if (linkType === 'note') {
+        const noteId = MNUtil.getNoteIdByURL(linkURL);
+        if (noteId) {
+          const targetNote = MNNote.new(noteId);
+          if (targetNote) {
+            targetNote.focusInFloatMindMap();
+            MNUtil.showHUD(`🎯 已在浮窗显示：${linkText}`);
+          }
+        }
+      } else if (linkType === 'uistatus') {
+        selectedTask.focusInFloatMindMap();
+        MNUtil.showHUD(`🚀 已启动任务：${MNTaskManager.parseTaskTitle(selectedTask.noteTitle).content}`);
+      } else {
+        MNUtil.openURL(linkURL);
+        MNUtil.showHUD(`🔗 已打开：${linkText}`);
+      }
+      
+    } catch (error) {
+      MNUtil.log(`❌ 选择启动失败: ${error.message || error}`);
+      MNUtil.showHUD("操作失败，请重试");
+    }
+  });
+
+  // updateLaunchLink - 更新启动链接
+  MNTaskGlobal.registerCustomAction("updateLaunchLink", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    if (!focusNote) {
+      MNUtil.showHUD("请先选择一个任务");
+      return;
+    }
+    
+    try {
+      // 检查剪贴板内容
+      const clipboardText = MNUtil.clipboardText;
+      let linkURL = null;
+      let linkText = "启动";
+      
+      if (clipboardText) {
+        // 检查是否是卡片ID
+        if (clipboardText.match(/^[A-Za-z0-9]{32}$/)) {
+          // 32位ID，转换为URL
+          linkURL = `marginnote4app://note/${clipboardText}`;
+          linkText = "链接卡片";
+          MNUtil.log("🔗 检测到卡片ID，已转换为URL");
+        } 
+        // 检查是否是卡片URL
+        else if (clipboardText.includes('marginnote4app://note/')) {
+          linkURL = clipboardText;
+          linkText = "链接卡片";
+          MNUtil.log("🔗 检测到卡片URL");
+        }
+        // 检查是否是UIStatus URL
+        else if (clipboardText.includes('marginnote4app://uistatus/')) {
+          linkURL = clipboardText;
+          linkText = "UI状态";
+          MNUtil.log("🔗 检测到UIStatus URL");
+        }
+        // 其他URL
+        else if (clipboardText.match(/^https?:\/\//)) {
+          linkURL = clipboardText;
+          // 尝试从URL提取域名作为链接文本
+          const domain = clipboardText.match(/^https?:\/\/([^\/]+)/);
+          if (domain) {
+            linkText = domain[1].replace('www.', '');
+          }
+          MNUtil.log("🔗 检测到网页URL");
+        }
+      }
+      
+      if (linkURL) {
+        // 使用剪贴板中的链接
+        MNUtil.undoGrouping(() => {
+          // 获取当前的启动字段
+          const currentLaunch = focusNote.getHTMLCommentFieldText("启动");
+          if (currentLaunch) {
+            // 更新现有字段
+            focusNote.setHTMLCommentField("启动", `[${linkText}](${linkURL})`);
+            MNUtil.showHUD("✅ 已更新启动链接");
+          } else {
+            // 添加新字段
+            MNTaskManager.addLaunchField(focusNote, linkURL, linkText);
+            MNUtil.showHUD("✅ 已添加启动链接");
+          }
+        });
+      } else {
+        // 没有检测到有效链接，显示应用选择对话框
+        await MNTaskManager.addOrUpdateLaunchLink(focusNote);
+      }
+      
+    } catch (error) {
+      MNUtil.log(`❌ 更新启动链接失败: ${error.message || error}`);
+      MNUtil.showHUD("更新失败，请重试");
+    }
+  });
+
+  // reorderTodayTasks - 调整任务顺序
+  MNTaskGlobal.registerCustomAction("reorderTodayTasks", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    try {
+      // 获取进行中的任务
+      const todayTasks = MNTaskManager.filterTodayTasks();
+      const grouped = MNTaskManager.groupTodayTasks(todayTasks);
+      const inProgressTasks = grouped.inProgress || [];
+      
+      if (inProgressTasks.length === 0) {
+        MNUtil.showHUD("📝 没有进行中的任务");
+        return;
+      }
+      
+      if (inProgressTasks.length === 1) {
+        MNUtil.showHUD("只有一个任务，无需排序");
+        return;
+      }
+      
+      // 当前排序的任务列表
+      let orderedTasks = [...inProgressTasks];
+      let hasChanges = false;
+      
+      while (true) {
+        // 构建显示列表
+        const displayOptions = orderedTasks.map((task, index) => {
+          const parts = MNTaskManager.parseTaskTitle(task.noteTitle);
+          const priority = MNTaskManager.getTaskPriority(task);
+          const priorityIcon = priority === '高' ? '🔴' : priority === '中' ? '🟡' : '⚪';
+          return `${index + 1}. ${priorityIcon} ${parts.content.substring(0, 40)}${parts.content.length > 40 ? '...' : ''}`;
+        });
+        
+        // 添加操作选项
+        displayOptions.push("──────────");
+        displayOptions.push("✅ 确认顺序");
+        displayOptions.push("❌ 取消");
+        
+        // 显示选择对话框
+        const selectedIndex = await MNUtil.userSelect(
+          "选择要调整顺序的任务",
+          "选择任务后可以上下移动",
+          displayOptions
+        );
+        
+        if (selectedIndex === 0) break; // 用户取消
+        
+        const actualIndex = selectedIndex - 1;
+        
+        // 处理确认和取消
+        if (actualIndex === displayOptions.length - 2) {
+          // 确认顺序
+          if (hasChanges) {
+            await saveTaskOrder(orderedTasks);
+            MNUtil.showHUD("✅ 任务顺序已保存");
+          } else {
+            MNUtil.showHUD("未做任何修改");
+          }
+          break;
+        } else if (actualIndex === displayOptions.length - 1) {
+          // 取消
+          MNUtil.showHUD("已取消排序");
+          break;
+        } else if (actualIndex < orderedTasks.length) {
+          // 选择了某个任务，显示移动选项
+          const moveOptions = [];
+          if (actualIndex > 0) moveOptions.push("⬆️ 上移");
+          if (actualIndex < orderedTasks.length - 1) moveOptions.push("⬇️ 下移");
+          if (actualIndex > 0) moveOptions.push("⏫ 移到顶部");
+          if (actualIndex < orderedTasks.length - 1) moveOptions.push("⏬ 移到底部");
+          moveOptions.push("↩️ 返回");
+          
+          const moveIndex = await MNUtil.userSelect(
+            `调整位置：${orderedTasks[actualIndex].noteTitle.substring(0, 30)}...`,
+            "",
+            moveOptions
+          );
+          
+          if (moveIndex === 0) continue; // 用户取消
+          
+          const moveAction = moveOptions[moveIndex - 1];
+          const task = orderedTasks[actualIndex];
+          
+          switch (moveAction) {
+            case "⬆️ 上移":
+              orderedTasks.splice(actualIndex, 1);
+              orderedTasks.splice(actualIndex - 1, 0, task);
+              hasChanges = true;
+              break;
+            case "⬇️ 下移":
+              orderedTasks.splice(actualIndex, 1);
+              orderedTasks.splice(actualIndex + 1, 0, task);
+              hasChanges = true;
+              break;
+            case "⏫ 移到顶部":
+              orderedTasks.splice(actualIndex, 1);
+              orderedTasks.unshift(task);
+              hasChanges = true;
+              break;
+            case "⏬ 移到底部":
+              orderedTasks.splice(actualIndex, 1);
+              orderedTasks.push(task);
+              hasChanges = true;
+              break;
+          }
+        }
+      }
+      
+    } catch (error) {
+      MNUtil.log(`❌ 调整任务顺序失败: ${error.message || error}`);
+      MNUtil.showHUD("操作失败，请重试");
+    }
+  });
+  
+  // 辅助函数：保存任务顺序
+  async function saveTaskOrder(orderedTasks) {
+    MNUtil.undoGrouping(() => {
+      orderedTasks.forEach((task, index) => {
+        // 保存排序索引到"排序"字段
+        task.setHTMLCommentField("排序", String(index + 1));
+      });
+      
+      // 刷新今日看板
+      MNTaskManager.refreshTodayBoard();
+    });
+  }
+
 }
 
 // 立即注册

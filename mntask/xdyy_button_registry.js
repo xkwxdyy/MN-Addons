@@ -78,6 +78,13 @@ function registerAllButtons() {
     templateName: "menu_field_manage"
   });
 
+  // custom7: 快速启动 - 单击自动启动任务，长按显示启动选项菜单
+  MNTaskGlobal.registerButton("custom7", {
+    name: "快速启动",
+    image: "custom7",
+    templateName: "menu_quick_launch"
+  });
+
 }
 
 // 扩展 taskConfig 的函数

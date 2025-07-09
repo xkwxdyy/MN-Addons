@@ -869,6 +869,90 @@ class MNTaskManager {
   }
 
   /**
+   * 添加启动字段
+   * @param {MNNote} note - 要添加启动字段的笔记
+   * @param {string} linkURL - 链接URL
+   * @param {string} linkText - 链接文本
+   */
+  static addLaunchField(note, linkURL, linkText = "启动") {
+    if (!note || !linkURL) return
+    
+    const launchLink = `[${linkText}](${linkURL})`
+    const fieldHtml = TaskFieldUtils.createFieldHtml(launchLink, 'subField')
+    
+    MNUtil.undoGrouping(() => {
+      // 添加到末尾
+      note.appendMarkdownComment(fieldHtml)
+      const lastIndex = note.MNComments.length - 1
+      
+      // 移动到"信息"字段下
+      this.moveCommentToField(note, lastIndex, '信息', true)
+    })
+  }
+
+  /**
+   * 判断链接类型
+   * @param {string} url - 要判断的URL
+   * @returns {string} - 'note' | 'uistatus' | 'other'
+   */
+  static getLinkType(url) {
+    if (!url) return 'other'
+    
+    if (url.includes('marginnote4app://note/')) {
+      return 'note'
+    } else if (url.includes('marginnote4app://uistatus/')) {
+      return 'uistatus'
+    } else {
+      return 'other'
+    }
+  }
+
+  /**
+   * 添加或更新启动链接（带用户选择）
+   * @param {MNNote} note - 要更新的笔记
+   */
+  static async addOrUpdateLaunchLink(note) {
+    if (!note) return
+    
+    const apps = [
+      { name: "Obsidian", scheme: "obsidian://open" },
+      { name: "Notion", scheme: "notion://" },
+      { name: "Things", scheme: "things:///" },
+      { name: "OmniFocus", scheme: "omnifocus:///" },
+      { name: "Bear", scheme: "bear://x-callback-url/open-note" },
+      { name: "Craft", scheme: "craftdocs://" },
+      { name: "Logseq", scheme: "logseq://" },
+      { name: "RemNote", scheme: "remnote://" },
+      { name: "Roam", scheme: "roam://" },
+      { name: "默认启动", scheme: "marginnote4app://uistatus/H4sIAAAAAAAAE5VSy5LbIBD8F87SFuIp%2BWbJ5VxyyCG3VCqF0LBmg4VKoM06W%2F73AHbiveY2j56mp5l3NHr%2F8zxxtEOGgNbYMNNJGGmHJWAsmRg7wRQIojpDZQtEj5ibpm0apeRI5ahBcKEx4agqZGFxNqIdzlmM%2Fjx5jXZGuQAV0mqdRv9WujmG6Q7Vzv%2BGB8zPEeYYSivNO3WB1U5JI2MDYw0b6l4OtGb7o6h72rY1wU2Hh33Ph%2BMh6YC3ND%2Bd%2FQSFwlgHNzLjvIpntdwSr7cw%2BwiFuj%2F27ND2pO4IYTXjvajbLqf4yEk74D2lXaI2m3MfV0pkn71W0foZ7d6RNyZAzNGPl%2BDnV%2BU2%2BHpZkg40fPri7RwTRzbgibWSck6YbEUjGO1khS6lzgWThLNUo7jlmF8rFLRyeZUnIiiTVGDcsK5JGHEtCgI4F9Kr375XyC%2Bw3uXgD5kfX26FLTo7P7xe1DMkf1O5tBc1gysTRUv6f960mLKOcdJgUqEVAqhVnwp6hVcLv26hfT7dnL0T32D5Iko%2F2AlGtT7a%2BUzsbHz2SvstGbNr0jZRjeFkpwnmf9B4gnM28ABGbS4bGP1i9f8cRJb59zCvfwCp6rmF9QIAAA%3D%3D" }
+    ]
+    
+    const selectedIndex = await MNUtil.userSelect("选择要启动的应用", "", apps.map(a => a.name))
+    if (selectedIndex === 0) return // 用户取消
+    
+    const app = apps[selectedIndex - 1]
+    const launchLink = `[${app.name}](${app.scheme})`
+    const fieldHtml = TaskFieldUtils.createFieldHtml(launchLink, 'subField')
+    
+    MNUtil.undoGrouping(() => {
+      // 检查是否已有"启动"字段
+      const existingIndex = note.getIncludingCommentIndex("[启动]")
+      
+      if (existingIndex !== -1) {
+        // 更新现有字段
+        note.replaceWithMarkdownComment(fieldHtml, existingIndex)
+        MNUtil.showHUD("✅ 已更新启动链接")
+      } else {
+        // 添加新字段
+        note.appendMarkdownComment(fieldHtml)
+        const lastIndex = note.MNComments.length - 1
+        this.moveCommentToField(note, lastIndex, '信息', true)
+        MNUtil.showHUD("✅ 已添加启动链接")
+      }
+    })
+  }
+
+  /**
    * 链接父任务
    * @param {MNNote} note - 要链接的卡片
    * @param {MNNote} parentNote - 父任务卡片（可选）
@@ -2259,16 +2343,50 @@ class MNTaskManager {
    * @returns {MNNote[]} 排序后的任务列表
    */
   static sortTodayTasks(tasks) {
-    // 直接使用 TaskFilterEngine 的智能排序
-    return TaskFilterEngine.sort(tasks, {
-      strategy: 'smart',
-      weights: {
-        priority: 0.4,      // 优先级权重更高
-        urgency: 0.3,       // 紧急度次之
-        importance: 0.2,    // 重要性
-        progress: 0.1       // 进度
-      }
+    // 首先检查是否有手动排序的任务
+    const hasManualOrder = tasks.some(task => {
+      const orderField = task.getHTMLCommentFieldText("排序")
+      return orderField && orderField.trim() !== ""
     })
+    
+    if (hasManualOrder) {
+      // 如果有手动排序，优先使用手动排序
+      return tasks.sort((a, b) => {
+        const orderA = parseInt(a.getHTMLCommentFieldText("排序") || "999")
+        const orderB = parseInt(b.getHTMLCommentFieldText("排序") || "999")
+        
+        if (orderA !== orderB) {
+          return orderA - orderB
+        }
+        
+        // 如果排序值相同，使用智能排序作为次要排序依据
+        const scoreA = TaskFilterEngine.calculateSmartScore(a, {
+          priority: 0.4,
+          urgency: 0.3,
+          importance: 0.2,
+          progress: 0.1
+        })
+        const scoreB = TaskFilterEngine.calculateSmartScore(b, {
+          priority: 0.4,
+          urgency: 0.3,
+          importance: 0.2,
+          progress: 0.1
+        })
+        
+        return scoreB - scoreA
+      })
+    } else {
+      // 如果没有手动排序，使用智能排序
+      return TaskFilterEngine.sort(tasks, {
+        strategy: 'smart',
+        weights: {
+          priority: 0.4,      // 优先级权重更高
+          urgency: 0.3,       // 紧急度次之
+          importance: 0.2,    // 重要性
+          progress: 0.1       // 进度
+        }
+      })
+    }
   }
   
   /**

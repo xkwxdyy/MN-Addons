@@ -222,6 +222,33 @@ function registerAllMenuTemplates() {
     }
   });
 
+  // menu_quick_launch - 快速启动菜单（新增）
+  MNTaskGlobal.registerMenuTemplate("menu_quick_launch", {
+    action: "quickLaunchTask",  // 单击自动启动第一个进行中任务
+    onLongPress: {
+      action: "menu",
+      menuWidth: 300,
+      menuItems: [
+        {
+          action: "quickLaunchTask",
+          menuTitle: "🚀 快速启动任务"
+        },
+        {
+          action: "selectAndLaunchTask",
+          menuTitle: "🎯 选择并启动任务"
+        },
+        {
+          action: "updateLaunchLink",
+          menuTitle: "🔗 更新启动链接"
+        },
+        {
+          action: "reorderTodayTasks",
+          menuTitle: "📊 调整任务顺序"
+        }
+      ]
+    }
+  });
+
 }
 
 // 扩展 taskConfig.template 方法

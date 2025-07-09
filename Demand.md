@@ -1,3 +1,21 @@
+还是有大问题！很多函数还是被删了！比如 mergIntoAndRenewReplaceholder，对照你写的 deleted_mnnote_methods_report.md 一个一个排查！ mntoolbar 里只要出现的都不能删！！！！！！！ ultrathink
+---
+重点排查一下 git 的：5a616902f5f20d4d42c758845c5ce18d30ada447 里的更新内容。具体说明如下：
+
+上一次我让你根据：
+```
+请你精简 mnutils/xdyyutils.js 文件里的代码，不需要处理 MNMath 和 HtmlMarkdownUtils 类和 Pangu 类。其余的都需要处理。
+
+精简依据，也就是下面情况的要删除
+1. 没有在 mntask 里用到的
+2. 没有在 mntoolbar 里用到的
+
+尤其是 xdyyutils.js 里面有很多 MNNote 和 MNUtil 类的函数补充，但是很多内容都已经在 MNMath 类里实现了，所以不需要了，但是还是有一部分在 mntoolbar 里有用到，这些暂时保留先。
+```
+简化了代码，但是我发现有一个具体的情况：你把很多 mntoolbar, MNMath, HtmlMarkdownUtils 里涉及到的函数也删除了！比如 MNNote 的扩展：moveCommentsByIndexArr （好像是这个）！
+
+请你完整自查，看看是不是误删了什么！不要删多了！ultrathink
+---
 请你精简 mnutils/xdyyutils.js 文件里的代码，不需要处理 MNMath 和 HtmlMarkdownUtils 类和 Pangu 类。其余的都需要处理。
 
 精简依据，也就是下面情况的要删除

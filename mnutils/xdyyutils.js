@@ -2,6 +2,50 @@
  * 夏大鱼羊 - Begin
  */
 
+/**
+ * 夏大鱼羊 - MNUtil 扩展 - begin
+ */
+
+/**
+ * 判断是否为对象（getLinkCommentsIndexArr 依赖）
+ * @param {Object} obj 
+ * @returns {Boolean}
+ */
+MNUtil.isObj = function(obj) {
+  return typeof obj === "object" && obj !== null && !Array.isArray(obj)
+}
+
+/**
+ * 判断评论是否是链接（getLinkCommentsIndexArr 依赖）
+ * @param {Object|string} comment - 评论对象或字符串
+ * @returns {Boolean}
+ */
+MNUtil.isCommentLink = function(comment){
+  if (this.isObj(comment)) {
+    if (comment.type == "TextNote") {
+      return comment.text.isLink()
+    }
+  } else if (typeof comment == "string") {
+    return comment.isLink()
+  }
+}
+
+/**
+ * 获取链接的文本（getLinkCommentsIndexArr 依赖）
+ * @param {Object|string} link - 链接对象或字符串
+ * @returns {string} 链接文本
+ */
+MNUtil.getLinkText = function(link){
+  if (this.isObj(link) && this.isCommentLink(link)) {
+    return link.text
+  }
+  return link
+}
+
+/**
+ * 夏大鱼羊 - MNUtil 扩展 - end
+ */
+
 class MNMath {
   /**
    * 粗读根目录
@@ -6777,6 +6821,461 @@ MNNote.prototype.getIncludingCommentIndex = function(comment,includeHtmlComment 
       return i
   }
   return -1
+}
+
+/**
+ * 移动评论到指定位置（mntoolbar 中使用 46+ 次）
+ * @param {number} fromIndex - 原始位置索引
+ * @param {number} toIndex - 目标位置索引
+ * @param {boolean} msg - 是否显示无变化提示
+ * @returns {MNNote} 返回 this 以支持链式调用
+ */
+MNNote.prototype.moveComment = function(fromIndex, toIndex, msg = false) {
+  try {
+    let length = this.comments.length;
+    let arr = Array.from({ length: length }, (_, i) => i);
+    let from = fromIndex
+    let to = toIndex
+    if (fromIndex < 0) {
+      from = 0
+    }
+    if (fromIndex > (arr.length-1)) {
+      from = arr.length-1
+    }
+    if (toIndex < 0) {
+      to = 0
+    }
+    if (toIndex > (arr.length-1)) {
+      to = arr.length-1
+    }
+    if (from == to) {
+      if (msg) {
+        MNUtil.showHUD("No change")
+      }
+      return
+    }
+    // 取出要移动的元素
+    const element = arr.splice(to, 1)[0];
+    // 将元素插入到目标位置
+    arr.splice(from, 0, element);
+    let targetArr = arr
+    this.sortCommentsByNewIndices(targetArr)
+    return this
+  } catch (error) {
+    MNNote.addErrorLog(error, "moveComment")
+    return this
+  }
+}
+
+/**
+ * 批量移动评论到指定位置（MNMath/HtmlMarkdownUtils 使用）
+ * @param {Array<number>} indexArr - 要移动的评论索引数组
+ * @param {number} toIndex - 目标位置索引
+ */
+MNNote.prototype.moveCommentsByIndexArr = function(indexArr, toIndex){
+  if (indexArr.length !== 0) {
+    let max = Math.max(...indexArr)
+    let min = Math.min(...indexArr)
+    if (toIndex < min) {
+      // 此时是往上移动
+      for (let i = 0; i < indexArr.length; i++) {
+        this.moveComment(indexArr[i], toIndex+i)
+      }
+    } else if (toIndex > max) {
+      // 此时是往下移动
+      for (let i = indexArr.length-1; i >= 0; i--) {
+        this.moveComment(indexArr[i], toIndex-(indexArr.length-i))
+      }
+    }
+  }
+}
+
+/**
+ * 刷新笔记显示（mntoolbar 中使用 6 次）
+ * @param {number} delay - 延迟时间（秒）
+ */
+MNNote.prototype.refresh = async function(delay = 0){
+  if (delay) {
+    await MNUtil.delay(delay)
+  }
+  this.note.appendMarkdownComment("")
+  this.note.removeCommentByIndex(this.note.comments.length-1)
+}
+
+/**
+ * 合并到目标笔记（mntoolbar 中使用 2 次）
+ * @param {MNNote} targetNote - 目标笔记
+ * @param {string} htmlType - HTML 样式类型
+ */
+MNNote.prototype.mergeInto = function(targetNote, htmlType = "none"){
+  // 合并之前先更新链接
+  this.renewLinks()
+
+  let oldComments = this.MNComments
+  oldComments.forEach((comment, index) => {
+    // if (comment.type == "linkComment" && comment.linkDirection == "both") {
+    if (comment.type == "linkComment" && this.LinkIfDouble(comment.text)) {
+      let linkedNote = MNNote.new(comment.text.toNoteId())
+      let linkedNoteComments = linkedNote.MNComments
+      let indexArrInLinkedNote = linkedNote.getLinkCommentsIndexArr(this.noteId.toNoteURL())
+      // 把 this 的链接更新为 targetNote 的链接
+      indexArrInLinkedNote.forEach(index => {
+        // linkedNoteComments[index].text = targetNote.noteURL
+        // linkedNoteComments[index].detail.text = targetNote.noteURL
+        // linkedNote.replaceWithMarkdownComment(targetNote.noteURL,linkedNoteComments[index].index)
+        linkedNote.replaceWithMarkdownComment(targetNote.noteURL, index)
+      })
+    }
+  })
+
+  if (this.title) {
+    targetNote.appendMarkdownComment(
+      HtmlMarkdownUtils.createHtmlMarkdownText(this.title.toNoBracketPrefixContent(), htmlType)
+    )
+    this.title = ""
+  }
+
+  // 检测 this 的第一条评论对应是否是 targetNote 是的话就去掉
+  if (this.comments[0] && this.comments[0].text && (this.comments[0].text == targetNote.noteURL)) {
+    this.removeCommentByIndex(0)
+  }
+
+
+  // 合并到目标卡片
+  targetNote.merge(this)
+
+  // 最后更新一下合并后的链接
+  let targetNoteComments = targetNote.MNComments
+  for (let i = 0; i < targetNoteComments.length; i++) {
+    if (targetNoteComments[i].type == "linkComment" && !targetNoteComments[i].linkDirection != "to") {
+      let linkedNote = MNNote.new(targetNoteComments[i].text.toNoteId())
+      linkedNote.refresh()
+    }
+  }
+  targetNote.refresh()
+}
+
+/**
+ * 删除指定索引之后的重复链接（mntoolbar 中使用）
+ * @param {number} startIndex - 开始检查的索引
+ */
+MNNote.prototype.linkRemoveDuplicatesAfterIndex = function(startIndex){
+  let links = new Set()
+  if (startIndex < this.comments.length-1) {
+    // 下面先有内容才处理
+    for (let i = this.comments.length-1; i > startIndex; i--){
+      let comment = this.comments[i]
+      if (
+        comment.type == "TextNote" && comment.text &&
+        comment.text.includes("marginnote4app://note/")
+      ) {
+        if (links.has(comment.text)) {
+          this.removeCommentByIndex(i)
+        } else {
+          links.add(comment.text)
+        }
+      }
+    }
+  }
+}
+
+/**
+ * 合并到目标笔记并移动评论（mntoolbar 中使用）
+ * @param {MNNote} targetNote - 目标笔记
+ * @param {Number} targetIndex - 目标位置索引
+ * @param {string} htmlType - HTML 样式类型
+ */
+MNNote.prototype.mergeIntoAndMove = function(targetNote, targetIndex, htmlType = "none"){
+  // let commentsLength = this.comments.length
+  // if (this.title) {
+  //   commentsLength += 1  // 如果有标题的话，合并后会处理为评论，所以要加 1
+  // }
+  // if (this.excerptText) {
+  //   commentsLength += 1  // 如果有摘录的话，合并后也会变成评论，所以要加 1
+  // }
+
+  // 要把 targetNote 的这一条链接去掉，否则会多移动一条评论
+  let commentsLength = this.comments.length + !!this.title + !!this.excerptText - (this.comments && this.comments[0].text && this.comments[0].text == targetNote.noteURL)
+
+  this.mergeInto(targetNote, htmlType)
+
+  // 生成从 targetNote.comments.length - commentsLength 到 targetNote.comments.length - 1 的数组
+  let targetNoteCommentsToMoveArr = [...Array(commentsLength)].map((_, i) => targetNote.comments.length - commentsLength + i)
+
+  targetNote.moveCommentsByIndexArr(targetNoteCommentsToMoveArr, targetIndex)
+}
+
+/**
+ * 合并到目标笔记并更新占位符（mntoolbar 中使用 2 次）
+ * @param {MNNote} targetNote - 目标笔记
+ * @param {string} htmlType - HTML 样式类型
+ */
+MNNote.prototype.mergIntoAndRenewReplaceholder = function(targetNote, htmlType = "none"){
+  let targetIndex = targetNote.getCommentIndex(this.noteURL)
+  if (targetIndex !== -1) {
+    // if (this.comments[0].text && this.comments[0].text == targetNote.noteURL) {
+    //   // 此时表示的情景：从某个命题双向链接到空白处，生成的占位符
+    //   // 所以合并前把第一条评论删掉
+
+    //   // bug: 删掉的话，下一步就无法根据这条评论来改变 point 和 subpoint 了
+    //   /  fix: 把这个删除放到 mergeInto 里
+    //   this.removeCommentByIndex(0)
+    // }
+    if (this.title.startsWith("【占位】")){
+      this.title = ""
+    }
+    this.mergeIntoAndMove(targetNote, targetIndex +1, htmlType)
+    targetNote.removeCommentByIndex(targetIndex) // 删除占位符
+  }
+}
+
+/**
+ * 刷新所有相关卡片（mntoolbar 中使用 1 次）
+ * @param {number} delay - 延迟时间（秒）
+ */
+MNNote.prototype.refreshAll = async function(delay = 0){
+  if (delay) {
+    await MNUtil.delay(delay)
+  }
+  if (this.descendantNodes.descendant.length > 0) {
+    this.descendantNodes.descendant.forEach(descendantNote => {
+      descendantNote.refresh()
+    })
+  }
+  if (this.ancestorNodes.length > 0) {
+    this.ancestorNodes.forEach(ancestorNote => {
+      ancestorNote.refresh()
+    })
+  }
+  this.refresh()
+}
+
+/**
+ * 获取文本评论的索引数组（mergeInto 依赖）
+ * @param {string} text - 要查找的文本
+ * @returns {Array<number>} 索引数组
+ */
+MNNote.prototype.getTextCommentsIndexArr = function(text){
+  let arr = []
+  this.comments.forEach((comment, index) => {
+    if (comment.type == "TextNote" && comment.text == text) {
+      arr.push(index)
+    }
+  })
+  return arr
+}
+
+/**
+ * 获取 HTML 评论的索引数组（mergeInto 依赖）
+ * @returns {Array<number>} 索引数组
+ */
+MNNote.prototype.getHtmlCommentsIndexArr = function(){
+  let indexArr = []
+  for (let i = 0; i < this.comments.length; i++) {
+    let comment = this.comments[i]
+    if (comment.type == "HtmlNote") {
+      indexArr.push(i)
+    }
+  }
+  return indexArr
+}
+
+/**
+ * 判断卡片中是否有某个链接（mergeInto 依赖）
+ * @param {string} link - 链接 ID 或 URL
+ * @returns {boolean}
+ */
+MNNote.prototype.hasLink = function(link){
+  if (link.ifNoteIdorURL()) {
+    let URL = link.toNoteURL()
+    return this.getCommentIndex(URL) !== -1
+  }
+}
+
+/**
+ * 将 MN3 链接转换为 MN4 链接（mergeInto 依赖）
+ */
+MNNote.prototype.LinksConvertToMN4Version = function(){
+  for (let i = this.comments.length-1; i >= 0; i--) {
+    let comment = this.comments[i]
+    if (
+      comment.type == "TextNote" &&
+      comment.text.startsWith("marginnote3app://note/")
+    ) {
+      let targetNoteId = comment.text.match(/marginnote3app:\/\/note\/(.*)/)[1]
+      let targetNote = MNNote.new(targetNoteId)
+      if (targetNote) {
+        this.removeCommentByIndex(i)
+        this.appendNoteLink(targetNote, "To")
+        this.moveComment(this.comments.length-1, i)
+      } else {
+        this.removeCommentByIndex(i)
+      }
+    }
+  }
+}
+
+/**
+ * 清除失效的链接（mergeInto 依赖）
+ */
+MNNote.prototype.clearFailedLinks = function(){
+  for (let i = this.comments.length-1; i >= 0; i--) {
+    let comment = this.comments[i]
+    if  (
+      comment.type == "TextNote" &&
+      (
+        comment.text.startsWith("marginnote3app://note/") ||
+        comment.text.startsWith("marginnote4app://note/") 
+      )
+    ) {
+      let targetNoteId = comment.text.match(/marginnote[34]app:\/\/note\/(.*)/)[1]
+      if (!targetNoteId.includes("/summary/")) {  // 防止把概要的链接删掉了
+        let targetNote = MNNote.new(targetNoteId)
+        if (!targetNote) {
+          this.removeCommentByIndex(i)
+        }
+      }
+    }
+  }
+}
+
+/**
+ * 获取链接类型（mergeInto 依赖）
+ * @param {string} link - 链接
+ * @returns {string} "Double"|"Single"|"NoLink"
+ */
+MNNote.prototype.LinkGetType = function(link){
+  // 兼容一下 link 是卡片 comment 的情形
+  if (MNUtil.isObj(link) && link.type == "TextNote") {
+    link = link.text
+  }
+  if (link.ifNoteIdorURL()) {
+    // 先确保参数是链接的 ID 或者 URL
+    let linkedNoteId = link.toNoteID()
+    let linkedNoteURL = link.toNoteURL()
+    if (this.hasLink(linkedNoteURL)) {
+      let linkedNote = MNNote.new(linkedNoteId)
+      return linkedNote.hasLink(this.noteURL) ? "Double" : "Single"
+    } else {
+      MNUtil.showHUD("卡片中没有此链接！")
+      return "NoLink"
+    }
+  } else {
+    MNUtil.showHUD("参数不是合法的链接 ID 或 URL！")
+  }
+}
+
+/**
+ * 判断是否为双向链接（mergeInto 依赖）
+ * @param {string} link - 链接
+ * @returns {boolean}
+ */
+MNNote.prototype.LinkIfDouble = function(link){
+  return this.LinkGetType(link) === "Double"
+}
+
+/**
+ * 获取链接评论的索引数组（mergeInto 依赖）
+ * @param {Object|String} link - 链接
+ * @returns {Array<number>} 索引数组
+ */
+MNNote.prototype.getLinkCommentsIndexArr = function(link){
+  return this.getTextCommentsIndexArr(MNUtil.getLinkText(link))
+}
+
+/**
+ * 修复合并造成的链接问题（mergeInto 依赖）
+ */
+MNNote.prototype.fixProblemLinks = function(){
+  let comments = this.MNComments
+  comments.forEach((comment) => {
+    if (comment.type == "linkComment") {
+      let targetNote = MNNote.new(comment.text)
+      if (targetNote && targetNote.groupNoteId) {
+        if (
+          targetNote.groupNoteId !== comment.text
+        ) {
+          comment.text = targetNote.groupNoteId.toNoteURL()
+        }
+      }
+    }
+  })
+}
+
+/**
+ * 获取下一个 HTML 评论的索引（mergeInto 间接依赖）
+ * @param {string} htmltext - HTML 评论文本
+ * @returns {number} 索引，没有则返回 -1
+ */
+MNNote.prototype.getNextHtmlCommentIndex = function(htmltext){
+  let indexArr = this.getHtmlCommentsIndexArr()
+  let htmlCommentIndex = this.getHtmlCommentIndex(htmltext)
+  let nextHtmlCommentIndex = -1
+  if (htmlCommentIndex !== -1) {
+    let nextIndex = indexArr.indexOf(htmlCommentIndex) + 1
+    if (nextIndex < indexArr.length) {
+      nextHtmlCommentIndex = indexArr[nextIndex]
+    }
+  }
+  return nextHtmlCommentIndex
+}
+
+/**
+ * 获取 HTML 块的索引数组（mergeInto 间接依赖）
+ * @param {string} htmltext - HTML 评论文本
+ * @returns {Array<number>} 索引数组
+ */
+MNNote.prototype.getHtmlBlockIndexArr = function(htmltext){
+  let htmlCommentIndex = this.getHtmlCommentIndex(htmltext)
+  let indexArr = []
+  if (htmlCommentIndex !== -1) {
+    // 获取下一个 html 评论的 index
+    let nextHtmlCommentIndex = this.getNextHtmlCommentIndex(htmltext)
+    if (nextHtmlCommentIndex == -1) {
+      // 如果没有下一个 html 评论，则以 htmlCommentIndex 到最后一个评论作为 block
+      for (let i = htmlCommentIndex; i <= this.comments.length-1; i++) {
+        indexArr.push(i)
+      }
+    } else {
+      // 有下一个 html 评论，则以 htmlCommentIndex 到 nextHtmlCommentIndex 之间的评论作为 block
+      for (let i = htmlCommentIndex; i < nextHtmlCommentIndex; i++) {
+        indexArr.push(i)
+      }
+    }
+  }
+  return indexArr
+}
+
+/**
+ * 转换链接到新版本（mergeInto 依赖）
+ */
+MNNote.prototype.convertLinksToNewVersion = function(){
+  this.LinksConvertToMN4Version()
+}
+
+/**
+ * 更新链接（mergeInto 依赖）
+ */
+MNNote.prototype.LinkRenew = function(){
+  this.convertLinksToNewVersion()
+  this.clearFailedLinks()
+  this.fixProblemLinks()
+
+  // 应用去重
+  let applicationHtmlCommentIndex = Math.max(
+    this.getIncludingHtmlCommentIndex("应用："),
+    this.getIncludingCommentIndex("的应用")
+  )
+  if (applicationHtmlCommentIndex !== -1) {
+    this.linkRemoveDuplicatesAfterIndex(applicationHtmlCommentIndex)
+  }
+}
+
+/**
+ * 更新链接（mergeInto 使用）
+ */
+MNNote.prototype.renewLinks = function(){
+  this.LinkRenew()
 }
 
 /**

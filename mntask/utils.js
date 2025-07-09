@@ -1180,7 +1180,7 @@ try {
         note.excerptText = replacedText
         break;
       case "newComment":
-        note.appendTextComment(replacedText)
+        note.appendMarkdownComment(replacedText)
         break;
       default:
         MNUtil.showHUD("Invalid target: "+target)

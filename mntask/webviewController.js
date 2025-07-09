@@ -1588,21 +1588,12 @@ taskController.prototype.customActionByDes = async function (button,des,checkSub
           let commentIndex = des.index ?? 999
           // MNUtil.copy("text"+focusNotes.length)
           MNUtil.undoGrouping(()=>{
-            if (markdown) {
-              focusNotes.forEach(note => {
-                let replacedText = taskUtils.detectAndReplace(comment,undefined,note)
-                if (replacedText.trim()) {
-                  note.appendMarkdownComment(replacedText,commentIndex)
-                }
-              })
-            }else{
-              focusNotes.forEach(note => {
-                let replacedText = taskUtils.detectAndReplace(comment,undefined,note)
-                if (replacedText.trim()) {
-                  note.appendTextComment(replacedText,commentIndex)
-                }
-              })
-            }
+            focusNotes.forEach(note => {
+              let replacedText = taskUtils.detectAndReplace(comment,undefined,note)
+              if (replacedText.trim()) {
+                note.appendMarkdownComment(replacedText,commentIndex)
+              }
+            })
           })
         }
         await MNUtil.delay(0.1)
@@ -1759,11 +1750,7 @@ taskController.prototype.customActionByDes = async function (button,des,checkSub
                 note.noteTitle = mergedText
                 break;
               case "newComment":
-                if ("markdown" in des && des.markdown) {
-                  note.appendMarkdownComment(mergedText)
-                }else{
-                  note.appendTextComment(mergedText)
-                }
+                note.appendMarkdownComment(mergedText)
                 break;
               case "clipboard":
                 MNUtil.copy(mergedText)

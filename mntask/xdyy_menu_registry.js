@@ -78,18 +78,6 @@ function registerAllMenuTemplates() {
         {
           action: "toggleTaskStatusBackward",
           menuTitle: "↩️ 退回状态"
-        },
-        {
-          action: "addTaskLogEntry",
-          menuTitle: "📝 添加任务记录"
-        },
-        {
-          action: "viewTaskLogs",
-          menuTitle: "📊 查看任务记录"
-        },
-        {
-          action: "updateTaskProgress",
-          menuTitle: "📈 更新任务进度"
         }
       ]
     }
@@ -117,6 +105,10 @@ function registerAllMenuTemplates() {
         {
           action: "refreshTodayBoard",
           menuTitle: "🔄 刷新今日看板"
+        },
+        {
+          action: "handleOverdueTasks",
+          menuTitle: "⚠️ 处理过期任务"
         }
       ]
     }
@@ -208,6 +200,20 @@ function registerAllMenuTemplates() {
           action: "manageCustomFields",
           menuTitle: "📋 字段管理（完整功能）"
         },
+        "──────────",
+        {
+          action: "addTaskLogEntry",
+          menuTitle: "📝 添加任务记录"
+        },
+        {
+          action: "viewTaskLogs",
+          menuTitle: "📊 查看任务记录"
+        },
+        {
+          action: "updateTaskProgress",
+          menuTitle: "📈 更新任务进度"
+        },
+        "──────────",
         {
           action: "addOrUpdateLaunchLink",
           menuTitle: "📱 添加/更新启动链接"

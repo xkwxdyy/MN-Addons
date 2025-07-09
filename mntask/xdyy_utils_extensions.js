@@ -2025,15 +2025,27 @@ class MNTaskManager {
     
     // 查找是否已有今日标记
     let todayFieldIndex = -1
+    // 查找是否有过期标记
+    let overdueFieldIndex = -1
+    
     for (let field of parsed.taskFields) {
       if (field.content.includes('📅 今日')) {
         todayFieldIndex = field.index
-        break
+      } else if (field.content.includes('⚠️ 过期')) {
+        overdueFieldIndex = field.index
       }
     }
     
     MNUtil.undoGrouping(() => {
       if (isToday && todayFieldIndex === -1) {
+        // 如果要添加今日标记，先移除过期标记（如果有）
+        if (overdueFieldIndex >= 0) {
+          note.removeCommentByIndex(overdueFieldIndex)
+          MNUtil.log("✅ 移除过期标记")
+          // 移除后需要重新计算索引，因为删除操作会改变后续索引
+          overdueFieldIndex = -1
+        }
+        
         // 添加今日标记（包含日期信息）
         const todayFieldHtml = TaskFieldUtils.createTodayField(true)
         note.appendMarkdownComment(todayFieldHtml)
@@ -2103,6 +2115,14 @@ class MNTaskManager {
   static setTaskPriority(note, priority) {
     if (!this.isTaskCard(note)) {
       MNUtil.showHUD("请选择一个任务卡片")
+      return
+    }
+    
+    // 验证 priority 参数
+    const validPriorities = ['高', '中', '低']
+    if (!priority || !validPriorities.includes(priority)) {
+      MNUtil.showHUD(`❌ 无效的优先级值: ${priority || 'undefined'}`)
+      MNUtil.log(`❌ setTaskPriority 收到无效参数: ${priority}`)
       return
     }
     
@@ -2392,40 +2412,49 @@ class MNTaskManager {
       return false
     }
     
-    const parsed = this.parseTaskComments(note)
-    
-    // 查找任务记录字段
-    let logFieldIndex = -1
-    for (let field of parsed.taskFields) {
-      if (field.content.includes('📝 任务记录')) {
-        logFieldIndex = field.index
-        break
+    try {
+      const parsed = this.parseTaskComments(note)
+      
+      // 查找任务记录字段
+      let logFieldIndex = -1
+      for (let field of parsed.taskFields) {
+        if (field.content.includes('📝 任务记录')) {
+          logFieldIndex = field.index
+          break
+        }
       }
+      
+      MNUtil.undoGrouping(() => {
+        // 如果没有任务记录字段，先创建
+        if (logFieldIndex === -1) {
+          MNUtil.log("📝 创建任务记录字段")
+          const logFieldHtml = TaskFieldUtils.createTaskLogField()
+          note.appendMarkdownComment(logFieldHtml)
+          // 移动到信息字段下方
+          this.moveCommentToField(note, note.MNComments.length - 1, '信息', true)
+        }
+        
+        // 添加新的记录条目
+        MNUtil.log("📝 添加任务记录条目: " + content)
+        const logEntry = TaskFieldUtils.createTaskLogEntry(content, progress)
+        note.appendMarkdownComment(logEntry)
+        
+        // 将记录移动到任务记录字段下方
+        this.moveCommentToField(note, note.MNComments.length - 1, '📝 任务记录', true)
+        
+        // 如果指定了进度，更新任务的总体进度
+        if (progress !== undefined) {
+          MNUtil.log("📊 更新任务进度: " + progress + "%")
+          this.updateTaskProgress(note, progress)
+        }
+      })
+      
+      return true
+    } catch (error) {
+      MNUtil.log("❌ 添加任务记录失败: " + error.message)
+      MNUtil.showHUD("添加任务记录失败：" + error.message)
+      return false
     }
-    
-    MNUtil.undoGrouping(() => {
-      // 如果没有任务记录字段，先创建
-      if (logFieldIndex === -1) {
-        const logFieldHtml = TaskFieldUtils.createTaskLogField()
-        note.appendMarkdownComment(logFieldHtml)
-        // 移动到信息字段下方
-        this.moveCommentToField(note, note.MNComments.length - 1, '信息', true)
-      }
-      
-      // 添加新的记录条目
-      const logEntry = TaskFieldUtils.createTaskLogEntry(content, progress)
-      note.appendTextComment(logEntry)
-      
-      // 将记录移动到任务记录字段下方
-      this.moveCommentToField(note, note.MNComments.length - 1, '任务记录', true)
-      
-      // 如果指定了进度，更新任务的总体进度
-      if (progress !== undefined) {
-        this.updateTaskProgress(note, progress)
-      }
-    })
-    
-    return true
   }
   
   /**
@@ -2853,6 +2882,11 @@ class MNTaskManager {
         text.includes('## 😴') ||
         text.includes('## ✅') ||
         text.includes('## 💡') ||
+        // 过期任务提醒相关
+        text.includes('## ⚠️ 过期任务提醒') ||
+        text.includes('个过期任务：') ||
+        text.includes('- ⚠️ **过期') ||
+        text.includes('💡 点击「今日任务」→「处理过期任务」') ||
         // 统计信息条目
         text.startsWith('- 总任务数：') ||
         text.startsWith('- 进行中：') ||
@@ -2882,17 +2916,33 @@ class MNTaskManager {
   /**
    * 分组今日任务
    * @param {MNNote[]} tasks - 今日任务列表
+   * @param {Array} overdueTasks - 过期任务数组（包含task和overdueDays信息）
    * @returns {Object} 分组后的任务
    */
-  static groupTodayTasks(tasks) {
+  static groupTodayTasks(tasks, overdueTasks = []) {
     const grouped = {
+      overdue: [],      // 新增过期任务分组
       highPriority: [],
       inProgress: [],
       notStarted: [],
       completed: []
     }
     
+    // 先处理过期任务
+    if (overdueTasks.length > 0) {
+      overdueTasks.forEach(({ task, overdueDays }) => {
+        // 为过期任务添加过期天数信息
+        task._overdueDays = overdueDays
+        grouped.overdue.push(task)
+      })
+    }
+    
     tasks.forEach(task => {
+      // 如果任务已经在过期组中，跳过
+      if (grouped.overdue.some(t => t.noteId === task.noteId)) {
+        return
+      }
+      
       const parts = this.parseTaskTitle(task.noteTitle)
       const priority = this.getTaskPriority(task)
       
@@ -2929,6 +2979,15 @@ class MNTaskManager {
    * @param {Object} grouped - 分组后的任务
    */
   static addTaskLinksToBoard(boardNote, grouped) {
+    // 过期任务（优先显示）
+    if (grouped.overdue && grouped.overdue.length > 0) {
+      boardNote.appendMarkdownComment("## ⚠️ 过期任务")
+      grouped.overdue.forEach(task => {
+        const link = this.createTaskLink(task)
+        boardNote.appendMarkdownComment(link)
+      })
+    }
+    
     // 高优先级任务
     if (grouped.highPriority.length > 0) {
       boardNote.appendMarkdownComment("## 🔴 高优先级")
@@ -2984,6 +3043,12 @@ class MNTaskManager {
       displayText = `${time} ${displayText}`
     }
     
+    // 检查是否是过期任务并添加过期天数
+    if (task._overdueDays) {
+      const daysText = task._overdueDays === 1 ? "1天" : `${task._overdueDays}天`
+      displayText = `${displayText} (过期${daysText})`
+    }
+    
     // 添加任务类型图标
     let typeIcon = ''
     switch (parts.type) {
@@ -3001,11 +3066,17 @@ class MNTaskManager {
         break
     }
     
-    // 添加优先级标记
+    // 添加优先级标记（过期任务使用特殊标记）
     let priorityIcon = ''
-    if (priority === '高') priorityIcon = '🔴 '
-    else if (priority === '中') priorityIcon = '🟡 '
-    else if (priority === '低') priorityIcon = '🟢 '
+    if (task._overdueDays) {
+      priorityIcon = '⚠️ '  // 过期任务统一使用警告图标
+    } else if (priority === '高') {
+      priorityIcon = '🔴 '
+    } else if (priority === '中') {
+      priorityIcon = '🟡 '
+    } else if (priority === '低') {
+      priorityIcon = '🟢 '
+    }
     
     // 添加状态标记（如果是已完成）
     let statusIcon = ''

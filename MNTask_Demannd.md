@@ -2,6 +2,26 @@
 1. 一旦修改代码，就需要按照修改的内容程度来改 mnaddon.json 的版本号。
 2. 任何更新，尤其是新功能，要在 mntask_guide.md 里详细更新。
 ---
+目前开发的按钮功能包括菜单里的，仍然有很多有问题！请你进行一遍详细的自查与修复 ultrathink
+
+---
+添加任务记录这些功能应该放在字段记录的那个按钮里，而不是任务状态切换的按钮 ultrathink
+
+
+---
+设置优先级功能出问题了，没有弹窗，而是直接加了 `<span id="subField" style="background:#FFF;color:#FF8C5A;border:2px solid currentColor;border-radius:3px;padding:6px 12px;font-size:0.9em;font-weight:600;box-shadow:0 1px 3px rgba(255,140,90,0.2);display:inline-block;">🔥 优先级: ⚪ undefined</span>` 请修复 ultrathink
+
+---
+过期任务功能现在很不完善！看板里虽然会增加有几个过期任务，但我看不到哪些过期了，“使用「处理过期任务」功能管理”，这个提示也没用啊，也没这个功能。
+
+筛选的功能也有大问题，请你仔细重新检查。ultrathink
+
+---
+MNTask 里关于任务记录的几个功能，没几个能用的，要不就是点击没反应，请仔细检查！ ultrathink
+
+
+
+---
 我发现 MNTask 里用了 MNMath 的 toNoExcerptVersion 函数，并且很多次，但这个其实和 math 无关，我觉得要不就把 toNoExcerptVersion 函数的实现写到 mntask 里的辅助类里，避免对 MNMath 类有依赖，因为 MNMath 是扩展部分，不是官方原生的功能。ultrathink
 
 ---

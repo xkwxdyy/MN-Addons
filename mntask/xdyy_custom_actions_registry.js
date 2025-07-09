@@ -52,13 +52,14 @@ function registerAllCustomActions() {
   MNTaskGlobal.registerCustomAction("taskCardMake", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     
-    if (!focusNote && (!focusNotes || focusNotes.length === 0)) {
-      MNUtil.showHUD("请先选择一个或多个笔记");
-      return;
-    }
-    
-    // 使用 focusNotes（支持多选）或单个 focusNote
-    const notesToProcess = focusNotes && focusNotes.length > 0 ? focusNotes : [focusNote];
+    try {
+      if (!focusNote && (!focusNotes || focusNotes.length === 0)) {
+        MNUtil.showHUD("请先选择一个或多个笔记");
+        return;
+      }
+      
+      // 使用 focusNotes（支持多选）或单个 focusNote
+      const notesToProcess = focusNotes && focusNotes.length > 0 ? focusNotes : [focusNote];
     
     // 区分已经是任务卡片和需要转换的卡片
     const taskCards = [];
@@ -202,22 +203,27 @@ function registerAllCustomActions() {
         MNUtil.showHUD(message);
       }
     });
+    } catch (error) {
+      MNUtil.log(`❌ taskCardMake 执行失败: ${error.message || error}`);
+      MNUtil.showHUD(`任务制卡失败: ${error.message || "未知错误"}`);
+    }
   });
   
   // toggleTaskStatusForward - 向前切换任务状态（单击）
   MNTaskGlobal.registerCustomAction("toggleTaskStatusForward", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     
-    if (!focusNote) {
-      MNUtil.showHUD("请先选择一个任务");
-      return;
-    }
-    
-    // 判断是否是任务卡片
-    if (!MNTaskManager.isTaskCard(focusNote)) {
-      MNUtil.showHUD("请选择一个任务卡片");
-      return;
-    }
+    try {
+      if (!focusNote) {
+        MNUtil.showHUD("请先选择一个任务");
+        return;
+      }
+      
+      // 判断是否是任务卡片
+      if (!MNTaskManager.isTaskCard(focusNote)) {
+        MNUtil.showHUD("请选择一个任务卡片");
+        return;
+      }
     
     // 解析当前状态
     const titleParts = MNTaskManager.parseTaskTitle(focusNote.noteTitle);
@@ -292,6 +298,10 @@ function registerAllCustomActions() {
     });
     
     MNUtil.showHUD(`✅ 状态已更新：${currentStatus} → ${newStatus}`);
+    } catch (error) {
+      MNUtil.log(`❌ toggleTaskStatusForward 执行失败: ${error.message || error}`);
+      MNUtil.showHUD(`状态切换失败: ${error.message || "未知错误"}`);
+    }
   });
   
   // toggleTaskStatusBackward - 退回上一个状态（长按菜单）
@@ -810,7 +820,7 @@ function registerAllCustomActions() {
           colorIndex: 7  // 橙色
         });
         newInbox.appendTags(["今日聚焦", "Inbox"]);
-        newInbox.appendTextComment("待处理任务和今日必做事项");
+        newInbox.appendMarkdownComment("待处理任务和今日必做事项");
         
         // 移动任务到新创建的 Inbox
         focusNotes.forEach(note => {
@@ -1238,6 +1248,11 @@ function registerAllCustomActions() {
       return;
     }
     
+    if (!MNTaskManager.isTaskCard(focusNote)) {
+      MNUtil.showHUD("请选择一个任务卡片");
+      return;
+    }
+    
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "更新任务进度",
       "请输入进度百分比 (0-100)",
@@ -1249,16 +1264,17 @@ function registerAllCustomActions() {
           const progressText = alert.textFieldAtIndex(0).text;
           const percentage = parseInt(progressText);
           
-          if (isNaN(percentage)) {
-            MNUtil.showHUD("请输入有效的数字");
+          if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+            MNUtil.showHUD("请输入 0-100 之间的数字");
             return;
           }
           
           MNUtil.undoGrouping(() => {
             try {
-              MNTaskManager.updateProgress(focusNote, percentage);
+              MNTaskManager.updateTaskProgress(focusNote, percentage);
               MNUtil.showHUD(`✅ 进度已更新为 ${percentage}%`);
             } catch (error) {
+              MNUtil.log("❌ 更新进度失败: " + error.message);
               MNUtil.showHUD("更新进度失败：" + error.message);
             }
           });
@@ -1383,7 +1399,7 @@ function registerAllCustomActions() {
           MNUtil.undoGrouping(() => {
             try {
               const timestamp = new Date().toLocaleString();
-              focusNote.appendTextComment(`进度备注 [${timestamp}]：${note}`);
+              focusNote.appendMarkdownComment(`- 进度备注 [${timestamp}]：${note}`);
               MNUtil.showHUD("✅ 进度备注已添加");
             } catch (error) {
               MNUtil.showHUD("添加备注失败：" + error.message);
@@ -1421,7 +1437,7 @@ function registerAllCustomActions() {
           MNUtil.undoGrouping(() => {
             try {
               const now = new Date();
-              focusNote.appendTextComment(`工作时间记录：${hours}小时 (${now.toLocaleString()})`);
+              focusNote.appendMarkdownComment(`- 工作时间记录：${hours}小时 (${now.toLocaleString()})`);
               
               // 更新累计时间标签
               const timeTags = focusNote.tags.filter(tag => tag.includes("小时"));
@@ -1825,7 +1841,7 @@ function registerAllCustomActions() {
           note.appendTags([tomorrowTag, "明日"]);
           
           // 添加推迟记录
-          note.appendTextComment(`推迟记录：从 ${today.toLocaleDateString()} 推迟到 ${tomorrow.toLocaleDateString()}`);
+          note.appendMarkdownComment(`推迟记录：从 ${today.toLocaleDateString()} 推迟到 ${tomorrow.toLocaleDateString()}`);
           
           note.refresh();
         } catch (error) {
@@ -1848,40 +1864,48 @@ function registerAllCustomActions() {
       return;
     }
     
-    // 获取当前进度
-    const currentProgress = MNTaskManager.getLatestProgress(focusNote) || 0;
-    
-    // 输入记录内容
-    const content = await MNUtil.input(
-      "添加任务记录",
-      "请输入本次工作内容",
-      ""
-    );
-    
-    if (!content) return;
-    
-    // 输入进度
-    const progressStr = await MNUtil.input(
-      "更新进度",
-      `当前进度: ${currentProgress}%\n请输入新的进度百分比 (0-100)`,
-      String(currentProgress)
-    );
-    
-    let progress = null;
-    if (progressStr) {
-      progress = parseInt(progressStr);
-      if (isNaN(progress) || progress < 0 || progress > 100) {
-        MNUtil.showHUD("进度必须是 0-100 之间的数字");
-        return;
+    try {
+      // 获取当前进度
+      const currentProgress = MNTaskManager.getLatestProgress(focusNote) || 0;
+      
+      // 输入记录内容
+      const contentRes = await MNUtil.input(
+        "添加任务记录",
+        "请输入本次工作内容",
+        ["取消", "确定"]
+      );
+      
+      if (!contentRes.button || !contentRes.input) return;
+      const content = contentRes.input;
+      
+      // 输入进度
+      const progressRes = await MNUtil.input(
+        "更新进度",
+        `当前进度: ${currentProgress}%\n请输入新的进度百分比 (0-100)`,
+        ["取消", "确定"]
+      );
+      
+      let progress = null;
+      if (progressRes.button && progressRes.input) {
+        progress = parseInt(progressRes.input);
+        if (isNaN(progress) || progress < 0 || progress > 100) {
+          MNUtil.showHUD("进度必须是 0-100 之间的数字");
+          return;
+        }
       }
+      
+      // 添加记录
+      const success = MNTaskManager.addTaskLog(focusNote, content, progress);
+      
+      if (success) {
+        // 显示成功提示
+        const progressText = progress !== null ? `，进度: ${progress}%` : "";
+        MNUtil.showHUD(`✅ 已添加任务记录${progressText}`);
+      }
+    } catch (error) {
+      MNUtil.log("❌ addTaskLogEntry 执行失败: " + error.message);
+      MNUtil.showHUD("操作失败：" + error.message);
     }
-    
-    // 添加记录
-    MNTaskManager.addTaskLog(focusNote, content, progress);
-    
-    // 显示成功提示
-    const progressText = progress !== null ? `，进度: ${progress}%` : "";
-    MNUtil.showHUD(`✅ 已添加任务记录${progressText}`);
   });
   
   // viewTaskLogs - 查看任务记录
@@ -1893,66 +1917,71 @@ function registerAllCustomActions() {
       return;
     }
     
-    // 获取所有记录
-    const logs = MNTaskManager.getTaskLogs(focusNote);
-    
-    if (logs.length === 0) {
-      MNUtil.showHUD("暂无任务记录");
-      return;
-    }
-    
-    // 构建显示内容
-    const taskParts = MNTaskManager.parseTaskTitle(focusNote.noteTitle);
-    let content = [`📝 任务记录 - ${taskParts.content}`, ""];
-    
-    // 添加当前进度
-    const currentProgress = MNTaskManager.getLatestProgress(focusNote);
-    if (currentProgress !== null) {
-      content.push(`📊 当前进度: ${currentProgress}%`);
-      content.push("");
-    }
-    
-    // 添加记录列表
-    content.push("📋 历史记录:");
-    logs.forEach((log, index) => {
-      const progressText = log.progress !== null ? ` | ${log.progress}%` : "";
-      content.push(`${index + 1}. ${log.timestamp}${progressText}`);
-      content.push(`   ${log.content}`);
-    });
-    
-    // 统计信息
-    content.push("");
-    content.push("📊 统计信息:");
-    content.push(`- 总记录数: ${logs.length}`);
-    
-    // 计算时间跨度
-    if (logs.length > 0) {
-      const firstTime = logs[0].timestamp;
-      const lastTime = logs[logs.length - 1].timestamp;
-      content.push(`- 首次记录: ${firstTime}`);
-      content.push(`- 最后记录: ${lastTime}`);
-    }
-    
-    // 显示对话框
-    const options = ["确定", "编辑记录", "导出记录"];
-    const selectedIndex = await MNUtil.userSelect(
-      "任务记录历史",
-      content.join("\n"),
-      options
-    );
-    
-    if (selectedIndex === 2) {
-      // 编辑记录（待实现）
-      MNUtil.showHUD("编辑功能开发中...");
-    } else if (selectedIndex === 3) {
-      // 导出记录
-      const exportContent = logs.map(log => {
-        const progressText = log.progress !== null ? ` | 进度: ${log.progress}%` : "";
-        return `${log.timestamp} | ${log.content}${progressText}`;
-      }).join("\n");
+    try {
+      // 获取所有记录
+      const logs = MNTaskManager.getTaskLogs(focusNote);
       
-      MNUtil.copyText(exportContent);
-      MNUtil.showHUD("✅ 已复制到剪贴板");
+      if (logs.length === 0) {
+        MNUtil.showHUD("暂无任务记录");
+        return;
+      }
+      
+      // 构建显示内容
+      const taskParts = MNTaskManager.parseTaskTitle(focusNote.noteTitle);
+      let content = [`📝 任务记录 - ${taskParts.content}`, ""];
+      
+      // 添加当前进度
+      const currentProgress = MNTaskManager.getLatestProgress(focusNote);
+      if (currentProgress !== null) {
+        content.push(`📊 当前进度: ${currentProgress}%`);
+        content.push("");
+      }
+      
+      // 添加记录列表
+      content.push("📋 历史记录:");
+      logs.forEach((log, index) => {
+        const progressText = log.progress !== null ? ` | ${log.progress}%` : "";
+        content.push(`${index + 1}. ${log.timestamp}${progressText}`);
+        content.push(`   ${log.content}`);
+      });
+      
+      // 统计信息
+      content.push("");
+      content.push("📊 统计信息:");
+      content.push(`- 总记录数: ${logs.length}`);
+      
+      // 计算时间跨度
+      if (logs.length > 0) {
+        const firstTime = logs[0].timestamp;
+        const lastTime = logs[logs.length - 1].timestamp;
+        content.push(`- 首次记录: ${firstTime}`);
+        content.push(`- 最后记录: ${lastTime}`);
+      }
+      
+      // 显示对话框
+      const options = ["确定", "编辑记录", "导出记录"];
+      const selectedIndex = await MNUtil.userSelect(
+        "任务记录历史",
+        content.join("\n"),
+        options
+      );
+      
+      if (selectedIndex === 2) {
+        // 编辑记录（待实现）
+        MNUtil.showHUD("编辑功能开发中...");
+      } else if (selectedIndex === 3) {
+        // 导出记录
+        const exportContent = logs.map(log => {
+          const progressText = log.progress !== null ? ` | 进度: ${log.progress}%` : "";
+          return `${log.timestamp} | ${log.content}${progressText}`;
+        }).join("\n");
+        
+        MNUtil.copy(exportContent);
+        MNUtil.showHUD("✅ 已复制到剪贴板");
+      }
+    } catch (error) {
+      MNUtil.log("❌ viewTaskLogs 执行失败: " + error.message);
+      MNUtil.showHUD("查看记录失败：" + error.message);
     }
   });
   
@@ -2007,16 +2036,17 @@ function registerAllCustomActions() {
         break;
       case 8:
         // 自定义记录
-        content = await MNUtil.input("自定义记录", "请输入记录内容", "");
-        if (!content) return;
+        const customRes = await MNUtil.input("自定义记录", "请输入记录内容", ["取消", "确定"]);
+        if (!customRes.button || !customRes.input) return;
+        content = customRes.input;
         break;
     }
     
     // 如果内容以冒号结尾，需要补充详情
     if (content.endsWith("：")) {
-      const detail = await MNUtil.input("补充详情", content, "");
-      if (!detail) return;
-      content += detail;
+      const detailRes = await MNUtil.input("补充详情", content, ["取消", "确定"]);
+      if (!detailRes.button || !detailRes.input) return;
+      content += detailRes.input;
     }
     
     // 添加记录
@@ -2045,8 +2075,9 @@ function registerAllCustomActions() {
     
     if (splitMode === 1) {
       // 简单拆分
-      const rangeInput = await MNUtil.input("章节范围", "请输入章节范围（例如：1-10）");
-      if (!rangeInput) return;
+      const rangeRes = await MNUtil.input("章节范围", "请输入章节范围（例如：1-10）", ["取消", "确定"]);
+      if (!rangeRes.button || !rangeRes.input) return;
+      const rangeInput = rangeRes.input;
       
       const match = rangeInput.match(/^(\d+)-(\d+)$/);
       if (!match) {
@@ -2114,8 +2145,9 @@ function registerAllCustomActions() {
     }
     
     // 输入总页数
-    const totalPagesInput = await MNUtil.input("设置总页数", `请输入书籍总页数\n${currentProgress > 1 ? `当前进度：第${currentProgress}页` : ''}`);
-    if (!totalPagesInput) return;
+    const totalPagesRes = await MNUtil.input("设置总页数", `请输入书籍总页数\n${currentProgress > 1 ? `当前进度：第${currentProgress}页` : ''}`, ["取消", "确定"]);
+    if (!totalPagesRes.button || !totalPagesRes.input) return;
+    const totalPagesInput = totalPagesRes.input;
     
     const totalPages = parseInt(totalPagesInput);
     if (isNaN(totalPages) || totalPages <= 0) {
@@ -2124,8 +2156,9 @@ function registerAllCustomActions() {
     }
     
     // 输入每日页数
-    const pagesPerDayInput = await MNUtil.input("每日阅读页数", "建议根据您的阅读速度设置（默认20页）");
-    const pagesPerDay = pagesPerDayInput ? parseInt(pagesPerDayInput) : 20;
+    const pagesPerDayRes = await MNUtil.input("每日阅读页数", "建议根据您的阅读速度设置（默认20页）", ["取消", "确定"]);
+    if (!pagesPerDayRes.button) return;
+    const pagesPerDay = pagesPerDayRes.input ? parseInt(pagesPerDayRes.input) : 20;
     
     if (isNaN(pagesPerDay) || pagesPerDay <= 0) {
       MNUtil.showHUD("请输入有效的每日页数");
@@ -2570,27 +2603,23 @@ function registerAllCustomActions() {
       
       let targetType = null;
       switch(selectedIndex) {
-        case 1: targetType = 'objective'; break;
-        case 2: targetType = 'keyResult'; break;
-        case 3: targetType = 'project'; break;
-        case 4: targetType = 'task'; break;
+        case 1: targetType = '目标'; break;
+        case 2: targetType = '关键结果'; break;
+        case 3: targetType = '项目'; break;
+        case 4: targetType = '动作'; break;
         case 5: targetType = null; break; // 全部
       }
       
-      const notebook = MNNotebook.currentNotebook;
-      if (!notebook) {
-        MNUtil.showHUD("无法获取当前笔记本");
-        return;
+      // 使用 TaskFilterEngine 从看板筛选
+      const criteria = {};
+      if (targetType) {
+        criteria.hierarchyType = targetType;
       }
+      const filteredTasks = TaskFilterEngine.filter(criteria);
       
-      const filteredNotes = notebook.notes.filter(note => {
-        const type = MNTaskManager.getTaskType(note);
-        return type && (targetType === null || type.key === targetType);
-      });
-      
-      // 使用分区管理系统处理筛选结果
-      const typeName = targetType ? MNTaskManager.taskTypes[targetType].zhName : "所有类型";
-      MNTaskManager.executeFilterWithPartition(typeName + "任务", filteredNotes, context);
+      // 使用统一的展示方式
+      const typeName = targetType || "所有类型";
+      await showFilterResultsMenu(filteredTasks, typeName + "任务");
   });
 
   // filterByTaskStatus - 按任务状态筛选
@@ -2601,33 +2630,26 @@ function registerAllCustomActions() {
     const selectedIndex = await MNUtil.userSelect("选择任务状态", "", options);
     if (selectedIndex === 0) return; // 0 是取消按钮
     
-    let targetStatus = null;
+    let targetStatuses = [];
     switch(selectedIndex) {
-      case 1: targetStatus = 'notStarted'; break;
-      case 2: targetStatus = 'inProgress'; break;
-      case 3: targetStatus = 'completed'; break;
-      case 4: targetStatus = 'blocked'; break;
-      case 5: targetStatus = 'cancelled'; break;
-      case 6: targetStatus = null; break; // 全部
+      case 1: targetStatuses = ['未开始']; break;
+      case 2: targetStatuses = ['进行中']; break;
+      case 3: targetStatuses = ['已完成']; break;
+      case 4: targetStatuses = ['已阻塞']; break;
+      case 5: targetStatuses = ['已取消']; break;
+      case 6: targetStatuses = null; break; // 全部状态，不设置筛选条件
     }
     
-    const notebook = MNNotebook.currentNotebook;
-    if (!notebook) {
-      MNUtil.showHUD("无法获取当前笔记本");
-      return;
+    // 使用 TaskFilterEngine 从看板筛选
+    const criteria = {};
+    if (targetStatuses) {
+      criteria.statuses = targetStatuses;
     }
+    const filteredTasks = TaskFilterEngine.filter(criteria);
     
-    const filteredNotes = notebook.notes.filter(note => {
-      const type = MNTaskManager.getTaskType(note);
-      if (!type) return false;
-      
-      const status = MNTaskManager.getNoteStatus(note);
-      return targetStatus === null || status === targetStatus;
-    });
-    
-    // 使用分区管理系统处理筛选结果
+    // 使用统一的展示方式
     const statusName = options[selectedIndex - 1];
-    MNTaskManager.executeFilterWithPartition(statusName + "任务", filteredNotes, context);
+    await showFilterResultsMenu(filteredTasks, statusName + "任务");
   });
 
   // filterByProgress - 按进度筛选
@@ -2648,34 +2670,30 @@ function registerAllCustomActions() {
       case 6: minProgress = 100; maxProgress = 100; break;
     }
     
-    const notebook = MNNotebook.currentNotebook;
-    if (!notebook) {
-      MNUtil.showHUD("无法获取当前笔记本");
-      return;
-    }
-    
-    const filteredNotes = notebook.notes.filter(note => {
-      const type = MNTaskManager.getTaskType(note);
-      if (!type) return false;
-      
-      // 获取进度
-      let progress = 0;
-      const progressTags = note.tags.filter(tag => tag.includes("%进度"));
-      if (progressTags.length > 0) {
-        const match = progressTags[0].match(/(\d+)%进度/);
-        if (match) {
-          progress = parseInt(match[1]);
+    // 使用 TaskFilterEngine 从看板筛选，并添加自定义筛选函数
+    const criteria = {
+      customFilter: (task) => {
+        // 获取进度
+        let progress = 0;
+        const progressTags = task.tags.filter(tag => tag.includes("%进度"));
+        if (progressTags.length > 0) {
+          const match = progressTags[0].match(/(\d+)%进度/);
+          if (match) {
+            progress = parseInt(match[1]);
+          }
+        } else if (task.colorIndex === 5) {
+          // 已完成状态默认100%
+          progress = 100;
         }
-      } else if (note.colorIndex === 5) {
-        // 已完成状态默认100%
-        progress = 100;
+        
+        return progress >= minProgress && progress <= maxProgress;
       }
-      
-      return progress >= minProgress && progress <= maxProgress;
-    });
+    };
+    
+    const filteredTasks = TaskFilterEngine.filter(criteria);
     
     // 按进度排序
-    filteredNotes.sort((a, b) => {
+    filteredTasks.sort((a, b) => {
       const getProgress = (note) => {
         const tags = note.tags.filter(tag => tag.includes("%进度"));
         if (tags.length > 0) {
@@ -2687,26 +2705,22 @@ function registerAllCustomActions() {
       return getProgress(b) - getProgress(a);
     });
     
-    // 使用分区管理系统处理筛选结果
+    // 使用统一的展示方式
     const progressName = `进度${options[selectedIndex - 1]}`;
-    MNTaskManager.executeFilterWithPartition(progressName, filteredNotes, context);
+    await showFilterResultsMenu(filteredTasks, progressName);
   });
 
   // filterByTag - 按标签筛选
   MNTaskGlobal.registerCustomAction("filterByTag", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
     
-    const notebook = MNNotebook.currentNotebook;
-    if (!notebook) {
-      MNUtil.showHUD("无法获取当前笔记本");
-      return;
-    }
+    // 先获取所有看板中的任务
+    const allTasks = TaskFilterEngine.filter({});
     
     // 收集所有标签
     const tagSet = new Set();
-    notebook.notes.forEach(note => {
-      const type = MNTaskManager.getTaskType(note);
-      if (type && note.tags) {
+    allTasks.forEach(note => {
+      if (note.tags) {
         note.tags.forEach(tag => {
           // 排除日期标签和进度标签
           if (!tag.match(/^\d{4}\/\d{2}\/\d{2}$/) && !tag.includes("%进度") && !tag.includes("小时")) {
@@ -2727,17 +2741,12 @@ function registerAllCustomActions() {
     
     const selectedTags = [tags[selectedIndex - 1]]; // 转换为数组以保持后续代码兼容
     
-    const filteredNotes = notebook.notes.filter(note => {
-      const type = MNTaskManager.getTaskType(note);
-      if (!type || !note.tags) return false;
-      
-      // 检查是否包含所有选中的标签
-      return selectedTags.every(tag => note.tags.includes(tag));
-    });
+    // 使用 TaskFilterEngine 从看板筛选
+    const filteredTasks = TaskFilterEngine.filter({ tags: selectedTags });
     
-    // 使用分区管理系统处理筛选结果
+    // 使用统一的展示方式
     const tagText = selectedTags.join(", ");
-    MNTaskManager.executeFilterWithPartition(`标签[${tagText}]`, filteredNotes, context);
+    await showFilterResultsMenu(filteredTasks, `标签[${tagText}]`);
   });
 
   // filterOverdueTasks - 筛选逾期任务
@@ -3065,7 +3074,7 @@ function registerAllCustomActions() {
         });
         
         // 添加项目起始时间
-        projectNote.appendTextComment(`起始时间：${new Date().toLocaleString()}`);
+        projectNote.appendMarkdownComment(`- 起始时间：${new Date().toLocaleString()}`);
         
         projectNote.focusInMindMap(0.2);
         MNUtil.showHUD("✅ 已创建项目");
@@ -3109,8 +3118,8 @@ function registerAllCustomActions() {
               colorIndex: 7  // 橙色
             });
             milestone.appendTags(["里程碑", "未完成"]);
-            milestone.appendTextComment("截止日期：待定");
-            milestone.appendTextComment("负责人：待定");
+            milestone.appendMarkdownComment("- 截止日期：待定");
+            milestone.appendMarkdownComment("- 负责人：待定");
             
             focusNote.refresh();
             MNUtil.showHUD("✅ 已创建里程碑");
@@ -3186,9 +3195,9 @@ function registerAllCustomActions() {
               });
               
               actionNote.appendTags(["行动项", "待处理"]);
-              actionNote.appendTextComment("场景：未设置");
-              actionNote.appendTextComment("预计时间：未设置");
-              actionNote.appendTextComment(`创建时间：${new Date().toLocaleString()}`);
+              actionNote.appendMarkdownComment("- 场景：未设置");
+              actionNote.appendMarkdownComment("- 预计时间：未设置");
+              actionNote.appendMarkdownComment(`- 创建时间：${new Date().toLocaleString()}`);
               
               parentNote.refresh();
               MNUtil.showHUD("✅ 已创建行动项");
@@ -3221,7 +3230,7 @@ function registerAllCustomActions() {
         if (contextIndex !== -1) {
           focusNote.removeCommentByIndex(contextIndex);
         }
-        focusNote.appendTextComment(`场景：${selectedContext}`);
+        focusNote.appendMarkdownComment(`场景：${selectedContext}`);
         
         // 添加场景标签
         const contextTag = selectedContext.split(' ')[1];
@@ -3269,12 +3278,13 @@ function registerAllCustomActions() {
   MNTaskGlobal.registerCustomAction("toggleTodayMark", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
     
-    if (!focusNote && (!focusNotes || focusNotes.length === 0)) {
-      MNUtil.showHUD("请先选择一个或多个任务");
-      return;
-    }
-    
-    const notesToProcess = focusNotes && focusNotes.length > 0 ? focusNotes : [focusNote];
+    try {
+      if (!focusNote && (!focusNotes || focusNotes.length === 0)) {
+        MNUtil.showHUD("请先选择一个或多个任务");
+        return;
+      }
+      
+      const notesToProcess = focusNotes && focusNotes.length > 0 ? focusNotes : [focusNote];
     
     MNUtil.undoGrouping(() => {
       let addCount = 0;
@@ -3307,6 +3317,10 @@ function registerAllCustomActions() {
         MNTaskGlobal.executeCustomAction("refreshTodayBoard", context);
       });
     }
+    } catch (error) {
+      MNUtil.log(`❌ toggleTodayMark 执行失败: ${error.message || error}`);
+      MNUtil.showHUD(`标记今日任务失败: ${error.message || "未知错误"}`);
+    }
   });
 
   // setTaskPriority - 设置任务优先级
@@ -3324,17 +3338,49 @@ function registerAllCustomActions() {
     }
     
     const priorities = ["高", "中", "低"];
-    const selectedIndex = await MNUtil.userSelect("设置任务优先级", "", priorities);
     
-    if (selectedIndex === 0) return; // 用户取消
-    
-    const priority = priorities[selectedIndex - 1];
-    
-    MNUtil.undoGrouping(() => {
-      MNTaskManager.setTaskPriority(focusNote, priority);
-    });
-    
-    MNUtil.showHUD(`✅ 优先级已设置为：${priority}`);
+    try {
+      // 添加调试日志
+      MNUtil.log("🔥 开始设置任务优先级");
+      
+      const selectedIndex = await MNUtil.userSelect("设置任务优先级", "", priorities);
+      
+      // 添加返回值日志
+      MNUtil.log(`🔥 userSelect 返回值: ${selectedIndex}`);
+      
+      // 验证返回值
+      if (selectedIndex === 0 || selectedIndex === null || selectedIndex === undefined) {
+        MNUtil.log("🔥 用户取消或返回值无效");
+        return; // 用户取消或返回值无效
+      }
+      
+      // 验证索引范围
+      if (selectedIndex < 1 || selectedIndex > priorities.length) {
+        MNUtil.showHUD("❌ 选择无效，请重试");
+        MNUtil.log(`🔥 无效的选择索引: ${selectedIndex}`);
+        return;
+      }
+      
+      const priority = priorities[selectedIndex - 1];
+      
+      // 再次验证 priority 值
+      if (!priority || !["高", "中", "低"].includes(priority)) {
+        MNUtil.showHUD("❌ 优先级值无效");
+        MNUtil.log(`🔥 无效的优先级值: ${priority}`);
+        return;
+      }
+      
+      MNUtil.log(`🔥 即将设置优先级为: ${priority}`);
+      
+      MNUtil.undoGrouping(() => {
+        MNTaskManager.setTaskPriority(focusNote, priority);
+      });
+      
+      MNUtil.showHUD(`✅ 优先级已设置为：${priority}`);
+    } catch (error) {
+      MNUtil.showHUD("❌ 设置优先级失败");
+      MNUtil.log(`🔥 设置优先级出错: ${error.message || error}`);
+    }
   });
 
   // setTaskTime - 设置任务计划时间
@@ -3360,8 +3406,10 @@ function registerAllCustomActions() {
     let time = timeOptions[selectedIndex - 1];
     
     if (time === "自定义") {
-      time = await MNUtil.input("请输入计划时间", "格式：HH:MM（如 09:30）", "09:00");
-      if (!time || !time.match(/^\d{1,2}:\d{2}$/)) {
+      const timeRes = await MNUtil.input("请输入计划时间", "格式：HH:MM（如 09:30）", ["取消", "确定"]);
+      if (!timeRes.button || !timeRes.input) return;
+      time = timeRes.input;
+      if (!time.match(/^\d{1,2}:\d{2}$/)) {
         MNUtil.showHUD("时间格式错误");
         return;
       }
@@ -3481,21 +3529,14 @@ function registerAllCustomActions() {
         return;
       }
       
-      // 按优先级和状态分组
-      const grouped = MNTaskManager.groupTodayTasks(todayTasks);
+      // 按优先级和状态分组（包含过期任务）
+      const grouped = MNTaskManager.groupTodayTasks(todayTasks, overdueTasks);
       
-      // 添加任务链接到看板
+      // 添加任务链接到看板（过期任务会作为单独的分组显示）
       MNTaskManager.addTaskLinksToBoard(todayBoard, grouped);
       
       // 添加统计信息
       MNTaskManager.updateBoardStatistics(todayBoard, todayTasks);
-      
-      // 如果有过期任务，额外添加过期任务提示
-      if (overdueTasks.length > 0) {
-        todayBoard.appendMarkdownComment("## ⚠️ 过期任务提醒");
-        todayBoard.appendMarkdownComment(`- 发现 ${overdueTasks.length} 个过期任务`);
-        todayBoard.appendMarkdownComment("- 使用「处理过期任务」功能管理");
-      }
       
       // 刷新看板显示
       todayBoard.refresh();
@@ -3678,9 +3719,9 @@ function registerAllCustomActions() {
         break;
         
       case 9: // 按标签筛选
-        const tag = await MNUtil.input("输入标签名称", "", "");
-        if (tag) {
-          filteredTasks = TaskFilterEngine.filterByTags([tag], boardKeys);
+        const tagRes = await MNUtil.input("输入标签名称", "", ["取消", "确定"]);
+        if (tagRes.button && tagRes.input) {
+          filteredTasks = TaskFilterEngine.filterByTags([tagRes.input], boardKeys);
         }
         break;
         
@@ -3807,19 +3848,21 @@ function registerAllCustomActions() {
         break;
         
       case 5: // 批量添加标签
-        const tag = await MNUtil.input("输入标签名称", "", "");
-        if (tag) {
-          await MNTaskManager.batchAddTag(focusNotes, tag);
+        const tagResult = await MNUtil.input("输入标签名称", "", ["取消", "确定"]);
+        if (tagResult.button && tagResult.input) {
+          await MNTaskManager.batchAddTag(focusNotes, tagResult.input);
         }
         break;
         
       case 6: // 批量设置截止日期
-        const dateStr = await MNUtil.input("输入截止日期", "格式：YYYY-MM-DD", "");
-        if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-          const date = new Date(dateStr);
-          await MNTaskManager.batchSetDueDate(focusNotes, date);
-        } else if (dateStr) {
-          MNUtil.showHUD("日期格式错误");
+        const dateRes = await MNUtil.input("输入截止日期", "格式：YYYY-MM-DD", ["取消", "确定"]);
+        if (dateRes.button && dateRes.input) {
+          if (dateRes.input.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const date = new Date(dateRes.input);
+            await MNTaskManager.batchSetDueDate(focusNotes, date);
+          } else {
+            MNUtil.showHUD("日期格式错误");
+          }
         }
         break;
         

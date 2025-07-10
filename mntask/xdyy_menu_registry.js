@@ -45,10 +45,6 @@ function registerAllMenuTemplates() {
       menuWidth: 300,
       menuItems: [
         {
-          action: "taskCardMake",
-          menuTitle: "📝 智能任务制卡"
-        },
-        {
           action: "changeTaskType",
           menuTitle: "🔄 修改卡片类型（支持多选）"
         },
@@ -58,7 +54,7 @@ function registerAllMenuTemplates() {
         },
         {
           action: "updateChildrenPaths",
-          menuTitle: "🔄 更新子卡片路径"
+          menuTitle: "🔄 更新子卡片标题前缀的路径"
         },
         {
           action: "renewCards",
@@ -76,13 +72,13 @@ function registerAllMenuTemplates() {
       menuWidth: 280,
       menuItems: [
         {
-          action: "toggleTaskStatusForward",
-          menuTitle: "➡️ 推进状态"
-        },
-        {
           action: "toggleTaskStatusBackward",
           menuTitle: "↩️ 退回状态"
-        }
+        },
+        {
+          action: "achieveCards",
+          menuTitle: "📦 归档已完成任务"
+        },
       ]
     }
   });
@@ -95,10 +91,6 @@ function registerAllMenuTemplates() {
       menuWidth: 280,
       menuItems: [
         {
-          action: "toggleTodayMark",
-          menuTitle: "📅 标记/取消今日任务"
-        },
-        {
           action: "setTaskPriority",
           menuTitle: "🔥 设置任务优先级"
         },
@@ -110,10 +102,6 @@ function registerAllMenuTemplates() {
           action: "refreshTodayBoard",
           menuTitle: "🔄 刷新今日看板"
         },
-        {
-          action: "handleOverdueTasks",
-          menuTitle: "⚠️ 处理过期任务"
-        }
       ]
     }
   });
@@ -203,6 +191,10 @@ function registerAllMenuTemplates() {
       menuWidth: 300,
       menuItems: [
         {
+          action: "addOrUpdateLaunchLink",
+          menuTitle: "📱 添加/更新启动链接"
+        },
+        {
           action: "addCustomField",
           menuTitle: "📝 快速添加字段"
         },
@@ -228,10 +220,6 @@ function registerAllMenuTemplates() {
           menuTitle: "📈 更新任务进度"
         },
         "──────────",
-        {
-          action: "addOrUpdateLaunchLink",
-          menuTitle: "📱 添加/更新启动链接"
-        }
       ]
     }
   });
@@ -243,10 +231,6 @@ function registerAllMenuTemplates() {
       action: "menu",
       menuWidth: 300,
       menuItems: [
-        {
-          action: "quickLaunchTask",
-          menuTitle: "🚀 快速启动任务"
-        },
         {
           action: "selectAndLaunchTask",
           menuTitle: "🎯 选择并启动任务"

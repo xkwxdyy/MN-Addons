@@ -494,6 +494,7 @@ function registerAllCustomActions() {
             try {
               // 解析当前标题
               const titleParts = MNTaskManager.parseTaskTitle(note.noteTitle);
+              const oldType = titleParts.type;
               
               // 构建新标题
               let newTitle;
@@ -505,6 +506,60 @@ function registerAllCustomActions() {
               
               // 更新标题
               note.noteTitle = newTitle;
+              
+              // 处理字段变更
+              if (oldType !== newType) {
+                const parsed = MNTaskManager.parseTaskComments(note);
+                
+                // 如果从其他类型转换为动作类型，需要删除"包含"和状态字段
+                if (newType === "动作") {
+                  // 删除包含字段
+                  const containsField = parsed.taskFields.find(f => f.content === '包含');
+                  if (containsField) {
+                    note.removeCommentByIndex(containsField.index);
+                    // 重新解析，因为索引已经改变
+                    const updatedParsed = MNTaskManager.parseTaskComments(note);
+                    
+                    // 删除状态字段（未开始、进行中、已完成、已归档）
+                    const statusFields = ['未开始', '进行中', '已完成', '已归档'];
+                    statusFields.forEach(status => {
+                      const statusField = updatedParsed.taskFields.find(f => 
+                        f.content.includes(status) && f.fieldType === 'stateField'
+                      );
+                      if (statusField) {
+                        note.removeCommentByIndex(statusField.index);
+                        // 每次删除后重新解析
+                        updatedParsed.taskFields = MNTaskManager.parseTaskComments(note).taskFields;
+                      }
+                    });
+                  }
+                } 
+                // 如果从动作类型转换为其他类型，需要添加"包含"和状态字段
+                else if (oldType === "动作") {
+                  // 检查是否已有包含字段
+                  const hasContainsField = parsed.taskFields.some(f => f.content === '包含');
+                  if (!hasContainsField) {
+                    // 查找信息字段的位置
+                    const infoField = parsed.taskFields.find(f => f.content === '信息');
+                    if (infoField) {
+                      // 在信息字段后添加包含字段
+                      const containsFieldHtml = TaskFieldUtils.createFieldHtml('包含', 'mainField');
+                      note.appendMarkdownComment(containsFieldHtml);
+                      // 移动到信息字段后面
+                      note.moveComment(note.MNComments.length - 1, infoField.index + 1, false);
+                      
+                      // 添加状态子字段（移除"已阻塞"和"已取消"）
+                      const statuses = ['未开始', '进行中', '已完成', '已归档'];
+                      statuses.forEach((status, idx) => {
+                        const statusHtml = TaskFieldUtils.createStatusField(status);
+                        note.appendMarkdownComment(statusHtml);
+                        // 移动到包含字段后面
+                        note.moveComment(note.MNComments.length - 1, infoField.index + 2 + idx, false);
+                      });
+                    }
+                  }
+                }
+              }
               
               // 刷新卡片
               note.refresh();
@@ -1001,8 +1056,8 @@ function registerAllCustomActions() {
       
       // 显示更新选项
       const updateOptions = [
-        "更新任务路径",
-        "更新链接关系",
+        "更新任务标题前缀的路径",
+        "更新链接与所属关系",
         "清理失效链接",
         "刷新任务字段",
         "全部更新"

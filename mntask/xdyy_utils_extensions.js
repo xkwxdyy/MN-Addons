@@ -509,7 +509,7 @@ class MNTaskManager {
       note.appendMarkdownComment(containsFieldHtml)
       MNUtil.log("✅ 添加包含字段，索引：" + (note.MNComments.length - 1))
       
-      // 添加四个状态子字段
+      // 添加四个状态子字段（移除"已阻塞"和"已取消"）
       const statuses = ['未开始', '进行中', '已完成', '已归档']
       statuses.forEach(status => {
         const statusHtml = TaskFieldUtils.createStatusField(status)
@@ -3256,6 +3256,89 @@ class MNTaskManager {
       ? Math.round(stats.completed / stats.total * 100) 
       : 0
     boardNote.appendMarkdownComment(`- 完成进度：${progressPercent}%`)
+  }
+
+  /**
+   * 获取看板中的所有任务卡片
+   * @param {MNNote} boardNote - 看板笔记
+   * @returns {MNNote[]} 任务卡片数组
+   */
+  static getAllTaskCardsFromBoard(boardNote) {
+    if (!boardNote) return []
+    
+    const results = []
+    const processedIds = new Set()
+    
+    // 递归收集所有任务卡片
+    const collectTasks = (parentNote) => {
+      if (!parentNote || !parentNote.childNotes) return
+      
+      for (let childNote of parentNote.childNotes) {
+        // 避免重复处理
+        if (processedIds.has(childNote.noteId)) continue
+        processedIds.add(childNote.noteId)
+        
+        // 只收集任务卡片
+        if (this.isTaskCard(childNote)) {
+          results.push(childNote)
+        }
+        
+        // 递归处理子卡片
+        collectTasks(childNote)
+      }
+    }
+    
+    collectTasks(boardNote)
+    return results
+  }
+
+  /**
+   * 获取笔记的状态
+   * @param {MNNote} note - 笔记对象
+   * @returns {string} 状态字符串（'未开始'/'进行中'/'已完成'/'已归档'）
+   */
+  static getNoteStatus(note) {
+    if (!this.isTaskCard(note)) return null
+    
+    const titleParts = this.parseTaskTitle(note.noteTitle)
+    return titleParts.status || '未开始'
+  }
+
+  /**
+   * 获取今日看板
+   * @returns {MNNote|null} 今日看板笔记对象
+   */
+  static getTodayBoard() {
+    const todayBoardId = taskConfig.getBoardNoteId('today')
+    if (!todayBoardId) {
+      MNUtil.log('❌ 未配置今日看板')
+      return null
+    }
+    
+    const todayBoard = MNNote.new(todayBoardId)
+    if (!todayBoard) {
+      MNUtil.log('❌ 无法找到今日看板')
+      return null
+    }
+    
+    return todayBoard
+  }
+
+  /**
+   * 获取链接类型
+   * @param {string} url - 链接URL
+   * @returns {string} 链接类型（'note'/'uistatus'/'other'）
+   */
+  static getLinkType(url) {
+    if (!url) return 'other'
+    
+    if (url.includes('marginnote4app://note/')) {
+      return 'note'
+    } else if (url.includes('marginnote4app://uistatus/')) {
+      return 'uistatus'
+    } else {
+      return 'other'
+    }
   }
 }
 

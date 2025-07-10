@@ -199,6 +199,23 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       return false
     }
   },
+  webViewDidFinishLoad: function(webView) {
+    let self = getTaskSettingController()
+    try {
+      // 检查是否是今日看板的 WebView
+      if (webView === self.todayBoardWebViewInstance) {
+        // 标记初始化完成
+        self.todayBoardWebViewInitialized = true
+        
+        // 加载任务数据
+        self.loadTodayBoardData()
+        
+        MNUtil.log("今日看板 WebView 加载完成")
+      }
+    } catch (error) {
+      taskUtils.addErrorLog(error, "webViewDidFinishLoad")
+    }
+  },
   changeOpacityTo:function (opacity) {
     self.view.layer.opacity = opacity
   },
@@ -1290,9 +1307,10 @@ taskSettingController.prototype.initViewManager = function() {
           // 首次显示时创建 WebView
           if (!self.todayBoardWebViewInitialized) {
             self.initTodayBoardWebView()
+          } else {
+            // 如果已经初始化，刷新数据
+            self.loadTodayBoardData()
           }
-          // 加载或刷新数据
-          self.loadTodayBoardData()
         }
       }
     },
@@ -2577,16 +2595,20 @@ taskSettingController.prototype.checkPopoverController = function () {
  */
 taskSettingController.prototype.createTodayBoardWebView = function() {
   try {
-    // 创建 WebView
-    this.todayBoardWebView.webView = new UIWebView(this.todayBoardWebView.bounds)
-    this.todayBoardWebView.webView.backgroundColor = UIColor.whiteColor()
-    this.todayBoardWebView.webView.scalesPageToFit = false
-    this.todayBoardWebView.webView.autoresizingMask = (1 << 1 | 1 << 4) // 宽高自适应
-    this.todayBoardWebView.webView.delegate = this
-    this.todayBoardWebView.webView.layer.cornerRadius = 10
-    this.todayBoardWebView.webView.layer.masksToBounds = true
+    // 创建一个内部的 UIWebView
+    const webView = new UIWebView(this.todayBoardWebView.bounds)
+    webView.backgroundColor = UIColor.whiteColor()
+    webView.scalesPageToFit = false
+    webView.autoresizingMask = (1 << 1 | 1 << 4) // 宽高自适应
+    webView.delegate = this
+    webView.layer.cornerRadius = 10
+    webView.layer.masksToBounds = true
     
-    this.todayBoardWebView.addSubview(this.todayBoardWebView.webView)
+    // 将 WebView 添加到容器视图中
+    this.todayBoardWebView.addSubview(webView)
+    
+    // 保存 WebView 引用，方便后续操作
+    this.todayBoardWebViewInstance = webView
     
     // 标记未初始化
     this.todayBoardWebViewInitialized = false
@@ -2601,18 +2623,18 @@ taskSettingController.prototype.createTodayBoardWebView = function() {
  */
 taskSettingController.prototype.initTodayBoardWebView = function() {
   try {
-    if (!this.todayBoardWebView.webView) {
+    if (!this.todayBoardWebViewInstance) {
       return
     }
     
     // 加载 HTML 文件
     const htmlPath = taskConfig.mainPath + '/todayboard.html'
-    this.todayBoardWebView.webView.loadFileURLAllowingReadAccessToURL(
+    this.todayBoardWebViewInstance.loadFileURLAllowingReadAccessToURL(
       NSURL.fileURLWithPath(htmlPath),
       NSURL.fileURLWithPath(taskConfig.mainPath)
     )
     
-    this.todayBoardWebViewInitialized = true
+    // 不在这里标记初始化完成，等待 webViewDidFinishLoad
   } catch (error) {
     taskUtils.addErrorLog(error, "initTodayBoardWebView")
     MNUtil.showHUD("加载今日看板失败")
@@ -2620,12 +2642,35 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
 }
 
 /**
+ * 在 WebView 中执行 JavaScript（与 MNUtils 相同的实现模式）
+ * @param {string} script - 要执行的 JavaScript 代码
+ * @param {string} webViewName - WebView 的名称，默认为 'todayBoardWebViewInstance'
+ * @returns {Promise} 返回执行结果的 Promise
+ */
+taskSettingController.prototype.runJavaScript = async function(script, webViewName = 'todayBoardWebViewInstance') {
+  return new Promise((resolve, reject) => {
+    try {
+      if (!this[webViewName]) {
+        reject(new Error(`WebView ${webViewName} not found`))
+        return
+      }
+      
+      this[webViewName].evaluateJavaScript(script, result => {
+        resolve(result)
+      })
+    } catch (error) {
+      reject(error)
+    }
+  })
+}
+
+/**
  * 加载今日看板数据
  * @this {settingController}
  */
-taskSettingController.prototype.loadTodayBoardData = function() {
+taskSettingController.prototype.loadTodayBoardData = async function() {
   try {
-    if (!this.todayBoardWebView.webView) {
+    if (!this.todayBoardWebViewInstance) {
       return
     }
     
@@ -2664,10 +2709,14 @@ taskSettingController.prototype.loadTodayBoardData = function() {
       }
     })
     
-    // 传递数据到 WebView
+    // 传递数据到 WebView（使用新的 runJavaScript 方法）
     const encodedTasks = encodeURIComponent(JSON.stringify(displayTasks))
     const script = `if(typeof loadTasksFromPlugin !== 'undefined') { loadTasksFromPlugin('${encodedTasks}') }`
-    this.todayBoardWebView.webView.stringByEvaluatingJavaScriptFromString(script)
+    
+    // 使用与 MNUtils 相同的异步执行模式
+    await this.runJavaScript(script)
+    
+    MNUtil.log(`✅ 今日看板数据加载成功，共 ${displayTasks.length} 个任务`)
     
   } catch (error) {
     taskUtils.addErrorLog(error, "loadTodayBoardData")

@@ -1165,6 +1165,23 @@ C. 使用学习模板（适合技能学习）：
 
 ## 更新日志
 
+### v0.8.7 (2025-01-10)
+- **修复**：解决 todayTasks 变量作用域错误
+  - 移除 catch 块中对可能未定义变量的引用
+  - 简化错误日志记录逻辑
+
+### v0.8.6 (2025-01-10)
+- **修复**：解决今日看板"加载任务数据失败"的问题
+  - 重构 WebView 创建和数据加载逻辑，参考 MNUtils 的实现模式
+  - 添加 webViewDidFinishLoad 委托方法，确保数据在 HTML 加载完成后再传递
+  - 统一使用 todayBoardWebViewInstance 作为实际的 WebView 引用
+
+### v0.8.5 (2025-01-10)
+- **架构改进**：将今日看板集成到 settingController 中
+  - 解决独立窗口无法移动和关闭的问题
+  - 今日看板现在作为设置面板的一个标签页，提供更好的用户体验
+  - 移除独立的 todayBoardController 加载
+
 ### v0.7.7 (2025-01)
 - **根本性修复**：解决 HTML 今日看板导致的 WebView delegate 错误
   - 移除 todayBoardController.js 中的 `JSB.require('utils')` 避免重复加载

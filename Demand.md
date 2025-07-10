@@ -1,3 +1,29 @@
+1. JavaScript 基础的部分整体还是写的太生硬了，逻辑性不强，对新手不友好。
+2. 学习 mntoolbar/mntoolbar_learning/main.js, mntoolbar/mntoolbar_learning/webviewController.js, mntoolbar/mntoolbar_learning/settingController.js 这三个文件中的 JSDoc 注释，里面详细地补充了一些对插件，尤其是 toolbar 插件里结构的框架，尽可能地把 JSDoc 注释里的内容充分学习凝练，然后写到 A_first_course_to_the_development_of_MN_Addon.md
+3. 最后你要以一个完全新手的视角重新自己从头再读一遍这个文档，哪里觉得难懂的，哪里觉得不通俗的，哪里觉得不够详细的，哪里觉得不够深入浅出的，都要进行修改和补充。
+4. `note.appendHtmlComment("<b>HTML</b>", "显示文本", 16);` 你这写的是错的，请读 mnai 项目学习如何正确使用 appendHtmlComment，如果你是从哪里看到的，说明那个地方也写错了，把那个地方一起改了。下面出现的 appendHtmlComment 的都要检查！
+5. 
+```// 通用函数
+function changeNotesColor(context, colorIndex, colorName) {
+  const { focusNotes } = context;
+  
+  if (!focusNotes || focusNotes.length === 0) {
+    MNUtil.showHUD("❌ 请先选择笔记");
+    return;
+  }
+  
+  MNUtil.undoGrouping(() => {
+    focusNotes.forEach(note => {
+      note.colorIndex = colorIndex;
+    });
+    MNUtil.showHUD(`✅ 已改为${colorName}`);
+  });
+}
+```
+其中`const { focusNotes } = context;` 是不是有问题啊，是不是还得写成 `const { button, des, focusNote, focusNotes, self } = context;`，下面有好多都是！不知道你从哪里看到的 `const { focusNotes } = context;`  的写法，这是错误的，把原出处也要改掉！
+
+ultrathink
+---
 请基于当前目录下的 mnai, mntask, mnutils, mntoolbar 项目，完善  ./A_first_course_to_the_development_of_MN_Addon.md, 我把里面初步的框架写好了。这是一个面向一个没有 JavaScript 基础的 MarginNote 插件开发新手的教学文档，所以尽可能写得通俗易懂，深入浅出。
 
 1. 把几个项目里的所有 Markdown 文件全都精读一遍！包括每个项目里的 CLAUDE.md 文件，这些都是开发插件中的精华所在。
@@ -7,7 +33,7 @@
    - 在开发新按钮功能中涉及到的
    - MNUtils 的基础 API 中涉及到的
   这些要写详细
-5. MNUtils 一定要总结最常见，最常用的 API，尤其是 MNNote 类和 MNUtil 类的 API，这些是开发插件的基础。
+1. MNUtils 一定要总结最常见，最常用的 API，尤其是 MNNote 类和 MNUtil 类的 API，这些是开发插件的基础。
 
 希望最终的效果是只需要通过你的这一个文档就能让一个没有 JavaScript 基础的初学者，能够快速入门 MarginNote 插件开发，并且能够独立开发出自己的插件。ultrathink
 

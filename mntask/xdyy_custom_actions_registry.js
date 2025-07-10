@@ -4036,23 +4036,45 @@ function registerAllCustomActions() {
     try {
       MNUtil.log("🎯 打开 HTML 今日看板");
       
+      // 确保 self 是主插件实例
+      const mainPlugin = self || MNTaskGlobal.mainPlugin || MNTaskInstance;
+      if (!mainPlugin) {
+        throw new Error("无法获取主插件实例");
+      }
+      
       // 检查是否已经加载了控制器
-      JSB.require('todayBoardController');
+      try {
+        JSB.require('todayBoardController');
+      } catch (requireError) {
+        MNUtil.log("❌ 加载 todayBoardController 失败");
+        throw new Error("看板控制器文件未找到或加载失败");
+      }
+      
+      // 验证控制器类是否存在
+      if (typeof TodayBoardController === 'undefined') {
+        throw new Error("TodayBoardController 类未定义");
+      }
       
       // 创建并显示看板控制器
       const controller = TodayBoardController.new();
+      if (!controller) {
+        throw new Error("无法创建看板控制器实例");
+      }
       
       // 设置模态展示样式
       controller.modalPresentationStyle = 0; // UIModalPresentationFullScreen
       
       // 展示控制器
-      self.presentViewControllerAnimatedCompletion(controller, true, null);
+      mainPlugin.presentViewControllerAnimatedCompletion(controller, true, null);
       
       MNUtil.log("✅ HTML 今日看板已打开");
     } catch (error) {
       MNUtil.log(`❌ 打开 HTML 今日看板失败: ${error.message || error}`);
-      taskUtils.addErrorLog(error, "openTodayBoardHTML");
-      MNUtil.showHUD("打开看板失败，请检查文件是否存在");
+      taskUtils.addErrorLog(error, "openTodayBoardHTML", {
+        hasMainPlugin: !!(self || MNTaskGlobal.mainPlugin || MNTaskInstance),
+        hasTodayBoardController: typeof TodayBoardController !== 'undefined'
+      });
+      MNUtil.showHUD(`打开看板失败: ${error.message || '未知错误'}`);
     }
   });
 

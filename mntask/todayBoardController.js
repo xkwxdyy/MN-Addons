@@ -5,7 +5,6 @@
  */
 
 JSB.require('utils');
-JSB.require('MNTaskManager');
 
 /** @return {TodayBoardController} */
 const getTodayBoardController = () => self;
@@ -16,6 +15,10 @@ var TodayBoardController = JSB.defineClass('TodayBoardController : UIViewControl
     let self = getTodayBoardController();
     try {
       self.init();
+      // 设置默认视图大小（参考 mnai 的做法）
+      self.view.frame = {x: 50, y: 50, width: 800, height: 600};
+      self.lastFrame = self.view.frame;
+      self.currentFrame = self.view.frame;
       self.setupUI();
       self.loadTodayBoard();
     } catch (error) {
@@ -78,7 +81,7 @@ TodayBoardController.prototype.createNavigationBar = function() {
   // 导航栏容器
   const navBar = UIView.new();
   navBar.backgroundColor = MNUtil.hexColor("#667eea");
-  taskFrame.set(navBar, 0, 0, this.view.bounds.width, 44);
+  navBar.frame = {x: 0, y: 0, width: this.view.bounds.width, height: 44};
   this.view.addSubview(navBar);
   
   // 标题
@@ -87,7 +90,7 @@ TodayBoardController.prototype.createNavigationBar = function() {
   titleLabel.textColor = UIColor.whiteColor();
   titleLabel.font = UIFont.boldSystemFontOfSize(17);
   titleLabel.textAlignment = NSTextAlignmentCenter;
-  taskFrame.set(titleLabel, 0, 0, this.view.bounds.width, 44);
+  titleLabel.frame = {x: 0, y: 0, width: this.view.bounds.width, height: 44};
   navBar.addSubview(titleLabel);
   
   // 关闭按钮
@@ -95,7 +98,7 @@ TodayBoardController.prototype.createNavigationBar = function() {
   closeButton.setTitleForState("关闭", 0);
   closeButton.setTitleColorForState(UIColor.whiteColor(), 0);
   closeButton.titleLabel.font = UIFont.systemFontOfSize(16);
-  taskFrame.set(closeButton, this.view.bounds.width - 60, 0, 60, 44);
+  closeButton.frame = {x: this.view.bounds.width - 60, y: 0, width: 60, height: 44};
   closeButton.addTargetActionForControlEvents(this, "close", 1 << 6);
   navBar.addSubview(closeButton);
   
@@ -103,7 +106,7 @@ TodayBoardController.prototype.createNavigationBar = function() {
   const refreshButton = UIButton.buttonWithType(0);
   refreshButton.setTitleForState("🔄", 0);
   refreshButton.titleLabel.font = UIFont.systemFontOfSize(20);
-  taskFrame.set(refreshButton, 10, 0, 44, 44);
+  refreshButton.frame = {x: 10, y: 0, width: 44, height: 44};
   refreshButton.addTargetActionForControlEvents(this, "refreshBoard:", 1 << 6);
   navBar.addSubview(refreshButton);
   
@@ -329,7 +332,7 @@ TodayBoardController.prototype.viewTaskDetail = function(taskId) {
 }
 
 // 刷新看板
-TodayBoardController.prototype.refreshBoard = function() {
+TodayBoardController.prototype.refreshBoard = function(button) {
   MNUtil.showHUD("🔄 正在刷新...");
   this.loadTaskData();
 }

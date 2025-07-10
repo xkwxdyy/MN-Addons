@@ -4029,6 +4029,33 @@ function registerAllCustomActions() {
     });
   });
 
+  // openTodayBoardHTML - 打开 HTML 增强版今日看板
+  MNTaskGlobal.registerCustomAction("openTodayBoardHTML", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    try {
+      MNUtil.log("🎯 打开 HTML 今日看板");
+      
+      // 检查是否已经加载了控制器
+      JSB.require('todayBoardController');
+      
+      // 创建并显示看板控制器
+      const controller = TodayBoardController.new();
+      
+      // 设置模态展示样式
+      controller.modalPresentationStyle = 0; // UIModalPresentationFullScreen
+      
+      // 展示控制器
+      self.presentViewControllerAnimatedCompletion(controller, true, null);
+      
+      MNUtil.log("✅ HTML 今日看板已打开");
+    } catch (error) {
+      MNUtil.log(`❌ 打开 HTML 今日看板失败: ${error.message || error}`);
+      taskUtils.addErrorLog(error, "openTodayBoardHTML");
+      MNUtil.showHUD("打开看板失败，请检查文件是否存在");
+    }
+  });
+
   // handleOverdueTasks - 处理过期的今日任务
   MNTaskGlobal.registerCustomAction("handleOverdueTasks", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;

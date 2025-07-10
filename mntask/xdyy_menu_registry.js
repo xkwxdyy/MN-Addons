@@ -154,6 +154,10 @@ function registerAllMenuTemplates() {
           menuTitle: "🎯 聚焦今日看板"
         },
         {
+          action: "openTodayBoardHTML",
+          menuTitle: "🌐 HTML 今日看板"
+        },
+        {
           action: "openTasksFloatMindMap",
           menuTitle: "📊 打开任务管理脑图"
         },

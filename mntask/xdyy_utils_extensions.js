@@ -3340,6 +3340,249 @@ class MNTaskManager {
       return 'other'
     }
   }
+  
+  /**
+   * 检查任务是否过期
+   * @param {string} todayFieldContent - 今日字段内容
+   * @returns {Object} {isOverdue: boolean, days: number}
+   */
+  static checkIfOverdue(todayFieldContent) {
+    if (!todayFieldContent) {
+      return { isOverdue: false, days: 0 };
+    }
+    
+    // 提取日期（格式：📅 今日 (2025-01-08)）
+    const dateMatch = todayFieldContent.match(/\((\d{4}-\d{2}-\d{2})\)/);
+    if (!dateMatch) {
+      return { isOverdue: false, days: 0 };
+    }
+    
+    const taskDate = new Date(dateMatch[1]);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    taskDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = today - taskDate;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    return {
+      isOverdue: diffDays > 0,
+      days: diffDays
+    };
+  }
+  
+  /**
+   * 获取任务的计划时间
+   * @param {MNNote} note - 任务卡片
+   * @returns {string|null} 计划时间
+   */
+  static getPlannedTime(note) {
+    const timeField = TaskFieldUtils.getFieldContent(note, "⏰");
+    if (!timeField) return null;
+    
+    // 提取时间（格式：⏰ 09:00）
+    const timeMatch = timeField.match(/(\d{1,2}:\d{2})/);
+    return timeMatch ? timeMatch[1] : null;
+  }
+  
+  /**
+   * 获取任务进度
+   * @param {MNNote} note - 任务卡片
+   * @returns {number|null} 进度百分比
+   */
+  static getTaskProgress(note) {
+    const progressField = TaskFieldUtils.getFieldContent(note, "进度");
+    if (!progressField) return null;
+    
+    const match = progressField.match(/(\d+)%/);
+    return match ? parseInt(match[1]) : null;
+  }
+  
+  /**
+   * 获取启动链接
+   * @param {MNNote} note - 任务卡片
+   * @returns {Object|null} 链接对象 {text, url, noteId}
+   */
+  static getLaunchLink(note) {
+    const launchField = TaskFieldUtils.getFieldContent(note, "启动");
+    if (!launchField) return null;
+    
+    // 解析 Markdown 链接格式 [text](url)
+    const linkMatch = launchField.match(/\[([^\]]+)\]\(([^)]+)\)/);
+    if (linkMatch) {
+      return {
+        text: linkMatch[1],
+        url: linkMatch[2],
+        noteId: this.extractNoteIdFromUrl(linkMatch[2])
+      };
+    }
+    
+    return null;
+  }
+  
+  /**
+   * 从 URL 提取笔记 ID
+   * @param {string} url - MarginNote URL
+   * @returns {string|null} 笔记 ID
+   */
+  static extractNoteIdFromUrl(url) {
+    if (!url) return null;
+    
+    // MarginNote URL 格式：marginnote4app://note/XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+    const match = url.match(/marginnote\d*app:\/\/note\/([A-F0-9-]+)/i);
+    return match ? match[1] : null;
+  }
+  
+  /**
+   * 生成今日任务报告
+   * @param {Array<MNNote>} todayTasks - 今日任务列表
+   * @returns {string} 报告文本
+   */
+  static generateTodayReport(todayTasks) {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('zh-CN');
+    const timeStr = now.toLocaleTimeString('zh-CN');
+    
+    let report = `📊 今日任务报告\n`;
+    report += `📅 日期：${dateStr}\n`;
+    report += `⏰ 时间：${timeStr}\n`;
+    report += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+    
+    // 统计信息
+    const stats = {
+      total: todayTasks.length,
+      notStarted: 0,
+      inProgress: 0,
+      completed: 0,
+      overdue: 0
+    };
+    
+    // 分类任务
+    const tasksByStatus = {
+      '未开始': [],
+      '进行中': [],
+      '已完成': [],
+      '过期': []
+    };
+    
+    todayTasks.forEach(task => {
+      const taskInfo = this.parseTaskTitle(task.noteTitle);
+      const todayField = TaskFieldUtils.getFieldContent(task, "今日");
+      const overdueInfo = this.checkIfOverdue(todayField);
+      
+      if (overdueInfo.isOverdue) {
+        stats.overdue++;
+        tasksByStatus['过期'].push({task, taskInfo, overdueInfo});
+      } else {
+        switch (taskInfo.status) {
+          case '未开始':
+            stats.notStarted++;
+            tasksByStatus['未开始'].push({task, taskInfo});
+            break;
+          case '进行中':
+            stats.inProgress++;
+            tasksByStatus['进行中'].push({task, taskInfo});
+            break;
+          case '已完成':
+            stats.completed++;
+            tasksByStatus['已完成'].push({task, taskInfo});
+            break;
+        }
+      }
+    });
+    
+    // 完成率
+    const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+    
+    // 统计摘要
+    report += `📈 统计摘要\n`;
+    report += `• 任务总数：${stats.total}\n`;
+    report += `• 未开始：${stats.notStarted}\n`;
+    report += `• 进行中：${stats.inProgress}\n`;
+    report += `• 已完成：${stats.completed}\n`;
+    report += `• 过期任务：${stats.overdue}\n`;
+    report += `• 完成率：${completionRate}%\n\n`;
+    
+    // 详细列表
+    Object.entries(tasksByStatus).forEach(([status, tasks]) => {
+      if (tasks.length === 0) return;
+      
+      report += `${this.getStatusIcon(status)} ${status}（${tasks.length}）\n`;
+      report += `────────────────\n`;
+      
+      tasks.forEach(({task, taskInfo, overdueInfo}) => {
+        const priority = this.getTaskPriority(task) || '低';
+        const priorityIcon = this.getPriorityIcon(priority);
+        const typeIcon = this.getTaskTypeIcon(taskInfo.type);
+        
+        report += `${typeIcon}${priorityIcon} ${taskInfo.content}\n`;
+        
+        if (overdueInfo && overdueInfo.isOverdue) {
+          report += `   ⚠️ 过期 ${overdueInfo.days} 天\n`;
+        }
+        
+        const plannedTime = this.getPlannedTime(task);
+        if (plannedTime) {
+          report += `   ⏰ ${plannedTime}\n`;
+        }
+        
+        const progress = this.getTaskProgress(task);
+        if (progress) {
+          report += `   📊 进度：${progress}%\n`;
+        }
+        
+        report += '\n';
+      });
+      
+      report += '\n';
+    });
+    
+    return report;
+  }
+  
+  /**
+   * 获取状态图标
+   * @param {string} status - 状态名称
+   * @returns {string} 图标
+   */
+  static getStatusIcon(status) {
+    const icons = {
+      '未开始': '😴',
+      '进行中': '🔥',
+      '已完成': '✅',
+      '过期': '⚠️'
+    };
+    return icons[status] || '❓';
+  }
+  
+  /**
+   * 获取任务类型图标
+   * @param {string} type - 任务类型
+   * @returns {string} 图标
+   */
+  static getTaskTypeIcon(type) {
+    const icons = {
+      '目标': '🎯',
+      '关键结果': '📊',
+      '项目': '📁',
+      '动作': '▶️'
+    };
+    return icons[type] || '📋';
+  }
+  
+  /**
+   * 获取优先级图标
+   * @param {string} priority - 优先级
+   * @returns {string} 图标
+   */
+  static getPriorityIcon(priority) {
+    const icons = {
+      '高': '🔴',
+      '中': '🟡',
+      '低': '🟢'
+    };
+    return icons[priority] || '⚪';
+  }
 }
 
 

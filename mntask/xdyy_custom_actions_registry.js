@@ -4049,13 +4049,13 @@ function registerAllCustomActions() {
       MNUtil.log("📌 使用已加载的 todayBoardController");
       
       // 验证控制器类是否存在
-      if (typeof TodayBoardController === 'undefined') {
-        throw new Error("TodayBoardController 类未定义");
+      if (typeof todayBoardController === 'undefined') {
+        throw new Error("todayBoardController 类未定义");
       }
       
       // 创建并显示看板控制器
-      MNUtil.log("🔨 创建 TodayBoardController 实例");
-      const controller = TodayBoardController.new();
+      MNUtil.log("🔨 创建 todayBoardController 实例");
+      const controller = todayBoardController.new();
       if (!controller) {
         throw new Error("无法创建看板控制器实例");
       }
@@ -4072,7 +4072,7 @@ function registerAllCustomActions() {
       MNUtil.log(`❌ 打开 HTML 今日看板失败: ${error.message || error}`);
       taskUtils.addErrorLog(error, "openTodayBoardHTML", {
         hasMainPlugin: !!(self || MNTaskGlobal.mainPlugin || MNTaskInstance),
-        hasTodayBoardController: typeof TodayBoardController !== 'undefined',
+        hasTodayBoardController: typeof todayBoardController !== 'undefined',
         loadedControllers: MNTaskGlobal.loadedControllers
       });
       MNUtil.showHUD(`打开看板失败: ${error.message || '未知错误'}`);

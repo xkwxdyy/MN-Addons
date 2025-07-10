@@ -13,6 +13,9 @@ MNTaskGlobal.customActions = MNTaskGlobal.customActions || {};
 // 存储主插件实例的引用
 MNTaskGlobal.mainPlugin = null;
 
+// 记录已加载的控制器，防止重复加载
+MNTaskGlobal.loadedControllers = MNTaskGlobal.loadedControllers || {};
+
 
 /**
  * 注册自定义 action
@@ -4042,13 +4045,8 @@ function registerAllCustomActions() {
         throw new Error("无法获取主插件实例");
       }
       
-      // 检查是否已经加载了控制器
-      try {
-        JSB.require('todayBoardController');
-      } catch (requireError) {
-        MNUtil.log("❌ 加载 todayBoardController 失败");
-        throw new Error("看板控制器文件未找到或加载失败");
-      }
+      // todayBoardController 现在在 main.js 中启动时加载，无需动态加载
+      MNUtil.log("📌 使用已加载的 todayBoardController");
       
       // 验证控制器类是否存在
       if (typeof TodayBoardController === 'undefined') {
@@ -4056,6 +4054,7 @@ function registerAllCustomActions() {
       }
       
       // 创建并显示看板控制器
+      MNUtil.log("🔨 创建 TodayBoardController 实例");
       const controller = TodayBoardController.new();
       if (!controller) {
         throw new Error("无法创建看板控制器实例");
@@ -4065,6 +4064,7 @@ function registerAllCustomActions() {
       controller.modalPresentationStyle = 0; // UIModalPresentationFullScreen
       
       // 展示控制器
+      MNUtil.log("📱 展示控制器");
       mainPlugin.presentViewControllerAnimatedCompletion(controller, true, null);
       
       MNUtil.log("✅ HTML 今日看板已打开");
@@ -4072,7 +4072,8 @@ function registerAllCustomActions() {
       MNUtil.log(`❌ 打开 HTML 今日看板失败: ${error.message || error}`);
       taskUtils.addErrorLog(error, "openTodayBoardHTML", {
         hasMainPlugin: !!(self || MNTaskGlobal.mainPlugin || MNTaskInstance),
-        hasTodayBoardController: typeof TodayBoardController !== 'undefined'
+        hasTodayBoardController: typeof TodayBoardController !== 'undefined',
+        loadedControllers: MNTaskGlobal.loadedControllers
       });
       MNUtil.showHUD(`打开看板失败: ${error.message || '未知错误'}`);
     }

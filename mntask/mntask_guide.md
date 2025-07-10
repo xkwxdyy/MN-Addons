@@ -1165,6 +1165,29 @@ C. 使用学习模板（适合技能学习）：
 
 ## 更新日志
 
+### v0.7.7 (2025-01)
+- **根本性修复**：解决 HTML 今日看板导致的 WebView delegate 错误
+  - 移除 todayBoardController.js 中的 `JSB.require('utils')` 避免重复加载
+  - 恢复启动时加载控制器，确保类定义在正确的上下文中
+  - 简化动态加载逻辑，避免复杂的状态管理
+
+### v0.7.6 (2025-01)
+- **关键修复**：解决 TodayBoardController 类未定义的问题
+  - 移除立即执行函数（IIFE）包装，与其他控制器保持一致
+  - 采用简单直接的定义方式，让 JSB.defineClass 正常工作
+  - 遵循成熟项目（settingController、webviewController）的模式
+
+### v0.7.5 (2025-01)
+- **重大修复**：彻底解决 HTML 今日看板导致软件卡死的问题
+  - 采用按需加载模式，避免启动时重复定义类
+  - 添加防重复加载保护机制
+  - 改进 UIWebView 资源管理和清理
+  - 增强调试日志，便于问题追踪
+- **架构改进**：
+  - 将 todayBoardController 从启动加载改为动态加载
+  - 使用全局标记防止重复 JSB.require
+  - 添加类定义前的存在性检查
+
 ### v0.7.4 (2025-01)
 - **修复**：HTML 今日看板导致软件崩溃的严重问题
   - 修复了错误的 JSB.require('MNTaskManager') 依赖

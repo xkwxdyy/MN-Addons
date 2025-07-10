@@ -4,24 +4,39 @@
  * @file todayBoardController.js
  */
 
-JSB.require('utils');
-
-/** @return {TodayBoardController} */
-const getTodayBoardController = () => self;
-
-var TodayBoardController = JSB.defineClass('TodayBoardController : UIViewController <UIWebViewDelegate>', {
+// 防止重复定义 - 简单检查
+if (typeof TodayBoardController !== 'undefined') {
+  MNUtil.log("⚠️ TodayBoardController 已存在，跳过重复定义");
+} else {
+  /** @return {TodayBoardController} */
+  const getTodayBoardController = () => self;
+  
+  MNUtil.log("📝 开始定义 TodayBoardController");
+  
+  var TodayBoardController = JSB.defineClass('TodayBoardController : UIViewController <UIWebViewDelegate>', {
   // 视图加载
   viewDidLoad: function() {
     let self = getTodayBoardController();
+    MNUtil.log("🚀 TodayBoardController viewDidLoad 开始");
     try {
       self.init();
+      MNUtil.log("✅ init 完成");
+      
       // 设置默认视图大小（参考 mnai 的做法）
       self.view.frame = {x: 50, y: 50, width: 800, height: 600};
       self.lastFrame = self.view.frame;
       self.currentFrame = self.view.frame;
+      MNUtil.log("✅ 视图大小设置完成");
+      
       self.setupUI();
+      MNUtil.log("✅ setupUI 完成");
+      
       self.loadTodayBoard();
+      MNUtil.log("✅ loadTodayBoard 完成");
+      
+      MNUtil.log("🎉 TodayBoardController viewDidLoad 成功完成");
     } catch (error) {
+      MNUtil.log(`❌ viewDidLoad 错误: ${error.message || error}`);
       taskUtils.addErrorLog(error, "TodayBoardController.viewDidLoad");
       MNUtil.showHUD("加载今日看板失败");
     }
@@ -53,7 +68,34 @@ var TodayBoardController = JSB.defineClass('TodayBoardController : UIViewControl
   // 关闭视图
   close: function() {
     let self = getTodayBoardController();
+    MNUtil.log("🔒 关闭 HTML 今日看板");
+    
+    // 清理 WebView
+    if (self.webView) {
+      self.webView.delegate = null;
+      self.webView.stopLoading();
+      self.webView.removeFromSuperview();
+      self.webView = null;
+    }
+    
+    // 清理定时器
+    if (self.refreshTimer) {
+      clearInterval(self.refreshTimer);
+      self.refreshTimer = null;
+    }
+    
     self.dismissViewControllerAnimatedCompletion(true, null);
+  },
+  
+  // 视图将要消失时清理
+  viewWillDisappear: function(animated) {
+    let self = getTodayBoardController();
+    MNUtil.log("👋 TodayBoardController viewWillDisappear");
+    
+    // 清理 WebView delegate
+    if (self.webView) {
+      self.webView.delegate = null;
+    }
   }
 });
 
@@ -115,12 +157,16 @@ TodayBoardController.prototype.createNavigationBar = function() {
 
 // 创建 WebView
 TodayBoardController.prototype.createWebView = function() {
+  MNUtil.log("📱 开始创建 WebView");
+  
   const webViewFrame = {
     x: 0,
     y: 44,
     width: this.view.bounds.width,
     height: this.view.bounds.height - 44
   };
+  
+  MNUtil.log(`📐 WebView frame: ${JSON.stringify(webViewFrame)}`);
   
   this.webView = new UIWebView(webViewFrame);
   this.webView.backgroundColor = MNUtil.hexColor("#ffffff");
@@ -129,6 +175,7 @@ TodayBoardController.prototype.createWebView = function() {
   this.webView.delegate = this;
   
   this.view.addSubview(this.webView);
+  MNUtil.log("✅ WebView 创建成功并添加到视图");
 }
 
 // 加载今日看板
@@ -372,4 +419,7 @@ TodayBoardController.prototype.quickStart = function() {
     taskUtils.addErrorLog(error, "quickStart");
     MNUtil.showHUD("快速启动失败");
   }
+}
+  
+  MNUtil.log("✅ TodayBoardController 定义完成");
 }

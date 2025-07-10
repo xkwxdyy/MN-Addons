@@ -1,5 +1,5 @@
 {
-  "currentState": "role_activated_with_memory",
+  "currentState": "initialized",
   "stateHistory": [
     {
       "from": "initial",
@@ -64,27 +64,23 @@
     {
       "from": "initialized",
       "command": "init",
-      "timestamp": "2025-07-09T17:51:11.520Z",
+      "timestamp": "2025-07-10T03:30:21.333Z",
       "args": [
         {
-          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon"
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask"
         }
       ]
     },
     {
       "from": "initialized",
-      "command": "welcome",
-      "timestamp": "2025-07-09T17:51:44.247Z",
-      "args": []
-    },
-    {
-      "from": "role_discovery",
-      "command": "action",
-      "timestamp": "2025-07-09T17:52:25.228Z",
+      "command": "init",
+      "timestamp": "2025-07-10T04:40:35.758Z",
       "args": [
-        "frontend-developer"
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask"
+        }
       ]
     }
   ],
-  "lastUpdated": "2025-07-09T17:52:25.244Z"
+  "lastUpdated": "2025-07-10T04:40:35.778Z"
 }

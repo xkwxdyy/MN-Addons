@@ -823,22 +823,18 @@ MNUtil.removeObserver(self, 'NotificationName');
 > 3. 事件处理方法开头进行参数验证
 > 4. 使用 try-catch 保护事件处理逻辑
 
-## MNUtils API 入门
+## MNUtils API 入门 - 让插件"活"起来
 
-### 1. 什么是 MNUtils？
+### 🎯 学习目标
 
-MNUtils 是 MarginNote 插件开发的核心框架，提供了 300+ 个封装好的 API，让你能够：
-- 操作笔记和文档
-- 显示界面和菜单
-- 处理用户交互
-- 管理文件和数据
+完成本章后，你将能够：
+- ✅ 与用户进行各种交互（显示消息、获取输入）
+- ✅ 操作笔记（获取、修改、批量处理）
+- ✅ 使用高级功能（剪贴板、菜单、文件操作）
 
-### 2. 如何使用 MNUtils？
+### 开始之前：安装 MNUtils
 
-#### 方法一：依赖 MNUtils 插件（推荐）
-
-1. 用户需要先安装 MNUtils 插件
-2. 在你的插件中使用：
+MNUtils 就像是插件开发的"瑞士军刀"，提供了 300+ 个实用工具。首先需要确保它可用：
 
 ```javascript
 JSB.newAddon = function(mainPath) {
@@ -849,11 +845,11 @@ JSB.newAddon = function(mainPath) {
     sceneWillConnect: function() {
       // 检查 MNUtils 是否可用
       if (typeof MNUtil === 'undefined') {
-        MNUtil.alert("请先安装 MNUtils 插件");
+        alert("请先安装 MNUtils 插件");
         return;
       }
       
-      // 正常使用 MNUtils API
+      // 可以开始使用了！
       MNUtil.showHUD("插件已启动");
     }
   });
@@ -862,293 +858,856 @@ JSB.newAddon = function(mainPath) {
 };
 ```
 
-#### 方法二：内置 mnutils.js（独立运行）
+> 💡 **新手提示**：MNUtils 是一个独立的插件，需要先从插件商店安装。安装后，其他插件就可以使用它提供的功能了。
 
-将 mnutils.js 文件复制到你的插件目录，然后：
+### 第一站：与用户对话（让插件有反馈）
+
+想象一下，如果插件默默工作，用户完全不知道发生了什么，体验会很糟糕。所以第一步，我们要学会"说话"。
+
+#### 🗨️ 最简单的开始 - showHUD
+
+`showHUD` 就像手机上的通知提示，简单但很有用：
 
 ```javascript
-JSB.require('mnutils');  // 加载本地的 mnutils.js
+// 告诉用户发生了什么
+MNUtil.showHUD("✅ 操作成功！");     // 默认显示 2 秒
+
+// 处理耗时操作时
+MNUtil.showHUD("⏳ 正在处理...", 5);  // 显示 5 秒
+
+// 遇到错误时
+MNUtil.showHUD("❌ 操作失败：请先选择笔记", -1);  // 需要手动关闭
 ```
 
-### 3. MNUtil 类 - 核心工具类（最常用）
+> 💡 **什么时候用？**
+> - 操作完成时：给用户一个反馈
+> - 开始处理时：让用户知道插件在工作
+> - 出错时：告诉用户哪里出了问题
 
-#### 3.1 UI 交互
+#### 🤔 让用户做选择 - confirm
+
+有时候我们需要用户确认，特别是删除等危险操作：
 
 ```javascript
-// 显示提示信息（最常用）
-MNUtil.showHUD("操作成功！");                    // 默认 2 秒
-MNUtil.showHUD("正在处理...", 5);               // 显示 5 秒
-MNUtil.showHUD("❌ 操作失败", -1);              // 需要手动关闭
-
-// 确认对话框
-const confirmed = await MNUtil.confirm("确认删除？", "此操作不可恢复");
-if (confirmed) {
-  // 用户点击确认
-}
-
-// 输入对话框
-const input = await MNUtil.input("请输入标题", "新建笔记的标题", ["确定"]);
-if (input) {
-  // 用户输入了内容
-}
-
-// 选择对话框
-const options = ["选项1", "选项2", "选项3"];
-const selected = await MNUtil.userSelect("请选择", "", options);
-if (selected > 0) {  // 0 是取消
-  const choice = options[selected - 1];
+async function deleteNotes() {
+  // 先问问用户是否确定
+  const confirmed = await MNUtil.confirm(
+    "确认删除？", 
+    "将删除所有选中的笔记，此操作不可恢复"
+  );
+  
+  if (confirmed) {
+    // 用户点了"确定"
+    MNUtil.showHUD("正在删除...");
+    // 执行删除操作
+  } else {
+    // 用户点了"取消"
+    MNUtil.showHUD("已取消");
+  }
 }
 ```
 
-#### 3.2 笔记操作
+#### ✍️ 获取用户输入 - input
+
+需要用户输入文字时：
 
 ```javascript
-// 获取笔记
-const note = MNUtil.getNoteById(noteId);         // 通过 ID 获取
-const exists = MNUtil.noteExists(noteId);        // 检查是否存在
-
-// 聚焦笔记
-MNUtil.focusNoteInMindMapById(noteId, 0.3);      // 在脑图中聚焦
-MNUtil.focusNoteInDocumentById(noteId);          // 在文档中聚焦
-
-// 撤销分组（重要！）
-MNUtil.undoGrouping(() => {
-  // 这里的所有操作会作为一个撤销单元
-  note1.noteTitle = "新标题";
-  note2.colorIndex = 3;
-  // 用户按撤销会一次撤销所有操作
-});
-```
-
-#### 3.3 剪贴板和选择
-
-```javascript
-// 剪贴板
-MNUtil.copy("要复制的文本");                     // 复制文本
-MNUtil.copyJSON({name: "data"});                // 复制对象为 JSON
-const text = MNUtil.clipboardText;              // 读取剪贴板
-
-// 获取选中内容
-const selectedText = MNUtil.selectionText;      // 当前选中的文本
-```
-
-#### 3.4 平台和版本
-
-```javascript
-// 版本检测
-if (MNUtil.isMN4()) {
-  // MarginNote 4 特有功能
+async function renameNote() {
+  const focusNote = MNNote.getFocusNote();
+  if (!focusNote) {
+    MNUtil.showHUD("请先选择笔记");
+    return;
+  }
+  
+  // 获取新标题
+  const newTitle = await MNUtil.input(
+    "重命名笔记",
+    "请输入新的标题",
+    ["确定"]  // 按钮文字
+  );
+  
+  if (newTitle) {
+    // 用户输入了内容
+    MNUtil.undoGrouping(() => {
+      focusNote.noteTitle = newTitle;
+    });
+    MNUtil.showHUD("✅ 已重命名");
+  }
 }
-
-// 平台检测
-if (MNUtil.isMacOS()) {
-  // macOS 特有功能
-} else {
-  // iOS 功能
-}
-
-// 版本信息
-console.log(MNUtil.version);  // {version: "4.0.0", type: "macOS"}
 ```
 
-#### 3.5 文件操作
+#### 📋 多项选择 - userSelect
+
+当有多个选项让用户选择时：
 
 ```javascript
-// 读写 JSON
-const data = MNUtil.readJSON("/path/to/file.json");
-MNUtil.writeJSON("/path/to/file.json", {key: "value"});
-
-// 检查文件
-if (MNUtil.isfileExists("/path/to/file")) {
-  // 文件存在
+async function changeNoteColor() {
+  const colorOptions = [
+    "🔴 红色 - 重要",
+    "🟡 黄色 - 注意", 
+    "🔵 蓝色 - 信息",
+    "🟢 绿色 - 完成"
+  ];
+  
+  const selected = await MNUtil.userSelect(
+    "选择颜色",
+    "给笔记设置什么颜色？",
+    colorOptions
+  );
+  
+  if (selected > 0) {  // 0 表示取消
+    const colorMap = {1: 6, 2: 3, 3: 2, 4: 8};  // 选项对应的颜色索引
+    const focusNote = MNNote.getFocusNote();
+    
+    if (focusNote) {
+      MNUtil.undoGrouping(() => {
+        focusNote.colorIndex = colorMap[selected];
+      });
+      MNUtil.showHUD(`✅ 已设置为${colorOptions[selected - 1]}`);
+    }
+  }
 }
-
-// 创建文件夹
-MNUtil.createFolder("/path/to/folder");
 ```
 
-### 4. MNNote 类 - 笔记核心类（最重要）
+#### 🎯 新手任务：创建一个问候插件
 
-#### 4.1 获取笔记
+把上面学到的组合起来，创建你的第一个交互式功能：
 
 ```javascript
-// 获取当前焦点笔记（最常用）
+async function greetUser() {
+  // 1. 获取用户名字
+  const name = await MNUtil.input("你好！", "请问怎么称呼你？", ["确定"]);
+  
+  if (!name) {
+    MNUtil.showHUD("👋 下次见！");
+    return;
+  }
+  
+  // 2. 询问需求
+  const needs = [
+    "📝 整理笔记",
+    "🎨 批量改色",
+    "🏷️ 添加标签",
+    "🔗 创建链接"
+  ];
+  
+  const selected = await MNUtil.userSelect(
+    `你好，${name}！`,
+    "需要什么帮助？",
+    needs
+  );
+  
+  // 3. 根据选择给出反馈
+  if (selected > 0) {
+    MNUtil.showHUD(`✅ 明白了！让我们开始${needs[selected - 1]}`);
+    // 这里可以调用相应的功能
+  }
+}
+```
+
+> 🎉 **恭喜！** 你已经学会了与用户交互的所有基本方法。现在你的插件可以"说话"、"提问"、"倾听"了！
+
+### 第二站：操作笔记（你的主要工作对象）
+
+笔记是 MarginNote 的核心，也是插件最常操作的对象。让我们像搭积木一样，一步步学会操作它们。
+
+#### 🎯 第一步：找到要操作的笔记
+
+在操作笔记之前，我们需要先"拿到"它。就像你要修改一份文件，得先找到这个文件。
+
+```javascript
+// 最常用：获取用户当前选中的笔记
 const focusNote = MNNote.getFocusNote();
+
+// 始终要检查是否真的拿到了
 if (!focusNote) {
-  MNUtil.showHUD("请先选择一个笔记");
+  MNUtil.showHUD("❌ 请先选择一个笔记");
   return;
 }
 
+// 现在可以安全地使用了
+MNUtil.showHUD(`✅ 找到了：${focusNote.noteTitle}`);
+```
+
+> 💡 **为什么要检查？**  
+> 用户可能没有选中任何笔记就点击了你的按钮。如果不检查就直接操作，插件会崩溃。记住：**永远不要假设笔记存在**。
+
+#### 📚 批量获取：处理多个笔记
+
+有时候需要同时处理多个笔记：
+
+```javascript
 // 获取所有选中的笔记
 const selectedNotes = MNNote.getFocusNotes();
-MNUtil.showHUD(`选中了 ${selectedNotes.length} 个笔记`);
 
-// 创建笔记对象
-const note = MNNote.new(noteId);  // 从 ID 创建
-```
-
-#### 4.2 笔记属性
-
-```javascript
-// 基本属性
-note.noteId          // 笔记唯一 ID
-note.noteTitle       // 笔记标题
-note.excerptText     // 摘录文本
-note.colorIndex      // 颜色索引 (0-15)
-
-// 颜色对照表
-// 0: 无色, 1: 淡黄, 2: 淡蓝, 3: 黄色
-// 4: 深蓝, 5: 橙色, 6: 红色, 7: 紫色
-// 8: 淡绿, 9: 深绿, 10: 灰色, 11: 深橙
-// 12: 棕色, 13: 深红, 14: 深紫, 15: 深灰
-
-// 层级关系
-note.parentNote      // 父笔记
-note.childNotes      // 子笔记数组
-
-// 其他属性
-note.comments        // 评论数组
-note.tags            // 标签数组
-note.createDate      // 创建时间
-note.modifiedDate    // 修改时间
-```
-
-#### 4.3 笔记操作
-
-```javascript
-// 修改属性
-MNUtil.undoGrouping(() => {
-  note.noteTitle = "新的标题";
-  note.colorIndex = 2;  // 设为淡蓝色
-});
-
-// 添加评论
-note.appendTextComment("这是一条文本评论");
-note.appendMarkdownComment("**粗体** *斜体*");
-note.appendHtmlComment(
-  "<b>HTML内容</b>",
-  "纯文本内容",
-  {width: 100, height: 50},  // 尺寸对象
-  "myPlugin"                  // 标签
-);
-
-// 标签操作
-note.appendTags(["重要", "复习"]);      // 添加标签
-note.removeTags(["临时"]);              // 删除标签
-
-// 链接操作
-note.appendNoteLink(anotherNote, "To");  // 添加链接
-
-// 层级操作
-parentNote.addChild(childNote);          // 添加子笔记
-childNote.removeFromParent();            // 移除父子关系
-
-// 其他操作
-note.focus();                            // 聚焦到这个笔记
-note.openInFloatingWindow();            // 在浮窗中打开
-note.delete();                          // 删除笔记
-```
-
-#### 4.4 批量操作示例
-
-```javascript
-// 批量修改选中笔记的颜色
-const notes = MNNote.getFocusNotes();
-if (notes.length === 0) {
-  MNUtil.showHUD("请先选择笔记");
+if (selectedNotes.length === 0) {
+  MNUtil.showHUD("❌ 请至少选择一个笔记");
   return;
 }
 
-MNUtil.undoGrouping(() => {
-  notes.forEach(note => {
-    note.colorIndex = 3;  // 全部设为黄色
-    note.appendTags(["已处理"]);
-  });
-  MNUtil.showHUD(`✅ 已处理 ${notes.length} 个笔记`);
+MNUtil.showHUD(`✅ 选中了 ${selectedNotes.length} 个笔记`);
+
+// 处理每一个笔记
+selectedNotes.forEach((note, index) => {
+  console.log(`第 ${index + 1} 个笔记：${note.noteTitle}`);
 });
 ```
 
-### 5. Menu 类 - 弹出菜单
+#### 🔍 了解笔记的"身份证"
+
+每个笔记都有很多属性，就像人有名字、年龄、身高一样：
 
 ```javascript
-// 创建菜单
-const menu = new Menu(button, self, 250);  // 宽度 250
-
-// 添加菜单项
-menu.addMenuItem("复制标题", "copyTitle:", note);
-menu.addMenuItem("设为重要", "setImportant:", note);
-menu.addMenuItem("删除", "deleteNote:", note);
-
-// 显示菜单
-menu.show();
-
-// 在插件类中实现对应方法
-copyTitle: function(note) {
-  MNUtil.copy(note.noteTitle);
-  MNUtil.showHUD("已复制标题");
-}
-```
-
-### 6. 常用操作模式
-
-#### 6.1 安全操作模式
-
-```javascript
-// 始终检查对象是否存在
-const focusNote = MNNote.getFocusNote();
-if (!focusNote) {
-  MNUtil.showHUD("请先选择笔记");
-  return;
-}
-
-// 使用 try-catch 处理错误
-try {
-  MNUtil.undoGrouping(() => {
-    // 你的操作
-  });
-} catch (error) {
-  MNUtil.showHUD("操作失败: " + error.message);
-}
-```
-
-#### 6.2 异步操作模式
-
-```javascript
-// 使用 async/await
-processNote: async function() {
-  const title = await MNUtil.input("输入新标题", "", ["确定"]);
-  if (!title) return;
+function inspectNote() {
+  const focusNote = MNNote.getFocusNote();
+  if (!focusNote) return;
   
+  // 基本信息
+  console.log("标题：", focusNote.noteTitle);      // 笔记标题
+  console.log("摘录：", focusNote.excerptText);    // 摘录的文本
+  console.log("颜色：", focusNote.colorIndex);     // 颜色编号 (0-15)
+  
+  // 关系信息
+  console.log("有父笔记吗？", focusNote.parentNote ? "有" : "没有");
+  console.log("子笔记数量：", focusNote.childNotes.length);
+  
+  // 内容信息
+  console.log("评论数量：", focusNote.comments.length);
+  console.log("标签：", focusNote.tags.join(", "));
+}
+```
+
+#### 🎨 修改笔记（最重要的部分）
+
+现在到了激动人心的时刻——修改笔记！但是记住一个黄金法则：**所有修改都要包在 `undoGrouping` 里**。
+
+```javascript
+// ❌ 错误的做法（用户无法撤销）
+focusNote.noteTitle = "新标题";
+focusNote.colorIndex = 6;
+
+// ✅ 正确的做法（用户可以一键撤销）
+MNUtil.undoGrouping(() => {
+  focusNote.noteTitle = "新标题";
+  focusNote.colorIndex = 6;
+});
+```
+
+> 🔑 **黄金法则**：`undoGrouping` 就像一个"事务"，里面的所有操作要么全部成功，要么全部撤销。这给了用户"后悔药"。
+
+#### 📝 实战示例：智能笔记处理器
+
+让我们把学到的知识组合起来，创建一个实用的功能：
+
+```javascript
+async function smartNoteProcessor() {
+  // 1. 获取选中的笔记
+  const notes = MNNote.getFocusNotes();
+  if (notes.length === 0) {
+    MNUtil.showHUD("❌ 请选择要处理的笔记");
+    return;
+  }
+  
+  // 2. 询问用户想做什么
+  const actions = [
+    "🎨 统一改色",
+    "🏷️ 批量加标签",
+    "📝 添加前缀",
+    "🧹 清理格式"
+  ];
+  
+  const selected = await MNUtil.userSelect("选择操作", "", actions);
+  if (selected === 0) return;
+  
+  // 3. 执行操作（使用撤销分组）
+  MNUtil.showHUD("⏳ 处理中...", -1);
+  
+  MNUtil.undoGrouping(() => {
+    let successCount = 0;
+    
+    notes.forEach(note => {
+      switch (selected) {
+        case 1: // 统一改色
+          note.colorIndex = 3;  // 黄色
+          break;
+          
+        case 2: // 批量加标签
+          note.appendTags(["已整理", new Date().toLocaleDateString()]);
+          break;
+          
+        case 3: // 添加前缀
+          note.noteTitle = "📌 " + note.noteTitle;
+          break;
+          
+        case 4: // 清理格式
+          note.noteTitle = note.noteTitle.trim().replace(/\s+/g, ' ');
+          break;
+      }
+      
+      successCount++;
+    });
+    
+    MNUtil.showHUD(`✅ 成功处理 ${successCount} 个笔记`);
+  });
+}
+```
+
+#### 🎨 颜色速查表
+
+MarginNote 使用数字表示颜色，这里是完整对照表：
+
+```javascript
+const colorMap = {
+  0: "⚪ 无色",     1: "🟡 淡黄",   2: "🔵 淡蓝",   3: "🟡 黄色",
+  4: "🔷 深蓝",     5: "🟠 橙色",   6: "🔴 红色",   7: "🟣 紫色",
+  8: "🟢 淡绿",     9: "🟢 深绿",   10: "⚫ 灰色",  11: "🟤 深橙",
+  12: "🟫 棕色",    13: "🔴 深红",  14: "🟣 深紫",  15: "⚫ 深灰"
+};
+
+// 使用示例
+function setNoteColorByMeaning() {
+  const focusNote = MNNote.getFocusNote();
+  if (!focusNote) return;
+  
+  const options = [
+    "🔴 重要/紧急 (红色)",
+    "🟡 需要注意 (黄色)",
+    "🟢 已完成 (绿色)",
+    "🔵 参考信息 (蓝色)"
+  ];
+  
+  MNUtil.userSelect("选择含义", "", options).then(selected => {
+    if (selected > 0) {
+      const colorIndices = [6, 3, 8, 2];  // 对应的颜色索引
+      MNUtil.undoGrouping(() => {
+        focusNote.colorIndex = colorIndices[selected - 1];
+      });
+    }
+  });
+}
+```
+
+#### 💬 给笔记添加内容
+
+笔记不仅有标题，还可以添加各种评论：
+
+```javascript
+function enrichNote() {
   const focusNote = MNNote.getFocusNote();
   if (!focusNote) return;
   
   MNUtil.undoGrouping(() => {
-    focusNote.noteTitle = title;
+    // 添加纯文本评论
+    focusNote.appendTextComment("📅 " + new Date().toLocaleString());
+    
+    // 添加 Markdown 格式评论
+    focusNote.appendMarkdownComment("**重点：** 这是一个 *重要* 的笔记");
+    
+    // 添加 HTML 格式评论（更丰富的样式）
+    focusNote.appendHtmlComment(
+      '<span style="color: red; font-weight: bold;">⚠️ 注意事项</span>',
+      "注意事项",  // 纯文本版本
+      {width: 150, height: 30},  // 显示尺寸
+      "myPlugin"  // 标签，用于识别是哪个插件添加的
+    );
+    
+    // 添加标签
+    focusNote.appendTags(["重要", "待复习"]);
+  });
+  
+  MNUtil.showHUD("✅ 笔记内容已丰富");
+}
+```
+
+#### 🎯 新手任务：创建一个笔记模板系统
+
+综合运用所学知识，创建一个实用的笔记模板功能：
+
+```javascript
+async function applyNoteTemplate() {
+  const focusNote = MNNote.getFocusNote();
+  if (!focusNote) {
+    MNUtil.showHUD("❌ 请先选择一个笔记");
+    return;
+  }
+  
+  // 定义模板
+  const templates = {
+    "📚 读书笔记": {
+      prefix: "📚 ",
+      color: 2,  // 淡蓝色
+      tags: ["读书", "学习"],
+      comments: [
+        "📖 书名：",
+        "👤 作者：",
+        "📄 章节：",
+        "💡 要点：",
+        "💭 思考："
+      ]
+    },
+    "🎯 任务清单": {
+      prefix: "🎯 ",
+      color: 3,  // 黄色
+      tags: ["任务", "待办"],
+      comments: [
+        "📅 截止日期：",
+        "🎯 目标：",
+        "📝 步骤：\n- [ ] \n- [ ] \n- [ ] ",
+        "✅ 完成情况："
+      ]
+    },
+    "💡 灵感记录": {
+      prefix: "💡 ",
+      color: 5,  // 橙色
+      tags: ["灵感", "创意"],
+      comments: [
+        "💡 灵感来源：",
+        "🎨 具体想法：",
+        "🔗 相关链接：",
+        "📅 记录时间：" + new Date().toLocaleString()
+      ]
+    }
+  };
+  
+  // 让用户选择模板
+  const templateNames = Object.keys(templates);
+  const selected = await MNUtil.userSelect("选择模板", "", templateNames);
+  
+  if (selected > 0) {
+    const templateName = templateNames[selected - 1];
+    const template = templates[templateName];
+    
+    // 应用模板
+    MNUtil.undoGrouping(() => {
+      // 修改标题
+      if (!focusNote.noteTitle.startsWith(template.prefix)) {
+        focusNote.noteTitle = template.prefix + focusNote.noteTitle;
+      }
+      
+      // 设置颜色
+      focusNote.colorIndex = template.color;
+      
+      // 添加标签
+      focusNote.appendTags(template.tags);
+      
+      // 添加评论
+      template.comments.forEach(comment => {
+        focusNote.appendTextComment(comment);
+      });
+    });
+    
+    MNUtil.showHUD(`✅ 已应用模板：${templateName}`);
+  }
+}
+```
+
+> 🎉 **太棒了！** 你已经掌握了笔记操作的核心技能。现在你可以：
+> - ✅ 安全地获取和检查笔记
+> - ✅ 修改笔记的各种属性
+> - ✅ 批量处理多个笔记
+> - ✅ 使用撤销分组保护用户操作
+> - ✅ 创建实用的笔记处理功能
+
+### 第三站：增强功能（让插件更强大）
+
+前两站我们学会了和用户对话、操作笔记。现在让我们解锁一些高级功能，让你的插件真正强大起来！
+
+#### 📋 剪贴板操作 - 与外界交流的桥梁
+
+剪贴板是插件与外部世界交流的重要途径。想象一下，用户从网页复制了一段文字，你的插件可以直接使用它！
+
+```javascript
+// 📥 读取剪贴板
+function pasteAsNote() {
+  // 获取剪贴板内容
+  const clipboardText = MNUtil.clipboardText;
+  
+  if (!clipboardText) {
+    MNUtil.showHUD("❌ 剪贴板是空的");
+    return;
+  }
+  
+  // 检查内容类型
+  if (clipboardText.startsWith("http")) {
+    MNUtil.showHUD("🔗 检测到链接，正在创建链接笔记...");
+    // 创建链接笔记
+  } else if (clipboardText.length > 200) {
+    MNUtil.showHUD("📄 检测到长文本，正在创建摘要笔记...");
+    // 创建长文本笔记
+  } else {
+    MNUtil.showHUD("📝 正在创建笔记...");
+    // 创建普通笔记
+  }
+}
+
+// 📤 复制到剪贴板
+function copyNoteInfo() {
+  const focusNote = MNNote.getFocusNote();
+  if (!focusNote) {
+    MNUtil.showHUD("❌ 请先选择笔记");
+    return;
+  }
+  
+  // 构建要复制的内容
+  const info = `📌 ${focusNote.noteTitle}
+📝 ${focusNote.excerptText || "无摘录"}
+🏷️ ${focusNote.tags.join(", ") || "无标签"}
+🔗 ${focusNote.noteURL}`;
+  
+  // 复制到剪贴板
+  MNUtil.copy(info);
+  MNUtil.showHUD("✅ 笔记信息已复制");
+}
+```
+
+> 💡 **实用场景**：
+> - 从网页复制内容直接创建笔记
+> - 导出笔记信息到其他应用
+> - 批量收集链接并创建引用
+
+#### 🎛️ 自定义菜单 - 让插件更专业
+
+当功能变多时，一个按钮已经不够用了。这时候就需要菜单来组织功能：
+
+```javascript
+// 创建一个功能丰富的右键菜单
+async function showSmartMenu(button) {
+  const focusNote = MNNote.getFocusNote();
+  if (!focusNote) {
+    MNUtil.showHUD("❌ 请先选择笔记");
+    return;
+  }
+  
+  // 创建菜单（按钮，控制器，宽度）
+  const menu = new Menu(button, self, 280);
+  
+  // 添加菜单项 - 基础操作
+  menu.addMenuItem("📋 复制标题", "copyTitle:", focusNote);
+  menu.addMenuItem("🔗 复制链接", "copyLink:", focusNote);
+  menu.addMenuItem("📝 复制摘录", "copyExcerpt:", focusNote);
+  
+  // 添加分隔线（用纯文本作为分组标题）
+  menu.addMenuItem("─────── 高级操作 ───────");
+  
+  // 高级操作
+  menu.addMenuItem("🎨 应用模板", "applyTemplate:", focusNote);
+  menu.addMenuItem("🔄 转换格式", "convertFormat:", focusNote);
+  menu.addMenuItem("📊 生成统计", "generateStats:", focusNote);
+  
+  // 条件菜单项（根据笔记状态显示不同选项）
+  if (focusNote.childNotes.length > 0) {
+    menu.addMenuItem("👶 处理子笔记", "processChildren:", focusNote);
+  }
+  
+  if (focusNote.tags.includes("TODO")) {
+    menu.addMenuItem("✅ 标记完成", "markDone:", focusNote);
+  }
+  
+  // 显示菜单
+  menu.show();
+}
+
+// 实现菜单功能（在插件类中）
+copyTitle: function(note) {
+  MNUtil.copy(note.noteTitle);
+  MNUtil.showHUD("✅ 标题已复制");
+},
+
+copyLink: function(note) {
+  MNUtil.copy(note.noteURL);
+  MNUtil.showHUD("✅ 链接已复制");
+},
+
+applyTemplate: async function(note) {
+  // 这里可以调用之前写的模板功能
+  await applyNoteTemplate();
+}
+```
+
+> 🎯 **菜单设计技巧**：
+> - 最常用的功能放在最上面
+> - 使用图标让菜单更直观
+> - 相关功能用分隔线分组
+> - 危险操作（如删除）放在最下面
+
+#### 💾 文件操作 - 导入导出数据
+
+有时候我们需要保存配置或导出数据：
+
+```javascript
+// 📤 导出笔记到文件
+function exportNotes() {
+  const notes = MNNote.getFocusNotes();
+  if (notes.length === 0) {
+    MNUtil.showHUD("❌ 请选择要导出的笔记");
+    return;
+  }
+  
+  // 构建导出数据
+  const exportData = {
+    exportDate: new Date().toISOString(),
+    noteCount: notes.length,
+    notes: notes.map(note => ({
+      title: note.noteTitle,
+      excerpt: note.excerptText,
+      color: note.colorIndex,
+      tags: note.tags,
+      comments: note.comments.map(c => c.text)
+    }))
+  };
+  
+  // 保存到文件
+  const fileName = `笔记导出_${new Date().toLocaleDateString()}.json`;
+  const filePath = `${MNUtil.mainPath}/exports/${fileName}`;
+  
+  // 确保目录存在
+  MNUtil.createFolder(`${MNUtil.mainPath}/exports`);
+  
+  // 写入文件
+  MNUtil.writeJSON(filePath, exportData);
+  
+  // 复制文件路径到剪贴板
+  MNUtil.copy(filePath);
+  MNUtil.showHUD(`✅ 已导出 ${notes.length} 个笔记\n路径已复制到剪贴板`);
+}
+
+// 📥 从文件导入配置
+function loadConfig() {
+  const configPath = `${MNUtil.mainPath}/config.json`;
+  
+  // 检查文件是否存在
+  if (!MNUtil.isfileExists(configPath)) {
+    // 创建默认配置
+    const defaultConfig = {
+      version: "1.0.0",
+      settings: {
+        defaultColor: 3,
+        autoTag: true,
+        templateEnabled: true
+      }
+    };
+    
+    MNUtil.writeJSON(configPath, defaultConfig);
+    return defaultConfig;
+  }
+  
+  // 读取配置
+  return MNUtil.readJSON(configPath);
+}
+```
+
+#### 🌍 平台适配 - 让插件更友好
+
+MarginNote 支持 Mac 和 iPad，不同平台有不同的特性：
+
+```javascript
+// 检测平台并适配
+function adaptToPlatform() {
+  const isMac = MNUtil.isMacOS();
+  
+  if (isMac) {
+    // Mac 平台特有功能
+    setupMacFeatures();
+  } else {
+    // iOS/iPadOS 特有功能
+    setupIOSFeatures();
+  }
+}
+
+// Mac 平台功能
+function setupMacFeatures() {
+  // Mac 支持更复杂的快捷键
+  MNUtil.showHUD("💻 Mac 版本：支持键盘快捷键");
+  
+  // Mac 支持文件拖放
+  // 可以实现拖入文件创建笔记等功能
+}
+
+// iOS 平台功能
+function setupIOSFeatures() {
+  // iOS 更注重手势操作
+  MNUtil.showHUD("📱 iOS 版本：优化触摸体验");
+  
+  // iOS 的菜单需要考虑手指操作
+  // 按钮要更大，间距要更宽
+}
+
+// 自适应界面示例
+function createAdaptiveUI() {
+  const isMac = MNUtil.isMacOS();
+  
+  // 根据平台调整按钮大小
+  const buttonSize = isMac ? 30 : 44;  // iOS 需要更大的触摸目标
+  const spacing = isMac ? 5 : 10;      // iOS 需要更大的间距
+  
+  // 创建按钮时使用这些值
+  const button = MNButton.new({
+    width: buttonSize,
+    height: buttonSize,
+    margin: spacing
   });
 }
 ```
 
-#### 6.3 批处理模式
+#### 🎯 综合实战：智能笔记助手
+
+让我们把所有学到的增强功能组合起来，创建一个真正实用的功能：
 
 ```javascript
-// 处理多个笔记时显示进度
-const notes = MNNote.getFocusNotes();
-let processed = 0;
+// 智能笔记助手 - 集成所有高级功能
+async function smartNoteAssistant() {
+  // 检测平台
+  const isMac = MNUtil.isMacOS();
+  
+  // 构建功能菜单
+  const features = [
+    "📋 从剪贴板创建笔记",
+    "📤 导出选中笔记",
+    "🎨 批量应用模板",
+    "🔄 智能格式转换",
+    "📊 生成学习报告",
+    "⚙️ 插件设置"
+  ];
+  
+  // iOS 上添加额外选项
+  if (!isMac) {
+    features.push("📱 触摸优化模式");
+  }
+  
+  const selected = await MNUtil.userSelect(
+    "智能笔记助手",
+    "选择要执行的功能",
+    features
+  );
+  
+  if (selected === 0) return;
+  
+  switch (selected) {
+    case 1: // 从剪贴板创建笔记
+      await createNoteFromClipboard();
+      break;
+      
+    case 2: // 导出选中笔记
+      await exportSelectedNotes();
+      break;
+      
+    case 3: // 批量应用模板
+      await batchApplyTemplate();
+      break;
+      
+    case 4: // 智能格式转换
+      await smartFormatConversion();
+      break;
+      
+    case 5: // 生成学习报告
+      await generateStudyReport();
+      break;
+      
+    case 6: // 插件设置
+      await showSettings();
+      break;
+      
+    case 7: // iOS 触摸优化
+      if (!isMac) {
+        await enableTouchOptimization();
+      }
+      break;
+  }
+}
 
-MNUtil.showHUD("处理中...", -1);  // 显示持续的 HUD
-
-MNUtil.undoGrouping(() => {
-  notes.forEach(note => {
-    // 处理每个笔记
-    note.colorIndex = 2;
-    processed++;
-  });
-});
-
-MNUtil.showHUD(`✅ 完成！处理了 ${processed} 个笔记`);
+// 从剪贴板智能创建笔记
+async function createNoteFromClipboard() {
+  const text = MNUtil.clipboardText;
+  if (!text) {
+    MNUtil.showHUD("❌ 剪贴板为空");
+    return;
+  }
+  
+  // 智能识别内容类型
+  let noteType = "普通笔记";
+  let color = 0;
+  let tags = [];
+  
+  if (text.startsWith("http")) {
+    noteType = "链接笔记";
+    color = 2;  // 蓝色
+    tags = ["链接", "参考"];
+  } else if (text.includes("TODO") || text.includes("待办")) {
+    noteType = "任务笔记";
+    color = 3;  // 黄色
+    tags = ["TODO", "任务"];
+  } else if (text.length > 500) {
+    noteType = "长文笔记";
+    color = 8;  // 绿色
+    tags = ["长文", "阅读"];
+  }
+  
+  const confirmed = await MNUtil.confirm(
+    `创建${noteType}`,
+    `检测到${noteType}，是否创建？\n\n${text.substring(0, 100)}...`
+  );
+  
+  if (confirmed) {
+    // 这里实际创建笔记的代码
+    MNUtil.showHUD(`✅ ${noteType}创建成功`);
+  }
+}
 ```
 
-## 插件文件处理
+#### 🎯 新手任务：创建你的瑞士军刀
+
+现在轮到你了！试着创建一个集成多种功能的"瑞士军刀"插件：
+
+```javascript
+// 你的任务：完成这个多功能工具
+async function mySwissKnife() {
+  const focusNote = MNNote.getFocusNote();
+  
+  // 1. 创建一个自适应菜单
+  const menu = new Menu(button, self, MNUtil.isMacOS() ? 250 : 300);
+  
+  // 2. 添加至少5个实用功能
+  menu.addMenuItem("📋 复制为 Markdown", "copyAsMarkdown:", focusNote);
+  menu.addMenuItem("🔗 生成分享链接", "generateShareLink:", focusNote);
+  // ... 添加更多功能
+  
+  // 3. 根据不同情况显示不同选项
+  if (MNUtil.clipboardText) {
+    menu.addMenuItem("📥 粘贴并关联", "pasteAndLink:", focusNote);
+  }
+  
+  menu.show();
+}
+
+// 实现其中一个功能作为示例
+copyAsMarkdown: function(note) {
+  if (!note) return;
+  
+  // 构建 Markdown 格式
+  const markdown = `## ${note.noteTitle}
+
+${note.excerptText || ""}
+
+标签：${note.tags.map(t => `#${t}`).join(" ")}
+创建时间：${new Date(note.createTime).toLocaleString()}
+`;
+  
+  MNUtil.copy(markdown);
+  MNUtil.showHUD("✅ 已复制 Markdown 格式");
+}
+```
+
+> 🎉 **恭喜你完成第三站！**
+> 
+> 你已经掌握了：
+> - ✅ 剪贴板操作 - 与外部世界交流
+> - ✅ 菜单系统 - 组织复杂功能
+> - ✅ 文件操作 - 导入导出数据
+> - ✅ 平台适配 - 优化用户体验
+> 
+> 这些增强功能让你的插件从"能用"变成"好用"。记住，好的插件不仅功能强大，更要体验流畅！
+
+## 开发你的第一个按钮
 
 ### 1. 插件打包（极其重要）
 

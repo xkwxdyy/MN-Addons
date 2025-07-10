@@ -49,7 +49,18 @@ function registerAllButtons() {
     image: "makeCards",
     templateName: "menu_makeCards"  // 延迟获取template
   });
+
+  global.registerButton("custom3", {
+    name: "增加模板",
+    image: "addTemplate",
+    templateName: "addTemplate"
+  });
   
+  global.registerButton("proof", {
+    name: "证明按钮",
+    image: "custom16",
+    templateName: "menu_proof"
+  });
   
   global.registerButton("custom10", {
     name: "管理评论",
@@ -143,7 +154,7 @@ function registerAllButtons() {
     image: "excerpt_white",
     templateName: "menu_excerpt"
   });
-  
+
   
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
     MNUtil.log(`🚀 已注册 ${Object.keys(global.customButtons).length} 个自定义按钮`);

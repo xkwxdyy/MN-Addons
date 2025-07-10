@@ -60,14 +60,14 @@ function registerAllCustomActions() {
 
   // HTML 设置
   const htmlSetting = [
+    { title: "CHECK: 🔍", type: "check" },
     { title: "方法: ✔", type: "method" },
-    // { title: "思路: 💡", type: "idea" },
     { title: "目标: 🎯", type: "goal" },
     { title: "关键: 🔑", type: "key" },
     { title: "问题: ❓", type: "question" },
     { title: "注: 📝", type: "remark" },
     { title: "注意: ⚠️", type: "alert" },
-    { title: "特别注意: ❗❗❗", type: "danger" },
+    { title: "特别注意: ❗❗❗", type: "danger" }
   ];
   const htmlSettingTitles = htmlSetting.map((config) => config.title);
 
@@ -1717,6 +1717,23 @@ function registerAllCustomActions() {
     );
   });
 
+  // addProofCheckComment
+  global.registerCustomAction("addProofCheckComment", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+      try {
+        MNUtil.undoGrouping(() => {
+        // 直接调用原生 API，绕过 MNNote 的空值检查
+        const htmlContent = HtmlMarkdownUtils.createHtmlMarkdownText(undefined, "check");
+        if (htmlContent) {
+          focusNote.note.appendMarkdownComment(htmlContent);
+        }  
+        MNUtil.log(htmlContent)
+      });
+      } catch (error) {
+        MNUtil.showHUD("添加CHECK评论失败: " + error);
+      }
+    });
+
   // copyMarkdownVersionFocusNoteURL
   global.registerCustomAction("copyMarkdownVersionFocusNoteURL", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
@@ -2393,6 +2410,19 @@ function registerAllCustomActions() {
       }
     });
   });
+
+  global.registerCustomAction("addTemplate", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    try {
+      MNUtil.undoGrouping(() => {
+        MNMath.addTemplate(focusNote);
+      });
+    } catch (error) {
+      MNUtil.showHUD(error);
+    }
+  });
+
+
 
   // hideAddonBar - 隐藏插件栏
   global.registerCustomAction("hideAddonBar", async function(context) {

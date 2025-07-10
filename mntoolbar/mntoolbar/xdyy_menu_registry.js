@@ -526,6 +526,21 @@ function registerAllMenuTemplates() {
     }
   });
 
+  // menu_proof
+  global.registerMenuTemplate("menu_proof", {
+    action: "addProofCheckComment",
+    onLongPress: {
+      action: "menu",
+      menuWidth: 320,
+      menuItems: [
+        {
+          action: "upwardMergeWithStyledComments",
+          menuTitle: "将子卡片作为证明要点合并"
+        }
+      ]
+    }
+  });
+
   global.registerMenuTemplate("hideAddonBar", JSON.stringify({
     action: "hideAddonBar"
   }));

@@ -1824,6 +1824,156 @@ function registerAllCustomActions() {
     }
   });
 
+  // ocrAllUntitledDescendants - 批量 OCR 无标题子孙卡片
+  global.registerCustomAction("ocrAllUntitledDescendants", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    try {
+      // 检查是否有 focusNote
+      if (!focusNote) {
+        MNUtil.showHUD("请先选择一个笔记");
+        return;
+      }
+      
+      // 获取所有子孙卡片
+      const descendantData = focusNote.descendantNodes;
+      const descendants = descendantData ? descendantData.descendant : [];
+      
+      // 创建包含选中卡片和所有子孙卡片的数组
+      const allNotes = [focusNote, ...descendants];
+      
+      // 筛选无标题且有图片的卡片
+      const untitledNotes = allNotes.filter(note => {
+        // 检查是否无标题
+        if (note.noteTitle && note.noteTitle.trim()) {
+          return false;
+        }
+        // 检查是否有图片
+        const imageData = MNNote.getImageFromNote(note);
+        return imageData !== null && imageData !== undefined;
+      });
+      
+      if (untitledNotes.length === 0) {
+        MNUtil.showHUD("没有找到无标题且包含图片的子孙卡片");
+        return;
+      }
+      
+      // 确认操作
+      const confirmed = await MNUtil.confirm(
+        "批量 OCR 确认",
+        `找到 ${untitledNotes.length} 个无标题卡片，是否进行 OCR 识别？`
+      );
+      
+      if (!confirmed) {
+        return;
+      }
+      
+      // OCR 源选项配置（与单个 OCR 保持一致）
+      const ocrSources = [
+        { name: "Doc2X - 专业文档识别", source: "Doc2X" },
+        { name: "SimpleTex - 数学公式", source: "SimpleTex" },
+        { name: "GPT-4o - OpenAI 视觉", source: "GPT-4o" },
+        { name: "GPT-4o mini", source: "GPT-4o-mini" },
+        { name: "glm-4v-plus - 智谱AI Plus", source: "glm-4v-plus" },
+        { name: "glm-4v-flash - 智谱AI Flash", source: "glm-4v-flash" },
+        { name: "Claude 3.5 Sonnet", source: "claude-3-5-sonnet-20241022" },
+        { name: "Claude 3.7 Sonnet", source: "claude-3-7-sonnet" },
+        { name: "Gemini 2.0 Flash - Google", source: "gemini-2.0-flash" },
+        { name: "Moonshot-v1", source: "Moonshot-v1" },
+        { name: "默认配置", source: "default" }
+      ];
+      
+      // 显示 OCR 源选择对话框
+      const sourceNames = ocrSources.map(s => s.name);
+      const selectedIndex = await MNUtil.userSelect(
+        "选择 OCR 源",
+        "请选择要使用的识别引擎（将应用到所有卡片）",
+        sourceNames
+      );
+      
+      // 处理用户取消
+      if (selectedIndex === 0) {
+        return;
+      }
+      
+      const selectedOCR = ocrSources[selectedIndex - 1];
+      MNUtil.showHUD(`开始批量识别（${selectedOCR.name}）...`);
+      
+      // 批量处理
+      let successCount = 0;
+      let failCount = 0;
+      
+      for (let i = 0; i < untitledNotes.length; i++) {
+        const note = untitledNotes[i];
+        
+        try {
+          // 获取图片数据
+          const imageData = MNNote.getImageFromNote(note);
+          if (!imageData) {
+            failCount++;
+            continue;
+          }
+          
+          // 执行 OCR
+          let ocrResult;
+          if (typeof ocrNetwork !== 'undefined') {
+            ocrResult = await ocrNetwork.OCR(imageData, selectedOCR.source, true);
+          } else if (typeof toolbarUtils !== 'undefined') {
+            // 降级到免费 OCR
+            ocrResult = await toolbarUtils.freeOCR(imageData);
+          } else {
+            MNUtil.showHUD("请先安装 MN OCR 插件");
+            return;
+          }
+          
+          // 设置标题
+          if (ocrResult && ocrResult.trim()) {
+            MNUtil.undoGrouping(() => {
+              note.noteTitle = ocrResult.trim();
+            });
+            successCount++;
+          } else {
+            failCount++;
+          }
+          
+        } catch (error) {
+          failCount++;
+          if (typeof toolbarUtils !== 'undefined') {
+            toolbarUtils.addErrorLog(error, "ocrAllUntitledDescendants", {noteId: note.noteId});
+          }
+        }
+        
+        // 更新进度（每处理3个或最后一个时更新）
+        if ((i + 1) % 3 === 0 || i === untitledNotes.length - 1) {
+          MNUtil.showHUD(`处理进度: ${i + 1}/${untitledNotes.length}`);
+          await MNUtil.delay(0.1);  // 短暂延迟让 UI 更新
+        }
+      }
+      
+      // 显示完成信息
+      let resultMessage = `处理完成！成功: ${successCount}`;
+      if (failCount > 0) {
+        resultMessage += `，失败: ${failCount}`;
+      }
+      MNUtil.showHUD(resultMessage);
+      
+      // 发送批量完成通知（可选，用于其他插件集成）
+      MNUtil.postNotification("BatchOCRFinished", {
+        action: "batchTitleOCR",
+        parentNoteId: focusNote.noteId,
+        totalCount: untitledNotes.length,
+        successCount: successCount,
+        failCount: failCount
+      });
+      
+    } catch (error) {
+      MNUtil.showHUD("批量 OCR 失败: " + error.message);
+      if (typeof toolbarUtils !== 'undefined') {
+        toolbarUtils.addErrorLog(error, "ocrAllUntitledDescendants");
+      }
+    }
+  });
+
   // copyMarkdownVersionFocusNoteURL
   global.registerCustomAction("copyMarkdownVersionFocusNoteURL", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;

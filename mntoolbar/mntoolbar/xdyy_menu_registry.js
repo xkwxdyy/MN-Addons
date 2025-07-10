@@ -540,6 +540,10 @@ function registerAllMenuTemplates() {
         {
           action: "ocrAsProofTitle",
           menuTitle: "🔍 OCR 识别设置为标题（可选源）"
+        },
+        {
+          action: "ocrAllUntitledDescendants",
+          menuTitle: "🔍 批量 OCR 无标题子孙卡片"
         }
       ]
     }

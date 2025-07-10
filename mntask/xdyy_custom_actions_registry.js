@@ -4045,40 +4045,36 @@ function registerAllCustomActions() {
         throw new Error("无法获取主插件实例");
       }
       
-      // todayBoardController 现在在 main.js 中启动时加载，无需动态加载
-      MNUtil.log("📌 使用已加载的 todayBoardController");
+      // 使用 settingController 来显示今日看板
+      MNUtil.log("📌 使用 settingController 显示今日看板");
       
       // 验证控制器类是否存在
-      if (typeof todayBoardController === 'undefined') {
-        throw new Error("todayBoardController 类未定义");
+      if (typeof taskSettingController === 'undefined') {
+        throw new Error("taskSettingController 类未定义");
       }
       
-      // 创建并显示看板控制器
-      MNUtil.log("🔨 创建 todayBoardController 实例");
-      
-      // 检查是否已有实例
-      if (!mainPlugin.todayBoardController) {
-        mainPlugin.todayBoardController = todayBoardController.new();
-        if (!mainPlugin.todayBoardController) {
-          throw new Error("无法创建看板控制器实例");
-        }
-        
-        // 添加到 studyView (像 mnai 和 mnbrowser 一样)
-        MNUtil.log("📌 添加控制器视图到 studyView");
-        MNUtil.studyView.addSubview(mainPlugin.todayBoardController.view);
+      // 检查是否已有 settingController 实例
+      if (!mainPlugin.settingController) {
+        mainPlugin.settingController = taskSettingController.new();
+        mainPlugin.settingController.mainPath = taskConfig.mainPath;
+        mainPlugin.settingController.action = taskConfig.action;
+        MNUtil.studyView.addSubview(mainPlugin.settingController.view);
       }
       
-      // 显示控制器
-      MNUtil.log("📱 显示控制器");
-      mainPlugin.todayBoardController.show();
+      // 显示设置面板
+      mainPlugin.settingController.show();
+      
+      // 切换到今日看板视图
+      MNUtil.delay(0.1).then(() => {
+        mainPlugin.settingController.viewManager.switchTo('todayBoard');
+      });
       
       MNUtil.log("✅ HTML 今日看板已打开");
     } catch (error) {
       MNUtil.log(`❌ 打开 HTML 今日看板失败: ${error.message || error}`);
       taskUtils.addErrorLog(error, "openTodayBoardHTML", {
         hasMainPlugin: !!(self || MNTaskGlobal.mainPlugin || MNTaskInstance),
-        hasTodayBoardController: typeof todayBoardController !== 'undefined',
-        loadedControllers: MNTaskGlobal.loadedControllers
+        hasSettingController: typeof taskSettingController !== 'undefined'
       });
       MNUtil.showHUD(`打开看板失败: ${error.message || '未知错误'}`);
     }

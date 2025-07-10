@@ -6,8 +6,8 @@ JSB.newAddon = function (mainPath) {
   if (!taskUtils.checkMNUtilsFolder(mainPath)) {return undefined}
   JSB.require('webviewController');
   JSB.require('settingController'); // 文件名保持不变，只是类名改变了
-  // 加载 todayBoardController
-  JSB.require('todayBoardController');
+  // 加载 todayBoardController (已集成到 settingController 中，不再需要独立加载)
+  // JSB.require('todayBoardController');
   
   // 加载自定义菜单注册表（必须在 utils 之后）
   try {

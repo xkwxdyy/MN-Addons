@@ -1,3 +1,17 @@
+请基于当前目录下的 mnai, mntask, mnutils, mntoolbar 项目，完善  ./A_first_course_to_the_development_of_MN_Addon.md, 我把里面初步的框架写好了。这是一个面向一个没有 JavaScript 基础的 MarginNote 插件开发新手的教学文档，所以尽可能写得通俗易懂，深入浅出。
+
+1. 把几个项目里的所有 Markdown 文件全都精读一遍！包括每个项目里的 CLAUDE.md 文件，这些都是开发插件中的精华所在。
+2. 然后精读 mnutils, mntask 和 mntoolbar 项目代码，这是开发的重点，尤其是 mnutils. 也是后续初学者开发主要学习的插件。
+3. 然后再精读 mnai 项目代码，了解插件更多的处理可能性以及一些结合插件实现的操作，了解插件还能实现什么效果
+4. 你要完成上面几个内容再开始写。JavaScript 基础不需要太深，但是
+   - 在开发新按钮功能中涉及到的
+   - MNUtils 的基础 API 中涉及到的
+  这些要写详细
+5. MNUtils 一定要总结最常见，最常用的 API，尤其是 MNNote 类和 MNUtil 类的 API，这些是开发插件的基础。
+
+希望最终的效果是只需要通过你的这一个文档就能让一个没有 JavaScript 基础的初学者，能够快速入门 MarginNote 插件开发，并且能够独立开发出自己的插件。ultrathink
+
+---
 还是有大问题！很多函数还是被删了！比如 mergIntoAndRenewReplaceholder，对照你写的 deleted_mnnote_methods_report.md 一个一个排查！ mntoolbar 里只要出现的都不能删！！！！！！！ ultrathink
 ---
 重点排查一下 git 的：5a616902f5f20d4d42c758845c5ce18d30ada447 里的更新内容。具体说明如下：

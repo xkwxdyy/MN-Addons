@@ -2,10 +2,18 @@
 1. 一旦修改代码，就需要按照修改的内容程度来改 mnaddon.json 的版本号。
 2. 任何更新，尤其是新功能，要在 mntask_guide.md 里详细更新。
 ---
-增加检查看板
+增加检查看板。下面详细解释。
 
-插件开发入门
-MNTask 插件介绍及开发思路
+
+---
+1. “切换类型”的话，需要查看下面有没有“包含”和状态字段，动作卡片不需要！
+2. 状态的话：“已阻塞”和“已取消”都去掉
+3. “getOKRNotesOnToday”报错：获取OKR任务失败：MNTaskManager，getAllTaskCardsFromBoard is nota function. （In'MNTaskManager getAllTaskCardsFromBoard （rootNote）， MNTaskManager.getAllTaskCardsFromBoard is undefined
+4. 今日看板刷新功能失效，看板里一直是空的！
+
+
+
+
 
 --
 请你分析几个按钮里单击、菜单里的功能，然后分析功能的合理性，在 guide 文件里加入你尽可能想到的基于这些功能合理的工作流。

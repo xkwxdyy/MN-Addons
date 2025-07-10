@@ -5,15 +5,25 @@
 ## 📚 目录
 
 1. [前言 - 为什么要学习插件开发](#前言---为什么要学习插件开发)
-2. [JavaScript 必备基础](#javascript-必备基础)
+   - 插件能做什么 | 学习路线图
+2. [JavaScript 必备基础](#javascript-必备基础)（⭐ 新手必读）
+   - 变量 | 字符串 | 数组 | 对象 | 函数 | 条件判断
 3. [MarginNote 插件结构](#marginnote-插件结构)
-4. [MNUtils API 入门](#mnutils-api-入门)
-5. [开发你的第一个按钮](#开发你的第一个按钮)
+   - 插件入口 | 生命周期 | JSB 框架
+4. [MNUtils API 入门](#mnutils-api-入门)（⭐ 核心内容）
+   - 什么是 MNUtils | 常用 API | 实战示例
+5. [开发你的第一个按钮](#开发你的第一个按钮)（🚀 快速上手）
+   - 三步添加按钮 | 实战示例 | 调试技巧
 6. [插件文件处理](#插件文件处理)
+   - 打包方法 | 安装调试 | 常见错误
 7. [进阶功能开发](#进阶功能开发)
+   - 评论管理 | 链接管理 | 批量处理 | 模板系统
 8. [MNTask 案例学习](#mntask-案例学习)
-9. [常见问题与调试](#常见问题与调试)
+   - 任务卡片 | 状态管理 | 学习要点
+9. [常见问题与调试](#常见问题与调试)（🔧 遇到问题看这里）
+   - 常见错误 | 调试技巧 | 性能优化
 10. [资源与下一步](#资源与下一步)
+    - 学习路径 | 推荐资源 | 社区支持
 
 ## 前言 - 为什么要学习插件开发
 
@@ -23,328 +33,795 @@ MarginNote 的插件系统让你能够：
 - 💡 整合外部工具，如 AI、网络服务等
 - 🛠️ 修改现有插件，适配个人需求
 
-## JavaScript 必备基础
+### 🗺️ 学习路线图（新手必看）
 
-### 1. 变量和常量
-
-```javascript
-// 变量 - 可以修改的值
-let noteTitle = "我的笔记";
-noteTitle = "修改后的标题";  // ✅ 可以修改
-
-// 常量 - 不能修改的值
-const colorIndex = 2;
-colorIndex = 3;  // ❌ 错误！常量不能修改
-
-// 在 MN 插件中的实际应用
-const focusNote = MNNote.getFocusNote();  // 获取当前选中的卡片
-let originalTitle = focusNote.noteTitle;   // 保存原始标题
+```
+第 1-3 天：JavaScript 基础
+  ↓ 学习变量、字符串、数组（章节2）
+第 4-5 天：理解插件结构
+  ↓ 了解插件如何运行（章节3）
+第 6-7 天：熟悉 MNUtils API
+  ↓ 掌握核心 API 使用（章节4）
+第 8-10 天：创建第一个按钮 ⭐
+  ↓ 动手实践，建立信心（章节5）
+第 11-15 天：开发实用功能
+  ↓ 批量处理、模板等（章节7）
+第 16-21 天：学习优秀案例
+  ↓ 研究 MNTask 源码（章节8）
 ```
 
-### 2. 字符串操作
+> 💡 **新手建议**：不要试图一次学完所有内容。按照路线图循序渐进，每完成一个阶段就动手实践一下。
+
+## JavaScript 必备基础
+
+> 💡 **为什么要学 JavaScript？**  
+> 想象一下，MarginNote 就像一个功能强大的笔记本，而 JavaScript 就是让你能在这个笔记本上"施展魔法"的咒语。通过 JavaScript，你可以让 MarginNote 按照你的想法自动工作。
+
+### 1. 从一个实际需求开始
+
+假设你想给所有重要的笔记加上红色标记，手动操作需要：
+1. 找到每个笔记
+2. 点击颜色按钮
+3. 选择红色
+4. 重复...重复...重复...😓
+
+用插件只需要一行"魔法咒语"：
+```javascript
+focusNote.colorIndex = 6;  // 瞬间变红！
+```
+
+但是等等，`focusNote` 是什么？`colorIndex` 又是什么？别急，让我们一步步来理解。
+
+### 2. 变量 - 给东西起名字
+
+在生活中，我们会说"把**那本书**递给我"。在 JavaScript 中，我们需要先给"那本书"起个名字：
 
 ```javascript
-// 字符串拼接
-let prefix = "【重要】";
-let content = "这是笔记内容";
-let fullTitle = prefix + content;  // "【重要】这是笔记内容"
+// 用 let 声明一个可以改变的变量（就像用铅笔写字）
+let myBook = "JavaScript 入门";
+myBook = "JavaScript 进阶";  // ✅ 可以改！
 
-// 模板字符串（推荐）
-let noteCount = 5;
-let message = `已处理 ${noteCount} 个笔记`;  // "已处理 5 个笔记"
+// 用 const 声明一个不能改变的常量（就像用钢笔写字）
+const myName = "小明";
+myName = "小红";  // ❌ 错误！const 声明的不能改
+```
 
-// 常用字符串方法
-let text = "  MarginNote 4  ";
-text.trim()           // "MarginNote 4" (去除首尾空格)
-text.includes("Note") // true (是否包含)
-text.replace("4", "3") // "  MarginNote 3  " (替换)
-text.split(" ")       // ["", "", "MarginNote", "4", "", ""] (分割)
+**在插件中的实际应用：**
+```javascript
+// 获取当前选中的笔记，存到 focusNote 变量里
+const focusNote = MNNote.getFocusNote();
 
-// MN 插件实例
-if (focusNote.noteTitle.includes("TODO")) {
-  focusNote.noteTitle = focusNote.noteTitle.replace("TODO", "DONE");
+// 如果你想保存原始标题以便后续恢复
+let originalTitle = focusNote.noteTitle;
+```
+
+> 🎯 **小贴士**：用 `const` 还是 `let`？  
+> - 如果这个值后面不会变，用 `const`（比如获取的笔记对象）
+> - 如果这个值可能会变，用 `let`（比如计数器、临时标题等）
+
+### 3. 字符串 - 处理文字
+
+字符串就是文本，用引号包起来：
+
+```javascript
+// 三种引号都可以
+let text1 = "双引号";
+let text2 = '单引号';
+let text3 = `反引号（模板字符串）`;
+```
+
+**为什么有三种？看看实际应用：**
+
+```javascript
+// 场景1：在笔记标题前加上标记
+let noteTitle = "重要会议";
+let markedTitle = "【待办】" + noteTitle;  // 结果："【待办】重要会议"
+
+// 场景2：显示处理进度（这时模板字符串就很方便）
+let processed = 5;
+let total = 10;
+let progress = `已处理 ${processed}/${total} 个笔记`;  // "已处理 5/10 个笔记"
+```
+
+**常用的文字处理技巧：**
+```javascript
+let title = "  TODO: 完成作业  ";
+
+// 去掉首尾空格
+title = title.trim();  // "TODO: 完成作业"
+
+// 检查是否包含某个词
+if (title.includes("TODO")) {
+  // 替换文字
+  title = title.replace("TODO", "DONE");  // "DONE: 完成作业"
+}
+
+// 在插件中的实际应用
+const focusNote = MNNote.getFocusNote();
+if (focusNote && focusNote.noteTitle.includes("重要")) {
+  focusNote.colorIndex = 6;  // 包含"重要"的笔记标记为红色
 }
 ```
 
-### 3. 数组操作
+### 4. 数组 - 管理多个东西
+
+想象数组就像一个有编号的储物柜：
 
 ```javascript
-// 创建数组
+// 创建一个标签列表
 let tags = ["重要", "复习", "考试"];
+//  位置：    0      1      2     （位置从 0 开始数！）
 
-// 访问元素
+// 获取第一个标签
 let firstTag = tags[0];  // "重要"
 
-// 添加元素
-tags.push("紧急");      // 末尾添加
-tags.unshift("最新");   // 开头添加
-
-// 数组方法（插件开发常用）
-let notes = MNNote.getFocusNotes();  // 获取所有选中的笔记
-
-// filter - 筛选
-let importantNotes = notes.filter(note => note.colorIndex === 2);
-
-// map - 转换
-let titles = notes.map(note => note.noteTitle);
-
-// forEach - 遍历
-notes.forEach(note => {
-  note.colorIndex = 3;  // 将所有笔记设为黄色
-});
-
-// find - 查找第一个
-let todoNote = notes.find(note => note.noteTitle.includes("TODO"));
+// 添加新标签
+tags.push("紧急");  // 在末尾添加 → ["重要", "复习", "考试", "紧急"]
 ```
 
-### 4. 对象操作
+**在插件开发中，数组最常用于处理多个笔记：**
 
 ```javascript
-// 创建对象
-let noteConfig = {
-  title: "我的笔记",
-  color: 2,
-  tags: ["重要", "复习"]
+// 获取所有选中的笔记
+const selectedNotes = MNNote.getFocusNotes();
+console.log(`选中了 ${selectedNotes.length} 个笔记`);
+
+// 场景1：给所有选中的笔记加上黄色
+selectedNotes.forEach(note => {
+  note.colorIndex = 3;  // 3 是黄色
+});
+
+// 场景2：找出所有包含"TODO"的笔记
+const todoNotes = selectedNotes.filter(note => 
+  note.noteTitle.includes("TODO")
+);
+
+// 场景3：获取所有笔记的标题
+const titles = selectedNotes.map(note => note.noteTitle);
+// 如果选中了3个笔记，titles 可能是：["笔记1", "笔记2", "笔记3"]
+```
+
+> 💡 **数组方法速记**：
+> - `forEach` = 对每个元素做点什么（遍历）
+> - `filter` = 筛选出符合条件的（过滤）
+> - `map` = 把每个元素转换成别的东西（映射）
+> - `find` = 找到第一个符合条件的（查找）
+
+### 5. 对象 - 描述复杂的东西
+
+如果说数组是"有序的列表"，那对象就是"有名字的属性集合"：
+
+```javascript
+// 描述一本书的信息
+let book = {
+  title: "JavaScript 入门",
+  author: "张三",
+  pages: 200,
+  isRead: true
 };
 
-// 访问属性
-let title = noteConfig.title;      // 点号访问
-let color = noteConfig["color"];   // 方括号访问
+// 获取信息
+console.log(book.title);        // "JavaScript 入门"
+console.log(book["author"]);    // "张三"（另一种写法）
 
-// 修改属性
-noteConfig.title = "新标题";
-noteConfig.priority = "高";  // 添加新属性
+// 修改信息
+book.pages = 250;               // 修改页数
+book.publisher = "清华出版社";   // 添加新属性
+```
 
-// 解构赋值（常见于插件开发）
-const { button, des, focusNote } = context;  // 从 context 对象中提取属性
+**在插件中，对象无处不在：**
+```javascript
+// 笔记对象包含了各种属性
+const focusNote = MNNote.getFocusNote();
+if (focusNote) {
+  console.log(focusNote.noteTitle);    // 标题
+  console.log(focusNote.noteId);       // 唯一ID
+  console.log(focusNote.colorIndex);   // 颜色编号
+  console.log(focusNote.tags);         // 标签数组
+}
 
-// MN 插件实例 - Menu 类的使用
-let menuConfig = {
+// 创建菜单时，用对象描述菜单结构
+const menuConfig = {
   action: "menu",
   menuItems: [
     {
       action: "copyTitle",
-      menuTitle: "复制标题"
+      menuTitle: "📋 复制标题"
     },
     {
-      action: "makeCard",
-      menuTitle: "制作卡片"
+      action: "changeColor",
+      menuTitle: "🎨 改变颜色"
     }
   ]
 };
 ```
 
-### 5. 函数基础
+> 🔑 **理解对象的关键**：把对象想象成一个"资料卡"，上面记录了各种相关信息。
+
+### 6. 函数 - 可重复使用的魔法
+
+函数就像一个"魔法配方"，定义一次，可以反复使用：
 
 ```javascript
-// 函数声明
-function processNote(note) {
-  note.colorIndex = 2;
-  note.appendTags(["已处理"]);
-  return note;
+// 定义一个"把笔记变红"的函数
+function makeNoteRed(note) {
+  note.colorIndex = 6;  // 6 是红色
+  MNUtil.showHUD("已标记为红色！");
 }
 
-// 箭头函数（插件中更常用）
-const processNote = (note) => {
-  note.colorIndex = 2;
-  note.appendTags(["已处理"]);
-  return note;
-};
-
-// 简写形式
-const getTitle = note => note.noteTitle;  // 单参数可省略括号
-const isImportant = note => note.colorIndex === 2;  // 单行可省略大括号
-
-// 异步函数（处理需要等待的操作）
-const askUser = async () => {
-  const result = await MNUtil.input("请输入标题", "", ["确定"]);
-  return result;
-};
-```
-
-### 6. 条件判断
-
-```javascript
-// if-else 语句
-if (focusNote) {
-  // 有选中的笔记
-  MNUtil.showHUD("找到笔记：" + focusNote.noteTitle);
-} else {
-  // 没有选中
-  MNUtil.showHUD("请先选择一个笔记");
-}
-
-// 三元运算符（简洁的条件判断）
-let message = focusNote ? "有选中" : "无选中";
-
-// 逻辑运算
-if (focusNote && focusNote.noteTitle) {  // 两个条件都要满足
-  // 处理笔记
-}
-
-if (!focusNote || focusNote.colorIndex === 0) {  // 任一条件满足
-  // 处理无效情况
+// 使用这个函数
+const myNote = MNNote.getFocusNote();
+if (myNote) {
+  makeNoteRed(myNote);  // 调用函数
 }
 ```
 
-### 7. 错误处理
-
+**现代 JavaScript 更喜欢用箭头函数：**
 ```javascript
-// try-catch 结构（插件开发必备）
-try {
-  // 可能出错的代码
-  const focusNote = MNNote.getFocusNote();
-  focusNote.noteTitle = "新标题";
-} catch (error) {
-  // 错误处理
-  MNUtil.showHUD("操作失败：" + error.message);
+// 传统函数写法
+function addPrefix(title) {
+  return "【重要】" + title;
 }
 
-// 安全检查模式
+// 箭头函数写法（在插件中更常见）
+const addPrefix = (title) => {
+  return "【重要】" + title;
+};
+
+// 如果函数体只有一行，可以更简洁
+const addPrefix = title => "【重要】" + title;
+
+// 实际应用：批量处理笔记
+const markAsImportant = (notes) => {
+  notes.forEach(note => {
+    note.noteTitle = addPrefix(note.noteTitle);
+    note.colorIndex = 6;  // 红色
+  });
+};
+```
+
+### 7. 条件判断 - 让插件更智能
+
+程序需要根据不同情况做不同的事：
+
+```javascript
+// 基本的 if-else
 const focusNote = MNNote.getFocusNote();
+
 if (focusNote) {
-  // 确保 focusNote 存在再操作
-  focusNote.noteTitle = "新标题";
+  // 有选中笔记时
+  MNUtil.showHUD(`正在处理：${focusNote.noteTitle}`);
+} else {
+  // 没有选中时
+  MNUtil.showHUD("请先选择一个笔记！");
+  return;  // 提前结束
+}
+
+// 多重条件
+if (focusNote.colorIndex === 0) {
+  MNUtil.showHUD("这是个无色笔记");
+} else if (focusNote.colorIndex === 6) {
+  MNUtil.showHUD("这是个红色笔记");
+} else {
+  MNUtil.showHUD("这是其他颜色的笔记");
 }
 ```
 
-## MarginNote 插件结构
-
-### 1. 基本文件结构
-
-```
-my-plugin/
-├── main.js         # 插件主文件（必需）
-├── mnaddon.json    # 插件配置文件（必需）
-├── logo.png        # 插件图标 44×44（必需）
-└── utils.js        # 工具函数（可选）
-```
-
-### 2. mnaddon.json - 插件配置
-
-```json
-{
-  "addonid": "com.example.myplugin",
-  "name": "我的插件",
-  "author": "你的名字",
-  "version": "1.0.0",
-  "marginnote_version_min": "3.7.0",
-  "cert_key": ""  // 留空即可
+**实用技巧 - 短路逻辑：**
+```javascript
+// && (AND) - 所有条件都要满足
+if (focusNote && focusNote.noteTitle && focusNote.noteTitle.includes("TODO")) {
+  // 安全地检查：笔记存在 且 有标题 且 标题包含TODO
 }
+
+// || (OR) - 任一条件满足即可
+if (!focusNote || focusNote.colorIndex === 0) {
+  MNUtil.showHUD("请选择一个有颜色的笔记");
+}
+
+// 三元运算符 - 简洁的条件判断
+const message = focusNote ? "已选中笔记" : "未选中笔记";
 ```
 
-### 3. main.js - 插件主文件
+### 8. 异步操作 - 等待用户输入
+
+有些操作需要时间，比如等待用户输入：
 
 ```javascript
-// 必需的框架代码
-JSB.newAddon = function(mainPath) {
-  // 定义插件类
-  var MyPlugin = JSB.defineClass('MyPlugin : JSExtension', {
-    // ========== 生命周期方法 ==========
+// async/await 让异步代码看起来像同步的
+async function askUserForTitle() {
+  // await 表示"等待"这个操作完成
+  const newTitle = await MNUtil.input("请输入新标题", "标题", ["确定"]);
+  
+  if (newTitle) {
+    const focusNote = MNNote.getFocusNote();
+    if (focusNote) {
+      focusNote.noteTitle = newTitle;
+      MNUtil.showHUD("标题已更新！");
+    }
+  }
+}
+
+// 调用异步函数
+askUserForTitle();  // 注意：不需要 await，除非在另一个 async 函数中
+```
+
+### 🎯 快速实战：你的第一个完整功能（新手信心提升）
+
+学了这么多，让我们立即实战！下面是一个完整的小功能，你可以直接复制使用：
+
+```javascript
+// 功能：给选中的笔记添加时间戳
+async function addTimestamp() {
+  // 1. 获取选中的笔记
+  const focusNote = MNNote.getFocusNote();
+  
+  // 2. 检查是否有选中
+  if (!focusNote) {
+    MNUtil.showHUD("❌ 请先选择一个笔记");
+    return;
+  }
+  
+  // 3. 获取当前时间
+  const now = new Date();
+  const timestamp = now.toLocaleString('zh-CN');
+  
+  // 4. 在标题前添加时间戳
+  const oldTitle = focusNote.noteTitle;
+  const newTitle = `[${timestamp}] ${oldTitle}`;
+  
+  // 5. 使用撤销分组（让用户可以一键撤销）
+  MNUtil.undoGrouping(() => {
+    focusNote.noteTitle = newTitle;
+    focusNote.colorIndex = 3;  // 设为黄色
+    focusNote.appendTextComment(`原标题：${oldTitle}`);
+  });
+  
+  // 6. 显示成功消息
+  MNUtil.showHUD("✅ 已添加时间戳");
+}
+
+// 执行函数
+addTimestamp();
+```
+
+> 💡 **恭喜！** 你刚刚完成了一个包含所有基础知识的实用功能：
+> - ✅ 使用了变量存储数据
+> - ✅ 使用了对象属性（focusNote.noteTitle）
+> - ✅ 使用了条件判断（if 语句）
+> - ✅ 使用了字符串处理（模板字符串）
+> - ✅ 使用了函数封装功能
+> - ✅ 使用了错误处理（检查 focusNote）
+
+### 9. 错误处理 - 让插件更稳定
+
+即使是最好的代码也可能出错，所以要做好准备：
+
+```javascript
+// 使用 try-catch 捕获错误
+async function safeProcessNote() {
+  try {
+    const focusNote = MNNote.getFocusNote();
+    if (!focusNote) {
+      throw new Error("没有选中笔记");  // 主动抛出错误
+    }
     
-    // 场景连接时（插件启动）
-    sceneWillConnect: function() {
-      // 初始化代码
-      MNUtil.showHUD("插件已启动");
-    },
+    focusNote.noteTitle = "新标题";
+    MNUtil.showHUD("✅ 处理成功");
     
-    // 场景断开时（插件关闭）
-    sceneDidDisconnect: function() {
-      // 清理代码
-    },
-    
-    // 笔记本打开时
-    notebookWillOpen: function(notebookId) {
-      // 笔记本相关初始化
-    },
-    
-    // 笔记本关闭时
-    notebookWillClose: function(notebookId) {
-      // 保存状态等
-    },
-    
-    // ========== 事件响应方法 ==========
-    
-    // 笔记弹出菜单
-    onPopupMenuOnNote: function(sender) {
-      if (!sender || !sender.userInfo || !sender.userInfo.note) return;
-      
-      // 添加自定义菜单项
-      sender.userInfo.menuController.commandTable.push({
-        title: "我的功能",
-        object: self,
-        selector: "myFunction:",
-        param: sender.userInfo.note.noteId
-      });
-    },
-    
-    // 选中文本弹出菜单
-    onPopupMenuOnSelection: function(sender) {
-      // 处理选中文本
-    },
-    
-    // ========== 自定义方法 ==========
-    
-    // 自定义功能实现
-    myFunction: function(noteId) {
-      const note = MNNote.new(noteId);
-      if (!note) {
-        MNUtil.showHUD("未找到笔记");
-        return;
-      }
-      
-      // 使用撤销分组
-      MNUtil.undoGrouping(() => {
-        note.noteTitle = "已处理: " + note.noteTitle;
-        note.colorIndex = 2;  // 设为淡蓝色
-        MNUtil.showHUD("✅ 处理完成");
-      });
+  } catch (error) {
+    // 错误时显示友好的提示
+    MNUtil.showHUD(`❌ 操作失败：${error.message}`);
+  }
+}
+```
+
+**防御式编程 - 提前检查：**
+```javascript
+function processNotes(notes) {
+  // 提前检查参数
+  if (!notes || notes.length === 0) {
+    MNUtil.showHUD("没有要处理的笔记");
+    return;
+  }
+  
+  // 安全地处理每个笔记
+  notes.forEach(note => {
+    if (note && note.noteTitle) {  // 双重检查
+      note.noteTitle = `[已处理] ${note.noteTitle}`;
     }
   });
   
-  // 返回插件类
+  MNUtil.showHUD(`✅ 成功处理 ${notes.length} 个笔记`);
+}
+```
+
+### 10. 把知识串起来 - 第一个完整功能
+
+现在让我们用学到的知识写一个实用的功能：
+
+```javascript
+// 功能：批量整理TODO笔记
+async function organizeTodoNotes() {
+  try {
+    // 1. 获取所有选中的笔记（数组）
+    const selectedNotes = MNNote.getFocusNotes();
+    
+    // 2. 检查是否有选中（条件判断）
+    if (!selectedNotes || selectedNotes.length === 0) {
+      MNUtil.showHUD("请先选择要整理的笔记");
+      return;
+    }
+    
+    // 3. 筛选出TODO笔记（数组方法）
+    const todoNotes = selectedNotes.filter(note => 
+      note.noteTitle.includes("TODO")
+    );
+    
+    // 4. 询问用户操作（异步）
+    const action = await MNUtil.userSelect(
+      "选择操作", 
+      "", 
+      ["标记为完成", "设为紧急", "添加今日标签"]
+    );
+    
+    // 5. 根据选择执行操作（条件判断）
+    if (action === 0) return;  // 用户取消
+    
+    // 6. 批量处理（函数 + 循环）
+    MNUtil.undoGrouping(() => {
+      todoNotes.forEach(note => {
+        switch (action) {
+          case 1:  // 标记为完成
+            note.noteTitle = note.noteTitle.replace("TODO", "DONE");
+            note.colorIndex = 8;  // 绿色
+            break;
+          case 2:  // 设为紧急
+            note.noteTitle = "🔥 " + note.noteTitle;
+            note.colorIndex = 6;  // 红色
+            break;
+          case 3:  // 添加今日标签
+            note.appendTags([`📅 ${new Date().toLocaleDateString()}`]);
+            break;
+        }
+      });
+    });
+    
+    // 7. 显示结果（字符串模板）
+    MNUtil.showHUD(`✅ 成功处理 ${todoNotes.length} 个TODO笔记`);
+    
+  } catch (error) {
+    // 8. 错误处理
+    MNUtil.showHUD(`❌ 出错了：${error.message}`);
+  }
+}
+
+// 运行这个函数
+organizeTodoNotes();
+```
+
+> 🎉 **恭喜你！**  
+> 如果你能理解上面这个函数，你已经掌握了 MarginNote 插件开发所需的 JavaScript 基础。接下来，让我们看看如何把这些知识应用到实际的插件开发中。
+
+## MarginNote 插件结构
+
+> 🏗️ **插件 = 配置文件 + 代码文件 + 资源文件**  
+> 就像盖房子需要图纸、材料和工具，MarginNote 插件也由这三部分组成。
+
+### 1. 插件的"身份证" - 文件结构
+
+```
+my-plugin/                  # 你的插件文件夹
+├── 📄 main.js             # 插件的"大脑"（必需）
+├── 📋 mnaddon.json        # 插件的"身份证"（必需）
+├── 🎨 logo.png            # 插件的"头像"44×44像素（必需）
+├── 🔧 utils.js            # 工具箱（可选）
+└── 📁 resources/          # 资源文件夹（可选）
+    ├── images/            # 图片资源
+    └── html/              # 网页文件
+```
+
+### 2. mnaddon.json - 插件配置文件
+
+这个文件告诉 MarginNote 你的插件是谁：
+
+```json
+{
+  "addonid": "com.example.myplugin",     // 唯一ID，像身份证号
+  "name": "我的第一个插件",                // 显示名称
+  "author": "你的名字",                    // 作者
+  "version": "1.0.0",                     // 版本号
+  "marginnote_version_min": "3.7.0",      // 最低支持的 MN 版本
+  "cert_key": ""                          // 认证密钥（留空即可）
+}
+```
+
+> 💡 **版本号规则**：主版本.次版本.修订版本  
+> - 1.0.0 → 1.0.1（修复bug）  
+> - 1.0.0 → 1.1.0（新功能）  
+> - 1.0.0 → 2.0.0（大改版）
+
+### 3. 插件生命周期 - 从出生到消亡
+
+根据 mntoolbar_learning 的详细注释，插件的生命周期就像人的一生：
+
+```
+🚀 插件工厂函数 JSB.newAddon(mainPath)
+         │
+         ├─ 📦 加载依赖模块
+         │    └─ JSB.require('utils')
+         │
+         ├─ 🔍 检查 MNUtils（如果需要）
+         │    └─ 确保必要的依赖存在
+         │
+         └─ 🎯 定义插件类
+              │
+              ├─ 🌟 sceneWillConnect (出生)
+              │    ├─ 初始化插件核心
+              │    ├─ 设置初始状态
+              │    └─ 注册事件监听器
+              │
+              ├─ 📚 notebookWillOpen (开始工作)
+              │    ├─ 创建用户界面
+              │    ├─ 加载配置
+              │    └─ 准备工具栏
+              │
+              ├─ 🎮 用户交互阶段
+              │    ├─ onPopupMenuOnNote
+              │    ├─ onPopupMenuOnSelection
+              │    └─ 自定义功能执行
+              │
+              ├─ 📕 notebookWillClose (准备休息)
+              │    ├─ 保存用户数据
+              │    └─ 清理临时资源
+              │
+              └─ 🌅 sceneDidDisconnect (结束)
+                   ├─ 移除事件监听
+                   └─ 释放所有资源
+```
+
+### 4. main.js - 插件主文件详解
+
+基于 mntoolbar_learning 的深入理解，这是一个完整的插件框架：
+
+```javascript
+/**
+ * 🚀 插件工厂函数 - MarginNote 插件系统的入口
+ * 
+ * 当 MarginNote 加载插件时会调用这个函数
+ * @param {string} mainPath - 插件的安装路径
+ */
+JSB.newAddon = function(mainPath) {
+  // 📦 第一步：加载依赖（如果有）
+  // JSB.require('utils');  // 加载工具模块
+  
+  // 🎯 第二步：获取插件单例的辅助函数（JSB 框架特殊要求）
+  const getMyPlugin = () => self;
+  
+  /**
+   * 📱 定义插件主类
+   * 继承自 JSExtension，获得生命周期方法
+   */
+  var MyPlugin = JSB.defineClass('MyPlugin : JSExtension', {
+    
+    /**
+     * 🌟 场景即将连接 - 插件生命周期的开始
+     * 调用时机：打开 MarginNote、创建新窗口、从后台恢复
+     */
+    sceneWillConnect: function() {
+      // 获取插件实例（必须第一行）
+      let self = getMyPlugin();
+      
+      // 初始化插件状态
+      self.isReady = false;
+      self.selectedText = "";
+      
+      // 显示启动消息
+      MNUtil.showHUD("🚀 插件已启动");
+      
+      // 注册事件监听器（观察者模式）
+      // 参数：(观察者, 方法名, 通知名)
+      MNUtil.addObserver(self, 'onPopupMenuOnNote:', 'PopupMenuOnNote');
+      MNUtil.addObserver(self, 'onPopupMenuOnSelection:', 'PopupMenuOnSelection');
+    },
+    
+    /**
+     * 🌅 场景已断开连接 - 清理资源
+     * 调用时机：关闭插件、关闭窗口
+     */
+    sceneDidDisconnect: function() {
+      // 安全检查
+      if (typeof MNUtil === 'undefined') return;
+      
+      let self = getMyPlugin();
+      
+      // 移除所有监听器（防止内存泄漏）
+      MNUtil.removeObserver(self, 'PopupMenuOnNote');
+      MNUtil.removeObserver(self, 'PopupMenuOnSelection');
+      
+      // 清理其他资源
+      self.isReady = false;
+    },
+    
+    /**
+     * 📚 笔记本即将打开
+     * 调用时机：用户打开笔记本、切换笔记本
+     */
+    notebookWillOpen: function(notebookId) {
+      let self = getMyPlugin();
+      
+      // 记录当前笔记本
+      self.currentNotebookId = notebookId;
+      
+      // 延迟初始化（给界面时间完全加载）
+      MNUtil.delay(0.5).then(() => {
+        self.isReady = true;
+        MNUtil.showHUD("📚 笔记本已就绪");
+      });
+    },
+    
+    /**
+     * 📝 笔记弹出菜单事件
+     * 当用户点击笔记卡片弹出菜单时触发
+     */
+    onPopupMenuOnNote: function(sender) {
+      // 参数验证（防御式编程）
+      if (!sender || !sender.userInfo || !sender.userInfo.note) return;
+      
+      let self = getMyPlugin();
+      let note = sender.userInfo.note;
+      
+      // 添加自定义菜单项
+      sender.userInfo.menuController.commandTable.push({
+        title: "🎨 改变颜色",
+        object: self,
+        selector: "changeNoteColor:",
+        param: note.noteId
+      });
+      
+      sender.userInfo.menuController.commandTable.push({
+        title: "📋 复制标题",
+        object: self,
+        selector: "copyNoteTitle:",
+        param: note.noteId
+      });
+    },
+    
+    /**
+     * ✏️ 选中文本弹出菜单事件
+     */
+    onPopupMenuOnSelection: function(sender) {
+      if (!sender || !sender.userInfo) return;
+      
+      let self = getMyPlugin();
+      
+      // 保存选中的文本
+      self.selectedText = sender.userInfo.documentController.selectionText;
+      
+      // 添加菜单项
+      sender.userInfo.menuController.commandTable.push({
+        title: "🔍 搜索选中文本",
+        object: self,
+        selector: "searchSelectedText:",
+        param: self.selectedText
+      });
+    },
+    
+    // ========== 自定义功能实现 ==========
+    
+    /**
+     * 改变笔记颜色
+     */
+    changeNoteColor: function(noteId) {
+      let self = getMyPlugin();
+      const note = MNNote.new(noteId);
+      
+      if (!note) {
+        MNUtil.showHUD("❌ 找不到笔记");
+        return;
+      }
+      
+      // 使用撤销分组（用户可以撤销）
+      MNUtil.undoGrouping(() => {
+        // 循环切换颜色（0-15）
+        note.colorIndex = (note.colorIndex + 1) % 16;
+        
+        // 颜色名称映射
+        const colorNames = ["无色", "淡黄", "淡蓝", "黄色", "深蓝", 
+                          "橙色", "红色", "紫色", "淡绿", "深绿",
+                          "灰色", "深橙", "棕色", "深红", "深紫", "深灰"];
+        
+        MNUtil.showHUD(`🎨 已改为${colorNames[note.colorIndex]}`);
+      });
+    },
+    
+    /**
+     * 复制笔记标题
+     */
+    copyNoteTitle: function(noteId) {
+      const note = MNNote.new(noteId);
+      if (!note) return;
+      
+      MNUtil.copy(note.noteTitle);
+      MNUtil.showHUD("📋 已复制标题");
+    },
+    
+    /**
+     * 搜索选中文本
+     */
+    searchSelectedText: function(text) {
+      if (!text) return;
+      
+      // 在当前笔记本中搜索
+      const notebook = MNNotebook.currentNotebook;
+      if (!notebook) return;
+      
+      // 这里可以实现搜索逻辑
+      MNUtil.showHUD(`🔍 搜索"${text}"...`);
+    }
+  });
+  
+  // 返回插件类供 MarginNote 管理
   return MyPlugin;
 };
 ```
 
-### 4. 生命周期详解
+### 5. JSB 框架的特殊规则
 
-```
-插件安装
-    ↓
-sceneWillConnect()      # 插件启动
-    ↓
-notebookWillOpen()      # 打开笔记本
-    ↓
-[用户使用插件功能]
-    ↓
-notebookWillClose()     # 关闭笔记本
-    ↓
-sceneDidDisconnect()    # 插件关闭
-```
+#### ⚠️ self 引用陷阱（最容易犯的错误）
 
-### 5. JSB 框架特殊规则
-
-#### ⚠️ self 引用规则（极其重要）
+在标准 JavaScript 中，`this` 指向当前对象。但在 JSB 框架中，情况完全不同：
 
 ```javascript
-// ❌ 错误：在方法内部使用 this
-JSB.defineClass('MyPlugin : JSExtension', {
-  myMethod: function() {
-    let self = this;  // ❌ 在 JSB 框架中不起作用！
-  }
-});
+// ❌ 永远不要在 JSB.defineClass 的方法中这样做
+myMethod: function() {
+  let self = this;  // 这在 JSB 中获取不到正确的实例！
+  self.someProperty = "value";  // 会报错
+}
 
-// ✅ 正确：使用获取实例函数
-const getMyPlugin = () => self;  // 文件顶部定义
+// ✅ 正确的做法（来自 mntoolbar_learning）
+const getMyPlugin = () => self;  // 在文件顶部定义
 
-JSB.defineClass('MyPlugin : JSExtension', {
-  myMethod: function() {
-    let self = getMyPlugin();  // ✅ 正确获取实例
-    // 使用 self
-  }
-});
+myMethod: function() {
+  let self = getMyPlugin();  // 通过函数获取实例
+  self.someProperty = "value";  // 正常工作
+}
 ```
+
+**为什么会这样？**
+- JSB 是 JavaScript Bridge，桥接了 JS 和 Objective-C
+- `this` 的行为被修改以适应原生框架
+- `self` 是 JSB 提供的全局变量，指向插件实例
+
+### 6. 事件驱动架构
+
+MarginNote 插件采用观察者模式，通过 NSNotificationCenter 实现：
+
+```javascript
+// 注册观察者
+MNUtil.addObserver(self, 'onEventName:', 'NotificationName');
+
+// 事件触发时，会调用 onEventName: 方法
+onEventName: function(sender) {
+  // sender.userInfo 包含事件数据
+}
+
+// 记得在 sceneDidDisconnect 中移除
+MNUtil.removeObserver(self, 'NotificationName');
+```
+
+**常用事件列表：**
+- `PopupMenuOnNote` - 笔记菜单弹出
+- `PopupMenuOnSelection` - 文本选择菜单弹出
+- `ProcessNewExcerpt` - 新建摘录
+- `ChangeExcerptRange` - 修改摘录范围
+- `ClosePopupMenuOnNote` - 关闭笔记菜单
+
+> 🎯 **最佳实践**：
+> 1. 总是在 `sceneWillConnect` 中注册监听器
+> 2. 总是在 `sceneDidDisconnect` 中移除监听器
+> 3. 事件处理方法开头进行参数验证
+> 4. 使用 try-catch 保护事件处理逻辑
 
 ## MNUtils API 入门
 
@@ -548,7 +1025,12 @@ MNUtil.undoGrouping(() => {
 // 添加评论
 note.appendTextComment("这是一条文本评论");
 note.appendMarkdownComment("**粗体** *斜体*");
-note.appendHtmlComment("<b>HTML</b>", "显示文本", 16);
+note.appendHtmlComment(
+  "<b>HTML内容</b>",
+  "纯文本内容",
+  {width: 100, height: 50},  // 尺寸对象
+  "myPlugin"                  // 标签
+);
 
 // 标签操作
 note.appendTags(["重要", "复习"]);      // 添加标签
@@ -768,7 +1250,49 @@ MNToolbar 使用**注册表模式**，让你无需修改核心文件就能添加
 └── webviewController.js       └── xdyy_custom_actions_registry.js # 功能实现
 ```
 
-### 2. 三步添加新按钮
+### 🚀 快速开始模板（新手复制即用）
+
+想要最快速度看到效果？直接复制下面的代码到对应文件：
+
+**第一步：在 `xdyy_button_registry.js` 中添加：**
+```javascript
+global.registerButton("custom19", {
+  name: "时间戳",
+  image: "timer",  // 使用内置图标
+  templateName: "menu_timestamp"
+});
+```
+
+**第二步：在 `xdyy_menu_registry.js` 中添加：**
+```javascript
+global.registerMenuTemplate("menu_timestamp", JSON.stringify({
+  action: "addTimestamp"
+}));
+```
+
+**第三步：在 `xdyy_custom_actions_registry.js` 中添加：**
+```javascript
+global.registerCustomAction("addTimestamp", async function(context) {
+  const { button, des, focusNote, focusNotes, self } = context;
+  
+  if (!focusNote) {
+    MNUtil.showHUD("❌ 请先选择笔记");
+    return;
+  }
+  
+  MNUtil.undoGrouping(() => {
+    const time = new Date().toLocaleString('zh-CN');
+    focusNote.noteTitle = `[${time}] ${focusNote.noteTitle}`;
+    MNUtil.showHUD("✅ 已添加时间戳");
+  });
+});
+```
+
+**完成！** 重启 MarginNote，你的第一个按钮就出现在工具栏了！
+
+---
+
+### 2. 三步添加新按钮（详细说明）
 
 #### 步骤 1：注册按钮（xdyy_button_registry.js）
 
@@ -859,7 +1383,7 @@ global.registerCustomAction("changeToYellow", async function(context) {
 
 // 通用函数
 function changeNotesColor(context, colorIndex, colorName) {
-  const { focusNotes } = context;
+  const { button, des, focusNote, focusNotes, self } = context;
   
   if (!focusNotes || focusNotes.length === 0) {
     MNUtil.showHUD("❌ 请先选择笔记");
@@ -913,7 +1437,7 @@ global.registerMenuTemplate("menu_smart_title", {
 
 // 步骤 3：实现功能
 global.registerCustomAction("addPrefix", async function(context) {
-  const { focusNotes } = context;
+  const { button, des, focusNote, focusNotes, self } = context;
   if (!focusNotes || focusNotes.length === 0) {
     MNUtil.showHUD("❌ 请先选择笔记");
     return;
@@ -932,7 +1456,7 @@ global.registerCustomAction("addPrefix", async function(context) {
 });
 
 global.registerCustomAction("cleanTitle", async function(context) {
-  const { focusNotes } = context;
+  const { button, des, focusNote, focusNotes, self } = context;
   if (!focusNotes || focusNotes.length === 0) {
     MNUtil.showHUD("❌ 请先选择笔记");
     return;
@@ -985,7 +1509,7 @@ global.registerMenuTemplate("menu_advanced", {
 
 ```javascript
 global.registerCustomAction("conditionalMenu", async function(context) {
-  const { focusNote } = context;
+  const { button, des, focusNote, focusNotes, self } = context;
   
   // 根据条件显示不同菜单
   const menuItems = [];
@@ -1070,7 +1594,8 @@ note.appendMarkdownComment("**粗体** *斜体* `代码`");
 note.appendHtmlComment(
   '<span style="color: red;">红色文字</span>',
   "红色文字",  // 纯文本版本
-  16           // 字体大小
+  {width: 100, height: 30},  // 尺寸对象
+  "myPlugin"                 // 标签
 );
 
 // 移动评论位置
@@ -1106,7 +1631,7 @@ const linkedNotes = note1.linkedNotes.map(link => {
 
 ```javascript
 global.registerCustomAction("batchProcess", async function(context) {
-  const { focusNotes } = context;
+  const { button, des, focusNote, focusNotes, self } = context;
   
   if (!focusNotes || focusNotes.length === 0) {
     MNUtil.showHUD("❌ 请选择要处理的笔记");
@@ -1263,7 +1788,7 @@ global.registerCustomAction("openInObsidian", async function(context) {
 
 // 复制为特定格式
 global.registerCustomAction("copyAsMarkdown", async function(context) {
-  const { focusNote } = context;
+  const { button, des, focusNote, focusNotes, self } = context;
   if (!focusNote) return;
   
   // 构建 Markdown 格式
@@ -1349,7 +1874,7 @@ function createTaskCard(type, content) {
     task.appendHtmlComment(
       "状态: 未开始",
       "状态: 未开始",
-      16,
+      {width: 100, height: 30},
       "state"
     );
     
@@ -1400,7 +1925,7 @@ function toggleTaskState(note, forward = true) {
       note.appendHtmlComment(
         `状态: ${newStatus} ${newEmoji}`,
         `状态: ${newStatus}`,
-        16,
+        {width: 120, height: 30},
         "state"
       );
     }
@@ -1428,7 +1953,7 @@ function markAsToday(notes) {
         note.appendHtmlComment(
           `📅 今日 (${today})`,
           `今日任务`,
-          14,
+          {width: 100, height: 25},
           "today"
         );
         
@@ -1474,6 +1999,29 @@ function getTodayTasks() {
 5. **模块化设计**：将功能拆分为独立的函数
 
 ## 常见问题与调试
+
+### 🆘 新手自检清单（遇到问题先看这里）
+
+遇到问题不要慌！按照这个清单逐项检查：
+
+1. **插件是否正确安装？**
+   - [ ] MNUtils 已安装并勾选启用
+   - [ ] 你的插件已安装并勾选启用
+   - [ ] 重启过 MarginNote（必须！）
+
+2. **代码是否有语法错误？**
+   - [ ] 检查所有的括号 `{}` `()` `[]` 是否成对
+   - [ ] 检查是否有多余的逗号
+   - [ ] 字符串引号是否匹配
+
+3. **功能是否正确注册？**
+   - [ ] 按钮在 `xdyy_button_registry.js` 中注册了吗？
+   - [ ] 菜单在 `xdyy_menu_registry.js` 中定义了吗？
+   - [ ] 动作在 `xdyy_custom_actions_registry.js` 中实现了吗？
+
+4. **测试步骤是否正确？**
+   - [ ] 选中了笔记再点击按钮？
+   - [ ] 在正确的视图（文档/学习/复习）？
 
 ### 1. 插件无法加载（最常见）
 
@@ -1904,6 +2452,18 @@ try {
   }
 }
 ```
+
+### 📋 新手毕业清单
+
+完成以下任务，你就正式从新手毕业了：
+
+- [ ] 成功创建了至少一个自定义按钮
+- [ ] 理解了 `focusNote` 和 `focusNotes` 的区别
+- [ ] 能够使用 `MNUtil.undoGrouping()` 包装操作
+- [ ] 知道如何用 `MNUtil.showHUD()` 显示消息
+- [ ] 学会了用 `try-catch` 处理错误
+- [ ] 能够独立调试简单的问题
+- [ ] 完成了一个对自己有用的小功能
 
 ## 结语
 

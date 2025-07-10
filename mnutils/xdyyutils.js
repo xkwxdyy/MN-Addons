@@ -5657,7 +5657,8 @@ class HtmlMarkdownUtils {
     goal: '🎯',
     question: '❓',
     idea: '💡',
-    method: '✨'
+    method: '✨',
+    check: '🔍'
   };
   static prefix = {
     danger: '',
@@ -5676,7 +5677,8 @@ class HtmlMarkdownUtils {
     goal: '',
     question: '',
     idea: '思路：',
-    method: '方法：'
+    method: '方法：',
+    check: 'CHECK'
   };
   static styles = {
     // 格外注意
@@ -5698,13 +5700,37 @@ class HtmlMarkdownUtils {
     // 思路
     idea: 'font-weight:600;color:#4A4EB2;background:linear-gradient(15deg,#F0F4FF 30%,#E6EDFF);border:2px dashed #7B7FD1;border-radius:12px;padding:10px 18px;display:inline-block;box-shadow:0 0 0 2px rgba(123,127,209,0.2),inset 0 0 10px rgba(123,127,209,0.1);position:relative;margin:4px 8px;',
     // 方法
-    method: 'display:block;font-weight:700;color:#1B4332;background:linear-gradient(135deg,#74C69D 0%,#95D5B2 25%,#C7F0DB 60%,#E8F5E8 100%);font-size:1.3em;padding:12px 20px 12px 24px;border-left:10px solid #2D6A4F;margin:0 0 12px 0;border-radius:0 6px 6px 0;box-shadow:0 4px 12px rgba(116,198,157,0.2),inset 0 1px 0 rgba(255,255,255,0.5);text-shadow:0 1px 1px rgba(255,255,255,0.4);position:relative;'
+    method: 'display:block;font-weight:700;color:#1B4332;background:linear-gradient(135deg,#74C69D 0%,#95D5B2 25%,#C7F0DB 60%,#E8F5E8 100%);font-size:1.3em;padding:12px 20px 12px 24px;border-left:10px solid #2D6A4F;margin:0 0 12px 0;border-radius:0 6px 6px 0;box-shadow:0 4px 12px rgba(116,198,157,0.2),inset 0 1px 0 rgba(255,255,255,0.5);text-shadow:0 1px 1px rgba(255,255,255,0.4);position:relative;',
+    // 检查
+    check: 'font-weight:600;color:#34A853;background:#E6F7EE;border:2px solid #34A853;border-radius:4px;padding:4px 8px;display:inline-block;box-shadow:0 1px 2px rgba(52,168,83,0.2);margin:0 2px;line-height:1.3;vertical-align:baseline;position:relative;'
   };
+  // 定义即使内容为空也要输出的类型白名单
+  static emptyContentWhitelist = ['check'];
+  
   static createHtmlMarkdownText(text, type = 'none') {
+    // 对于白名单中的类型，特殊处理
+    if (this.emptyContentWhitelist.includes(type) && (!text || (typeof text === 'string' && text.trim() === ''))) {
+      // 对于白名单类型，即使内容为空也返回完整的 HTML
+      return `<span id="${type}" style="${this.styles[type]} ">${this.icons[type]} ${this.prefix[type]}</span>`;
+    }
+    
+    // 处理 undefined 或 null 的情况
+    if (!text) {
+      if (type === 'none') {
+        return '';
+      } else {
+        return '';
+      }
+    }
+    
     let handledText = Pangu.spacing(text)
     if (type === 'none') {
       return text.trim();
     } else {
+      // 如果内容为空且类型不在白名单中，返回空字符串
+      if (!handledText) {
+        return '';
+      }
       return `<span id="${type}" style="${this.styles[type]} ">${this.icons[type]} ${this.prefix[type]}${handledText}</span>`;
     }
   }

@@ -56,9 +56,9 @@ function registerAllButtons() {
     templateName: "addTemplate"
   });
   
-  global.registerButton("proof", {
-    name: "证明按钮",
-    image: "custom16",
+  global.registerButton("custom8", {
+    name: "证明",
+    image: "proof",
     templateName: "menu_proof"
   });
   

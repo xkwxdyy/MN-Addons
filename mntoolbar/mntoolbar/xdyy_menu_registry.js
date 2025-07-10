@@ -536,6 +536,10 @@ function registerAllMenuTemplates() {
         {
           action: "upwardMergeWithStyledComments",
           menuTitle: "将子卡片作为证明要点合并"
+        },
+        {
+          action: "ocrAsProofTitle",
+          menuTitle: "🔍 OCR 识别设置为标题（可选源）"
         }
       ]
     }

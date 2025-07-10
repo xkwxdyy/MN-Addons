@@ -1734,6 +1734,96 @@ function registerAllCustomActions() {
       }
     });
 
+  // ocrAsProofTitle - OCR 识别设置为标题
+  global.registerCustomAction("ocrAsProofTitle", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    try {
+      // 检查是否有 focusNote
+      if (!focusNote) {
+        MNUtil.showHUD("请先选择一个笔记");
+        return;
+      }
+      
+      // 获取图片数据
+      let imageData = MNUtil.getDocImage(true, true);
+      if (!imageData && focusNote) {
+        imageData = MNNote.getImageFromNote(focusNote);
+      }
+      if (!imageData) {
+        MNUtil.showHUD("未找到可识别的图片");
+        return;
+      }
+      
+      // OCR 源选项配置
+      const ocrSources = [
+        { name: "Doc2X - 专业文档识别", source: "Doc2X" },
+        { name: "SimpleTex - 数学公式", source: "SimpleTex" },
+        { name: "GPT-4o - OpenAI 视觉", source: "GPT-4o" },
+        { name: "GPT-4o mini", source: "GPT-4o-mini" },
+        { name: "glm-4v-plus - 智谱AI Plus", source: "glm-4v-plus" },
+        { name: "glm-4v-flash - 智谱AI Flash", source: "glm-4v-flash" },
+        { name: "Claude 3.5 Sonnet", source: "claude-3-5-sonnet-20241022" },
+        { name: "Claude 3.7 Sonnet", source: "claude-3-7-sonnet" },
+        { name: "Gemini 2.0 Flash - Google", source: "gemini-2.0-flash" },
+        { name: "Moonshot-v1", source: "Moonshot-v1" },
+        { name: "默认配置", source: "default" }
+      ];
+      
+      // 显示 OCR 源选择对话框
+      const sourceNames = ocrSources.map(s => s.name);
+      const selectedIndex = await MNUtil.userSelect(
+        "选择 OCR 源",
+        "请选择要使用的识别引擎",
+        sourceNames
+      );
+      
+      // 处理用户取消
+      if (selectedIndex === 0) {
+        return;
+      }
+      
+      const selectedOCR = ocrSources[selectedIndex - 1];
+      MNUtil.showHUD(`正在使用 ${selectedOCR.name} 识别...`);
+      
+      // 执行 OCR
+      let ocrResult;
+      if (typeof ocrNetwork !== 'undefined') {
+        // 使用 MNOCR 插件
+        ocrResult = await ocrNetwork.OCR(imageData, selectedOCR.source, true);
+      } else if (typeof toolbarUtils !== 'undefined') {
+        // 使用免费 OCR（ChatGPT Vision - glm-4v-flash 模型）
+        ocrResult = await toolbarUtils.freeOCR(imageData);
+      } else {
+        MNUtil.showHUD("请先安装 MN OCR 插件");
+        return;
+      }
+      
+      if (ocrResult) {
+        MNUtil.undoGrouping(() => {
+          // 将 OCR 结果设置为笔记标题
+          focusNote.noteTitle = ocrResult.trim();
+          MNUtil.showHUD("✅ 已设置为标题");
+        });
+        
+        // 发送 OCR 完成通知（可选，用于其他插件集成）
+        MNUtil.postNotification("OCRFinished", {
+          action: "toTitle",
+          noteId: focusNote.noteId,
+          result: ocrResult
+        });
+      } else {
+        MNUtil.showHUD("OCR 识别失败");
+      }
+      
+    } catch (error) {
+      MNUtil.showHUD("OCR 识别失败: " + error.message);
+      if (typeof toolbarUtils !== 'undefined') {
+        toolbarUtils.addErrorLog(error, "ocrAsProofTitle");
+      }
+    }
+  });
+
   // copyMarkdownVersionFocusNoteURL
   global.registerCustomAction("copyMarkdownVersionFocusNoteURL", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;

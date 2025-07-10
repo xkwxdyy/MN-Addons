@@ -1296,3 +1296,88 @@ if (HtmlMarkdownUtils.isHtmlMDComment(cleanText)) {
 - 内容归属逻辑必须在早期就明确定义
 - 边界检查在每个层级都很重要
 - 用户体验优先：隐藏复杂性，提供直观的导航
+
+### MNToolbar 按钮开发陷阱（空内容处理与按钮命名）
+
+在开发 MNToolbar 的证明按钮（CHECK 类型 HtmlMarkdown）功能时，遇到了一系列容易被忽视的问题。
+
+#### 问题场景
+需要添加一个证明按钮，单击时添加空的 CHECK 类型 HtmlMarkdown 评论，长按时显示菜单。
+
+#### 遇到的问题和解决方案
+
+##### 1. HtmlMarkdownUtils 空内容处理
+**问题**：当内容为空时，`createHtmlMarkdownText` 不会生成任何输出。
+
+**初次尝试**：添加白名单机制，但忽略了 MNNote 层的检查。
+
+**根本原因**：问题不在 `HtmlMarkdownUtils`，而在 `MNNote.appendMarkdownComment` 方法：
+```javascript
+// MNNote 内部实现
+let validComment = comment && comment.trim()
+if (!validComment) {
+  return this  // 空内容直接返回，不执行添加
+}
+```
+
+##### 2. 空输入的不同表现
+**现象**：手动添加时空输入框能成功，但代码传入空字符串失败。
+
+**原因分析**：
+- 手动输入：`alert.textFieldAtIndex(0).text` 返回 `undefined`
+- 代码传入：传入空字符串 `""` 或空格 `" "` 都会被 trim 掉
+
+**解决方案**：模拟手动输入的行为，传入 `undefined` 而不是空字符串。
+
+##### 3. 最终的解决方案失效
+**问题**：即使传入 `undefined`，仍然无法添加。
+
+**最终方案**：直接调用原生 API，绕过 MNNote 的包装器：
+```javascript
+// 直接调用原生 API，绕过 MNNote 的空值检查
+const htmlContent = HtmlMarkdownUtils.createHtmlMarkdownText(undefined, "check");
+if (htmlContent) {
+  focusNote.note.appendMarkdownComment(htmlContent);
+}
+```
+
+##### 4. 按钮键名必须使用特定格式（最隐蔽的陷阱）
+**问题**：按钮注册成功，长按能弹出菜单，但单击完全无反应。
+
+**排查过程**：
+- 代码逻辑正确 ✓
+- 菜单模板正确 ✓
+- 动作注册正确 ✓
+- 但单击就是不触发
+
+**根本原因**：MNToolbar 的按钮系统只识别 `custom` + 数字格式的键名！
+
+**错误示例**：
+```javascript
+global.registerButton("proof", {  // ❌ 不会响应单击
+  name: "证明按钮",
+  image: "custom16",
+  templateName: "menu_proof"
+});
+```
+
+**正确示例**：
+```javascript
+global.registerButton("custom8", {  // ✅ 正常工作
+  name: "证明按钮",
+  image: "proof",
+  templateName: "menu_proof"
+});
+```
+
+#### 关键经验
+1. **API 层级理解**：要区分包装器（如 MNNote）和原生 API 的行为差异
+2. **输入值类型**：`undefined`、`null`、`""`、`" "` 在不同场景下表现不同
+3. **框架约定**：某些看似灵活的 API 实际有隐含的命名约定
+4. **调试策略**：当高层 API 有限制时，考虑使用底层 API
+
+#### 适用场景
+- 开发需要添加空内容的功能
+- 处理输入框空值与代码空值的差异
+- MNToolbar 自定义按钮开发
+- 遇到"代码正确但不工作"的诡异问题

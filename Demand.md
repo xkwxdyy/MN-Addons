@@ -1,3 +1,17 @@
+修复 mntoolbar 的 upwardMergeWithStyledComments ：在 git 的 e0e40164b75bb9353b6bb015cf22399c7bfacccc 和5a616902f5f20d4d42c758845c5ce18d30ada447 两次 commit 中删除了大量的 API。不知道是不是这次删除导致的问题。
+请你先分析这个动作的逻辑和功能，然后目前的效果是除了第一张子卡片的标题变成了 HtmlMardown 评论添加，然后后续的合并之类的以及后续的卡片都没有变！请你找出问题并修复！ultrathink
+---
+现在开发 mnutils 的  HtmlMarkdownUtils：
+增加一个新的类型叫 check，具体的样式为
+```
+<span id="check" style="font-weight:600;color:#34A853;background:#E6F7EE;border:2px solid #34A853;border-radius:4px;padding:4px 8px;display:inline-block;box-shadow:0 1px 2px rgba(52,168,83,0.2);margin:0 2px;line-height:1.3;vertical-align:baseline;position:relative;">🔍 CHECK
+</span>
+```
+样式为上面的，emoji 也是上面的
+默认的前缀是 CHECK。要注意兼容到 mntoolbar 的动作里面
+
+然后 mntoolbar 新增一个按钮，内容为证明按钮,菜单为 menu_proof，单击动作为增加一个上面新增的这个 CHECK 的HtmlMarkdown 评论，不加任何内容。长按菜单的第一个就是制卡按钮里的有一个合并证明要点，这里也加一个一样的 ultrathink
+---
 1. JavaScript 基础的部分整体还是写的太生硬了，逻辑性不强，对新手不友好。
 2. 学习 mntoolbar/mntoolbar_learning/main.js, mntoolbar/mntoolbar_learning/webviewController.js, mntoolbar/mntoolbar_learning/settingController.js 这三个文件中的 JSDoc 注释，里面详细地补充了一些对插件，尤其是 toolbar 插件里结构的框架，尽可能地把 JSDoc 注释里的内容充分学习凝练，然后写到 A_first_course_to_the_development_of_MN_Addon.md
 3. 最后你要以一个完全新手的视角重新自己从头再读一遍这个文档，哪里觉得难懂的，哪里觉得不通俗的，哪里觉得不够详细的，哪里觉得不够深入浅出的，都要进行修改和补充。

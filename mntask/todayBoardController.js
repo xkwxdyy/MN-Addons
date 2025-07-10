@@ -13,6 +13,18 @@ var todayBoardController = JSB.defineClass('todayBoardController : UIViewControl
       self.lastFrame = self.view.frame;
       self.currentFrame = self.view.frame;
       
+      // 设置视图属性（参考 mnai 和 mnbrowser）
+      self.view.backgroundColor = UIColor.whiteColor(); // 设置白色背景，避免透明
+      self.view.layer.shadowOffset = {width: 0, height: 0};
+      self.view.layer.shadowRadius = 15;
+      self.view.layer.shadowOpacity = 0.5;
+      self.view.layer.shadowColor = UIColor.colorWithWhiteAlpha(0.5, 1);
+      self.view.layer.cornerRadius = 11;
+      self.view.layer.opacity = 1.0;
+      self.view.layer.borderColor = MNUtil.hexColorAlpha("#9bb2d6", 0.8);
+      self.view.layer.borderWidth = 0;
+      self.view.autoresizingMask = (1 << 0 | 1 << 3); // 自动调整位置
+      
       self.setupUI();
       self.loadTodayBoard();
     } catch (error) {
@@ -68,7 +80,8 @@ var todayBoardController = JSB.defineClass('todayBoardController : UIViewControl
       self.refreshTimer = null;
     }
     
-    self.dismissViewControllerAnimatedCompletion(true, null);
+    // 使用 hide 方法隐藏视图（不再使用模态关闭）
+    self.hide();
   },
   
   // 视图将要消失时清理
@@ -83,7 +96,17 @@ var todayBoardController = JSB.defineClass('todayBoardController : UIViewControl
   
   // WebView 加载完成
   webViewDidFinishLoad: function(webView) {
-    // 可以在这里执行加载完成后的操作
+    let self = getTodayBoardController();
+    
+    // 标记 WebView 已加载完成
+    self.webViewLoaded = true;
+    
+    // 延迟一点执行，确保 HTML 中的 JavaScript 已初始化
+    if (typeof MNUtil !== 'undefined' && MNUtil.delay) {
+      MNUtil.delay(0.2).then(() => {
+        self.loadTaskData();
+      });
+    }
   }
 });
 
@@ -95,6 +118,7 @@ todayBoardController.prototype.init = function() {
   this.mainPath = taskUtils.mainPath || '';
   this.htmlPath = this.mainPath + '/todayboard.html';
   this.refreshTimer = null;
+  this.webViewLoaded = false;  // 标记 WebView 是否已加载
 }
 
 // 设置 UI
@@ -169,18 +193,13 @@ todayBoardController.prototype.createWebView = function() {
 // 加载今日看板
 todayBoardController.prototype.loadTodayBoard = function() {
   try {
-    // 使用正确的方法加载 HTML 文件
+    // 使用正确的方法加载 HTML 文件（参考 mneditor 的做法）
     this.webView.loadFileURLAllowingReadAccessToURL(
       NSURL.fileURLWithPath(this.htmlPath),
-      NSURL.fileURLWithPath(this.mainPath + '/')
+      NSURL.fileURLWithPath(this.mainPath)  // 移除末尾的斜杠
     );
     
-    // 延迟加载数据，确保 WebView 已准备好
-    if (typeof MNUtil !== 'undefined' && MNUtil.delay) {
-      MNUtil.delay(0.5).then(() => {
-        this.loadTaskData();
-      });
-    }
+    // 数据加载现在在 webViewDidFinishLoad 中处理
   } catch (error) {
     if (typeof taskUtils !== 'undefined' && taskUtils.addErrorLog) {
       taskUtils.addErrorLog(error, "loadTodayBoard");
@@ -194,7 +213,20 @@ todayBoardController.prototype.loadTodayBoard = function() {
 // 加载任务数据
 todayBoardController.prototype.loadTaskData = function() {
   try {
+    // 检查 WebView 状态
+    if (!this.webView) {
+      MNUtil.log("❌ WebView 未创建");
+      return;
+    }
+    
+    if (!this.webViewLoaded) {
+      MNUtil.log("❌ WebView 未加载完成");
+      return;
+    }
+    
     if (typeof MNTaskManager === 'undefined') {
+      MNUtil.log("❌ MNTaskManager 未定义");
+      MNUtil.showHUD("任务管理器未初始化");
       return;
     }
     
@@ -228,16 +260,36 @@ todayBoardController.prototype.loadTaskData = function() {
     });
     
     // 传递数据到 WebView
+    MNUtil.log(`📊 准备传递 ${displayTasks.length} 个任务到 WebView`);
+    
+    // 先检查函数是否存在
+    const checkScript = "typeof loadTasksFromPlugin !== 'undefined'";
+    const funcExists = this.webView.stringByEvaluatingJavaScriptFromString(checkScript);
+    MNUtil.log(`🔍 loadTasksFromPlugin 函数存在: ${funcExists}`);
+    
     const encodedTasks = encodeURIComponent(JSON.stringify(displayTasks));
     const script = `loadTasksFromPlugin('${encodedTasks}')`;
-    this.webView.stringByEvaluatingJavaScriptFromString(script);
+    const result = this.webView.stringByEvaluatingJavaScriptFromString(script);
+    
+    if (result) {
+      MNUtil.log(`✅ JavaScript 执行结果: ${result}`);
+    } else {
+      MNUtil.log("✅ 任务数据已传递到 WebView");
+    }
     
   } catch (error) {
     if (typeof taskUtils !== 'undefined' && taskUtils.addErrorLog) {
       taskUtils.addErrorLog(error, "loadTaskData");
     }
+    
+    // 输出详细错误信息
+    if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+      MNUtil.log(`❌ loadTaskData 错误: ${error.message || error}`);
+      MNUtil.log(`❌ 错误堆栈: ${error.stack || '无'}`);
+    }
+    
     if (typeof MNUtil !== 'undefined' && MNUtil.showHUD) {
-      MNUtil.showHUD("加载任务数据失败");
+      MNUtil.showHUD(`加载任务数据失败: ${error.message || '未知错误'}`);
     }
   }
 }
@@ -488,5 +540,66 @@ todayBoardController.prototype.createButton = function(buttonName, targetAction,
     this[superview].addSubview(this[buttonName]);
   } else {
     this.view.addSubview(this[buttonName]);
+  }
+}
+
+// 显示看板（参考 mnai 的实现）
+todayBoardController.prototype.show = function() {
+  try {
+    // 将视图置于最前
+    MNUtil.studyView.bringSubviewToFront(this.view);
+    
+    // 保存当前透明度
+    const preOpacity = this.view.layer.opacity;
+    this.view.layer.opacity = 0.2;
+    
+    // 显示视图
+    this.view.hidden = false;
+    
+    // 动画显示
+    if (typeof MNUtil !== 'undefined' && MNUtil.animate) {
+      MNUtil.animate(() => {
+        this.view.layer.opacity = preOpacity;
+      }).then(() => {
+        this.view.layer.borderWidth = 0;
+        this.view.layer.opacity = 1.0;
+        MNUtil.studyView.bringSubviewToFront(this.view);
+      });
+    } else {
+      // 没有动画时直接显示
+      this.view.layer.opacity = 1.0;
+    }
+    
+    // 数据加载已在 loadTodayBoard 中处理，避免重复调用
+    
+  } catch (error) {
+    if (typeof taskUtils !== 'undefined' && taskUtils.addErrorLog) {
+      taskUtils.addErrorLog(error, "todayBoardController.show");
+    }
+  }
+}
+
+// 隐藏看板（参考 mnai 的实现）
+todayBoardController.prototype.hide = function() {
+  try {
+    const preOpacity = this.view.layer.opacity;
+    
+    // 动画隐藏
+    if (typeof MNUtil !== 'undefined' && MNUtil.animate) {
+      MNUtil.animate(() => {
+        this.view.layer.opacity = 0.2;
+      }).then(() => {
+        this.view.hidden = true;
+        this.view.layer.opacity = preOpacity;
+      });
+    } else {
+      // 没有动画时直接隐藏
+      this.view.hidden = true;
+    }
+    
+  } catch (error) {
+    if (typeof taskUtils !== 'undefined' && taskUtils.addErrorLog) {
+      taskUtils.addErrorLog(error, "todayBoardController.hide");
+    }
   }
 }

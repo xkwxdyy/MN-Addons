@@ -4055,17 +4055,22 @@ function registerAllCustomActions() {
       
       // 创建并显示看板控制器
       MNUtil.log("🔨 创建 todayBoardController 实例");
-      const controller = todayBoardController.new();
-      if (!controller) {
-        throw new Error("无法创建看板控制器实例");
+      
+      // 检查是否已有实例
+      if (!mainPlugin.todayBoardController) {
+        mainPlugin.todayBoardController = todayBoardController.new();
+        if (!mainPlugin.todayBoardController) {
+          throw new Error("无法创建看板控制器实例");
+        }
+        
+        // 添加到 studyView (像 mnai 和 mnbrowser 一样)
+        MNUtil.log("📌 添加控制器视图到 studyView");
+        MNUtil.studyView.addSubview(mainPlugin.todayBoardController.view);
       }
       
-      // 设置模态展示样式
-      controller.modalPresentationStyle = 0; // UIModalPresentationFullScreen
-      
-      // 展示控制器
-      MNUtil.log("📱 展示控制器");
-      mainPlugin.presentViewControllerAnimatedCompletion(controller, true, null);
+      // 显示控制器
+      MNUtil.log("📱 显示控制器");
+      mainPlugin.todayBoardController.show();
       
       MNUtil.log("✅ HTML 今日看板已打开");
     } catch (error) {

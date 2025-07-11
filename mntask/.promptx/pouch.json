@@ -174,13 +174,13 @@
     {
       "from": "initialized",
       "command": "remember",
-      "timestamp": "2025-07-11T11:52:54.452Z",
+      "timestamp": "2025-07-11T12:36:08.216Z",
       "args": [
-        "## MN-Addon 开发陷阱：不存在的 API 方法（getHTMLCommentFieldText）\n\n### 问题描述\n在开发 MNTask 今日看板刷新功能时，`sortTodayTasks` 方法中使用了 `task.getHTMLCommentFieldText(\"排序\")`，但这个方法在 MNNote 对象上并不存在，导致：\n- 排序功能执行失败\n- 整个今日看板刷新流程中断\n- 看板只显示标题，没有任务内容\n\n### 根本原因\n1. 文档与实现不同步：可能是旧版本的 API 或计划中的功能\n2. 复制代码未验证：从其他项目复制代码时没有验证 API 是否存在\n3. 缺少运行时检查：没有在使用前检查方法是否存在\n\n### 解决方案\n最终采用简化实现：直接使用 TaskFilterEngine.sort 进行智能排序，避免依赖不存在的 API。\n\n### 经验教训\n1. 当遇到\"函数不存在\"错误时，首先确认该 API 是否真的存在\n2. 不要假设所有看起来合理的方法都已实现\n3. 简单的解决方案往往比复杂的更可靠\n4. 查阅源码而非文档：直接在 mnutils.js 和 xdyyutils.js 中搜索方法\n5. 添加防御性编程：对不确定的 API 添加 typeof 检查或 try-catch",
+        "MN-Addon WebView 显示和数据传递问题解决方案：\n\n1. WebView 显示问题：\n   - 必须在容器视图布局完成后创建 WebView（使用延迟初始化）\n   - 使用 loadFileURLAllowingReadAccessToURL 而不是 loadRequest\n   - 正确设置 frame：使用容器的 bounds\n\n2. iframe 架构数据传递：\n   - 主容器(sidebarContainer.html)需要代理函数接收原生调用\n   - 使用 postMessage 转发数据到 iframe\n   - iframe 页面需要监听 message 事件\n   - 保持原有 API 兼容性：原生代码仍调用 loadTasksFromPlugin",
         "--tags",
-        "MN-Addon API陷阱 调试技巧 MarginNote插件 MNTask"
+        "WebView MarginNote iframe postMessage MNTask"
       ]
     }
   ],
-  "lastUpdated": "2025-07-11T11:52:54.480Z"
+  "lastUpdated": "2025-07-11T12:36:08.230Z"
 }

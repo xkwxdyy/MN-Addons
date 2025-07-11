@@ -1594,27 +1594,21 @@ taskSettingController.prototype.initViewManager = function() {
       },
       
       log: {
-        view: 'logView',
+        view: 'todayBoardWebView',  // 使用统一的 WebView
         button: 'logButton',
         selectedColor: '#457bd3',
         normalColor: '#9bb2d6',
         onShow: function(self) {
           MNUtil.log("📊 切换到日志视图")
           
-          // 执行今日看板 WebView 状态诊断
-          if (self.diagnoseWebViewStatus) {
-            MNUtil.log("🔍 执行今日看板 WebView 状态诊断")
-            self.diagnoseWebViewStatus()
-          }
-          
-          // 如果日志 WebView 还未创建，创建它
-          if (!self.logWebViewInstance) {
-            MNUtil.log("📝 首次显示，创建日志 WebView")
-            self.createLogWebView()
+          // 确保 WebView 已初始化
+          if (!self.todayBoardWebViewInitialized) {
+            MNUtil.log("📱 首次显示，需要初始化 WebView")
+            self.initTodayBoardWebView()
           } else {
-            // 如果已创建，刷新日志显示
-            MNUtil.log("♻️ 刷新日志显示")
-            self.showLogs(TaskLogManager.getLogs())
+            // 切换到日志视图
+            MNUtil.log("♻️ 切换到日志页面")
+            self.switchWebViewToLog()
           }
           
           // 调整窗口大小以适应日志查看器
@@ -1628,9 +1622,6 @@ taskSettingController.prototype.initViewManager = function() {
           self.view.frame = frame
           self.currentFrame = frame
           self.view.setNeedsLayout()
-          
-          // 布局日志视图的按钮
-          self.settingViewLayout()
         }
       }
     },
@@ -3078,13 +3069,13 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
     }
     
     // 加载 HTML 文件
-    const htmlPath = taskConfig.mainPath + '/todayboard.html'
+    const htmlPath = taskConfig.mainPath + '/sidebarContainer.html'
     MNUtil.log(`📁 HTML 文件路径: ${htmlPath}`)
     
     // 检查文件是否存在
     if (!NSFileManager.defaultManager().fileExistsAtPath(htmlPath)) {
       MNUtil.log("❌ HTML 文件不存在: " + htmlPath)
-      MNUtil.showHUD("找不到今日看板文件")
+      MNUtil.showHUD("找不到侧边栏容器文件")
       return
     }
     
@@ -3258,6 +3249,64 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
   } catch (error) {
     taskUtils.addErrorLog(error, "loadTodayBoardData")
     MNUtil.showHUD("加载任务数据失败")
+  }
+}
+
+/**
+ * 切换 WebView 到日志视图
+ * @this {settingController}
+ */
+taskSettingController.prototype.switchWebViewToLog = function() {
+  try {
+    MNUtil.log("🔄 切换 WebView 到日志视图")
+    
+    if (!this.todayBoardWebViewInstance) {
+      MNUtil.log("❌ WebView 实例不存在")
+      return
+    }
+    
+    // 使用 JavaScript 切换到日志视图
+    const script = `
+      if (typeof switchView === 'function') {
+        switchView('log');
+      } else {
+        window.location.href = 'mntask://showHUD?message=' + encodeURIComponent('切换失败');
+      }
+    `
+    
+    this.runJavaScriptInWebView(script)
+  } catch (error) {
+    taskUtils.addErrorLog(error, "switchWebViewToLog")
+    MNUtil.showHUD("切换到日志视图失败")
+  }
+}
+
+/**
+ * 通用方法：切换 WebView 到指定视图
+ * @this {settingController}
+ * @param {string} viewName - 视图名称 (todayboard, log, taskqueue, statistics, settings)
+ */
+taskSettingController.prototype.switchSidebarView = function(viewName) {
+  try {
+    MNUtil.log(`🔄 切换到 ${viewName} 视图`)
+    
+    if (!this.todayBoardWebViewInstance) {
+      MNUtil.log("❌ WebView 实例不存在")
+      return
+    }
+    
+    const script = `
+      if (typeof switchView === 'function') {
+        switchView('${viewName}');
+      } else {
+        window.location.href = 'mntask://showHUD?message=' + encodeURIComponent('切换失败');
+      }
+    `
+    
+    this.runJavaScriptInWebView(script)
+  } catch (error) {
+    taskUtils.addErrorLog(error, "switchSidebarView")
+    MNUtil.showHUD(`切换到 ${viewName} 失败`)
   }
 }
 
@@ -3780,15 +3829,16 @@ taskSettingController.prototype.showLogs = async function() {
     MNUtil.log("📊 开始显示日志")
     TaskLogManager.info("开始显示日志", "SettingController")
     
-    if (!this.logWebViewInstance) {
-      MNUtil.log("⚠️ logWebViewInstance 不存在")
-      TaskLogManager.warn("logWebViewInstance 不存在", "SettingController")
+    // 使用统一的 WebView 实例
+    if (!this.todayBoardWebViewInstance) {
+      MNUtil.log("⚠️ WebView 实例不存在")
+      TaskLogManager.warn("WebView 实例不存在", "SettingController")
       return
     }
     
-    if (!this.logWebViewInitialized) {
-      MNUtil.log("⚠️ 日志 WebView 未初始化完成")
-      TaskLogManager.warn("日志 WebView 未初始化完成", "SettingController")
+    if (!this.todayBoardWebViewInitialized) {
+      MNUtil.log("⚠️ WebView 未初始化完成")
+      TaskLogManager.warn("WebView 未初始化完成", "SettingController")
       return
     }
     
@@ -3806,9 +3856,9 @@ taskSettingController.prototype.showLogs = async function() {
     }
     
     // 验证 WebView 状态
-    MNUtil.log(`📱 执行前 WebView URL: ${this.logWebViewInstance.URL ? this.logWebViewInstance.URL.absoluteString() : 'null'}`)
-    MNUtil.log(`📱 执行前 WebView loading: ${this.logWebViewInstance.loading}`)
-    MNUtil.log(`📱 执行前 WebView canGoBack: ${this.logWebViewInstance.canGoBack}`)
+    MNUtil.log(`📱 执行前 WebView URL: ${this.todayBoardWebViewInstance.URL ? this.todayBoardWebViewInstance.URL.absoluteString() : 'null'}`)
+    MNUtil.log(`📱 执行前 WebView loading: ${this.todayBoardWebViewInstance.loading}`)
+    MNUtil.log(`📱 执行前 WebView canGoBack: ${this.todayBoardWebViewInstance.canGoBack}`)
     
     // 编码日志数据
     // 检查 encodeURIComponent 函数是否存在
@@ -3822,47 +3872,32 @@ taskSettingController.prototype.showLogs = async function() {
     MNUtil.log(`📦 编码后的数据长度: ${encodedLogs.length}`)
     MNUtil.log(`📦 前100个字符: ${encodedLogs.substring(0, 100)}`)
     
-    // 先检查 showLogsFromAddon 函数是否存在
-    const funcCheckResult = await this.runJavaScriptInWebView('typeof showLogsFromAddon', 'logWebViewInstance')
-    MNUtil.log(`🔍 showLogsFromAddon 函数类型: ${funcCheckResult}`)
-    
-    if (funcCheckResult === 'undefined') {
-      MNUtil.log("⚠️ showLogsFromAddon 函数未定义，等待重试...")
-      TaskLogManager.warn("showLogsFromAddon 函数未定义，等待重试", "ShowLogs")
-      
-      // 延迟后重试
-      await MNUtil.delay(1)
-      const retryResult = await this.runJavaScriptInWebView('typeof showLogsFromAddon', 'logWebViewInstance')
-      if (retryResult === 'undefined') {
-        MNUtil.log("❌ showLogsFromAddon 函数仍然未定义")
-        TaskLogManager.error("showLogsFromAddon 函数仍然未定义", "ShowLogs")
-        MNUtil.showHUD("日志查看器初始化失败")
-        
-        // 尝试重新加载 HTML
-        MNUtil.log("🔄 尝试重新初始化日志 WebView")
-        this.initLogWebView()
-        return
+    // 使用新的方式传递日志数据到 iframe
+    const script = `
+      // 获取当前 iframe
+      const iframe = document.querySelector('.content-frame');
+      if (iframe && iframe.contentWindow) {
+        // 发送日志数据到 iframe
+        iframe.contentWindow.postMessage({
+          type: 'showLogs',
+          logs: ${JSON.stringify(logs)}
+        }, '*');
+        'success';
+      } else {
+        'iframe_not_found';
       }
+    `;
+    
+    const result = await this.runJavaScriptInWebView(script)
+    
+    if (result === 'success') {
+      MNUtil.log("✅ 日志数据已发送到 iframe")
+      TaskLogManager.info("日志数据已成功发送", "ShowLogs")
+    } else {
+      MNUtil.log("❌ 发送日志数据失败: " + result)
+      TaskLogManager.error("发送日志数据失败", "ShowLogs", result)
+      MNUtil.showHUD("日志查看器未就绪")
     }
-    
-    // 调用 WebView 中的函数
-    const script = `showLogsFromAddon('${encodedLogs}')`
-    MNUtil.log("🚀 准备执行 JavaScript: " + script.substring(0, 100) + "...")
-    MNUtil.log(`📍 调用 runJavaScriptInWebView，WebView类型: logWebViewInstance`)
-    
-    try {
-      const result = await this.runJavaScriptInWebView(script, 'logWebViewInstance')
-      MNUtil.log("📝 JavaScript 执行结果: " + result)
-      MNUtil.log(`📝 结果类型: ${typeof result}`)
-      MNUtil.log(`📝 结果长度: ${result ? result.length : 0}`)
-    } catch (jsError) {
-      MNUtil.log(`❌ JavaScript 执行错误: ${jsError.message}`)
-      MNUtil.log(`📍 错误堆栈: ${jsError.stack}`)
-      throw jsError
-    }
-    
-    MNUtil.log("✅ 日志数据已加载到查看器")
-    TaskLogManager.info("日志数据加载完成", "SettingController")
   } catch (error) {
     taskUtils.addErrorLog(error, "showLogs")
     MNUtil.showHUD("显示日志失败")

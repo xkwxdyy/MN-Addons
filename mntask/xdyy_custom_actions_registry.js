@@ -3922,72 +3922,8 @@ function registerAllCustomActions() {
   MNTaskGlobal.registerCustomAction("refreshTodayBoard", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
     
-    const todayBoardId = taskConfig.getBoardNoteId('today');
-    
-    if (!todayBoardId) {
-      MNUtil.showHUD("❌ 请先在设置中绑定今日看板\n设置 → Task Boards → 今日看板");
-      return;
-    }
-    
-    const todayBoard = MNNote.new(todayBoardId);
-    
-    if (!todayBoard) {
-      MNUtil.showHUD("❌ 无法找到今日看板卡片\n请重新设置或检查卡片是否存在");
-      return;
-    }
-    
-    MNUtil.showHUD("🔄 正在刷新今日看板...");
-    
-    MNUtil.undoGrouping(() => {
-      // 获取今日任务
-      let todayTasks = MNTaskManager.filterTodayTasks();
-      
-      // 如果从看板中没有找到，尝试从整个笔记本搜索
-      if (todayTasks.length === 0) {
-        todayTasks = MNTaskManager.filterAllTodayTasks();
-      }
-      
-      // 清理现有的任务链接（保留其他内容）
-      MNTaskManager.clearTaskLinksFromBoard(todayBoard);
-      
-      // 更新看板标题
-      const now = new Date();
-      const dateStr = `${now.getMonth() + 1}月${now.getDate()}日`;
-      todayBoard.noteTitle = `📅 今日看板 - ${dateStr}`;
-      
-      // 如果没有今日任务，添加提示
-      if (todayTasks.length === 0) {
-        todayBoard.appendMarkdownComment("## 💡 暂无今日任务");
-        todayBoard.appendMarkdownComment("- 使用「今日任务」按钮标记任务");
-        todayBoard.appendMarkdownComment("- 或从任务菜单中选择「标记为今日」");
-        MNUtil.showHUD("📅 暂无今日任务");
-        return;
-      }
-      
-      // 按优先级和状态分组
-      const grouped = MNTaskManager.groupTodayTasks(todayTasks);
-      
-      // 添加任务链接到看板
-      MNTaskManager.addTaskLinksToBoard(todayBoard, grouped);
-      
-      // 添加统计信息 - 根据用户要求移除，避免重复添加
-      // MNTaskManager.updateBoardStatistics(todayBoard, todayTasks);
-      
-      // 刷新看板显示
-      todayBoard.refresh();
-      
-      // 显示完成提示
-      const inProgressCount = grouped.inProgress.length;
-      const highPriorityCount = grouped.highPriority.length;
-      let hudMessage = `✅ 刷新完成\n📋 今日任务：${todayTasks.length} 个`;
-      if (inProgressCount > 0) {
-        hudMessage += `\n🔥 进行中：${inProgressCount} 个`;
-      }
-      if (highPriorityCount > 0) {
-        hudMessage += `\n🔴 高优先级：${highPriorityCount} 个`;
-      }
-      MNUtil.showHUD(hudMessage);
-    });
+    // 直接调用 MNTaskManager 的方法
+    MNTaskManager.refreshTodayBoard();
   });
 
   // openTodayBoardHTML - 打开 HTML 增强版今日看板

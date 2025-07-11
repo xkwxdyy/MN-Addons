@@ -1205,30 +1205,11 @@ class MNTaskManager {
       if (note.tags && note.tags.includes("今日")) {
         MNUtil.log("🔄 检测到任务有今日标签，准备同步更新今日看板")
         
-        // 获取今日看板
-        const todayBoardId = taskConfig.getBoardNoteId('today')
-        if (todayBoardId && MNNote.new(todayBoardId)) {
-          MNUtil.log("📋 找到今日看板，延迟刷新以重新组织任务")
-          
-          // 延迟执行刷新，确保当前状态更新完成
-          MNUtil.delay(0.5).then(() => {
-            // 使用 MNTaskGlobal 执行刷新操作
-            if (typeof MNTaskGlobal !== 'undefined' && MNTaskGlobal.executeCustomAction) {
-              MNUtil.log("🔄 执行今日看板刷新")
-              // 创建一个最小的 context 对象
-              const context = {
-                button: null,
-                des: "auto-refresh",
-                focusNote: note,
-                focusNotes: [note],
-                self: null
-              }
-              MNTaskGlobal.executeCustomAction("refreshTodayBoard", context)
-            } else {
-              MNUtil.log("⚠️ MNTaskGlobal 未定义，无法自动刷新今日看板")
-            }
-          })
-        }
+        // 延迟执行刷新，确保当前状态更新完成
+        MNUtil.delay(0.5).then(() => {
+          MNUtil.log("🔄 调用 refreshTodayBoard 方法刷新今日看板")
+          MNTaskManager.refreshTodayBoard()
+        })
       }
     })
   }
@@ -3462,6 +3443,88 @@ class MNTaskManager {
     // 创建 Markdown 链接（任务类型在最前面，便于识别）
     const url = `marginnote4app://note/${task.noteId}`
     return `- ${typeIcon}${priorityIcon}${statusIcon}[${displayText}](${url})`
+  }
+  
+  /**
+   * 刷新今日看板
+   * @returns {boolean} 是否刷新成功
+   */
+  static refreshTodayBoard() {
+    MNUtil.log("🔄 MNTaskManager.refreshTodayBoard() 被调用")
+    
+    const todayBoardId = taskConfig.getBoardNoteId('today')
+    
+    if (!todayBoardId) {
+      MNUtil.showHUD("❌ 请先在设置中绑定今日看板\n设置 → Task Boards → 今日看板")
+      return false
+    }
+    
+    const todayBoard = MNNote.new(todayBoardId)
+    
+    if (!todayBoard) {
+      MNUtil.showHUD("❌ 无法找到今日看板卡片\n请重新设置或检查卡片是否存在")
+      return false
+    }
+    
+    MNUtil.showHUD("🔄 正在刷新今日看板...")
+    
+    let success = false
+    MNUtil.undoGrouping(() => {
+      try {
+        // 获取今日任务
+        let todayTasks = this.filterTodayTasks()
+        
+        // 如果从看板中没有找到，尝试从整个笔记本搜索
+        if (todayTasks.length === 0) {
+          todayTasks = this.filterAllTodayTasks()
+        }
+        
+        // 清理现有的任务链接（保留其他内容）
+        this.clearTaskLinksFromBoard(todayBoard)
+        
+        // 更新看板标题
+        const now = new Date()
+        const dateStr = `${now.getMonth() + 1}月${now.getDate()}日`
+        todayBoard.noteTitle = `📅 今日看板 - ${dateStr}`
+        
+        // 如果没有今日任务，添加提示
+        if (todayTasks.length === 0) {
+          todayBoard.appendMarkdownComment("## 💡 暂无今日任务")
+          todayBoard.appendMarkdownComment("- 使用「今日任务」按钮标记任务")
+          todayBoard.appendMarkdownComment("- 或从任务菜单中选择「标记为今日」")
+          MNUtil.showHUD("📅 暂无今日任务")
+          success = true
+          return
+        }
+        
+        // 按优先级和状态分组
+        const grouped = this.groupTodayTasks(todayTasks)
+        
+        // 添加任务链接到看板
+        this.addTaskLinksToBoard(todayBoard, grouped)
+        
+        // 刷新看板显示
+        todayBoard.refresh()
+        
+        // 显示完成提示
+        const inProgressCount = grouped.inProgress.length
+        const highPriorityCount = grouped.highPriority.length
+        let hudMessage = `✅ 刷新完成\n📋 今日任务：${todayTasks.length} 个`
+        if (inProgressCount > 0) {
+          hudMessage += `\n🔥 进行中：${inProgressCount} 个`
+        }
+        if (highPriorityCount > 0) {
+          hudMessage += `\n🔴 高优先级：${highPriorityCount} 个`
+        }
+        MNUtil.showHUD(hudMessage)
+        success = true
+      } catch (error) {
+        MNUtil.log(`❌ refreshTodayBoard 出错: ${error.message || error}`)
+        MNUtil.showHUD("❌ 刷新失败：" + error.message)
+      }
+    })
+    
+    return success
   }
   
   /**

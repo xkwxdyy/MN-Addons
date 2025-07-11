@@ -769,6 +769,17 @@ function clearLogsFromAddon() {
 function copyToClipboard(text) {
   window.location.href = "nativeCopy://content="+encodeURIComponent(text);
 }
+
+// 监听来自父窗口的消息
+window.addEventListener('message', function(event) {
+  try {
+    if (event.data && event.data.type === 'showLogs') {
+      logViewer.loadLogs(event.data.logs);
+    }
+  } catch (error) {
+    console.error('处理消息失败:', error);
+  }
+});
     </script>
 </body>
 </html>

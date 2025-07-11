@@ -94,3 +94,57 @@ JavaScript 文件中存在语法错误（如在同一作用域内重复声明 co
 5. 添加防御性编程：对不确定的 API 添加 typeof 检查或 try-catch --tags MN-Addon API陷阱 调试技巧 MarginNote插件 MNTask
 --tags #流程管理 #评分:8 #有效期:长期
 - END
+
+- 2025/07/11 20:24 START
+## MN-Addon 开发原则：函数调用 vs Action 调用（极其重要）
+
+在 MNTask 和 MNToolbar 项目中的核心架构原则：
+
+### 核心原则
+**在函数内部，永远不要通过 Action 系统调用功能，而应该直接调用封装好的函数。**
+
+### 架构设计
+1. **Action 应该是薄包装层**：Action 只负责接收用户交互并调用核心函数
+2. **核心逻辑封装在可复用的函数中**：所有业务逻辑都在独立的函数或类方法中
+3. **函数之间直接相互调用**：不通过 Action 系统
+
+### 错误示例
+```javascript
+// ❌ 在函数内部通过 Action 系统调用
+MNTaskGlobal.executeCustomAction("refreshTodayBoard", context)
+```
+
+### 正确示例
+```javascript
+// ✅ 直接调用函数
+this.refreshTodayBoard()  // 或 MNTaskManager.refreshTodayBoard()
+```
+
+### 为什么重要
+1. 避免循环依赖和上下文问题
+2. 提高性能（直接调用更快）
+3. 易于测试和维护
+4. 避免构造复杂的 context 对象
+
+### 实际案例
+今日看板刷新功能重构：将 refreshTodayBoard action 的逻辑提取到 MNTaskManager.refreshTodayBoard() 方法，updateTaskStatus 直接调用该方法而不是通过 action。
+
+记住：Action 是为用户交互设计的，不是为代码内部调用设计的！ --tags MN-Addon 架构原则 开发规范 MNTask MNToolbar
+--tags #其他 #评分:8 #有效期:长期
+- END
+
+- 2025/07/11 20:36 START
+MN-Addon WebView 显示和数据传递问题解决方案：
+
+1. WebView 显示问题：
+   - 必须在容器视图布局完成后创建 WebView（使用延迟初始化）
+   - 使用 loadFileURLAllowingReadAccessToURL 而不是 loadRequest
+   - 正确设置 frame：使用容器的 bounds
+
+2. iframe 架构数据传递：
+   - 主容器(sidebarContainer.html)需要代理函数接收原生调用
+   - 使用 postMessage 转发数据到 iframe
+   - iframe 页面需要监听 message 事件
+   - 保持原有 API 兼容性：原生代码仍调用 loadTasksFromPlugin --tags WebView MarginNote iframe postMessage MNTask
+--tags #其他 #评分:8 #有效期:长期
+- END

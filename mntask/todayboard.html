@@ -1167,6 +1167,19 @@
             boardManager.renderTasks();
             boardManager.updateStats();
         }
+
+        // 监听来自父窗口的消息
+        window.addEventListener('message', function(event) {
+            try {
+                if (event.data && event.data.type === 'loadTasks') {
+                    // 将任务数据编码后传递给 boardManager
+                    const encodedTasks = encodeURIComponent(JSON.stringify(event.data.tasks));
+                    boardManager.loadTasks(encodedTasks);
+                }
+            } catch (error) {
+                console.error('处理消息失败:', error);
+            }
+        });
     </script>
 </body>
 </html>

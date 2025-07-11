@@ -211,14 +211,14 @@
                     <span class="nav-icon">📊</span>
                     <span class="nav-label">统计分析</span>
                 </div>
+                <div class="nav-item" data-view="taskeditor" style="display: none;">
+                    <span class="nav-icon">✏️</span>
+                    <span class="nav-label">任务编辑</span>
+                </div>
             </div>
             
             <div class="nav-section">
                 <div class="nav-section-title">系统工具</div>
-                <div class="nav-item" data-view="log">
-                    <span class="nav-icon">📜</span>
-                    <span class="nav-label">系统日志</span>
-                </div>
                 <div class="nav-item" data-view="settings">
                     <span class="nav-icon">⚙️</span>
                     <span class="nav-label">设置</span>
@@ -254,9 +254,9 @@
                 url: 'statistics.html',
                 title: '统计分析'
             },
-            log: {
-                url: 'log.html',
-                title: '系统日志'
+            taskeditor: {
+                url: 'taskeditor.html',
+                title: '任务编辑'
             },
             settings: {
                 url: 'settings.html',
@@ -325,11 +325,6 @@
                         view: viewName,
                         title: config.title
                     });
-                }
-                
-                // 如果是日志视图，通知原生代码加载日志数据
-                if (viewName === 'log') {
-                    window.location.href = 'mntask://loadLogData';
                 }
                 
                 // 如果是今日看板，通知原生代码加载任务数据
@@ -433,6 +428,31 @@
                 }
             }
             return 'iframe_not_ready';
+        }
+        
+        // 加载任务详情到编辑器
+        function loadTaskDetailFromPlugin(encodedTask) {
+            const iframe = document.querySelector('.content-frame');
+            if (iframe && iframe.contentWindow && iframe.contentWindow.loadTaskFromPlugin) {
+                iframe.contentWindow.loadTaskFromPlugin(encodedTask);
+                return 'success';
+            }
+            return 'iframe_not_ready';
+        }
+        
+        // 显示任务编辑器
+        function showTaskEditor(taskId) {
+            // 显示任务编辑器导航项
+            const editorNav = document.querySelector('[data-view="taskeditor"]');
+            if (editorNav) {
+                editorNav.style.display = 'flex';
+            }
+            
+            // 切换到任务编辑器视图
+            switchView('taskeditor');
+            
+            // 通知原生代码加载任务数据
+            window.location.href = `mntask://loadTaskForEdit?taskId=${encodeURIComponent(taskId)}`;
         }
     </script>
 </body>

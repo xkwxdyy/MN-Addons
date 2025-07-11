@@ -1,5 +1,5 @@
 {
-  "currentState": "memory_saved",
+  "currentState": "initialized",
   "stateHistory": [
     {
       "from": "initial",
@@ -200,7 +200,17 @@
         "--tags",
         "MNTask 项目视图 WebView iframe MarginNote"
       ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "init",
+      "timestamp": "2025-07-11T17:26:53.340Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask"
+        }
+      ]
     }
   ],
-  "lastUpdated": "2025-07-11T13:06:45.008Z"
+  "lastUpdated": "2025-07-11T17:26:53.350Z"
 }

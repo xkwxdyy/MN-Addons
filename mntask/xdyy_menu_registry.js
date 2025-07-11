@@ -95,12 +95,8 @@ function registerAllMenuTemplates() {
           menuTitle: "🔥 设置任务优先级"
         },
         {
-          action: "focusTodayTasks",
-          menuTitle: "🎯 聚焦今日看板"
-        },
-        {
-          action: "refreshTodayBoard",
-          menuTitle: "🔄 刷新今日看板"
+          action: "openTodayBoard",
+          menuTitle: "🎯 打开任务看板"
         },
         {
           action: "fixLegacyTodayMarks",
@@ -148,18 +144,14 @@ function registerAllMenuTemplates() {
 
   // menu_board_view - 看板视图菜单（精简版）
   MNTaskGlobal.registerMenuTemplate("menu_board_view", {
-    action: "focusTodayTasks",  // 单击聚焦今日看板
+    action: "openTodayBoard",  // 单击打开任务看板
     onLongPress: {
       action: "menu",
       menuWidth: 300,
       menuItems: [
         {
-          action: "focusTodayTasks",
-          menuTitle: "🎯 聚焦今日看板"
-        },
-        {
-          action: "openTodayBoardHTML",
-          menuTitle: "🌐 HTML 今日看板"
+          action: "openTodayBoard",
+          menuTitle: "🎯 打开任务看板"
         },
         {
           action: "openTasksFloatMindMap",

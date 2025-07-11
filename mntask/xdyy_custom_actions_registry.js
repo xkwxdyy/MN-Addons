@@ -3788,7 +3788,7 @@ function registerAllCustomActions() {
     MNUtil.showHUD(`收件箱中有 ${pendingActions.length} 个待处理项`);
   });
 
-  // toggleTodayMark - 切换今日任务标记
+  // toggleTodayMark - 设置任务日期（今日）
   MNTaskGlobal.registerCustomAction("toggleTodayMark", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
     
@@ -3799,41 +3799,61 @@ function registerAllCustomActions() {
       }
       
       const notesToProcess = focusNotes && focusNotes.length > 0 ? focusNotes : [focusNote];
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     
-    MNUtil.undoGrouping(() => {
-      let addCount = 0;
-      let removeCount = 0;
-      
-      notesToProcess.forEach(note => {
-        if (MNTaskManager.isTaskCard(note)) {
-          if (MNTaskManager.isToday(note)) {
-            MNTaskManager.markAsToday(note, false);
-            removeCount++;
-          } else {
-            MNTaskManager.markAsToday(note, true);
-            addCount++;
+      MNUtil.undoGrouping(() => {
+        let addCount = 0;
+        let removeCount = 0;
+        
+        notesToProcess.forEach(note => {
+          if (MNTaskManager.isTaskCard(note)) {
+            // 检查是否已经有日期字段
+            const taskComments = MNTaskManager.parseTaskComments(note);
+            let hasDateField = false;
+            let currentDate = null;
+            
+            for (let field of taskComments.taskFields) {
+              if (field.content.includes('📅')) {
+                hasDateField = true;
+                const dateMatch = field.content.match(/(\d{4}-\d{2}-\d{2})/);
+                if (dateMatch) {
+                  currentDate = dateMatch[1];
+                }
+                break;
+              }
+            }
+            
+            if (hasDateField && currentDate === todayStr) {
+              // 如果已经是今天的日期，移除
+              MNTaskManager.markWithDate(note, false);
+              removeCount++;
+            } else {
+              // 设置为今天
+              MNTaskManager.markWithDate(note, todayStr);
+              addCount++;
+            }
           }
+        });
+        
+        if (addCount > 0 && removeCount > 0) {
+          MNUtil.showHUD(`✅ 设置 ${addCount} 个，移除 ${removeCount} 个日期`);
+        } else if (addCount > 0) {
+          MNUtil.showHUD(`✅ 已设置 ${addCount} 个任务为今日`);
+        } else if (removeCount > 0) {
+          MNUtil.showHUD(`✅ 已移除 ${removeCount} 个日期标记`);
         }
       });
       
-      if (addCount > 0 && removeCount > 0) {
-        MNUtil.showHUD(`✅ 添加 ${addCount} 个，移除 ${removeCount} 个今日标记`);
-      } else if (addCount > 0) {
-        MNUtil.showHUD(`✅ 已添加 ${addCount} 个今日标记`);
-      } else if (removeCount > 0) {
-        MNUtil.showHUD(`✅ 已移除 ${removeCount} 个今日标记`);
+      // 自动刷新今日看板（如果已配置）
+      if (taskConfig.getBoardNoteId('today')) {
+        MNUtil.delay(0.5).then(() => {
+          MNTaskGlobal.executeCustomAction("refreshTodayBoard", context);
+        });
       }
-    });
-    
-    // 自动刷新今日看板（如果已配置）
-    if (taskConfig.getBoardNoteId('today')) {
-      MNUtil.delay(0.5).then(() => {
-        MNTaskGlobal.executeCustomAction("refreshTodayBoard", context);
-      });
-    }
     } catch (error) {
       MNUtil.log(`❌ toggleTodayMark 执行失败: ${error.message || error}`);
-      MNUtil.showHUD(`标记今日任务失败: ${error.message || "未知错误"}`);
+      MNUtil.showHUD(`设置任务日期失败: ${error.message || "未知错误"}`);
     }
   });
 
@@ -3936,38 +3956,34 @@ function registerAllCustomActions() {
     MNUtil.showHUD(`✅ 计划时间已设置为：${time}`);
   });
 
-  // focusTodayTasks - 聚焦到今日看板
-  MNTaskGlobal.registerCustomAction("focusTodayTasks", async function(context) {
+  // openTodayBoard - 打开任务看板
+  MNTaskGlobal.registerCustomAction("openTodayBoard", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
     
-    const todayBoardId = taskConfig.getBoardNoteId('today');
-    if (!todayBoardId) {
-      MNUtil.showHUD("请先配置今日看板");
+    // 检查设置控制器是否存在
+    const getTaskSettingController = self.__block.target
+    if (!getTaskSettingController) {
+      MNUtil.showHUD("❌ 无法获取设置控制器");
       return;
     }
     
-    const todayBoard = MNNote.new(todayBoardId);
-    if (!todayBoard) {
-      MNUtil.showHUD("今日看板不存在");
+    const taskSettingController = getTaskSettingController();
+    if (!taskSettingController) {
+      MNUtil.showHUD("❌ 设置控制器未初始化");
       return;
     }
     
-    todayBoard.focusInFloatMindMap(0.5);
+    // 显示设置面板
+    taskSettingController.show();
     
-    // 显示今日任务统计
-    let todayTasks = MNTaskManager.filterTodayTasks();
+    // 切换到看板视图
+    setTimeout(() => {
+      if (taskSettingController.viewManager) {
+        taskSettingController.viewManager.switchTo('todayBoard');
+      }
+    }, 100);
     
-    // 如果从看板中没有找到，尝试从整个笔记本搜索
-    if (todayTasks.length === 0) {
-      todayTasks = MNTaskManager.filterAllTodayTasks();
-    }
-    
-    const inProgressCount = todayTasks.filter(task => {
-      const status = MNTaskManager.parseTaskTitle(task.noteTitle).status;
-      return status === '进行中';
-    }).length;
-    
-    MNUtil.showHUD(`📅 今日任务：${todayTasks.length} 个\n🔥 进行中：${inProgressCount} 个`);
+    MNUtil.showHUD("📊 正在打开任务看板...");
   });
 
   // refreshTodayBoard - 刷新今日看板（链接引用模式）

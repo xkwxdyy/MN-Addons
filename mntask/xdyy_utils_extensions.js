@@ -87,14 +87,26 @@ class TaskFieldUtils {
   }
   
   /**
-   * 创建今日字段
+   * 创建日期字段
+   * @param {string|boolean} date - 日期字符串(YYYY-MM-DD)或true表示今天
+   * @returns {string} 格式化的日期字段 HTML
+   */
+  static createDateField(date = true) {
+    let dateStr = date
+    if (date === true) {
+      const today = new Date()
+      dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    }
+    return this.createFieldHtml(`📅 日期: ${dateStr}`, 'subField')
+  }
+  
+  /**
+   * 创建今日字段（向后兼容）
    * @param {boolean} includeDate - 是否包含日期信息
    * @returns {string} 格式化的今日字段 HTML
    */
   static createTodayField(includeDate = true) {
-    const today = new Date()
-    const dateStr = includeDate ? ` (${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')})` : ''
-    return this.createFieldHtml(`📅 今日${dateStr}`, 'subField')
+    return this.createDateField(true)
   }
   
   /**
@@ -2150,12 +2162,19 @@ class MNTaskManager {
   }
   
   /**
-   * 标记/取消标记为今日任务
+   * 标记/取消标记任务日期
    * @param {MNNote} note - 要标记的任务卡片
-   * @param {boolean} isToday - true 标记为今日，false 取消标记
+   * @param {boolean|string} dateOrRemove - 日期字符串(YYYY-MM-DD)或false表示移除
    * @returns {boolean} 操作是否成功
    */
-  static markAsToday(note, isToday = true) {
+  static markWithDate(note, dateOrRemove = null) {
+    // 保持向后兼容
+    if (dateOrRemove === true) {
+      const today = new Date()
+      dateOrRemove = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    }
+    
+    const isToday = dateOrRemove !== false && dateOrRemove !== null
     if (!this.isTaskCard(note)) {
       MNUtil.showHUD("请选择一个任务卡片")
       return false
@@ -2163,22 +2182,22 @@ class MNTaskManager {
     
     const parsed = this.parseTaskComments(note)
     
-    // 查找是否已有今日标记
-    let todayFieldIndex = -1
+    // 查找是否已有日期标记
+    let dateFieldIndex = -1
     // 查找是否有过期标记
     let overdueFieldIndex = -1
     
     for (let field of parsed.taskFields) {
-      if (field.content.includes('📅 今日')) {
-        todayFieldIndex = field.index
+      if (field.content.includes('📅')) {
+        dateFieldIndex = field.index
       } else if (field.content.includes('⚠️ 过期')) {
         overdueFieldIndex = field.index
       }
     }
     
     MNUtil.undoGrouping(() => {
-      if (isToday && todayFieldIndex === -1) {
-        // 如果要添加今日标记，先移除过期标记（如果有）
+      if (isToday && dateFieldIndex === -1) {
+        // 如果要添加日期标记，先移除过期标记（如果有）
         if (overdueFieldIndex >= 0) {
           note.removeCommentByIndex(overdueFieldIndex)
           MNUtil.log("✅ 移除过期标记")
@@ -2186,37 +2205,44 @@ class MNTaskManager {
           overdueFieldIndex = -1
         }
         
-        // 添加今日标记（包含日期信息）
-        const todayFieldHtml = TaskFieldUtils.createTodayField(true)
-        note.appendMarkdownComment(todayFieldHtml)
+        // 添加日期标记
+        const dateFieldHtml = TaskFieldUtils.createFieldHtml(`📅 日期: ${dateOrRemove}`, 'subField')
+        note.appendMarkdownComment(dateFieldHtml)
         // 移动到信息字段下
         this.moveCommentToField(note, note.MNComments.length - 1, '信息', false)
-        MNUtil.log("✅ 添加今日标记（含日期）")
-      } else if (!isToday && todayFieldIndex >= 0) {
-        // 移除今日标记
-        note.removeCommentByIndex(todayFieldIndex)
-        MNUtil.log("✅ 移除今日标记")
-      } else if (isToday && todayFieldIndex >= 0) {
-        // 如果已经有今日标记，检查是否需要更新日期
-        const field = parsed.taskFields.find(f => f.index === todayFieldIndex)
-        if (field) {
-          const existingContent = field.content
-          const dateMatch = existingContent.match(/\((\d{4}-\d{2}-\d{2})\)/)
-          
-          if (!dateMatch) {
-            // 旧版标记没有日期，更新为新格式
-            note.removeCommentByIndex(todayFieldIndex)
-            const todayFieldHtml = TaskFieldUtils.createTodayField(true)
-            note.appendMarkdownComment(todayFieldHtml)
-            // 移动到信息字段下
-            this.moveCommentToField(note, note.MNComments.length - 1, '信息', false)
-            MNUtil.log("✅ 已更新今日标记格式（添加日期）")
-          }
-        }
+        MNUtil.log(`✅ 添加日期标记: ${dateOrRemove}`)
+      } else if (!isToday && dateFieldIndex >= 0) {
+        // 移除日期标记
+        note.removeCommentByIndex(dateFieldIndex)
+        MNUtil.log("✅ 移除日期标记")
+      } else if (isToday && dateFieldIndex >= 0) {
+        // 如果已经有日期标记，更新日期
+        note.removeCommentByIndex(dateFieldIndex)
+        const dateFieldHtml = TaskFieldUtils.createFieldHtml(`📅 日期: ${dateOrRemove}`, 'subField')
+        note.appendMarkdownComment(dateFieldHtml)
+        // 移动到信息字段下
+        this.moveCommentToField(note, note.MNComments.length - 1, '信息', false)
+        MNUtil.log(`✅ 更新日期标记: ${dateOrRemove}`)
       }
     })
     
     return true
+  }
+  
+  /**
+   * 标记/取消标记为今日任务（向后兼容方法）
+   * @param {MNNote} note - 要标记的任务卡片
+   * @param {boolean} isToday - true 标记为今日，false 取消标记
+   * @returns {boolean} 操作是否成功
+   */
+  static markAsToday(note, isToday = true) {
+    if (isToday) {
+      const today = new Date()
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+      return this.markWithDate(note, todayStr)
+    } else {
+      return this.markWithDate(note, false)
+    }
   }
   
   /**
@@ -2227,18 +2253,28 @@ class MNTaskManager {
   static isToday(note) {
     if (!this.isTaskCard(note)) return false
     
+    const today = new Date()
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    
     const comments = note.MNComments || []
     for (let comment of comments) {
       if (comment && comment.text) {
         const text = comment.text
         // 检查纯文本格式
-        if (text.includes('📅 今日')) {
-          return true
+        if (text.includes('📅')) {
+          // 提取日期
+          const dateMatch = text.match(/(\d{4}-\d{2}-\d{2})/)
+          if (dateMatch && dateMatch[1] === todayStr) {
+            return true
+          }
         }
         // 检查 HTML 格式（去除 HTML 标签后检查）
         const cleanText = text.replace(/<[^>]*>/g, '')
-        if (cleanText.includes('📅 今日')) {
-          return true
+        if (cleanText.includes('📅')) {
+          const dateMatch = cleanText.match(/(\d{4}-\d{2}-\d{2})/)
+          if (dateMatch && dateMatch[1] === todayStr) {
+            return true
+          }
         }
       }
     }

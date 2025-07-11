@@ -955,6 +955,7 @@
                             <div class="task-meta">
                                 <span class="meta-item">${statusIcon} ${task.status}</span>
                                 <span class="meta-item">${priorityIcon} ${task.priority || '低'}优先级</span>
+                                ${task.scheduledDate ? `<span class="meta-item">📅 ${task.scheduledDate}</span>` : ''}
                                 ${task.plannedTime ? `<span class="meta-item">⏰ ${task.plannedTime}</span>` : ''}
                                 ${task.isOverdue ? `<span class="meta-item" style="color: var(--overdue-color)">过期 ${task.overdueDays} 天</span>` : ''}
                             </div>
@@ -974,6 +975,12 @@
                                 🚀 启动
                             </button>
                         ` : ''}
+                        <button class="task-action-btn" onclick="boardManager.scheduleTask('${task.id}')">
+                            📅 安排
+                        </button>
+                        <button class="task-action-btn" onclick="boardManager.editTask('${task.id}')">
+                            ✏️ 编辑
+                        </button>
                         <button class="task-action-btn" onclick="boardManager.viewTaskDetail('${task.id}')">
                             👁️ 详情
                         </button>
@@ -1041,6 +1048,22 @@
             // 查看任务详情
             viewTaskDetail(taskId) {
                 window.location.href = `mntask://viewDetail?id=${taskId}`;
+            }
+
+            // 编辑任务
+            editTask(taskId) {
+                // 通知父窗口显示任务编辑器
+                if (window.parent && window.parent.showTaskEditor) {
+                    window.parent.showTaskEditor(taskId);
+                } else {
+                    // 直接通知原生代码
+                    window.location.href = `mntask://editTask?id=${taskId}`;
+                }
+            }
+
+            // 安排任务日期
+            scheduleTask(taskId) {
+                window.location.href = `mntask://scheduleTask?id=${taskId}`;
             }
 
             // 刷新看板

@@ -168,6 +168,9 @@ try {
         self.setTextview(self.selectedItem)
       })
       self.settingView.hidden = false
+      
+      // 默认显示看板视图
+      self.viewManager.switchTo('todayBoard')
     } catch (error) {  
       taskUtils.addErrorLog(error, "viewDidLoad.setButtonText", info)
     }
@@ -235,9 +238,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       MNUtil.log("🔔 webViewDidFinishLoad 被调用")
       MNUtil.log(`📱 WebView 实例: ${webView}`)
       MNUtil.log(`📱 今日看板 WebView 实例: ${self.todayBoardWebViewInstance}`)
-      MNUtil.log(`📱 日志 WebView 实例: ${self.logWebViewInstance}`)
       MNUtil.log(`📱 是今日看板?: ${webView === self.todayBoardWebViewInstance}`)
-      MNUtil.log(`📱 是日志查看器?: ${webView === self.logWebViewInstance}`)
       
       // 检查是否是今日看板的 WebView
       if (webView === self.todayBoardWebViewInstance) {
@@ -251,23 +252,6 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
         MNUtil.delay(0.5).then(() => {
           MNUtil.log("🚀 开始加载今日看板数据")
           self.loadTodayBoardData()
-        })
-      }
-      // 检查是否是日志的 WebView
-      else if (webView === self.logWebViewInstance) {
-        // 标记初始化完成
-        self.logWebViewInitialized = true
-        
-        MNUtil.log("✅ 日志 WebView 加载完成")
-        MNUtil.log(`📊 日志查看器初始化状态: ${self.logWebViewInitialized}`)
-        MNUtil.log(`📝 当前 URL: ${webView.URL ? webView.URL.absoluteString() : 'undefined'}`)
-        MNUtil.log(`📝 是否正在加载: ${webView.loading}`)
-        
-        // 延迟加载数据，确保 JavaScript 环境完全就绪
-        MNUtil.delay(0.3).then(() => {
-          MNUtil.log("🚀 开始加载日志数据")
-          MNUtil.log(`📊 准备调用 showLogs 方法`)
-          self.showLogs()
         })
       } else {
         MNUtil.log("⚠️ 未识别的 WebView 实例")
@@ -593,115 +577,6 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
         MNUtil.log(`⚠️ 剪贴板内容改变了！新内容: ${clipboardAfter}`)
       }
     })
-  },
-  logButtonTapped: function (params) {
-    let self = getTaskSettingController()
-    // 记录视图切换
-    TaskLogManager.info("切换到日志视图", "SettingController")
-    self.viewManager.switchTo('log')
-  },
-  
-  // 测试日志功能
-  testLogButtonTapped: function(sender) {
-    let self = getTaskSettingController()
-    MNUtil.log("🧪 测试日志按钮点击")
-    
-    // 添加各种级别的测试日志
-    TaskLogManager.info("测试信息日志 - " + new Date().toLocaleTimeString(), "TestLog")
-    TaskLogManager.warn("测试警告日志 - " + new Date().toLocaleTimeString(), "TestLog")
-    TaskLogManager.error("测试错误日志 - " + new Date().toLocaleTimeString(), "TestLog")
-    TaskLogManager.debug("测试调试日志", "TestLog", {
-      timestamp: Date.now(),
-      webViewExists: !!self.logWebViewInstance,
-      webViewInitialized: self.logWebViewInitialized,
-      logCount: TaskLogManager.getLogs().length
-    })
-    
-    // 诊断 WebView 状态
-    self.diagnoseLogWebView()
-    
-    MNUtil.showHUD("已添加测试日志")
-    
-    // 如果在日志视图，刷新显示
-    if (self.currentView === 'logView' && self.logWebViewInitialized) {
-      self.showLogs()
-    }
-  },
-  
-  // 诊断日志 WebView
-  diagnoseLogWebView: async function() {
-    let self = getTaskSettingController()
-    MNUtil.log("=== 日志 WebView 诊断 ===")
-    
-    if (!self.logWebViewInstance) {
-      MNUtil.log("❌ logWebViewInstance 不存在")
-      return
-    }
-    
-    // 检查基本状态
-    MNUtil.log(`📱 WebView URL: ${self.logWebViewInstance.URL ? self.logWebViewInstance.URL.absoluteString() : 'null'}`)
-    MNUtil.log(`📱 WebView loading: ${self.logWebViewInstance.loading}`)
-    MNUtil.log(`📱 初始化状态: ${self.logWebViewInitialized}`)
-    
-    try {
-      // 检查文档状态
-      const readyState = await self.runJavaScriptInWebView('document.readyState', 'logWebViewInstance')
-      MNUtil.log(`📄 Document readyState: ${readyState}`)
-      
-      // 检查函数是否存在
-      const funcType = await self.runJavaScriptInWebView('typeof showLogsFromAddon', 'logWebViewInstance')
-      MNUtil.log(`🔍 showLogsFromAddon 函数类型: ${funcType}`)
-      
-      // 检查 logViewer 对象
-      const logViewerType = await self.runJavaScriptInWebView('typeof logViewer', 'logWebViewInstance')
-      MNUtil.log(`🔍 logViewer 对象类型: ${logViewerType}`)
-      
-      // 获取页面标题
-      const pageTitle = await self.runJavaScriptInWebView('document.title', 'logWebViewInstance')
-      MNUtil.log(`📄 页面标题: ${pageTitle}`)
-      
-      // 检查 body 内容长度
-      const bodyLength = await self.runJavaScriptInWebView('document.body ? document.body.innerHTML.length : 0', 'logWebViewInstance')
-      MNUtil.log(`📄 Body 内容长度: ${bodyLength}`)
-      
-    } catch (error) {
-      MNUtil.log(`❌ 诊断时出错: ${error.message}`)
-    }
-    
-    MNUtil.log("=== 诊断完成 ===")
-  },
-  
-  // 刷新日志显示
-  refreshLogButtonTapped: function(sender) {
-    let self = getTaskSettingController()
-    MNUtil.log("🔄 刷新日志显示")
-    TaskLogManager.info("手动刷新日志显示", "SettingController")
-    
-    if (self.logWebViewInitialized) {
-      self.showLogs()
-      MNUtil.showHUD("日志已刷新")
-    } else {
-      MNUtil.showHUD("日志视图未初始化")
-    }
-  },
-  
-  // 清空日志
-  clearLogButtonTapped: async function(sender) {
-    let self = getTaskSettingController()
-    MNUtil.log("🗑️ 清空日志按钮点击")
-    
-    const result = await MNUtil.confirm("确认清空", "确定要清空所有日志吗？", ["取消", "清空"])
-    
-    if (result === 1) {
-      TaskLogManager.clear()
-      
-      if (self.logWebViewInitialized) {
-        self.clearLogs()
-      }
-      
-      MNUtil.showHUD("日志已清空")
-      TaskLogManager.info("日志已被用户清空", "SettingController")
-    }
   },
   popupButtonTapped: function (params) {
     let self = getTaskSettingController()
@@ -1580,7 +1455,7 @@ taskSettingController.prototype.initViewManager = function() {
         selectedColor: '#457bd3',
         normalColor: '#9bb2d6',
         onShow: function(self) {
-          MNUtil.log("🎯 切换到今日看板视图")
+          MNUtil.log("🎯 切换到看板视图")
           // 首次显示时创建 WebView
           if (!self.todayBoardWebViewInitialized) {
             MNUtil.log("📱 首次显示，需要初始化 WebView")
@@ -1590,38 +1465,6 @@ taskSettingController.prototype.initViewManager = function() {
             MNUtil.log("♻️ WebView 已初始化，刷新数据")
             self.loadTodayBoardData()
           }
-        }
-      },
-      
-      log: {
-        view: 'todayBoardWebView',  // 使用统一的 WebView
-        button: 'logButton',
-        selectedColor: '#457bd3',
-        normalColor: '#9bb2d6',
-        onShow: function(self) {
-          MNUtil.log("📊 切换到日志视图")
-          
-          // 确保 WebView 已初始化
-          if (!self.todayBoardWebViewInitialized) {
-            MNUtil.log("📱 首次显示，需要初始化 WebView")
-            self.initTodayBoardWebView()
-          } else {
-            // 切换到日志视图
-            MNUtil.log("♻️ 切换到日志页面")
-            self.switchWebViewToLog()
-          }
-          
-          // 调整窗口大小以适应日志查看器
-          const frame = self.view.frame
-          if (frame.width < 500) {
-            frame.width = 500
-          }
-          if (frame.height < 500) {
-            frame.height = 500
-          }
-          self.view.frame = frame
-          self.currentFrame = frame
-          self.view.setNeedsLayout()
         }
       }
     },
@@ -1796,20 +1639,19 @@ taskSettingController.prototype.settingViewLayout = function (){
     }
     this.tabView.frame = tabViewFrame
     
-    // 设置 tabView 内部的按钮
-    taskFrame.set(this.configButton, 5, 0)
+    // 设置 tabView 内部的按钮 - 看板按钮在最前
+    taskFrame.set(this.todayBoardButton, 5, 0)
+    taskFrame.set(this.configButton, this.todayBoardButton.frame.x + this.todayBoardButton.frame.width+5, 0)
     taskFrame.set(this.dynamicButton, this.configButton.frame.x + this.configButton.frame.width+5, 0)
     taskFrame.set(this.popupButton, this.dynamicButton.frame.x + this.dynamicButton.frame.width+5, 0)
     taskFrame.set(this.advancedButton, this.popupButton.frame.x + this.popupButton.frame.width+5, 0)
     taskFrame.set(this.taskBoardButton, this.advancedButton.frame.x + this.advancedButton.frame.width+5, 0)
-    taskFrame.set(this.todayBoardButton, this.taskBoardButton.frame.x + this.taskBoardButton.frame.width+5, 0)
-    taskFrame.set(this.logButton, this.todayBoardButton.frame.x + this.todayBoardButton.frame.width+5, 0)
     
     // 关闭按钮与 tabView 对齐
     taskFrame.set(this.closeButton, tabViewFrame.width + 5, tabViewFrame.y)
     
     // 设置 tabView 的 contentSize，使按钮可以横向滚动
-    const tabContentWidth = this.logButton.frame.x + this.logButton.frame.width + 10;
+    const tabContentWidth = this.taskBoardButton.frame.x + this.taskBoardButton.frame.width + 10;
     this.tabView.contentSize = {width: tabContentWidth, height: 30}
     let scrollHeight = 5
     if (MNUtil.appVersion().type === "macOS") {
@@ -1901,25 +1743,6 @@ taskSettingController.prototype.settingViewLayout = function (){
       }
     }
     
-    // 日志视图布局
-    taskFrame.set(this.logView, 0, 0, width-2, height-60)
-    
-    // 日志视图按钮布局
-    if (!this.logView.hidden && this.logWebViewInitialized) {
-      // 在日志视图顶部水平排列三个按钮
-      const buttonWidth = (width - 40) / 3  // 按钮宽度，留出边距
-      const buttonHeight = 35
-      const buttonY = 10  // 顶部边距
-      
-      // 测试按钮
-      taskFrame.set(this.logTestButton, 10, buttonY, buttonWidth, buttonHeight)
-      
-      // 刷新按钮（在测试按钮右侧）
-      taskFrame.set(this.logRefreshButton, 15 + buttonWidth, buttonY, buttonWidth, buttonHeight)
-      
-      // 清空按钮（在刷新按钮右侧）
-      taskFrame.set(this.logClearButton, 20 + buttonWidth * 2, buttonY, buttonWidth, buttonHeight)
-    }
 }
 
 
@@ -1959,48 +1782,19 @@ try {
   // 创建今日看板视图（包含 WebView）
   this.creatView("todayBoardWebView","settingView","#9bb2d6",0.0)
   this.todayBoardWebView.hidden = true
-  
-  // 创建日志视图（容器）
-  this.creatView("logView","settingView","#9bb2d6",0.0)
-  this.logView.hidden = true
-  
-  // 在日志视图中添加测试按钮
-  this.createButton("logTestButton","testLogButtonTapped:","logView")
-  MNButton.setConfig(this.logTestButton, {
-    title: "添加测试日志",
-    color: "#457bd3",
-    alpha: 0.9,
-    font: 14,
-    radius: 8,
-    bold: true
-  })
-  
-  this.createButton("logRefreshButton","refreshLogButtonTapped:","logView")
-  MNButton.setConfig(this.logRefreshButton, {
-    title: "刷新日志",
-    color: "#558fed",
-    alpha: 0.9,
-    font: 14,
-    radius: 8,
-    bold: true
-  })
-  
-  this.createButton("logClearButton","clearLogButtonTapped:","logView")
-  MNButton.setConfig(this.logClearButton, {
-    title: "清空日志",
-    color: "#ff4444",
-    alpha: 0.9,
-    font: 14,
-    radius: 8,
-    bold: true
-  })
 
 
+  this.createButton("todayBoardButton","todayBoardButtonTapped:","tabView")
+  MNButton.setConfig(this.todayBoardButton, {color:"#457bd3",alpha:0.9,opacity:1.0,title:"看板",font:17,radius:10,bold:true})
+  this.todayBoardButton.width = this.todayBoardButton.sizeThatFits({width:150,height:30}).width+15
+  this.todayBoardButton.height = 30
+  this.todayBoardButton.selected = true
+  
   this.createButton("configButton","configButtonTapped:","tabView")
-  MNButton.setConfig(this.configButton, {color:"#457bd3",alpha:0.9,opacity:1.0,title:"Buttons",font:17,radius:10,bold:true})
+  MNButton.setConfig(this.configButton, {alpha:0.9,opacity:1.0,title:"Buttons",font:17,radius:10,bold:true})
   this.configButton.width = this.configButton.sizeThatFits({width:150,height:30}).width+15
   this.configButton.height = 30
-  this.configButton.selected = true
+  this.configButton.selected = false
 
   this.createButton("dynamicButton","dynamicButtonTapped:","tabView")
   MNButton.setConfig(this.dynamicButton, {alpha:0.9,opacity:1.0,title:"Dynamic",font:17,radius:10,bold:true})
@@ -2025,18 +1819,6 @@ try {
   this.taskBoardButton.width = this.taskBoardButton.sizeThatFits({width:150,height:30}).width+15
   this.taskBoardButton.height = 30
   this.taskBoardButton.selected = false
-  
-  this.createButton("todayBoardButton","todayBoardButtonTapped:","tabView")
-  MNButton.setConfig(this.todayBoardButton, {alpha:0.9,opacity:1.0,title:"今日看板",font:17,radius:10,bold:true})
-  this.todayBoardButton.width = this.todayBoardButton.sizeThatFits({width:150,height:30}).width+15
-  this.todayBoardButton.height = 30
-  this.todayBoardButton.selected = false
-  
-  this.createButton("logButton","logButtonTapped:","tabView")
-  MNButton.setConfig(this.logButton, {alpha:0.9,opacity:1.0,title:"日志",font:17,radius:10,bold:true})
-  this.logButton.width = this.logButton.sizeThatFits({width:150,height:30}).width+15
-  this.logButton.height = 30
-  this.logButton.selected = false
 
   this.createButton("closeButton","closeButtonTapped:","view")
   MNButton.setConfig(this.closeButton, {color:"#e06c75",alpha:0.9,opacity:1.0,radius:10,bold:true})
@@ -3162,6 +2944,19 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
         const timeInfo = MNTaskManager.getPlannedTime(task)
         const progressInfo = MNTaskManager.getTaskProgress(task)
         
+        // 获取任务日期
+        let scheduledDate = null
+        const taskComments = MNTaskManager.parseTaskComments(task)
+        for (let field of taskComments.taskFields) {
+          if (field.content.includes('📅')) {
+            const dateMatch = field.content.match(/(\d{4}-\d{2}-\d{2})/)
+            if (dateMatch) {
+              scheduledDate = dateMatch[1]
+            }
+            break
+          }
+        }
+        
         // 检查是否过期
         const todayField = TaskFieldUtils.getFieldContent(task, "今日")
         const overdueInfo = MNTaskManager.checkIfOverdue(todayField)
@@ -3181,6 +2976,7 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
           status: taskInfo.status || '未开始',
           priority: priorityInfo || '低',
           plannedTime: timeInfo,
+          scheduledDate: scheduledDate,
           progress: progressInfo || 0,
           isOverdue: overdueInfo.isOverdue,
           overdueDays: overdueInfo.days,
@@ -3256,30 +3052,6 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
  * 切换 WebView 到日志视图
  * @this {settingController}
  */
-taskSettingController.prototype.switchWebViewToLog = function() {
-  try {
-    MNUtil.log("🔄 切换 WebView 到日志视图")
-    
-    if (!this.todayBoardWebViewInstance) {
-      MNUtil.log("❌ WebView 实例不存在")
-      return
-    }
-    
-    // 使用 JavaScript 切换到日志视图
-    const script = `
-      if (typeof switchView === 'function') {
-        switchView('log');
-      } else {
-        window.location.href = 'mntask://showHUD?message=' + encodeURIComponent('切换失败');
-      }
-    `
-    
-    this.runJavaScriptInWebView(script)
-  } catch (error) {
-    taskUtils.addErrorLog(error, "switchWebViewToLog")
-    MNUtil.showHUD("切换到日志视图失败")
-  }
-}
 
 /**
  * 加载项目列表数据
@@ -3546,6 +3318,19 @@ taskSettingController.prototype.loadProjectTasks = async function(projectId, fil
         const timeInfo = MNTaskManager.getPlannedTime(task)
         const progressInfo = MNTaskManager.getTaskProgress(task)
         
+        // 获取任务日期
+        let scheduledDate = null
+        const taskComments = MNTaskManager.parseTaskComments(task)
+        for (let field of taskComments.taskFields) {
+          if (field.content.includes('📅')) {
+            const dateMatch = field.content.match(/(\d{4}-\d{2}-\d{2})/)
+            if (dateMatch) {
+              scheduledDate = dateMatch[1]
+            }
+            break
+          }
+        }
+        
         // 检查是否过期
         const todayField = TaskFieldUtils.getFieldContent(task, "今日")
         const overdueInfo = MNTaskManager.checkIfOverdue(todayField)
@@ -3565,6 +3350,7 @@ taskSettingController.prototype.loadProjectTasks = async function(projectId, fil
           status: taskInfo.status || '未开始',
           priority: priorityInfo || '低',
           plannedTime: timeInfo,
+          scheduledDate: scheduledDate,
           progress: progressInfo || 0,
           isOverdue: overdueInfo.isOverdue,
           overdueDays: overdueInfo.days,
@@ -3657,6 +3443,54 @@ taskSettingController.prototype.handleTodayBoardProtocol = function(url) {
         this.handleViewTaskDetail(params.id)
         break
         
+      case 'scheduleTask':
+        this.handleScheduleTask(params.id)
+        break
+        
+      case 'editTask':
+        this.handleEditTask(params.id)
+        break
+        
+      case 'loadTaskDetail':
+        this.handleLoadTaskDetail()
+        break
+        
+      case 'loadTaskForEdit':
+        this.handleLoadTaskForEdit(params.taskId)
+        break
+        
+      case 'addField':
+        this.handleAddField(params)
+        break
+        
+      case 'updateField':
+        this.handleUpdateField(params)
+        break
+        
+      case 'deleteField':
+        this.handleDeleteField(params)
+        break
+        
+      case 'reorderFields':
+        this.handleReorderFields(params)
+        break
+        
+      case 'updateTaskDate':
+        this.handleUpdateTaskDate(params)
+        break
+        
+      case 'clearTaskDate':
+        this.handleClearTaskDate()
+        break
+        
+      case 'closeTaskEditor':
+        this.handleCloseTaskEditor()
+        break
+        
+      case 'saveTaskChanges':
+        this.handleSaveTaskChanges()
+        break
+        
       case 'refresh':
         this.handleRefreshBoard()
         break
@@ -3673,10 +3507,6 @@ taskSettingController.prototype.handleTodayBoardProtocol = function(url) {
         if (params.message) {
           MNUtil.showHUD(decodeURIComponent(params.message))
         }
-        break
-        
-      case 'loadLogData':
-        this.showLogs()
         break
         
       case 'loadTodayBoardData':
@@ -3868,6 +3698,485 @@ taskSettingController.prototype.handleViewTaskDetail = function(taskId) {
 }
 
 /**
+ * 处理安排任务日期
+ * @this {settingController}
+ * @param {string} taskId - 任务ID
+ */
+taskSettingController.prototype.handleScheduleTask = async function(taskId) {
+  try {
+    if (!taskId) return
+    
+    const task = MNNote.new(taskId)
+    if (!task) {
+      MNUtil.showHUD("任务不存在")
+      return
+    }
+    
+    // 获取当前任务的日期信息
+    const taskInfo = MNTaskManager.parseTaskComments(task)
+    let currentDate = null
+    
+    // 查找现有的日期字段
+    for (let field of taskInfo.taskFields) {
+      if (field.content.includes('📅')) {
+        const dateMatch = field.content.match(/(\d{4}-\d{2}-\d{2})/)
+        if (dateMatch) {
+          currentDate = dateMatch[1]
+        }
+        break
+      }
+    }
+    
+    // 弹出日期选择对话框
+    const today = new Date()
+    const defaultDate = currentDate || `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    
+    const result = await MNUtil.prompt(
+      "安排任务日期",
+      "请选择或输入日期（格式：YYYY-MM-DD）",
+      defaultDate
+    )
+    
+    if (result && result.trim()) {
+      // 验证日期格式
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+      if (!dateRegex.test(result.trim())) {
+        MNUtil.showHUD("❌ 日期格式错误，请使用 YYYY-MM-DD 格式")
+        return
+      }
+      
+      // 更新任务日期
+      MNUtil.undoGrouping(() => {
+        // 移除旧的日期字段
+        let removed = false
+        for (let field of taskInfo.taskFields) {
+          if (field.content.includes('📅')) {
+            task.removeCommentByIndex(field.index)
+            removed = true
+            break
+          }
+        }
+        
+        // 添加新的日期字段
+        const dateFieldHtml = TaskFieldUtils.createFieldHtml(`📅 日期: ${result.trim()}`, 'subField')
+        task.appendMarkdownComment(dateFieldHtml)
+        
+        // 移动到信息字段下
+        MNTaskManager.moveCommentToField(task, task.MNComments.length - 1, '信息', false)
+        
+        MNUtil.showHUD(`✅ 已安排到 ${result.trim()}`)
+      })
+      
+      // 刷新看板
+      this.loadTodayBoardData()
+    }
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleScheduleTask")
+    MNUtil.showHUD("安排日期失败")
+  }
+}
+
+/**
+ * 处理编辑任务
+ * @param {string} taskId - 任务ID
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleEditTask = function(taskId) {
+  try {
+    MNUtil.log(`📝 准备编辑任务: ${taskId}`)
+    
+    // 调用 WebView 中的函数显示任务编辑器
+    const script = `
+      if (typeof showTaskEditor === 'function') {
+        showTaskEditor('${taskId}');
+        'success';
+      } else {
+        'function_not_found';
+      }
+    `
+    
+    this.runJavaScriptInWebView(script).then(result => {
+      if (result !== 'success') {
+        MNUtil.showHUD("无法打开任务编辑器")
+      }
+    })
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleEditTask")
+    MNUtil.showHUD("打开任务编辑器失败")
+  }
+}
+
+/**
+ * 处理加载任务详情（编辑器主动请求）
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleLoadTaskDetail = function() {
+  try {
+    MNUtil.log("📋 任务编辑器请求加载任务详情")
+    
+    if (!this.editingTaskId) {
+      MNUtil.showHUD("没有选中的任务")
+      return
+    }
+    
+    const task = MNNote.new(this.editingTaskId)
+    if (!task) {
+      MNUtil.showHUD("任务不存在")
+      return
+    }
+    
+    const taskInfo = MNTaskManager.getTaskInfo(task)
+    
+    // 准备任务数据
+    const taskData = {
+      id: task.noteId,
+      title: taskInfo.content,
+      type: taskInfo.type,
+      status: taskInfo.status,
+      priority: taskInfo.priority,
+      scheduledDate: taskInfo.scheduledDate,
+      fields: taskInfo.taskFields.map(field => ({
+        name: field.fieldName,
+        content: field.content,
+        index: field.index
+      }))
+    }
+    
+    // 发送数据到编辑器
+    const encodedData = encodeURIComponent(JSON.stringify(taskData))
+    const script = `loadTaskDetailFromPlugin('${encodedData}')`
+    this.runJavaScriptInWebView(script)
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleLoadTaskDetail")
+    MNUtil.showHUD("加载任务详情失败")
+  }
+}
+
+/**
+ * 处理加载任务进行编辑
+ * @param {string} taskId - 任务ID
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleLoadTaskForEdit = function(taskId) {
+  try {
+    MNUtil.log(`📝 加载任务进行编辑: ${taskId}`)
+    
+    // 保存正在编辑的任务ID
+    this.editingTaskId = taskId
+    
+    const task = MNNote.new(taskId)
+    if (!task) {
+      MNUtil.showHUD("任务不存在")
+      return
+    }
+    
+    const taskInfo = MNTaskManager.getTaskInfo(task)
+    
+    // 准备任务数据
+    const taskData = {
+      id: task.noteId,
+      title: taskInfo.content,
+      type: taskInfo.type,
+      status: taskInfo.status,
+      priority: taskInfo.priority,
+      scheduledDate: taskInfo.scheduledDate,
+      fields: taskInfo.taskFields.map(field => ({
+        name: field.fieldName,
+        content: field.content,
+        index: field.index
+      }))
+    }
+    
+    // 发送数据到编辑器
+    const encodedData = encodeURIComponent(JSON.stringify(taskData))
+    const script = `loadTaskDetailFromPlugin('${encodedData}')`
+    this.runJavaScriptInWebView(script)
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleLoadTaskForEdit")
+    MNUtil.showHUD("加载任务失败")
+  }
+}
+
+/**
+ * 处理添加字段
+ * @param {Object} params - 参数对象
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleAddField = function(params) {
+  try {
+    const fieldName = decodeURIComponent(params.name || '')
+    const fieldContent = decodeURIComponent(params.content || '')
+    
+    if (!this.editingTaskId || !fieldName) {
+      MNUtil.showHUD("参数错误")
+      return
+    }
+    
+    const task = MNNote.new(this.editingTaskId)
+    if (!task) {
+      MNUtil.showHUD("任务不存在")
+      return
+    }
+    
+    MNUtil.undoGrouping(() => {
+      // 创建带样式的字段
+      const fieldHtml = TaskFieldUtils.createFieldHtml(fieldName, 'subField')
+      const fullContent = fieldContent ? `${fieldHtml} ${fieldContent}` : fieldHtml
+      
+      // 添加到笔记
+      task.appendMarkdownComment(fullContent)
+      
+      // 获取刚添加的评论索引
+      const lastIndex = task.MNComments.length - 1
+      
+      // 移动到"信息"字段的最上方
+      MNTaskManager.moveCommentToField(task, lastIndex, '信息', false)
+    })
+    
+    MNUtil.showHUD(`✅ 已添加字段：${fieldName}`)
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleAddField")
+    MNUtil.showHUD("添加字段失败")
+  }
+}
+
+/**
+ * 处理更新字段
+ * @param {Object} params - 参数对象
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleUpdateField = function(params) {
+  try {
+    const index = parseInt(params.index)
+    const fieldName = decodeURIComponent(params.name || '')
+    const fieldContent = decodeURIComponent(params.content || '')
+    const oldName = decodeURIComponent(params.oldName || '')
+    
+    if (!this.editingTaskId || isNaN(index)) {
+      MNUtil.showHUD("参数错误")
+      return
+    }
+    
+    const task = MNNote.new(this.editingTaskId)
+    if (!task) {
+      MNUtil.showHUD("任务不存在")
+      return
+    }
+    
+    MNUtil.undoGrouping(() => {
+      const taskInfo = MNTaskManager.getTaskInfo(task)
+      const targetField = taskInfo.taskFields.find(f => f.fieldName === oldName)
+      
+      if (targetField) {
+        // 创建新的字段内容
+        const fieldHtml = TaskFieldUtils.createFieldHtml(fieldName, 'subField')
+        const fullContent = fieldContent ? `${fieldHtml} ${fieldContent}` : fieldHtml
+        
+        // 更新评论
+        task.comments[targetField.index].text = fullContent
+      }
+    })
+    
+    MNUtil.showHUD(`✅ 已更新字段：${fieldName}`)
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleUpdateField")
+    MNUtil.showHUD("更新字段失败")
+  }
+}
+
+/**
+ * 处理删除字段
+ * @param {Object} params - 参数对象
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleDeleteField = function(params) {
+  try {
+    const index = parseInt(params.index)
+    const fieldName = decodeURIComponent(params.name || '')
+    
+    if (!this.editingTaskId || isNaN(index)) {
+      MNUtil.showHUD("参数错误")
+      return
+    }
+    
+    const task = MNNote.new(this.editingTaskId)
+    if (!task) {
+      MNUtil.showHUD("任务不存在")
+      return
+    }
+    
+    MNUtil.undoGrouping(() => {
+      const taskInfo = MNTaskManager.getTaskInfo(task)
+      const targetField = taskInfo.taskFields.find(f => f.fieldName === fieldName)
+      
+      if (targetField) {
+        task.removeCommentByIndex(targetField.index)
+      }
+    })
+    
+    MNUtil.showHUD(`✅ 已删除字段：${fieldName}`)
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleDeleteField")
+    MNUtil.showHUD("删除字段失败")
+  }
+}
+
+/**
+ * 处理字段重排序
+ * @param {Object} params - 参数对象
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleReorderFields = function(params) {
+  try {
+    const oldIndex = parseInt(params.oldIndex)
+    const newIndex = parseInt(params.newIndex)
+    
+    if (!this.editingTaskId || isNaN(oldIndex) || isNaN(newIndex)) {
+      MNUtil.showHUD("参数错误")
+      return
+    }
+    
+    const task = MNNote.new(this.editingTaskId)
+    if (!task) {
+      MNUtil.showHUD("任务不存在")
+      return
+    }
+    
+    // TODO: 实现字段重排序逻辑
+    MNUtil.showHUD("字段重排序功能开发中...")
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleReorderFields")
+    MNUtil.showHUD("重排序失败")
+  }
+}
+
+/**
+ * 处理更新任务日期
+ * @param {Object} params - 参数对象
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleUpdateTaskDate = function(params) {
+  try {
+    const date = decodeURIComponent(params.date || '')
+    
+    if (!this.editingTaskId || !date) {
+      MNUtil.showHUD("参数错误")
+      return
+    }
+    
+    const task = MNNote.new(this.editingTaskId)
+    if (!task) {
+      MNUtil.showHUD("任务不存在")
+      return
+    }
+    
+    MNUtil.undoGrouping(() => {
+      const taskInfo = MNTaskManager.getTaskInfo(task)
+      
+      // 移除旧的日期字段
+      for (let field of taskInfo.taskFields) {
+        if (field.content.includes('📅')) {
+          task.removeCommentByIndex(field.index)
+          break
+        }
+      }
+      
+      // 添加新的日期字段
+      const dateFieldHtml = TaskFieldUtils.createFieldHtml(`📅 日期: ${date}`, 'subField')
+      task.appendMarkdownComment(dateFieldHtml)
+      
+      // 移动到信息字段下
+      MNTaskManager.moveCommentToField(task, task.MNComments.length - 1, '信息', false)
+    })
+    
+    MNUtil.showHUD(`✅ 已设置日期：${date}`)
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleUpdateTaskDate")
+    MNUtil.showHUD("更新日期失败")
+  }
+}
+
+/**
+ * 处理清除任务日期
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleClearTaskDate = function() {
+  try {
+    if (!this.editingTaskId) {
+      MNUtil.showHUD("没有选中的任务")
+      return
+    }
+    
+    const task = MNNote.new(this.editingTaskId)
+    if (!task) {
+      MNUtil.showHUD("任务不存在")
+      return
+    }
+    
+    MNUtil.undoGrouping(() => {
+      const taskInfo = MNTaskManager.getTaskInfo(task)
+      
+      // 移除日期字段
+      for (let field of taskInfo.taskFields) {
+        if (field.content.includes('📅')) {
+          task.removeCommentByIndex(field.index)
+          break
+        }
+      }
+    })
+    
+    MNUtil.showHUD("✅ 已清除日期")
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleClearTaskDate")
+    MNUtil.showHUD("清除日期失败")
+  }
+}
+
+/**
+ * 处理关闭任务编辑器
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleCloseTaskEditor = function() {
+  try {
+    // 隐藏任务编辑器导航项
+    const script = `
+      const editorNav = document.querySelector('[data-view="taskeditor"]');
+      if (editorNav) {
+        editorNav.style.display = 'none';
+      }
+      // 切换回今日看板
+      switchView('todayboard');
+    `
+    
+    this.runJavaScriptInWebView(script)
+    
+    // 清除编辑状态
+    this.editingTaskId = null
+    
+    // 刷新看板数据
+    this.loadTodayBoardData()
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleCloseTaskEditor")
+  }
+}
+
+/**
+ * 处理保存任务更改
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleSaveTaskChanges = function() {
+  try {
+    MNUtil.showHUD("✅ 更改已保存")
+    
+    // 刷新看板数据
+    this.loadTodayBoardData()
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleSaveTaskChanges")
+    MNUtil.showHUD("保存失败")
+  }
+}
+
+/**
  * 处理刷新看板
  * @this {settingController}
  */
@@ -3960,22 +4269,6 @@ taskSettingController.prototype.handleLogProtocol = function(url) {
     MNUtil.log(`📊 处理日志协议: ${action}`, params)
     
     switch (action) {
-      case 'clearLogs':
-        this.handleClearLogs()
-        break
-        
-      case 'exportLogs':
-        this.handleExportLogs()
-        break
-        
-      case 'filterLogs':
-        this.handleFilterLogs(params.level)
-        break
-        
-      case 'refreshLogs':
-        this.handleRefreshLogs()
-        break
-        
       case 'copyLog':
         if (params.content) {
           MNUtil.copy(decodeURIComponent(params.content))
@@ -3997,347 +4290,14 @@ taskSettingController.prototype.handleLogProtocol = function(url) {
   }
 }
 
-/**
- * 处理清空日志
- * @this {settingController}
- */
-taskSettingController.prototype.handleClearLogs = function() {
-  try {
-    if (typeof TaskLogManager !== 'undefined' && TaskLogManager.clearLogs) {
-      TaskLogManager.clearLogs()
-      this.showLogs() // 刷新显示
-      MNUtil.showHUD("日志已清空")
-    }
-  } catch (error) {
-    taskUtils.addErrorLog(error, "handleClearLogs")
-  }
-}
 
-/**
- * 处理导出日志
- * @this {settingController}
- */
-taskSettingController.prototype.handleExportLogs = function() {
-  try {
-    if (typeof TaskLogManager !== 'undefined' && TaskLogManager.exportLogs) {
-      const logs = TaskLogManager.getLogs()
-      const exportText = logs.map(log => {
-        return `[${log.timestamp}] [${log.level}] ${log.message}${log.details ? ' - ' + JSON.stringify(log.details) : ''}`
-      }).join('\n')
-      
-      MNUtil.copy(exportText)
-      MNUtil.showHUD("日志已复制到剪贴板")
-    }
-  } catch (error) {
-    taskUtils.addErrorLog(error, "handleExportLogs")
-  }
-}
 
-/**
- * 处理过滤日志
- * @param {string} level - 日志级别
- * @this {settingController}
- */
-taskSettingController.prototype.handleFilterLogs = function(level) {
-  try {
-    // 这里可以实现日志过滤逻辑
-    // 目前先简单地刷新显示
-    this.showLogs()
-    MNUtil.showHUD(`显示 ${level} 级别日志`)
-  } catch (error) {
-    taskUtils.addErrorLog(error, "handleFilterLogs")
-  }
-}
 
-/**
- * 处理刷新日志
- * @this {settingController}
- */
-taskSettingController.prototype.handleRefreshLogs = function() {
-  try {
-    this.showLogs()
-    MNUtil.showHUD("日志已刷新")
-  } catch (error) {
-    taskUtils.addErrorLog(error, "handleRefreshLogs")
-  }
-}
-
-/**
- * 创建日志查看器的 WebView
- * @this {settingController}
- */
-taskSettingController.prototype.createLogWebView = function() {
-  try {
-    MNUtil.log("🔨 开始创建日志查看器 WebView")
-    TaskLogManager.info("开始创建日志 WebView", "SettingController")
-    
-    // 检查容器视图
-    if (!this.logView) {
-      MNUtil.log("❌ logView 容器不存在")
-      TaskLogManager.error("logView 容器不存在", "SettingController")
-      return
-    }
-    
-    const bounds = this.logView.bounds
-    MNUtil.log("📏 logView bounds: " + JSON.stringify(bounds))
-    TaskLogManager.debug("logView bounds", "SettingController", JSON.stringify(bounds))
-    
-    // 创建一个内部的 UIWebView
-    const webView = new UIWebView(bounds)
-    webView.backgroundColor = UIColor.whiteColor()
-    webView.scalesPageToFit = false
-    webView.autoresizingMask = (1 << 1 | 1 << 4) // 宽高自适应
-    webView.delegate = this
-    webView.layer.cornerRadius = 10
-    webView.layer.masksToBounds = true
-    
-    MNUtil.log("📐 日志 WebView 创建成功，bounds: " + JSON.stringify(bounds))
-    MNUtil.log(`📱 WebView 实例: ${webView}`)
-    MNUtil.log(`📱 WebView delegate 设置为: ${webView.delegate}`)
-    MNUtil.log(`📱 this 对象: ${this}`)
-    MNUtil.log(`📱 WebView 类型: ${webView.constructor.name}`)
-    TaskLogManager.info("日志 WebView 创建成功", "SettingController")
-    
-    // 将 WebView 添加到容器视图中
-    this.logView.addSubview(webView)
-    MNUtil.log("✅ WebView 已添加到 logView")
-    MNUtil.log(`📱 logView 子视图数量: ${this.logView.subviews.length}`)
-    
-    // 保存 WebView 引用，方便后续操作
-    this.logWebViewInstance = webView
-    MNUtil.log(`📱 logWebViewInstance 已保存: ${this.logWebViewInstance}`)
-    MNUtil.log(`📱 验证引用相等: ${this.logWebViewInstance === webView}`)
-    
-    // 标记未初始化
-    this.logWebViewInitialized = false
-    
-    MNUtil.log("✅ 日志查看器 WebView 创建完成")
-    TaskLogManager.info("日志查看器 WebView 创建完成", "SettingController")
-    
-    // 立即初始化
-    this.initLogWebView()
-  } catch (error) {
-    taskUtils.addErrorLog(error, "createLogWebView")
-    MNUtil.log("❌ 创建日志 WebView 失败: " + error.message)
-    TaskLogManager.error("创建日志 WebView 失败", "SettingController", error.message + "\n" + error.stack)
-  }
-}
-
-/**
- * 初始化日志查看器 WebView
- * @this {settingController}
- */
-taskSettingController.prototype.initLogWebView = function() {
-  try {
-    MNUtil.log("🌟 开始初始化日志查看器 WebView")
-    TaskLogManager.info("开始初始化日志 WebView", "SettingController")
-    
-    // 详细记录 WebView 实例信息
-    MNUtil.log(`📱 logWebViewInstance 存在: ${this.logWebViewInstance ? '是' : '否'}`)
-    if (this.logWebViewInstance) {
-      MNUtil.log(`📱 WebView 类型: ${this.logWebViewInstance.constructor.name}`)
-      MNUtil.log(`📱 WebView delegateViews: ${this.logWebViewInstance.delegateViews}`)
-      MNUtil.log(`📱 WebView navigationDelegate: ${this.logWebViewInstance.navigationDelegate}`)
-      MNUtil.log(`📱 WebView 当前 URL: ${this.logWebViewInstance.URL ? this.logWebViewInstance.URL.absoluteString() : 'null'}`)
-      MNUtil.log(`📱 WebView 是否正在加载: ${this.logWebViewInstance.loading}`)
-    }
-    
-    if (!this.logWebViewInstance) {
-      MNUtil.log("❌ 日志 WebView 实例不存在，无法初始化")
-      TaskLogManager.error("日志 WebView 实例不存在", "SettingController")
-      return
-    }
-    
-    // 加载 HTML 文件
-    const htmlPath = taskConfig.mainPath + '/log.html'
-    MNUtil.log(`📁 日志 HTML 文件路径: ${htmlPath}`)
-    TaskLogManager.info(`日志 HTML 路径: ${htmlPath}`, "SettingController")
-    
-    // 检查文件是否存在
-    const fileManager = NSFileManager.defaultManager()
-    const fileExists = fileManager.fileExistsAtPath(htmlPath)
-    MNUtil.log(`📄 文件存在检查: ${fileExists}`)
-    TaskLogManager.info(`log.html 文件存在: ${fileExists}`, "SettingController")
-    
-    if (!fileExists) {
-      MNUtil.log("❌ 日志 HTML 文件不存在: " + htmlPath)
-      TaskLogManager.error("日志 HTML 文件不存在", "SettingController", htmlPath)
-      MNUtil.showHUD("找不到日志查看器文件")
-      
-      // 列出目录内容帮助调试
-      const files = fileManager.contentsOfDirectoryAtPathError(taskConfig.mainPath, null)
-      MNUtil.log("📂 目录内容: " + files.join(", "))
-      TaskLogManager.debug("插件目录文件列表", "SettingController", files.join(", "))
-      return
-    }
-    
-    MNUtil.log("✅ 准备加载 HTML 文件")
-    const fileURL = NSURL.fileURLWithPath(htmlPath)
-    const baseURL = NSURL.fileURLWithPath(taskConfig.mainPath)
-    
-    MNUtil.log(`📎 文件 URL: ${fileURL.absoluteString()}`)
-    MNUtil.log(`📎 基础 URL: ${baseURL.absoluteString()}`)
-    
-    // 记录加载前的状态
-    MNUtil.log(`📱 加载前 WebView URL: ${this.logWebViewInstance.URL ? this.logWebViewInstance.URL.absoluteString() : 'null'}`)
-    MNUtil.log(`📱 加载前 WebView loading 状态: ${this.logWebViewInstance.loading}`)
-    
-    this.logWebViewInstance.loadFileURLAllowingReadAccessToURL(fileURL, baseURL)
-    
-    // 记录加载后的状态
-    MNUtil.log(`📱 加载后 WebView URL: ${this.logWebViewInstance.URL ? this.logWebViewInstance.URL.absoluteString() : 'null'}`)
-    MNUtil.log(`📱 加载后 WebView loading 状态: ${this.logWebViewInstance.loading}`)
-    
-    MNUtil.log("📝 已发送日志 HTML 加载请求，等待 webViewDidFinishLoad")
-    TaskLogManager.info("已发送 HTML 加载请求", "SettingController")
-    
-    // 不在这里标记初始化完成，等待 webViewDidFinishLoad
-  } catch (error) {
-    MNUtil.log(`❌ initLogWebView 错误: ${error.message}`)
-    MNUtil.log(`📍 错误堆栈: ${error.stack}`)
-    taskUtils.addErrorLog(error, "initLogWebView")
-    MNUtil.showHUD("加载日志查看器失败")
-    MNUtil.log("❌ 初始化日志查看器失败: " + error.message)
-    TaskLogManager.error("初始化日志 WebView 失败", "SettingController", error.message + "\n" + error.stack)
-  }
-}
 
 /**
  * 显示日志到日志查看器
  * @this {settingController}
  */
-taskSettingController.prototype.showLogs = async function() {
-  try {
-    MNUtil.log("📊 开始显示日志")
-    TaskLogManager.info("开始显示日志", "SettingController")
-    
-    // 使用统一的 WebView 实例
-    if (!this.todayBoardWebViewInstance) {
-      MNUtil.log("⚠️ WebView 实例不存在")
-      TaskLogManager.warn("WebView 实例不存在", "SettingController")
-      return
-    }
-    
-    if (!this.todayBoardWebViewInitialized) {
-      MNUtil.log("⚠️ WebView 未初始化完成")
-      TaskLogManager.warn("WebView 未初始化完成", "SettingController")
-      return
-    }
-    
-    // 获取所有日志
-    const logs = TaskLogManager.getLogs()
-    MNUtil.log(`📊 准备显示 ${logs.length} 条日志`)
-    TaskLogManager.info(`获取到 ${logs.length} 条日志`, "SettingController")
-    
-    // 打印前几条日志用于调试
-    if (logs.length > 0) {
-      MNUtil.log("🔍 前3条日志示例:")
-      logs.slice(0, 3).forEach((log, index) => {
-        MNUtil.log(`  ${index + 1}. [${log.level}] ${log.message}`)
-      })
-    }
-    
-    // 验证 WebView 状态
-    MNUtil.log(`📱 执行前 WebView URL: ${this.todayBoardWebViewInstance.URL ? this.todayBoardWebViewInstance.URL.absoluteString() : 'null'}`)
-    MNUtil.log(`📱 执行前 WebView loading: ${this.todayBoardWebViewInstance.loading}`)
-    MNUtil.log(`📱 执行前 WebView canGoBack: ${this.todayBoardWebViewInstance.canGoBack}`)
-    
-    // 编码日志数据
-    // 检查 encodeURIComponent 函数是否存在
-    if (typeof encodeURIComponent !== 'function') {
-      MNUtil.log("❌ encodeURIComponent 函数不存在")
-      TaskLogManager.error("encodeURIComponent 函数不存在", "SettingController")
-      return
-    }
-    
-    const encodedLogs = encodeURIComponent(JSON.stringify(logs))
-    MNUtil.log(`📦 编码后的数据长度: ${encodedLogs.length}`)
-    MNUtil.log(`📦 前100个字符: ${encodedLogs.substring(0, 100)}`)
-    
-    // 使用新的方式传递日志数据到 iframe
-    const script = `
-      // 获取当前 iframe
-      const iframe = document.querySelector('.content-frame');
-      if (iframe && iframe.contentWindow) {
-        // 发送日志数据到 iframe
-        iframe.contentWindow.postMessage({
-          type: 'showLogs',
-          logs: ${JSON.stringify(logs)}
-        }, '*');
-        'success';
-      } else {
-        'iframe_not_found';
-      }
-    `;
-    
-    const result = await this.runJavaScriptInWebView(script)
-    
-    if (result === 'success') {
-      MNUtil.log("✅ 日志数据已发送到 iframe")
-      TaskLogManager.info("日志数据已成功发送", "ShowLogs")
-    } else {
-      MNUtil.log("❌ 发送日志数据失败: " + result)
-      TaskLogManager.error("发送日志数据失败", "ShowLogs", result)
-      MNUtil.showHUD("日志查看器未就绪")
-    }
-  } catch (error) {
-    taskUtils.addErrorLog(error, "showLogs")
-    MNUtil.showHUD("显示日志失败")
-    MNUtil.log("❌ showLogs 错误: " + error.message)
-    TaskLogManager.error("显示日志失败", "SettingController", error.message + "\n" + error.stack)
-  }
-}
-
-/**
- * 追加单条日志到日志查看器
- * @param {Object} log - 日志对象
- * @this {settingController}
- */
-taskSettingController.prototype.appendLog = async function(log) {
-  try {
-    if (!this.logWebViewInstance || !this.logWebViewInitialized) {
-      return
-    }
-    
-    // 编码日志数据
-    // 检查 encodeURIComponent 函数是否存在
-    if (typeof encodeURIComponent !== 'function') {
-      // 避免循环日志，这里不记录错误
-      return
-    }
-    
-    const encodedLog = encodeURIComponent(JSON.stringify(log))
-    
-    // 调用 WebView 中的函数
-    const script = `appendLogFromAddon('${encodedLog}')`
-    await this.runJavaScriptInWebView(script, 'logWebViewInstance')
-  } catch (error) {
-    // 避免循环日志，这里不记录错误
-  }
-}
-
-/**
- * 清空日志查看器
- * @this {settingController}
- */
-taskSettingController.prototype.clearLogs = async function() {
-  try {
-    if (!this.logWebViewInstance || !this.logWebViewInitialized) {
-      return
-    }
-    
-    // 清空日志管理器
-    TaskLogManager.clear()
-    
-    // 调用 WebView 中的函数
-    const script = `clearLogsFromAddon()`
-    await this.runJavaScriptInWebView(script, 'logWebViewInstance')
-    
-    MNUtil.showHUD("日志已清空")
-  } catch (error) {
-    taskUtils.addErrorLog(error, "clearLogs")
-  }
-}
 
 /**
  * 诊断 WebView 状态
@@ -4346,27 +4306,8 @@ taskSettingController.prototype.clearLogs = async function() {
 taskSettingController.prototype.diagnoseWebViewStatus = function() {
   MNUtil.log("=== WebView 状态诊断 ===")
   
-  // 检查日志 WebView
-  MNUtil.log("📊 日志 WebView 诊断:")
-  MNUtil.log(`  - logView 存在: ${!!this.logView}`)
-  MNUtil.log(`  - logWebViewInstance 存在: ${!!this.logWebViewInstance}`)
-  MNUtil.log(`  - logWebViewInitialized: ${this.logWebViewInitialized}`)
-  
-  if (this.logView) {
-    MNUtil.log(`  - logView frame: ${JSON.stringify(this.logView.frame)}`)
-    MNUtil.log(`  - logView hidden: ${this.logView.hidden}`)
-    MNUtil.log(`  - logView 子视图数: ${this.logView.subviews.length}`)
-  }
-  
-  if (this.logWebViewInstance) {
-    MNUtil.log(`  - WebView frame: ${JSON.stringify(this.logWebViewInstance.frame)}`)
-    MNUtil.log(`  - WebView URL: ${this.logWebViewInstance.request?.URL?.absoluteString || 'No URL'}`)
-    MNUtil.log(`  - WebView loading: ${this.logWebViewInstance.loading}`)
-    MNUtil.log(`  - WebView canGoBack: ${this.logWebViewInstance.canGoBack}`)
-  }
-  
   // 检查今日看板 WebView
-  MNUtil.log("\n📅 今日看板 WebView 诊断:")
+  MNUtil.log("📅 今日看板 WebView 诊断:")
   MNUtil.log(`  - todayBoardWebView 存在: ${!!this.todayBoardWebView}`)
   MNUtil.log(`  - todayBoardWebViewInstance 存在: ${!!this.todayBoardWebViewInstance}`)
   MNUtil.log(`  - todayBoardWebViewInitialized: ${this.todayBoardWebViewInitialized}`)
@@ -4392,12 +4333,6 @@ taskSettingController.prototype.diagnoseWebViewStatus = function() {
   
   // 将诊断信息也记录到 TaskLogManager
   TaskLogManager.debug("WebView 状态诊断", "Diagnostics", {
-    logWebView: {
-      containerExists: !!this.logView,
-      instanceExists: !!this.logWebViewInstance,
-      initialized: this.logWebViewInitialized,
-      frame: this.logWebViewInstance?.frame
-    },
     todayBoardWebView: {
       containerExists: !!this.todayBoardWebView,
       instanceExists: !!this.todayBoardWebViewInstance,
@@ -4680,6 +4615,19 @@ taskSettingController.prototype.loadTaskQueueData = async function() {
         const priorityInfo = MNTaskManager.getTaskPriority(task)
         const timeInfo = MNTaskManager.getPlannedTime(task)
         const progressInfo = MNTaskManager.getTaskProgress(task)
+        
+        // 获取任务日期
+        let scheduledDate = null
+        const taskComments = MNTaskManager.parseTaskComments(task)
+        for (let field of taskComments.taskFields) {
+          if (field.content.includes('📅')) {
+            const dateMatch = field.content.match(/(\d{4}-\d{2}-\d{2})/)
+            if (dateMatch) {
+              scheduledDate = dateMatch[1]
+            }
+            break
+          }
+        }
         
         // 检查是否过期
         const todayField = TaskFieldUtils.getFieldContent(task, "今日")

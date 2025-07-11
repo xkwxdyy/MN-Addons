@@ -338,9 +338,10 @@
                 }
                 
                 // 如果是项目视图，通知原生代码加载项目数据
-                if (viewName === 'projects') {
-                    window.location.href = 'mntask://loadProjectsData';
-                }
+                // 注释掉自动加载，改为由 projectview.html 初始化后主动加载
+                // if (viewName === 'projects') {
+                //     window.location.href = 'mntask://loadProjectsData';
+                // }
             };
 
             iframe.onerror = function() {

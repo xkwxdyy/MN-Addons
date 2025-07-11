@@ -224,3 +224,239 @@ projectview.html (iframe)
 2. **代理函数模式**：主容器提供统一的数据传递接口
 3. **协议驱动**：视图通过 URL 协议向原生代码请求数据
 4. **组件复用**：相同的 UI 组件（如任务卡片）应该在不同视图间复用样式和行为
+
+## 项目层级导航实现（2025-01-11）
+
+### 需求背景
+项目可能有多层级结构（项目包含子项目），需要实现类似文件管理器的导航体验。
+
+### 实现方案
+
+#### 1. 导航栈管理
+```javascript
+// projectview.html
+const projectManager = {
+    navigationStack: [],  // 导航历史栈
+    currentLevel: null,   // 当前层级（null 表示顶级）
+    
+    // 进入子项目
+    enterProject(project) {
+        this.navigationStack.push({
+            id: project.id,
+            name: project.name
+        });
+        this.currentLevel = project.id;
+        window.location.href = `mntask://loadSubProjects?parentId=${encodeURIComponent(project.id)}`;
+    },
+    
+    // 返回上一级
+    goBack() {
+        if (this.navigationStack.length > 0) {
+            this.navigationStack.pop();
+            // 处理返回逻辑...
+        }
+    }
+}
+```
+
+#### 2. 面包屑导航 UI
+```html
+<div class="breadcrumb" id="breadcrumb">
+    <span class="breadcrumb-item" onclick="goToLevel(null)">项目</span>
+    <span class="breadcrumb-separator">></span>
+    <span class="breadcrumb-item">子项目名称</span>
+</div>
+```
+
+#### 3. 后端支持
+修改 `loadProjectsData` 支持父项目参数：
+```javascript
+// settingController.js
+taskSettingController.prototype.loadProjectsData = async function(parentId = null) {
+    if (parentId === null) {
+        // 加载顶级项目
+        projectTasks = TaskFilterEngine.filter({
+            boardKeys: ['target', 'project'],
+            customFilter: (task) => taskInfo.type === '项目'
+        })
+    } else {
+        // 加载指定项目的子项目
+        const parentNote = MNNote.new(parentId)
+        projectTasks = getSubProjects(parentNote)
+    }
+}
+```
+
+### 关键要点
+1. **状态管理**：维护导航栈和当前层级
+2. **URL 参数传递**：通过 parentId 参数区分不同层级的请求
+3. **UI 反馈**：面包屑导航让用户清楚当前位置
+4. **子项目识别**：通过 `hasSubProjects` 标记显示不同的 UI
+
+## 复杂筛选逻辑实现（2025-01-11）
+
+### 需求背景
+项目视图需要默认隐藏已完成的动作，但保留已完成的目标、项目等其他类型的任务。
+
+### 实现方案
+
+#### 1. 筛选器状态设计
+```javascript
+filters: {
+    statuses: new Set(['未开始', '进行中']),  // 默认不包含"已完成"
+    types: new Set(['目标', '关键结果', '项目', '动作']),
+    priorities: new Set(['高', '中', '低']),
+    hideCompletedActions: true  // 特殊规则标记
+}
+```
+
+#### 2. 筛选逻辑实现
+```javascript
+shouldShowTask(task) {
+    // 特殊规则：隐藏已完成的动作
+    if (this.filters.hideCompletedActions && 
+        task.type === '动作' && 
+        task.status === '已完成') {
+        return false;
+    }
+    
+    // 常规筛选
+    return this.filters.statuses.has(task.status) && 
+           this.filters.types.has(task.type) &&
+           this.filters.priorities.has(task.priority || '低');
+}
+```
+
+#### 3. UI 提示
+```html
+<p class="filter-hint">提示：默认隐藏已完成的动作</p>
+```
+
+#### 4. 筛选结果统计
+```javascript
+updateStats(filteredTasks = null) {
+    const tasksToCount = filteredTasks || this.tasks;
+    const stats = {
+        total: tasksToCount.length,
+        filtered: filteredTasks ? `(已筛选 ${this.tasks.length - filteredTasks.length} 项)` : ''
+    };
+    
+    document.getElementById('contentStats').innerHTML = `
+        <span>显示: ${stats.total} ${stats.filtered}</span>
+    `;
+}
+```
+
+### 关键要点
+1. **业务规则优先**：特殊筛选规则应该在常规筛选之前处理
+2. **用户提示**：让用户知道有特殊的筛选规则在生效
+3. **统计反馈**：显示筛选前后的数量对比
+4. **灵活配置**：通过复选框让用户可以关闭特殊规则
+
+## WebView 初始化时序问题的新解决方案（2025-01-11）
+
+### 问题描述
+项目视图和任务队列在切换时一直显示"加载中"，需要手动刷新才能加载数据。
+
+### 根本原因
+sidebarContainer.html 在 iframe 的 onload 事件中立即发送数据加载请求，但此时 iframe 内的 JavaScript 可能还未完全初始化，导致无法正确接收和处理数据。
+
+### 解决方案
+
+#### 1. 子页面主动加载
+让每个视图在自己初始化完成后主动请求数据：
+```javascript
+// projectview.html
+init() {
+    this.bindEvents();
+    this.setupFilters();
+    this.showLoadingState();
+    
+    // 延迟加载数据，确保 WebView 通信准备就绪
+    setTimeout(() => {
+        console.log('项目视图初始化完成，开始加载数据');
+        window.location.href = 'mntask://loadProjectsData';
+    }, 100);
+}
+```
+
+#### 2. 移除父容器的自动加载
+```javascript
+// sidebarContainer.html
+// 注释掉自动加载，改为由子页面初始化后主动加载
+// if (viewName === 'projects') {
+//     window.location.href = 'mntask://loadProjectsData';
+// }
+```
+
+### 与之前解决方案的对比
+- **之前**：今日看板通过让父容器延迟发送数据解决
+- **现在**：项目视图通过子页面主动请求解决
+- **优势**：子页面掌控自己的初始化时机，更加可靠
+
+### 关键要点
+1. **初始化控制权**：让每个视图控制自己的初始化时机
+2. **适度延迟**：100ms 延迟确保 WebView 通信机制就绪
+3. **调试友好**：添加 console.log 便于跟踪加载流程
+4. **统一处理**：相同问题的视图使用相同的解决方案
+
+## API 文档与源码不一致问题（2025-01-11）
+
+### 问题描述
+在开发过程中发现 `mnutils/MNUTILS_API_GUIDE.md` 文档中记载的某些 API 实际上不存在或参数不一致。
+
+### 典型案例
+
+#### 1. MNUtil.select() 方法不存在
+```javascript
+// ❌ 文档中的错误示例
+const selectedIndex = await MNUtil.select("选择任务类型", options, false);
+if (selectedIndex === null) return;  // 文档说取消返回 null
+
+// ✅ 实际正确的 API
+const selectedIndex = await MNUtil.userSelect("选择任务类型", "", options);
+if (selectedIndex === 0) return;  // 实际取消返回 0
+```
+
+#### 2. 索引差异
+- 文档描述：选项索引从 0 开始
+- 实际情况：选项索引从 1 开始（0 是取消按钮）
+
+#### 3. 缺失的方法
+文档中未提及但实际存在的有用方法：
+```javascript
+// xdyyutils.js 中存在但文档未记录
+note.getIncludingCommentIndex("状态：");  // 查找包含特定文本的评论
+note.getIncludingHtmlCommentIndex("字段名");
+note.getTextCommentsIndexArr("完整文本");
+```
+
+### 解决方法
+
+#### 1. 直接查看源码
+```bash
+# 搜索方法是否存在
+grep -n "methodName" mnutils.js
+grep -n "methodName" xdyyutils.js
+```
+
+#### 2. 验证参数
+查看方法的实际实现，确认参数个数和类型：
+```javascript
+// mnutils.js 第 921 行
+static async userSelect(mainTitle, subTitle, items) {
+    // 需要三个参数，不是文档中的两个
+}
+```
+
+### 最佳实践
+1. **源码是真相**：始终以 `mnutils.js` 和 `xdyyutils.js` 为准
+2. **先查文档后验证**：文档提供思路，源码确认细节
+3. **测试边界情况**：特别是取消按钮等特殊返回值
+4. **记录差异**：发现差异时记录下来，避免重复踩坑
+
+### 经验总结
+1. **文档滞后是常态**：API 更新后文档可能没有同步
+2. **IDE 不可靠**：JSB 框架下 IDE 的智能提示可能不准确
+3. **grep 是好帮手**：快速验证方法是否存在
+4. **保持怀疑**：遇到"Not supported yet"等错误时，首先怀疑是 API 名称或参数错误

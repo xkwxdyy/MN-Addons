@@ -657,8 +657,11 @@
             init() {
                 this.setupEventListeners();
                 this.showLoadingState();
-                // 请求加载数据
-                window.location.href = 'mntask://loadTaskQueueData';
+                // 延迟加载数据，确保 WebView 通信准备就绪
+                setTimeout(() => {
+                    console.log('任务队列初始化完成，开始加载数据');
+                    window.location.href = 'mntask://loadTaskQueueData';
+                }, 100);
             },
 
             // 设置事件监听

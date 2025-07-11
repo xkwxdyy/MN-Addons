@@ -664,6 +664,12 @@
                 this.bindEvents();
                 this.setupFilters();
                 this.showLoadingState();
+                
+                // 延迟加载数据，确保 WebView 通信准备就绪
+                setTimeout(() => {
+                    console.log('项目视图初始化完成，开始加载数据');
+                    window.location.href = 'mntask://loadProjectsData';
+                }, 100);
             },
 
             // 绑定事件

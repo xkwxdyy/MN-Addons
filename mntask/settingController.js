@@ -207,10 +207,13 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
         // 标记初始化完成
         self.todayBoardWebViewInitialized = true
         
-        // 加载任务数据
-        self.loadTodayBoardData()
+        MNUtil.log("今日看板 WebView 加载完成，准备延迟加载数据")
         
-        MNUtil.log("今日看板 WebView 加载完成")
+        // 延迟加载数据，确保 JavaScript 环境完全就绪
+        MNUtil.delay(0.5).then(() => {
+          MNUtil.log("开始加载今日看板数据")
+          self.loadTodayBoardData()
+        })
       }
     } catch (error) {
       taskUtils.addErrorLog(error, "webViewDidFinishLoad")
@@ -1376,11 +1379,14 @@ taskSettingController.prototype.initViewManager = function() {
         selectedColor: '#457bd3',
         normalColor: '#9bb2d6',
         onShow: function(self) {
+          MNUtil.log("🎯 切换到今日看板视图")
           // 首次显示时创建 WebView
           if (!self.todayBoardWebViewInitialized) {
+            MNUtil.log("📱 首次显示，需要初始化 WebView")
             self.initTodayBoardWebView()
           } else {
             // 如果已经初始化，刷新数据
+            MNUtil.log("♻️ WebView 已初始化，刷新数据")
             self.loadTodayBoardData()
           }
         }
@@ -2677,6 +2683,8 @@ taskSettingController.prototype.checkPopoverController = function () {
  */
 taskSettingController.prototype.createTodayBoardWebView = function() {
   try {
+    MNUtil.log("🔨 开始创建今日看板 WebView")
+    
     // 创建一个内部的 UIWebView
     const webView = new UIWebView(this.todayBoardWebView.bounds)
     webView.backgroundColor = UIColor.whiteColor()
@@ -2686,6 +2694,8 @@ taskSettingController.prototype.createTodayBoardWebView = function() {
     webView.layer.cornerRadius = 10
     webView.layer.masksToBounds = true
     
+    MNUtil.log("📐 WebView 创建成功，bounds: " + JSON.stringify(this.todayBoardWebView.bounds))
+    
     // 将 WebView 添加到容器视图中
     this.todayBoardWebView.addSubview(webView)
     
@@ -2694,8 +2704,11 @@ taskSettingController.prototype.createTodayBoardWebView = function() {
     
     // 标记未初始化
     this.todayBoardWebViewInitialized = false
+    
+    MNUtil.log("✅ 今日看板 WebView 创建完成")
   } catch (error) {
     taskUtils.addErrorLog(error, "createTodayBoardWebView")
+    MNUtil.log("❌ 创建 WebView 失败: " + error.message)
   }
 }
 
@@ -2705,21 +2718,36 @@ taskSettingController.prototype.createTodayBoardWebView = function() {
  */
 taskSettingController.prototype.initTodayBoardWebView = function() {
   try {
+    MNUtil.log("🌟 开始初始化今日看板 WebView")
+    
     if (!this.todayBoardWebViewInstance) {
+      MNUtil.log("❌ WebView 实例不存在，无法初始化")
       return
     }
     
     // 加载 HTML 文件
     const htmlPath = taskConfig.mainPath + '/todayboard.html'
+    MNUtil.log(`📁 HTML 文件路径: ${htmlPath}`)
+    
+    // 检查文件是否存在
+    if (!NSFileManager.defaultManager().fileExistsAtPath(htmlPath)) {
+      MNUtil.log("❌ HTML 文件不存在: " + htmlPath)
+      MNUtil.showHUD("找不到今日看板文件")
+      return
+    }
+    
     this.todayBoardWebViewInstance.loadFileURLAllowingReadAccessToURL(
       NSURL.fileURLWithPath(htmlPath),
       NSURL.fileURLWithPath(taskConfig.mainPath)
     )
     
+    MNUtil.log("📝 已发送 HTML 加载请求，等待 webViewDidFinishLoad")
+    
     // 不在这里标记初始化完成，等待 webViewDidFinishLoad
   } catch (error) {
     taskUtils.addErrorLog(error, "initTodayBoardWebView")
     MNUtil.showHUD("加载今日看板失败")
+    MNUtil.log("❌ 初始化失败: " + error.message)
   }
 }
 
@@ -2835,26 +2863,45 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
       }
     })
     
-    // 传递数据到 WebView
-    const encodedTasks = encodeURIComponent(JSON.stringify(displayTasks))
-    const script = `if(typeof loadTasksFromPlugin !== 'undefined') { 
-      loadTasksFromPlugin('${encodedTasks}'); 
-      return 'success';
-    } else {
-      return 'function not found';
-    }`
+    // 先检查 WebView 状态
+    const readyStateScript = `document.readyState`
+    const readyState = await this.runJavaScriptInWebView(readyStateScript)
+    MNUtil.log(`📄 WebView readyState: ${readyState}`)
     
-    // 使用异步执行并检查结果
-    const result = await this.runJavaScriptInWebView(script)
+    // 检查 loadTasksFromPlugin 函数是否存在
+    const checkScript = `typeof loadTasksFromPlugin !== 'undefined' ? 'true' : 'false'`
+    const functionExists = await this.runJavaScriptInWebView(checkScript)
+    MNUtil.log(`🔍 loadTasksFromPlugin 函数存在: ${functionExists}`)
     
-    if (result === 'function not found') {
-      MNUtil.log("❌ loadTasksFromPlugin 函数未找到，可能 WebView 还未准备好")
-      // 延迟后重试一次
-      await MNUtil.delay(0.5)
-      await this.runJavaScriptInWebView(script)
+    if (functionExists !== 'true') {
+      MNUtil.log("⏳ 等待 JavaScript 环境就绪...")
+      await MNUtil.delay(1)
+      
+      // 重新检查
+      const recheckResult = await this.runJavaScriptInWebView(checkScript)
+      if (recheckResult !== 'true') {
+        MNUtil.log("❌ loadTasksFromPlugin 函数仍然不存在，可能 HTML 文件有问题")
+        MNUtil.showHUD("今日看板初始化失败")
+        return
+      }
     }
     
-    MNUtil.log(`✅ 今日看板数据加载成功，共 ${displayTasks.length} 个任务`)
+    // 传递数据到 WebView
+    const encodedTasks = encodeURIComponent(JSON.stringify(displayTasks))
+    MNUtil.log(`📤 准备传递 ${displayTasks.length} 个任务到 WebView`)
+    
+    // 使用更简单的方式调用
+    const script = `loadTasksFromPlugin('${encodedTasks}')`
+    
+    try {
+      await this.runJavaScriptInWebView(script)
+      MNUtil.log(`✅ 今日看板数据加载成功，共 ${displayTasks.length} 个任务`)
+    } catch (error) {
+      MNUtil.log(`❌ 执行 JavaScript 失败: ${error.message}`)
+      // 尝试使用旧的方式
+      const fallbackScript = `if(typeof loadTasksFromPlugin !== 'undefined') { loadTasksFromPlugin('${encodedTasks}'); }`
+      await this.runJavaScriptInWebView(fallbackScript)
+    }
     
   } catch (error) {
     taskUtils.addErrorLog(error, "loadTodayBoardData")

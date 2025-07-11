@@ -3369,50 +3369,65 @@ class MNTaskManager {
    * @param {Object} grouped - 分组后的任务
    */
   static addTaskLinksToBoard(boardNote, grouped) {
+    MNUtil.log("🔍 开始添加任务链接到看板")
+    MNUtil.log(`📊 分组情况: overdue=${grouped.overdue?.length || 0}, highPriority=${grouped.highPriority?.length || 0}, inProgress=${grouped.inProgress?.length || 0}, notStarted=${grouped.notStarted?.length || 0}, completed=${grouped.completed?.length || 0}`)
+    
+    // 使用不同的方法添加内容
+    // 方法1：尝试使用 appendTextComment 替代
+    const addSection = (title, tasks) => {
+      try {
+        // 添加分组标题
+        boardNote.appendTextComment(title)
+        MNUtil.log(`✅ 添加标题成功: ${title}`)
+        
+        // 添加任务链接
+        tasks.forEach(task => {
+          try {
+            // 方法A：直接添加任务链接
+            boardNote.appendNoteLink(task, "To")
+            MNUtil.log(`✅ 添加任务链接成功: ${task.noteTitle}`)
+          } catch (e1) {
+            try {
+              // 方法B：添加文本形式的链接
+              const link = this.createTaskLink(task)
+              boardNote.appendTextComment(link)
+              MNUtil.log(`✅ 添加文本链接成功: ${link}`)
+            } catch (e2) {
+              MNUtil.log(`❌ 所有方法都失败: ${e2.message}`)
+            }
+          }
+        })
+      } catch (e) {
+        MNUtil.log(`❌ 添加分组失败: ${e.message}`)
+      }
+    }
+    
     // 过期任务（优先显示）
     if (grouped.overdue && grouped.overdue.length > 0) {
-      boardNote.appendMarkdownComment("## ⚠️ 过期任务")
-      grouped.overdue.forEach(task => {
-        const link = this.createTaskLink(task)
-        boardNote.appendMarkdownComment(link)
-      })
+      addSection("⚠️ 过期任务", grouped.overdue)
     }
     
     // 高优先级任务
     if (grouped.highPriority.length > 0) {
-      boardNote.appendMarkdownComment("## 🔴 高优先级")
-      grouped.highPriority.forEach(task => {
-        const link = this.createTaskLink(task)
-        boardNote.appendMarkdownComment(link)
-      })
+      addSection("🔴 高优先级", grouped.highPriority)
     }
     
     // 进行中任务
     if (grouped.inProgress.length > 0) {
-      boardNote.appendMarkdownComment("## 🔥 进行中")
-      grouped.inProgress.forEach(task => {
-        const link = this.createTaskLink(task)
-        boardNote.appendMarkdownComment(link)
-      })
+      addSection("🔥 进行中", grouped.inProgress)
     }
     
     // 未开始任务
     if (grouped.notStarted.length > 0) {
-      boardNote.appendMarkdownComment("## 😴 未开始")
-      grouped.notStarted.forEach(task => {
-        const link = this.createTaskLink(task)
-        boardNote.appendMarkdownComment(link)
-      })
+      addSection("😴 未开始", grouped.notStarted)
     }
     
     // 已完成任务（可选显示）
     if (grouped.completed.length > 0) {
-      boardNote.appendMarkdownComment("## ✅ 已完成")
-      grouped.completed.forEach(task => {
-        const link = this.createTaskLink(task)
-        boardNote.appendMarkdownComment(link)
-      })
+      addSection("✅ 已完成", grouped.completed)
     }
+    
+    MNUtil.log("✅ 任务链接添加完成")
   }
   
   /**
@@ -3513,21 +3528,27 @@ class MNTaskManager {
       }
     })
     
-    // 添加统计信息
-    boardNote.appendMarkdownComment("## ✅ 统计信息")
-    boardNote.appendMarkdownComment(`- 总任务数：${stats.total}`)
-    boardNote.appendMarkdownComment(`- 进行中：${stats.inProgress}`)
-    boardNote.appendMarkdownComment(`- 未开始：${stats.notStarted}`)
-    boardNote.appendMarkdownComment(`- 已完成：${stats.completed}`)
-    if (stats.highPriority > 0) {
-      boardNote.appendMarkdownComment(`- 高优先级：${stats.highPriority}`)
+    // 添加统计信息 - 使用 appendTextComment 替代
+    try {
+      boardNote.appendTextComment("✅ 统计信息")
+      boardNote.appendTextComment(`- 总任务数：${stats.total}`)
+      boardNote.appendTextComment(`- 进行中：${stats.inProgress}`)
+      boardNote.appendTextComment(`- 未开始：${stats.notStarted}`)
+      boardNote.appendTextComment(`- 已完成：${stats.completed}`)
+      if (stats.highPriority > 0) {
+        boardNote.appendTextComment(`- 高优先级：${stats.highPriority}`)
+      }
+      
+      // 添加进度条
+      const progressPercent = stats.total > 0 
+        ? Math.round(stats.completed / stats.total * 100) 
+        : 0
+      boardNote.appendTextComment(`- 完成进度：${progressPercent}%`)
+      
+      MNUtil.log("✅ 统计信息添加成功")
+    } catch (e) {
+      MNUtil.log(`❌ 添加统计信息失败: ${e.message}`)
     }
-    
-    // 添加进度条
-    const progressPercent = stats.total > 0 
-      ? Math.round(stats.completed / stats.total * 100) 
-      : 0
-    boardNote.appendMarkdownComment(`- 完成进度：${progressPercent}%`)
   }
 
   /**

@@ -3976,16 +3976,17 @@ function registerAllCustomActions() {
       }
     }
     
+    // 获取今日任务（可能已经更新过了）
+    let todayTasks = MNTaskManager.filterTodayTasks();
+    
+    // 如果从看板中没有找到，尝试从整个笔记本搜索
+    if (todayTasks.length === 0) {
+      MNUtil.log("⚠️ 看板中未找到今日任务，尝试从整个笔记本搜索...");
+      todayTasks = MNTaskManager.filterAllTodayTasks();
+    }
+    
+    // 第一步：清理和更新标题
     MNUtil.undoGrouping(() => {
-      // 获取今日任务（可能已经更新过了）
-      let todayTasks = MNTaskManager.filterTodayTasks();
-      
-      // 如果从看板中没有找到，尝试从整个笔记本搜索
-      if (todayTasks.length === 0) {
-        MNUtil.log("⚠️ 看板中未找到今日任务，尝试从整个笔记本搜索...");
-        todayTasks = MNTaskManager.filterAllTodayTasks();
-      }
-      
       // 清理现有的任务链接（保留其他内容）
       MNTaskManager.clearTaskLinksFromBoard(todayBoard);
       
@@ -3993,43 +3994,65 @@ function registerAllCustomActions() {
       const now = new Date();
       const dateStr = `${now.getMonth() + 1}月${now.getDate()}日`;
       todayBoard.noteTitle = `📅 今日看板 - ${dateStr}`;
-      
-      // 如果没有今日任务，添加提示
-      if (todayTasks.length === 0) {
-        todayBoard.appendMarkdownComment("## 💡 暂无今日任务");
-        todayBoard.appendMarkdownComment("- 使用「今日任务」按钮标记任务");
-        todayBoard.appendMarkdownComment("- 或从任务菜单中选择「标记为今日」");
-        MNUtil.showHUD("📅 暂无今日任务");
-        return;
-      }
-      
-      // 按优先级和状态分组（包含过期任务）
-      const grouped = MNTaskManager.groupTodayTasks(todayTasks, overdueTasks);
-      
-      // 添加任务链接到看板（过期任务会作为单独的分组显示）
-      MNTaskManager.addTaskLinksToBoard(todayBoard, grouped);
-      
-      // 添加统计信息
-      MNTaskManager.updateBoardStatistics(todayBoard, todayTasks);
-      
-      // 刷新看板显示
-      todayBoard.refresh();
-      
-      // 显示完成提示
-      const inProgressCount = grouped.inProgress.length;
-      const highPriorityCount = grouped.highPriority.length;
-      let hudMessage = `✅ 刷新完成\n📋 今日任务：${todayTasks.length} 个`;
-      if (inProgressCount > 0) {
-        hudMessage += `\n🔥 进行中：${inProgressCount} 个`;
-      }
-      if (highPriorityCount > 0) {
-        hudMessage += `\n🔴 高优先级：${highPriorityCount} 个`;
-      }
-      if (overdueTasks.length > 0) {
-        hudMessage += `\n⚠️ 过期任务：${overdueTasks.length} 个`;
-      }
-      MNUtil.showHUD(hudMessage);
     });
+    
+    // 如果没有今日任务，添加提示
+    if (todayTasks.length === 0) {
+      MNUtil.delay(0.1).then(() => {
+        MNUtil.undoGrouping(() => {
+          try {
+            // 尝试使用 appendTextComment
+            todayBoard.appendTextComment("💡 暂无今日任务");
+            todayBoard.appendTextComment("- 使用「今日任务」按钮标记任务");
+            todayBoard.appendTextComment("- 或从任务菜单中选择「标记为今日」");
+            MNUtil.log("✅ 添加暂无任务提示成功");
+          } catch (e) {
+            MNUtil.log(`❌ 添加暂无任务提示失败: ${e.message}`);
+          }
+        });
+      });
+      MNUtil.showHUD("📅 暂无今日任务");
+      return;
+    }
+    
+    // 按优先级和状态分组（包含过期任务）
+    const grouped = MNTaskManager.groupTodayTasks(todayTasks, overdueTasks);
+    
+    // 第二步：延迟添加内容（避免 undoGrouping 的问题）
+    MNUtil.delay(0.1).then(() => {
+      try {
+        MNUtil.log("🔄 开始添加任务内容到看板");
+        
+        // 添加任务链接到看板（过期任务会作为单独的分组显示）
+        MNTaskManager.addTaskLinksToBoard(todayBoard, grouped);
+        
+        // 添加统计信息
+        MNTaskManager.updateBoardStatistics(todayBoard, todayTasks);
+        
+        // 刷新看板显示
+        todayBoard.refresh();
+        
+        MNUtil.log("✅ 看板内容添加完成");
+      } catch (error) {
+        MNUtil.log(`❌ 添加看板内容时出错: ${error.message}`);
+        MNUtil.addErrorLog(error, "refreshTodayBoard.addContent");
+      }
+    });
+    
+    // 显示完成提示
+    const inProgressCount = grouped.inProgress.length;
+    const highPriorityCount = grouped.highPriority.length;
+    let hudMessage = `✅ 刷新完成\n📋 今日任务：${todayTasks.length} 个`;
+    if (inProgressCount > 0) {
+      hudMessage += `\n🔥 进行中：${inProgressCount} 个`;
+    }
+    if (highPriorityCount > 0) {
+      hudMessage += `\n🔴 高优先级：${highPriorityCount} 个`;
+    }
+    if (overdueTasks.length > 0) {
+      hudMessage += `\n⚠️ 过期任务：${overdueTasks.length} 个`;
+    }
+    MNUtil.showHUD(hudMessage);
   });
 
   // openTodayBoardHTML - 打开 HTML 增强版今日看板

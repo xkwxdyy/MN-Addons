@@ -3282,6 +3282,211 @@ taskSettingController.prototype.switchWebViewToLog = function() {
 }
 
 /**
+ * 加载项目列表数据
+ * @this {settingController}
+ */
+taskSettingController.prototype.loadProjectsData = async function() {
+  try {
+    MNUtil.log("📂 开始加载项目列表")
+    
+    if (!this.todayBoardWebViewInstance) {
+      MNUtil.log("❌ WebView 实例不存在")
+      return
+    }
+    
+    // 确保 MNTaskManager 已定义
+    if (typeof MNTaskManager === 'undefined') {
+      MNUtil.showHUD("任务管理器未初始化")
+      return
+    }
+    
+    // 确保 TaskFilterEngine 已定义
+    if (typeof TaskFilterEngine === 'undefined') {
+      MNUtil.showHUD("任务筛选引擎未初始化")
+      return
+    }
+    
+    // 从目标看板和项目看板获取所有项目类型的任务
+    const projectTasks = TaskFilterEngine.filter({
+      boardKeys: ['target', 'project'],  // 从目标看板和项目看板获取
+      customFilter: (task) => {
+        const taskInfo = MNTaskManager.parseTaskTitle(task.noteTitle)
+        return taskInfo.type === '项目'
+      }
+    })
+    
+    MNUtil.log(`📊 从目标和项目看板找到 ${projectTasks.length} 个项目任务`)
+    
+    // 递归获取项目的子任务
+    const getProjectChildren = (projectNote) => {
+      const children = []
+      if (projectNote.childNotes) {
+        for (let child of projectNote.childNotes) {
+          if (MNTaskManager.isTaskCard(child)) {
+            children.push(child)
+          }
+          // 递归获取子任务
+          children.push(...getProjectChildren(child))
+        }
+      }
+      return children
+    }
+    
+    // 将项目任务转换为项目列表
+    const projects = projectTasks.map(task => {
+      const taskInfo = MNTaskManager.parseTaskTitle(task.noteTitle)
+      
+      // 获取该项目下的子任务数量
+      const childTasks = getProjectChildren(task)
+      
+      return {
+        id: task.noteId,
+        name: taskInfo.content || task.noteTitle,
+        icon: '📁',
+        taskCount: childTasks.length,
+        status: taskInfo.status || '未开始'
+      }
+    })
+    
+    // 按照状态排序：进行中 > 未开始 > 已完成
+    const statusOrder = {'进行中': 0, '未开始': 1, '已完成': 2}
+    projects.sort((a, b) => {
+      const orderA = statusOrder[a.status] ?? 3
+      const orderB = statusOrder[b.status] ?? 3
+      return orderA - orderB
+    })
+    
+    MNUtil.log(`📊 找到 ${projects.length} 个项目`)
+    
+    // 传递数据到 WebView
+    const encodedProjects = encodeURIComponent(JSON.stringify(projects))
+    const script = `loadProjectsFromPlugin('${encodedProjects}')`
+    
+    await this.runJavaScriptInWebView(script)
+    MNUtil.log(`✅ 项目列表加载成功`)
+    
+  } catch (error) {
+    taskUtils.addErrorLog(error, "loadProjectsData")
+    MNUtil.showHUD("加载项目列表失败")
+  }
+}
+
+/**
+ * 加载特定项目的任务
+ * @this {settingController}
+ * @param {string} projectId - 项目ID
+ */
+taskSettingController.prototype.loadProjectTasks = async function(projectId) {
+  try {
+    MNUtil.log(`📁 开始加载项目任务: ${projectId}`)
+    
+    if (!this.todayBoardWebViewInstance) {
+      MNUtil.log("❌ WebView 实例不存在")
+      return
+    }
+    
+    if (!projectId) {
+      MNUtil.showHUD("项目ID为空")
+      return
+    }
+    
+    // 获取项目笔记
+    const projectNote = MNNote.new(projectId)
+    if (!projectNote) {
+      MNUtil.showHUD("项目不存在")
+      return
+    }
+    
+    // 递归获取项目的子任务
+    const getProjectChildren = (parentNote) => {
+      const children = []
+      if (parentNote.childNotes) {
+        for (let child of parentNote.childNotes) {
+          if (MNTaskManager.isTaskCard(child)) {
+            // 检查任务状态
+            const taskInfo = MNTaskManager.parseTaskTitle(child.noteTitle)
+            if (['未开始', '进行中', '已完成'].includes(taskInfo.status)) {
+              children.push(child)
+            }
+          }
+          // 递归获取子任务
+          children.push(...getProjectChildren(child))
+        }
+      }
+      return children
+    }
+    
+    // 获取项目下的所有任务
+    const projectTasks = getProjectChildren(projectNote)
+    
+    MNUtil.log(`📊 找到 ${projectTasks.length} 个任务`)
+    
+    // 转换为适合显示的格式（复用今日看板的格式）
+    const displayTasks = projectTasks.map(task => {
+      try {
+        const taskInfo = MNTaskManager.parseTaskTitle(task.noteTitle)
+        const priorityInfo = MNTaskManager.getTaskPriority(task)
+        const timeInfo = MNTaskManager.getPlannedTime(task)
+        const progressInfo = MNTaskManager.getTaskProgress(task)
+        
+        // 检查是否过期
+        const todayField = TaskFieldUtils.getFieldContent(task, "今日")
+        const overdueInfo = MNTaskManager.checkIfOverdue(todayField)
+        
+        // 获取启动链接
+        let launchLink = null
+        try {
+          launchLink = MNTaskManager.getLaunchLink(task)
+        } catch (e) {
+          // 忽略获取链接失败的错误
+        }
+        
+        return {
+          id: task.noteId,
+          title: taskInfo.content || task.noteTitle,
+          type: taskInfo.type || '任务',
+          status: taskInfo.status || '未开始',
+          priority: priorityInfo || '低',
+          plannedTime: timeInfo,
+          progress: progressInfo || 0,
+          isOverdue: overdueInfo.isOverdue,
+          overdueDays: overdueInfo.days,
+          launchUrl: launchLink,
+          path: taskInfo.path || ''
+        }
+      } catch (error) {
+        MNUtil.log(`⚠️ 处理任务失败: ${error.message}`)
+        // 返回基本信息
+        return {
+          id: task.noteId,
+          title: task.noteTitle,
+          type: '任务',
+          status: '未知',
+          priority: '低',
+          plannedTime: null,
+          progress: 0,
+          isOverdue: false,
+          overdueDays: 0,
+          launchUrl: null,
+          path: ''
+        }
+      }
+    })
+    
+    // 传递数据到 WebView
+    const encodedTasks = encodeURIComponent(JSON.stringify(displayTasks))
+    const script = `loadProjectTasksFromPlugin('${encodedTasks}')`
+    
+    await this.runJavaScriptInWebView(script)
+    MNUtil.log(`✅ 项目任务加载成功`)
+    
+  } catch (error) {
+    taskUtils.addErrorLog(error, "loadProjectTasks")
+    MNUtil.showHUD("加载项目任务失败")
+  }
+}
+
+/**
  * 通用方法：切换 WebView 到指定视图
  * @this {settingController}
  * @param {string} viewName - 视图名称 (todayboard, log, taskqueue, statistics, settings)
@@ -3350,6 +3555,44 @@ taskSettingController.prototype.handleTodayBoardProtocol = function(url) {
       case 'showHUD':
         if (params.message) {
           MNUtil.showHUD(decodeURIComponent(params.message))
+        }
+        break
+        
+      case 'loadLogData':
+        this.showLogs()
+        break
+        
+      case 'loadTodayBoardData':
+        this.loadTodayBoardData()
+        break
+        
+      case 'loadProjectsData':
+        this.loadProjectsData()
+        break
+        
+      case 'loadProjectTasks':
+        if (params.projectId) {
+          this.loadProjectTasks(decodeURIComponent(params.projectId))
+        } else {
+          MNUtil.showHUD("项目ID参数缺失")
+        }
+        break
+        
+      case 'updateTaskStatus':
+        if (params.taskId) {
+          this.updateTaskStatus(params.taskId)
+        }
+        break
+        
+      case 'launchTask':
+        if (params.taskId) {
+          this.launchTask(params.taskId)
+        }
+        break
+        
+      case 'viewTaskDetail':
+        if (params.taskId) {
+          this.viewTaskDetail(params.taskId)
         }
         break
         

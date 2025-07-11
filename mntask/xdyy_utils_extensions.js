@@ -499,9 +499,18 @@ class MNTaskManager {
       note.appendMarkdownComment(infoFieldHtml)
       MNUtil.log("✅ 添加信息字段，索引：" + (note.MNComments.length - 1))
       
-      // 如果是"动作"类型，只添加信息字段，跳过其他字段
+      // 如果是"动作"类型，添加信息字段和默认启动字段
       if (taskType === "动作") {
-        MNUtil.log("🎯 动作类型任务，只添加信息字段")
+        MNUtil.log("🎯 动作类型任务，添加信息字段和启动字段")
+        
+        // 添加默认启动字段
+        const defaultLaunchLink = "marginnote4app://uistatus/H4sIAAAAAAAAE5VSy5LbIBD8F87SFuIp%2BWbJ5VxyyCG3VCqF0LBmg4VKoM06W%2F73AHbiveY2j56mp5l3NHr%2F8zxxtEOGgNbYMNNJGGmHJWAsmRg7wRQIojpDZQtEj5ibpm0apeRI5ahBcKEx4agqZGFxNqIdzlmM%2Fjx5jXZGuQAV0mqdRv9WujmG6Q7Vzv%2BGB8zPEeYYSivNO3WB1U5JI2MDYw0b6l4OtGb7o6h72rY1wU2Hh33Ph%2BMh6YC3ND%2Bd%2FQSFwlgHNzLjvIpntdwSr7cw%2BwiFuj%2F27ND2pO4IYTXjvajbLqf4yEk74D2lXaI2m3MfV0pkn71W0foZ7d6RNyZAzNGPl%2BDnV%2BU2%2BHpZkg40fPri7RwTRzbgibWSck6YbEUjGO1khS6lzgWThLNUo7jlmF8rFLRyeZUnIiiTVGDcsK5JGHEtCgI4F9Kr375XyC%2Bw3uXgD5kfX26FLTo7P7xe1DMkf1O5tBc1gysTRUv6f960mLKOcdJgUqEVAqhVnwp6hVcLv26hfT7dnL0T32D5Iko%2F2AlGtT7a%2BUzsbHz2SvstGbNr0jZRjeFkpwnmf9B4gnM28ABGbS4bGP1i9f8cRJb59zCvfwCp6rmF9QIAAA%3D%3D";
+        const launchLink = `[启动](${defaultLaunchLink})`;
+        const launchFieldHtml = TaskFieldUtils.createFieldHtml(launchLink, 'subField');
+        MNUtil.log("📝 启动字段HTML: " + launchFieldHtml)
+        note.appendMarkdownComment(launchFieldHtml)
+        MNUtil.log("✅ 添加启动字段，索引：" + (note.MNComments.length - 1))
+        
         MNUtil.log("🎯 任务字段添加完成，总评论数：" + note.MNComments.length)
         return
       }
@@ -1951,7 +1960,8 @@ class MNTaskManager {
     // 检查所有子任务的状态
     for (let childTask of childTasks) {
       const titleParts = this.parseTaskTitle(childTask.noteTitle)
-      if (titleParts.status !== "已完成") {
+      // "已完成"和"已归档"都视为完成状态
+      if (titleParts.status !== "已完成" && titleParts.status !== "已归档") {
         MNUtil.log(`📋 发现未完成的子任务：${childTask.noteTitle}`)
         return false
       }
@@ -1959,6 +1969,29 @@ class MNTaskManager {
     
     MNUtil.log("✅ 所有子任务已完成，可以自动完成父任务")
     return true
+  }
+  
+  /**
+   * 检查是否有活跃（未完成）的子任务
+   * @param {MNNote} parentNote - 父任务笔记
+   * @returns {boolean} 是否有活跃的子任务
+   */
+  static hasActiveChildTasks(parentNote) {
+    if (!parentNote || !this.isTaskCard(parentNote)) return false
+    
+    // 获取所有子任务
+    const childTasks = this.getChildTaskNotes(parentNote)
+    
+    // 检查是否有"未开始"或"进行中"的子任务
+    for (let childTask of childTasks) {
+      const titleParts = this.parseTaskTitle(childTask.noteTitle)
+      if (titleParts.status === "未开始" || titleParts.status === "进行中") {
+        MNUtil.log(`📋 发现活跃的子任务：${childTask.noteTitle}`)
+        return true
+      }
+    }
+    
+    return false
   }
   
   /**
@@ -1994,12 +2027,19 @@ class MNTaskManager {
       }
     }
     // 规则3：如果子任务从"已完成"变为其他状态，父任务如果是"已完成"应该变回"进行中"
-    else if (parentTitleParts.status === "已完成" && childNewStatus !== "已完成") {
-      MNUtil.log(`📋 子任务未完成，更新父任务为进行中`)
-      this.updateTaskStatus(parentNote, "进行中", true)  // 跳过父任务更新避免循环
-      
-      // 递归向上更新
-      this.updateParentStatus(parentNote, "进行中")
+    // 但需要检查是否还有其他活跃的子任务
+    else if (parentTitleParts.status === "已完成" && childNewStatus !== "已完成" && childNewStatus !== "已归档") {
+      // 如果子任务变为"已归档"，不需要改变父任务状态
+      // 只有当子任务变为"未开始"或"进行中"时，才需要检查
+      if (this.hasActiveChildTasks(parentNote)) {
+        MNUtil.log(`📋 存在活跃子任务，更新父任务为进行中`)
+        this.updateTaskStatus(parentNote, "进行中", true)  // 跳过父任务更新避免循环
+        
+        // 递归向上更新
+        this.updateParentStatus(parentNote, "进行中")
+      } else {
+        MNUtil.log(`📋 没有活跃子任务，保持父任务为已完成`)
+      }
     }
   }
   

@@ -203,6 +203,10 @@
                     <span class="nav-icon">📝</span>
                     <span class="nav-label">任务队列</span>
                 </div>
+                <div class="nav-item" data-view="projects">
+                    <span class="nav-icon">📂</span>
+                    <span class="nav-label">项目视图</span>
+                </div>
                 <div class="nav-item" data-view="statistics">
                     <span class="nav-icon">📊</span>
                     <span class="nav-label">统计分析</span>
@@ -241,6 +245,10 @@
             taskqueue: {
                 url: 'taskqueue.html',
                 title: '任务队列'
+            },
+            projects: {
+                url: 'projectview.html',
+                title: '项目视图'
             },
             statistics: {
                 url: 'statistics.html',
@@ -318,6 +326,21 @@
                         title: config.title
                     });
                 }
+                
+                // 如果是日志视图，通知原生代码加载日志数据
+                if (viewName === 'log') {
+                    window.location.href = 'mntask://loadLogData';
+                }
+                
+                // 如果是今日看板，通知原生代码加载任务数据
+                if (viewName === 'todayboard') {
+                    window.location.href = 'mntask://loadTodayBoardData';
+                }
+                
+                // 如果是项目视图，通知原生代码加载项目数据
+                if (viewName === 'projects') {
+                    window.location.href = 'mntask://loadProjectsData';
+                }
             };
 
             iframe.onerror = function() {
@@ -362,6 +385,44 @@
                     const tasks = JSON.parse(decodeURIComponent(encodedTasks));
                     iframe.contentWindow.postMessage({
                         type: 'loadTasks',
+                        tasks: tasks
+                    }, '*');
+                    return 'success';
+                } catch (error) {
+                    console.error('Failed to parse tasks:', error);
+                    return 'error';
+                }
+            }
+            return 'iframe_not_ready';
+        }
+        
+        // 加载项目列表
+        function loadProjectsFromPlugin(encodedProjects) {
+            const iframe = document.querySelector('.content-frame');
+            if (iframe && iframe.contentWindow) {
+                try {
+                    const projects = JSON.parse(decodeURIComponent(encodedProjects));
+                    iframe.contentWindow.postMessage({
+                        type: 'loadProjects',
+                        projects: projects
+                    }, '*');
+                    return 'success';
+                } catch (error) {
+                    console.error('Failed to parse projects:', error);
+                    return 'error';
+                }
+            }
+            return 'iframe_not_ready';
+        }
+        
+        // 加载项目任务
+        function loadProjectTasksFromPlugin(encodedTasks) {
+            const iframe = document.querySelector('.content-frame');
+            if (iframe && iframe.contentWindow) {
+                try {
+                    const tasks = JSON.parse(decodeURIComponent(encodedTasks));
+                    iframe.contentWindow.postMessage({
+                        type: 'loadProjectTasks',
                         tasks: tasks
                     }, '*');
                     return 'success';

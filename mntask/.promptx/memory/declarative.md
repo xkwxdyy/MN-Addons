@@ -148,3 +148,49 @@ MN-Addon WebView 显示和数据传递问题解决方案：
    - 保持原有 API 兼容性：原生代码仍调用 loadTasksFromPlugin --tags WebView MarginNote iframe postMessage MNTask
 --tags #其他 #评分:8 #有效期:长期
 - END
+
+- 2025/07/11 20:47 START
+iframe 架构下的视图切换时序问题解决方案：
+
+1. 问题症状：
+   - 切换到日志视图时一直显示"加载中"
+   - 需要手动刷新才能加载数据
+
+2. 根本原因：
+   - 切换视图只是改变了 iframe 的 src
+   - 没有等待 iframe 加载完成就尝试传递数据
+   - 或者根本没有触发数据加载
+
+3. 解决方案：
+   - 在 iframe.onload 中通知原生代码
+   - 根据不同视图发送不同的加载请求
+   - 原生代码收到请求后调用相应的数据加载方法
+
+4. 关键要点：
+   - iframe 加载是异步的
+   - 使用 URL 协议从 WebView 通知原生代码
+   - 事件驱动设计：iframe 主动请求数据
+   - 每个视图都需要独立的初始化逻辑 --tags iframe WebView MarginNote 时序 异步加载
+--tags #其他 #评分:8 #有效期:长期
+- END
+
+- 2025/07/11 21:06 START
+MNTask v0.10.1 开发经验总结：
+
+1. **任务路径显示**：在 todayboard.html 的任务卡片中，通过在 task-title 后添加 task-path div 实现路径显示，使用灰色小字体（font-size: 12px, color: var(--text-secondary)），数据从 settingController.js 的 loadTodayBoardData 中传递（task.path）。
+
+2. **项目视图架构**：
+   - 创建独立的 projectview.html，实现两栏布局（左侧项目列表，右侧任务列表）
+   - 在 sidebarContainer.html 添加导航项和代理函数（loadProjectsFromPlugin、loadProjectTasksFromPlugin）
+   - 在 settingController.js 添加 loadProjectsData 和 loadProjectTasks 函数
+   - 扩展 handleTodayBoardProtocol 处理新的协议（loadProjectsData、loadProjectTasks）
+
+3. **关键实现细节**：
+   - 项目筛选：MNTaskManager.filterTasksSync({ types: ['项目'] })
+   - 子任务获取：MNTaskManager.filterTasksSync({ parentId: projectId })
+   - 项目排序：按状态排序（进行中 > 未开始 > 已完成）
+   - 复用任务卡片样式和功能，保持用户体验一致性
+
+4. **iframe 通信模式**：原生代码 → sidebarContainer 代理函数 → iframe postMessage → 视图内部处理 --tags MNTask 项目视图 WebView iframe MarginNote
+--tags #其他 #评分:8 #有效期:长期
+- END

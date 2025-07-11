@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>项目视图</title>
+    <style>
+        :root {
+            --primary-bg: #ffffff;
+            --sidebar-bg: #f8f9fa;
+            --card-bg: #f8f9fa;
+            --border-color: #e9ecef;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --hover-bg: #e9ecef;
+            --active-bg: #457bd3;
+            --active-text: #ffffff;
+            --overdue-color: #dc3545;
+            --high-priority: #dc3545;
+            --medium-priority: #ffc107;
+            --low-priority: #28a745;
+            --info-color: #17a2b8;
+            --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+            --transition-speed: 0.2s;
+            --card-radius: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-primary);
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            height: 100vh;
+        }
+
+        /* 容器布局 */
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 左侧项目列表 */
+        .project-sidebar {
+            width: 250px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            flex-shrink: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .project-header {
+            padding: 20px;
+            font-size: 18px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--primary-bg);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .refresh-button {
+            background: none;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all var(--transition-speed);
+            color: var(--text-secondary);
+        }
+        
+        .refresh-button:hover {
+            background-color: var(--hover-bg);
+            color: var(--text-primary);
+        }
+
+        .project-list {
+            padding: 10px;
+        }
+
+        .project-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all var(--transition-speed);
+        }
+
+        .project-item:hover {
+            background-color: var(--hover-bg);
+        }
+
+        .project-item.active {
+            background-color: var(--active-bg);
+            color: var(--active-text);
+        }
+
+        .project-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .project-icon {
+            font-size: 20px;
+        }
+
+        .project-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .project-count {
+            font-size: 12px;
+            background-color: rgba(0,0,0,0.1);
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+
+        .project-item.active .project-count {
+            background-color: rgba(255,255,255,0.2);
+        }
+
+        /* 右侧内容区 */
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .content-header {
+            padding: 20px;
+            background-color: var(--primary-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .content-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .content-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* 任务容器 */
+        .task-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: var(--primary-bg);
+        }
+
+        /* 任务卡片（复用今日看板的样式） */
+        .task-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--card-radius);
+            padding: 15px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all var(--transition-speed);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .task-card:hover {
+            transform: translateX(5px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .task-card.high-priority {
+            border-left: 4px solid var(--high-priority);
+        }
+
+        .task-card.medium-priority {
+            border-left: 4px solid var(--medium-priority);
+        }
+
+        .task-card.low-priority {
+            border-left: 4px solid var(--low-priority);
+        }
+
+        .task-card.overdue {
+            border-left: 4px solid var(--overdue-color);
+            background: rgba(220, 53, 69, 0.05);
+        }
+
+        .task-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .task-type-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .task-content {
+            flex: 1;
+        }
+
+        .task-title {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 5px;
+            line-height: 1.4;
+        }
+
+        .task-path {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+            line-height: 1.2;
+        }
+
+        .task-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* 任务操作按钮 */
+        .task-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .task-action-btn {
+            padding: 4px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all var(--transition-speed);
+        }
+
+        .task-action-btn:hover {
+            background: var(--hover-bg);
+        }
+
+        .task-action-btn.primary {
+            background: var(--info-color);
+            color: white;
+            border-color: var(--info-color);
+        }
+
+        .task-action-btn.primary:hover {
+            background: #138496;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+            opacity: 0.3;
+        }
+
+        /* 加载状态 */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .loading-spinner {
+            border: 3px solid var(--border-color);
+            border-top: 3px solid var(--info-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .project-sidebar {
+                width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧项目列表 -->
+        <div class="project-sidebar">
+            <div class="project-header">
+                <span>项目列表</span>
+                <button class="refresh-button" onclick="projectManager.refreshProjects()" title="刷新项目列表">
+                    🔄
+                </button>
+            </div>
+            <div class="project-list" id="projectList">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>加载中...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧内容区 -->
+        <div class="content-area">
+            <div class="content-header">
+                <div class="content-title" id="contentTitle">选择一个项目</div>
+                <div class="content-stats" id="contentStats">
+                    <!-- 统计信息将动态插入 -->
+                </div>
+            </div>
+            <div class="task-container" id="taskContainer">
+                <div class="empty-state">
+                    <div class="empty-icon">📂</div>
+                    <div>请从左侧选择一个项目</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 项目管理器
+        const projectManager = {
+            projects: [],
+            tasks: [],
+            currentProject: null,
+
+            // 初始化
+            init() {
+                this.bindEvents();
+                this.showLoadingState();
+            },
+
+            // 绑定事件
+            bindEvents() {
+                // 监听 postMessage 事件
+                window.addEventListener('message', (event) => {
+                    try {
+                        if (event.data && event.data.type === 'loadProjects') {
+                            this.loadProjects(event.data.projects);
+                        } else if (event.data && event.data.type === 'loadProjectTasks') {
+                            this.loadProjectTasks(event.data.tasks);
+                        }
+                    } catch (error) {
+                        console.error('处理消息失败:', error);
+                    }
+                });
+            },
+
+            // 显示加载状态
+            showLoadingState() {
+                const projectList = document.getElementById('projectList');
+                projectList.innerHTML = `
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <p>加载中...</p>
+                    </div>
+                `;
+            },
+
+            // 加载项目列表
+            loadProjects(projects) {
+                this.projects = projects;
+                this.renderProjectList();
+                
+                // 自动选择第一个项目
+                if (projects.length > 0) {
+                    this.selectProject(projects[0]);
+                }
+            },
+
+            // 渲染项目列表
+            renderProjectList() {
+                const projectList = document.getElementById('projectList');
+                projectList.innerHTML = '';
+
+                if (this.projects.length === 0) {
+                    projectList.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">📁</div>
+                            <div>暂无项目</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                this.projects.forEach((project, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'project-item';
+                    item.dataset.projectId = project.id;
+                    
+                    item.innerHTML = `
+                        <div class="project-info">
+                            <span class="project-icon">${project.icon || '📁'}</span>
+                            <span class="project-name">${project.name}</span>
+                        </div>
+                        <span class="project-count">${project.taskCount || 0}</span>
+                    `;
+
+                    item.addEventListener('click', () => this.selectProject(project));
+                    projectList.appendChild(item);
+                });
+            },
+
+            // 选择项目
+            selectProject(project) {
+                this.currentProject = project;
+
+                // 更新UI状态
+                document.querySelectorAll('.project-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                document.querySelector(`[data-project-id="${project.id}"]`)?.classList.add('active');
+
+                // 更新标题
+                document.getElementById('contentTitle').textContent = project.name;
+
+                // 显示加载状态
+                const taskContainer = document.getElementById('taskContainer');
+                taskContainer.innerHTML = `
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <p>加载任务中...</p>
+                    </div>
+                `;
+
+                // 请求加载项目任务
+                window.location.href = `mntask://loadProjectTasks?projectId=${encodeURIComponent(project.id)}`;
+            },
+
+            // 加载项目任务
+            loadProjectTasks(tasks) {
+                this.tasks = tasks;
+                this.renderTasks();
+                this.updateStats();
+            },
+
+            // 渲染任务列表
+            renderTasks() {
+                const container = document.getElementById('taskContainer');
+                container.innerHTML = '';
+
+                if (this.tasks.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">📋</div>
+                            <div>该项目暂无任务</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                this.tasks.forEach(task => {
+                    container.appendChild(this.createTaskCard(task));
+                });
+            },
+
+            // 创建任务卡片
+            createTaskCard(task) {
+                const card = document.createElement('div');
+                card.className = 'task-card';
+                card.dataset.taskId = task.id;
+                
+                // 添加优先级样式
+                if (task.isOverdue) {
+                    card.classList.add('overdue');
+                } else if (task.priority === '高') {
+                    card.classList.add('high-priority');
+                } else if (task.priority === '中') {
+                    card.classList.add('medium-priority');
+                } else {
+                    card.classList.add('low-priority');
+                }
+
+                const typeIcon = this.getTaskTypeIcon(task.type);
+                const statusIcon = this.getStatusIcon(task.status);
+                const priorityIcon = this.getPriorityIcon(task.priority);
+
+                card.innerHTML = `
+                    <div class="task-header">
+                        <div class="task-type-icon">${typeIcon}</div>
+                        <div class="task-content">
+                            <div class="task-title">${task.title}</div>
+                            ${task.path ? `<div class="task-path">${task.path}</div>` : ''}
+                            <div class="task-meta">
+                                <span class="meta-item">${statusIcon} ${task.status}</span>
+                                <span class="meta-item">${priorityIcon} ${task.priority || '低'}优先级</span>
+                                ${task.plannedTime ? `<span class="meta-item">⏰ ${task.plannedTime}</span>` : ''}
+                                ${task.isOverdue ? `<span class="meta-item" style="color: var(--overdue-color)">过期 ${task.overdueDays} 天</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="task-actions">
+                        <button class="task-action-btn" onclick="projectManager.updateTaskStatus('${task.id}')">
+                            ${task.status === '未开始' ? '▶️ 开始' : task.status === '进行中' ? '✅ 完成' : '📦 归档'}
+                        </button>
+                        ${task.launchUrl ? `
+                            <button class="task-action-btn primary" onclick="projectManager.launchTask('${task.id}')">
+                                🚀 启动
+                            </button>
+                        ` : ''}
+                        <button class="task-action-btn" onclick="projectManager.viewTaskDetail('${task.id}')">
+                            👁️ 详情
+                        </button>
+                    </div>
+                `;
+
+                return card;
+            },
+
+            // 获取任务类型图标
+            getTaskTypeIcon(type) {
+                const icons = {
+                    '目标': '🎯',
+                    '关键结果': '📊',
+                    '项目': '📁',
+                    '动作': '▶️'
+                };
+                return icons[type] || '📋';
+            },
+
+            // 获取状态图标
+            getStatusIcon(status) {
+                const icons = {
+                    '未开始': '😴',
+                    '进行中': '🔥',
+                    '已完成': '✅',
+                    '已归档': '📦'
+                };
+                return icons[status] || '❓';
+            },
+
+            // 获取优先级图标
+            getPriorityIcon(priority) {
+                const icons = {
+                    '高': '🔴',
+                    '中': '🟡',
+                    '低': '🟢'
+                };
+                return icons[priority] || '🟢';
+            },
+
+            // 更新统计信息
+            updateStats() {
+                const stats = {
+                    total: this.tasks.length,
+                    todo: this.tasks.filter(t => t.status === '未开始').length,
+                    doing: this.tasks.filter(t => t.status === '进行中').length,
+                    done: this.tasks.filter(t => t.status === '已完成').length
+                };
+
+                document.getElementById('contentStats').innerHTML = `
+                    <span>总计: ${stats.total}</span>
+                    <span>未开始: ${stats.todo}</span>
+                    <span>进行中: ${stats.doing}</span>
+                    <span>已完成: ${stats.done}</span>
+                `;
+            },
+
+            // 更新任务状态
+            updateTaskStatus(taskId) {
+                window.location.href = `mntask://updateTaskStatus?taskId=${taskId}`;
+            },
+
+            // 启动任务
+            launchTask(taskId) {
+                window.location.href = `mntask://launchTask?taskId=${taskId}`;
+            },
+
+            // 查看任务详情
+            viewTaskDetail(taskId) {
+                window.location.href = `mntask://viewTaskDetail?taskId=${taskId}`;
+            },
+            
+            // 刷新项目列表
+            refreshProjects() {
+                this.showLoadingState();
+                window.location.href = 'mntask://loadProjectsData';
+            }
+        };
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            projectManager.init();
+        });
+
+        // 接收来自父窗口的数据
+        function loadProjectsFromPlugin(encodedProjects) {
+            try {
+                const projects = JSON.parse(decodeURIComponent(encodedProjects));
+                projectManager.loadProjects(projects);
+                return 'success';
+            } catch (error) {
+                console.error('Failed to parse projects:', error);
+                return 'error';
+            }
+        }
+
+        function loadProjectTasksFromPlugin(encodedTasks) {
+            try {
+                const tasks = JSON.parse(decodeURIComponent(encodedTasks));
+                projectManager.loadProjectTasks(tasks);
+                return 'success';
+            } catch (error) {
+                console.error('Failed to parse tasks:', error);
+                return 'error';
+            }
+        }
+    </script>
+</body>
+</html>

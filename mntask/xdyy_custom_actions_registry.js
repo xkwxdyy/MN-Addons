@@ -636,6 +636,15 @@ function registerAllCustomActions() {
     MNUtil.log("🏗️ 开始根据层级批量制卡");
     MNUtil.log("📌 根卡片：" + focusNote.noteTitle);
     
+    // 首先让用户选择根卡片的类型
+    const taskTypes = ["目标", "关键结果", "项目", "动作"];
+    const selectedIndex = await MNUtil.userSelect("选择根卡片类型", "请选择根卡片的任务类型", taskTypes);
+    
+    if (selectedIndex === 0) return; // 用户取消
+    
+    const rootType = taskTypes[selectedIndex - 1];
+    MNUtil.log(`📋 用户选择的根卡片类型：${rootType}`);
+    
     // 获取所有后代节点和层级信息
     let allDescendants, treeIndex;
     try {
@@ -677,7 +686,7 @@ function registerAllCustomActions() {
     
     MNUtil.log(`📊 节点总数：${nodesWithInfo.length}，最大层级：${maxLevel}`);
     
-    // 根据层级深度确定任务类型分配策略（改进版）
+    // 根据新规则确定任务类型分配策略
     function getTaskTypeByLevel(node, parentNode, level, maxLevel) {
       // 1. 如果节点已经是任务卡片，保持原有类型
       if (MNTaskManager.isTaskCard(node)) {
@@ -686,48 +695,92 @@ function registerAllCustomActions() {
         return titleParts.type;
       }
       
-      // 2. 如果节点不是任务卡片，基于父节点类型智能推断
-      if (parentNode && MNTaskManager.isTaskCard(parentNode)) {
-        const parentTitleParts = MNTaskManager.parseTaskTitle(parentNode.noteTitle);
-        const parentType = parentTitleParts.type;
+      // 2. 根节点使用用户选择的类型
+      if (level === 0) {
+        return rootType;
+      }
+      
+      // 3. 根据父节点类型决定子节点类型
+      if (parentNode) {
+        // 获取父节点的类型
+        let parentType;
+        if (MNTaskManager.isTaskCard(parentNode)) {
+          const parentTitleParts = MNTaskManager.parseTaskTitle(parentNode.noteTitle);
+          parentType = parentTitleParts.type;
+        } else if (level === 1) {
+          // 如果父节点是根节点且不是任务卡片，使用用户选择的根类型
+          parentType = rootType;
+        }
         
-        // 基于父级类型的智能推断
+        // 根据新规则分配类型
         switch(parentType) {
           case "目标":
-            return "关键结果";  // 目标的子级通常是关键结果
+            return "关键结果";  // 目标 → 关键结果
           case "关键结果":
-            return "项目";      // 关键结果的子级通常是项目
+            return "项目";      // 关键结果 → 项目
           case "项目":
-            return "动作";      // 项目的子级通常是动作
+            // 项目可以有项目或动作作为子节点
+            // 如果是最底层，则为动作，否则为项目
+            return (level === maxLevel) ? "动作" : "项目";
           case "动作":
-            return "动作";      // 动作的子级还是动作
+            return "动作";      // 动作 → 动作
           default:
-            // 如果无法识别父级类型，使用原有逻辑
-            break;
+            // 默认情况下，最底层为动作，其他为项目
+            return (level === maxLevel) ? "动作" : "项目";
         }
       }
       
-      // 3. 如果没有父节点或父节点不是任务卡片，使用原有的层级逻辑
-      if (maxLevel === 0) return "动作";  // 只有根节点
+      // 4. 默认规则：最底层总是动作
+      return (level === maxLevel) ? "动作" : "项目";
+    }
+    
+    // 预先计算所有节点的类型（避免处理过程中父节点标题未更新导致的问题）
+    const nodeTypeMap = new Map();
+    
+    // 按层级顺序计算类型
+    for (let currentLevel = 0; currentLevel <= maxLevel; currentLevel++) {
+      const nodesAtThisLevel = nodesWithInfo.filter(item => item.level === currentLevel);
       
-      if (maxLevel === 1) {
-        return level === 0 ? "项目" : "动作";
-      }
-      
-      if (maxLevel === 2) {
-        switch(level) {
-          case 0: return "目标";
-          case 1: return "关键结果";
-          case 2: return "项目";
-          default: return "动作";
+      nodesAtThisLevel.forEach(item => {
+        const node = item.node;
+        const parentNode = node.parentNote;
+        
+        // 修改 getTaskTypeByLevel 调用，传入预计算的父节点类型
+        let taskType;
+        if (MNTaskManager.isTaskCard(node)) {
+          // 如果已经是任务卡片，保持原有类型
+          const titleParts = MNTaskManager.parseTaskTitle(node.noteTitle);
+          taskType = titleParts.type;
+        } else if (item.level === 0) {
+          // 根节点使用用户选择的类型
+          taskType = rootType;
+        } else if (parentNode && nodeTypeMap.has(parentNode.noteId)) {
+          // 使用预计算的父节点类型
+          const parentType = nodeTypeMap.get(parentNode.noteId);
+          switch(parentType) {
+            case "目标":
+              taskType = "关键结果";
+              break;
+            case "关键结果":
+              taskType = "项目";
+              break;
+            case "项目":
+              // 项目的子节点：最底层为动作，否则为项目
+              taskType = (item.level === maxLevel) ? "动作" : "项目";
+              break;
+            case "动作":
+              taskType = "动作";
+              break;
+            default:
+              taskType = (item.level === maxLevel) ? "动作" : "项目";
+          }
+        } else {
+          // 默认规则：最底层为动作
+          taskType = (item.level === maxLevel) ? "动作" : "项目";
         }
-      }
-      
-      // maxLevel >= 3
-      if (level === 0) return "目标";
-      if (level === 1) return "关键结果";
-      if (level === maxLevel) return "动作";
-      return "项目";  // 中间层都是项目
+        
+        nodeTypeMap.set(node.noteId, taskType);
+      });
     }
     
     // 显示预览信息（改进版：统计每个层级的实际类型分布）
@@ -737,8 +790,7 @@ function registerAllCustomActions() {
     // 统计每个层级的类型分布
     const typeDistribution = {};
     nodesWithInfo.forEach(item => {
-      const parentNode = item.node.parentNote;
-      const taskType = getTaskTypeByLevel(item.node, parentNode, item.level, maxLevel);
+      const taskType = nodeTypeMap.get(item.node.noteId);
       
       if (!typeDistribution[item.level]) {
         typeDistribution[item.level] = {};
@@ -780,7 +832,7 @@ function registerAllCustomActions() {
             nodesAtThisLevel.forEach(item => {
               const node = item.node;
               const parentNode = node.parentNote;
-              const taskType = getTaskTypeByLevel(node, parentNode, item.level, maxLevel);
+              const taskType = nodeTypeMap.get(node.noteId);  // 使用预先计算的类型
               
               try {
                 MNUtil.log(`🔨 处理节点：${node.noteTitle}，层级：${item.level}，类型：${taskType}`);

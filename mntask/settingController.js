@@ -89,6 +89,16 @@ var taskSettingController = JSB.defineClass('taskSettingController : UIViewContr
   viewDidLoad: function() {
     let self = getTaskSettingController()
 try {
+    // 记录插件初始化开始
+    TaskLogManager.info("MNTask 设置面板开始初始化", "SettingController")
+    
+    // 添加一些测试日志
+    TaskLogManager.debug("调试信息：初始化参数", "SettingController", JSON.stringify({
+      viewFrame: self.view.frame,
+      timestamp: Date.now()
+    }))
+    TaskLogManager.warn("警告：这是一条测试警告", "SettingController")
+    
     self.init()
     taskFrame.set(self.view,50,50,355,500)
     self.lastFrame = self.view.frame;
@@ -115,7 +125,12 @@ try {
     if (!self.settingView) {
       self.createSettingView()
     }
+    
+    // 记录初始化成功
+    TaskLogManager.info("MNTask 设置面板初始化完成", "SettingController")
 } catch (error) {
+  // 记录初始化错误
+  TaskLogManager.error("MNTask 设置面板初始化失败", "SettingController", error)
   MNUtil.showHUD(error)
 }
     self.createButton("maxButton","maxButtonTapped:")
@@ -193,6 +208,12 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       return false
     }
     
+    // 处理日志查看器的自定义协议
+    if (requestURL.startsWith("mnlog://")) {
+      self.handleLogProtocol(requestURL)
+      return false
+    }
+    
     return true;
     } catch (error) {
       taskUtils.addErrorLog(error, "webViewShouldStartLoadWithRequestNavigationType")
@@ -202,20 +223,51 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   webViewDidFinishLoad: function(webView) {
     let self = getTaskSettingController()
     try {
+      MNUtil.log("🔔 webViewDidFinishLoad 被调用")
+      MNUtil.log(`📱 WebView 实例: ${webView}`)
+      MNUtil.log(`📱 今日看板 WebView 实例: ${self.todayBoardWebViewInstance}`)
+      MNUtil.log(`📱 日志 WebView 实例: ${self.logWebViewInstance}`)
+      MNUtil.log(`📱 是今日看板?: ${webView === self.todayBoardWebViewInstance}`)
+      MNUtil.log(`📱 是日志查看器?: ${webView === self.logWebViewInstance}`)
+      
       // 检查是否是今日看板的 WebView
       if (webView === self.todayBoardWebViewInstance) {
         // 标记初始化完成
         self.todayBoardWebViewInitialized = true
         
-        MNUtil.log("今日看板 WebView 加载完成，准备延迟加载数据")
+        MNUtil.log("✅ 今日看板 WebView 加载完成，准备延迟加载数据")
+        MNUtil.log(`📊 今日看板初始化状态: ${self.todayBoardWebViewInitialized}`)
         
         // 延迟加载数据，确保 JavaScript 环境完全就绪
         MNUtil.delay(0.5).then(() => {
-          MNUtil.log("开始加载今日看板数据")
+          MNUtil.log("🚀 开始加载今日看板数据")
           self.loadTodayBoardData()
         })
       }
+      // 检查是否是日志的 WebView
+      else if (webView === self.logWebViewInstance) {
+        // 标记初始化完成
+        self.logWebViewInitialized = true
+        
+        MNUtil.log("✅ 日志 WebView 加载完成")
+        MNUtil.log(`📊 日志查看器初始化状态: ${self.logWebViewInitialized}`)
+        MNUtil.log(`📝 当前 URL: ${webView.URL ? webView.URL.absoluteString() : 'undefined'}`)
+        MNUtil.log(`📝 是否正在加载: ${webView.loading}`)
+        
+        // 延迟加载数据，确保 JavaScript 环境完全就绪
+        MNUtil.delay(0.3).then(() => {
+          MNUtil.log("🚀 开始加载日志数据")
+          MNUtil.log(`📊 准备调用 showLogs 方法`)
+          self.showLogs()
+        })
+      } else {
+        MNUtil.log("⚠️ 未识别的 WebView 实例")
+        MNUtil.log(`📱 WebView URL: ${webView.URL ? webView.URL.absoluteString() : 'undefined'}`)
+        MNUtil.log(`📱 WebView 标题: ${webView.title ? webView.title : 'undefined'}`)
+      }
     } catch (error) {
+      MNUtil.log(`❌ webViewDidFinishLoad 出错: ${error.message}`)
+      MNUtil.log(`📍 错误堆栈: ${error.stack}`)
       taskUtils.addErrorLog(error, "webViewDidFinishLoad")
     }
   },
@@ -353,6 +405,8 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
         break;
     }
   } catch (error) {
+    // 使用 TaskLogManager 记录错误
+    TaskLogManager.error("重置配置失败", "SettingController", error)
     MNUtil.showHUD("Error in resetConfig: "+error)
   }
   },
@@ -500,28 +554,103 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   },
   advancedButtonTapped: function (params) {
     let self = getTaskSettingController()
+    // 记录视图切换
+    TaskLogManager.info("切换到高级设置视图", "SettingController")
     self.viewManager.switchTo('advanced')
   },
   taskBoardButtonTapped: function (params) {
     let self = getTaskSettingController()
+    // 记录视图切换
+    TaskLogManager.info("切换到任务看板视图", "SettingController")
     self.viewManager.switchTo('taskBoard')
   },
   todayBoardButtonTapped: function (params) {
     let self = getTaskSettingController()
+    // 记录视图切换
+    TaskLogManager.info("切换到今日看板视图", "SettingController")
     self.viewManager.switchTo('todayBoard')
+  },
+  logButtonTapped: function (params) {
+    let self = getTaskSettingController()
+    // 记录视图切换
+    TaskLogManager.info("切换到日志视图", "SettingController")
+    self.viewManager.switchTo('log')
+  },
+  
+  // 测试日志功能
+  testLogButtonTapped: function(sender) {
+    let self = getTaskSettingController()
+    MNUtil.log("🧪 测试日志按钮点击")
+    
+    // 添加各种级别的测试日志
+    TaskLogManager.info("测试信息日志 - " + new Date().toLocaleTimeString(), "TestLog")
+    TaskLogManager.warn("测试警告日志 - " + new Date().toLocaleTimeString(), "TestLog")
+    TaskLogManager.error("测试错误日志 - " + new Date().toLocaleTimeString(), "TestLog")
+    TaskLogManager.debug("测试调试日志", "TestLog", {
+      timestamp: Date.now(),
+      webViewExists: !!self.logWebViewInstance,
+      webViewInitialized: self.logWebViewInitialized,
+      logCount: TaskLogManager.getLogs().length
+    })
+    
+    MNUtil.showHUD("已添加测试日志")
+    
+    // 如果在日志视图，刷新显示
+    if (self.currentView === 'logView' && self.logWebViewInitialized) {
+      self.showLogs()
+    }
+  },
+  
+  // 刷新日志显示
+  refreshLogButtonTapped: function(sender) {
+    let self = getTaskSettingController()
+    MNUtil.log("🔄 刷新日志显示")
+    TaskLogManager.info("手动刷新日志显示", "SettingController")
+    
+    if (self.logWebViewInitialized) {
+      self.showLogs()
+      MNUtil.showHUD("日志已刷新")
+    } else {
+      MNUtil.showHUD("日志视图未初始化")
+    }
+  },
+  
+  // 清空日志
+  clearLogButtonTapped: async function(sender) {
+    let self = getTaskSettingController()
+    MNUtil.log("🗑️ 清空日志按钮点击")
+    
+    const result = await MNUtil.confirm("确认清空", "确定要清空所有日志吗？", ["取消", "清空"])
+    
+    if (result === 1) {
+      TaskLogManager.clear()
+      
+      if (self.logWebViewInitialized) {
+        self.clearLogs()
+      }
+      
+      MNUtil.showHUD("日志已清空")
+      TaskLogManager.info("日志已被用户清空", "SettingController")
+    }
   },
   popupButtonTapped: function (params) {
     let self = getTaskSettingController()
+    // 记录视图切换
+    TaskLogManager.info("切换到弹窗配置视图", "SettingController")
     self.viewManager.switchTo('popup')
   },
   configButtonTapped: function (params) {
     let self = getTaskSettingController()
+    // 记录视图切换
+    TaskLogManager.info("切换到配置视图", "SettingController")
     if (self.viewManager) {
       self.viewManager.switchTo('config')
     }
   },
   dynamicButtonTapped: async function (params) {
     let self = getTaskSettingController()
+    // 记录视图切换
+    TaskLogManager.info("切换到动态视图", "SettingController")
     self.viewManager.switchTo('dynamic')
   },
   chooseTemplate: async function (button) {
@@ -570,6 +699,8 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     MNUtil.copy(input)
     MNUtil.showHUD("Copy config")
     } catch (error) {
+      // 使用 TaskLogManager 记录错误
+      TaskLogManager.error("复制配置失败", "SettingController", error)
       taskUtils.addErrorLog(error, "configCopyTapped", info)
     }
   },
@@ -1390,6 +1521,47 @@ taskSettingController.prototype.initViewManager = function() {
             self.loadTodayBoardData()
           }
         }
+      },
+      
+      log: {
+        view: 'logView',
+        button: 'logButton',
+        selectedColor: '#457bd3',
+        normalColor: '#9bb2d6',
+        onShow: function(self) {
+          MNUtil.log("📊 切换到日志视图")
+          
+          // 执行今日看板 WebView 状态诊断
+          if (self.diagnoseWebViewStatus) {
+            MNUtil.log("🔍 执行今日看板 WebView 状态诊断")
+            self.diagnoseWebViewStatus()
+          }
+          
+          // 如果日志 WebView 还未创建，创建它
+          if (!self.logWebViewInstance) {
+            MNUtil.log("📝 首次显示，创建日志 WebView")
+            self.createLogWebView()
+          } else {
+            // 如果已创建，刷新日志显示
+            MNUtil.log("♻️ 刷新日志显示")
+            self.showLogs(TaskLogManager.getLogs())
+          }
+          
+          // 调整窗口大小以适应日志查看器
+          const frame = self.view.frame
+          if (frame.width < 500) {
+            frame.width = 500
+          }
+          if (frame.height < 500) {
+            frame.height = 500
+          }
+          self.view.frame = frame
+          self.currentFrame = frame
+          self.view.setNeedsLayout()
+          
+          // 布局日志视图的按钮
+          self.settingViewLayout()
+        }
       }
     },
     
@@ -1653,6 +1825,23 @@ taskSettingController.prototype.settingViewLayout = function (){
     
     // 设置 ScrollView 的 contentSize，为多个看板预留空间
     this.taskBoardView.contentSize = {width: width-2, height: 700}
+    
+    // 日志视图按钮布局
+    if (!this.logView.hidden && this.logWebViewInitialized) {
+      // 在日志视图顶部水平排列三个按钮
+      const buttonWidth = (width - 40) / 3  // 按钮宽度，留出边距
+      const buttonHeight = 35
+      const buttonY = 10  // 顶部边距
+      
+      // 测试按钮
+      taskFrame.set(this.logTestButton, 10, buttonY, buttonWidth, buttonHeight)
+      
+      // 刷新按钮（在测试按钮右侧）
+      taskFrame.set(this.logRefreshButton, 15 + buttonWidth, buttonY, buttonWidth, buttonHeight)
+      
+      // 清空按钮（在刷新按钮右侧）
+      taskFrame.set(this.logClearButton, 20 + buttonWidth * 2, buttonY, buttonWidth, buttonHeight)
+    }
 }
 
 
@@ -1692,6 +1881,41 @@ try {
   // 创建今日看板视图（包含 WebView）
   this.creatView("todayBoardWebView","settingView","#9bb2d6",0.0)
   this.todayBoardWebView.hidden = true
+  
+  // 创建日志视图（容器）
+  this.creatView("logView","settingView","#9bb2d6",0.0)
+  this.logView.hidden = true
+  
+  // 在日志视图中添加测试按钮
+  this.createButton("logTestButton","testLogButtonTapped:","logView")
+  MNButton.setConfig(this.logTestButton, {
+    title: "添加测试日志",
+    color: "#457bd3",
+    alpha: 0.9,
+    font: 14,
+    radius: 8,
+    bold: true
+  })
+  
+  this.createButton("logRefreshButton","refreshLogButtonTapped:","logView")
+  MNButton.setConfig(this.logRefreshButton, {
+    title: "刷新日志",
+    color: "#558fed",
+    alpha: 0.9,
+    font: 14,
+    radius: 8,
+    bold: true
+  })
+  
+  this.createButton("logClearButton","clearLogButtonTapped:","logView")
+  MNButton.setConfig(this.logClearButton, {
+    title: "清空日志",
+    color: "#ff4444",
+    alpha: 0.9,
+    font: 14,
+    radius: 8,
+    bold: true
+  })
 
 
   this.createButton("configButton","configButtonTapped:","tabView")
@@ -1729,6 +1953,12 @@ try {
   this.todayBoardButton.width = this.todayBoardButton.sizeThatFits({width:150,height:30}).width+15
   this.todayBoardButton.height = 30
   this.todayBoardButton.selected = false
+  
+  this.createButton("logButton","logButtonTapped:","tabView")
+  MNButton.setConfig(this.logButton, {alpha:0.9,opacity:1.0,title:"日志",font:17,radius:10,bold:true})
+  this.logButton.width = this.logButton.sizeThatFits({width:150,height:30}).width+15
+  this.logButton.height = 30
+  this.logButton.selected = false
 
   this.createButton("closeButton","closeButtonTapped:","view")
   MNButton.setConfig(this.closeButton, {color:"#e06c75",alpha:0.9,opacity:1.0,radius:10,bold:true})
@@ -2204,16 +2434,22 @@ taskSettingController.prototype.setTextview = function (name = this.selectedItem
  * @param {string} boardKey - 看板唯一标识
  */
 taskSettingController.prototype.focusBoard = function(boardKey) {
+  // 记录聚焦看板操作
+  TaskLogManager.info(`聚焦看板: ${boardKey}`, "SettingController")
+  
   let noteId = taskConfig.getBoardNoteId(boardKey)
   if (!noteId) {
+    TaskLogManager.warn(`看板未设置: ${boardKey}`, "SettingController")
     this.showHUD(`❌ 未设置${this.getBoardDisplayName(boardKey)}`)
     return
   }
   
   let note = MNNote.new(noteId)
   if (note) {
+    TaskLogManager.debug(`成功聚焦看板: ${boardKey}`, "SettingController", { noteId })
     note.focusInFloatMindMap()
   } else {
+    TaskLogManager.error(`看板卡片不存在: ${boardKey}`, "SettingController", { noteId })
     this.showHUD("❌ 卡片不存在")
     // 清除无效的 ID
     taskConfig.clearBoardNoteId(boardKey)
@@ -2227,8 +2463,12 @@ taskSettingController.prototype.focusBoard = function(boardKey) {
  * @param {string} boardKey - 看板唯一标识
  */
 taskSettingController.prototype.clearBoard = async function(boardKey) {
+  // 记录清除看板操作
+  TaskLogManager.info(`清除看板: ${boardKey}`, "SettingController")
+  
   // 如果没有设置看板，直接返回
   if (!taskConfig.getBoardNoteId(boardKey)) {
+    TaskLogManager.warn(`看板未设置: ${boardKey}`, "SettingController")
     this.showHUD(`❌ 未设置${this.getBoardDisplayName(boardKey)}`)
     return
   }
@@ -2241,6 +2481,7 @@ taskSettingController.prototype.clearBoard = async function(boardKey) {
   )
   
   if (result === 1) {  // 用户点击了"清除"
+    TaskLogManager.info(`用户确认清除看板: ${boardKey}`, "SettingController")
     taskConfig.clearBoardNoteId(boardKey)
     this.updateBoardLabel(boardKey)
     this.showHUD(`✅ 已清除${this.getBoardDisplayName(boardKey)}`)
@@ -2253,8 +2494,12 @@ taskSettingController.prototype.clearBoard = async function(boardKey) {
  * @param {string} boardKey - 看板唯一标识
  */
 taskSettingController.prototype.pasteBoard = async function(boardKey) {
+  // 记录粘贴看板操作
+  TaskLogManager.info(`粘贴看板: ${boardKey}`, "SettingController")
+  
   let noteId = MNUtil.clipboardText
   if (!noteId) {
+    TaskLogManager.warn("剪贴板为空", "SettingController")
     this.showHUD("剪贴板为空")
     return
   }
@@ -2262,6 +2507,7 @@ taskSettingController.prototype.pasteBoard = async function(boardKey) {
   // 验证卡片是否存在
   let note = MNNote.new(noteId)
   if (!note) {
+    TaskLogManager.error(`卡片不存在: ${noteId}`, "SettingController")
     this.showHUD("❌ 卡片不存在")
     return
   }
@@ -2275,13 +2521,21 @@ taskSettingController.prototype.pasteBoard = async function(boardKey) {
     )
     
     if (result !== 1) {  // 用户取消了
+      TaskLogManager.info(`用户取消替换看板: ${boardKey}`, "SettingController")
       return
     }
   }
   
   // 保存新的看板卡片
+  const oldNoteId = taskConfig.getBoardNoteId(boardKey)
   taskConfig.saveBoardNoteId(boardKey, note.noteId)
   this.updateBoardLabel(boardKey)
+  
+  TaskLogManager.info(`成功粘贴看板: ${boardKey}`, "SettingController", {
+    oldNoteId,
+    newNoteId: note.noteId
+  })
+  
   this.showHUD(`✅ 已保存${this.getBoardDisplayName(boardKey)}`)
 }
 
@@ -2966,17 +3220,35 @@ taskSettingController.prototype.handleTodayBoardProtocol = function(url) {
  */
 taskSettingController.prototype.handleUpdateTaskStatus = function(taskId) {
   try {
-    if (!taskId) return
+    // 记录开始更新任务状态
+    TaskLogManager.info("开始更新任务状态", "SettingController", { taskId })
+    
+    if (!taskId) {
+      TaskLogManager.warn("任务ID为空", "SettingController")
+      return
+    }
     
     const task = MNNote.new(taskId)
     if (!task) {
+      TaskLogManager.error("任务不存在", "SettingController", { taskId })
       MNUtil.showHUD("任务不存在")
       return
     }
     
+    // 获取当前状态（用于日志记录）
+    const currentStatus = MNTaskManager.getTaskStatus(task)
+    
     // 使用 undoGrouping 确保可以撤销
     MNUtil.undoGrouping(() => {
       MNTaskManager.toggleTaskStatus(task, true)
+    })
+    
+    // 获取新状态（用于日志记录）
+    const newStatus = MNTaskManager.getTaskStatus(task)
+    TaskLogManager.info("任务状态已更新", "SettingController", { 
+      taskId, 
+      fromStatus: currentStatus, 
+      toStatus: newStatus 
     })
     
     // 延迟刷新数据，确保状态已更新
@@ -2986,6 +3258,8 @@ taskSettingController.prototype.handleUpdateTaskStatus = function(taskId) {
     
     MNUtil.showHUD("状态已更新")
   } catch (error) {
+    // 使用 TaskLogManager 记录错误
+    TaskLogManager.error("更新任务状态失败", "SettingController", error)
     taskUtils.addErrorLog(error, "handleUpdateTaskStatus")
     MNUtil.showHUD("更新状态失败")
   }
@@ -3139,6 +3413,448 @@ taskSettingController.prototype.handleQuickStart = function() {
     taskUtils.addErrorLog(error, "handleQuickStart")
     MNUtil.showHUD("快速启动失败")
   }
+}
+
+// ========== 日志查看器 WebView 相关方法 ==========
+
+/**
+ * 处理日志查看器的自定义协议
+ * @param {string} url - 协议 URL
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleLogProtocol = function(url) {
+  try {
+    const urlParts = url.split("://")[1].split("?")
+    const action = urlParts[0]
+    const params = this.parseQueryString(urlParts[1] || '')
+    
+    MNUtil.log(`📊 处理日志协议: ${action}`, params)
+    
+    switch (action) {
+      case 'clearLogs':
+        this.handleClearLogs()
+        break
+        
+      case 'exportLogs':
+        this.handleExportLogs()
+        break
+        
+      case 'filterLogs':
+        this.handleFilterLogs(params.level)
+        break
+        
+      case 'refreshLogs':
+        this.handleRefreshLogs()
+        break
+        
+      case 'copyLog':
+        if (params.content) {
+          MNUtil.copy(decodeURIComponent(params.content))
+          MNUtil.showHUD("日志已复制")
+        }
+        break
+        
+      case 'showHUD':
+        if (params.message) {
+          MNUtil.showHUD(decodeURIComponent(params.message))
+        }
+        break
+        
+      default:
+        MNUtil.log(`⚠️ 未知的日志协议动作: ${action}`)
+    }
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleLogProtocol")
+  }
+}
+
+/**
+ * 处理清空日志
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleClearLogs = function() {
+  try {
+    if (typeof TaskLogManager !== 'undefined' && TaskLogManager.clearLogs) {
+      TaskLogManager.clearLogs()
+      this.showLogs() // 刷新显示
+      MNUtil.showHUD("日志已清空")
+    }
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleClearLogs")
+  }
+}
+
+/**
+ * 处理导出日志
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleExportLogs = function() {
+  try {
+    if (typeof TaskLogManager !== 'undefined' && TaskLogManager.exportLogs) {
+      const logs = TaskLogManager.getLogs()
+      const exportText = logs.map(log => {
+        return `[${log.timestamp}] [${log.level}] ${log.message}${log.details ? ' - ' + JSON.stringify(log.details) : ''}`
+      }).join('\n')
+      
+      MNUtil.copy(exportText)
+      MNUtil.showHUD("日志已复制到剪贴板")
+    }
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleExportLogs")
+  }
+}
+
+/**
+ * 处理过滤日志
+ * @param {string} level - 日志级别
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleFilterLogs = function(level) {
+  try {
+    // 这里可以实现日志过滤逻辑
+    // 目前先简单地刷新显示
+    this.showLogs()
+    MNUtil.showHUD(`显示 ${level} 级别日志`)
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleFilterLogs")
+  }
+}
+
+/**
+ * 处理刷新日志
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleRefreshLogs = function() {
+  try {
+    this.showLogs()
+    MNUtil.showHUD("日志已刷新")
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleRefreshLogs")
+  }
+}
+
+/**
+ * 创建日志查看器的 WebView
+ * @this {settingController}
+ */
+taskSettingController.prototype.createLogWebView = function() {
+  try {
+    MNUtil.log("🔨 开始创建日志查看器 WebView")
+    TaskLogManager.info("开始创建日志 WebView", "SettingController")
+    
+    // 检查容器视图
+    if (!this.logView) {
+      MNUtil.log("❌ logView 容器不存在")
+      TaskLogManager.error("logView 容器不存在", "SettingController")
+      return
+    }
+    
+    const bounds = this.logView.bounds
+    MNUtil.log("📏 logView bounds: " + JSON.stringify(bounds))
+    TaskLogManager.debug("logView bounds", "SettingController", JSON.stringify(bounds))
+    
+    // 创建一个内部的 UIWebView
+    const webView = new UIWebView(bounds)
+    webView.backgroundColor = UIColor.whiteColor()
+    webView.scalesPageToFit = false
+    webView.autoresizingMask = (1 << 1 | 1 << 4) // 宽高自适应
+    webView.delegate = this
+    webView.layer.cornerRadius = 10
+    webView.layer.masksToBounds = true
+    
+    MNUtil.log("📐 日志 WebView 创建成功，bounds: " + JSON.stringify(bounds))
+    MNUtil.log(`📱 WebView 实例: ${webView}`)
+    MNUtil.log(`📱 WebView delegate 设置为: ${webView.delegate}`)
+    MNUtil.log(`📱 this 对象: ${this}`)
+    MNUtil.log(`📱 WebView 类型: ${webView.constructor.name}`)
+    TaskLogManager.info("日志 WebView 创建成功", "SettingController")
+    
+    // 将 WebView 添加到容器视图中
+    this.logView.addSubview(webView)
+    MNUtil.log("✅ WebView 已添加到 logView")
+    MNUtil.log(`📱 logView 子视图数量: ${this.logView.subviews.length}`)
+    
+    // 保存 WebView 引用，方便后续操作
+    this.logWebViewInstance = webView
+    MNUtil.log(`📱 logWebViewInstance 已保存: ${this.logWebViewInstance}`)
+    MNUtil.log(`📱 验证引用相等: ${this.logWebViewInstance === webView}`)
+    
+    // 标记未初始化
+    this.logWebViewInitialized = false
+    
+    MNUtil.log("✅ 日志查看器 WebView 创建完成")
+    TaskLogManager.info("日志查看器 WebView 创建完成", "SettingController")
+    
+    // 立即初始化
+    this.initLogWebView()
+  } catch (error) {
+    taskUtils.addErrorLog(error, "createLogWebView")
+    MNUtil.log("❌ 创建日志 WebView 失败: " + error.message)
+    TaskLogManager.error("创建日志 WebView 失败", "SettingController", error.message + "\n" + error.stack)
+  }
+}
+
+/**
+ * 初始化日志查看器 WebView
+ * @this {settingController}
+ */
+taskSettingController.prototype.initLogWebView = function() {
+  try {
+    MNUtil.log("🌟 开始初始化日志查看器 WebView")
+    TaskLogManager.info("开始初始化日志 WebView", "SettingController")
+    
+    // 详细记录 WebView 实例信息
+    MNUtil.log(`📱 logWebViewInstance 存在: ${this.logWebViewInstance ? '是' : '否'}`)
+    if (this.logWebViewInstance) {
+      MNUtil.log(`📱 WebView 类型: ${this.logWebViewInstance.constructor.name}`)
+      MNUtil.log(`📱 WebView delegateViews: ${this.logWebViewInstance.delegateViews}`)
+      MNUtil.log(`📱 WebView navigationDelegate: ${this.logWebViewInstance.navigationDelegate}`)
+      MNUtil.log(`📱 WebView 当前 URL: ${this.logWebViewInstance.URL ? this.logWebViewInstance.URL.absoluteString() : 'null'}`)
+      MNUtil.log(`📱 WebView 是否正在加载: ${this.logWebViewInstance.loading}`)
+    }
+    
+    if (!this.logWebViewInstance) {
+      MNUtil.log("❌ 日志 WebView 实例不存在，无法初始化")
+      TaskLogManager.error("日志 WebView 实例不存在", "SettingController")
+      return
+    }
+    
+    // 加载 HTML 文件
+    const htmlPath = taskConfig.mainPath + '/log.html'
+    MNUtil.log(`📁 日志 HTML 文件路径: ${htmlPath}`)
+    TaskLogManager.info(`日志 HTML 路径: ${htmlPath}`, "SettingController")
+    
+    // 检查文件是否存在
+    const fileManager = NSFileManager.defaultManager()
+    const fileExists = fileManager.fileExistsAtPath(htmlPath)
+    MNUtil.log(`📄 文件存在检查: ${fileExists}`)
+    TaskLogManager.info(`log.html 文件存在: ${fileExists}`, "SettingController")
+    
+    if (!fileExists) {
+      MNUtil.log("❌ 日志 HTML 文件不存在: " + htmlPath)
+      TaskLogManager.error("日志 HTML 文件不存在", "SettingController", htmlPath)
+      MNUtil.showHUD("找不到日志查看器文件")
+      
+      // 列出目录内容帮助调试
+      const files = fileManager.contentsOfDirectoryAtPathError(taskConfig.mainPath, null)
+      MNUtil.log("📂 目录内容: " + files.join(", "))
+      TaskLogManager.debug("插件目录文件列表", "SettingController", files.join(", "))
+      return
+    }
+    
+    MNUtil.log("✅ 准备加载 HTML 文件")
+    const fileURL = NSURL.fileURLWithPath(htmlPath)
+    const baseURL = NSURL.fileURLWithPath(taskConfig.mainPath)
+    
+    MNUtil.log(`📎 文件 URL: ${fileURL.absoluteString()}`)
+    MNUtil.log(`📎 基础 URL: ${baseURL.absoluteString()}`)
+    
+    // 记录加载前的状态
+    MNUtil.log(`📱 加载前 WebView URL: ${this.logWebViewInstance.URL ? this.logWebViewInstance.URL.absoluteString() : 'null'}`)
+    MNUtil.log(`📱 加载前 WebView loading 状态: ${this.logWebViewInstance.loading}`)
+    
+    this.logWebViewInstance.loadFileURLAllowingReadAccessToURL(fileURL, baseURL)
+    
+    // 记录加载后的状态
+    MNUtil.log(`📱 加载后 WebView URL: ${this.logWebViewInstance.URL ? this.logWebViewInstance.URL.absoluteString() : 'null'}`)
+    MNUtil.log(`📱 加载后 WebView loading 状态: ${this.logWebViewInstance.loading}`)
+    
+    MNUtil.log("📝 已发送日志 HTML 加载请求，等待 webViewDidFinishLoad")
+    TaskLogManager.info("已发送 HTML 加载请求", "SettingController")
+    
+    // 不在这里标记初始化完成，等待 webViewDidFinishLoad
+  } catch (error) {
+    MNUtil.log(`❌ initLogWebView 错误: ${error.message}`)
+    MNUtil.log(`📍 错误堆栈: ${error.stack}`)
+    taskUtils.addErrorLog(error, "initLogWebView")
+    MNUtil.showHUD("加载日志查看器失败")
+    MNUtil.log("❌ 初始化日志查看器失败: " + error.message)
+    TaskLogManager.error("初始化日志 WebView 失败", "SettingController", error.message + "\n" + error.stack)
+  }
+}
+
+/**
+ * 显示日志到日志查看器
+ * @this {settingController}
+ */
+taskSettingController.prototype.showLogs = async function() {
+  try {
+    MNUtil.log("📊 开始显示日志")
+    TaskLogManager.info("开始显示日志", "SettingController")
+    
+    if (!this.logWebViewInstance) {
+      MNUtil.log("⚠️ logWebViewInstance 不存在")
+      TaskLogManager.warn("logWebViewInstance 不存在", "SettingController")
+      return
+    }
+    
+    if (!this.logWebViewInitialized) {
+      MNUtil.log("⚠️ 日志 WebView 未初始化完成")
+      TaskLogManager.warn("日志 WebView 未初始化完成", "SettingController")
+      return
+    }
+    
+    // 获取所有日志
+    const logs = TaskLogManager.getLogs()
+    MNUtil.log(`📊 准备显示 ${logs.length} 条日志`)
+    TaskLogManager.info(`获取到 ${logs.length} 条日志`, "SettingController")
+    
+    // 打印前几条日志用于调试
+    if (logs.length > 0) {
+      MNUtil.log("🔍 前3条日志示例:")
+      logs.slice(0, 3).forEach((log, index) => {
+        MNUtil.log(`  ${index + 1}. [${log.level}] ${log.message}`)
+      })
+    }
+    
+    // 验证 WebView 状态
+    MNUtil.log(`📱 执行前 WebView URL: ${this.logWebViewInstance.URL ? this.logWebViewInstance.URL.absoluteString() : 'null'}`)
+    MNUtil.log(`📱 执行前 WebView loading: ${this.logWebViewInstance.loading}`)
+    MNUtil.log(`📱 执行前 WebView canGoBack: ${this.logWebViewInstance.canGoBack}`)
+    
+    // 编码日志数据
+    const encodedLogs = encodeURIComponent(JSON.stringify(logs))
+    MNUtil.log(`📦 编码后的数据长度: ${encodedLogs.length}`)
+    MNUtil.log(`📦 前100个字符: ${encodedLogs.substring(0, 100)}`)
+    
+    // 调用 WebView 中的函数
+    const script = `showLogsFromAddon('${encodedLogs}')`
+    MNUtil.log("🚀 准备执行 JavaScript: " + script.substring(0, 100) + "...")
+    MNUtil.log(`📍 调用 runJavaScriptInWebView，WebView类型: logWebViewInstance`)
+    
+    try {
+      const result = await this.runJavaScriptInWebView(script, 'logWebViewInstance')
+      MNUtil.log("📝 JavaScript 执行结果: " + result)
+      MNUtil.log(`📝 结果类型: ${typeof result}`)
+      MNUtil.log(`📝 结果长度: ${result ? result.length : 0}`)
+    } catch (jsError) {
+      MNUtil.log(`❌ JavaScript 执行错误: ${jsError.message}`)
+      MNUtil.log(`📍 错误堆栈: ${jsError.stack}`)
+      throw jsError
+    }
+    
+    MNUtil.log("✅ 日志数据已加载到查看器")
+    TaskLogManager.info("日志数据加载完成", "SettingController")
+  } catch (error) {
+    taskUtils.addErrorLog(error, "showLogs")
+    MNUtil.showHUD("显示日志失败")
+    MNUtil.log("❌ showLogs 错误: " + error.message)
+    TaskLogManager.error("显示日志失败", "SettingController", error.message + "\n" + error.stack)
+  }
+}
+
+/**
+ * 追加单条日志到日志查看器
+ * @param {Object} log - 日志对象
+ * @this {settingController}
+ */
+taskSettingController.prototype.appendLog = async function(log) {
+  try {
+    if (!this.logWebViewInstance || !this.logWebViewInitialized) {
+      return
+    }
+    
+    // 编码日志数据
+    const encodedLog = encodeURIComponent(JSON.stringify(log))
+    
+    // 调用 WebView 中的函数
+    const script = `appendLogFromAddon('${encodedLog}')`
+    await this.runJavaScriptInWebView(script, 'logWebViewInstance')
+  } catch (error) {
+    // 避免循环日志，这里不记录错误
+  }
+}
+
+/**
+ * 清空日志查看器
+ * @this {settingController}
+ */
+taskSettingController.prototype.clearLogs = async function() {
+  try {
+    if (!this.logWebViewInstance || !this.logWebViewInitialized) {
+      return
+    }
+    
+    // 清空日志管理器
+    TaskLogManager.clear()
+    
+    // 调用 WebView 中的函数
+    const script = `clearLogsFromAddon()`
+    await this.runJavaScriptInWebView(script, 'logWebViewInstance')
+    
+    MNUtil.showHUD("日志已清空")
+  } catch (error) {
+    taskUtils.addErrorLog(error, "clearLogs")
+  }
+}
+
+/**
+ * 诊断 WebView 状态
+ * @this {settingController}
+ */
+taskSettingController.prototype.diagnoseWebViewStatus = function() {
+  MNUtil.log("=== WebView 状态诊断 ===")
+  
+  // 检查日志 WebView
+  MNUtil.log("📊 日志 WebView 诊断:")
+  MNUtil.log(`  - logView 存在: ${!!this.logView}`)
+  MNUtil.log(`  - logWebViewInstance 存在: ${!!this.logWebViewInstance}`)
+  MNUtil.log(`  - logWebViewInitialized: ${this.logWebViewInitialized}`)
+  
+  if (this.logView) {
+    MNUtil.log(`  - logView frame: ${JSON.stringify(this.logView.frame)}`)
+    MNUtil.log(`  - logView hidden: ${this.logView.hidden}`)
+    MNUtil.log(`  - logView 子视图数: ${this.logView.subviews.length}`)
+  }
+  
+  if (this.logWebViewInstance) {
+    MNUtil.log(`  - WebView frame: ${JSON.stringify(this.logWebViewInstance.frame)}`)
+    MNUtil.log(`  - WebView URL: ${this.logWebViewInstance.request?.URL?.absoluteString || 'No URL'}`)
+    MNUtil.log(`  - WebView loading: ${this.logWebViewInstance.loading}`)
+    MNUtil.log(`  - WebView canGoBack: ${this.logWebViewInstance.canGoBack}`)
+  }
+  
+  // 检查今日看板 WebView
+  MNUtil.log("\n📅 今日看板 WebView 诊断:")
+  MNUtil.log(`  - todayBoardWebView 存在: ${!!this.todayBoardWebView}`)
+  MNUtil.log(`  - todayBoardWebViewInstance 存在: ${!!this.todayBoardWebViewInstance}`)
+  MNUtil.log(`  - todayBoardWebViewInitialized: ${this.todayBoardWebViewInitialized}`)
+  
+  if (this.todayBoardWebView) {
+    MNUtil.log(`  - todayBoardWebView frame: ${JSON.stringify(this.todayBoardWebView.frame)}`)
+    MNUtil.log(`  - todayBoardWebView hidden: ${this.todayBoardWebView.hidden}`)
+    MNUtil.log(`  - todayBoardWebView 子视图数: ${this.todayBoardWebView.subviews.length}`)
+  }
+  
+  if (this.todayBoardWebViewInstance) {
+    MNUtil.log(`  - WebView frame: ${JSON.stringify(this.todayBoardWebViewInstance.frame)}`)
+    MNUtil.log(`  - WebView URL: ${this.todayBoardWebViewInstance.request?.URL?.absoluteString || 'No URL'}`)
+    MNUtil.log(`  - WebView loading: ${this.todayBoardWebViewInstance.loading}`)
+  }
+  
+  // 检查当前视图状态
+  MNUtil.log("\n🎯 当前视图状态:")
+  MNUtil.log(`  - currentView: ${this.currentView}`)
+  MNUtil.log(`  - viewManager 存在: ${!!this.viewManager}`)
+  
+  MNUtil.log("=== 诊断完成 ===")
+  
+  // 将诊断信息也记录到 TaskLogManager
+  TaskLogManager.debug("WebView 状态诊断", "Diagnostics", {
+    logWebView: {
+      containerExists: !!this.logView,
+      instanceExists: !!this.logWebViewInstance,
+      initialized: this.logWebViewInitialized,
+      frame: this.logWebViewInstance?.frame
+    },
+    todayBoardWebView: {
+      containerExists: !!this.todayBoardWebView,
+      instanceExists: !!this.todayBoardWebViewInstance,
+      initialized: this.todayBoardWebViewInitialized,
+      frame: this.todayBoardWebViewInstance?.frame
+    },
+    currentView: this.currentView
+  })
 }
 
 /**

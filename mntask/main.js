@@ -1,6 +1,18 @@
 JSB.newAddon = function (mainPath) {
   JSB.require('utils')
   
+  // 加载日志管理器
+  try {
+    JSB.require('logManager')
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.info("MNTask 插件启动", "Main");
+    }
+  } catch (error) {
+    if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+      MNUtil.log("⚠️ logManager.js 加载失败: " + error.message)
+    }
+  }
+  
   // 加载工具函数扩展（包含 MNTaskManager 等核心类）
   try {
     JSB.require('xdyy_utils_extensions')

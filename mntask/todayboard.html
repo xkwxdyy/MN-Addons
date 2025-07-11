@@ -7,6 +7,7 @@
     <style>
         :root {
             --primary-bg: #ffffff;
+            --sidebar-bg: #f8f9fa;
             --card-bg: #f8f9fa;
             --border-color: #e9ecef;
             --text-primary: #212529;
@@ -36,6 +37,169 @@
             padding: 0;
             margin: 0;
             overflow-x: hidden;
+            display: flex;
+            height: 100vh;
+        }
+
+        /* 侧边栏样式 */
+        .sidebar {
+            user-select: none;
+            -webkit-user-select: none;
+            width: 200px;
+            background-color: var(--sidebar-bg);
+            padding: 10px;
+            height: 100vh;
+            border-right: 1px solid var(--border-color);
+            transition: transform 0.2s ease-out;
+            position: relative;
+            z-index: 1000;
+            flex-shrink: 0;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-200px);
+        }
+
+        .toggle-sidebar {
+            position: absolute;
+            right: 0px;
+            top: 0px;
+            width: 32px;
+            height: 34px;
+            background-color: var(--sidebar-bg);
+            border: 0px solid var(--border-color);
+            border-radius: 0px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+            transition: all 0.2s ease-out;
+            display: none;
+        }
+
+        .toggle-sidebar:hover {
+            background-color: var(--hover-bg);
+        }
+
+        .sidebar.collapsed .toggle-sidebar {
+            right: -32px;
+            border-radius: 0 5px 5px 0;
+            border-left: none;
+        }
+
+        .toggle-sidebar::before {
+            content: "◀";
+            font-size: 12px;
+            transition: transform 0.2s ease-out;
+            color: var(--text-secondary);
+        }
+
+        .sidebar.collapsed .toggle-sidebar::before {
+            transform: rotate(180deg);
+        }
+
+        /* 筛选器部分 */
+        .filter-section {
+            margin-bottom: 24px;
+        }
+
+        .filter-section h3 {
+            margin: 0 0 12px 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            padding-bottom: 8px;
+            padding-left: 5px;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-option {
+            display: flex;
+            align-items: center;
+            margin: 3px 0;
+            padding: 7px 3px;
+            border-radius: 6px;
+            transition: all var(--transition-speed) ease;
+            cursor: pointer;
+        }
+
+        .filter-option:hover {
+            background-color: var(--hover-bg);
+        }
+
+        .filter-option input[type="checkbox"] {
+            margin-right: 10px;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            border: 2px solid var(--border-color);
+            border-radius: 3px;
+            position: relative;
+            transition: all var(--transition-speed) ease;
+        }
+
+        .filter-option input[type="checkbox"]:checked {
+            background-color: var(--info-color);
+            border-color: var(--info-color);
+        }
+
+        .filter-option input[type="checkbox"]:checked::after {
+            content: "✓";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 12px;
+        }
+
+        .filter-option label {
+            cursor: pointer;
+            flex: 1;
+            font-size: 14px;
+            color: var(--text-primary);
+            padding: 2px 8px;
+            border-radius: 4px;
+            transition: all var(--transition-speed) ease;
+            font-weight: 500;
+        }
+
+        .clear-filters {
+            margin-top: 16px;
+            padding: 10px 16px;
+            background-color: var(--primary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: all var(--transition-speed) ease;
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .clear-filters:hover {
+            background-color: var(--hover-bg);
+            color: var(--text-primary);
+        }
+
+        /* 主要内容 */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            min-width: 0;
+            background-color: var(--primary-bg);
+            transition: margin-left var(--transition-speed) ease;
+            margin-left: 0;
         }
 
         /* 顶部统计栏 */
@@ -50,6 +214,7 @@
             position: sticky;
             top: 0;
             z-index: 100;
+            flex-shrink: 0;
         }
 
         .stats-item {
@@ -70,9 +235,10 @@
 
         /* 主容器 */
         .main-container {
+            flex: 1;
             padding: 20px;
-            max-width: 1200px;
-            margin: 0 auto;
+            overflow-y: auto;
+            width: 100%;
         }
 
         /* 操作栏 */
@@ -320,6 +486,30 @@
 
         /* 响应式设计 */
         @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                box-shadow: var(--shadow-md);
+                margin-right: 0;
+            }
+
+            .sidebar.collapsed {
+                transform: translateX(-100%);
+            }
+
+            .toggle-sidebar {
+                right: 0px;
+                width: 30px;
+                height: 34px;
+                display: block;
+            }
+
+            .main-content {
+                margin-left: 0 !important;
+                width: 100%;
+            }
+
             .stats-bar {
                 flex-wrap: wrap;
                 padding: 10px;
@@ -343,91 +533,289 @@
                 justify-content: center;
             }
         }
+
+        @media (min-width: 769px) {
+            .sidebar {
+                transform: none !important;
+            }
+            
+            .toggle-sidebar {
+                display: none;
+            }
+        }
+
+        /* 自定义滚动条 */
+        .main-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .main-container::-webkit-scrollbar-track {
+            background: var(--sidebar-bg);
+        }
+
+        .main-container::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .main-container::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
     </style>
 </head>
 <body>
-    <!-- 统计栏 -->
-    <div class="stats-bar">
-        <div class="stats-item">
-            <div class="stats-value" id="totalCount">0</div>
-            <div class="stats-label">今日任务</div>
+    <!-- 侧边栏 -->
+    <div class="sidebar" id="sidebar">
+        <button class="toggle-sidebar" id="toggleSidebar"></button>
+        
+        <div class="filter-section">
+            <h3>状态</h3>
+            <div class="filter-option">
+                <input type="checkbox" id="status-todo" checked>
+                <label for="status-todo">未开始</label>
+            </div>
+            <div class="filter-option">
+                <input type="checkbox" id="status-doing" checked>
+                <label for="status-doing">进行中</label>
+            </div>
+            <div class="filter-option">
+                <input type="checkbox" id="status-done" checked>
+                <label for="status-done">已完成</label>
+            </div>
         </div>
-        <div class="stats-item">
-            <div class="stats-value" id="inProgressCount">0</div>
-            <div class="stats-label">进行中</div>
+        
+        <div class="filter-section">
+            <h3>优先级</h3>
+            <div class="filter-option">
+                <input type="checkbox" id="priority-high" checked>
+                <label for="priority-high">高优先级</label>
+            </div>
+            <div class="filter-option">
+                <input type="checkbox" id="priority-medium" checked>
+                <label for="priority-medium">中优先级</label>
+            </div>
+            <div class="filter-option">
+                <input type="checkbox" id="priority-low" checked>
+                <label for="priority-low">低优先级</label>
+            </div>
         </div>
-        <div class="stats-item">
-            <div class="stats-value" id="completedCount">0</div>
-            <div class="stats-label">已完成</div>
+        
+        <div class="filter-section">
+            <h3>类型</h3>
+            <div id="type-filters">
+                <!-- 动态添加的类型过滤器 -->
+            </div>
         </div>
-        <div class="stats-item">
-            <div class="stats-value" id="completionRate">0%</div>
-            <div class="stats-label">完成率</div>
-        </div>
+        
+        <button class="clear-filters" onclick="boardManager.clearFilters()">清除过滤</button>
     </div>
 
-    <!-- 主容器 -->
-    <div class="main-container">
-        <!-- 操作栏 -->
-        <div class="action-bar">
-            <div>
-                <button class="action-button" onclick="boardManager.refreshBoard()">
-                    🔄 刷新看板
-                </button>
-                <button class="action-button" onclick="boardManager.toggleSortMode()">
-                    📊 排序方式
-                </button>
+    <!-- 主内容区 -->
+    <div class="main-content">
+        <!-- 统计栏 -->
+        <div class="stats-bar">
+            <div class="stats-item">
+                <div class="stats-value" id="totalCount">0</div>
+                <div class="stats-label">今日任务</div>
             </div>
-            <div>
-                <button class="action-button" onclick="boardManager.exportData()">
-                    📤 导出数据
-                </button>
+            <div class="stats-item">
+                <div class="stats-value" id="inProgressCount">0</div>
+                <div class="stats-label">进行中</div>
+            </div>
+            <div class="stats-item">
+                <div class="stats-value" id="completedCount">0</div>
+                <div class="stats-label">已完成</div>
+            </div>
+            <div class="stats-item">
+                <div class="stats-value" id="completionRate">0%</div>
+                <div class="stats-label">完成率</div>
             </div>
         </div>
 
-        <!-- 任务容器 -->
-        <div id="taskContainer">
-            <div class="loading">
-                <div class="loading-spinner"></div>
-                <div>加载中...</div>
+        <!-- 主容器 -->
+        <div class="main-container">
+            <!-- 操作栏 -->
+            <div class="action-bar">
+                <div>
+                    <button class="action-button" onclick="boardManager.refreshBoard()">
+                        🔄 刷新看板
+                    </button>
+                    <button class="action-button" onclick="boardManager.toggleSortMode()">
+                        📊 排序方式
+                    </button>
+                </div>
+                <div>
+                    <button class="action-button" onclick="boardManager.exportData()">
+                        📤 导出数据
+                    </button>
+                </div>
+            </div>
+
+            <!-- 任务容器 -->
+            <div id="taskContainer">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <div>加载中...</div>
+                </div>
             </div>
         </div>
+
+        <!-- 浮动刷新按钮 -->
+        <button class="float-button" onclick="boardManager.quickStart()">
+            ⚡
+        </button>
     </div>
-
-    <!-- 浮动刷新按钮 -->
-    <button class="float-button" onclick="boardManager.quickStart()">
-        ⚡
-    </button>
 
     <script>
         class TodayBoardManager {
             constructor() {
                 this.tasks = [];
                 this.sortMode = 'priority'; // priority, time, status
+                this.filters = {
+                    statuses: new Set(['未开始', '进行中', '已完成']),
+                    priorities: new Set(['高', '中', '低']),
+                    types: new Set()
+                };
                 this.init();
             }
 
             init() {
                 this.setupEventListeners();
+                this.setupSidebar();
+            }
+
+            setupSidebar() {
+                const sidebar = document.getElementById('sidebar');
+                const toggleBtn = document.getElementById('toggleSidebar');
+                let isCollapsed = false;
+
+                const toggleSidebar = () => {
+                    if (window.innerWidth <= 768) {
+                        isCollapsed = !isCollapsed;
+                        sidebar.classList.toggle('collapsed');
+                    }
+                };
+
+                const handleResize = () => {
+                    if (window.innerWidth <= 768) {
+                        sidebar.classList.add('collapsed');
+                        isCollapsed = true;
+                    } else {
+                        sidebar.classList.remove('collapsed');
+                        isCollapsed = false;
+                    }
+                };
+
+                // 初始检查窗口大小
+                handleResize();
+                
+                toggleBtn.addEventListener('click', toggleSidebar);
+                window.addEventListener('resize', handleResize);
             }
 
             setupEventListeners() {
+                // 状态过滤器
+                ['todo', 'doing', 'done'].forEach((status, index) => {
+                    const statusMap = ['未开始', '进行中', '已完成'];
+                    document.getElementById(`status-${status}`).addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            this.filters.statuses.add(statusMap[index]);
+                        } else {
+                            this.filters.statuses.delete(statusMap[index]);
+                        }
+                        this.renderTasks();
+                    });
+                });
+
+                // 优先级过滤器
+                ['high', 'medium', 'low'].forEach((priority, index) => {
+                    const priorityMap = ['高', '中', '低'];
+                    document.getElementById(`priority-${priority}`).addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            this.filters.priorities.add(priorityMap[index]);
+                        } else {
+                            this.filters.priorities.delete(priorityMap[index]);
+                        }
+                        this.renderTasks();
+                    });
+                });
+
                 // 拖拽功能预留
                 document.addEventListener('dragstart', this.handleDragStart.bind(this));
                 document.addEventListener('dragover', this.handleDragOver.bind(this));
                 document.addEventListener('drop', this.handleDrop.bind(this));
             }
 
+            updateTypeFilters() {
+                const typeFilters = document.getElementById('type-filters');
+                typeFilters.innerHTML = '';
+                
+                const types = this.getAllTypes();
+                types.forEach(type => {
+                    const div = document.createElement('div');
+                    div.className = 'filter-option';
+                    div.innerHTML = `
+                        <input type="checkbox" id="type-${type}" checked>
+                        <label for="type-${type}">${type}</label>
+                    `;
+                    
+                    div.querySelector('input').addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            this.filters.types.add(type);
+                        } else {
+                            this.filters.types.delete(type);
+                        }
+                        this.renderTasks();
+                    });
+                    
+                    typeFilters.appendChild(div);
+                });
+                
+                // 初始化类型过滤器
+                this.filters.types = new Set(types);
+            }
+
+            getAllTypes() {
+                return new Set(this.tasks.map(task => task.type));
+            }
+
+            clearFilters() {
+                this.filters.statuses = new Set(['未开始', '进行中', '已完成']);
+                this.filters.priorities = new Set(['高', '中', '低']);
+                this.filters.types = new Set([...this.getAllTypes()]);
+                
+                // 重置复选框
+                ['status-todo', 'status-doing', 'status-done', 
+                 'priority-high', 'priority-medium', 'priority-low'].forEach(id => {
+                    document.getElementById(id).checked = true;
+                });
+                
+                // 重置类型过滤器
+                document.querySelectorAll('#type-filters input[type="checkbox"]').forEach(checkbox => {
+                    checkbox.checked = true;
+                });
+                
+                this.renderTasks();
+            }
+
             // 加载任务数据
             loadTasks(encodedTasks) {
                 try {
                     this.tasks = JSON.parse(decodeURIComponent(encodedTasks));
+                    this.updateTypeFilters();
                     this.renderTasks();
                     this.updateStats();
                 } catch (error) {
                     console.error('Failed to load tasks:', error);
                     this.showError('加载任务失败');
                 }
+            }
+
+            // 检查任务是否应该显示
+            shouldShowTask(task) {
+                return this.filters.statuses.has(task.status) && 
+                       this.filters.priorities.has(task.priority || '低') &&
+                       this.filters.types.has(task.type);
             }
 
             // 渲染任务列表
@@ -448,6 +836,18 @@
 
                 // 对任务进行分组
                 const groups = this.groupTasks();
+                const hasAnyTasks = Object.values(groups).some(group => group.length > 0);
+
+                if (!hasAnyTasks) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">🔍</div>
+                            <div>没有符合筛选条件的任务</div>
+                            <div style="margin-top: 10px; font-size: 14px;">尝试调整筛选条件或清除筛选</div>
+                        </div>
+                    `;
+                    return;
+                }
 
                 // 渲染每个分组
                 Object.entries(groups).forEach(([groupName, tasks]) => {
@@ -482,24 +882,26 @@
                     '未开始': []
                 };
 
-                this.tasks.forEach(task => {
-                    if (task.isOverdue) {
-                        groups['过期任务'].push(task);
-                    } else if (task.status === '未开始') {
-                        groups['未开始'].push(task);
-                    } else {
-                        switch (task.priority) {
-                            case '高':
-                                groups['高优先级'].push(task);
-                                break;
-                            case '中':
-                                groups['中优先级'].push(task);
-                                break;
-                            default:
-                                groups['低优先级'].push(task);
+                this.tasks
+                    .filter(task => this.shouldShowTask(task))
+                    .forEach(task => {
+                        if (task.isOverdue) {
+                            groups['过期任务'].push(task);
+                        } else if (task.status === '未开始') {
+                            groups['未开始'].push(task);
+                        } else {
+                            switch (task.priority) {
+                                case '高':
+                                    groups['高优先级'].push(task);
+                                    break;
+                                case '中':
+                                    groups['中优先级'].push(task);
+                                    break;
+                                default:
+                                    groups['低优先级'].push(task);
+                            }
                         }
-                    }
-                });
+                    });
 
                 return groups;
             }

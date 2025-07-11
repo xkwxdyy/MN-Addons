@@ -3348,12 +3348,31 @@ taskSettingController.prototype.loadProjectsData = async function(parentId = nul
       MNUtil.log(`📊 在项目 ${parentNote.noteTitle} 下找到 ${projectTasks.length} 个子项目`)
     }
     
-    // 递归获取项目的子任务
+    // 递归获取项目的子任务（应用默认筛选条件）
     const getProjectChildren = (projectNote) => {
       const children = []
+      // 项目视图的默认筛选条件
+      const defaultStatuses = new Set(['未开始', '进行中'])
+      const hideCompletedActions = true
+      
       if (projectNote.childNotes) {
         for (let child of projectNote.childNotes) {
           if (MNTaskManager.isTaskCard(child)) {
+            const taskInfo = MNTaskManager.parseTaskTitle(child.noteTitle)
+            
+            // 应用默认筛选条件（与项目视图保持一致）
+            // 1. 特殊规则：隐藏已完成的动作
+            if (hideCompletedActions && 
+                taskInfo.type === '动作' && 
+                taskInfo.status === '已完成') {
+              continue
+            }
+            
+            // 2. 常规筛选：检查任务状态
+            if (!defaultStatuses.has(taskInfo.status)) {
+              continue
+            }
+            
             children.push(child)
           }
           // 递归获取子任务
@@ -3367,8 +3386,28 @@ taskSettingController.prototype.loadProjectsData = async function(parentId = nul
     const projects = projectTasks.map(task => {
       const taskInfo = MNTaskManager.parseTaskTitle(task.noteTitle)
       
-      // 获取该项目下的子任务数量
+      // 获取该项目下的子任务数量（应用筛选条件）
       const childTasks = getProjectChildren(task)
+      
+      // 计算所有子任务的总数（递归，不应用筛选）
+      const getAllChildrenCount = (projectNote) => {
+        let count = 0
+        if (projectNote.childNotes) {
+          for (let child of projectNote.childNotes) {
+            if (MNTaskManager.isTaskCard(child)) {
+              count++
+            }
+            count += getAllChildrenCount(child)
+          }
+        }
+        return count
+      }
+      
+      const totalChildCount = getAllChildrenCount(task)
+      
+      if (totalChildCount !== childTasks.length) {
+        MNUtil.log(`📊 项目 "${taskInfo.content}": 总任务数 ${totalChildCount}, 筛选后显示 ${childTasks.length}`)
+      }
       
       // 检查是否有子项目
       let hasSubProjects = false

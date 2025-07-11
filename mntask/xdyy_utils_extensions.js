@@ -3,6 +3,11 @@
  * 通过 prototype 方式扩展 taskUtils 类的功能
  */
 
+// 文件加载日志
+if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+  MNUtil.log("🔧 开始加载 xdyy_utils_extensions.js")
+}
+
 /**
  * 安全的文本格式化函数
  * 如果 Pangu 存在则使用 Pangu.spacing，否则返回原文本
@@ -2140,6 +2145,23 @@ class MNTaskManager {
         // 移除今日标记
         note.removeCommentByIndex(todayFieldIndex)
         MNUtil.log("✅ 移除今日标记")
+      } else if (isToday && todayFieldIndex >= 0) {
+        // 如果已经有今日标记，检查是否需要更新日期
+        const field = parsed.taskFields.find(f => f.index === todayFieldIndex)
+        if (field) {
+          const existingContent = field.content
+          const dateMatch = existingContent.match(/\((\d{4}-\d{2}-\d{2})\)/)
+          
+          if (!dateMatch) {
+            // 旧版标记没有日期，更新为新格式
+            note.removeCommentByIndex(todayFieldIndex)
+            const todayFieldHtml = TaskFieldUtils.createTodayField(true)
+            note.appendMarkdownComment(todayFieldHtml)
+            // 移动到信息字段下
+            this.moveCommentToField(note, note.MNComments.length - 1, '信息', false)
+            MNUtil.log("✅ 已更新今日标记格式（添加日期）")
+          }
+        }
       }
     })
     
@@ -2156,8 +2178,17 @@ class MNTaskManager {
     
     const comments = note.MNComments || []
     for (let comment of comments) {
-      if (comment && comment.text && comment.text.includes('📅 今日')) {
-        return true
+      if (comment && comment.text) {
+        const text = comment.text
+        // 检查纯文本格式
+        if (text.includes('📅 今日')) {
+          return true
+        }
+        // 检查 HTML 格式（去除 HTML 标签后检查）
+        const cleanText = text.replace(/<[^>]*>/g, '')
+        if (cleanText.includes('📅 今日')) {
+          return true
+        }
       }
     }
     
@@ -2174,17 +2205,23 @@ class MNTaskManager {
     
     const comments = note.MNComments || []
     for (let comment of comments) {
-      if (comment && comment.text && comment.text.includes('📅 今日')) {
-        // 尝试提取日期信息 (YYYY-MM-DD)
-        const dateMatch = comment.text.match(/\((\d{4})-(\d{2})-(\d{2})\)/)
-        if (dateMatch) {
-          const year = parseInt(dateMatch[1])
-          const month = parseInt(dateMatch[2]) - 1 // JavaScript 月份从 0 开始
-          const day = parseInt(dateMatch[3])
-          return new Date(year, month, day)
+      if (comment && comment.text) {
+        const text = comment.text
+        // 先去除 HTML 标签
+        const cleanText = text.replace(/<[^>]*>/g, '')
+        
+        if (cleanText.includes('📅 今日')) {
+          // 尝试提取日期信息 (YYYY-MM-DD)
+          const dateMatch = cleanText.match(/\((\d{4})-(\d{2})-(\d{2})\)/)
+          if (dateMatch) {
+            const year = parseInt(dateMatch[1])
+            const month = parseInt(dateMatch[2]) - 1 // JavaScript 月份从 0 开始
+            const day = parseInt(dateMatch[3])
+            return new Date(year, month, day)
+          }
+          // 如果没有日期信息，说明是旧版本的今日标记
+          return null
         }
-        // 如果没有日期信息，说明是旧版本的今日标记
-        return null
       }
     }
     
@@ -2313,22 +2350,228 @@ class MNTaskManager {
   }
   
   /**
+   * 从整个笔记本中筛选今日任务（不限于看板）
+   * @returns {MNNote[]} 今日任务列表
+   */
+  static filterAllTodayTasks() {
+    if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+      MNUtil.log("🔍 从整个笔记本中搜索今日任务")
+    }
+    
+    const results = []
+    const processedIds = new Set()
+    
+    // 获取当前笔记本
+    const currentNotebook = MNUtil.currentNotebook
+    const currentNotebookId = MNUtil.currentNotebookId
+    
+    if (!currentNotebook || !currentNotebookId) {
+      if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+        MNUtil.log("⚠️ 无法获取当前笔记本")
+      }
+      return results
+    }
+    
+    // 递归搜索所有笔记
+    const searchTasks = (notes) => {
+      if (!notes || notes.length === 0) return
+      
+      for (let note of notes) {
+        if (!note || processedIds.has(note.noteId)) continue
+        processedIds.add(note.noteId)
+        
+        // 检查是否是今日任务
+        if (MNTaskManager.isTaskCard(note) && this.isToday(note)) {
+          const titleParts = MNTaskManager.parseTaskTitle(note.noteTitle)
+          // 只添加未完成和进行中的任务
+          if (titleParts.status === '未开始' || titleParts.status === '进行中') {
+            results.push(note)
+            if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+              MNUtil.log(`✅ 找到今日任务：${note.noteTitle}`)
+            }
+          }
+        }
+        
+        // 递归搜索子笔记
+        if (note.childNotes && note.childNotes.length > 0) {
+          searchTasks(note.childNotes)
+        }
+      }
+    }
+    
+    // 从笔记本的所有根笔记开始搜索
+    // 使用 MNUtil.notesInStudySet 获取笔记本中的所有笔记
+    try {
+      const allNotes = MNUtil.notesInStudySet(currentNotebookId)
+      if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+        MNUtil.log(`📊 笔记本中共有 ${allNotes.length} 个笔记`)
+      }
+      
+      // 遍历所有笔记（因为 notesInStudySet 返回的是扁平化的数组）
+      for (let note of allNotes) {
+        if (!note || processedIds.has(note.noteId)) continue
+        processedIds.add(note.noteId)
+        
+        // 将每个笔记转换为 MNNote 对象
+        const mnNote = MNNote.new(note)
+        if (!mnNote) continue
+        
+        // 检查是否是今日任务
+        if (MNTaskManager.isTaskCard(mnNote) && this.isToday(mnNote)) {
+          const titleParts = MNTaskManager.parseTaskTitle(mnNote.noteTitle)
+          // 只添加未完成和进行中的任务
+          if (titleParts.status === '未开始' || titleParts.status === '进行中') {
+            results.push(mnNote)
+            if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+              MNUtil.log(`✅ 找到今日任务：${mnNote.noteTitle}`)
+            }
+          }
+        }
+      }
+    } catch (error) {
+      if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+        MNUtil.log("❌ 搜索笔记时出错：" + error.message)
+      }
+    }
+    
+    if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+      MNUtil.log(`📊 共找到 ${results.length} 个今日任务`)
+    }
+    
+    // 使用智能排序
+    return TaskFilterEngine.sort(results, {
+      strategy: 'smart',
+      weights: {
+        priority: 0.4,
+        urgency: 0.3,
+        importance: 0.2,
+        progress: 0.1
+      }
+    })
+  }
+  
+  /**
+   * 从整个笔记本中按状态筛选任务
+   * @param {string} status - 要筛选的状态
+   * @returns {MNNote[]} 符合条件的任务列表
+   */
+  static filterAllTasksByStatus(status) {
+    if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+      MNUtil.log(`🔍 从整个笔记本中搜索状态为"${status}"的任务`)
+    }
+    
+    const results = []
+    const processedIds = new Set()
+    
+    // 获取当前笔记本
+    const currentNotebook = MNUtil.currentNotebook
+    const currentNotebookId = MNUtil.currentNotebookId
+    
+    if (!currentNotebook || !currentNotebookId) {
+      if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+        MNUtil.log("⚠️ 无法获取当前笔记本")
+      }
+      return results
+    }
+    
+    try {
+      const allNotes = MNUtil.notesInStudySet(currentNotebookId)
+      if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+        MNUtil.log(`📊 笔记本中共有 ${allNotes.length} 个笔记`)
+      }
+      
+      // 遍历所有笔记
+      for (let note of allNotes) {
+        if (!note || processedIds.has(note.noteId)) continue
+        processedIds.add(note.noteId)
+        
+        // 将每个笔记转换为 MNNote 对象
+        const mnNote = MNNote.new(note)
+        if (!mnNote) continue
+        
+        // 检查是否是任务卡片且状态匹配
+        if (MNTaskManager.isTaskCard(mnNote)) {
+          const titleParts = MNTaskManager.parseTaskTitle(mnNote.noteTitle)
+          if (titleParts.status === status) {
+            results.push(mnNote)
+            if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+              MNUtil.log(`✅ 找到${status}任务：${mnNote.noteTitle}`)
+            }
+          }
+        }
+      }
+    } catch (error) {
+      if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+        MNUtil.log("❌ 搜索笔记时出错：" + error.message)
+      }
+    }
+    
+    if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+      MNUtil.log(`📊 共找到 ${results.length} 个${status}任务`)
+    }
+    
+    // 返回排序后的结果
+    return TaskFilterEngine.sort(results, {
+      strategy: 'smart',
+      weights: {
+        priority: 0.4,
+        urgency: 0.3,
+        importance: 0.2,
+        progress: 0.1
+      }
+    })
+  }
+  
+  /**
    * 筛选今日任务
-   * @param {string[]} boardKeys - 要筛选的看板（如 ['target', 'project', 'action']）
+   * @param {string[]|Object} boardKeys - 要筛选的看板或筛选配置
    * @returns {MNNote[]} 排序后的今日任务列表
    */
   static filterTodayTasks(boardKeys = ['target', 'project', 'action']) {
+    // 支持传入配置对象
+    let filterConfig = {}
+    if (Array.isArray(boardKeys)) {
+      filterConfig = {
+        boardKeys: boardKeys,
+        statuses: ['未开始', '进行中']
+      }
+    } else if (typeof boardKeys === 'object') {
+      filterConfig = boardKeys
+      // 设置默认值
+      if (!filterConfig.boardKeys) {
+        filterConfig.boardKeys = ['target', 'project', 'action']
+      }
+      if (!filterConfig.statuses) {
+        filterConfig.statuses = ['未开始', '进行中']
+      }
+    }
+    
+    if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+      MNUtil.log("🔍 开始筛选今日任务，配置：" + JSON.stringify(filterConfig))
+    }
+    
+    // 如果配置中包含 includeAll 参数，使用全局搜索
+    if (filterConfig.includeAll) {
+      return this.filterAllTodayTasks()
+    }
+    
     // 使用 TaskFilterEngine 筛选今日任务
     const todayTasks = TaskFilterEngine.filter({
-      boardKeys,
-      statuses: ['未开始', '进行中'],  // 过滤已完成和已归档
-      customFilter: (task) => this.isToday(task)
+      boardKeys: filterConfig.boardKeys,
+      statuses: filterConfig.statuses,
+      customFilter: (task) => {
+        const isToday = this.isToday(task)
+        if (typeof MNUtil !== 'undefined' && MNUtil.log && isToday) {
+          MNUtil.log("✅ 发现今日任务：" + task.noteTitle)
+        }
+        return isToday
+      }
     })
     
     // 使用智能排序
     return TaskFilterEngine.sort(todayTasks, {
       strategy: 'smart',
-      weights: {
+      weights: filterConfig.weights || {
         priority: 0.4,      // 优先级权重更高
         urgency: 0.3,       // 紧急度次之
         importance: 0.2,    // 重要性
@@ -2458,6 +2701,35 @@ class MNTaskManager {
     }
     
     return overdueTasks
+  }
+  
+  /**
+   * 修复旧版今日标记（添加日期信息）
+   * @param {string[]} boardKeys - 要检查的看板
+   * @returns {number} 修复的任务数量
+   */
+  static fixLegacyTodayMarks(boardKeys = ['target', 'project', 'action']) {
+    const todayTasks = this.filterTodayTasks(boardKeys)
+    let fixedCount = 0
+    
+    MNUtil.undoGrouping(() => {
+      for (let task of todayTasks) {
+        const markDate = this.getTodayMarkDate(task)
+        if (!markDate) {
+          // 旧版标记没有日期，重新标记
+          this.markAsToday(task, false)  // 先移除
+          this.markAsToday(task, true)   // 再添加（会自动加上日期）
+          fixedCount++
+          MNUtil.log(`✅ 修复旧版今日标记：${task.noteTitle}`)
+        }
+      }
+    })
+    
+    if (fixedCount > 0) {
+      MNUtil.showHUD(`✅ 已修复 ${fixedCount} 个旧版今日标记`)
+    }
+    
+    return fixedCount
   }
   
   /**
@@ -3354,6 +3626,11 @@ class MNTaskManager {
     // 提取日期（格式：📅 今日 (2025-01-08)）
     const dateMatch = todayFieldContent.match(/\((\d{4}-\d{2}-\d{2})\)/);
     if (!dateMatch) {
+      // 如果没有日期信息（旧版今日标记），认为是过期的
+      // 假设已过期1天，以便提示用户更新
+      if (todayFieldContent.includes('📅 今日')) {
+        return { isOverdue: true, days: 1 };
+      }
       return { isOverdue: false, days: 0 };
     }
     
@@ -3585,6 +3862,10 @@ class MNTaskManager {
   }
 }
 
+// 确认 MNTaskManager 类已定义
+if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+  MNUtil.log("✅ MNTaskManager 类已成功定义")
+}
 
 /**
  * TaskFilterEngine - 任务筛选引擎
@@ -3622,10 +3903,24 @@ class TaskFilterEngine {
     // 从各个看板收集任务
     for (let boardKey of boardKeys) {
       const boardNoteId = taskConfig.getBoardNoteId(boardKey)
-      if (!boardNoteId) continue
+      if (!boardNoteId) {
+        if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+          MNUtil.log(`⚠️ 看板 ${boardKey} 未配置`)
+        }
+        continue
+      }
       
       const boardNote = MNNote.new(boardNoteId)
-      if (!boardNote) continue
+      if (!boardNote) {
+        if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+          MNUtil.log(`⚠️ 看板 ${boardKey} 不存在，ID: ${boardNoteId}`)
+        }
+        continue
+      }
+      
+      if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+        MNUtil.log(`🔍 开始从看板 ${boardKey} 收集任务`)
+      }
       
       // 递归收集所有任务卡片
       const collectTasks = (parentNote) => {
@@ -3642,9 +3937,20 @@ class TaskFilterEngine {
             continue
           }
           
+          if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+            MNUtil.log(`🔍 找到任务卡片：${childNote.noteTitle.substring(0, 50)}...`)
+          }
+          
           // 应用筛选条件
           if (this.matchesCriteria(childNote, criteria)) {
             results.push(childNote)
+            if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+              MNUtil.log(`✅ 任务符合筛选条件`)
+            }
+          } else {
+            if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+              MNUtil.log(`❌ 任务不符合筛选条件`)
+            }
           }
           
           // 递归处理子卡片
@@ -3653,6 +3959,10 @@ class TaskFilterEngine {
       }
       
       collectTasks(boardNote)
+    }
+    
+    if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+      MNUtil.log(`📊 共找到 ${results.length} 个符合条件的任务`)
     }
     
     return results
@@ -4813,6 +5123,16 @@ function initXDYYExtensions() {
     taskUtils.defaultWindowState.preprocess = false;
   }
 
+  // 将核心类暴露到全局作用域
+  // JSBox 环境中，直接赋值到全局
+  global.TaskFieldUtils = TaskFieldUtils;
+  global.MNTaskManager = MNTaskManager;
+  global.TaskFilterEngine = TaskFilterEngine;
+  
+  // 日志输出
+  if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+    MNUtil.log("✅ MNTaskManager 和相关类已暴露到全局");
+  }
 }
 
 /**
@@ -4879,5 +5199,13 @@ try {
     extendTaskConfigInit();
   }
 } catch (error) {
-  // 静默处理错误
+  // 报告错误而不是静默处理
+  if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+    MNUtil.addErrorLog(error, "xdyy_utils_extensions 初始化失败", {
+      message: error.message,
+      stack: error.stack
+    })
+  }
+  // 至少在控制台输出错误
+  console.error("xdyy_utils_extensions 初始化错误:", error)
 }

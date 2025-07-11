@@ -1,6 +1,25 @@
 JSB.newAddon = function (mainPath) {
   JSB.require('utils')
-  JSB.require('xdyy_utils_extensions')  // 加载工具函数扩展
+  
+  // 加载工具函数扩展（包含 MNTaskManager 等核心类）
+  try {
+    JSB.require('xdyy_utils_extensions')
+    if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+      MNUtil.log("✅ xdyy_utils_extensions.js 加载成功")
+    }
+  } catch (error) {
+    if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+      MNUtil.addErrorLog(error, "加载 xdyy_utils_extensions.js 失败", {
+        message: error.message,
+        stack: error.stack
+      })
+    }
+    // 这是核心文件，加载失败应该报告
+    if (typeof MNUtil !== 'undefined' && MNUtil.showHUD) {
+      MNUtil.showHUD("❌ 核心扩展加载失败: " + error.message)
+    }
+  }
+  
   JSB.require('pinyin')
   
   if (!taskUtils.checkMNUtilsFolder(mainPath)) {return undefined}
@@ -123,7 +142,10 @@ JSB.newAddon = function (mainPath) {
           self.addonController.notebookid = notebookid
           self.notebookid = notebookid
           taskUtils.notebookId = notebookid
+          taskUtils.currentNotebookId = notebookid
           taskConfig.checkCloudStore()
+          // 加载笔记本特定配置
+          await taskConfig.readCloudConfig(false, false, false)
         }
         MNUtil.delay(0.2).then(()=>{
           MNUtil.studyView.becomeFirstResponder(); //For dismiss keyboard on iOS

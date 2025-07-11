@@ -2,6 +2,11 @@
  * task 的 Actions 注册表
  */
 
+// 文件加载日志
+if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+  MNUtil.log("🔧 开始加载 xdyy_custom_actions_registry.js")
+}
+
 // 使用 MNTask 专用命名空间，避免与 MNToolbar 冲突
 if (typeof MNTaskGlobal === "undefined") {
   var MNTaskGlobal = {};
@@ -51,6 +56,19 @@ MNTaskGlobal.executeCustomAction = async function (actionName, context) {
 
 // 注册所有自定义 actions
 function registerAllCustomActions() {
+  // 检查依赖是否存在
+  if (typeof MNTaskManager === 'undefined') {
+    if (typeof MNUtil !== 'undefined') {
+      MNUtil.log("⚠️ MNTaskManager 未定义，跳过自定义 actions 注册")
+      MNUtil.showHUD("❌ 任务管理核心组件加载失败，请重启插件")
+    }
+    return;
+  }
+  
+  if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+    MNUtil.log("✅ MNTaskManager 已就绪，开始注册自定义 actions")
+  }
+  
   // taskCardMake - 智能任务制卡
   MNTaskGlobal.registerCustomAction("taskCardMake", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
@@ -3096,36 +3114,6 @@ function registerAllCustomActions() {
       await showFilterResultsMenu(filteredTasks, typeName + "任务");
   });
 
-  // filterByTaskStatus - 按任务状态筛选
-  MNTaskGlobal.registerCustomAction("filterByTaskStatus", async function(context) {
-    const { button, des, focusNote, focusNotes, self } = context;
-    
-    const options = ["⬜ 未开始", "🔵 进行中", "✅ 已完成", "🔴 已阻塞", "❌ 已取消", "全部状态"];
-    const selectedIndex = await MNUtil.userSelect("选择任务状态", "", options);
-    if (selectedIndex === 0) return; // 0 是取消按钮
-    
-    let targetStatuses = [];
-    switch(selectedIndex) {
-      case 1: targetStatuses = ['未开始']; break;
-      case 2: targetStatuses = ['进行中']; break;
-      case 3: targetStatuses = ['已完成']; break;
-      case 4: targetStatuses = ['已阻塞']; break;
-      case 5: targetStatuses = ['已取消']; break;
-      case 6: targetStatuses = null; break; // 全部状态，不设置筛选条件
-    }
-    
-    // 使用 TaskFilterEngine 从看板筛选
-    const criteria = {};
-    if (targetStatuses) {
-      criteria.statuses = targetStatuses;
-    }
-    const filteredTasks = TaskFilterEngine.filter(criteria);
-    
-    // 使用统一的展示方式
-    const statusName = options[selectedIndex - 1];
-    await showFilterResultsMenu(filteredTasks, statusName + "任务");
-  });
-
   // filterByProgress - 按进度筛选
   MNTaskGlobal.registerCustomAction("filterByProgress", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
@@ -3915,7 +3903,13 @@ function registerAllCustomActions() {
     todayBoard.focusInFloatMindMap(0.5);
     
     // 显示今日任务统计
-    const todayTasks = MNTaskManager.filterTodayTasks();
+    let todayTasks = MNTaskManager.filterTodayTasks();
+    
+    // 如果从看板中没有找到，尝试从整个笔记本搜索
+    if (todayTasks.length === 0) {
+      todayTasks = MNTaskManager.filterAllTodayTasks();
+    }
+    
     const inProgressCount = todayTasks.filter(task => {
       const status = MNTaskManager.parseTaskTitle(task.noteTitle).status;
       return status === '进行中';
@@ -3984,7 +3978,13 @@ function registerAllCustomActions() {
     
     MNUtil.undoGrouping(() => {
       // 获取今日任务（可能已经更新过了）
-      const todayTasks = MNTaskManager.filterTodayTasks();
+      let todayTasks = MNTaskManager.filterTodayTasks();
+      
+      // 如果从看板中没有找到，尝试从整个笔记本搜索
+      if (todayTasks.length === 0) {
+        MNUtil.log("⚠️ 看板中未找到今日任务，尝试从整个笔记本搜索...");
+        todayTasks = MNTaskManager.filterAllTodayTasks();
+      }
       
       // 清理现有的任务链接（保留其他内容）
       MNTaskManager.clearTaskLinksFromBoard(todayBoard);
@@ -4080,6 +4080,34 @@ function registerAllCustomActions() {
     }
   });
 
+  // fixLegacyTodayMarks - 修复旧版今日标记
+  MNTaskGlobal.registerCustomAction("fixLegacyTodayMarks", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    try {
+      MNUtil.showHUD("🔧 正在检查旧版今日标记...");
+      
+      // 修复旧版标记
+      const fixedCount = MNTaskManager.fixLegacyTodayMarks();
+      
+      if (fixedCount === 0) {
+        MNUtil.showHUD("✅ 所有今日标记已是最新格式");
+      } else {
+        MNUtil.showHUD(`✅ 已修复 ${fixedCount} 个旧版标记`);
+        
+        // 自动刷新今日看板
+        if (taskConfig.getBoardNoteId('today')) {
+          MNUtil.delay(0.5).then(() => {
+            MNTaskGlobal.executeCustomAction("refreshTodayBoard", context);
+          });
+        }
+      }
+    } catch (error) {
+      MNUtil.log(`❌ fixLegacyTodayMarks 执行失败: ${error.message || error}`);
+      MNUtil.showHUD(`修复失败: ${error.message || "未知错误"}`);
+    }
+  });
+  
   // handleOverdueTasks - 处理过期的今日任务
   MNTaskGlobal.registerCustomAction("handleOverdueTasks", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
@@ -4964,6 +4992,222 @@ function registerAllCustomActions() {
       MNTaskManager.refreshTodayBoard();
     });
   }
+
+  // ==================== 筛选功能诊断工具 ====================
+  
+  // diagnoseFilterFunction - 诊断筛选功能失效的原因
+  MNTaskGlobal.registerCustomAction("diagnoseFilterFunction", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    MNUtil.showHUD("🔍 正在诊断筛选功能...");
+    
+    try {
+      let diagnosticReport = "📊 筛选功能诊断报告\n\n";
+      let hasProblems = false;
+      
+      // 1. 检查看板配置
+      diagnosticReport += "1. 看板配置检查：\n";
+      const boardKeys = ['target', 'project', 'action', 'completed', 'today'];
+      const boardNames = {
+        target: '目标看板',
+        project: '项目看板', 
+        action: '动作看板',
+        completed: '已完成看板',
+        today: '今日看板'
+      };
+      
+      let configuredBoards = 0;
+      let missingBoards = [];
+      let invalidBoards = [];
+      
+      for (let boardKey of boardKeys) {
+        const boardId = taskConfig.getBoardNoteId(boardKey);
+        if (!boardId) {
+          missingBoards.push(boardNames[boardKey]);
+          diagnosticReport += `   ❌ ${boardNames[boardKey]} - 未配置\n`;
+          hasProblems = true;
+        } else {
+          const boardNote = MNNote.new(boardId);
+          if (!boardNote) {
+            invalidBoards.push(boardNames[boardKey]);
+            diagnosticReport += `   ⚠️ ${boardNames[boardKey]} - 配置无效（卡片不存在）\n`;
+            hasProblems = true;
+          } else {
+            configuredBoards++;
+            diagnosticReport += `   ✅ ${boardNames[boardKey]} - 正常\n`;
+          }
+        }
+      }
+      
+      diagnosticReport += `\n   配置情况：${configuredBoards}/5 个看板已配置\n`;
+      
+      // 2. 检查任务卡片数量
+      diagnosticReport += "\n2. 任务卡片统计：\n";
+      let totalTasks = 0;
+      let tasksByBoard = {};
+      
+      for (let boardKey of ['target', 'project', 'action']) {
+        const boardId = taskConfig.getBoardNoteId(boardKey);
+        if (boardId) {
+          const boardNote = MNNote.new(boardId);
+          if (boardNote) {
+            const tasks = [];
+            const collectTasks = (note) => {
+              if (!note || !note.childNotes) return;
+              for (let child of note.childNotes) {
+                if (MNTaskManager.isTaskCard(child)) {
+                  tasks.push(child);
+                }
+                collectTasks(child);
+              }
+            };
+            collectTasks(boardNote);
+            tasksByBoard[boardKey] = tasks.length;
+            totalTasks += tasks.length;
+            diagnosticReport += `   • ${boardNames[boardKey]}：${tasks.length} 个任务\n`;
+          }
+        }
+      }
+      
+      diagnosticReport += `   总计：${totalTasks} 个任务卡片\n`;
+      
+      if (totalTasks === 0) {
+        diagnosticReport += "   ⚠️ 没有找到任何任务卡片\n";
+        hasProblems = true;
+      }
+      
+      // 3. 测试筛选功能
+      diagnosticReport += "\n3. 筛选功能测试：\n";
+      
+      // 测试今日任务筛选
+      try {
+        const todayTasks = MNTaskManager.filterTodayTasks();
+        diagnosticReport += `   • 今日任务：${todayTasks.length} 个\n`;
+        
+        // 如果今日任务为0，尝试从整个笔记本搜索
+        if (todayTasks.length === 0) {
+          const allTodayTasks = MNTaskManager.filterAllTodayTasks();
+          if (allTodayTasks.length > 0) {
+            diagnosticReport += `     ⚠️ 看板中无今日任务，但笔记本中有 ${allTodayTasks.length} 个今日任务\n`;
+            diagnosticReport += `     建议：将今日任务移动到相应看板\n`;
+          }
+        }
+      } catch (error) {
+        diagnosticReport += `   ❌ 今日任务筛选失败：${error.message}\n`;
+        hasProblems = true;
+      }
+      
+      // 测试优先级筛选
+      try {
+        const highPriorityTasks = TaskFilterEngine.filterHighPriorityIncompleteTasks();
+        diagnosticReport += `   • 高优先级未完成：${highPriorityTasks.length} 个\n`;
+      } catch (error) {
+        diagnosticReport += `   ❌ 优先级筛选失败：${error.message}\n`;
+        hasProblems = true;
+      }
+      
+      // 测试状态筛选
+      try {
+        const activeTasks = TaskFilterEngine.filterActiveTasks();
+        diagnosticReport += `   • 活跃任务（未开始+进行中）：${activeTasks.length} 个\n`;
+      } catch (error) {
+        diagnosticReport += `   ❌ 状态筛选失败：${error.message}\n`;
+        hasProblems = true;
+      }
+      
+      // 4. 检查任务日期字段
+      diagnosticReport += "\n4. 任务日期检查：\n";
+      let tasksWithDate = 0;
+      let tasksWithoutDate = 0;
+      
+      if (totalTasks > 0) {
+        const allTasks = TaskFilterEngine.filter({ boardKeys: ['target', 'project', 'action'] });
+        for (let task of allTasks) {
+          if (TaskFilterEngine.getTaskDate(task)) {
+            tasksWithDate++;
+          } else {
+            tasksWithoutDate++;
+          }
+        }
+        diagnosticReport += `   • 有日期的任务：${tasksWithDate} 个\n`;
+        diagnosticReport += `   • 无日期的任务：${tasksWithoutDate} 个\n`;
+      }
+      
+      // 5. 总结和建议
+      diagnosticReport += "\n5. 诊断结果：\n";
+      if (!hasProblems && totalTasks > 0) {
+        diagnosticReport += "   ✅ 筛选功能基本正常\n";
+        diagnosticReport += "\n建议：\n";
+        diagnosticReport += "   • 确保任务卡片已分配到正确的看板\n";
+        diagnosticReport += "   • 为任务设置优先级和日期等属性\n";
+        diagnosticReport += "   • 使用今日任务标记功能标记重要任务\n";
+      } else {
+        diagnosticReport += "   ⚠️ 发现以下问题：\n";
+        if (missingBoards.length > 0) {
+          diagnosticReport += `   • 未配置的看板：${missingBoards.join('、')}\n`;
+        }
+        if (invalidBoards.length > 0) {
+          diagnosticReport += `   • 配置无效的看板：${invalidBoards.join('、')}\n`;
+        }
+        if (totalTasks === 0) {
+          diagnosticReport += "   • 没有任何任务卡片\n";
+        }
+        
+        diagnosticReport += "\n解决方案：\n";
+        if (missingBoards.length > 0 || invalidBoards.length > 0) {
+          diagnosticReport += "   1. 进入设置面板配置看板\n";
+          diagnosticReport += "   2. 为每个看板创建或选择一个卡片\n";
+          diagnosticReport += "   3. 点击 Paste 按钮绑定看板\n";
+        }
+        if (totalTasks === 0) {
+          diagnosticReport += "   1. 使用任务制卡功能创建任务\n";
+          diagnosticReport += "   2. 将任务移动到相应的看板\n";
+        }
+      }
+      
+      // 将诊断报告创建为卡片
+      const diagnosticNote = MNNote.createWithTitleNotebook("📊 筛选功能诊断报告", MNUtil.currentNotebook);
+      diagnosticNote.appendMarkdownComment(diagnosticReport);
+      diagnosticNote.focusInFloatMindMap(0.5);
+      
+      MNUtil.showHUD("✅ 诊断完成，请查看诊断报告");
+      
+    } catch (error) {
+      MNUtil.log(`❌ 诊断失败: ${error.message || error}`);
+      MNUtil.showHUD(`诊断失败: ${error.message || "未知错误"}`);
+    }
+  });
+  
+  // filterByTaskStatus - 按状态筛选（修复版）
+  MNTaskGlobal.registerCustomAction("filterByTaskStatus", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    const statuses = ["未开始", "进行中", "已完成", "已归档"];
+    const selectedIndex = await MNUtil.userSelect("选择任务状态", "", statuses);
+    
+    if (selectedIndex === 0) return;
+    
+    const selectedStatus = statuses[selectedIndex - 1];
+    const boardKeys = ['target', 'project', 'action'];
+    
+    // 先尝试从看板筛选
+    let filteredTasks = TaskFilterEngine.filter({
+      boardKeys,
+      statuses: [selectedStatus]
+    });
+    
+    // 如果没有结果，尝试从整个笔记本筛选
+    if (filteredTasks.length === 0) {
+      MNUtil.log("⚠️ 看板中未找到符合条件的任务，尝试从整个笔记本搜索...");
+      filteredTasks = MNTaskManager.filterAllTasksByStatus(selectedStatus);
+    }
+    
+    if (filteredTasks.length === 0) {
+      MNUtil.showHUD(`没有找到状态为"${selectedStatus}"的任务`);
+    } else {
+      await showFilterResultsMenu(filteredTasks, `📊 ${selectedStatus}的任务`);
+    }
+  });
 
 }
 

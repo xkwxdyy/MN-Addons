@@ -160,6 +160,7 @@ class taskUtils {
   static errorLog = []
   static version
   static currentNoteId
+  static currentNotebookId
   static currentSelection
   static isSubscribe = false
   static mainPath
@@ -4688,6 +4689,29 @@ class taskConfig {
    * @type {NSUbiquitousKeyValueStore}
    */
   static cloudStore
+  
+  // 定义全局配置字段（跨笔记本共享）
+  static globalConfigFields = [
+    'windowState', 'action', 'dynamicAction', 'actions', 
+    'buttonConfig', 'popupConfig', 'addonLogos', 'imageScale', 
+    'syncConfig', 'dynamic', 'referenceIds'
+  ]
+  
+  // 定义笔记本配置字段（每个笔记本独立）
+  static notebookConfigFields = [
+    'rootNoteId', 'partitionCards'
+  ]
+  
+  // 获取当前笔记本 ID
+  static getCurrentNotebookId() {
+    try {
+      return taskUtils.currentNotebookId
+    } catch (error) {
+      taskUtils.addErrorLog(error, "getCurrentNotebookId")
+      return null
+    }
+  }
+  
   // static defaultConfig = {showEditorWhenEditingNote:false}
   static init(mainPath){
     // this.config = this.getByDefault("MNTask_config",this.defaultConfig)
@@ -4782,6 +4806,12 @@ class taskConfig {
   })
   return hasReplace
   }
+  
+  static hasNotebookContent() {
+    // 检查是否有任何看板绑定或根节点ID
+    return this.rootNoteId !== null || 
+           (this.partitionCards && Object.keys(this.partitionCards).length > 0)
+  }
   static getPopupConfig(key){
     if (this.popupConfig[key] !== undefined) {
       return this.popupConfig[key]
@@ -4839,6 +4869,46 @@ class taskConfig {
     }
     return config
   }
+  // 导入全局配置
+  static importGlobalConfig(config) {
+    try {
+      if (!MNUtil.isIOS() && config.windowState) { //iOS端不参与"MNTask_windowState"的云同步
+        this.windowState = config.windowState
+      }
+      let icloudSync = this.syncConfig.iCloudSync
+      if (config.syncConfig) this.syncConfig = config.syncConfig
+      if (config.dynamic !== undefined) this.dynamic = config.dynamic
+      if (config.addonLogos) this.addonLogos = config.addonLogos
+      if (config.referenceIds) this.referenceIds = config.referenceIds
+      if (config.actionKeys) this.action = config.actionKeys
+      if (config.actions) this.actions = config.actions
+      if (config.buttonConfig) this.buttonConfig = config.buttonConfig
+      if (config.popupConfig) this.popupConfig = config.popupConfig
+      if (config.dynamicActionKeys && config.dynamicActionKeys.length > 0) {
+        this.dynamicAction = config.dynamicActionKeys
+      } else if (config.actionKeys) {
+        this.dynamicAction = config.actionKeys
+      }
+      this.syncConfig.iCloudSync = icloudSync
+      return true
+    } catch (error) {
+      taskUtils.addErrorLog(error, "importGlobalConfig")
+      return false
+    }
+  }
+  
+  // 导入笔记本配置
+  static importNotebookConfig(config) {
+    try {
+      if (config.rootNoteId !== undefined) this.rootNoteId = config.rootNoteId
+      if (config.partitionCards) this.partitionCards = config.partitionCards
+      return true
+    } catch (error) {
+      taskUtils.addErrorLog(error, "importNotebookConfig")
+      return false
+    }
+  }
+  
   static importConfig(config){
     try {
     if (!MNUtil.isIOS()) { //iOS端不参与"MNTask_windowState"的云同步
@@ -4872,39 +4942,102 @@ class taskConfig {
     let lastModifyTime = this.syncConfig.lastModifyTime ?? 0
     return Math.max(lastSyncTime,lastModifyTime)
   }
+  
+  // 分离全局配置和笔记本配置
+  static separateConfig(config) {
+    const globalConfig = {}
+    const notebookConfig = {}
+    
+    for (const key in config) {
+      if (this.globalConfigFields.includes(key)) {
+        globalConfig[key] = config[key]
+      } else if (this.notebookConfigFields.includes(key)) {
+        notebookConfig[key] = config[key]
+      }
+    }
+    
+    return { globalConfig, notebookConfig }
+  }
+  
+  // 获取笔记本配置的 iCloud 键
+  static getNotebookConfigKey(notebookId) {
+    return `MNTask_notebook_${notebookId || this.getCurrentNotebookId()}`
+  }
+  
+  // 合并全局配置和笔记本配置
+  static mergeConfigs(globalConfig, notebookConfig) {
+    return { ...globalConfig, ...notebookConfig }
+  }
   static async readCloudConfig(msg = true,alert = false,force = false){
     try {
-    if (force) {
       this.checkCloudStore(false)
-      let cloudConfig = this.cloudStore.objectForKey("MNTask_totalConfig")
-      this.importConfig(cloudConfig)
-      this.syncConfig.lastSyncTime = Date.now()
-      this.save(undefined,undefined,false)
-      if (msg) {
-        MNUtil.showHUD("Import from iCloud")
+      const notebookId = this.getCurrentNotebookId()
+      if (!notebookId) {
+        if (msg) {
+          MNUtil.showHUD("无法获取笔记本 ID")
+        }
+        return false
       }
-      return true
-    }
-    if(!this.iCloudSync){
-      return false
-    }
-      this.checkCloudStore(false)
-      // this.cloudStore.removeObjectForKey("MNTask_totalConfig")
-      let cloudConfig = this.cloudStore.objectForKey("MNTask_totalConfig")
+      
+      // 读取全局配置
+      let cloudGlobalConfig = this.cloudStore.objectForKey("MNTask_totalConfig")
+      
+      // 读取笔记本配置
+      const notebookKey = this.getNotebookConfigKey(notebookId)
+      let cloudNotebookConfig = this.cloudStore.objectForKey(notebookKey)
+      
+      // 处理配置迁移（向后兼容）
+      if (cloudGlobalConfig && !cloudNotebookConfig) {
+        // 旧版本配置，需要迁移
+        const { globalConfig, notebookConfig } = this.separateConfig(cloudGlobalConfig)
+        cloudGlobalConfig = globalConfig
+        cloudNotebookConfig = notebookConfig
+        
+        // 保存分离后的配置
+        if (force || this.iCloudSync) {
+          this.cloudStore.setObjectForKey(globalConfig, "MNTask_totalConfig")
+          this.cloudStore.setObjectForKey(notebookConfig, notebookKey)
+        }
+      }
+      
+      if (force) {
+        // 强制导入
+        if (cloudGlobalConfig) {
+          this.importGlobalConfig(cloudGlobalConfig)
+        }
+        if (cloudNotebookConfig) {
+          this.importNotebookConfig(cloudNotebookConfig)
+        }
+        this.syncConfig.lastSyncTime = Date.now()
+        this.save(undefined,undefined,false)
+        if (msg) {
+          MNUtil.showHUD("Import from iCloud")
+        }
+        return true
+      }
+      
+      if(!this.iCloudSync){
+        return false
+      }
+      
+      // 合并配置用于比较
+      const cloudConfig = this.mergeConfigs(cloudGlobalConfig || {}, cloudNotebookConfig || {})
+      const localConfig = this.getAllConfig()
+      
       if (cloudConfig && cloudConfig.syncConfig) {
-        let same = this.deepEqual(cloudConfig, this.getAllConfig())
+        let same = this.deepEqual(cloudConfig, localConfig)
         if (same && !force) {
           if (msg) {
             MNUtil.showHUD("No change")
           }
           return false
         }
+        
         let localLatestTime = this.getLocalLatestTime()
-        let localOldestTime = Math.min(this.syncConfig.lastSyncTime,this.syncConfig.lastModifyTime)
-        let cloudLatestTime = Math.max(cloudConfig.syncConfig.lastSyncTime,cloudConfig.syncConfig.lastModifyTime)
-        let cloudOldestTime = Math.min(cloudConfig.syncConfig.lastSyncTime,cloudConfig.syncConfig.lastModifyTime)
+        let cloudLatestTime = Math.max(cloudConfig.syncConfig.lastSyncTime || 0, cloudConfig.syncConfig.lastModifyTime || 0)
+        let cloudOldestTime = Math.min(cloudConfig.syncConfig.lastSyncTime || 0, cloudConfig.syncConfig.lastModifyTime || 0)
+        
         if (localLatestTime < cloudOldestTime || force) {
-          // MNUtil.copy("Import from iCloud")
           if (alert) {
             let confirm = await MNUtil.confirm("MN Task: Import from iCloud?","MN Task: 是否导入iCloud配置？")
             if (!confirm) {
@@ -4914,11 +5047,20 @@ class taskConfig {
           if (msg) {
             MNUtil.showHUD("Import from iCloud")
           }
-          this.importConfig(cloudConfig)
+          
+          // 分别导入全局和笔记本配置
+          if (cloudGlobalConfig) {
+            this.importGlobalConfig(cloudGlobalConfig)
+          }
+          if (cloudNotebookConfig) {
+            this.importNotebookConfig(cloudNotebookConfig)
+          }
+          
           this.syncConfig.lastSyncTime = Date.now()
           this.save(undefined,undefined,false)
           return true
         }
+        
         if (this.syncConfig.lastModifyTime > (cloudConfig.syncConfig.lastModifyTime+1000) ) {
           if (alert) {
             let confirm = await MNUtil.confirm("MN Task: Uploading to iCloud?","MN Task: 是否上传配置到iCloud？")
@@ -4929,19 +5071,22 @@ class taskConfig {
           this.writeCloudConfig()
           return false
         }
+        
         let userSelect = await MNUtil.userSelect("MN Task\nConflict config, import or export?","配置冲突，请选择操作",["📥 Import / 导入","📤 Export / 导出"])
         switch (userSelect) {
           case 0:
             MNUtil.showHUD("User Cancel")
             return false
           case 1:
-            let success = this.importConfig(cloudConfig)
-            if (success) {
-              return true
-            }else{
-              MNUtil.showHUD("Invalid config in iCloud!")
-              return false
+            if (cloudGlobalConfig) {
+              this.importGlobalConfig(cloudGlobalConfig)
             }
+            if (cloudNotebookConfig) {
+              this.importNotebookConfig(cloudNotebookConfig)
+            }
+            this.syncConfig.lastSyncTime = Date.now()
+            this.save(undefined,undefined,false)
+            return true
           case 2:
             this.writeCloudConfig(msg,true)
             return false
@@ -4966,30 +5111,62 @@ class taskConfig {
   }
   static writeCloudConfig(msg = true,force = false){
   try {
+    this.checkCloudStore()
+    const notebookId = this.getCurrentNotebookId()
+    if (!notebookId) {
+      if (msg) {
+        MNUtil.showHUD("无法获取笔记本 ID")
+      }
+      return false
+    }
+    
     if (force) {//force下不检查订阅(由更上层完成)
-      this.checkCloudStore()
       this.syncConfig.lastSyncTime = Date.now()
       this.syncConfig.lastModifyTime = Date.now()
-      let cloudConfig = this.cloudStore.objectForKey("MNTask_totalConfig")
-      let config = this.getAllConfig()
-      if (MNUtil.isIOS() && cloudConfig && cloudConfig.windowState) {
+      
+      // 分离配置
+      const config = this.getAllConfig()
+      const { globalConfig, notebookConfig } = this.separateConfig(config)
+      
+      // 保存全局配置
+      let cloudGlobalConfig = this.cloudStore.objectForKey("MNTask_totalConfig")
+      if (MNUtil.isIOS() && cloudGlobalConfig && cloudGlobalConfig.windowState) {
         //iOS端不参与"MNTask_windowState"的云同步
-        config.windowState = cloudConfig.windowState
+        globalConfig.windowState = cloudGlobalConfig.windowState
       }
+      
       if (msg) {
         MNUtil.showHUD("Uploading...")
       }
-      this.cloudStore.setObjectForKey(config,"MNTask_totalConfig")
+      
+      // 分别保存全局配置和笔记本配置
+      this.cloudStore.setObjectForKey(globalConfig,"MNTask_totalConfig")
+      
+      // 只有在有实际内容时才保存笔记本配置
+      if (this.hasNotebookContent()) {
+        const notebookKey = this.getNotebookConfigKey(notebookId)
+        this.cloudStore.setObjectForKey(notebookConfig, notebookKey)
+      }
+      
       return true
     }
+    
     if(!this.iCloudSync){
       return false
     }
+    
     let iCloudSync = this.syncConfig.iCloudSync
-    this.checkCloudStore()
-    let cloudConfig = this.cloudStore.objectForKey("MNTask_totalConfig")
+    
+    // 读取云端配置进行比较
+    let cloudGlobalConfig = this.cloudStore.objectForKey("MNTask_totalConfig")
+    const notebookKey = this.getNotebookConfigKey(notebookId)
+    let cloudNotebookConfig = this.cloudStore.objectForKey(notebookKey)
+    
+    const cloudConfig = this.mergeConfigs(cloudGlobalConfig || {}, cloudNotebookConfig || {})
+    const localConfig = this.getAllConfig()
+    
     if (cloudConfig && cloudConfig.syncConfig) {
-      let same = this.deepEqual(cloudConfig, this.getAllConfig())
+      let same = this.deepEqual(cloudConfig, localConfig)
       if (same) {
         if (msg) {
           MNUtil.showHUD("No change")
@@ -4997,30 +5174,46 @@ class taskConfig {
         return false
       }
       let localLatestTime = this.getLocalLatestTime()
-      let cloudOldestTime = Math.min(cloudConfig.syncConfig.lastSyncTime,cloudConfig.syncConfig.lastModifyTime)
+      let cloudOldestTime = Math.min(cloudConfig.syncConfig.lastSyncTime || 0, cloudConfig.syncConfig.lastModifyTime || 0)
       if (localLatestTime < cloudOldestTime) {
-        let localTime = Date.parse(localLatestTime).toLocaleString()
-        let cloudTime = Date.parse(cloudOldestTime).toLocaleString()
-        MNUtil.showHUD("Conflict config: loca_"+localTime+", cloud_"+cloudTime)
+        let localTime = new Date(localLatestTime).toLocaleString()
+        let cloudTime = new Date(cloudOldestTime).toLocaleString()
+        MNUtil.showHUD("Conflict config: local_"+localTime+", cloud_"+cloudTime)
         return false
       }
     }
+    
     this.syncConfig.lastSyncTime = Date.now()
-    // this.syncConfig.lastModifyTime = Date.now()
+    
     if (this.dynamicAction.length === 0) {
       this.dynamicAction = this.action
     }
-    let config = this.getAllConfig()
-    if (MNUtil.isIOS() && cloudConfig && cloudConfig.windowState) {
+    
+    // 分离配置
+    const config = this.getAllConfig()
+    const { globalConfig, notebookConfig } = this.separateConfig(config)
+    
+    // 处理 iOS windowState
+    if (MNUtil.isIOS() && cloudGlobalConfig && cloudGlobalConfig.windowState) {
       //iOS端不参与"MNTask_windowState"的云同步
-      config.windowState = cloudConfig.windowState
+      globalConfig.windowState = cloudGlobalConfig.windowState
     }
-    // MNUtil.copyJSON(config)
+    
     if (msg) {
       MNUtil.showHUD("Uploading...")
     }
-    config.syncConfig.iCloudSync = iCloudSync
-    this.cloudStore.setObjectForKey(config,"MNTask_totalConfig")
+    
+    // 保存 iCloudSync 状态
+    globalConfig.syncConfig.iCloudSync = iCloudSync
+    
+    // 分别保存全局配置和笔记本配置
+    this.cloudStore.setObjectForKey(globalConfig,"MNTask_totalConfig")
+    
+    // 只有在有实际内容时才保存笔记本配置
+    if (this.hasNotebookContent()) {
+      this.cloudStore.setObjectForKey(notebookConfig, notebookKey)
+    }
+    
     this.syncConfig.lastSyncTime = Date.now()
     this.save("MNTask_syncConfig",undefined,false)
     return true
@@ -5589,6 +5782,11 @@ static getDescriptionByName(actionName){
     // 检查 null 值，避免崩溃
     if (noteId !== null && noteId !== undefined) {
       this.save("MNTask_rootNoteId", noteId)
+      
+      // 如果开启了 iCloud 同步，保存到云端
+      if (this.iCloudSync) {
+        this.writeCloudConfig(false)
+      }
     } else {
       // 如果是 null 或 undefined，删除键
       this.remove("MNTask_rootNoteId")
@@ -5613,6 +5811,11 @@ static getDescriptionByName(actionName){
   static savePartitionCard(partitionName, cardId) {
     this.partitionCards[partitionName] = cardId
     this.save("MNTask_partitionCards", this.partitionCards)
+    
+    // 如果开启了 iCloud 同步，保存到云端
+    if (this.iCloudSync) {
+      this.writeCloudConfig(false)
+    }
   }
   
   static clearPartitionCards() {
@@ -5649,6 +5852,163 @@ static getDescriptionByName(actionName){
       delete this.partitionCards[boardKey]
       this.save("MNTask_partitionCards", this.partitionCards)
     }
+  }
+  
+  // 清理空的笔记本配置
+  static async cleanEmptyNotebookConfigs() {
+    try {
+      this.checkCloudStore()
+      const allKeys = this.cloudStore.dictionaryRepresentation()
+      let cleanedCount = 0
+      let checkedCount = 0
+      
+      for (const key in allKeys) {
+        if (key.startsWith('MNTask_notebook_')) {
+          checkedCount++
+          const config = allKeys[key]
+          // 检查配置是否为空或只有默认值
+          if (this.isEmptyNotebookConfig(config)) {
+            this.cloudStore.removeObjectForKey(key)
+            cleanedCount++
+            MNUtil.log(`清理空配置: ${key}`)
+          }
+        }
+      }
+      
+      MNUtil.log(`检查了 ${checkedCount} 个笔记本配置，清理了 ${cleanedCount} 个空配置`)
+      return { checkedCount, cleanedCount }
+    } catch (error) {
+      taskUtils.addErrorLog(error, "cleanEmptyNotebookConfigs")
+      return { checkedCount: 0, cleanedCount: 0 }
+    }
+  }
+  
+  // 判断笔记本配置是否为空
+  static isEmptyNotebookConfig(config) {
+    if (!config) return true
+    
+    // 如果配置不是对象，返回 true
+    if (typeof config !== 'object') return true
+    
+    // 检查是否有实际内容
+    const hasRootNote = config.rootNoteId !== null && 
+                       config.rootNoteId !== undefined && 
+                       config.rootNoteId !== ""
+    
+    const hasPartitions = config.partitionCards && 
+                         typeof config.partitionCards === 'object' &&
+                         Object.keys(config.partitionCards).length > 0
+    
+    // 如果既没有根节点也没有分区卡片，认为是空配置
+    return !hasRootNote && !hasPartitions
+  }
+  
+  // 彻底清理所有 MNTask 配置
+  static async resetAllConfigs() {
+    try {
+      // 1. 清理所有 iCloud 配置
+      this.checkCloudStore()
+      const allKeys = this.cloudStore.dictionaryRepresentation()
+      let cleanedCount = 0
+      
+      for (const key in allKeys) {
+        if (key.startsWith('MNTask_')) {
+          this.cloudStore.removeObjectForKey(key)
+          cleanedCount++
+          MNUtil.log(`清理 iCloud 配置: ${key}`)
+        }
+      }
+      
+      // 2. 清理本地配置
+      const localKeys = [
+        "MNTask_windowState", "MNTask_dynamic", "MNTask_action",
+        "MNTask_dynamicAction", "MNTask_actionConfig", "MNTask_addonLogos",
+        "MNTask_referenceIds", "MNTask_rootNoteId", "MNTask_partitionCards",
+        "MNTask_buttonConfig", "MNTask_popupConfig", "MNTask_imageScale",
+        "MNTask_syncConfig"
+      ]
+      
+      localKeys.forEach(key => {
+        this.remove(key)
+      })
+      
+      // 3. 重置内存中的配置到默认值
+      this.windowState = this.defaultWindowState
+      this.dynamic = true
+      this.action = this.getDefaultActionKeys()
+      this.dynamicAction = this.action
+      this.actions = this.getActions()
+      this.addonLogos = {}
+      this.referenceIds = {}
+      this.rootNoteId = null
+      this.partitionCards = {}
+      this.buttonConfig = this.defalutButtonConfig
+      this.popupConfig = this.defaultPopupReplaceConfig
+      this.imageScale = {}
+      this.syncConfig = this.defaultSyncConfig
+      
+      // 4. 同步 iCloud
+      if (this.cloudStore) {
+        this.cloudStore.synchronize()
+      }
+      
+      return { success: true, cleanedCount }
+    } catch (error) {
+      taskUtils.addErrorLog(error, "resetAllConfigs")
+      return { success: false, cleanedCount: 0 }
+    }
+  }
+  
+  // 清理当前笔记本的看板配置
+  static clearCurrentNotebookBoards() {
+    this.rootNoteId = null
+    this.partitionCards = {}
+    this.remove("MNTask_rootNoteId")
+    this.save("MNTask_partitionCards", {})
+    
+    // 如果开启了 iCloud 同步，也更新云端
+    if (this.iCloudSync) {
+      this.writeCloudConfig(false)
+    }
+  }
+  
+  // 清理无效的看板绑定
+  static cleanInvalidBoardBindings() {
+    let cleaned = false
+    let cleanedBoards = []
+    
+    // 检查根节点
+    if (this.rootNoteId) {
+      const note = MNNote.new(this.rootNoteId)
+      if (!note) {
+        this.clearRootNoteId()
+        cleaned = true
+        cleanedBoards.push("根目录")
+      }
+    }
+    
+    // 检查分区卡片
+    const boardNames = {
+      'target': '目标看板',
+      'project': '项目看板',
+      'action': '动作看板',
+      'completed': '已完成看板',
+      'today': '今日看板'
+    }
+    
+    for (const key in this.partitionCards) {
+      const noteId = this.partitionCards[key]
+      if (noteId) {
+        const note = MNNote.new(noteId)
+        if (!note) {
+          this.clearBoardNoteId(key)
+          cleaned = true
+          cleanedBoards.push(boardNames[key] || key)
+        }
+      }
+    }
+    
+    return { cleaned, cleanedBoards }
   }
 
 }

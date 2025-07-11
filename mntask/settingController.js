@@ -1188,6 +1188,78 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     MNUtil.postNotification("refreshView",{})
     // MNUtil.copyJSON(config)
   },
+  cleanEmptyConfigs: async function() {
+    let self = getTaskSettingController()
+    
+    // 确认对话框
+    const confirm = await MNUtil.confirm(
+      "清理空配置", 
+      "此操作将清理所有未使用的笔记本配置，释放 iCloud 存储空间。是否继续？"
+    )
+    
+    if (!confirm) return
+    
+    // 显示处理中
+    MNUtil.showHUD("正在清理空配置...")
+    
+    // 执行清理
+    const result = await taskConfig.cleanEmptyNotebookConfigs()
+    
+    // 显示结果
+    if (result.cleanedCount > 0) {
+      MNUtil.showHUD(`✅ 成功清理 ${result.cleanedCount} 个空配置`)
+      
+      // 同步到 iCloud
+      if (taskConfig.iCloudSync) {
+        taskConfig.cloudStore.synchronize()
+      }
+    } else if (result.checkedCount > 0) {
+      MNUtil.showHUD(`✅ 检查了 ${result.checkedCount} 个配置，没有需要清理的空配置`)
+    } else {
+      MNUtil.showHUD("❌ 清理失败，请稍后重试")
+    }
+  },
+  resetAllConfigs: async function() {
+    let self = getTaskSettingController()
+    
+    // 强警告对话框
+    const confirm = await MNUtil.confirm(
+      "⚠️ 重置所有配置", 
+      "此操作将删除所有 MNTask 配置（包括本地和 iCloud），所有看板绑定将被清除。此操作不可恢复！\n\n确定要继续吗？"
+    )
+    
+    if (!confirm) return
+    
+    // 二次确认
+    const doubleConfirm = await MNUtil.confirm(
+      "⚠️ 最终确认", 
+      "真的要删除所有配置吗？所有任务看板设置都将丢失！"
+    )
+    
+    if (!doubleConfirm) return
+    
+    // 显示处理中
+    MNUtil.showHUD("正在重置所有配置...")
+    
+    try {
+      // 执行重置
+      await taskConfig.resetAllConfigs()
+      
+      MNUtil.showHUD("✅ 所有配置已重置")
+      
+      // 关闭设置面板
+      MNUtil.delay(1).then(() => {
+        self.closeButtonTapped()
+        
+        // 通知刷新视图
+        MNUtil.postNotification("refreshView", {})
+      })
+      
+    } catch (error) {
+      MNUtil.showHUD("❌ 重置失败：" + error.message)
+      MNUtil.addErrorLog(error, "resetAllConfigs")
+    }
+  },
   changeTaskDirection:async function (button) {
     let self = getTaskSettingController()
     var commandTable = []
@@ -1531,6 +1603,8 @@ taskSettingController.prototype.settingViewLayout = function (){
     taskFrame.set(this.iCloudButton, 5, 205, 160,35)
     taskFrame.set(this.directionButton, 5, 245, width-10,35)
     taskFrame.set(this.dynamicOrderButton, 5, 285, width-10,35)
+    taskFrame.set(this.cleanConfigButton, 5, 325, width-10,35)
+    taskFrame.set(this.resetAllConfigsButton, 5, 365, width-10,35)
     taskFrame.set(this.exportButton, 170, 205, (width-180)/2,35)
     taskFrame.set(this.importButton, 175+(width-180)/2, 205, (width-180)/2,35)
     
@@ -1763,6 +1837,14 @@ try {
   this.createButton("dynamicOrderButton","toggleDynamicOrder:","advanceView")
   MNButton.setColor(this.dynamicOrderButton, "#457bd3",0.8)
   MNButton.setTitle(this.dynamicOrderButton, "Enable Dynamic Order: "+(taskConfig.getWindowState("dynamicOrder")?"✅":"❌"),undefined,true)
+
+  this.createButton("cleanConfigButton","cleanEmptyConfigs:","advanceView")
+  MNButton.setColor(this.cleanConfigButton, "#d67b5c",0.8)
+  MNButton.setTitle(this.cleanConfigButton, "清理空配置 🧹",undefined,true)
+
+  this.createButton("resetAllConfigsButton","resetAllConfigs:","advanceView")
+  MNButton.setColor(this.resetAllConfigsButton, "#ff3b30",0.9)
+  MNButton.setTitle(this.resetAllConfigsButton, "⚠️ 重置所有配置",undefined,true)
 
   this.createScrollView("scrollview", "configView")
   // this.scrollview = UIScrollView.new()
@@ -2647,7 +2729,7 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
  * @param {string} webViewName - WebView 的名称，默认为 'todayBoardWebViewInstance'
  * @returns {Promise} 返回执行结果的 Promise
  */
-taskSettingController.prototype.runJavaScript = async function(script, webViewName = 'todayBoardWebViewInstance') {
+taskSettingController.prototype.runJavaScriptInWebView = async function(script, webViewName = 'todayBoardWebViewInstance') {
   return new Promise((resolve, reject) => {
     try {
       if (!this[webViewName]) {
@@ -2655,7 +2737,8 @@ taskSettingController.prototype.runJavaScript = async function(script, webViewNa
         return
       }
       
-      this[webViewName].evaluateJavaScript(script, result => {
+      // 使用 evaluateJavaScript 方法（与 webviewInput 保持一致）
+      this[webViewName].evaluateJavaScript(script, (result) => {
         resolve(result)
       })
     } catch (error) {
@@ -2671,6 +2754,12 @@ taskSettingController.prototype.runJavaScript = async function(script, webViewNa
 taskSettingController.prototype.loadTodayBoardData = async function() {
   try {
     if (!this.todayBoardWebViewInstance) {
+      MNUtil.log("❌ WebView 实例不存在")
+      return
+    }
+    
+    if (!this.todayBoardWebViewInitialized) {
+      MNUtil.log("❌ WebView 未初始化完成")
       return
     }
     
@@ -2680,41 +2769,90 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
       return
     }
     
-    // 获取今日任务
-    const todayTasks = MNTaskManager.filterTodayTasks()
+    // 获取今日任务（使用改进的筛选逻辑）
+    let todayTasks = MNTaskManager.filterTodayTasks()
+    
+    // 如果默认搜索没有结果，尝试全局搜索
+    if (todayTasks.length === 0) {
+      MNUtil.log("⚠️ 默认看板无今日任务，尝试全局搜索")
+      todayTasks = MNTaskManager.filterTodayTasks({
+        includeAll: true,
+        statuses: ['未开始', '进行中', '已完成']
+      })
+    }
+    
+    MNUtil.log(`📊 找到 ${todayTasks.length} 个今日任务`)
     
     // 转换为适合显示的格式
     const displayTasks = todayTasks.map(task => {
-      const taskInfo = MNTaskManager.parseTaskTitle(task.noteTitle)
-      const priorityInfo = MNTaskManager.getTaskPriority(task)
-      const timeInfo = MNTaskManager.getPlannedTime(task)
-      const progressInfo = MNTaskManager.getTaskProgress(task)
-      
-      // 检查是否过期
-      const todayField = TaskFieldUtils.getFieldContent(task, "今日")
-      const overdueInfo = MNTaskManager.checkIfOverdue(todayField)
-      
-      return {
-        id: task.noteId,
-        title: taskInfo.content,
-        type: taskInfo.type,
-        status: taskInfo.status,
-        priority: priorityInfo || '低',
-        plannedTime: timeInfo,
-        progress: progressInfo,
-        isOverdue: overdueInfo.isOverdue,
-        overdueDays: overdueInfo.days,
-        launchUrl: MNTaskManager.getLaunchLink(task),
-        path: taskInfo.path || ''
+      try {
+        const taskInfo = MNTaskManager.parseTaskTitle(task.noteTitle)
+        const priorityInfo = MNTaskManager.getTaskPriority(task)
+        const timeInfo = MNTaskManager.getPlannedTime(task)
+        const progressInfo = MNTaskManager.getTaskProgress(task)
+        
+        // 检查是否过期
+        const todayField = TaskFieldUtils.getFieldContent(task, "今日")
+        const overdueInfo = MNTaskManager.checkIfOverdue(todayField)
+        
+        // 获取启动链接
+        let launchLink = null
+        try {
+          launchLink = MNTaskManager.getLaunchLink(task)
+        } catch (e) {
+          // 忽略获取链接失败的错误
+        }
+        
+        return {
+          id: task.noteId,
+          title: taskInfo.content || task.noteTitle,
+          type: taskInfo.type || '任务',
+          status: taskInfo.status || '未开始',
+          priority: priorityInfo || '低',
+          plannedTime: timeInfo,
+          progress: progressInfo || 0,
+          isOverdue: overdueInfo.isOverdue,
+          overdueDays: overdueInfo.days,
+          launchUrl: launchLink,
+          path: taskInfo.path || ''
+        }
+      } catch (error) {
+        MNUtil.log(`⚠️ 处理任务失败: ${error.message}`)
+        // 返回基本信息
+        return {
+          id: task.noteId,
+          title: task.noteTitle,
+          type: '任务',
+          status: '未知',
+          priority: '低',
+          plannedTime: null,
+          progress: 0,
+          isOverdue: false,
+          overdueDays: 0,
+          launchUrl: null,
+          path: ''
+        }
       }
     })
     
-    // 传递数据到 WebView（使用新的 runJavaScript 方法）
+    // 传递数据到 WebView
     const encodedTasks = encodeURIComponent(JSON.stringify(displayTasks))
-    const script = `if(typeof loadTasksFromPlugin !== 'undefined') { loadTasksFromPlugin('${encodedTasks}') }`
+    const script = `if(typeof loadTasksFromPlugin !== 'undefined') { 
+      loadTasksFromPlugin('${encodedTasks}'); 
+      return 'success';
+    } else {
+      return 'function not found';
+    }`
     
-    // 使用与 MNUtils 相同的异步执行模式
-    await this.runJavaScript(script)
+    // 使用异步执行并检查结果
+    const result = await this.runJavaScriptInWebView(script)
+    
+    if (result === 'function not found') {
+      MNUtil.log("❌ loadTasksFromPlugin 函数未找到，可能 WebView 还未准备好")
+      // 延迟后重试一次
+      await MNUtil.delay(0.5)
+      await this.runJavaScriptInWebView(script)
+    }
     
     MNUtil.log(`✅ 今日看板数据加载成功，共 ${displayTasks.length} 个任务`)
     
@@ -2734,27 +2872,354 @@ taskSettingController.prototype.handleTodayBoardProtocol = function(url) {
     const action = urlParts[0]
     const params = this.parseQueryString(urlParts[1] || '')
     
+    MNUtil.log(`📱 处理今日看板协议: ${action}`, params)
+    
     switch (action) {
       case 'updateStatus':
-        this.updateTaskStatus(params.id)
+        this.handleUpdateTaskStatus(params.id)
         break
+        
       case 'launch':
-        this.launchTask(params.id)
+        this.handleLaunchTask(params.id)
         break
+        
       case 'viewDetail':
-        this.viewTaskDetail(params.id)
+        this.handleViewTaskDetail(params.id)
         break
+        
       case 'refresh':
-        this.loadTodayBoardData()
+        this.handleRefreshBoard()
         break
+        
+      case 'export':
+        this.handleExportData()
+        break
+        
+      case 'quickStart':
+        this.handleQuickStart()
+        break
+        
       case 'showHUD':
         if (params.message) {
           MNUtil.showHUD(decodeURIComponent(params.message))
         }
         break
+        
+      default:
+        MNUtil.log(`⚠️ 未知的协议动作: ${action}`)
     }
   } catch (error) {
     taskUtils.addErrorLog(error, "handleTodayBoardProtocol")
+  }
+}
+
+/**
+ * 处理更新任务状态
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleUpdateTaskStatus = function(taskId) {
+  try {
+    if (!taskId) return
+    
+    const task = MNNote.new(taskId)
+    if (!task) {
+      MNUtil.showHUD("任务不存在")
+      return
+    }
+    
+    // 使用 undoGrouping 确保可以撤销
+    MNUtil.undoGrouping(() => {
+      MNTaskManager.toggleTaskStatus(task, true)
+    })
+    
+    // 延迟刷新数据，确保状态已更新
+    MNUtil.delay(0.3).then(() => {
+      this.refreshTodayBoardData()
+    })
+    
+    MNUtil.showHUD("状态已更新")
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleUpdateTaskStatus")
+    MNUtil.showHUD("更新状态失败")
+  }
+}
+
+/**
+ * 处理启动任务
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleLaunchTask = function(taskId) {
+  try {
+    if (!taskId) return
+    
+    const task = MNNote.new(taskId)
+    if (!task) {
+      MNUtil.showHUD("任务不存在")
+      return
+    }
+    
+    const launchLink = MNTaskManager.getLaunchLink(task)
+    if (!launchLink) {
+      MNUtil.showHUD("此任务没有启动链接")
+      return
+    }
+    
+    const linkType = MNTaskManager.getLinkType(launchLink)
+    
+    switch (linkType) {
+      case 'cardLink':
+        const targetNote = MNNote.new(launchLink.noteId)
+        if (targetNote) {
+          targetNote.focusInFloatMindMap(0.5)
+          this.hide() // 隐藏设置面板
+        }
+        break
+        
+      case 'uiState':
+        task.focusInFloatMindMap(0.5)
+        this.hide()
+        break
+        
+      case 'external':
+        MNUtil.openURL(launchLink.url)
+        break
+        
+      default:
+        MNUtil.showHUD("未知的链接类型")
+    }
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleLaunchTask")
+    MNUtil.showHUD("启动任务失败")
+  }
+}
+
+/**
+ * 处理查看任务详情
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleViewTaskDetail = function(taskId) {
+  try {
+    if (!taskId) return
+    
+    const task = MNNote.new(taskId)
+    if (!task) {
+      MNUtil.showHUD("任务不存在")
+      return
+    }
+    
+    // 在浮窗中显示任务
+    task.focusInFloatMindMap(0.5)
+    // 隐藏设置面板
+    this.hide()
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleViewTaskDetail")
+    MNUtil.showHUD("查看详情失败")
+  }
+}
+
+/**
+ * 处理刷新看板
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleRefreshBoard = function() {
+  try {
+    MNUtil.showHUD("🔄 正在刷新...")
+    
+    // 先检查并修复旧版今日标记
+    if (typeof MNTaskManager !== 'undefined' && MNTaskManager.fixLegacyTodayMarks) {
+      const fixedCount = MNTaskManager.fixLegacyTodayMarks()
+      if (fixedCount > 0) {
+        MNUtil.showHUD(`✅ 已修复 ${fixedCount} 个旧版标记`)
+      }
+    }
+    
+    // 刷新数据
+    this.loadTodayBoardData()
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleRefreshBoard")
+    MNUtil.showHUD("刷新失败")
+  }
+}
+
+/**
+ * 处理导出数据
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleExportData = function() {
+  try {
+    if (typeof MNTaskManager === 'undefined') {
+      MNUtil.showHUD("任务管理器未初始化")
+      return
+    }
+    
+    const todayTasks = MNTaskManager.filterTodayTasks()
+    const report = MNTaskManager.generateTodayReport(todayTasks)
+    
+    MNUtil.copy(report)
+    MNUtil.showHUD("📋 今日任务报告已复制到剪贴板")
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleExportData")
+    MNUtil.showHUD("导出失败")
+  }
+}
+
+/**
+ * 处理快速启动
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleQuickStart = function() {
+  try {
+    if (typeof MNTaskManager === 'undefined') {
+      MNUtil.showHUD("任务管理器未初始化")
+      return
+    }
+    
+    // 获取第一个进行中的任务
+    const todayTasks = MNTaskManager.filterTodayTasks()
+    const inProgressTasks = todayTasks.filter(task => {
+      const taskInfo = MNTaskManager.parseTaskTitle(task.noteTitle)
+      return taskInfo.status === '进行中'
+    })
+    
+    if (inProgressTasks.length === 0) {
+      MNUtil.showHUD("没有进行中的任务")
+      return
+    }
+    
+    // 启动第一个任务
+    this.handleLaunchTask(inProgressTasks[0].noteId)
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleQuickStart")
+    MNUtil.showHUD("快速启动失败")
+  }
+}
+
+/**
+ * 刷新今日看板数据（增量更新）
+ * @this {settingController}
+ */
+taskSettingController.prototype.refreshTodayBoardData = async function() {
+  try {
+    if (!this.todayBoardWebViewInstance || !this.todayBoardWebViewInitialized) {
+      return
+    }
+    
+    // 重新加载数据
+    await this.loadTodayBoardData()
+  } catch (error) {
+    taskUtils.addErrorLog(error, "refreshTodayBoardData")
+  }
+}
+
+/**
+ * 更新单个任务（增量更新）
+ * @param {string} taskId - 任务ID
+ * @this {settingController}
+ */
+taskSettingController.prototype.updateSingleTask = async function(taskId) {
+  try {
+    if (!this.todayBoardWebViewInstance || !this.todayBoardWebViewInitialized) {
+      return
+    }
+    
+    const task = MNNote.new(taskId)
+    if (!task) return
+    
+    // 转换任务数据
+    const taskInfo = MNTaskManager.parseTaskTitle(task.noteTitle)
+    const priorityInfo = MNTaskManager.getTaskPriority(task)
+    const timeInfo = MNTaskManager.getPlannedTime(task)
+    const progressInfo = MNTaskManager.getTaskProgress(task)
+    const todayField = TaskFieldUtils.getFieldContent(task, "今日")
+    const overdueInfo = MNTaskManager.checkIfOverdue(todayField)
+    
+    const displayTask = {
+      id: task.noteId,
+      title: taskInfo.content || task.noteTitle,
+      type: taskInfo.type || '任务',
+      status: taskInfo.status || '未开始',
+      priority: priorityInfo || '低',
+      plannedTime: timeInfo,
+      progress: progressInfo || 0,
+      isOverdue: overdueInfo.isOverdue,
+      overdueDays: overdueInfo.days,
+      launchUrl: MNTaskManager.getLaunchLink(task),
+      path: taskInfo.path || ''
+    }
+    
+    // 发送更新到 WebView
+    const encodedTask = encodeURIComponent(JSON.stringify(displayTask))
+    const script = `if(typeof updateTask !== 'undefined') { updateTask('${encodedTask}') }`
+    await this.runJavaScriptInWebView(script)
+    
+    MNUtil.log(`✅ 更新任务: ${displayTask.title}`)
+  } catch (error) {
+    taskUtils.addErrorLog(error, "updateSingleTask")
+  }
+}
+
+/**
+ * 添加新任务到看板
+ * @param {MNNote} task - 任务笔记
+ * @this {settingController}
+ */
+taskSettingController.prototype.addTaskToBoard = async function(task) {
+  try {
+    if (!this.todayBoardWebViewInstance || !this.todayBoardWebViewInitialized) {
+      return
+    }
+    
+    // 转换任务数据
+    const taskInfo = MNTaskManager.parseTaskTitle(task.noteTitle)
+    const priorityInfo = MNTaskManager.getTaskPriority(task)
+    const timeInfo = MNTaskManager.getPlannedTime(task)
+    const progressInfo = MNTaskManager.getTaskProgress(task)
+    const todayField = TaskFieldUtils.getFieldContent(task, "今日")
+    const overdueInfo = MNTaskManager.checkIfOverdue(todayField)
+    
+    const displayTask = {
+      id: task.noteId,
+      title: taskInfo.content || task.noteTitle,
+      type: taskInfo.type || '任务',
+      status: taskInfo.status || '未开始',
+      priority: priorityInfo || '低',
+      plannedTime: timeInfo,
+      progress: progressInfo || 0,
+      isOverdue: overdueInfo.isOverdue,
+      overdueDays: overdueInfo.days,
+      launchUrl: MNTaskManager.getLaunchLink(task),
+      path: taskInfo.path || ''
+    }
+    
+    // 发送新任务到 WebView
+    const encodedTask = encodeURIComponent(JSON.stringify(displayTask))
+    const script = `if(typeof addTask !== 'undefined') { addTask('${encodedTask}') }`
+    await this.runJavaScriptInWebView(script)
+    
+    MNUtil.log(`✅ 添加任务到看板: ${displayTask.title}`)
+  } catch (error) {
+    taskUtils.addErrorLog(error, "addTaskToBoard")
+  }
+}
+
+/**
+ * 从看板移除任务
+ * @param {string} taskId - 任务ID
+ * @this {settingController}
+ */
+taskSettingController.prototype.removeTaskFromBoard = async function(taskId) {
+  try {
+    if (!this.todayBoardWebViewInstance || !this.todayBoardWebViewInitialized) {
+      return
+    }
+    
+    // 从 WebView 移除任务
+    const script = `if(typeof removeTask !== 'undefined') { removeTask('${taskId}') }`
+    await this.runJavaScriptInWebView(script)
+    
+    MNUtil.log(`✅ 从看板移除任务: ${taskId}`)
+  } catch (error) {
+    taskUtils.addErrorLog(error, "removeTaskFromBoard")
   }
 }
 

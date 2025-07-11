@@ -230,8 +230,19 @@ todayBoardController.prototype.loadTaskData = function() {
       return;
     }
     
-    // 获取今日任务
-    const todayTasks = MNTaskManager.filterTodayTasks();
+    // 获取今日任务（尝试从更多地方搜索）
+    let todayTasks = MNTaskManager.filterTodayTasks();
+    
+    // 如果默认搜索没有结果，尝试全局搜索
+    if (todayTasks.length === 0) {
+      MNUtil.log("⚠️ 默认看板无今日任务，尝试全局搜索");
+      todayTasks = MNTaskManager.filterTodayTasks({
+        includeAll: true,
+        statuses: ['未开始', '进行中', '已完成']  // 包含已完成的任务
+      });
+    }
+    
+    MNUtil.log(`📊 找到 ${todayTasks.length} 个今日任务`);
     
     // 转换为适合显示的格式
     const displayTasks = todayTasks.map(task => {
@@ -467,6 +478,19 @@ todayBoardController.prototype.viewTaskDetail = function(taskId) {
 // 刷新看板
 todayBoardController.prototype.refreshBoard = function(button) {
   MNUtil.showHUD("🔄 正在刷新...");
+  
+  // 自动修复旧版今日标记
+  if (typeof MNTaskManager !== 'undefined' && MNTaskManager.fixLegacyTodayMarks) {
+    const fixedCount = MNTaskManager.fixLegacyTodayMarks();
+    if (fixedCount > 0) {
+      // 延迟一下再加载数据，确保修复完成
+      MNUtil.delay(0.5).then(() => {
+        this.loadTaskData();
+      });
+      return;
+    }
+  }
+  
   this.loadTaskData();
 }
 

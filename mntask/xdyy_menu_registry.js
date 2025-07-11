@@ -102,6 +102,10 @@ function registerAllMenuTemplates() {
           action: "refreshTodayBoard",
           menuTitle: "🔄 刷新今日看板"
         },
+        {
+          action: "fixLegacyTodayMarks",
+          menuTitle: "🔧 修复旧版今日标记"
+        },
       ]
     }
   });

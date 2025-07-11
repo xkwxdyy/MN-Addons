@@ -3284,8 +3284,9 @@ taskSettingController.prototype.switchWebViewToLog = function() {
 /**
  * 加载项目列表数据
  * @this {settingController}
+ * @param {string|null} parentId - 父项目ID，null 表示加载顶级项目
  */
-taskSettingController.prototype.loadProjectsData = async function() {
+taskSettingController.prototype.loadProjectsData = async function(parentId = null) {
   try {
     MNUtil.log("📂 开始加载项目列表")
     
@@ -3306,16 +3307,46 @@ taskSettingController.prototype.loadProjectsData = async function() {
       return
     }
     
-    // 从目标看板和项目看板获取所有项目类型的任务
-    const projectTasks = TaskFilterEngine.filter({
-      boardKeys: ['target', 'project'],  // 从目标看板和项目看板获取
-      customFilter: (task) => {
-        const taskInfo = MNTaskManager.parseTaskTitle(task.noteTitle)
-        return taskInfo.type === '项目'
-      }
-    })
+    let projectTasks = []
     
-    MNUtil.log(`📊 从目标和项目看板找到 ${projectTasks.length} 个项目任务`)
+    if (parentId === null) {
+      // 加载顶级项目（从目标看板和项目看板）
+      projectTasks = TaskFilterEngine.filter({
+        boardKeys: ['target', 'project'],  // 从目标看板和项目看板获取
+        customFilter: (task) => {
+          const taskInfo = MNTaskManager.parseTaskTitle(task.noteTitle)
+          return taskInfo.type === '项目'
+        }
+      })
+      
+      MNUtil.log(`📊 从目标和项目看板找到 ${projectTasks.length} 个顶级项目`)
+    } else {
+      // 加载指定项目的子项目
+      const parentNote = MNNote.new(parentId)
+      if (!parentNote) {
+        MNUtil.showHUD("父项目不存在")
+        return
+      }
+      
+      // 递归获取所有子项目
+      const getSubProjects = (note) => {
+        const subProjects = []
+        if (note.childNotes) {
+          for (let child of note.childNotes) {
+            if (MNTaskManager.isTaskCard(child)) {
+              const taskInfo = MNTaskManager.parseTaskTitle(child.noteTitle)
+              if (taskInfo.type === '项目') {
+                subProjects.push(child)
+              }
+            }
+          }
+        }
+        return subProjects
+      }
+      
+      projectTasks = getSubProjects(parentNote)
+      MNUtil.log(`📊 在项目 ${parentNote.noteTitle} 下找到 ${projectTasks.length} 个子项目`)
+    }
     
     // 递归获取项目的子任务
     const getProjectChildren = (projectNote) => {
@@ -3339,12 +3370,27 @@ taskSettingController.prototype.loadProjectsData = async function() {
       // 获取该项目下的子任务数量
       const childTasks = getProjectChildren(task)
       
+      // 检查是否有子项目
+      let hasSubProjects = false
+      if (task.childNotes) {
+        for (let child of task.childNotes) {
+          if (MNTaskManager.isTaskCard(child)) {
+            const childInfo = MNTaskManager.parseTaskTitle(child.noteTitle)
+            if (childInfo.type === '项目') {
+              hasSubProjects = true
+              break
+            }
+          }
+        }
+      }
+      
       return {
         id: task.noteId,
         name: taskInfo.content || task.noteTitle,
         icon: '📁',
         taskCount: childTasks.length,
-        status: taskInfo.status || '未开始'
+        status: taskInfo.status || '未开始',
+        hasSubProjects: hasSubProjects
       }
     })
     
@@ -3375,8 +3421,9 @@ taskSettingController.prototype.loadProjectsData = async function() {
  * 加载特定项目的任务
  * @this {settingController}
  * @param {string} projectId - 项目ID
+ * @param {Object} filters - 筛选条件
  */
-taskSettingController.prototype.loadProjectTasks = async function(projectId) {
+taskSettingController.prototype.loadProjectTasks = async function(projectId, filters = null) {
   try {
     MNUtil.log(`📁 开始加载项目任务: ${projectId}`)
     
@@ -3397,7 +3444,7 @@ taskSettingController.prototype.loadProjectTasks = async function(projectId) {
       return
     }
     
-    // 递归获取项目的子任务
+    // 递归获取项目的子任务（考虑筛选条件）
     const getProjectChildren = (parentNote) => {
       const children = []
       if (parentNote.childNotes) {
@@ -3405,9 +3452,26 @@ taskSettingController.prototype.loadProjectTasks = async function(projectId) {
           if (MNTaskManager.isTaskCard(child)) {
             // 检查任务状态
             const taskInfo = MNTaskManager.parseTaskTitle(child.noteTitle)
-            if (['未开始', '进行中', '已完成'].includes(taskInfo.status)) {
-              children.push(child)
+            
+            // 应用筛选条件（如果有）
+            if (filters) {
+              // 特殊规则：隐藏已完成的动作
+              if (filters.hideCompletedActions && 
+                  taskInfo.type === '动作' && 
+                  taskInfo.status === '已完成') {
+                continue
+              }
+              
+              // 常规筛选
+              if (filters.statuses && !filters.statuses.includes(taskInfo.status)) {
+                continue
+              }
+              if (filters.types && !filters.types.includes(taskInfo.type)) {
+                continue
+              }
             }
+            
+            children.push(child)
           }
           // 递归获取子任务
           children.push(...getProjectChildren(child))
@@ -3570,6 +3634,14 @@ taskSettingController.prototype.handleTodayBoardProtocol = function(url) {
         this.loadProjectsData()
         break
         
+      case 'loadSubProjects':
+        if (params.parentId) {
+          this.loadProjectsData(decodeURIComponent(params.parentId))
+        } else {
+          MNUtil.showHUD("父项目ID参数缺失")
+        }
+        break
+        
       case 'loadProjectTasks':
         if (params.projectId) {
           this.loadProjectTasks(decodeURIComponent(params.projectId))
@@ -3594,6 +3666,20 @@ taskSettingController.prototype.handleTodayBoardProtocol = function(url) {
         if (params.taskId) {
           this.viewTaskDetail(params.taskId)
         }
+        break
+        
+      case 'loadTaskQueueData':
+        this.loadTaskQueueData()
+        break
+        
+      case 'moveToToday':
+        if (params.taskId) {
+          this.moveTaskToToday(params.taskId)
+        }
+        break
+        
+      case 'exportTaskQueue':
+        this.exportTaskQueue()
         break
         
       default:
@@ -4497,6 +4583,156 @@ taskSettingController.prototype.viewTaskDetail = function(taskId) {
     taskUtils.addErrorLog(error, "viewTaskDetail")
   }
 }
+
+/**
+ * 加载任务队列数据
+ * @this {settingController}
+ */
+taskSettingController.prototype.loadTaskQueueData = async function() {
+  try {
+    MNUtil.log("📋 开始加载任务队列数据")
+    
+    if (!this.todayBoardWebViewInstance) {
+      MNUtil.log("❌ WebView 实例不存在")
+      return
+    }
+    
+    // 确保必要的模块已定义
+    if (typeof MNTaskManager === 'undefined') {
+      MNUtil.showHUD("任务管理器未初始化")
+      return
+    }
+    
+    if (typeof TaskFilterEngine === 'undefined') {
+      MNUtil.showHUD("任务筛选引擎未初始化")
+      return
+    }
+    
+    // 从所有看板获取未完成的任务
+    const allTasks = TaskFilterEngine.filter({
+      boardKeys: ['target', 'project', 'action'],  // 从三个主要看板获取
+      customFilter: (task) => {
+        const taskInfo = MNTaskManager.parseTaskTitle(task.noteTitle)
+        // 只获取未开始和进行中的任务
+        return taskInfo.status === '未开始' || taskInfo.status === '进行中'
+      }
+    })
+    
+    MNUtil.log(`📊 找到 ${allTasks.length} 个待处理任务`)
+    
+    // 转换为适合显示的格式
+    const queueTasks = allTasks.map(task => {
+      try {
+        const taskInfo = MNTaskManager.parseTaskTitle(task.noteTitle)
+        const priorityInfo = MNTaskManager.getTaskPriority(task)
+        const timeInfo = MNTaskManager.getPlannedTime(task)
+        const progressInfo = MNTaskManager.getTaskProgress(task)
+        
+        // 检查是否过期
+        const todayField = TaskFieldUtils.getFieldContent(task, "今日")
+        const overdueInfo = MNTaskManager.checkIfOverdue(todayField)
+        
+        // 获取所属项目
+        let projectName = null
+        let currentNote = task.parentNote
+        while (currentNote) {
+          if (MNTaskManager.isTaskCard(currentNote)) {
+            const parentInfo = MNTaskManager.parseTaskTitle(currentNote.noteTitle)
+            if (parentInfo.type === '项目') {
+              projectName = parentInfo.content || currentNote.noteTitle
+              break
+            }
+          }
+          currentNote = currentNote.parentNote
+        }
+        
+        return {
+          id: task.noteId,
+          title: taskInfo.content || task.noteTitle,
+          type: taskInfo.type || '任务',
+          status: taskInfo.status || '未开始',
+          priority: priorityInfo || '低',
+          plannedTime: timeInfo,
+          progress: progressInfo || 0,
+          isOverdue: overdueInfo.isOverdue,
+          overdueDays: overdueInfo.days,
+          path: taskInfo.path || '',
+          projectName: projectName
+        }
+      } catch (error) {
+        MNUtil.log(`⚠️ 处理任务失败: ${error.message}`)
+        // 返回基本信息
+        return {
+          id: task.noteId,
+          title: task.noteTitle,
+          type: '任务',
+          status: '未知',
+          priority: '低',
+          plannedTime: null,
+          progress: 0,
+          isOverdue: false,
+          overdueDays: 0,
+          path: '',
+          projectName: null
+        }
+      }
+    })
+    
+    // 传递数据到 WebView
+    const encodedTasks = encodeURIComponent(JSON.stringify(queueTasks))
+    const script = `loadTasksFromPlugin('${encodedTasks}')`
+    
+    await this.runJavaScriptInWebView(script)
+    MNUtil.log(`✅ 任务队列加载成功，共 ${queueTasks.length} 个任务`)
+    
+  } catch (error) {
+    taskUtils.addErrorLog(error, "loadTaskQueueData")
+    MNUtil.showHUD("加载任务队列失败")
+  }
+}
+
+/**
+ * 移动任务到今日
+ * @this {settingController}
+ * @param {string} taskId - 任务ID
+ */
+taskSettingController.prototype.moveTaskToToday = function(taskId) {
+  try {
+    const task = MNNote.new(taskId)
+    if (!task) {
+      MNUtil.showHUD("任务不存在")
+      return
+    }
+    
+    // 添加或更新今日字段
+    const today = new Date().toLocaleDateString('zh-CN')
+    TaskFieldUtils.updateFieldContent(task, "今日", today)
+    
+    MNUtil.showHUD("✅ 已添加到今日任务")
+    
+    // 刷新任务队列
+    this.loadTaskQueueData()
+    
+  } catch (error) {
+    taskUtils.addErrorLog(error, "moveTaskToToday")
+    MNUtil.showHUD("添加到今日失败")
+  }
+}
+
+/**
+ * 导出任务队列
+ * @this {settingController}
+ */
+taskSettingController.prototype.exportTaskQueue = function() {
+  try {
+    MNUtil.showHUD("功能开发中...")
+    // TODO: 实现任务队列导出功能
+  } catch (error) {
+    taskUtils.addErrorLog(error, "exportTaskQueue")
+    MNUtil.showHUD("导出失败")
+  }
+}
+
 /**
  * 
  * @param {string} title 

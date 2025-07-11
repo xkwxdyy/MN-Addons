@@ -75,6 +75,65 @@
             align-items: center;
         }
         
+        /* 面包屑导航 */
+        .breadcrumb {
+            padding: 10px 20px;
+            background-color: var(--sidebar-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        .breadcrumb-item {
+            cursor: pointer;
+            transition: color var(--transition-speed);
+        }
+        
+        .breadcrumb-item:hover {
+            color: var(--text-primary);
+        }
+        
+        .breadcrumb-separator {
+            color: var(--text-secondary);
+            user-select: none;
+        }
+        
+        .breadcrumb-current {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        
+        /* 返回按钮 */
+        .back-button {
+            background: none;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all var(--transition-speed);
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .back-button:hover {
+            background-color: var(--hover-bg);
+            color: var(--text-primary);
+        }
+        
+        /* 子项目标识 */
+        .project-item.has-children::after {
+            content: "›";
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-left: auto;
+        }
+        
         .refresh-button {
             background: none;
             border: 1px solid var(--border-color);
@@ -324,10 +383,151 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* 筛选侧边栏 */
+        .filter-sidebar {
+            width: 200px;
+            background-color: var(--sidebar-bg);
+            border-left: 1px solid var(--border-color);
+            padding: 10px;
+            height: 100vh;
+            overflow-y: auto;
+            position: relative;
+            transition: transform 0.2s ease-out;
+            z-index: 100;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .filter-sidebar.collapsed {
+            transform: translateX(200px);
+        }
+
+        .toggle-filter {
+            position: absolute;
+            left: -32px;
+            top: 10px;
+            width: 32px;
+            height: 34px;
+            background-color: var(--sidebar-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 5px 0 0 5px;
+            border-right: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 101;
+            transition: all 0.2s ease-out;
+        }
+
+        .toggle-filter:hover {
+            background-color: var(--hover-bg);
+        }
+
+        .toggle-filter::before {
+            content: "▶";
+            font-size: 12px;
+            transition: transform 0.2s ease-out;
+            color: var(--text-secondary);
+        }
+
+        .filter-sidebar.collapsed .toggle-filter::before {
+            transform: rotate(180deg);
+        }
+
+        .filter-section {
+            margin-bottom: 20px;
+        }
+
+        .filter-section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0 5px;
+        }
+
+        .filter-option {
+            display: flex;
+            align-items: center;
+            padding: 8px 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color var(--transition-speed);
+        }
+
+        .filter-option:hover {
+            background-color: var(--hover-bg);
+        }
+
+        .filter-option input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            cursor: pointer;
+            position: relative;
+            appearance: none;
+            background-color: white;
+            border: 2px solid var(--border-color);
+            border-radius: 3px;
+            transition: all var(--transition-speed);
+        }
+
+        .filter-option input[type="checkbox"]:checked {
+            background-color: var(--active-bg);
+            border-color: var(--active-bg);
+        }
+
+        .filter-option input[type="checkbox"]:checked::after {
+            content: "✓";
+            position: absolute;
+            top: -2px;
+            left: 2px;
+            color: white;
+            font-size: 12px;
+        }
+
+        .filter-option label {
+            font-size: 14px;
+            cursor: pointer;
+            flex: 1;
+            user-select: none;
+        }
+
+        .clear-filters {
+            width: 100%;
+            padding: 8px;
+            margin-top: 10px;
+            background-color: var(--hover-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            text-align: center;
+            transition: all var(--transition-speed);
+        }
+
+        .clear-filters:hover {
+            background-color: var(--border-color);
+        }
+
+        .filter-hint {
+            font-size: 12px;
+            color: var(--text-secondary);
+            padding: 0 10px;
+            margin-top: 5px;
+            line-height: 1.4;
+        }
+
         /* 响应式设计 */
         @media (max-width: 768px) {
             .project-sidebar {
                 width: 200px;
+            }
+            .filter-sidebar {
+                transform: translateX(200px);
             }
         }
     </style>
@@ -337,10 +537,19 @@
         <!-- 左侧项目列表 -->
         <div class="project-sidebar">
             <div class="project-header">
-                <span>项目列表</span>
-                <button class="refresh-button" onclick="projectManager.refreshProjects()" title="刷新项目列表">
-                    🔄
-                </button>
+                <span id="projectListTitle">项目列表</span>
+                <div style="display: flex; gap: 8px;">
+                    <button class="back-button" id="backButton" onclick="projectManager.goBack()" style="display: none;">
+                        ← 返回
+                    </button>
+                    <button class="refresh-button" onclick="projectManager.refreshProjects()" title="刷新项目列表">
+                        🔄
+                    </button>
+                </div>
+            </div>
+            <!-- 面包屑导航 -->
+            <div class="breadcrumb" id="breadcrumb" style="display: none;">
+                <!-- 动态生成的面包屑 -->
             </div>
             <div class="project-list" id="projectList">
                 <div class="loading">
@@ -365,6 +574,74 @@
                 </div>
             </div>
         </div>
+        
+        <!-- 筛选侧边栏 -->
+        <div class="filter-sidebar" id="filterSidebar">
+            <button class="toggle-filter" id="toggleFilter"></button>
+            
+            <div class="filter-section">
+                <h3>状态</h3>
+                <div class="filter-option">
+                    <input type="checkbox" id="status-todo" checked>
+                    <label for="status-todo">未开始</label>
+                </div>
+                <div class="filter-option">
+                    <input type="checkbox" id="status-doing" checked>
+                    <label for="status-doing">进行中</label>
+                </div>
+                <div class="filter-option">
+                    <input type="checkbox" id="status-done">
+                    <label for="status-done">已完成</label>
+                </div>
+                <p class="filter-hint">提示：默认隐藏已完成的动作</p>
+            </div>
+            
+            <div class="filter-section">
+                <h3>类型</h3>
+                <div class="filter-option">
+                    <input type="checkbox" id="type-target" checked>
+                    <label for="type-target">目标</label>
+                </div>
+                <div class="filter-option">
+                    <input type="checkbox" id="type-keyresult" checked>
+                    <label for="type-keyresult">关键结果</label>
+                </div>
+                <div class="filter-option">
+                    <input type="checkbox" id="type-project" checked>
+                    <label for="type-project">项目</label>
+                </div>
+                <div class="filter-option">
+                    <input type="checkbox" id="type-action" checked>
+                    <label for="type-action">动作</label>
+                </div>
+            </div>
+            
+            <div class="filter-section">
+                <h3>优先级</h3>
+                <div class="filter-option">
+                    <input type="checkbox" id="priority-high" checked>
+                    <label for="priority-high">高优先级</label>
+                </div>
+                <div class="filter-option">
+                    <input type="checkbox" id="priority-medium" checked>
+                    <label for="priority-medium">中优先级</label>
+                </div>
+                <div class="filter-option">
+                    <input type="checkbox" id="priority-low" checked>
+                    <label for="priority-low">低优先级</label>
+                </div>
+            </div>
+            
+            <div class="filter-section">
+                <h3>特殊筛选</h3>
+                <div class="filter-option">
+                    <input type="checkbox" id="hide-completed-actions" checked>
+                    <label for="hide-completed-actions">隐藏已完成的动作</label>
+                </div>
+            </div>
+            
+            <button class="clear-filters" onclick="projectManager.clearFilters()">清除筛选</button>
+        </div>
     </div>
 
     <script>
@@ -373,10 +650,19 @@
             projects: [],
             tasks: [],
             currentProject: null,
+            navigationStack: [],  // 导航历史栈
+            currentLevel: null,   // 当前层级（null 表示顶级）
+            filters: {
+                statuses: new Set(['未开始', '进行中']),
+                types: new Set(['目标', '关键结果', '项目', '动作']),
+                priorities: new Set(['高', '中', '低']),
+                hideCompletedActions: true
+            },
 
             // 初始化
             init() {
                 this.bindEvents();
+                this.setupFilters();
                 this.showLoadingState();
             },
 
@@ -393,6 +679,66 @@
                     } catch (error) {
                         console.error('处理消息失败:', error);
                     }
+                });
+                
+                // 筛选栏切换
+                document.getElementById('toggleFilter').addEventListener('click', () => {
+                    const sidebar = document.getElementById('filterSidebar');
+                    sidebar.classList.toggle('collapsed');
+                });
+            },
+            
+            // 设置筛选器
+            setupFilters() {
+                // 状态筛选器
+                ['todo', 'doing', 'done'].forEach((status, index) => {
+                    const statusMap = ['未开始', '进行中', '已完成'];
+                    document.getElementById(`status-${status}`).addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            this.filters.statuses.add(statusMap[index]);
+                        } else {
+                            this.filters.statuses.delete(statusMap[index]);
+                        }
+                        this.renderTasks();
+                    });
+                });
+                
+                // 类型筛选器
+                const typeMap = {
+                    'target': '目标',
+                    'keyresult': '关键结果',
+                    'project': '项目',
+                    'action': '动作'
+                };
+                
+                Object.keys(typeMap).forEach(type => {
+                    document.getElementById(`type-${type}`).addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            this.filters.types.add(typeMap[type]);
+                        } else {
+                            this.filters.types.delete(typeMap[type]);
+                        }
+                        this.renderTasks();
+                    });
+                });
+                
+                // 优先级筛选器
+                ['high', 'medium', 'low'].forEach((priority, index) => {
+                    const priorityMap = ['高', '中', '低'];
+                    document.getElementById(`priority-${priority}`).addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            this.filters.priorities.add(priorityMap[index]);
+                        } else {
+                            this.filters.priorities.delete(priorityMap[index]);
+                        }
+                        this.renderTasks();
+                    });
+                });
+                
+                // 特殊筛选
+                document.getElementById('hide-completed-actions').addEventListener('change', (e) => {
+                    this.filters.hideCompletedActions = e.target.checked;
+                    this.renderTasks();
                 });
             },
 
@@ -411,11 +757,67 @@
             loadProjects(projects) {
                 this.projects = projects;
                 this.renderProjectList();
+                this.updateBreadcrumb();
+                this.updateNavigationUI();
                 
-                // 自动选择第一个项目
-                if (projects.length > 0) {
+                // 如果是顶级，自动选择第一个项目
+                if (this.currentLevel === null && projects.length > 0) {
                     this.selectProject(projects[0]);
                 }
+            },
+            
+            // 更新导航UI
+            updateNavigationUI() {
+                const backButton = document.getElementById('backButton');
+                const projectListTitle = document.getElementById('projectListTitle');
+                
+                if (this.currentLevel) {
+                    backButton.style.display = 'flex';
+                    projectListTitle.textContent = '子项目列表';
+                } else {
+                    backButton.style.display = 'none';
+                    projectListTitle.textContent = '项目列表';
+                }
+            },
+            
+            // 更新面包屑导航
+            updateBreadcrumb() {
+                const breadcrumb = document.getElementById('breadcrumb');
+                
+                if (this.navigationStack.length === 0) {
+                    breadcrumb.style.display = 'none';
+                    return;
+                }
+                
+                breadcrumb.style.display = 'flex';
+                breadcrumb.innerHTML = '';
+                
+                // 添加"项目"根节点
+                const rootItem = document.createElement('span');
+                rootItem.className = 'breadcrumb-item';
+                rootItem.textContent = '项目';
+                rootItem.onclick = () => this.goToLevel(null);
+                breadcrumb.appendChild(rootItem);
+                
+                // 添加导航路径
+                this.navigationStack.forEach((item, index) => {
+                    // 添加分隔符
+                    const separator = document.createElement('span');
+                    separator.className = 'breadcrumb-separator';
+                    separator.textContent = '>';
+                    breadcrumb.appendChild(separator);
+                    
+                    // 添加项目名
+                    const itemElement = document.createElement('span');
+                    itemElement.className = index === this.navigationStack.length - 1 ? 'breadcrumb-current' : 'breadcrumb-item';
+                    itemElement.textContent = item.name;
+                    
+                    if (index < this.navigationStack.length - 1) {
+                        itemElement.onclick = () => this.goToLevel(item.id, index + 1);
+                    }
+                    
+                    breadcrumb.appendChild(itemElement);
+                });
             },
 
             // 渲染项目列表
@@ -436,6 +838,12 @@
                 this.projects.forEach((project, index) => {
                     const item = document.createElement('div');
                     item.className = 'project-item';
+                    
+                    // 如果项目有子项目，添加标识
+                    if (project.hasSubProjects) {
+                        item.classList.add('has-children');
+                    }
+                    
                     item.dataset.projectId = project.id;
                     
                     item.innerHTML = `
@@ -453,6 +861,34 @@
 
             // 选择项目
             selectProject(project) {
+                // 如果项目有子项目，进入下一层级
+                if (project.hasSubProjects) {
+                    this.enterProject(project);
+                } else {
+                    // 否则显示项目任务
+                    this.showProjectTasks(project);
+                }
+            },
+            
+            // 进入子项目层级
+            enterProject(project) {
+                // 添加到导航栈
+                this.navigationStack.push({
+                    id: project.id,
+                    name: project.name
+                });
+                
+                this.currentLevel = project.id;
+                
+                // 显示加载状态
+                this.showLoadingState();
+                
+                // 请求加载子项目
+                window.location.href = `mntask://loadSubProjects?parentId=${encodeURIComponent(project.id)}`;
+            },
+            
+            // 显示项目任务
+            showProjectTasks(project) {
                 this.currentProject = project;
 
                 // 更新UI状态
@@ -476,6 +912,37 @@
                 // 请求加载项目任务
                 window.location.href = `mntask://loadProjectTasks?projectId=${encodeURIComponent(project.id)}`;
             },
+            
+            // 返回上一级
+            goBack() {
+                if (this.navigationStack.length > 0) {
+                    this.navigationStack.pop();
+                    
+                    if (this.navigationStack.length > 0) {
+                        const parent = this.navigationStack[this.navigationStack.length - 1];
+                        this.currentLevel = parent.id;
+                        window.location.href = `mntask://loadSubProjects?parentId=${encodeURIComponent(parent.id)}`;
+                    } else {
+                        this.currentLevel = null;
+                        this.refreshProjects();
+                    }
+                }
+            },
+            
+            // 跳转到指定层级
+            goToLevel(levelId, stackIndex = 0) {
+                if (levelId === null) {
+                    // 返回顶级
+                    this.navigationStack = [];
+                    this.currentLevel = null;
+                    this.refreshProjects();
+                } else {
+                    // 保留到指定层级的导航栈
+                    this.navigationStack = this.navigationStack.slice(0, stackIndex);
+                    this.currentLevel = levelId;
+                    window.location.href = `mntask://loadSubProjects?parentId=${encodeURIComponent(levelId)}`;
+                }
+            },
 
             // 加载项目任务
             loadProjectTasks(tasks) {
@@ -498,10 +965,42 @@
                     `;
                     return;
                 }
+                
+                // 筛选任务
+                const filteredTasks = this.tasks.filter(task => this.shouldShowTask(task));
+                
+                if (filteredTasks.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">🔍</div>
+                            <div>没有符合筛选条件的任务</div>
+                            <div style="margin-top: 10px; font-size: 14px;">尝试调整筛选条件或清除筛选</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // 更新统计信息
+                this.updateStats(filteredTasks);
 
-                this.tasks.forEach(task => {
+                filteredTasks.forEach(task => {
                     container.appendChild(this.createTaskCard(task));
                 });
+            },
+            
+            // 判断任务是否应该显示
+            shouldShowTask(task) {
+                // 特殊规则：隐藏已完成的动作
+                if (this.filters.hideCompletedActions && 
+                    task.type === '动作' && 
+                    task.status === '已完成') {
+                    return false;
+                }
+                
+                // 常规筛选
+                return this.filters.statuses.has(task.status) && 
+                       this.filters.types.has(task.type) &&
+                       this.filters.priorities.has(task.priority || '低');
             },
 
             // 创建任务卡片
@@ -590,16 +1089,18 @@
             },
 
             // 更新统计信息
-            updateStats() {
+            updateStats(filteredTasks = null) {
+                const tasksToCount = filteredTasks || this.tasks;
                 const stats = {
-                    total: this.tasks.length,
-                    todo: this.tasks.filter(t => t.status === '未开始').length,
-                    doing: this.tasks.filter(t => t.status === '进行中').length,
-                    done: this.tasks.filter(t => t.status === '已完成').length
+                    total: tasksToCount.length,
+                    todo: tasksToCount.filter(t => t.status === '未开始').length,
+                    doing: tasksToCount.filter(t => t.status === '进行中').length,
+                    done: tasksToCount.filter(t => t.status === '已完成').length,
+                    filtered: filteredTasks ? `(已筛选 ${this.tasks.length - filteredTasks.length} 项)` : ''
                 };
 
                 document.getElementById('contentStats').innerHTML = `
-                    <span>总计: ${stats.total}</span>
+                    <span>显示: ${stats.total} ${stats.filtered}</span>
                     <span>未开始: ${stats.todo}</span>
                     <span>进行中: ${stats.doing}</span>
                     <span>已完成: ${stats.done}</span>
@@ -624,7 +1125,38 @@
             // 刷新项目列表
             refreshProjects() {
                 this.showLoadingState();
-                window.location.href = 'mntask://loadProjectsData';
+                if (this.currentLevel) {
+                    window.location.href = `mntask://loadSubProjects?parentId=${encodeURIComponent(this.currentLevel)}`;
+                } else {
+                    window.location.href = 'mntask://loadProjectsData';
+                }
+            },
+            
+            // 清除筛选
+            clearFilters() {
+                // 重置筛选器
+                this.filters.statuses = new Set(['未开始', '进行中', '已完成']);
+                this.filters.types = new Set(['目标', '关键结果', '项目', '动作']);
+                this.filters.priorities = new Set(['高', '中', '低']);
+                this.filters.hideCompletedActions = false;
+                
+                // 重置复选框
+                ['status-todo', 'status-doing', 'status-done'].forEach(id => {
+                    document.getElementById(id).checked = true;
+                });
+                
+                ['type-target', 'type-keyresult', 'type-project', 'type-action'].forEach(id => {
+                    document.getElementById(id).checked = true;
+                });
+                
+                ['priority-high', 'priority-medium', 'priority-low'].forEach(id => {
+                    document.getElementById(id).checked = true;
+                });
+                
+                document.getElementById('hide-completed-actions').checked = false;
+                
+                // 重新渲染
+                this.renderTasks();
             }
         };
 

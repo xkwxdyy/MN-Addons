@@ -3923,14 +3923,16 @@ function registerAllCustomActions() {
     const { button, des, focusNote, focusNotes, self } = context;
     
     const todayBoardId = taskConfig.getBoardNoteId('today');
+    
     if (!todayBoardId) {
-      MNUtil.showHUD("请先配置今日看板");
+      MNUtil.showHUD("❌ 请先在设置中绑定今日看板\n设置 → Task Boards → 今日看板");
       return;
     }
     
     const todayBoard = MNNote.new(todayBoardId);
+    
     if (!todayBoard) {
-      MNUtil.showHUD("今日看板不存在");
+      MNUtil.showHUD("❌ 无法找到今日看板卡片\n请重新设置或检查卡片是否存在");
       return;
     }
     
@@ -3942,7 +3944,6 @@ function registerAllCustomActions() {
       
       // 如果从看板中没有找到，尝试从整个笔记本搜索
       if (todayTasks.length === 0) {
-        MNUtil.log("⚠️ 看板中未找到今日任务，尝试从整个笔记本搜索...");
         todayTasks = MNTaskManager.filterAllTodayTasks();
       }
       
@@ -3969,8 +3970,8 @@ function registerAllCustomActions() {
       // 添加任务链接到看板
       MNTaskManager.addTaskLinksToBoard(todayBoard, grouped);
       
-      // 添加统计信息
-      MNTaskManager.updateBoardStatistics(todayBoard, todayTasks);
+      // 添加统计信息 - 根据用户要求移除，避免重复添加
+      // MNTaskManager.updateBoardStatistics(todayBoard, todayTasks);
       
       // 刷新看板显示
       todayBoard.refresh();
@@ -4063,6 +4064,54 @@ function registerAllCustomActions() {
       MNUtil.log(`❌ fixLegacyTodayMarks 执行失败: ${error.message || error}`);
       MNUtil.showHUD(`修复失败: ${error.message || "未知错误"}`);
     }
+  });
+  
+  // checkTodayBoardConfig - 检查今日看板配置（诊断工具）
+  MNTaskGlobal.registerCustomAction("checkTodayBoardConfig", async function(context) {
+    MNUtil.log("🔍 开始检查今日看板配置");
+    
+    // 1. 检查 partitionCards 配置
+    MNUtil.log("📋 检查 partitionCards 配置:");
+    MNUtil.log(`  - partitionCards 对象: ${taskConfig.partitionCards ? '存在' : '不存在'}`);
+    if (taskConfig.partitionCards) {
+      MNUtil.log(`  - 所有分区: ${JSON.stringify(Object.keys(taskConfig.partitionCards))}`);
+      MNUtil.log(`  - today 键: ${taskConfig.partitionCards.today ? '存在' : '不存在'}`);
+      if (taskConfig.partitionCards.today) {
+        MNUtil.log(`  - today 值: ${taskConfig.partitionCards.today}`);
+      }
+    }
+    
+    // 2. 使用 getBoardNoteId 方法获取
+    const todayBoardId = taskConfig.getBoardNoteId('today');
+    MNUtil.log(`📋 getBoardNoteId('today') 返回: ${todayBoardId || '空'}`);
+    
+    // 3. 尝试创建笔记对象
+    if (todayBoardId) {
+      const todayBoard = MNNote.new(todayBoardId);
+      MNUtil.log(`📋 MNNote.new() 结果: ${todayBoard ? '成功' : '失败'}`);
+      
+      if (todayBoard) {
+        MNUtil.log("📋 看板对象详情:");
+        MNUtil.log(`  - noteId: ${todayBoard.noteId}`);
+        MNUtil.log(`  - noteTitle: ${todayBoard.noteTitle}`);
+        MNUtil.log(`  - 评论数: ${todayBoard.comments ? todayBoard.comments.length : '无法获取'}`);
+        MNUtil.log(`  - 子笔记数: ${todayBoard.childNotes ? todayBoard.childNotes.length : '无法获取'}`);
+      }
+    }
+    
+    // 4. 显示诊断结果
+    let message = "今日看板配置诊断结果:\n";
+    if (!taskConfig.partitionCards || !taskConfig.partitionCards.today) {
+      message += "❌ 今日看板未配置\n请在设置中绑定今日看板";
+    } else if (!todayBoardId) {
+      message += "❌ 无法获取看板ID";
+    } else if (!MNNote.new(todayBoardId)) {
+      message += "❌ 看板卡片不存在或无法访问\n可能已被删除或在其他笔记本中";
+    } else {
+      message += "✅ 配置正常，看板可以访问";
+    }
+    
+    MNUtil.showHUD(message);
   });
   
   // handleOverdueTasks - 处理过期的今日任务

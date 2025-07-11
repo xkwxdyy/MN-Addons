@@ -1381,3 +1381,79 @@ global.registerButton("custom8", {  // ✅ 正常工作
 - 处理输入框空值与代码空值的差异
 - MNToolbar 自定义按钮开发
 - 遇到"代码正确但不工作"的诡异问题
+
+### 不存在的 API 方法陷阱（getHTMLCommentFieldText）
+
+在开发今日看板刷新功能时，发现调用了不存在的方法导致功能失败。
+
+#### 问题描述
+`sortTodayTasks` 方法中使用了 `task.getHTMLCommentFieldText("排序")`，但这个方法在 MNNote 对象上并不存在，导致：
+- 排序功能执行失败
+- 整个今日看板刷新流程中断
+- 看板只显示标题，没有任务内容
+
+#### 错误示例
+```javascript
+// ❌ 错误：getHTMLCommentFieldText 方法不存在
+const orderField = task.getHTMLCommentFieldText("排序")
+const orderA = parseInt(a.getHTMLCommentFieldText("排序") || "999")
+```
+
+#### 根本原因
+1. **文档与实现不同步**：可能是旧版本的 API 或计划中的功能
+2. **复制代码未验证**：从其他项目复制代码时没有验证 API 是否存在
+3. **缺少运行时检查**：没有在使用前检查方法是否存在
+
+#### 解决方案
+
+##### 方案一：实现缺失的功能（如果确实需要）
+```javascript
+// 自己实现获取字段值的方法
+static getTaskFieldValue(note, fieldName) {
+  const parsed = this.parseTaskComments(note)
+  const field = parsed.taskFields.find(f => 
+    f.content && f.content.includes(fieldName)
+  )
+  return field ? field.content.split(fieldName)[1]?.trim() : null
+}
+```
+
+##### 方案二：简化实现（推荐）
+```javascript
+// ✅ 正确：直接使用已有的 API
+static sortTodayTasks(tasks) {
+  return TaskFilterEngine.sort(tasks, {
+    strategy: 'smart',
+    weights: {
+      priority: 0.4,
+      urgency: 0.3,
+      importance: 0.2,
+      progress: 0.1
+    }
+  })
+}
+```
+
+#### 预防措施
+1. **使用前验证 API**：
+   ```javascript
+   if (typeof task.getHTMLCommentFieldText === 'function') {
+     // 使用该方法
+   } else {
+     // 使用备选方案
+   }
+   ```
+
+2. **查阅源码而非文档**：
+   - 直接在 mnutils.js 和 xdyyutils.js 中搜索方法
+   - 文档可能过时，源码是最终真相
+
+3. **添加防御性编程**：
+   - 对不确定的 API 添加 try-catch
+   - 提供降级方案
+
+#### 经验总结
+- 当遇到"函数不存在"错误时，首先确认该 API 是否真的存在
+- 不要假设所有看起来合理的方法都已实现
+- 简单的解决方案往往比复杂的更可靠
+- 遇到问题时，考虑是否可以用已有的 API 实现同样的功能

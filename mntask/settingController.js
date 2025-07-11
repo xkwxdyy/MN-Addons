@@ -192,12 +192,21 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     try {
     let self = getTaskSettingController()
     let requestURL = request.URL().absoluteString()
+    
+    // 添加调试日志
+    MNUtil.log(`🔗 WebView 请求: ${requestURL}`)
+    TaskLogManager.debug("WebView URL 请求", "WebView", requestURL)
+    
     if (!requestURL) {
       MNUtil.showHUD("Empty URL")
       return false
     }
-    if (/^nativecopy\:\/\//.test(requestURL)) {
+    
+    // 更严格的判断，确保是明确的复制请求
+    if (/^nativecopy\:\/\/content=/.test(requestURL)) {
       let text = decodeURIComponent(requestURL.split("content=")[1])
+      MNUtil.log(`📋 准备复制内容: ${text}`)
+      TaskLogManager.info(`复制到剪贴板: ${text}`, "WebView")
       MNUtil.copy(text)
       return false
     }
@@ -568,7 +577,22 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     let self = getTaskSettingController()
     // 记录视图切换
     TaskLogManager.info("切换到今日看板视图", "SettingController")
+    MNUtil.log("🎯 todayBoardButtonTapped 被调用")
+    MNUtil.log(`📱 按钮信息: ${params}`)
+    
+    // 检查是否有剪贴板内容被意外复制
+    const clipboardBefore = MNUtil.clipboardText
+    MNUtil.log(`📋 切换前剪贴板: ${clipboardBefore}`)
+    
     self.viewManager.switchTo('todayBoard')
+    
+    // 检查切换后剪贴板是否改变
+    MNUtil.delay(0.1).then(() => {
+      const clipboardAfter = MNUtil.clipboardText
+      if (clipboardBefore !== clipboardAfter) {
+        MNUtil.log(`⚠️ 剪贴板内容改变了！新内容: ${clipboardAfter}`)
+      }
+    })
   },
   logButtonTapped: function (params) {
     let self = getTaskSettingController()
@@ -593,12 +617,58 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       logCount: TaskLogManager.getLogs().length
     })
     
+    // 诊断 WebView 状态
+    self.diagnoseLogWebView()
+    
     MNUtil.showHUD("已添加测试日志")
     
     // 如果在日志视图，刷新显示
     if (self.currentView === 'logView' && self.logWebViewInitialized) {
       self.showLogs()
     }
+  },
+  
+  // 诊断日志 WebView
+  diagnoseLogWebView: async function() {
+    let self = getTaskSettingController()
+    MNUtil.log("=== 日志 WebView 诊断 ===")
+    
+    if (!self.logWebViewInstance) {
+      MNUtil.log("❌ logWebViewInstance 不存在")
+      return
+    }
+    
+    // 检查基本状态
+    MNUtil.log(`📱 WebView URL: ${self.logWebViewInstance.URL ? self.logWebViewInstance.URL.absoluteString() : 'null'}`)
+    MNUtil.log(`📱 WebView loading: ${self.logWebViewInstance.loading}`)
+    MNUtil.log(`📱 初始化状态: ${self.logWebViewInitialized}`)
+    
+    try {
+      // 检查文档状态
+      const readyState = await self.runJavaScriptInWebView('document.readyState', 'logWebViewInstance')
+      MNUtil.log(`📄 Document readyState: ${readyState}`)
+      
+      // 检查函数是否存在
+      const funcType = await self.runJavaScriptInWebView('typeof showLogsFromAddon', 'logWebViewInstance')
+      MNUtil.log(`🔍 showLogsFromAddon 函数类型: ${funcType}`)
+      
+      // 检查 logViewer 对象
+      const logViewerType = await self.runJavaScriptInWebView('typeof logViewer', 'logWebViewInstance')
+      MNUtil.log(`🔍 logViewer 对象类型: ${logViewerType}`)
+      
+      // 获取页面标题
+      const pageTitle = await self.runJavaScriptInWebView('document.title', 'logWebViewInstance')
+      MNUtil.log(`📄 页面标题: ${pageTitle}`)
+      
+      // 检查 body 内容长度
+      const bodyLength = await self.runJavaScriptInWebView('document.body ? document.body.innerHTML.length : 0', 'logWebViewInstance')
+      MNUtil.log(`📄 Body 内容长度: ${bodyLength}`)
+      
+    } catch (error) {
+      MNUtil.log(`❌ 诊断时出错: ${error.message}`)
+    }
+    
+    MNUtil.log("=== 诊断完成 ===")
   },
   
   // 刷新日志显示
@@ -1742,12 +1812,13 @@ taskSettingController.prototype.settingViewLayout = function (){
     taskFrame.set(this.advancedButton, this.popupButton.frame.x + this.popupButton.frame.width+5, 0)
     taskFrame.set(this.taskBoardButton, this.advancedButton.frame.x + this.advancedButton.frame.width+5, 0)
     taskFrame.set(this.todayBoardButton, this.taskBoardButton.frame.x + this.taskBoardButton.frame.width+5, 0)
+    taskFrame.set(this.logButton, this.todayBoardButton.frame.x + this.todayBoardButton.frame.width+5, 0)
     
     // 关闭按钮与 tabView 对齐
     taskFrame.set(this.closeButton, tabViewFrame.width + 5, tabViewFrame.y)
     
     // 设置 tabView 的 contentSize，使按钮可以横向滚动
-    const tabContentWidth = this.todayBoardButton.frame.x + this.todayBoardButton.frame.width + 10;
+    const tabContentWidth = this.logButton.frame.x + this.logButton.frame.width + 10;
     this.tabView.contentSize = {width: tabContentWidth, height: 30}
     let scrollHeight = 5
     if (MNUtil.appVersion().type === "macOS") {
@@ -1817,14 +1888,30 @@ taskSettingController.prototype.settingViewLayout = function (){
     taskFrame.set(this.clearCompletedBoardButton, 15+(width-30)/3, 455, (width-30)/3, 35)
     taskFrame.set(this.pasteCompletedBoardButton, 20+2*(width-30)/3, 455, (width-30)/3, 35)
     
-    // 今日看板
-    taskFrame.set(this.todayBoardLabel, 10, 510, width-20, 35)
-    taskFrame.set(this.focusTodayBoardButton, 10, 555, (width-30)/3, 35)
-    taskFrame.set(this.clearTodayBoardButton, 15+(width-30)/3, 555, (width-30)/3, 35)
-    taskFrame.set(this.pasteTodayBoardButton, 20+2*(width-30)/3, 555, (width-30)/3, 35)
+    // 今日看板 - 已移至 WebView 实现，注释掉旧的布局
+    // taskFrame.set(this.todayBoardLabel, 10, 510, width-20, 35)
+    // taskFrame.set(this.focusTodayBoardButton, 10, 555, (width-30)/3, 35)
+    // taskFrame.set(this.clearTodayBoardButton, 15+(width-30)/3, 555, (width-30)/3, 35)
+    // taskFrame.set(this.pasteTodayBoardButton, 20+2*(width-30)/3, 555, (width-30)/3, 35)
     
-    // 设置 ScrollView 的 contentSize，为多个看板预留空间
-    this.taskBoardView.contentSize = {width: width-2, height: 700}
+    // 设置 ScrollView 的 contentSize，为多个看板预留空间（已移除今日看板）
+    this.taskBoardView.contentSize = {width: width-2, height: 600}
+    
+    // 今日看板 WebView 布局
+    taskFrame.set(this.todayBoardWebView, 0, 0, width-2, height-60)
+    
+    // 如果 WebView 实例存在，更新其 frame
+    if (this.todayBoardWebViewInstance) {
+      this.todayBoardWebViewInstance.frame = {
+        x: 0,
+        y: 0,
+        width: this.todayBoardWebView.bounds.width,
+        height: this.todayBoardWebView.bounds.height
+      }
+    }
+    
+    // 日志视图布局
+    taskFrame.set(this.logView, 0, 0, width-2, height-60)
     
     // 日志视图按钮布局
     if (!this.logView.hidden && this.logWebViewInitialized) {
@@ -2232,12 +2319,12 @@ try {
     parent: 'taskBoardView'
   })
   
-  // 创建今日看板
-  this.createBoardBinding({
-    key: 'today',
-    title: '今日看板:',
-    parent: 'taskBoardView'
-  })
+  // 创建今日看板 - 已移至 WebView 实现，注释掉旧的实现
+  // this.createBoardBinding({
+  //   key: 'today',
+  //   title: '今日看板:',
+  //   parent: 'taskBoardView'
+  // })
   
   // 创建今日看板的 WebView
   this.createTodayBoardWebView()
@@ -2939,27 +3026,12 @@ taskSettingController.prototype.createTodayBoardWebView = function() {
   try {
     MNUtil.log("🔨 开始创建今日看板 WebView")
     
-    // 创建一个内部的 UIWebView
-    const webView = new UIWebView(this.todayBoardWebView.bounds)
-    webView.backgroundColor = UIColor.whiteColor()
-    webView.scalesPageToFit = false
-    webView.autoresizingMask = (1 << 1 | 1 << 4) // 宽高自适应
-    webView.delegate = this
-    webView.layer.cornerRadius = 10
-    webView.layer.masksToBounds = true
-    
-    MNUtil.log("📐 WebView 创建成功，bounds: " + JSON.stringify(this.todayBoardWebView.bounds))
-    
-    // 将 WebView 添加到容器视图中
-    this.todayBoardWebView.addSubview(webView)
-    
-    // 保存 WebView 引用，方便后续操作
-    this.todayBoardWebViewInstance = webView
-    
-    // 标记未初始化
+    // 延迟创建 WebView，等待视图显示时再创建
+    // 这样可以确保获取正确的 frame
+    this.todayBoardWebViewInstance = null
     this.todayBoardWebViewInitialized = false
     
-    MNUtil.log("✅ 今日看板 WebView 创建完成")
+    MNUtil.log("✅ 今日看板 WebView 准备就绪，将在显示时创建")
   } catch (error) {
     taskUtils.addErrorLog(error, "createTodayBoardWebView")
     MNUtil.log("❌ 创建 WebView 失败: " + error.message)
@@ -2974,9 +3046,35 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
   try {
     MNUtil.log("🌟 开始初始化今日看板 WebView")
     
+    // 如果 WebView 实例不存在，先创建它
     if (!this.todayBoardWebViewInstance) {
-      MNUtil.log("❌ WebView 实例不存在，无法初始化")
-      return
+      MNUtil.log("📱 创建 WebView 实例")
+      
+      // 获取容器的当前边界
+      const containerBounds = this.todayBoardWebView.bounds
+      MNUtil.log(`📐 容器边界: ${JSON.stringify(containerBounds)}`)
+      
+      // 创建 WebView，填充整个容器
+      const webView = new UIWebView({
+        x: 0, 
+        y: 0, 
+        width: containerBounds.width, 
+        height: containerBounds.height
+      })
+      webView.backgroundColor = UIColor.whiteColor()
+      webView.scalesPageToFit = false
+      webView.autoresizingMask = (1 << 1 | 1 << 4) // 宽高自适应
+      webView.delegate = this
+      webView.layer.cornerRadius = 10
+      webView.layer.masksToBounds = true
+      
+      // 将 WebView 添加到容器视图中
+      this.todayBoardWebView.addSubview(webView)
+      
+      // 保存 WebView 引用
+      this.todayBoardWebViewInstance = webView
+      
+      MNUtil.log("✅ WebView 实例创建成功")
     }
     
     // 加载 HTML 文件
@@ -3713,9 +3811,39 @@ taskSettingController.prototype.showLogs = async function() {
     MNUtil.log(`📱 执行前 WebView canGoBack: ${this.logWebViewInstance.canGoBack}`)
     
     // 编码日志数据
+    // 检查 encodeURIComponent 函数是否存在
+    if (typeof encodeURIComponent !== 'function') {
+      MNUtil.log("❌ encodeURIComponent 函数不存在")
+      TaskLogManager.error("encodeURIComponent 函数不存在", "SettingController")
+      return
+    }
+    
     const encodedLogs = encodeURIComponent(JSON.stringify(logs))
     MNUtil.log(`📦 编码后的数据长度: ${encodedLogs.length}`)
     MNUtil.log(`📦 前100个字符: ${encodedLogs.substring(0, 100)}`)
+    
+    // 先检查 showLogsFromAddon 函数是否存在
+    const funcCheckResult = await this.runJavaScriptInWebView('typeof showLogsFromAddon', 'logWebViewInstance')
+    MNUtil.log(`🔍 showLogsFromAddon 函数类型: ${funcCheckResult}`)
+    
+    if (funcCheckResult === 'undefined') {
+      MNUtil.log("⚠️ showLogsFromAddon 函数未定义，等待重试...")
+      TaskLogManager.warn("showLogsFromAddon 函数未定义，等待重试", "ShowLogs")
+      
+      // 延迟后重试
+      await MNUtil.delay(1)
+      const retryResult = await this.runJavaScriptInWebView('typeof showLogsFromAddon', 'logWebViewInstance')
+      if (retryResult === 'undefined') {
+        MNUtil.log("❌ showLogsFromAddon 函数仍然未定义")
+        TaskLogManager.error("showLogsFromAddon 函数仍然未定义", "ShowLogs")
+        MNUtil.showHUD("日志查看器初始化失败")
+        
+        // 尝试重新加载 HTML
+        MNUtil.log("🔄 尝试重新初始化日志 WebView")
+        this.initLogWebView()
+        return
+      }
+    }
     
     // 调用 WebView 中的函数
     const script = `showLogsFromAddon('${encodedLogs}')`
@@ -3755,6 +3883,12 @@ taskSettingController.prototype.appendLog = async function(log) {
     }
     
     // 编码日志数据
+    // 检查 encodeURIComponent 函数是否存在
+    if (typeof encodeURIComponent !== 'function') {
+      // 避免循环日志，这里不记录错误
+      return
+    }
+    
     const encodedLog = encodeURIComponent(JSON.stringify(log))
     
     // 调用 WebView 中的函数

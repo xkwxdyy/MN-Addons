@@ -1,5 +1,5 @@
 {
-  "currentState": "initialized",
+  "currentState": "memory_saved",
   "stateHistory": [
     {
       "from": "initial",
@@ -80,7 +80,107 @@
           "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask"
         }
       ]
+    },
+    {
+      "from": "initialized",
+      "command": "remember",
+      "timestamp": "2025-07-10T17:22:23.364Z",
+      "args": [
+        "## MNToolbar 按钮开发陷阱总结\n\n### 1. MNNote.appendMarkdownComment 空内容检查\n- 问题：MNNote 包装器会检查 `comment && comment.trim()`，空内容直接返回\n- 解决：使用原生 API `focusNote.note.appendMarkdownComment()` 绕过检查\n\n### 2. 空输入值的不同表现\n- 手动输入空框：`alert.textFieldAtIndex(0).text` 返回 `undefined`\n- 代码传入空字符串：`\"\"` 或 `\" \"` 都会被 trim 掉\n- 关键：理解 undefined、null、空字符串的差异\n\n### 3. MNToolbar 按钮键名必须使用 custom+数字格式\n- 错误：使用 `registerButton(\"proof\", ...)` 导致单击无反应\n- 正确：必须使用 `registerButton(\"custom8\", ...)` 格式\n- 原因：按钮系统只识别 custom 格式的键名\n- 症状：长按菜单正常但单击失效\n\n### 4. 调试策略\n- API 层级：区分包装器和原生 API\n- 框架约定：注意隐含的命名规则\n- 底层方案：高层 API 受限时使用底层 API",
+        "--tags",
+        "MN-Addon MNToolbar 开发陷阱 按钮开发"
+      ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "init",
+      "timestamp": "2025-07-10T17:39:00.693Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-07-10T17:54:22.684Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-07-10T18:16:49.547Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnutils"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-07-10T18:40:34.002Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-07-11T03:35:01.342Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-07-11T03:41:48.763Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-07-11T04:13:25.801Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-07-11T06:04:56.269Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "remember",
+      "timestamp": "2025-07-11T11:52:54.452Z",
+      "args": [
+        "## MN-Addon 开发陷阱：不存在的 API 方法（getHTMLCommentFieldText）\n\n### 问题描述\n在开发 MNTask 今日看板刷新功能时，`sortTodayTasks` 方法中使用了 `task.getHTMLCommentFieldText(\"排序\")`，但这个方法在 MNNote 对象上并不存在，导致：\n- 排序功能执行失败\n- 整个今日看板刷新流程中断\n- 看板只显示标题，没有任务内容\n\n### 根本原因\n1. 文档与实现不同步：可能是旧版本的 API 或计划中的功能\n2. 复制代码未验证：从其他项目复制代码时没有验证 API 是否存在\n3. 缺少运行时检查：没有在使用前检查方法是否存在\n\n### 解决方案\n最终采用简化实现：直接使用 TaskFilterEngine.sort 进行智能排序，避免依赖不存在的 API。\n\n### 经验教训\n1. 当遇到\"函数不存在\"错误时，首先确认该 API 是否真的存在\n2. 不要假设所有看起来合理的方法都已实现\n3. 简单的解决方案往往比复杂的更可靠\n4. 查阅源码而非文档：直接在 mnutils.js 和 xdyyutils.js 中搜索方法\n5. 添加防御性编程：对不确定的 API 添加 typeof 检查或 try-catch",
+        "--tags",
+        "MN-Addon API陷阱 调试技巧 MarginNote插件 MNTask"
+      ]
     }
   ],
-  "lastUpdated": "2025-07-10T04:40:35.778Z"
+  "lastUpdated": "2025-07-11T11:52:54.480Z"
 }

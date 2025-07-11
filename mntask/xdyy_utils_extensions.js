@@ -1200,6 +1200,36 @@ class MNTaskManager {
       if (!skipParentUpdate) {
         this.updateParentStatus(note, newStatus)
       }
+      
+      // 检查是否有今日标签，如果有则同步更新今日看板
+      if (note.tags && note.tags.includes("今日")) {
+        MNUtil.log("🔄 检测到任务有今日标签，准备同步更新今日看板")
+        
+        // 获取今日看板
+        const todayBoardId = taskConfig.getBoardNoteId('today')
+        if (todayBoardId && MNNote.new(todayBoardId)) {
+          MNUtil.log("📋 找到今日看板，延迟刷新以重新组织任务")
+          
+          // 延迟执行刷新，确保当前状态更新完成
+          MNUtil.delay(0.5).then(() => {
+            // 使用 MNTaskGlobal 执行刷新操作
+            if (typeof MNTaskGlobal !== 'undefined' && MNTaskGlobal.executeCustomAction) {
+              MNUtil.log("🔄 执行今日看板刷新")
+              // 创建一个最小的 context 对象
+              const context = {
+                button: null,
+                des: "auto-refresh",
+                focusNote: note,
+                focusNotes: [note],
+                self: null
+              }
+              MNTaskGlobal.executeCustomAction("refreshTodayBoard", context)
+            } else {
+              MNUtil.log("⚠️ MNTaskGlobal 未定义，无法自动刷新今日看板")
+            }
+          })
+        }
+      }
     })
   }
 
@@ -2586,50 +2616,16 @@ class MNTaskManager {
    * @returns {MNNote[]} 排序后的任务列表
    */
   static sortTodayTasks(tasks) {
-    // 首先检查是否有手动排序的任务
-    const hasManualOrder = tasks.some(task => {
-      const orderField = task.getHTMLCommentFieldText("排序")
-      return orderField && orderField.trim() !== ""
+    // 直接使用 TaskFilterEngine 的智能排序
+    return TaskFilterEngine.sort(tasks, {
+      strategy: 'smart',
+      weights: {
+        priority: 0.4,      // 优先级权重更高
+        urgency: 0.3,       // 紧急度次之
+        importance: 0.2,    // 重要性
+        progress: 0.1       // 进度
+      }
     })
-    
-    if (hasManualOrder) {
-      // 如果有手动排序，优先使用手动排序
-      return tasks.sort((a, b) => {
-        const orderA = parseInt(a.getHTMLCommentFieldText("排序") || "999")
-        const orderB = parseInt(b.getHTMLCommentFieldText("排序") || "999")
-        
-        if (orderA !== orderB) {
-          return orderA - orderB
-        }
-        
-        // 如果排序值相同，使用智能排序作为次要排序依据
-        const scoreA = TaskFilterEngine.calculateSmartScore(a, {
-          priority: 0.4,
-          urgency: 0.3,
-          importance: 0.2,
-          progress: 0.1
-        })
-        const scoreB = TaskFilterEngine.calculateSmartScore(b, {
-          priority: 0.4,
-          urgency: 0.3,
-          importance: 0.2,
-          progress: 0.1
-        })
-        
-        return scoreB - scoreA
-      })
-    } else {
-      // 如果没有手动排序，使用智能排序
-      return TaskFilterEngine.sort(tasks, {
-        strategy: 'smart',
-        weights: {
-          priority: 0.4,      // 优先级权重更高
-          urgency: 0.3,       // 紧急度次之
-          importance: 0.2,    // 重要性
-          progress: 0.1       // 进度
-        }
-      })
-    }
   }
   
   /**
@@ -3369,65 +3365,41 @@ class MNTaskManager {
    * @param {Object} grouped - 分组后的任务
    */
   static addTaskLinksToBoard(boardNote, grouped) {
-    MNUtil.log("🔍 开始添加任务链接到看板")
-    MNUtil.log(`📊 分组情况: overdue=${grouped.overdue?.length || 0}, highPriority=${grouped.highPriority?.length || 0}, inProgress=${grouped.inProgress?.length || 0}, notStarted=${grouped.notStarted?.length || 0}, completed=${grouped.completed?.length || 0}`)
-    
-    // 使用不同的方法添加内容
-    // 方法1：尝试使用 appendTextComment 替代
-    const addSection = (title, tasks) => {
-      try {
-        // 添加分组标题
-        boardNote.appendTextComment(title)
-        MNUtil.log(`✅ 添加标题成功: ${title}`)
-        
-        // 添加任务链接
-        tasks.forEach(task => {
-          try {
-            // 方法A：直接添加任务链接
-            boardNote.appendNoteLink(task, "To")
-            MNUtil.log(`✅ 添加任务链接成功: ${task.noteTitle}`)
-          } catch (e1) {
-            try {
-              // 方法B：添加文本形式的链接
-              const link = this.createTaskLink(task)
-              boardNote.appendTextComment(link)
-              MNUtil.log(`✅ 添加文本链接成功: ${link}`)
-            } catch (e2) {
-              MNUtil.log(`❌ 所有方法都失败: ${e2.message}`)
-            }
-          }
-        })
-      } catch (e) {
-        MNUtil.log(`❌ 添加分组失败: ${e.message}`)
-      }
-    }
-    
-    // 过期任务（优先显示）
-    if (grouped.overdue && grouped.overdue.length > 0) {
-      addSection("⚠️ 过期任务", grouped.overdue)
-    }
-    
     // 高优先级任务
     if (grouped.highPriority.length > 0) {
-      addSection("🔴 高优先级", grouped.highPriority)
+      boardNote.appendMarkdownComment("## 🔴 高优先级")
+      grouped.highPriority.forEach(task => {
+        const link = this.createTaskLink(task)
+        boardNote.appendMarkdownComment(link)
+      })
     }
     
     // 进行中任务
     if (grouped.inProgress.length > 0) {
-      addSection("🔥 进行中", grouped.inProgress)
+      boardNote.appendMarkdownComment("## 🔥 进行中")
+      grouped.inProgress.forEach(task => {
+        const link = this.createTaskLink(task)
+        boardNote.appendMarkdownComment(link)
+      })
     }
     
     // 未开始任务
     if (grouped.notStarted.length > 0) {
-      addSection("😴 未开始", grouped.notStarted)
+      boardNote.appendMarkdownComment("## 😴 未开始")
+      grouped.notStarted.forEach(task => {
+        const link = this.createTaskLink(task)
+        boardNote.appendMarkdownComment(link)
+      })
     }
     
     // 已完成任务（可选显示）
     if (grouped.completed.length > 0) {
-      addSection("✅ 已完成", grouped.completed)
+      boardNote.appendMarkdownComment("## ✅ 已完成")
+      grouped.completed.forEach(task => {
+        const link = this.createTaskLink(task)
+        boardNote.appendMarkdownComment(link)
+      })
     }
-    
-    MNUtil.log("✅ 任务链接添加完成")
   }
   
   /**
@@ -3528,27 +3500,21 @@ class MNTaskManager {
       }
     })
     
-    // 添加统计信息 - 使用 appendTextComment 替代
-    try {
-      boardNote.appendTextComment("✅ 统计信息")
-      boardNote.appendTextComment(`- 总任务数：${stats.total}`)
-      boardNote.appendTextComment(`- 进行中：${stats.inProgress}`)
-      boardNote.appendTextComment(`- 未开始：${stats.notStarted}`)
-      boardNote.appendTextComment(`- 已完成：${stats.completed}`)
-      if (stats.highPriority > 0) {
-        boardNote.appendTextComment(`- 高优先级：${stats.highPriority}`)
-      }
-      
-      // 添加进度条
-      const progressPercent = stats.total > 0 
-        ? Math.round(stats.completed / stats.total * 100) 
-        : 0
-      boardNote.appendTextComment(`- 完成进度：${progressPercent}%`)
-      
-      MNUtil.log("✅ 统计信息添加成功")
-    } catch (e) {
-      MNUtil.log(`❌ 添加统计信息失败: ${e.message}`)
+    // 添加统计信息
+    boardNote.appendMarkdownComment("## 📊 统计信息")
+    boardNote.appendMarkdownComment(`- 总任务数：${stats.total}`)
+    boardNote.appendMarkdownComment(`- 进行中：${stats.inProgress}`)
+    boardNote.appendMarkdownComment(`- 未开始：${stats.notStarted}`)
+    boardNote.appendMarkdownComment(`- 已完成：${stats.completed}`)
+    if (stats.highPriority > 0) {
+      boardNote.appendMarkdownComment(`- 高优先级：${stats.highPriority}`)
     }
+    
+    // 添加进度条
+    const progressPercent = stats.total > 0 
+      ? Math.round(stats.completed / stats.total * 100) 
+      : 0
+    boardNote.appendMarkdownComment(`- 完成进度：${progressPercent}%`)
   }
 
   /**

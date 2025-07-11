@@ -1,3 +1,13 @@
+很好，现在我的需求是我会点击一张卡片，然后我希望对这个卡片的所有没有标题的子孙卡片都进行这样的 OCR 操作，你看看能不能行？ultrathink
+---
+继续开发 mntoolbar：
+尝试在“证明”按钮的长按菜单里加一个功能：
+将选中的卡片 OCR，并且把 OCR 的结果设置为标题。
+1. 参考 toolbar 本来就有的 OCR 动作
+2. 要注意 onFinish 的处理，因为 OCR 需要时间
+3. 调用的模型和源和 toolbar 保持一致，默认用第一个，然后用 JSDoc 写其余的，然后我来选 
+ultrathink
+---
 修复 mntoolbar 的 upwardMergeWithStyledComments ：在 git 的 e0e40164b75bb9353b6bb015cf22399c7bfacccc 和5a616902f5f20d4d42c758845c5ce18d30ada447 两次 commit 中删除了大量的 API。不知道是不是这次删除导致的问题。
 请你先分析这个动作的逻辑和功能，然后目前的效果是除了第一张子卡片的标题变成了 HtmlMardown 评论添加，然后后续的合并之类的以及后续的卡片都没有变！请你找出问题并修复！ultrathink
 ---

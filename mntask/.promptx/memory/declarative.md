@@ -42,3 +42,55 @@ JavaScript 文件中存在语法错误（如在同一作用域内重复声明 co
 --tags #最佳实践 #工具使用 #评分:8 #有效期:长期
 - END
 
+
+
+- 2025/07/11 01:22 START
+## MNToolbar 按钮开发陷阱总结
+
+### 1. MNNote.appendMarkdownComment 空内容检查
+- 问题：MNNote 包装器会检查 `comment && comment.trim()`，空内容直接返回
+- 解决：使用原生 API `focusNote.note.appendMarkdownComment()` 绕过检查
+
+### 2. 空输入值的不同表现
+- 手动输入空框：`alert.textFieldAtIndex(0).text` 返回 `undefined`
+- 代码传入空字符串：`""` 或 `" "` 都会被 trim 掉
+- 关键：理解 undefined、null、空字符串的差异
+
+### 3. MNToolbar 按钮键名必须使用 custom+数字格式
+- 错误：使用 `registerButton("proof", ...)` 导致单击无反应
+- 正确：必须使用 `registerButton("custom8", ...)` 格式
+- 原因：按钮系统只识别 custom 格式的键名
+- 症状：长按菜单正常但单击失效
+
+### 4. 调试策略
+- API 层级：区分包装器和原生 API
+- 框架约定：注意隐含的命名规则
+- 底层方案：高层 API 受限时使用底层 API --tags MN-Addon MNToolbar 开发陷阱 按钮开发
+--tags #最佳实践 #评分:8 #有效期:长期
+- END
+
+- 2025/07/11 19:52 START
+## MN-Addon 开发陷阱：不存在的 API 方法（getHTMLCommentFieldText）
+
+### 问题描述
+在开发 MNTask 今日看板刷新功能时，`sortTodayTasks` 方法中使用了 `task.getHTMLCommentFieldText("排序")`，但这个方法在 MNNote 对象上并不存在，导致：
+- 排序功能执行失败
+- 整个今日看板刷新流程中断
+- 看板只显示标题，没有任务内容
+
+### 根本原因
+1. 文档与实现不同步：可能是旧版本的 API 或计划中的功能
+2. 复制代码未验证：从其他项目复制代码时没有验证 API 是否存在
+3. 缺少运行时检查：没有在使用前检查方法是否存在
+
+### 解决方案
+最终采用简化实现：直接使用 TaskFilterEngine.sort 进行智能排序，避免依赖不存在的 API。
+
+### 经验教训
+1. 当遇到"函数不存在"错误时，首先确认该 API 是否真的存在
+2. 不要假设所有看起来合理的方法都已实现
+3. 简单的解决方案往往比复杂的更可靠
+4. 查阅源码而非文档：直接在 mnutils.js 和 xdyyutils.js 中搜索方法
+5. 添加防御性编程：对不确定的 API 添加 typeof 检查或 try-catch --tags MN-Addon API陷阱 调试技巧 MarginNote插件 MNTask
+--tags #流程管理 #评分:8 #有效期:长期
+- END

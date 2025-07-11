@@ -3382,32 +3382,31 @@ taskSettingController.prototype.loadProjectsData = async function(parentId = nul
       return children
     }
     
+    // 计算子项目数量（应用筛选条件）
+    const getSubProjectsCount = (projectNote) => {
+      let count = 0
+      const defaultStatuses = new Set(['未开始', '进行中'])
+      
+      if (projectNote.childNotes) {
+        for (let child of projectNote.childNotes) {
+          if (MNTaskManager.isTaskCard(child)) {
+            const childInfo = MNTaskManager.parseTaskTitle(child.noteTitle)
+            // 只计算符合筛选条件的子项目
+            if (childInfo.type === '项目' && defaultStatuses.has(childInfo.status)) {
+              count++
+            }
+          }
+        }
+      }
+      return count
+    }
+    
     // 将项目任务转换为项目列表
     const projects = projectTasks.map(task => {
       const taskInfo = MNTaskManager.parseTaskTitle(task.noteTitle)
       
       // 获取该项目下的子任务数量（应用筛选条件）
       const childTasks = getProjectChildren(task)
-      
-      // 计算所有子任务的总数（递归，不应用筛选）
-      const getAllChildrenCount = (projectNote) => {
-        let count = 0
-        if (projectNote.childNotes) {
-          for (let child of projectNote.childNotes) {
-            if (MNTaskManager.isTaskCard(child)) {
-              count++
-            }
-            count += getAllChildrenCount(child)
-          }
-        }
-        return count
-      }
-      
-      const totalChildCount = getAllChildrenCount(task)
-      
-      if (totalChildCount !== childTasks.length) {
-        MNUtil.log(`📊 项目 "${taskInfo.content}": 总任务数 ${totalChildCount}, 筛选后显示 ${childTasks.length}`)
-      }
       
       // 检查是否有子项目
       let hasSubProjects = false
@@ -3423,11 +3422,26 @@ taskSettingController.prototype.loadProjectsData = async function(parentId = nul
         }
       }
       
+      // 根据是否有子项目决定显示什么数字
+      let displayCount
+      let countType
+      if (hasSubProjects) {
+        // 有子项目时，显示子项目数量
+        displayCount = getSubProjectsCount(task)
+        countType = "子项目"
+      } else {
+        // 无子项目时，显示任务数量
+        displayCount = childTasks.length
+        countType = "任务"
+      }
+      
+      MNUtil.log(`📊 项目 "${taskInfo.content}": ${displayCount} 个${countType}`)
+      
       return {
         id: task.noteId,
         name: taskInfo.content || task.noteTitle,
         icon: '📁',
-        taskCount: childTasks.length,
+        taskCount: displayCount,
         status: taskInfo.status || '未开始',
         hasSubProjects: hasSubProjects
       }

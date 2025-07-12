@@ -3999,6 +3999,56 @@ function registerAllCustomActions() {
     return MNTaskGlobal.executeCustomAction("openTodayBoard", context);
   });
 
+  // editSelectedTask - 编辑选中的任务
+  MNTaskGlobal.registerCustomAction("editSelectedTask", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    try {
+      // 获取当前选中的任务
+      const selectedNote = focusNote || MNNote.getFocusNote();
+      
+      if (!selectedNote) {
+        MNUtil.showHUD("❌ 请先选中一个任务卡片");
+        return;
+      }
+      
+      // 检查是否是任务卡片
+      if (!MNTaskManager.isTaskCard(selectedNote)) {
+        MNUtil.showHUD("❌ 请选中一个任务卡片（格式：【类型｜状态】内容）");
+        return;
+      }
+      
+      const taskId = selectedNote.noteId;
+      MNUtil.log(`📝 准备编辑任务: ${taskId}`);
+      
+      // 先打开设置面板
+      MNUtil.postNotification("openTaskSetting", {});
+      
+      // 延迟后打开任务编辑器
+      MNUtil.delay(0.3).then(() => {
+        const mainPlugin = MNTaskGlobal.mainPlugin || MNTaskInstance || self;
+        if (mainPlugin && mainPlugin.settingController) {
+          // 设置当前编辑的任务ID
+          mainPlugin.settingController.currentEditingTaskId = taskId;
+          
+          // 切换到任务编辑器视图
+          if (mainPlugin.settingController.viewManager) {
+            mainPlugin.settingController.viewManager.switchTo('taskeditor');
+          } else {
+            // 如果没有 viewManager，直接调用编辑方法
+            mainPlugin.settingController.editTask(taskId);
+          }
+          
+          MNUtil.showHUD("✏️ 正在打开任务编辑器...");
+        }
+      });
+      
+    } catch (error) {
+      MNUtil.log(`❌ 编辑任务失败: ${error.message || error}`);
+      MNUtil.showHUD("编辑任务失败");
+    }
+  });
+
   // fixLegacyTodayMarks - 修复旧版今日标记
   MNTaskGlobal.registerCustomAction("fixLegacyTodayMarks", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;

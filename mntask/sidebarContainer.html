@@ -288,6 +288,13 @@
                 return;
             }
 
+            // 特殊处理任务编辑器
+            if (viewName === 'taskeditor') {
+                // 通知原生代码检查是否有选中的任务
+                window.location.href = 'mntask://openTaskEditor';
+                return;
+            }
+
             // 更新导航栏状态
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.classList.remove('active');

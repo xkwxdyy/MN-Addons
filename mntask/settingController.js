@@ -3458,7 +3458,13 @@ taskSettingController.prototype.handleTodayBoardProtocol = function(url) {
         break
         
       case 'editTask':
-        this.handleEditTask(params.id)
+        // 兼容两种参数名
+        const taskId = params.id || params.taskId
+        if (taskId) {
+          this.editTask(taskId)
+        } else {
+          MNUtil.showHUD("❌ 缺少任务ID参数")
+        }
         break
         
       case 'loadTaskDetail':
@@ -3587,6 +3593,10 @@ taskSettingController.prototype.handleTodayBoardProtocol = function(url) {
         
       case 'exportTaskQueue':
         this.exportTaskQueue()
+        break
+        
+      case 'openTaskEditor':
+        this.handleOpenTaskEditor()
         break
         
       default:
@@ -4162,15 +4172,8 @@ taskSettingController.prototype.handleClearTaskDate = function() {
  */
 taskSettingController.prototype.handleCloseTaskEditor = function() {
   try {
-    // 隐藏任务编辑器导航项
-    const script = `
-      const editorNav = document.querySelector('[data-view="taskeditor"]');
-      if (editorNav) {
-        editorNav.style.display = 'none';
-      }
-      // 切换回今日看板
-      switchView('todayboard');
-    `
+    // 切换回今日看板
+    const script = `switchView('todayboard');`
     
     this.runJavaScriptInWebView(script)
     
@@ -5050,20 +5053,46 @@ taskSettingController.prototype.editTask = function(taskId) {
       return
     }
     
+    // 验证任务是否存在
+    const task = MNNote.new(taskId)
+    if (!task) {
+      MNUtil.showHUD("❌ 任务不存在")
+      return
+    }
+    
     // 保存当前编辑的任务ID
     this.currentEditingTaskId = taskId
     
-    // 创建或显示任务编辑器
-    if (!this.taskEditorWebView) {
-      this.createTaskEditorWebView()
+    // 使用 viewManager 切换到任务编辑器视图
+    if (this.viewManager) {
+      this.viewManager.switchTo('taskeditor')
+      MNUtil.showHUD("✏️ 正在打开任务编辑器...")
+    } else {
+      // 如果没有 viewManager，尝试通过 WebView 切换
+      const script = `
+        // 确保任务编辑器导航项可见
+        const editorNav = document.querySelector('[data-view="taskeditor"]');
+        if (editorNav && editorNav.style.display === 'none') {
+          editorNav.style.display = '';
+        }
+        
+        // 切换到任务编辑器视图
+        if (typeof switchView === 'function') {
+          switchView('taskeditor');
+          'success';
+        } else {
+          'switchView_not_found';
+        }
+      `
+      
+      this.runJavaScriptInWebView(script).then(result => {
+        if (result === 'success') {
+          MNUtil.showHUD("✏️ 正在打开任务编辑器...")
+        } else {
+          MNUtil.showHUD("❌ 无法切换到任务编辑器")
+        }
+      })
     }
-    
-    this.taskEditorWebView.hidden = false
-    
-    // 加载任务数据
-    MNUtil.delay(0.1).then(() => {
-      this.loadTaskDetailForEditor()
-    })
     
   } catch (error) {
     taskUtils.addErrorLog(error, "editTask")
@@ -5105,6 +5134,35 @@ taskSettingController.prototype.createTaskEditorWebView = function() {
   } catch (error) {
     taskUtils.addErrorLog(error, "createTaskEditorWebView")
     MNUtil.showHUD("创建编辑器失败")
+  }
+}
+
+/**
+ * 处理从侧边栏打开任务编辑器
+ * @this {settingController}
+ */
+taskSettingController.prototype.handleOpenTaskEditor = function() {
+  try {
+    // 获取当前选中的任务
+    const focusNote = MNNote.getFocusNote()
+    
+    if (!focusNote) {
+      MNUtil.showHUD("❌ 请先选中一个任务卡片")
+      return
+    }
+    
+    // 检查是否是任务卡片
+    if (!MNTaskManager.isTaskCard(focusNote)) {
+      MNUtil.showHUD("❌ 请选中一个任务卡片（格式：【类型｜状态】内容）")
+      return
+    }
+    
+    // 调用 editTask 方法
+    this.editTask(focusNote.noteId)
+    
+  } catch (error) {
+    taskUtils.addErrorLog(error, "handleOpenTaskEditor")
+    MNUtil.showHUD("打开任务编辑器失败")
   }
 }
 

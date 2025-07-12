@@ -154,6 +154,10 @@ function registerAllMenuTemplates() {
           menuTitle: "🎯 打开任务看板"
         },
         {
+          action: "editSelectedTask",
+          menuTitle: "✏️ 编辑选中任务"
+        },
+        {
           action: "openTasksFloatMindMap",
           menuTitle: "📊 打开任务管理脑图"
         },

@@ -1274,6 +1274,261 @@ function extendToolbarConfigInit() {
     }
     MNUtil.postNotification("refreshToolbarButton", {})
   }
+
+  // ===== AI 调用相关函数 =====
+  
+  /**
+   * AI 翻译功能
+   * @param {string} text - 要翻译的文本
+   * @param {string} targetLang - 目标语言（默认中文）
+   * @param {string} model - AI 模型
+   * @returns {Promise<string>} 翻译后的文本
+   */
+  toolbarUtils.aiTranslate = async function(text, targetLang = "中文", model = "gpt-4o-mini") {
+    try {
+      // 检查 MNUtils 是否激活
+      if (typeof subscriptionConfig === 'undefined') {
+        MNUtil.showHUD("❌ 请先安装并激活 MN Utils");
+        return null;
+      }
+      
+      if (!subscriptionConfig.getConfig("activated")) {
+        MNUtil.showHUD("❌ 请在 MN Utils 中配置 API Key");
+        return null;
+      }
+      
+      // 构建提示词
+      const systemPrompt = `你是一个专业的翻译助手。请将用户提供的内容翻译成${targetLang}。
+要求：
+1. 保持原意，翻译准确
+2. 使用自然流畅的语言
+3. 只返回翻译结果，不要添加任何解释或说明`;
+      
+      // 构建消息
+      const messages = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: text }
+      ];
+      
+      // 使用 Subscription 配置
+      const config = {
+        apiKey: subscriptionConfig.config.apikey,
+        apiHost: subscriptionConfig.config.url,
+        model: model,
+        temperature: 0.3,
+        stream: false
+      };
+      
+      // 发送请求
+      const result = await this.sendAIRequest(messages, config);
+      
+      if (result) {
+        return result.trim();
+      } else {
+        MNUtil.showHUD("❌ 翻译失败");
+        return null;
+      }
+      
+    } catch (error) {
+      toolbarUtils.addErrorLog(error, "aiTranslate");
+      MNUtil.showHUD("❌ 翻译出错: " + error.message);
+      return null;
+    }
+  }
+  
+  /**
+   * 发送 AI 请求（通用方法）
+   * @param {Array} messages - 消息数组
+   * @param {Object} config - 配置对象
+   * @returns {Promise<string>} AI 响应内容
+   */
+  toolbarUtils.sendAIRequest = async function(messages, config) {
+    try {
+      const headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + config.apiKey
+      };
+      
+      const body = {
+        model: config.model,
+        messages: messages,
+        temperature: config.temperature,
+        stream: config.stream
+      };
+      
+      // 构建完整 URL
+      let apiUrl = config.apiHost;
+      // 如果 apiHost 已经包含完整路径，直接使用
+      if (!apiUrl.includes("/v1/chat/completions")) {
+        if (!apiUrl.endsWith("/")) {
+          apiUrl += "/";
+        }
+        apiUrl += "v1/chat/completions";
+      }
+      
+      // 创建请求
+      const request = NSMutableURLRequest.requestWithURL(NSURL.URLWithString(apiUrl));
+      request.HTTPMethod = "POST";
+      
+      // 设置请求头
+      Object.keys(headers).forEach(key => {
+        request.setValueForHTTPHeaderField(headers[key], key);
+      });
+      
+      // 设置请求体
+      request.HTTPBody = NSJSONSerialization.dataWithJSONObjectOptionsError(body, 0);
+      
+      // 发送同步请求
+      const response = NSURLConnection.sendSynchronousRequestReturningResponseError(request);
+      
+      if (response && response.length() > 0) {
+        const jsonResponse = NSJSONSerialization.JSONObjectWithDataOptionsError(response, 0);
+        
+        if (jsonResponse && jsonResponse.choices && jsonResponse.choices.length > 0) {
+          return jsonResponse.choices[0].message.content;
+        }
+      }
+      
+      return null;
+      
+    } catch (error) {
+      toolbarUtils.addErrorLog(error, "sendAIRequest");
+      throw error;
+    }
+  }
+  
+  /**
+   * OCR 后进行 AI 翻译
+   * @param {string} ocrText - OCR 识别的文本
+   * @param {string} model - AI 模型
+   * @returns {Promise<string>} 翻译后的文本
+   */
+  toolbarUtils.ocrWithTranslation = async function(ocrText, model = "gpt-4o-mini") {
+    try {
+      // 先显示 OCR 结果
+      MNUtil.showHUD("📝 OCR 完成，正在翻译...");
+      
+      let translatedText = null;
+      
+      // 优先尝试使用内置翻译 API
+      translatedText = await this.aiTranslateBuiltin(ocrText, "中文", model);
+      
+      // 如果内置 API 失败，尝试使用 MN Utils 的 API（如果配置了）
+      if (!translatedText && typeof subscriptionConfig !== 'undefined' && subscriptionConfig.getConfig("activated")) {
+        translatedText = await this.aiTranslate(ocrText, "中文", model);
+      }
+      
+      if (translatedText) {
+        MNUtil.showHUD("✅ 翻译完成");
+        return translatedText;
+      } else {
+        // 如果翻译失败，返回原始 OCR 文本
+        MNUtil.showHUD("⚠️ 翻译失败，使用原始文本");
+        return ocrText;
+      }
+      
+    } catch (error) {
+      toolbarUtils.addErrorLog(error, "ocrWithTranslation");
+      // 翻译失败时返回原始文本
+      return ocrText;
+    }
+  }
+  
+  /**
+   * 内置翻译 API（不依赖 MN Utils 配置）
+   * @param {string} text - 要翻译的文本
+   * @param {string} targetLang - 目标语言
+   * @param {string} model - AI 模型（默认使用智谱 AI）
+   * @returns {Promise<string|null>} 翻译后的文本
+   */
+  toolbarUtils.aiTranslateBuiltin = async function(text, targetLang = "中文", model = "glm-4-flashx-250414") {
+    try {
+      // 使用智谱 AI 的内置 API Key
+      const apiKey = '449628b94fcac030495890ee542284b8.F23PvJW4XXLJ4Lsu';
+      const apiUrl = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
+      
+      // 模型映射：将其他模型名称映射到智谱 AI 的模型
+      const modelMap = {
+        "gpt-4o-mini": "glm-4-flashx-250414",
+        "gpt-4o": "glm-4-flashx-250414",
+        "gpt-4.1": "glm-4-flashx-250414",
+        "claude-3-5-sonnet": "glm-4-flashx-250414",
+        "claude-3-7-sonnet": "glm-4-flashx-250414"
+      };
+      
+      // 使用映射后的模型名称，如果没有映射则使用原始名称
+      const actualModel = modelMap[model] || model;
+      
+      // 构建翻译提示词
+      let systemPrompt = `You are a professional translator. Translate the following text into ${targetLang}. Only provide the translation, no explanations.`;
+      
+      // 如果是翻译成中文，使用更具体的提示
+      if (targetLang === "中文") {
+        systemPrompt = "For the given text from user, translate it into chinese.";
+      }
+      
+      // 构建请求体
+      const body = {
+        model: actualModel,
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt
+          },
+          {
+            role: "user",
+            content: text.trim()
+          }
+        ],
+        temperature: 0.1
+      };
+      
+      // 创建请求
+      const request = NSMutableURLRequest.requestWithURL(NSURL.URLWithString(apiUrl));
+      request.HTTPMethod = "POST";
+      request.setValueForHTTPHeaderField("Bearer " + apiKey, "Authorization");
+      request.setValueForHTTPHeaderField("application/json", "Content-Type");
+      request.HTTPBody = NSJSONSerialization.dataWithJSONObjectOptionsError(body, 0);
+      
+      // 发送同步请求
+      const response = NSURLConnection.sendSynchronousRequestReturningResponseError(request);
+      
+      if (response && response.length() > 0) {
+        const jsonResponse = NSJSONSerialization.JSONObjectWithDataOptionsError(response, 0);
+        
+        if (jsonResponse && jsonResponse.choices && jsonResponse.choices.length > 0) {
+          const translatedText = jsonResponse.choices[0].message.content;
+          return translatedText ? translatedText.trim() : null;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      toolbarUtils.addErrorLog(error, "aiTranslateBuiltin");
+      return null;
+    }
+  }
+
+  /**
+   * 获取可用的 AI 模型列表
+   * @returns {Array<string>} 模型列表
+   */
+  toolbarUtils.getAvailableAIModels = function() {
+    // 这些是 Subscription 支持的模型
+    return [
+      "gpt-4o-mini",
+      "gpt-4o",
+      "gpt-4.1",
+      "gpt-4.1-mini",
+      "gpt-4.1-nano",
+      "claude-3-5-sonnet",
+      "claude-3-7-sonnet",
+      "glm-4-plus",
+      "glm-z1-airx",
+      "deepseek-chat",
+      "deepseek-reasoner"
+    ];
+  }
   
   // 添加 toggleRoughReading 静态方法
   // 夏大鱼羊

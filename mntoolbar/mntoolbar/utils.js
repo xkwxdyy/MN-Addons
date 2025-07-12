@@ -4650,6 +4650,10 @@ class toolbarConfig {
     lastSyncTime: 0,
     lastModifyTime: 0
   }
+  // 夏大鱼羊 - begin: 默认 OCR 源和翻译模型配置
+  static defaultOCRSource = "Doc2X"  // 默认 OCR 源
+  static defaultTranslateModel = "gpt-4o-mini"  // 默认翻译模型
+  // 夏大鱼羊 - end
   /**
    * @type {{iCloudSync:boolean,lastSyncTime:number,lastModifyTime:number}}
    */
@@ -4716,6 +4720,12 @@ class toolbarConfig {
     // this.popupConfig = this.defaultPopupReplaceConfig
     this.popupConfig = this.getByDefault("MNToolbar_popupConfig", this.defaultPopupReplaceConfig)
     this.syncConfig = this.getByDefault("MNToolbar_syncConfig", this.defaultSyncConfig)
+    
+    // 夏大鱼羊 - begin: 初始化 OCR 源和翻译模型配置
+    this.ocrSource = this.getByDefault("MNToolbar_ocrSource", this.defaultOCRSource)
+    this.translateModel = this.getByDefault("MNToolbar_translateModel", this.defaultTranslateModel)
+    // 夏大鱼羊 - end
+    
     this.initImage()
     this.checkCloudStore(false)
   }
@@ -4800,7 +4810,11 @@ class toolbarConfig {
       dynamicActionKeys: this.dynamicAction,
       actions: this.actions,
       buttonConfig:this.buttonConfig,
-      popupConfig:this.popupConfig
+      popupConfig:this.popupConfig,
+      // 夏大鱼羊 - begin: 添加 OCR 源和翻译模型配置
+      ocrSource: this.ocrSource,
+      translateModel: this.translateModel
+      // 夏大鱼羊 - end
     }
     return config
   }
@@ -4818,6 +4832,10 @@ class toolbarConfig {
     this.actions = config.actions
     this.buttonConfig = config.buttonConfig
     this.popupConfig = config.popupConfig
+    // 夏大鱼羊 - begin: 导入 OCR 源和翻译模型配置
+    if (config.ocrSource) this.ocrSource = config.ocrSource
+    if (config.translateModel) this.translateModel = config.translateModel
+    // 夏大鱼羊 - end
     if (config.dynamicActionKeys && config.dynamicActionKeys.length > 0) {
       this.dynamicAction = config.dynamicActionKeys
     }else{
@@ -5382,6 +5400,10 @@ static save(key = undefined,value = undefined,upload = true) {
     defaults.setObjectForKey(this.popupConfig,"MNToolbar_popupConfig")
     defaults.setObjectForKey(this.imageScale,"MNToolbar_imageScale")
     defaults.setObjectForKey(this.syncConfig,"MNToolbar_syncConfig")
+    // 夏大鱼羊 - begin: 保存 OCR 源和翻译模型配置
+    defaults.setObjectForKey(this.ocrSource,"MNToolbar_ocrSource")
+    defaults.setObjectForKey(this.translateModel,"MNToolbar_translateModel")
+    // 夏大鱼羊 - end
     this.syncConfig.lastModifyTime = Date.now()
     if (upload && this.iCloudSync) {
       this.writeCloudConfig(false)
@@ -5433,6 +5455,14 @@ static save(key = undefined,value = undefined,upload = true) {
       case "MNToolbar_syncConfig":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.syncConfig,key)
         break;
+      // 夏大鱼羊 - begin: 处理 OCR 源和翻译模型配置
+      case "MNToolbar_ocrSource":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.ocrSource,key)
+        break;
+      case "MNToolbar_translateModel":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.translateModel,key)
+        break;
+      // 夏大鱼羊 - end
       default:
         toolbarUtils.showHUD("Not supported")
         break;

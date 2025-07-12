@@ -1824,6 +1824,110 @@ function registerAllCustomActions() {
     }
   });
 
+  // ocrAsProofTitleWithTranslation - OCR 识别并翻译后设置为标题
+  global.registerCustomAction("ocrAsProofTitleWithTranslation", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    try {
+      // 检查是否有 focusNote
+      if (!focusNote) {
+        MNUtil.showHUD("请先选择一个笔记");
+        return;
+      }
+      
+      // 获取图片数据
+      let imageData = MNUtil.getDocImage(true, true);
+      if (!imageData && focusNote) {
+        imageData = MNNote.getImageFromNote(focusNote);
+      }
+      if (!imageData) {
+        MNUtil.showHUD("未找到可识别的图片");
+        return;
+      }
+      
+      // 直接使用配置的 OCR 源
+      const ocrSource = toolbarConfig.ocrSource || "default";
+      
+      // OCR 源名称映射
+      const ocrSourceNames = {
+        "Doc2X": "Doc2X - 专业文档识别",
+        "SimpleTex": "SimpleTex - 数学公式",
+        "GPT-4o": "GPT-4o - OpenAI 视觉",
+        "GPT-4o-mini": "GPT-4o mini",
+        "glm-4v-plus": "glm-4v-plus - 智谱AI Plus",
+        "glm-4v-flash": "glm-4v-flash - 智谱AI Flash",
+        "claude-3-5-sonnet-20241022": "Claude 3.5 Sonnet",
+        "claude-3-7-sonnet": "Claude 3.7 Sonnet",
+        "gemini-2.0-flash": "Gemini 2.0 Flash - Google",
+        "Moonshot-v1": "Moonshot-v1",
+        "default": "默认配置"
+      };
+      
+      const sourceName = ocrSourceNames[ocrSource] || ocrSource;
+      MNUtil.showHUD(`正在使用 ${sourceName} 识别...`);
+      
+      // 执行 OCR
+      let ocrResult;
+      if (typeof ocrNetwork !== 'undefined') {
+        // 使用 MNOCR 插件
+        ocrResult = await ocrNetwork.OCR(imageData, ocrSource, true);
+      } else if (typeof toolbarUtils !== 'undefined') {
+        // 使用免费 OCR（ChatGPT Vision - glm-4v-flash 模型）
+        ocrResult = await toolbarUtils.freeOCR(imageData);
+      } else {
+        MNUtil.showHUD("请先安装 MN OCR 插件");
+        return;
+      }
+      
+      if (ocrResult) {
+        // 询问是否翻译
+        const confirmTranslate = await MNUtil.confirm(
+          "是否翻译为中文？",
+          "OCR 识别完成:\n\n" + ocrResult.substring(0, 100) + (ocrResult.length > 100 ? "..." : "") + "\n\n是否将结果翻译为中文？"
+        );
+        
+        if (confirmTranslate) {
+          // 直接使用配置的默认翻译模型
+          const selectedModel = toolbarConfig.translateModel || "gpt-4o-mini";
+          
+          MNUtil.showHUD(`正在使用 ${selectedModel} 翻译...`);
+          
+          // 执行翻译
+          const translatedText = await toolbarUtils.ocrWithTranslation(ocrResult, selectedModel);
+          
+          MNUtil.undoGrouping(() => {
+            // 将翻译结果设置为笔记标题
+            focusNote.noteTitle = translatedText.trim();
+            MNUtil.showHUD("✅ 已翻译并设置为标题");
+          });
+          
+          // 发送 OCR 完成通知（可选，用于其他插件集成）
+          MNUtil.postNotification("OCRFinished", {
+            action: "toTitleWithTranslation",
+            noteId: focusNote.noteId,
+            originalResult: ocrResult,
+            translatedResult: translatedText
+          });
+        } else {
+          // 用户选择不翻译，直接使用 OCR 结果
+          MNUtil.undoGrouping(() => {
+            focusNote.noteTitle = ocrResult.trim();
+            MNUtil.showHUD("✅ 已设置为标题（未翻译）");
+          });
+        }
+      } else {
+        MNUtil.showHUD("OCR 识别失败");
+      }
+      
+    } catch (error) {
+      MNUtil.showHUD("OCR 翻译失败: " + error.message);
+      if (typeof toolbarUtils !== 'undefined') {
+        toolbarUtils.addErrorLog(error, "ocrAsProofTitleWithTranslation");
+      }
+    }
+  });
+
+
   // ocrAllUntitledDescendants - 批量 OCR 无标题子孙卡片
   global.registerCustomAction("ocrAllUntitledDescendants", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
@@ -2727,6 +2831,88 @@ function registerAllCustomActions() {
       MNUtil.showHUD("需要安装最新版本的 MNUtils");
     }
   })
+
+  // switchOCRSource - 切换 OCR 源
+  global.registerCustomAction("switchOCRSource", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    // OCR 源选项 - 与 ocrAsProofTitleWithTranslation 保持一致
+    const ocrSources = [
+      { value: "Doc2X", name: "Doc2X - 专业文档识别" },
+      { value: "SimpleTex", name: "SimpleTex - 数学公式" },
+      { value: "GPT-4o", name: "GPT-4o" },
+      { value: "GPT-4o-mini", name: "GPT-4o-mini" },
+      { value: "glm-4v-plus", name: "glm-4v-plus" },
+      { value: "glm-4v-flash", name: "glm-4v-flash" },
+      { value: "claude-3-5-sonnet-20241022", name: "claude-3-5-sonnet-20241022" },
+      { value: "claude-3-7-sonnet", name: "claude-3-7-sonnet" },
+      { value: "gemini-2.0-flash", name: "gemini-2.0-flash" },
+      { value: "Moonshot-v1", name: "Moonshot-v1" }
+    ];
+    
+    const currentSource = toolbarConfig.ocrSource || "Doc2X";
+    const currentSourceName = ocrSources.find(s => s.value === currentSource)?.name || currentSource;
+    
+    // 显示选择对话框
+    const selectedIndex = await MNUtil.userSelect(
+      "选择 OCR 源",
+      `当前: ${currentSourceName}`,
+      ocrSources.map(s => s.name)
+    );
+    
+    if (selectedIndex === 0) {
+      // 用户取消
+      return;
+    }
+    
+    // 保存选择（selectedIndex 从 1 开始）
+    const selectedSource = ocrSources[selectedIndex - 1];
+    toolbarConfig.ocrSource = selectedSource.value;
+    toolbarConfig.save();
+    
+    MNUtil.showHUD(`✅ OCR 源已切换为: ${selectedSource.name}`);
+  });
+
+  // switchTranslateModel - 切换翻译模型
+  global.registerCustomAction("switchTranslateModel", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    // 翻译模型选项
+    const translateModels = [
+      "gpt-4o-mini",
+      "gpt-4o",
+      "gpt-4.1",
+      "gpt-4.1-mini",
+      "gpt-4.1-nano",
+      "claude-3-5-sonnet",
+      "claude-3-7-sonnet",
+      "glm-4-plus",
+      "glm-z1-airx",
+      "deepseek-chat",
+      "deepseek-reasoner",
+      "glm-4-flashx（内置智谱AI）"
+    ];
+    const currentModel = toolbarConfig.translateModel || "gpt-4o-mini";
+    
+    // 显示选择对话框
+    const selectedIndex = await MNUtil.userSelect(
+      "选择翻译模型", 
+      `当前: ${currentModel}`,
+      translateModels
+    );
+    
+    if (selectedIndex === 0) {
+      // 用户取消
+      return;
+    }
+    
+    // 保存选择（selectedIndex 从 1 开始）
+    const selectedModel = translateModels[selectedIndex - 1];
+    toolbarConfig.translateModel = selectedModel;
+    toolbarConfig.save();
+    
+    MNUtil.showHUD(`✅ 翻译模型已切换为: ${selectedModel}`);
+  });
 
 }
 

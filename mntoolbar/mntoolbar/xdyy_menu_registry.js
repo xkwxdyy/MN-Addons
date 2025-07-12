@@ -542,8 +542,21 @@ function registerAllMenuTemplates() {
           menuTitle: "🔍 OCR 识别设置为标题（可选源）"
         },
         {
+          action: "ocrAsProofTitleWithTranslation",
+          menuTitle: "🌐 OCR 识别并翻译为标题"
+        },
+        {
           action: "ocrAllUntitledDescendants",
           menuTitle: "🔍 批量 OCR 无标题子孙卡片"
+        },
+        "⚙️ 设置",
+        {
+          action: "switchOCRSource",
+          menuTitle: "    切换 OCR 源"
+        },
+        {
+          action: "switchTranslateModel",
+          menuTitle: "    切换翻译模型"
         }
       ]
     }

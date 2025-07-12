@@ -3438,7 +3438,8 @@ taskSettingController.prototype.handleTodayBoardProtocol = function(url) {
     const action = urlParts[0]
     const params = this.parseQueryString(urlParts[1] || '')
     
-    MNUtil.log(`📱 处理今日看板协议: ${action}`, params)
+    MNUtil.log(`📱 处理今日看板协议: ${action}`)
+    MNUtil.log(`📱 协议参数:`, JSON.stringify(params))
     
     switch (action) {
       case 'updateStatus':
@@ -3615,9 +3616,12 @@ taskSettingController.prototype.handleUpdateTaskStatus = function(taskId) {
   try {
     // 记录开始更新任务状态
     TaskLogManager.info("开始更新任务状态", "SettingController", { taskId })
+    MNUtil.log(`🔄 handleUpdateTaskStatus 被调用，taskId: ${taskId}`)
     
     if (!taskId) {
       TaskLogManager.warn("任务ID为空", "SettingController")
+      MNUtil.log("❌ 任务ID为空，无法更新状态")
+      MNUtil.showHUD("任务ID为空")
       return
     }
     
@@ -3738,10 +3742,17 @@ taskSettingController.prototype.handleViewTaskDetail = function(taskId) {
  */
 taskSettingController.prototype.handleScheduleTask = async function(taskId) {
   try {
-    if (!taskId) return
+    MNUtil.log(`📅 handleScheduleTask 被调用，taskId: ${taskId}`)
+    
+    if (!taskId) {
+      MNUtil.log("❌ 任务ID为空，无法安排日期")
+      MNUtil.showHUD("任务ID为空")
+      return
+    }
     
     const task = MNNote.new(taskId)
     if (!task) {
+      MNUtil.log(`❌ 任务不存在: ${taskId}`)
       MNUtil.showHUD("任务不存在")
       return
     }
@@ -4205,9 +4216,16 @@ taskSettingController.prototype.handleSaveTaskChanges = function() {
       return
     }
     
-    // 从 WebView 获取编辑的数据
-    const script = `JSON.stringify(taskEditor.getChangedFields())`
-    this.runJavaScriptInWebView(script, 'taskEditorWebView').then(result => {
+    // 从 iframe 中的任务编辑器获取数据
+    const script = `
+      const iframe = document.querySelector('.content-frame');
+      if (iframe && iframe.contentWindow && iframe.contentWindow.taskEditor) {
+        JSON.stringify(iframe.contentWindow.taskEditor.getChangedFields());
+      } else {
+        'null';
+      }
+    `
+    this.runJavaScriptInWebView(script).then(result => {
       if (!result || result === 'null') {
         MNUtil.showHUD("❌ 没有需要保存的更改")
         return
@@ -4227,10 +4245,7 @@ taskSettingController.prototype.handleSaveTaskChanges = function() {
       // 刷新看板数据
       this.loadTodayBoardData()
       
-      // 如果有任务编辑器窗口，关闭它
-      if (this.taskEditorWebView) {
-        this.taskEditorWebView.hidden = true
-      }
+      // 任务编辑器现在在 iframe 中，不需要手动关闭
     }).catch(error => {
       taskUtils.addErrorLog(error, "handleSaveTaskChanges.runJS")
       MNUtil.showHUD("❌ 获取更改失败")
@@ -5061,38 +5076,28 @@ taskSettingController.prototype.editTask = function(taskId) {
     }
     
     // 保存当前编辑的任务ID
-    this.currentEditingTaskId = taskId
+    this.editingTaskId = taskId
     
-    // 使用 viewManager 切换到任务编辑器视图
-    if (this.viewManager) {
-      this.viewManager.switchTo('taskeditor')
-      MNUtil.showHUD("✏️ 正在打开任务编辑器...")
-    } else {
-      // 如果没有 viewManager，尝试通过 WebView 切换
-      const script = `
-        // 确保任务编辑器导航项可见
-        const editorNav = document.querySelector('[data-view="taskeditor"]');
-        if (editorNav && editorNav.style.display === 'none') {
-          editorNav.style.display = '';
-        }
-        
-        // 切换到任务编辑器视图
-        if (typeof switchView === 'function') {
-          switchView('taskeditor');
-          'success';
-        } else {
-          'switchView_not_found';
-        }
-      `
-      
-      this.runJavaScriptInWebView(script).then(result => {
-        if (result === 'success') {
-          MNUtil.showHUD("✏️ 正在打开任务编辑器...")
-        } else {
-          MNUtil.showHUD("❌ 无法切换到任务编辑器")
-        }
-      })
-    }
+    MNUtil.log(`📝 准备编辑任务: ${taskId}`)
+    
+    // 通过 JavaScript 调用 sidebarContainer 的 showTaskEditor 函数
+    const script = `
+      if (typeof showTaskEditor === 'function') {
+        showTaskEditor('${taskId}');
+        'success';
+      } else {
+        'showTaskEditor_not_found';
+      }
+    `
+    
+    this.runJavaScriptInWebView(script).then(result => {
+      if (result === 'success') {
+        MNUtil.log("✅ 已通知显示任务编辑器")
+      } else {
+        MNUtil.log("❌ 无法调用 showTaskEditor 函数")
+        MNUtil.showHUD("打开任务编辑器失败")
+      }
+    })
     
   } catch (error) {
     taskUtils.addErrorLog(error, "editTask")
@@ -5100,42 +5105,6 @@ taskSettingController.prototype.editTask = function(taskId) {
   }
 }
 
-/**
- * 创建任务编辑器 WebView
- * @this {settingController}
- */
-taskSettingController.prototype.createTaskEditorWebView = function() {
-  try {
-    const frame = {
-      x: 50,
-      y: 50,
-      width: 800,
-      height: 600
-    }
-    
-    this.taskEditorWebView = new UIWebView(frame)
-    this.taskEditorWebView.delegate = this
-    this.taskEditorWebView.backgroundColor = UIColor.whiteColor()
-    this.taskEditorWebView.layer.cornerRadius = 10
-    this.taskEditorWebView.layer.masksToBounds = true
-    this.taskEditorWebView.layer.borderWidth = 1
-    this.taskEditorWebView.layer.borderColor = UIColor.grayColor().CGColor
-    
-    // 加载任务编辑器HTML
-    const htmlPath = taskConfig.mainPath + '/taskeditor.html'
-    this.taskEditorWebView.loadFileURLAllowingReadAccessToURL(
-      NSURL.fileURLWithPath(htmlPath),
-      NSURL.fileURLWithPath(taskConfig.mainPath)
-    )
-    
-    // 添加到视图
-    MNUtil.studyView.addSubview(this.taskEditorWebView)
-    
-  } catch (error) {
-    taskUtils.addErrorLog(error, "createTaskEditorWebView")
-    MNUtil.showHUD("创建编辑器失败")
-  }
-}
 
 /**
  * 处理从侧边栏打开任务编辑器
@@ -5166,18 +5135,19 @@ taskSettingController.prototype.handleOpenTaskEditor = function() {
   }
 }
 
+
 /**
  * 加载任务详情到编辑器
  * @this {settingController}
  */
 taskSettingController.prototype.loadTaskDetailForEditor = function() {
   try {
-    if (!this.currentEditingTaskId) {
+    if (!this.editingTaskId) {
       MNUtil.showHUD("❌ 没有选中的任务")
       return
     }
     
-    const task = MNNote.new(this.currentEditingTaskId)
+    const task = MNNote.new(this.editingTaskId)
     if (!task) {
       MNUtil.showHUD("❌ 任务不存在")
       return
@@ -5189,7 +5159,7 @@ taskSettingController.prototype.loadTaskDetailForEditor = function() {
     
     // 构建任务数据
     const taskData = {
-      id: this.currentEditingTaskId,
+      id: this.editingTaskId,
       title: taskInfo.content,
       type: taskInfo.type,
       status: taskInfo.status,
@@ -5227,10 +5197,10 @@ taskSettingController.prototype.loadTaskDetailForEditor = function() {
       })
     })
     
-    // 发送数据到编辑器
+    // 发送数据到 iframe 中的编辑器
     const encodedData = encodeURIComponent(JSON.stringify(taskData))
-    const script = `loadTaskFromPlugin('${encodedData}')`
-    this.runJavaScriptInWebView(script, 'taskEditorWebView')
+    const script = `loadTaskDetailFromPlugin('${encodedData}')`
+    this.runJavaScriptInWebView(script)
     
   } catch (error) {
     taskUtils.addErrorLog(error, "loadTaskDetailForEditor")
@@ -5244,10 +5214,12 @@ taskSettingController.prototype.loadTaskDetailForEditor = function() {
  */
 taskSettingController.prototype.closeTaskEditor = function() {
   try {
-    if (this.taskEditorWebView) {
-      this.taskEditorWebView.hidden = true
-    }
-    this.currentEditingTaskId = null
+    // 清除当前编辑的任务ID
+    this.editingTaskId = null
+    
+    // 任务编辑器现在是在 iframe 中显示的，关闭操作由 sidebarContainer 处理
+    MNUtil.log("📝 任务编辑器已关闭")
+    
   } catch (error) {
     taskUtils.addErrorLog(error, "closeTaskEditor")
   }

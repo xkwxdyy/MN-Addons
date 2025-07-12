@@ -460,3 +460,78 @@ static async userSelect(mainTitle, subTitle, items) {
 2. **IDE 不可靠**：JSB 框架下 IDE 的智能提示可能不准确
 3. **grep 是好帮手**：快速验证方法是否存在
 4. **保持怀疑**：遇到"Not supported yet"等错误时，首先怀疑是 API 名称或参数错误
+
+## iframe 与父窗口通信问题（2025-01-12）
+
+### 问题描述
+在 iframe 架构下，子页面（如 todayboard.html）中的任务操作按钮无法正确触发原生代码的协议处理。
+
+### 根本原因
+iframe 中直接使用 `window.location.href = 'mntask://...'` 无法正确传递到原生代码，因为：
+1. iframe 有自己的浏览上下文
+2. URL 协议需要在主 WebView（父窗口）中触发才能被原生代码截获
+
+### 解决方案
+
+#### 1. 子页面使用 postMessage 发送消息
+```javascript
+// todayboard.html 中的任务操作
+updateTaskStatus(taskId) {
+    window.parent.postMessage({
+        action: 'updateStatus',
+        params: { id: taskId }
+    }, '*');
+}
+```
+
+#### 2. 父窗口接收并转发协议
+```javascript
+// sidebarContainer.html
+window.addEventListener('message', function(event) {
+    if (event.data && event.data.action) {
+        const params = event.data.params || {};
+        const queryString = Object.keys(params)
+            .map(key => `${key}=${encodeURIComponent(params[key])}`)
+            .join('&');
+        
+        const url = `mntask://${event.data.action}${queryString ? '?' + queryString : ''}`;
+        window.location.href = url;
+    }
+});
+```
+
+### 关键要点
+1. **iframe 通信必须使用 postMessage**：不能直接触发 URL 协议
+2. **参数编码很重要**：使用 encodeURIComponent 确保特殊字符正确传递
+3. **调试日志很有用**：在消息传递的每个环节添加日志
+4. **父窗口是协议中转站**：所有协议都需要通过父窗口转发
+
+## 视图重复加载优化（2025-01-12）
+
+### 问题描述
+切换回已加载的视图（如今日看板）时，会重新加载 iframe，导致闪烁和性能浪费。
+
+### 解决方案
+在 loadView 函数中添加智能检测：
+```javascript
+const currentSrc = iframe.src;
+const isSameView = currentSrc && currentSrc.includes(config.url);
+
+if (isSameView) {
+    // 相同视图，直接触发数据刷新
+    switch (viewName) {
+        case 'todayboard':
+            window.location.href = 'mntask://loadTodayBoardData';
+            break;
+        // ... 其他视图
+    }
+} else {
+    // 不同视图，重新加载 iframe
+    iframe.src = config.url;
+}
+```
+
+### 优化效果
+1. **减少页面重载**：相同视图切换时不会重新加载页面
+2. **提升响应速度**：数据刷新比页面重载快得多
+3. **改善用户体验**：减少闪烁和等待时间

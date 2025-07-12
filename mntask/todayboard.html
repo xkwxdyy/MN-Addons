@@ -1123,38 +1123,67 @@
 
             // 更新任务状态
             updateTaskStatus(taskId) {
-                window.location.href = `mntask://updateStatus?id=${taskId}`;
+                console.log(`[UpdateStatus] 更新任务状态: ${taskId}`);
+                // 发送消息到父窗口
+                window.parent.postMessage({
+                    action: 'updateStatus',
+                    params: { id: taskId }
+                }, '*');
             }
 
             // 启动任务
             launchTask(taskId) {
-                window.location.href = `mntask://launch?id=${taskId}`;
+                console.log(`[LaunchTask] 启动任务: ${taskId}`);
+                // 发送消息到父窗口
+                window.parent.postMessage({
+                    action: 'launch',
+                    params: { id: taskId }
+                }, '*');
             }
 
             // 查看任务详情
             viewTaskDetail(taskId) {
-                window.location.href = `mntask://viewDetail?id=${taskId}`;
+                console.log(`[ViewDetail] 查看任务详情: ${taskId}`);
+                // 发送消息到父窗口
+                window.parent.postMessage({
+                    action: 'viewDetail',
+                    params: { id: taskId }
+                }, '*');
             }
 
             // 编辑任务
             editTask(taskId) {
+                console.log(`[EditTask] 编辑任务: ${taskId}`);
                 // 通知父窗口显示任务编辑器
                 if (window.parent && window.parent.showTaskEditor) {
                     window.parent.showTaskEditor(taskId);
                 } else {
-                    // 直接通知原生代码
-                    window.location.href = `mntask://editTask?id=${taskId}`;
+                    // 通过消息发送到父窗口
+                    window.parent.postMessage({
+                        action: 'editTask',
+                        params: { id: taskId }
+                    }, '*');
                 }
             }
 
             // 安排任务日期
             scheduleTask(taskId) {
-                window.location.href = `mntask://scheduleTask?id=${taskId}`;
+                console.log(`[ScheduleTask] 安排任务日期: ${taskId}`);
+                // 发送消息到父窗口
+                window.parent.postMessage({
+                    action: 'scheduleTask',
+                    params: { id: taskId }
+                }, '*');
             }
 
             // 刷新看板
             refreshBoard() {
-                window.location.href = 'mntask://refresh';
+                console.log('[RefreshBoard] 刷新看板');
+                // 发送消息到父窗口
+                window.parent.postMessage({
+                    action: 'refresh',
+                    params: {}
+                }, '*');
             }
 
             // 切换排序方式
@@ -1201,12 +1230,22 @@
 
             // 导出数据
             exportData() {
-                window.location.href = 'mntask://export';
+                console.log('[ExportData] 导出数据');
+                // 发送消息到父窗口
+                window.parent.postMessage({
+                    action: 'export',
+                    params: {}
+                }, '*');
             }
 
             // 快速启动
             quickStart() {
-                window.location.href = 'mntask://quickStart';
+                console.log('[QuickStart] 快速启动');
+                // 发送消息到父窗口
+                window.parent.postMessage({
+                    action: 'quickStart',
+                    params: {}
+                }, '*');
             }
 
             // 拖拽处理函数
@@ -1235,8 +1274,12 @@
 
             // 显示消息
             showMessage(message) {
-                // 通过 URL scheme 显示 HUD
-                window.location.href = `mntask://showHUD?message=${encodeURIComponent(message)}`;
+                console.log(`[ShowMessage] ${message}`);
+                // 发送消息到父窗口
+                window.parent.postMessage({
+                    action: 'showHUD',
+                    params: { message: message }
+                }, '*');
             }
 
             // 显示错误

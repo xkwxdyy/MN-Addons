@@ -1,7 +1,18 @@
 下面开发 mntask 项目。
 1. 一旦修改代码，就需要按照修改的内容程度来改 mnaddon.json 的版本号。
 2. 任何更新，尤其是新功能，要在 mntask_guide.md 里详细更新。
-3.  /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/log.md 是用于测试的 log 文件，一般说“log 文件已更新”就是这个。 MNUtil.log() 添加的内容我会复制到这里
+3.  /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/log.md 是用于测试的 log 文件，一般说“log 文件已更新”就是这个。 MNUtil.log() 添加的内容我会复制到这里。
+4.  你更新的 log 写在 mntask_guide.md 里! 而不是 log.md 里。 
+---
+还有一些问题：（我们说的看板都是“setting”点击后，或者是“看板”按钮点击后打开的那个看板，通过 html 来实现的）
+1. 看板进入后，点击左侧除了“今日看板”以外的，再回到“今日看板”，会一直显示“加载中”，
+   需要手动刷新才能显示内容。
+2. 任务“安排”按钮点击一直弹窗“安排日期失败”
+3. 任务“完成”按钮击一直弹窗“更新状态失败”
+2 和 3 综合在一起就是看板里的任务卡片除了“详情”有效，其它都无效！请修复！！
+ultrathink
+
+
 ---
 1. 选中任务卡片后，点击“任务编辑”按钮，弹窗显示“正在打开任务编辑器...”，但面板没有任何变化
 2. 看板里的任务卡片的“编辑”按钮点击也没有任何反应

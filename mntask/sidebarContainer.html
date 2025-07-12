@@ -317,14 +317,42 @@
             // 显示加载状态
             const loading = document.querySelector('.loading');
             const iframe = document.querySelector('.content-frame');
-            loading.style.display = 'block';
-            iframe.style.display = 'none';
-
-            // 加载内容
-            iframe.src = config.url;
-            iframe.onload = function() {
+            
+            // 检查是否已经加载了相同的视图
+            const currentSrc = iframe.src;
+            const targetUrl = new URL(config.url, window.location.href).href;
+            const isSameView = currentSrc && currentSrc.includes(config.url);
+            
+            console.log(`[loadView] 切换到视图: ${viewName}`);
+            console.log(`[loadView] 当前 src: ${currentSrc}`);
+            console.log(`[loadView] 目标 url: ${targetUrl}`);
+            console.log(`[loadView] 是否相同视图: ${isSameView}`);
+            
+            if (isSameView) {
+                // 如果是相同的视图，不重新加载 iframe，直接触发数据刷新
+                console.log(`[loadView] 视图已加载，直接刷新数据`);
                 loading.style.display = 'none';
                 iframe.style.display = 'block';
+                
+                // 根据视图类型触发对应的数据加载
+                switch (viewName) {
+                    case 'todayboard':
+                        console.log('[loadView] 触发今日看板数据加载');
+                        window.location.href = 'mntask://loadTodayBoardData';
+                        break;
+                    case 'projects':
+                        console.log('[loadView] 项目视图由页面自行加载');
+                        // 项目视图由页面初始化后自行加载
+                        break;
+                    case 'taskqueue':
+                        console.log('[loadView] 触发任务队列数据加载');
+                        window.location.href = 'mntask://loadTaskQueueData';
+                        break;
+                    case 'log':
+                        console.log('[loadView] 触发日志数据加载');
+                        window.location.href = 'mntask://loadLogData';
+                        break;
+                }
                 
                 // 通知原生代码视图已切换
                 if (window.webkit && window.webkit.messageHandlers) {
@@ -333,22 +361,45 @@
                         title: config.title
                     });
                 }
+            } else {
+                // 不同的视图，需要重新加载 iframe
+                console.log(`[loadView] 加载新视图`);
+                loading.style.display = 'block';
+                iframe.style.display = 'none';
                 
-                // 如果是今日看板，通知原生代码加载任务数据
-                if (viewName === 'todayboard') {
-                    window.location.href = 'mntask://loadTodayBoardData';
-                }
-                
-                // 如果是项目视图，通知原生代码加载项目数据
-                // 注释掉自动加载，改为由 projectview.html 初始化后主动加载
-                // if (viewName === 'projects') {
-                //     window.location.href = 'mntask://loadProjectsData';
-                // }
-            };
+                // 加载内容
+                iframe.src = config.url;
+                iframe.onload = function() {
+                    console.log(`[loadView] iframe 加载完成: ${viewName}`);
+                    loading.style.display = 'none';
+                    iframe.style.display = 'block';
+                    
+                    // 通知原生代码视图已切换
+                    if (window.webkit && window.webkit.messageHandlers) {
+                        window.webkit.messageHandlers.viewChanged.postMessage({
+                            view: viewName,
+                            title: config.title
+                        });
+                    }
+                    
+                    // 如果是今日看板，通知原生代码加载任务数据
+                    if (viewName === 'todayboard') {
+                        console.log('[loadView] 今日看板加载完成，触发数据加载');
+                        window.location.href = 'mntask://loadTodayBoardData';
+                    }
+                    
+                    // 如果是项目视图，通知原生代码加载项目数据
+                    // 注释掉自动加载，改为由 projectview.html 初始化后主动加载
+                    // if (viewName === 'projects') {
+                    //     window.location.href = 'mntask://loadProjectsData';
+                    // }
+                };
 
-            iframe.onerror = function() {
-                showError('加载失败');
-            };
+                iframe.onerror = function() {
+                    console.error(`[loadView] 加载失败: ${viewName}`);
+                    showError('加载失败');
+                };
+            }
         }
 
         // 显示错误信息
@@ -375,7 +426,17 @@
         window.addEventListener('message', function(event) {
             // 转发消息到原生代码
             if (event.data && event.data.action) {
-                const url = `mntask://${event.data.action}?${new URLSearchParams(event.data.params || {})}`;
+                console.log('[Message] 收到来自 iframe 的消息:', event.data);
+                
+                // 构建 URL 参数
+                const params = event.data.params || {};
+                const queryString = Object.keys(params)
+                    .map(key => `${key}=${encodeURIComponent(params[key])}`)
+                    .join('&');
+                
+                const url = `mntask://${event.data.action}${queryString ? '?' + queryString : ''}`;
+                console.log('[Message] 转发 URL 协议:', url);
+                
                 window.location.href = url;
             }
         });

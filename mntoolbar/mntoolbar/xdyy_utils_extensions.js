@@ -1376,13 +1376,13 @@ function extendToolbarConfigInit() {
       });
       
       // 设置请求体
-      request.HTTPBody = NSJSONSerialization.dataWithJSONObjectOptionsError(body, 0);
+      request.HTTPBody = NSJSONSerialization.dataWithJSONObjectOptions(body, 0);
       
       // 发送同步请求
       const response = NSURLConnection.sendSynchronousRequestReturningResponseError(request);
       
       if (response && response.length() > 0) {
-        const jsonResponse = NSJSONSerialization.JSONObjectWithDataOptionsError(response, 0);
+        const jsonResponse = NSJSONSerialization.JSONObjectWithDataOptions(response, 0);
         
         if (jsonResponse && jsonResponse.choices && jsonResponse.choices.length > 0) {
           return jsonResponse.choices[0].message.content;
@@ -1405,29 +1405,48 @@ function extendToolbarConfigInit() {
    */
   toolbarUtils.ocrWithTranslation = async function(ocrText, model = "gpt-4o-mini") {
     try {
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`🔧 [OCR翻译] 开始处理，文本长度: ${ocrText.length}`);
+      }
+      
       // 先显示 OCR 结果
       MNUtil.showHUD("📝 OCR 完成，正在翻译...");
       
       let translatedText = null;
       
       // 优先尝试使用内置翻译 API
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`🔧 [OCR翻译] 尝试使用内置翻译 API`);
+      }
       translatedText = await this.aiTranslateBuiltin(ocrText, "中文", model);
       
       // 如果内置 API 失败，尝试使用 MN Utils 的 API（如果配置了）
       if (!translatedText && typeof subscriptionConfig !== 'undefined' && subscriptionConfig.getConfig("activated")) {
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`🔧 [OCR翻译] 内置 API 失败，尝试使用 MN Utils API`);
+        }
         translatedText = await this.aiTranslate(ocrText, "中文", model);
       }
       
       if (translatedText) {
         MNUtil.showHUD("✅ 翻译完成");
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`✅ [OCR翻译] 翻译成功`);
+        }
         return translatedText;
       } else {
         // 如果翻译失败，返回原始 OCR 文本
         MNUtil.showHUD("⚠️ 翻译失败，使用原始文本");
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`❌ [OCR翻译] 翻译失败，返回原始文本`);
+        }
         return ocrText;
       }
       
     } catch (error) {
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`❌ [OCR翻译] 异常: ${error.message}`);
+      }
       toolbarUtils.addErrorLog(error, "ocrWithTranslation");
       // 翻译失败时返回原始文本
       return ocrText;
@@ -1443,6 +1462,19 @@ function extendToolbarConfigInit() {
    */
   toolbarUtils.aiTranslateBuiltin = async function(text, targetLang = "中文", model = "glm-4-flashx-250414") {
     try {
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`🔧 [翻译] 开始内置翻译: ${text.substring(0, 50)}...`);
+        MNUtil.log(`🔧 [翻译] 目标语言: ${targetLang}, 模型: ${model}`);
+      }
+      
+      // 检查 MNConnection 是否可用
+      if (typeof MNConnection === 'undefined') {
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`❌ [翻译] MNConnection 不可用`);
+        }
+        throw new Error("MNConnection 不可用，请确保 MN Utils 已安装");
+      }
+      
       // 使用智谱 AI 的内置 API Key
       const apiKey = '449628b94fcac030495890ee542284b8.F23PvJW4XXLJ4Lsu';
       const apiUrl = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
@@ -1458,6 +1490,10 @@ function extendToolbarConfigInit() {
       
       // 使用映射后的模型名称，如果没有映射则使用原始名称
       const actualModel = modelMap[model] || model;
+      
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`🔧 [翻译] 实际使用模型: ${actualModel}`);
+      }
       
       // 构建翻译提示词
       let systemPrompt = `You are a professional translator. Translate the following text into ${targetLang}. Only provide the translation, no explanations.`;
@@ -1483,27 +1519,54 @@ function extendToolbarConfigInit() {
         temperature: 0.1
       };
       
-      // 创建请求
-      const request = NSMutableURLRequest.requestWithURL(NSURL.URLWithString(apiUrl));
-      request.HTTPMethod = "POST";
-      request.setValueForHTTPHeaderField("Bearer " + apiKey, "Authorization");
-      request.setValueForHTTPHeaderField("application/json", "Content-Type");
-      request.HTTPBody = NSJSONSerialization.dataWithJSONObjectOptionsError(body, 0);
+      // 使用 MNConnection 创建和发送请求
+      const request = MNConnection.initRequest(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + apiKey
+        },
+        timeout: 30,
+        json: body
+      });
       
-      // 发送同步请求
-      const response = NSURLConnection.sendSynchronousRequestReturningResponseError(request);
+      // 发送请求
+      const response = await MNConnection.sendRequest(request);
       
-      if (response && response.length() > 0) {
-        const jsonResponse = NSJSONSerialization.JSONObjectWithDataOptionsError(response, 0);
-        
-        if (jsonResponse && jsonResponse.choices && jsonResponse.choices.length > 0) {
-          const translatedText = jsonResponse.choices[0].message.content;
-          return translatedText ? translatedText.trim() : null;
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`🔧 [翻译] API 响应: ${JSON.stringify(response).substring(0, 200)}...`);
+      }
+      
+      // 检查响应状态
+      if (response && response.statusCode >= 400) {
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`❌ [翻译] API 错误: 状态码 ${response.statusCode}`);
+          if (response.data && response.data.error) {
+            MNUtil.log(`❌ [翻译] 错误详情: ${JSON.stringify(response.data.error)}`);
+          }
+        }
+        return null;
+      }
+      
+      // 处理成功响应
+      if (response && response.choices && response.choices.length > 0) {
+        const translatedText = response.choices[0].message.content;
+        if (translatedText) {
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log(`✅ [翻译] 翻译成功: ${translatedText.substring(0, 100)}...`);
+          }
+          return translatedText.trim();
         }
       }
       
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`❌ [翻译] 无有效响应或响应格式错误`);
+      }
       return null;
     } catch (error) {
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`❌ [翻译] 异常错误: ${error.message}`);
+      }
       toolbarUtils.addErrorLog(error, "aiTranslateBuiltin");
       return null;
     }

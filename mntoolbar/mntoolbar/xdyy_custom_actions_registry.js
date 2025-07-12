@@ -1887,27 +1887,43 @@ function registerAllCustomActions() {
         );
         
         if (confirmTranslate) {
-          // 直接使用配置的默认翻译模型
-          const selectedModel = toolbarConfig.translateModel || "gpt-4o-mini";
-          
-          MNUtil.showHUD(`正在使用 ${selectedModel} 翻译...`);
-          
-          // 执行翻译
-          const translatedText = await toolbarUtils.ocrWithTranslation(ocrResult, selectedModel);
-          
+          // 先设置 OCR 结果为标题
           MNUtil.undoGrouping(() => {
-            // 将翻译结果设置为笔记标题
-            focusNote.noteTitle = translatedText.trim();
-            MNUtil.showHUD("✅ 已翻译并设置为标题");
+            focusNote.noteTitle = ocrResult.trim();
+            MNUtil.showHUD("✅ 已设置 OCR 结果为标题，正在翻译...");
           });
           
-          // 发送 OCR 完成通知（可选，用于其他插件集成）
-          MNUtil.postNotification("OCRFinished", {
-            action: "toTitleWithTranslation",
-            noteId: focusNote.noteId,
-            originalResult: ocrResult,
-            translatedResult: translatedText
-          });
+          // 异步执行翻译
+          (async () => {
+            try {
+              // 直接使用配置的默认翻译模型
+              const selectedModel = toolbarConfig.translateModel || "gpt-4o-mini";
+              
+              MNUtil.showHUD(`正在使用 ${selectedModel} 翻译...`);
+              
+              // 执行翻译
+              const translatedText = await toolbarUtils.ocrWithTranslation(ocrResult, selectedModel);
+              
+              MNUtil.undoGrouping(() => {
+                // 将翻译结果更新到笔记标题
+                focusNote.noteTitle = translatedText.trim();
+                MNUtil.showHUD("✅ 翻译完成并更新标题");
+              });
+              
+              // 发送 OCR 完成通知（可选，用于其他插件集成）
+              MNUtil.postNotification("OCRFinished", {
+                action: "toTitleWithTranslation",
+                noteId: focusNote.noteId,
+                originalResult: ocrResult,
+                translatedResult: translatedText
+              });
+            } catch (translationError) {
+              MNUtil.showHUD("翻译失败: " + translationError.message);
+              if (typeof toolbarUtils !== 'undefined') {
+                toolbarUtils.addErrorLog(translationError, "ocrAsProofTitleWithTranslation - translation");
+              }
+            }
+          })();
         } else {
           // 用户选择不翻译，直接使用 OCR 结果
           MNUtil.undoGrouping(() => {

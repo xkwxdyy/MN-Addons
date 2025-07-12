@@ -477,7 +477,13 @@
 
             // 加载字段列表
             loadFields(fields) {
-                this.fields = fields;
+                // 为每个字段添加原始索引以跟踪更改
+                this.fields = fields.map((field, index) => ({
+                    ...field,
+                    originalIndex: index,
+                    isNew: false,
+                    isDeleted: false
+                }));
                 this.renderFields();
             },
 
@@ -485,7 +491,10 @@
             renderFields() {
                 const container = document.getElementById('fieldsList');
                 
-                if (this.fields.length === 0) {
+                // 过滤掉已删除的字段
+                const activeFields = this.fields.filter(field => !field.isDeleted);
+                
+                if (activeFields.length === 0) {
                     container.innerHTML = `
                         <div class="empty-state">
                             <div class="empty-state-icon">📝</div>
@@ -495,7 +504,9 @@
                     return;
                 }
 
-                container.innerHTML = this.fields.map((field, index) => `
+                container.innerHTML = this.fields.map((field, index) => {
+                    if (field.isDeleted) return '';
+                    return `
                     <div class="field-item" draggable="true" data-index="${index}">
                         <span class="field-drag-handle">≡</span>
                         <div class="field-info">
@@ -513,7 +524,8 @@
                             </button>
                         </div>
                     </div>
-                `).join('');
+                `;
+                }).join('');
 
                 // 重新绑定拖拽事件
                 this.bindDragEvents();
@@ -639,7 +651,8 @@
             deleteField(index) {
                 if (confirm(`确定要删除字段"${this.fields[index].name}"吗？`)) {
                     const field = this.fields[index];
-                    this.fields.splice(index, 1);
+                    // 标记为删除而不是直接删除，以便跟踪更改
+                    field.isDeleted = true;
                     this.hasChanges = true;
                     this.renderFields();
                     
@@ -660,17 +673,66 @@
                     return;
                 }
 
+                // 检测字段类型
+                let fieldType = 'normal';
+                let extraData = {};
+                
+                // 检测日期字段
+                if (name.includes('日期') || name.includes('Date')) {
+                    fieldType = 'date';
+                    // 如果内容是日期格式，提取日期
+                    const dateMatch = content.match(/\d{4}-\d{2}-\d{2}/);
+                    if (dateMatch) {
+                        extraData.date = dateMatch[0];
+                    }
+                }
+                // 检测优先级字段
+                else if (name.includes('优先级') || name.includes('Priority')) {
+                    fieldType = 'priority';
+                    if (content.includes('高') || content.includes('High')) {
+                        extraData.priority = '高';
+                    } else if (content.includes('中') || content.includes('Medium')) {
+                        extraData.priority = '中';
+                    } else if (content.includes('低') || content.includes('Low')) {
+                        extraData.priority = '低';
+                    }
+                }
+                // 检测启动链接
+                else if (name.includes('启动') || name.includes('Launch') || name.includes('链接')) {
+                    fieldType = 'launch';
+                    // 检测URL
+                    const urlMatch = content.match(/(https?:\/\/[^\s]+|marginnote\d+app:\/\/[^\s]+)/);
+                    if (urlMatch) {
+                        extraData.url = urlMatch[0];
+                        extraData.text = content.replace(urlMatch[0], '').trim() || name;
+                    }
+                }
+
                 if (this.editingFieldIndex === -1) {
                     // 添加新字段
-                    this.fields.push({ name, content });
+                    this.fields.push({ 
+                        name, 
+                        content,
+                        isNew: true,
+                        isDeleted: false,
+                        originalIndex: undefined,
+                        fieldType: fieldType,
+                        ...extraData
+                    });
                     // 通知原生代码
-                    window.location.href = `mntask://addField?name=${encodeURIComponent(name)}&content=${encodeURIComponent(content)}`;
+                    window.location.href = `mntask://addField?name=${encodeURIComponent(name)}&content=${encodeURIComponent(content)}&fieldType=${fieldType}`;
                 } else {
                     // 更新现有字段
                     const oldField = this.fields[this.editingFieldIndex];
-                    this.fields[this.editingFieldIndex] = { name, content };
+                    this.fields[this.editingFieldIndex] = { 
+                        ...oldField,
+                        name, 
+                        content,
+                        fieldType: fieldType,
+                        ...extraData
+                    };
                     // 通知原生代码
-                    window.location.href = `mntask://updateField?index=${this.editingFieldIndex}&name=${encodeURIComponent(name)}&content=${encodeURIComponent(content)}&oldName=${encodeURIComponent(oldField.name)}`;
+                    window.location.href = `mntask://updateField?index=${this.editingFieldIndex}&name=${encodeURIComponent(name)}&content=${encodeURIComponent(content)}&oldName=${encodeURIComponent(oldField.name)}&fieldType=${fieldType}`;
                 }
 
                 this.hasChanges = true;
@@ -721,6 +783,70 @@
                 window.location.href = 'mntask://saveTaskChanges';
                 alert('更改已保存');
                 this.hasChanges = false;
+            },
+
+            // 获取更改的字段数据
+            getChangedFields() {
+                const changes = {
+                    deletedFields: [],
+                    updatedFields: [],
+                    addedFields: [],
+                    reorderedFields: []
+                };
+
+                // 跟踪原始字段以检测更改
+                const originalFields = this.currentTask ? (this.currentTask.fields || []) : [];
+                
+                // 检测删除的字段
+                originalFields.forEach((origField, index) => {
+                    const exists = this.fields.some(field => 
+                        field.originalIndex === index && !field.isDeleted
+                    );
+                    if (!exists) {
+                        changes.deletedFields.push(index);
+                    }
+                });
+
+                // 检测更新和新增的字段
+                this.fields.forEach((field, currentIndex) => {
+                    if (field.isDeleted) return;
+
+                    if (field.isNew) {
+                        // 新增的字段
+                        changes.addedFields.push({
+                            content: field.content || field.name,
+                            isMainField: field.isMainField || false,
+                            fieldType: field.fieldType || 'normal',
+                            priority: field.priority,
+                            date: field.date,
+                            url: field.url,
+                            text: field.text
+                        });
+                    } else if (field.originalIndex !== undefined) {
+                        // 检查是否更新
+                        const origField = originalFields[field.originalIndex];
+                        if (origField && (
+                            origField.name !== field.name || 
+                            origField.content !== field.content
+                        )) {
+                            changes.updatedFields.push({
+                                index: field.originalIndex,
+                                content: field.content || field.name,
+                                isMainField: field.isMainField || false
+                            });
+                        }
+
+                        // 检查是否重新排序
+                        if (field.originalIndex !== currentIndex) {
+                            changes.reorderedFields.push({
+                                from: field.originalIndex,
+                                to: currentIndex
+                            });
+                        }
+                    }
+                });
+
+                return changes;
             }
         };
 

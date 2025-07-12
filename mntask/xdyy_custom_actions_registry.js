@@ -3987,52 +3987,11 @@ function registerAllCustomActions() {
     MNTaskManager.refreshTodayBoard();
   });
 
-  // openTodayBoardHTML - 打开 HTML 增强版今日看板
+  // openTodayBoardHTML - 打开 HTML 增强版今日看板（重定向到 openTodayBoard）
   MNTaskGlobal.registerCustomAction("openTodayBoardHTML", async function(context) {
-    const { button, des, focusNote, focusNotes, self } = context;
-    
-    try {
-      MNUtil.log("🎯 打开 HTML 今日看板");
-      
-      // 确保 self 是主插件实例
-      const mainPlugin = self || MNTaskGlobal.mainPlugin || MNTaskInstance;
-      if (!mainPlugin) {
-        throw new Error("无法获取主插件实例");
-      }
-      
-      // 使用 settingController 来显示今日看板
-      MNUtil.log("📌 使用 settingController 显示今日看板");
-      
-      // 验证控制器类是否存在
-      if (typeof taskSettingController === 'undefined') {
-        throw new Error("taskSettingController 类未定义");
-      }
-      
-      // 检查是否已有 settingController 实例
-      if (!mainPlugin.settingController) {
-        mainPlugin.settingController = taskSettingController.new();
-        mainPlugin.settingController.mainPath = taskConfig.mainPath;
-        mainPlugin.settingController.action = taskConfig.action;
-        MNUtil.studyView.addSubview(mainPlugin.settingController.view);
-      }
-      
-      // 显示设置面板
-      mainPlugin.settingController.show();
-      
-      // 切换到今日看板视图
-      MNUtil.delay(0.1).then(() => {
-        mainPlugin.settingController.viewManager.switchTo('todayBoard');
-      });
-      
-      MNUtil.log("✅ HTML 今日看板已打开");
-    } catch (error) {
-      MNUtil.log(`❌ 打开 HTML 今日看板失败: ${error.message || error}`);
-      taskUtils.addErrorLog(error, "openTodayBoardHTML", {
-        hasMainPlugin: !!(self || MNTaskGlobal.mainPlugin || MNTaskInstance),
-        hasSettingController: typeof taskSettingController !== 'undefined'
-      });
-      MNUtil.showHUD(`打开看板失败: ${error.message || '未知错误'}`);
-    }
+    // 重定向到 openTodayBoard
+    MNUtil.log("🔄 openTodayBoardHTML 重定向到 openTodayBoard");
+    return MNTaskGlobal.executeCustomAction("openTodayBoard", context);
   });
 
   // fixLegacyTodayMarks - 修复旧版今日标记

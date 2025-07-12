@@ -3,6 +3,10 @@
 2. 任何更新，尤其是新功能，要在 mntask_guide.md 里详细更新。
 3.  /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/log.md 是用于测试的 log 文件，一般说“log 文件已更新”就是这个。 MNUtil.log() 添加的内容我会复制到这里
 ---
+单击看板按钮仍然显示失败，然后是错误报错弹窗：MN Task Error (registerTaskUpdateObserver): ReferenceError: Can't find variable: setinterval。但是看板是加出来了。ultrathink
+
+
+---
 1. 看板按钮的单击显示“Not supported yet”！“打开任务看板” 功能也是，这样就不方便了，希望的效果是和 “setting” 一样能打开看板的 html 界面。
 2. 项目视图的那个筛选框，必须要把面板弄的很宽才会出来，应该加一个按钮能手动打开
 3. 今日看板里，我点击“刷新”后弹出：已修复1个旧版标记，我点击一次就弹出一次，这个修复肯定是一次性的动作，不应该出现这么多次！

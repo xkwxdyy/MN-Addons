@@ -3035,6 +3035,9 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
     try {
       await this.runJavaScriptInWebView(script)
       MNUtil.log(`✅ 今日看板数据加载成功，共 ${displayTasks.length} 个任务`)
+      
+      // 注册任务更新监听器，实现卡片到HTML的实时同步
+      this.registerTaskUpdateObserver()
     } catch (error) {
       MNUtil.log(`❌ 执行 JavaScript 失败: ${error.message}`)
       // 尝试使用旧的方式
@@ -3549,6 +3552,20 @@ taskSettingController.prototype.handleTodayBoardProtocol = function(url) {
         if (params.taskId) {
           this.viewTaskDetail(params.taskId)
         }
+        break
+        
+      case 'editTask':
+        if (params.taskId) {
+          this.editTask(params.taskId)
+        }
+        break
+        
+      case 'loadTaskDetail':
+        this.loadTaskDetailForEditor()
+        break
+        
+      case 'closeTaskEditor':
+        this.closeTaskEditor()
         break
         
       case 'loadTaskQueueData':
@@ -4166,13 +4183,264 @@ taskSettingController.prototype.handleCloseTaskEditor = function() {
  */
 taskSettingController.prototype.handleSaveTaskChanges = function() {
   try {
-    MNUtil.showHUD("✅ 更改已保存")
+    // 获取当前编辑的任务ID
+    if (!this.currentEditingTaskId) {
+      MNUtil.showHUD("❌ 没有正在编辑的任务")
+      return
+    }
     
-    // 刷新看板数据
-    this.loadTodayBoardData()
+    const task = MNNote.new(this.currentEditingTaskId)
+    if (!task) {
+      MNUtil.showHUD("❌ 任务不存在")
+      return
+    }
+    
+    // 从 WebView 获取编辑的数据
+    const script = `JSON.stringify(taskEditor.getChangedFields())`
+    this.runJavaScriptInWebView(script, 'taskEditorWebView').then(result => {
+      if (!result || result === 'null') {
+        MNUtil.showHUD("❌ 没有需要保存的更改")
+        return
+      }
+      
+      const changes = JSON.parse(result)
+      MNUtil.log(`📝 准备保存任务字段更改: ${JSON.stringify(changes)}`)
+      
+      // 使用 undoGrouping 确保可以撤销
+      MNUtil.undoGrouping(() => {
+        // 处理字段更改
+        this.applyFieldChanges(task, changes)
+      })
+      
+      MNUtil.showHUD("✅ 更改已保存")
+      
+      // 刷新看板数据
+      this.loadTodayBoardData()
+      
+      // 如果有任务编辑器窗口，关闭它
+      if (this.taskEditorWebView) {
+        this.taskEditorWebView.hidden = true
+      }
+    }).catch(error => {
+      taskUtils.addErrorLog(error, "handleSaveTaskChanges.runJS")
+      MNUtil.showHUD("❌ 获取更改失败")
+    })
   } catch (error) {
     taskUtils.addErrorLog(error, "handleSaveTaskChanges")
     MNUtil.showHUD("保存失败")
+  }
+}
+
+/**
+ * 应用字段更改到任务卡片
+ * @this {settingController}
+ * @param {MNNote} task - 任务卡片
+ * @param {Object} changes - 字段更改数据
+ */
+taskSettingController.prototype.applyFieldChanges = function(task, changes) {
+  try {
+    const parsed = TaskFieldUtils.parseTaskComments(task)
+    const comments = task.comments || []
+    
+    // 处理删除的字段
+    if (changes.deletedFields && changes.deletedFields.length > 0) {
+      // 从后往前删除，避免索引问题
+      changes.deletedFields.sort((a, b) => b - a).forEach(index => {
+        if (comments[index]) {
+          comments.splice(index, 1)
+        }
+      })
+    }
+    
+    // 处理更新的字段
+    if (changes.updatedFields && changes.updatedFields.length > 0) {
+      changes.updatedFields.forEach(field => {
+        if (comments[field.index]) {
+          // 保持字段的HTML格式
+          const fieldHtml = TaskFieldUtils.createFieldHtml(
+            field.content, 
+            field.isMainField ? 'mainField' : 'subField'
+          )
+          comments[field.index].text = fieldHtml
+          comments[field.index].type = "markdownComment"
+        }
+      })
+    }
+    
+    // 处理新增的字段
+    if (changes.addedFields && changes.addedFields.length > 0) {
+      changes.addedFields.forEach(field => {
+        // 处理特殊字段类型
+        let fieldHtml = ''
+        
+        if (field.fieldType === 'date') {
+          fieldHtml = TaskFieldUtils.createDateField(field.date || true)
+        } else if (field.fieldType === 'priority') {
+          fieldHtml = TaskFieldUtils.createPriorityField(field.priority || '中')
+        } else if (field.fieldType === 'launch') {
+          // 启动链接需要特殊处理
+          // 检查是否是 MarginNote 链接
+          if (this.isMarginNoteLink(field.url)) {
+            // 获取笔记ID并尝试获取标题
+            const noteId = MNUtil.getNoteIdByURL(field.url)
+            const note = MNNote.new(noteId)
+            const displayText = note ? note.noteTitle : field.text
+            this.addLaunchFieldToTask(task, field.url, displayText)
+          } else {
+            this.addLaunchFieldToTask(task, field.url, field.text)
+          }
+          return
+        } else {
+          // 普通字段
+          fieldHtml = TaskFieldUtils.createFieldHtml(
+            field.content, 
+            field.isMainField ? 'mainField' : 'subField'
+          )
+        }
+        
+        task.appendMarkdownComment(fieldHtml)
+      })
+    }
+    
+    // 处理字段排序
+    if (changes.reorderedFields && changes.reorderedFields.length > 0) {
+      // TODO: 实现字段重新排序逻辑
+      MNUtil.log("⚠️ 字段排序功能尚未实现")
+    }
+    
+  } catch (error) {
+    taskUtils.addErrorLog(error, "applyFieldChanges")
+    throw error
+  }
+}
+
+/**
+ * 检查是否是 MarginNote 链接
+ * @param {string} url - 要检查的URL
+ * @returns {boolean} 是否是 MarginNote 链接
+ */
+taskSettingController.prototype.isMarginNoteLink = function(url) {
+  return /^marginnote\dapp:\/\//.test(url)
+}
+
+/**
+ * 添加启动链接到任务
+ * @this {settingController}
+ * @param {MNNote} task - 任务卡片
+ * @param {string} url - 链接URL
+ * @param {string} text - 链接文本
+ */
+taskSettingController.prototype.addLaunchFieldToTask = function(task, url, text) {
+  try {
+    TaskFieldUtils.addLaunchField(task, url, text || "启动")
+  } catch (error) {
+    taskUtils.addErrorLog(error, "addLaunchFieldToTask")
+    MNUtil.log(`❌ 添加启动链接失败: ${error.message}`)
+  }
+}
+
+/**
+ * 注册任务更新监听器
+ * 监听任务卡片的修改，实现卡片到HTML的实时同步
+ * @this {settingController}
+ */
+taskSettingController.prototype.registerTaskUpdateObserver = function() {
+  try {
+    // 存储定时器ID，避免重复注册
+    if (this.taskUpdateTimer) {
+      clearInterval(this.taskUpdateTimer)
+    }
+    
+    // 存储任务的最后修改时间，用于检测变化
+    this.taskLastModified = new Map()
+    
+    // 每2秒检查一次任务更新
+    this.taskUpdateTimer = setInterval(() => {
+      if (this.todayBoardWebViewInstance && !this.todayBoardWebViewInstance.hidden) {
+        this.checkTaskUpdates()
+      }
+    }, 2000)
+    
+    MNUtil.log("✅ 任务更新监听器已注册")
+  } catch (error) {
+    taskUtils.addErrorLog(error, "registerTaskUpdateObserver")
+  }
+}
+
+/**
+ * 检查任务是否有更新
+ * @this {settingController}
+ */
+taskSettingController.prototype.checkTaskUpdates = function() {
+  try {
+    // 获取当前显示的任务
+    const todayTasks = MNTaskManager.filterTodayTasks()
+    
+    todayTasks.forEach(task => {
+      const taskId = task.noteId
+      const currentModified = task.modifiedDate
+      const lastModified = this.taskLastModified.get(taskId)
+      
+      // 检查任务是否被修改
+      if (lastModified && currentModified > lastModified) {
+        MNUtil.log(`📝 检测到任务更新: ${task.noteTitle}`)
+        this.pushTaskUpdateToHTML(task)
+      }
+      
+      // 更新最后修改时间
+      this.taskLastModified.set(taskId, currentModified)
+    })
+  } catch (error) {
+    // 静默处理错误，避免频繁的错误提示
+    MNUtil.log(`检查任务更新时出错: ${error.message}`)
+  }
+}
+
+/**
+ * 将任务更新推送到HTML视图
+ * @this {settingController}
+ * @param {MNNote} task - 更新的任务
+ */
+taskSettingController.prototype.pushTaskUpdateToHTML = function(task) {
+  try {
+    const taskInfo = MNTaskManager.getTaskInfo(task)
+    const parsed = TaskFieldUtils.parseTaskComments(task)
+    
+    // 准备更新数据
+    const updateData = {
+      id: task.noteId,
+      title: taskInfo.content,
+      type: taskInfo.type,
+      status: taskInfo.status,
+      tags: taskInfo.tags || [],
+      priority: parsed.priority,
+      isScheduled: parsed.hasDateField,
+      scheduledDate: parsed.dateField?.date,
+      fields: parsed.fields || []
+    }
+    
+    // 编码数据
+    const encodedData = encodeURIComponent(JSON.stringify(updateData))
+    
+    // 推送更新到WebView
+    const script = `
+      if (typeof boardManager !== 'undefined' && boardManager.updateTask) {
+        boardManager.updateTask('${encodedData}');
+        'success';
+      } else {
+        'boardManager_not_found';
+      }
+    `
+    
+    this.runJavaScriptInWebView(script).then(result => {
+      if (result === 'success') {
+        MNUtil.log(`✅ 任务更新已推送到HTML: ${taskInfo.content}`)
+      }
+    }).catch(error => {
+      MNUtil.log(`推送任务更新失败: ${error.message}`)
+    })
+  } catch (error) {
+    taskUtils.addErrorLog(error, "pushTaskUpdateToHTML")
   }
 }
 
@@ -4186,6 +4454,9 @@ taskSettingController.prototype.handleRefreshBoard = function() {
     
     // 刷新数据
     this.loadTodayBoardData()
+    
+    // 重新注册任务更新监听器
+    this.registerTaskUpdateObserver()
     
     MNUtil.showHUD("✅ 刷新完成")
   } catch (error) {
@@ -4750,6 +5021,163 @@ taskSettingController.prototype.exportTaskQueue = function() {
   } catch (error) {
     taskUtils.addErrorLog(error, "exportTaskQueue")
     MNUtil.showHUD("导出失败")
+  }
+}
+
+/**
+ * 编辑任务
+ * @this {settingController}
+ * @param {string} taskId - 任务ID
+ */
+taskSettingController.prototype.editTask = function(taskId) {
+  try {
+    if (!taskId) {
+      MNUtil.showHUD("❌ 任务ID无效")
+      return
+    }
+    
+    // 保存当前编辑的任务ID
+    this.currentEditingTaskId = taskId
+    
+    // 创建或显示任务编辑器
+    if (!this.taskEditorWebView) {
+      this.createTaskEditorWebView()
+    }
+    
+    this.taskEditorWebView.hidden = false
+    
+    // 加载任务数据
+    setTimeout(() => {
+      this.loadTaskDetailForEditor()
+    }, 100)
+    
+  } catch (error) {
+    taskUtils.addErrorLog(error, "editTask")
+    MNUtil.showHUD("打开任务编辑器失败")
+  }
+}
+
+/**
+ * 创建任务编辑器 WebView
+ * @this {settingController}
+ */
+taskSettingController.prototype.createTaskEditorWebView = function() {
+  try {
+    const frame = {
+      x: 50,
+      y: 50,
+      width: 800,
+      height: 600
+    }
+    
+    this.taskEditorWebView = new UIWebView(frame)
+    this.taskEditorWebView.delegate = this
+    this.taskEditorWebView.backgroundColor = UIColor.whiteColor()
+    this.taskEditorWebView.layer.cornerRadius = 10
+    this.taskEditorWebView.layer.masksToBounds = true
+    this.taskEditorWebView.layer.borderWidth = 1
+    this.taskEditorWebView.layer.borderColor = UIColor.grayColor().CGColor
+    
+    // 加载任务编辑器HTML
+    const htmlPath = taskConfig.mainPath + '/taskeditor.html'
+    this.taskEditorWebView.loadFileURLAllowingReadAccessToURL(
+      NSURL.fileURLWithPath(htmlPath),
+      NSURL.fileURLWithPath(taskConfig.mainPath)
+    )
+    
+    // 添加到视图
+    MNUtil.studyView.addSubview(this.taskEditorWebView)
+    
+  } catch (error) {
+    taskUtils.addErrorLog(error, "createTaskEditorWebView")
+    MNUtil.showHUD("创建编辑器失败")
+  }
+}
+
+/**
+ * 加载任务详情到编辑器
+ * @this {settingController}
+ */
+taskSettingController.prototype.loadTaskDetailForEditor = function() {
+  try {
+    if (!this.currentEditingTaskId) {
+      MNUtil.showHUD("❌ 没有选中的任务")
+      return
+    }
+    
+    const task = MNNote.new(this.currentEditingTaskId)
+    if (!task) {
+      MNUtil.showHUD("❌ 任务不存在")
+      return
+    }
+    
+    // 解析任务信息
+    const taskInfo = MNTaskManager.parseTaskTitle(task.noteTitle)
+    const parsed = TaskFieldUtils.parseTaskComments(task)
+    
+    // 构建任务数据
+    const taskData = {
+      id: this.currentEditingTaskId,
+      title: taskInfo.content,
+      type: taskInfo.type,
+      status: taskInfo.status,
+      fields: [],
+      scheduledDate: null
+    }
+    
+    // 处理字段
+    parsed.taskFields.forEach(field => {
+      const fieldName = field.content
+      let fieldContent = ''
+      
+      // 获取字段的具体内容
+      if (field.text.includes('<span')) {
+        // 从HTML中提取内容
+        const match = field.text.match(/<span[^>]*>([^<]*)<\/span>/)
+        if (match && match[1]) {
+          fieldContent = match[1].trim()
+        }
+      }
+      
+      // 特殊处理日期字段
+      if (fieldName.includes('日期:')) {
+        const dateMatch = fieldName.match(/日期:\s*(.+)/)
+        if (dateMatch) {
+          taskData.scheduledDate = dateMatch[1]
+          return // 跳过日期字段，单独处理
+        }
+      }
+      
+      taskData.fields.push({
+        name: fieldName,
+        content: fieldContent,
+        isMainField: field.isMainField
+      })
+    })
+    
+    // 发送数据到编辑器
+    const encodedData = encodeURIComponent(JSON.stringify(taskData))
+    const script = `loadTaskFromPlugin('${encodedData}')`
+    this.runJavaScriptInWebView(script, 'taskEditorWebView')
+    
+  } catch (error) {
+    taskUtils.addErrorLog(error, "loadTaskDetailForEditor")
+    MNUtil.showHUD("加载任务详情失败")
+  }
+}
+
+/**
+ * 关闭任务编辑器
+ * @this {settingController}
+ */
+taskSettingController.prototype.closeTaskEditor = function() {
+  try {
+    if (this.taskEditorWebView) {
+      this.taskEditorWebView.hidden = true
+    }
+    this.currentEditingTaskId = null
+  } catch (error) {
+    taskUtils.addErrorLog(error, "closeTaskEditor")
   }
 }
 

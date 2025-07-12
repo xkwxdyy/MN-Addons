@@ -2898,6 +2898,15 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
 }
 
 /**
+ * 检测对象是否为 NSNull
+ * @param {any} obj - 要检测的对象
+ * @returns {boolean} 如果是 NSNull 返回 true
+ */
+taskSettingController.prototype.isNSNull = function(obj) {
+  return (obj === NSNull.new())
+}
+
+/**
  * 在 WebView 中执行 JavaScript（与 MNUtils 相同的实现模式）
  * @param {string} script - 要执行的 JavaScript 代码
  * @param {string} webViewName - WebView 的名称，默认为 'todayBoardWebViewInstance'
@@ -2913,6 +2922,17 @@ taskSettingController.prototype.runJavaScriptInWebView = async function(script, 
       
       // 使用 evaluateJavaScript 方法（与 webviewInput 保持一致）
       this[webViewName].evaluateJavaScript(script, (result) => {
+        // 处理 NSNull 情况（iPad 上经常返回 NSNull）
+        if (this.isNSNull(result)) {
+          // 如果脚本包含 IIFE 包装，很可能执行成功但返回了 NSNull
+          // 这种情况下返回 'success' 而不是 undefined
+          if (script.includes('(function()')) {
+            resolve('success')
+          } else {
+            resolve(undefined)
+          }
+          return
+        }
         resolve(result)
       })
     } catch (error) {
@@ -3054,31 +3074,54 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
       }
     }
     
-    // 传递数据到 WebView
+    // 传递数据到 WebView - 使用全局变量方式
     const encodedTasks = encodeURIComponent(JSON.stringify(displayTasks))
     MNUtil.log(`📤 准备传递 ${displayTasks.length} 个任务到 WebView`)
     
-    // 使用更简单的方式调用
-    const script = `loadTasksFromPlugin('${encodedTasks}')`
+    // 新方法：将数据存储在全局变量中，避免iframe限制
+    const script = `
+      (function() {
+        try {
+          // 将数据存储在全局变量中
+          window.mntaskPendingData = {
+            type: 'tasks',
+            view: 'todayboard',
+            data: '${encodedTasks}',
+            timestamp: ${Date.now()}
+          };
+          
+          // 如果loadTasksFromPlugin存在，也调用它（兼容旧方法）
+          if (typeof loadTasksFromPlugin === 'function') {
+            loadTasksFromPlugin('${encodedTasks}');
+          }
+          
+          return 'success';
+        } catch(e) {
+          return 'error: ' + e.message;
+        }
+      })()
+    `
     
     try {
       const result = await this.runJavaScriptInWebView(script)
       MNUtil.log(`📡 JavaScript 执行结果: ${result}`)
       
-      // 处理 NSNull 或 undefined 的情况
-      if (result === null || result === undefined || (typeof result === 'object' && result.toString() === '[object NSNull]')) {
-        MNUtil.log(`⚠️ WebView 返回 null，可能函数执行失败`)
-        
+      // 处理返回结果
+      if (result === 'success') {
+        MNUtil.log(`✅ 今日看板数据加载成功，共 ${displayTasks.length} 个任务`)
+        // 注册任务更新监听器，实现卡片到HTML的实时同步
+        this.registerTaskUpdateObserver()
+        MNUtil.showHUD("刷新完成")
+      } else if (result === 'iframe_not_ready' || result === 'iframe_not_found') {
+        MNUtil.log(`⏳ iframe 未准备好，等待后重试`)
         // 等待一段时间后重试
         await MNUtil.delay(1.5)
-        
-        // 使用包装函数确保返回值
-        const wrappedScript = `
+        const retryScript = `
           (function() {
             try {
               if (typeof loadTasksFromPlugin === 'function') {
                 var result = loadTasksFromPlugin('${encodedTasks}');
-                return result || 'executed';
+                return result || 'success';
               } else {
                 return 'function_not_found';
               }
@@ -3087,38 +3130,30 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
             }
           })()
         `
-        
-        const retryResult = await this.runJavaScriptInWebView(wrappedScript)
+        const retryResult = await this.runJavaScriptInWebView(retryScript)
         MNUtil.log(`🔄 重试结果: ${retryResult}`)
-        
-        if (retryResult === 'executed' || retryResult === 'success') {
+        if (retryResult === 'success') {
           MNUtil.log(`✅ 重试成功，数据已加载`)
           this.registerTaskUpdateObserver()
-        } else if (retryResult === 'function_not_found') {
-          MNUtil.log(`❌ loadTasksFromPlugin 函数不存在`)
-          MNUtil.showHUD("今日看板初始化失败")
+          MNUtil.showHUD("刷新完成")
         } else {
           MNUtil.log(`❌ 重试失败: ${retryResult}`)
+          MNUtil.showHUD("加载失败，请稍后重试")
         }
-      } else if (result === 'success') {
-        MNUtil.log(`✅ 今日看板数据加载成功，共 ${displayTasks.length} 个任务`)
-        // 注册任务更新监听器，实现卡片到HTML的实时同步
-        this.registerTaskUpdateObserver()
-      } else if (result === 'iframe_not_ready') {
-        MNUtil.log(`⏳ iframe 未准备好，等待后重试`)
-        // 等待一段时间后重试
-        await MNUtil.delay(1.5)
-        const retryResult = await this.runJavaScriptInWebView(script)
-        MNUtil.log(`🔄 重试结果: ${retryResult}`)
+      } else if (result === 'function_not_found') {
+        MNUtil.log(`❌ loadTasksFromPlugin 函数不存在`)
+        MNUtil.showHUD("今日看板初始化失败")
+      } else if (result && typeof result === 'string' && result.startsWith('error:')) {
+        MNUtil.log(`❌ 执行出错: ${result}`)
+        MNUtil.showHUD("加载失败")
       } else {
         MNUtil.log(`⚠️ 数据传递返回异常: ${result}`)
+        MNUtil.showHUD("加载失败")
       }
     } catch (error) {
       MNUtil.log(`❌ 执行 JavaScript 失败: ${error.message}`)
-      // 尝试使用旧的方式
-      const fallbackScript = `if(typeof loadTasksFromPlugin !== 'undefined') { loadTasksFromPlugin('${encodedTasks}'); 'called'; } else { 'not_found'; }`
-      const fallbackResult = await this.runJavaScriptInWebView(fallbackScript)
-      MNUtil.log(`🔄 fallback 结果: ${fallbackResult}`)
+      taskUtils.addErrorLog(error, "loadTodayBoardData.runJS")
+      MNUtil.showHUD("加载失败")
     }
     
   } catch (error) {
@@ -3313,10 +3348,51 @@ taskSettingController.prototype.loadProjectsData = async function(parentId = nul
     
     // 传递数据到 WebView
     const encodedProjects = encodeURIComponent(JSON.stringify(projects))
-    const script = `loadProjectsFromPlugin('${encodedProjects}')`
+    // 新方法：将数据存储在全局变量中，避免iframe限制
+    const script = `
+      (function() {
+        try {
+          // 将数据存储在全局变量中
+          window.mntaskPendingData = {
+            type: 'projects',
+            view: 'projectview',
+            data: '${encodedProjects}',
+            timestamp: ${Date.now()}
+          };
+          
+          // 如果loadProjectsFromPlugin存在，也调用它（兼容旧方法）
+          if (typeof loadProjectsFromPlugin === 'function') {
+            loadProjectsFromPlugin('${encodedProjects}');
+          }
+          
+          return 'success';
+        } catch(e) {
+          return 'error: ' + e.message;
+        }
+      })()
+    `
     
-    await this.runJavaScriptInWebView(script)
-    MNUtil.log(`✅ 项目列表加载成功`)
+    const result = await this.runJavaScriptInWebView(script)
+    MNUtil.log(`📡 JavaScript 执行结果: ${result}`)
+    
+    if (result === 'success') {
+      MNUtil.log(`✅ 项目列表加载成功`)
+      MNUtil.showHUD("刷新完成")
+    } else if (result === 'iframe_not_ready' || result === 'iframe_not_found') {
+      MNUtil.log(`⏳ iframe 未准备好，等待后重试`)
+      await MNUtil.delay(1)
+      const retryResult = await this.runJavaScriptInWebView(script)
+      if (retryResult === 'success') {
+        MNUtil.log(`✅ 重试成功，项目列表已加载`)
+        MNUtil.showHUD("刷新完成")
+      } else {
+        MNUtil.log(`❌ 重试失败: ${retryResult}`)
+        MNUtil.showHUD("加载失败，请稍后重试")
+      }
+    } else {
+      MNUtil.log(`❌ 加载项目列表失败: ${result}`)
+      MNUtil.showHUD("加载失败")
+    }
     
   } catch (error) {
     taskUtils.addErrorLog(error, "loadProjectsData")
@@ -3458,12 +3534,53 @@ taskSettingController.prototype.loadProjectTasks = async function(projectId, fil
       }
     })
     
-    // 传递数据到 WebView
+    // 传递数据到 WebView - 使用全局变量方式
     const encodedTasks = encodeURIComponent(JSON.stringify(displayTasks))
-    const script = `loadProjectTasksFromPlugin('${encodedTasks}')`
+    // 新方法：将数据存储在全局变量中，避免iframe限制
+    const script = `
+      (function() {
+        try {
+          // 将数据存储在全局变量中
+          window.mntaskPendingData = {
+            type: 'projectTasks',
+            view: 'projectview',
+            data: '${encodedTasks}',
+            timestamp: ${Date.now()}
+          };
+          
+          // 如果loadProjectTasksFromPlugin存在，也调用它（兼容旧方法）
+          if (typeof loadProjectTasksFromPlugin === 'function') {
+            loadProjectTasksFromPlugin('${encodedTasks}');
+          }
+          
+          return 'success';
+        } catch(e) {
+          return 'error: ' + e.message;
+        }
+      })()
+    `
     
-    await this.runJavaScriptInWebView(script)
-    MNUtil.log(`✅ 项目任务加载成功`)
+    const result = await this.runJavaScriptInWebView(script)
+    MNUtil.log(`📡 JavaScript 执行结果: ${result}`)
+    
+    if (result === 'success') {
+      MNUtil.log(`✅ 项目任务加载成功`)
+      MNUtil.showHUD("刷新完成")
+    } else if (result === 'iframe_not_ready' || result === 'iframe_not_found') {
+      MNUtil.log(`⏳ iframe 未准备好，等待后重试`)
+      await MNUtil.delay(1)
+      const retryResult = await this.runJavaScriptInWebView(script)
+      if (retryResult === 'success') {
+        MNUtil.log(`✅ 重试成功，项目任务已加载`)
+        MNUtil.showHUD("刷新完成")
+      } else {
+        MNUtil.log(`❌ 重试失败: ${retryResult}`)
+        MNUtil.showHUD("加载失败，请稍后重试")
+      }
+    } else {
+      MNUtil.log(`❌ 加载项目任务失败: ${result}`)
+      MNUtil.showHUD("加载失败")
+    }
     
   } catch (error) {
     taskUtils.addErrorLog(error, "loadProjectTasks")
@@ -3943,6 +4060,7 @@ taskSettingController.prototype.handleLoadTaskDetail = function() {
     }
     
     const taskInfo = MNTaskManager.getTaskInfo(task)
+    MNUtil.log(`📋 获取到任务信息: ${JSON.stringify(taskInfo)}`)
     
     // 准备任务数据
     const taskData = {
@@ -3952,18 +4070,47 @@ taskSettingController.prototype.handleLoadTaskDetail = function() {
       status: taskInfo.status,
       priority: taskInfo.priority,
       scheduledDate: taskInfo.scheduledDate,
-      fields: taskInfo.taskFields.map(field => ({
-        name: field.fieldName,
-        content: field.content,
-        index: field.index
-      }))
+      fields: taskInfo.taskFields.map(field => {
+        // 从 content 中提取字段名（如果 fieldName 不存在）
+        let fieldName = field.fieldName
+        let fieldContent = field.content
+        
+        if (!fieldName && field.content) {
+          // 尝试从 content 中解析字段名
+          const colonIndex = field.content.indexOf(':')
+          if (colonIndex > 0) {
+            fieldName = field.content.substring(0, colonIndex).trim()
+            fieldContent = field.content.substring(colonIndex + 1).trim()
+          } else {
+            fieldName = field.content.trim()
+            fieldContent = ''
+          }
+        }
+        
+        return {
+          name: fieldName || field.content,
+          content: fieldContent || '',
+          index: field.index
+        }
+      })
     }
+    
+    MNUtil.log(`📤 准备发送的任务数据: ${JSON.stringify(taskData)}`)
     
     // 发送数据到编辑器
     const encodedData = encodeURIComponent(JSON.stringify(taskData))
     const script = `loadTaskDetailFromPlugin('${encodedData}')`
-    this.runJavaScriptInWebView(script)
+    
+    this.runJavaScriptInWebView(script).then(result => {
+      MNUtil.log(`📡 loadTaskDetailFromPlugin 结果: ${result}`)
+      if (result === 'success') {
+        MNUtil.log("✅ 任务详情已加载到编辑器")
+      } else {
+        MNUtil.log(`⚠️ 加载结果: ${result}`)
+      }
+    })
   } catch (error) {
+    MNUtil.log(`❌ handleLoadTaskDetail 错误: ${error.message}`)
     taskUtils.addErrorLog(error, "handleLoadTaskDetail")
     MNUtil.showHUD("加载任务详情失败")
   }
@@ -4006,8 +4153,47 @@ taskSettingController.prototype.handleLoadTaskForEdit = function(taskId) {
     
     // 发送数据到编辑器
     const encodedData = encodeURIComponent(JSON.stringify(taskData))
-    const script = `loadTaskDetailFromPlugin('${encodedData}')`
-    this.runJavaScriptInWebView(script)
+    const script = `
+      (function() {
+        try {
+          if (typeof loadTaskDetailFromPlugin === 'function') {
+            var result = loadTaskDetailFromPlugin('${encodedData}');
+            return result || 'success';
+          } else {
+            return 'function_not_found';
+          }
+        } catch(e) {
+          return 'error: ' + e.message;
+        }
+      })()
+    `
+    
+    this.runJavaScriptInWebView(script).then(result => {
+      MNUtil.log(`📡 加载任务详情结果: ${result}`)
+      
+      if (result === 'success') {
+        MNUtil.log(`✅ 任务详情加载成功`)
+      } else if (result === 'iframe_not_ready' || result === 'iframe_not_found') {
+        MNUtil.log(`⏳ iframe 未准备好，等待后重试`)
+        // 延迟后重试
+        MNUtil.delay(1).then(() => {
+          this.runJavaScriptInWebView(script).then(retryResult => {
+            if (retryResult === 'success') {
+              MNUtil.log(`✅ 重试成功，任务详情已加载`)
+            } else {
+              MNUtil.log(`❌ 重试失败: ${retryResult}`)
+              MNUtil.showHUD("加载任务失败")
+            }
+          })
+        })
+      } else {
+        MNUtil.log(`❌ 加载任务详情失败: ${result}`)
+        MNUtil.showHUD("加载任务失败")
+      }
+    }).catch(error => {
+      taskUtils.addErrorLog(error, "handleLoadTaskForEdit.runJS")
+      MNUtil.showHUD("加载任务失败")
+    })
   } catch (error) {
     taskUtils.addErrorLog(error, "handleLoadTaskForEdit")
     MNUtil.showHUD("加载任务失败")
@@ -4069,6 +4255,8 @@ taskSettingController.prototype.handleUpdateField = function(params) {
     const fieldContent = decodeURIComponent(params.content || '')
     const oldName = decodeURIComponent(params.oldName || '')
     
+    MNUtil.log(`📝 handleUpdateField 被调用: index=${index}, name=${fieldName}, content=${fieldContent}, oldName=${oldName}`)
+    
     if (!this.editingTaskId || isNaN(index)) {
       MNUtil.showHUD("参数错误")
       return
@@ -4082,20 +4270,30 @@ taskSettingController.prototype.handleUpdateField = function(params) {
     
     MNUtil.undoGrouping(() => {
       const taskInfo = MNTaskManager.getTaskInfo(task)
-      const targetField = taskInfo.taskFields.find(f => f.fieldName === oldName)
+      MNUtil.log(`📋 任务字段数量: ${taskInfo.taskFields.length}`)
+      
+      // 通过索引查找字段（更可靠）
+      const targetField = taskInfo.taskFields[index]
       
       if (targetField) {
+        MNUtil.log(`✅ 找到目标字段: ${targetField.fieldName}, index=${targetField.index}`)
+        
         // 创建新的字段内容
         const fieldHtml = TaskFieldUtils.createFieldHtml(fieldName, 'subField')
         const fullContent = fieldContent ? `${fieldHtml} ${fieldContent}` : fieldHtml
         
         // 更新评论
         task.comments[targetField.index].text = fullContent
+        MNUtil.log(`✅ 字段已更新: ${fullContent}`)
+      } else {
+        MNUtil.log(`❌ 未找到索引为 ${index} 的字段`)
+        MNUtil.showHUD("未找到要更新的字段")
       }
     })
     
     MNUtil.showHUD(`✅ 已更新字段：${fieldName}`)
   } catch (error) {
+    MNUtil.log(`❌ handleUpdateField 错误: ${error.message}`)
     taskUtils.addErrorLog(error, "handleUpdateField")
     MNUtil.showHUD("更新字段失败")
   }
@@ -4111,6 +4309,8 @@ taskSettingController.prototype.handleDeleteField = function(params) {
     const index = parseInt(params.index)
     const fieldName = decodeURIComponent(params.name || '')
     
+    MNUtil.log(`🗑️ handleDeleteField 被调用: index=${index}, name=${fieldName}`)
+    
     if (!this.editingTaskId || isNaN(index)) {
       MNUtil.showHUD("参数错误")
       return
@@ -4124,15 +4324,23 @@ taskSettingController.prototype.handleDeleteField = function(params) {
     
     MNUtil.undoGrouping(() => {
       const taskInfo = MNTaskManager.getTaskInfo(task)
-      const targetField = taskInfo.taskFields.find(f => f.fieldName === fieldName)
+      
+      // 通过索引查找字段（更可靠）
+      const targetField = taskInfo.taskFields[index]
       
       if (targetField) {
+        MNUtil.log(`✅ 找到要删除的字段: ${targetField.fieldName || targetField.content}, index=${targetField.index}`)
         task.removeCommentByIndex(targetField.index)
+        MNUtil.log(`✅ 字段已删除`)
+      } else {
+        MNUtil.log(`❌ 未找到索引为 ${index} 的字段`)
+        MNUtil.showHUD("未找到要删除的字段")
       }
     })
     
     MNUtil.showHUD(`✅ 已删除字段：${fieldName}`)
   } catch (error) {
+    MNUtil.log(`❌ handleDeleteField 错误: ${error.message}`)
     taskUtils.addErrorLog(error, "handleDeleteField")
     MNUtil.showHUD("删除字段失败")
   }
@@ -4277,47 +4485,103 @@ taskSettingController.prototype.handleCloseTaskEditor = function() {
 taskSettingController.prototype.handleSaveTaskChanges = function() {
   try {
     // 获取当前编辑的任务ID
-    if (!this.currentEditingTaskId) {
+    if (!this.editingTaskId) {
       MNUtil.showHUD("❌ 没有正在编辑的任务")
       return
     }
     
-    const task = MNNote.new(this.currentEditingTaskId)
+    const task = MNNote.new(this.editingTaskId)
     if (!task) {
       MNUtil.showHUD("❌ 任务不存在")
       return
     }
     
-    // 从 iframe 中的任务编辑器获取数据
+    // 使用新的方法获取编辑器数据
+    // 首先尝试通过 postMessage 请求数据
+    const requestId = Date.now().toString()
     const script = `
-      const iframe = document.querySelector('.content-frame');
-      if (iframe && iframe.contentWindow && iframe.contentWindow.taskEditor) {
-        JSON.stringify(iframe.contentWindow.taskEditor.getChangedFields());
-      } else {
-        'null';
-      }
+      (function() {
+        try {
+          const iframe = document.querySelector('.content-frame');
+          if (!iframe || !iframe.contentWindow) {
+            return JSON.stringify({ error: 'iframe_not_found' });
+          }
+          
+          // 先尝试直接访问
+          if (iframe.contentWindow.taskEditor && typeof iframe.contentWindow.taskEditor.getChangedFields === 'function') {
+            const changes = iframe.contentWindow.taskEditor.getChangedFields();
+            return JSON.stringify({ success: true, data: changes });
+          }
+          
+          // 如果直接访问失败，使用 postMessage
+          iframe.contentWindow.postMessage({
+            type: 'getChangedFields',
+            requestId: '${requestId}'
+          }, '*');
+          
+          // 等待响应
+          return new Promise((resolve) => {
+            const timeout = setTimeout(() => {
+              resolve(JSON.stringify({ error: 'timeout' }));
+            }, 3000);
+            
+            function handleMessage(event) {
+              if (event.data && event.data.type === 'changedFields' && event.data.requestId === '${requestId}') {
+                clearTimeout(timeout);
+                window.removeEventListener('message', handleMessage);
+                resolve(JSON.stringify({ success: true, data: event.data.changes }));
+              }
+            }
+            
+            window.addEventListener('message', handleMessage);
+          });
+        } catch (error) {
+          return JSON.stringify({ error: error.message });
+        }
+      })()
     `
     this.runJavaScriptInWebView(script).then(result => {
-      if (!result || result === 'null') {
-        MNUtil.showHUD("❌ 没有需要保存的更改")
+      MNUtil.log(`[handleSaveTaskChanges] runJavaScriptInWebView 返回结果: ${result}`)
+      
+      if (!result || result === null || result === 'null' || result === 'undefined') {
+        MNUtil.showHUD("❌ 无法获取编辑器数据，请稍后重试")
         return
       }
       
-      const changes = JSON.parse(result)
-      MNUtil.log(`📝 准备保存任务字段更改: ${JSON.stringify(changes)}`)
-      
-      // 使用 undoGrouping 确保可以撤销
-      MNUtil.undoGrouping(() => {
-        // 处理字段更改
-        this.applyFieldChanges(task, changes)
-      })
-      
-      MNUtil.showHUD("✅ 更改已保存")
-      
-      // 刷新看板数据
-      this.loadTodayBoardData()
-      
-      // 任务编辑器现在在 iframe 中，不需要手动关闭
+      try {
+        const response = JSON.parse(result)
+        
+        if (response.error) {
+          MNUtil.log(`❌ 获取更改失败: ${response.error}`)
+          MNUtil.showHUD("❌ 无法获取编辑器数据")
+          return
+        }
+        
+        if (!response.success || !response.data) {
+          MNUtil.log("❌ 响应格式错误")
+          MNUtil.showHUD("❌ 获取更改失败")
+          return
+        }
+        
+        const changes = response.data
+        MNUtil.log(`📝 准备保存任务字段更改: ${JSON.stringify(changes)}`)
+        
+        // 使用 undoGrouping 确保可以撤销
+        MNUtil.undoGrouping(() => {
+          // 处理字段更改
+          this.applyFieldChanges(task, changes)
+        })
+        
+        MNUtil.showHUD("✅ 更改已保存")
+        
+        // 刷新看板数据
+        this.loadTodayBoardData()
+        
+      } catch (parseError) {
+        MNUtil.log(`❌ 解析结果失败: ${parseError.message}`)
+        taskUtils.addErrorLog(parseError, "handleSaveTaskChanges.parse")
+        MNUtil.showHUD("❌ 获取更改失败")
+      }
     }).catch(error => {
       taskUtils.addErrorLog(error, "handleSaveTaskChanges.runJS")
       MNUtil.showHUD("❌ 获取更改失败")
@@ -5070,12 +5334,53 @@ taskSettingController.prototype.loadTaskQueueData = async function() {
       }
     })
     
-    // 传递数据到 WebView
+    // 传递数据到 WebView - 使用全局变量方式
     const encodedTasks = encodeURIComponent(JSON.stringify(queueTasks))
-    const script = `loadTasksFromPlugin('${encodedTasks}')`
+    // 新方法：将数据存储在全局变量中，避免iframe限制
+    const script = `
+      (function() {
+        try {
+          // 将数据存储在全局变量中
+          window.mntaskPendingData = {
+            type: 'tasks',
+            view: 'taskqueue',
+            data: '${encodedTasks}',
+            timestamp: ${Date.now()}
+          };
+          
+          // 如果loadTasksFromPlugin存在，也调用它（兼容旧方法）
+          if (typeof loadTasksFromPlugin === 'function') {
+            loadTasksFromPlugin('${encodedTasks}');
+          }
+          
+          return 'success';
+        } catch(e) {
+          return 'error: ' + e.message;
+        }
+      })()
+    `
     
-    await this.runJavaScriptInWebView(script)
-    MNUtil.log(`✅ 任务队列加载成功，共 ${queueTasks.length} 个任务`)
+    const result = await this.runJavaScriptInWebView(script)
+    MNUtil.log(`📡 JavaScript 执行结果: ${result}`)
+    
+    if (result === 'success') {
+      MNUtil.log(`✅ 任务队列加载成功，共 ${queueTasks.length} 个任务`)
+      MNUtil.showHUD("刷新完成")
+    } else if (result === 'iframe_not_ready' || result === 'iframe_not_found') {
+      MNUtil.log(`⏳ iframe 未准备好，等待后重试`)
+      await MNUtil.delay(1)
+      const retryResult = await this.runJavaScriptInWebView(script)
+      if (retryResult === 'success') {
+        MNUtil.log(`✅ 重试成功，任务队列已加载`)
+        MNUtil.showHUD("刷新完成")
+      } else {
+        MNUtil.log(`❌ 重试失败: ${retryResult}`)
+        MNUtil.showHUD("加载失败，请稍后重试")
+      }
+    } else {
+      MNUtil.log(`❌ 加载任务队列失败: ${result}`)
+      MNUtil.showHUD("加载失败")
+    }
     
   } catch (error) {
     taskUtils.addErrorLog(error, "loadTaskQueueData")

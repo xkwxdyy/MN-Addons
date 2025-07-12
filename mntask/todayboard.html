@@ -707,6 +707,15 @@
                 this.setupEventListeners();
                 this.setupSidebar();
                 this.requestFilterState();
+                
+                // 启动定时检查机制
+                this.startDataChecker();
+                
+                // 延迟请求数据，确保 WebView 通信准备就绪
+                setTimeout(() => {
+                    console.log('[todayboard] 初始化完成，请求数据');
+                    window.location.href = 'mntask://loadTodayBoardData';
+                }, 200);
             }
             
             // 请求父窗口的筛选器状态
@@ -876,6 +885,46 @@
                         values: Array.from(values)
                     }, '*');
                 }
+            }
+            
+            // 定时检查是否有待处理的数据
+            startDataChecker() {
+                let checkCount = 0;
+                const maxChecks = 50; // 最多检查5秒
+                
+                this.dataCheckInterval = setInterval(() => {
+                    checkCount++;
+                    
+                    // 检查父窗口的全局变量
+                    if (window.parent && window.parent.mntaskPendingData) {
+                        const data = window.parent.mntaskPendingData;
+                        console.log('[todayboard] 检测到待处理数据:', data.type);
+                        
+                        // 检查数据类型和视图匹配
+                        if (data.type === 'tasks' && 
+                            (data.view === 'todayboard' || !data.view)) {
+                            
+                            console.log('[todayboard] 处理今日看板数据');
+                            try {
+                                this.loadTasks(data.data);
+                                
+                                // 清除已处理的数据
+                                window.parent.mntaskPendingData = null;
+                                
+                                // 停止检查
+                                clearInterval(this.dataCheckInterval);
+                            } catch (error) {
+                                console.error('[todayboard] 处理数据失败:', error);
+                            }
+                        }
+                    }
+                    
+                    // 超过最大检查次数后停止
+                    if (checkCount >= maxChecks) {
+                        console.log('[todayboard] 停止数据检查');
+                        clearInterval(this.dataCheckInterval);
+                    }
+                }, 100);
             }
 
             // 加载任务数据
@@ -1378,11 +1427,56 @@
             boardManager.updateStats();
         }
 
+        // 页面初始化完成后，主动请求数据
+        document.addEventListener('DOMContentLoaded', function() {
+            // 延迟一点时间确保 WebView 通信准备就绪
+            setTimeout(function() {
+                console.log('[todayboard] 初始化完成，请求加载数据');
+                // 通知父窗口加载数据
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        action: 'refresh',
+                        params: {}
+                    }, '*');
+                } else {
+                    // 如果不在 iframe 中，直接通过 URL 协议请求
+                    window.location.href = 'mntask://refresh';
+                }
+            }, 100);
+        });
+
         // 监听来自父窗口的消息
+        // 暴露全局函数供直接调用
+        window.loadTasksDirectly = function(encodedTasks) {
+            console.log('[todayboard] 直接调用 loadTasksDirectly');
+            try {
+                boardManager.loadTasks(encodedTasks);
+                return true;
+            } catch (error) {
+                console.error('直接加载任务失败:', error);
+                return false;
+            }
+        };
+        
+        window.applyFilterStateDirectly = function(filters) {
+            console.log('[todayboard] 直接调用 applyFilterStateDirectly');
+            try {
+                boardManager.applyFilterState(filters);
+                return true;
+            } catch (error) {
+                console.error('直接应用筛选器失败:', error);
+                return false;
+            }
+        };
+
+        // 保留 postMessage 监听作为备用
         window.addEventListener('message', function(event) {
+            console.log('[todayboard] 收到 message:', event.data ? event.data.type : 'unknown');
+            
             try {
                 // 处理任务加载
                 if (event.data && event.data.type === 'loadTasks') {
+                    console.log('[todayboard] 收到 loadTasks 消息，任务数量:', event.data.tasks.length);
                     // 将任务数据编码后传递给 boardManager
                     const encodedTasks = encodeURIComponent(JSON.stringify(event.data.tasks));
                     boardManager.loadTasks(encodedTasks);

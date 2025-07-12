@@ -440,11 +440,8 @@
                 this.setupDragAndDrop();
                 this.bindEvents();
                 
-                // 延迟加载数据，确保 WebView 通信准备就绪
-                setTimeout(() => {
-                    console.log('请求加载任务数据');
-                    window.location.href = 'mntask://loadTaskDetail';
-                }, 100);
+                // 不再自动请求加载任务数据，等待原生代码调用 loadTaskFromPlugin
+                console.log('任务编辑器已准备就绪，等待加载任务数据');
             },
 
             // 加载任务数据
@@ -887,6 +884,24 @@
         // 初始化
         document.addEventListener('DOMContentLoaded', () => {
             taskEditor.init();
+        });
+        
+        // 将 taskEditor 暴露给全局，以便原生代码访问
+        window.taskEditor = taskEditor;
+        
+        // 监听来自父窗口的消息
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'getChangedFields') {
+                // 获取更改的字段数据
+                const changes = taskEditor.getChangedFields();
+                
+                // 发送响应
+                event.source.postMessage({
+                    type: 'changedFields',
+                    requestId: event.data.requestId,
+                    changes: changes
+                }, '*');
+            }
         });
     </script>
 </body>

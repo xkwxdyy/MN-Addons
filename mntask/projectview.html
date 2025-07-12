@@ -1268,9 +1268,12 @@
         
         // 监听来自父窗口的消息
         window.addEventListener('message', function(event) {
+            console.log('[projectview] 收到 message:', event.data ? event.data.type : 'unknown');
+            
             try {
                 // 处理项目列表加载
                 if (event.data && event.data.type === 'loadProjects') {
+                    console.log('[projectview] 收到 loadProjects 消息，项目数量:', event.data.projects.length);
                     const encodedProjects = encodeURIComponent(JSON.stringify(event.data.projects));
                     projectManager.loadProjects(event.data.projects);
                 }
@@ -1296,6 +1299,31 @@
                 console.error('[ProjectView] 处理消息失败:', error);
             }
         });
+        
+        // 暴露全局函数供直接调用
+        window.loadProjectsDirectly = function(encodedProjects) {
+            console.log('[projectview] 直接调用 loadProjectsDirectly');
+            try {
+                const projects = JSON.parse(decodeURIComponent(encodedProjects));
+                projectManager.loadProjects(projects);
+                return true;
+            } catch (error) {
+                console.error('直接加载项目失败:', error);
+                return false;
+            }
+        };
+        
+        window.loadProjectTasksDirectly = function(encodedTasks) {
+            console.log('[projectview] 直接调用 loadProjectTasksDirectly');
+            try {
+                const tasks = JSON.parse(decodeURIComponent(encodedTasks));
+                projectManager.loadProjectTasks(tasks);
+                return true;
+            } catch (error) {
+                console.error('直接加载任务失败:', error);
+                return false;
+            }
+        };
     </script>
 </body>
 </html>

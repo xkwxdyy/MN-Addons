@@ -767,8 +767,11 @@
 
                 // 监听 postMessage 事件
                 window.addEventListener('message', (event) => {
+                    console.log('[taskqueue] 收到 message:', event.data ? event.data.type : 'unknown');
+                    
                     try {
                         if (event.data && event.data.type === 'loadTasks') {
+                            console.log('[taskqueue] 收到 loadTasks 消息，任务数量:', event.data.tasks.length);
                             this.loadTasks(event.data.tasks);
                         }
                         
@@ -1212,6 +1215,34 @@
                 return 'error';
             }
         }
+        
+        // 暴露全局函数供直接调用
+        window.loadTasksDirectly = function(encodedTasks) {
+            console.log('[taskqueue] 直接调用 loadTasksDirectly');
+            try {
+                const tasks = JSON.parse(decodeURIComponent(encodedTasks));
+                queueManager.loadTasks(tasks);
+                return true;
+            } catch (error) {
+                console.error('直接加载任务失败:', error);
+                return false;
+            }
+        };
+        
+        // 监听 postMessage 作为备用方案
+        window.addEventListener('message', function(event) {
+            console.log('[taskqueue] 收到 message:', event.data ? event.data.type : 'unknown');
+            
+            try {
+                if (event.data && event.data.type === 'loadTasks') {
+                    console.log('[taskqueue] 收到 loadTasks 消息，任务数量:', event.data.tasks.length);
+                    const encodedTasks = encodeURIComponent(JSON.stringify(event.data.tasks));
+                    queueManager.loadTasks(JSON.parse(decodeURIComponent(encodedTasks)));
+                }
+            } catch (error) {
+                console.error('处理消息失败:', error);
+            }
+        });
     </script>
 </body>
 </html>

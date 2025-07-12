@@ -4184,16 +4184,10 @@ taskSettingController.prototype.handleRefreshBoard = function() {
   try {
     MNUtil.showHUD("🔄 正在刷新...")
     
-    // 先检查并修复旧版今日标记
-    if (typeof MNTaskManager !== 'undefined' && MNTaskManager.fixLegacyTodayMarks) {
-      const fixedCount = MNTaskManager.fixLegacyTodayMarks()
-      if (fixedCount > 0) {
-        MNUtil.showHUD(`✅ 已修复 ${fixedCount} 个旧版标记`)
-      }
-    }
-    
     // 刷新数据
     this.loadTodayBoardData()
+    
+    MNUtil.showHUD("✅ 刷新完成")
   } catch (error) {
     taskUtils.addErrorLog(error, "handleRefreshBoard")
     MNUtil.showHUD("刷新失败")
@@ -4705,9 +4699,34 @@ taskSettingController.prototype.moveTaskToToday = function(taskId) {
       return
     }
     
-    // 添加或更新今日字段
-    const today = new Date().toLocaleDateString('zh-CN')
-    TaskFieldUtils.updateFieldContent(task, "今日", today)
+    // 检查是否已有日期字段
+    const parsed = TaskFieldUtils.parseTaskComments(task)
+    let hasDateField = false
+    let dateFieldIndex = -1
+    
+    for (let i = 0; i < parsed.comments.length; i++) {
+      if (parsed.comments[i].text && parsed.comments[i].text.includes('📅 日期:')) {
+        hasDateField = true
+        dateFieldIndex = i
+        break
+      }
+    }
+    
+    const today = new Date()
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    const dateFieldHtml = TaskFieldUtils.createFieldHtml(`📅 日期: ${dateStr}`, 'subField')
+    
+    if (hasDateField && dateFieldIndex >= 0) {
+      // 更新现有的日期字段
+      const comments = task.comments
+      if (comments && comments[dateFieldIndex]) {
+        comments[dateFieldIndex].text = dateFieldHtml
+        comments[dateFieldIndex].type = "markdownComment"
+      }
+    } else {
+      // 添加新的日期字段
+      task.appendMarkdownComment(dateFieldHtml)
+    }
     
     MNUtil.showHUD("✅ 已添加到今日任务")
     

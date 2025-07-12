@@ -3960,30 +3960,23 @@ function registerAllCustomActions() {
   MNTaskGlobal.registerCustomAction("openTodayBoard", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
     
-    // 检查设置控制器是否存在
-    const getTaskSettingController = self.__block.target
-    if (!getTaskSettingController) {
-      MNUtil.showHUD("❌ 无法获取设置控制器");
-      return;
+    try {
+      // 通过通知系统打开设置面板
+      MNUtil.postNotification("openTaskSetting", {});
+      
+      // 延迟切换到看板视图
+      setTimeout(() => {
+        // 获取主插件实例
+        const mainPlugin = MNTaskGlobal.mainPlugin || MNTaskInstance || self;
+        if (mainPlugin && mainPlugin.settingController && mainPlugin.settingController.viewManager) {
+          mainPlugin.settingController.viewManager.switchTo('todayBoard');
+          MNUtil.showHUD("📊 任务看板已打开");
+        }
+      }, 200);
+    } catch (error) {
+      MNUtil.log(`❌ 打开任务看板失败: ${error.message || error}`);
+      MNUtil.showHUD("打开看板失败");
     }
-    
-    const taskSettingController = getTaskSettingController();
-    if (!taskSettingController) {
-      MNUtil.showHUD("❌ 设置控制器未初始化");
-      return;
-    }
-    
-    // 显示设置面板
-    taskSettingController.show();
-    
-    // 切换到看板视图
-    setTimeout(() => {
-      if (taskSettingController.viewManager) {
-        taskSettingController.viewManager.switchTo('todayBoard');
-      }
-    }, 100);
-    
-    MNUtil.showHUD("📊 正在打开任务看板...");
   });
 
   // refreshTodayBoard - 刷新今日看板（链接引用模式）

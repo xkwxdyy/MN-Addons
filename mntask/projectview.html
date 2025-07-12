@@ -404,10 +404,10 @@
 
         .toggle-filter {
             position: absolute;
-            left: -32px;
+            left: -36px;
             top: 10px;
-            width: 32px;
-            height: 34px;
+            width: 36px;
+            height: 40px;
             background-color: var(--sidebar-bg);
             border: 1px solid var(--border-color);
             border-radius: 5px 0 0 5px;
@@ -418,17 +418,18 @@
             justify-content: center;
             z-index: 101;
             transition: all 0.2s ease-out;
+            box-shadow: -2px 2px 4px rgba(0,0,0,0.1);
         }
 
         .toggle-filter:hover {
             background-color: var(--hover-bg);
+            transform: translateX(-2px);
         }
 
         .toggle-filter::before {
-            content: "▶";
-            font-size: 12px;
+            content: "🔍";
+            font-size: 16px;
             transition: transform 0.2s ease-out;
-            color: var(--text-secondary);
         }
 
         .filter-sidebar.collapsed .toggle-filter::before {
@@ -576,7 +577,7 @@
         </div>
         
         <!-- 筛选侧边栏 -->
-        <div class="filter-sidebar" id="filterSidebar">
+        <div class="filter-sidebar collapsed" id="filterSidebar">
             <button class="toggle-filter" id="toggleFilter"></button>
             
             <div class="filter-section">

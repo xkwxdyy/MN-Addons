@@ -5061,9 +5061,9 @@ taskSettingController.prototype.editTask = function(taskId) {
     this.taskEditorWebView.hidden = false
     
     // 加载任务数据
-    setTimeout(() => {
+    MNUtil.delay(0.1).then(() => {
       this.loadTaskDetailForEditor()
-    }, 100)
+    })
     
   } catch (error) {
     taskUtils.addErrorLog(error, "editTask")

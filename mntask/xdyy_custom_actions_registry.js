@@ -3965,17 +3965,22 @@ function registerAllCustomActions() {
       MNUtil.postNotification("openTaskSetting", {});
       
       // 延迟切换到看板视图
-      setTimeout(() => {
+      MNUtil.delay(0.2).then(() => {
         // 获取主插件实例
         const mainPlugin = MNTaskGlobal.mainPlugin || MNTaskInstance || self;
         if (mainPlugin && mainPlugin.settingController && mainPlugin.settingController.viewManager) {
           mainPlugin.settingController.viewManager.switchTo('todayBoard');
           MNUtil.showHUD("📊 任务看板已打开");
         }
-      }, 200);
+      });
     } catch (error) {
       MNUtil.log(`❌ 打开任务看板失败: ${error.message || error}`);
-      MNUtil.showHUD("打开看板失败");
+      MNUtil.log(`❌ 错误堆栈: ${error.stack || '无堆栈信息'}`);
+      console.error("openTodayBoard error details:", error);
+      
+      // 显示更详细的错误信息
+      const errorMsg = error.message || error.toString() || "未知错误";
+      MNUtil.showHUD(`打开看板失败: ${errorMsg}`);
     }
   });
 

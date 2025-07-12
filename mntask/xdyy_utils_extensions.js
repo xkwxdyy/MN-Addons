@@ -3986,6 +3986,89 @@ class MNTaskManager {
     };
     return icons[priority] || '⚪';
   }
+
+  /**
+   * 获取任务信息（兼容旧代码）
+   * @param {MNNote} task - 任务卡片
+   * @returns {Object} 任务信息对象
+   */
+  static getTaskInfo(task) {
+    if (!task) return null;
+    
+    // 解析任务标题
+    const titleParts = this.parseTaskTitle(task.noteTitle || '');
+    
+    // 解析任务字段
+    const parsed = TaskFieldUtils.parseTaskComments(task);
+    
+    // 构建任务信息对象
+    const taskInfo = {
+      // 基本信息
+      content: titleParts.content || task.noteTitle || '',
+      type: titleParts.type || '动作',
+      status: titleParts.status || '未开始',
+      path: titleParts.path || '',
+      
+      // 优先级
+      priority: '低',
+      
+      // 日期信息
+      scheduledDate: null,
+      
+      // 任务字段
+      taskFields: []
+    };
+    
+    // 解析字段信息
+    if (parsed && parsed.taskFields) {
+      parsed.taskFields.forEach(field => {
+        // 提取优先级
+        if (field.content.includes('优先级')) {
+          if (field.content.includes('🔴') || field.content.includes('高')) {
+            taskInfo.priority = '高';
+          } else if (field.content.includes('🟡') || field.content.includes('中')) {
+            taskInfo.priority = '中';
+          } else if (field.content.includes('🟢') || field.content.includes('低')) {
+            taskInfo.priority = '低';
+          }
+        }
+        
+        // 提取日期
+        if (field.content.includes('📅') || field.content.includes('日期')) {
+          const dateMatch = field.content.match(/\d{4}-\d{2}-\d{2}/);
+          if (dateMatch) {
+            taskInfo.scheduledDate = dateMatch[0];
+          }
+        }
+        
+        // 添加到字段列表
+        taskInfo.taskFields.push({
+          fieldName: field.fieldName || field.content.split(':')[0].trim(),
+          content: field.content,
+          index: field.index,
+          isMainField: field.isMainField
+        });
+      });
+    }
+    
+    // 添加评论中的其他字段
+    if (task.comments) {
+      task.comments.forEach((comment, index) => {
+        // 跳过已经解析的任务字段
+        const isTaskField = TaskFieldUtils.isTaskField(comment);
+        if (!isTaskField && comment.text) {
+          taskInfo.taskFields.push({
+            fieldName: '评论',
+            content: comment.text,
+            index: index,
+            isMainField: false
+          });
+        }
+      });
+    }
+    
+    return taskInfo;
+  }
 }
 
 // 确认 MNTaskManager 类已定义

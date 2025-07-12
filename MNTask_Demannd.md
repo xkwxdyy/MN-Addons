@@ -3,9 +3,20 @@
 2. 任何更新，尤其是新功能，要在 mntask_guide.md 里详细更新。
 3.  /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/log.md 是用于测试的 log 文件，一般说“log 文件已更新”就是这个。 MNUtil.log() 添加的内容我会复制到这里
 ---
+任务编辑出现了，但
+1. 我选中卡片，仍然提示我未选中任务卡片
+2. 我点击取消后，左侧栏里的“任务编辑”就直接消失了！
+ultrathink
+
+---
+我重新和你汇总一下现在问题，以防遗漏
 1. 新加的卡片编辑功能我也没看到在哪！左侧应该多一个卡片编辑栏的，但没有！
 2. 从按钮点击看板，打开看板后仍然显示“打开看板失败”！请解决！
+“任务队列”界面
+1. 任务的“今日”按钮点击无效
+2. 点击完成后，脑图里的卡片状态并没有更新，然后弹出了一个报错
   ultrathink
+
 
 ---
 单击看板按钮仍然显示失败，然后是错误报错弹窗：MN Task Error (registerTaskUpdateObserver): ReferenceError: Can't find variable: setinterval。但是看板是加出来了。ultrathink

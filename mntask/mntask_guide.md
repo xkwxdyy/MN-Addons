@@ -2298,6 +2298,38 @@ MNTask v0.11.0 提供了功能强大的任务看板系统，采用现代化的 W
 - 在 loadTodayBoardData 中添加了 isLoadingTodayBoard 标志和 finally 块
 - 优化了 registerTaskUpdateObserver 和 checkTaskUpdates 方法的安全检查
 
+## 版本 v0.11.12
+
+### 修复的问题
+
+1. **日志过度输出导致的性能问题**
+   - **问题**：Mac 和 iPad 上日志文件快速增长，每分钟产生 600+ 条日志
+   - **原因**：
+     - TaskFilterEngine.filter 对每个任务卡片都输出详细日志
+     - parseTaskComments 对每个评论都输出详细日志
+     - checkTaskUpdates 每 2 秒执行一次，导致日志爆炸式增长
+   - **修复**：
+     - 注释掉 TaskFilterEngine.filter 中的"找到任务卡片"、"符合/不符合筛选条件"日志
+     - 注释掉 parseTaskComments 中的评论详情和字段识别日志
+     - 简化 filterTodayTasks 的配置日志，只保留关键信息
+
+### 技术改进
+
+1. **日志优化**
+   - 保留错误日志和关键汇总日志（如"找到 X 个今日任务"）
+   - 移除循环中的详细日志输出
+   - 大幅减少日志文件大小和 CPU 占用
+
+2. **性能提升**
+   - 减少字符串拼接和 JSON 序列化操作
+   - 降低定时器执行时的系统开销
+
+### 实现细节
+
+- 在 xdyy_utils_extensions.js 中注释掉过度的日志输出
+- 保留必要的错误日志和汇总信息
+- 未改变任何功能逻辑，仅优化日志输出
+
 ### v0.0.0 (初始版本)
 - 基础任务管理功能
 - OKR 层级系统（目标、关键结果、项目、动作）

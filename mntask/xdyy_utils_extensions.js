@@ -594,7 +594,8 @@ class MNTaskManager {
       return result
     }
     
-    MNUtil.log("📋 总评论数：" + comments.length)
+    // 注释掉详细日志
+    // MNUtil.log("📋 总评论数：" + comments.length)
     
     comments.forEach((comment, index) => {
       if (!comment) return
@@ -606,18 +607,21 @@ class MNTaskManager {
         text = comment.text || ''
         commentType = comment.type || ''
       } catch (e) {
+        // 保留错误日志
         MNUtil.log(`⚠️ 评论 ${index} 属性访问失败: ` + e.message)
         return
       }
       
-      MNUtil.log(`🔍 评论 ${index}: type=${commentType}, text=${text.substring(0, 50) + (text.length > 50 ? '...' : '')}, isTaskField=${TaskFieldUtils.isTaskField(text)}`)
+      // 注释掉详细日志
+      // MNUtil.log(`🔍 评论 ${index}: type=${commentType}, text=${text.substring(0, 50) + (text.length > 50 ? '...' : '')}, isTaskField=${TaskFieldUtils.isTaskField(text)}`)
       
       // 检查是否是任务字段（MNComment 对象的 type 已经是处理后的类型）
       if ((commentType === 'textComment' || commentType === 'markdownComment') && TaskFieldUtils.isTaskField(text)) {
         const fieldType = TaskFieldUtils.getFieldType(text)
         const content = TaskFieldUtils.getFieldContent(text)
         
-        MNUtil.log(`✅ 识别为任务字段: fieldType=${fieldType}, content=${content}`)
+        // 注释掉详细日志
+        // MNUtil.log(`✅ 识别为任务字段: fieldType=${fieldType}, content=${content}`)
         
         result.taskFields.push({
           index: index,
@@ -2633,8 +2637,9 @@ class MNTaskManager {
       }
     }
     
+    // 保留开始筛选的日志，但简化配置信息
     if (typeof MNUtil !== 'undefined' && MNUtil.log) {
-      MNUtil.log("🔍 开始筛选今日任务，配置：" + JSON.stringify(filterConfig))
+      MNUtil.log(`🔍 开始筛选今日任务，看板: ${filterConfig.boardKeys.join(', ')}`)
     }
     
     // 如果配置中包含 includeAll 参数，使用全局搜索
@@ -2648,9 +2653,10 @@ class MNTaskManager {
       statuses: filterConfig.statuses,
       customFilter: (task) => {
         const isToday = this.isToday(task)
-        if (typeof MNUtil !== 'undefined' && MNUtil.log && isToday) {
-          MNUtil.log("✅ 发现今日任务：" + task.noteTitle)
-        }
+        // 注释掉详细日志
+        // if (typeof MNUtil !== 'undefined' && MNUtil.log && isToday) {
+        //   MNUtil.log("✅ 发现今日任务：" + task.noteTitle)
+        // }
         return isToday
       }
     })
@@ -3999,7 +4005,7 @@ class MNTaskManager {
     const titleParts = this.parseTaskTitle(task.noteTitle || '');
     
     // 解析任务字段
-    const parsed = TaskFieldUtils.parseTaskComments(task);
+    const parsed = MNTaskManager.parseTaskComments(task);
     
     // 构建任务信息对象
     const taskInfo = {
@@ -4127,9 +4133,10 @@ class TaskFilterEngine {
         continue
       }
       
-      if (typeof MNUtil !== 'undefined' && MNUtil.log) {
-        MNUtil.log(`🔍 开始从看板 ${boardKey} 收集任务`)
-      }
+      // 注释掉详细日志
+      // if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+      //   MNUtil.log(`🔍 开始从看板 ${boardKey} 收集任务`)
+      // }
       
       // 递归收集所有任务卡片
       const collectTasks = (parentNote) => {
@@ -4146,20 +4153,23 @@ class TaskFilterEngine {
             continue
           }
           
-          if (typeof MNUtil !== 'undefined' && MNUtil.log) {
-            MNUtil.log(`🔍 找到任务卡片：${childNote.noteTitle.substring(0, 50)}...`)
-          }
+          // 注释掉详细日志，减少日志输出
+          // if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+          //   MNUtil.log(`🔍 找到任务卡片：${childNote.noteTitle.substring(0, 50)}...`)
+          // }
           
           // 应用筛选条件
           if (this.matchesCriteria(childNote, criteria)) {
             results.push(childNote)
-            if (typeof MNUtil !== 'undefined' && MNUtil.log) {
-              MNUtil.log(`✅ 任务符合筛选条件`)
-            }
+            // 注释掉详细日志
+            // if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+            //   MNUtil.log(`✅ 任务符合筛选条件`)
+            // }
           } else {
-            if (typeof MNUtil !== 'undefined' && MNUtil.log) {
-              MNUtil.log(`❌ 任务不符合筛选条件`)
-            }
+            // 注释掉详细日志
+            // if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+            //   MNUtil.log(`❌ 任务不符合筛选条件`)
+            // }
           }
           
           // 递归处理子卡片

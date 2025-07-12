@@ -178,6 +178,13 @@ try {
   viewWillAppear: function(animated) {
   },
   viewWillDisappear: function(animated) {
+    let self = getTaskSettingController()
+    // 清理任务更新定时器
+    if (self.taskUpdateTimer) {
+      self.taskUpdateTimer.invalidate()
+      self.taskUpdateTimer = null
+      MNUtil.log("🔄 任务更新监听器已停止")
+    }
   },
 viewWillLayoutSubviews: function() {
     let buttonHeight = 25
@@ -4348,22 +4355,29 @@ taskSettingController.prototype.registerTaskUpdateObserver = function() {
   try {
     // 存储定时器ID，避免重复注册
     if (this.taskUpdateTimer) {
-      clearInterval(this.taskUpdateTimer)
+      this.taskUpdateTimer.invalidate()
+      this.taskUpdateTimer = null
     }
     
     // 存储任务的最后修改时间，用于检测变化
     this.taskLastModified = new Map()
     
-    // 每2秒检查一次任务更新
-    this.taskUpdateTimer = setInterval(() => {
-      if (this.todayBoardWebViewInstance && !this.todayBoardWebViewInstance.hidden) {
-        this.checkTaskUpdates()
+    // 使用 NSTimer 创建定时器，每2秒检查一次任务更新
+    const self = this
+    this.taskUpdateTimer = NSTimer.scheduledTimerWithTimeInterval(
+      2.0,  // 间隔时间（秒）
+      true, // repeats = true 表示重复执行
+      function() {
+        if (self.todayBoardWebViewInstance && !self.todayBoardWebViewInstance.hidden) {
+          self.checkTaskUpdates()
+        }
       }
-    }, 2000)
+    )
     
     MNUtil.log("✅ 任务更新监听器已注册")
   } catch (error) {
     taskUtils.addErrorLog(error, "registerTaskUpdateObserver")
+    MNUtil.log(`❌ 注册任务更新监听器失败: ${error.message}`)
   }
 }
 

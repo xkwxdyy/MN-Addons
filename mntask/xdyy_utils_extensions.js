@@ -2637,8 +2637,8 @@ class MNTaskManager {
       }
     }
     
-    // 保留开始筛选的日志，但简化配置信息
-    if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+    // 只在非静默模式下输出日志
+    if (!filterConfig.silent && typeof MNUtil !== 'undefined' && MNUtil.log) {
       MNUtil.log(`🔍 开始筛选今日任务，看板: ${filterConfig.boardKeys.join(', ')}`)
     }
     

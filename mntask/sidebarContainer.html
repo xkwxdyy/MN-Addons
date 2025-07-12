@@ -236,6 +236,64 @@
     </div>
 
     <script>
+        // 全局筛选器状态管理
+        const filterState = {
+            statuses: new Set(['未开始', '进行中', '已完成']),
+            priorities: new Set(['高', '中', '低']),
+            types: new Set(),
+            
+            // 保存状态到 localStorage
+            save() {
+                const state = {
+                    statuses: Array.from(this.statuses),
+                    priorities: Array.from(this.priorities),
+                    types: Array.from(this.types)
+                };
+                localStorage.setItem('mntask_filter_state', JSON.stringify(state));
+            },
+            
+            // 从 localStorage 恢复状态
+            load() {
+                const saved = localStorage.getItem('mntask_filter_state');
+                if (saved) {
+                    try {
+                        const state = JSON.parse(saved);
+                        this.statuses = new Set(state.statuses || ['未开始', '进行中', '已完成']);
+                        this.priorities = new Set(state.priorities || ['高', '中', '低']);
+                        this.types = new Set(state.types || []);
+                    } catch (e) {
+                        console.error('Failed to load filter state:', e);
+                    }
+                }
+            },
+            
+            // 更新状态
+            update(type, values) {
+                this[type] = new Set(values);
+                this.save();
+                // 通知所有 iframe 更新筛选器
+                this.notifyAllFrames();
+            },
+            
+            // 通知所有 iframe 更新筛选器状态
+            notifyAllFrames() {
+                const iframe = document.querySelector('.content-frame');
+                if (iframe && iframe.contentWindow) {
+                    iframe.contentWindow.postMessage({
+                        type: 'updateFilters',
+                        filters: {
+                            statuses: Array.from(this.statuses),
+                            priorities: Array.from(this.priorities),
+                            types: Array.from(this.types)
+                        }
+                    }, '*');
+                }
+            }
+        };
+        
+        // 初始化时加载筛选器状态
+        filterState.load();
+        
         // 视图配置
         const viewConfig = {
             todayboard: {
@@ -424,6 +482,27 @@
 
         // 处理iframe消息
         window.addEventListener('message', function(event) {
+            // 处理筛选器更新
+            if (event.data && event.data.type === 'updateFilterState') {
+                console.log('[FilterState] 更新筛选器状态:', event.data);
+                filterState.update(event.data.filterType, event.data.values);
+                return;
+            }
+            
+            // 处理获取筛选器状态请求
+            if (event.data && event.data.type === 'getFilterState') {
+                console.log('[FilterState] 发送筛选器状态到 iframe');
+                event.source.postMessage({
+                    type: 'filterState',
+                    filters: {
+                        statuses: Array.from(filterState.statuses),
+                        priorities: Array.from(filterState.priorities),
+                        types: Array.from(filterState.types)
+                    }
+                }, '*');
+                return;
+            }
+            
             // 转发消息到原生代码
             if (event.data && event.data.action) {
                 console.log('[Message] 收到来自 iframe 的消息:', event.data);
@@ -444,19 +523,28 @@
         // 代理函数：接收原生代码的调用并转发到 iframe
         function loadTasksFromPlugin(encodedTasks) {
             const iframe = document.querySelector('.content-frame');
+            console.log('[sidebarContainer] loadTasksFromPlugin 被调用');
+            console.log('[sidebarContainer] iframe 存在:', !!iframe);
+            
             if (iframe && iframe.contentWindow) {
                 try {
                     const tasks = JSON.parse(decodeURIComponent(encodedTasks));
+                    console.log('[sidebarContainer] 解析任务成功，数量:', tasks.length);
+                    
                     iframe.contentWindow.postMessage({
                         type: 'loadTasks',
                         tasks: tasks
                     }, '*');
+                    
+                    console.log('[sidebarContainer] 消息已发送到 iframe');
                     return 'success';
                 } catch (error) {
-                    console.error('Failed to parse tasks:', error);
+                    console.error('[sidebarContainer] 解析任务失败:', error);
                     return 'error';
                 }
             }
+            
+            console.log('[sidebarContainer] iframe 未准备好');
             return 'iframe_not_ready';
         }
         
@@ -510,16 +598,23 @@
         
         // 显示任务编辑器
         function showTaskEditor(taskId) {
+            console.log('[showTaskEditor] 函数被调用，taskId:', taskId);
+            
             // 显示任务编辑器导航项
             const editorNav = document.querySelector('[data-view="taskeditor"]');
             if (editorNav) {
+                console.log('[showTaskEditor] 找到编辑器导航项，设置为显示');
                 editorNav.style.display = 'flex';
+            } else {
+                console.log('[showTaskEditor] 未找到编辑器导航项');
             }
             
             // 切换到任务编辑器视图
+            console.log('[showTaskEditor] 切换到任务编辑器视图');
             switchView('taskeditor');
             
             // 通知原生代码加载任务数据
+            console.log('[showTaskEditor] 通知原生代码加载任务数据');
             window.location.href = `mntask://loadTaskForEdit?taskId=${encodeURIComponent(taskId)}`;
         }
     </script>

@@ -3057,16 +3057,28 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
     const script = `loadTasksFromPlugin('${encodedTasks}')`
     
     try {
-      await this.runJavaScriptInWebView(script)
-      MNUtil.log(`✅ 今日看板数据加载成功，共 ${displayTasks.length} 个任务`)
+      const result = await this.runJavaScriptInWebView(script)
+      MNUtil.log(`📡 JavaScript 执行结果: ${result}`)
       
-      // 注册任务更新监听器，实现卡片到HTML的实时同步
-      this.registerTaskUpdateObserver()
+      if (result === 'success') {
+        MNUtil.log(`✅ 今日看板数据加载成功，共 ${displayTasks.length} 个任务`)
+        // 注册任务更新监听器，实现卡片到HTML的实时同步
+        this.registerTaskUpdateObserver()
+      } else if (result === 'iframe_not_ready') {
+        MNUtil.log(`⏳ iframe 未准备好，等待后重试`)
+        // 等待一段时间后重试
+        await MNUtil.delay(1.5)
+        const retryResult = await this.runJavaScriptInWebView(script)
+        MNUtil.log(`🔄 重试结果: ${retryResult}`)
+      } else {
+        MNUtil.log(`⚠️ 数据传递返回异常: ${result}`)
+      }
     } catch (error) {
       MNUtil.log(`❌ 执行 JavaScript 失败: ${error.message}`)
       // 尝试使用旧的方式
       const fallbackScript = `if(typeof loadTasksFromPlugin !== 'undefined') { loadTasksFromPlugin('${encodedTasks}'); }`
-      await this.runJavaScriptInWebView(fallbackScript)
+      const fallbackResult = await this.runJavaScriptInWebView(fallbackScript)
+      MNUtil.log(`🔄 fallback 结果: ${fallbackResult}`)
     }
     
   } catch (error) {
@@ -4411,10 +4423,10 @@ taskSettingController.prototype.registerTaskUpdateObserver = function() {
       this.taskLastModified = new Map()
     }
     
-    // 使用 NSTimer 创建定时器，每2秒检查一次任务更新
+    // 使用 NSTimer 创建定时器，每10秒检查一次任务更新
     const self = this
     this.taskUpdateTimer = NSTimer.scheduledTimerWithTimeInterval(
-      2.0,  // 间隔时间（秒）
+      10.0,  // 间隔时间增加到10秒，减少性能消耗
       true, // repeats = true 表示重复执行
       function() {
         // 增加安全检查，避免在 WebView 隐藏或正在加载时执行
@@ -4444,8 +4456,8 @@ taskSettingController.prototype.checkTaskUpdates = function() {
       return
     }
     
-    // 获取当前显示的任务
-    const todayTasks = MNTaskManager.filterTodayTasks()
+    // 获取当前显示的任务，传入静默模式参数
+    const todayTasks = MNTaskManager.filterTodayTasks({ silent: true })
     
     // 记录检查的任务数量（仅在首次或数量变化时记录）
     if (!this.lastTaskCount || this.lastTaskCount !== todayTasks.length) {
@@ -5122,22 +5134,65 @@ taskSettingController.prototype.editTask = function(taskId) {
     
     MNUtil.log(`📝 准备编辑任务: ${taskId}`)
     
+    // 首先检查 WebView 状态
+    if (!this.todayBoardWebViewInstance) {
+      MNUtil.log("❌ WebView 实例不存在")
+      MNUtil.showHUD("任务编辑器未初始化")
+      return
+    }
+    
+    // 检查 WebView 是否隐藏
+    if (this.todayBoardWebViewInstance.hidden) {
+      MNUtil.log("⚠️ WebView 当前隐藏，尝试显示")
+      this.todayBoardWebViewInstance.hidden = false
+    }
+    
     // 通过 JavaScript 调用 sidebarContainer 的 showTaskEditor 函数
     const script = `
-      if (typeof showTaskEditor === 'function') {
-        showTaskEditor('${taskId}');
-        'success';
-      } else {
-        'showTaskEditor_not_found';
-      }
+      (function() {
+        console.log('[editTask] 检查 showTaskEditor 函数');
+        if (typeof showTaskEditor === 'function') {
+          console.log('[editTask] showTaskEditor 函数存在，调用它');
+          showTaskEditor('${taskId}');
+          return 'success';
+        } else {
+          console.log('[editTask] showTaskEditor 函数不存在');
+          // 尝试查找函数
+          console.log('[editTask] window.showTaskEditor:', typeof window.showTaskEditor);
+          console.log('[editTask] parent.showTaskEditor:', typeof parent.showTaskEditor);
+          return 'showTaskEditor_not_found';
+        }
+      })()
     `
     
     this.runJavaScriptInWebView(script).then(result => {
+      MNUtil.log(`📡 编辑器调用结果: ${result}`)
       if (result === 'success') {
-        MNUtil.log("✅ 已通知显示任务编辑器")
+        MNUtil.log("✅ 任务编辑器已打开")
+        // 等待一下再加载任务详情
+        MNUtil.delay(0.5).then(() => {
+          this.loadTaskDetailForEditor()
+        })
       } else {
-        MNUtil.log("❌ 无法调用 showTaskEditor 函数")
-        MNUtil.showHUD("打开任务编辑器失败")
+        MNUtil.log(`❌ 任务编辑器打开失败: ${result}`)
+        // 尝试直接切换到任务编辑视图
+        const switchScript = `
+          if (typeof switchView === 'function') {
+            switchView('taskeditor');
+            'switch_success';
+          } else {
+            'switch_not_found';
+          }
+        `
+        return this.runJavaScriptInWebView(switchScript)
+      }
+    }).then(switchResult => {
+      if (switchResult && switchResult === 'switch_success') {
+        MNUtil.log("✅ 已切换到任务编辑视图")
+        // 等待视图加载后再加载任务详情
+        MNUtil.delay(1).then(() => {
+          this.loadTaskDetailForEditor()
+        })
       }
     })
     

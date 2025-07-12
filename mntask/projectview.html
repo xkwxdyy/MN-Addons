@@ -40,7 +40,11 @@
             margin: 0;
             overflow: hidden;
             display: flex;
-            height: 100vh;
+            height: 100%;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            left: 0;
         }
 
         /* 容器布局 */
@@ -665,12 +669,68 @@
                 this.bindEvents();
                 this.setupFilters();
                 this.showLoadingState();
+                this.requestFilterState();
                 
                 // 延迟加载数据，确保 WebView 通信准备就绪
                 setTimeout(() => {
                     console.log('项目视图初始化完成，开始加载数据');
                     window.location.href = 'mntask://loadProjectsData';
                 }, 100);
+            },
+            
+            // 请求父窗口的筛选器状态
+            requestFilterState() {
+                if (window.parent && window.parent !== window) {
+                    console.log('[ProjectView] 请求父窗口筛选器状态');
+                    window.parent.postMessage({ type: 'getFilterState' }, '*');
+                }
+            },
+            
+            // 应用从父窗口接收的筛选器状态
+            applyFilterState(filters) {
+                console.log('[ProjectView] 应用筛选器状态:', filters);
+                
+                if (filters.statuses) {
+                    this.filters.statuses = new Set(filters.statuses);
+                    // 更新状态复选框
+                    document.getElementById('status-todo').checked = filters.statuses.includes('未开始');
+                    document.getElementById('status-doing').checked = filters.statuses.includes('进行中');
+                    document.getElementById('status-done').checked = filters.statuses.includes('已完成');
+                }
+                
+                if (filters.priorities) {
+                    this.filters.priorities = new Set(filters.priorities);
+                    // 更新优先级复选框
+                    document.getElementById('priority-high').checked = filters.priorities.includes('高');
+                    document.getElementById('priority-medium').checked = filters.priorities.includes('中');
+                    document.getElementById('priority-low').checked = filters.priorities.includes('低');
+                }
+                
+                if (filters.types && filters.types.length > 0) {
+                    this.filters.types = new Set(filters.types);
+                    // 更新类型复选框
+                    document.getElementById('type-target').checked = filters.types.includes('目标');
+                    document.getElementById('type-keyresult').checked = filters.types.includes('关键结果');
+                    document.getElementById('type-project').checked = filters.types.includes('项目');
+                    document.getElementById('type-action').checked = filters.types.includes('动作');
+                }
+                
+                // 如果有任务数据，重新渲染
+                if (this.tasks.length > 0) {
+                    this.renderTasks();
+                }
+            },
+            
+            // 通知父窗口筛选器状态已更改
+            notifyFilterChange(filterType, values) {
+                if (window.parent && window.parent !== window) {
+                    console.log('[ProjectView] 通知父窗口筛选器更改:', filterType, values);
+                    window.parent.postMessage({
+                        type: 'updateFilterState',
+                        filterType: filterType,
+                        values: Array.from(values)
+                    }, '*');
+                }
             },
 
             // 绑定事件
@@ -707,6 +767,8 @@
                             this.filters.statuses.delete(statusMap[index]);
                         }
                         this.renderTasks();
+                        // 通知父窗口状态已更改
+                        this.notifyFilterChange('statuses', this.filters.statuses);
                     });
                 });
                 
@@ -726,6 +788,8 @@
                             this.filters.types.delete(typeMap[type]);
                         }
                         this.renderTasks();
+                        // 通知父窗口类型已更改
+                        this.notifyFilterChange('types', this.filters.types);
                     });
                 });
                 
@@ -739,6 +803,8 @@
                             this.filters.priorities.delete(priorityMap[index]);
                         }
                         this.renderTasks();
+                        // 通知父窗口优先级已更改
+                        this.notifyFilterChange('priorities', this.filters.priorities);
                     });
                 });
                 
@@ -1162,6 +1228,11 @@
                 
                 document.getElementById('hide-completed-actions').checked = false;
                 
+                // 通知父窗口筛选器已重置
+                this.notifyFilterChange('statuses', this.filters.statuses);
+                this.notifyFilterChange('types', this.filters.types);
+                this.notifyFilterChange('priorities', this.filters.priorities);
+                
                 // 重新渲染
                 this.renderTasks();
             }
@@ -1194,6 +1265,37 @@
                 return 'error';
             }
         }
+        
+        // 监听来自父窗口的消息
+        window.addEventListener('message', function(event) {
+            try {
+                // 处理项目列表加载
+                if (event.data && event.data.type === 'loadProjects') {
+                    const encodedProjects = encodeURIComponent(JSON.stringify(event.data.projects));
+                    projectManager.loadProjects(event.data.projects);
+                }
+                
+                // 处理项目任务加载
+                if (event.data && event.data.type === 'loadProjectTasks') {
+                    const encodedTasks = encodeURIComponent(JSON.stringify(event.data.tasks));
+                    projectManager.loadProjectTasks(event.data.tasks);
+                }
+                
+                // 处理筛选器状态
+                if (event.data && event.data.type === 'filterState') {
+                    console.log('[ProjectView] 收到筛选器状态:', event.data.filters);
+                    projectManager.applyFilterState(event.data.filters);
+                }
+                
+                // 处理筛选器更新
+                if (event.data && event.data.type === 'updateFilters') {
+                    console.log('[ProjectView] 收到筛选器更新:', event.data.filters);
+                    projectManager.applyFilterState(event.data.filters);
+                }
+            } catch (error) {
+                console.error('[ProjectView] 处理消息失败:', error);
+            }
+        });
     </script>
 </body>
 </html>

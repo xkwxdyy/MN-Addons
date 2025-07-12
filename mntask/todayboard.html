@@ -4,41 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>今日任务看板</title>
+    <link rel="stylesheet" href="common.css">
     <style>
-        :root {
-            --primary-bg: #ffffff;
-            --sidebar-bg: #f8f9fa;
-            --card-bg: #f8f9fa;
-            --border-color: #e9ecef;
-            --text-primary: #212529;
-            --text-secondary: #6c757d;
-            --hover-bg: #e9ecef;
-            --overdue-color: #dc3545;
-            --high-priority: #dc3545;
-            --medium-priority: #ffc107;
-            --low-priority: #28a745;
-            --info-color: #17a2b8;
-            --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
-            --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
-            --transition-speed: 0.2s;
-            --card-radius: 8px;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
+        /* 今日看板特有样式 */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: var(--primary-bg);
-            color: var(--text-primary);
-            padding: 0;
-            margin: 0;
-            overflow-x: hidden;
             display: flex;
-            height: 100vh;
         }
 
         /* 侧边栏样式 */
@@ -48,13 +18,14 @@
             width: 200px;
             background-color: var(--sidebar-bg);
             padding: 10px;
-            height: 100vh;
+            height: 100%;
             border-right: 1px solid var(--border-color);
             transition: transform 0.2s ease-out;
             position: relative;
             z-index: 1000;
             flex-shrink: 0;
             box-shadow: var(--shadow-sm);
+            overflow-y: auto;
         }
 
         .sidebar.collapsed {
@@ -63,20 +34,20 @@
 
         .toggle-sidebar {
             position: absolute;
-            right: 0px;
-            top: 0px;
+            right: -32px;
+            top: 10px;
             width: 32px;
             height: 34px;
             background-color: var(--sidebar-bg);
-            border: 0px solid var(--border-color);
-            border-radius: 0px;
+            border: 1px solid var(--border-color);
+            border-radius: 0 5px 5px 0;
+            border-left: none;
             cursor: pointer;
-            display: flex;
+            display: none;
             align-items: center;
             justify-content: center;
             z-index: 1001;
             transition: all 0.2s ease-out;
-            display: none;
         }
 
         .toggle-sidebar:hover {
@@ -85,6 +56,7 @@
 
         .sidebar.collapsed .toggle-sidebar {
             right: -32px;
+            border: 1px solid var(--border-color);
             border-radius: 0 5px 5px 0;
             border-left: none;
         }
@@ -98,6 +70,23 @@
 
         .sidebar.collapsed .toggle-sidebar::before {
             transform: rotate(180deg);
+        }
+
+        /* 侧边栏标题 */
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 10px;
+            margin-bottom: 16px;
+            border-bottom: 2px solid var(--border-color);
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--text-primary);
+        }
+
+        .filter-icon {
+            font-size: 20px;
         }
 
         /* 筛选器部分 */
@@ -194,7 +183,7 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            height: 100vh;
+            height: 100%;
             overflow: hidden;
             min-width: 0;
             background-color: var(--primary-bg);
@@ -594,9 +583,14 @@
     </style>
 </head>
 <body>
-    <!-- 侧边栏 -->
+    <!-- 筛选面板 -->
     <div class="sidebar" id="sidebar">
         <button class="toggle-sidebar" id="toggleSidebar"></button>
+        
+        <div class="sidebar-header">
+            <span class="filter-icon">🔍</span>
+            <span>筛选条件</span>
+        </div>
         
         <div class="filter-section">
             <h3>状态</h3>
@@ -712,6 +706,14 @@
             init() {
                 this.setupEventListeners();
                 this.setupSidebar();
+                this.requestFilterState();
+            }
+            
+            // 请求父窗口的筛选器状态
+            requestFilterState() {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({ type: 'getFilterState' }, '*');
+                }
             }
 
             setupSidebar() {
@@ -754,6 +756,8 @@
                             this.filters.statuses.delete(statusMap[index]);
                         }
                         this.renderTasks();
+                        // 通知父窗口状态已更改
+                        this.notifyFilterChange('statuses', this.filters.statuses);
                     });
                 });
 
@@ -767,6 +771,8 @@
                             this.filters.priorities.delete(priorityMap[index]);
                         }
                         this.renderTasks();
+                        // 通知父窗口优先级已更改
+                        this.notifyFilterChange('priorities', this.filters.priorities);
                     });
                 });
 
@@ -826,6 +832,50 @@
                 });
                 
                 this.renderTasks();
+            }
+            
+            // 应用从父窗口接收的筛选器状态
+            applyFilterState(filters) {
+                if (filters.statuses) {
+                    this.filters.statuses = new Set(filters.statuses);
+                    // 更新状态复选框
+                    document.getElementById('status-todo').checked = filters.statuses.includes('未开始');
+                    document.getElementById('status-doing').checked = filters.statuses.includes('进行中');
+                    document.getElementById('status-done').checked = filters.statuses.includes('已完成');
+                }
+                
+                if (filters.priorities) {
+                    this.filters.priorities = new Set(filters.priorities);
+                    // 更新优先级复选框
+                    document.getElementById('priority-high').checked = filters.priorities.includes('高');
+                    document.getElementById('priority-medium').checked = filters.priorities.includes('中');
+                    document.getElementById('priority-low').checked = filters.priorities.includes('低');
+                }
+                
+                if (filters.types && filters.types.length > 0) {
+                    this.filters.types = new Set(filters.types);
+                    // 更新类型复选框
+                    document.querySelectorAll('#type-filters input[type="checkbox"]').forEach(checkbox => {
+                        const type = checkbox.id.replace('type-', '');
+                        checkbox.checked = filters.types.includes(type);
+                    });
+                }
+                
+                // 如果有任务数据，重新渲染
+                if (this.tasks.length > 0) {
+                    this.renderTasks();
+                }
+            }
+            
+            // 通知父窗口筛选器状态已更改
+            notifyFilterChange(filterType, values) {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'updateFilterState',
+                        filterType: filterType,
+                        values: Array.from(values)
+                    }, '*');
+                }
             }
 
             // 加载任务数据
@@ -1331,10 +1381,23 @@
         // 监听来自父窗口的消息
         window.addEventListener('message', function(event) {
             try {
+                // 处理任务加载
                 if (event.data && event.data.type === 'loadTasks') {
                     // 将任务数据编码后传递给 boardManager
                     const encodedTasks = encodeURIComponent(JSON.stringify(event.data.tasks));
                     boardManager.loadTasks(encodedTasks);
+                }
+                
+                // 处理筛选器状态
+                if (event.data && event.data.type === 'filterState') {
+                    console.log('收到筛选器状态:', event.data.filters);
+                    boardManager.applyFilterState(event.data.filters);
+                }
+                
+                // 处理筛选器更新
+                if (event.data && event.data.type === 'updateFilters') {
+                    console.log('收到筛选器更新:', event.data.filters);
+                    boardManager.applyFilterState(event.data.filters);
                 }
             } catch (error) {
                 console.error('处理消息失败:', error);

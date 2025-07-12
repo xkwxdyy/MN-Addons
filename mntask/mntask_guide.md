@@ -2258,6 +2258,46 @@ MNTask v0.11.0 提供了功能强大的任务看板系统，采用现代化的 W
 - 修复了 editTask、handleSaveTaskChanges、loadTaskDetailForEditor 等方法
 - 确保任务编辑器完全在 iframe 架构下运行
 
+## 版本 v0.11.11
+
+### 修复的问题
+
+1. **iPad 看板无限刷新问题**
+   - **问题**：iPad 上看板一直在刷新，任务无法加载，但 Mac 上正常工作
+   - **原因**：
+     - handleRefreshBoard 方法重复调用 registerTaskUpdateObserver，导致多个定时器同时运行
+     - loadTodayBoardData 内部也会调用 registerTaskUpdateObserver，造成双重注册
+     - 快速点击刷新按钮时可能创建多个定时器实例
+   - **修复**：
+     - 从 handleRefreshBoard 中移除了重复的 registerTaskUpdateObserver 调用
+     - 添加了防重复加载机制，在 loadTodayBoardData 执行期间阻止新的加载请求
+     - 优化了 registerTaskUpdateObserver，添加了防频繁注册保护（1秒内不允许重复注册）
+     - 增强了定时器的安全检查，避免在 WebView 隐藏或正在加载时执行更新
+
+2. **parseTaskComments 方法调用错误**
+   - 用户已自行修复：将 TaskFieldUtils.parseTaskComments 改为 MNTaskManager.parseTaskComments
+
+### 技术改进
+
+1. **防重复加载机制**
+   - 添加 `isLoadingTodayBoard` 标志，防止并发加载
+   - 在 finally 块中确保标志被正确清理，即使出错也不会阻塞后续加载
+
+2. **定时器管理优化**
+   - 添加 `lastRegisterTime` 时间戳，防止 1 秒内重复注册
+   - 增加了详细的日志输出，便于调试定时器相关问题
+   - checkTaskUpdates 方法增加了防止在加载期间执行的保护
+
+3. **日志优化**
+   - 减少了重复的日志输出，只在任务数量变化时记录
+   - 添加了更多的调试信息，帮助定位平台相关的问题
+
+### 实现细节
+
+- 修改了 handleRefreshBoard 方法，移除了重复的 registerTaskUpdateObserver 调用
+- 在 loadTodayBoardData 中添加了 isLoadingTodayBoard 标志和 finally 块
+- 优化了 registerTaskUpdateObserver 和 checkTaskUpdates 方法的安全检查
+
 ### v0.0.0 (初始版本)
 - 基础任务管理功能
 - OKR 层级系统（目标、关键结果、项目、动作）

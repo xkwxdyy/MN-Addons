@@ -1742,12 +1742,19 @@ taskSettingController.prototype.settingViewLayout = function (){
     
     // 如果 WebView 实例存在，更新其 frame
     if (this.todayBoardWebViewInstance) {
+      // 使用 bounds 而不是 frame，确保相对于父视图的坐标系
+      const containerBounds = this.todayBoardWebView.bounds
       this.todayBoardWebViewInstance.frame = {
         x: 0,
         y: 0,
-        width: this.todayBoardWebView.bounds.width,
-        height: this.todayBoardWebView.bounds.height
+        width: containerBounds.width,
+        height: containerBounds.height
       }
+      
+      // 设置自动调整大小的 mask，使 WebView 随容器大小变化
+      this.todayBoardWebViewInstance.autoresizingMask = (1 << 1 | 1 << 4) // 宽高自适应
+      
+      MNUtil.log(`📐 更新 WebView frame: ${JSON.stringify(this.todayBoardWebViewInstance.frame)}`)
     }
     
 }
@@ -2847,6 +2854,8 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
       webView.delegate = this
       webView.layer.cornerRadius = 10
       webView.layer.masksToBounds = true
+      webView.scrollView.bounces = false // 禁用弹性滚动
+      webView.scrollView.scrollEnabled = true // 允许滚动
       
       // 将 WebView 添加到容器视图中
       this.todayBoardWebView.addSubview(webView)
@@ -2923,9 +2932,17 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
       return
     }
     
+    // 防止重复加载
+    if (this.isLoadingTodayBoard) {
+      MNUtil.log("⏳ 正在加载中，跳过重复请求")
+      return
+    }
+    this.isLoadingTodayBoard = true
+    
     // 确保 MNTaskManager 已定义
     if (typeof MNTaskManager === 'undefined') {
       MNUtil.showHUD("任务管理器未初始化")
+      this.isLoadingTodayBoard = false
       return
     }
     
@@ -3055,6 +3072,9 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
   } catch (error) {
     taskUtils.addErrorLog(error, "loadTodayBoardData")
     MNUtil.showHUD("加载任务数据失败")
+  } finally {
+    // 清除加载标志
+    this.isLoadingTodayBoard = false
   }
 }
 
@@ -4264,7 +4284,7 @@ taskSettingController.prototype.handleSaveTaskChanges = function() {
  */
 taskSettingController.prototype.applyFieldChanges = function(task, changes) {
   try {
-    const parsed = TaskFieldUtils.parseTaskComments(task)
+    const parsed = MNTaskManager.parseTaskComments(task)
     const comments = task.comments || []
     
     // 处理删除的字段
@@ -4373,12 +4393,23 @@ taskSettingController.prototype.registerTaskUpdateObserver = function() {
   try {
     // 存储定时器ID，避免重复注册
     if (this.taskUpdateTimer) {
+      MNUtil.log("🔄 清理旧的任务更新监听器")
       this.taskUpdateTimer.invalidate()
       this.taskUpdateTimer = null
     }
     
+    // 防止在短时间内重复注册
+    const now = Date.now()
+    if (this.lastRegisterTime && (now - this.lastRegisterTime < 1000)) {
+      MNUtil.log("⏳ 防止频繁注册，跳过本次注册")
+      return
+    }
+    this.lastRegisterTime = now
+    
     // 存储任务的最后修改时间，用于检测变化
-    this.taskLastModified = new Map()
+    if (!this.taskLastModified) {
+      this.taskLastModified = new Map()
+    }
     
     // 使用 NSTimer 创建定时器，每2秒检查一次任务更新
     const self = this
@@ -4386,7 +4417,10 @@ taskSettingController.prototype.registerTaskUpdateObserver = function() {
       2.0,  // 间隔时间（秒）
       true, // repeats = true 表示重复执行
       function() {
-        if (self.todayBoardWebViewInstance && !self.todayBoardWebViewInstance.hidden) {
+        // 增加安全检查，避免在 WebView 隐藏或正在加载时执行
+        if (self.todayBoardWebViewInstance && 
+            !self.todayBoardWebViewInstance.hidden &&
+            !self.isLoadingTodayBoard) {
           self.checkTaskUpdates()
         }
       }
@@ -4405,8 +4439,19 @@ taskSettingController.prototype.registerTaskUpdateObserver = function() {
  */
 taskSettingController.prototype.checkTaskUpdates = function() {
   try {
+    // 防止在加载过程中检查更新
+    if (this.isLoadingTodayBoard) {
+      return
+    }
+    
     // 获取当前显示的任务
     const todayTasks = MNTaskManager.filterTodayTasks()
+    
+    // 记录检查的任务数量（仅在首次或数量变化时记录）
+    if (!this.lastTaskCount || this.lastTaskCount !== todayTasks.length) {
+      MNUtil.log(`📊 检查 ${todayTasks.length} 个今日任务的更新`)
+      this.lastTaskCount = todayTasks.length
+    }
     
     todayTasks.forEach(task => {
       const taskId = task.noteId
@@ -4436,7 +4481,7 @@ taskSettingController.prototype.checkTaskUpdates = function() {
 taskSettingController.prototype.pushTaskUpdateToHTML = function(task) {
   try {
     const taskInfo = MNTaskManager.getTaskInfo(task)
-    const parsed = TaskFieldUtils.parseTaskComments(task)
+    const parsed = MNTaskManager.parseTaskComments(task)
     
     // 准备更新数据
     const updateData = {
@@ -4484,11 +4529,8 @@ taskSettingController.prototype.handleRefreshBoard = function() {
   try {
     MNUtil.showHUD("🔄 正在刷新...")
     
-    // 刷新数据
+    // 刷新数据（loadTodayBoardData 内部会注册监听器）
     this.loadTodayBoardData()
-    
-    // 重新注册任务更新监听器
-    this.registerTaskUpdateObserver()
     
     MNUtil.showHUD("✅ 刷新完成")
   } catch (error) {
@@ -5003,7 +5045,7 @@ taskSettingController.prototype.moveTaskToToday = function(taskId) {
     }
     
     // 检查是否已有日期字段
-    const parsed = TaskFieldUtils.parseTaskComments(task)
+    const parsed = MNTaskManager.parseTaskComments(task)
     let hasDateField = false
     let dateFieldIndex = -1
     
@@ -5155,7 +5197,7 @@ taskSettingController.prototype.loadTaskDetailForEditor = function() {
     
     // 解析任务信息
     const taskInfo = MNTaskManager.parseTaskTitle(task.noteTitle)
-    const parsed = TaskFieldUtils.parseTaskComments(task)
+    const parsed = MNTaskManager.parseTaskComments(task)
     
     // 构建任务数据
     const taskData = {

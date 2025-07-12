@@ -17,6 +17,9 @@ class Menu{
     this.menuController.rowHeight = 35
     this.preferredPosition = preferredPosition
   }
+  static new(sender,delegate,width = 200,preferredPosition = 2){
+    return new Menu(sender,delegate,width,preferredPosition)
+  }
   /**
    * @param {object[]} items
    */
@@ -47,7 +50,21 @@ class Menu{
   addMenuItem(title,selector,params = "",checked=false){
     this.commandTable.push({title:title,object:this.delegate,selector:selector,param:params,checked:checked})
   }
+  addItem(title,selector,params = "",checked=false){
+    this.commandTable.push({title:title,object:this.delegate,selector:selector,param:params,checked:checked})
+  }
   addMenuItems(items){
+    let fullItems = items.map(item=>{
+      if ("object" in item) {
+        return item
+      }else{
+        item.object = this.delegate
+        return item
+      }
+    })
+    this.commandTable.push(...fullItems)
+  }
+  addItems(items){
     let fullItems = items.map(item=>{
       if ("object" in item) {
         return item
@@ -209,9 +226,9 @@ class MNUtil {
       }
       this.logs.push(log)
       // MNUtil.copy(this.logs)
-      if (subscriptionUtils.subscriptionController) {
-        subscriptionUtils.subscriptionController.appendLog(log)
-      }
+        if (subscriptionUtils.subscriptionController) {
+          subscriptionUtils.subscriptionController?.appendLog(log)
+        }
       return
     }
     if ("level" in log) {
@@ -229,7 +246,9 @@ class MNUtil {
       log.detail = JSON.stringify(log.detail,null,2)
     }
     this.logs.push(log)
-    subscriptionUtils.subscriptionController.appendLog(log)
+    if (subscriptionUtils.subscriptionController) {
+      subscriptionUtils.subscriptionController?.appendLog(log)
+    }
   }
   static clearLogs(){
     this.logs = []
@@ -884,6 +903,9 @@ static textMatchPhrase(text, query) {
     this.app.stopWaitHUDOnView(view);
     this.onWaitHUD = false
   }
+  static alert(message){
+    this.app.alert(message)
+  }
    /**
    * Displays a confirmation dialog with a main title and a subtitle.
    * 
@@ -1090,6 +1112,66 @@ static textMatchPhrase(text, query) {
    */
   static openURL(url){
     this.app.openURL(NSURL.URLWithString(url));
+  }
+  /**
+   * 
+   * @param {string} urlString 
+   * @returns {{url:string,scheme:string,host:string,query:string,params:Object}}
+   */
+  static parseURL(urlString){
+    let url
+    if (typeof urlString === "string") {
+      url = NSURL.URLWithString(urlString)
+    }else{
+      if (urlString instanceof NSURL) {
+        url = urlString
+      }else if (urlString instanceof NSURLRequest) {
+        url = urlString.URL()
+      }
+    }
+    let config = {
+      url:url.absoluteString(),
+      scheme:url.scheme,
+      host:url.host,
+      query:url.query
+    }
+    let pathComponents = url.pathComponents()
+    if (pathComponents && pathComponents.length > 0) {
+      config.pathComponents = pathComponents.filter(k=>k !== "/")
+    }
+    // 解析查询字符串
+    const params = {};
+    let queryString = url.query;
+    if (queryString) {
+      const pairs = queryString.split('&');
+      for (const pair of pairs) {
+        // 跳过空的参数对 (例如 'a=1&&b=2' 中的第二个 '&')
+        if (!pair) continue;
+        const eqIndex = pair.indexOf('=');
+        let key, value;
+
+        if (eqIndex === -1) {
+          // 处理没有值的参数，例如 '...&readonly&...'
+          key = decodeURIComponent(pair);
+          value = ''; // 通常将无值的 key 对应的值设为空字符串
+        } else {
+          key = decodeURIComponent(pair.substring(0, eqIndex));
+          let tem = decodeURIComponent(pair.substring(eqIndex + 1));
+          if (MNUtil.isValidJSON(tem)) {
+            value = JSON.parse(tem)
+          }else if (tem === "true") {
+            value = true
+          }else if (tem === "false") {
+            value = false
+          }else{
+            value = tem
+          }
+        }
+        params[key] = value;
+      }
+    }
+    config.params = params
+    return config
   }
   /**
    * 
@@ -1920,6 +2002,12 @@ try {
     if (object.noteId) {
       return "MbBookNote"
     }
+    if (object instanceof NSURL) {
+      return "NSURL"
+    }
+    if (object instanceof NSURLRequest) {
+      return "NSURLRequest"
+    }
     if ("title" in object || "content" in object || "excerptText" in object) {
       return "NoteConfig"
     }
@@ -1953,6 +2041,9 @@ try {
    */
   static get docMapSplitMode(){
     return this.studyController.docMapSplitMode
+  }
+  static set docMapSplitMode(mode){
+    this.studyController.docMapSplitMode = mode
   }
   /**
    * Retrieves the image data from the current document controller or other document controllers if the document map split mode is enabled.
@@ -2676,8 +2767,7 @@ try {
 static hasBackLink(from,to){
   let fromNote = MNNote.new(from)
   let targetNote = MNNote.new(to)//链接到的卡片
-  // 检查 fromNote 和 targetNote 是否都存在（避免失效链接导致的错误）
-  if (fromNote && targetNote && targetNote.linkedNotes && targetNote.linkedNotes.length > 0) {
+  if (targetNote.linkedNotes && targetNote.linkedNotes.length > 0) {
     if (targetNote.linkedNotes.some(n=>n.noteid === fromNote.noteId)) {
       return true
     }
@@ -2866,6 +2956,11 @@ class MNConnection{
       "Content-Type": "application/json",
       Accept: "application/json"
     }
+    // let newHearders = {
+    //   ...headers,
+    //   ...(options.headers ?? {})
+    // }
+    // MNUtil.copy(newHearders)
     request.setAllHTTPHeaderFields({
       ...headers,
       ...(options.headers ?? {})
@@ -2911,18 +3006,29 @@ class MNConnection{
    * @returns {Promise<Object>} A promise that resolves with the response data or an error object.
    */
   static async sendRequest(request){
-    // MNUtil.copy("sendRequest")
     const queue = NSOperationQueue.mainQueue()
     return new Promise((resolve, reject) => {
       NSURLConnection.sendAsynchronousRequestQueueCompletionHandler(
         request,
         queue,
         (res, data, err) => {
+        try {
+        if (MNUtil.isNSNull(res)) {
+          if (err.localizedDescription){
+            let error = {error:err.localizedDescription}
+            resolve(error)
+            return
+          }
+          resolve({error:"Response is null"})
+          return
+        }
+        // MNUtil.showHUD("123")
+
           const result = NSJSONSerialization.JSONObjectWithDataOptions(
             data,
             1<<0
           )
-          const validJson = NSJSONSerialization.isValidJSONObject(result)
+          const validJson = result && NSJSONSerialization.isValidJSONObject(result)
           if (err.localizedDescription){
             MNUtil.showHUD(err.localizedDescription)
             let error = {error:err.localizedDescription}
@@ -2931,21 +3037,26 @@ class MNConnection{
             }
             resolve(error)
           }
-          if (res.statusCode() === 200) {
-            // MNUtil.showHUD("OCR success")
-          }else{
+        // MNUtil.showHUD("456")
+
+          if (res.statusCode() >= 400) {
             let error = {statusCode:res.statusCode()}
             if (validJson) {
               error.data = result
             }
             resolve(error)
-            // MNUtil.showHUD("Error in OCR")
           }
+        // MNUtil.showHUD("789"+typeof data)
+
           if (validJson){
             resolve(result)
           }else{
             resolve(data)
           }
+        } catch (error) {
+        // MNUtil.addErrorLog(error, "sendRequest")
+          resolve({error: error.localizedDescription || "Unknown error"})
+        }
         }
       )
   })
@@ -2968,10 +3079,18 @@ class MNConnection{
    * @returns {Promise<Object|Error>} A promise that resolves with the response data or an error object.
    */
   static async fetch (url,options = {}){
+    try {
+
     const request = this.initRequest(url, options)
     // MNUtil.copy(typeof request)
     const res = await this.sendRequest(request)
+    // MNUtil.showHUD("Fetch"+(typeof res))
     return res
+      
+    } catch (error) {
+      MNUtil.addErrorLog(error, "fetch")
+      return undefined
+    }
   }
   /**
    * Encodes a string to Base64.
@@ -3795,6 +3914,9 @@ class MNDocument{
   get path(){
     return this.document.fullPathFileName
   }
+  get fileData(){
+    return MNUtil.getFile(this.document.fullPathFileName)
+  }
   get lastVisit(){
     return this.document.lastVisit
   }
@@ -4344,6 +4466,15 @@ class MNNote{
   get groupNoteId(){
     return this.note.groupNoteId
   }
+  /**
+   * @returns {MNNote|undefined} The group note of the current note.
+   */
+  get groupNote(){
+    if (this.note.groupNoteId) {
+      return MNNote.new(this.note.groupNoteId)
+    }
+    return undefined
+  }
   get groupMode(){
     return this.note.groupMode
   }
@@ -4617,12 +4748,31 @@ class MNNote{
   set fillIndex(index){
     this.note.fillIndex = index
   }
+  /**
+   * @returns {string} The date when the note was created.
+   */
   get createDate(){
     return this.note.createDate
   }
+  /**
+   * @returns {number} The date when the note was created.
+   */
+  get createDateNumber(){
+    return Date.parse(this.note.createDate)
+  }
+  /**
+   * @returns {string} The date when the note was last modified.
+   */
   get modifiedDate(){
     return this.note.modifiedDate
   }
+  /**
+   * @returns {number} The date when the note was last modified.
+   */
+  get modifiedDateNumber(){
+    return Date.parse(this.note.modifiedDate)
+  }
+
   get linkedNotes(){
     return this.note.linkedNotes
   }
@@ -4886,6 +5036,19 @@ class MNNote{
    * @returns {MNNote}
    */
   realGroupNoteForTopicId(nodebookid = MNUtil.currentNotebookId){
+    let noteId = this.note.realGroupNoteIdForTopicId(nodebookid)
+    if (!noteId) {
+      return this.note
+    }
+    return MNNote.new(noteId)
+  };
+  /**
+   * 当前卡片可能只是文档上的摘录，通过这个方法获取它在指定学习集下的卡片noteId
+   * 与底层API不同的是，这里如果不提供nodebookid参数，则默认为当前学习集的nodebookid
+   * @param {string} nodebookid
+   * @returns {MNNote}
+   */
+  noteInDocForTopicId(nodebookid = MNUtil.currentNotebookId){
     let noteId = this.note.realGroupNoteIdForTopicId(nodebookid)
     if (!noteId) {
       return this.note
@@ -6573,8 +6736,7 @@ class MNComment {
     if (this.type === "linkComment"){
       let fromNote = MNNote.new(this.originalNoteId)
       let toNote = this.note
-      // 检查 toNote 是否存在（避免失效链接导致的错误）
-      if (toNote && toNote.linkedNotes && toNote.linkedNotes.length > 0) {
+      if (toNote.linkedNotes && toNote.linkedNotes.length > 0) {
         if (toNote.linkedNotes.some(n=>n.noteid === fromNote.noteId)) {
           return true
         }
@@ -6586,10 +6748,9 @@ class MNComment {
   removeBackLink(){
     if (this.type === "linkComment" && this.linkDirection === "both") {
       let targetNote = this.note//链接到的卡片
-      // 检查 targetNote 是否存在（避免失效链接导致的错误）
-      if (targetNote && this.hasBackLink()) {
+      if (this.hasBackLink()) {
         MNComment.from(targetNote).forEach(comment => {
-          if (comment.type === "linkComment" && comment.note && comment.note.noteId === this.originalNoteId) {
+          if (comment.type === "linkComment" && comment.note.noteId === this.originalNoteId) {
             comment.remove()
             this.linkDirection = "one-way"
           }
@@ -6601,8 +6762,7 @@ class MNComment {
   try {
     if (this.type === "linkComment" && (this.linkDirection === "one-way" || force)) {
       let targetNote = this.note//链接到的卡片
-      // 检查 targetNote 是否存在（避免失效链接导致的错误）
-      if (targetNote && !this.hasBackLink()) {
+      if (!this.hasBackLink()) {
         targetNote.appendNoteLink(this.originalNoteId,"To")
         this.linkDirection = "both"
       }

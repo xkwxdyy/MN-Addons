@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Key 充值中心</title>
+    <link rel="stylesheet" href="newkey.css">
+    <link href="https://vip.123pan.cn/1836303614/dl/cdn/font-awesome/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <main class="main-content">
+            <!-- 充值类型选择 -->
+            <section class="recharge-type-section">
+                <div class="type-options">
+                    <div class="type-card selected" id="new-apikey" data-type="new">
+                        <div class="card-icon">
+                            <i class="fas fa-plus-circle"></i>
+                        </div>
+                        <h3>购买 APIKey</h3>
+                        <div class="type-indicator"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- API Key 输入区域 -->
+            <section class="apikey-input-section" id="apikey-input" style="display: none;">
+                <h3>为以下 APIKey 充值</h3>
+                <div class="input-group">
+                    <input type="text" id="apikey-field" placeholder="请输入您的API Key">
+                    <button class="verify-btn" id="verify-btn">
+                        <i class="fas fa-check"></i> 验证
+                    </button>
+                </div>
+                <div class="apikey-status" id="apikey-status"></div>
+            </section>
+
+            <!-- 积分选择区域 -->
+            <section class="credits-section" id="credits-section">
+                <h2>选择积分额度</h2>
+                <div class="credits-grid">
+                    <div class="credit-card" data-credits="5" data-price="5">
+                        <div class="credit-amount">5 积分</div>
+                        <div class="credit-price">¥5</div>
+                    </div>
+                    
+                    <div class="credit-card" data-credits="10" data-price="9.5">
+                        <div class="credit-amount">10 积分</div>
+                        <div class="credit-price">¥9.5</div>
+                    </div>
+                    
+                    <div class="credit-card" data-credits="20" data-price="19">
+                        <div class="credit-amount">20 积分</div>
+                        <div class="credit-price">¥19</div>
+                    </div>
+                    
+                    <div class="credit-card best-value" data-credits="50" data-price="45">
+                        <div class="best-value-badge">超值</div>
+                        <div class="credit-amount">50 积分</div>
+                        <div class="credit-price">¥45</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 订单摘要 -->
+            <section class="order-summary" id="order-summary" style="display: none;">
+                <h3>订单摘要</h3>
+                <div class="summary-content">
+                    <div class="summary-item">
+                        <span>充值类型：</span>
+                        <span id="summary-type"></span>
+                    </div>
+                    <div class="summary-item" id="summary-apikey-item" style="display: none;">
+                        <span>API Key：</span>
+                        <span id="summary-apikey"></span>
+                    </div>
+                    <div class="summary-item">
+                        <span>充值积分：</span>
+                        <span id="summary-credits"></span>
+                    </div>
+                    <div class="summary-item total">
+                        <span>总计：</span>
+                        <span id="summary-price"></span>
+                    </div>
+                </div>
+                
+                <div class="payment-grid">
+                
+                  <button class="pay-button" id="pay-button">
+                      <i class="fas fa-credit-card"></i>
+                      打开爱发电支付
+                  </button>
+
+                  <button class="pay-button-browser" id="pay-button-browser">
+                      <i class="fas fa-credit-card"></i>
+                      在浏览器中打开
+                  </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- 帮助提示 -->
+        <aside class="help-section">
+            <div class="help-card">
+                <h4><i class="fas fa-question-circle"></i> 需要帮助？</h4>
+                <ul>
+                    <li>新用户请购买新的 APIKey</li>
+                    <li>已有 APIKey 的用户可直接充值</li>
+                    <li>积分永不过期，可随时使用</li>
+                    <li>需要打开爱发电进行购买，支持微信、支付宝等多种支付方式</li>
+                </ul>
+            </div>
+        </aside>
+    </div>
+
+    <script src="recharge.js"></script>
+</body>
+</html> 

@@ -24,6 +24,7 @@ body {
 </style>
 <body>
   <div id="jsoneditor"></div>
+  <script src="subfunc.js"></script>
   <script>
     // create the editor
     let actionNames = ['addChildNote','addBrotherNote','addComment','addImageComment','addTags','addMarkdownLink','crash','clearContent','cloneAndMerge','cloneAsChildNote','confirm','chatAI','copy','command','export','focus','insertSnippet','link','moveNote','mergeText','moveComment','menu','noteHighlight','openURL','openWebURL','ocr','paste','replace','removeComment','removeTags','search','searchInDict','setContent','setColor','setTimer','showInFloatWindow','switchTitleOrExcerpt','showMessage','setButtonImage','shortcut','triggerButton','toggleView','toggleTextFirst','toggleMarkdown','userSelect']
@@ -324,9 +325,6 @@ body {
     }
 
     return arr;
-}
-function copyToClipboard(text) {
-  window.location.href = "nativeCopy://content="+encodeURIComponent(text);
 }
     const options = {
       schema: action,

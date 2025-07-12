@@ -1,8 +1,37 @@
 下面开发 mntask 项目。
 1. 一旦修改代码，就需要按照修改的内容程度来改 mnaddon.json 的版本号。
 2. 任何更新，尤其是新功能，要在 mntask_guide.md 里详细更新。
-3.  /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/log.md 是用于测试的 log 文件，一般说“log 文件已更新”就是这个。 MNUtil.log() 添加的内容我会复制到这里。太多了话请分段细读，这个很重要。
+3.  /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/log.md 是用于测试的 log 文件，一般说“log 文件已更新”就是这个。 MNUtil.log() 添加的内容我会复制到这里。太多了话请分段细读，这个很重要。如果区分 iPad 和 mac 的话，iPad 端的 log 信息在 iPad_MNUtils_LogViewer.md 里。
 4.  你更新的 log 写在 mntask_guide.md 里! 而不是 log.md 里。 
+---
+iPad_MNUtils_LogViewer.md 已更新。
+
+iPad 端测试：打开看板后，左侧栏的按钮点击后都显示“刷新完成”。
+但是现在仍然是一直显示“加载中”，不加载，怎么点刷新按钮都没用
+我把所有的按钮都点了一遍，log 信息在 iPad_MNUtils_LogViewer.md 里，已更新。
+ultrathink
+
+
+---
+mac 端测试：
+1. 字段可以通过 html  添加了！但是编辑失败！也就是编辑后没有同步进去。删除也不行！
+2. 卡片的信息没有加载到任务编辑看板里，标题部分仍然是“加载中”。应该是包括字段信息都要加载出来。
+3. 我点击“保存更改”，弹窗“获取更改失败”，但我脑图里是选中了卡片的
+也就是任务编辑功能，目前只能加字段，其它功能全部失效。
+
+iPad 端测试：
+log 信息在 iPad_MNUtils_LogViewer.md 里，已更新。
+2. 点击“刷新看板”后弹窗显示“刷新完成”，但界面仍然是“加载中”，没有任何变化
+3. “刷新队列”
+  - 点击“刷新队列”界面没任何反应，仍然是“加载中”
+4. "任务列表"
+  - 点击“任务列表”后，面板没有任何变化
+5. 任务编辑功能和 mac 端一致，只能加字段。
+总而言之，iPad 端全都是加载中，点刷新也没用。
+
+请修复上述问题！
+ultrathink
+
 ---
 log.md 已更新。
 mac 端测试：

@@ -293,6 +293,128 @@ taskSettingController.prototype.loadProjectsData = async function(parentId = nul
 3. **UI 反馈**：面包屑导航让用户清楚当前位置
 4. **子项目识别**：通过 `hasSubProjects` 标记显示不同的 UI
 
+## iPad 平台 NSNull 问题解决方案（2025-01-12）
+
+### 问题描述
+在 iPad 上运行时，WebView 的 `evaluateJavaScript` 方法可能返回 NSNull 对象而不是预期的字符串结果，导致后续代码尝试调用 `result.startsWith()` 时出错。
+
+### 错误信息
+```
+📡 JavaScript 执行结果: [object NSNull]
+❌ 执行 JavaScript 失败: result.startsWith is not a function. (In 'result.startsWith('error:')', 'result.startsWith' is undefined)
+```
+
+### 根本原因
+1. **平台差异**：iOS/iPadOS 的 JavaScript 桥接行为与 macOS 不同
+2. **返回值处理**：即使 JavaScript 正确执行并返回值，`evaluateJavaScript` 仍可能返回 NSNull
+3. **类型假设**：代码假设返回值是字符串，直接调用 `startsWith` 方法
+
+### 解决方案
+
+#### 1. 添加 NSNull 检测方法
+```javascript
+taskSettingController.prototype.isNSNull = function(obj) {
+  return (obj === NSNull.new())
+}
+```
+
+#### 2. 改进 JavaScript 执行结果处理
+```javascript
+this[webViewName].evaluateJavaScript(script, (result) => {
+  // 处理 NSNull 情况
+  if (this.isNSNull(result)) {
+    // 如果脚本包含 IIFE 包装，很可能执行成功但返回了 NSNull
+    if (script.includes('(function()')) {
+      resolve('success')
+    } else {
+      resolve(undefined)
+    }
+    return
+  }
+  resolve(result)
+})
+```
+
+#### 3. 加强类型检查
+```javascript
+// 在使用 startsWith 之前检查类型
+if (result && typeof result === 'string' && result.startsWith('error:')) {
+  // 处理错误
+}
+```
+
+### 关键要点
+1. **不要假设返回类型**：始终检查返回值的类型
+2. **平台测试**：在 Mac 和 iPad 上都要测试
+3. **参考成熟方案**：mnutils 和 mnai 已经处理了这个问题
+4. **优雅降级**：NSNull 不一定意味着失败，可能只是返回值丢失
+
+## iPad iframe postMessage 通信问题（2025-01-12）
+
+### 问题描述
+在 iPad 上，虽然解决了 NSNull 问题，但 iframe 内的页面仍然显示"加载中"，无法接收到通过 postMessage 发送的数据。
+
+### 问题分析
+1. **Mac 正常，iPad 异常**：同样的代码在 Mac 上工作正常
+2. **时序问题**：iPad 上 iframe 的加载和消息监听器注册的时序可能不同
+3. **postMessage 限制**：iOS WebView 对 postMessage 的处理可能有特殊性
+
+### 解决方案：增强消息重试机制
+
+在 `sidebarContainer.html` 中改进数据传递函数：
+
+```javascript
+function loadTasksFromPlugin(encodedTasks) {
+    const iframe = document.querySelector('.content-frame');
+    
+    if (!iframe || !iframe.contentWindow) {
+        return 'iframe_not_ready';
+    }
+    
+    try {
+        const tasks = JSON.parse(decodeURIComponent(encodedTasks));
+        
+        // 定义发送消息的函数
+        const sendMessage = () => {
+            if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage({
+                    type: 'loadTasks',
+                    tasks: tasks
+                }, '*');
+                console.log('[sidebarContainer] 消息已发送到 iframe');
+            }
+        };
+        
+        // 立即发送一次
+        sendMessage();
+        
+        // iPad 上可能需要多次重试，使用递增的延迟时间
+        setTimeout(sendMessage, 100);
+        setTimeout(sendMessage, 300);
+        setTimeout(sendMessage, 600);
+        
+        // 最后一次尝试，确保 iframe 完全加载
+        setTimeout(sendMessage, 1000);
+        
+        return 'success';
+    } catch (error) {
+        console.error('[sidebarContainer] 解析任务失败:', error);
+        return 'error: ' + error.message;
+    }
+}
+```
+
+### 关键要点
+1. **多次重试**：使用递增的延迟时间（0ms, 100ms, 300ms, 600ms, 1000ms）
+2. **日志追踪**：添加 console.log 便于调试
+3. **统一处理**：所有数据加载函数都采用相同的重试机制
+4. **平台差异**：接受并适应 iOS/iPadOS 的特殊性
+
+### 其他可选方案
+1. **双向通信确认**：iframe 加载完成后主动通知父窗口
+2. **直接函数调用**：在 iframe 中暴露全局函数供父窗口调用
+3. **缓存机制**：父窗口缓存数据，等待 iframe ready 信号
+
 ## 复杂筛选逻辑实现（2025-01-11）
 
 ### 需求背景

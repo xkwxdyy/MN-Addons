@@ -1,3 +1,14 @@
+ocrAsProofTitleWithTranslation 目前无法实现翻译功能，翻译的那个弹窗点击后仍然是直接把翻译前的内容作为了标题。请深入学习 mnautostyle 插件项目，这里开发了 autoAi* 的功能，其中有一个是自动翻译！刚好是我们要的，请学习他的实现方式，并迁移过来。ultrathink
+
+
+---
+我补充一下，使用 mntoolbar 的时候，默认是 MNUtils 的 API Key 填写好了的
+---
+1. 没有 MNUtil.alert 函数 
+2. 你这个 API 配置很有问题,很麻烦. 并不需要, MNUtils 插件里有一个 Subscription Manager，我们是在这里有一个总的 API Key 填写，然后 AI 调用的话，只需要切换模型即可，什么都不需要配置。请你把这个操作学习过来，请再仔细学习 mnai 项目！ultrathink
+
+
+---
 现在开发 mntoolbar/mntoolbar 项目：
 1. 现在已经有 ocrAsProofTitle 函数了，这个函数的作用是调用 OCR 对卡片进行 OCR 并将返回的结果设置为标题。
 2. 现在我希望你仔细研究 mnai 和 mntoolbar 项目的代码，我希望实现的功能是：能够进一步调用 AI 来将上面返回的结果翻译为中文。所以你得非常清楚 mnai 插件是如何实现的 AI 调用的，以及返回的结果如何获取，以及对应 的 Prompt 如何设置，还有可以设置一些 Function call 这个可以作为参考，我们作为底层代码层，大概率用不到这个，我们主要是需要 AI 返回的结果。ultrathink

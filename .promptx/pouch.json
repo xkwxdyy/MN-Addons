@@ -1,5 +1,5 @@
 {
-  "currentState": "memory_saved",
+  "currentState": "initialized",
   "stateHistory": [
     {
       "from": "initial",
@@ -352,7 +352,37 @@
         "--tags",
         "marginnote plugin mnaddon 打包 packaging 错误 闪退 crash"
       ]
+    },
+    {
+      "from": "memory_saved",
+      "command": "init",
+      "timestamp": "2025-07-12T12:49:56.729Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntoolbar/mntoolbar"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-07-12T13:19:22.364Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/mnautostyle"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-07-12T13:34:51.099Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/mnautostyle"
+        }
+      ]
     }
   ],
-  "lastUpdated": "2025-06-30T04:11:13.675Z"
+  "lastUpdated": "2025-07-12T13:34:51.116Z"
 }

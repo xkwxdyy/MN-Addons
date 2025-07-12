@@ -1314,6 +1314,27 @@ MNTask v0.11.0 提供了功能强大的任务看板系统，采用现代化的 W
 
 ## 更新日志
 
+### v0.11.15 (2025-01-12)
+- **紧急修复**：解决 v0.11.14 引入的严重问题
+  - 修复 sidebarContainer.html 中的 JavaScript 语法错误（setTimeout 缺少延迟参数和正确的闭包）
+  - 移除 iframe 加载前的 about:blank 清空操作，避免触发多余的加载事件
+  - 简化 runJavaScriptInWebView 方法，移除可能导致问题的额外检查
+  - 这些问题导致整个看板无法使用，现已完全修复
+
+### v0.11.14 (2025-01-12)
+- **修复**：`MNTaskManager.getTaskStatus` 方法调用错误
+  - 修正为正确的方法名 `getNoteStatus`
+  - 修复了任务状态更新和查询失败的问题
+- **修复**：任务编辑器视图切换问题
+  - 在 sidebarContainer.html 的 `switchView` 函数中添加 `skipProtocol` 参数
+  - 修复了点击任务编辑按钮后界面无变化的问题
+- **改进**：iPad WebView 兼容性
+  - 学习 mnai、mnutils、mntoolbar 项目的最佳实践
+  - 增强 `runJavaScriptInWebView` 方法的 NSNull 处理
+  - 改进 WebView 初始化时的属性设置
+  - 优化 iframe 加载和消息传递机制
+  - 添加更严格的错误检查和延迟处理
+
 ### v0.11.13 (2025-01-12)
 - **修复**：定时刷新频率过高的问题
   - 将任务更新检查间隔从 2 秒增加到 10 秒

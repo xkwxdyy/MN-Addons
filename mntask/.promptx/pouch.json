@@ -1,5 +1,5 @@
 {
-  "currentState": "role_activated_with_memory",
+  "currentState": "initialized",
   "stateHistory": [
     {
       "from": "initial",
@@ -234,7 +234,17 @@
       "args": [
         "frontend-developer"
       ]
+    },
+    {
+      "from": "role_activated_with_memory",
+      "command": "init",
+      "timestamp": "2025-07-12T08:23:58.704Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask"
+        }
+      ]
     }
   ],
-  "lastUpdated": "2025-07-12T08:03:14.641Z"
+  "lastUpdated": "2025-07-12T08:23:58.725Z"
 }

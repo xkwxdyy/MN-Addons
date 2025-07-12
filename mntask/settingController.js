@@ -2857,6 +2857,11 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
       webView.scrollView.bounces = false // 禁用弹性滚动
       webView.scrollView.scrollEnabled = true // 允许滚动
       
+      // 学习 mntoolbar 的做法，设置 WebView 的额外属性以提升兼容性
+      webView.opaque = false // 透明背景
+      webView.mediaPlaybackRequiresUserAction = false // 允许自动播放媒体
+      webView.allowsInlineMediaPlayback = true // 允许内联媒体播放
+      
       // 将 WebView 添加到容器视图中
       this.todayBoardWebView.addSubview(webView)
       
@@ -3060,7 +3065,42 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
       const result = await this.runJavaScriptInWebView(script)
       MNUtil.log(`📡 JavaScript 执行结果: ${result}`)
       
-      if (result === 'success') {
+      // 处理 NSNull 或 undefined 的情况
+      if (result === null || result === undefined || (typeof result === 'object' && result.toString() === '[object NSNull]')) {
+        MNUtil.log(`⚠️ WebView 返回 null，可能函数执行失败`)
+        
+        // 等待一段时间后重试
+        await MNUtil.delay(1.5)
+        
+        // 使用包装函数确保返回值
+        const wrappedScript = `
+          (function() {
+            try {
+              if (typeof loadTasksFromPlugin === 'function') {
+                var result = loadTasksFromPlugin('${encodedTasks}');
+                return result || 'executed';
+              } else {
+                return 'function_not_found';
+              }
+            } catch(e) {
+              return 'error: ' + e.message;
+            }
+          })()
+        `
+        
+        const retryResult = await this.runJavaScriptInWebView(wrappedScript)
+        MNUtil.log(`🔄 重试结果: ${retryResult}`)
+        
+        if (retryResult === 'executed' || retryResult === 'success') {
+          MNUtil.log(`✅ 重试成功，数据已加载`)
+          this.registerTaskUpdateObserver()
+        } else if (retryResult === 'function_not_found') {
+          MNUtil.log(`❌ loadTasksFromPlugin 函数不存在`)
+          MNUtil.showHUD("今日看板初始化失败")
+        } else {
+          MNUtil.log(`❌ 重试失败: ${retryResult}`)
+        }
+      } else if (result === 'success') {
         MNUtil.log(`✅ 今日看板数据加载成功，共 ${displayTasks.length} 个任务`)
         // 注册任务更新监听器，实现卡片到HTML的实时同步
         this.registerTaskUpdateObserver()
@@ -3076,7 +3116,7 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
     } catch (error) {
       MNUtil.log(`❌ 执行 JavaScript 失败: ${error.message}`)
       // 尝试使用旧的方式
-      const fallbackScript = `if(typeof loadTasksFromPlugin !== 'undefined') { loadTasksFromPlugin('${encodedTasks}'); }`
+      const fallbackScript = `if(typeof loadTasksFromPlugin !== 'undefined') { loadTasksFromPlugin('${encodedTasks}'); 'called'; } else { 'not_found'; }`
       const fallbackResult = await this.runJavaScriptInWebView(fallbackScript)
       MNUtil.log(`🔄 fallback 结果: ${fallbackResult}`)
     }
@@ -3665,7 +3705,7 @@ taskSettingController.prototype.handleUpdateTaskStatus = function(taskId) {
     }
     
     // 获取当前状态（用于日志记录）
-    const currentStatus = MNTaskManager.getTaskStatus(task)
+    const currentStatus = MNTaskManager.getNoteStatus(task)
     
     // 使用 undoGrouping 确保可以撤销
     MNUtil.undoGrouping(() => {
@@ -3673,7 +3713,7 @@ taskSettingController.prototype.handleUpdateTaskStatus = function(taskId) {
     })
     
     // 获取新状态（用于日志记录）
-    const newStatus = MNTaskManager.getTaskStatus(task)
+    const newStatus = MNTaskManager.getNoteStatus(task)
     TaskLogManager.info("任务状态已更新", "SettingController", { 
       taskId, 
       fromStatus: currentStatus, 

@@ -341,13 +341,13 @@
         });
 
         // 切换视图
-        function switchView(viewName) {
+        function switchView(viewName, skipProtocol = false) {
             if (viewName === currentView || !viewConfig[viewName]) {
                 return;
             }
 
             // 特殊处理任务编辑器
-            if (viewName === 'taskeditor') {
+            if (viewName === 'taskeditor' && !skipProtocol) {
                 // 通知原生代码检查是否有选中的任务
                 window.location.href = 'mntask://openTaskEditor';
                 return;
@@ -425,7 +425,7 @@
                 loading.style.display = 'block';
                 iframe.style.display = 'none';
                 
-                // 加载内容
+                // 直接加载内容，不需要先清空
                 iframe.src = config.url;
                 iframe.onload = function() {
                     console.log(`[loadView] iframe 加载完成: ${viewName}`);
@@ -452,7 +452,7 @@
                     //     window.location.href = 'mntask://loadProjectsData';
                     // }
                 };
-
+                
                 iframe.onerror = function() {
                     console.error(`[loadView] 加载失败: ${viewName}`);
                     showError('加载失败');
@@ -526,26 +526,35 @@
             console.log('[sidebarContainer] loadTasksFromPlugin 被调用');
             console.log('[sidebarContainer] iframe 存在:', !!iframe);
             
-            if (iframe && iframe.contentWindow) {
-                try {
-                    const tasks = JSON.parse(decodeURIComponent(encodedTasks));
-                    console.log('[sidebarContainer] 解析任务成功，数量:', tasks.length);
-                    
+            // 学习 mnai 的错误处理方式，更严格的检查
+            if (!iframe) {
+                console.error('[sidebarContainer] iframe 元素不存在');
+                return 'iframe_not_found';
+            }
+            
+            if (!iframe.contentWindow) {
+                console.error('[sidebarContainer] iframe.contentWindow 不存在');
+                return 'iframe_not_ready';
+            }
+            
+            try {
+                const tasks = JSON.parse(decodeURIComponent(encodedTasks));
+                console.log('[sidebarContainer] 解析任务成功，数量:', tasks.length);
+                
+                // 学习 mntoolbar 的做法，延迟发送消息以确保 iframe 准备就绪
+                setTimeout(() => {
                     iframe.contentWindow.postMessage({
                         type: 'loadTasks',
                         tasks: tasks
                     }, '*');
-                    
                     console.log('[sidebarContainer] 消息已发送到 iframe');
-                    return 'success';
-                } catch (error) {
-                    console.error('[sidebarContainer] 解析任务失败:', error);
-                    return 'error';
-                }
+                }, 100);
+                
+                return 'success';
+            } catch (error) {
+                console.error('[sidebarContainer] 解析任务失败:', error);
+                return 'error: ' + error.message;
             }
-            
-            console.log('[sidebarContainer] iframe 未准备好');
-            return 'iframe_not_ready';
         }
         
         // 加载项目列表
@@ -609,9 +618,9 @@
                 console.log('[showTaskEditor] 未找到编辑器导航项');
             }
             
-            // 切换到任务编辑器视图
+            // 切换到任务编辑器视图，跳过协议调用
             console.log('[showTaskEditor] 切换到任务编辑器视图');
-            switchView('taskeditor');
+            switchView('taskeditor', true);
             
             // 通知原生代码加载任务数据
             console.log('[showTaskEditor] 通知原生代码加载任务数据');

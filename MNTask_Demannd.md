@@ -4,6 +4,15 @@
 3.  /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/log.md 是用于测试的 log 文件，一般说“log 文件已更新”就是这个。 MNUtil.log() 添加的内容我会复制到这里。太多了话请分段细读，这个很重要。如果区分 iPad 和 mac 的话，iPad 端的 log 信息在 iPad_MNUtils_LogViewer.md 里。
 4.  你更新的 log 写在 mntask_guide.md 里! 而不是 log.md 里。 
 ---
+看板功能开发有巨大的问题。我咨询了插件开发专家，他说
+1. 没处理跨域的问题，要避免跨域的东西
+2. 完全不需要 iframe，这东西一个纯 html 就能写完的
+3. 学习 /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/mnbrowser/mnbrowser：“看 Browser 的主页代码吧，要么插件端跑个 js 拿到网页端的信息，要么网页端触发一个 URL Scheme 然后插件端拦截”
+4. 插件和网页本身是比较独立的东西，可以先单独写网页部分，在电脑浏览器上确保这个网页所有功能都正常，再去封装函数，然后回到插件里考虑数据交换的部分
+
+我网页开发一点也不懂，我觉得你先像他说的那样，先开发网页测试，然后再考虑数据交换，然后你写的代码要有充足的注释，也就是你的开发也是要作为我学习的示例。 ultrathink
+
+---
 iPad_MNUtils_LogViewer.md 已更新。
 
 iPad 端测试：打开看板后，左侧栏的按钮点击后都显示“刷新完成”。

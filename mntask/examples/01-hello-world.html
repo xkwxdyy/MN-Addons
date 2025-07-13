@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MNTask Hello World 示例</title>
+    <style>
+        /* 基础样式 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f7;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #1d1d1f;
+            margin-bottom: 20px;
+        }
+        
+        /* 按钮样式 */
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 10px 10px 10px 0;
+            background-color: #007aff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .button:hover {
+            background-color: #0063d1;
+        }
+        
+        .button:active {
+            transform: scale(0.98);
+        }
+        
+        /* 消息显示区 */
+        .message-box {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0f0f0;
+            border-radius: 8px;
+            min-height: 50px;
+        }
+        
+        .message-box h3 {
+            margin: 0 0 10px 0;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        #messages {
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        /* 状态指示器 */
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status.ready {
+            background-color: #d1f2d1;
+            color: #2e7d2e;
+        }
+        
+        .status.loading {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        /* 代码展示区 */
+        .code-preview {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+        
+        .code-comment {
+            color: #6a9955;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 MNTask Hello World</h1>
+        
+        <p>这是一个最简单的 WebView 与插件通信示例。点击下面的按钮来测试通信功能。</p>
+        
+        <!-- 状态显示 -->
+        <p>
+            页面状态：<span id="status" class="status loading">初始化中...</span>
+        </p>
+        
+        <!-- 操作按钮 -->
+        <div style="margin: 20px 0;">
+            <button class="button" onclick="sayHello()">
+                👋 向插件说 Hello
+            </button>
+            
+            <button class="button" onclick="getCurrentTime()">
+                ⏰ 获取当前时间
+            </button>
+            
+            <button class="button" onclick="sendData()">
+                📤 发送测试数据
+            </button>
+        </div>
+        
+        <!-- 消息显示区域 -->
+        <div class="message-box">
+            <h3>📨 消息记录：</h3>
+            <div id="messages">等待交互...</div>
+        </div>
+        
+        <!-- 代码预览（教学用） -->
+        <div class="code-preview">
+            <span class="code-comment">// 当前执行的代码会显示在这里</span>
+            <div id="codePreview"></div>
+        </div>
+    </div>
+    
+    <script>
+        // ==================== 工具函数 ====================
+        
+        /**
+         * 添加消息到显示区
+         * @param {string} message - 要显示的消息
+         * @param {string} type - 消息类型 (send/receive/info)
+         */
+        function addMessage(message, type = 'info') {
+            const messagesDiv = document.getElementById('messages');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            // 创建消息元素
+            const messageElement = document.createElement('div');
+            messageElement.style.marginBottom = '5px';
+            
+            // 根据类型设置不同的样式
+            let prefix = '';
+            let color = '#333';
+            
+            switch(type) {
+                case 'send':
+                    prefix = '📤 发送：';
+                    color = '#007aff';
+                    break;
+                case 'receive':
+                    prefix = '📥 接收：';
+                    color = '#34c759';
+                    break;
+                case 'error':
+                    prefix = '❌ 错误：';
+                    color = '#ff3b30';
+                    break;
+                default:
+                    prefix = 'ℹ️ 信息：';
+                    color = '#666';
+            }
+            
+            messageElement.innerHTML = `
+                <span style="color: #999; font-size: 12px;">[${timestamp}]</span>
+                <span style="color: ${color};">${prefix}</span>
+                ${message}
+            `;
+            
+            // 添加到消息区域（最新的在上面）
+            messagesDiv.insertBefore(messageElement, messagesDiv.firstChild);
+            
+            // 限制消息数量
+            while (messagesDiv.children.length > 10) {
+                messagesDiv.removeChild(messagesDiv.lastChild);
+            }
+        }
+        
+        /**
+         * 显示执行的代码
+         * @param {string} code - 代码内容
+         */
+        function showCode(code) {
+            const codePreview = document.getElementById('codePreview');
+            codePreview.textContent = code;
+        }
+        
+        // ==================== 与插件通信的函数 ====================
+        
+        /**
+         * 向插件发送 Hello 消息
+         * 演示最基本的 URL Scheme 通信
+         */
+        function sayHello() {
+            // 显示代码
+            showCode("window.location.href = 'mntask://sayHello?message=Hello%20from%20WebView!'");
+            
+            // 记录发送的消息
+            addMessage("Hello from WebView!", 'send');
+            
+            // 使用 URL Scheme 发送消息到插件
+            // 注意：中文和特殊字符需要使用 encodeURIComponent 编码
+            window.location.href = 'mntask://sayHello?message=' + encodeURIComponent('Hello from WebView!');
+        }
+        
+        /**
+         * 请求插件获取当前时间
+         * 演示请求-响应模式
+         */
+        function getCurrentTime() {
+            // 显示代码
+            showCode("window.location.href = 'mntask://getTime'");
+            
+            addMessage("请求当前时间", 'send');
+            
+            // 发送请求
+            window.location.href = 'mntask://getTime';
+        }
+        
+        /**
+         * 发送复杂数据到插件
+         * 演示如何传递 JSON 数据
+         */
+        function sendData() {
+            // 准备测试数据
+            const testData = {
+                name: "测试任务",
+                type: "任务",
+                status: "进行中",
+                tags: ["重要", "紧急"],
+                createdAt: new Date().toISOString()
+            };
+            
+            // 显示代码
+            const code = `const data = ${JSON.stringify(testData, null, 2)};
+const encoded = encodeURIComponent(JSON.stringify(data));
+window.location.href = 'mntask://receiveData?data=' + encoded;`;
+            showCode(code);
+            
+            addMessage("发送测试数据: " + JSON.stringify(testData), 'send');
+            
+            // 编码并发送数据
+            const encoded = encodeURIComponent(JSON.stringify(testData));
+            window.location.href = 'mntask://receiveData?data=' + encoded;
+        }
+        
+        // ==================== 接收插件的消息 ====================
+        
+        /**
+         * 接收插件发来的消息
+         * 这个函数会被插件通过 evaluateJavaScript 调用
+         * @param {string} message - 消息内容
+         */
+        function receiveMessage(message) {
+            addMessage(message, 'receive');
+            
+            // 显示插件调用的代码
+            showCode(`// 插件执行的代码：
+webView.evaluateJavaScript('receiveMessage("${message}")')`)
+        }
+        
+        /**
+         * 接收插件发来的时间数据
+         * @param {string} timeString - 时间字符串
+         */
+        function receiveTime(timeString) {
+            addMessage("当前时间: " + timeString, 'receive');
+            
+            // 显示一个提示
+            const alertDiv = document.createElement('div');
+            alertDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                background-color: #34c759;
+                color: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                animation: slideIn 0.3s ease-out;
+            `;
+            alertDiv.textContent = '⏰ ' + timeString;
+            document.body.appendChild(alertDiv);
+            
+            // 3秒后移除
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 3000);
+        }
+        
+        /**
+         * 接收插件确认收到数据
+         * @param {boolean} success - 是否成功
+         * @param {string} message - 附加消息
+         */
+        function receiveDataConfirm(success, message) {
+            if (success) {
+                addMessage("✅ 插件已收到数据: " + message, 'receive');
+            } else {
+                addMessage("❌ 数据发送失败: " + message, 'error');
+            }
+        }
+        
+        // ==================== 页面初始化 ====================
+        
+        /**
+         * 页面加载完成后的初始化
+         */
+        window.onload = function() {
+            console.log('[Hello World] 页面加载完成');
+            
+            // 更新状态
+            document.getElementById('status').className = 'status ready';
+            document.getElementById('status').textContent = '已就绪';
+            
+            addMessage("页面已加载完成", 'info');
+            
+            // 通知插件页面已准备就绪
+            // 这是一个好习惯，让插件知道可以开始发送数据了
+            window.location.href = 'mntask://pageReady';
+            
+            // 添加 CSS 动画
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from {
+                        transform: translateX(100%);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        };
+        
+        // ==================== 调试辅助 ====================
+        
+        // 在控制台显示所有的消息
+        console.log('%c🎯 MNTask Hello World 示例已加载', 
+                    'color: #007aff; font-size: 16px; font-weight: bold;');
+        console.log('可用的函数：');
+        console.log('- sayHello(): 向插件发送 Hello');
+        console.log('- getCurrentTime(): 获取当前时间');
+        console.log('- sendData(): 发送测试数据');
+        console.log('- receiveMessage(msg): 接收插件消息');
+    </script>
+</body>
+</html>

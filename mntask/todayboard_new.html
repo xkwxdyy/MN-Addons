@@ -1,0 +1,1620 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>今日任务看板 - MNTask</title>
+    
+    <!-- 引入通信桥接库 -->
+    <script src="mntask-bridge.js"></script>
+    
+    <style>
+        /* ==================== CSS 变量定义 ==================== */
+        :root {
+            /* 颜色主题 */
+            --color-primary: #007aff;
+            --color-primary-hover: #0063d1;
+            --color-success: #34c759;
+            --color-warning: #ff9500;
+            --color-danger: #ff3b30;
+            --color-info: #5856d6;
+            
+            /* 背景色 */
+            --bg-primary: #f5f5f7;
+            --bg-secondary: #ffffff;
+            --bg-sidebar: #fafafa;
+            
+            /* 文字颜色 */
+            --text-primary: #1d1d1f;
+            --text-secondary: #86868b;
+            --text-tertiary: #c7c7cc;
+            
+            /* 边框 */
+            --border-color: #e5e5e7;
+            --border-radius: 12px;
+            --border-radius-sm: 6px;
+            
+            /* 阴影 */
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.16);
+            
+            /* 动画 */
+            --transition-fast: 0.2s;
+            --transition-normal: 0.3s;
+            
+            /* 布局 */
+            --sidebar-width: 240px;
+            --header-height: 60px;
+            --card-gap: 16px;
+        }
+        
+        /* 暗色模式支持 */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-primary: #1c1c1e;
+                --bg-secondary: #2c2c2e;
+                --bg-sidebar: #242426;
+                --text-primary: #ffffff;
+                --text-secondary: #8e8e93;
+                --text-tertiary: #48484a;
+                --border-color: #38383a;
+            }
+        }
+        
+        /* ==================== 基础样式重置 ==================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+            font-size: 14px;
+            overflow: hidden;
+        }
+        
+        /* ==================== 布局结构 ==================== */
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        /* ==================== 侧边栏 ==================== */
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            transition: transform var(--transition-normal) ease;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        .sidebar.collapsed {
+            transform: translateX(calc(-1 * var(--sidebar-width)));
+        }
+        
+        /* 侧边栏头部 */
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* 筛选器区域 */
+        .filters {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+        
+        .filter-section {
+            margin-bottom: 24px;
+        }
+        
+        .filter-section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            padding-left: 4px;
+        }
+        
+        .filter-option {
+            display: flex;
+            align-items: center;
+            padding: 8px 4px;
+            margin: 4px 0;
+            border-radius: var(--border-radius-sm);
+            cursor: pointer;
+            transition: background-color var(--transition-fast);
+        }
+        
+        .filter-option:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        .filter-checkbox {
+            width: 18px;
+            height: 18px;
+            margin-right: 10px;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            transition: all var(--transition-fast);
+            position: relative;
+        }
+        
+        .filter-checkbox:checked {
+            background-color: var(--color-primary);
+            border-color: var(--color-primary);
+        }
+        
+        .filter-checkbox:checked::after {
+            content: "✓";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .filter-label {
+            flex: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .filter-count {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            background-color: rgba(0, 0, 0, 0.05);
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+        
+        /* 侧边栏底部 */
+        .sidebar-footer {
+            padding: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        /* ==================== 主内容区 ==================== */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* 头部工具栏 */
+        .header {
+            height: var(--header-height);
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .sidebar-toggle {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--border-radius-sm);
+            transition: background-color var(--transition-fast);
+        }
+        
+        .sidebar-toggle:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        .header-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .header-stats {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        /* 按钮样式 */
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: var(--border-radius-sm);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-primary {
+            background-color: var(--color-primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--color-primary-hover);
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--color-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-secondary:hover {
+            background-color: rgba(0, 122, 255, 0.1);
+        }
+        
+        /* 视图切换 */
+        .view-switcher {
+            display: flex;
+            background-color: rgba(0, 0, 0, 0.05);
+            border-radius: var(--border-radius-sm);
+            padding: 2px;
+        }
+        
+        .view-btn {
+            padding: 6px 12px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all var(--transition-fast);
+            color: var(--text-secondary);
+        }
+        
+        .view-btn.active {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        /* ==================== 任务显示区域 ==================== */
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+        
+        /* 任务网格 */
+        .task-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: var(--card-gap);
+            animation: fadeIn var(--transition-normal) ease;
+        }
+        
+        /* 任务列表视图 */
+        .task-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        /* ==================== 任务卡片 ==================== */
+        .task-card {
+            background-color: var(--bg-secondary);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+            transition: all var(--transition-fast);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .task-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+        
+        .task-card.completed {
+            opacity: 0.7;
+        }
+        
+        .task-card.overdue::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background-color: var(--color-danger);
+        }
+        
+        /* 任务卡片头部 */
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+        
+        .task-type-badge {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .type-目标 {
+            background-color: rgba(0, 122, 255, 0.1);
+            color: var(--color-primary);
+        }
+        
+        .type-项目 {
+            background-color: rgba(88, 86, 214, 0.1);
+            color: var(--color-info);
+        }
+        
+        .type-任务 {
+            background-color: rgba(52, 199, 89, 0.1);
+            color: var(--color-success);
+        }
+        
+        .type-动作 {
+            background-color: rgba(255, 149, 0, 0.1);
+            color: var(--color-warning);
+        }
+        
+        .task-status-icon {
+            font-size: 20px;
+        }
+        
+        /* 任务标题 */
+        .task-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        /* 任务元信息 */
+        .task-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        
+        .task-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        /* 进度条 */
+        .task-progress {
+            margin: 12px 0;
+        }
+        
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .progress-bar {
+            height: 6px;
+            background-color: rgba(0, 0, 0, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background-color: var(--color-success);
+            transition: width var(--transition-normal) ease;
+        }
+        
+        /* 任务操作 */
+        .task-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .task-action-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            background-color: transparent;
+            border-radius: var(--border-radius-sm);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        
+        .task-action-btn:hover {
+            background-color: var(--color-primary);
+            color: white;
+            border-color: var(--color-primary);
+        }
+        
+        /* ==================== 加载和空状态 ==================== */
+        .loading-container, .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 400px;
+            color: var(--text-secondary);
+        }
+        
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--color-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        
+        .empty-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+        
+        .empty-message {
+            font-size: 14px;
+            text-align: center;
+            max-width: 300px;
+        }
+        
+        /* ==================== 动画 ==================== */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .fade-in {
+            animation: fadeIn var(--transition-normal) ease;
+        }
+        
+        /* ==================== 响应式设计 ==================== */
+        @media (max-width: 768px) {
+            :root {
+                --sidebar-width: 280px;
+                --header-height: 50px;
+            }
+            
+            .sidebar {
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                z-index: 100;
+                box-shadow: var(--shadow-lg);
+            }
+            
+            .sidebar-backdrop {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0, 0, 0, 0.3);
+                z-index: 99;
+                display: none;
+            }
+            
+            .sidebar-backdrop.show {
+                display: block;
+            }
+            
+            .task-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                padding: 0 16px;
+            }
+            
+            .content-area {
+                padding: 16px;
+            }
+        }
+        
+        /* ==================== 工具类 ==================== */
+        .text-truncate {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .mt-1 { margin-top: 8px; }
+        .mt-2 { margin-top: 16px; }
+        .mt-3 { margin-top: 24px; }
+        
+        .mb-1 { margin-bottom: 8px; }
+        .mb-2 { margin-bottom: 16px; }
+        .mb-3 { margin-bottom: 24px; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 侧边栏 -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2 class="sidebar-title">
+                    <span>🎯</span>
+                    <span>筛选器</span>
+                </h2>
+            </div>
+            
+            <div class="filters">
+                <!-- 状态筛选 -->
+                <div class="filter-section">
+                    <h3 class="filter-section-title">任务状态</h3>
+                    <div id="statusFilters">
+                        <div class="filter-option">
+                            <input type="checkbox" class="filter-checkbox" id="filter-status-notstarted" checked>
+                            <label for="filter-status-notstarted" class="filter-label">
+                                <span>🔵 未开始</span>
+                                <span class="filter-count" data-status="未开始">0</span>
+                            </label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" class="filter-checkbox" id="filter-status-inprogress" checked>
+                            <label for="filter-status-inprogress" class="filter-label">
+                                <span>🟡 进行中</span>
+                                <span class="filter-count" data-status="进行中">0</span>
+                            </label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" class="filter-checkbox" id="filter-status-completed">
+                            <label for="filter-status-completed" class="filter-label">
+                                <span>🟢 已完成</span>
+                                <span class="filter-count" data-status="已完成">0</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 类型筛选 -->
+                <div class="filter-section">
+                    <h3 class="filter-section-title">任务类型</h3>
+                    <div id="typeFilters">
+                        <div class="filter-option">
+                            <input type="checkbox" class="filter-checkbox" id="filter-type-goal" checked>
+                            <label for="filter-type-goal" class="filter-label">
+                                <span>🎯 目标</span>
+                                <span class="filter-count" data-type="目标">0</span>
+                            </label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" class="filter-checkbox" id="filter-type-project" checked>
+                            <label for="filter-type-project" class="filter-label">
+                                <span>📁 项目</span>
+                                <span class="filter-count" data-type="项目">0</span>
+                            </label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" class="filter-checkbox" id="filter-type-task" checked>
+                            <label for="filter-type-task" class="filter-label">
+                                <span>📋 任务</span>
+                                <span class="filter-count" data-type="任务">0</span>
+                            </label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" class="filter-checkbox" id="filter-type-action" checked>
+                            <label for="filter-type-action" class="filter-label">
+                                <span>⚡ 动作</span>
+                                <span class="filter-count" data-type="动作">0</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 优先级筛选 -->
+                <div class="filter-section">
+                    <h3 class="filter-section-title">优先级</h3>
+                    <div id="priorityFilters">
+                        <div class="filter-option">
+                            <input type="checkbox" class="filter-checkbox" id="filter-priority-high" checked>
+                            <label for="filter-priority-high" class="filter-label">
+                                <span>🔴 高优先级</span>
+                                <span class="filter-count" data-priority="高">0</span>
+                            </label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" class="filter-checkbox" id="filter-priority-medium" checked>
+                            <label for="filter-priority-medium" class="filter-label">
+                                <span>🟡 中优先级</span>
+                                <span class="filter-count" data-priority="中">0</span>
+                            </label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" class="filter-checkbox" id="filter-priority-low" checked>
+                            <label for="filter-priority-low" class="filter-label">
+                                <span>🟢 低优先级</span>
+                                <span class="filter-count" data-priority="低">0</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar-footer">
+                <button class="btn btn-secondary" style="width: 100%;" onclick="resetFilters()">
+                    🔄 重置筛选
+                </button>
+            </div>
+        </aside>
+        
+        <!-- 移动端侧边栏背景 -->
+        <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
+        
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 头部工具栏 -->
+            <header class="header">
+                <div class="header-left">
+                    <button class="sidebar-toggle" onclick="toggleSidebar()">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                    <h1 class="header-title">今日任务看板</h1>
+                    <span class="header-stats" id="headerStats">共 0 个任务</span>
+                </div>
+                
+                <div class="header-right">
+                    <!-- 视图切换 -->
+                    <div class="view-switcher">
+                        <button class="view-btn active" data-view="grid" onclick="switchView('grid')">
+                            网格
+                        </button>
+                        <button class="view-btn" data-view="list" onclick="switchView('list')">
+                            列表
+                        </button>
+                    </div>
+                    
+                    <!-- 刷新按钮 -->
+                    <button class="btn btn-primary" onclick="refreshTasks()">
+                        <span>🔄</span>
+                        <span>刷新</span>
+                    </button>
+                </div>
+            </header>
+            
+            <!-- 内容区域 -->
+            <div class="content-area" id="contentArea">
+                <!-- 初始加载状态 -->
+                <div class="loading-container" id="loadingContainer">
+                    <div class="loading-spinner"></div>
+                    <p>正在加载任务数据...</p>
+                </div>
+                
+                <!-- 空状态（默认隐藏） -->
+                <div class="empty-state hidden" id="emptyState">
+                    <div class="empty-icon">📭</div>
+                    <h2 class="empty-title">没有找到任务</h2>
+                    <p class="empty-message">
+                        今天还没有安排任务，或者所有任务都被筛选掉了。
+                        尝试调整筛选条件或添加新任务。
+                    </p>
+                </div>
+                
+                <!-- 任务容器（默认隐藏） -->
+                <div class="task-grid hidden" id="taskContainer"></div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        /**
+         * 今日任务看板主程序
+         * @module TodayBoard
+         * @description 
+         * 这是今日任务看板的主要 JavaScript 代码。
+         * 负责任务的显示、筛选、交互等所有功能。
+         */
+        
+        // ==================== 全局变量 ====================
+        
+        /**
+         * 应用状态管理
+         * @namespace
+         */
+        const AppState = {
+            /** @type {Array<Object>} 所有任务数据 */
+            allTasks: [],
+            
+            /** @type {Array<Object>} 筛选后的任务 */
+            filteredTasks: [],
+            
+            /** @type {string} 当前视图模式 (grid/list) */
+            currentView: 'grid',
+            
+            /** @type {boolean} 是否正在加载 */
+            isLoading: false,
+            
+            /** @type {Object} 筛选器状态 */
+            filters: {
+                statuses: new Set(['未开始', '进行中']),
+                types: new Set(['目标', '项目', '任务', '动作']),
+                priorities: new Set(['高', '中', '低'])
+            }
+        };
+        
+        /**
+         * 配置选项
+         * @namespace
+         */
+        const Config = {
+            /** @type {boolean} 是否开启调试模式 */
+            debug: true,
+            
+            /** @type {number} 动画持续时间（毫秒） */
+            animationDuration: 300,
+            
+            /** @type {number} 刷新防抖延迟（毫秒） */
+            refreshDebounceDelay: 500
+        };
+        
+        // ==================== 初始化 ====================
+        
+        /**
+         * 应用初始化
+         * 在 DOM 加载完成后自动执行
+         */
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 今日任务看板初始化开始');
+            
+            // 初始化各个模块
+            initializeFilters();
+            initializeEventListeners();
+            initializeBridge();
+            
+            // 请求初始数据
+            requestTaskData();
+            
+            console.log('✅ 今日任务看板初始化完成');
+        });
+        
+        /**
+         * 初始化筛选器
+         * 设置筛选器的事件监听器
+         */
+        function initializeFilters() {
+            // 为所有筛选器复选框添加事件监听
+            document.querySelectorAll('.filter-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', handleFilterChange);
+            });
+            
+            console.log('📋 筛选器初始化完成');
+        }
+        
+        /**
+         * 初始化事件监听器
+         * 设置全局事件监听
+         */
+        function initializeEventListeners() {
+            // 监听键盘快捷键
+            document.addEventListener('keydown', handleKeyboardShortcuts);
+            
+            // 监听窗口大小变化
+            window.addEventListener('resize', debounce(handleResize, 300));
+            
+            console.log('🎧 事件监听器初始化完成');
+        }
+        
+        /**
+         * 初始化通信桥接
+         * 设置与插件的通信
+         */
+        function initializeBridge() {
+            // 监听任务数据
+            bridge.on('tasks', handleTasksReceived);
+            
+            // 监听更新结果
+            bridge.on('updateResult', handleUpdateResult);
+            
+            // 监听错误
+            bridge.on('error', handleError);
+            
+            console.log('🌉 通信桥接初始化完成');
+        }
+        
+        // ==================== 数据请求与接收 ====================
+        
+        /**
+         * 请求任务数据
+         * 向插件请求今日任务列表
+         */
+        function requestTaskData() {
+            console.log('📡 请求任务数据');
+            
+            showLoading();
+            AppState.isLoading = true;
+            
+            // 发送请求
+            bridge.send('requestTasks', {
+                date: new Date().toISOString().split('T')[0],
+                includeCompleted: true
+            }).catch(error => {
+                console.error('请求任务失败：', error);
+                showError('无法加载任务数据');
+            });
+        }
+        
+        /**
+         * 处理接收到的任务数据
+         * @param {Array<Object>} tasks - 任务数组
+         */
+        function handleTasksReceived(tasks) {
+            console.log(`📥 收到 ${tasks.length} 个任务`);
+            
+            // 保存任务数据
+            AppState.allTasks = tasks;
+            AppState.isLoading = false;
+            
+            // 更新筛选器计数
+            updateFilterCounts();
+            
+            // 应用筛选并渲染
+            applyFiltersAndRender();
+        }
+        
+        /**
+         * 处理更新结果
+         * @param {Object} result - 更新结果
+         */
+        function handleUpdateResult(result) {
+            if (result.success) {
+                console.log('✅ 更新成功：', result.message);
+                // 可以显示成功提示
+                showToast('操作成功', 'success');
+            } else {
+                console.error('❌ 更新失败：', result.error);
+                showToast('操作失败：' + result.error, 'error');
+            }
+        }
+        
+        /**
+         * 处理错误
+         * @param {Object} error - 错误信息
+         */
+        function handleError(error) {
+            console.error('❌ 发生错误：', error);
+            showToast('发生错误：' + error.message, 'error');
+        }
+        
+        // ==================== 筛选功能 ====================
+        
+        /**
+         * 处理筛选器变化
+         * @param {Event} event - 变化事件
+         */
+        function handleFilterChange(event) {
+            const checkbox = event.target;
+            const filterId = checkbox.id;
+            
+            // 解析筛选器类型和值
+            const parts = filterId.split('-');
+            const filterType = parts[1]; // status, type, priority
+            const filterValue = parts[2]; // notstarted, inprogress, etc.
+            
+            // 映射值到中文
+            const valueMap = {
+                'notstarted': '未开始',
+                'inprogress': '进行中',
+                'completed': '已完成',
+                'goal': '目标',
+                'project': '项目',
+                'task': '任务',
+                'action': '动作',
+                'high': '高',
+                'medium': '中',
+                'low': '低'
+            };
+            
+            const actualValue = valueMap[filterValue] || filterValue;
+            
+            // 更新筛选器状态
+            const filterSet = filterType === 'status' ? AppState.filters.statuses :
+                            filterType === 'type' ? AppState.filters.types :
+                            AppState.filters.priorities;
+            
+            if (checkbox.checked) {
+                filterSet.add(actualValue);
+            } else {
+                filterSet.delete(actualValue);
+            }
+            
+            console.log(`🔍 筛选器变化：${filterType} - ${actualValue} - ${checkbox.checked ? '选中' : '取消'}`);
+            
+            // 应用筛选并重新渲染
+            applyFiltersAndRender();
+        }
+        
+        /**
+         * 应用筛选器并渲染
+         */
+        function applyFiltersAndRender() {
+            // 应用筛选
+            AppState.filteredTasks = filterTasks(AppState.allTasks);
+            
+            console.log(`🎯 筛选结果：${AppState.filteredTasks.length}/${AppState.allTasks.length} 个任务`);
+            
+            // 更新统计信息
+            updateStats();
+            
+            // 渲染任务
+            renderTasks();
+        }
+        
+        /**
+         * 根据筛选器过滤任务
+         * @param {Array<Object>} tasks - 原始任务数组
+         * @returns {Array<Object>} 过滤后的任务数组
+         */
+        function filterTasks(tasks) {
+            return tasks.filter(task => {
+                // 检查状态
+                if (!AppState.filters.statuses.has(task.status)) {
+                    return false;
+                }
+                
+                // 检查类型
+                if (!AppState.filters.types.has(task.type)) {
+                    return false;
+                }
+                
+                // 检查优先级
+                const priority = task.priority || '低';
+                if (!AppState.filters.priorities.has(priority)) {
+                    return false;
+                }
+                
+                return true;
+            });
+        }
+        
+        /**
+         * 更新筛选器计数
+         */
+        function updateFilterCounts() {
+            // 统计各种类型的数量
+            const counts = {
+                status: {},
+                type: {},
+                priority: {}
+            };
+            
+            AppState.allTasks.forEach(task => {
+                // 统计状态
+                counts.status[task.status] = (counts.status[task.status] || 0) + 1;
+                
+                // 统计类型
+                counts.type[task.type] = (counts.type[task.type] || 0) + 1;
+                
+                // 统计优先级
+                const priority = task.priority || '低';
+                counts.priority[priority] = (counts.priority[priority] || 0) + 1;
+            });
+            
+            // 更新 DOM
+            document.querySelectorAll('.filter-count').forEach(countEl => {
+                const type = countEl.dataset.status || countEl.dataset.type || countEl.dataset.priority;
+                let count = 0;
+                
+                if (countEl.dataset.status) {
+                    count = counts.status[type] || 0;
+                } else if (countEl.dataset.type) {
+                    count = counts.type[type] || 0;
+                } else if (countEl.dataset.priority) {
+                    count = counts.priority[type] || 0;
+                }
+                
+                countEl.textContent = count;
+            });
+        }
+        
+        /**
+         * 重置所有筛选器
+         */
+        function resetFilters() {
+            // 重置筛选器状态
+            AppState.filters = {
+                statuses: new Set(['未开始', '进行中', '已完成']),
+                types: new Set(['目标', '项目', '任务', '动作']),
+                priorities: new Set(['高', '中', '低'])
+            };
+            
+            // 更新 UI
+            document.querySelectorAll('.filter-checkbox').forEach(checkbox => {
+                checkbox.checked = true;
+            });
+            
+            // 重新应用筛选
+            applyFiltersAndRender();
+        }
+        
+        // ==================== 任务渲染 ====================
+        
+        /**
+         * 渲染任务列表
+         */
+        function renderTasks() {
+            const container = document.getElementById('taskContainer');
+            const loadingEl = document.getElementById('loadingContainer');
+            const emptyEl = document.getElementById('emptyState');
+            
+            // 隐藏加载状态
+            loadingEl.classList.add('hidden');
+            
+            // 检查是否有任务
+            if (AppState.filteredTasks.length === 0) {
+                container.classList.add('hidden');
+                emptyEl.classList.remove('hidden');
+                return;
+            }
+            
+            // 隐藏空状态
+            emptyEl.classList.add('hidden');
+            
+            // 清空容器
+            container.innerHTML = '';
+            
+            // 根据当前视图模式设置类名
+            container.className = AppState.currentView === 'grid' ? 'task-grid' : 'task-list';
+            
+            // 渲染每个任务
+            AppState.filteredTasks.forEach((task, index) => {
+                const taskElement = createTaskElement(task);
+                
+                // 添加动画延迟
+                taskElement.style.animationDelay = `${index * 50}ms`;
+                taskElement.classList.add('fade-in');
+                
+                container.appendChild(taskElement);
+            });
+            
+            // 显示容器
+            container.classList.remove('hidden');
+        }
+        
+        /**
+         * 创建任务元素
+         * @param {Object} task - 任务数据
+         * @returns {HTMLElement} 任务元素
+         */
+        function createTaskElement(task) {
+            const card = document.createElement('div');
+            card.className = 'task-card';
+            card.dataset.taskId = task.id;
+            
+            // 添加状态类
+            if (task.status === '已完成') {
+                card.classList.add('completed');
+            }
+            
+            // 添加过期类
+            if (task.isOverdue) {
+                card.classList.add('overdue');
+            }
+            
+            // 构建卡片内容
+            card.innerHTML = `
+                <!-- 任务头部 -->
+                <div class="task-header">
+                    <span class="task-type-badge type-${task.type}">${task.type}</span>
+                    <span class="task-status-icon">${getStatusIcon(task.status)}</span>
+                </div>
+                
+                <!-- 任务标题 -->
+                <h3 class="task-title">${escapeHtml(task.title)}</h3>
+                
+                <!-- 任务元信息 -->
+                <div class="task-meta">
+                    ${task.priority ? `
+                        <div class="task-meta-item">
+                            <span>${getPriorityIcon(task.priority)}</span>
+                            <span>${task.priority}优先级</span>
+                        </div>
+                    ` : ''}
+                    
+                    ${task.plannedTime ? `
+                        <div class="task-meta-item">
+                            <span>⏱</span>
+                            <span>${task.plannedTime}</span>
+                        </div>
+                    ` : ''}
+                    
+                    ${task.isOverdue ? `
+                        <div class="task-meta-item" style="color: var(--color-danger);">
+                            <span>⚠️</span>
+                            <span>已过期 ${task.overdueDays} 天</span>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <!-- 进度条（如果有） -->
+                ${task.progress !== undefined && task.progress !== null ? `
+                    <div class="task-progress">
+                        <div class="progress-info">
+                            <span>完成进度</span>
+                            <span>${task.progress}%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${task.progress}%"></div>
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <!-- 操作按钮 -->
+                <div class="task-actions">
+                    <button class="task-action-btn" onclick="updateTaskStatus('${task.id}', '${getNextStatus(task.status)}')">
+                        <span>${getStatusActionIcon(task.status)}</span>
+                        <span>${getStatusActionText(task.status)}</span>
+                    </button>
+                    
+                    <button class="task-action-btn" onclick="launchTask('${task.id}')">
+                        <span>🚀</span>
+                        <span>启动</span>
+                    </button>
+                </div>
+            `;
+            
+            // 点击卡片查看详情
+            card.addEventListener('click', function(e) {
+                // 如果点击的是按钮，不触发卡片点击
+                if (e.target.closest('.task-action-btn')) return;
+                
+                viewTaskDetail(task.id);
+            });
+            
+            return card;
+        }
+        
+        // ==================== 任务操作 ====================
+        
+        /**
+         * 更新任务状态
+         * @param {string} taskId - 任务 ID
+         * @param {string} newStatus - 新状态
+         */
+        function updateTaskStatus(taskId, newStatus) {
+            console.log(`📝 更新任务状态：${taskId} -> ${newStatus}`);
+            
+            // 乐观更新：立即更新本地数据
+            const task = AppState.allTasks.find(t => t.id === taskId);
+            if (task) {
+                task.status = newStatus;
+                
+                // 重新渲染
+                applyFiltersAndRender();
+            }
+            
+            // 发送到插件
+            bridge.send('updateTaskStatus', {
+                taskId: taskId,
+                status: newStatus
+            }).catch(error => {
+                // 如果失败，恢复原状态
+                console.error('更新失败：', error);
+                
+                // 这里应该恢复原状态，但需要先保存原状态
+                // 为了简化，这里只刷新数据
+                requestTaskData();
+            });
+        }
+        
+        /**
+         * 启动任务
+         * @param {string} taskId - 任务 ID
+         */
+        function launchTask(taskId) {
+            console.log(`🚀 启动任务：${taskId}`);
+            
+            // 发送到插件
+            bridge.send('launchTask', {
+                taskId: taskId
+            });
+        }
+        
+        /**
+         * 查看任务详情
+         * @param {string} taskId - 任务 ID
+         */
+        function viewTaskDetail(taskId) {
+            console.log(`👁 查看任务详情：${taskId}`);
+            
+            // 发送到插件
+            bridge.send('viewTaskDetail', {
+                taskId: taskId
+            });
+        }
+        
+        /**
+         * 刷新任务
+         */
+        function refreshTasks() {
+            console.log('🔄 刷新任务');
+            
+            // 显示加载状态
+            const button = event.target.closest('.btn');
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<span>⏳</span><span>刷新中...</span>';
+            }
+            
+            // 请求数据
+            requestTaskData();
+            
+            // 恢复按钮状态
+            setTimeout(() => {
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = '<span>🔄</span><span>刷新</span>';
+                }
+            }, 1000);
+        }
+        
+        // ==================== UI 控制 ====================
+        
+        /**
+         * 切换侧边栏
+         */
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebarBackdrop');
+            
+            sidebar.classList.toggle('collapsed');
+            
+            // 移动端显示背景
+            if (window.innerWidth <= 768) {
+                backdrop.classList.toggle('show');
+            }
+        }
+        
+        /**
+         * 切换视图模式
+         * @param {string} view - 视图模式 (grid/list)
+         */
+        function switchView(view) {
+            console.log(`👁 切换视图：${view}`);
+            
+            AppState.currentView = view;
+            
+            // 更新按钮状态
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.view === view);
+            });
+            
+            // 重新渲染
+            renderTasks();
+        }
+        
+        /**
+         * 显示加载状态
+         */
+        function showLoading() {
+            document.getElementById('loadingContainer').classList.remove('hidden');
+            document.getElementById('taskContainer').classList.add('hidden');
+            document.getElementById('emptyState').classList.add('hidden');
+        }
+        
+        /**
+         * 显示错误
+         * @param {string} message - 错误消息
+         */
+        function showError(message) {
+            const emptyState = document.getElementById('emptyState');
+            emptyState.querySelector('.empty-icon').textContent = '❌';
+            emptyState.querySelector('.empty-title').textContent = '加载失败';
+            emptyState.querySelector('.empty-message').textContent = message;
+            
+            document.getElementById('loadingContainer').classList.add('hidden');
+            document.getElementById('taskContainer').classList.add('hidden');
+            emptyState.classList.remove('hidden');
+        }
+        
+        /**
+         * 显示提示消息
+         * @param {string} message - 消息内容
+         * @param {string} type - 消息类型 (success/error/info)
+         */
+        function showToast(message, type = 'info') {
+            // 创建提示元素
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 24px;
+                border-radius: 8px;
+                color: white;
+                font-weight: 500;
+                z-index: 1000;
+                animation: slideIn 0.3s ease;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            `;
+            
+            // 根据类型设置颜色
+            const colors = {
+                success: '#34c759',
+                error: '#ff3b30',
+                info: '#007aff'
+            };
+            
+            toast.style.backgroundColor = colors[type] || colors.info;
+            toast.textContent = message;
+            
+            document.body.appendChild(toast);
+            
+            // 3秒后移除
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        
+        /**
+         * 更新统计信息
+         */
+        function updateStats() {
+            const statsEl = document.getElementById('headerStats');
+            const total = AppState.allTasks.length;
+            const filtered = AppState.filteredTasks.length;
+            
+            if (total === filtered) {
+                statsEl.textContent = `共 ${total} 个任务`;
+            } else {
+                statsEl.textContent = `显示 ${filtered} / ${total} 个任务`;
+            }
+        }
+        
+        // ==================== 事件处理 ====================
+        
+        /**
+         * 处理键盘快捷键
+         * @param {KeyboardEvent} event - 键盘事件
+         */
+        function handleKeyboardShortcuts(event) {
+            // Cmd/Ctrl + R: 刷新
+            if ((event.metaKey || event.ctrlKey) && event.key === 'r') {
+                event.preventDefault();
+                refreshTasks();
+            }
+            
+            // Cmd/Ctrl + F: 聚焦搜索（如果有搜索功能）
+            if ((event.metaKey || event.ctrlKey) && event.key === 'f') {
+                event.preventDefault();
+                // 这里可以实现搜索功能
+            }
+            
+            // Esc: 关闭侧边栏（移动端）
+            if (event.key === 'Escape' && window.innerWidth <= 768) {
+                const sidebar = document.getElementById('sidebar');
+                if (!sidebar.classList.contains('collapsed')) {
+                    toggleSidebar();
+                }
+            }
+        }
+        
+        /**
+         * 处理窗口大小变化
+         */
+        function handleResize() {
+            // 在大屏幕上自动显示侧边栏
+            if (window.innerWidth > 768) {
+                const sidebar = document.getElementById('sidebar');
+                const backdrop = document.getElementById('sidebarBackdrop');
+                
+                sidebar.classList.remove('collapsed');
+                backdrop.classList.remove('show');
+            }
+        }
+        
+        // ==================== 工具函数 ====================
+        
+        /**
+         * 获取状态图标
+         * @param {string} status - 任务状态
+         * @returns {string} 状态图标
+         */
+        function getStatusIcon(status) {
+            const icons = {
+                '未开始': '🔵',
+                '进行中': '🟡',
+                '已完成': '🟢'
+            };
+            return icons[status] || '⚪';
+        }
+        
+        /**
+         * 获取优先级图标
+         * @param {string} priority - 优先级
+         * @returns {string} 优先级图标
+         */
+        function getPriorityIcon(priority) {
+            const icons = {
+                '高': '🔴',
+                '中': '🟡',
+                '低': '🟢'
+            };
+            return icons[priority] || '⚪';
+        }
+        
+        /**
+         * 获取下一个状态
+         * @param {string} currentStatus - 当前状态
+         * @returns {string} 下一个状态
+         */
+        function getNextStatus(currentStatus) {
+            const statusFlow = {
+                '未开始': '进行中',
+                '进行中': '已完成',
+                '已完成': '未开始'
+            };
+            return statusFlow[currentStatus] || '未开始';
+        }
+        
+        /**
+         * 获取状态操作图标
+         * @param {string} status - 当前状态
+         * @returns {string} 操作图标
+         */
+        function getStatusActionIcon(status) {
+            const icons = {
+                '未开始': '▶️',
+                '进行中': '✅',
+                '已完成': '🔄'
+            };
+            return icons[status] || '▶️';
+        }
+        
+        /**
+         * 获取状态操作文本
+         * @param {string} status - 当前状态
+         * @returns {string} 操作文本
+         */
+        function getStatusActionText(status) {
+            const texts = {
+                '未开始': '开始',
+                '进行中': '完成',
+                '已完成': '重置'
+            };
+            return texts[status] || '更新';
+        }
+        
+        /**
+         * HTML 转义
+         * @param {string} text - 原始文本
+         * @returns {string} 转义后的文本
+         */
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+        
+        /**
+         * 防抖函数
+         * @param {Function} func - 要防抖的函数
+         * @param {number} wait - 等待时间
+         * @returns {Function} 防抖后的函数
+         */
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+        
+        // ==================== 调试输出 ====================
+        
+        if (Config.debug) {
+            console.log('%c🎯 今日任务看板已加载', 
+                       'color: #007aff; font-size: 16px; font-weight: bold;');
+            console.log('可用的全局对象和函数：');
+            console.log('- AppState: 应用状态');
+            console.log('- Config: 配置选项');
+            console.log('- bridge: 通信桥接实例');
+            console.log('- refreshTasks(): 刷新任务');
+            console.log('- toggleSidebar(): 切换侧边栏');
+            console.log('- switchView(view): 切换视图');
+            console.log('- resetFilters(): 重置筛选器');
+        }
+    </script>
+</body>
+</html>

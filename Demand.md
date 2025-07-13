@@ -1,3 +1,12 @@
+现在继续开发 mnutils 的 MNMath 类的 manageCommentsByPopup 函数。
+1. switch (buttonIndex) 是通过对应按钮的数字，但是这样有一个不足就是，如果把上面的数组里的元素换一下顺序，那么下面的 switch 语句必须整体都要改，很麻烦，请你优化。
+2. 目前弹窗里的多选功能支持移动和删除，我希望你再增加一个：“提取”。从效果上来看，就是把选中的内容提取出来变成新的卡片，成为子卡片，不需要有标题。具体的实现方式如下：
+- 假设选中的是 note，那么克隆一下 note 为 clonedNote，并且把 clonedNote 添加为 note 的子卡片
+- 因为是克隆的，所以两个卡片的评论是一模一样的，对应的 index 也是一样的，所以要达到提取的效果，其实就是把 clonedNote 里在弹窗里选中的几个评论之外的评论都删除掉就行了。
+ultrathink
+
+
+---
 ocrAsProofTitleWithTranslation 目前无法实现翻译功能，翻译的那个弹窗点击后仍然是直接把翻译前的内容作为了标题。请深入学习 mnautostyle 插件项目，这里开发了 autoAi* 的功能，其中有一个是自动翻译！刚好是我们要的，请学习他的实现方式，并迁移过来。ultrathink
 
 

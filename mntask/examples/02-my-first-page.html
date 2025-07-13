@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>我的第一个网页 - 练习文件</title>
+    <meta charset="UTF-8">
+    
+    <!-- 
+    =====================================
+    🌟 欢迎来到你的第一个网页！
+    
+    这是一个练习文件，我会一步步带你理解每一行代码。
+    不要害怕，慢慢来，每个程序员都是这样开始的！
+    
+    💡 提示：
+    - 绿色的文字（像这样）是注释，不会显示在网页上
+    - 注释是用来解释代码的，帮助你理解
+    - 你可以随意修改代码，看看会发生什么
+    =====================================
+    -->
+    
+    <style>
+        /* 这里是 CSS 区域，用来美化网页 */
+        
+        /* body 是整个网页的"身体" */
+        body {
+            /* 设置背景颜色 - 试试改成其他颜色，比如 lightblue, pink, #ffcc00 */
+            background-color: #f0f0f0;
+            
+            /* 设置字体 - 这是苹果系统的默认字体 */
+            font-family: -apple-system, Arial, sans-serif;
+            
+            /* 设置内边距 - 让内容不要贴着边 */
+            padding: 20px;
+            
+            /* 设置文字颜色 */
+            color: #333;
+            
+            /* 让所有内容居中 */
+            text-align: center;
+        }
+        
+        /* 设置大标题的样式 */
+        h1 {
+            /* 标题颜色 - 深蓝色 */
+            color: #2c3e50;
+            
+            /* 标题大小 */
+            font-size: 36px;
+            
+            /* 标题下方的间距 */
+            margin-bottom: 20px;
+        }
+        
+        /* 设置段落的样式 */
+        p {
+            /* 段落文字大小 */
+            font-size: 18px;
+            
+            /* 行高 - 让文字不那么挤 */
+            line-height: 1.6;
+            
+            /* 段落之间的间距 */
+            margin: 15px 0;
+        }
+        
+        /* 设置按钮的样式 */
+        button {
+            /* 按钮背景色 - 绿色 */
+            background-color: #4CAF50;
+            
+            /* 按钮文字颜色 - 白色 */
+            color: white;
+            
+            /* 按钮内边距 - 上下10px，左右20px */
+            padding: 10px 20px;
+            
+            /* 去掉按钮的边框 */
+            border: none;
+            
+            /* 按钮圆角 - 数字越大越圆 */
+            border-radius: 5px;
+            
+            /* 按钮文字大小 */
+            font-size: 16px;
+            
+            /* 鼠标移上去变成手型 */
+            cursor: pointer;
+            
+            /* 添加过渡效果 - 让颜色变化更平滑 */
+            transition: background-color 0.3s;
+            
+            /* 按钮之间的间距 */
+            margin: 5px;
+        }
+        
+        /* 当鼠标悬停在按钮上时 */
+        button:hover {
+            /* 变成深一点的绿色 */
+            background-color: #45a049;
+        }
+        
+        /* 特殊的盒子样式 */
+        .special-box {
+            /* 白色背景 */
+            background-color: white;
+            
+            /* 添加阴影效果 */
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            
+            /* 圆角 */
+            border-radius: 10px;
+            
+            /* 内边距 */
+            padding: 30px;
+            
+            /* 最大宽度 */
+            max-width: 600px;
+            
+            /* 居中显示 */
+            margin: 30px auto;
+        }
+        
+        /* 图片样式 */
+        .emoji {
+            font-size: 48px;
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 
+    =====================================
+    这里是 body 标签内部，所有可见的内容都放在这里
+    =====================================
+    -->
+    
+    <!-- 大标题 - 试试把文字改成你的名字 -->
+    <h1>🎉 你好，世界！</h1>
+    
+    <!-- 段落 - 这是普通的文字 -->
+    <p>欢迎来到网页开发的世界！这是你创建的第一个网页。</p>
+    
+    <!-- 另一个段落 -->
+    <p>是不是很神奇？只需要一些简单的代码，就能创建出漂亮的网页！</p>
+    
+    <!-- 一个特殊的盒子，使用了我们定义的 special-box 样式 -->
+    <div class="special-box">
+        <div class="emoji">🚀</div>
+        <h2>开始你的旅程</h2>
+        <p>点击下面的按钮，看看会发生什么！</p>
+        
+        <!-- 按钮们 - onclick 表示点击时要做什么 -->
+        <button onclick="sayHello()">👋 打个招呼</button>
+        <button onclick="changeColor()">🎨 变换颜色</button>
+        <button onclick="showTime()">⏰ 显示时间</button>
+        <button onclick="showSecret()">🎁 神秘按钮</button>
+    </div>
+    
+    <!-- 用来显示消息的区域 -->
+    <div id="message" style="margin-top: 30px; font-size: 20px;">
+        <!-- 这里会显示各种消息 -->
+    </div>
+    
+    <!-- 练习区域 -->
+    <div class="special-box" style="margin-top: 40px;">
+        <h2>📝 练习时间！</h2>
+        <p>试试完成下面的练习：</p>
+        <ol style="text-align: left; display: inline-block;">
+            <li>把大标题改成你的名字</li>
+            <li>添加一个新的段落，写上你的爱好</li>
+            <li>创建一个新按钮，点击时显示你的年龄</li>
+            <li>改变页面的背景颜色</li>
+            <li>让按钮变成你喜欢的颜色</li>
+        </ol>
+    </div>
+    
+    <!-- 
+    =====================================
+    JavaScript 区域 - 让网页"活"起来的代码
+    =====================================
+    -->
+    <script>
+        // 这是 JavaScript 注释，用 // 开头
+        
+        /* 
+           这是多行注释
+           可以写很多行
+           用来解释复杂的代码
+        */
+        
+        // 函数1：打招呼
+        function sayHello() {
+            // 获取消息显示区域
+            const messageDiv = document.getElementById('message');
+            
+            // 改变消息内容
+            messageDiv.innerHTML = '👋 你好！很高兴见到你！我是你的网页助手。';
+            
+            // 改变消息颜色
+            messageDiv.style.color = '#2c3e50';
+            
+            // 在控制台也打印一条消息（按F12打开控制台可以看到）
+            console.log('用户点击了打招呼按钮');
+        }
+        
+        // 函数2：改变颜色
+        function changeColor() {
+            // 创建一个颜色数组
+            const colors = [
+                '#e74c3c',  // 红色
+                '#3498db',  // 蓝色
+                '#2ecc71',  // 绿色
+                '#f39c12',  // 橙色
+                '#9b59b6',  // 紫色
+                '#1abc9c'   // 青色
+            ];
+            
+            // 随机选择一个颜色
+            // Math.random() 生成 0-1 的随机数
+            // Math.floor() 向下取整
+            const randomIndex = Math.floor(Math.random() * colors.length);
+            const randomColor = colors[randomIndex];
+            
+            // 改变整个页面的背景色
+            document.body.style.backgroundColor = randomColor;
+            
+            // 显示消息
+            document.getElementById('message').innerHTML = 
+                '🎨 背景颜色已改变！再点一次试试其他颜色。';
+        }
+        
+        // 函数3：显示时间
+        function showTime() {
+            // 创建一个新的日期对象（包含当前时间）
+            const now = new Date();
+            
+            // 获取各个时间部分
+            const year = now.getFullYear();       // 年
+            const month = now.getMonth() + 1;      // 月（注意：月份从0开始，所以要+1）
+            const date = now.getDate();            // 日
+            const hours = now.getHours();          // 时
+            const minutes = now.getMinutes();      // 分
+            const seconds = now.getSeconds();      // 秒
+            
+            // 格式化时间（如果数字小于10，前面加0）
+            const formattedTime = 
+                `${year}年${month}月${date}日 ` +
+                `${hours.toString().padStart(2, '0')}:` +
+                `${minutes.toString().padStart(2, '0')}:` +
+                `${seconds.toString().padStart(2, '0')}`;
+            
+            // 显示时间
+            document.getElementById('message').innerHTML = 
+                `⏰ 现在是：${formattedTime}`;
+        }
+        
+        // 函数4：神秘功能
+        function showSecret() {
+            // 创建一些有趣的消息
+            const secrets = [
+                '🌟 你发现了一个秘密！你真棒！',
+                '🎯 坚持学习，你会成为优秀的开发者！',
+                '💪 每个专家都曾是初学者，加油！',
+                '🌈 编程就像魔法，你是魔法师！',
+                '🎮 恭喜你找到了彩蛋！',
+                '🚀 下一站：成为编程大神！'
+            ];
+            
+            // 随机选择一条消息
+            const randomSecret = secrets[Math.floor(Math.random() * secrets.length)];
+            
+            // 显示消息
+            const messageDiv = document.getElementById('message');
+            messageDiv.innerHTML = randomSecret;
+            
+            // 添加一些特效
+            messageDiv.style.fontSize = '24px';
+            messageDiv.style.color = '#e74c3c';
+            messageDiv.style.fontWeight = 'bold';
+            
+            // 让消息有动画效果
+            messageDiv.style.transform = 'scale(0)';
+            setTimeout(() => {
+                messageDiv.style.transition = 'transform 0.5s';
+                messageDiv.style.transform = 'scale(1)';
+            }, 100);
+        }
+        
+        // =====================================
+        // 🎯 练习：创建你自己的函数
+        // =====================================
+        
+        // 练习函数：显示你的年龄
+        // 提示：完成下面的函数
+        function showMyAge() {
+            // TODO: 在这里写代码
+            // 1. 创建一个变量存储你的年龄
+            // 2. 获取消息区域
+            // 3. 显示你的年龄
+            
+            // 示例代码（把注释符号去掉并修改）：
+            // const myAge = 18;
+            // document.getElementById('message').innerHTML = '我今年 ' + myAge + ' 岁！';
+        }
+        
+        // =====================================
+        // 页面加载完成后执行的代码
+        // =====================================
+        window.onload = function() {
+            console.log('🎉 页面加载完成！');
+            console.log('💡 提示：按 F12 打开控制台，可以看到这些消息');
+            
+            // 显示欢迎消息
+            document.getElementById('message').innerHTML = 
+                '👆 点击上面的按钮试试看！';
+        };
+        
+        // =====================================
+        // 🌟 恭喜你！
+        // 你已经创建了一个完整的交互式网页！
+        // 
+        // 下一步：
+        // 1. 修改代码，看看效果
+        // 2. 完成练习题
+        // 3. 添加你自己的创意
+        // 
+        // 记住：犯错是学习的一部分，大胆尝试！
+        // =====================================
+    </script>
+</body>
+</html>

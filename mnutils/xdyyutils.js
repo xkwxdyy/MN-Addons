@@ -4072,12 +4072,8 @@ class MNMath {
   static performDelete(note, deleteCommentIndexArr) {
     MNUtil.undoGrouping(() => {
       try {
-        // 从大到小排序，避免删除时索引变化
-        const sortedIndices = [...deleteCommentIndexArr].sort((a, b) => b - a);
-        
-        sortedIndices.forEach(index => {
-          note.removeCommentByIndex(index);
-        });
+        // 使用批量删除 API
+        note.removeCommentsByIndexArr(deleteCommentIndexArr);
         
         note.refresh();
         MNUtil.showHUD(`成功删除 ${deleteCommentIndexArr.length} 项评论`);
@@ -4093,11 +4089,13 @@ class MNMath {
    * 将选中的评论提取为新的子卡片
    */
   static performExtract(note, extractCommentIndexArr) {
+    let clonedNote = null;
+    
+    // 第一步：创建子卡片
     MNUtil.undoGrouping(() => {
       try {
         // 克隆原笔记
-        const clonedNote = note.clone();
-
+        clonedNote = note.clone();
         clonedNote.title = ""
         
         // 将克隆的笔记添加为原笔记的子卡片
@@ -4111,9 +4109,7 @@ class MNMath {
         indicesToDelete.sort((a, b) => b - a);
         
         // 删除未选中的评论
-        indicesToDelete.forEach(index => {
-          clonedNote.removeCommentByIndex(index);
-        });
+        clonedNote.removeCommentsByIndexArr(indicesToDelete);
         
         // 刷新显示
         clonedNote.refresh();
@@ -4127,8 +4123,42 @@ class MNMath {
       } catch (error) {
         MNUtil.showHUD("提取失败: " + error.message);
         MNUtil.addErrorLog(error, "performExtract", {noteId: note.noteId});
+        return; // 出错则不显示后续对话框
       }
     });
+    
+    // 第二步：询问是否删除原评论
+    if (clonedNote) {
+      // 延迟显示对话框，确保前面的操作完成
+      MNUtil.delay(0.5).then(() => {
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "提取完成",
+          `已成功提取 ${extractCommentIndexArr.length} 项评论到新卡片。\n\n是否从原卡片中删除这些评论？`,
+          0,
+          "保留原评论",
+          ["删除原评论"],
+          (alert, buttonIndex) => {
+            if (buttonIndex === 1) {
+              // 用户选择删除原评论
+              MNUtil.undoGrouping(() => {
+                try {
+                  // 使用批量删除 API
+                  note.removeCommentsByIndexArr(extractCommentIndexArr);
+                  
+                  note.refresh();
+                  MNUtil.showHUD("已删除原卡片中的评论");
+                  
+                } catch (error) {
+                  MNUtil.showHUD("删除原评论失败: " + error.message);
+                  MNUtil.addErrorLog(error, "performExtract.deleteOriginal", {noteId: note.noteId});
+                }
+              });
+            }
+            // 如果选择"保留原评论"，则不做任何操作
+          }
+        );
+      });
+    }
   }
 
   /**
@@ -8688,6 +8718,21 @@ MNNote.prototype.moveCommentsByIndexArr = function(indexArr, toIndex){
       }
     }
   }
+}
+
+/**
+ * 批量删除评论
+ * @param {Array<number>} indexArr - 要删除的评论索引数组
+ */
+MNNote.prototype.removeCommentsByIndexArr = function(indexArr) {
+  if (indexArr.length === 0) return;
+  
+  // 从大到小排序，避免删除时索引变化
+  const sortedIndices = [...indexArr].sort((a, b) => b - a);
+  
+  sortedIndices.forEach(index => {
+    this.removeCommentByIndex(index);
+  });
 }
 
 /**

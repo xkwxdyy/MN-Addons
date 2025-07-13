@@ -5746,7 +5746,8 @@ class HtmlMarkdownUtils {
     question: '❓',
     idea: '💡',
     method: '✨',
-    check: '🔍'
+    check: '🔍',
+    sketch: '✏️'
   };
   static prefix = {
     danger: '',
@@ -5766,7 +5767,8 @@ class HtmlMarkdownUtils {
     question: '',
     idea: '思路：',
     method: '方法：',
-    check: 'CHECK'
+    check: 'CHECK',
+    sketch: 'SKETCH'
   };
   static styles = {
     // 格外注意
@@ -5790,7 +5792,9 @@ class HtmlMarkdownUtils {
     // 方法
     method: 'display:block;font-weight:700;color:#1B4332;background:linear-gradient(135deg,#74C69D 0%,#95D5B2 25%,#C7F0DB 60%,#E8F5E8 100%);font-size:1.3em;padding:12px 20px 12px 24px;border-left:10px solid #2D6A4F;margin:0 0 12px 0;border-radius:0 6px 6px 0;box-shadow:0 4px 12px rgba(116,198,157,0.2),inset 0 1px 0 rgba(255,255,255,0.5);text-shadow:0 1px 1px rgba(255,255,255,0.4);position:relative;',
     // 检查
-    check: 'font-weight:600;color:#34A853;background:#E6F7EE;border:2px solid #34A853;border-radius:4px;padding:4px 8px;display:inline-block;box-shadow:0 1px 2px rgba(52,168,83,0.2);margin:0 2px;line-height:1.3;vertical-align:baseline;position:relative;'
+    check: 'font-weight:600;color:#34A853;background:#E6F7EE;border:2px solid #34A853;border-radius:4px;padding:4px 8px;display:inline-block;box-shadow:0 1px 2px rgba(52,168,83,0.2);margin:0 2px;line-height:1.3;vertical-align:baseline;position:relative;',
+    // 草稿/手绘
+    sketch: 'background:transparent;color:#5D4037;display:inline-block;border-bottom:2px dotted #FF9800;padding:0 4px 2px;margin:0 2px;line-height:1.2;vertical-align:baseline;position:relative;font-size:0.9em;font-style:italic;'
   };
   // 定义即使内容为空也要输出的类型白名单
   static emptyContentWhitelist = ['check'];

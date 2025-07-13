@@ -3700,6 +3700,7 @@ class MNMath {
     // 添加分隔线和操作选项
     displayOptions.push("──────────────");
     displayOptions.push("➡️ 移动选中项");
+    displayOptions.push("📤 提取选中项");
     displayOptions.push("🗑️ 删除选中项");
     
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
@@ -3742,6 +3743,18 @@ class MNMath {
           this.showDeleteConfirmDialog(note, selectedIndicesArray);
           
         } else if (buttonIndex === displayOptions.length - 1) {
+          // 用户选择了"提取选中项"
+          if (selectedIndices.size === 0) {
+            MNUtil.showHUD("没有选中任何内容");
+            this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null);
+            return;
+          }
+          
+          // 调用提取操作
+          const selectedIndicesArray = Array.from(selectedIndices).sort((a, b) => a - b);
+          this.performExtract(note, selectedIndicesArray);
+          
+        } else if (buttonIndex === displayOptions.length - 2) {
           // 用户选择了"移动选中项"
           if (selectedIndices.size === 0) {
             MNUtil.showHUD("没有选中任何内容");
@@ -3753,7 +3766,7 @@ class MNMath {
           const selectedIndicesArray = Array.from(selectedIndices).sort((a, b) => a - b);
           this.showMoveTargetSelectionDialog(note, selectedIndicesArray);
           
-        } else if (buttonIndex === displayOptions.length - 2) {
+        } else if (buttonIndex === displayOptions.length - 3) {
           // 用户选择了分隔线，忽略并重新显示
           this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null);
           
@@ -3802,14 +3815,47 @@ class MNMath {
    * 通过弹窗管理评论（移动或删除）
    */
   static manageCommentsByPopup(note) {
-    // 第一步：选择移动方式
-    const firstOptions = [
-      "📝 手动输入 Index",
-      "✅ 多选评论内容",
-      "🔄 自动获取新内容",
-      "Z️⃣ 最后一条评论",
-      "📦 选择字段区域"
-    ];
+    // 定义选项和对应的处理函数
+    const optionHandlers = {
+      "📝 手动输入 Index": () => {
+        this.showManualInputDialog(note, (indices) => {
+          if (indices && indices.length > 0) {
+            this.showActionSelectionDialog(note, indices);
+          }
+        });
+      },
+      
+      "✅ 多选评论内容": () => {
+        const allOptions = this.getAllCommentOptionsForMove(note);
+        const selectedIndices = new Set();
+        this.showCommentMultiSelectDialog(note, allOptions, selectedIndices, null);
+      },
+      
+      "🔄 自动获取新内容": () => {
+        const moveCommentIndexArr = this.autoGetNewContentToMoveIndexArr(note);
+        if (moveCommentIndexArr.length === 0) {
+          MNUtil.showHUD("没有检测到新内容");
+          return;
+        }
+        this.showActionSelectionDialog(note, moveCommentIndexArr);
+      },
+      
+      "Z️⃣ 最后一条评论": () => {
+        const moveCommentIndexArr = [note.comments.length - 1];
+        this.showActionSelectionDialog(note, moveCommentIndexArr);
+      },
+      
+      "📦 选择字段区域": () => {
+        this.showFieldSelectionForMove(note, (indices) => {
+          if (indices && indices.length > 0) {
+            this.showActionSelectionDialog(note, indices);
+          }
+        });
+      }
+    };
+    
+    // 提取选项列表
+    const firstOptions = Object.keys(optionHandlers);
     
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "选择要管理的评论",
@@ -3820,46 +3866,11 @@ class MNMath {
       (alert, buttonIndex) => {
         if (buttonIndex === 0) return; // 取消
         
-        let moveCommentIndexArr = [];
-        
-        switch (buttonIndex) {
-          case 1: // 手动输入
-            this.showManualInputDialog(note, (indices) => {
-              if (indices && indices.length > 0) {
-                moveCommentIndexArr = indices;
-                this.showActionSelectionDialog(note, moveCommentIndexArr);
-              }
-            });
-            break;
-            
-          case 2: // 多选评论
-            const allOptions = this.getAllCommentOptionsForMove(note);
-            const selectedIndices = new Set();
-            this.showCommentMultiSelectDialog(note, allOptions, selectedIndices, null);
-            break;
-            
-          case 3: // 自动获取
-            moveCommentIndexArr = this.autoGetNewContentToMoveIndexArr(note);
-            if (moveCommentIndexArr.length === 0) {
-              MNUtil.showHUD("没有检测到新内容");
-              return;
-            }
-            this.showActionSelectionDialog(note, moveCommentIndexArr);
-            break;
-            
-          case 4: // 最后一条
-            moveCommentIndexArr = [note.comments.length - 1];
-            this.showActionSelectionDialog(note, moveCommentIndexArr);
-            break;
-            
-          case 5: // 选择字段区域
-            this.showFieldSelectionForMove(note, (indices) => {
-              if (indices && indices.length > 0) {
-                moveCommentIndexArr = indices;
-                this.showActionSelectionDialog(note, moveCommentIndexArr);
-              }
-            });
-            break;
+        // 根据选项执行对应的处理函数
+        const selectedOption = firstOptions[buttonIndex - 1];
+        const handler = optionHandlers[selectedOption];
+        if (handler) {
+          handler();
         }
       }
     );
@@ -3933,12 +3944,13 @@ class MNMath {
   }
 
   /**
-   * 显示操作选择对话框（移动或删除）
+   * 显示操作选择对话框（移动、提取或删除）
    */
   static showActionSelectionDialog(note, moveCommentIndexArr) {
     // 先让用户选择操作类型
     const actionOptions = [
       "➡️ 移动评论",
+      "📤 提取评论",
       "🗑️ 删除评论"
     ];
     
@@ -3955,6 +3967,9 @@ class MNMath {
           // 移动评论
           this.showMoveTargetSelectionDialog(note, moveCommentIndexArr);
         } else if (buttonIndex === 2) {
+          // 提取评论
+          this.performExtract(note, moveCommentIndexArr);
+        } else if (buttonIndex === 3) {
           // 删除评论
           this.showDeleteConfirmDialog(note, moveCommentIndexArr);
         }
@@ -4069,6 +4084,49 @@ class MNMath {
       } catch (error) {
         MNUtil.showHUD("删除失败: " + error.message);
         MNUtil.addErrorLog(error, "performDelete", {noteId: note.noteId});
+      }
+    });
+  }
+
+  /**
+   * 执行提取操作
+   * 将选中的评论提取为新的子卡片
+   */
+  static performExtract(note, extractCommentIndexArr) {
+    MNUtil.undoGrouping(() => {
+      try {
+        // 克隆原笔记
+        const clonedNote = note.clone();
+
+        clonedNote.title = ""
+        
+        // 将克隆的笔记添加为原笔记的子卡片
+        note.addChild(clonedNote);
+        
+        // 获取所有评论的索引，并排除要提取的评论
+        const allIndices = Array.from({length: clonedNote.comments.length}, (_, i) => i);
+        const indicesToDelete = allIndices.filter(i => !extractCommentIndexArr.includes(i));
+        
+        // 从大到小排序，避免删除时索引变化
+        indicesToDelete.sort((a, b) => b - a);
+        
+        // 删除未选中的评论
+        indicesToDelete.forEach(index => {
+          clonedNote.removeCommentByIndex(index);
+        });
+        
+        // 刷新显示
+        clonedNote.refresh();
+        note.refresh();
+        
+        MNUtil.showHUD(`成功提取 ${extractCommentIndexArr.length} 项评论为新卡片`);
+        
+        // 在脑图中聚焦新创建的卡片
+        MNUtil.focusNoteInMindMapById(clonedNote.noteId, 0.5);
+        
+      } catch (error) {
+        MNUtil.showHUD("提取失败: " + error.message);
+        MNUtil.addErrorLog(error, "performExtract", {noteId: note.noteId});
       }
     });
   }

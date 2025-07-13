@@ -63,6 +63,11 @@ function registerAllCustomActions() {
     { title: "CHECK: 🔍", type: "check" },
     { title: "方法: ✔", type: "method" },
     { title: "目标: 🎯", type: "goal" },
+    { title: "level1: 🚩", type: "level1" },
+    { title: "level2: ▸", type: "level2" },
+    { title: "level3: ▪", type: "level3" },
+    { title: "level4: •", type: "level4" },
+    { title: "level5: ·", type: "level5" },
     { title: "关键: 🔑", type: "key" },
     { title: "问题: ❓", type: "question" },
     { title: "注: 📝", type: "remark" },
@@ -1845,8 +1850,8 @@ function registerAllCustomActions() {
         return;
       }
       
-      // 直接使用配置的 OCR 源
-      const ocrSource = toolbarConfig.ocrSource || "default";
+      // 使用配置的 OCR 源，默认为 Doc2X
+      const ocrSource = toolbarConfig.ocrSource || toolbarConfig.defaultOCRSource || "Doc2X";
       
       // OCR 源名称映射
       const ocrSourceNames = {
@@ -1859,8 +1864,7 @@ function registerAllCustomActions() {
         "claude-3-5-sonnet-20241022": "Claude 3.5 Sonnet",
         "claude-3-7-sonnet": "Claude 3.7 Sonnet",
         "gemini-2.0-flash": "Gemini 2.0 Flash - Google",
-        "Moonshot-v1": "Moonshot-v1",
-        "default": "默认配置"
+        "Moonshot-v1": "Moonshot-v1"
       };
       
       const sourceName = ocrSourceNames[ocrSource] || ocrSource;
@@ -2928,6 +2932,335 @@ function registerAllCustomActions() {
     toolbarConfig.save();
     
     MNUtil.showHUD(`✅ 翻译模型已切换为: ${selectedModel}`);
+  });
+  
+  // ocrAllUntitledDescendantsWithTranslation - 批量 OCR 并翻译无标题子孙卡片
+  global.registerCustomAction("ocrAllUntitledDescendantsWithTranslation", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    try {
+      // 检查是否有 focusNote
+      if (!focusNote) {
+        MNUtil.showHUD("请先选择一个笔记");
+        return;
+      }
+      
+      // 获取所有子孙卡片
+      const descendantData = focusNote.descendantNodes;
+      const descendants = descendantData ? descendantData.descendant : [];
+      
+      // 创建包含选中卡片和所有子孙卡片的数组
+      const allNotes = [focusNote, ...descendants];
+      
+      // 筛选无标题且有图片的卡片
+      const untitledNotes = allNotes.filter(note => {
+        // 检查是否无标题
+        if (note.noteTitle && note.noteTitle.trim()) {
+          return false;
+        }
+        // 检查是否有图片
+        const imageData = MNNote.getImageFromNote(note);
+        return imageData !== null && imageData !== undefined;
+      });
+      
+      if (untitledNotes.length === 0) {
+        MNUtil.showHUD("没有找到无标题且包含图片的子孙卡片");
+        return;
+      }
+      
+      // 确认操作
+      const confirmed = await MNUtil.confirm(
+        "批量 OCR + 翻译确认",
+        `找到 ${untitledNotes.length} 个无标题卡片，将进行 OCR 识别并翻译为中文。`
+      );
+      
+      if (!confirmed) {
+        return;
+      }
+      
+      // 使用配置的 OCR 源和翻译模型
+      const ocrSource = toolbarConfig.ocrSource || toolbarConfig.defaultOCRSource || "Doc2X";
+      const translateModel = toolbarConfig.translateModel || toolbarConfig.defaultTranslateModel || "gpt-4o-mini";
+      
+      MNUtil.showHUD(`开始批量处理（OCR: ${ocrSource}, 翻译: ${translateModel}）...`);
+      
+      // 批量处理
+      let successCount = 0;
+      let failCount = 0;
+      
+      for (let i = 0; i < untitledNotes.length; i++) {
+        const note = untitledNotes[i];
+        
+        try {
+          // 获取图片数据
+          const imageData = MNNote.getImageFromNote(note);
+          if (!imageData) {
+            failCount++;
+            continue;
+          }
+          
+          // 执行 OCR
+          let ocrResult;
+          if (typeof ocrNetwork !== 'undefined') {
+            // 使用 MNOCR 插件
+            ocrResult = await ocrNetwork.OCR(imageData, ocrSource, true);
+          } else if (typeof toolbarUtils !== 'undefined') {
+            // 降级到免费 OCR
+            ocrResult = await toolbarUtils.freeOCR(imageData);
+          } else {
+            MNUtil.showHUD("请先安装 MN OCR 插件");
+            return;
+          }
+          
+          if (ocrResult && ocrResult.trim()) {
+            // 执行翻译
+            try {
+              const translatedText = await toolbarUtils.ocrWithTranslation(ocrResult, translateModel);
+              
+              // 设置翻译后的标题
+              MNUtil.undoGrouping(() => {
+                note.noteTitle = translatedText.trim();
+              });
+              
+              successCount++;
+            } catch (translationError) {
+              // 翻译失败，使用原始 OCR 结果
+              MNUtil.undoGrouping(() => {
+                note.noteTitle = ocrResult.trim();
+              });
+              
+              successCount++;
+              
+              if (typeof MNUtil !== "undefined" && MNUtil.log) {
+                MNUtil.log(`⚠️ [批量OCR翻译] 翻译失败，使用原始文本: ${translationError.message}`);
+              }
+            }
+          } else {
+            failCount++;
+          }
+          
+        } catch (error) {
+          failCount++;
+          if (typeof toolbarUtils !== 'undefined') {
+            toolbarUtils.addErrorLog(error, "ocrAllUntitledDescendantsWithTranslation", {noteId: note.noteId});
+          }
+        }
+        
+        // 更新进度（每处理3个或最后一个时更新）
+        if ((i + 1) % 3 === 0 || i === untitledNotes.length - 1) {
+          MNUtil.showHUD(`处理进度: ${i + 1}/${untitledNotes.length}`);
+          await MNUtil.delay(0.1);  // 短暂延迟让 UI 更新
+        }
+      }
+      
+      // 显示完成信息
+      let resultMessage = `✅ 处理完成！成功: ${successCount}`;
+      if (failCount > 0) {
+        resultMessage += `，失败: ${failCount}`;
+      }
+      MNUtil.showHUD(resultMessage);
+      
+      // 发送批量完成通知（可选，用于其他插件集成）
+      MNUtil.postNotification("BatchOCRTranslationFinished", {
+        action: "batchOCRWithTranslation",
+        noteId: focusNote.noteId,
+        successCount: successCount,
+        failCount: failCount,
+        totalCount: untitledNotes.length
+      });
+      
+    } catch (error) {
+      MNUtil.showHUD("批量 OCR 翻译失败: " + error.message);
+      if (typeof toolbarUtils !== 'undefined') {
+        toolbarUtils.addErrorLog(error, "ocrAllUntitledDescendantsWithTranslation");
+      }
+    }
+  });
+  
+  // translateAllDescendants - 批量翻译子孙卡片
+  global.registerCustomAction("translateAllDescendants", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    try {
+      // 检查是否有 focusNote
+      if (!focusNote) {
+        MNUtil.showHUD("请先选择一个卡片");
+        return;
+      }
+      
+      // 获取所有子孙卡片
+      const descendantData = focusNote.descendantNodes;
+      const descendants = descendantData ? descendantData.descendant : [];
+      
+      // 创建包含选中卡片和所有子孙卡片的数组
+      const allNotes = [focusNote, ...descendants];
+      
+      // 筛选有标题或摘录的卡片
+      const notesToTranslate = allNotes.filter(note => {
+        // 检查是否有标题或摘录内容
+        return (note.noteTitle && note.noteTitle.trim()) || 
+               (note.excerptText && note.excerptText.trim());
+      });
+      
+      if (notesToTranslate.length === 0) {
+        MNUtil.showHUD("没有找到可翻译的卡片");
+        return;
+      }
+      
+      // 显示翻译选项对话框
+      const translateOptions = [
+        "仅翻译标题",
+        "仅翻译摘录",
+        "翻译标题和摘录",
+        "添加翻译到评论"
+      ];
+      
+      const optionIndex = await MNUtil.userSelect(
+        "选择翻译方式",
+        `找到 ${notesToTranslate.length} 个卡片可翻译`,
+        translateOptions
+      );
+      
+      if (optionIndex === 0) {
+        return; // 用户取消
+      }
+      
+      // 选择翻译模型
+      const translateModels = toolbarUtils.getAvailableAIModels ? 
+        toolbarUtils.getAvailableAIModels() : 
+        ["gpt-4o-mini", "gpt-4o", "claude-3-5-sonnet"];
+        
+      const currentModel = toolbarConfig.translateModel || "gpt-4o-mini";
+      
+      const modelIndex = await MNUtil.userSelect(
+        "选择翻译模型",
+        `当前: ${currentModel}`,
+        translateModels
+      );
+      
+      if (modelIndex === 0) {
+        return; // 用户取消
+      }
+      
+      const selectedModel = translateModels[modelIndex - 1];
+      const translateMode = optionIndex; // 1-4
+      
+      // 开始批量翻译
+      MNUtil.showHUD(`开始批量翻译（共 ${notesToTranslate.length} 个卡片）...`);
+      
+      let successCount = 0;
+      let failCount = 0;
+      
+      // 使用撤销分组
+      MNUtil.undoGrouping(async () => {
+        for (let i = 0; i < notesToTranslate.length; i++) {
+          const note = notesToTranslate[i];
+          
+          try {
+            // 显示进度
+            if (i % 5 === 0) {
+              MNUtil.showHUD(`正在翻译... (${i + 1}/${notesToTranslate.length})`);
+            }
+            
+            let hasChanges = false;
+            
+            // 根据选择的模式执行翻译
+            if (translateMode === 1 || translateMode === 3) {
+              // 翻译标题
+              if (note.noteTitle && note.noteTitle.trim()) {
+                const translatedTitle = await toolbarUtils.translateNoteContent(
+                  note.noteTitle, 
+                  'academic', 
+                  '中文', 
+                  selectedModel
+                );
+                
+                if (translatedTitle && translatedTitle !== note.noteTitle) {
+                  if (translateMode === 1) {
+                    note.noteTitle = translatedTitle;
+                  } else {
+                    // 保留原标题，在后面添加翻译
+                    note.noteTitle = `${note.noteTitle} | ${translatedTitle}`;
+                  }
+                  hasChanges = true;
+                }
+              }
+            }
+            
+            if (translateMode === 2 || translateMode === 3) {
+              // 翻译摘录
+              if (note.excerptText && note.excerptText.trim()) {
+                const translatedExcerpt = await toolbarUtils.translateNoteContent(
+                  note.excerptText, 
+                  'academic', 
+                  '中文', 
+                  selectedModel
+                );
+                
+                if (translatedExcerpt && translatedExcerpt !== note.excerptText) {
+                  if (translateMode === 2) {
+                    note.excerptText = translatedExcerpt;
+                  } else {
+                    // 保留原摘录，在后面添加翻译
+                    note.excerptText = `${note.excerptText}\n\n翻译：${translatedExcerpt}`;
+                  }
+                  hasChanges = true;
+                }
+              }
+            }
+            
+            if (translateMode === 4) {
+              // 添加翻译到评论
+              let textToTranslate = "";
+              
+              if (note.noteTitle && note.noteTitle.trim()) {
+                textToTranslate = note.noteTitle;
+              } else if (note.excerptText && note.excerptText.trim()) {
+                textToTranslate = note.excerptText;
+              }
+              
+              if (textToTranslate) {
+                const translation = await toolbarUtils.translateNoteContent(
+                  textToTranslate, 
+                  'academic', 
+                  '中文', 
+                  selectedModel
+                );
+                
+                if (translation) {
+                  // 添加翻译作为评论
+                  note.appendTextComment(`翻译：${translation}`);
+                  hasChanges = true;
+                }
+              }
+            }
+            
+            if (hasChanges) {
+              successCount++;
+            }
+            
+          } catch (error) {
+            failCount++;
+            if (typeof MNUtil !== "undefined" && MNUtil.log) {
+              MNUtil.log(`❌ [批量翻译] 卡片翻译失败: ${error.message}`);
+            }
+          }
+        }
+        
+        // 显示完成信息
+        const message = failCount > 0 ? 
+          `✅ 翻译完成：成功 ${successCount} 个，失败 ${failCount} 个` :
+          `✅ 翻译完成：成功翻译 ${successCount} 个卡片`;
+          
+        MNUtil.showHUD(message);
+      });
+      
+    } catch (error) {
+      MNUtil.showHUD("批量翻译失败: " + error.message);
+      if (typeof toolbarUtils !== 'undefined') {
+        toolbarUtils.addErrorLog(error, "translateAllDescendants");
+      }
+    }
   });
 
 }

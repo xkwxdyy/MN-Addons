@@ -1454,6 +1454,29 @@ function extendToolbarConfigInit() {
   }
   
   /**
+   * 翻译配置
+   * 包含系统提示词和其他可配置参数
+   */
+  toolbarUtils.translationConfig = {
+    // 基础翻译提示词
+    basicPrompt: "Translate the following text to {targetLang}. Only provide the translation without any explanation or additional text.",
+    
+    // 学术翻译提示词（用于卡片内容翻译）
+    academicPrompt: "You are a professional academic translator. Translate the following academic text to {targetLang}. Maintain academic terminology and style. Only provide the translation without any explanation.",
+    
+    // 获取翻译提示词的方法
+    getPrompt: function(type = 'basic', targetLang = '中文') {
+      const prompts = {
+        'basic': this.basicPrompt,
+        'academic': this.academicPrompt
+      };
+      
+      const prompt = prompts[type] || prompts['basic'];
+      return prompt.replace('{targetLang}', targetLang);
+    }
+  };
+  
+  /**
    * 内置翻译 API（不依赖 MN Utils 配置）
    * @param {string} text - 要翻译的文本
    * @param {string} targetLang - 目标语言
@@ -1495,13 +1518,8 @@ function extendToolbarConfigInit() {
         MNUtil.log(`🔧 [翻译] 实际使用模型: ${actualModel}`);
       }
       
-      // 构建翻译提示词
-      let systemPrompt = `You are a professional translator. Translate the following text into ${targetLang}. Only provide the translation, no explanations.`;
-      
-      // 如果是翻译成中文，使用更具体的提示
-      if (targetLang === "中文") {
-        systemPrompt = "For the given text from user, translate it into chinese.";
-      }
+      // 使用可配置的翻译提示词
+      const systemPrompt = toolbarUtils.translationConfig.getPrompt('basic', targetLang);
       
       // 构建请求体
       const body = {
@@ -1569,6 +1587,51 @@ function extendToolbarConfigInit() {
       }
       toolbarUtils.addErrorLog(error, "aiTranslateBuiltin");
       return null;
+    }
+  }
+  
+  /**
+   * 批量翻译卡片内容
+   * @param {string} text - 要翻译的文本
+   * @param {string} type - 翻译类型（'basic' 或 'academic'）
+   * @param {string} targetLang - 目标语言
+   * @param {string} model - AI 模型
+   * @returns {Promise<string|null>} 翻译后的文本
+   */
+  toolbarUtils.translateNoteContent = async function(text, type = 'academic', targetLang = "中文", model = null) {
+    try {
+      if (!text || !text.trim()) {
+        return text;
+      }
+      
+      // 使用配置的默认模型或传入的模型
+      const actualModel = model || toolbarConfig.translateModel || toolbarConfig.defaultTranslateModel || "gpt-4o-mini";
+      
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`🔧 [批量翻译] 开始翻译，类型: ${type}, 目标语言: ${targetLang}, 模型: ${actualModel}`);
+      }
+      
+      // 保存原始提示词获取函数
+      const originalGetPrompt = toolbarUtils.translationConfig.getPrompt;
+      
+      // 临时替换为指定类型的提示词
+      toolbarUtils.translationConfig.getPrompt = function(promptType, lang) {
+        return originalGetPrompt.call(this, type, lang);
+      };
+      
+      try {
+        // 调用内置翻译 API
+        const result = await toolbarUtils.aiTranslateBuiltin(text, targetLang, actualModel);
+        return result;
+      } finally {
+        // 恢复原始提示词获取函数
+        toolbarUtils.translationConfig.getPrompt = originalGetPrompt;
+      }
+    } catch (error) {
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`❌ [批量翻译] 翻译失败: ${error.message}`);
+      }
+      throw error;
     }
   }
 

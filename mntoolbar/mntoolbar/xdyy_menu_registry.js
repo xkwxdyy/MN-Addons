@@ -537,26 +537,42 @@ function registerAllMenuTemplates() {
           action: "upwardMergeWithStyledComments",
           menuTitle: "将子卡片作为证明要点合并"
         },
+        "🔍 OCR",
         {
           action: "ocrAsProofTitle",
-          menuTitle: "🔍 OCR 识别设置为标题（可选源）"
+          menuTitle: "    OCR >> 设置为标题"
         },
         {
           action: "ocrAsProofTitleWithTranslation",
-          menuTitle: "🌐 OCR 识别并翻译为标题"
+          menuTitle: "    OCR >> 翻译 >> 设置为标题"
         },
         {
           action: "ocrAllUntitledDescendants",
-          menuTitle: "🔍 批量 OCR 无标题子孙卡片"
-        },
-        "⚙️ 设置",
-        {
-          action: "switchOCRSource",
-          menuTitle: "    切换 OCR 源"
+          menuTitle: "    【批量】OCR >> 设置为标题"
         },
         {
-          action: "switchTranslateModel",
-          menuTitle: "    切换翻译模型"
+          action: "ocrAllUntitledDescendantsWithTranslation",
+          menuTitle: "    【批量】OCR >> 翻译 >> 设置为标题"
+        },
+        "🌐 翻译",
+        {
+          action: "translateAllDescendants",
+          menuTitle: "    【批量】翻译标题"
+        },
+        {
+          "action": "menu",
+          "menuTitle": "⚙️ 设置",
+          "menuWidth": 200,
+          "menuItems": [
+            {
+              action: "switchOCRSource",
+              menuTitle: "切换 OCR 源"
+            },
+            {
+              action: "switchTranslateModel",
+              menuTitle: "切换翻译模型"
+            }
+          ]
         }
       ]
     }

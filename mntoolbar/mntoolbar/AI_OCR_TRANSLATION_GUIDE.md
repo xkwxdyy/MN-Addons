@@ -7,6 +7,8 @@
 ## 新增功能
 
 1. **OCR 识别并翻译为标题** - 识别图片中的文字并自动翻译成中文
+2. **批量 OCR 并翻译无标题子孙卡片** - 批量对无标题的子孙卡片进行 OCR 识别并翻译
+3. **批量翻译子孙卡片** - 批量翻译选中卡片及其所有子孙卡片的内容
 
 ## 使用前提
 
@@ -32,7 +34,31 @@
 7. 等待翻译完成
 8. 翻译结果将自动设置为卡片标题
 
-### 3. 支持的 OCR 源
+### 3. 批量 OCR 并翻译无标题子孙卡片
+
+1. 选择一个父卡片（将处理它及其所有无标题的子孙卡片）
+2. 点击 "🌐 批量 OCR 并翻译无标题子孙卡片"
+3. 系统会显示找到的无标题卡片数量，确认操作
+4. 使用当前配置的 OCR 源和翻译模型自动处理
+5. 等待批量处理完成
+6. 系统会显示成功和失败的数量
+
+**注意**：此功能使用已配置的 OCR 源和翻译模型，如需更改请先使用菜单中的设置选项。
+
+### 4. 批量翻译子孙卡片
+
+1. 选择一个父卡片（将会翻译它及其所有子孙卡片）
+2. 点击 "🌐 批量翻译子孙卡片"
+3. 选择翻译方式：
+   - 仅翻译标题
+   - 仅翻译摘录
+   - 翻译标题和摘录
+   - 添加翻译到评论
+4. 选择翻译模型
+5. 等待批量翻译完成
+6. 系统会显示成功和失败的数量
+
+### 5. 支持的 OCR 源
 
 - Doc2X - 专业文档识别
 - SimpleTex - 数学公式
@@ -79,3 +105,18 @@
 - AI 调用函数位于：`xdyy_utils_extensions.js`
 - OCR 翻译动作位于：`xdyy_custom_actions_registry.js`
 - 菜单注册位于：`xdyy_menu_registry.js`
+- 翻译提示词配置：`toolbarUtils.translationConfig`
+
+## 自定义翻译提示词
+
+可以通过修改 `xdyy_utils_extensions.js` 中的 `toolbarUtils.translationConfig` 来自定义翻译提示词：
+
+```javascript
+toolbarUtils.translationConfig = {
+  // 基础翻译提示词
+  basicPrompt: "Translate the following text to {targetLang}. Only provide the translation without any explanation or additional text.",
+  
+  // 学术翻译提示词（用于批量翻译）
+  academicPrompt: "You are a professional academic translator. Translate the following academic text to {targetLang}. Maintain academic terminology and style. Only provide the translation without any explanation."
+}
+```

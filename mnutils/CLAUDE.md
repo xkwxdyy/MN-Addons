@@ -371,9 +371,6 @@ note.removeFromParent()
 note.createChildNote(config)
 
 // 5. 其他操作
-note.open()                     // 打开笔记
-note.copy()                     // 复制笔记
-note.delete(withDescendant)     // 删除笔记
 note.merge(anotherNote)         // 合并笔记
 ```
 

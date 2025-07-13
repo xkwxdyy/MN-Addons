@@ -2214,33 +2214,6 @@ class MNNote {
    * ========================================
    */
   
-  /**
-   * 📋 复制笔记
-   * 
-   * 【复制的内容】
-   * - 标题和摘录
-   * - 所有评论
-   * - 颜色和样式
-   * - 不包括：子笔记、链接
-   * 
-   * @returns {MNNote} 新创建的笔记副本
-   * 
-   * @example
-   * // 创建副本用于编辑
-   * let draft = note.copy()
-   * draft.noteTitle = "[草稿] " + draft.noteTitle
-   * 
-   * // 创建模板
-   * let template = note.copy()
-   * template.comments.forEach((c, i) => {
-   *   if (c.type === "TextNote") {
-   *     template.removeCommentByIndex(i)
-   *   }
-   * })
-   */
-  copy() {
-    // 实现...
-  }
   
   /**
    * 🗑️ 删除笔记

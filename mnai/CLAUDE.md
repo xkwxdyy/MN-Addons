@@ -603,7 +603,6 @@ try {
 
 - 使用 `MNUtil.showHUD()` 显示调试信息
 - 使用 `chatAIUtils.addErrorLog()` 记录错误
-- 使用 `MNUtil.copy()` 复制对象进行调试
 
 ## 学习要点
 

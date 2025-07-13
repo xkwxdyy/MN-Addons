@@ -260,19 +260,19 @@ function registerAllCustomActions() {
         newStatus = "已完成";
         break;
       case "已完成":
-        newStatus = "已归档";
-        break;
-      case "已归档":
-        // 询问是否移动到归档区
+        // 询问是否归档任务
         try {
-          const buttonIndex = await MNUtil.confirm("任务归档", "是否将已归档的任务移动到归档区？");
+          const buttonIndex = await MNUtil.confirm("任务归档", "是否将任务归档并移动到归档区？");
           
           if (buttonIndex !== 1) {
             // 用户点击取消（buttonIndex === 0）
             return;
           }
           
-          // 用户点击确认（buttonIndex === 1），执行归档
+          // 用户点击确认（buttonIndex === 1），先更新状态为已归档
+          newStatus = "已归档";
+          
+          // 执行归档移动
           const completedBoardId = taskConfig.getBoardNoteId('completed');
           
           if (!completedBoardId) {
@@ -287,18 +287,36 @@ function registerAllCustomActions() {
             return;
           }
           
-          // 移动到归档区
+          // 更新状态并移动到归档区
           MNUtil.undoGrouping(() => {
+            // 先更新状态
+            MNTaskManager.updateTaskStatus(focusNote, newStatus);
+            
+            // 刷新当前卡片
+            focusNote.refresh();
+            
+            // 刷新父卡片（如果有）
+            if (focusNote.parentNote && MNTaskManager.isTaskCard(focusNote.parentNote)) {
+              focusNote.parentNote.refresh();
+            }
+            
+            // 移动到归档区
             const success = MNTaskManager.moveTo(focusNote, completedBoardNote);
             if (success) {
-              MNUtil.showHUD("✅ 任务已移动到归档区");
+              MNUtil.showHUD("✅ 任务已归档并移动到归档区");
             } else {
-              MNUtil.showHUD("❌ 移动失败");
+              MNUtil.showHUD("❌ 移动失败，但状态已更新为已归档");
             }
           });
+          return; // 直接返回，不执行后面的通用更新逻辑
         } catch (error) {
-          MNUtil.showHUD(`移动失败: ${error.message || error}`);
+          MNUtil.showHUD(`归档失败: ${error.message || error}`);
+          return;
         }
+        break;
+      case "已归档":
+        // 已归档的任务不再改变状态
+        MNUtil.showHUD("任务已归档");
         return;
       default:
         MNUtil.showHUD("未知的任务状态");

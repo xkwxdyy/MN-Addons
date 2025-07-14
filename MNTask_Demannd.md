@@ -4,6 +4,22 @@
 3.  /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/log.md 是用于测试的 log 文件，一般说“log 文件已更新”就是这个。 MNUtil.log() 添加的内容我会复制到这里。太多了话请分段细读，这个很重要。如果区分 iPad 和 mac 的话，iPad 端的 log 信息在 iPad_MNUtils_LogViewer.md 里。
 4.  你更新的 log 写在 mntask_guide.md 里! 而不是 log.md 里。 
 ---
+ 然后现在还不需要通过插件来访问实际的数据,我需要你自己测试一些数据，因为卡片类型有四种，而且要考虑筛选之类的，所以数据要比较多。
+
+ 数据结构是这样的（具体的请看一下 MNTaskManager 里的函数来理解）：我们操作的都是卡片，卡片有标题和评论。
+ 具体的卡片的 API 需要看一下 [MNUtils 的API文件](mnutils/MNUtils_API_Guide.md). 但其实你基本上操作的都是 markdown 类型的文本评论，具体还要学习 [utils 里的 MNComment 类和 MNNote 类来看评论是如何操作的](mnutils/mnutils.js)，比如修改，删除，添加。
+
+ 每个任务卡片都有一个卡片的 ID，这个将作为 html 与卡片交互的唯一标识符。这个提示你一下。
+
+ 注意这些的目的是为了帮助你更好地开发面板，我们先把 html 写好。然后你基于上面的分析来更好地把 html 开发一下。然后数据就是你自己给一些目标的，项目的例子来测试 html 的功能。
+
+---
+我得说一下为什么要开发这个看板，以及这个看板后续的功能。
+这个看板并不是要把按钮的功能通过这个看板实现，而是开发按钮实现起来麻烦的功能，比如任务的字段添加，修改，移动，删除。
+
+或者是任务的筛选功能这些需要更好的 UI 交互的功能。ultrathink
+
+---
 看板功能开发有巨大的问题。我咨询了插件开发专家，他说
 1. 没处理跨域的问题，要避免跨域的东西
 2. 完全不需要 iframe，这东西一个纯 html 就能写完的

@@ -2,93 +2,394 @@
   "name": "中心主题",
   "children": [
     {
-      "name": "这个公式是信号处理领域中的一个表达式，它通常用于描述两个信号序列 $W_{nX}(s)$ 和 $W_{nY}(s)$ 之间的关系。这里的 $R_n^2(s)$ 通常被解释为“相关系数的平方”，用来衡量两个信号序列的相关性。下面是对这个公式的逐项解释：",
-      "raw": "这个公式是信号处理领域中的一个表达式，它通常用于描述两个信号序列 $W_{nX}(s)$ 和 $W_{nY}(s)$ 之间的关系。这里的 $R_n^2(s)$ 通常被解释为“相关系数的平方”，用来衡量两个信号序列的相关性。下面是对这个公式的逐项解释：",
+      "name": "干旱的定义",
       "children": [
         {
-          "name": "$S(s)$：这个符号通常表示某个信号的频谱函数，其中 $s$ 是复频率变量。",
+          "name": "Drought can be defined as a sustained lack of precipitation including rain and snow (meteorological), plant stress due to dry soils and intense evaporation (agricultural or ecological) and depleted river flows and reservoir levels (hydrological)2",
+          "raw": "Drought can be defined as a sustained lack of precipitation including rain and snow (meteorological), plant stress due to dry soils and intense evaporation (agricultural or ecological) and depleted river flows and reservoir levels (hydrological)2",
           "children": [],
-          "type": "list_item"
+          "type": "paragraph"
         },
         {
-          "name": "$W_{nX}(s)$ 和 $W_{nY}(s)$：这两个符号分别表示两个信号序列的频谱表示，其中 $n$ 可能表示时间索引或者某种迭代次数。",
+          "name": "干旱可以被定义为持续缺乏降水，包括雨水和雪水（气象学），由于土壤干燥和强烈蒸发而导致植物受到压力（农业或生态学）以及河流流量和水库水位下降（水文学）。",
+          "raw": "干旱可以被定义为持续缺乏降水，包括雨水和雪水（气象学），由于土壤干燥和强烈蒸发而导致植物受到压力（农业或生态学）以及河流流量和水库水位下降（水文学）。",
           "children": [],
-          "type": "list_item"
+          "type": "paragraph"
         },
         {
-          "name": "$s^{-1}$：这个表示对复频率变量 $s$ 的逆操作，即 $s$ 的倒数。",
-          "children": [],
-          "type": "list_item"
+          "name": "陆地上水分的最终来源",
+          "children": [
+            {
+              "name": "The ultimate source of moisture over land is through moisture transported by the winds from the oceans, though substantial amounts are further recycled through continual precipitation and re-evaporation from the ground.",
+              "raw": "The ultimate source of moisture over land is through moisture transported by the winds from the oceans, though substantial amounts are further recycled through continual precipitation and re-evaporation from the ground.",
+              "children": [],
+              "type": "paragraph"
+            },
+            {
+              "name": "陆地上的水分最终来源于海洋，通过风的传输进入陆地，尽管大量的水分还会通过持续的降水和地面的再蒸发进一步循环。",
+              "raw": "陆地上的水分最终来源于海洋，通过风的传输进入陆地，尽管大量的水分还会通过持续的降水和地面的再蒸发进一步循环。",
+              "children": [],
+              "type": "paragraph"
+            }
+          ],
+          "type": "heading"
         },
         {
-          "name": "$|S(s^{-1}W_{nXY}(s))|^2$：这个表达式表示 $S(s^{-1}W_{nXY}(s))$ 的模的平方，其中 $W_{nXY}(s)$ 可能表示 $W_{nX}(s)$ 和 $W_{nY}(s)$ 的某种组合或者相关运算。",
-          "children": [],
-          "type": "list_item"
+          "name": "全球变暖加剧干旱：温暖的大气更有效地吸收地表水分",
+          "children": [
+            {
+              "name": "As global temperatures rise in response to human-induced greenhouse gas emissions, drought is expected to intensify as a warmer, thirstier atmosphere more effectively saps moisture from the surface2,3.",
+              "raw": "As global temperatures rise in response to human-induced greenhouse gas emissions, drought is expected to intensify as a warmer, thirstier atmosphere more effectively saps moisture from the surface2,3.",
+              "children": [],
+              "type": "paragraph"
+            },
+            {
+              "name": "随着人为排放温室气体导致全球温度上升，由于更温暖、更渴望水分的大气更有效地从地表吸收水分，预计干旱将会加剧。",
+              "raw": "随着人为排放温室气体导致全球温度上升，由于更温暖、更渴望水分的大气更有效地从地表吸收水分，预计干旱将会加剧。",
+              "children": [],
+              "type": "paragraph"
+            },
+            {
+              "name": "陆地比海洋升温更快的影响",
+              "children": [
+                {
+                  "name": "as the land warms more rapidly than the ocean, due to lags in the climate system as well as feedbacks involving land, vegetation and the atmosphere, this limits the ocean’s capacity to supply sufficient moisture to maintain relative humidity2,3",
+                  "raw": "as the land warms more rapidly than the ocean, due to lags in the climate system as well as feedbacks involving land, vegetation and the atmosphere, this limits the ocean’s capacity to supply sufficient moisture to maintain relative humidity2,3",
+                  "children": [],
+                  "type": "paragraph"
+                },
+                {
+                  "name": "由于气候系统中的滞后效应以及涉及陆地、植被和大气的反馈作用，陆地比海洋升温更快，这限制了海洋供应足够水分以维持相对湿度的能力。",
+                  "raw": "由于气候系统中的滞后效应以及涉及陆地、植被和大气的反馈作用，陆地比海洋升温更快，这限制了海洋供应足够水分以维持相对湿度的能力。",
+                  "children": [],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "heading"
+            }
+          ],
+          "type": "heading"
+        },
+        {
+          "name": "风向模式的变化对湿润与干旱区域的影响",
+          "children": [
+            {
+              "name": "Changing wind patterns in response to natural weather fluctuations or longer-term climate change also strongly dictate which regions become wetter or drier as the supply of moisture shifts from one location to another.",
+              "raw": "Changing wind patterns in response to natural weather fluctuations or longer-term climate change also strongly dictate which regions become wetter or drier as the supply of moisture shifts from one location to another.",
+              "children": [],
+              "type": "paragraph"
+            },
+            {
+              "name": "由于自然天气波动或长期气候变化，风向模式的变化也强烈决定了哪些地区变得更湿润或更干燥，因为水分供应从一个地方转移到另一个地方。",
+              "raw": "由于自然天气波动或长期气候变化，风向模式的变化也强烈决定了哪些地区变得更湿润或更干燥，因为水分供应从一个地方转移到另一个地方。",
+              "children": [],
+              "type": "paragraph"
+            }
+          ],
+          "type": "heading"
+        },
+        {
+          "name": "风导致的干旱：全球多地区干旱的起因是水分供应不足",
+          "children": [
+            {
+              "name": "a depleted moisture supply, determined by the winds, dominates the origins of drought over multiple regions across the globe.",
+              "raw": "a depleted moisture supply, determined by the winds, dominates the origins of drought over multiple regions across the globe.",
+              "children": [],
+              "type": "paragraph"
+            },
+            {
+              "name": "风导致的水分供应不足决定了全球多个地区干旱的起因。",
+              "raw": "风导致的水分供应不足决定了全球多个地区干旱的起因。",
+              "children": [],
+              "type": "paragraph"
+            },
+            {
+              "name": "来自副热带北太平洋的水汽供给不足有利于北美西部和东亚地区的干旱条件",
+              "children": [
+                {
+                  "name": "deficits in moisture supplied from the subtropical North Pacific favour drought conditions across western North America and east Asia",
+                  "raw": "deficits in moisture supplied from the subtropical North Pacific favour drought conditions across western North America and east Asia",
+                  "children": [],
+                  "type": "paragraph"
+                },
+                {
+                  "name": "来自副热带北太平洋的水汽供给不足有利于北美西部和东亚地区的干旱条件。这意味着，当副热带北太平洋地区的水汽供应减少时，北美西部和东亚地区更易发生干旱。",
+                  "raw": "来自副热带北太平洋的水汽供给不足有利于北美西部和东亚地区的干旱条件。这意味着，当副热带北太平洋地区的水汽供应减少时，北美西部和东亚地区更易发生干旱。",
+                  "children": [],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "heading"
+            },
+            {
+              "name": "地中海水汽供应中断可能导致中纬度欧亚大陆广泛干旱",
+              "children": [
+                {
+                  "name": "an interruption in the supply of moisture from the Mediterranean can initiate drought across a large expanse of mid-latitude Eurasia.",
+                  "raw": "an interruption in the supply of moisture from the Mediterranean can initiate drought across a large expanse of mid-latitude Eurasia.",
+                  "children": [],
+                  "type": "paragraph"
+                },
+                {
+                  "name": "地中海水汽供应的中断可以在中纬度欧亚大陆的广阔地区引发干旱。",
+                  "raw": "地中海水汽供应的中断可以在中纬度欧亚大陆的广阔地区引发干旱。",
+                  "children": [],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "heading"
+            },
+            {
+              "name": "部分地区的干旱与水源供应减少有关",
+              "children": [
+                {
+                  "name": "Droughts in some regions are contingent upon a reduced supply of water from multiple source regions.",
+                  "raw": "Droughts in some regions are contingent upon a reduced supply of water from multiple source regions.",
+                  "children": [],
+                  "type": "paragraph"
+                },
+                {
+                  "name": "某些地区的干旱是由于来自多个水源地区的供水减少所致。",
+                  "raw": "某些地区的干旱是由于来自多个水源地区的供水减少所致。",
+                  "children": [],
+                  "type": "paragraph"
+                },
+                {
+                  "name": "南美洲依赖于来自北部和南部亚热带大西洋及南太平洋的水汽，但也强烈依赖亚马逊的陆地水源",
+                  "children": [
+                    {
+                      "name": "South America relies on moisture supplied from the northern and southern subtropical Atlantic and southern Pacific but is also strongly dependent on a terrestrial source from the Amazon.",
+                      "raw": "South America relies on moisture supplied from the northern and southern subtropical Atlantic and southern Pacific but is also strongly dependent on a terrestrial source from the Amazon.",
+                      "children": [],
+                      "type": "paragraph"
+                    },
+                    {
+                      "name": "南美洲依靠来自北部和南部亚热带大西洋以及南太平洋的水汽供应，但同时也极度依赖于亚马逊地区的陆地水源。",
+                      "raw": "南美洲依靠来自北部和南部亚热带大西洋以及南太平洋的水汽供应，但同时也极度依赖于亚马逊地区的陆地水源。",
+                      "children": [],
+                      "type": "paragraph"
+                    }
+                  ],
+                  "type": "heading"
+                }
+              ],
+              "type": "heading"
+            },
+            {
+              "name": "单一水源地区供水不足与干旱风险增加; 特定地区面临的显著担忧",
+              "children": [
+                {
+                  "name": "in regions dominated by a single water source, a deficient supply greatly increases the probability of experiencing a drought",
+                  "raw": "in regions dominated by a single water source, a deficient supply greatly increases the probability of experiencing a drought",
+                  "children": [],
+                  "type": "paragraph"
+                },
+                {
+                  "name": "在主要依赖单一水源的地区，供水不足会显著增加遭遇干旱的概率。",
+                  "raw": "在主要依赖单一水源的地区，供水不足会显著增加遭遇干旱的概率。",
+                  "children": [],
+                  "type": "paragraph"
+                },
+                {
+                  "name": "This poses a considerable concern for specific areas such as eastern Europe, southeast South America and eastern North America.",
+                  "raw": "This poses a considerable concern for specific areas such as eastern Europe, southeast South America and eastern North America.",
+                  "children": [],
+                  "type": "paragraph"
+                },
+                {
+                  "name": "这对特定地区，如东欧、南美东南部和北美东部，构成了相当大的担忧。",
+                  "raw": "这对特定地区，如东欧、南美东南部和北美东部，构成了相当大的担忧。",
+                  "children": [],
+                  "type": "paragraph"
+                },
+                {
+                  "name": "深入理解干旱的远程起源及敏感热点的识别对规划的重要性",
+                  "children": [
+                    {
+                      "name": "These advances in understanding the remote origins of drought and the identification of particularly sensitive hotspots are of importance to hydrological, humanitarian and environmental planning since predicting drought onset over extended periods, such as many weeks, remains a great challenge.",
+                      "raw": "These advances in understanding the remote origins of drought and the identification of particularly sensitive hotspots are of importance to hydrological, humanitarian and environmental planning since predicting drought onset over extended periods, such as many weeks, remains a great challenge.",
+                      "children": [],
+                      "type": "paragraph"
+                    },
+                    {
+                      "name": "这些在理解干旱的远程起源以及识别特别敏感的热点方面的进步，对于水文、人道主义和环境规划具有重要意义，因为预测多周甚至更长时间尺度上干旱的开始仍然是一个巨大的挑战。",
+                      "raw": "这些在理解干旱的远程起源以及识别特别敏感的热点方面的进步，对于水文、人道主义和环境规划具有重要意义，因为预测多周甚至更长时间尺度上干旱的开始仍然是一个巨大的挑战。",
+                      "children": [],
+                      "type": "paragraph"
+                    }
+                  ],
+                  "type": "heading"
+                },
+                {
+                  "name": "研究仅考虑累积降水赤字，聚焦于当今干旱变率",
+                  "children": [
+                    {
+                      "name": " The study considers only the accumulated precipitation deficit since the focus is on present-day drought variability, though it is recognized that warming and drying of the air intensifies atmospheric evaporative demand for surface water.",
+                      "raw": " The study considers only the accumulated precipitation deficit since the focus is on present-day drought variability, though it is recognized that warming and drying of the air intensifies atmospheric evaporative demand for surface water.",
+                      "children": [],
+                      "type": "paragraph"
+                    },
+                    {
+                      "name": "该研究只考虑了累积降水赤字，因为重点是当前的干旱变率，尽管人们认识到，空气的变暖和干燥加剧了大气对地表水的蒸发需求。",
+                      "raw": "该研究只考虑了累积降水赤字，因为重点是当前的干旱变率，尽管人们认识到，空气的变暖和干燥加剧了大气对地表水的蒸发需求。",
+                      "children": [],
+                      "type": "paragraph"
+                    },
+                    {
+                      "name": "合并卫星降水数据集中的不确定性以及全球水循环和构建湿度路径的计算技术的再分析",
+                      "children": [
+                        {
+                          "name": "There are also uncertainties to consider in the merged satellite-based precipitation datasets as well as the reanalysis of the global water cycle and computational techniques used to construct moisture pathways. ",
+                          "raw": "There are also uncertainties to consider in the merged satellite-based precipitation datasets as well as the reanalysis of the global water cycle and computational techniques used to construct moisture pathways. ",
+                          "children": [],
+                          "type": "paragraph"
+                        },
+                        {
+                          "name": "合并卫星降水数据集以及全球水循环和湿度路径构建计算技术的再分析中也存在不确定性需要考虑。",
+                          "raw": "合并卫星降水数据集以及全球水循环和湿度路径构建计算技术的再分析中也存在不确定性需要考虑。",
+                          "children": [],
+                          "type": "paragraph"
+                        }
+                      ],
+                      "type": "heading"
+                    },
+                    {
+                      "name": "再分析估算的可靠性依赖于观测数据的稳定性和准确性",
+                      "children": [
+                        {
+                          "name": "These reanalysis estimates depend on the stability and accuracy of observations assimilated into a global weather forecast model, which itself may introduce biases due to deficient physical processes, particularly given that the system used is not the most current version.",
+                          "raw": "These reanalysis estimates depend on the stability and accuracy of observations assimilated into a global weather forecast model, which itself may introduce biases due to deficient physical processes, particularly given that the system used is not the most current version.",
+                          "children": [],
+                          "type": "paragraph"
+                        },
+                        {
+                          "name": "这些再分析估计依赖于融入全球天气预报模型的观测数据的稳定性和准确性，这本身可能由于缺乏物理过程而引入偏差，尤其是考虑到使用的系统并非最新版本。",
+                          "raw": "这些再分析估计依赖于融入全球天气预报模型的观测数据的稳定性和准确性，这本身可能由于缺乏物理过程而引入偏差，尤其是考虑到使用的系统并非最新版本。",
+                          "children": [],
+                          "type": "paragraph"
+                        }
+                      ],
+                      "type": "heading"
+                    }
+                  ],
+                  "type": "heading"
+                },
+                {
+                  "name": "全球变暖导致大气中水汽增加加剧了全球水循环",
+                  "children": [
+                    {
+                      "name": "Increase in atmospheric moisture as the planet warms4 is intensifying the global water cycle, including the transport of moisture2. ",
+                      "raw": "Increase in atmospheric moisture as the planet warms4 is intensifying the global water cycle, including the transport of moisture2. ",
+                      "children": [],
+                      "type": "paragraph"
+                    },
+                    {
+                      "name": "随着地球变暖，大气中的水汽增加正在加剧全球水循环，包括水汽的输送。",
+                      "raw": "随着地球变暖，大气中的水汽增加正在加剧全球水循环，包括水汽的输送。",
+                      "children": [],
+                      "type": "paragraph"
+                    },
+                    {
+                      "name": "干旱地区降水循环和土壤水分的减少加剧了干旱的可能性和强度",
+                      "children": [
+                        {
+                          "name": "However, declining moisture supply, precipitation recycling and soil moisture in arid zones5 bucks this trend, intensifying dry periods or seasons6 and makes the likelihood and intensity of drought greater in some regions, such as parts of South America, southern Africa, and Australia. ",
+                          "raw": "However, declining moisture supply, precipitation recycling and soil moisture in arid zones5 bucks this trend, intensifying dry periods or seasons6 and makes the likelihood and intensity of drought greater in some regions, such as parts of South America, southern Africa, and Australia. ",
+                          "children": [],
+                          "type": "paragraph"
+                        },
+                        {
+                          "name": "然而，干旱区域的降水供给、降水循环和土壤水分的减少5逆转了这一趋势，加剧了干旱期或季节的严重性6，使得一些地区，如南美部分地区、南部非洲和澳大利亚，干旱的可能性和强度增加。",
+                          "raw": "然而，干旱区域的降水供给、降水循环和土壤水分的减少5逆转了这一趋势，加剧了干旱期或季节的严重性6，使得一些地区，如南美部分地区、南部非洲和澳大利亚，干旱的可能性和强度增加。",
+                          "children": [],
+                          "type": "paragraph"
+                        }
+                      ],
+                      "type": "heading"
+                    }
+                  ],
+                  "type": "heading"
+                },
+                {
+                  "name": "气候模型在未来预测中低估或未能捕捉到干旱地区和季节的干旱信号",
+                  "children": [
+                    {
+                      "name": "climate models used to make future projections are underestimating or even failing to capture the drying signal over already dry regions and seasons7.",
+                      "raw": "climate models used to make future projections are underestimating or even failing to capture the drying signal over already dry regions and seasons7.",
+                      "children": [],
+                      "type": "paragraph"
+                    },
+                    {
+                      "name": "用于进行未来预测的气候模型在捕捉到已经干旱的地区和季节的干旱信号方面表现出了低估或甚至无法捕捉的情况。",
+                      "raw": "用于进行未来预测的气候模型在捕捉到已经干旱的地区和季节的干旱信号方面表现出了低估或甚至无法捕捉的情况。",
+                      "children": [],
+                      "type": "paragraph"
+                    },
+                    {
+                      "name": "气候模型在细尺度过程表征中的误差",
+                      "children": [
+                        {
+                          "name": "While these climate models can adequately represent the wind patterns that channel atmospheric water into and out of regions, the more detailed processes operating at a finer scales are prone to error, including precipitation intermittency and cloud development, spatial patterns in soil moisture and water use by plants2,3.",
+                          "raw": "While these climate models can adequately represent the wind patterns that channel atmospheric water into and out of regions, the more detailed processes operating at a finer scales are prone to error, including precipitation intermittency and cloud development, spatial patterns in soil moisture and water use by plants2,3.",
+                          "children": [],
+                          "type": "paragraph"
+                        },
+                        {
+                          "name": "虽然这些气候模型能够充分表示引导大气水分进出区域的风向模式，但在更细微尺度上运行的详细过程容易出错，包括降水间歇性和云层发展、土壤湿度和植物用水的空间模式等方面。",
+                          "raw": "虽然这些气候模型能够充分表示引导大气水分进出区域的风向模式，但在更细微尺度上运行的详细过程容易出错，包括降水间歇性和云层发展、土壤湿度和植物用水的空间模式等方面。",
+                          "children": [],
+                          "type": "paragraph"
+                        }
+                      ],
+                      "type": "heading"
+                    },
+                    {
+                      "name": "局部过程对干旱开始的可预测性至关重要",
+                      "children": [
+                        {
+                          "name": "Local processes are therefore also critical to the predictability of drought onset, yet there remains considerable uncertainty in how the atmosphere, land and vegetation interact and determine propagation and amplification of drought development2,3,8",
+                          "raw": "Local processes are therefore also critical to the predictability of drought onset, yet there remains considerable uncertainty in how the atmosphere, land and vegetation interact and determine propagation and amplification of drought development2,3,8",
+                          "children": [],
+                          "type": "paragraph"
+                        },
+                        {
+                          "name": "因此，局部过程对干旱开始的可预测性也至关重要，然而，大气、陆地和植被如何相互作用以及如何决定干旱发展的传播和放大，仍然存在着相当大的不确定性。",
+                          "raw": "因此，局部过程对干旱开始的可预测性也至关重要，然而，大气、陆地和植被如何相互作用以及如何决定干旱发展的传播和放大，仍然存在着相当大的不确定性。",
+                          "children": [],
+                          "type": "paragraph"
+                        }
+                      ],
+                      "type": "heading"
+                    },
+                    {
+                      "name": "预测全球变暖将加剧和扩大陆地淡水亏缺的海洋起源",
+                      "children": [
+                        {
+                          "name": "An identified ocean origin of terrestrial fresh water deficit is projected to intensify and become more widespread as the planet warms9. ",
+                          "raw": "An identified ocean origin of terrestrial fresh water deficit is projected to intensify and become more widespread as the planet warms9. ",
+                          "children": [],
+                          "type": "paragraph"
+                        },
+                        {
+                          "name": "据预测，随着地球变暖，源自海洋的陆地淡水亏缺现象将变得更加严重并广泛传播。",
+                          "raw": "据预测，随着地球变暖，源自海洋的陆地淡水亏缺现象将变得更加严重并广泛传播。",
+                          "children": [],
+                          "type": "paragraph"
+                        }
+                      ],
+                      "type": "heading"
+                    }
+                  ],
+                  "type": "heading"
+                }
+              ],
+              "type": "heading"
+            }
+          ],
+          "type": "heading"
         }
       ],
-      "type": "paragraph",
-      "hasList": true,
-      "listText": "1. $S(s)$：这个符号通常表示某个信号的频谱函数，其中 $s$ 是复频率变量。\n\n2. $W_{nX}(s)$ 和 $W_{nY}(s)$：这两个符号分别表示两个信号序列的频谱表示，其中 $n$ 可能表示时间索引或者某种迭代次数。\n\n3. $s^{-1}$：这个表示对复频率变量 $s$ 的逆操作，即 $s$ 的倒数。\n\n4. $|S(s^{-1}W_{nXY}(s))|^2$：这个表达式表示 $S(s^{-1}W_{nXY}(s))$ 的模的平方，其中 $W_{nXY}(s)$ 可能表示 $W_{nX}(s)$ 和 $W_{nY}(s)$ 的某种组合或者相关运算。",
-      "listStart": 1,
-      "ordered": true
-    },
-    {
-      "name": "具体来说：",
-      "raw": "具体来说：",
-      "children": [
-        {
-          "name": "$s^{-1}W_{nXY}(s)$ 可能是两个信号序列 $W_{nX}(s)$ 和 $W_{nY}(s)$ 的某种加权组合，其中 $s^{-1}$ 作用在它们上面。",
-          "children": [],
-          "type": "list_item"
-        },
-        {
-          "name": "$S(s^{-1}W_{nXY}(s))$ 表示这个组合信号经过某种变换（如傅里叶变换）后的频谱函数。",
-          "children": [],
-          "type": "list_item"
-        },
-        {
-          "name": "$|S(s^{-1}W_{nXY}(s))|^2$ 表示这个频谱函数的能量的度量。",
-          "children": [],
-          "type": "list_item"
-        },
-        {
-          "name": "$S(s^{-1}|W_{nX}(s)|^2)$ 和 $S(s^{-1}|W_{nY}(s)|^2)$：这两个表达式分别表示 $|W_{nX}(s)|^2$ 和 $|W_{nY}(s)|^2$ 的频谱函数，其中 $|W_{nX}(s)|^2$ 和 $|W_{nY}(s)|^2$ 分别表示 $W_{nX}(s)$ 和 $W_{nY}(s)$ 的能量的度量。",
-          "children": [],
-          "type": "list_item"
-        }
-      ],
-      "type": "paragraph",
-      "hasList": true,
-      "listText": "5. $S(s^{-1}|W_{nX}(s)|^2)$ 和 $S(s^{-1}|W_{nY}(s)|^2)$：这两个表达式分别表示 $|W_{nX}(s)|^2$ 和 $|W_{nY}(s)|^2$ 的频谱函数，其中 $|W_{nX}(s)|^2$ 和 $|W_{nY}(s)|^2$ 分别表示 $W_{nX}(s)$ 和 $W_{nY}(s)$ 的能量的度量。",
-      "listStart": 5,
-      "ordered": true
-    },
-    {
-      "name": "整个公式 $R_n^2(s)$ 的意义是：",
-      "raw": "整个公式 $R_n^2(s)$ 的意义是：",
-      "children": [
-        {
-          "name": "分子 $|S(s^{-1}W_{nXY}(s))|^2$ 表示两个信号组合后的能量。",
-          "children": [],
-          "type": "list_item"
-        },
-        {
-          "name": "分母 $S(s^{-1}|W_{nX}(s)|^2) \\cdot S(s^{-1}|W_{nY}(s)|^2)$ 表示两个信号各自能量的乘积。",
-          "children": [],
-          "type": "list_item"
-        }
-      ],
-      "type": "paragraph",
-      "hasList": true,
-      "listText": "- 分子 $|S(s^{-1}W_{nXY}(s))|^2$ 表示两个信号组合后的能量。\n\n- 分母 $S(s^{-1}|W_{nX}(s)|^2) \\cdot S(s^{-1}|W_{nY}(s)|^2)$ 表示两个信号各自能量的乘积。",
-      "listStart": "",
-      "ordered": false
-    },
-    {
-      "name": "因此，$R_n^2(s)$ 衡量了两个信号序列的相关性，其值在 0 到 1 之间。当 $R_n^2(s)$ 接近 1 时，表示两个信号序列高度相关；当 $R_n^2(s)$ 接近 0 时，表示两个信号序列几乎不相关。",
-      "raw": "因此，$R_n^2(s)$ 衡量了两个信号序列的相关性，其值在 0 到 1 之间。当 $R_n^2(s)$ 接近 1 时，表示两个信号序列高度相关；当 $R_n^2(s)$ 接近 0 时，表示两个信号序列几乎不相关。",
-      "children": [],
-      "type": "paragraph"
+      "type": "heading"
     }
   ]
 }

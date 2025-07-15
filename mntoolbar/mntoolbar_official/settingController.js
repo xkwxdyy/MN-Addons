@@ -49,16 +49,20 @@ try {
     self.moveButton.height = 17
     // self.moveButton.showsTouchWhenHighlighted = true
     self.settingViewLayout()
+    
+    MNButton.addPanGesture(self.moveButton, self, "onMoveGesture:")
+    MNButton.addPanGesture(self.resizeButton, self, "onResizeGesture:")
+    MNButton.addPanGesture(self.closeButton, self, "onResizeGesture1:")
 
-    self.moveGesture = new UIPanGestureRecognizer(self,"onMoveGesture:")
-    self.moveButton.addGestureRecognizer(self.moveGesture)
-    self.moveGesture.view.hidden = false
-    self.moveGesture.addTargetAction(self,"onMoveGesture:")
+    // self.moveGesture = new UIPanGestureRecognizer(self,"onMoveGesture:")
+    // self.moveButton.addGestureRecognizer(self.moveGesture)
+    // self.moveGesture.view.hidden = false
+    // self.moveGesture.addTargetAction(self,"onMoveGesture:")
 
-    self.resizeGesture = new UIPanGestureRecognizer(self,"onResizeGesture:")
-    self.resizeButton.addGestureRecognizer(self.resizeGesture)
-    self.resizeGesture.view.hidden = false
-    self.resizeGesture.addTargetAction(self,"onResizeGesture:")
+    // self.resizeGesture = new UIPanGestureRecognizer(self,"onResizeGesture:")
+    // self.resizeButton.addGestureRecognizer(self.resizeGesture)
+    // self.resizeGesture.view.hidden = false
+    // self.resizeGesture.addTargetAction(self,"onResizeGesture:")
     // self.settingController.view.hidden = false
     // 初始化只显示buttons标签页,不考虑dynamic
     self.selectedItem = toolbarConfig.action[0]
@@ -190,18 +194,28 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     }
   },
   resetButtonTapped: async function (button) {
-    var commandTable = [
-      {title:'🔄   Reset all button configs',object:self,selector:'resetConfig:',param:"config"},
-      {title:'🔄   Reset fixed button order',object:self,selector:'resetConfig:',param:"order"},
-      {title:'🔄   Reset dynamic button order',object:self,selector:'resetConfig:',param:"dynamicOrder"},
-      {title:'🔄   Reset all button images',object:self,selector:'resetConfig:',param:"image"},
-    ]
-    self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,250,0)
+    let isEditingDynamic = self.dynamicButton.selected
+    let menu = new Menu(button,self)
+    menu.width = 250
+    menu.rowHeight = 35
+    menu.preferredPosition = 0
+    let selector = "resetConfig:"
+    if (isEditingDynamic) {
+      menu.addMenuItem('🔄   Reset all button configs', selector, "config")
+      menu.addMenuItem('🔄   Reset button order', selector, "dynamicOrder")
+      menu.addMenuItem('🔄   Reset all button images', selector, "image")
+      menu.show()
+    }else{
+      menu.addMenuItem('🔄   Reset all button configs', selector, "config")
+      menu.addMenuItem('🔄   Reset button order', selector, "order")
+      menu.addMenuItem('🔄   Reset all button images', selector, "image")
+      menu.show()
+    }
   },
   resetConfig: async function (param) {
   try {
     let self = getSettingController()
-    self.checkPopoverController()
+    Menu.dismissCurrentMenu()
     let isEditingDynamic = self.dynamicButton.selected
     switch (param) {
       case "config":
@@ -219,15 +233,15 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
         toolbarConfig.reset("order")
         if (!isEditingDynamic) {
           self.setButtonText()
+          MNUtil.showHUD("Reset fixed order")
         }
-        MNUtil.showHUD("Reset fixed order")
         break;
       case "dynamicOrder":
         toolbarConfig.reset("dynamicOrder")
         if (isEditingDynamic) {
           self.setButtonText()
+          MNUtil.showHUD("Reset dynamic order")
         }
-        MNUtil.showHUD("Reset dynamic order")
         break;
       case "image":
         toolbarConfig.imageScale = {}
@@ -243,7 +257,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
         break;
     }
   } catch (error) {
-    MNUtil.showHUD("Error in resetConfig: "+error)
+    toolbarUtils.addErrorLog(error, "resetConfig")
   }
   },
   closeButtonTapped: async function() {
@@ -343,26 +357,18 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     toolbarConfig.save("MNToolbar_popupConfig")
   },
   onMoveGesture:function (gesture) {
-    let locationToMN = gesture.locationInView(toolbarUtils.studyController().view)
-    if (!self.locationToButton || !self.miniMode && (Date.now() - self.moveDate) > 100) {
-      let translation = gesture.translationInView(toolbarUtils.studyController().view)
-      let locationToBrowser = gesture.locationInView(self.view)
-      let locationToButton = gesture.locationInView(gesture.view)
-      let newY = locationToButton.y-translation.y 
-      let newX = locationToButton.x-translation.x
-      if (gesture.state === 1) {
-        self.locationToBrowser = {x:locationToBrowser.x-translation.x,y:locationToBrowser.y-translation.y}
-        self.locationToButton = {x:newX,y:newY}
-      }
+    let self = getSettingController()
+    let location = toolbarUtils.getNewLoc(gesture)
+    let frame = self.view.frame
+    self.view.frame = MNUtil.genFrame(location.x,location.y,frame.width,frame.height)
+    self.currentFrame  = self.view.frame
+    self.custom = false;
+    if (gesture.state === 3) {
+      MNUtil.studyView.bringSubviewToFront(self.view)
     }
-    self.moveDate = Date.now()
-    // let location = {x:locationToMN.x - self.locationToBrowser.x,y:locationToMN.y -self.locationToBrowser.y}
-    let location = {x:locationToMN.x - self.locationToButton.x-gesture.view.frame.x,y:locationToMN.y -self.locationToButton.y-gesture.view.frame.y}
-
     let studyFrame = MNUtil.studyView.bounds
     let y = toolbarUtils.constrain(location.y, 0, studyFrame.height-15)
     let x = toolbarUtils.constrain(location.x, 0, studyFrame.width-15)
-    
     if (self.custom) {
       // Application.sharedInstance().showHUD(self.custom, self.view.window, 2);
       self.customMode = "None"
@@ -376,6 +382,41 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       self.currentFrame  = self.view.frame
     }
     self.custom = false;
+
+
+    // let locationToMN = gesture.locationInView(toolbarUtils.studyController().view)
+    // if (!self.locationToButton || !self.miniMode && (Date.now() - self.moveDate) > 100) {
+    //   let translation = gesture.translationInView(toolbarUtils.studyController().view)
+    //   let locationToBrowser = gesture.locationInView(self.view)
+    //   let locationToButton = gesture.locationInView(gesture.view)
+    //   let newY = locationToButton.y-translation.y 
+    //   let newX = locationToButton.x-translation.x
+    //   if (gesture.state === 1) {
+    //     self.locationToBrowser = {x:locationToBrowser.x-translation.x,y:locationToBrowser.y-translation.y}
+    //     self.locationToButton = {x:newX,y:newY}
+    //   }
+    // }
+    // self.moveDate = Date.now()
+    // // let location = {x:locationToMN.x - self.locationToBrowser.x,y:locationToMN.y -self.locationToBrowser.y}
+    // let location = {x:locationToMN.x - self.locationToButton.x-gesture.view.frame.x,y:locationToMN.y -self.locationToButton.y-gesture.view.frame.y}
+
+    // let studyFrame = MNUtil.studyView.bounds
+    // let y = toolbarUtils.constrain(location.y, 0, studyFrame.height-15)
+    // let x = toolbarUtils.constrain(location.x, 0, studyFrame.width-15)
+    
+    // if (self.custom) {
+    //   // Application.sharedInstance().showHUD(self.custom, self.view.window, 2);
+    //   self.customMode = "None"
+    //   MNUtil.animate(()=>{
+    //     Frame.set(self.view,x,y,self.lastFrame.width,self.lastFrame.height)
+    //     self.currentFrame  = self.view.frame
+    //     self.settingViewLayout()
+    //   },0.1)
+    // }else{
+    //   Frame.set(self.view,x,y)
+    //   self.currentFrame  = self.view.frame
+    // }
+    // self.custom = false;
   },
   onResizeGesture:function (gesture) {
     self.custom = false;
@@ -384,6 +425,16 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     let locationToBrowser = gesture.locationInView(self.view)
     let width = toolbarUtils.constrain(locationToBrowser.x+baseframe.width*0.3, 355, MNUtil.studyView.frame.width)
     let height = toolbarUtils.constrain(locationToBrowser.y+baseframe.height*0.3, 475, MNUtil.studyView.frame.height)
+    Frame.setSize(self.view,width,height)
+    self.currentFrame  = self.view.frame
+  },
+  onResizeGesture1:function (gesture) {
+    self.custom = false;
+    self.customMode = "none"
+    let baseframe = gesture.view.frame
+    let locationToBrowser = gesture.locationInView(self.view)
+    let width = toolbarUtils.constrain(locationToBrowser.x+baseframe.width*0.8, 355, MNUtil.studyView.frame.width)
+    let height = toolbarUtils.constrain(locationToBrowser.y+baseframe.height*0.8, 475, MNUtil.studyView.frame.height)
     Frame.setSize(self.view,width,height)
     self.currentFrame  = self.view.frame
   },
@@ -551,6 +602,13 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     let actions = toolbarConfig.actions
     let input = await self.getWebviewContent()
     if (selected === "execute" || MNUtil.isValidJSON(input)) {
+      if (selected.includes("custom")) {
+        let action = JSON.parse(input)
+        if (!("action" in action)) {
+          MNUtil.confirm("MNToolbar", "❌ Action is not found!")
+          return
+        }
+      }
       if (!actions[selected]) {
         actions[selected] = toolbarConfig.getAction(selected)
       }
@@ -561,11 +619,8 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
         self.toolbarController.dynamicToolbar.actions = actions
       }
       toolbarConfig.save("MNToolbar_actionConfig")
-      if (!selected.includes("custom")) {
-        MNUtil.showHUD("Save Action: "+self.titleInput.text)
-      }else{
-        MNUtil.showHUD("Save Custom Action: "+self.titleInput.text)
-      }
+      let prefix = selected.includes("custom") ? "Custom " : ""
+      self.showHUD("Save "+prefix+"Action: "+self.titleInput.text)
       if (selected === "edit") {
         let config = JSON.parse(input)
         if ("showOnNoteEdit" in config) {
@@ -577,7 +632,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       //   self.runJavaScript(`document.getElementById('editor').innerHTML = document.body.innerText`)
       // }
     }else{
-      MNUtil.showHUD("Invalid JSON format!")
+      MNUtil.confirm("MNToolbar","Invalid JSON format!")
     }
     } catch (error) {
       toolbarUtils.addErrorLog(error, "configSaveTapped", info)
@@ -609,32 +664,35 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       return
     }
     if (selected.includes("custom")) {
-      let des = toolbarConfig.getDescriptionByName(selected)
+      let des = toolbarConfig.getDescriptionById(selected)
       // MNUtil.copyJSON(des)
       self.toolbarController.customActionByDes(button,des)
       return
     }
     if (selected.includes("color")) {
       let colorIndex = parseInt(selected.split("color")[1])
-      toolbarUtils.setColor(colorIndex)
+      let des = toolbarConfig.getDescriptionById(selected)
+      des.action = "setColor"
+      des.color = colorIndex
+      toolbarUtils.setColor(des)
       return
     }
     if (selected === "ocr") {
-      let des = toolbarConfig.getDescriptionByName("ocr")
+      let des = toolbarConfig.getDescriptionById("ocr")
       des.action = "ocr"
       self.toolbarController.customActionByDes(button,des)
       // toolbarUtils.ocr()
       return
     }
     if (selected === "timer") {
-      let des = toolbarConfig.getDescriptionByName("timer")
+      let des = toolbarConfig.getDescriptionById("timer")
       des.action = "setTimer"
       self.toolbarController.customActionByDes(button,des)
       // toolbarUtils.ocr()
       return
     }
     if (selected === "sidebar") {
-      let des = toolbarConfig.getDescriptionByName("sidebar")
+      let des = toolbarConfig.getDescriptionById("sidebar")
       toolbarUtils.toggleSidebar(des)
       return
     }
@@ -658,15 +716,28 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   toggleSelected:function (button) {
     if (self.selectedItem === button.id) {
       let selected = self.selectedItem
-      var commandTable = [
-        {title:"➕ new icon from 🖼️ Photo", object:self, selector:'changeIconFromPhoto:',param:selected},
-        {title:"➕ new icon from 📄 File", object:self, selector:'changeIconFromFile:',param:selected},
-        {title:"➕ new icon from 🌐 Appicon Forge", object:self, selector:'changeIconFromWeb:',param:"https://zhangyu1818.github.io/appicon-forge/"},
-        {title:"➕ new icon from 🌐 Icon Font", object:self, selector:'changeIconFromWeb:',param:"https://www.iconfont.cn/"},
-        {title:"🔍 change icon scale", object:self, selector:'changeIconScale:',param:selected},
-        {title:"🔄 reset icon", object:self, selector:'resetIcon:',param:selected}
-      ]
-      self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,300,1)
+      let menu = new Menu(button,self)
+      menu.width = 200
+      menu.rowHeight = 35
+      menu.preferredPosition = 1
+      // menu.addMenuItem("➕  New icon from 🖼️ Photo", 'changeIconFromPhoto:', selected)
+      // menu.addMenuItem("➕  New icon from 📄 File", 'changeIconFromFile:', selected)
+      // menu.addMenuItem("➕  New icon from 🌐 Appicon Forge", 'changeIconFromWeb:', "https://zhangyu1818.github.io/appicon-forge/")
+      // menu.addMenuItem("➕  New icon from 🌐 Icon Font", 'changeIconFromWeb:', "https://www.iconfont.cn/")
+      menu.addMenuItem("➕  New icon", 'chooseIconSource:')
+      menu.addMenuItem("🔍  Change icon scale", 'changeIconScale:', selected)
+      menu.addMenuItem("🔄  Reset icon", 'resetIcon:', selected)
+      // var commandTable = [
+      //   {title:"➕  New icon from 🖼️ Photo", object:self, selector:'changeIconFromPhoto:',param:selected},
+      //   {title:"➕  New icon from 📄 File", object:self, selector:'changeIconFromFile:',param:selected},
+      //   {title:"➕  New icon from 🌐 Appicon Forge", object:self, selector:'changeIconFromWeb:',param:"https://zhangyu1818.github.io/appicon-forge/"},
+      //   {title:"➕  New icon from 🌐 Icon Font", object:self, selector:'changeIconFromWeb:',param:"https://www.iconfont.cn/"},
+      //   {title:"🔍  Change icon scale", object:self, selector:'changeIconScale:',param:selected},
+      //   {title:"🔄  Reset icon", object:self, selector:'resetIcon:',param:selected}
+      // ]
+      menu.addMenuItem("🔗  Copy URL", 'copyActionURL:', selected)
+      menu.show()
+      // self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,300,1)
       return
     }
     button.isSelected = !button.isSelected
@@ -687,6 +758,57 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     }else{
       MNButton.setColor(button, "#ffffff", 0.8)
     }
+  },
+  chooseIconSource:async function (buttonName) {
+    let self = getSettingController()
+    Menu.dismissCurrentMenu()
+    self.checkPopoverController()
+    let userSelect = await MNUtil.userSelect("Choose Icon Source", "请选择图片来源", ["🖼️  Photo / 图库","📄  File / 文件","🌐  Appicon Forge","🌐  Icon Font"])
+    if (userSelect === 0) {
+      MNUtil.showHUD("Cancel")
+      return
+    }
+    if (!toolbarUtils.checkSubscribe(true)) {
+      return
+    }
+    let beginFrame = self.view.frame
+    let endFrame = self.view.frame
+    if (endFrame.width < 800) {
+      endFrame.width = 800
+    }
+    if (endFrame.height < 600) {
+      endFrame.height = 600
+    }
+    switch (userSelect) {
+      case 1:
+        self.imagePickerController = UIImagePickerController.new()
+        self.imagePickerController.buttonName = buttonName
+        self.imagePickerController.delegate = self  // 设置代理
+        self.imagePickerController.sourceType = 0  // 设置图片源为相册
+        // self.imagePickerController.allowsEditing = true  // 允许裁剪
+        MNUtil.studyController.presentViewControllerAnimatedCompletion(self.imagePickerController,true,undefined)
+        break;
+      case 2:
+        let UTI = ["public.image"]
+        let path = await MNUtil.importFile(UTI)
+        let image = MNUtil.getImage(path,1)
+        toolbarConfig.setButtonImage(buttonName, image,true)
+        break;
+      case 3:
+        MNUtil.postNotification("openInBrowser", {url:"https://zhangyu1818.github.io/appicon-forge/",beginFrame:beginFrame,endFrame:endFrame})
+        break;
+      case 4:
+        MNUtil.postNotification("openInBrowser", {url:"https://www.iconfont.cn/",beginFrame:beginFrame,endFrame:endFrame})
+        break;
+      default:
+        break;
+    }
+    // MNUtil.copy(userSelect)
+  },
+  copyActionURL:function (buttonName) {
+    Menu.dismissCurrentMenu()
+    let url = "marginnote4app://addon/mntoolbar?action="+buttonName
+    MNUtil.copy(url)
   },
   changeIconFromPhoto:function (buttonName) {
     self.checkPopoverController()
@@ -758,6 +880,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   },
   resetIcon:function (buttonName) {
     try {
+    Menu.dismissCurrentMenu()
     self.checkPopoverController()
       
 
@@ -797,6 +920,78 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       toolbarConfig.save("MNToolbar_addonLogos")
       MNUtil.refreshAddonCommands()
     }
+  },
+  chooseOption: async function (button) {
+    let self = getSettingController()
+    let selected = self.selectedItem
+    if (!toolbarConfig.checkCouldSave(selected)) {
+      return
+    }
+    self.showHUD("Checking options...",0.5)
+    let menu = new Menu(button,self)
+    menu.width = 300
+    menu.rowHeight = 35
+    menu.preferredPosition = 0
+    let input = await self.getWebviewContent()
+    let des = JSON.parse(input)
+    // let des = toolbarConfig.getDescriptionById(selected)
+    let actionName = des.action
+    let menuItems = toolbarUtils.getActionOptions(actionName)
+    // if ("onFinish" in des) {
+    //   let menuItemsForOnFinish = toolbarUtils.getActionOptions(des.onFinish.action,"onFinish.")
+    //   menuItems = menuItems.concat(menuItemsForOnFinish)
+    // }
+    // if ("onLongPress" in des) {
+    //   let menuItemsForOnLongPress = toolbarUtils.getActionOptions(des.onLongPress.action,"onLongPress.")
+    //   menuItems = menuItems.concat(menuItemsForOnLongPress)
+    // }
+    let width = []
+    if (menuItems.length > 0) {
+      let currentKeys = Object.keys(des)
+      menuItems = menuItems.filter(item=>!currentKeys.includes(item))
+      if (menuItems.length > 0) {
+        // MNUtil.copy(currentKeys)
+        menuItems.forEach(item=>{
+          menu.addMenuItem("🔘  "+item,"addOption:",item)
+          width.push(toolbarUtils.strCode("🔘  "+item))
+        })
+        menu.width = Math.max(...width)*9+30
+        menu.show()
+        return
+      }
+    }
+    self.showHUD("No options")
+  },
+  addOption:async function (item) {
+    Menu.dismissCurrentMenu()
+    let input = await self.getWebviewContent()
+    let config = JSON.parse(input)
+    switch (item) {
+      case "onLongPress":
+        config.onLongPress = {action:""}
+        break;
+      case "onFinish":
+        config.onFinish = {action:""}
+        break;
+      case "markdown":
+      case "compression":
+      case "followParentColor":
+      case "multi":
+      case "allowDeleteNote":
+      case "followAutoStyle":
+      case "forceToFocus":
+      case "textFirst":
+      case "focusInFloatWindowForAllDocMode":
+      case "mainMindMap":
+      case "ocr":
+      case "asTitle":
+        config[item] = true
+        break;
+      default:
+        config[item] = ""
+        break;
+    }
+    self.updateWebviewContent(config)
   },
   saveButtonColor:function (button) {
     if (!toolbarUtils.checkSubscribe(true)) {
@@ -1089,32 +1284,34 @@ settingController.prototype.settingViewLayout = function (){
     Frame.set(this.resizeButton,width-25,height-80)
     if (width < 650) {
       Frame.set(this.webviewInput, 5, 195, width-10, height-255)
-      Frame.set(this.titleInput,5,155,width-80,35)
-      Frame.set(this.saveButton,width-70,155)
+      Frame.set(this.titleInput,5,155,width-122,35)
+      Frame.set(this.saveButton,width-112,155)
       Frame.set(this.templateButton,width-188,199.5)
-      Frame.set(this.runButton,width-35,199.5)
+      Frame.set(this.runButton,width-42,155)
+      Frame.set(this.addOptionButton,width-35,199.5)
       Frame.set(this.copyButton,width-158,199.5)
       Frame.set(this.pasteButton,width-99,199.5)
-      Frame.set(this.scrollview,5,5,width-10,145)
+      Frame.set(this.scrollview,5,5,width-48,145)
       // this.scrollview.contentSize = {width:width-20,height:height};
-      Frame.set(this.moveTopButton, width-40, 10)
-      Frame.set(this.moveUpButton, width-40, 45)
-      Frame.set(this.moveDownButton, width-40, 80)
-      Frame.set(this.configReset, width-40, 115)
+      Frame.set(this.moveTopButton, width-38, 5)
+      Frame.set(this.moveUpButton, width-38, 43)
+      Frame.set(this.moveDownButton, width-38, 80)
+      Frame.set(this.configReset, width-38, 117)
     }else{
       Frame.set(this.webviewInput,305,45,width-310,height-105)
-      Frame.set(this.titleInput,305,5,width-380,35)
-      Frame.set(this.saveButton,width-70,5)
+      Frame.set(this.titleInput,305,5,width-422,35)
+      Frame.set(this.saveButton,width-112,5)
       Frame.set(this.templateButton,width-188,49.5)
-      Frame.set(this.runButton,width-35,49.5)
+      Frame.set(this.runButton,width-42,5)
+      Frame.set(this.addOptionButton,width-35,49.5)
       Frame.set(this.copyButton,width-158,49.5)
       Frame.set(this.pasteButton,width-99,49.5)
       Frame.set(this.scrollview,5,5,295,height-65)
       // this.scrollview.contentSize = {width:295,height:height};
-      Frame.set(this.moveTopButton, 263, 15)
-      Frame.set(this.moveUpButton, 263, 50)
-      Frame.set(this.moveDownButton, 263, 85)
-      Frame.set(this.configReset, 263, 120)
+      Frame.set(this.moveTopButton, 261, 14)
+      Frame.set(this.moveUpButton, 261, 51)
+      Frame.set(this.moveDownButton, 261, 88)
+      Frame.set(this.configReset, 261, 125)
     }
 
 
@@ -1355,27 +1552,28 @@ try {
 
   this.createButton("configReset","resetButtonTapped:","configView")
   this.configReset.layer.opacity = 1.0
-  this.configReset.setTitleForState("🔄",0)
-  this.configReset.width = 30
-  this.configReset.height = 30
+  MNButton.setTitle(this.configReset, "🔄",20)
+  this.configReset.width = 33
+  this.configReset.height = 33
 
   this.createButton("moveUpButton","moveForwardTapped:","configView")
   this.moveUpButton.layer.opacity = 1.0
-  this.moveUpButton.setTitleForState("🔼",0)
-  this.moveUpButton.width = 30
-  this.moveUpButton.height = 30
+  MNButton.setTitle(this.moveUpButton, "🔽",20)
+
+  this.moveUpButton.width = 33
+  this.moveUpButton.height = 33
 
   this.createButton("moveDownButton","moveBackwardTapped:","configView")
   this.moveDownButton.layer.opacity = 1.0
-  this.moveDownButton.setTitleForState("🔽",0)
-  this.moveDownButton.width = 30
-  this.moveDownButton.height = 30
+  MNButton.setTitle(this.moveDownButton, "🔽",20)
+  this.moveDownButton.width = 33
+  this.moveDownButton.height = 33
 
   this.createButton("moveTopButton","moveTopTapped:","configView")
   this.moveTopButton.layer.opacity = 1.0
-  this.moveTopButton.setTitleForState("🔝",0)
-  this.moveTopButton.width = 30 //写入属性而不是写入frame中,作为固定参数使用,配合Frame.setLoc可以方便锁死按钮大小
-  this.moveTopButton.height = 30
+  MNButton.setTitle(this.moveTopButton, "🔝",20)
+  this.moveTopButton.width = 33 //写入属性而不是写入frame中,作为固定参数使用,配合Frame.setLoc可以方便锁死按钮大小
+  this.moveTopButton.height = 33
 
   this.createButton("templateButton","chooseTemplate:","configView")
   MNButton.setConfig(this.templateButton, {opacity:0.8,color:"#457bd3"})
@@ -1383,6 +1581,8 @@ try {
   this.templateButton.setImageForState(toolbarConfig.templateImage,0)
   this.templateButton.width = 26
   this.templateButton.height = 26
+
+
 
   this.createButton("copyButton","configCopyTapped:","configView")
   MNButton.setConfig(this.copyButton, {opacity:0.8,color:"#457bd3",title:"Copy",bold:true})
@@ -1413,14 +1613,19 @@ try {
   this.resizeButton.width = 25
   this.resizeButton.height = 25
 
+  this.createButton("addOptionButton","chooseOption:","configView")
+  MNButton.setConfig(this.addOptionButton, {opacity:0.8,color:"#457bd3",title:"➕"})
+  this.addOptionButton.layer.cornerRadius = 6
+  this.addOptionButton.width = 26
+  this.addOptionButton.height = 26
 
   this.createButton("runButton","configRunTapped:","configView")
   MNButton.setConfig(this.runButton, {opacity:0.8,color:"#e06c75"})
-  this.runButton.layer.cornerRadius = 6
+  // this.runButton.layer.cornerRadius = 6
   // MNButton.setConfig(this.runButton, {opacity:1.0,title:"▶️",font:25,color:"#ffffff",alpha:0.})
   this.runButton.setImageForState(toolbarConfig.runImage,0)
-  this.runButton.width = 26
-  this.runButton.height = 26
+  this.runButton.width = 35
+  this.runButton.height = 35
 
   let color = ["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9fdc"]
 } catch (error) {
@@ -1459,49 +1664,24 @@ settingController.prototype.setButtonText = function (names=toolbarConfig.getAll
 /**
  * @this {settingController}
  */
-settingController.prototype.setTextview = function (name = this.selectedItem) {
+settingController.prototype.setTextview = function (actionKey = this.selectedItem) {
   try {
       // let entries           =  NSUserDefaults.standardUserDefaults().objectForKey('MNBrowser_entries');
       // let actions = toolbarConfig.actions
       // let defaultActions = toolbarConfig.getActions()
-      let action = toolbarConfig.getAction(name)
+      let action = toolbarConfig.getAction(actionKey)
       // let action = (name in actions)?actions[name]:defaultActions[name]
-      let text  = action.name
+      let text  = action.name//每个动作的title
       this.titleInput.text= text
-      if (MNUtil.isValidJSON(action.description)) {
-        let des = JSON.parse(action.description)
-        if (name === "sidebar") {
-          des.action = "toggleSidebar"
-        }
-        if (name === "ocr") {
-          des.action = "ocr"
-        }
-        // MNUtil.showHUD(typeof des)
-        // MNUtil.copy(des)
+      let des = toolbarConfig.getDescriptionById(actionKey)
+      if (des) {
         this.setWebviewContent(des)
       }else{
-        MNUtil.copy(action.description)
+        MNUtil.copy(action)
         MNUtil.showHUD("Invalid description")
         des = {}
-        if (name === "pasteAsTitle") {
-          des = {
-            "action": "setContent",
-            "target": "title",
-            "content": "{{clipboardText}}"
-          }
-        }
         this.setWebviewContent(des)
       }
-      // let description = action.description
-      // if (MNUtil.isValidJSON(description)) {
-      //   this.preAction = name
-      //   this.setWebviewContent(description)
-      // }else{
-      //   actions = toolbarConfig.getActions()
-      //   description = action.description
-      //   this.preAction = name
-      //   this.setWebviewContent(description)
-      // }
   } catch (error) {
     toolbarUtils.addErrorLog(error, "setTextview")
   }
@@ -1514,16 +1694,16 @@ settingController.prototype.refreshLayout = function () {
   if (!this.configView.hidden) {
     var viewFrame = this.scrollview.bounds;
     var xLeft     = 0
-    let initX = 10
-    let initY = 10
+    let initX = 9
+    let initY = 9
     let initL = 0
     let buttonWidth = 40
     let buttonHeight = 40
     this.locs = [];
     this.words.map((word,index)=>{
       // let title = word
-      if (xLeft+initX+buttonWidth > viewFrame.width-10) {
-        initX = 10
+      if (xLeft+initX+buttonWidth > viewFrame.width) {
+        initX = 9
         initY = initY+50
         initL = initL+1
       }
@@ -1820,15 +2000,6 @@ settingController.prototype.loadWebviewContent = function () {
 /**
  * @this {settingController}
  */
-settingController.prototype.updateWebviewContent = function (content) {
-  if (!MNUtil.isValidJSON(content)) {
-    content = "{}"
-  }
-  this.runJavaScript(`updateContent('${encodeURIComponent(content)}')`)
-}
-/**
- * @this {settingController}
- */
 settingController.prototype.setWebviewContent = function (content) {
   if (typeof content === "object") {
     this.runJavaScript(`setContent('${encodeURIComponent(JSON.stringify(content))}')`)
@@ -1838,6 +2009,19 @@ settingController.prototype.setWebviewContent = function (content) {
     content = "{}"
   }
   this.runJavaScript(`setContent('${encodeURIComponent(content)}')`)
+}
+/**
+ * @this {settingController}
+ */
+settingController.prototype.updateWebviewContent = function (content) {
+  if (typeof content === "object") {
+    this.runJavaScript(`updateContent('${encodeURIComponent(JSON.stringify(content))}')`)
+    return
+  }
+  if (!MNUtil.isValidJSON(content)) {
+    content = "{}"
+  }
+  this.runJavaScript(`updateContent('${encodeURIComponent(content)}')`)
 }
 /**
  * @this {settingController}

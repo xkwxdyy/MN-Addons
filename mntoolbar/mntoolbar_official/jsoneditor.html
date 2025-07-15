@@ -25,7 +25,7 @@ body {
 <body>
   <div id="jsoneditor"></div>
   <script>
-  let actionNames = ['addChildNote','addBrotherNote','addComment','addImageComment','addTags','addMarkdownLink','crash','clearContent','cloneAndMerge','cloneAsChildNote','confirm','chatAI','copy','command','export','focus','insertSnippet','importDoc','link','markdown2Mindmap','moveNote','mergeText','moveComment','menu','noteHighlight','openURL','openWebURL','ocr','paste','redo','replace','removeComment','removeTags','search','searchInDict','setContent','setColor','setTimer','showInFloatWindow','switchTitleOrExcerpt','showMessage','setButtonImage','shortcut','triggerButton','toggleView','toggleTextFirst','toggleMarkdown','toggleSidebar','undo','userSelect','webSearch']
+  let actionNames = ['addChildNote','addBrotherNote','addComment','addImageComment','addTags','addMarkdownLink','addWordsToEurdic','bigbang','crash','clearContent','clearFormat','cloneAndMerge','cloneAsChildNote','confirm','chatAI','copy','command','export','focus','insertSnippet','importDoc','link','markdown2Mindmap','moveNote','mergeText','moveComment','menu','noteHighlight','ocr','openURL','openWebURL','openInEditor','openSetting','paste','redo','replace','removeComment','removeTags','search','searchInDict','setContent','setColor','setTimer','snipaste','showInFloatWindow','switchTitleOrExcerpt','showMessage','setButtonImage','shortcut','triggerButton','toggleView','toggleTextFirst','toggleMarkdown','toggleSidebar','undo','userSelect','webSearch']
   function generalActionProperties(params) {
     return {
       "action": {
@@ -147,7 +147,199 @@ body {
     return stringEnum(['TextNote','HtmlNote','PaintNote','LinkNote','tagComment','linkComment','markdownComment','textComment','HtmlComment','blankTextComment','blankImageComment','mergedImageCommentWithDrawing','mergedImageComment','mergedTextComment','imageCommentWithDrawing','imageComment','drawingComment'])
   }
     // create the editor
-    let commandNames = ['GoNewFeatures','GoUserGuide','GoManual','InAppPurchase','DBVaults','ShareLicenses','SharePackage','GoiCloud','ExportPKG','ExportVault','ExportMapPDF','ExportDocPDF','ExportOmni','ExportWord','ExportMind','ExportAnki','BackupDB','ClearTemp','OpenTrash','OpenExtensions','GoSettings','EditUndo','EditRedo','EditCut','CommonCopy','EditPaste','EditSelAll','EditMarkdown','ToggleDocument','ToggleMindMap','ToggleCards','ToggleReview','ToggleResearch','ToggleMoreSettings','ToggleSidebar','FullTextSearch','DraftList','ManageDocs','ToggleFullDoc','ToggleBookLeft','ToggleBookBottom','ToggleTabsBar','ToggleAddFile','TabNextFile','TabPrevFile','ToggleSplit','BindSplit','EmphasisCloze','ToggleTextLink','SyncMindMapToBook','SyncBookToMindMap','SyncWindowPos','SyncDeletion','SetRefCopyMode','SetCloneCopyMode','UIStatusURL','BookTOC','BookPageList','BookMarkList','BookSketchList','BookCardList','EditDocLayers','ViewDocCardGroup','BookSearch','BookPageFlip','BookPageScroll','ExtendSplit','ExtendMargin','ExtendPopup','PdfCrop','BookPageNumber','GoBack','GoForward','BookMarkAdd','BookMarkRemove','EditPDFPages','AddToTOC','SplitBook','InsertBlank','Translate','FoldHighlight','SourceHighlight','EditTextBox','EditImageBox','ExcerptToolSettings','ExcerptToolSelect','ExcerptToolCustom0','ExcerptToolCustom1','ExcerptToolCustom2','ExcerptToolCustom3','HighlightShortcut1','HighlightShortcut2','HighlightShortcut3','HighlightShortcut4','ExcerptToolSketch','NotebookOutline','ViewMapCardGroup','EditMultiSel','FocusNote','FocusParent','NotebookOutlineEdit','EditOutlineIncLevel','EditOutlineDecLevel','SnippetMode','NewSiblingNote','NewChildNote','NewParentNote','ToggleExpand','EditGroupNotes','EditLinkNotes','EditMergeNotes','SelBranchStyle0','SelBranchStyle1','SelBranchStyle2','SelBranchStyle3','SelBranchStyle4','SelBranchStyle60','SelBranchStyle61','SelBranchStyle64','SelBranchStyle7','SelBranchStyle100','GlobalBranchStyle','ZoomToFit','ViewExpandAll','ViewCollapseAll','ViewExpandLevel0','ViewExpandLevel1','ViewExpandLevel2','ViewExpandLevel3','ViewExpandLevel4','ViewExpandLevel5','ViewExpandLevel6','ViewExpandLevel7','ViewExpandRows','ViewCollapseRows','EditArrangeNotes','MindmapSnippetMode','SelectBranch','ShowSketch','HideSketch','EditCopy','EditReference','EditCopyLink','EditDeleteNote','EditColorNoteIndex0','EditColorNoteIndex1','EditColorNoteIndex2','EditColorNoteIndex3','EditColorNoteIndex4','EditColorNoteIndex5','EditColorNoteIndex6','EditColorNoteIndex7','EditColorNoteIndex8','EditColorNoteIndex9','EditColorNoteIndex10','EditColorNoteIndex11','EditColorNoteIndex12','EditColorNoteIndex13','EditColorNoteIndex14','EditColorNoteIndex15','EditTagNote','EditAddTitle','EditAddText','EditAppendComment','ContinueExcerpt','EditTextMode','EditOcclusion','EditUnmergeNote','TextToTitle','ExpandExtend','CollapseExtend','SendToMap','RemoveFromMap','AddToReview','ClearFormat1','ClearFormat2','FlashcardSpeech','SetTitleHighlight','SetCommentHighlight','SetAsEmphasis','MergeTo','FlashcardsPlay','FlashcardsStop','FlashcardFlip','FlashcardLocal','FlashcardAgain','FlashcardHard','FlashcardGood','FlashcardEasy','FlashcardStarred']
+    let commandNames = [
+      'AddToReview',
+      'AddToTOC',
+      'BackupDB',
+      'BindSplit',
+      'BookTOC',
+      'BookPageList',
+      'BookMarkList',
+      'BookSketchList',
+      'BookCardList',
+      'BookSearch',
+      'BookPageFlip',
+      'BookPageScroll',
+      'BookPageNumber',
+      'BookMarkAdd',
+      'BookMarkRemove',
+      'ClearTemp',
+      'ClearFormat1',
+      'ClearFormat2',
+      'CommonCopy',
+      'CollapseExtend',
+      'ContinueExcerpt',
+      'DBVaults',
+      'DraftList',
+      'EditAddTitle',
+      'EditAddText',
+      'EditAppendComment',
+      'EditArrangeNotes',
+      'EditUndo',
+      'EditRedo',
+      'EditCut',
+      'EditCopy',
+      'EditCopyLink',
+      'EditDeleteNote',
+      'EditDocLayers',
+      'EditPaste',
+      'EditPDFPages',
+      'EditMarkdown',
+      'EditTextBox',
+      'EditTextMode',
+      'EditImageBox',
+      'EditGroupNotes',
+      'EditLinkNotes',
+      'EditMultiSel',
+      'EditMergeNotes',
+      'EditOcclusion',
+      'EditOutlineIncLevel',
+      'EditOutlineDecLevel',
+      'EditReference',
+      'EditSelAll',
+      'EditTagNote',
+      'EditUnmergeNote',
+      'EditColorNoteIndex0',
+      'EditColorNoteIndex1',
+      'EditColorNoteIndex2',
+      'EditColorNoteIndex3',
+      'EditColorNoteIndex4',
+      'EditColorNoteIndex5',
+      'EditColorNoteIndex6',
+      'EditColorNoteIndex7',
+      'EditColorNoteIndex8',
+      'EditColorNoteIndex9',
+      'EditColorNoteIndex10',
+      'EditColorNoteIndex11',
+      'EditColorNoteIndex12',
+      'EditColorNoteIndex13',
+      'EditColorNoteIndex14',
+      'EditColorNoteIndex15',
+      'ExcerptToolSettings',
+      'ExcerptToolSelect',
+      'ExcerptToolCustom0',
+      'ExcerptToolCustom1',
+      'ExcerptToolCustom2',
+      'ExcerptToolCustom3',
+      'ExcerptToolSketch',
+      'EmphasisCloze',
+      'ExportPKG',
+      'ExportVault',
+      'ExportMapPDF',
+      'ExportDocPDF',
+      'ExportOmni',
+      'ExportWord',
+      'ExportMind',
+      'ExportAnki',
+      'ExtendSplit',
+      'ExtendMargin',
+      'ExtendPopup',
+      'ExpandExtend',
+
+      'FocusNote',
+      'FocusParent',
+      'FoldHighlight',
+      'FullTextSearch',
+      'FlashcardsPlay',
+      'FlashcardsStop',
+      'FlashcardFlip',
+      'FlashcardLocal',
+      'FlashcardAgain',
+      'FlashcardHard',
+      'FlashcardGood',
+      'FlashcardEasy',
+      'FlashcardStarred',
+      'FlashcardSpeech',
+      'GlobalBranchStyle',
+      'GoBack',
+      'GoForward',
+      'GoiCloud',
+      'GoManual',
+      'GoNewFeatures',
+      'GoSettings',
+      'GoUserGuide',
+      'HideSketch',
+      'HighlightShortcut1',
+      'HighlightShortcut2',
+      'HighlightShortcut3',
+      'HighlightShortcut4',
+      'InAppPurchase',
+      'InsertBlank',
+      'ManageDocs',
+      'MergeTo',
+      'MindmapSnippetMode',
+      'NotebookOutline',
+      'NotebookOutlineEdit',
+      'NewSiblingNote',
+      'NewChildNote',
+      'NewParentNote',
+      'OpenTrash',
+      'OpenExtensions',
+      'PdfCrop',
+      'RemoveFromMap',
+      'SendToMap',
+      'ShareLicenses',
+      'SharePackage',
+      'SplitBook',
+      'SyncMindMapToBook',
+      'SyncBookToMindMap',
+      'SyncWindowPos',
+      'SyncDeletion',
+      'SetAsEmphasis',
+      'SetCloneCopyMode',
+      'SetCommentHighlight',
+      'SetRefCopyMode',
+      'SetTitleHighlight',
+      'SourceHighlight',
+      'SnippetMode',
+      'SelBranchStyle0',
+      'SelBranchStyle1',
+      'SelBranchStyle2',
+      'SelBranchStyle3',
+      'SelBranchStyle4',
+      'SelBranchStyle60',
+      'SelBranchStyle61',
+      'SelBranchStyle64',
+      'SelBranchStyle7',
+      'SelBranchStyle100',
+      'SelectBranch',
+      'ShowSketch',
+      'TabNextFile',
+      'TabPrevFile',
+      'TextToTitle',
+      'Translate',
+      'ToggleAddFile',
+      'ToggleBookLeft',
+      'ToggleBookBottom',
+      'ToggleCards',
+      'ToggleDocument',
+      'ToggleExpand',
+      'ToggleFullDoc',
+      'ToggleSplit',
+      'ToggleSidebar',
+      'ToggleTabsBar',
+      'ToggleTextLink',
+      'ToggleMindMap',
+      'ToggleMoreSettings',
+      'ToggleReview',
+      'ToggleResearch',
+      'UIStatusURL',
+      'ViewCollapseRows',
+      'ViewCollapseAll',
+      'ViewDocCardGroup',
+      'ViewExpandAll',
+      'ViewExpandLevel0',
+      'ViewExpandLevel1',
+      'ViewExpandLevel2',
+      'ViewExpandLevel3',
+      'ViewExpandLevel4',
+      'ViewExpandLevel5',
+      'ViewExpandLevel6',
+      'ViewExpandLevel7',
+      'ViewExpandRows',
+      'ViewMapCardGroup',
+      'ZoomToFit'
+      ]
     const container = document.getElementById("jsoneditor")
     let actionProperties = generalActionProperties()
     actionProperties.timerMode = stringEnum(["clock","pauseOrResume","countUp","countdown"])
@@ -254,7 +446,7 @@ function setSchema(schema) {
     editor.setSchema(schema,{action:action,menuTitle:menuTitle,menuAction:menuAction,selectAction:selectAction})
   }
 }
-function setSchemaByActionName(actionName) {
+function getSchemaByActionName(actionName) {
   let properties = generalActionProperties()
   switch (actionName) {
     case "command":
@@ -262,7 +454,7 @@ function setSchemaByActionName(actionName) {
       properties.commands = arrayType(stringEnum(commandNames))
       break;
     case "copy":
-      properties.target = stringEnum(['auto','comment','comments','excerpt','excerptOCR','menu','notesText','noteId','noteURL','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown','selectionText','selectionImage','title'])
+      properties.target = stringEnum(['auto','comment','comments','excerpt','excerptOCR','menu','notesText','noteId','noteURL','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown','selectionText','selectionImage','title','chatAIOutput'])
       properties.index = numberEnum([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60])
       properties.content = stringType()
       break;
@@ -273,6 +465,7 @@ function setSchemaByActionName(actionName) {
       break;
     case "markdown2Mindmap":
       properties.source = stringEnum(['currentNote','clipboard','file'])
+      properties.method = stringEnum(['onlyHeading','auto'])
       break;
     case "addMarkdownLink":
       properties.title = stringType()
@@ -299,10 +492,17 @@ function setSchemaByActionName(actionName) {
       properties.tag = stringType()
       properties.tags = arrayType(stringType())
       break;
+    case "link":
+      properties.type = stringEnum(['Both','To','From'])
+      properties.target = stringType()
+      break;
     case "mergeText":
       properties.target = stringEnum(['excerptText','title','newComment','clipboard'])
-      properties.source = stringType()
+      properties.source = arrayType(stringType())
       break
+    case "cloneAndMerge":
+      properties.target = stringType()
+      break;
     case "ocr":
       properties.target = stringEnum(['comment','excerpt','childNote','clipboard','editor','chatModeReference','option'])
       properties.ocrSource = stringEnum(["Doc2X","SimpleTex","GPT-4o","GPT-4o-mini","GPT-4.1","GPT-4.1-mini","GPT-4.1-nano","MiniMax-Text-01","glm-4v-plus","glm-4v-flash","claude-3-5-sonnet-20241022","claude-3-7-sonnet","gemini-2.0-flash","gemini-2.0-flash-lite","gemini-2.5-pro","gemini-2.5-flash","Moonshot-v1"])
@@ -334,7 +534,7 @@ function setSchemaByActionName(actionName) {
       properties.name = stringType()
       break;
     case "replace":
-      properties.target = stringEnum(['excerpt','title'])
+      properties.target = stringEnum(['excerpt','title','clipboardText'])
       properties.content = stringType()
       properties.from = stringType()
       properties.to = stringType()
@@ -365,6 +565,7 @@ function setSchemaByActionName(actionName) {
     case "clearContent":
       properties.target = stringEnum(['title','excerptText','comments'])
       properties.type = commentType()
+      properties.allowDeleteNote = booleanType()
       break;
     case "openURL":
       properties.url = stringType()
@@ -404,7 +605,7 @@ function setSchemaByActionName(actionName) {
       properties.buttonName = stringType()
       break;
     case "focus":
-      source = stringEnum(['parentNote'])
+      properties.source = stringEnum(['parentNote'])
       properties.target = stringEnum(['doc','mindmap','both','floatMindmap'])
       properties.noteURL = stringType()
       properties.forceToFocus = booleanType()
@@ -412,6 +613,13 @@ function setSchemaByActionName(actionName) {
     case "insertSnippet":
       properties.content = stringType()
       properties.target = stringEnum(['textview','menu','editor'])
+      break;
+    case "addWordsToEurdic":
+      properties.word = stringType()
+      properties.words = arrayType(stringType())
+      properties.studylistId = stringType()
+      properties.studylistName = stringType()
+      properties.APIKey = stringType()
       break;
     case "moveNote":
       properties.mainMindMap = booleanType()
@@ -428,9 +636,10 @@ function setSchemaByActionName(actionName) {
       properties.parentNote = stringType()
       properties.mainMindMap = booleanType()
       properties.textFirst = booleanType()
-      properties.focusAfterHighlight = booleanType()
       properties.focusAfterDelay = numberType()
       properties.focusInFloatWindowForAllDocMode = booleanType()
+      properties.markdown = booleanType()
+      properties.continueExcerpt = booleanType()
       break;
     case "search":
       properties.target = stringEnum(['menu'])
@@ -443,9 +652,31 @@ function setSchemaByActionName(actionName) {
       properties.system = stringType()
       break;
     default:
-      setSchema()
-      return;
+      break;
   }
+  return properties
+}
+function getSchemaByAction(action) {
+  let properties = getSchemaByActionName(action.action)
+  
+  if (properties && "onLongPress" in action) {
+    let tem = getSchemaByActionName(action.onLongPress.action)
+    if (tem) {
+      properties.onLongPress = genSchema(tem)
+    }
+  }
+  if (properties && "onFinish" in action) {
+    let tem = getSchemaByAction(action.onFinish)
+    if (tem) {
+      properties.onFinish = genSchema(tem)
+    }
+  }
+  return properties
+}
+function setSchemaByAction(action) {
+  let properties = getSchemaByAction(action)
+  // console.log(properties);
+  
   setSchema(genSchema(properties))
 }
     const options = {
@@ -484,12 +715,17 @@ function setSchemaByActionName(actionName) {
         return items
       },
       onEvent:(node, event)=> {
+        if (event.type === 'mouseout' && event.srcElement.tagName === 'SELECT') {
+          // console.log(event.srcElement.tagName);
+          event.srcElement.blur()
+        }
         if (event.type === 'blur') {
           editor.refresh()
           removeFocus()
           return
         }
         if (event.type === 'change') {
+          // removeFocus()
           // if (node.value === '❌ Delete') {
           //   let config = editor.get();
           //   let path = node.path;
@@ -514,123 +750,137 @@ function setSchemaByActionName(actionName) {
           // console.log("change");
           // editor.refresh()
           let config = editor.get()
+          
           let needSet = false
-          if ((node.path.length === 1) && "action" in config) {
-            setSchemaByActionName(config.action)
-            switch (config.action) {
-              case "copy":
-                if (!("target" in config)) {
-                  config.target = "auto"
-                  needSet = true
-                } 
-                break;
-              case "addComment":
-                if (!("content" in config)) {
-                  config.content = ""
-                  needSet = true
-                } 
-                break;
-              case "menu":
-                if (!("menuItems" in config)) {
-                  config.menuItems = []
-                  needSet = true
-                } 
-                break;
-              case "mergeText":
-                if (!("source" in config)) {
-                  config.source = []
-                  needSet = true
-                } 
-                if (!("target" in config)) {
-                  config.target = "excerptText"
-                  needSet = true
-                } 
-                break;
-              case "ocr":
-                if(!("target" in config)){
-                  config.target = "excerpt"
-                  needSet = true
+          if ("action" in config && node.field === "action") {
+            setSchemaByAction(config)
+            if ((node.path.length === 1) && "action" in config) {
+              switch (config.action) {
+                case "copy":
+                  if (!("target" in config)) {
+                    config.target = "auto"
+                    needSet = true
+                  } 
+                  break;
+                case "addComment":
+                  if (!("content" in config)) {
+                    config.content = ""
+                    needSet = true
+                  } 
+                  break;
+                case "menu":
+                  if (!("menuItems" in config)) {
+                    config.menuItems = []
+                    needSet = true
+                  } 
+                  break;
+                case "mergeText":
+                  if (!("source" in config)) {
+                    config.source = []
+                    needSet = true
+                  } 
+                  if (!("target" in config)) {
+                    config.target = "excerptText"
+                    needSet = true
+                  } 
+                  break;
+                case "ocr":
+                  if(!("target" in config)){
+                    config.target = "excerpt"
+                    needSet = true
+                  }
+                  break;
+                case "shortcut":{
+                  if (!("name" in config)) {
+                    config.name = ""
+                    needSet = true
+                  }
                 }
-                break;
-              case "shortcut":{
-                if (!("name" in config)) {
-                  config.name = ""
-                  needSet = true
-                }
-              }
-              case "replace":
-                if(!("target" in config)){
-                  config.target = "excerpt"
-                  needSet = true
-                }
-                break;
-              case "openURL":
-                if(!("url" in config)){
-                  config.url = ""
-                  needSet = true
-                }
-                break;
-              case "triggerButton":
-                if(!("buttonName" in config)){
-                  config.buttonName = ""
-                  needSet = true
-                }
-                break;
-              case "confirm":
-                if(!("title" in config)){
-                  config.title = ""
-                  needSet = true
-                }
-                if(!("onConfirm" in config)){
-                  config.onConfirm = {
-                    "action": "",
+                case "replace":
+                  if(!("target" in config)){
+                    config.target = "excerpt"
+                    needSet = true
+                  }
+                  break;
+                case "openURL":
+                  if(!("url" in config)){
+                    config.url = ""
+                    needSet = true
+                  }
+                  break;
+                case "triggerButton":
+                  if(!("buttonName" in config)){
+                    config.buttonName = ""
+                    needSet = true
+                  }
+                  break;
+                case "confirm":
+                  if(!("title" in config)){
+                    config.title = ""
+                    needSet = true
+                  }
+                  if(!("onConfirm" in config)){
+                    config.onConfirm = {
+                      "action": "",
+                    }
+                    needSet = true
+                  }
+                  break;
+                case "webSearch": 
+                  if(!("question" in config)){
+                    config.question = ""
+                    needSet = true
+                  }
+                  break;
+                case "showMessage":
+                  if(!("content" in config)){
+                    config.content = ""
+                    needSet = true
+                  }
+                  break;
+                case "addWordsToEurdic":
+                  if(!("word" in config) && !("words" in config)){
+                    config.word = ""
+                  }
+                  if(!("studylistId" in config)){
+                    config.studylistId = ""
+                  }
+                  if(!("APIKey" in config)){
+                    config.APIKey = ""
                   }
                   needSet = true
-                }
-                break;
-              case "webSearch": 
-                if(!("question" in config)){
-                  config.question = ""
-                  needSet = true
-                }
-                break;
-              case "showMessage":
-                if(!("content" in config)){
-                  config.content = ""
-                  needSet = true
-                }
-                break;
-              case "addMarkdownLink":
-                if(!("title" in config)){
-                  config.title = ""
-                  needSet = true
-                }
-                if(!("link" in config)){
-                  config.link = ""
-                  needSet = true
-                }
-                break;
-              case "toggleView":
-                if (!("target" in config) && !("targets" in config)) {
-                  config.target = "123"
-                  needSet = true
-                }
-                break;
-              case "userSelect":
-                if(!("selectItems" in config)){
-                  config.selectItems = [{action:""},{action:""}]
-                  needSet = true
-                }
-                if(!("title" in config)){
-                  config.title = ""
-                  needSet = true
-                }
-                break;
-              default:
-                break;
+                  break;
+                case "addMarkdownLink":
+                  if(!("title" in config)){
+                    config.title = ""
+                    needSet = true
+                  }
+                  if(!("link" in config)){
+                    config.link = ""
+                    needSet = true
+                  }
+                  break;
+                case "toggleView":
+                  if (!("target" in config) && !("targets" in config)) {
+                    config.target = "123"
+                    needSet = true
+                  }
+                  break;
+                case "userSelect":
+                  if(!("selectItems" in config)){
+                    config.selectItems = [{action:""},{action:""}]
+                    needSet = true
+                  }
+                  if(!("title" in config)){
+                    config.title = ""
+                    needSet = true
+                  }
+                  break;
+                default:
+                  break;
+              }
             }
           }
-
           if (needSet) {
             editor.update(config)
           }
@@ -780,10 +1030,22 @@ function setSchemaByActionName(actionName) {
     const editor = new JSONEditor(container, options)
 
         // set json
-        const initialJson = {
-  "target": "chatMode",
-  "action": "toggleSidebar"
-}
+    const initialJson = {
+      "target": "chatMode",
+      "action": "toggleSidebar",
+      "onFinish":{
+        "target": "chatMode",
+        "action": "toggleSidebar",
+        "onFinish":{
+          "target": "chatMode",
+          "action": "toggleSidebar",
+          "onFinish":{
+            "target": "chatMode",
+            "action": "toggleSidebar"
+          }
+        }
+      }
+    }
         const initialJson0 = {
   "action": "menu",
   "menuItems": [
@@ -865,8 +1127,7 @@ function setSchemaByActionName(actionName) {
 
         editor.set(initialJson)
         if ("action" in initialJson) {
-          let targetAction = initialJson.action
-          setSchemaByActionName(targetAction)
+          setSchemaByAction(initialJson)
         }
         // get json
       const updatedJson = editor.get()
@@ -875,8 +1136,7 @@ function setSchemaByActionName(actionName) {
         // MNUtil.copy(tem)
         editor.update(tem)
         if ("action" in tem) {
-          let targetAction = tem.action
-          setSchemaByActionName(targetAction)
+          setSchemaByAction(tem)
         }
         setTimeout(() => {
           editor.expandAll()
@@ -889,11 +1149,17 @@ function setSchemaByActionName(actionName) {
         editor.expandAll()
         adjustSelectWidth()
         if ("action" in tem) {
-          let targetAction = tem.action
-          setSchemaByActionName(targetAction)
+          setSchemaByAction(tem)
         }else{
           setSchema()
         }
+      }
+      function updateContent(data) {
+        let tem = JSON.parse(decodeURIComponent(data))
+        // MNUtil.copy(tem)
+        editor.update(tem)
+        editor.expandAll()
+        adjustSelectWidth()
       }
       function getContent() {
         let tem = JSON.stringify(editor.get(),null,2)

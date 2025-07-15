@@ -163,6 +163,7 @@ class toolbarUtils {
   static currentSelection
   static isSubscribe = false
   static mainPath
+  static studylist = []
   /**
    * @type {MNNote[]}
    * @static
@@ -213,13 +214,6 @@ class toolbarUtils {
       "🔨 empty action":{
           "description": "空白动作",
           "action": "xxx",
-      },
-      "🔨 empty action with double click":{
-        "description": "空白动作 带双击动作",
-        "action": "xxx",
-        "doubleClick": {
-          "action": "xxx"
-        }
       },
       "🔨 split note to mindmap":{
         "action": "markdown2Mindmap",
@@ -345,7 +339,12 @@ class toolbarUtils {
       "🔨 chatAI in prompt":{
         "description": "执行预定好的prompt",
         "action": "chatAI",
-        "target": "翻译"
+        "prompt": "翻译"
+      },
+      "🔨 chatAI in current prompt":{
+        "description": "执行当前的prompt",
+        "action": "chatAI",
+        "target": "currentPrompt"
       },
       "🔨 chatAI in custom prompt":{
         "description": "指定user和system",
@@ -359,7 +358,7 @@ class toolbarUtils {
         "target": "menu"
       },
       "🔨 search in Baidu":{
-        "description": "弹出菜单选择搜索的目的",
+        "description": "百度搜索",
         "action": "search",
         "target": "Baidu"
       },
@@ -535,6 +534,131 @@ class toolbarUtils {
   static clipboardText() {
     return UIPasteboard.generalPasteboard().string
   }
+  static getActionOptions(actionName,prefix = undefined){
+    let menuItems = []
+    switch (actionName) {
+      case "command":
+        menuItems = ["command","commands"]
+        break;
+      case "copy":
+        menuItems = ["target","index","content"]
+        break;
+      case "addComment":
+        menuItems = ["content","markdown","index"]
+        break;
+      case "markdown2Mindmap":
+        menuItems = ["source","method"]
+        break;
+      case "addMarkdownLink":
+        menuItems = ["title","link"]
+        break;
+      case "addImageComment":
+        menuItems = ["target","source","compression"]
+        break;
+      case "addChildNote":
+        menuItems = ["title","content","markdown","color"]
+        break;
+      case "addBrotherNote":
+        menuItems = ["title","content","markdown","color"]
+        break;
+      case "addTags":
+        menuItems = ["tag","tags"]
+        break;
+      case "mergeText":
+        menuItems = ["target","source"]
+        break;
+      case "ocr":
+        menuItems = ["target","ocrSource","method","followParentColor"]
+        break;
+      case "toggleSidebar":
+        menuItems = ["target"]
+        break;
+      case "toggleView":
+        menuItems = ["target","targets"]
+        break;
+      case "menu":
+        menuItems = ["menuItems","menuWidth"]
+        break;
+      case "shortcut":
+        menuItems = ["name"]
+        break;
+      case "replace":
+        menuItems = ["target","content","from","to","reg","steps"]
+        break;
+      case "showInFloatWindow":
+        menuItems = ["noteURL","target"]
+        break;
+      case "export":
+        menuItems = ["source","target"]
+        break;
+      case "removeComment":
+        menuItems = ["type","types","multi"]
+        break;
+      case "paste":
+        menuItems = ["target"]
+        break;
+      case "setContent":
+        menuItems = ["target","content","range"]
+        break;
+      case "clearContent":
+        menuItems = ["target","type","allowDeleteNote"]
+        break;
+      case "openURL":
+        menuItems = ["url"]
+        break;
+      case "setTimer":
+        menuItems = ["target","timerMode","minutes","annotation"]
+        break;
+      case "removeTags":
+        menuItems = ["target","tags","tag"]
+        break;
+      case "searchInDict":
+        menuItems = ["target"]
+        break;
+      case "setColor":
+        menuItems = ["color","fillPattern","followAutoStyle"]
+        break;
+      case "userSelect":
+        menuItems = ["title","subTitle","selectItems"]
+        break;
+      case "showMessage":
+        menuItems = ["content"]
+        break;
+      case "confirm":
+        menuItems = ["title","subTitle"]
+        break;
+      case "tirggerButton":
+        menuItems = ["buttonName"]
+        break;
+      case "focus":
+        menuItems = ["source","target","noteURL","forceToFocus"]
+        break;
+      case "insertSnippet":
+        menuItems = ["content","target"]
+        break;
+      case "moveNote":
+        menuItems = ["mainMindMap","noteURL"]
+        break;
+      case "noteHighlight":
+        menuItems = ["color","fillPattern","asTitle","title","ocr","tags","tag","parentNote","mainMindMap","textFirst","focusAfterDelay","focusInFloatWindowForAllDocMode","markdown","continueExcerpt"]
+        break;
+      case "search":
+        menuItems = ["target","engine"]
+        break;
+      case "chatAI":
+        menuItems = ["target","prompt","user","system"]
+        break;
+      default:
+        break;
+    }
+    if (prefix) {
+      menuItems = menuItems.concat(["onFinish"])
+      return menuItems.map(item=>prefix+item)
+    }else{
+      menuItems = menuItems.concat(["onLongPress","onFinish"])
+      return menuItems
+    }
+  }
   static mergeWhitespace(str) {
       if (!str) {
         return ""
@@ -546,6 +670,23 @@ class toolbarUtils {
   }
 static replaceAction(des){
 try {
+  if (des.target === "clipboardText") {
+    let content = des.content ?? MNUtil.clipboardText
+    if ("steps" in des) {//如果有steps则表示是多步替换,优先执行
+      let nSteps = des.steps.length
+      for (let i = 0; i < nSteps; i++) {
+        let step = des.steps[i]
+        let ptt = this._replace_get_ptt_(step)
+        content = content.replace(ptt, step.to)
+      }
+      MNUtil.copy(content)
+      return;
+    }
+    let ptt = this._replace_get_ptt_(des)
+    content = content.replace(ptt, des.to)
+    MNUtil.copy(content)
+    return
+  }
 
   let range = des.range ?? "currentNotes"
   let targetNotes = this.getNotesByRange(range)
@@ -645,6 +786,63 @@ try {
     return false
   }
 }
+  static getNewLoc(gesture,referenceView = MNUtil.studyView){
+    let locationToMN = gesture.locationInView(referenceView)
+    if (!gesture.moveDate) {
+      gesture.moveDate = 0
+    }
+    if ((Date.now() - gesture.moveDate) > 100) {
+      let translation = gesture.translationInView(referenceView)
+      let locationToBrowser = gesture.locationInView(gesture.view.superview)
+      // if (gesture.state !== 3 && Math.abs(translation.y)<20 && Math.abs(translation.x)<20) {
+      if (gesture.state === 1) {
+        gesture.locationToBrowser = {x:locationToBrowser.x-translation.x,y:locationToBrowser.y-translation.y}
+        // MNUtil.showHUD(JSON.stringify(gesture.locationToBrowser))
+      }
+    }
+    // MNUtil.showHUD(JSON.stringify(locationToMN))
+    if (locationToMN.x <= 0) {
+      locationToMN.x = 0
+    }
+    if (locationToMN.x > referenceView.frame.width) {
+      locationToMN.x = referenceView.frame.width
+    }
+    gesture.moveDate = Date.now()
+    // let location = {x:locationToMN.x - self.locationToButton.x-gesture.view.frame.x,y:locationToMN.y -self.locationToButton.y-gesture.view.frame.y}
+    let location = {x:locationToMN.x - gesture.locationToBrowser.x,y:locationToMN.y -gesture.locationToBrowser.y}
+    if (location.y <= 0) {
+      location.y = 0
+    }
+    if (location.y>=referenceView.frame.height-15) {
+      location.y = referenceView.frame.height-15
+    }
+    return location
+  }
+  static strCode(str) {  //获取字符串的字节数
+    var count = 0;  //初始化字节数递加变量并获取字符串参数的字符个数
+    var cn = [8211, 8212, 8216, 8217, 8220, 8221, 8230, 12289, 12290, 12296, 12297, 12298, 12299, 12300, 12301, 12302, 12303, 12304, 12305, 12308, 12309, 65281, 65288, 65289, 65292, 65294, 65306, 65307, 65311]
+    var half = [32, 33, 34, 35, 36, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 58, 59, 60, 61, 62, 63, 64, 91, 92, 93, 94, 95, 96, 123, 124, 125, 126,105,108,8211]
+    if (str) {  //如果存在字符串，则执行
+      let len = str.length;
+        for (var i = 0; i < len; i++) {  //遍历字符串，枚举每个字符
+        let charCode = str.charCodeAt(i)
+            if (charCode>=65 && charCode<=90) {
+              count += 1.5;  //大写
+        } else if (half.includes(charCode)) {
+              count +=0.45
+        } else if (cn.includes(charCode)) {
+              count +=0.8
+            }else if (charCode > 255) {  //字符编码大于255，说明是双字节字符(即是中文)
+                count += 2;  //则累加2个
+            }else{
+                count++;  //否则递加一次
+            }
+        }
+        return count;  //返回字节数
+    } else {
+        return 0;  //如果参数为空，则返回0个
+    }
+  }
   static smartCopy(){
     MNUtil.showHUD("smartcopy")
     let selection = MNUtil.currentSelection
@@ -719,16 +917,17 @@ try {
   }
   static async copy(des) {
     try {
-      
-
     let focusNote = MNNote.getFocusNote()
-    let target = des.target
+    let target = des.target ?? "auto"
     let element = undefined
     if (target) {
       switch (target) {
         case "auto":
           toolbarUtils.smartCopy()
           return
+        case "chatAIOutput":
+          element = await chatAIUtils.notifyController.getTextForAction()
+          break;
         case "selectionText":
           if (MNUtil.currentSelection.onSelection) {
             element = MNUtil.selectionText
@@ -851,7 +1050,8 @@ try {
     }
     let copyContent = des.content
     if (copyContent) {
-      let replacedText = this.detectAndReplace(copyContent,element)
+      // let replacedText = this.detectAndReplace(copyContent,element)
+      let replacedText = await this.render(copyContent,{element:element,noteId:focusNote.noteId})
       MNUtil.copy(replacedText)
       MNUtil.showHUD("目标文本已复制")
       return true
@@ -903,15 +1103,24 @@ try {
     )
     this.app.refreshAfterDBChanged(notebookId)
   }
+  static openURL(url){
+    if (!this.app) {
+      this.app = Application.sharedInstance()
+    }
+    this.app.openURL(NSURL.URLWithString(url));
+  }
   static async checkMNUtil(alert = false,delay = 0.01){
     if (typeof MNUtil === 'undefined') {//如果MNUtil未被加载，则执行一次延时，然后再检测一次
       //仅在MNUtil未被完全加载时执行delay
-      await toolbarUtils.delay(delay)
+      await this.delay(delay)
       if (typeof MNUtil === 'undefined') {
         if (alert) {
-          toolbarUtils.confirm("MN Toolbar: Install 'MN Utils' first", "MN Toolbar: 请先安装'MN Utils'")
+          let res = await this.confirm("MN Toolbar:", "Install 'MN Utils' first\n\n请先安装'MN Utils'",["Cancel","Open URL"])
+          if (res) {
+            this.openURL("https://bbs.marginnote.com.cn/t/topic/49699")
+          }
         }else{
-          toolbarUtils.showHUD("MN Toolbar: Please install 'MN Utils' first!",5)
+          this.showHUD("MN Toolbar: Please install 'MN Utils' first!",5)
         }
         return false
       }
@@ -921,10 +1130,10 @@ try {
   /**
    * 
    * @param {MbBookNote|MNNote} currentNote 
-   * @param {string} targetNoteId 
+   * @param {string|MNNote} targetNote 
    */
-  static cloneAndMerge(currentNote,targetNoteId) {
-    let cloneNote = MNNote.clone(targetNoteId)
+  static cloneAndMerge(currentNote,targetNote) {
+    let cloneNote = MNNote.clone(targetNote)
     currentNote.merge(cloneNote.note)
   }
   /**
@@ -987,12 +1196,13 @@ try {
  * @param {MNNote|MbBookNote|undefined} note 
  * @returns 
  */
-  static getVarInfo(text) {//对通用的部分先写好对应的值
-    let config = {}
+  static async getVarInfo(text,preConfig = {}) {//对通用的部分先写好对应的值
+    let config = preConfig
     let hasClipboardText = text.includes("{{clipboardText}}")
     let hasSelectionText = text.includes("{{selectionText}}")
     let hasCurrentDocName = text.includes("{{currentDocName}}")
     let hasCurrentDocAttach = text.includes("{{currentDocAttach}}")
+    let hasChatAIOutput = text.includes("{{chatAIOutput}}")
     if (hasClipboardText) {
       config.clipboardText = MNUtil.clipboardText
     }
@@ -1004,6 +1214,9 @@ try {
     }
     if (hasCurrentDocAttach && editorUtils) {
       config.currentDocAttach = editorUtils.getAttachContentByMD5(MNUtil.currentDocmd5)
+    }
+    if (hasChatAIOutput && chatAIUtils) {
+      config.chatAIOutput = await chatAIUtils.notifyController.getTextForAction()
     }
     return config
   }
@@ -1077,7 +1290,7 @@ try {
   }
   /**
    * 
-   * @param {MNNote|MbBookNote} note 
+   * @param {MNNote} note 
    * @param {{target:string,type:string,index:number}} des 
    */
   static clearNoteContent(note,des){
@@ -1091,42 +1304,16 @@ try {
         break;
       case "comments"://todo: 改进type检测,支持未添加index参数时移除所有评论
         // this.removeComment(des)
-        let commentLength = note.comments.length
-        let comment
-        for (let i = commentLength-1; i >= 0; i--) {
-          if ("type" in des) {
-            switch (des.type) {
-              case "TextNote":
-                comment = note.comments[i]
-                if (comment.type === "TextNote") {
-                  note.removeCommentByIndex(i)
-                }
-                break;
-              case "LinkNote":
-                comment = note.comments[i]
-                if (comment.type === "LinkNote") {
-                  note.removeCommentByIndex(i)
-                }
-                break;
-              case "PaintNote":
-                comment = note.comments[i]
-                if (comment.type === "PaintNote") {
-                  note.removeCommentByIndex(i)
-                }
-                break;
-              case "HtmlNote":
-                comment = note.comments[i]
-                if (comment.type === "HtmlNote") {
-                  note.removeCommentByIndex(i)
-                }
-                break;
-              default:
-                break;
-            }
-          }else{
-            note.removeCommentByIndex(i)
+        if ("type" in des) {
+          let indices = note.getCommentIndicesByCondition({type:des.type})
+          note.removeCommentsByIndices(indices)
+        }else if ("index" in dex){
+          note.removeCommentByIndex(des.index)
+        }else{
+          let commentLength = note.comments.length
+          for (let i = commentLength-1; i >= 0; i--) {
+              note.removeCommentByIndex(i)
           }
-          break;
         }
         break;
       default:
@@ -1157,12 +1344,32 @@ try {
         break;
     }
   }
+  /**
+   * 
+   * @param {MNNote} note 
+   * @returns 
+   */
+  static isEmptyNote(note){
+    if (note.title) {
+      return false
+    }
+    if (note.excerptText || note.excerptPic) {
+      return false
+    }
+    if (note.comments && note.comments.length) {
+      return false
+    }
+    return true
+  }
   static clearContent(des){
     let range = des.range ?? "currentNotes"
     let targetNotes = this.getNotesByRange(range)
     MNUtil.undoGrouping(()=>{
       targetNotes.forEach(note=>{
         this.clearNoteContent(note, des)
+        if (des.allowDeleteNote && this.isEmptyNote(note)) {
+          note.delete()
+        }
       })
     })
   }
@@ -1181,15 +1388,16 @@ try {
     }
   }
   static replace(note,ptt,des){
-    let content
+    let content = this._replace_get_content_(note,des)
     switch (des.target) {
       case "title":
-        content = note.noteTitle
         note.noteTitle = content.replace(ptt, des.to)
         break;
       case "excerpt":
-        content = note.excerptText ?? ""
         note.excerptText = content.replace(ptt, des.to)
+        break;
+      case "clipboardText":
+        MNUtil.copy(content.replace(ptt, des.to))
         break;
       default:
         break;
@@ -1206,6 +1414,9 @@ try {
     return ptt
   }
   static _replace_get_content_(note,des) {
+    if (des.content) {
+      return this.detectAndReplace(des.content,note)
+    }
     let content = ""
     switch (des.target) {
       case "title":
@@ -1213,6 +1424,9 @@ try {
         break;
       case "excerpt":
         content = note.excerptText ?? ""
+        break;
+      case "clipboardText":
+        content = MNUtil.clipboardText
         break;
       default:
         break;
@@ -1514,6 +1728,77 @@ try {
   } catch (error) {
     return undefined
   }
+  }
+  static mergeText(des){
+    try {
+
+      let noteRange = des.range ?? "currentNotes"
+      let targetNotes = this.getNotesByRange(noteRange)
+        MNUtil.undoGrouping(()=>{
+          targetNotes.forEach((note,index)=>{
+            let mergedText = this.getMergedText(note, des, index)
+            if (mergedText === undefined) {
+              return
+            }
+            switch (des.target) {
+              case "excerptText":
+                note.excerptText = mergedText
+                if ("markdown" in des) {
+                  note.excerptTextMarkdown = des.markdown
+                }
+                break;
+              case "title":
+                note.noteTitle = mergedText
+                break;
+              case "newComment":
+                if ("markdown" in des && des.markdown) {
+                  note.appendMarkdownComment(mergedText)
+                }else{
+                  note.appendTextComment(mergedText)
+                }
+                break;
+              case "clipboard":
+                MNUtil.copy(mergedText)
+                break;
+              default:
+                break;
+            }
+          })
+        })
+        if (this.sourceToRemove.length) {
+          MNUtil.undoGrouping(()=>{
+            // MNUtil.showHUD("remove")
+            this.sourceToRemove.forEach(note=>{
+              note.excerptText = ""
+            })
+            MNUtil.delay(1).then(()=>{
+              this.sourceToRemove = []
+            })
+          })
+        }
+        if (Object.keys(this.commentToRemove).length) {
+          MNUtil.undoGrouping(()=>{
+            let commentInfos = Object.keys(this.commentToRemove)
+            commentInfos.forEach(noteId => {
+              let note = MNNote.new(noteId)
+              let sortedIndex = MNUtil.sort(this.commentToRemove[noteId],"decrement")
+              sortedIndex.forEach(commentIndex=>{
+                if (commentIndex < 0) {
+                  note.noteTitle = ""
+                }else{
+                  note.removeCommentByIndex(commentIndex)
+                }
+              })
+            })
+            MNUtil.delay(1).then(()=>{
+              this.commentToRemove = {}
+            })
+          })
+        }
+        
+    } catch (error) {
+      this.addErrorLog(error, 'mergeText')
+    }
   }
   /**
    * 
@@ -1841,7 +2126,7 @@ static getConfig(text){
   }
   return {title:text}
 }
-  /**
+/**
  * 
  * @param {MNNote} note 
  * @param {Object} ast 
@@ -1870,7 +2155,7 @@ try {
           }else{
             config = {title:text,excerptText:c.children[0].name}
           }
-          let childNote = note.createChildNote(config)
+          let childNote = note.createChildNote(config,false)
           if (c.children[0].children.length) {
             this.AST2Mindmap(childNote,c.children[0])
           }
@@ -1897,9 +2182,111 @@ try {
       }
       // MNUtil.showHUD("message")
       //继续创建子节点
-      let childNote = note.createChildNote(config)
+      let childNote = note.createChildNote(config,false)
       this.AST2Mindmap(childNote,c)
     })
+  }else{
+    // MNUtil.showHUD("No children found")
+  }
+  } catch (error) {
+  this.addErrorLog(error, "AST2Mindmap")
+}
+}
+
+
+/**
+ * 
+ * @param {MNNote} note 
+ * @param {Object} ast 
+ */
+static AST2MindmapOnlyHeadingFirstLevel(note,ast,level = "all") {
+try {
+  if (ast.children && ast.children.length) {
+    ast.children.forEach((c,index)=>{
+      if (c.type === 'hr') {
+        return
+      }
+      if (c.type == "heading") {
+        let config = {title:c.name,excerptTextMarkdown:true}
+        let subHeadings = c.children.filter(child=>child.type === "heading")
+        if (subHeadings.length) {
+          let childNote = note.createChildNote(config,false)
+          this.AST2MindmapOnlyHeading(childNote,c)
+        }else{
+          config.excerptText = c.children.map(p=>{
+            let texts = [p.raw ?? p.name]
+            if (p.hasList) {
+              texts.push(p.listText)
+            }
+            return texts.join("\n")
+          }).join("\n\n")
+          let childNote = note.createChildNote(config,false)
+        }
+      }else{
+        let texts = [c.raw ?? c.name]
+        if (c.hasList) {
+          texts.push(c.listText)
+        }
+        let config = {excerptText:texts.join("\n"),excerptTextMarkdown:true}
+        let childNote = note.createChildNote(config,false)
+        // this.AST2MindmapOnlyHeading(childNote,c)
+      }
+    })
+  }else{
+    // MNUtil.showHUD("No children found")
+  }
+  } catch (error) {
+  this.addErrorLog(error, "AST2Mindmap")
+}
+}
+
+/**
+ * 
+ * @param {MNNote} note 
+ * @param {Object} ast 
+ */
+static AST2MindmapOnlyHeading(note,ast,level = "all") {
+try {
+  let excerptTexts = []
+  if (ast.children && ast.children.length) {
+    ast.children.forEach((c,index)=>{
+      if (c.type === 'hr') {
+        return
+      }
+      if (c.type == "heading") {
+        let config = {title:c.name,excerptTextMarkdown:true}
+        let subHeadings = c.children.filter(child=>child.type === "heading")
+        if (subHeadings.length) {
+          let childNote = note.createChildNote(config,false)
+          this.AST2MindmapOnlyHeading(childNote,c)
+        }else{
+          config.excerptText = c.children.map(p=>{
+            let texts = [p.raw ?? p.name]
+            if (p.hasList) {
+              texts.push(p.listText)
+            }
+            return texts.join("\n")
+          }).join("\n\n")
+          let childNote = note.createChildNote(config,false)
+        }
+      }else{
+        let texts = [c.raw ?? c.name]
+        if (c.hasList) {
+          texts.push(c.listText)
+        }
+        excerptTexts.push(texts.join("\n"))
+        // let config = {}
+        // let childNote = note.createChildNote(config,false)
+        // this.AST2MindmapOnlyHeading(childNote,c)
+      }
+    })
+    if (excerptTexts.length) {
+      if (note.excerptText) {
+        note.excerptText = note.excerptText+"\n"+excerptTexts.join("\n")
+      }else{
+        note.excerptText = excerptTexts.join("\n")
+      }
+    }
   }else{
     // MNUtil.showHUD("No children found")
   }
@@ -1913,6 +2300,7 @@ try {
 
     let markdown = ``
     let source = des.source ?? "currentNote"
+    let method = des.method ?? "auto"//支持onlyHeading
     let focusNote = MNNote.getFocusNote()
     let newNoteTitle = "Mindmap"
     switch (source) {
@@ -1940,19 +2328,90 @@ try {
     MNUtil.showHUD("Creating Mindmap...")
     await MNUtil.delay(0.1)
     let res = toolbarUtils.markdown2AST(markdown)
-    // MNUtil.copy(res)
+    if (method === "onlyHeading" && !res.children.some(c=>c.type == "heading")) {
+      MNUtil.showHUD("No Heading Found")
+      return
+    }
     MNUtil.undoGrouping(()=>{
       if (!focusNote) {
         focusNote = this.newNoteInCurrentChildMap({title:newNoteTitle})
         focusNote.focusInFloatMindMap(0.5)
       }
-      toolbarUtils.AST2Mindmap(focusNote,res)
+      if (method === "onlyHeading") {
+        toolbarUtils.AST2MindmapOnlyHeadingFirstLevel(focusNote,res)
+      }else{
+        toolbarUtils.AST2Mindmap(focusNote,res)
+      }
     })
     return
  } catch (error) {
   this.addErrorLog(error, "markdown2Mindmap")
   return
  }
+  }
+  static async getStudylist(key){
+        let options = {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": key
+          }}
+        let res = await MNConnection.fetch("https://api.frdic.com/api/open/v1/studylist/category?language=en",options)
+        if (res.data) {
+          return res.data
+        }
+        return []
+  }
+  static async getWordIndo(word,key){
+        let options = {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": key
+          }}
+        let res = await MNConnection.fetch("https://api.frdic.com/api/open/v1/studylist/word?language=en&word="+word,options)
+        return res
+  }
+  static async addWordsToEurdic(words,option = {}){
+    let studylistId = option.studylistId
+    if (!studylistId && option.studylistName) {
+      let targetStudylist = this.studylist.find(item=>item.name === option.studylistName)
+      if (targetStudylist) {
+        studylistId = targetStudylist.id
+      }else{
+        this.studylist = await this.getStudylist(option.APIKey)
+        studylistId = this.studylist.find(item=>item.name === option.studylistName)?.id
+      }
+    }
+    let targetWords = []
+    let noteId = MNNote.getFocusNote()?.noteId
+    for (let index = 0; index < words.length; index++) {
+      const element = await this.render(words[index],{noteId:noteId});
+      targetWords.push(element)
+    }
+      let options = {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": option.APIKey
+          },
+          body: JSON.stringify({
+  "id": studylistId,
+  "language": "en",
+  "words": targetWords
+  })
+        }
+        // let res = await MNConnection.fetch("https://api.frdic.com/api/open/v1/studylist/category?language=en",options)
+        let res = await MNConnection.fetch("https://api.frdic.com/api/open/v1/studylist/words",options)
+        if (res.data && res.data.message) {
+          MNUtil.showHUD(res.data.message)
+          // await MNUtil.delay(1)
+          // let infos = await Promise.all(targetWords.map(item=>this.getWordIndo(item,option.APIKey)))
+          // MNUtil.copy(infos)
+        }else{
+          MNUtil.copy(res)
+        }
+        return res
   }
   static checkHeight(height,maxButtons = 20){
     if (height > 420 && !this.isSubscribed(false)) {
@@ -1982,6 +2441,12 @@ try {
     }
     this.errorLog.push(tem)
     MNUtil.copyJSON(this.errorLog)
+    MNUtil.log({
+      source:"MN Toolbar",
+      message:source,
+      level:"ERROR",
+      detail:JSON.stringify(tem,null,2)
+    })
   }
   static removeComment(des){
     // MNUtil.copyJSON(des)
@@ -2088,6 +2553,12 @@ try {
     }
     MNUtil.postNotification("setTimer", userInfo)
   }
+  /**
+   * 
+   * @param {object} des 
+   * @param {UIButton|undefined} button 
+   * @returns 
+   */
   static searchInDict(des,button){
     let target = des.target ?? "eudic"
     let textSelected = MNUtil.selectionText
@@ -2114,7 +2585,7 @@ try {
       }else{
         let studyFrame = MNUtil.studyView.bounds
         let beginFrame = self.view.frame
-        if (button.menu) {
+        if (button && button.menu) {
           button.menu.dismissAnimated(true)
           let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
           let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 500, 500)
@@ -2152,7 +2623,7 @@ try {
       }
 
 
-      // let des = toolbarConfig.getDescriptionByName("searchInEudic")
+      // let des = toolbarConfig.getDescriptionById("searchInEudic")
       // if (des && des.source) {
       //   // MNUtil.copyJSON(des)
       //   switch (des.source) {
@@ -2227,6 +2698,12 @@ try {
     }
     return undefined
   }
+  /**
+   * 
+   * @param {object} des 
+   * @param {UIButton|undefined} button 
+   * @returns 
+   */
   static chatAI(des,button){
     if (des.target === "openFloat") {
       MNUtil.postNotification("chatAIOpenFloat", {beginFrame:button.convertRectToView(button.bounds,MNUtil.studyView)})
@@ -2257,6 +2734,12 @@ try {
     MNUtil.postNotification("customChat",{})
     // MNUtil.showHUD("No valid argument!")
   }
+  /**
+   * 
+   * @param {object} des 
+   * @param {UIButton|undefined} button 
+   * @returns 
+   */
   static search(des,button){
     // MNUtil.copyJSON(des)
     // MNUtil.showHUD("Search")
@@ -2266,14 +2749,47 @@ try {
     if (focusNote) {
       noteId = focusNote.noteId
     }
-    let studyFrame = MNUtil.studyView.bounds
-    let beginFrame = button.frame
-    if (button.menu) {
-      button.menu.dismissAnimated(true)
-      let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-      let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
-      endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
-      endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
+    if (button) {
+      let studyFrame = MNUtil.studyView.bounds
+      let beginFrame = button.frame
+      if (button.menu) {
+        button.menu.dismissAnimated(true)
+        let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+        let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+        endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
+        endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
+        if (selectionText) {
+          // MNUtil.showHUD("Text:"+selectionText)
+          MNUtil.postNotification("searchInBrowser",{text:selectionText,beginFrame:beginFrame,endFrame:endFrame})
+        }else{
+          // MNUtil.showHUD("NoteId:"+noteId)
+          MNUtil.postNotification("searchInBrowser",{noteid:noteId,beginFrame:beginFrame,endFrame:endFrame})
+        }
+        return
+      }
+      let endFrame
+      beginFrame.y = beginFrame.y-10
+      if (beginFrame.x+490 > studyFrame.width) {
+        endFrame = Frame.gen(beginFrame.x-450, beginFrame.y-10, 450, 500)
+        if (beginFrame.y+490 > studyFrame.height) {
+          endFrame.y = studyFrame.height-500
+        }
+      }else{
+        endFrame = Frame.gen(beginFrame.x+40, beginFrame.y-10, 450, 500)
+        if (beginFrame.y+490 > studyFrame.height) {
+          endFrame.y = studyFrame.height-500
+        }
+      }
+      if (des.engine) {
+        if (selectionText) {
+          // MNUtil.showHUD("Text:"+selectionText)
+          MNUtil.postNotification("searchInBrowser",{text:selectionText,engine:des.engine,beginFrame:beginFrame,endFrame:endFrame})
+        }else{
+          // MNUtil.showHUD("NoteId:"+noteId)
+          MNUtil.postNotification("searchInBrowser",{noteid:noteId,engine:des.engine,beginFrame:beginFrame,endFrame:endFrame})
+        }
+        return
+      }
       if (selectionText) {
         // MNUtil.showHUD("Text:"+selectionText)
         MNUtil.postNotification("searchInBrowser",{text:selectionText,beginFrame:beginFrame,endFrame:endFrame})
@@ -2281,41 +2797,26 @@ try {
         // MNUtil.showHUD("NoteId:"+noteId)
         MNUtil.postNotification("searchInBrowser",{noteid:noteId,beginFrame:beginFrame,endFrame:endFrame})
       }
-      return
-    }
-    // if (button.menu) {
-    //   beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-    // }
-    let endFrame
-    beginFrame.y = beginFrame.y-10
-    if (beginFrame.x+490 > studyFrame.width) {
-      endFrame = Frame.gen(beginFrame.x-450, beginFrame.y-10, 450, 500)
-      if (beginFrame.y+490 > studyFrame.height) {
-        endFrame.y = studyFrame.height-500
-      }
     }else{
-      endFrame = Frame.gen(beginFrame.x+40, beginFrame.y-10, 450, 500)
-      if (beginFrame.y+490 > studyFrame.height) {
-        endFrame.y = studyFrame.height-500
+      if (des.engine) {
+        if (selectionText) {
+          // MNUtil.showHUD("Text:"+selectionText)
+          MNUtil.postNotification("searchInBrowser",{text:selectionText,engine:des.engine})
+        }else{
+          // MNUtil.showHUD("NoteId:"+noteId)
+          MNUtil.postNotification("searchInBrowser",{noteid:noteId,engine:des.engine})
+        }
+        return
       }
-    }
-    if (des.engine) {
       if (selectionText) {
         // MNUtil.showHUD("Text:"+selectionText)
-        MNUtil.postNotification("searchInBrowser",{text:selectionText,engine:des.engine,beginFrame:beginFrame,endFrame:endFrame})
+        MNUtil.postNotification("searchInBrowser",{text:selectionText})
       }else{
         // MNUtil.showHUD("NoteId:"+noteId)
-        MNUtil.postNotification("searchInBrowser",{noteid:noteId,engine:des.engine,beginFrame:beginFrame,endFrame:endFrame})
+        MNUtil.postNotification("searchInBrowser",{noteid:noteId})
       }
-      return
     }
-    if (selectionText) {
-      // MNUtil.showHUD("Text:"+selectionText)
-      MNUtil.postNotification("searchInBrowser",{text:selectionText,beginFrame:beginFrame,endFrame:endFrame})
-    }else{
-      // MNUtil.showHUD("NoteId:"+noteId)
-      MNUtil.postNotification("searchInBrowser",{noteid:noteId,beginFrame:beginFrame,endFrame:endFrame})
-    }
+
   }
   /**
    * @param {NSData} image 
@@ -2514,11 +3015,15 @@ try {
                 return;
               case 4:
                 let studyFrame = MNUtil.studyView.bounds
-                let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-                let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
-                endFrame.y = toolbarUtils.constrain(endFrame.y, 0, studyFrame.height-500)
-                endFrame.x = toolbarUtils.constrain(endFrame.x, 0, studyFrame.width-500)
-                MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
+                if (button) {
+                  let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+                  let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+                  endFrame.y = toolbarUtils.constrain(endFrame.y, 0, studyFrame.height-500)
+                  endFrame.x = toolbarUtils.constrain(endFrame.x, 0, studyFrame.width-500)
+                  MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
+                }else{
+                  MNUtil.postNotification("openInEditor",{content:res})
+                }
                 return;
               case 5:
                 let child = focusNote.createChildNote({excerptText:res,excerptTextMarkdown:true})
@@ -2538,12 +3043,16 @@ try {
                 MNUtil.showHUD("✅ Save to clipboard")
                 return;
               case 2:
-                let studyFrame = MNUtil.studyView.bounds
-                let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-                let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
-                endFrame.y = toolbarUtils.constrain(endFrame.y, 0, studyFrame.height-500)
-                endFrame.x = toolbarUtils.constrain(endFrame.x, 0, studyFrame.width-500)
-                MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
+                if (button) {
+                  let studyFrame = MNUtil.studyView.bounds
+                  let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+                  let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+                  endFrame.y = toolbarUtils.constrain(endFrame.y, 0, studyFrame.height-500)
+                  endFrame.x = toolbarUtils.constrain(endFrame.x, 0, studyFrame.width-500)
+                  MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
+                }else{
+                  MNUtil.postNotification("openInEditor",{content:res})
+                }
                 return;
               case 3:
                 MNUtil.undoGrouping(()=>{
@@ -2605,12 +3114,16 @@ try {
           }
           break;
         case "editor":
-          let studyFrame = MNUtil.studyView.bounds
-          let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
-          let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
-          endFrame.y = toolbarUtils.constrain(endFrame.y, 0, studyFrame.height-500)
-          endFrame.x = toolbarUtils.constrain(endFrame.x, 0, studyFrame.width-500)
-          MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
+          if (button) {
+            let studyFrame = MNUtil.studyView.bounds
+            let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+            let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+            endFrame.y = toolbarUtils.constrain(endFrame.y, 0, studyFrame.height-500)
+            endFrame.x = toolbarUtils.constrain(endFrame.x, 0, studyFrame.width-500)
+            MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
+          }else{
+            MNUtil.postNotification("openInEditor",{content:res})
+          }
           return
         case "chatModeReference":
           let method = "append"
@@ -2878,8 +3391,8 @@ Image Text Extraction Specialist
     noteConfig.isMarkdownExcerpt = note.excerptTextMarkdown
     noteConfig.isImageExcerpt = !!note.excerptPic
     noteConfig.date = {
-      create:note.createDate.toLocaleString(),
-      modify:note.modifiedDate.toLocaleString(),
+      create:note.createDate?.toLocaleString(),
+      modify:note.modifiedDate?.toLocaleString(),
     }
     noteConfig.allText = note.allNoteText()
     noteConfig.tags = note.tags
@@ -3596,6 +4109,9 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
         }else if ("textFirst" in des && des.textFirst) {
           focusNote.textFirst = des.textFirst
         }
+        if ("markdown" in des) {
+          focusNote.excerptTextMarkdown = des.markdown
+        }
         if ("asTitle" in des && des.asTitle) {
           focusNote.noteTitle = focusNote.excerptText
           focusNote.excerptText = ""
@@ -3648,6 +4164,58 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
         }
       })
     })
+  }
+  static openInEditor(des,button,controller){
+    try {
+    let noteId = toolbarUtils.currentNoteId
+    if (!noteId) {
+      let focusNote = MNNote.getFocusNote()
+      if (focusNote) {
+        noteId = focusNote.noteId
+      }
+    }
+    if (!noteId && MNUtil.currentSelection.onSelection) {
+      noteId = MNNote.fromSelection().realGroupNoteForTopicId().noteId
+    }
+    if (!noteId) {
+      MNUtil.showHUD("No note")
+      return
+    }
+    let studyFrame = MNUtil.studyView.bounds
+    if (button && button.menu) {
+      button.menu.dismissAnimated(true)
+      let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+      let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+      endFrame.y = toolbarUtils.constrain(endFrame.y, 0, studyFrame.height-500)
+      endFrame.x = toolbarUtils.constrain(endFrame.x, 0, studyFrame.width-500)
+      MNUtil.postNotification("openInEditor",{noteId:noteId,beginFrame:beginFrame,endFrame:endFrame})
+      return
+    }
+    if (button) {
+      let beginFrame = button.frame
+      beginFrame.y = beginFrame.y-10
+      if (beginFrame.x+490 > studyFrame.width) {
+        let endFrame = Frame.gen(beginFrame.x-450, beginFrame.y-10, 450, 500)
+        if (beginFrame.y+490 > studyFrame.height) {
+          endFrame.y = studyFrame.height-500
+        }
+        MNUtil.postNotification("openInEditor",{noteId:noteId,beginFrame:beginFrame,endFrame:endFrame})
+      }else{
+        let endFrame = Frame.gen(beginFrame.x+40, beginFrame.y-10, 450, 500)
+        if (beginFrame.y+490 > studyFrame.height) {
+          endFrame.y = studyFrame.height-500
+        }
+        MNUtil.postNotification("openInEditor",{noteId:noteId,beginFrame:beginFrame,endFrame:endFrame})
+      }
+      if (controller) {
+        controller.hideAfterDelay()
+      }
+    }else{
+        MNUtil.postNotification("openInEditor",{noteId:noteId})
+    }
+    } catch (error) {
+      this.addErrorLog(error, "openInEditor")
+    }
   }
   static insertSnippet(des){
     let target = des.target ?? "textview"
@@ -3747,6 +4315,24 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       }
     }else{
       MNUtil.toggleExtensionPanel()
+    }
+  }
+  static getSplitLine(studyController) {
+    let study = studyController
+    let studyFrame = study.view.bounds
+    let readerFrame = study.readerController.view.frame
+    let hidden = study.readerController.view.hidden//true代表脑图全屏
+    let rightMode = study.rightMapMode
+    let fullWindow = readerFrame.width == studyFrame.width
+    if (hidden || fullWindow) {
+      return undefined
+    }
+    if (rightMode) {
+      let splitLine = readerFrame.x+readerFrame.width
+      return splitLine
+    }else{
+      let splitLine = readerFrame.x
+      return splitLine
     }
   }
   static async setColor(des){
@@ -4197,6 +4783,7 @@ static getButtonFrame(button){
         return [
             "🔨 chatAI with menu",
             "🔨 chatAI in prompt",
+            "🔨 chatAI in current prompt",
             "🔨 chatAI in custom prompt"
           ]
       case "copy":
@@ -4232,37 +4819,40 @@ static getButtonFrame(button){
     }
     return [
       "🔨 empty action",
-      "🔨 empty action with double click",
-      "🔨 empty action with finish action",
-      "🔨 insert snippet",
-      "🔨 insert snippet with menu",
       "🔨 add note index",
-      "🔨 toggle mindmap",
       "🔨 copy with menu",
       "🔨 copy markdown link",
-      "🔨 toggle markdown",
-      "🔨 toggle textFirst",
       "🔨 chatAI with menu",
-      "🔨 search with menu",
-      "🔨 split note to mindmap",
-      "🔨 import mindmap from markdown file",
-      "🔨 import mindmap from clipboard",
-      "🔨 OCR with menu",
-      "🔨 OCR to clipboard",
-      "🔨 OCR as chat mode reference",
-      "🔨 toggle full doc and tab bar",
-      "🔨 merge text of merged notes",
+      "🔨 chatAI in prompt",
+      "🔨 chatAI in current prompt",
+      "🔨 chatAI in custom prompt",
       "🔨 create & move to main mindmap",
       "🔨 create & move as child note",
       "🔨 create & set branch style",
+      "🔨 focus note",
+      "🔨 focus in float window",
+      "🔨 import mindmap from markdown file",
+      "🔨 import mindmap from clipboard",
+      "🔨 insert snippet",
+      "🔨 insert snippet with menu",
+      "🔨 merge text of merged notes",
       "🔨 move note to main mindmap",
       "🔨 menu with actions",
-      "🔨 focus in float window",
-      "🔨 focus note",
-      "🔨 user confirm",
-      "🔨 user select",
+      "🔨 OCR with menu",
+      "🔨 OCR to clipboard",
+      "🔨 OCR as chat mode reference",
+      "🔨 smart copy",
       "🔨 show message",
-      "🔨 trigger button"
+      "🔨 search with menu",
+      "🔨 search in Baidu",
+      "🔨 split note to mindmap",
+      "🔨 toggle mindmap",
+      "🔨 toggle markdown",
+      "🔨 toggle textFirst",
+      "🔨 toggle full doc and tab bar",
+      "🔨 trigger button",
+      "🔨 user confirm",
+      "🔨 user select"
     ]
   }
   static extractJSONFromMarkdown(markdown) {
@@ -4369,7 +4959,8 @@ static getButtonFrame(button){
     let replaceText= text
     let note = MNNote.new(noteid)
     let noteConfig = this.getNoteObject(note)
-    let config = this.getVarInfo(text,userInput,{note:noteConfig})
+    let config = await this.getVarInfo(text,{userInput:userInput,note:noteConfig})
+    // MNUtil.copy(noteConfig)
     let prompt = MNUtil.render(replaceText, config)
     return prompt
       
@@ -4383,7 +4974,7 @@ static async getTextVarInfo(text,userInput) {
   try {
   let replaceText= text
   let noteConfig = this.getNoteObject(MNNote.getFocusNote())
-  let config = this.getVarInfo(text,userInput,{note:noteConfig})
+  let config = await this.getVarInfo(text,{note:noteConfig,userInput:userInput})
   let output = mustache.render(replaceText, config)
   return output
   // MNUtil.copy(output)
@@ -4403,18 +4994,699 @@ static async getTextVarInfo(text,userInput) {
    * 
    * @param {string} mainTitle - The main title of the confirmation dialog.
    * @param {string} subTitle - The subtitle of the confirmation dialog.
-   * @returns {Promise<number>} A promise that resolves with the button index of the button clicked by the user.
+   * @param {string[]} items - The items of the confirmation dialog.
+   * @returns {Promise<number|undefined>} A promise that resolves with the button index of the button clicked by the user.
    */
-  static async confirm(mainTitle,subTitle){
+  static async confirm(mainTitle,subTitle,items = ["Cancel","Confirm"]){
+    if (MNOnAlert) {
+      return
+    }
+    MNOnAlert = true
     return new Promise((resolve, reject) => {
       UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-        mainTitle,subTitle,0,"Cancel",["Confirm"],
+        mainTitle,subTitle,0,items[0],items.slice(1),
         (alert, buttonIndex) => {
+          MNOnAlert = false
           // MNUtil.copyJSON({alert:alert,buttonIndex:buttonIndex})
           resolve(buttonIndex)
         }
       )
     })
+  }
+/**
+ * 根据动作名在配置中查找符合的动作并执行（不是根据id/key）
+ * @param {string} actionName 
+ * @returns 
+ */
+static async executeAction(actionName,useId=false) {
+  try {
+    let actionDes
+    if (useId) {//直接根据key获取配置
+      actionDes = toolbarConfig.getDescriptionById(actionName)
+    }else{
+      let actionKey = toolbarConfig.getAllActions().find(key=>{
+        let name
+        if (key in toolbarConfig.actions) {
+          name = toolbarConfig.actions[key].name
+        }else{
+          name = toolbarConfig.getActions()[key].name
+        }
+        return name === actionName
+      })
+      if (!actionKey) {
+        MNUtil.showHUD("Missing action: "+actionName)
+        return
+      }
+      actionDes = toolbarConfig.getDescriptionById(actionKey)
+    }
+
+        if (!("action" in actionDes)) {
+          self.showHUD("Missing action")
+          return
+        }
+        // MNUtil.copy(actionDes)
+        await toolbarUtils.customActionByDes(actionDes)
+        while ("onFinish" in actionDes) {
+          let delay = actionDes.delay ?? 0.5
+          actionDes = actionDes.onFinish
+          await MNUtil.delay(delay)
+          await toolbarUtils.customActionByDes(actionDes)
+        }
+  
+  } catch (error) {
+    this.addErrorLog(error, "executeAction")
+    throw error;
+  }
+}
+/**
+ * @param {object} des 
+ * @returns 
+ */
+static async customActionByDes(des,button,controller,checkSubscribe = true) {//这里actionName指的是key
+  try {
+    if (checkSubscribe && !this.checkSubscribe(true)) {
+      return
+    }
+    let focusNote = MNNote.getFocusNote()
+    let targetNotes = []
+    let success = true
+    // MNUtil.showHUD("message"+(focusNote instanceof MNNote))
+    let notebookid = focusNote ? focusNote.notebookId : MNUtil.currentNotebookId
+    let title,content,color,config
+    let targetNoteId
+    switch (des.action) {
+      case "switchTitleorExcerpt":
+        this.switchTitleOrExcerpt()
+        await MNUtil.delay(0.1)
+        break;
+      case "bigbang":
+        MNUtil.postNotification("bigbangNote",{noteid:focusNote.noteId})
+        await MNUtil.delay(0.1)
+        break;
+      case "clearFormat":
+        let focusNotes = MNNote.getFocusNotes()
+        MNUtil.undoGrouping(()=>{
+          focusNotes.map(note=>{
+            note.clearFormat()
+          })
+        })
+        await MNUtil.delay(0.1)
+        break;
+      case "snipaste":
+        let selection = MNUtil.currentSelection
+        if (selection.onSelection && !selection.isText) {
+          let imageData = selection.image
+          MNUtil.postNotification("snipasteImage", {imageData:imageData})
+        }else{
+          MNUtil.postNotification("snipasteNote",{noteid:focusNote.noteId})
+        }
+        await MNUtil.delay(0.1)
+        break;
+      case "openSetting":
+        MNUtil.postNotification("openToolbarSetting", {})
+        await MNUtil.delay(0.1)
+        break;
+      case "undo":
+        UndoManager.sharedInstance().undo()
+        MNUtil.refreshAfterDBChanged(notebookid)
+        await MNUtil.delay(0.1)
+        break;
+      case "redo":
+        UndoManager.sharedInstance().redo()
+        MNUtil.refreshAfterDBChanged(notebookid)
+        await MNUtil.delay(0.1)
+        break;
+      case "openInEditor":
+        this.openInEditor(des, button, controller)
+        await MNUtil.delay(0.1)
+        break;
+      case "copy":
+        if (des.target || des.content) {
+          success = await this.copy(des)
+        }else{
+          success = this.smartCopy()
+        }
+        break;
+      case "paste":
+        this.paste(des)
+        await MNUtil.delay(0.1)
+        break;
+      case "markdown2Mindmap":
+        this.markdown2Mindmap(des)
+        break;
+      case "webSearch":
+        await this.webSearch(des)
+        break;
+      case "setTimer":
+        this.setTimer(des)
+        break;
+      case "cloneAndMerge":
+      try {
+        if (!des.hideMessage) {
+          MNUtil.showHUD("cloneAndMerge")
+        }
+        MNUtil.undoGrouping(()=>{
+          try {
+          MNNote.getFocusNotes().forEach(focusNote=>{
+            this.cloneAndMerge(focusNote.note, des.target)
+          })
+          } catch (error) {
+            MNUtil.showHUD(error)
+          }
+        })
+        await MNUtil.delay(0.1)
+      } catch (error) {
+        MNUtil.showHUD(error)
+      }
+        break;
+      case "cloneAsChildNote":
+        if (!des.hideMessage) {
+          MNUtil.showHUD("cloneAsChildNote")
+        }
+        targetNoteId= MNUtil.getNoteIdByURL(des.target)
+        MNUtil.undoGrouping(()=>{
+          MNNote.getFocusNotes().forEach(focusNote=>{
+            this.cloneAsChildNote(focusNote, targetNoteId)
+          })
+        })
+        await MNUtil.delay(0.1)
+        break;
+      case "addTags":
+        this.addTags(des)
+        break;
+      case "removeTags":
+        this.removeTags(des)
+        break;
+      case "ocr":
+        await this.ocr(des,button)
+        break;
+      case "searchInDict":
+        // MNUtil.showHUD("searchInDict")
+        this.searchInDict(des,button)
+        break;
+      case "insertSnippet":
+        success = this.insertSnippet(des)
+        break;
+      case "importDoc":
+        let docPath = await MNUtil.importFile(["com.adobe.pdf","public.text"])
+        if (docPath.endsWith(".pdf")) {
+          let docMd5 = MNUtil.importDocument(docPath)
+          MNUtil.openDoc(docMd5)
+        }else{
+          let fileName = MNUtil.getFileName(docPath).split(".")[0]
+          let content = MNUtil.readText(docPath)
+          if (focusNote) {
+            let child = focusNote.createChildNote({title:fileName,excerptText:content,excerptTextMarkdown:true})
+            await child.focusInMindMap(0.5)
+          }else{
+            let newNote = this.newNoteInCurrentChildMap({title:fileName,excerptText:content,excerptTextMarkdown:true})
+            await newNote.focusInMindMap(0.5)
+          }
+        }
+        break;
+      case "noteHighlight":
+        let newNote = await this.noteHighlight(des)
+        if (newNote && newNote.notebookId === MNUtil.currentNotebookId) {
+          if ("continueExcerpt" in des && des.continueExcerpt) {
+            //如果是继续摘录，则不需要focus
+            MNUtil.excuteCommand("ContinueExcerpt")
+          }
+          let focusInFloatWindowForAllDocMode = des.focusInFloatWindowForAllDocMode ?? false
+          let delay = des.focusAfterDelay ?? 0.5
+          if (MNUtil.studyController.docMapSplitMode === 2) {
+            if (focusInFloatWindowForAllDocMode) {
+              await newNote.focusInFloatMindMap(delay)
+            }
+          }
+        }
+        // if ("parentNote" in des) {
+        //   await MNUtil.delay(5)
+        //   let parentNote = MNNote.new(des.parentNote)
+        //   parentNote.focusInMindMap()
+        //   MNUtil.showHUD("as childNote of "+parentNote.noteId)
+        //   MNUtil.undoGrouping(()=>{
+        //     parentNote.addChild(newNote)
+        //   })
+        // }
+
+        break;
+      case "moveNote":
+        this.moveNote(des)
+        await MNUtil.delay(0.1)
+        break;
+      case "addChildNote"://不支持多选
+        if (!des.hideMessage) {
+          MNUtil.showHUD("addChildNote")
+        }
+        config = {}
+        if (des.title) {
+          config.title = this.detectAndReplace(des.title)
+        }
+        if (des.content) {
+          config.content = this.detectAndReplace(des.content)
+        }
+        if (des.markdown) {
+          config.markdown = des.content
+        }
+        color = undefined
+        if (des.color) {
+          switch (des.color) {
+            case "{{parent}}":
+            case "parent":
+              color = focusNote.colorIndex
+              break;
+            default:
+              if (typeof des.color === "number") {
+                color = des.color
+              }else{
+                color = parseInt(des.color.trim())
+              }
+              break;
+          }
+          config.color = color
+        }
+        let childNote = focusNote.createChildNote(config)
+        await childNote.focusInMindMap(0.5)
+        break;
+      case "file2base64":
+        let file = await MNUtil.importFile(["public.data"])
+        let data = NSData.dataWithContentsOfFile(file)
+        MNUtil.copy(data.base64Encoding())
+        break;
+      case "addBrotherNote":
+        if (!des.hideMessage) {
+          MNUtil.showHUD("addBrotherNote")
+        }
+        config = {}
+        if (des.title) {
+          config.title = this.detectAndReplace(des.title)
+        }
+        if (des.content) {
+          config.content = this.detectAndReplace(des.content)
+        }
+        if (des.markdown) {
+          config.markdown = des.markdown
+        }
+        color = undefined
+        if (des.color) {
+          switch (des.color) {
+            case "{{parent}}":
+            case "parent":
+              color = focusNote.parentNote.colorIndex
+              break;
+            case "{{current}}":
+            case "current":
+              color = focusNote.colorIndex
+              break;
+            default:
+              if (typeof des.color === "number") {
+                color = des.color
+              }else{
+                color = parseInt(des.color.trim())
+              }
+              break;
+          }
+          config.color = color
+        }
+        let brotherNote = focusNote.createBrotherNote(config)
+        await brotherNote.focusInMindMap(0.5)
+        break;
+
+      case "crash":
+        if (!des.hideMessage) {
+          MNUtil.showHUD("crash")
+        }
+        MNUtil.studyView.frame = {x:undefined}
+        await MNUtil.delay(0.1)
+        break;
+      case "addComment":
+        if (!des.hideMessage) {
+          MNUtil.showHUD("addComment")
+        }
+        let comment = des.content?.trim()
+        if (comment) {
+          let focusNotes = MNNote.getFocusNotes()
+          let markdown = des.markdown ?? true
+          let commentIndex = des.index ?? 999
+          // MNUtil.copy("text"+focusNotes.length)
+          MNUtil.undoGrouping(()=>{
+            if (markdown) {
+              focusNotes.forEach(note => {
+                let replacedText = this.detectAndReplace(comment,undefined,note)
+                if (replacedText.trim()) {
+                  note.appendMarkdownComment(replacedText,commentIndex)
+                }
+              })
+            }else{
+              focusNotes.forEach(note => {
+                let replacedText = this.detectAndReplace(comment,undefined,note)
+                if (replacedText.trim()) {
+                  note.appendTextComment(replacedText,commentIndex)
+                }
+              })
+            }
+          })
+        }
+        await MNUtil.delay(0.1)
+        break;
+      case "addMarkdownLink":
+        if (!des.hideMessage) {
+          MNUtil.showHUD("addMarkdownLink")
+        }
+        let title = des.title
+        let link = des.link
+        if (title && link) {
+          let replacedTitle = this.detectAndReplace(title)
+          let replacedLink = this.detectAndReplace(link)
+          // MNUtil.copy("text"+focusNotes.length)
+          MNUtil.undoGrouping(()=>{
+            focusNote.appendMarkdownComment(`[${replacedTitle}](${replacedLink})`)
+          })
+        }
+        await MNUtil.delay(0.1)
+        break;
+      case "removeComment":
+        if (!des.hideMessage) {
+          MNUtil.showHUD("removeComment")
+        }
+        this.removeComment(des)
+        await MNUtil.delay(0.1)
+        break;
+      case "moveComment":
+        if (!des.hideMessage) {
+          MNUtil.showHUD("moveComment")
+        }
+        this.moveComment(des)
+        await MNUtil.delay(0.1)
+        break;
+      case "link":
+        let linkType = des.linkType ?? "Both"
+        let targetUrl = des.target
+        if (targetUrl === "{{clipboardText}}") {
+          targetUrl = MNUtil.clipboardText
+        }
+        // MNUtil.showHUD(targetUrl)
+        let targetNote = MNNote.new(targetUrl)
+        MNUtil.undoGrouping(()=>{
+          if (targetNote) {
+            MNNote.getFocusNotes().forEach(note=>{
+              note.appendNoteLink(targetNote,linkType)
+            })
+          }else{
+            MNUtil.showHUD("Invalid target note!")
+          }
+        })
+        await MNUtil.delay(0.1)
+        break;
+      case "clearContent":
+        this.clearContent(des)
+        break;
+      case "setContent":
+          this.setContent(des)
+        break;
+      case "showInFloatWindow":
+        this.showInFloatWindow(des)
+        // MNUtil.copy(focusNote.noteId)
+        await MNUtil.delay(0.1)
+        break;
+      case "openURL":
+        if (des.url) {
+          let url = this.detectAndReplace(des.url)
+          MNUtil.openURL(url)
+          break;
+          // MNUtil.showHUD("message")
+        }
+        MNUtil.showHUD("No valid argument!")
+        break;
+      case "command":
+        let urlPre = "marginnote4app://command/"
+        let delay = des.commandDelay ?? 0.1
+        if (des.commands) {
+          for (let i = 0; i < des.commands.length; i++) {
+            const command = des.commands[i];
+            let url = urlPre+command
+            MNUtil.openURL(url)
+            await MNUtil.delay(delay)
+          }
+          break
+        }
+        if (des.command) {
+          let url = urlPre+des.command
+          MNUtil.openURL(url)
+          break
+        }
+        MNUtil.showHUD("No valid argument!")
+        break
+      case "shortcut":
+        let shortcutName = des.name
+        let url = "shortcuts://run-shortcut?name="+encodeURIComponent(shortcutName)
+        if (des.input) {
+          url = url+"&input="+encodeURIComponent(des.input)
+        }
+        if (des.text) {
+          let text = this.detectAndReplace(des.text)
+          url = url+"&text="+encodeURIComponent(text)
+        }
+        MNUtil.openURL(url)
+        break
+      case "toggleTextFirst":
+        if (!des.hideMessage) {
+          MNUtil.showHUD("toggleTextFirst")
+        }
+        targetNotes = this.getNotesByRange(des.range ?? "currentNotes")
+        MNUtil.undoGrouping(()=>{
+          targetNotes.forEach(note=>{
+            note.textFirst = !note.textFirst
+          })
+        })
+        await MNUtil.delay(0.1)
+        break
+      case "toggleMarkdown":
+        if (!des.hideMessage) {
+          MNUtil.showHUD("toggleMarkdown")
+        }
+        targetNotes = this.getNotesByRange(des.range ?? "currentNotes")
+        MNUtil.undoGrouping(()=>{
+          targetNotes.forEach(note=>{
+            note.excerptTextMarkdown = !note.excerptTextMarkdown
+          })
+        })
+        await MNUtil.delay(0.1)
+        break
+      case "toggleSidebar":
+        this.toggleSidebar(des)
+        break;
+      case "replace":
+        this.replaceAction(des)
+        break;
+      case "mergeText":
+        this.mergeText(des)
+        await MNUtil.delay(0.1)
+        break;
+      case "chatAI":
+        this.chatAI(des,button)
+        break
+      case "search":
+        this.search(des,button)
+        break;
+      case "openWebURL":
+        this.openWebURL(des)
+        break;
+      case "addImageComment":
+        let source = des.source ?? "photo"
+        this.compression = des.compression ?? true
+        this.currentNoteId = focusNote.noteId
+        switch (source) {
+          case "camera":
+            this.imagePickerController = UIImagePickerController.new()
+            this.imagePickerController.delegate = this  // 设置代理
+            this.imagePickerController.sourceType = 1  // 设置图片源为相机
+            // this.imagePickerController.allowsEditing = true  // 设置图片源为相册
+            MNUtil.studyController.presentViewControllerAnimatedCompletion(this.imagePickerController,true,undefined)
+            break;
+          case "photo":
+            this.imagePickerController = UIImagePickerController.new()
+            this.imagePickerController.delegate = this  // 设置代理
+            this.imagePickerController.sourceType = 0  // 设置图片源为相册
+            // this.imagePickerController.allowsEditing = true  // 设置图片源为相册
+            MNUtil.studyController.presentViewControllerAnimatedCompletion(this.imagePickerController,true,undefined)
+            break;
+          case "file":
+            let UTI = ["public.image"]
+            let path = await MNUtil.importFile(UTI)
+            let imageData = MNUtil.getFile(path)
+            MNUtil.showHUD("Import: "+MNUtil.getFileName(path))
+            MNUtil.copyImage(imageData)
+            focusNote.paste()
+            break;
+          default:
+            MNUtil.showHUD("unknown source")
+            break;
+        }
+        // this.presentViewControllerAnimatedCompletion(this.imagePickerController,true,undefined)
+        // 展示图片选择器
+        // present(imagePickerController, animated: true, completion: nil)
+        break;
+      case "focus":
+        await this.focus(des)
+        break 
+      case "showMessage":
+        this.showMessage(des)
+        break
+      case "addWordsToEurdic":
+        let words = des.words ?? [des.word]
+        let option = {
+          APIKey:des.APIKey
+        }
+        if (des.studylistId) {
+          option.studylistId = des.studylistId
+        }
+        if (des.studylistName) {
+          option.studylistName = des.studylistName
+        }
+        await this.addWordsToEurdic(words,option)
+        break
+      case "confirm":
+        let targetDes = await this.userConfirm(des)
+        if (targetDes) {
+          success = await this.customActionByDes(targetDes,button) 
+        }else{
+          success = false
+          MNUtil.showHUD("No valid argument!")
+        }
+        break
+      case "userSelect":
+        let selectDes = await this.userSelect(des)
+        if (selectDes) {
+          success = await this.customActionByDes(selectDes,button) 
+        }else{
+          success = false
+          MNUtil.showHUD("No valid argument!")
+        }
+        break
+      case "toggleView":
+        if ("targets" in des) {
+          des.targets.map(target=>{
+            MNUtil.postNotification("toggleMindmapToolbar", {target:target})
+          })
+        }else{
+          MNUtil.postNotification("toggleMindmapToolbar", {target:des.target})
+        }
+        break
+      case "export":
+        this.export(des)
+        // let exportTarget = des.target ?? "auto"
+        // let docPath = MNUtil.getDocById(focusNote.note.docMd5).fullPathFileName
+        // MNUtil.saveFile(docPath, ["public.pdf"])
+        break;
+      case "setButtonImage":
+        if (!des.hideMessage) {
+          MNUtil.showHUD("setButtonImage...")
+        }
+        await MNUtil.delay(0.01)
+        if ("imageConfig" in des) {
+          let config = des.imageConfig
+          let keys = Object.keys(config)
+          for (let i = 0; i < keys.length; i++) {
+            let url = config[keys[i]].url
+            let scale = config[keys[i]].scale??3
+            MNUtil.showHUD("setButtonImage: "+keys[i])
+            toolbarConfig.setImageByURL(keys[i], url,false,scale)
+          }
+          // await Promise.all(asyncActions)
+          MNUtil.postNotification("refreshToolbarButton", {})
+        }else{
+          MNUtil.showHUD("Missing imageConfig")
+        }
+        break;
+      case "setColor":
+        await this.setColor(des)
+        break;
+      case "triggerButton":
+        let targetButtonName = des.buttonName
+        let description = toolbarConfig.getDesByButtonName(targetButtonName)
+        success = await this.customActionByDes(description)
+        break;
+      default:
+        MNUtil.showHUD("Not supported yet...")
+        break;
+    }
+    return new Promise((resolve, reject) => {
+      resolve()
+    })
+    // if (this.dynamicWindow) {
+    //   this.hideAfterDelay()
+    // }
+    // copyJSON(des)
+  } catch (error) {
+    this.addErrorLog(error, "toolbarUtils.customActionByDes")
+    // MNUtil.showHUD(error)
+  }
+}
+  static parseURL(urlString){
+    let url
+    if (typeof urlString === "string") {
+      url = NSURL.URLWithString(urlString)
+    }else{
+      if (urlString instanceof NSURL) {
+        url = urlString
+      }else if (urlString instanceof NSURLRequest) {
+        url = urlString.URL()
+      }
+    }
+    let absoluteString = url.absoluteString()
+    if (absoluteString === "about:blank") {
+      return {
+        url:absoluteString,
+        scheme:"about",
+        params:{},
+        isBlank:true
+      }
+    }
+    let config = {
+      url:absoluteString,
+      scheme:url.scheme,
+      host:url.host,
+      query:url.query,
+      pathComponents:url.pathComponents().filter(k=>k !== "/")
+    }
+    let pathComponents = url.pathComponents()
+    if (pathComponents && pathComponents.length > 0) {
+      config.pathComponents = pathComponents.filter(k=>k !== "/")
+    }
+    // 解析查询字符串
+    const params = {};
+    let queryString = url.query;
+    if (queryString) {
+      const pairs = queryString.split('&');
+      for (const pair of pairs) {
+        // 跳过空的参数对 (例如 'a=1&&b=2' 中的第二个 '&')
+        if (!pair) continue;
+        const eqIndex = pair.indexOf('=');
+        let key, value;
+
+        if (eqIndex === -1) {
+          // 处理没有值的参数，例如 '...&readonly&...'
+          key = decodeURIComponent(pair);
+          value = ''; // 通常将无值的 key 对应的值设为空字符串
+        } else {
+          key = decodeURIComponent(pair.substring(0, eqIndex));
+          let tem = decodeURIComponent(pair.substring(eqIndex + 1));
+          if (MNUtil.isValidJSON(tem)) {
+            value = JSON.parse(tem)
+          }else if (tem === "true") {
+            value = true
+          }else if (tem === "false") {
+            value = false
+          }else{
+            value = tem
+          }
+        }
+        params[key] = value;
+      }
+    }
+    config.params = params
+    return config
   }
 }
 
@@ -4706,7 +5978,7 @@ class toolbarConfig {
       toolbarUtils.app.defaultTextColor,
       0.8
     );
-      let editorConfig = this.getDescriptionByName("edit")
+      let editorConfig = this.getDescriptionById("edit")
       if ("showOnNoteEdit" in editorConfig) {
         this.showEditorOnNoteEdit = editorConfig.showOnNoteEdit
       }
@@ -5031,7 +6303,7 @@ class toolbarConfig {
       }
     })
     this.curveImage = MNUtil.getImage(this.mainPath+"/curve.png",2)
-    this.runImage = MNUtil.getImage(this.mainPath+"/run.png",2.6)
+    this.runImage = MNUtil.getImage(this.mainPath+"/run.png",2.)
     this.templateImage = MNUtil.getImage(this.mainPath+"/template.png",2.2)
     // MNUtil.copyJSON(this.imageConfigs)
       } catch (error) {
@@ -5162,7 +6434,7 @@ class toolbarConfig {
       return undefined
     }
     let action = allActions[buttonIndex]
-    let actionDes = toolbarConfig.getDescriptionByName(action)
+    let actionDes = toolbarConfig.getDescriptionById(action)
     return actionDes
   
   }
@@ -5306,12 +6578,18 @@ static template(action) {
   }
   return JSON.stringify(config,null,2)
 }
+/**
+ * 
+ * @param {string} actionKey 
+ * @returns {object}
+ */
 static getAction(actionKey){
   let action = {}
   if (actionKey in this.actions) {
     action = this.actions[actionKey]
     if (!MNUtil.isValidJSON(action.description)) {//兼容旧版本的description问题
       action.description = this.getActions()[actionKey].description
+      //这里的description是字符串而非json对象
     }
     return action
   }
@@ -5525,22 +6803,84 @@ static getExecuteCode(){
     return toolbarConfig.getActions()[actionName].description
   }
 }
-static getDescriptionByName(actionName){
+/**
+ * 
+ * @param {string} actionKey 
+ * @returns {object} json对象,而非字符串
+ */
+static getDescriptionById(actionKey){
   let des
-  if (actionName in toolbarConfig.actions) {
-    des = toolbarConfig.actions[actionName].description
+  if (actionKey in toolbarConfig.actions) {
+    des = toolbarConfig.actions[actionKey].description
   }else{
-    des = toolbarConfig.getActions()[actionName].description
+    des = toolbarConfig.getActions()[actionKey].description
   }
   if (MNUtil.isValidJSON(des)) {
-    return JSON.parse(des)
-  }
-  if (actionName === "pasteAsTitle") {
-    return {
-      "action": "paste",
-      "target": "title",
-      "content": "{{clipboardText}}"
+    let desObject = JSON.parse(des)
+    if (actionKey.startsWith("color")) {
+      desObject.action = "setColor"
+      desObject.color = parseInt(actionKey.replace("color",""))
+    }else{
+      switch (actionKey) {
+        case "bigbang":
+          desObject.action = "bigbang"
+          break;
+        case "switchTitleorExcerpt":
+          desObject.action = "switchTitleOrExcerpt"
+          break;
+        case "clearFormat":
+          desObject.action = "clearFormat"
+          break;
+        case "snipaste":
+          desObject.action = "snipaste"
+          break;
+        case "copyAsMarkdownLink":
+          desObject.action = "copy"
+          desObject.content = "[{{note.title}}]({{note.url}})"
+          break;
+        case "sidebar":
+          desObject.action = "toggleSidebar"
+          break;
+        case "ocr":
+          desObject.action = "ocr"
+          break;
+        case "copy":
+          desObject.action = "copy"
+          break;
+        case "timer":
+          desObject.action = "setTimer"
+          break;
+        case "undo":
+          desObject.action = "undo"
+          break;
+        case "redo":
+          desObject.action = "redo"
+          break;
+        case "edit":
+          desObject.action = "openInEditor"
+          break;
+        case "searchInEudic":
+          desObject.action = "searchInDict"
+          break;
+        case "search":
+          desObject.action = "search"
+          break;
+        case "chatglm":
+          desObject.action = "chatAI"
+          break;
+        case "setting":
+          desObject.action = "openSetting"
+          break;
+        case "pasteAsTitle":
+          desObject.action = "paste"
+          desObject.target = "title"
+          desObject.content = "{{clipboardText}}"
+          break;
+        default:
+          break;
+      }
     }
+    return desObject
   }
   return {}
 }

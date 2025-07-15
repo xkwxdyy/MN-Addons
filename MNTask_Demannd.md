@@ -4,6 +4,31 @@
 3.  /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/log.md 是用于测试的 log 文件，一般说“log 文件已更新”就是这个。 MNUtil.log() 添加的内容我会复制到这里。太多了话请分段细读，这个很重要。如果区分 iPad 和 mac 的话，iPad 端的 log 信息在 iPad_MNUtils_LogViewer.md 里。
 4.  你更新的 log 写在 mntask_guide.md 里! 而不是 log.md 里。 
 ---
+新增一个“记录”按钮，单击后能增加一个时间戳记录。具体细节如下：
+1. 例子
+```
+<div style="position:relative; padding-left:28px; margin:14px 0; color:#1E40AF; font-weight:500; font-size:0.92em">
+  <div style="position:absolute; left:0; top:50%; transform:translateY(-50%); 
+              width:18px; height:18px; background:conic-gradient(#3B82F6 0%, #60A5FA 50%, #3B82F6 100%); 
+              border-radius:50%; display:flex; align-items:center; justify-content:center">
+    <div style="width:8px; height:8px; background:white; border-radius:50%"></div>
+  </div>
+  2025-07-15 23:52:42
+</div>
+内容
+```
+2. 样式：时间的样式就获取当前的时间，然后用上面的样式来显示。内容的地方通过弹窗来让用户输入内容。
+3. 位置：添加在选中的卡片的最后一个评论即可，很简单，直接 appendMarkdownComment 就行。
+
+
+---
+任务卡片的制卡我们现在增加一个新的主字段叫做“进展”，放在最下方。
+1. 要注意“包含”下方的任务链接的移动处理是否会出问题？是否要进行相应的修改？因为之前的话“包含”主字段是在最下方
+2. 如果一些之前制作的任务卡片的话，优化一下 taskCardMake 函数，对于旧卡片， taskCardMake 触发时检测一下卡片是否有“进展”这个主字段，如果没有的话就添加一个。
+
+
+
+---
  然后现在还不需要通过插件来访问实际的数据,我需要你自己测试一些数据，因为卡片类型有四种，而且要考虑筛选之类的，所以数据要比较多。
 
  数据结构是这样的（具体的请看一下 MNTaskManager 里的函数来理解）：我们操作的都是卡片，卡片有标题和评论。

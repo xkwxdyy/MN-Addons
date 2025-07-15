@@ -1147,6 +1147,12 @@
                             📤 导出数据
                         </button>
                         <div style="margin-left: auto; display: flex; align-items: center; gap: 16px;">
+                            <div id="filterIndicator" style="display: none; background: var(--bg-active); padding: 6px 12px; border-radius: var(--radius-sm);">
+                                <span>🔍 筛选已应用</span>
+                                <button class="btn" style="padding: 2px 8px; margin-left: 8px; font-size: 0.75rem;" onclick="clearFilter()">
+                                    清除筛选
+                                </button>
+                            </div>
                             <span>已选中: <span id="selectedCount" style="font-weight: bold;">0</span> 项</span>
                             <input type="text" class="field-input" placeholder="搜索任务..." onkeyup="searchTasks(this.value)">
                         </div>
@@ -1267,6 +1273,31 @@
                         </div>
                         <div id="filterPreviewList">
                             <!-- 筛选结果预览 -->
+                        </div>
+                        
+                        <div id="filterActions" style="display: none; margin-top: 20px;">
+                            <h4 class="mb-2">筛选操作</h4>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button class="btn btn-primary" onclick="showFullFilterResults()">
+                                    📋 查看全部结果
+                                </button>
+                                <button class="btn" onclick="applyFilterToTable()">
+                                    📊 应用到表格
+                                </button>
+                                <button class="btn" onclick="exportFilteredTasks()">
+                                    📤 导出筛选结果
+                                </button>
+                                <button class="btn" onclick="selectFilteredTasks()">
+                                    ✅ 选择所有结果
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="fullFilterResults" style="display: none; margin-top: 20px;">
+                            <h4 class="mb-2">完整筛选结果</h4>
+                            <div id="fullFilterResultsList" style="max-height: 400px; overflow-y: auto;">
+                                <!-- 完整结果列表 -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1478,6 +1509,8 @@
         let selectedTasks = new Set();
         let currentView = 'fields';
         let lastOperation = null; // 记录最后一次操作，用于撤销
+        let currentFilteredTasks = null; // 当前筛选结果
+        let isFilterApplied = false; // 是否应用了筛选
 
         // 生成测试数据
         function generateTestData() {
@@ -1798,12 +1831,16 @@
                 
                 tbody.innerHTML = '';
                 
-                if (!tasks || tasks.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">暂无任务数据</td></tr>';
+                // 决定要显示的任务列表
+                const tasksToDisplay = isFilterApplied && currentFilteredTasks ? currentFilteredTasks : tasks;
+                
+                if (!tasksToDisplay || tasksToDisplay.length === 0) {
+                    const message = isFilterApplied ? '没有符合筛选条件的任务' : '暂无任务数据';
+                    tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">${message}</td></tr>`;
                     return;
                 }
                 
-                tasks.forEach(task => {
+                tasksToDisplay.forEach(task => {
                     if (!task || !task.id) {
                         console.warn('跳过无效任务:', task);
                         return;
@@ -2231,6 +2268,10 @@
                 return typeMatch && statusMatch && priorityMatch;
             });
             
+            // 保存筛选结果
+            currentFilteredTasks = filteredTasks;
+            isFilterApplied = true;
+            
             document.getElementById('filterResultCount').textContent = filteredTasks.length;
             document.getElementById('filterExcludedCount').textContent = tasks.length - filteredTasks.length;
             
@@ -2270,6 +2311,18 @@
                 previewList.innerHTML = '<p class="text-center text-muted">没有符合条件的任务</p>';
             }
             
+            // 显示或隐藏操作按钮
+            const filterActions = document.getElementById('filterActions');
+            if (filterActions) {
+                filterActions.style.display = filteredTasks.length > 0 ? 'block' : 'none';
+            }
+            
+            // 隐藏完整结果区域（等待用户点击查看）
+            const fullResults = document.getElementById('fullFilterResults');
+            if (fullResults) {
+                fullResults.style.display = 'none';
+            }
+            
             showToast(`筛选完成，找到 ${filteredTasks.length} 个任务`);
         }
 
@@ -2278,7 +2331,168 @@
             document.querySelectorAll('#view-filter input[type="checkbox"]').forEach(cb => {
                 cb.checked = true;
             });
+            currentFilteredTasks = null;
+            isFilterApplied = false;
             applyAdvancedFilter();
+        }
+        
+        // 显示完整筛选结果
+        function showFullFilterResults() {
+            if (!currentFilteredTasks || currentFilteredTasks.length === 0) {
+                showToast('没有筛选结果可显示', 'error');
+                return;
+            }
+            
+            const fullResults = document.getElementById('fullFilterResults');
+            const resultsList = document.getElementById('fullFilterResultsList');
+            
+            if (!fullResults || !resultsList) {
+                console.error('完整结果容器未找到');
+                return;
+            }
+            
+            // 渲染所有筛选结果
+            resultsList.innerHTML = currentFilteredTasks.map((task, index) => {
+                const typeIcon = {
+                    '目标': '🎯',
+                    '关键结果': '🔑',
+                    '项目': '📁',
+                    '动作': '⚡'
+                }[task.type] || '📋';
+                
+                return `
+                    <div class="task-card" style="margin-bottom: 12px; padding: 16px; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--glass-border);">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div style="flex: 1;">
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                    <span style="color: var(--text-muted); font-size: 0.875rem;">#${index + 1}</span>
+                                    <span class="task-type-badge ${task.type === '目标' ? 'goal' : 
+                                                                  task.type === '关键结果' ? 'kr' : 
+                                                                  task.type === '项目' ? 'project' : 'action'}">
+                                        ${typeIcon} ${task.type}
+                                    </span>
+                                    <span class="status-indicator">
+                                        <span class="status-dot ${task.status === '未开始' ? 'todo' : 
+                                                                 task.status === '进行中' ? 'doing' : 'done'}"></span>
+                                        ${task.status}
+                                    </span>
+                                    ${task.fields.priority ? `<span class="tag">${task.fields.priority === '高' ? '🔴' : task.fields.priority === '中' ? '🟡' : '🟢'} ${task.fields.priority}</span>` : ''}
+                                </div>
+                                <h4 style="margin: 0 0 8px 0; font-size: 1rem;">${task.title}</h4>
+                                ${task.path ? `<div class="task-path">📍 ${task.path}</div>` : ''}
+                                <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                                    ${task.fields.today ? '<span class="tag">📅 今日</span>' : ''}
+                                    ${task.fields.dueDate ? `<span class="tag">⏰ ${task.fields.dueDate}</span>` : ''}
+                                    ${task.fields.tags ? task.fields.tags.map(tag => `<span class="tag">${tag}</span>`).join('') : ''}
+                                    ${task.fields.progress !== undefined ? `<span class="tag">📊 ${task.fields.progress}%</span>` : ''}
+                                </div>
+                            </div>
+                            <button class="btn" style="margin-left: 16px;" onclick="viewTaskDetail('${task.id}')">
+                                查看详情
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            // 显示完整结果区域
+            fullResults.style.display = 'block';
+            resultsList.scrollTop = 0;
+            
+            showToast(`显示全部 ${currentFilteredTasks.length} 个筛选结果`);
+        }
+        
+        // 应用筛选到表格
+        function applyFilterToTable() {
+            if (!currentFilteredTasks || currentFilteredTasks.length === 0) {
+                showToast('没有筛选结果可应用', 'error');
+                return;
+            }
+            
+            // 切换到字段管理视图
+            switchView('fields');
+            
+            // 标记筛选已应用
+            isFilterApplied = true;
+            
+            // 显示筛选指示器
+            const indicator = document.getElementById('filterIndicator');
+            if (indicator) {
+                indicator.style.display = 'flex';
+            }
+            
+            // 更新显示逻辑（通过修改 renderFieldTable 来实现）
+            renderFieldTable();
+            
+            showToast(`已应用筛选，显示 ${currentFilteredTasks.length} 个任务`);
+        }
+        
+        // 导出筛选结果
+        function exportFilteredTasks() {
+            if (!currentFilteredTasks || currentFilteredTasks.length === 0) {
+                showToast('没有筛选结果可导出', 'error');
+                return;
+            }
+            
+            const exportData = currentFilteredTasks.map(task => ({
+                id: task.id,
+                type: task.type,
+                status: task.status,
+                title: task.title,
+                path: task.path || '',
+                priority: task.fields.priority || '',
+                dueDate: task.fields.dueDate || '',
+                tags: (task.fields.tags || []).join(', '),
+                progress: task.fields.progress || 0,
+                today: task.fields.today ? '是' : '否'
+            }));
+            
+            const csv = convertToCSV(exportData);
+            const fileName = `筛选结果_${new Date().toISOString().split('T')[0]}.csv`;
+            downloadFile(csv, fileName, 'text/csv;charset=utf-8');
+            
+            showToast(`已导出 ${currentFilteredTasks.length} 个筛选结果`);
+        }
+        
+        // 选择所有筛选结果
+        function selectFilteredTasks() {
+            if (!currentFilteredTasks || currentFilteredTasks.length === 0) {
+                showToast('没有筛选结果可选择', 'error');
+                return;
+            }
+            
+            // 清空当前选择
+            selectedTasks.clear();
+            
+            // 选择所有筛选结果
+            currentFilteredTasks.forEach(task => {
+                selectedTasks.add(task.id);
+            });
+            
+            // 切换到批量操作视图
+            switchView('batch');
+            
+            // 更新选择提示
+            updateSelectionHint();
+            
+            showToast(`已选择 ${selectedTasks.size} 个筛选结果`);
+        }
+
+        // 清除筛选
+        function clearFilter() {
+            isFilterApplied = false;
+            currentFilteredTasks = null;
+            
+            // 隐藏筛选指示器
+            const indicator = document.getElementById('filterIndicator');
+            if (indicator) {
+                indicator.style.display = 'none';
+            }
+            
+            // 重新渲染表格
+            renderFieldTable();
+            
+            showToast('筛选已清除');
         }
 
         // 快速筛选

@@ -193,6 +193,20 @@ class MNUtil {
     //   marked.setOptions({ renderer });
     // }
   }
+  static focusHistory = []
+  /**
+   * 只记录最近十次的操作
+   * @param {string} type
+   * @param {{noteId:string,text:string,imageData:NSData,notebookId:string,docMd5:string}} detail 
+   */
+  static addHistory(type,detail){
+    if (this.focusHistory.length>=10) {
+      this.focusHistory.shift()
+    }
+    let history = {type:type,time:Date.now(),...detail}
+    this.focusHistory.push(history)
+    // MNUtil.copy(this.focusHistory)
+  }
   static errorLog = []
   static logs = []
   static addErrorLog(error,source,info){
@@ -913,7 +927,7 @@ static textMatchPhrase(text, query) {
    * It returns a promise that resolves with the button index of the button clicked by the user.
    * 
    * @param {string} mainTitle - The main title of the confirmation dialog.
-   * @param {string} subTitle - The subtitle of the confirmation dialog.
+   * @param {string|object} subTitle - The subtitle of the confirmation dialog.
    * @param {string[]} items - The items of the confirmation dialog.
    * @returns {Promise<number|undefined>} A promise that resolves with the button index of the button clicked by the user.
    */
@@ -921,10 +935,12 @@ static textMatchPhrase(text, query) {
     if (MNOnAlert) {
       return
     }
+    let typeofSubTitle = typeof subTitle
+    let fixedSubtitle = typeofSubTitle === "string"?subTitle:JSON.stringify(subTitle,undefined,2)
     MNOnAlert = true
     return new Promise((resolve, reject) => {
       UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-        mainTitle,subTitle,0,items[0],items.slice(1),
+        mainTitle,fixedSubtitle,0,items[0],items.slice(1),
         (alert, buttonIndex) => {
           MNOnAlert = false
           // MNUtil.copyJSON({alert:alert,buttonIndex:buttonIndex})
@@ -1119,6 +1135,9 @@ static textMatchPhrase(text, query) {
    * @returns {{url:string,scheme:string,host:string,query:string,params:Object}}
    */
   static parseURL(urlString){
+    /**
+     * @type {NSURL}
+     */
     let url
     if (typeof urlString === "string") {
       url = NSURL.URLWithString(urlString)
@@ -1129,16 +1148,28 @@ static textMatchPhrase(text, query) {
         url = urlString.URL()
       }
     }
+    let absoluteString = url.absoluteString()
+    if (absoluteString === "about:blank") {
+      return {
+        url:absoluteString,
+        scheme:"about",
+        params:{},
+        isBlank:true
+      }
+    }
     let config = {
       url:url.absoluteString(),
       scheme:url.scheme,
       host:url.host,
-      query:url.query
+      query:url.query,
+      isBlank:false
     }
     let pathComponents = url.pathComponents()
     if (pathComponents && pathComponents.length > 0) {
       config.pathComponents = pathComponents.filter(k=>k !== "/")
     }
+
+    let fragment = url.fragment
     // 解析查询字符串
     const params = {};
     let queryString = url.query;
@@ -1395,77 +1426,121 @@ static textMatchPhrase(text, query) {
     return view.isDescendantOfView(this.currentWindow)
   }
   static addObserver(observer,selector,name){
+    if (!observer.notifications) {
+      observer.notifications = [name]
+    }else{
+      observer.notifications.push(name)
+    }
     NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, name);
   }
-  
+  static addObservers(observer,kv){
+
+    let keys = Object.keys(kv)
+    if (!observer.notifications) {
+      observer.notifications = keys
+    }else{
+      let allNotifications = observer.notifications.concat(keys)
+      observer.notifications = MNUtil.unique(allNotifications)
+    }
+    observer.notifications = keys
+    for (let i = 0; i < keys.length; i++) {
+      let name = keys[i]
+      let selector = kv[name]
+      NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, name);
+    }
+  }
   static addObserverForPopupMenuOnNote(observer,selector){
-    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, "PopupMenuOnNote");
+    this.addObserver(observer, selector, "PopupMenuOnNote")
   }
   static addObserverForClosePopupMenuOnNote(observer,selector){
-    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, "ClosePopupMenuOnNote");
+    this.addObserver(observer, selector, "ClosePopupMenuOnNote")
   }
   static addObserverForPopupMenuOnSelection(observer,selector){
-    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, "PopupMenuOnSelection");
+    this.addObserver(observer, selector, "PopupMenuOnSelection")
   }
   static addObserverForClosePopupMenuOnSelection(observer,selector){
-    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, "ClosePopupMenuOnSelection");
+    this.addObserver(observer, selector, "ClosePopupMenuOnSelection")
   }
   static addObserverForUITextViewTextDidBeginEditing(observer,selector){
-    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, "UITextViewTextDidBeginEditingNotification");
+    this.addObserver(observer, selector, "UITextViewTextDidBeginEditingNotification")
   }
   static addObserverForUITextViewTextDidEndEditing(observer,selector){
-    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, "UITextViewTextDidEndEditingNotification");
+    this.addObserver(observer, selector, "UITextViewTextDidEndEditingNotification")
   }
   static addObserverForCloudKeyValueStoreDidChange(observer,selector){
-    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, "NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI");
+    this.addObserver(observer, selector, "NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI")
   }
   static addObserverForProcessNewExcerpt(observer,selector){
-    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, "ProcessNewExcerpt");
+    this.addObserver(observer, selector, "ProcessNewExcerpt")
   }
   static addObserverForAddonBroadcast(observer,selector){
-    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, "AddonBroadcast");
+    this.addObserver(observer, selector, "AddonBroadcast")
   }
   static addObserverForUIPasteboardChanged(observer,selector){
-    NSNotificationCenter.defaultCenter().addObserverSelectorName(observer, selector, "UIPasteboardChangedNotification");
+    this.addObserver(observer, selector, "UIPasteboardChangedNotification")
   }
 
   static removeObserver(observer,name){
+    if (!name) {
+      return
+    }
     NSNotificationCenter.defaultCenter().removeObserverName(observer, name);
-  }
-  static removeObservers(observer,notifications) {
-    notifications.forEach(notification=>{
-      NSNotificationCenter.defaultCenter().removeObserverName(observer, notification);
+    observer.notifications = observer.notifications.filter(item=>{
+      return item !== name;
     })
   }
-  static removeObserverForPopupMenuOnNote(observer,selector){
-    NSNotificationCenter.defaultCenter().removeObserverName(observer, selector, "PopupMenuOnNote");
+  /**
+   * 
+   * @param {string} observer 
+   * @param {Array<String>} notifications
+   */
+  static removeObservers(observer,notifications = undefined) {
+    if (notifications && notifications.length) {
+      notifications.forEach(notification=>{
+        NSNotificationCenter.defaultCenter().removeObserverName(observer, notification);
+      })
+      observer.notifications = observer.notifications.filter(item=>{
+        return !notifications.includes(item);
+      })
+    }else{//删除所有observer
+      let allNotifications = observer.notifications;
+      allNotifications.forEach(notification=>{
+        NSNotificationCenter.defaultCenter().removeObserverName(observer, notification);
+      })
+      observer.notifications = observer.notifications.filter(item=>{
+        return !allNotifications.includes(item);
+      })
+    }
   }
-  static removeObserverForClosePopupMenuOnNote(observer,selector){
-    NSNotificationCenter.defaultCenter().removeObserverName(observer, selector, "ClosePopupMenuOnNote");
+  static removeObserverForPopupMenuOnNote(observer){
+    this.removeObserver(observer, "PopupMenuOnNote")
   }
-  static removeObserverForPopupMenuOnSelection(observer,selector){
-    NSNotificationCenter.defaultCenter().removeObserverName(observer, selector, "PopupMenuOnSelection");
+  static removeObserverForClosePopupMenuOnNote(observer){
+    this.removeObserver(observer, "ClosePopupMenuOnNote")
   }
-  static removeObserverForClosePopupMenuOnSelection(observer,selector){
-    NSNotificationCenter.defaultCenter().removeObserverName(observer, selector, "ClosePopupMenuOnSelection");
+  static removeObserverForPopupMenuOnSelection(observer){
+    this.removeObserver(observer, "PopupMenuOnSelection")
   }
-  static removeObserverForUITextViewTextDidBeginEditing(observer,selector){
-    NSNotificationCenter.defaultCenter().removeObserverName(observer, selector, "UITextViewTextDidBeginEditingNotification");
+  static removeObserverForClosePopupMenuOnSelection(observer){
+    this.removeObserver(observer, "ClosePopupMenuOnSelection")
   }
-  static removeObserverForUITextViewTextDidEndEditing(observer,selector){
-    NSNotificationCenter.defaultCenter().removeObserverName(observer, selector, "UITextViewTextDidEndEditingNotification");
+  static removeObserverForUITextViewTextDidBeginEditing(observer){
+    this.removeObserver(observer, "UITextViewTextDidBeginEditingNotification")
   }
-  static removeObserverForCloudKeyValueStoreDidChange(observer,selector){
-    NSNotificationCenter.defaultCenter().removeObserverName(observer, selector, "NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI");
+  static removeObserverForUITextViewTextDidEndEditing(observer){
+    this.removeObserver(observer, "UITextViewTextDidEndEditingNotification")
   }
-  static removeObserverForProcessNewExcerpt(observer,selector){
-    NSNotificationCenter.defaultCenter().removeObserverName(observer, selector, "ProcessNewExcerpt");
+  static removeObserverForCloudKeyValueStoreDidChange(observer){
+    this.removeObserver(observer, "NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI")
   }
-  static removeObserverForAddonBroadcast(observer,selector){
-    NSNotificationCenter.defaultCenter().removeObserverName(observer, selector, "AddonBroadcast");
+  static removeObserverForProcessNewExcerpt(observer){
+    this.removeObserver(observer, "ProcessNewExcerpt")
   }
-  static removeObserverForUIPasteboardChanged(observer,selector){
-    NSNotificationCenter.defaultCenter().removeObserverName(observer, selector, "UIPasteboardChangedNotification");
+  static removeObserverForAddonBroadcast(observer){
+    this.removeObserver(observer, "AddonBroadcast")
+  }
+  static removeObserverForUIPasteboardChanged(observer){
+    this.removeObserver(observer, "UIPasteboardChangedNotification")
   }
   static refreshAddonCommands(){
     this.studyController.refreshAddonCommands()
@@ -1780,13 +1855,25 @@ static textMatchPhrase(text, query) {
       return data
     }
   }
+  /**
+   * 
+   * @param {string} path 
+   * @returns {object|undefined}
+   */
   static readJSON(path){
+    if (!this.isfileExists(path)) {
+      return undefined
+    }
     let data = NSData.dataWithContentsOfFile(path)
     const res = NSJSONSerialization.JSONObjectWithDataOptions(
       data,
       1<<0
     )
-    return res
+    if (NSJSONSerialization.isValidJSONObject(res)) {
+      return res
+    }else{
+      return undefined
+    }
   }
   static writeJSON(path,object){
     NSData.dataWithStringEncoding(
@@ -1819,6 +1906,58 @@ static textMatchPhrase(text, query) {
     }
     let text = this.data2string(res)
     return text
+  }
+  static isAddonRunning(addonName){
+    let addonNameUpper = addonName.toUpperCase()
+    switch (addonNameUpper) {
+      case "SNIPASTE":
+      case "MNSNIPASTE":
+      case "MN SNIPASTE":
+      case "MARGINNOTE.EXTENSION.MNSNIPASTE":
+        return typeof snipasteUtils !== "undefined"
+      case "WEBDAV":
+      case "MNWEBDAV":
+      case "MN WEBDAV":
+      case "MARGINNOTE.EXTENSION.MNWEBDAV":
+        return typeof webdavUtils !== "undefined"
+      case "CHATAI":
+      case "MNCHATAI":
+      case "MN CHATAI":
+      case "MARGINNOTE.EXTENSION.MNCHATGLM":
+        return typeof chatAIUtils !== "undefined"
+      case "BROWSER":
+      case "MNBROWSER":
+      case "MN BROWSER":
+      case "MARGINNOTE.EXTENSION.MNBROWSER":
+        return typeof browserUtils !== "undefined"
+      case "TOOLBAR":
+      case "MNTOOLBAR":
+      case "MN TOOLBAR":
+      case "MARGINNOTE.EXTENSION.MNTOOLBAR":
+        return typeof toolbarUtils !== "undefined"
+      case "MILKDOWN":
+      case "MNMILKDOWN":
+      case "MN MILKDOWN":
+      case "MARGINNOTE.EXTENSION.MNMILKDOWN":
+        return typeof milkdownUtils !== "undefined"
+      case "EDITOR":
+      case "MNEDITOR":
+      case "MN EDITOR":
+      case "MARGINNOTE.EXTENSION.MNEDITOR":
+        return typeof editorUtils !== "undefined"
+      case "OCR":
+      case "MNOCR":
+      case "MN OCR":
+      case "MARGINNOTE.EXTENSION.MNOCR":
+        return typeof ocrUtils !== "undefined"
+      case "AUTOSTYLE":
+      case "MNAUTOSTYLE":
+      case "MN AUTOSTYLE":
+      case "MARGINNOTE.EXTENSION.MNAUTOSTYLE":
+        return typeof autoUtils !== "undefined"
+      default:
+    }
+    return false
   }
   /**
    * Encrypts or decrypts a string using XOR encryption with a given key.
@@ -2158,6 +2297,37 @@ try {
           resolve(res)
         }
       )
+    })
+  }
+  /**
+   * Displays an input dialog with a title, subtitle, and a list of items.
+   * 
+   * This method shows an input dialog with the specified title and subtitle. It allows the user to input text and select from a list of items.
+   * The method returns a promise that resolves with an object containing the input text and the index of the button clicked by the user.
+   * 
+   * @param {string} title - The main title of the input dialog.
+   * @param {string} subTitle - The subtitle of the input dialog.
+   * @param {string[]} items - The list of items to display in the dialog.
+   * @returns {Promise<{input:string,button:number}>} A promise that resolves with an object containing the input text and the button index.
+   */
+  static async inputDev(title,subTitle,items) {
+    if (MNOnAlert) {
+      return
+    }
+    MNOnAlert = true
+    return new Promise(async (resolve, reject) => {
+      let alertview = UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        title,subTitle,4,items[0],items.slice(1),
+        (alert, buttonIndex) => {
+          let res = {input:alert.textFieldAtIndex(0).text,button:buttonIndex}
+          MNOnAlert = false
+          resolve(res)
+        }
+      )
+      await MNUtil.delay(1)
+      alertview.dismissWithClickedButtonIndexAnimated(0,true)
+      await MNUtil.delay(1)
+      alertview.show()
     })
   }
   /**

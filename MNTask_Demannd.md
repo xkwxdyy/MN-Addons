@@ -4,6 +4,11 @@
 3.  /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/log.md 是用于测试的 log 文件，一般说“log 文件已更新”就是这个。 MNUtil.log() 添加的内容我会复制到这里。太多了话请分段细读，这个很重要。如果区分 iPad 和 mac 的话，iPad 端的 log 信息在 iPad_MNUtils_LogViewer.md 里。
 4.  你更新的 log 写在 mntask_guide.md 里! 而不是 log.md 里。 
 ---
+1. 如果已经是任务卡片了，不要直接跳过，要检查是否有失效链接！
+
+
+
+---
 新增一个“记录”按钮，单击后能增加一个时间戳记录。具体细节如下：
 1. 例子
 ```

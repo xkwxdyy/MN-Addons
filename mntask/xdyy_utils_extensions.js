@@ -629,16 +629,11 @@ class MNTaskManager {
     
     // 如果已有"进展"字段，无需升级
     if (hasProgressField) {
-      MNUtil.log("📌 卡片已有进展字段，无需升级")
+      // MNUtil.log("📌 卡片已有进展字段，无需升级")
       return false
     }
     
-    MNUtil.log("📊 旧卡片检测：缺少进展字段，开始升级")
-    
-    // 确定插入位置（在所有字段的最后）
-    const insertIndex = Math.max(lastMainFieldIndex, lastStateFieldIndex) + 1
-    MNUtil.log(`📍 最后主字段位置: ${lastMainFieldIndex}, 最后状态字段位置: ${lastStateFieldIndex}`)
-    MNUtil.log(`📍 计算插入位置: ${insertIndex}`)
+    // MNUtil.log("📊 旧卡片检测：缺少进展字段，开始升级")
     
     MNUtil.undoGrouping(() => {
       // 添加"进展"主字段
@@ -647,20 +642,10 @@ class MNTaskManager {
       // 先追加到末尾
       MNUtil.log("📝 追加进展字段到末尾")
       note.appendMarkdownComment(progressFieldHtml)
-      
-      // 获取刚添加的评论索引
-      const lastIndex = note.MNComments.length - 1
-      MNUtil.log(`📝 进展字段已添加，当前索引: ${lastIndex}`)
-      
-      // 如果需要移动到特定位置
-      if (insertIndex < lastIndex) {
-        MNUtil.log(`🔄 移动进展字段从索引 ${lastIndex} 到 ${insertIndex}`)
-        note.moveComment(lastIndex, insertIndex, false)
-      }
-      
+
       // 刷新卡片以确保界面更新
       note.refresh()
-      MNUtil.log("✅ 旧卡片升级完成，已添加进展字段")
+      // MNUtil.log("✅ 旧卡片升级完成，已添加进展字段")
     })
     
     return true

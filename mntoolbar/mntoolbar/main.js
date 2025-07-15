@@ -40,13 +40,13 @@ JSB.newAddon = function (mainPath) {
     }
   }
   /** @return {MNToolbarClass} */
-  const getMNToolbarClass = ()=>self  
+  // const getMNToolbarClass = ()=>self  
   var MNToolbarClass = JSB.defineClass(
     'MNToolbar : JSExtension',
     { /* Instance members */
       sceneWillConnect: async function () { //Window initialize
         if (!(await toolbarUtils.checkMNUtil(true))) return
-        let self = getMNToolbarClass()
+        // let self = getMNToolbarClass()//可能要删除这个
         self.init(mainPath)
 
         self.isNewWindow = false;
@@ -99,7 +99,7 @@ JSB.newAddon = function (mainPath) {
       notebookWillOpen: async function (notebookid) {
         if (!(await toolbarUtils.checkMNUtil(true,0.1))) return
         if (MNUtil.studyMode < 3) {
-          let self = getMNToolbarClass()
+          // let self = getMNToolbarClass()
           self.init(mainPath)
           await MNUtil.delay(0.5)
           self.ensureView(true)
@@ -144,7 +144,7 @@ JSB.newAddon = function (mainPath) {
       // },
       onPopupMenuOnSelection: async function (sender) { // Clicking note
         if (typeof MNUtil === 'undefined') return
-        let self = getMNToolbarClass()
+        // let self = getMNToolbarClass()
         if (self.window !== MNUtil.currentWindow) {
           return
         }
@@ -272,7 +272,7 @@ JSB.newAddon = function (mainPath) {
       },
       onPopupMenuOnNote: async function (sender) { // Clicking note
         if (typeof MNUtil === 'undefined') return
-        let self = getMNToolbarClass()
+        // let self = getMNToolbarClass()
         if (self.window !== MNUtil.currentWindow) {
           return
         }
@@ -634,7 +634,7 @@ JSB.newAddon = function (mainPath) {
 
       },
       onRefreshView: function (sender) {
-        let self = getMNToolbarClass()
+        // let self = getMNToolbarClass()
         if (typeof MNUtil === 'undefined') return 
         if (self.window !== MNUtil.currentWindow) {
           return
@@ -643,7 +643,7 @@ JSB.newAddon = function (mainPath) {
         self.settingController.refreshView("advanceView")
       },
       onCloudConfigChange: async function (sender) {
-        let self = getMNToolbarClass()
+        // let self = getMNToolbarClass()
         if (typeof MNUtil === 'undefined') return
         if (self.window !== MNUtil.currentWindow) {
           return
@@ -655,7 +655,7 @@ JSB.newAddon = function (mainPath) {
         self.checkUpdate()
       },
       manualSync: async function (sender) {
-        let self = getMNToolbarClass()
+        // let self = getMNToolbarClass()
         if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
         if (typeof MNUtil === 'undefined') return
         if (self.window !== MNUtil.currentWindow) {
@@ -772,12 +772,12 @@ try {
         }
       },
       openSetting:function () {
-        let self = getMNToolbarClass()
+        // let self = getMNToolbarClass()
         self.checkPopoverController()
         self.openSetting()
       },
       toggleToolbar:function () {
-        let self = getMNToolbarClass()
+        // let self = getMNToolbarClass()
         self.checkPopoverController()
         self.init(mainPath)
         self.ensureView(true)
@@ -806,7 +806,7 @@ try {
         }
       },
       toggleDynamic:function () {
-        let self = getMNToolbarClass()
+        // let self = getMNToolbarClass()
         self.checkPopoverController()
         if (typeof MNUtil === 'undefined') return
         toolbarConfig.dynamic = !toolbarConfig.dynamic
@@ -842,12 +842,12 @@ try {
 
       openDocument:function (button) {
         if (typeof MNUtil === 'undefined') return
-        let self = getMNToolbarClass()
+        // let self = getMNToolbarClass()
         self.checkPopoverController()
         MNUtil.postNotification("openInBrowser", {url:"https://mnaddon.craft.me/toolbar"})
       },
       toggleToolbarDirection: function (source) {
-        let self = getMNToolbarClass()
+        // let self = getMNToolbarClass()
         self.checkPopoverController()
         toolbarConfig.toggleToolbarDirection(source)
       },

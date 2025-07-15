@@ -832,6 +832,8 @@ try {
         self.checkPopoverController()
         toolbarConfig.togglePreprocess()
       },
+      // 夏大鱼羊结束
+
       // 夏大鱼羊增加：粗读模式
       toggleRoughReading: function () {
         let self = getMNToolbarClass()

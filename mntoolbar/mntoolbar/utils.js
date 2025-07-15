@@ -5608,6 +5608,21 @@ static async customActionByDes(des,button,controller,checkSubscribe = true) {//�
         success = await this.customActionByDes(description)
         break;
       default:
+        // 检查是否是自定义 action
+        if (typeof global !== 'undefined' && global.executeCustomAction) {
+          const context = {
+            button: button,
+            des: des,
+            focusNote: focusNote,
+            focusNotes: MNNote.getFocusNotes(),
+            self: controller
+          };
+          const handled = await global.executeCustomAction(des.action, context);
+          if (handled) {
+            // 自定义 action 已处理
+            break;
+          }
+        }
         MNUtil.showHUD("Not supported yet...")
         break;
     }

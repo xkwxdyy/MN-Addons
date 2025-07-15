@@ -6,7 +6,9 @@
       "Bash(npm cache clean:*)",
       "mcp__promptx__promptx_init",
       "Bash(rg:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }

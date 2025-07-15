@@ -22,6 +22,7 @@
     "xdyy_menu_registry.js"
   ],
   "exclude": [
+    "/Users/linlifei/extension/FeliksPro/.out/index.d.ts",
     "node_modules",
     "*.mnaddon"
   ]

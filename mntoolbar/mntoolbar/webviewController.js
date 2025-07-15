@@ -144,16 +144,6 @@ viewWillLayoutSubviews: function() {
     self.view.layer.opacity = opacity
     // self.webAppButton.setTitleForState(`${opacity*100}%`, 0);
   },
-  // 夏大鱼羊 - begin
-  togglePreprocess: function () {
-    self.checkPopover()
-    toolbarConfig.togglePreprocess()
-  },
-  toggleRoughReading: function () {
-    self.checkPopover()
-    toolbarConfig.toggleRoughReading()
-  },
-  // 夏大鱼羊 - end
   changeScreen: function(sender) {
     let self = getToolbarController()
     let clickDate = Date.now()
@@ -224,6 +214,16 @@ try {
   MNUtil.showHUD(error)
 }
   },
+  // 夏大鱼羊 - begin
+  togglePreprocess: function () {
+    self.checkPopover()
+    toolbarConfig.togglePreprocess()
+  },
+  toggleRoughReading: function () {
+    self.checkPopover()
+    toolbarConfig.toggleRoughReading()
+  },
+  // 夏大鱼羊 - end
   /**
    * 
    * @param {UIButton} button 

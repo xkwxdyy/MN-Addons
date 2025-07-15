@@ -68,6 +68,12 @@ function registerAllButtons() {
     templateName: "menu_comment"
   });
 
+  global.registerButton("custom11", {
+    name: "搜索",
+    image: "search",
+    templateName: "menu_search"
+  });
+
   // 评论相关按钮
   global.registerButton("custom20", {
     name: "htmlMarkdown 评论",

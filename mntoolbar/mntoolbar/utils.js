@@ -5719,8 +5719,9 @@ class toolbarConfig {
   static showEditorOnNoteEdit = false
   static defalutButtonConfig = {color:"#ffffff",alpha:0.85}
   static defaultWindowState = {
-    // 夏大鱼羊 - begin：add Preprocess
+    // 夏大鱼羊 - begin：add Preprocess and RoughReading
     preprocess:false,
+    roughReading:false,
     // 夏大鱼羊 - end
     sideMode:"",//固定工具栏下贴边模式
     splitMode:false,//固定工具栏下是否跟随分割线
@@ -6012,7 +6013,6 @@ class toolbarConfig {
     this.ocrSource = this.getByDefault("MNToolbar_ocrSource", this.defaultOCRSource)
     this.translateModel = this.getByDefault("MNToolbar_translateModel", this.defaultTranslateModel)
     // 夏大鱼羊 - end
-    
     this.initImage()
     this.checkCloudStore(false)
   }

@@ -5724,6 +5724,338 @@ class MNMath {
       MNUtil.log("deleteSelectedComments 出错: " + error.toString());
     }
   }
+
+  /**
+   * 批量向上查找定义类卡片
+   * 从当前卡片向上遍历父卡片，收集多个定义类卡片
+   * 
+   * @param {MNNote} startNote - 起始卡片
+   * @param {number} maxCount - 最多查找的数量，默认5个
+   * @returns {Object} 返回对象包含 cards（定义卡片数组）和 lastNote（最后检查的卡片）
+   */
+  static findDefinitionCards(startNote, maxCount = 5) {
+    const definitionCards = []
+    let currentNote = startNote
+    
+    while (currentNote && currentNote.parentNote && definitionCards.length < maxCount) {
+      currentNote = MNNote.new(currentNote.parentNote)
+      
+      // 检查是否为定义类卡片
+      if (this.getNoteType(currentNote) === "定义") {
+        definitionCards.push(currentNote)
+      }
+    }
+    
+    return { 
+      cards: definitionCards, 
+      lastNote: currentNote  // 保存最后检查的卡片，用于继续查找
+    }
+  }
+
+  /**
+   * 选择定义卡片
+   * 从找到的多个定义卡片中让用户选择一个
+   * 
+   * @param {Array<MNNote>} definitionCards - 定义卡片数组
+   * @param {boolean} canContinue - 是否可以继续向上查找
+   * @returns {Promise<{selected: MNNote|null, continue: boolean}>} 返回选中的卡片或继续查找的标志
+   */
+  static async selectDefinitionCard(definitionCards, canContinue = true) {
+    if (definitionCards.length === 0) {
+      return { selected: null, continue: false }
+    }
+    
+    // 构建选项列表
+    const options = definitionCards.map(card => {
+      const parsed = this.parseNoteTitle(card)
+      const prefix = parsed.prefixContent || ""
+      const content = parsed.content || card.title || "未命名定义"
+      return prefix ? `【定义：${prefix}】${content}` : `【定义】${content}`
+    })
+    
+    // 如果可以继续查找，添加选项
+    if (canContinue) {
+      options.push("⬆️ 继续向上查找更多...")
+    }
+    
+    // 显示选择弹窗
+    return new Promise((resolve) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "选择定义卡片",
+        `找到 ${definitionCards.length} 个定义卡片，请选择：`,
+        0,
+        "取消",
+        options,
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) {
+            // 取消
+            resolve({ selected: null, continue: false })
+          } else if (canContinue && buttonIndex === options.length) {
+            // 选择了"继续向上查找"
+            resolve({ selected: null, continue: true })
+          } else {
+            // 选择了某个定义卡片
+            const selectedIndex = buttonIndex - 1
+            resolve({ selected: definitionCards[selectedIndex], continue: false })
+          }
+        }
+      )
+    })
+  }
+
+  /**
+   * 重新排序"相关链接"字段下的归类卡片链接
+   * 按照类型（命题、反例、例子等）对链接进行分组排序
+   * 
+   * @param {MNNote} defNote - 定义类卡片
+   * @returns {boolean} 是否进行了重新排序
+   */
+  static reorderContainsFieldLinks(defNote) {
+    try {
+      const commentsObj = this.parseNoteComments(defNote)
+      
+      // 找到"相关链接"字段
+      const containsField = commentsObj.htmlCommentsObjArr.find(field => {
+        const fieldText = field.text.trim()
+        return fieldText === "相关链接" || fieldText === "相关链接:" || fieldText === "相关链接："
+      })
+      
+      if (!containsField) {
+        MNUtil.log("未找到'相关链接'字段")
+        return false
+      }
+      
+      // 获取字段下的所有链接评论
+      const fieldIndices = containsField.excludingFieldBlockIndexArr
+      const linkComments = []
+      
+      fieldIndices.forEach(index => {
+        const comment = defNote.MNComments[index]
+        if (comment && comment.type === "linkComment") {
+          linkComments.push({ index, comment })
+        }
+      })
+      
+      if (linkComments.length === 0) {
+        MNUtil.log("'相关链接'字段下没有链接")
+        return false
+      }
+      
+      // 获取每个链接对应的笔记并解析类型
+      const typedLinks = linkComments.map(link => {
+        try {
+          const noteId = link.comment.text.toNoteId()
+          const linkedNote = MNUtil.getNoteById(noteId)
+          if (!linkedNote) return null
+          
+          const parsedTitle = this.parseNoteTitle(MNNote.new(linkedNote))
+          return {
+            ...link,
+            note: linkedNote,
+            noteId: noteId,
+            type: parsedTitle.type || "其他",
+            content: parsedTitle.content || ""
+          }
+        } catch (e) {
+          MNUtil.log("解析链接失败: " + e.toString())
+          return null
+        }
+      }).filter(Boolean)
+      
+      if (typedLinks.length === 0) {
+        MNUtil.log("没有有效的链接")
+        return false
+      }
+      
+      // 按类型分组
+      const typeOrder = ["命题", "反例", "例子", "问题", "思路", "思想方法"]
+      const groupedLinks = {}
+      
+      typedLinks.forEach(link => {
+        if (!groupedLinks[link.type]) {
+          groupedLinks[link.type] = []
+        }
+        groupedLinks[link.type].push(link)
+      })
+      
+      // 重新排序
+      const orderedLinks = []
+      
+      // 先添加预定义顺序的类型
+      typeOrder.forEach(type => {
+        if (groupedLinks[type]) {
+          orderedLinks.push(...groupedLinks[type])
+        }
+      })
+      
+      // 添加其他类型
+      Object.keys(groupedLinks).forEach(type => {
+        if (!typeOrder.includes(type)) {
+          orderedLinks.push(...groupedLinks[type])
+        }
+      })
+      
+      // 检查顺序是否发生变化
+      const needReorder = orderedLinks.some((link, idx) => 
+        link.index !== fieldIndices[idx]
+      )
+      
+      if (needReorder) {
+        MNUtil.undoGrouping(() => {
+          // 先删除所有链接（从后往前删除）
+          [...fieldIndices].reverse().forEach(index => {
+            const comment = defNote.MNComments[index]
+            if (comment && comment.type === "linkComment") {
+              defNote.removeCommentByIndex(index)
+            }
+          })
+          
+          // 按新顺序添加链接
+          orderedLinks.forEach(link => {
+            defNote.appendNoteLink(MNNote.new(link.note), "To")
+          })
+        })
+        
+        MNUtil.log(`重新排序了 ${orderedLinks.length} 个链接`)
+        return true
+      }
+      
+      MNUtil.log("链接顺序已经是正确的，无需重新排序")
+      return false
+      
+    } catch (error) {
+      MNUtil.log("reorderContainsFieldLinks 出错: " + error.toString())
+      MNUtil.addErrorLog(error, "reorderContainsFieldLinks")
+      return false
+    }
+  }
+
+  /**
+   * 显示定义卡片目录（主函数）
+   * 整合查找、排序和跳转功能，提供快速导航到归类卡片的能力
+   */
+  static async showDefinitionCatalog() {
+    try {
+      // 获取当前焦点卡片
+      const focusNote = MNNote.getFocusNote()
+      if (!focusNote) {
+        MNUtil.showHUD("请先选中一个卡片")
+        return
+      }
+      
+      let currentNote = focusNote
+      let selectedDefNote = null
+      
+      // 循环查找，直到用户选择一个定义卡片或取消
+      while (!selectedDefNote) {
+        // 批量查找定义类卡片
+        const result = this.findDefinitionCards(currentNote, 5)
+        
+        if (result.cards.length === 0) {
+          MNUtil.showHUD("未找到定义类卡片")
+          return
+        }
+        
+        // 让用户选择
+        const canContinue = result.lastNote && result.lastNote.parentNote // 还可以继续向上查找
+        const selection = await this.selectDefinitionCard(result.cards, canContinue)
+        
+        if (!selection.selected && !selection.continue) {
+          // 用户取消
+          return
+        }
+        
+        if (selection.continue) {
+          // 继续向上查找
+          currentNote = result.lastNote
+          continue
+        }
+        
+        // 用户选择了一个定义卡片
+        selectedDefNote = selection.selected
+      }
+      
+      // 重新排序包含字段的链接
+      const reordered = this.reorderContainsFieldLinks(selectedDefNote)
+      if (reordered) {
+        MNUtil.showHUD("已重新排序归类卡片")
+      }
+      
+      // 获取相关链接字段下的所有链接
+      const commentsObj = this.parseNoteComments(selectedDefNote)
+      const containsField = commentsObj.htmlCommentsObjArr.find(field => {
+        const fieldText = field.text.trim()
+        return fieldText === "相关链接" || fieldText === "相关链接:" || fieldText === "相关链接："
+      })
+      
+      if (!containsField) {
+        MNUtil.showHUD("定义卡片中没有'相关链接'字段")
+        return
+      }
+      
+      // 收集链接信息
+      const fieldIndices = containsField.excludingFieldBlockIndexArr
+      const linkOptions = []
+      const linkNoteIds = []
+      
+      fieldIndices.forEach(index => {
+        const comment = selectedDefNote.MNComments[index]
+        if (comment && comment.type === "linkComment") {
+          try {
+            const noteId = comment.text.toNoteId()
+            const linkedNote = MNUtil.getNoteById(noteId)
+            if (!linkedNote) return
+            
+            const parsedTitle = this.parseNoteTitle(MNNote.new(linkedNote))
+            
+            // 格式化显示选项
+            const type = parsedTitle.type || "?"
+            const content = parsedTitle.content || "未知内容"
+            const displayText = `[${type}] "${content}"`
+            
+            linkOptions.push(displayText)
+            linkNoteIds.push(noteId)
+          } catch (e) {
+            MNUtil.log("处理链接时出错: " + e.toString())
+          }
+        }
+      })
+      
+      if (linkOptions.length === 0) {
+        MNUtil.showHUD("相关链接字段下没有有效的归类卡片")
+        return
+      }
+      
+      // 获取定义卡片的标题信息
+      const defParsedTitle = this.parseNoteTitle(selectedDefNote)
+      const defTitle = defParsedTitle.prefixContent ? 
+        `【定义：${defParsedTitle.prefixContent}】` : 
+        defNote.title
+      
+      // 显示选择弹窗
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "选择归类卡片",
+        `定义：${defTitle}\n共 ${linkOptions.length} 个归类卡片`,
+        0,
+        "取消",
+        linkOptions,
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) return // 取消
+          
+          const selectedIndex = buttonIndex - 1
+          const selectedNoteId = linkNoteIds[selectedIndex]
+          
+          // 在 FloatMindMap 中定位
+          MNUtil.focusNoteInMindMapById(selectedNoteId)
+          // MNUtil.showHUD("已定位到归类卡片")
+        }
+      )
+      
+    } catch (error) {
+      MNUtil.addErrorLog(error, "showDefinitionCatalog")
+      MNUtil.showHUD("发生错误：" + error.message)
+    }
+  }
 }
 
 

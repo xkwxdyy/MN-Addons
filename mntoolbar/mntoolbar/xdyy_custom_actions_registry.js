@@ -86,6 +86,18 @@ function registerAllCustomActions() {
   ];
   const levelHtmlSettingTitles = levelHtmlSetting.map((config) => config.title);
 
+
+
+  global.registerCustomAction("reorderContainsFieldLinks", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    MNUtil.undoGrouping(()=>{
+      try {
+        MNMath.reorderContainsFieldLinks(focusNote);
+      } catch (error) {
+        MNUtil.showHUD(error);
+      }
+    })
+  })
   // ========== REFERENCE 相关 (43 个) ==========
 
   // referenceRefByRefNumAddFocusInFloatMindMap
@@ -3259,6 +3271,20 @@ function registerAllCustomActions() {
       MNUtil.showHUD("批量翻译失败: " + error.message);
       if (typeof toolbarUtils !== 'undefined') {
         toolbarUtils.addErrorLog(error, "translateAllDescendants");
+      }
+    }
+  });
+
+  // 搜索定义卡片目录
+  global.registerCustomAction("searchDefinition", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    try {
+      // 调用定义卡片目录功能
+      await MNMath.showDefinitionCatalog();
+    } catch (error) {
+      MNUtil.showHUD("搜索失败: " + error.message);
+      if (typeof toolbarUtils !== 'undefined') {
+        toolbarUtils.addErrorLog(error, "searchDefinition");
       }
     }
   });

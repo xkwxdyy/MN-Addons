@@ -104,7 +104,20 @@ class MNToolbarUpdater:
                 {
                     'type': 'insert_before',
                     'marker': '            self.tableItem(\'📄   Document\', \'openDocument:\'),',
-                    'content': '            self.tableItem(\'🗂️   卡片预处理模式  \',"togglePreprocess:", undefined, toolbarConfig.windowState.preprocess),'
+                    'content': '''            self.tableItem('🗂️   卡片预处理模式  ',"togglePreprocess:", undefined, toolbarConfig.windowState.preprocess),
+            self.tableItem('📖   粗读模式  ',"toggleRoughReading:", undefined, toolbarConfig.windowState.roughReading),'''
+                },
+                {
+                    'type': 'insert_before',
+                    'marker': '      openDocument:function (button) {',
+                    'content': '''      // 夏大鱼羊增加：粗读模式
+      toggleRoughReading: function () {
+        let self = getMNToolbarClass()
+        self.checkPopoverController()
+        toolbarConfig.toggleRoughReading()
+      },
+      // 夏大鱼羊结束
+'''
                 }
             ],
             'webviewController.js': [
@@ -133,6 +146,7 @@ class MNToolbarUpdater:
       }
       // 夏大鱼羊 - begin
       commandTable.unshift(self.tableItem('🗂️   卡片预处理模式',"togglePreprocess:", toolbarConfig.windowState.preprocess))
+      commandTable.unshift(self.tableItem('📖   粗读模式',"toggleRoughReading:", toolbarConfig.windowState.roughReading))
       // 夏大鱼羊 - end
     }else{
       if (toolbarConfig.vertical()) {
@@ -142,18 +156,22 @@ class MNToolbarUpdater:
       }
       // 夏大鱼羊 - begin
       commandTable.unshift(self.tableItem('🗂️   卡片预处理模式',"togglePreprocess:", toolbarConfig.windowState.preprocess))
+      commandTable.unshift(self.tableItem('📖   粗读模式',"toggleRoughReading:", toolbarConfig.windowState.roughReading))
       // 夏大鱼羊 - end
     }'''
                 },
-                # 保留这个配置，webviewController 需要自己的 togglePreprocess 方法来响应菜单
+                # 在 toggleDynamic 函数后添加 togglePreprocess 和 toggleRoughReading
                 {
-                    'type': 'insert_after_once',  # 只插入一次，避免重复
-                    'marker': '  },',
-                    'context': 'self.popoverController = MNUtil.getPopoverAndPresent(sender, commandTable,200)',
+                    'type': 'insert_after',
+                    'marker': '} catch (error) {\n  MNUtil.showHUD(error)\n}\n  },',
                     'content': '''  // 夏大鱼羊 - begin
   togglePreprocess: function () {
     self.checkPopover()
     toolbarConfig.togglePreprocess()
+  },
+  toggleRoughReading: function () {
+    self.checkPopover()
+    toolbarConfig.toggleRoughReading()
   },
   // 夏大鱼羊 - end'''
                 },
@@ -212,8 +230,9 @@ class MNToolbarUpdater:
                 {
                     'type': 'insert_after',
                     'marker': '  static defaultWindowState = {',
-                    'content': '''    // 夏大鱼羊 - begin：add Preprocess
+                    'content': '''    // 夏大鱼羊 - begin：add Preprocess and RoughReading
     preprocess:false,
+    roughReading:false,
     // 夏大鱼羊 - end'''
                 },
                 {
@@ -225,13 +244,47 @@ class MNToolbarUpdater:
                 },
                 {
                     'type': 'insert_after',
+                    'marker': '  lastModifyTime: 0\n  }',
+                    'content': '''  // 夏大鱼羊 - begin: 默认 OCR 源和翻译模型配置
+  static defaultOCRSource = "Doc2X"  // 默认 OCR 源
+  static defaultTranslateModel = "gpt-4o-mini"  // 默认翻译模型
+  // 夏大鱼羊 - end'''
+                },
+                {
+                    'type': 'insert_after',
+                    'marker': '    this.syncConfig = this.getByDefault("MNToolbar_syncConfig", this.defaultSyncConfig)',
+                    'content': '''    
+    // 夏大鱼羊 - begin: 初始化 OCR 源和翻译模型配置
+    this.ocrSource = this.getByDefault("MNToolbar_ocrSource", this.defaultOCRSource)
+    this.translateModel = this.getByDefault("MNToolbar_translateModel", this.defaultTranslateModel)
+    // 夏大鱼羊 - end'''
+                },
+                {
+                    'type': 'insert_after',
                     'marker': '      addonLogos: this.addonLogos,',
                     'content': '      referenceIds:this.referenceIds,'
+                },
+                {
+                    'type': 'replace',
+                    'old': '      popupConfig:this.popupConfig',
+                    'new': '''      popupConfig:this.popupConfig,
+      // 夏大鱼羊 - begin: 添加 OCR 源和翻译模型配置
+      ocrSource: this.ocrSource,
+      translateModel: this.translateModel
+      // 夏大鱼羊 - end'''
                 },
                 {
                     'type': 'insert_after',
                     'marker': '    this.addonLogos = config.addonLogos',
                     'content': '    this.referenceIds = config.referenceIds'
+                },
+                {
+                    'type': 'insert_after',
+                    'marker': '    this.popupConfig = config.popupConfig',
+                    'content': '''    // 夏大鱼羊 - begin: 导入 OCR 源和翻译模型配置
+    if (config.ocrSource) this.ocrSource = config.ocrSource
+    if (config.translateModel) this.translateModel = config.translateModel
+    // 夏大鱼羊 - end'''
                 },
                 # togglePreprocess 已经解耦到 xdyy_utils_extensions.js，不需要再添加到 utils.js
                 {
@@ -241,10 +294,55 @@ class MNToolbarUpdater:
                 },
                 {
                     'type': 'insert_after',
+                    'marker': '    defaults.setObjectForKey(this.syncConfig,"MNToolbar_syncConfig")',
+                    'content': '''    // 夏大鱼羊 - begin: 保存 OCR 源和翻译模型配置
+    defaults.setObjectForKey(this.ocrSource,"MNToolbar_ocrSource")
+    defaults.setObjectForKey(this.translateModel,"MNToolbar_translateModel")
+    // 夏大鱼羊 - end'''
+                },
+                {
+                    'type': 'insert_after',
                     'marker': '    switch (key) {',
                     'content': '''      case "MNToolbar_referenceIds":
         NSUserDefaults.standardUserDefaults().setObjectForKey(this.referenceIds,key)
         break;'''
+                },
+                {
+                    'type': 'insert_after',
+                    'marker': '      case "MNToolbar_syncConfig":\n        NSUserDefaults.standardUserDefaults().setObjectForKey(this.syncConfig,key)\n        break;',
+                    'content': '''      // 夏大鱼羊 - begin: 处理 OCR 源和翻译模型配置
+      case "MNToolbar_ocrSource":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.ocrSource,key)
+        break;
+      case "MNToolbar_translateModel":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.translateModel,key)
+        break;
+      // 夏大鱼羊 - end'''
+                },
+                {
+                    'type': 'replace',
+                    'old': '''      default:
+        MNUtil.showHUD("Not supported yet...")
+        break;''',
+                    'new': '''      default:
+        // 检查是否是自定义 action
+        if (typeof global !== 'undefined' && global.executeCustomAction) {
+          const context = {
+            button: button,
+            des: des,
+            focusNote: focusNote,
+            focusNotes: MNNote.getFocusNotes(),
+            self: controller
+          };
+          const handled = await global.executeCustomAction(des.action, context);
+          if (handled) {
+            // 自定义 action 已处理
+            break;
+          }
+        }
+        MNUtil.showHUD("Not supported yet...")
+        break;''',
+                    'context': 'customActionByDes'
                 },
                 {
                     'type': 'append_to_file',
@@ -280,7 +378,11 @@ if (typeof extendToolbarConfigInit === 'function') {
     "lib": ["ES2015", "ES2017", "ES2019", "ES2020"],
     "checkJs": false,
     "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "baseUrl": ".",
+    "paths": {
+      "*": ["./*"]
+    }
   },
   "include": [
     "main.js",
@@ -288,10 +390,14 @@ if (typeof extendToolbarConfigInit === 'function') {
     "settingController.js",
     "utils.js",
     "xdyy_utils_extensions.js",
-    "xdyy_custom_actions_registry.js"
+    "xdyy_custom_actions_registry.js",
+    "xdyy_button_registry.js",
+    "xdyy_menu_registry.js"
   ],
   "exclude": [
-    "/Users/linlifei/extension/FeliksPro/.out/index.d.ts"
+    "/Users/linlifei/extension/FeliksPro/.out/index.d.ts",
+    "node_modules",
+    "*.mnaddon"
   ]
 }'''
                 }

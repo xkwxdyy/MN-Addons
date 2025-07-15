@@ -58,6 +58,10 @@ function registerAllMenuTemplates() {
           action: "linkRemoveDuplicatesAfterApplication",
           menuTitle: "    “应用”下方的链接去重"
         },
+        {
+          "action": "reorderContainsFieldLinks",
+          "menuTitle": "  定义“相关链接”下方的链接重新排序",
+        },
         "⬇️ 字段处理",
         {
           action: "replaceFieldContentByPopup",
@@ -581,6 +585,11 @@ function registerAllMenuTemplates() {
   global.registerMenuTemplate("hideAddonBar", JSON.stringify({
     action: "hideAddonBar"
   }));
+
+  // 搜索定义卡片目录
+  global.registerMenuTemplate("menu_search", {
+    action: "searchDefinition"
+  });
   
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
     MNUtil.log(`🚀 已注册 ${Object.keys(global.customMenuTemplates).length} 个自定义菜单模板`);

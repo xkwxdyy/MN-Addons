@@ -513,7 +513,7 @@ class MNTaskManager {
       
       // 如果是"动作"类型，添加信息字段和默认启动字段
       if (taskType === "动作") {
-        MNUtil.log("🎯 动作类型任务，添加信息字段和启动字段")
+        MNUtil.log("🎯 动作类型任务，添加信息字段、启动字段和进展字段")
         
         // 添加默认启动字段
         const defaultLaunchLink = "marginnote4app://uistatus/H4sIAAAAAAAAE5VSy5LbIBD8F87SFuIp%2BWbJ5VxyyCG3VCqF0LBmg4VKoM06W%2F73AHbiveY2j56mp5l3NHr%2F8zxxtEOGgNbYMNNJGGmHJWAsmRg7wRQIojpDZQtEj5ibpm0apeRI5ahBcKEx4agqZGFxNqIdzlmM%2Fjx5jXZGuQAV0mqdRv9WujmG6Q7Vzv%2BGB8zPEeYYSivNO3WB1U5JI2MDYw0b6l4OtGb7o6h72rY1wU2Hh33Ph%2BMh6YC3ND%2Bd%2FQSFwlgHNzLjvIpntdwSr7cw%2BwiFuj%2F27ND2pO4IYTXjvajbLqf4yEk74D2lXaI2m3MfV0pkn71W0foZ7d6RNyZAzNGPl%2BDnV%2BU2%2BHpZkg40fPri7RwTRzbgibWSck6YbEUjGO1khS6lzgWThLNUo7jlmF8rFLRyeZUnIiiTVGDcsK5JGHEtCgI4F9Kr375XyC%2Bw3uXgD5kfX26FLTo7P7xe1DMkf1O5tBc1gysTRUv6f960mLKOcdJgUqEVAqhVnwp6hVcLv26hfT7dnL0T32D5Iko%2F2AlGtT7a%2BUzsbHz2SvstGbNr0jZRjeFkpwnmf9B4gnM28ABGbS4bGP1i9f8cRJb59zCvfwCp6rmF9QIAAA%3D%3D";
@@ -522,6 +522,12 @@ class MNTaskManager {
         MNUtil.log("📝 启动字段HTML: " + launchFieldHtml)
         note.appendMarkdownComment(launchFieldHtml)
         MNUtil.log("✅ 添加启动字段，索引：" + (note.MNComments.length - 1))
+        
+        // 添加主字段"进展"
+        const progressFieldHtml = TaskFieldUtils.createFieldHtml('进展', 'mainField')
+        MNUtil.log("📝 进展字段HTML: " + progressFieldHtml)
+        note.appendMarkdownComment(progressFieldHtml)
+        MNUtil.log("✅ 添加进展字段，索引：" + (note.MNComments.length - 1))
         
         MNUtil.log("🎯 任务字段添加完成，总评论数：" + note.MNComments.length)
         return
@@ -543,6 +549,12 @@ class MNTaskManager {
         note.appendMarkdownComment(statusHtml)
         MNUtil.log(`✅ 添加${status}字段，索引：` + (note.MNComments.length - 1))
       })
+      
+      // 添加主字段"进展"
+      const progressFieldHtml = TaskFieldUtils.createFieldHtml('进展', 'mainField')
+      MNUtil.log("📝 进展字段HTML: " + progressFieldHtml)
+      note.appendMarkdownComment(progressFieldHtml)
+      MNUtil.log("✅ 添加进展字段，索引：" + (note.MNComments.length - 1))
       
       MNUtil.log("🎯 任务字段添加完成，总评论数：" + note.MNComments.length)
     })
@@ -569,6 +581,75 @@ class MNTaskManager {
     }
     
     return false
+  }
+
+  /**
+   * 升级旧任务卡片，添加缺失的"进展"字段
+   * @param {MNNote} note - 要升级的任务卡片
+   * @returns {boolean} 是否成功升级
+   */
+  static upgradeOldTaskCard(note) {
+    if (!note || !note.MNComments) return false
+    
+    // 解析任务类型
+    const titleParts = this.parseTaskTitle(note.noteTitle)
+    const taskType = titleParts.type
+    
+    // 检查是否已有"进展"字段
+    const comments = note.MNComments
+    let hasProgressField = false
+    let lastMainFieldIndex = -1
+    let lastStateFieldIndex = -1
+    
+    for (let i = 0; i < comments.length; i++) {
+      const comment = comments[i]
+      if (comment) {
+        const text = comment.text || ''
+        if (TaskFieldUtils.isTaskField(text)) {
+          if (text.includes('进展')) {
+            hasProgressField = true
+            break
+          }
+          // 记录最后一个主字段的位置
+          if (text.includes('id="mainField"')) {
+            lastMainFieldIndex = i
+          }
+          // 记录最后一个状态字段的位置
+          if (text.includes('id="stateField"')) {
+            lastStateFieldIndex = i
+          }
+        }
+      }
+    }
+    
+    // 如果已有"进展"字段，无需升级
+    if (hasProgressField) {
+      return false
+    }
+    
+    MNUtil.log("📊 旧卡片检测：缺少进展字段，开始升级")
+    
+    // 确定插入位置（在所有字段的最后）
+    const insertIndex = Math.max(lastMainFieldIndex, lastStateFieldIndex) + 1
+    
+    MNUtil.undoGrouping(() => {
+      // 添加"进展"主字段
+      const progressFieldHtml = TaskFieldUtils.createFieldHtml('进展', 'mainField')
+      
+      if (insertIndex < comments.length) {
+        // 有其他评论在后面，插入到指定位置
+        MNUtil.log(`📝 在索引 ${insertIndex} 处插入进展字段`)
+        note.insertComment(progressFieldHtml, insertIndex)
+      } else {
+        // 没有其他评论了，直接追加
+        MNUtil.log("📝 追加进展字段到末尾")
+        note.appendMarkdownComment(progressFieldHtml)
+      }
+      
+      MNUtil.log("✅ 旧卡片升级完成，已添加进展字段")
+    })
+    
+    return true
   }
 
   /**

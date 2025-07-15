@@ -155,6 +155,12 @@ function registerAllCustomActions() {
     MNUtil.undoGrouping(() => {
       // 处理已经是任务卡片的
       taskCards.forEach(note => {
+        // 检查是否是旧卡片（缺少"进展"字段）
+        const upgraded = MNTaskManager.upgradeOldTaskCard(note);
+        if (upgraded) {
+          MNUtil.log(`📊 已升级旧任务卡片: ${note.noteTitle}`);
+        }
+        
         // 首先更新链接关系（如果卡片已经移动）
         MNTaskManager.updateTaskLinkRelationship(note);
         

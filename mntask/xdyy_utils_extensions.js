@@ -601,12 +601,17 @@ class MNTaskManager {
     let lastMainFieldIndex = -1
     let lastStateFieldIndex = -1
     
+    MNUtil.log(`🔍 开始检查任务卡片是否需要升级: ${note.noteTitle}`)
+    MNUtil.log(`📝 评论总数: ${comments.length}`)
+    
     for (let i = 0; i < comments.length; i++) {
       const comment = comments[i]
       if (comment) {
         const text = comment.text || ''
         if (TaskFieldUtils.isTaskField(text)) {
-          if (text.includes('进展')) {
+          // 更精确的检测：必须是主字段格式且包含">进展</span>"
+          if (text.includes('id="mainField"') && text.includes('>进展</span>')) {
+            MNUtil.log(`✅ 检测到进展字段，位置: ${i}`)
             hasProgressField = true
             break
           }
@@ -624,6 +629,7 @@ class MNTaskManager {
     
     // 如果已有"进展"字段，无需升级
     if (hasProgressField) {
+      MNUtil.log("📌 卡片已有进展字段，无需升级")
       return false
     }
     
@@ -631,21 +637,29 @@ class MNTaskManager {
     
     // 确定插入位置（在所有字段的最后）
     const insertIndex = Math.max(lastMainFieldIndex, lastStateFieldIndex) + 1
+    MNUtil.log(`📍 最后主字段位置: ${lastMainFieldIndex}, 最后状态字段位置: ${lastStateFieldIndex}`)
+    MNUtil.log(`📍 计算插入位置: ${insertIndex}`)
     
     MNUtil.undoGrouping(() => {
       // 添加"进展"主字段
       const progressFieldHtml = TaskFieldUtils.createFieldHtml('进展', 'mainField')
       
-      if (insertIndex < comments.length) {
-        // 有其他评论在后面，插入到指定位置
-        MNUtil.log(`📝 在索引 ${insertIndex} 处插入进展字段`)
-        note.insertComment(progressFieldHtml, insertIndex)
-      } else {
-        // 没有其他评论了，直接追加
-        MNUtil.log("📝 追加进展字段到末尾")
-        note.appendMarkdownComment(progressFieldHtml)
+      // 先追加到末尾
+      MNUtil.log("📝 追加进展字段到末尾")
+      note.appendMarkdownComment(progressFieldHtml)
+      
+      // 获取刚添加的评论索引
+      const lastIndex = note.MNComments.length - 1
+      MNUtil.log(`📝 进展字段已添加，当前索引: ${lastIndex}`)
+      
+      // 如果需要移动到特定位置
+      if (insertIndex < lastIndex) {
+        MNUtil.log(`🔄 移动进展字段从索引 ${lastIndex} 到 ${insertIndex}`)
+        note.moveComment(lastIndex, insertIndex, false)
       }
       
+      // 刷新卡片以确保界面更新
+      note.refresh()
       MNUtil.log("✅ 旧卡片升级完成，已添加进展字段")
     })
     
@@ -4155,6 +4169,223 @@ class MNTaskManager {
     }
     
     return taskInfo;
+  }
+  
+  /**
+   * 处理已有的任务卡片
+   * @param {Object} note - MN卡片对象
+   * @returns {Object} 处理结果
+   */
+  static async processExistingTaskCards(note) {
+    try {
+      // 检查是否需要升级
+      if (this.upgradeOldTaskCard(note)) {
+        return {
+          type: 'upgraded',
+          noteId: note.noteId,
+          title: note.noteTitle
+        };
+      }
+      
+      // 卡片已是最新版本
+      return {
+        type: 'skipped',
+        noteId: note.noteId,
+        title: note.noteTitle,
+        reason: '已是最新版本任务卡片'
+      };
+    } catch (error) {
+      MNUtil.log(`❌ 处理任务卡片失败: ${error.message || error}`);
+      return {
+        type: 'failed',
+        noteId: note.noteId,
+        title: note.noteTitle,
+        error: error.message || error
+      };
+    }
+  }
+  
+  /**
+   * 自动检测任务类型
+   * @param {string} content - 任务内容
+   * @param {Array} childNotes - 子卡片数组
+   * @returns {string} 任务类型
+   */
+  static autoDetectTaskType(content, childNotes = []) {
+    // 关键词检测规则
+    const keywords = {
+      '目标': ['目标', 'OKR', 'objective', 'goal'],
+      '关键结果': ['关键结果', 'KR', 'key result', '指标', '达成'],
+      '项目': ['项目', 'project', '计划', '方案'],
+      '动作': ['动作', 'action', '任务', 'task', '执行', '实施']
+    };
+    
+    // 检测内容中的关键词
+    const lowerContent = content.toLowerCase();
+    for (const [type, words] of Object.entries(keywords)) {
+      if (words.some(word => lowerContent.includes(word.toLowerCase()))) {
+        return type;
+      }
+    }
+    
+    // 根据子卡片数量推断
+    if (childNotes.length > 5) {
+      return '目标';  // 多个子任务可能是目标
+    } else if (childNotes.length > 0) {
+      return '项目';  // 有子任务可能是项目
+    }
+    
+    // 默认为动作
+    return '动作';
+  }
+  
+  /**
+   * 转换为任务卡片
+   * @param {Object} note - MN卡片对象
+   * @param {string} taskType - 任务类型
+   * @returns {Object} 处理结果
+   */
+  static async convertToTaskCard(note, taskType) {
+    try {
+      // 更新标题
+      const newTitle = `【${taskType}｜未开始】${note.noteTitle}`;
+      note.noteTitle = newTitle;
+      
+      // 添加任务字段
+      await this.addTaskFieldsWithStatus(note, taskType, '未开始');
+      
+      // 处理子任务关系
+      if (note.childNotes && note.childNotes.length > 0) {
+        await this.updateChildTasksRelation(note);
+      }
+      
+      return {
+        type: 'created',
+        noteId: note.noteId,
+        title: note.noteTitle,
+        taskType: taskType
+      };
+    } catch (error) {
+      MNUtil.log(`❌ 转换任务卡片失败: ${error.message || error}`);
+      return {
+        type: 'failed',
+        noteId: note.noteId,
+        title: note.noteTitle,
+        error: error.message || error
+      };
+    }
+  }
+  
+  /**
+   * 批量处理卡片
+   * @param {Array} notes - 要处理的卡片数组
+   * @returns {Object} 处理结果汇总
+   */
+  static async batchProcessCards(notes) {
+    const results = {
+      created: [],
+      upgraded: [],
+      skipped: [],
+      failed: [],
+      total: notes.length
+    };
+    
+    // 处理每个卡片
+    for (const note of notes) {
+      let result;
+      
+      // 检查是否已是任务卡片
+      if (this.isTaskCard(note)) {
+        result = await this.processExistingTaskCards(note);
+      } else {
+        // 询问任务类型
+        const taskTypes = ['目标', '关键结果', '项目', '动作'];
+        
+        // 自动检测建议类型
+        const suggestedType = this.autoDetectTaskType(
+          note.noteTitle,
+          note.childNotes
+        );
+        const suggestedIndex = taskTypes.indexOf(suggestedType);
+        
+        // 构建选项（将建议项标记出来）
+        const options = taskTypes.map((type, index) => {
+          return index === suggestedIndex ? `${type} (推荐)` : type;
+        });
+        
+        const selectedIndex = await MNUtil.userSelect(
+          "选择任务类型",
+          `为「${note.noteTitle}」选择合适的类型`,
+          options
+        );
+        
+        if (selectedIndex === 0) {
+          result = {
+            type: 'skipped',
+            noteId: note.noteId,
+            title: note.noteTitle,
+            reason: '用户取消'
+          };
+        } else {
+          const taskType = taskTypes[selectedIndex - 1];
+          result = await this.convertToTaskCard(note, taskType);
+        }
+      }
+      
+      // 归类结果
+      results[result.type].push(result);
+    }
+    
+    return results;
+  }
+  
+  /**
+   * 获取要处理的笔记
+   * @param {Object} focusNote - 焦点笔记
+   * @param {Array} focusNotes - 选中的多个笔记
+   * @returns {Array|null} 要处理的笔记数组
+   */
+  static getNotesToProcess(focusNote, focusNotes) {
+    // 获取要处理的笔记
+    const notesToProcess = focusNotes && focusNotes.length > 0 ? focusNotes : (focusNote ? [focusNote] : null);
+    
+    if (!notesToProcess || notesToProcess.length === 0) {
+      MNUtil.showHUD("请选择要制卡的笔记");
+      return null;
+    }
+    
+    return notesToProcess;
+  }
+  
+  /**
+   * 显示处理结果
+   * @param {Object} result - 处理结果
+   */
+  static showProcessResult(result) {
+    const messages = [];
+    
+    if (result.created.length > 0) {
+      messages.push(`✅ 创建: ${result.created.length}个`);
+    }
+    if (result.upgraded.length > 0) {
+      messages.push(`⬆️ 升级: ${result.upgraded.length}个`);
+    }
+    if (result.skipped.length > 0) {
+      messages.push(`⏭️ 跳过: ${result.skipped.length}个`);
+    }
+    if (result.failed.length > 0) {
+      messages.push(`❌ 失败: ${result.failed.length}个`);
+    }
+    
+    const summary = messages.join(', ');
+    MNUtil.showHUD(`任务制卡完成\n${summary}`);
+    
+    // 记录详细日志
+    if (result.failed.length > 0) {
+      result.failed.forEach(item => {
+        MNUtil.log(`❌ 制卡失败 [${item.title}]: ${item.error}`);
+      });
+    }
   }
 }
 

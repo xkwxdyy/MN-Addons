@@ -251,6 +251,29 @@ function registerAllMenuTemplates() {
     }
   });
 
+  // menu_record_log - 记录菜单（新增）
+  MNTaskGlobal.registerMenuTemplate("menu_record_log", {
+    action: "addTimestampRecord",  // 单击添加时间戳记录
+    onLongPress: {
+      action: "menu",
+      menuWidth: 300,
+      menuItems: [
+        {
+          action: "addTimestampRecord",
+          menuTitle: "⏱️ 添加时间戳记录"
+        },
+        {
+          action: "viewTaskLogs",
+          menuTitle: "📊 查看任务记录"
+        },
+        {
+          action: "quickAddTaskLog",
+          menuTitle: "⚡ 快速记录"
+        }
+      ]
+    }
+  });
+
 }
 
 // 扩展 taskConfig.template 方法

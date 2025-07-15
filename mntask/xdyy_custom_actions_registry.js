@@ -74,162 +74,15 @@ function registerAllCustomActions() {
     const { button, des, focusNote, focusNotes, self } = context;
     
     try {
-      if (!focusNote && (!focusNotes || focusNotes.length === 0)) {
-        MNUtil.showHUD("请先选择一个或多个笔记");
-        return;
-      }
+      // 验证输入
+      const notesToProcess = MNTaskManager.getNotesToProcess(focusNote, focusNotes);
+      if (!notesToProcess) return;
       
-      // 使用 focusNotes（支持多选）或单个 focusNote
-      const notesToProcess = focusNotes && focusNotes.length > 0 ? focusNotes : [focusNote];
-    
-    // 区分已经是任务卡片和需要转换的卡片
-    const taskCards = [];
-    const notTaskCards = [];
-    
-    notesToProcess.forEach(note => {
-      if (MNTaskManager.isTaskCard(note)) {
-        taskCards.push(note);
-      } else {
-        notTaskCards.push(note);
-      }
-    });
-    
-    // 如果有需要转换的卡片，根据父卡片类型智能推断
-    let typeMapping = new Map(); // 存储每个卡片的类型
-    let needManualSelect = []; // 需要手动选择的卡片
-    
-    if (notTaskCards.length > 0) {
-      // 遍历每个卡片，根据父卡片类型自动推断
-      notTaskCards.forEach(note => {
-        const parentNote = note.parentNote;
-        let autoType = null;
-        
-        if (parentNote && MNTaskManager.isTaskCard(parentNote)) {
-          const parentParts = MNTaskManager.parseTaskTitle(parentNote.noteTitle);
-          const parentType = parentParts.type;
-          
-          // 根据层级规则自动推断
-          if (parentType === "目标") {
-            autoType = "关键结果";
-            MNUtil.log(`🎯 自动推断：父卡片是"目标"，子卡片设为"关键结果"`);
-          } else if (parentType === "关键结果") {
-            autoType = "项目";
-            MNUtil.log(`🎯 自动推断：父卡片是"关键结果"，子卡片设为"项目"`);
-          }
-        }
-        
-        if (autoType) {
-          typeMapping.set(note, autoType);
-        } else {
-          needManualSelect.push(note);
-        }
-      });
+      // 批量处理
+      const result = await MNTaskManager.batchProcessCards(notesToProcess);
       
-      // 如果有需要手动选择的卡片，弹出选择框
-      if (needManualSelect.length > 0) {
-        const taskTypes = ["目标", "关键结果", "项目", "动作"];
-        const autoCount = notTaskCards.length - needManualSelect.length;
-        let subTitle = `${needManualSelect.length} 个卡片需要手动选择类型`;
-        if (autoCount > 0) {
-          subTitle += `\n(${autoCount} 个卡片已自动推断类型)`;
-        }
-        
-        const selectedIndex = await MNUtil.userSelect("选择任务类型", subTitle, taskTypes);
-        
-        if (selectedIndex === 0) return; // 用户取消
-        
-        const selectedType = taskTypes[selectedIndex - 1];
-        // 为所有需要手动选择的卡片设置相同类型
-        needManualSelect.forEach(note => {
-          typeMapping.set(note, selectedType);
-        });
-      }
-      
-      // 显示智能推断的结果
-      if (typeMapping.size > 0 && needManualSelect.length === 0) {
-        MNUtil.showHUD(`✅ 已根据父卡片类型自动设置任务类型`);
-      }
-    }
-    
-    // 批量处理
-    MNUtil.undoGrouping(() => {
-      // 处理已经是任务卡片的
-      taskCards.forEach(note => {
-        // 检查是否是旧卡片（缺少"进展"字段）
-        const upgraded = MNTaskManager.upgradeOldTaskCard(note);
-        if (upgraded) {
-          MNUtil.log(`📊 已升级旧任务卡片: ${note.noteTitle}`);
-        }
-        
-        // 首先更新链接关系（如果卡片已经移动）
-        MNTaskManager.updateTaskLinkRelationship(note);
-        
-        // 更新任务路径
-        MNTaskManager.updateTaskPath(note);
-        
-        // 清除失效链接
-        try {
-          MNTaskManager.cleanupBrokenLinks(note);
-        } catch (error) {
-          MNUtil.log("清理失效链接时出错: " + error);
-        }
-      });
-      
-      // 处理需要转换的卡片
-      notTaskCards.forEach(note => {
-        // 获取该卡片的任务类型
-        const taskType = typeMapping.get(note);
-        if (!taskType) {
-          MNUtil.log(`⚠️ 卡片没有分配类型，跳过: ${note.noteTitle}`);
-          return;
-        }
-        
-        // 获取父卡片
-        const parentNote = note.parentNote;
-        
-        // 先使用 taskUtils.toNoExcerptVersion 处理摘录卡片
-        let noteToConvert = note;
-        if (note.excerptText) {
-          const converted = taskUtils.toNoExcerptVersion(note);
-          if (converted) {
-            noteToConvert = converted;
-          }
-        }
-        
-        // 构建任务路径
-        const path = MNTaskManager.buildTaskPath(noteToConvert);
-        
-        // 构建新标题
-        const content = noteToConvert.noteTitle || "未命名任务";
-        const newTitle = path ? 
-          `【${taskType} >> ${path}｜未开始】${content}` :
-          `【${taskType}｜未开始】${content}`;
-        
-        noteToConvert.noteTitle = newTitle;
-        
-        // 设置颜色（白色=未开始）
-        noteToConvert.colorIndex = 12;
-        
-        // 添加任务字段（信息字段和状态字段）
-        MNTaskManager.addTaskFieldsWithStatus(noteToConvert);
-        
-        // 直接执行链接操作
-        MNTaskManager.linkParentTask(noteToConvert, parentNote);
-      });
-      
-      // 显示处理结果
-      if (notTaskCards.length > 0) {
-        const autoCount = notTaskCards.length - needManualSelect.length;
-        let message = `✅ 已创建 ${notTaskCards.length} 个任务卡片`;
-        if (autoCount > 0) {
-          message += `\n🎯 自动推断：${autoCount} 个`;
-        }
-        if (needManualSelect.length > 0) {
-          message += `\n✋ 手动选择：${needManualSelect.length} 个`;
-        }
-        MNUtil.showHUD(message);
-      }
-    });
+      // 显示结果
+      MNTaskManager.showProcessResult(result);
     } catch (error) {
       MNUtil.log(`❌ taskCardMake 执行失败: ${error.message || error}`);
       MNUtil.showHUD(`任务制卡失败: ${error.message || "未知错误"}`);
@@ -5247,6 +5100,81 @@ function registerAllCustomActions() {
       MNUtil.showHUD(`没有找到状态为"${selectedStatus}"的任务`);
     } else {
       await showFilterResultsMenu(filteredTasks, `📊 ${selectedStatus}的任务`);
+    }
+  });
+
+  // addTimestampRecord - 添加时间戳记录
+  MNTaskGlobal.registerCustomAction("addTimestampRecord", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    if (!focusNote) {
+      MNUtil.showHUD("请先选择一个任务卡片");
+      return;
+    }
+    
+    // 检查是否是任务卡片
+    if (!MNTaskManager.isTaskCard(focusNote)) {
+      MNUtil.showHUD("请选择一个任务卡片");
+      return;
+    }
+    
+    try {
+      // 弹出输入框让用户输入记录内容
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "添加记录",
+        "请输入记录内容",
+        2,  // 输入框样式
+        "取消",
+        ["确定"],
+        (alert, buttonIndex) => {
+          if (buttonIndex === 1) {
+            const content = alert.textFieldAtIndex(0).text;
+            
+            if (!content || content.trim() === "") {
+              MNUtil.showHUD("记录内容不能为空");
+              return;
+            }
+            
+            MNUtil.undoGrouping(() => {
+              try {
+                // 获取当前时间并格式化
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                
+                // 构建带样式的时间戳HTML
+                const timestampHtml = `<div style="position:relative; padding-left:28px; margin:14px 0; color:#1E40AF; font-weight:500; font-size:0.92em">
+  <div style="position:absolute; left:0; top:50%; transform:translateY(-50%); 
+              width:18px; height:18px; background:conic-gradient(#3B82F6 0%, #60A5FA 50%, #3B82F6 100%); 
+              border-radius:50%; display:flex; align-items:center; justify-content:center">
+    <div style="width:8px; height:8px; background:white; border-radius:50%"></div>
+  </div>
+  ${timestamp}
+</div>
+${content.trim()}`;
+                
+                // 添加到卡片最后
+                focusNote.appendMarkdownComment(timestampHtml);
+                
+                // 刷新卡片显示
+                focusNote.refresh();
+                
+                MNUtil.showHUD("✅ 已添加时间戳记录");
+              } catch (error) {
+                MNUtil.showHUD("添加记录失败：" + error.message);
+              }
+            });
+          }
+        }
+      );
+    } catch (error) {
+      MNUtil.log(`❌ addTimestampRecord 执行失败: ${error.message || error}`);
+      MNUtil.showHUD(`添加记录失败: ${error.message || "未知错误"}`);
     }
   });
 

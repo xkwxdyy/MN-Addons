@@ -85,6 +85,13 @@ function registerAllButtons() {
     templateName: "menu_quick_launch"
   });
 
+  // custom8: 记录 - 单击添加时间戳记录，长按显示记录相关菜单
+  MNTaskGlobal.registerButton("custom8", {
+    name: "记录",
+    image: "custom8",
+    templateName: "menu_record_log"
+  });
+
 }
 
 // 扩展 taskConfig 的函数

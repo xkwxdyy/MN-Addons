@@ -6064,27 +6064,6 @@ class MNMath {
   // 搜索根目录配置
   static searchRootConfigs = null;
   static tempRootInfo = null; // 存储临时根目录信息
-  
-  /**
-   * 显示定义卡片目录
-   */
-  static async showDefinitionCatalog() {
-    try {
-      // 直接打开定义根目录
-      const definitionRootId = this.roughReadingRootNoteIds["定义"];
-      const definitionNote = MNNote.new(definitionRootId);
-      if (definitionNote) {
-        definitionNote.focusInMindMap(0.5);
-        MNUtil.showHUD("✅ 已定位到定义目录");
-      } else {
-        MNUtil.showHUD("❌ 定义目录不存在");
-      }
-    } catch (error) {
-      MNUtil.log("显示定义目录失败: " + error.toString());
-      MNUtil.addErrorLog(error, "showDefinitionCatalog");
-      throw error;
-    }
-  }
   static searchBoardId = "37F2105C-35E4-4840-AD79-DA4702C36BE1";  // 搜索筛选看板 ID
   
   /**
@@ -6783,15 +6762,29 @@ class MNMath {
       }
       
       // 聚焦到结果卡片
-      MNUtil.delay(0.3).then(() => {
-        resultCard.focusInFloatMindMap();
-      });
+      resultCard.focusInFloatMindMap(0.5);
       
       return resultCard;
     } catch (error) {
       MNUtil.log("创建搜索结果卡片失败: " + error.toString());
       MNUtil.addErrorLog(error, "createSearchResultCard");
       return null;
+    }
+  }
+
+  static showSearchBoard() {
+    const boardNote = MNNote.new(this.searchBoardId);
+    if (!boardNote) {
+      MNUtil.showHUD("搜索看板不存在");
+      return null;
+    }
+
+    if (boardNote.childNotes.length === 0) {
+      boardNote.focusInFloatMindMap(0.3)
+    } else {
+      // 如果有子卡片，聚焦到最后一张子卡片
+      const lastChild = boardNote.childNotes[boardNote.childNotes.length - 1];
+      lastChild.focusInFloatMindMap(0.5);
     }
   }
 }

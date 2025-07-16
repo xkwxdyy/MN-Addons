@@ -203,8 +203,8 @@ function extendToolbarConfig() {
       const button = Object.assign({}, global.customButtons[key]);
       
       // 如果有 templateName，动态获取 description
-      if (button.templateName && !button.description && this.template) {
-        button.description = this.template(button.templateName);
+      if (button.templateName && !button.description && toolbarConfig.template) {
+        button.description = toolbarConfig.template(button.templateName);
       }
       
       // 删除 templateName 属性
@@ -234,8 +234,8 @@ function extendToolbarConfig() {
       const button = Object.assign({}, global.customButtons[actionKey]);
       
       // 如果有 templateName，动态获取 description
-      if (button.templateName && !button.description && this.template) {
-        button.description = this.template(button.templateName);
+      if (button.templateName && !button.description && toolbarConfig.template) {
+        button.description = toolbarConfig.template(button.templateName);
       }
       
       delete button.templateName;

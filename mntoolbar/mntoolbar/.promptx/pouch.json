@@ -1,46 +1,16 @@
 {
-  "currentState": "memory_saved",
+  "currentState": "initialized",
   "stateHistory": [
     {
       "from": "initial",
-      "command": "remember",
-      "timestamp": "2025-07-06T05:33:21.736Z",
-      "args": [
-        "## focusInMindMap 定位失效问题解决方案\n\n### 问题描述\n在 MarginNote 插件开发中，创建新卡片后使用 focusInMindMap 方法无法正确定位到新卡片，焦点仍停留在原卡片上。\n\n### 根本原因\nMNUtil.undoGrouping() 与后续的评论移动操作（moveCommentsArrToField）存在冲突，移动操作会改变焦点，导致 focusInMindMap 的定位效果被覆盖。\n\n### 解决方案\n使用 MNUtil.delay().then() 代替 MNUtil.undoGrouping()，确保所有操作完成后再执行定位：\n\n```javascript\n// 先执行所有可能改变焦点的操作\nnote.appendMarkdownComment(...);\nnote.appendNoteLink(...);\nthis.moveCommentsArrToField(...);\n\n// 延迟执行定位\nMNUtil.delay(0.5).then(() => {\n  if (MNUtil.mindmapView) {\n    newNote.focusInMindMap(0.3)\n  }\n})\n```\n\n### 关键点\n1. 执行顺序：所有UI操作完成后再定位\n2. 使用 Promise 延迟而非 undoGrouping\n3. 检查是否在脑图视图中\n4. 避免焦点竞争",
-        "--tags",
-        "MarginNote focusInMindMap 焦点管理 异步执行"
-      ]
-    },
-    {
-      "from": "memory_saved",
       "command": "init",
-      "timestamp": "2025-07-06T14:52:01.410Z",
+      "timestamp": "2025-07-16T10:10:23.752Z",
       "args": [
         {
-          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon"
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntoolbar/mntoolbar"
         }
-      ]
-    },
-    {
-      "from": "initialized",
-      "command": "init",
-      "timestamp": "2025-07-06T15:23:28.826Z",
-      "args": [
-        {
-          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnutils"
-        }
-      ]
-    },
-    {
-      "from": "initialized",
-      "command": "remember",
-      "timestamp": "2025-07-06T17:16:27.099Z",
-      "args": [
-        "MN-Addon 项目：多层级评论选择对话框开发经验\n\n在开发 moveCommentsByPopup 功能增强时的关键经验：\n\n1. 四层结构设计：\n   - 第一层：选择要移动的评论（支持多选）\n   - 第二层：选择目标字段（只显示字段，不显示 HtmlMarkdown）\n   - 第三层：选择字段内的位置（显示独立评论和 HtmlMarkdown \"文件夹\"）\n   - 第四层：选择 HtmlMarkdown 内部的具体位置\n\n2. 内容归属规则：\n   - HtmlMarkdown 之前的内容是独立的\n   - HtmlMarkdown 之后的所有内容都属于该 HtmlMarkdown\n   - 两个 HtmlMarkdown 之间的内容属于前一个 HtmlMarkdown\n\n3. 关键实现方法：\n   - parseFieldTopLevelStructure：解析字段顶层结构\n   - parseFieldInternalComments：解析所有评论类型\n   - showCommentMultiSelectDialog：多选对话框\n   - showHtmlMarkdownInternalPositionDialog：HtmlMarkdown 内部选择\n\n4. 常见陷阱：\n   - HtmlMarkdown 在第二层显示：需要在 getHtmlCommentsTextArrForPopup 中过滤\n   - 内容归属逻辑错误：使用三步清晰逻辑解决\n   - 字段边界问题：传递 fieldObj 参数限制范围\n\n5. 设计原则：\n   - 文件夹式隐藏机制\n   - 每层职责明确\n   - 边界控制严格\n   - 用户体验优先",
-        "--tags",
-        "MN-Addon mnutils moveCommentsByPopup 多层级导航 HtmlMarkdown 开发经验"
       ]
     }
   ],
-  "lastUpdated": "2025-07-06T17:16:27.117Z"
+  "lastUpdated": "2025-07-16T10:10:23.780Z"
 }

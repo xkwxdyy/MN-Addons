@@ -1,24 +1,27 @@
 {
   "windowState": {
+    "dynamicOrder": false,
     "frame": {
-      "y": 46.5,
-      "x": 146,
+      "y": 0,
+      "x": 0,
       "width": 40,
-      "height": 555
+      "height": 420
     },
     "open": false,
     "splitMode": false,
-    "dynamicDirection": "horizontal",
+    "dynamicDirection": "vertical",
     "preprocess": false,
-    "dynamicButton": 6,
+    "dynamicButton": 9,
+    "direction": "vertical",
+    "roughReading": false,
     "sideMode": ""
   },
   "syncConfig": {
     "iCloudSync": false,
-    "lastSyncTime": 1745344242087,
-    "lastModifyTime": 1745344243889
+    "lastSyncTime": 1752640919225,
+    "lastModifyTime": 1752640919225
   },
-  "dynamic": true,
+  "dynamic": false,
   "addonLogos": {
     "MNSnipaste": true,
     "MNChatAI": true,
@@ -27,41 +30,42 @@
     "MNBrowser": true,
     "MNOCR": true
   },
-  "referenceIds": {},
+  "referenceIds": {
+    "88603c9aa7b3c7605d84c08e0e17527f8ae7de0a323c666a0331cc8e7b616eab": {
+      "0": "B04A3569-C3D0-4228-AD89-BCF662A7DE6F",
+      "Conway[1978]": "BA09675E-6017-4565-81F3-641524FF1B16"
+    },
+    "755b947cd6163a1461585df3efdf86b33283ec3f98b1475aaf2cb0d051765121": {
+      "0": "694BC6A5-A237-4F9D-B7A2-799A6A356FAB",
+      "7": "0F282011-99EA-4326-978E-455976B5D685",
+      "17": "0F282011-99EA-4326-978E-455976B5D685",
+      "22": "F335B2B8-63E5-45FE-8764-94395D0C5E16"
+    }
+  },
   "actionKeys": [
-    "custom1",
-    "custom20",
-    "custom9",
-    "custom10",
-    "custom2",
+    "custom15",
     "custom3",
-    "custom17",
-    "custom4",
-    "custom5",
-    "custom6",
-    "snipaste",
-    "custom7",
+    "custom8",
+    "custom10",
     "custom11",
-    "execute",
-    "ocr",
+    "custom20",
+    "custom5",
+    "custom2",
+    "custom9",
+    "custom4",
+    "custom7",
+    "custom6",
+    "custom17",
+    "snipaste",
     "edit",
     "copyAsMarkdownLink",
-    "search",
-    "bigbang",
-    "chatglm",
     "custom16",
-    "custom12",
     "custom13",
-    "custom14"
-  ],
-  "dynamicActionKeys": [
     "copy",
     "searchInEudic",
     "switchTitleorExcerpt",
-    "copyAsMarkdownLink",
     "search",
     "bigbang",
-    "snipaste",
     "chatglm",
     "setting",
     "pasteAsTitle",
@@ -82,27 +86,57 @@
     "color13",
     "color14",
     "color15",
-    "custom1",
-    "custom2",
-    "custom3",
-    "custom4",
-    "custom5",
-    "custom6",
-    "custom7",
-    "custom8",
-    "custom9",
-    "custom10",
-    "custom11",
-    "custom12",
-    "custom13",
-    "custom14",
-    "custom15",
-    "custom16",
-    "custom17",
-    "custom18",
-    "custom19",
     "ocr",
+    "timer",
+    "execute",
+    "sidebar",
+    "undo",
+    "redo"
+  ],
+  "dynamicActionKeys": [
+    "custom15",
+    "custom3",
+    "custom8",
+    "custom10",
+    "custom20",
+    "custom5",
+    "custom2",
+    "custom9",
+    "custom4",
+    "custom7",
+    "custom6",
+    "custom17",
+    "snipaste",
     "edit",
+    "copyAsMarkdownLink",
+    "custom16",
+    "custom13",
+    "copy",
+    "searchInEudic",
+    "switchTitleorExcerpt",
+    "search",
+    "bigbang",
+    "chatglm",
+    "setting",
+    "pasteAsTitle",
+    "clearFormat",
+    "color0",
+    "color1",
+    "color2",
+    "color3",
+    "color4",
+    "color5",
+    "color6",
+    "color7",
+    "color8",
+    "color9",
+    "color10",
+    "color11",
+    "color12",
+    "color13",
+    "color14",
+    "color15",
+    "ocr",
     "timer",
     "execute",
     "sidebar",
@@ -110,125 +144,250 @@
     "redo"
   ],
   "actions": {
-    "edit": {
-      "name": "edit",
-      "image": "edit",
-      "description": "{\"showOnNoteEdit\":false}"
-    },
-    "custom7": {
-      "name": "隐藏插件栏",
-      "image": "hideAddonBar",
-      "description": "{\n  \"action\": \"hideAddonBar\"\n}"
-    },
-    "custom12": {
-      "name": "[卡片弹窗替换]工作流",
-      "image": "workflow_white",
-      "description": "{\n  \"action\": \"menu\",\n  \"menuWidth\": 300,\n  \"menuItems\": [\n    \"⬇️ 临时\",\n    {\n      \"action\": \"moveToInbox\",\n      \"menuTitle\": \"    加入 Inbox\"\n    },\n    {\n      \"action\": \"\",\n      \"menuTitle\": \"     剪切 + 「浮窗」定位今日 Inbox\"\n    }\n  ]\n}"
-    },
-    "custom16": {
-      "name": "[手型工具弹窗替换]文本",
-      "image": "text_white",
-      "description": "{\n  \"action\": \"selectionTextToTitleCase\",\n  \"onLongPress\": {\n    \"action\": \"menu\",\n    \"menuItems\": [\n      {\n        \"action\": \"selectionTextToTitleCase\",\n        \"menuTitle\": \"标题规范\"\n      },\n      {\n        \"action\": \"selectionTextToLowerCase\",\n        \"menuTitle\": \"转小写\"\n      },\n      {\n        \"action\": \"selectionTextHandleSpaces\",\n        \"menuTitle\": \"处理空格\"\n      }\n    ]\n  }\n}"
-    },
-    "custom1": {
+    "custom15": {
       "name": "制卡",
       "image": "makeCards",
-      "description": "{\n  \"action\": \"TemplateMakeNotes\",\n  \"doubleClick\": {\n    \"action\": \"mergeTemplateNotes\"\n  },\n  \"onLongPress\": {\n    \"action\": \"menu\",\n    \"menuWidth\": 320,\n    \"menuItems\": [\n      \"⬇️ 合并\",\n      {\n        \"action\": \"mergeInParentNote\",\n        \"menuTitle\": \"    合并到父卡片\"\n      },\n      {\n        \"action\": \"mergeInParentNoteWithPopup\",\n        \"menuTitle\": \"    合并到父卡片：弹窗选择类型\"\n      },\n      {\n        \"action\": \"mergIntoParenNoteAndRenewReplaceholder\",\n        \"menuTitle\": \"    合并到父卡片 & 替换占位符\"\n      },\n      {\n        \"action\": \"mergIntoParenNoteAndRenewReplaceholderWithPopup\",\n        \"menuTitle\": \"    合并到父卡片 & 替换占位符: 弹窗选择类型\"\n      },\n      \"⬇️ 制卡\",\n      {\n        \"action\": \"multiTemplateMakeNotes\",\n        \"menuTitle\": \"    批量制卡\"\n      },\n      {\n        \"action\": \"TemplateMakeChildNotes\",\n        \"menuTitle\": \"    批量进行子卡片制卡\"\n      },\n      {\n        \"action\": \"TemplateMakeDescendantNotes\",\n        \"menuTitle\": \"    批量进行子孙卡片制卡\"\n      },\n      {\n        \"action\": \"menu\",\n        \"menuTitle\": \"️️    ➡️ 文献制卡\",\n        \"menuItems\": [\n          {\n            \"action\": \"referencePaperMakeCards\",\n            \"menuTitle\": \"📄 论文制卡\"\n          },\n          {\n            \"action\": \"referenceBookMakeCards\",\n            \"menuTitle\": \"📚 书作制卡\"\n          },\n          {\n            \"action\": \"referenceSeriesBookMakeCard\",\n            \"menuTitle\": \"📚 系列书作制卡\"\n          },\n          {\n            \"action\": \"referenceOneVolumeJournalMakeCards\",\n            \"menuTitle\": \"📄 整卷期刊制卡\"\n          },\n          {\n            \"action\": \"referenceAuthorNoteMake\",\n            \"menuTitle\": \"作者卡片制卡\"\n          }\n        ]\n      },\n      \"⬇️ 修改标题\",\n      {\n        \"action\": \"changeTitlePrefix\",\n        \"menuTitle\": \"    强制修改卡片前缀\"\n      },\n      {\n        \"action\": \"changeChildNotesTitles\",\n        \"menuTitle\": \"    批量修改子卡片标题\"\n      },\n      {\n        \"action\": \"changeDescendantNotesTitles\",\n        \"menuTitle\": \"    批量修改子孙卡片标题\"\n      },\n      \"⬇️ 清空评论\",\n      {\n        \"action\": \"clearContentKeepExcerptWithTitle\",\n        \"menuTitle\": \"    清空评论 + ✅ 摘录 ✅ 标题\"\n      },\n      {\n        \"action\": \"clearContentKeepExcerpt\",\n        \"menuTitle\": \"    清空评论 + ✅ 摘录 ❌ 标题\"\n      },\n      \"⬇️ 杂项\",\n      {\n        \"action\": \"renewExcerptInParentNoteByFocusNote\",\n        \"menuTitle\": \"    父卡片的摘录替换为选中卡片的摘录\"\n      },\n      {\n        \"action\": \"convertNoteToNonexcerptVersion\",\n        \"menuTitle\": \"    转化为非摘录版本\"\n      },\n      {\n        \"action\": \"splitMarkdownTextInFocusNote\",\n        \"menuTitle\": \"    基于 Markdown 拆卡\"\n      }\n    ]\n  }\n}"
-    },
-    "custom2": {
-      "name": "学习",
-      "image": "study",
-      "description": "{\n  \"action\": \"menu\",\n  \"menuWidth\": 330,\n  \"menuItems\": [\n    \"⬇️ 更新证明\",\n    {\n      \"action\": \"renewProofContentPoints\",\n      \"menuTitle\": \"    🔄更新证明\\\"-\\\": 弹窗选择 \"\n    },\n    {\n      \"action\": \"renewLinksBetweenClassificationNoteAndKnowledegeNote\",\n      \"menuTitle\": \"更新1️⃣次「归类卡片」与「概念or归类卡片」之间的🔗\"\n    },\n    {\n      \"action\": \"menu\",\n      \"menuTitle\": \"➡️ 注释\",\n      \"menuWidth\": 260,\n      \"menuItems\": [\n        {\n          \"action\": \"htmlCommentToProofFromClipboard\",\n          \"menuTitle\": \"从剪切板粘贴到证明中\"\n        },\n        {\n          \"action\": \"htmlCommentToBottom\",\n          \"menuTitle\": \"➕卡片末尾\"\n        },\n        {\n          \"action\": \"htmlCommentToProofBottom\",\n          \"menuTitle\": \"⬆️证明末尾\"\n        },\n        {\n          \"action\": \"htmlCommentToProofTop\",\n          \"menuTitle\": \"⬆️证明开始\"\n        }\n      ]\n    },\n    {\n      \"action\": \"menu\",\n      \"menuTitle\": \"➡️ 证明\",\n      \"menuWidth\": 250,\n      \"menuItems\": [\n        {\n          \"action\": \"addProofToStartFromClipboard\",\n          \"menuTitle\": \"从剪切板增加证明⬆️证明「开始」\"\n        },\n        {\n          \"action\": \"addProofFromClipboard\",\n          \"menuTitle\": \"从剪切板增加证明⬆️证明「末尾」\"\n        },\n        {\n          \"action\": \"moveProofToMethod\",\n          \"menuTitle\": \"证明⬆️某种方法\"\n        },\n        {\n          \"action\": \"proofAddNewMethodWithComment\",\n          \"menuTitle\": \"➕证明方法（补充注释）\"\n        },\n        {\n          \"action\": \"proofAddNewMethod\",\n          \"menuTitle\": \"➕证明方法（无注释）\"\n        },\n        {\n          \"action\": \"proofAddMethodComment\",\n          \"menuTitle\": \"补充某证明方法的注释\"\n        },\n        {\n          \"action\": \"renewProof\",\n          \"menuTitle\": \"更新证明\"\n        },\n        {\n          \"action\": \"moveProofDown\",\n          \"menuTitle\": \"将证明移到最下方\"\n        }\n      ]\n    },\n    {\n      \"action\": \"menu\",\n      \"menuTitle\": \"➡️ 反例\",\n      \"menuItems\": [\n        {\n          \"action\": \"proofAddNewAntiexample\",\n          \"menuTitle\": \"➕反例（无注释）\"\n        },\n        {\n          \"action\": \"proofAddNewAntiexampleWithComment\",\n          \"menuTitle\": \"➕反例（补充注释）\"\n        }\n      ]\n    },\n    {\n      \"action\": \"addOldNoteKeyword\",\n      \"menuTitle\": \"（旧卡片）➕关键词\"\n    }\n  ]\n}"
-    },
-    "custom9": {
-      "name": "思考",
-      "image": "think",
-      "description": "{\n  \"action\": \"moveUpThoughtPointsToBottom\",\n  \"onLongPress\": {\n    \"action\": \"menu\",\n    \"menuWidth\": 330,\n    \"menuItems\": [\n      {\n        \"action\": \"moveUpThoughtPointsToTop\",\n        \"menuTitle\": \"思考点🔝思考区「上方」\"\n      },\n      {\n        \"action\": \"addThoughtPoint\",\n        \"menuTitle\": \"➕思考点\"\n      },\n      {\n        \"action\": \"addThoughtPointAndMoveLastCommentToThought\",\n        \"menuTitle\": \"➕思考点 & 最后1️⃣💬⬆️思考\"\n      },\n      {\n        \"action\": \"addThoughtPointAndMoveNewCommentsToThought\",\n        \"menuTitle\": \"➕思考点 & 新💬⬆️思考\"\n      },\n      {\n        \"action\": \"moveLastCommentToThought\",\n        \"menuTitle\": \"最后1️⃣💬⬆️思考\"\n      },\n      {\n        \"action\": \"moveLastTwoCommentsToThought\",\n        \"menuTitle\": \"最后2️⃣💬⬆️思考\"\n      },\n      {\n        \"action\": \"moveLastTwoCommentsInBiLinkNotesToThought\",\n        \"menuTitle\": \"双向链接的两张卡片同时最后2️⃣💬⬆️思考\"\n      }\n    ]\n  }\n}"
-    },
-    "custom13": {
-      "name": "[卡片弹窗替换]摘录",
-      "image": "excerpt_white",
-      "description": "{\n  \"action\": \"moveToExcerptPartBottom\",\n  \"onLongPress\": {\n    \"action\": \"menu\",\n    \"menuWidth\": 350,\n    \"menuItems\": [\n      {\n        \"action\": \"deleteCommentsByPopupAndMoveNewContentToExcerptAreaTop\",\n        \"menuTitle\": \"删除某些评论后移动新内容 ⇨ 摘录区「🔝 top」\"\n      },\n      {\n        \"action\": \"deleteCommentsByPopupAndMoveNewContentToExcerptAreaBottom\",\n        \"menuTitle\": \"删除某些评论后移动新内容 ⇨ 摘录区「⬇️ bottom」\"\n      },\n      {\n        \"action\": \"moveToExcerptPartBottom\",\n        \"menuTitle\": \"⇨ 摘录区「⬇️ bottom」\"\n      },\n      {\n        \"action\": \"moveToExcerptPartTop\",\n        \"menuTitle\": \"⇨ 摘录区「🔝 top」\"\n      }\n    ]\n  }\n}"
-    },
-    "custom17": {
-      "name": "卡片储存",
-      "image": "pin_white",
-      "description": "{\n  \"action\": \"menu\",\n  \"menuItems\": [\n    {\n      \"action\": \"openPinnedNote-1\",\n      \"menuTitle\": \"Hᵖ(𝔻)\"\n    },\n    {\n      \"action\": \"openPinnedNote-2\",\n      \"menuTitle\": \"Lᵖ(𝕋)\"\n    },\n    {\n      \"action\": \"openPinnedNote-3\",\n      \"menuTitle\": \"Hᵖ(𝕋)\"\n    }\n  ]\n}"
-    },
-    "chatglm": {
-      "name": "ChatAI",
-      "image": "ai",
-      "description": "ChatAI"
+      "description": "{\n  \"action\": \"makeNote\",\n  \"doubleClick\": {\n    \"action\": \"doubleClickMakeNote\"\n  },\n  \"onLongPress\": {\n    \"action\": \"menu\",\n    \"menuWidth\": 320,\n    \"menuItems\": [\n      \"🪄 制卡\",\n      {\n        \"action\": \"makeCardWithoutFocus\",\n        \"menuTitle\": \"    不定位制卡\"\n      },\n      {\n        \"action\": \"menu\",\n        \"menuTitle\": \"➡️ 文献制卡\",\n        \"menuItems\": [\n          {\n            \"action\": \"referencePaperMakeCards\",\n            \"menuTitle\": \"📄 论文制卡\"\n          },\n          {\n            \"action\": \"referenceBookMakeCards\",\n            \"menuTitle\": \"📚 书作制卡\"\n          },\n          {\n            \"action\": \"referenceSeriesBookMakeCard\",\n            \"menuTitle\": \"📚 系列书作制卡\"\n          },\n          {\n            \"action\": \"referenceOneVolumeJournalMakeCards\",\n            \"menuTitle\": \"📄 整卷期刊制卡\"\n          },\n          {\n            \"action\": \"referenceAuthorNoteMake\",\n            \"menuTitle\": \"作者卡片制卡\"\n          }\n        ]\n      },\n      \"⚙️ 处理卡片\",\n      {\n        \"action\": \"upwardMergeWithStyledComments\",\n        \"menuTitle\": \"    将子卡片作为证明要点合并\"\n      },\n      \"🪄 生成卡片\",\n      {\n        \"action\": \"addNewIdeaNote\",\n        \"menuTitle\": \"    生成「思路」卡片\"\n      },\n      {\n        \"action\": \"addNewSummaryNote\",\n        \"menuTitle\": \"    生成「总结」卡片\"\n      }\n    ]\n  }\n}"
     },
     "custom3": {
       "name": "增加模板",
       "image": "addTemplate",
       "description": "{\n  \"action\": \"addTemplate\"\n}"
     },
-    "custom20": {
-      "name": "htmlMarkdown 评论",
-      "image": "htmlmdcomment",
-      "description": "{\n  \"action\": \"addHtmlMarkdownComment\",\n  \"onLongPress\": {\n    \"action\": \"menu\",\n    \"menuWidth\": 280,\n    \"menuItems\": [\n      {\n        \"action\": \"renewContentPointsToHtmlType\",\n        \"menuTitle\": \"🔄 更新\\\"-\\\": 弹窗选择\"\n      },\n      {\n        \"action\": \"htmlMDCommentsToNextLevelType\",\n        \"menuTitle\": \"⬇️ HtmlMD 评论降级\"\n      },\n      {\n        \"action\": \"htmlMDCommentsToLastLevelType\",\n        \"menuTitle\": \"⬆️ HtmlMD 评论升级\"\n      }\n    ]\n  }\n}"
+    "custom8": {
+      "name": "证明",
+      "image": "proof",
+      "description": "{\n  \"action\": \"addProofCheckComment\",\n  \"onLongPress\": {\n    \"action\": \"menu\",\n    \"menuWidth\": 320,\n    \"menuItems\": [\n      {\n        \"action\": \"upwardMergeWithStyledComments\",\n        \"menuTitle\": \"将子卡片作为证明要点合并\"\n      },\n      \"🔍 OCR\",\n      {\n        \"action\": \"ocrAsProofTitle\",\n        \"menuTitle\": \"    OCR >> 设置为标题\"\n      },\n      {\n        \"action\": \"ocrAsProofTitleWithTranslation\",\n        \"menuTitle\": \"    OCR >> 翻译 >> 设置为标题\"\n      },\n      {\n        \"action\": \"ocrAllUntitledDescendants\",\n        \"menuTitle\": \"    【批量】OCR >> 设置为标题\"\n      },\n      {\n        \"action\": \"ocrAllUntitledDescendantsWithTranslation\",\n        \"menuTitle\": \"    【批量】OCR >> 翻译 >> 设置为标题\"\n      },\n      \"🌐 翻译\",\n      {\n        \"action\": \"translateAllDescendants\",\n        \"menuTitle\": \"    【批量】翻译标题\"\n      },\n      {\n        \"action\": \"menu\",\n        \"menuTitle\": \"⚙️ 设置\",\n        \"menuWidth\": 200,\n        \"menuItems\": [\n          {\n            \"action\": \"switchOCRSource\",\n            \"menuTitle\": \"切换 OCR 源\"\n          },\n          {\n            \"action\": \"switchTranslateModel\",\n            \"menuTitle\": \"切换翻译模型\"\n          }\n        ]\n      }\n    ]\n  }\n}"
     },
     "custom10": {
       "name": "管理评论",
       "image": "comment",
-      "description": "{\n  \"action\": \"manageCommentsByPopup\",\n  \"onLongPress\": {\n    \"action\": \"menu\",\n    \"menuWidth\": 300,\n    \"menuItems\": [\n      {\n        \"action\": \"moveLastOneCommentByPopupTo\",\n        \"menuTitle\": \"移动「最后1️⃣条」评论\"\n      },\n      {\n        \"action\": \"moveLastTwoCommentByPopupTo\",\n        \"menuTitle\": \"移动「最后2️⃣条」评论\"\n      },\n      {\n        \"action\": \"moveLastThreeCommentByPopupTo\",\n        \"menuTitle\": \"移动「最后3️⃣条」评论\"\n      }\n    ]\n  }\n}"
+      "description": "{\n  \"action\": \"manageCommentsByPopup\",\n  \"onLongPress\": {\n    \"action\": \"menu\",\n    \"menuWidth\": 300,\n    \"menuItems\": [\n      \"🔗 链接处理\",\n      {\n        \"action\": \"removeBidirectionalLinks\",\n        \"menuTitle\": \"    删除双向链接\"\n      },\n      {\n        \"action\": \"updateBidirectionalLink\",\n        \"menuTitle\": \"    更新链接\"\n      },\n      {\n        \"action\": \"linkRemoveDuplicatesAfterApplication\",\n        \"menuTitle\": \"    “应用”下方的链接去重\"\n      },\n      {\n        \"action\": \"reorderContainsFieldLinks\",\n        \"menuTitle\": \"  定义“相关链接”下方的链接重新排序\"\n      },\n      \"⬇️ 字段处理\",\n      {\n        \"action\": \"replaceFieldContentByPopup\",\n        \"menuTitle\": \"    替换字段\"\n      },\n      {\n        \"action\": \"retainFieldContentOnly\",\n        \"menuTitle\": \"    保留某个字段内容\"\n      },\n      \"❌ 删除评论\",\n      {\n        \"action\": \"clearContentKeepExcerptWithTitle\",\n        \"menuTitle\": \"    只保留摘录和标题\"\n      },\n      {\n        \"action\": \"clearContentKeepExcerpt\",\n        \"menuTitle\": \"    只保留摘录，无标题\"\n      }\n    ]\n  }\n}"
     },
-    "bigbang": {
-      "name": "Bigbang",
-      "image": "bigbang",
-      "description": "Bigbang"
+    "custom11": {
+      "name": "搜索",
+      "image": "search",
+      "description": "{\n  \"action\": \"searchNotes\",\n  \"onLongPress\": {\n    \"action\": \"menu\",\n    \"menuWidth\": 300,\n    \"menuItems\": [\n      {\n        \"action\": \"searchDefinition\",\n        \"menuTitle\": \"📚 定义卡片目录\"\n      },\n      {\n        \"action\": \"searchNotes\",\n        \"menuTitle\": \"🔍 搜索笔记\"\n      },\n      {\n        \"action\": \"manageSearchRoots\",\n        \"menuTitle\": \"📁 管理搜索根目录\"\n      }\n    ]\n  }\n}"
     },
-    "copyAsMarkdownLink": {
-      "name": "Copy md link",
-      "image": "copyAsMarkdownLink",
-      "description": "Copy md link"
+    "custom20": {
+      "name": "htmlMarkdown 评论",
+      "image": "htmlmdcomment",
+      "description": "{\n  \"action\": \"addHtmlMarkdownComment\",\n  \"onLongPress\": {\n    \"action\": \"menu\",\n    \"menuWidth\": 300,\n    \"menuItems\": [\n      {\n        \"action\": \"changeHtmlMarkdownCommentTypeByPopup\",\n        \"menuTitle\": \"🔄 修改某条 HtmlMD 评论的类型\"\n      },\n      {\n        \"action\": \"renewContentsToHtmlMarkdownCommentType\",\n        \"menuTitle\": \"🔄 更新文本内容为 HtmlMD 评论\"\n      }\n    ]\n  }\n}"
+    },
+    "custom5": {
+      "name": "卡片",
+      "image": "card",
+      "description": "{\n  \"action\": \"copyMarkdownVersionFocusNoteURL\",\n  \"onLongPress\": {\n    \"action\": \"menu\",\n    \"menuWidth\": 350,\n    \"menuItems\": [\n      \"⬇️ 卡片处理\",\n      {\n        \"action\": \"toBeIndependent\",\n        \"menuTitle\": \"    ⇨ 独立\"\n      },\n      {\n        \"action\": \"convertNoteToNonexcerptVersion\",\n        \"menuTitle\": \"    转化为非摘录版本\"\n      },\n      {\n        \"action\": \"splitMarkdownTextInFocusNote\",\n        \"menuTitle\": \"    基于 Markdown 拆卡\"\n      },\n      \"⬇️ 合并到父卡片\",\n      {\n        \"action\": \"mergeInParentNote\",\n        \"menuTitle\": \"    合并到父卡片\"\n      },\n      {\n        \"action\": \"mergeInParentNoteWithPopup\",\n        \"menuTitle\": \"    合并到父卡片：弹窗选择类型\"\n      },\n      {\n        \"action\": \"mergIntoParenNoteAndRenewReplaceholder\",\n        \"menuTitle\": \"    合并到父卡片 & 替换占位符\"\n      },\n      {\n        \"action\": \"mergIntoParenNoteAndRenewReplaceholderWithPopup\",\n        \"menuTitle\": \"    合并到父卡片 & 替换占位符: 弹窗选择类型\"\n      },\n      {\n        \"action\": \"renewExcerptInParentNoteByFocusNote\",\n        \"menuTitle\": \"    父卡片的摘录替换为选中卡片的摘录\"\n      },\n      \"🔄 处理旧卡片\",\n      {\n        \"action\": \"batchChangeClassificationTitles\",\n        \"menuTitle\": \"    批量更新归类卡片标题\"\n      },\n      {\n        \"action\": \"renewKnowledgeNoteIntoParentNote\",\n        \"menuTitle\": \"    更新知识点卡片到父卡片中\"\n      },\n      \"⬇️ 修改标题\",\n      {\n        \"action\": \"removeTitlePrefix\",\n        \"menuTitle\": \"    去掉卡片前缀\"\n      },\n      \"ℹ️ 获取卡片信息\",\n      {\n        \"action\": \"copyFocusNotesIdArr\",\n        \"menuTitle\": \"    复制卡片🆔\"\n      },\n      {\n        \"action\": \"copyFocusNotesURLArr\",\n        \"menuTitle\": \"    复制卡片 URL\"\n      }\n    ]\n  }\n}"
+    },
+    "custom2": {
+      "name": "学习",
+      "image": "study",
+      "description": "{\n  \"action\": \"menu\",\n  \"menuWidth\": 330,\n  \"menuItems\": [\n    {\n      \"action\": \"autoMoveLinksBetweenCards\",\n      \"menuTitle\": \"自动移动卡片之间的链接\"\n    }\n  ]\n}"
+    },
+    "custom9": {
+      "name": "思考",
+      "image": "think",
+      "description": "{\n  \"action\": \"moveUpThoughtPointsToBottom\",\n  \"onLongPress\": {\n    \"action\": \"menu\",\n    \"menuWidth\": 330,\n    \"menuItems\": []\n  }\n}"
     },
     "custom4": {
       "name": "文献",
       "image": "reference",
       "description": "{\n  \"action\": \"menu\",\n  \"menuItems\": [\n    {\n      \"action\": \"menu\",\n      \"menuTitle\": \"➡️ 🧠文献学习\",\n      \"menuWidth\": 500,\n      \"menuItems\": [\n        \"⬇️ ➕引用\",\n        {\n          \"action\": \"referenceRefByRefNumAndFocusInMindMap\",\n          \"menuTitle\": \"选中「具体引用」卡片+输入文献号→ ➕引用 + 剪切归类 + 主视图定位\"\n        },\n        {\n          \"action\": \"referenceRefByRefNumAddFocusInFloatMindMap\",\n          \"menuTitle\": \"选中「具体引用」卡片+输入文献号→ ➕引用 + 剪切归类 + 浮窗定位\"\n        },\n        \"⬇️ ➕「具体引用情况」汇总卡片\",\n        {\n          \"action\": \"referenceCreateClassificationNoteByIdAndFocusNote\",\n          \"menuTitle\": \"选中「参考文献摘录」卡片+输入文献号→ 「具体引用情况」汇总卡片 + 浮窗定位\"\n        }\n      ]\n    },\n    {\n      \"action\": \"menu\",\n      \"menuTitle\": \"➡️ 参考文献 🆔\",\n      \"menuItems\": [\n        {\n          \"action\": \"menu\",\n          \"menuTitle\": \"👉 当前文档相关 🆔 录入\",\n          \"menuWidth\": 350,\n          \"menuItems\": [\n            {\n              \"action\": \"referenceStoreIdForCurrentDocByFocusNote\",\n              \"menuTitle\": \"绑定「选中的卡片」➡️「当前文档」\"\n            },\n            {\n              \"action\": \"referenceStoreOneIdForCurrentDocByFocusNote\",\n              \"menuTitle\": \"绑定「选中的卡片」➡️ 文献号\"\n            },\n            {\n              \"action\": \"referenceTestIfIdInCurrentDoc\",\n              \"menuTitle\": \"检测文献号的🆔绑定\"\n            }\n          ]\n        },\n        {\n          \"action\": \"menu\",\n          \"menuTitle\": \"➡️ 导出 🆔\",\n          \"menuWidth\": 250,\n          \"menuItems\": [\n            {\n              \"action\": \"referenceExportReferenceIdsToClipboard\",\n              \"menuTitle\": \"导出参考文献卡片🆔到剪切板\"\n            },\n            {\n              \"action\": \"referenceExportReferenceIdsToFile\",\n              \"menuTitle\": \"导出参考文献卡片🆔到文件\"\n            }\n          ]\n        },\n        {\n          \"action\": \"menu\",\n          \"menuTitle\": \"⬅️ 导入 🆔\",\n          \"menuWidth\": 250,\n          \"menuItems\": [\n            {\n              \"action\": \"referenceInputReferenceIdsFromClipboard\",\n              \"menuTitle\": \"从剪切板导入参考文献卡片🆔\"\n            },\n            {\n              \"action\": \"referenceInputReferenceIdsFromFile\",\n              \"menuTitle\": \"从文件导入参考文献卡片🆔\"\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"action\": \"menu\",\n      \"menuTitle\": \"➡️ 🗂️文献卡片\",\n      \"menuItems\": [\n        {\n          \"action\": \"referenceInfoAuthor\",\n          \"menuTitle\": \"👨‍🎓 作者\"\n        },\n        {\n          \"action\": \"referenceInfoYear\",\n          \"menuTitle\": \"⌛️ 年份\"\n        },\n        {\n          \"action\": \"referenceInfoJournal\",\n          \"menuTitle\": \"📄 期刊\"\n        },\n        {\n          \"action\": \"referenceInfoPublisher\",\n          \"menuTitle\": \"📚 出版社\"\n        },\n        {\n          \"action\": \"referenceInfoKeywords\",\n          \"menuTitle\": \"📌 关键词\"\n        },\n        {\n          \"action\": \"referenceInfoDoiFromClipboard\",\n          \"menuTitle\": \"🔢 DOI\"\n        },\n        {\n          \"action\": \"menu\",\n          \"menuTitle\": \"➡️ 🔗 引用样式\",\n          \"menuItems\": [\n            {\n              \"action\": \"referenceInfoRefFromInputRefNum\",\n              \"menuTitle\": \"输入文献号录入引用样式\"\n            },\n            {\n              \"action\": \"referenceInfoRefFromFocusNote\",\n              \"menuTitle\": \"选中摘录自动录入引用样式\"\n            },\n            {\n              \"action\": \"referenceInfoInputRef\",\n              \"menuTitle\": \"手动输入引用样式\"\n            }\n          ]\n        },\n        {\n          \"action\": \"menu\",\n          \"menuTitle\": \"➡️ .bib 信息\",\n          \"menuItems\": [\n            {\n              \"action\": \"referenceBibInfoPasteFromClipboard\",\n              \"menuTitle\": \"从剪切板粘贴 .bib 信息\"\n            },\n            {\n              \"action\": \"referenceBibInfoCopy\",\n              \"menuTitle\": \"复制 .bib 信息\"\n            },\n            {\n              \"action\": \"referenceBibInfoExport\",\n              \"menuTitle\": \"导出 .bib 信息\"\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"action\": \"menu\",\n      \"menuTitle\": \"➡️ 👨‍🎓作者卡片\",\n      \"menuItems\": [\n        {\n          \"action\": \"referenceAuthorRenewAbbreviation\",\n          \"menuTitle\": \"更新作者缩写\"\n        },\n        {\n          \"action\": \"referenceAuthorInfoFromClipboard\",\n          \"menuTitle\": \"粘贴个人信息\"\n        },\n        {\n          \"action\": \"referenceAuthorNoteMake\",\n          \"menuTitle\": \"作者卡片制卡\"\n        }\n      ]\n    },\n    {\n      \"action\": \"menu\",\n      \"menuTitle\": \"➡️ 📄期刊卡片\",\n      \"menuItems\": []\n    },\n    {\n      \"action\": \"menu\",\n      \"menuTitle\": \"➡️ 📌关键词卡片\",\n      \"menuItems\": [\n        {\n          \"action\": \"referenceKeywordsAddRelatedKeywords\",\n          \"menuTitle\": \"➕相关关键词\"\n        },\n        {\n          \"action\": \"referenceGetRelatedReferencesByKeywords\",\n          \"menuTitle\": \"根据关键词筛选文献\"\n        }\n      ]\n    }\n  ]\n}"
     },
-    "custom14": {
-      "name": "MN",
-      "image": "MN_white",
-      "description": "{\n  \"action\": \"menu\",\n  \"menuItems\": [\n    {\n      \"action\": \"MNEditDeleteNote\",\n      \"menuTitle\": \"删除卡片\"\n    },\n    {\n      \"action\": \"MNFocusNote\",\n      \"menuTitle\": \"焦点\"\n    }\n  ]\n}"
-    },
-    "custom5": {
-      "name": "卡片",
-      "image": "card",
-      "description": "{\n  \"action\": \"menu\",\n  \"menuWidth\": 250,\n  \"menuItems\": [\n    {\n      \"action\": \"toBeIndependent\",\n      \"menuTitle\": \"⇨ 独立\"\n    },\n    {\n      \"action\": \"copyFocusNotesIdArr\",\n      \"menuTitle\": \"复制卡片🆔\"\n    },\n    {\n      \"action\": \"copyFocusNotesURLArr\",\n      \"menuTitle\": \"复制卡片 URL\"\n    },\n    {\n      \"action\": \"getNewClassificationInformation\",\n      \"menuTitle\": \"更新卡片归类情况到选中的卡片中\"\n    },\n    {\n      \"action\": \"menu\",\n      \"menuTitle\": \"➡️ 处理旧卡片\",\n      \"menuWidth\": 250,\n      \"menuItems\": [\n        {\n          \"action\": \"renewCards\",\n          \"menuTitle\": \"🔄 更新旧卡片\"\n        },\n        {\n          \"action\": \"reappendAllLinksInNote\",\n          \"menuTitle\": \"🔄 卡片的所有链接重新链接\"\n        },\n        {\n          \"action\": \"clearAllFailedLinks\",\n          \"menuTitle\": \"❌ 处理旧链接、失效的链接\"\n        },\n        {\n          \"action\": \"clearAllLinks\",\n          \"menuTitle\": \"❌ 所有链接\"\n        },\n        {\n          \"action\": \"clearContentKeepExcerptWithTitle\",\n          \"menuTitle\": \"✅ 摘录 ✅ 标题\"\n        },\n        {\n          \"action\": \"clearContentKeepExcerpt\",\n          \"menuTitle\": \"✅ 摘录 ❌ 标题\"\n        },\n        {\n          \"action\": \"clearContentKeepHandwritingAndImage\",\n          \"menuTitle\": \"✅ 手写、图片 ❌ 标题\"\n        },\n        {\n          \"action\": \"clearContentKeepExcerptAndHandwritingAndImage\",\n          \"menuTitle\": \"✅ 摘录、手写和图片 ❌ 标题\"\n        },\n        {\n          \"action\": \"clearContentKeepMarkdownText\",\n          \"menuTitle\": \"✅ Markdown 文本 ❌ 标题\"\n        },\n        {\n          \"action\": \"clearContentKeepHtmlText\",\n          \"menuTitle\": \"✅ HTML 文本 ❌ 标题\"\n        },\n        {\n          \"action\": \"clearContentKeepText\",\n          \"menuTitle\": \"✅ MD & HTML 文本 ❌ 标题\"\n        },\n        {\n          \"action\": \"achieveCards\",\n          \"menuTitle\": \"📦 存档旧卡片\"\n        }\n      ]\n    },\n    \"-----存档------\",\n    {\n      \"action\": \"changeChildNotesPrefix\",\n      \"menuTitle\": \"✂️ 修改子卡片前缀\"\n    },\n    {\n      \"action\": \"renewChildNotesPrefix\",\n      \"menuTitle\": \"✂️ 重新设置子卡片前缀\"\n    },\n    {\n      \"action\": \"refreshNotes\",\n      \"menuTitle\": \"🔄 刷新卡片\"\n    },\n    {\n      \"action\": \"refreshCardsAndAncestorsAndDescendants\",\n      \"menuTitle\": \"🔄 刷新卡片及其所有父子卡片\"\n    },\n    {\n      \"action\": \"menu\",\n      \"menuTitle\": \"➡️ 链接\",\n      \"menuItems\": [\n        {\n          \"action\": \"linkRemoveDuplicatesAfterApplication\",\n          \"menuTitle\": \"“应用”下方的链接去重\"\n        }\n      ]\n    },\n    {\n      \"action\": \"focusInMindMap\",\n      \"menuTitle\": \"focus In 主视图\"\n    },\n    {\n      \"action\": \"focusInFloatMindMap\",\n      \"menuTitle\": \"focus In 浮窗\"\n    },\n    {\n      \"action\": \"menu\",\n      \"menuTitle\": \"➡️ 卡片标题\",\n      \"menuItems\": [\n        {\n          \"action\": \"handleTitleSpaces\",\n          \"menuTitle\": \"处理标题空格\"\n        },\n        {\n          \"action\": \"menu\",\n          \"menuTitle\": \"➡️ 复制标题\",\n          \"menuItems\": [\n            {\n              \"action\": \"copyWholeTitle\",\n              \"menuTitle\": \"复制整个标题\"\n            },\n            {\n              \"action\": \"copyTitleSecondPart\",\n              \"menuTitle\": \"【】后的标题主体\"\n            },\n            {\n              \"action\": \"copyTitleFirstKeyword\",\n              \"menuTitle\": \"第1️⃣个标题词\"\n            },\n            {\n              \"action\": \"copyTitleFirstQuoteContent\",\n              \"menuTitle\": \"第1️⃣个引号内容\"\n            },\n            {\n              \"action\": \"copyTitleSecondQuoteContent\",\n              \"menuTitle\": \"第2️⃣个引号内容\"\n            }\n          ]\n        },\n        {\n          \"action\": \"menu\",\n          \"menuTitle\": \"➡️ 粘贴到标题\",\n          \"menuItems\": [\n            {\n              \"action\": \"pasteInTitle\",\n              \"menuTitle\": \"完全替换标题\"\n            },\n            {\n              \"action\": \"pasteAfterTitle\",\n              \"menuTitle\": \"添加到原标题后面\"\n            }\n          ]\n        },\n        {\n          \"action\": \"findDuplicateTitles\",\n          \"menuTitle\": \"子卡片标题查重\"\n        }\n      ]\n    }\n  ]\n}"
-    },
-    "snipaste": {
-      "name": "Snipaste",
-      "image": "snipaste",
-      "description": "Snipaste"
-    },
-    "custom11": {
-      "name": "工作流",
-      "image": "workflow",
-      "description": "{\n  \"action\": \"menu\",\n  \"menuWidth\": 300,\n  \"menuItems\": [\n    \"⬇️ 临时\",\n    {\n      \"action\": \"moveToInbox\",\n      \"menuTitle\": \"    加入 Inbox\"\n    },\n    {\n      \"action\": \"\",\n      \"menuTitle\": \"     剪切 + 「浮窗」定位今日 Inbox\"\n    }\n  ]\n}"
-    },
-    "execute": {
-      "name": "execute",
-      "image": "execute",
-      "description": "let focusNote = MNNote.getFocusNote()\nMNUtil.showHUD(focusNote.noteTitle)"
-    },
-    "ocr": {
-      "name": "ocr",
-      "image": "ocr",
-      "description": "{\"target\":\"comment\",\"source\":\"default\"}"
+    "custom7": {
+      "name": "隐藏插件栏",
+      "image": "hideAddonBar",
+      "description": "{\"action\":\"hideAddonBar\"}"
     },
     "custom6": {
       "name": "文本",
       "image": "text",
       "description": "{\n  \"action\": \"menu\",\n  \"menuItems\": [\n    {\n      \"action\": \"menu\",\n      \"menuTitle\": \"→ 文档中选中的文本\",\n      \"menuItems\": [\n        {\n          \"action\": \"selectionTextToTitleCase\",\n          \"menuTitle\": \"标题规范\"\n        },\n        {\n          \"action\": \"selectionTextToLowerCase\",\n          \"menuTitle\": \"转小写\"\n        },\n        {\n          \"action\": \"selectionTextHandleSpaces\",\n          \"menuTitle\": \"处理空格\"\n        }\n      ]\n    },\n    {\n      \"action\": \"menu\",\n      \"menuTitle\": \"→ 复制的文本\",\n      \"menuItems\": [\n        {\n          \"action\": \"copiedTextToTitleCase\",\n          \"menuTitle\": \"标题规范\"\n        },\n        {\n          \"action\": \"copiedTextToLowerCase\",\n          \"menuTitle\": \"转小写\"\n        },\n        {\n          \"action\": \"copiedTextHandleSpaces\",\n          \"menuTitle\": \"处理空格\"\n        }\n      ]\n    }\n  ]\n}"
     },
+    "custom17": {
+      "name": "卡片储存",
+      "image": "pin_white",
+      "description": "{\n  \"action\": \"menu\",\n  \"menuItems\": [\n    {\n      \"action\": \"openPinnedNote-1\",\n      \"menuTitle\": \"Hᵖ(𝔻)\"\n    },\n    {\n      \"action\": \"openPinnedNote-2\",\n      \"menuTitle\": \"Lᵖ(𝕋)\"\n    },\n    {\n      \"action\": \"openPinnedNote-3\",\n      \"menuTitle\": \"Hᵖ(𝕋)\"\n    }\n  ]\n}"
+    },
+    "snipaste": {
+      "name": "Snipaste",
+      "image": "snipaste",
+      "description": "Snipaste"
+    },
+    "edit": {
+      "name": "edit",
+      "image": "edit",
+      "description": "{\"showOnNoteEdit\":false}"
+    },
+    "copyAsMarkdownLink": {
+      "name": "Copy md link",
+      "image": "copyAsMarkdownLink",
+      "description": "Copy md link"
+    },
+    "custom16": {
+      "name": "[手型工具弹窗替换]文本",
+      "image": "text_white",
+      "description": "{\n  \"action\": \"selectionTextToTitleCase\",\n  \"onLongPress\": {\n    \"action\": \"menu\",\n    \"menuItems\": [\n      {\n        \"action\": \"selectionTextToTitleCase\",\n        \"menuTitle\": \"标题规范\"\n      },\n      {\n        \"action\": \"selectionTextToLowerCase\",\n        \"menuTitle\": \"转小写\"\n      },\n      {\n        \"action\": \"selectionTextHandleSpaces\",\n        \"menuTitle\": \"处理空格\"\n      }\n    ]\n  }\n}"
+    },
+    "custom13": {
+      "name": "[卡片弹窗替换]摘录",
+      "image": "excerpt_white",
+      "description": "{\n  \"action\": \"moveToExcerptPartBottom\"\n}"
+    },
+    "copy": {
+      "name": "Copy",
+      "image": "copyExcerptPic",
+      "description": "{}"
+    },
+    "searchInEudic": {
+      "name": "Search in Eudic",
+      "image": "searchInEudic",
+      "description": "{}"
+    },
+    "switchTitleorExcerpt": {
+      "name": "Switch title",
+      "image": "switchTitleorExcerpt",
+      "description": "{}"
+    },
     "search": {
       "name": "Search",
       "image": "search",
-      "description": "Search"
+      "description": "{}"
+    },
+    "bigbang": {
+      "name": "Bigbang",
+      "image": "bigbang",
+      "description": "{}"
+    },
+    "chatglm": {
+      "name": "ChatAI",
+      "image": "ai",
+      "description": "{}"
+    },
+    "setting": {
+      "name": "Setting",
+      "image": "setting",
+      "description": "{}"
+    },
+    "pasteAsTitle": {
+      "name": "Paste As Title",
+      "image": "pasteAsTitle",
+      "description": "{\n  \"action\": \"setContent\",\n  \"target\": \"title\",\n  \"content\": \"{{clipboardText}}\"\n}"
+    },
+    "clearFormat": {
+      "name": "Clear Format",
+      "image": "clearFormat",
+      "description": "{}"
+    },
+    "color0": {
+      "name": "Set Color 1",
+      "image": "color0",
+      "description": "{\n  \"fillPattern\": -1\n}"
+    },
+    "color1": {
+      "name": "Set Color 2",
+      "image": "color1",
+      "description": "{\n  \"fillPattern\": -1\n}"
+    },
+    "color2": {
+      "name": "Set Color 3",
+      "image": "color2",
+      "description": "{\n  \"fillPattern\": -1\n}"
+    },
+    "color3": {
+      "name": "Set Color 4",
+      "image": "color3",
+      "description": "{\n  \"fillPattern\": -1\n}"
+    },
+    "color4": {
+      "name": "Set Color 5",
+      "image": "color4",
+      "description": "{\n  \"fillPattern\": -1\n}"
+    },
+    "color5": {
+      "name": "Set Color 6",
+      "image": "color5",
+      "description": "{\n  \"fillPattern\": -1\n}"
+    },
+    "color6": {
+      "name": "Set Color 7",
+      "image": "color6",
+      "description": "{\n  \"fillPattern\": -1\n}"
+    },
+    "color7": {
+      "name": "Set Color 8",
+      "image": "color7",
+      "description": "{\n  \"fillPattern\": -1\n}"
+    },
+    "color8": {
+      "name": "Set Color 9",
+      "image": "color8",
+      "description": "{\n  \"fillPattern\": -1\n}"
+    },
+    "color9": {
+      "name": "Set Color 10",
+      "image": "color9",
+      "description": "{\n  \"fillPattern\": -1\n}"
+    },
+    "color10": {
+      "name": "Set Color 11",
+      "image": "color10",
+      "description": "{\n  \"fillPattern\": -1\n}"
+    },
+    "color11": {
+      "name": "Set Color 12",
+      "image": "color11",
+      "description": "{\n  \"fillPattern\": -1\n}"
+    },
+    "color12": {
+      "name": "Set Color 13",
+      "image": "color12",
+      "description": "{\n  \"fillPattern\": -1\n}"
+    },
+    "color13": {
+      "name": "Set Color 14",
+      "image": "color13",
+      "description": "{\n  \"fillPattern\": -1\n}"
+    },
+    "color14": {
+      "name": "Set Color 15",
+      "image": "color14",
+      "description": "{\n  \"fillPattern\": -1\n}"
+    },
+    "color15": {
+      "name": "Set Color 16",
+      "image": "color15",
+      "description": "{\n  \"fillPattern\": -1\n}"
+    },
+    "ocr": {
+      "name": "ocr",
+      "image": "ocr",
+      "description": "{\"target\":\"comment\",\"source\":\"default\"}"
+    },
+    "timer": {
+      "name": "timer",
+      "image": "timer",
+      "description": "{\"target\":\"menu\"}"
+    },
+    "execute": {
+      "name": "execute",
+      "image": "execute",
+      "description": "MNUtil.showHUD('Hello world')"
+    },
+    "sidebar": {
+      "name": "sidebar",
+      "image": "sidebar",
+      "description": "{}"
+    },
+    "undo": {
+      "name": "undo",
+      "image": "undo",
+      "description": "{}"
+    },
+    "redo": {
+      "name": "redo",
+      "image": "redo",
+      "description": "{}"
     }
   },
   "buttonConfig": {
@@ -278,7 +437,7 @@
     },
     "goWikiNote": {
       "enabled": true,
-      "target": "custom11",
+      "target": "custom13",
       "name": "goWikiNote"
     },
     "addToReview": {
@@ -501,5 +660,7 @@
       "target": "",
       "name": "blankHighlight"
     }
-  }
+  },
+  "ocrSource": "Doc2X",
+  "translateModel": "gpt-4o-mini"
 }

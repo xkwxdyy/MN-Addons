@@ -36,6 +36,28 @@ MNTaskGlobal.getButton = function(key) {
  * 精简后的6个核心功能按钮
  */
 function registerAllButtons() {
+
+  // custom7: 快速启动 - 单击自动启动任务，长按显示启动选项菜单
+  MNTaskGlobal.registerButton("custom7", {
+    name: "快速启动",
+    image: "custom7",
+    templateName: "menu_quick_launch"
+  });
+
+  // custom8: 记录 - 单击添加时间戳记录，长按显示记录相关菜单
+  MNTaskGlobal.registerButton("custom8", {
+    name: "记录",
+    image: "custom8",
+    templateName: "menu_record_log"
+  });
+
+  // custom6: 字段管理 - 单击添加字段，长按显示字段操作菜单
+  MNTaskGlobal.registerButton("custom6", {
+    name: "字段管理",
+    image: "custom6",
+    templateName: "menu_field_manage"
+  });
+
   // custom1: 任务制卡 - 单击智能制卡，长按显示任务管理菜单
   MNTaskGlobal.registerButton("custom1", {
     name: "任务制卡",
@@ -69,27 +91,6 @@ function registerAllButtons() {
     name: "看板视图",
     image: "custom5",
     templateName: "menu_board_view"
-  });
-
-  // custom6: 字段管理 - 单击添加字段，长按显示字段操作菜单
-  MNTaskGlobal.registerButton("custom6", {
-    name: "字段管理",
-    image: "custom6",
-    templateName: "menu_field_manage"
-  });
-
-  // custom7: 快速启动 - 单击自动启动任务，长按显示启动选项菜单
-  MNTaskGlobal.registerButton("custom7", {
-    name: "快速启动",
-    image: "custom7",
-    templateName: "menu_quick_launch"
-  });
-
-  // custom8: 记录 - 单击添加时间戳记录，长按显示记录相关菜单
-  MNTaskGlobal.registerButton("custom8", {
-    name: "记录",
-    image: "custom8",
-    templateName: "menu_record_log"
   });
 
 }

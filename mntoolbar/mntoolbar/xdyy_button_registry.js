@@ -223,8 +223,52 @@ function extendToolbarConfig() {
     return allActions;
   };
   
+  // 扩展 getAction 方法，确保返回自定义配置
+  if (!toolbarConfig._originalGetAction) {
+    toolbarConfig._originalGetAction = toolbarConfig.getAction;
+  }
+  
+  toolbarConfig.getAction = function(actionKey) {
+    // 先检查自定义按钮
+    if (global.customButtons[actionKey]) {
+      const button = Object.assign({}, global.customButtons[actionKey]);
+      
+      // 如果有 templateName，动态获取 description
+      if (button.templateName && !button.description && this.template) {
+        button.description = this.template(button.templateName);
+      }
+      
+      delete button.templateName;
+      return button;
+    }
+    
+    // 如果不是自定义按钮，调用原始方法
+    if (toolbarConfig._originalGetAction) {
+      const result = toolbarConfig._originalGetAction.call(this, actionKey);
+      if (result) {
+        return result;
+      }
+    }
+    
+    // 如果都找不到，尝试从 getActions() 中获取
+    const allActions = this.getActions();
+    if (allActions && allActions[actionKey]) {
+      return allActions[actionKey];
+    }
+    
+    // 最后返回一个默认的空按钮配置，避免 undefined 错误
+    if (typeof MNUtil !== "undefined" && MNUtil.log) {
+      MNUtil.log(`⚠️ 找不到按钮配置: ${actionKey}，返回默认配置`);
+    }
+    return {
+      name: actionKey,
+      image: "default",
+      description: "{}"
+    };
+  };
+  
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
-    MNUtil.log("✅ toolbarConfig.getActions 方法已扩展，支持自定义按钮");
+    MNUtil.log("✅ toolbarConfig.getActions 和 getAction 方法已扩展，支持自定义按钮");
   }
   
   return true;
@@ -232,7 +276,7 @@ function extendToolbarConfig() {
 
 // 强制刷新按钮配置的函数
 function forceRefreshButtons() {
-  if (typeof toolbarConfig === 'undefined' || !toolbarConfig.actions) {
+  if (typeof toolbarConfig === 'undefined') {
     return false;
   }
   
@@ -240,34 +284,65 @@ function forceRefreshButtons() {
   const newActions = toolbarConfig.getActions();
   toolbarConfig.actions = newActions;
   
+  // 强制更新每个自定义按钮的配置
+  for (const key in global.customButtons) {
+    if (toolbarConfig.actions[key]) {
+      const button = Object.assign({}, global.customButtons[key]);
+      
+      // 如果有 templateName，动态获取 description
+      if (button.templateName && !button.description && toolbarConfig.template) {
+        button.description = toolbarConfig.template(button.templateName);
+      }
+      
+      delete button.templateName;
+      toolbarConfig.actions[key] = button;
+    }
+  }
+  
   // 创建自定义按钮的键名数组
   const customKeys = Object.keys(global.customButtons);
   
-  // 更新 action 数组：替换所有 custom 按钮
+  // 保存用户当前的按钮顺序（非 custom 按钮）
+  const nonCustomButtons = [];
   if (toolbarConfig.action && Array.isArray(toolbarConfig.action)) {
-    // 先移除所有旧的 custom 按钮
-    toolbarConfig.action = toolbarConfig.action.filter(key => !key.startsWith('custom'));
-    // 添加我们的 custom 按钮
-    toolbarConfig.action = customKeys.concat(toolbarConfig.action);
+    for (let key of toolbarConfig.action) {
+      if (!key.startsWith('custom') && !customKeys.includes(key)) {
+        nonCustomButtons.push(key);
+      }
+    }
   }
   
-  // 更新 dynamicAction 数组：替换所有 custom 按钮
+  // 重建 action 数组：先添加自定义按钮，再添加其他按钮
+  if (toolbarConfig.action && Array.isArray(toolbarConfig.action)) {
+    toolbarConfig.action = customKeys.concat(nonCustomButtons);
+  }
+  
+  // 同样处理 dynamicAction 数组
+  const nonCustomDynamicButtons = [];
   if (toolbarConfig.dynamicAction && Array.isArray(toolbarConfig.dynamicAction)) {
-    // 先移除所有旧的 custom 按钮
-    toolbarConfig.dynamicAction = toolbarConfig.dynamicAction.filter(key => !key.startsWith('custom'));
-    // 添加我们的 custom 按钮
-    toolbarConfig.dynamicAction = customKeys.concat(toolbarConfig.dynamicAction);
+    for (let key of toolbarConfig.dynamicAction) {
+      if (!key.startsWith('custom') && !customKeys.includes(key)) {
+        nonCustomDynamicButtons.push(key);
+      }
+    }
+    toolbarConfig.dynamicAction = customKeys.concat(nonCustomDynamicButtons);
   }
   
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
     MNUtil.log(`🔄 强制刷新按钮配置完成，共 ${Object.keys(newActions).length} 个按钮`);
     MNUtil.log(`📍 action 数组: ${toolbarConfig.action.slice(0, 10).join(', ')}...`);
     MNUtil.log(`📍 dynamicAction 数组: ${toolbarConfig.dynamicAction.slice(0, 10).join(', ')}...`);
+    MNUtil.log(`📍 自定义按钮: ${customKeys.join(', ')}`);
   }
   
   // 发送刷新通知
   if (typeof MNUtil !== "undefined" && MNUtil.postNotification) {
     MNUtil.postNotification("refreshToolbarButton", {});
+  }
+  
+  // 保存配置
+  if (toolbarConfig.save) {
+    toolbarConfig.save();
   }
   
   return true;

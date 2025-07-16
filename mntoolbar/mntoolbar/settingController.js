@@ -1670,6 +1670,13 @@ settingController.prototype.setTextview = function (actionKey = this.selectedIte
       // let actions = toolbarConfig.actions
       // let defaultActions = toolbarConfig.getActions()
       let action = toolbarConfig.getAction(actionKey)
+      // 添加防御性检查
+      if (!action) {
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`⚠️ setTextview: 获取按钮配置失败 - ${actionKey}`);
+        }
+        action = { name: actionKey, description: "{}" };
+      }
       // let action = (name in actions)?actions[name]:defaultActions[name]
       let text  = action.name//每个动作的title
       this.titleInput.text= text

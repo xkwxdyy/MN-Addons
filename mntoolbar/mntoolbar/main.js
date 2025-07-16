@@ -72,6 +72,17 @@ JSB.newAddon = function (mainPath) {
         MNUtil.addObserver(self, 'onTextDidEndEditing:', 'UITextViewTextDidEndEditingNotification')
         MNUtil.addObserver(self, 'onCloudConfigChange:', 'NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI')
         MNUtil.addObserver(self, 'onAddonBroadcast:', 'AddonBroadcast');
+        
+        // 夏大鱼羊 - begin: 延迟刷新按钮配置，确保自定义扩展完全加载
+        setTimeout(function() {
+          if (typeof global !== 'undefined' && global.forceRefreshButtons) {
+            if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+              MNUtil.log("🔄 延迟刷新按钮配置，确保自定义按钮生效");
+            }
+            global.forceRefreshButtons();
+          }
+        }, 1000);
+        // 夏大鱼羊 - end
       },
 
       sceneDidDisconnect: function () { // Window disconnect 在插件页面关闭插件（不是删除）
@@ -113,6 +124,17 @@ JSB.newAddon = function (mainPath) {
         MNUtil.delay(0.2).then(()=>{
           self.studyView.becomeFirstResponder(); //For dismiss keyboard on iOS
         })
+        
+        // 夏大鱼羊 - begin: 笔记本打开时也刷新按钮配置
+        setTimeout(function() {
+          if (typeof global !== 'undefined' && global.forceRefreshButtons) {
+            if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+              MNUtil.log("🔄 笔记本打开，刷新自定义按钮配置");
+            }
+            global.forceRefreshButtons();
+          }
+        }, 500);
+        // 夏大鱼羊 - end
           
       },
 

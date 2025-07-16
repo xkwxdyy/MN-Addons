@@ -594,12 +594,12 @@ function registerAllMenuTemplates() {
       menuWidth: 300,
       menuItems: [
         {
-          action: "searchDefinition",
-          menuTitle: "📚 定义卡片目录"
+          action: "showSearchBoard",
+          menuTitle: "📋 打开搜索看板"
         },
         {
-          action: "searchNotes",
-          menuTitle: "🔍 搜索笔记"
+          action: "searchDefinition",
+          menuTitle: "📚 搜索上层定义卡片的目录"
         },
         {
           action: "manageSearchRoots",

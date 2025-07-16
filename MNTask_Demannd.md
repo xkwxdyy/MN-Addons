@@ -1,3 +1,70 @@
+请完善 launchTask 函数（已经在 MNTaskManager 里定义了）。
+1. isTaskLaunched 和 currentLaunchedTask 变量（就在launchTask 函数上的上面两行）分别表示
+   - isTaskLaunched：是否有任务被启动了
+   - currentLaunchedTask：当前运行的任务卡片（你可以改成存卡片的 ID）
+  但我还没有把他们的数据永久化，也就是存到 iCloud 里面，请你处理
+2. 我的逻辑是这样的：
+   - 如果我选中了任务类型的卡片，然后触发 launchTask 函数，则此时获取到（通过 getLaunchLink）获取到启动的链接，记为 link
+     - 看 link 是哪种类型（可以封装一个函数判断）一共有两种：uistate(`marginnote4app://uistatus/` 开头) 和 note 的 URL（有一个 getLaunchLinkType 可以看看是不是可以用）
+       - 如果是 uistate ，暂时做空处理，后面完善
+       - 如果是 note 的 URL，就在主视图定位这个 url 对应的卡片
+     - 然后 isTaskLaunched 设置为 true，因为此时启动了任务
+     - currentLaunchedTask 就变成当前选中的这张任务卡片
+   - 如果没有选中卡片，或者选中的不是任务类型的卡片
+     - 此时先看 isTaskLaunched 是不是 true，以及 currentLaunchedTask 有没有内容，如果有，此时的效果就是在主视图定位 currentLaunchedTask 卡片，并且  isTaskLaunched 改为 false，也就是我们重新回到了任务规划。
+3.  launchTask 函数我已经加载在 mntask 的 menu_quick_launch 菜单下了。我需要你写一个长按菜单里的功能，其实是基于上面的功能，因为有的时候我需要找到当前的任务卡片，然后记录进展，这个时候不需要在主视图定位，而且 isTaskLaunched 也不需要改成 false。也就是只检测 currentLaunchedTask 是哪种卡片，然后在浮窗中定位。简而言之，这个功能就是在浮窗定位当前启动的任务卡片。
+ultrathink
+
+MNTaskManager 类里面有很多函数重复了！请自己检查并去重，注意要看内容，基本一致的就直接删掉，有比较大区别的最后汇总起来我来判断。
+
+
+
+---
+目前任务卡片有“进展”字段。目前是全部都是手动输入的，我希望下面的情况能够自动处理。对于目标，关键结果，以及项目三种类型的卡片，记为 A，如果子卡片 B 的状态更新了，就要把这个更新记录添加到进展里。记录用行内链接，也就是 [B 的标题（没有前缀部分）](卡片 URL)，我们把这个记为 content
+1. 用 addTimestampRecord 函数里面的部分内容，可能你要先封装一下，才能内部调用。
+2. 以下情形要记录
+   1. 未开始 状态转为进行中：开始「content」
+   2. 进行中 状态转为已完成：完成「content」
+   3. 已完成 状态退为进行中：重新进行「content」
+暂时就想到这么多，你可以补充和完善。ultrathink
+
+
+---
+动作转项目卡片有问题。比如动作卡片默认制卡后是
+```
+【动作|未开始】啊啊
+信息
+所属
+启动
+进展
+```
+但是这个时候通过“修改卡片类型”动作转换的评论变成了：
+```
+信息
+包含
+未开始
+进行中
+已完成
+已归档
+所属
+启动
+进展
+```
+这是错误的！“包含”以及下面子字段应该在“进展”字段的上方，也就是正确的应该是
+```
+信息
+所属
+启动
+包含
+未开始
+进行中
+已完成
+已归档
+进展
+```
+请解决！
+
+---
 ❌ 需要封装的动作（大量）：中 1,2,3,5 封装优化，其余动作直接删除（注意菜单里也要对应删除）
 ---
 下面开发 mntask 项目。

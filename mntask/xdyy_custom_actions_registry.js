@@ -468,6 +468,16 @@ function registerAllCustomActions() {
     );
   });
 
+  MNTaskGlobal.registerCustomAction("launchTask", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    MNUtil.undoGrouping(()=>{
+      try {
+        MNTaskManager.launchTask(focusNote);
+      } catch (error) {
+        MNUtil.showHUD(error);
+      }
+    })
+  })
 
   // addOrUpdateLaunchLink - 添加或更新启动链接
   MNTaskGlobal.registerCustomAction("addOrUpdateLaunchLink", async function(context) {
@@ -489,13 +499,15 @@ function registerAllCustomActions() {
     const defaultLaunchLink = "marginnote4app://uistatus/H4sIAAAAAAAAE5VSy5LbIBD8F87SFuIp%2BWbJ5VxyyCG3VCqF0LBmg4VKoM06W%2F73AHbiveY2j56mp5l3NHr%2F8zxxtEOGgNbYMNNJGGmHJWAsmRg7wRQIojpDZQtEj5ibpm0apeRI5ahBcKEx4agqZGFxNqIdzlmM%2Fjx5jXZGuQAV0mqdRv9WujmG6Q7Vzv%2BGB8zPEeYYSivNO3WB1U5JI2MDYw0b6l4OtGb7o6h72rY1wU2Hh33Ph%2BMh6YC3ND%2Bd%2FQSFwlgHNzLjvIpntdwSr7cw%2BwiFuj%2F27ND2pO4IYTXjvajbLqf4yEk74D2lXaI2m3MfV0pkn71W0foZ7d6RNyZAzNGPl%2BDnV%2BU2%2BHpZkg40fPri7RwTRzbgibWSck6YbEUjGO1khS6lzgWThLNUo7jlmF8rFLRyeZUnIiiTVGDcsK5JGHEtCgI4F9Kr375XyC%2Bw3uXgD5kfX26FLTo7P7xe1DMkf1O5tBc1gysTRUv6f960mLKOcdJgUqEVAqhVnwp6hVcLv26hfT7dnL0T32D5Iko%2F2AlGtT7a%2BUzsbHz2SvstGbNr0jZRjeFkpwnmf9B4gnM28ABGbS4bGP1i9f8cRJb59zCvfwCp6rmF9QIAAA%3D%3D";
     
     // 检查是否是 MarginNote UI 状态链接，如果不是则使用默认链接
-    let linkToUse;
-    if (clipboardText && clipboardText.startsWith("marginnote4app://uistatus/")) {
-      linkToUse = clipboardText;
-      MNUtil.log("✅ 使用剪切板中的链接");
-    } else {
-      linkToUse = defaultLaunchLink;
-      MNUtil.log("📋 使用默认启动链接");
+    let linkToUse = defaultLaunchLink;
+    if (clipboardText) {
+      if (clipboardText.startsWith("marginnote4app://uistatus/")) {
+        linkToUse = clipboardText;
+        MNUtil.showHUD("✅ 更新 UI 状态链接");
+      } else if (clipboardText.ifNoteIdorURL()) {
+        linkToUse = clipboardText.toNoteURL()
+        MNUtil.showHUD("✅ 更新卡片链接: " + MNNote.new(clipboardText).title);
+      }
     }
     
     MNUtil.undoGrouping(() => {
@@ -510,7 +522,7 @@ function registerAllCustomActions() {
         if (existingIndex !== -1) {
           // 更新现有字段
           focusNote.replaceWithMarkdownComment(fieldHtml, existingIndex);
-          MNUtil.showHUD("✅ 已更新启动链接", 2);
+          // MNUtil.showHUD("✅ 已更新启动链接", 2);
         } else {
           // 添加新字段
           focusNote.appendMarkdownComment(fieldHtml);
@@ -518,7 +530,7 @@ function registerAllCustomActions() {
           
           // 移动到"信息"字段下
           MNTaskManager.moveCommentToField(focusNote, lastIndex, '信息', true);
-          MNUtil.showHUD("✅ 已添加启动链接", 2);
+          // MNUtil.showHUD("✅ 已添加启动链接", 2);
         }
         
         // 刷新卡片
@@ -529,63 +541,77 @@ function registerAllCustomActions() {
     });
   });
 
-
-
-  // addTimestampRecord - 添加时间戳记录
   MNTaskGlobal.registerCustomAction("addTimestampRecord", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
     
     if (!focusNote) {
-      MNUtil.showHUD("请先选择一个任务");
+      MNUtil.showHUD("请先选择一个任务卡片");
+      return;
+    }
+    
+    // 检查是否是任务卡片
+    if (!MNTaskManager.isTaskCard(focusNote)) {
+      MNUtil.showHUD("请选择一个任务卡片");
       return;
     }
     
     try {
-      // 获取当前时间
-      const now = new Date();
-      const timestamp = now.toLocaleString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      });
-      
-      // 添加时间戳记录
-      const recordText = `⏱️ ${timestamp}`;
-      
-      MNUtil.undoGrouping(() => {
-        // 如果是任务卡片，添加到进展字段
-        if (MNTaskManager.isTaskCard(focusNote)) {
-          // 检查是否已有"进展"字段
-          const progressIndex = focusNote.getIncludingCommentIndex("进展");
-          
-          if (progressIndex !== -1) {
-            // 在现有进展字段后添加时间戳
-            const existingComment = focusNote.MNComments[progressIndex];
-            const existingText = existingComment.text || "";
-            const updatedText = existingText + `\n${recordText}`;
-            existingComment.text = updatedText;
-          } else {
-            // 创建新的进展字段
-            const progressFieldHtml = TaskFieldUtils.createFieldHtml("进展", 'mainField');
-            const fullContent = `${progressFieldHtml}\n${recordText}`;
-            focusNote.appendMarkdownComment(fullContent);
+      // 弹出输入框让用户输入记录内容
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "添加记录",
+        "请输入记录内容",
+        2,  // 输入框样式
+        "取消",
+        ["确定"],
+        (alert, buttonIndex) => {
+          if (buttonIndex === 1) {
+            const content = alert.textFieldAtIndex(0).text;
+            
+            if (!content || content.trim() === "") {
+              MNUtil.showHUD("记录内容不能为空");
+              return;
+            }
+            
+            MNUtil.undoGrouping(() => {
+              try {
+                // 获取当前时间并格式化
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                
+                // 构建带样式的时间戳HTML
+                const timestampHtml = `<div style="position:relative; padding-left:28px; margin:14px 0; color:#1E40AF; font-weight:500; font-size:0.92em">
+  <div style="position:absolute; left:0; top:50%; transform:translateY(-50%); 
+              width:18px; height:18px; background:conic-gradient(#3B82F6 0%, #60A5FA 50%, #3B82F6 100%); 
+              border-radius:50%; display:flex; align-items:center; justify-content:center">
+    <div style="width:8px; height:8px; background:white; border-radius:50%"></div>
+  </div>
+  ${timestamp}
+</div>
+${content.trim()}`;
+                
+                // 添加到卡片最后
+                focusNote.appendMarkdownComment(timestampHtml);
+                
+                // 刷新卡片显示
+                focusNote.refresh();
+                
+                MNUtil.showHUD("✅ 已添加时间戳记录");
+              } catch (error) {
+                MNUtil.showHUD("添加记录失败：" + error.message);
+              }
+            });
           }
-        } else {
-          // 普通卡片，直接添加评论
-          focusNote.appendMarkdownComment(recordText);
         }
-        
-        // 刷新卡片
-        focusNote.refresh();
-        
-        MNUtil.showHUD("✅ 已添加时间戳记录");
-      });
+      );
     } catch (error) {
       MNUtil.log(`❌ addTimestampRecord 执行失败: ${error.message || error}`);
-      MNUtil.showHUD(`添加时间戳记录失败: ${error.message || "未知错误"}`);
+      MNUtil.showHUD(`添加记录失败: ${error.message || "未知错误"}`);
     }
   });
 

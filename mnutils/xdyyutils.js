@@ -6132,8 +6132,14 @@ class MNMath {
             }
           },
           lastUsedRoot: "default",
+          includeClassification: true,  // 默认包含归类卡片
           lastModified: Date.now()
         };
+      }
+      
+      // 确保旧配置有这个字段（向后兼容）
+      if (config && config.includeClassification === undefined) {
+        config.includeClassification = true;
       }
       
       return config;
@@ -6149,6 +6155,7 @@ class MNMath {
           }
         },
         lastUsedRoot: "default",
+        includeClassification: true,  // 默认包含归类卡片
         lastModified: Date.now()
       };
     }
@@ -6260,16 +6267,42 @@ class MNMath {
         return [];
       }
       
+      // 显示获取卡片列表的进度
+      MNUtil.showHUD("⛳ 正在获取卡片列表...");
+      
       // 获取所有子孙卡片
       const allDescendants = this.getAllDescendantNotes(rootNote);
       MNUtil.log(`在 ${allDescendants.length} 个卡片中搜索`);
       
+      // 显示搜索进度
+      MNUtil.showHUD(`🔍 正在搜索 ${allDescendants.length} 个卡片...`);
+      
+      // 获取配置中的归类卡片设置
+      const includeClassification = this.searchRootConfigs ? this.searchRootConfigs.includeClassification : true;
+      
       // 过滤符合条件的卡片
       const results = [];
+      let processedCount = 0;
       
       for (const note of allDescendants) {
         const mnNote = MNNote.new(note);
         const title = mnNote.noteTitle || "";
+        
+        // 每处理 100 个卡片显示一次进度
+        processedCount++;
+        if (processedCount % 100 === 0) {
+          MNUtil.showHUD(`🔍 正在搜索... (${processedCount}/${allDescendants.length})`);
+          // 延迟一下，让UI有机会更新
+          await MNUtil.delay(0.01);
+        }
+        
+        // 如果不包含归类卡片，检查是否为归类卡片
+        if (!includeClassification) {
+          const noteType = this.getNoteType(mnNote);
+          if (noteType === "归类") {
+            continue;  // 跳过归类卡片
+          }
+        }
         
         // 检查是否所有关键词都包含在标题中
         let allMatch = true;
@@ -6314,6 +6347,9 @@ class MNMath {
         if (keywords.length > 0) {
           message += `\n🔑 已输入关键词：${keywords.join(" // ")}`;
         }
+        // 显示归类卡片搜索状态
+        const includeClassification = this.searchRootConfigs.includeClassification;
+        message += `\n📑 搜索归类卡片：${includeClassification ? "☑️ 是" : "☐︎ 否"}`;
         
         // 显示输入框
         const result = await new Promise((resolve) => {
@@ -6322,7 +6358,7 @@ class MNMath {
             message,
             2, // 输入框样式
             "取消",
-            ["开始搜索", "下一个词", "切换根目录", "添加根目录"],
+            ["开始搜索", "下一个词", "切换根目录", "添加根目录", includeClassification ? "☑️ 搜索归类卡片" : "☐︎ 搜索归类卡片"],
             (alert, buttonIndex) => {
               if (buttonIndex === 0) {
                 // 取消
@@ -6362,6 +6398,10 @@ class MNMath {
                   
                 case 4: // 添加根目录
                   resolve({ action: "addRoot", input: inputText });
+                  break;
+                  
+                case 5: // 切换归类卡片搜索开关
+                  resolve({ action: "toggleClassification" });
                   break;
               }
             }
@@ -6403,6 +6443,13 @@ class MNMath {
           case "addRoot":
             // 添加根目录
             await this.handleAddRoot(result.input);
+            break;
+            
+          case "toggleClassification":
+            // 切换归类卡片搜索开关
+            this.searchRootConfigs.includeClassification = !this.searchRootConfigs.includeClassification;
+            this.saveSearchConfig();
+            MNUtil.showHUD(`归类卡片搜索：${this.searchRootConfigs.includeClassification ? "已启用" : "已禁用"}`);
             break;
         }
         
@@ -6561,8 +6608,8 @@ class MNMath {
       const groupedResults = {};
       
       for (const note of results) {
-        const parsedTitle = this.parseNoteTitle(note);
-        const type = parsedTitle.type || "其他";
+        // 使用 getNoteType 获取正确的卡片类型
+        const type = this.getNoteType(note) || "其他";
         
         if (!groupedResults[type]) {
           groupedResults[type] = [];
@@ -6585,14 +6632,10 @@ class MNMath {
       // 按顺序添加分组结果
       for (const [type, icon] of Object.entries(typeOrder)) {
         if (groupedResults[type] && groupedResults[type].length > 0) {
-          // 添加分组标题（使用 HTML 评论）
-          const groupTitle = `【${icon} ${type}】(${groupedResults[type].length}个)`;
-          resultCard.appendHtmlComment(
-            `<span style="font-weight: bold; border: 1px solid #ccc; padding: 2px 8px; border-radius: 4px;">${groupTitle}</span>`,
-            groupTitle,
-            16,
-            "group"
-          );
+          // 添加分组标题（使用简单的 Markdown 格式）
+          const groupTitle = `${icon} ${type}（${groupedResults[type].length}个）`;
+          resultCard.appendMarkdownComment(`---`);  // 分隔线
+          resultCard.appendMarkdownComment(`**${groupTitle}**`);  // 粗体标题
           
           // 添加该组的链接
           for (const note of groupedResults[type]) {
@@ -6605,7 +6648,7 @@ class MNMath {
       
       // 聚焦到结果卡片
       MNUtil.delay(0.3).then(() => {
-        resultCard.focusInMindMap();
+        resultCard.focusInFloatMindMap();
       });
       
       return resultCard;

@@ -8,7 +8,9 @@
       "Bash(rg:*)",
       "Bash(grep:*)",
       "Bash(ls:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(gh auth:*)",
+      "Bash(brew install:*)"
     ],
     "deny": []
   }

@@ -366,6 +366,20 @@ if (typeof extendToolbarConfigInit === 'function') {
                 {
                     'type': 'custom_actions',
                     'description': '保留用户自定义动作'
+                },
+                {
+                    'type': 'replace_section',
+                    'start_marker': '    "custom11":{name:"Custom 11",image:"custom11",description: this.template("cloneAndMerge")},',
+                    'end_marker': '    "custom11":{name:"Custom 11",image:"custom11",description: this.template("cloneAndMerge")},',
+                    'replacement': '    // custom11 通过 xdyy_button_registry.js 定义为搜索功能',
+                    'description': '移除 custom11 的默认定义，让自定义配置生效'
+                },
+                {
+                    'type': 'replace_section',
+                    'start_marker': '    "custom20":{name:"Custom 20",image:"custom20",description: this.template("removeComment")},',
+                    'end_marker': '    "custom20":{name:"Custom 20",image:"custom20",description: this.template("removeComment")},',
+                    'replacement': '    // custom20 通过 xdyy_button_registry.js 定义为 HtmlMarkdown 评论功能',
+                    'description': '移除 custom20 的默认定义，让自定义配置生效'
                 }
             ],
             'jsconfig.json': [

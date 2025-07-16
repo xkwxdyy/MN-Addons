@@ -3289,6 +3289,110 @@ function registerAllCustomActions() {
     }
   });
 
+  // 搜索笔记功能
+  global.registerCustomAction("searchNotes", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    try {
+      // 直接调用 MNMath 中的搜索对话框方法
+      await MNMath.showSearchDialog();
+    } catch (error) {
+      MNUtil.showHUD("搜索失败: " + error.message);
+      if (typeof toolbarUtils !== 'undefined') {
+        toolbarUtils.addErrorLog(error, "searchNotes");
+      }
+    }
+  });
+
+  // 管理搜索根目录
+  global.registerCustomAction("manageSearchRoots", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    try {
+      // 将来可以在 MNMath 中实现更完整的管理功能
+      const allRoots = MNMath.getAllSearchRoots();
+      const rootOptions = [];
+      const rootKeys = [];
+      
+      for (const [key, root] of Object.entries(allRoots)) {
+        const isDefault = root.isDefault ? " 🏠" : "";
+        rootOptions.push(`${root.name}${isDefault}`);
+        rootKeys.push(key);
+      }
+      
+      rootOptions.push("➕ 添加新根目录");
+      
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "管理搜索根目录",
+        "选择要管理的根目录",
+        0,
+        "取消",
+        rootOptions,
+        async (alert, buttonIndex) => {
+          if (buttonIndex === 0) return;
+          
+          if (buttonIndex === rootOptions.length) {
+            // 添加新根目录
+            const focusNote = MNNote.getFocusNote();
+            if (!focusNote) {
+              MNUtil.showHUD("请先选中一个卡片");
+              return;
+            }
+            
+            // 请求输入名称
+            UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+              "添加根目录",
+              `将以下卡片设为根目录：\n${focusNote.noteTitle || "无标题"}`,
+              2,
+              "取消",
+              ["确定"],
+              (alert, buttonIndex) => {
+                if (buttonIndex === 1) {
+                  const name = alert.textFieldAtIndex(0).text.trim();
+                  if (name) {
+                    MNMath.addSearchRoot(focusNote.noteId, name);
+                  }
+                }
+              }
+            );
+          } else {
+            // 管理现有根目录
+            const selectedKey = rootKeys[buttonIndex - 1];
+            const selectedRoot = allRoots[selectedKey];
+            
+            if (selectedRoot.isDefault) {
+              MNUtil.showHUD("默认根目录不可删除");
+              return;
+            }
+            
+            // 显示操作选项
+            UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+              selectedRoot.name,
+              `ID: ${selectedRoot.id}`,
+              0,
+              "取消",
+              ["删除此根目录", "在脑图中定位"],
+              (alert, buttonIndex) => {
+                if (buttonIndex === 1) {
+                  // 删除
+                  delete MNMath.searchRootConfigs.roots[selectedKey];
+                  MNMath.saveSearchConfig();
+                  MNUtil.showHUD("✅ 已删除根目录");
+                } else if (buttonIndex === 2) {
+                  // 定位
+                  MNUtil.focusNoteInMindMapById(selectedRoot.id);
+                }
+              }
+            );
+          }
+        }
+      );
+    } catch (error) {
+      MNUtil.showHUD("管理失败: " + error.message);
+      if (typeof toolbarUtils !== 'undefined') {
+        toolbarUtils.addErrorLog(error, "manageSearchRoots");
+      }
+    }
+  });
+
 }
 
 // 立即注册

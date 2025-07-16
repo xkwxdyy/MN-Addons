@@ -586,9 +586,27 @@ function registerAllMenuTemplates() {
     action: "hideAddonBar"
   }));
 
-  // 搜索定义卡片目录
+  // 搜索功能菜单
   global.registerMenuTemplate("menu_search", {
-    action: "searchDefinition"
+    action: "searchNotes",  // 单击：搜索笔记
+    onLongPress: {  // 长按：显示菜单
+      action: "menu",
+      menuWidth: 300,
+      menuItems: [
+        {
+          action: "searchDefinition",
+          menuTitle: "📚 定义卡片目录"
+        },
+        {
+          action: "searchNotes",
+          menuTitle: "🔍 搜索笔记"
+        },
+        {
+          action: "manageSearchRoots",
+          menuTitle: "📁 管理搜索根目录"
+        }
+      ]
+    }
   });
   
   if (typeof MNUtil !== "undefined" && MNUtil.log) {

@@ -6056,6 +6056,565 @@ class MNMath {
       MNUtil.showHUD("发生错误：" + error.message)
     }
   }
+
+  /**
+   * 搜索功能相关配置和方法
+   */
+  
+  // 搜索根目录配置
+  static searchRootConfigs = null;
+  static tempRootInfo = null; // 存储临时根目录信息
+  
+  /**
+   * 显示定义卡片目录
+   */
+  static async showDefinitionCatalog() {
+    try {
+      // 直接打开定义根目录
+      const definitionRootId = this.roughReadingRootNoteIds["定义"];
+      const definitionNote = MNNote.new(definitionRootId);
+      if (definitionNote) {
+        definitionNote.focusInMindMap(0.5);
+        MNUtil.showHUD("✅ 已定位到定义目录");
+      } else {
+        MNUtil.showHUD("❌ 定义目录不存在");
+      }
+    } catch (error) {
+      MNUtil.log("显示定义目录失败: " + error.toString());
+      MNUtil.addErrorLog(error, "showDefinitionCatalog");
+      throw error;
+    }
+  }
+  static searchBoardId = "37F2105C-35E4-4840-AD79-DA4702C36BE1";  // 搜索筛选看板 ID
+  
+  /**
+   * 初始化搜索配置
+   */
+  static initSearchConfig() {
+    if (!this.searchRootConfigs) {
+      this.searchRootConfigs = this.loadSearchConfig();
+    }
+    return this.searchRootConfigs;
+  }
+  
+  /**
+   * 加载搜索配置（从 iCloud 或本地）
+   */
+  static loadSearchConfig() {
+    try {
+      // 先尝试从本地加载
+      const localConfig = NSUserDefaults.standardUserDefaults().objectForKey("MNMath_SearchConfig");
+      let config = localConfig ? JSON.parse(localConfig) : null;
+      
+      // 如果开启了 iCloud 同步，尝试从 iCloud 加载
+      if (typeof toolbarConfig !== 'undefined' && toolbarConfig.iCloudSync) {
+        const cloudStore = NSUbiquitousKeyValueStore.defaultStore();
+        if (cloudStore) {
+          const cloudConfig = cloudStore.objectForKey("MNMath_SearchConfig");
+          if (cloudConfig) {
+            const cloudData = JSON.parse(cloudConfig);
+            // 比较时间戳，使用较新的配置
+            if (!config || (cloudData.lastModified > config.lastModified)) {
+              config = cloudData;
+            }
+          }
+        }
+      }
+      
+      // 如果没有配置，使用默认配置
+      if (!config) {
+        config = {
+          roots: {
+            default: {
+              id: "B2A5D567-909C-44E8-BC08-B1532D3D0AA1",
+              name: "数学知识库",
+              isDefault: true
+            }
+          },
+          lastUsedRoot: "default",
+          lastModified: Date.now()
+        };
+      }
+      
+      return config;
+    } catch (error) {
+      MNUtil.log("加载搜索配置失败: " + error.toString());
+      // 返回默认配置
+      return {
+        roots: {
+          default: {
+            id: "B2A5D567-909C-44E8-BC08-B1532D3D0AA1",
+            name: "数学知识库",
+            isDefault: true
+          }
+        },
+        lastUsedRoot: "default",
+        lastModified: Date.now()
+      };
+    }
+  }
+  
+  /**
+   * 保存搜索配置（到 iCloud 和本地）
+   */
+  static saveSearchConfig() {
+    try {
+      if (!this.searchRootConfigs) {
+        this.initSearchConfig();
+      }
+      
+      this.searchRootConfigs.lastModified = Date.now();
+      const configStr = JSON.stringify(this.searchRootConfigs);
+      
+      // 保存到本地
+      NSUserDefaults.standardUserDefaults().setObjectForKey(configStr, "MNMath_SearchConfig");
+      
+      // 如果开启了 iCloud 同步，保存到 iCloud
+      if (typeof toolbarConfig !== 'undefined' && toolbarConfig.iCloudSync) {
+        const cloudStore = NSUbiquitousKeyValueStore.defaultStore();
+        if (cloudStore) {
+          cloudStore.setObjectForKey(configStr, "MNMath_SearchConfig");
+          cloudStore.synchronize();
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      MNUtil.log("保存搜索配置失败: " + error.toString());
+      return false;
+    }
+  }
+  
+  /**
+   * 获取当前搜索根目录 ID
+   */
+  static getCurrentSearchRoot() {
+    this.initSearchConfig();
+    const lastUsed = this.searchRootConfigs.lastUsedRoot;
+    const root = this.searchRootConfigs.roots[lastUsed];
+    return root ? root.id : this.searchRootConfigs.roots.default.id;
+  }
+  
+  /**
+   * 获取所有搜索根目录
+   */
+  static getAllSearchRoots() {
+    this.initSearchConfig();
+    return this.searchRootConfigs.roots;
+  }
+  
+  /**
+   * 添加搜索根目录
+   * @param {string} noteId - 卡片 ID 或 URL
+   * @param {string} name - 根目录名称
+   */
+  static addSearchRoot(noteId, name) {
+    try {
+      this.initSearchConfig();
+      
+      // 处理 URL 格式的 noteId
+      if (noteId.includes("marginnote")) {
+        noteId = noteId.toNoteId();
+      }
+      
+      // 验证卡片是否存在
+      const note = MNUtil.getNoteById(noteId);
+      if (!note) {
+        MNUtil.showHUD("卡片不存在");
+        return false;
+      }
+      
+      // 生成唯一 key
+      const key = "root_" + Date.now();
+      
+      // 添加到配置
+      this.searchRootConfigs.roots[key] = {
+        id: noteId,
+        name: name,
+        isDefault: false
+      };
+      
+      // 保存配置
+      this.saveSearchConfig();
+      
+      MNUtil.showHUD("✅ 已添加根目录：" + name);
+      return true;
+    } catch (error) {
+      MNUtil.log("添加搜索根目录失败: " + error.toString());
+      MNUtil.showHUD("添加失败：" + error.message);
+      return false;
+    }
+  }
+  
+  /**
+   * 搜索笔记主函数
+   * @param {Array<string>} keywords - 关键词数组
+   * @param {string} rootNoteId - 根目录 ID
+   */
+  static async searchNotesInDescendants(keywords, rootNoteId) {
+    try {
+      // 获取根卡片
+      const rootNote = MNNote.new(rootNoteId);
+      if (!rootNote) {
+        MNUtil.showHUD("根目录卡片不存在");
+        return [];
+      }
+      
+      // 获取所有子孙卡片
+      const allDescendants = this.getAllDescendantNotes(rootNote);
+      MNUtil.log(`在 ${allDescendants.length} 个卡片中搜索`);
+      
+      // 过滤符合条件的卡片
+      const results = [];
+      
+      for (const note of allDescendants) {
+        const mnNote = MNNote.new(note);
+        const title = mnNote.noteTitle || "";
+        
+        // 检查是否所有关键词都包含在标题中
+        let allMatch = true;
+        for (const keyword of keywords) {
+          if (!title.includes(keyword)) {
+            allMatch = false;
+            break;
+          }
+        }
+        
+        if (allMatch) {
+          results.push(mnNote);
+        }
+      }
+      
+      MNUtil.log(`找到 ${results.length} 个匹配结果`);
+      return results;
+    } catch (error) {
+      MNUtil.log("搜索失败: " + error.toString());
+      MNUtil.addErrorLog(error, "searchNotesInDescendants");
+      return [];
+    }
+  }
+  
+  /**
+   * 显示搜索对话框 - 主入口
+   * 处理用户输入和搜索流程
+   */
+  static async showSearchDialog() {
+    try {
+      let keywords = [];
+      let currentRootId = this.getCurrentSearchRoot();
+      const allRoots = this.getAllSearchRoots();
+      
+      // 主循环：处理用户输入
+      while (true) {
+        // 获取当前根目录名称
+        const currentRootName = this.getCurrentRootName(currentRootId, allRoots);
+        
+        // 构建提示信息
+        let message = `🔍 搜索笔记\n📁 当前根目录：${currentRootName}`;
+        if (keywords.length > 0) {
+          message += `\n🔑 已输入关键词：${keywords.join(" // ")}`;
+        }
+        
+        // 显示输入框
+        const result = await new Promise((resolve) => {
+          UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+            "搜索笔记",
+            message,
+            2, // 输入框样式
+            "取消",
+            ["开始搜索", "下一个词", "切换根目录", "添加根目录"],
+            (alert, buttonIndex) => {
+              if (buttonIndex === 0) {
+                // 取消
+                resolve({ action: "cancel" });
+                return;
+              }
+              
+              const inputText = alert.textFieldAtIndex(0).text.trim();
+              
+              switch (buttonIndex) {
+                case 1: // 开始搜索
+                  if (inputText) {
+                    // 处理输入的关键词
+                    const newKeywords = inputText.split("//").map(k => k.trim()).filter(k => k);
+                    keywords.push(...newKeywords);
+                  }
+                  
+                  if (keywords.length === 0) {
+                    MNUtil.showHUD("请输入搜索关键词");
+                    resolve({ action: "continue" });
+                  } else {
+                    resolve({ action: "search" });
+                  }
+                  break;
+                  
+                case 2: // 下一个词
+                  if (inputText) {
+                    const newKeywords = inputText.split("//").map(k => k.trim()).filter(k => k);
+                    keywords.push(...newKeywords);
+                  }
+                  resolve({ action: "nextWord" });
+                  break;
+                  
+                case 3: // 切换根目录
+                  resolve({ action: "switchRoot" });
+                  break;
+                  
+                case 4: // 添加根目录
+                  resolve({ action: "addRoot", input: inputText });
+                  break;
+              }
+            }
+          );
+        });
+        
+        // 处理结果
+        switch (result.action) {
+          case "cancel":
+            return;
+            
+          case "search":
+            // 执行搜索
+            MNUtil.showHUD("⏳ 搜索中...");
+            const results = await this.searchNotesInDescendants(keywords, currentRootId);
+            
+            if (results.length === 0) {
+              MNUtil.showHUD(`未找到包含 "${keywords.join(' AND ')}" 的卡片`);
+            } else {
+              // 创建搜索结果卡片
+              this.createSearchResultCard(results, keywords, currentRootName);
+              MNUtil.showHUD(`✅ 找到 ${results.length} 个结果`);
+            }
+            return;
+            
+          case "nextWord":
+          case "continue":
+            // 继续循环
+            break;
+            
+          case "switchRoot":
+            // 选择根目录
+            const newRootId = await this.showRootSelection(currentRootId, allRoots);
+            if (newRootId) {
+              currentRootId = newRootId;
+            }
+            break;
+            
+          case "addRoot":
+            // 添加根目录
+            await this.handleAddRoot(result.input);
+            break;
+        }
+        
+        // 如果是 search 或 cancel，会 return，其他情况继续循环
+        if (result.action === "search" || result.action === "cancel") {
+          break;
+        }
+      }
+    } catch (error) {
+      MNUtil.showHUD("搜索失败: " + error.message);
+      MNUtil.addErrorLog(error, "showSearchDialog");
+    }
+  }
+  
+  /**
+   * 获取当前根目录名称
+   */
+  static getCurrentRootName(currentRootId, allRoots) {
+    // 先检查是否是临时根目录
+    if (this.tempRootInfo && this.tempRootInfo.id === currentRootId) {
+      return this.tempRootInfo.name;
+    }
+    
+    // 在配置中查找
+    for (const [key, root] of Object.entries(allRoots)) {
+      if (root.id === currentRootId) {
+        return root.name;
+      }
+    }
+    
+    // 如果还是未找到，可能是之前保存的临时根目录，尝试获取卡片信息
+    try {
+      const rootNote = MNNote.new(currentRootId);
+      if (rootNote) {
+        return rootNote.noteTitle || "无标题";
+      }
+    } catch (e) {
+      // 忽略错误
+    }
+    
+    return "未知";
+  }
+  
+  /**
+   * 显示根目录选择对话框
+   */
+  static async showRootSelection(currentRootId, allRoots) {
+    return new Promise((resolve) => {
+      const rootOptions = ["📍 当前选中的卡片（临时）"];
+      const rootKeys = ["__current__"];
+      
+      for (const [key, root] of Object.entries(allRoots)) {
+        const marker = root.id === currentRootId ? " ✅" : "";
+        rootOptions.push(root.name + marker);
+        rootKeys.push(key);
+      }
+      
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "选择搜索根目录",
+        "选择要搜索的根目录",
+        0,
+        "取消",
+        rootOptions,
+        (alert, buttonIndex) => {
+          if (buttonIndex > 0) {
+            const selectedKey = rootKeys[buttonIndex - 1];
+            
+            if (selectedKey === "__current__") {
+              // 使用当前选中的卡片作为临时根目录
+              const currentNote = MNNote.getFocusNote();
+              if (currentNote) {
+                // 保存临时根目录信息到类级别
+                this.tempRootInfo = {
+                  id: currentNote.noteId,
+                  name: currentNote.noteTitle || "无标题"
+                };
+                resolve(currentNote.noteId);
+              } else {
+                MNUtil.showHUD("请先选中一个卡片");
+                resolve(null);
+              }
+            } else {
+              // 使用配置中的根目录
+              this.tempRootInfo = null; // 清除临时根目录信息
+              // 更新最后使用的根目录
+              this.searchRootConfigs.lastUsedRoot = selectedKey;
+              this.saveSearchConfig();
+              resolve(allRoots[selectedKey].id);
+            }
+          } else {
+            resolve(null);
+          }
+        }
+      );
+    });
+  }
+  
+  /**
+   * 处理添加根目录
+   */
+  static async handleAddRoot(input) {
+    if (input) {
+      // 用户输入了 ID 或 URL，请求输入名称
+      await new Promise((resolve) => {
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "添加根目录",
+          "请输入根目录的名称",
+          2,
+          "取消",
+          ["确定"],
+          (alert, buttonIndex) => {
+            if (buttonIndex === 1) {
+              const name = alert.textFieldAtIndex(0).text.trim();
+              if (name) {
+                this.addSearchRoot(input, name);
+              }
+            }
+            resolve();
+          }
+        );
+      });
+    } else {
+      MNUtil.showHUD("请输入卡片 ID 或 URL");
+    }
+  }
+  
+  /**
+   * 创建搜索结果卡片
+   * @param {Array<MNNote>} results - 搜索结果
+   * @param {Array<string>} keywords - 搜索关键词
+   * @param {string} rootName - 根目录名称
+   */
+  static createSearchResultCard(results, keywords, rootName) {
+    try {
+      // 获取搜索看板
+      const boardNote = MNNote.new(this.searchBoardId);
+      if (!boardNote) {
+        MNUtil.showHUD("搜索看板不存在");
+        return null;
+      }
+      
+      // 创建结果卡片
+      const resultCard = boardNote.createChildNote({
+        title: `搜索：${keywords.join(" AND ")}`,
+        excerptText: ""
+      });
+      
+      // 添加搜索信息
+      resultCard.appendTextComment(`📑 搜索结果：${keywords.join(" AND ")}`);
+      resultCard.appendTextComment(`📁 根目录：${rootName}`);
+      resultCard.appendTextComment(`⏰ 搜索时间：${new Date().toLocaleString('zh-CN')}`);
+      resultCard.appendTextComment(`📊 结果数量：${results.length} 个`);
+      resultCard.appendTextComment("");  // 空行
+      
+      // 按类型分组
+      const groupedResults = {};
+      
+      for (const note of results) {
+        const parsedTitle = this.parseNoteTitle(note);
+        const type = parsedTitle.type || "其他";
+        
+        if (!groupedResults[type]) {
+          groupedResults[type] = [];
+        }
+        groupedResults[type].push(note);
+      }
+      
+      // 定义类型顺序和图标
+      const typeOrder = {
+        "定义": "📘",
+        "命题": "📙",
+        "例子": "📗",
+        "反例": "📕",
+        "归类": "📑",
+        "思想方法": "💡",
+        "问题": "❓",
+        "其他": "🔖"
+      };
+      
+      // 按顺序添加分组结果
+      for (const [type, icon] of Object.entries(typeOrder)) {
+        if (groupedResults[type] && groupedResults[type].length > 0) {
+          // 添加分组标题（使用 HTML 评论）
+          const groupTitle = `【${icon} ${type}】(${groupedResults[type].length}个)`;
+          resultCard.appendHtmlComment(
+            `<span style="font-weight: bold; border: 1px solid #ccc; padding: 2px 8px; border-radius: 4px;">${groupTitle}</span>`,
+            groupTitle,
+            16,
+            "group"
+          );
+          
+          // 添加该组的链接
+          for (const note of groupedResults[type]) {
+            // 建立从结果卡片到搜索结果的单向链接
+            // 使用 "To" 类型，在结果卡片中添加指向搜索结果的链接
+            resultCard.appendNoteLink(note, "To");
+          }
+        }
+      }
+      
+      // 聚焦到结果卡片
+      MNUtil.delay(0.3).then(() => {
+        resultCard.focusInMindMap();
+      });
+      
+      return resultCard;
+    } catch (error) {
+      MNUtil.log("创建搜索结果卡片失败: " + error.toString());
+      MNUtil.addErrorLog(error, "createSearchResultCard");
+      return null;
+    }
+  }
 }
 
 

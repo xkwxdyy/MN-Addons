@@ -4232,22 +4232,46 @@ class MNTaskManager {
    */
   static async convertToTaskCard(note, taskType) {
     try {
-      // 更新标题
-      const newTitle = `【${taskType}｜未开始】${note.noteTitle}`;
-      note.noteTitle = newTitle;
+      // 获取父卡片
+      const parentNote = note.parentNote;
       
-      // 添加任务字段
-      await this.addTaskFieldsWithStatus(note, taskType, '未开始');
-      
-      // 处理子任务关系
-      if (note.childNotes && note.childNotes.length > 0) {
-        await this.updateChildTasksRelation(note);
+      // 先使用 taskUtils.toNoExcerptVersion 处理摘录卡片
+      let noteToConvert = note;
+      if (note.excerptText && typeof taskUtils !== 'undefined' && taskUtils.toNoExcerptVersion) {
+        const converted = taskUtils.toNoExcerptVersion(note);
+        if (converted) {
+          noteToConvert = converted;
+        }
       }
+      
+      // 构建任务路径
+      const path = this.buildTaskPath(noteToConvert);
+      
+      // 构建新标题
+      const content = noteToConvert.noteTitle || "未命名任务";
+      const newTitle = path ? 
+        safeSpacing(`【${taskType} >> ${path}｜未开始】${content}`) :
+        safeSpacing(`【${taskType}｜未开始】${content}`);
+      
+      MNUtil.undoGrouping(() => {
+        noteToConvert.noteTitle = newTitle;
+        
+        // 设置颜色（白色=未开始）
+        noteToConvert.colorIndex = 12;
+        
+        // 添加任务字段（信息字段和状态字段）
+        this.addTaskFieldsWithStatus(noteToConvert);
+        
+        // 执行链接操作（处理所属字段和父子链接）
+        if (parentNote && this.isTaskCard(parentNote)) {
+          this.linkParentTask(noteToConvert, parentNote);
+        }
+      });
       
       return {
         type: 'created',
-        noteId: note.noteId,
-        title: note.noteTitle,
+        noteId: noteToConvert.noteId,
+        title: noteToConvert.noteTitle,
         taskType: taskType
       };
     } catch (error) {

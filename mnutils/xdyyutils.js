@@ -6133,13 +6133,17 @@ class MNMath {
           },
           lastUsedRoot: "default",
           includeClassification: true,  // 默认包含归类卡片
+          ignorePrefix: false,  // 默认搜索完整标题
           lastModified: Date.now()
         };
       }
       
-      // 确保旧配置有这个字段（向后兼容）
+      // 确保旧配置有这些字段（向后兼容）
       if (config && config.includeClassification === undefined) {
         config.includeClassification = true;
+      }
+      if (config && config.ignorePrefix === undefined) {
+        config.ignorePrefix = false;
       }
       
       return config;
@@ -6156,6 +6160,7 @@ class MNMath {
         },
         lastUsedRoot: "default",
         includeClassification: true,  // 默认包含归类卡片
+        ignorePrefix: false,  // 默认搜索完整标题
         lastModified: Date.now()
       };
     }
@@ -6279,6 +6284,8 @@ class MNMath {
       
       // 获取配置中的归类卡片设置
       const includeClassification = this.searchRootConfigs ? this.searchRootConfigs.includeClassification : true;
+      // 获取配置中的忽略前缀设置
+      const ignorePrefix = this.searchRootConfigs ? this.searchRootConfigs.ignorePrefix : false;
       
       // 过滤符合条件的卡片
       const results = [];
@@ -6296,18 +6303,28 @@ class MNMath {
           await MNUtil.delay(0.01);
         }
         
+        // 获取卡片类型
+        const noteType = this.getNoteType(mnNote);
+        
         // 如果不包含归类卡片，检查是否为归类卡片
-        if (!includeClassification) {
-          const noteType = this.getNoteType(mnNote);
-          if (noteType === "归类") {
-            continue;  // 跳过归类卡片
-          }
+        if (!includeClassification && noteType === "归类") {
+          continue;  // 跳过归类卡片
         }
         
-        // 检查是否所有关键词都包含在标题中
+        // 根据配置决定搜索的文本内容
+        let searchText = title;  // 默认搜索完整标题
+        
+        // 如果启用了忽略前缀，且不是归类卡片
+        if (ignorePrefix && noteType !== "归类") {
+          const parsedTitle = this.parseNoteTitle(mnNote);
+          // 使用无前缀的内容部分进行搜索
+          searchText = parsedTitle.content || title;
+        }
+        
+        // 检查是否所有关键词都包含在搜索文本中
         let allMatch = true;
         for (const keyword of keywords) {
-          if (!title.includes(keyword)) {
+          if (!searchText.includes(keyword)) {
             allMatch = false;
             break;
           }
@@ -6350,6 +6367,9 @@ class MNMath {
         // 显示归类卡片搜索状态
         const includeClassification = this.searchRootConfigs.includeClassification;
         message += `\n📑 搜索归类卡片：${includeClassification ? "☑️ 是" : "☐︎ 否"}`;
+        // 显示忽略前缀搜索状态
+        const ignorePrefix = this.searchRootConfigs.ignorePrefix;
+        message += `\n🎯 忽略前缀搜索：${ignorePrefix ? "☑️ 是" : "☐︎ 否"}`;
         
         // 显示输入框
         const result = await new Promise((resolve) => {
@@ -6358,7 +6378,9 @@ class MNMath {
             message,
             2, // 输入框样式
             "取消",
-            ["开始搜索", "下一个词", "切换根目录", "添加根目录", includeClassification ? "☑️ 搜索归类卡片" : "☐︎ 搜索归类卡片"],
+            ["开始搜索", "下一个词", "切换根目录", "添加根目录", 
+             includeClassification ? "☑️ 搜索归类卡片" : "☐︎ 搜索归类卡片",
+             ignorePrefix ? "☑️ 忽略前缀搜索" : "☐︎ 忽略前缀搜索"],
             (alert, buttonIndex) => {
               if (buttonIndex === 0) {
                 // 取消
@@ -6402,6 +6424,10 @@ class MNMath {
                   
                 case 5: // 切换归类卡片搜索开关
                   resolve({ action: "toggleClassification" });
+                  break;
+                  
+                case 6: // 切换忽略前缀搜索开关
+                  resolve({ action: "toggleIgnorePrefix" });
                   break;
               }
             }
@@ -6450,6 +6476,13 @@ class MNMath {
             this.searchRootConfigs.includeClassification = !this.searchRootConfigs.includeClassification;
             this.saveSearchConfig();
             MNUtil.showHUD(`归类卡片搜索：${this.searchRootConfigs.includeClassification ? "已启用" : "已禁用"}`);
+            break;
+            
+          case "toggleIgnorePrefix":
+            // 切换忽略前缀搜索开关
+            this.searchRootConfigs.ignorePrefix = !this.searchRootConfigs.ignorePrefix;
+            this.saveSearchConfig();
+            MNUtil.showHUD(`忽略前缀搜索：${this.searchRootConfigs.ignorePrefix ? "已启用" : "已禁用"}`);
             break;
         }
         

@@ -4163,16 +4163,36 @@ class MNTaskManager {
    */
   static async processExistingTaskCards(note) {
     try {
-      // 检查是否需要升级
+      let hasChanges = false;
+      
+      // 1. 清除失效链接
+      const removedLinksCount = this.cleanupBrokenLinks(note);
+      if (removedLinksCount > 0) {
+        hasChanges = true;
+        MNUtil.log(`✅ 清除了 ${removedLinksCount} 个失效链接`);
+      }
+      
+      // 2. 检查是否需要升级
       if (this.upgradeOldTaskCard(note)) {
         return {
           type: 'upgraded',
           noteId: note.noteId,
-          title: note.noteTitle
+          title: note.noteTitle,
+          removedLinks: removedLinksCount
         };
       }
       
-      // 卡片已是最新版本
+      // 3. 如果只是清理了链接，也算是更新
+      if (hasChanges) {
+        return {
+          type: 'upgraded',
+          noteId: note.noteId,
+          title: note.noteTitle,
+          reason: `清理了 ${removedLinksCount} 个失效链接`
+        };
+      }
+      
+      // 卡片已是最新版本且无需清理
       return {
         type: 'skipped',
         noteId: note.noteId,
@@ -4261,6 +4281,9 @@ class MNTaskManager {
         
         // 添加任务字段（信息字段和状态字段）
         this.addTaskFieldsWithStatus(noteToConvert);
+        
+        // 清理失效链接
+        this.cleanupBrokenLinks(noteToConvert);
         
         // 执行链接操作（处理所属字段和父子链接）
         if (parentNote && this.isTaskCard(parentNote)) {
@@ -5649,6 +5672,749 @@ class TaskFilterEngine {
     })
     
     return createdTasks
+  }
+
+  /**
+   * 向前切换任务状态
+   * @param {Object} note - 任务卡片
+   * @returns {Promise<boolean>} 是否成功
+   */
+  static async toggleStatusForward(note) {
+    if (!note) {
+      MNUtil.showHUD("请先选择一个任务");
+      return false;
+    }
+    
+    if (!this.isTaskCard(note)) {
+      MNUtil.showHUD("请选择一个任务卡片");
+      return false;
+    }
+    
+    const titleParts = this.parseTaskTitle(note.noteTitle);
+    const currentStatus = titleParts.status;
+    
+    let newStatus = currentStatus;
+    switch (currentStatus) {
+      case "未开始":
+        newStatus = "进行中";
+        break;
+      case "进行中":
+        newStatus = "已完成";
+        break;
+      case "已完成":
+        // 询问是否归档任务
+        try {
+          const buttonIndex = await MNUtil.confirm("任务归档", "是否将任务归档并移动到归档区？");
+          
+          if (buttonIndex !== 1) {
+            return false;
+          }
+          
+          newStatus = "已归档";
+          
+          // 执行归档移动
+          const completedBoardId = taskConfig.getBoardNoteId('completed');
+          
+          if (!completedBoardId) {
+            MNUtil.showHUD("请先在设置中配置已完成归档区");
+            return false;
+          }
+          
+          const completedBoardNote = MNNote.new(completedBoardId);
+          if (!completedBoardNote) {
+            MNUtil.showHUD("无法找到已完成归档区");
+            return false;
+          }
+          
+          // 更新状态并移动到归档区
+          MNUtil.undoGrouping(() => {
+            this.updateTaskStatus(note, newStatus);
+            note.refresh();
+            
+            if (note.parentNote && this.isTaskCard(note.parentNote)) {
+              note.parentNote.refresh();
+            }
+            
+            const success = this.moveTo(note, completedBoardNote);
+            if (success) {
+              MNUtil.showHUD("✅ 任务已归档并移动到归档区");
+            } else {
+              MNUtil.showHUD("❌ 移动失败，但状态已更新为已归档");
+            }
+          });
+          return true;
+        } catch (error) {
+          MNUtil.showHUD(`归档失败: ${error.message || error}`);
+          return false;
+        }
+      case "已归档":
+        MNUtil.showHUD("任务已归档");
+        return false;
+      default:
+        MNUtil.showHUD("未知的任务状态");
+        return false;
+    }
+    
+    // 更新状态
+    MNUtil.undoGrouping(() => {
+      this.updateTaskStatus(note, newStatus);
+      note.refresh();
+      
+      if (note.parentNote && this.isTaskCard(note.parentNote)) {
+        note.parentNote.refresh();
+      }
+    });
+    
+    MNUtil.showHUD(`✅ 状态已更新：${currentStatus} → ${newStatus}`);
+    return true;
+  }
+
+  /**
+   * 向后切换任务状态（退回上一个状态）
+   * @param {Object} note - 任务卡片
+   * @returns {boolean} 是否成功
+   */
+  static toggleStatusBackward(note) {
+    if (!note) {
+      MNUtil.showHUD("请先选择一个任务");
+      return false;
+    }
+    
+    if (!this.isTaskCard(note)) {
+      MNUtil.showHUD("请选择一个任务卡片");
+      return false;
+    }
+    
+    const titleParts = this.parseTaskTitle(note.noteTitle);
+    const currentStatus = titleParts.status;
+    
+    let newStatus = currentStatus;
+    switch (currentStatus) {
+      case "未开始":
+        MNUtil.showHUD("任务尚未开始");
+        return false;
+      case "进行中":
+        newStatus = "未开始";
+        break;
+      case "已完成":
+        newStatus = "进行中";
+        break;
+      case "已归档":
+        newStatus = "已完成";
+        break;
+      default:
+        MNUtil.showHUD("未知的任务状态");
+        return false;
+    }
+    
+    MNUtil.undoGrouping(() => {
+      this.updateTaskStatus(note, newStatus);
+    });
+    
+    MNUtil.showHUD(`↩️ 状态已退回：${currentStatus} → ${newStatus}`);
+    return true;
+  }
+
+  /**
+   * 修改任务卡片类型
+   * @param {Array} notes - 要修改的卡片数组
+   * @returns {Promise<boolean>} 是否成功
+   */
+  static async changeTaskType(notes) {
+    if (!notes || notes.length === 0) {
+      MNUtil.showHUD("请先选择一个或多个卡片");
+      return false;
+    }
+    
+    // 筛选出任务卡片
+    const taskNotes = notes.filter(note => this.isTaskCard(note));
+    
+    if (taskNotes.length === 0) {
+      MNUtil.showHUD("请选择任务卡片");
+      return false;
+    }
+    
+    // 显示类型选择弹窗
+    const taskTypes = ["目标", "关键结果", "项目", "动作"];
+    
+    return new Promise((resolve) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "修改卡片类型",
+        `选择新的卡片类型\n当前选中 ${taskNotes.length} 个卡片`,
+        0,
+        "取消",
+        taskTypes,
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) {
+            resolve(false);
+            return;
+          }
+          
+          const newType = taskTypes[buttonIndex - 1];
+          
+          MNUtil.undoGrouping(() => {
+            let successCount = 0;
+            
+            taskNotes.forEach(note => {
+              try {
+                const titleParts = this.parseTaskTitle(note.noteTitle);
+                const oldType = titleParts.type;
+                
+                // 构建新标题
+                let newTitle;
+                if (titleParts.path) {
+                  newTitle = `【${newType} >> ${titleParts.path}｜${titleParts.status}】${titleParts.content}`;
+                } else {
+                  newTitle = `【${newType}｜${titleParts.status}】${titleParts.content}`;
+                }
+                
+                note.noteTitle = newTitle;
+                
+                // 处理字段变更
+                if (oldType !== newType) {
+                  const parsed = this.parseTaskComments(note);
+                  
+                  // 如果从其他类型转换为动作类型，需要删除"包含"和状态字段
+                  if (newType === "动作") {
+                    const containsField = parsed.taskFields.find(f => f.content === '包含');
+                    if (containsField) {
+                      note.removeCommentByIndex(containsField.index);
+                      const updatedParsed = this.parseTaskComments(note);
+                      
+                      const statusFields = ['未开始', '进行中', '已完成', '已归档'];
+                      statusFields.forEach(status => {
+                        const statusField = updatedParsed.taskFields.find(f => 
+                          f.content.includes(status) && f.fieldType === 'stateField'
+                        );
+                        if (statusField) {
+                          note.removeCommentByIndex(statusField.index);
+                          updatedParsed.taskFields = this.parseTaskComments(note).taskFields;
+                        }
+                      });
+                    }
+                  } 
+                  // 如果从动作类型转换为其他类型，需要添加"包含"和状态字段
+                  else if (oldType === "动作") {
+                    const hasContainsField = parsed.taskFields.some(f => f.content === '包含');
+                    if (!hasContainsField) {
+                      const infoField = parsed.taskFields.find(f => f.content === '信息');
+                      if (infoField) {
+                        const containsFieldHtml = TaskFieldUtils.createFieldHtml('包含', 'mainField');
+                        note.appendMarkdownComment(containsFieldHtml);
+                        note.moveComment(note.MNComments.length - 1, infoField.index + 1, false);
+                        
+                        const statuses = ['未开始', '进行中', '已完成', '已归档'];
+                        statuses.forEach((status, idx) => {
+                          const statusHtml = TaskFieldUtils.createStatusField(status);
+                          note.appendMarkdownComment(statusHtml);
+                          note.moveComment(note.MNComments.length - 1, infoField.index + 2 + idx, false);
+                        });
+                      }
+                    }
+                  }
+                }
+                
+                note.refresh();
+                successCount++;
+              } catch (error) {
+                MNUtil.log(`修改卡片类型失败: ${error.message}`);
+              }
+            });
+            
+            // 刷新父卡片
+            taskNotes.forEach(note => {
+              if (note.parentNote && this.isTaskCard(note.parentNote)) {
+                note.parentNote.refresh();
+              }
+            });
+            
+            MNUtil.showHUD(`✅ 成功修改 ${successCount}/${taskNotes.length} 个卡片类型为：${newType}`);
+          });
+          
+          resolve(true);
+        }
+      );
+    });
+  }
+
+  /**
+   * 根据层级批量制卡
+   * @param {Object} rootNote - 根卡片
+   * @returns {Promise<boolean>} 是否成功
+   */
+  static async batchCreateByHierarchy(rootNote) {
+    if (!rootNote) {
+      MNUtil.showHUD("请先选择根卡片");
+      return false;
+    }
+    
+    MNUtil.log("🏗️ 开始根据层级批量制卡");
+    MNUtil.log("📌 根卡片：" + rootNote.noteTitle);
+    
+    // 首先让用户选择根卡片的类型
+    const taskTypes = ["目标", "关键结果", "项目", "动作"];
+    const selectedIndex = await MNUtil.userSelect("选择根卡片类型", "请选择根卡片的任务类型", taskTypes);
+    
+    if (selectedIndex === 0) return false;
+    
+    const rootType = taskTypes[selectedIndex - 1];
+    MNUtil.log(`📋 用户选择的根卡片类型：${rootType}`);
+    
+    // 获取所有后代节点和层级信息
+    let allDescendants, treeIndex;
+    try {
+      const nodesData = rootNote.descendantNodes;
+      if (!nodesData || typeof nodesData.descendant === 'undefined' || typeof nodesData.treeIndex === 'undefined') {
+        throw new Error("无法获取后代节点信息");
+      }
+      allDescendants = nodesData.descendant;
+      treeIndex = nodesData.treeIndex;
+    } catch (e) {
+      MNUtil.log("❌ 无法获取后代节点：" + e.message);
+      MNUtil.showHUD("无法获取卡片层级信息");
+      return false;
+    }
+    
+    // 计算最大层级深度
+    let maxLevel = 0;
+    const nodesWithInfo = [];
+    
+    // 首先添加根节点
+    nodesWithInfo.push({
+      node: rootNote,
+      level: 0,
+      treeIndex: []
+    });
+    
+    // 添加所有后代节点
+    if (allDescendants && allDescendants.length > 0) {
+      allDescendants.forEach((node, i) => {
+        const level = treeIndex[i].length;
+        nodesWithInfo.push({
+          node: node,
+          level: level,
+          treeIndex: treeIndex[i]
+        });
+        maxLevel = Math.max(maxLevel, level);
+      });
+    }
+    
+    MNUtil.log(`📊 节点总数：${nodesWithInfo.length}，最大层级：${maxLevel}`);
+    
+    // 根据新规则确定任务类型分配策略
+    function getTaskTypeByLevel(node, parentNode, level, maxLevel) {
+      // 1. 如果节点已经是任务卡片，保持原有类型
+      if (MNTaskManager.isTaskCard(node)) {
+        const titleParts = MNTaskManager.parseTaskTitle(node.noteTitle);
+        MNUtil.log(`📌 保持原有类型：${titleParts.type}`);
+        return titleParts.type;
+      }
+      
+      // 2. 根节点使用用户选择的类型
+      if (level === 0) {
+        return rootType;
+      }
+      
+      // 3. 根据父节点类型决定子节点类型
+      if (parentNode) {
+        let parentType;
+        if (MNTaskManager.isTaskCard(parentNode)) {
+          const parentTitleParts = MNTaskManager.parseTaskTitle(parentNode.noteTitle);
+          parentType = parentTitleParts.type;
+        } else if (level === 1) {
+          parentType = rootType;
+        }
+        
+        switch(parentType) {
+          case "目标":
+            return "关键结果";
+          case "关键结果":
+            return "项目";
+          case "项目":
+            return (level === maxLevel) ? "动作" : "项目";
+          case "动作":
+            return "动作";
+          default:
+            return "动作";
+        }
+      }
+      
+      return "动作";
+    }
+    
+    // 构建节点父子关系
+    const nodeParentMap = new Map();
+    nodesWithInfo.forEach((nodeInfo, index) => {
+      if (index === 0) return;
+      
+      const parentIndex = treeIndex[index - 1];
+      let parentNode = rootNote;
+      
+      if (parentIndex.length > 0) {
+        for (let i = 0; i < nodesWithInfo.length; i++) {
+          if (JSON.stringify(nodesWithInfo[i].treeIndex) === JSON.stringify(parentIndex.slice(0, nodeInfo.treeIndex.length - 1))) {
+            parentNode = nodesWithInfo[i].node;
+            break;
+          }
+        }
+      }
+      
+      nodeParentMap.set(nodeInfo.node, parentNode);
+    });
+    
+    // 批量制卡
+    MNUtil.undoGrouping(() => {
+      const processedNodes = [];
+      
+      nodesWithInfo.forEach((nodeInfo, index) => {
+        const node = nodeInfo.node;
+        const level = nodeInfo.level;
+        const parentNode = index === 0 ? null : nodeParentMap.get(node);
+        
+        // 确定任务类型
+        const taskType = getTaskTypeByLevel(node, parentNode, level, maxLevel);
+        
+        MNUtil.log(`📝 层级 ${level} - 节点 ${index}：${node.noteTitle} → ${taskType}`);
+        
+        // 检查是否已经是任务卡片
+        if (!this.isTaskCard(node)) {
+          // 创建任务卡片标题
+          const taskTitle = `【${taskType}｜未开始】${node.noteTitle}`;
+          node.noteTitle = taskTitle;
+        }
+        
+        // 转换为任务卡片
+        const result = this.convertToTaskCard(node, {
+          type: taskType,
+          status: "未开始",
+          isNewCard: !this.isTaskCard(node)
+        });
+        
+        if (result.success) {
+          processedNodes.push({
+            node: node,
+            level: level,
+            type: taskType
+          });
+        }
+      });
+      
+      MNUtil.showHUD(`✅ 批量制卡完成：成功处理 ${processedNodes.length}/${nodesWithInfo.length} 个节点`);
+    });
+    
+    return true;
+  }
+
+  /**
+   * 归档已完成的任务
+   * @param {Array} notes - 要归档的任务数组（可选）
+   * @returns {Promise<boolean>} 是否成功
+   */
+  static async archiveCompletedTasks(notes) {
+    // 如果没有传入笔记，获取已完成的任务
+    if (!notes || notes.length === 0) {
+      notes = TaskFilterEngine.filter({
+        boardKeys: ['target', 'project', 'action', 'inbox'],
+        customFilter: (task) => {
+          const taskInfo = this.getTaskInfo(task);
+          return taskInfo.status === '已完成';
+        }
+      });
+    }
+    
+    // 筛选出已完成的任务卡片
+    const completedTasks = notes.filter(note => {
+      if (!this.isTaskCard(note)) return false;
+      const titleParts = this.parseTaskTitle(note.noteTitle);
+      return titleParts.status === '已完成';
+    });
+    
+    if (completedTasks.length === 0) {
+      MNUtil.showHUD("没有需要归档的已完成任务");
+      return false;
+    }
+    
+    // 确认归档
+    const confirmText = `确认归档 ${completedTasks.length} 个已完成任务？\n归档后任务将移动到归档区`;
+    const buttonIndex = await MNUtil.confirm("归档已完成任务", confirmText);
+    
+    if (buttonIndex !== 1) return false;
+    
+    // 获取归档区
+    const completedBoardId = taskConfig.getBoardNoteId('completed');
+    if (!completedBoardId) {
+      MNUtil.showHUD("请先在设置中配置已完成归档区");
+      return false;
+    }
+    
+    const completedBoardNote = MNNote.new(completedBoardId);
+    if (!completedBoardNote) {
+      MNUtil.showHUD("无法找到已完成归档区");
+      return false;
+    }
+    
+    // 执行归档
+    let successCount = 0;
+    
+    MNUtil.undoGrouping(() => {
+      completedTasks.forEach(task => {
+        try {
+          // 更新状态为已归档
+          this.updateTaskStatus(task, "已归档");
+          
+          // 移动到归档区
+          if (this.moveTo(task, completedBoardNote)) {
+            successCount++;
+          }
+        } catch (error) {
+          MNUtil.log(`归档任务失败: ${error.message}`);
+        }
+      });
+    });
+    
+    MNUtil.showHUD(`✅ 成功归档 ${successCount}/${completedTasks.length} 个任务`);
+    return true;
+  }
+
+  /**
+   * 更新卡片（路径/链接/字段）
+   * @param {Array} notes - 要更新的卡片数组
+   * @returns {boolean} 是否成功
+   */
+  static renewCards(notes) {
+    if (!notes || notes.length === 0) {
+      MNUtil.showHUD("请选择要更新的卡片");
+      return false;
+    }
+    
+    // 筛选出任务卡片
+    const taskNotes = notes.filter(note => this.isTaskCard(note));
+    
+    if (taskNotes.length === 0) {
+      MNUtil.showHUD("请选择任务卡片");
+      return false;
+    }
+    
+    let updatedCount = 0;
+    
+    MNUtil.undoGrouping(() => {
+      taskNotes.forEach(note => {
+        try {
+          // 1. 更新路径
+          this.updateTaskPath(note);
+          
+          // 2. 清理失效链接
+          this.cleanupBrokenLinks(note);
+          
+          // 3. 更新字段格式
+          const parsed = this.parseTaskComments(note);
+          
+          // 确保所有主字段都有正确的样式
+          parsed.taskFields.forEach(field => {
+            if (field.fieldType === 'mainField' || field.fieldType === 'subField' || field.fieldType === 'stateField') {
+              const currentHtml = note.MNComments[field.index].text;
+              const expectedHtml = TaskFieldUtils.createFieldHtml(field.content, field.fieldType);
+              
+              if (currentHtml !== expectedHtml) {
+                note.replaceWithMarkdownComment(expectedHtml, field.index);
+              }
+            }
+          });
+          
+          // 4. 刷新卡片
+          note.refresh();
+          updatedCount++;
+        } catch (error) {
+          MNUtil.log(`更新卡片失败: ${error.message}`);
+        }
+      });
+      
+      // 刷新父卡片
+      taskNotes.forEach(note => {
+        if (note.parentNote && this.isTaskCard(note.parentNote)) {
+          note.parentNote.refresh();
+        }
+      });
+    });
+    
+    MNUtil.showHUD(`✅ 成功更新 ${updatedCount}/${taskNotes.length} 个卡片`);
+    return true;
+  }
+
+  /**
+   * 编辑自定义字段
+   * @param {Object} note - 任务卡片
+   * @returns {Promise<boolean>} 是否成功
+   */
+  static async editCustomField(note) {
+    if (!note) {
+      MNUtil.showHUD("请先选择一个卡片");
+      return false;
+    }
+    
+    if (!this.isTaskCard(note)) {
+      MNUtil.showHUD("请选择任务卡片");
+      return false;
+    }
+    
+    // 获取当前所有字段
+    const parsed = this.parseTaskComments(note);
+    const customFields = parsed.taskFields.filter(f => 
+      f.fieldType === 'subField' && 
+      !['所属', '📅 今日', '🔥 优先级', '⏰ 计划时间'].includes(f.content) &&
+      !f.content.includes('未开始') && 
+      !f.content.includes('进行中') && 
+      !f.content.includes('已完成') && 
+      !f.content.includes('已归档')
+    );
+    
+    if (customFields.length === 0) {
+      MNUtil.showHUD("没有可编辑的自定义字段");
+      return false;
+    }
+    
+    // 构建选项列表
+    const options = customFields.map(f => f.content);
+    
+    // 让用户选择要编辑的字段
+    const selectedIndex = await MNUtil.userSelect("选择要编辑的字段", "", options);
+    
+    if (selectedIndex === 0) return false;
+    
+    const selectedField = customFields[selectedIndex - 1];
+    
+    // 让用户输入新值
+    const newValue = await MNUtil.input("编辑字段", `当前值：${selectedField.content}`, selectedField.content);
+    
+    if (!newValue || newValue === selectedField.content) return false;
+    
+    // 更新字段
+    MNUtil.undoGrouping(() => {
+      const newFieldHtml = TaskFieldUtils.createFieldHtml(newValue, 'subField');
+      note.replaceWithMarkdownComment(newFieldHtml, selectedField.index);
+      note.refresh();
+    });
+    
+    MNUtil.showHUD(`✅ 字段已更新：${selectedField.content} → ${newValue}`);
+    return true;
+  }
+
+  /**
+   * 添加或更新启动链接
+   * @param {Object} note - 任务卡片
+   * @returns {Promise<boolean>} 是否成功
+   */
+  static async addOrUpdateLaunchLink(note) {
+    if (!note) {
+      MNUtil.showHUD("请先选择一个任务");
+      return false;
+    }
+    
+    if (!this.isTaskCard(note)) {
+      MNUtil.showHUD("请选择任务卡片");
+      return false;
+    }
+    
+    const titleParts = this.parseTaskTitle(note.noteTitle);
+    if (titleParts.type !== "动作") {
+      MNUtil.showHUD("只有动作类型的任务才能设置启动链接");
+      return false;
+    }
+    
+    // 选择启动类型
+    const launchTypes = ["应用", "URL", "删除启动链接"];
+    const typeIndex = await MNUtil.userSelect("选择启动类型", "选择任务的启动方式", launchTypes);
+    
+    if (typeIndex === 0) return false;
+    
+    const selectedType = launchTypes[typeIndex - 1];
+    
+    if (selectedType === "删除启动链接") {
+      // 删除启动字段
+      const parsed = this.parseTaskComments(note);
+      if (parsed.launch) {
+        MNUtil.undoGrouping(() => {
+          note.removeCommentByIndex(parsed.launch.index);
+          note.refresh();
+        });
+        MNUtil.showHUD("✅ 已删除启动链接");
+        return true;
+      } else {
+        MNUtil.showHUD("该任务没有启动链接");
+        return false;
+      }
+    }
+    
+    let launchContent = "";
+    
+    if (selectedType === "应用") {
+      // 获取应用列表
+      const apps = this.getCommonApps();
+      const appNames = apps.map(app => app.name);
+      appNames.push("自定义应用");
+      
+      const appIndex = await MNUtil.userSelect("选择应用", "选择要启动的应用", appNames);
+      
+      if (appIndex === 0) return false;
+      
+      if (appIndex === appNames.length) {
+        // 自定义应用
+        const customApp = await MNUtil.input("自定义应用", "输入应用的 URL Scheme（如：things:）", "");
+        if (!customApp) return false;
+        launchContent = customApp;
+      } else {
+        launchContent = apps[appIndex - 1].scheme;
+      }
+    } else {
+      // URL
+      const url = await MNUtil.input("输入URL", "输入要打开的网址", "https://");
+      if (!url) return false;
+      launchContent = url;
+    }
+    
+    // 添加或更新启动字段
+    MNUtil.undoGrouping(() => {
+      const launchFieldHtml = `${TaskFieldUtils.createFieldHtml('启动', 'subField')} [${selectedType}](${launchContent})`;
+      
+      const parsed = this.parseTaskComments(note);
+      if (parsed.launch) {
+        // 更新现有字段
+        note.replaceWithMarkdownComment(launchFieldHtml, parsed.launch.index);
+      } else {
+        // 添加新字段
+        note.appendMarkdownComment(launchFieldHtml);
+        
+        // 移动到合适位置（信息字段后面）
+        const infoField = parsed.taskFields.find(f => f.content === '信息');
+        if (infoField) {
+          note.moveComment(note.MNComments.length - 1, infoField.index + 1, false);
+        }
+      }
+      
+      note.refresh();
+    });
+    
+    MNUtil.showHUD(`✅ 启动链接已${parsed.launch ? '更新' : '添加'}`);
+    return true;
+  }
+
+  /**
+   * 获取常用应用列表
+   * @returns {Array} 应用列表
+   */
+  static getCommonApps() {
+    return [
+      { name: "Things 3", scheme: "things:" },
+      { name: "OmniFocus", scheme: "omnifocus:" },
+      { name: "Todoist", scheme: "todoist:" },
+      { name: "Reminders", scheme: "x-apple-reminderkit:" },
+      { name: "Calendar", scheme: "calshow:" },
+      { name: "Safari", scheme: "http://" },
+      { name: "Mail", scheme: "mailto:" },
+      { name: "Notes", scheme: "mobilenotes:" },
+      { name: "Shortcuts", scheme: "shortcuts:" },
+      { name: "Files", scheme: "shareddocuments:" }
+    ];
   }
 }
 

@@ -85,23 +85,15 @@ function registerAllMenuTemplates() {
 
   // menu_today_tasks - 今日任务菜单（精简版）
   MNTaskGlobal.registerMenuTemplate("menu_today_tasks", {
-    action: "toggleTodayMark",     // 单击切换今日标记
-    onLongPress: {                 // 长按显示完整菜单
+    action: "addTimestampRecord",     // 单击添加时间戳记录
+    onLongPress: {                    // 长按显示完整菜单
       action: "menu",
       menuWidth: 280,
       menuItems: [
         {
-          action: "setTaskPriority",
-          menuTitle: "🔥 设置任务优先级"
-        },
-        {
-          action: "openTodayBoard",
-          menuTitle: "🎯 打开任务看板"
-        },
-        {
-          action: "fixLegacyTodayMarks",
-          menuTitle: "🔧 修复旧版今日标记"
-        },
+          action: "addTimestampRecord",
+          menuTitle: "⏱️ 添加时间戳记录"
+        }
       ]
     }
   });
@@ -109,150 +101,6 @@ function registerAllMenuTemplates() {
 
   // menu_filter_sort - 筛选排序菜单（精简版）
   MNTaskGlobal.registerMenuTemplate("menu_filter_sort", {
-    action: "filterTasks",  // 单击直接进入筛选
-    onLongPress: {
-      action: "menu",
-      menuWidth: 300,
-      menuItems: [
-        {
-          action: "filterTasks",
-          menuTitle: "🔍 任务筛选器"
-        },
-        {
-          action: "sortTasks",
-          menuTitle: "📊 任务排序"
-        },
-        {
-          action: "batchTaskOperation",
-          menuTitle: "⚡ 批量任务操作"
-        },
-        {
-          action: "filterThisWeek",
-          menuTitle: "📊 本周任务"
-        },
-        {
-          action: "filterOverdue",
-          menuTitle: "⚠️ 已逾期任务"
-        },
-        {
-          action: "filterByTaskStatus",
-          menuTitle: "📈 按状态筛选"
-        }
-      ]
-    }
-  });
-
-  // menu_board_view - 看板视图菜单（精简版）
-  MNTaskGlobal.registerMenuTemplate("menu_board_view", {
-    action: "openTodayBoard",  // 单击打开任务看板
-    onLongPress: {
-      action: "menu",
-      menuWidth: 300,
-      menuItems: [
-        {
-          action: "openTodayBoard",
-          menuTitle: "🎯 打开任务看板"
-        },
-        {
-          action: "editSelectedTask",
-          menuTitle: "✏️ 编辑选中任务"
-        },
-        {
-          action: "openTasksFloatMindMap",
-          menuTitle: "📊 打开任务管理脑图"
-        },
-        {
-          action: "getOKRNotesOnToday",
-          menuTitle: "📊 获取今日OKR任务"
-        },
-        "──────────",
-        {
-          action: "achieveCards",
-          menuTitle: "📦 归档已完成任务"
-        },
-        {
-          action: "viewTaskStatistics",
-          menuTitle: "📊 查看任务统计"
-        },
-        "──────────",
-        {
-          action: "exportTasksToJSON",
-          menuTitle: "💾 导出任务数据 (JSON)"
-        },
-        {
-          action: "exportTasksToMarkdown",
-          menuTitle: "📝 导出任务报告 (Markdown)"
-        }
-      ]
-    }
-  });
-
-  // menu_field_manage - 字段管理菜单（新增）
-  MNTaskGlobal.registerMenuTemplate("menu_field_manage", {
-    action: "addCustomField",  // 单击添加字段
-    onLongPress: {
-      action: "menu",
-      menuWidth: 300,
-      menuItems: [
-        {
-          action: "addOrUpdateLaunchLink",
-          menuTitle: "📱 添加/更新启动链接"
-        },
-        {
-          action: "addCustomField",
-          menuTitle: "📝 快速添加字段"
-        },
-        {
-          action: "editCustomField",
-          menuTitle: "✏️ 快速编辑字段"
-        },
-        {
-          action: "manageCustomFields",
-          menuTitle: "📋 字段管理（完整功能）"
-        },
-        "──────────",
-        {
-          action: "addTaskLogEntry",
-          menuTitle: "📝 添加任务记录"
-        },
-        {
-          action: "viewTaskLogs",
-          menuTitle: "📊 查看任务记录"
-        },
-        {
-          action: "updateTaskProgress",
-          menuTitle: "📈 更新任务进度"
-        },
-        "──────────",
-      ]
-    }
-  });
-
-  // menu_quick_launch - 快速启动菜单（新增）
-  MNTaskGlobal.registerMenuTemplate("menu_quick_launch", {
-    action: "quickLaunchTask",  // 单击自动启动第一个进行中任务
-    onLongPress: {
-      action: "menu",
-      menuWidth: 300,
-      menuItems: [
-        {
-          action: "selectAndLaunchTask",
-          menuTitle: "🎯 选择并启动任务"
-        },
-        {
-          action: "updateLaunchLink",
-          menuTitle: "🔗 更新启动链接"
-        },
-        {
-          action: "reorderTodayTasks",
-          menuTitle: "📊 调整任务顺序"
-        }
-      ]
-    }
-  });
-
-  // menu_record_log - 记录菜单（新增）
-  MNTaskGlobal.registerMenuTemplate("menu_record_log", {
     action: "addTimestampRecord",  // 单击添加时间戳记录
     onLongPress: {
       action: "menu",
@@ -261,17 +109,67 @@ function registerAllMenuTemplates() {
         {
           action: "addTimestampRecord",
           menuTitle: "⏱️ 添加时间戳记录"
-        },
-        {
-          action: "viewTaskLogs",
-          menuTitle: "📊 查看任务记录"
-        },
-        {
-          action: "quickAddTaskLog",
-          menuTitle: "⚡ 快速记录"
         }
       ]
     }
+  });
+
+  // menu_board_view - 看板视图菜单（精简版）
+  MNTaskGlobal.registerMenuTemplate("menu_board_view", {
+    action: "achieveCards",  // 单击归档任务
+    onLongPress: {
+      action: "menu",
+      menuWidth: 300,
+      menuItems: [
+        {
+          action: "achieveCards",
+          menuTitle: "📦 归档已完成任务"
+        },
+        {
+          action: "renewCards",
+          menuTitle: "🔄 更新卡片"
+        }
+      ]
+    }
+  });
+
+  // menu_field_manage - 字段管理菜单（新增）
+  MNTaskGlobal.registerMenuTemplate("menu_field_manage", {
+    action: "editCustomField",  // 单击编辑字段
+    onLongPress: {
+      action: "menu",
+      menuWidth: 300,
+      menuItems: [
+        {
+          action: "editCustomField",
+          menuTitle: "✏️ 快速编辑字段"
+        },
+        {
+          action: "addOrUpdateLaunchLink",
+          menuTitle: "📱 添加/更新启动链接"
+        }
+      ]
+    }
+  });
+
+  // menu_quick_launch - 快速启动菜单（新增）
+  MNTaskGlobal.registerMenuTemplate("menu_quick_launch", {
+    action: "addOrUpdateLaunchLink",  // 单击添加/更新启动链接
+    onLongPress: {
+      action: "menu",
+      menuWidth: 300,
+      menuItems: [
+        {
+          action: "addOrUpdateLaunchLink",
+          menuTitle: "📱 添加/更新启动链接"
+        }
+      ]
+    }
+  });
+
+  // menu_record_log - 记录菜单（新增）
+  MNTaskGlobal.registerMenuTemplate("menu_record_log", {
+    action: "addTimestampRecord"  // 单击添加时间戳记录
   });
 
 }

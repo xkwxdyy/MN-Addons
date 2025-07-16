@@ -6262,8 +6262,9 @@ class MNMath {
    * 搜索笔记主函数
    * @param {Array<string>} keywords - 关键词数组
    * @param {string} rootNoteId - 根目录 ID
+   * @param {Set|null} selectedTypes - 选中的类型集合，null 表示全选
    */
-  static async searchNotesInDescendants(keywords, rootNoteId) {
+  static async searchNotesInDescendants(keywords, rootNoteId, selectedTypes = null) {
     try {
       // 获取根卡片
       const rootNote = MNNote.new(rootNoteId);
@@ -6311,6 +6312,13 @@ class MNMath {
           continue;  // 跳过归类卡片
         }
         
+        // 如果用户选择了特定类型，进行类型筛选
+        if (selectedTypes !== null && selectedTypes.size > 0) {
+          if (!selectedTypes.has(noteType)) {
+            continue;  // 跳过未选中类型的卡片
+          }
+        }
+        
         // 根据配置决定搜索的文本内容
         let searchText = title;  // 默认搜索完整标题
         
@@ -6353,6 +6361,7 @@ class MNMath {
       let keywords = [];
       let currentRootId = this.getCurrentSearchRoot();
       const allRoots = this.getAllSearchRoots();
+      let selectedTypes = null;  // null 表示全选，Set 表示选中的类型
       
       // 主循环：处理用户输入
       while (true) {
@@ -6370,6 +6379,13 @@ class MNMath {
         // 显示忽略前缀搜索状态
         const ignorePrefix = this.searchRootConfigs.ignorePrefix;
         message += `\n🎯 忽略前缀搜索：${ignorePrefix ? "☑️ 是" : "☐︎ 否"}`;
+        // 显示选中的类型
+        if (selectedTypes !== null && selectedTypes.size > 0) {
+          const typeNames = Array.from(selectedTypes).join("、");
+          message += `\n📋 搜索类型：${typeNames}`;
+        } else {
+          message += `\n📋 搜索类型：全部`;
+        }
         
         // 显示输入框
         const result = await new Promise((resolve) => {
@@ -6380,7 +6396,8 @@ class MNMath {
             "取消",
             ["开始搜索", "下一个词", "切换根目录", "添加根目录", 
              includeClassification ? "☑️ 搜索归类卡片" : "☐︎ 搜索归类卡片",
-             ignorePrefix ? "☑️ 忽略前缀搜索" : "☐︎ 忽略前缀搜索"],
+             ignorePrefix ? "☑️ 忽略前缀搜索" : "☐︎ 忽略前缀搜索",
+             "📋 选择类型"],
             (alert, buttonIndex) => {
               if (buttonIndex === 0) {
                 // 取消
@@ -6429,6 +6446,10 @@ class MNMath {
                 case 6: // 切换忽略前缀搜索开关
                   resolve({ action: "toggleIgnorePrefix" });
                   break;
+                  
+                case 7: // 选择类型
+                  resolve({ action: "selectTypes" });
+                  break;
               }
             }
           );
@@ -6442,7 +6463,7 @@ class MNMath {
           case "search":
             // 执行搜索
             MNUtil.showHUD("⏳ 搜索中...");
-            const results = await this.searchNotesInDescendants(keywords, currentRootId);
+            const results = await this.searchNotesInDescendants(keywords, currentRootId, selectedTypes);
             
             if (results.length === 0) {
               MNUtil.showHUD(`未找到包含 "${keywords.join(' AND ')}" 的卡片`);
@@ -6484,6 +6505,14 @@ class MNMath {
             this.saveSearchConfig();
             MNUtil.showHUD(`忽略前缀搜索：${this.searchRootConfigs.ignorePrefix ? "已启用" : "已禁用"}`);
             break;
+            
+          case "selectTypes":
+            // 显示类型选择对话框
+            const newSelectedTypes = await this.showTypeSelectDialog(selectedTypes);
+            if (newSelectedTypes !== null) {
+              selectedTypes = newSelectedTypes;
+            }
+            break;
         }
         
         // 如果是 search 或 cancel，会 return，其他情况继续循环
@@ -6495,6 +6524,80 @@ class MNMath {
       MNUtil.showHUD("搜索失败: " + error.message);
       MNUtil.addErrorLog(error, "showSearchDialog");
     }
+  }
+  
+  /**
+   * 显示类型选择对话框
+   * @param {Set|null} selectedTypes - 已选中的类型集合，null 表示第一次打开
+   * @returns {Promise<Set|null>} 返回选中的类型集合，null 表示取消
+   */
+  static showTypeSelectDialog(selectedTypes = null) {
+    // 定义可选的类型
+    const availableTypes = ["定义", "命题", "反例", "思想方法", "思路", "问题"];
+    
+    // 如果是第一次打开（selectedTypes 为 null），创建空 Set
+    if (selectedTypes === null) {
+      selectedTypes = new Set();
+    }
+    
+    // 构建显示选项
+    let displayOptions = availableTypes.map(type => {
+      let prefix = selectedTypes.has(type) ? "✅ " : "";
+      return prefix + type;
+    });
+    
+    // 添加全选/取消全选选项
+    let allSelected = selectedTypes.size === availableTypes.length;
+    let selectAllText = allSelected ? "⬜ 取消全选" : "☑️ 全选所有类型";
+    displayOptions.unshift(selectAllText);
+    
+    // 添加确定选项
+    displayOptions.push("──────────────");
+    displayOptions.push("✅ 确定选择");
+    
+    return new Promise((resolve) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "选择要搜索的卡片类型",
+        `已选中 ${selectedTypes.size}/${availableTypes.length} 个类型`,
+        0,
+        "取消",
+        displayOptions,
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) {
+            resolve(null); // 取消
+            return;
+          }
+          
+          if (buttonIndex === 1) {
+            // 全选/取消全选
+            if (allSelected) {
+              selectedTypes.clear();
+            } else {
+              availableTypes.forEach(type => selectedTypes.add(type));
+            }
+            // 递归调用
+            this.showTypeSelectDialog(selectedTypes).then(resolve);
+          } else if (buttonIndex === displayOptions.length) {
+            // 确定
+            resolve(selectedTypes.size > 0 ? selectedTypes : null);
+          } else if (buttonIndex === displayOptions.length - 1) {
+            // 分隔线，重新显示
+            this.showTypeSelectDialog(selectedTypes).then(resolve);
+          } else {
+            // 切换选中状态
+            const typeIndex = buttonIndex - 2;
+            const type = availableTypes[typeIndex];
+            if (selectedTypes.has(type)) {
+              selectedTypes.delete(type);
+            } else {
+              selectedTypes.add(type);
+            }
+            // 递归调用
+            this.showTypeSelectDialog(selectedTypes).then(resolve);
+          }
+        }
+      );
+    });
   }
   
   /**

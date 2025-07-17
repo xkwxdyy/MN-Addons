@@ -6,7 +6,6 @@ JSB.newAddon = function (mainPath) {
   if (!toolbarUtils.checkMNUtilsFolder(mainPath)) {return undefined}
   JSB.require('webviewController');
   JSB.require('settingController');
-  // JSB.require('UIPencilInteraction');
   /** @return {MNToolbarClass} */
   // const getMNToolbarClass = ()=>self  
   var MNToolbarClass = JSB.defineClass(

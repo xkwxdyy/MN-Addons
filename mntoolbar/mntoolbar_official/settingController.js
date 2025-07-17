@@ -368,7 +368,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     }
     let studyFrame = MNUtil.studyView.bounds
     let y = toolbarUtils.constrain(location.y, 0, studyFrame.height-15)
-    let x = toolbarUtils.constrain(location.x, 0, studyFrame.width-15)
+    let x = toolbarUtils.constrain(location.x, -0.5*frame.width, studyFrame.width-15)
     if (self.custom) {
       // Application.sharedInstance().showHUD(self.custom, self.view.window, 2);
       self.customMode = "None"

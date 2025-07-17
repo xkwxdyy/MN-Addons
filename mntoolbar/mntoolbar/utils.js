@@ -5076,6 +5076,7 @@ static async customActionByDes(des,button,controller,checkSubscribe = true) {//�
     let targetNoteId
     switch (des.action) {
       case "switchTitleorExcerpt":
+      case "switchTitleOrExcerpt":
         this.switchTitleOrExcerpt()
         await MNUtil.delay(0.1)
         break;
@@ -5429,8 +5430,7 @@ static async customActionByDes(des,button,controller,checkSubscribe = true) {//�
             await MNUtil.delay(delay)
           }
           break
-        }
-        if (des.command) {
+        }else if (des.command) {
           let url = urlPre+des.command
           MNUtil.openURL(url)
           break
@@ -6824,21 +6824,12 @@ static getExecuteCode(){
  * @returns {object} json对象,而非字符串
  */
 static getDescriptionById(actionKey){
-  if (typeof MNUtil !== "undefined" && MNUtil.log) {
-    MNUtil.log(`🔍 getDescriptionById 调用: ${actionKey}`);
-  }
-  
   let des
   if (actionKey in toolbarConfig.actions) {
     des = toolbarConfig.actions[actionKey].description
   }else{
     des = toolbarConfig.getActions()[actionKey].description
   }
-  
-  if (typeof MNUtil !== "undefined" && MNUtil.log) {
-    MNUtil.log(`🔍 获取到的原始 description: ${des?.substring(0, 100)}...`);
-  }
-  
   if (MNUtil.isValidJSON(des)) {
     let desObject = JSON.parse(des)
     if (actionKey.startsWith("color")) {

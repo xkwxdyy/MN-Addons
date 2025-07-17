@@ -89,8 +89,19 @@ class Menu{
     })
     this.commandTable.splice(index,0,...fullItems)
   }
-  show(){
+  show(autoWidth = false){
   try {
+    if (autoWidth) {
+      let titles = this.commandTable.map(item=>item.title)
+      let maxWidth = this.width
+      titles.forEach(title=>{
+        let width = chatAIUtils.strCode(title).length*9+30
+        if (width > maxWidth) {
+          maxWidth = width
+        }
+      })
+      this.width = maxWidth
+    }
 
     let position = this.preferredPosition
     this.menuController.commandTable = this.commandTable
@@ -230,6 +241,11 @@ class MNUtil {
       detail:tem
     })
   }
+  /**
+   * 
+   * @param {string|{message:string,level:string,source:string,timestamp:number,detail:string}} log 
+   * @returns 
+   */
   static log(log){
     if (typeof log == "string") {
       log = {
@@ -1656,10 +1672,12 @@ static textMatchPhrase(text, query) {
       if (!str) {
         return "";
       }
-      // 先将多个连续的换行符替换为单个换行符
-      var tempStr = str.replace(/\n+/g, '\n');
-      // 再将其它的空白符（除了换行符）替换为单个空格
-      return tempStr.replace(/[\r\t\f\v ]+/g, ' ').trim();
+      // 1. 替换为标准空格
+      // 2. 将多个连续的换行符替换为单个换行符
+      // 3. 将其它空白符（除了换行符）替换为单个空格
+      var tempStr = str.replace(/&nbsp;/g, ' ').replace(/\n+/g, '\n\n').replace(/[\r\t\f\v\s]+/g, ' ').trim()
+      // var tempStr = str.replace(/\n+/g, '\n').replace(/[\r\t\f\v ]+/g, ' ').trim()
+      return tempStr;
   }
   static undo(notebookId = this.currentNotebookId){
     UndoManager.sharedInstance().undo()
@@ -1945,6 +1963,11 @@ static textMatchPhrase(text, query) {
       case "MN EDITOR":
       case "MARGINNOTE.EXTENSION.MNEDITOR":
         return typeof editorUtils !== "undefined"
+      case "CKEDITOR":
+      case "MNCKEDITOR":
+      case "MN CKEDITOR":
+      case "MARGINNOTE.EXTENSION.MNCKEDITOR":
+        return typeof ckeditorUtils !== "undefined"
       case "OCR":
       case "MNOCR":
       case "MN OCR":
@@ -5197,6 +5220,7 @@ class MNNote{
    * @returns {string}
    */
   realGroupNoteIdForTopicId(nodebookid = MNUtil.currentNotebookId){
+    this.note.originNoteId
     return this.note.realGroupNoteIdForTopicId(nodebookid)
   };
   /**

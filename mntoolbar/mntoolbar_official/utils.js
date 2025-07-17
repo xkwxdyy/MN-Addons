@@ -5076,6 +5076,7 @@ static async customActionByDes(des,button,controller,checkSubscribe = true) {//è
     let targetNoteId
     switch (des.action) {
       case "switchTitleorExcerpt":
+      case "switchTitleOrExcerpt":
         this.switchTitleOrExcerpt()
         await MNUtil.delay(0.1)
         break;
@@ -5429,8 +5430,7 @@ static async customActionByDes(des,button,controller,checkSubscribe = true) {//è
             await MNUtil.delay(delay)
           }
           break
-        }
-        if (des.command) {
+        }else if (des.command) {
           let url = urlPre+des.command
           MNUtil.openURL(url)
           break

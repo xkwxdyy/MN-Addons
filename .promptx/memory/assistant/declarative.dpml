@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<memory>
+  <item id="mem_1752722137995_mcmd41brj" time="2025/07/17 11:15">
+    <content>
+      MN-Addon 开发新经验（2025-01-17）：
+    
+      1. **任务启动功能闪退问题**
+      - 原因：NSUserDefaults 不能直接存储 JavaScript 对象，尝试将 JS 对象传给 setObjectForKey 会导致崩溃
+      - 解决：使用 JSON.stringify/JSON.parse 进行序列化和反序列化
+      - 文件：utils.js 的 saveLaunchedTaskState 和 getLaunchedTaskState 方法
+      - 教训：JSB 框架下 JavaScript 对象必须序列化为字符串才能传给 ObjC API
+    
+      2. **任务字段查找方法问题**
+      - 原因：启动字段的格式特殊，整个 [启动](url) 作为字段名存在，TaskFieldUtils.getFieldContent 无法匹配
+      - 解决：使用 note.getIncludingCommentIndex(&quot;[启动]&quot;) 查找包含特定文本的评论
+      - 文件：xdyy_utils_extensions.js 的 getLaunchLink 方法
+      - 教训：对于特殊格式的字段，需要使用相应的查找方法
+    
+      3. **其他重要修复**
+      - 移除了设置顶部的&quot;看板&quot;按钮（注释掉 todayBoardButton 相关代码）
+      - 修改进展记录格式从 [名称](url) 改为「名称」
+      - 版本更新至 0.12.7
+    </content>
+    <tags>#其他</tags>
+  </item>
+</memory>

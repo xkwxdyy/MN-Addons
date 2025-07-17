@@ -1,16 +1,27 @@
 {
-  "currentState": "initialized",
+  "currentState": "memory_saved",
   "stateHistory": [
     {
       "from": "initial",
       "command": "init",
-      "timestamp": "2025-07-15T15:17:12.498Z",
+      "timestamp": "2025-07-16T17:10:00.754Z",
       "args": [
         {
           "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon"
         }
       ]
+    },
+    {
+      "from": "initialized",
+      "command": "remember",
+      "timestamp": "2025-07-17T03:15:37.952Z",
+      "args": [
+        "assistant",
+        "MN-Addon 开发新经验（2025-01-17）：\n\n1. **任务启动功能闪退问题**\n   - 原因：NSUserDefaults 不能直接存储 JavaScript 对象，尝试将 JS 对象传给 setObjectForKey 会导致崩溃\n   - 解决：使用 JSON.stringify/JSON.parse 进行序列化和反序列化\n   - 文件：utils.js 的 saveLaunchedTaskState 和 getLaunchedTaskState 方法\n   - 教训：JSB 框架下 JavaScript 对象必须序列化为字符串才能传给 ObjC API\n\n2. **任务字段查找方法问题**\n   - 原因：启动字段的格式特殊，整个 [启动](url) 作为字段名存在，TaskFieldUtils.getFieldContent 无法匹配\n   - 解决：使用 note.getIncludingCommentIndex(\"[启动]\") 查找包含特定文本的评论\n   - 文件：xdyy_utils_extensions.js 的 getLaunchLink 方法\n   - 教训：对于特殊格式的字段，需要使用相应的查找方法\n\n3. **其他重要修复**\n   - 移除了设置顶部的\"看板\"按钮（注释掉 todayBoardButton 相关代码）\n   - 修改进展记录格式从 [名称](url) 改为「名称」\n   - 版本更新至 0.12.7",
+        "--tags",
+        "MN-Addon JavaScript NSUserDefaults 崩溃修复 字段查找"
+      ]
     }
   ],
-  "lastUpdated": "2025-07-15T15:17:12.516Z"
+  "lastUpdated": "2025-07-17T03:15:38.024Z"
 }

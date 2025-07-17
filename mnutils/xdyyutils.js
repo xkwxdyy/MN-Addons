@@ -1249,6 +1249,12 @@ class MNMath {
         ["命题", "例子", "反例"].includes(targetNoteType)
       ) {
         // 场景5：命题、例子、反例之间的链接
+        // 检查是否互为最后一条评论链接
+        if (!this.checkMutualLastCommentLinks(note, targetNote)) {
+          MNUtil.showHUD("不满足互为最后一条评论链接的条件");
+          return false;
+        }
+        
         // 两个卡片都需要处理，类似定义卡片之间的处理
         
         // 处理当前卡片

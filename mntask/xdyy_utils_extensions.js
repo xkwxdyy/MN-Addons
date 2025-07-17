@@ -48,7 +48,15 @@ class TaskFieldUtils {
   static createFieldHtml(text, type = 'mainField', id = '') {
     const style = this.styles[type] || this.styles.mainField
     const idAttr = id ? `id="${id}"` : `id="${type}"`
-    return `<span ${idAttr} style="${style}">${text}</span>`
+    const html = `<span ${idAttr} style="${style}">${text}</span>`
+    
+    // Debug logging
+    MNUtil.log(`🔍 DEBUG createFieldHtml:`)
+    MNUtil.log(`  - Input text: "${text}"`)
+    MNUtil.log(`  - Type: ${type}`)
+    MNUtil.log(`  - Generated HTML: ${html.substring(0, 100)}...`)
+    
+    return html
   }
   
   /**
@@ -249,7 +257,7 @@ class TaskFieldUtils {
    * @param {string|MNComment} comment - 评论内容或评论对象
    * @returns {string} 纯文本内容
    */
-  static getFieldContent(comment) {
+  static extractFieldText(comment) {
     let text = ''
     if (typeof comment === 'string') {
       text = comment
@@ -682,7 +690,17 @@ class MNTaskManager {
       const infoFieldHtml = TaskFieldUtils.createFieldHtml('信息', 'mainField')
       MNUtil.log("📝 信息字段HTML: " + infoFieldHtml)
       note.appendMarkdownComment(infoFieldHtml)
-      MNUtil.log("✅ 添加信息字段，索引：" + (note.MNComments.length - 1))
+      const newIndex = note.MNComments.length - 1
+      MNUtil.log("✅ 添加信息字段，索引：" + newIndex)
+      
+      // Debug: Check what was actually stored
+      if (note.MNComments[newIndex]) {
+        const storedComment = note.MNComments[newIndex]
+        MNUtil.log("🔍 DEBUG - Stored comment check:")
+        MNUtil.log(`  - Comment type: ${storedComment.type}`)
+        MNUtil.log(`  - Comment text: "${storedComment.text}"`)
+        MNUtil.log(`  - Text length: ${storedComment.text ? storedComment.text.length : 0}`)
+      }
       
       // 如果是"动作"类型，添加信息字段和默认启动字段
       if (taskType === "动作") {
@@ -902,7 +920,7 @@ class MNTaskManager {
         MNUtil.log(`  - Comment type: ${commentType}`)
         MNUtil.log(`  - Is task field: ${TaskFieldUtils.isTaskField(text)}`)
         if (TaskFieldUtils.isTaskField(text)) {
-          const fieldContent = TaskFieldUtils.getFieldContent(text)
+          const fieldContent = TaskFieldUtils.extractFieldText(text)
           MNUtil.log(`  - Field content extracted: "${fieldContent}"`)
         }
       }
@@ -913,8 +931,8 @@ class MNTaskManager {
       // 检查是否是任务字段（MNComment 对象的 type 已经是处理后的类型）
       if ((commentType === 'textComment' || commentType === 'markdownComment') && TaskFieldUtils.isTaskField(text)) {
         const fieldType = TaskFieldUtils.getFieldType(text)
-        // 注意：getFieldContent 实际上提取的是 <span> 标签内的文本，这是字段名
-        const fieldName = TaskFieldUtils.getFieldContent(text)
+        // 注意：extractFieldText 实际上提取的是 <span> 标签内的文本，这是字段名
+        const fieldName = TaskFieldUtils.extractFieldText(text)
         
         // 注释掉详细日志
         // MNUtil.log(`✅ 识别为任务字段: fieldType=${fieldType}, fieldName=${fieldName}`)

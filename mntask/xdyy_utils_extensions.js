@@ -604,17 +604,8 @@ class MNTaskManager {
       
       // 其他类型（目标、关键结果、项目）继续添加剩余字段
       
-      // 添加主字段"所属"
-      const belongsToFieldHtml = TaskFieldUtils.createFieldHtml('所属', 'mainField')
-      MNUtil.log("📝 所属字段HTML: " + belongsToFieldHtml)
-      note.appendMarkdownComment(belongsToFieldHtml)
-      MNUtil.log("✅ 添加所属字段，索引：" + (note.MNComments.length - 1))
-      
-      // 添加主字段"启动"
-      const launchFieldHtml = TaskFieldUtils.createFieldHtml('启动', 'mainField')
-      MNUtil.log("📝 启动字段HTML: " + launchFieldHtml)
-      note.appendMarkdownComment(launchFieldHtml)
-      MNUtil.log("✅ 添加启动字段，索引：" + (note.MNComments.length - 1))
+      // 注意：所属字段由 linkParentTask 方法动态添加，不在这里创建
+      // 注意：启动字段通过 addLaunchField 方法添加，不在这里创建
       
       // 添加主字段"包含"
       const containsFieldHtml = TaskFieldUtils.createFieldHtml('包含', 'mainField')

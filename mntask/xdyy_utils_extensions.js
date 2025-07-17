@@ -5283,7 +5283,7 @@ class MNTaskManager {
               if (noteId) {
                 const targetNote = MNNote.new(noteId)
                 if (targetNote) {
-                  targetNote.focusInFloatMindMap(0.5)
+                  targetNote.focusInMindMap(0.5)
                   // 更新启动状态
                   this.isTaskLaunched = true
                   this.currentLaunchedTaskId = focusNote.noteId
@@ -5308,7 +5308,7 @@ class MNTaskManager {
           const launchedTask = MNNote.new(this.currentLaunchedTaskId)
           if (launchedTask) {
             // 在主视图定位当前启动的任务
-            launchedTask.focusInFloatMindMap(0.5)
+            launchedTask.focusInMindMap(0.5)
             // 重置启动状态
             this.isTaskLaunched = false
             MNUtil.showHUD("返回任务规划")

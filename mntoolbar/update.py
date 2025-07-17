@@ -41,7 +41,7 @@ class MNToolbarUpdater:
                 },
                 {
                     'type': 'insert_after',
-                    'marker': '// JSB.require(\'UIPencilInteraction\');',
+                    'marker': '  }\n  /** @return {MNToolbarClass} */',
                     'content': '''  
   // 加载自定义 actions 扩展（必须在 webviewController 之后）
   try {
@@ -90,11 +90,40 @@ class MNToolbarUpdater:
   }'''
                 },
                 {
+                    'type': 'insert_after',
+                    'marker': '        MNUtil.addObserver(self, \'onAddonBroadcast:\', \'AddonBroadcast\');',
+                    'content': '''        
+        // 夏大鱼羊 - begin: 延迟刷新按钮配置，确保自定义扩展完全加载
+        setTimeout(function() {
+          if (typeof global !== 'undefined' && global.forceRefreshButtons) {
+            if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+              MNUtil.log("🔄 延迟刷新按钮配置，确保自定义按钮生效");
+            }
+            global.forceRefreshButtons();
+          }
+        }, 1000);
+        // 夏大鱼羊 - end'''
+                },
+                {
+                    'type': 'insert_after',
+                    'marker': '        self.studyView.becomeFirstResponder(); //For dismiss keyboard on iOS\n        })',
+                    'content': '''        
+        // 夏大鱼羊 - begin: 笔记本打开时也刷新按钮配置
+        setTimeout(function() {
+          if (typeof global !== 'undefined' && global.forceRefreshButtons) {
+            if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+              MNUtil.log("🔄 笔记本打开，刷新自定义按钮配置");
+            }
+            global.forceRefreshButtons();
+          }
+        }, 500);
+        // 夏大鱼羊 - end'''
+                },
+                {
                     'type': 'insert_before',
                     'marker': '      openDocument:function (button) {',
                     'content': '''      // 夏大鱼羊增加：卡片的预处理
       togglePreprocess: function () {
-        let self = getMNToolbarClass()
         self.checkPopoverController()
         toolbarConfig.togglePreprocess()
       },
@@ -112,7 +141,6 @@ class MNToolbarUpdater:
                     'marker': '      openDocument:function (button) {',
                     'content': '''      // 夏大鱼羊增加：粗读模式
       toggleRoughReading: function () {
-        let self = getMNToolbarClass()
         self.checkPopoverController()
         toolbarConfig.toggleRoughReading()
       },
@@ -380,6 +408,19 @@ if (typeof extendToolbarConfigInit === 'function') {
                     'end_marker': '    "custom20":{name:"Custom 20",image:"custom20",description: this.template("removeComment")},',
                     'replacement': '    // custom20 通过 xdyy_button_registry.js 定义为 HtmlMarkdown 评论功能',
                     'description': '移除 custom20 的默认定义，让自定义配置生效'
+                }
+            ],
+            'settingController.js': [
+                {
+                    'type': 'insert_after',
+                    'marker': '      let action = toolbarConfig.getAction(actionKey)',
+                    'content': '''      // 添加防御性检查
+      if (!action) {
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`⚠️ setTextview: 获取按钮配置失败 - ${actionKey}`);
+        }
+        action = { name: actionKey, description: "{}" };
+      }'''
                 }
             ],
             'jsconfig.json': [

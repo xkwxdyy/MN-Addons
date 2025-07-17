@@ -850,7 +850,6 @@ try {
       },
       // 夏大鱼羊增加：卡片的预处理
       togglePreprocess: function () {
-        let self = getMNToolbarClass()
         self.checkPopoverController()
         toolbarConfig.togglePreprocess()
       },
@@ -858,7 +857,6 @@ try {
 
       // 夏大鱼羊增加：粗读模式
       toggleRoughReading: function () {
-        let self = getMNToolbarClass()
         self.checkPopoverController()
         toolbarConfig.toggleRoughReading()
       },

@@ -374,6 +374,7 @@ class MNMath {
     this.linkParentNote(note) // 链接广义的父卡片（可能是链接归类卡片）
     // this.refreshNote(note) // 刷新卡片
     this.autoMoveNewContent(note) // 自动移动新内容到对应字段
+    this.moveTaskCardLinksToRelatedField(note) // 移动任务卡片链接到"相关链接"字段
     this.refreshNotes(note) // 刷新卡片
     if (addToReview) {
       this.addToReview(note, reviewEverytime) // 加入复习
@@ -560,6 +561,59 @@ class MNMath {
         // 忽略错误
       }
     });
+  }
+
+  /**
+   * 判断一个链接是否指向任务卡片
+   * 
+   * @param {string} linkUrl - MarginNote 链接 URL
+   * @returns {boolean} 是否是任务卡片链接
+   */
+  static isTaskCardLink(linkUrl) {
+    try {
+      // 从 URL 提取 noteId
+      const noteIdMatch = linkUrl.match(/marginnote[34]app:\/\/note\/([A-Z0-9-]+)/i);
+      if (!noteIdMatch || !noteIdMatch[1]) {
+        return false;
+      }
+      
+      const noteId = noteIdMatch[1];
+      
+      // 获取对应的 MNNote 对象
+      const targetNote = MNNote.new(noteId, false);
+      if (!targetNote) {
+        return false;
+      }
+      
+      // 检查是否需要加载 MNTaskManager
+      if (typeof MNTaskManager === 'undefined') {
+        // 尝试动态加载 MNTaskManager
+        try {
+          JSB.require('mntask/xdyy_utils_extensions');
+        } catch (e) {
+          // 如果无法加载，使用内置的简单判断
+          const title = targetNote.noteTitle || "";
+          if (!title.startsWith("【") || !title.includes("｜") || !title.includes("】")) {
+            return false;
+          }
+          
+          // 简单提取类型
+          const typeMatch = title.match(/【([^>｜]+)/);
+          if (!typeMatch) return false;
+          
+          const type = typeMatch[1].trim();
+          const validTypes = ["目标", "关键结果", "项目", "动作"];
+          return validTypes.includes(type);
+        }
+      }
+      
+      // 使用 MNTaskManager.isTaskCard 判断
+      return MNTaskManager.isTaskCard(targetNote);
+      
+    } catch (error) {
+      // 出错时返回 false
+      return false;
+    }
   }
 
   /**
@@ -945,6 +999,45 @@ class MNMath {
   }
 
   /**
+   * 检查两张卡片是否互为最后一条评论链接
+   * @param {MNNote} noteA - 第一张卡片
+   * @param {MNNote} noteB - 第二张卡片
+   * @returns {boolean} - 是否互为最后一条评论链接
+   */
+  static checkMutualLastCommentLinks(noteA, noteB) {
+    try {
+      // 获取两张卡片的评论
+      let commentsA = noteA.MNComments;
+      let commentsB = noteB.MNComments;
+      
+      // 检查两张卡片是否都有评论
+      if (commentsA.length === 0 || commentsB.length === 0) {
+        return false;
+      }
+      
+      // 获取最后一条评论
+      let lastCommentA = commentsA[commentsA.length - 1];
+      let lastCommentB = commentsB[commentsB.length - 1];
+      
+      // 检查最后一条评论是否都是链接类型
+      if (lastCommentA.type !== "linkComment" || lastCommentB.type !== "linkComment") {
+        return false;
+      }
+      
+      // 提取链接的目标ID
+      let linkIdFromA = lastCommentA.text.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1];
+      let linkIdFromB = lastCommentB.text.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1];
+      
+      // 检查是否互相链接
+      return linkIdFromA === noteB.noteId && linkIdFromB === noteA.noteId;
+      
+    } catch (error) {
+      MNUtil.log(`checkMutualLastCommentLinks error: ${error}`);
+      return false;
+    }
+  }
+
+  /**
    * 智能链接排列
    * 
    * 自动识别手动创建的双向链接并根据卡片类型移动到相应字段
@@ -1052,6 +1145,12 @@ class MNMath {
         
       } else if (noteType === "定义" && targetNoteType === "定义") {
         // 场景2：定义卡片之间的链接
+        // 检查是否互为最后一条评论链接
+        if (!this.checkMutualLastCommentLinks(note, targetNote)) {
+          MNUtil.showHUD("不满足互为最后一条评论链接的条件");
+          return false;
+        }
+        
         // 两个定义卡片都需要处理
         
         // 处理当前卡片
@@ -3149,6 +3248,103 @@ class MNMath {
   }
 
   /**
+   * 检测并移动任务卡片链接到"相关链接"字段
+   * 在制卡过程中，自动将最后一个字段下方的任务卡片链接移动到"相关链接"字段
+   * 
+   * @param {MNNote} note - 要处理的知识卡片
+   */
+  static moveTaskCardLinksToRelatedField(note) {
+    try {
+      // 1. 解析卡片结构，获取字段信息
+      const commentsObj = this.parseNoteComments(note);
+      const htmlCommentsObjArr = commentsObj.htmlCommentsObjArr;
+      
+      if (htmlCommentsObjArr.length === 0) {
+        return; // 没有字段，直接返回
+      }
+      
+      // 2. 获取最后一个字段及其下方的内容
+      const lastField = htmlCommentsObjArr[htmlCommentsObjArr.length - 1];
+      const lastFieldName = lastField.text;
+      
+      // 如果最后一个字段已经是"相关链接"，则无需处理
+      if (lastFieldName === "相关链接" || lastFieldName === "相关链接：") {
+        return;
+      }
+      
+      // 3. 检查是否存在"相关链接"字段
+      let relatedLinksFieldObj = null;
+      for (let i = 0; i < htmlCommentsObjArr.length; i++) {
+        const field = htmlCommentsObjArr[i];
+        if (field.text === "相关链接" || field.text === "相关链接：") {
+          relatedLinksFieldObj = field;
+          break;
+        }
+      }
+      
+      // 如果没有"相关链接"字段，则无法移动
+      if (!relatedLinksFieldObj) {
+        return;
+      }
+      
+      // 4. 获取最后一个字段下方的所有链接
+      const lastFieldIndices = lastField.excludingFieldBlockIndexArr;
+      const taskCardLinkIndices = [];
+      
+      // 遍历最后一个字段下方的评论
+      for (let i = 0; i < lastFieldIndices.length; i++) {
+        const commentIndex = lastFieldIndices[i];
+        const comment = note.MNComments[commentIndex];
+        
+        // 检查评论是否存在
+        if (!comment) {
+          console.log(`[moveTaskCardLinksToRelatedField] Comment at index ${commentIndex} is undefined`);
+          continue;
+        }
+        
+        // 获取评论类型，处理 type 可能为 undefined 的情况
+        let commentType = comment.type;
+        if (!commentType && comment.detail) {
+          // 如果 type 为 undefined，尝试重新计算类型
+          commentType = MNComment.getCommentType(comment.detail);
+        }
+        
+        // 检查是否是链接评论
+        if (commentType === "linkComment") {
+          // 获取链接 URL，兼容不同的属性位置
+          const linkUrl = comment.text || comment.detail?.text || "";
+          
+          if (!linkUrl) {
+            console.log(`[moveTaskCardLinksToRelatedField] Link URL is empty for comment at index ${commentIndex}`);
+            continue;
+          }
+          
+          // 判断链接是否指向任务卡片
+          if (this.isTaskCardLink(linkUrl)) {
+            taskCardLinkIndices.push(commentIndex);
+          }
+        }
+      }
+      
+      // 5. 如果找到任务卡片链接，移动到"相关链接"字段
+      if (taskCardLinkIndices.length > 0) {
+        // 移动到"相关链接"字段的底部
+        this.moveCommentsArrToField(note, taskCardLinkIndices, relatedLinksFieldObj.text, true);
+        
+        // 可选：显示提示
+        // MNUtil.showHUD(`已将 ${taskCardLinkIndices.length} 个任务卡片链接移动到"相关链接"字段`);
+      }
+      
+    } catch (error) {
+      // 错误处理，但不中断制卡流程
+      console.error("[moveTaskCardLinksToRelatedField] Error:", error);
+      console.error("[moveTaskCardLinksToRelatedField] Error stack:", error.stack);
+      // 可选：在开发阶段显示错误提示
+      // MNUtil.showHUD(`任务卡片链接处理出错: ${error.message}`);
+    }
+  }
+
+  /**
    * 获取指定字段内的 HtmlMarkdown 评论
    * @param {MNNote} note - 笔记对象
    * @param {string} fieldName - 字段名称
@@ -3311,7 +3507,7 @@ class MNMath {
    * @param {Object} fieldObj - 字段对象，包含字段的边界信息
    * @param {Function} callback - 回调函数
    */
-  static showHtmlMarkdownInternalPositionDialog(note, htmlMarkdownComment, fieldObj, callback) {
+  static showHtmlMarkdownInternalPositionDialog(note, htmlMarkdownComment, fieldObj, callback, previousDialog = null) {
     // 获取该 HtmlMarkdown 评论后面的内容，限制在当前字段范围内
     const comments = note.MNComments;
     const startIndex = htmlMarkdownComment.index;
@@ -3354,7 +3550,14 @@ class MNMath {
     // 构建选项
     const icon = HtmlMarkdownUtils.icons[htmlMarkdownComment.type] || '📄';
     const content = htmlMarkdownComment.content || '';
-    let options = [`[${icon}] ${content} 顶部`];
+    let options = [];
+    
+    // 如果有上一层，添加返回选项
+    if (previousDialog) {
+      options.push("⬅️ 返回上一层");
+    }
+    
+    options.push(`[${icon}] ${content} 顶部`);
     
     if (internalComments.length > 0) {
       // 为每个内部评论生成位置选项
@@ -3380,7 +3583,16 @@ class MNMath {
           return;
         }
         
-        if (buttonIndex === 1) {
+        // 如果有返回选项，处理返回
+        if (previousDialog && buttonIndex === 1) {
+          previousDialog();
+          return;
+        }
+        
+        // 根据是否有返回选项调整索引
+        const offset = previousDialog ? 1 : 0;
+        
+        if (buttonIndex === 1 + offset) {
           // HtmlMarkdown 顶部（即其下方）
           callback(startIndex + 1);
         } else if (buttonIndex === options.length) {
@@ -3393,8 +3605,8 @@ class MNMath {
           }
         } else {
           // 评论位置
-          const commentIndex = Math.floor((buttonIndex - 2) / 2);
-          const isAfter = (buttonIndex - 2) % 2 === 1;
+          const commentIndex = Math.floor((buttonIndex - 2 - offset) / 2);
+          const isAfter = (buttonIndex - 2 - offset) % 2 === 1;
           
           if (commentIndex < internalComments.length) {
             const targetIndex = internalComments[commentIndex].index;
@@ -3552,7 +3764,7 @@ class MNMath {
    * @param {string} fieldName - 字段名称
    * @param {Function} callback - 回调函数，参数为选中的索引位置
    */
-  static showFieldInternalPositionDialog(note, fieldName, callback) {
+  static showFieldInternalPositionDialog(note, fieldName, callback, previousDialog = null) {
     const fieldObj = this.parseNoteComments(note).htmlCommentsObjArr.find(obj => obj.text.includes(fieldName));
     if (!fieldObj) {
       callback(null);
@@ -3568,8 +3780,17 @@ class MNMath {
       return;
     }
     
-    let options = [`【${fieldName}】字段顶部`];
-    let optionActions = [{type: 'fieldTop'}]; // 记录每个选项的动作
+    let options = [];
+    let optionActions = []; // 记录每个选项的动作
+    
+    // 如果有上一层，添加返回选项
+    if (previousDialog) {
+      options.push("⬅️ 返回上一层");
+      optionActions.push({type: 'return'});
+    }
+    
+    options.push(`【${fieldName}】字段顶部`);
+    optionActions.push({type: 'fieldTop'});
     
     // 合并并排序所有元素
     let allElements = [];
@@ -3641,7 +3862,12 @@ class MNMath {
         
         const action = optionActions[buttonIndex - 1];
         
-        if (action.type === 'fieldTop') {
+        if (action.type === 'return') {
+          // 返回上一层
+          previousDialog();
+          return;
+          
+        } else if (action.type === 'fieldTop') {
           // 字段顶部
           callback(fieldObj.index + 1);
           
@@ -3660,7 +3886,10 @@ class MNMath {
           
         } else if (action.type === 'htmlMarkdownDetail') {
           // 用户点击了 HtmlMarkdown 标题，显示其内部位置选择
-          this.showHtmlMarkdownInternalPositionDialog(note, action.section.htmlMarkdownObj, fieldObj, callback);
+          this.showHtmlMarkdownInternalPositionDialog(note, action.section.htmlMarkdownObj, fieldObj, callback, () => {
+            // 返回函数：重新显示当前对话框
+            this.showFieldInternalPositionDialog(note, fieldName, callback, previousDialog);
+          });
           
         } else if (action.type === 'htmlMarkdownBottom') {
           // HtmlMarkdown 的 Bottom
@@ -3684,8 +3913,9 @@ class MNMath {
    * @param {Array} commentOptions - 评论选项数组
    * @param {Set} selectedIndices - 已选中的索引集合
    * @param {Function} callback - 回调函数，参数为选中的索引数组
+   * @param {Function} previousDialog - 返回上一层的函数
    */
-  static showCommentMultiSelectDialog(note, commentOptions, selectedIndices, callback) {
+  static showCommentMultiSelectDialog(note, commentOptions, selectedIndices, callback, previousDialog = null) {
     // 构建显示选项
     let displayOptions = commentOptions.map(item => {
       let prefix = selectedIndices.has(item.index) ? "✅ " : "";
@@ -3698,6 +3928,9 @@ class MNMath {
     displayOptions.unshift(selectAllText);
     
     // 添加分隔线和操作选项
+    if (previousDialog) {
+      displayOptions.push("⬅️ 返回上一层");
+    }
     displayOptions.push("──────────────");
     displayOptions.push("➡️ 移动选中项");
     displayOptions.push("📤 提取选中项");
@@ -3728,25 +3961,28 @@ class MNMath {
           }
           
           // 递归显示更新后的对话框
-          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null);
+          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
           
         } else if (buttonIndex === displayOptions.length) {
           // 用户选择了"删除选中项"
           if (selectedIndices.size === 0) {
             MNUtil.showHUD("没有选中任何内容");
-            this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null);
+            this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
             return;
           }
           
           // 直接调用删除确认对话框
           const selectedIndicesArray = Array.from(selectedIndices).sort((a, b) => a - b);
-          this.showDeleteConfirmDialog(note, selectedIndicesArray);
+          this.showDeleteConfirmDialog(note, selectedIndicesArray, () => {
+            // 返回函数：重新显示当前对话框
+            this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
+          });
           
         } else if (buttonIndex === displayOptions.length - 1) {
           // 用户选择了"提取选中项"
           if (selectedIndices.size === 0) {
             MNUtil.showHUD("没有选中任何内容");
-            this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null);
+            this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
             return;
           }
           
@@ -3758,19 +3994,30 @@ class MNMath {
           // 用户选择了"移动选中项"
           if (selectedIndices.size === 0) {
             MNUtil.showHUD("没有选中任何内容");
-            this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null);
+            this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
             return;
           }
           
           // 直接调用移动目标选择对话框
           const selectedIndicesArray = Array.from(selectedIndices).sort((a, b) => a - b);
-          this.showMoveTargetSelectionDialog(note, selectedIndicesArray);
+          this.showMoveTargetSelectionDialog(note, selectedIndicesArray, () => {
+            // 返回函数：重新显示当前对话框
+            this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
+          });
           
         } else if (buttonIndex === displayOptions.length - 3) {
           // 用户选择了分隔线，忽略并重新显示
-          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null);
+          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
           
         } else {
+          // 需要检查是否选择了返回选项
+          const returnIndex = previousDialog ? displayOptions.indexOf("⬅️ 返回上一层") : -1;
+          if (previousDialog && buttonIndex === returnIndex + 1) {
+            // 用户选择了返回上一层
+            previousDialog();
+            return;
+          }
+          
           // 用户选择了某个评论，切换选中状态
           let selectedComment = commentOptions[buttonIndex - 2]; // 因为加了全选选项，所以索引要减2
           
@@ -3781,7 +4028,7 @@ class MNMath {
           }
           
           // 递归显示更新后的对话框
-          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null);
+          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
         }
       }
     );
@@ -3820,15 +4067,24 @@ class MNMath {
       "📝 手动输入 Index": () => {
         this.showManualInputDialog(note, (indices) => {
           if (indices && indices.length > 0) {
-            this.showActionSelectionDialog(note, indices);
+            this.showActionSelectionDialog(note, indices, () => {
+              // 返回函数：重新显示主菜单
+              this.manageCommentsByPopup(note);
+            });
           }
+        }, () => {
+          // 返回函数：重新显示主菜单
+          this.manageCommentsByPopup(note);
         });
       },
       
       "✅ 多选评论内容": () => {
         const allOptions = this.getAllCommentOptionsForMove(note);
         const selectedIndices = new Set();
-        this.showCommentMultiSelectDialog(note, allOptions, selectedIndices, null);
+        this.showCommentMultiSelectDialog(note, allOptions, selectedIndices, null, () => {
+          // 返回函数：重新显示主菜单
+          this.manageCommentsByPopup(note);
+        });
       },
       
       "🔄 自动获取新内容": () => {
@@ -3837,19 +4093,31 @@ class MNMath {
           MNUtil.showHUD("没有检测到新内容");
           return;
         }
-        this.showActionSelectionDialog(note, moveCommentIndexArr);
+        this.showActionSelectionDialog(note, moveCommentIndexArr, () => {
+          // 返回函数：重新显示主菜单
+          this.manageCommentsByPopup(note);
+        });
       },
       
       "Z️⃣ 最后一条评论": () => {
         const moveCommentIndexArr = [note.comments.length - 1];
-        this.showActionSelectionDialog(note, moveCommentIndexArr);
+        this.showActionSelectionDialog(note, moveCommentIndexArr, () => {
+          // 返回函数：重新显示主菜单
+          this.manageCommentsByPopup(note);
+        });
       },
       
       "📦 选择字段区域": () => {
         this.showFieldSelectionForMove(note, (indices) => {
           if (indices && indices.length > 0) {
-            this.showActionSelectionDialog(note, indices);
+            this.showActionSelectionDialog(note, indices, () => {
+              // 返回函数：重新显示主菜单
+              this.manageCommentsByPopup(note);
+            });
           }
+        }, () => {
+          // 返回函数：重新显示主菜单
+          this.manageCommentsByPopup(note);
         });
       }
     };
@@ -3879,28 +4147,44 @@ class MNMath {
   /**
    * 显示手动输入对话框
    */
-  static showManualInputDialog(note, callback) {
+  static showManualInputDialog(note, callback, previousDialog = null) {
+    // 构建选项数组
+    const options = ["确定"];
+    if (previousDialog) {
+      options.unshift("⬅️ 返回上一层");
+    }
+    
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "输入要移动的评论 Index",
       "❗️从 1 开始\n支持:\n- 单个序号: 1,2,3\n- 范围: 1-4 \n- 特殊字符: X(倒数第3条), Y(倒数第2条), Z(最后一条)\n- 组合使用: 1,3-5,Y,Z",
       2,
       "取消",
-      ["确定"],
+      options,
       (alert, buttonIndex) => {
         if (buttonIndex === 0) {
           callback(null);
           return;
         }
         
-        const userInput = alert.textFieldAtIndex(0).text;
-        if (!userInput) {
-          MNUtil.showHUD("请输入有效的索引");
-          callback(null);
+        // 如果有返回选项，处理返回
+        if (previousDialog && buttonIndex === 1) {
+          previousDialog();
           return;
         }
         
-        const indices = userInput.parseCommentIndices(note.comments.length);
-        callback(indices);
+        // 确定按钮的索引根据是否有返回选项而不同
+        const confirmIndex = previousDialog ? 2 : 1;
+        if (buttonIndex === confirmIndex) {
+          const userInput = alert.textFieldAtIndex(0).text;
+          if (!userInput) {
+            MNUtil.showHUD("请输入有效的索引");
+            callback(null);
+            return;
+          }
+          
+          const indices = userInput.parseCommentIndices(note.comments.length);
+          callback(indices);
+        }
       }
     );
   }
@@ -3908,7 +4192,7 @@ class MNMath {
   /**
    * 显示字段选择对话框
    */
-  static showFieldSelectionForMove(note, callback) {
+  static showFieldSelectionForMove(note, callback, previousDialog = null) {
     const htmlCommentsTextArr = this.parseNoteComments(note).htmlCommentsTextArr;
     
     if (htmlCommentsTextArr.length === 0) {
@@ -3917,19 +4201,33 @@ class MNMath {
       return;
     }
     
+    // 构建选项数组
+    let options = [...htmlCommentsTextArr];
+    if (previousDialog) {
+      options.unshift("⬅️ 返回上一层");
+    }
+    
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "选择字段区域",
       "选择要移动的字段内容",
       0,
       "取消",
-      htmlCommentsTextArr,
+      options,
       (alert, buttonIndex) => {
         if (buttonIndex === 0) {
           callback(null);
           return;
         }
         
-        const selectedField = htmlCommentsTextArr[buttonIndex - 1];
+        // 如果有返回选项，处理返回
+        if (previousDialog && buttonIndex === 1) {
+          previousDialog();
+          return;
+        }
+        
+        // 计算实际的字段索引
+        const fieldIndex = previousDialog ? buttonIndex - 2 : buttonIndex - 1;
+        const selectedField = htmlCommentsTextArr[fieldIndex];
         const indices = this.getHtmlCommentExcludingFieldBlockIndexArr(note, selectedField);
         
         if (indices.length === 0) {
@@ -3946,13 +4244,18 @@ class MNMath {
   /**
    * 显示操作选择对话框（移动、提取或删除）
    */
-  static showActionSelectionDialog(note, moveCommentIndexArr) {
+  static showActionSelectionDialog(note, moveCommentIndexArr, previousDialog = null) {
     // 先让用户选择操作类型
     const actionOptions = [
       "➡️ 移动评论",
       "📤 提取评论",
       "🗑️ 删除评论"
     ];
+    
+    // 如果有上一层，添加返回选项
+    if (previousDialog) {
+      actionOptions.unshift("⬅️ 返回上一层");
+    }
     
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "选择操作类型",
@@ -3963,15 +4266,30 @@ class MNMath {
       (alert, buttonIndex) => {
         if (buttonIndex === 0) return; // 取消
         
-        if (buttonIndex === 1) {
+        // 如果有返回选项，处理返回
+        if (previousDialog && buttonIndex === 1) {
+          previousDialog();
+          return;
+        }
+        
+        // 根据是否有返回选项调整索引
+        const offset = previousDialog ? 1 : 0;
+        
+        if (buttonIndex === 1 + offset) {
           // 移动评论
-          this.showMoveTargetSelectionDialog(note, moveCommentIndexArr);
-        } else if (buttonIndex === 2) {
+          this.showMoveTargetSelectionDialog(note, moveCommentIndexArr, () => {
+            // 返回函数：重新显示当前对话框
+            this.showActionSelectionDialog(note, moveCommentIndexArr, previousDialog);
+          });
+        } else if (buttonIndex === 2 + offset) {
           // 提取评论
           this.performExtract(note, moveCommentIndexArr);
-        } else if (buttonIndex === 3) {
+        } else if (buttonIndex === 3 + offset) {
           // 删除评论
-          this.showDeleteConfirmDialog(note, moveCommentIndexArr);
+          this.showDeleteConfirmDialog(note, moveCommentIndexArr, () => {
+            // 返回函数：重新显示当前对话框
+            this.showActionSelectionDialog(note, moveCommentIndexArr, previousDialog);
+          });
         }
       }
     );
@@ -3980,19 +4298,33 @@ class MNMath {
   /**
    * 显示移动目标选择对话框（第二层）
    */
-  static showMoveTargetSelectionDialog(note, moveCommentIndexArr) {
+  static showMoveTargetSelectionDialog(note, moveCommentIndexArr, previousDialog = null) {
     const targetOptions = this.getHtmlCommentsTextArrForPopup(note);
+    
+    // 如果有上一层，添加返回选项
+    let options = [...targetOptions];
+    if (previousDialog) {
+      options.unshift("⬅️ 返回上一层");
+    }
     
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "选择移动的位置",
       `将移动 ${moveCommentIndexArr.length} 项内容\n点击字段或带 ◆ 的项目可选择更精确的位置`,
       0,
       "取消",
-      targetOptions,
+      options,
       (alert, buttonIndex) => {
         if (buttonIndex === 0) return; // 取消
         
-        const selectedOption = targetOptions[buttonIndex - 1];
+        // 如果有返回选项，处理返回
+        if (previousDialog && buttonIndex === 1) {
+          previousDialog();
+          return;
+        }
+        
+        // 根据是否有返回选项调整索引
+        const optionIndex = previousDialog ? buttonIndex - 2 : buttonIndex - 1;
+        const selectedOption = targetOptions[optionIndex];
         
         // 判断是否点击了字段区域
         if (selectedOption && selectedOption.includes("区】----------") && !selectedOption.includes("摘录区")) {
@@ -4006,13 +4338,16 @@ class MNMath {
               if (targetIndex !== null) {
                 this.performMove(note, moveCommentIndexArr, targetIndex);
               }
+            }, () => {
+              // 返回函数：重新显示当前对话框
+              this.showMoveTargetSelectionDialog(note, moveCommentIndexArr, previousDialog);
             });
             return;
           }
         }
         
         // 直接移动到选定位置
-        const targetIndex = this.getCommentsIndexArrToMoveForPopup(note)[buttonIndex - 1];
+        const targetIndex = this.getCommentsIndexArrToMoveForPopup(note)[optionIndex];
         if (targetIndex !== null) {
           this.performMove(note, moveCommentIndexArr, targetIndex);
         }
@@ -4039,7 +4374,7 @@ class MNMath {
   /**
    * 显示删除确认对话框
    */
-  static showDeleteConfirmDialog(note, deleteCommentIndexArr) {
+  static showDeleteConfirmDialog(note, deleteCommentIndexArr, previousDialog = null) {
     // 构建要删除的评论列表
     let deleteList = [];
     deleteCommentIndexArr.forEach(index => {
@@ -4052,14 +4387,32 @@ class MNMath {
     
     const message = `确定要删除以下 ${deleteCommentIndexArr.length} 项评论吗？\n\n${deleteList.join('\n')}`;
     
+    // 构建选项数组
+    const options = ["🗑️ 确认删除"];
+    if (previousDialog) {
+      options.unshift("⬅️ 返回上一层");
+    }
+    
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "确认删除",
       message,
       0,
       "取消",
-      ["🗑️ 确认删除"],
+      options,
       (alert, buttonIndex) => {
-        if (buttonIndex === 1) {
+        if (buttonIndex === 0) {
+          return; // 取消
+        }
+        
+        // 如果有返回选项，处理返回
+        if (previousDialog && buttonIndex === 1) {
+          previousDialog();
+          return;
+        }
+        
+        // 确认删除的索引根据是否有返回选项而不同
+        const confirmIndex = previousDialog ? 2 : 1;
+        if (buttonIndex === confirmIndex) {
           this.performDelete(note, deleteCommentIndexArr);
         }
       }

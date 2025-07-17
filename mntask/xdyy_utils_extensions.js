@@ -532,6 +532,15 @@ class MNTaskManager {
         MNUtil.log(`  - 进展字段: ${parsed.progress ? '有' : '无'}`)
         
         MNUtil.undoGrouping(() => {
+          // 先清理失效链接
+          MNUtil.log(`🧹 开始清理失效链接...`)
+          const removedLinksCount = this.cleanupBrokenLinks(noteToConvert)
+          if (removedLinksCount > 0) {
+            MNUtil.log(`✅ 清理了 ${removedLinksCount} 个失效链接`)
+          } else {
+            MNUtil.log(`✅ 没有发现失效链接`)
+          }
+          
           // 添加任务字段（信息字段和状态字段）
           MNUtil.log(`📝 调用 addTaskFieldsWithStatus`)
           this.addTaskFieldsWithStatus(noteToConvert)

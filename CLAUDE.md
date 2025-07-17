@@ -657,3 +657,126 @@ if (isSameView) {
 1. **减少页面重载**：相同视图切换时不会重新加载页面
 2. **提升响应速度**：数据刷新比页面重载快得多
 3. **改善用户体验**：减少闪烁和等待时间
+
+## 任务启动功能闪退问题（2025-01-17）
+
+### 问题描述
+点击「启动任务」按钮后，MarginNote 4 应用程序直接闪退。崩溃日志显示异常发生在 NSUserDefaults 操作时。
+
+### 崩溃信息
+```
+Exception Type:        EXC_CRASH (SIGABRT)
+Exception Codes:       0x0000000000000000, 0x0000000000000000
+Termination Reason:    Namespace SIGNAL, Code 6 Abort trap: 6
+
+崩溃调用栈：
+Foundation -[NSUserDefaults(NSUserDefaults) setObject:forKey:] + 68
+JavaScriptCore JSC::ObjCCallbackFunctionImpl::call
+```
+
+### 根本原因
+1. **类型不兼容**：NSUserDefaults 只能存储 Objective-C 兼容的类型（NSString、NSNumber、NSArray、NSDictionary 等）
+2. **直接存储 JS 对象**：代码尝试将 JavaScript 对象直接传给 `setObjectForKey`，导致崩溃
+3. **调用路径**：`launchTask` → `taskConfig.saveLaunchedTaskState(state)` → `NSUserDefaults.setObjectForKey`
+
+### 解决方案
+
+#### 1. 修改保存方法，使用 JSON 序列化
+```javascript
+// utils.js
+static saveLaunchedTaskState(state) {
+  const notebookId = this.getCurrentNotebookId()
+  if (!notebookId) return
+  
+  const key = `MNTask_launchedTaskState_${notebookId}`
+  // 序列化为 JSON 字符串
+  const jsonString = JSON.stringify(state)
+  this.save(key, jsonString)
+}
+```
+
+#### 2. 修改读取方法，使用 JSON 反序列化
+```javascript
+// utils.js
+static getLaunchedTaskState() {
+  const notebookId = this.getCurrentNotebookId()
+  if (!notebookId) return {
+    isTaskLaunched: false,
+    currentLaunchedTaskId: null
+  }
+  
+  const key = `MNTask_launchedTaskState_${notebookId}`
+  const jsonString = this.getByDefault(key, null)
+  
+  if (jsonString) {
+    try {
+      return JSON.parse(jsonString)
+    } catch (e) {
+      // 解析失败返回默认值
+    }
+  }
+  
+  return {
+    isTaskLaunched: false,
+    currentLaunchedTaskId: null
+  }
+}
+```
+
+### 关键要点
+1. **JSB 框架限制**：JavaScript 对象不能直接传给 Objective-C API
+2. **序列化必要性**：复杂数据结构必须序列化为字符串再存储
+3. **错误处理**：JSON.parse 可能失败，需要 try-catch 保护
+4. **通用原则**：使用 NSUserDefaults 时始终确保数据类型兼容
+
+## 任务字段查找方法问题（2025-01-17）
+
+### 问题描述
+`getLaunchLink` 方法无法找到任务卡片中的启动链接，导致启动任务功能失效。
+
+### 问题分析
+启动字段在任务卡片中的存储格式特殊：
+```html
+<span id="subField" style="...">[启动](marginnote4app://note/xxx)</span>
+```
+
+关键点：
+1. 字段名不是普通的"启动"文本
+2. 整个 `[启动](url)` 是作为字段名存在的
+3. `TaskFieldUtils.getFieldContent(note, "启动")` 无法匹配这种格式
+
+### 解决方案
+
+#### 使用正确的查找方法
+```javascript
+// xdyy_utils_extensions.js
+static getLaunchLink(note) {
+  // 查找包含 "[启动]" 的评论
+  const launchIndex = note.getIncludingCommentIndex("[启动]");
+  if (launchIndex === -1) return null;
+  
+  const comment = note.MNComments[launchIndex];
+  if (!comment || !comment.text) return null;
+  
+  // 从评论文本中提取链接
+  const linkMatch = comment.text.match(/\[启动\]\(([^)]+)\)/);
+  if (linkMatch) {
+    return linkMatch[1];  // 返回 URL 部分
+  }
+  return null;
+}
+```
+
+### 相关代码
+在 `addOrUpdateLaunchLink` action 中，启动字段是这样创建的：
+```javascript
+// xdyy_custom_actions_registry.js
+const launchLink = `[启动](${linkToUse})`;
+const fieldHtml = TaskFieldUtils.createFieldHtml(launchLink, 'subField');
+```
+
+### 关键要点
+1. **字段格式特殊性**：某些字段的"字段名"本身就包含了值（如 Markdown 链接）
+2. **查找方法选择**：对于特殊格式的字段，使用 `getIncludingCommentIndex` 而不是 `getFieldContent`
+3. **正则表达式提取**：使用正则表达式从 HTML 中提取所需的 URL
+4. **API 一致性**：查找和创建字段的方法要保持一致

@@ -6551,6 +6551,7 @@ class MNMath {
           lastUsedRoot: "default",
           includeClassification: true,  // 默认包含归类卡片
           ignorePrefix: false,  // 默认搜索完整标题
+          searchInKeywords: false,  // 默认不搜索关键词字段
           lastModified: Date.now()
         };
       }
@@ -6561,6 +6562,9 @@ class MNMath {
       }
       if (config && config.ignorePrefix === undefined) {
         config.ignorePrefix = false;
+      }
+      if (config && config.searchInKeywords === undefined) {
+        config.searchInKeywords = false;
       }
       
       return config;
@@ -6578,6 +6582,7 @@ class MNMath {
         lastUsedRoot: "default",
         includeClassification: true,  // 默认包含归类卡片
         ignorePrefix: false,  // 默认搜索完整标题
+        searchInKeywords: false,  // 默认不搜索关键词字段
         lastModified: Date.now()
       };
     }
@@ -6676,6 +6681,36 @@ class MNMath {
   }
   
   /**
+   * 从卡片中提取关键词字段的内容
+   * @param {MNNote} note - 要提取关键词的卡片
+   * @returns {string} 关键词内容，如果没有则返回空字符串
+   */
+  static getKeywordsFromNote(note) {
+    try {
+      // 遍历所有评论
+      const comments = note.MNComments;
+      
+      for (const comment of comments) {
+        // 查找 htmlComment 类型且以"关键词"开头的评论
+        if (comment.type === "htmlComment" && comment.text) {
+          // 使用正则表达式匹配"关键词："或"关键词： "后的内容
+          const match = comment.text.match(/^关键词[:：]\s*(.*)$/);
+          if (match) {
+            // 返回关键词内容（去除首尾空格）
+            return match[1].trim();
+          }
+        }
+      }
+      
+      // 没有找到关键词字段
+      return "";
+    } catch (error) {
+      MNUtil.log(`getKeywordsFromNote error: ${error}`);
+      return "";
+    }
+  }
+
+  /**
    * 搜索笔记主函数
    * @param {Array<string>} keywords - 关键词数组
    * @param {string} rootNoteId - 根目录 ID
@@ -6746,6 +6781,18 @@ class MNMath {
           searchText = parsedTitle.content || title;
         }
         
+        // 获取配置中的搜索关键词字段设置
+        const searchInKeywords = this.searchRootConfigs ? this.searchRootConfigs.searchInKeywords : false;
+        
+        // 如果启用了关键词字段搜索，尝试获取关键词内容
+        if (searchInKeywords) {
+          const keywordsContent = this.getKeywordsFromNote(mnNote);
+          if (keywordsContent) {
+            // 将关键词内容添加到搜索文本中
+            searchText = searchText + " " + keywordsContent;
+          }
+        }
+        
         // 检查是否所有关键词都包含在搜索文本中
         let allMatch = true;
         for (const keyword of keywords) {
@@ -6796,6 +6843,9 @@ class MNMath {
         // 显示忽略前缀搜索状态
         const ignorePrefix = this.searchRootConfigs.ignorePrefix;
         message += `\n🎯 忽略前缀搜索：${ignorePrefix ? "☑️ 是" : "☐︎ 否"}`;
+        // 显示搜索关键词字段状态
+        const searchInKeywords = this.searchRootConfigs.searchInKeywords;
+        message += `\n🔖 搜索关键词字段：${searchInKeywords ? "☑️ 是" : "☐︎ 否"}`;
         // 显示选中的类型
         if (selectedTypes !== null && selectedTypes.size > 0) {
           const typeNames = Array.from(selectedTypes).join("、");
@@ -6814,6 +6864,7 @@ class MNMath {
             ["开始搜索", "下一个词", "切换根目录", "添加根目录", 
              includeClassification ? "☑️ 搜索归类卡片" : "☐︎ 搜索归类卡片",
              ignorePrefix ? "☑️ 忽略前缀搜索" : "☐︎ 忽略前缀搜索",
+             searchInKeywords ? "☑️ 搜索关键词字段" : "☐︎ 搜索关键词字段",
              "📋 选择类型"],
             (alert, buttonIndex) => {
               if (buttonIndex === 0) {
@@ -6864,7 +6915,11 @@ class MNMath {
                   resolve({ action: "toggleIgnorePrefix" });
                   break;
                   
-                case 7: // 选择类型
+                case 7: // 切换搜索关键词字段开关
+                  resolve({ action: "toggleSearchInKeywords" });
+                  break;
+                  
+                case 8: // 选择类型
                   resolve({ action: "selectTypes" });
                   break;
               }
@@ -6884,8 +6939,12 @@ class MNMath {
             
             if (results.length === 0) {
               MNUtil.showHUD(`未找到包含 "${keywords.join(' AND ')}" 的卡片`);
+            } else if (results.length === 1) {
+              // 只有一个结果时，直接定位到该卡片
+              results[0].focusInFloatMindMap(0.5);
+              MNUtil.showHUD(`✅ 找到唯一结果，已定位`);
             } else {
-              // 创建搜索结果卡片
+              // 多个结果时，创建搜索结果卡片
               this.createSearchResultCard(results, keywords, currentRootName);
               MNUtil.showHUD(`✅ 找到 ${results.length} 个结果`);
             }
@@ -6921,6 +6980,13 @@ class MNMath {
             this.searchRootConfigs.ignorePrefix = !this.searchRootConfigs.ignorePrefix;
             this.saveSearchConfig();
             MNUtil.showHUD(`忽略前缀搜索：${this.searchRootConfigs.ignorePrefix ? "已启用" : "已禁用"}`);
+            break;
+            
+          case "toggleSearchInKeywords":
+            // 切换搜索关键词字段开关
+            this.searchRootConfigs.searchInKeywords = !this.searchRootConfigs.searchInKeywords;
+            this.saveSearchConfig();
+            MNUtil.showHUD(`搜索关键词字段：${this.searchRootConfigs.searchInKeywords ? "已启用" : "已禁用"}`);
             break;
             
           case "selectTypes":

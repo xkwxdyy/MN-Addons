@@ -921,7 +921,7 @@ class MNTaskManager {
       
       // 特殊处理：如果找不到状态字段，可能是因为卡片结构有问题
       // 检查是否是状态字段
-      const statusFields = ['未开始', '进行中', '已完成']
+      const statusFields = ['未开始', '进行中', '已完成', '已归档']
       if (statusFields.includes(fieldText)) {
         MNUtil.log("⚠️ 这是一个状态字段，但未找到。检查卡片是否已正确初始化任务字段")
         // 尝试添加任务字段

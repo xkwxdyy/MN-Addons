@@ -1283,12 +1283,30 @@ class MNTaskManager {
         this.addTaskFieldsWithStatus(parent)
       }
       
-      // 1. 在父任务中创建到子任务的链接
-      parent.appendNoteLink(note, "To")
+      // 1. 检查父任务中是否已有指向子任务的链接
+      const parentParsed = this.parseTaskComments(parent)
+      let existingLinkIndex = -1
       
-      // 2. 获取父任务中刚创建的链接索引
-      const linkIndexInParent = parent.MNComments.length - 1
-      MNUtil.log(`📎 创建链接，索引：${linkIndexInParent}`)
+      for (let link of parentParsed.links) {
+        if (link.linkedNoteId === note.noteId) {
+          existingLinkIndex = link.index
+          MNUtil.log(`📎 发现已有链接，索引：${existingLinkIndex}`)
+          break
+        }
+      }
+      
+      // 2. 根据情况创建或使用现有链接
+      let linkIndexInParent
+      if (existingLinkIndex !== -1) {
+        // 已有链接，使用现有链接索引
+        linkIndexInParent = existingLinkIndex
+        MNUtil.log(`📎 使用现有链接，索引：${linkIndexInParent}`)
+      } else {
+        // 没有链接，创建新链接
+        parent.appendNoteLink(note, "To")
+        linkIndexInParent = parent.MNComments.length - 1
+        MNUtil.log(`📎 创建新链接，索引：${linkIndexInParent}`)
+      }
       
       // 3. 获取子任务的状态
       const titleParts = this.parseTaskTitle(note.noteTitle)

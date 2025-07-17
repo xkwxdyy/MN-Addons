@@ -61,6 +61,7 @@ function registerAllCustomActions() {
   // HTML 设置
   const htmlSetting = [
     { title: "CHECK: 🔍", type: "check" },
+    { title: "SKETCH: ✍️", type: "sketch" },
     { title: "方法: ✔", type: "method" },
     { title: "目标: 🎯", type: "goal" },
     { title: "level1: 🚩", type: "level1" },

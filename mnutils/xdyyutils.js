@@ -6691,8 +6691,8 @@ class MNMath {
       const comments = note.MNComments;
       
       for (const comment of comments) {
-        // 查找 htmlComment 类型且以"关键词"开头的评论
-        if (comment.type === "htmlComment" && comment.text) {
+        // 查找 HtmlComment/HtmlNote 类型且以"关键词"开头的评论
+        if ((comment.type === "HtmlComment" || comment.type === "HtmlNote") && comment.text) {
           // 使用正则表达式匹配"关键词："或"关键词： "后的内容
           const match = comment.text.match(/^关键词[:：]\s*(.*)$/);
           if (match) {

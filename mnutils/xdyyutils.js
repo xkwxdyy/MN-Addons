@@ -10617,3 +10617,38 @@ MNUtil.prototype.log = function(log, copy = false){
       this.copy(this.logs)
     }
   }
+
+/**
+ * ============================================
+ * MNComment 补丁区域
+ * 修复官方 mnutils.js 中的 bug
+ * ============================================
+ */
+
+// 修复 MNComment.prototype.hasBackLink 中的 toNote.linkedNotes 错误
+// 当 toNote 为 undefined 时会导致错误：TypeError: undefined is not an object (evaluating 'toNote.linkedNotes')
+if (typeof MNComment !== 'undefined' && MNComment.prototype.hasBackLink) {
+  // 保存原始方法
+  const originalHasBackLink = MNComment.prototype.hasBackLink;
+  
+  // 重写方法，添加安全检查
+  MNComment.prototype.hasBackLink = function() {
+    if (this.type === "linkComment") {
+      let fromNote = MNNote.new(this.originalNoteId);
+      let toNote = this.note;
+      
+      // 添加 toNote 的存在性检查
+      if (!toNote) {
+        return false;
+      }
+      
+      // 继续原始逻辑
+      if (toNote.linkedNotes && toNote.linkedNotes.length > 0) {
+        if (toNote.linkedNotes.some(n => n.noteid === fromNote.noteId)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+}

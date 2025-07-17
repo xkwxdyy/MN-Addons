@@ -908,8 +908,8 @@ try {
             self.tableItem('🛠️   Direction   '+(toolbarConfig.vertical()?'↕️':'↔️'), selector,"fixed"),
             self.tableItem('🌟   Dynamic   ', "toggleDynamic",undefined,toolbarConfig.dynamic),
             self.tableItem('🌟   Direction   '+(toolbarConfig.vertical()?'↕️':'↔️'), selector,"dynamic"),
-            self.tableItem('🗂️   卡片预处理模式  ',"togglePreprocess:", undefined, toolbarConfig.windowState.preprocess),
-            self.tableItem('📖   粗读模式  ',"toggleRoughReading:", undefined, toolbarConfig.windowState.roughReading),
+            self.tableItem('🗂️   卡片预处理模式  ',"togglePreprocess", undefined, toolbarConfig.windowState.preprocess),
+            self.tableItem('📖   粗读模式  ',"toggleRoughReading", undefined, toolbarConfig.windowState.roughReading),
             self.tableItem('📄   Document', 'openDocument:'),
             self.tableItem('🔄   Manual Sync','manualSync:')
         ];

@@ -639,6 +639,167 @@ ${content.trim()}`;
     }
   });
 
+  // 测试父子关系建立
+  MNTaskGlobal.registerCustomAction("testParentChildRelation", async function(context) {
+    const { focusNote } = context;
+    if (!focusNote) {
+      MNUtil.showHUD("❌ 请先选择一个卡片");
+      return;
+    }
+
+    MNUtil.showHUD("🔧 开始测试父子关系建立...");
+    
+    try {
+      MNUtil.log("\n========== 父子关系测试开始 ==========");
+      MNUtil.log(`📋 当前卡片: ${focusNote.noteTitle}`);
+      MNUtil.log(`🆔 卡片ID: ${focusNote.noteId}`);
+      
+      // 1. 检查当前卡片状态
+      const isCurrentTaskCard = MNTaskManager.isTaskCard(focusNote);
+      MNUtil.log(`\n✅ 当前卡片是否是任务卡片: ${isCurrentTaskCard ? '是' : '否'}`);
+      
+      // 2. 检查父卡片
+      const parentNote = focusNote.parentNote;
+      if (parentNote) {
+        MNUtil.log(`\n👪 父卡片信息:`);
+        MNUtil.log(`  - 标题: ${parentNote.noteTitle}`);
+        MNUtil.log(`  - ID: ${parentNote.noteId}`);
+        
+        const isParentTaskCard = MNTaskManager.isTaskCard(parentNote);
+        MNUtil.log(`  - 是否是任务卡片: ${isParentTaskCard ? '是' : '否'}`);
+        
+        if (isParentTaskCard) {
+          const parentParts = MNTaskManager.parseTaskTitle(parentNote.noteTitle);
+          MNUtil.log(`  - 类型: ${parentParts.type}`);
+          MNUtil.log(`  - 状态: ${parentParts.status}`);
+        }
+      } else {
+        MNUtil.log(`\n👪 没有父卡片`);
+      }
+      
+      // 3. 执行制卡操作
+      MNUtil.log(`\n🔧 执行制卡操作...`);
+      const result = await MNTaskManager.convertToTaskCard(focusNote);
+      
+      MNUtil.log(`\n📊 制卡结果: ${result.type}`);
+      
+      if (result.type === 'created' || result.type === 'upgraded') {
+        // 4. 检查字段创建情况
+        const parsed = MNTaskManager.parseTaskComments(focusNote);
+        MNUtil.log(`\n📋 字段检查:`);
+        MNUtil.log(`  - 信息字段: ${parsed.info ? '✅ 有' : '❌ 无'}`);
+        MNUtil.log(`  - 包含字段: ${parsed.contains ? '✅ 有' : '❌ 无'}`);
+        MNUtil.log(`  - 所属字段: ${parsed.belongsTo ? '✅ 有' : '❌ 无'}`);
+        MNUtil.log(`  - 启动字段: ${parsed.launch ? '✅ 有' : '❌ 无'}`);
+        MNUtil.log(`  - 进展字段: ${parsed.progress ? '✅ 有' : '❌ 无'}`);
+        
+        // 重点检查所属字段
+        if (parentNote && MNTaskManager.isTaskCard(parentNote)) {
+          if (parsed.belongsTo) {
+            MNUtil.log(`\n✅ 所属字段已创建:`);
+            MNUtil.log(`  - 索引: ${parsed.belongsTo.index}`);
+            MNUtil.log(`  - 内容: ${parsed.belongsTo.text}`);
+          } else {
+            MNUtil.log(`\n❌ 应该有所属字段但没有创建！`);
+          }
+        }
+        
+        // 5. 检查父任务中的链接
+        if (parentNote && MNTaskManager.isTaskCard(parentNote)) {
+          MNUtil.log(`\n📎 检查父任务中的链接:`);
+          
+          // 获取所有指向当前卡片的链接
+          const links = [];
+          parentNote.MNComments.forEach((comment, index) => {
+            if (comment && comment.type === "linkComment") {
+              try {
+                // 检查链接是否指向当前卡片
+                if (comment.noteid === focusNote.noteId || 
+                    (comment.note && comment.note.noteId === focusNote.noteId)) {
+                  links.push({ comment, index });
+                }
+              } catch (e) {
+                MNUtil.log(`  - 检查链接 ${index} 时出错: ${e.message}`);
+              }
+            }
+          });
+          
+          MNUtil.log(`  - 找到 ${links.length} 个指向子任务的链接`);
+          
+          if (links.length > 0) {
+            // 获取父任务的解析信息
+            const parentParsed = MNTaskManager.parseTaskComments(parentNote);
+            const childStatus = MNTaskManager.parseTaskTitle(focusNote.noteTitle).status || '未开始';
+            
+            links.forEach((link, i) => {
+              MNUtil.log(`  - 链接${i+1}:`);
+              MNUtil.log(`    - 位置索引: ${link.index}`);
+              
+              // 检查链接是否在正确的字段下
+              let expectedField = childStatus;
+              if (parentParsed.type === "动作") {
+                expectedField = "信息";
+              }
+              
+              // 查找链接应该在的字段位置
+              let expectedFieldIndex = -1;
+              parentParsed.taskFields.forEach(field => {
+                if (field.content === expectedField) {
+                  expectedFieldIndex = field.index;
+                }
+              });
+              
+              if (expectedFieldIndex !== -1) {
+                MNUtil.log(`    - 应该在 "${expectedField}" 字段下 (索引 ${expectedFieldIndex})`);
+                if (link.index > expectedFieldIndex) {
+                  MNUtil.log(`    - ✅ 位置正确`);
+                } else {
+                  MNUtil.log(`    - ❌ 位置错误，在字段之前`);
+                }
+              }
+            });
+          } else {
+            MNUtil.log(`  - ❌ 没有找到指向子任务的链接！`);
+          }
+        }
+        
+        // 6. 测试结果总结
+        MNUtil.log(`\n========== 测试总结 ==========`);
+        const issues = [];
+        
+        if (parentNote && MNTaskManager.isTaskCard(parentNote) && !parsed.belongsTo) {
+          issues.push("缺少所属字段");
+        }
+        
+        if (parentNote && MNTaskManager.isTaskCard(parentNote)) {
+          const links = parentNote.MNComments.filter(c => 
+            c && c.type === "linkComment" && 
+            (c.noteid === focusNote.noteId || (c.note && c.note.noteId === focusNote.noteId))
+          );
+          if (links.length === 0) {
+            issues.push("父任务中没有子任务链接");
+          }
+        }
+        
+        if (issues.length === 0) {
+          MNUtil.showHUD("✅ 父子关系建立正确！");
+          MNUtil.log("✅ 所有检查通过");
+        } else {
+          MNUtil.showHUD(`❌ 发现问题：${issues.join(", ")}`);
+          MNUtil.log(`❌ 发现以下问题：`);
+          issues.forEach(issue => MNUtil.log(`  - ${issue}`));
+        }
+        
+      } else {
+        MNUtil.showHUD(`⚠️ 制卡失败: ${result.type} - ${result.reason || result.error}`);
+      }
+      
+    } catch (error) {
+      MNUtil.showHUD(`❌ 测试失败: ${error.message}`);
+      MNUtil.log(`❌ 错误详情: ${error.stack}`);
+    }
+  });
+
 }
 
 // 立即调用注册函数

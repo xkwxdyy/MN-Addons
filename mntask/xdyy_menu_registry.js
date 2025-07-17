@@ -59,6 +59,10 @@ function registerAllMenuTemplates() {
         {
           action: "renewCards",
           menuTitle: "🔄 更新卡片（路径/链接/字段）"
+        },
+        {
+          action: "testParentChildRelation",
+          menuTitle: "🧪 测试制卡功能"
         }
       ]
     }

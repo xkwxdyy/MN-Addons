@@ -351,6 +351,18 @@ class MNTaskManager {
       }
       
       titleParts.typeAndPath = typeAndPath  // 保留完整的类型和路径
+      
+      // 详细日志
+      MNUtil.log(`📝 parseTaskTitle 解析成功:`)
+      MNUtil.log(`  - 原标题: "${title}"`)
+      MNUtil.log(`  - 类型: ${titleParts.type}`)
+      MNUtil.log(`  - 路径: ${titleParts.path || '(无)'}`)
+      MNUtil.log(`  - 状态: ${titleParts.status}`)
+      MNUtil.log(`  - 内容: ${titleParts.content}`)
+    } else {
+      MNUtil.log(`❌ parseTaskTitle 解析失败:`)
+      MNUtil.log(`  - 原标题: "${title}"`)
+      MNUtil.log(`  - 正则匹配失败`)
     }
     
     return titleParts
@@ -364,20 +376,42 @@ class MNTaskManager {
   static isTaskCard(note) {
     const title = note.noteTitle || ""
     
+    // 详细日志：记录判断过程
+    const logPrefix = `🔍 isTaskCard 检查 "${title.substring(0, 50)}${title.length > 50 ? '...' : ''}"`
+    
     // 必须符合基本格式
-    if (!title.startsWith("【") || !title.includes("｜") || !title.includes("】")) {
+    if (!title.startsWith("【")) {
+      MNUtil.log(`${logPrefix} ❌ 不是以【开头`)
+      return false
+    }
+    if (!title.includes("｜")) {
+      MNUtil.log(`${logPrefix} ❌ 不包含｜分隔符`)
+      return false
+    }
+    if (!title.includes("】")) {
+      MNUtil.log(`${logPrefix} ❌ 不包含】结束符`)
       return false
     }
     
     // 解析标题获取类型
     const titleParts = this.parseTaskTitle(title)
     if (!titleParts.type) {
+      MNUtil.log(`${logPrefix} ❌ 无法解析出任务类型`)
+      MNUtil.log(`  解析结果: ${JSON.stringify(titleParts)}`)
       return false
     }
     
     // 只接受这四种任务类型
     const validTypes = ["目标", "关键结果", "项目", "动作"]
-    return validTypes.includes(titleParts.type)
+    const isValid = validTypes.includes(titleParts.type)
+    
+    if (!isValid) {
+      MNUtil.log(`${logPrefix} ❌ 类型 "${titleParts.type}" 不在有效类型列表中`)
+    } else {
+      MNUtil.log(`${logPrefix} ✅ 是有效的任务卡片，类型: ${titleParts.type}`)
+    }
+    
+    return isValid
   }
 
   /**
@@ -437,9 +471,33 @@ class MNTaskManager {
       }
     }
     
+    MNUtil.log(`\n🚀 === 开始转换任务卡片 ===`)
+    MNUtil.log(`📝 卡片标题: ${focusNote.noteTitle}`)
+    MNUtil.log(`🆔 卡片ID: ${focusNote.noteId}`)
+    MNUtil.log(`📋 指定任务类型: ${taskType || '未指定'}`)
+    
     try {
       // 获取父卡片
       const parentNote = focusNote.parentNote
+      
+      if (parentNote) {
+        MNUtil.log(`👪 检测到父卡片:`)
+        MNUtil.log(`  - 标题: ${parentNote.noteTitle}`)
+        MNUtil.log(`  - ID: ${parentNote.noteId}`)
+        
+        // 详细检查父卡片是否是任务卡片
+        const isParentTaskCard = this.isTaskCard(parentNote)
+        MNUtil.log(`👪 父卡片任务卡片检查结果: ${isParentTaskCard ? '✅ 是' : '❌ 否'}`)
+        
+        if (isParentTaskCard) {
+          const parentParts = this.parseTaskTitle(parentNote.noteTitle)
+          MNUtil.log(`  - 父任务类型: ${parentParts.type}`)
+          MNUtil.log(`  - 父任务状态: ${parentParts.status}`)
+          MNUtil.log(`  - 父任务内容: ${parentParts.content}`)
+        }
+      } else {
+        MNUtil.log(`👪 没有父卡片`)
+      }
       
       // 先使用 taskUtils.toNoExcerptVersion 处理摘录卡片
       let noteToConvert = focusNote
@@ -452,15 +510,42 @@ class MNTaskManager {
       
       // 检查是否已经是任务格式
       const isAlreadyTask = this.isTaskCard(noteToConvert)
+      MNUtil.log(`✅ 是否已经是任务格式: ${isAlreadyTask ? '是' : '否'}`)
       
       if (isAlreadyTask) {
         // 已经是任务格式，只需要添加字段
+        MNUtil.log(`📋 已是任务格式，开始添加/更新字段`)
+        
+        // 检查是否缺少所属字段
+        const parsed = this.parseTaskComments(noteToConvert)
+        MNUtil.log(`🔍 当前卡片字段情况:`)
+        MNUtil.log(`  - 信息字段: ${parsed.info ? '有' : '无'}`)
+        MNUtil.log(`  - 所属字段: ${parsed.belongsTo ? '有' : '无'}`)
+        MNUtil.log(`  - 进展字段: ${parsed.progress ? '有' : '无'}`)
+        
         MNUtil.undoGrouping(() => {
           // 添加任务字段（信息字段和状态字段）
+          MNUtil.log(`📝 调用 addTaskFieldsWithStatus`)
           this.addTaskFieldsWithStatus(noteToConvert)
           
-          // 直接执行链接操作
-          this.linkParentTask(noteToConvert, parentNote)
+          // 执行链接操作（处理所属字段和父子链接）
+          if (parentNote && this.isTaskCard(parentNote)) {
+            MNUtil.log(`🔗 父卡片是任务卡片，执行链接操作`)
+            MNUtil.log(`  - 当前是否有所属字段: ${parsed.belongsTo ? '有' : '无'}`)
+            MNUtil.log(`  - 父卡片标题: ${parentNote.noteTitle}`)
+            MNUtil.log(`  - 子卡片标题: ${noteToConvert.noteTitle}`)
+            MNUtil.log(`  🔗 调用 linkParentTask...`)
+            this.linkParentTask(noteToConvert, parentNote)
+            MNUtil.log(`  ✅ linkParentTask 调用完成`)
+          } else {
+            MNUtil.log(`⚠️ 父卡片不存在或不是任务卡片，跳过链接操作`)
+            if (parentNote) {
+              MNUtil.log(`  - 父卡片存在但不是任务卡片`)
+              MNUtil.log(`  - 父卡片标题: ${parentNote.noteTitle}`)
+            } else {
+              MNUtil.log(`  - 没有父卡片`)
+            }
+          }
         })
         
         return {
@@ -489,9 +574,11 @@ class MNTaskManager {
           selectedType = taskTypes[selectedIndex - 1]
         }
         
+        MNUtil.log(`📋 新建任务卡片，类型: ${selectedType}`)
         MNUtil.undoGrouping(() => {
           // 构建任务路径
           const path = this.buildTaskPath(noteToConvert)
+          MNUtil.log(`📍 任务路径: ${path || '无'}`)
           
           // 构建新标题
           const content = noteToConvert.noteTitle || "未命名任务"
@@ -499,16 +586,33 @@ class MNTaskManager {
             safeSpacing(`【${selectedType} >> ${path}｜未开始】${content}`) :
             safeSpacing(`【${selectedType}｜未开始】${content}`)
           
+          MNUtil.log(`✏️ 新标题: ${newTitle}`)
           noteToConvert.noteTitle = newTitle
           
           // 设置颜色（白色=未开始）
           noteToConvert.colorIndex = 12
           
           // 添加任务字段（信息字段和状态字段）
+          MNUtil.log(`📝 调用 addTaskFieldsWithStatus`)
           this.addTaskFieldsWithStatus(noteToConvert)
           
-          // 直接执行链接操作
-          this.linkParentTask(noteToConvert, parentNote)
+          // 执行链接操作（处理所属字段和父子链接）
+          if (parentNote && this.isTaskCard(parentNote)) {
+            MNUtil.log(`🔗 父卡片是任务卡片，执行链接操作`)
+            MNUtil.log(`  - 父卡片标题: ${parentNote.noteTitle}`)
+            MNUtil.log(`  - 子卡片标题: ${noteToConvert.noteTitle}`)
+            MNUtil.log(`  🔗 调用 linkParentTask...`)
+            this.linkParentTask(noteToConvert, parentNote)
+            MNUtil.log(`  ✅ linkParentTask 调用完成`)
+          } else {
+            MNUtil.log(`⚠️ 父卡片不存在或不是任务卡片，跳过链接操作`)
+            if (parentNote) {
+              MNUtil.log(`  - 父卡片存在但不是任务卡片`)
+              MNUtil.log(`  - 父卡片标题: ${parentNote.noteTitle}`)
+            } else {
+              MNUtil.log(`  - 没有父卡片`)
+            }
+          }
         })
         
         return {
@@ -756,6 +860,10 @@ class MNTaskManager {
       taskFields: [],       // 任务字段（主字段和子字段）
       links: [],            // 链接评论
       belongsTo: null,      // 所属字段
+      info: null,           // 信息字段
+      contains: null,       // 包含字段
+      progress: null,       // 进展字段
+      launch: null,         // 启动字段
       otherComments: []     // 其他评论
     }
     
@@ -787,29 +895,66 @@ class MNTaskManager {
         return
       }
       
+      // Debug logging for field content extraction issue
+      if (index < 5) {  // Only log first 5 to avoid spam
+        MNUtil.log(`🔍 DEBUG parseTaskComments - Comment ${index}:`)
+        MNUtil.log(`  - Raw text: "${text.substring(0, 100)}${text.length > 100 ? '...' : ''}"`)
+        MNUtil.log(`  - Comment type: ${commentType}`)
+        MNUtil.log(`  - Is task field: ${TaskFieldUtils.isTaskField(text)}`)
+        if (TaskFieldUtils.isTaskField(text)) {
+          const fieldContent = TaskFieldUtils.getFieldContent(text)
+          MNUtil.log(`  - Field content extracted: "${fieldContent}"`)
+        }
+      }
+      
       // 注释掉详细日志
       // MNUtil.log(`🔍 评论 ${index}: type=${commentType}, text=${text.substring(0, 50) + (text.length > 50 ? '...' : '')}, isTaskField=${TaskFieldUtils.isTaskField(text)}`)
       
       // 检查是否是任务字段（MNComment 对象的 type 已经是处理后的类型）
       if ((commentType === 'textComment' || commentType === 'markdownComment') && TaskFieldUtils.isTaskField(text)) {
         const fieldType = TaskFieldUtils.getFieldType(text)
-        const content = TaskFieldUtils.getFieldContent(text)
+        // 注意：getFieldContent 实际上提取的是 <span> 标签内的文本，这是字段名
+        const fieldName = TaskFieldUtils.getFieldContent(text)
         
         // 注释掉详细日志
-        // MNUtil.log(`✅ 识别为任务字段: fieldType=${fieldType}, content=${content}`)
+        // MNUtil.log(`✅ 识别为任务字段: fieldType=${fieldType}, fieldName=${fieldName}`)
         
         result.taskFields.push({
           index: index,
           text: text,
           fieldType: fieldType,
-          content: content,
+          content: fieldName,  // 存储字段名
           isMainField: fieldType === 'mainField',
           isStatusField: fieldType === 'stateField'
         })
         
-        // 如果是"所属"字段，也记录到 belongsTo
-        if (content === '所属') {
+        // 记录特定字段
+        if (fieldName === '所属') {
           result.belongsTo = {
+            index: index,
+            text: text,
+            comment: comment
+          }
+        } else if (fieldName === '信息') {
+          result.info = {
+            index: index,
+            text: text,
+            comment: comment
+          }
+        } else if (fieldName === '包含') {
+          result.contains = {
+            index: index,
+            text: text,
+            comment: comment
+          }
+        } else if (fieldName === '进展') {
+          result.progress = {
+            index: index,
+            text: text,
+            comment: comment
+          }
+        } else if (fieldName === '启动') {
+          result.launch = {
             index: index,
             text: text,
             comment: comment
@@ -875,8 +1020,8 @@ class MNTaskManager {
     
     // 查找目标字段
     for (let field of parsed.taskFields) {
-      MNUtil.log("🔍 检查字段：" + field.content + " 是否包含 " + fieldText)
-      if (field.content.includes(fieldText)) {
+      MNUtil.log(`🔍 检查字段：content="${field.content}", fieldType="${field.fieldType}", 目标="${fieldText}"`)
+      if (field.content && field.content.includes(fieldText)) {
         MNUtil.log("✅ 找到匹配字段！")
         if (toBottom) {
           // 移动到该字段的最底部
@@ -1150,18 +1295,27 @@ class MNTaskManager {
       
       // 检查是否已有所属字段
       const parsed = this.parseTaskComments(note)
-      MNUtil.log("🔍 解析的任务字段：" + JSON.stringify(parsed.taskFields.map(f => ({content: f.content, index: f.index}))))
+      MNUtil.log("🔍 解析的任务字段：" + JSON.stringify(parsed.taskFields.map(f => ({content: f.content, index: f.index, fieldType: f.fieldType}))))
       MNUtil.log("🔍 是否已有所属字段：" + (parsed.belongsTo ? "是" : "否"))
+      MNUtil.log("🔍 是否有信息字段：" + (parsed.info ? "是" : "否"))
       
       if (!parsed.belongsTo) {
-        // 找到"信息"字段的位置
+        MNUtil.log("📝 准备创建所属字段...")
+        
+        // 优先使用 parsed.info
         let infoFieldIndex = -1
-        for (let i = 0; i < parsed.taskFields.length; i++) {
-          MNUtil.log(`🔍 检查字段 ${i}：` + parsed.taskFields[i].content)
-          if (parsed.taskFields[i].content === '信息') {
-            infoFieldIndex = parsed.taskFields[i].index
-            MNUtil.log("✅ 找到信息字段，索引：" + infoFieldIndex)
-            break
+        if (parsed.info) {
+          infoFieldIndex = parsed.info.index
+          MNUtil.log("✅ 通过 parsed.info 找到信息字段，索引：" + infoFieldIndex)
+        } else {
+          // 备用方案：遍历查找
+          for (let i = 0; i < parsed.taskFields.length; i++) {
+            MNUtil.log(`🔍 检查字段 ${i}：content="${parsed.taskFields[i].content}", fieldType="${parsed.taskFields[i].fieldType}"`)
+            if (parsed.taskFields[i].content === '信息') {
+              infoFieldIndex = parsed.taskFields[i].index
+              MNUtil.log("✅ 通过遍历找到信息字段，索引：" + infoFieldIndex)
+              break
+            }
           }
         }
         
@@ -4315,43 +4469,9 @@ class MNTaskManager {
     for (const note of notes) {
       let result;
       
-      // 检查是否已是任务卡片
-      if (this.isTaskCard(note)) {
-        result = await this.processExistingTaskCards(note);
-      } else {
-        // 询问任务类型
-        const taskTypes = ['目标', '关键结果', '项目', '动作'];
-        
-        // 自动检测建议类型
-        const suggestedType = this.autoDetectTaskType(
-          note.noteTitle,
-          note.childNotes
-        );
-        const suggestedIndex = taskTypes.indexOf(suggestedType);
-        
-        // 构建选项（将建议项标记出来）
-        const options = taskTypes.map((type, index) => {
-          return index === suggestedIndex ? `${type} (推荐)` : type;
-        });
-        
-        const selectedIndex = await MNUtil.userSelect(
-          "选择任务类型",
-          `为「${note.noteTitle}」选择合适的类型`,
-          options
-        );
-        
-        if (selectedIndex === 0) {
-          result = {
-            type: 'skipped',
-            noteId: note.noteId,
-            title: note.noteTitle,
-            reason: '用户取消'
-          };
-        } else {
-          const taskType = taskTypes[selectedIndex - 1];
-          result = await this.convertToTaskCard(note, taskType);
-        }
-      }
+      // 所有卡片都走 convertToTaskCard 路径
+      // convertToTaskCard 内部会处理已是任务卡片和新卡片的不同情况
+      result = await this.convertToTaskCard(note);
       
       // 归类结果
       results[result.type].push(result);

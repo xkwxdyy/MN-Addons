@@ -780,3 +780,109 @@ const fieldHtml = TaskFieldUtils.createFieldHtml(launchLink, 'subField');
 2. **查找方法选择**：对于特殊格式的字段，使用 `getIncludingCommentIndex` 而不是 `getFieldContent`
 3. **正则表达式提取**：使用正则表达式从 HTML 中提取所需的 URL
 4. **API 一致性**：查找和创建字段的方法要保持一致
+
+## MNTask 制卡功能问题汇总（2025-01-17）
+
+### 1. TaskFieldUtils 方法名冲突问题
+
+#### 问题描述
+在任务制卡功能中，所有字段的内容都返回 null，导致无法正确识别字段位置。"所属"字段被添加到卡片末尾而不是"信息"字段下方，父任务中的链接也无法移动到正确的状态字段下方。
+
+#### 问题原因
+TaskFieldUtils 类中存在两个同名的 `getFieldContent` 方法：
+```javascript
+// 第一个方法（行 260）
+static getFieldContent(comment) {
+  // 从 HTML 中提取 <span> 标签内的文本
+  const regex = /<span[^>]*>(.*?)<\/span>/
+  const match = text.match(regex)
+  return match ? match[1].trim() : text
+}
+
+// 第二个方法（行 306）
+static getFieldContent(note, fieldName) {
+  // 从笔记中查找指定字段名的内容
+  // 如果找不到返回 null
+}
+```
+
+JavaScript 不支持方法重载，第二个方法定义会覆盖第一个方法。当代码调用 `TaskFieldUtils.getFieldContent(text)` 时，实际调用的是第二个方法，参数不匹配导致返回 null。
+
+#### 解决方案
+将第一个方法重命名为 `extractFieldText`，避免方法名冲突：
+```javascript
+static extractFieldText(comment) {
+  const regex = /<span[^>]*>(.*?)<\/span>/
+  const match = text.match(regex)
+  return match ? match[1].trim() : text
+}
+```
+
+#### 经验教训
+- **JavaScript 没有方法重载**：同名方法会被后定义的覆盖
+- **命名要有区分度**：功能不同的方法应该有不同的名称
+- **调试技巧**：当方法返回意外结果时，检查是否有同名方法冲突
+
+### 2. 父子任务链接管理问题
+
+#### 问题描述
+每次对已制卡的动作卡片点击"制卡"时，父项目卡片中会出现重复的子卡片链接。
+
+#### 问题原因
+`linkParentTask` 方法直接调用 `parent.appendNoteLink(note, "To")` 创建新链接，没有检查是否已存在链接。
+
+#### 解决方案
+在创建链接前先检查是否已存在：
+```javascript
+// 1. 检查父任务中是否已有指向子任务的链接
+const parentParsed = this.parseTaskComments(parent)
+let existingLinkIndex = -1
+
+for (let link of parentParsed.links) {
+  if (link.linkedNoteId === note.noteId) {
+    existingLinkIndex = link.index
+    break
+  }
+}
+
+// 2. 根据情况创建或使用现有链接
+let linkIndexInParent
+if (existingLinkIndex !== -1) {
+  linkIndexInParent = existingLinkIndex  // 使用现有链接
+} else {
+  parent.appendNoteLink(note, "To")       // 创建新链接
+  linkIndexInParent = parent.MNComments.length - 1
+}
+```
+
+#### 链接管理最佳实践
+- **检查存在性**：创建前先检查是否已存在
+- **移动而非创建**：状态改变时移动现有链接到新位置
+- **维护唯一性**：确保父子之间只有一个链接
+
+### 3. 失效链接清理时机问题
+
+#### 问题描述
+对已是任务卡片的卡片点击"制卡"时，不会清理失效链接，导致无效链接累积。
+
+#### 问题原因
+`convertToTaskCard` 方法在处理已是任务卡片的情况时，只更新字段和处理父子关系，没有调用 `cleanupBrokenLinks`。
+
+#### 解决方案
+在处理已是任务卡片时，先清理失效链接：
+```javascript
+MNUtil.undoGrouping(() => {
+  // 先清理失效链接
+  const removedLinksCount = this.cleanupBrokenLinks(noteToConvert)
+  if (removedLinksCount > 0) {
+    MNUtil.log(`✅ 清理了 ${removedLinksCount} 个失效链接`)
+  }
+  
+  // 然后进行其他处理...
+})
+```
+
+#### 清理策略
+- **主动清理**：每次制卡时都检查并清理失效链接
+- **日志反馈**：告知用户清理了多少个失效链接
+- **性能考虑**：cleanupBrokenLinks 只在必要时调用

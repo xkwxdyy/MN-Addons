@@ -531,19 +531,32 @@ class MNTaskManager {
         MNUtil.log(`  - 所属字段: ${parsed.belongsTo ? '有' : '无'}`)
         MNUtil.log(`  - 进展字段: ${parsed.progress ? '有' : '无'}`)
         
+        // 记录是否有实际改动
+        let hasChanges = false
+        
         MNUtil.undoGrouping(() => {
           // 先清理失效链接
           MNUtil.log(`🧹 开始清理失效链接...`)
           const removedLinksCount = this.cleanupBrokenLinks(noteToConvert)
           if (removedLinksCount > 0) {
             MNUtil.log(`✅ 清理了 ${removedLinksCount} 个失效链接`)
+            hasChanges = true
           } else {
             MNUtil.log(`✅ 没有发现失效链接`)
           }
           
+          // 记录字段添加前的评论数量
+          const beforeFieldCount = noteToConvert.MNComments.length
+          
           // 添加任务字段（信息字段和状态字段）
           MNUtil.log(`📝 调用 addTaskFieldsWithStatus`)
           this.addTaskFieldsWithStatus(noteToConvert)
+          
+          // 检查是否有新字段被添加
+          if (noteToConvert.MNComments.length > beforeFieldCount) {
+            MNUtil.log(`📝 添加了 ${noteToConvert.MNComments.length - beforeFieldCount} 个新字段`)
+            hasChanges = true
+          }
           
           // 执行链接操作（处理所属字段和父子链接）
           if (parentNote && this.isTaskCard(parentNote)) {
@@ -554,6 +567,10 @@ class MNTaskManager {
             MNUtil.log(`  🔗 调用 linkParentTask...`)
             this.linkParentTask(noteToConvert, parentNote)
             MNUtil.log(`  ✅ linkParentTask 调用完成`)
+            // linkParentTask 可能会添加所属字段或移动链接，都算是改动
+            if (!parsed.belongsTo || parentNote) {
+              hasChanges = true
+            }
           } else {
             MNUtil.log(`⚠️ 父卡片不存在或不是任务卡片，跳过链接操作`)
             if (parentNote) {
@@ -565,10 +582,22 @@ class MNTaskManager {
           }
         })
         
-        return {
-          type: 'upgraded',
-          noteId: noteToConvert.noteId,
-          title: noteToConvert.noteTitle
+        // 根据是否有实际改动返回不同的结果
+        if (hasChanges) {
+          MNUtil.log(`✅ 任务卡片有更新`)
+          return {
+            type: 'upgraded',
+            noteId: noteToConvert.noteId,
+            title: noteToConvert.noteTitle
+          }
+        } else {
+          MNUtil.log(`⏭️ 任务卡片无需更新`)
+          return {
+            type: 'skipped',
+            noteId: noteToConvert.noteId,
+            title: noteToConvert.noteTitle,
+            reason: '已是最新版本任务卡片'
+          }
         }
       } else {
         // 不是任务格式，需要选择类型并转换

@@ -889,10 +889,10 @@ class MNMath {
       oldParentNotesToCleanup.forEach(cleanup => {
         try {
           // 删除当前卡片中指向旧父卡片的链接（按文本删除，避免索引问题）
-          note.removeCommentsByText(cleanup.linkText)
+          this.removeCommentsByText(note, cleanup.linkText)
           
           // 删除旧父卡片中指向当前卡片的链接
-          cleanup.targetNote.removeCommentsByText(note.noteURL)
+          this.removeLinkToNote(cleanup.targetNote, note.noteId)
         } catch (error) {
           // 忽略错误，继续处理
         }
@@ -969,7 +969,7 @@ class MNMath {
    * 获取一个卡片在另一个卡片中的 index
    */
   static getNoteIndexInAnotherNote(note, anotherNote) {
-    return anotherNote.MNComments.findIndex(comment => comment.type === "linkComment" && comment.text === note.noteURL);
+    return anotherNote.MNComments.findIndex(comment => comment && comment.type === "linkComment" && comment.text === note.noteURL);
   }
 
   /**
@@ -1087,7 +1087,7 @@ class MNMath {
       } else {
         // 否则手动检查
         let targetHasLinkBack = targetNote.MNComments.some(comment => {
-          if (comment.type === "linkComment") {
+          if (comment && comment.type === "linkComment") {
             let linkId = comment.text.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1];
             return linkId === note.noteId;
           }
@@ -1112,7 +1112,7 @@ class MNMath {
         // note 是归类卡片，targetNote 是知识点卡片
         // 知识点卡片的链接移动到"相关链接"
         let targetLinkIndex = targetNote.MNComments.findIndex(comment => {
-          if (comment.type === "linkComment") {
+          if (comment && comment.type === "linkComment") {
             let linkId = comment.text.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1];
             return linkId === note.noteId;
           }
@@ -1160,7 +1160,7 @@ class MNMath {
         
         // 处理目标卡片
         let targetLinkIndex = targetNote.MNComments.findIndex(comment => {
-          if (comment.type === "linkComment") {
+          if (comment && comment.type === "linkComment") {
             let linkId = comment.text.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1];
             return linkId === note.noteId;
           }
@@ -1225,7 +1225,7 @@ class MNMath {
         
         // 处理目标卡片
         let targetLinkIndex = targetNote.MNComments.findIndex(comment => {
-          if (comment.type === "linkComment") {
+          if (comment && comment.type === "linkComment") {
             let linkId = comment.text.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1];
             return linkId === note.noteId;
           }
@@ -1258,7 +1258,7 @@ class MNMath {
         
         // 处理目标卡片
         let targetLinkIndex = targetNote.MNComments.findIndex(comment => {
-          if (comment.type === "linkComment") {
+          if (comment && comment.type === "linkComment") {
             let linkId = comment.text.match(/marginnote[34]app:\/\/note\/([^\/]+)/)?.[1];
             return linkId === note.noteId;
           }
@@ -1327,7 +1327,7 @@ class MNMath {
     // 这样可以确保双向链接的卡片都能显示正确的新标题
     if (note.MNComments && note.MNComments.length > 0) {
       note.MNComments.forEach(comment => {
-        if (comment.type === "linkComment") {
+        if (comment && comment.type === "linkComment") {
           try {
             // 直接使用 URL 获取链接的卡片
             const linkedNote = MNNote.new(comment.text);
@@ -1997,6 +1997,9 @@ class MNMath {
       
       for (let i = 0; i < note.MNComments.length; i++) {
         let comment = note.MNComments[i];
+        if (!comment) {
+          continue;
+        }
         if (comment.type === "mergedImageComment" || comment.type === "mergedImageCommentWithDrawing") {
           // 是合并图片，继续
           continue;
@@ -3202,6 +3205,82 @@ class MNMath {
     
     // 调用去重功能
     this.removeDuplicateLinksInLastField(targetMNNote);
+  }
+
+  /**
+   * 根据文本删除评论（优化版本，支持链接评论）
+   * @param {MNNote} note - 要处理的笔记
+   * @param {string|string[]} texts - 要删除的文本或文本数组
+   */
+  static removeCommentsByText(note, texts) {
+    if (!note || !texts) {
+      return;
+    }
+    
+    // 处理参数，确保是数组
+    const textsToRemove = Array.isArray(texts) ? texts : [texts];
+    
+    // 过滤掉非字符串元素
+    const validTexts = textsToRemove.filter(text => typeof text === 'string');
+    
+    if (validTexts.length === 0) {
+      return;
+    }
+    
+    // 从后向前遍历，避免索引混乱
+    for (let i = note.comments.length - 1; i >= 0; i--) {
+      const comment = note.comments[i];
+      
+      // 检查是否需要删除
+      if (comment && comment.text && validTexts.includes(comment.text)) {
+        // 支持 TextNote、HtmlNote 和所有包含 text 属性的评论类型
+        if (comment.type === "TextNote" || comment.type === "HtmlNote") {
+          note.removeCommentByIndex(i);
+        }
+      }
+    }
+  }
+
+  /**
+   * 删除指向特定笔记的链接
+   * @param {MNNote} note - 要处理的笔记
+   * @param {string} targetNoteIdOrUrl - 目标笔记ID或URL
+   */
+  static removeLinkToNote(note, targetNoteIdOrUrl) {
+    if (!note || !targetNoteIdOrUrl) {
+      return;
+    }
+    
+    // 提取纯粹的 noteId（如果传入的是完整 URL）
+    let targetNoteId = targetNoteIdOrUrl;
+    const noteIdMatch = targetNoteIdOrUrl.match(/marginnote[34]app:\/\/note\/([A-Z0-9-]+)/i);
+    if (noteIdMatch) {
+      targetNoteId = noteIdMatch[1];
+    }
+    
+    // 使用 MNComments 获取包装后的评论
+    const comments = note.MNComments;
+    if (!comments || comments.length === 0) {
+      return;
+    }
+    
+    // 收集要删除的索引
+    const indicesToRemove = [];
+    
+    comments.forEach((comment, index) => {
+      if (comment && comment.type === "linkComment" && comment.text) {
+        // 检查链接是否指向目标笔记
+        if (comment.text.includes(targetNoteId)) {
+          indicesToRemove.push(index);
+        }
+      }
+    });
+    
+    // 从后向前删除
+    indicesToRemove.sort((a, b) => b - a);
+    indicesToRemove.forEach(index => {
+      note.removeCommentByIndex(index);
+    });
   }
 
   /**
@@ -9905,7 +9984,8 @@ MNNote.prototype.clearFailedLinks = function(){
 MNNote.prototype.fixProblemLinks = function(){
   let comments = this.MNComments
   comments.forEach((comment) => {
-    if (comment.type = "linkComment") {
+    // 添加安全检查，修复赋值错误
+    if (comment && comment.type === "linkComment") {
       let targetNote = MNNote.new(comment.text)
       if (targetNote && targetNote.groupNoteId) {
         if (

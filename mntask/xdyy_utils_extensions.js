@@ -288,6 +288,36 @@ class TaskFieldUtils {
       content: remainingText
     }
   }
+  
+  /**
+   * 获取指定字段的内容
+   * @param {MNNote} note - 任务卡片
+   * @param {string} fieldName - 要查找的字段名
+   * @returns {string|null} 字段内容，如果没找到则返回 null
+   */
+  static getFieldContent(note, fieldName) {
+    if (!note || !note.MNComments) return null
+    
+    // 遍历所有评论查找匹配的字段
+    for (let i = 0; i < note.MNComments.length; i++) {
+      const comment = note.MNComments[i]
+      if (!comment || !comment.text) continue
+      
+      const text = comment.text
+      
+      // 检查是否是任务字段
+      if (this.isTaskField(text)) {
+        const parsed = this.getFieldNameAndContent(text)
+        
+        // 检查字段名是否匹配
+        if (parsed.fieldName === fieldName) {
+          return parsed.content
+        }
+      }
+    }
+    
+    return null
+  }
 }
 
 /**
@@ -393,66 +423,108 @@ class MNTaskManager {
   /**
    * 转换为任务卡片
    * @param {MNNote} note - 要转换的卡片（如果为空则使用焦点卡片）
+   * @param {string} taskType - 指定的任务类型（可选）
    */
-  static async convertToTaskCard(note) {
+  static async convertToTaskCard(note, taskType = null) {
     // 获取要转换的卡片
     const focusNote = note || MNNote.getFocusNote()
-    if (!focusNote) return
-    
-    // 获取父卡片
-    const parentNote = focusNote.parentNote
-    
-    // 先使用 taskUtils.toNoExcerptVersion 处理摘录卡片
-    let noteToConvert = focusNote
-    if (focusNote.excerptText) {
-      const converted = taskUtils.toNoExcerptVersion(focusNote)
-      if (converted) {
-        noteToConvert = converted
+    if (!focusNote) {
+      return {
+        type: 'failed',
+        noteId: null,
+        title: '无选中卡片',
+        error: '没有选中任何卡片'
       }
     }
     
-    // 检查是否已经是任务格式
-    const isAlreadyTask = this.isTaskCard(noteToConvert)
-    
-    if (isAlreadyTask) {
-      // 已经是任务格式，只需要添加字段
-      MNUtil.undoGrouping(() => {
-        // 添加任务字段（信息字段和状态字段）
-        this.addTaskFieldsWithStatus(noteToConvert)
-        
-        // 直接执行链接操作
-        this.linkParentTask(noteToConvert, parentNote)
-      })
-    } else {
-      // 不是任务格式，需要选择类型并转换
-      const taskTypes = ["目标", "关键结果", "项目", "动作"]
-      const selectedIndex = await MNUtil.userSelect("选择任务类型", "", taskTypes)
+    try {
+      // 获取父卡片
+      const parentNote = focusNote.parentNote
       
-      if (selectedIndex === 0) return // 用户取消
+      // 先使用 taskUtils.toNoExcerptVersion 处理摘录卡片
+      let noteToConvert = focusNote
+      if (focusNote.excerptText) {
+        const converted = taskUtils.toNoExcerptVersion(focusNote)
+        if (converted) {
+          noteToConvert = converted
+        }
+      }
       
-      const selectedType = taskTypes[selectedIndex - 1]
+      // 检查是否已经是任务格式
+      const isAlreadyTask = this.isTaskCard(noteToConvert)
       
-      MNUtil.undoGrouping(() => {
-        // 构建任务路径
-        const path = this.buildTaskPath(noteToConvert)
+      if (isAlreadyTask) {
+        // 已经是任务格式，只需要添加字段
+        MNUtil.undoGrouping(() => {
+          // 添加任务字段（信息字段和状态字段）
+          this.addTaskFieldsWithStatus(noteToConvert)
+          
+          // 直接执行链接操作
+          this.linkParentTask(noteToConvert, parentNote)
+        })
         
-        // 构建新标题
-        const content = noteToConvert.noteTitle || "未命名任务"
-        const newTitle = path ? 
-          safeSpacing(`【${selectedType} >> ${path}｜未开始】${content}`) :
-          safeSpacing(`【${selectedType}｜未开始】${content}`)
+        return {
+          type: 'upgraded',
+          noteId: noteToConvert.noteId,
+          title: noteToConvert.noteTitle
+        }
+      } else {
+        // 不是任务格式，需要选择类型并转换
+        let selectedType = taskType
         
-        noteToConvert.noteTitle = newTitle
+        // 如果没有指定类型，则显示选择对话框
+        if (!selectedType) {
+          const taskTypes = ["目标", "关键结果", "项目", "动作"]
+          const selectedIndex = await MNUtil.userSelect("选择任务类型", "", taskTypes)
+          
+          if (selectedIndex === 0) {
+            return {
+              type: 'skipped',
+              noteId: focusNote.noteId,
+              title: focusNote.noteTitle,
+              reason: '用户取消'
+            }
+          }
+          
+          selectedType = taskTypes[selectedIndex - 1]
+        }
         
-        // 设置颜色（白色=未开始）
-        noteToConvert.colorIndex = 12
+        MNUtil.undoGrouping(() => {
+          // 构建任务路径
+          const path = this.buildTaskPath(noteToConvert)
+          
+          // 构建新标题
+          const content = noteToConvert.noteTitle || "未命名任务"
+          const newTitle = path ? 
+            safeSpacing(`【${selectedType} >> ${path}｜未开始】${content}`) :
+            safeSpacing(`【${selectedType}｜未开始】${content}`)
+          
+          noteToConvert.noteTitle = newTitle
+          
+          // 设置颜色（白色=未开始）
+          noteToConvert.colorIndex = 12
+          
+          // 添加任务字段（信息字段和状态字段）
+          this.addTaskFieldsWithStatus(noteToConvert)
+          
+          // 直接执行链接操作
+          this.linkParentTask(noteToConvert, parentNote)
+        })
         
-        // 添加任务字段（信息字段和状态字段）
-        this.addTaskFieldsWithStatus(noteToConvert)
-        
-        // 直接执行链接操作
-        this.linkParentTask(noteToConvert, parentNote)
-      })
+        return {
+          type: 'created',
+          noteId: noteToConvert.noteId,
+          title: noteToConvert.noteTitle
+        }
+      }
+    } catch (error) {
+      MNUtil.log(`❌ 转换任务卡片失败: ${error.message || error}`)
+      return {
+        type: 'failed',
+        noteId: focusNote.noteId,
+        title: focusNote.noteTitle,
+        error: error.message || error
+      }
     }
   }
 
@@ -481,10 +553,7 @@ class MNTaskManager {
    * @param {MNNote} note - 要添加字段的卡片
    * @param {string} taskType - 任务类型
    */
-  static addTaskFields(note, taskType) {
-    // 现在改为调用新方法
-    this.addTaskFieldsWithStatus(note)
-  }
+  // addTaskFields 方法已废弃，请直接使用 addTaskFieldsWithStatus
   
   /**
    * 添加带状态的任务字段
@@ -535,6 +604,18 @@ class MNTaskManager {
       
       // 其他类型（目标、关键结果、项目）继续添加剩余字段
       
+      // 添加主字段"所属"
+      const belongsToFieldHtml = TaskFieldUtils.createFieldHtml('所属', 'mainField')
+      MNUtil.log("📝 所属字段HTML: " + belongsToFieldHtml)
+      note.appendMarkdownComment(belongsToFieldHtml)
+      MNUtil.log("✅ 添加所属字段，索引：" + (note.MNComments.length - 1))
+      
+      // 添加主字段"启动"
+      const launchFieldHtml = TaskFieldUtils.createFieldHtml('启动', 'mainField')
+      MNUtil.log("📝 启动字段HTML: " + launchFieldHtml)
+      note.appendMarkdownComment(launchFieldHtml)
+      MNUtil.log("✅ 添加启动字段，索引：" + (note.MNComments.length - 1))
+      
       // 添加主字段"包含"
       const containsFieldHtml = TaskFieldUtils.createFieldHtml('包含', 'mainField')
       MNUtil.log("📝 包含字段HTML: " + containsFieldHtml)
@@ -575,6 +656,29 @@ class MNTaskManager {
         const text = comment.text || ''
         // 检查是否包含主字段"信息"
         if (TaskFieldUtils.isTaskField(text) && text.includes('信息')) {
+          return true
+        }
+      }
+    }
+    
+    return false
+  }
+
+  /**
+   * 检查任务卡片是否有"进展"字段
+   * @param {MNNote} note - 要检查的任务卡片
+   * @returns {boolean} 是否有进展字段
+   */
+  static hasProgressField(note) {
+    if (!note || !note.MNComments) return false
+    
+    // 检查是否有"进展"主字段
+    const comments = note.MNComments
+    for (let comment of comments) {
+      if (comment) {
+        const text = comment.text || ''
+        // 检查是否包含主字段"进展"
+        if (TaskFieldUtils.isTaskField(text) && text.includes('id="mainField"') && text.includes('>进展</span>')) {
           return true
         }
       }
@@ -1167,6 +1271,7 @@ class MNTaskManager {
     if (!this.isTaskCard(note)) return
     
     const titleParts = this.parseTaskTitle(note.noteTitle)
+    const oldStatus = titleParts.status
     const typeWithPath = titleParts.path ? 
       `${titleParts.type} >> ${titleParts.path}` : 
       titleParts.type
@@ -1194,7 +1299,29 @@ class MNTaskManager {
       note.noteTitle = newTitle
       note.colorIndex = colorIndex
       
-      // 如果有父任务，更新父任务中链接的位置
+      // 自动记录进展
+      if (oldStatus !== newStatus) {
+        let progressContent = ''
+        const taskContent = titleParts.content
+        
+        // 根据状态变化生成记录内容
+        if (oldStatus === '未开始' && newStatus === '进行中') {
+          progressContent = `开始「${taskContent}」`
+        } else if (oldStatus === '进行中' && newStatus === '已完成') {
+          progressContent = `完成「${taskContent}」`
+        } else if (oldStatus === '已完成' && newStatus === '进行中') {
+          progressContent = `重新进行「${taskContent}」`
+        } else if (newStatus === '已归档') {
+          progressContent = `归档「${taskContent}」`
+        } else {
+          progressContent = `「${taskContent}」状态变更：${oldStatus} → ${newStatus}`
+        }
+        
+        // 添加进展记录
+        this.addProgressRecord(note, progressContent)
+      }
+      
+      // 如果有父任务，更新父任务中链接的位置和进展记录
       const parent = note.parentNote
       if (parent && this.isTaskCard(parent)) {
         MNUtil.log(`🔄 更新父任务中的链接位置: ${parent.noteTitle}`)
@@ -1203,6 +1330,40 @@ class MNTaskManager {
         if (!this.hasTaskFields(parent)) {
           MNUtil.log("⚠️ 父任务缺少任务字段，先添加")
           this.addTaskFieldsWithStatus(parent)
+        }
+        
+        // 向父任务添加进展记录
+        if (oldStatus !== newStatus) {
+          // 构建进展内容，使用「名称」格式
+          const childTitle = titleParts.content
+          const childLink = `「${childTitle}」`
+          let parentProgressContent = ''
+          
+          // 根据状态变化生成进展记录
+          if (oldStatus === '未开始' && newStatus === '进行中') {
+            parentProgressContent = `开始${childLink}`
+          } else if (oldStatus === '进行中' && newStatus === '已完成') {
+            parentProgressContent = `完成${childLink}`
+          } else if (oldStatus === '已完成' && newStatus === '进行中') {
+            parentProgressContent = `重新进行${childLink}`
+          } else if (newStatus === '已归档') {
+            parentProgressContent = `归档${childLink}`
+          } else {
+            parentProgressContent = `${childLink}状态变更：${oldStatus} → ${newStatus}`
+          }
+          
+          // 检查父任务是否有"进展"字段
+          const hasProgressField = this.hasProgressField(parent)
+          if (!hasProgressField) {
+            MNUtil.log("⚠️ 父任务缺少进展字段，先添加")
+            // 添加进展字段
+            const progressFieldHtml = TaskFieldUtils.createFieldHtml('进展', 'mainField')
+            parent.appendMarkdownComment(progressFieldHtml)
+          }
+          
+          // 添加进展记录到父任务
+          this.addProgressRecord(parent, parentProgressContent)
+          MNUtil.log(`✅ 已向父任务添加进展记录: ${parentProgressContent}`)
         }
         
         // 解析父任务的评论，找到指向当前任务的链接
@@ -2698,18 +2859,7 @@ class MNTaskManager {
    * @param {MNNote[]} tasks - 今日任务列表
    * @returns {MNNote[]} 排序后的任务列表
    */
-  static sortTodayTasks(tasks) {
-    // 直接使用 TaskFilterEngine 的智能排序
-    return TaskFilterEngine.sort(tasks, {
-      strategy: 'smart',
-      weights: {
-        priority: 0.4,      // 优先级权重更高
-        urgency: 0.3,       // 紧急度次之
-        importance: 0.2,    // 重要性
-        progress: 0.1       // 进度
-      }
-    })
-  }
+  // sortTodayTasks 方法已废弃，请直接使用 TaskFilterEngine.sort
   
   /**
    * 移动任务到今日看板
@@ -3436,7 +3586,15 @@ class MNTaskManager {
     
     // 对每组按优先级和时间排序
     Object.keys(grouped).forEach(key => {
-      grouped[key] = this.sortTodayTasks(grouped[key])
+      grouped[key] = TaskFilterEngine.sort(grouped[key], {
+        strategy: 'smart',
+        weights: {
+          priority: 0.4,      // 优先级权重更高
+          urgency: 0.3,       // 紧急度次之
+          importance: 0.2,    // 重要性
+          progress: 0.1       // 进度
+        }
+      })
     })
     
     return grouped
@@ -4149,70 +4307,6 @@ class MNTaskManager {
   }
   
   /**
-   * 转换为任务卡片
-   * @param {Object} note - MN卡片对象
-   * @param {string} taskType - 任务类型
-   * @returns {Object} 处理结果
-   */
-  static async convertToTaskCard(note, taskType) {
-    try {
-      // 获取父卡片
-      const parentNote = note.parentNote;
-      
-      // 先使用 taskUtils.toNoExcerptVersion 处理摘录卡片
-      let noteToConvert = note;
-      if (note.excerptText && typeof taskUtils !== 'undefined' && taskUtils.toNoExcerptVersion) {
-        const converted = taskUtils.toNoExcerptVersion(note);
-        if (converted) {
-          noteToConvert = converted;
-        }
-      }
-      
-      // 构建任务路径
-      const path = this.buildTaskPath(noteToConvert);
-      
-      // 构建新标题
-      const content = noteToConvert.noteTitle || "未命名任务";
-      const newTitle = path ? 
-        safeSpacing(`【${taskType} >> ${path}｜未开始】${content}`) :
-        safeSpacing(`【${taskType}｜未开始】${content}`);
-      
-      MNUtil.undoGrouping(() => {
-        noteToConvert.noteTitle = newTitle;
-        
-        // 设置颜色（白色=未开始）
-        noteToConvert.colorIndex = 12;
-        
-        // 添加任务字段（信息字段和状态字段）
-        this.addTaskFieldsWithStatus(noteToConvert);
-        
-        // 清理失效链接
-        this.cleanupBrokenLinks(noteToConvert);
-        
-        // 执行链接操作（处理所属字段和父子链接）
-        if (parentNote && this.isTaskCard(parentNote)) {
-          this.linkParentTask(noteToConvert, parentNote);
-        }
-      });
-      
-      return {
-        type: 'created',
-        noteId: noteToConvert.noteId,
-        title: noteToConvert.noteTitle,
-        taskType: taskType
-      };
-    } catch (error) {
-      MNUtil.log(`❌ 转换任务卡片失败: ${error.message || error}`);
-      return {
-        type: 'failed',
-        noteId: note.noteId,
-        title: note.noteTitle,
-        error: error.message || error
-      };
-    }
-  }
-  
-  /**
    * 批量处理卡片
    * @param {Array} notes - 要处理的卡片数组
    * @returns {Object} 处理结果汇总
@@ -4727,20 +4821,22 @@ class MNTaskManager {
         MNUtil.log(`📝 层级 ${level} - 节点 ${index}：${node.noteTitle} → ${taskType}`);
         
         // 检查是否已经是任务卡片
-        if (!this.isTaskCard(node)) {
-          // 创建任务卡片标题
-          const taskTitle = `【${taskType}｜未开始】${node.noteTitle}`;
+        let isAlreadyTaskCard = this.isTaskCard(node);
+        if (!isAlreadyTaskCard) {
+          // 构建任务路径
+          const path = this.buildTaskPath(node);
+          // 创建任务卡片标题（包含路径）
+          const content = node.noteTitle || "未命名任务";
+          const taskTitle = path ? 
+            `【${taskType} >> ${path}｜未开始】${content}` :
+            `【${taskType}｜未开始】${content}`;
           node.noteTitle = taskTitle;
         }
         
-        // 转换为任务卡片
-        const result = this.convertToTaskCard(node, {
-          type: taskType,
-          status: "未开始",
-          isNewCard: !this.isTaskCard(node)
-        });
+        // 转换为任务卡片，传递 taskType 作为字符串
+        const result = this.convertToTaskCard(node, taskType);
         
-        if (result.success) {
+        if (result && (result.type === 'created' || result.type === 'upgraded')) {
           processedNodes.push({
             node: node,
             level: level,
@@ -4954,11 +5050,172 @@ class MNTaskManager {
   /**
    * 启动任务
    */
-  static isTaskLaunched = false
-  static currentLaunchedTask = undefined
+  static get isTaskLaunched() {
+    const state = taskConfig.getLaunchedTaskState()
+    return state?.isTaskLaunched || false
+  }
+  
+  static set isTaskLaunched(value) {
+    const state = taskConfig.getLaunchedTaskState()
+    state.isTaskLaunched = value
+    taskConfig.saveLaunchedTaskState(state)
+  }
+  
+  static get currentLaunchedTaskId() {
+    const state = taskConfig.getLaunchedTaskState()
+    return state?.currentLaunchedTaskId || null
+  }
+  
+  static set currentLaunchedTaskId(value) {
+    const state = taskConfig.getLaunchedTaskState()
+    state.currentLaunchedTaskId = value
+    taskConfig.saveLaunchedTaskState(state)
+  }
+  
   static launchTask(focusNote) {
-    if (focusNote && this.isTaskCard(focusNote)) {
+    try {
+      // 获取当前选中的卡片
+      if (!focusNote) {
+        focusNote = MNNote.getFocusNote()
+      }
       
+      // 如果选中了任务类型的卡片
+      if (focusNote && this.isTaskCard(focusNote)) {
+        const launchLink = this.getLaunchLink(focusNote)
+        
+        if (launchLink) {
+          const linkType = this.getLaunchLinkType(launchLink)
+          
+          switch (linkType) {
+            case 'uistatus':
+              // 暂时不处理 uistate 类型
+              MNUtil.showHUD("暂不支持 UI 状态链接")
+              break
+              
+            case 'note':
+              // 在主视图定位卡片
+              const noteId = launchLink.match(/marginnote4app:\/\/note\/([A-Za-z0-9-]+)/)?.[1]
+              if (noteId) {
+                const targetNote = MNNote.new(noteId)
+                if (targetNote) {
+                  targetNote.focusInFloatMindMap(0.5)
+                  // 更新启动状态
+                  this.isTaskLaunched = true
+                  this.currentLaunchedTaskId = focusNote.noteId
+                  MNUtil.showHUD("任务已启动")
+                } else {
+                  MNUtil.showHUD("无法找到目标卡片")
+                }
+              }
+              break
+              
+            default:
+              MNUtil.showHUD("不支持的链接类型")
+          }
+        } else {
+          MNUtil.showHUD("未找到启动链接")
+        }
+      } 
+      // 没有选中或选中的不是任务卡片
+      else {
+        // 检查是否有已启动的任务
+        if (this.isTaskLaunched && this.currentLaunchedTaskId) {
+          const launchedTask = MNNote.new(this.currentLaunchedTaskId)
+          if (launchedTask) {
+            // 在主视图定位当前启动的任务
+            launchedTask.focusInFloatMindMap(0.5)
+            // 重置启动状态
+            this.isTaskLaunched = false
+            MNUtil.showHUD("返回任务规划")
+          } else {
+            // 如果找不到任务，清空状态
+            this.isTaskLaunched = false
+            this.currentLaunchedTaskId = null
+            MNUtil.showHUD("无法找到已启动的任务")
+          }
+        } else {
+          MNUtil.showHUD("请选中一个任务卡片")
+        }
+      }
+    } catch (error) {
+      MNUtil.showHUD("启动任务失败: " + error.message)
+      if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+        MNUtil.log("🔴 launchTask error: " + error.message)
+      }
+    }
+  }
+  
+  /**
+   * 在浮窗中定位当前启动的任务
+   */
+  static locateCurrentTaskInFloat() {
+    try {
+      if (!this.currentLaunchedTaskId) {
+        MNUtil.showHUD("当前没有启动的任务")
+        return
+      }
+      
+      const launchedTask = MNNote.new(this.currentLaunchedTaskId)
+      if (launchedTask) {
+        // 在浮窗中定位，不改变 isTaskLaunched 状态
+        launchedTask.focusInFloatMindMap(0.5)
+        MNUtil.showHUD("已定位当前任务")
+      } else {
+        // 如果找不到任务，清空状态
+        this.isTaskLaunched = false
+        this.currentLaunchedTaskId = null
+        MNUtil.showHUD("无法找到已启动的任务")
+      }
+    } catch (error) {
+      MNUtil.showHUD("定位任务失败: " + error.message)
+      if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+        MNUtil.log("🔴 locateCurrentTaskInFloat error: " + error.message)
+      }
+    }
+  }
+  
+  /**
+   * 添加进展记录
+   * @param {MNNote} note - 任务卡片
+   * @param {string} content - 记录内容
+   */
+  static addProgressRecord(note, content) {
+    try {
+      if (!note || !content) return
+      
+      // 获取当前时间并格式化
+      const now = new Date()
+      const year = now.getFullYear()
+      const month = String(now.getMonth() + 1).padStart(2, '0')
+      const day = String(now.getDate()).padStart(2, '0')
+      const hours = String(now.getHours()).padStart(2, '0')
+      const minutes = String(now.getMinutes()).padStart(2, '0')
+      const timestamp = `${year}-${month}-${day} ${hours}:${minutes}`
+      
+      // 构建带样式的时间戳HTML
+      const timestampHtml = `<div style="position:relative; padding-left:28px; margin:14px 0; color:#1E40AF; font-weight:500; font-size:0.92em">
+  <div style="position:absolute; left:0; top:50%; transform:translateY(-50%); 
+              width:18px; height:18px; background:conic-gradient(#3B82F6 0%, #60A5FA 50%, #3B82F6 100%); 
+              border-radius:50%; display:flex; align-items:center; justify-content:center">
+    <div style="width:8px; height:8px; background:white; border-radius:50%"></div>
+  </div>
+  ${timestamp}
+</div>
+${content.trim()}`
+      
+      // 添加到卡片最后
+      note.appendMarkdownComment(timestampHtml)
+      
+      // 刷新卡片显示
+      note.refresh()
+      
+      if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+        MNUtil.log(`✅ 已添加进展记录: ${content}`)
+      }
+    } catch (error) {
+      if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+        MNUtil.log("🔴 addProgressRecord error: " + error.message)
+      }
     }
   }
 
@@ -4982,16 +5239,20 @@ class MNTaskManager {
   /**
    * 获取启动链接
    * @param {MNNote} note - 任务卡片
-   * @returns {Object|null} 链接对象 {text, url}
+   * @returns {string|null} 链接 URL
    */
   static getLaunchLink(note) {
-    const launchField = TaskFieldUtils.getFieldContent(note, "启动");
-    if (!launchField) return null;
+    // 查找包含 "[启动]" 的评论
+    const launchIndex = note.getIncludingCommentIndex("[启动]");
+    if (launchIndex === -1) return null;
     
-    // 解析 Markdown 链接格式 [text](url)
-    const linkMatch = launchField.match(/\[([^\]]+)\]\(([^)]+)\)/);
+    const comment = note.MNComments[launchIndex];
+    if (!comment || !comment.text) return null;
+    
+    // 从评论文本中提取链接
+    const linkMatch = comment.text.match(/\[启动\]\(([^)]+)\)/);
     if (linkMatch) {
-      return linkMatch[2]
+      return linkMatch[1];  // 返回 URL 部分
     }
     return null;
   }

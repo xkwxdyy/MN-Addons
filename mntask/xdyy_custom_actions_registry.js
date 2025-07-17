@@ -614,6 +614,30 @@ ${content.trim()}`;
       MNUtil.showHUD(`添加记录失败: ${error.message || "未知错误"}`);
     }
   });
+  
+  // launchTask - 启动任务
+  MNTaskGlobal.registerCustomAction("launchTask", function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    try {
+      MNTaskManager.launchTask(focusNote);
+    } catch (error) {
+      MNUtil.log(`❌ launchTask 执行失败: ${error.message || error}`);
+      MNUtil.showHUD(`启动任务失败: ${error.message || "未知错误"}`);
+    }
+  });
+  
+  // locateCurrentTaskInFloat - 在浮窗中定位当前任务
+  MNTaskGlobal.registerCustomAction("locateCurrentTaskInFloat", function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    try {
+      MNTaskManager.locateCurrentTaskInFloat();
+    } catch (error) {
+      MNUtil.log(`❌ locateCurrentTaskInFloat 执行失败: ${error.message || error}`);
+      MNUtil.showHUD(`定位任务失败: ${error.message || "未知错误"}`);
+    }
+  });
 
 }
 

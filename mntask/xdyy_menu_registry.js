@@ -154,11 +154,15 @@ function registerAllMenuTemplates() {
 
   // menu_quick_launch - 快速启动菜单（新增）
   MNTaskGlobal.registerMenuTemplate("menu_quick_launch", {
-    action: "addOrUpdateLaunchLink",  // 单击添加/更新启动链接
+    action: "launchTask",  // 单击启动任务
     onLongPress: {
       action: "menu",
       menuWidth: 300,
       menuItems: [
+        {
+          action: "locateCurrentTaskInFloat",
+          menuTitle: "📍 在浮窗中定位当前任务"
+        },
         {
           action: "addOrUpdateLaunchLink",
           menuTitle: "📱 添加/更新启动链接"

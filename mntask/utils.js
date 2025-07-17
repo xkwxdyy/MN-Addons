@@ -4699,7 +4699,7 @@ class taskConfig {
   
   // 定义笔记本配置字段（每个笔记本独立）
   static notebookConfigFields = [
-    'rootNoteId', 'partitionCards'
+    'rootNoteId', 'partitionCards', 'launchedTaskState'
   ]
   
   // 获取当前笔记本 ID
@@ -5854,6 +5854,55 @@ static getDescriptionByName(actionName){
     }
   }
   
+  // 获取笔记本级别的任务启动状态
+  static getLaunchedTaskState() {
+    const notebookId = this.getCurrentNotebookId()
+    if (!notebookId) return {
+      isTaskLaunched: false,
+      currentLaunchedTaskId: null
+    }
+    
+    const key = `MNTask_launchedTaskState_${notebookId}`
+    const jsonString = this.getByDefault(key, null)
+    
+    if (jsonString) {
+      try {
+        return JSON.parse(jsonString)
+      } catch (e) {
+        // 解析失败返回默认值
+      }
+    }
+    
+    return {
+      isTaskLaunched: false,
+      currentLaunchedTaskId: null
+    }
+  }
+  
+  // 保存笔记本级别的任务启动状态
+  static saveLaunchedTaskState(state) {
+    const notebookId = this.getCurrentNotebookId()
+    if (!notebookId) return
+    
+    const key = `MNTask_launchedTaskState_${notebookId}`
+    // 序列化为 JSON 字符串
+    const jsonString = JSON.stringify(state)
+    this.save(key, jsonString)
+  }
+  
+  // 清除笔记本级别的任务启动状态
+  static clearLaunchedTaskState() {
+    const notebookId = this.getCurrentNotebookId()
+    if (!notebookId) return
+    
+    const key = `MNTask_launchedTaskState_${notebookId}`
+    const state = {
+      isTaskLaunched: false,
+      currentLaunchedTaskId: null
+    }
+    this.save(key, state)
+  }
+  
   // 清理空的笔记本配置
   static async cleanEmptyNotebookConfigs() {
     try {
@@ -5899,8 +5948,12 @@ static getDescriptionByName(actionName){
                          typeof config.partitionCards === 'object' &&
                          Object.keys(config.partitionCards).length > 0
     
-    // 如果既没有根节点也没有分区卡片，认为是空配置
-    return !hasRootNote && !hasPartitions
+    const hasLaunchedTask = config.launchedTaskState && 
+                           config.launchedTaskState.currentLaunchedTaskId !== null &&
+                           config.launchedTaskState.currentLaunchedTaskId !== undefined
+    
+    // 如果既没有根节点也没有分区卡片，且没有启动的任务，认为是空配置
+    return !hasRootNote && !hasPartitions && !hasLaunchedTask
   }
   
   // 彻底清理所有 MNTask 配置

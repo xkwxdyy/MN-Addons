@@ -558,33 +558,33 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     TaskLogManager.info("切换到高级设置视图", "SettingController")
     self.viewManager.switchTo('advanced')
   },
-  taskBoardButtonTapped: function (params) {
-    let self = getTaskSettingController()
-    // 记录视图切换
-    TaskLogManager.info("切换到任务看板视图", "SettingController")
-    self.viewManager.switchTo('taskBoard')
-  },
-  todayBoardButtonTapped: function (params) {
-    let self = getTaskSettingController()
-    // 记录视图切换
-    TaskLogManager.info("切换到今日看板视图", "SettingController")
-    MNUtil.log("🎯 todayBoardButtonTapped 被调用")
-    MNUtil.log(`📱 按钮信息: ${params}`)
-    
-    // 检查是否有剪贴板内容被意外复制
-    const clipboardBefore = MNUtil.clipboardText
-    MNUtil.log(`📋 切换前剪贴板: ${clipboardBefore}`)
-    
-    self.viewManager.switchTo('todayBoard')
-    
-    // 检查切换后剪贴板是否改变
-    MNUtil.delay(0.1).then(() => {
-      const clipboardAfter = MNUtil.clipboardText
-      if (clipboardBefore !== clipboardAfter) {
-        MNUtil.log(`⚠️ 剪贴板内容改变了！新内容: ${clipboardAfter}`)
-      }
-    })
-  },
+  // taskBoardButtonTapped: function (params) {
+  //   let self = getTaskSettingController()
+  //   // 记录视图切换
+  //   TaskLogManager.info("切换到任务看板视图", "SettingController")
+  //   self.viewManager.switchTo('taskBoard')
+  // },
+  // todayBoardButtonTapped: function (params) {
+  //   let self = getTaskSettingController()
+  //   // 记录视图切换
+  //   TaskLogManager.info("切换到今日看板视图", "SettingController")
+  //   MNUtil.log("🎯 todayBoardButtonTapped 被调用")
+  //   MNUtil.log(`📱 按钮信息: ${params}`)
+  //   
+  //   // 检查是否有剪贴板内容被意外复制
+  //   const clipboardBefore = MNUtil.clipboardText
+  //   MNUtil.log(`📋 切换前剪贴板: ${clipboardBefore}`)
+  //   
+  //   self.viewManager.switchTo('todayBoard')
+  //   
+  //   // 检查切换后剪贴板是否改变
+  //   MNUtil.delay(0.1).then(() => {
+  //     const clipboardAfter = MNUtil.clipboardText
+  //     if (clipboardBefore !== clipboardAfter) {
+  //       MNUtil.log(`⚠️ 剪贴板内容改变了！新内容: ${clipboardAfter}`)
+  //     }
+  //   })
+  // },
   popupButtonTapped: function (params) {
     let self = getTaskSettingController()
     // 记录视图切换
@@ -1081,7 +1081,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     
     // 保存新的根目录卡片
     taskConfig.saveRootNoteId(note.noteId)
-    self.updateRootNoteLabel()
+    // self.updateRootNoteLabel()
     self.showHUD("✅ 已保存根目录卡片")
   },
   clearRootNoteId: async function () {
@@ -1102,7 +1102,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     
     if (result === 1) {  // 用户点击了"清除"
       taskConfig.clearRootNoteId()
-      self.updateRootNoteLabel()
+      // self.updateRootNoteLabel()
       self.showHUD("✅ 已清除根目录卡片")
     }
   },
@@ -1121,7 +1121,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       self.showHUD("❌ 卡片不存在")
       // 清除无效的 ID
       taskConfig.clearRootNoteId()
-      self.updateRootNoteLabel()
+      // self.updateRootNoteLabel()
     }
   },
   
@@ -1442,23 +1442,23 @@ taskSettingController.prototype.initViewManager = function() {
           self.setButtonText(dynamicAction)
         }
       },
-      taskBoard: {
-        view: 'taskBoardView',
-        button: 'taskBoardButton',
-        selectedColor: '#457bd3',
-        normalColor: '#9bb2d6',
-        onShow: function(self) {
-          self.updateRootNoteLabel()
-          self.updateBoardLabel('target')
-          self.updateBoardLabel('project')
-          self.updateBoardLabel('action')
-          self.updateBoardLabel('completed')
-          self.settingViewLayout()
-        }
-      },
+      // taskBoard: {
+      //   view: 'taskBoardView',
+      //   button: 'taskBoardButton',
+      //   selectedColor: '#457bd3',
+      //   normalColor: '#9bb2d6',
+      //   onShow: function(self) {
+      //     self.updateRootNoteLabel()
+      //     self.updateBoardLabel('target')
+      //     self.updateBoardLabel('project')
+      //     self.updateBoardLabel('action')
+      //     self.updateBoardLabel('completed')
+      //     self.settingViewLayout()
+      //   }
+      // },
       todayBoard: {
         view: 'todayBoardWebView',
-        button: 'todayBoardButton',
+        // button: 'todayBoardButton',
         selectedColor: '#457bd3',
         normalColor: '#9bb2d6',
         onShow: function(self) {
@@ -1604,7 +1604,7 @@ taskSettingController.prototype.settingViewLayout = function (){
     taskFrame.set(this.configView,0,0,width-2,height-60)
     taskFrame.set(this.advanceView,0,0,width-2,height-60)
     taskFrame.set(this.popupEditView,0,0,width-2,height-60)
-    taskFrame.set(this.taskBoardView,0,0,width-2,height-60)
+    // taskFrame.set(this.taskBoardView,0,0,width-2,height-60)
     taskFrame.set(this.resizeButton,width-25,height-80)
     if (width < 650) {
       taskFrame.set(this.webviewInput, 5, 195, width-10, height-255)
@@ -1647,18 +1647,19 @@ taskSettingController.prototype.settingViewLayout = function (){
     this.tabView.frame = tabViewFrame
     
     // 设置 tabView 内部的按钮 - 看板按钮在最前
-    taskFrame.set(this.todayBoardButton, 5, 0)
-    taskFrame.set(this.configButton, this.todayBoardButton.frame.x + this.todayBoardButton.frame.width+5, 0)
+    // taskFrame.set(this.todayBoardButton, 5, 0)
+    taskFrame.set(this.configButton, 5, 0)  // configButton 现在是第一个按钮
     taskFrame.set(this.dynamicButton, this.configButton.frame.x + this.configButton.frame.width+5, 0)
     taskFrame.set(this.popupButton, this.dynamicButton.frame.x + this.dynamicButton.frame.width+5, 0)
     taskFrame.set(this.advancedButton, this.popupButton.frame.x + this.popupButton.frame.width+5, 0)
-    taskFrame.set(this.taskBoardButton, this.advancedButton.frame.x + this.advancedButton.frame.width+5, 0)
+    // taskFrame.set(this.taskBoardButton, this.advancedButton.frame.x + this.advancedButton.frame.width+5, 0)
     
     // 关闭按钮与 tabView 对齐
     taskFrame.set(this.closeButton, tabViewFrame.width + 5, tabViewFrame.y)
     
     // 设置 tabView 的 contentSize，使按钮可以横向滚动
-    const tabContentWidth = this.taskBoardButton.frame.x + this.taskBoardButton.frame.width + 10;
+    // const tabContentWidth = this.taskBoardButton.frame.x + this.taskBoardButton.frame.width + 10;
+    const tabContentWidth = this.advancedButton.frame.x + this.advancedButton.frame.width + 10;
     this.tabView.contentSize = {width: tabContentWidth, height: 30}
     let scrollHeight = 5
     if (MNUtil.appVersion().type === "macOS") {
@@ -1735,7 +1736,7 @@ taskSettingController.prototype.settingViewLayout = function (){
     // taskFrame.set(this.pasteTodayBoardButton, 20+2*(width-30)/3, 555, (width-30)/3, 35)
     
     // 设置 ScrollView 的 contentSize，为多个看板预留空间（已移除今日看板）
-    this.taskBoardView.contentSize = {width: width-2, height: 600}
+    // this.taskBoardView.contentSize = {width: width-2, height: 600}
     
     // 今日看板 WebView 布局
     taskFrame.set(this.todayBoardWebView, 0, 0, width-2, height-60)
@@ -1789,20 +1790,20 @@ try {
   this.creatView("advanceView","settingView","#9bb2d6",0.0)
   this.advanceView.hidden = true
 
-  this.createScrollView("taskBoardView","settingView")
-  this.taskBoardView.hidden = true
-  this.taskBoardView.backgroundColor = MNUtil.hexColorAlpha("#9bb2d6",0.0)
+  // this.createScrollView("taskBoardView","settingView")
+  // this.taskBoardView.hidden = true
+  // this.taskBoardView.backgroundColor = MNUtil.hexColorAlpha("#9bb2d6",0.0)
   
   // 创建今日看板视图（包含 WebView）
   this.creatView("todayBoardWebView","settingView","#9bb2d6",0.0)
   this.todayBoardWebView.hidden = true
 
 
-  this.createButton("todayBoardButton","todayBoardButtonTapped:","tabView")
-  MNButton.setConfig(this.todayBoardButton, {color:"#457bd3",alpha:0.9,opacity:1.0,title:"看板",font:17,radius:10,bold:true})
-  this.todayBoardButton.width = this.todayBoardButton.sizeThatFits({width:150,height:30}).width+15
-  this.todayBoardButton.height = 30
-  this.todayBoardButton.selected = true
+  // this.createButton("todayBoardButton","todayBoardButtonTapped:","tabView")
+  // MNButton.setConfig(this.todayBoardButton, {color:"#457bd3",alpha:0.9,opacity:1.0,title:"看板",font:17,radius:10,bold:true})
+  // this.todayBoardButton.width = this.todayBoardButton.sizeThatFits({width:150,height:30}).width+15
+  // this.todayBoardButton.height = 30
+  // this.todayBoardButton.selected = true
   
   this.createButton("configButton","configButtonTapped:","tabView")
   MNButton.setConfig(this.configButton, {alpha:0.9,opacity:1.0,title:"Buttons",font:17,radius:10,bold:true})
@@ -1828,11 +1829,11 @@ try {
   this.advancedButton.height = 30
   this.advancedButton.selected = false
 
-  this.createButton("taskBoardButton","taskBoardButtonTapped:","tabView")
-  MNButton.setConfig(this.taskBoardButton, {alpha:0.9,opacity:1.0,title:"Task Board",font:17,radius:10,bold:true})
-  this.taskBoardButton.width = this.taskBoardButton.sizeThatFits({width:150,height:30}).width+15
-  this.taskBoardButton.height = 30
-  this.taskBoardButton.selected = false
+  // this.createButton("taskBoardButton","taskBoardButtonTapped:","tabView")
+  // MNButton.setConfig(this.taskBoardButton, {alpha:0.9,opacity:1.0,title:"Task Board",font:17,radius:10,bold:true})
+  // this.taskBoardButton.width = this.taskBoardButton.sizeThatFits({width:150,height:30}).width+15
+  // this.taskBoardButton.height = 30
+  // this.taskBoardButton.selected = false
 
   this.createButton("closeButton","closeButtonTapped:","view")
   MNButton.setConfig(this.closeButton, {color:"#e06c75",alpha:0.9,opacity:1.0,radius:10,bold:true})
@@ -2055,56 +2056,56 @@ try {
   let color = ["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9fdc"]
 
   // Task Board 视图内容
-  this.createButton("focusRootNoteButton","focusRootNoteId:","taskBoardView")
-  MNButton.setConfig(this.focusRootNoteButton, {title:"Focus",color:"#457bd3",alpha:0.8})
+  // this.createButton("focusRootNoteButton","focusRootNoteId:","taskBoardView")
+  // MNButton.setConfig(this.focusRootNoteButton, {title:"Focus",color:"#457bd3",alpha:0.8})
   
-  this.createButton("clearRootNoteButton","clearRootNoteId:","taskBoardView")
-  MNButton.setConfig(this.clearRootNoteButton, {title:"Clear",color:"#9bb2d6",alpha:0.8})
+  // this.createButton("clearRootNoteButton","clearRootNoteId:","taskBoardView")
+  // MNButton.setConfig(this.clearRootNoteButton, {title:"Clear",color:"#9bb2d6",alpha:0.8})
   
-  this.createButton("pasteRootNoteButton","pasteRootNoteId:","taskBoardView")
-  MNButton.setConfig(this.pasteRootNoteButton, {title:"Paste",color:"#9bb2d6",alpha:0.8})
+  // this.createButton("pasteRootNoteButton","pasteRootNoteId:","taskBoardView")
+  // MNButton.setConfig(this.pasteRootNoteButton, {title:"Paste",color:"#9bb2d6",alpha:0.8})
 
   // 添加说明文本
-  this.createButton("rootNoteLabel","","taskBoardView")
-  MNButton.setConfig(this.rootNoteLabel, {
-    title:"任务管理总看板:",
-    color:"#457bd3",
-    alpha:0.3,
-    font:16,
-    bold:true
-  })
-  this.rootNoteLabel.userInteractionEnabled = false
+  // this.createButton("rootNoteLabel","","taskBoardView")
+  // MNButton.setConfig(this.rootNoteLabel, {
+  //   title:"任务管理总看板:",
+  //   color:"#457bd3",
+  //   alpha:0.3,
+  //   font:16,
+  //   bold:true
+  // })
+  // this.rootNoteLabel.userInteractionEnabled = false
   
   // 更新标签显示
-  this.updateRootNoteLabel()
+  // this.updateRootNoteLabel()
   
   // 创建目标看板
-  this.createBoardBinding({
-    key: 'target',
-    title: '目标看板:',
-    parent: 'taskBoardView'
-  })
+  // this.createBoardBinding({
+  //   key: 'target',
+  //   title: '目标看板:',
+  //   parent: 'taskBoardView'
+  // })
   
   // 创建项目看板
-  this.createBoardBinding({
-    key: 'project',
-    title: '项目看板:',
-    parent: 'taskBoardView'
-  })
+  // this.createBoardBinding({
+  //   key: 'project',
+  //   title: '项目看板:',
+  //   parent: 'taskBoardView'
+  // })
   
   // 创建动作看板
-  this.createBoardBinding({
-    key: 'action',
-    title: '动作看板:',
-    parent: 'taskBoardView'
-  })
+  // this.createBoardBinding({
+  //   key: 'action',
+  //   title: '动作看板:',
+  //   parent: 'taskBoardView'
+  // })
   
   // 创建已完成存档区看板
-  this.createBoardBinding({
-    key: 'completed',
-    title: '已完成存档区:',
-    parent: 'taskBoardView'
-  })
+  // this.createBoardBinding({
+  //   key: 'completed',
+  //   title: '已完成存档区:',
+  //   parent: 'taskBoardView'
+  // })
   
   // 创建今日看板 - 已移至 WebView 实现，注释掉旧的实现
   // this.createBoardBinding({
@@ -2125,13 +2126,13 @@ try {
  * 更新根目录标签显示
  * @this {settingController}
  */
-taskSettingController.prototype.updateRootNoteLabel = function() {
-  let rootNoteId = taskConfig.getRootNoteId()
-  let title = rootNoteId ? "任务管理总看板: ✅" : "任务管理总看板: ❌"
-  MNButton.setConfig(this.rootNoteLabel, {
-    title: title
-  })
-}
+// taskSettingController.prototype.updateRootNoteLabel = function() {
+//   let rootNoteId = taskConfig.getRootNoteId()
+//   let title = rootNoteId ? "任务管理总看板: ✅" : "任务管理总看板: ❌"
+//   MNButton.setConfig(this.rootNoteLabel, {
+//     title: title
+//   })
+// }
 
 /**
  * 创建通用的看板绑定组件

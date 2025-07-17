@@ -10,7 +10,13 @@
       "Bash(ls:*)",
       "Bash(find:*)",
       "Bash(gh auth:*)",
-      "Bash(brew install:*)"
+      "Bash(brew install:*)",
+      "Bash(gh issue create:*)",
+      "Bash(git add:*)",
+      "Bash(gh issue comment:*)",
+      "Bash(gh issue close:*)",
+      "Bash(git push:*)",
+      "mcp__promptx__promptx_remember"
     ],
     "deny": []
   }

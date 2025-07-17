@@ -3,8 +3,19 @@
   "stateHistory": [
     {
       "from": "initial",
+      "command": "remember",
+      "timestamp": "2025-07-17T17:04:48.018Z",
+      "args": [
+        "assistant",
+        "MN-Addon 项目 Git 操作重要事项：\n1. 提交后必须执行 git push 推送到远程仓库，不要忘记 push\n2. 远程仓库名是 github 而不是默认的 origin\n3. 正确命令：git push github [分支名]\n4. 错误命令：git push origin [分支名] 会报错\n5. 在创建 GitHub Issue 之前必须确保代码已推送",
+        "--tags",
+        "git push github remote MN-Addon"
+      ]
+    },
+    {
+      "from": "memory_saved",
       "command": "init",
-      "timestamp": "2025-07-16T17:10:00.754Z",
+      "timestamp": "2025-07-17T17:04:55.800Z",
       "args": [
         {
           "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon"
@@ -14,14 +25,14 @@
     {
       "from": "initialized",
       "command": "remember",
-      "timestamp": "2025-07-17T03:15:37.952Z",
+      "timestamp": "2025-07-17T17:05:08.466Z",
       "args": [
         "assistant",
-        "MN-Addon 开发新经验（2025-01-17）：\n\n1. **任务启动功能闪退问题**\n   - 原因：NSUserDefaults 不能直接存储 JavaScript 对象，尝试将 JS 对象传给 setObjectForKey 会导致崩溃\n   - 解决：使用 JSON.stringify/JSON.parse 进行序列化和反序列化\n   - 文件：utils.js 的 saveLaunchedTaskState 和 getLaunchedTaskState 方法\n   - 教训：JSB 框架下 JavaScript 对象必须序列化为字符串才能传给 ObjC API\n\n2. **任务字段查找方法问题**\n   - 原因：启动字段的格式特殊，整个 [启动](url) 作为字段名存在，TaskFieldUtils.getFieldContent 无法匹配\n   - 解决：使用 note.getIncludingCommentIndex(\"[启动]\") 查找包含特定文本的评论\n   - 文件：xdyy_utils_extensions.js 的 getLaunchLink 方法\n   - 教训：对于特殊格式的字段，需要使用相应的查找方法\n\n3. **其他重要修复**\n   - 移除了设置顶部的\"看板\"按钮（注释掉 todayBoardButton 相关代码）\n   - 修改进展记录格式从 [名称](url) 改为「名称」\n   - 版本更新至 0.12.7",
+        "MN-Addon 项目 Git 操作重要事项：\n1. 提交后必须执行 git push 推送到远程仓库，不要忘记 push\n2. 远程仓库名是 github 而不是默认的 origin\n3. 正确命令：git push github [分支名]\n4. 错误命令：git push origin [分支名] 会报错\n5. 在创建 GitHub Issue 之前必须确保代码已推送\n6. 查看远程仓库配置：git remote -v",
         "--tags",
-        "MN-Addon JavaScript NSUserDefaults 崩溃修复 字段查找"
+        "git push github remote MN-Addon"
       ]
     }
   ],
-  "lastUpdated": "2025-07-17T03:15:38.024Z"
+  "lastUpdated": "2025-07-17T17:05:08.471Z"
 }

@@ -5,7 +5,7 @@
  */
 
 // 创建全局注册表
-if (typeof global === 'undefined') {
+if (typeof global === "undefined") {
   var global = {};
 }
 
@@ -17,7 +17,7 @@ global.customMenuTemplates = {};
  * @param {string} name - 菜单名称
  * @param {Object} template - 菜单模板对象
  */
-global.registerMenuTemplate = function(name, template) {
+global.registerMenuTemplate = function (name, template) {
   global.customMenuTemplates[name] = template;
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
     MNUtil.log(`📦 已注册菜单模板: ${name}`);
@@ -29,7 +29,7 @@ global.registerMenuTemplate = function(name, template) {
  * @param {string} name - 菜单名称
  * @returns {Object|null} 菜单模板对象
  */
-global.getMenuTemplate = function(name) {
+global.getMenuTemplate = function (name) {
   return global.customMenuTemplates[name] || null;
 };
 
@@ -56,11 +56,11 @@ function registerAllMenuTemplates() {
         },
         {
           action: "linkRemoveDuplicatesAfterApplication",
-          menuTitle: "    “应用”下方的链接去重"
+          menuTitle: "    “应用”下方的链接去重",
         },
         {
-          "action": "reorderContainsFieldLinks",
-          "menuTitle": "  定义“相关链接”下方的链接重新排序",
+          action: "reorderContainsFieldLinks",
+          menuTitle: "  定义“相关链接”下方的链接重新排序",
         },
         "⬇️ 字段处理",
         {
@@ -80,19 +80,18 @@ function registerAllMenuTemplates() {
           action: "clearContentKeepExcerpt",
           menuTitle: "    只保留摘录，无标题",
         },
-      ]
-    }
+      ],
+    },
   });
-  
+
   // menu_think
   global.registerMenuTemplate("menu_think", {
     action: "moveUpThoughtPointsToBottom",
     onLongPress: {
       action: "menu",
       menuWidth: 330,
-      menuItems: [
-      ]
-    }
+      menuItems: [],
+    },
   });
 
   // menu_study
@@ -102,9 +101,9 @@ function registerAllMenuTemplates() {
     menuItems: [
       {
         action: "autoMoveLinksBetweenCards",
-        menuTitle: "自动移动卡片之间的链接"
-      }
-    ]
+        menuTitle: "自动移动卡片之间的链接",
+      },
+    ],
   });
 
   // menu_reference
@@ -119,18 +118,21 @@ function registerAllMenuTemplates() {
           "⬇️ ➕引用",
           {
             action: "referenceRefByRefNumAndFocusInMindMap",
-            menuTitle: "选中「具体引用」卡片+输入文献号→ ➕引用 + 剪切归类 + 主视图定位"
+            menuTitle:
+              "选中「具体引用」卡片+输入文献号→ ➕引用 + 剪切归类 + 主视图定位",
           },
           {
             action: "referenceRefByRefNumAddFocusInFloatMindMap",
-            menuTitle: "选中「具体引用」卡片+输入文献号→ ➕引用 + 剪切归类 + 浮窗定位"
+            menuTitle:
+              "选中「具体引用」卡片+输入文献号→ ➕引用 + 剪切归类 + 浮窗定位",
           },
           "⬇️ ➕「具体引用情况」汇总卡片",
           {
             action: "referenceCreateClassificationNoteByIdAndFocusNote",
-            menuTitle: "选中「参考文献摘录」卡片+输入文献号→ 「具体引用情况」汇总卡片 + 浮窗定位",
+            menuTitle:
+              "选中「参考文献摘录」卡片+输入文献号→ 「具体引用情况」汇总卡片 + 浮窗定位",
           },
-        ]
+        ],
       },
       {
         action: "menu",
@@ -148,13 +150,13 @@ function registerAllMenuTemplates() {
               },
               {
                 action: "referenceStoreOneIdForCurrentDocByFocusNote",
-                menuTitle: "绑定「选中的卡片」➡️ 文献号"
+                menuTitle: "绑定「选中的卡片」➡️ 文献号",
               },
               {
                 action: "referenceTestIfIdInCurrentDoc",
                 menuTitle: "检测文献号的🆔绑定",
               },
-            ]
+            ],
           },
           {
             action: "menu",
@@ -163,13 +165,13 @@ function registerAllMenuTemplates() {
             menuItems: [
               {
                 action: "referenceExportReferenceIdsToClipboard",
-                menuTitle: "导出参考文献卡片🆔到剪切板"
+                menuTitle: "导出参考文献卡片🆔到剪切板",
               },
               {
                 action: "referenceExportReferenceIdsToFile",
-                menuTitle: "导出参考文献卡片🆔到文件"
+                menuTitle: "导出参考文献卡片🆔到文件",
               },
-            ]
+            ],
           },
           {
             action: "menu",
@@ -178,15 +180,15 @@ function registerAllMenuTemplates() {
             menuItems: [
               {
                 action: "referenceInputReferenceIdsFromClipboard",
-                menuTitle: "从剪切板导入参考文献卡片🆔"
+                menuTitle: "从剪切板导入参考文献卡片🆔",
               },
               {
                 action: "referenceInputReferenceIdsFromFile",
-                menuTitle: "从文件导入参考文献卡片🆔"
+                menuTitle: "从文件导入参考文献卡片🆔",
               },
-            ]
-          }
-        ]
+            ],
+          },
+        ],
       },
       {
         action: "menu",
@@ -194,7 +196,7 @@ function registerAllMenuTemplates() {
         menuItems: [
           {
             action: "referenceInfoAuthor",
-            menuTitle: "👨‍🎓 作者"
+            menuTitle: "👨‍🎓 作者",
           },
           {
             action: "referenceInfoYear",
@@ -222,17 +224,17 @@ function registerAllMenuTemplates() {
             menuItems: [
               {
                 action: "referenceInfoRefFromInputRefNum",
-                menuTitle: "输入文献号录入引用样式"
+                menuTitle: "输入文献号录入引用样式",
               },
               {
                 action: "referenceInfoRefFromFocusNote",
-                menuTitle: "选中摘录自动录入引用样式"
+                menuTitle: "选中摘录自动录入引用样式",
               },
               {
                 action: "referenceInfoInputRef",
-                menuTitle: "手动输入引用样式"
-              }
-            ]
+                menuTitle: "手动输入引用样式",
+              },
+            ],
           },
           {
             action: "menu",
@@ -240,19 +242,19 @@ function registerAllMenuTemplates() {
             menuItems: [
               {
                 action: "referenceBibInfoPasteFromClipboard",
-                menuTitle: "从剪切板粘贴 .bib 信息"
+                menuTitle: "从剪切板粘贴 .bib 信息",
               },
               {
                 action: "referenceBibInfoCopy",
-                menuTitle: "复制 .bib 信息"
+                menuTitle: "复制 .bib 信息",
               },
               {
                 action: "referenceBibInfoExport",
                 menuTitle: "导出 .bib 信息",
-              }
-            ]
-          }
-        ]
+              },
+            ],
+          },
+        ],
       },
       {
         action: "menu",
@@ -264,19 +266,18 @@ function registerAllMenuTemplates() {
           },
           {
             action: "referenceAuthorInfoFromClipboard",
-            menuTitle: "粘贴个人信息"
+            menuTitle: "粘贴个人信息",
           },
           {
             action: "referenceAuthorNoteMake",
-            menuTitle: "作者卡片制卡"
-          }
-        ]
+            menuTitle: "作者卡片制卡",
+          },
+        ],
       },
       {
         action: "menu",
         menuTitle: "➡️ 📄期刊卡片",
-        menuItems: [
-        ]
+        menuItems: [],
       },
       {
         action: "menu",
@@ -284,15 +285,15 @@ function registerAllMenuTemplates() {
         menuItems: [
           {
             action: "referenceKeywordsAddRelatedKeywords",
-            menuTitle: "➕相关关键词"
+            menuTitle: "➕相关关键词",
           },
           {
             action: "referenceGetRelatedReferencesByKeywords",
-            menuTitle: "根据关键词筛选文献"
-          }
-        ]
+            menuTitle: "根据关键词筛选文献",
+          },
+        ],
       },
-    ]
+    ],
   });
 
   // menu_text
@@ -305,17 +306,17 @@ function registerAllMenuTemplates() {
         menuItems: [
           {
             action: "selectionTextToTitleCase",
-            menuTitle: "标题规范"
+            menuTitle: "标题规范",
           },
           {
             action: "selectionTextToLowerCase",
-            menuTitle: "转小写"
+            menuTitle: "转小写",
           },
           {
             action: "selectionTextHandleSpaces",
-            menuTitle: "处理空格"
-          }
-        ]
+            menuTitle: "处理空格",
+          },
+        ],
       },
       {
         action: "menu",
@@ -323,19 +324,19 @@ function registerAllMenuTemplates() {
         menuItems: [
           {
             action: "copiedTextToTitleCase",
-            menuTitle: "标题规范"
+            menuTitle: "标题规范",
           },
           {
             action: "copiedTextToLowerCase",
-            menuTitle: "转小写"
+            menuTitle: "转小写",
           },
           {
             action: "copiedTextHandleSpaces",
-            menuTitle: "处理空格"
-          }
-        ]
+            menuTitle: "处理空格",
+          },
+        ],
       },
-    ]
+    ],
   });
 
   // menu_handtool_text
@@ -346,18 +347,18 @@ function registerAllMenuTemplates() {
       menuItems: [
         {
           action: "selectionTextToTitleCase",
-          menuTitle: "标题规范"
+          menuTitle: "标题规范",
         },
         {
           action: "selectionTextToLowerCase",
-          menuTitle: "转小写"
+          menuTitle: "转小写",
         },
         {
           action: "selectionTextHandleSpaces",
-          menuTitle: "处理空格"
-        }
-      ]
-    }
+          menuTitle: "处理空格",
+        },
+      ],
+    },
   });
 
   // menu_card
@@ -404,16 +405,16 @@ function registerAllMenuTemplates() {
         "🔄 处理旧卡片",
         {
           action: "batchChangeClassificationTitles",
-          menuTitle: "    批量更新归类卡片标题"
+          menuTitle: "    批量更新归类卡片标题",
         },
         {
           action: "renewKnowledgeNoteIntoParentNote",
-          menuTitle: "    更新知识点卡片到父卡片中"
+          menuTitle: "    更新知识点卡片到父卡片中",
         },
         "⬇️ 修改标题",
         {
           action: "removeTitlePrefix",
-          menuTitle: "    去掉卡片前缀"
+          menuTitle: "    去掉卡片前缀",
         },
         "ℹ️ 获取卡片信息",
         {
@@ -423,14 +424,23 @@ function registerAllMenuTemplates() {
         {
           action: "copyFocusNotesURLArr",
           menuTitle: "    复制卡片 URL",
-        }
-      ]
-    }
-  }); 
+        },
+      ],
+    },
+  });
 
   // menu_excerpt
   global.registerMenuTemplate("menu_excerpt", {
     action: "moveToExcerptPartBottom",
+    onLongPress: {
+      action: "menu",
+      menuItems: [
+        {
+          action: "mergeToParentAndMoveCommentToExcerpt",
+          menuTitle: "合并到父卡片并移动评论到摘录",
+        },
+      ],
+    },
   });
 
   // menu_card_pin
@@ -449,14 +459,14 @@ function registerAllMenuTemplates() {
         action: "openPinnedNote-3",
         menuTitle: "Hᵖ(𝕋)",
       },
-    ]
+    ],
   });
 
   // menu_makeCards
   global.registerMenuTemplate("menu_makeCards", {
     action: "makeNote",
     doubleClick: {
-      action: "doubleClickMakeNote"
+      action: "doubleClickMakeNote",
     },
     onLongPress: {
       action: "menu",
@@ -465,7 +475,7 @@ function registerAllMenuTemplates() {
         "🪄 制卡",
         {
           action: "makeCardWithoutFocus",
-          menuTitle: "    不定位制卡"
+          menuTitle: "    不定位制卡",
         },
         {
           action: "menu",
@@ -473,25 +483,25 @@ function registerAllMenuTemplates() {
           menuItems: [
             {
               action: "referencePaperMakeCards",
-              menuTitle: "📄 论文制卡"
+              menuTitle: "📄 论文制卡",
             },
             {
               action: "referenceBookMakeCards",
-              menuTitle: "📚 书作制卡"
+              menuTitle: "📚 书作制卡",
             },
             {
               action: "referenceSeriesBookMakeCard",
-              menuTitle: "📚 系列书作制卡"
+              menuTitle: "📚 系列书作制卡",
             },
             {
               action: "referenceOneVolumeJournalMakeCards",
-              menuTitle: "📄 整卷期刊制卡"
+              menuTitle: "📄 整卷期刊制卡",
             },
             {
               action: "referenceAuthorNoteMake",
-              menuTitle: "作者卡片制卡"
+              menuTitle: "作者卡片制卡",
             },
-          ]
+          ],
         },
         "⚙️ 处理卡片",
         {
@@ -501,14 +511,14 @@ function registerAllMenuTemplates() {
         "🪄 生成卡片",
         {
           action: "addNewIdeaNote",
-          menuTitle: "    生成「思路」卡片"
+          menuTitle: "    生成「思路」卡片",
         },
         {
           action: "addNewSummaryNote",
-          menuTitle: "    生成「总结」卡片"
+          menuTitle: "    生成「总结」卡片",
         },
-      ]
-    }
+      ],
+    },
   });
 
   // menu_htmlmdcomment
@@ -524,10 +534,10 @@ function registerAllMenuTemplates() {
         },
         {
           action: "renewContentsToHtmlMarkdownCommentType",
-          menuTitle: '🔄 更新文本内容为 HtmlMD 评论',
+          menuTitle: "🔄 更新文本内容为 HtmlMD 评论",
         },
-      ]
-    }
+      ],
+    },
   });
 
   // menu_proof
@@ -539,108 +549,114 @@ function registerAllMenuTemplates() {
       menuItems: [
         {
           action: "upwardMergeWithStyledComments",
-          menuTitle: "将子卡片作为证明要点合并"
+          menuTitle: "将子卡片作为证明要点合并",
         },
         "🔍 OCR",
         {
           action: "ocrAsProofTitle",
-          menuTitle: "    OCR >> 设置为标题"
+          menuTitle: "    OCR >> 设置为标题",
         },
         {
           action: "ocrAsProofTitleWithTranslation",
-          menuTitle: "    OCR >> 翻译 >> 设置为标题"
+          menuTitle: "    OCR >> 翻译 >> 设置为标题",
         },
         {
           action: "ocrAllUntitledDescendants",
-          menuTitle: "    【批量】OCR >> 设置为标题"
+          menuTitle: "    【批量】OCR >> 设置为标题",
         },
         {
           action: "ocrAllUntitledDescendantsWithTranslation",
-          menuTitle: "    【批量】OCR >> 翻译 >> 设置为标题"
+          menuTitle: "    【批量】OCR >> 翻译 >> 设置为标题",
         },
         "🌐 翻译",
         {
           action: "translateAllDescendants",
-          menuTitle: "    【批量】翻译标题"
+          menuTitle: "    【批量】翻译标题",
         },
         {
-          "action": "menu",
-          "menuTitle": "⚙️ 设置",
-          "menuWidth": 200,
-          "menuItems": [
+          action: "menu",
+          menuTitle: "⚙️ 设置",
+          menuWidth: 200,
+          menuItems: [
             {
               action: "switchOCRSource",
-              menuTitle: "切换 OCR 源"
+              menuTitle: "切换 OCR 源",
             },
             {
               action: "switchTranslateModel",
-              menuTitle: "切换翻译模型"
-            }
-          ]
-        }
-      ]
-    }
+              menuTitle: "切换翻译模型",
+            },
+          ],
+        },
+      ],
+    },
   });
 
-  global.registerMenuTemplate("hideAddonBar", JSON.stringify({
-    action: "hideAddonBar"
-  }));
+  global.registerMenuTemplate(
+    "hideAddonBar",
+    JSON.stringify({
+      action: "hideAddonBar",
+    }),
+  );
 
   // 搜索功能菜单
   global.registerMenuTemplate("menu_search", {
-    action: "searchNotes",  // 单击：搜索笔记
-    onLongPress: {  // 长按：显示菜单
+    action: "searchNotes", // 单击：搜索笔记
+    onLongPress: {
+      // 长按：显示菜单
       action: "menu",
       menuWidth: 300,
       menuItems: [
         {
           action: "showSearchBoard",
-          menuTitle: "📋 打开搜索看板"
+          menuTitle: "📋 打开搜索看板",
         },
         {
           action: "searchDefinition",
-          menuTitle: "📚 搜索上层定义卡片的目录"
+          menuTitle: "📚 搜索上层定义卡片的目录",
         },
         {
           action: "manageSearchRoots",
-          menuTitle: "📁 管理搜索根目录"
-        }
-      ]
-    }
+          menuTitle: "📁 管理搜索根目录",
+        },
+      ],
+    },
   });
-  
+
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
-    MNUtil.log(`🚀 已注册 ${Object.keys(global.customMenuTemplates).length} 个自定义菜单模板`);
+    MNUtil.log(
+      `🚀 已注册 ${Object.keys(global.customMenuTemplates).length} 个自定义菜单模板`,
+    );
   }
 }
 
 // 扩展 toolbarConfig.template 方法
-if (typeof toolbarConfig !== 'undefined') {
+if (typeof toolbarConfig !== "undefined") {
   // 保存原始的 template 方法
   const originalTemplate = toolbarConfig.template;
-  
+
   // 重写 template 方法
-  toolbarConfig.template = function(action) {
+  toolbarConfig.template = function (action) {
     // 先检查自定义菜单模板
     const customTemplate = global.getMenuTemplate(action);
     if (customTemplate) {
       // 如果是字符串，直接返回
-      if (typeof customTemplate === 'string') {
+      if (typeof customTemplate === "string") {
         return customTemplate;
       }
       // 如果是对象，转换为JSON字符串
       return JSON.stringify(customTemplate, null, 2);
     }
-    
+
     // 如果不是自定义模板，调用原始方法
-    if (originalTemplate && typeof originalTemplate === 'function') {
+    if (originalTemplate && typeof originalTemplate === "function") {
       return originalTemplate.call(this, action);
     }
-    
+
     // 默认返回
     return undefined;
   };
-  
+
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
     MNUtil.log("✅ toolbarConfig.template 方法已扩展，支持自定义菜单模板");
   }
@@ -656,9 +672,9 @@ try {
 }
 
 // 导出注册函数供外部使用
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     registerMenuTemplate: global.registerMenuTemplate,
-    getMenuTemplate: global.getMenuTemplate
+    getMenuTemplate: global.getMenuTemplate,
   };
 }

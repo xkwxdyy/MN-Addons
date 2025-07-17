@@ -104,8 +104,8 @@ class MNToolbarUpdater:
                 {
                     'type': 'insert_before',
                     'marker': '            self.tableItem(\'📄   Document\', \'openDocument:\'),',
-                    'content': '''            self.tableItem('🗂️   卡片预处理模式  ',"togglePreprocess:", undefined, toolbarConfig.windowState.preprocess),
-            self.tableItem('📖   粗读模式  ',"toggleRoughReading:", undefined, toolbarConfig.windowState.roughReading),'''
+                    'content': '''            self.tableItem('🗂️   卡片预处理模式  ',"togglePreprocess", undefined, toolbarConfig.windowState.preprocess),
+            self.tableItem('📖   粗读模式  ',"toggleRoughReading", undefined, toolbarConfig.windowState.roughReading),'''
                 },
                 {
                     'type': 'insert_before',
@@ -145,8 +145,8 @@ class MNToolbarUpdater:
         commandTable.unshift(self.tableItem('🌟  Direction   ↔️', selector,"dynamic"))
       }
       // 夏大鱼羊 - begin
-      commandTable.unshift(self.tableItem('🗂️   卡片预处理模式',"togglePreprocess:", toolbarConfig.windowState.preprocess))
-      commandTable.unshift(self.tableItem('📖   粗读模式',"toggleRoughReading:", toolbarConfig.windowState.roughReading))
+      commandTable.unshift(self.tableItem('🗂️   卡片预处理模式',"togglePreprocess:", "", toolbarConfig.windowState.preprocess))
+      commandTable.unshift(self.tableItem('📖   粗读模式',"toggleRoughReading:", "", toolbarConfig.windowState.roughReading))
       // 夏大鱼羊 - end
     }else{
       if (toolbarConfig.vertical()) {
@@ -155,8 +155,8 @@ class MNToolbarUpdater:
         commandTable.unshift(self.tableItem('🛠️  Direction   ↔️', selector,"fixed"))
       }
       // 夏大鱼羊 - begin
-      commandTable.unshift(self.tableItem('🗂️   卡片预处理模式',"togglePreprocess:", toolbarConfig.windowState.preprocess))
-      commandTable.unshift(self.tableItem('📖   粗读模式',"toggleRoughReading:", toolbarConfig.windowState.roughReading))
+      commandTable.unshift(self.tableItem('🗂️   卡片预处理模式',"togglePreprocess:", "", toolbarConfig.windowState.preprocess))
+      commandTable.unshift(self.tableItem('📖   粗读模式',"toggleRoughReading:", "", toolbarConfig.windowState.roughReading))
       // 夏大鱼羊 - end
     }'''
                 },

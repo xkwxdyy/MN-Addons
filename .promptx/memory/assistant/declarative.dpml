@@ -23,4 +23,16 @@
     </content>
     <tags>#其他</tags>
   </item>
+  <item id="mem_1752771908468_14n63dfb1" time="2025/07/18 01:05">
+    <content>
+      MN-Addon 项目 Git 操作重要事项：
+      1. 提交后必须执行 git push 推送到远程仓库，不要忘记 push
+      2. 远程仓库名是 github 而不是默认的 origin
+      3. 正确命令：git push github [分支名]
+      4. 错误命令：git push origin [分支名] 会报错
+      5. 在创建 GitHub Issue 之前必须确保代码已推送
+      6. 查看远程仓库配置：git remote -v
+    </content>
+    <tags>#工具使用</tags>
+  </item>
 </memory>

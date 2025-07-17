@@ -1,9 +1,133 @@
+我补充一下:这个制卡逻辑是很简单的,你不要弄复杂了,我选中的这段内容,其实已经包含了合并默认字段后每一步的逻  │
+│   辑.  重新回去看当前的逻辑进行修复 ultrathink          
+
+1. “项目”的“信息”字段下，缺少了“所属”，比如下面的例子，记为 A
+```
+【项目>哈哈阿拉丁按时>嘎嘎嘎嘎|未开始】哈哈哈哈
+信息
+包含
+未开始
+进行中
+已完成
+已归档
+进展
+```
+2. “动作”的“信息”字段下，有启动，但也缺少了“所属”。比如下面的例子，记为 B
+```
+【动作>>哈哈阿拉丁按时>>嘎嘎嘎嘎>>哈哈哈哈|未开始】B
+信息
+启动
+进展
+```
+制卡后，A 的最下面增加了 B 的链接，但位置错误
+```
+【项目>>哈哈阿拉丁按时>>嘎嘎嘎嘎|未开始】哈哈哈哈
+信息
+包含
+未开始
+进行中
+已完成
+已归档
+进展
+【动作>>哈哈阿拉丁按时>>嘎嘎嘎嘎>>哈哈哈哈|未开始】B （这条是B 的链接，只是显示为B 的标题）
+```
+链接应当是
+```
+【项目>>哈哈阿拉丁按时>>嘎嘎嘎嘎|未开始】哈哈哈哈
+信息
+包含
+未开始
+【动作>>哈哈阿拉丁按时>>嘎嘎嘎嘎>>哈哈哈哈|未开始】B （这条是B 的链接，只是显示为B 的标题）
+进行中
+已完成
+已归档
+进展
+```
+
+所以综上，应该 A 制卡后的效果理论效果为：
+```
+【项目>哈哈阿拉丁按时>>嘎嘎嘎嘎|未开始】哈哈哈哈
+信息
+所属 嘎嘎嘎嘎（此时为A 卡片的父卡片的标题的行内链接）
+包含
+未开始
+进行中
+已完成
+已归档
+进展
+```
+
+B 制卡后，B 应该是
+```
+【动作>>哈哈阿拉丁按时>>嘎嘎嘎嘎>>哈哈哈哈|未开始】B
+信息
+所属 哈哈哈哈（此时为B 卡片的父卡片 A的标题的行内链接）
+启动
+进展
+```
+同时 A 变成
+```
+【项目>>哈哈阿拉丁按时>>嘎嘎嘎嘎|未开始】哈哈哈哈
+信息
+包含
+未开始
+【动作>>哈哈阿拉丁按时>>嘎嘎嘎嘎>>哈哈哈哈|未开始】B （这条是B 的链接，只是显示为B 的标题）
+进行中
+已完成
+已归档
+进展
+```
+
+3. 已经是任务卡片的，制卡后缺少清除失效链接的处理，请重新分析逻辑并实现上面的效果，上面的效果以前是实现了的！如果你想要看以前的代码
+```
+mnaddon4 unpack <路径>
+```
+可以把 mntask 目录下的 *.mnaddon 进行解压。我印象里大概是 12.2 以前的制卡都没问题，只是以前的制卡的代码没有封装，全都暴露在 xdyy_menu_registry.js 里了。
+
+ultrathink
+
+---
+继续开发 MNTask。
+现在制卡功能有严重的问题！！！！！！！！！！
+“所属”和“启动”怎么都变成了主字段，而且内容都没有了！！！
+<span id="mainField" style="font-weight:600;color:#1E40AF;background:linear-gradient(15deg,#EFF6FF 30%,#DBEAFE);border:2px solid #3B82F6;border-radius:12px;padding:10px 18px;display:inline-block;box-shadow:2px 2px 0px #BFDBFE,4px 4px 8px rgba(59,130,246,0.12);position:relative;margin:4px 8px;">所属</span> 
+请查看 git 最近的几次 commit 看看你是改动了什么导致的。
+ultrathink
+
+---
+1. 任务制卡出问题！[01:56:39] [INFO] [Default] ❌ taskCardMake 执行失败: undefined is not an object (evaluating 'result.type')
+点击制卡按钮后，选择“动作”之后又弹出一个选类型的弹窗？？？
+
+1. 点击“启动”按钮的单击效果一直显示“未找到启动链接”，但启动字段里的链接我两种都试过了，仍然显示“未找到启动链接”，请分析并解决。
+
+2. setting 里的“看板”视图先去掉吧，现在暂时不需要，先把控制显示的那个先注释掉，否则会[
+  {
+    "version": "marginnote4",
+    "type": "macOS",
+    "taskVersion": "0.12.5"
+  },
+  {
+    "source": "handleRefreshBoard",
+    "time": "Thu Jul 17 2025 01:54:52 GMT+0800 (中国标准时间)",
+    "error": "this.loadTodayBoardData is not a function. (In 'this.loadTodayBoardData()', 'this.loadTodayBoardData' is undefined)"
+  },
+  {
+    "source": "handleTodayBoardProtocol",
+    "time": "Thu Jul 17 2025 01:54:53 GMT+0800 (中国标准时间)",
+    "error": "this.loadTodayBoardData is not a function. (In 'this.loadTodayBoardData()', 'this.loadTodayBoardData' is undefined)"
+  }
+]
+
+ultrathink
+
+---
+
 请完善 launchTask 函数（已经在 MNTaskManager 里定义了）。
 1. isTaskLaunched 和 currentLaunchedTask 变量（就在launchTask 函数上的上面两行）分别表示
    - isTaskLaunched：是否有任务被启动了
    - currentLaunchedTask：当前运行的任务卡片（你可以改成存卡片的 ID）
   但我还没有把他们的数据永久化，也就是存到 iCloud 里面，请你处理
-2. 我的逻辑是这样的：
+1. 我的逻辑是这样的：
    - 如果我选中了任务类型的卡片，然后触发 launchTask 函数，则此时获取到（通过 getLaunchLink）获取到启动的链接，记为 link
      - 看 link 是哪种类型（可以封装一个函数判断）一共有两种：uistate(`marginnote4app://uistatus/` 开头) 和 note 的 URL（有一个 getLaunchLinkType 可以看看是不是可以用）
        - 如果是 uistate ，暂时做空处理，后面完善
@@ -12,7 +136,7 @@
      - currentLaunchedTask 就变成当前选中的这张任务卡片
    - 如果没有选中卡片，或者选中的不是任务类型的卡片
      - 此时先看 isTaskLaunched 是不是 true，以及 currentLaunchedTask 有没有内容，如果有，此时的效果就是在主视图定位 currentLaunchedTask 卡片，并且  isTaskLaunched 改为 false，也就是我们重新回到了任务规划。
-3.  launchTask 函数我已经加载在 mntask 的 menu_quick_launch 菜单下了。我需要你写一个长按菜单里的功能，其实是基于上面的功能，因为有的时候我需要找到当前的任务卡片，然后记录进展，这个时候不需要在主视图定位，而且 isTaskLaunched 也不需要改成 false。也就是只检测 currentLaunchedTask 是哪种卡片，然后在浮窗中定位。简而言之，这个功能就是在浮窗定位当前启动的任务卡片。
+2.  launchTask 函数我已经加载在 mntask 的 menu_quick_launch 菜单下了。我需要你写一个长按菜单里的功能，其实是基于上面的功能，因为有的时候我需要找到当前的任务卡片，然后记录进展，这个时候不需要在主视图定位，而且 isTaskLaunched 也不需要改成 false。也就是只检测 currentLaunchedTask 是哪种卡片，然后在浮窗中定位。简而言之，这个功能就是在浮窗定位当前启动的任务卡片。
 ultrathink
 
 MNTaskManager 类里面有很多函数重复了！请自己检查并去重，注意要看内容，基本一致的就直接删掉，有比较大区别的最后汇总起来我来判断。

@@ -434,6 +434,7 @@ function registerAllMenuTemplates() {
     action: "moveToExcerptPartBottom",
     onLongPress: {
       action: "menu",
+      menuWidth: 300,
       menuItems: [
         {
           action: "mergeToParentAndMoveCommentToExcerpt",

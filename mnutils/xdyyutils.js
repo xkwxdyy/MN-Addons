@@ -4647,36 +4647,15 @@ class MNMath {
             
             // 4. 如果 C 中有 A 的链接
             if (aLinkIndexInC !== -1) {
-              // 创建 B 到 C 的单向链接
-              extractedNote.appendNoteLink(linkedNote, "To");
+              // 在 C 中创建指向 B 的单向链接
+              linkedNote.appendNoteLink(extractedNote, "To");
               
               // 获取新创建的链接索引（应该是最后一个）
-              const newLinkIndex = extractedNote.comments.length - 1;
+              const newLinkIndex = linkedNote.comments.length - 1;
               
-              // 如果新链接不在原位置，移动到原位置
-              if (newLinkIndex !== i && newLinkIndex >= 0) {
-                // 计算目标位置：如果当前位置的链接被移走了，目标位置需要调整
-                const targetIndex = newLinkIndex > i ? i : i - 1;
-                if (targetIndex >= 0 && targetIndex !== newLinkIndex) {
-                  extractedNote.moveComment(newLinkIndex, targetIndex);
-                }
-              }
-              
-              // 在 C 中处理 B 的链接位置
-              // 查找 C 中新创建的 B 链接
-              const updatedCComments = linkedNote.MNComments;
-              for (let k = updatedCComments.length - 1; k >= 0; k--) {
-                const cComment = updatedCComments[k];
-                if (cComment && cComment.type === "linkComment") {
-                  const cLinkedNote = MNNote.new(cComment.text);
-                  if (cLinkedNote && cLinkedNote.noteId === extractedNote.noteId) {
-                    // 如果这个链接不在 A 链接的下方，移动它
-                    if (k !== aLinkIndexInC + 1) {
-                      linkedNote.moveComment(k, aLinkIndexInC + 1);
-                    }
-                    break;
-                  }
-                }
+              // 将新链接移动到 A 链接的下方
+              if (newLinkIndex !== aLinkIndexInC + 1) {
+                linkedNote.moveComment(newLinkIndex, aLinkIndexInC + 1);
               }
             }
           }

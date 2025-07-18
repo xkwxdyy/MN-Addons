@@ -638,9 +638,17 @@ class MNMath {
    * 转化为非摘录版本
    */
   static toNoExcerptVersion(note){
+    // 保存原始剪贴板
+    const originalClipboard = MNUtil.clipboardText;
+    MNUtil.log(`[toNoExcerptVersion] 开始，原剪贴板内容: ${originalClipboard ? originalClipboard.substring(0, 50) + "..." : "空"}`);
+    
     if (note.parentNote) {
       if (note.excerptText) { // 把摘录内容的检测放到 toNoExcerptVersion 的内部
         let parentNote = note.parentNote
+        
+        // 创建新兄弟卡片前检查剪贴板
+        MNUtil.log(`[toNoExcerptVersion] 创建新卡片前剪贴板: ${MNUtil.clipboardText === originalClipboard ? "未变化" : "已变化为: " + MNUtil.clipboardText}`);
+        
         let config = {
           title: note.noteTitle,
           content: "",
@@ -649,9 +657,37 @@ class MNMath {
         }
         // 创建新兄弟卡片，标题为旧卡片的标题
         let newNote = parentNote.createChildNote(config)
+        
+        // 检查创建后剪贴板
+        const afterCreateClipboard = MNUtil.clipboardText;
+        MNUtil.log(`[toNoExcerptVersion] 创建新卡片后剪贴板: ${afterCreateClipboard}`);
+        MNUtil.log(`[toNoExcerptVersion] 新卡片ID: ${newNote.noteId}`);
+        
+        // 如果剪贴板被修改为新卡片ID，立即恢复
+        if (afterCreateClipboard === newNote.noteId) {
+          MNUtil.log(`[toNoExcerptVersion] ⚠️ 检测到剪贴板被设置为新卡片ID，立即恢复`);
+          MNUtil.clipboardText = originalClipboard;
+        }
+        
         note.noteTitle = ""
+        
+        // 合并前检查
+        MNUtil.log(`[toNoExcerptVersion] 合并前剪贴板: ${MNUtil.clipboardText === originalClipboard ? "未变化" : "已变化为: " + MNUtil.clipboardText}`);
+        
         // 将旧卡片合并到新卡片中
         note.mergeInto(newNote)
+        
+        // 合并后检查
+        const afterMergeClipboard = MNUtil.clipboardText;
+        MNUtil.log(`[toNoExcerptVersion] 合并后剪贴板: ${afterMergeClipboard}`);
+        
+        // 最终恢复剪贴板
+        if (MNUtil.clipboardText !== originalClipboard) {
+          MNUtil.log(`[toNoExcerptVersion] ✅ 最终恢复剪贴板`);
+          MNUtil.clipboardText = originalClipboard;
+        }
+        
+        MNUtil.log(`[toNoExcerptVersion] 完成，返回新卡片ID: ${newNote.noteId}`);
         // newNote.focusInMindMap(0.2)
         return newNote; // 返回新卡片
       } else {

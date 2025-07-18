@@ -1,5 +1,45 @@
-我补充一下:这个制卡逻辑是很简单的,你不要弄复杂了,我选中的这段内容,其实已经包含了合并默认字段后每一步的逻  │
-│   辑.  重新回去看当前的逻辑进行修复 ultrathink          
+mntask 的动作转项目卡片有问题。比如动作卡片默认制卡后是
+```
+【动作|未开始】啊啊
+信息
+所属
+启动
+进展
+```
+但是这个时候通过“修改卡片类型”动作转换的评论变成了：
+```
+信息
+包含
+未开始
+进行中
+已完成
+已归档
+所属
+启动
+进展
+```
+这是错误的！“包含”以及下面子字段应该在“进展”字段的上方，也就是正确的应该是
+```
+信息
+所属
+启动
+包含
+未开始
+进行中
+已完成
+已归档
+进展
+```
+请解决！请你仔细分析动作卡片应该的样式和项目卡片应该的样式！然后再开始考虑处理逻辑 ultrathink
+---
+继续开发 mntask 的启动按钮的单击功能，现在 launchTask 优化一下：
+1. 每天有一个固定的复习任务，要在所有任务开始之前完成
+2. 所以每天第一次点击启动，应该执行复习任务，而有一个 uistate 链接来保存这个复习界面：`marginnote4app://uistatus/H4sIAAAAAAAAE01Ty3LbMAz8F56tDN8P3yy57qWHHnrrdDqUBMVKKFEj0kncjP%2B9JO3WvhHYxQJYQZ%2FIzuEdVrQlG9R6%2Fzr1Am0RCCWlEmC06lvgg5EtZ53QPR3I0BmMjcJEE6WVor3qBq6BCyGxZq2wEiS6ioXFjRFtcY5i9FPvO7QdrAuwQZ1d%2B9Z%2FFDS%2Fob9RO%2Bf%2FwJ3mpwnmmBkPuTmmXCj0pOnsGdYx4aghtTKa0WrH9rLi5Auudk3NKrbHih002Smi0mzwker7yfdQJIbRwVVscN7GyS7XwHenMPsIRbo%2B1Hyva1oZSnnFRS0rbXKID4LqBu8YM0l6ODn3uGYS%2B%2BY7G0c%2Fo%2B0n8sMQIObX75fg5zfrTvDjvECe%2Fet3P84xaWRTnrihhCpJqVHSMC70Bp1LXmtMFKdUJMMF5eKyQaGzLq%2FyJJlMsDFMc4aVluRSJgjgXEhdf%2F7aIL%2FAehsHP0S%2BfbkmTtGN893%2FxT5D8jelC7zYGVypKO04k4ZLyTTmRKaLSIRELswVAti1O96CtxHey5Gt4%2FPxavGtw5WWz6VQw9hDa9c7nG9onAefTev8KTm0zWtF24bj2Pcw%2F6fGI0zZyT0M9uSyk9EvY1c%2BH%2BcN54Q3Va0aVvHdQVY107qimBjc7GrRHPa5YE3%2Fw2JXyG1usnn0f5d8%2BQsPOiesMQMAAA%3D%3D` 。
+3. 我的想法是这样，设置一个全局变量和 iCloud 同步的（注意要和笔记本相关）来记录今天是否复习了。每天早上七点后打开软件时这个 bool 值为 false，表示今天还没有复习。如果是 false 的话，启动按钮默认启动复习的链接。
+4. 启动按钮加一个长按功能，点击后表示已完成今日复习，设置全局变量为 true。
+5. 我想的是我可以给一张卡片 ID 专门记录每天的复习时间，比如启动复习开始计时，然后复习完成后，记录下时间。这个卡片的 ID 也是我给出然后与学习集同步。具体的时间，用时间戳（参考时间戳的记录）就行，比如开始时间，结束时间，用了多久
+---
+我补充一下:这个制卡逻辑是很简单的,你不要弄复杂了,我选中的这段内容,其实已经包含了合并默认字段后每一步的逻辑.重新回去看当前的逻辑进行修复 ultrathink          
 
 1. “项目”的“信息”字段下，缺少了“所属”，比如下面的例子，记为 A
 ```
@@ -12,7 +52,7 @@
 已归档
 进展
 ```
-2. “动作”的“信息”字段下，有启动，但也缺少了“所属”。比如下面的例子，记为 B
+1. “动作”的“信息”字段下，有启动，但也缺少了“所属”。比如下面的例子，记为 B
 ```
 【动作>>哈哈阿拉丁按时>>嘎嘎嘎嘎>>哈哈哈哈|未开始】B
 信息

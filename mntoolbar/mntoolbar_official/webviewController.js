@@ -1996,6 +1996,7 @@ toolbarController.prototype.popupReplace = async function (button) {
   try {
   // MNUtil.showHUD("message")
   let menu = PopupMenu.currentMenu()
+  // MNUtil.log("Menuheight:"+menu.frame.height)
   if (menu) {
     let ids = menu.items.map(item=>{
       if (item.actionString) {
@@ -2003,6 +2004,9 @@ toolbarController.prototype.popupReplace = async function (button) {
       }
       return ""
     })
+    let beginIndex = menu.frame.height > 45 ? 1 : 0
+    // MNUtil.copy(ids)
+    // MNUtil.log("subviews:"+menu.subviews.length)
     let maxButtonNumber = (ids.length == menu.subviews.length)?ids.length:menu.subviews.length-1
     // MNUtil.showHUD("message"+ids.length+";"+menu.subviews.length)
     // MNUtil.showHUD(message)
@@ -2010,7 +2014,7 @@ toolbarController.prototype.popupReplace = async function (button) {
       if (!ids[i]) {
         continue
       }
-      let popupButton = menu.subviews[i].subviews[0]
+      let popupButton = menu.subviews[i+beginIndex].subviews[0]
       let popupConfig = toolbarConfig.getPopupConfig(ids[i])
       // MNUtil.showHUD("message"+menu.subviews.length)
       if (!popupConfig) {
@@ -2040,12 +2044,14 @@ toolbarController.prototype.popupReplace = async function (button) {
       if (!ids[i]) {
         continue
       }
-      let popupButton = menu.subviews[i].subviews[0]
+      let popupButton = menu.subviews[i+beginIndex].subviews[0]
       let popupConfig = toolbarConfig.getPopupConfig(ids[i])
       // MNUtil.showHUD("message"+menu.subviews.length)
 
       if (!popupConfig) {
         MNUtil.showHUD("Unknown popup button: "+ids[i])
+        MNUtil.log(ids[i])
+        
         continue
       }
       // MNUtil.showHUD("popupReplace:"+ids[i]+":"+toolbarConfig.getPopupConfig(ids[i]).enabled)
@@ -2082,7 +2088,7 @@ toolbarController.prototype.popupReplace = async function (button) {
       if (!ids[i]) {
         continue
       }
-      let popupButton = menu.subviews[i].subviews[0]
+      let popupButton = menu.subviews[i+beginIndex].subviews[0]
       let popupConfig = toolbarConfig.getPopupConfig(ids[i])
       // MNUtil.showHUD("message"+menu.subviews.length)
       if (!popupConfig) {

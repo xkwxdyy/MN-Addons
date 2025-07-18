@@ -320,7 +320,7 @@ JSB.newAddon = function (mainPath) {
               yOffset = 45
               break;
             case 1:
-              yOffset = -50
+              yOffset = -80
               break;
             case 2:
               yOffset = 45

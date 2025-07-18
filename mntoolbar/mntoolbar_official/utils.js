@@ -5816,7 +5816,13 @@ class toolbarConfig {
   "imageboxOnPage",
   "cameraOnPage",
   "moreOperations",
-  "dragDrop"
+  "dragDrop",
+  "exportCards",
+  "newGroupMenu",
+  "showInlineChatForNote",
+  "showInlineChat",
+  "selectBranch",
+  "ocrForNote"
 ]
   static defaultPopupReplaceConfig = {
     noteHighlight:{enabled:false,target:"",name:"noteHighlight"},
@@ -5889,6 +5895,12 @@ class toolbarConfig {
     sourceHighlightOfNote:{enabled:false,target:"",name:"sourceHighlightOfNote"},
     paintHighlight:{enabled:false,target:"",name:"paintHighlight"},
     dragDrop:{enabled:false,target:"",name:"dragDrop"},
+    exportCards:{enabled:false,target:"",name:"exportCards"},
+    newGroupMenu:{enabled:false,target:"",name:"newGroupMenu"},
+    showInlineChatForNote:{enabled:false,target:"",name:"showInlineChatForNote"},
+    showInlineChat:{enabled:false,target:"",name:"showInlineChat"},
+    selectBranch:{enabled:false,target:"",name:"selectBranch"},
+    ocrForNote:{enabled:false,target:"",name:"ocrForNote"},
   }
   static defalutImageScale = {
     "color0":2.4,

@@ -440,6 +440,10 @@ function registerAllMenuTemplates() {
           action: "mergeToParentAndMoveCommentToExcerpt",
           menuTitle: "合并到父卡片并移动评论到摘录",
         },
+        {
+          action: "mergeToParentAndMoveCommentToTop",
+          menuTitle: "合并到父卡片并移动到最顶端",
+        },
       ],
     },
   });

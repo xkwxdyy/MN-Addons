@@ -2821,6 +2821,41 @@ function registerAllCustomActions() {
     },
   );
 
+  // mergeToParentAndMoveCommentToTop
+  global.registerCustomAction(
+    "mergeToParentAndMoveCommentToTop",
+    async function (context) {
+      const { button, des, focusNote, focusNotes, self } = context;
+      MNUtil.undoGrouping(() => {
+        try {
+          // 检查是否有父卡片
+          if (!focusNote.parentNote) {
+            MNUtil.showHUD("❌ 当前卡片没有父卡片");
+            return;
+          }
+
+          const parentNote = focusNote.parentNote;
+
+          // 合并子卡片到父卡片
+          focusNote.mergeInto(parentNote);
+
+          // 延迟一下确保合并完成
+          MNUtil.delay(0.1).then(() => {
+            // 获取最新评论的索引（最后一条）
+            const lastCommentIndex = parentNote.comments.length - 1;
+            if (lastCommentIndex >= 0) {
+              // 将最新评论移动到最顶端（索引0）
+              parentNote.moveCommentsByIndexArr([lastCommentIndex], 0);
+              MNUtil.showHUD("✅ 已合并到父卡片并移动到最顶端");
+            }
+          });
+        } catch (error) {
+          MNUtil.showHUD(`❌ 操作失败: ${error.message}`);
+        }
+      });
+    },
+  );
+
   // moveToInput
   // moveToPreparationForExam
   // moveToInternalize

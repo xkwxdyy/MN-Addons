@@ -48,12 +48,32 @@ function initXDYYExtensions() {
   toolbarUtils.roughReadingMakeNote = function(note) {
     MNUtil.undoGrouping(() => {
       try {
+        // 保存原始剪贴板内容
+        const originalClipboard = MNUtil.clipboardText;
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log("🔍 [粗读制卡] 开始，原剪贴板内容: " + (originalClipboard ? originalClipboard.substring(0, 50) + "..." : "空"));
+        }
+        
         // 0. 如果是摘录卡片，先转换为非摘录版本
         if (note.excerptText) {
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log("🔍 [粗读制卡] 检测到摘录卡片，开始转换");
+          }
           note = MNMath.toNoExcerptVersion(note)
           if (!note) {
             MNUtil.log("❌ 转换为非摘录版本失败")
             return
+          }
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log("🔍 [粗读制卡] 转换完成，新卡片ID: " + note.noteId);
+            // 检查剪贴板是否被意外修改
+            const currentClipboard = MNUtil.clipboardText;
+            if (currentClipboard !== originalClipboard) {
+              MNUtil.log("⚠️ [粗读制卡] 检测到剪贴板被修改: " + currentClipboard);
+              // 恢复原始剪贴板内容
+              MNUtil.clipboardText = originalClipboard;
+              MNUtil.log("✅ [粗读制卡] 已恢复原始剪贴板内容");
+            }
           }
         }
         
@@ -99,15 +119,46 @@ function initXDYYExtensions() {
         
         // 2. 使用 MNMath 的制卡体系
         // addToReview = false, reviewEverytime = true, focusInMindMap = true
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          const beforeMakeCardClipboard = MNUtil.clipboardText;
+          MNUtil.log("🔍 [粗读制卡] 调用 MNMath.makeCard 前，剪贴板: " + (beforeMakeCardClipboard === originalClipboard ? "未变化" : "已变化为: " + beforeMakeCardClipboard));
+        }
+        
         MNMath.makeCard(note, false, true, true)
+        
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          const afterMakeCardClipboard = MNUtil.clipboardText;
+          MNUtil.log("🔍 [粗读制卡] 调用 MNMath.makeCard 后，剪贴板: " + (afterMakeCardClipboard === originalClipboard ? "未变化" : "已变化为: " + afterMakeCardClipboard));
+        }
         
         // 3. 定位到脑图中，防止移动后找不到
         note.focusInMindMap(0.5)
+        
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          const afterFocusClipboard = MNUtil.clipboardText;
+          MNUtil.log("🔍 [粗读制卡] 调用 focusInMindMap 后，剪贴板: " + (afterFocusClipboard === originalClipboard ? "未变化" : "已变化为: " + afterFocusClipboard));
+        }
+        
+        // 最后再次检查并恢复剪贴板
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          const finalClipboard = MNUtil.clipboardText;
+          if (finalClipboard !== originalClipboard) {
+            MNUtil.log("⚠️ [粗读制卡] 制卡完成后检测到剪贴板被修改: " + finalClipboard);
+            MNUtil.clipboardText = originalClipboard;
+            MNUtil.log("✅ [粗读制卡] 已恢复原始剪贴板内容");
+          }
+          MNUtil.log("✅ [粗读制卡] 完成");
+        }
         
         // MNUtil.showHUD("✅ 粗读制卡完成（未加入复习）")
       } catch (error) {
         toolbarUtils.addErrorLog(error, "roughReadingMakeNote")
         // MNUtil.showHUD(`❌ 粗读制卡失败: ${error.message}`)
+        
+        // 出错时也要恢复剪贴板
+        if (typeof originalClipboard !== 'undefined') {
+          MNUtil.clipboardText = originalClipboard;
+        }
       }
     })
   }

@@ -17,7 +17,8 @@
       "Bash(gh issue close:*)",
       "Bash(git push:*)",
       "mcp__promptx__promptx_remember",
-      "mcp__promptx__promptx_recall"
+      "mcp__promptx__promptx_recall",
+      "Bash(sed:*)"
     ],
     "deny": []
   }

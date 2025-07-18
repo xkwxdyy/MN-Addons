@@ -951,17 +951,17 @@ class MNTaskManager {
         return
       }
       
-      // Debug logging for field content extraction issue
-      if (index < 5) {  // Only log first 5 to avoid spam
-        MNUtil.log(`🔍 DEBUG parseTaskComments - Comment ${index}:`)
-        MNUtil.log(`  - Raw text: "${text.substring(0, 100)}${text.length > 100 ? '...' : ''}"`)
-        MNUtil.log(`  - Comment type: ${commentType}`)
-        MNUtil.log(`  - Is task field: ${TaskFieldUtils.isTaskField(text)}`)
-        if (TaskFieldUtils.isTaskField(text)) {
-          const fieldContent = TaskFieldUtils.extractFieldText(text)
-          MNUtil.log(`  - Field content extracted: "${fieldContent}"`)
-        }
-      }
+      // Debug logging for field content extraction issue - commented out to reduce log spam
+      // if (index < 5) {  // Only log first 5 to avoid spam
+      //   MNUtil.log(`🔍 DEBUG parseTaskComments - Comment ${index}:`)
+      //   MNUtil.log(`  - Raw text: "${text.substring(0, 100)}${text.length > 100 ? '...' : ''}"`)
+      //   MNUtil.log(`  - Comment type: ${commentType}`)
+      //   MNUtil.log(`  - Is task field: ${TaskFieldUtils.isTaskField(text)}`)
+      //   if (TaskFieldUtils.isTaskField(text)) {
+      //     const fieldContent = TaskFieldUtils.extractFieldText(text)
+      //     MNUtil.log(`  - Field content extracted: "${fieldContent}"`)
+      //   }
+      // }
       
       // 注释掉详细日志
       // MNUtil.log(`🔍 评论 ${index}: type=${commentType}, text=${text.substring(0, 50) + (text.length > 50 ? '...' : '')}, isTaskField=${TaskFieldUtils.isTaskField(text)}`)
@@ -4805,41 +4805,105 @@ class MNTaskManager {
                   
                   // 如果从其他类型转换为动作类型，需要删除"包含"和状态字段
                   if (newType === "动作") {
+                    MNUtil.log(`🔄 从${oldType}转换为动作，需要删除"包含"和状态字段`);
+                    
+                    // 收集要删除的字段索引
+                    const indicesToRemove = [];
+                    
+                    // 查找"包含"字段
                     const containsField = parsed.taskFields.find(f => f.content === '包含');
                     if (containsField) {
-                      note.removeCommentByIndex(containsField.index);
-                      const updatedParsed = this.parseTaskComments(note);
-                      
-                      const statusFields = ['未开始', '进行中', '已完成', '已归档'];
-                      statusFields.forEach(status => {
-                        const statusField = updatedParsed.taskFields.find(f => 
-                          f.content.includes(status) && f.fieldType === 'stateField'
-                        );
-                        if (statusField) {
-                          note.removeCommentByIndex(statusField.index);
-                          updatedParsed.taskFields = this.parseTaskComments(note).taskFields;
-                        }
-                      });
+                      indicesToRemove.push(containsField.index);
+                      MNUtil.log(`📍 找到"包含"字段，索引：${containsField.index}`);
                     }
+                    
+                    // 查找状态字段
+                    const statusFields = ['未开始', '进行中', '已完成', '已归档'];
+                    statusFields.forEach(status => {
+                      const statusField = parsed.taskFields.find(f => 
+                        f.content === status && f.fieldType === 'stateField'
+                      );
+                      if (statusField) {
+                        indicesToRemove.push(statusField.index);
+                        MNUtil.log(`📍 找到"${status}"字段，索引：${statusField.index}`);
+                      }
+                    });
+                    
+                    // 从大到小排序，避免删除时索引变化的问题
+                    indicesToRemove.sort((a, b) => b - a);
+                    
+                    // 删除字段
+                    indicesToRemove.forEach(index => {
+                      note.removeCommentByIndex(index);
+                      MNUtil.log(`🗑️ 删除索引 ${index} 的字段`);
+                    });
                   } 
                   // 如果从动作类型转换为其他类型，需要添加"包含"和状态字段
                   else if (oldType === "动作") {
                     const hasContainsField = parsed.taskFields.some(f => f.content === '包含');
                     if (!hasContainsField) {
-                      const infoField = parsed.taskFields.find(f => f.content === '信息');
-                      if (infoField) {
+                      // 查找"启动"字段，"包含"应该添加在它之后
+                      const launchField = parsed.taskFields.find(f => 
+                        f.content && f.content.includes('[启动]')
+                      );
+                      
+                      // 如果没有启动字段，则查找"信息"字段
+                      const referenceField = launchField || parsed.taskFields.find(f => f.content === '信息');
+                      
+                      if (referenceField) {
+                        MNUtil.log(`🔄 从动作转换为${newType}，需要添加"包含"和状态字段`);
+                        MNUtil.log(`📍 参考字段"${launchField ? '启动' : '信息'}"位置：${referenceField.index}`);
+                        
+                        // 首先添加"包含"字段
                         const containsFieldHtml = TaskFieldUtils.createFieldHtml('包含', 'mainField');
                         note.appendMarkdownComment(containsFieldHtml);
-                        note.moveComment(note.MNComments.length - 1, infoField.index + 1, false);
+                        const containsIndex = note.MNComments.length - 1;
+                        MNUtil.log(`📝 添加"包含"字段到索引 ${containsIndex}`);
                         
-                        const statuses = ['未开始', '进行中', '已完成', '已归档'];
-                        statuses.forEach((status, idx) => {
-                          const statusHtml = TaskFieldUtils.createStatusField(status);
-                          note.appendMarkdownComment(statusHtml);
-                          note.moveComment(note.MNComments.length - 1, infoField.index + 2 + idx, false);
-                        });
+                        // 移动"包含"字段到参考字段后面
+                        note.moveComment(containsIndex, referenceField.index + 1, false);
+                        MNUtil.log(`🔄 移动"包含"字段到位置 ${referenceField.index + 1}`);
+                        
+                        // 重新解析以获取更新后的字段位置
+                        const updatedParsed = this.parseTaskComments(note);
+                        const updatedContainsField = updatedParsed.taskFields.find(f => f.content === '包含');
+                        
+                        if (updatedContainsField) {
+                          // 添加状态字段到"包含"字段后面
+                          const statuses = ['未开始', '进行中', '已完成', '已归档'];
+                          let targetPosition = updatedContainsField.index + 1;
+                          
+                          statuses.forEach((status, idx) => {
+                            const statusHtml = TaskFieldUtils.createStatusField(status);
+                            note.appendMarkdownComment(statusHtml);
+                            const statusIndex = note.MNComments.length - 1;
+                            MNUtil.log(`📝 添加"${status}"字段到索引 ${statusIndex}`);
+                            
+                            // 调试：打印当前评论数量
+                            MNUtil.log(`   当前评论总数：${note.MNComments.length}`);
+                            
+                            // 移动到正确位置
+                            note.moveComment(statusIndex, targetPosition, false);
+                            MNUtil.log(`🔄 移动"${status}"字段到位置 ${targetPosition}`);
+                            
+                            // 由于刚移动了一个元素到 targetPosition，下一个应该在其后面
+                            targetPosition++;
+                            MNUtil.log(`   下一个字段目标位置：${targetPosition}`);
+                          });
+                        } else {
+                          MNUtil.log(`❌ 无法找到更新后的"包含"字段位置`);
+                        }
                       }
                     }
+                  }
+                  
+                  // 调试：打印最终的字段顺序
+                  if (oldType === "动作" && newType !== "动作") {
+                    MNUtil.log(`🔍 字段转换完成，最终字段顺序：`);
+                    const finalParsed = this.parseTaskComments(note);
+                    finalParsed.taskFields.forEach((field, idx) => {
+                      MNUtil.log(`   ${idx + 1}. ${field.content} (索引: ${field.index})`);
+                    });
                   }
                 }
                 

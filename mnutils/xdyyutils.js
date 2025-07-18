@@ -6672,7 +6672,7 @@ class MNMath {
       this.saveSearchConfig();
       
       MNUtil.showHUD("✅ 已添加根目录：" + name);
-      return true;
+      return key; // 返回新添加的根目录 key
     } catch (error) {
       MNUtil.log("添加搜索根目录失败: " + error.toString());
       MNUtil.showHUD("添加失败：" + error.message);
@@ -6853,6 +6853,7 @@ class MNMath {
         } else {
           message += `\n📋 搜索类型：全部`;
         }
+        message += `\n\n💡 提示：点击"添加根目录"可使用当前卡片或输入ID/URL`;
         
         // 显示输入框
         const result = await new Promise((resolve) => {
@@ -6965,7 +6966,18 @@ class MNMath {
             
           case "addRoot":
             // 添加根目录
-            await this.handleAddRoot(result.input);
+            const newRoot = await this.handleAddRoot(result.input);
+            if (newRoot) {
+              // 设置新添加的根目录为当前根目录
+              currentRootId = newRoot.id;
+              currentRootName = newRoot.name;
+              // 更新最后使用的根目录
+              this.searchRootConfigs.lastUsedRoot = newRoot.key;
+              this.saveSearchConfig();
+              // 刷新 allRoots 以包含新添加的根目录
+              allRoots = this.getAllSearchRoots();
+              MNUtil.showHUD(`✅ 已切换到新根目录：${newRoot.name}`);
+            }
             break;
             
           case "toggleClassification":
@@ -7172,7 +7184,7 @@ class MNMath {
   static async handleAddRoot(input) {
     if (input) {
       // 用户输入了 ID 或 URL，请求输入名称
-      await new Promise((resolve) => {
+      return await new Promise((resolve) => {
         UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
           "添加根目录",
           "请输入根目录的名称",
@@ -7183,15 +7195,105 @@ class MNMath {
             if (buttonIndex === 1) {
               const name = alert.textFieldAtIndex(0).text.trim();
               if (name) {
-                this.addSearchRoot(input, name);
+                const key = this.addSearchRoot(input, name);
+                if (key && key !== false) {
+                  // 返回新添加的根目录信息
+                  resolve({
+                    key: key,
+                    id: this.searchRootConfigs.roots[key].id,
+                    name: name
+                  });
+                  return;
+                }
               }
             }
-            resolve();
+            resolve(null);
           }
         );
       });
     } else {
-      MNUtil.showHUD("请输入卡片 ID 或 URL");
+      // 输入为空时，提供选项让用户选择
+      return await new Promise((resolve) => {
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "添加搜索根目录",
+          "请选择添加方式",
+          0,
+          "取消",
+          ["📍 使用当前选中的卡片", "📝 手动输入卡片 ID/URL"],
+          async (alert, buttonIndex) => {
+            if (buttonIndex === 1) {
+              // 使用当前选中的卡片
+              const currentNote = MNNote.getFocusNote();
+              if (currentNote) {
+                // 获取卡片标题作为默认名称
+                const defaultName = currentNote.noteTitle || "未命名根目录";
+                
+                // 请求用户输入或确认名称
+                const result = await new Promise((innerResolve) => {
+                  UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+                    "添加根目录",
+                    `当前选中的卡片：${defaultName}\n\n请输入根目录的名称（或使用默认名称）`,
+                    2,
+                    "取消",
+                    ["确定"],
+                    (alert2, buttonIndex2) => {
+                      if (buttonIndex2 === 1) {
+                        const name = alert2.textFieldAtIndex(0).text.trim() || defaultName;
+                        const key = this.addSearchRoot(currentNote.noteId, name);
+                        if (key && key !== false) {
+                          innerResolve({
+                            key: key,
+                            id: this.searchRootConfigs.roots[key].id,
+                            name: name
+                          });
+                          return;
+                        }
+                      }
+                      innerResolve(null);
+                    }
+                  );
+                  // 预填充默认名称
+                  const textField = UIAlertView.currentAlertView().textFieldAtIndex(0);
+                  textField.text = defaultName;
+                });
+                resolve(result);
+              } else {
+                MNUtil.showHUD("请先选中一个卡片");
+                resolve(null);
+              }
+            } else if (buttonIndex === 2) {
+              // 手动输入 ID/URL
+              const inputResult = await new Promise((innerResolve) => {
+                UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+                  "手动输入",
+                  "请输入卡片 ID 或 URL",
+                  2,
+                  "取消",
+                  ["下一步"],
+                  async (alert2, buttonIndex2) => {
+                    if (buttonIndex2 === 1) {
+                      const idOrUrl = alert2.textFieldAtIndex(0).text.trim();
+                      if (idOrUrl) {
+                        // 调用原来的逻辑处理输入的 ID/URL
+                        const result = await this.handleAddRoot(idOrUrl);
+                        innerResolve(result);
+                      } else {
+                        MNUtil.showHUD("请输入有效的卡片 ID 或 URL");
+                        innerResolve(null);
+                      }
+                    } else {
+                      innerResolve(null);
+                    }
+                  }
+                );
+              });
+              resolve(inputResult);
+            } else {
+              resolve(null);
+            }
+          }
+        );
+      });
     }
   }
   

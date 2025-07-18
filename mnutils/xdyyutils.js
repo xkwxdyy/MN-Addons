@@ -4536,6 +4536,14 @@ class MNMath {
         clonedNote = note.clone();
         clonedNote.title = ""
         
+        // 删除克隆卡片的所有子卡片
+        if (clonedNote.childNotes && clonedNote.childNotes.length > 0) {
+          // 从后往前删除，避免索引变化
+          for (let i = clonedNote.childNotes.length - 1; i >= 0; i--) {
+            clonedNote.childNotes[i].removeFromParent();
+          }
+        }
+        
         // 将克隆的笔记添加为原笔记的子卡片
         note.addChild(clonedNote);
         
@@ -4548,6 +4556,9 @@ class MNMath {
         
         // 删除未选中的评论
         clonedNote.removeCommentsByIndexArr(indicesToDelete);
+        
+        // 处理链接关系继承
+        this.handleExtractedNoteLinks(note, clonedNote, extractCommentIndexArr);
         
         // 刷新显示
         clonedNote.refresh();
@@ -4596,6 +4607,87 @@ class MNMath {
           }
         );
       });
+    }
+  }
+
+  /**
+   * 处理提取卡片的链接关系继承
+   * @param {MNNote} originalNote - 原卡片 A
+   * @param {MNNote} extractedNote - 提取出的卡片 B
+   * @param {number[]} extractCommentIndexArr - 被提取的评论索引数组
+   */
+  static handleExtractedNoteLinks(originalNote, extractedNote, extractCommentIndexArr) {
+    try {
+      // 1. 解析提取卡片 B 中的所有评论
+      const extractedComments = extractedNote.MNComments;
+      
+      // 2. 遍历所有评论，查找链接类型的评论
+      for (let i = 0; i < extractedComments.length; i++) {
+        const comment = extractedComments[i];
+        
+        if (comment && comment.type === "linkComment") {
+          // 获取链接到的卡片 C
+          const linkedNote = MNNote.new(comment.text);
+          
+          if (linkedNote) {
+            // 3. 检查 C 中是否有 A 的链接
+            const linkedNoteComments = linkedNote.MNComments;
+            let aLinkIndexInC = -1;
+            
+            for (let j = 0; j < linkedNoteComments.length; j++) {
+              const cComment = linkedNoteComments[j];
+              if (cComment && cComment.type === "linkComment") {
+                const cLinkedNote = MNNote.new(cComment.text);
+                if (cLinkedNote && cLinkedNote.noteId === originalNote.noteId) {
+                  aLinkIndexInC = j;
+                  break;
+                }
+              }
+            }
+            
+            // 4. 如果 C 中有 A 的链接
+            if (aLinkIndexInC !== -1) {
+              // 创建 B 到 C 的单向链接
+              extractedNote.appendNoteLink(linkedNote, "To");
+              
+              // 获取新创建的链接索引（应该是最后一个）
+              const newLinkIndex = extractedNote.comments.length - 1;
+              
+              // 如果新链接不在原位置，移动到原位置
+              if (newLinkIndex !== i && newLinkIndex >= 0) {
+                // 计算目标位置：如果当前位置的链接被移走了，目标位置需要调整
+                const targetIndex = newLinkIndex > i ? i : i - 1;
+                if (targetIndex >= 0 && targetIndex !== newLinkIndex) {
+                  extractedNote.moveComment(newLinkIndex, targetIndex);
+                }
+              }
+              
+              // 在 C 中处理 B 的链接位置
+              // 查找 C 中新创建的 B 链接
+              const updatedCComments = linkedNote.MNComments;
+              for (let k = updatedCComments.length - 1; k >= 0; k--) {
+                const cComment = updatedCComments[k];
+                if (cComment && cComment.type === "linkComment") {
+                  const cLinkedNote = MNNote.new(cComment.text);
+                  if (cLinkedNote && cLinkedNote.noteId === extractedNote.noteId) {
+                    // 如果这个链接不在 A 链接的下方，移动它
+                    if (k !== aLinkIndexInC + 1) {
+                      linkedNote.moveComment(k, aLinkIndexInC + 1);
+                    }
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      MNUtil.addErrorLog(error, "handleExtractedNoteLinks", {
+        originalNoteId: originalNote.noteId,
+        extractedNoteId: extractedNote.noteId
+      });
+      // 不抛出错误，让提取操作继续完成
     }
   }
 
@@ -6824,7 +6916,7 @@ class MNMath {
     try {
       let keywords = [];
       let currentRootId = this.getCurrentSearchRoot();
-      const allRoots = this.getAllSearchRoots();
+      let allRoots = this.getAllSearchRoots();
       let selectedTypes = null;  // null 表示全选，Set 表示选中的类型
       
       // 主循环：处理用户输入
@@ -6970,7 +7062,6 @@ class MNMath {
             if (newRoot) {
               // 设置新添加的根目录为当前根目录
               currentRootId = newRoot.id;
-              currentRootName = newRoot.name;
               // 更新最后使用的根目录
               this.searchRootConfigs.lastUsedRoot = newRoot.key;
               this.saveSearchConfig();
@@ -7252,9 +7343,9 @@ class MNMath {
                       innerResolve(null);
                     }
                   );
-                  // 预填充默认名称
-                  const textField = UIAlertView.currentAlertView().textFieldAtIndex(0);
-                  textField.text = defaultName;
+                  // 注释掉预填充以避免只读属性错误
+                  // const textField = UIAlertView.currentAlertView().textFieldAtIndex(0);
+                  // textField.text = defaultName;
                 });
                 resolve(result);
               } else {

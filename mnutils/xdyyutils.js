@@ -4662,11 +4662,14 @@ class MNMath {
               // 用户选择删除原评论
               MNUtil.undoGrouping(() => {
                 try {
-                  // 使用批量删除 API
+                  // 先清理被提取内容中链接对应卡片的反向链接（必须在删除前执行）
+                  this.cleanupExtractedContentLinks(note, extractCommentIndexArr);
+                  
+                  // 然后使用批量删除 API
                   note.removeCommentsByIndexArr(extractCommentIndexArr);
                   
                   note.refresh();
-                  MNUtil.showHUD("已删除原卡片中的评论");
+                  MNUtil.showHUD("已删除原卡片中的评论并清理相关链接");
                   
                 } catch (error) {
                   MNUtil.showHUD("删除原评论失败: " + error.message);
@@ -4738,6 +4741,73 @@ class MNMath {
         extractedNoteId: extractedNote.noteId
       });
       // 不抛出错误，让提取操作继续完成
+    }
+  }
+
+  /**
+   * 清理被提取内容中链接对应卡片的反向链接
+   * 当用户选择删除原评论时调用，用于保持链接关系的一致性
+   * 
+   * @param {MNNote} originalNote - 原始卡片 A
+   * @param {number[]} extractCommentIndexArr - 被提取的评论索引数组
+   */
+  static cleanupExtractedContentLinks(originalNote, extractCommentIndexArr) {
+    try {
+      const originalComments = originalNote.MNComments;
+      
+      // 遍历被提取的评论索引
+      for (const index of extractCommentIndexArr) {
+        const comment = originalComments[index];
+        
+        // 检查是否为链接评论
+        if (comment && comment.type === "linkComment") {
+          // 获取链接指向的卡片
+          const linkedNote = MNNote.new(comment.text);
+          
+          if (linkedNote) {
+            // 解析链接卡片的结构
+            const commentsObj = this.parseNoteComments(linkedNote);
+            const htmlCommentsArr = commentsObj.htmlCommentsObjArr;
+            
+            if (htmlCommentsArr.length > 0) {
+              // 获取最后一个字段
+              const lastField = htmlCommentsArr[htmlCommentsArr.length - 1];
+              const fieldIndices = lastField.excludingFieldBlockIndexArr;
+              
+              // 准备要删除的索引
+              const indicesToRemove = [];
+              const originalNoteUrl = originalNote.noteId.toNoteURL();
+              
+              // 检查最后字段中的每个评论
+              for (const fieldIndex of fieldIndices) {
+                const fieldComment = linkedNote.MNComments[fieldIndex];
+                
+                if (fieldComment && fieldComment.type === "linkComment") {
+                  // 检查是否指向原卡片 A
+                  const linkedNoteInField = MNNote.new(fieldComment.text);
+                  if (linkedNoteInField && linkedNoteInField.noteId === originalNote.noteId) {
+                    indicesToRemove.push(fieldIndex);
+                  }
+                }
+              }
+              
+              // 从大到小排序并删除
+              if (indicesToRemove.length > 0) {
+                indicesToRemove.sort((a, b) => b - a);
+                for (const indexToRemove of indicesToRemove) {
+                  linkedNote.removeCommentByIndex(indexToRemove);
+                }
+                linkedNote.refresh();
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      MNUtil.addErrorLog(error, "cleanupExtractedContentLinks", {
+        originalNoteId: originalNote.noteId
+      });
+      // 不抛出错误，让主流程继续
     }
   }
 

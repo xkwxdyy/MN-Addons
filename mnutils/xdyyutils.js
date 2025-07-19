@@ -6595,7 +6595,11 @@ class MNMath {
       const defParsedTitle = this.parseNoteTitle(selectedDefNote)
       const defTitle = defParsedTitle.prefixContent ? 
         `【定义：${defParsedTitle.prefixContent}】` : 
-        defNote.title
+        selectedDefNote.title
+      
+      // 将定义卡片本身作为第一个选项
+      linkOptions.unshift(`📍 ${defTitle} (定义卡片本身)`)
+      linkNoteIds.unshift(selectedDefNote.noteId)
       
       // 显示选择弹窗
       UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(

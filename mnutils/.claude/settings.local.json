@@ -28,7 +28,9 @@
       "Bash(/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnutils/check_apis.sh:*)",
       "Bash(node:*)",
       "mcp__promptx__promptx_init",
-      "mcp__promptx__promptx_remember"
+      "mcp__promptx__promptx_remember",
+      "Bash(git add:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }

@@ -4,14 +4,13 @@
     {
       "from": "initial",
       "command": "init",
-      "timestamp": "2025-07-18T10:25:37.201Z",
+      "timestamp": "2025-07-19T15:01:01.142Z",
       "args": [
         {
-          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnutils",
-          "ideType": "cursor"
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnutils"
         }
       ]
     }
   ],
-  "lastUpdated": "2025-07-18T10:25:37.231Z"
+  "lastUpdated": "2025-07-19T15:01:01.172Z"
 }

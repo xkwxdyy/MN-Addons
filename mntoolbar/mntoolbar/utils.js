@@ -5841,7 +5841,8 @@ class toolbarConfig {
   "showInlineChatForNote",
   "showInlineChat",
   "selectBranch",
-  "ocrForNote"
+  "ocrForNote",
+  "textFirstForNote"
 ]
   static defaultPopupReplaceConfig = {
     noteHighlight:{enabled:false,target:"",name:"noteHighlight"},
@@ -5920,6 +5921,7 @@ class toolbarConfig {
     showInlineChat:{enabled:false,target:"",name:"showInlineChat"},
     selectBranch:{enabled:false,target:"",name:"selectBranch"},
     ocrForNote:{enabled:false,target:"",name:"ocrForNote"},
+    textFirstForNote:{enabled:false,target:"",name:"textFirstForNote"},
   }
   static defalutImageScale = {
     "color0":2.4,

@@ -375,6 +375,7 @@ class MNMath {
     // this.refreshNote(note) // 刷新卡片
     this.autoMoveNewContent(note) // 自动移动新内容到对应字段
     this.moveTaskCardLinksToRelatedField(note) // 移动任务卡片链接到"相关链接"字段
+    this.moveSummaryLinksToTop(note) // 移动总结链接到卡片最上方
     this.refreshNotes(note) // 刷新卡片
     if (addToReview) {
       this.addToReview(note, reviewEverytime) // 加入复习
@@ -3462,6 +3463,62 @@ class MNMath {
       console.error("[moveTaskCardLinksToRelatedField] Error stack:", error.stack);
       // 可选：在开发阶段显示错误提示
       // MNUtil.showHUD(`任务卡片链接处理出错: ${error.message}`);
+    }
+  }
+
+  /**
+   * 移动所有总结链接到卡片最上方
+   * @param {MNNote} note - 笔记对象
+   */
+  static moveSummaryLinksToTop(note) {
+    try {
+      // 1. 收集所有 summaryComment 的索引
+      const summaryLinkIndices = [];
+      
+      // 遍历所有评论
+      for (let i = 0; i < note.MNComments.length; i++) {
+        const comment = note.MNComments[i];
+        
+        if (!comment) {
+          continue;
+        }
+        
+        // 获取评论类型
+        let commentType = comment.type;
+        if (!commentType && comment.detail) {
+          // 如果 type 为 undefined，尝试重新计算类型
+          commentType = MNComment.getCommentType(comment.detail);
+        }
+        
+        // 检查是否是 summaryComment
+        if (commentType === "summaryComment") {
+          summaryLinkIndices.push(i);
+        }
+      }
+      
+      // 2. 如果找到总结链接，按索引倒序移动到顶部
+      if (summaryLinkIndices.length > 0) {
+        // 倒序排列索引，这样移动时不会影响后续索引
+        summaryLinkIndices.sort((a, b) => b - a);
+        
+        // 移动每个总结链接到顶部
+        // 由于是倒序处理，后面的链接会先移动，所以它们会保持原有的相对顺序
+        for (let i = 0; i < summaryLinkIndices.length; i++) {
+          const fromIndex = summaryLinkIndices[i];
+          // 移动到位置 0（最顶部）
+          note.moveComment(fromIndex, 0, false);
+        }
+        
+        // 可选：显示提示
+        // MNUtil.showHUD(`已将 ${summaryLinkIndices.length} 个总结链接移动到卡片顶部`);
+      }
+      
+    } catch (error) {
+      // 错误处理，但不中断制卡流程
+      console.error("[moveSummaryLinksToTop] Error:", error);
+      console.error("[moveSummaryLinksToTop] Error stack:", error.stack);
+      // 可选：在开发阶段显示错误提示
+      // MNUtil.showHUD(`总结链接处理出错: ${error.message}`);
     }
   }
 

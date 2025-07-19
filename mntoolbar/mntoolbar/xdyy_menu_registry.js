@@ -80,6 +80,11 @@ function registerAllMenuTemplates() {
           action: "clearContentKeepExcerpt",
           menuTitle: "    只保留摘录，无标题",
         },
+        "⬇️ 移动最后一条评论",
+        {
+          action: "moveLastCommentToBelongArea",
+          menuTitle: "    移动到所属区",
+        },
       ],
     },
   });

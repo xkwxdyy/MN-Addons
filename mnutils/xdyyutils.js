@@ -5424,13 +5424,33 @@ class MNMath {
               // 增加兄弟层级模板
               type = this.parseNoteTitle(note).type
               if (type) {
-                templateNote = MNNote.clone(this.types["归类"].templateNoteId)
-                templateNote.noteTitle = "“" +  userInputTitle + "”相关" + type
+                // 分割输入，支持通过//创建多个兄弟卡片链
+                let titlePartsArray = userInputTitle.split("//")
+                
                 MNUtil.undoGrouping(()=>{
-                  note.parentNote.addChild(templateNote.note)
-                  this.linkParentNote(templateNote);
+                  let lastNote = null
+                  
+                  // 创建第一个兄弟卡片
+                  let firstNote = MNNote.clone(this.types["归类"].templateNoteId)
+                  firstNote.noteTitle = "“" + titlePartsArray[0] + "”相关" + type
+                  note.parentNote.addChild(firstNote.note)
+                  this.linkParentNote(firstNote)
+                  lastNote = firstNote
+                  
+                  // 如果有更多部分，创建子卡片链
+                  for (let i = 1; i < titlePartsArray.length; i++) {
+                    let childNote = MNNote.clone(this.types["归类"].templateNoteId)
+                    // 累积标题：第一部分 + 当前部分
+                    let accumulatedTitle = titlePartsArray[0] + titlePartsArray[i]
+                    childNote.noteTitle = "“" + accumulatedTitle + "”相关" + type
+                    lastNote.addChild(childNote.note)
+                    this.linkParentNote(childNote)
+                    lastNote = childNote
+                  }
+                  
+                  // 聚焦最后创建的卡片
+                  lastNote.focusInMindMap(0.5)
                 })
-                templateNote.focusInMindMap(0.5)
               }
               break
             case 2: // 连续向下「倒序」增加模板

@@ -3472,53 +3472,31 @@ class MNMath {
    */
   static moveSummaryLinksToTop(note) {
     try {
-      // 1. 收集所有 summaryComment 的索引
       const summaryLinkIndices = [];
       
-      // 遍历所有评论
+      // 遍历所有评论，直接检查文本内容
       for (let i = 0; i < note.MNComments.length; i++) {
         const comment = note.MNComments[i];
+        if (!comment) continue;
         
-        if (!comment) {
-          continue;
-        }
+        // 获取评论文本 - 兼容不同的属性位置
+        const text = comment.text || (comment.detail && comment.detail.text) || "";
         
-        // 获取评论类型
-        let commentType = comment.type;
-        if (!commentType && comment.detail) {
-          // 如果 type 为 undefined，尝试重新计算类型
-          commentType = MNComment.getCommentType(comment.detail);
-        }
-        
-        // 检查是否是 summaryComment
-        if (commentType === "summaryComment") {
+        // 检查是否是总结链接：marginnote4app://note/ID/summary/0
+        // 匹配格式：marginnote[数字]app://note/[任意字符]/summary/
+        if (/^marginnote\dapp:\/\/note\/.*\/summary\//.test(text)) {
           summaryLinkIndices.push(i);
         }
       }
       
-      // 2. 如果找到总结链接，按索引倒序移动到顶部
+      // 使用 moveCommentsByIndexArr 批量移动到顶部
       if (summaryLinkIndices.length > 0) {
-        // 倒序排列索引，这样移动时不会影响后续索引
-        summaryLinkIndices.sort((a, b) => b - a);
-        
-        // 移动每个总结链接到顶部
-        // 由于是倒序处理，后面的链接会先移动，所以它们会保持原有的相对顺序
-        for (let i = 0; i < summaryLinkIndices.length; i++) {
-          const fromIndex = summaryLinkIndices[i];
-          // 移动到位置 0（最顶部）
-          note.moveComment(fromIndex, 0, false);
-        }
-        
-        // 可选：显示提示
-        // MNUtil.showHUD(`已将 ${summaryLinkIndices.length} 个总结链接移动到卡片顶部`);
+        note.moveCommentsByIndexArr(summaryLinkIndices, 0);
       }
       
     } catch (error) {
-      // 错误处理，但不中断制卡流程
-      console.error("[moveSummaryLinksToTop] Error:", error);
-      console.error("[moveSummaryLinksToTop] Error stack:", error.stack);
-      // 可选：在开发阶段显示错误提示
-      // MNUtil.showHUD(`总结链接处理出错: ${error.message}`);
+      // 开发阶段显示错误提示
+      MNUtil.showHUD(`总结链接处理出错: ${error.message}`);
     }
   }
 

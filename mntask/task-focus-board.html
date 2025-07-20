@@ -545,6 +545,114 @@
             color: var(--type-keyresult);
             margin-right: 4px;
         }
+
+        /* 时间轴日期选择器样式 */
+        .timeline-date-controls {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-left: auto;
+        }
+
+        .timeline-date-picker {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .timeline-date-picker:hover {
+            border-color: var(--type-goal);
+        }
+
+        .timeline-date-picker:focus {
+            outline: none;
+            border-color: var(--type-goal);
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+        }
+
+        .date-nav-btn {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: var(--transition);
+            min-width: 32px;
+        }
+
+        .date-nav-btn:hover {
+            border-color: var(--type-goal);
+            color: var(--type-goal);
+            background: var(--bg-hover);
+        }
+
+        .date-nav-btn.today-btn {
+            padding: var(--spacing-xs) var(--spacing-md);
+        }
+
+        .timeline-stats {
+            display: flex;
+            gap: var(--spacing-lg);
+            margin: var(--spacing-md) 0;
+            padding: var(--spacing-md);
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+        }
+
+        .timeline-stat {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .timeline-stat-label {
+            color: var(--text-muted);
+        }
+
+        .timeline-stat-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* 时间轴空状态样式 */
+        .timeline-empty-state {
+            text-align: center;
+            padding: var(--spacing-xl) var(--spacing-lg);
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: var(--spacing-md);
+            opacity: 0.5;
+        }
+
+        .empty-state-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .empty-state-text {
+            font-size: 0.875rem;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .empty-state-actions {
+            display: flex;
+            gap: var(--spacing-md);
+            justify-content: center;
+        }
         
         /* ========================================
            🔀 并发任务样式
@@ -1365,9 +1473,14 @@
                         <div class="current-focus-section">
                             <div class="section-header">
                                 <h2 class="section-title">🎯 当前焦点任务</h2>
-                                <button class="btn btn-secondary" onclick="selectFocusTasks()">
-                                    选择焦点任务
-                                </button>
+                                <div style="display: flex; gap: 10px;">
+                                    <button class="btn btn-secondary" onclick="selectFocusTasks()">
+                                        选择焦点任务
+                                    </button>
+                                    <button class="btn btn-primary" onclick="scheduleTomorrowTasks()">
+                                        📅 安排明天任务
+                                    </button>
+                                </div>
                             </div>
                             
                             <div class="focus-task-container" id="focusTaskContainer">
@@ -1420,6 +1533,16 @@
                     <div class="timeline-section">
                         <div class="section-header">
                             <h2 class="section-title">📅 任务执行时间轴</h2>
+                            <div class="timeline-date-controls">
+                                <button class="date-nav-btn" onclick="changeTimelineDate(-1)">←</button>
+                                <input type="date" id="timelineDatePicker" class="timeline-date-picker" onchange="onTimelineDateChange()">
+                                <button class="date-nav-btn" onclick="changeTimelineDate(1)">→</button>
+                                <button class="date-nav-btn today-btn" onclick="selectTodayDate()">今天</button>
+                            </div>
+                        </div>
+                        
+                        <div class="timeline-stats" id="timelineStats">
+                            <!-- 统计信息将在这里动态生成 -->
                         </div>
                         
                         <div class="timeline-container" id="todayTimeline">
@@ -1587,6 +1710,29 @@
         </div>
     </div>
 
+    <!-- 模态框 - 安排明天任务 -->
+    <div id="scheduleTomorrowModal" class="modal">
+        <div class="modal-content" style="width: 600px; max-height: 80vh;">
+            <div class="modal-header">
+                <h3 class="modal-title">安排明天的任务</h3>
+                <button class="modal-close" onclick="closeModal('scheduleTomorrowModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">选择要安排到明天的任务（可多选）</p>
+                <div id="tomorrowTaskSelectList" class="task-select-list" style="max-height: 400px; overflow-y: auto;">
+                    <!-- 任务列表将在这里动态生成 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="text-muted" style="margin-right: auto;">
+                    已选择 <span id="selectedTomorrowCount">0</span> 个任务
+                </div>
+                <button class="btn btn-secondary" onclick="closeModal('scheduleTomorrowModal')">取消</button>
+                <button class="btn btn-primary" onclick="confirmTomorrowSchedule()">确定安排</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         /* ========================================
            📊 数据模型
@@ -1601,6 +1747,9 @@
         let tempFocusTasks = new Set(); // 临时选择的焦点任务ID集合
         let customViews = {}; // 自定义视图配置
         let activeFilters = {}; // 当前激活的筛选器
+        
+        // 时间轴相关变量
+        let selectedTimelineDate = new Date(); // 当前选择的时间轴日期
         
         // 项目列表和自动完成相关变量
         const projectList = [
@@ -1634,6 +1783,7 @@
                 dueDate: "2025-01-25",
                 tags: ["插件", "Bug", "紧急"],
                 today: true, // 是否是今日任务
+                plannedDate: null, // 计划执行日期
                 
                 // 新增进展记录
                 progressLog: [
@@ -1884,11 +2034,36 @@
         
         // 渲染今日时间轴
         function renderTodayTimeline() {
-            // 只显示进行中和已完成的任务
-            const timelineTasks = tasks.filter(task => 
-                task.status === '进行中' || task.status === '已完成'
-            );
+            // 获取选择的日期（ISO格式：YYYY-MM-DD）
+            const selectedDateStr = selectedTimelineDate.toISOString().split('T')[0];
+            const todayStr = new Date().toISOString().split('T')[0];
+            
+            // 根据选择的日期筛选任务
+            const timelineTasks = tasks.filter(task => {
+                // 只显示进行中和已完成的任务
+                if (task.status !== '进行中' && task.status !== '已完成') {
+                    return false;
+                }
+                
+                // 如果任务有 plannedDate，则按 plannedDate 筛选
+                if (task.fields.plannedDate) {
+                    return task.fields.plannedDate === selectedDateStr;
+                }
+                
+                // 如果没有 plannedDate，则根据 today 字段和选择的日期判断
+                if (selectedDateStr === todayStr) {
+                    // 如果选择的是今天，显示标记为今日任务的
+                    return task.fields.today === true;
+                }
+                
+                // 其他日期不显示没有 plannedDate 的任务
+                return false;
+            });
+            
             const container = document.getElementById('todayTimeline');
+            
+            // 更新统计信息
+            updateTimelineStats(timelineTasks, selectedDateStr);
             
             // 按状态和时间排序：进行中的在前，已完成的在后
             timelineTasks.sort((a, b) => {
@@ -1974,6 +2149,33 @@
                     `;
                 }).join('')}
             `;
+            
+            // 如果没有任务，显示空状态提示
+            if (timelineTasks.length === 0) {
+                const isToday = selectedDateStr === todayStr;
+                const date = new Date(selectedDateStr);
+                container.innerHTML = `
+                    <div class="timeline-empty-state">
+                        <div class="empty-state-icon">📅</div>
+                        <h3 class="empty-state-title">
+                            ${isToday ? '今天还没有进行中或已完成的任务' : `${date.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })}没有任务记录`}
+                        </h3>
+                        <p class="empty-state-text">
+                            ${isToday ? '开始处理任务后，它们会显示在这里' : '选择其他日期查看任务记录'}
+                        </p>
+                        ${isToday ? `
+                            <div class="empty-state-actions">
+                                <button class="btn btn-primary" onclick="switchView('focus')">
+                                    🎯 查看焦点任务
+                                </button>
+                                <button class="btn btn-secondary" onclick="scheduleTomorrowTasks()">
+                                    📅 安排明天任务
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
         }
 
         /* ========================================
@@ -1995,7 +2197,8 @@
                     switchView('focus');
                     break;
                 case 'today':
-                    // 切换到今日视图
+                    // 切换到今日视图，并设置日期为今天
+                    selectedTimelineDate = new Date();
                     switchView('today');
                     break;
                 case 'high-priority':
@@ -2523,6 +2726,11 @@
                     renderPendingTasks();
                     break;
                 case 'today':
+                    // 初始化日期选择器
+                    const datePicker = document.getElementById('timelineDatePicker');
+                    if (datePicker) {
+                        datePicker.value = selectedTimelineDate.toISOString().split('T')[0];
+                    }
                     renderTodayTimeline();
                     break;
                 case 'project':
@@ -2597,6 +2805,7 @@
                     dueDate: "",
                     tags: tags,
                     today: true, // 快速添加的任务默认为今日任务
+                    plannedDate: new Date().toISOString().split('T')[0], // 默认为今天的日期
                     progressLog: [],
                     customViews: [],
                     project: project,
@@ -3363,7 +3572,8 @@
                 focusTasksOrder: focusTasksOrder,
                 customViews: customViews,
                 activeFilters: activeFilters,
-                currentView: currentView
+                currentView: currentView,
+                selectedTimelineDate: selectedTimelineDate.toISOString()
             };
             
             localStorage.setItem('mntask-focus-board', JSON.stringify(data));
@@ -3381,12 +3591,217 @@
                     customViews = data.customViews || {};
                     activeFilters = data.activeFilters || {};
                     currentView = data.currentView || 'focus';
+                    
+                    // 加载保存的时间轴日期
+                    if (data.selectedTimelineDate) {
+                        selectedTimelineDate = new Date(data.selectedTimelineDate);
+                    }
+                    
                     return true;
                 } catch (e) {
                     console.error('加载数据失败:', e);
                 }
             }
             return false;
+        }
+        
+        /* ========================================
+           📅 安排明天任务功能
+           ======================================== */
+        
+        // 临时存储选中的任务ID
+        let selectedTomorrowTasks = new Set();
+        
+        // 打开安排明天任务对话框
+        function scheduleTomorrowTasks() {
+            selectedTomorrowTasks.clear();
+            const container = document.getElementById('tomorrowTaskSelectList');
+            
+            // 筛选可以安排的任务（未开始和暂停的任务）
+            const availableTasks = tasks.filter(task => 
+                task.status === '未开始' || task.status === '暂停'
+            );
+            
+            if (availableTasks.length === 0) {
+                container.innerHTML = '<p class="text-muted text-center">没有可安排的任务（只能安排"未开始"和"暂停"状态的任务）</p>';
+            } else {
+                container.innerHTML = availableTasks.map(task => `
+                    <div class="task-select-item">
+                        <input type="checkbox" 
+                               id="tomorrow_${task.id}" 
+                               value="${task.id}"
+                               onchange="toggleTomorrowTask('${task.id}')">
+                        <label for="tomorrow_${task.id}" style="flex: 1; cursor: pointer;">
+                            <div class="task-select-info">
+                                <div class="task-select-header">
+                                    <span class="task-type-badge ${task.type.toLowerCase()}">
+                                        ${getTaskTypeIcon(task.type)} ${task.type}
+                                    </span>
+                                    <span class="task-status-badge ${task.status.toLowerCase()}">
+                                        ${getStatusIcon(task.status)} ${task.status}
+                                    </span>
+                                    ${task.fields.priority ? `
+                                        <span class="priority-indicator ${task.fields.priority.toLowerCase()}">
+                                            ${getPriorityIcon(task.fields.priority)}
+                                        </span>
+                                    ` : ''}
+                                </div>
+                                <div class="task-select-title">${task.title}</div>
+                                <div class="task-select-path">${task.path}</div>
+                                ${task.fields.plannedDate ? `
+                                    <div class="text-small text-muted">
+                                        当前计划日期: ${formatDate(task.fields.plannedDate)}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </label>
+                    </div>
+                `).join('');
+            }
+            
+            updateTomorrowSelectionCount();
+            document.getElementById('scheduleTomorrowModal').classList.add('active');
+        }
+        
+        // 切换任务选择状态
+        function toggleTomorrowTask(taskId) {
+            if (selectedTomorrowTasks.has(taskId)) {
+                selectedTomorrowTasks.delete(taskId);
+            } else {
+                selectedTomorrowTasks.add(taskId);
+            }
+            updateTomorrowSelectionCount();
+        }
+        
+        // 更新选择计数
+        function updateTomorrowSelectionCount() {
+            document.getElementById('selectedTomorrowCount').textContent = selectedTomorrowTasks.size;
+        }
+        
+        // 确认安排到明天
+        function confirmTomorrowSchedule() {
+            if (selectedTomorrowTasks.size === 0) {
+                alert('请至少选择一个任务');
+                return;
+            }
+            
+            // 计算明天的日期
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const tomorrowStr = tomorrow.toISOString().split('T')[0];
+            
+            // 更新选中任务的 plannedDate
+            let updatedCount = 0;
+            selectedTomorrowTasks.forEach(taskId => {
+                const task = tasks.find(t => t.id === taskId);
+                if (task) {
+                    task.fields.plannedDate = tomorrowStr;
+                    updatedCount++;
+                    
+                    // 添加进展记录
+                    if (!task.fields.progressLog) {
+                        task.fields.progressLog = [];
+                    }
+                    task.fields.progressLog.push({
+                        date: new Date().toLocaleString('zh-CN'),
+                        note: `任务已安排到 ${tomorrow.toLocaleDateString('zh-CN')}`
+                    });
+                }
+            });
+            
+            // 保存数据
+            saveToLocalStorage();
+            
+            // 关闭模态框
+            closeModal('scheduleTomorrowModal');
+            
+            // 显示成功提示
+            alert(`已成功安排 ${updatedCount} 个任务到明天`);
+            
+            // 如果当前在时间轴视图，刷新显示
+            if (currentView === 'today') {
+                renderTodayTimeline();
+            }
+            
+            // 更新侧边栏统计
+            updateSidebarStats();
+        }
+        
+        /* ========================================
+           📅 时间轴日期选择功能
+           ======================================== */
+        
+        // 更新时间轴统计信息
+        function updateTimelineStats(timelineTasks, dateStr) {
+            const statsContainer = document.getElementById('timelineStats');
+            if (!statsContainer) return;
+            
+            const inProgressCount = timelineTasks.filter(t => t.status === '进行中').length;
+            const completedCount = timelineTasks.filter(t => t.status === '已完成').length;
+            
+            // 格式化日期显示
+            const date = new Date(dateStr);
+            const today = new Date();
+            const isToday = dateStr === today.toISOString().split('T')[0];
+            const dateDisplay = isToday ? '今天' : date.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' });
+            
+            statsContainer.innerHTML = `
+                <div class="timeline-stat">
+                    <span class="timeline-stat-label">📅 日期：</span>
+                    <span class="timeline-stat-value">${dateDisplay}</span>
+                </div>
+                <div class="timeline-stat">
+                    <span class="timeline-stat-label">🚀 进行中：</span>
+                    <span class="timeline-stat-value">${inProgressCount}</span>
+                </div>
+                <div class="timeline-stat">
+                    <span class="timeline-stat-label">✅ 已完成：</span>
+                    <span class="timeline-stat-value">${completedCount}</span>
+                </div>
+                <div class="timeline-stat">
+                    <span class="timeline-stat-label">📊 总计：</span>
+                    <span class="timeline-stat-value">${timelineTasks.length}</span>
+                </div>
+            `;
+        }
+        
+        // 改变时间轴日期
+        function changeTimelineDate(direction) {
+            const newDate = new Date(selectedTimelineDate);
+            newDate.setDate(newDate.getDate() + direction);
+            selectedTimelineDate = newDate;
+            
+            // 更新日期选择器的值
+            const datePicker = document.getElementById('timelineDatePicker');
+            if (datePicker) {
+                datePicker.value = selectedTimelineDate.toISOString().split('T')[0];
+            }
+            
+            // 重新渲染时间轴
+            renderTodayTimeline();
+        }
+        
+        // 选择今天的日期
+        function selectTodayDate() {
+            selectedTimelineDate = new Date();
+            
+            // 更新日期选择器的值
+            const datePicker = document.getElementById('timelineDatePicker');
+            if (datePicker) {
+                datePicker.value = selectedTimelineDate.toISOString().split('T')[0];
+            }
+            
+            // 重新渲染时间轴
+            renderTodayTimeline();
+        }
+        
+        // 日期选择器改变事件
+        function onTimelineDateChange() {
+            const datePicker = document.getElementById('timelineDatePicker');
+            if (datePicker && datePicker.value) {
+                selectedTimelineDate = new Date(datePicker.value + 'T00:00:00');
+                renderTodayTimeline();
+            }
         }
         
         /* ========================================

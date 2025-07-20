@@ -1,3 +1,6 @@
+类似于 addNewSummaryNote 和 addNewIdeaNote 功能，现在需要增加一个新增反例卡片的功能。稍微区别一下的是
+此时的 HtmlMarkdown 评论用 alert 类型。选中卡片 A 增加反例卡片 B 的话，A 到 B 的链接移动到卡片最上方。ultrathink
+---
 优化一下 mnutils 的 manageCommentsByPopup 函数的提取评论功能。
 目前提取之后可以选择删除选中的评论。我希望你先看看提取出来的那个部分，我们也有一个链接处理。
 比如 A 卡片我们选择了一些内容记为 content，提取为 B，我要检测 content 里链接对应的卡片的最后一个字段里是否包含 A 的链接，如果有的话，就删掉这个链接。

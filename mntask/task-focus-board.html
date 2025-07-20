@@ -338,6 +338,19 @@
             background: var(--bg-focus);
         }
 
+        /* 拖拽状态样式 */
+        .focus-task-card[draggable="true"] {
+            cursor: move;
+        }
+
+        .focus-task-card.dragging {
+            opacity: 0.5;
+        }
+
+        .focus-task-card.drag-over {
+            border-top: 3px solid var(--type-goal) !important;
+        }
+
         /* 任务类型标签 */
         .task-type-badge {
             display: inline-flex;
@@ -1255,7 +1268,13 @@
                     🎯 焦点任务
                 </button>
                 <button class="view-btn" data-view="today" onclick="switchView('today')">
-                    📅 今日时间轴
+                    📅 时间轴
+                </button>
+                <button class="view-btn" data-view="project" onclick="switchView('project')">
+                    📦 项目看板
+                </button>
+                <button class="view-btn" data-view="goal" onclick="switchView('goal')">
+                    🎪 目标看板
                 </button>
                 <button class="view-btn" data-view="board" onclick="switchView('board')">
                     📋 看板视图
@@ -1410,6 +1429,28 @@
                     </div>
                 </div>
 
+                <!-- 项目看板视图 -->
+                <div id="view-project" class="view-container hidden">
+                    <div class="section-header">
+                        <h2 class="section-title">📦 项目看板</h2>
+                        <span class="text-muted">管理所有项目的进展</span>
+                    </div>
+                    <div id="projectBoardContainer">
+                        <!-- 项目看板内容将在这里动态生成 -->
+                    </div>
+                </div>
+
+                <!-- 目标看板视图 -->
+                <div id="view-goal" class="view-container hidden">
+                    <div class="section-header">
+                        <h2 class="section-title">🎪 目标看板</h2>
+                        <span class="text-muted">管理目标和关键结果</span>
+                    </div>
+                    <div id="goalBoardContainer">
+                        <!-- 目标看板内容将在这里动态生成 -->
+                    </div>
+                </div>
+
                 <!-- 看板视图（待实现） -->
                 <div id="view-board" class="view-container hidden">
                     <div class="section-header">
@@ -1556,6 +1597,7 @@
         let filteredTasks = []; // 筛选后的任务列表
         let currentView = 'focus';
         let focusTasks = new Set(); // 当前焦点任务ID集合
+        let focusTasksOrder = []; // 焦点任务的排序
         let tempFocusTasks = new Set(); // 临时选择的焦点任务ID集合
         let customViews = {}; // 自定义视图配置
         let activeFilters = {}; // 当前激活的筛选器
@@ -1654,13 +1696,35 @@
         // 渲染焦点任务卡片
         function renderFocusTasks() {
             const container = document.getElementById('focusTaskContainer');
-            const focusTasksList = tasks.filter(task => focusTasks.has(task.id));
+            // 只显示动作类型的焦点任务
+            let focusTasksList = tasks.filter(task => 
+                focusTasks.has(task.id) && task.type === '动作'
+            );
             
-            container.innerHTML = focusTasksList.map(task => {
+            // 按照 focusTasksOrder 排序
+            if (focusTasksOrder.length > 0) {
+                focusTasksList.sort((a, b) => {
+                    const indexA = focusTasksOrder.indexOf(a.id);
+                    const indexB = focusTasksOrder.indexOf(b.id);
+                    if (indexA === -1) return 1;
+                    if (indexB === -1) return -1;
+                    return indexA - indexB;
+                });
+            }
+            
+            container.innerHTML = focusTasksList.map((task, index) => {
                 const hasConflict = hasTimeConflict(task);
                 
                 return `
-                <div class="focus-task-card ${task.currentFocus ? 'active' : ''} ${hasConflict ? 'has-conflict' : ''} fade-in" onclick="toggleCurrentFocus('${task.id}')">
+                <div class="focus-task-card ${task.currentFocus ? 'active' : ''} ${hasConflict ? 'has-conflict' : ''} fade-in" 
+                     draggable="true"
+                     data-task-id="${task.id}"
+                     data-task-index="${index}"
+                     ondragstart="handleDragStart(event)"
+                     ondragover="handleDragOver(event)"
+                     ondrop="handleDrop(event)"
+                     ondragend="handleDragEnd(event)"
+                     onclick="toggleCurrentFocus('${task.id}')">
                     <div class="task-type-badge ${task.type.toLowerCase()}">
                         ${getTaskTypeIcon(task.type)} ${task.type}
                     </div>
@@ -1730,8 +1794,11 @@
         function renderPendingTasks() {
             // 使用筛选后的任务列表，如果为空则使用全部任务
             const sourceList = filteredTasks.length > 0 ? filteredTasks : tasks;
+            // 只显示未完成且不在焦点中的动作类型任务
             const pendingTasks = sourceList.filter(task => 
-                task.status !== '已完成' && !focusTasks.has(task.id)
+                task.status !== '已完成' && 
+                !focusTasks.has(task.id) && 
+                task.type === '动作'
             );
             
             document.getElementById('pendingCount').textContent = pendingTasks.length;
@@ -2198,6 +2265,12 @@
             }
             
             focusTasks.add(taskId);
+            
+            // 将新任务添加到排序数组末尾
+            if (!focusTasksOrder.includes(taskId)) {
+                focusTasksOrder.push(taskId);
+            }
+            
             renderFocusTasks();
             updateSidebarStats();
             saveToLocalStorage();
@@ -2260,6 +2333,84 @@
             
             updateSidebarStats();
             saveToLocalStorage();
+        }
+
+        // 拖拽相关变量
+        let draggedTaskId = null;
+
+        // 拖拽开始
+        function handleDragStart(event) {
+            draggedTaskId = event.target.dataset.taskId;
+            event.target.style.opacity = '0.5';
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/html', event.target.innerHTML);
+        }
+
+        // 拖拽经过
+        function handleDragOver(event) {
+            if (event.preventDefault) {
+                event.preventDefault();
+            }
+            event.dataTransfer.dropEffect = 'move';
+            
+            const target = event.target.closest('.focus-task-card');
+            if (target && target.dataset.taskId !== draggedTaskId) {
+                target.style.borderTop = '2px solid #667eea';
+            }
+            
+            return false;
+        }
+
+        // 拖拽放下
+        function handleDrop(event) {
+            if (event.stopPropagation) {
+                event.stopPropagation();
+            }
+            
+            const dropTarget = event.target.closest('.focus-task-card');
+            if (!dropTarget || draggedTaskId === dropTarget.dataset.taskId) {
+                return false;
+            }
+            
+            const dropTaskId = dropTarget.dataset.taskId;
+            
+            // 更新 focusTasksOrder 数组
+            const draggedIndex = focusTasksOrder.indexOf(draggedTaskId);
+            const dropIndex = focusTasksOrder.indexOf(dropTaskId);
+            
+            if (draggedIndex === -1) {
+                // 如果拖拽的任务不在数组中，将其添加到放置位置
+                focusTasksOrder.splice(dropIndex, 0, draggedTaskId);
+            } else {
+                // 移除拖拽的任务
+                focusTasksOrder.splice(draggedIndex, 1);
+                // 重新计算放置位置（因为数组已经改变）
+                const newDropIndex = focusTasksOrder.indexOf(dropTaskId);
+                // 在放置位置插入
+                focusTasksOrder.splice(newDropIndex, 0, draggedTaskId);
+            }
+            
+            // 确保数组中只包含当前焦点任务
+            focusTasksOrder = focusTasksOrder.filter(id => focusTasks.has(id));
+            
+            // 重新渲染焦点任务
+            renderFocusTasks();
+            saveToLocalStorage();
+            
+            return false;
+        }
+
+        // 拖拽结束
+        function handleDragEnd(event) {
+            event.target.style.opacity = '';
+            
+            // 清除所有拖拽指示器
+            const cards = document.querySelectorAll('.focus-task-card');
+            cards.forEach(card => {
+                card.style.borderTop = '';
+            });
+            
+            draggedTaskId = null;
         }
 
         /* ========================================
@@ -2369,11 +2520,23 @@
             switch(viewName) {
                 case 'focus':
                     renderFocusTasks();
+                    renderPendingTasks();
                     break;
                 case 'today':
                     renderTodayTimeline();
                     break;
-                // 其他视图待实现
+                case 'project':
+                    renderProjectBoard();
+                    break;
+                case 'goal':
+                    renderGoalBoard();
+                    break;
+                case 'board':
+                    renderBoardView();
+                    break;
+                case 'list':
+                    renderListView();
+                    break;
             }
         }
 
@@ -2666,8 +2829,10 @@
             // 创建 focusTasks 的临时副本
             tempFocusTasks = new Set(focusTasks);
             
-            // 渲染任务列表
-            const nonCompletedTasks = tasks.filter(task => task.status !== '已完成');
+            // 渲染任务列表 - 只显示未完成的动作类型任务
+            const nonCompletedTasks = tasks.filter(task => 
+                task.status !== '已完成' && task.type === '动作'
+            );
             listContainer.innerHTML = nonCompletedTasks.map(task => `
                 <div class="task-select-item ${tempFocusTasks.has(task.id) ? 'selected' : ''}" 
                      onclick="toggleTaskSelection('${task.id}', event)">
@@ -2720,6 +2885,16 @@
         function confirmFocusSelection() {
             // 将临时选择同步到全局状态
             focusTasks = new Set(tempFocusTasks);
+            
+            // 将新添加的任务添加到排序数组末尾
+            tempFocusTasks.forEach(taskId => {
+                if (!focusTasksOrder.includes(taskId)) {
+                    focusTasksOrder.push(taskId);
+                }
+            });
+            
+            // 移除不再是焦点任务的ID
+            focusTasksOrder = focusTasksOrder.filter(id => focusTasks.has(id));
             
             closeModal('selectFocusModal');
             renderFocusTasks();
@@ -2945,6 +3120,132 @@
         }
         
         /* ========================================
+           📦 项目看板
+           ======================================== */
+        
+        function renderProjectBoard() {
+            const container = document.getElementById('projectBoardContainer');
+            const projectTasks = tasks.filter(task => task.type === '项目');
+            
+            // 按状态分组
+            const statusGroups = {
+                '未开始': projectTasks.filter(t => t.status === '未开始'),
+                '进行中': projectTasks.filter(t => t.status === '进行中'),
+                '已完成': projectTasks.filter(t => t.status === '已完成')
+            };
+            
+            container.innerHTML = `
+                <div class="board-columns">
+                    ${Object.entries(statusGroups).map(([status, tasks]) => `
+                        <div class="board-column">
+                            <div class="board-column-header">
+                                <h3>${getStatusIcon(status)} ${status}</h3>
+                                <span class="count-badge">${tasks.length}</span>
+                            </div>
+                            <div class="board-column-content">
+                                ${tasks.map(task => `
+                                    <div class="board-card" onclick="viewTaskDetail('${task.id}')">
+                                        <div class="board-card-header">
+                                            <span class="priority-badge ${task.fields.priority.toLowerCase()}">
+                                                ${getPriorityIcon(task.fields.priority)}
+                                            </span>
+                                            <span class="text-small text-muted">${task.fields.project || '未分类'}</span>
+                                        </div>
+                                        <h4 class="board-card-title">${task.title}</h4>
+                                        <div class="board-card-meta">
+                                            ${task.fields.dueDate ? `<span>📅 ${formatDate(task.fields.dueDate)}</span>` : ''}
+                                            ${task.fields.progress ? `<span>📊 ${task.fields.progress}%</span>` : ''}
+                                        </div>
+                                        <div class="board-card-footer">
+                                            <div class="board-card-actions">
+                                                ${task.status === '未开始' ? `
+                                                    <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '进行中')">
+                                                        🚀 开始
+                                                    </button>
+                                                ` : task.status === '进行中' ? `
+                                                    <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '已完成')">
+                                                        ✅ 完成
+                                                    </button>
+                                                ` : ''}
+                                                <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); viewTaskDetail('${task.id}')">
+                                                    📝 详情
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('') || '<p class="text-muted">暂无项目</p>'}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        /* ========================================
+           🎪 目标看板
+           ======================================== */
+        
+        function renderGoalBoard() {
+            const container = document.getElementById('goalBoardContainer');
+            const goals = tasks.filter(task => task.type === '目标');
+            const keyResults = tasks.filter(task => task.type === '关键结果');
+            
+            container.innerHTML = `
+                <div class="goal-board">
+                    ${goals.map(goal => {
+                        const goalKeyResults = keyResults.filter(kr => kr.parent === goal.id);
+                        const progress = goalKeyResults.length > 0
+                            ? Math.round(goalKeyResults.reduce((sum, kr) => sum + (kr.fields.progress || 0), 0) / goalKeyResults.length)
+                            : 0;
+                        
+                        return `
+                            <div class="goal-card">
+                                <div class="goal-header">
+                                    <h3 class="goal-title">
+                                        ${getTaskTypeIcon('目标')} ${goal.title}
+                                    </h3>
+                                    <span class="${getStatusClass(goal.status)}">
+                                        ${getStatusIcon(goal.status)} ${goal.status}
+                                    </span>
+                                </div>
+                                <div class="goal-progress">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: ${progress}%"></div>
+                                    </div>
+                                    <span class="progress-text">${progress}%</span>
+                                </div>
+                                <div class="key-results">
+                                    <h4 class="key-results-title">关键结果</h4>
+                                    ${goalKeyResults.length > 0 ? goalKeyResults.map(kr => `
+                                        <div class="key-result-item" onclick="viewTaskDetail('${kr.id}')">
+                                            <div class="key-result-header">
+                                                <span class="key-result-title">${kr.title}</span>
+                                                <span class="key-result-progress">${kr.fields.progress || 0}%</span>
+                                            </div>
+                                            <div class="key-result-progress-bar">
+                                                <div class="progress-fill" style="width: ${kr.fields.progress || 0}%"></div>
+                                            </div>
+                                        </div>
+                                    `).join('') : '<p class="text-muted text-small">暂无关键结果</p>'}
+                                </div>
+                                <div class="goal-actions">
+                                    <button class="btn btn-secondary" onclick="viewTaskDetail('${goal.id}')">
+                                        📝 查看详情
+                                    </button>
+                                    ${goal.status !== '已完成' ? `
+                                        <button class="btn btn-primary" onclick="addKeyResult('${goal.id}')">
+                                            ➕ 添加关键结果
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }).join('') || '<p class="text-muted">暂无目标</p>'}
+                </div>
+            `;
+        }
+        
+        /* ========================================
            📋 看板视图
            ======================================== */
         
@@ -3059,6 +3360,7 @@
             const data = {
                 tasks: tasks,
                 focusTasks: Array.from(focusTasks),
+                focusTasksOrder: focusTasksOrder,
                 customViews: customViews,
                 activeFilters: activeFilters,
                 currentView: currentView
@@ -3075,6 +3377,7 @@
                     const data = JSON.parse(savedData);
                     tasks = data.tasks || [];
                     focusTasks = new Set(data.focusTasks || []);
+                    focusTasksOrder = data.focusTasksOrder || [];
                     customViews = data.customViews || {};
                     activeFilters = data.activeFilters || {};
                     currentView = data.currentView || 'focus';

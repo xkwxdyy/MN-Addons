@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MNTask 焦点任务看板</title>
+    <title>MNTask 任务看板</title>
     
     <!-- 引入测试数据 -->
     <script src="testData.js"></script>
@@ -2237,6 +2237,71 @@
             border-color: var(--type-goal);
             color: var(--type-goal);
         }
+        
+        /* ========================================
+           ⏰ 时间轴任务组样式
+           ======================================== */
+        
+        /* 任务组容器 */
+        .timeline-item-group {
+            position: relative;
+            display: flex;
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-xl);
+            padding-left: 20px;
+        }
+        
+        /* 任务组的时间点 */
+        .timeline-dot-group {
+            position: absolute;
+            left: -8px;
+            top: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        /* 任务组计数 */
+        .timeline-group-count {
+            background: var(--type-goal);
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        /* 任务组标签 */
+        .timeline-group-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-sm);
+            font-weight: 500;
+        }
+        
+        /* 任务组内容容器 */
+        .timeline-group-tasks {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+        
+        /* 分组中的任务内容 */
+        .timeline-content-grouped {
+            margin-left: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+        }
+        
+        .timeline-content-grouped:hover {
+            border-color: var(--type-goal);
+            transform: translateX(4px);
+        }
     </style>
 </head>
 <body>
@@ -2244,7 +2309,7 @@
         <!-- 顶部导航栏 -->
         <nav class="navbar">
             <div class="navbar-left">
-                <h1 class="navbar-title">MNTask 焦点看板</h1>
+                <h1 class="navbar-title">MNTask 看板</h1>
                 
                 <!-- 快速添加任务 -->
                 <div class="quick-add-container" style="position: relative;">
@@ -3201,7 +3266,7 @@
             
             const container = document.getElementById('pendingTasksList');
             container.innerHTML = pendingTasks.slice(0, 10).map(task => `
-                <div class="timeline-content mb-2 slide-in">
+                <div class="timeline-content mb-2 slide-in" onclick="viewTaskDetail('${task.id}')" style="cursor: pointer;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <span class="task-type-badge ${task.type.toLowerCase()} text-small">
@@ -3365,6 +3430,12 @@
                 // 如果状态相同，按开始时间或结束时间排序
                 const timeA = a.fields.startTime || a.fields.endTime || '';
                 const timeB = b.fields.startTime || b.fields.endTime || '';
+                
+                // 如果时间相同，按任务ID排序（确保稳定的排序结果）
+                if (timeA === timeB) {
+                    return a.id.localeCompare(b.id);
+                }
+                
                 return timeB.localeCompare(timeA); // 最新的在前
             });
             
@@ -3406,12 +3477,103 @@
                     }).join('')}
                 `;
             } else {
-                // 日视图保持原样
+                // 日视图 - 检测并分组同时间的任务
+                const taskGroups = [];
+                let currentGroup = null;
+                
+                timelineTasks.forEach((task, index) => {
+                    const taskTime = task.fields.startTime || task.fields.endTime || '';
+                    
+                    if (currentGroup && currentGroup.time === taskTime) {
+                        // 添加到当前组
+                        currentGroup.tasks.push(task);
+                    } else {
+                        // 创建新组
+                        currentGroup = {
+                            time: taskTime,
+                            tasks: [task]
+                        };
+                        taskGroups.push(currentGroup);
+                    }
+                });
+                
+                // 渲染分组的时间轴
                 container.innerHTML = `
                     <div class="timeline-line"></div>
-                    ${timelineTasks.map(task => renderTimelineTask(task)).join('')}
+                    ${taskGroups.map(group => {
+                        if (group.tasks.length === 1) {
+                            // 单个任务，正常渲染
+                            return renderTimelineTask(group.tasks[0]);
+                        } else {
+                            // 多个任务同时间，特殊渲染
+                            return renderTimelineTaskGroup(group);
+                        }
+                    }).join('')}
                 `;
             }
+        }
+        
+        // 渲染同时间的任务组
+        function renderTimelineTaskGroup(group) {
+            const timeStr = group.tasks[0].status === '进行中' && group.tasks[0].fields.startTime
+                ? `开始于 ${new Date(group.tasks[0].fields.startTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
+                : group.tasks[0].status === '已完成' && group.tasks[0].fields.endTime
+                ? `完成于 ${new Date(group.tasks[0].fields.endTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
+                : group.tasks[0].status;
+            
+            return `
+                <div class="timeline-item-group fade-in">
+                    <div class="timeline-dot-group">
+                        <div class="timeline-dot ${group.tasks.some(t => t.status === '进行中') ? 'active' : ''}"></div>
+                        <span class="timeline-group-count">${group.tasks.length}</span>
+                    </div>
+                    <div class="timeline-time">${timeStr}</div>
+                    <div class="timeline-content-wrapper">
+                        <div class="timeline-group-label">同时${group.tasks[0].status === '进行中' ? '开始' : '完成'}的任务</div>
+                        <div class="timeline-group-tasks">
+                            ${group.tasks.map(task => `
+                                <div class="timeline-content timeline-content-grouped" onclick="viewTaskDetail('${task.id}')">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span class="task-type-badge ${task.type.toLowerCase()} text-small">
+                                            ${getTaskTypeIcon(task.type)} ${task.type}
+                                        </span>
+                                        <span class="${getStatusClass(task.status)} text-small">
+                                            ${getStatusIcon(task.status)} ${task.status}
+                                        </span>
+                                    </div>
+                                    <div class="mt-1 font-weight-500">${task.title}</div>
+                                    <div class="text-small text-muted mt-1">
+                                        ${task.path}
+                                    </div>
+                                    ${task.status === '进行中' && task.fields.startTime ? `
+                                        <div class="text-small text-muted mt-1">
+                                            ⏱ 已用时：${formatElapsedTime(task.fields.startTime)}
+                                        </div>
+                                    ` : ''}
+                                    ${task.status === '已完成' && task.fields.startTime && task.fields.endTime ? `
+                                        <div class="text-small text-muted mt-1">
+                                            ⏱ 耗时：${formatElapsedTime(task.fields.startTime, task.fields.endTime)}
+                                        </div>
+                                    ` : ''}
+                                    <div class="mt-2" style="display: flex; gap: 8px;">
+                                        ${task.status === '进行中' ? `
+                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '已完成')">
+                                                ✅ 完成
+                                            </button>
+                                            <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '暂停')">
+                                                ⏸ 暂停
+                                            </button>
+                                        ` : ''}
+                                        <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); viewProgressLog(event, '${task.id}')">
+                                            📊 进展
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
         }
         
         // 渲染单个时间轴任务
@@ -5526,7 +5688,7 @@
                 }
             });
             
-            console.log('🚀 MNTask 焦点看板已启动');
+            console.log('🚀 MNTask 看板已启动');
         });
         
         // 更新侧边栏统计

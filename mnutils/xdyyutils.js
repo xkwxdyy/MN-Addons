@@ -7655,7 +7655,7 @@ class HtmlMarkdownUtils {
   };
   static prefix = {
     danger: '',
-    alert: '注意：',
+    alert: '',
     key: '',
     // step: '',
     // point: '',

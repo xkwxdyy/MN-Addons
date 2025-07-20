@@ -554,6 +554,29 @@
                 min-height: 48px;
                 font-size: 16px; /* 防止iOS缩放 */
             }
+            
+            /* 看板移动端优化 */
+            .type-boards-container {
+                padding: var(--spacing-sm);
+                gap: var(--spacing-lg);
+            }
+            
+            .kanban-container {
+                padding: var(--spacing-sm);
+                gap: var(--spacing-sm);
+            }
+            
+            .kanban-column {
+                min-width: 260px;
+            }
+            
+            .type-board-header {
+                padding: var(--spacing-md);
+            }
+            
+            .type-board-title {
+                font-size: 1rem;
+            }
         }
 
         /* 触摸设备优化 */
@@ -1422,22 +1445,65 @@
         }
         
         /* 看板视图样式 */
+        .type-boards-container {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xl);
+            padding: var(--spacing-lg);
+        }
+
+        .type-board-section {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .type-board-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-lg);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .type-board-title {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            margin: 0;
+            font-size: 1.125rem;
+        }
+
+        .type-board-count {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-weight: normal;
+        }
+
+        .btn-sm {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            font-size: 0.75rem;
+        }
+
         .kanban-container {
             display: flex;
             gap: var(--spacing-lg);
-            height: calc(100vh - 200px);
             overflow-x: auto;
-            padding-bottom: var(--spacing-lg);
+            padding: var(--spacing-lg);
+            min-height: 300px;
         }
         
         .kanban-column {
-            min-width: 300px;
-            max-width: 350px;
-            background: var(--glass-bg);
+            min-width: 280px;
+            background: rgba(255, 255, 255, 0.02);
             border: 1px solid var(--glass-border);
             border-radius: var(--radius);
             display: flex;
             flex-direction: column;
+            height: fit-content;
+            min-height: 200px;
         }
         
         .kanban-header {
@@ -1478,6 +1544,20 @@
             border-color: var(--type-goal);
             transform: translateY(-2px);
             box-shadow: var(--shadow);
+        }
+        
+        /* 看板折叠/展开动画 */
+        .kanban-container {
+            transition: all 0.3s ease-in-out;
+            transform-origin: top;
+        }
+        
+        .type-board-section .btn-sm {
+            transition: transform 0.3s ease;
+        }
+        
+        .type-board-section .btn-sm:hover {
+            transform: scale(1.1);
         }
         
         /* ========================================
@@ -1821,6 +1901,227 @@
             text-align: center;
             padding: var(--spacing-xl);
             color: var(--text-muted);
+        }
+        
+        /* ========================================
+           🎨 动态侧边栏样式
+           ======================================== */
+        
+        /* 看板导航项 */
+        .board-nav-item {
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+        }
+        
+        .board-nav-item:hover {
+            background: var(--bg-hover);
+            border-color: var(--type-goal);
+        }
+        
+        .board-nav-item.active {
+            background: var(--bg-active);
+            border-color: var(--type-goal);
+            color: var(--type-goal);
+        }
+        
+        .board-nav-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .board-nav-title {
+            font-weight: 500;
+            font-size: 0.9375rem;
+        }
+        
+        .board-nav-count {
+            background: var(--bg-active);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            color: var(--type-goal);
+        }
+        
+        .board-nav-stats {
+            display: flex;
+            gap: var(--spacing-xs);
+            flex-wrap: wrap;
+        }
+        
+        .status-tag {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .status-tag.todo {
+            background: rgba(113, 128, 150, 0.2);
+            color: var(--status-todo);
+        }
+        
+        .status-tag.pause {
+            background: rgba(91, 157, 217, 0.2);
+            color: var(--status-pause);
+        }
+        
+        .status-tag.doing {
+            background: rgba(246, 173, 85, 0.2);
+            color: var(--status-doing);
+        }
+        
+        .status-tag.done {
+            background: rgba(72, 187, 120, 0.2);
+            color: var(--status-done);
+        }
+        
+        /* 日期导航网格 */
+        .date-nav-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .date-nav-btn {
+            padding: var(--spacing-sm);
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.875rem;
+        }
+        
+        .date-nav-btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--type-goal);
+        }
+        
+        /* 时间轴统计迷你版 */
+        .timeline-stats-mini {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-sm);
+        }
+        
+        .timeline-stats-mini .stat-item {
+            background: var(--bg-card);
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            text-align: center;
+        }
+        
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: block;
+        }
+        
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--type-goal);
+        }
+        
+        /* 进度条迷你版 */
+        .progress-bar-mini {
+            height: 4px;
+            background: var(--bg-hover);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: var(--spacing-xs);
+        }
+        
+        .progress-bar-mini .progress-fill {
+            height: 100%;
+            background: var(--type-goal);
+            transition: width 0.3s ease;
+        }
+        
+        /* 项目统计 */
+        .project-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-sm);
+        }
+        
+        /* 目标导航项 */
+        .goal-nav-item {
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-sm);
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .goal-nav-item:hover {
+            background: var(--bg-hover);
+            border-color: var(--type-goal);
+        }
+        
+        .goal-nav-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .goal-nav-krs {
+            padding-left: var(--spacing-md);
+        }
+        
+        .kr-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-xs) 0;
+            border-bottom: 1px solid var(--glass-border);
+        }
+        
+        .kr-item:last-child {
+            border-bottom: none;
+        }
+        
+        /* 目标统计 */
+        .goal-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-sm);
+        }
+        
+        /* 按钮块样式 */
+        .btn-block {
+            width: 100%;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        /* 保存视图按钮 */
+        .save-view-btn {
+            padding: 4px 8px;
+            background: transparent;
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .save-view-btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--type-goal);
+            color: var(--type-goal);
         }
     </style>
 </head>
@@ -3526,6 +3827,9 @@
             
             currentView = viewName;
             
+            // 更新侧边栏内容
+            updateSidebar(viewName);
+            
             // 根据视图类型渲染内容
             switch(viewName) {
                 case 'focus':
@@ -4215,7 +4519,7 @@
                             : 0;
                         
                         return `
-                            <div class="goal-card">
+                            <div class="goal-card" data-goal-id="${goal.id}">
                                 <div class="goal-header">
                                     <h3 class="goal-title">
                                         ${getTaskTypeIcon('目标')} ${goal.title}
@@ -4262,61 +4566,576 @@
         }
         
         /* ========================================
+           🎨 动态侧边栏系统
+           ======================================== */
+        
+        // 更新侧边栏内容
+        function updateSidebar(viewName) {
+            const sidebar = document.getElementById('sidebar');
+            
+            switch(viewName) {
+                case 'board':
+                    renderBoardSidebar();
+                    break;
+                case 'focus':
+                    renderFocusSidebar();
+                    break;
+                case 'today':
+                    renderTimelineSidebar();
+                    break;
+                case 'project':
+                    renderProjectSidebar();
+                    break;
+                case 'goal':
+                    renderGoalSidebar();
+                    break;
+                case 'list':
+                    renderListSidebar();
+                    break;
+                default:
+                    renderListSidebar(); // 默认显示列表视图的侧边栏
+            }
+        }
+        
+        // 看板视图侧边栏 - 显示4个类型看板的快速导航
+        function renderBoardSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            
+            // 按任务类型分组统计
+            const typeGroups = {
+                '目标': tasks.filter(t => t.type === '目标'),
+                '关键结果': tasks.filter(t => t.type === '关键结果'),
+                '项目': tasks.filter(t => t.type === '项目'),
+                '动作': tasks.filter(t => t.type === '动作')
+            };
+            
+            // 计算每个类型的状态分布
+            function getStatusCounts(tasks) {
+                return {
+                    '未开始': tasks.filter(t => t.status === '未开始').length,
+                    '暂停': tasks.filter(t => t.status === '暂停').length,
+                    '进行中': tasks.filter(t => t.status === '进行中').length,
+                    '已完成': tasks.filter(t => t.status === '已完成').length
+                };
+            }
+            
+            sidebar.innerHTML = `
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">
+                        <span>📋 看板导航</span>
+                        <button class="btn btn-sm" onclick="toggleAllTypeBoards()">
+                            全部展开/折叠
+                        </button>
+                    </h3>
+                    ${Object.entries(typeGroups).map(([type, typeTasks]) => {
+                        const statusCounts = getStatusCounts(typeTasks);
+                        const isExpanded = document.getElementById(`board-${type}`)?.style.display !== 'none';
+                        
+                        return `
+                            <div class="board-nav-item ${isExpanded ? 'active' : ''}" 
+                                 onclick="scrollToTypeBoard('${type}')"
+                                 id="nav-${type}">
+                                <div class="board-nav-header">
+                                    <span class="board-nav-title">
+                                        ${getTaskTypeIcon(type)} ${type}看板
+                                    </span>
+                                    <span class="board-nav-count">${typeTasks.length}</span>
+                                </div>
+                                <div class="board-nav-stats">
+                                    ${statusCounts['未开始'] > 0 ? `<span class="status-tag todo">${statusCounts['未开始']}</span>` : ''}
+                                    ${statusCounts['暂停'] > 0 ? `<span class="status-tag pause">${statusCounts['暂停']}</span>` : ''}
+                                    ${statusCounts['进行中'] > 0 ? `<span class="status-tag doing">${statusCounts['进行中']}</span>` : ''}
+                                    ${statusCounts['已完成'] > 0 ? `<span class="status-tag done">${statusCounts['已完成']}</span>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">看板操作</h3>
+                    <button class="btn btn-block btn-secondary" onclick="expandAllTypeBoards()">
+                        ➕ 展开所有看板
+                    </button>
+                    <button class="btn btn-block btn-secondary" onclick="collapseAllTypeBoards()">
+                        ➖ 折叠所有看板
+                    </button>
+                </div>
+            `;
+            
+            // 设置 Intersection Observer 来高亮当前可视看板
+            setupBoardNavObserver();
+        }
+        
+        // 焦点视图侧边栏
+        function renderFocusSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            
+            // 统计焦点任务信息
+            const focusTasksArray = Array.from(focusTasks);
+            const todayTasks = tasks.filter(t => t.fields.today);
+            const highPriorityTasks = tasks.filter(t => t.fields.priority === '高' && t.status !== '已完成');
+            const inProgressTasks = tasks.filter(t => t.status === '进行中');
+            
+            sidebar.innerHTML = `
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">🎯 焦点统计</h3>
+                    <div class="custom-view-item active">
+                        <span>🎯 当前焦点</span>
+                        <span class="text-small text-muted">${focusTasksArray.length}</span>
+                    </div>
+                    <div class="custom-view-item" onclick="applyQuickFilter('today')">
+                        <span>📅 今日任务</span>
+                        <span class="text-small text-muted">${todayTasks.length}</span>
+                    </div>
+                    <div class="custom-view-item" onclick="applyQuickFilter('high-priority')">
+                        <span>🔴 高优先级</span>
+                        <span class="text-small text-muted">${highPriorityTasks.length}</span>
+                    </div>
+                    <div class="custom-view-item" onclick="applyQuickFilter('in-progress')">
+                        <span>🚀 进行中</span>
+                        <span class="text-small text-muted">${inProgressTasks.length}</span>
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">快速操作</h3>
+                    <button class="btn btn-block btn-primary" onclick="selectFocusTasks()">
+                        🎯 选择焦点任务
+                    </button>
+                    <button class="btn btn-block btn-secondary" onclick="clearFocusTasks()">
+                        🗑️ 清空焦点任务
+                    </button>
+                </div>
+            `;
+        }
+        
+        // 时间轴视图侧边栏
+        function renderTimelineSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            
+            // 获取选中日期的任务
+            const selectedDateStr = selectedTimelineDate.toISOString().split('T')[0];
+            const dateTasks = tasks.filter(t => t.fields.plannedDate === selectedDateStr);
+            
+            // 统计时间分布
+            const timeSlots = {
+                '上午': dateTasks.filter(t => {
+                    const time = t.todayPlannedTime;
+                    return time && parseInt(time.split(':')[0]) < 12;
+                }).length,
+                '下午': dateTasks.filter(t => {
+                    const time = t.todayPlannedTime;
+                    return time && parseInt(time.split(':')[0]) >= 12 && parseInt(time.split(':')[0]) < 18;
+                }).length,
+                '晚上': dateTasks.filter(t => {
+                    const time = t.todayPlannedTime;
+                    return time && parseInt(time.split(':')[0]) >= 18;
+                }).length,
+                '未安排': dateTasks.filter(t => !t.todayPlannedTime).length
+            };
+            
+            sidebar.innerHTML = `
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">📅 日期导航</h3>
+                    <div class="date-nav-grid">
+                        <button class="date-nav-btn" onclick="selectTodayDate()">今天</button>
+                        <button class="date-nav-btn" onclick="changeTimelineDate(1)">明天</button>
+                        <button class="date-nav-btn" onclick="changeTimelineDate(7)">下周</button>
+                        <button class="date-nav-btn" onclick="changeTimelineDate(-1)">昨天</button>
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">⏰ 时间分布</h3>
+                    ${Object.entries(timeSlots).map(([slot, count]) => `
+                        <div class="custom-view-item">
+                            <span>${slot}</span>
+                            <span class="text-small text-muted">${count}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">任务统计</h3>
+                    <div class="timeline-stats-mini">
+                        <div class="stat-item">
+                            <span class="stat-label">总任务</span>
+                            <span class="stat-value">${dateTasks.length}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">已完成</span>
+                            <span class="stat-value">${dateTasks.filter(t => t.status === '已完成').length}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 项目视图侧边栏
+        function renderProjectSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            
+            // 获取所有项目
+            const projects = [...new Set(tasks.filter(t => t.type === '项目').map(t => t.path))];
+            
+            sidebar.innerHTML = `
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">📦 项目列表</h3>
+                    ${projects.map(project => {
+                        const projectTasks = tasks.filter(t => t.path === project && t.type === '项目');
+                        const completedCount = projectTasks.filter(t => t.status === '已完成').length;
+                        const progress = projectTasks.length > 0 ? Math.round(completedCount / projectTasks.length * 100) : 0;
+                        
+                        return `
+                            <div class="custom-view-item" onclick="filterByProject('${project}')">
+                                <div>
+                                    <div>${project}</div>
+                                    <div class="progress-bar-mini">
+                                        <div class="progress-fill" style="width: ${progress}%"></div>
+                                    </div>
+                                </div>
+                                <span class="text-small text-muted">${progress}%</span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">项目统计</h3>
+                    <div class="project-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">总项目数</span>
+                            <span class="stat-value">${projects.length}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">进行中</span>
+                            <span class="stat-value">${tasks.filter(t => t.type === '项目' && t.status === '进行中').length}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 目标视图侧边栏
+        function renderGoalSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            
+            // 获取所有目标
+            const goals = tasks.filter(t => t.type === '目标');
+            const keyResults = tasks.filter(t => t.type === '关键结果');
+            
+            sidebar.innerHTML = `
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">🎪 目标层级</h3>
+                    ${goals.map(goal => {
+                        const goalKRs = keyResults.filter(kr => kr.parent === goal.id);
+                        const progress = goalKRs.length > 0
+                            ? Math.round(goalKRs.reduce((sum, kr) => sum + (kr.fields.progress || 0), 0) / goalKRs.length)
+                            : 0;
+                        
+                        return `
+                            <div class="goal-nav-item" onclick="scrollToGoal('${goal.id}')">
+                                <div class="goal-nav-header">
+                                    <span>${getTaskTypeIcon('目标')} ${goal.title}</span>
+                                    <span class="text-small">${progress}%</span>
+                                </div>
+                                <div class="goal-nav-krs">
+                                    ${goalKRs.map(kr => `
+                                        <div class="kr-item">
+                                            <span class="text-small">🔑 ${kr.title}</span>
+                                            <span class="text-small text-muted">${kr.fields.progress || 0}%</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">目标统计</h3>
+                    <div class="goal-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">总目标数</span>
+                            <span class="stat-value">${goals.length}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">关键结果</span>
+                            <span class="stat-value">${keyResults.length}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 列表视图侧边栏（保持原有设计）
+        function renderListSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            
+            // 恢复原有的侧边栏内容
+            sidebar.innerHTML = `
+                <!-- 快速筛选 -->
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">快速筛选</h3>
+                    <div class="custom-view-item active" onclick="applyQuickFilter('current')">
+                        <span>🎯 当前焦点</span>
+                        <span class="text-small text-muted">${focusTasks.size}</span>
+                    </div>
+                    <div class="custom-view-item" onclick="applyQuickFilter('today')">
+                        <span>📅 今日任务</span>
+                        <span class="text-small text-muted">${tasks.filter(t => t.fields.today).length}</span>
+                    </div>
+                    <div class="custom-view-item" onclick="applyQuickFilter('high-priority')">
+                        <span>🔴 高优先级</span>
+                        <span class="text-small text-muted">${tasks.filter(t => t.fields.priority === '高').length}</span>
+                    </div>
+                    <div class="custom-view-item" onclick="applyQuickFilter('in-progress')">
+                        <span>🚀 进行中</span>
+                        <span class="text-small text-muted">${tasks.filter(t => t.status === '进行中').length}</span>
+                    </div>
+                    <div class="custom-view-item" onclick="applyQuickFilter('paused')">
+                        <span>⏯ 暂停中</span>
+                        <span class="text-small text-muted">${tasks.filter(t => t.status === '暂停').length}</span>
+                    </div>
+                </div>
+
+                <!-- 自定义视图 -->
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">
+                        <span>自定义视图</span>
+                        <button class="save-view-btn" onclick="saveCurrentView()">
+                            + 保存当前
+                        </button>
+                    </h3>
+                    <div id="customViewsList">
+                        <div class="custom-view-item" onclick="loadCustomView('plugin-bugs')">
+                            <span>🐛 插件Bug汇总</span>
+                            <span class="text-small text-muted">15</span>
+                        </div>
+                        <div class="custom-view-item" onclick="loadCustomView('week-focus')">
+                            <span>🎯 本周重点</span>
+                            <span class="text-small text-muted">7</span>
+                        </div>
+                        <div class="custom-view-item" onclick="loadCustomView('review-needed')">
+                            <span>👀 待Review</span>
+                            <span class="text-small text-muted">4</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 项目分组 -->
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">项目分组</h3>
+                    ${[...new Set(tasks.map(t => t.path))].slice(0, 5).map(project => `
+                        <div class="custom-view-item" onclick="filterByProject('${project}')">
+                            <span>📦 ${project}</span>
+                            <span class="text-small text-muted">${tasks.filter(t => t.path === project).length}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        // 滚动到指定类型的看板
+        function scrollToTypeBoard(type) {
+            const board = document.getElementById(`board-${type}`);
+            const section = board?.closest('.type-board-section');
+            
+            if (section) {
+                // 展开看板（如果是折叠状态）
+                if (board.style.display === 'none') {
+                    toggleTypeBoard(type);
+                }
+                
+                // 平滑滚动到看板
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                
+                // 更新导航项的高亮状态
+                document.querySelectorAll('.board-nav-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                document.getElementById(`nav-${type}`)?.classList.add('active');
+            }
+        }
+        
+        // 设置 Intersection Observer 来检测当前可视的看板
+        function setupBoardNavObserver() {
+            const sections = document.querySelectorAll('.type-board-section');
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const type = entry.target.querySelector('[id^="board-"]')?.id.replace('board-', '');
+                        if (type) {
+                            // 更新导航项的高亮状态
+                            document.querySelectorAll('.board-nav-item').forEach(item => {
+                                item.classList.remove('active');
+                            });
+                            document.getElementById(`nav-${type}`)?.classList.add('active');
+                        }
+                    }
+                });
+            }, {
+                threshold: 0.5
+            });
+            
+            sections.forEach(section => observer.observe(section));
+        }
+        
+        // 展开所有看板
+        function expandAllTypeBoards() {
+            ['目标', '关键结果', '项目', '动作'].forEach(type => {
+                const board = document.getElementById(`board-${type}`);
+                const icon = document.getElementById(`toggle-icon-${type}`);
+                if (board) {
+                    board.style.display = 'flex';
+                    if (icon) icon.textContent = '−';
+                }
+            });
+        }
+        
+        // 折叠所有看板
+        function collapseAllTypeBoards() {
+            ['目标', '关键结果', '项目', '动作'].forEach(type => {
+                const board = document.getElementById(`board-${type}`);
+                const icon = document.getElementById(`toggle-icon-${type}`);
+                if (board) {
+                    board.style.display = 'none';
+                    if (icon) icon.textContent = '+';
+                }
+            });
+        }
+        
+        // 切换所有看板的展开/折叠状态
+        function toggleAllTypeBoards() {
+            const boards = document.querySelectorAll('[id^="board-"]');
+            const hasCollapsed = Array.from(boards).some(board => board.style.display === 'none');
+            
+            if (hasCollapsed) {
+                expandAllTypeBoards();
+            } else {
+                collapseAllTypeBoards();
+            }
+        }
+        
+        // 清空焦点任务
+        function clearFocusTasks() {
+            if (confirm('确定要清空所有焦点任务吗？')) {
+                focusTasks.clear();
+                focusTasksOrder = [];
+                renderFocusTasks();
+                updateSidebarStats();
+                saveToLocalStorage();
+            }
+        }
+        
+        // 滚动到指定目标
+        function scrollToGoal(goalId) {
+            const goalElement = document.querySelector(`[data-goal-id="${goalId}"]`);
+            if (goalElement) {
+                goalElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+        
+        /* ========================================
            📋 看板视图
            ======================================== */
         
         function renderBoardView(filteredTasks = tasks) {
             const container = document.getElementById('view-board');
             
-            // 按状态分组
-            const columns = {
-                '未开始': filteredTasks.filter(t => t.status === '未开始'),
-                '暂停': filteredTasks.filter(t => t.status === '暂停'),
-                '进行中': filteredTasks.filter(t => t.status === '进行中'),
-                '已完成': filteredTasks.filter(t => t.status === '已完成')
+            // 按任务类型分组
+            const typeGroups = {
+                '目标': filteredTasks.filter(t => t.type === '目标'),
+                '关键结果': filteredTasks.filter(t => t.type === '关键结果'),
+                '项目': filteredTasks.filter(t => t.type === '项目'),
+                '动作': filteredTasks.filter(t => t.type === '动作')
             };
             
+            // 状态列定义
+            const statusColumns = ['未开始', '暂停', '进行中', '已完成'];
+            
             container.innerHTML = `
-                <div class="kanban-container">
-                    ${Object.entries(columns).map(([status, tasks]) => `
-                        <div class="kanban-column" 
-                             data-status="${status}"
-                             ondragover="handleKanbanDragOver(event)"
-                             ondragenter="handleKanbanDragEnter(event)"
-                             ondragleave="handleKanbanDragLeave(event)"
-                             ondrop="handleKanbanDrop(event, '${status}')">
-                            <div class="kanban-header">
-                                <span>${getStatusIcon(status)} ${status}</span>
-                                <span class="kanban-count">${tasks.length}</span>
-                            </div>
-                            <div class="kanban-body">
-                                ${tasks.map(task => `
-                                    <div class="kanban-card" 
-                                         draggable="true"
-                                         data-task-id="${task.id}"
-                                         ondragstart="handleKanbanDragStart(event, '${task.id}')"
-                                         ondragend="handleKanbanDragEnd(event)"
-                                         onclick="viewTaskDetail('${task.id}')">
-                                        <div class="task-type-badge ${task.type.toLowerCase()} text-small mb-1">
-                                            ${getTaskTypeIcon(task.type)} ${task.type}
-                                        </div>
-                                        <div class="font-weight-500 mb-1">${task.title}</div>
-                                        <div class="text-small text-muted mb-2">${task.path}</div>
-                                        <div>
-                                            <span class="text-small">${getPriorityIcon(task.fields.priority)} ${task.fields.priority}</span>
-                                        </div>
-                                        ${task.fields.dueDate ? `
-                                            <div class="text-small text-muted mt-1">
-                                                📅 ${formatDate(task.fields.dueDate)}
+                <div class="type-boards-container">
+                    ${Object.entries(typeGroups).map(([type, typeTasks]) => {
+                        // 为每个类型创建一个独立的看板
+                        const totalCount = typeTasks.length;
+                        
+                        return `
+                            <div class="type-board-section">
+                                <div class="type-board-header">
+                                    <h3 class="type-board-title">
+                                        <span class="task-type-badge ${type.toLowerCase()}">
+                                            ${getTaskTypeIcon(type)} ${type}看板
+                                        </span>
+                                        <span class="type-board-count">共 ${totalCount} 个</span>
+                                    </h3>
+                                    <button class="btn btn-sm" onclick="toggleTypeBoard('${type}')">
+                                        <span id="toggle-icon-${type}">−</span>
+                                    </button>
+                                </div>
+                                
+                                <div class="kanban-container" id="board-${type}">
+                                    ${statusColumns.map(status => {
+                                        const statusTasks = typeTasks.filter(t => t.status === status);
+                                        
+                                        return `
+                                            <div class="kanban-column" 
+                                                 data-status="${status}"
+                                                 data-type="${type}"
+                                                 ondragover="handleKanbanDragOver(event)"
+                                                 ondragenter="handleKanbanDragEnter(event)"
+                                                 ondragleave="handleKanbanDragLeave(event)"
+                                                 ondrop="handleKanbanDrop(event, '${status}')">
+                                                <div class="kanban-header">
+                                                    <span>${getStatusIcon(status)} ${status}</span>
+                                                    <span class="kanban-count">${statusTasks.length}</span>
+                                                </div>
+                                                <div class="kanban-body">
+                                                    ${statusTasks.map(task => `
+                                                        <div class="kanban-card" 
+                                                             draggable="true"
+                                                             data-task-id="${task.id}"
+                                                             ondragstart="handleKanbanDragStart(event, '${task.id}')"
+                                                             ondragend="handleKanbanDragEnd(event)"
+                                                             onclick="viewTaskDetail('${task.id}')">
+                                                            <div class="font-weight-500 mb-1">${task.title}</div>
+                                                            <div class="text-small text-muted mb-2">${task.path}</div>
+                                                            <div>
+                                                                <span class="text-small">${getPriorityIcon(task.fields.priority)} ${task.fields.priority}</span>
+                                                            </div>
+                                                            ${task.fields.dueDate ? `
+                                                                <div class="text-small text-muted mt-1">
+                                                                    📅 ${formatDate(task.fields.dueDate)}
+                                                                </div>
+                                                            ` : ''}
+                                                        </div>
+                                                    `).join('')}
+                                                </div>
                                             </div>
-                                        ` : ''}
-                                    </div>
-                                `).join('')}
+                                        `;
+                                    }).join('')}
+                                </div>
                             </div>
-                        </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
             `;
+        }
+        
+        // 切换类型看板的展开/折叠
+        function toggleTypeBoard(type) {
+            const board = document.getElementById(`board-${type}`);
+            const icon = document.getElementById(`toggle-icon-${type}`);
+            
+            if (board.style.display === 'none') {
+                board.style.display = 'flex';
+                icon.textContent = '−';
+            } else {
+                board.style.display = 'none';
+                icon.textContent = '+';
+            }
         }
         
         /* ========================================

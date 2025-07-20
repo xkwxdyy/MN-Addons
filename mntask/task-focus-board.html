@@ -379,6 +379,7 @@
             border: 1px solid var(--glass-border);
             border-radius: var(--radius-lg);
             padding: var(--spacing-lg);
+            padding-left: calc(var(--spacing-lg) + 30px);
             transition: var(--transition);
             cursor: pointer;
             position: relative;
@@ -397,16 +398,116 @@
         }
 
         /* 拖拽状态样式 */
-        .focus-task-card[draggable="true"] {
-            cursor: move;
-        }
 
-        .focus-task-card.dragging {
+        /* 拖拽手柄 */
+        .drag-handle {
+            position: absolute;
+            left: var(--spacing-sm);
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 20px;
+            color: var(--text-muted);
+            cursor: grab;
+            opacity: 0;
+            transition: opacity 0.2s;
+            user-select: none;
+            z-index: 10;
+        }
+        
+        .focus-task-card:hover .drag-handle {
             opacity: 0.5;
         }
-
-        .focus-task-card.drag-over {
-            border-top: 3px solid var(--type-goal) !important;
+        
+        .drag-handle:hover {
+            opacity: 1 !important;
+            color: var(--text-secondary);
+        }
+        
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+        
+        /* 拖拽状态 */
+        .focus-task-card.dragging {
+            opacity: 0.3;
+            transform: scale(0.95);
+            box-shadow: none;
+            cursor: grabbing;
+        }
+        
+        /* 拖拽时的容器状态 */
+        .focus-tasks-container.dragging-active {
+            gap: calc(var(--spacing-lg) + 10px);
+        }
+        
+        /* 插入指示器 */
+        .focus-task-card.drop-indicator-top {
+            margin-top: 35px;
+            transition: margin 0.2s ease-out;
+        }
+        
+        .focus-task-card.drop-indicator-top::before {
+            content: '↓ 放置到这里';
+            position: absolute;
+            top: -35px;
+            left: -5px;
+            right: -5px;
+            height: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 2px dashed rgba(255, 255, 255, 0.5);
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.6),
+                        inset 0 0 20px rgba(255, 255, 255, 0.2);
+            animation: dropZonePulse 0.8s ease-in-out infinite;
+            z-index: 100;
+        }
+        
+        .focus-task-card.drop-indicator-bottom {
+            margin-bottom: 35px;
+            transition: margin 0.2s ease-out;
+        }
+        
+        .focus-task-card.drop-indicator-bottom::after {
+            content: '↑ 放置到这里';
+            position: absolute;
+            bottom: -35px;
+            left: -5px;
+            right: -5px;
+            height: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 2px dashed rgba(255, 255, 255, 0.5);
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.6),
+                        inset 0 0 20px rgba(255, 255, 255, 0.2);
+            animation: dropZonePulse 0.8s ease-in-out infinite;
+            z-index: 100;
+        }
+        
+        @keyframes dropZonePulse {
+            0%, 100% { 
+                opacity: 0.9; 
+                transform: scale(1);
+                box-shadow: 0 0 20px rgba(102, 126, 234, 0.6),
+                            inset 0 0 20px rgba(255, 255, 255, 0.2);
+            }
+            50% { 
+                opacity: 1; 
+                transform: scale(1.02);
+                box-shadow: 0 0 30px rgba(102, 126, 234, 0.8),
+                            inset 0 0 30px rgba(255, 255, 255, 0.3);
+            }
         }
 
         /* 焦点任务移除按钮 */
@@ -493,6 +594,11 @@
                 height: 36px;
                 font-size: 20px;
                 right: calc(var(--spacing-sm) + 44px);
+            }
+            
+            .drag-handle {
+                opacity: 0.3;
+                font-size: 24px;
             }
         }
 
@@ -3226,10 +3332,13 @@
                      data-task-index="${index}"
                      ondragstart="handleDragStart(event)"
                      ondragover="handleDragOver(event)"
+                     ondragenter="handleDragEnter(event)"
+                     ondragleave="handleDragLeave(event)"
                      ondrop="handleDrop(event)"
                      ondragend="handleDragEnd(event)"
                      onclick="viewTaskDetail('${task.id}')"
                      style="cursor: pointer;">
+                    <div class="drag-handle" title="拖拽排序">⋮⋮</div>
                     <button class="focus-task-remove" onclick="removeFromFocus(event, '${task.id}')" title="从焦点移除">
                         ✕
                     </button>
@@ -4246,35 +4355,91 @@
 
         // 拖拽相关变量
         let draggedTaskId = null;
+        let draggedElement = null;
+        let currentDropTarget = null;
+        let dropPosition = null;
 
         // 拖拽开始
         function handleDragStart(event) {
-            draggedTaskId = event.target.dataset.taskId;
-            event.target.style.opacity = '0.5';
+            const card = event.target.closest('.focus-task-card');
+            if (!card) return;
+            
+            draggedTaskId = card.dataset.taskId;
+            draggedElement = card;
+            card.classList.add('dragging');
+            
+            // 给容器添加拖拽活动状态
+            const container = document.querySelector('.focus-tasks-container');
+            if (container) {
+                container.classList.add('dragging-active');
+            }
+            
             event.dataTransfer.effectAllowed = 'move';
-            event.dataTransfer.setData('text/html', event.target.innerHTML);
+            event.dataTransfer.setData('text/plain', draggedTaskId);
+            
+            // 延迟添加拖拽样式，避免影响拖拽图像
+            setTimeout(() => {
+                card.style.opacity = '0.3';
+            }, 0);
+        }
+        
+        // 拖拽进入
+        function handleDragEnter(event) {
+            const target = event.target.closest('.focus-task-card');
+            if (!target || target === draggedElement) return;
+            
+            currentDropTarget = target;
+        }
+        
+        // 拖拽离开
+        function handleDragLeave(event) {
+            const target = event.target.closest('.focus-task-card');
+            if (!target) return;
+            
+            // 确保真的离开了卡片（不是进入子元素）
+            if (!target.contains(event.relatedTarget)) {
+                target.classList.remove('drop-indicator-top', 'drop-indicator-bottom');
+            }
         }
 
         // 拖拽经过
         function handleDragOver(event) {
-            if (event.preventDefault) {
-                event.preventDefault();
-            }
+            event.preventDefault();
             event.dataTransfer.dropEffect = 'move';
             
             const target = event.target.closest('.focus-task-card');
-            if (target && target.dataset.taskId !== draggedTaskId) {
-                target.style.borderTop = '2px solid #667eea';
-            }
+            if (!target || target === draggedElement) return;
             
-            return false;
+            // 清除所有指示器
+            document.querySelectorAll('.focus-task-card').forEach(card => {
+                if (card !== target) {
+                    card.classList.remove('drop-indicator-top', 'drop-indicator-bottom');
+                }
+            });
+            
+            // 计算鼠标位置
+            const rect = target.getBoundingClientRect();
+            const y = event.clientY - rect.top;
+            const height = rect.height;
+            
+            // 根据鼠标位置决定插入位置
+            if (y < height / 2) {
+                // 上半部分 - 在目标上方插入
+                target.classList.remove('drop-indicator-bottom');
+                target.classList.add('drop-indicator-top');
+                dropPosition = 'before';
+            } else {
+                // 下半部分 - 在目标下方插入
+                target.classList.remove('drop-indicator-top');
+                target.classList.add('drop-indicator-bottom');
+                dropPosition = 'after';
+            }
         }
 
         // 拖拽放下
         function handleDrop(event) {
-            if (event.stopPropagation) {
-                event.stopPropagation();
-            }
+            event.preventDefault();
+            event.stopPropagation();
             
             const dropTarget = event.target.closest('.focus-task-card');
             if (!dropTarget || draggedTaskId === dropTarget.dataset.taskId) {
@@ -4287,17 +4452,19 @@
             const draggedIndex = focusTasksOrder.indexOf(draggedTaskId);
             const dropIndex = focusTasksOrder.indexOf(dropTaskId);
             
-            if (draggedIndex === -1) {
-                // 如果拖拽的任务不在数组中，将其添加到放置位置
-                focusTasksOrder.splice(dropIndex, 0, draggedTaskId);
-            } else {
-                // 移除拖拽的任务
+            // 先移除被拖拽的元素
+            if (draggedIndex !== -1) {
                 focusTasksOrder.splice(draggedIndex, 1);
-                // 重新计算放置位置（因为数组已经改变）
-                const newDropIndex = focusTasksOrder.indexOf(dropTaskId);
-                // 在放置位置插入
-                focusTasksOrder.splice(newDropIndex, 0, draggedTaskId);
             }
+            
+            // 重新计算插入位置
+            let newIndex = focusTasksOrder.indexOf(dropTaskId);
+            if (dropPosition === 'after') {
+                newIndex++;
+            }
+            
+            // 插入到新位置
+            focusTasksOrder.splice(newIndex, 0, draggedTaskId);
             
             // 确保数组中只包含当前焦点任务
             focusTasksOrder = focusTasksOrder.filter(id => focusTasks.has(id));
@@ -4311,15 +4478,26 @@
 
         // 拖拽结束
         function handleDragEnd(event) {
-            event.target.style.opacity = '';
+            if (draggedElement) {
+                draggedElement.classList.remove('dragging');
+                draggedElement.style.opacity = '';
+            }
+            
+            // 移除容器的拖拽活动状态
+            const container = document.querySelector('.focus-tasks-container');
+            if (container) {
+                container.classList.remove('dragging-active');
+            }
             
             // 清除所有拖拽指示器
-            const cards = document.querySelectorAll('.focus-task-card');
-            cards.forEach(card => {
-                card.style.borderTop = '';
+            document.querySelectorAll('.focus-task-card').forEach(card => {
+                card.classList.remove('drop-indicator-top', 'drop-indicator-bottom');
             });
             
             draggedTaskId = null;
+            draggedElement = null;
+            currentDropTarget = null;
+            dropPosition = null;
         }
 
         /* ========================================

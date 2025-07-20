@@ -1,0 +1,1647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MNTask 焦点任务看板</title>
+    
+    <style>
+        /* ========================================
+           🎨 CSS 变量定义 - 现代化设计系统
+           ======================================== */
+        :root {
+            /* 主题色 - 深色系 */
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a25;
+            --bg-card: rgba(255, 255, 255, 0.03);
+            --bg-hover: rgba(255, 255, 255, 0.06);
+            --bg-active: rgba(102, 126, 234, 0.15);
+            --bg-focus: rgba(102, 126, 234, 0.25);
+            
+            /* 玻璃效果 */
+            --glass-bg: rgba(255, 255, 255, 0.04);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-blur: blur(10px);
+            
+            /* 文字颜色 */
+            --text-primary: #ffffff;
+            --text-secondary: #a8a8b8;
+            --text-muted: #6c6c7c;
+            --text-disabled: #4a4a5a;
+            
+            /* 任务类型颜色 */
+            --type-goal: #667eea;        /* 目标 - 紫蓝 */
+            --type-kr: #f687b3;          /* 关键结果 - 粉红 */
+            --type-project: #48bb78;     /* 项目 - 绿色 */
+            --type-action: #ed8936;      /* 动作 - 橙色 */
+            
+            /* 状态颜色 */
+            --status-todo: #718096;      /* 未开始 - 灰色 */
+            --status-doing: #f6ad55;     /* 进行中 - 橙黄 */
+            --status-done: #48bb78;      /* 已完成 - 绿色 */
+            
+            /* 优先级颜色 */
+            --priority-high: #fc8181;    /* 高 - 红色 */
+            --priority-medium: #f6e05e;  /* 中 - 黄色 */
+            --priority-low: #68d391;     /* 低 - 绿色 */
+            
+            /* 其他样式变量 */
+            --radius: 12px;
+            --radius-sm: 6px;
+            --radius-lg: 16px;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.4);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            
+            /* 间距系统 */
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+        }
+
+        /* ========================================
+           📐 基础样式重置
+           ======================================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--glass-border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-disabled);
+        }
+
+        /* ========================================
+           🏗️ 主布局结构
+           ======================================== */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+        }
+
+        /* 顶部导航栏 */
+        .navbar {
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            border-bottom: 1px solid var(--glass-border);
+            padding: var(--spacing-md) var(--spacing-lg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            z-index: 100;
+        }
+
+        .navbar-left {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-lg);
+            flex: 1;
+        }
+
+        .navbar-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--type-goal) 0%, var(--type-kr) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* 快速添加任务输入框 */
+        .quick-add-container {
+            flex: 1;
+            max-width: 500px;
+        }
+
+        .quick-add-input {
+            width: 100%;
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            transition: var(--transition);
+        }
+
+        .quick-add-input:focus {
+            outline: none;
+            border-color: var(--type-goal);
+            background: var(--bg-hover);
+        }
+
+        .quick-add-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* 视图切换按钮组 */
+        .view-switcher {
+            display: flex;
+            gap: var(--spacing-xs);
+            background: var(--bg-card);
+            padding: var(--spacing-xs);
+            border-radius: var(--radius-sm);
+        }
+
+        .view-btn {
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+            font-size: 0.875rem;
+            font-weight: 500;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .view-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .view-btn.active {
+            background: var(--bg-active);
+            color: var(--type-goal);
+        }
+
+        /* 主内容区域 */
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* 侧边栏 - 自定义视图 */
+        .sidebar {
+            width: 240px;
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            border-right: 1px solid var(--glass-border);
+            padding: var(--spacing-lg);
+            overflow-y: auto;
+            flex-shrink: 0;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-240px);
+            margin-right: -240px;
+        }
+
+        .sidebar-section {
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .sidebar-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: var(--spacing-md);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* 自定义视图列表 */
+        .custom-view-item {
+            padding: var(--spacing-sm) var(--spacing-md);
+            margin-bottom: var(--spacing-xs);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.875rem;
+        }
+
+        .custom-view-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .custom-view-item.active {
+            background: var(--bg-active);
+            color: var(--type-goal);
+        }
+
+        /* 工作区 */
+        .workspace {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: var(--bg-primary);
+        }
+
+        /* 视图容器 */
+        .view-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--spacing-lg);
+        }
+
+        /* ========================================
+           🎯 焦点任务视图
+           ======================================== */
+        .focus-view {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* 当前焦点任务 */
+        .current-focus-section {
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .section-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .focus-task-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: var(--spacing-lg);
+        }
+
+        .focus-task-card {
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            transition: var(--transition);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .focus-task-card:hover {
+            border-color: var(--type-goal);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .focus-task-card.active {
+            border-color: var(--type-goal);
+            background: var(--bg-focus);
+        }
+
+        /* 任务类型标签 */
+        .task-type-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .task-type-badge.goal {
+            background: rgba(102, 126, 234, 0.2);
+            color: var(--type-goal);
+        }
+
+        .task-type-badge.kr {
+            background: rgba(246, 135, 179, 0.2);
+            color: var(--type-kr);
+        }
+
+        .task-type-badge.project {
+            background: rgba(72, 187, 120, 0.2);
+            color: var(--type-project);
+        }
+
+        .task-type-badge.action {
+            background: rgba(237, 137, 54, 0.2);
+            color: var(--type-action);
+        }
+
+        .focus-task-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: var(--spacing-sm);
+            line-height: 1.4;
+        }
+
+        .focus-task-meta {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .focus-task-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-lg);
+        }
+
+        .btn {
+            padding: var(--spacing-sm) var(--spacing-md);
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .btn-primary {
+            background: var(--type-goal);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd6;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--glass-border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-hover);
+            border-color: var(--text-muted);
+        }
+
+        /* 启动按钮特殊样式 */
+        .btn-launch {
+            background: linear-gradient(135deg, var(--type-goal) 0%, var(--type-kr) 100%);
+            color: white;
+            font-weight: 600;
+        }
+
+        .btn-launch:hover {
+            transform: translateY(-1px) scale(1.02);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        /* 进度条 */
+        .progress-container {
+            margin-top: var(--spacing-md);
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-xs);
+            font-size: 0.875rem;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--type-goal) 0%, var(--type-kr) 100%);
+            transition: width 0.3s ease;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* ========================================
+           📅 今日时间轴视图
+           ======================================== */
+        .timeline-section {
+            margin-top: var(--spacing-xl);
+        }
+
+        .timeline-container {
+            position: relative;
+            padding-left: var(--spacing-xl);
+        }
+
+        .timeline-line {
+            position: absolute;
+            left: 12px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--glass-border);
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: var(--spacing-lg);
+            display: flex;
+            align-items: flex-start;
+            gap: var(--spacing-md);
+        }
+
+        .timeline-dot {
+            position: absolute;
+            left: -20px;
+            top: 8px;
+            width: 8px;
+            height: 8px;
+            background: var(--type-goal);
+            border-radius: 50%;
+            box-shadow: 0 0 0 4px var(--bg-primary), 0 0 0 6px var(--glass-border);
+        }
+
+        .timeline-time {
+            min-width: 60px;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .timeline-content {
+            flex: 1;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            padding: var(--spacing-md);
+            transition: var(--transition);
+        }
+
+        .timeline-content:hover {
+            border-color: var(--type-goal);
+            background: var(--bg-hover);
+        }
+
+        /* ========================================
+           🔍 筛选器面板
+           ======================================== */
+        .filter-panel {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .filter-row {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .filter-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .filter-input {
+            width: 100%;
+            padding: var(--spacing-sm);
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .filter-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-xs);
+            margin-top: var(--spacing-sm);
+        }
+
+        .filter-tag {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .filter-tag:hover {
+            border-color: var(--type-goal);
+        }
+
+        .filter-tag.active {
+            background: var(--bg-active);
+            border-color: var(--type-goal);
+            color: var(--type-goal);
+        }
+
+        /* ========================================
+           💾 可保存视图管理
+           ======================================== */
+        .save-view-btn {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            background: transparent;
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .save-view-btn:hover {
+            border-color: var(--type-goal);
+            color: var(--type-goal);
+        }
+
+        /* ========================================
+           📊 进展记录面板
+           ======================================== */
+        .progress-log-panel {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            padding: var(--spacing-lg);
+            margin-top: var(--spacing-md);
+        }
+
+        .progress-log-item {
+            display: flex;
+            gap: var(--spacing-md);
+            padding: var(--spacing-sm) 0;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .progress-log-item:last-child {
+            border-bottom: none;
+        }
+
+        .progress-log-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            min-width: 120px;
+        }
+
+        .progress-log-content {
+            flex: 1;
+            font-size: 0.875rem;
+        }
+
+        .progress-log-value {
+            font-weight: 600;
+            color: var(--type-goal);
+        }
+
+        /* ========================================
+           🎨 动画效果
+           ======================================== */
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .slide-in {
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* ========================================
+           📱 响应式设计
+           ======================================== */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                z-index: 1000;
+                box-shadow: var(--shadow-lg);
+            }
+
+            .sidebar.collapsed {
+                transform: translateX(-100%);
+            }
+
+            .navbar {
+                flex-wrap: wrap;
+                gap: var(--spacing-md);
+            }
+
+            .quick-add-container {
+                order: 3;
+                flex-basis: 100%;
+            }
+
+            .focus-task-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ========================================
+           🛠️ 工具类
+           ======================================== */
+        .hidden {
+            display: none !important;
+        }
+
+        .text-muted {
+            color: var(--text-muted);
+        }
+
+        .text-small {
+            font-size: 0.875rem;
+        }
+
+        .mt-1 { margin-top: var(--spacing-sm); }
+        .mt-2 { margin-top: var(--spacing-md); }
+        .mt-3 { margin-top: var(--spacing-lg); }
+        .mb-1 { margin-bottom: var(--spacing-sm); }
+        .mb-2 { margin-bottom: var(--spacing-md); }
+        .mb-3 { margin-bottom: var(--spacing-lg); }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 顶部导航栏 -->
+        <nav class="navbar">
+            <div class="navbar-left">
+                <h1 class="navbar-title">MNTask 焦点看板</h1>
+                
+                <!-- 快速添加任务 -->
+                <div class="quick-add-container">
+                    <input type="text" 
+                           class="quick-add-input" 
+                           placeholder="快速添加任务... (输入后按Enter，支持 #标签 @项目 !优先级)"
+                           onkeypress="handleQuickAdd(event)">
+                </div>
+            </div>
+            
+            <!-- 视图切换 -->
+            <div class="view-switcher">
+                <button class="view-btn active" data-view="focus" onclick="switchView('focus')">
+                    🎯 焦点任务
+                </button>
+                <button class="view-btn" data-view="today" onclick="switchView('today')">
+                    📅 今日时间轴
+                </button>
+                <button class="view-btn" data-view="board" onclick="switchView('board')">
+                    📋 看板视图
+                </button>
+                <button class="view-btn" data-view="list" onclick="switchView('list')">
+                    📝 列表视图
+                </button>
+            </div>
+        </nav>
+
+        <!-- 主内容区域 -->
+        <div class="main-content">
+            <!-- 侧边栏 - 自定义视图 -->
+            <aside class="sidebar" id="sidebar">
+                <!-- 快速筛选 -->
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">快速筛选</h3>
+                    <div class="custom-view-item active" onclick="applyQuickFilter('current')">
+                        <span>🎯 当前焦点</span>
+                        <span class="text-small text-muted">3</span>
+                    </div>
+                    <div class="custom-view-item" onclick="applyQuickFilter('today')">
+                        <span>📅 今日任务</span>
+                        <span class="text-small text-muted">8</span>
+                    </div>
+                    <div class="custom-view-item" onclick="applyQuickFilter('high-priority')">
+                        <span>🔴 高优先级</span>
+                        <span class="text-small text-muted">5</span>
+                    </div>
+                    <div class="custom-view-item" onclick="applyQuickFilter('in-progress')">
+                        <span>🚀 进行中</span>
+                        <span class="text-small text-muted">12</span>
+                    </div>
+                </div>
+
+                <!-- 自定义视图 -->
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">
+                        <span>自定义视图</span>
+                        <button class="save-view-btn" onclick="saveCurrentView()">
+                            + 保存当前
+                        </button>
+                    </h3>
+                    <div id="customViewsList">
+                        <div class="custom-view-item" onclick="loadCustomView('plugin-bugs')">
+                            <span>🐛 插件Bug汇总</span>
+                            <span class="text-small text-muted">15</span>
+                        </div>
+                        <div class="custom-view-item" onclick="loadCustomView('week-focus')">
+                            <span>🎯 本周重点</span>
+                            <span class="text-small text-muted">7</span>
+                        </div>
+                        <div class="custom-view-item" onclick="loadCustomView('review-needed')">
+                            <span>👀 待Review</span>
+                            <span class="text-small text-muted">4</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 项目分组 -->
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">项目分组</h3>
+                    <div class="custom-view-item" onclick="filterByProject('mntask')">
+                        <span>📦 MNTask插件</span>
+                        <span class="text-small text-muted">23</span>
+                    </div>
+                    <div class="custom-view-item" onclick="filterByProject('mnai')">
+                        <span>🤖 MNAI插件</span>
+                        <span class="text-small text-muted">18</span>
+                    </div>
+                    <div class="custom-view-item" onclick="filterByProject('research')">
+                        <span>🔬 研究项目</span>
+                        <span class="text-small text-muted">12</span>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 工作区 -->
+            <div class="workspace">
+                <!-- 焦点任务视图 -->
+                <div id="view-focus" class="view-container">
+                    <div class="focus-view">
+                        <!-- 当前焦点任务 -->
+                        <div class="current-focus-section">
+                            <div class="section-header">
+                                <h2 class="section-title">🎯 当前焦点任务</h2>
+                                <button class="btn btn-secondary" onclick="selectFocusTasks()">
+                                    选择焦点任务
+                                </button>
+                            </div>
+                            
+                            <div class="focus-task-container" id="focusTaskContainer">
+                                <!-- 焦点任务卡片将在这里动态生成 -->
+                            </div>
+                        </div>
+
+                        <!-- 智能筛选器 -->
+                        <div class="filter-panel">
+                            <div class="filter-row">
+                                <div class="filter-group">
+                                    <div class="filter-label">标题包含</div>
+                                    <input type="text" class="filter-input" placeholder="搜索任务标题..." onkeyup="filterTasks()">
+                                </div>
+                                <div class="filter-group">
+                                    <div class="filter-label">标签筛选</div>
+                                    <input type="text" class="filter-input" placeholder="输入标签..." onkeyup="filterByTags()">
+                                </div>
+                                <div class="filter-group">
+                                    <div class="filter-label">项目筛选</div>
+                                    <select class="filter-input" onchange="filterBySelectedProject()">
+                                        <option value="">所有项目</option>
+                                        <option value="mntask">MNTask插件</option>
+                                        <option value="mnai">MNAI插件</option>
+                                        <option value="research">研究项目</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="filter-tags" id="activeFilters">
+                                <!-- 活跃的筛选标签 -->
+                            </div>
+                        </div>
+
+                        <!-- 待处理任务概览 -->
+                        <div class="section-header mt-3">
+                            <h2 class="section-title">📋 待处理任务</h2>
+                            <span class="text-muted">共 <span id="pendingCount">0</span> 项</span>
+                        </div>
+                        <div id="pendingTasksList">
+                            <!-- 待处理任务列表 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 今日时间轴视图 -->
+                <div id="view-today" class="view-container hidden">
+                    <div class="timeline-section">
+                        <div class="section-header">
+                            <h2 class="section-title">📅 今日任务时间轴</h2>
+                            <button class="btn btn-secondary" onclick="autoScheduleTasks()">
+                                🤖 智能排期
+                            </button>
+                        </div>
+                        
+                        <div class="timeline-container" id="todayTimeline">
+                            <div class="timeline-line"></div>
+                            <!-- 时间轴项目将在这里动态生成 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 看板视图（待实现） -->
+                <div id="view-board" class="view-container hidden">
+                    <div class="section-header">
+                        <h2 class="section-title">📋 看板视图</h2>
+                    </div>
+                    <p class="text-muted">看板视图开发中...</p>
+                </div>
+
+                <!-- 列表视图（待实现） -->
+                <div id="view-list" class="view-container hidden">
+                    <div class="section-header">
+                        <h2 class="section-title">📝 列表视图</h2>
+                    </div>
+                    <p class="text-muted">列表视图开发中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ========================================
+           📊 数据模型
+           ======================================== */
+        
+        // 任务数据结构
+        let tasks = [];
+        let currentView = 'focus';
+        let focusTasks = new Set(); // 当前焦点任务ID集合
+        let customViews = {}; // 自定义视图配置
+        let activeFilters = {}; // 当前激活的筛选器
+
+        // 扩展的任务数据结构示例
+        const taskTemplate = {
+            id: "task_1",
+            type: "动作", // 目标、关键结果、项目、动作
+            status: "进行中", // 未开始、进行中、已完成
+            title: "修复MNTask插件Bug",
+            path: "Q1目标 >> 产品优化 >> 插件开发",
+            
+            // 新增字段
+            launchLink: "marginnote4app://note/xxx", // MN uistate链接
+            currentFocus: true, // 是否是当前焦点任务
+            todayPlannedTime: "14:00-16:00", // 今日计划时间段
+            
+            // 原有字段
+            fields: {
+                priority: "高", // 高、中、低
+                dueDate: "2025-01-25",
+                tags: ["插件", "Bug", "紧急"],
+                progress: 30,
+                today: true, // 是否是今日任务
+                
+                // 新增进展记录
+                progressLog: [
+                    {
+                        date: "2025-01-20 10:00",
+                        progress: 30,
+                        note: "完成问题定位，发现是TaskFieldUtils方法名冲突"
+                    }
+                ],
+                
+                // 所属的自定义视图
+                customViews: ["插件Bug汇总", "本周重点"],
+                
+                // 项目归属
+                project: "mntask"
+            }
+        };
+
+        /* ========================================
+           🚀 初始化
+           ======================================== */
+        
+        // 生成测试数据
+        function generateTestData() {
+            let taskId = 1;
+            
+            // 生成一些焦点任务
+            tasks.push({
+                id: `task_${taskId++}`,
+                type: "动作",
+                status: "进行中",
+                title: "修复TaskFieldUtils方法名冲突问题",
+                path: "MNTask插件开发 >> Bug修复",
+                launchLink: "marginnote4app://note/12345",
+                currentFocus: true,
+                todayPlannedTime: "09:00-11:00",
+                fields: {
+                    priority: "高",
+                    dueDate: "2025-01-20",
+                    tags: ["MNTask", "Bug", "紧急"],
+                    progress: 60,
+                    today: true,
+                    progressLog: [
+                        {
+                            date: "2025-01-20 09:00",
+                            progress: 30,
+                            note: "定位到问题原因"
+                        },
+                        {
+                            date: "2025-01-20 10:30",
+                            progress: 60,
+                            note: "完成代码修复，准备测试"
+                        }
+                    ],
+                    customViews: ["插件Bug汇总", "今日必做"],
+                    project: "mntask"
+                }
+            });
+
+            tasks.push({
+                id: `task_${taskId++}`,
+                type: "项目",
+                status: "进行中",
+                title: "实现任务焦点看板功能",
+                path: "MNTask插件开发 >> 新功能",
+                launchLink: "marginnote4app://note/67890",
+                currentFocus: true,
+                todayPlannedTime: "14:00-17:00",
+                fields: {
+                    priority: "高",
+                    dueDate: "2025-01-22",
+                    tags: ["MNTask", "新功能", "看板"],
+                    progress: 20,
+                    today: true,
+                    progressLog: [
+                        {
+                            date: "2025-01-20 14:00",
+                            progress: 20,
+                            note: "完成界面设计和基础架构"
+                        }
+                    ],
+                    customViews: ["本周重点"],
+                    project: "mntask"
+                }
+            });
+
+            tasks.push({
+                id: `task_${taskId++}`,
+                type: "动作",
+                status: "未开始",
+                title: "优化MNAI插件性能",
+                path: "MNAI插件开发 >> 性能优化",
+                launchLink: "",
+                currentFocus: false,
+                todayPlannedTime: "17:00-18:00",
+                fields: {
+                    priority: "中",
+                    dueDate: "2025-01-21",
+                    tags: ["MNAI", "性能", "优化"],
+                    progress: 0,
+                    today: true,
+                    progressLog: [],
+                    customViews: ["本周重点"],
+                    project: "mnai"
+                }
+            });
+
+            // 生成更多测试任务
+            const taskTitles = [
+                "完善插件文档",
+                "处理用户反馈的Issue",
+                "研究新的API接口",
+                "重构核心模块代码",
+                "添加单元测试",
+                "更新版本发布说明",
+                "调研竞品功能",
+                "设计新的UI组件"
+            ];
+
+            const projects = ["mntask", "mnai", "research"];
+            const priorities = ["高", "中", "低"];
+            const statuses = ["未开始", "进行中", "已完成"];
+
+            for (let i = 0; i < 20; i++) {
+                const isToday = Math.random() > 0.6;
+                const project = projects[Math.floor(Math.random() * projects.length)];
+                
+                tasks.push({
+                    id: `task_${taskId++}`,
+                    type: ["目标", "关键结果", "项目", "动作"][Math.floor(Math.random() * 4)],
+                    status: statuses[Math.floor(Math.random() * statuses.length)],
+                    title: taskTitles[Math.floor(Math.random() * taskTitles.length)] + ` #${i + 1}`,
+                    path: `${project} >> 子项目 ${Math.floor(i / 3)}`,
+                    launchLink: Math.random() > 0.5 ? `marginnote4app://note/${Math.random().toString(36).substr(2, 9)}` : "",
+                    currentFocus: false,
+                    todayPlannedTime: isToday ? `${9 + Math.floor(Math.random() * 10)}:00-${10 + Math.floor(Math.random() * 10)}:00` : "",
+                    fields: {
+                        priority: priorities[Math.floor(Math.random() * priorities.length)],
+                        dueDate: new Date(Date.now() + Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        tags: [project, priorities[Math.floor(Math.random() * priorities.length)]],
+                        progress: Math.floor(Math.random() * 101),
+                        today: isToday,
+                        progressLog: [],
+                        customViews: Math.random() > 0.7 ? ["插件Bug汇总"] : [],
+                        project: project
+                    }
+                });
+            }
+
+            // 将前3个任务设为焦点任务
+            focusTasks.add(tasks[0].id);
+            focusTasks.add(tasks[1].id);
+            focusTasks.add(tasks[2].id);
+
+            console.log(`✅ 生成了 ${tasks.length} 个测试任务`);
+        }
+
+        /* ========================================
+           🎯 焦点任务功能
+           ======================================== */
+        
+        // 渲染焦点任务卡片
+        function renderFocusTasks() {
+            const container = document.getElementById('focusTaskContainer');
+            const focusTasksList = tasks.filter(task => focusTasks.has(task.id));
+            
+            container.innerHTML = focusTasksList.map(task => `
+                <div class="focus-task-card ${task.currentFocus ? 'active' : ''} fade-in" onclick="toggleCurrentFocus('${task.id}')">
+                    <div class="task-type-badge ${task.type.toLowerCase()}">
+                        ${getTaskTypeIcon(task.type)} ${task.type}
+                    </div>
+                    
+                    <h3 class="focus-task-title">${task.title}</h3>
+                    
+                    <div class="focus-task-meta">
+                        <span>${getStatusIcon(task.status)} ${task.status}</span>
+                        <span>${getPriorityIcon(task.fields.priority)} ${task.fields.priority}</span>
+                        ${task.fields.dueDate ? `<span>📅 ${formatDate(task.fields.dueDate)}</span>` : ''}
+                    </div>
+                    
+                    ${task.todayPlannedTime ? `
+                        <div class="focus-task-meta">
+                            <span>⏰ ${task.todayPlannedTime}</span>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="progress-container">
+                        <div class="progress-header">
+                            <span>进度</span>
+                            <span class="progress-value">${task.fields.progress || 0}%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${task.fields.progress || 0}%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="focus-task-actions">
+                        ${task.launchLink ? `
+                            <button class="btn btn-launch" onclick="launchTask(event, '${task.id}')">
+                                🚀 启动
+                            </button>
+                        ` : `
+                            <button class="btn btn-secondary" onclick="setLaunchLink(event, '${task.id}')">
+                                🔗 设置启动链接
+                            </button>
+                        `}
+                        <button class="btn btn-secondary" onclick="updateProgress(event, '${task.id}')">
+                            📈 更新进度
+                        </button>
+                        <button class="btn btn-secondary" onclick="viewProgressLog(event, '${task.id}')">
+                            📊 进展详情
+                        </button>
+                    </div>
+                </div>
+            `).join('') || '<p class="text-muted">暂无焦点任务，请从任务列表中选择</p>';
+            
+            // 更新待处理任务
+            renderPendingTasks();
+        }
+
+        // 渲染待处理任务
+        function renderPendingTasks() {
+            const pendingTasks = tasks.filter(task => 
+                task.status !== '已完成' && !focusTasks.has(task.id)
+            );
+            
+            document.getElementById('pendingCount').textContent = pendingTasks.length;
+            
+            const container = document.getElementById('pendingTasksList');
+            container.innerHTML = pendingTasks.slice(0, 10).map(task => `
+                <div class="timeline-content mb-2 slide-in" style="cursor: pointer;" onclick="addToFocus('${task.id}')">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <span class="task-type-badge ${task.type.toLowerCase()} text-small">
+                                ${getTaskTypeIcon(task.type)} ${task.type}
+                            </span>
+                            <span class="text-small text-muted ml-2">${task.fields.priority}优先级</span>
+                        </div>
+                        <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;">
+                            + 添加到焦点
+                        </button>
+                    </div>
+                    <div class="mt-1 font-weight-500">${task.title}</div>
+                    ${task.fields.dueDate ? `<div class="text-small text-muted">截止: ${formatDate(task.fields.dueDate)}</div>` : ''}
+                </div>
+            `).join('') || '<p class="text-muted">暂无待处理任务</p>';
+        }
+
+        /* ========================================
+           📅 今日时间轴功能
+           ======================================== */
+        
+        // 渲染今日时间轴
+        function renderTodayTimeline() {
+            const todayTasks = tasks.filter(task => task.fields.today);
+            const container = document.getElementById('todayTimeline');
+            
+            // 按计划时间排序
+            todayTasks.sort((a, b) => {
+                const timeA = a.todayPlannedTime ? parseInt(a.todayPlannedTime.split(':')[0]) : 24;
+                const timeB = b.todayPlannedTime ? parseInt(b.todayPlannedTime.split(':')[0]) : 24;
+                return timeA - timeB;
+            });
+            
+            container.innerHTML = `
+                <div class="timeline-line"></div>
+                ${todayTasks.map(task => `
+                    <div class="timeline-item fade-in">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-time">${task.todayPlannedTime || '待安排'}</div>
+                        <div class="timeline-content" onclick="viewTaskDetail('${task.id}')">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span class="task-type-badge ${task.type.toLowerCase()} text-small">
+                                    ${getTaskTypeIcon(task.type)} ${task.type}
+                                </span>
+                                <span class="${getStatusClass(task.status)} text-small">
+                                    ${getStatusIcon(task.status)} ${task.status}
+                                </span>
+                            </div>
+                            <div class="mt-1 font-weight-500">${task.title}</div>
+                            <div class="text-small text-muted mt-1">
+                                ${task.path}
+                            </div>
+                            ${task.launchLink ? `
+                                <button class="btn btn-launch mt-2" style="padding: 4px 12px; font-size: 0.75rem;" onclick="launchTask(event, '${task.id}')">
+                                    🚀 启动任务
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('')}
+            ` || '<p class="text-muted">今日暂无安排任务</p>';
+        }
+
+        /* ========================================
+           🔍 筛选功能
+           ======================================== */
+        
+        // 应用快速筛选
+        function applyQuickFilter(filterType) {
+            // 更新侧边栏选中状态
+            document.querySelectorAll('.custom-view-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.closest('.custom-view-item').classList.add('active');
+            
+            // 应用筛选逻辑
+            switch(filterType) {
+                case 'current':
+                    // 显示焦点任务
+                    switchView('focus');
+                    break;
+                case 'today':
+                    // 切换到今日视图
+                    switchView('today');
+                    break;
+                case 'high-priority':
+                    // 筛选高优先级任务
+                    activeFilters.priority = '高';
+                    applyFilters();
+                    break;
+                case 'in-progress':
+                    // 筛选进行中的任务
+                    activeFilters.status = '进行中';
+                    applyFilters();
+                    break;
+            }
+        }
+
+        // 保存当前视图
+        function saveCurrentView() {
+            const viewName = prompt('请输入视图名称：');
+            if (!viewName) return;
+            
+            // 保存当前的筛选配置
+            customViews[viewName] = {
+                filters: {...activeFilters},
+                focusTasks: [...focusTasks],
+                viewType: currentView
+            };
+            
+            // 添加到侧边栏
+            const viewsList = document.getElementById('customViewsList');
+            const newItem = document.createElement('div');
+            newItem.className = 'custom-view-item slide-in';
+            newItem.onclick = () => loadCustomView(viewName);
+            newItem.innerHTML = `
+                <span>📌 ${viewName}</span>
+                <span class="text-small text-muted">0</span>
+            `;
+            viewsList.appendChild(newItem);
+            
+            alert(`视图 "${viewName}" 已保存`);
+        }
+
+        // 加载自定义视图
+        function loadCustomView(viewName) {
+            const view = customViews[viewName];
+            if (view) {
+                activeFilters = {...view.filters};
+                focusTasks = new Set(view.focusTasks);
+                switchView(view.viewType);
+                applyFilters();
+            }
+        }
+
+        /* ========================================
+           🚀 任务操作功能
+           ======================================== */
+        
+        // 启动任务
+        function launchTask(event, taskId) {
+            event.stopPropagation();
+            const task = tasks.find(t => t.id === taskId);
+            if (task && task.launchLink) {
+                console.log(`启动任务: ${task.title}`);
+                console.log(`跳转到: ${task.launchLink}`);
+                // 在实际应用中，这里会调用 window.location.href = task.launchLink
+                alert(`模拟启动任务:\n${task.title}\n\n链接: ${task.launchLink}`);
+            }
+        }
+
+        // 设置启动链接
+        function setLaunchLink(event, taskId) {
+            event.stopPropagation();
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+            
+            const link = prompt('请输入MN uistate链接：', 'marginnote4app://note/');
+            if (link) {
+                task.launchLink = link;
+                renderFocusTasks();
+                alert('启动链接已设置');
+            }
+        }
+
+        // 更新进度
+        function updateProgress(event, taskId) {
+            event.stopPropagation();
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+            
+            const currentProgress = task.fields.progress || 0;
+            const newProgress = prompt(`更新进度 (当前: ${currentProgress}%)：`, currentProgress);
+            
+            if (newProgress !== null && !isNaN(newProgress)) {
+                const progress = Math.max(0, Math.min(100, parseInt(newProgress)));
+                const note = prompt('进展说明（可选）：');
+                
+                task.fields.progress = progress;
+                
+                // 添加进展记录
+                if (!task.fields.progressLog) {
+                    task.fields.progressLog = [];
+                }
+                
+                task.fields.progressLog.push({
+                    date: new Date().toLocaleString('zh-CN'),
+                    progress: progress,
+                    note: note || `进度更新至 ${progress}%`
+                });
+                
+                // 如果进度达到100%，自动更新状态为已完成
+                if (progress === 100) {
+                    task.status = '已完成';
+                }
+                
+                renderFocusTasks();
+                alert(`进度已更新至 ${progress}%`);
+            }
+        }
+
+        // 查看进展日志
+        function viewProgressLog(event, taskId) {
+            event.stopPropagation();
+            const task = tasks.find(t => t.id === taskId);
+            if (!task || !task.fields.progressLog || task.fields.progressLog.length === 0) {
+                alert('暂无进展记录');
+                return;
+            }
+            
+            const logHtml = task.fields.progressLog.map(log => `
+                <div class="progress-log-item">
+                    <div class="progress-log-time">${log.date}</div>
+                    <div class="progress-log-content">
+                        <span class="progress-log-value">${log.progress}%</span> - ${log.note}
+                    </div>
+                </div>
+            `).join('');
+            
+            // 这里简化处理，实际应该使用模态框
+            const logWindow = window.open('', '进展日志', 'width=600,height=400');
+            logWindow.document.write(`
+                <html>
+                <head>
+                    <title>进展日志 - ${task.title}</title>
+                    <style>
+                        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 20px; background: #0a0a0f; color: #fff; }
+                        h2 { margin-bottom: 20px; }
+                        .progress-log-item { display: flex; gap: 16px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+                        .progress-log-time { font-size: 14px; color: #6c6c7c; min-width: 140px; }
+                        .progress-log-content { flex: 1; font-size: 14px; }
+                        .progress-log-value { font-weight: 600; color: #667eea; }
+                    </style>
+                </head>
+                <body>
+                    <h2>${task.title} - 进展日志</h2>
+                    ${logHtml}
+                </body>
+                </html>
+            `);
+        }
+
+        // 切换当前焦点状态
+        function toggleCurrentFocus(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                // 如果点击的是已经在焦点中的任务，切换其活跃状态
+                if (task.currentFocus) {
+                    task.currentFocus = false;
+                } else {
+                    // 先将其他任务的焦点状态取消
+                    tasks.forEach(t => t.currentFocus = false);
+                    task.currentFocus = true;
+                }
+                renderFocusTasks();
+            }
+        }
+
+        // 添加到焦点任务
+        function addToFocus(taskId) {
+            if (focusTasks.size >= 5) {
+                alert('焦点任务不能超过5个，请先移除其他任务');
+                return;
+            }
+            
+            focusTasks.add(taskId);
+            renderFocusTasks();
+        }
+
+        /* ========================================
+           🛠️ 工具函数
+           ======================================== */
+        
+        // 获取任务类型图标
+        function getTaskTypeIcon(type) {
+            const icons = {
+                '目标': '🎯',
+                '关键结果': '🔑',
+                '项目': '📁',
+                '动作': '⚡'
+            };
+            return icons[type] || '📌';
+        }
+
+        // 获取状态图标
+        function getStatusIcon(status) {
+            const icons = {
+                '未开始': '⏸',
+                '进行中': '🚀',
+                '已完成': '✅'
+            };
+            return icons[status] || '❓';
+        }
+
+        // 获取优先级图标
+        function getPriorityIcon(priority) {
+            const icons = {
+                '高': '🔴',
+                '中': '🟡',
+                '低': '🟢'
+            };
+            return icons[priority] || '⚪';
+        }
+
+        // 获取状态样式类
+        function getStatusClass(status) {
+            const classes = {
+                '未开始': 'text-muted',
+                '进行中': 'text-warning',
+                '已完成': 'text-success'
+            };
+            return classes[status] || '';
+        }
+
+        // 格式化日期
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const today = new Date();
+            const diffDays = Math.floor((date - today) / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) return '今天';
+            if (diffDays === 1) return '明天';
+            if (diffDays === -1) return '昨天';
+            if (diffDays > 0 && diffDays <= 7) return `${diffDays}天后`;
+            if (diffDays < 0) return `逾期${-diffDays}天`;
+            
+            return date.toLocaleDateString('zh-CN');
+        }
+
+        // 切换视图
+        function switchView(viewName) {
+            // 更新按钮状态
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.view === viewName);
+            });
+            
+            // 隐藏所有视图
+            document.querySelectorAll('.view-container').forEach(view => {
+                view.classList.add('hidden');
+            });
+            
+            // 显示目标视图
+            const targetView = document.getElementById(`view-${viewName}`);
+            if (targetView) {
+                targetView.classList.remove('hidden');
+            }
+            
+            currentView = viewName;
+            
+            // 根据视图类型渲染内容
+            switch(viewName) {
+                case 'focus':
+                    renderFocusTasks();
+                    break;
+                case 'today':
+                    renderTodayTimeline();
+                    break;
+                // 其他视图待实现
+            }
+        }
+
+        // 快速添加任务
+        function handleQuickAdd(event) {
+            if (event.key !== 'Enter') return;
+            
+            const input = event.target;
+            const text = input.value.trim();
+            if (!text) return;
+            
+            // 解析输入文本
+            let title = text;
+            let tags = [];
+            let priority = '中';
+            let project = '';
+            
+            // 提取标签 #tag
+            const tagMatches = text.match(/#(\S+)/g);
+            if (tagMatches) {
+                tags = tagMatches.map(tag => tag.substring(1));
+                title = title.replace(/#\S+/g, '').trim();
+            }
+            
+            // 提取项目 @project
+            const projectMatch = text.match(/@(\S+)/);
+            if (projectMatch) {
+                project = projectMatch[1];
+                title = title.replace(/@\S+/g, '').trim();
+            }
+            
+            // 提取优先级 !high !medium !low
+            const priorityMatch = text.match(/!(\S+)/);
+            if (priorityMatch) {
+                const p = priorityMatch[1].toLowerCase();
+                if (p === 'high' || p === '高') priority = '高';
+                else if (p === 'low' || p === '低') priority = '低';
+                title = title.replace(/!\S+/g, '').trim();
+            }
+            
+            // 创建新任务
+            const newTask = {
+                id: `task_${Date.now()}`,
+                type: "动作",
+                status: "未开始",
+                title: title,
+                path: project || "快速添加",
+                launchLink: "",
+                currentFocus: false,
+                todayPlannedTime: "",
+                fields: {
+                    priority: priority,
+                    dueDate: "",
+                    tags: tags,
+                    progress: 0,
+                    today: true, // 快速添加的任务默认为今日任务
+                    progressLog: [],
+                    customViews: [],
+                    project: project
+                }
+            };
+            
+            tasks.unshift(newTask);
+            input.value = '';
+            
+            // 刷新当前视图
+            switch(currentView) {
+                case 'focus':
+                    renderFocusTasks();
+                    break;
+                case 'today':
+                    renderTodayTimeline();
+                    break;
+            }
+            
+            // 显示成功提示
+            console.log(`✅ 任务已添加: ${title}`);
+        }
+
+        /* ========================================
+           🚀 应用初始化
+           ======================================== */
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 生成测试数据
+            generateTestData();
+            
+            // 渲染初始视图
+            renderFocusTasks();
+            
+            console.log('🚀 MNTask 焦点看板已启动');
+        });
+    </script>
+</body>
+</html>

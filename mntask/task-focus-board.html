@@ -440,6 +440,44 @@
             color: #fc8181;
             transform: scale(1.1);
         }
+        
+        /* 当前任务标记按钮 */
+        .focus-task-current {
+            position: absolute;
+            top: var(--spacing-sm);
+            right: calc(var(--spacing-sm) + 36px);
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            line-height: 1;
+            transition: var(--transition);
+            opacity: 0;
+            z-index: 10;
+        }
+        
+        .focus-task-card:hover .focus-task-current {
+            opacity: 1;
+        }
+        
+        .focus-task-current:hover {
+            background: rgba(102, 126, 234, 0.2);
+            color: var(--type-goal);
+            transform: scale(1.1);
+        }
+        
+        .focus-task-current.active {
+            opacity: 1;
+            color: #f6ad55;
+            background: rgba(246, 173, 85, 0.2);
+        }
 
         @media (max-width: 768px) {
             .focus-task-remove {
@@ -447,6 +485,14 @@
                 width: 36px;
                 height: 36px;
                 font-size: 20px;
+            }
+            
+            .focus-task-current {
+                opacity: 1;
+                width: 36px;
+                height: 36px;
+                font-size: 20px;
+                right: calc(var(--spacing-sm) + 44px);
             }
         }
 
@@ -3182,9 +3228,15 @@
                      ondragover="handleDragOver(event)"
                      ondrop="handleDrop(event)"
                      ondragend="handleDragEnd(event)"
-                     onclick="toggleCurrentFocus('${task.id}')">
+                     onclick="viewTaskDetail('${task.id}')"
+                     style="cursor: pointer;">
                     <button class="focus-task-remove" onclick="removeFromFocus(event, '${task.id}')" title="从焦点移除">
                         ✕
+                    </button>
+                    <button class="focus-task-current ${task.currentFocus ? 'active' : ''}" 
+                            onclick="event.stopPropagation(); toggleCurrentFocus('${task.id}')" 
+                            title="${task.currentFocus ? '取消当前任务' : '设为当前任务'}">
+                        ${task.currentFocus ? '⭐' : '☆'}
                     </button>
                     <div class="task-type-badge ${task.type.toLowerCase()}">
                         ${getTaskTypeIcon(task.type)} ${task.type}
@@ -4126,15 +4178,29 @@
             const currentTime = new Date().toISOString();
             
             // 状态变化逻辑
+            const today = new Date().toISOString().split('T')[0];
+            
             if (oldStatus === '未开始' && newStatus === '进行中') {
-                // 任务开始，记录开始时间
+                // 任务开始，记录开始时间并更新日期
                 task.fields.startTime = currentTime;
+                task.fields.plannedDate = today;
+                task.fields.today = true;
+            } else if (oldStatus === '暂停' && newStatus === '进行中') {
+                // 从暂停恢复，更新日期为今天
+                task.fields.plannedDate = today;
+                task.fields.today = true;
+                // 如果之前没有开始时间，记录新的开始时间
+                if (!task.fields.startTime) {
+                    task.fields.startTime = currentTime;
+                }
             } else if (oldStatus === '进行中' && newStatus === '已完成') {
                 // 任务完成，记录结束时间
                 task.fields.endTime = currentTime;
             } else if (newStatus === '进行中' && !task.fields.startTime) {
-                // 如果直接设置为进行中且没有开始时间，记录开始时间
+                // 如果直接设置为进行中且没有开始时间，记录开始时间并更新日期
                 task.fields.startTime = currentTime;
+                task.fields.plannedDate = today;
+                task.fields.today = true;
             } else if (newStatus === '已完成' && !task.fields.endTime) {
                 // 如果直接设置为已完成且没有结束时间，记录结束时间
                 task.fields.endTime = currentTime;
@@ -4172,6 +4238,8 @@
                     break;
             }
             
+            // 更新侧边栏（特别是时间轴视图的统计）
+            updateSidebar(currentView);
             updateSidebarStats();
             saveToLocalStorage();
         }

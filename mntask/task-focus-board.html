@@ -1180,6 +1180,51 @@
             font-size: 0.875rem;
             color: var(--type-goal);
         }
+        
+        /* 进展日志样式 */
+        .progress-log-item {
+            display: flex;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md);
+            border-bottom: 1px solid var(--glass-border);
+            transition: var(--transition);
+        }
+        
+        .progress-log-item:last-child {
+            border-bottom: none;
+        }
+        
+        .progress-log-item:hover {
+            background: var(--bg-hover);
+            cursor: pointer;
+        }
+        
+        .progress-log-item:hover .progress-log-content::after {
+            content: " ✏️";
+            opacity: 0.5;
+            font-size: 0.875rem;
+        }
+        
+        .progress-log-time {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            min-width: 140px;
+            flex-shrink: 0;
+        }
+        
+        .progress-log-content {
+            flex: 1;
+            font-size: 0.9375rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        
+        .progress-log-empty {
+            text-align: center;
+            padding: var(--spacing-xl);
+            color: var(--text-muted);
+        }
     </style>
 </head>
 <body>
@@ -1482,6 +1527,24 @@
                     <!-- 状态切换按钮将在这里动态生成 -->
                 </div>
                 <button class="btn btn-secondary" onclick="closeModal('taskDetailModal')" style="margin-left: auto;">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框 - 进展详情 -->
+    <div id="progressLogModal" class="modal">
+        <div class="modal-content" style="width: 600px; max-height: 80vh;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="progressLogTitle">进展详情</h3>
+                <button class="modal-close" onclick="closeModal('progressLogModal')">✕</button>
+            </div>
+            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+                <div id="progressLogList">
+                    <!-- 进展日志列表将在这里动态生成 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeModal('progressLogModal')">关闭</button>
             </div>
         </div>
     </div>
@@ -1958,40 +2021,133 @@
         function viewProgressLog(event, taskId) {
             event.stopPropagation();
             const task = tasks.find(t => t.id === taskId);
-            if (!task || !task.fields.progressLog || task.fields.progressLog.length === 0) {
-                alert('暂无进展记录');
-                return;
+            if (!task) return;
+            
+            // 更新模态框标题
+            document.getElementById('progressLogTitle').textContent = `${task.title} - 进展详情`;
+            
+            // 生成进展日志内容
+            const logList = document.getElementById('progressLogList');
+            
+            if (!task.fields.progressLog || task.fields.progressLog.length === 0) {
+                logList.innerHTML = `
+                    <div class="progress-log-empty">
+                        <p>暂无进展记录</p>
+                        <button class="btn btn-primary" onclick="closeModal('progressLogModal'); addProgressNote(event, '${taskId}')">
+                            📝 添加第一条进展
+                        </button>
+                    </div>
+                `;
+            } else {
+                // 按时间倒序显示，最新的在前面
+                const sortedLogs = [...task.fields.progressLog].reverse();
+                logList.innerHTML = sortedLogs.map((log, index) => {
+                    const originalIndex = task.fields.progressLog.length - 1 - index; // 获取原始索引
+                    return `
+                        <div class="progress-log-item" 
+                             data-task-id="${taskId}" 
+                             data-log-index="${originalIndex}"
+                             ondblclick="editProgressLog('${taskId}', ${originalIndex})">
+                            <div class="progress-log-time">${log.date}</div>
+                            <div class="progress-log-content">${escapeHtml(log.note)}</div>
+                        </div>
+                    `;
+                }).join('');
             }
             
-            const logHtml = task.fields.progressLog.map(log => `
-                <div class="progress-log-item">
-                    <div class="progress-log-time">${log.date}</div>
-                    <div class="progress-log-content">
-                        ${log.note}
-                    </div>
-                </div>
-            `).join('');
+            // 显示模态框
+            document.getElementById('progressLogModal').classList.add('active');
+        }
+        
+        // HTML 转义函数，防止 XSS
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+        
+        // 编辑进展日志
+        function editProgressLog(taskId, logIndex) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task || !task.fields.progressLog || !task.fields.progressLog[logIndex]) return;
             
-            // 这里简化处理，实际应该使用模态框
-            const logWindow = window.open('', '进展日志', 'width=600,height=400');
-            logWindow.document.write(`
-                <html>
-                <head>
-                    <title>进展日志 - ${task.title}</title>
-                    <style>
-                        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 20px; background: #0a0a0f; color: #fff; }
-                        h2 { margin-bottom: 20px; }
-                        .progress-log-item { display: flex; gap: 16px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
-                        .progress-log-time { font-size: 14px; color: #6c6c7c; min-width: 140px; }
-                        .progress-log-content { flex: 1; font-size: 14px; }
-                    </style>
-                </head>
-                <body>
-                    <h2>${task.title} - 进展日志</h2>
-                    ${logHtml}
-                </body>
-                </html>
-            `);
+            const log = task.fields.progressLog[logIndex];
+            const logItem = document.querySelector(`[data-task-id="${taskId}"][data-log-index="${logIndex}"]`);
+            if (!logItem) return;
+            
+            const contentDiv = logItem.querySelector('.progress-log-content');
+            const originalContent = log.note;
+            
+            // 创建编辑区域
+            const textarea = document.createElement('textarea');
+            textarea.className = 'progress-log-edit';
+            textarea.value = originalContent;
+            textarea.style.width = '100%';
+            textarea.style.minHeight = '60px';
+            textarea.style.padding = '8px';
+            textarea.style.fontSize = '0.9375rem';
+            textarea.style.fontFamily = 'inherit';
+            textarea.style.lineHeight = '1.6';
+            textarea.style.background = 'var(--bg-primary)';
+            textarea.style.color = 'var(--text-primary)';
+            textarea.style.border = '1px solid var(--type-goal)';
+            textarea.style.borderRadius = 'var(--radius-sm)';
+            textarea.style.resize = 'vertical';
+            
+            // 替换内容
+            contentDiv.innerHTML = '';
+            contentDiv.appendChild(textarea);
+            
+            // 自动调整高度
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+            textarea.focus();
+            textarea.select();
+            
+            // 保存函数
+            const saveEdit = () => {
+                const newContent = textarea.value.trim();
+                if (newContent && newContent !== originalContent) {
+                    log.note = newContent;
+                    saveToLocalStorage();
+                    // 重新渲染进展日志
+                    viewProgressLog({ stopPropagation: () => {} }, taskId);
+                } else if (!newContent) {
+                    // 如果内容为空，恢复原内容
+                    contentDiv.innerHTML = escapeHtml(originalContent);
+                } else {
+                    // 内容未改变，恢复显示
+                    contentDiv.innerHTML = escapeHtml(originalContent);
+                }
+            };
+            
+            // 取消编辑函数
+            const cancelEdit = () => {
+                contentDiv.innerHTML = escapeHtml(originalContent);
+            };
+            
+            // 监听键盘事件
+            textarea.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    saveEdit();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelEdit();
+                }
+            });
+            
+            // 失去焦点时保存
+            textarea.addEventListener('blur', saveEdit);
+            
+            // 自动调整高度
+            textarea.addEventListener('input', () => {
+                textarea.style.height = 'auto';
+                textarea.style.height = textarea.scrollHeight + 'px';
+            });
         }
 
         // 切换当前焦点状态

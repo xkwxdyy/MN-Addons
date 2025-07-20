@@ -179,6 +179,64 @@
             padding: var(--spacing-xs);
             border-radius: var(--radius-sm);
         }
+        
+        /* 全局功能按钮组 */
+        .global-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-left: var(--spacing-lg);
+        }
+        
+        .global-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            font-size: 1.125rem;
+        }
+        
+        .global-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border-color: var(--type-goal);
+        }
+        
+        .global-btn.active {
+            background: var(--bg-active);
+            color: var(--type-goal);
+        }
+        
+        .tooltip {
+            position: absolute;
+            bottom: -36px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
+            pointer-events: none;
+            box-shadow: var(--shadow);
+        }
+        
+        .global-btn:hover .tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
 
         .view-btn {
             padding: var(--spacing-sm) var(--spacing-md);
@@ -747,6 +805,23 @@
             width: 2px;
             background: var(--glass-border);
         }
+        
+        /* 时间轴日期分组 */
+        .timeline-date-group {
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .timeline-date-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--type-goal);
+            margin-bottom: var(--spacing-md);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            background: var(--bg-card);
+            border-left: 3px solid var(--type-goal);
+            border-radius: var(--radius-sm);
+            display: inline-block;
+        }
 
         .timeline-item {
             position: relative;
@@ -823,12 +898,51 @@
             margin-right: 4px;
         }
 
+        /* 时间轴控件容器 */
+        .timeline-controls {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-lg);
+            margin-left: auto;
+        }
+        
+        /* 时间轴视图模式切换 */
+        .timeline-view-mode {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-card);
+            padding: 4px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--glass-border);
+        }
+        
+        .view-mode-btn {
+            padding: 6px 12px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+        }
+        
+        .view-mode-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+        
+        .view-mode-btn.active {
+            background: var(--bg-active);
+            color: var(--type-goal);
+        }
+        
         /* 时间轴日期选择器样式 */
         .timeline-date-controls {
             display: flex;
             align-items: center;
             gap: var(--spacing-sm);
-            margin-left: auto;
         }
 
         .timeline-date-picker {
@@ -2161,11 +2275,21 @@
                 <button class="view-btn" data-view="goal" onclick="switchView('goal')">
                     🎪 目标看板
                 </button>
-                <button class="view-btn" data-view="board" onclick="switchView('board')">
-                    📋 看板视图
+            </div>
+            
+            <!-- 全局功能按钮 -->
+            <div class="global-actions">
+                <button class="global-btn" onclick="openGlobalSearch()">
+                    🔍
+                    <span class="tooltip">全局搜索 (Ctrl+K)</span>
                 </button>
-                <button class="view-btn" data-view="list" onclick="switchView('list')">
-                    📝 列表视图
+                <button class="global-btn" onclick="openSettings()">
+                    ⚙️
+                    <span class="tooltip">设置</span>
+                </button>
+                <button class="global-btn" onclick="openHelp()">
+                    ❓
+                    <span class="tooltip">帮助与教程</span>
                 </button>
             </div>
         </nav>
@@ -2310,11 +2434,18 @@
                     <div class="timeline-section">
                         <div class="section-header">
                             <h2 class="section-title">📅 任务执行时间轴</h2>
-                            <div class="timeline-date-controls">
-                                <button class="date-nav-btn" onclick="changeTimelineDate(-1)">←</button>
-                                <input type="date" id="timelineDatePicker" class="timeline-date-picker" onchange="onTimelineDateChange()">
-                                <button class="date-nav-btn" onclick="changeTimelineDate(1)">→</button>
-                                <button class="date-nav-btn today-btn" onclick="selectTodayDate()">今天</button>
+                            <div class="timeline-controls">
+                                <div class="timeline-view-mode">
+                                    <button class="view-mode-btn active" data-mode="day" onclick="setTimelineViewMode('day')">日</button>
+                                    <button class="view-mode-btn" data-mode="week" onclick="setTimelineViewMode('week')">周</button>
+                                    <button class="view-mode-btn" data-mode="month" onclick="setTimelineViewMode('month')">月</button>
+                                </div>
+                                <div class="timeline-date-controls">
+                                    <button class="date-nav-btn" onclick="changeTimelineDate(-1)">←</button>
+                                    <input type="date" id="timelineDatePicker" class="timeline-date-picker" onchange="onTimelineDateChange()">
+                                    <button class="date-nav-btn" onclick="changeTimelineDate(1)">→</button>
+                                    <button class="date-nav-btn today-btn" onclick="selectTodayDate()">今天</button>
+                                </div>
                             </div>
                         </div>
                         
@@ -2351,21 +2482,6 @@
                     </div>
                 </div>
 
-                <!-- 看板视图（待实现） -->
-                <div id="view-board" class="view-container hidden">
-                    <div class="section-header">
-                        <h2 class="section-title">📋 看板视图</h2>
-                    </div>
-                    <p class="text-muted">看板视图开发中...</p>
-                </div>
-
-                <!-- 列表视图（待实现） -->
-                <div id="view-list" class="view-container hidden">
-                    <div class="section-header">
-                        <h2 class="section-title">📝 列表视图</h2>
-                    </div>
-                    <p class="text-muted">列表视图开发中...</p>
-                </div>
             </div>
         </div>
     </div>
@@ -2588,6 +2704,43 @@
         </div>
     </div>
 
+    <!-- 模态框 - 全局搜索 -->
+    <div id="globalSearchModal" class="modal">
+        <div class="modal-content" style="width: 600px; max-height: 80vh;">
+            <div class="modal-header">
+                <h3 class="modal-title">🔍 全局搜索</h3>
+                <button class="modal-close" onclick="closeModal('globalSearchModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <input type="text" 
+                       id="globalSearchInput" 
+                       class="form-input" 
+                       placeholder="搜索任务标题、路径、标签..."
+                       oninput="performGlobalSearch()"
+                       style="font-size: 1.125rem; padding: var(--spacing-md);">
+                
+                <div class="search-filters" style="margin-top: var(--spacing-md); display: flex; gap: var(--spacing-sm);">
+                    <label class="filter-checkbox">
+                        <input type="checkbox" id="searchInCompleted" onchange="performGlobalSearch()">
+                        包含已完成
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" id="searchInTags" checked onchange="performGlobalSearch()">
+                        搜索标签
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" id="searchInPath" checked onchange="performGlobalSearch()">
+                        搜索路径
+                    </label>
+                </div>
+                
+                <div id="searchResults" style="margin-top: var(--spacing-lg); max-height: 400px; overflow-y: auto;">
+                    <!-- 搜索结果将在这里显示 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         /* ========================================
            📊 数据模型
@@ -2606,6 +2759,7 @@
         
         // 时间轴相关变量
         let selectedTimelineDate = new Date(); // 当前选择的时间轴日期
+        let timelineViewMode = 'day'; // 时间轴视图模式: 'day', 'week', 'month'
         
         // 项目列表和自动完成相关变量
         const projectList = [
@@ -2624,11 +2778,27 @@
            🔔 通知系统
            ======================================== */
         
-        function showNotification(message, type = 'info') {
+        let notificationCount = 0;
+        
+        function showNotification(message, type = 'info', duration = 3000) {
             // 创建通知元素
             const notification = document.createElement('div');
             notification.className = `notification notification-${type}`;
-            notification.textContent = message;
+            notification.style.top = `${20 + notificationCount * 70}px`;
+            
+            // 添加图标和关闭按钮
+            const icons = {
+                info: '💡',
+                warning: '⚠️',
+                error: '❌',
+                success: '✅'
+            };
+            
+            notification.innerHTML = `
+                <span class="notification-icon">${icons[type] || icons.info}</span>
+                <span class="notification-message">${message}</span>
+                <button class="notification-close">×</button>
+            `;
             
             // 添加样式（如果还没有的话）
             if (!document.getElementById('notificationStyles')) {
@@ -2637,53 +2807,204 @@
                 style.textContent = `
                     .notification {
                         position: fixed;
-                        top: 20px;
                         right: 20px;
-                        padding: 12px 24px;
-                        border-radius: 8px;
+                        padding: 16px 20px;
+                        padding-right: 40px;
+                        border-radius: 12px;
                         font-size: 14px;
                         font-weight: 500;
                         color: white;
                         background: #4CAF50;
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                        box-shadow: 0 6px 16px rgba(0,0,0,0.4);
                         z-index: 10000;
                         animation: slideIn 0.3s ease-out;
                         max-width: 350px;
+                        min-width: 250px;
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        transition: transform 0.3s ease;
+                    }
+                    
+                    .notification-icon {
+                        font-size: 18px;
+                        flex-shrink: 0;
+                    }
+                    
+                    .notification-message {
+                        flex: 1;
+                        line-height: 1.4;
+                    }
+                    
+                    .notification-close {
+                        position: absolute;
+                        top: 50%;
+                        right: 12px;
+                        transform: translateY(-50%);
+                        background: none;
+                        border: none;
+                        color: white;
+                        font-size: 24px;
+                        cursor: pointer;
+                        opacity: 0.8;
+                        padding: 0;
+                        width: 24px;
+                        height: 24px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        transition: opacity 0.2s;
+                    }
+                    
+                    .notification-close:hover {
+                        opacity: 1;
+                    }
+                    
+                    .notification-success {
+                        background: #48bb78;
                     }
                     
                     .notification-warning {
-                        background: #ff9800;
+                        background: #ed8936;
                     }
                     
                     .notification-error {
-                        background: #f44336;
+                        background: #e53e3e;
                     }
                     
                     .notification-info {
-                        background: #2196F3;
+                        background: #3182ce;
                     }
                     
                     @keyframes slideIn {
-                        from { transform: translateX(100%); opacity: 0; }
-                        to { transform: translateX(0); opacity: 1; }
+                        from { transform: translateX(120%); }
+                        to { transform: translateX(0); }
                     }
                     
                     @keyframes slideOut {
-                        from { transform: translateX(0); opacity: 1; }
-                        to { transform: translateX(100%); opacity: 0; }
+                        from { transform: translateX(0); }
+                        to { transform: translateX(120%); }
                     }
                 `;
                 document.head.appendChild(style);
             }
             
+            // 增加计数器
+            notificationCount++;
+            
             // 添加到页面
             document.body.appendChild(notification);
             
-            // 3秒后自动移除
-            setTimeout(() => {
+            // 关闭功能
+            const closeNotification = () => {
                 notification.style.animation = 'slideOut 0.3s ease-out';
-                setTimeout(() => notification.remove(), 300);
-            }, 3000);
+                setTimeout(() => {
+                    notification.remove();
+                    notificationCount--;
+                    // 重新排列剩余的通知
+                    document.querySelectorAll('.notification').forEach((n, index) => {
+                        n.style.top = `${20 + index * 70}px`;
+                    });
+                }, 300);
+            };
+            
+            // 点击关闭按钮
+            notification.querySelector('.notification-close').onclick = closeNotification;
+            
+            // 自动移除
+            if (duration > 0) {
+                setTimeout(closeNotification, duration);
+            }
+        }
+        
+        // 确认对话框
+        function showConfirm(message, onConfirm, onCancel) {
+            // 创建遮罩层
+            const overlay = document.createElement('div');
+            overlay.className = 'confirm-overlay';
+            
+            // 创建对话框
+            const dialog = document.createElement('div');
+            dialog.className = 'confirm-dialog';
+            dialog.innerHTML = `
+                <div class="confirm-content">
+                    <p>${message}</p>
+                    <div class="confirm-buttons">
+                        <button class="btn btn-secondary" onclick="this.closest('.confirm-overlay').remove()">取消</button>
+                        <button class="btn btn-primary confirm-ok">确定</button>
+                    </div>
+                </div>
+            `;
+            
+            // 添加样式
+            if (!document.getElementById('confirmStyles')) {
+                const style = document.createElement('style');
+                style.id = 'confirmStyles';
+                style.textContent = `
+                    .confirm-overlay {
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: rgba(0, 0, 0, 0.6);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        z-index: 10000;
+                        animation: fadeIn 0.2s ease-out;
+                    }
+                    
+                    .confirm-dialog {
+                        background: var(--bg-tertiary);
+                        border-radius: var(--radius-lg);
+                        padding: 24px;
+                        max-width: 400px;
+                        width: 90%;
+                        box-shadow: var(--shadow-lg);
+                        animation: scaleIn 0.2s ease-out;
+                    }
+                    
+                    .confirm-content p {
+                        margin: 0 0 20px;
+                        font-size: 16px;
+                        color: var(--text-primary);
+                    }
+                    
+                    .confirm-buttons {
+                        display: flex;
+                        gap: 12px;
+                        justify-content: flex-end;
+                    }
+                    
+                    @keyframes fadeIn {
+                        from { opacity: 0; }
+                        to { opacity: 1; }
+                    }
+                    
+                    @keyframes scaleIn {
+                        from { transform: scale(0.9); opacity: 0; }
+                        to { transform: scale(1); opacity: 1; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            overlay.appendChild(dialog);
+            document.body.appendChild(overlay);
+            
+            // 绑定事件
+            dialog.querySelector('.confirm-ok').onclick = () => {
+                overlay.remove();
+                if (onConfirm) onConfirm();
+            };
+            
+            overlay.onclick = (e) => {
+                if (e.target === overlay) {
+                    overlay.remove();
+                    if (onCancel) onCancel();
+                }
+            };
         }
         
         // 扩展的任务数据结构示例
@@ -2957,38 +3278,84 @@
             return groups;
         }
         
+        // 设置时间轴视图模式
+        function setTimelineViewMode(mode) {
+            timelineViewMode = mode;
+            
+            // 更新按钮状态
+            document.querySelectorAll('.view-mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            
+            // 更新日期导航的步进值
+            renderTodayTimeline();
+        }
+        
+        // 获取日期范围
+        function getDateRange(baseDate, mode) {
+            const start = new Date(baseDate);
+            const end = new Date(baseDate);
+            
+            switch (mode) {
+                case 'week':
+                    // 获取本周的开始和结束日期（周一到周日）
+                    const day = start.getDay();
+                    const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+                    start.setDate(diff);
+                    end.setDate(start.getDate() + 6);
+                    break;
+                case 'month':
+                    // 获取本月的开始和结束日期
+                    start.setDate(1);
+                    end.setMonth(end.getMonth() + 1);
+                    end.setDate(0);
+                    break;
+                // 'day' 模式不需要调整
+            }
+            
+            return {
+                start: start.toISOString().split('T')[0],
+                end: end.toISOString().split('T')[0]
+            };
+        }
+        
         // 渲染今日时间轴
         function renderTodayTimeline() {
-            // 获取选择的日期（ISO格式：YYYY-MM-DD）
-            const selectedDateStr = selectedTimelineDate.toISOString().split('T')[0];
+            // 获取选择的日期范围
+            const dateRange = getDateRange(selectedTimelineDate, timelineViewMode);
             const todayStr = new Date().toISOString().split('T')[0];
             
-            // 根据选择的日期筛选任务
+            // 根据选择的日期范围筛选任务
             const timelineTasks = tasks.filter(task => {
                 // 只显示进行中和已完成的任务
                 if (task.status !== '进行中' && task.status !== '已完成') {
                     return false;
                 }
                 
-                // 如果任务有 plannedDate，则按 plannedDate 筛选
+                // 如果任务有 plannedDate，则按日期范围筛选
                 if (task.fields.plannedDate) {
-                    return task.fields.plannedDate === selectedDateStr;
+                    if (timelineViewMode === 'day') {
+                        return task.fields.plannedDate === dateRange.start;
+                    } else {
+                        return task.fields.plannedDate >= dateRange.start && 
+                               task.fields.plannedDate <= dateRange.end;
+                    }
                 }
                 
                 // 如果没有 plannedDate，则根据 today 字段和选择的日期判断
-                if (selectedDateStr === todayStr) {
+                if (timelineViewMode === 'day' && dateRange.start === todayStr) {
                     // 如果选择的是今天，显示标记为今日任务的
                     return task.fields.today === true;
                 }
                 
-                // 其他日期不显示没有 plannedDate 的任务
+                // 其他情况不显示没有 plannedDate 的任务
                 return false;
             });
             
             const container = document.getElementById('todayTimeline');
             
             // 更新统计信息
-            updateTimelineStats(timelineTasks, selectedDateStr);
+            updateTimelineStats(timelineTasks, dateRange);
             
             // 按状态和时间排序：进行中的在前，已完成的在后
             timelineTasks.sort((a, b) => {
@@ -3007,100 +3374,99 @@
                 return;
             }
             
-            container.innerHTML = `
-                <div class="timeline-line"></div>
-                ${timelineTasks.map(task => {
-                    const timeStr = task.status === '进行中' && task.fields.startTime
-                        ? `开始于 ${new Date(task.fields.startTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
-                        : task.status === '已完成' && task.fields.endTime
-                        ? `完成于 ${new Date(task.fields.endTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
-                        : task.status;
-                    
-                    return `
-                        <div class="timeline-item fade-in">
-                            <div class="timeline-dot ${task.status === '进行中' ? 'active' : ''}"></div>
-                            <div class="timeline-time">${timeStr}</div>
-                            <div class="timeline-content-wrapper">
-                                <div class="timeline-content" onclick="viewTaskDetail('${task.id}')">
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <span class="task-type-badge ${task.type.toLowerCase()} text-small">
-                                            ${getTaskTypeIcon(task.type)} ${task.type}
-                                        </span>
-                                        <span class="${getStatusClass(task.status)} text-small">
-                                            ${getStatusIcon(task.status)} ${task.status}
-                                        </span>
-                                    </div>
-                                    <div class="mt-1 font-weight-500">${task.title}</div>
-                                    <div class="text-small text-muted mt-1">
-                                        ${task.path}
-                                    </div>
-                                    ${task.status === '进行中' && task.fields.startTime ? `
-                                        <div class="text-small text-muted mt-1">
-                                            ⏱ 已用时：${formatElapsedTime(task.fields.startTime)}
-                                        </div>
-                                    ` : ''}
-                                    ${task.status === '已完成' && task.fields.startTime && task.fields.endTime ? `
-                                        <div class="text-small text-muted mt-1">
-                                            ⏱ 耗时：${formatElapsedTime(task.fields.startTime, task.fields.endTime)}
-                                        </div>
-                                    ` : ''}
-                                    <div class="mt-2" style="display: flex; gap: 8px;">
-                                        ${task.status === '进行中' ? `
-                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '已完成')">
-                                                ✅ 完成任务
-                                            </button>
-                                            <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '暂停')">
-                                                ⏸ 暂停
-                                            </button>
-                                        ` : ''}
-                                        <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); viewProgressLog(event, '${task.id}')">
-                                            📊 进展详情
-                                        </button>
-                                    </div>
-                                    ${task.fields.progressLog && task.fields.progressLog.length > 0 ? `
-                                        <div class="timeline-progress-logs">
-                                            <div class="text-small text-muted mt-2">最新进展：</div>
-                                            ${task.fields.progressLog.slice(-2).map(log => `
-                                                <div class="timeline-progress-item">
-                                                    <span class="timeline-progress-time">${new Date(log.date).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
-                                                    ${log.note}
-                                                </div>
-                                            `).join('')}
-                                        </div>
-                                    ` : ''}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-            `;
-            
-            // 如果没有任务，显示空状态提示
-            if (timelineTasks.length === 0) {
-                const isToday = selectedDateStr === todayStr;
-                const date = new Date(selectedDateStr);
+            // 对于周视图和月视图，按日期分组
+            if (timelineViewMode !== 'day') {
+                const tasksByDate = {};
+                timelineTasks.forEach(task => {
+                    const date = task.fields.plannedDate || new Date().toISOString().split('T')[0];
+                    if (!tasksByDate[date]) {
+                        tasksByDate[date] = [];
+                    }
+                    tasksByDate[date].push(task);
+                });
+                
+                // 生成分组的时间轴
+                const sortedDates = Object.keys(tasksByDate).sort();
                 container.innerHTML = `
-                    <div class="timeline-empty-state">
-                        <div class="empty-state-icon">📅</div>
-                        <h3 class="empty-state-title">
-                            ${isToday ? '今天还没有进行中或已完成的任务' : `${date.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })}没有任务记录`}
-                        </h3>
-                        <p class="empty-state-text">
-                            ${isToday ? '开始处理任务后，它们会显示在这里' : '选择其他日期查看任务记录'}
-                        </p>
-                        ${isToday ? `
-                            <div class="empty-state-actions">
-                                <button class="btn btn-primary" onclick="switchView('focus')">
-                                    🎯 查看焦点任务
-                                </button>
-                                <button class="btn btn-secondary" onclick="scheduleTomorrowTasks()">
-                                    📅 安排明天任务
-                                </button>
+                    <div class="timeline-line"></div>
+                    ${sortedDates.map(date => {
+                        const dateObj = new Date(date);
+                        const dateLabel = dateObj.toLocaleDateString('zh-CN', {
+                            month: 'numeric',
+                            day: 'numeric',
+                            weekday: 'short'
+                        });
+                        
+                        return `
+                            <div class="timeline-date-group">
+                                <div class="timeline-date-label">${dateLabel}</div>
+                                ${tasksByDate[date].map(task => renderTimelineTask(task)).join('')}
                             </div>
-                        ` : ''}
-                    </div>
+                        `;
+                    }).join('')}
+                `;
+            } else {
+                // 日视图保持原样
+                container.innerHTML = `
+                    <div class="timeline-line"></div>
+                    ${timelineTasks.map(task => renderTimelineTask(task)).join('')}
                 `;
             }
+        }
+        
+        // 渲染单个时间轴任务
+        function renderTimelineTask(task) {
+            const timeStr = task.status === '进行中' && task.fields.startTime
+                ? `开始于 ${new Date(task.fields.startTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
+                : task.status === '已完成' && task.fields.endTime
+                ? `完成于 ${new Date(task.fields.endTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
+                : task.status;
+            
+            return `
+                <div class="timeline-item fade-in">
+                    <div class="timeline-dot ${task.status === '进行中' ? 'active' : ''}"></div>
+                    <div class="timeline-time">${timeStr}</div>
+                    <div class="timeline-content-wrapper">
+                        <div class="timeline-content" onclick="viewTaskDetail('${task.id}')">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span class="task-type-badge ${task.type.toLowerCase()} text-small">
+                                    ${getTaskTypeIcon(task.type)} ${task.type}
+                                </span>
+                                <span class="${getStatusClass(task.status)} text-small">
+                                    ${getStatusIcon(task.status)} ${task.status}
+                                </span>
+                            </div>
+                            <div class="mt-1 font-weight-500">${task.title}</div>
+                            <div class="text-small text-muted mt-1">
+                                ${task.path}
+                            </div>
+                            ${task.status === '进行中' && task.fields.startTime ? `
+                                <div class="text-small text-muted mt-1">
+                                    ⏱ 已用时：${formatElapsedTime(task.fields.startTime)}
+                                </div>
+                            ` : ''}
+                            ${task.status === '已完成' && task.fields.startTime && task.fields.endTime ? `
+                                <div class="text-small text-muted mt-1">
+                                    ⏱ 耗时：${formatElapsedTime(task.fields.startTime, task.fields.endTime)}
+                                </div>
+                            ` : ''}
+                            <div class="mt-2" style="display: flex; gap: 8px;">
+                                ${task.status === '进行中' ? `
+                                    <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '已完成')">
+                                        ✅ 完成任务
+                                    </button>
+                                    <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '暂停')">
+                                        ⏸ 暂停
+                                    </button>
+                                ` : ''}
+                                <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); viewProgressLog(event, '${task.id}')">
+                                    📊 进展详情
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         /* ========================================
@@ -3167,7 +3533,7 @@
             `;
             viewsList.appendChild(newItem);
             
-            alert(`视图 "${viewName}" 已保存`);
+            showNotification(`视图 "${viewName}" 已保存`, 'success');
         }
 
         // 加载自定义视图
@@ -3193,7 +3559,9 @@
                 console.log(`启动任务: ${task.title}`);
                 console.log(`跳转到: ${task.launchLink}`);
                 // 在实际应用中，这里会调用 window.location.href = task.launchLink
-                alert(`模拟启动任务:\n${task.title}\n\n链接: ${task.launchLink}`);
+                showNotification(`正在启动任务: ${task.title}`, 'info');
+                // 模拟启动任务 - 实际应该打开链接
+                console.log(`启动链接: ${task.launchLink}`);
             }
         }
 
@@ -3300,7 +3668,7 @@
             }
             
             if (!link) {
-                alert('请输入链接');
+                showNotification('请输入链接', 'warning');
                 return;
             }
             
@@ -3399,7 +3767,7 @@
                 
                 renderFocusTasks();
                 saveToLocalStorage();
-                alert('进展已记录');
+                showNotification('进展已记录', 'success');
             }
         }
 
@@ -3555,7 +3923,7 @@
         // 添加到焦点任务
         function addToFocus(taskId) {
             if (focusTasks.size >= 5) {
-                alert('焦点任务不能超过5个，请先移除其他任务');
+                showNotification('焦点任务不能超过5个，请先移除其他任务', 'warning');
                 return;
             }
             
@@ -4191,7 +4559,7 @@
                 taskItem.classList.remove('selected');
             } else {
                 if (tempFocusTasks.size >= 5) {
-                    alert('焦点任务不能超过5个');
+                    showNotification('焦点任务不能超过5个', 'warning');
                     return;
                 }
                 tempFocusTasks.add(taskId);
@@ -4251,7 +4619,7 @@
         // 按项目筛选（侧边栏）
         function filterByProject(project) {
             activeFilters.project = project;
-            switchView('list'); // 切换到列表视图
+            switchView('project'); // 切换到项目看板视图
             applyFilters();
         }
         
@@ -4299,11 +4667,11 @@
                 case 'today':
                     renderTodayTimeline();
                     break;
-                case 'board':
-                    renderBoardView(filteredTasks);
+                case 'project':
+                    renderProjectBoard();
                     break;
-                case 'list':
-                    renderListView(filteredTasks);
+                case 'goal':
+                    renderGoalBoard();
                     break;
             }
             
@@ -4574,9 +4942,6 @@
             const sidebar = document.getElementById('sidebar');
             
             switch(viewName) {
-                case 'board':
-                    renderBoardSidebar();
-                    break;
                 case 'focus':
                     renderFocusSidebar();
                     break;
@@ -4589,83 +4954,11 @@
                 case 'goal':
                     renderGoalSidebar();
                     break;
-                case 'list':
-                    renderListSidebar();
-                    break;
                 default:
-                    renderListSidebar(); // 默认显示列表视图的侧边栏
+                    renderFocusSidebar(); // 默认显示焦点视图的侧边栏
             }
         }
         
-        // 看板视图侧边栏 - 显示4个类型看板的快速导航
-        function renderBoardSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            
-            // 按任务类型分组统计
-            const typeGroups = {
-                '目标': tasks.filter(t => t.type === '目标'),
-                '关键结果': tasks.filter(t => t.type === '关键结果'),
-                '项目': tasks.filter(t => t.type === '项目'),
-                '动作': tasks.filter(t => t.type === '动作')
-            };
-            
-            // 计算每个类型的状态分布
-            function getStatusCounts(tasks) {
-                return {
-                    '未开始': tasks.filter(t => t.status === '未开始').length,
-                    '暂停': tasks.filter(t => t.status === '暂停').length,
-                    '进行中': tasks.filter(t => t.status === '进行中').length,
-                    '已完成': tasks.filter(t => t.status === '已完成').length
-                };
-            }
-            
-            sidebar.innerHTML = `
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">
-                        <span>📋 看板导航</span>
-                        <button class="btn btn-sm" onclick="toggleAllTypeBoards()">
-                            全部展开/折叠
-                        </button>
-                    </h3>
-                    ${Object.entries(typeGroups).map(([type, typeTasks]) => {
-                        const statusCounts = getStatusCounts(typeTasks);
-                        const isExpanded = document.getElementById(`board-${type}`)?.style.display !== 'none';
-                        
-                        return `
-                            <div class="board-nav-item ${isExpanded ? 'active' : ''}" 
-                                 onclick="scrollToTypeBoard('${type}')"
-                                 id="nav-${type}">
-                                <div class="board-nav-header">
-                                    <span class="board-nav-title">
-                                        ${getTaskTypeIcon(type)} ${type}看板
-                                    </span>
-                                    <span class="board-nav-count">${typeTasks.length}</span>
-                                </div>
-                                <div class="board-nav-stats">
-                                    ${statusCounts['未开始'] > 0 ? `<span class="status-tag todo">${statusCounts['未开始']}</span>` : ''}
-                                    ${statusCounts['暂停'] > 0 ? `<span class="status-tag pause">${statusCounts['暂停']}</span>` : ''}
-                                    ${statusCounts['进行中'] > 0 ? `<span class="status-tag doing">${statusCounts['进行中']}</span>` : ''}
-                                    ${statusCounts['已完成'] > 0 ? `<span class="status-tag done">${statusCounts['已完成']}</span>` : ''}
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-                
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">看板操作</h3>
-                    <button class="btn btn-block btn-secondary" onclick="expandAllTypeBoards()">
-                        ➕ 展开所有看板
-                    </button>
-                    <button class="btn btn-block btn-secondary" onclick="collapseAllTypeBoards()">
-                        ➖ 折叠所有看板
-                    </button>
-                </div>
-            `;
-            
-            // 设置 Intersection Observer 来高亮当前可视看板
-            setupBoardNavObserver();
-        }
         
         // 焦点视图侧边栏
         function renderFocusSidebar() {
@@ -4869,165 +5162,18 @@
             `;
         }
         
-        // 列表视图侧边栏（保持原有设计）
-        function renderListSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            
-            // 恢复原有的侧边栏内容
-            sidebar.innerHTML = `
-                <!-- 快速筛选 -->
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">快速筛选</h3>
-                    <div class="custom-view-item active" onclick="applyQuickFilter('current')">
-                        <span>🎯 当前焦点</span>
-                        <span class="text-small text-muted">${focusTasks.size}</span>
-                    </div>
-                    <div class="custom-view-item" onclick="applyQuickFilter('today')">
-                        <span>📅 今日任务</span>
-                        <span class="text-small text-muted">${tasks.filter(t => t.fields.today).length}</span>
-                    </div>
-                    <div class="custom-view-item" onclick="applyQuickFilter('high-priority')">
-                        <span>🔴 高优先级</span>
-                        <span class="text-small text-muted">${tasks.filter(t => t.fields.priority === '高').length}</span>
-                    </div>
-                    <div class="custom-view-item" onclick="applyQuickFilter('in-progress')">
-                        <span>🚀 进行中</span>
-                        <span class="text-small text-muted">${tasks.filter(t => t.status === '进行中').length}</span>
-                    </div>
-                    <div class="custom-view-item" onclick="applyQuickFilter('paused')">
-                        <span>⏯ 暂停中</span>
-                        <span class="text-small text-muted">${tasks.filter(t => t.status === '暂停').length}</span>
-                    </div>
-                </div>
-
-                <!-- 自定义视图 -->
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">
-                        <span>自定义视图</span>
-                        <button class="save-view-btn" onclick="saveCurrentView()">
-                            + 保存当前
-                        </button>
-                    </h3>
-                    <div id="customViewsList">
-                        <div class="custom-view-item" onclick="loadCustomView('plugin-bugs')">
-                            <span>🐛 插件Bug汇总</span>
-                            <span class="text-small text-muted">15</span>
-                        </div>
-                        <div class="custom-view-item" onclick="loadCustomView('week-focus')">
-                            <span>🎯 本周重点</span>
-                            <span class="text-small text-muted">7</span>
-                        </div>
-                        <div class="custom-view-item" onclick="loadCustomView('review-needed')">
-                            <span>👀 待Review</span>
-                            <span class="text-small text-muted">4</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 项目分组 -->
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">项目分组</h3>
-                    ${[...new Set(tasks.map(t => t.path))].slice(0, 5).map(project => `
-                        <div class="custom-view-item" onclick="filterByProject('${project}')">
-                            <span>📦 ${project}</span>
-                            <span class="text-small text-muted">${tasks.filter(t => t.path === project).length}</span>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-        }
         
-        // 滚动到指定类型的看板
-        function scrollToTypeBoard(type) {
-            const board = document.getElementById(`board-${type}`);
-            const section = board?.closest('.type-board-section');
-            
-            if (section) {
-                // 展开看板（如果是折叠状态）
-                if (board.style.display === 'none') {
-                    toggleTypeBoard(type);
-                }
-                
-                // 平滑滚动到看板
-                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                
-                // 更新导航项的高亮状态
-                document.querySelectorAll('.board-nav-item').forEach(item => {
-                    item.classList.remove('active');
-                });
-                document.getElementById(`nav-${type}`)?.classList.add('active');
-            }
-        }
-        
-        // 设置 Intersection Observer 来检测当前可视的看板
-        function setupBoardNavObserver() {
-            const sections = document.querySelectorAll('.type-board-section');
-            
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const type = entry.target.querySelector('[id^="board-"]')?.id.replace('board-', '');
-                        if (type) {
-                            // 更新导航项的高亮状态
-                            document.querySelectorAll('.board-nav-item').forEach(item => {
-                                item.classList.remove('active');
-                            });
-                            document.getElementById(`nav-${type}`)?.classList.add('active');
-                        }
-                    }
-                });
-            }, {
-                threshold: 0.5
-            });
-            
-            sections.forEach(section => observer.observe(section));
-        }
-        
-        // 展开所有看板
-        function expandAllTypeBoards() {
-            ['目标', '关键结果', '项目', '动作'].forEach(type => {
-                const board = document.getElementById(`board-${type}`);
-                const icon = document.getElementById(`toggle-icon-${type}`);
-                if (board) {
-                    board.style.display = 'flex';
-                    if (icon) icon.textContent = '−';
-                }
-            });
-        }
-        
-        // 折叠所有看板
-        function collapseAllTypeBoards() {
-            ['目标', '关键结果', '项目', '动作'].forEach(type => {
-                const board = document.getElementById(`board-${type}`);
-                const icon = document.getElementById(`toggle-icon-${type}`);
-                if (board) {
-                    board.style.display = 'none';
-                    if (icon) icon.textContent = '+';
-                }
-            });
-        }
-        
-        // 切换所有看板的展开/折叠状态
-        function toggleAllTypeBoards() {
-            const boards = document.querySelectorAll('[id^="board-"]');
-            const hasCollapsed = Array.from(boards).some(board => board.style.display === 'none');
-            
-            if (hasCollapsed) {
-                expandAllTypeBoards();
-            } else {
-                collapseAllTypeBoards();
-            }
-        }
         
         // 清空焦点任务
         function clearFocusTasks() {
-            if (confirm('确定要清空所有焦点任务吗？')) {
+            showConfirm('确定要清空所有焦点任务吗？', () => {
                 focusTasks.clear();
                 focusTasksOrder = [];
                 renderFocusTasks();
                 updateSidebarStats();
                 saveToLocalStorage();
-            }
+                showNotification('已清空所有焦点任务', 'success');
+            });
         }
         
         // 滚动到指定目标
@@ -5038,258 +5184,6 @@
             }
         }
         
-        /* ========================================
-           📋 看板视图
-           ======================================== */
-        
-        function renderBoardView(filteredTasks = tasks) {
-            const container = document.getElementById('view-board');
-            
-            // 按任务类型分组
-            const typeGroups = {
-                '目标': filteredTasks.filter(t => t.type === '目标'),
-                '关键结果': filteredTasks.filter(t => t.type === '关键结果'),
-                '项目': filteredTasks.filter(t => t.type === '项目'),
-                '动作': filteredTasks.filter(t => t.type === '动作')
-            };
-            
-            // 状态列定义
-            const statusColumns = ['未开始', '暂停', '进行中', '已完成'];
-            
-            container.innerHTML = `
-                <div class="type-boards-container">
-                    ${Object.entries(typeGroups).map(([type, typeTasks]) => {
-                        // 为每个类型创建一个独立的看板
-                        const totalCount = typeTasks.length;
-                        
-                        return `
-                            <div class="type-board-section">
-                                <div class="type-board-header">
-                                    <h3 class="type-board-title">
-                                        <span class="task-type-badge ${type.toLowerCase()}">
-                                            ${getTaskTypeIcon(type)} ${type}看板
-                                        </span>
-                                        <span class="type-board-count">共 ${totalCount} 个</span>
-                                    </h3>
-                                    <button class="btn btn-sm" onclick="toggleTypeBoard('${type}')">
-                                        <span id="toggle-icon-${type}">−</span>
-                                    </button>
-                                </div>
-                                
-                                <div class="kanban-container" id="board-${type}">
-                                    ${statusColumns.map(status => {
-                                        const statusTasks = typeTasks.filter(t => t.status === status);
-                                        
-                                        return `
-                                            <div class="kanban-column" 
-                                                 data-status="${status}"
-                                                 data-type="${type}"
-                                                 ondragover="handleKanbanDragOver(event)"
-                                                 ondragenter="handleKanbanDragEnter(event)"
-                                                 ondragleave="handleKanbanDragLeave(event)"
-                                                 ondrop="handleKanbanDrop(event, '${status}')">
-                                                <div class="kanban-header">
-                                                    <span>${getStatusIcon(status)} ${status}</span>
-                                                    <span class="kanban-count">${statusTasks.length}</span>
-                                                </div>
-                                                <div class="kanban-body">
-                                                    ${statusTasks.map(task => `
-                                                        <div class="kanban-card" 
-                                                             draggable="true"
-                                                             data-task-id="${task.id}"
-                                                             ondragstart="handleKanbanDragStart(event, '${task.id}')"
-                                                             ondragend="handleKanbanDragEnd(event)"
-                                                             onclick="viewTaskDetail('${task.id}')">
-                                                            <div class="font-weight-500 mb-1">${task.title}</div>
-                                                            <div class="text-small text-muted mb-2">${task.path}</div>
-                                                            <div>
-                                                                <span class="text-small">${getPriorityIcon(task.fields.priority)} ${task.fields.priority}</span>
-                                                            </div>
-                                                            ${task.fields.dueDate ? `
-                                                                <div class="text-small text-muted mt-1">
-                                                                    📅 ${formatDate(task.fields.dueDate)}
-                                                                </div>
-                                                            ` : ''}
-                                                        </div>
-                                                    `).join('')}
-                                                </div>
-                                            </div>
-                                        `;
-                                    }).join('')}
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            `;
-        }
-        
-        // 切换类型看板的展开/折叠
-        function toggleTypeBoard(type) {
-            const board = document.getElementById(`board-${type}`);
-            const icon = document.getElementById(`toggle-icon-${type}`);
-            
-            if (board.style.display === 'none') {
-                board.style.display = 'flex';
-                icon.textContent = '−';
-            } else {
-                board.style.display = 'none';
-                icon.textContent = '+';
-            }
-        }
-        
-        /* ========================================
-           🎯 看板拖拽功能
-           ======================================== */
-        
-        // 存储正在拖拽的任务ID
-        let draggingTaskId = null;
-        
-        // 开始拖拽
-        function handleKanbanDragStart(event, taskId) {
-            draggingTaskId = taskId;
-            event.dataTransfer.effectAllowed = 'move';
-            event.dataTransfer.setData('text/plain', taskId);
-            
-            // 添加拖拽中的样式
-            event.target.classList.add('dragging');
-        }
-        
-        // 拖拽经过列
-        function handleKanbanDragOver(event) {
-            event.preventDefault();
-            event.dataTransfer.dropEffect = 'move';
-        }
-        
-        // 进入可放置区域
-        function handleKanbanDragEnter(event) {
-            const column = event.currentTarget;
-            if (column.classList.contains('kanban-column')) {
-                column.classList.add('drag-over');
-            }
-        }
-        
-        // 离开可放置区域
-        function handleKanbanDragLeave(event) {
-            const column = event.currentTarget;
-            if (column.classList.contains('kanban-column')) {
-                column.classList.remove('drag-over');
-            }
-        }
-        
-        // 放置任务
-        function handleKanbanDrop(event, newStatus) {
-            event.preventDefault();
-            
-            const column = event.currentTarget;
-            column.classList.remove('drag-over');
-            
-            if (!draggingTaskId) return;
-            
-            const task = tasks.find(t => t.id === draggingTaskId);
-            if (!task) return;
-            
-            // 检查状态转换是否合理
-            if (task.status === newStatus) {
-                // 相同状态，不需要更新
-                return;
-            }
-            
-            // 状态转换合理性验证
-            const invalidTransitions = {
-                '已完成': ['未开始'],  // 已完成不能直接回到未开始
-                '暂停': ['已完成']     // 暂停状态不能直接完成
-            };
-            
-            if (invalidTransitions[task.status] && invalidTransitions[task.status].includes(newStatus)) {
-                // 显示提示
-                showNotification(`不能从"${task.status}"直接变更为"${newStatus}"`, 'warning');
-                return;
-            }
-            
-            // 特殊状态转换确认
-            if (task.status === '已完成' && newStatus !== '已完成') {
-                if (!confirm('确定要将已完成的任务重新打开吗？')) {
-                    return;
-                }
-            }
-            
-            // 更新任务状态
-            toggleTaskStatus(draggingTaskId, newStatus);
-            
-            // 清空拖拽状态
-            draggingTaskId = null;
-        }
-        
-        // 结束拖拽
-        function handleKanbanDragEnd(event) {
-            event.target.classList.remove('dragging');
-            
-            // 清除所有列的拖拽样式
-            document.querySelectorAll('.kanban-column').forEach(column => {
-                column.classList.remove('drag-over');
-            });
-            
-            draggingTaskId = null;
-        }
-        
-        /* ========================================
-           📝 列表视图
-           ======================================== */
-        
-        function renderListView(filteredTasks = tasks) {
-            const container = document.getElementById('view-list');
-            
-            container.innerHTML = `
-                <div class="list-container">
-                    <div class="list-header">
-                        <div>选择</div>
-                        <div>类型</div>
-                        <div>状态</div>
-                        <div>标题</div>
-                        <div>优先级</div>
-                        <div>截止日期</div>
-                        <div>标签</div>
-                    </div>
-                    <div class="list-body">
-                        ${filteredTasks.map(task => `
-                            <div class="list-row" onclick="viewTaskDetail('${task.id}')">
-                                <div onclick="event.stopPropagation()">
-                                    <input type="checkbox" class="list-checkbox">
-                                </div>
-                                <div>
-                                    <span class="task-type-badge ${task.type.toLowerCase()} text-small">
-                                        ${getTaskTypeIcon(task.type)} ${task.type}
-                                    </span>
-                                </div>
-                                <div>
-                                    <span class="text-small">
-                                        ${getStatusIcon(task.status)} ${task.status}
-                                    </span>
-                                </div>
-                                <div>
-                                    <div class="font-weight-500">${task.title}</div>
-                                    <div class="text-small text-muted">${task.path}</div>
-                                </div>
-                                <div>
-                                    <span class="text-small">
-                                        ${getPriorityIcon(task.fields.priority)} ${task.fields.priority}
-                                    </span>
-                                </div>
-                                <div class="text-small">
-                                    ${task.fields.dueDate ? formatDate(task.fields.dueDate) : '-'}
-                                </div>
-                                <div>
-                                    ${task.fields.tags.map(tag => `
-                                        <span class="filter-tag text-small">${tag}</span>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        }
         
         /* ========================================
            💾 数据持久化
@@ -5412,7 +5306,7 @@
         // 确认安排到明天
         function confirmTomorrowSchedule() {
             if (selectedTomorrowTasks.size === 0) {
-                alert('请至少选择一个任务');
+                showNotification('请至少选择一个任务', 'warning');
                 return;
             }
             
@@ -5447,7 +5341,7 @@
             closeModal('scheduleTomorrowModal');
             
             // 显示成功提示
-            alert(`已成功安排 ${updatedCount} 个任务到明天`);
+            showNotification(`已成功安排 ${updatedCount} 个任务到明天`, 'success');
             
             // 如果当前在时间轴视图，刷新显示
             if (currentView === 'today') {
@@ -5463,7 +5357,7 @@
            ======================================== */
         
         // 更新时间轴统计信息
-        function updateTimelineStats(timelineTasks, dateStr) {
+        function updateTimelineStats(timelineTasks, dateRange) {
             const statsContainer = document.getElementById('timelineStats');
             if (!statsContainer) return;
             
@@ -5471,14 +5365,38 @@
             const completedCount = timelineTasks.filter(t => t.status === '已完成').length;
             
             // 格式化日期显示
-            const date = new Date(dateStr);
-            const today = new Date();
-            const isToday = dateStr === today.toISOString().split('T')[0];
-            const dateDisplay = isToday ? '今天' : date.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' });
+            let dateDisplay;
+            const today = new Date().toISOString().split('T')[0];
+            const startDate = new Date(dateRange.start);
+            const endDate = new Date(dateRange.end);
+            
+            if (timelineViewMode === 'day') {
+                const isToday = dateRange.start === today;
+                dateDisplay = isToday ? '今天' : startDate.toLocaleDateString('zh-CN', { 
+                    month: 'long', 
+                    day: 'numeric', 
+                    weekday: 'long' 
+                });
+            } else if (timelineViewMode === 'week') {
+                const weekNum = getWeekNumber(startDate);
+                const year = startDate.getFullYear();
+                dateDisplay = `${year}年 第${weekNum}周 (${startDate.toLocaleDateString('zh-CN', {
+                    month: 'numeric',
+                    day: 'numeric'
+                })} - ${endDate.toLocaleDateString('zh-CN', {
+                    month: 'numeric',
+                    day: 'numeric'
+                })})`;
+            } else if (timelineViewMode === 'month') {
+                dateDisplay = startDate.toLocaleDateString('zh-CN', { 
+                    year: 'numeric',
+                    month: 'long' 
+                });
+            }
             
             statsContainer.innerHTML = `
                 <div class="timeline-stat">
-                    <span class="timeline-stat-label">📅 日期：</span>
+                    <span class="timeline-stat-label">📅 ${timelineViewMode === 'day' ? '日期' : timelineViewMode === 'week' ? '周' : '月份'}：</span>
                     <span class="timeline-stat-value">${dateDisplay}</span>
                 </div>
                 <div class="timeline-stat">
@@ -5496,10 +5414,32 @@
             `;
         }
         
+        // 获取周数
+        function getWeekNumber(date) {
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            const dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+        }
+        
         // 改变时间轴日期
         function changeTimelineDate(direction) {
             const newDate = new Date(selectedTimelineDate);
-            newDate.setDate(newDate.getDate() + direction);
+            
+            // 根据视图模式调整步进值
+            switch (timelineViewMode) {
+                case 'day':
+                    newDate.setDate(newDate.getDate() + direction);
+                    break;
+                case 'week':
+                    newDate.setDate(newDate.getDate() + (direction * 7));
+                    break;
+                case 'month':
+                    newDate.setMonth(newDate.getMonth() + direction);
+                    break;
+            }
+            
             selectedTimelineDate = newDate;
             
             // 更新日期选择器的值
@@ -5615,6 +5555,192 @@
                 }
             });
         }
+        
+        /* ========================================
+           🔍 全局搜索功能
+           ======================================== */
+        
+        // 打开全局搜索
+        function openGlobalSearch() {
+            const modal = document.getElementById('globalSearchModal');
+            const input = document.getElementById('globalSearchInput');
+            
+            modal.classList.add('active');
+            input.value = '';
+            input.focus();
+            
+            // 显示初始搜索结果（最近访问的任务）
+            showRecentTasks();
+        }
+        
+        // 执行全局搜索
+        function performGlobalSearch() {
+            const keyword = document.getElementById('globalSearchInput').value.trim().toLowerCase();
+            const includeCompleted = document.getElementById('searchInCompleted').checked;
+            const searchInTags = document.getElementById('searchInTags').checked;
+            const searchInPath = document.getElementById('searchInPath').checked;
+            
+            if (!keyword) {
+                showRecentTasks();
+                return;
+            }
+            
+            // 搜索任务
+            const results = tasks.filter(task => {
+                // 排除已完成的任务（如果未勾选）
+                if (!includeCompleted && task.status === '已完成') {
+                    return false;
+                }
+                
+                // 搜索标题
+                if (task.title.toLowerCase().includes(keyword)) {
+                    return true;
+                }
+                
+                // 搜索路径
+                if (searchInPath && task.path && task.path.toLowerCase().includes(keyword)) {
+                    return true;
+                }
+                
+                // 搜索标签
+                if (searchInTags && task.fields.tags) {
+                    return task.fields.tags.some(tag => tag.toLowerCase().includes(keyword));
+                }
+                
+                return false;
+            });
+            
+            // 显示搜索结果
+            displaySearchResults(results);
+        }
+        
+        // 显示最近访问的任务
+        function showRecentTasks() {
+            const recentTasks = tasks
+                .filter(task => task.status !== '已完成')
+                .sort((a, b) => {
+                    // 优先显示焦点任务
+                    if (focusTasks.has(a.id) && !focusTasks.has(b.id)) return -1;
+                    if (!focusTasks.has(a.id) && focusTasks.has(b.id)) return 1;
+                    // 其次按优先级排序
+                    const priorityOrder = { '高': 0, '中': 1, '低': 2 };
+                    return priorityOrder[a.fields.priority] - priorityOrder[b.fields.priority];
+                })
+                .slice(0, 10);
+            
+            const container = document.getElementById('searchResults');
+            container.innerHTML = `
+                <h4 style="margin-bottom: var(--spacing-md); color: var(--text-secondary);">最近任务</h4>
+                ${recentTasks.map(task => createSearchResultItem(task)).join('')}
+            `;
+        }
+        
+        // 显示搜索结果
+        function displaySearchResults(results) {
+            const container = document.getElementById('searchResults');
+            
+            if (results.length === 0) {
+                container.innerHTML = '<p class="text-muted text-center">没有找到匹配的任务</p>';
+                return;
+            }
+            
+            container.innerHTML = `
+                <h4 style="margin-bottom: var(--spacing-md); color: var(--text-secondary);">
+                    搜索结果 (${results.length})
+                </h4>
+                ${results.map(task => createSearchResultItem(task)).join('')}
+            `;
+        }
+        
+        // 创建搜索结果项
+        function createSearchResultItem(task) {
+            return `
+                <div class="search-result-item" onclick="selectSearchResult('${task.id}')" style="
+                    padding: var(--spacing-md);
+                    margin-bottom: var(--spacing-sm);
+                    background: var(--bg-card);
+                    border: 1px solid var(--glass-border);
+                    border-radius: var(--radius-sm);
+                    cursor: pointer;
+                    transition: var(--transition);
+                ">
+                    <div style="display: flex; align-items: center; gap: var(--spacing-sm); margin-bottom: var(--spacing-xs);">
+                        <span class="task-type-badge ${task.type.toLowerCase()}">
+                            ${getTaskTypeIcon(task.type)} ${task.type}
+                        </span>
+                        <span class="text-small" style="color: ${getStatusColor(task.status)};">
+                            ${getStatusIcon(task.status)} ${task.status}
+                        </span>
+                        ${focusTasks.has(task.id) ? '<span class="text-small">🎯 焦点</span>' : ''}
+                    </div>
+                    <div class="font-weight-500">${highlightKeyword(task.title)}</div>
+                    <div class="text-small text-muted">${highlightKeyword(task.path)}</div>
+                    ${task.fields.tags.length > 0 ? `
+                        <div style="margin-top: var(--spacing-xs);">
+                            ${task.fields.tags.map(tag => `
+                                <span class="filter-tag text-small">${highlightKeyword(tag)}</span>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+        
+        // 高亮关键词
+        function highlightKeyword(text) {
+            const keyword = document.getElementById('globalSearchInput').value.trim();
+            if (!keyword || !text) return text;
+            
+            const regex = new RegExp(`(${keyword})`, 'gi');
+            return text.replace(regex, '<mark style="background: var(--type-goal); color: white; padding: 0 2px; border-radius: 2px;">$1</mark>');
+        }
+        
+        // 选择搜索结果
+        function selectSearchResult(taskId) {
+            // 关闭搜索模态框
+            closeModal('globalSearchModal');
+            
+            // 查看任务详情
+            viewTaskDetail(taskId);
+        }
+        
+        // 获取状态颜色
+        function getStatusColor(status) {
+            const colors = {
+                '未开始': 'var(--status-todo)',
+                '暂停': 'var(--status-pause)',
+                '进行中': 'var(--status-doing)',
+                '已完成': 'var(--status-done)'
+            };
+            return colors[status] || 'var(--text-secondary)';
+        }
+        
+        /* ========================================
+           ⚙️ 设置功能
+           ======================================== */
+        
+        function openSettings() {
+            // 暂时使用 alert，后续可以实现完整的设置界面
+            showNotification('设置功能开发中...', 'info');
+        }
+        
+        /* ========================================
+           ❓ 帮助功能
+           ======================================== */
+        
+        function openHelp() {
+            // 暂时使用 alert，后续可以实现完整的帮助界面
+            showNotification('帮助功能开发中...', 'info');
+        }
+        
+        // 绑定全局快捷键
+        document.addEventListener('keydown', function(e) {
+            // Ctrl/Cmd + K 打开搜索
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                openGlobalSearch();
+            }
+        });
     </script>
 </body>
 </html>

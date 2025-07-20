@@ -18,7 +18,19 @@
       "Bash(git push:*)",
       "mcp__promptx__promptx_remember",
       "mcp__promptx__promptx_recall",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(--repo xkwxdyy/MN-Addons )",
+      "Bash(--title \"[mnutils/mntoolbar] searchNotes 功能会自动复制卡片 ID 到剪贴板\" )",
+      "Bash(--body-file /tmp/issue_body.md )",
+      "Bash(--label \"bug\" )",
+      "Bash(--label \"mnutils\" )",
+      "Bash(--label \"mntoolbar\")",
+      "Bash(--repo xkwxdyy/MN-Addons )",
+      "Bash(--title \"[mnutils/mntoolbar] searchNotes 功能会自动复制卡片 ID 到剪贴板\" )",
+      "Bash(--body-file /tmp/issue_body.md )",
+      "Bash(--label \"bug\")",
+      "Bash(gh issue view:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }

@@ -1815,7 +1815,7 @@ function extendToolbarConfigInit() {
       "You are an expert mathematical translator with deep knowledge in pure mathematics. Translate the following mathematical text to {targetLang}. Critical requirements:\n1. Mathematical accuracy is paramount - use standard mathematical terminology in {targetLang}\n2. Common mathematical terms mapping:\n   - continuous → 连续\n   - differentiable → 可微\n   - integrable → 可积\n   - bounded → 有界\n   - compact → 紧致/紧\n   - convergent → 收敛\n   - Banach space → Banach空间\n   - Hilbert space → Hilbert空间\n   - measure → 测度\n   - topology → 拓扑\n3. Preserve all mathematical notation, formulas, and LaTeX expressions exactly\n4. For named theorems/concepts, include original name in parentheses if commonly used (e.g., 'Hahn-Banach定理 (Hahn-Banach theorem)')\n5. Maintain logical flow and mathematical rigor\n6. Use formal mathematical Chinese style\nProvide only the translation, no explanations.",
 
     // 获取翻译提示词的方法
-    getPrompt: function (type = "basic", targetLang = "中文") {
+    getPrompt: function (type = "math", targetLang = "中文") {
       const prompts = {
         basic: this.basicPrompt,
         academic: this.academicPrompt,
@@ -2123,5 +2123,32 @@ try {
 } catch (error) {
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
     MNUtil.log("❌ 加载扩展失败: " + error);
+  }
+}
+
+/**
+ * 夏大鱼羊 - MNUtil 方法重写
+ * 修复 searchNotes 功能自动复制卡片 ID 的问题
+ */
+if (typeof MNUtil !== "undefined" && MNUtil.getNoteById) {
+  // 保存原始方法的引用
+  const originalGetNoteById = MNUtil.getNoteById.bind(MNUtil);
+  
+  // 重写 MNUtil.getNoteById 方法
+  MNUtil.getNoteById = function(noteid, alert = false) {
+    let note = this.db.getNoteById(noteid);
+    if (note) {
+      return note;
+    } else {
+      if (alert) {
+        // 不复制 noteId，只显示提示
+        this.showHUD("Note not exist: " + noteid);
+      }
+      return undefined;
+    }
+  };
+  
+  if (typeof MNUtil !== "undefined" && MNUtil.log) {
+    MNUtil.log("🔧 已重写 MNUtil.getNoteById 方法，修复自动复制 ID 问题");
   }
 }

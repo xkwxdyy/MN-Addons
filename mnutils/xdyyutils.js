@@ -7541,7 +7541,7 @@ class MNMath {
   static createSearchResultCard(results, keywords, rootName) {
     try {
       // 获取搜索看板
-      const boardNote = MNNote.new(this.searchBoardId);
+      const boardNote = MNNote.new(this.searchBoardId, false);
       if (!boardNote) {
         MNUtil.showHUD("搜索看板不存在");
         return null;
@@ -7614,7 +7614,7 @@ class MNMath {
   }
 
   static showSearchBoard() {
-    const boardNote = MNNote.new(this.searchBoardId);
+    const boardNote = MNNote.new(this.searchBoardId, false);
     if (!boardNote) {
       MNUtil.showHUD("搜索看板不存在");
       return null;

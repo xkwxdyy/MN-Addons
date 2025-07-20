@@ -3511,6 +3511,66 @@ function registerAllCustomActions() {
     });
   });
 
+  // addNewCounterexampleNote
+  global.registerCustomAction("addNewCounterexampleNote", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    if (!focusNote) {
+      MNUtil.showHUD("❌ 请先选择一个卡片");
+      return;
+    }
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "生成「反例」卡片",
+      "请输入反例标题",
+      2,  // 输入框样式
+      "取消",
+      ["确定"],
+      (alert, buttonIndex) => {
+        if (buttonIndex === 1) {
+          const userInput = alert.textFieldAtIndex(0).text;
+          if (!userInput || userInput.trim() === "") {
+            MNUtil.showHUD("❌ 请输入反例标题");
+            return;
+          }
+          
+          MNUtil.undoGrouping(() => {
+            try {
+              // 1. 克隆反例模板卡片
+              const counterexampleNote = MNNote.clone(MNMath.types.反例.templateNoteId);
+              
+              // 2. 创建标题（包含前缀和内容）
+              const prefixContent = MNMath.createChildNoteTitlePrefixContent(focusNote);
+              counterexampleNote.noteTitle = MNMath.createTitlePrefix(MNMath.types.反例.prefixName, prefixContent) + userInput.trim();
+              
+              // 3. 添加为子卡片
+              focusNote.addChild(counterexampleNote);
+              
+              // 4. 在父卡片中添加评论和链接
+              focusNote.appendMarkdownComment(HtmlMarkdownUtils.createHtmlMarkdownText(userInput.trim(), "alert"));  // 使用 alert 类型
+              focusNote.appendNoteLink(counterexampleNote, "Both");  // 双向链接
+              
+              // 5. 在父卡片 A 中，移动评论和链接到"相关思考"字段
+              MNMath.moveCommentsArrToField(focusNote, "Y, Z", "相关思考");
+              
+              // 6. 在反例卡片 B 中，移动父卡片链接到最上方（摘录区）
+              MNMath.moveCommentsArrToField(counterexampleNote, "Z", "摘录区");
+              
+              // 7. 延迟聚焦到新卡片
+              MNUtil.delay(0.5).then(() => {
+                counterexampleNote.focusInMindMap(0.3);
+              });
+              
+              MNUtil.showHUD(`✅ 已生成反例卡片`);
+            } catch (error) {
+              MNUtil.showHUD(`❌ 生成反例卡片失败: ${error.message || error}`);
+            }
+          });
+        }
+      }
+    );
+  });
+
   // makeCard
   // makeNote
   global.registerCustomAction("makeNote", async function (context) {

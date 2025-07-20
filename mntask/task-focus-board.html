@@ -2490,7 +2490,7 @@
             const nonCompletedTasks = tasks.filter(task => task.status !== '已完成');
             listContainer.innerHTML = nonCompletedTasks.map(task => `
                 <div class="task-select-item ${tempFocusTasks.has(task.id) ? 'selected' : ''}" 
-                     onclick="toggleTaskSelection('${task.id}')">
+                     onclick="toggleTaskSelection('${task.id}', event)">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <span class="task-type-badge ${task.type.toLowerCase()} text-small">
@@ -2500,7 +2500,8 @@
                         </div>
                         <input type="checkbox" class="list-checkbox" 
                                ${tempFocusTasks.has(task.id) ? 'checked' : ''} 
-                               onclick="event.stopPropagation()">
+                               onchange="event.stopPropagation()"
+                               style="pointer-events: none;">
                     </div>
                     <div class="mt-1 font-weight-500">${task.title}</div>
                     <div class="text-small text-muted">${task.path}</div>
@@ -2511,12 +2512,18 @@
         }
         
         // 切换任务选择
-        function toggleTaskSelection(taskId) {
-            const checkbox = event.currentTarget.querySelector('.list-checkbox');
+        function toggleTaskSelection(taskId, event) {
+            // 从事件目标或其父元素获取任务项元素
+            const taskItem = event.currentTarget.classList.contains('task-select-item') 
+                ? event.currentTarget 
+                : event.currentTarget.closest('.task-select-item');
+            
+            const checkbox = taskItem.querySelector('.list-checkbox');
+            
             if (tempFocusTasks.has(taskId)) {
                 tempFocusTasks.delete(taskId);
                 checkbox.checked = false;
-                event.currentTarget.classList.remove('selected');
+                taskItem.classList.remove('selected');
             } else {
                 if (tempFocusTasks.size >= 5) {
                     alert('焦点任务不能超过5个');
@@ -2524,7 +2531,7 @@
                 }
                 tempFocusTasks.add(taskId);
                 checkbox.checked = true;
-                event.currentTarget.classList.add('selected');
+                taskItem.classList.add('selected');
             }
             // 注意：这里不更新侧边栏统计，因为还没有确认
         }

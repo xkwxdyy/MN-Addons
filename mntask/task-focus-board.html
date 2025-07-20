@@ -351,6 +351,47 @@
             border-top: 3px solid var(--type-goal) !important;
         }
 
+        /* 焦点任务移除按钮 */
+        .focus-task-remove {
+            position: absolute;
+            top: var(--spacing-sm);
+            right: var(--spacing-sm);
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            line-height: 1;
+            transition: var(--transition);
+            opacity: 0;
+            z-index: 10;
+        }
+
+        .focus-task-card:hover .focus-task-remove {
+            opacity: 1;
+        }
+
+        .focus-task-remove:hover {
+            background: rgba(252, 129, 129, 0.2);
+            color: #fc8181;
+            transform: scale(1.1);
+        }
+
+        @media (max-width: 768px) {
+            .focus-task-remove {
+                opacity: 1;
+                width: 36px;
+                height: 36px;
+                font-size: 20px;
+            }
+        }
+
         /* 任务类型标签 */
         .task-type-badge {
             display: inline-flex;
@@ -448,6 +489,219 @@
         .btn-launch:hover {
             transform: translateY(-1px) scale(1.02);
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        /* ========================================
+           📱 移动端优化
+           ======================================== */
+        @media (max-width: 768px) {
+            /* 增大按钮点击区域 */
+            .btn {
+                min-height: 44px;
+                padding: var(--spacing-md) var(--spacing-lg);
+                font-size: 0.9375rem;
+            }
+            
+            /* 确保焦点任务按钮有足够间距 */
+            .focus-task-actions {
+                gap: var(--spacing-md);
+                margin-top: var(--spacing-md);
+            }
+            
+            .focus-task-actions .btn {
+                flex: 1;
+                justify-content: center;
+                min-width: auto;
+            }
+            
+            /* 优化模态框关闭按钮 */
+            .modal-close {
+                width: 44px;
+                height: 44px;
+                font-size: 24px;
+            }
+            
+            /* 侧边栏项目增大点击区域 */
+            .custom-view-item,
+            .list-checkbox,
+            .task-select-item {
+                min-height: 48px;
+                padding: var(--spacing-md);
+            }
+            
+            /* 待处理任务按钮优化 */
+            .pending-task-item button {
+                min-height: 36px;
+                padding: var(--spacing-sm) var(--spacing-md);
+            }
+            
+            /* 增加触摸反馈 */
+            .btn:active,
+            .focus-task-card:active,
+            .custom-view-item:active {
+                transform: scale(0.98);
+                opacity: 0.9;
+            }
+            
+            /* 防止误触，增加按钮间距 */
+            .focus-task-meta {
+                gap: var(--spacing-md);
+                flex-wrap: wrap;
+            }
+            
+            /* 快速输入框优化 */
+            .quick-add-input {
+                min-height: 48px;
+                font-size: 16px; /* 防止iOS缩放 */
+            }
+        }
+
+        /* 触摸设备优化 */
+        @media (hover: none) and (pointer: coarse) {
+            /* 移除悬停效果，改为触摸效果 */
+            .focus-task-remove {
+                opacity: 1;
+            }
+            
+            /* 增强触摸反馈 */
+            .btn,
+            .focus-task-card,
+            .task-select-item,
+            .custom-view-item {
+                -webkit-tap-highlight-color: rgba(102, 126, 234, 0.2);
+            }
+        }
+
+        /* ========================================
+           🔗 启动链接管理样式
+           ======================================== */
+        .launch-link-form {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-lg);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .form-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            transition: var(--transition);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--type-goal);
+            background: var(--bg-hover);
+        }
+
+        .form-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin: 0;
+        }
+
+        /* 链接类型选择器 */
+        .link-type-selector {
+            display: flex;
+            gap: var(--spacing-sm);
+            background: var(--glass-bg);
+            padding: var(--spacing-xs);
+            border-radius: var(--radius-sm);
+        }
+
+        .link-type-btn {
+            flex: 1;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-xs);
+            font-size: 0.875rem;
+        }
+
+        .link-type-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .link-type-btn.active {
+            background: var(--type-goal);
+            color: white;
+        }
+
+        /* 最近链接 */
+        .recent-links-section {
+            border-top: 1px solid var(--glass-border);
+            padding-top: var(--spacing-lg);
+        }
+
+        .recent-links-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .recent-links-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+        }
+
+        .recent-link-item {
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .recent-link-item:hover {
+            border-color: var(--type-goal);
+            background: var(--bg-hover);
+        }
+
+        .recent-link-icon {
+            font-size: 1rem;
+        }
+
+        .recent-link-text {
+            flex: 1;
+            font-size: 0.75rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .recent-link-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
         }
 
         /* ========================================
@@ -1226,6 +1480,228 @@
             box-shadow: var(--shadow);
         }
         
+        /* ========================================
+           📋 项目看板样式
+           ======================================== */
+        .board-columns {
+            display: flex;
+            gap: var(--spacing-lg);
+            overflow-x: auto;
+            padding-bottom: var(--spacing-lg);
+        }
+
+        .board-column {
+            min-width: 300px;
+            flex: 1;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .board-column-header {
+            padding: var(--spacing-md);
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .board-column-header h3 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .count-badge {
+            background: var(--bg-active);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            color: var(--type-goal);
+        }
+
+        .board-column-content {
+            flex: 1;
+            padding: var(--spacing-md);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .board-card {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            padding: var(--spacing-md);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .board-card:hover {
+            border-color: var(--type-goal);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .board-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .board-card-title {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            margin: var(--spacing-sm) 0;
+            line-height: 1.4;
+        }
+
+        .board-card-meta {
+            display: flex;
+            gap: var(--spacing-md);
+            margin: var(--spacing-sm) 0;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .board-card-footer {
+            margin-top: var(--spacing-md);
+            padding-top: var(--spacing-sm);
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .board-card-actions {
+            display: flex;
+            gap: var(--spacing-xs);
+            flex-wrap: wrap;
+        }
+
+        .btn-sm {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            font-size: 0.75rem;
+        }
+        
+        /* 看板拖拽样式 */
+        .kanban-card[draggable="true"] {
+            cursor: grab;
+            position: relative;
+        }
+        
+        .kanban-card[draggable="true"]:active {
+            cursor: grabbing;
+        }
+        
+        .kanban-card.dragging {
+            opacity: 0.5;
+            transform: rotate(3deg) scale(1.02);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.3);
+            transition: none;
+            position: relative;
+            z-index: 1000;
+        }
+        
+        /* 原位置的占位符效果 */
+        .kanban-card.dragging::after {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            right: -5px;
+            bottom: -5px;
+            border: 2px dashed var(--type-goal);
+            border-radius: var(--radius-sm);
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        
+        /* 不同状态列的拖拽效果 */
+        .kanban-column[data-status="未开始"].drag-over {
+            background: linear-gradient(135deg, var(--bg-active) 0%, rgba(113, 128, 150, 0.1) 100%);
+            border-color: var(--status-todo);
+            box-shadow: inset 0 0 0 2px var(--status-todo), 0 4px 20px rgba(113, 128, 150, 0.2);
+        }
+        
+        .kanban-column[data-status="进行中"].drag-over {
+            background: linear-gradient(135deg, var(--bg-active) 0%, rgba(246, 173, 85, 0.1) 100%);
+            border-color: var(--status-doing);
+            box-shadow: inset 0 0 0 2px var(--status-doing), 0 4px 20px rgba(246, 173, 85, 0.2);
+        }
+        
+        .kanban-column[data-status="暂停"].drag-over {
+            background: linear-gradient(135deg, var(--bg-active) 0%, rgba(91, 157, 217, 0.1) 100%);
+            border-color: var(--status-pause);
+            box-shadow: inset 0 0 0 2px var(--status-pause), 0 4px 20px rgba(91, 157, 217, 0.2);
+        }
+        
+        .kanban-column[data-status="已完成"].drag-over {
+            background: linear-gradient(135deg, var(--bg-active) 0%, rgba(72, 187, 120, 0.1) 100%);
+            border-color: var(--status-done);
+            box-shadow: inset 0 0 0 2px var(--status-done), 0 4px 20px rgba(72, 187, 120, 0.2);
+        }
+        
+        .kanban-column.drag-over .board-column-header h3 {
+            transform: scale(1.05);
+            transition: transform 0.2s ease;
+        }
+        
+        /* 拖拽占位符样式 */
+        .drag-placeholder {
+            height: 120px;
+            margin: var(--spacing-md) 0;
+            border: 2px dashed var(--glass-border);
+            border-radius: var(--radius);
+            background: var(--bg-hover);
+            opacity: 0.5;
+            transition: var(--transition);
+            animation: placeholderPulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes placeholderPulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.6; }
+        }
+        
+        /* 禁止文本选择在拖拽时 */
+        .dragging * {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        /* 拖拽时的指示器 */
+        .drop-indicator {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--type-goal), transparent);
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+        
+        .drop-indicator.active {
+            opacity: 1;
+            animation: indicatorGlow 0.5s ease-in-out;
+        }
+        
+        @keyframes indicatorGlow {
+            0% { transform: scaleX(0); }
+            100% { transform: scaleX(1); }
+        }
+        
+        /* 拖拽时卡片hover效果禁用 */
+        .dragging .board-card:hover {
+            transform: none;
+            border-color: var(--glass-border);
+        }
+        
         /* 列表视图样式 */
         .list-container {
             background: var(--glass-bg);
@@ -1733,6 +2209,84 @@
         </div>
     </div>
 
+    <!-- 模态框 - 启动链接管理 -->
+    <div id="launchLinkModal" class="modal">
+        <div class="modal-content" style="width: 600px; max-height: 80vh;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="launchLinkTitle">设置启动链接</h3>
+                <button class="modal-close" onclick="closeModal('launchLinkModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="launch-link-form">
+                    <div class="form-group">
+                        <label class="form-label">链接类型</label>
+                        <div class="link-type-selector">
+                            <button class="link-type-btn active" data-type="marginnote" onclick="selectLinkType('marginnote')">
+                                📚 MarginNote
+                            </button>
+                            <button class="link-type-btn" data-type="url" onclick="selectLinkType('url')">
+                                🌐 网页链接
+                            </button>
+                            <button class="link-type-btn" data-type="file" onclick="selectLinkType('file')">
+                                📄 文件路径
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" id="marginnoteLinkGroup">
+                        <label class="form-label">MarginNote UIState 链接</label>
+                        <input type="text" 
+                               class="form-input" 
+                               id="marginnoteLink" 
+                               placeholder="marginnote4app://note/..."
+                               value="">
+                        <p class="form-hint">粘贴从 MarginNote 复制的 UIState 链接</p>
+                    </div>
+                    
+                    <div class="form-group hidden" id="urlLinkGroup">
+                        <label class="form-label">网页链接</label>
+                        <input type="url" 
+                               class="form-input" 
+                               id="urlLink" 
+                               placeholder="https://..."
+                               value="">
+                        <p class="form-hint">输入要打开的网页地址</p>
+                    </div>
+                    
+                    <div class="form-group hidden" id="fileLinkGroup">
+                        <label class="form-label">文件路径</label>
+                        <input type="text" 
+                               class="form-input" 
+                               id="fileLink" 
+                               placeholder="/path/to/file..."
+                               value="">
+                        <p class="form-hint">输入本地文件的完整路径</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">备注说明（可选）</label>
+                        <textarea class="form-input" 
+                                  id="linkNote" 
+                                  rows="2" 
+                                  placeholder="描述这个链接的用途..."></textarea>
+                    </div>
+                    
+                    <!-- 最近使用的链接 -->
+                    <div class="recent-links-section" id="recentLinksSection">
+                        <h4 class="recent-links-title">最近使用的链接</h4>
+                        <div id="recentLinksList" class="recent-links-list">
+                            <!-- 动态生成最近链接 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('launchLinkModal')">取消</button>
+                <button class="btn btn-primary" onclick="confirmLaunchLink()">确定</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         /* ========================================
            📊 数据模型
@@ -1747,6 +2301,7 @@
         let tempFocusTasks = new Set(); // 临时选择的焦点任务ID集合
         let customViews = {}; // 自定义视图配置
         let activeFilters = {}; // 当前激活的筛选器
+        let currentEditingTaskId = null; // 当前正在编辑的任务ID
         
         // 时间轴相关变量
         let selectedTimelineDate = new Date(); // 当前选择的时间轴日期
@@ -1764,6 +2319,72 @@
         let autocompleteActive = false;
         let currentAutocompleteList = [];
 
+        /* ========================================
+           🔔 通知系统
+           ======================================== */
+        
+        function showNotification(message, type = 'info') {
+            // 创建通知元素
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.textContent = message;
+            
+            // 添加样式（如果还没有的话）
+            if (!document.getElementById('notificationStyles')) {
+                const style = document.createElement('style');
+                style.id = 'notificationStyles';
+                style.textContent = `
+                    .notification {
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        padding: 12px 24px;
+                        border-radius: 8px;
+                        font-size: 14px;
+                        font-weight: 500;
+                        color: white;
+                        background: #4CAF50;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                        z-index: 10000;
+                        animation: slideIn 0.3s ease-out;
+                        max-width: 350px;
+                    }
+                    
+                    .notification-warning {
+                        background: #ff9800;
+                    }
+                    
+                    .notification-error {
+                        background: #f44336;
+                    }
+                    
+                    .notification-info {
+                        background: #2196F3;
+                    }
+                    
+                    @keyframes slideIn {
+                        from { transform: translateX(100%); opacity: 0; }
+                        to { transform: translateX(0); opacity: 1; }
+                    }
+                    
+                    @keyframes slideOut {
+                        from { transform: translateX(0); opacity: 1; }
+                        to { transform: translateX(100%); opacity: 0; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            // 添加到页面
+            document.body.appendChild(notification);
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+        
         // 扩展的任务数据结构示例
         const taskTemplate = {
             id: "task_1",
@@ -1875,6 +2496,9 @@
                      ondrop="handleDrop(event)"
                      ondragend="handleDragEnd(event)"
                      onclick="toggleCurrentFocus('${task.id}')">
+                    <button class="focus-task-remove" onclick="removeFromFocus(event, '${task.id}')" title="从焦点移除">
+                        ✕
+                    </button>
                     <div class="task-type-badge ${task.type.toLowerCase()}">
                         ${getTaskTypeIcon(task.type)} ${task.type}
                     </div>
@@ -2275,15 +2899,182 @@
         // 设置启动链接
         function setLaunchLink(event, taskId) {
             event.stopPropagation();
+            currentEditingTaskId = taskId;
             const task = tasks.find(t => t.id === taskId);
             if (!task) return;
             
-            const link = prompt('请输入MN uistate链接：', 'marginnote4app://note/');
-            if (link) {
-                task.launchLink = link;
-                renderFocusTasks();
-                alert('启动链接已设置');
+            // 更新模态框标题
+            document.getElementById('launchLinkTitle').textContent = `设置启动链接 - ${task.title}`;
+            
+            // 如果任务已有链接，预填充
+            if (task.launchLink) {
+                document.getElementById('marginnoteLink').value = task.launchLink;
             }
+            
+            // 加载最近使用的链接
+            loadRecentLinks();
+            
+            // 显示模态框
+            document.getElementById('launchLinkModal').classList.add('active');
+        }
+
+        // 选择链接类型
+        function selectLinkType(type) {
+            // 更新按钮状态
+            document.querySelectorAll('.link-type-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-type="${type}"]`).classList.add('active');
+            
+            // 显示对应的输入框
+            document.getElementById('marginnoteLinkGroup').classList.add('hidden');
+            document.getElementById('urlLinkGroup').classList.add('hidden');
+            document.getElementById('fileLinkGroup').classList.add('hidden');
+            
+            switch(type) {
+                case 'marginnote':
+                    document.getElementById('marginnoteLinkGroup').classList.remove('hidden');
+                    break;
+                case 'url':
+                    document.getElementById('urlLinkGroup').classList.remove('hidden');
+                    break;
+                case 'file':
+                    document.getElementById('fileLinkGroup').classList.remove('hidden');
+                    break;
+            }
+        }
+
+        // 加载最近使用的链接
+        function loadRecentLinks() {
+            const recentLinks = getRecentLinks();
+            const listContainer = document.getElementById('recentLinksList');
+            
+            if (recentLinks.length === 0) {
+                listContainer.innerHTML = '<p class="text-muted text-small">暂无最近使用的链接</p>';
+                return;
+            }
+            
+            listContainer.innerHTML = recentLinks.map(link => `
+                <div class="recent-link-item" onclick="applyRecentLink('${encodeURIComponent(link.url)}', '${link.type}')">
+                    <span class="recent-link-icon">${getIconByType(link.type)}</span>
+                    <span class="recent-link-text">${link.url}</span>
+                    <span class="recent-link-time">${formatRelativeTime(link.time)}</span>
+                </div>
+            `).join('');
+        }
+
+        // 应用最近的链接
+        function applyRecentLink(encodedUrl, type) {
+            const url = decodeURIComponent(encodedUrl);
+            selectLinkType(type);
+            
+            switch(type) {
+                case 'marginnote':
+                    document.getElementById('marginnoteLink').value = url;
+                    break;
+                case 'url':
+                    document.getElementById('urlLink').value = url;
+                    break;
+                case 'file':
+                    document.getElementById('fileLink').value = url;
+                    break;
+            }
+        }
+
+        // 确认启动链接
+        function confirmLaunchLink() {
+            const activeType = document.querySelector('.link-type-btn.active').dataset.type;
+            let link = '';
+            
+            switch(activeType) {
+                case 'marginnote':
+                    link = document.getElementById('marginnoteLink').value.trim();
+                    break;
+                case 'url':
+                    link = document.getElementById('urlLink').value.trim();
+                    break;
+                case 'file':
+                    link = document.getElementById('fileLink').value.trim();
+                    break;
+            }
+            
+            if (!link) {
+                alert('请输入链接');
+                return;
+            }
+            
+            const task = tasks.find(t => t.id === currentEditingTaskId);
+            if (task) {
+                task.launchLink = link;
+                task.launchLinkType = activeType;
+                
+                // 保存到最近使用
+                saveRecentLink(link, activeType);
+                
+                // 清空表单
+                document.getElementById('marginnoteLink').value = '';
+                document.getElementById('urlLink').value = '';
+                document.getElementById('fileLink').value = '';
+                document.getElementById('linkNote').value = '';
+                
+                closeModal('launchLinkModal');
+                renderFocusTasks();
+                saveToLocalStorage();
+                
+                // 显示成功提示
+                console.log('✅ 启动链接已设置');
+            }
+        }
+
+        // 获取最近使用的链接
+        function getRecentLinks() {
+            const saved = localStorage.getItem('mntask-recent-links');
+            return saved ? JSON.parse(saved) : [];
+        }
+
+        // 保存最近使用的链接
+        function saveRecentLink(url, type) {
+            let recentLinks = getRecentLinks();
+            
+            // 移除重复项
+            recentLinks = recentLinks.filter(link => link.url !== url);
+            
+            // 添加到开头
+            recentLinks.unshift({
+                url: url,
+                type: type,
+                time: Date.now()
+            });
+            
+            // 最多保存10个
+            recentLinks = recentLinks.slice(0, 10);
+            
+            localStorage.setItem('mntask-recent-links', JSON.stringify(recentLinks));
+        }
+
+        // 根据类型获取图标
+        function getIconByType(type) {
+            const icons = {
+                'marginnote': '📚',
+                'url': '🌐',
+                'file': '📄'
+            };
+            return icons[type] || '🔗';
+        }
+
+        // 格式化相对时间
+        function formatRelativeTime(timestamp) {
+            const now = Date.now();
+            const diff = now - timestamp;
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
+            
+            if (minutes < 1) return '刚刚';
+            if (minutes < 60) return `${minutes}分钟前`;
+            if (hours < 24) return `${hours}小时前`;
+            if (days < 7) return `${days}天前`;
+            return new Date(timestamp).toLocaleDateString('zh-CN');
         }
 
         // 添加进展说明
@@ -2474,6 +3265,22 @@
                 focusTasksOrder.push(taskId);
             }
             
+            renderFocusTasks();
+            updateSidebarStats();
+            saveToLocalStorage();
+        }
+
+        // 从焦点任务中移除
+        function removeFromFocus(event, taskId) {
+            event.stopPropagation();
+            
+            // 从焦点任务集合中移除
+            focusTasks.delete(taskId);
+            
+            // 从排序数组中移除
+            focusTasksOrder = focusTasksOrder.filter(id => id !== taskId);
+            
+            // 重新渲染
             renderFocusTasks();
             updateSidebarStats();
             saveToLocalStorage();
@@ -3472,14 +4279,24 @@
             container.innerHTML = `
                 <div class="kanban-container">
                     ${Object.entries(columns).map(([status, tasks]) => `
-                        <div class="kanban-column">
+                        <div class="kanban-column" 
+                             data-status="${status}"
+                             ondragover="handleKanbanDragOver(event)"
+                             ondragenter="handleKanbanDragEnter(event)"
+                             ondragleave="handleKanbanDragLeave(event)"
+                             ondrop="handleKanbanDrop(event, '${status}')">
                             <div class="kanban-header">
                                 <span>${getStatusIcon(status)} ${status}</span>
                                 <span class="kanban-count">${tasks.length}</span>
                             </div>
                             <div class="kanban-body">
                                 ${tasks.map(task => `
-                                    <div class="kanban-card" onclick="viewTaskDetail('${task.id}')">
+                                    <div class="kanban-card" 
+                                         draggable="true"
+                                         data-task-id="${task.id}"
+                                         ondragstart="handleKanbanDragStart(event, '${task.id}')"
+                                         ondragend="handleKanbanDragEnd(event)"
+                                         onclick="viewTaskDetail('${task.id}')">
                                         <div class="task-type-badge ${task.type.toLowerCase()} text-small mb-1">
                                             ${getTaskTypeIcon(task.type)} ${task.type}
                                         </div>
@@ -3500,6 +4317,101 @@
                     `).join('')}
                 </div>
             `;
+        }
+        
+        /* ========================================
+           🎯 看板拖拽功能
+           ======================================== */
+        
+        // 存储正在拖拽的任务ID
+        let draggingTaskId = null;
+        
+        // 开始拖拽
+        function handleKanbanDragStart(event, taskId) {
+            draggingTaskId = taskId;
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', taskId);
+            
+            // 添加拖拽中的样式
+            event.target.classList.add('dragging');
+        }
+        
+        // 拖拽经过列
+        function handleKanbanDragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+        }
+        
+        // 进入可放置区域
+        function handleKanbanDragEnter(event) {
+            const column = event.currentTarget;
+            if (column.classList.contains('kanban-column')) {
+                column.classList.add('drag-over');
+            }
+        }
+        
+        // 离开可放置区域
+        function handleKanbanDragLeave(event) {
+            const column = event.currentTarget;
+            if (column.classList.contains('kanban-column')) {
+                column.classList.remove('drag-over');
+            }
+        }
+        
+        // 放置任务
+        function handleKanbanDrop(event, newStatus) {
+            event.preventDefault();
+            
+            const column = event.currentTarget;
+            column.classList.remove('drag-over');
+            
+            if (!draggingTaskId) return;
+            
+            const task = tasks.find(t => t.id === draggingTaskId);
+            if (!task) return;
+            
+            // 检查状态转换是否合理
+            if (task.status === newStatus) {
+                // 相同状态，不需要更新
+                return;
+            }
+            
+            // 状态转换合理性验证
+            const invalidTransitions = {
+                '已完成': ['未开始'],  // 已完成不能直接回到未开始
+                '暂停': ['已完成']     // 暂停状态不能直接完成
+            };
+            
+            if (invalidTransitions[task.status] && invalidTransitions[task.status].includes(newStatus)) {
+                // 显示提示
+                showNotification(`不能从"${task.status}"直接变更为"${newStatus}"`, 'warning');
+                return;
+            }
+            
+            // 特殊状态转换确认
+            if (task.status === '已完成' && newStatus !== '已完成') {
+                if (!confirm('确定要将已完成的任务重新打开吗？')) {
+                    return;
+                }
+            }
+            
+            // 更新任务状态
+            toggleTaskStatus(draggingTaskId, newStatus);
+            
+            // 清空拖拽状态
+            draggingTaskId = null;
+        }
+        
+        // 结束拖拽
+        function handleKanbanDragEnd(event) {
+            event.target.classList.remove('dragging');
+            
+            // 清除所有列的拖拽样式
+            document.querySelectorAll('.kanban-column').forEach(column => {
+                column.classList.remove('drag-over');
+            });
+            
+            draggingTaskId = null;
         }
         
         /* ========================================

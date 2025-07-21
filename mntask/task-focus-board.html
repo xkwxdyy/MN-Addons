@@ -4864,12 +4864,6 @@
                                 </div>
                                 
                                 <div class="task-actions">
-                                    <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleQuickProgress('${task.id}')" title="记录进展">
-                                        📝
-                                    </button>
-                                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); viewProgressLog(event, '${task.id}')" title="查看详情">
-                                        📊
-                                    </button>
                                     ${task.status === '进行中' ? `
                                         <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '已完成')" title="完成任务">
                                             ✅
@@ -5482,7 +5476,22 @@
         // 渲染任务内联进展记录
         function renderTaskProgressInline(task) {
             if (!task.fields.progressLog || task.fields.progressLog.length === 0) {
-                return '<div class="timeline-progress-empty">暂无进展记录</div>';
+                return `
+                    <div class="timeline-progress-display">
+                        <div class="progress-header-with-actions">
+                            <span class="progress-header">📝 最新进展：</span>
+                            <div class="progress-inline-actions">
+                                <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleQuickProgress('${task.id}')" title="记录进展">
+                                    📝 记录
+                                </button>
+                                <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); viewProgressLog(event, '${task.id}')" title="查看详情">
+                                    📊 详情
+                                </button>
+                            </div>
+                        </div>
+                        <div class="timeline-progress-empty">暂无进展记录</div>
+                    </div>
+                `;
             }
             
             // 获取最新5条进展，按时间倒序
@@ -5492,7 +5501,17 @@
             
             return `
                 <div class="timeline-progress-display">
-                    <div class="progress-header">📝 最新进展：</div>
+                    <div class="progress-header-with-actions">
+                        <span class="progress-header">📝 最新进展：</span>
+                        <div class="progress-inline-actions">
+                            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleQuickProgress('${task.id}')" title="记录进展">
+                                📝 记录
+                            </button>
+                            <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); viewProgressLog(event, '${task.id}')" title="查看详情">
+                                📊 详情
+                            </button>
+                        </div>
+                    </div>
                     ${recentProgress.map((progress, index) => `
                         <div class="progress-item ${index === 0 ? 'latest' : 'history'}">
                             ${index === 0 ? 

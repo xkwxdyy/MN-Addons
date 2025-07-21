@@ -3139,6 +3139,13 @@
             }
         }
         
+        /* Desktop: show toggle button when sidebar is collapsed */
+        @media (min-width: 961px) {
+            body.sidebar-collapsed .sidebar-toggle-btn {
+                display: flex;
+            }
+        }
+        
         /* 手机设备 (768px及以下) */
         @media (max-width: 768px) {
             /* 进一步调整焦点任务容器 */
@@ -4517,8 +4524,10 @@
             if (windowWidth > 960) {
                 // 桌面端：使用 collapsed 类
                 sidebar.classList.toggle('collapsed');
-                // 保存折叠状态到 localStorage
                 const isCollapsed = sidebar.classList.contains('collapsed');
+                // 更新 body 类以控制按钮显示
+                document.body.classList.toggle('sidebar-collapsed', isCollapsed);
+                // 保存折叠状态到 localStorage
                 localStorage.setItem('sidebar-collapsed', isCollapsed);
             } else {
                 // 移动端：使用 show 类和遮罩层
@@ -4545,6 +4554,15 @@
                 sidebar.classList.remove('show');
                 overlay.classList.remove('show');
                 document.body.style.overflow = '';
+                
+                // 恢复桌面端的折叠状态
+                const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+                sidebar.classList.toggle('collapsed', isCollapsed);
+                document.body.classList.toggle('sidebar-collapsed', isCollapsed);
+            } else {
+                // 移动端时移除桌面端的类
+                sidebar.classList.remove('collapsed');
+                document.body.classList.remove('sidebar-collapsed');
             }
         }
         
@@ -6876,29 +6894,53 @@
             // 创建 focusTasks 的临时副本
             tempFocusTasks = new Set(focusTasks);
             
-            // 渲染任务列表 - 只显示未完成的动作类型任务
-            const nonCompletedTasks = tasks.filter(task => 
-                task.status !== '已完成' && task.type === '动作'
+            // 渲染任务列表 - 显示待处理列表中的任务
+            let nonCompletedTasks = tasks.filter(task => 
+                pendingTasks.has(task.id) && 
+                task.status !== '已完成' && 
+                task.type === '动作'
             );
-            listContainer.innerHTML = nonCompletedTasks.map(task => `
-                <div class="task-select-item ${tempFocusTasks.has(task.id) ? 'selected' : ''}" 
-                     onclick="toggleTaskSelection('${task.id}', event)">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <span class="task-type-badge ${task.type.toLowerCase()} text-small">
-                                ${getTaskTypeIcon(task.type)} ${task.type}
-                            </span>
-                            <span class="text-small text-muted ml-2">${task.fields.priority}优先级</span>
-                        </div>
-                        <input type="checkbox" class="list-checkbox" 
-                               ${tempFocusTasks.has(task.id) ? 'checked' : ''} 
-                               onchange="event.stopPropagation()"
-                               style="pointer-events: none;">
+            
+            // 按照 pendingTasksOrder 排序
+            if (pendingTasksOrder.length > 0) {
+                nonCompletedTasks.sort((a, b) => {
+                    const indexA = pendingTasksOrder.indexOf(a.id);
+                    const indexB = pendingTasksOrder.indexOf(b.id);
+                    if (indexA === -1) return 1;
+                    if (indexB === -1) return -1;
+                    return indexA - indexB;
+                });
+            }
+            
+            if (nonCompletedTasks.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="text-center text-muted" style="padding: 40px;">
+                        <div style="font-size: 48px; opacity: 0.3;">📋</div>
+                        <p class="mt-2">暂无待处理任务可选择</p>
+                        <p class="text-small">请先将任务添加到待处理列表</p>
                     </div>
-                    <div class="mt-1 font-weight-500">${task.title}</div>
-                    <div class="text-small text-muted">${task.path}</div>
-                </div>
-            `).join('');
+                `;
+            } else {
+                listContainer.innerHTML = nonCompletedTasks.map(task => `
+                    <div class="task-select-item ${tempFocusTasks.has(task.id) ? 'selected' : ''}" 
+                         onclick="toggleTaskSelection('${task.id}', event)">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <span class="task-type-badge ${task.type.toLowerCase()} text-small">
+                                    ${getTaskTypeIcon(task.type)} ${task.type}
+                                </span>
+                                <span class="text-small text-muted ml-2">${task.fields.priority}优先级</span>
+                            </div>
+                            <input type="checkbox" class="list-checkbox" 
+                                   ${tempFocusTasks.has(task.id) ? 'checked' : ''} 
+                                   onchange="event.stopPropagation()"
+                                   style="pointer-events: none;">
+                        </div>
+                        <div class="mt-1 font-weight-500">${task.title}</div>
+                        <div class="text-small text-muted">${task.path}</div>
+                    </div>
+                `).join('');
+            }
             
             modal.classList.add('active');
         }
@@ -8410,6 +8452,15 @@
             // 初始化 filteredTasks
             filteredTasks = tasks;
             
+            // 恢复侧边栏折叠状态（仅在桌面端）
+            if (window.innerWidth > 960) {
+                const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+                if (isCollapsed) {
+                    document.getElementById('sidebar').classList.add('collapsed');
+                    document.body.classList.add('sidebar-collapsed');
+                }
+            }
+            
             // 渲染初始视图
             switchView(currentView);
             
@@ -8654,6 +8705,11 @@
         function renderPlanningView() {
             initPlanningSelection(); // 确保选择状态已初始化
             
+            // 重要：在渲染完成后更新按钮状态
+            setTimeout(() => {
+                updatePlanningButtonStates();
+            }, 0);
+            
             const unplannedTasks = getUnplannedTasks();
             const plannedTasks = getPlannedTasks();
             
@@ -8666,7 +8722,9 @@
             unplannedContainer.innerHTML = unplannedTasks.map(task => `
                 <div class="planning-task-item" data-task-id="${task.id}">
                     <div class="task-checkbox">
-                        <input type="checkbox" id="planning_${task.id}" onchange="togglePlanningTaskSelection('${task.id}')">
+                        <input type="checkbox" id="planning_${task.id}" 
+                               ${window.selectedPlanningTasks && window.selectedPlanningTasks.has(task.id) ? 'checked' : ''}
+                               onchange="togglePlanningTaskSelection('${task.id}')">
                         <label for="planning_${task.id}"></label>
                     </div>
                     <div class="task-content">
@@ -8776,14 +8834,14 @@
         // 更新规划按钮状态
         function updatePlanningButtonStates() {
             const selectedCount = window.selectedPlanningTasks ? window.selectedPlanningTasks.size : 0;
-            const buttons = document.querySelectorAll('.planning-btn');
+            const buttons = document.querySelectorAll('.planning-btn:not(.primary)'); // 排除主按钮
             
             console.log('Updating planning button states, selected count:', selectedCount, 'buttons found:', buttons.length);
             
             buttons.forEach(btn => {
                 // 只在没有选择时禁用按钮
                 btn.disabled = selectedCount === 0;
-                btn.style.opacity = selectedCount === 0 ? '0.5' : '1';
+                // 不需要手动设置 opacity，CSS 会处理
                 
                 const text = btn.textContent.trim();
                 if (selectedCount > 0) {

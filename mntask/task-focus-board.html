@@ -1628,6 +1628,20 @@
             font-size: 0.75rem;
         }
 
+        .progress-inline-actions {
+            display: flex;
+            gap: var(--spacing-xs);
+            margin-top: var(--spacing-sm);
+        }
+
+        .progress-inline-actions .btn {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            height: 24px;
+            min-width: 50px;
+            border-radius: 4px;
+        }
+
         /* 按钮颜色变化 */
         .btn-success {
             background: var(--status-done);
@@ -5478,18 +5492,16 @@
             if (!task.fields.progressLog || task.fields.progressLog.length === 0) {
                 return `
                     <div class="timeline-progress-display">
-                        <div class="progress-header-with-actions">
-                            <span class="progress-header">📝 最新进展：</span>
-                            <div class="progress-inline-actions">
-                                <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleQuickProgress('${task.id}')" title="记录进展">
-                                    📝 记录
-                                </button>
-                                <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); viewProgressLog(event, '${task.id}')" title="查看详情">
-                                    📊 详情
-                                </button>
-                            </div>
-                        </div>
+                        <div class="progress-header">📝 最新进展：</div>
                         <div class="timeline-progress-empty">暂无进展记录</div>
+                        <div class="progress-inline-actions">
+                            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleQuickProgress('${task.id}')" title="记录进展">
+                                📝 记录
+                            </button>
+                            <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); viewProgressLog(event, '${task.id}')" title="查看详情">
+                                📊 详情
+                            </button>
+                        </div>
                     </div>
                 `;
             }
@@ -5501,17 +5513,7 @@
             
             return `
                 <div class="timeline-progress-display">
-                    <div class="progress-header-with-actions">
-                        <span class="progress-header">📝 最新进展：</span>
-                        <div class="progress-inline-actions">
-                            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleQuickProgress('${task.id}')" title="记录进展">
-                                📝 记录
-                            </button>
-                            <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); viewProgressLog(event, '${task.id}')" title="查看详情">
-                                📊 详情
-                            </button>
-                        </div>
-                    </div>
+                    <div class="progress-header">📝 最新进展：</div>
                     ${recentProgress.map((progress, index) => `
                         <div class="progress-item ${index === 0 ? 'latest' : 'history'}">
                             ${index === 0 ? 
@@ -5524,6 +5526,14 @@
                         `<div class="progress-more">还有 ${task.fields.progressLog.length - 5} 条记录...</div>` : 
                         ''
                     }
+                    <div class="progress-inline-actions">
+                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleQuickProgress('${task.id}')" title="记录进展">
+                            📝 记录
+                        </button>
+                        <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); viewProgressLog(event, '${task.id}')" title="查看详情">
+                            📊 详情
+                        </button>
+                    </div>
                 </div>
             `;
         }

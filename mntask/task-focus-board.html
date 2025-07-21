@@ -1642,6 +1642,74 @@
             border-radius: 4px;
         }
 
+        /* 可编辑字段样式 */
+        .editable-field {
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid transparent;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .editable-field:hover {
+            background: var(--bg-hover);
+            border-color: var(--glass-border);
+        }
+
+        .editable-field::after {
+            content: "✏️";
+            opacity: 0;
+            position: absolute;
+            right: -20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.7rem;
+            transition: var(--transition);
+        }
+
+        .editable-field:hover::after {
+            opacity: 0.6;
+        }
+
+        .field-editing {
+            background: var(--bg-focus);
+            border-color: var(--type-action);
+        }
+
+        .field-input {
+            background: var(--bg-secondary);
+            border: 1px solid var(--type-action);
+            border-radius: 4px;
+            padding: 4px 8px;
+            color: var(--text-primary);
+            font-size: inherit;
+            width: 100%;
+            outline: none;
+        }
+
+        .priority-select {
+            background: var(--bg-secondary);
+            border: 1px solid var(--type-action);
+            border-radius: 4px;
+            padding: 4px 8px;
+            color: var(--text-primary);
+            font-size: inherit;
+            outline: none;
+        }
+
+        .tags-editor {
+            background: var(--bg-secondary);
+            border: 1px solid var(--type-action);
+            border-radius: 4px;
+            padding: 4px 8px;
+            color: var(--text-primary);
+            font-size: inherit;
+            width: 100%;
+            outline: none;
+            min-height: 60px;
+        }
+
         /* 按钮颜色变化 */
         .btn-success {
             background: var(--status-done);
@@ -2365,6 +2433,39 @@
             gap: var(--spacing-xs);
             flex-wrap: wrap;
         }
+        
+        /* 子项目样式 */
+        .board-card.sub-project {
+            margin-left: var(--spacing-lg);
+            margin-top: var(--spacing-sm);
+            position: relative;
+            border-left: 3px solid var(--type-project);
+            background: rgba(72, 187, 120, 0.05);
+        }
+        
+        .sub-project-indicator {
+            position: absolute;
+            left: -20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 15px;
+            height: 1px;
+            background: var(--glass-border);
+        }
+        
+        .sub-project-indicator::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: -6px;
+            width: 1px;
+            height: calc(50% + 6px);
+            background: var(--glass-border);
+        }
+        
+        .board-card.sub-project .board-card-title {
+            font-size: 0.875rem;
+        }
 
         .btn-sm {
             padding: var(--spacing-xs) var(--spacing-sm);
@@ -2483,6 +2584,63 @@
         .dragging .board-card:hover {
             transform: none;
             border-color: var(--glass-border);
+        }
+        
+        /* 项目看板拖拽样式 */
+        .board-card[draggable="true"] {
+            cursor: grab;
+        }
+        
+        .board-card[draggable="true"]:active {
+            cursor: grabbing;
+        }
+        
+        .board-card.dragging {
+            opacity: 0.3;
+            transform: rotate(2deg) scale(1.01);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            transition: none;
+            position: relative;
+            z-index: 1000;
+        }
+        
+        /* 看板列的拖拽悬停效果 */
+        .board-column-content.drag-over {
+            background: var(--bg-active);
+            border: 2px dashed var(--type-project);
+            border-radius: var(--radius-sm);
+            position: relative;
+            min-height: 100px;
+        }
+        
+        .board-column-content.drag-over::before {
+            content: '释放以移动到此状态';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--type-project);
+            font-size: 0.875rem;
+            font-weight: 600;
+            opacity: 0.8;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        
+        /* 不同状态列的拖拽效果 */
+        .board-column-content[data-status="未开始"].drag-over {
+            background: linear-gradient(135deg, var(--bg-active) 0%, rgba(113, 128, 150, 0.1) 100%);
+            border-color: var(--status-todo);
+        }
+        
+        .board-column-content[data-status="进行中"].drag-over {
+            background: linear-gradient(135deg, var(--bg-active) 0%, rgba(246, 173, 85, 0.1) 100%);
+            border-color: var(--status-doing);
+        }
+        
+        .board-column-content[data-status="已完成"].drag-over {
+            background: linear-gradient(135deg, var(--bg-active) 0%, rgba(72, 187, 120, 0.1) 100%);
+            border-color: var(--status-done);
         }
         
         /* 列表视图样式 */
@@ -3127,9 +3285,50 @@
             gap: var(--spacing-sm);
         }
         
-        .planning-btn:hover {
+        .planning-btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: var(--shadow);
+        }
+        
+        .planning-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .planning-btn.primary {
+            background: linear-gradient(135deg, #ff6b6b, #f06595);
+            font-size: 1rem;
+            padding: var(--spacing-lg);
+        }
+        
+        .smart-planning-section,
+        .manual-planning-section {
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .planning-tips {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            padding: var(--spacing-md);
+            margin-top: var(--spacing-md);
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+        
+        .planning-tips ul {
+            list-style: none;
+            padding: 0;
+            margin-top: var(--spacing-sm);
+        }
+        
+        .planning-tips li {
+            padding: var(--spacing-xs) 0;
+            border-bottom: 1px solid var(--glass-border);
+        }
+        
+        .planning-tips li:last-child {
+            border-bottom: none;
         }
         
         .planning-filters {
@@ -3424,26 +3623,47 @@
                             <!-- 计划操作区 -->
                             <div class="planning-panel planning-actions">
                                 <div class="panel-header">
-                                    <h3 class="panel-title">⚡ 快速规划</h3>
+                                    <h3 class="panel-title">⚡ 智能规划</h3>
                                 </div>
                                 <div class="panel-content">
-                                    <div class="quick-planning-options">
-                                        <button class="planning-btn" onclick="bulkAddToPending()">
-                                            📋 批量添加到待处理
+                                    <!-- 智能规划建议 -->
+                                    <div class="smart-planning-section">
+                                        <h4>🤖 AI 建议</h4>
+                                        <button class="planning-btn primary" onclick="autoScheduleTasks()">
+                                            🎯 一键智能安排
                                         </button>
-                                        <button class="planning-btn" onclick="bulkAddToFocus()">
-                                            🎯 批量添加到焦点
-                                        </button>
-                                        <button class="planning-btn" onclick="scheduleTasksForTomorrow()">
-                                            📅 安排明天执行
-                                        </button>
-                                        <button class="planning-btn" onclick="scheduleTasksForWeek()">
-                                            🗓️ 安排本周执行
-                                        </button>
+                                        <div class="planning-tips">
+                                            <p>将根据任务优先级、类型和依赖关系智能分配到：</p>
+                                            <ul>
+                                                <li>高优先级动作 → 焦点任务</li>
+                                                <li>中优先级动作 → 待处理</li>
+                                                <li>其他任务 → 合理分配到未来日期</li>
+                                            </ul>
+                                        </div>
                                     </div>
                                     
+                                    <!-- 手动规划选项 -->
+                                    <div class="manual-planning-section">
+                                        <h4>✋ 手动规划</h4>
+                                        <div class="quick-planning-options">
+                                            <button class="planning-btn" onclick="bulkAddToPending()" disabled>
+                                                📋 添加到待处理
+                                            </button>
+                                            <button class="planning-btn" onclick="bulkAddToFocus()" disabled>
+                                                🎯 添加到焦点
+                                            </button>
+                                            <button class="planning-btn" onclick="scheduleTasksForTomorrow()" disabled>
+                                                📅 安排明天
+                                            </button>
+                                            <button class="planning-btn" onclick="scheduleTasksForWeek()" disabled>
+                                                🗓️ 分配到本周
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 筛选器 -->
                                     <div class="planning-filters">
-                                        <h4>筛选条件</h4>
+                                        <h4>🔍 筛选任务</h4>
                                         <div class="filter-group">
                                             <label>
                                                 <input type="checkbox" id="planningFilterType" onchange="updatePlanningFilters()">
@@ -3580,7 +3800,7 @@
             <div class="modal-body">
                 <div class="task-detail-section">
                     <div class="task-detail-label">任务标题</div>
-                    <div class="task-detail-value" id="detailTitle">-</div>
+                    <div class="task-detail-value editable-field" id="detailTitle" onclick="editTaskField('title', this)">-</div>
                 </div>
                 
                 <div class="task-detail-section">
@@ -3601,7 +3821,7 @@
                         </div>
                         <div>
                             <div class="text-small text-muted">优先级</div>
-                            <div id="detailPriority">-</div>
+                            <div class="editable-field" id="detailPriority" onclick="editTaskField('priority', this)">-</div>
                         </div>
                     </div>
                 </div>
@@ -3630,14 +3850,14 @@
                 
                 <div class="task-detail-section">
                     <div class="task-detail-label">标签</div>
-                    <div class="task-detail-tags" id="detailTags">
+                    <div class="task-detail-tags editable-field" id="detailTags" onclick="editTaskField('tags', this)">
                         <!-- 标签将在这里动态生成 -->
                     </div>
                 </div>
                 
                 <div class="task-detail-section">
                     <div class="task-detail-label">启动链接</div>
-                    <div class="task-detail-value" id="detailLaunchLink">-</div>
+                    <div class="task-detail-value editable-field" id="detailLaunchLink" onclick="editTaskField('launchLink', this)">-</div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -4292,15 +4512,25 @@
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebarOverlay');
+            const windowWidth = window.innerWidth;
             
-            sidebar.classList.toggle('show');
-            overlay.classList.toggle('show');
-            
-            // 如果是打开状态，阻止主体滚动
-            if (sidebar.classList.contains('show')) {
-                document.body.style.overflow = 'hidden';
+            if (windowWidth > 960) {
+                // 桌面端：使用 collapsed 类
+                sidebar.classList.toggle('collapsed');
+                // 保存折叠状态到 localStorage
+                const isCollapsed = sidebar.classList.contains('collapsed');
+                localStorage.setItem('sidebar-collapsed', isCollapsed);
             } else {
-                document.body.style.overflow = '';
+                // 移动端：使用 show 类和遮罩层
+                sidebar.classList.toggle('show');
+                overlay.classList.toggle('show');
+                
+                // 如果是打开状态，阻止主体滚动
+                if (sidebar.classList.contains('show')) {
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    document.body.style.overflow = '';
+                }
             }
         }
         
@@ -4667,11 +4897,8 @@
                     }
                 }
                 
-                // 如果没有 plannedDate，则根据 today 字段和选择的日期判断
-                if (timelineViewMode === 'day' && dateRange.start === todayStr) {
-                    // 如果选择的是今天，显示标记为今日任务的
-                    return task.fields.today === true;
-                }
+                // 如果没有 plannedDate，不显示在时间轴中
+                // （已移除对 today 字段的依赖）
                 
                 // 其他情况不显示没有 plannedDate 的任务
                 return false;
@@ -5271,7 +5498,10 @@
         
         // HTML 转义函数，防止 XSS
         function escapeHtml(unsafe) {
-            return unsafe
+            if (unsafe == null) {
+                return '';
+            }
+            return String(unsafe)
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")
@@ -5872,8 +6102,17 @@
                 case 'focus':
                     renderFocusTasks();
                     break;
-                case 'today':
+                case 'timeline':
                     renderTodayTimeline();
+                    break;
+                case 'planning':
+                    renderPlanningView();
+                    break;
+                case 'project':
+                    renderProjectBoard();
+                    break;
+                case 'goal':
+                    renderGoalBoard();
                     break;
                 case 'board':
                     renderBoardView();
@@ -6044,6 +6283,10 @@
         let draggedPendingElement = null;
         let currentPendingDropTarget = null;
         let pendingDropPosition = null;
+        
+        // 项目看板拖拽相关变量
+        let draggedProjectTaskId = null;
+        let draggedProjectElement = null;
 
         // 待处理任务拖拽开始
         function handlePendingDragStart(event) {
@@ -6873,11 +7116,18 @@
             window.currentDetailTaskId = taskId;
             
             // 填充详情
-            document.getElementById('detailTitle').textContent = task.title;
+            // 对于可编辑字段，保持onclick处理
+            const titleEl = document.getElementById('detailTitle');
+            titleEl.textContent = task.title;
+            titleEl.onclick = function() { editTaskField('title', this); };
+            
             document.getElementById('detailPath').textContent = task.path || '无';
-            document.getElementById('detailType').textContent = `${getTaskTypeIcon(task.type)} ${task.type}`;
-            document.getElementById('detailStatus').textContent = `${getStatusIcon(task.status)} ${task.status}`;
-            document.getElementById('detailPriority').textContent = `${getPriorityIcon(task.fields.priority)} ${task.fields.priority}`;
+            document.getElementById('detailType').innerHTML = `${getTaskTypeIcon(task.type)} ${task.type}`;
+            document.getElementById('detailStatus').innerHTML = `${getStatusIcon(task.status)} ${task.status}`;
+            
+            const priorityEl = document.getElementById('detailPriority');
+            priorityEl.innerHTML = `${getPriorityIcon(task.fields.priority)} ${task.fields.priority}`;
+            priorityEl.onclick = function() { editTaskField('priority', this); };
             document.getElementById('detailDueDate').textContent = task.fields.dueDate ? formatDate(task.fields.dueDate) : '未设置';
             
             // 时间安排（包含并发冲突提示）
@@ -6901,7 +7151,9 @@
             }
             document.getElementById('detailTodayTime').innerHTML = timeDisplay;
             
-            document.getElementById('detailLaunchLink').textContent = task.launchLink || '未设置';
+            const launchLinkEl = document.getElementById('detailLaunchLink');
+            launchLinkEl.textContent = task.launchLink || '未设置';
+            launchLinkEl.onclick = function() { editTaskField('launchLink', this); };
             document.getElementById('detailStartTime').textContent = task.fields.startTime ? new Date(task.fields.startTime).toLocaleString('zh-CN') : '未开始';
             document.getElementById('detailEndTime').textContent = task.fields.endTime ? new Date(task.fields.endTime).toLocaleString('zh-CN') : '未结束';
             
@@ -6910,6 +7162,7 @@
             tagsContainer.innerHTML = task.fields.tags.map(tag => `
                 <span class="task-detail-tag">${tag}</span>
             `).join('') || '<span class="text-muted">无标签</span>';
+            tagsContainer.onclick = function() { editTaskField('tags', this); };
             
             // 生成状态切换按钮
             const statusButtons = document.getElementById('taskStatusButtons');
@@ -6936,6 +7189,157 @@
                 window.currentDetailTaskId = null;
             }
         }
+
+        /* ========================================
+           ✏️ 任务字段编辑功能
+           ======================================== */
+
+        // 编辑任务字段
+        function editTaskField(fieldType, element) {
+            // 防止重复编辑
+            if (element.classList.contains('field-editing')) {
+                return;
+            }
+
+            const taskId = window.currentDetailTaskId;
+            if (!taskId) return;
+
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            element.classList.add('field-editing');
+            const originalContent = element.innerHTML;
+            let originalValue;
+
+            switch (fieldType) {
+                case 'title':
+                    originalValue = task.title;
+                    element.innerHTML = `<input type="text" class="field-input" value="${escapeHtml(originalValue)}" onblur="saveTaskField('${fieldType}', this, '${taskId}')" onkeydown="handleFieldKeydown(event, '${fieldType}', this, '${taskId}')">`;
+                    break;
+                
+                case 'priority':
+                    originalValue = task.fields.priority;
+                    element.innerHTML = `
+                        <select class="priority-select" onblur="saveTaskField('${fieldType}', this, '${taskId}')" onkeydown="handleFieldKeydown(event, '${fieldType}', this, '${taskId}')">
+                            <option value="高" ${originalValue === '高' ? 'selected' : ''}>🔴 高</option>
+                            <option value="中" ${originalValue === '中' ? 'selected' : ''}>🟡 中</option>
+                            <option value="低" ${originalValue === '低' ? 'selected' : ''}>🟢 低</option>
+                        </select>
+                    `;
+                    break;
+                
+                case 'tags':
+                    originalValue = task.fields.tags.join(', ');
+                    element.innerHTML = `<textarea class="tags-editor" placeholder="输入标签，用逗号分隔" onblur="saveTaskField('${fieldType}', this, '${taskId}')" onkeydown="handleFieldKeydown(event, '${fieldType}', this, '${taskId}')">${escapeHtml(originalValue)}</textarea>`;
+                    break;
+                
+                case 'launchLink':
+                    originalValue = task.launchLink || '';
+                    element.innerHTML = `<input type="text" class="field-input" value="${escapeHtml(originalValue)}" placeholder="输入MarginNote链接" onblur="saveTaskField('${fieldType}', this, '${taskId}')" onkeydown="handleFieldKeydown(event, '${fieldType}', this, '${taskId}')">`;
+                    break;
+            }
+
+            // 聚焦到输入框
+            const input = element.querySelector('input, select, textarea');
+            if (input) {
+                input.focus();
+                if (input.type === 'text' || input.tagName === 'TEXTAREA') {
+                    input.select();
+                }
+            }
+
+            // 保存原始内容用于取消编辑
+            element._originalContent = originalContent;
+            element._originalValue = originalValue;
+        }
+
+        // 处理字段编辑的键盘事件
+        function handleFieldKeydown(event, fieldType, input, taskId) {
+            if (event.key === 'Enter' && fieldType !== 'tags') {
+                event.preventDefault();
+                saveTaskField(fieldType, input, taskId);
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                cancelFieldEdit(fieldType, input, taskId);
+            }
+        }
+
+        // 保存任务字段
+        function saveTaskField(fieldType, input, taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            const element = input.closest('.editable-field');
+            const newValue = input.value.trim();
+
+            switch (fieldType) {
+                case 'title':
+                    if (newValue && newValue !== task.title) {
+                        task.title = newValue;
+                        element.textContent = newValue;
+                        showNotification('标题已更新', 'success');
+                    } else {
+                        element.innerHTML = element._originalContent;
+                    }
+                    break;
+                
+                case 'priority':
+                    if (newValue !== task.fields.priority) {
+                        task.fields.priority = newValue;
+                        element.innerHTML = `${getPriorityIcon(newValue)} ${newValue}`;
+                        showNotification('优先级已更新', 'success');
+                    } else {
+                        element.innerHTML = element._originalContent;
+                    }
+                    break;
+                
+                case 'tags':
+                    const newTags = newValue ? newValue.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
+                    task.fields.tags = newTags;
+                    element.innerHTML = newTags.length > 0 ? 
+                        newTags.map(tag => `<span class="task-detail-tag">${tag}</span>`).join('') : 
+                        '<span class="text-muted">无标签</span>';
+                    showNotification('标签已更新', 'success');
+                    break;
+                
+                case 'launchLink':
+                    if (newValue !== task.launchLink) {
+                        task.launchLink = newValue;
+                        element.textContent = newValue || '未设置';
+                        showNotification('启动链接已更新', 'success');
+                    } else {
+                        element.innerHTML = element._originalContent;
+                    }
+                    break;
+            }
+
+            element.classList.remove('field-editing');
+            
+            // 保存到本地存储
+            saveToLocalStorage();
+            
+            // 刷新相关视图
+            refreshAllViews();
+        }
+
+        // 取消字段编辑
+        function cancelFieldEdit(fieldType, input, taskId) {
+            const element = input.closest('.editable-field');
+            element.innerHTML = element._originalContent;
+            element.classList.remove('field-editing');
+        }
+
+        // 刷新所有视图
+        function refreshAllViews() {
+            if (currentView === 'focus') {
+                renderFocusTasks();
+                renderPendingTasks();
+            } else if (currentView === 'timeline') {
+                renderTodayTimeline();
+            } else if (currentView === 'planning') {
+                renderPlanningView();
+            }
+        }
         
         /* ========================================
            📦 项目看板
@@ -6945,55 +7349,185 @@
             const container = document.getElementById('projectBoardContainer');
             const projectTasks = tasks.filter(task => task.type === '项目');
             
-            // 按状态分组
+            // 构建项目层级结构
+            const rootProjects = projectTasks.filter(p => !p.parent);
+            const subProjects = projectTasks.filter(p => p.parent);
+            
+            // 创建项目卡片的渲染函数
+            function renderProjectCard(project, isSubProject = false) {
+                const childProjects = subProjects.filter(sub => sub.parent === project.id);
+                
+                return `
+                    <div class="board-card ${isSubProject ? 'sub-project' : ''}" 
+                         draggable="true"
+                         data-task-id="${project.id}"
+                         data-task-status="${project.status}"
+                         ondragstart="handleProjectDragStart(event)"
+                         ondragend="handleProjectDragEnd(event)"
+                         onclick="viewTaskDetail('${project.id}')">
+                        ${isSubProject ? '<div class="sub-project-indicator"></div>' : ''}
+                        <div class="board-card-header">
+                            <span class="priority-badge ${project.fields.priority.toLowerCase()}">
+                                ${getPriorityIcon(project.fields.priority)}
+                            </span>
+                            <span class="text-small text-muted">${project.fields.project || '未分类'}</span>
+                        </div>
+                        <h4 class="board-card-title">${project.title}</h4>
+                        <div class="board-card-meta">
+                            ${project.fields.dueDate ? `<span>📅 ${formatDate(project.fields.dueDate)}</span>` : ''}
+                            ${project.fields.progress ? `<span>📊 ${project.fields.progress}%</span>` : ''}
+                            ${childProjects.length > 0 ? `<span>📁 ${childProjects.length} 子项目</span>` : ''}
+                        </div>
+                        <div class="board-card-footer">
+                            <div class="board-card-actions">
+                                ${project.status === '未开始' ? `
+                                    <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleTaskStatus('${project.id}', '进行中')">
+                                        🚀 开始
+                                    </button>
+                                ` : project.status === '进行中' ? `
+                                    <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); toggleTaskStatus('${project.id}', '已完成')">
+                                        ✅ 完成
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    ${childProjects.filter(sub => sub.status === project.status).map(sub => 
+                        renderProjectCard(sub, true)
+                    ).join('')}
+                `;
+            }
+            
+            // 按状态分组，只包含根项目
             const statusGroups = {
-                '未开始': projectTasks.filter(t => t.status === '未开始'),
-                '进行中': projectTasks.filter(t => t.status === '进行中'),
-                '已完成': projectTasks.filter(t => t.status === '已完成')
+                '未开始': rootProjects.filter(t => t.status === '未开始'),
+                '进行中': rootProjects.filter(t => t.status === '进行中'),
+                '已完成': rootProjects.filter(t => t.status === '已完成')
+            };
+            
+            // 计算每个状态的总项目数（包括子项目）
+            const totalCounts = {
+                '未开始': projectTasks.filter(t => t.status === '未开始').length,
+                '进行中': projectTasks.filter(t => t.status === '进行中').length,
+                '已完成': projectTasks.filter(t => t.status === '已完成').length
             };
             
             container.innerHTML = `
                 <div class="board-columns">
-                    ${Object.entries(statusGroups).map(([status, tasks]) => `
+                    ${Object.entries(statusGroups).map(([status, rootTasks]) => `
                         <div class="board-column">
                             <div class="board-column-header">
                                 <h3>${getStatusIcon(status)} ${status}</h3>
-                                <span class="count-badge">${tasks.length}</span>
+                                <span class="count-badge">${totalCounts[status]}</span>
                             </div>
-                            <div class="board-column-content">
-                                ${tasks.map(task => `
-                                    <div class="board-card" onclick="viewTaskDetail('${task.id}')">
-                                        <div class="board-card-header">
-                                            <span class="priority-badge ${task.fields.priority.toLowerCase()}">
-                                                ${getPriorityIcon(task.fields.priority)}
-                                            </span>
-                                            <span class="text-small text-muted">${task.fields.project || '未分类'}</span>
-                                        </div>
-                                        <h4 class="board-card-title">${task.title}</h4>
-                                        <div class="board-card-meta">
-                                            ${task.fields.dueDate ? `<span>📅 ${formatDate(task.fields.dueDate)}</span>` : ''}
-                                            ${task.fields.progress ? `<span>📊 ${task.fields.progress}%</span>` : ''}
-                                        </div>
-                                        <div class="board-card-footer">
-                                            <div class="board-card-actions">
-                                                ${task.status === '未开始' ? `
-                                                    <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '进行中')">
-                                                        🚀 开始
-                                                    </button>
-                                                ` : task.status === '进行中' ? `
-                                                    <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '已完成')">
-                                                        ✅ 完成
-                                                    </button>
-                                                ` : ''}
-                                            </div>
-                                        </div>
-                                    </div>
-                                `).join('') || '<p class="text-muted">暂无项目</p>'}
+                            <div class="board-column-content"
+                                 data-status="${status}"
+                                 ondragover="handleProjectDragOver(event)"
+                                 ondragleave="handleProjectDragLeave(event)"
+                                 ondrop="handleProjectDrop(event)">
+                                ${rootTasks.map(task => renderProjectCard(task)).join('') || '<p class="text-muted">暂无项目</p>'}
                             </div>
                         </div>
                     `).join('')}
                 </div>
             `;
+        }
+        
+        // 渲染看板视图（根据当前视图调用相应的看板）
+        function renderBoardView() {
+            // 根据当前视图渲染相应的看板
+            if (currentView === 'project') {
+                renderProjectBoard();
+            } else if (currentView === 'goal') {
+                renderGoalBoard();
+            }
+        }
+        
+        /* ========================================
+           🎯 项目看板拖拽功能
+           ======================================== */
+        
+        // 项目卡片拖拽开始
+        function handleProjectDragStart(event) {
+            const card = event.target.closest('.board-card');
+            if (!card) return;
+            
+            draggedProjectTaskId = card.dataset.taskId;
+            draggedProjectElement = card;
+            
+            card.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', draggedProjectTaskId);
+            
+            // 延迟设置透明度，避免影响拖拽图像
+            setTimeout(() => {
+                card.style.opacity = '0.3';
+            }, 0);
+        }
+        
+        // 项目看板列拖拽悬停
+        function handleProjectDragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+            
+            const column = event.target.closest('.board-column-content');
+            if (column) {
+                column.classList.add('drag-over');
+            }
+        }
+        
+        // 项目看板列拖拽离开
+        function handleProjectDragLeave(event) {
+            const column = event.target.closest('.board-column-content');
+            if (column && !column.contains(event.relatedTarget)) {
+                column.classList.remove('drag-over');
+            }
+        }
+        
+        // 项目卡片放置
+        function handleProjectDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const column = event.target.closest('.board-column-content');
+            if (!column || !draggedProjectTaskId) return;
+            
+            const newStatus = column.dataset.status;
+            const task = tasks.find(t => t.id === draggedProjectTaskId);
+            
+            if (task && task.status !== newStatus) {
+                // 更新任务状态
+                task.status = newStatus;
+                
+                // 显示通知
+                showNotification(`任务已移动到 ${newStatus}`, 'success');
+                
+                // 保存到本地存储
+                saveToLocalStorage();
+                
+                // 重新渲染项目看板
+                renderProjectBoard();
+            }
+            
+            // 清除拖拽悬停样式
+            column.classList.remove('drag-over');
+        }
+        
+        // 项目卡片拖拽结束
+        function handleProjectDragEnd(event) {
+            if (draggedProjectElement) {
+                draggedProjectElement.classList.remove('dragging');
+                draggedProjectElement.style.opacity = '';
+            }
+            
+            // 清除所有拖拽悬停样式
+            document.querySelectorAll('.board-column-content').forEach(col => {
+                col.classList.remove('drag-over');
+            });
+            
+            // 重置拖拽状态
+            draggedProjectTaskId = null;
+            draggedProjectElement = null;
         }
         
         /* ========================================
@@ -7146,46 +7680,9 @@
             const selectedDateStr = formatDateToLocal(selectedTimelineDate);
             const dateTasks = tasks.filter(t => t.fields.plannedDate === selectedDateStr);
             
-            // 统计时间分布
-            const timeSlots = {
-                '上午': dateTasks.filter(t => {
-                    const time = t.todayPlannedTime;
-                    return time && parseInt(time.split(':')[0]) < 12;
-                }).length,
-                '下午': dateTasks.filter(t => {
-                    const time = t.todayPlannedTime;
-                    return time && parseInt(time.split(':')[0]) >= 12 && parseInt(time.split(':')[0]) < 18;
-                }).length,
-                '晚上': dateTasks.filter(t => {
-                    const time = t.todayPlannedTime;
-                    return time && parseInt(time.split(':')[0]) >= 18;
-                }).length,
-                '未安排': dateTasks.filter(t => !t.todayPlannedTime).length
-            };
-            
             sidebar.innerHTML = `
                 <div class="sidebar-section">
-                    <h3 class="sidebar-title">📅 日期导航</h3>
-                    <div class="date-nav-grid">
-                        <button class="date-nav-btn" onclick="selectTodayDate()">今天</button>
-                        <button class="date-nav-btn" onclick="selectTomorrow()">明天</button>
-                        <button class="date-nav-btn" onclick="selectNextWeek()">下周</button>
-                        <button class="date-nav-btn" onclick="selectYesterday()">昨天</button>
-                    </div>
-                </div>
-                
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">⏰ 时间分布</h3>
-                    ${Object.entries(timeSlots).map(([slot, count]) => `
-                        <div class="custom-view-item" onclick="filterTimelineByTimeSlot('${slot}')" style="cursor: pointer;">
-                            <span>${slot}</span>
-                            <span class="text-small text-muted">${count}</span>
-                        </div>
-                    `).join('')}
-                </div>
-                
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">任务统计</h3>
+                    <h3 class="sidebar-title">📊 任务统计</h3>
                     <div class="timeline-stats-mini">
                         <div class="stat-item">
                             <span class="stat-label">总任务</span>
@@ -7195,7 +7692,21 @@
                             <span class="stat-label">已完成</span>
                             <span class="stat-value">${dateTasks.filter(t => t.status === '已完成').length}</span>
                         </div>
+                        <div class="stat-item">
+                            <span class="stat-label">进行中</span>
+                            <span class="stat-value">${dateTasks.filter(t => t.status === '进行中').length}</span>
+                        </div>
                     </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">⚡ 快速操作</h3>
+                    <button class="btn btn-block btn-secondary" onclick="openAddToPendingModal()">
+                        📋 添加到待处理
+                    </button>
+                    <button class="btn btn-block btn-secondary" onclick="refreshTimelineView()">
+                        🔄 刷新视图
+                    </button>
                 </div>
             `;
         }
@@ -7555,9 +8066,11 @@
         
         // 格式化日期为本地日期字符串 (YYYY-MM-DD)
         function formatDateToLocal(date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
+            // 确保使用本地时间而不是UTC时间
+            const localDate = new Date(date.getTime());
+            const year = localDate.getFullYear();
+            const month = String(localDate.getMonth() + 1).padStart(2, '0');
+            const day = String(localDate.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         }
         
@@ -7630,18 +8143,44 @@
         
         // 改变时间轴日期
         function changeTimelineDate(direction) {
-            const newDate = new Date(selectedTimelineDate);
+            // 创建本地日期副本，避免直接修改
+            const year = selectedTimelineDate.getFullYear();
+            const month = selectedTimelineDate.getMonth();
+            const day = selectedTimelineDate.getDate();
+            let newDate = new Date(year, month, day);
             
             // 根据视图模式调整步进值
             switch (timelineViewMode) {
                 case 'day':
-                    newDate.setDate(newDate.getDate() + direction);
+                    newDate = new Date(year, month, day + direction);
                     break;
                 case 'week':
-                    newDate.setDate(newDate.getDate() + (direction * 7));
+                    newDate = new Date(year, month, day + (direction * 7));
                     break;
                 case 'month':
-                    newDate.setMonth(newDate.getMonth() + direction);
+                    // 处理月份边界情况
+                    if (direction > 0) {
+                        // 下个月
+                        if (month === 11) {
+                            newDate = new Date(year + 1, 0, 1);
+                        } else {
+                            // 保持日期在月末的处理
+                            const nextMonth = month + 1;
+                            const daysInNextMonth = new Date(year, nextMonth + 1, 0).getDate();
+                            const targetDay = Math.min(day, daysInNextMonth);
+                            newDate = new Date(year, nextMonth, targetDay);
+                        }
+                    } else {
+                        // 上个月
+                        if (month === 0) {
+                            newDate = new Date(year - 1, 11, 1);
+                        } else {
+                            const prevMonth = month - 1;
+                            const daysInPrevMonth = new Date(year, month, 0).getDate();
+                            const targetDay = Math.min(day, daysInPrevMonth);
+                            newDate = new Date(year, prevMonth, targetDay);
+                        }
+                    }
                     break;
             }
             
@@ -7659,7 +8198,15 @@
         
         // 选择今天的日期
         function selectTodayDate() {
-            selectedTimelineDate = new Date();
+            const now = new Date();
+            // 创建本地日期，避免时区问题
+            selectedTimelineDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            timelineViewMode = 'day'; // 重置为日视图
+            
+            // 更新视图模式按钮状态
+            document.querySelectorAll('.view-mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === 'day');
+            });
             
             // 更新日期选择器的值
             const datePicker = document.getElementById('timelineDatePicker');
@@ -7673,9 +8220,12 @@
 
         // 选择昨天的日期（固定昨天）
         function selectYesterday() {
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            selectedTimelineDate = yesterday;
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            const day = now.getDate();
+            // 创建本地日期，昨天
+            selectedTimelineDate = new Date(year, month, day - 1);
             
             // 更新日期选择器的值
             const datePicker = document.getElementById('timelineDatePicker');
@@ -7689,9 +8239,12 @@
 
         // 选择明天的日期（固定明天）
         function selectTomorrow() {
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            selectedTimelineDate = tomorrow;
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            const day = now.getDate();
+            // 创建本地日期，明天
+            selectedTimelineDate = new Date(year, month, day + 1);
             
             // 更新日期选择器的值
             const datePicker = document.getElementById('timelineDatePicker');
@@ -7706,13 +8259,14 @@
         // 选择本周（周一开始）
         function selectThisWeek() {
             const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth();
+            const day = today.getDate();
             const currentDay = today.getDay();
             const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay; // 如果是周日(0)，回退6天；否则前进到周一
             
-            const monday = new Date(today);
-            monday.setDate(today.getDate() + mondayOffset);
-            
-            selectedTimelineDate = monday;
+            // 创建本地日期，本周一
+            selectedTimelineDate = new Date(year, month, day + mondayOffset);
             timelineViewMode = 'week'; // 切换到周视图
             
             // 更新视图模式按钮状态
@@ -7733,13 +8287,14 @@
         // 选择下周（下周一开始）
         function selectNextWeek() {
             const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth();
+            const day = today.getDate();
             const currentDay = today.getDay();
             const nextMondayOffset = currentDay === 0 ? 1 : 8 - currentDay; // 计算到下周一的天数
             
-            const nextMonday = new Date(today);
-            nextMonday.setDate(today.getDate() + nextMondayOffset);
-            
-            selectedTimelineDate = nextMonday;
+            // 创建本地日期，下周一
+            selectedTimelineDate = new Date(year, month, day + nextMondayOffset);
             timelineViewMode = 'week'; // 切换到周视图
             
             // 更新视图模式按钮状态
@@ -7755,6 +8310,13 @@
             
             // 重新渲染时间轴
             renderTodayTimeline();
+        }
+        
+        // 刷新时间轴视图
+        function refreshTimelineView() {
+            renderTodayTimeline();
+            updateSidebar('today');
+            showNotification('时间轴视图已刷新', 'success');
         }
         
         // 按时间段筛选时间轴任务
@@ -7824,7 +8386,9 @@
         function onTimelineDateChange() {
             const datePicker = document.getElementById('timelineDatePicker');
             if (datePicker && datePicker.value) {
-                selectedTimelineDate = new Date(datePicker.value + 'T00:00:00');
+                // 创建本地日期，避免时区问题
+                const [year, month, day] = datePicker.value.split('-');
+                selectedTimelineDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
                 renderTodayTimeline();
             }
         }
@@ -8078,8 +8642,18 @@
            📌 计划视图功能
            ======================================== */
         
+        // 初始化计划视图选择状态
+        function initPlanningSelection() {
+            if (!window.selectedPlanningTasks) {
+                window.selectedPlanningTasks = new Set();
+            }
+            console.log('Planning selection initialized');
+        }
+        
         // 渲染计划视图
         function renderPlanningView() {
+            initPlanningSelection(); // 确保选择状态已初始化
+            
             const unplannedTasks = getUnplannedTasks();
             const plannedTasks = getPlannedTasks();
             
@@ -8195,6 +8769,7 @@
                 window.selectedPlanningTasks.add(taskId);
             }
             
+            console.log('Planning task selection changed:', taskId, 'Total selected:', window.selectedPlanningTasks.size);
             updatePlanningButtonStates();
         }
         
@@ -8203,17 +8778,25 @@
             const selectedCount = window.selectedPlanningTasks ? window.selectedPlanningTasks.size : 0;
             const buttons = document.querySelectorAll('.planning-btn');
             
+            console.log('Updating planning button states, selected count:', selectedCount, 'buttons found:', buttons.length);
+            
             buttons.forEach(btn => {
+                // 只在没有选择时禁用按钮
                 btn.disabled = selectedCount === 0;
+                btn.style.opacity = selectedCount === 0 ? '0.5' : '1';
+                
                 const text = btn.textContent.trim();
                 if (selectedCount > 0) {
                     if (text.includes('批量')) {
-                        btn.textContent = text.replace(/\(\d+\)/, `(${selectedCount})`);
-                        if (!text.includes('(')) {
+                        // 更新计数显示
+                        if (text.includes('(')) {
+                            btn.textContent = text.replace(/\(\d+\)/, `(${selectedCount})`);
+                        } else {
                             btn.textContent = text + ` (${selectedCount})`;
                         }
                     }
                 } else {
+                    // 移除计数显示
                     btn.textContent = text.replace(/\s*\(\d+\)/, '');
                 }
             });
@@ -8257,6 +8840,8 @@
         
         // 批量添加到待处理
         function bulkAddToPending() {
+            console.log('bulkAddToPending called, selected tasks:', window.selectedPlanningTasks);
+            
             if (!window.selectedPlanningTasks || window.selectedPlanningTasks.size === 0) {
                 showNotification('请先选择要添加的任务', 'warning');
                 return;
@@ -8268,6 +8853,7 @@
                     pendingTasks.add(taskId);
                     pendingTasksOrder.push(taskId);
                     addedCount++;
+                    console.log('Added task to pending:', taskId);
                 }
             });
             
@@ -8378,32 +8964,47 @@
         
         // 清空规划选择
         function clearPlanningSelection() {
+            console.log('clearPlanningSelection called');
+            
             if (window.selectedPlanningTasks) {
+                const previousCount = window.selectedPlanningTasks.size;
                 window.selectedPlanningTasks.clear();
+                console.log('Cleared', previousCount, 'selected tasks');
             }
             
             // 清除所有复选框
-            document.querySelectorAll('.planning-task-item input[type="checkbox"]').forEach(checkbox => {
+            const checkboxes = document.querySelectorAll('.planning-task-item input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
                 checkbox.checked = false;
             });
             
+            showNotification('已清空选择', 'success');
             updatePlanningButtonStates();
         }
         
         // 全选待规划任务
         function selectAllUnplanned() {
+            console.log('selectAllUnplanned called');
+            
             if (!window.selectedPlanningTasks) {
                 window.selectedPlanningTasks = new Set();
             }
             
             const visibleTasks = document.querySelectorAll('.planning-task-item:not([style*="display: none"])');
+            console.log('Found visible tasks:', visibleTasks.length);
+            
             visibleTasks.forEach(item => {
                 const taskId = item.dataset.taskId;
-                window.selectedPlanningTasks.add(taskId);
-                const checkbox = item.querySelector('input[type="checkbox"]');
-                checkbox.checked = true;
+                if (taskId) {
+                    window.selectedPlanningTasks.add(taskId);
+                    const checkbox = item.querySelector('input[type="checkbox"]');
+                    if (checkbox) {
+                        checkbox.checked = true;
+                    }
+                }
             });
             
+            showNotification(`已选择 ${visibleTasks.length} 个任务`, 'success');
             updatePlanningButtonStates();
         }
         
@@ -8427,53 +9028,79 @@
         
         // 智能安排任务
         function autoScheduleTasks() {
+            console.log('autoScheduleTasks called');
+            
             const unplannedTasks = getUnplannedTasks();
             if (unplannedTasks.length === 0) {
                 showNotification('没有需要安排的任务', 'info');
                 return;
             }
             
-            // 简单的智能安排逻辑：
-            // 1. 高优先级任务优先
-            // 2. 动作任务优先进入待处理
-            // 3. 其他任务按时间分散
+            console.log('Found unplanned tasks:', unplannedTasks.length);
+            
+            // 智能安排逻辑：
+            // 1. 高优先级动作任务 → 待处理
+            // 2. 高优先级其他任务 → 焦点
+            // 3. 中优先级动作任务 → 明天
+            // 4. 其他任务 → 本周分散
             
             const highPriorityActions = unplannedTasks.filter(t => t.fields.priority === '高' && t.type === '动作');
+            const highPriorityOthers = unplannedTasks.filter(t => t.fields.priority === '高' && t.type !== '动作');
             const mediumPriorityActions = unplannedTasks.filter(t => t.fields.priority === '中' && t.type === '动作');
-            const otherTasks = unplannedTasks.filter(t => !(t.fields.priority === '高' && t.type === '动作') && !(t.fields.priority === '中' && t.type === '动作'));
+            const otherTasks = unplannedTasks.filter(t => t.fields.priority !== '高' && !(t.fields.priority === '中' && t.type === '动作'));
             
             let scheduledCount = 0;
             
-            // 高优先级动作加到焦点
+            // 1. 高优先级动作任务 → 焦点（最多3个）
             highPriorityActions.slice(0, 3).forEach(task => {
                 if (!task.currentFocus) {
                     task.currentFocus = true;
                     focusTasks.add(task.id);
                     focusTasksOrder.push(task.id);
                     scheduledCount++;
+                    console.log('Added to focus:', task.title);
                 }
             });
             
-            // 中优先级动作加到待处理
+            // 2. 高优先级其他任务 → 焦点（最多2个）
+            highPriorityOthers.slice(0, 2).forEach(task => {
+                if (!task.currentFocus) {
+                    task.currentFocus = true;
+                    focusTasks.add(task.id);
+                    focusTasksOrder.push(task.id);
+                    scheduledCount++;
+                    console.log('Added to focus:', task.title);
+                }
+            });
+            
+            // 3. 中优先级动作任务 → 待处理（最多5个）
             mediumPriorityActions.slice(0, 5).forEach(task => {
                 if (!pendingTasks.has(task.id)) {
                     pendingTasks.add(task.id);
                     pendingTasksOrder.push(task.id);
                     scheduledCount++;
+                    console.log('Added to pending:', task.title);
                 }
             });
             
-            // 其他任务分配到未来几天
+            // 4. 其他任务 → 分配到未来几天（最多10个）
             const today = new Date();
             otherTasks.slice(0, 10).forEach((task, index) => {
                 const scheduleDate = new Date(today);
                 scheduleDate.setDate(today.getDate() + Math.floor(index / 2) + 1); // 每两个任务安排到同一天
                 task.fields.plannedDate = formatDateToLocal(scheduleDate);
                 scheduledCount++;
+                console.log('Scheduled for', formatDateToLocal(scheduleDate), ':', task.title);
             });
             
             if (scheduledCount > 0) {
-                showNotification(`智能安排已完成，共安排 ${scheduledCount} 个任务`, 'success');
+                const details = [
+                    `焦点任务: ${Math.min(3, highPriorityActions.length) + Math.min(2, highPriorityOthers.length)}`,
+                    `待处理: ${Math.min(5, mediumPriorityActions.length)}`,
+                    `计划日期: ${Math.min(10, otherTasks.length)}`
+                ].filter(d => !d.includes(': 0')).join(', ');
+                
+                showNotification(`智能安排完成 (${details})`, 'success');
                 saveToLocalStorage();
                 renderPlanningView();
             } else {

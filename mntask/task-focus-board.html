@@ -369,7 +369,7 @@
 
         .focus-task-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: var(--spacing-lg);
         }
 
@@ -3221,7 +3221,7 @@
         
         .planning-panels {
             display: grid;
-            grid-template-columns: 1fr 320px 1fr;
+            grid-template-columns: 3fr 2fr;  /* 60/40 分割 */
             gap: var(--spacing-lg);
             margin-top: var(--spacing-lg);
         }
@@ -3237,6 +3237,24 @@
         .planning-panel.planning-actions {
             background: var(--bg-secondary);
             border: 2px solid var(--type-goal);
+        }
+        
+        .planning-panel.task-pool {
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .planning-panel.task-pool .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            max-height: unset;
+        }
+        
+        .planning-panel.planning-actions.enhanced {
+            position: sticky;
+            top: 20px;
+            max-height: calc(100vh - 200px);
         }
         
         .panel-header {
@@ -3383,17 +3401,188 @@
             cursor: pointer;
             transition: var(--transition);
             position: relative;
+            display: flex;
+            align-items: flex-start;
+            gap: var(--spacing-md);
         }
         
         .planning-task-item:hover {
             border-color: var(--type-goal);
             transform: translateY(-1px);
             box-shadow: var(--shadow);
+            background: rgba(102, 126, 234, 0.08);
         }
         
         .planning-task-item.selected {
             border-color: var(--type-goal);
             background: var(--bg-active);
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.3);
+        }
+        
+        .planning-task-item.dragging {
+            opacity: 0.5;
+        }
+        
+        .planning-task-item.drag-over {
+            border-color: var(--type-project);
+            background: rgba(72, 187, 120, 0.1);
+        }
+        
+        /* 任务复选框样式增强 */
+        .task-checkbox {
+            position: relative;
+            flex-shrink: 0;
+        }
+        
+        .task-checkbox input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: var(--type-goal);
+        }
+        
+        .task-content {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .task-header {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-sm);
+            flex-wrap: wrap;
+        }
+        
+        .task-title {
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin: 0;
+            color: var(--text-primary);
+            word-break: break-word;
+        }
+        
+        .task-meta {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        
+        .task-path {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            opacity: 0.8;
+        }
+        
+        .task-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-xs);
+            color: var(--text-muted);
+        }
+        
+        /* 选中任务预览 */
+        .selected-tasks-preview {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .selected-tasks-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: var(--spacing-sm);
+        }
+        
+        .selected-task-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm);
+            background: var(--bg-hover);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--spacing-xs);
+            font-size: 0.875rem;
+        }
+        
+        .selected-task-item:hover {
+            background: var(--bg-active);
+        }
+        
+        .remove-selected {
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: color 0.2s;
+        }
+        
+        .remove-selected:hover {
+            color: var(--priority-high);
+        }
+        
+        /* 规划建议 */
+        .planning-suggestions {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            padding: var(--spacing-md);
+            margin-top: var(--spacing-md);
+            font-size: 0.875rem;
+            line-height: 1.6;
+        }
+        
+        .planning-suggestions ul {
+            list-style: none;
+            padding: 0;
+            margin: var(--spacing-sm) 0 0 0;
+        }
+        
+        .planning-suggestions li {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-xs) 0;
+        }
+        
+        .planning-suggestions li::before {
+            content: "•";
+            color: var(--type-goal);
+            font-weight: bold;
+        }
+        
+        /* 规划结果预览 */
+        .planning-result-preview {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            padding: var(--spacing-md);
+            margin-top: var(--spacing-lg);
+        }
+        
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-sm);
+        }
+        
+        .stat-item {
+            background: var(--bg-hover);
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.875rem;
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            color: var(--type-goal);
         }
         
         .planning-task-meta {
@@ -3414,14 +3603,38 @@
         }
         
         /* 响应式调整 */
-        @media (max-width: 1024px) {
+        @media (max-width: 1200px) {
             .planning-panels {
                 grid-template-columns: 1fr;
                 gap: var(--spacing-md);
             }
             
-            .planning-panel.planning-actions {
+            .planning-panel.planning-actions.enhanced {
+                position: relative;
+                top: auto;
+                max-height: none;
                 order: -1;
+            }
+            
+            .planning-panel.task-pool {
+                height: auto;
+                min-height: 400px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .planning-task-item {
+                padding: var(--spacing-sm);
+            }
+            
+            .task-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .planning-btn {
+                font-size: 0.813rem;
+                padding: var(--spacing-sm) var(--spacing-md);
             }
         }
         
@@ -4246,9 +4459,9 @@
                         <!-- 任务规划面板 -->
                         <div class="planning-panels">
                             <!-- 待规划任务 -->
-                            <div class="planning-panel">
+                            <div class="planning-panel task-pool">
                                 <div class="panel-header">
-                                    <h3 class="panel-title">📝 待规划任务</h3>
+                                    <h3 class="panel-title">📝 待规划任务池</h3>
                                     <span class="panel-count" id="unplannedCount">0</span>
                                 </div>
                                 <div class="panel-content" id="unplannedTasksList">
@@ -4256,40 +4469,43 @@
                                 </div>
                             </div>
                             
-                            <!-- 计划操作区 -->
-                            <div class="planning-panel planning-actions">
+                            <!-- 增强版操作面板 -->
+                            <div class="planning-panel planning-actions enhanced">
                                 <div class="panel-header">
-                                    <h3 class="panel-title">⚡ 智能规划</h3>
+                                    <h3 class="panel-title">⚡ 智能规划中心</h3>
                                 </div>
                                 <div class="panel-content">
+                                    <!-- 选中任务预览 -->
+                                    <div class="selected-tasks-preview" id="selectedTasksPreview" style="display: none;">
+                                        <h4>✅ 已选中的任务</h4>
+                                        <div class="selected-tasks-list" id="selectedTasksList">
+                                            <!-- 选中的任务将在这里显示 -->
+                                        </div>
+                                    </div>
+                                    
                                     <!-- 智能规划建议 -->
                                     <div class="smart-planning-section">
-                                        <h4>🤖 AI 建议</h4>
+                                        <h4>🤖 AI 智能建议</h4>
                                         <button class="planning-btn primary" onclick="autoScheduleTasks()">
                                             🎯 一键智能安排
                                         </button>
-                                        <div class="planning-tips">
-                                            <p>将根据任务优先级、类型和依赖关系智能分配到：</p>
-                                            <ul>
-                                                <li>高优先级动作 → 焦点任务</li>
-                                                <li>中优先级动作 → 待处理</li>
-                                                <li>其他任务 → 合理分配到未来日期</li>
-                                            </ul>
+                                        <div class="planning-suggestions" id="planningSuggestions">
+                                            <!-- 动态生成的建议将在这里显示 -->
                                         </div>
                                     </div>
                                     
                                     <!-- 手动规划选项 -->
                                     <div class="manual-planning-section">
-                                        <h4>✋ 手动规划</h4>
+                                        <h4>✋ 快速规划</h4>
                                         <div class="quick-planning-options">
                                             <button class="planning-btn" onclick="bulkAddToPending()" disabled>
                                                 📋 添加到待处理
                                             </button>
                                             <button class="planning-btn" onclick="bulkAddToFocus()" disabled>
-                                                🎯 添加到焦点
+                                                🎯 设为焦点任务
                                             </button>
                                             <button class="planning-btn" onclick="scheduleTasksForTomorrow()" disabled>
-                                                📅 安排明天
+                                                📅 安排明天执行
                                             </button>
                                             <button class="planning-btn" onclick="scheduleTasksForWeek()" disabled>
                                                 🗓️ 分配到本周
@@ -4299,7 +4515,7 @@
                                     
                                     <!-- 筛选器 -->
                                     <div class="planning-filters">
-                                        <h4>🔍 筛选任务</h4>
+                                        <h4>🔍 快速筛选</h4>
                                         <div class="filter-group">
                                             <label>优先级：</label>
                                             <select id="planningFilterPriority" onchange="updatePlanningFilters()">
@@ -4316,17 +4532,14 @@
                                             </select>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                            
-                            <!-- 已规划任务预览 -->
-                            <div class="planning-panel">
-                                <div class="panel-header">
-                                    <h3 class="panel-title">✅ 已规划任务</h3>
-                                    <span class="panel-count" id="plannedCount">0</span>
-                                </div>
-                                <div class="panel-content" id="plannedTasksList">
-                                    <!-- 已规划的任务列表 -->
+                                    
+                                    <!-- 规划结果可视化 -->
+                                    <div class="planning-result-preview" id="planningResultPreview" style="display: none;">
+                                        <h4>📊 规划结果预览</h4>
+                                        <div class="result-stats" id="resultStats">
+                                            <!-- 规划结果统计将在这里显示 -->
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -8936,9 +9149,6 @@
             
             // 统计焦点任务信息
             const focusTasksArray = Array.from(focusTasks);
-            const todayTasks = tasks.filter(t => t.fields.today);
-            const highPriorityTasks = tasks.filter(t => t.fields.priority === '高' && t.status !== '已完成');
-            const inProgressTasks = tasks.filter(t => t.status === '进行中');
             
             sidebar.innerHTML = `
                 <div class="sidebar-section">
@@ -8946,18 +9156,6 @@
                     <div class="custom-view-item active">
                         <span>🎯 当前焦点</span>
                         <span class="text-small text-muted">${focusTasksArray.length}</span>
-                    </div>
-                    <div class="custom-view-item" onclick="applyQuickFilter('today')">
-                        <span>📅 今日任务</span>
-                        <span class="text-small text-muted">${todayTasks.length}</span>
-                    </div>
-                    <div class="custom-view-item" onclick="applyQuickFilter('high-priority')">
-                        <span>🔴 高优先级</span>
-                        <span class="text-small text-muted">${highPriorityTasks.length}</span>
-                    </div>
-                    <div class="custom-view-item" onclick="applyQuickFilter('in-progress')">
-                        <span>🚀 进行中</span>
-                        <span class="text-small text-muted">${inProgressTasks.length}</span>
                     </div>
                 </div>
                 
@@ -8976,6 +9174,9 @@
                     </button>
                     <button class="btn btn-block btn-secondary" onclick="clearFocusTasks()">
                         🗑️ 清空焦点任务
+                    </button>
+                    <button class="btn btn-block btn-secondary" onclick="resetToTestData()">
+                        🔄 重置测试数据
                     </button>
                 </div>
             `;
@@ -9123,8 +9324,9 @@
             
             // 统计任务信息
             const unplannedTasks = getUnplannedTasks();
-            const plannedTasks = getPlannedTasks();
             const totalTasks = tasks.length;
+            const focusCount = focusTasks.size;
+            const pendingCount = pendingTasks.size;
             
             sidebar.innerHTML = `
                 <div class="sidebar-section">
@@ -9133,12 +9335,16 @@
                         <span>📝 待规划动作</span>
                         <span class="text-small text-muted">${unplannedTasks.length}</span>
                     </div>
-                    <div class="text-small text-muted" style="padding: 0 15px; margin-top: -5px; margin-bottom: 10px; opacity: 0.7;">
-                        仅显示动作类型任务
+                    <div class="custom-view-item">
+                        <span>🎯 焦点任务</span>
+                        <span class="text-small text-muted">${focusCount}</span>
                     </div>
                     <div class="custom-view-item">
-                        <span>✅ 已规划动作</span>
-                        <span class="text-small text-muted">${plannedTasks.length}</span>
+                        <span>📋 待处理任务</span>
+                        <span class="text-small text-muted">${pendingCount}</span>
+                    </div>
+                    <div class="text-small text-muted" style="padding: 0 15px; margin-top: -5px; margin-bottom: 10px; opacity: 0.7;">
+                        仅显示动作类型任务
                     </div>
                     <div class="custom-view-item">
                         <span>📋 总任务数</span>
@@ -9272,6 +9478,9 @@
                     <button class="btn btn-block btn-secondary" onclick="exportBoardData()">
                         💾 导出看板数据
                     </button>
+                    <button class="btn btn-block btn-secondary" onclick="resetToTestData()">
+                        🔄 重置测试数据
+                    </button>
                 </div>
             `;
         }
@@ -9345,6 +9554,40 @@
                 }
             }
             return false;
+        }
+        
+        // 重置为测试数据
+        function resetToTestData() {
+            if (confirm('确定要重置为测试数据吗？当前数据将被清除。')) {
+                // 清除localStorage
+                localStorage.removeItem('mntask-focus-board');
+                
+                // 清空现有数据
+                tasks = [];
+                focusTasks.clear();
+                focusTasksOrder = [];
+                pendingTasks.clear();
+                pendingTasksOrder = [];
+                activeFilters = {};
+                
+                // 重新生成测试数据
+                generateTestData();
+                
+                // 重新初始化
+                filteredTasks = tasks;
+                if (hasActiveFilters()) {
+                    applyFilters();
+                }
+                
+                // 刷新当前视图
+                switchView(currentView);
+                
+                // 更新侧边栏
+                updateSidebar(currentView);
+                updateSidebarStats();
+                
+                showNotification('已重置为测试数据', 'success');
+            }
         }
         
         /* ========================================
@@ -10080,26 +10323,32 @@
             // 重要：在渲染完成后更新按钮状态
             setTimeout(() => {
                 updatePlanningButtonStates();
+                updateSelectedTasksPreview();
+                updatePlanningSuggestions();
             }, 0);
             
             const unplannedTasks = getUnplannedTasks();
-            const plannedTasks = getPlannedTasks();
             
             // 更新计数
             document.getElementById('unplannedCount').textContent = unplannedTasks.length;
-            document.getElementById('plannedCount').textContent = plannedTasks.length;
             
             // 渲染待规划任务列表
             const unplannedContainer = document.getElementById('unplannedTasksList');
             unplannedContainer.innerHTML = unplannedTasks.map(task => `
-                <div class="planning-task-item" data-task-id="${task.id}">
+                <div class="planning-task-item ${window.selectedPlanningTasks && window.selectedPlanningTasks.has(task.id) ? 'selected' : ''}" 
+                     data-task-id="${task.id}"
+                     draggable="true"
+                     ondragstart="handlePlanningDragStart(event, '${task.id}')"
+                     ondragend="handlePlanningDragEnd(event)"
+                     ondragover="handlePlanningDragOver(event)"
+                     ondrop="handlePlanningDrop(event, '${task.id}')">
                     <div class="task-checkbox">
                         <input type="checkbox" id="planning_${task.id}" 
                                ${window.selectedPlanningTasks && window.selectedPlanningTasks.has(task.id) ? 'checked' : ''}
                                onchange="togglePlanningTaskSelection('${task.id}')">
                         <label for="planning_${task.id}"></label>
                     </div>
-                    <div class="task-content">
+                    <div class="task-content" onclick="handleTaskItemClick(event, '${task.id}')">
                         <div class="task-header">
                             <span class="task-type-badge ${task.type.toLowerCase()}">
                                 ${getTaskTypeIcon(task.type)} ${task.type}
@@ -10120,23 +10369,8 @@
                 </div>
             `).join('') || '<div class="empty-state">🎉 所有任务都已规划完成！</div>';
             
-            // 渲染已规划任务预览
-            const plannedContainer = document.getElementById('plannedTasksList');
-            plannedContainer.innerHTML = plannedTasks.slice(0, 10).map(task => `
-                <div class="planned-task-item">
-                    <div class="task-info">
-                        <span class="task-type-badge ${task.type.toLowerCase()}">
-                            ${getTaskTypeIcon(task.type)}
-                        </span>
-                        <span class="task-title">${task.title}</span>
-                    </div>
-                    <div class="task-schedule">
-                        ${task.currentFocus ? '<span class="schedule-badge focus">🎯 焦点</span>' : ''}
-                        ${pendingTasks.has(task.id) ? '<span class="schedule-badge pending">📋 待处理</span>' : ''}
-                        ${task.fields.plannedDate ? `<span class="schedule-badge date">📅 ${formatDate(task.fields.plannedDate)}</span>` : ''}
-                    </div>
-                </div>
-            `).join('') || '<div class="empty-state">暂无已规划任务</div>';
+            // 添加拖拽事件监听
+            setupPlanningDragAndDrop();
             
             // 填充项目筛选选项
             const projectSelect = document.getElementById('planningFilterProject');
@@ -10209,8 +10443,166 @@
                 window.selectedPlanningTasks.add(taskId);
             }
             
+            // 更新任务项样式
+            const taskItem = document.querySelector(`.planning-task-item[data-task-id="${taskId}"]`);
+            if (taskItem) {
+                taskItem.classList.toggle('selected', window.selectedPlanningTasks.has(taskId));
+            }
+            
             console.log('Planning task selection changed:', taskId, 'Total selected:', window.selectedPlanningTasks.size);
             updatePlanningButtonStates();
+            updateSelectedTasksPreview();
+            updatePlanningSuggestions();
+        }
+        
+        // 处理任务项点击
+        function handleTaskItemClick(event, taskId) {
+            // 阻止事件冒泡到checkbox
+            if (event.target.closest('.task-checkbox')) return;
+            
+            // 切换checkbox状态
+            const checkbox = document.getElementById(`planning_${taskId}`);
+            if (checkbox) {
+                checkbox.checked = !checkbox.checked;
+                togglePlanningTaskSelection(taskId);
+            }
+        }
+        
+        // 更新选中任务预览
+        function updateSelectedTasksPreview() {
+            const previewContainer = document.getElementById('selectedTasksPreview');
+            const listContainer = document.getElementById('selectedTasksList');
+            
+            if (!window.selectedPlanningTasks || window.selectedPlanningTasks.size === 0) {
+                previewContainer.style.display = 'none';
+                return;
+            }
+            
+            previewContainer.style.display = 'block';
+            const selectedTasks = Array.from(window.selectedPlanningTasks).map(taskId => 
+                tasks.find(t => t.id === taskId)
+            ).filter(Boolean);
+            
+            listContainer.innerHTML = selectedTasks.map(task => `
+                <div class="selected-task-item">
+                    <span class="task-type-badge ${task.type.toLowerCase()}">
+                        ${getTaskTypeIcon(task.type)}
+                    </span>
+                    <span class="task-title">${task.title}</span>
+                    <span class="remove-selected" onclick="removeFromSelection('${task.id}')">✕</span>
+                </div>
+            `).join('');
+        }
+        
+        // 从选中列表移除任务
+        function removeFromSelection(taskId) {
+            const checkbox = document.getElementById(`planning_${taskId}`);
+            if (checkbox) {
+                checkbox.checked = false;
+                togglePlanningTaskSelection(taskId);
+            }
+        }
+        
+        // 更新规划建议
+        function updatePlanningSuggestions() {
+            const suggestionsContainer = document.getElementById('planningSuggestions');
+            
+            if (!window.selectedPlanningTasks || window.selectedPlanningTasks.size === 0) {
+                suggestionsContainer.innerHTML = `
+                    <p>选择任务后，AI 将为您提供智能规划建议。</p>
+                    <ul>
+                        <li>高优先级任务建议加入焦点</li>
+                        <li>中优先级任务建议加入待处理</li>
+                        <li>低优先级任务建议安排到未来日期</li>
+                    </ul>
+                `;
+                return;
+            }
+            
+            const selectedTasks = Array.from(window.selectedPlanningTasks).map(taskId => 
+                tasks.find(t => t.id === taskId)
+            ).filter(Boolean);
+            
+            // 分析任务
+            const highPriority = selectedTasks.filter(t => t.fields.priority === '高');
+            const mediumPriority = selectedTasks.filter(t => t.fields.priority === '中');
+            const lowPriority = selectedTasks.filter(t => t.fields.priority === '低');
+            
+            let suggestions = '<p>基于选中任务的分析：</p><ul>';
+            
+            if (highPriority.length > 0) {
+                suggestions += `<li><strong>${highPriority.length} 个高优先级任务</strong>：建议立即加入焦点任务</li>`;
+            }
+            if (mediumPriority.length > 0) {
+                suggestions += `<li><strong>${mediumPriority.length} 个中优先级任务</strong>：建议加入待处理列表</li>`;
+            }
+            if (lowPriority.length > 0) {
+                suggestions += `<li><strong>${lowPriority.length} 个低优先级任务</strong>：建议安排到本周稍后</li>`;
+            }
+            
+            // 根据焦点任务数量给出建议
+            const currentFocusCount = focusTasks.size;
+            if (currentFocusCount + highPriority.length > 5) {
+                suggestions += `<li>⚠️ 当前已有 ${currentFocusCount} 个焦点任务，建议先完成部分再添加新的</li>`;
+            }
+            
+            suggestions += '</ul>';
+            suggestionsContainer.innerHTML = suggestions;
+        }
+        
+        // 拖拽功能 - 使用全局的 draggedTaskId 变量
+        // let draggedTaskId = null; // 删除重复声明，使用第 6996 行的全局变量
+        
+        function handlePlanningDragStart(event, taskId) {
+            draggedTaskId = taskId;
+            event.target.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', taskId);
+        }
+        
+        function handlePlanningDragEnd(event) {
+            event.target.classList.remove('dragging');
+            draggedTaskId = null;
+        }
+        
+        function handlePlanningDragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+            
+            const taskItem = event.target.closest('.planning-task-item');
+            if (taskItem && taskItem.dataset.taskId !== draggedTaskId) {
+                taskItem.classList.add('drag-over');
+            }
+        }
+        
+        function handlePlanningDrop(event, targetTaskId) {
+            event.preventDefault();
+            
+            const taskItem = event.target.closest('.planning-task-item');
+            if (taskItem) {
+                taskItem.classList.remove('drag-over');
+            }
+            
+            if (draggedTaskId && draggedTaskId !== targetTaskId) {
+                // 重新排序任务
+                reorderPlanningTasks(draggedTaskId, targetTaskId);
+            }
+        }
+        
+        function setupPlanningDragAndDrop() {
+            const taskItems = document.querySelectorAll('.planning-task-item');
+            taskItems.forEach(item => {
+                item.addEventListener('dragleave', function() {
+                    this.classList.remove('drag-over');
+                });
+            });
+        }
+        
+        function reorderPlanningTasks(sourceId, targetId) {
+            // 这里可以实现任务重新排序的逻辑
+            console.log('Reordering planning tasks:', sourceId, 'to', targetId);
+            // 暂时只刷新视图
+            renderPlanningView();
         }
         
         // 更新规划按钮状态
@@ -10282,10 +10674,13 @@
             }
             
             let addedCount = 0;
+            const addedTasks = [];
             window.selectedPlanningTasks.forEach(taskId => {
                 if (!pendingTasks.has(taskId)) {
                     pendingTasks.add(taskId);
                     pendingTasksOrder.push(taskId);
+                    const task = tasks.find(t => t.id === taskId);
+                    if (task) addedTasks.push(task);
                     addedCount++;
                     console.log('Added task to pending:', taskId);
                 }
@@ -10294,6 +10689,7 @@
             if (addedCount > 0) {
                 showNotification(`已将 ${addedCount} 个任务添加到待处理`, 'success');
                 saveToLocalStorage();
+                showPlanningResult('pending', addedTasks);
                 clearPlanningSelection();
                 renderPlanningView();
             } else {
@@ -10309,12 +10705,14 @@
             }
             
             let addedCount = 0;
+            const addedTasks = [];
             window.selectedPlanningTasks.forEach(taskId => {
                 const task = tasks.find(t => t.id === taskId);
                 if (task && !task.currentFocus) {
                     task.currentFocus = true;
                     focusTasks.add(taskId);
                     focusTasksOrder.push(taskId);
+                    addedTasks.push(task);
                     addedCount++;
                 }
             });
@@ -10322,11 +10720,64 @@
             if (addedCount > 0) {
                 showNotification(`已将 ${addedCount} 个任务添加到焦点`, 'success');
                 saveToLocalStorage();
+                showPlanningResult('focus', addedTasks);
                 clearPlanningSelection();
                 renderPlanningView();
             } else {
                 showNotification('选中的任务已在焦点列表中', 'info');
             }
+        }
+        
+        // 显示规划结果
+        function showPlanningResult(type, tasksList) {
+            const resultContainer = document.getElementById('planningResultPreview');
+            const statsContainer = document.getElementById('resultStats');
+            
+            resultContainer.style.display = 'block';
+            
+            let stats = '';
+            if (type === 'focus') {
+                stats = `
+                    <div class="stat-item">
+                        <span>新增焦点任务</span>
+                        <span class="stat-value">${tasksList.length}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>当前焦点总数</span>
+                        <span class="stat-value">${focusTasks.size}</span>
+                    </div>
+                `;
+            } else if (type === 'pending') {
+                stats = `
+                    <div class="stat-item">
+                        <span>新增待处理</span>
+                        <span class="stat-value">${tasksList.length}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>待处理总数</span>
+                        <span class="stat-value">${pendingTasks.size}</span>
+                    </div>
+                `;
+            } else if (type === 'scheduled') {
+                const dates = [...new Set(tasksList.map(t => t.fields.plannedDate))];
+                stats = `
+                    <div class="stat-item">
+                        <span>已安排任务</span>
+                        <span class="stat-value">${tasksList.length}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>分布天数</span>
+                        <span class="stat-value">${dates.length}</span>
+                    </div>
+                `;
+            }
+            
+            statsContainer.innerHTML = stats;
+            
+            // 3秒后隐藏结果
+            setTimeout(() => {
+                resultContainer.style.display = 'none';
+            }, 3000);
         }
         
         // 安排明天执行
@@ -10341,10 +10792,12 @@
             const tomorrowStr = formatDateToLocal(tomorrow);
             
             let scheduledCount = 0;
+            const scheduledTasks = [];
             window.selectedPlanningTasks.forEach(taskId => {
                 const task = tasks.find(t => t.id === taskId);
                 if (task) {
                     task.fields.plannedDate = tomorrowStr;
+                    scheduledTasks.push(task);
                     scheduledCount++;
                 }
             });
@@ -10352,6 +10805,7 @@
             if (scheduledCount > 0) {
                 showNotification(`已将 ${scheduledCount} 个任务安排到明天`, 'success');
                 saveToLocalStorage();
+                showPlanningResult('scheduled', scheduledTasks);
                 clearPlanningSelection();
                 renderPlanningView();
             }
@@ -10369,6 +10823,7 @@
             baseDate.setDate(baseDate.getDate() + 1);
             
             let scheduledCount = 0;
+            const scheduledTasks = [];
             const taskArray = Array.from(window.selectedPlanningTasks);
             
             taskArray.forEach((taskId, index) => {
@@ -10377,6 +10832,7 @@
                     const scheduleDate = new Date(baseDate);
                     scheduleDate.setDate(baseDate.getDate() + (index % 7)); // 分布到一周内
                     task.fields.plannedDate = formatDateToLocal(scheduleDate);
+                    scheduledTasks.push(task);
                     scheduledCount++;
                 }
             });
@@ -10384,6 +10840,7 @@
             if (scheduledCount > 0) {
                 showNotification(`已将 ${scheduledCount} 个任务安排到本周`, 'success');
                 saveToLocalStorage();
+                showPlanningResult('scheduled', scheduledTasks);
                 clearPlanningSelection();
                 renderPlanningView();
             }

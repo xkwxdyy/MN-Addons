@@ -423,6 +423,39 @@
             color: var(--text-secondary);
         }
         
+        /* 待处理任务置顶按钮 */
+        .pending-task-pin {
+            position: absolute;
+            top: 8px;
+            left: 40px;
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-muted);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            line-height: 1;
+            transition: var(--transition);
+            opacity: 0;
+            z-index: 10;
+        }
+        
+        .pending-task-item:hover .pending-task-pin {
+            opacity: 0.6;
+        }
+        
+        .pending-task-pin:hover {
+            background: rgba(102, 126, 234, 0.2);
+            color: var(--type-goal);
+            transform: scale(1.1);
+            opacity: 1;
+        }
+        
         /* 待处理任务拖拽样式 */
         .pending-task-item:hover .drag-handle {
             opacity: 0.5;
@@ -5869,7 +5902,8 @@
                      onclick="viewTaskDetail('${task.id}')" 
                      style="cursor: pointer; position: relative;">
                     <div class="drag-handle" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 16px; color: var(--text-muted); cursor: grab; opacity: 0; transition: opacity 0.2s;" title="拖拽排序">⋮⋮</div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-left: 20px;">
+                    <button class="pending-task-pin" onclick="event.stopPropagation(); pinToTopPending('${task.id}')" title="置顶">📌</button>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-left: 70px;">
                         <div>
                             <span class="task-type-badge ${task.type.toLowerCase()} text-small">
                                 ${getTaskTypeIcon(task.type)} ${task.type}
@@ -5885,9 +5919,9 @@
                             </button>
                         </div>
                     </div>
-                    <div class="mt-1 font-weight-500" style="margin-left: 20px;">${task.title}</div>
-                    <div class="text-small text-muted" style="margin-left: 20px;">${task.path}</div>
-                    ${task.fields.dueDate ? `<div class="text-small text-muted" style="margin-left: 20px;">截止: ${formatDate(task.fields.dueDate)}</div>` : ''}
+                    <div class="mt-1 font-weight-500" style="margin-left: 70px;">${task.title}</div>
+                    <div class="text-small text-muted" style="margin-left: 70px;">${task.path}</div>
+                    ${task.fields.dueDate ? `<div class="text-small text-muted" style="margin-left: 70px;">截止: ${formatDate(task.fields.dueDate)}</div>` : ''}
                 </div>
             `).join('') || '<p class="text-muted">暂无待处理任务，点击左侧 "📋 添加到待处理" 来添加任务</p>';
         }
@@ -6923,6 +6957,15 @@
                     // 先将其他任务的焦点状态取消
                     tasks.forEach(t => t.currentFocus = false);
                     task.currentFocus = true;
+                    
+                    // 将当前任务移动到焦点任务列表的第一个位置
+                    // 先从 focusTasksOrder 中移除该任务
+                    const currentIndex = focusTasksOrder.indexOf(taskId);
+                    if (currentIndex > -1) {
+                        focusTasksOrder.splice(currentIndex, 1);
+                    }
+                    // 将任务插入到第一个位置
+                    focusTasksOrder.unshift(taskId);
                 }
                 renderFocusTasks();
             }
@@ -7117,6 +7160,22 @@
             renderPendingTasks();
             saveToLocalStorage();
             showNotification('已从待处理中移除', 'info');
+        }
+        
+        // 将任务置顶到待处理列表
+        function pinToTopPending(taskId) {
+            // 先从当前位置移除
+            const currentIndex = pendingTasksOrder.indexOf(taskId);
+            if (currentIndex > -1) {
+                pendingTasksOrder.splice(currentIndex, 1);
+            }
+            // 添加到顶部
+            pendingTasksOrder.unshift(taskId);
+            
+            // 重新渲染并保存
+            renderPendingTasks();
+            saveToLocalStorage();
+            showNotification('任务已置顶', 'success');
         }
 
         /* ========================================

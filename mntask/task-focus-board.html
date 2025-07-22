@@ -426,10 +426,11 @@
         /* 待处理任务置顶按钮 */
         .pending-task-pin {
             position: absolute;
-            top: 8px;
+            top: 50%;
+            transform: translateY(-50%);
             left: 40px;
-            width: 24px;
-            height: 24px;
+            width: 28px;
+            height: 28px;
             border: none;
             background: rgba(255, 255, 255, 0.08);
             color: var(--text-muted);
@@ -438,7 +439,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
+            font-size: 20px;
             line-height: 1;
             transition: var(--transition);
             opacity: 0;
@@ -449,10 +450,9 @@
             opacity: 0.6;
         }
         
-        .pending-task-pin:hover {
+        .pending-task-item:hover .pending-task-pin:hover {
             background: rgba(102, 126, 234, 0.2);
             color: var(--type-goal);
-            transform: scale(1.1);
             opacity: 1;
         }
         
@@ -700,6 +700,16 @@
                 opacity: 0.3;
                 font-size: 24px;
             }
+            
+            /* 待处理任务置顶按钮在移动设备上始终显示 */
+            .pending-task-pin {
+                opacity: 0.3;
+            }
+            
+            .pending-task-item:hover .pending-task-pin,
+            .pending-task-item:hover .pending-task-pin:hover {
+                opacity: 1;
+            }
         }
 
 
@@ -932,6 +942,17 @@
             .task-select-item,
             .custom-view-item {
                 -webkit-tap-highlight-color: rgba(102, 126, 234, 0.2);
+            }
+            
+            /* 待处理任务置顶按钮在触屏设备上始终显示 */
+            .pending-task-pin {
+                opacity: 0.3;
+            }
+            
+            /* 触摸时提供反馈 */
+            .pending-task-pin:active {
+                opacity: 1;
+                background: rgba(102, 126, 234, 0.3);
             }
         }
 
@@ -5902,7 +5923,7 @@
                      onclick="viewTaskDetail('${task.id}')" 
                      style="cursor: pointer; position: relative;">
                     <div class="drag-handle" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 16px; color: var(--text-muted); cursor: grab; opacity: 0; transition: opacity 0.2s;" title="拖拽排序">⋮⋮</div>
-                    <button class="pending-task-pin" onclick="event.stopPropagation(); pinToTopPending('${task.id}')" title="置顶">📌</button>
+                    ${index > 0 ? `<button class="pending-task-pin" onclick="event.stopPropagation(); pinToTopPending('${task.id}')" title="置顶">⬆️</button>` : ''}
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-left: 70px;">
                         <div>
                             <span class="task-type-badge ${task.type.toLowerCase()} text-small">
@@ -6033,7 +6054,9 @@
             const todayStr = formatDateToLocal(new Date());
             
             // 根据选择的日期范围筛选任务
-            const timelineTasks = tasks.filter(task => {
+            // 如果有筛选，使用 filteredTasks，否则使用全部任务
+            const baseTasks = (filteredTasks && filteredTasks.length >= 0) ? filteredTasks : tasks;
+            const timelineTasks = baseTasks.filter(task => {
                 // 只显示项目和动作类型的任务
                 if (task.type !== '项目' && task.type !== '动作') {
                     return false;
@@ -6066,21 +6089,22 @@
             // 更新统计信息
             updateTimelineStats(timelineTasks, dateRange);
             
-            // 按状态和时间排序：进行中的在前，已完成的在后
+            // 纯按时间排序，状态通过视觉样式区分
             timelineTasks.sort((a, b) => {
-                if (a.status === '进行中' && b.status !== '进行中') return -1;
-                if (a.status !== '进行中' && b.status === '进行中') return 1;
-                
-                // 如果状态相同，按开始时间或结束时间排序
+                // 获取任务时间（优先使用开始时间，否则使用结束时间）
                 const timeA = a.fields.startTime || a.fields.endTime || '';
                 const timeB = b.fields.startTime || b.fields.endTime || '';
                 
-                // 如果时间相同，按任务ID排序（确保稳定的排序结果）
+                // 如果时间相同，进行中的任务优先显示
                 if (timeA === timeB) {
+                    if (a.status === '进行中' && b.status !== '进行中') return -1;
+                    if (a.status !== '进行中' && b.status === '进行中') return 1;
+                    // 最后按任务ID排序（确保稳定的排序结果）
                     return a.id.localeCompare(b.id);
                 }
                 
-                return timeA.localeCompare(timeB); // 最早的在前
+                // 按时间升序排序（最早的在前）
+                return timeA.localeCompare(timeB);
             });
             
             // 生成时间轴内容
@@ -6159,11 +6183,12 @@
         
         // 渲染同时间的任务组
         function renderTimelineTaskGroup(group) {
-            const timeStr = group.tasks[0].status === '进行中' && group.tasks[0].fields.startTime
-                ? `开始于 ${new Date(group.tasks[0].fields.startTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
-                : group.tasks[0].status === '已完成' && group.tasks[0].fields.endTime
-                ? `完成于 ${new Date(group.tasks[0].fields.endTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
-                : group.tasks[0].status;
+            // 获取第一个任务的时间，不区分状态
+            const firstTask = group.tasks[0];
+            const taskTime = firstTask.fields.startTime || firstTask.fields.endTime;
+            const timeStr = taskTime
+                ? new Date(taskTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+                : '暂无时间';
             
             return `
                 <div class="timeline-item-group fade-in">
@@ -6173,7 +6198,7 @@
                     </div>
                     <div class="timeline-time">${timeStr}</div>
                     <div class="timeline-content-wrapper">
-                        <div class="timeline-group-label">同时${group.tasks[0].status === '进行中' ? '开始' : '完成'}的任务</div>
+                        <div class="timeline-group-label">同一时间的任务</div>
                         <div class="timeline-group-tasks">
                             ${group.tasks.map(task => `
                                 <div class="timeline-content timeline-content-grouped" onclick="viewTaskDetail('${task.id}')">
@@ -6222,11 +6247,11 @@
         
         // 渲染单个时间轴任务
         function renderTimelineTask(task) {
-            const timeStr = task.status === '进行中' && task.fields.startTime
-                ? `开始于 ${new Date(task.fields.startTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
-                : task.status === '已完成' && task.fields.endTime
-                ? `完成于 ${new Date(task.fields.endTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
-                : task.status;
+            // 优先显示任务的具体时间，不区分状态
+            const taskTime = task.fields.startTime || task.fields.endTime;
+            const timeStr = taskTime
+                ? new Date(taskTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+                : '暂无时间';
             
             return `
                 <div class="timeline-item fade-in">
@@ -8326,8 +8351,15 @@
         
         // 检查是否有活跃的筛选条件
         function hasActiveFilters() {
-            return activeFilters.title || activeFilters.tag || activeFilters.project || 
-                   activeFilters.status || activeFilters.priority || activeFilters.type;
+            // 检查通用筛选器
+            const hasActiveFilter = activeFilters.title || activeFilters.tag || activeFilters.project || 
+                                  activeFilters.status || activeFilters.priority || activeFilters.type;
+            
+            // 检查看板筛选器
+            const hasBoardFilter = boardFilters.search || boardFilters.project || boardFilters.status || 
+                                  boardFilters.priority || boardFilters.type;
+            
+            return hasActiveFilter || hasBoardFilter;
         }
         
         // 应用筛选
@@ -8956,8 +8988,14 @@
             // 更新统计信息
             updateBoardStats();
             
-            // 重新渲染看板
-            renderBoardView();
+            // 根据当前视图重新渲染
+            if (currentView === 'timeline') {
+                renderTodayTimeline();
+            } else if (currentView === 'board') {
+                renderBoardView();
+            } else if (currentView === 'planning') {
+                showPlanningView();
+            }
         }
         
         // 更新看板筛选标签

@@ -30,8 +30,7 @@ const testTaskData = {
                 priority: "高",
                 dueDate: "2025-03-31",
                 tags: ["Q1目标", "产品质量", "用户体验"],
-                today: false,
-                progressLog: [
+                                progressLog: [
                     {
                         date: "2025-01-15 09:00",
                         note: "完成插件架构重构规划"
@@ -61,8 +60,7 @@ const testTaskData = {
                 priority: "高",
                 dueDate: "2025-02-15",
                 tags: ["Bug修复", "质量提升"],
-                today: false,
-                progressLog: [],
+                                progressLog: [],
                 customViews: ["插件Bug汇总", "Q1规划"],
                 project: "okr"
             }
@@ -83,8 +81,7 @@ const testTaskData = {
                 priority: "高",
                 dueDate: "2025-01-31",
                 tags: ["MNTask", "Bug修复", "紧急"],
-                today: false,
-                progressLog: [
+                                progressLog: [
                     {
                         date: "2025-01-13 14:00",
                         note: "完成Bug收集和分类，共发现12个高优先级Bug"
@@ -123,8 +120,7 @@ const testTaskData = {
                 priority: "高",
                 dueDate: "2025-01-20",
                 tags: ["MNTask", "Bug", "紧急", "方法名冲突"],
-                today: true,
-                progressLog: [
+                                progressLog: [
                     {
                         date: "2025-01-20 09:00",
                         note: "定位到问题原因：JavaScript不支持方法重载，同名方法被覆盖"
@@ -172,8 +168,7 @@ const testTaskData = {
                 priority: "高",
                 dueDate: "2025-01-20",
                 tags: ["MNTask", "Bug", "链接管理"],
-                today: true,
-                progressLog: [
+                                progressLog: [
                     {
                         date: "2025-01-20 11:05",
                         note: "开始分析问题：检查 linkParentTask 方法的实现"
@@ -187,6 +182,116 @@ const testTaskData = {
                 project: "mntask"
             }
         });
+        
+        
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "动作",
+            status: "未开始",
+            title: "修复选择焦点任务后看板不更新的问题",
+            path: `${goalQ1.title} >> ${kr1.title} >> ${projectBugFix.title}`,
+            launchLink: "marginnote4app://note/bug-12347",
+            currentFocus: false,
+            todayPlannedTime: "14:00-15:00",
+            fields: {
+                priority: "中",
+                dueDate: "2025-01-21",
+                tags: ["MNTask", "Bug", "UI更新"],
+                                progressLog: [
+                    {
+                        date: "2025-01-20 14:05",
+                        note: "检查渲染逻辑，发现是状态更新后没有调用渲染函数"
+                    },
+                    {
+                        date: "2025-01-20 14:20",
+                        note: "添加 renderFocusTasks() 调用，问题解决"
+                    }
+                ],
+                customViews: ["插件Bug汇总"],
+                project: "mntask"
+            }
+        });
+        
+        // 添加并发任务示例
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "动作",
+            status: "进行中",
+            title: "参加团队周会",
+            path: "工作项目",
+            launchLink: "marginnote4app://note/meeting-weekly",
+            currentFocus: false,
+            todayPlannedTime: "14:30-15:30",
+            fields: {
+                priority: "中",
+                dueDate: "2025-01-20",
+                tags: ["会议", "团队协作"],
+                                progressLog: [],
+                customViews: ["今日必做"],
+                project: "work"
+            }
+        });
+        
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "动作",
+            status: "未开始",
+            title: "回复紧急邮件",
+            path: "工作项目",
+            launchLink: "",
+            currentFocus: false,
+            todayPlannedTime: "14:00-14:30",
+            fields: {
+                priority: "高",
+                dueDate: "2025-01-20",
+                tags: ["沟通", "紧急"],
+                                progressLog: [],
+                customViews: ["今日必做"],
+                project: "work"
+            }
+        });
+        
+        // KR2：优化用户体验
+        const kr2 = {
+            id: `task_${taskId++}`,
+            type: "关键结果",
+            status: "未开始",
+            title: "提升插件易用性，减少用户学习成本",
+            path: goalQ1.title,
+            launchLink: "marginnote4app://note/kr2-ux",
+            currentFocus: false,
+            todayPlannedTime: "",
+            fields: {
+                priority: "中",
+                dueDate: "2025-03-15",
+                tags: ["用户体验", "易用性"],
+                                progressLog: [],
+                customViews: ["Q1规划"],
+                project: "okr"
+            }
+        };
+        tasks.push(kr2);
+        
+        // 项目：UI改进计划
+        const projectUI = {
+            id: `task_${taskId++}`,
+            type: "项目",
+            status: "未开始",
+            title: "焦点任务看板UI优化",
+            path: `${goalQ1.title} >> ${kr2.title}`,
+            launchLink: "marginnote4app://note/project-ui",
+            currentFocus: false,
+            todayPlannedTime: "",
+            fields: {
+                priority: "中",
+                dueDate: "2025-02-28",
+                tags: ["UI优化", "设计改进"],
+                                progressLog: [],
+                customViews: ["本周重点"],
+                project: "mntask"
+            }
+        };
+        tasks.push(projectUI);
         
         // 添加一些暂停状态的任务示例
         tasks.push({
@@ -202,8 +307,7 @@ const testTaskData = {
                 priority: "中",
                 dueDate: "2025-01-28",
                 tags: ["MNTask", "重构", "架构"],
-                today: false,
-                progressLog: [
+                                progressLog: [
                     {
                         date: "2025-01-18 09:00",
                         note: "开始分析现有架构的痛点和改进空间"
@@ -234,120 +338,6 @@ const testTaskData = {
             }
         });
         
-        tasks.push({
-            id: `task_${taskId++}`,
-            type: "动作",
-            status: "未开始",
-            title: "修复选择焦点任务后看板不更新的问题",
-            path: `${goalQ1.title} >> ${kr1.title} >> ${projectBugFix.title}`,
-            launchLink: "marginnote4app://note/bug-12347",
-            currentFocus: false,
-            todayPlannedTime: "14:00-15:00",
-            fields: {
-                priority: "中",
-                dueDate: "2025-01-21",
-                tags: ["MNTask", "Bug", "UI更新"],
-                today: true,
-                progressLog: [
-                    {
-                        date: "2025-01-20 14:05",
-                        note: "检查渲染逻辑，发现是状态更新后没有调用渲染函数"
-                    },
-                    {
-                        date: "2025-01-20 14:20",
-                        note: "添加 renderFocusTasks() 调用，问题解决"
-                    }
-                ],
-                customViews: ["插件Bug汇总"],
-                project: "mntask"
-            }
-        });
-        
-        // 添加并发任务示例
-        tasks.push({
-            id: `task_${taskId++}`,
-            type: "动作",
-            status: "进行中",
-            title: "参加团队周会",
-            path: "工作项目",
-            launchLink: "marginnote4app://note/meeting-weekly",
-            currentFocus: false,
-            todayPlannedTime: "14:30-15:30",
-            fields: {
-                priority: "中",
-                dueDate: "2025-01-20",
-                tags: ["会议", "团队协作"],
-                today: true,
-                progressLog: [],
-                customViews: ["今日必做"],
-                project: "work"
-            }
-        });
-        
-        tasks.push({
-            id: `task_${taskId++}`,
-            type: "动作",
-            status: "未开始",
-            title: "回复紧急邮件",
-            path: "工作项目",
-            launchLink: "",
-            currentFocus: false,
-            todayPlannedTime: "14:00-14:30",
-            fields: {
-                priority: "高",
-                dueDate: "2025-01-20",
-                tags: ["沟通", "紧急"],
-                today: true,
-                progressLog: [],
-                customViews: ["今日必做"],
-                project: "work"
-            }
-        });
-        
-        // KR2：优化用户体验
-        const kr2 = {
-            id: `task_${taskId++}`,
-            type: "关键结果",
-            status: "未开始",
-            title: "提升插件易用性，减少用户学习成本",
-            path: goalQ1.title,
-            launchLink: "marginnote4app://note/kr2-ux",
-            currentFocus: false,
-            todayPlannedTime: "",
-            fields: {
-                priority: "中",
-                dueDate: "2025-03-15",
-                tags: ["用户体验", "易用性"],
-                today: false,
-                progressLog: [],
-                customViews: ["Q1规划"],
-                project: "okr"
-            }
-        };
-        tasks.push(kr2);
-        
-        // 项目：UI改进计划
-        const projectUI = {
-            id: `task_${taskId++}`,
-            type: "项目",
-            status: "未开始",
-            title: "焦点任务看板UI优化",
-            path: `${goalQ1.title} >> ${kr2.title}`,
-            launchLink: "marginnote4app://note/project-ui",
-            currentFocus: false,
-            todayPlannedTime: "",
-            fields: {
-                priority: "中",
-                dueDate: "2025-02-28",
-                tags: ["UI优化", "设计改进"],
-                today: false,
-                progressLog: [],
-                customViews: ["本周重点"],
-                project: "mntask"
-            }
-        };
-        tasks.push(projectUI);
-        
         // UI改进任务
         tasks.push({
             id: `task_${taskId++}`,
@@ -362,8 +352,7 @@ const testTaskData = {
                 priority: "中",
                 dueDate: "2025-01-25",
                 tags: ["功能开发", "自动补全"],
-                today: false,
-                progressLog: [],
+                                progressLog: [],
                 customViews: [],
                 project: "mntask"
             }
@@ -382,8 +371,7 @@ const testTaskData = {
                 priority: "低",
                 dueDate: "2025-01-26",
                 tags: ["UI优化", "时间轴"],
-                today: true,
-                progressLog: [],
+                                progressLog: [],
                 customViews: [],
                 project: "mntask"
             }
@@ -403,8 +391,7 @@ const testTaskData = {
                 priority: "中",
                 dueDate: "2025-02-15",
                 tags: ["知识管理", "个人项目"],
-                today: false,
-                progressLog: [
+                                progressLog: [
                     {
                         date: "2025-01-10 10:00",
                         note: "完成需求分析，确定优化方向：标签系统、搜索功能、知识图谱"
@@ -431,6 +418,82 @@ const testTaskData = {
             }
         });
         
+        // ========================================
+        // 软件开发项目完整生命周期
+        // ========================================
+        
+        // Q1目标2：电商平台重构项目
+        const goalEcommerce = {
+            id: `task_${taskId++}`,
+            type: "目标",
+            status: "进行中",
+            title: "Q1目标：完成电商平台2.0版本开发和上线",
+            path: "",
+            launchLink: "marginnote4app://note/goal-ecommerce-q1",
+            currentFocus: false,
+            todayPlannedTime: "",
+            fields: {
+                priority: "高",
+                dueDate: "2025-03-31",
+                tags: ["Q1目标", "电商平台", "重点项目"],
+                progressLog: [
+                    {
+                        date: "2025-01-05 09:00",
+                        note: "项目启动会议，确定技术栈和架构方案"
+                    },
+                    {
+                        date: "2025-01-10 14:00",
+                        note: "完成技术选型：React 18 + Node.js + MongoDB"
+                    }
+                ],
+                customViews: ["Q1规划", "重点项目"],
+                project: "ecommerce"
+            }
+        };
+        tasks.push(goalEcommerce);
+        
+        // 电商项目 - 需求分析阶段
+        const projectRequirement = {
+            id: `task_${taskId++}`,
+            type: "项目",
+            status: "已完成",
+            title: "需求分析和系统设计",
+            path: goalEcommerce.title,
+            launchLink: "marginnote4app://note/project-requirement",
+            currentFocus: false,
+            todayPlannedTime: "",
+            fields: {
+                priority: "高",
+                dueDate: "2025-01-15",
+                tags: ["需求分析", "系统设计", "架构"],
+                progressLog: [
+                    {
+                        date: "2025-01-06 09:00",
+                        note: "开始收集业务需求，与产品团队沟通"
+                    },
+                    {
+                        date: "2025-01-08 14:00",
+                        note: "完成用户故事编写，共计45个用户故事"
+                    },
+                    {
+                        date: "2025-01-10 10:00",
+                        note: "设计系统架构图，采用微服务架构"
+                    },
+                    {
+                        date: "2025-01-12 16:00",
+                        note: "完成数据库设计，共15个核心表"
+                    },
+                    {
+                        date: "2025-01-15 17:00",
+                        note: "需求评审通过，进入开发阶段"
+                    }
+                ],
+                customViews: ["已完成任务", "电商项目"],
+                project: "ecommerce"
+            }
+        };
+        tasks.push(projectRequirement);
+        
         tasks.push({
             id: `task_${taskId++}`,
             type: "动作",
@@ -444,8 +507,7 @@ const testTaskData = {
                 priority: "低",
                 dueDate: "2025-02-05",
                 tags: ["AI功能", "创新"],
-                today: true,
-                progressLog: [
+                                progressLog: [
                     {
                         date: "2025-01-20 15:00",
                         note: "开始研究机器学习算法"
@@ -457,6 +519,87 @@ const testTaskData = {
                 ],
                 customViews: ["暂停任务", "今日必做"],
                 project: "mntask"
+            }
+        });
+        
+        // 电商项目 - 前端开发阶段
+        const projectFrontend = {
+            id: `task_${taskId++}`,
+            type: "项目",
+            status: "进行中",
+            title: "前端开发 - React商城界面",
+            path: goalEcommerce.title,
+            launchLink: "marginnote4app://note/project-frontend",
+            currentFocus: false,
+            todayPlannedTime: "",
+            fields: {
+                priority: "高",
+                dueDate: "2025-02-10",
+                tags: ["前端开发", "React", "UI/UX"],
+                progressLog: [
+                    {
+                        date: "2025-01-16 09:00",
+                        note: "搭建React项目框架，配置Webpack和Babel"
+                    },
+                    {
+                        date: "2025-01-17 10:00",
+                        note: "完成组件库选型，决定使用Ant Design"
+                    },
+                    {
+                        date: "2025-01-18 14:00",
+                        note: "实现商品列表页面和详情页面"
+                    },
+                    {
+                        date: "2025-01-19 16:00",
+                        note: "完成购物车功能的前端实现"
+                    }
+                ],
+                customViews: ["进行中项目", "前端开发"],
+                project: "ecommerce"
+            }
+        };
+        tasks.push(projectFrontend);
+        
+        // 前端开发具体任务
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "动作",
+            status: "进行中",
+            title: "实现响应式设计，适配移动端",
+            path: `${goalEcommerce.title} >> ${projectFrontend.title}`,
+            launchLink: "marginnote4app://note/task-responsive",
+            currentFocus: false,
+            todayPlannedTime: "10:00-12:00",
+            fields: {
+                priority: "高",
+                dueDate: "2025-01-20",
+                plannedDate: "2025-01-20",
+                tags: ["响应式", "移动端", "CSS"],
+                startTime: "2025-01-20T10:00:00",
+                progressLog: [
+                    {
+                        date: "2025-01-20 10:00",
+                        note: "开始分析现有页面的响应式需求"
+                    },
+                    {
+                        date: "2025-01-20 10:30",
+                        note: "使用CSS Grid和Flexbox重构布局系统"
+                    },
+                    {
+                        date: "2025-01-20 11:00",
+                        note: "添加媒体查询，处理不同屏幕尺寸"
+                    },
+                    {
+                        date: "2025-01-20 11:30",
+                        note: "遇到问题：导航菜单在小屏幕下显示异常"
+                    },
+                    {
+                        date: "2025-01-20 11:45",
+                        note: "解决方案：实现汉堡菜单和侧边栏导航"
+                    }
+                ],
+                customViews: ["今日必做", "前端任务"],
+                project: "ecommerce"
             }
         });
         
@@ -474,10 +617,72 @@ const testTaskData = {
                 priority: "中",
                 dueDate: "2025-01-20",
                 tags: ["代码评审", "协作"],
-                today: true,
-                progressLog: [],
+                                progressLog: [],
                 customViews: ["今日必做"],
                 project: "mntask"
+            }
+        });
+        
+        // 电商项目 - 后端开发任务
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "动作",
+            status: "进行中",
+            title: "开发RESTful API - 用户认证模块",
+            path: `${goalEcommerce.title} >> 后端开发`,
+            launchLink: "marginnote4app://note/task-auth-api",
+            currentFocus: false,
+            todayPlannedTime: "14:00-16:00",
+            fields: {
+                priority: "高",
+                dueDate: "2025-01-20",
+                plannedDate: "2025-01-20",
+                tags: ["API开发", "Node.js", "认证"],
+                startTime: "2025-01-20T14:00:00",
+                progressLog: [
+                    {
+                        date: "2025-01-20 14:00",
+                        note: "开始设计JWT认证方案"
+                    },
+                    {
+                        date: "2025-01-20 14:30",
+                        note: "实现用户注册和登录接口"
+                    },
+                    {
+                        date: "2025-01-20 15:00",
+                        note: "添加密码加密和验证逻辑"
+                    },
+                    {
+                        date: "2025-01-20 15:30",
+                        note: "遇到问题：Token刷新机制存在安全漏洞"
+                    },
+                    {
+                        date: "2025-01-20 15:45",
+                        note: "实现双 Token机制（Access Token + Refresh Token）"
+                    }
+                ],
+                customViews: ["今日必做", "后端任务"],
+                project: "ecommerce"
+            }
+        });
+        
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "动作",
+            status: "未开始",
+            title: "数据库优化 - 添加索引和查询优化",
+            path: `${goalEcommerce.title} >> 数据库优化`,
+            launchLink: "marginnote4app://note/task-db-optimize",
+            currentFocus: false,
+            todayPlannedTime: "16:00-17:00",
+            fields: {
+                priority: "中",
+                dueDate: "2025-01-20",
+                plannedDate: "2025-01-20",
+                tags: ["数据库", "性能优化", "MongoDB"],
+                progressLog: [],
+                customViews: ["今日必做", "数据库任务"],
+                project: "ecommerce"
             }
         });
         
@@ -494,10 +699,71 @@ const testTaskData = {
                 priority: "高",
                 dueDate: "2025-01-20",
                 tags: ["客户支持", "紧急"],
-                today: true,
-                progressLog: [],
+                                progressLog: [],
                 customViews: ["今日必做"],
                 project: "work"
+            }
+        });
+        
+        // 电商项目 - 测试阶段
+        const projectTesting = {
+            id: `task_${taskId++}`,
+            type: "项目",
+            status: "未开始",
+            title: "测试和质量保证",
+            path: goalEcommerce.title,
+            launchLink: "marginnote4app://note/project-testing",
+            currentFocus: false,
+            todayPlannedTime: "",
+            fields: {
+                priority: "高",
+                dueDate: "2025-02-20",
+                tags: ["测试", "QA", "质量保证"],
+                progressLog: [],
+                customViews: ["未来项目", "测试阶段"],
+                project: "ecommerce"
+            }
+        };
+        tasks.push(projectTesting);
+        
+        // 电商项目 - 测试任务
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "动作",
+            status: "未开始",
+            title: "编写单元测试 - 购物车模块",
+            path: `${goalEcommerce.title} >> ${projectTesting.title}`,
+            launchLink: "",
+            currentFocus: false,
+            todayPlannedTime: "",
+            fields: {
+                priority: "中",
+                dueDate: "2025-02-01",
+                plannedDate: "2025-02-01",
+                tags: ["单元测试", "Jest", "TDD"],
+                progressLog: [],
+                customViews: ["下周任务", "测试任务"],
+                project: "ecommerce"
+            }
+        });
+        
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "动作",
+            status: "未开始",
+            title: "集成测试 - API接口测试",
+            path: `${goalEcommerce.title} >> ${projectTesting.title}`,
+            launchLink: "",
+            currentFocus: false,
+            todayPlannedTime: "",
+            fields: {
+                priority: "中",
+                dueDate: "2025-02-05",
+                plannedDate: "2025-02-05",
+                tags: ["集成测试", "API测试", "Postman"],
+                progressLog: [],
+                customViews: ["下周任务", "测试任务"],
+                project: "ecommerce"
             }
         });
         
@@ -514,8 +780,7 @@ const testTaskData = {
                 priority: "低",
                 dueDate: "2025-01-20",
                 tags: ["学习", "笔记整理"],
-                today: true,
-                progressLog: [
+                                progressLog: [
                     {
                         date: "2025-01-20 20:00",
                         note: "开始整理JavaScript高级编程笔记"
@@ -523,6 +788,139 @@ const testTaskData = {
                 ],
                 customViews: ["今日必做"],
                 project: "personal"
+            }
+        });
+        
+        // ========================================
+        // 产品运营项目
+        // ========================================
+        
+        // 用户增长项目
+        const projectGrowth = {
+            id: `task_${taskId++}`,
+            type: "项目",
+            status: "进行中",
+            title: "用户增长计划 - Q1用户翻倍",
+            path: "",
+            launchLink: "marginnote4app://note/project-growth",
+            currentFocus: false,
+            todayPlannedTime: "",
+            fields: {
+                priority: "高",
+                dueDate: "2025-03-31",
+                tags: ["用户增长", "运营", "KPI"],
+                progressLog: [
+                    {
+                        date: "2025-01-05 10:00",
+                        note: "制定Q1用户增长策略，目标DAU翻倍"
+                    },
+                    {
+                        date: "2025-01-10 14:00",
+                        note: "完成用户画像分析，确定3类核心用户群体"
+                    },
+                    {
+                        date: "2025-01-15 16:00",
+                        note: "启动第一波增长活动，新用户注册增长30%"
+                    }
+                ],
+                customViews: ["运营项目", "重点项目"],
+                project: "growth"
+            }
+        };
+        tasks.push(projectGrowth);
+        
+        // 用户研究任务
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "动作",
+            status: "进行中",
+            title: "用户访谈 - 深度了解付费用户需求",
+            path: `${projectGrowth.title}`,
+            launchLink: "marginnote4app://note/task-user-interview",
+            currentFocus: false,
+            todayPlannedTime: "14:00-15:30",
+            fields: {
+                priority: "高",
+                dueDate: "2025-01-20",
+                plannedDate: "2025-01-20",
+                tags: ["用户研究", "访谈", "定性分析"],
+                startTime: "2025-01-20T14:00:00",
+                progressLog: [
+                    {
+                        date: "2025-01-20 14:00",
+                        note: "开始第1场用户访谈，用户背景：企业版大客户"
+                    },
+                    {
+                        date: "2025-01-20 14:30",
+                        note: "发现关键痛点：批量操作效率低，需要更好的团队协作功能"
+                    },
+                    {
+                        date: "2025-01-20 15:00",
+                        note: "第2场访谈，用户背景：个人高级用户"
+                    },
+                    {
+                        date: "2025-01-20 15:20",
+                        note: "用户希望有更多自定义选项和高级功能"
+                    }
+                ],
+                customViews: ["今日必做", "用户研究"],
+                project: "growth"
+            }
+        });
+        
+        // 数据分析任务
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "动作",
+            status: "未开始",
+            title: "数据分析 - 用户留存率下降原因分析",
+            path: `${projectGrowth.title}`,
+            launchLink: "marginnote4app://note/task-data-analysis",
+            currentFocus: false,
+            todayPlannedTime: "16:00-17:30",
+            fields: {
+                priority: "高",
+                dueDate: "2025-01-20",
+                plannedDate: "2025-01-20",
+                tags: ["数据分析", "留存率", "SQL"],
+                progressLog: [],
+                customViews: ["今日必做", "数据分析"],
+                project: "growth"
+            }
+        });
+        
+        // 营销活动任务
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "动作",
+            status: "进行中",
+            title: "策划春节营销活动方案",
+            path: `${projectGrowth.title}`,
+            launchLink: "marginnote4app://note/task-marketing-plan",
+            currentFocus: false,
+            todayPlannedTime: "09:00-10:30",
+            fields: {
+                priority: "高",
+                dueDate: "2025-01-21",
+                plannedDate: "2025-01-20",
+                tags: ["营销活动", "策划", "春节"],
+                startTime: "2025-01-20T09:00:00",
+                progressLog: [
+                    {
+                        date: "2025-01-20 09:00",
+                        note: "开始研究竞品春节活动方案"
+                    },
+                    {
+                        date: "2025-01-20 09:30",
+                        note: "确定活动主题：‘龙年大吉，好运连连’"
+                    },
+                    {
+                        date: "2025-01-20 10:00",
+                        note: "设计活动玩法：集福卡、红包雨、限时折扣"
+                    }
+                ],
+                customViews: ["今日必做", "营销活动"],
+                project: "growth"
             }
         });
         
@@ -540,8 +938,7 @@ const testTaskData = {
                 priority: "高",
                 dueDate: "2025-01-19",
                 tags: ["文档", "需求分析"],
-                today: false,
-                progressLog: [
+                                progressLog: [
                     {
                         date: "2025-01-19 14:00",
                         note: "完成需求文档初稿"
@@ -575,8 +972,7 @@ const testTaskData = {
                 dueDate: "2025-01-13",
                 plannedDate: "2025-01-13",
                 tags: ["框架搭建", "基础设施"],
-                today: false,
-                startTime: "2025-01-13T09:00:00",
+                                startTime: "2025-01-13T09:00:00",
                 endTime: "2025-01-13T11:30:00",
                 progressLog: [
                     {
@@ -615,8 +1011,7 @@ const testTaskData = {
                 dueDate: "2025-01-13",
                 plannedDate: "2025-01-13",
                 tags: ["学习", "API研究", "文档"],
-                today: false,
-                startTime: "2025-01-13T14:00:00",
+                                startTime: "2025-01-13T14:00:00",
                 endTime: "2025-01-13T16:45:00",
                 progressLog: [
                     {
@@ -655,8 +1050,7 @@ const testTaskData = {
                 dueDate: "2025-01-13",
                 plannedDate: "2025-01-13",
                 tags: ["会议", "需求评审"],
-                today: false,
-                startTime: "2025-01-13T10:00:00",
+                                startTime: "2025-01-13T10:00:00",
                 endTime: "2025-01-13T11:30:00",
                 progressLog: [
                     {
@@ -696,8 +1090,7 @@ const testTaskData = {
                 dueDate: "2025-01-14",
                 plannedDate: "2025-01-14",
                 tags: ["UI开发", "组件", "前端"],
-                today: false,
-                startTime: "2025-01-14T09:00:00",
+                                startTime: "2025-01-14T09:00:00",
                 endTime: "2025-01-14T12:00:00",
                 progressLog: [
                     {
@@ -736,8 +1129,7 @@ const testTaskData = {
                 dueDate: "2025-01-14",
                 plannedDate: "2025-01-14",
                 tags: ["Bug修复", "CSS", "紧急"],
-                today: false,
-                startTime: "2025-01-14T14:00:00",
+                                startTime: "2025-01-14T14:00:00",
                 endTime: "2025-01-14T15:20:00",
                 progressLog: [
                     {
@@ -777,8 +1169,7 @@ const testTaskData = {
                 dueDate: "2025-01-15",
                 plannedDate: "2025-01-15",
                 tags: ["测试", "质量保证", "单元测试"],
-                today: false,
-                startTime: "2025-01-15T10:00:00",
+                                startTime: "2025-01-15T10:00:00",
                 endTime: "2025-01-15T12:00:00",
                 progressLog: [
                     {
@@ -817,8 +1208,7 @@ const testTaskData = {
                 dueDate: "2025-01-15",
                 plannedDate: "2025-01-15",
                 tags: ["性能优化", "数据库", "后端"],
-                today: false,
-                startTime: "2025-01-15T14:00:00",
+                                startTime: "2025-01-15T14:00:00",
                 endTime: "2025-01-15T17:00:00",
                 progressLog: [
                     {
@@ -858,8 +1248,7 @@ const testTaskData = {
                 dueDate: "2025-01-16",
                 plannedDate: "2025-01-16",
                 tags: ["功能开发", "搜索", "筛选"],
-                today: false,
-                startTime: "2025-01-16T09:00:00",
+                                startTime: "2025-01-16T09:00:00",
                 endTime: "2025-01-16T11:30:00",
                 progressLog: [
                     {
@@ -898,8 +1287,7 @@ const testTaskData = {
                 dueDate: "2025-01-16",
                 plannedDate: "2025-01-16",
                 tags: ["周报", "文档", "例行"],
-                today: false,
-                startTime: "2025-01-16T16:00:00",
+                                startTime: "2025-01-16T16:00:00",
                 endTime: "2025-01-16T16:45:00",
                 progressLog: [
                     {
@@ -935,8 +1323,7 @@ const testTaskData = {
                 dueDate: "2025-01-17",
                 plannedDate: "2025-01-17",
                 tags: ["重构", "代码优化", "架构"],
-                today: false,
-                startTime: "2025-01-17T09:00:00",
+                                startTime: "2025-01-17T09:00:00",
                 endTime: "2025-01-17T11:45:00",
                 progressLog: [
                     {
@@ -975,8 +1362,7 @@ const testTaskData = {
                 dueDate: "2025-01-17",
                 plannedDate: "2025-01-17",
                 tags: ["学习", "技术分享", "架构"],
-                today: false,
-                startTime: "2025-01-17T14:00:00",
+                                startTime: "2025-01-17T14:00:00",
                 endTime: "2025-01-17T16:00:00",
                 progressLog: [
                     {
@@ -1012,8 +1398,7 @@ const testTaskData = {
                 dueDate: "2025-01-18",
                 plannedDate: "2025-01-18",
                 tags: ["阅读", "学习", "最佳实践"],
-                today: false,
-                startTime: "2025-01-18T09:00:00",
+                                startTime: "2025-01-18T09:00:00",
                 endTime: "2025-01-18T11:00:00",
                 progressLog: [
                     {
@@ -1048,8 +1433,7 @@ const testTaskData = {
                 dueDate: "2025-01-18",
                 plannedDate: "2025-01-18",
                 tags: ["写作", "博客", "经验分享"],
-                today: false,
-                startTime: "2025-01-18T14:00:00",
+                                startTime: "2025-01-18T14:00:00",
                 endTime: "2025-01-18T16:30:00",
                 progressLog: [
                     {
@@ -1085,8 +1469,7 @@ const testTaskData = {
                 dueDate: "2025-01-19",
                 plannedDate: "2025-01-19",
                 tags: ["笔记整理", "知识管理", "复盘"],
-                today: false,
-                startTime: "2025-01-19T10:00:00",
+                                startTime: "2025-01-19T10:00:00",
                 endTime: "2025-01-19T11:30:00",
                 progressLog: [
                     {
@@ -1125,8 +1508,7 @@ const testTaskData = {
                 dueDate: "2025-01-19",
                 plannedDate: "2025-01-19",
                 tags: ["规划", "工作安排"],
-                today: false,
-                startTime: "2025-01-19T16:00:00",
+                                startTime: "2025-01-19T16:00:00",
                 endTime: "2025-01-19T17:00:00",
                 progressLog: [
                     {
@@ -1170,8 +1552,7 @@ const testTaskData = {
                 dueDate: "2025-01-20",
                 plannedDate: "2025-01-20",
                 tags: ["晨读", "学习", "习惯"],
-                today: true,
-                startTime: "2025-01-20T06:30:00",
+                                startTime: "2025-01-20T06:30:00",
                 endTime: "2025-01-20T07:30:00",
                 progressLog: [
                     {
@@ -1206,8 +1587,7 @@ const testTaskData = {
                 dueDate: "2025-01-20",
                 plannedDate: "2025-01-20",
                 tags: ["运动", "健康", "习惯"],
-                today: true,
-                startTime: "2025-01-20T07:30:00",
+                                startTime: "2025-01-20T07:30:00",
                 endTime: "2025-01-20T08:00:00",
                 progressLog: [
                     {
@@ -1238,8 +1618,7 @@ const testTaskData = {
                 dueDate: "2025-01-20",
                 plannedDate: "2025-01-20",
                 tags: ["规划", "工作", "每日例行"],
-                today: true,
-                startTime: "2025-01-20T08:30:00",
+                                startTime: "2025-01-20T08:30:00",
                 endTime: "2025-01-20T08:55:00",
                 progressLog: [
                     {
@@ -1275,8 +1654,7 @@ const testTaskData = {
                 dueDate: "2025-01-20",
                 plannedDate: "2025-01-20",
                 tags: ["会议", "敏捷", "每日例行"],
-                today: true,
-                startTime: "2025-01-20T09:00:00",
+                                startTime: "2025-01-20T09:00:00",
                 endTime: "2025-01-20T09:15:00",
                 progressLog: [
                     {
@@ -1308,8 +1686,7 @@ const testTaskData = {
                 dueDate: "2025-01-20",
                 plannedDate: "2025-01-20",
                 tags: ["算法", "学习", "面试准备"],
-                today: true,
-                progressLog: [],
+                                progressLog: [],
                 customViews: ["今日必做", "技术提升"],
                 project: "personal"
             }
@@ -1329,8 +1706,7 @@ const testTaskData = {
                 dueDate: "2025-01-20",
                 plannedDate: "2025-01-20",
                 tags: ["总结", "反思", "每日例行"],
-                today: true,
-                progressLog: [],
+                                progressLog: [],
                 customViews: ["今日必做", "个人成长"],
                 project: "personal"
             }
@@ -1355,8 +1731,7 @@ const testTaskData = {
                 dueDate: "2025-01-21",
                 plannedDate: "2025-01-21",
                 tags: ["发布", "里程碑", "重要"],
-                today: false,
-                progressLog: [],
+                                progressLog: [],
                 customViews: ["明日任务", "项目里程碑"],
                 project: "mntask"
             }
@@ -1376,8 +1751,7 @@ const testTaskData = {
                 dueDate: "2025-01-21",
                 plannedDate: "2025-01-21",
                 tags: ["演示", "客户", "重要"],
-                today: false,
-                progressLog: [],
+                                progressLog: [],
                 customViews: ["明日任务", "客户相关"],
                 project: "work"
             }
@@ -1397,8 +1771,7 @@ const testTaskData = {
                 dueDate: "2025-01-21",
                 plannedDate: "2025-01-21",
                 tags: ["文档", "用户手册"],
-                today: false,
-                progressLog: [],
+                                progressLog: [],
                 customViews: ["明日任务", "文档工作"],
                 project: "mntask"
             }
@@ -1419,8 +1792,7 @@ const testTaskData = {
                 dueDate: "2025-01-22",
                 plannedDate: "2025-01-22",
                 tags: ["性能优化", "前端", "用户体验"],
-                today: false,
-                progressLog: [],
+                                progressLog: [],
                 customViews: ["本周任务", "技术优化"],
                 project: "mntask"
             }
@@ -1440,8 +1812,7 @@ const testTaskData = {
                 dueDate: "2025-01-22",
                 plannedDate: "2025-01-22",
                 tags: ["分享", "团队", "架构"],
-                today: false,
-                progressLog: [],
+                                progressLog: [],
                 customViews: ["本周任务", "知识分享"],
                 project: "work"
             }
@@ -1462,8 +1833,7 @@ const testTaskData = {
                 dueDate: "2025-01-23",
                 plannedDate: "2025-01-23",
                 tags: ["测试", "CI/CD", "基础设施"],
-                today: false,
-                progressLog: [],
+                                progressLog: [],
                 customViews: ["本周任务", "质量保证"],
                 project: "mntask"
             }
@@ -1483,8 +1853,7 @@ const testTaskData = {
                 dueDate: "2025-01-23",
                 plannedDate: "2025-01-23",
                 tags: ["会议", "产品规划", "决策"],
-                today: false,
-                progressLog: [],
+                                progressLog: [],
                 customViews: ["本周任务", "产品规划"],
                 project: "work"
             }
@@ -1505,8 +1874,7 @@ const testTaskData = {
                 dueDate: "2025-01-24",
                 plannedDate: "2025-01-24",
                 tags: ["代码审查", "质量", "协作"],
-                today: false,
-                progressLog: [],
+                                progressLog: [],
                 customViews: ["本周任务", "代码质量"],
                 project: "mntask"
             }
@@ -1526,8 +1894,7 @@ const testTaskData = {
                 dueDate: "2025-01-24",
                 plannedDate: "2025-01-24",
                 tags: ["周报", "总结", "例行"],
-                today: false,
-                progressLog: [],
+                                progressLog: [],
                 customViews: ["本周任务", "例行任务"],
                 project: "work"
             }
@@ -1548,8 +1915,7 @@ const testTaskData = {
                 dueDate: "2025-01-25",
                 plannedDate: "2025-01-25",
                 tags: ["开源", "贡献", "学习"],
-                today: false,
-                progressLog: [],
+                                progressLog: [],
                 customViews: ["周末任务", "技术成长"],
                 project: "personal"
             }
@@ -1570,8 +1936,7 @@ const testTaskData = {
                 dueDate: "2025-02-01",
                 plannedDate: "2025-01-27",
                 tags: ["MNAI", "新项目", "AI"],
-                today: false,
-                progressLog: [],
+                                progressLog: [],
                 customViews: ["下周任务", "新项目"],
                 project: "mnai"
             }
@@ -1591,8 +1956,7 @@ const testTaskData = {
                 dueDate: "2025-01-31",
                 plannedDate: "2025-01-28",
                 tags: ["绩效", "自评", "重要"],
-                today: false,
-                progressLog: [],
+                                progressLog: [],
                 customViews: ["下周任务", "职业发展"],
                 project: "work"
             }
@@ -1617,8 +1981,7 @@ const testTaskData = {
                 dueDate: "2025-01-22",
                 plannedDate: "2025-01-20",
                 tags: ["重构", "跨天任务", "架构"],
-                today: false,
-                startTime: "2025-01-20T09:00:00",
+                                startTime: "2025-01-20T09:00:00",
                 estimatedHours: 24,
                 progressLog: [
                     {
@@ -1650,8 +2013,7 @@ const testTaskData = {
                 dueDate: "2025-01-21",
                 plannedDate: "2025-01-21",
                 tags: ["会议", "每日例行", "敏捷"],
-                today: false,
-                isRecurring: true,
+                                isRecurring: true,
                 recurringPattern: "weekdays",
                 progressLog: [],
                 customViews: ["例行任务", "团队协作"],
@@ -1674,8 +2036,7 @@ const testTaskData = {
                 dueDate: "2025-01-20",
                 plannedDate: "2025-01-20",
                 tags: ["后台任务", "自动化", "持续运行"],
-                today: true,
-                isBackground: true,
+                                isBackground: true,
                 startTime: "2025-01-20T00:00:00",
                 progressLog: [
                     {
@@ -1696,6 +2057,84 @@ const testTaskData = {
             }
         });
         
+        // ========================================
+        // 个人提升项目
+        // ========================================
+        
+        // 健身目标
+        const goalFitness = {
+            id: `task_${taskId++}`,
+            type: "目标",
+            status: "进行中",
+            title: "2025年健身目标：体脂率降至15%",
+            path: "",
+            launchLink: "marginnote4app://note/goal-fitness-2025",
+            currentFocus: false,
+            todayPlannedTime: "",
+            fields: {
+                priority: "中",
+                dueDate: "2025-12-31",
+                tags: ["健身", "健康", "长期目标"],
+                progressLog: [
+                    {
+                        date: "2025-01-01 06:00",
+                        note: "制定年度健身计划，目前体脂率：22%"
+                    },
+                    {
+                        date: "2025-01-15 18:00",
+                        note: "两周进展：体脂率降至21.5%，坚持每天运动"
+                    }
+                ],
+                customViews: ["个人目标", "健康管理"],
+                project: "fitness"
+            }
+        };
+        tasks.push(goalFitness);
+        
+        // 健身任务
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "动作",
+            status: "已完成",
+            title: "力量训练 - 胸部和肩部",
+            path: goalFitness.title,
+            launchLink: "marginnote4app://note/task-workout-chest",
+            currentFocus: false,
+            todayPlannedTime: "06:00-07:00",
+            fields: {
+                priority: "中",
+                dueDate: "2025-01-20",
+                plannedDate: "2025-01-20",
+                tags: ["力量训练", "健身", "习惯"],
+                startTime: "2025-01-20T06:00:00",
+                endTime: "2025-01-20T07:00:00",
+                progressLog: [
+                    {
+                        date: "2025-01-20 06:00",
+                        note: "热身：5分钟跑步机"
+                    },
+                    {
+                        date: "2025-01-20 06:10",
+                        note: "卧推：4组x12次，重量60kg"
+                    },
+                    {
+                        date: "2025-01-20 06:25",
+                        note: "哑铃飞鸟：3组x15次"
+                    },
+                    {
+                        date: "2025-01-20 06:40",
+                        note: "肩部推举：4组x10次"
+                    },
+                    {
+                        date: "2025-01-20 06:55",
+                        note: "拉伸放松，补充蛋白质"
+                    }
+                ],
+                customViews: ["今日必做", "健身记录"],
+                project: "fitness"
+            }
+        });
+        
         // 长期任务
         tasks.push({
             id: `task_${taskId++}`,
@@ -1711,8 +2150,7 @@ const testTaskData = {
                 dueDate: "2025-04-20",
                 plannedDate: "2025-01-20",
                 tags: ["学习", "长期目标", "AI"],
-                today: false,
-                estimatedDays: 90,
+                                estimatedDays: 90,
                 progressLog: [
                     {
                         date: "2025-01-15 20:00",
@@ -1727,6 +2165,388 @@ const testTaskData = {
                 project: "personal"
             }
         });
+        
+        // 阅读计划
+        const projectReading = {
+            id: `task_${taskId++}`,
+            type: "项目",
+            status: "进行中",
+            title: "2025年度阅读计划 - 每月至少2本书",
+            path: "",
+            launchLink: "marginnote4app://note/project-reading-2025",
+            currentFocus: false,
+            todayPlannedTime: "",
+            fields: {
+                priority: "中",
+                dueDate: "2025-12-31",
+                tags: ["阅读", "学习", "个人成长"],
+                progressLog: [
+                    {
+                        date: "2025-01-01 20:00",
+                        note: "制定年度阅读清单，包含技术、管理、人文等类别"
+                    },
+                    {
+                        date: "2025-01-10 21:00",
+                        note: "完成第1本：《第五项修炼》"
+                    },
+                    {
+                        date: "2025-01-19 21:00",
+                        note: "完成第2本：《代码整洁之道》"
+                    }
+                ],
+                customViews: ["阅读计划", "个人成长"],
+                project: "reading"
+            }
+        };
+        tasks.push(projectReading);
+        
+        // 阅读任务
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "动作",
+            status: "进行中",
+            title: "阅读《认知天性》 - 第5-6章",
+            path: projectReading.title,
+            launchLink: "marginnote4app://note/task-reading-cognitive",
+            currentFocus: false,
+            todayPlannedTime: "21:30-22:30",
+            fields: {
+                priority: "低",
+                dueDate: "2025-01-20",
+                plannedDate: "2025-01-20",
+                tags: ["阅读", "心理学", "认知科学"],
+                progressLog: [
+                    {
+                        date: "2025-01-19 21:30",
+                        note: "完成前4章，理解了系统1和系统2的区别"
+                    },
+                    {
+                        date: "2025-01-20 21:30",
+                        note: "开始第5章：过度自信和专家判断"
+                    }
+                ],
+                customViews: ["今日必做", "阅读进度"],
+                project: "reading"
+            }
+        });
+        
+        // ========================================
+        // 并发任务和时间冲突场景
+        // ========================================
+        
+        // 同时间的多个会议冲突
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "动作",
+            status: "进行中",
+            title: "重要会议：项目启动会",
+            path: "工作项目",
+            launchLink: "marginnote4app://note/meeting-kickoff",
+            currentFocus: false,
+            todayPlannedTime: "10:00-11:00",
+            fields: {
+                priority: "高",
+                dueDate: "2025-01-20",
+                plannedDate: "2025-01-20",
+                tags: ["会议", "项目启动", "重要"],
+                startTime: "2025-01-20T10:00:00",
+                progressLog: [
+                    {
+                        date: "2025-01-20 10:00",
+                        note: "会议开始，20人参与"
+                    },
+                    {
+                        date: "2025-01-20 10:15",
+                        note: "介绍项目背景和目标"
+                    },
+                    {
+                        date: "2025-01-20 10:30",
+                        note: "讨论技术方案和时间表"
+                    }
+                ],
+                customViews: ["今日必做", "会议安排"],
+                project: "work"
+            }
+        });
+        
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "动作",
+            status: "未开始",
+            title: "紧急会议：客户问题处理",
+            path: "工作项目",
+            launchLink: "marginnote4app://note/meeting-urgent",
+            currentFocus: false,
+            todayPlannedTime: "10:30-11:30",
+            fields: {
+                priority: "高",
+                dueDate: "2025-01-20",
+                plannedDate: "2025-01-20",
+                tags: ["会议", "紧急", "客户"],
+                progressLog: [],
+                customViews: ["今日必做", "会议安排"],
+                project: "work"
+            }
+        });
+        
+        // 多任务并行处理
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "动作",
+            status: "进行中",
+            title: "后台渲染：视频处理任务",
+            path: `${goalEcommerce.title}`,
+            launchLink: "",
+            currentFocus: false,
+            todayPlannedTime: "00:00-23:59",
+            fields: {
+                priority: "低",
+                dueDate: "2025-01-20",
+                plannedDate: "2025-01-20",
+                tags: ["后台任务", "视频处理", "自动化"],
+                isBackground: true,
+                startTime: "2025-01-20T08:00:00",
+                progressLog: [
+                    {
+                        date: "2025-01-20 08:00",
+                        note: "开始处理10个视频文件"
+                    },
+                    {
+                        date: "2025-01-20 12:00",
+                        note: "已完成5个视频的渲染"
+                    },
+                    {
+                        date: "2025-01-20 16:00",
+                        note: "完成8个，预计18:00全部完成"
+                    }
+                ],
+                customViews: ["后台任务"],
+                project: "ecommerce"
+            }
+        });
+        
+        // 增加更多有详细进度记录的任务
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "动作",
+            status: "进行中",
+            title: "调试生产环境的内存泄漏问题",
+            path: `${goalEcommerce.title}`,
+            launchLink: "marginnote4app://note/task-debug-memory",
+            currentFocus: true,
+            todayPlannedTime: "11:00-13:00",
+            fields: {
+                priority: "高",
+                dueDate: "2025-01-20",
+                plannedDate: "2025-01-20",
+                tags: ["调试", "性能问题", "紧急"],
+                startTime: "2025-01-20T11:00:00",
+                progressLog: [
+                    {
+                        date: "2025-01-20 11:00",
+                        note: "开始分析生产环境日志，发现内存使用持续增长"
+                    },
+                    {
+                        date: "2025-01-20 11:15",
+                        note: "使用Chrome DevTools进行堆内存快照分析"
+                    },
+                    {
+                        date: "2025-01-20 11:30",
+                        note: "发现问题：事件监听器未正确移除"
+                    },
+                    {
+                        date: "2025-01-20 11:45",
+                        note: "遇到新问题：循环引用导致的内存泄漏"
+                    },
+                    {
+                        date: "2025-01-20 12:00",
+                        note: "使用WeakMap替换Map解决循环引用问题"
+                    },
+                    {
+                        date: "2025-01-20 12:15",
+                        note: "修复代码已部署到测试环境，开始监控"
+                    },
+                    {
+                        date: "2025-01-20 12:30",
+                        note: "内存使用稳定，准备推送到生产环境"
+                    }
+                ],
+                customViews: ["今日必做", "技术问题"],
+                project: "ecommerce"
+            }
+        });
+        focusTasks.push(`task_${taskId-1}`);
+        
+        // ========================================
+        // 已完成的目标和关键结果
+        // ========================================
+        
+        // 已完成的目标
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "目标",
+            status: "已完成",
+            title: "2024年Q4目标：完成MarginNote插件平台MVP版本",
+            path: "",
+            launchLink: "marginnote4app://note/goal-2024-q4",
+            currentFocus: false,
+            todayPlannedTime: "",
+            fields: {
+                priority: "高",
+                dueDate: "2024-12-31",
+                tags: ["Q4目标", "已完成", "MVP"],
+                progressLog: [
+                    {
+                        date: "2024-10-01 09:00",
+                        note: "制定季度目标，确定核心功能范围"
+                    },
+                    {
+                        date: "2024-11-15 14:00",
+                        note: "完成基础架构搭建和核心功能开发"
+                    },
+                    {
+                        date: "2024-12-20 16:00",
+                        note: "MVP版本测试通过，准备发布"
+                    },
+                    {
+                        date: "2024-12-28 18:00",
+                        note: "成功发布MVP版本，目标完成！"
+                    }
+                ],
+                customViews: ["已完成目标", "里程碑"],
+                project: "platform"
+            }
+        });
+        
+        // 已完成的关键结果
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "关键结果",
+            status: "已完成",
+            title: "获得100+用户的Beta测试反馈",
+            path: "2024年Q4目标：完成MarginNote插件平台MVP版本",
+            launchLink: "marginnote4app://note/kr-beta-feedback",
+            currentFocus: false,
+            todayPlannedTime: "",
+            fields: {
+                priority: "高",
+                dueDate: "2024-12-15",
+                tags: ["用户反馈", "Beta测试", "已完成"],
+                progressLog: [
+                    {
+                        date: "2024-11-20 10:00",
+                        note: "启动Beta测试计划，邀请20位种子用户"
+                    },
+                    {
+                        date: "2024-11-25 14:00",
+                        note: "收到首批反馈，发现几个关键易用性问题"
+                    },
+                    {
+                        date: "2024-12-05 16:00",
+                        note: "扩大测试范围，累计获得80位用户反馈"
+                    },
+                    {
+                        date: "2024-12-15 18:00",
+                        note: "达成目标！共收集120位用户的详细反馈"
+                    }
+                ],
+                customViews: ["已完成KR", "用户研究"],
+                project: "platform"
+            }
+        });
+        
+        // 未开始的目标
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "目标",
+            status: "未开始",
+            title: "Q2目标：构建插件开发者生态系统",
+            path: "",
+            launchLink: "marginnote4app://note/goal-q2-ecosystem",
+            currentFocus: false,
+            todayPlannedTime: "",
+            fields: {
+                priority: "中",
+                dueDate: "2025-06-30",
+                tags: ["Q2目标", "生态系统", "未来规划"],
+                progressLog: [],
+                customViews: ["未来目标", "Q2规划"],
+                project: "ecosystem"
+            }
+        });
+        
+        // 暂停的关键结果
+        tasks.push({
+            id: `task_${taskId++}`,
+            type: "关键结果",
+            status: "暂停",
+            title: "建立插件评分和评论系统",
+            path: goalQ1.title,
+            launchLink: "marginnote4app://note/kr-rating-system",
+            currentFocus: false,
+            todayPlannedTime: "",
+            fields: {
+                priority: "低",
+                dueDate: "2025-03-15",
+                tags: ["评分系统", "社区功能", "暂停"],
+                progressLog: [
+                    {
+                        date: "2025-01-10 14:00",
+                        note: "开始设计评分系统架构"
+                    },
+                    {
+                        date: "2025-01-12 16:00",
+                        note: "因优先级调整，暂时搁置此任务"
+                    }
+                ],
+                customViews: ["暂停任务", "Q1规划"],
+                project: "platform"
+            }
+        });
+        
+        // ========================================
+        // 总结和统计
+        // ========================================
+        
+        // 统计任务数量
+        const taskStats = {
+            total: tasks.length,
+            byType: {
+                goal: tasks.filter(t => t.type === '目标').length,
+                kr: tasks.filter(t => t.type === '关键结果').length,
+                project: tasks.filter(t => t.type === '项目').length,
+                action: tasks.filter(t => t.type === '动作').length
+            },
+            byStatus: {
+                todo: tasks.filter(t => t.status === '未开始').length,
+                inProgress: tasks.filter(t => t.status === '进行中').length,
+                paused: tasks.filter(t => t.status === '暂停').length,
+                done: tasks.filter(t => t.status === '已完成').length
+            },
+            byPriority: {
+                high: tasks.filter(t => t.fields.priority === '高').length,
+                medium: tasks.filter(t => t.fields.priority === '中').length,
+                low: tasks.filter(t => t.fields.priority === '低').length
+            }
+        };
+        
+        console.log('📊 测试数据统计:', taskStats);
+        
+        // 验证所有类型和状态组合都有覆盖
+        const typesStatusCoverage = {};
+        const types = ['目标', '关键结果', '项目', '动作'];
+        const statuses = ['未开始', '进行中', '暂停', '已完成'];
+        
+        types.forEach(type => {
+            typesStatusCoverage[type] = {};
+            statuses.forEach(status => {
+                typesStatusCoverage[type][status] = tasks.filter(
+                    t => t.type === type && t.status === status
+                ).length;
+            });
+        });
+        
+        console.log('🎯 类型-状态覆盖情况:', typesStatusCoverage);
         
         this.tasks = tasks;
         this.initialFocusTasks = focusTasks;

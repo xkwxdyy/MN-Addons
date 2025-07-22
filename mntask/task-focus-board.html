@@ -669,6 +669,7 @@
             }
         }
 
+
         /* 任务类型标签 */
         .task-type-badge {
             display: inline-flex;
@@ -1302,6 +1303,7 @@
             font-weight: 600;
             color: var(--text-primary);
         }
+        
 
         /* 时间轴空状态样式 */
         .timeline-empty-state {
@@ -2565,6 +2567,29 @@
             display: flex;
             gap: var(--spacing-xs);
             flex-wrap: wrap;
+        }
+        
+        /* 看板卡片折叠/展开状态样式 */
+        .board-card {
+            position: relative;
+            min-height: 60px;
+            transition: all 0.3s ease;
+        }
+        
+        .board-card:not(.expanded) {
+            padding-bottom: calc(var(--spacing-md) + 20px);
+        }
+        
+        .board-card.expanded {
+            min-height: auto;
+        }
+        
+        .board-card .expand-indicator {
+            transition: transform 0.3s ease;
+        }
+        
+        .board-card:hover .expand-indicator {
+            opacity: 1 !important;
         }
         
         /* 子项目样式 */
@@ -5273,6 +5298,9 @@
         let activeFilters = {}; // 当前激活的筛选器
         let currentEditingTaskId = null; // 当前正在编辑的任务ID
         
+        // 任务卡片展开状态管理
+        let expandedTasksBoard = new Set(); // 看板视图展开的任务ID集合
+        
         // 时间轴相关变量
         let now = new Date();
         let selectedTimelineDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // 当前选择的时间轴日期（纯日期，无时间）
@@ -5733,7 +5761,6 @@
                     
                     <h3 class="focus-task-title">${task.title}</h3>
                     ${task.path ? `<div class="focus-task-path" style="font-size: 0.75rem; color: var(--text-muted); margin: 4px 0 8px 0;">📍 ${task.path}</div>` : ''}
-                    
                     <div class="focus-task-meta">
                         <span>${getStatusIcon(task.status)} ${task.status}</span>
                         <span>${getPriorityIcon(task.fields.priority)} ${task.fields.priority}</span>
@@ -6898,6 +6925,34 @@
                     task.currentFocus = true;
                 }
                 renderFocusTasks();
+            }
+        }
+
+        // 确保只有一个任务被标记为当前焦点
+        function ensureOnlyOneCurrentFocus() {
+            let hasCurrentFocus = false;
+            let currentFocusCount = 0;
+            
+            // 先统计有多少个任务被标记为当前焦点
+            tasks.forEach(task => {
+                if (task.currentFocus) {
+                    currentFocusCount++;
+                }
+            });
+            
+            // 如果有多个，只保留第一个
+            if (currentFocusCount > 1) {
+                tasks.forEach(task => {
+                    if (task.currentFocus) {
+                        if (hasCurrentFocus) {
+                            // 如果已经有一个当前焦点任务，将后续的都设为 false
+                            task.currentFocus = false;
+                        } else {
+                            hasCurrentFocus = true;
+                        }
+                    }
+                });
+                console.log(`修复了 ${currentFocusCount - 1} 个重复的当前焦点任务标记`);
             }
         }
 
@@ -8435,6 +8490,18 @@
             }
         }
 
+        // 处理看板任务卡片点击
+        function handleBoardTaskClick(event, taskId) {
+            if (expandedTasksBoard.has(taskId)) {
+                // 已展开，打开详情
+                viewTaskDetail(taskId);
+            } else {
+                // 未展开，展开卡片
+                expandedTasksBoard.add(taskId);
+                renderKanbanBoard();
+            }
+        }
+
         /* ========================================
            ✏️ 任务字段编辑功能
            ======================================== */
@@ -9194,14 +9261,16 @@
         
         // 渲染任务卡片（统一格式）
         function renderTaskCard(task) {
+            const isExpanded = expandedTasksBoard.has(task.id);
+            
             return `
-                <div class="board-card" 
+                <div class="board-card ${isExpanded ? 'expanded' : ''}" 
                      draggable="true"
                      data-task-id="${task.id}"
                      data-task-status="${task.status}"
                      ondragstart="handleBoardDragStart(event)"
                      ondragend="handleBoardDragEnd(event)"
-                     onclick="viewTaskDetail('${task.id}')">
+                     onclick="handleBoardTaskClick(event, '${task.id}')">
                     <div class="board-card-header">
                         <span class="type-icon">${getTaskTypeIcon(task.type)}</span>
                         <span class="priority-badge ${task.fields.priority.toLowerCase()}">
@@ -9209,6 +9278,13 @@
                         </span>
                     </div>
                     <h4 class="board-card-title">${task.title}</h4>
+                    ${task.path ? `<div class="board-card-path" style="font-size: 0.85rem; color: var(--text-muted); opacity: 0.7; margin: 4px 0;">📍 ${task.path}</div>` : ''}
+                    
+                    <div class="expand-indicator" style="position: absolute; right: 8px; bottom: 8px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.6;">
+                        ${isExpanded ? '▲' : '▼'}
+                    </div>
+                    
+                    ${isExpanded ? `
                     <div class="board-card-meta">
                         ${task.fields.dueDate ? `<span>📅 ${formatDate(task.fields.dueDate)}</span>` : ''}
                         ${task.fields.progress ? `<span>📊 ${task.fields.progress}%</span>` : ''}
@@ -9217,6 +9293,7 @@
                         <span class="task-type-badge">${task.type}</span>
                         ${getTaskActions(task)}
                     </div>
+                    ` : ''}
                 </div>
             `;
         }
@@ -10107,6 +10184,9 @@
                 // 重新生成测试数据
                 generateTestData();
                 
+                // 确保只有一个任务被标记为当前焦点
+                ensureOnlyOneCurrentFocus();
+                
                 // 重新初始化
                 filteredTasks = tasks;
                 if (hasActiveFilters()) {
@@ -10592,6 +10672,9 @@
                 // 如果没有保存的数据，生成测试数据
                 generateTestData();
             }
+            
+            // 确保只有一个任务被标记为当前焦点
+            ensureOnlyOneCurrentFocus();
             
             // 初始化 filteredTasks
             filteredTasks = tasks;
@@ -11560,6 +11643,9 @@
                 // 如果没有保存的数据，生成测试数据
                 generateTestData();
             }
+            
+            // 确保只有一个任务被标记为当前焦点
+            ensureOnlyOneCurrentFocus();
             
             // 初始渲染
             switchView(currentView);

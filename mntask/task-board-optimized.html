@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MNTask 任务看板 - 优化版</title>
+    
+    <!-- 引入测试数据 -->
+    <script src="testData.js"></script>
+    
+    <style>
+        /* ========================================
+           🎨 CSS 变量定义 - 现代化设计系统
+           ======================================== */
+        :root {
+            /* 主题色 - 深色系 */
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a25;
+            --bg-card: rgba(255, 255, 255, 0.03);
+            --bg-hover: rgba(255, 255, 255, 0.06);
+            --bg-active: rgba(102, 126, 234, 0.15);
+            --bg-focus: rgba(102, 126, 234, 0.25);
+            
+            /* 玻璃效果 */
+            --glass-bg: rgba(255, 255, 255, 0.04);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-blur: blur(10px);
+            
+            /* 文字颜色 */
+            --text-primary: #ffffff;
+            --text-secondary: #a8a8b8;
+            --text-muted: #6c6c7c;
+            --text-disabled: #4a4a5a;
+            
+            /* 任务类型颜色 */
+            --type-goal: #667eea;        /* 目标 - 紫蓝 */
+            --type-kr: #f687b3;          /* 关键结果 - 粉红 */
+            --type-project: #48bb78;     /* 项目 - 绿色 */
+            --type-action: #ed8936;      /* 动作 - 橙色 */
+            
+            /* 状态颜色 */
+            --status-todo: #718096;      /* 未开始 - 灰色 */
+            --status-pause: #5b9dd9;     /* 暂停 - 蓝色 */
+            --status-doing: #f6ad55;     /* 进行中 - 橙黄 */
+            --status-done: #48bb78;      /* 已完成 - 绿色 */
+            
+            /* 优先级颜色 */
+            --priority-high: #fc8181;    /* 高 - 红色 */
+            --priority-medium: #f6e05e;  /* 中 - 黄色 */
+            --priority-low: #68d391;     /* 低 - 绿色 */
+            
+            /* 其他样式变量 */
+            --radius: 12px;
+            --radius-sm: 6px;
+            --radius-lg: 16px;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.4);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            
+            /* 间距系统 */
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+        }
+
+        /* ========================================
+           📐 基础样式重置
+           ======================================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--glass-border);
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* ========================================
+           🏗️ 应用布局
+           ======================================== */
+        #app {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-layout {
+            display: flex;
+            height: 100%;
+            position: relative;
+        }
+
+        /* 侧边栏 */
+        .sidebar {
+            width: 250px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            transition: width 0.3s;
+        }
+
+        .sidebar.collapsed {
+            width: 60px;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: var(--spacing-lg);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .logo img {
+            width: 32px;
+            height: 32px;
+        }
+
+        .nav-menu {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .nav-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--bg-active);
+            color: var(--type-goal);
+        }
+
+        /* 主内容区 */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* 通知区域 */
+        .notifications {
+            position: fixed;
+            top: var(--spacing-lg);
+            right: var(--spacing-lg);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .notification {
+            background: var(--bg-card);
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            padding: var(--spacing-md) var(--spacing-lg);
+            box-shadow: var(--shadow);
+            animation: slideIn 0.3s ease-out;
+            position: relative;
+            padding-right: var(--spacing-xl);
+        }
+
+        .notification.success {
+            border-color: var(--status-done);
+        }
+
+        .notification.error {
+            border-color: var(--priority-high);
+        }
+
+        .notification.warning {
+            border-color: var(--priority-medium);
+        }
+
+        .notification-close {
+            position: absolute;
+            top: var(--spacing-sm);
+            right: var(--spacing-sm);
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 20px;
+            line-height: 1;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification.fade-out {
+            animation: fadeOut 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeOut {
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        /* ========================================
+           📋 任务看板样式
+           ======================================== */
+        .task-board {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .board-header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--glass-border);
+            padding: var(--spacing-md) var(--spacing-lg);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-lg);
+        }
+
+        .header-left h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .stats {
+            display: flex;
+            gap: var(--spacing-md);
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .stats span {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            background: var(--bg-card);
+            border-radius: var(--radius-sm);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+
+        .view-switcher {
+            display: flex;
+            gap: var(--spacing-xs);
+            background: var(--bg-card);
+            padding: var(--spacing-xs);
+            border-radius: var(--radius);
+        }
+
+        .view-btn {
+            padding: var(--spacing-xs) var(--spacing-md);
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .view-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .view-btn.active {
+            background: var(--bg-active);
+            color: var(--type-goal);
+        }
+
+        /* 筛选面板 */
+        .filter-panel {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--glass-border);
+            padding: var(--spacing-lg);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-lg);
+        }
+
+        .filter-section h3 {
+            font-size: 14px;
+            margin-bottom: var(--spacing-sm);
+            color: var(--text-secondary);
+        }
+
+        /* 任务卡片 */
+        .task-card {
+            background: var(--bg-card);
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            padding: var(--spacing-md);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .task-card:hover {
+            background: var(--bg-hover);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .task-card.dragging {
+            opacity: 0.5;
+        }
+
+        .task-card[data-dragging="true"] {
+            opacity: 0.3;
+        }
+
+        /* 任务类型样式 */
+        .task-card.目标 {
+            border-left: 3px solid var(--type-goal);
+        }
+
+        .task-card.关键结果 {
+            border-left: 3px solid var(--type-kr);
+        }
+
+        .task-card.项目 {
+            border-left: 3px solid var(--type-project);
+        }
+
+        .task-card.动作 {
+            border-left: 3px solid var(--type-action);
+        }
+
+        .task-header {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .drag-handle {
+            cursor: move;
+            color: var(--text-muted);
+            user-select: none;
+        }
+
+        .task-type {
+            font-size: 20px;
+        }
+
+        .task-title {
+            flex: 1;
+            font-weight: 500;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: var(--spacing-xs);
+        }
+
+        .task-actions button {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: var(--spacing-xs);
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+        }
+
+        .task-actions button:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        /* 拖拽相关样式 */
+        .drag-placeholder {
+            transition: var(--transition);
+        }
+
+        .drag-helper {
+            cursor: move !important;
+        }
+
+        .drop-hover {
+            background: var(--bg-active) !important;
+            border-color: var(--type-goal) !important;
+        }
+
+        body.dragging {
+            cursor: move !important;
+        }
+
+        /* 视图样式 */
+        .overview-view,
+        .timeline-view,
+        .kanban-view,
+        .tree-view {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--spacing-lg);
+        }
+
+        .type-section {
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .type-section h2 {
+            margin-bottom: var(--spacing-md);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .task-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: var(--spacing-md);
+        }
+
+        /* 看板视图 */
+        .kanban-board {
+            display: flex;
+            gap: var(--spacing-lg);
+            height: 100%;
+        }
+
+        .kanban-column {
+            flex: 1;
+            background: var(--bg-secondary);
+            border-radius: var(--radius);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .column-header {
+            padding: var(--spacing-md);
+            background: var(--bg-tertiary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .column-content {
+            flex: 1;
+            padding: var(--spacing-md);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        /* 时间轴视图 */
+        .timeline-grid {
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            gap: var(--spacing-md);
+        }
+
+        .time-slot {
+            min-height: 80px;
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+        }
+
+        .time-slot:hover {
+            background: var(--bg-hover);
+        }
+
+        /* 树形视图 */
+        .tree-node {
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .node-content {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .tree-toggle {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: var(--spacing-xs);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                left: -250px;
+                z-index: 100;
+                transition: left 0.3s;
+            }
+            
+            .sidebar.open {
+                left: 0;
+            }
+            
+            .kanban-board {
+                flex-direction: column;
+            }
+            
+            .task-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 加载和错误状态 */
+        .loading-container,
+        .error-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-lg);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--glass-border);
+            border-top-color: var(--type-goal);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            color: var(--priority-high);
+            text-align: center;
+            max-width: 500px;
+        }
+
+        /* 调试模式 */
+        body[data-debug="true"] * {
+            outline: 1px dashed rgba(255, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="loading-container">
+            <div class="spinner"></div>
+            <p>正在加载应用...</p>
+        </div>
+    </div>
+
+    <!-- 加载优化后的模块 -->
+    <script src="task-board-utils.js"></script>
+    <script src="state-manager.js"></script>
+    <script src="render-engine.js"></script>
+    <script src="drag-manager.js"></script>
+    <script src="task-board.js"></script>
+    <script src="app.js"></script>
+
+    <script>
+        // 开发环境配置
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            window.DEBUG_MODE = true;
+            console.log('🔧 Debug mode enabled');
+        }
+
+        // 错误边界
+        window.addEventListener('error', (event) => {
+            console.error('Global error caught:', event.error);
+            
+            // 在开发环境显示错误详情
+            if (window.DEBUG_MODE) {
+                document.body.setAttribute('data-debug', 'true');
+            }
+        });
+
+        // 性能监控
+        if ('PerformanceObserver' in window) {
+            const perfObserver = new PerformanceObserver((list) => {
+                for (const entry of list.getEntries()) {
+                    console.log(`⚡ ${entry.name}: ${entry.duration.toFixed(2)}ms`);
+                }
+            });
+            
+            perfObserver.observe({ entryTypes: ['measure'] });
+        }
+
+        // 记录应用启动时间
+        performance.mark('app-init-start');
+        
+        window.addEventListener('load', () => {
+            performance.mark('app-init-end');
+            performance.measure('app-initialization', 'app-init-start', 'app-init-end');
+        });
+    </script>
+</body>
+</html>

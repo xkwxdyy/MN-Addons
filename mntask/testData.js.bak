@@ -25,6 +25,7 @@ const testTaskData = {
             path: "",
             launchLink: "marginnote4app://note/goal-q1-2025",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "高",
                 dueDate: "2025-03-31",
@@ -54,6 +55,7 @@ const testTaskData = {
             path: goalQ1.title,
             launchLink: "marginnote4app://note/kr1-bugs",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "高",
                 dueDate: "2025-02-15",
@@ -74,6 +76,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr1.title}`,
             launchLink: "marginnote4app://note/project-bugfix",
             currentFocus: true,
+            todayPlannedTime: "",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-31",
@@ -114,6 +117,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr1.title} >> ${projectBugFix.title}`,
             launchLink: "marginnote4app://note/bug-12345",
             currentFocus: true,
+            todayPlannedTime: "09:00-11:00",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-22",
@@ -163,6 +167,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr1.title} >> ${projectBugFix.title}`,
             launchLink: "marginnote4app://note/bug-12346",
             currentFocus: false,
+            todayPlannedTime: "11:00-12:00",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-22",
@@ -192,6 +197,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr1.title} >> ${projectBugFix.title}`,
             launchLink: "marginnote4app://note/bug-12347",
             currentFocus: false,
+            todayPlannedTime: "14:00-15:00",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-22",
@@ -221,6 +227,7 @@ const testTaskData = {
             path: "工作项目",
             launchLink: "marginnote4app://note/meeting-weekly",
             currentFocus: false,
+            todayPlannedTime: "14:30-15:30",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-22",
@@ -241,6 +248,7 @@ const testTaskData = {
             path: "工作项目",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "14:00-14:30",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-22",
@@ -261,6 +269,7 @@ const testTaskData = {
             path: goalQ1.title,
             launchLink: "marginnote4app://note/kr2-ux",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "中",
                 dueDate: "2025-03-15",
@@ -281,6 +290,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr2.title}`,
             launchLink: "marginnote4app://note/project-ui",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "中",
                 dueDate: "2025-02-28",
@@ -301,6 +311,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr2.title} >> ${projectUI.title}`,
             launchLink: "marginnote4app://note/paused-task-1",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-28",
@@ -345,6 +356,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr2.title} >> ${projectUI.title}`,
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-25",
@@ -363,6 +375,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr2.title} >> ${projectUI.title}`,
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "16:00-18:00",
             fields: {
                 priority: "低",
                 dueDate: "2025-07-26",
@@ -382,6 +395,7 @@ const testTaskData = {
             path: "",
             launchLink: "marginnote4app://note/project-pkm",
             currentFocus: true,
+            todayPlannedTime: "",
             fields: {
                 priority: "中",
                 dueDate: "2025-08-15",
@@ -428,6 +442,7 @@ const testTaskData = {
             path: "",
             launchLink: "marginnote4app://note/goal-ecommerce-q1",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "高",
                 dueDate: "2025-03-31",
@@ -457,6 +472,7 @@ const testTaskData = {
             path: goalEcommerce.title,
             launchLink: "marginnote4app://note/project-requirement",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-15",
@@ -500,6 +516,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr2.title} >> ${projectUI.title}`,
             launchLink: "marginnote4app://note/paused-task-2",
             currentFocus: false,
+            todayPlannedTime: "15:00-17:00",
             fields: {
                 priority: "低",
                 dueDate: "2025-02-05",
@@ -528,6 +545,7 @@ const testTaskData = {
             path: goalEcommerce.title,
             launchLink: "marginnote4app://note/project-frontend",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "高",
                 dueDate: "2025-08-10",
@@ -567,6 +585,7 @@ const testTaskData = {
             path: `${goalEcommerce.title} >> ${projectFrontend.title}`,
             launchLink: "marginnote4app://note/task-responsive",
             currentFocus: false,
+            todayPlannedTime: "10:00-12:00",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-20",
@@ -609,6 +628,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr1.title} >> ${projectBugFix.title}`,
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "16:00-17:00",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-20",
@@ -628,6 +648,7 @@ const testTaskData = {
             path: `${goalEcommerce.title} >> 后端开发`,
             launchLink: "marginnote4app://note/task-auth-api",
             currentFocus: false,
+            todayPlannedTime: "14:00-16:00",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-20",
@@ -669,6 +690,7 @@ const testTaskData = {
             path: `${goalEcommerce.title} >> 数据库优化`,
             launchLink: "marginnote4app://note/task-db-optimize",
             currentFocus: false,
+            todayPlannedTime: "16:00-17:00",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-20",
@@ -688,6 +710,7 @@ const testTaskData = {
             path: "工作项目",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "16:30-17:30",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-20",
@@ -707,6 +730,7 @@ const testTaskData = {
             path: goalEcommerce.title,
             launchLink: "marginnote4app://note/project-testing",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "高",
                 dueDate: "2025-02-20",
@@ -727,6 +751,7 @@ const testTaskData = {
             path: `${goalEcommerce.title} >> ${projectTesting.title}`,
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "中",
                 dueDate: "2025-02-01",
@@ -746,6 +771,7 @@ const testTaskData = {
             path: `${goalEcommerce.title} >> ${projectTesting.title}`,
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "中",
                 dueDate: "2025-02-05",
@@ -765,6 +791,7 @@ const testTaskData = {
             path: "个人知识管理系统优化",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "20:00-21:00",
             fields: {
                 priority: "低",
                 dueDate: "2025-07-20",
@@ -793,6 +820,7 @@ const testTaskData = {
             path: "",
             launchLink: "marginnote4app://note/project-growth",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "高",
                 dueDate: "2025-03-31",
@@ -826,6 +854,7 @@ const testTaskData = {
             path: `${projectGrowth.title}`,
             launchLink: "marginnote4app://note/task-user-interview",
             currentFocus: false,
+            todayPlannedTime: "14:00-15:30",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-22",
@@ -864,6 +893,7 @@ const testTaskData = {
             path: `${projectGrowth.title}`,
             launchLink: "marginnote4app://note/task-data-analysis",
             currentFocus: false,
+            todayPlannedTime: "16:00-17:30",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-20",
@@ -884,6 +914,7 @@ const testTaskData = {
             path: `${projectGrowth.title}`,
             launchLink: "marginnote4app://note/task-marketing-plan",
             currentFocus: false,
+            todayPlannedTime: "09:00-10:30",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-21",
@@ -918,6 +949,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr1.title} >> ${projectBugFix.title}`,
             launchLink: "marginnote4app://note/done-12340",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-19",
@@ -953,6 +985,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr1.title} >> ${projectBugFix.title}`,
             launchLink: "marginnote4app://note/done-framework",
             currentFocus: false,
+            todayPlannedTime: "09:00-12:00",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-13",
@@ -991,6 +1024,7 @@ const testTaskData = {
             path: "个人知识管理系统优化",
             launchLink: "marginnote4app://note/done-api-research",
             currentFocus: false,
+            todayPlannedTime: "14:00-17:00",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-13",
@@ -1029,6 +1063,7 @@ const testTaskData = {
             path: "工作项目",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "10:00-11:30",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-13",
@@ -1068,6 +1103,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr2.title} >> ${projectUI.title}`,
             launchLink: "marginnote4app://note/done-ui-components",
             currentFocus: false,
+            todayPlannedTime: "09:00-12:00",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-14",
@@ -1106,6 +1142,7 @@ const testTaskData = {
             path: "工作项目",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "14:00-15:30",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-14",
@@ -1145,6 +1182,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr1.title} >> ${projectBugFix.title}`,
             launchLink: "marginnote4app://note/done-unit-tests",
             currentFocus: false,
+            todayPlannedTime: "10:00-12:00",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-15",
@@ -1183,6 +1221,7 @@ const testTaskData = {
             path: "工作项目",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "14:00-17:00",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-15",
@@ -1222,6 +1261,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr2.title} >> ${projectUI.title}`,
             launchLink: "marginnote4app://note/done-search-filter",
             currentFocus: false,
+            todayPlannedTime: "09:00-11:30",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-16",
@@ -1260,6 +1300,7 @@ const testTaskData = {
             path: "工作项目",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "16:00-17:00",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-16",
@@ -1295,6 +1336,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr1.title} >> ${projectBugFix.title}`,
             launchLink: "marginnote4app://note/done-refactor",
             currentFocus: false,
+            todayPlannedTime: "09:00-12:00",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-17",
@@ -1333,6 +1375,7 @@ const testTaskData = {
             path: "个人知识管理系统优化",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "14:00-16:00",
             fields: {
                 priority: "低",
                 dueDate: "2025-07-17",
@@ -1368,6 +1411,7 @@ const testTaskData = {
             path: "个人知识管理系统优化",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "09:00-11:00",
             fields: {
                 priority: "低",
                 dueDate: "2025-07-18",
@@ -1402,6 +1446,7 @@ const testTaskData = {
             path: "个人知识管理系统优化",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "14:00-17:00",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-18",
@@ -1437,6 +1482,7 @@ const testTaskData = {
             path: "个人知识管理系统优化",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "10:00-11:30",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-19",
@@ -1475,6 +1521,7 @@ const testTaskData = {
             path: "工作项目",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "16:00-17:00",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-19",
@@ -1518,6 +1565,7 @@ const testTaskData = {
             path: "个人知识管理系统优化",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "06:30-07:30",
             fields: {
                 priority: "低",
                 dueDate: "2025-07-22",
@@ -1552,6 +1600,7 @@ const testTaskData = {
             path: "个人项目",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "07:30-08:00",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-22",
@@ -1582,6 +1631,7 @@ const testTaskData = {
             path: "工作项目",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "08:30-09:00",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-22",
@@ -1617,6 +1667,7 @@ const testTaskData = {
             path: "工作项目",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "09:00-09:15",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-20",
@@ -1648,6 +1699,7 @@ const testTaskData = {
             path: "个人知识管理系统优化",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "21:00-22:00",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-20",
@@ -1667,6 +1719,7 @@ const testTaskData = {
             path: "个人项目",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "22:00-22:30",
             fields: {
                 priority: "低",
                 dueDate: "2025-07-20",
@@ -1691,6 +1744,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr1.title} >> ${projectBugFix.title}`,
             launchLink: "marginnote4app://note/release-v1",
             currentFocus: false,
+            todayPlannedTime: "10:00-12:00",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-21",
@@ -1710,6 +1764,7 @@ const testTaskData = {
             path: "工作项目",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "14:00-15:30",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-21",
@@ -1729,6 +1784,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr2.title} >> ${projectUI.title}`,
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "16:00-18:00",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-21",
@@ -1749,6 +1805,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr2.title} >> ${projectUI.title}`,
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "09:00-12:00",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-22",
@@ -1768,6 +1825,7 @@ const testTaskData = {
             path: "工作项目",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "15:00-16:30",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-22",
@@ -1788,6 +1846,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr1.title} >> ${projectBugFix.title}`,
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "09:00-17:00",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-23",
@@ -1807,6 +1866,7 @@ const testTaskData = {
             path: "工作项目",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "14:00-16:00",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-23",
@@ -1827,6 +1887,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr1.title} >> ${projectBugFix.title}`,
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "10:00-12:00",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-24",
@@ -1846,6 +1907,7 @@ const testTaskData = {
             path: "工作项目",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "16:00-17:00",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-24",
@@ -1866,6 +1928,7 @@ const testTaskData = {
             path: "个人知识管理系统优化",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "10:00-12:00",
             fields: {
                 priority: "低",
                 dueDate: "2025-07-25",
@@ -1886,6 +1949,7 @@ const testTaskData = {
             path: goalQ1.title,
             launchLink: "marginnote4app://note/project-mnai",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "高",
                 dueDate: "2025-02-01",
@@ -1905,6 +1969,7 @@ const testTaskData = {
             path: "工作项目",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-31",
@@ -1929,6 +1994,7 @@ const testTaskData = {
             path: `${goalQ1.title} >> ${kr1.title}`,
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-22",
@@ -1960,6 +2026,7 @@ const testTaskData = {
             path: "工作项目",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "09:00-09:15",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-21",
@@ -1982,6 +2049,7 @@ const testTaskData = {
             path: "工作项目",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "00:00-23:59",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-20",
@@ -2021,6 +2089,7 @@ const testTaskData = {
             path: "",
             launchLink: "marginnote4app://note/goal-fitness-2025",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "中",
                 dueDate: "2025-12-31",
@@ -2050,6 +2119,7 @@ const testTaskData = {
             path: goalFitness.title,
             launchLink: "marginnote4app://note/task-workout-chest",
             currentFocus: false,
+            todayPlannedTime: "06:00-07:00",
             fields: {
                 priority: "中",
                 dueDate: "2025-07-20",
@@ -2093,6 +2163,7 @@ const testTaskData = {
             path: "",
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "中",
                 dueDate: "2025-04-20",
@@ -2123,6 +2194,7 @@ const testTaskData = {
             path: "",
             launchLink: "marginnote4app://note/project-reading-2025",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "中",
                 dueDate: "2025-12-31",
@@ -2156,6 +2228,7 @@ const testTaskData = {
             path: projectReading.title,
             launchLink: "marginnote4app://note/task-reading-cognitive",
             currentFocus: false,
+            todayPlannedTime: "21:30-22:30",
             fields: {
                 priority: "低",
                 dueDate: "2025-07-20",
@@ -2189,6 +2262,7 @@ const testTaskData = {
             path: "工作项目",
             launchLink: "marginnote4app://note/meeting-kickoff",
             currentFocus: false,
+            todayPlannedTime: "10:00-11:00",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-20",
@@ -2222,6 +2296,7 @@ const testTaskData = {
             path: "工作项目",
             launchLink: "marginnote4app://note/meeting-urgent",
             currentFocus: false,
+            todayPlannedTime: "10:30-11:30",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-20",
@@ -2242,6 +2317,7 @@ const testTaskData = {
             path: `${goalEcommerce.title}`,
             launchLink: "",
             currentFocus: false,
+            todayPlannedTime: "00:00-23:59",
             fields: {
                 priority: "低",
                 dueDate: "2025-07-20",
@@ -2277,6 +2353,7 @@ const testTaskData = {
             path: `${goalEcommerce.title}`,
             launchLink: "marginnote4app://note/task-debug-memory",
             currentFocus: true,
+            todayPlannedTime: "11:00-13:00",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-20",
@@ -2332,6 +2409,7 @@ const testTaskData = {
             path: "",
             launchLink: "marginnote4app://note/goal-2024-q4",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-31",
@@ -2368,6 +2446,7 @@ const testTaskData = {
             path: "2024年Q4目标：完成MarginNote插件平台MVP版本",
             launchLink: "marginnote4app://note/kr-beta-feedback",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "高",
                 dueDate: "2025-07-15",
@@ -2404,6 +2483,7 @@ const testTaskData = {
             path: "",
             launchLink: "marginnote4app://note/goal-q2-ecosystem",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "中",
                 dueDate: "2025-06-30",
@@ -2423,6 +2503,7 @@ const testTaskData = {
             path: goalQ1.title,
             launchLink: "marginnote4app://note/kr-rating-system",
             currentFocus: false,
+            todayPlannedTime: "",
             fields: {
                 priority: "低",
                 dueDate: "2025-03-15",

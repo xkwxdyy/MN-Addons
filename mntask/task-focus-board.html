@@ -2183,6 +2183,62 @@
         .mb-3 { margin-bottom: var(--spacing-lg); }
         
         /* ========================================
+           📝 全局快速进展弹窗
+           ======================================== */
+        .global-quick-progress {
+            position: fixed;
+            background: var(--bg-secondary);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            padding: var(--spacing-md);
+            box-shadow: var(--shadow-lg);
+            z-index: 1500;
+            width: 400px;
+            display: none;
+            animation: fadeInScale 0.2s ease-out;
+        }
+        
+        .global-quick-progress.active {
+            display: block;
+        }
+        
+        .global-quick-progress-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .global-quick-progress-title {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .global-quick-progress-close {
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 1.2em;
+            padding: 4px;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+        
+        .global-quick-progress-close:hover {
+            color: var(--text-primary);
+        }
+        
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        /* ========================================
            🎭 模态框样式
            ======================================== */
         .modal {
@@ -3481,8 +3537,8 @@
         
         /* 反思面板网格布局 */
         .reflection-panels {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            display: flex;
+            flex-direction: column;
             gap: var(--spacing-xl);
             margin-top: var(--spacing-xl);
         }
@@ -5271,12 +5327,6 @@
                                 <div class="today-timeline-summary" id="todayTasksSummary">
                                     <!-- 动态渲染今日任务统计 -->
                                 </div>
-                                <div class="progress-records" id="todayProgressRecords">
-                                    <h4>📝 今日进展记录</h4>
-                                    <div class="progress-list" id="todayProgressList">
-                                        <!-- 动态渲染进展记录 -->
-                                    </div>
-                                </div>
                                 <div class="add-progress-prompt">
                                     <button class="btn btn-primary" onclick="showAddProgressModal()">
                                         ➕ 为今天的任务添加进展记录
@@ -5305,6 +5355,48 @@
                                     <button class="btn btn-primary" onclick="openTomorrowPlanningModal()">
                                         📅 快速规划明天的任务
                                     </button>
+                                </div>
+                            </div>
+                            
+                            <!-- 5. 全局任务筛选 -->
+                            <div class="reflection-section all-tasks-filter" id="all-tasks-filter">
+                                <h3 class="section-subtitle">🔍 全部任务筛选</h3>
+                                <div class="filter-controls" style="margin-bottom: 15px;">
+                                    <div class="filter-row" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
+                                        <input type="text" 
+                                               id="allTasksSearch" 
+                                               class="filter-input" 
+                                               placeholder="🔍 搜索任务标题..." 
+                                               style="flex: 1; min-width: 200px;"
+                                               oninput="filterAllTasks()">
+                                        <select id="allTasksTypeFilter" onchange="filterAllTasks()" style="min-width: 120px;">
+                                            <option value="">所有类型</option>
+                                            <option value="目标">🎦 目标</option>
+                                            <option value="关键结果">🔑 关键结果</option>
+                                            <option value="项目">📦 项目</option>
+                                            <option value="动作">⚡ 动作</option>
+                                        </select>
+                                        <select id="allTasksStatusFilter" onchange="filterAllTasks()" style="min-width: 120px;">
+                                            <option value="">所有状态</option>
+                                            <option value="未开始">⏰ 未开始</option>
+                                            <option value="进行中">🚀 进行中</option>
+                                            <option value="暂停">⏸ 暂停</option>
+                                            <option value="已完成">✅ 已完成</option>
+                                        </select>
+                                        <select id="allTasksPriorityFilter" onchange="filterAllTasks()" style="min-width: 120px;">
+                                            <option value="">所有优先级</option>
+                                            <option value="高">🔴 高</option>
+                                            <option value="中">🟡 中</option>
+                                            <option value="低">🟢 低</option>
+                                        </select>
+                                    </div>
+                                    <div class="filter-actions" style="display: flex; gap: 10px; align-items: center;">
+                                        <span id="allTasksCount" class="text-muted" style="font-size: 0.85em;">显示全部 ${tasks.length} 个任务</span>
+                                        <button class="btn btn-sm" onclick="resetAllTasksFilter()">🔄 重置筛选</button>
+                                    </div>
+                                </div>
+                                <div class="all-tasks-list" id="allTasksList" style="max-height: 400px; overflow-y: auto;">
+                                    <!-- 动态渲染任务列表 -->
                                 </div>
                             </div>
                         </div>
@@ -5929,6 +6021,48 @@
            ======================================== */
         
         let notificationCount = 0;
+        
+        // 滚动到指定区域
+        function scrollToSection(sectionId) {
+            let element;
+            
+            // 根据不同的 section ID 查找对应的元素
+            switch(sectionId) {
+                case 'focus-review':
+                    element = document.querySelector('.focus-review');
+                    break;
+                case 'pending-review':
+                    element = document.querySelector('.pending-review');
+                    break;
+                case 'today-review':
+                    element = document.querySelector('.today-review');
+                    break;
+                case 'tomorrow-preview':
+                    element = document.querySelector('.tomorrow-preview');
+                    break;
+                case 'all-tasks-filter':
+                    element = document.getElementById('allTasksSection');
+                    break;
+                default:
+                    element = document.getElementById(sectionId);
+            }
+            
+            if (element) {
+                // 滚动到元素位置，预留一些顶部空间
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                
+                // 添加高亮效果
+                element.style.transition = 'all 0.3s ease';
+                element.style.transform = 'scale(1.02)';
+                element.style.boxShadow = '0 0 20px rgba(102, 126, 234, 0.5)';
+                
+                // 2秒后移除高亮效果
+                setTimeout(() => {
+                    element.style.transform = '';
+                    element.style.boxShadow = '';
+                }, 2000);
+            }
+        }
         
         function showNotification(message, type = 'info', duration = 3000) {
             // 创建通知元素
@@ -7159,34 +7293,6 @@
                             
                             <!-- 进展记录显示区域 -->
                             ${renderTaskProgressInline(task)}
-                            
-                            <!-- 快速进展输入面板 -->
-                            <div id="quickProgress-${task.id}" class="quick-progress-panel hidden">
-                                <textarea class="progress-input" 
-                                          placeholder="记录当前进展..."
-                                          id="progressText-${task.id}"
-                                          onclick="event.stopPropagation()"
-                                          oninput="updateCharacterCount('${task.id}')"
-                                          maxlength="500"></textarea>
-                                <div class="progress-meta">
-                                    <div class="progress-char-count">
-                                        <span id="charCount-${task.id}" class="char-count">0</span>/500
-                                    </div>
-                                    <div class="progress-tip">
-                                        💡 Ctrl+Enter 保存，Esc 取消
-                                    </div>
-                                </div>
-                                <div class="progress-actions">
-                                    <button class="btn btn-primary btn-sm" 
-                                            onclick="event.stopPropagation(); saveQuickProgress('${task.id}')">
-                                        💾 保存
-                                    </button>
-                                    <button class="btn btn-secondary btn-sm" 
-                                            onclick="event.stopPropagation(); cancelQuickProgress('${task.id}')">
-                                        ❌ 取消
-                                    </button>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -7493,7 +7599,15 @@
                     note: note.trim()
                 });
                 
-                renderFocusTasks();
+                // 根据当前视图刷新对应内容
+                if (currentView === 'focus') {
+                    renderFocusTasks();
+                } else if (currentView === 'planning') {
+                    renderPlanningView();
+                } else if (currentView === 'today') {
+                    renderTodayTimeline();
+                }
+                
                 saveToLocalStorage();
                 showNotification('进展已记录', 'success');
             }
@@ -7501,7 +7615,10 @@
 
         // 查看进展日志
         function viewProgressLog(event, taskId) {
-            event.stopPropagation();
+            // 检查event参数是否存在
+            if (event && event.stopPropagation) {
+                event.stopPropagation();
+            }
             const task = tasks.find(t => t.id === taskId);
             if (!task) return;
             
@@ -7640,113 +7757,9 @@
            ======================================== */
 
         // 切换快速进展输入面板
-        function toggleQuickProgress(taskId) {
-            const panel = document.getElementById(`quickProgress-${taskId}`);
-            if (!panel) {
-                console.warn(`快速进展面板不存在: quickProgress-${taskId}`);
-                // 尝试使用普通的进展记录功能
-                addProgressNote(null, taskId);
-                return;
-            }
-            const isHidden = panel.classList.contains('hidden');
-            
-            // 关闭其他所有打开的进展输入面板
-            document.querySelectorAll('.quick-progress-panel').forEach(p => {
-                if (p.id !== `quickProgress-${taskId}`) {
-                    p.classList.add('hidden');
-                }
-            });
-            
-            if (isHidden) {
-                panel.classList.remove('hidden');
-                // 聚焦到输入框
-                const textArea = document.getElementById(`progressText-${taskId}`);
-                setTimeout(() => {
-                    textArea.focus();
-                    // 初始化字符计数
-                    updateCharacterCount(taskId);
-                }, 100);
-            } else {
-                panel.classList.add('hidden');
-            }
-        }
-
-        // 保存快速进展
-        function saveQuickProgress(taskId) {
-            const progressText = document.getElementById(`progressText-${taskId}`).value.trim();
-            
-            if (!progressText) {
-                alert('请输入进展内容');
-                return;
-            }
-            
-            // 调用现有的进展保存逻辑
-            const now = new Date();
-            const progressEntry = {
-                date: now.toLocaleString('zh-CN'),
-                note: progressText
-            };
-            
-            // 更新任务进展日志
-            const task = tasks.find(t => t.id === taskId);
-            if (task) {
-                if (!task.fields.progressLog) {
-                    task.fields.progressLog = [];
-                }
-                task.fields.progressLog.push(progressEntry);
-                
-                // 保存到本地存储
-                saveToLocalStorage();
-                
-                // 清空输入框并隐藏面板
-                document.getElementById(`progressText-${taskId}`).value = '';
-                document.getElementById(`quickProgress-${taskId}`).classList.add('hidden');
-                
-                // 显示成功提示
-                const progressLength = progressText.length;
-                showNotification(`进展已保存 ✅ (${progressLength}字)`, 'success');
-                
-                // 刷新时间轴显示
-                if (currentView === 'today') {
-                    setTimeout(() => {
-                        forceRefreshTimeline();
-                    }, 50);
-                }
-            }
-        }
-
-        // 取消快速进展输入
-        function cancelQuickProgress(taskId) {
-            document.getElementById(`progressText-${taskId}`).value = '';
-            document.getElementById(`quickProgress-${taskId}`).classList.add('hidden');
-        }
-
-        // 更新字符计数
-        function updateCharacterCount(taskId) {
-            const textarea = document.getElementById(`progressText-${taskId}`);
-            const charCountElement = document.getElementById(`charCount-${taskId}`);
-            
-            if (textarea && charCountElement) {
-                const currentLength = textarea.value.length;
-                charCountElement.textContent = currentLength;
-                
-                // 根据字符数量改变颜色
-                if (currentLength > 400) {
-                    charCountElement.style.color = 'var(--priority-high)';
-                } else if (currentLength > 300) {
-                    charCountElement.style.color = 'var(--priority-medium)';
-                } else {
-                    charCountElement.style.color = 'var(--text-muted)';
-                }
-                
-                // 接近限制时提示
-                if (currentLength >= 450) {
-                    charCountElement.parentElement.style.animation = 'pulse 1s infinite';
-                } else {
-                    charCountElement.parentElement.style.animation = 'none';
-                }
-            }
-        }
+        // 旧的快速进展函数已移除，现在使用全局快速进展弹窗
+        // showQuickProgress, openGlobalQuickProgress, closeGlobalQuickProgress, 
+        // updateGlobalCharacterCount, saveGlobalQuickProgress 函数在第13456行后定义
 
         /* ========================================
            📝 时间轴进展记录显示功能
@@ -8089,8 +8102,13 @@
             // 关闭模态框
             closeModal('addToPendingModal');
             
-            // 重新渲染待处理任务
-            renderPendingTasks();
+            // 根据当前视图刷新对应内容
+            if (currentView === 'focus') {
+                renderPendingTasks();
+            } else if (currentView === 'planning') {
+                // 刷新计划视图中的待处理任务部分
+                renderPendingTasksReview();
+            }
             
             // 保存数据
             saveToLocalStorage();
@@ -8101,7 +8119,15 @@
         // 从待处理中移除任务
         function removeFromPending(taskId) {
             pendingTasks.delete(taskId);
-            renderPendingTasks();
+            
+            // 根据当前视图刷新对应内容
+            if (currentView === 'focus') {
+                renderPendingTasks();
+            } else if (currentView === 'planning') {
+                // 刷新计划视图中的待处理任务部分
+                renderPendingTasksReview();
+            }
+            
             saveToLocalStorage();
             showNotification('已从待处理中移除', 'info');
         }
@@ -11078,37 +11104,43 @@
         function renderPlanningSidebar() {
             const sidebar = document.getElementById('sidebar');
             
-            // 统计任务信息
-            const unplannedTasks = getUnplannedTasks();
-            const totalTasks = tasks.length;
-            const focusCount = focusTasks.size;
-            const pendingCount = pendingTasks.size;
-            
             sidebar.innerHTML = `
                 <div class="sidebar-section">
-                    <h3 class="sidebar-title">📊 规划统计</h3>
-                    <div class="custom-view-item">
-                        <span>📝 待规划动作</span>
-                        <span class="text-small text-muted">${unplannedTasks.length}</span>
+                    <h3 class="sidebar-title">🗺️ 快速定位</h3>
+                    <div class="custom-view-item" onclick="scrollToSection('focus-review')" style="cursor: pointer;">
+                        <span>🎯 焦点任务回顾</span>
+                        <span class="text-small text-muted">→</span>
                     </div>
-                    <div class="custom-view-item">
-                        <span>🎯 焦点任务</span>
-                        <span class="text-small text-muted">${focusCount}</span>
+                    <div class="custom-view-item" onclick="scrollToSection('pending-review')" style="cursor: pointer;">
+                        <span>📋 待处理任务检查</span>
+                        <span class="text-small text-muted">→</span>
                     </div>
-                    <div class="custom-view-item">
-                        <span>📋 待处理任务</span>
-                        <span class="text-small text-muted">${pendingCount}</span>
+                    <div class="custom-view-item" onclick="scrollToSection('today-review')" style="cursor: pointer;">
+                        <span>📅 今日任务回顾</span>
+                        <span class="text-small text-muted">→</span>
                     </div>
-                    <div class="text-small text-muted" style="padding: 0 15px; margin-top: -5px; margin-bottom: 10px; opacity: 0.7;">
-                        仅显示动作类型任务
+                    <div class="custom-view-item" onclick="scrollToSection('tomorrow-preview')" style="cursor: pointer;">
+                        <span>🌅 明日任务预览</span>
+                        <span class="text-small text-muted">→</span>
                     </div>
-                    <div class="custom-view-item">
-                        <span>📋 总任务数</span>
-                        <span class="text-small text-muted">${totalTasks}</span>
+                    <div class="custom-view-item" onclick="scrollToSection('all-tasks-filter')" style="cursor: pointer;">
+                        <span>🔍 全部任务筛选</span>
+                        <span class="text-small text-muted">→</span>
                     </div>
                 </div>
                 
-                <!-- 旧的规划工具已被新的反思仪表板替代 -->
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">⚡ 快速操作</h3>
+                    <button class="btn btn-block btn-primary" onclick="openAddToPendingModal()">
+                        📋 添加到待处理
+                    </button>
+                    <button class="btn btn-block btn-secondary" onclick="openTomorrowPlanningModal()">
+                        📅 规划明日任务
+                    </button>
+                    <button class="btn btn-block btn-secondary" onclick="refreshPlanningView()">
+                        🔄 刷新视图
+                    </button>
+                </div>
             `;
         }
         
@@ -12088,14 +12120,26 @@
             // 4. 渲染明日任务预览
             renderTomorrowTasksPreview();
             
-            // 更新侧边栏
+            // 5. 渲染全局任务筛选
+            renderAllTasksFilter();
+            
+            // 更新侦边栏
             updateSidebar('planning');
         }
         
         // 渲染焦点任务回顾
         function renderFocusTasksReview() {
             const focusTasksArray = Array.from(focusTasks).map(id => tasks.find(t => t.id === id)).filter(Boolean);
-            const completed = focusTasksArray.filter(t => t.status === '已完成').length;
+            
+            // 按状态分组
+            const tasksByStatus = {
+                '已完成': focusTasksArray.filter(t => t.status === '已完成'),
+                '进行中': focusTasksArray.filter(t => t.status === '进行中'),
+                '暂停': focusTasksArray.filter(t => t.status === '暂停'),
+                '未开始': focusTasksArray.filter(t => t.status === '未开始')
+            };
+            
+            const completed = tasksByStatus['已完成'].length;
             const total = focusTasksArray.length;
             const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
             
@@ -12123,7 +12167,14 @@
             if (focusTasksArray.length === 0) {
                 listContainer.innerHTML = '<p class="empty-state">当前没有焦点任务</p>';
             } else {
-                listContainer.innerHTML = focusTasksArray.map(task => {
+                listContainer.innerHTML = `
+                    ${tasksByStatus['已完成'].length > 0 ? `
+                        <div class="status-group" style="margin-bottom: 20px;">
+                            <h5 style="font-size: 0.85em; color: var(--status-done); margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
+                                ✅ 已完成 (${tasksByStatus['已完成'].length})
+                            </h5>
+                            <div style="margin-left: 20px;">
+                                ${tasksByStatus['已完成'].map(task => {
                     const progressCount = task.fields.progressLog ? task.fields.progressLog.length : 0;
                     return `
                         <div class="reflection-task-item" style="position: relative;">
@@ -12142,37 +12193,103 @@
                                     </button>
                                 ` : ''}
                             </div>
-                            
-                            <!-- 快速进展输入面板 -->
-                            <div id="quickProgress-${task.id}" class="quick-progress-panel hidden">
-                                <textarea class="progress-input" 
-                                          placeholder="记录当前进展..."
-                                          id="progressText-${task.id}"
-                                          onclick="event.stopPropagation()"
-                                          oninput="updateCharacterCount('${task.id}')"
-                                          maxlength="500"></textarea>
-                                <div class="progress-meta">
-                                    <div class="progress-char-count">
-                                        <span id="charCount-${task.id}" class="char-count">0</span>/500
-                                    </div>
-                                    <div class="progress-tip">
-                                        💡 Ctrl+Enter 保存，Esc 取消
+                        </div>
+                    `;
+                }).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    ${tasksByStatus['进行中'].length > 0 ? `
+                        <div class="status-group" style="margin-bottom: 20px;">
+                            <h5 style="font-size: 0.85em; color: var(--status-doing); margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
+                                🚀 进行中 (${tasksByStatus['进行中'].length})
+                            </h5>
+                            <div style="margin-left: 20px;">
+                                ${tasksByStatus['进行中'].map(task => {
+                    const progressCount = task.fields.progressLog ? task.fields.progressLog.length : 0;
+                    return `
+                        <div class="reflection-task-item" style="position: relative;">
+                            <div onclick="viewTaskDetail('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                                <div class="task-status-icon">${getStatusIcon(task.status)}</div>
+                                <div class="task-info">
+                                    <div class="task-title">${task.title}</div>
+                                    <div class="task-meta">
+                                        <span class="task-type">${task.type}</span>
+                                        <span class="task-progress">进展记录: ${progressCount}</span>
                                     </div>
                                 </div>
-                                <div class="progress-actions">
-                                    <button class="btn btn-primary btn-sm" 
-                                            onclick="event.stopPropagation(); saveQuickProgress('${task.id}')">
-                                        💾 保存
-                                    </button>
-                                    <button class="btn btn-secondary btn-sm" 
-                                            onclick="event.stopPropagation(); cancelQuickProgress('${task.id}')">
-                                        ❌ 取消
-                                    </button>
-                                </div>
+                                <button class="btn btn-sm" onclick="event.stopPropagation(); showQuickProgress('${task.id}')">
+                                    📝 添加进展
+                                </button>
                             </div>
                         </div>
                     `;
-                }).join('');
+                }).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    ${tasksByStatus['暂停'].length > 0 ? `
+                        <div class="status-group" style="margin-bottom: 20px;">
+                            <h5 style="font-size: 0.85em; color: var(--status-pause); margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
+                                ⏸ 暂停 (${tasksByStatus['暂停'].length})
+                            </h5>
+                            <div style="margin-left: 20px;">
+                                ${tasksByStatus['暂停'].map(task => {
+                    const progressCount = task.fields.progressLog ? task.fields.progressLog.length : 0;
+                    return `
+                        <div class="reflection-task-item" style="position: relative;">
+                            <div onclick="viewTaskDetail('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                                <div class="task-status-icon">${getStatusIcon(task.status)}</div>
+                                <div class="task-info">
+                                    <div class="task-title">${task.title}</div>
+                                    <div class="task-meta">
+                                        <span class="task-type">${task.type}</span>
+                                        <span class="task-progress">进展记录: ${progressCount}</span>
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm" onclick="event.stopPropagation(); showQuickProgress('${task.id}')">
+                                    📝 添加进展
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    ${tasksByStatus['未开始'].length > 0 ? `
+                        <div class="status-group" style="margin-bottom: 20px;">
+                            <h5 style="font-size: 0.85em; color: var(--status-todo); margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
+                                ⏰ 未开始 (${tasksByStatus['未开始'].length})
+                            </h5>
+                            <div style="margin-left: 20px;">
+                                ${tasksByStatus['未开始'].map(task => {
+                    const progressCount = task.fields.progressLog ? task.fields.progressLog.length : 0;
+                    return `
+                        <div class="reflection-task-item" style="position: relative;">
+                            <div onclick="viewTaskDetail('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                                <div class="task-status-icon">${getStatusIcon(task.status)}</div>
+                                <div class="task-info">
+                                    <div class="task-title">${task.title}</div>
+                                    <div class="task-meta">
+                                        <span class="task-type">${task.type}</span>
+                                        <span class="task-progress">进展记录: ${progressCount}</span>
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm" onclick="event.stopPropagation(); showQuickProgress('${task.id}')">
+                                    📝 添加进展
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                `;
             }
         }
         
@@ -12201,9 +12318,9 @@
                         </div>
                     ` : ''}
                 </div>
-                ${pendingTasksArray.length > 5 ? `
+                ${pendingTasksArray.length > 10 ? `
                     <div class="pending-warning">
-                        ⚠️ 待处理任务较多，建议重新评估优先级
+                        ⚠️ 待处理任务较多（${pendingTasksArray.length}个），建议重新评估优先级
                     </div>
                 ` : ''}
                 
@@ -12243,144 +12360,117 @@
                 (task.type === '项目' || task.type === '动作')
             );
             
-            const completed = todayTasks.filter(t => t.status === '已完成').length;
-            const inProgress = todayTasks.filter(t => t.status === '进行中').length;
-            const paused = todayTasks.filter(t => t.status === '暂停').length;
-            const notStarted = todayTasks.filter(t => t.status === '未开始').length;
+            // 按状态分组
+            const tasksByStatus = {
+                '已完成': todayTasks.filter(t => t.status === '已完成'),
+                '进行中': todayTasks.filter(t => t.status === '进行中'),
+                '暂停': todayTasks.filter(t => t.status === '暂停'),
+                '未开始': todayTasks.filter(t => t.status === '未开始')
+            };
             
-            // 渲染统计
             const summaryContainer = document.getElementById('todayTasksSummary');
-            summaryContainer.innerHTML = `
-                <div class="today-stats">
-                    <div class="stat-item completed">
-                        <span class="stat-icon">✅</span>
-                        <span class="stat-text">已完成: ${completed}个</span>
-                    </div>
-                    <div class="stat-item in-progress">
-                        <span class="stat-icon">🚀</span>
-                        <span class="stat-text">进行中: ${inProgress}个</span>
-                    </div>
-                    <div class="stat-item paused">
-                        <span class="stat-icon">⏸</span>
-                        <span class="stat-text">暂停: ${paused}个</span>
-                    </div>
-                    <div class="stat-item not-started">
-                        <span class="stat-icon">⏰</span>
-                        <span class="stat-text">未开始: ${notStarted}个</span>
-                    </div>
-                </div>
+            
+            // 创建树状结构的渲染函数
+            const renderTaskTree = (status, tasks, icon) => {
+                if (tasks.length === 0) return '';
                 
-                <!-- 今日任务列表 -->
-                <div class="today-tasks-list" style="margin-top: 20px;">
-                    <h4 style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 10px;">今日任务详情</h4>
-                    ${todayTasks.length === 0 ? '<p class="empty-state">今天没有安排任务</p>' : 
-                      todayTasks.map(task => `
-                        <div class="reflection-task-item" style="margin-bottom: 10px; position: relative;">
-                            <div onclick="viewTaskDetail('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
-                                <div class="task-status-icon">${getStatusIcon(task.status)}</div>
-                                <div class="task-info" style="flex: 1;">
-                                    <div class="task-title">${task.title}</div>
-                                    <div class="task-meta">
-                                        <span class="task-type">${task.type}</span>
-                                        <span class="task-priority ${task.fields.priority.toLowerCase()}">${getPriorityIcon(task.fields.priority)} ${task.fields.priority}</span>
-                                        ${task.fields.progressLog && task.fields.progressLog.length > 0 ? 
-                                            `<span class="task-progress">进展: ${task.fields.progressLog.length}条</span>` : 
-                                            '<span class="task-progress">暂无进展</span>'
-                                        }
-                                    </div>
-                                    ${task.fields.progressLog && task.fields.progressLog.length > 0 ? `
-                                        <div class="latest-progress" style="margin-top: 5px; font-size: 0.85em; color: var(--text-muted);">
-                                            最新进展: ${task.fields.progressLog[task.fields.progressLog.length - 1].note.substring(0, 50)}${task.fields.progressLog[task.fields.progressLog.length - 1].note.length > 50 ? '...' : ''}
-                                        </div>
-                                    ` : ''}
-                                </div>
-                                <div class="task-actions" style="display: flex; gap: 5px;">
-                                    ${task.status !== '已完成' ? `
-                                        <button class="btn btn-sm" onclick="event.stopPropagation(); showQuickProgress('${task.id}')">
-                                            📝 进展
-                                        </button>
-                                        ${task.status === '未开始' ? `
-                                            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); updateTaskStatus('${task.id}', '进行中')">
-                                                ▶️ 开始
-                                            </button>
-                                        ` : task.status === '进行中' ? `
-                                            <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); updateTaskStatus('${task.id}', '已完成')">
-                                                ✅ 完成
-                                            </button>
-                                        ` : ''}
-                                    ` : ''}
-                                </div>
-                            </div>
-                            
-                            <!-- 快速进展输入面板 -->
-                            <div id="quickProgress-${task.id}" class="quick-progress-panel hidden">
-                                <textarea class="progress-input" 
-                                          placeholder="记录当前进展..."
-                                          id="progressText-${task.id}"
-                                          onclick="event.stopPropagation()"
-                                          oninput="updateCharacterCount('${task.id}')"
-                                          maxlength="500"></textarea>
-                                <div class="progress-meta">
-                                    <div class="progress-char-count">
-                                        <span id="charCount-${task.id}" class="char-count">0</span>/500
-                                    </div>
-                                    <div class="progress-tip">
-                                        💡 Ctrl+Enter 保存，Esc 取消
-                                    </div>
-                                </div>
-                                <div class="progress-actions">
-                                    <button class="btn btn-primary btn-sm" 
-                                            onclick="event.stopPropagation(); saveQuickProgress('${task.id}')">
-                                        💾 保存
-                                    </button>
-                                    <button class="btn btn-secondary btn-sm" 
-                                            onclick="event.stopPropagation(); cancelQuickProgress('${task.id}')">
-                                        ❌ 取消
-                                    </button>
-                                </div>
-                            </div>
+                return `
+                    <div class="tree-status-node" style="margin-bottom: 20px;">
+                        <div class="tree-status-header" style="font-weight: 600; color: var(--status-${getStatusColor(status)}); margin-bottom: 10px;">
+                            ${icon} ${status} (${tasks.length})
                         </div>
-                    `).join('')}
+                        <div class="tree-task-list" style="margin-left: 20px; border-left: 2px solid var(--glass-border); padding-left: 15px;">
+                            ${tasks.map((task, index) => `
+                                <div class="tree-task-item" style="position: relative; margin-bottom: ${index === tasks.length - 1 ? '0' : '12px'};">
+                                    <!-- 树形连接线 -->
+                                    <div style="position: absolute; left: -16px; top: 12px; width: 13px; height: 1px; background: var(--glass-border);"></div>
+                                    ${index === tasks.length - 1 ? `
+                                        <div style="position: absolute; left: -17px; top: -100%; bottom: 12px; width: 2px; background: var(--bg-secondary);"></div>
+                                    ` : ''}
+                                    
+                                    <div class="task-content" style="background: var(--bg-card); padding: 10px; border-radius: 8px; border: 1px solid var(--glass-border);">
+                                        <div onclick="viewTaskDetail('${task.id}')" style="cursor: pointer;">
+                                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                <div style="flex: 1;">
+                                                    <div class="task-title" style="font-weight: 500; margin-bottom: 4px;">${task.title}</div>
+                                                    <div class="task-meta" style="font-size: 0.85em; color: var(--text-muted);">
+                                                        <span class="task-type">${getTaskTypeIcon(task.type)} ${task.type}</span>
+                                                        <span class="task-priority ${task.fields.priority.toLowerCase()}" style="margin-left: 8px;">
+                                                            ${getPriorityIcon(task.fields.priority)} ${task.fields.priority}
+                                                        </span>
+                                                        ${task.fields.progressLog && task.fields.progressLog.length > 0 ? 
+                                                            `<span style="margin-left: 8px;">📝 ${task.fields.progressLog.length}条进展</span>` : 
+                                                            ''
+                                                        }
+                                                    </div>
+                                                    ${task.fields.progressLog && task.fields.progressLog.length > 0 ? `
+                                                        <div class="latest-progress" style="margin-top: 6px; padding: 6px 10px; background: var(--bg-hover); border-radius: 6px; font-size: 0.85em; color: var(--text-secondary);">
+                                                            💭 ${task.fields.progressLog[task.fields.progressLog.length - 1].note.substring(0, 60)}${task.fields.progressLog[task.fields.progressLog.length - 1].note.length > 60 ? '...' : ''}
+                                                        </div>
+                                                    ` : ''}
+                                                </div>
+                                                ${(status === '未开始' || status === '暂停') ? `
+                                                    <div class="task-actions" style="display: flex; gap: 5px; margin-left: 10px;">
+                                                        ${status === '未开始' ? `
+                                                            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); updateTaskStatus('${task.id}', '进行中')">
+                                                                ▶️ 开始
+                                                            </button>
+                                                        ` : `
+                                                            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); updateTaskStatus('${task.id}', '进行中')">
+                                                                ▶️ 继续
+                                                            </button>
+                                                        `}
+                                                        <button class="btn btn-sm" onclick="event.stopPropagation(); addToPending('${task.id}')">
+                                                            📋 待处理
+                                                        </button>
+                                                        ${status === '未开始' ? `
+                                                            <button class="btn btn-sm" onclick="event.stopPropagation(); moveToTomorrow('${task.id}')">
+                                                                📅 明天
+                                                            </button>
+                                                        ` : ''}
+                                                    </div>
+                                                ` : status === '进行中' ? `
+                                                    <div class="task-actions" style="display: flex; gap: 5px; margin-left: 10px;">
+                                                        <button class="btn btn-sm" onclick="event.stopPropagation(); showQuickProgress('${task.id}')">
+                                                            📝 进展
+                                                        </button>
+                                                        <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); updateTaskStatus('${task.id}', '已完成')">
+                                                            ✅ 完成
+                                                        </button>
+                                                    </div>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            };
+            
+            // 获取状态对应的颜色类名
+            function getStatusColor(status) {
+                const colorMap = {
+                    '已完成': 'done',
+                    '进行中': 'doing',
+                    '暂停': 'pause',
+                    '未开始': 'todo'
+                };
+                return colorMap[status] || 'todo';
+            }
+            
+            // 使用树状结构展示
+            summaryContainer.innerHTML = `
+                <div class="today-tasks-tree">
+                    ${todayTasks.length === 0 ? '<p class="empty-state">今天没有安排任务</p>' : `
+                        ${renderTaskTree('已完成', tasksByStatus['已完成'], '✅')}
+                        ${renderTaskTree('进行中', tasksByStatus['进行中'], '🚀')}
+                        ${renderTaskTree('暂停', tasksByStatus['暂停'], '⏸')}
+                        ${renderTaskTree('未开始', tasksByStatus['未开始'], '⏰')}
+                    `}
                 </div>
             `;
-            
-            // 收集今日的所有进展记录
-            const todayProgressList = [];
-            tasks.forEach(task => {
-                if (task.fields.progressLog) {
-                    task.fields.progressLog.forEach(log => {
-                        const logDate = log.date.split(' ')[0];
-                        if (logDate === today || log.date.includes('今天')) {
-                            todayProgressList.push({
-                                taskTitle: task.title,
-                                taskId: task.id,
-                                note: log.note,
-                                time: log.date
-                            });
-                        }
-                    });
-                }
-            });
-            
-            // 渲染进展记录
-            const progressListContainer = document.getElementById('todayProgressList');
-            if (todayProgressList.length === 0) {
-                progressListContainer.innerHTML = '<p class="empty-state">今天还没有添加进展记录</p>';
-            } else {
-                progressListContainer.innerHTML = todayProgressList
-                    .sort((a, b) => new Date(b.time) - new Date(a.time))
-                    .map(progress => `
-                        <div class="progress-item">
-                            <div class="progress-time">${progress.time.split(' ')[1] || progress.time}</div>
-                            <div class="progress-content">
-                                <div class="progress-task" onclick="viewTaskDetail('${progress.taskId}')">
-                                    ${progress.taskTitle}
-                                </div>
-                                <div class="progress-note">${progress.note}</div>
-                            </div>
-                        </div>
-                    `).join('');
-            }
         }
         
         // 渲染明日任务预览
@@ -12503,6 +12593,219 @@
             if (suggestions.length > 0) {
                 suggestionsList.innerHTML = suggestions.map(s => `<li>${s}</li>`).join('');
             }
+        }
+        
+        // 渲染全部任务筛选
+        function renderAllTasksFilter() {
+            const container = document.getElementById('allTasksList');
+            if (!container) return;
+            
+            // 初始化显示所有任务
+            const filteredTasks = tasks;
+            updateAllTasksList(filteredTasks);
+            updateAllTasksCount(filteredTasks.length, tasks.length);
+        }
+        
+        // 筛选所有任务
+        function filterAllTasks() {
+            const searchTerm = document.getElementById('allTasksSearch').value.toLowerCase();
+            const typeFilter = document.getElementById('allTasksTypeFilter').value;
+            const statusFilter = document.getElementById('allTasksStatusFilter').value;
+            const priorityFilter = document.getElementById('allTasksPriorityFilter').value;
+            
+            const filtered = tasks.filter(task => {
+                // 搜索词过滤
+                if (searchTerm && !task.title.toLowerCase().includes(searchTerm)) {
+                    return false;
+                }
+                
+                // 类型过滤
+                if (typeFilter && task.type !== typeFilter) {
+                    return false;
+                }
+                
+                // 状态过滤
+                if (statusFilter && task.status !== statusFilter) {
+                    return false;
+                }
+                
+                // 优先级过滤
+                if (priorityFilter && task.fields.priority !== priorityFilter) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            updateAllTasksList(filtered);
+            updateAllTasksCount(filtered.length, tasks.length);
+        }
+        
+        // 更新任务列表显示
+        function updateAllTasksList(filteredTasks) {
+            const container = document.getElementById('allTasksList');
+            if (!container) return;
+            
+            if (filteredTasks.length === 0) {
+                container.innerHTML = '<p class="empty-state">没有找到匹配的任务</p>';
+                return;
+            }
+            
+            // 按类型分组
+            const tasksByType = {
+                '目标': filteredTasks.filter(t => t.type === '目标'),
+                '关键结果': filteredTasks.filter(t => t.type === '关键结果'),
+                '项目': filteredTasks.filter(t => t.type === '项目'),
+                '动作': filteredTasks.filter(t => t.type === '动作')
+            };
+            
+            container.innerHTML = Object.entries(tasksByType)
+                .filter(([type, tasks]) => tasks.length > 0)
+                .map(([type, typeTasks]) => `
+                    <div class="task-type-group" style="margin-bottom: 20px;">
+                        <h5 style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 10px;">
+                            ${getTaskTypeIcon(type)} ${type} (${typeTasks.length})
+                        </h5>
+                        <div style="margin-left: 15px;">
+                            ${typeTasks.map(task => `
+                                <div class="reflection-task-item" onclick="viewTaskDetail('${task.id}')" style="margin-bottom: 8px;">
+                                    <div class="task-status-icon">${getStatusIcon(task.status)}</div>
+                                    <div class="task-info" style="flex: 1;">
+                                        <div class="task-title">${task.title}</div>
+                                        <div class="task-meta">
+                                            <span class="task-status ${task.status.toLowerCase()}">${task.status}</span>
+                                            <span class="task-priority ${task.fields.priority.toLowerCase()}">${getPriorityIcon(task.fields.priority)} ${task.fields.priority}</span>
+                                            ${task.fields.project ? `<span class="task-project">📦 ${task.fields.project}</span>` : ''}
+                                            ${task.fields.plannedDate ? `<span class="task-date">📅 ${formatDate(task.fields.plannedDate)}</span>` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="task-actions" style="display: flex; gap: 5px;">
+                                        ${task.status !== '已完成' && !focusTasks.has(task.id) ? `
+                                            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); addToFocus('${task.id}')">
+                                                🎯 加入焦点
+                                            </button>
+                                        ` : ''}
+                                        ${task.status !== '已完成' && !pendingTasks.has(task.id) ? `
+                                            <button class="btn btn-sm" onclick="event.stopPropagation(); addToPending('${task.id}')">
+                                                📋 加入待处理
+                                            </button>
+                                        ` : ''}
+                                        ${task.status !== '已完成' && !task.fields.plannedDate ? `
+                                            <button class="btn btn-sm" onclick="event.stopPropagation(); openScheduleTaskModal('${task.id}')">
+                                                📅 安排日期
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('');
+        }
+        
+        // 更新任务计数
+        function updateAllTasksCount(filteredCount, totalCount) {
+            const countElement = document.getElementById('allTasksCount');
+            if (!countElement) return;
+            
+            if (filteredCount === totalCount) {
+                countElement.textContent = `显示全部 ${totalCount} 个任务`;
+            } else {
+                countElement.textContent = `显示 ${filteredCount} / ${totalCount} 个任务`;
+            }
+        }
+        
+        // 重置筛选
+        function resetAllTasksFilter() {
+            document.getElementById('allTasksSearch').value = '';
+            document.getElementById('allTasksTypeFilter').value = '';
+            document.getElementById('allTasksStatusFilter').value = '';
+            document.getElementById('allTasksPriorityFilter').value = '';
+            
+            renderAllTasksFilter();
+        }
+        
+        // 打开安排任务日期对话框
+        function openScheduleTaskModal(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+            
+            const modal = document.createElement('div');
+            modal.className = 'modal active';
+            modal.innerHTML = `
+                <div class="modal-overlay" onclick="this.parentElement.remove()"></div>
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>📅 安排任务日期</h3>
+                        <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="margin-bottom: 15px;">
+                            <h4>${getTaskTypeIcon(task.type)} ${task.title}</h4>
+                            <p class="text-muted">${task.type} - ${task.status}</p>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label for="scheduleDate">选择日期：</label>
+                            <input type="date" 
+                                   id="scheduleDate" 
+                                   value="${formatDateToLocal(new Date())}" 
+                                   min="${formatDateToLocal(new Date())}">
+                        </div>
+                        <div class="quick-date-options" style="display: flex; gap: 10px; margin-bottom: 15px;">
+                            <button class="btn btn-sm" onclick="document.getElementById('scheduleDate').value = '${formatDateToLocal(new Date())}'">
+                                今天
+                            </button>
+                            <button class="btn btn-sm" onclick="document.getElementById('scheduleDate').value = '${formatDateToLocal(new Date(Date.now() + 86400000))}'">
+                                明天
+                            </button>
+                            <button class="btn btn-sm" onclick="document.getElementById('scheduleDate').value = '${formatDateToLocal(new Date(Date.now() + 2 * 86400000))}'">
+                                后天
+                            </button>
+                            <button class="btn btn-sm" onclick="document.getElementById('scheduleDate').value = '${formatDateToLocal(new Date(Date.now() + 7 * 86400000))}'">
+                                下周
+                            </button>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">取消</button>
+                        <button class="btn btn-primary" onclick="confirmScheduleTask('${taskId}')">
+                            确定安排
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        // 确认安排任务日期
+        function confirmScheduleTask(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+            
+            const dateInput = document.getElementById('scheduleDate');
+            const selectedDate = new Date(dateInput.value + 'T00:00:00');
+            
+            updateTaskPlannedDate(task, selectedDate);
+            
+            // 记录进展
+            if (!task.fields.progressLog) {
+                task.fields.progressLog = [];
+            }
+            task.fields.progressLog.push({
+                date: new Date().toLocaleString('zh-CN'),
+                note: `任务已安排到 ${selectedDate.toLocaleDateString('zh-CN')}`
+            });
+            
+            // 保存数据
+            saveToLocalStorage();
+            
+            // 关闭对话框
+            document.querySelector('.modal').remove();
+            
+            // 刷新显示
+            filterAllTasks();
+            
+            showNotification(`任务已安排到 ${selectedDate.toLocaleDateString('zh-CN')}`, 'success');
         }
         
         // 获取未规划的任务
@@ -12710,9 +13013,165 @@
         }
         
         // 快速为特定任务添加进展记录
+        // 全局快速进展弹窗状态
+        let currentProgressTaskId = null;
+        
         function showQuickProgress(taskId) {
-            // 使用现有的快速进展功能
-            toggleQuickProgress(taskId);
+            // 使用全局快速进展弹窗
+            openGlobalQuickProgress(taskId);
+        }
+        
+        function openGlobalQuickProgress(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+            
+            currentProgressTaskId = taskId;
+            const popup = document.getElementById('globalQuickProgress');
+            
+            // 设置任务信息
+            const iconSpan = popup.querySelector('.task-icon');
+            const nameSpan = popup.querySelector('.task-name');
+            iconSpan.textContent = getTaskTypeIcon(task.type);
+            nameSpan.textContent = task.name;
+            
+            // 清空之前的内容
+            const textarea = document.getElementById('globalProgressText');
+            textarea.value = '';
+            updateGlobalCharacterCount();
+            
+            // 获取点击按钮的位置
+            const button = event.target.closest('button');
+            if (button) {
+                const rect = button.getBoundingClientRect();
+                const popupWidth = 400;
+                const popupHeight = 260;
+                
+                // 计算弹窗位置
+                let left = rect.right + 10;
+                let top = rect.top;
+                
+                // 防止超出右边界
+                if (left + popupWidth > window.innerWidth - 20) {
+                    left = rect.left - popupWidth - 10;
+                }
+                
+                // 防止超出底部
+                if (top + popupHeight > window.innerHeight - 20) {
+                    top = window.innerHeight - popupHeight - 20;
+                }
+                
+                // 防止超出顶部
+                if (top < 20) {
+                    top = 20;
+                }
+                
+                popup.style.left = left + 'px';
+                popup.style.top = top + 'px';
+            }
+            
+            // 显示弹窗
+            popup.classList.add('active');
+            
+            // 聚焦输入框
+            setTimeout(() => {
+                textarea.focus();
+            }, 100);
+            
+            // 绑定快捷键
+            textarea.onkeydown = function(e) {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    e.preventDefault();
+                    saveGlobalQuickProgress();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeGlobalQuickProgress();
+                }
+            };
+        }
+        
+        function closeGlobalQuickProgress() {
+            const popup = document.getElementById('globalQuickProgress');
+            popup.classList.remove('active');
+            currentProgressTaskId = null;
+        }
+        
+        function updateGlobalCharacterCount() {
+            const textarea = document.getElementById('globalProgressText');
+            const charCount = document.getElementById('globalCharCount');
+            const currentLength = textarea.value.length;
+            
+            charCount.textContent = currentLength;
+            
+            // 根据字符数量改变颜色
+            if (currentLength > 400) {
+                charCount.style.color = 'var(--priority-high)';
+            } else if (currentLength > 300) {
+                charCount.style.color = 'var(--priority-medium)';
+            } else {
+                charCount.style.color = 'var(--text-muted)';
+            }
+            
+            // 接近限制时提示
+            if (currentLength >= 450) {
+                charCount.parentElement.style.animation = 'pulse 1s infinite';
+            } else {
+                charCount.parentElement.style.animation = 'none';
+            }
+        }
+        
+        function saveGlobalQuickProgress() {
+            if (!currentProgressTaskId) return;
+            
+            const progressText = document.getElementById('globalProgressText').value.trim();
+            if (!progressText) {
+                showNotification('请输入进展内容', 'warning');
+                return;
+            }
+            
+            const task = tasks.find(t => t.id === currentProgressTaskId);
+            if (!task) return;
+            
+            // 保存进展 - 使用与旧函数相同的数据结构
+            const now = new Date();
+            const progressEntry = {
+                date: now.toLocaleString('zh-CN'),
+                note: progressText
+            };
+            
+            // 更新任务进展日志
+            if (!task.fields) {
+                task.fields = {};
+            }
+            if (!task.fields.progressLog) {
+                task.fields.progressLog = [];
+            }
+            task.fields.progressLog.push(progressEntry);
+            
+            // 更新任务的最后更新时间
+            task.lastModified = now.toISOString();
+            
+            // 保存到本地存储
+            saveToLocalStorage();
+            
+            // 显示成功提示
+            const progressLength = progressText.length;
+            showNotification(`进展已保存 ✅ (${progressLength}字)`, 'success');
+            
+            // 关闭弹窗
+            closeGlobalQuickProgress();
+            
+            // 根据当前视图刷新对应内容
+            if (currentView === 'today') {
+                setTimeout(() => {
+                    forceRefreshTimeline();
+                }, 50);
+            } else if (currentView === 'planning') {
+                // 刷新计划视图
+                renderPlanningView();
+            } else if (currentView === 'focus') {
+                // 刷新焦点视图
+                renderFocusTasks();
+            }
         }
         
         // 绑定全局快捷键
@@ -12749,5 +13208,37 @@
             console.log('✅ MNTask 任务看板初始化完成');
         });
     </script>
+    
+    <!-- 全局快速进展弹窗 -->
+    <div id="globalQuickProgress" class="global-quick-progress">
+        <div class="global-quick-progress-header">
+            <div class="global-quick-progress-title">
+                <span class="task-icon"></span>
+                <span class="task-name"></span>
+            </div>
+            <span class="global-quick-progress-close" onclick="closeGlobalQuickProgress()">×</span>
+        </div>
+        <textarea class="progress-input" 
+                  placeholder="记录当前进展..."
+                  id="globalProgressText"
+                  oninput="updateGlobalCharacterCount()"
+                  maxlength="500"></textarea>
+        <div class="progress-meta">
+            <div class="progress-char-count">
+                <span id="globalCharCount" class="char-count">0</span>/500
+            </div>
+            <div class="progress-tip">
+                💡 Ctrl+Enter 保存，Esc 取消
+            </div>
+        </div>
+        <div class="progress-actions">
+            <button class="btn btn-primary btn-sm" onclick="saveGlobalQuickProgress()">
+                💾 保存
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="closeGlobalQuickProgress()">
+                取消
+            </button>
+        </div>
+    </div>
 </body>
 </html>

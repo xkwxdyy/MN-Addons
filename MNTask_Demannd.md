@@ -1,3 +1,249 @@
+# 插件看板数据交互与卡片同步实现  
+> 下面说的“看板”默认指“task-focus-board.html” 文件
+> 如果是软件里的“看板”，是指一些固定的卡片，作为看板的功能，来“存”卡片而已，本身并没有什么特别
+> “软件卡片”||“软件里任务卡片”指的是 MarginNote 里的任务类型的卡片
+> “看板里任务卡片”默认指的是“task-focus-board.html”文件中的任务卡片
+
+请完成插件看板功能中「卡片数据与看板同步交互」的开发实现，具体需求如下：  
+
+
+### **任务目标**  
+
+开发插件看板的双向数据同步功能：实现软件里任务卡片数据 ↔ HTML任务卡片数据，并实现界面的实时交互（即软件卡片信息提取→转化为HTML元数据→HTML 中修改元数据后同步回原卡片），确保看板中任务卡片与软件中任务卡片内容的一致性。  
+
+
+### **核心参考**  
+
+请以 **MN Browser插件**（/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnbrowser） 的实现逻辑为主要学习对象，重点分析其如何完成：  
+1. 卡片原始数据 → HTML界面的信息传递（数据提取与转换）  
+2. HTML界面修改 → 卡片内容的反向同步（元数据解析与内容更新）  
+
+其余参考：卡片操作 API 看：mnutils/xdyyutils.js 和 mnutils/mnutils.js 中的相关函数实现。
+评论内容主要看 MNComment 类。
+
+软件中任务类型的卡片的主要处理参考 MNTask项目 xdyy_utils_extensions.js 文件中对任务类卡片的处理。
+
+### **具体开发需求**  
+
+#### 1. 软件内提取任务卡片提取范围限制  
+
+仅从 **已绑定的软件内看板卡片** 中提取任务卡片（非整个笔记本），要恢复之前的软件内 mntask 的 setting 的看板绑定视图。
+
+#### 2. 核心实现步骤
+
+##### （1）卡片信息提取与元数据转换  
+
+- 如何从目标看板卡片中提取关键信息
+- 需将提取的信息转化为 **可输入HTML界面的卡片元数据格式**（请说明元数据应包含的字段、数据类型及结构示例）。  
+
+##### （2）HTML元数据修改与卡片同步  
+
+- 当HTML界面接收到元数据并修改后（如用户编辑标题/状态），如何将修改后的元数据解析为卡片可识别的格式？  
+- 如何通过插件API将解析后的内容 **精准同步回原看板卡片**（避免影响其他无关卡片）？  
+
+
+具体的软件任务卡片数据转换示例（你从中可以看出，什么是我要的内容信息，而剩余的是格式内容）：动作卡片 A
+```
+【动作 >> 开发 MarginNote 插件 >> 开发 MNUtils 插件 >> 开发 MNMath 类｜进行中】要处理反例紧跟着非归类卡片的情况！
+---
+否则制卡会出问题！
+---
+<span id="mainField" style="font-weight:600;color:#1E40AF;background:linear-gradient(15deg,#EFF6FF 30%,#DBEAFE);border:2px solid #3B82F6;border-radius:12px;padding:10px 18px;display:inline-block;box-shadow:2px 2px 0px #BFDBFE,4px 4px 8px rgba(59,130,246,0.12);position:relative;margin:4px 8px;">信息</span>
+---
+<span id="subField" style="background:#FFF;color:#FF8C5A;border:2px solid currentColor;border-radius:3px;padding:6px 12px;font-size:0.9em;font-weight:600;box-shadow:0 1px 3px rgba(255,140,90,0.2);display:inline-block;"> 所属 </span> [开发 MNMath 类](marginnote4app://note/8E5D50A4-DF1E-4395-8370-B88DC371C3C5)
+---
+<span id="subField" style="background:#FFF;color:#FF8C5A;border:2px solid currentColor;border-radius:3px;padding:6px 12px;font-size:0.9em;font-weight:600;box-shadow:0 1px 3px rgba(255,140,90,0.2);display:inline-block;">[启动](marginnote4app://uistatus/H4sIAAAAAAAAE5VSy5LbIBD8F87SFuIp%2BWbJ5VxyyCG3VCqF0LBmg4VKoM06W%2F73AHbiveY2j56mp5l3NHr%2F8zxxtEOGgNbYMNNJGGmHJWAsmRg7wRQIojpDZQtEj5ibpm0apeRI5ahBcKEx4agqZGFxNqIdzlmM%2Fjx5jXZGuQAV0mqdRv9WujmG6Q7Vzv%2BGB8zPEeYYSivNO3WB1U5JI2MDYw0b6l4OtGb7o6h72rY1wU2Hh33Ph%2BMh6YC3ND%2Bd%2FQSFwlgHNzLjvIpntdwSr7cw%2BwiFuj%2F27ND2pO4IYTXjvajbLqf4yEk74D2lXaI2m3MfV0pkn71W0foZ7d6RNyZAzNGPl%2BDnV%2BU2%2BHpZkg40fPri7RwTRzbgibWSck6YbEUjGO1khS6lzgWThLNUo7jlmF8rFLRyeZUnIiiTVGDcsK5JGHEtCgI4F9Kr375XyC%2Bw3uXgD5kfX26FLTo7P7xe1DMkf1O5tBc1gysTRUv6f960mLKOcdJgUqEVAqhVnwp6hVcLv26hfT7dnL0T32D5Iko%2F2AlGtT7a%2BUzsbHz2SvstGbNr0jZRjeFkpwnmf9B4gnM28ABGbS4bGP1i9f8cRJb59zCvfwCp6rmF9QIAAA%3D%3D)</span>
+---
+<span id="mainField" style="font-weight:600;color:#1E40AF;background:linear-gradient(15deg,#EFF6FF 30%,#DBEAFE);border:2px solid #3B82F6;border-radius:12px;padding:10px 18px;display:inline-block;box-shadow:2px 2px 0px #BFDBFE,4px 4px 8px rgba(59,130,246,0.12);position:relative;margin:4px 8px;">进展</span>
+---
+<div style="position:relative; padding-left:28px; margin:14px 0; color:#1E40AF; font-weight:500; font-size:0.92em">
+  <div style="position:absolute; left:0; top:50%; transform:translateY(-50%); 
+              width:18px; height:18px; background:conic-gradient(#3B82F6 0%, #60A5FA 50%, #3B82F6 100%); 
+              border-radius:50%; display:flex; align-items:center; justify-content:center">
+    <div style="width:8px; height:8px; background:white; border-radius:50%"></div>
+  </div>
+  2025-07-20 11:10
+</div>
+开始「要处理反例紧跟着非归类卡片的情况！」
+```
+
+其中
+```
+【动作 >> 开发 MarginNote 插件 >> 开发 MNUtils 插件 >> 开发 MNMath 类｜进行中】要处理反例紧跟着非归类卡片的情况！
+```
+是卡片的标题，其余的用 --- 分隔的是一条条评论。卡片 A 的 URL 是 "marginnote4app://note/328FE6A7-D3DE-4ECE-943A-9DAEED56E515".
+
+那么 A 对应的数据结构应该是：
+```json
+{
+  "type": "action",
+  "title-content": "要处理反例紧跟着非归类卡片的情况！",
+  "title-path": "开发 MarginNote 插件 >> 开发 MNUtils 插件 >> 开发 MNMath 类",
+  "status": "进行中",
+  "url": "marginnote4app://note/328FE6A7-D3DE-4ECE-943A-9DAEED56E515",
+  "id": "328FE6A7-D3DE-4ECE-943A-9DAEED56E515",
+  // 任务描述/笔记/想法
+  "description": "否则制卡会出问题！",
+  "launchLink": "marginnote4app://uistatus/H4sIAAAAAAAAE5VSy5LbIBD8F87SFuIp%2BWbJ5VxyyCG3VCqF0LBmg4VKoM06W%2F73AHbiveY2j56mp5l3NHr%2F8zxxtEOGgNbYMNNJGGmHJWAsmRg7wRQIojpDZQtEj5ibpm0apeRI5ahBcKEx4agqZGFxNqIdzlmM%2Fjx5jXZGuQAV0mqdRv9WujmG6Q7Vzv%2BGB8zPEeYYSivNO3WB1U5JI2MDYw0b6l4OtGb7o6h72rY1wU2Hh33Ph%2BMh6YC3ND%2Bd%2FQSFwlgHNzLjvIpntdwSr7cw%2BwiFuj%2F27ND2pO4IYTXjvajbLqf4yEk74D2lXaI2m3MfV0pkn71W0foZ7d6RNyZAzNGPl%2BDnV%2BU2%2BHpZkg40fPri7RwTRzbgibWSck6YbEUjGO1khS6lzgWThLNUo7jlmF8rFLRyeZUnIiiTVGDcsK5JGHEtCgI4F9Kr375XyC%2Bw3uXgD5kfX26FLTo7P7xe1DMkf1O5tBc1gysTRUv6f960mLKOcdJgUqEVAqhVnwp6hVcLv26hfT7dnL0T32D5Iko%2F2AlGtT7a%2BUzsbHz2SvstGbNr0jZRjeFkpwnmf9B4gnM28ABGbS4bGP1i9f8cRJb59zCvfwCp6rmF9QIAAA%3D%3D",
+  "parent-title":"开发 MNMath 类",
+  "parent-URL": "marginnote4app://note/8E5D50A4-DF1E-4395-8370-B88DC371C3C5",
+  "progresses": [
+    {
+      "time": "2025-07-20 11:10",
+      "content": "开始「要处理反例紧跟着非归类卡片的情况！」"
+    }
+  ]
+}
+```
+
+如果 B 是 A 上一级的项目卡片，则 B 的信息还多了
+```json
+{
+  // ...
+  "including": [
+    {
+      // A 的信息
+    },
+    {
+      // 另一个动作卡片 的信息
+    }
+  ]
+}
+```
+
+请基于以上需求，完成看板与卡片的双向数据同步功能开发。
+注意要严格参考 MN Broswer 和 MNUtils。然后重点是先完成双向数据同步！ultrathink
+
+---
+开发暂停状态（不在“状态”的单击里切换，而是在长按菜单里增加暂停功能）
+---
+下面仍然处理“计划”视图
+1. 现在的任务的那个信息预览UI很分散！
+2. 今日任务回顾
+   - 数据和下面的内容是割裂的！应该是类似于树状结构
+```
+已完成
+  |- 看书
+  ｜- 看电影
+暂停
+……
+```
+  - 未完成的同理要增加是否添加到待处理还是明天继续
+ultrathink
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+1. 左侧的规划统计没有意义，改为对每个部分的定位，然后每个功能看板单独成行，现在是两个一行
+2. 增加一个子看板在最底下，能看到所有任务，并且可以筛选，这个部分是要在上面基础上把其它任务纳入规划
+3. 现在的任务的那个信息预览UI很分散！
+4. 任务详情的进展
+  - 报错
+  ```
+  task-focus-board.html:12077 🎨 [renderPlanningView] 开始渲染反思仪表板
+task-focus-board.html:11869 🚀 MNTask 看板已启动
+task-focus-board.html:12077 🎨 [renderPlanningView] 开始渲染反思仪表板
+task-focus-board.html:12749 ✅ MNTask 任务看板初始化完成
+task-focus-board.html:7504 Uncaught TypeError: Cannot read properties of null (reading 'stopPropagation')
+    at viewProgressLog (task-focus-board.html:7504:19)
+    at HTMLButtonElement.onclick (task-focus-board.html:5568:126)
+task-focus-board.html:7504 Uncaught TypeError: Cannot read properties of null (reading 'stopPropagation')
+    at viewProgressLog (task-focus-board.html:7504:19)
+    at HTMLButtonElement.onclick (task-focus-board.html:5568:126)
+```
+  - 添加进展后没有立刻刷新
+1. 焦点任务回顾
+  - 已完成和处理中，或者暂定的应该分区显示
+  - 未完成的任务要支持选择后续处理，比如添加到待处理任务，或者是移动到明天等
+2. 待处理任务检查
+  - 点击“添加新的待处理任务”右上角显示已添加，但是列表没有刷新！比如 cmd+R 手动刷新！请修复
+  - 五个以上就“待处理任务较多，建议重新评估优先级”，但是这个不应该有限制，焦点任务有限制是正常的
+3. 今日任务回顾
+   - 数据和下面的内容是割裂的！应该是类似于树状结构
+```
+已完成
+  |- 看书
+  ｜- 看电影
+暂停
+……
+```
+  - 未完成的同理要增加是否添加到待处理还是明天继续
+1. 今日进展记录
+  - 不需要这个部分
+2. 明日任务预览
+  我觉得明日任务和待处理任务有交叉点，我的思路是明天（检测时间）打开这个 html 时，就自动把明日任务加到待处理任务中。
+ultrathink
+---
+开发一个总结的汇总视图
+
+
+
+---
+1. “加入焦点”点击并没有刷新待处理任务列表
+2. 控制台日志：
+```task-focus-board.html:12073 🎨 [renderPlanningView] 开始渲染反思仪表板
+task-focus-board.html:11865 🚀 MNTask 看板已启动
+task-focus-board.html:12073 🎨 [renderPlanningView] 开始渲染反思仪表板
+task-focus-board.html:12685 ✅ MNTask 任务看板初始化完成
+task-focus-board.html:7646 快速进展面板不存在: quickProgress-task_3
+toggleQuickProgress @ task-focus-board.html:7646
+showQuickProgress @ task-focus-board.html:12651
+onclick @ task-focus-board.html:12689
+task-focus-board.html:7646 快速进展面板不存在: quickProgress-task_4
+toggleQuickProgress @ task-focus-board.html:7646
+showQuickProgress @ task-focus-board.html:12651
+onclick @ task-focus-board.html:12689
+``` ultrathink
+
+
+---
+1. 任务详情里应该要看到进展！但现在没有！
+2. "计划"视图，目前的里面很多都是数字，或者只有任务名称。请注意我们的计划的这些筛选的目的是是对这些任务进行更好地处理，数字本身是没有意义的！一定要能回源到任务本身！
+3. 当前控制台仍然有报错
+```
+task-focus-board.html:11802 🎨 [renderPlanningView] 开始渲染反思仪表板
+task-focus-board.html:11594 🚀 MNTask 看板已启动
+task-focus-board.html:11802 🎨 [renderPlanningView] 开始渲染反思仪表板
+task-focus-board.html:12302 ✅ MNTask 任务看板初始化完成
+task-focus-board.html:7521 Uncaught TypeError: Cannot read properties of null (reading 'classList')
+    at toggleQuickProgress (task-focus-board.html:7521:36)
+    at showQuickProgress (task-focus-board.html:12268:13)
+    at HTMLButtonElement.onclick (task-focus-board.html:12306:34)
+toggleQuickProgress @ task-focus-board.html:7521
+showQuickProgress @ task-focus-board.html:12268
+onclick @ task-focus-board.html:12306
+task-focus-board.html:11802 🎨 [renderPlanningView] 开始渲染反思仪表板
+task-focus-board.html:7355 Uncaught TypeError: Cannot read properties of null (reading 'stopPropagation')
+    at addProgressNote (task-focus-board.html:7355:19)
+    at HTMLDivElement.onclick (task-focus-board.html:1:40)
+addProgressNote @ task-focus-board.html:7355
+onclick @ task-focus-board.html:1
+
+```
+ultrathink
+
+
+---
+"计划"视图我们要重新设计:我目前的想法是结合对"焦点视图"的分析来处理，也就是要解决下面的问题，或者是帮助用户去反思：
+1. 焦点任务都完成了吗？完成的怎么样？
+2. 待处理任务里面还有内容吗？需要往里添加内容吗？
+3. 今天的任务完成的怎么样（可以和时间轴联系起来），需要添加进展记录吗？
+4. 明天的任务有哪些？
+ultrathink
+
+---
 请你再完整阅读自查一遍 task-focus-board.html 里的代码逻辑和问题 ultrathink
 ---
 “修复选择焦点任务后看板不更新的问题” 动作任务，我点击任务详情，发现里面提示“时间冲突”？？然后是“14:00-15:00” 下面有

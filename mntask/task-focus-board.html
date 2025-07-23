@@ -6009,8 +6009,8 @@
         }
         
         // 强制刷新时间轴视图
-        function forceRefreshTimeline() {
-            console.log('🔄 [forceRefreshTimeline] 开始执行强制刷新时间轴');
+        function forceRefreshTimeline(targetTaskId = null, savedScrollPosition = null) {
+            console.log('🔄 [forceRefreshTimeline] 开始执行强制刷新时间轴', { targetTaskId, savedScrollPosition });
             
             // 立即保存数据
             saveToLocalStorage();
@@ -6064,7 +6064,7 @@
                     renderTodayTimeline();
                     console.log('✅ [forceRefreshTimeline] renderTodayTimeline 调用完成');
                     
-                    // 验证刷新后的按钮状态
+                    // 验证刷新后的按钮状态并恢复滚动位置
                     setTimeout(() => {
                         const afterButtons = {};
                         tasksToVerify.forEach(taskId => {
@@ -6085,7 +6085,24 @@
                         });
                         console.log('🔘 [forceRefreshTimeline] 刷新后按钮状态:', afterButtons);
                         console.log('📏 [forceRefreshTimeline] 刷新后HTML长度:', container.innerHTML.length);
-                    }, 100);
+                        
+                        // 恢复滚动位置
+                        const viewContainer = document.querySelector('.view-container');
+                        if (viewContainer && savedScrollPosition !== null) {
+                            console.log('📍 [forceRefreshTimeline] 恢复滚动位置:', savedScrollPosition);
+                            viewContainer.scrollTop = savedScrollPosition;
+                            
+                            // 如果有目标任务ID，确保该任务可见
+                            if (targetTaskId) {
+                                const taskElement = document.querySelector(`[data-task-id="${targetTaskId}"]`);
+                                if (taskElement) {
+                                    // 使用 scrollIntoView 确保任务在视图中心
+                                    taskElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    console.log('🎯 [forceRefreshTimeline] 滚动到任务:', targetTaskId);
+                                }
+                            }
+                        }
+                    }, 150); // 增加延迟以确保DOM完全渲染
                     
                     // 更新侧边栏
                     console.log('📊 [forceRefreshTimeline] 更新侧边栏统计');
@@ -6101,6 +6118,11 @@
         // 时间轴专用的任务状态切换函数
         function toggleTaskStatusInTimeline(taskId, newStatus) {
             console.log('🔧 [toggleTaskStatusInTimeline] 开始执行，参数:', { taskId, newStatus });
+            
+            // 记录当前滚动位置
+            const viewContainer = document.querySelector('.view-container');
+            const scrollPosition = viewContainer ? viewContainer.scrollTop : 0;
+            console.log('📍 [toggleTaskStatusInTimeline] 记录滚动位置:', scrollPosition);
             
             // 直接更新任务状态，避免重复刷新
             const task = tasks.find(t => t.id === taskId);
@@ -6174,9 +6196,9 @@
             showNotification(`任务状态已更新为：${newStatus}`, 'success');
             console.log('📢 [toggleTaskStatusInTimeline] 通知已显示');
             
-            // 立即强制刷新时间轴
+            // 立即强制刷新时间轴，传递任务ID和滚动位置
             console.log('🔄 [toggleTaskStatusInTimeline] 准备调用 forceRefreshTimeline');
-            forceRefreshTimeline();
+            forceRefreshTimeline(taskId, scrollPosition);
             console.log('✅ [toggleTaskStatusInTimeline] forceRefreshTimeline 调用完成');
             
             // 更新侧边栏统计

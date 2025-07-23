@@ -6096,13 +6096,13 @@
                             if (targetTaskId) {
                                 const taskElement = document.querySelector(`[data-task-id="${targetTaskId}"]`);
                                 if (taskElement) {
-                                    // 使用 scrollIntoView 确保任务在视图中心
-                                    taskElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    // 使用 scrollIntoView 确保任务在视图中心（瞬时滚动）
+                                    taskElement.scrollIntoView({ behavior: 'instant', block: 'center' });
                                     console.log('🎯 [forceRefreshTimeline] 滚动到任务:', targetTaskId);
                                 }
                             }
                         }
-                    }, 150); // 增加延迟以确保DOM完全渲染
+                    }, 50); // 减少延迟以加快响应速度
                     
                     // 更新侧边栏
                     console.log('📊 [forceRefreshTimeline] 更新侧边栏统计');

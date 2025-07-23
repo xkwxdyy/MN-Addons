@@ -6010,31 +6010,108 @@
         
         // 强制刷新时间轴视图
         function forceRefreshTimeline() {
+            console.log('🔄 [forceRefreshTimeline] 开始执行强制刷新时间轴');
+            
             // 立即保存数据
             saveToLocalStorage();
+            console.log('💾 [forceRefreshTimeline] 数据已保存到本地存储');
+            
+            // 先捕获一些要验证的任务状态
+            const tasksToVerify = ['task_6', 'task_8', 'task_59'];
+            const beforeStates = {};
+            tasksToVerify.forEach(taskId => {
+                const task = tasks.find(t => t.id === taskId);
+                if (task) {
+                    beforeStates[taskId] = {
+                        status: task.status,
+                        title: task.title.substring(0, 30) + '...'
+                    };
+                }
+            });
+            console.log('🔍 [forceRefreshTimeline] 刷新前任务状态:', beforeStates);
             
             // 使用requestAnimationFrame确保在下一帧重新渲染
             requestAnimationFrame(() => {
+                console.log('🎯 [forceRefreshTimeline] requestAnimationFrame 回调开始执行');
+                
                 const container = document.getElementById('todayTimeline');  // 修复容器ID
+                console.log('📦 [forceRefreshTimeline] 查找容器元素 todayTimeline:', container ? '找到' : '未找到');
+                
                 if (container) {
-                    // 清空容器内容
+                    // 捕获刷新前的按钮状态
+                    const beforeButtons = {};
+                    tasksToVerify.forEach(taskId => {
+                        const taskEl = container.querySelector(`[data-task-id="${taskId}"]`);
+                        if (taskEl) {
+                            const buttons = taskEl.querySelectorAll('.timeline-task-actions button');
+                            beforeButtons[taskId] = Array.from(buttons).map(btn => btn.textContent.trim());
+                        }
+                    });
+                    console.log('🔘 [forceRefreshTimeline] 刷新前按钮状态:', beforeButtons);
+                    
+                    console.log('🗑️ [forceRefreshTimeline] 清空容器前的HTML长度:', container.innerHTML.length);
+                    
+                    // 强力DOM刷新：先设置为空，再强制重排，再渲染
                     container.innerHTML = '';
+                    container.style.display = 'none';
+                    container.offsetHeight; // 强制重排
+                    container.style.display = '';
+                    
+                    console.log('✅ [forceRefreshTimeline] 容器已清空并强制重排');
+                    
                     // 重新渲染时间轴
+                    console.log('🎨 [forceRefreshTimeline] 调用 renderTodayTimeline 开始重新渲染');
                     renderTodayTimeline();
+                    console.log('✅ [forceRefreshTimeline] renderTodayTimeline 调用完成');
+                    
+                    // 验证刷新后的按钮状态
+                    setTimeout(() => {
+                        const afterButtons = {};
+                        tasksToVerify.forEach(taskId => {
+                            const taskEl = container.querySelector(`[data-task-id="${taskId}"]`);
+                            if (taskEl) {
+                                const buttons = taskEl.querySelectorAll('.timeline-task-actions button');
+                                afterButtons[taskId] = Array.from(buttons).map(btn => btn.textContent.trim());
+                                
+                                // 检查任务状态文本
+                                const statusEl = taskEl.querySelector('[class*="status"]');
+                                const task = tasks.find(t => t.id === taskId);
+                                console.log(`📊 [DOM验证] ${taskId}:`, {
+                                    数据状态: task?.status,
+                                    DOM状态: statusEl?.textContent.trim(),
+                                    按钮变化: beforeButtons[taskId]?.join(',') + ' → ' + afterButtons[taskId]?.join(',')
+                                });
+                            }
+                        });
+                        console.log('🔘 [forceRefreshTimeline] 刷新后按钮状态:', afterButtons);
+                        console.log('📏 [forceRefreshTimeline] 刷新后HTML长度:', container.innerHTML.length);
+                    }, 100);
+                    
                     // 更新侧边栏
+                    console.log('📊 [forceRefreshTimeline] 更新侧边栏统计');
                     updateSidebar('today');
                     updateSidebarStats();
+                    console.log('✅ [forceRefreshTimeline] 强制刷新完成');
+                } else {
+                    console.error('❌ [forceRefreshTimeline] 未找到容器元素 todayTimeline');
                 }
             });
         }
         
         // 时间轴专用的任务状态切换函数
         function toggleTaskStatusInTimeline(taskId, newStatus) {
+            console.log('🔧 [toggleTaskStatusInTimeline] 开始执行，参数:', { taskId, newStatus });
+            
             // 直接更新任务状态，避免重复刷新
             const task = tasks.find(t => t.id === taskId);
-            if (!task) return;
+            if (!task) {
+                console.error('❌ [toggleTaskStatusInTimeline] 未找到任务:', taskId);
+                return;
+            }
+            console.log('✅ [toggleTaskStatusInTimeline] 找到任务:', task.title);
             
             const oldStatus = task.status;
+            console.log('📝 [toggleTaskStatusInTimeline] 状态变更:', oldStatus, '→', newStatus);
             const currentTime = new Date().toISOString();
             const today = formatDateToLocal(new Date());
             
@@ -6064,6 +6141,14 @@
             
             // 更新状态
             task.status = newStatus;
+            console.log('✅ [toggleTaskStatusInTimeline] 状态更新完成，task对象:', {
+                id: task.id,
+                title: task.title.substring(0, 20) + '...',
+                oldStatus: oldStatus,
+                newStatus: task.status,
+                startTime: task.fields.startTime,
+                endTime: task.fields.endTime
+            });
             
             // 记录进展
             if (!task.fields.progressLog) {
@@ -6077,15 +6162,27 @@
             // 保存数据
             saveToLocalStorage();
             
+            // 验证tasks数组中的更新
+            const updatedTask = tasks.find(t => t.id === taskId);
+            console.log('🔍 [toggleTaskStatusInTimeline] 验证tasks数组中的任务状态:', {
+                id: updatedTask.id,
+                status: updatedTask.status,
+                isSameObject: updatedTask === task
+            });
+            
             // 显示通知
             showNotification(`任务状态已更新为：${newStatus}`, 'success');
+            console.log('📢 [toggleTaskStatusInTimeline] 通知已显示');
             
             // 立即强制刷新时间轴
+            console.log('🔄 [toggleTaskStatusInTimeline] 准备调用 forceRefreshTimeline');
             forceRefreshTimeline();
+            console.log('✅ [toggleTaskStatusInTimeline] forceRefreshTimeline 调用完成');
             
             // 更新侧边栏统计
             updateSidebar('today');
             updateSidebarStats();
+            console.log('✅ [toggleTaskStatusInTimeline] 状态切换完成');
         }
         
         // 时间轴专用的添加到焦点函数
@@ -6146,13 +6243,18 @@
         
         // 渲染今日时间轴
         function renderTodayTimeline() {
+            console.log('🎨 [renderTodayTimeline] 开始渲染时间轴');
+            
             // 获取选择的日期范围
             const dateRange = getDateRange(selectedTimelineDate, timelineViewMode);
             const todayStr = formatDateToLocal(new Date());
+            console.log('📅 [renderTodayTimeline] 日期范围:', dateRange, '今日:', todayStr);
             
             // 根据选择的日期范围筛选任务
-            // 如果有筛选，使用 filteredTasks，否则使用全部任务
-            const baseTasks = (filteredTasks && filteredTasks.length >= 0) ? filteredTasks : tasks;
+            // 始终使用最新的 tasks 数组，避免使用过时的 filteredTasks
+            const baseTasks = tasks;
+            console.log('📊 [renderTodayTimeline] 基础任务数量:', baseTasks.length);
+            
             const timelineTasks = baseTasks.filter(task => {
                 // 只显示项目和动作类型的任务
                 if (task.type !== '项目' && task.type !== '动作') {
@@ -6188,7 +6290,22 @@
                 return false;
             });
             
+            console.log('🎯 [renderTodayTimeline] 筛选后的时间轴任务数量:', timelineTasks.length);
+            console.log('🔍 [renderTodayTimeline] 任务状态检查:', 
+                timelineTasks.map(t => ({ 
+                    id: t.id, 
+                    title: t.title.substring(0, 20) + '...', 
+                    status: t.status 
+                }))
+            );
+            
             const container = document.getElementById('todayTimeline');
+            console.log('📦 [renderTodayTimeline] 获取容器元素:', container ? '成功' : '失败');
+            
+            if (!container) {
+                console.error('❌ [renderTodayTimeline] 未找到时间轴容器元素 todayTimeline');
+                return;
+            }
             
             // 更新统计信息
             updateTimelineStats(timelineTasks, dateRange);
@@ -6230,6 +6347,12 @@
                 
                 // 生成分组的时间轴
                 const sortedDates = Object.keys(tasksByDate).sort();
+                
+                // 强制DOM更新
+                console.log('🔧 [renderTodayTimeline] 强制DOM更新前');
+                container.style.display = 'none';
+                container.offsetHeight; // 强制重排
+                
                 container.innerHTML = `
                     <div class="timeline-line"></div>
                     ${sortedDates.map(date => {
@@ -6248,6 +6371,8 @@
                         `;
                     }).join('')}
                 `;
+                container.style.display = ''; // 恢复显示
+                console.log('✅ [renderTodayTimeline] 强制DOM更新完成（周/月视图）');
             } else {
                 // 日视图 - 检测并分组同时间的任务
                 const taskGroups = [];
@@ -6270,6 +6395,11 @@
                 });
                 
                 // 渲染分组的时间轴
+                // 强制DOM更新
+                console.log('🔧 [renderTodayTimeline] 强制DOM更新前（日视图）');
+                container.style.display = 'none';
+                container.offsetHeight; // 强制重排
+                
                 container.innerHTML = `
                     <div class="timeline-line"></div>
                     ${taskGroups.map(group => {
@@ -6282,7 +6412,26 @@
                         }
                     }).join('')}
                 `;
+                
+                container.style.display = ''; // 恢复显示
+                console.log('✅ [renderTodayTimeline] 强制DOM更新完成（日视图）');
             }
+            
+            console.log('📏 [renderTodayTimeline] 最终渲染的HTML长度:', container.innerHTML.length);
+            
+            // DOM更新验证
+            if (timelineTasks.length > 0) {
+                const firstTaskId = timelineTasks[0].id;
+                const taskElement = container.querySelector(`[data-task-id="${firstTaskId}"]`);
+                if (taskElement) {
+                    const statusElement = taskElement.querySelector('.task-status') || 
+                                        taskElement.querySelector('[class*="status"]');
+                    console.log('🔍 [renderTodayTimeline] DOM验证 - 第一个任务的状态显示:', 
+                        statusElement ? statusElement.textContent.trim() : '未找到状态元素');
+                }
+            }
+            
+            console.log('✅ [renderTodayTimeline] 时间轴渲染完成');
         }
         
         // 渲染同时间的任务组
@@ -6330,20 +6479,20 @@
                                     ` : ''}
                                     <div class="mt-2" style="display: flex; gap: 8px; flex-wrap: wrap;">
                                         ${task.status === '未开始' ? `
-                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatusInTimeline('${task.id}', '进行中')">
+                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); console.log('🚀 [Timeline Group Button] 开始任务按钮被点击，taskId:', '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '进行中')">
                                                 🚀 开始
                                             </button>
                                         ` : ''}
                                         ${task.status === '进行中' ? `
-                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatusInTimeline('${task.id}', '已完成')">
+                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); console.log('✅ [Timeline Group Button] 完成任务按钮被点击，taskId:', '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '已完成')">
                                                 ✅ 完成
                                             </button>
-                                            <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatusInTimeline('${task.id}', '暂停')">
+                                            <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); console.log('⏸ [Timeline Group Button] 暂停任务按钮被点击，taskId:', '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '暂停')">
                                                 ⏸ 暂停
                                             </button>
                                         ` : ''}
                                         ${task.status === '暂停' ? `
-                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatusInTimeline('${task.id}', '进行中')">
+                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); console.log('▶️ [Timeline Group Button] 继续任务按钮被点击，taskId:', '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '进行中')">
                                                 ▶️ 继续
                                             </button>
                                         ` : ''}
@@ -6371,14 +6520,33 @@
         
         // 渲染单个时间轴任务
         function renderTimelineTask(task) {
+            // 调试特定任务的渲染
+            if (task.id === 'task_6' || task.id === 'task_8' || task.id === 'task_59') {
+                const originalTask = tasks.find(t => t.id === task.id);
+                console.log('🎯 [renderTimelineTask] 渲染特定任务:', {
+                    id: task.id,
+                    title: task.title.substring(0, 30) + '...',
+                    status: task.status,
+                    originalStatus: originalTask ? originalTask.status : 'N/A',
+                    isSameObject: task === originalTask,
+                    hasStartButton: task.status === '未开始',
+                    hasCompleteButton: task.status === '进行中',
+                    hasPauseButton: task.status === '进行中',
+                    hasContinueButton: task.status === '暂停'
+                });
+            }
+            
             // 优先显示任务的具体时间，不区分状态
             const taskTime = task.fields.startTime || task.fields.endTime;
             const timeStr = taskTime
                 ? new Date(taskTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
                 : '暂无时间';
             
+            // 添加时间戳确保DOM识别变化
+            const timestamp = Date.now();
+            
             return `
-                <div class="timeline-item fade-in">
+                <div class="timeline-item fade-in" data-task-id="${task.id}" data-timestamp="${timestamp}">
                     <div class="timeline-dot ${task.status === '进行中' ? 'active' : ''}"></div>
                     <div class="timeline-time">${timeStr}</div>
                     <div class="timeline-content-wrapper">
@@ -6390,7 +6558,7 @@
                                         <span class="task-type-badge ${task.type.toLowerCase()} text-small">
                                             ${getTaskTypeIcon(task.type)} ${task.type}
                                         </span>
-                                        <span class="${getStatusClass(task.status)} text-small">
+                                        <span class="${getStatusClass(task.status)} text-small task-status-display">
                                             ${getStatusIcon(task.status)} ${task.status}
                                         </span>
                                     </div>
@@ -6410,22 +6578,23 @@
                                     ` : ''}
                                 </div>
                                 
-                                <div class="timeline-task-actions">
+                                <div class="timeline-task-actions" data-current-status="${task.status}">
+                                    <!-- 调试信息：当前状态=${task.status} -->
                                     ${task.status === '未开始' ? `
-                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleTaskStatusInTimeline('${task.id}', '进行中')" title="开始任务">
+                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); console.log('🚀 [Timeline Button] 开始任务按钮被点击，taskId:', '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '进行中')" title="开始任务" data-action="start">
                                             🚀
                                         </button>
                                     ` : ''}
                                     ${task.status === '进行中' ? `
-                                        <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); toggleTaskStatusInTimeline('${task.id}', '已完成')" title="完成任务">
+                                        <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); console.log('✅ [Timeline Button] 完成任务按钮被点击，taskId:', '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '已完成')" title="完成任务" data-action="complete">
                                             ✅
                                         </button>
-                                        <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); toggleTaskStatusInTimeline('${task.id}', '暂停')" title="暂停任务">
+                                        <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); console.log('⏸ [Timeline Button] 暂停任务按钮被点击，taskId:', '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '暂停')" title="暂停任务" data-action="pause">
                                             ⏸
                                         </button>
                                     ` : ''}
                                     ${task.status === '暂停' ? `
-                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleTaskStatusInTimeline('${task.id}', '进行中')" title="继续任务">
+                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); console.log('▶️ [Timeline Button] 继续任务按钮被点击，taskId:', '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '进行中')" title="继续任务" data-action="continue">
                                             ▶️
                                         </button>
                                     ` : ''}

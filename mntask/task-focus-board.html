@@ -4901,7 +4901,7 @@
                         <div class="filter-section">
                             <button class="filter-quick-btn" onclick="filterTodayTasks()">📅 今日任务</button>
                             <button class="filter-quick-btn" onclick="filterWeekTasks()">📆 本周任务</button>
-                            <button class="filter-quick-btn" onclick="filterOverdueTasks()">⏰ 逾期任务</button>
+                            <button class="filter-quick-btn" onclick="filterOverdueTasks()">逾期任务</button>
                             <button class="filter-quick-btn" onclick="clearAllFilters()">🔄 清除筛选</button>
                         </div>
                     </div>
@@ -5016,10 +5016,12 @@
                             <div class="text-small text-muted">截止日期</div>
                             <div id="detailDueDate">-</div>
                         </div>
+                        <!-- 今日安排功能已移除
                         <div>
                             <div class="text-small text-muted">今日安排</div>
                             <div id="detailTodayTime">-</div>
                         </div>
+                        -->
                         <div>
                             <div class="text-small text-muted">开始时间</div>
                             <div id="detailStartTime">-</div>
@@ -5642,7 +5644,7 @@
             // 新增字段
             launchLink: "marginnote4app://note/xxx", // MN uistate链接
             currentFocus: true, // 是否是当前焦点任务
-            todayPlannedTime: "14:00-16:00", // 今日计划时间段
+            // 时间安排功能已移除
             
             // 原有字段
             fields: {
@@ -5797,10 +5799,10 @@
             }
             
             container.innerHTML = focusTasksList.map((task, index) => {
-                const hasConflict = hasTimeConflict(task);
+                // 时间冲突检查已移除
                 
                 return `
-                <div class="focus-task-card ${task.currentFocus ? 'active' : ''} ${hasConflict ? 'has-conflict' : ''} fade-in" 
+                <div class="focus-task-card ${task.currentFocus ? 'active' : ''} fade-in" 
                      draggable="true"
                      data-task-id="${task.id}"
                      data-task-index="${index}"
@@ -5853,12 +5855,6 @@
                         ${task.fields.startTime ? `<span style="font-size: 0.75rem; color: var(--text-muted);">⏱ ${formatElapsedTime(task.fields.startTime, task.fields.endTime)}</span>` : ''}
                     </div>
                     
-                    ${task.todayPlannedTime ? `
-                        <div class="focus-task-meta">
-                            <span>⏰ ${task.todayPlannedTime}</span>
-                            ${hasConflict ? '<span class="concurrent-indicator">🔀 时间冲突</span>' : ''}
-                        </div>
-                    ` : ''}
                     
                     ${task.fields.progressLog && task.fields.progressLog.length > 0 ? `
                         <div class="recent-progress">
@@ -5965,29 +5961,10 @@
         
         // 时间段重叠检查功能已移除 - 系统不再考虑时间安排
         
-        // 将任务分组到并发组
+        // 将任务分组（时间重叠检查已移除）
         function groupConcurrentTasks(tasks) {
-            const groups = [];
-            const processed = new Set();
-            
-            tasks.forEach((task, index) => {
-                if (processed.has(index)) return;
-                
-                const group = [task];
-                processed.add(index);
-                
-                // 查找与当前任务时间重叠的其他任务
-                for (let i = index + 1; i < tasks.length; i++) {
-                    if (!processed.has(i) && timeRangesOverlap(task.todayPlannedTime, tasks[i].todayPlannedTime)) {
-                        group.push(tasks[i]);
-                        processed.add(i);
-                    }
-                }
-                
-                groups.push(group);
-            });
-            
-            return groups;
+            // 由于不再考虑时间安排，每个任务单独成组
+            return tasks.map(task => [task]);
         }
         
         // 设置时间轴视图模式
@@ -8112,7 +8089,6 @@
                 path: project || "快速添加",
                 launchLink: "",
                 currentFocus: false,
-                todayPlannedTime: "",
                 fields: {
                     priority: priority,
                     dueDate: "",
@@ -8741,26 +8717,7 @@
             priorityEl.onclick = function() { editTaskField('priority', this); };
             document.getElementById('detailDueDate').textContent = task.fields.dueDate ? formatDate(task.fields.dueDate) : '未设置';
             
-            // 时间安排（包含并发冲突提示）
-            const conflictingTasks = getConflictingTasks(task);
-            let timeDisplay = task.todayPlannedTime || '未安排';
-            if (conflictingTasks.length > 0) {
-                timeDisplay += ` <span class="concurrent-indicator">🔀 时间冲突</span>`;
-                
-                // 添加冲突任务列表
-                const conflictList = conflictingTasks.map(t => `
-                    <div class="conflict-task-item">
-                        <span class="task-type-badge ${t.type.toLowerCase()} text-small">
-                            ${getTaskTypeIcon(t.type)} ${t.type}
-                        </span>
-                        <span class="text-small">${t.title}</span>
-                        <span class="text-small text-muted">${t.todayPlannedTime}</span>
-                    </div>
-                `).join('');
-                
-                timeDisplay += `<div class="conflict-tasks-list mt-2">${conflictList}</div>`;
-            }
-            document.getElementById('detailTodayTime').innerHTML = timeDisplay;
+            // 时间安排功能已移除 - UI字段已隐藏
             
             const launchLinkEl = document.getElementById('detailLaunchLink');
             launchLinkEl.textContent = task.launchLink || '未设置';
@@ -10943,26 +10900,12 @@
             
             let filteredTasks = [];
             switch(timeSlot) {
+                // 时间段筛选功能已移除
                 case '上午':
-                    filteredTasks = dateTasks.filter(t => {
-                        const time = t.todayPlannedTime;
-                        return time && parseInt(time.split(':')[0]) < 12;
-                    });
-                    break;
                 case '下午':
-                    filteredTasks = dateTasks.filter(t => {
-                        const time = t.todayPlannedTime;
-                        return time && parseInt(time.split(':')[0]) >= 12 && parseInt(time.split(':')[0]) < 18;
-                    });
-                    break;
                 case '晚上':
-                    filteredTasks = dateTasks.filter(t => {
-                        const time = t.todayPlannedTime;
-                        return time && parseInt(time.split(':')[0]) >= 18;
-                    });
-                    break;
                 case '未安排':
-                    filteredTasks = dateTasks.filter(t => !t.todayPlannedTime);
+                    filteredTasks = dateTasks;
                     break;
                 default:
                     filteredTasks = dateTasks;
@@ -10984,7 +10927,6 @@
             
             container.innerHTML = filteredTasks.map(task => `
                 <div class="timeline-task-item" onclick="viewTaskDetail('${task.id}')">
-                    <div class="task-time">${task.todayPlannedTime || '未安排'}</div>
                     <div class="task-content">
                         <div class="task-title">${task.title}</div>
                         <div class="task-meta">

@@ -4769,7 +4769,7 @@
                                     <div class="planning-filters">
                                         <h4>🔍 快速筛选</h4>
                                         <div class="filter-group">
-                                            <label>优先级：</label>
+                                            <label for="planningFilterPriority">优先级：</label>
                                             <select id="planningFilterPriority" onchange="updatePlanningFilters()">
                                                 <option value="">全部</option>
                                                 <option value="高">高</option>
@@ -4778,7 +4778,7 @@
                                             </select>
                                         </div>
                                         <div class="filter-group">
-                                            <label>项目：</label>
+                                            <label for="planningFilterProject">项目：</label>
                                             <select id="planningFilterProject" onchange="updatePlanningFilters()">
                                                 <option value="">全部项目</option>
                                             </select>
@@ -5103,7 +5103,7 @@
             <div class="modal-body">
                 <div class="launch-link-form">
                     <div class="form-group">
-                        <label class="form-label">链接类型</label>
+                        <div class="form-label">链接类型</div>
                         <div class="link-type-selector">
                             <button class="link-type-btn active" data-type="marginnote" onclick="selectLinkType('marginnote')">
                                 📚 MarginNote
@@ -5118,7 +5118,7 @@
                     </div>
                     
                     <div class="form-group" id="marginnoteLinkGroup">
-                        <label class="form-label">MarginNote UIState 链接</label>
+                        <label class="form-label" for="marginnoteLink">MarginNote UIState 链接</label>
                         <input type="text" 
                                class="form-input" 
                                id="marginnoteLink" 
@@ -5128,7 +5128,7 @@
                     </div>
                     
                     <div class="form-group hidden" id="urlLinkGroup">
-                        <label class="form-label">网页链接</label>
+                        <label class="form-label" for="urlLink">网页链接</label>
                         <input type="url" 
                                class="form-input" 
                                id="urlLink" 
@@ -5138,7 +5138,7 @@
                     </div>
                     
                     <div class="form-group hidden" id="fileLinkGroup">
-                        <label class="form-label">文件路径</label>
+                        <label class="form-label" for="fileLink">文件路径</label>
                         <input type="text" 
                                class="form-input" 
                                id="fileLink" 
@@ -5148,7 +5148,7 @@
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label">备注说明（可选）</label>
+                        <label class="form-label" for="linkNote">备注说明（可选）</label>
                         <textarea class="form-input" 
                                   id="linkNote" 
                                   rows="2" 
@@ -5773,20 +5773,7 @@
            🎯 焦点任务功能
            ======================================== */
         
-        // 检查任务是否有时间冲突
-        function hasTimeConflict(task) {
-            if (!task.todayPlannedTime || !task.fields.today) return false;
-            
-            // 找出所有今日任务
-            const todayTasks = tasks.filter(t => 
-                t.fields.today && 
-                t.todayPlannedTime && 
-                t.id !== task.id
-            );
-            
-            // 检查是否有时间重叠
-            return todayTasks.some(t => timeRangesOverlap(task.todayPlannedTime, t.todayPlannedTime));
-        }
+        // 时间冲突检查功能已移除 - 系统不再考虑时间安排
         
         // 渲染焦点任务卡片
         function renderFocusTasks() {
@@ -5976,35 +5963,7 @@
            📅 今日时间轴功能
            ======================================== */
         
-        // 检测时间段是否重叠
-        function timeRangesOverlap(range1, range2) {
-            if (!range1 || !range2) return false;
-            
-            // 解析时间字符串为分钟数
-            function parseTimeToMinutes(timeStr) {
-                const parts = timeStr.trim().split(':');
-                if (parts.length !== 2) return 0;
-                const hours = parseInt(parts[0]) || 0;
-                const minutes = parseInt(parts[1]) || 0;
-                return hours * 60 + minutes;
-            }
-            
-            try {
-                const times1 = range1.split('-').map(t => parseTimeToMinutes(t));
-                const times2 = range2.split('-').map(t => parseTimeToMinutes(t));
-                
-                if (times1.length !== 2 || times2.length !== 2) return false;
-                
-                const [start1, end1] = times1;
-                const [start2, end2] = times2;
-                
-                // 检查时间段是否有重叠
-                return start1 < end2 && start2 < end1;
-            } catch (e) {
-                console.error('时间解析错误:', e);
-                return false;
-            }
-        }
+        // 时间段重叠检查功能已移除 - 系统不再考虑时间安排
         
         // 将任务分组到并发组
         function groupConcurrentTasks(tasks) {
@@ -6079,7 +6038,7 @@
             
             // 使用requestAnimationFrame确保在下一帧重新渲染
             requestAnimationFrame(() => {
-                const container = document.getElementById('todayTimelineContainer');
+                const container = document.getElementById('todayTimeline');  // 修复容器ID
                 if (container) {
                     // 清空容器内容
                     container.innerHTML = '';
@@ -8758,17 +8717,7 @@
         }
         
         // 查看任务详情
-        // 获取与指定任务时间冲突的任务列表
-        function getConflictingTasks(task) {
-            if (!task.todayPlannedTime || !task.fields.today) return [];
-            
-            return tasks.filter(t => 
-                t.fields.today && 
-                t.todayPlannedTime && 
-                t.id !== task.id &&
-                timeRangesOverlap(task.todayPlannedTime, t.todayPlannedTime)
-            );
-        }
+        // 获取时间冲突任务功能已移除 - 系统不再考虑时间安排
         
         function viewTaskDetail(taskId) {
             const task = tasks.find(t => t.id === taskId);

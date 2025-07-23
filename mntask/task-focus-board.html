@@ -3462,13 +3462,425 @@
         }
 
         /* ========================================
-           📋 计划视图样式
+           📋 计划视图样式 - 反思仪表板
            ======================================== */
         
         .planning-section {
             padding: var(--spacing-lg);
             max-width: 1200px;
             margin: 0 auto;
+        }
+        
+        /* 反思仪表板容器 */
+        .reflection-dashboard {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            min-height: 100vh;
+        }
+        
+        /* 反思面板网格布局 */
+        .reflection-panels {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-xl);
+            margin-top: var(--spacing-xl);
+        }
+        
+        /* 单个反思区块 */
+        .reflection-section {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            padding: var(--spacing-lg);
+            backdrop-filter: var(--glass-blur);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .reflection-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--type-goal), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .reflection-section:hover {
+            border-color: var(--type-goal);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .reflection-section:hover::before {
+            opacity: 1;
+        }
+        
+        /* 区块标题 */
+        .section-subtitle {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-md);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        
+        /* 焦点任务统计卡片 */
+        .focus-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .stat-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .stat-card {
+            background: var(--bg-hover);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            padding: var(--spacing-md);
+            text-align: center;
+            transition: var(--transition);
+        }
+        
+        .stat-card:hover {
+            background: var(--bg-active);
+            border-color: var(--type-goal);
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--type-goal);
+            line-height: 1;
+        }
+        
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: var(--spacing-xs);
+        }
+        
+        /* 空状态样式 */
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+            font-style: italic;
+            padding: var(--spacing-xl) 0;
+        }
+        
+        /* 高亮显示 */
+        .highlight {
+            color: var(--type-goal);
+            font-weight: 600;
+        }
+        
+        /* 今日任务统计项 */
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm);
+            background: var(--bg-hover);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .stat-item.completed { border-left: 3px solid var(--status-done); }
+        .stat-item.in-progress { border-left: 3px solid var(--status-doing); }
+        .stat-item.paused { border-left: 3px solid var(--status-pause); }
+        .stat-item.not-started { border-left: 3px solid var(--status-todo); }
+        
+        /* 任务元信息 */
+        .task-meta {
+            display: flex;
+            gap: var(--spacing-md);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        
+        .task-type {
+            background: var(--bg-active);
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+        
+        /* 进度任务信息 */
+        .progress-task {
+            font-weight: 500;
+            color: var(--type-goal);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .progress-task:hover {
+            text-decoration: underline;
+        }
+        
+        .progress-note {
+            margin-top: var(--spacing-xs);
+            color: var(--text-primary);
+        }
+        
+        /* 警告提示 */
+        .pending-warning {
+            background: rgba(252, 129, 129, 0.1);
+            border: 1px solid rgba(252, 129, 129, 0.3);
+            border-radius: var(--radius-sm);
+            padding: var(--spacing-md);
+            margin-top: var(--spacing-md);
+            color: var(--priority-high);
+        }
+        
+        /* 明日任务数量 */
+        .tomorrow-count {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-md);
+        }
+        
+        /* 建议文本 */
+        .suggestion {
+            color: var(--text-secondary);
+            margin-top: var(--spacing-sm);
+        }
+        
+        /* 任务列表项 */
+        .reflection-task-item {
+            background: var(--bg-hover);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-sm);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+        
+        .reflection-task-item:hover {
+            background: var(--bg-active);
+            border-color: var(--type-goal);
+            transform: translateX(4px);
+        }
+        
+        .task-status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        
+        .task-status-indicator.todo { background: var(--status-todo); }
+        .task-status-indicator.doing { background: var(--status-doing); }
+        .task-status-indicator.done { background: var(--status-done); }
+        .task-status-indicator.pause { background: var(--status-pause); }
+        
+        .reflection-task-info {
+            flex: 1;
+        }
+        
+        .reflection-task-title {
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+        
+        .reflection-task-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+        
+        /* 待处理任务统计 */
+        .pending-stats {
+            display: flex;
+            justify-content: space-between;
+            background: var(--bg-hover);
+            border-radius: var(--radius-sm);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .pending-stat-item {
+            text-align: center;
+        }
+        
+        .pending-stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--type-project);
+        }
+        
+        .pending-stat-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+        
+        /* 今日任务统计 */
+        .today-stats {
+            background: var(--bg-hover);
+            border-radius: var(--radius-sm);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .time-efficiency-bar {
+            height: 8px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: var(--spacing-sm) 0;
+        }
+        
+        .efficiency-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--type-project), var(--type-goal));
+            transition: width 0.3s ease;
+        }
+        
+        /* 进展记录列表 */
+        .progress-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .progress-item {
+            background: var(--bg-hover);
+            border-left: 3px solid var(--type-action);
+            padding: var(--spacing-sm) var(--spacing-md);
+            margin-bottom: var(--spacing-sm);
+            font-size: 0.875rem;
+        }
+        
+        .progress-time {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+        
+        /* 反思提示区域 */
+        .reflection-prompt {
+            background: var(--bg-hover);
+            border: 1px dashed var(--glass-border);
+            border-radius: var(--radius-sm);
+            padding: var(--spacing-md);
+            margin-top: var(--spacing-lg);
+            font-style: italic;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+        
+        .reflection-prompt p {
+            margin: 0;
+        }
+        
+        /* 操作按钮区域 */
+        .pending-actions,
+        .add-progress-prompt,
+        .quick-planning {
+            margin-top: var(--spacing-md);
+            display: flex;
+            gap: var(--spacing-sm);
+            flex-wrap: wrap;
+        }
+        
+        /* 明日任务列表 */
+        .tomorrow-tasks {
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .tomorrow-task-item {
+            background: var(--bg-hover);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-sm);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .tomorrow-task-item:hover {
+            border-color: var(--type-kr);
+            background: var(--bg-active);
+        }
+        
+        /* 规划建议列表 */
+        .planning-suggestions {
+            background: var(--bg-hover);
+            border-radius: var(--radius-sm);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .planning-suggestions h4 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: var(--spacing-sm);
+            color: var(--text-primary);
+        }
+        
+        .planning-suggestions ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .planning-suggestions li {
+            padding: var(--spacing-xs) 0;
+            padding-left: var(--spacing-md);
+            position: relative;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+        
+        .planning-suggestions li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--type-goal);
+            font-weight: bold;
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 1024px) {
+            .reflection-panels {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .reflection-dashboard {
+                padding: var(--spacing-md);
+            }
+            
+            .reflection-panels {
+                gap: var(--spacing-md);
+            }
+            
+            .reflection-section {
+                padding: var(--spacing-md);
+            }
+            
+            .focus-stats {
+                grid-template-columns: 1fr;
+            }
         }
         
         .planning-panels {
@@ -4698,9 +5110,9 @@
 
                 <!-- 计划视图 -->
                 <div id="view-planning" class="view-container hidden">
-                    <div class="planning-section">
+                    <div class="planning-section reflection-dashboard">
                         <div class="section-header">
-                            <h2 class="section-title">📋 任务规划中心</h2>
+                            <h2 class="section-title">📊 任务反思与计划</h2>
                             <div class="planning-controls">
                                 <button class="btn btn-secondary" onclick="refreshPlanningView()">
                                     🔄 刷新
@@ -4708,90 +5120,81 @@
                             </div>
                         </div>
                         
-                        <!-- 任务规划面板 -->
-                        <div class="planning-panels">
-                            <!-- 待规划任务 -->
-                            <div class="planning-panel task-pool">
-                                <div class="panel-header">
-                                    <h3 class="panel-title">📝 待规划任务池</h3>
-                                    <span class="panel-count" id="unplannedCount">0</span>
+                        <!-- 反思仪表板 -->
+                        <div class="reflection-panels">
+                            <!-- 1. 焦点任务完成情况 -->
+                            <div class="reflection-section focus-review">
+                                <h3 class="section-subtitle">🎯 焦点任务回顾</h3>
+                                <div class="focus-stats" id="focusTasksStats">
+                                    <!-- 动态渲染统计数据 -->
                                 </div>
-                                <div class="panel-content" id="unplannedTasksList">
-                                    <!-- 未规划的任务列表 -->
+                                <div class="focus-task-list" id="focusTasksList">
+                                    <!-- 动态渲染焦点任务列表 -->
+                                </div>
+                                <div class="reflection-prompt">
+                                    <p>💭 反思：哪些任务进展顺利？哪些遇到了阻碍？</p>
                                 </div>
                             </div>
                             
-                            <!-- 增强版操作面板 -->
-                            <div class="planning-panel planning-actions enhanced">
-                                <div class="panel-header">
-                                    <h3 class="panel-title">⚡ 智能规划中心</h3>
+                            <!-- 2. 待处理任务检查 -->
+                            <div class="reflection-section pending-review">
+                                <h3 class="section-subtitle">📋 待处理任务检查</h3>
+                                <div class="pending-overview" id="pendingOverview">
+                                    <!-- 动态渲染待处理概览 -->
                                 </div>
-                                <div class="panel-content">
-                                    <!-- 选中任务预览 -->
-                                    <div class="selected-tasks-preview" id="selectedTasksPreview" style="display: none;">
-                                        <h4>✅ 已选中的任务</h4>
-                                        <div class="selected-tasks-list" id="selectedTasksList">
-                                            <!-- 选中的任务将在这里显示 -->
-                                        </div>
+                                <div class="pending-actions">
+                                    <button class="btn btn-primary" onclick="openAddToPendingModal()">
+                                        ➕ 添加新的待处理任务
+                                    </button>
+                                    <button class="btn btn-secondary" onclick="reviewPendingTasks()">
+                                        🔄 重新评估优先级
+                                    </button>
+                                </div>
+                                <div class="reflection-prompt">
+                                    <p>💭 反思：这些任务是否还有价值？需要重新安排优先级吗？</p>
+                                </div>
+                            </div>
+                            
+                            <!-- 3. 今日任务完成情况 -->
+                            <div class="reflection-section today-review">
+                                <h3 class="section-subtitle">📅 今日任务回顾</h3>
+                                <div class="today-timeline-summary" id="todayTasksSummary">
+                                    <!-- 动态渲染今日任务统计 -->
+                                </div>
+                                <div class="progress-records" id="todayProgressRecords">
+                                    <h4>📝 今日进展记录</h4>
+                                    <div class="progress-list" id="todayProgressList">
+                                        <!-- 动态渲染进展记录 -->
                                     </div>
-                                    
-                                    <!-- 智能规划建议 -->
-                                    <div class="smart-planning-section">
-                                        <h4>🤖 AI 智能建议</h4>
-                                        <button class="planning-btn primary" onclick="autoScheduleTasks()">
-                                            🎯 一键智能安排
-                                        </button>
-                                        <div class="planning-suggestions" id="planningSuggestions">
-                                            <!-- 动态生成的建议将在这里显示 -->
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- 手动规划选项 -->
-                                    <div class="manual-planning-section">
-                                        <h4>✋ 快速规划</h4>
-                                        <div class="quick-planning-options">
-                                            <button class="planning-btn" onclick="bulkAddToPending()" disabled>
-                                                📋 添加到待处理
-                                            </button>
-                                            <button class="planning-btn" onclick="bulkAddToFocus()" disabled>
-                                                🎯 设为焦点任务
-                                            </button>
-                                            <button class="planning-btn" onclick="scheduleTasksForTomorrow()" disabled>
-                                                📅 安排明天执行
-                                            </button>
-                                            <button class="planning-btn" onclick="scheduleTasksForWeek()" disabled>
-                                                🗓️ 分配到本周
-                                            </button>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- 筛选器 -->
-                                    <div class="planning-filters">
-                                        <h4>🔍 快速筛选</h4>
-                                        <div class="filter-group">
-                                            <label for="planningFilterPriority">优先级：</label>
-                                            <select id="planningFilterPriority" onchange="updatePlanningFilters()">
-                                                <option value="">全部</option>
-                                                <option value="高">高</option>
-                                                <option value="中">中</option>
-                                                <option value="低">低</option>
-                                            </select>
-                                        </div>
-                                        <div class="filter-group">
-                                            <label for="planningFilterProject">项目：</label>
-                                            <select id="planningFilterProject" onchange="updatePlanningFilters()">
-                                                <option value="">全部项目</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- 规划结果可视化 -->
-                                    <div class="planning-result-preview" id="planningResultPreview" style="display: none;">
-                                        <h4>📊 规划结果预览</h4>
-                                        <div class="result-stats" id="resultStats">
-                                            <!-- 规划结果统计将在这里显示 -->
-                                        </div>
-                                    </div>
+                                </div>
+                                <div class="add-progress-prompt">
+                                    <button class="btn btn-primary" onclick="showAddProgressModal()">
+                                        ➕ 为今天的任务添加进展记录
+                                    </button>
+                                </div>
+                                <div class="reflection-prompt">
+                                    <p>💭 反思：今天的时间利用效率如何？有哪些收获和教训？</p>
+                                </div>
+                            </div>
+                            
+                            <!-- 4. 明日任务预览 -->
+                            <div class="reflection-section tomorrow-preview">
+                                <h3 class="section-subtitle">🌅 明日任务预览</h3>
+                                <div class="tomorrow-tasks" id="tomorrowTasksList">
+                                    <!-- 动态渲染明日任务 -->
+                                </div>
+                                <div class="planning-suggestions">
+                                    <h4>💡 规划建议</h4>
+                                    <ul id="planningSuggestionsList">
+                                        <li>考虑将未完成的焦点任务延续到明天</li>
+                                        <li>从待处理中选择高优先级任务</li>
+                                        <li>预留时间处理可能的紧急事务</li>
+                                    </ul>
+                                </div>
+                                <div class="quick-planning">
+                                    <button class="btn btn-primary" onclick="openTomorrowPlanningModal()">
+                                        📅 快速规划明天的任务
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -11422,68 +11825,263 @@
         
         // 渲染计划视图
         function renderPlanningView() {
-            initPlanningSelection(); // 确保选择状态已初始化
+            console.log('🎨 [renderPlanningView] 开始渲染反思仪表板');
             
-            // 重要：在渲染完成后更新按钮状态
-            setTimeout(() => {
-                updatePlanningButtonStates();
-                updateSelectedTasksPreview();
-                updatePlanningSuggestions();
-            }, 0);
+            // 1. 渲染焦点任务回顾
+            renderFocusTasksReview();
             
-            const unplannedTasks = getUnplannedTasks();
+            // 2. 渲染待处理任务检查
+            renderPendingTasksReview();
             
-            // 更新计数
-            document.getElementById('unplannedCount').textContent = unplannedTasks.length;
+            // 3. 渲染今日任务回顾
+            renderTodayTasksReview();
             
-            // 渲染待规划任务列表
-            const unplannedContainer = document.getElementById('unplannedTasksList');
-            unplannedContainer.innerHTML = unplannedTasks.map(task => `
-                <div class="planning-task-item ${window.selectedPlanningTasks && window.selectedPlanningTasks.has(task.id) ? 'selected' : ''}" 
-                     data-task-id="${task.id}"
-                     draggable="true"
-                     ondragstart="handlePlanningDragStart(event, '${task.id}')"
-                     ondragend="handlePlanningDragEnd(event)"
-                     ondragover="handlePlanningDragOver(event)"
-                     ondrop="handlePlanningDrop(event, '${task.id}')">
-                    <div class="task-checkbox">
-                        <input type="checkbox" id="planning_${task.id}" 
-                               ${window.selectedPlanningTasks && window.selectedPlanningTasks.has(task.id) ? 'checked' : ''}
-                               onchange="togglePlanningTaskSelection('${task.id}')">
-                        <label for="planning_${task.id}"></label>
+            // 4. 渲染明日任务预览
+            renderTomorrowTasksPreview();
+            
+            // 更新侧边栏
+            updateSidebar('planning');
+        }
+        
+        // 渲染焦点任务回顾
+        function renderFocusTasksReview() {
+            const focusTasksArray = Array.from(focusTasks).map(id => tasks.find(t => t.id === id)).filter(Boolean);
+            const completed = focusTasksArray.filter(t => t.status === '已完成').length;
+            const total = focusTasksArray.length;
+            const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
+            
+            // 渲染统计数据
+            const statsContainer = document.getElementById('focusTasksStats');
+            statsContainer.innerHTML = `
+                <div class="stat-cards">
+                    <div class="stat-card">
+                        <div class="stat-value">${completed}/${total}</div>
+                        <div class="stat-label">已完成</div>
                     </div>
-                    <div class="task-content" onclick="handleTaskItemClick(event, '${task.id}')">
-                        <div class="task-header">
-                            <span class="task-type-badge ${task.type.toLowerCase()}">
-                                ${getTaskTypeIcon(task.type)} ${task.type}
-                            </span>
-                            <span class="priority-badge ${task.fields.priority.toLowerCase()}">
-                                ${getPriorityIcon(task.fields.priority)}
-                            </span>
-                            <span class="status-badge ${task.status.toLowerCase()}">
-                                ${getStatusIcon(task.status)}
-                            </span>
-                        </div>
-                        <h4 class="task-title">${task.title}</h4>
-                        <div class="task-meta">
-                            ${task.path ? `<span class="task-path">📍 ${task.path}</span>` : ''}
-                            ${task.fields.tags.length > 0 ? `<span class="task-tags">${task.fields.tags.map(tag => `#${tag}`).join(' ')}</span>` : ''}
-                        </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${rate}%</div>
+                        <div class="stat-label">完成率</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${focusTasksArray.filter(t => t.status === '进行中').length}</div>
+                        <div class="stat-label">进行中</div>
                     </div>
                 </div>
-            `).join('') || '<div class="empty-state">🎉 所有任务都已规划完成！</div>';
+            `;
             
-            // 添加拖拽事件监听
-            setupPlanningDragAndDrop();
+            // 渲染焦点任务列表
+            const listContainer = document.getElementById('focusTasksList');
+            if (focusTasksArray.length === 0) {
+                listContainer.innerHTML = '<p class="empty-state">当前没有焦点任务</p>';
+            } else {
+                listContainer.innerHTML = focusTasksArray.map(task => {
+                    const progressCount = task.fields.progressLog ? task.fields.progressLog.length : 0;
+                    return `
+                        <div class="reflection-task-item" onclick="viewTaskDetail('${task.id}')">
+                            <div class="task-status-icon">${getStatusIcon(task.status)}</div>
+                            <div class="task-info">
+                                <div class="task-title">${task.title}</div>
+                                <div class="task-meta">
+                                    <span class="task-type">${task.type}</span>
+                                    <span class="task-progress">进展记录: ${progressCount}</span>
+                                </div>
+                            </div>
+                            ${task.status !== '已完成' ? `
+                                <button class="btn btn-sm" onclick="event.stopPropagation(); showQuickProgress('${task.id}')">
+                                    📝 添加进展
+                                </button>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+        
+        // 渲染待处理任务检查
+        function renderPendingTasksReview() {
+            const pendingTasksArray = Array.from(pendingTasks).map(id => tasks.find(t => t.id === id)).filter(Boolean);
+            const overviewContainer = document.getElementById('pendingOverview');
             
-            // 填充项目筛选选项
-            const projectSelect = document.getElementById('planningFilterProject');
-            const projects = [...new Set(tasks.map(t => t.fields.project || t.path).filter(Boolean))];
-            projectSelect.innerHTML = '<option value="">全部项目</option>' + 
-                projects.map(project => `<option value="${project}">${project}</option>`).join('');
+            // 计算最早的待处理任务等待时间
+            let oldestWaitTime = 0;
+            pendingTasksArray.forEach(task => {
+                if (task.fields.createdAt) {
+                    const waitDays = Math.floor((new Date() - new Date(task.fields.createdAt)) / (1000 * 60 * 60 * 24));
+                    if (waitDays > oldestWaitTime) oldestWaitTime = waitDays;
+                }
+            });
             
-            // 应用当前筛选条件
-            updatePlanningFilters();
+            overviewContainer.innerHTML = `
+                <div class="pending-stats">
+                    <div class="pending-count">
+                        当前有 <span class="highlight">${pendingTasksArray.length}</span> 个待处理任务
+                    </div>
+                    ${oldestWaitTime > 0 ? `
+                        <div class="pending-age">
+                            最早的任务已等待 <span class="highlight">${oldestWaitTime}天</span>
+                        </div>
+                    ` : ''}
+                </div>
+                ${pendingTasksArray.length > 5 ? `
+                    <div class="pending-warning">
+                        ⚠️ 待处理任务较多，建议重新评估优先级
+                    </div>
+                ` : ''}
+            `;
+        }
+        
+        // 渲染今日任务回顾
+        function renderTodayTasksReview() {
+            const today = formatDateToLocal(new Date());
+            const todayTasks = tasks.filter(task => 
+                (task.fields.plannedDate === today || task.fields.today) &&
+                (task.type === '项目' || task.type === '动作')
+            );
+            
+            const completed = todayTasks.filter(t => t.status === '已完成').length;
+            const inProgress = todayTasks.filter(t => t.status === '进行中').length;
+            const paused = todayTasks.filter(t => t.status === '暂停').length;
+            const notStarted = todayTasks.filter(t => t.status === '未开始').length;
+            
+            // 渲染统计
+            const summaryContainer = document.getElementById('todayTasksSummary');
+            summaryContainer.innerHTML = `
+                <div class="today-stats">
+                    <div class="stat-item completed">
+                        <span class="stat-icon">✅</span>
+                        <span class="stat-text">已完成: ${completed}个</span>
+                    </div>
+                    <div class="stat-item in-progress">
+                        <span class="stat-icon">🚀</span>
+                        <span class="stat-text">进行中: ${inProgress}个</span>
+                    </div>
+                    <div class="stat-item paused">
+                        <span class="stat-icon">⏸</span>
+                        <span class="stat-text">暂停: ${paused}个</span>
+                    </div>
+                    <div class="stat-item not-started">
+                        <span class="stat-icon">⏰</span>
+                        <span class="stat-text">未开始: ${notStarted}个</span>
+                    </div>
+                </div>
+            `;
+            
+            // 收集今日的所有进展记录
+            const todayProgressList = [];
+            tasks.forEach(task => {
+                if (task.fields.progressLog) {
+                    task.fields.progressLog.forEach(log => {
+                        const logDate = log.date.split(' ')[0];
+                        if (logDate === today || log.date.includes('今天')) {
+                            todayProgressList.push({
+                                taskTitle: task.title,
+                                taskId: task.id,
+                                note: log.note,
+                                time: log.date
+                            });
+                        }
+                    });
+                }
+            });
+            
+            // 渲染进展记录
+            const progressListContainer = document.getElementById('todayProgressList');
+            if (todayProgressList.length === 0) {
+                progressListContainer.innerHTML = '<p class="empty-state">今天还没有添加进展记录</p>';
+            } else {
+                progressListContainer.innerHTML = todayProgressList
+                    .sort((a, b) => new Date(b.time) - new Date(a.time))
+                    .map(progress => `
+                        <div class="progress-item">
+                            <div class="progress-time">${progress.time.split(' ')[1] || progress.time}</div>
+                            <div class="progress-content">
+                                <div class="progress-task" onclick="viewTaskDetail('${progress.taskId}')">
+                                    ${progress.taskTitle}
+                                </div>
+                                <div class="progress-note">${progress.note}</div>
+                            </div>
+                        </div>
+                    `).join('');
+            }
+        }
+        
+        // 渲染明日任务预览
+        function renderTomorrowTasksPreview() {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const tomorrowStr = formatDateToLocal(tomorrow);
+            
+            const tomorrowTasks = tasks.filter(task => 
+                task.fields.plannedDate === tomorrowStr &&
+                (task.type === '项目' || task.type === '动作')
+            );
+            
+            const listContainer = document.getElementById('tomorrowTasksList');
+            if (tomorrowTasks.length === 0) {
+                listContainer.innerHTML = `
+                    <p class="empty-state">明天还没有安排任务</p>
+                    <p class="suggestion">建议从待处理任务中选择重要的任务安排到明天</p>
+                `;
+            } else {
+                listContainer.innerHTML = `
+                    <div class="tomorrow-count">已安排 ${tomorrowTasks.length} 个任务</div>
+                    <div class="tomorrow-task-list">
+                        ${tomorrowTasks.map(task => `
+                            <div class="tomorrow-task-item">
+                                <span class="task-type-icon">${getTaskTypeIcon(task.type)}</span>
+                                <span class="task-title">${task.title}</span>
+                                <span class="task-priority ${task.fields.priority.toLowerCase()}">
+                                    ${task.fields.priority}
+                                </span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+            
+            // 更新规划建议
+            updatePlanningSuggestions();
+        }
+        
+        // 更新规划建议
+        function updatePlanningSuggestions() {
+            const suggestions = [];
+            
+            // 检查未完成的焦点任务
+            const unfinishedFocus = Array.from(focusTasks)
+                .map(id => tasks.find(t => t.id === id))
+                .filter(t => t && t.status !== '已完成');
+            
+            if (unfinishedFocus.length > 0) {
+                suggestions.push(`有 ${unfinishedFocus.length} 个焦点任务未完成，考虑延续到明天`);
+            }
+            
+            // 检查高优先级待处理任务
+            const highPriorityPending = Array.from(pendingTasks)
+                .map(id => tasks.find(t => t.id === id))
+                .filter(t => t && t.fields.priority === '高');
+            
+            if (highPriorityPending.length > 0) {
+                suggestions.push(`待处理中有 ${highPriorityPending.length} 个高优先级任务需要安排`);
+            }
+            
+            // 检查明日任务量
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const tomorrowStr = formatDateToLocal(tomorrow);
+            const tomorrowTasks = tasks.filter(t => t.fields.plannedDate === tomorrowStr);
+            
+            if (tomorrowTasks.length > 8) {
+                suggestions.push('明天的任务较多，注意合理安排时间');
+            } else if (tomorrowTasks.length < 3) {
+                suggestions.push('明天的任务较少，可以多安排一些任务');
+            }
+            
+            // 更新建议列表
+            const suggestionsList = document.getElementById('planningSuggestionsList');
+            if (suggestions.length > 0) {
+                suggestionsList.innerHTML = suggestions.map(s => `<li>${s}</li>`).join('');
+            }
         }
         
         // 获取未规划的任务

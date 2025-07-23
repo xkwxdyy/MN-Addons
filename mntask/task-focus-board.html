@@ -6072,6 +6072,65 @@
             };
         }
         
+        // 强制刷新时间轴视图
+        function forceRefreshTimeline() {
+            // 立即保存数据
+            saveToLocalStorage();
+            
+            // 使用requestAnimationFrame确保在下一帧重新渲染
+            requestAnimationFrame(() => {
+                const container = document.getElementById('todayTimelineContainer');
+                if (container) {
+                    // 清空容器内容
+                    container.innerHTML = '';
+                    // 重新渲染时间轴
+                    renderTodayTimeline();
+                    // 更新侧边栏
+                    updateSidebar('today');
+                    updateSidebarStats();
+                }
+            });
+        }
+        
+        // 时间轴专用的任务状态切换函数
+        function toggleTaskStatusInTimeline(taskId, newStatus) {
+            // 调用原有的状态切换函数
+            toggleTaskStatus(taskId, newStatus);
+            
+            // 如果在时间轴视图，强制刷新
+            if (currentView === 'today') {
+                setTimeout(() => {
+                    forceRefreshTimeline();
+                }, 100);
+            }
+        }
+        
+        // 时间轴专用的添加到焦点函数
+        function addToFocusInTimeline(taskId) {
+            // 调用原有的添加函数
+            addToFocus(taskId);
+            
+            // 强制刷新时间轴
+            if (currentView === 'today') {
+                setTimeout(() => {
+                    forceRefreshTimeline();
+                }, 100);
+            }
+        }
+        
+        // 时间轴专用的添加到待处理函数
+        function addToPendingInTimeline(taskId) {
+            // 调用原有的添加函数
+            addToPending(taskId);
+            
+            // 强制刷新时间轴
+            if (currentView === 'today') {
+                setTimeout(() => {
+                    forceRefreshTimeline();
+                }, 100);
+            }
+        }
+        
         // 渲染今日时间轴
         function renderTodayTimeline() {
             // 获取选择的日期范围
@@ -6258,30 +6317,30 @@
                                     ` : ''}
                                     <div class="mt-2" style="display: flex; gap: 8px; flex-wrap: wrap;">
                                         ${task.status === '未开始' ? `
-                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '进行中')">
+                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatusInTimeline('${task.id}', '进行中')">
                                                 🚀 开始
                                             </button>
                                         ` : ''}
                                         ${task.status === '进行中' ? `
-                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); console.log('组内完成按钮点击', '${task.id}'); toggleTaskStatus('${task.id}', '已完成')">
+                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatusInTimeline('${task.id}', '已完成')">
                                                 ✅ 完成
                                             </button>
-                                            <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); console.log('组内暂停按钮点击', '${task.id}'); toggleTaskStatus('${task.id}', '暂停')">
+                                            <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatusInTimeline('${task.id}', '暂停')">
                                                 ⏸ 暂停
                                             </button>
                                         ` : ''}
                                         ${task.status === '暂停' ? `
-                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '进行中')">
+                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatusInTimeline('${task.id}', '进行中')">
                                                 ▶️ 继续
                                             </button>
                                         ` : ''}
                                         ${task.status !== '已完成' && !focusTasks.has(task.id) ? `
-                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); addToFocus('${task.id}')" title="添加到焦点">
+                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); addToFocusInTimeline('${task.id}')" title="添加到焦点">
                                                 🎯 焦点
                                             </button>
                                         ` : ''}
                                         ${task.status !== '已完成' && !pendingTasks.has(task.id) ? `
-                                            <button class="btn btn-info" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); addToPending('${task.id}')" title="添加到待处理">
+                                            <button class="btn btn-info" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); addToPendingInTimeline('${task.id}')" title="添加到待处理">
                                                 📋 待处理
                                             </button>
                                         ` : ''}
@@ -6340,30 +6399,30 @@
                                 
                                 <div class="timeline-task-actions">
                                     ${task.status === '未开始' ? `
-                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '进行中')" title="开始任务">
+                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleTaskStatusInTimeline('${task.id}', '进行中')" title="开始任务">
                                             🚀
                                         </button>
                                     ` : ''}
                                     ${task.status === '进行中' ? `
-                                        <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); console.log('完成按钮点击', '${task.id}'); toggleTaskStatus('${task.id}', '已完成')" title="完成任务">
+                                        <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); toggleTaskStatusInTimeline('${task.id}', '已完成')" title="完成任务">
                                             ✅
                                         </button>
-                                        <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); console.log('暂停按钮点击', '${task.id}'); toggleTaskStatus('${task.id}', '暂停')" title="暂停任务">
+                                        <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); toggleTaskStatusInTimeline('${task.id}', '暂停')" title="暂停任务">
                                             ⏸
                                         </button>
                                     ` : ''}
                                     ${task.status === '暂停' ? `
-                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '进行中')" title="继续任务">
+                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleTaskStatusInTimeline('${task.id}', '进行中')" title="继续任务">
                                             ▶️
                                         </button>
                                     ` : ''}
                                     ${task.status !== '已完成' && !focusTasks.has(task.id) ? `
-                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); addToFocus('${task.id}')" title="添加到焦点">
+                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); addToFocusInTimeline('${task.id}')" title="添加到焦点">
                                             🎯
                                         </button>
                                     ` : ''}
                                     ${task.status !== '已完成' && !pendingTasks.has(task.id) ? `
-                                        <button class="btn btn-sm btn-info" onclick="event.stopPropagation(); addToPending('${task.id}')" title="添加到待处理">
+                                        <button class="btn btn-sm btn-info" onclick="event.stopPropagation(); addToPendingInTimeline('${task.id}')" title="添加到待处理">
                                             📋
                                         </button>
                                     ` : ''}
@@ -6912,7 +6971,9 @@
                 
                 // 刷新时间轴显示
                 if (currentView === 'today') {
-                    renderTodayTimeline();
+                    setTimeout(() => {
+                        forceRefreshTimeline();
+                    }, 50);
                 }
             }
         }
@@ -7115,6 +7176,18 @@
             updateSidebarStats();
             saveToLocalStorage();
             showNotification('已添加到焦点任务', 'success');
+            
+            // 根据当前视图刷新相应内容
+            if (currentView === 'today') {
+                // 强制刷新时间轴
+                setTimeout(() => {
+                    const container = document.getElementById('todayTimelineContainer');
+                    if (container) {
+                        container.innerHTML = '';  // 清空内容
+                    }
+                    renderTodayTimeline();
+                }, 50);
+            }
         }
         
         // 直接添加单个任务到待处理
@@ -7135,6 +7208,18 @@
             updateSidebarStats();
             saveToLocalStorage();
             showNotification('已添加到待处理任务', 'success');
+            
+            // 根据当前视图刷新相应内容
+            if (currentView === 'today') {
+                // 强制刷新时间轴
+                setTimeout(() => {
+                    const container = document.getElementById('todayTimelineContainer');
+                    if (container) {
+                        container.innerHTML = '';  // 清空内容
+                    }
+                    renderTodayTimeline();
+                }, 50);
+            }
         }
 
         /* ========================================
@@ -7375,7 +7460,6 @@
 
         // 切换任务状态
         function toggleTaskStatus(taskId, newStatus) {
-            console.log('toggleTaskStatus called:', taskId, newStatus); // 调试日志
             const task = tasks.find(t => t.id === taskId);
             if (!task) {
                 console.error('Task not found:', taskId);
@@ -7430,39 +7514,52 @@
                 note: `任务状态从"${oldStatus}"变更为"${newStatus}"`
             });
             
-            // 刷新视图
-            switch(currentView) {
-                case 'focus':
-                    renderFocusTasks();
-                    break;
-                case 'timeline':
-                    renderTodayTimeline();
-                    break;
-                case 'planning':
-                    renderPlanningView();
-                    break;
-                case 'project':
-                    renderProjectBoard();
-                    break;
-                case 'goal':
-                    renderGoalBoard();
-                    break;
-                case 'board':
-                    renderBoardView();
-                    // 初始化项目下拉框
-                    initializeBoardProjectFilter();
-                    // 初始化统计信息
-                    updateBoardStats();
-                    break;
-                case 'list':
-                    renderListView();
-                    break;
-            }
-            
-            // 更新侧边栏（特别是时间轴视图的统计）
-            updateSidebar(currentView);
-            updateSidebarStats();
+            // 保存数据到本地存储
             saveToLocalStorage();
+            
+            // 强制刷新视图 - 使用setTimeout确保DOM更新
+            setTimeout(() => {
+                // 刷新主视图
+                switch(currentView) {
+                    case 'focus':
+                        renderFocusTasks();
+                        break;
+                    case 'today':  // 时间轴视图的实际名称是 'today'
+                        // 强制重新渲染整个时间轴
+                        const container = document.getElementById('todayTimelineContainer');
+                        if (container) {
+                            container.innerHTML = '';  // 清空内容
+                        }
+                        renderTodayTimeline();
+                        break;
+                    case 'planning':
+                        renderPlanningView();
+                        break;
+                    case 'project':
+                        renderProjectBoard();
+                        break;
+                    case 'goal':
+                        renderGoalBoard();
+                        break;
+                    case 'board':
+                        renderBoardView();
+                        // 初始化项目下拉框
+                        initializeBoardProjectFilter();
+                        // 初始化统计信息
+                        updateBoardStats();
+                        break;
+                    case 'list':
+                        renderListView();
+                        break;
+                }
+                
+                // 更新侧边栏（特别是时间轴视图的统计）
+                updateSidebar(currentView);
+                updateSidebarStats();
+                
+                // 显示状态变更通知
+                showNotification(`任务状态已更新为：${newStatus}`, 'success');
+            }, 50);
         }
 
         // 拖拽相关变量
@@ -10481,14 +10578,13 @@
             // 计算明天的日期
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
-            const tomorrowStr = tomorrow.toISOString().split('T')[0];
             
             // 更新选中任务的 plannedDate
             let updatedCount = 0;
             selectedTomorrowTasks.forEach(taskId => {
                 const task = tasks.find(t => t.id === taskId);
                 if (task) {
-                    task.fields.plannedDate = tomorrowStr;
+                    updateTaskPlannedDate(task, tomorrow);
                     updatedCount++;
                     
                     // 添加进展记录
@@ -10532,6 +10628,27 @@
             const month = String(localDate.getMonth() + 1).padStart(2, '0');
             const day = String(localDate.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
+        }
+        
+        // 统一处理任务计划日期变更
+        function updateTaskPlannedDate(task, newDate) {
+            const today = formatDateToLocal(new Date());
+            const newDateStr = typeof newDate === 'string' ? newDate : formatDateToLocal(newDate);
+            task.fields.plannedDate = newDateStr;
+            
+            // 如果任务进行中但被安排到未来，自动暂停
+            if (task.status === '进行中' && newDateStr > today) {
+                task.status = '暂停';
+                // 记录进展
+                if (!task.fields.progressLog) {
+                    task.fields.progressLog = [];
+                }
+                const displayDate = new Date(newDateStr).toLocaleDateString('zh-CN');
+                task.fields.progressLog.push({
+                    date: new Date().toLocaleString('zh-CN'),
+                    note: `任务已暂停并安排到 ${displayDate}`
+                });
+            }
         }
         
         // 更新时间轴统计信息
@@ -11624,7 +11741,7 @@
             window.selectedPlanningTasks.forEach(taskId => {
                 const task = tasks.find(t => t.id === taskId);
                 if (task) {
-                    task.fields.plannedDate = tomorrowStr;
+                    updateTaskPlannedDate(task, tomorrowStr);
                     scheduledTasks.push(task);
                     scheduledCount++;
                 }
@@ -11659,7 +11776,7 @@
                 if (task) {
                     const scheduleDate = new Date(baseDate);
                     scheduleDate.setDate(baseDate.getDate() + (index % 7)); // 分布到一周内
-                    task.fields.plannedDate = formatDateToLocal(scheduleDate);
+                    updateTaskPlannedDate(task, scheduleDate);
                     scheduledTasks.push(task);
                     scheduledCount++;
                 }

@@ -564,3 +564,43 @@ git remote -v
 - 在创建 GitHub Issue 之前，确保代码已经推送到远程仓库
 - 使用 `git push github [分支名]` 而不是 `git push origin [分支名]`
 - 如果忘记 push，Issue 中引用的代码链接将无法访问
+
+## 时间轴刷新问题彻底解决方案（2025-01-23）
+
+### 问题描述
+用户反复反馈时间轴任务状态更新后不刷新的严重问题：
+- 点击暂停/完成按钮后显示成功通知
+- 但时间轴中的任务状态和按钮没有变化
+- 必须手动 cmd+R 刷新页面才能看到更新
+
+### 根本原因
+`filteredTasks` 数组包含过时的任务对象副本：
+```javascript
+// filteredTasks 是通过 filter 创建的副本
+filteredTasks = tasks.filter(task => { ... });
+
+// 状态更新只影响 tasks 数组中的原始对象
+task.status = newStatus;  // task 是 tasks 数组中的对象
+
+// renderTodayTimeline 使用 filteredTasks 渲染
+const baseTasks = filteredTasks;  // 使用了包含旧状态的副本
+```
+
+### 解决方案
+让 `renderTodayTimeline` 始终使用最新的 `tasks` 数组：
+```javascript
+// 修改前
+const baseTasks = (filteredTasks && filteredTasks.length >= 0) ? filteredTasks : tasks;
+
+// 修改后
+const baseTasks = tasks;  // 始终使用原始数组，确保数据最新
+```
+
+### 关键要点
+1. **避免使用缓存的数组副本**：在需要实时更新的场景中，应直接使用原始数据源
+2. **理解 JavaScript 对象引用**：`filter()` 创建新数组但包含原对象的引用，修改对象属性会影响所有引用，但如果使用了旧的数组副本，仍会渲染旧数据
+3. **调试技巧**：添加对象引用比较（`isSameObject: task === originalTask`）可以快速定位是否使用了过时的对象副本
+
+### 相关修复
+- Commit: b1a9d28
+- Issue: #9

@@ -828,6 +828,17 @@
             background: var(--bg-hover);
             border-color: var(--text-muted);
         }
+        
+        .btn-info {
+            background: #5bc0de;
+            color: white;
+            border: none;
+        }
+        
+        .btn-info:hover {
+            background: #46b8da;
+            transform: translateY(-1px);
+        }
 
         /* 启动按钮特殊样式 */
         .btn-launch {
@@ -1634,6 +1645,20 @@
             align-items: center;
             justify-content: center;
             font-size: 0.875rem;
+        }
+        
+        /* 时间轴任务按钮样式 */
+        .timeline-task-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .timeline-task-actions .btn-sm {
+            padding: 2px 8px;
+            font-size: 0.75rem;
+            min-height: 24px;
         }
 
         .timeline-progress-display {
@@ -6062,10 +6087,17 @@
                     return false;
                 }
                 
-                // 只显示进行中和已完成的任务
-                if (task.status !== '进行中' && task.status !== '已完成') {
-                    return false;
+                // 显示所有未完成的任务和今天完成的任务
+                if (task.status === '已完成') {
+                    // 已完成任务只显示今天完成的
+                    if (task.fields.endTime) {
+                        const endDate = formatDateToLocal(new Date(task.fields.endTime));
+                        if (endDate !== todayStr) {
+                            return false;
+                        }
+                    }
                 }
+                // 未开始、进行中、暂停的任务都显示
                 
                 // 如果任务有 plannedDate，则按日期范围筛选
                 if (task.fields.plannedDate) {
@@ -6224,13 +6256,33 @@
                                             ⏱ 耗时：${formatElapsedTime(task.fields.startTime, task.fields.endTime)}
                                         </div>
                                     ` : ''}
-                                    <div class="mt-2" style="display: flex; gap: 8px;">
+                                    <div class="mt-2" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                        ${task.status === '未开始' ? `
+                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '进行中')">
+                                                🚀 开始
+                                            </button>
+                                        ` : ''}
                                         ${task.status === '进行中' ? `
-                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '已完成')">
+                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); console.log('组内完成按钮点击', '${task.id}'); toggleTaskStatus('${task.id}', '已完成')">
                                                 ✅ 完成
                                             </button>
-                                            <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '暂停')">
+                                            <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); console.log('组内暂停按钮点击', '${task.id}'); toggleTaskStatus('${task.id}', '暂停')">
                                                 ⏸ 暂停
+                                            </button>
+                                        ` : ''}
+                                        ${task.status === '暂停' ? `
+                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '进行中')">
+                                                ▶️ 继续
+                                            </button>
+                                        ` : ''}
+                                        ${task.status !== '已完成' && !focusTasks.has(task.id) ? `
+                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); addToFocus('${task.id}')" title="添加到焦点">
+                                                🎯 焦点
+                                            </button>
+                                        ` : ''}
+                                        ${task.status !== '已完成' && !pendingTasks.has(task.id) ? `
+                                            <button class="btn btn-info" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); addToPending('${task.id}')" title="添加到待处理">
+                                                📋 待处理
                                             </button>
                                         ` : ''}
                                         <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); viewProgressLog(event, '${task.id}')">
@@ -6286,13 +6338,33 @@
                                     ` : ''}
                                 </div>
                                 
-                                <div class="task-actions">
+                                <div class="timeline-task-actions">
+                                    ${task.status === '未开始' ? `
+                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '进行中')" title="开始任务">
+                                            🚀
+                                        </button>
+                                    ` : ''}
                                     ${task.status === '进行中' ? `
-                                        <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '已完成')" title="完成任务">
+                                        <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); console.log('完成按钮点击', '${task.id}'); toggleTaskStatus('${task.id}', '已完成')" title="完成任务">
                                             ✅
                                         </button>
-                                        <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '暂停')" title="暂停任务">
+                                        <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); console.log('暂停按钮点击', '${task.id}'); toggleTaskStatus('${task.id}', '暂停')" title="暂停任务">
                                             ⏸
+                                        </button>
+                                    ` : ''}
+                                    ${task.status === '暂停' ? `
+                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '进行中')" title="继续任务">
+                                            ▶️
+                                        </button>
+                                    ` : ''}
+                                    ${task.status !== '已完成' && !focusTasks.has(task.id) ? `
+                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); addToFocus('${task.id}')" title="添加到焦点">
+                                            🎯
+                                        </button>
+                                    ` : ''}
+                                    ${task.status !== '已完成' && !pendingTasks.has(task.id) ? `
+                                        <button class="btn btn-sm btn-info" onclick="event.stopPropagation(); addToPending('${task.id}')" title="添加到待处理">
+                                            📋
                                         </button>
                                     ` : ''}
                                 </div>
@@ -7042,6 +7114,27 @@
             renderPendingTasks(); // 重新渲染待处理任务
             updateSidebarStats();
             saveToLocalStorage();
+            showNotification('已添加到焦点任务', 'success');
+        }
+        
+        // 直接添加单个任务到待处理
+        function addToPending(taskId) {
+            if (pendingTasks.has(taskId)) {
+                showNotification('该任务已在待处理列表中', 'warning');
+                return;
+            }
+            
+            pendingTasks.add(taskId);
+            
+            // 将新任务添加到排序数组末尾
+            if (!pendingTasksOrder.includes(taskId)) {
+                pendingTasksOrder.push(taskId);
+            }
+            
+            renderPendingTasks();
+            updateSidebarStats();
+            saveToLocalStorage();
+            showNotification('已添加到待处理任务', 'success');
         }
 
         /* ========================================
@@ -7282,8 +7375,12 @@
 
         // 切换任务状态
         function toggleTaskStatus(taskId, newStatus) {
+            console.log('toggleTaskStatus called:', taskId, newStatus); // 调试日志
             const task = tasks.find(t => t.id === taskId);
-            if (!task) return;
+            if (!task) {
+                console.error('Task not found:', taskId);
+                return;
+            }
             
             const oldStatus = task.status;
             const currentTime = new Date().toISOString();
@@ -10442,7 +10539,9 @@
             const statsContainer = document.getElementById('timelineStats');
             if (!statsContainer) return;
             
+            const notStartedCount = timelineTasks.filter(t => t.status === '未开始').length;
             const inProgressCount = timelineTasks.filter(t => t.status === '进行中').length;
+            const pausedCount = timelineTasks.filter(t => t.status === '暂停').length;
             const completedCount = timelineTasks.filter(t => t.status === '已完成').length;
             
             // 格式化日期显示
@@ -10480,10 +10579,22 @@
                     <span class="timeline-stat-label">📅 ${timelineViewMode === 'day' ? '日期' : timelineViewMode === 'week' ? '周' : '月份'}：</span>
                     <span class="timeline-stat-value">${dateDisplay}</span>
                 </div>
+                ${notStartedCount > 0 ? `
+                <div class="timeline-stat">
+                    <span class="timeline-stat-label">📝 未开始：</span>
+                    <span class="timeline-stat-value">${notStartedCount}</span>
+                </div>
+                ` : ''}
                 <div class="timeline-stat">
                     <span class="timeline-stat-label">🚀 进行中：</span>
                     <span class="timeline-stat-value">${inProgressCount}</span>
                 </div>
+                ${pausedCount > 0 ? `
+                <div class="timeline-stat">
+                    <span class="timeline-stat-label">⏸ 暂停：</span>
+                    <span class="timeline-stat-value">${pausedCount}</span>
+                </div>
+                ` : ''}
                 <div class="timeline-stat">
                     <span class="timeline-stat-label">✅ 已完成：</span>
                     <span class="timeline-stat-value">${completedCount}</span>

@@ -50,6 +50,9 @@
 // JSB.require('utils');
 // JSB.require('base64')
 
+// 全局 MNTask 插件实例引用
+var MNTaskInstance = null;
+
 /**
  * MNTask 设置控制器 - 采用 JSB 框架的事件驱动架构
  * 
@@ -89,45 +92,29 @@ var taskSettingController = JSB.defineClass('taskSettingController : UIViewContr
   viewDidLoad: function() {
     let self = getTaskSettingController()
 try {
-    // 记录插件初始化开始
-    TaskLogManager.info("MNTask 设置面板开始初始化", "SettingController")
+    MNUtil.log("📍 [MNTask] viewDidLoad 开始")
     
-    // 添加一些测试日志
-    TaskLogManager.debug("调试信息：初始化参数", "SettingController", JSON.stringify({
-      viewFrame: self.view.frame,
-      timestamp: Date.now()
-    }))
-    TaskLogManager.warn("警告：这是一条测试警告", "SettingController")
+    // 暂时注释 TaskLogManager，避免早期调用
+    // TaskLogManager.info("MNTask 设置面板开始初始化", "SettingController")
     
-    self.init()
-    // 延迟设置 frame，避免在 view 未完全初始化时设置导致崩溃
-    // taskFrame.set(self.view,50,50,355,500)
+    MNUtil.log("📍 [MNTask] 1. 准备设置 frame")
     
-    // 使用延迟来确保 view 已经完全初始化
-    MNUtil.delay(0.1).then(() => {
-      // 添加安全检查
-      if (self.view && self.view.frame) {
-        taskFrame.set(self.view, 50, 50, 355, 500)
-        self.lastFrame = self.view.frame;
-        self.currentFrame = self.view.frame
-        MNUtil.log("✅ 设置面板 frame 成功")
-      } else {
-        MNUtil.log("⚠️ view 未准备好，跳过 frame 设置")
-        // 设置默认值
-        self.lastFrame = {x: 50, y: 50, width: 355, height: 500}
-        self.currentFrame = {x: 50, y: 50, width: 355, height: 500}
-      }
-    })
+    // 像 MNBrowser 一样，先设置 frame
+    self.view.frame = {x:50, y:50, width:355, height:500}
+    self.lastFrame = self.view.frame
+    self.currentFrame = self.view.frame
     
-    // 先设置临时的默认值，避免后续代码访问 undefined
-    self.lastFrame = {x: 50, y: 50, width: 355, height: 500}
-    self.currentFrame = {x: 50, y: 50, width: 355, height: 500}
+    MNUtil.log("📍 [MNTask] 2. frame 设置完成: " + JSON.stringify(self.view.frame))
+    
+    // 设置其他属性
     self.isMainWindow = true
     self.title = "main"
     self.preAction = ""
     self.test = [0]
     self.moveDate = Date.now()
     self.color = [true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true]
+    
+    MNUtil.log("📍 [MNTask] 3. 设置 layer 属性")
     self.view.layer.shadowOffset = {width: 0, height: 0};
     self.view.layer.shadowRadius = 15;
     self.view.layer.shadowOpacity = 0.5;
@@ -136,22 +123,33 @@ try {
     self.view.layer.opacity = 1.0
     self.view.layer.borderColor = MNUtil.hexColorAlpha("#9bb2d6",0.8)
     self.view.layer.borderWidth = 0
-    // self.view.backgroundColor = MNUtil.hexColorAlpha("#9bb2d6",0.8)
+    
+    MNUtil.log("📍 [MNTask] 4. 准备调用 self.init()")
+    // 现在调用 init，在 frame 设置之后（像 MNBrowser 一样）
+    self.init()
+    MNUtil.log("📍 [MNTask] 5. self.init() 完成")
+    
     self.config = {}
     if (!self.config.delay) {
       self.config.delay = 0
     }
+    
+    MNUtil.log("📍 [MNTask] 6. 准备创建 settingView")
     if (!self.settingView) {
       self.createSettingView()
     }
+    MNUtil.log("📍 [MNTask] 7. settingView 创建完成")
     
-    // 记录初始化成功
-    TaskLogManager.info("MNTask 设置面板初始化完成", "SettingController")
+    // 暂时注释，等基本功能正常后再启用
+    // TaskLogManager.info("MNTask 设置面板初始化完成", "SettingController")
 } catch (error) {
   // 记录初始化错误
-  TaskLogManager.error("MNTask 设置面板初始化失败", "SettingController", error)
-  MNUtil.showHUD(error)
+  MNUtil.log("❌ [MNTask] viewDidLoad 错误: " + error.message)
+  MNUtil.log("❌ [MNTask] 错误堆栈: " + error.stack)
+  // TaskLogManager.error("MNTask 设置面板初始化失败", "SettingController", error)
+  MNUtil.showHUD("初始化失败: " + error.message)
 }
+    MNUtil.log("📍 [MNTask] 8. 创建按钮")
     self.createButton("maxButton","maxButtonTapped:")
     self.maxButton.setTitleForState('➕', 0);
     self.maxButton.titleLabel.font = UIFont.systemFontOfSize(10);
@@ -165,6 +163,8 @@ try {
     self.moveButton.width = 150
     self.moveButton.height = 17
     // self.moveButton.showsTouchWhenHighlighted = true
+    
+    MNUtil.log("📍 [MNTask] 9. 调用 settingViewLayout")
     self.settingViewLayout()
 
     self.moveGesture = new UIPanGestureRecognizer(self,"onMoveGesture:")
@@ -181,6 +181,7 @@ try {
     self.selectedItem = taskConfig.action[0]
     let allActions = taskConfig.action.concat(taskConfig.getDefaultActionKeys().slice(taskConfig.action.length))
 
+    MNUtil.log("📍 [MNTask] 10. 设置按钮文本和视图")
     try {
       self.setButtonText(allActions,self.selectedItem)
       MNUtil.delay(0.5).then(()=>{
@@ -191,8 +192,11 @@ try {
       // 默认显示看板视图
       self.viewManager.switchTo('todayBoard')
     } catch (error) {  
+      MNUtil.log("❌ [MNTask] setButtonText 错误: " + error.message)
       taskUtils.addErrorLog(error, "viewDidLoad.setButtonText", info)
     }
+    
+    MNUtil.log("✅ [MNTask] viewDidLoad 完成")
   },
   viewWillAppear: function(animated) {
   },
@@ -232,7 +236,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     
     // 添加调试日志
     MNUtil.log(`🔗 WebView 请求: ${requestURL}`)
-    TaskLogManager.debug("WebView URL 请求", "WebView", requestURL)
+    // TaskLogManager.debug("WebView URL 请求", "WebView", requestURL)
     
     if (!requestURL) {
       MNUtil.showHUD("Empty URL")
@@ -243,7 +247,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     if (/^nativecopy\:\/\/content=/.test(requestURL)) {
       let text = decodeURIComponent(requestURL.split("content=")[1])
       MNUtil.log(`📋 准备复制内容: ${text}`)
-      TaskLogManager.info(`复制到剪贴板: ${text}`, "WebView")
+      // TaskLogManager.info(`复制到剪贴板: ${text}`, "WebView")
       MNUtil.copy(text)
       return false
     }
@@ -438,7 +442,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     }
   } catch (error) {
     // 使用 TaskLogManager 记录错误
-    TaskLogManager.error("重置配置失败", "SettingController", error)
+    // TaskLogManager.error("重置配置失败", "SettingController", error)
     MNUtil.showHUD("Error in resetConfig: "+error)
   }
   },
@@ -587,19 +591,25 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   advancedButtonTapped: function (params) {
     let self = getTaskSettingController()
     // 记录视图切换
-    TaskLogManager.info("切换到高级设置视图", "SettingController")
+    // TaskLogManager.info("切换到高级设置视图", "SettingController")
     self.viewManager.switchTo('advanced')
   },
   taskBoardButtonTapped: function (params) {
     let self = getTaskSettingController()
     // 记录视图切换
-    TaskLogManager.info("切换到任务看板视图", "SettingController")
+    // TaskLogManager.info("切换到任务看板视图", "SettingController")
     self.viewManager.switchTo('taskBoard')
+  },
+  htmlButtonTapped: function (params) {
+    let self = getTaskSettingController()
+    // 记录视图切换
+    MNUtil.log("切换到 HTML 视图")
+    self.viewManager.switchTo('html')
   },
   // todayBoardButtonTapped: function (params) {
   //   let self = getTaskSettingController()
   //   // 记录视图切换
-  //   TaskLogManager.info("切换到今日看板视图", "SettingController")
+  //   // TaskLogManager.info("切换到今日看板视图", "SettingController")
   //   MNUtil.log("🎯 todayBoardButtonTapped 被调用")
   //   MNUtil.log(`📱 按钮信息: ${params}`)
   //   
@@ -620,13 +630,13 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   popupButtonTapped: function (params) {
     let self = getTaskSettingController()
     // 记录视图切换
-    TaskLogManager.info("切换到弹窗配置视图", "SettingController")
+    // TaskLogManager.info("切换到弹窗配置视图", "SettingController")
     self.viewManager.switchTo('popup')
   },
   configButtonTapped: function (params) {
     let self = getTaskSettingController()
     // 记录视图切换
-    TaskLogManager.info("切换到配置视图", "SettingController")
+    // TaskLogManager.info("切换到配置视图", "SettingController")
     if (self.viewManager) {
       self.viewManager.switchTo('config')
     }
@@ -634,7 +644,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   dynamicButtonTapped: async function (params) {
     let self = getTaskSettingController()
     // 记录视图切换
-    TaskLogManager.info("切换到动态视图", "SettingController")
+    // TaskLogManager.info("切换到动态视图", "SettingController")
     self.viewManager.switchTo('dynamic')
   },
   chooseTemplate: async function (button) {
@@ -1415,6 +1425,28 @@ taskSettingController.prototype.init = function () {
   this.selectedText = '';
   this.searchedText = '';
   
+  // 尝试获取 MNTask 插件实例
+  try {
+    // 方法1: 从 MNTask 类获取
+    if (typeof MNTask !== 'undefined' && MNTask.sharedInstance) {
+      MNTaskInstance = MNTask.sharedInstance();
+      MNUtil.log("✅ 获取 MNTaskInstance 成功 (通过 MNTask.sharedInstance)")
+    } 
+    // 方法2: 从应用查询扩展
+    else if (Application.sharedInstance().queryExtension) {
+      MNTaskInstance = Application.sharedInstance().queryExtension('mntask');
+      if (MNTaskInstance) {
+        MNUtil.log("✅ 获取 MNTaskInstance 成功 (通过 queryExtension)")
+      }
+    }
+    
+    if (!MNTaskInstance) {
+      MNUtil.log("⚠️ 无法获取 MNTaskInstance，某些功能可能受限")
+    }
+  } catch (e) {
+    MNUtil.log("❌ 获取 MNTaskInstance 时出错: " + e.message)
+  }
+  
   // 初始化 viewManager
   this.initViewManager();
 }
@@ -1480,7 +1512,7 @@ taskSettingController.prototype.initViewManager = function() {
         selectedColor: '#457bd3',
         normalColor: '#9bb2d6',
         onShow: function(self) {
-          self.updateRootNoteLabel()
+          // self.updateRootNoteLabel()  // Commented out - method is not defined
           self.updateBoardLabel('target')
           self.updateBoardLabel('project')
           self.updateBoardLabel('action')
@@ -1505,21 +1537,48 @@ taskSettingController.prototype.initViewManager = function() {
             self.loadTodayBoardData()
           }
         }
+      },
+      html: {
+        view: 'webviewInput',
+        button: 'htmlButton',
+        selectedColor: '#457bd3',
+        normalColor: '#9bb2d6',
+        onShow: function(self) {
+          MNUtil.log("📄 切换到 HTML 视图")
+          // HTML 视图是默认的 webview
+        }
       }
     },
     
     // 切换到指定视图
     switchTo: function(viewName) {
+      MNUtil.log(`🔄 Switching to view: ${viewName}`)
+      
       const viewConfig = self.viewManager.views[viewName]
       
       if (!viewConfig) {
+        MNUtil.log(`❌ View config not found for: ${viewName}`)
         return
       }
       
+      MNUtil.log(`📦 View config found:`, JSON.stringify({
+        view: viewConfig.view,
+        button: viewConfig.button,
+        hasView: !!self[viewConfig.view],
+        hasButton: !!self[viewConfig.button]
+      }))
+      
       // 如果有前置检查，执行并判断是否继续
       if (viewConfig.onShow) {
-        const shouldContinue = viewConfig.onShow(self)
-        if (shouldContinue === false) return
+        try {
+          const shouldContinue = viewConfig.onShow(self)
+          if (shouldContinue === false) {
+            MNUtil.log(`⚠️ onShow returned false, aborting view switch`)
+            return
+          }
+        } catch (e) {
+          MNUtil.log(`❌ Error in onShow for ${viewName}: ${e.message}`)
+        }
       }
       
       // 隐藏所有视图并重置按钮状态
@@ -1537,10 +1596,16 @@ taskSettingController.prototype.initViewManager = function() {
       // 显示当前视图
       if (self[viewConfig.view]) {
         self[viewConfig.view].hidden = false
+        MNUtil.log(`✅ Showing view: ${viewConfig.view}`)
+      } else {
+        MNUtil.log(`❌ View not found: ${viewConfig.view}`)
       }
       if (self[viewConfig.button]) {
         self[viewConfig.button].selected = true
         MNButton.setColor(self[viewConfig.button], viewConfig.selectedColor, 0.8)
+        MNUtil.log(`✅ Highlighting button: ${viewConfig.button}`)
+      } else {
+        MNUtil.log(`❌ Button not found: ${viewConfig.button}`)
       }
     },
     
@@ -1685,12 +1750,13 @@ taskSettingController.prototype.settingViewLayout = function (){
     taskFrame.set(this.popupButton, this.dynamicButton.frame.x + this.dynamicButton.frame.width+5, 0)
     taskFrame.set(this.advancedButton, this.popupButton.frame.x + this.popupButton.frame.width+5, 0)
     taskFrame.set(this.taskBoardButton, this.advancedButton.frame.x + this.advancedButton.frame.width+5, 0)
+    taskFrame.set(this.htmlButton, this.taskBoardButton.frame.x + this.taskBoardButton.frame.width+5, 0)
     
     // 关闭按钮与 tabView 对齐
     taskFrame.set(this.closeButton, tabViewFrame.width + 5, tabViewFrame.y)
     
     // 设置 tabView 的 contentSize，使按钮可以横向滚动
-    const tabContentWidth = this.taskBoardButton.frame.x + this.taskBoardButton.frame.width + 10;
+    const tabContentWidth = this.htmlButton.frame.x + this.htmlButton.frame.width + 10;
     this.tabView.contentSize = {width: tabContentWidth, height: 30}
     let scrollHeight = 5
     if (MNUtil.appVersion().type === "macOS") {
@@ -1865,6 +1931,12 @@ try {
   this.taskBoardButton.width = this.taskBoardButton.sizeThatFits({width:150,height:30}).width+15
   this.taskBoardButton.height = 30
   this.taskBoardButton.selected = false
+
+  this.createButton("htmlButton","htmlButtonTapped:","tabView")
+  MNButton.setConfig(this.htmlButton, {alpha:0.9,opacity:1.0,title:"HTML",font:17,radius:10,bold:true})
+  this.htmlButton.width = this.htmlButton.sizeThatFits({width:150,height:30}).width+15
+  this.htmlButton.height = 30
+  this.htmlButton.selected = false
 
   this.createButton("closeButton","closeButtonTapped:","view")
   MNButton.setConfig(this.closeButton, {color:"#e06c75",alpha:0.9,opacity:1.0,radius:10,bold:true})
@@ -2918,7 +2990,7 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
     }
     
     // 加载 HTML 文件
-    const htmlPath = taskConfig.mainPath + '/sidebarContainer.html'
+    const htmlPath = taskConfig.mainPath + '/task-focus-board.html'
     MNUtil.log(`📁 HTML 文件路径: ${htmlPath}`)
     
     // 检查文件是否存在

@@ -1177,7 +1177,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     
     // 保存新的根目录卡片
     taskConfig.saveRootNoteId(note.noteId)
-    // self.updateRootNoteLabel()
+    self.updateRootNoteLabel()
     self.showHUD("✅ 已保存根目录卡片")
   },
   clearRootNoteId: async function () {
@@ -1198,7 +1198,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     
     if (result === 1) {  // 用户点击了"清除"
       taskConfig.clearRootNoteId()
-      // self.updateRootNoteLabel()
+      self.updateRootNoteLabel()
       self.showHUD("✅ 已清除根目录卡片")
     }
   },
@@ -1217,86 +1217,105 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       self.showHUD("❌ 卡片不存在")
       // 清除无效的 ID
       taskConfig.clearRootNoteId()
-      // self.updateRootNoteLabel()
+      self.updateRootNoteLabel()
     }
   },
   
+  // 根目录看板处理方法
+  focusRootBoard: function(sender) {
+    let self = getTaskSettingController()
+    MNUtil.log("🔍 focusRootBoard 被调用")
+    self.focusBoard('root')
+  },
+  
+  clearRootBoard: async function(sender) {
+    let self = getTaskSettingController()
+    MNUtil.log("🗑️ clearRootBoard 被调用")
+    await self.clearBoard('root')
+  },
+  
+  pasteRootBoard: async function(sender) {
+    let self = getTaskSettingController()
+    MNUtil.log("📋 pasteRootBoard 被调用")
+    await self.pasteBoard('root')
+  },
+  
   // 通用看板处理方法
-  focusTargetBoard: function() {
+  focusTargetBoard: function(sender) {
     let self = getTaskSettingController()
     self.focusBoard('target')
   },
   
-  clearTargetBoard: async function() {
+  clearTargetBoard: async function(sender) {
     let self = getTaskSettingController()
     await self.clearBoard('target')
   },
   
-  pasteTargetBoard: async function() {
+  pasteTargetBoard: async function(sender) {
     let self = getTaskSettingController()
     await self.pasteBoard('target')
   },
   
   // 项目看板处理方法
-  focusProjectBoard: function() {
+  focusProjectBoard: function(sender) {
     let self = getTaskSettingController()
     self.focusBoard('project')
   },
   
-  clearProjectBoard: async function() {
+  clearProjectBoard: async function(sender) {
     let self = getTaskSettingController()
     await self.clearBoard('project')
   },
   
-  pasteProjectBoard: async function() {
+  pasteProjectBoard: async function(sender) {
     let self = getTaskSettingController()
     await self.pasteBoard('project')
   },
   
   // 动作看板处理方法
-  focusActionBoard: function() {
+  focusActionBoard: function(sender) {
     let self = getTaskSettingController()
     self.focusBoard('action')
   },
   
-  clearActionBoard: async function() {
+  clearActionBoard: async function(sender) {
     let self = getTaskSettingController()
     await self.clearBoard('action')
   },
   
-  pasteActionBoard: async function() {
+  pasteActionBoard: async function(sender) {
     let self = getTaskSettingController()
     await self.pasteBoard('action')
   },
   
   // 已完成存档区看板处理方法
-  focusCompletedBoard: function() {
+  focusCompletedBoard: function(sender) {
     let self = getTaskSettingController()
     self.focusBoard('completed')
   },
   
-  clearCompletedBoard: async function() {
+  clearCompletedBoard: async function(sender) {
     let self = getTaskSettingController()
     await self.clearBoard('completed')
   },
   
-  pasteCompletedBoard: async function() {
+  pasteCompletedBoard: async function(sender) {
     let self = getTaskSettingController()
     await self.pasteBoard('completed')
   },
   
   // 今日看板处理方法
-  focusTodayBoard: function() {
+  focusTodayBoard: function(sender) {
     let self = getTaskSettingController()
     self.focusBoard('today')
   },
   
-  clearTodayBoard: async function() {
+  clearTodayBoard: async function(sender) {
     let self = getTaskSettingController()
     await self.clearBoard('today')
   },
   
-  pasteTodayBoard: async function() {
+  pasteTodayBoard: async function(sender) {
     let self = getTaskSettingController()
     await self.pasteBoard('today')
   },
@@ -2208,35 +2227,36 @@ try {
   let color = ["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9fdc"]
 
   // Task Board 视图内容
-  // this.createButton("focusRootNoteButton","focusRootNoteId:","taskBoardView")
-  // MNButton.setConfig(this.focusRootNoteButton, {title:"Focus",color:"#457bd3",alpha:0.8})
+  // 手动创建根目录看板（使用 v0_10_2 的方式）
+  this.createButton("focusRootNoteButton","focusRootNoteId:","taskBoardView")
+  MNButton.setConfig(this.focusRootNoteButton, {title:"Focus",color:"#457bd3",alpha:0.8})
   
-  // this.createButton("clearRootNoteButton","clearRootNoteId:","taskBoardView")
-  // MNButton.setConfig(this.clearRootNoteButton, {title:"Clear",color:"#9bb2d6",alpha:0.8})
+  this.createButton("clearRootNoteButton","clearRootNoteId:","taskBoardView")
+  MNButton.setConfig(this.clearRootNoteButton, {title:"Clear",color:"#9bb2d6",alpha:0.8})
   
-  // this.createButton("pasteRootNoteButton","pasteRootNoteId:","taskBoardView")
-  // MNButton.setConfig(this.pasteRootNoteButton, {title:"Paste",color:"#9bb2d6",alpha:0.8})
+  this.createButton("pasteRootNoteButton","pasteRootNoteId:","taskBoardView")
+  MNButton.setConfig(this.pasteRootNoteButton, {title:"Paste",color:"#9bb2d6",alpha:0.8})
 
   // 添加说明文本
-  // this.createButton("rootNoteLabel","","taskBoardView")
-  // MNButton.setConfig(this.rootNoteLabel, {
-  //   title:"任务管理总看板:",
-  //   color:"#457bd3",
-  //   alpha:0.3,
-  //   font:16,
-  //   bold:true
-  // })
-  // this.rootNoteLabel.userInteractionEnabled = false
+  this.createButton("rootNoteLabel","","taskBoardView")
+  MNButton.setConfig(this.rootNoteLabel, {
+    title:"任务管理总看板:",
+    color:"#457bd3",
+    alpha:0.3,
+    font:16,
+    bold:true
+  })
+  this.rootNoteLabel.userInteractionEnabled = false
   
   // 更新标签显示
-  // this.updateRootNoteLabel()
+  this.updateRootNoteLabel()
   
-  // 创建根目录看板
-  this.createBoardBinding({
-    key: 'root',
-    title: '根目录看板:',
-    parent: 'taskBoardView'
-  })
+  // 创建根目录看板 - 已改为手动创建方式
+  // this.createBoardBinding({
+  //   key: 'root',
+  //   title: '根目录看板:',
+  //   parent: 'taskBoardView'
+  // })
   
   // 创建目标看板
   this.createBoardBinding({
@@ -2285,13 +2305,13 @@ try {
  * 更新根目录标签显示
  * @this {settingController}
  */
-// taskSettingController.prototype.updateRootNoteLabel = function() {
-//   let rootNoteId = taskConfig.getRootNoteId()
-//   let title = rootNoteId ? "任务管理总看板: ✅" : "任务管理总看板: ❌"
-//   MNButton.setConfig(this.rootNoteLabel, {
-//     title: title
-//   })
-// }
+taskSettingController.prototype.updateRootNoteLabel = function() {
+  let rootNoteId = taskConfig.getRootNoteId()
+  let title = rootNoteId ? "任务管理总看板: ✅" : "任务管理总看板: ❌"
+  MNButton.setConfig(this.rootNoteLabel, {
+    title: title
+  })
+}
 
 /**
  * 创建通用的看板绑定组件
@@ -2305,6 +2325,8 @@ taskSettingController.prototype.createBoardBinding = function(config) {
   const {key, title, parent} = config
   const keyCapitalized = key.charAt(0).toUpperCase() + key.slice(1)
   
+  MNUtil.log(`📦 创建看板组件: ${key}, 标题: ${title}, 父视图: ${parent}`)
+  
   // 创建标签
   const labelName = `${key}BoardLabel`
   this.createButton(labelName, "", parent)
@@ -2316,6 +2338,7 @@ taskSettingController.prototype.createBoardBinding = function(config) {
     bold: true
   })
   this[labelName].userInteractionEnabled = false
+  MNUtil.log(`✅ 创建标签: ${labelName}`)
   
   // 创建 Focus 按钮
   const focusButtonName = `focus${keyCapitalized}BoardButton`
@@ -2326,27 +2349,33 @@ taskSettingController.prototype.createBoardBinding = function(config) {
     color: "#457bd3",
     alpha: 0.8
   })
+  MNUtil.log(`✅ 创建 Focus 按钮: ${focusButtonName}, 选择器: ${focusSelector}`)
   
   // 创建 Clear 按钮
   const clearButtonName = `clear${keyCapitalized}BoardButton`
-  this.createButton(clearButtonName, `clear${keyCapitalized}Board:`, parent)
+  const clearSelector = `clear${keyCapitalized}Board:`
+  this.createButton(clearButtonName, clearSelector, parent)
   MNButton.setConfig(this[clearButtonName], {
     title: "Clear",
     color: "#9bb2d6",
     alpha: 0.8
   })
+  MNUtil.log(`✅ 创建 Clear 按钮: ${clearButtonName}, 选择器: ${clearSelector}`)
   
   // 创建 Paste 按钮
   const pasteButtonName = `paste${keyCapitalized}BoardButton`
-  this.createButton(pasteButtonName, `paste${keyCapitalized}Board:`, parent)
+  const pasteSelector = `paste${keyCapitalized}Board:`
+  this.createButton(pasteButtonName, pasteSelector, parent)
   MNButton.setConfig(this[pasteButtonName], {
     title: "Paste",
     color: "#9bb2d6",
     alpha: 0.8
   })
+  MNUtil.log(`✅ 创建 Paste 按钮: ${pasteButtonName}, 选择器: ${pasteSelector}`)
   
   // 更新标签显示
   this.updateBoardLabel(key)
+  MNUtil.log(`📦 看板组件创建完成: ${key}`)
 }
 
 /**
@@ -2468,6 +2497,7 @@ taskSettingController.prototype.setTextview = function (name = this.selectedItem
  * @param {string} boardKey - 看板唯一标识
  */
 taskSettingController.prototype.focusBoard = function(boardKey) {
+  MNUtil.log(`📍 focusBoard 被调用，boardKey: ${boardKey}`)
   // 记录聚焦看板操作
   TaskLogManager.info(`聚焦看板: ${boardKey}`, "SettingController")
   
@@ -2497,6 +2527,7 @@ taskSettingController.prototype.focusBoard = function(boardKey) {
  * @param {string} boardKey - 看板唯一标识
  */
 taskSettingController.prototype.clearBoard = async function(boardKey) {
+  MNUtil.log(`🗑️ clearBoard 被调用，boardKey: ${boardKey}`)
   // 记录清除看板操作
   TaskLogManager.info(`清除看板: ${boardKey}`, "SettingController")
   
@@ -2522,9 +2553,9 @@ taskSettingController.prototype.clearBoard = async function(boardKey) {
     
     // 触发数据同步
     if (MNTaskInstance && MNTaskInstance.syncTasksToWebView) {
-      setTimeout(() => {
+      MNUtil.delay(0.1).then(() => {
         MNTaskInstance.syncTasksToWebView()
-      }, 100)
+      })
     }
   }
 }
@@ -2535,6 +2566,7 @@ taskSettingController.prototype.clearBoard = async function(boardKey) {
  * @param {string} boardKey - 看板唯一标识
  */
 taskSettingController.prototype.pasteBoard = async function(boardKey) {
+  MNUtil.log(`📋 pasteBoard 被调用，boardKey: ${boardKey}`)
   // 记录粘贴看板操作
   TaskLogManager.info(`粘贴看板: ${boardKey}`, "SettingController")
   
@@ -2581,9 +2613,9 @@ taskSettingController.prototype.pasteBoard = async function(boardKey) {
   
   // 触发数据同步
   if (MNTaskInstance && MNTaskInstance.syncTasksToWebView) {
-    setTimeout(() => {
+    MNUtil.delay(0.1).then(() => {
       MNTaskInstance.syncTasksToWebView()
-    }, 100)
+    })
   }
 }
 
@@ -3091,9 +3123,10 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
  * 加载今日看板数据
  * @this {settingController}
  */
-taskSettingController.prototype.loadTodayBoardData = function() {
+taskSettingController.prototype.loadTodayBoardData = async function() {
   try {
     MNUtil.log("📦 开始加载今日看板数据")
+    MNUtil.showHUD("🔄 正在加载任务数据...")
     
     if (!this.todayBoardWebViewInstance || !this.todayBoardWebViewInitialized) {
       MNUtil.log("⚠️ WebView 尚未初始化，跳过数据加载")
@@ -3124,17 +3157,75 @@ taskSettingController.prototype.loadTodayBoardData = function() {
           continue
         }
         
-        // 获取子任务
-        const childNotes = boardNote.childNotes || []
-        MNUtil.log(`📋 看板 ${boardKey} 有 ${childNotes.length} 个任务`)
+        // 异步递归收集所有任务卡片（避免UI冻结）
+        const collectTaskCards = async (parentNote, collected = [], processedIds = new Set()) => {
+          if (!parentNote || !parentNote.childNotes) return collected
+          
+          const childNotes = Array.from(parentNote.childNotes)
+          const batchSize = 10 // 每批处理10个节点
+          
+          // 分批处理子节点
+          for (let i = 0; i < childNotes.length; i += batchSize) {
+            const batch = childNotes.slice(i, i + batchSize)
+            
+            // 处理当前批次
+            // 使用 MNUtil.delay 替代 setTimeout 让出主线程
+            await MNUtil.delay(0.001)
+            
+            for (const childNote of batch) {
+              // 避免重复处理
+              if (processedIds.has(childNote.noteId)) continue
+              processedIds.add(childNote.noteId)
+              
+              // 检查是否是任务卡片
+              const typeField = TaskFieldUtils.getFieldContent(childNote, "类型")
+              const title = childNote.noteTitle || ""
+              
+              let isTaskCard = false
+              
+              // 方式1：通过类型字段判断（新格式）
+              if (typeField && ["目标", "关键结果", "项目", "动作"].includes(typeField)) {
+                isTaskCard = true
+                MNUtil.log(`✅ 通过类型字段识别任务: ${title.substring(0, 30)}... (类型: ${typeField})`)
+              }
+              // 方式2：通过标题格式判断（兼容旧格式）
+              else if (title.startsWith("【") && title.includes("｜") && title.includes("】")) {
+                isTaskCard = true
+                MNUtil.log(`✅ 通过标题格式识别任务: ${title.substring(0, 30)}...`)
+              }
+              
+              if (isTaskCard) {
+                collected.push(childNote)
+              }
+            }
+            
+            // 递归处理子节点
+            for (const childNote of batch) {
+              await collectTaskCards(childNote, collected, processedIds)
+            }
+            
+            // 每处理完一批，显示进度
+            if (i + batchSize < childNotes.length) {
+              MNUtil.log(`📊 处理进度: ${Math.min(i + batchSize, childNotes.length)}/${childNotes.length} 个节点`)
+            }
+          }
+          
+          return collected
+        }
+        
+        // 收集所有任务卡片
+        const allTaskCards = await collectTaskCards(boardNote)
+        MNUtil.log(`📋 看板 ${boardKey} 递归找到 ${allTaskCards.length} 个任务卡片`)
         
         // 转换任务数据
-        tasksData[boardKey] = childNotes.map(note => {
+        tasksData[boardKey] = allTaskCards.map(note => {
           try {
             // 获取任务字段
             const status = TaskFieldUtils.getFieldContent(note, "状态") || "未开始"
             const description = TaskFieldUtils.getFieldContent(note, "信息") || ""
             const priority = TaskFieldUtils.getFieldContent(note, "优先级") || "中"
+            const typeField = TaskFieldUtils.getFieldContent(note, "类型")
+            const title = note.noteTitle || ""
         
         // 获取启动链接
         let launchLink = ""
@@ -3157,11 +3248,39 @@ taskSettingController.prototype.loadTodayBoardData = function() {
           parentURL = "marginnote4app://note/" + note.parentNote.noteId
         }
         
+            // 获取任务类型
+            let taskType = this.mapBoardKeyToType(boardKey)
+            
+            // 类型映射表：中文 -> 英文
+            const typeMapping = {
+              '目标': 'target',
+              '关键结果': 'keyresult',
+              '项目': 'project',
+              '动作': 'action'
+            }
+            
+            // 如果有类型字段，转换为英文
+            if (typeField && typeMapping[typeField]) {
+              taskType = typeMapping[typeField]
+            }
+            
+            // 如果是通过标题格式识别的任务，从标题中提取类型并转换
+            if (!typeField && title.startsWith("【") && title.includes("｜") && title.includes("】")) {
+              const typeMatch = title.match(/【([^>>｜]+)/)
+              if (typeMatch && typeMatch[1]) {
+                // 去除可能的路径部分，只取类型
+                const typePart = typeMatch[1].split(' >> ')[0].trim()
+                if (typeMapping[typePart]) {
+                  taskType = typeMapping[typePart]
+                }
+              }
+            }
+            
             // 返回任务数据
             totalTaskCount++
             return {
               id: note.noteId,
-              type: this.mapBoardKeyToType(boardKey),
+              type: taskType,
               titleContent: note.noteTitle || "无标题",
               titlePath: this.buildTitlePath(note),
               status: status,
@@ -3184,29 +3303,80 @@ taskSettingController.prototype.loadTodayBoardData = function() {
     
     MNUtil.log(`📊 总共加载了 ${totalTaskCount} 个任务`)
     
-    // 将数据转为 JSON 字符串
+    // 将数据转为 JSON 字符串并编码（避免特殊字符问题）
     const jsonData = JSON.stringify(tasksData)
+    const encodedData = encodeURIComponent(jsonData)
     
-    // 注入数据到 WebView
-    const jsCode = `
-      (function() {
-        try {
-          if (typeof TaskSync !== 'undefined' && TaskSync.receiveTasks) {
-            const result = TaskSync.receiveTasks(${jsonData});
-            console.log('📦 数据加载结果:', result);
-            console.log('📊 加载任务总数: ${totalTaskCount}');
-          } else {
-            console.error('❌ TaskSync 未定义或 receiveTasks 方法不存在');
-            console.log('⚠️ window.TaskSync:', window.TaskSync);
+    // 注入数据到 WebView（带重试机制）
+    const injectData = async (retryCount = 0) => {
+      const maxRetries = 3
+      const retryDelay = 500 // 毫秒
+      
+      const jsCode = `
+        (function() {
+          try {
+            if (typeof TaskSync !== 'undefined' && TaskSync.receiveTasks) {
+              // 解码数据
+              const decodedData = decodeURIComponent('${encodedData}');
+              const tasksData = JSON.parse(decodedData);
+              const result = TaskSync.receiveTasks(tasksData);
+              console.log('📦 数据加载结果:', result);
+              console.log('📊 加载任务总数: ${totalTaskCount}');
+              return 'success';
+            } else {
+              console.error('❌ TaskSync 未定义或 receiveTasks 方法不存在');
+              console.log('⚠️ window.TaskSync:', window.TaskSync);
+              return 'taskSyncNotReady';
+            }
+          } catch (e) {
+            console.error('❌ 执行 TaskSync.receiveTasks 出错:', e);
+            return 'error: ' + e.message;
           }
-        } catch (e) {
-          console.error('❌ 执行 TaskSync.receiveTasks 出错:', e);
+        })();
+      `
+      
+      // 执行 JavaScript 并获取结果
+      const result = await this.runJavaScriptInWebView(jsCode, 'todayBoardWebViewInstance')
+      
+      if (result === 'success') {
+        MNUtil.log("✅ 任务数据已成功发送到 WebView")
+        MNUtil.showHUD("✅ 数据加载成功")
+      } else if (result === 'taskSyncNotReady' && retryCount < maxRetries) {
+        MNUtil.log(`⏱️ TaskSync 未就绪，${retryDelay}ms 后重试 (${retryCount + 1}/${maxRetries})`)
+        await MNUtil.delay(retryDelay / 1000)
+        return injectData(retryCount + 1)
+      } else if (result === 'taskSyncNotReady') {
+        MNUtil.log("❌ TaskSync 始终未就绪，数据加载失败")
+        MNUtil.showHUD("⚠️ 数据加载失败，请点击刷新按钮重试")
+      } else {
+        MNUtil.log(`❌ 数据注入失败: ${result}`)
+      }
+    }
+    
+    // 先检查 TaskSync 是否存在
+    const checkTaskSyncCode = `
+      (function() {
+        if (typeof TaskSync !== 'undefined') {
+          console.log('✅ TaskSync 已定义');
+          console.log('📋 TaskSync 方法:', Object.getOwnPropertyNames(TaskSync));
+          return 'exists';
+        } else {
+          console.error('❌ TaskSync 未定义');
+          return 'notExists';
         }
       })();
     `
     
-    this.todayBoardWebViewInstance.evaluateJavaScript(jsCode)
-    MNUtil.log("✅ 任务数据已发送到 WebView")
+    const taskSyncStatus = await this.runJavaScriptInWebView(checkTaskSyncCode, 'todayBoardWebViewInstance')
+    MNUtil.log(`📋 TaskSync 状态: ${taskSyncStatus}`)
+    
+    if (taskSyncStatus === 'notExists') {
+      MNUtil.log("⚠️ TaskSync 未定义，等待一秒后重试...")
+      await MNUtil.delay(1)
+    }
+    
+    // 开始注入数据
+    injectData()
     
   } catch (error) {
     MNUtil.log(`❌ loadTodayBoardData 出错: ${error.message}`)
@@ -3366,32 +3536,28 @@ taskSettingController.prototype.isNSNull = function(obj) {
  * @returns {Promise} 返回执行结果的 Promise
  */
 taskSettingController.prototype.runJavaScriptInWebView = async function(script, webViewName = 'todayBoardWebViewInstance') {
-  return new Promise((resolve, reject) => {
-    try {
-      if (!this[webViewName]) {
-        reject(new Error(`WebView ${webViewName} not found`))
-        return
-      }
-      
-      // 使用 evaluateJavaScript 方法（与 webviewInput 保持一致）
-      this[webViewName].evaluateJavaScript(script, (result) => {
-        // 处理 NSNull 情况（iPad 上经常返回 NSNull）
-        if (this.isNSNull(result)) {
-          // 如果脚本包含 IIFE 包装，很可能执行成功但返回了 NSNull
-          // 这种情况下返回 'success' 而不是 undefined
-          if (script.includes('(function()')) {
-            resolve('success')
-          } else {
-            resolve(undefined)
-          }
-          return
-        }
-        resolve(result)
-      })
-    } catch (error) {
-      reject(error)
+  try {
+    if (!this[webViewName]) {
+      throw new Error(`WebView ${webViewName} not found`)
     }
-  })
+    
+    // 使用 stringByEvaluatingJavaScriptFromString 进行同步执行（避免时序问题）
+    const result = this[webViewName].stringByEvaluatingJavaScriptFromString(script)
+    
+    // 处理返回值
+    if (!result || result === "") {
+      // 如果脚本包含 IIFE 包装，很可能执行成功但没有返回值
+      if (script.includes('(function()')) {
+        return 'success'
+      }
+      return undefined
+    }
+    
+    return result
+  } catch (error) {
+    MNUtil.log(`❌ JavaScript 执行错误: ${error.message}`)
+    throw error
+  }
 }
 
 
@@ -3858,9 +4024,8 @@ taskSettingController.prototype.handleTodayBoardProtocol = function(url) {
         
       case 'syncTasks':
         // 触发任务同步
-        if (MNTaskInstance) {
-          MNTaskInstance.syncTasksToWebView()
-        }
+        MNUtil.log("🔄 收到任务同步请求")
+        this.loadTodayBoardData()
         break
         
       default:

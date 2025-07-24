@@ -900,6 +900,11 @@ try {
         self.checkPopoverController()
         self.openSetting()
       },
+      openTodayBoard:function () {
+        let self = getMNTaskClass()
+        self.checkPopoverController()
+        self.openTodayBoard()
+      },
       toggleTask:function () {
         let self = getMNTaskClass()
         self.checkPopoverController()

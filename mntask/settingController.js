@@ -100,9 +100,28 @@ try {
     TaskLogManager.warn("警告：这是一条测试警告", "SettingController")
     
     self.init()
-    taskFrame.set(self.view,50,50,355,500)
-    self.lastFrame = self.view.frame;
-    self.currentFrame = self.view.frame
+    // 延迟设置 frame，避免在 view 未完全初始化时设置导致崩溃
+    // taskFrame.set(self.view,50,50,355,500)
+    
+    // 使用延迟来确保 view 已经完全初始化
+    MNUtil.delay(0.1).then(() => {
+      // 添加安全检查
+      if (self.view && self.view.frame) {
+        taskFrame.set(self.view, 50, 50, 355, 500)
+        self.lastFrame = self.view.frame;
+        self.currentFrame = self.view.frame
+        MNUtil.log("✅ 设置面板 frame 成功")
+      } else {
+        MNUtil.log("⚠️ view 未准备好，跳过 frame 设置")
+        // 设置默认值
+        self.lastFrame = {x: 50, y: 50, width: 355, height: 500}
+        self.currentFrame = {x: 50, y: 50, width: 355, height: 500}
+      }
+    })
+    
+    // 先设置临时的默认值，避免后续代码访问 undefined
+    self.lastFrame = {x: 50, y: 50, width: 355, height: 500}
+    self.currentFrame = {x: 50, y: 50, width: 355, height: 500}
     self.isMainWindow = true
     self.title = "main"
     self.preAction = ""
@@ -187,6 +206,14 @@ try {
     }
   },
 viewWillLayoutSubviews: function() {
+    let self = getTaskSettingController()
+    
+    // 添加安全检查
+    if (!self.view || !self.view.bounds) {
+      MNUtil.log("⚠️ viewWillLayoutSubviews: view 未准备好")
+      return
+    }
+    
     let buttonHeight = 25
     // self.view.frame = self.currentFrame
     var viewFrame = self.view.bounds;

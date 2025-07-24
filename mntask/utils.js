@@ -13,30 +13,77 @@ class taskFrame{
    * @param {number} height 
    */
   static set(view,x,y,width,height){
+    // 添加安全检查
+    if (!view) {
+      MNUtil.log("⚠️ taskFrame.set: view 参数为空")
+      return
+    }
+    
+    if (!view.frame) {
+      MNUtil.log("⚠️ taskFrame.set: view.frame 不存在")
+      return
+    }
+    
     let oldFrame = view.frame
     let frame = view.frame
+    
+    // 验证数值参数
     if (x !== undefined) {
-      frame.x = x
-    }else if (view.x !== undefined) {
+      if (!isNaN(x) && isFinite(x)) {
+        frame.x = x
+      } else {
+        MNUtil.log(`⚠️ taskFrame.set: 无效的 x 值: ${x}`)
+      }
+    } else if (view.x !== undefined) {
       frame.x = view.x
     }
+    
     if (y !== undefined) {
-      frame.y = y
-    }else if (view.y !== undefined) {
+      if (!isNaN(y) && isFinite(y)) {
+        frame.y = y
+      } else {
+        MNUtil.log(`⚠️ taskFrame.set: 无效的 y 值: ${y}`)
+      }
+    } else if (view.y !== undefined) {
       frame.y = view.y
     }
+    
     if (width !== undefined) {
-      frame.width = width
-    }else if (view.width !== undefined) {
+      if (!isNaN(width) && isFinite(width) && width > 0) {
+        frame.width = width
+      } else {
+        MNUtil.log(`⚠️ taskFrame.set: 无效的 width 值: ${width}`)
+      }
+    } else if (view.width !== undefined) {
       frame.width = view.width
     }
+    
     if (height !== undefined) {
-      frame.height = height
-    }else if (view.height !== undefined) {
+      if (!isNaN(height) && isFinite(height) && height > 0) {
+        frame.height = height
+      } else {
+        MNUtil.log(`⚠️ taskFrame.set: 无效的 height 值: ${height}`)
+      }
+    } else if (view.height !== undefined) {
       frame.height = view.height
     }
-    if (!this.sameFrame(oldFrame,frame)) {
-      view.frame = frame
+    
+    // 最终验证 frame 的有效性
+    if (frame && !isNaN(frame.x) && !isNaN(frame.y) && 
+        !isNaN(frame.width) && !isNaN(frame.height) &&
+        isFinite(frame.x) && isFinite(frame.y) && 
+        isFinite(frame.width) && isFinite(frame.height) &&
+        frame.width > 0 && frame.height > 0) {
+      
+      if (!this.sameFrame(oldFrame,frame)) {
+        try {
+          view.frame = frame
+        } catch (error) {
+          MNUtil.log(`❌ taskFrame.set: 设置 frame 失败: ${error.message}`)
+        }
+      }
+    } else {
+      MNUtil.log(`⚠️ taskFrame.set: frame 值无效: ${JSON.stringify(frame)}`)
     }
   }
   static sameFrame(frame1,frame2){

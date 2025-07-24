@@ -259,6 +259,11 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
         MNUtil.delay(0.5).then(() => {
           MNUtil.log("🚀 开始加载今日看板数据")
           self.loadTodayBoardData()
+          
+          // 触发任务数据同步
+          if (MNTaskInstance && MNTaskInstance.syncTasksToWebView) {
+            MNTaskInstance.syncTasksToWebView()
+          }
         })
       } else {
         MNUtil.log("⚠️ 未识别的 WebView 实例")
@@ -558,12 +563,12 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     TaskLogManager.info("切换到高级设置视图", "SettingController")
     self.viewManager.switchTo('advanced')
   },
-  // taskBoardButtonTapped: function (params) {
-  //   let self = getTaskSettingController()
-  //   // 记录视图切换
-  //   TaskLogManager.info("切换到任务看板视图", "SettingController")
-  //   self.viewManager.switchTo('taskBoard')
-  // },
+  taskBoardButtonTapped: function (params) {
+    let self = getTaskSettingController()
+    // 记录视图切换
+    TaskLogManager.info("切换到任务看板视图", "SettingController")
+    self.viewManager.switchTo('taskBoard')
+  },
   // todayBoardButtonTapped: function (params) {
   //   let self = getTaskSettingController()
   //   // 记录视图切换
@@ -1442,20 +1447,20 @@ taskSettingController.prototype.initViewManager = function() {
           self.setButtonText(dynamicAction)
         }
       },
-      // taskBoard: {
-      //   view: 'taskBoardView',
-      //   button: 'taskBoardButton',
-      //   selectedColor: '#457bd3',
-      //   normalColor: '#9bb2d6',
-      //   onShow: function(self) {
-      //     self.updateRootNoteLabel()
-      //     self.updateBoardLabel('target')
-      //     self.updateBoardLabel('project')
-      //     self.updateBoardLabel('action')
-      //     self.updateBoardLabel('completed')
-      //     self.settingViewLayout()
-      //   }
-      // },
+      taskBoard: {
+        view: 'taskBoardView',
+        button: 'taskBoardButton',
+        selectedColor: '#457bd3',
+        normalColor: '#9bb2d6',
+        onShow: function(self) {
+          self.updateRootNoteLabel()
+          self.updateBoardLabel('target')
+          self.updateBoardLabel('project')
+          self.updateBoardLabel('action')
+          self.updateBoardLabel('completed')
+          self.settingViewLayout()
+        }
+      },
       todayBoard: {
         view: 'todayBoardWebView',
         // button: 'todayBoardButton',
@@ -1652,14 +1657,13 @@ taskSettingController.prototype.settingViewLayout = function (){
     taskFrame.set(this.dynamicButton, this.configButton.frame.x + this.configButton.frame.width+5, 0)
     taskFrame.set(this.popupButton, this.dynamicButton.frame.x + this.dynamicButton.frame.width+5, 0)
     taskFrame.set(this.advancedButton, this.popupButton.frame.x + this.popupButton.frame.width+5, 0)
-    // taskFrame.set(this.taskBoardButton, this.advancedButton.frame.x + this.advancedButton.frame.width+5, 0)
+    taskFrame.set(this.taskBoardButton, this.advancedButton.frame.x + this.advancedButton.frame.width+5, 0)
     
     // 关闭按钮与 tabView 对齐
     taskFrame.set(this.closeButton, tabViewFrame.width + 5, tabViewFrame.y)
     
     // 设置 tabView 的 contentSize，使按钮可以横向滚动
-    // const tabContentWidth = this.taskBoardButton.frame.x + this.taskBoardButton.frame.width + 10;
-    const tabContentWidth = this.advancedButton.frame.x + this.advancedButton.frame.width + 10;
+    const tabContentWidth = this.taskBoardButton.frame.x + this.taskBoardButton.frame.width + 10;
     this.tabView.contentSize = {width: tabContentWidth, height: 30}
     let scrollHeight = 5
     if (MNUtil.appVersion().type === "macOS") {
@@ -1790,9 +1794,9 @@ try {
   this.creatView("advanceView","settingView","#9bb2d6",0.0)
   this.advanceView.hidden = true
 
-  // this.createScrollView("taskBoardView","settingView")
-  // this.taskBoardView.hidden = true
-  // this.taskBoardView.backgroundColor = MNUtil.hexColorAlpha("#9bb2d6",0.0)
+  this.createScrollView("taskBoardView","settingView")
+  this.taskBoardView.hidden = true
+  this.taskBoardView.backgroundColor = MNUtil.hexColorAlpha("#9bb2d6",0.0)
   
   // 创建今日看板视图（包含 WebView）
   this.creatView("todayBoardWebView","settingView","#9bb2d6",0.0)
@@ -1829,11 +1833,11 @@ try {
   this.advancedButton.height = 30
   this.advancedButton.selected = false
 
-  // this.createButton("taskBoardButton","taskBoardButtonTapped:","tabView")
-  // MNButton.setConfig(this.taskBoardButton, {alpha:0.9,opacity:1.0,title:"Task Board",font:17,radius:10,bold:true})
-  // this.taskBoardButton.width = this.taskBoardButton.sizeThatFits({width:150,height:30}).width+15
-  // this.taskBoardButton.height = 30
-  // this.taskBoardButton.selected = false
+  this.createButton("taskBoardButton","taskBoardButtonTapped:","tabView")
+  MNButton.setConfig(this.taskBoardButton, {alpha:0.9,opacity:1.0,title:"Task Board",font:17,radius:10,bold:true})
+  this.taskBoardButton.width = this.taskBoardButton.sizeThatFits({width:150,height:30}).width+15
+  this.taskBoardButton.height = 30
+  this.taskBoardButton.selected = false
 
   this.createButton("closeButton","closeButtonTapped:","view")
   MNButton.setConfig(this.closeButton, {color:"#e06c75",alpha:0.9,opacity:1.0,radius:10,bold:true})
@@ -2080,39 +2084,39 @@ try {
   // this.updateRootNoteLabel()
   
   // 创建目标看板
-  // this.createBoardBinding({
-  //   key: 'target',
-  //   title: '目标看板:',
-  //   parent: 'taskBoardView'
-  // })
+  this.createBoardBinding({
+    key: 'target',
+    title: '目标看板:',
+    parent: 'taskBoardView'
+  })
   
   // 创建项目看板
-  // this.createBoardBinding({
-  //   key: 'project',
-  //   title: '项目看板:',
-  //   parent: 'taskBoardView'
-  // })
+  this.createBoardBinding({
+    key: 'project',
+    title: '项目看板:',
+    parent: 'taskBoardView'
+  })
   
   // 创建动作看板
-  // this.createBoardBinding({
-  //   key: 'action',
-  //   title: '动作看板:',
-  //   parent: 'taskBoardView'
-  // })
+  this.createBoardBinding({
+    key: 'action',
+    title: '动作看板:',
+    parent: 'taskBoardView'
+  })
   
   // 创建已完成存档区看板
-  // this.createBoardBinding({
-  //   key: 'completed',
-  //   title: '已完成存档区:',
-  //   parent: 'taskBoardView'
-  // })
+  this.createBoardBinding({
+    key: 'completed',
+    title: '已完成存档区:',
+    parent: 'taskBoardView'
+  })
   
-  // 创建今日看板 - 已移至 WebView 实现，注释掉旧的实现
-  // this.createBoardBinding({
-  //   key: 'today',
-  //   title: '今日看板:',
-  //   parent: 'taskBoardView'
-  // })
+  // 创建今日看板
+  this.createBoardBinding({
+    key: 'today',
+    title: '今日看板:',
+    parent: 'taskBoardView'
+  })
   
   // 创建今日看板的 WebView
   this.createTodayBoardWebView()
@@ -2360,6 +2364,13 @@ taskSettingController.prototype.clearBoard = async function(boardKey) {
     taskConfig.clearBoardNoteId(boardKey)
     this.updateBoardLabel(boardKey)
     this.showHUD(`✅ 已清除${this.getBoardDisplayName(boardKey)}`)
+    
+    // 触发数据同步
+    if (MNTaskInstance && MNTaskInstance.syncTasksToWebView) {
+      setTimeout(() => {
+        MNTaskInstance.syncTasksToWebView()
+      }, 100)
+    }
   }
 }
 
@@ -2412,6 +2423,13 @@ taskSettingController.prototype.pasteBoard = async function(boardKey) {
   })
   
   this.showHUD(`✅ 已保存${this.getBoardDisplayName(boardKey)}`)
+  
+  // 触发数据同步
+  if (MNTaskInstance && MNTaskInstance.syncTasksToWebView) {
+    setTimeout(() => {
+      MNTaskInstance.syncTasksToWebView()
+    }, 100)
+  }
 }
 
 /**
@@ -3377,6 +3395,38 @@ taskSettingController.prototype.handleTodayBoardProtocol = function(url) {
         
       case 'openTaskEditor':
         this.handleOpenTaskEditor()
+        break
+        
+      case 'updateTask':
+        // 处理任务更新
+        if (params.data) {
+          const taskData = JSON.parse(decodeURIComponent(params.data))
+          if (MNTaskInstance) {
+            MNTaskInstance.updateTaskFromWebView(taskData)
+          } else {
+            MNUtil.log("❌ MNTaskInstance 不存在")
+            MNUtil.showHUD("❌ 无法更新任务")
+          }
+        }
+        break
+        
+      case 'batchUpdate':
+        // 处理批量更新
+        if (params.data) {
+          const tasksData = JSON.parse(decodeURIComponent(params.data))
+          if (MNTaskInstance) {
+            for (const taskData of tasksData) {
+              MNTaskInstance.updateTaskFromWebView(taskData)
+            }
+          }
+        }
+        break
+        
+      case 'syncTasks':
+        // 触发任务同步
+        if (MNTaskInstance) {
+          MNTaskInstance.syncTasksToWebView()
+        }
         break
         
       default:

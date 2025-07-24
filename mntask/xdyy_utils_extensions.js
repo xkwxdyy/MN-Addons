@@ -1506,6 +1506,9 @@ class MNTaskManager {
       case "进行中":
         colorIndex = 3  // 粉色
         break
+      case "暂停":
+        colorIndex = 8  // 蓝色
+        break
       case "未开始":
         colorIndex = 12  // 白色
         break
@@ -1530,6 +1533,10 @@ class MNTaskManager {
           progressContent = `完成「${taskContent}」`
         } else if (oldStatus === '已完成' && newStatus === '进行中') {
           progressContent = `重新进行「${taskContent}」`
+        } else if (oldStatus === '进行中' && newStatus === '暂停') {
+          progressContent = `暂停「${taskContent}」`
+        } else if (oldStatus === '暂停' && newStatus === '进行中') {
+          progressContent = `继续「${taskContent}」`
         } else if (newStatus === '已归档') {
           progressContent = `归档「${taskContent}」`
         } else {
@@ -4627,6 +4634,9 @@ class MNTaskManager {
       case "未开始":
         newStatus = "进行中";
         break;
+      case "暂停":
+        newStatus = "进行中";
+        break;
       case "进行中":
         newStatus = "已完成";
         break;
@@ -4741,6 +4751,38 @@ class MNTaskManager {
     });
     
     MNUtil.showHUD(`↩️ 状态已退回：${currentStatus} → ${newStatus}`);
+    return true;
+  }
+  
+  /**
+   * 暂停任务
+   * @param {MNNote} note - 要暂停的任务卡片
+   * @returns {boolean} 是否成功暂停
+   */
+  static async pauseTask(note) {
+    if (!note || !this.isTaskCard(note)) {
+      MNUtil.showHUD("请先选择一个任务卡片");
+      return false;
+    }
+    
+    const titleParts = this.parseTaskTitle(note.noteTitle);
+    const currentStatus = titleParts.status;
+    
+    // 只有进行中的任务可以暂停
+    if (currentStatus !== "进行中") {
+      MNUtil.showHUD("只有进行中的任务可以暂停");
+      return false;
+    }
+    
+    MNUtil.undoGrouping(() => {
+      this.updateTaskStatus(note, "暂停");
+      note.refresh();
+      if (note.parentNote && this.isTaskCard(note.parentNote)) {
+        note.parentNote.refresh();
+      }
+    });
+    
+    MNUtil.showHUD(`⏸️ 任务已暂停`);
     return true;
   }
 
@@ -6854,6 +6896,254 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     initXDYYExtensions,
     extendTaskConfigInit
+  }
+}
+
+/**
+ * TaskDataExtractor - 任务数据提取和转换类
+ * 用于从看板卡片中提取任务数据并转换为元数据格式
+ */
+class TaskDataExtractor {
+  /**
+   * 从看板卡片中提取所有任务卡片
+   * @param {string} boardNoteId - 看板卡片的 ID
+   * @returns {Array} 任务元数据数组
+   */
+  static async extractTasksFromBoard(boardNoteId) {
+    MNUtil.log(`🔍 开始从看板提取任务: ${boardNoteId}`)
+    
+    if (!boardNoteId) {
+      MNUtil.log("❌ 看板 ID 为空")
+      return []
+    }
+    
+    try {
+      const boardNote = MNNote.new(boardNoteId)
+      if (!boardNote) {
+        MNUtil.log(`❌ 看板卡片不存在: ${boardNoteId}`)
+        return []
+      }
+      
+      // 获取看板卡片的所有子卡片
+      const childNotes = boardNote.childNotes || []
+      MNUtil.log(`📋 找到 ${childNotes.length} 个子卡片`)
+      
+      const tasks = []
+      const errors = []
+      
+      // 遍历所有子卡片，提取任务数据
+      for (let i = 0; i < childNotes.length; i++) {
+        try {
+          const childNote = childNotes[i]
+          const taskData = await this.convertTaskToMetadata(childNote)
+          if (taskData) {
+            tasks.push(taskData)
+          }
+        } catch (error) {
+          errors.push(`子卡片 ${i}: ${error.message}`)
+          MNUtil.log(`⚠️ 处理子卡片 ${i} 时出错: ${error.message}`)
+        }
+      }
+      
+      if (errors.length > 0) {
+        MNUtil.log(`⚠️ 处理过程中有 ${errors.length} 个错误`)
+      }
+      
+      MNUtil.log(`✅ 成功提取 ${tasks.length} 个任务`)
+      return tasks
+      
+    } catch (error) {
+      MNUtil.log(`❌ 提取任务失败: ${error.message}`)
+      if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+        MNUtil.addErrorLog(error, "TaskDataExtractor.extractTasksFromBoard", {
+          boardNoteId,
+          message: error.message
+        })
+      }
+      return []
+    }
+  }
+  
+  /**
+   * 将任务卡片转换为元数据格式
+   * @param {MNNote} note - 任务卡片对象
+   * @returns {Object|null} 任务元数据对象
+   */
+  static async convertTaskToMetadata(note) {
+    if (!note || !note.noteTitle) {
+      return null
+    }
+    
+    try {
+      // 解析任务标题
+      const titleInfo = MNTaskManager.parseTaskTitle(note.noteTitle)
+      if (!titleInfo || !titleInfo.type) {
+        // 不是任务卡片
+        return null
+      }
+      
+      MNUtil.log(`📝 转换任务: ${note.noteTitle}`)
+      
+      // 解析任务评论获取字段信息
+      const parsedData = MNTaskManager.parseTaskComments(note)
+      
+      // 构建任务元数据
+      const metadata = {
+        id: note.noteId,
+        url: `marginnote4app://note/${note.noteId}`,
+        type: this.normalizeTaskType(titleInfo.type),
+        titleContent: titleInfo.content || '',
+        titlePath: titleInfo.path || '',
+        status: titleInfo.status || '未开始',
+        description: '',
+        launchLink: '',
+        parentTitle: '',
+        parentURL: '',
+        progresses: [],
+        including: []
+      }
+      
+      // 提取任务描述（第一个纯文本评论）
+      if (parsedData.plainTextComments && parsedData.plainTextComments.length > 0) {
+        metadata.description = parsedData.plainTextComments[0].text
+      }
+      
+      // 提取启动链接
+      if (parsedData.fields) {
+        const launchLink = this.extractLaunchLink(parsedData.fields)
+        if (launchLink) {
+          metadata.launchLink = launchLink
+        }
+        
+        // 提取所属信息
+        const belongsTo = this.extractBelongsTo(parsedData.fields)
+        if (belongsTo) {
+          metadata.parentTitle = belongsTo.title
+          metadata.parentURL = belongsTo.url
+        }
+        
+        // 提取进展信息
+        metadata.progresses = this.extractProgresses(parsedData.fields)
+      }
+      
+      // 如果是项目或目标类型，递归提取子任务
+      if (titleInfo.type === '项目' || titleInfo.type === '目标') {
+        const childNotes = note.childNotes || []
+        for (let i = 0; i < childNotes.length; i++) {
+          try {
+            const childNote = childNotes[i]
+            const childData = await this.convertTaskToMetadata(childNote)
+            if (childData) {
+              metadata.including.push(childData)
+            }
+          } catch (error) {
+            MNUtil.log(`⚠️ 处理子任务 ${i} 时出错: ${error.message}`)
+          }
+        }
+      }
+      
+      return metadata
+      
+    } catch (error) {
+      MNUtil.log(`❌ 转换任务元数据失败: ${error.message}`)
+      MNUtil.log(`任务标题: ${note.noteTitle}`)
+      if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+        MNUtil.addErrorLog(error, "TaskDataExtractor.convertTaskToMetadata", {
+          noteId: note.noteId,
+          noteTitle: note.noteTitle,
+          message: error.message
+        })
+      }
+      return null
+    }
+  }
+  
+  /**
+   * 标准化任务类型
+   * @param {string} type - 原始类型
+   * @returns {string} 标准化后的类型 (action/project/target/keyresult)
+   */
+  static normalizeTaskType(type) {
+    const typeMap = {
+      '动作': 'action',
+      '项目': 'project',
+      '目标': 'target',
+      '关键结果': 'keyresult'
+    }
+    return typeMap[type] || type.toLowerCase()
+  }
+  
+  /**
+   * 从字段中提取启动链接
+   * @param {Array} fields - 字段数组
+   * @returns {string|null} 启动链接
+   */
+  static extractLaunchLink(fields) {
+    for (const field of fields) {
+      if (field.type === 'field' && field.name && field.name.includes('[启动]')) {
+        // 从 Markdown 链接格式中提取 URL
+        const match = field.name.match(/\[启动\]\(([^)]+)\)/)
+        if (match) {
+          return match[1]
+        }
+      }
+    }
+    return null
+  }
+  
+  /**
+   * 从字段中提取所属信息
+   * @param {Array} fields - 字段数组
+   * @returns {Object|null} 包含 title 和 url 的对象
+   */
+  static extractBelongsTo(fields) {
+    for (const field of fields) {
+      if (field.type === 'field' && field.name === '所属' && field.value) {
+        // 解析 Markdown 链接格式 [标题](URL)
+        const match = field.value.match(/\[([^\]]+)\]\(([^)]+)\)/)
+        if (match) {
+          return {
+            title: match[1],
+            url: match[2]
+          }
+        }
+      }
+    }
+    return null
+  }
+  
+  /**
+   * 从字段中提取进展信息
+   * @param {Array} fields - 字段数组
+   * @returns {Array} 进展数组
+   */
+  static extractProgresses(fields) {
+    const progresses = []
+    let inProgressSection = false
+    
+    for (const field of fields) {
+      if (field.type === 'field' && field.name === '进展') {
+        inProgressSection = true
+        continue
+      }
+      
+      if (inProgressSection && field.type === 'plainText') {
+        // 解析进展格式：时间戳 + 内容
+        const timeMatch = field.text.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2})/)
+        if (timeMatch) {
+          const time = timeMatch[1]
+          const content = field.text.substring(timeMatch.index + timeMatch[0].length).trim()
+          progresses.push({ time, content })
+        }
+      }
+      
+      // 遇到下一个主字段时结束进展提取
+      if (inProgressSection && field.type === 'field' && field.name !== '进展') {
+        break
+      }
+    }
+    
+    return progresses
   }
 }
 

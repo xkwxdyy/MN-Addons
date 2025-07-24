@@ -8380,6 +8380,14 @@
             // 保存数据
             saveToLocalStorage();
             
+            // 同步到原生端
+            if (window.TaskSync) {
+                TaskSync.sendTaskUpdate(taskId, {
+                    status: newStatus,
+                    newProgress: `任务状态从"${oldStatus}"变更为"${newStatus}"`
+                });
+            }
+            
             // 显示通知
             showNotification(`任务状态已更新为：${newStatus}`, 'success');
             
@@ -13206,7 +13214,159 @@
             switchView(currentView);
             
             console.log('✅ MNTask 任务看板初始化完成');
+            
+            // 延迟请求同步数据（等待原生端准备就绪）
+            setTimeout(() => {
+                if (window.TaskSync) {
+                    TaskSync.requestSync();
+                }
+            }, 500);
         });
+        
+        /**
+         * TaskSync - 任务数据同步类
+         * 用于处理与原生端的数据交互
+         */
+        class TaskSync {
+            /**
+             * 接收来自原生端的任务数据
+             * @param {Object} tasksData - 包含各看板任务的数据
+             */
+            static receiveTasks(tasksData) {
+                console.log('📥 接收到任务数据:', tasksData);
+                
+                try {
+                    // 清空现有数据
+                    tasks.length = 0;
+                    
+                    // 处理每个看板的任务
+                    for (const [boardKey, boardTasks] of Object.entries(tasksData)) {
+                        for (const taskData of boardTasks) {
+                            // 转换为界面需要的格式
+                            const task = this.convertToUIFormat(taskData);
+                            if (task) {
+                                tasks.push(task);
+                            }
+                        }
+                    }
+                    
+                    // 刷新当前视图
+                    switchView(currentView);
+                    
+                    console.log(`✅ 成功加载 ${tasks.length} 个任务`);
+                    return 'success';
+                    
+                } catch (error) {
+                    console.error('❌ 接收任务数据失败:', error);
+                    return 'error: ' + error.message;
+                }
+            }
+            
+            /**
+             * 将原生数据格式转换为 UI 格式
+             * @param {Object} taskData - 原生任务数据
+             * @returns {Object} UI 格式的任务对象
+             */
+            static convertToUIFormat(taskData) {
+                const typeIconMap = {
+                    'target': '🎯',
+                    'keyresult': '📊',
+                    'project': '📁',
+                    'action': '🔨'
+                };
+                
+                const statusMap = {
+                    '未开始': 'todo',
+                    '进行中': 'doing',
+                    '已完成': 'done',
+                    '暂停': 'pause'
+                };
+                
+                return {
+                    id: taskData.id,
+                    type: taskData.type,
+                    title: taskData.titleContent,
+                    path: taskData.titlePath,
+                    status: statusMap[taskData.status] || 'todo',
+                    priority: 'medium', // 默认中等优先级
+                    description: taskData.description || '',
+                    launchLink: taskData.launchLink || '',
+                    parentId: taskData.parentURL ? taskData.parentURL.split('/').pop() : null,
+                    parentTitle: taskData.parentTitle || '',
+                    icon: typeIconMap[taskData.type] || '📄',
+                    isScheduled: false,
+                    scheduledDate: null,
+                    scheduleTime: null,
+                    isCurrent: false,
+                    isCompleted: taskData.status === '已完成',
+                    completedDate: null,
+                    createdDate: new Date().toISOString().split('T')[0],
+                    updatedDate: new Date().toISOString().split('T')[0],
+                    tags: [],
+                    notes: taskData.description || '',
+                    // 保存原始数据用于同步
+                    _originalData: taskData
+                };
+            }
+            
+            /**
+             * 发送任务更新到原生端
+             * @param {string} taskId - 任务 ID
+             * @param {Object} updates - 更新的字段
+             */
+            static sendTaskUpdate(taskId, updates) {
+                const task = tasks.find(t => t.id === taskId);
+                if (!task || !task._originalData) {
+                    console.error('❌ 找不到任务或原始数据:', taskId);
+                    return;
+                }
+                
+                // 构建更新数据
+                const updateData = {
+                    id: taskId,
+                    ...updates
+                };
+                
+                // 如果更新了状态，转换回原生格式
+                if (updates.status) {
+                    const statusMap = {
+                        'todo': '未开始',
+                        'doing': '进行中',
+                        'done': '已完成',
+                        'pause': '暂停'
+                    };
+                    updateData.status = statusMap[updates.status] || updates.status;
+                }
+                
+                // 使用 URL Scheme 发送更新
+                const url = `mntask://updateTask?data=${encodeURIComponent(JSON.stringify(updateData))}`;
+                window.location.href = url;
+                
+                console.log('📤 发送任务更新:', updateData);
+            }
+            
+            /**
+             * 批量发送任务更新
+             * @param {Array} tasksUpdates - 多个任务的更新数据
+             */
+            static sendBatchUpdate(tasksUpdates) {
+                const url = `mntask://batchUpdate?data=${encodeURIComponent(JSON.stringify(tasksUpdates))}`;
+                window.location.href = url;
+                
+                console.log('📤 批量发送任务更新:', tasksUpdates);
+            }
+            
+            /**
+             * 请求同步最新数据
+             */
+            static requestSync() {
+                window.location.href = 'mntask://syncTasks';
+                console.log('🔄 请求同步任务数据');
+            }
+        }
+        
+        // 将 TaskSync 暴露到全局
+        window.TaskSync = TaskSync;
     </script>
     
     <!-- 全局快速进展弹窗 -->

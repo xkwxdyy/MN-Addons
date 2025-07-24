@@ -113,6 +113,17 @@ function registerAllCustomActions() {
     }
   });
   
+  // pauseTask - 暂停任务（长按菜单）
+  MNTaskGlobal.registerCustomAction("pauseTask", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    try {
+      await MNTaskManager.pauseTask(focusNote);
+    } catch (error) {
+      MNUtil.log(`❌ pauseTask 执行失败: ${error.message || error}`);
+      MNUtil.showHUD(`暂停任务失败: ${error.message || "未知错误"}`);
+    }
+  });
 
   // changeTaskType - 修改卡片类型（支持多选）
   MNTaskGlobal.registerCustomAction("changeTaskType", async function(context) {

@@ -307,6 +307,81 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       taskUtils.addErrorLog(error, "webViewDidFinishLoad")
     }
   },
+  /**
+   * 处理 WebView 的 URL 请求
+   * @param {UIWebView} webView - WebView 实例
+   * @param {NSURLRequest} request - 请求对象
+   * @param {number} navigationType - 导航类型
+   * @returns {boolean} 是否允许加载
+   */
+  webViewShouldStartLoadWithRequest: function(webView, request, navigationType) {
+    let self = getTaskSettingController()
+    try {
+      const url = request.URL.absoluteString()
+      MNUtil.log(`🔗 WebView 请求 URL: ${url}`)
+      
+      // 处理自定义 URL Scheme
+      if (url.startsWith('mntask://')) {
+        MNUtil.log('🎯 检测到 MNTask URL Scheme')
+        
+        // 解析 URL
+        const urlParts = url.split('?')
+        const action = urlParts[0].replace('mntask://', '')
+        
+        // 解析参数
+        let params = {}
+        if (urlParts.length > 1) {
+          const queryString = urlParts[1]
+          const paramPairs = queryString.split('&')
+          for (const pair of paramPairs) {
+            const [key, value] = pair.split('=')
+            if (key === 'data') {
+              try {
+                params[key] = JSON.parse(decodeURIComponent(value))
+              } catch (e) {
+                MNUtil.log(`⚠️ 解析 JSON 参数失败: ${e.message}`)
+                params[key] = decodeURIComponent(value)
+              }
+            } else {
+              params[key] = decodeURIComponent(value || '')
+            }
+          }
+        }
+        
+        MNUtil.log(`📋 URL Scheme 动作: ${action}`)
+        MNUtil.log(`📦 参数: ${JSON.stringify(params)}`)
+        
+        // 处理不同的动作
+        switch(action) {
+          case 'updateTask':
+            self.handleUpdateTask(params.data)
+            break
+            
+          case 'batchUpdate':
+            self.handleBatchUpdate(params.data)
+            break
+            
+          case 'syncTasks':
+            self.loadTodayBoardData()
+            break
+            
+          default:
+            MNUtil.log(`⚠️ 未知的 URL Scheme 动作: ${action}`)
+        }
+        
+        // 阻止加载这个 URL
+        return false
+      }
+      
+      // 允许其他 URL 加载
+      return true
+      
+    } catch (error) {
+      MNUtil.log(`❌ webViewShouldStartLoadWithRequest 出错: ${error.message}`)
+      taskUtils.addErrorLog(error, "webViewShouldStartLoadWithRequest")
+      return true
+    }
+  },
   changeOpacityTo:function (opacity) {
     self.view.layer.opacity = opacity
   },
@@ -1492,6 +1567,7 @@ taskSettingController.prototype.initViewManager = function() {
         normalColor: '#9bb2d6',
         onShow: function(self) {
           // self.updateRootNoteLabel()  // Commented out - method is not defined
+          self.updateBoardLabel('root')
           self.updateBoardLabel('target')
           self.updateBoardLabel('project')
           self.updateBoardLabel('action')
@@ -2154,6 +2230,13 @@ try {
   
   // 更新标签显示
   // this.updateRootNoteLabel()
+  
+  // 创建根目录看板
+  this.createBoardBinding({
+    key: 'root',
+    title: '根目录看板:',
+    parent: 'taskBoardView'
+  })
   
   // 创建目标看板
   this.createBoardBinding({
@@ -3019,40 +3102,45 @@ taskSettingController.prototype.loadTodayBoardData = function() {
     
     // 准备任务数据
     const tasksData = {}
+    let totalTaskCount = 0
     
     // 获取各看板的数据
     const boards = ['target', 'project', 'key', 'action', 'root']
     
     for (const boardKey of boards) {
-      const boardNoteId = taskConfig.getBoardNoteId(boardKey)
-      if (!boardNoteId) {
-        MNUtil.log(`📋 看板 ${boardKey} 没有设置笔记`)
-        continue
-      }
-      
-      // 获取看板笔记
-      const boardNote = MNNote.new(boardNoteId)
-      if (!boardNote) {
-        MNUtil.log(`⚠️ 无法获取看板笔记: ${boardKey}`)
-        continue
-      }
-      
-      // 获取子任务
-      const childNotes = boardNote.childNotes || []
-      MNUtil.log(`📋 看板 ${boardKey} 有 ${childNotes.length} 个任务`)
-      
-      // 转换任务数据
-      tasksData[boardKey] = childNotes.map(note => {
-        // 获取任务字段
-        const status = TaskFieldUtils.getFieldContent(note, "状态") || "未开始"
-        const typeField = TaskFieldUtils.getFieldContent(note, "类型")
-        const description = TaskFieldUtils.getFieldContent(note, "信息") || ""
+      try {
+        const boardNoteId = taskConfig.getBoardNoteId(boardKey)
+        if (!boardNoteId) {
+          MNUtil.log(`📋 看板 ${boardKey} 没有设置笔记`)
+          tasksData[boardKey] = []
+          continue
+        }
+        
+        // 获取看板笔记
+        const boardNote = MNNote.new(boardNoteId)
+        if (!boardNote) {
+          MNUtil.log(`⚠️ 无法获取看板笔记: ${boardKey} (ID: ${boardNoteId})`)
+          tasksData[boardKey] = []
+          continue
+        }
+        
+        // 获取子任务
+        const childNotes = boardNote.childNotes || []
+        MNUtil.log(`📋 看板 ${boardKey} 有 ${childNotes.length} 个任务`)
+        
+        // 转换任务数据
+        tasksData[boardKey] = childNotes.map(note => {
+          try {
+            // 获取任务字段
+            const status = TaskFieldUtils.getFieldContent(note, "状态") || "未开始"
+            const description = TaskFieldUtils.getFieldContent(note, "信息") || ""
+            const priority = TaskFieldUtils.getFieldContent(note, "优先级") || "中"
         
         // 获取启动链接
         let launchLink = ""
         const launchIndex = note.getIncludingCommentIndex("[启动]")
         if (launchIndex !== -1) {
-          const comment = note.comments[launchIndex]
+          const comment = note.MNComments[launchIndex]
           if (comment && comment.text) {
             const linkMatch = comment.text.match(/\[启动\]\(([^)]+)\)/)
             if (linkMatch) {
@@ -3069,32 +3157,52 @@ taskSettingController.prototype.loadTodayBoardData = function() {
           parentURL = "marginnote4app://note/" + note.parentNote.noteId
         }
         
-        // 返回任务数据
-        return {
-          id: note.noteId,
-          type: this.mapBoardKeyToType(boardKey),
-          titleContent: note.noteTitle || "无标题",
-          titlePath: this.buildTitlePath(note),
-          status: status,
-          description: description,
-          launchLink: launchLink,
-          parentURL: parentURL,
-          parentTitle: parentTitle
-        }
-      })
+            // 返回任务数据
+            totalTaskCount++
+            return {
+              id: note.noteId,
+              type: this.mapBoardKeyToType(boardKey),
+              titleContent: note.noteTitle || "无标题",
+              titlePath: this.buildTitlePath(note),
+              status: status,
+              description: description,
+              priority: priority,
+              launchLink: launchLink,
+              parentURL: parentURL,
+              parentTitle: parentTitle
+            }
+          } catch (noteError) {
+            MNUtil.log(`⚠️ 处理任务出错: ${noteError.message}`)
+            return null
+          }
+        }).filter(task => task !== null)
+      } catch (boardError) {
+        MNUtil.log(`❌ 处理看板 ${boardKey} 出错: ${boardError.message}`)
+        tasksData[boardKey] = []
+      }
     }
+    
+    MNUtil.log(`📊 总共加载了 ${totalTaskCount} 个任务`)
     
     // 将数据转为 JSON 字符串
     const jsonData = JSON.stringify(tasksData)
     
     // 注入数据到 WebView
     const jsCode = `
-      if (typeof TaskSync !== 'undefined' && TaskSync.receiveTasks) {
-        const result = TaskSync.receiveTasks(${jsonData});
-        console.log('📦 数据加载结果:', result);
-      } else {
-        console.error('❌ TaskSync 未定义或 receiveTasks 方法不存在');
-      }
+      (function() {
+        try {
+          if (typeof TaskSync !== 'undefined' && TaskSync.receiveTasks) {
+            const result = TaskSync.receiveTasks(${jsonData});
+            console.log('📦 数据加载结果:', result);
+            console.log('📊 加载任务总数: ${totalTaskCount}');
+          } else {
+            console.error('❌ TaskSync 未定义或 receiveTasks 方法不存在');
+            console.log('⚠️ window.TaskSync:', window.TaskSync);
+          }
+        } catch (e) {
+          console.error('❌ 执行 TaskSync.receiveTasks 出错:', e);
+        }
+      })();
     `
     
     this.todayBoardWebViewInstance.evaluateJavaScript(jsCode)
@@ -3102,6 +3210,7 @@ taskSettingController.prototype.loadTodayBoardData = function() {
     
   } catch (error) {
     MNUtil.log(`❌ loadTodayBoardData 出错: ${error.message}`)
+    MNUtil.log(`📍 错误堆栈: ${error.stack}`)
     taskUtils.addErrorLog(error, "loadTodayBoardData")
   }
 }
@@ -3139,6 +3248,106 @@ taskSettingController.prototype.buildTitlePath = function(note) {
   }
   
   return path.join(' >> ')
+}
+
+/**
+ * 处理单个任务更新
+ * @param {Object} updateData - 更新数据
+ */
+taskSettingController.prototype.handleUpdateTask = function(updateData) {
+  try {
+    if (!updateData || !updateData.id) {
+      MNUtil.log('⚠️ 更新数据无效')
+      return
+    }
+    
+    MNUtil.log(`📝 更新任务: ${updateData.id}`)
+    MNUtil.log(`📦 更新内容: ${JSON.stringify(updateData)}`)
+    
+    // 获取任务笔记
+    const note = MNNote.new(updateData.id)
+    if (!note) {
+      MNUtil.log(`❌ 找不到任务笔记: ${updateData.id}`)
+      return
+    }
+    
+    // 使用 undoGrouping 确保更新可以撤销
+    MNUtil.undoGrouping(() => {
+      // 更新状态
+      if (updateData.status) {
+        const statusIndex = TaskFieldUtils.getFieldIndex(note, "状态")
+        if (statusIndex !== -1) {
+          // 更新现有状态字段
+          const statusHtml = TaskFieldUtils.createFieldHtml("状态", updateData.status)
+          note.setCommentHTMLAtIndex(statusHtml, statusIndex)
+          MNUtil.log(`✅ 更新状态为: ${updateData.status}`)
+        } else {
+          // 添加状态字段
+          const statusHtml = TaskFieldUtils.createFieldHtml("状态", updateData.status)
+          note.appendHtmlComment(statusHtml)
+          MNUtil.log(`✅ 添加状态字段: ${updateData.status}`)
+        }
+      }
+      
+      // 更新优先级
+      if (updateData.priority) {
+        const priorityIndex = TaskFieldUtils.getFieldIndex(note, "优先级")
+        if (priorityIndex !== -1) {
+          const priorityHtml = TaskFieldUtils.createFieldHtml("优先级", updateData.priority)
+          note.setCommentHTMLAtIndex(priorityHtml, priorityIndex)
+          MNUtil.log(`✅ 更新优先级为: ${updateData.priority}`)
+        }
+      }
+      
+      // 更新信息/描述
+      if (updateData.description !== undefined) {
+        const infoIndex = TaskFieldUtils.getFieldIndex(note, "信息")
+        if (infoIndex !== -1) {
+          const infoHtml = TaskFieldUtils.createFieldHtml("信息", updateData.description)
+          note.setCommentHTMLAtIndex(infoHtml, infoIndex)
+          MNUtil.log(`✅ 更新信息`)
+        }
+      }
+    })
+    
+    // 刷新 WebView 显示
+    this.loadTodayBoardData()
+    
+    // 显示成功提示
+    MNUtil.showHUD(`✅ 任务已更新`)
+    
+  } catch (error) {
+    MNUtil.log(`❌ handleUpdateTask 出错: ${error.message}`)
+    taskUtils.addErrorLog(error, "handleUpdateTask")
+  }
+}
+
+/**
+ * 批量更新任务
+ * @param {Array} tasksUpdates - 任务更新数组
+ */
+taskSettingController.prototype.handleBatchUpdate = function(tasksUpdates) {
+  try {
+    if (!Array.isArray(tasksUpdates)) {
+      MNUtil.log('⚠️ 批量更新数据格式错误')
+      return
+    }
+    
+    MNUtil.log(`📦 批量更新 ${tasksUpdates.length} 个任务`)
+    
+    MNUtil.undoGrouping(() => {
+      for (const updateData of tasksUpdates) {
+        this.handleUpdateTask(updateData)
+      }
+    })
+    
+    // 显示成功提示
+    MNUtil.showHUD(`✅ 批量更新了 ${tasksUpdates.length} 个任务`)
+    
+  } catch (error) {
+    MNUtil.log(`❌ handleBatchUpdate 出错: ${error.message}`)
+    taskUtils.addErrorLog(error, "handleBatchUpdate")
+  }
 }
 
 /**

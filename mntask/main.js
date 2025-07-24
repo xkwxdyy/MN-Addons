@@ -989,6 +989,7 @@ try {
         let selector = "toggleTaskDirection:"
         var commandTable = [
             self.tableItem('⚙️   Setting', 'openSetting:'),
+            self.tableItem('📋   今日看板', 'openTodayBoard:'),
             self.tableItem('🛠️   Task', 'toggleTask:',undefined,!self.addonController.view.hidden),
             self.tableItem('🛠️   Direction   '+(taskConfig.vertical()?'↕️':'↔️'), selector,"fixed"),
             self.tableItem('🌟   Dynamic   ', "toggleDynamic",undefined,taskConfig.dynamic),
@@ -1103,6 +1104,41 @@ try {
       taskUtils.addErrorLog(error, "openSetting")
     }
 }
+  /**
+   * 打开今日看板视图
+   * @this {MNTaskClass} 
+   */
+  MNTaskClass.prototype.openTodayBoard = function () {
+    try {
+      // 先打开设置面板
+      if (!this.settingController) {
+        this.settingController = taskSettingController.new();
+        this.settingController.taskController = this.addonController
+        this.settingController.mainPath = taskConfig.mainPath;
+        this.settingController.action = taskConfig.action
+        MNUtil.studyView.addSubview(this.settingController.view)
+      }
+      
+      // 显示设置面板
+      this.settingController.show()
+      
+      // 切换到今日看板视图
+      if (this.settingController.viewManager) {
+        MNUtil.log("切换到今日看板视图")
+        this.settingController.viewManager.switchTo('todayBoard')
+      } else {
+        MNUtil.log("viewManager 尚未初始化，延迟切换")
+        // 延迟执行，等待 viewManager 初始化
+        MNUtil.delay(0.1).then(() => {
+          if (this.settingController.viewManager) {
+            this.settingController.viewManager.switchTo('todayBoard')
+          }
+        })
+      }
+    } catch (error) {
+      taskUtils.addErrorLog(error, "openTodayBoard")
+    }
+  }
   MNTaskClass.prototype.checkUpdate = async function () {
     try {
       let shouldUpdate = await taskConfig.readCloudConfig(false)

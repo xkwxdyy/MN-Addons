@@ -600,33 +600,12 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     // TaskLogManager.info("切换到任务看板视图", "SettingController")
     self.viewManager.switchTo('taskBoard')
   },
-  htmlButtonTapped: function (params) {
+  todayBoardButtonTapped: function (params) {
     let self = getTaskSettingController()
     // 记录视图切换
-    MNUtil.log("切换到 HTML 视图")
-    self.viewManager.switchTo('html')
+    MNUtil.log("切换到今日看板视图")
+    self.viewManager.switchTo('todayBoard')
   },
-  // todayBoardButtonTapped: function (params) {
-  //   let self = getTaskSettingController()
-  //   // 记录视图切换
-  //   // TaskLogManager.info("切换到今日看板视图", "SettingController")
-  //   MNUtil.log("🎯 todayBoardButtonTapped 被调用")
-  //   MNUtil.log(`📱 按钮信息: ${params}`)
-  //   
-  //   // 检查是否有剪贴板内容被意外复制
-  //   const clipboardBefore = MNUtil.clipboardText
-  //   MNUtil.log(`📋 切换前剪贴板: ${clipboardBefore}`)
-  //   
-  //   self.viewManager.switchTo('todayBoard')
-  //   
-  //   // 检查切换后剪贴板是否改变
-  //   MNUtil.delay(0.1).then(() => {
-  //     const clipboardAfter = MNUtil.clipboardText
-  //     if (clipboardBefore !== clipboardAfter) {
-  //       MNUtil.log(`⚠️ 剪贴板内容改变了！新内容: ${clipboardAfter}`)
-  //     }
-  //   })
-  // },
   popupButtonTapped: function (params) {
     let self = getTaskSettingController()
     // 记录视图切换
@@ -1522,7 +1501,7 @@ taskSettingController.prototype.initViewManager = function() {
       },
       todayBoard: {
         view: 'todayBoardWebView',
-        // button: 'todayBoardButton',
+        button: 'todayBoardButton',
         selectedColor: '#457bd3',
         normalColor: '#9bb2d6',
         onShow: function(self) {
@@ -1536,16 +1515,6 @@ taskSettingController.prototype.initViewManager = function() {
             MNUtil.log("♻️ WebView 已初始化，刷新数据")
             self.loadTodayBoardData()
           }
-        }
-      },
-      html: {
-        view: 'webviewInput',
-        button: 'htmlButton',
-        selectedColor: '#457bd3',
-        normalColor: '#9bb2d6',
-        onShow: function(self) {
-          MNUtil.log("📄 切换到 HTML 视图")
-          // HTML 视图是默认的 webview
         }
       }
     },
@@ -1701,7 +1670,7 @@ taskSettingController.prototype.settingViewLayout = function (){
     taskFrame.set(this.configView,0,0,width-2,height-60)
     taskFrame.set(this.advanceView,0,0,width-2,height-60)
     taskFrame.set(this.popupEditView,0,0,width-2,height-60)
-    // taskFrame.set(this.taskBoardView,0,0,width-2,height-60)
+    taskFrame.set(this.taskBoardView,0,0,width-2,height-60)
     taskFrame.set(this.resizeButton,width-25,height-80)
     if (width < 650) {
       taskFrame.set(this.webviewInput, 5, 195, width-10, height-255)
@@ -1743,20 +1712,19 @@ taskSettingController.prototype.settingViewLayout = function (){
     }
     this.tabView.frame = tabViewFrame
     
-    // 设置 tabView 内部的按钮 - 看板按钮在最前
-    // taskFrame.set(this.todayBoardButton, 5, 0)
-    taskFrame.set(this.configButton, 5, 0)  // configButton 现在是第一个按钮
+    // 设置 tabView 内部的按钮 - 今日看板按钮在最前
+    taskFrame.set(this.todayBoardButton, 5, 0)
+    taskFrame.set(this.configButton, this.todayBoardButton.frame.x + this.todayBoardButton.frame.width+5, 0)
     taskFrame.set(this.dynamicButton, this.configButton.frame.x + this.configButton.frame.width+5, 0)
     taskFrame.set(this.popupButton, this.dynamicButton.frame.x + this.dynamicButton.frame.width+5, 0)
     taskFrame.set(this.advancedButton, this.popupButton.frame.x + this.popupButton.frame.width+5, 0)
     taskFrame.set(this.taskBoardButton, this.advancedButton.frame.x + this.advancedButton.frame.width+5, 0)
-    taskFrame.set(this.htmlButton, this.taskBoardButton.frame.x + this.taskBoardButton.frame.width+5, 0)
     
     // 关闭按钮与 tabView 对齐
     taskFrame.set(this.closeButton, tabViewFrame.width + 5, tabViewFrame.y)
     
     // 设置 tabView 的 contentSize，使按钮可以横向滚动
-    const tabContentWidth = this.htmlButton.frame.x + this.htmlButton.frame.width + 10;
+    const tabContentWidth = this.taskBoardButton.frame.x + this.taskBoardButton.frame.width + 10;
     this.tabView.contentSize = {width: tabContentWidth, height: 30}
     let scrollHeight = 5
     if (MNUtil.appVersion().type === "macOS") {
@@ -1825,6 +1793,10 @@ taskSettingController.prototype.settingViewLayout = function (){
     taskFrame.set(this.focusCompletedBoardButton, 10, 455, (width-30)/3, 35)
     taskFrame.set(this.clearCompletedBoardButton, 15+(width-30)/3, 455, (width-30)/3, 35)
     taskFrame.set(this.pasteCompletedBoardButton, 20+2*(width-30)/3, 455, (width-30)/3, 35)
+    
+    // 设置 taskBoardView 的 contentSize，确保所有按钮都可以滚动访问
+    // 最后一个按钮位于 y=455，高度 35，再加上底部边距
+    this.taskBoardView.contentSize = {width: width-2, height: 455 + 35 + 20}
     
     // 今日看板 - 已移至 WebView 实现，注释掉旧的布局
     // taskFrame.set(this.todayBoardLabel, 10, 510, width-20, 35)
@@ -1932,11 +1904,12 @@ try {
   this.taskBoardButton.height = 30
   this.taskBoardButton.selected = false
 
-  this.createButton("htmlButton","htmlButtonTapped:","tabView")
-  MNButton.setConfig(this.htmlButton, {alpha:0.9,opacity:1.0,title:"HTML",font:17,radius:10,bold:true})
-  this.htmlButton.width = this.htmlButton.sizeThatFits({width:150,height:30}).width+15
-  this.htmlButton.height = 30
-  this.htmlButton.selected = false
+  // 添加今日看板按钮
+  this.createButton("todayBoardButton","todayBoardButtonTapped:","tabView")
+  MNButton.setConfig(this.todayBoardButton, {alpha:0.9,opacity:1.0,title:"今日看板",font:17,radius:10,bold:true})
+  this.todayBoardButton.width = this.todayBoardButton.sizeThatFits({width:150,height:30}).width+15
+  this.todayBoardButton.height = 30
+  this.todayBoardButton.selected = false
 
   this.createButton("closeButton","closeButtonTapped:","view")
   MNButton.setConfig(this.closeButton, {color:"#e06c75",alpha:0.9,opacity:1.0,radius:10,bold:true})
@@ -2842,6 +2815,10 @@ taskSettingController.prototype.createWebviewInput = function (superView) {
   //   NSURL.fileURLWithPath(this.mainPath + '/jsoneditor.html'),
   //   NSURL.fileURLWithPath(MNUtil.mainPath + '/')
   // );
+  
+  // 默认隐藏，只有在切换到 HTML 视图时才显示
+  this.webviewInput.hidden = true
+  
     } catch (error) {
     MNUtil.showHUD(error)
   }
@@ -2972,8 +2949,20 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
       webView.delegate = this
       webView.layer.cornerRadius = 10
       webView.layer.masksToBounds = true
-      webView.scrollView.bounces = false // 禁用弹性滚动
+      
+      // 配置 ScrollView 以获得流畅的滚动体验（参考 MNBrowser）
+      webView.scrollView.bounces = true // 启用弹性滚动以获得自然的滚动体验
       webView.scrollView.scrollEnabled = true // 允许滚动
+      webView.scrollView.alwaysBounceVertical = true // 垂直方向始终有弹性
+      webView.scrollView.decelerationRate = 0.998 // 正常减速率
+      webView.scrollView.showsVerticalScrollIndicator = true // 显示滚动条
+      webView.scrollView.showsHorizontalScrollIndicator = false // 隐藏水平滚动条
+      
+      // 防止顶部出现空白区域
+      if (webView.scrollView.contentInsetAdjustmentBehavior !== undefined) {
+        webView.scrollView.contentInsetAdjustmentBehavior = 2 // UIScrollViewContentInsetAdjustmentNever
+      }
+      webView.scrollView.contentInset = {top: 0, left: 0, bottom: 0, right: 0}
       
       // 学习 mntoolbar 的做法，设置 WebView 的额外属性以提升兼容性
       webView.opaque = false // 透明背景
@@ -3013,6 +3002,143 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
     MNUtil.showHUD("加载今日看板失败")
     MNUtil.log("❌ 初始化失败: " + error.message)
   }
+}
+
+/**
+ * 加载今日看板数据
+ * @this {settingController}
+ */
+taskSettingController.prototype.loadTodayBoardData = function() {
+  try {
+    MNUtil.log("📦 开始加载今日看板数据")
+    
+    if (!this.todayBoardWebViewInstance || !this.todayBoardWebViewInitialized) {
+      MNUtil.log("⚠️ WebView 尚未初始化，跳过数据加载")
+      return
+    }
+    
+    // 准备任务数据
+    const tasksData = {}
+    
+    // 获取各看板的数据
+    const boards = ['target', 'project', 'key', 'action', 'root']
+    
+    for (const boardKey of boards) {
+      const boardNoteId = taskConfig.getBoardNoteId(boardKey)
+      if (!boardNoteId) {
+        MNUtil.log(`📋 看板 ${boardKey} 没有设置笔记`)
+        continue
+      }
+      
+      // 获取看板笔记
+      const boardNote = MNNote.new(boardNoteId)
+      if (!boardNote) {
+        MNUtil.log(`⚠️ 无法获取看板笔记: ${boardKey}`)
+        continue
+      }
+      
+      // 获取子任务
+      const childNotes = boardNote.childNotes || []
+      MNUtil.log(`📋 看板 ${boardKey} 有 ${childNotes.length} 个任务`)
+      
+      // 转换任务数据
+      tasksData[boardKey] = childNotes.map(note => {
+        // 获取任务字段
+        const status = TaskFieldUtils.getFieldContent(note, "状态") || "未开始"
+        const typeField = TaskFieldUtils.getFieldContent(note, "类型")
+        const description = TaskFieldUtils.getFieldContent(note, "信息") || ""
+        
+        // 获取启动链接
+        let launchLink = ""
+        const launchIndex = note.getIncludingCommentIndex("[启动]")
+        if (launchIndex !== -1) {
+          const comment = note.comments[launchIndex]
+          if (comment && comment.text) {
+            const linkMatch = comment.text.match(/\[启动\]\(([^)]+)\)/)
+            if (linkMatch) {
+              launchLink = linkMatch[1]
+            }
+          }
+        }
+        
+        // 获取父任务信息
+        let parentTitle = ""
+        let parentURL = ""
+        if (note.parentNote) {
+          parentTitle = note.parentNote.noteTitle || ""
+          parentURL = "marginnote4app://note/" + note.parentNote.noteId
+        }
+        
+        // 返回任务数据
+        return {
+          id: note.noteId,
+          type: this.mapBoardKeyToType(boardKey),
+          titleContent: note.noteTitle || "无标题",
+          titlePath: this.buildTitlePath(note),
+          status: status,
+          description: description,
+          launchLink: launchLink,
+          parentURL: parentURL,
+          parentTitle: parentTitle
+        }
+      })
+    }
+    
+    // 将数据转为 JSON 字符串
+    const jsonData = JSON.stringify(tasksData)
+    
+    // 注入数据到 WebView
+    const jsCode = `
+      if (typeof TaskSync !== 'undefined' && TaskSync.receiveTasks) {
+        const result = TaskSync.receiveTasks(${jsonData});
+        console.log('📦 数据加载结果:', result);
+      } else {
+        console.error('❌ TaskSync 未定义或 receiveTasks 方法不存在');
+      }
+    `
+    
+    this.todayBoardWebViewInstance.evaluateJavaScript(jsCode)
+    MNUtil.log("✅ 任务数据已发送到 WebView")
+    
+  } catch (error) {
+    MNUtil.log(`❌ loadTodayBoardData 出错: ${error.message}`)
+    taskUtils.addErrorLog(error, "loadTodayBoardData")
+  }
+}
+
+/**
+ * 映射看板键到任务类型
+ * @param {string} boardKey - 看板键
+ * @returns {string} 任务类型
+ */
+taskSettingController.prototype.mapBoardKeyToType = function(boardKey) {
+  const typeMap = {
+    'target': 'target',
+    'project': 'project', 
+    'key': 'keyresult',
+    'action': 'action',
+    'root': 'action' // root 看板默认为动作类型
+  }
+  return typeMap[boardKey] || 'action'
+}
+
+/**
+ * 构建任务标题路径
+ * @param {MNNote} note - 任务笔记
+ * @returns {string} 标题路径
+ */
+taskSettingController.prototype.buildTitlePath = function(note) {
+  const path = []
+  let current = note.parentNote
+  
+  while (current) {
+    if (current.noteTitle) {
+      path.unshift(current.noteTitle)
+    }
+    current = current.parentNote
+  }
+  
+  return path.join(' >> ')
 }
 
 /**

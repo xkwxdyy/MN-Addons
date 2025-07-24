@@ -15,7 +15,8 @@ class taskFrame{
   static set(view,x,y,width,height){
     // 添加安全检查
     if (!view) {
-      MNUtil.log("⚠️ taskFrame.set: view 参数为空")
+      // 静默返回，避免在布局更新时产生大量警告
+      // 某些视图可能尚未创建或已被销毁
       return
     }
     

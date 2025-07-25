@@ -2406,6 +2406,74 @@
             background: var(--bg-active);
         }
         
+        /* 搜索结果操作按钮样式 */
+        .search-action-btn {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            border: 1px solid var(--glass-border);
+            background: var(--bg-card);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .search-action-btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--type-goal);
+            color: var(--text-primary);
+            transform: scale(1.05);
+        }
+        
+        .search-action-btn.active {
+            background: var(--bg-active);
+            border-color: var(--type-goal);
+            color: var(--type-goal);
+        }
+        
+        .search-action-btn.active:hover {
+            background: var(--bg-focus);
+            transform: scale(1.05);
+        }
+        
+        /* 高级筛选样式 */
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+        }
+        
+        .checkbox-group .filter-checkbox {
+            margin: 0;
+            padding: var(--spacing-xs);
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+        }
+        
+        .checkbox-group .filter-checkbox:hover {
+            background: var(--bg-hover);
+        }
+        
+        .advanced-filters-grid {
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
         /* 看板视图样式 */
         .type-boards-container {
             display: flex;
@@ -6000,36 +6068,195 @@
 
     <!-- 模态框 - 全局搜索 -->
     <div id="globalSearchModal" class="modal">
-        <div class="modal-content" style="width: 600px; max-height: 80vh;">
+        <div class="modal-content" style="width: 800px; max-height: 90vh;">
             <div class="modal-header">
-                <h3 class="modal-title">🔍 全局搜索</h3>
+                <h3 class="modal-title">🔍 全局搜索与筛选</h3>
                 <button class="modal-close" onclick="closeModal('globalSearchModal')">✕</button>
             </div>
-            <div class="modal-body">
-                <input type="text" 
-                       id="globalSearchInput" 
-                       class="form-input" 
-                       placeholder="搜索任务标题、路径、标签..."
-                       oninput="performGlobalSearch()"
-                       style="font-size: 1.125rem; padding: var(--spacing-md);">
-                
-                <div class="search-filters" style="margin-top: var(--spacing-md); display: flex; gap: var(--spacing-sm);">
-                    <label class="filter-checkbox">
-                        <input type="checkbox" id="searchInCompleted" onchange="performGlobalSearch()">
-                        包含已完成
-                    </label>
-                    <label class="filter-checkbox">
-                        <input type="checkbox" id="searchInTags" checked onchange="performGlobalSearch()">
-                        搜索标签
-                    </label>
-                    <label class="filter-checkbox">
-                        <input type="checkbox" id="searchInPath" checked onchange="performGlobalSearch()">
-                        搜索路径
-                    </label>
+            <div class="modal-body" style="padding: 0;">
+                <!-- 快速搜索区域 -->
+                <div style="padding: var(--spacing-lg); border-bottom: 1px solid var(--glass-border);">
+                    <input type="text" 
+                           id="globalSearchInput" 
+                           class="form-input" 
+                           placeholder="搜索任务标题、路径、标签..."
+                           oninput="performGlobalSearch()"
+                           style="font-size: 1.125rem; padding: var(--spacing-md);">
+                    
+                    <div class="search-filters" style="margin-top: var(--spacing-md); display: flex; gap: var(--spacing-sm); align-items: center;">
+                        <label class="filter-checkbox">
+                            <input type="checkbox" id="searchInCompleted" onchange="performGlobalSearch()">
+                            包含已完成
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" id="searchInTags" checked onchange="performGlobalSearch()">
+                            搜索标签
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" id="searchInPath" checked onchange="performGlobalSearch()">
+                            搜索路径
+                        </label>
+                        <button class="btn btn-sm" onclick="toggleAdvancedFilters()" style="margin-left: auto;">
+                            <span id="advancedFiltersToggleText">⚙️ 高级筛选</span>
+                        </button>
+                    </div>
                 </div>
                 
-                <div id="searchResults" style="margin-top: var(--spacing-lg); max-height: 400px; overflow-y: auto;">
-                    <!-- 搜索结果将在这里显示 -->
+                <!-- 高级筛选区域（可折叠） -->
+                <div id="advancedFiltersPanel" style="display: none; padding: var(--spacing-lg); border-bottom: 1px solid var(--glass-border); background: var(--bg-tertiary);">
+                    <!-- 快速筛选预设 -->
+                    <div style="margin-bottom: var(--spacing-md);">
+                        <div class="filter-label">快速筛选：</div>
+                        <div style="display: flex; gap: var(--spacing-sm); flex-wrap: wrap;">
+                            <button class="btn btn-sm" onclick="applyQuickFilter('today')">📅 今日任务</button>
+                            <button class="btn btn-sm" onclick="applyQuickFilter('weekFocus')">🎯 本周焦点</button>
+                            <button class="btn btn-sm" onclick="applyQuickFilter('highPriority')">🔴 高优先级未完成</button>
+                            <button class="btn btn-sm" onclick="applyQuickFilter('inProgress')">🔄 进行中任务</button>
+                            <button class="btn btn-sm" onclick="applyQuickFilter('pendingReview')">📋 待处理审查</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 详细筛选选项 -->
+                    <div class="advanced-filters-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-md);">
+                        <!-- 任务类型（多选） -->
+                        <div class="filter-group">
+                            <div class="filter-label">任务类型</div>
+                            <div class="checkbox-group">
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="searchTypes" value="目标" checked onchange="performGlobalSearch()">
+                                    🎯 目标
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="searchTypes" value="关键结果" checked onchange="performGlobalSearch()">
+                                    🔑 关键结果
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="searchTypes" value="项目" checked onchange="performGlobalSearch()">
+                                    📦 项目
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="searchTypes" value="动作" checked onchange="performGlobalSearch()">
+                                    ⚡ 动作
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- 任务状态（多选） -->
+                        <div class="filter-group">
+                            <div class="filter-label">任务状态</div>
+                            <div class="checkbox-group">
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="searchStatuses" value="未开始" checked onchange="performGlobalSearch()">
+                                    😴 未开始
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="searchStatuses" value="进行中" checked onchange="performGlobalSearch()">
+                                    🔥 进行中
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="searchStatuses" value="暂停" checked onchange="performGlobalSearch()">
+                                    ⏸ 暂停
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="searchStatuses" value="已完成" onchange="performGlobalSearch()">
+                                    ✅ 已完成
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="searchStatuses" value="已归档" onchange="performGlobalSearch()">
+                                    📦 已归档
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- 优先级（多选） -->
+                        <div class="filter-group">
+                            <div class="filter-label">优先级</div>
+                            <div class="checkbox-group">
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="searchPriorities" value="高" checked onchange="performGlobalSearch()">
+                                    🔴 高
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="searchPriorities" value="中" checked onchange="performGlobalSearch()">
+                                    🟡 中
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" name="searchPriorities" value="低" checked onchange="performGlobalSearch()">
+                                    🟢 低
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- 特殊筛选 -->
+                        <div class="filter-group">
+                            <div class="filter-label">特殊筛选</div>
+                            <div class="checkbox-group">
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" id="searchOnlyFocus" onchange="performGlobalSearch()">
+                                    🎯 仅焦点任务
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" id="searchOnlyPending" onchange="performGlobalSearch()">
+                                    📋 仅待处理任务
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" id="searchWithProgress" onchange="performGlobalSearch()">
+                                    📝 有进展记录
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" id="searchWithLaunch" onchange="performGlobalSearch()">
+                                    🚀 有启动链接
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- 项目筛选 -->
+                        <div class="filter-group">
+                            <div class="filter-label">项目</div>
+                            <select class="filter-input" id="searchProject" onchange="performGlobalSearch()">
+                                <option value="">所有项目</option>
+                                <option value="mntask">📦 MNTask插件</option>
+                                <option value="mnai">🤖 MNAI插件</option>
+                                <option value="research">🔬 研究项目</option>
+                                <option value="personal">👤 个人项目</option>
+                                <option value="work">💼 工作项目</option>
+                                <option value="learning">📚 学习计划</option>
+                            </select>
+                        </div>
+                        
+                        <!-- 时间范围 -->
+                        <div class="filter-group">
+                            <div class="filter-label">时间范围</div>
+                            <select class="filter-input" id="searchTimeRange" onchange="performGlobalSearch()">
+                                <option value="">所有时间</option>
+                                <option value="today">今天</option>
+                                <option value="thisWeek">本周</option>
+                                <option value="thisMonth">本月</option>
+                                <option value="lastMonth">上个月</option>
+                                <option value="custom">自定义...</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- 筛选条件操作按钮 -->
+                    <div style="margin-top: var(--spacing-md); display: flex; gap: var(--spacing-sm); justify-content: flex-end;">
+                        <button class="btn btn-sm btn-secondary" onclick="resetAdvancedFilters()">重置筛选</button>
+                    </div>
+                </div>
+                
+                <!-- 活跃筛选条件显示 -->
+                <div id="activeSearchFilters" style="padding: var(--spacing-md); display: none; gap: var(--spacing-sm); flex-wrap: wrap; background: var(--bg-secondary); border-bottom: 1px solid var(--glass-border);">
+                    <!-- 活跃的筛选标签将显示在这里 -->
+                </div>
+                
+                <!-- 搜索结果区域 -->
+                <div style="padding: var(--spacing-lg);">
+                    <div id="searchResultsStats" style="margin-bottom: var(--spacing-md); color: var(--text-secondary); font-size: 0.875rem;">
+                        <!-- 搜索结果统计信息 -->
+                    </div>
+                    <div id="searchResults" style="max-height: 400px; overflow-y: auto;">
+                        <!-- 搜索结果将在这里显示 -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -6038,7 +6265,7 @@
     <script>
         // 全局错误处理器
         window.onerror = function(msg, url, lineNo, columnNo, error) {
-            console.error('🚨 JavaScript错误:', {
+            MNUtil.log('🚨 JavaScript错误:', {
                 message: msg,
                 source: url,
                 line: lineNo,
@@ -6060,7 +6287,7 @@
                 };
                 window.location.href = `mntask://log?${new URLSearchParams(errorData).toString()}`;
             } catch (e) {
-                console.error('发送错误日志失败:', e);
+                MNUtil.log('发送错误日志失败:', e);
             }
             
             return true; // 阻止默认错误处理
@@ -6068,7 +6295,7 @@
         
         // 处理Promise拒绝
         window.addEventListener('unhandledrejection', function(event) {
-            console.error('🚨 未处理的Promise拒绝:', event.reason);
+            MNUtil.log('🚨 未处理的Promise拒绝:', event.reason);
             event.preventDefault();
         });
         
@@ -6307,7 +6534,7 @@
                     closeModal('taskDetailModal');
                 }
             } catch (error) {
-                console.error('定位卡片失败:', error);
+                MNUtil.log('定位卡片失败:', error);
                 showNotification('定位失败：' + error.message, 'error');
             }
         }
@@ -6454,12 +6681,12 @@
                 const data = testTaskData.generate();
                 tasks = data.tasks;
                 focusTasks = new Set(data.focusTasks);
-                console.log(`✅ 加载了 ${tasks.length} 个测试任务`);
+                MNUtil.log(`✅ 加载了 ${tasks.length} 个测试任务`);
             } else {
-                console.error('❌ 无法加载测试数据，请确保 testData.js 文件存在');
+                MNUtil.log('❌ 无法加载测试数据，请确保 testData.js 文件存在');
             }
             
-            console.log(`✅ 生成了 ${tasks.length} 个测试任务`);
+            MNUtil.log(`✅ 生成了 ${tasks.length} 个测试任务`);
         }
 
         /* ========================================
@@ -6785,11 +7012,11 @@
         
         // 强制刷新时间轴视图
         function forceRefreshTimeline(targetTaskId = null, savedScrollPosition = null) {
-            console.log('🔄 [forceRefreshTimeline] 开始执行强制刷新时间轴', { targetTaskId, savedScrollPosition });
+            MNUtil.log('🔄 [forceRefreshTimeline] 开始执行强制刷新时间轴', { targetTaskId, savedScrollPosition });
             
             // 立即保存数据
             saveToLocalStorage();
-            console.log('💾 [forceRefreshTimeline] 数据已保存到本地存储');
+            MNUtil.log('💾 [forceRefreshTimeline] 数据已保存到本地存储');
             
             // 先捕获一些要验证的任务状态
             const tasksToVerify = ['task_6', 'task_8', 'task_59'];
@@ -6803,14 +7030,14 @@
                     };
                 }
             });
-            console.log('🔍 [forceRefreshTimeline] 刷新前任务状态:', beforeStates);
+            MNUtil.log('🔍 [forceRefreshTimeline] 刷新前任务状态:', beforeStates);
             
             // 使用requestAnimationFrame确保在下一帧重新渲染
             requestAnimationFrame(() => {
-                console.log('🎯 [forceRefreshTimeline] requestAnimationFrame 回调开始执行');
+                MNUtil.log('🎯 [forceRefreshTimeline] requestAnimationFrame 回调开始执行');
                 
                 const container = document.getElementById('todayTimeline');  // 修复容器ID
-                console.log('📦 [forceRefreshTimeline] 查找容器元素 todayTimeline:', container ? '找到' : '未找到');
+                MNUtil.log('📦 [forceRefreshTimeline] 查找容器元素 todayTimeline:', container ? '找到' : '未找到');
                 
                 if (container) {
                     // 捕获刷新前的按钮状态
@@ -6822,9 +7049,9 @@
                             beforeButtons[taskId] = Array.from(buttons).map(btn => btn.textContent.trim());
                         }
                     });
-                    console.log('🔘 [forceRefreshTimeline] 刷新前按钮状态:', beforeButtons);
+                    MNUtil.log('🔘 [forceRefreshTimeline] 刷新前按钮状态:', beforeButtons);
                     
-                    console.log('🗑️ [forceRefreshTimeline] 清空容器前的HTML长度:', container.innerHTML.length);
+                    MNUtil.log('🗑️ [forceRefreshTimeline] 清空容器前的HTML长度:', container.innerHTML.length);
                     
                     // 强力DOM刷新：先设置为空，再强制重排，再渲染
                     container.innerHTML = '';
@@ -6832,12 +7059,12 @@
                     container.offsetHeight; // 强制重排
                     container.style.display = '';
                     
-                    console.log('✅ [forceRefreshTimeline] 容器已清空并强制重排');
+                    MNUtil.log('✅ [forceRefreshTimeline] 容器已清空并强制重排');
                     
                     // 重新渲染时间轴
-                    console.log('🎨 [forceRefreshTimeline] 调用 renderTodayTimeline 开始重新渲染');
+                    MNUtil.log('🎨 [forceRefreshTimeline] 调用 renderTodayTimeline 开始重新渲染');
                     renderTodayTimeline();
-                    console.log('✅ [forceRefreshTimeline] renderTodayTimeline 调用完成');
+                    MNUtil.log('✅ [forceRefreshTimeline] renderTodayTimeline 调用完成');
                     
                     // 验证刷新后的按钮状态并恢复滚动位置
                     setTimeout(() => {
@@ -6851,20 +7078,20 @@
                                 // 检查任务状态文本
                                 const statusEl = taskEl.querySelector('[class*="status"]');
                                 const task = tasks.find(t => t.id === taskId);
-                                console.log(`📊 [DOM验证] ${taskId}:`, {
+                                MNUtil.log(`📊 [DOM验证] ${taskId}:`, {
                                     数据状态: task?.status,
                                     DOM状态: statusEl?.textContent.trim(),
                                     按钮变化: beforeButtons[taskId]?.join(',') + ' → ' + afterButtons[taskId]?.join(',')
                                 });
                             }
                         });
-                        console.log('🔘 [forceRefreshTimeline] 刷新后按钮状态:', afterButtons);
-                        console.log('📏 [forceRefreshTimeline] 刷新后HTML长度:', container.innerHTML.length);
+                        MNUtil.log('🔘 [forceRefreshTimeline] 刷新后按钮状态:', afterButtons);
+                        MNUtil.log('📏 [forceRefreshTimeline] 刷新后HTML长度:', container.innerHTML.length);
                         
                         // 恢复滚动位置
                         const viewContainer = document.querySelector('.view-container');
                         if (viewContainer && savedScrollPosition !== null) {
-                            console.log('📍 [forceRefreshTimeline] 恢复滚动位置:', savedScrollPosition);
+                            MNUtil.log('📍 [forceRefreshTimeline] 恢复滚动位置:', savedScrollPosition);
                             viewContainer.scrollTop = savedScrollPosition;
                             
                             // 如果有目标任务ID，确保该任务可见
@@ -6873,19 +7100,19 @@
                                 if (taskElement) {
                                     // 使用 scrollIntoView 确保任务在视图中心（瞬时滚动）
                                     taskElement.scrollIntoView({ behavior: 'instant', block: 'center' });
-                                    console.log('🎯 [forceRefreshTimeline] 滚动到任务:', targetTaskId);
+                                    MNUtil.log('🎯 [forceRefreshTimeline] 滚动到任务:', targetTaskId);
                                 }
                             }
                         }
                     }, 50); // 减少延迟以加快响应速度
                     
                     // 更新侧边栏
-                    console.log('📊 [forceRefreshTimeline] 更新侧边栏统计');
+                    MNUtil.log('📊 [forceRefreshTimeline] 更新侧边栏统计');
                     updateSidebar('today');
                     updateSidebarStats();
-                    console.log('✅ [forceRefreshTimeline] 强制刷新完成');
+                    MNUtil.log('✅ [forceRefreshTimeline] 强制刷新完成');
                 } else {
-                    console.error('❌ [forceRefreshTimeline] 未找到容器元素 todayTimeline');
+                    MNUtil.log('❌ [forceRefreshTimeline] 未找到容器元素 todayTimeline');
                 }
             });
         }
@@ -7711,53 +7938,89 @@
 
         // 添加进展说明
         function addProgressNote(event, taskId) {
-            // 检查event参数，避免报错
-            if (event && event.stopPropagation) {
-                event.stopPropagation();
-            }
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) return;
+            MNUtil.log('🔍 [addProgressNote] 函数被调用');
+            MNUtil.log('📊 参数:', { event: event, taskId: taskId });
             
-            const note = prompt('请输入进展说明：');
-            
-            if (note && note.trim()) {
-                // 添加进展记录
-                if (!task.fields.progressLog) {
-                    task.fields.progressLog = [];
+            try {
+                // 检查event参数，避免报错
+                if (event && event.stopPropagation) {
+                    event.stopPropagation();
+                    MNUtil.log('✅ 已阻止事件冒泡');
                 }
                 
-                const newProgress = {
-                    date: new Date().toLocaleString('zh-CN'),
-                    note: note.trim()
-                };
+                MNUtil.log('🔍 查找任务，taskId:', taskId);
+                MNUtil.log('📊 当前tasks数组长度:', tasks.length);
                 
-                task.fields.progressLog.push(newProgress);
+                const task = tasks.find(t => t.id === taskId);
+                if (!task) {
+                    MNUtil.log('❌ 找不到任务，taskId:', taskId);
+                    MNUtil.log('📊 可用的任务ID:', tasks.map(t => t.id));
+                    return;
+                }
+                MNUtil.log('✅ 找到任务:', task);
                 
-                // 同步进展数据到原生端
-                if (window.TaskSync && window.TaskSync.sendTaskUpdate) {
-                    // 将进展数据转换回原生格式
-                    const progressesForSync = task.fields.progressLog.map(p => {
-                        // 根据原生端期望的格式转换
-                        return `${p.date}: ${p.note}`;
-                    });
+                MNUtil.log('🔍 弹出输入框');
+                const note = prompt('请输入进展说明：');
+                MNUtil.log('📊 用户输入:', note);
+                
+                if (note && note.trim()) {
+                    // 添加进展记录
+                    if (!task.fields.progressLog) {
+                        MNUtil.log('📝 初始化progressLog数组');
+                        task.fields.progressLog = [];
+                    }
                     
-                    TaskSync.sendTaskUpdate(taskId, {
-                        progresses: progressesForSync
-                    });
-                    console.log('📤 进展数据已同步到原生端');
+                    const newProgress = {
+                        date: new Date().toLocaleString('zh-CN'),
+                        note: note.trim()
+                    };
+                    MNUtil.log('📊 新进展记录:', newProgress);
+                    
+                    task.fields.progressLog.push(newProgress);
+                    MNUtil.log('✅ 进展已添加到数组，当前进展数:', task.fields.progressLog.length);
+                    
+                    // 同步进展数据到原生端
+                    if (window.TaskSync && window.TaskSync.sendTaskUpdate) {
+                        MNUtil.log('🔍 开始同步到原生端');
+                        // 将进展数据转换回原生格式
+                        const progressesForSync = task.fields.progressLog.map(p => {
+                            // 根据原生端期望的格式转换
+                            return `${p.date}: ${p.note}`;
+                        });
+                        MNUtil.log('📊 同步数据格式:', progressesForSync);
+                        
+                        TaskSync.sendTaskUpdate(taskId, {
+                            progresses: progressesForSync
+                        });
+                        MNUtil.log('📤 进展数据已同步到原生端');
+                    } else {
+                        MNUtil.log('⚠️ TaskSync 不可用');
+                    }
+                    
+                    // 根据当前视图刷新对应内容
+                    MNUtil.log('🔍 当前视图:', currentView);
+                    if (currentView === 'focus') {
+                        MNUtil.log('🔄 刷新焦点任务视图');
+                        renderFocusTasks();
+                    } else if (currentView === 'planning') {
+                        MNUtil.log('🔄 刷新规划视图');
+                        renderPlanningView();
+                    } else if (currentView === 'today') {
+                        MNUtil.log('🔄 刷新今日时间轴');
+                        renderTodayTimeline();
+                    }
+                    
+                    MNUtil.log('💾 保存到本地存储');
+                    saveToLocalStorage();
+                    showNotification('进展已记录', 'success');
+                    MNUtil.log('✅ [addProgressNote] 执行完成');
+                } else {
+                    MNUtil.log('⚠️ 用户取消或输入为空');
                 }
-                
-                // 根据当前视图刷新对应内容
-                if (currentView === 'focus') {
-                    renderFocusTasks();
-                } else if (currentView === 'planning') {
-                    renderPlanningView();
-                } else if (currentView === 'today') {
-                    renderTodayTimeline();
-                }
-                
-                saveToLocalStorage();
-                showNotification('进展已记录', 'success');
+            } catch (error) {
+                MNUtil.log('🚨 [addProgressNote] 执行出错:', error);
+                MNUtil.log('错误堆栈:', error.stack);
+                showNotification('添加进展失败: ' + error.message, 'error');
             }
         }
 
@@ -8377,8 +8640,21 @@
             // 从排序数组中移除
             focusTasksOrder = focusTasksOrder.filter(id => id !== taskId);
             
+            // 自动加入待处理（如果还未加入）
+            if (!pendingTasks.has(taskId)) {
+                pendingTasks.add(taskId);
+                // 将新任务添加到排序数组末尾
+                if (!pendingTasksOrder.includes(taskId)) {
+                    pendingTasksOrder.push(taskId);
+                }
+                showNotification('已从焦点移除并加入待处理任务', 'info');
+            } else {
+                showNotification('已从焦点任务移除', 'info');
+            }
+            
             // 重新渲染
             renderFocusTasks();
+            renderPendingTasks(); // 同时刷新待处理任务列表
             updateSidebarStats();
             saveToLocalStorage();
         }
@@ -8943,11 +9219,41 @@
         // 去除HTML标签
         function stripHTMLTags(html) {
             if (!html) return '';
+            
+            MNUtil.log('🔍 stripHTMLTags 输入:', html);
+            
+            // 先尝试修复不完整的HTML
+            let fixedHtml = html;
+            
+            // 如果以样式属性开始但没有开始标签，添加一个
+            if (html.match(/^[a-zA-Z-]+\s*[:;]/) && !html.startsWith('<')) {
+                fixedHtml = '<div style="' + html;
+            }
+            
+            // 处理不匹配的引号和标签
+            fixedHtml = fixedHtml
+                .replace(/"/g, '"')  // 统一引号
+                .replace(/>/g, '>')  // 确保标签闭合
+                .replace(/</g, '<');
+            
             // 创建临时DOM元素来解析HTML
             const tmp = document.createElement('div');
-            tmp.innerHTML = html;
-            // 返回纯文本内容
-            return tmp.textContent || tmp.innerText || '';
+            try {
+                tmp.innerHTML = fixedHtml;
+                const result = tmp.textContent || tmp.innerText || '';
+                MNUtil.log('✅ stripHTMLTags 输出:', result);
+                return result;
+            } catch (e) {
+                MNUtil.log('❌ stripHTMLTags 解析失败:', e);
+                // 如果解析失败，使用正则表达式移除HTML
+                const cleaned = html
+                    .replace(/<[^>]*>/g, '')  // 移除完整的标签
+                    .replace(/^[^>]*>/, '')   // 移除开头的不完整标签
+                    .replace(/<[^>]*$/, '')   // 移除结尾的不完整标签
+                    .trim();
+                MNUtil.log('✅ stripHTMLTags 备用输出:', cleaned);
+                return cleaned;
+            }
         }
 
         // 格式化日期
@@ -9786,13 +10092,13 @@
         // 获取时间冲突任务功能已移除 - 系统不再考虑时间安排
         
         function showInMindMap(taskId) {
-            console.log('🔍 [showInMindMap] 被调用，taskId:', taskId);
+            MNUtil.log('🔍 [showInMindMap] 被调用，taskId:', taskId);
             const task = tasks.find(t => t.id === taskId);
             if (!task) {
-                console.error('❌ [showInMindMap] 找不到任务:', taskId);
+                MNUtil.log('❌ [showInMindMap] 找不到任务:', taskId);
                 return;
             }
-            console.log('✅ [showInMindMap] 找到任务:', task);
+            MNUtil.log('✅ [showInMindMap] 找到任务:', task);
             
             // 保存当前查看的任务ID
             window.currentDetailTaskId = taskId;
@@ -9868,14 +10174,14 @@
             `;
             
             // 显示模态框
-            console.log('🎯 [showInMindMap] 准备显示模态框');
+            MNUtil.log('🎯 [showInMindMap] 准备显示模态框');
             const modal = document.getElementById('taskDetailModal');
             if (!modal) {
-                console.error('❌ [showInMindMap] 找不到 taskDetailModal 元素');
+                MNUtil.log('❌ [showInMindMap] 找不到 taskDetailModal 元素');
                 return;
             }
             modal.classList.add('active');
-            console.log('✅ [showInMindMap] 模态框已添加 active 类');
+            MNUtil.log('✅ [showInMindMap] 模态框已添加 active 类');
         }
         
         // 从详情模态框切换任务状态
@@ -12667,6 +12973,12 @@
                     });
                 }
                 
+                // Ctrl/Cmd + K 打开全局搜索
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                    e.preventDefault();
+                    openGlobalSearch();
+                }
+                
                 // Ctrl/Cmd + S 保存
                 if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                     e.preventDefault();
@@ -12730,35 +13042,96 @@
             const searchInTags = document.getElementById('searchInTags').checked;
             const searchInPath = document.getElementById('searchInPath').checked;
             
-            if (!keyword) {
-                showRecentTasks();
-                return;
-            }
+            // 获取高级筛选条件
+            const selectedTypes = Array.from(document.querySelectorAll('input[name="searchTypes"]:checked')).map(cb => cb.value);
+            const selectedStatuses = Array.from(document.querySelectorAll('input[name="searchStatuses"]:checked')).map(cb => cb.value);
+            const selectedPriorities = Array.from(document.querySelectorAll('input[name="searchPriorities"]:checked')).map(cb => cb.value);
+            const selectedProject = document.getElementById('searchProject').value;
+            const timeRange = document.getElementById('searchTimeRange').value;
             
-            // 搜索任务
-            const results = tasks.filter(task => {
-                // 排除已完成的任务（如果未勾选）
-                if (!includeCompleted && task.status === '已完成') {
+            // 特殊筛选
+            const onlyFocus = document.getElementById('searchOnlyFocus').checked;
+            const onlyPending = document.getElementById('searchOnlyPending').checked;
+            const withProgress = document.getElementById('searchWithProgress').checked;
+            const withLaunch = document.getElementById('searchWithLaunch').checked;
+            
+            // 筛选任务
+            let results = tasks.filter(task => {
+                // 确保任务有基本属性
+                if (!task || !task.title) {
                     return false;
                 }
                 
-                // 搜索标题
-                if (task.title.toLowerCase().includes(keyword)) {
-                    return true;
+                // 类型筛选
+                if (selectedTypes.length > 0 && !selectedTypes.includes(task.type)) {
+                    return false;
                 }
                 
-                // 搜索路径
-                if (searchInPath && task.path && task.path.toLowerCase().includes(keyword)) {
-                    return true;
+                // 状态筛选
+                if (selectedStatuses.length > 0 && !selectedStatuses.includes(task.status)) {
+                    return false;
                 }
                 
-                // 搜索标签
-                if (searchInTags && task.fields.tags) {
-                    return task.fields.tags.some(tag => tag.toLowerCase().includes(keyword));
+                // 优先级筛选
+                const taskPriority = (task.fields && task.fields.priority) || '低';
+                if (selectedPriorities.length > 0 && !selectedPriorities.includes(taskPriority)) {
+                    return false;
                 }
                 
-                return false;
+                // 项目筛选
+                if (selectedProject && task.fields && task.fields.project !== selectedProject) {
+                    return false;
+                }
+                
+                // 特殊筛选
+                if (onlyFocus && !focusTasks.has(task.id)) {
+                    return false;
+                }
+                if (onlyPending && !pendingTasks.has(task.id)) {
+                    return false;
+                }
+                if (withProgress && (!task.fields || !task.fields.progressLog || task.fields.progressLog.length === 0)) {
+                    return false;
+                }
+                if (withLaunch && !task.launchLink) {
+                    return false;
+                }
+                
+                // 时间范围筛选
+                if (timeRange && !matchTimeRange(task, timeRange)) {
+                    return false;
+                }
+                
+                // 关键词搜索（如果有输入关键词）
+                if (keyword) {
+                    let matchKeyword = false;
+                    
+                    // 搜索标题
+                    if (task.title.toLowerCase().includes(keyword)) {
+                        matchKeyword = true;
+                    }
+                    
+                    // 搜索路径
+                    if (!matchKeyword && searchInPath && task.path && task.path.toLowerCase().includes(keyword)) {
+                        matchKeyword = true;
+                    }
+                    
+                    // 搜索标签
+                    if (!matchKeyword && searchInTags && task.fields && task.fields.tags && Array.isArray(task.fields.tags)) {
+                        matchKeyword = task.fields.tags.some(tag => tag.toLowerCase().includes(keyword));
+                    }
+                    
+                    return matchKeyword;
+                }
+                
+                return true;
             });
+            
+            // 更新活跃筛选条件显示
+            updateActiveSearchFilters();
+            
+            // 显示搜索结果统计
+            updateSearchResultsStats(results.length, tasks.length);
             
             // 显示搜索结果
             displaySearchResults(results);
@@ -12767,18 +13140,22 @@
         // 显示最近访问的任务
         function showRecentTasks() {
             const recentTasks = tasks
-                .filter(task => task.status !== '已完成')
+                .filter(task => task && task.status !== '已完成')
                 .sort((a, b) => {
                     // 优先显示焦点任务
                     if (focusTasks.has(a.id) && !focusTasks.has(b.id)) return -1;
                     if (!focusTasks.has(a.id) && focusTasks.has(b.id)) return 1;
                     // 其次按优先级排序
                     const priorityOrder = { '高': 0, '中': 1, '低': 2 };
-                    return priorityOrder[a.fields.priority] - priorityOrder[b.fields.priority];
+                    const aPriority = (a.fields && a.fields.priority) || '低';
+                    const bPriority = (b.fields && b.fields.priority) || '低';
+                    return priorityOrder[aPriority] - priorityOrder[bPriority];
                 })
                 .slice(0, 10);
             
             const container = document.getElementById('searchResults');
+            if (!container) return;
+            
             container.innerHTML = `
                 <h4 style="margin-bottom: var(--spacing-md); color: var(--text-secondary);">最近任务</h4>
                 ${recentTasks.map(task => createSearchResultItem(task)).join('')}
@@ -12804,34 +13181,82 @@
         
         // 创建搜索结果项
         function createSearchResultItem(task) {
+            // 确保任务有必要的属性
+            const taskType = task.type || '动作';
+            const taskStatus = task.status || '未开始';
+            const taskTitle = task.title || '未命名任务';
+            const taskPath = task.path || '';
+            const taskTags = (task.fields && task.fields.tags && Array.isArray(task.fields.tags)) ? task.fields.tags : [];
+            const isInFocus = focusTasks.has(task.id);
+            const isInPending = pendingTasks.has(task.id);
+            const isCompleted = taskStatus === '已完成' || taskStatus === '已归档';
+            
             return `
-                <div class="search-result-item" onclick="selectSearchResult('${task.id}')" style="
+                <div class="search-result-item" 
+                     onmouseover="this.style.background='var(--bg-hover)'; this.style.borderColor='var(--type-goal)'" 
+                     onmouseout="this.style.background='var(--bg-card)'; this.style.borderColor='var(--glass-border)'"
+                     style="
                     padding: var(--spacing-md);
                     margin-bottom: var(--spacing-sm);
                     background: var(--bg-card);
                     border: 1px solid var(--glass-border);
                     border-radius: var(--radius-sm);
-                    cursor: pointer;
                     transition: var(--transition);
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    gap: var(--spacing-md);
                 ">
-                    <div style="display: flex; align-items: center; gap: var(--spacing-sm); margin-bottom: var(--spacing-xs);">
-                        <span class="task-type-badge ${task.type.toLowerCase()}">
-                            ${getTaskTypeIcon(task.type)} ${task.type}
-                        </span>
-                        <span class="text-small" style="color: ${getStatusColor(task.status)};">
-                            ${getStatusIcon(task.status)} ${task.status}
-                        </span>
-                        ${focusTasks.has(task.id) ? '<span class="text-small">🎯 焦点</span>' : ''}
-                    </div>
-                    <div class="font-weight-500">${highlightKeyword(task.title)}</div>
-                    <div class="text-small text-muted">${highlightKeyword(task.path)}</div>
-                    ${task.fields.tags.length > 0 ? `
-                        <div style="margin-top: var(--spacing-xs);">
-                            ${task.fields.tags.map(tag => `
-                                <span class="filter-tag text-small">${highlightKeyword(tag)}</span>
-                            `).join('')}
+                    <!-- 主体内容区域 -->
+                    <div style="flex: 1; cursor: pointer;" onclick="selectSearchResult('${task.id}')">
+                        <div style="display: flex; align-items: center; gap: var(--spacing-sm); margin-bottom: var(--spacing-xs);">
+                            <span class="task-type-badge ${taskType.toLowerCase()}">
+                                ${getTaskTypeIcon(taskType)} ${taskType}
+                            </span>
+                            <span class="text-small" style="color: ${getStatusColor(taskStatus)};">
+                                ${getStatusIcon(taskStatus)} ${taskStatus}
+                            </span>
+                            ${isInFocus ? '<span class="text-small">🎯 焦点</span>' : ''}
+                            ${isInPending ? '<span class="text-small">📋 待处理</span>' : ''}
                         </div>
-                    ` : ''}
+                        <div class="font-weight-500">${highlightKeyword(taskTitle)}</div>
+                        ${taskPath ? `<div class="text-small text-muted">${highlightKeyword(taskPath)}</div>` : ''}
+                        ${taskTags.length > 0 ? `
+                            <div style="margin-top: var(--spacing-xs);">
+                                ${taskTags.map(tag => `
+                                    <span class="filter-tag text-small">${highlightKeyword(tag)}</span>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <!-- 操作按钮区域 -->
+                    <div class="search-result-actions" style="display: flex; gap: var(--spacing-xs); flex-shrink: 0;">
+                        <!-- 定位按钮 -->
+                        <button class="search-action-btn" 
+                                onclick="event.stopPropagation(); handleSearchAction('locate', '${task.id}')"
+                                title="定位卡片">
+                            📍
+                        </button>
+                        
+                        <!-- 焦点按钮 -->
+                        ${!isCompleted ? `
+                            <button class="search-action-btn ${isInFocus ? 'active' : ''}" 
+                                    onclick="event.stopPropagation(); handleSearchAction('focus', '${task.id}')"
+                                    title="${isInFocus ? '移出焦点' : '加入焦点'}">
+                                ${isInFocus ? '🎯' : '🎯'}
+                            </button>
+                        ` : ''}
+                        
+                        <!-- 待处理按钮 -->
+                        ${!isCompleted ? `
+                            <button class="search-action-btn ${isInPending ? 'active' : ''}" 
+                                    onclick="event.stopPropagation(); handleSearchAction('pending', '${task.id}')"
+                                    title="${isInPending ? '移出待处理' : '加入待处理'}">
+                                ${isInPending ? '📋' : '📋'}
+                            </button>
+                        ` : ''}
+                    </div>
                 </div>
             `;
         }
@@ -12854,6 +13279,44 @@
             showInMindMap(taskId);
         }
         
+        // 处理搜索结果的操作按钮
+        function handleSearchAction(action, taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+            
+            switch (action) {
+                case 'locate':
+                    // 定位卡片
+                    focusTaskInMindMap(taskId);
+                    closeModal('globalSearchModal');
+                    break;
+                    
+                case 'focus':
+                    // 加入/移出焦点
+                    if (focusTasks.has(taskId)) {
+                        // 创建一个假的 event 对象
+                        const fakeEvent = { stopPropagation: () => {} };
+                        removeFromFocus(fakeEvent, taskId);
+                    } else {
+                        addToFocus(taskId);
+                    }
+                    // 刷新搜索结果以更新按钮状态
+                    performGlobalSearch();
+                    break;
+                    
+                case 'pending':
+                    // 加入/移出待处理
+                    if (pendingTasks.has(taskId)) {
+                        removeFromPending(taskId);
+                    } else {
+                        addToPending(taskId);
+                    }
+                    // 刷新搜索结果以更新按钮状态
+                    performGlobalSearch();
+                    break;
+            }
+        }
+        
         // 获取状态颜色
         function getStatusColor(status) {
             const colors = {
@@ -12863,6 +13326,250 @@
                 '已完成': 'var(--status-done)'
             };
             return colors[status] || 'var(--text-secondary)';
+        }
+        
+        // 切换高级筛选面板
+        function toggleAdvancedFilters() {
+            const panel = document.getElementById('advancedFiltersPanel');
+            const toggleText = document.getElementById('advancedFiltersToggleText');
+            
+            if (panel.style.display === 'none') {
+                panel.style.display = 'block';
+                toggleText.textContent = '⚙️ 收起筛选';
+            } else {
+                panel.style.display = 'none';
+                toggleText.textContent = '⚙️ 高级筛选';
+            }
+        }
+        
+        // 时间范围匹配
+        function matchTimeRange(task, range) {
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            
+            switch (range) {
+                case 'today':
+                    // 检查计划日期或开始日期是否是今天
+                    if (task.fields && task.fields.dueDate) {
+                        const dueDate = new Date(task.fields.dueDate);
+                        return dueDate.toDateString() === today.toDateString();
+                    }
+                    if (task.fields && task.fields.startTime) {
+                        const startDate = new Date(task.fields.startTime);
+                        return startDate.toDateString() === today.toDateString();
+                    }
+                    return false;
+                    
+                case 'thisWeek':
+                    const weekStart = new Date(today);
+                    weekStart.setDate(today.getDate() - today.getDay());
+                    const weekEnd = new Date(weekStart);
+                    weekEnd.setDate(weekStart.getDate() + 6);
+                    
+                    if (task.fields && task.fields.dueDate) {
+                        const dueDate = new Date(task.fields.dueDate);
+                        return dueDate >= weekStart && dueDate <= weekEnd;
+                    }
+                    return false;
+                    
+                case 'thisMonth':
+                    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                    
+                    if (task.fields && task.fields.dueDate) {
+                        const dueDate = new Date(task.fields.dueDate);
+                        return dueDate >= monthStart && dueDate <= monthEnd;
+                    }
+                    return false;
+                    
+                case 'lastMonth':
+                    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+                    
+                    if (task.fields && task.fields.dueDate) {
+                        const dueDate = new Date(task.fields.dueDate);
+                        return dueDate >= lastMonthStart && dueDate <= lastMonthEnd;
+                    }
+                    return false;
+                    
+                default:
+                    return true;
+            }
+        }
+        
+        // 更新活跃筛选条件显示
+        function updateActiveSearchFilters() {
+            const container = document.getElementById('activeSearchFilters');
+            const filters = [];
+            
+            // 收集所有活跃的筛选条件
+            const keyword = document.getElementById('globalSearchInput').value.trim();
+            if (keyword) {
+                filters.push({ type: 'keyword', label: `关键词: ${keyword}`, key: 'keyword' });
+            }
+            
+            const selectedTypes = Array.from(document.querySelectorAll('input[name="searchTypes"]:checked'));
+            if (selectedTypes.length > 0 && selectedTypes.length < 4) {
+                filters.push({ type: 'types', label: `类型: ${selectedTypes.map(cb => cb.value).join(', ')}`, key: 'types' });
+            }
+            
+            const selectedStatuses = Array.from(document.querySelectorAll('input[name="searchStatuses"]:checked'));
+            if (selectedStatuses.length > 0 && selectedStatuses.length < 5) {
+                filters.push({ type: 'statuses', label: `状态: ${selectedStatuses.map(cb => cb.value).join(', ')}`, key: 'statuses' });
+            }
+            
+            const selectedPriorities = Array.from(document.querySelectorAll('input[name="searchPriorities"]:checked'));
+            if (selectedPriorities.length > 0 && selectedPriorities.length < 3) {
+                filters.push({ type: 'priorities', label: `优先级: ${selectedPriorities.map(cb => cb.value).join(', ')}`, key: 'priorities' });
+            }
+            
+            const selectedProject = document.getElementById('searchProject').value;
+            if (selectedProject) {
+                const projectText = document.querySelector(`#searchProject option[value="${selectedProject}"]`).textContent;
+                filters.push({ type: 'project', label: `项目: ${projectText}`, key: 'project' });
+            }
+            
+            const timeRange = document.getElementById('searchTimeRange').value;
+            if (timeRange) {
+                const rangeText = document.querySelector(`#searchTimeRange option[value="${timeRange}"]`).textContent;
+                filters.push({ type: 'timeRange', label: `时间: ${rangeText}`, key: 'timeRange' });
+            }
+            
+            // 特殊筛选
+            if (document.getElementById('searchOnlyFocus').checked) {
+                filters.push({ type: 'special', label: '仅焦点任务', key: 'onlyFocus' });
+            }
+            if (document.getElementById('searchOnlyPending').checked) {
+                filters.push({ type: 'special', label: '仅待处理任务', key: 'onlyPending' });
+            }
+            if (document.getElementById('searchWithProgress').checked) {
+                filters.push({ type: 'special', label: '有进展记录', key: 'withProgress' });
+            }
+            if (document.getElementById('searchWithLaunch').checked) {
+                filters.push({ type: 'special', label: '有启动链接', key: 'withLaunch' });
+            }
+            
+            // 显示筛选条件
+            if (filters.length > 0) {
+                container.style.display = 'flex';
+                container.innerHTML = filters.map(f => `
+                    <span class="filter-tag" style="cursor: pointer;" onclick="removeSearchFilter('${f.key}')">
+                        ${f.label} ✕
+                    </span>
+                `).join('');
+            } else {
+                container.style.display = 'none';
+            }
+        }
+        
+        // 更新搜索结果统计
+        function updateSearchResultsStats(resultCount, totalCount) {
+            const statsContainer = document.getElementById('searchResultsStats');
+            const filterCount = totalCount - resultCount;
+            
+            if (filterCount > 0) {
+                statsContainer.innerHTML = `找到 ${resultCount} 个任务 (已筛选 ${filterCount} 个)`;
+            } else {
+                statsContainer.innerHTML = `找到 ${resultCount} 个任务`;
+            }
+        }
+        
+        // 应用快速筛选预设
+        function applyQuickFilter(preset) {
+            // 先重置所有筛选
+            resetAdvancedFilters();
+            
+            switch (preset) {
+                case 'today':
+                    document.getElementById('searchTimeRange').value = 'today';
+                    break;
+                    
+                case 'weekFocus':
+                    document.getElementById('searchTimeRange').value = 'thisWeek';
+                    document.getElementById('searchOnlyFocus').checked = true;
+                    break;
+                    
+                case 'highPriority':
+                    // 只选择高优先级
+                    document.querySelectorAll('input[name="searchPriorities"]').forEach(cb => cb.checked = false);
+                    document.querySelector('input[name="searchPriorities"][value="高"]').checked = true;
+                    // 排除已完成
+                    document.querySelectorAll('input[name="searchStatuses"]').forEach(cb => cb.checked = cb.value !== '已完成' && cb.value !== '已归档');
+                    break;
+                    
+                case 'inProgress':
+                    // 只选择进行中状态
+                    document.querySelectorAll('input[name="searchStatuses"]').forEach(cb => cb.checked = false);
+                    document.querySelector('input[name="searchStatuses"][value="进行中"]').checked = true;
+                    break;
+                    
+                case 'pendingReview':
+                    document.getElementById('searchOnlyPending').checked = true;
+                    break;
+            }
+            
+            // 触发搜索
+            performGlobalSearch();
+        }
+        
+        // 重置高级筛选
+        function resetAdvancedFilters() {
+            // 重置所有复选框为默认状态
+            document.querySelectorAll('input[name="searchTypes"]').forEach(cb => cb.checked = true);
+            document.querySelectorAll('input[name="searchStatuses"]').forEach(cb => cb.checked = cb.value !== '已完成' && cb.value !== '已归档');
+            document.querySelectorAll('input[name="searchPriorities"]').forEach(cb => cb.checked = true);
+            
+            // 重置下拉框
+            document.getElementById('searchProject').value = '';
+            document.getElementById('searchTimeRange').value = '';
+            
+            // 重置特殊筛选
+            document.getElementById('searchOnlyFocus').checked = false;
+            document.getElementById('searchOnlyPending').checked = false;
+            document.getElementById('searchWithProgress').checked = false;
+            document.getElementById('searchWithLaunch').checked = false;
+            
+            // 触发搜索
+            performGlobalSearch();
+        }
+        
+        // 移除单个筛选条件
+        function removeSearchFilter(filterKey) {
+            switch (filterKey) {
+                case 'keyword':
+                    document.getElementById('globalSearchInput').value = '';
+                    break;
+                case 'types':
+                    document.querySelectorAll('input[name="searchTypes"]').forEach(cb => cb.checked = true);
+                    break;
+                case 'statuses':
+                    document.querySelectorAll('input[name="searchStatuses"]').forEach(cb => cb.checked = cb.value !== '已完成' && cb.value !== '已归档');
+                    break;
+                case 'priorities':
+                    document.querySelectorAll('input[name="searchPriorities"]').forEach(cb => cb.checked = true);
+                    break;
+                case 'project':
+                    document.getElementById('searchProject').value = '';
+                    break;
+                case 'timeRange':
+                    document.getElementById('searchTimeRange').value = '';
+                    break;
+                case 'onlyFocus':
+                    document.getElementById('searchOnlyFocus').checked = false;
+                    break;
+                case 'onlyPending':
+                    document.getElementById('searchOnlyPending').checked = false;
+                    break;
+                case 'withProgress':
+                    document.getElementById('searchWithProgress').checked = false;
+                    break;
+                case 'withLaunch':
+                    document.getElementById('searchWithLaunch').checked = false;
+                    break;
+            }
+            
+            // 触发搜索
+            performGlobalSearch();
         }
         
         /* ========================================
@@ -14164,45 +14871,94 @@
              * @returns {Array} UI 格式的进展数据
              */
             static convertProgressData(progresses) {
+                MNUtil.log('🔍 [convertProgressData] 开始转换进展数据');
+                MNUtil.log('📊 原始进展数据:', progresses);
+                MNUtil.log('📊 进展数据类型:', Array.isArray(progresses) ? 'Array' : typeof progresses);
+                
                 if (!progresses || !Array.isArray(progresses)) {
+                    MNUtil.log('⚠️ 进展数据为空或非数组，返回空数组');
                     return [];
                 }
                 
-                return progresses.map(progress => {
+                MNUtil.log('📊 进展数量:', progresses.length);
+                
+                const result = progresses.map((progress, index) => {
+                    MNUtil.log(`\n🔍 处理第 ${index + 1} 条进展:`);
+                    MNUtil.log('📊 原始数据:', progress);
+                    MNUtil.log('📊 数据类型:', typeof progress);
+                    
                     // 如果已经是正确格式，直接返回
                     if (progress.date && progress.note) {
+                        MNUtil.log('✅ 已是正确格式，直接使用');
                         return progress;
                     }
                     
                     // 尝试解析不同格式的进展数据
                     if (typeof progress === 'string') {
+                        MNUtil.log('📝 字符串格式，尝试解析');
+                        MNUtil.log('📊 字符串内容:', progress);
+                        MNUtil.log('📊 字符串长度:', progress.length);
+                        
                         // 假设字符串格式为 "时间: 内容" 或直接是内容
                         const parts = progress.split(/[:：]/);
+                        MNUtil.log('📊 分割后的部分:', parts);
+                        MNUtil.log('📊 分割部分数量:', parts.length);
+                        
                         if (parts.length >= 2) {
-                            return {
+                            const convertedData = {
                                 date: parts[0].trim(),
                                 note: parts.slice(1).join(':').trim()
                             };
+                            MNUtil.log('✅ 解析为时间:内容格式:', convertedData);
+                            return convertedData;
                         } else {
-                            return {
+                            const noteContent = stripHTMLTags(progress);
+                            const convertedData = {
                                 date: new Date().toLocaleString('zh-CN'),
-                                note: stripHTMLTags(progress)
+                                note: noteContent
                             };
+                            MNUtil.log('📝 无时间戳，使用当前时间:', convertedData);
+                            MNUtil.log('📊 清理HTML前:', progress);
+                            MNUtil.log('📊 清理HTML后:', noteContent);
+                            return convertedData;
                         }
                     } else if (typeof progress === 'object') {
+                        MNUtil.log('📦 对象格式，尝试提取字段');
+                        MNUtil.log('📊 对象键:', Object.keys(progress));
+                        MNUtil.log('📊 对象内容:', JSON.stringify(progress));
+                        
                         // 尝试从对象中提取时间和内容
-                        return {
-                            date: progress.time || progress.timestamp || progress.date || new Date().toLocaleString('zh-CN'),
-                            note: stripHTMLTags(progress.content || progress.note || progress.text || JSON.stringify(progress))
+                        const dateValue = progress.time || progress.timestamp || progress.date || new Date().toLocaleString('zh-CN');
+                        const noteSource = progress.content || progress.note || progress.text || JSON.stringify(progress);
+                        const noteValue = stripHTMLTags(noteSource);
+                        
+                        const convertedData = {
+                            date: dateValue,
+                            note: noteValue
                         };
+                        MNUtil.log('✅ 从对象提取的数据:', convertedData);
+                        MNUtil.log('📊 清理HTML前:', noteSource);
+                        MNUtil.log('📊 清理HTML后:', noteValue);
+                        return convertedData;
                     }
                     
                     // 默认处理
-                    return {
+                    MNUtil.log('⚠️ 使用默认处理方式');
+                    const stringValue = String(progress);
+                    const noteValue = stripHTMLTags(stringValue);
+                    const convertedData = {
                         date: new Date().toLocaleString('zh-CN'),
-                        note: stripHTMLTags(String(progress))
+                        note: noteValue
                     };
+                    MNUtil.log('📊 转换为字符串:', stringValue);
+                    MNUtil.log('📊 清理HTML后:', noteValue);
+                    MNUtil.log('✅ 默认处理结果:', convertedData);
+                    return convertedData;
                 });
+                
+                MNUtil.log('\n✅ [convertProgressData] 转换完成');
+                MNUtil.log('📊 转换后的数据:', result);
+                return result;
             }
             
             /**
@@ -14213,7 +14969,7 @@
             static convertToUIFormat(taskData) {
                 // 验证必要字段
                 if (!taskData || !taskData.id) {
-                    console.error('❌ 转换失败: 缺少必要字段', taskData);
+                    MNUtil.log('❌ 转换失败: 缺少必要字段', taskData);
                     return null;
                 }
                 

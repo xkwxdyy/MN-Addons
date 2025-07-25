@@ -55,9 +55,12 @@ JSB.newAddon = function (mainPath) {
         MNUtil.removeObserver(self,'NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI')
         MNUtil.removeObserver(self,'ClosePopupMenuOnSelection')
         MNUtil.removeObserver(self,'AddonBroadcast');
+        NSUserDefaults.standardUserDefaults().synchronize()
+
       },
 
       sceneWillResignActive: function () { // Window resign active
+        NSUserDefaults.standardUserDefaults().synchronize()
       },
 
       sceneDidBecomeActive: function () { // Window become active
@@ -95,6 +98,7 @@ JSB.newAddon = function (mainPath) {
         toolbarConfig.windowState.open  = !self.addonController.view.hidden
         toolbarConfig.windowState.frame = self.addonController.view.frame
         toolbarConfig.save("MNToolbar_windowState")
+        NSUserDefaults.standardUserDefaults().synchronize()
       },
       // /**
       //  * 
@@ -419,20 +423,35 @@ JSB.newAddon = function (mainPath) {
         let config = MNUtil.parseURL(message)
         let addon = config.pathComponents[0]
         if (addon === "mntoolbar") {
-          let actionKey = config.params.action
-          let actionDes = toolbarConfig.getDescriptionById(actionKey)
-          if (!("action" in actionDes)) {
-            self.showHUD("Missing action")
+          if ("action" in config.params) {
+            let actionKey = config.params.action
+            let actionDes = toolbarConfig.getDescriptionById(actionKey)
+            if (!("action" in actionDes)) {
+              self.showHUD("Missing action")
+              return
+            }
+            await toolbarUtils.customActionByDes(actionDes)
+            while ("onFinish" in actionDes) {
+              let delay = actionDes.delay ?? 0.5
+              actionDes = actionDes.onFinish
+              await MNUtil.delay(delay)
+              await toolbarUtils.customActionByDes(actionDes)
+            }
             return
           }
-          // MNUtil.copy(actionDes)
-          await toolbarUtils.customActionByDes(actionDes)
-          while ("onFinish" in actionDes) {
-            let delay = actionDes.delay ?? 0.5
-            actionDes = actionDes.onFinish
-            await MNUtil.delay(delay)
-            await toolbarUtils.customActionByDes(actionDes)
+          if ("config" in config.params) {
+            if (self.settingController && !self.settingController.view.hidden) {
+              self.settingController.importFromShareURL(config.params.config)
+              return
+            }else{
+              let confirm = await MNUtil.confirm("MN Toolbar", "Open Setting first\n\n请先打开设置并选中要替换的动作")
+              if (confirm) {
+                self.openSetting()
+              }
+            }
+            // self.openSetting()
           }
+          // MNUtil.copy(actionDes)
         }
         
       } catch (error) {
@@ -834,7 +853,7 @@ try {
             self.tableItem('🛠️   Toolbar', 'toggleToolbar:',undefined,!self.addonController.view.hidden),
             self.tableItem('🛠️   Direction   '+(toolbarConfig.vertical()?'↕️':'↔️'), selector,"fixed"),
             self.tableItem('🌟   Dynamic   ', "toggleDynamic",undefined,toolbarConfig.dynamic),
-            self.tableItem('🌟   Direction   '+(toolbarConfig.vertical()?'↕️':'↔️'), selector,"dynamic"),
+            self.tableItem('🌟   Direction   '+(toolbarConfig.vertical(true)?'↕️':'↔️'), selector,"dynamic"),
             self.tableItem('📄   Document', 'openDocument:'),
             self.tableItem('🔄   Manual Sync','manualSync:')
         ];
@@ -949,6 +968,10 @@ try {
       // this.settingController.dynamicToolbar = this.dynamicToolbar
       this.studyController.view.addSubview(this.settingController.view)
       // toolbarUtils.studyController().view.addSubview(this.settingController.view)
+    }
+    if (toolbarUtils.settingViewOpened) {
+      MNUtil.showHUD("Setting view is already opened")
+      return
     }
     this.settingController.show()
     } catch (error) {

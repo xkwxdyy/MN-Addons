@@ -887,7 +887,9 @@ try {
   onLongPressGesture:async function (gesture) {
     if (gesture.state === 1) {
       let button = gesture.view
-      let actionName = button.target ?? (self.dynamicWindow?toolbarConfig.dynamicAction[button.index]:toolbarConfig.action[button.index])//这个是key
+      let dynamicOrder = toolbarConfig.getWindowState("dynamicOrder")
+      let useDynamic = dynamicOrder && self.dynamicWindow
+      let actionName = button.target ?? (useDynamic?toolbarConfig.dynamicAction[button.index]:toolbarConfig.action[button.index])//这个是key
       if (actionName) {
         let des = toolbarConfig.getDescriptionById(actionName)
         if ("onLongPress" in des) {
@@ -988,6 +990,15 @@ try {
       toolbarUtils.addErrorLog(error, "onResizeGesture")
     }
   },
+  tabbarTapped: function (button) {
+    let self = getToolbarController()
+    // MNUtil.showHUD("tabbarTapped")
+    // MNUtil.log("tabbarTapped")
+    self.popupReplaceAgain()
+    // if (self.dynamicWindow) {
+    //   self.hide()
+    // }
+  }
 });
 toolbarController.prototype.setButtonLayout = function (button,targetAction) {
     button.autoresizingMask = (1 << 0 | 1 << 3);
@@ -2017,54 +2028,75 @@ toolbarController.prototype.popupReplace = async function (button) {
   // MNUtil.showHUD("message")
   let menu = PopupMenu.currentMenu()
   // MNUtil.log("Menuheight:"+menu.frame.height)
-  if (menu) {
-    let ids = menu.items.map(item=>{
-      if (item.actionString) {
-        return item.actionString.replace(":", "")
+  if (!menu) {
+    return
+  }
+  // MNUtil.log("Subviews:"+menu.subviews.length)
+  let allButtons = menu.subviews.filter(button=>{
+    return button.frame.height > 40
+  })
+  let allButtonsNumber = allButtons.length
+  // MNUtil.log(menu.subviews[0].frame.height)
+  let ids = menu.items.map(item=>{
+    if (item.actionString) {
+      return item.actionString.replace(":", "")
+    }
+    return ""
+  })
+  let beginIndex = menu.frame.height > 45 ? 1 : 0
+  // MNUtil.copy(ids)
+  // MNUtil.log("subviews:"+menu.subviews.length)
+  let maxButtonNumber = (ids.length == allButtonsNumber)?ids.length:allButtonsNumber-1
+  // MNUtil.showHUD("message"+ids.length+";"+menu.subviews.length)
+  // MNUtil.showHUD(message)
+  for (let i = 0; i < maxButtonNumber; i++) {
+    if (!ids[i]) {
+      continue
+    }
+
+    let popupButton = allButtons[i].subviews[0]
+    let popupConfig = toolbarConfig.getPopupConfig(ids[i])
+    // MNUtil.showHUD("message"+menu.subviews.length)
+    if (!popupConfig) {
+      // MNUtil.showHUD("Unknown popup button: "+ids[i])
+      continue
+    }
+    // MNUtil.showHUD("popupReplace:"+ids[i]+":"+toolbarConfig.getPopupConfig(ids[i]).enabled)
+    if (popupConfig.enabled) {
+      // MNUtil.showHUD(toolbarConfig.getPopupConfig(ids[i]).target)
+      let target = popupConfig.target
+      if (target) {
+      try {
+        popupButton.menu = menu
+        popupButton.target = target
+        popupButton.setImageForState(toolbarConfig.imageConfigs[target],0)
+        popupButton.setImageForState(toolbarConfig.imageConfigs[target],1)
+      } catch (error) {
+        toolbarUtils.addErrorLog(error, "popupReplaceImage", ids[i])
       }
-      return ""
-    })
-    let beginIndex = menu.frame.height > 45 ? 1 : 0
-    // MNUtil.copy(ids)
-    // MNUtil.log("subviews:"+menu.subviews.length)
-    let maxButtonNumber = (ids.length == menu.subviews.length)?ids.length:menu.subviews.length-1
-    // MNUtil.showHUD("message"+ids.length+";"+menu.subviews.length)
-    // MNUtil.showHUD(message)
-    for (let i = 0; i < maxButtonNumber; i++) {
-      if (!ids[i]) {
-        continue
-      }
-      let popupButton = menu.subviews[i+beginIndex].subviews[0]
-      let popupConfig = toolbarConfig.getPopupConfig(ids[i])
-      // MNUtil.showHUD("message"+menu.subviews.length)
-      if (!popupConfig) {
-        // MNUtil.showHUD("Unknown popup button: "+ids[i])
-        continue
-      }
-      // MNUtil.showHUD("popupReplace:"+ids[i]+":"+toolbarConfig.getPopupConfig(ids[i]).enabled)
-      if (popupConfig.enabled) {
-        // MNUtil.showHUD(toolbarConfig.getPopupConfig(ids[i]).target)
-        let target = popupConfig.target
-        if (target) {
-        try {
-          popupButton.menu = menu
-          popupButton.target = target
-          popupButton.setImageForState(toolbarConfig.imageConfigs[target],0)
-          popupButton.setImageForState(toolbarConfig.imageConfigs[target],1)
-        } catch (error) {
-          toolbarUtils.addErrorLog(error, "popupReplaceImage", ids[i])
-        }
-        }else{
-          // MNUtil.showHUD("message"+ids[i])
-          // toolbarUtils.addErrorLog(error, "popupReplace", ids[i])
-        }
+      }else{
+        // MNUtil.showHUD("message"+ids[i])
+        // toolbarUtils.addErrorLog(error, "popupReplace", ids[i])
       }
     }
+  }
+  if (menu) {
     for (let i = 0; i < maxButtonNumber; i++) {
       if (!ids[i]) {
         continue
       }
-      let popupButton = menu.subviews[i+beginIndex].subviews[0]
+      if (beginIndex && i == 0) {
+        // menu.subviews[0].hidden = true
+        // MNUtil.showHUD("message"+menu.subviews[0].subviews.length)
+        let tabbarView = menu.subviews[0];
+        tabbarView.subviews.forEach(button=>{
+          button.addTargetActionForControlEvents(this, "tabbarTapped:", 1 << 6);
+          // MNUtil.log("addTargetActionForControlEvents:")
+        })
+        // tabbarView.subviews[0].addTargetActionForControlEvents(this, "tabbarTapped:", 1 << 6);
+        // tabbarView.subviews[1].addTargetActionForControlEvents(this, "tabbarTapped:", 1 << 6);
+      }
+      let popupButton = allButtons[i].subviews[0]
       let popupConfig = toolbarConfig.getPopupConfig(ids[i])
       // MNUtil.showHUD("message"+menu.subviews.length)
 
@@ -2101,14 +2133,15 @@ toolbarController.prototype.popupReplace = async function (button) {
         }
       }
     }
-    await MNUtil.delay(0.01)
-
+  }
+  await MNUtil.delay(0.1)
+  if (menu) {
     // MNUtil.copy("number: "+targetsNumber)
     for (let i = 0; i < maxButtonNumber; i++) {
       if (!ids[i]) {
         continue
       }
-      let popupButton = menu.subviews[i+beginIndex].subviews[0]
+      let popupButton = allButtons[i].subviews[0]
       let popupConfig = toolbarConfig.getPopupConfig(ids[i])
       // MNUtil.showHUD("message"+menu.subviews.length)
       if (!popupConfig) {
@@ -2121,10 +2154,38 @@ toolbarController.prototype.popupReplace = async function (button) {
           let targetsNumber = popupButton.allTargets().count()
           // let action = temButton.allControlEvents.length
           if (targetsNumber === 1) {
-            MNUtil.showHUD("可能存在按钮替换失败: "+i)
+  // MNUtil.log("Subviews:"+menu.subviews.length)
+  // menu.subviews[0].hidden = true
+  MNUtil.log(menu.subviews[0].frame.height)
+            MNUtil.log("可能存在按钮替换失败,按钮索引: "+i)
+            // MNUtil.log("可能存在按钮替换失败,按钮索引: "+(i+beginIndex))
+            let target = popupConfig.target
+            if (target) {
+            try {
+              MNUtil.log("尝试重新替换按钮,按钮索引: "+i)
+              popupButton.menu = menu
+              popupButton.target = target
+              if (toolbarConfig.builtinActionKeys.includes(target)) {
+                if (target.includes("color")) {
+                  popupButton.color = parseInt(target.slice(5))
+                  this.replaceButtonTo(popupButton, "setColor:")
+                }else{
+                  this.replaceButtonTo(popupButton, target+":")
+                }
+              }else{
+                this.replaceButtonTo(popupButton, "customAction:")
+              }
+            } catch (error) {
+              toolbarUtils.addErrorLog(error, "popupReplaceSelector", ids[i])
+            }
+            }else{
+              MNUtil.showHUD("message"+ids[i])
+              // toolbarUtils.addErrorLog(error, "popupReplace", ids[i])
+            }
           }else{
             // MNUtil.showHUD("Number: "+targetsNumber)
           }
+
       }
     }
     return menu
@@ -2136,6 +2197,172 @@ toolbarController.prototype.popupReplace = async function (button) {
     toolbarUtils.addErrorLog(error, "popupReplace")
   }
 }
+
+/**
+ * @this {toolbarController}
+ */
+toolbarController.prototype.popupReplaceAgain = async function (button) {
+
+  let hasReplace = toolbarConfig.hasPopup()
+  if (!hasReplace) {
+    return
+  }
+  try {
+  // MNUtil.showHUD("message")
+  let menu = PopupMenu.currentMenu()
+  // MNUtil.log("Menuheight:"+menu.frame.height)
+  if (!menu) {
+    return
+  }
+  let ids = menu.items.map(item=>{
+    if (item.actionString) {
+      return item.actionString.replace(":", "")
+    }
+    return ""
+  })
+  let allButtons = menu.subviews.filter(button=>{
+    return button.frame.height > 40
+  })
+  let allButtonsNumber = allButtons.length
+  // MNUtil.copy(ids)
+  // MNUtil.log("subviews:"+menu.subviews.length)
+  let maxButtonNumber = (ids.length == allButtonsNumber)?ids.length:allButtonsNumber-1
+  // MNUtil.showHUD("message"+ids.length+";"+menu.subviews.length)
+  // MNUtil.showHUD(message)
+  for (let i = 0; i < maxButtonNumber; i++) {
+    if (!ids[i]) {
+      continue
+    }
+
+    let popupButton = allButtons[i].subviews[0]
+    let popupConfig = toolbarConfig.getPopupConfig(ids[i])
+    // MNUtil.showHUD("message"+menu.subviews.length)
+    if (!popupConfig) {
+      // MNUtil.showHUD("Unknown popup button: "+ids[i])
+      continue
+    }
+    // MNUtil.showHUD("popupReplace:"+ids[i]+":"+toolbarConfig.getPopupConfig(ids[i]).enabled)
+    if (popupConfig.enabled) {
+      // MNUtil.showHUD(toolbarConfig.getPopupConfig(ids[i]).target)
+      let target = popupConfig.target
+      if (target) {
+      try {
+        popupButton.menu = menu
+        popupButton.target = target
+        popupButton.setImageForState(toolbarConfig.imageConfigs[target],0)
+        popupButton.setImageForState(toolbarConfig.imageConfigs[target],1)
+      } catch (error) {
+        toolbarUtils.addErrorLog(error, "popupReplaceImage", ids[i])
+      }
+      }else{
+        // MNUtil.showHUD("message"+ids[i])
+        // toolbarUtils.addErrorLog(error, "popupReplace", ids[i])
+      }
+    }
+  }
+  if (menu) {
+    for (let i = 0; i < maxButtonNumber; i++) {
+      if (!ids[i]) {
+        continue
+      }
+      let popupButton = allButtons[i].subviews[0]
+      let popupConfig = toolbarConfig.getPopupConfig(ids[i])
+      // MNUtil.showHUD("message"+menu.subviews.length)
+
+      if (!popupConfig) {
+        MNUtil.showHUD("Unknown popup button: "+ids[i])
+        MNUtil.log(ids[i])
+        
+        continue
+      }
+      // MNUtil.showHUD("popupReplace:"+ids[i]+":"+toolbarConfig.getPopupConfig(ids[i]).enabled)
+      if (popupConfig.enabled) {
+        // MNUtil.showHUD(toolbarConfig.getPopupConfig(ids[i]).target)
+        let target = popupConfig.target
+        if (target) {
+        try {
+          popupButton.menu = menu
+          popupButton.target = target
+          if (toolbarConfig.builtinActionKeys.includes(target)) {
+            if (target.includes("color")) {
+              popupButton.color = parseInt(target.slice(5))
+              this.replaceButtonTo(popupButton, "setColor:")
+            }else{
+              this.replaceButtonTo(popupButton, target+":")
+            }
+          }else{
+            this.replaceButtonTo(popupButton, "customAction:")
+          }
+        } catch (error) {
+          toolbarUtils.addErrorLog(error, "popupReplaceSelector", ids[i])
+        }
+        }else{
+          MNUtil.showHUD("message"+ids[i])
+          // toolbarUtils.addErrorLog(error, "popupReplace", ids[i])
+        }
+      }
+    }
+  }
+  await MNUtil.delay(0.01)
+  if (menu) {
+    // MNUtil.copy("number: "+targetsNumber)
+    for (let i = 0; i < maxButtonNumber; i++) {
+      if (!ids[i]) {
+        continue
+      }
+      let popupButton = allButtons[i].subviews[0]
+      let popupConfig = toolbarConfig.getPopupConfig(ids[i])
+      // MNUtil.showHUD("message"+menu.subviews.length)
+      if (!popupConfig) {
+        MNUtil.showHUD("Unknown popup button: "+ids[i])
+        continue
+      }
+      // MNUtil.showHUD("popupReplace:"+ids[i]+":"+toolbarConfig.getPopupConfig(ids[i]).enabled)
+      if (popupConfig.enabled) {
+          // let tem = getAllProperties(temButton)
+          let targetsNumber = popupButton.allTargets().count()
+          // let action = temButton.allControlEvents.length
+          if (targetsNumber === 1) {
+            MNUtil.log("可能存在按钮替换失败,按钮索引: "+i)
+            let target = popupConfig.target
+            if (target) {
+            try {
+              MNUtil.log("尝试重新替换按钮,按钮索引: "+i)
+              popupButton.menu = menu
+              popupButton.target = target
+              if (toolbarConfig.builtinActionKeys.includes(target)) {
+                if (target.includes("color")) {
+                  popupButton.color = parseInt(target.slice(5))
+                  this.replaceButtonTo(popupButton, "setColor:")
+                }else{
+                  this.replaceButtonTo(popupButton, target+":")
+                }
+              }else{
+                this.replaceButtonTo(popupButton, "customAction:")
+              }
+            } catch (error) {
+              toolbarUtils.addErrorLog(error, "popupReplaceSelector", ids[i])
+            }
+            }else{
+              MNUtil.showHUD("message"+ids[i])
+              // toolbarUtils.addErrorLog(error, "popupReplace", ids[i])
+            }
+          }else{
+            // MNUtil.showHUD("Number: "+targetsNumber)
+          }
+
+      }
+    }
+    return menu
+  }else{
+    return undefined
+    // MNUtil.showHUD("popupReplaceError")
+  }
+  } catch (error) {
+    toolbarUtils.addErrorLog(error, "popupReplace")
+  }
+}
+
 /**
  * 检测是否需要弹出菜单,如果需要弹出菜单则返回true,否则返回false
  * @this {toolbarController}

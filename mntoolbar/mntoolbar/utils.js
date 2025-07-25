@@ -164,6 +164,7 @@ class toolbarUtils {
   static isSubscribe = false
   static mainPath
   static studylist = []
+  static settingViewOpened = false
   /**
    * @type {MNNote[]}
    * @static
@@ -537,8 +538,14 @@ class toolbarUtils {
   static getActionOptions(actionName,prefix = undefined){
     let menuItems = []
     switch (actionName) {
+      case "toggleTextFirst":
+        menuItems = ["range"]
+        break;
       case "command":
         menuItems = ["command","commands"]
+        break;
+      case "toggleMarkdown":
+        menuItems = ["targetMode","range"]
         break;
       case "copy":
         menuItems = ["target","index","content"]
@@ -565,7 +572,7 @@ class toolbarUtils {
         menuItems = ["tag","tags"]
         break;
       case "mergeText":
-        menuItems = ["target","source"]
+        menuItems = ["target","source","range"]
         break;
       case "ocr":
         menuItems = ["target","ocrSource","method","followParentColor"]
@@ -583,7 +590,7 @@ class toolbarUtils {
         menuItems = ["name"]
         break;
       case "replace":
-        menuItems = ["target","content","from","to","reg","steps"]
+        menuItems = ["target","content","from","to","reg","steps","range"]
         break;
       case "showInFloatWindow":
         menuItems = ["noteURL","target"]
@@ -601,7 +608,7 @@ class toolbarUtils {
         menuItems = ["target","content","range"]
         break;
       case "clearContent":
-        menuItems = ["target","type","allowDeleteNote"]
+        menuItems = ["target","type","allowDeleteNote","range","index"]
         break;
       case "openURL":
         menuItems = ["url"]
@@ -996,6 +1003,14 @@ try {
             element = focusNote.allNoteText()
           }
           break;
+        case "textComments":
+          if (focusNote && focusNote.comments.length) {
+            let textCommentIndices = focusNote.getCommentIndicesByCondition({types:["blankTextComment","mergedTextComment","markdownComment","textComment"]})
+            let comments = focusNote.MNComments
+            let textComments = textCommentIndices.map(index=>comments[index])
+            element = textComments.map(comment=>comment.text).join("\n")
+          }
+          break;
         case "comment":
           if (focusNote && focusNote.comments.length) {
             let index = 1
@@ -1260,6 +1275,39 @@ try {
     if (!regParts) throw ""
     return new RegExp(regParts[1], regParts[2])
   }
+/**
+ * 
+ * @param {MNNote[]} notes 
+ * @returns 
+ */
+static buildHierarchy(notes) {
+try {
+
+  const tree = [];
+  const map = {}; // Helper to quickly find notes by their ID
+
+  // First pass: Create a map of notes and initialize a 'children' array for each.
+  notes.forEach(note => {
+    map[note.id] = { id:note.id, children: [] }; // Store a copy and add children array
+  });
+  // Second pass: Populate the 'children' arrays and identify root nodes.
+  notes.forEach(note => {
+    let parentId = note.parentNoteId
+    if (parentId && map[parentId]) {
+      // If it has a parent and the parent exists in our map, add it to parent's children
+      map[parentId].children.push(map[note.id]);
+    } else {
+      // Otherwise, it's a root node (or an orphan if parentId is invalid but present)
+      tree.push(map[note.id]);
+    }
+  });
+
+  return tree;
+  
+} catch (error) {
+  return []
+}
+}
   /**
    * 
    * @param {*} range 
@@ -1279,10 +1327,20 @@ try {
         })
         return childNotes
       case "descendants":
+      case "descendantNotes"://所有后代节点
         let descendantNotes = []
-        MNNote.getFocusNotes().map(note=>{
+        // let descendantNotes = []
+        let focusNotes = MNNote.getFocusNotes()
+        if (focusNotes.length === 0) {
+          MNUtil.showHUD("No notes found")
+          return []
+        }
+        let topLevelNotes = this.buildHierarchy(focusNotes).map(o=>MNNote.new(o.id))
+        // let notesWithoutDescendants = focusNotes.filter(note=>!note.hasDescendantNodes)
+        topLevelNotes.map(note=>{
           descendantNotes = descendantNotes.concat(note.descendantNodes.descendant)
         })
+        MNUtil.log("descendantNotes:"+descendantNotes.length)
         return descendantNotes
       default:
         return [MNNote.getFocusNote()]
@@ -1294,6 +1352,8 @@ try {
    * @param {{target:string,type:string,index:number}} des 
    */
   static clearNoteContent(note,des){
+    try {
+
     let target = des.target ?? "title"
     switch (target) {
       case "title":
@@ -1302,22 +1362,29 @@ try {
       case "excerptText":
         note.excerptText = ""
         break;
+      case "excerptTextAndComments":
+        note.excerptText = ""
       case "comments"://todo: 改进type检测,支持未添加index参数时移除所有评论
         // this.removeComment(des)
         if ("type" in des) {
           let indices = note.getCommentIndicesByCondition({type:des.type})
           note.removeCommentsByIndices(indices)
-        }else if ("index" in dex){
+        }else if ("index" in des){
           note.removeCommentByIndex(des.index)
         }else{
           let commentLength = note.comments.length
           for (let i = commentLength-1; i >= 0; i--) {
+              // MNUtil.log("Removing comment at index: "+i)
               note.removeCommentByIndex(i)
           }
         }
         break;
       default:
         break;
+    }
+      
+    } catch (error) {
+      this.addErrorLog(error, "clearNoteContent")
     }
   }
   /**
@@ -2441,12 +2508,14 @@ try {
     }
     this.errorLog.push(tem)
     MNUtil.copyJSON(this.errorLog)
-    MNUtil.log({
-      source:"MN Toolbar",
-      message:source,
-      level:"ERROR",
-      detail:JSON.stringify(tem,null,2)
-    })
+    if (typeof MNUtil.log !== undefined) {
+      MNUtil.log({
+        source:"MN Toolbar",
+        message:source,
+        level:"ERROR",
+        detail:JSON.stringify(tem,null,2)
+      })
+    }
   }
   static removeComment(des){
     // MNUtil.copyJSON(des)
@@ -5465,10 +5534,23 @@ static async customActionByDes(des,button,controller,checkSubscribe = true) {//�
         if (!des.hideMessage) {
           MNUtil.showHUD("toggleMarkdown")
         }
+        let targetMode = des.targetMode ?? "toggle"
         targetNotes = this.getNotesByRange(des.range ?? "currentNotes")
         MNUtil.undoGrouping(()=>{
           targetNotes.forEach(note=>{
-            note.excerptTextMarkdown = !note.excerptTextMarkdown
+            switch (targetMode) {
+              case "toggle":
+                note.excerptTextMarkdown = !note.excerptTextMarkdown
+                break;
+              case "disable":
+                note.excerptTextMarkdown = false
+                break;
+              case "enable":
+                note.excerptTextMarkdown = true
+                break;
+              default:
+                break;
+            }
           })
         })
         await MNUtil.delay(0.1)
@@ -5842,7 +5924,8 @@ class toolbarConfig {
   "showInlineChat",
   "selectBranch",
   "ocrForNote",
-  "textFirstForNote"
+  "textFirstForNote",
+  "aiMenuPlaceholder"
 ]
   static defaultPopupReplaceConfig = {
     noteHighlight:{enabled:false,target:"",name:"noteHighlight"},
@@ -5922,6 +6005,7 @@ class toolbarConfig {
     selectBranch:{enabled:false,target:"",name:"selectBranch"},
     ocrForNote:{enabled:false,target:"",name:"ocrForNote"},
     textFirstForNote:{enabled:false,target:"",name:"textFirstForNote"},
+    aiMenuPlaceholder:{enabled:false,target:"",name:"aiMenuPlaceholder"},
   }
   static defalutImageScale = {
     "color0":2.4,
@@ -6779,7 +6863,7 @@ static save(key = undefined,value = undefined,upload = true) {
       this.writeCloudConfig(false)
     }
   }
-  NSUserDefaults.standardUserDefaults().synchronize()
+  // NSUserDefaults.standardUserDefaults().synchronize()
 }
 
 static get(key) {

@@ -46,7 +46,7 @@ body {
       "range": {
         "title": "range",
         "type": "string",
-        "enum": ['currentNote','currentNotes','childNotes','descendants'],
+        "enum": ['currentNotes','childNotes','descendantNotes'],
       },
       "hideMessage": {
         "type": "boolean",
@@ -114,6 +114,12 @@ body {
     return {
       "title": "string",
       "type": "string",
+    }
+  }
+  function numberType() {
+    return {
+      "title": "number",
+      "type": "number",
     }
   }
   function booleanType(defaultValue = false) {
@@ -454,7 +460,7 @@ function getSchemaByActionName(actionName) {
       properties.commands = arrayType(stringEnum(commandNames))
       break;
     case "copy":
-      properties.target = stringEnum(['auto','comment','comments','excerpt','excerptOCR','menu','notesText','noteId','noteURL','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown','selectionText','selectionImage','title','chatAIOutput'])
+      properties.target = stringEnum(['auto','comment','textComments','excerpt','excerptOCR','menu','notesText','noteId','noteURL','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown','selectionText','selectionImage','title','chatAIOutput'])
       properties.index = numberEnum([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60])
       properties.content = stringType()
       break;
@@ -499,6 +505,7 @@ function getSchemaByActionName(actionName) {
     case "mergeText":
       properties.target = stringEnum(['excerptText','title','newComment','clipboard'])
       properties.source = arrayType(stringType())
+      properties.range = stringEnum(['currentNotes','childNotes','descendantNotes'])
       break
     case "cloneAndMerge":
       properties.target = stringType()
@@ -540,6 +547,7 @@ function getSchemaByActionName(actionName) {
       properties.to = stringType()
       properties.reg = stringType()
       properties.steps = arrayType()
+      properties.range = stringEnum(['currentNotes','childNotes','descendantNotes'])
       break;
     case "showInFloatWindow":
       properties.noteURL = stringType()
@@ -560,12 +568,14 @@ function getSchemaByActionName(actionName) {
     case "setContent":
       properties.target = stringEnum(['title','excerpt','newComment'])
       properties.content = stringType()
-      properties.range = stringEnum(['currentNotes','childNotes','descendants'])
+      properties.range = stringEnum(['currentNotes','childNotes','descendantNotes'])
       break;
     case "clearContent":
-      properties.target = stringEnum(['title','excerptText','comments'])
+      properties.target = stringEnum(['title','excerptText','comments','excerptTextAndComments'])
       properties.type = commentType()
       properties.allowDeleteNote = booleanType()
+      properties.index = numberType()
+      properties.range = stringEnum(['currentNotes','childNotes','descendantNotes'])
       break;
     case "openURL":
       properties.url = stringType()
@@ -624,6 +634,14 @@ function getSchemaByActionName(actionName) {
     case "moveNote":
       properties.mainMindMap = booleanType()
       properties.noteURL = stringType()
+      break;
+    case "toggleMarkdown":
+      properties.targetMode = stringEnum(["toggle","disable","enable"])
+      properties.range = stringEnum(['currentNotes','childNotes','descendantNotes'])
+
+      break;
+    case "toggleTextFirst":
+      properties.range = stringEnum(['currentNotes','childNotes','descendantNotes'])
       break;
     case "noteHighlight":
       properties.color = numberEnum([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15])
@@ -1007,7 +1025,7 @@ function setSchemaByAction(action) {
               case 'linkType':
                 return ['Both','To','From'];
               case 'range':
-                return ['currentNotes','childNotes','descendants'];
+                return ['currentNotes','childNotes','descendantNotes'];
               case 'target':
                 return ['addonBar','appendTitle','appendExcerpt','auto','both','comment','comments','clipboard','currentNote','currentChildMap','currentPrompt','currentNoteInMindMap','clipboardText','chatMode','chatModeReference','doc','default','editor','excerpt','excerptText','excerptOCR','floatMindmap','menu','mindmap','mainMindMap','mindmapToolbar','newComment','notesText','noteId','noteURL','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown','noteInClipboard','openFloat','parentNote','selectionText','selectionImage','title'];
               case 'command':

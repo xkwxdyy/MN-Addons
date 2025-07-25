@@ -557,12 +557,20 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   configPasteTapped: async function (params) {
     // MNUtil.copy(self.selectedItem)
     let selected = self.selectedItem
-    if (!toolbarConfig.checkCouldSave(selected)) {
+    if (!self.checkCouldSave()) {
       return
     }
     try {
     let input = MNUtil.clipboardText
-    if (selected === "execute" || MNUtil.isValidJSON(input)) {
+    if (MNUtil.isValidJSON(input)) {
+      if (toolbarConfig.builtinActionKeys.includes(self.selectedItem)) {
+        let oldConfig = toolbarConfig.getDescriptionById(self.selectedItem)
+        // MNUtil.copy(oldConfig)
+        if (oldConfig.action !== input.action) {
+          MNUtil.showHUD("Only supports acton: "+oldConfig.action)
+          return
+        }
+      }
       if (!toolbarConfig.actions[selected]) {
         toolbarConfig.actions[selected] = toolbarConfig.getAction(selected)
       }
@@ -584,7 +592,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
           toolbarConfig.showEditorOnNoteEdit = config.showOnNoteEdit
         }
       }
-      self.setWebviewContent(input)
+      self.updateWebviewContent(input)
     }else{
       MNUtil.showHUD("Invalid JSON format: "+input)
       MNUtil.copy("Invalid JSON format: "+input)
@@ -736,6 +744,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       //   {title:"🔄  Reset icon", object:self, selector:'resetIcon:',param:selected}
       // ]
       menu.addMenuItem("🔗  Copy URL", 'copyActionURL:', selected)
+      menu.addMenuItem("📤  Share Config", 'shareActionURL:', selected)
       menu.show()
       // self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,300,1)
       return
@@ -805,10 +814,21 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     }
     // MNUtil.copy(userSelect)
   },
-  copyActionURL:function (buttonName) {
+  copyActionURL:function (actionKey) {
     Menu.dismissCurrentMenu()
-    let url = "marginnote4app://addon/mntoolbar?action="+buttonName
+    let url = "marginnote4app://addon/mntoolbar?action="+actionKey
     MNUtil.copy(url)
+    MNUtil.showHUD("✅ Action URL copied to clipboard")
+  },
+  shareActionURL:function (actionKey) {
+    Menu.dismissCurrentMenu()
+    let des = toolbarConfig.getDescriptionById(actionKey)
+    // MNUtil.copy(des)
+    let url = "marginnote4app://addon/mntoolbar?config="+encodeURIComponent(JSON.stringify(des))
+    MNUtil.copy(url)
+    MNUtil.showHUD("✅ Share URL copied to clipboard")
+    // MNUtil.shareText(url, "Share "+des.name+" config")
+    // let shareText = "Share "+buttonName+" config"
   },
   changeIconFromPhoto:function (buttonName) {
     self.checkPopoverController()
@@ -1558,7 +1578,7 @@ try {
 
   this.createButton("moveUpButton","moveForwardTapped:","configView")
   this.moveUpButton.layer.opacity = 1.0
-  MNButton.setTitle(this.moveUpButton, "🔽",20)
+  MNButton.setTitle(this.moveUpButton, "🔼",20)
 
   this.moveUpButton.width = 33
   this.moveUpButton.height = 33
@@ -1817,6 +1837,7 @@ settingController.prototype.show = function (frame) {
       this.view.layer.opacity = 1.0
       this.showAllButton()
       this.settingView.hidden = false
+      toolbarUtils.settingViewOpened = true
   })
     } catch (error) {
       MNUtil.showHUD(error)
@@ -1844,23 +1865,16 @@ settingController.prototype.hide = function (frame) {
   let preCustom = this.custom
   this.hideAllButton()
   this.custom = false
-  UIView.animateWithDurationAnimationsCompletion(0.25,()=>{
+  MNUtil.animate(()=>{
     this.view.layer.opacity = 0.2
-    // if (frame) {
-    //   this.view.frame = frame
-    //   this.currentFrame = frame
-    // }
-    // this.view.frame = {x:preFrame.x+preFrame.width*0.1,y:preFrame.y+preFrame.height*0.1,width:preFrame.width*0.8,height:preFrame.height*0.8}
-    // this.currentFrame = {x:preFrame.x+preFrame.width*0.1,y:preFrame.y+preFrame.height*0.1,width:preFrame.width*0.8,height:preFrame.height*0.8}
-  },
-  ()=>{
+  }).then(()=>{
     this.view.hidden = true;
     this.view.layer.opacity = preOpacity      
     this.view.frame = preFrame
     this.currentFrame = preFrame
     this.custom = preCustom
-    // this.view.frame = preFrame
-    // this.currentFrame = preFrame
+    toolbarUtils.settingViewOpened = false
+  
   })
 }
 
@@ -2002,12 +2016,14 @@ settingController.prototype.loadWebviewContent = function () {
  */
 settingController.prototype.setWebviewContent = function (content) {
   if (typeof content === "object") {
+    // MNUtil.copy(`setContent('${encodeURIComponent(JSON.stringify(content))}')`)
     this.runJavaScript(`setContent('${encodeURIComponent(JSON.stringify(content))}')`)
     return
   }
   if (!MNUtil.isValidJSON(content)) {
     content = "{}"
   }
+  // MNUtil.copy(`setContent('${encodeURIComponent(content)}')`)
   this.runJavaScript(`setContent('${encodeURIComponent(content)}')`)
 }
 /**
@@ -2083,6 +2099,35 @@ settingController.prototype.tableItem = function (title,selector,param = "",chec
  */
 settingController.prototype.showHUD = function (title,duration = 1.5,view = this.view) {
   MNUtil.showHUD(title,duration,view)
+}
+settingController.prototype.checkCouldSave = function () {
+  let selected = this.selectedItem
+  let res = toolbarConfig.checkCouldSave(selected)
+  return res
+}
+/**
+ * @this {settingController}
+ * @param {object} config 
+ */
+settingController.prototype.importFromShareURL = async function (config) {
+  if (!this.checkCouldSave()) {
+    return
+  }
+  if (toolbarConfig.builtinActionKeys.includes(this.selectedItem)) {
+    let oldConfig = toolbarConfig.getDescriptionById(this.selectedItem)
+    // MNUtil.copy(oldConfig)
+    if (oldConfig.action !== config.action) {
+      MNUtil.showHUD("Only supports acton: "+oldConfig.action)
+      return
+    }
+  }
+
+  let confirm = await MNUtil.confirm("MN Toolbar", "Replace current config with below config\n\n将替换当前配置为下面的配置\n\n"+JSON.stringify(config,null,2))
+  if (confirm) {
+    this.updateWebviewContent(config)
+    MNUtil.showHUD("✅ Replaced current config")
+    return
+  }
 }
 /**
  * 

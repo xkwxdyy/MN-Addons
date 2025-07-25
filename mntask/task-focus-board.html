@@ -6543,7 +6543,7 @@
                         <div class="recent-progress">
                             <div class="recent-progress-header">
                                 <span>📝 最近进展</span>
-                                <span class="recent-progress-time">${formatProgressTime(task.fields.progressLog[task.fields.progressLog.length - 1].date)}</span>
+                                <span class="recent-progress-time">${formatProgressTimeRelative(task.fields.progressLog[task.fields.progressLog.length - 1].date)}</span>
                             </div>
                             <div class="recent-progress-content">
                                 ${task.fields.progressLog[task.fields.progressLog.length - 1].note}
@@ -7624,10 +7624,26 @@
                     task.fields.progressLog = [];
                 }
                 
-                task.fields.progressLog.push({
+                const newProgress = {
                     date: new Date().toLocaleString('zh-CN'),
                     note: note.trim()
-                });
+                };
+                
+                task.fields.progressLog.push(newProgress);
+                
+                // 同步进展数据到原生端
+                if (window.TaskSync && window.TaskSync.sendTaskUpdate) {
+                    // 将进展数据转换回原生格式
+                    const progressesForSync = task.fields.progressLog.map(p => {
+                        // 根据原生端期望的格式转换
+                        return `${p.date}: ${p.note}`;
+                    });
+                    
+                    TaskSync.sendTaskUpdate(taskId, {
+                        progresses: progressesForSync
+                    });
+                    console.log('📤 进展数据已同步到原生端');
+                }
                 
                 // 根据当前视图刷新对应内容
                 if (currentView === 'focus') {
@@ -7795,8 +7811,8 @@
            📝 时间轴进展记录显示功能
            ======================================== */
 
-        // 格式化进展时间显示
-        function formatProgressTime(dateStr) {
+        // 格式化进展时间显示（绝对时间格式）
+        function formatProgressTimeAbsolute(dateStr) {
             const progressDate = new Date(dateStr);
             const now = new Date();
             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -7843,8 +7859,8 @@
                     ${recentProgress.map((progress, index) => `
                         <div class="progress-item ${index === 0 ? 'latest' : 'history'}">
                             ${index === 0 ? 
-                                `${formatProgressTime(progress.date)}: ${progress.note}` :
-                                `｜- ${formatProgressTime(progress.date)} ${progress.note}`
+                                `${formatProgressTimeAbsolute(progress.date)}: ${progress.note}` :
+                                `｜- ${formatProgressTimeAbsolute(progress.date)} ${progress.note}`
                             }
                         </div>
                     `).join('')}
@@ -8848,8 +8864,8 @@
             return hours > 0 ? `${days}天${hours}小时` : `${days}天`;
         }
         
-        // 格式化进展时间
-        function formatProgressTime(dateStr) {
+        // 格式化进展时间（相对时间格式）
+        function formatProgressTimeRelative(dateStr) {
             if (!dateStr) return '';
             
             const date = new Date(dateStr);
@@ -9648,8 +9664,13 @@
         // 获取时间冲突任务功能已移除 - 系统不再考虑时间安排
         
         function showInMindMap(taskId) {
+            console.log('🔍 [showInMindMap] 被调用，taskId:', taskId);
             const task = tasks.find(t => t.id === taskId);
-            if (!task) return;
+            if (!task) {
+                console.error('❌ [showInMindMap] 找不到任务:', taskId);
+                return;
+            }
+            console.log('✅ [showInMindMap] 找到任务:', task);
             
             // 保存当前查看的任务ID
             window.currentDetailTaskId = taskId;
@@ -9725,7 +9746,14 @@
             `;
             
             // 显示模态框
-            document.getElementById('taskDetailModal').classList.add('active');
+            console.log('🎯 [showInMindMap] 准备显示模态框');
+            const modal = document.getElementById('taskDetailModal');
+            if (!modal) {
+                console.error('❌ [showInMindMap] 找不到 taskDetailModal 元素');
+                return;
+            }
+            modal.classList.add('active');
+            console.log('✅ [showInMindMap] 模态框已添加 active 类');
         }
         
         // 从详情模态框切换任务状态
@@ -9861,6 +9889,15 @@
                     if (newValue !== task.launchLink) {
                         task.launchLink = newValue;
                         element.textContent = newValue || '未设置';
+                        
+                        // 同步启动链接到原生端
+                        if (window.TaskSync && window.TaskSync.sendTaskUpdate) {
+                            TaskSync.sendTaskUpdate(taskId, {
+                                launchLink: newValue
+                            });
+                            console.log('📤 启动链接已同步到原生端');
+                        }
+                        
                         showNotification('启动链接已更新', 'success');
                     } else {
                         element.innerHTML = element._originalContent;
@@ -12725,9 +12762,23 @@
             
             // 检查 TaskSync 是否可用
             if (window.TaskSync && window.TaskSync.requestSync) {
-                // 请求同步数据
-                TaskSync.requestSync();
-                console.log('📤 已发送数据刷新请求');
+                // ========== 性能优化：手动刷新时强制清除缓存 ==========
+                // 传递 forceRefresh 参数，让原生端知道需要强制刷新
+                if (mnTaskBridge && mnTaskBridge.ready) {
+                    mnTaskBridge.send('syncTasks', { forceRefresh: true })
+                        .then(response => {
+                            console.log('✅ 通过 MNTaskBridge 请求强制刷新成功:', response);
+                        })
+                        .catch(error => {
+                            console.error('❌ MNTaskBridge 请求同步失败:', error);
+                            // 降级到原有方案
+                            window.location.href = 'mntask://syncTasks?forceRefresh=true';
+                        });
+                } else {
+                    // 使用原有的 URL Scheme 方案，带上 forceRefresh 参数
+                    window.location.href = 'mntask://syncTasks?forceRefresh=true';
+                }
+                console.log('📤 已发送强制刷新请求');
             } else {
                 console.error('❌ TaskSync 未定义或 requestSync 方法不存在');
                 showNotification('刷新失败：TaskSync 未就绪', 'error');
@@ -13978,6 +14029,53 @@
             }
             
             /**
+             * 转换进展数据格式
+             * @param {Array} progresses - 原生进展数据
+             * @returns {Array} UI 格式的进展数据
+             */
+            static convertProgressData(progresses) {
+                if (!progresses || !Array.isArray(progresses)) {
+                    return [];
+                }
+                
+                return progresses.map(progress => {
+                    // 如果已经是正确格式，直接返回
+                    if (progress.date && progress.note) {
+                        return progress;
+                    }
+                    
+                    // 尝试解析不同格式的进展数据
+                    if (typeof progress === 'string') {
+                        // 假设字符串格式为 "时间: 内容" 或直接是内容
+                        const parts = progress.split(/[:：]/);
+                        if (parts.length >= 2) {
+                            return {
+                                date: parts[0].trim(),
+                                note: parts.slice(1).join(':').trim()
+                            };
+                        } else {
+                            return {
+                                date: new Date().toLocaleString('zh-CN'),
+                                note: progress
+                            };
+                        }
+                    } else if (typeof progress === 'object') {
+                        // 尝试从对象中提取时间和内容
+                        return {
+                            date: progress.time || progress.timestamp || progress.date || new Date().toLocaleString('zh-CN'),
+                            note: progress.content || progress.note || progress.text || JSON.stringify(progress)
+                        };
+                    }
+                    
+                    // 默认处理
+                    return {
+                        date: new Date().toLocaleString('zh-CN'),
+                        note: String(progress)
+                    };
+                });
+            }
+            
+            /**
              * 将原生数据格式转换为 UI 格式
              * @param {Object} taskData - 原生任务数据
              * @returns {Object} UI 格式的任务对象
@@ -14052,7 +14150,7 @@
                     // fields 对象存储任务的字段数据
                     fields: {
                         priority: taskData.priority || '低',  // 保持中文格式的优先级
-                        progressLog: taskData.progresses || []
+                        progressLog: this.convertProgressData(taskData.progresses)
                     },
                     // 保存原始数据用于同步
                     _originalData: taskData

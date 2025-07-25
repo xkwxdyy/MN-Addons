@@ -4,6 +4,43 @@
 > “看板里任务卡片”默认指的是“task-focus-board.html”文件中的任务卡片
 > 如果需要查看以前的版本，可以解压以前的版本的 `.mnaddon` 后缀的文件，用 `mnaddon4 unpack <path>` 解压。
 
+## “计划”视图
+
+### “焦点任务回顾”
+
+- “添加进展”按钮点击后弹出输入框，但是几个按钮，比如“保存”和“取消”点击全都没反应！ultrathink
+
+
+---
+请完整自查“task-focus-board.html”在插件里加载，显示与交互的代码。看看有没有什么问题，注意之后主要在 iPad 上使用，要确保 iPad 和 mac 上都正常运行。ultrathink
+
+---
+1. “task-focus-board.html”的 “计划”视图的“全部任务筛选” 中没有显示任务路径！
+2. “task-focus-board.html”的“计划”视图和“看板”视图里的任务本来设计起来是点击之后弹出任务详情的，现在没有了
+3. “task-focus-board.html”的“计划”视图和“看板”视图里的任务增加一个按钮是能定位到这个任务对应的卡片：很简单的，这个任务对应的ID 就是卡片 id，用 MNNote.new(id).focusInMindMap() 就能定位到卡片了。ultrathink
+
+
+
+---
+information.log 已更新。看板现在最大的问题是只显示了软件内几个看板下方的“子卡片”而非“子孙卡片”.
+但是请你仔细读 information.log 的部分，其实子孙卡片都被解析了，比如
+```
+【项目 >> 开发 MarginNote 插件｜进行中】开发 MNUtils 插件
+```
+为标题的卡片是
+```
+【项目｜进行中】开发 MarginNote 插件
+```
+的子卡片，但是
+```
+【项目 >> 开发 MarginNote 插件｜进行中】开发 MNUtils 插件
+```
+卡片并没有显示在 html 看板中！请仔细检查问题并修复！ ultrathink
+
+
+
+
+---
 information.log 已更新。你之前的修改我已经 git stage 了。
 1. 目前 task-focus-board.html 最大的问题是：识别的任务卡片的数据无法在 task-focus-board.html 中显示出来！你可以仔细看看 v0_10_2 的版本（虽然那个版本的 html 不同，但你可以学习数据读取），以及学习 MN Browser 插件数据读取和显示逻辑。
 2. MNTask 插件里的软件里看板的 “Task Board” 视图里除了“根目录看板”的三个按钮，其它看板的全都点击无效！！！请仔细看根目录为什么可行，其它的为什么不行，然后修复！以前也是统一用 createBoardBinding 的！你可以看看 v0_10_2 甚至更前面的版本，看看问题在哪？ ultrathink

@@ -3906,9 +3906,9 @@ taskSettingController.prototype.handleTodayBoardProtocol = function(url) {
         }
         break
         
-      case 'viewTaskDetail':
+      case 'showInMindMap':
         if (params.taskId) {
-          this.viewTaskDetail(params.taskId)
+          this.showInMindMap(params.taskId)
         }
         break
         
@@ -5230,9 +5230,9 @@ taskSettingController.prototype.updateTaskStatus = function(taskId) {
 
 
 /**
- * 查看任务详情
+ * 在主脑图中定位卡片
  */
-taskSettingController.prototype.viewTaskDetail = function(taskId) {
+taskSettingController.prototype.showInMindMap = function(taskId) {
   try {
     const task = MNNote.new(taskId)
     if (!task) {
@@ -5240,10 +5240,10 @@ taskSettingController.prototype.viewTaskDetail = function(taskId) {
       return
     }
     
-    task.focusInFloatMindMap(0.5)
+    task.focusInMindMap(0.5)
     this.hide()
   } catch (error) {
-    taskUtils.addErrorLog(error, "viewTaskDetail")
+    taskUtils.addErrorLog(error, "showInMindMap")
   }
 }
 

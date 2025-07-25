@@ -6211,18 +6211,13 @@
         // 定位到任务卡片
         function focusTaskInMindMap(taskId) {
             try {
-                // 使用 MNNote API 定位到卡片
-                const note = MNNote.new(taskId);
-                if (note) {
-                    note.focusInMindMap();
-                    showNotification('已定位到卡片', 'success');
-                    // 关闭任务详情模态框
-                    const modal = document.getElementById('taskDetailModal');
-                    if (modal && modal.classList.contains('active')) {
-                        closeModal('taskDetailModal');
-                    }
-                } else {
-                    showNotification('找不到对应的卡片', 'error');
+                // 通过 URL Scheme 调用插件原生代码
+                window.location.href = `mntask://showInMindMap?taskId=${encodeURIComponent(taskId)}`;
+                
+                // 关闭任务详情模态框（如果打开的话）
+                const modal = document.getElementById('taskDetailModal');
+                if (modal && modal.classList.contains('active')) {
+                    closeModal('taskDetailModal');
                 }
             } catch (error) {
                 console.error('定位卡片失败:', error);
@@ -6500,7 +6495,7 @@
                      ondragleave="handleDragLeave(event)"
                      ondrop="handleDrop(event)"
                      ondragend="handleDragEnd(event)"
-                     onclick="viewTaskDetail('${task.id}')"
+                     onclick="showInMindMap('${task.id}')"
                      style="cursor: pointer;">
                     <div class="drag-handle" title="拖拽排序">⋮⋮</div>
                     <button class="focus-task-remove" onclick="removeFromFocus(event, '${task.id}')" title="从焦点移除">
@@ -6616,7 +6611,7 @@
                      ondragleave="handlePendingDragLeave(event)"
                      ondrop="handlePendingDrop(event)"
                      ondragend="handlePendingDragEnd(event)"
-                     onclick="viewTaskDetail('${task.id}')" 
+                     onclick="showInMindMap('${task.id}')" 
                      style="cursor: pointer; position: relative;">
                     <div class="drag-handle" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 16px; color: var(--text-muted); cursor: grab; opacity: 0; transition: opacity 0.2s;" title="拖拽排序">⋮⋮</div>
                     ${index > 0 ? `<button class="pending-task-pin" onclick="event.stopPropagation(); pinToTopPending('${task.id}')" title="置顶">⬆️</button>` : ''}
@@ -7169,7 +7164,7 @@
                         <div class="timeline-group-label">同一时间的任务</div>
                         <div class="timeline-group-tasks">
                             ${group.tasks.map(task => `
-                                <div class="timeline-content timeline-content-grouped" onclick="viewTaskDetail('${task.id}')">
+                                <div class="timeline-content timeline-content-grouped" onclick="showInMindMap('${task.id}')">
                                     <div style="display: flex; justify-content: space-between; align-items: center;">
                                         <span class="task-type-badge ${task.type.toLowerCase()} text-small">
                                             ${getTaskTypeIcon(task.type)} ${task.type}
@@ -7268,7 +7263,7 @@
                         <div class="timeline-main-content">
                             <!-- 任务头部：信息 + 操作按钮 -->
                             <div class="timeline-header">
-                                <div class="task-info" onclick="viewTaskDetail('${task.id}')">
+                                <div class="task-info" onclick="showInMindMap('${task.id}')">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-xs);">
                                         <span class="task-type-badge ${task.type.toLowerCase()} text-small">
                                             ${getTaskTypeIcon(task.type)} ${task.type}
@@ -9652,7 +9647,7 @@
         // 查看任务详情
         // 获取时间冲突任务功能已移除 - 系统不再考虑时间安排
         
-        function viewTaskDetail(taskId) {
+        function showInMindMap(taskId) {
             const task = tasks.find(t => t.id === taskId);
             if (!task) return;
             
@@ -9747,7 +9742,7 @@
         // 处理看板任务卡片点击
         function handleBoardTaskClick(event, taskId) {
             // 直接打开任务详情
-            viewTaskDetail(taskId);
+            showInMindMap(taskId);
         }
 
         /* ========================================
@@ -9924,7 +9919,7 @@
                          data-task-status="${project.status}"
                          ondragstart="handleProjectDragStart(event)"
                          ondragend="handleProjectDragEnd(event)"
-                         onclick="viewTaskDetail('${project.id}')">
+                         onclick="showInMindMap('${project.id}')">
                         ${isSubProject ? '<div class="sub-project-indicator"></div>' : ''}
                         <div class="board-card-header">
                             <span class="priority-badge ${project.fields.priority.toLowerCase()}">
@@ -10381,7 +10376,7 @@
                                     </thead>
                                     <tbody>
                                         ${typeTasks.map(task => `
-                                            <tr class="task-list-row" onclick="viewTaskDetail('${task.id}')">
+                                            <tr class="task-list-row" onclick="showInMindMap('${task.id}')">
                                                 <td class="task-title">
                                                     ${task.title}
                                                     ${task.path ? `<div style="font-size: 0.85em; color: var(--text-muted); opacity: 0.7;">📍 ${task.path}</div>` : ''}
@@ -10707,7 +10702,7 @@
                     <div class="gantt-body">
                         <div class="gantt-task-list">
                             ${tasksWithDates.map((task, index) => `
-                                <div class="gantt-task-item" onclick="viewTaskDetail('${task.id}')">
+                                <div class="gantt-task-item" onclick="showInMindMap('${task.id}')">
                                     <span class="gantt-task-type">${getTaskTypeIcon(task.type)}</span>
                                     <span class="gantt-task-title">${task.title}</span>
                                     <span class="gantt-task-status">${getStatusIcon(task.status)}</span>
@@ -10830,7 +10825,7 @@
             return `
                 <div class="gantt-bar ${barClass}" 
                      style="top: ${index * 40 + 5}px; left: ${left}px; width: ${width}px;"
-                     onclick="viewTaskDetail('${task.id}')"
+                     onclick="showInMindMap('${task.id}')"
                      title="${task.title}">
                     <div class="gantt-bar-progress" style="width: ${progressWidth}px;"></div>
                     <div class="gantt-bar-text">${task.title}</div>
@@ -10943,7 +10938,7 @@
                             : 0;
                         
                         return `
-                            <div class="goal-card" data-goal-id="${goal.id}" onclick="viewTaskDetail('${goal.id}')" style="cursor: pointer;">
+                            <div class="goal-card" data-goal-id="${goal.id}" onclick="showInMindMap('${goal.id}')" style="cursor: pointer;">
                                 <div class="goal-header">
                                     <h3 class="goal-title">
                                         ${getTaskTypeIcon('目标')} ${goal.title}
@@ -10961,7 +10956,7 @@
                                 <div class="key-results">
                                     <h4 class="key-results-title">关键结果</h4>
                                     ${goalKeyResults.length > 0 ? goalKeyResults.map(kr => `
-                                        <div class="key-result-item" onclick="event.stopPropagation(); viewTaskDetail('${kr.id}')">
+                                        <div class="key-result-item" onclick="event.stopPropagation(); showInMindMap('${kr.id}')">
                                             <div class="key-result-header">
                                                 <span class="key-result-title">${kr.title}</span>
                                                 <span class="key-result-progress">${kr.fields.progress || 0}%</span>
@@ -11889,7 +11884,7 @@
             }
             
             container.innerHTML = filteredTasks.map(task => `
-                <div class="timeline-task-item" onclick="viewTaskDetail('${task.id}')">
+                <div class="timeline-task-item" onclick="showInMindMap('${task.id}')">
                     <div class="task-content">
                         <div class="task-title">
                             ${task.title}
@@ -12697,7 +12692,7 @@
             closeModal('globalSearchModal');
             
             // 查看任务详情
-            viewTaskDetail(taskId);
+            showInMindMap(taskId);
         }
         
         // 获取状态颜色
@@ -12834,7 +12829,7 @@
                     const progressCount = task.fields.progressLog ? task.fields.progressLog.length : 0;
                     return `
                         <div class="reflection-task-item" style="position: relative;">
-                            <div onclick="viewTaskDetail('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                            <div onclick="showInMindMap('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
                                 <div class="task-status-icon">${getStatusIcon(task.status)}</div>
                                 <div class="task-info">
                                     <div class="task-title">${task.title}</div>
@@ -12866,7 +12861,7 @@
                     const progressCount = task.fields.progressLog ? task.fields.progressLog.length : 0;
                     return `
                         <div class="reflection-task-item" style="position: relative;">
-                            <div onclick="viewTaskDetail('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                            <div onclick="showInMindMap('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
                                 <div class="task-status-icon">${getStatusIcon(task.status)}</div>
                                 <div class="task-info">
                                     <div class="task-title">${task.title}</div>
@@ -12896,7 +12891,7 @@
                     const progressCount = task.fields.progressLog ? task.fields.progressLog.length : 0;
                     return `
                         <div class="reflection-task-item" style="position: relative;">
-                            <div onclick="viewTaskDetail('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                            <div onclick="showInMindMap('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
                                 <div class="task-status-icon">${getStatusIcon(task.status)}</div>
                                 <div class="task-info">
                                     <div class="task-title">${task.title}</div>
@@ -12926,7 +12921,7 @@
                     const progressCount = task.fields.progressLog ? task.fields.progressLog.length : 0;
                     return `
                         <div class="reflection-task-item" style="position: relative;">
-                            <div onclick="viewTaskDetail('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                            <div onclick="showInMindMap('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
                                 <div class="task-status-icon">${getStatusIcon(task.status)}</div>
                                 <div class="task-info">
                                     <div class="task-title">${task.title}</div>
@@ -12984,7 +12979,7 @@
                 <div class="pending-tasks-list" style="margin-top: 15px;">
                     ${pendingTasksArray.length === 0 ? '<p class="empty-state">没有待处理任务</p>' : 
                       pendingTasksArray.slice(0, 5).map(task => `
-                        <div class="reflection-task-item" onclick="viewTaskDetail('${task.id}')" style="margin-bottom: 8px;">
+                        <div class="reflection-task-item" onclick="showInMindMap('${task.id}')" style="margin-bottom: 8px;">
                             <div class="task-status-icon">${getStatusIcon(task.status)}</div>
                             <div class="task-info">
                                 <div class="task-title">${task.title}</div>
@@ -13045,7 +13040,7 @@
                                     ` : ''}
                                     
                                     <div class="task-content" style="background: var(--bg-card); padding: 10px; border-radius: 8px; border: 1px solid var(--glass-border);">
-                                        <div onclick="viewTaskDetail('${task.id}')" style="cursor: pointer;">
+                                        <div onclick="showInMindMap('${task.id}')" style="cursor: pointer;">
                                             <div style="display: flex; align-items: center; justify-content: space-between;">
                                                 <div style="flex: 1;">
                                                     <div class="task-title" style="font-weight: 500; margin-bottom: 4px;">${task.title}</div>
@@ -13171,7 +13166,7 @@
                             const parentProject = isProject ? null : tasks.find(t => t.id === task.fields.parentId && t.type === '项目');
                             
                             return `
-                            <div class="reflection-task-item tomorrow-task" onclick="viewTaskDetail('${task.id}')" style="margin-bottom: 10px;">
+                            <div class="reflection-task-item tomorrow-task" onclick="showInMindMap('${task.id}')" style="margin-bottom: 10px;">
                                 <div class="task-status-icon">${getTaskTypeIcon(task.type)}</div>
                                 <div class="task-info" style="flex: 1;">
                                     <div class="task-title">${task.title}</div>
@@ -13324,7 +13319,7 @@
                         </h5>
                         <div style="margin-left: 15px;">
                             ${typeTasks.map(task => `
-                                <div class="reflection-task-item" onclick="viewTaskDetail('${task.id}')" style="margin-bottom: 8px;">
+                                <div class="reflection-task-item" onclick="showInMindMap('${task.id}')" style="margin-bottom: 8px;">
                                     <div class="task-status-icon">${getStatusIcon(task.status)}</div>
                                     <div class="task-info" style="flex: 1;">
                                         <div class="task-title">

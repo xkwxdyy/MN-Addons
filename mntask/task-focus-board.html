@@ -6205,6 +6205,28 @@
             }
         }
         
+        // 定位到任务卡片
+        function focusTaskInMindMap(taskId) {
+            try {
+                // 使用 MNNote API 定位到卡片
+                const note = MNNote.new(taskId);
+                if (note) {
+                    note.focusInMindMap();
+                    showNotification('已定位到卡片', 'success');
+                    // 关闭任务详情模态框
+                    const modal = document.getElementById('taskDetailModal');
+                    if (modal && modal.classList.contains('active')) {
+                        closeModal('taskDetailModal');
+                    }
+                } else {
+                    showNotification('找不到对应的卡片', 'error');
+                }
+            } catch (error) {
+                console.error('定位卡片失败:', error);
+                showNotification('定位失败：' + error.message, 'error');
+            }
+        }
+        
         // 确认对话框
         function showConfirm(message, onConfirm, onCancel) {
             // 创建遮罩层
@@ -9698,7 +9720,11 @@
                     <button class="btn btn-primary" onclick="toggleTaskStatusFromDetail('${status}')">
                         ${getStatusIcon(status)} 设为${status}
                     </button>
-                `).join('');
+                `).join('') + `
+                <button class="btn btn-info" onclick="focusTaskInMindMap('${task.id}')">
+                    📍 定位到卡片
+                </button>
+            `;
             
             // 显示模态框
             document.getElementById('taskDetailModal').classList.add('active');
@@ -9717,14 +9743,8 @@
 
         // 处理看板任务卡片点击
         function handleBoardTaskClick(event, taskId) {
-            if (expandedTasksBoard.has(taskId)) {
-                // 已展开，打开详情
-                viewTaskDetail(taskId);
-            } else {
-                // 未展开，展开卡片
-                expandedTasksBoard.add(taskId);
-                renderBoardKanban();  // 修复函数名错误
-            }
+            // 直接打开任务详情
+            viewTaskDetail(taskId);
         }
 
         /* ========================================
@@ -10359,7 +10379,10 @@
                                     <tbody>
                                         ${typeTasks.map(task => `
                                             <tr class="task-list-row" onclick="viewTaskDetail('${task.id}')">
-                                                <td class="task-title">${task.title}</td>
+                                                <td class="task-title">
+                                                    ${task.title}
+                                                    ${task.path ? `<div style="font-size: 0.85em; color: var(--text-muted); opacity: 0.7;">📍 ${task.path}</div>` : ''}
+                                                </td>
                                                 <td><span class="status-badge ${task.status}">${getStatusIcon(task.status)} ${task.status}</span></td>
                                                 <td><span class="priority-badge ${task.fields.priority.toLowerCase()}">${getPriorityIcon(task.fields.priority)}</span></td>
                                                 <td>${task.fields.dueDate ? formatDate(task.fields.dueDate) : '-'}</td>
@@ -10492,16 +10515,15 @@
         
         // 渲染任务卡片（统一格式）
         function renderTaskCard(task) {
-            const isExpanded = expandedTasksBoard.has(task.id);
-            
             return `
-                <div class="board-card ${isExpanded ? 'expanded' : ''}" 
+                <div class="board-card" 
                      draggable="true"
                      data-task-id="${task.id}"
                      data-task-status="${task.status}"
                      ondragstart="handleBoardDragStart(event)"
                      ondragend="handleBoardDragEnd(event)"
-                     onclick="handleBoardTaskClick(event, '${task.id}')">
+                     onclick="handleBoardTaskClick(event, '${task.id}')"
+                     style="cursor: pointer;">
                     <div class="board-card-header">
                         <span class="type-icon">${getTaskTypeIcon(task.type)}</span>
                         <span class="priority-badge ${task.fields.priority.toLowerCase()}">
@@ -10511,11 +10533,6 @@
                     <h4 class="board-card-title">${task.title}</h4>
                     ${task.path ? `<div class="board-card-path" style="font-size: 0.85rem; color: var(--text-muted); opacity: 0.7; margin: 4px 0;">📍 ${task.path}</div>` : ''}
                     
-                    <div class="expand-indicator" style="position: absolute; right: 8px; bottom: 8px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.6;">
-                        ${isExpanded ? '▲' : '▼'}
-                    </div>
-                    
-                    ${isExpanded ? `
                     <div class="board-card-meta">
                         ${task.fields.dueDate ? `<span>📅 ${formatDate(task.fields.dueDate)}</span>` : ''}
                         ${task.fields.progress ? `<span>📊 ${task.fields.progress}%</span>` : ''}
@@ -10524,19 +10541,25 @@
                         <span class="task-type-badge">${task.type}</span>
                         ${getTaskActions(task)}
                     </div>
-                    ` : ''}
                 </div>
             `;
         }
         
         // 获取任务操作按钮
         function getTaskActions(task) {
+            let actions = '';
+            
+            // 状态操作按钮
             if (task.status === '未开始') {
-                return `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '进行中')">🚀 开始</button>`;
+                actions += `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '进行中')">🚀 开始</button>`;
             } else if (task.status === '进行中') {
-                return `<button class="btn btn-sm btn-success" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '已完成')">✅ 完成</button>`;
+                actions += `<button class="btn btn-sm btn-success" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '已完成')">✅ 完成</button>`;
             }
-            return '';
+            
+            // 定位按钮
+            actions += `<button class="btn btn-sm btn-info" onclick="event.stopPropagation(); focusTaskInMindMap('${task.id}')" title="定位到卡片">📍</button>`;
+            
+            return actions;
         }
         
         // 统一看板拖拽功能
@@ -11865,7 +11888,10 @@
             container.innerHTML = filteredTasks.map(task => `
                 <div class="timeline-task-item" onclick="viewTaskDetail('${task.id}')">
                     <div class="task-content">
-                        <div class="task-title">${task.title}</div>
+                        <div class="task-title">
+                            ${task.title}
+                            ${task.path ? `<div style="font-size: 0.85em; color: var(--text-muted); opacity: 0.7;">📍 ${task.path}</div>` : ''}
+                        </div>
                         <div class="task-meta">
                             <span class="task-type ${task.type.toLowerCase()}">${task.type}</span>
                             <span class="task-status ${task.status.toLowerCase()}">${task.status}</span>
@@ -12752,7 +12778,10 @@
                                 <div class="reflection-task-item" onclick="viewTaskDetail('${task.id}')" style="margin-bottom: 8px;">
                                     <div class="task-status-icon">${getStatusIcon(task.status)}</div>
                                     <div class="task-info" style="flex: 1;">
-                                        <div class="task-title">${task.title}</div>
+                                        <div class="task-title">
+                                            ${task.title}
+                                            ${task.path ? `<div style="font-size: 0.85em; color: var(--text-muted); opacity: 0.7; margin-top: 2px;">📍 ${task.path}</div>` : ''}
+                                        </div>
                                         <div class="task-meta">
                                             <span class="task-status ${task.status.toLowerCase()}">${task.status}</span>
                                             <span class="task-priority ${task.fields.priority.toLowerCase()}">${getPriorityIcon(task.fields.priority)} ${task.fields.priority}</span>

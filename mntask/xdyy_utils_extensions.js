@@ -7007,30 +7007,54 @@ class TaskDataExtractor {
     try {
       // 解析任务标题
       const titleInfo = MNTaskManager.parseTaskTitle(note.noteTitle)
-      if (!titleInfo || !titleInfo.type) {
-        // 不是任务卡片
-        return null
-      }
-      
-      MNUtil.log(`📝 转换任务: ${note.noteTitle}`)
       
       // 解析任务评论获取字段信息
       const parsedData = MNTaskManager.parseTaskComments(note)
       
-      // 构建任务元数据
+      // 如果标题解析失败，尝试从评论中识别任务类型
+      let taskType = titleInfo?.type
+      let taskStatus = titleInfo?.status || '未开始'
+      let taskContent = titleInfo?.content || note.noteTitle
+      let taskPath = titleInfo?.path || ''
+      
+      if (!taskType) {
+        // 检查是否有任务字段（信息、包含等）来判断是否是任务卡片
+        if (parsedData.info || parsedData.contains || parsedData.taskFields.length > 0) {
+          // 尝试从评论中识别任务类型
+          if (parsedData.contains) {
+            taskType = '项目'  // 有"包含"字段的通常是项目
+          } else if (note.childNotes && note.childNotes.length > 0) {
+            taskType = '目标'  // 有子卡片的可能是目标
+          } else {
+            taskType = '动作'  // 默认为动作
+          }
+          MNUtil.log(`⚠️ 从字段推断任务类型: ${taskType}`)
+        } else {
+          // 不是任务卡片
+          return null
+        }
+      }
+      
+      MNUtil.log(`📝 转换任务: ${note.noteTitle}`)
+      
+      // 构建任务元数据（与 testData.js 格式保持一致）
       const metadata = {
         id: note.noteId,
         url: `marginnote4app://note/${note.noteId}`,
-        type: this.normalizeTaskType(titleInfo.type),
-        titleContent: titleInfo.content || '',
-        titlePath: titleInfo.path || '',
-        status: titleInfo.status || '未开始',
+        type: taskType,  // 保持中文类型，不进行转换
+        title: taskContent,  // 使用 title 而非 titleContent
+        path: taskPath,  // 使用 path 而非 titlePath
+        status: taskStatus,
+        priority: '低',  // 默认优先级为低
         description: '',
         launchLink: '',
         parentTitle: '',
         parentURL: '',
         progresses: [],
-        including: []
+        including: [],
+        // 为了兼容性，同时保留原始字段名
+        titleContent: taskContent,
+        titlePath: taskPath
       }
       
       // 提取任务描述（第一个纯文本评论）
@@ -7054,10 +7078,16 @@ class TaskDataExtractor {
         
         // 提取进展信息
         metadata.progresses = this.extractProgresses(parsedData.fields)
+        
+        // 提取优先级信息
+        const priority = TaskFieldUtils.getFieldContent(note, '优先级')
+        if (priority) {
+          metadata.priority = priority
+        }
       }
       
       // 如果是项目或目标类型，递归提取子任务
-      if (titleInfo.type === '项目' || titleInfo.type === '目标') {
+      if (taskType === '项目' || taskType === '目标') {
         const childNotes = note.childNotes || []
         for (let i = 0; i < childNotes.length; i++) {
           try {
@@ -7070,6 +7100,24 @@ class TaskDataExtractor {
             MNUtil.log(`⚠️ 处理子任务 ${i} 时出错: ${error.message}`)
           }
         }
+      }
+      
+      // 数据验证日志
+      MNUtil.log(`✅ 任务元数据构建完成:`)
+      MNUtil.log(`  - ID: ${metadata.id}`)
+      MNUtil.log(`  - 类型: ${metadata.type}`)
+      MNUtil.log(`  - 标题: ${metadata.title}`)
+      MNUtil.log(`  - 状态: ${metadata.status}`)
+      MNUtil.log(`  - 优先级: ${metadata.priority}`)
+      MNUtil.log(`  - 路径: ${metadata.path || '(无)'}`)
+      MNUtil.log(`  - 子任务数: ${metadata.including.length}`)
+      
+      // 验证必要字段
+      if (!metadata.id || !metadata.type || !metadata.title) {
+        MNUtil.log(`⚠️ 任务数据缺少必要字段:`)
+        MNUtil.log(`  - ID: ${metadata.id ? '✓' : '✗'}`)
+        MNUtil.log(`  - 类型: ${metadata.type ? '✓' : '✗'}`)
+        MNUtil.log(`  - 标题: ${metadata.title ? '✓' : '✗'}`)
       }
       
       return metadata

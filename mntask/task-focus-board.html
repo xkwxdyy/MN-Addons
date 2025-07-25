@@ -13344,7 +13344,12 @@
                     'target': '🎯',
                     'keyresult': '📊',
                     'project': '📁',
-                    'action': '🔨'
+                    'action': '🔨',
+                    // 中文类型映射
+                    '目标': '🎯',
+                    '关键结果': '📊',
+                    '项目': '📁',
+                    '动作': '🔨'
                 };
                 
                 const statusMap = {
@@ -13354,23 +13359,30 @@
                     '暂停': 'pause'
                 };
                 
+                const priorityMap = {
+                    '高': 'high',
+                    '中': 'medium',
+                    '低': 'low'
+                };
+                
                 // 调试日志：显示原始数据
                 if (tasks.length < 5) { // 只显示前5个任务的详细信息
                     console.log(`🔍 转换任务数据:`, {
                         id: taskData.id,
                         type: taskData.type,
                         titleContent: taskData.titleContent,
-                        status: taskData.status
+                        status: taskData.status,
+                        priority: taskData.priority
                     });
                 }
                 
                 const convertedTask = {
                     id: taskData.id,
                     type: taskData.type,
-                    title: taskData.titleContent || '无标题',
-                    path: taskData.titlePath || '',
+                    title: taskData.title || taskData.titleContent || '无标题',  // 兼容两种字段名
+                    path: taskData.path || taskData.titlePath || '',  // 兼容两种字段名
                     status: statusMap[taskData.status] || 'todo',
-                    priority: taskData.priority || 'medium',
+                    priority: priorityMap[taskData.priority] || taskData.priority || 'low',
                     description: taskData.description || '',
                     launchLink: taskData.launchLink || '',
                     parentId: taskData.parentURL ? taskData.parentURL.split('/').pop() : null,
@@ -13386,6 +13398,11 @@
                     updatedDate: new Date().toISOString().split('T')[0],
                     tags: [],
                     notes: taskData.description || '',
+                    // fields 对象存储任务的字段数据
+                    fields: {
+                        priority: taskData.priority || '低',  // 保持中文格式的优先级
+                        progressLog: taskData.progresses || []
+                    },
                     // 保存原始数据用于同步
                     _originalData: taskData
                 };

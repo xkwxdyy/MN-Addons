@@ -748,7 +748,9 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     MNUtil.showHUD("Copy config")
     } catch (error) {
       // 使用 TaskLogManager 记录错误
-      TaskLogManager.error("复制配置失败", "SettingController", error)
+      if (typeof TaskLogManager !== 'undefined') {
+        TaskLogManager.error("复制配置失败", "SettingController", error)
+      }
       taskUtils.addErrorLog(error, "configCopyTapped", info)
     }
   },
@@ -2501,21 +2503,29 @@ taskSettingController.prototype.setTextview = function (name = this.selectedItem
 taskSettingController.prototype.focusBoard = function(boardKey) {
   MNUtil.log(`📍 focusBoard 被调用，boardKey: ${boardKey}`)
   // 记录聚焦看板操作
-  TaskLogManager.info(`聚焦看板: ${boardKey}`, "SettingController")
+  if (typeof TaskLogManager !== 'undefined') {
+    TaskLogManager.info(`聚焦看板: ${boardKey}`, "SettingController")
+  }
   
   let noteId = taskConfig.getBoardNoteId(boardKey)
   if (!noteId) {
-    TaskLogManager.warn(`看板未设置: ${boardKey}`, "SettingController")
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.warn(`看板未设置: ${boardKey}`, "SettingController")
+    }
     this.showHUD(`❌ 未设置${this.getBoardDisplayName(boardKey)}`)
     return
   }
   
   let note = MNNote.new(noteId)
   if (note) {
-    TaskLogManager.debug(`成功聚焦看板: ${boardKey}`, "SettingController", { noteId })
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.debug(`成功聚焦看板: ${boardKey}`, "SettingController", { noteId })
+    }
     note.focusInFloatMindMap()
   } else {
-    TaskLogManager.error(`看板卡片不存在: ${boardKey}`, "SettingController", { noteId })
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.error(`看板卡片不存在: ${boardKey}`, "SettingController", { noteId })
+    }
     this.showHUD("❌ 卡片不存在")
     // 清除无效的 ID
     taskConfig.clearBoardNoteId(boardKey)
@@ -2531,11 +2541,15 @@ taskSettingController.prototype.focusBoard = function(boardKey) {
 taskSettingController.prototype.clearBoard = async function(boardKey) {
   MNUtil.log(`🗑️ clearBoard 被调用，boardKey: ${boardKey}`)
   // 记录清除看板操作
-  TaskLogManager.info(`清除看板: ${boardKey}`, "SettingController")
+  if (typeof TaskLogManager !== 'undefined') {
+    TaskLogManager.info(`清除看板: ${boardKey}`, "SettingController")
+  }
   
   // 如果没有设置看板，直接返回
   if (!taskConfig.getBoardNoteId(boardKey)) {
-    TaskLogManager.warn(`看板未设置: ${boardKey}`, "SettingController")
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.warn(`看板未设置: ${boardKey}`, "SettingController")
+    }
     this.showHUD(`❌ 未设置${this.getBoardDisplayName(boardKey)}`)
     return
   }
@@ -2548,7 +2562,9 @@ taskSettingController.prototype.clearBoard = async function(boardKey) {
   )
   
   if (result === 1) {  // 用户点击了"清除"
-    TaskLogManager.info(`用户确认清除看板: ${boardKey}`, "SettingController")
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.info(`用户确认清除看板: ${boardKey}`, "SettingController")
+    }
     taskConfig.clearBoardNoteId(boardKey)
     this.updateBoardLabel(boardKey)
     this.showHUD(`✅ 已清除${this.getBoardDisplayName(boardKey)}`)
@@ -2570,11 +2586,15 @@ taskSettingController.prototype.clearBoard = async function(boardKey) {
 taskSettingController.prototype.pasteBoard = async function(boardKey) {
   MNUtil.log(`📋 pasteBoard 被调用，boardKey: ${boardKey}`)
   // 记录粘贴看板操作
-  TaskLogManager.info(`粘贴看板: ${boardKey}`, "SettingController")
+  if (typeof TaskLogManager !== 'undefined') {
+    TaskLogManager.info(`粘贴看板: ${boardKey}`, "SettingController")
+  }
   
   let noteId = MNUtil.clipboardText
   if (!noteId) {
-    TaskLogManager.warn("剪贴板为空", "SettingController")
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.warn("剪贴板为空", "SettingController")
+    }
     this.showHUD("剪贴板为空")
     return
   }
@@ -2582,7 +2602,9 @@ taskSettingController.prototype.pasteBoard = async function(boardKey) {
   // 验证卡片是否存在
   let note = MNNote.new(noteId)
   if (!note) {
-    TaskLogManager.error(`卡片不存在: ${noteId}`, "SettingController")
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.error(`卡片不存在: ${noteId}`, "SettingController")
+    }
     this.showHUD("❌ 卡片不存在")
     return
   }
@@ -2596,7 +2618,9 @@ taskSettingController.prototype.pasteBoard = async function(boardKey) {
     )
     
     if (result !== 1) {  // 用户取消了
-      TaskLogManager.info(`用户取消替换看板: ${boardKey}`, "SettingController")
+      if (typeof TaskLogManager !== 'undefined') {
+        TaskLogManager.info(`用户取消替换看板: ${boardKey}`, "SettingController")
+      }
       return
     }
   }
@@ -2606,10 +2630,12 @@ taskSettingController.prototype.pasteBoard = async function(boardKey) {
   taskConfig.saveBoardNoteId(boardKey, note.noteId)
   this.updateBoardLabel(boardKey)
   
-  TaskLogManager.info(`成功粘贴看板: ${boardKey}`, "SettingController", {
-    oldNoteId,
-    newNoteId: note.noteId
-  })
+  if (typeof TaskLogManager !== 'undefined') {
+    TaskLogManager.info(`成功粘贴看板: ${boardKey}`, "SettingController", {
+      oldNoteId,
+      newNoteId: note.noteId
+    })
+  }
   
   this.showHUD(`✅ 已保存${this.getBoardDisplayName(boardKey)}`)
   
@@ -3443,19 +3469,22 @@ taskSettingController.prototype.runJavaScriptInWebView = async function(script, 
       throw new Error(`WebView ${webViewName} not found`)
     }
     
-    // 使用 stringByEvaluatingJavaScriptFromString 进行同步执行（避免时序问题）
-    const result = this[webViewName].stringByEvaluatingJavaScriptFromString(script)
-    
-    // 处理返回值
-    if (!result || result === "") {
-      // 如果脚本包含 IIFE 包装，很可能执行成功但没有返回值
-      if (script.includes('(function()')) {
-        return 'success'
-      }
-      return undefined
-    }
-    
-    return result
+    // 使用 evaluateJavaScript 方法（与 MN Browser 保持一致）
+    return new Promise((resolve, reject) => {
+      this[webViewName].evaluateJavaScript(script, (result) => {
+        // 处理 NSNull
+        if (MNUtil.isNSNull(result)) {
+          // 如果脚本包含 IIFE 包装，很可能执行成功但没有返回值
+          if (script.includes('(function()')) {
+            resolve('success')
+          } else {
+            resolve(undefined)
+          }
+        } else {
+          resolve(result)
+        }
+      })
+    })
   } catch (error) {
     MNUtil.log(`❌ JavaScript 执行错误: ${error.message}`)
     throw error
@@ -3945,11 +3974,15 @@ taskSettingController.prototype.handleTodayBoardProtocol = function(url) {
 taskSettingController.prototype.handleUpdateTaskStatus = function(taskId) {
   try {
     // 记录开始更新任务状态
-    TaskLogManager.info("开始更新任务状态", "SettingController", { taskId })
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.info("开始更新任务状态", "SettingController", { taskId })
+    }
     MNUtil.log(`🔄 handleUpdateTaskStatus 被调用，taskId: ${taskId}`)
     
     if (!taskId) {
-      TaskLogManager.warn("任务ID为空", "SettingController")
+      if (typeof TaskLogManager !== 'undefined') {
+        TaskLogManager.warn("任务ID为空", "SettingController")
+      }
       MNUtil.log("❌ 任务ID为空，无法更新状态")
       MNUtil.showHUD("任务ID为空")
       return
@@ -3957,7 +3990,9 @@ taskSettingController.prototype.handleUpdateTaskStatus = function(taskId) {
     
     const task = MNNote.new(taskId)
     if (!task) {
-      TaskLogManager.error("任务不存在", "SettingController", { taskId })
+      if (typeof TaskLogManager !== 'undefined') {
+        TaskLogManager.error("任务不存在", "SettingController", { taskId })
+      }
       MNUtil.showHUD("任务不存在")
       return
     }
@@ -3972,11 +4007,13 @@ taskSettingController.prototype.handleUpdateTaskStatus = function(taskId) {
     
     // 获取新状态（用于日志记录）
     const newStatus = MNTaskManager.getNoteStatus(task)
-    TaskLogManager.info("任务状态已更新", "SettingController", { 
-      taskId, 
-      fromStatus: currentStatus, 
-      toStatus: newStatus 
-    })
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.info("任务状态已更新", "SettingController", { 
+        taskId, 
+        fromStatus: currentStatus, 
+        toStatus: newStatus 
+      })
+    }
     
     // 延迟刷新数据，确保状态已更新
     MNUtil.delay(0.3).then(() => {
@@ -3986,7 +4023,9 @@ taskSettingController.prototype.handleUpdateTaskStatus = function(taskId) {
     MNUtil.showHUD("状态已更新")
   } catch (error) {
     // 使用 TaskLogManager 记录错误
-    TaskLogManager.error("更新任务状态失败", "SettingController", error)
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.error("更新任务状态失败", "SettingController", error)
+    }
     taskUtils.addErrorLog(error, "handleUpdateTaskStatus")
     MNUtil.showHUD("更新状态失败")
   }
@@ -5080,15 +5119,17 @@ taskSettingController.prototype.diagnoseWebViewStatus = function() {
   MNUtil.log("=== 诊断完成 ===")
   
   // 将诊断信息也记录到 TaskLogManager
-  TaskLogManager.debug("WebView 状态诊断", "Diagnostics", {
-    todayBoardWebView: {
-      containerExists: !!this.todayBoardWebView,
-      instanceExists: !!this.todayBoardWebViewInstance,
-      initialized: this.todayBoardWebViewInitialized,
-      frame: this.todayBoardWebViewInstance?.frame
-    },
-    currentView: this.currentView
-  })
+  if (typeof TaskLogManager !== 'undefined') {
+    TaskLogManager.debug("WebView 状态诊断", "Diagnostics", {
+      todayBoardWebView: {
+        containerExists: !!this.todayBoardWebView,
+        instanceExists: !!this.todayBoardWebViewInstance,
+        initialized: this.todayBoardWebViewInitialized,
+        frame: this.todayBoardWebViewInstance?.frame
+      },
+      currentView: this.currentView
+    })
+  }
 }
 
 /**

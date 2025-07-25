@@ -6442,11 +6442,12 @@
         // 渲染焦点任务卡片
         function renderFocusTasks() {
             const container = document.getElementById('focusTaskContainer');
-            // 只显示动作类型的未完成焦点任务
+            // 只显示动作类型的未完成、未归档的焦点任务
             let focusTasksList = tasks.filter(task => 
                 focusTasks.has(task.id) && 
                 task.type === '动作' && 
-                task.status !== '已完成'
+                task.status !== '已完成' &&
+                task.status !== '已归档'
             );
             
             // 按照 focusTasksOrder 排序
@@ -6942,6 +6943,11 @@
             const timelineTasks = baseTasks.filter(task => {
                 // 只显示项目和动作类型的任务
                 if (task.type !== '项目' && task.type !== '动作') {
+                    return false;
+                }
+                
+                // 不显示已归档的任务
+                if (task.status === '已归档') {
                     return false;
                 }
                 
@@ -8759,7 +8765,8 @@
                 '未开始': '⏸',
                 '暂停': '⏯',
                 '进行中': '🚀',
-                '已完成': '✅'
+                '已完成': '✅',
+                '已归档': '📦'
             };
             return icons[status] || '❓';
         }
@@ -8881,8 +8888,23 @@
             // 更新侧边栏内容
             updateSidebar(viewName);
             
-            // 根据视图类型渲染内容
-            switch(viewName) {
+            // 特殊处理：今日视图需要初始化日期
+            if (viewName === 'today') {
+                // 重置为今天的日期
+                const now2 = new Date();
+                selectedTimelineDate = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate());
+                // 初始化日期选择器
+                const datePicker = document.getElementById('timelineDatePicker');
+                if (datePicker) {
+                    datePicker.value = formatDateToLocal(selectedTimelineDate);
+                }
+            }
+            
+            // 应用筛选器
+            applyFilters();
+            
+            // 根据视图类型渲染内容（注意：applyFilters 已经会调用相应的渲染函数，这里注释掉避免重复渲染）
+            /*switch(viewName) {
                 case 'focus':
                     renderFocusTasks();
                     renderPendingTasks();
@@ -8917,7 +8939,7 @@
                 case 'planning':
                     renderPlanningView();
                     break;
-            }
+            }*/
         }
 
         // 快速添加任务
@@ -9453,10 +9475,13 @@
         // 应用筛选
         function applyFilters() {
             // 更新全局 filteredTasks
+            console.log(`🔍 [applyFilters] 开始筛选，总任务数: ${tasks.length}, 当前视图: ${currentView}`);
+            
             filteredTasks = tasks.filter(task => {
-                // 特殊规则：在焦点视图中默认隐藏所有已完成的任务
-                // 如果没有显式设置状态筛选，且在焦点视图中，隐藏所有已完成任务
-                if (!activeFilters.status && currentView === 'focus' && task.status === '已完成') {
+                // 特殊规则：在焦点视图中默认隐藏已完成和已归档的任务
+                // 如果没有显式设置状态筛选，且在焦点视图中，隐藏已完成和已归档任务
+                if (!activeFilters.status && currentView === 'focus' && 
+                    (task.status === '已完成' || task.status === '已归档')) {
                     return false;
                 }
                 
@@ -9491,6 +9516,16 @@
                 return true;
             });
             
+            console.log(`✅ [applyFilters] 筛选完成，筛选后任务数: ${filteredTasks.length}`);
+            if (filteredTasks.length > 0) {
+                console.log(`📊 [applyFilters] 任务状态分布:`, 
+                    filteredTasks.reduce((acc, task) => {
+                        acc[task.status] = (acc[task.status] || 0) + 1;
+                        return acc;
+                    }, {})
+                );
+            }
+            
             // 根据当前视图渲染
             switch(currentView) {
                 case 'focus':
@@ -9516,6 +9551,21 @@
                             renderBoardGantt();
                             break;
                     }
+                    // 初始化项目下拉框和统计信息
+                    initializeBoardProjectFilter();
+                    updateBoardStats();
+                    break;
+                case 'project':
+                    renderProjectBoard();
+                    break;
+                case 'goal':
+                    renderGoalBoard();
+                    break;
+                case 'list':
+                    renderListView();
+                    break;
+                case 'planning':
+                    renderPlanningView();
                     break;
             }
             
@@ -13356,7 +13406,8 @@
                     '未开始': 'todo',
                     '进行中': 'doing',
                     '已完成': 'done',
-                    '暂停': 'pause'
+                    '暂停': 'pause',
+                    '已归档': 'archived'
                 };
                 
                 const priorityMap = {
@@ -13381,7 +13432,8 @@
                     type: taskData.type,
                     title: taskData.title || taskData.titleContent || '无标题',  // 兼容两种字段名
                     path: taskData.path || taskData.titlePath || '',  // 兼容两种字段名
-                    status: statusMap[taskData.status] || 'todo',
+                    status: taskData.status,  // 保持中文状态名，不进行转换
+                    statusEn: statusMap[taskData.status] || 'todo',  // 英文状态供内部逻辑使用
                     priority: priorityMap[taskData.priority] || taskData.priority || 'low',
                     description: taskData.description || '',
                     launchLink: taskData.launchLink || '',

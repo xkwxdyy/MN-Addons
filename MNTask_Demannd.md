@@ -1,3 +1,41 @@
+> 下面说的“看板”默认指“task-focus-board.html” 文件
+> 如果是软件里的“看板”，是指一些固定的卡片，作为看板的功能，来“存”卡片而已，本身并没有什么特别
+> “软件卡片”||“软件里任务卡片”指的是 MarginNote 里的任务类型的卡片
+> “看板里任务卡片”默认指的是“task-focus-board.html”文件中的任务卡片
+> 如果需要查看以前的版本，可以解压以前的版本的 `.mnaddon` 后缀的文件，用 `mnaddon4 unpack <path>` 解压。
+
+information.log 已更新。你之前的修改我已经 git stage 了。
+1. 目前 task-focus-board.html 最大的问题是：识别的任务卡片的数据无法在 task-focus-board.html 中显示出来！你可以仔细看看 v0_10_2 的版本（虽然那个版本的 html 不同，但你可以学习数据读取），以及学习 MN Browser 插件数据读取和显示逻辑。
+2. MNTask 插件里的软件里看板的 “Task Board” 视图里除了“根目录看板”的三个按钮，其它看板的全都点击无效！！！请仔细看根目录为什么可行，其它的为什么不行，然后修复！以前也是统一用 createBoardBinding 的！你可以看看 v0_10_2 甚至更前面的版本，看看问题在哪？ ultrathink
+
+
+
+### **任务目标**  
+
+开发插件看板的双向数据同步功能：实现软件里任务卡片数据 ↔ HTML任务卡片数据，并实现界面的实时交互（即软件卡片信息提取→转化为HTML元数据→HTML 中修改元数据后同步回原卡片），确保看板中任务卡片与软件中任务卡片内容的一致性。  
+
+
+### **核心参考**  
+
+请以 **MN Browser插件**（/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnbrowser） 的实现逻辑为主要学习对象，重点分析其如何完成：  
+1. 卡片原始数据 → HTML界面的信息传递（数据提取与转换）  
+2. HTML界面修改 → 卡片内容的反向同步（元数据解析与内容更新）  
+
+其余参考：卡片操作 API 看：mnutils/xdyyutils.js 和 mnutils/mnutils.js 中的相关函数实现。
+评论内容主要看 MNComment 类。
+
+之前你开发的行不通，现在“今日看板”功能打开了 task-focus-board.html，但里面依旧没有数据！ ultrathink
+
+
+---
+information.log 已更新。请再研读一下 MN Browser 关于 html 的显示和数据传输部分的内容！解决 MNTask 下面的问题：
+1. 严重问题：现在 setting 里的看板绑定视图“Task Board”按钮全都失效！
+2. 第一次打开 setting 时能正常显示 task-focus-board.html ，但是你怎么还是没懂啊？？我说了多少次啊，现在上面的视图切换按钮：Buttons，Dynamic，这些点击之后就回不到 task-focus-board.html 了！！！！！！！！在插件的菜单里单独加一个功能，就是打开 task-focus-board.html 的，然后视图切换按钮也要加一个点击能打开  task-focus-board.html 的，你初始化都能加载，怎么后面还加载不了了？？？ 
+3. 严重问题：task-focus-board.html 里没有任何任务，说明软件的看板里的任务并没有被成功解析过来！
+ultrathink
+
+
+---
 # 插件看板数据交互与卡片同步实现  
 > 下面说的“看板”默认指“task-focus-board.html” 文件
 > 如果是软件里的“看板”，是指一些固定的卡片，作为看板的功能，来“存”卡片而已，本身并没有什么特别

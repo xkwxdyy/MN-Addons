@@ -950,7 +950,9 @@ class MNTaskManager {
       contains: null,       // 包含字段
       progress: null,       // 进展字段
       launch: null,         // 启动字段
-      otherComments: []     // 其他评论
+      otherComments: [],    // 其他评论
+      plainTextComments: [], // 纯文本评论（用于提取描述）
+      fields: []            // 统一的字段数组（用于数据提取）
     }
     
     if (!note || !note.MNComments) return result
@@ -1078,6 +1080,90 @@ class MNTaskManager {
         result.otherComments.push({
           index: index,
           comment: comment
+        })
+        
+        // 如果是纯文本评论，添加到 plainTextComments
+        if ((commentType === 'textComment' || commentType === 'markdownComment') && text && !TaskFieldUtils.isTaskField(text)) {
+          result.plainTextComments.push({
+            index: index,
+            text: text,
+            comment: comment
+          })
+        }
+      }
+    })
+    
+    // 构建统一的 fields 数组，用于数据提取
+    let currentFieldName = null
+    let inProgressSection = false
+    
+    comments.forEach((comment, index) => {
+      if (!comment) return
+      
+      const text = comment.text || ''
+      const commentType = comment.type || ''
+      
+      // 处理任务字段
+      if (TaskFieldUtils.isTaskField(text)) {
+        const fieldName = TaskFieldUtils.extractFieldText(text)
+        currentFieldName = fieldName
+        
+        // 如果是"进展"字段，标记开始进展部分
+        if (fieldName === '进展') {
+          inProgressSection = true
+        } else {
+          inProgressSection = false
+        }
+        
+        result.fields.push({
+          type: 'field',
+          name: fieldName,
+          value: null,
+          index: index
+        })
+      }
+      // 处理所属字段的值（紧跟在"所属"字段后的评论）
+      else if (currentFieldName === '所属' && index > 0 && 
+               result.fields.length > 0 && 
+               result.fields[result.fields.length - 1].name === '所属') {
+        // 尝试从整个评论文本中提取链接
+        const linkMatch = text.match(/\[([^\]]+)\]\(([^)]+)\)/)
+        if (linkMatch) {
+          result.fields[result.fields.length - 1].value = linkMatch[0]
+        }
+      }
+      // 处理启动字段的值
+      else if (text.includes('[启动]')) {
+        const linkMatch = text.match(/\[启动\]\(([^)]+)\)/)
+        if (linkMatch) {
+          // 更新启动字段或创建新的
+          const launchField = result.fields.find(f => f.name === '启动')
+          if (launchField) {
+            launchField.value = linkMatch[0]
+          } else {
+            result.fields.push({
+              type: 'field',
+              name: '[启动]',  // 保持原始格式
+              value: linkMatch[0],
+              index: index
+            })
+          }
+        }
+      }
+      // 处理进展部分的内容
+      else if (inProgressSection && (commentType === 'textComment' || commentType === 'markdownComment')) {
+        result.fields.push({
+          type: 'plainText',
+          text: text,
+          index: index
+        })
+      }
+      // 处理普通纯文本评论
+      else if ((commentType === 'textComment' || commentType === 'markdownComment') && !TaskFieldUtils.isTaskField(text)) {
+        result.fields.push({
+          type: 'plainText',
+          text: text,
+          index: index
         })
       }
     })
@@ -7057,33 +7143,72 @@ class TaskDataExtractor {
         titlePath: taskPath
       }
       
-      // 提取任务描述（第一个纯文本评论）
-      if (parsedData.plainTextComments && parsedData.plainTextComments.length > 0) {
-        metadata.description = parsedData.plainTextComments[0].text
+      // 提取任务描述（信息字段后的第一个纯文本评论）
+      if (parsedData.info && parsedData.plainTextComments && parsedData.plainTextComments.length > 0) {
+        // 查找信息字段后的第一个纯文本评论
+        const infoIndex = parsedData.info.index
+        for (const textComment of parsedData.plainTextComments) {
+          if (textComment.index > infoIndex) {
+            metadata.description = textComment.text
+            break
+          }
+        }
       }
       
-      // 提取启动链接
-      if (parsedData.fields) {
-        const launchLink = this.extractLaunchLink(parsedData.fields)
-        if (launchLink) {
-          metadata.launchLink = launchLink
+      // 使用 getLaunchLink 方法提取启动链接
+      const launchLink = MNTaskManager.getLaunchLink(note)
+      if (launchLink) {
+        metadata.launchLink = launchLink
+        MNUtil.log(`  - 启动链接: ${launchLink}`)
+      }
+      
+      // 提取所属信息（使用 getIncludingCommentIndex 查找）
+      const belongsIndex = note.getIncludingCommentIndex("所属")
+      if (belongsIndex !== -1 && belongsIndex + 1 < note.MNComments.length) {
+        // 所属字段的下一个评论通常包含父任务链接
+        const nextComment = note.MNComments[belongsIndex + 1]
+        if (nextComment && nextComment.text) {
+          const match = nextComment.text.match(/\[([^\]]+)\]\(([^)]+)\)/)
+          if (match) {
+            metadata.parentTitle = match[1]
+            metadata.parentURL = match[2]
+            MNUtil.log(`  - 所属: ${metadata.parentTitle}`)
+          }
+        }
+      }
+      
+      // 提取进展信息
+      if (parsedData.progress) {
+        const progressIndex = parsedData.progress.index
+        const progresses = []
+        
+        // 收集进展字段后的所有文本评论，直到遇到下一个字段
+        for (let i = progressIndex + 1; i < note.MNComments.length; i++) {
+          const comment = note.MNComments[i]
+          if (!comment) continue
+          
+          const text = comment.text || ''
+          // 如果遇到新的字段，停止收集
+          if (TaskFieldUtils.isTaskField(text)) break
+          
+          // 只收集纯文本评论
+          if (comment.type === 'textComment' || comment.type === 'markdownComment') {
+            if (text && !TaskFieldUtils.isTaskField(text)) {
+              progresses.push(text)
+            }
+          }
         }
         
-        // 提取所属信息
-        const belongsTo = this.extractBelongsTo(parsedData.fields)
-        if (belongsTo) {
-          metadata.parentTitle = belongsTo.title
-          metadata.parentURL = belongsTo.url
+        metadata.progresses = progresses
+        if (progresses.length > 0) {
+          MNUtil.log(`  - 进展记录: ${progresses.length} 条`)
         }
-        
-        // 提取进展信息
-        metadata.progresses = this.extractProgresses(parsedData.fields)
-        
-        // 提取优先级信息
-        const priority = TaskFieldUtils.getFieldContent(note, '优先级')
-        if (priority) {
-          metadata.priority = priority
-        }
+      }
+      
+      // 提取优先级信息
+      const priority = TaskFieldUtils.getFieldContent(note, '优先级')
+      if (priority) {
+        metadata.priority = priority
       }
       
       // 如果是项目或目标类型，递归提取子任务

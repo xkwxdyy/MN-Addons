@@ -833,6 +833,13 @@
             line-height: 1.4;
             word-wrap: break-word;
             overflow-wrap: break-word;
+            max-height: 3.6em; /* 限制最多显示3行 (1.4 * 3 ≈ 4.2) */
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            line-clamp: 3; /* 标准属性，提高兼容性 */
+            -webkit-box-orient: vertical;
+            text-overflow: ellipsis;
         }
         
         .recent-progress-time {
@@ -6029,6 +6036,42 @@
     </div>
 
     <script>
+        // 全局错误处理器
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            console.error('🚨 JavaScript错误:', {
+                message: msg,
+                source: url,
+                line: lineNo,
+                column: columnNo,
+                error: error
+            });
+            
+            // 尝试通过MNTask协议发送错误日志
+            try {
+                const errorData = {
+                    level: 'error',
+                    message: `JavaScript错误: ${msg}`,
+                    data: JSON.stringify({
+                        filename: url,
+                        lineno: lineNo,
+                        colno: columnNo,
+                        stack: error ? error.stack : ''
+                    })
+                };
+                window.location.href = `mntask://log?${new URLSearchParams(errorData).toString()}`;
+            } catch (e) {
+                console.error('发送错误日志失败:', e);
+            }
+            
+            return true; // 阻止默认错误处理
+        };
+        
+        // 处理Promise拒绝
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('🚨 未处理的Promise拒绝:', event.reason);
+            event.preventDefault();
+        });
+        
         /* ========================================
            📊 数据模型
            ======================================== */
@@ -6595,7 +6638,7 @@
                                 <span class="recent-progress-time">${formatProgressTimeRelative(task.fields.progressLog[task.fields.progressLog.length - 1].date)}</span>
                             </div>
                             <div class="recent-progress-content">
-                                ${task.fields.progressLog[task.fields.progressLog.length - 1].note}
+                                ${stripHTMLTags(task.fields.progressLog[task.fields.progressLog.length - 1].note)}
                             </div>
                         </div>
                     ` : ''}
@@ -8897,6 +8940,16 @@
             return classes[status] || '';
         }
 
+        // 去除HTML标签
+        function stripHTMLTags(html) {
+            if (!html) return '';
+            // 创建临时DOM元素来解析HTML
+            const tmp = document.createElement('div');
+            tmp.innerHTML = html;
+            // 返回纯文本内容
+            return tmp.textContent || tmp.innerText || '';
+        }
+
         // 格式化日期
         function formatDate(dateStr) {
             const date = new Date(dateStr);
@@ -9786,7 +9839,7 @@
                         <div class="progress-log-time" style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 4px;">
                             ${log.date}
                         </div>
-                        <div class="progress-log-note">${log.note}</div>
+                        <div class="progress-log-note">${stripHTMLTags(log.note)}</div>
                     </div>
                 `).join('');
                 
@@ -14133,21 +14186,21 @@
                         } else {
                             return {
                                 date: new Date().toLocaleString('zh-CN'),
-                                note: progress
+                                note: stripHTMLTags(progress)
                             };
                         }
                     } else if (typeof progress === 'object') {
                         // 尝试从对象中提取时间和内容
                         return {
                             date: progress.time || progress.timestamp || progress.date || new Date().toLocaleString('zh-CN'),
-                            note: progress.content || progress.note || progress.text || JSON.stringify(progress)
+                            note: stripHTMLTags(progress.content || progress.note || progress.text || JSON.stringify(progress))
                         };
                     }
                     
                     // 默认处理
                     return {
                         date: new Date().toLocaleString('zh-CN'),
-                        note: String(progress)
+                        note: stripHTMLTags(String(progress))
                     };
                 });
             }

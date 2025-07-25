@@ -2,7 +2,7 @@
     "addonid": "marginnote.extension.mnutils",
     "author": "Feliks",
     "title": "MN Utils",
-    "version": "0.1.6.alpha0716",
+    "version": "0.1.6.alpha0720",
     "marginnote_version_min": "3.7.11",
     "cert_key": ""
 }

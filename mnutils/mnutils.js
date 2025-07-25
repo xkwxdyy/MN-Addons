@@ -247,7 +247,7 @@ class MNUtil {
    * @returns 
    */
   static log(log){
-    if (typeof log == "string") {
+    if (typeof log == "string" || typeof log == "number") {
       log = {
         message:log,
         level:"INFO",
@@ -261,6 +261,9 @@ class MNUtil {
         }
       return
     }
+    if (!("message" in log)) {
+      log.message = "See detail";
+    }
     if ("level" in log) {
       log.level = log.level.toUpperCase();
     }else{
@@ -272,8 +275,20 @@ class MNUtil {
     if (!("timestamp" in log)) {
       log.timestamp = Date.now();
     }
-    if ("detail" in log && typeof log.detail == "object") {
-      log.detail = JSON.stringify(log.detail,null,2)
+    if ("detail" in log) {
+      if (typeof log.detail == "object") {
+        log.detail = JSON.stringify(log.detail,null,2)
+      }
+    }else{
+      let keys = Object.keys(log)
+      if (keys.length !== 0) {
+        let keysRemain = keys.filter(key => key != "timestamp" && key != "source" && key != "level" && key != "message")
+        if (keysRemain.length) {
+          let detail = {}
+          keysRemain.forEach(key => detail[key] = log[key])
+          log.detail = JSON.stringify(detail,null,2)
+        }
+      }
     }
     this.logs.push(log)
     if (subscriptionUtils.subscriptionController) {
@@ -1142,8 +1157,60 @@ static textMatchPhrase(text, query) {
    *
    * @param {string} url
    */
-  static openURL(url){
-    this.app.openURL(NSURL.URLWithString(url));
+  static openURL(url,mode = "external"){
+    switch (mode) {
+      case "external":
+        this.app.openURL(NSURL.URLWithString(url));
+        break;
+      case "mnbrowser":
+        MNUtil.postNotification("openInBrowser", {url:url})
+        break;
+      default:
+        break;
+    }
+  }
+  static openWith(config,addon = "external"){
+    if (addon) {
+      let mode
+      switch (addon) {
+        case "external":
+          if ("url" in config) {
+            this.openURL(config.url)
+          }
+          break;
+        case "mnbrowser":
+          mode = config.mode ?? "openURL"
+          switch (mode) {
+            case "openURL":
+              MNUtil.postNotification("openInBrowser", {url:config.url})
+              break;
+            case "search":
+              let userInfo = {}
+              if ("textToSearch" in config) {
+                userInfo.text = config.textToSearch
+              }
+              if ("noteId" in config) {
+                userInfo.noteid = config.noteId
+              }
+              if ("engine" in config) {
+                userInfo.engine = config.engine
+              }
+              MNUtil.postNotification("searchInBrowser", userInfo)
+              break;
+            default:
+              MNUtil.showHUD("mode not found")
+              break;
+          }
+          break;
+      
+        default:
+          break;
+      }
+    }else{
+      MNUtil.showHUD("addon not found")
+    }
+
+    
   }
   /**
    * 
@@ -1186,6 +1253,9 @@ static textMatchPhrase(text, query) {
     }
 
     let fragment = url.fragment
+    if (fragment) {
+      config.fragment = fragment
+    }
     // 解析查询字符串
     const params = {};
     let queryString = url.query;
@@ -1272,7 +1342,10 @@ static textMatchPhrase(text, query) {
       return note
     }else{
       if (alert){
-        this.copy(noteid)
+        this.log({
+          level:'error',
+          message:noteid
+        })
         this.showHUD("Note not exist!")
       }
       return undefined
@@ -2407,7 +2480,7 @@ try {
   }
   return undefined
   } catch (error) {
-    MNUtil.copy(error.toString())
+    MNUtil.addErrorLog(error, "getStatusCodeDescription")
   }
   }
   /**
@@ -2428,6 +2501,9 @@ try {
    * @returns {number}
    */
   static constrain(value, min, max) {
+    if (min > max) {
+      return Math.min(Math.max(value, max), min);
+    }
     return Math.min(Math.max(value, min), max);
   }
   /**
@@ -3379,6 +3455,39 @@ static async uploadWebDAVFile(url, username, password, fileContent) {
       return UIImage.imageWithDataScale(imageData,scale)
     }
     MNUtil.showHUD("Download failed")
+    return undefined
+  }
+    /**
+   * 
+   * @param {MbBookNote} note 
+   * @returns 
+   */
+  static getImageFromNote(note,checkTextFirst = false) {
+    if (note.excerptPic) {
+      if (checkTextFirst && note.textFirst) {
+        //检查发现图片已经转为文本，因此略过
+      }else{
+        return MNUtil.getMediaByHash(note.excerptPic.paint)
+      }
+    }
+    if (note.comments.length) {
+      let imageData = undefined
+      for (let i = 0; i < note.comments.length; i++) {
+        const comment = note.comments[i];
+        if (comment.type === 'PaintNote' && comment.paint) {
+          imageData = MNUtil.getMediaByHash(comment.paint)
+          break
+        }
+        if (comment.type === "LinkNote" && comment.q_hpic && comment.q_hpic.paint) {
+          imageData = MNUtil.getMediaByHash(comment.q_hpic.paint)
+          break
+        }
+        
+      }
+      if (imageData) {
+        return imageData
+      }
+    }
     return undefined
   }
 /**
@@ -5369,7 +5478,10 @@ try {
         if (noteFromURL) {
           this.note.merge(noteFromURL)
         }else{
-          MNUtil.copy(note)
+          MNUtil.log({
+            level:'error',
+            message:note
+          })
           MNUtil.showHUD("Note not exist!")
         }
       case "NoteId":
@@ -5378,7 +5490,10 @@ try {
         if (targetNote) {
           this.note.merge(targetNote)
         }else{
-          MNUtil.copy(note)
+          MNUtil.log({
+            level:'error',
+            message:note
+          })
           MNUtil.showHUD("Note not exist!")
         }
         break
@@ -5440,7 +5555,10 @@ try {
         if (noteFromURL) {
           this.note.addChild(noteFromURL)
         }else{
-          MNUtil.copy(note)
+          MNUtil.log({
+            level:'error',
+            message:note
+          })
           MNUtil.showHUD("Note not exist!")
         }
         break;
@@ -5450,7 +5568,10 @@ try {
         if (targetNote) {
           this.note.addChild(targetNote)
         }else{
-          MNUtil.copy(note)
+          MNUtil.log({
+            level:'error',
+            message:note
+          })
           MNUtil.showHUD("Note not exist!")
         }
         break;
@@ -6523,7 +6644,10 @@ try {
       case "NoteURL":
         let noteFromURL = MNUtil.getNoteById(MNUtil.getNoteIdByURL(note))
         if (!noteFromURL) {
-          MNUtil.copy(note)
+          MNUtil.log({
+            level:'error',
+            message:note
+          })
           MNUtil.showHUD("Note not exists!")
           return undefined
         }
@@ -6533,7 +6657,10 @@ try {
       case "string":
         let targetNote = MNUtil.getNoteById(note)
         if (!targetNote) {
-          MNUtil.copy(note)
+          MNUtil.log({
+            level:'error',
+            message:note
+          })
           MNUtil.showHUD("Note not exists!")
           return undefined
         }

@@ -8,6 +8,9 @@
     <!-- 引入测试数据 -->
     <script src="testData.js"></script>
     
+    <!-- 引入 MNTask 通信桥接库 -->
+    <script src="mntask-bridge.js"></script>
+    
     <style>
         /* ========================================
            🎨 CSS 变量定义 - 现代化设计系统
@@ -11916,11 +11919,557 @@
         }
         
         /* ========================================
+           📱 触摸事件和设备适配支持
+           ======================================== */
+        
+        /**
+         * 设备检测工具类
+         */
+        const DeviceDetector = {
+            /**
+             * 检测是否为触摸设备
+             */
+            isTouchDevice() {
+                return ('ontouchstart' in window) || 
+                       (navigator.maxTouchPoints > 0) || 
+                       (navigator.msMaxTouchPoints > 0);
+            },
+            
+            /**
+             * 检测是否为 iOS 设备
+             */
+            isIOS() {
+                return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            },
+            
+            /**
+             * 检测是否为 iPad
+             */
+            isIPad() {
+                return (navigator.userAgent.includes("iPad") || 
+                       (navigator.userAgent.includes("Mac") && this.isTouchDevice()));
+            },
+            
+            /**
+             * 获取设备类型
+             */
+            getDeviceType() {
+                if (this.isIPad()) return 'ipad';
+                if (this.isIOS()) return 'iphone';
+                if (this.isTouchDevice()) return 'touch';
+                return 'desktop';
+            }
+        };
+        
+        
+        /**
+         * 初始化设备特定的适配逻辑
+         */
+        function initDeviceAdaptation() {
+            const deviceType = DeviceDetector.getDeviceType();
+            console.log(`🔧 初始化 ${deviceType} 设备适配`);
+            
+            // iPad 特定适配
+            if (deviceType === 'ipad') {
+                // 禁用默认的上下文菜单
+                document.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                });
+                
+                // 处理方向变化
+                window.addEventListener('orientationchange', handleOrientationChange);
+                handleOrientationChange(); // 初始化时调用一次
+                
+                // 优化侧边栏在 iPad 上的行为
+                optimizeIPadSidebar();
+                
+                // 添加多任务手势支持
+                addMultitaskingSupport();
+            }
+            
+            // iPhone 特定适配
+            else if (deviceType === 'iphone') {
+                // 在 iPhone 上默认隐藏侧边栏
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar && window.innerWidth < 768) {
+                    sidebar.classList.add('hidden');
+                    document.body.classList.add('sidebar-hidden');
+                }
+                
+                // 优化小屏幕上的布局
+                optimizeSmallScreenLayout();
+            }
+            
+            // 通用触摸设备适配
+            if (DeviceDetector.isTouchDevice()) {
+                // 添加滑动手势支持
+                addSwipeGestures();
+                
+                // 优化滚动行为
+                optimizeScrollBehavior();
+                
+                // 处理虚拟键盘
+                handleVirtualKeyboard();
+            }
+            
+            // 桌面设备适配
+            else {
+                // 添加键盘快捷键
+                addKeyboardShortcuts();
+                
+                // 启用拖拽功能
+                enableDesktopDragAndDrop();
+            }
+        }
+        
+        /**
+         * 处理设备方向变化
+         */
+        function handleOrientationChange() {
+            const orientation = window.orientation;
+            const isLandscape = Math.abs(orientation) === 90;
+            
+            document.body.classList.toggle('landscape', isLandscape);
+            document.body.classList.toggle('portrait', !isLandscape);
+            
+            console.log(`📐 设备方向: ${isLandscape ? '横屏' : '竖屏'}`);
+            
+            // 横屏时可能需要调整布局
+            if (isLandscape && DeviceDetector.isIPad()) {
+                // 在横屏模式下显示侧边栏
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar) {
+                    sidebar.classList.remove('hidden');
+                }
+            }
+        }
+        
+        /**
+         * 优化 iPad 侧边栏
+         */
+        function optimizeIPadSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            if (!sidebar) return;
+            
+            // 在 iPad 上使用覆盖式侧边栏而非推移式
+            if (window.innerWidth < 1024) {
+                sidebar.classList.add('overlay-mode');
+                
+                // 点击空白处关闭侧边栏
+                const overlay = document.getElementById('sidebarOverlay');
+                if (overlay) {
+                    overlay.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        toggleSidebar();
+                    });
+                }
+            }
+        }
+        
+        /**
+         * 添加多任务手势支持
+         */
+        function addMultitaskingSupport() {
+            // 检测四指或五指手势（iPad 多任务手势）
+            let touchCount = 0;
+            
+            document.addEventListener('touchstart', (e) => {
+                touchCount = e.touches.length;
+            });
+            
+            document.addEventListener('touchend', (e) => {
+                // 如果是多指手势，不阻止默认行为
+                if (touchCount >= 4) {
+                    return;
+                }
+                touchCount = 0;
+            });
+        }
+        
+        /**
+         * 优化小屏幕布局
+         */
+        function optimizeSmallScreenLayout() {
+            // 调整网格布局为单列
+            const style = document.createElement('style');
+            style.textContent = `
+                @media (max-width: 480px) {
+                    .task-grid,
+                    .focus-container {
+                        grid-template-columns: 1fr !important;
+                    }
+                    
+                    .modal-content {
+                        width: 95% !important;
+                        margin: 2.5% auto !important;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        /**
+         * 添加滑动手势
+         */
+        function addSwipeGestures() {
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let touchEndX = 0;
+            let touchEndY = 0;
+            
+            document.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
+            }, { passive: true });
+            
+            document.addEventListener('touchend', (e) => {
+                touchEndX = e.changedTouches[0].screenX;
+                touchEndY = e.changedTouches[0].screenY;
+                handleSwipe();
+            }, { passive: true });
+            
+            function handleSwipe() {
+                const deltaX = touchEndX - touchStartX;
+                const deltaY = touchEndY - touchStartY;
+                const minSwipeDistance = 50;
+                
+                // 水平滑动
+                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
+                    if (deltaX > 0) {
+                        // 右滑 - 显示侧边栏
+                        if (touchStartX < 20) { // 从边缘开始
+                            const sidebar = document.getElementById('sidebar');
+                            if (sidebar && sidebar.classList.contains('hidden')) {
+                                toggleSidebar();
+                            }
+                        }
+                    } else {
+                        // 左滑 - 隐藏侧边栏
+                        const sidebar = document.getElementById('sidebar');
+                        if (sidebar && !sidebar.classList.contains('hidden') && window.innerWidth < 768) {
+                            toggleSidebar();
+                        }
+                    }
+                }
+            }
+        }
+        
+        /**
+         * 优化滚动行为
+         */
+        function optimizeScrollBehavior() {
+            // 防止过度滚动
+            document.body.addEventListener('touchmove', (e) => {
+                if (e.target.closest('.modal-content')) {
+                    // 允许模态框内的滚动
+                    return;
+                }
+                
+                const scrollable = e.target.closest('.task-list, .timeline-content, .board-column-content');
+                if (scrollable) {
+                    const isScrollable = scrollable.scrollHeight > scrollable.clientHeight;
+                    if (!isScrollable) {
+                        e.preventDefault();
+                    }
+                }
+            }, { passive: false });
+        }
+        
+        /**
+         * 处理虚拟键盘
+         */
+        function handleVirtualKeyboard() {
+            // 监听输入框焦点
+            document.addEventListener('focusin', (e) => {
+                if (e.target.matches('input, textarea')) {
+                    document.body.classList.add('keyboard-visible');
+                    
+                    // 确保输入框在视口内
+                    setTimeout(() => {
+                        e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 300);
+                }
+            });
+            
+            document.addEventListener('focusout', (e) => {
+                if (e.target.matches('input, textarea')) {
+                    document.body.classList.remove('keyboard-visible');
+                }
+            });
+        }
+        
+        /**
+         * 添加键盘快捷键（桌面端）
+         */
+        function addKeyboardShortcuts() {
+            const shortcuts = {
+                'ctrl+k': () => openGlobalSearch(),
+                'ctrl+n': () => showQuickAddTask(),
+                'ctrl+/': () => openHelp(),
+                'ctrl+,': () => openSettings(),
+                'ctrl+r': () => refreshTasks(),
+                'ctrl+1': () => switchView('focus'),
+                'ctrl+2': () => switchView('planning'),
+                'ctrl+3': () => switchView('today'),
+                'ctrl+4': () => switchView('board'),
+                'escape': () => closeAllModals()
+            };
+            
+            document.addEventListener('keydown', (e) => {
+                const key = (e.ctrlKey || e.metaKey ? 'ctrl+' : '') + e.key.toLowerCase();
+                
+                if (shortcuts[key]) {
+                    e.preventDefault();
+                    shortcuts[key]();
+                }
+            });
+        }
+        
+        /**
+         * 启用桌面端拖拽功能
+         */
+        function enableDesktopDragAndDrop() {
+            // 这里可以添加更高级的桌面端拖拽功能
+            console.log('✅ 桌面端拖拽功能已启用');
+        }
+        
+        /**
+         * 关闭所有模态框
+         */
+        function closeAllModals() {
+            document.querySelectorAll('.modal.active').forEach(modal => {
+                modal.classList.remove('active');
+            });
+        }
+        
+        /**
+         * 添加触摸反馈样式
+         */
+        function addTouchFeedbackStyles() {
+            const style = document.createElement('style');
+            style.textContent = `
+                /* 触摸反馈效果 */
+                .touch-active {
+                    opacity: 0.7 !important;
+                    transform: scale(0.98) !important;
+                    transition: all 0.1s ease !important;
+                }
+                
+                /* 优化移动端滚动 */
+                .task-list,
+                .project-grid,
+                .board-column-content,
+                .timeline-content {
+                    -webkit-overflow-scrolling: touch;
+                    overscroll-behavior: contain;
+                }
+                
+                /* iPad 特定优化 */
+                @media screen and (min-width: 768px) and (max-width: 1366px) {
+                    .btn, .task-card, .view-btn {
+                        min-height: 44px; /* Apple 推荐的最小触摸目标 */
+                        padding: 12px 16px;
+                    }
+                    
+                    .task-actions button {
+                        min-width: 44px;
+                        min-height: 44px;
+                    }
+                }
+                
+                /* 防止 iOS 上的文本选择 */
+                .btn, .task-card-header, .view-btn {
+                    -webkit-touch-callout: none;
+                    -webkit-user-select: none;
+                }
+                
+                /* 优化移动端按钮和交互元素 */
+                @media (hover: none) and (pointer: coarse) {
+                    /* 增大所有按钮的可点击区域 */
+                    .btn {
+                        min-height: 44px;
+                        padding: 12px 20px;
+                        font-size: 16px; /* 防止 iOS 自动缩放 */
+                    }
+                    
+                    .btn-sm {
+                        min-height: 36px;
+                        padding: 8px 16px;
+                        font-size: 14px;
+                    }
+                    
+                    /* 任务卡片优化 */
+                    .focus-task-card,
+                    .task-item,
+                    .pending-task-item {
+                        min-height: 60px;
+                        padding: 16px;
+                    }
+                    
+                    /* 任务操作按钮组优化 */
+                    .task-actions {
+                        gap: 12px;
+                    }
+                    
+                    .task-actions button {
+                        min-width: 44px;
+                        min-height: 44px;
+                        font-size: 18px;
+                    }
+                    
+                    /* 视图切换按钮优化 */
+                    .view-btn {
+                        min-height: 44px;
+                        padding: 12px 16px;
+                        font-size: 15px;
+                    }
+                    
+                    /* 侧边栏项目优化 */
+                    .custom-view-item,
+                    .project-item {
+                        min-height: 44px;
+                        padding: 12px 16px;
+                    }
+                    
+                    /* 模态框按钮优化 */
+                    .modal-footer .btn {
+                        min-width: 100px;
+                    }
+                    
+                    /* 输入框优化 */
+                    input[type="text"],
+                    input[type="date"],
+                    select,
+                    textarea {
+                        min-height: 44px;
+                        font-size: 16px; /* 防止缩放 */
+                        padding: 12px;
+                    }
+                    
+                    /* 复选框和单选框优化 */
+                    input[type="checkbox"],
+                    input[type="radio"] {
+                        width: 20px;
+                        height: 20px;
+                        margin-right: 12px;
+                    }
+                    
+                    /* 下拉菜单项优化 */
+                    .dropdown-item {
+                        min-height: 44px;
+                        padding: 12px 16px;
+                    }
+                    
+                    /* 标签优化 */
+                    .tag,
+                    .priority-tag,
+                    .status-tag {
+                        padding: 6px 12px;
+                        font-size: 14px;
+                    }
+                    
+                    /* 进度条触摸区域优化 */
+                    .progress-bar-container {
+                        min-height: 24px;
+                        padding: 8px 0;
+                    }
+                    
+                    /* 快速操作按钮始终显示 */
+                    .quick-action-btn,
+                    .task-quick-btn {
+                        opacity: 0.8;
+                    }
+                    
+                    /* 防止双击缩放 */
+                    * {
+                        touch-action: manipulation;
+                    }
+                    
+                    /* 滚动容器优化 */
+                    .scroll-container {
+                        scroll-snap-type: y proximity;
+                        scroll-padding-top: 20px;
+                    }
+                    
+                    .task-item,
+                    .focus-task-card {
+                        scroll-snap-align: start;
+                    }
+                }
+                
+                /* iPad Pro 特定优化 */
+                @media screen and (min-width: 1024px) and (max-width: 1366px) and (hover: none) {
+                    /* 利用更大的屏幕空间 */
+                    .main-container {
+                        padding: 24px;
+                    }
+                    
+                    .task-grid {
+                        grid-template-columns: repeat(3, 1fr);
+                        gap: 24px;
+                    }
+                    
+                    /* 侧边栏在 iPad Pro 上可以更宽 */
+                    .sidebar {
+                        width: 320px;
+                    }
+                }
+                
+                /* 横屏模式优化 */
+                @media screen and (orientation: landscape) and (max-height: 768px) {
+                    /* 减少垂直方向的内边距 */
+                    .header {
+                        padding: 12px 20px;
+                    }
+                    
+                    .view-tabs {
+                        margin-bottom: 16px;
+                    }
+                    
+                    /* 优化内容区域高度 */
+                    .content-area {
+                        max-height: calc(100vh - 120px);
+                    }
+                }
+                
+                /* 安全区域适配（针对有刘海屏的设备） */
+                @supports (padding: env(safe-area-inset-left)) {
+                    .main-container {
+                        padding-left: max(20px, env(safe-area-inset-left));
+                        padding-right: max(20px, env(safe-area-inset-right));
+                        padding-bottom: max(20px, env(safe-area-inset-bottom));
+                    }
+                    
+                    .sidebar {
+                        padding-left: env(safe-area-inset-left);
+                    }
+                    
+                    .header {
+                        padding-top: max(20px, env(safe-area-inset-top));
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        /* ========================================
            🚀 应用初始化
            ======================================== */
         
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {
+            // 初始化设备适配
+            console.log('📱 设备类型:', DeviceDetector.getDeviceType());
+            
+            // 添加触摸反馈样式
+            addTouchFeedbackStyles();
+            
+            // 添加设备类型到 body 类名，方便 CSS 定制
+            document.body.classList.add(`device-${DeviceDetector.getDeviceType()}`);
+            
+            // 设备特定的适配逻辑
+            initDeviceAdaptation();
+            
             // 尝试从 localStorage 加载数据
             const hasData = loadFromLocalStorage();
             
@@ -13326,8 +13875,34 @@
         });
         
         /**
+         * 初始化 MNTask 通信桥接器
+         */
+        let mnTaskBridge = null;
+        
+        // 在页面加载时初始化桥接器
+        if (typeof MNTaskBridge !== 'undefined') {
+            mnTaskBridge = new MNTaskBridge({
+                debug: true,
+                protocol: 'mntask://',
+                autoInit: true
+            });
+            
+            // 监听来自插件的任务数据
+            mnTaskBridge.on('tasks', (tasksData) => {
+                if (window.TaskSync) {
+                    TaskSync.receiveTasks(tasksData);
+                }
+            });
+            
+            console.log('✅ MNTaskBridge 已初始化');
+        } else {
+            console.warn('⚠️ MNTaskBridge 未找到，使用降级方案');
+        }
+        
+        /**
          * TaskSync - 任务数据同步类
          * 用于处理与原生端的数据交互
+         * 优先使用 MNTaskBridge，如果不可用则降级到原有方案
          */
         class TaskSync {
             /**
@@ -13525,9 +14100,21 @@
                     updateData.status = statusMap[updates.status] || updates.status;
                 }
                 
-                // 使用 URL Scheme 发送更新
-                const url = `mntask://updateTask?data=${encodeURIComponent(JSON.stringify(updateData))}`;
-                window.location.href = url;
+                // 优先使用 MNTaskBridge
+                if (mnTaskBridge && mnTaskBridge.ready) {
+                    mnTaskBridge.send('updateTask', updateData)
+                        .then(response => {
+                            console.log('✅ 通过 MNTaskBridge 发送成功:', response);
+                        })
+                        .catch(error => {
+                            console.error('❌ MNTaskBridge 发送失败:', error);
+                            // 降级到原有方案
+                            this._sendViaURLScheme('updateTask', updateData);
+                        });
+                } else {
+                    // 使用原有的 URL Scheme 方案
+                    this._sendViaURLScheme('updateTask', updateData);
+                }
                 
                 console.log('📤 发送任务更新:', updateData);
             }
@@ -13537,8 +14124,21 @@
              * @param {Array} tasksUpdates - 多个任务的更新数据
              */
             static sendBatchUpdate(tasksUpdates) {
-                const url = `mntask://batchUpdate?data=${encodeURIComponent(JSON.stringify(tasksUpdates))}`;
-                window.location.href = url;
+                // 优先使用 MNTaskBridge
+                if (mnTaskBridge && mnTaskBridge.ready) {
+                    mnTaskBridge.send('batchUpdate', tasksUpdates)
+                        .then(response => {
+                            console.log('✅ 通过 MNTaskBridge 批量发送成功:', response);
+                        })
+                        .catch(error => {
+                            console.error('❌ MNTaskBridge 批量发送失败:', error);
+                            // 降级到原有方案
+                            this._sendViaURLScheme('batchUpdate', tasksUpdates);
+                        });
+                } else {
+                    // 使用原有的 URL Scheme 方案
+                    this._sendViaURLScheme('batchUpdate', tasksUpdates);
+                }
                 
                 console.log('📤 批量发送任务更新:', tasksUpdates);
             }
@@ -13547,8 +14147,35 @@
              * 请求同步最新数据
              */
             static requestSync() {
-                window.location.href = 'mntask://syncTasks';
+                // 优先使用 MNTaskBridge
+                if (mnTaskBridge && mnTaskBridge.ready) {
+                    mnTaskBridge.send('syncTasks', {})
+                        .then(response => {
+                            console.log('✅ 通过 MNTaskBridge 请求同步成功:', response);
+                        })
+                        .catch(error => {
+                            console.error('❌ MNTaskBridge 请求同步失败:', error);
+                            // 降级到原有方案
+                            window.location.href = 'mntask://syncTasks';
+                        });
+                } else {
+                    // 使用原有的 URL Scheme 方案
+                    window.location.href = 'mntask://syncTasks';
+                }
+                
                 console.log('🔄 请求同步任务数据');
+            }
+            
+            /**
+             * 通过 URL Scheme 发送数据（降级方案）
+             * @private
+             */
+            static _sendViaURLScheme(action, data) {
+                let url = `mntask://${action}`;
+                if (data && Object.keys(data).length > 0) {
+                    url += `?data=${encodeURIComponent(JSON.stringify(data))}`;
+                }
+                window.location.href = url;
             }
         }
         

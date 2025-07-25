@@ -3112,6 +3112,23 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
       webView.mediaPlaybackRequiresUserAction = false // 允许自动播放媒体
       webView.allowsInlineMediaPlayback = true // 允许内联媒体播放
       
+      // iPad 特定优化设置
+      if (MNUtil.isIPadOS()) {
+        MNUtil.log("📱 检测到 iPad 设备，应用特定优化")
+        
+        // 禁用自动检测电话号码和链接（避免误触）
+        webView.dataDetectorTypes = 0
+        
+        // 优化缩放行为
+        webView.scrollView.minimumZoomScale = 1.0
+        webView.scrollView.maximumZoomScale = 1.0
+        webView.scrollView.zoomScale = 1.0
+        
+        // 设置更适合 iPad 的内边距
+        webView.scrollView.contentInset = {top: 0, left: 0, bottom: 20, right: 0}
+        webView.scrollView.scrollIndicatorInsets = {top: 0, left: 0, bottom: 20, right: 0}
+      }
+      
       // 将 WebView 添加到容器视图中
       this.todayBoardWebView.addSubview(webView)
       
@@ -3490,7 +3507,6 @@ taskSettingController.prototype.runJavaScriptInWebView = async function(script, 
     throw error
   }
 }
-
 
 /**
  * 切换 WebView 到日志视图

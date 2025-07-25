@@ -5159,6 +5159,10 @@
             
             <!-- 全局功能按钮 -->
             <div class="global-actions">
+                <button class="global-btn" onclick="refreshTasks()">
+                    🔄
+                    <span class="tooltip">刷新数据</span>
+                </button>
                 <button class="global-btn" onclick="openGlobalSearch()">
                     🔍
                     <span class="tooltip">全局搜索 (Ctrl+K)</span>
@@ -12092,6 +12096,25 @@
         }
         
         /* ========================================
+           🔄 刷新数据功能
+           ======================================== */
+        
+        function refreshTasks() {
+            // 显示加载提示
+            showNotification('正在刷新数据...', 'info');
+            
+            // 检查 TaskSync 是否可用
+            if (window.TaskSync && window.TaskSync.requestSync) {
+                // 请求同步数据
+                TaskSync.requestSync();
+                console.log('📤 已发送数据刷新请求');
+            } else {
+                console.error('❌ TaskSync 未定义或 requestSync 方法不存在');
+                showNotification('刷新失败：TaskSync 未就绪', 'error');
+            }
+        }
+        
+        /* ========================================
            ❓ 帮助功能
            ======================================== */
         
@@ -13235,19 +13258,61 @@
             static receiveTasks(tasksData) {
                 console.log('📥 接收到任务数据:', tasksData);
                 
+                // 数据验证
+                if (!tasksData || typeof tasksData !== 'object') {
+                    console.error('❌ 无效的任务数据格式');
+                    return 'error: 无效的数据格式';
+                }
+                
                 try {
                     // 清空现有数据
                     tasks.length = 0;
+                    let totalReceived = 0;
+                    let totalConverted = 0;
+                    let conversionErrors = [];
                     
                     // 处理每个看板的任务
                     for (const [boardKey, boardTasks] of Object.entries(tasksData)) {
-                        for (const taskData of boardTasks) {
+                        console.log(`📋 处理 ${boardKey} 看板: ${boardTasks.length} 个任务`);
+                        
+                        if (!Array.isArray(boardTasks)) {
+                            console.warn(`⚠️ ${boardKey} 看板数据不是数组:`, boardTasks);
+                            continue;
+                        }
+                        
+                        for (let i = 0; i < boardTasks.length; i++) {
+                            const taskData = boardTasks[i];
+                            totalReceived++;
+                            
+                            // 验证任务数据的必要字段
+                            if (!taskData.id) {
+                                conversionErrors.push(`${boardKey}[${i}]: 缺少id字段`);
+                                continue;
+                            }
+                            
                             // 转换为界面需要的格式
-                            const task = this.convertToUIFormat(taskData);
-                            if (task) {
-                                tasks.push(task);
+                            try {
+                                const task = this.convertToUIFormat(taskData);
+                                if (task) {
+                                    tasks.push(task);
+                                    totalConverted++;
+                                } else {
+                                    conversionErrors.push(`${boardKey}[${i}]: 转换失败 (id: ${taskData.id})`);
+                                }
+                            } catch (convError) {
+                                conversionErrors.push(`${boardKey}[${i}]: ${convError.message}`);
                             }
                         }
+                    }
+                    
+                    // 输出转换结果统计
+                    console.log(`📊 数据转换统计:`);
+                    console.log(`  - 接收任务总数: ${totalReceived}`);
+                    console.log(`  - 成功转换: ${totalConverted}`);
+                    console.log(`  - 转换失败: ${totalReceived - totalConverted}`);
+                    
+                    if (conversionErrors.length > 0) {
+                        console.warn('⚠️ 转换错误详情:', conversionErrors);
                     }
                     
                     // 刷新当前视图
@@ -13258,6 +13323,7 @@
                     
                 } catch (error) {
                     console.error('❌ 接收任务数据失败:', error);
+                    console.error('错误堆栈:', error.stack);
                     return 'error: ' + error.message;
                 }
             }
@@ -13268,6 +13334,12 @@
              * @returns {Object} UI 格式的任务对象
              */
             static convertToUIFormat(taskData) {
+                // 验证必要字段
+                if (!taskData || !taskData.id) {
+                    console.error('❌ 转换失败: 缺少必要字段', taskData);
+                    return null;
+                }
+                
                 const typeIconMap = {
                     'target': '🎯',
                     'keyresult': '📊',
@@ -13282,13 +13354,23 @@
                     '暂停': 'pause'
                 };
                 
-                return {
+                // 调试日志：显示原始数据
+                if (tasks.length < 5) { // 只显示前5个任务的详细信息
+                    console.log(`🔍 转换任务数据:`, {
+                        id: taskData.id,
+                        type: taskData.type,
+                        titleContent: taskData.titleContent,
+                        status: taskData.status
+                    });
+                }
+                
+                const convertedTask = {
                     id: taskData.id,
                     type: taskData.type,
-                    title: taskData.titleContent,
-                    path: taskData.titlePath,
+                    title: taskData.titleContent || '无标题',
+                    path: taskData.titlePath || '',
                     status: statusMap[taskData.status] || 'todo',
-                    priority: 'medium', // 默认中等优先级
+                    priority: taskData.priority || 'medium',
                     description: taskData.description || '',
                     launchLink: taskData.launchLink || '',
                     parentId: taskData.parentURL ? taskData.parentURL.split('/').pop() : null,
@@ -13307,6 +13389,13 @@
                     // 保存原始数据用于同步
                     _originalData: taskData
                 };
+                
+                // 验证转换结果
+                if (!convertedTask.title || !convertedTask.type) {
+                    console.warn('⚠️ 转换后的任务缺少关键字段:', convertedTask);
+                }
+                
+                return convertedTask;
             }
             
             /**

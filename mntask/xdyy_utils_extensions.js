@@ -326,6 +326,36 @@ class TaskFieldUtils {
     
     return null
   }
+  
+  /**
+   * 获取指定字段的索引位置
+   * @param {MNNote} note - 任务卡片
+   * @param {string} fieldName - 要查找的字段名
+   * @returns {number} 字段索引，如果没找到则返回 -1
+   */
+  static getFieldIndex(note, fieldName) {
+    if (!note || !note.MNComments) return -1
+    
+    // 遍历所有评论查找匹配的字段
+    for (let i = 0; i < note.MNComments.length; i++) {
+      const comment = note.MNComments[i]
+      if (!comment || !comment.text) continue
+      
+      const text = comment.text
+      
+      // 检查是否是任务字段
+      if (this.isTaskField(text)) {
+        const parsed = this.getFieldNameAndContent(text)
+        
+        // 检查字段名是否匹配
+        if (parsed.fieldName === fieldName) {
+          return i
+        }
+      }
+    }
+    
+    return -1
+  }
 }
 
 /**

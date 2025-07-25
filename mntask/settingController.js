@@ -1213,6 +1213,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     let note = MNNote.new(noteId)
     if (note) {
       note.focusInFloatMindMap()
+      MNUtil.showHUD("🔍 已聚焦到根目录卡片")
     } else {
       self.showHUD("❌ 卡片不存在")
       // 清除无效的 ID
@@ -1225,6 +1226,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   focusRootBoard: function(sender) {
     let self = getTaskSettingController()
     MNUtil.log("🔍 focusRootBoard 被调用")
+    MNUtil.showHUD("🔍 focusRootBoard 被调用")
     self.focusBoard('root')
   },
   
@@ -1241,81 +1243,81 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   },
   
   // 通用看板处理方法
-  focusTargetBoard: function(sender) {
+  focusTargetBoard: function() {
     let self = getTaskSettingController()
     self.focusBoard('target')
   },
   
-  clearTargetBoard: async function(sender) {
+  clearTargetBoard: async function() {
     let self = getTaskSettingController()
     await self.clearBoard('target')
   },
   
-  pasteTargetBoard: async function(sender) {
+  pasteTargetBoard: async function() {
     let self = getTaskSettingController()
     await self.pasteBoard('target')
   },
   
   // 项目看板处理方法
-  focusProjectBoard: function(sender) {
+  focusProjectBoard: function() {
     let self = getTaskSettingController()
     self.focusBoard('project')
   },
   
-  clearProjectBoard: async function(sender) {
+  clearProjectBoard: async function() {
     let self = getTaskSettingController()
     await self.clearBoard('project')
   },
   
-  pasteProjectBoard: async function(sender) {
+  pasteProjectBoard: async function() {
     let self = getTaskSettingController()
     await self.pasteBoard('project')
   },
   
   // 动作看板处理方法
-  focusActionBoard: function(sender) {
+  focusActionBoard: function() {
     let self = getTaskSettingController()
     self.focusBoard('action')
   },
   
-  clearActionBoard: async function(sender) {
+  clearActionBoard: async function() {
     let self = getTaskSettingController()
     await self.clearBoard('action')
   },
   
-  pasteActionBoard: async function(sender) {
+  pasteActionBoard: async function() {
     let self = getTaskSettingController()
     await self.pasteBoard('action')
   },
   
   // 已完成存档区看板处理方法
-  focusCompletedBoard: function(sender) {
+  focusCompletedBoard: function() {
     let self = getTaskSettingController()
     self.focusBoard('completed')
   },
   
-  clearCompletedBoard: async function(sender) {
+  clearCompletedBoard: async function() {
     let self = getTaskSettingController()
     await self.clearBoard('completed')
   },
   
-  pasteCompletedBoard: async function(sender) {
+  pasteCompletedBoard: async function() {
     let self = getTaskSettingController()
     await self.pasteBoard('completed')
   },
   
   // 今日看板处理方法
-  focusTodayBoard: function(sender) {
+  focusTodayBoard: function() {
     let self = getTaskSettingController()
     self.focusBoard('today')
   },
   
-  clearTodayBoard: async function(sender) {
+  clearTodayBoard: async function() {
     let self = getTaskSettingController()
     await self.clearBoard('today')
   },
   
-  pasteTodayBoard: async function(sender) {
+  pasteTodayBoard: async function() {
     let self = getTaskSettingController()
     await self.pasteBoard('today')
   },
@@ -3136,167 +3138,57 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
     // 准备任务数据
     const tasksData = {}
     let totalTaskCount = 0
+    let boundBoards = 0
     
     // 获取各看板的数据
-    const boards = ['target', 'project', 'key', 'action', 'root']
+    const boards = {
+      target: taskConfig.getBoardNoteId('target'),
+      project: taskConfig.getBoardNoteId('project'),
+      action: taskConfig.getBoardNoteId('action'),
+      completed: taskConfig.getBoardNoteId('completed'),
+      today: taskConfig.getBoardNoteId('today')
+    }
     
-    for (const boardKey of boards) {
-      try {
-        const boardNoteId = taskConfig.getBoardNoteId(boardKey)
-        if (!boardNoteId) {
-          MNUtil.log(`📋 看板 ${boardKey} 没有设置笔记`)
+    MNUtil.log(`📋 看板绑定状态: ${JSON.stringify(boards)}`)
+    
+    // 检查是否绑定了任何看板
+    for (const [boardKey, boardNoteId] of Object.entries(boards)) {
+      if (boardNoteId) {
+        boundBoards++
+      }
+    }
+    
+    if (boundBoards === 0) {
+      MNUtil.log("❌ 没有绑定任何看板")
+      MNUtil.showHUD("❌ 请先在设置中绑定看板\n设置 → Task Boards")
+      
+      // 传递空数据给 WebView
+      const jsCode = `
+        (function() {
+          if (typeof TaskSync !== 'undefined' && TaskSync.receiveTasks) {
+            TaskSync.receiveTasks({});
+            return 'success';
+          }
+          return 'taskSyncNotReady';
+        })();
+      `
+      await this.runJavaScriptInWebView(jsCode, 'todayBoardWebViewInstance')
+      return
+    }
+    
+    // 提取每个看板的任务数据
+    for (const [boardKey, boardNoteId] of Object.entries(boards)) {
+      if (boardNoteId) {
+        try {
+          // 使用 TaskDataExtractor.extractTasksFromBoard 确保数据格式一致
+          tasksData[boardKey] = await TaskDataExtractor.extractTasksFromBoard(boardNoteId)
+          totalTaskCount += tasksData[boardKey].length
+          MNUtil.log(`✅ ${boardKey} 看板提取了 ${tasksData[boardKey].length} 个任务`)
+        } catch (error) {
+          MNUtil.log(`❌ 提取 ${boardKey} 看板任务失败: ${error.message}`)
           tasksData[boardKey] = []
-          continue
         }
-        
-        // 获取看板笔记
-        const boardNote = MNNote.new(boardNoteId)
-        if (!boardNote) {
-          MNUtil.log(`⚠️ 无法获取看板笔记: ${boardKey} (ID: ${boardNoteId})`)
-          tasksData[boardKey] = []
-          continue
-        }
-        
-        // 异步递归收集所有任务卡片（避免UI冻结）
-        const collectTaskCards = async (parentNote, collected = [], processedIds = new Set()) => {
-          if (!parentNote || !parentNote.childNotes) return collected
-          
-          const childNotes = Array.from(parentNote.childNotes)
-          const batchSize = 10 // 每批处理10个节点
-          
-          // 分批处理子节点
-          for (let i = 0; i < childNotes.length; i += batchSize) {
-            const batch = childNotes.slice(i, i + batchSize)
-            
-            // 处理当前批次
-            // 使用 MNUtil.delay 替代 setTimeout 让出主线程
-            await MNUtil.delay(0.001)
-            
-            for (const childNote of batch) {
-              // 避免重复处理
-              if (processedIds.has(childNote.noteId)) continue
-              processedIds.add(childNote.noteId)
-              
-              // 检查是否是任务卡片
-              const typeField = TaskFieldUtils.getFieldContent(childNote, "类型")
-              const title = childNote.noteTitle || ""
-              
-              let isTaskCard = false
-              
-              // 方式1：通过类型字段判断（新格式）
-              if (typeField && ["目标", "关键结果", "项目", "动作"].includes(typeField)) {
-                isTaskCard = true
-                MNUtil.log(`✅ 通过类型字段识别任务: ${title.substring(0, 30)}... (类型: ${typeField})`)
-              }
-              // 方式2：通过标题格式判断（兼容旧格式）
-              else if (title.startsWith("【") && title.includes("｜") && title.includes("】")) {
-                isTaskCard = true
-                MNUtil.log(`✅ 通过标题格式识别任务: ${title.substring(0, 30)}...`)
-              }
-              
-              if (isTaskCard) {
-                collected.push(childNote)
-              }
-            }
-            
-            // 递归处理子节点
-            for (const childNote of batch) {
-              await collectTaskCards(childNote, collected, processedIds)
-            }
-            
-            // 每处理完一批，显示进度
-            if (i + batchSize < childNotes.length) {
-              MNUtil.log(`📊 处理进度: ${Math.min(i + batchSize, childNotes.length)}/${childNotes.length} 个节点`)
-            }
-          }
-          
-          return collected
-        }
-        
-        // 收集所有任务卡片
-        const allTaskCards = await collectTaskCards(boardNote)
-        MNUtil.log(`📋 看板 ${boardKey} 递归找到 ${allTaskCards.length} 个任务卡片`)
-        
-        // 转换任务数据
-        tasksData[boardKey] = allTaskCards.map(note => {
-          try {
-            // 获取任务字段
-            const status = TaskFieldUtils.getFieldContent(note, "状态") || "未开始"
-            const description = TaskFieldUtils.getFieldContent(note, "信息") || ""
-            const priority = TaskFieldUtils.getFieldContent(note, "优先级") || "中"
-            const typeField = TaskFieldUtils.getFieldContent(note, "类型")
-            const title = note.noteTitle || ""
-        
-        // 获取启动链接
-        let launchLink = ""
-        const launchIndex = note.getIncludingCommentIndex("[启动]")
-        if (launchIndex !== -1) {
-          const comment = note.MNComments[launchIndex]
-          if (comment && comment.text) {
-            const linkMatch = comment.text.match(/\[启动\]\(([^)]+)\)/)
-            if (linkMatch) {
-              launchLink = linkMatch[1]
-            }
-          }
-        }
-        
-        // 获取父任务信息
-        let parentTitle = ""
-        let parentURL = ""
-        if (note.parentNote) {
-          parentTitle = note.parentNote.noteTitle || ""
-          parentURL = "marginnote4app://note/" + note.parentNote.noteId
-        }
-        
-            // 获取任务类型
-            let taskType = this.mapBoardKeyToType(boardKey)
-            
-            // 类型映射表：中文 -> 英文
-            const typeMapping = {
-              '目标': 'target',
-              '关键结果': 'keyresult',
-              '项目': 'project',
-              '动作': 'action'
-            }
-            
-            // 如果有类型字段，转换为英文
-            if (typeField && typeMapping[typeField]) {
-              taskType = typeMapping[typeField]
-            }
-            
-            // 如果是通过标题格式识别的任务，从标题中提取类型并转换
-            if (!typeField && title.startsWith("【") && title.includes("｜") && title.includes("】")) {
-              const typeMatch = title.match(/【([^>>｜]+)/)
-              if (typeMatch && typeMatch[1]) {
-                // 去除可能的路径部分，只取类型
-                const typePart = typeMatch[1].split(' >> ')[0].trim()
-                if (typeMapping[typePart]) {
-                  taskType = typeMapping[typePart]
-                }
-              }
-            }
-            
-            // 返回任务数据
-            totalTaskCount++
-            return {
-              id: note.noteId,
-              type: taskType,
-              titleContent: note.noteTitle || "无标题",
-              titlePath: this.buildTitlePath(note),
-              status: status,
-              description: description,
-              priority: priority,
-              launchLink: launchLink,
-              parentURL: parentURL,
-              parentTitle: parentTitle
-            }
-          } catch (noteError) {
-            MNUtil.log(`⚠️ 处理任务出错: ${noteError.message}`)
-            return null
-          }
-        }).filter(task => task !== null)
-      } catch (boardError) {
-        MNUtil.log(`❌ 处理看板 ${boardKey} 出错: ${boardError.message}`)
+      } else {
         tasksData[boardKey] = []
       }
     }
@@ -3319,6 +3211,16 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
               // 解码数据
               const decodedData = decodeURIComponent('${encodedData}');
               const tasksData = JSON.parse(decodedData);
+              
+              // 添加数据验证日志
+              console.log('📦 接收到的任务数据结构:', Object.keys(tasksData));
+              for (const [boardKey, tasks] of Object.entries(tasksData)) {
+                console.log('  📋 ' + boardKey + ' 看板: ' + tasks.length + ' 个任务');
+                if (tasks.length > 0) {
+                  console.log('    示例任务:', tasks[0]);
+                }
+              }
+              
               const result = TaskSync.receiveTasks(tasksData);
               console.log('📦 数据加载结果:', result);
               console.log('📊 加载任务总数: ${totalTaskCount}');

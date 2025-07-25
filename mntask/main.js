@@ -114,6 +114,8 @@ JSB.newAddon = function (mainPath) {
         MNUtil.addObserver(self, 'onTextDidBeginEditing:', 'UITextViewTextDidBeginEditingNotification')
         MNUtil.addObserver(self, 'onTextDidEndEditing:', 'UITextViewTextDidEndEditingNotification')
         MNUtil.addObserver(self, 'onCloudConfigChange:', 'NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI')
+        // 添加笔记更新监听器（用于同步看板数据）
+        MNUtil.addObserver(self, 'onNoteDidUpdate:', 'NoteDidUpdate')
       },
 
       sceneDidDisconnect: function () { // Window disconnect 在插件页面关闭插件（不是删除）
@@ -129,6 +131,7 @@ JSB.newAddon = function (mainPath) {
         MNUtil.removeObserver(self,'openTaskSetting')
         MNUtil.removeObserver(self,'NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI')
         MNUtil.removeObserver(self,'ClosePopupMenuOnSelection')
+        MNUtil.removeObserver(self,'NoteDidUpdate')
         // MNUtil.delay(2).then(()=>{
         //   MNUtil.copy("object")
         //   self.addonController.view.frame = {x:undefined}
@@ -782,6 +785,56 @@ JSB.newAddon = function (mainPath) {
           MNUtil.showHUD("❌ 同步失败: " + error.message)
         }
       },
+      /**
+       * 处理笔记更新事件，用于实时同步看板数据
+       * @param {Object} sender - 通知对象
+       */
+      onNoteDidUpdate: function(sender) {
+        try {
+          let self = getMNTaskClass()
+          
+          // 检查是否在当前窗口
+          if (self.window !== MNUtil.currentWindow) {
+            return
+          }
+          
+          // 获取更新的笔记ID
+          const noteId = sender.userInfo ? sender.userInfo.noteid : null
+          if (!noteId) return
+          
+          // 检查是否是任务卡片
+          const note = MNNote.new(noteId)
+          if (!note) return
+          
+          // 检查是否是任务类型的卡片
+          const typeField = TaskFieldUtils.getFieldContent(note, "类型")
+          if (!typeField) return
+          
+          MNUtil.log(`📝 检测到任务卡片更新: ${note.noteTitle || noteId}`)
+          
+          // 如果今日看板正在显示，刷新数据
+          if (self.addonController && 
+              self.addonController.settingController && 
+              self.addonController.settingController.todayBoardWebViewInitialized) {
+            
+            // 延迟刷新，避免频繁更新
+            if (self.noteUpdateTimer) {
+              clearTimeout(self.noteUpdateTimer)
+            }
+            
+            self.noteUpdateTimer = setTimeout(() => {
+              MNUtil.log("🔄 刷新今日看板数据")
+              self.addonController.settingController.loadTodayBoardData()
+              self.noteUpdateTimer = null
+            }, 500)
+          }
+          
+        } catch (error) {
+          MNUtil.log(`❌ onNoteDidUpdate 出错: ${error.message}`)
+          taskUtils.addErrorLog(error, "onNoteDidUpdate")
+        }
+      },
+      
       /**
        * 
        * @param {{object:UITextView}} param 

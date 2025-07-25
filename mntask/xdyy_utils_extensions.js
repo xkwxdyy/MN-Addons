@@ -7042,31 +7042,57 @@ class TaskDataExtractor {
       
       // 获取看板卡片的所有子卡片
       const childNotes = boardNote.childNotes || []
-      MNUtil.log(`📋 找到 ${childNotes.length} 个子卡片`)
+      MNUtil.log(`📋 找到 ${childNotes.length} 个直接子卡片`)
       
-      const tasks = []
+      const allTasks = []
       const errors = []
       
-      // 遍历所有子卡片，提取任务数据
-      for (let i = 0; i < childNotes.length; i++) {
+      // 递归函数：遍历卡片树，提取所有任务卡片
+      const collectAllTasksRecursively = async (note, depth = 0) => {
         try {
-          const childNote = childNotes[i]
-          const taskData = await this.convertTaskToMetadata(childNote)
-          if (taskData) {
-            tasks.push(taskData)
+          // 判断是否是任务卡片
+          if (MNTaskManager.isTaskCard(note)) {
+            const indent = '  '.repeat(depth)
+            MNUtil.log(`${indent}📋 处理任务: ${note.noteTitle}`)
+            
+            // 转换当前任务并清除 including 字段（因为我们已经递归收集所有任务）
+            const taskData = await this.convertTaskToMetadata(note)
+            if (taskData) {
+              // 清除 including 字段，避免重复（所有任务都会被递归收集）
+              taskData.including = []
+              allTasks.push(taskData)
+            }
+          }
+          
+          // 递归处理所有子卡片（不管当前卡片是否是任务卡片）
+          const childNotes = note.childNotes || []
+          if (childNotes.length > 0) {
+            const indent = '  '.repeat(depth)
+            MNUtil.log(`${indent}📁 检查 ${childNotes.length} 个子卡片`)
+            
+            for (let i = 0; i < childNotes.length; i++) {
+              await collectAllTasksRecursively(childNotes[i], depth + 1)
+            }
           }
         } catch (error) {
-          errors.push(`子卡片 ${i}: ${error.message}`)
-          MNUtil.log(`⚠️ 处理子卡片 ${i} 时出错: ${error.message}`)
+          errors.push(`处理卡片时出错 (层级 ${depth}): ${error.message}`)
+          MNUtil.log(`⚠️ 处理卡片时出错 (层级 ${depth}): ${error.message}`)
         }
+      }
+      
+      // 遍历所有直接子卡片，递归收集所有任务
+      for (let i = 0; i < childNotes.length; i++) {
+        const childNote = childNotes[i]
+        MNUtil.log(`📌 处理直接子卡片 ${i + 1}/${childNotes.length}`)
+        await collectAllTasksRecursively(childNote, 0)
       }
       
       if (errors.length > 0) {
         MNUtil.log(`⚠️ 处理过程中有 ${errors.length} 个错误`)
       }
       
-      MNUtil.log(`✅ 成功提取 ${tasks.length} 个任务`)
-      return tasks
+      MNUtil.log(`✅ 成功提取 ${allTasks.length} 个任务（包含所有层级）`)
+      return allTasks
       
     } catch (error) {
       MNUtil.log(`❌ 提取任务失败: ${error.message}`)
@@ -7140,7 +7166,18 @@ class TaskDataExtractor {
         including: [],
         // 为了兼容性，同时保留原始字段名
         titleContent: taskContent,
-        titlePath: taskPath
+        titlePath: taskPath,
+        // 添加 fields 对象以支持 HTML 端的筛选功能
+        fields: {
+          priority: '低',  // 默认优先级
+          tags: [],  // 标签数组
+          project: '',  // 项目名称
+          progressLog: [],  // 进展日志
+          plannedDate: null,
+          today: false,
+          startTime: null,
+          endTime: null
+        }
       }
       
       // 提取任务描述（信息字段后的第一个纯文本评论）
@@ -7173,6 +7210,13 @@ class TaskDataExtractor {
             metadata.parentTitle = match[1]
             metadata.parentURL = match[2]
             MNUtil.log(`  - 所属: ${metadata.parentTitle}`)
+            
+            // 如果父任务是项目类型，设置 project 字段
+            const parentTitleInfo = MNTaskManager.parseTaskTitle(metadata.parentTitle)
+            if (parentTitleInfo && parentTitleInfo.type === '项目') {
+              metadata.fields.project = parentTitleInfo.content
+              MNUtil.log(`  - 项目: ${metadata.fields.project}`)
+            }
           }
         }
       }
@@ -7200,6 +7244,11 @@ class TaskDataExtractor {
         }
         
         metadata.progresses = progresses
+        // 同时更新 fields.progressLog 以支持 HTML 端
+        metadata.fields.progressLog = progresses.map(text => ({
+          date: new Date().toLocaleString('zh-CN'),
+          note: text
+        }))
         if (progresses.length > 0) {
           MNUtil.log(`  - 进展记录: ${progresses.length} 条`)
         }
@@ -7209,6 +7258,15 @@ class TaskDataExtractor {
       const priority = TaskFieldUtils.getFieldContent(note, '优先级')
       if (priority) {
         metadata.priority = priority
+        metadata.fields.priority = priority
+      }
+      
+      // 提取标签信息
+      const tags = TaskFieldUtils.getFieldContent(note, '标签')
+      if (tags) {
+        // 标签可能是逗号、空格或其他分隔符分隔的字符串
+        metadata.fields.tags = tags.split(/[,，\s]+/).filter(tag => tag.trim().length > 0)
+        MNUtil.log(`  - 标签: ${metadata.fields.tags.join(', ')}`)
       }
       
       // 如果是项目或目标类型，递归提取子任务

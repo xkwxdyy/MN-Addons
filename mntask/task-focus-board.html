@@ -386,7 +386,6 @@
             transition: var(--transition);
             cursor: pointer;
             position: relative;
-            overflow: hidden;
         }
 
         .focus-task-card:hover {
@@ -682,6 +681,38 @@
             color: #f6ad55;
             background: rgba(246, 173, 85, 0.2);
         }
+        
+        /* 焦点任务定位按钮 */
+        .focus-task-locate {
+            position: absolute;
+            top: var(--spacing-sm);
+            right: calc(var(--spacing-sm) + 72px); /* 在当前任务标记按钮左边 */
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            line-height: 1;
+            transition: var(--transition);
+            opacity: 0;
+            z-index: 10;
+        }
+        
+        .focus-task-card:hover .focus-task-locate {
+            opacity: 1;
+        }
+        
+        .focus-task-locate:hover {
+            background: rgba(91, 157, 217, 0.2);
+            color: var(--status-pause);
+            transform: scale(1.1);
+        }
 
         @media (max-width: 768px) {
             .focus-task-remove {
@@ -697,6 +728,14 @@
                 height: 36px;
                 font-size: 20px;
                 right: calc(var(--spacing-sm) + 44px);
+            }
+            
+            .focus-task-locate {
+                opacity: 1;
+                width: 36px;
+                height: 36px;
+                font-size: 18px;
+                right: calc(var(--spacing-sm) + 88px);
             }
             
             .drag-handle {
@@ -767,6 +806,7 @@
             display: flex;
             gap: var(--spacing-sm);
             margin-top: var(--spacing-lg);
+            flex-wrap: wrap;
         }
         
         /* 最近进展样式 */
@@ -791,6 +831,8 @@
         .recent-progress-content {
             color: var(--text-primary);
             line-height: 1.4;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
         
         .recent-progress-time {
@@ -870,12 +912,14 @@
             .focus-task-actions {
                 gap: var(--spacing-md);
                 margin-top: var(--spacing-md);
+                flex-wrap: wrap;
             }
             
             .focus-task-actions .btn {
-                flex: 1;
+                flex: 1 1 auto;
                 justify-content: center;
-                min-width: auto;
+                min-width: 120px;
+                margin-bottom: var(--spacing-xs);
             }
             
             /* 优化模态框关闭按钮 */
@@ -6506,6 +6550,11 @@
                             title="${task.currentFocus ? '取消当前任务' : '设为当前任务'}">
                         ${task.currentFocus ? '⭐' : '☆'}
                     </button>
+                    <button class="focus-task-locate" 
+                            onclick="event.stopPropagation(); focusTaskInMindMap('${task.id}')" 
+                            title="定位到卡片">
+                        📍
+                    </button>
                     <div class="task-type-badge ${task.type.toLowerCase()}">
                         ${getTaskTypeIcon(task.type)} ${task.type}
                     </div>
@@ -6892,7 +6941,17 @@
         
         // 时间轴专用的添加到焦点函数
         function addToFocusInTimeline(taskId) {
-            if (focusTasks.size >= 5) {
+            // 只统计符合显示条件的焦点任务数量
+            const activeFocusTasks = Array.from(focusTasks)
+                .map(id => tasks.find(t => t.id === id))
+                .filter(task => 
+                    task && 
+                    task.type === '动作' && 
+                    task.status !== '已完成' && 
+                    task.status !== '已归档'
+                );
+            
+            if (activeFocusTasks.length >= 5) {
                 showNotification('焦点任务不能超过5个，请先移除其他任务', 'warning');
                 return;
             }
@@ -7955,7 +8014,17 @@
 
         // 添加到焦点任务
         function addToFocus(taskId) {
-            if (focusTasks.size >= 5) {
+            // 只统计符合显示条件的焦点任务数量
+            const activeFocusTasks = Array.from(focusTasks)
+                .map(id => tasks.find(t => t.id === id))
+                .filter(task => 
+                    task && 
+                    task.type === '动作' && 
+                    task.status !== '已完成' && 
+                    task.status !== '已归档'
+                );
+            
+            if (activeFocusTasks.length >= 5) {
                 showNotification('焦点任务不能超过5个，请先移除其他任务', 'warning');
                 return;
             }
@@ -12831,7 +12900,15 @@
         
         // 渲染焦点任务回顾
         function renderFocusTasksReview() {
-            const focusTasksArray = Array.from(focusTasks).map(id => tasks.find(t => t.id === id)).filter(Boolean);
+            // 使用与焦点任务视图相同的过滤逻辑：只统计动作类型且未完成、未归档的任务
+            const focusTasksArray = Array.from(focusTasks)
+                .map(id => tasks.find(t => t.id === id))
+                .filter(task => 
+                    task && 
+                    task.type === '动作' && 
+                    task.status !== '已完成' && 
+                    task.status !== '已归档'
+                );
             
             // 按状态分组
             const tasksByStatus = {

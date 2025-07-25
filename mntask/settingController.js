@@ -362,7 +362,13 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
             break
             
           case 'syncTasks':
-            self.loadTodayBoardData()
+            // ========== 性能优化：检查是否需要强制刷新 ==========
+            if (params.forceRefresh === 'true' || params.forceRefresh === true) {
+              MNUtil.log("⚡ 检测到强制刷新请求")
+              self.forceRefreshTodayBoard()
+            } else {
+              self.loadTodayBoardData()
+            }
             break
             
           default:
@@ -1501,6 +1507,10 @@ taskSettingController.prototype.init = function () {
   this.customMode = "None"
   this.selectedText = '';
   this.searchedText = '';
+  
+  // ========== 今日看板性能优化：数据加载标志 ==========
+  this.todayBoardDataLoaded = false;  // 标记今日看板数据是否已加载
+  this.todayBoardLoadTime = null;     // 记录数据加载时间
   
   // 尝试获取 MNTask 插件实例
   try {
@@ -3171,17 +3181,38 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
 taskSettingController.prototype.loadTodayBoardData = async function() {
   try {
     MNUtil.log("📦 开始加载今日看板数据")
-    MNUtil.showHUD("🔄 正在加载任务数据...")
     
     if (!this.todayBoardWebViewInstance || !this.todayBoardWebViewInitialized) {
       MNUtil.log("⚠️ WebView 尚未初始化，跳过数据加载")
       return
     }
     
-    // 准备任务数据
-    const tasksData = {}
+    // ========== 性能优化：检查是否需要重新加载数据 ==========
+    if (this.todayBoardDataLoaded && taskConfig.isTodayBoardCacheValid()) {
+      MNUtil.log("✅ 数据已加载且缓存有效，跳过重复加载")
+      return
+    }
+    
+    // ========== 性能优化：尝试使用缓存数据 ==========
+    let tasksData = taskConfig.getTodayBoardCache()
     let totalTaskCount = 0
     let boundBoards = 0
+    
+    if (tasksData) {
+      // 计算缓存数据的任务数量
+      for (const tasks of Object.values(tasksData)) {
+        if (Array.isArray(tasks)) {
+          totalTaskCount += tasks.length
+        }
+      }
+      MNUtil.log(`✅ 使用缓存数据，共 ${totalTaskCount} 个任务`)
+    } else {
+      // 缓存无效，需要重新提取数据
+      MNUtil.showHUD("🔄 正在加载任务数据...")
+      MNUtil.log("⚠️ 缓存无效，开始重新提取任务数据")
+      
+      // 准备任务数据
+      tasksData = {}
     
     // 获取各看板的数据
     const boards = {
@@ -3219,24 +3250,28 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
       return
     }
     
-    // 提取每个看板的任务数据
-    for (const [boardKey, boardNoteId] of Object.entries(boards)) {
-      if (boardNoteId) {
-        try {
-          // 使用 TaskDataExtractor.extractTasksFromBoard 确保数据格式一致
-          tasksData[boardKey] = await TaskDataExtractor.extractTasksFromBoard(boardNoteId)
-          totalTaskCount += tasksData[boardKey].length
-          MNUtil.log(`✅ ${boardKey} 看板提取了 ${tasksData[boardKey].length} 个任务`)
-        } catch (error) {
-          MNUtil.log(`❌ 提取 ${boardKey} 看板任务失败: ${error.message}`)
+      // 提取每个看板的任务数据
+      for (const [boardKey, boardNoteId] of Object.entries(boards)) {
+        if (boardNoteId) {
+          try {
+            // 使用 TaskDataExtractor.extractTasksFromBoard 确保数据格式一致
+            tasksData[boardKey] = await TaskDataExtractor.extractTasksFromBoard(boardNoteId)
+            totalTaskCount += tasksData[boardKey].length
+            MNUtil.log(`✅ ${boardKey} 看板提取了 ${tasksData[boardKey].length} 个任务`)
+          } catch (error) {
+            MNUtil.log(`❌ 提取 ${boardKey} 看板任务失败: ${error.message}`)
+            tasksData[boardKey] = []
+          }
+        } else {
           tasksData[boardKey] = []
         }
-      } else {
-        tasksData[boardKey] = []
       }
+      
+      MNUtil.log(`📊 总共加载了 ${totalTaskCount} 个任务`)
+      
+      // ========== 性能优化：保存到缓存 ==========
+      taskConfig.setTodayBoardCache(tasksData)
     }
-    
-    MNUtil.log(`📊 总共加载了 ${totalTaskCount} 个任务`)
     
     // 将数据转为 JSON 字符串并编码（避免特殊字符问题）
     const jsonData = JSON.stringify(tasksData)
@@ -3286,6 +3321,10 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
       if (result === 'success') {
         MNUtil.log("✅ 任务数据已成功发送到 WebView")
         MNUtil.showHUD("✅ 数据加载成功")
+        
+        // ========== 性能优化：标记数据已加载 ==========
+        this.todayBoardDataLoaded = true
+        this.todayBoardLoadTime = Date.now()
       } else if (result === 'taskSyncNotReady' && retryCount < maxRetries) {
         MNUtil.log(`⏱️ TaskSync 未就绪，${retryDelay}ms 后重试 (${retryCount + 1}/${maxRetries})`)
         await MNUtil.delay(retryDelay / 1000)
@@ -3327,6 +3366,31 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
     MNUtil.log(`❌ loadTodayBoardData 出错: ${error.message}`)
     MNUtil.log(`📍 错误堆栈: ${error.stack}`)
     taskUtils.addErrorLog(error, "loadTodayBoardData")
+  }
+}
+
+/**
+ * 强制刷新今日看板数据
+ * 清除缓存并重新加载数据
+ * @this {settingController}
+ */
+taskSettingController.prototype.forceRefreshTodayBoard = async function() {
+  try {
+    MNUtil.log("🔄 强制刷新今日看板数据")
+    
+    // ========== 性能优化：清除缓存 ==========
+    taskConfig.clearTodayBoardCache()
+    
+    // 重置加载标志
+    this.todayBoardDataLoaded = false
+    this.todayBoardLoadTime = null
+    
+    // 重新加载数据
+    await this.loadTodayBoardData()
+    
+  } catch (error) {
+    MNUtil.log(`❌ forceRefreshTodayBoard 出错: ${error.message}`)
+    taskUtils.addErrorLog(error, "forceRefreshTodayBoard")
   }
 }
 

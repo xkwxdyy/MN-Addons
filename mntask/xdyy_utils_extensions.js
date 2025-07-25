@@ -7020,13 +7020,27 @@ if (typeof module !== 'undefined' && module.exports) {
  * 用于从看板卡片中提取任务数据并转换为元数据格式
  */
 class TaskDataExtractor {
+  // ========== 性能优化：调试模式控制 ==========
+  static debugMode = false  // 默认关闭详细日志
+  
+  /**
+   * 切换调试模式
+   * @param {boolean} enable - 是否启用调试模式
+   */
+  static setDebugMode(enable) {
+    this.debugMode = enable
+    MNUtil.log(`⚙️ TaskDataExtractor 调试模式: ${enable ? '开启' : '关闭'}`)
+  }
+  
   /**
    * 从看板卡片中提取所有任务卡片
    * @param {string} boardNoteId - 看板卡片的 ID
    * @returns {Array} 任务元数据数组
    */
   static async extractTasksFromBoard(boardNoteId) {
-    MNUtil.log(`🔍 开始从看板提取任务: ${boardNoteId}`)
+    if (this.debugMode) {
+      MNUtil.log(`🔍 开始从看板提取任务: ${boardNoteId}`)
+    }
     
     if (!boardNoteId) {
       MNUtil.log("❌ 看板 ID 为空")
@@ -7042,18 +7056,21 @@ class TaskDataExtractor {
       
       // 获取看板卡片的所有子卡片
       const childNotes = boardNote.childNotes || []
-      MNUtil.log(`📋 找到 ${childNotes.length} 个直接子卡片`)
       
       const allTasks = []
       const errors = []
+      let processedCards = 0  // 统计处理的卡片数
       
       // 递归函数：遍历卡片树，提取所有任务卡片
       const collectAllTasksRecursively = async (note, depth = 0) => {
+        processedCards++
         try {
           // 判断是否是任务卡片
           if (MNTaskManager.isTaskCard(note)) {
-            const indent = '  '.repeat(depth)
-            MNUtil.log(`${indent}📋 处理任务: ${note.noteTitle}`)
+            if (this.debugMode) {
+              const indent = '  '.repeat(depth)
+              MNUtil.log(`${indent}📋 处理任务: ${note.noteTitle}`)
+            }
             
             // 转换当前任务并清除 including 字段（因为我们已经递归收集所有任务）
             const taskData = await this.convertTaskToMetadata(note)
@@ -7067,31 +7084,31 @@ class TaskDataExtractor {
           // 递归处理所有子卡片（不管当前卡片是否是任务卡片）
           const childNotes = note.childNotes || []
           if (childNotes.length > 0) {
-            const indent = '  '.repeat(depth)
-            MNUtil.log(`${indent}📁 检查 ${childNotes.length} 个子卡片`)
-            
             for (let i = 0; i < childNotes.length; i++) {
               await collectAllTasksRecursively(childNotes[i], depth + 1)
             }
           }
         } catch (error) {
           errors.push(`处理卡片时出错 (层级 ${depth}): ${error.message}`)
-          MNUtil.log(`⚠️ 处理卡片时出错 (层级 ${depth}): ${error.message}`)
+          if (this.debugMode) {
+            MNUtil.log(`⚠️ 处理卡片时出错 (层级 ${depth}): ${error.message}`)
+          }
         }
       }
       
       // 遍历所有直接子卡片，递归收集所有任务
       for (let i = 0; i < childNotes.length; i++) {
         const childNote = childNotes[i]
-        MNUtil.log(`📌 处理直接子卡片 ${i + 1}/${childNotes.length}`)
         await collectAllTasksRecursively(childNote, 0)
       }
       
-      if (errors.length > 0) {
-        MNUtil.log(`⚠️ 处理过程中有 ${errors.length} 个错误`)
+      // ========== 性能优化：仅输出摘要信息 ==========
+      MNUtil.log(`✅ 提取完成: ${allTasks.length} 个任务 / ${processedCards} 张卡片${errors.length > 0 ? ` (⚠️ ${errors.length} 个错误)` : ''}`)
+      
+      if (this.debugMode && errors.length > 0) {
+        errors.forEach(err => MNUtil.log(`  - ${err}`))
       }
       
-      MNUtil.log(`✅ 成功提取 ${allTasks.length} 个任务（包含所有层级）`)
       return allTasks
       
     } catch (error) {
@@ -7248,10 +7265,7 @@ class TaskDataExtractor {
         metadata.fields.progressLog = progresses.map(text => ({
           date: new Date().toLocaleString('zh-CN'),
           note: text
-        }))
-        if (progresses.length > 0) {
-          MNUtil.log(`  - 进展记录: ${progresses.length} 条`)
-        }
+}))
       }
       
       // 提取优先级信息

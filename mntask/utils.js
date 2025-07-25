@@ -4738,6 +4738,14 @@ class taskConfig {
    */
   static cloudStore
   
+  // 今日看板任务数据缓存
+  static todayBoardCache = {
+    data: null,                 // 缓存的任务数据
+    timestamp: null,            // 缓存时间戳
+    notebookId: null,          // 缓存对应的笔记本ID
+    isValid: false             // 缓存是否有效
+  }
+  
   // 定义全局配置字段（跨笔记本共享）
   static globalConfigFields = [
     'windowState', 'action', 'dynamicAction', 'actions', 
@@ -6110,6 +6118,89 @@ static getDescriptionByName(actionName){
     }
     
     return { cleaned, cleanedBoards }
+  }
+  
+  // ========== 今日看板性能优化：缓存管理方法 ==========
+  
+  /**
+   * 检查缓存是否有效
+   * @returns {boolean} 缓存是否有效
+   */
+  static isTodayBoardCacheValid() {
+    // 检查缓存是否存在
+    if (!this.todayBoardCache.data || !this.todayBoardCache.timestamp) {
+      return false
+    }
+    
+    // 检查缓存是否对应当前笔记本
+    const currentNotebookId = this.getCurrentNotebookId()
+    if (this.todayBoardCache.notebookId !== currentNotebookId) {
+      return false
+    }
+    
+    // 检查缓存是否过期（默认5分钟过期）
+    const cacheAge = Date.now() - this.todayBoardCache.timestamp
+    const maxAge = 5 * 60 * 1000 // 5分钟
+    if (cacheAge > maxAge) {
+      return false
+    }
+    
+    return this.todayBoardCache.isValid
+  }
+  
+  /**
+   * 获取缓存的任务数据
+   * @returns {Object|null} 缓存的任务数据
+   */
+  static getTodayBoardCache() {
+    if (this.isTodayBoardCacheValid()) {
+      MNUtil.log("✅ 使用缓存的今日看板数据")
+      return this.todayBoardCache.data
+    }
+    return null
+  }
+  
+  /**
+   * 设置任务数据缓存
+   * @param {Object} data - 要缓存的任务数据
+   */
+  static setTodayBoardCache(data) {
+    this.todayBoardCache = {
+      data: data,
+      timestamp: Date.now(),
+      notebookId: this.getCurrentNotebookId(),
+      isValid: true
+    }
+    MNUtil.log("✅ 已更新今日看板数据缓存")
+  }
+  
+  /**
+   * 清除缓存
+   */
+  static clearTodayBoardCache() {
+    this.todayBoardCache = {
+      data: null,
+      timestamp: null,
+      notebookId: null,
+      isValid: false
+    }
+    MNUtil.log("🗑️ 已清除今日看板数据缓存")
+  }
+  
+  /**
+   * 标记缓存为无效（但不清除数据）
+   */
+  static invalidateTodayBoardCache() {
+    this.todayBoardCache.isValid = false
+    MNUtil.log("⚠️ 已标记今日看板缓存为无效")
+  }
+  
+  /**
+   * 当任务数据发生变化时调用
+   * 用于主动使缓存失效
+   */
+  static onTaskDataChanged() {
+    this.invalidateTodayBoardCache()
   }
 
 }

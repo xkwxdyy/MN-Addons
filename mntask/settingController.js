@@ -275,6 +275,26 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     try {
       MNUtil.log("🔔 webViewDidFinishLoad 被调用")
       
+      // 调试信息：显示所有 WebView 的状态
+      MNUtil.log(`📊 WebView 状态检查:`)
+      MNUtil.log(`   - webviewInput 存在: ${!!self.webviewInput}`)
+      MNUtil.log(`   - todayBoardWebViewInstance 存在: ${!!self.todayBoardWebViewInstance}`)
+      MNUtil.log(`   - 传入的 webView: ${webView}`)
+      
+      // 尝试获取 WebView 的 URL 用于调试
+      let webViewURL = ''
+      try {
+        if (webView.request && webView.request.URL) {
+          const urlObj = webView.request.URL()
+          if (urlObj && urlObj.absoluteString) {
+            webViewURL = urlObj.absoluteString()
+          }
+        }
+      } catch (e) {
+        MNUtil.log(`⚠️ 获取 WebView URL 时出错: ${e.message}`)
+      }
+      MNUtil.log(`   - 当前 WebView URL: ${webViewURL || 'undefined'}`)
+      
       // 检查是否是 jsoneditor WebView
       if (self.webviewInput && webView === self.webviewInput) {
         MNUtil.log("📝 JSON 编辑器 WebView 加载完成")
@@ -303,17 +323,25 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
         return
       }
       
-      // 如果都不匹配，尝试通过 URL 识别（作为备用方案）
-      let webViewURL = ''
-      try {
-        if (webView.request && webView.request.URL) {
-          const urlObj = webView.request.URL()
-          if (urlObj && urlObj.absoluteString) {
-            webViewURL = urlObj.absoluteString()
-          }
+      // 如果都不匹配，尝试根据 URL 识别
+      if (webViewURL.includes('task-focus-board.html')) {
+        MNUtil.log("🎯 通过 URL 识别到今日看板 WebView")
+        // 可能是 WebView 实例还未被保存到 todayBoardWebViewInstance
+        if (!self.todayBoardWebViewInitialized) {
+          self.todayBoardWebViewInitialized = true
+          MNUtil.log("✅ 标记今日看板已初始化")
+          
+          // 延迟加载数据
+          MNUtil.delay(0.5).then(() => {
+            MNUtil.log("🚀 开始加载今日看板数据")
+            self.loadTodayBoardData()
+            
+            if (MNTaskInstance && MNTaskInstance.syncTasksToWebView) {
+              MNTaskInstance.syncTasksToWebView()
+            }
+          })
         }
-      } catch (e) {
-        MNUtil.log(`⚠️ 获取 WebView URL 时出错: ${e.message}`)
+        return
       }
       
       MNUtil.log(`⚠️ 未识别的 WebView，URL: ${webViewURL || 'undefined'}`)
@@ -3221,9 +3249,14 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
     }
     
     // ========== 性能优化：检查是否需要重新加载数据 ==========
-    if (this.todayBoardDataLoaded && taskConfig.isTodayBoardCacheValid()) {
+    // iPad 上强制刷新数据，避免缓存问题
+    if (!MNUtil.isIPadOS() && this.todayBoardDataLoaded && taskConfig.isTodayBoardCacheValid()) {
       MNUtil.log("✅ 数据已加载且缓存有效，跳过重复加载")
       return
+    }
+    
+    if (MNUtil.isIPadOS()) {
+      MNUtil.log("📱 检测到 iPad 设备，强制刷新数据")
     }
     
     // ========== 性能优化：尝试使用缓存数据 ==========
@@ -3267,19 +3300,41 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
     
     if (boundBoards === 0) {
       MNUtil.log("❌ 没有绑定任何看板")
-      MNUtil.showHUD("❌ 请先在设置中绑定看板\n设置 → Task Boards")
       
-      // 传递空数据给 WebView
-      const jsCode = `
-        (function() {
-          if (typeof TaskSync !== 'undefined' && TaskSync.receiveTasks) {
-            TaskSync.receiveTasks({});
-            return 'success';
-          }
-          return 'taskSyncNotReady';
-        })();
-      `
-      await this.runJavaScriptInWebView(jsCode, 'todayBoardWebViewInstance')
+      // iPad 上提供加载测试数据的选项
+      if (MNUtil.isIPadOS()) {
+        MNUtil.log("📱 iPad 设备，尝试加载测试数据")
+        const jsCode = `
+          (function() {
+            if (typeof TaskSync !== 'undefined' && TaskSync.loadTestData) {
+              console.log('📱 iPad: 加载测试数据');
+              TaskSync.loadTestData();
+              return 'testDataLoaded';
+            } else if (typeof TaskSync !== 'undefined' && TaskSync.receiveTasks) {
+              TaskSync.receiveTasks({});
+              return 'emptyData';
+            }
+            return 'taskSyncNotReady';
+          })();
+        `
+        const result = await this.runJavaScriptInWebView(jsCode, 'todayBoardWebViewInstance')
+        MNUtil.log(`📱 iPad 测试数据加载结果: ${result}`)
+        MNUtil.showHUD("📱 iPad: 已加载测试数据\n请在设置中绑定看板")
+      } else {
+        MNUtil.showHUD("❌ 请先在设置中绑定看板\n设置 → Task Boards")
+        
+        // 传递空数据给 WebView
+        const jsCode = `
+          (function() {
+            if (typeof TaskSync !== 'undefined' && TaskSync.receiveTasks) {
+              TaskSync.receiveTasks({});
+              return 'success';
+            }
+            return 'taskSyncNotReady';
+          })();
+        `
+        await this.runJavaScriptInWebView(jsCode, 'todayBoardWebViewInstance')
+      }
       return
     }
     
@@ -3387,9 +3442,17 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
     const taskSyncStatus = await this.runJavaScriptInWebView(checkTaskSyncCode, 'todayBoardWebViewInstance')
     MNUtil.log(`📋 TaskSync 状态: ${taskSyncStatus}`)
     
-    if (taskSyncStatus === 'notExists') {
-      MNUtil.log("⚠️ TaskSync 未定义，等待一秒后重试...")
-      await MNUtil.delay(1)
+    // iPad 上需要更长的等待时间
+    if (taskSyncStatus === 'notExists' || taskSyncStatus === undefined) {
+      const waitTime = MNUtil.isIPadOS() ? 2 : 1
+      MNUtil.log(`⚠️ TaskSync 未定义，等待 ${waitTime} 秒后重试...`)
+      await MNUtil.delay(waitTime)
+      
+      // iPad 上再次检查
+      if (MNUtil.isIPadOS()) {
+        const retryStatus = await this.runJavaScriptInWebView(checkTaskSyncCode, 'todayBoardWebViewInstance')
+        MNUtil.log(`📋 iPad 重试后 TaskSync 状态: ${retryStatus}`)
+      }
     }
     
     // 开始注入数据

@@ -53,6 +53,9 @@
 // 全局 MNTask 插件实例引用
 var MNTaskInstance = null;
 
+// 全局 settingController 实例引用（JSB 框架需要）
+var self = null;
+
 /**
  * MNTask 设置控制器 - 采用 JSB 框架的事件驱动架构
  * 
@@ -90,6 +93,8 @@ var MNTaskInstance = null;
 const getTaskSettingController = ()=>self
 var taskSettingController = JSB.defineClass('taskSettingController : UIViewController <NSURLConnectionDelegate,UIImagePickerControllerDelegate,UIWebViewDelegate>', {
   viewDidLoad: function() {
+    // 设置全局 self 引用（重要：JSB 框架需要）
+    self = this;
     let self = getTaskSettingController()
 try {
     MNUtil.log("📍 [MNTask] viewDidLoad 开始")
@@ -278,8 +283,12 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       // 调试信息：显示所有 WebView 的状态
       MNUtil.log(`📊 WebView 状态检查:`)
       MNUtil.log(`   - webviewInput 存在: ${!!self.webviewInput}`)
+      MNUtil.log(`   - webviewInput 地址: ${self.webviewInput}`)
       MNUtil.log(`   - todayBoardWebViewInstance 存在: ${!!self.todayBoardWebViewInstance}`)
-      MNUtil.log(`   - 传入的 webView: ${webView}`)
+      MNUtil.log(`   - todayBoardWebViewInstance 地址: ${self.todayBoardWebViewInstance}`)
+      MNUtil.log(`   - 传入的 webView 地址: ${webView}`)
+      MNUtil.log(`   - webView === webviewInput: ${webView === self.webviewInput}`)
+      MNUtil.log(`   - webView === todayBoardWebViewInstance: ${webView === self.todayBoardWebViewInstance}`)
       
       // 尝试获取 WebView 的 URL 用于调试
       let webViewURL = ''
@@ -326,7 +335,14 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       // 如果都不匹配，尝试根据 URL 识别
       if (webViewURL.includes('task-focus-board.html')) {
         MNUtil.log("🎯 通过 URL 识别到今日看板 WebView")
-        // 可能是 WebView 实例还未被保存到 todayBoardWebViewInstance
+        
+        // 保存 WebView 引用（如果还没有保存）
+        if (!self.todayBoardWebViewInstance) {
+          self.todayBoardWebViewInstance = webView
+          MNUtil.log("📌 保存今日看板 WebView 引用")
+        }
+        
+        // 标记初始化完成
         if (!self.todayBoardWebViewInitialized) {
           self.todayBoardWebViewInitialized = true
           MNUtil.log("✅ 标记今日看板已初始化")
@@ -746,6 +762,13 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     let self = getTaskSettingController()
     // 记录视图切换
     MNUtil.log("切换到今日看板视图")
+    
+    // 确保 WebView 被初始化
+    if (!self.todayBoardWebViewInitialized) {
+      MNUtil.log("⚠️ 今日看板未初始化，强制初始化")
+      self.initTodayBoardWebView()
+    }
+    
     self.viewManager.switchTo('todayBoard')
   },
   popupButtonTapped: function (params) {
@@ -1736,6 +1759,12 @@ taskSettingController.prototype.initViewManager = function() {
       if (self[viewConfig.view]) {
         self[viewConfig.view].hidden = false
         MNUtil.log(`✅ Showing view: ${viewConfig.view}`)
+        
+        // 特殊处理：确保今日看板的 WebView 也可见
+        if (viewName === 'todayBoard' && self.todayBoardWebViewInstance) {
+          self.todayBoardWebViewInstance.hidden = false
+          MNUtil.log(`✅ 确保今日看板 WebView 可见`)
+        }
       } else {
         MNUtil.log(`❌ View not found: ${viewConfig.view}`)
       }
@@ -2368,8 +2397,8 @@ try {
     parent: 'taskBoardView'
   })
   
-  // 创建今日看板的 WebView
-  this.createTodayBoardWebView()
+  // 注释掉错误的创建方法 - 这个方法会清空 WebView 引用
+  // this.createTodayBoardWebView()
   
 } catch (error) {
   taskUtils.addErrorLog(error, "createSettingView")
@@ -3207,6 +3236,10 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
       this.todayBoardWebViewInstance = webView
       
       MNUtil.log("✅ WebView 实例创建成功")
+      MNUtil.log(`📊 WebView delegate 设置为: ${webView.delegate}`)
+      MNUtil.log(`📊 当前 controller 实例: ${this}`)
+      MNUtil.log(`📊 WebView 添加到容器: ${this.todayBoardWebView}`)
+      MNUtil.log(`📊 容器子视图数量: ${this.todayBoardWebView.subviews ? this.todayBoardWebView.subviews.length : 0}`)
     }
     
     // 加载 HTML 文件
@@ -3220,12 +3253,17 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
       return
     }
     
+    // 再次确认 delegate 设置
+    MNUtil.log(`📊 加载前 delegate 确认: ${this.todayBoardWebViewInstance.delegate === this}`)
+    
     this.todayBoardWebViewInstance.loadFileURLAllowingReadAccessToURL(
       NSURL.fileURLWithPath(htmlPath),
       NSURL.fileURLWithPath(taskConfig.mainPath)
     )
     
     MNUtil.log("📝 已发送 HTML 加载请求，等待 webViewDidFinishLoad")
+    MNUtil.log(`📊 WebView 实例地址: ${this.todayBoardWebViewInstance}`)
+    MNUtil.log(`📊 WebView delegate: ${this.todayBoardWebViewInstance.delegate}`)
     
     // 不在这里标记初始化完成，等待 webViewDidFinishLoad
   } catch (error) {

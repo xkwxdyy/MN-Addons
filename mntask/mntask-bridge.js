@@ -546,30 +546,44 @@
             const timestamp = new Date().toLocaleTimeString();
             const fullMessage = `${prefix} ${timestamp} - ${message}`;
             
-            // 根据级别选择控制台方法
-            const consoleMethods = {
-                info: 'info',
-                warn: 'warn',
-                error: 'error',
-                debug: 'log',
-                log: 'log'
-            };
-            
-            const method = consoleMethods[level] || 'log';
-            
-            if (data !== null) {
-                console[method](fullMessage, data);
-            } else {
-                console[method](fullMessage);
+            // 保留 console.log 用于开发时调试（如果可用）
+            if (typeof console !== 'undefined') {
+                const consoleMethods = {
+                    info: 'info',
+                    warn: 'warn',
+                    error: 'error',
+                    debug: 'log',
+                    log: 'log'
+                };
+                
+                const method = consoleMethods[level] || 'log';
+                
+                if (console[method]) {
+                    if (data !== null) {
+                        console[method](fullMessage, data);
+                    } else {
+                        console[method](fullMessage);
+                    }
+                }
             }
             
-            // 如果是错误，也发送到插件端
-            if (level === 'error' && this.ready) {
-                this._sendURL('log', {
-                    level: 'error',
-                    message: message,
-                    data: data
-                });
+            // 发送到插件端（所有级别的日志都发送，不仅仅是错误）
+            if (this.ready) {
+                const params = {
+                    level: level,
+                    message: encodeURIComponent(message)
+                };
+                
+                if (data !== null) {
+                    try {
+                        params.data = encodeURIComponent(JSON.stringify(data));
+                    } catch (e) {
+                        // 如果数据无法序列化，忽略
+                        params.data = encodeURIComponent('[无法序列化的数据]');
+                    }
+                }
+                
+                this._sendURL('log', params);
             }
         }
     }

@@ -4039,6 +4039,20 @@ taskSettingController.prototype.handleTodayBoardProtocol = function(url) {
         this.loadTodayBoardData()
         break
         
+      case 'log':
+        // 处理来自 WebView 的日志消息
+        const level = params.level || 'log'
+        const message = decodeURIComponent(params.message || '')
+        const data = params.data ? JSON.parse(decodeURIComponent(params.data)) : null
+        
+        // 转发到 MNUtil.log
+        if (data) {
+          MNUtil.log(`📱 [WebView] ${message}`, data)
+        } else {
+          MNUtil.log(`📱 [WebView] ${message}`)
+        }
+        break
+        
       default:
         MNUtil.log(`⚠️ 未知的协议动作: ${action}`)
     }

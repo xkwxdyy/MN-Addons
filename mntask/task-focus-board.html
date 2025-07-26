@@ -807,6 +807,22 @@
             gap: var(--spacing-sm);
             margin-top: var(--spacing-lg);
             flex-wrap: wrap;
+            width: 100%;
+        }
+        
+        .focus-task-actions .btn {
+            flex: 1 1 calc(33.33% - var(--spacing-sm));
+            min-width: 0;
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .focus-task-content {
+            flex: 1;
+            width: 100%;
         }
         
         /* 最近进展样式 */
@@ -917,15 +933,13 @@
             
             /* 确保焦点任务按钮有足够间距 */
             .focus-task-actions {
-                gap: var(--spacing-md);
+                gap: var(--spacing-xs);
                 margin-top: var(--spacing-md);
-                flex-wrap: wrap;
             }
             
             .focus-task-actions .btn {
-                flex: 1 1 auto;
+                flex: 1 1 100%;
                 justify-content: center;
-                min-width: 120px;
                 margin-bottom: var(--spacing-xs);
             }
             
@@ -6808,10 +6822,8 @@
                      ondragenter="handleDragEnter(event)"
                      ondragleave="handleDragLeave(event)"
                      ondrop="handleDrop(event)"
-                     ondragend="handleDragEnd(event)"
-                     onclick="showInMindMap('${task.id}')"
-                     style="cursor: pointer;">
-                    <div class="drag-handle" title="拖拽排序">⋮⋮</div>
+                     ondragend="handleDragEnd(event)">
+                    <div class="drag-handle" onclick="event.stopPropagation();" title="拖拽排序">⋮⋮</div>
                     <button class="focus-task-remove" onclick="removeFromFocus(event, '${task.id}')" title="从焦点移除">
                         ✕
                     </button>
@@ -6825,6 +6837,7 @@
                             title="定位到卡片">
                         📍
                     </button>
+                    <div class="focus-task-content" onclick="handleFocusTaskClick(event, '${task.id}')" style="cursor: pointer; flex: 1;">
                     <div class="task-type-badge ${task.type.toLowerCase()}">
                         ${getTaskTypeIcon(task.type)} ${task.type}
                     </div>
@@ -6886,6 +6899,7 @@
                         <button class="btn btn-secondary" onclick="viewProgressLog(event, '${task.id}')">
                             📊 进展详情
                         </button>
+                    </div>
                     </div>
                 </div>
             `;
@@ -7119,23 +7133,23 @@
         
         // 时间轴专用的任务状态切换函数
         function toggleTaskStatusInTimeline(taskId, newStatus) {
-            console.log('🔧 [toggleTaskStatusInTimeline] 开始执行，参数:', { taskId, newStatus });
+            MNUtil.log('🔧 [toggleTaskStatusInTimeline] 开始执行，参数:', { taskId, newStatus });
             
             // 记录当前滚动位置
             const viewContainer = document.querySelector('.view-container');
             const scrollPosition = viewContainer ? viewContainer.scrollTop : 0;
-            console.log('📍 [toggleTaskStatusInTimeline] 记录滚动位置:', scrollPosition);
+            MNUtil.log('📍 [toggleTaskStatusInTimeline] 记录滚动位置:', scrollPosition);
             
             // 直接更新任务状态，避免重复刷新
             const task = tasks.find(t => t.id === taskId);
             if (!task) {
-                console.error('❌ [toggleTaskStatusInTimeline] 未找到任务:', taskId);
+                MNUtil.log('❌ [toggleTaskStatusInTimeline] 未找到任务: ' + taskId);
                 return;
             }
-            console.log('✅ [toggleTaskStatusInTimeline] 找到任务:', task.title);
+            MNUtil.log('✅ [toggleTaskStatusInTimeline] 找到任务: ' + task.title);
             
             const oldStatus = task.status;
-            console.log('📝 [toggleTaskStatusInTimeline] 状态变更:', oldStatus, '→', newStatus);
+            MNUtil.log('📝 [toggleTaskStatusInTimeline] 状态变更: ' + oldStatus + ' → ' + newStatus);
             const currentTime = new Date().toISOString();
             const today = formatDateToLocal(new Date());
             
@@ -7165,7 +7179,7 @@
             
             // 更新状态
             task.status = newStatus;
-            console.log('✅ [toggleTaskStatusInTimeline] 状态更新完成，task对象:', {
+            MNUtil.log('✅ [toggleTaskStatusInTimeline] 状态更新完成，task对象:', {
                 id: task.id,
                 title: task.title.substring(0, 20) + '...',
                 oldStatus: oldStatus,
@@ -7188,7 +7202,7 @@
             
             // 验证tasks数组中的更新
             const updatedTask = tasks.find(t => t.id === taskId);
-            console.log('🔍 [toggleTaskStatusInTimeline] 验证tasks数组中的任务状态:', {
+            MNUtil.log('🔍 [toggleTaskStatusInTimeline] 验证tasks数组中的任务状态:', {
                 id: updatedTask.id,
                 status: updatedTask.status,
                 isSameObject: updatedTask === task
@@ -7196,17 +7210,17 @@
             
             // 显示通知
             showNotification(`任务状态已更新为：${newStatus}`, 'success');
-            console.log('📢 [toggleTaskStatusInTimeline] 通知已显示');
+            MNUtil.log('📢 [toggleTaskStatusInTimeline] 通知已显示');
             
             // 立即强制刷新时间轴，传递任务ID和滚动位置
-            console.log('🔄 [toggleTaskStatusInTimeline] 准备调用 forceRefreshTimeline');
+            MNUtil.log('🔄 [toggleTaskStatusInTimeline] 准备调用 forceRefreshTimeline');
             forceRefreshTimeline(taskId, scrollPosition);
-            console.log('✅ [toggleTaskStatusInTimeline] forceRefreshTimeline 调用完成');
+            MNUtil.log('✅ [toggleTaskStatusInTimeline] forceRefreshTimeline 调用完成');
             
             // 更新侧边栏统计
             updateSidebar('today');
             updateSidebarStats();
-            console.log('✅ [toggleTaskStatusInTimeline] 状态切换完成');
+            MNUtil.log('✅ [toggleTaskStatusInTimeline] 状态切换完成');
         }
         
         // 时间轴专用的添加到焦点函数
@@ -7277,17 +7291,17 @@
         
         // 渲染今日时间轴
         function renderTodayTimeline() {
-            console.log('🎨 [renderTodayTimeline] 开始渲染时间轴');
+            MNUtil.log('🎨 [renderTodayTimeline] 开始渲染时间轴');
             
             // 获取选择的日期范围
             const dateRange = getDateRange(selectedTimelineDate, timelineViewMode);
             const todayStr = formatDateToLocal(new Date());
-            console.log('📅 [renderTodayTimeline] 日期范围:', dateRange, '今日:', todayStr);
+            MNUtil.log('📅 [renderTodayTimeline] 日期范围:', { dateRange: dateRange, today: todayStr });
             
             // 根据选择的日期范围筛选任务
             // 始终使用最新的 tasks 数组，避免使用过时的 filteredTasks
             const baseTasks = tasks;
-            console.log('📊 [renderTodayTimeline] 基础任务数量:', baseTasks.length);
+            MNUtil.log('📊 [renderTodayTimeline] 基础任务数量: ' + baseTasks.length);
             
             const timelineTasks = baseTasks.filter(task => {
                 // 只显示项目和动作类型的任务
@@ -7329,8 +7343,8 @@
                 return false;
             });
             
-            console.log('🎯 [renderTodayTimeline] 筛选后的时间轴任务数量:', timelineTasks.length);
-            console.log('🔍 [renderTodayTimeline] 任务状态检查:', 
+            MNUtil.log('🎯 [renderTodayTimeline] 筛选后的时间轴任务数量: ' + timelineTasks.length);
+            MNUtil.log('🔍 [renderTodayTimeline] 任务状态检查:', 
                 timelineTasks.map(t => ({ 
                     id: t.id, 
                     title: t.title.substring(0, 20) + '...', 
@@ -7339,10 +7353,10 @@
             );
             
             const container = document.getElementById('todayTimeline');
-            console.log('📦 [renderTodayTimeline] 获取容器元素:', container ? '成功' : '失败');
+            MNUtil.log('📦 [renderTodayTimeline] 获取容器元素: ' + (container ? '成功' : '失败'));
             
             if (!container) {
-                console.error('❌ [renderTodayTimeline] 未找到时间轴容器元素 todayTimeline');
+                MNUtil.log('❌ [renderTodayTimeline] 未找到时间轴容器元素 todayTimeline');
                 return;
             }
             
@@ -7388,7 +7402,7 @@
                 const sortedDates = Object.keys(tasksByDate).sort();
                 
                 // 强制DOM更新
-                console.log('🔧 [renderTodayTimeline] 强制DOM更新前');
+                MNUtil.log('🔧 [renderTodayTimeline] 强制DOM更新前');
                 container.style.display = 'none';
                 container.offsetHeight; // 强制重排
                 
@@ -7411,7 +7425,7 @@
                     }).join('')}
                 `;
                 container.style.display = ''; // 恢复显示
-                console.log('✅ [renderTodayTimeline] 强制DOM更新完成（周/月视图）');
+                MNUtil.log('✅ [renderTodayTimeline] 强制DOM更新完成（周/月视图）');
             } else {
                 // 日视图 - 检测并分组同时间的任务
                 const taskGroups = [];
@@ -7435,7 +7449,7 @@
                 
                 // 渲染分组的时间轴
                 // 强制DOM更新
-                console.log('🔧 [renderTodayTimeline] 强制DOM更新前（日视图）');
+                MNUtil.log('🔧 [renderTodayTimeline] 强制DOM更新前（日视图）');
                 container.style.display = 'none';
                 container.offsetHeight; // 强制重排
                 
@@ -7453,10 +7467,10 @@
                 `;
                 
                 container.style.display = ''; // 恢复显示
-                console.log('✅ [renderTodayTimeline] 强制DOM更新完成（日视图）');
+                MNUtil.log('✅ [renderTodayTimeline] 强制DOM更新完成（日视图）');
             }
             
-            console.log('📏 [renderTodayTimeline] 最终渲染的HTML长度:', container.innerHTML.length);
+            MNUtil.log('📏 [renderTodayTimeline] 最终渲染的HTML长度: ' + container.innerHTML.length);
             
             // DOM更新验证
             if (timelineTasks.length > 0) {
@@ -7465,12 +7479,12 @@
                 if (taskElement) {
                     const statusElement = taskElement.querySelector('.task-status') || 
                                         taskElement.querySelector('[class*="status"]');
-                    console.log('🔍 [renderTodayTimeline] DOM验证 - 第一个任务的状态显示:', 
-                        statusElement ? statusElement.textContent.trim() : '未找到状态元素');
+                    MNUtil.log('🔍 [renderTodayTimeline] DOM验证 - 第一个任务的状态显示: ' + 
+                        (statusElement ? statusElement.textContent.trim() : '未找到状态元素'));
                 }
             }
             
-            console.log('✅ [renderTodayTimeline] 时间轴渲染完成');
+            MNUtil.log('✅ [renderTodayTimeline] 时间轴渲染完成');
         }
         
         // 渲染同时间的任务组
@@ -7518,20 +7532,20 @@
                                     ` : ''}
                                     <div class="mt-2" style="display: flex; gap: 8px; flex-wrap: wrap;">
                                         ${task.status === '未开始' ? `
-                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); console.log('🚀 [Timeline Group Button] 开始任务按钮被点击，taskId:', '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '进行中')">
+                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); MNUtil.log('🚀 [Timeline Group Button] 开始任务按钮被点击，taskId: ' + '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '进行中')">
                                                 🚀 开始
                                             </button>
                                         ` : ''}
                                         ${task.status === '进行中' ? `
-                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); console.log('✅ [Timeline Group Button] 完成任务按钮被点击，taskId:', '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '已完成')">
+                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); MNUtil.log('✅ [Timeline Group Button] 完成任务按钮被点击，taskId: ' + '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '已完成')">
                                                 ✅ 完成
                                             </button>
-                                            <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); console.log('⏸ [Timeline Group Button] 暂停任务按钮被点击，taskId:', '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '暂停')">
+                                            <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); MNUtil.log('⏸ [Timeline Group Button] 暂停任务按钮被点击，taskId: ' + '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '暂停')">
                                                 ⏸ 暂停
                                             </button>
                                         ` : ''}
                                         ${task.status === '暂停' ? `
-                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); console.log('▶️ [Timeline Group Button] 继续任务按钮被点击，taskId:', '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '进行中')">
+                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); MNUtil.log('▶️ [Timeline Group Button] 继续任务按钮被点击，taskId: ' + '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '进行中')">
                                                 ▶️ 继续
                                             </button>
                                         ` : ''}
@@ -7562,7 +7576,7 @@
             // 调试特定任务的渲染
             if (task.id === 'task_6' || task.id === 'task_8' || task.id === 'task_59') {
                 const originalTask = tasks.find(t => t.id === task.id);
-                console.log('🎯 [renderTimelineTask] 渲染特定任务:', {
+                MNUtil.log('🎯 [renderTimelineTask] 渲染特定任务:', {
                     id: task.id,
                     title: task.title.substring(0, 30) + '...',
                     status: task.status,
@@ -7620,20 +7634,20 @@
                                 <div class="timeline-task-actions" data-current-status="${task.status}">
                                     <!-- 调试信息：当前状态=${task.status} -->
                                     ${task.status === '未开始' ? `
-                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); console.log('🚀 [Timeline Button] 开始任务按钮被点击，taskId:', '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '进行中')" title="开始任务" data-action="start">
+                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); MNUtil.log('🚀 [Timeline Button] 开始任务按钮被点击，taskId: ' + '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '进行中')" title="开始任务" data-action="start">
                                             🚀
                                         </button>
                                     ` : ''}
                                     ${task.status === '进行中' ? `
-                                        <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); console.log('✅ [Timeline Button] 完成任务按钮被点击，taskId:', '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '已完成')" title="完成任务" data-action="complete">
+                                        <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); MNUtil.log('✅ [Timeline Button] 完成任务按钮被点击，taskId: ' + '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '已完成')" title="完成任务" data-action="complete">
                                             ✅
                                         </button>
-                                        <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); console.log('⏸ [Timeline Button] 暂停任务按钮被点击，taskId:', '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '暂停')" title="暂停任务" data-action="pause">
+                                        <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); MNUtil.log('⏸ [Timeline Button] 暂停任务按钮被点击，taskId: ' + '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '暂停')" title="暂停任务" data-action="pause">
                                             ⏸
                                         </button>
                                     ` : ''}
                                     ${task.status === '暂停' ? `
-                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); console.log('▶️ [Timeline Button] 继续任务按钮被点击，taskId:', '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '进行中')" title="继续任务" data-action="continue">
+                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); MNUtil.log('▶️ [Timeline Button] 继续任务按钮被点击，taskId: ' + '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '进行中')" title="继续任务" data-action="continue">
                                             ▶️
                                         </button>
                                     ` : ''}
@@ -7746,12 +7760,12 @@
             event.stopPropagation();
             const task = tasks.find(t => t.id === taskId);
             if (task && task.launchLink) {
-                console.log(`启动任务: ${task.title}`);
-                console.log(`跳转到: ${task.launchLink}`);
+                MNUtil.log(`启动任务: ${task.title}`);
+                MNUtil.log(`跳转到: ${task.launchLink}`);
                 // 在实际应用中，这里会调用 window.location.href = task.launchLink
                 showNotification(`正在启动任务: ${task.title}`, 'info');
                 // 模拟启动任务 - 实际应该打开链接
-                console.log(`启动链接: ${task.launchLink}`);
+                MNUtil.log(`启动链接: ${task.launchLink}`);
             }
         }
 
@@ -7881,7 +7895,7 @@
                 saveToLocalStorage();
                 
                 // 显示成功提示
-                console.log('✅ 启动链接已设置');
+                MNUtil.log('✅ 启动链接已设置');
             }
         }
 
@@ -7982,10 +7996,19 @@
                     // 同步进展数据到原生端
                     if (window.TaskSync && window.TaskSync.sendTaskUpdate) {
                         MNUtil.log('🔍 开始同步到原生端');
-                        // 将进展数据转换回原生格式
+                        // 将进展数据转换为MarginNote期望的HTML格式
                         const progressesForSync = task.fields.progressLog.map(p => {
-                            // 根据原生端期望的格式转换
-                            return `${p.date}: ${p.note}`;
+                            // 构建MarginNote的进展HTML格式
+                            const timeHtml = `<div style="position:relative; padding-left:28px; margin:14px 0; color:#1E40AF; font-weight:500; font-size:0.92em">
+  <div style="position:absolute; left:0; top:50%; transform:translateY(-50%); 
+              width:18px; height:18px; background:conic-gradient(#3B82F6 0%, #60A5FA 50%, #3B82F6 100%); 
+              border-radius:50%; display:flex; align-items:center; justify-content:center">
+    <div style="width:8px; height:8px; background:white; border-radius:50%"></div>
+  </div>
+  ${p.date}
+</div>
+${p.note}`;
+                            return timeHtml;
                         });
                         MNUtil.log('📊 同步数据格式:', progressesForSync);
                         
@@ -8314,7 +8337,7 @@
                         }
                     }
                 });
-                console.log(`修复了 ${currentFocusCount - 1} 个重复的当前焦点任务标记`);
+                MNUtil.log(`修复了 ${currentFocusCount - 1} 个重复的当前焦点任务标记`);
             }
         }
 
@@ -8630,6 +8653,22 @@
             showNotification('已清除所有筛选条件', 'info');
         }
 
+        // 处理焦点任务卡片点击
+        function handleFocusTaskClick(event, taskId) {
+            // 阻止事件冒泡到父元素
+            event.stopPropagation();
+            
+            // 检查是否点击了按钮或其他交互元素
+            const target = event.target;
+            if (target.tagName === 'BUTTON' || target.closest('button')) {
+                return; // 如果点击的是按钮，不处理
+            }
+            
+            // 显示任务详情
+            MNUtil.log('🔍 [handleFocusTaskClick] 点击焦点任务卡片，taskId:', taskId);
+            showInMindMap(taskId);
+        }
+
         // 从焦点任务中移除
         function removeFromFocus(event, taskId) {
             event.stopPropagation();
@@ -8663,7 +8702,7 @@
         function toggleTaskStatus(taskId, newStatus) {
             const task = tasks.find(t => t.id === taskId);
             if (!task) {
-                console.error('Task not found:', taskId);
+                MNUtil.log('Task not found: ' + taskId);
                 return;
             }
             
@@ -8767,7 +8806,7 @@
         function updateTaskStatus(taskId, newStatus) {
             const task = tasks.find(t => t.id === taskId);
             if (!task) {
-                console.error('未找到任务:', taskId);
+                MNUtil.log('未找到任务: ' + taskId);
                 return;
             }
             
@@ -8833,7 +8872,7 @@
         function removeTaskDate(taskId) {
             const task = tasks.find(t => t.id === taskId);
             if (!task) {
-                console.error('未找到任务:', taskId);
+                MNUtil.log('未找到任务: ' + taskId);
                 return;
             }
             
@@ -9222,6 +9261,17 @@
             
             MNUtil.log('🔍 stripHTMLTags 输入:', html);
             
+            // 特殊处理MarginNote的进展格式
+            // 格式：<div style="...">时间</div>进展内容
+            const progressPattern = /<div[^>]*>.*?(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}).*?<\/div>\s*(.+)/s;
+            const progressMatch = html.match(progressPattern);
+            if (progressMatch) {
+                // 如果匹配到进展格式，只返回进展内容部分
+                const progressContent = progressMatch[2].trim();
+                MNUtil.log('✅ 提取的进展内容:', progressContent);
+                return progressContent;
+            }
+            
             // 先尝试修复不完整的HTML
             let fixedHtml = html;
             
@@ -9485,7 +9535,7 @@
             }
             
             // 显示成功提示
-            console.log(`✅ 任务已添加: ${title}`);
+            MNUtil.log(`✅ 任务已添加: ${title}`);
         }
 
         /* ========================================
@@ -9939,7 +9989,7 @@
         // 应用筛选
         function applyFilters() {
             // 更新全局 filteredTasks
-            console.log(`🔍 [applyFilters] 开始筛选，总任务数: ${tasks.length}, 当前视图: ${currentView}`);
+            MNUtil.log(`🔍 [applyFilters] 开始筛选，总任务数: ${tasks.length}, 当前视图: ${currentView}`);
             
             filteredTasks = tasks.filter(task => {
                 // 特殊规则：在焦点视图中默认隐藏已完成和已归档的任务
@@ -9980,9 +10030,9 @@
                 return true;
             });
             
-            console.log(`✅ [applyFilters] 筛选完成，筛选后任务数: ${filteredTasks.length}`);
+            MNUtil.log(`✅ [applyFilters] 筛选完成，筛选后任务数: ${filteredTasks.length}`);
             if (filteredTasks.length > 0) {
-                console.log(`📊 [applyFilters] 任务状态分布:`, 
+                MNUtil.log(`📊 [applyFilters] 任务状态分布:`, 
                     filteredTasks.reduce((acc, task) => {
                         acc[task.status] = (acc[task.status] || 0) + 1;
                         return acc;
@@ -10323,7 +10373,7 @@
                             TaskSync.sendTaskUpdate(taskId, {
                                 launchLink: newValue
                             });
-                            console.log('📤 启动链接已同步到原生端');
+                            MNUtil.log('📤 启动链接已同步到原生端');
                         }
                         
                         showNotification('启动链接已更新', 'success');
@@ -11508,6 +11558,9 @@
                     <button class="btn btn-block btn-secondary" onclick="resetToTestData()">
                         🔄 重置测试数据
                     </button>
+                    <button class="btn btn-block btn-secondary" onclick="clearCacheAndRefresh()">
+                        🧹 清除缓存并刷新
+                    </button>
                 </div>
             `;
         }
@@ -11814,6 +11867,107 @@
             showNotification('看板设置功能开发中...', 'info');
         }
         
+        // 导出看板数据
+        function exportBoardData() {
+            MNUtil.log('📤 开始导出数据...');
+            MNUtil.log('📊 当前 tasks 数组长度: ' + tasks.length);
+            
+            const exportData = {
+                exportDate: new Date().toISOString(),
+                tasks: tasks,
+                focusTasks: Array.from(focusTasks),
+                pendingTasks: Array.from(pendingTasks),
+                statistics: {
+                    total: tasks.length,
+                    byType: {
+                        goals: tasks.filter(t => t.type === '目标').length,
+                        keyResults: tasks.filter(t => t.type === '关键结果').length,
+                        projects: tasks.filter(t => t.type === '项目').length,
+                        actions: tasks.filter(t => t.type === '动作').length
+                    },
+                    byStatus: {
+                        notStarted: tasks.filter(t => t.status === '未开始').length,
+                        inProgress: tasks.filter(t => t.status === '进行中').length,
+                        completed: tasks.filter(t => t.status === '已完成').length,
+                        paused: tasks.filter(t => t.status === '暂停').length,
+                        archived: tasks.filter(t => t.status === '已归档').length
+                    }
+                }
+            };
+            
+            // 创建下载链接
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportFileDefaultName = `mntask_export_${new Date().toISOString().split('T')[0]}.json`;
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+            
+            showNotification(`已导出 ${tasks.length} 个任务`, 'success');
+        }
+        
+        // 刷新计划视图
+        function refreshPlanningView() {
+            MNUtil.log('🔄 刷新计划视图');
+            renderPlanningView();
+            showNotification('计划视图已刷新', 'success');
+        }
+        
+        // 刷新时间轴视图
+        function refreshTimelineView() {
+            MNUtil.log('🔄 刷新时间轴视图');
+            renderTodayTimeline();
+            showNotification('时间轴已刷新', 'success');
+        }
+        
+        // 快速切换项目
+        function quickSwitchProject(projectName) {
+            MNUtil.log('🔄 切换到项目: ' + projectName);
+            activeFilters.project = projectName;
+            applyFilters();
+            showNotification(`已切换到项目: ${projectName}`, 'success');
+        }
+        
+        // 聚焦今日重点
+        function focusTodayTasks() {
+            MNUtil.log('🎯 聚焦今日重点');
+            const today = formatDateToLocal(new Date());
+            const todayTasks = tasks.filter(t => 
+                t.fields.plannedDate === today && 
+                t.status !== '已完成' &&
+                t.status !== '已归档'
+            );
+            
+            if (todayTasks.length === 0) {
+                showNotification('今天没有计划的任务', 'info');
+                return;
+            }
+            
+            // 清空当前焦点任务
+            focusTasks.clear();
+            focusTasksOrder = [];
+            
+            // 添加今日任务到焦点
+            todayTasks.forEach(task => {
+                focusTasks.add(task.id);
+                focusTasksOrder.push(task.id);
+            });
+            
+            // 保存并刷新
+            saveToLocalStorage();
+            switchView('focus');
+            showNotification(`已将 ${todayTasks.length} 个今日任务加入焦点`, 'success');
+        }
+        
+        // 打开任务筛选模态框
+        function openTaskFilterModal() {
+            // 直接调用全局搜索功能，它已经包含了完整的筛选功能
+            openGlobalSearch();
+        }
+        
         /* ========================================
            💾 数据持久化
            ======================================== */
@@ -11858,7 +12012,7 @@
                     
                     return true;
                 } catch (e) {
-                    console.error('加载数据失败:', e);
+                    MNUtil.log('加载数据失败:', e);
                 }
             }
             return false;
@@ -11898,6 +12052,43 @@
                 updateSidebarStats();
                 
                 showNotification('已重置为测试数据', 'success');
+            }
+        }
+        
+        // 清除缓存并刷新数据
+        function clearCacheAndRefresh() {
+            if (confirm('确定要清除本地缓存并重新加载数据吗？')) {
+                // 清除 localStorage
+                localStorage.removeItem('mntask-focus-board');
+                
+                // 清空当前数据
+                tasks = [];
+                focusTasks.clear();
+                focusTasksOrder = [];
+                pendingTasks.clear();
+                pendingTasksOrder = [];
+                customViews = {};
+                activeFilters = {};
+                
+                // 重置 filteredTasks
+                filteredTasks = [];
+                
+                // 显示提示
+                showNotification('缓存已清除，正在重新加载数据...', 'info');
+                
+                // 刷新当前视图（显示空状态）
+                switchView(currentView);
+                updateSidebar(currentView);
+                updateSidebarStats();
+                
+                // 请求插件重新发送数据
+                if (window.TaskSync && window.TaskSync.requestSync) {
+                    MNUtil.log('🔄 请求同步真实数据');
+                    TaskSync.requestSync();
+                } else {
+                    MNUtil.log('❌ TaskSync 未就绪');
+                    showNotification('无法同步数据，TaskSync 未就绪', 'error');
+                }
             }
         }
         
@@ -12427,7 +12618,7 @@
          */
         function initDeviceAdaptation() {
             const deviceType = DeviceDetector.getDeviceType();
-            console.log(`🔧 初始化 ${deviceType} 设备适配`);
+            MNUtil.log(`🔧 初始化 ${deviceType} 设备适配`);
             
             // iPad 特定适配
             if (deviceType === 'ipad') {
@@ -12492,7 +12683,7 @@
             document.body.classList.toggle('landscape', isLandscape);
             document.body.classList.toggle('portrait', !isLandscape);
             
-            console.log(`📐 设备方向: ${isLandscape ? '横屏' : '竖屏'}`);
+            MNUtil.log(`📐 设备方向: ${isLandscape ? '横屏' : '竖屏'}`);
             
             // 横屏时可能需要调整布局
             if (isLandscape && DeviceDetector.isIPad()) {
@@ -12690,7 +12881,7 @@
          */
         function enableDesktopDragAndDrop() {
             // 这里可以添加更高级的桌面端拖拽功能
-            console.log('✅ 桌面端拖拽功能已启用');
+            MNUtil.log('✅ 桌面端拖拽功能已启用');
         }
         
         /**
@@ -12919,7 +13110,7 @@
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {
             // 初始化设备适配
-            console.log('📱 设备类型:', DeviceDetector.getDeviceType());
+            MNUtil.log('📱 设备类型: ' + DeviceDetector.getDeviceType());
             
             // 添加触摸反馈样式
             addTouchFeedbackStyles();
@@ -12983,7 +13174,7 @@
                 if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                     e.preventDefault();
                     saveToLocalStorage();
-                    console.log('✅ 数据已保存');
+                    MNUtil.log('✅ 数据已保存');
                 }
             });
             
@@ -13001,7 +13192,21 @@
                 }
             });
             
-            console.log('🚀 MNTask 看板已启动');
+            // 初始化响应式侧边栏
+            initResponsiveSidebar();
+            
+            // 初始化快速进展键盘快捷键
+            setupQuickProgressKeyboardShortcuts();
+            
+            MNUtil.log('🚀 MNTask 看板已启动');
+            MNUtil.log('✅ MNTask 任务看板初始化完成');
+            
+            // 延迟请求同步数据（等待原生端准备就绪）
+            setTimeout(() => {
+                if (window.TaskSync) {
+                    TaskSync.requestSync();
+                }
+            }, 500);
         });
         
         // 更新侧边栏统计
@@ -13596,10 +13801,10 @@
                 if (mnTaskBridge && mnTaskBridge.ready) {
                     mnTaskBridge.send('syncTasks', { forceRefresh: true })
                         .then(response => {
-                            console.log('✅ 通过 MNTaskBridge 请求强制刷新成功:', response);
+                            MNUtil.log('✅ 通过 MNTaskBridge 请求强制刷新成功:', response);
                         })
                         .catch(error => {
-                            console.error('❌ MNTaskBridge 请求同步失败:', error);
+                            MNUtil.log('❌ MNTaskBridge 请求同步失败:', error);
                             // 降级到原有方案
                             window.location.href = 'mntask://syncTasks?forceRefresh=true';
                         });
@@ -13607,9 +13812,9 @@
                     // 使用原有的 URL Scheme 方案，带上 forceRefresh 参数
                     window.location.href = 'mntask://syncTasks?forceRefresh=true';
                 }
-                console.log('📤 已发送强制刷新请求');
+                MNUtil.log('📤 已发送强制刷新请求');
             } else {
-                console.error('❌ TaskSync 未定义或 requestSync 方法不存在');
+                MNUtil.log('❌ TaskSync 未定义或 requestSync 方法不存在');
                 showNotification('刷新失败：TaskSync 未就绪', 'error');
             }
         }
@@ -13632,12 +13837,12 @@
             if (!window.selectedPlanningTasks) {
                 window.selectedPlanningTasks = new Set();
             }
-            console.log('Planning selection initialized');
+            MNUtil.log('Planning selection initialized');
         }
         
         // 渲染计划视图
         function renderPlanningView() {
-            console.log('🎨 [renderPlanningView] 开始渲染反思仪表板');
+            MNUtil.log('🎨 [renderPlanningView] 开始渲染反思仪表板');
             
             // 1. 渲染焦点任务回顾
             renderFocusTasksReview();
@@ -14728,34 +14933,7 @@
         /* ========================================
            🌟 页面加载完成后初始化
            ======================================== */
-        document.addEventListener('DOMContentLoaded', function() {
-            // 初始化响应式侧边栏
-            initResponsiveSidebar();
-            
-            // 初始化快速进展键盘快捷键
-            setupQuickProgressKeyboardShortcuts();
-            
-            // 加载保存的数据
-            if (!loadFromLocalStorage()) {
-                // 如果没有保存的数据，生成测试数据
-                generateTestData();
-            }
-            
-            // 确保只有一个任务被标记为当前焦点
-            ensureOnlyOneCurrentFocus();
-            
-            // 初始渲染
-            switchView(currentView);
-            
-            console.log('✅ MNTask 任务看板初始化完成');
-            
-            // 延迟请求同步数据（等待原生端准备就绪）
-            setTimeout(() => {
-                if (window.TaskSync) {
-                    TaskSync.requestSync();
-                }
-            }, 500);
-        });
+        // 第二个 DOMContentLoaded 已合并到第一个中，避免重复初始化
         
         /**
          * 初始化 MNTask 通信桥接器
@@ -14777,10 +14955,39 @@
                 }
             });
             
-            console.log('✅ MNTaskBridge 已初始化');
+            MNUtil.log('✅ MNTaskBridge 已初始化');
         } else {
-            console.warn('⚠️ MNTaskBridge 未找到，使用降级方案');
+            MNUtil.log('⚠️ MNTaskBridge 未找到，使用降级方案');
         }
+        
+        /**
+         * MNUtil 代理对象 - 用于在 WebView 环境中模拟 MNUtil.log 功能
+         * 通过 MNTaskBridge 将日志发送到插件端
+         */
+        window.MNUtil = window.MNUtil || {
+            log: function(message, data) {
+                // 尝试通过 bridge 发送日志
+                if (mnTaskBridge && mnTaskBridge.ready) {
+                    mnTaskBridge.send('log', {
+                        level: 'log',
+                        message: message,
+                        data: data
+                    }).catch(err => {
+                        // 如果发送失败，回退到 console.log
+                        console.log('[MNUtil.log]', message, data);
+                    });
+                } else {
+                    // 如果 bridge 不可用，使用 console.log
+                    if (typeof console !== 'undefined' && console.log) {
+                        if (data !== undefined) {
+                            console.log('[MNUtil.log]', message, data);
+                        } else {
+                            console.log('[MNUtil.log]', message);
+                        }
+                    }
+                }
+            }
+        };
         
         /**
          * TaskSync - 任务数据同步类
@@ -14788,38 +14995,116 @@
          * 优先使用 MNTaskBridge，如果不可用则降级到原有方案
          */
         class TaskSync {
+            // 同步状态管理
+            static isSyncing = false;
+            static lastSyncTime = null;
             /**
              * 接收来自原生端的任务数据
              * @param {Object} tasksData - 包含各看板任务的数据
              */
             static receiveTasks(tasksData) {
-                console.log('📥 接收到任务数据:', tasksData);
+                MNUtil.log('🚀 [TaskSync.receiveTasks] 开始执行');
+                MNUtil.log('📥 接收到任务数据:', tasksData);
+                MNUtil.log('📊 接收数据类型:', typeof tasksData);
+                MNUtil.log('📊 全局 tasks 数组当前长度:', tasks.length);
                 
-                // 数据验证
-                if (!tasksData || typeof tasksData !== 'object') {
-                    console.error('❌ 无效的任务数据格式');
-                    return 'error: 无效的数据格式';
+                // 增强的数据验证
+                if (!tasksData) {
+                    MNUtil.log('❌ 接收到 null 或 undefined 数据');
+                    showNotification('未接收到任务数据', 'error');
+                    // 重置同步状态
+                    this.isSyncing = false;
+                    return 'error: 数据为空';
+                }
+                
+                if (typeof tasksData !== 'object') {
+                    MNUtil.log('❌ 数据类型错误，期望对象，实际为:', typeof tasksData);
+                    showNotification('接收到无效的任务数据格式', 'error');
+                    // 重置同步状态
+                    this.isSyncing = false;
+                    return 'error: 数据类型错误';
+                }
+                
+                // 如果是字符串，尝试解析
+                let parsedData = tasksData;
+                if (typeof tasksData === 'string') {
+                    MNUtil.log('📋 数据是字符串，尝试解析...');
+                    try {
+                        parsedData = JSON.parse(tasksData);
+                        MNUtil.log('✅ 字符串解析成功');
+                    } catch (e) {
+                        MNUtil.log('❌ JSON 解析失败:', e.message);
+                        return 'error: JSON解析失败';
+                    }
+                }
+                
+                // 打印接收到的看板键
+                const boardKeys = Object.keys(parsedData);
+                MNUtil.log('📋 看板列表:', boardKeys);
+                
+                // 检查是否有有效的任务数据
+                let hasValidData = false;
+                let totalTasksInData = 0;
+                
+                for (const boardKey of boardKeys) {
+                    const boardTasks = parsedData[boardKey];
+                    MNUtil.log(`📋 检查 ${boardKey} 看板:`, {
+                        isArray: Array.isArray(boardTasks),
+                        length: boardTasks ? boardTasks.length : 0,
+                        type: typeof boardTasks
+                    });
+                    
+                    if (Array.isArray(boardTasks) && boardTasks.length > 0) {
+                        hasValidData = true;
+                        totalTasksInData += boardTasks.length;
+                    }
+                }
+                
+                MNUtil.log(`📊 数据统计: 总共 ${totalTasksInData} 个任务`);
+                
+                if (!hasValidData) {
+                    MNUtil.log('⚠️ 接收到的任务数据为空，保留现有数据');
+                    showNotification('未接收到任何任务数据，保留现有数据', 'warning');
+                    // 重置同步状态
+                    this.isSyncing = false;
+                    return 'warning: 无有效任务数据';
                 }
                 
                 try {
+                    // 备份现有数据
+                    const backupTasks = [...tasks];
+                    MNUtil.log(`📦 备份现有 ${backupTasks.length} 个任务`);
+                    
                     // 清空现有数据
                     tasks.length = 0;
+                    MNUtil.log('🗑️ 已清空 tasks 数组');
+                    
                     let totalReceived = 0;
                     let totalConverted = 0;
                     let conversionErrors = [];
                     
                     // 处理每个看板的任务
-                    for (const [boardKey, boardTasks] of Object.entries(tasksData)) {
-                        console.log(`📋 处理 ${boardKey} 看板: ${boardTasks.length} 个任务`);
+                    for (const [boardKey, boardTasks] of Object.entries(parsedData)) {
+                        MNUtil.log(`\n📋 开始处理 ${boardKey} 看板: ${boardTasks.length} 个任务`);
                         
                         if (!Array.isArray(boardTasks)) {
-                            console.warn(`⚠️ ${boardKey} 看板数据不是数组:`, boardTasks);
+                            MNUtil.log(`⚠️ ${boardKey} 看板数据不是数组:`, boardTasks);
                             continue;
                         }
                         
                         for (let i = 0; i < boardTasks.length; i++) {
                             const taskData = boardTasks[i];
                             totalReceived++;
+                            
+                            // 打印前3个任务的详细信息
+                            if (i < 3) {
+                                MNUtil.log(`  任务[${i}]:`, {
+                                    id: taskData.id,
+                                    title: taskData.title || taskData.titleContent,
+                                    type: taskData.type,
+                                    status: taskData.status
+                                });
+                            }
                             
                             // 验证任务数据的必要字段
                             if (!taskData.id) {
@@ -14837,30 +15122,77 @@
                                     conversionErrors.push(`${boardKey}[${i}]: 转换失败 (id: ${taskData.id})`);
                                 }
                             } catch (convError) {
+                                MNUtil.log(`❌ 转换任务 ${boardKey}[${i}] 失败:`, convError);
                                 conversionErrors.push(`${boardKey}[${i}]: ${convError.message}`);
                             }
                         }
+                        
+                        MNUtil.log(`✅ ${boardKey} 看板处理完成: 转换 ${boardTasks.length} 个任务`);
                     }
                     
                     // 输出转换结果统计
-                    console.log(`📊 数据转换统计:`);
-                    console.log(`  - 接收任务总数: ${totalReceived}`);
-                    console.log(`  - 成功转换: ${totalConverted}`);
-                    console.log(`  - 转换失败: ${totalReceived - totalConverted}`);
+                    MNUtil.log(`\n📊 数据转换统计:`);
+                    MNUtil.log(`  - 接收任务总数: ${totalReceived}`);
+                    MNUtil.log(`  - 成功转换: ${totalConverted}`);
+                    MNUtil.log(`  - 转换失败: ${totalReceived - totalConverted}`);
+                    MNUtil.log(`  - 当前 tasks 数组长度: ${tasks.length}`);
                     
                     if (conversionErrors.length > 0) {
-                        console.warn('⚠️ 转换错误详情:', conversionErrors);
+                        MNUtil.log('⚠️ 转换错误详情:', conversionErrors);
                     }
                     
+                    // 检查是否成功转换了至少一个任务
+                    if (totalConverted === 0) {
+                        MNUtil.log('❌ 没有成功转换任何任务，恢复备份数据');
+                        tasks.length = 0;
+                        tasks.push(...backupTasks);
+                        showNotification('任务转换失败，已恢复原有数据', 'error');
+                        return 'error: 转换失败';
+                    }
+                    
+                    // 验证 tasks 数组
+                    MNUtil.log('🔍 验证 tasks 数组:');
+                    MNUtil.log('  - 长度:', tasks.length);
+                    MNUtil.log('  - 第一个任务:', tasks[0]);
+                    MNUtil.log('  - window.tasks === tasks:', window.tasks === tasks);
+                    
                     // 刷新当前视图
+                    MNUtil.log('🔄 刷新视图:', currentView);
                     switchView(currentView);
                     
-                    console.log(`✅ 成功加载 ${tasks.length} 个任务`);
+                    // 保存新数据到 localStorage（关键修复）
+                    MNUtil.log('💾 保存到 localStorage...');
+                    saveToLocalStorage();
+                    
+                    MNUtil.log(`✅ 成功加载 ${tasks.length} 个任务`);
+                    MNUtil.log('🔄 数据已保存到本地存储');
+                    showNotification(`成功加载 ${tasks.length} 个任务`, 'success');
+                    
+                    // 最终验证
+                    MNUtil.log('🎯 最终验证 - tasks 数组长度:', tasks.length);
+                    MNUtil.log('📋 [TaskSync.receiveTasks] 执行完成');
+                    
+                    // 重置同步状态
+                    this.isSyncing = false;
+                    this.lastSyncTime = Date.now();
+                    
                     return 'success';
                     
                 } catch (error) {
-                    console.error('❌ 接收任务数据失败:', error);
-                    console.error('错误堆栈:', error.stack);
+                    MNUtil.log('❌ 接收任务数据失败:', error);
+                    MNUtil.log('错误堆栈:', error.stack);
+                    
+                    // 恢复备份数据
+                    if (typeof backupTasks !== 'undefined' && backupTasks.length > 0) {
+                        MNUtil.log('🔄 恢复备份数据...');
+                        tasks.length = 0;
+                        tasks.push(...backupTasks);
+                        showNotification('数据同步失败，已恢复原有数据', 'error');
+                    }
+                    
+                    // 重置同步状态
+                    this.isSyncing = false;
+                    
                     return 'error: ' + error.message;
                 }
             }
@@ -15001,7 +15333,7 @@
                 
                 // 调试日志：显示原始数据
                 if (tasks.length < 5) { // 只显示前5个任务的详细信息
-                    console.log(`🔍 转换任务数据:`, {
+                    MNUtil.log(`🔍 转换任务数据:`, {
                         id: taskData.id,
                         type: taskData.type,
                         titleContent: taskData.titleContent,
@@ -15044,7 +15376,7 @@
                 
                 // 验证转换结果
                 if (!convertedTask.title || !convertedTask.type) {
-                    console.warn('⚠️ 转换后的任务缺少关键字段:', convertedTask);
+                    MNUtil.log('⚠️ 转换后的任务缺少关键字段:', convertedTask);
                 }
                 
                 return convertedTask;
@@ -15058,7 +15390,7 @@
             static sendTaskUpdate(taskId, updates) {
                 const task = tasks.find(t => t.id === taskId);
                 if (!task || !task._originalData) {
-                    console.error('❌ 找不到任务或原始数据:', taskId);
+                    MNUtil.log('❌ 找不到任务或原始数据: ' + taskId);
                     return;
                 }
                 
@@ -15083,10 +15415,10 @@
                 if (mnTaskBridge && mnTaskBridge.ready) {
                     mnTaskBridge.send('updateTask', updateData)
                         .then(response => {
-                            console.log('✅ 通过 MNTaskBridge 发送成功:', response);
+                            MNUtil.log('✅ 通过 MNTaskBridge 发送成功:', response);
                         })
                         .catch(error => {
-                            console.error('❌ MNTaskBridge 发送失败:', error);
+                            MNUtil.log('❌ MNTaskBridge 发送失败:', error);
                             // 降级到原有方案
                             this._sendViaURLScheme('updateTask', updateData);
                         });
@@ -15095,7 +15427,7 @@
                     this._sendViaURLScheme('updateTask', updateData);
                 }
                 
-                console.log('📤 发送任务更新:', updateData);
+                MNUtil.log('📤 发送任务更新:', updateData);
             }
             
             /**
@@ -15107,10 +15439,10 @@
                 if (mnTaskBridge && mnTaskBridge.ready) {
                     mnTaskBridge.send('batchUpdate', tasksUpdates)
                         .then(response => {
-                            console.log('✅ 通过 MNTaskBridge 批量发送成功:', response);
+                            MNUtil.log('✅ 通过 MNTaskBridge 批量发送成功:', response);
                         })
                         .catch(error => {
-                            console.error('❌ MNTaskBridge 批量发送失败:', error);
+                            MNUtil.log('❌ MNTaskBridge 批量发送失败:', error);
                             // 降级到原有方案
                             this._sendViaURLScheme('batchUpdate', tasksUpdates);
                         });
@@ -15119,30 +15451,56 @@
                     this._sendViaURLScheme('batchUpdate', tasksUpdates);
                 }
                 
-                console.log('📤 批量发送任务更新:', tasksUpdates);
+                MNUtil.log('📤 批量发送任务更新:', tasksUpdates);
             }
             
             /**
              * 请求同步最新数据
              */
             static requestSync() {
+                // 检查是否正在同步
+                if (this.isSyncing) {
+                    MNUtil.log('⏳ 正在同步中，跳过重复请求');
+                    return;
+                }
+                
+                // 检查是否刚刚同步过（5秒内）
+                if (this.lastSyncTime && Date.now() - this.lastSyncTime < 5000) {
+                    MNUtil.log('⏰ 刚刚同步过，跳过频繁请求');
+                    return;
+                }
+                
+                // 设置同步状态
+                this.isSyncing = true;
+                MNUtil.log('🔄 开始请求同步数据...');
+                
                 // 优先使用 MNTaskBridge
                 if (mnTaskBridge && mnTaskBridge.ready) {
                     mnTaskBridge.send('syncTasks', {})
                         .then(response => {
-                            console.log('✅ 通过 MNTaskBridge 请求同步成功:', response);
+                            MNUtil.log('✅ 通过 MNTaskBridge 请求同步成功:', response);
+                            this.lastSyncTime = Date.now();
                         })
                         .catch(error => {
-                            console.error('❌ MNTaskBridge 请求同步失败:', error);
+                            MNUtil.log('❌ MNTaskBridge 请求同步失败:', error);
                             // 降级到原有方案
                             window.location.href = 'mntask://syncTasks';
+                            this.lastSyncTime = Date.now();
+                        })
+                        .finally(() => {
+                            this.isSyncing = false;
                         });
                 } else {
                     // 使用原有的 URL Scheme 方案
                     window.location.href = 'mntask://syncTasks';
+                    this.lastSyncTime = Date.now();
+                    // URL Scheme 无法知道何时完成，延迟重置状态
+                    setTimeout(() => {
+                        this.isSyncing = false;
+                    }, 2000);
                 }
                 
-                console.log('🔄 请求同步任务数据');
+                MNUtil.log('🔄 请求同步任务数据');
             }
             
             /**

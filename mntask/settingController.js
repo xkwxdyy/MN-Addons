@@ -274,12 +274,16 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     let self = getTaskSettingController()
     try {
       MNUtil.log("🔔 webViewDidFinishLoad 被调用")
-      MNUtil.log(`📱 WebView 实例: ${webView}`)
-      MNUtil.log(`📱 今日看板 WebView 实例: ${self.todayBoardWebViewInstance}`)
-      MNUtil.log(`📱 是今日看板?: ${webView === self.todayBoardWebViewInstance}`)
+      
+      // 检查是否是 jsoneditor WebView
+      if (self.webviewInput && webView === self.webviewInput) {
+        MNUtil.log("📝 JSON 编辑器 WebView 加载完成")
+        return
+      }
       
       // 检查是否是今日看板的 WebView
-      if (webView === self.todayBoardWebViewInstance) {
+      if (self.todayBoardWebViewInstance && webView === self.todayBoardWebViewInstance) {
+        MNUtil.log("✅ 识别到今日看板 WebView（通过实例比较）")
         // 标记初始化完成
         self.todayBoardWebViewInitialized = true
         
@@ -296,15 +300,44 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
             MNTaskInstance.syncTasksToWebView()
           }
         })
-      } else {
-        MNUtil.log("⚠️ 未识别的 WebView 实例")
-        MNUtil.log(`📱 WebView URL: ${webView.URL ? webView.URL.absoluteString() : 'undefined'}`)
-        MNUtil.log(`📱 WebView 标题: ${webView.title ? webView.title : 'undefined'}`)
+        return
       }
+      
+      // 如果都不匹配，尝试通过 URL 识别（作为备用方案）
+      let webViewURL = ''
+      try {
+        if (webView.request && webView.request.URL) {
+          const urlObj = webView.request.URL()
+          if (urlObj && urlObj.absoluteString) {
+            webViewURL = urlObj.absoluteString()
+          }
+        }
+      } catch (e) {
+        MNUtil.log(`⚠️ 获取 WebView URL 时出错: ${e.message}`)
+      }
+      
+      MNUtil.log(`⚠️ 未识别的 WebView，URL: ${webViewURL || 'undefined'}`)
+      
     } catch (error) {
       MNUtil.log(`❌ webViewDidFinishLoad 出错: ${error.message}`)
       MNUtil.log(`📍 错误堆栈: ${error.stack}`)
       taskUtils.addErrorLog(error, "webViewDidFinishLoad")
+    }
+  },
+  /**
+   * WebView 加载失败的回调
+   * @param {UIWebView} webView - WebView 实例
+   * @param {NSError} error - 错误对象
+   */
+  webViewDidFailLoadWithError: function(webView, error) {
+    let self = getTaskSettingController()
+    MNUtil.log(`❌ WebView 加载失败: ${error.message}`)
+    
+    if (self.todayBoardWebViewInstance && webView === self.todayBoardWebViewInstance) {
+      MNUtil.log("❌ 今日看板 WebView 加载失败")
+      MNUtil.showHUD("今日看板加载失败，请重试")
+    } else if (self.webviewInput && webView === self.webviewInput) {
+      MNUtil.log("❌ JSON 编辑器 WebView 加载失败")
     }
   },
   /**

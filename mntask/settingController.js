@@ -763,12 +763,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     // 记录视图切换
     MNUtil.log("切换到今日看板视图")
     
-    // 确保 WebView 被初始化
-    if (!self.todayBoardWebViewInitialized) {
-      MNUtil.log("⚠️ 今日看板未初始化，强制初始化")
-      self.initTodayBoardWebView()
-    }
-    
+    // 切换视图，viewManager 会处理初始化
     self.viewManager.switchTo('todayBoard')
   },
   popupButtonTapped: function (params) {
@@ -1699,10 +1694,18 @@ taskSettingController.prototype.initViewManager = function() {
         normalColor: '#9bb2d6',
         onShow: function(self) {
           MNUtil.log("🎯 切换到看板视图")
+          
+          // 确保布局更新
+          self.settingViewLayout()
+          
           // 首次显示时创建 WebView
           if (!self.todayBoardWebViewInitialized) {
             MNUtil.log("📱 首次显示，需要初始化 WebView")
-            self.initTodayBoardWebView()
+            // 延迟一帧以确保布局完成
+            self.delay(0.05).then(() => {
+              MNUtil.log("📱 延迟后开始初始化 WebView")
+              self.initTodayBoardWebView()
+            })
           } else {
             // 如果已经初始化，刷新数据
             MNUtil.log("♻️ WebView 已初始化，刷新数据")
@@ -3176,20 +3179,70 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
       MNUtil.log("📱 创建 WebView 实例")
       
       // 获取容器的当前边界
-      const containerBounds = this.todayBoardWebView.bounds
+      let containerBounds = this.todayBoardWebView.bounds
       MNUtil.log(`📐 容器边界: ${JSON.stringify(containerBounds)}`)
+      MNUtil.log(`📐 容器 frame: ${JSON.stringify(this.todayBoardWebView.frame)}`)
+      MNUtil.log(`📐 容器是否隐藏: ${this.todayBoardWebView.hidden}`)
+      
+      // 验证边界是否有效
+      if (!containerBounds || containerBounds.width <= 0 || containerBounds.height <= 0) {
+        MNUtil.log("⚠️ 容器边界无效，尝试使用 frame 或默认值")
+        
+        // 尝试使用 frame
+        const containerFrame = this.todayBoardWebView.frame
+        if (containerFrame && containerFrame.width > 0 && containerFrame.height > 0) {
+          containerBounds = {
+            x: 0,
+            y: 0,
+            width: containerFrame.width,
+            height: containerFrame.height
+          }
+          MNUtil.log(`📐 使用 frame 作为边界: ${JSON.stringify(containerBounds)}`)
+        } else {
+          // 使用默认值
+          const defaultWidth = this.settingView.frame.width - 2
+          const defaultHeight = this.settingView.frame.height - 60
+          containerBounds = {
+            x: 0,
+            y: 0,
+            width: defaultWidth > 0 ? defaultWidth : 600,
+            height: defaultHeight > 0 ? defaultHeight : 400
+          }
+          MNUtil.log(`📐 使用默认边界: ${JSON.stringify(containerBounds)}`)
+        }
+      }
+      
+      // 再次验证边界
+      if (containerBounds.width <= 0 || containerBounds.height <= 0) {
+        MNUtil.log("❌ 无法获取有效的容器边界，延迟初始化")
+        MNUtil.showHUD("容器尚未准备好，请稍后再试")
+        return
+      }
       
       // 创建 WebView，填充整个容器
-      const webView = new UIWebView({
-        x: 0, 
-        y: 0, 
-        width: containerBounds.width, 
-        height: containerBounds.height
-      })
-      webView.backgroundColor = UIColor.whiteColor()
-      webView.scalesPageToFit = false
-      webView.autoresizingMask = (1 << 1 | 1 << 4) // 宽高自适应
-      webView.delegate = this
+      let webView
+      try {
+        MNUtil.log(`📱 准备创建 WebView，尺寸: ${containerBounds.width}x${containerBounds.height}`)
+        
+        webView = new UIWebView({
+          x: 0, 
+          y: 0, 
+          width: containerBounds.width, 
+          height: containerBounds.height
+        })
+        
+        MNUtil.log("✅ WebView 实例创建成功")
+        
+        webView.backgroundColor = UIColor.whiteColor()
+        webView.scalesPageToFit = false
+        webView.autoresizingMask = (1 << 1 | 1 << 4) // 宽高自适应
+        webView.delegate = this
+      } catch (webViewError) {
+        MNUtil.log(`❌ 创建 WebView 失败: ${webViewError.message}`)
+        MNUtil.showHUD("创建今日看板失败，请稍后再试")
+        taskUtils.addErrorLog(webViewError, "创建 WebView")
+        return
+      }
       webView.layer.cornerRadius = 10
       webView.layer.masksToBounds = true
       
@@ -3230,7 +3283,16 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
       }
       
       // 将 WebView 添加到容器视图中
-      this.todayBoardWebView.addSubview(webView)
+      try {
+        MNUtil.log("📦 准备将 WebView 添加到容器")
+        this.todayBoardWebView.addSubview(webView)
+        MNUtil.log("✅ WebView 已添加到容器")
+      } catch (addError) {
+        MNUtil.log(`❌ 添加 WebView 到容器失败: ${addError.message}`)
+        MNUtil.showHUD("添加视图失败，请稍后再试")
+        taskUtils.addErrorLog(addError, "添加 WebView 到容器")
+        return
+      }
       
       // 保存 WebView 引用
       this.todayBoardWebViewInstance = webView

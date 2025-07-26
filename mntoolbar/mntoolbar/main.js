@@ -234,6 +234,7 @@ JSB.newAddon = function (mainPath) {
         }
         lastFrame.y = menuFrame.y-yOffset
         lastFrame.x = menuFrame.x
+        lastFrame.height = 40
         let testController = self.testController
         // let delay = testController.view.hidden?0.5:0
         // await MNUtil.delay(delay)
@@ -368,6 +369,7 @@ JSB.newAddon = function (mainPath) {
         let studyHeight = studyFrame.height
         
         self.testController.onClick = false
+        let testController = self.testController
         if (toolbarConfig.horizontal(true)) {
           let yOffset
           await MNUtil.delay(0.01)
@@ -390,7 +392,13 @@ JSB.newAddon = function (mainPath) {
               break;
           }
           lastFrame.y = menuFrame.y-yOffset
+          if (lastFrame.y < 0) {
+            testController.view.hidden = true
+            return
+          }
+          // MNUtil.log(lastFrame.y)
           lastFrame.x = menuFrame.x
+          lastFrame.height = 40
         }else{
           if (winRect.x-43<0) {
             lastFrame.x = winRect.x+winRect.width-studyFrameX
@@ -407,7 +415,6 @@ JSB.newAddon = function (mainPath) {
           }
         }
 
-        let testController = self.testController
         // let delay = testController.view.hidden?0.5:0
         // await MNUtil.delay(delay)
         if (self.notShow) {
@@ -543,11 +550,13 @@ JSB.newAddon = function (mainPath) {
                 self.testController.view.hidden = true
               })
             }
-            let currentFrame = self.testController.currentFrame
-            let buttonNumber = toolbarConfig.getWindowState("dynamicButton");
-            currentFrame.height = toolbarUtils.checkHeight(currentFrame.height,buttonNumber)
-            self.testController.view.frame = currentFrame
-            self.testController.currentFrame = currentFrame
+            if (!toolbarConfig.horizontal(true)) {
+              let currentFrame = self.testController.currentFrame
+              let buttonNumber = toolbarConfig.getWindowState("dynamicButton");
+              currentFrame.height = toolbarUtils.checkHeight(currentFrame.height,buttonNumber)
+              self.testController.view.frame = currentFrame
+              self.testController.currentFrame = currentFrame
+            }
           }
         }
         if (self.settingController && !self.settingController.onAnimate) {

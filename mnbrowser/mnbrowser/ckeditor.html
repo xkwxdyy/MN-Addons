@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>CKEditor 5 Sample</title>
+		<script type="module" crossorigin src="https://vip.123pan.cn/1836303614/dl/cdn/ckeditor/ckeditor.js"></script>
+		<script type="module" crossorigin src="https://vip.123pan.cn/1836303614/dl/cdn/ckeditor/ckeditor5.umd.js"></script>
+		<script type="module" crossorigin src="https://vip.123pan.cn/1836303614/dl/cdn/ckeditor/zh-cn.umd.js"></script>
+		<!-- <link rel="stylesheet" crossorigin href="https://vip.123pan.cn/1836303614/dl/cdn/ckeditor/ckeditor.css" defer> -->
+		<!-- <link rel="stylesheet" crossorigin href="https://vip.123pan.cn/1836303614/dl/cdn/ckeditor/ckeditor5.css" defer> -->
+    <link rel="stylesheet" href="ckeditor.css" defer>
+		<link rel="stylesheet" href="ckeditor5.css" defer>
+		<!-- <script type="module" src="ckeditor.js"></script> -->
+		<!-- <link rel="stylesheet" href="ckeditor.css"> -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+    <style>
+      body {
+        overscroll-behavior: none !important;
+      }
+      #root{
+        overscroll-behavior: none !important;
+      }
+      .main-container{
+        overscroll-behavior: none !important;
+      }
+    </style>
+	</head>
+	<body>
+		<div id="root"></div>
+    <script>
+    const notyf = new Notyf();
+
+        let target = document.getElementById("root");
+        var preventSelRecursion;
+        target.addEventListener('touchend', function(e){
+        setTimeout(() => {
+            var S = getSelection();
+            if (!S.rangeCount) return;
+            if (S.isCollapsed) return;
+            var r = S.getRangeAt(0);
+            if (!target.contains(r.commonAncestorContainer)) return;
+            if (preventSelRecursion) return;
+            notyf.success('阻止弹出菜单');
+            iosSelMenuPrevent();
+        }, 100);
+        }, false);
+
+        var iosSelMenuPrevent = debounce(function(){
+            var S = getSelection();
+            var r = S.getRangeAt(0);
+            preventSelRecursion = true;
+            S = getSelection();
+            S.removeAllRanges();
+            setTimeout(function(){ // make remove-add-selection removes the menu
+                S.addRange(r);
+                setTimeout(function(){
+                    preventSelRecursion = false;
+                });
+            },4);
+        },700); // if no selectionchange during 800ms : remove the menu
+
+        /* helper-function */
+        function debounce(fn, delay) {
+            var timer = null;
+            return function () {
+                var context = this, args = arguments;
+                clearTimeout(timer);
+                timer = setTimeout(function () {
+                    fn.apply(context, args);
+                }, delay);
+            };
+        }
+    </script>
+	</body>
+</html>

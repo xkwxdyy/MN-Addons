@@ -1,6 +1,6 @@
 /** @return {browserController} */
 const getBrowserController = ()=>self
-var browserController = JSB.defineClass('browserController : UIViewController <UIWebViewDelegate>',{
+var browserController = JSB.defineClass('browserController : UIViewController  <NSURLConnectionDelegate,UIWebViewDelegate>',{
   // /** @self {browserController} */
   viewDidLoad: function() {
   try {
@@ -11,9 +11,11 @@ var browserController = JSB.defineClass('browserController : UIViewController <U
     self.miniMode = false;
     self.shouldCopy = false
     self.shouldComment = false
+    self.preParseId = "123"
     self.selectedText = '';
     self.searchedText = '';
     self.webApp = "Bilibili"
+    self.watchMode = false
     if (!(self.webApp in browserConfig.webAppEntries)) {
       self.webApp = browserConfig.webAppEntrieNames[0]
     }
@@ -169,17 +171,45 @@ viewWillLayoutSubviews: function() {
    * 
    * @param {UIWebView} webView 
    */
-  webViewDidFinishLoad: function(webView) {
+  webViewDidFinishLoad: async function(webView) {
     let self = getBrowserController()
+    // MNUtil.log("webViewDidFinishLoad")
+    MNUtil.stopHUD()
+
     // MNUtil.showHUD("message")
     // MNUtil.showHUD("Finish")
     self.webview.url = webView.request.URL().absoluteString();
+    let currentURL = webView.request.URL().absoluteString()
+    // MNUtil.log(currentURL)
     self.refreshButton.setImageForState(browserUtils.reloadImage,0)
     self.changeButtonOpacity(1.0)
     self.isLoading = false;
     UIApplication.sharedApplication().networkActivityIndicatorVisible = false;
     let config = MNUtil.parseURL(webView.request.URL())
     if (config.scheme === "about") {
+      return
+    }
+    if (currentURL.startsWith("https://doc2x.noedgeai.com") && self.uploadOnDoc2X && self.uploadOnDoc2X.enabled) {
+      let canDrop = await self.runJavaScript(`'ondrop' in document.createElement('div');`)
+      if (!canDrop) {
+        MNUtil.showHUD("Doc2X not support drag and drop")
+        self.uploadOnDoc2X.enabled = true
+        return
+      }
+      switch (self.uploadOnDoc2X.action) {
+        case "uploadPDFToDoc2X":
+          self.uploadOnDoc2X.enabled = false
+          MNUtil.delay(1).then(()=>{
+            self.uploadPDFToDoc2X()
+          })
+          break;
+        case "uploadImageToDoc2X":
+          self.uploadOnDoc2X.enabled = false
+          MNUtil.delay(1).then(()=>{
+            self.uploadImageToDoc2X()
+          })
+          break;
+      }
       return
     }
     if (config.scheme === "https") {
@@ -191,9 +221,22 @@ viewWillLayoutSubviews: function() {
         case "fanyi.baidu.com":
           self.updateDaiduTranslateOffset()
           return;
+        case "zhuanlan.zhihu.com":
+        case "www.zhihu.com":
+          self.updateZhihuOffset()
+          return;
         case "zhangyu1818.github.io":
           self.updateAppiconForgeOffset()
           return;
+        case "m.bilibili.com":
+          self.updateBilibiliOffset()
+          return;
+        case "www.bilibili.com":
+          if (config.pathComponents[0] === "video") {
+            self.currentBvid = config.pathComponents[1]
+          }
+          self.updateBilibiliOffset()
+          return
         default:
           break;
       }
@@ -306,18 +349,53 @@ viewWillLayoutSubviews: function() {
    * @returns 
    */
   webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
+  try {
+
+    // MNUtil.log("webViewShouldStartLoadWithRequestNavigationType:"+type)
   //  https://qun.qq.com/universal-share/share?ac=1&authKey=7j5ESev4kHF%2BVOyv0MIP6xLGy7AxHqAv2aSo1zckqWUdLWKFloiCBbsmKsXAuvNY&busi_data=eyJncm91cENvZGUiOiI1MzkzMDUyMjciLCJ0b2tlbiI6IjA1c3R1azhjaVBvN1BmRUt6OGF5TXI0WEhzaEwrQ3IrN0k2ZklNU2tENnVjVzlRVlZSVFdFd3dPZGNCaG9LSlUiLCJ1aW4iOiIxNTE0NTAxNzY3In0%3D&data=g3UDk1OiVpEsWZsCg12Eau9l0pcVSSBZykMUIznWi8QSlSJfqWsr2m6VM4xiByyRC-t7sYSZmjr2z7s8dCsdxA&svctype=4&tempid=h5_group_info
   //  https://qm.qq.com/q/nuwBBTCwpi
     let currentURL = webView.request.URL().absoluteString()
     let requestURL = request.URL().absoluteString()
+    // MNUtil.copy(requestURL)
+    // MNUtil.log(requestURL)
+    // if(requestURL === 'https://doc2x.noedgeai.com/markdownEdit'){
+    //   MNUtil.log("reject")
+    //   return false
+    // }
+    
     let config = MNUtil.parseURL(requestURL)
-    // MNUtil.copy(config)
     switch (config.scheme) {
+      case "zhihu":
+        return false;
+      case "bilibili":
+        // MNUtil.log(config)
+        self.runJavaScript(`document.getElementsByClassName("openapp-dialog")[0].style.display = "none";document.getElementsByClassName("openapp-btn")[0].style.display = "none";`)
+        return false;
+      case "blob":
+        if (currentURL.startsWith("https://doc2x.noedgeai.com")) {
+          self.base64FromBlob(requestURL)
+          return false
+        }
+        if (currentURL.startsWith("https://moredraw.com") || currentURL.startsWith("http://moredraw.com")) {
+          // MNUtil.showHUD("base64FromBlob")
+          self.base64FromBlob(requestURL)
+          return false
+        }
+        // MNUtil.copy(config)
+        return false;
       case "http":
       case "https":
         self.inHomePage = false
         switch (config.host) {
             case "d.bilibili":
+            case "d.bilibili.com":
+              // MNUtil.log(config)
+              if (config.params.preUrl){
+                MNConnection.loadRequest(self.webview, config.params.preUrl)
+              }
+              // MNUtil.log("reject d.bilibili")
+              return false
+            case "oia.zhihu.com":
               return false
             case "oia.xiaohongshu.com":
               MNUtil.confirm("MN Utils", "Open Red Note?\n\n是否打开小红书？").then(async (confirm)=>{
@@ -338,7 +416,6 @@ viewWillLayoutSubviews: function() {
       case "xhsdiscover":
       case "zhihu":
         return false
-      
       case "zotero":
       case "marginnote3app":
       case "marginnote4app":
@@ -346,6 +423,49 @@ viewWillLayoutSubviews: function() {
         return false
       case "browser":
         switch (config.host) {
+          case "showhud":
+            self.showHUD(config.params.message)
+            MNUtil.stopHUD()
+            return false
+          case "getpdfdata":
+            // MNUtil.showHUD("getpdfdata")
+            let tem = config.params.content.split(",")
+            let type = self.fileTypeFromBase64(tem[0])
+            switch (type) {
+              case "pdf":
+                if (currentURL.startsWith("https://doc2x.noedgeai.com")) {
+                  self.importPDFFromBase64Doc2X(config.params.content,config.params.blobUrl)
+                }
+                if (currentURL.startsWith("https://moredraw.com") || currentURL.startsWith("http://moredraw.com")) {
+                  self.importPDFFromBase64MoreDraw(config.params.content,config.params.blobUrl)
+                }
+                break;
+              case "png":
+              case "jpg":
+                self.importImageFromBase64(config.params.content,config.params.blobUrl)
+                break;
+              default:
+                self.showHUD("Unsupported file type: "+type)
+                break;
+            }
+            // MNUtil.copy(tem[0])
+            return false
+          // MNUtil.copy(config)
+//             self.runJavaScript(`// 手动使 Blob URL 失效
+//             try {
+              
+
+// window.URL.revokeObjectURL("${config.params.blobUrl}");
+//             } catch (error) {
+//               error.message
+//             }
+// `).then(res => {
+//   MNUtil.copy(res)
+// })
+            return false;
+          case "downloadpdf":
+            self.downloadPDF(config.params)
+            return false
           case "openlink":
             MNConnection.loadRequest(webView, config.params.url)
             break;
@@ -363,6 +483,9 @@ viewWillLayoutSubviews: function() {
             browserConfig.config.homePageEngine = config.params.content
             browserConfig.save("MNBrowser_config")
             break;
+          case "copy":
+            MNUtil.copy(config.params.content)
+            break;
           case "search":
             let searchInfo = config.params
             self.search(searchInfo.text,searchInfo.engine)
@@ -370,9 +493,10 @@ viewWillLayoutSubviews: function() {
           case "copyimage":
             let base64 = config.params.image
             let imageData = NSData.dataWithContentsOfURL(NSURL.URLWithString(base64))
-            MNUtil.showHUD("Image copied")
             MNUtil.copyImage(imageData)
             MNUtil.postNotification("snipasteImage", {imageData:imageData})
+            MNUtil.waitHUD("✅ Image copied")
+            MNUtil.stopHUD()
             break;
           default:
             break;
@@ -381,6 +505,8 @@ viewWillLayoutSubviews: function() {
       default:
         break;
     }
+    // MNUtil.copy(config)
+
     // MNUtil.showHUD("type:"+type)
     // MNUtil.copyJSON({currentURL:currentURL,requestURL:requestURL,type:type,time:Date.now()})
     let redirectInfo = browserUtils.checkRedirect(requestURL)
@@ -412,7 +538,18 @@ viewWillLayoutSubviews: function() {
             let data = NSData.dataWithContentsOfURL(MNUtil.genNSURL(requestURL))
             data.writeToFileAtomically(targetPath, false)
             let docMd5 = MNUtil.importDocument(targetPath)
-            MNUtil.openDoc(docMd5)
+            if (typeof snipasteUtils !== 'undefined') {
+              MNUtil.postNotification("snipastePDF", {docMd5:docMd5,currPageNo:1})
+            }else{
+              let confirm = await MNUtil.confirm("MN Browser", "Open document?\n\n是否直接打开该文档？\n\n"+fileName)
+              if (confirm) {
+                MNUtil.openDoc(md5,MNUtil.currentNotebookId)
+                if (MNUtil.docMapSplitMode === 0) {
+                  MNUtil.studyController.docMapSplitMode = 1
+                }
+              }
+            }
+            // MNUtil.openDoc(docMd5)
           }
         })
         // MNUtil.showHUD("Save to "+targetPath)
@@ -433,6 +570,7 @@ const intervalId = setInterval(() => {
 }, 1000);
 
         `)
+self.updateBilibiliOffset()
         // self.runJavaScript(`document.querySelector('.bpx-player-ctrl-btn.bpx-player-ctrl-wide').click()`)
       // MNUtil.showHUD("message")
     }
@@ -452,6 +590,30 @@ const intervalId = setInterval(() => {
     // }
     // MNUtil.copy(requestURL)
     return true;
+    
+  } catch (error) {
+    browserUtils.addErrorLog(error, "webViewShouldStartLoadWithRequestNavigationType")
+    return true 
+  }
+  },
+  /**
+   * 
+   * @param {NSURLConnection} connection 
+   * @param {NSURLResponse} response 
+   * @returns 
+   */
+  connectionDidReceiveResponse: async function (connection,response) {
+    MNUtil.showHUD("connectionDidReceiveResponse")
+  },
+
+  connectionDidReceiveData: async function (connection,data) {
+    MNUtil.showHUD("connectionDidReceiveData")
+  },
+  connectionDidFinishLoading: function (connection) {
+    MNUtil.showHUD("connectionDidFinishLoading")
+  },
+  connectionDidFailWithError: function (connection,error) {
+    MNUtil.showHUD("connectionDidFailWithError")
   },
   changeScreen: function(sender) {
     if (sender.link) {
@@ -464,7 +626,7 @@ const intervalId = setInterval(() => {
       ];
     self.view.popoverController = MNUtil.getPopoverAndPresent(sender, commandTable,250,2)
   },
-  moveButtonTapped: function(sender) {
+  moveButtonTapped: async function(sender) {
   
     if (self.miniMode) {
       let preFrame = self.view.frame
@@ -481,19 +643,170 @@ const intervalId = setInterval(() => {
       self.show(preFrame)
       return
     }
-    var commandTable = [
-        {title:'🎛  Setting',object:self,selector:'openSettingView:',param:'right'},
-        {title:'📸  Screenshot',object:self,selector:'screenshot:',param:self.view.frame.width>1000?self.view.frame.width:1000},
-        {title:'📸  Screenshot Full Page',object:self,selector:'screenshotFull:',param:self.view.frame.width>1000?self.view.frame.width:1000},
-        {title:'🎬  VideoFrame → Clipboard',object:self,selector:'videoFrame:',param:self.view.frame.width>1000?self.view.frame.width:1000},
-        {title:'🎬  VideoFrame → Snipaste',object:self,selector:'videoFrameToSnipaste:',param:self.view.frame.width>1000?self.view.frame.width:1000},
-        {title:'🎬  VideoFrame → Editor',object:self,selector:'videoFrameToEditor:',param:self.view.frame.width>1000?self.view.frame.width:1000},
-        {title:'🎬  VideoFrame → CurrentNote',object:self,selector:'videoFrameToNote:',param:false},
-        {title:'🎬  VideoFrame → ChildNote',object:self,selector:'videoFrameToNote:',param:true},
-        {title:'🎬  VideoFrame → NewNote',object:self,selector:'videoFrameToNewNote:',param:true},
-        {title:'🎬  VideoFrame → NewComment',object:self,selector:'videoFrameToComment:',param:true},
-      ];
-    self.view.popoverController = MNUtil.getPopoverAndPresent(sender, commandTable,250,1)
+    let menu = new Menu(sender,self)
+    menu.width = 250
+    menu.preferredPosition = 1
+    menu.addMenuItem('🎛  Setting', 'openSettingView:','right')
+    menu.addMenuItem('📸  Screenshot', 'screenshot:',self.view.frame.width>1000?self.view.frame.width:1000)
+    menu.addMenuItem('📸  Screenshot Full Page', 'screenshotFull:',self.view.frame.width>1000?self.view.frame.width:1000)
+    menu.addMenuItem('📤  Export to PDF', 'exportToPDF:')
+    menu.addMenuItem('🎬  VideoFrame → Clipboard', 'videoFrame:',self.view.frame.width>1000?self.view.frame.width:1000)
+    menu.addMenuItem('🎬  VideoFrame → Snipaste', 'videoFrameToSnipaste:',self.view.frame.width>1000?self.view.frame.width:1000)
+    menu.addMenuItem('🎬  VideoFrame → Editor', 'videoFrameToEditor:',self.view.frame.width>1000?self.view.frame.width:1000)
+    menu.addMenuItem('🎬  VideoFrame → CurrentNote', 'videoFrameToNote:',false)
+    menu.addMenuItem('🎬  VideoFrame → ChildNote', 'videoFrameToNote:',true)
+    menu.addMenuItem('🎬  VideoFrame → NewNote', 'videoFrameToNewNote:',true)
+    menu.addMenuItem('🎬  VideoFrame → NewComment', 'videoFrameToComment:',true)
+    if ((await self.currentURLStartsWith("https://doc2x.noedgeai.com"))) {
+      menu.addMenuItem('📤  Upload to Doc2X', 'uploadToDoc2X:',true)
+    }
+    menu.show()
+    // var commandTable = [
+    //     {title:'🎛  Setting',object:self,selector:'openSettingView:',param:'right'},
+    //     {title:'📸  Screenshot',object:self,selector:'screenshot:',param:self.view.frame.width>1000?self.view.frame.width:1000},
+    //     {title:'📸  Screenshot Full Page',object:self,selector:'screenshotFull:',param:self.view.frame.width>1000?self.view.frame.width:1000},
+    //     {title:'🎬  VideoFrame → Clipboard',object:self,selector:'videoFrame:',param:self.view.frame.width>1000?self.view.frame.width:1000},
+    //     {title:'🎬  VideoFrame → Snipaste',object:self,selector:'videoFrameToSnipaste:',param:self.view.frame.width>1000?self.view.frame.width:1000},
+    //     {title:'🎬  VideoFrame → Editor',object:self,selector:'videoFrameToEditor:',param:self.view.frame.width>1000?self.view.frame.width:1000},
+    //     {title:'🎬  VideoFrame → CurrentNote',object:self,selector:'videoFrameToNote:',param:false},
+    //     {title:'🎬  VideoFrame → ChildNote',object:self,selector:'videoFrameToNote:',param:true},
+    //     {title:'🎬  VideoFrame → NewNote',object:self,selector:'videoFrameToNewNote:',param:true},
+    //     {title:'🎬  VideoFrame → NewComment',object:self,selector:'videoFrameToComment:',param:true},
+    //     {title:'UploadToDoc2X',object:self,selector:'uploadToDoc2X:',param:true},
+    //   ];
+    // self.view.popoverController = MNUtil.getPopoverAndPresent(sender, commandTable,250,1)
+  },
+  changeBilibiliVideoPart: async function (button) {
+    let self = getBrowserController()
+    Menu.dismissCurrentMenu()
+    self.changeBilibiliVideoPart(button)
+    // let encodedPartInfo = await self.runJavaScript(`    
+    // function getPartInfo() {
+    //   let list = document.getElementsByClassName("video-pod__list multip list")[0]
+    //   if (!list) {
+    //     return []
+    //   }
+    //   let items = list.getElementsByClassName("simple-base-item video-pod__item")
+    //   let partInfo = []
+    //   for (let i = 0; i < items.length; i++) {
+    //     let item = items[i]
+    //     let title = item.getElementsByClassName("title")[0].textContent.trim()
+    //     let time = item.getElementsByClassName("stats")[0].textContent.trim()
+    //     let times = time.split(":")
+    //     let minutes = parseInt(times[0])
+    //     let seconds = parseInt(times[1])
+    //     let totalSeconds = minutes*60+seconds
+
+    //     if (item.classList.contains("active")) {
+    //       partInfo.push({title:title,time:time,active:true,totalSeconds:totalSeconds})
+    //     }else{
+    //       partInfo.push({title:title,time:time,active:false,totalSeconds:totalSeconds})
+    //     }
+    //   }
+    //   console.log(partInfo)
+      
+    //   return encodeURIComponent(JSON.stringify(partInfo))
+    // }
+    // getPartInfo()
+    // `)
+    // let partInfo = JSON.parse(decodeURIComponent(encodedPartInfo))
+    // if (partInfo.length) {
+    //   // MNUtil.copy(partInfo)
+    //   let menu = new Menu(button,self)
+    //   let selector = "changePart:"
+    //   partInfo.forEach((part,index)=>{
+    //     menu.addMenuItem(part.title+" ("+part.time+")", selector,index+1,part.active)
+    //   })
+    //   menu.show()
+    // }else{
+    //   MNUtil.showHUD("No video part found")
+    // }
+
+
+  },
+  changePart: async function (params) {
+  try {
+    let self = getBrowserController()
+    Menu.dismissCurrentMenu()
+    if ("bvid" in params) {
+      self.openOrJump(params.bvid,0,params.p)
+    }else{
+      self.openOrJump(self.currentBvid, 0, params.p)
+    }
+    
+  } catch (error) {
+    browserUtils.addErrorLog(error, "changePage")
+  }
+  },
+  uploadToDoc2X: async function (params) {
+    let self = getBrowserController()
+    Menu.dismissCurrentMenu()
+    let currentURL = await self.getCurrentURL()
+    let currentImage = browserUtils.getCurrentImage()
+    // MNUtil.copy(currentImage)
+    if (currentImage) {
+      self.uploadImageToDoc2X(currentImage)
+      // self.waitHUD("Uploading file...")
+      // await MNUtil.delay(0.1)
+      // let fileName = "image.png"
+      // let fileBase64 = currentImage.base64Encoding().replace(/"/g, '\\"')
+      // self.uploadImageToDoc2X(fileBase64, fileName)
+      // await MNUtil.stopHUD(0.5)
+      // currentURL = await self.getCurrentURL()
+      // while (!currentURL.startsWith("https://doc2x.noedgeai.com/ocr?parseId_0=")) {
+      //   await MNUtil.delay(0.5)
+      //   currentURL = await self.getCurrentURL()
+      // }
+      // await MNUtil.delay(0.5)
+      // self.runJavaScript(`
+      // async function hideOriginalView() {
+      //   async function delay(seconds) {
+      //     return new Promise(resolve => setTimeout(resolve, seconds * 1000));
+      //   }
+      //   await delay(0.5);
+      //   document.getElementsByClassName("ant-splitter-panel")[0].style.display='none';
+      //   await delay(0.5);
+      //   document.getElementsByClassName("ant-splitter-panel")[0].style.display='none';
+      //   await delay(0.5);
+      //   document.getElementsByClassName("ant-splitter-panel")[0].style.display='none';
+      //   await delay(0.5);
+      //   document.getElementsByClassName("ant-splitter-panel")[0].style.display='none';
+      // }
+      // hideOriginalView();
+      // `)
+    }else{
+      self.uploadPDFToDoc2X()
+    }
+    return
+    // MNUtil.copy(currentURL)
+    if (currentURL === "https://doc2x.noedgeai.com/") {
+
+    }else if (currentURL === "https://doc2x.noedgeai.com/ocrUpload") {
+      self.waitHUD("Uploading file...")
+      await MNUtil.delay(0.1)
+      let currentImage = MNUtil.currentSelection.image
+      let fileName = "image.png"
+      let fileBase64 = currentImage.base64Encoding().replace(/"/g, '\\"')
+      self.uploadImageToDoc2X(fileBase64, fileName)
+      MNUtil.stopHUD(0.5)
+    }else{
+      // await self.runJavaScript(`window.location.href = 'https://doc2x.noedgeai.com/ocrUpload'`)
+      // currentURL = await self.getCurrentURL()
+      // while (currentURL !== "https://doc2x.noedgeai.com/ocrUpload") {
+      //   await MNUtil.delay(0.1)
+      //   currentURL = await self.getCurrentURL()
+      // }
+      // MNUtil.copy(currentURL)
+      await MNUtil.delay(0.1)
+      let currentImage = MNUtil.currentSelection.image
+      let fileName = "image.png"
+      let fileBase64 = currentImage.base64Encoding().replace(/"/g, '\\"')
+      self.uploadImageToDoc2X(fileBase64, fileName)
+    }
+    // if (!currentURL.startsWith("https://doc2x.noedgeai.com")) {
+    //   MNUtil.showHUD("Please open Doc2X first")
+    //   return
+    // }
   },
   onLongPress: async function(gesture) {
     if (gesture.state === 1) {
@@ -650,6 +963,15 @@ const intervalId = setInterval(() => {
     self.autoOpenVideoExcerpt.setTitleForState("Auto Open Video Excerpt: "+(autoOpenVideoExcerpt?"✅":"❌"),0)
     browserConfig.save("MNBrowser_config")
   },
+  toggleAutoExitWatchMode: function (params) {
+    if (!browserUtils.checkSubscribe(true)) {
+      return undefined
+    }
+    let autoExitWatchMode = !browserConfig.getConfig("autoExitWatchMode")
+    browserConfig.config.autoExitWatchMode = autoExitWatchMode
+    self.autoExitWatchMode.setTitleForState("Auto Exit Watch Mode: "+(autoExitWatchMode?"✅":"❌"),0)
+    browserConfig.save("MNBrowser_config")
+  },
   setSearchOrder:function (order) {
     if (self.view.popoverController) {self.view.popoverController.dismissPopoverAnimated(true);}
     browserConfig.searchOrder = order
@@ -660,6 +982,7 @@ const intervalId = setInterval(() => {
     self.runJavaScript(`document.body.style.zoom = ${zoom}`)
   },
   openSettingView:function (targetView) {
+    Menu.dismissCurrentMenu()
     self.openSetting(targetView)
   },
   toggleToolbar:function (opacity) {
@@ -682,6 +1005,15 @@ try {
       }
     })
     browserConfig.save("MNBrowser_toolbar")
+  },
+  toggleWatchMode:function (param) {
+    Menu.dismissCurrentMenu()
+    self.watchMode = !self.watchMode
+    if (self.watchMode) {
+      self.showHUD("✅ Watch Mode: ON")
+    }else{
+      self.showHUD("❌ Watch Mode: OFF")
+    }
   },
   toggleDesktop:function (param) {
     let self = getBrowserController()
@@ -744,35 +1076,37 @@ try {
   },
   openInNewWindow: function (url) {
     self.checkPopover()
+    Menu.dismissCurrentMenu()
     if (browserUtils.checkSubscribe()) {
-      let agent = self.webview.customUserAgent
-      MNUtil.postNotification('newWindow', {url:url,desktop:self.desktop,engine:browserConfig.engine,webApp:self.webApp,agent:agent})
-      self.homePage();
+      if (self.inHomePage) {
+        MNUtil.postNotification('newWindow', {homePage:true})
+      }else{
+        MNUtil.postNotification('newWindow', {url:url,desktop:self.desktop,engine:browserConfig.engine,webApp:self.webApp})
+        self.homePage();
+      }
     }
   },
   openNewWindow: function (url) {
     self.checkPopover()
+    Menu.dismissCurrentMenu()
     if (browserUtils.checkSubscribe()) {
-      let homePageConfig = browserConfig.getConfig("homePage")
-      MNUtil.postNotification('newWindow', {url:homePageConfig.url,desktop:homePageConfig.desktop})
+      MNUtil.postNotification('newWindow', {homePage:true})
     }
   },
-  openInBrowser: function (engine) {
-  self.webview.evaluateJavaScript(
-    `window.location.href`,
-    (ret) => {
-      self.webview.url = ret
-      MNUtil.openURL(self.webview.url)
-    }
-  );
+  openInBrowser: async function (engine) {
+    Menu.dismissCurrentMenu()
+    let url = await self.getCurrentURL()
+    MNUtil.openURL(url)
   },
   copyCurrentURL: async function (engine) {
+    Menu.dismissCurrentMenu()
     if (self.view.popoverController) {self.view.popoverController.dismissPopoverAnimated(true);}
     let url = await self.getCurrentURL()
     MNUtil.copy(url)
     self.showHUD("链接已复制")
   },
   copyCurrentURLWithText: async function(){
+    Menu.dismissCurrentMenu()
     if (self.view.popoverController) {self.view.popoverController.dismissPopoverAnimated(true);}
     let url = await self.getCurrentURL()
     let text = await self.getSelectedTextInWebview()
@@ -780,12 +1114,14 @@ try {
     self.showHUD("链接已复制")
   },
   bigbang: async function(){
+    Menu.dismissCurrentMenu()
     if (self.view.popoverController) {self.view.popoverController.dismissPopoverAnimated(true);}
     let url = await self.getCurrentURL()
     let text = await self.getTextInWebview()
     MNUtil.postNotification('bigbangText', {text:text,url:url})
   },
   openCopiedURL: function (engine) {
+    Menu.dismissCurrentMenu()
     MNConnection.loadRequest(self.webview, MNUtil.clipboardText)
   },
   resetConfig: async function (engine) {
@@ -795,7 +1131,7 @@ try {
     }
     if (self.configMode===0) {
       browserConfig.entries = browserConfig.defaultEntries
-      MNUtil.copyJSON(browserConfig.defaultEntries)
+      // MNUtil.copyJSON(browserConfig.defaultEntries)
       browserConfig.entrieNames = Object.keys(browserConfig.entries)
       browserConfig.engine = browserConfig.entrieNames[0]
       self.updateEngineButton()
@@ -932,7 +1268,7 @@ try {
             }).then(canvas => {
                 console.log('截图完成！');
                 // 将 canvas 转换为图片
-                const image = canvas.toDataURL('image/png'); // 也可以是 'image/jpeg'
+                const image = canvas.toDataURL('image/jpeg',0.8); // 压缩图片大小
                 window.location.href = 'browser://copyimage?image='+image
             }).catch(error => {
                 console.error('截图失败:', error);
@@ -953,6 +1289,46 @@ try {
             captureScreenshot();
         }
     `)
+  },
+  exportToPDF: async function () {
+    Menu.dismissCurrentMenu()
+    self.waitHUD("Exporting PDF...")
+    await MNUtil.delay(0.1)
+self.runJavaScript(browserUtils.getSubFuncScript()+`
+async function exportToPDF() {
+    // 检查 html2canvas 是否已定义，如果未定义则加载
+  if (typeof html2canvas === 'undefined') {
+      console.log('html2canvas 未加载，正在动态加载...');
+      loadHtml2CanvasScript( async () => {
+          // 加载完成后执行截图
+          let image = await screenshotToPNGBase64();
+          if (typeof jsPDF === 'undefined') {
+            loadJSPDFScript( async () => {
+              const pdfBase64 = await convertPngBase64ToPdfBase64(image,true);
+              postMessageToAddon("browser","downloadpdf",undefined,{"pdfBase64":pdfBase64})
+            });
+          }else{
+            const pdfBase64 = await convertPngBase64ToPdfBase64(image,true);
+            postMessageToAddon("browser","downloadpdf",undefined,{"pdfBase64":pdfBase64})
+          }
+      });
+  } else {
+      console.log('html2canvas 已加载，直接执行截图。');
+      // 如果已加载，则直接执行截图
+      let image = await screenshotToPNGBase64()
+      if (typeof jsPDF === 'undefined') {
+        loadJSPDFScript( async () => {
+          const pdfBase64 = await convertPngBase64ToPdfBase64(image,true);
+          postMessageToAddon("browser","downloadpdf",undefined,{"pdfBase64":pdfBase64})
+        });
+      }else{
+        const pdfBase64 = await convertPngBase64ToPdfBase64(image,true);
+        postMessageToAddon("browser","downloadpdf",undefined,{"pdfBase64":pdfBase64})
+      }
+  }
+}
+exportToPDF()
+        `)
   },
   /**
    * 截取整个网页
@@ -991,9 +1367,11 @@ try {
             };
 
             // 监听脚本加载失败事件
-            script.onerror = () => {
+            script.onerror = (e) => {
+                window.location.href = 'browser://showhud?message='+encodeURIComponent('加载失败'+url)
                 console.error(url + ' 加载失败');
             };
+    
 
             document.head.appendChild(script); // 或者 document.body.appendChild(script);
         }
@@ -1002,7 +1380,7 @@ try {
         function captureScreenshot() {
             // 检查 html2canvas 是否已加载
             if (typeof html2canvas === 'undefined') {
-                window.location.href = 'browser://showhud?message=库尚未加载完成，请稍后再试'
+                window.location.href = 'browser://showhud?message='+encodeURIComponent('html2canvas库加载失败')
                 return;
             }
 
@@ -1020,9 +1398,10 @@ try {
             }).then(canvas => {
                 console.log('截图完成！');
                 // 将 canvas 转换为图片
-                const image = canvas.toDataURL('image/png'); // 也可以是 'image/jpeg'
+                const image = canvas.toDataURL('image/jpeg',1.0); // 压缩图片大小
                 window.location.href = 'browser://copyimage?image='+image
             }).catch(error => {
+                window.location.href = 'browser://showhud?message='+encodeURIComponent('截图失败:'+error.message)
                 console.error('截图失败:', error);
             });
         }
@@ -1041,6 +1420,15 @@ try {
             captureScreenshot();
         }
     `)
+//     self.runJavaScript(`
+//      let url = 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.min.js'
+//             const script = document.createElement('script');
+//             script.type = 'text/javascript';
+//             script.src = url;
+//             document.head.appendChild(script);
+//     const image = await snapdom.toPng(document.body);
+// document.body.appendChild(image);
+//     `)
   },
   screenshot: async function (width) {
     if (self.view.popoverController) {self.view.popoverController.dismissPopoverAnimated(true);}
@@ -1096,6 +1484,20 @@ try {
     }
     self.homePage()
   },
+  loadCKEditor:function (params) {
+    try {
+      // MNUtil.copy(browserUtils.mainPath+"/ckeditor.html")
+      self.webview.loadFileURLAllowingReadAccessToURL(
+      NSURL.fileURLWithPath(browserUtils.mainPath+"/ckeditor.html"),
+      NSURL.fileURLWithPath(browserUtils.mainPath+"/")
+    )
+
+    // MNConnection.loadFile(self.webview, browserUtils.mainPath+"/ckeditor.html", browserUtils.mainPath+"/")
+          
+    } catch (error) {
+      browserUtils.addErrorLog(error, "loadCKEditor")
+    }
+  },
   customButtonTapped: async function(button){
     let self = getBrowserController()
     if (!browserUtils.checkSubscribe(true)) {
@@ -1108,6 +1510,29 @@ try {
     let text
     let configName = (button.index === 1)?"custom":"custom"+button.index
     switch (browserConfig.getConfig(configName)) {
+      case "uploadPDFToDoc2X":
+        if (!(await self.currentURLStartsWith("https://doc2x.noedgeai.com"))) {
+          MNUtil.waitHUD("Opening Doc2X...")
+          self.setWebMode(true)
+          MNConnection.loadRequest(self.webview, "https://doc2x.noedgeai.com")
+          self.uploadOnDoc2X = {enabled:true,action:"uploadPDFToDoc2X"}
+          return
+        }
+        self.uploadPDFToDoc2X()
+        break;
+      case "uploadImageToDoc2X":
+        if (!(await self.currentURLStartsWith("https://doc2x.noedgeai.com"))) {
+          MNUtil.waitHUD("Opening Doc2X...")
+          self.setWebMode(true)
+          MNConnection.loadRequest(self.webview, "https://doc2x.noedgeai.com")
+          self.uploadOnDoc2X = {enabled:true,action:"uploadImageToDoc2X"}
+          return
+        }
+        self.uploadImageToDoc2X()
+        break;
+      case "changeBilibiliVideoPart":
+        self.changeBilibiliVideoPart(button)
+        break;
       case "screenshot":
         let width = self.view.frame.width>1000?self.view.frame.width:1000
         let imageData = await self.screenshot(width)
@@ -1279,12 +1704,73 @@ backward10Seconds();`);
   goBackButtonTapped: function() {
     self.webview.goBack();
   },
-  goForwardButtonTapped: function() {
+  goForwardButtonTapµped: function() {
     self.webview.goForward();
   },
-  refreshButtonTapped: function(para) {
-    // self.runJavaScript(`document.querySelector('.bpx-player-ctrl-btn.bpx-player-ctrl-wide').click()`)
-    // return
+  refreshButtonTapped: async function(para) {
+//   try {
+
+// //  self.runJavaScript(`
+// //   // 1. 获取页面的拖放区域
+// //   const dropZone = document.body;
+
+// //   // 2. 直接使用原始Base64数据
+// //   const base64PDF = "${fileBase64Escape}";
+  
+// //   try {
+// //     // 3. 正确解析Base64并重建文件
+// //     const binaryString = atob(base64PDF);
+// //     const bytes = new Uint8Array(binaryString.length);
+    
+// //     // 逐个字符转换为字节值
+// //     for (let i = 0; i < binaryString.length; i++) {
+// //       bytes[i] = binaryString.charCodeAt(i) & 0xFF;
+// //     }
+    
+// //     // 4. 创建有效的PDF文件
+// //     const blob = new Blob([bytes.buffer], { type: 'application/pdf' });
+// //     const file = new File([blob], 'mockfile.pdf', { 
+// //       type: 'application/pdf',
+// //       lastModified: Date.now()
+// //     });
+
+// //     // 5. 创建自定义DataTransfer对象
+// //     const dataTransfer = new DataTransfer();
+// //     dataTransfer.items.add(file);
+
+// //     // 6. 创建并触发拖拽事件序列
+// //     const events = [
+// //       new DragEvent('dragenter', { bubbles: true, dataTransfer, view: window }),
+// //       new DragEvent('dragover', { 
+// //         bubbles: true, 
+// //         dataTransfer, 
+// //         cancelable: true, 
+// //         view: window 
+// //       }),
+// //       new DragEvent('drop', { 
+// //         bubbles: true, 
+// //         dataTransfer, 
+// //         cancelable: true, 
+// //         view: window 
+// //       })
+// //     ];
+    
+// //     events.forEach(event => dropZone.dispatchEvent(event));
+    
+// //     console.log('✅ PDF文件重建成功，拖拽事件已触发');
+    
+// //   } catch (error) {
+// //     console.error('⚠️ 文件重建失败:', error);
+// //     console.warn('Base64长度:', base64PDF.length);
+// //     console.warn('前100字符:', base64PDF.substring(0, 100));
+// //   }
+// // `)
+
+//   } catch (error) {
+//     browserUtils.addErrorLog(error, "upload")
+//   }
+//     // MNUtil.copy(res)
+//     return
     if (self.inHomePage) {
       self.homePage()
       return
@@ -1327,8 +1813,8 @@ backward10Seconds();`);
 
   // Application.sharedInstance().showHUD(self.isMainWindow,self.view.window,2)
 
-    if (self.isMainWindow) {
-      MNUtil.postNotification('close',{test:123})
+    if (self.isMainWindow && browserConfig.getConfig("autoExitWatchMode")) {
+      self.addonController.watchMode = false;
     }
     browserConfig.save("MNBrowser_dynamic")
   },
@@ -1397,36 +1883,25 @@ backward10Seconds();`);
     try {
     var commandTable 
     // MNUtil.showHUD("moreButtonTapped"+browserConfig.toolbar)
+    let menu = new Menu(button,self)
+    menu.width = 230
+    menu.preferredPosition = 1
+    menu.addMenuItem('🖥️  Desktop mode', 'toggleDesktop:','engine',self.desktop)
+    menu.addMenuItem('🌗  Left', 'splitScreen:','left',self.customMode==="left")
+    menu.addMenuItem('🌘  Left 1/3', 'splitScreen:','left13',self.customMode==="left13")
+    menu.addMenuItem('🌓  Right', 'splitScreen:','right',self.customMode==="right")
+    menu.addMenuItem('🌒  Right 1/3', 'splitScreen:','right13',self.customMode==="right13")
+    menu.addMenuItem('🌟  Dynamic', 'dynamicButtonTapped:','right',browserConfig.dynamic)
+    menu.addMenuItem('🌟  Toolbar', 'toggleToolbar:','right',browserConfig.toolbar)
     if (self.isMainWindow) {
-      commandTable = [
-        {title:'🖥️  Desktop mode',object:self,selector:'toggleDesktop:',param:"engine", checked:self.desktop},
-        {title:'🌗  Left',object:self,selector:'splitScreen:',param:'left',checked:self.customMode==="left"},
-        {title:'🌘  Left 1/3',object:self,selector:'splitScreen:',param:'left13',checked:self.customMode==="left13"},
-        {title:'🌓  Right',object:self,selector:'splitScreen:',param:'right',checked:self.customMode==="right"},
-        {title:'🌒  Right 1/3',object:self,selector:'splitScreen:',param:'right13',checked:self.customMode==="right13"},
-        {title:'🌟  Dynamic',object:self,selector:'dynamicButtonTapped:',param:'right',checked:browserConfig.dynamic},
-        {title:'🌟  Toolbar',object:self,selector:'toggleToolbar:',param:'right',checked:browserConfig.toolbar},
-        {title:'➕  Open in new window',object:self,selector:'openInNewWindow:',param:self.webview.url},
-        {title:'➕  Open new window',object:self,selector:'openNewWindow:',param:browserConfig.getConfig("homePage").url},
-        {title:'🌐  Open in browser',object:self,selector:'openInBrowser:',param:'right'},
-        {title:'🌐  Copy as MD link',object:self,selector:'copyCurrentURLWithText:',param:'right'},
-        {title:'🎚  Zoom',object:self,selector:'changeZoom:',param:button}
-      ];
-    }else{
-      commandTable = [
-        {title:'🖥️  Desktop mode',object:self,selector:'toggleDesktop:',param:"engine", checked:self.desktop},
-        {title:'🌗  Left',object:self,selector:'splitScreen:',param:'left',checked:self.customMode==="left"},
-        {title:'🌘  Left 1/3',object:self,selector:'splitScreen:',param:'left13',checked:self.customMode==="left13"},
-        {title:'🌓  Right',object:self,selector:'splitScreen:',param:'right',checked:self.customMode==="right"},
-        {title:'🌒  Right 1/3',object:self,selector:'splitScreen:',param:'right13',checked:self.customMode==="right13"},
-        {title:'🌟  Dynamic',object:self,selector:'dynamicButtonTapped:',param:'right',checked:browserConfig.dynamic},
-        {title:'🌟  Toolbar',object:self,selector:'toggleToolbar:',param:'right',checked:browserConfig.toolbar},
-        {title:'🌐  Open in browser',object:self,selector:'openInBrowser:',param:'right'},
-        {title:'🌐  Copy as MD link',object:self,selector:'copyCurrentURLWithText:',param:'right'},
-        {title:'🎚  Zoom',object:self,selector:'changeZoom:',param:button}
-      ];
+      menu.addMenuItem('👀  Watch Mode', 'toggleWatchMode:','right',self.watchMode)
+      menu.addMenuItem('➕  Open in new window', 'openInNewWindow:',self.webview.url)
+      menu.addMenuItem('➕  Open new window', 'openNewWindow:',browserConfig.getConfig("homePage").url)
     }
-    self.view.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,230,1)
+    menu.addMenuItem('🌐  Open in browser', 'openInBrowser:')
+    menu.addMenuItem('🌐  Copy as MD link', 'copyCurrentURLWithText:')
+    menu.addMenuItem('🎚  Zoom', 'changeZoom:',button)
+    menu.show()
     } catch (error) {
       browserUtils.addErrorLog(error, "moreButtonTapped")
     }
@@ -1520,6 +1995,7 @@ backward10Seconds();`);
       self.setFrame(x, y, frame.width,frame.height)
     }
     self.custom = false;
+    // MNUtil.copy(self.view.frame)
   },
   onResizeGesture:function (gesture) {
     self.custom = false;
@@ -1547,6 +2023,12 @@ backward10Seconds();`);
     //  Application.sharedInstance().showHUD(`{x:${translation.x},y:${translation.y}}`, self.view.window, 2);
     //  self.view.frame = {x:frame.x,y:frame.y,width:frame.width+translationX,height:frame.height+translationY}
     self.setFrame(frame.x, frame.y, width,height)
+    if (gesture.state === 3 && self.isMainWindow) {
+      let size = {width:width,height:height}
+      browserConfig.config.size = size
+      browserConfig.save("MNBrowser_config")
+      // MNUtil.showHUD("End")
+    }
   },
   changeWebAppTo:function(webApp) {
     if (self.view.popoverController) {self.view.popoverController.dismissPopoverAnimated(true);}
@@ -2005,6 +2487,8 @@ backward10Seconds();`);
     // self.popover(button, commandTable,200,1)
   },
   setSyncSource: async function (source) {
+  try {
+
     let self = getBrowserController()
     self.checkPopover()
     Menu.dismissCurrentMenu()
@@ -2059,6 +2543,10 @@ backward10Seconds();`);
     MNButton.setTitle(self.syncSourceButton, "Sync Config: "+browserConfig.getSyncSourceString(),undefined,true)
     browserConfig.save("MNBrowser_config",true)
     self.refreshView("syncView")
+    
+  } catch (error) {
+    browserUtils.addErrorLog(error, "setSyncSource")
+  }
   },
   stopSync:function (params) {
     self.checkPopover()
@@ -2072,7 +2560,7 @@ backward10Seconds();`);
     }
     let res = await MNUtil.userSelect("Choose Homepage", "选择主页", ["📱 Local HomePage (Mobile)","📱 Infinity Tab (Mobile)","💻 Local HomePage (Desktop)","💻 Infinity Tab (Desktop)","Custom / 自定义"])
     if(!res){return}
-    MNUtil.copy(res)
+    // MNUtil.copy(res)
     switch (res) {
       case 1:
         browserConfig.config.useLocalHomePage = true
@@ -2244,6 +2732,7 @@ browserController.prototype.init = function(){
     this.updateEngineButton()
     MNButton.addLongPressGesture(this.engineButton, this, "onLongPressSearch:")
 
+    // this.createButton("homeButton","loadCKEditor:","buttonScrollview")
     this.createButton("homeButton","homeButtonTapped:","buttonScrollview")
     this.homeButton.setImageForState(browserUtils.homeImage,0)
 
@@ -2763,7 +3252,7 @@ browserController.prototype.homePageHtml = function(){
 /** @this {browserController} */
 browserController.prototype.homePage = function() {
 try {
-
+  MNUtil.stopHUD()
   this.webview.stopLoading();
   let homePage = browserConfig.getConfig("homePage")
   this.setWebMode(homePage.desktop)
@@ -2902,6 +3391,33 @@ browserController.prototype.updateBingOffset = function() {
 };
 
 /** @this {browserController} */
+browserController.prototype.updateZhihuOffset = async function() {
+  if(!this.webview || !this.webview.window)return;
+  // await MNUtil.delay(1)
+  this.runJavaScript(`
+    function updateCSS() {
+    // 获取文档中的第一个样式表，或者可以创建一个新的样式表
+    const styleSheet = document.styleSheets[0];
+    
+    // 插入一条CSS规则
+    styleSheet.insertRule('.OpenInAppButton {display: none !important;}', styleSheet.cssRules.length);
+    styleSheet.insertRule('.Banner-link {display: none !important;\\npointer-events: none;\\nvisibility: hidden;}', styleSheet.cssRules.length);
+styleSheet.insertRule('.TopstoryItem--advertCard {display: none !important;\\npointer-events: none;\\nvisibility: hidden;}', styleSheet.cssRules.length);
+styleSheet.insertRule('.AdvertImg {display: none !important;\\npointer-events: none;\\nvisibility: hidden;}', styleSheet.cssRules.length);
+styleSheet.insertRule('.GlobalSideBar-category {display: none !important;\\npointer-events: none;\\nvisibility: hidden;}', styleSheet.cssRules.length);
+  }
+  updateCSS()
+  
+  `)
+  // await MNUtil.delay(1)
+  // this.runJavaScript(`document.getElementsByClassName("OpenInAppButton")[0].style.display = 'none';`)
+  // await MNUtil.delay(1)
+  // this.runJavaScript(`document.getElementsByClassName("OpenInAppButton")[0].style.display = 'none';`)
+  // await MNUtil.delay(1)
+  // this.runJavaScript(`document.getElementsByClassName("OpenInAppButton")[0].style.display = 'none';`)
+};
+
+/** @this {browserController} */
 browserController.prototype.updateYoudaoOffset = async function() {
   if(!this.webview || !this.webview.window)return;
   await this.runJavaScript(`document.getElementsByClassName("top-download")[0].style.display = "none";
@@ -2916,15 +3432,6 @@ browserController.prototype.updateYoudaoOffset = async function() {
       explains.map(explain=>explain.textContent).join("\\n")
     }
     `)
-
-    if (!browserUtils.isNSNull(result) && this.shouldCopy) {
-      MNUtil.copy(result)
-    }
-    if (!browserUtils.isNSNull(result) && this.shouldComment) {
-      MNUtil.undoGrouping(()=>{
-        MNUtil.getNoteById(this.currentNoteId).appendTextComment(ret)
-      })
-    }
     this.shouldCopy = false
     this.shouldComment = false
   }
@@ -2961,10 +3468,27 @@ browserController.prototype.runJavaScript = async function(script,delay) {
 };
 
 /** @this {browserController} */
-browserController.prototype.updateBilibiliOffset = function() {
+browserController.prototype.updateBilibiliOffset = async function() {
   if(!this.webview || !this.webview.window)return;
   // MNUtil.showHUD("updateBilibiliOffset")
-  this.runJavaScript(`document.getElementsByClassName("recommended-swipe grid-anchor")[0].style.display = "none";`,0.5)
+  await MNUtil.delay(1)
+  this.runJavaScript(`
+  if (document.getElementsByClassName("recommended-swipe grid-anchor") && document.getElementsByClassName("recommended-swipe grid-anchor").length > 0) {
+    document.getElementsByClassName("recommended-swipe grid-anchor")[0].style.display = "none";
+  }
+  if (document.getElementsByClassName("m-open-app fixed-openapp") && document.getElementsByClassName("m-open-app fixed-openapp").length > 0) {
+    document.getElementsByClassName("m-open-app fixed-openapp")[0].style.display = "none";
+  }
+  if (document.getElementsByClassName("video-card-ad-small") && document.getElementsByClassName("video-card-ad-small").length > 0) {
+    document.getElementsByClassName("video-card-ad-small")[0].style.display = "none";
+  }
+  if (document.getElementsByClassName("ad-report") && document.getElementsByClassName("ad-report").length > 0) {
+    document.getElementsByClassName("ad-report")[0].style.display = "none";
+  }
+  if (document.getElementsByClassName("slide-ad-exp") && document.getElementsByClassName("slide-ad-exp").length > 0) {
+    document.getElementsByClassName("slide-ad-exp")[0].style.display = "none";
+  }
+  `,0.5)
 };
 
 /** @this {browserController} */
@@ -3110,8 +3634,9 @@ browserController.prototype.settingViewLayout = function (){
     this.setHomepageButton.frame = MNUtil.genFrame(5,40,width-10,35)
     this.timestampDetail.frame = MNUtil.genFrame(5,80,width-10,35)
     this.autoOpenVideoExcerpt.frame = MNUtil.genFrame(5,120,width-10,35)
-    this.opacityButton.frame = MNUtil.genFrame(5,160,130,35)
-    this.slider.frame = MNUtil.genFrame(145,162,width-160,35)
+    this.autoExitWatchMode.frame = MNUtil.genFrame(5,160,width-10,35)
+    this.opacityButton.frame = MNUtil.genFrame(5,200,130,35)
+    this.slider.frame = MNUtil.genFrame(145,202,width-160,35)
     MNFrame.set(this.textviewInput, 5, 185, width-10, height-230)
     this.saveConfigButton.frame = {x:width-70,y:height-80,width:60,height:30}
     this.pasteConfigButton.frame = {x:width-135,y:height-80,width:60,height:30}
@@ -3397,6 +3922,11 @@ try {
   this.autoOpenVideoExcerpt.backgroundColor = MNUtil.hexColorAlpha("#457bd3",0.8)
   this.autoOpenVideoExcerpt.setTitleForState("Auto Open Video Excerpt: "+(browserConfig.getConfig("autoOpenVideoExcerpt")?"✅":"❌"),0)
 
+  this.createButton("autoExitWatchMode","toggleAutoExitWatchMode:","advanceView")
+  this.autoExitWatchMode.layer.opacity = 1.0
+  this.autoExitWatchMode.backgroundColor = MNUtil.hexColorAlpha("#457bd3",0.8)
+  this.autoExitWatchMode.setTitleForState("Auto Exit Watch Mode: "+(browserConfig.getConfig("autoExitWatchMode")?"✅":"❌"),0)
+
   this.createButton("opacityButton","changeOpacity:","advanceView")
   this.opacityButton.layer.opacity = 1.0
   this.opacityButton.backgroundColor = MNUtil.hexColorAlpha("#457bd3",0.8)
@@ -3663,6 +4193,21 @@ browserController.prototype.refreshLayout = function (refreshHomepage = false) {
 
 
 }
+
+/** @this {browserController} */
+browserController.prototype.getColor = function (highlight = false) {
+  if (this.desktop) {
+    if (highlight) {
+      return "#9e77ff"
+    }
+    return "#b5b5f5"
+  }
+  if (highlight) {
+    return "#5483cd"
+  }
+  return "#9bb2d6"
+}
+
 /** @this {browserController} */
 browserController.prototype.setWebMode = function (desktop = false) {
   if (desktop) {
@@ -3722,15 +4267,15 @@ browserController.prototype.showAllButton = function (frame) {
 }
 /** @this {browserController} */
 browserController.prototype.show = function (beginFrame,endFrame) {
-  let preFrame = this.currentFrame
+  let preFrame = this.currentFrame //目标矩形
   let studyFrame = MNUtil.studyView.frame
   if (endFrame) {
     preFrame = endFrame
   }
+  preFrame.height = MNUtil.constrain(preFrame.height, 100, studyFrame.height)
+  preFrame.width = MNUtil.constrain(preFrame.width, 215, studyFrame.width)
   preFrame.x = MNUtil.constrain(preFrame.x, 0, studyFrame.width-preFrame.width)
   preFrame.y = MNUtil.constrain(preFrame.y, 0, studyFrame.height-preFrame.height)
-  preFrame.width = MNUtil.constrain(preFrame.width, 215, studyFrame.width)
-  preFrame.height = MNUtil.constrain(preFrame.height, 100, studyFrame.height)
   let preOpacity = this.view.layer.opacity
   // studyController().view.bringSubviewToFront(this.view)
   this.view.layer.opacity = 0.2
@@ -3827,14 +4372,50 @@ browserController.prototype.creatTextView = function (viewName,superview="view",
 browserController.prototype.refreshView = function (targetView) {
 try {
 
-  let syncSource = browserConfig.getConfig("syncSource")
   switch (targetView) {
     case "syncView":
-      this.configNoteIdInput.text = browserConfig.getConfig("syncNoteId")
-      this.configNoteIdInput.hidden = (syncSource === "iCloud" || syncSource === "None")
-      this.focusConfigNoteButton.hidden = (syncSource === "iCloud" || syncSource === "None")
-      this.clearConfigNoteButton.hidden = (syncSource === "iCloud" || syncSource === "None")
-      this.pasteConfigNoteButton.hidden = (syncSource === "iCloud" || syncSource === "None")
+      let syncSource = browserConfig.getConfig("syncSource")
+      switch (syncSource) {
+        case "iCloud" :
+          this.configNoteIdInput.hidden = true
+          this.syncTimeButton.hidden = false
+          this.importConfigButton.hidden = false
+          this.exportConfigButton.hidden = false
+          this.autoImportButton.hidden = false
+          this.autoExportButton.hidden = false
+          this.pasteConfigNoteButton.hidden = true
+          this.clearConfigNoteButton.hidden = true
+          this.focusConfigNoteButton.hidden = true
+          MNButton.setTitle(this.importConfigButton, "Import from iCloud")
+          MNButton.setTitle(this.exportConfigButton, "Export to iCloud")
+          break;
+        case "MNNote":
+          this.configNoteIdInput.hidden = false
+          this.syncTimeButton.hidden = false
+          this.importConfigButton.hidden = false
+          this.exportConfigButton.hidden = false
+          this.autoImportButton.hidden = false
+          this.autoExportButton.hidden = false
+          this.pasteConfigNoteButton.hidden = false
+          this.clearConfigNoteButton.hidden = false
+          this.focusConfigNoteButton.hidden = false
+          this.configNoteIdInput.text = browserConfig.getConfig("syncNoteId")
+          MNButton.setTitle(this.importConfigButton, "Import from Note")
+          MNButton.setTitle(this.exportConfigButton, "Export to Note")
+          break;
+        case "None":
+          this.configNoteIdInput.hidden = true
+          this.importConfigButton.hidden = true
+          this.exportConfigButton.hidden = true
+          this.autoImportButton.hidden = true
+          this.autoExportButton.hidden = true
+          this.pasteConfigNoteButton.hidden = true
+          this.clearConfigNoteButton.hidden = true
+          this.focusConfigNoteButton.hidden = true
+          this.syncTimeButton.hidden = true
+        default:
+          break;
+      }
       MNButton.setTitle(this.autoExportButton, "Auto Export: "+(browserConfig.getConfig("autoExport")?"✅":"❌"))
       MNButton.setTitle(this.autoImportButton, "Auto Import: "+(browserConfig.getConfig("autoImport")?"✅":"❌"))
       let dateObj = new Date(browserConfig.getConfig("lastSyncTime"))
@@ -3870,7 +4451,7 @@ browserController.prototype.getCurrentURL = async function(url) {
   })
 };
 /** @this {browserController} */
-browserController.prototype.openOrJump = async function(bvid,time,p) {
+browserController.prototype.openOrJump = async function(bvid,time = 0,p) {
 try {
   
 
@@ -3902,8 +4483,8 @@ try {
     }
     MNUtil.showHUD(url)
     this.setWebMode(true)
-    MNConnection.loadRequest(this.webview, url)
-    // this.runJavaScript(`window.location.href="${url}"`)
+    // MNConnection.loadRequest(this.webview, url)
+    this.runJavaScript(`window.location.href="${url}"`)
   }
 } catch (error) {
   browserUtils.addErrorLog(error, "openOrJump")
@@ -4321,6 +4902,9 @@ browserController.prototype.refreshLastSyncTime = function () {
   this.refreshView("syncView")
   this.refreshView("configSearchView")
 }
+/**
+ * @this {browserController}
+ */
 browserController.prototype.updateEngineButton = function(){
   if (browserConfig.toolbar) {
     this.engineButton.setTitleForState(browserConfig.entries[browserConfig.engine].engine, 0);
@@ -4391,6 +4975,9 @@ if (this.view.popoverController) {this.view.popoverController.dismissPopoverAnim
       browserUtils.addErrorLog(error, "openSettingView")
     }
 }
+/**
+ * @this {browserController}
+ */
 browserController.prototype.customHomepage = async function (params) {//需要订阅
     if (!browserUtils.checkSubscribe(true)) {
       return
@@ -4407,4 +4994,552 @@ browserController.prototype.customHomepage = async function (params) {//需要�
     browserConfig.config.homePage = homePage
     self.setHomepageButton.setTitleForState("HomePage: "+homePage.url,0)
     MNUtil.showHUD("New HomePage: "+res.input)
+}
+
+/**
+ * 
+ * @param {string} title 
+ * @param {number} duration 
+ * @param {UIView} view 
+ */
+browserController.prototype.waitHUD = function (title,view = this.view) {
+  MNUtil.waitHUD(title,view)
+}
+/**
+ * @this {browserController}
+ */
+browserController.prototype.uploadPDFToDoc2XByBase64 = async function (fileBase64,fileName) {
+self.runJavaScript(`
+function uploadPDFBase64(filebase64,fileName) {
+  // 1. 获取页面的拖放区域
+  const dropZone = document.body;
+
+  // 2. 直接使用原始Base64数据
+  const base64PDF = filebase64;
+  
+  try {
+    // 3. 正确解析Base64并重建文件
+    const binaryString = atob(base64PDF);
+    const bytes = new Uint8Array(binaryString.length);
+    
+    // 逐个字符转换为字节值
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i) & 0xFF;
+    }
+    
+    // 4. 创建有效的PDF文件
+    const blob = new Blob([bytes.buffer], { type: 'application/pdf' });
+    const file = new File([blob], fileName, { 
+      type: 'application/pdf',
+      lastModified: Date.now()
+    });
+
+    // 5. 创建自定义DataTransfer对象
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+
+    // 6. 创建并触发拖拽事件序列
+    const events = [
+      new DragEvent('dragenter', { bubbles: true, dataTransfer, view: window }),
+      new DragEvent('dragover', { 
+        bubbles: true, 
+        dataTransfer, 
+        cancelable: true, 
+        view: window 
+      }),
+      new DragEvent('drop', { 
+        bubbles: true, 
+        dataTransfer, 
+        cancelable: true, 
+        view: window 
+      })
+    ];
+    
+    events.forEach(event => dropZone.dispatchEvent(event));
+    
+    console.log('✅ PDF文件重建成功，拖拽事件已触发');
+    
+  } catch (error) {
+    console.error('⚠️ 文件重建失败:', error);
+    console.warn('Base64长度:', base64PDF.length);
+    console.warn('前100字符:', base64PDF.substring(0, 100));
+  }
+}
+uploadPDFBase64("${fileBase64}","${fileName}")
+`)
+}
+/**
+ * @this {browserController}
+ */
+browserController.prototype.uploadImageToDoc2XByBase64 = async function (fileBase64,fileName) {
+self.runJavaScript(`
+function uploadPDFBase64(filebase64,fileName) {
+  // 1. 获取页面的拖放区域
+  const dropZone = document.body;
+
+  // 2. 直接使用原始Base64数据
+  const base64PDF = filebase64;
+  
+  try {
+    // 3. 正确解析Base64并重建文件
+    const binaryString = atob(base64PDF);
+    const bytes = new Uint8Array(binaryString.length);
+    
+    // 逐个字符转换为字节值
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i) & 0xFF;
+    }
+    
+    // 4. 创建有效的PDF文件
+    const blob = new Blob([bytes.buffer], { type: 'image/png' });
+    const file = new File([blob], fileName, { 
+      type: 'image/png',
+      lastModified: Date.now()
+    });
+
+    // 5. 创建自定义DataTransfer对象
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+
+    // 6. 创建并触发拖拽事件序列
+    const events = [
+      new DragEvent('dragenter', { bubbles: true, dataTransfer, view: window }),
+      new DragEvent('dragover', { 
+        bubbles: true, 
+        dataTransfer, 
+        cancelable: true, 
+        view: window 
+      }),
+      new DragEvent('drop', { 
+        bubbles: true, 
+        dataTransfer, 
+        cancelable: true, 
+        view: window 
+      })
+    ];
+    
+    events.forEach(event => dropZone.dispatchEvent(event));
+    
+    console.log('✅ PDF文件重建成功，拖拽事件已触发');
+    
+  } catch (error) {
+    console.error('⚠️ 文件重建失败:', error);
+    console.warn('Base64长度:', base64PDF.length);
+    console.warn('前100字符:', base64PDF.substring(0, 100));
+  }
+}
+uploadPDFBase64("${fileBase64}","${fileName}")
+`)
+}
+/**
+ * @this {browserController}
+ */
+browserController.prototype.fileTypeFromBase64 = function(prefix) {
+  if (prefix.includes("octet-stream") || prefix.includes("application/pdf")) {
+    return "pdf"
+  }
+  if (prefix.includes("html")) {
+    return "html"
+  }
+  if (prefix.includes("image/png")) {
+    return "png"
+  }
+  if (prefix.includes("image/jpeg")) {
+    return "jpg"
+  }
+  if (prefix.includes("markdown")){
+    return "markdown"
+  }
+  if (prefix.includes("zip")){
+    return "zip"
+  }
+
+}
+/**
+ * @this {browserController}
+ */
+browserController.prototype.importImageFromBase64 = async function(imageBase64,blobUrl) {
+  this.runJavaScript(`window.URL.revokeObjectURL("${blobUrl}");`)
+  // let tem = base64PDF.split(",")
+  let imageData = NSData.dataWithContentsOfURL(NSURL.URLWithString(imageBase64))
+  MNUtil.postNotification("snipasteImage", {imageData:imageData})
+  this.showHUD("Snipaste Image...")
+  // MNUtil.copy(object)
+  // let type = this.fileTypeFromBase64(tem[0])
+}
+/**
+ * @this {browserController}
+ */
+browserController.prototype.importPDFFromBase64Doc2X = async function(base64PDF,blobUrl) {
+  // MNUtil.copy(base64PDF)
+  let tem = base64PDF.split(",")
+  // let type = this.fileTypeFromBase64(tem[0])
+  // if (type !== "pdf") {
+  //   MNUtil.confirm("MN Browser","Not support file type: "+type)
+  //   return
+  // }
+  this.runJavaScript(`window.URL.revokeObjectURL("${blobUrl}");`)
+  MNUtil.waitHUD("Importing PDF...")
+  await MNUtil.delay(0.1)
+  let pdfData = NSData.dataWithContentsOfURL(NSURL.URLWithString("data:application/pdf;base64,"+tem[1]))
+  let fileName = await this.runJavaScript(`document.getElementsByClassName("doc2x-cander-breadcrumbs-item")[0].childNodes[0].textContent;`)
+  fileName = fileName.replace(".pdf","")+"_translated.pdf"
+  let userInput = await MNUtil.input("MN Browser", `Please enter the file name or using Default.\n\n请输入下载的文件名,或使用默认名:\n\n${fileName}`, ["Cancel / 取消","Default / 默认","Confirm / 确认"])
+  // MNUtil.copy(userInput)
+  switch (userInput.button) {
+    case 0:
+      MNUtil.stopHUD()
+      return
+    case 1:
+      if (userInput.input.trim()) {
+        fileName = userInput.input.trim().replace(".pdf","").replace(" ","_")+".pdf"
+      }
+      break;
+    case 2:
+      break;
+    default:
+      break;
+  }
+  let targetPath = MNUtil.documentFolder+"/WebDownloads/"+fileName
+  pdfData.writeToFileAtomically(targetPath, false)
+  let docMd5 = MNUtil.importDocument(targetPath)
+  if (typeof snipasteUtils !== 'undefined') {
+    MNUtil.postNotification("snipastePDF", {docMd5:docMd5,currPageNo:1})
+  }else{
+    let confirm = await MNUtil.confirm("MN Browser", "Open document?\n\n是否直接打开该文档？\n\n"+fileName)
+    if (confirm) {
+      MNUtil.openDoc(md5,MNUtil.currentNotebookId)
+      if (MNUtil.docMapSplitMode === 0) {
+        MNUtil.studyController.docMapSplitMode = 1
+      }
+    }
+  }
+  MNUtil.stopHUD()
+}
+
+/**
+ * @this {browserController}
+ */
+browserController.prototype.importPDFFromBase64MoreDraw = async function(base64PDF,blobUrl) {
+  // MNUtil.copy(base64PDF)
+  let tem = base64PDF.split(",")
+  // let type = this.fileTypeFromBase64(tem[0])
+  // if (type !== "pdf") {
+  //   MNUtil.confirm("MN Browser","Not support file type: "+type)
+  //   return
+  // }
+
+  this.runJavaScript(`window.URL.revokeObjectURL("${blobUrl}");`)
+  MNUtil.waitHUD("Importing PDF...")
+  await MNUtil.delay(0.1)
+  let pdfData = NSData.dataWithContentsOfURL(NSURL.URLWithString("data:application/pdf;base64,"+tem[1]))
+  let res = await this.runJavaScript(`  function getTtile() {
+    let titles = []
+    let elements = document.getElementsByClassName("n-card__content")
+    elements.forEach(element=>{
+      let title = element.textContent
+      if (title.trim()) {
+        if (/\\d+%/.test(title.trim())) {
+          title = title.replace(/\\d/g,"")
+        }else{
+          titles.push(title.trim())
+        }
+      }
+    })
+    return titles[0]
+  }
+  getTtile()`)
+  let fileName = res ? (res+".pdf") : ("moredraw_"+Date.now()+".pdf")
+  let userInput = await MNUtil.input("MN Browser", `Please enter the file name or using Default.\n\n请输入下载的文件名,或使用默认名:\n\n${fileName}`, ["Cancel / 取消","Default / 默认","Confirm / 确认"])
+  // MNUtil.copy(userInput)
+  switch (userInput.button) {
+    case 0:
+      MNUtil.stopHUD()
+      return
+    case 1:
+      if (userInput.input.trim()) {
+        fileName = userInput.input.trim().replace(".pdf","").replace(" ","_")+".pdf"
+      }
+      break;
+    case 2:
+      break;
+    default:
+      break;
+  }
+  let targetPath = MNUtil.documentFolder+"/WebDownloads/"+fileName
+  pdfData.writeToFileAtomically(targetPath, false)
+  let docMd5 = MNUtil.importDocument(targetPath)
+  if (typeof snipasteUtils !== 'undefined') {
+    MNUtil.postNotification("snipastePDF", {docMd5:docMd5,currPageNo:1})
+  }else{
+    let confirm = await MNUtil.confirm("MN Browser", "Open document?\n\n是否直接打开该文档？\n\n"+fileName)
+    if (confirm) {
+      MNUtil.openDoc(md5,MNUtil.currentNotebookId)
+      if (MNUtil.docMapSplitMode === 0) {
+        MNUtil.studyController.docMapSplitMode = 1
+      }
+    }
+  }
+  MNUtil.stopHUD()
+}
+function name(params) {
+  
+}
+/**
+ * @this {browserController}
+ */
+browserController.prototype.base64FromBlob = function(requestURL) {
+        this.runJavaScript(`
+async function blobUrlToBase64(blobUrl) {
+  try {
+    // 1. 通过 Blob URL 获取 Blob 对象
+    console.log("Fetching Blob from URL:", blobUrl);
+    const response = await fetch(blobUrl);
+    if (!response.ok) {
+      throw new Error(\`Failed to fetch Blob: \${response.statusText}\`);
+    }
+    const blob = await response.blob();
+    console.log("Blob object retrieved:", blob);
+
+    // 2. 将 Blob 对象转换为 Base64
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (reader.result) {
+          console.log("Data URL generated:", reader.result);
+          const base64 = reader.result;
+          resolve(base64);
+        } else {
+          reject(new Error("FileReader result is undefined or null."));
+        }
+      };
+      reader.onerror = () => {
+        reject(new Error("FileReader encountered an error."));
+      };
+      reader.readAsDataURL(blob); // 将 Blob 转换为 Data URL
+    });
+  } catch (error) {
+    console.error("Error converting Blob URL to Base64:", error);
+    throw error;
+  }
+};
+
+// 使用示例
+blobUrlToBase64("${requestURL}")
+  .then(base64 => {
+    window.location.href = "browser://getpdfdata?content=" + encodeURIComponent(base64)+"&blobUrl="+encodeURIComponent("${requestURL}");
+  })
+  .catch(error => {
+    window.location.href = "browser://copy?content=" + encodeURIComponent(error.message);
+  });
+`);
+}
+/**
+ * @this {browserController}
+ */
+browserController.prototype.uploadPDFToDoc2X = async function (document = MNUtil.currentDoc) {
+
+  this.waitHUD("Uploading file...")
+  await MNUtil.delay(0.1)
+  let fileName = document.docTitle.replace(/"/g, '\\"')+".pdf"
+  let fileBase64 = MNUtil.getFile(document.fullPathFileName).base64Encoding().replace(/"/g, '\\"')
+  this.uploadPDFToDoc2XByBase64(fileBase64, fileName)
+  MNUtil.stopHUD(0.5)
+  // self.runJavaScript(`
+  //   if(window.location.href !== 'https://doc2x.noedgeai.com/'){
+  //     window.location.href = 'https://doc2x.noedgeai.com/';
+  //   }
+  // `)
+}
+/**
+ * @this {browserController}
+ */
+browserController.prototype.uploadImageToDoc2X = async function (currentImage = browserUtils.getCurrentImage()) {
+  if (!currentImage) {
+    MNUtil.showHUD("No image selected")
+    return
+  }
+      this.waitHUD("Uploading file...")
+      await MNUtil.delay(0.1)
+      let fileName = "image.png"
+      let fileBase64 = currentImage.base64Encoding().replace(/"/g, '\\"')
+      await this.uploadImageToDoc2XByBase64(fileBase64, fileName)
+      await MNUtil.stopHUD(0.5)
+      currentURL = await this.getCurrentURL()
+      // MNUtil.log(currentURL)
+      // MNUtil.log(self.preParseId)
+      while (!currentURL.startsWith("https://doc2x.noedgeai.com/ocr?parseId_0=") || currentURL.includes(self.preParseId)) {
+        // MNUtil.log("delay")
+        await MNUtil.delay(0.5)
+        currentURL = await this.getCurrentURL()
+      }
+      let config = MNUtil.parseURL(currentURL)
+      self.preParseId = config.params.parseId_0
+      // MNUtil.copy(config)
+      await MNUtil.delay(0.5)
+      this.runJavaScript(`
+      async function hideOriginalView() {
+        async function delay(seconds) {
+          return new Promise(resolve => setTimeout(resolve, seconds * 1000));
+        }
+        await delay(0.5);
+        document.getElementsByClassName("ant-splitter-panel")[0].style.display='none';
+        await delay(0.5);
+        document.getElementsByClassName("ant-splitter-panel")[0].style.display='none';
+        await delay(0.5);
+        document.getElementsByClassName("ant-splitter-panel")[0].style.display='none';
+        await delay(0.5);
+        document.getElementsByClassName("ant-splitter-panel")[0].style.display='none';
+      }
+      hideOriginalView();
+      `)
+      let res = await this.runJavaScript(`document.getElementById("txta_input").textContent`)
+      MNUtil.copy(res)
+      this.showHUD("识别结果已复制")
+}
+/**
+ * 
+ * @param {string} url 
+ * @returns {Promise<boolean>}
+ */
+browserController.prototype.currentURLStartsWith = async function(url) {
+  let currentURL = await this.getCurrentURL()
+  return currentURL.startsWith(url);
+}
+
+browserController.prototype.downloadPDF = async function (params) {
+try {
+
+  // MNUtil.copy(params.pdfBase64)
+  MNUtil.stopHUD()
+  let pdfData = browserUtils.dataFromBase64(params.pdfBase64,"pdf")
+  if (!pdfData) {
+    MNUtil.showHUD("Invalid PDF")
+    return
+  }
+  let fileSize = pdfData.length()/1000000
+  MNUtil.stopHUD()
+  let defaultName = "imported_"+Date.now()+".pdf"
+  let title = await this.runJavaScript("document.title")
+  if (title && title.trim()) {
+    defaultName = title+".pdf"
+  }
+  let option = {}
+  let userInput = await MNUtil.input("MN Browser","Please input the name of the document\n\n请输入文档名称\n\nDefault: "+defaultName+"\n\nFile Size: "+fileSize.toFixed(2)+"MB",["Cancel",defaultName,"Confirm"])
+  if (userInput.button === 0) {
+    return
+  }
+  if (userInput.button === 1) {
+    option.fileName = defaultName
+  }
+  let input = userInput.text
+  if (input && input.trim()) {
+    if (input.endsWith(".pdf")) {
+      option.fileName = input
+    }else{
+      option.fileName = input+".pdf"
+    }
+  }
+  let md5 = browserUtils.importPDFFromData(pdfData,option)
+  MNUtil.log(md5)
+  if (md5) {
+    MNUtil.openDoc(md5)
+  }
+  
+} catch (error) {
+  browserUtils.addErrorLog(error, "downloadPDF")
+}
+}
+
+browserController.prototype.changeBilibiliVideoPart = async function (button) {
+let encodedPartInfo = await this.runJavaScript(`    
+    function getPartInfo() {
+      let videoPod = document.getElementsByClassName("video-pod__body")[0]
+      
+      if (!videoPod) {
+        console.log("No video pod found")
+        return []
+      }
+      let list = document.getElementsByClassName("video-pod__list multip list")[0]
+      if (list) {
+        let items = list.getElementsByClassName("simple-base-item video-pod__item")
+        let partInfo = []
+        for (let i = 0; i < items.length; i++) {
+          let item = items[i]
+          let title = item.getElementsByClassName("title")[0].textContent.trim()
+          let time = item.getElementsByClassName("stats")[0].textContent.trim()
+          let times = time.split(":")
+          let minutes = parseInt(times[0])
+          let seconds = parseInt(times[1])
+          let totalSeconds = minutes*60+seconds
+
+          if (item.classList.contains("active")) {
+            partInfo.push({title:title,time:time,active:true,totalSeconds:totalSeconds,p:i+1})
+          }else{
+            partInfo.push({title:title,time:time,active:false,totalSeconds:totalSeconds,p:i+1})
+          }
+        }
+        console.log(partInfo)
+
+        return encodeURIComponent(JSON.stringify(partInfo))
+      }else{
+        let list = videoPod.getElementsByClassName("video-pod__list section")[0]
+        if (!list) {
+          console.log("No video list found")
+          return []
+        }
+        let partInfo = []
+        let items = list.getElementsByClassName("pod-item video-pod__item simple")
+        for (let i = 0; i < items.length; i++) {
+          let item = items[i]
+          let bvid = item.getAttribute("data-key")
+          let isSingle = item.getElementsByClassName("single-p")[0]?true:false
+          let isActive = item.getElementsByClassName("simple-base-item active normal")[0]?true:false
+          if (isSingle) {
+            let title = item.getElementsByClassName("title-txt")[0].textContent.trim()
+            let time = item.getElementsByClassName("stats")[0].textContent.trim()
+            let times = time.split(":")
+            let minutes = parseInt(times[0])
+            let seconds = parseInt(times[1])
+            let totalSeconds = minutes*60+seconds
+            partInfo.push({title:title,time:time,active:isActive,totalSeconds:totalSeconds,bvid:bvid})
+          }else{
+            let parts = item.getElementsByClassName("simple-base-item page-item")
+            parts.forEach((part,index)=>{
+              let isActivePart = part.classList.contains("active")
+              let title = part.getElementsByClassName("title-txt")[0].textContent.trim()
+              let time = part.getElementsByClassName("stats")[0].textContent.trim()
+              let times = time.split(":")
+              let minutes = parseInt(times[0])
+              let seconds = parseInt(times[1])
+              let totalSeconds = minutes*60+seconds
+              partInfo.push({title:title,time:time,active:isActivePart,totalSeconds:totalSeconds,bvid:bvid,p:index+1})
+            })
+            
+
+          }
+        }
+        console.log(partInfo)
+        return encodeURIComponent(JSON.stringify(partInfo))
+        
+      }
+    }
+    getPartInfo()
+    `)
+    let partInfo = JSON.parse(decodeURIComponent(encodedPartInfo))
+    if (partInfo.length) {
+      // MNUtil.copy(partInfo)
+      let menu = new Menu(button,this)
+      let selector = "changePart:"
+      partInfo.forEach((part,index)=>{
+        if ("bvid" in part) {
+          menu.addMenuItem(part.title+" ("+part.time+")", selector,part,part.active)
+        }else{
+          menu.addMenuItem(part.title+" ("+part.time+")", selector,part,part.active)
+        }
+      })
+      menu.show(true)
+    }else{
+      MNUtil.showHUD("No video part found")
+    }
 }

@@ -35,7 +35,6 @@ JSB.newAddon = function (mainPath) {
         self.linkDetected = false
         self.addObserver( 'onPopupMenuOnSelection:', 'PopupMenuOnSelection')
         self.addObserver( 'onPopupMenuOnNote:', 'PopupMenuOnNote');
-        self.addObserver( 'onCloseView:', 'close');
         self.addObserver( 'receivedSearchInBrowser:', 'searchInBrowser');
         self.addObserver( 'receivedOpenInBrowser:', 'openInBrowser');
         self.addObserver( 'onNewWindow:', 'newWindow');
@@ -120,8 +119,9 @@ JSB.newAddon = function (mainPath) {
         self.newWindowController.view.removeFromSuperview()
 
         // self.appInstance.studyController(self.window).view.remov(self.addonController.view);
-        
-        self.watchMode = false;
+        if (browserConfig.getConfig("autoExitWatchMode")) {
+          self.addonController.watchMode = false;
+        }
         self.textSelected = '';
       },
 
@@ -216,7 +216,7 @@ JSB.newAddon = function (mainPath) {
             image: 'logo.png',
             object: self,
             selector: 'toggleAddon:',
-            checked: self.watchMode
+            checked: self.addonController.watchMode
           };
         }
       },
@@ -286,27 +286,21 @@ JSB.newAddon = function (mainPath) {
             });
           }
         }
-        if (!self.watchMode) {
+        if (!self.addonController.watchMode) {
+          let color = self.addonController.getColor(true)
           if (!addonController.view.hidden) {
-            MNButton.setColor(addonController.engineButton, "#5483cd",0.8)
+            MNButton.setColor(addonController.engineButton, color,0.8)
           }
           if (self.newWindowController) {
-            MNButton.setColor(self.newWindowController.engineButton, "#5483cd",0.8)
+            MNButton.setColor(self.newWindowController.engineButton, color,0.8)
           }
 
           self.viewTimer = NSTimer.scheduledTimerWithTimeInterval(5, false, function () {
-            if (addonController.desktop) { 
-              MNButton.setColor(addonController.engineButton, "#b5b5f5",0.8)
-            }else{
-              MNButton.setColor(addonController.engineButton, "#9bb2d6",0.8)
-            }
+            let color = self.addonController.getColor()
+            MNButton.setColor(addonController.engineButton, color,0.8)
             addonController.selectedText = ""
             if (self.newWindowController) {
-              if (self.newWindowController.desktop) {
-                MNButton.setColor(self.newWindowController.engineButton, "#b5b5f5",0.8)
-              }else{
-                MNButton.setColor(self.newWindowController.engineButton, "#9bb2d6",0.8)
-              }
+              MNButton.setColor(self.newWindowController.engineButton, color,0.8)
             }
             self.viewTimer.invalidate()
           });
@@ -428,19 +422,21 @@ JSB.newAddon = function (mainPath) {
             });
           }
         }
-        if (!self.watchMode) {
+        if (!self.addonController.watchMode) {
+          let color = self.addonController.getColor(true)
           if (!self.addonController.view.hidden) {
-            self.addonController.engineButton.backgroundColor = MNUtil.hexColorAlpha("#5483cd", 0.8)
+            self.addonController.engineButton.backgroundColor = MNUtil.hexColorAlpha(color, 0.8)
           }
           if (self.newWindowController) {
-            self.newWindowController.engineButton.backgroundColor = MNUtil.hexColorAlpha("#5483cd", 0.8)
+            self.newWindowController.engineButton.backgroundColor = MNUtil.hexColorAlpha(color, 0.8)
           }
           self.viewTimer = NSTimer.scheduledTimerWithTimeInterval(5, false, function () {
-            self.addonController.engineButton.backgroundColor = MNUtil.hexColorAlpha("#9bb2d6", 0.8)
-            // self.addonController.webAppButton.backgroundColor = UIColor.colorWithHexString("#9bb2d6").colorWithAlphaComponent(0.8);
+            let color = self.addonController.getColor()
+            self.addonController.engineButton.backgroundColor = MNUtil.hexColorAlpha(color, 0.8)
+            // self.addonController.webAppButton.backgroundColor = UIColor.colorWithHexString(color).colorWithAlphaComponent(0.8);
             self.addonController.selectedText = ""
             if (self.newWindowController) {
-              self.newWindowController.engineButton.backgroundColor = MNUtil.hexColorAlpha("#9bb2d6", 0.8)
+              self.newWindowController.engineButton.backgroundColor = MNUtil.hexColorAlpha(color, 0.8)
             }
             self.viewTimer.invalidate()
           });
@@ -488,17 +484,7 @@ JSB.newAddon = function (mainPath) {
         }
         // self.addonController.view.frame = {x:0,y:0,width:100,height:100}
       },
-      onCloseView: function (params) {
-        if (typeof MNUtil === 'undefined') {
-          return
-        }
-        // Application.sharedInstance().showHUD("trst",self.window,2)
-        if (self.window !== MNUtil.currentWindow) return; // Don't process message from other window
-        self.watchMode = false;
-        MNUtil.refreshAddonCommands()
-        // self.homePage()
-        // self.addonController.blur()
-      },
+
       onNewWindow: function (sender) {
         if (typeof MNUtil === 'undefined') {
           return
@@ -507,37 +493,40 @@ JSB.newAddon = function (mainPath) {
           MNUtil.showHUD("reject")
           return
         }
+        let userInfo = sender.userInfo
         if (!self.newWindowController) {
           self.newWindowController = browserController.new();
           self.newWindowController.addonBar = self.addonController.addonBar
           self.newWindowController.view.hidden = true
           MNUtil.studyView.addSubview(self.newWindowController.view);
-          self.newWindowController.setFrame(50,100,417,450)
+          self.newWindowController.setFrame(50,100,419,450)
         }
-        if (!MNUtil.isDescendantOfStudyView(self.newWindowController.view)) {
-          MNUtil.studyView.addSubview(self.newWindowController.view)
+        let newWindowController = self.newWindowController
+        if (!MNUtil.isDescendantOfStudyView(newWindowController.view)) {
+          MNUtil.studyView.addSubview(newWindowController.view)
         }
-        if (self.newWindowController.view.hidden) {
-          self.newWindowController.show(self.newWindowController.addonBar.frame)
+        if (newWindowController.view.hidden) {
+          newWindowController.show(newWindowController.addonBar.frame)
         }
         try {
-        self.newWindowController.setWebMode(sender.userInfo.desktop)
+        newWindowController.setWebMode(userInfo.desktop)
         let toolbar = browserConfig.toolbar
-        self.newWindowController.buttonScrollview.hidden = !toolbar
-        var viewFrame = self.newWindowController.view.bounds;
+        newWindowController.buttonScrollview.hidden = !toolbar
+        var viewFrame = newWindowController.view.bounds;
         if (browserConfig.toolbar) {
-          self.newWindowController.webview.frame = { x: viewFrame.x + 1, y: viewFrame.y + 10, width: viewFrame.width - 2, height: viewFrame.height - 40 }
+          newWindowController.webview.frame = { x: viewFrame.x + 1, y: viewFrame.y + 10, width: viewFrame.width - 2, height: viewFrame.height - 40 }
         } else {
-          self.newWindowController.webview.frame = { x: viewFrame.x + 1, y: viewFrame.y + 10, width: viewFrame.width - 2, height: viewFrame.height }
+          newWindowController.webview.frame = { x: viewFrame.x + 1, y: viewFrame.y + 10, width: viewFrame.width - 2, height: viewFrame.height }
         }
-        self.newWindowController.isMainWindow = false
-        self.newWindowController.webview.hidden = false;
-        if (sender.userInfo.agent) {
-          self.newWindowController.webview.customUserAgent = sender.userInfo.agent
-        }
+        newWindowController.isMainWindow = false
+        newWindowController.webview.hidden = false;
         // Application.sharedInstance().showHUD(userInfo.url, self.window, 5);
-        MNConnection.loadRequest(self.newWindowController.webview, sender.userInfo.url)
-        // self.newWindowController.webview.loadRequest(MNUtil.requestWithURL(sender.userInfo.url));
+        if (userInfo.homePage) {
+          newWindowController.homePage()
+        }else{
+          MNConnection.loadRequest(newWindowController.webview, userInfo.url)
+        }
+        // newWindowController.webview.loadRequest(MNUtil.requestWithURL(sender.userInfo.url));
         } catch (error) {
           browserUtils.addErrorLog(error, "onNewWindow")
         }
@@ -694,11 +683,12 @@ JSB.newAddon = function (mainPath) {
           if (self.isFirst) {
             // Application.sharedInstance().showHUD("first",self.window,2)
             let buttonFrame = self.addonBar.frame
-            let width = MNUtil.app.osType !== 1 ? 419 : 365
+            let size = browserConfig.getConfig("size")
+            let width = MNUtil.app.osType !== 1 ? size.width : 365
             if (buttonFrame.x === 0) {
-              self.addonController.setFrame(40,buttonFrame.y,width,450)
+              self.addonController.setFrame(40,buttonFrame.y,width,size.height)
             }else{
-              self.addonController.setFrame(buttonFrame.x-width,buttonFrame.y,width,450)
+              self.addonController.setFrame(buttonFrame.x-width,buttonFrame.y,width,size.height)
             }
             self.isFirst = false;
           }
@@ -708,7 +698,7 @@ JSB.newAddon = function (mainPath) {
           // self.addonController.view.hidden = false
           // self.addonController.webview.hidden = false
         } else {
-          if (self.textProcessed || self.watchMode) {
+          if (self.textProcessed || self.addonController.watchMode) {
             // self.addonController.view.hidden = true;
             if (self.addonController.miniMode) {
               let preFrame = self.addonController.view.frame
@@ -726,7 +716,9 @@ JSB.newAddon = function (mainPath) {
             }else{
               self.addonController.hide(self.addonBar.frame)
             }
-            self.watchMode = false;
+            if (browserConfig.getConfig("autoExitWatchMode")) {
+              self.addonController.watchMode = false;
+            }
             MNUtil.refreshAddonCommands()
             return;
           }
@@ -894,8 +886,9 @@ JSB.newAddon = function (mainPath) {
     })
   };
   MNBrowserClass.prototype.checkWatchMode = function () {
+
     if (Date.now() - this.dateNow < 500) {
-      this.watchMode = true;
+      this.addonController.watchMode = true;
       MNUtil.showHUD("Watch mode")
       MNUtil.refreshAddonCommands()
       this.addonController.webview.hidden = false

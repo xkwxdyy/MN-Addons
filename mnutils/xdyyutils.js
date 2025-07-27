@@ -4533,20 +4533,35 @@ class MNMath {
   static showDeleteConfirmDialog(note, deleteCommentIndexArr, previousDialog = null) {
     // 构建要删除的评论列表
     let deleteList = [];
+    let isLinkComment = false;
+    let linkUrl = null;
+    
     deleteCommentIndexArr.forEach(index => {
       const comment = note.MNComments[index];
       if (comment) {
         const displayText = this.formatCommentForDisplay(comment, index, note);
         deleteList.push(`• ${displayText}`);
+        
+        // 检查是否为链接评论（仅当只选中一条时）
+        if (deleteCommentIndexArr.length === 1 && comment.type === "linkComment") {
+          isLinkComment = true;
+          linkUrl = comment.text;
+        }
       }
     });
     
     const message = `确定要删除以下 ${deleteCommentIndexArr.length} 项评论吗？\n\n${deleteList.join('\n')}`;
     
     // 构建选项数组
-    const options = ["🗑️ 确认删除"];
+    const options = [];
     if (previousDialog) {
-      options.unshift("⬅️ 返回上一层");
+      options.push("⬅️ 返回上一层");
+    }
+    options.push("🗑️ 确认删除");
+    
+    // 如果是单个链接评论，增加复制选项
+    if (isLinkComment) {
+      options.push("🗑️📋 确认并复制行内链接");
     }
     
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
@@ -4560,16 +4575,56 @@ class MNMath {
           return; // 取消
         }
         
-        // 如果有返回选项，处理返回
-        if (previousDialog && buttonIndex === 1) {
+        // 处理返回选项
+        if (previousDialog && options[buttonIndex - 1] === "⬅️ 返回上一层") {
           previousDialog();
           return;
         }
         
-        // 确认删除的索引根据是否有返回选项而不同
-        const confirmIndex = previousDialog ? 2 : 1;
-        if (buttonIndex === confirmIndex) {
+        // 处理确认删除
+        if (options[buttonIndex - 1] === "🗑️ 确认删除") {
           this.performDelete(note, deleteCommentIndexArr);
+          return;
+        }
+        
+        // 处理确认并复制行内链接
+        if (options[buttonIndex - 1] === "🗑️📋 确认并复制行内链接") {
+          // 先显示输入引用词的对话框
+          UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+            "复制 Markdown 类型链接",
+            "输入引用词",
+            2,
+            "取消",
+            ["确定"],
+            (inputAlert, inputButtonIndex) => {
+              if (inputButtonIndex === 1) {
+                // 获取链接指向的笔记
+                const linkedNote = MNNote.new(linkUrl);
+                let refContent = inputAlert.textFieldAtIndex(0).text;
+                
+                // 如果用户没有输入，尝试获取链接笔记的标题
+                if (!refContent && linkedNote) {
+                  // 尝试从链接的笔记获取标题
+                  const titleParts = MNMath.parseNoteTitle(linkedNote);
+                  refContent = titleParts.content || linkedNote.noteTitle || "链接";
+                  // 去除可能的 "; " 前缀
+                  if (refContent.startsWith("; ")) {
+                    refContent = refContent.substring(2).trim();
+                  }
+                } else if (!refContent) {
+                  refContent = "链接";
+                }
+                
+                // 生成 Markdown 链接
+                const mdLink = `[${refContent}](${linkUrl})`;
+                MNUtil.copy(mdLink);
+                MNUtil.showHUD(`已复制: ${mdLink}`);
+                
+                // 然后执行删除操作
+                this.performDelete(note, deleteCommentIndexArr);
+              }
+            }
+          );
         }
       }
     );

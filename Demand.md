@@ -1,3 +1,10 @@
+优化一下 mnutils 的 manageCommentsByPopup 函数的删除评论功能。增加一个功能：
+1. 如果选中的只有一条评论，并且这个评论是一个卡片的链接
+2. 点击了删除评论
+3. 那么此时弹窗除了确认是否删除之外，还要增加一个“确认并复制行内链接”的选项。如果点击之后就类似于 mntoolbar 的 copyMarkdownVersionFocusNoteURL 动作，弹出一个框让用户填写引用词，确认后可以复制一个 Markdown 的链接。 ultrathink
+
+
+----
 类似于 addNewSummaryNote 和 addNewIdeaNote 功能，现在需要增加一个新增反例卡片的功能。稍微区别一下的是
 此时的 HtmlMarkdown 评论用 alert 类型。选中卡片 A 增加反例卡片 B 的话，A 到 B 的链接移动到卡片最上方。ultrathink
 ---

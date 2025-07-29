@@ -1168,32 +1168,79 @@ try {
    */
   MNTaskClass.prototype.openTodayBoard = function () {
     try {
+      MNUtil.log("🚀 开始打开今日看板")
+      
+      // 🔧 验证必要组件
+      if (!MNUtil.studyView) {
+        MNUtil.log("❌ studyView 不存在，无法打开今日看板")
+        MNUtil.showHUD("无法打开今日看板：界面未准备好")
+        return
+      }
+      
       // 先打开设置面板
       if (!this.settingController) {
-        this.settingController = taskSettingController.new();
-        this.settingController.taskController = this.addonController
-        this.settingController.mainPath = taskConfig.mainPath;
-        this.settingController.action = taskConfig.action
-        MNUtil.studyView.addSubview(this.settingController.view)
+        MNUtil.log("📱 创建设置控制器")
+        try {
+          this.settingController = taskSettingController.new();
+          this.settingController.taskController = this.addonController
+          this.settingController.mainPath = taskConfig.mainPath;
+          this.settingController.action = taskConfig.action
+          MNUtil.studyView.addSubview(this.settingController.view)
+          MNUtil.log("✅ 设置控制器创建成功")
+        } catch (createError) {
+          MNUtil.log("❌ 创建设置控制器失败: " + createError.message)
+          MNUtil.showHUD("创建设置面板失败")
+          taskUtils.addErrorLog(createError, "创建设置控制器")
+          return
+        }
       }
       
       // 显示设置面板
-      this.settingController.show()
+      try {
+        this.settingController.show()
+        MNUtil.log("✅ 设置面板显示成功")
+      } catch (showError) {
+        MNUtil.log("❌ 显示设置面板失败: " + showError.message)
+        MNUtil.showHUD("显示设置面板失败")
+        taskUtils.addErrorLog(showError, "显示设置面板")
+        return
+      }
       
       // 切换到今日看板视图
       if (this.settingController.viewManager) {
-        MNUtil.log("切换到今日看板视图")
-        this.settingController.viewManager.switchTo('todayBoard')
+        MNUtil.log("🔄 切换到今日看板视图")
+        try {
+          this.settingController.viewManager.switchTo('todayBoard')
+          MNUtil.log("✅ 今日看板视图切换成功")
+        } catch (switchError) {
+          MNUtil.log("❌ 切换今日看板视图失败: " + switchError.message)
+          MNUtil.showHUD("切换今日看板失败")
+          taskUtils.addErrorLog(switchError, "切换今日看板视图")
+        }
       } else {
-        MNUtil.log("viewManager 尚未初始化，延迟切换")
+        MNUtil.log("⏳ viewManager 尚未初始化，延迟切换")
         // 延迟执行，等待 viewManager 初始化
         MNUtil.delay(0.1).then(() => {
-          if (this.settingController.viewManager) {
-            this.settingController.viewManager.switchTo('todayBoard')
+          if (this.settingController && this.settingController.viewManager) {
+            try {
+              this.settingController.viewManager.switchTo('todayBoard')
+              MNUtil.log("✅ 延迟切换今日看板视图成功")
+            } catch (delaySwitchError) {
+              MNUtil.log("❌ 延迟切换今日看板视图失败: " + delaySwitchError.message)
+              taskUtils.addErrorLog(delaySwitchError, "延迟切换今日看板视图")
+            }
+          } else {
+            MNUtil.log("❌ 延迟后 viewManager 仍不存在")
+            MNUtil.showHUD("今日看板初始化失败，请重试")
           }
+        }).catch((delayError) => {
+          MNUtil.log("❌ 延迟执行失败: " + delayError.message)
+          taskUtils.addErrorLog(delayError, "延迟执行")
         })
       }
     } catch (error) {
+      MNUtil.log("❌ openTodayBoard 发生严重错误: " + error.message)
+      MNUtil.showHUD("打开今日看板时发生错误")
       taskUtils.addErrorLog(error, "openTodayBoard")
     }
   }

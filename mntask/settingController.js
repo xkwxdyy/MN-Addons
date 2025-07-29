@@ -3174,41 +3174,70 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
   try {
     MNUtil.log("🌟 开始初始化今日看板 WebView")
     
+    // 🔧 验证容器是否存在
+    if (!this.todayBoardWebView) {
+      MNUtil.log("❌ 今日看板容器不存在，跳过初始化")
+      return
+    }
+    
     // 如果 WebView 实例不存在，先创建它
     if (!this.todayBoardWebViewInstance) {
       MNUtil.log("📱 创建 WebView 实例")
       
-      // 获取容器的当前边界
-      let containerBounds = this.todayBoardWebView.bounds
-      MNUtil.log(`📐 容器边界: ${JSON.stringify(containerBounds)}`)
-      MNUtil.log(`📐 容器 frame: ${JSON.stringify(this.todayBoardWebView.frame)}`)
-      MNUtil.log(`📐 容器是否隐藏: ${this.todayBoardWebView.hidden}`)
+      // 🔧 安全获取容器边界，添加验证
+      let containerBounds = null
+      try {
+        containerBounds = this.todayBoardWebView.bounds
+        MNUtil.log(`📐 容器边界: ${JSON.stringify(containerBounds)}`)
+      } catch (error) {
+        MNUtil.log("⚠️ 获取容器边界失败: " + error.message)
+        containerBounds = null
+      }
       
-      // 验证边界是否有效
+      try {
+        MNUtil.log(`📐 容器 frame: ${JSON.stringify(this.todayBoardWebView.frame)}`)
+        MNUtil.log(`📐 容器是否隐藏: ${this.todayBoardWebView.hidden}`)
+      } catch (error) {
+        MNUtil.log("⚠️ 获取容器属性失败: " + error.message)
+      }
+      
+      // 🔧 验证边界是否有效，使用更安全的默认值
       if (!containerBounds || containerBounds.width <= 0 || containerBounds.height <= 0) {
         MNUtil.log("⚠️ 容器边界无效，尝试使用 frame 或默认值")
         
         // 尝试使用 frame
-        const containerFrame = this.todayBoardWebView.frame
-        if (containerFrame && containerFrame.width > 0 && containerFrame.height > 0) {
+        try {
+          const containerFrame = this.todayBoardWebView.frame
+          if (containerFrame && containerFrame.width > 0 && containerFrame.height > 0) {
+            containerBounds = {
+              x: 0,
+              y: 0,
+              width: containerFrame.width,
+              height: containerFrame.height
+            }
+            MNUtil.log(`📐 使用 frame 作为边界: ${JSON.stringify(containerBounds)}`)
+          } else {
+            // 使用默认值
+            const defaultWidth = this.settingView.frame.width - 2
+            const defaultHeight = this.settingView.frame.height - 60
+            containerBounds = {
+              x: 0,
+              y: 0,
+              width: defaultWidth > 0 ? defaultWidth : 600,
+              height: defaultHeight > 0 ? defaultHeight : 400
+            }
+            MNUtil.log(`📐 使用默认边界: ${JSON.stringify(containerBounds)}`)
+          }
+        } catch (frameError) {
+          MNUtil.log("⚠️ 获取 frame 失败: " + frameError.message)
+          // 使用安全的默认值
           containerBounds = {
             x: 0,
             y: 0,
-            width: containerFrame.width,
-            height: containerFrame.height
+            width: 600,
+            height: 400
           }
-          MNUtil.log(`📐 使用 frame 作为边界: ${JSON.stringify(containerBounds)}`)
-        } else {
-          // 使用默认值
-          const defaultWidth = this.settingView.frame.width - 2
-          const defaultHeight = this.settingView.frame.height - 60
-          containerBounds = {
-            x: 0,
-            y: 0,
-            width: defaultWidth > 0 ? defaultWidth : 600,
-            height: defaultHeight > 0 ? defaultHeight : 400
-          }
-          MNUtil.log(`📐 使用默认边界: ${JSON.stringify(containerBounds)}`)
+          MNUtil.log(`📐 使用安全默认边界: ${JSON.stringify(containerBounds)}`)
         }
       }
       
@@ -3402,39 +3431,39 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
       MNUtil.log("❌ 没有绑定任何看板")
       
       // iPad 上提供加载测试数据的选项
-      if (MNUtil.isIPadOS()) {
-        MNUtil.log("📱 iPad 设备，尝试加载测试数据")
-        const jsCode = `
-          (function() {
-            if (typeof TaskSync !== 'undefined' && TaskSync.loadTestData) {
-              console.log('📱 iPad: 加载测试数据');
-              TaskSync.loadTestData();
-              return 'testDataLoaded';
-            } else if (typeof TaskSync !== 'undefined' && TaskSync.receiveTasks) {
-              TaskSync.receiveTasks({});
-              return 'emptyData';
-            }
-            return 'taskSyncNotReady';
-          })();
-        `
-        const result = await this.runJavaScriptInWebView(jsCode, 'todayBoardWebViewInstance')
-        MNUtil.log(`📱 iPad 测试数据加载结果: ${result}`)
-        MNUtil.showHUD("📱 iPad: 已加载测试数据\n请在设置中绑定看板")
-      } else {
-        MNUtil.showHUD("❌ 请先在设置中绑定看板\n设置 → Task Boards")
+      // if (MNUtil.isIPadOS()) {
+      //   MNUtil.log("📱 iPad 设备，尝试加载测试数据")
+      //   const jsCode = `
+      //     (function() {
+      //       if (typeof TaskSync !== 'undefined' && TaskSync.loadTestData) {
+      //         console.log('📱 iPad: 加载测试数据');
+      //         TaskSync.loadTestData();
+      //         return 'testDataLoaded';
+      //       } else if (typeof TaskSync !== 'undefined' && TaskSync.receiveTasks) {
+      //         TaskSync.receiveTasks({});
+      //         return 'emptyData';
+      //       }
+      //       return 'taskSyncNotReady';
+      //     })();
+      //   `
+      //   const result = await this.runJavaScriptInWebView(jsCode, 'todayBoardWebViewInstance')
+      //   MNUtil.log(`📱 iPad 测试数据加载结果: ${result}`)
+      //   MNUtil.showHUD("📱 iPad: 已加载测试数据\n请在设置中绑定看板")
+      // } else {
+      //   MNUtil.showHUD("❌ 请先在设置中绑定看板\n设置 → Task Boards")
         
-        // 传递空数据给 WebView
-        const jsCode = `
-          (function() {
-            if (typeof TaskSync !== 'undefined' && TaskSync.receiveTasks) {
-              TaskSync.receiveTasks({});
-              return 'success';
-            }
-            return 'taskSyncNotReady';
-          })();
-        `
-        await this.runJavaScriptInWebView(jsCode, 'todayBoardWebViewInstance')
-      }
+      //   // 传递空数据给 WebView
+      //   const jsCode = `
+      //     (function() {
+      //       if (typeof TaskSync !== 'undefined' && TaskSync.receiveTasks) {
+      //         TaskSync.receiveTasks({});
+      //         return 'success';
+      //       }
+      //       return 'taskSyncNotReady';
+      //     })();
+      //   `
+      //   await this.runJavaScriptInWebView(jsCode, 'todayBoardWebViewInstance')
+      // }
       return
     }
     

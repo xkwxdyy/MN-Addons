@@ -950,6 +950,7 @@ class MNTaskManager {
       contains: null,       // 包含字段
       progress: null,       // 进展字段
       launch: null,         // 启动字段
+      description: '',      // 描述（从纯文本评论中提取）
       otherComments: [],    // 其他评论
       plainTextComments: [], // 纯文本评论（用于提取描述）
       fields: []            // 统一的字段数组（用于数据提取）
@@ -982,21 +983,7 @@ class MNTaskManager {
         MNUtil.log(`⚠️ 评论 ${index} 属性访问失败: ` + e.message)
         return
       }
-      
-      // Debug logging for field content extraction issue - commented out to reduce log spam
-      // if (index < 5) {  // Only log first 5 to avoid spam
-      //   MNUtil.log(`🔍 DEBUG parseTaskComments - Comment ${index}:`)
-      //   MNUtil.log(`  - Raw text: "${text.substring(0, 100)}${text.length > 100 ? '...' : ''}"`)
-      //   MNUtil.log(`  - Comment type: ${commentType}`)
-      //   MNUtil.log(`  - Is task field: ${TaskFieldUtils.isTaskField(text)}`)
-      //   if (TaskFieldUtils.isTaskField(text)) {
-      //     const fieldContent = TaskFieldUtils.extractFieldText(text)
-      //     MNUtil.log(`  - Field content extracted: "${fieldContent}"`)
-      //   }
-      // }
-      
-      // 注释掉详细日志
-      // MNUtil.log(`🔍 评论 ${index}: type=${commentType}, text=${text.substring(0, 50) + (text.length > 50 ? '...' : '')}, isTaskField=${TaskFieldUtils.isTaskField(text)}`)
+    
       
       // 检查是否是任务字段（MNComment 对象的 type 已经是处理后的类型）
       if ((commentType === 'textComment' || commentType === 'markdownComment') && TaskFieldUtils.isTaskField(text)) {
@@ -1004,16 +991,14 @@ class MNTaskManager {
         // 注意：extractFieldText 实际上提取的是 <span> 标签内的文本，这是字段名
         const fieldName = TaskFieldUtils.extractFieldText(text)
         
-        // 注释掉详细日志
-        // MNUtil.log(`✅ 识别为任务字段: fieldType=${fieldType}, fieldName=${fieldName}`)
-        
         result.taskFields.push({
           index: index,
           text: text,
           fieldType: fieldType,
           content: fieldName,  // 存储字段名
           isMainField: fieldType === 'mainField',
-          isStatusField: fieldType === 'stateField'
+          isStatusField: fieldType === 'stateField',
+          isSubField: fieldType === 'subField',
         })
         
         // 记录特定字段
@@ -5662,6 +5647,704 @@ ${content.trim()}`
       return linkMatch[1];  // 返回 URL 部分
     }
     return null;
+  }
+
+  /**
+   * 修改任务评论内容 - 基于 parseTaskComments 解析结果的通用评论修改函数
+   * @param {MNNote} note - 任务卡片
+   * @param {Object} selector - 评论选择器
+   * @param {number} selector.index - 按索引定位（优先级最高）
+   * @param {string} selector.fieldName - 按字段名定位（如"进展"、"信息"等）
+   * @param {string} selector.contentMatch - 按内容关键词匹配定位
+   * @param {string} selector.type - 按评论类型定位（需配合 fieldContext）
+   * @param {string} selector.fieldContext - 类型定位时的字段上下文
+   * @param {string} newContent - 新的评论内容
+   * @param {Object} options - 配置选项
+   * @param {boolean} options.forceMarkdown - 强制使用 Markdown 格式（默认根据原内容判断）
+   * @param {boolean} options.preserveFieldFormat - 保持字段格式不变（默认 true）
+   * @param {boolean} options.logDetails - 记录详细日志（默认 true）
+   * @returns {Object} 修改结果 {success: boolean, message: string, modifiedIndex?: number}
+   */
+  static modifyTaskComment(note, selector, newContent, options = {}) {
+    // 参数验证
+    if (!note || !note.MNComments) {
+      return { success: false, message: "无效的笔记对象或无评论" };
+    }
+    
+    if (!selector || typeof selector !== 'object') {
+      return { success: false, message: "无效的选择器参数" };
+    }
+    
+    if (typeof newContent !== 'string') {
+      return { success: false, message: "新内容必须为字符串" };
+    }
+
+    // 默认选项
+    const opts = {
+      forceMarkdown: false,
+      preserveFieldFormat: true,
+      logDetails: true,
+      ...options
+    };
+
+    const logPrefix = opts.logDetails ? "🔧 modifyTaskComment" : null;
+    
+    if (logPrefix) {
+      MNUtil.log(`${logPrefix} 开始修改评论`);
+      MNUtil.log(`  - 笔记标题: ${note.noteTitle}`);
+      MNUtil.log(`  - 选择器: ${JSON.stringify(selector)}`);
+      MNUtil.log(`  - 新内容: ${newContent.substring(0, 50)}${newContent.length > 50 ? '...' : ''}`);
+    }
+
+    try {
+      // 解析任务评论结构
+      const parsed = this.parseTaskComments(note);
+      
+      // 获取 MNComment 对象数组
+      const mnComments = MNComment.from(note);
+      if (!mnComments || mnComments.length === 0) {
+        return { success: false, message: "无法获取评论对象" };
+      }
+
+      // 根据不同选择器定位目标评论
+      let targetIndex = -1;
+      let targetComment = null;
+
+      // 策略1: 按索引定位（优先级最高）
+      if (typeof selector.index === 'number') {
+        if (selector.index >= 0 && selector.index < mnComments.length) {
+          targetIndex = selector.index;
+          targetComment = mnComments[targetIndex];
+          if (logPrefix) {
+            MNUtil.log(`${logPrefix} 按索引定位: ${targetIndex}`);
+          }
+        } else {
+          return { success: false, message: `索引 ${selector.index} 超出范围 (0-${mnComments.length-1})` };
+        }
+      }
+      
+      // 策略2: 按字段名定位
+      else if (selector.fieldName) {
+        const fieldName = selector.fieldName;
+        let foundField = null;
+        
+        // 查找特定字段
+        if (fieldName === '所属' && parsed.belongsTo) {
+          foundField = parsed.belongsTo;
+        } else if (fieldName === '信息' && parsed.info) {
+          foundField = parsed.info;
+        } else if (fieldName === '包含' && parsed.contains) {
+          foundField = parsed.contains;
+        } else if (fieldName === '进展' && parsed.progress) {
+          foundField = parsed.progress;
+        } else if (fieldName === '启动' && parsed.launch) {
+          foundField = parsed.launch;
+        } else {
+          // 在任务字段中查找
+          foundField = parsed.taskFields.find(field => field.content === fieldName);
+        }
+
+        if (foundField) {
+          targetIndex = foundField.index;
+          targetComment = mnComments[targetIndex];
+          if (logPrefix) {
+            MNUtil.log(`${logPrefix} 按字段名定位: ${fieldName} -> 索引 ${targetIndex}`);
+          }
+        } else {
+          return { success: false, message: `未找到字段: ${fieldName}` };
+        }
+      }
+      
+      // 策略3: 按内容匹配定位
+      else if (selector.contentMatch) {
+        const keyword = selector.contentMatch;
+        for (let i = 0; i < mnComments.length; i++) {
+          const comment = mnComments[i];
+          if (comment.text && comment.text.includes(keyword)) {
+            targetIndex = i;
+            targetComment = comment;
+            if (logPrefix) {
+              MNUtil.log(`${logPrefix} 按内容匹配定位: "${keyword}" -> 索引 ${targetIndex}`);
+            }
+            break;
+          }
+        }
+        
+        if (targetIndex === -1) {
+          return { success: false, message: `未找到包含内容 "${keyword}" 的评论` };
+        }
+      }
+      
+      // 策略4: 按类型和字段上下文定位
+      else if (selector.type && selector.fieldContext) {
+        // 先找到字段上下文
+        const fieldContext = selector.fieldContext;
+        let fieldStartIndex = -1;
+        
+        // 在 parsed.fields 中查找字段
+        for (let field of parsed.fields) {
+          if (field.type === 'field' && field.name === fieldContext) {
+            fieldStartIndex = field.index;
+            break;
+          }
+        }
+        
+        if (fieldStartIndex === -1) {
+          return { success: false, message: `未找到字段上下文: ${fieldContext}` };
+        }
+        
+        // 在字段之后查找指定类型的评论
+        for (let i = fieldStartIndex + 1; i < parsed.fields.length; i++) {
+          const field = parsed.fields[i];
+          if (field.type === 'field') break; // 遇到下一个字段则停止
+          if (field.type === selector.type) {
+            targetIndex = field.index;
+            targetComment = mnComments[targetIndex];
+            if (logPrefix) {
+              MNUtil.log(`${logPrefix} 按类型和上下文定位: ${selector.type} in ${fieldContext} -> 索引 ${targetIndex}`);
+            }
+            break;
+          }
+        }
+        
+        if (targetIndex === -1) {
+          return { success: false, message: `在字段 "${fieldContext}" 中未找到类型 "${selector.type}" 的评论` };
+        }
+      }
+      
+      else {
+        return { success: false, message: "无效的选择器：必须提供 index、fieldName、contentMatch 或 type+fieldContext" };
+      }
+
+      // 执行修改
+      if (targetComment) {
+        const originalText = targetComment.text || '';
+        
+        // 判断是否为字段评论，需要保持格式
+        const isFieldComment = TaskFieldUtils.isTaskField(originalText);
+        let finalContent = newContent;
+        
+        if (isFieldComment && opts.preserveFieldFormat) {
+          // 保持字段格式，只替换字段内容
+          const fieldMatch = originalText.match(/<span[^>]*>(.*?)<\/span>(.*)/);
+          if (fieldMatch) {
+            const fieldTag = fieldMatch[0].replace(fieldMatch[2], ''); // 保留span标签部分
+            finalContent = fieldTag + newContent;
+            if (logPrefix) {
+              MNUtil.log(`${logPrefix} 保持字段格式: ${fieldTag}`);
+            }
+          }
+        }
+        
+        // 使用 MNComment 的 text setter 进行修改
+        targetComment.text = finalContent;
+        
+        if (logPrefix) {
+          MNUtil.log(`${logPrefix} 修改完成`);
+          MNUtil.log(`  - 原内容: ${originalText.substring(0, 50)}${originalText.length > 50 ? '...' : ''}`);
+          MNUtil.log(`  - 新内容: ${finalContent.substring(0, 50)}${finalContent.length > 50 ? '...' : ''}`);
+        }
+        
+        return { 
+          success: true, 
+          message: "评论修改成功", 
+          modifiedIndex: targetIndex,
+          originalContent: originalText,
+          newContent: finalContent
+        };
+      }
+      
+      return { success: false, message: "未找到目标评论" };
+      
+    } catch (error) {
+      const errorMsg = `修改评论时发生错误: ${error.message}`;
+      if (logPrefix) {
+        MNUtil.log(`${logPrefix} 错误: ${errorMsg}`);
+      }
+      
+      // 记录错误到系统日志
+      if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+        MNUtil.addErrorLog(error, "modifyTaskComment", {
+          selector: selector,
+          newContent: newContent.substring(0, 100),
+          noteTitle: note.noteTitle
+        });
+      }
+      
+      return { success: false, message: errorMsg };
+    }
+  }
+
+  /**
+   * 批量修改任务评论内容 - 支持一次修改多个评论
+   * @param {MNNote} note - 任务卡片
+   * @param {Array} modifications - 修改操作数组
+   * @param {Object} modifications[].selector - 评论选择器（同 modifyTaskComment）
+   * @param {string} modifications[].newContent - 新内容
+   * @param {Object} modifications[].options - 选项（可选）
+   * @param {Object} globalOptions - 全局配置选项
+   * @param {boolean} globalOptions.useUndoGrouping - 使用撤销分组（默认 true）
+   * @param {boolean} globalOptions.stopOnError - 遇到错误时停止（默认 false）
+   * @param {boolean} globalOptions.logDetails - 记录详细日志（默认 true）
+   * @returns {Object} 批量修改结果 {success: boolean, message: string, results: Array, successCount: number, errorCount: number}
+   */
+  static modifyTaskComments(note, modifications, globalOptions = {}) {
+    // 参数验证
+    if (!note || !note.MNComments) {
+      return { 
+        success: false, 
+        message: "无效的笔记对象或无评论",
+        results: [],
+        successCount: 0,
+        errorCount: 0
+      };
+    }
+    
+    if (!Array.isArray(modifications) || modifications.length === 0) {
+      return { 
+        success: false, 
+        message: "无效的修改操作数组",
+        results: [],
+        successCount: 0,
+        errorCount: 0
+      };
+    }
+
+    // 默认全局选项
+    const opts = {
+      useUndoGrouping: true,
+      stopOnError: false,
+      logDetails: true,
+      ...globalOptions
+    };
+
+    const logPrefix = opts.logDetails ? "🔧 modifyTaskComments" : null;
+    
+    if (logPrefix) {
+      MNUtil.log(`${logPrefix} 开始批量修改评论`);
+      MNUtil.log(`  - 笔记标题: ${note.noteTitle}`);
+      MNUtil.log(`  - 修改操作数量: ${modifications.length}`);
+      MNUtil.log(`  - 使用撤销分组: ${opts.useUndoGrouping}`);
+    }
+
+    const results = [];
+    let successCount = 0;
+    let errorCount = 0;
+
+    // 执行批量修改的核心函数
+    const executeBatchModifications = () => {
+      for (let i = 0; i < modifications.length; i++) {
+        const modification = modifications[i];
+        
+        // 验证每个修改操作的格式
+        if (!modification || !modification.selector || typeof modification.newContent !== 'string') {
+          const errorResult = {
+            index: i,
+            success: false,
+            message: `修改操作 ${i} 格式无效：必须包含 selector 和 newContent`,
+            selector: modification?.selector,
+            newContent: modification?.newContent
+          };
+          results.push(errorResult);
+          errorCount++;
+          
+          if (opts.stopOnError) {
+            if (logPrefix) {
+              MNUtil.log(`${logPrefix} 遇到错误停止执行: ${errorResult.message}`);
+            }
+            break;
+          }
+          continue;
+        }
+
+        // 合并选项（局部选项覆盖全局选项）
+        const modificationOptions = {
+          logDetails: opts.logDetails,
+          ...modification.options
+        };
+
+        try {
+          // 调用单个修改函数
+          const result = this.modifyTaskComment(
+            note, 
+            modification.selector, 
+            modification.newContent, 
+            modificationOptions
+          );
+          
+          // 记录结果
+          const operationResult = {
+            index: i,
+            success: result.success,
+            message: result.message,
+            selector: modification.selector,
+            newContent: modification.newContent,
+            modifiedIndex: result.modifiedIndex,
+            originalContent: result.originalContent
+          };
+          
+          results.push(operationResult);
+          
+          if (result.success) {
+            successCount++;
+            if (logPrefix) {
+              MNUtil.log(`${logPrefix} 操作 ${i} 成功: 索引 ${result.modifiedIndex}`);
+            }
+          } else {
+            errorCount++;
+            if (logPrefix) {
+              MNUtil.log(`${logPrefix} 操作 ${i} 失败: ${result.message}`);
+            }
+            
+            if (opts.stopOnError) {
+              if (logPrefix) {
+                MNUtil.log(`${logPrefix} 遇到错误停止执行`);
+              }
+              break;
+            }
+          }
+          
+        } catch (error) {
+          const errorResult = {
+            index: i,
+            success: false,
+            message: `修改操作 ${i} 执行异常: ${error.message}`,
+            selector: modification.selector,
+            newContent: modification.newContent,
+            error: error.message
+          };
+          results.push(errorResult);
+          errorCount++;
+          
+          if (logPrefix) {
+            MNUtil.log(`${logPrefix} 操作 ${i} 异常: ${error.message}`);
+          }
+          
+          // 记录错误到系统日志
+          if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+            MNUtil.addErrorLog(error, "modifyTaskComments", {
+              operationIndex: i,
+              selector: modification.selector,
+              newContent: modification.newContent.substring(0, 100),
+              noteTitle: note.noteTitle
+            });
+          }
+          
+          if (opts.stopOnError) {
+            break;
+          }
+        }
+      }
+    };
+
+    // 根据是否使用撤销分组来执行
+    try {
+      if (opts.useUndoGrouping) {
+        MNUtil.undoGrouping(() => {
+          executeBatchModifications();
+        });
+      } else {
+        executeBatchModifications();
+      }
+      
+      const overallSuccess = errorCount === 0;
+      const message = overallSuccess 
+        ? `批量修改完成：成功 ${successCount} 个操作`
+        : `批量修改完成：成功 ${successCount} 个，失败 ${errorCount} 个操作`;
+      
+      if (logPrefix) {
+        MNUtil.log(`${logPrefix} ${message}`);
+      }
+      
+      return {
+        success: overallSuccess,
+        message: message,
+        results: results,
+        successCount: successCount,
+        errorCount: errorCount
+      };
+      
+    } catch (error) {
+      const errorMsg = `批量修改过程中发生错误: ${error.message}`;
+      
+      if (logPrefix) {
+        MNUtil.log(`${logPrefix} 错误: ${errorMsg}`);
+      }
+      
+      // 记录错误到系统日志
+      if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+        MNUtil.addErrorLog(error, "modifyTaskComments", {
+          modificationsCount: modifications.length,
+          noteTitle: note.noteTitle,
+          completedOperations: results.length
+        });
+      }
+      
+      return {
+        success: false,
+        message: errorMsg,
+        results: results,
+        successCount: successCount,
+        errorCount: errorCount + 1
+      };
+    }
+  }
+
+  // ============================================================================
+  // 使用示例和最佳实践
+  // ============================================================================
+  
+  /**
+   * 使用示例：演示如何使用 modifyTaskComment 和 modifyTaskComments
+   * 
+   * // === 单个评论修改示例 ===
+   * 
+   * // 示例1: 按索引修改评论
+   * const result1 = MNTaskManager.modifyTaskComment(note, {index: 2}, "新的进展内容");
+   * if (result1.success) {
+   *   MNUtil.log(`修改成功：索引 ${result1.modifiedIndex}`);
+   * }
+   * 
+   * // 示例2: 按字段名修改（推荐）
+   * const result2 = MNTaskManager.modifyTaskComment(note, {fieldName: "进展"}, "更新的进展信息");
+   * 
+   * // 示例3: 按内容匹配修改
+   * const result3 = MNTaskManager.modifyTaskComment(note, {contentMatch: "旧的关键词"}, "新的内容");
+   * 
+   * // 示例4: 按类型和字段上下文修改
+   * const result4 = MNTaskManager.modifyTaskComment(note, {
+   *   type: "plainText", 
+   *   fieldContext: "进展"
+   * }, "在进展字段中的新文本");
+   * 
+   * // 示例5: 带选项的修改
+   * const result5 = MNTaskManager.modifyTaskComment(note, 
+   *   {fieldName: "信息"}, 
+   *   "新的信息内容", 
+   *   {
+   *     preserveFieldFormat: true,  // 保持字段格式
+   *     logDetails: false          // 不记录详细日志
+   *   }
+   * );
+   * 
+   * // === 批量修改示例 ===
+   * 
+   * // 示例6: 批量修改多个字段
+   * const batchResult = MNTaskManager.modifyTaskComments(note, [
+   *   {selector: {fieldName: "进展"}, newContent: "新的进展"},
+   *   {selector: {fieldName: "信息"}, newContent: "更新的信息"},
+   *   {selector: {index: 5}, newContent: "修改索引5的评论"}
+   * ]);
+   * 
+   * MNUtil.log(`批量修改结果：成功 ${batchResult.successCount}，失败 ${batchResult.errorCount}`);
+   * 
+   * // 示例7: 带撤销分组的批量修改
+   * const batchResult2 = MNTaskManager.modifyTaskComments(note, 
+   *   [
+   *     {selector: {contentMatch: "待办"}, newContent: "已完成"},
+   *     {selector: {fieldName: "进展"}, newContent: "100%完成"}
+   *   ],
+   *   {
+   *     useUndoGrouping: true,  // 支持一次撤销所有修改
+   *     stopOnError: true,      // 遇到错误时停止
+   *     logDetails: true        // 记录详细日志
+   *   }
+   * );
+   * 
+   * // 示例8: 遍历批量结果
+   * batchResult2.results.forEach((result, index) => {
+   *   if (result.success) {
+   *     MNUtil.log(`操作 ${index} 成功: 修改了索引 ${result.modifiedIndex}`);
+   *   } else {
+   *     MNUtil.log(`操作 ${index} 失败: ${result.message}`);
+   *   }
+   * });
+   * 
+   * // === 错误处理示例 ===
+   * 
+   * // 示例9: 完整的错误处理
+   * try {
+   *   const result = MNTaskManager.modifyTaskComment(note, {fieldName: "不存在的字段"}, "内容");
+   *   if (!result.success) {
+   *     MNUtil.showHUD(`修改失败: ${result.message}`);
+   *   }
+   * } catch (error) {
+   *   MNUtil.showHUD(`修改异常: ${error.message}`);
+   * }
+   * 
+   * // === 与现有代码集成示例 ===
+   * 
+   * // 示例10: 在任务状态更新中使用
+   * static updateTaskStatus(note, newStatus) {
+   *   // 先解析当前状态
+   *   const parsed = this.parseTaskComments(note);
+   *   if (!parsed.progress) {
+   *     MNUtil.showHUD("该卡片没有进展字段");
+   *     return false;
+   *   }
+   *   
+   *   // 修改状态字段
+   *   const result = this.modifyTaskComment(note, 
+   *     {fieldName: "进展"}, 
+   *     `状态已更新为：${newStatus}`
+   *   );
+   *   
+   *   return result.success;
+   * }
+   */
+
+  /**
+   * 测试函数：验证 modifyTaskComment 和 modifyTaskComments 的功能
+   * 注意：这是一个内部测试函数，仅用于开发验证，正式使用时可以删除
+   * @param {MNNote} note - 测试用的任务卡片
+   * @returns {Object} 测试结果统计
+   */
+  static testModifyTaskCommentFunctions(note) {
+    if (!note || !note.MNComments) {
+      return { success: false, message: "需要一个有效的任务卡片进行测试" };
+    }
+
+    const testResults = [];
+    let passCount = 0;
+    let failCount = 0;
+
+    const addTestResult = (testName, success, message, details = null) => {
+      testResults.push({ testName, success, message, details });
+      if (success) {
+        passCount++;
+        MNUtil.log(`✅ ${testName}: ${message}`);
+      } else {
+        failCount++;
+        MNUtil.log(`❌ ${testName}: ${message}`);
+      }
+    };
+
+    MNUtil.log("🧪 开始测试 modifyTaskComment 系列函数");
+    MNUtil.log(`📋 测试卡片: ${note.noteTitle}`);
+
+    try {
+      // 先解析当前结构
+      const parsed = this.parseTaskComments(note);
+      MNUtil.log(`📊 卡片结构: ${parsed.taskFields.length} 个字段, ${note.MNComments.length} 个评论`);
+
+      // 测试1: 参数验证
+      const test1 = this.modifyTaskComment(null, {index: 0}, "测试");
+      addTestResult("参数验证测试", !test1.success && test1.message.includes("无效的笔记对象"), "正确拒绝了无效参数");
+
+      // 测试2: 无效选择器
+      const test2 = this.modifyTaskComment(note, {}, "测试");
+      addTestResult("无效选择器测试", !test2.success && test2.message.includes("无效的选择器"), "正确拒绝了无效选择器");
+
+      // 测试3: 超出范围的索引
+      const test3 = this.modifyTaskComment(note, {index: 999}, "测试");
+      addTestResult("索引超出范围测试", !test3.success && test3.message.includes("超出范围"), "正确处理了超出范围的索引");
+
+      // 测试4: 不存在的字段名
+      const test4 = this.modifyTaskComment(note, {fieldName: "不存在的字段"}, "测试");
+      addTestResult("不存在字段测试", !test4.success && test4.message.includes("未找到字段"), "正确处理了不存在的字段");
+
+      // 测试5: 按索引修改（如果有评论的话）
+      if (note.MNComments.length > 0) {
+        const originalText = note.MNComments[0].text;
+        const testContent = `测试内容_${Date.now()}`;
+        const test5 = this.modifyTaskComment(note, {index: 0}, testContent);
+        
+        if (test5.success) {
+          // 验证是否真的修改了
+          const newText = note.MNComments[0].text;
+          if (newText.includes(testContent)) {
+            addTestResult("按索引修改测试", true, `成功修改索引0的评论`, {originalText, newText});
+            
+            // 恢复原始内容
+            this.modifyTaskComment(note, {index: 0}, originalText);
+          } else {
+            addTestResult("按索引修改测试", false, "修改后内容不匹配");
+          }
+        } else {
+          addTestResult("按索引修改测试", false, test5.message);
+        }
+      }
+
+      // 测试6: 按字段修改（如果有进展字段）
+      if (parsed.progress) {
+        const originalText = parsed.progress.comment.text;
+        const testContent = `进展测试_${Date.now()}`;
+        const test6 = this.modifyTaskComment(note, {fieldName: "进展"}, testContent);
+        
+        if (test6.success) {
+          addTestResult("按字段修改测试", true, "成功修改进展字段", {originalText});
+          
+          // 恢复原始内容
+          this.modifyTaskComment(note, {fieldName: "进展"}, originalText);
+        } else {
+          addTestResult("按字段修改测试", false, test6.message);
+        }
+      }
+
+      // 测试7: 批量修改空数组
+      const test7 = this.modifyTaskComments(note, []);
+      addTestResult("批量修改空数组测试", !test7.success && test7.message.includes("无效的修改操作数组"), "正确处理了空数组");
+
+      // 测试8: 批量修改格式错误
+      const test8 = this.modifyTaskComments(note, [{selector: null}]);
+      addTestResult("批量修改格式错误测试", test8.errorCount > 0, "正确处理了格式错误的批量操作");
+
+      // 测试9: 批量修改成功案例（如果有足够的评论）
+      if (note.MNComments.length >= 2) {
+        const modifications = [
+          {selector: {index: 0}, newContent: `批量测试1_${Date.now()}`},
+          {selector: {index: 1}, newContent: `批量测试2_${Date.now()}`}
+        ];
+        
+        const test9 = this.modifyTaskComments(note, modifications, {useUndoGrouping: false});
+        if (test9.successCount === 2) {
+          addTestResult("批量修改成功测试", true, `成功批量修改了 ${test9.successCount} 个评论`);
+        } else {
+          addTestResult("批量修改成功测试", false, `批量修改结果异常: 成功${test9.successCount}, 失败${test9.errorCount}`);
+        }
+      }
+
+      // 测试10: MNComment 集成测试
+      try {
+        const mnComments = MNComment.from(note);
+        if (mnComments && mnComments.length > 0) {
+          addTestResult("MNComment集成测试", true, `成功获取 ${mnComments.length} 个 MNComment 对象`);
+        } else {
+          addTestResult("MNComment集成测试", false, "无法获取 MNComment 对象");
+        }
+      } catch (error) {
+        addTestResult("MNComment集成测试", false, `MNComment 集成失败: ${error.message}`);
+      }
+
+    } catch (error) {
+      addTestResult("总体测试异常", false, `测试过程中发生异常: ${error.message}`);
+      
+      // 记录测试异常
+      if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+        MNUtil.addErrorLog(error, "testModifyTaskCommentFunctions", {
+          noteTitle: note.noteTitle,
+          completedTests: testResults.length
+        });
+      }
+    }
+
+    const summary = {
+      success: failCount === 0,
+      totalTests: testResults.length,
+      passCount: passCount,
+      failCount: failCount,
+      testResults: testResults
+    };
+
+    MNUtil.log(`🏁 测试完成: 总计 ${summary.totalTests} 项，通过 ${passCount} 项，失败 ${failCount} 项`);
+    
+    if (summary.success) {
+      MNUtil.log("🎉 所有测试通过！modifyTaskComment 系列函数工作正常");
+    } else {
+      MNUtil.log("⚠️ 部分测试失败，请检查实现");
+    }
+
+    return summary;
   }
 }
 

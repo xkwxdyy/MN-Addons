@@ -70,6 +70,19 @@ JSB.newAddon = function (mainPath) {
       MNUtil.addErrorLog(error, "加载自定义 Actions")
     }
   }
+  
+  // 加载标签触发系统（必须在 xdyy_custom_actions_registry 之后）
+  try {
+    JSB.require('xdyy_tag_trigger_system')
+    if (typeof MNUtil !== 'undefined' && MNUtil.log) {
+      MNUtil.log("✅ 标签触发系统加载成功")
+    }
+  } catch (error) {
+    if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+      MNUtil.addErrorLog(error, "加载标签触发系统失败")
+    }
+  }
+  
   /** @return {MNTaskClass} */
   const getMNTaskClass = ()=>self
   
@@ -103,7 +116,7 @@ JSB.newAddon = function (mainPath) {
         MNUtil.addObserver(self, 'onPopupMenuOnNote:', 'PopupMenuOnNote')
         MNUtil.addObserver(self, 'onPopupMenuOnSelection:', 'PopupMenuOnSelection')
         MNUtil.addObserver(self, 'onClosePopupMenuOnSelection:', 'ClosePopupMenuOnSelection')
-        // MNUtil.addObserver(self, 'onProcessNewExcerpt:', 'ProcessNewExcerpt')
+        MNUtil.addObserver(self, 'onProcessNewExcerpt:', 'ProcessNewExcerpt')
         MNUtil.addObserver(self, 'onToggleDynamic:', 'toggleDynamic')
         MNUtil.addObserver(self, 'onClosePopupMenuOnNote:', 'ClosePopupMenuOnNote')
         MNUtil.addObserver(self, 'onRefreshView:', 'refreshView')
@@ -181,19 +194,32 @@ JSB.newAddon = function (mainPath) {
         taskConfig.windowState.frame = self.addonController.view.frame
         taskConfig.save("MNTask_windowState")
       },
-      // /**
-      //  * 
-      //  * @param {{userInfo:{noteid:String}}} sender 
-      //  * @returns 
-      //  */
-      // onProcessNewExcerpt:function (sender) {
-      //   if (typeof MNUtil === 'undefined') return
-      //   if (self.window !== MNUtil.currentWindow) return; // Don't process message from other window
-
-      //   MNUtil.delay(1).then(()=>{
-      //     taskUtils.previousNoteId = sender.userInfo.noteid
-      //   })
-      // },
+      /**
+       * 
+       * @param {{userInfo:{noteid:String}}} sender 
+       * @returns 
+       */
+      onProcessNewExcerpt: async function (sender) {
+        if (typeof MNUtil === 'undefined') return
+        if (self.window !== MNUtil.currentWindow) return; // Don't process message from other window
+        
+        try {
+          const noteId = sender.userInfo.noteid
+          const note = MNNote.new(noteId)
+          
+          // 调用标签触发系统
+          if (typeof MNTaskTagTrigger !== 'undefined' && MNTaskTagTrigger.processTags) {
+            await MNTaskTagTrigger.processTags(note)
+          }
+          
+          // 保留原有逻辑
+          MNUtil.delay(1).then(() => {
+            taskUtils.previousNoteId = noteId
+          })
+        } catch (error) {
+          taskUtils.addErrorLog(error, "onProcessNewExcerpt")
+        }
+      },
       onPopupMenuOnSelection: async function (sender) { // Clicking note
         if (typeof MNUtil === 'undefined') return
         let self = getMNTaskClass()

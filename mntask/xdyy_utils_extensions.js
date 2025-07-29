@@ -1026,7 +1026,7 @@ class MNTaskManager {
             text: text,
             comment: comment
           }
-        } else if (fieldName === '启动') {
+        } else if (fieldName === '启动' || fieldName.includes('[启动]')) {
           result.launch = {
             index: index,
             text: text,
@@ -5737,11 +5737,14 @@ ${content.trim()}`
           foundField = parsed.contains;
         } else if (fieldName === '进展' && parsed.progress) {
           foundField = parsed.progress;
-        } else if (fieldName === '启动' && parsed.launch) {
+        } else if ((fieldName === '启动' || fieldName === '[启动]' || fieldName.includes('启动')) && parsed.launch) {
           foundField = parsed.launch;
         } else {
           // 在任务字段中查找
-          foundField = parsed.taskFields.find(field => field.content === fieldName);
+          foundField = parsed.taskFields.find(field => 
+            field.content === fieldName || 
+            (fieldName.includes('启动') && field.content && field.content.includes('[启动]'))
+          );
         }
 
         if (foundField) {

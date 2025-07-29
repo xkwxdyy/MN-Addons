@@ -100,6 +100,13 @@ function registerAllButtons() {
     image: "think",
     templateName: "menu_think"
   });
+
+
+  global.registerButton("custom1", {
+    name: "摘录",
+    image: "excerpt",
+    templateName: "menu_excerpt"
+  });
   
   global.registerButton("custom4", {
     name: "文献",

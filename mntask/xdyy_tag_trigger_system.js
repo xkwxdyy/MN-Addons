@@ -47,6 +47,14 @@ MNTaskTagTrigger.register = function(tag, options) {
  * @param {MNNote} note - 要处理的笔记
  */
 MNTaskTagTrigger.processTags = async function(note) {
+  // 首先检查全局触发器开关
+  if (typeof taskConfig !== 'undefined' && !taskConfig.tagTriggerEnabled) {
+    if (this.config.debugMode) {
+      MNUtil.log("标签触发器已禁用")
+    }
+    return
+  }
+  
   if (!this.config.enabled) return;
   
   // 获取笔记标签

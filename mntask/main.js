@@ -642,7 +642,7 @@ JSB.newAddon = function (mainPath) {
             image: 'logo.png',
             object: self,
             selector: 'toggleAddon:',
-            checked: taskConfig.dynamic
+            checked: taskConfig.tagTriggerEnabled
           };
       },
       onNewIconImage: function (sender) {
@@ -1040,6 +1040,23 @@ try {
         self.checkPopoverController()
         taskConfig.togglePreprocess()
       },
+      
+      // 切换标签触发器开关
+      toggleTrigger: function() {
+        let self = getMNTaskClass()
+        self.checkPopoverController()
+        
+        // 切换状态
+        let enabled = !taskConfig.tagTriggerEnabled
+        taskConfig.tagTriggerEnabled = enabled
+        taskConfig.save("MNTask_tagTriggerEnabled", enabled)
+        
+        // 显示提示
+        MNUtil.showHUD(enabled ? "✅ 启用标签触发器" : "❌ 禁用标签触发器")
+        
+        // 刷新插件命令（更新菜单显示）
+        MNUtil.refreshAddonCommands()
+      },
       // 夏大鱼羊结束
 
       openDocument:function (button) {
@@ -1071,6 +1088,10 @@ try {
           self.addonController.addonBar = self.addonBar
         }
         let selector = "toggleTaskDirection:"
+        // 获取触发器状态
+        let triggerEnabled = taskConfig.tagTriggerEnabled
+        let triggerIcon = triggerEnabled ? "✅" : "❌"
+        
         var commandTable = [
             self.tableItem('⚙️   Setting', 'openSetting:'),
             self.tableItem('📋   今日看板', 'openTodayBoard:'),
@@ -1079,6 +1100,7 @@ try {
             self.tableItem('🌟   Dynamic   ', "toggleDynamic",undefined,taskConfig.dynamic),
             self.tableItem('🌟   Direction   '+(taskConfig.vertical()?'↕️':'↔️'), selector,"dynamic"),
             self.tableItem('🗂️   卡片预处理模式  ',"togglePreprocess:", undefined, taskConfig.windowState.preprocess),
+            self.tableItem(triggerIcon + '   标签触发器', 'toggleTrigger:'),
             self.tableItem('📄   Document', 'openDocument:'),
             self.tableItem('🔄   Manual Sync','manualSync:'),
             self.tableItem('📊   Test Board Sync','testBoardSync:')

@@ -4829,6 +4829,8 @@ class taskConfig {
     // this.popupConfig = this.defaultPopupReplaceConfig
     this.popupConfig = this.getByDefault("MNTask_popupConfig", this.defaultPopupReplaceConfig)
     this.syncConfig = this.getByDefault("MNTask_syncConfig", this.defaultSyncConfig)
+    // 标签触发器开关配置
+    this.tagTriggerEnabled = this.getByDefault("MNTask_tagTriggerEnabled", true)
     this.initImage()
     this.checkCloudStore(false)
   }
@@ -5673,6 +5675,7 @@ static save(key = undefined,value = undefined,upload = true) {
     defaults.setObjectForKey(this.popupConfig,"MNTask_popupConfig")
     defaults.setObjectForKey(this.imageScale,"MNTask_imageScale")
     defaults.setObjectForKey(this.syncConfig,"MNTask_syncConfig")
+    defaults.setObjectForKey(this.tagTriggerEnabled,"MNTask_tagTriggerEnabled")
     this.syncConfig.lastModifyTime = Date.now()
     if (upload && this.iCloudSync) {
       this.writeCloudConfig(false)

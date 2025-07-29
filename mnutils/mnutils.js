@@ -8,16 +8,18 @@ class Menu{
    * @type {string[]}
    */
   titles = []
-  constructor(sender,delegate,width = 200,preferredPosition = 2){
+  constructor(sender,delegate,width = undefined,preferredPosition = 2){
     this.menuController = MenuController.new()
     this.delegate = delegate
     this.sender = sender
     this.commandTable = []
-    this.width = width
     this.menuController.rowHeight = 35
     this.preferredPosition = preferredPosition
+    if (width && width >100) {//宽度必须大于100,否则不允许设置,即转为自动宽度
+      this.width = width
+    }
   }
-  static new(sender,delegate,width = 200,preferredPosition = 2){
+  static new(sender,delegate,width = undefined,preferredPosition = 2){
     return new Menu(sender,delegate,width,preferredPosition)
   }
   /**
@@ -91,11 +93,11 @@ class Menu{
   }
   show(autoWidth = false){
   try {
-    if (autoWidth) {
+    if (autoWidth || !this.width) {//用autoWidth参数来控制是否自动计算宽度,如果menu实例没有width参数,也会自动计算宽度
       let titles = this.commandTable.map(item=>item.title)
       let maxWidth = this.width
       titles.forEach(title=>{
-        let width = chatAIUtils.strCode(title).length*9+30
+        let width = MNUtil.strCode(title)*9+30
         if (width > maxWidth) {
           maxWidth = width
         }
@@ -146,7 +148,7 @@ class Menu{
     // this.menuController.menuTableView.dataSource = this.delegate
     Menu.popover = popoverController
   } catch (error) {
-    MNUtil.showHUD(error)
+    MNUtil.addErrorLog(error, "Menu.show")
   }
   }
   dismiss(){
@@ -163,6 +165,146 @@ class Menu{
     if (this.popover) {
       this.popover.dismissPopoverAnimated(true)
     }
+  }
+}
+
+class MNLog {
+  static logs = []
+  static updateLog(log){
+    if (subscriptionUtils.subscriptionController) {
+      subscriptionUtils.subscriptionController?.appendLog(log)
+    }
+  }
+  static showLogViewer(){
+    subscriptionUtils.subscriptionController.changeViewTo("log")
+  }
+  static getLogObject(log,defaultLevel="INFO",defaultSource="Default"){
+    if (typeof log == "string" || typeof log == "number") {
+      log = {
+        message:log,
+        level:"INFO",
+        source:"Default",
+        timestamp:Date.now()
+      }
+      return log
+    }
+    if (!("message" in log)) {
+      log.message = "See detail";
+    }
+    if ("level" in log) {
+      log.level = log.level.toUpperCase();
+    }else{
+      log.level = defaultLevel;
+    }
+    if (!("source" in log)) {
+      log.source = defaultSource;
+    }
+    if (!("timestamp" in log)) {
+      log.timestamp = Date.now();
+    }
+    if ("detail" in log) {
+      if (typeof log.detail == "object") {
+        log.detail = JSON.stringify(log.detail,null,2)
+      }
+    }else{
+      let keys = Object.keys(log)
+      if (keys.length !== 0) {
+        let keysRemain = keys.filter(key => key != "timestamp" && key != "source" && key != "level" && key != "message")
+        if (keysRemain.length) {
+          let detail = {}
+          keysRemain.forEach(key => detail[key] = log[key])
+          log.detail = JSON.stringify(detail,null,2)
+        }
+      }
+    }
+    return log
+  }
+  /**
+   * 
+   * @param {string|{message:string,level:string,source:string,timestamp:number,detail:string}} log 
+   * @returns 
+   */
+  static log(log){
+    let logObject = this.getLogObject(log)
+    this.logs.push(logObject)
+    this.updateLog(logObject)
+    if (this.logs.length > 1000) {
+      this.logs.shift()
+    }
+  }
+  /**
+   * 
+   * @param {string|{message:string,source:string,timestamp:number,detail:string}} log 
+   * @returns 
+   */
+  static info(log,source=undefined){
+    let logObject = this.getLogObject(log,"INFO",source)
+    this.logs.push(logObject)
+    this.updateLog(logObject)
+    if (this.logs.length > 1000) {
+      this.logs.shift()
+    }
+  }
+  /**
+   * 
+   * @param {string|{message:string,source:string,timestamp:number,detail:string}} log 
+   * @returns 
+   */
+  static error(log,source=undefined){
+    let logObject = this.getLogObject(log,"ERROR",source)
+    this.logs.push(logObject)
+    this.updateLog(logObject)
+    if (this.logs.length > 1000) {
+      this.logs.shift()
+    }
+  }
+  /**
+   * 
+   * @param {string|{message:string,source:string,timestamp:number,detail:string}} log 
+   * @returns 
+   */
+  static debug(log,source=undefined){
+    let logObject = this.getLogObject(log,"DEBUG",source)
+    this.logs.push(logObject)
+    this.updateLog(logObject)
+    if (this.logs.length > 1000) {
+      this.logs.shift()
+    }
+  }
+  /**
+   * 
+   * @param {string|{message:string,source:string,timestamp:number,detail:string}} log 
+   * @returns 
+   */
+  static warn(log,source=undefined){
+    let logObject = this.getLogObject(log,"WARN",source)
+    this.logs.push(logObject)
+    this.updateLog(logObject)
+    if (this.logs.length > 1000) {
+      this.logs.shift()
+    }
+  }
+  static clearLogs(){
+    this.logs = []
+    subscriptionUtils.subscriptionController.clearLogs()
+  }
+  /**
+   * 和MNUtil.showHUD一样，但是内容会被记录
+   * Displays a Heads-Up Display (HUD) message on the specified window for a given duration.
+   * 
+   * This method shows a HUD message on the specified window for the specified duration.
+   * If no window is provided, it defaults to the current window. The duration is set to 2 seconds by default.
+   * 
+   * @param {string} message - The message to display in the HUD.
+   * @param {number} [duration=2] - The duration in seconds for which the HUD should be displayed.
+   * @param {UIWindow} [window=this.currentWindow] - The window on which the HUD should be displayed.
+   */
+  static showHUD(message, duration = 2, view = this.currentWindow) {
+    // if (this.onWaitHUD) {
+    //   this.stopHUD(view)
+    // }
+    MNUtil.app.showHUD(message, view, duration);
+    this.log(message)
   }
 }
 class MNUtil {
@@ -294,7 +436,11 @@ class MNUtil {
     if (subscriptionUtils.subscriptionController) {
       subscriptionUtils.subscriptionController?.appendLog(log)
     }
+    if (this.logs.length > 1000) {
+      this.logs.shift()
+    }
   }
+
   static clearLogs(){
     this.logs = []
     subscriptionUtils.subscriptionController.clearLogs()
@@ -755,6 +901,31 @@ class MNUtil {
     }
     return allNotes.filter(note=>note.docMd5.endsWith("_StudySet"))
   }
+  static strCode(str) {  //获取字符串的字节数
+    var count = 0;  //初始化字节数递加变量并获取字符串参数的字符个数
+    var cn = [8211, 8212, 8216, 8217, 8220, 8221, 8230, 12289, 12290, 12296, 12297, 12298, 12299, 12300, 12301, 12302, 12303, 12304, 12305, 12308, 12309, 65281, 65288, 65289, 65292, 65294, 65306, 65307, 65311]
+    var half = [32, 33, 34, 35, 36, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 58, 59, 60, 61, 62, 63, 64, 91, 92, 93, 94, 95, 96, 123, 124, 125, 126,105,108,8211]
+    if (str) {  //如果存在字符串，则执行
+      let len = str.length;
+        for (var i = 0; i < len; i++) {  //遍历字符串，枚举每个字符
+        let charCode = str.charCodeAt(i)
+            if (charCode>=65 && charCode<=90) {
+              count += 1.5;  //大写
+        } else if (half.includes(charCode)) {
+              count +=0.45
+        } else if (cn.includes(charCode)) {
+              count +=0.8
+            }else if (charCode > 255) {  //字符编码大于255，说明是双字节字符(即是中文)
+                count += 2;  //则累加2个
+            }else{
+                count++;  //否则递加一次
+            }
+        }
+        return count;  //返回字节数
+    } else {
+        return 0;  //如果参数为空，则返回0个
+    }
+  }
 /**
  * 判断字符串是否包含符合特定语法的搜索内容。
  * 支持 .AND., .OR. 和括号 ()。
@@ -962,7 +1133,7 @@ static textMatchPhrase(text, query) {
    * @param {string[]} items - The items of the confirmation dialog.
    * @returns {Promise<number|undefined>} A promise that resolves with the button index of the button clicked by the user.
    */
-  static async confirm(mainTitle,subTitle,items = ["Cancel","Confirm"]){
+  static async confirm(mainTitle,subTitle="",items = ["Cancel","Confirm"]){
     if (MNOnAlert) {
       return
     }
@@ -987,7 +1158,7 @@ static textMatchPhrase(text, query) {
    * @param {string[]} items - The items to display in the dialog.
    * @returns {Promise<number>} A promise that resolves with the button index of the button clicked by the user.
    */
-  static async userSelect(mainTitle,subTitle,items){
+  static async userSelect(mainTitle,subTitle="",items){
     if (MNOnAlert) {
       return
     }
@@ -1215,7 +1386,7 @@ static textMatchPhrase(text, query) {
   /**
    * 
    * @param {string} urlString 
-   * @returns {{url:string,scheme:string,host:string,query:string,params:Object}}
+   * @returns {{url:string,scheme:string,host:string,query:string,params:Object,pathComponents:string[],isBlank:boolean,fragment:string}}
    */
   static parseURL(urlString){
     /**
@@ -1396,6 +1567,49 @@ static textMatchPhrase(text, query) {
    * @returns {string} 返回文件md5
    */
   static async importPDFFromFile(){
+    let docPath = await MNUtil.importFile("com.adobe.pdf")
+    return this.importDocument(docPath)
+  }
+  static dataFromBase64(base64,type = undefined){
+    if (type) {
+      switch (type) {
+        case "pdf":
+          if (base64.startsWith("data:application/pdf;base64,")) {
+            let pdfData = NSData.dataWithContentsOfURL(MNUtil.genNSURL(base64))
+            return pdfData
+          }else{
+            let pdfData = NSData.dataWithContentsOfURL(MNUtil.genNSURL("data:application/pdf;base64,"+base64))
+            return pdfData
+          }
+        default:
+          break;
+      }
+    }
+    return NSData.dataWithContentsOfURL(MNUtil.genNSURL(base64))
+  }
+  /**
+   * 该方法会弹出文件选择窗口以选择要导入的文档
+   * @returns {string} 返回文件md5
+   */
+  static async importPDFFromBase64(pdfBase64,option = {}){
+    let pdfData = this.dataFromBase64(pdfBase64)
+    if ("filePath" in option) {
+      pdfData.writeToFileAtomically(option.filePath, false)
+      let md5 = this.importDocument(option.filePath)
+      return md5
+    }
+    let fileName = option.fileName || ("imported_"+Date.now()+".pdf")
+    let folder = option.folder || MNUtil.tempFolder()
+    let filePath = folder.nativePath + fileName
+    pdfData.writeToFileAtomically(filePath, false)
+    let md5 = this.importDocument(filePath)
+    return md5
+  }
+  /**
+   * 该方法会弹出文件选择窗口以选择要导入的文档
+   * @returns {string} 返回文件md5
+   */
+  static async importPDFFromData(pdfData){
     let docPath = await MNUtil.importFile("com.adobe.pdf")
     return this.importDocument(docPath)
   }
@@ -2379,13 +2593,13 @@ try {
    * @param {string[]} items - The list of items to display in the dialog.
    * @returns {Promise<{input:string,button:number}>} A promise that resolves with an object containing the input text and the button index.
    */
-  static async input(title,subTitle,items) {
+  static async input(title,subTitle="",items = ["Cancel","Confirm"],options=undefined) {
     if (MNOnAlert) {
       return
     }
     MNOnAlert = true
-    return new Promise((resolve, reject) => {
-      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+    return new Promise(async(resolve, reject) => {
+      let alertview = UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
         title,subTitle,2,items[0],items.slice(1),
         (alert, buttonIndex) => {
           let res = {input:alert.textFieldAtIndex(0).text,button:buttonIndex}
@@ -2393,6 +2607,24 @@ try {
           resolve(res)
         }
       )
+      if (options) {
+        try {
+          await MNUtil.delay(0.5)
+          let textField = alertview.textFieldAtIndex(0)
+          while (!textField) {
+            await MNUtil.delay(0.1)
+            textField = alertview.textFieldAtIndex(0)
+          }
+          if ("placeholder" in options) {
+            textField.text = options.placeholder
+          }
+          if ("default" in options) {
+            textField.text = options.default
+          }
+        } catch (error) {
+          MNUtil.addErrorLog(error, "MNUtil.input")
+        }
+      }
     })
   }
   /**
@@ -2406,25 +2638,67 @@ try {
    * @param {string[]} items - The list of items to display in the dialog.
    * @returns {Promise<{input:string,button:number}>} A promise that resolves with an object containing the input text and the button index.
    */
-  static async inputDev(title,subTitle,items) {
+  static async userInput(title,subTitle="",items = ["Cancel","Confirm"],options=undefined) {
     if (MNOnAlert) {
       return
     }
     MNOnAlert = true
     return new Promise(async (resolve, reject) => {
       let alertview = UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-        title,subTitle,4,items[0],items.slice(1),
+        title,subTitle,2,items[0],items.slice(1),
         (alert, buttonIndex) => {
           let res = {input:alert.textFieldAtIndex(0).text,button:buttonIndex}
           MNOnAlert = false
           resolve(res)
         }
       )
-      await MNUtil.delay(1)
-      alertview.dismissWithClickedButtonIndexAnimated(0,true)
-      await MNUtil.delay(1)
-      alertview.show()
+      if (options) {
+        try {
+          await MNUtil.delay(0.5)
+          let textField = alertview.textFieldAtIndex(0)
+          while (!textField) {
+            await MNUtil.delay(0.1)
+            textField = alertview.textFieldAtIndex(0)
+          }
+          if ("placeholder" in options) {
+            textField.text = options.placeholder
+          }
+          if ("default" in options) {
+            textField.text = options.default
+          }
+        } catch (error) {
+          MNUtil.addErrorLog(error, "MNUtil.input")
+        }
+      }
     })
+  }
+
+  static removePunctuationOnlyElements(arr) {
+    // Regular expression to match strings consisting only of punctuation.
+    // This regex includes common Chinese and English punctuation marks.
+    // \p{P} matches any kind of punctuation character.
+    // \p{S} matches any kind of symbol.
+    // We also include specific Chinese punctuation not always covered by \p{P} or \p{S} in all JS environments.
+    const punctuationRegex = /^(?:[\p{P}\p{S}¡¿〽〃「」『』【】〝〞〟〰〾〿——‘’“”〝〞‵′＂＃＄％＆＇（）＊＋，－．／：；＜＝＞＠［＼］＾＿｀｛｜｝～￥িপূর্ণ！＂＃＄％＆＇（）＊＋，－．／：；＜＝＞？＠［＼］＾＿｀｛｜｝～])*$/u;
+
+    return arr.filter(item => !punctuationRegex.test(item.trim()));
+  }
+  static doSegment(str) {
+    if (!this.segmentit) {
+      this.segmentit = Segmentit.useDefault(new Segmentit.Segment());
+    }
+    let words = this.segmentit.doSegment(str,{simple:true}).filter(word=>!/^\s*$/.test(word))
+    return words
+  }
+  static wordCountBySegmentit(str) {
+    if (!this.segmentit) {
+      this.segmentit = Segmentit.useDefault(new Segmentit.Segment());
+    }
+    let words = this.segmentit.doSegment(str,{simple:true}).filter(word=>!/^\s*$/.test(word))
+    //去除标点符号
+    let wordsWithoutPunctuation = this.removePunctuationOnlyElements(words)
+    // MNUtil.copy(wordsWithoutPunctuation)
+    return wordsWithoutPunctuation.length
   }
   /**
    * 注意这里的code需要是字符串
@@ -6859,7 +7133,7 @@ class MNComment {
       return this.detail.q_htext
     }
     MNUtil.showHUD("No available text")
-    return undefined
+    return ""
   }
   get markdown(){
     return this.type === "markdownComment"
@@ -6875,8 +7149,6 @@ class MNComment {
         case "mergedTextComment":
         case "blankImageComment":
         case "mergedImageCommentWithDrawing":
-        case "mergedImageComment":
-        case "mergedTextComment":
         case "drawingComment":
         case "imageCommentWithDrawing":
         case "imageComment":
@@ -6926,7 +7198,7 @@ class MNComment {
           //     this.detail.text = noteURLs[0]
           //     note.replaceWithTextComment(noteURLs[0],this.index)
           //     this.addBackLink(true)
-          //   }else{
+          //   }else{be
           //     this.detail.text = noteURLs[0]
           //     note.replaceWithTextComment(noteURLs[0],this.index)
           //   }

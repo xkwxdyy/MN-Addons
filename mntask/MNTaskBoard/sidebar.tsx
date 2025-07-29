@@ -29,7 +29,7 @@ export function Sidebar({
   onImportData,
 }: SidebarProps) {
   return (
-    <div className="w-64 bg-slate-900/30 border-r border-slate-700 p-4 space-y-4 fixed h-full overflow-y-auto">
+    <div className="w-64 bg-slate-900/30 border-r border-slate-700 p-4 pb-8 space-y-4 fixed h-full overflow-y-auto">
       {/* 统计信息 */}
       <Card className="bg-slate-800/50 border-slate-700">
         <CardHeader className="pb-3">

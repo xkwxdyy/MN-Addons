@@ -1157,13 +1157,17 @@ export default function MNTaskBoard() {
             <AlertDialogTitle className="text-white">确认重置数据</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-300">
               此操作将永久删除所有任务数据，包括：
+            </AlertDialogDescription>
+            <div className="text-slate-300">
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li>所有焦点任务</li>
                 <li>所有待处理任务</li>
                 <li>任务进展记录</li>
                 <li>任务历史数据</li>
               </ul>
-              <strong className="text-red-400 block mt-2">此操作无法撤销！</strong>
+            </div>
+            <AlertDialogDescription className="text-red-400 font-semibold mt-2">
+              此操作无法撤销！
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

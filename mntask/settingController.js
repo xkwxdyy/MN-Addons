@@ -53,9 +53,6 @@
 // 全局 MNTask 插件实例引用
 var MNTaskInstance = null;
 
-// 全局 settingController 实例引用（JSB 框架需要）
-var self = null;
-
 /**
  * MNTask 设置控制器 - 采用 JSB 框架的事件驱动架构
  * 
@@ -93,8 +90,6 @@ var self = null;
 const getTaskSettingController = ()=>self
 var taskSettingController = JSB.defineClass('taskSettingController : UIViewController <NSURLConnectionDelegate,UIImagePickerControllerDelegate,UIWebViewDelegate>', {
   viewDidLoad: function() {
-    // 设置全局 self 引用（重要：JSB 框架需要）
-    self = this;
     let self = getTaskSettingController()
 try {
     MNUtil.log("📍 [MNTask] viewDidLoad 开始")
@@ -279,40 +274,12 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     let self = getTaskSettingController()
     try {
       MNUtil.log("🔔 webViewDidFinishLoad 被调用")
-      
-      // 调试信息：显示所有 WebView 的状态
-      MNUtil.log(`📊 WebView 状态检查:`)
-      MNUtil.log(`   - webviewInput 存在: ${!!self.webviewInput}`)
-      MNUtil.log(`   - webviewInput 地址: ${self.webviewInput}`)
-      MNUtil.log(`   - todayBoardWebViewInstance 存在: ${!!self.todayBoardWebViewInstance}`)
-      MNUtil.log(`   - todayBoardWebViewInstance 地址: ${self.todayBoardWebViewInstance}`)
-      MNUtil.log(`   - 传入的 webView 地址: ${webView}`)
-      MNUtil.log(`   - webView === webviewInput: ${webView === self.webviewInput}`)
-      MNUtil.log(`   - webView === todayBoardWebViewInstance: ${webView === self.todayBoardWebViewInstance}`)
-      
-      // 尝试获取 WebView 的 URL 用于调试
-      let webViewURL = ''
-      try {
-        if (webView.request && webView.request.URL) {
-          const urlObj = webView.request.URL()
-          if (urlObj && urlObj.absoluteString) {
-            webViewURL = urlObj.absoluteString()
-          }
-        }
-      } catch (e) {
-        MNUtil.log(`⚠️ 获取 WebView URL 时出错: ${e.message}`)
-      }
-      MNUtil.log(`   - 当前 WebView URL: ${webViewURL || 'undefined'}`)
-      
-      // 检查是否是 jsoneditor WebView
-      if (self.webviewInput && webView === self.webviewInput) {
-        MNUtil.log("📝 JSON 编辑器 WebView 加载完成")
-        return
-      }
+      MNUtil.log(`📱 WebView 实例: ${webView}`)
+      MNUtil.log(`📱 今日看板 WebView 实例: ${self.todayBoardWebViewInstance}`)
+      MNUtil.log(`📱 是今日看板?: ${webView === self.todayBoardWebViewInstance}`)
       
       // 检查是否是今日看板的 WebView
-      if (self.todayBoardWebViewInstance && webView === self.todayBoardWebViewInstance) {
-        MNUtil.log("✅ 识别到今日看板 WebView（通过实例比较）")
+      if (webView === self.todayBoardWebViewInstance) {
         // 标记初始化完成
         self.todayBoardWebViewInitialized = true
         
@@ -329,59 +296,15 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
             MNTaskInstance.syncTasksToWebView()
           }
         })
-        return
+      } else {
+        MNUtil.log("⚠️ 未识别的 WebView 实例")
+        MNUtil.log(`📱 WebView URL: ${webView.URL ? webView.URL.absoluteString() : 'undefined'}`)
+        MNUtil.log(`📱 WebView 标题: ${webView.title ? webView.title : 'undefined'}`)
       }
-      
-      // 如果都不匹配，尝试根据 URL 识别
-      if (webViewURL.includes('task-focus-board.html')) {
-        MNUtil.log("🎯 通过 URL 识别到今日看板 WebView")
-        
-        // 保存 WebView 引用（如果还没有保存）
-        if (!self.todayBoardWebViewInstance) {
-          self.todayBoardWebViewInstance = webView
-          MNUtil.log("📌 保存今日看板 WebView 引用")
-        }
-        
-        // 标记初始化完成
-        if (!self.todayBoardWebViewInitialized) {
-          self.todayBoardWebViewInitialized = true
-          MNUtil.log("✅ 标记今日看板已初始化")
-          
-          // 延迟加载数据
-          MNUtil.delay(0.5).then(() => {
-            MNUtil.log("🚀 开始加载今日看板数据")
-            self.loadTodayBoardData()
-            
-            if (MNTaskInstance && MNTaskInstance.syncTasksToWebView) {
-              MNTaskInstance.syncTasksToWebView()
-            }
-          })
-        }
-        return
-      }
-      
-      MNUtil.log(`⚠️ 未识别的 WebView，URL: ${webViewURL || 'undefined'}`)
-      
     } catch (error) {
       MNUtil.log(`❌ webViewDidFinishLoad 出错: ${error.message}`)
       MNUtil.log(`📍 错误堆栈: ${error.stack}`)
       taskUtils.addErrorLog(error, "webViewDidFinishLoad")
-    }
-  },
-  /**
-   * WebView 加载失败的回调
-   * @param {UIWebView} webView - WebView 实例
-   * @param {NSError} error - 错误对象
-   */
-  webViewDidFailLoadWithError: function(webView, error) {
-    let self = getTaskSettingController()
-    MNUtil.log(`❌ WebView 加载失败: ${error.message}`)
-    
-    if (self.todayBoardWebViewInstance && webView === self.todayBoardWebViewInstance) {
-      MNUtil.log("❌ 今日看板 WebView 加载失败")
-      MNUtil.showHUD("今日看板加载失败，请重试")
-    } else if (self.webviewInput && webView === self.webviewInput) {
-      MNUtil.log("❌ JSON 编辑器 WebView 加载失败")
     }
   },
   /**
@@ -762,8 +685,6 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     let self = getTaskSettingController()
     // 记录视图切换
     MNUtil.log("切换到今日看板视图")
-    
-    // 切换视图，viewManager 会处理初始化
     self.viewManager.switchTo('todayBoard')
   },
   popupButtonTapped: function (params) {
@@ -1694,18 +1615,10 @@ taskSettingController.prototype.initViewManager = function() {
         normalColor: '#9bb2d6',
         onShow: function(self) {
           MNUtil.log("🎯 切换到看板视图")
-          
-          // 确保布局更新
-          self.settingViewLayout()
-          
           // 首次显示时创建 WebView
           if (!self.todayBoardWebViewInitialized) {
             MNUtil.log("📱 首次显示，需要初始化 WebView")
-            // 延迟一帧以确保布局完成
-            self.delay(0.05).then(() => {
-              MNUtil.log("📱 延迟后开始初始化 WebView")
-              self.initTodayBoardWebView()
-            })
+            self.initTodayBoardWebView()
           } else {
             // 如果已经初始化，刷新数据
             MNUtil.log("♻️ WebView 已初始化，刷新数据")
@@ -1762,12 +1675,6 @@ taskSettingController.prototype.initViewManager = function() {
       if (self[viewConfig.view]) {
         self[viewConfig.view].hidden = false
         MNUtil.log(`✅ Showing view: ${viewConfig.view}`)
-        
-        // 特殊处理：确保今日看板的 WebView 也可见
-        if (viewName === 'todayBoard' && self.todayBoardWebViewInstance) {
-          self.todayBoardWebViewInstance.hidden = false
-          MNUtil.log(`✅ 确保今日看板 WebView 可见`)
-        }
       } else {
         MNUtil.log(`❌ View not found: ${viewConfig.view}`)
       }
@@ -2400,8 +2307,8 @@ try {
     parent: 'taskBoardView'
   })
   
-  // 注释掉错误的创建方法 - 这个方法会清空 WebView 引用
-  // this.createTodayBoardWebView()
+  // 创建今日看板的 WebView
+  this.createTodayBoardWebView()
   
 } catch (error) {
   taskUtils.addErrorLog(error, "createSettingView")
@@ -3174,104 +3081,25 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
   try {
     MNUtil.log("🌟 开始初始化今日看板 WebView")
     
-    // 🔧 验证容器是否存在
-    if (!this.todayBoardWebView) {
-      MNUtil.log("❌ 今日看板容器不存在，跳过初始化")
-      return
-    }
-    
     // 如果 WebView 实例不存在，先创建它
     if (!this.todayBoardWebViewInstance) {
       MNUtil.log("📱 创建 WebView 实例")
       
-      // 🔧 安全获取容器边界，添加验证
-      let containerBounds = null
-      try {
-        containerBounds = this.todayBoardWebView.bounds
-        MNUtil.log(`📐 容器边界: ${JSON.stringify(containerBounds)}`)
-      } catch (error) {
-        MNUtil.log("⚠️ 获取容器边界失败: " + error.message)
-        containerBounds = null
-      }
-      
-      try {
-        MNUtil.log(`📐 容器 frame: ${JSON.stringify(this.todayBoardWebView.frame)}`)
-        MNUtil.log(`📐 容器是否隐藏: ${this.todayBoardWebView.hidden}`)
-      } catch (error) {
-        MNUtil.log("⚠️ 获取容器属性失败: " + error.message)
-      }
-      
-      // 🔧 验证边界是否有效，使用更安全的默认值
-      if (!containerBounds || containerBounds.width <= 0 || containerBounds.height <= 0) {
-        MNUtil.log("⚠️ 容器边界无效，尝试使用 frame 或默认值")
-        
-        // 尝试使用 frame
-        try {
-          const containerFrame = this.todayBoardWebView.frame
-          if (containerFrame && containerFrame.width > 0 && containerFrame.height > 0) {
-            containerBounds = {
-              x: 0,
-              y: 0,
-              width: containerFrame.width,
-              height: containerFrame.height
-            }
-            MNUtil.log(`📐 使用 frame 作为边界: ${JSON.stringify(containerBounds)}`)
-          } else {
-            // 使用默认值
-            const defaultWidth = this.settingView.frame.width - 2
-            const defaultHeight = this.settingView.frame.height - 60
-            containerBounds = {
-              x: 0,
-              y: 0,
-              width: defaultWidth > 0 ? defaultWidth : 600,
-              height: defaultHeight > 0 ? defaultHeight : 400
-            }
-            MNUtil.log(`📐 使用默认边界: ${JSON.stringify(containerBounds)}`)
-          }
-        } catch (frameError) {
-          MNUtil.log("⚠️ 获取 frame 失败: " + frameError.message)
-          // 使用安全的默认值
-          containerBounds = {
-            x: 0,
-            y: 0,
-            width: 600,
-            height: 400
-          }
-          MNUtil.log(`📐 使用安全默认边界: ${JSON.stringify(containerBounds)}`)
-        }
-      }
-      
-      // 再次验证边界
-      if (containerBounds.width <= 0 || containerBounds.height <= 0) {
-        MNUtil.log("❌ 无法获取有效的容器边界，延迟初始化")
-        MNUtil.showHUD("容器尚未准备好，请稍后再试")
-        return
-      }
+      // 获取容器的当前边界
+      const containerBounds = this.todayBoardWebView.bounds
+      MNUtil.log(`📐 容器边界: ${JSON.stringify(containerBounds)}`)
       
       // 创建 WebView，填充整个容器
-      let webView
-      try {
-        MNUtil.log(`📱 准备创建 WebView，尺寸: ${containerBounds.width}x${containerBounds.height}`)
-        
-        webView = new UIWebView({
-          x: 0, 
-          y: 0, 
-          width: containerBounds.width, 
-          height: containerBounds.height
-        })
-        
-        MNUtil.log("✅ WebView 实例创建成功")
-        
-        webView.backgroundColor = UIColor.whiteColor()
-        webView.scalesPageToFit = false
-        webView.autoresizingMask = (1 << 1 | 1 << 4) // 宽高自适应
-        webView.delegate = this
-      } catch (webViewError) {
-        MNUtil.log(`❌ 创建 WebView 失败: ${webViewError.message}`)
-        MNUtil.showHUD("创建今日看板失败，请稍后再试")
-        taskUtils.addErrorLog(webViewError, "创建 WebView")
-        return
-      }
+      const webView = new UIWebView({
+        x: 0, 
+        y: 0, 
+        width: containerBounds.width, 
+        height: containerBounds.height
+      })
+      webView.backgroundColor = UIColor.whiteColor()
+      webView.scalesPageToFit = false
+      webView.autoresizingMask = (1 << 1 | 1 << 4) // 宽高自适应
+      webView.delegate = this
       webView.layer.cornerRadius = 10
       webView.layer.masksToBounds = true
       
@@ -3312,25 +3140,12 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
       }
       
       // 将 WebView 添加到容器视图中
-      try {
-        MNUtil.log("📦 准备将 WebView 添加到容器")
-        this.todayBoardWebView.addSubview(webView)
-        MNUtil.log("✅ WebView 已添加到容器")
-      } catch (addError) {
-        MNUtil.log(`❌ 添加 WebView 到容器失败: ${addError.message}`)
-        MNUtil.showHUD("添加视图失败，请稍后再试")
-        taskUtils.addErrorLog(addError, "添加 WebView 到容器")
-        return
-      }
+      this.todayBoardWebView.addSubview(webView)
       
       // 保存 WebView 引用
       this.todayBoardWebViewInstance = webView
       
       MNUtil.log("✅ WebView 实例创建成功")
-      MNUtil.log(`📊 WebView delegate 设置为: ${webView.delegate}`)
-      MNUtil.log(`📊 当前 controller 实例: ${this}`)
-      MNUtil.log(`📊 WebView 添加到容器: ${this.todayBoardWebView}`)
-      MNUtil.log(`📊 容器子视图数量: ${this.todayBoardWebView.subviews ? this.todayBoardWebView.subviews.length : 0}`)
     }
     
     // 加载 HTML 文件
@@ -3344,17 +3159,12 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
       return
     }
     
-    // 再次确认 delegate 设置
-    MNUtil.log(`📊 加载前 delegate 确认: ${this.todayBoardWebViewInstance.delegate === this}`)
-    
     this.todayBoardWebViewInstance.loadFileURLAllowingReadAccessToURL(
       NSURL.fileURLWithPath(htmlPath),
       NSURL.fileURLWithPath(taskConfig.mainPath)
     )
     
     MNUtil.log("📝 已发送 HTML 加载请求，等待 webViewDidFinishLoad")
-    MNUtil.log(`📊 WebView 实例地址: ${this.todayBoardWebViewInstance}`)
-    MNUtil.log(`📊 WebView delegate: ${this.todayBoardWebViewInstance.delegate}`)
     
     // 不在这里标记初始化完成，等待 webViewDidFinishLoad
   } catch (error) {
@@ -3378,14 +3188,9 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
     }
     
     // ========== 性能优化：检查是否需要重新加载数据 ==========
-    // iPad 上强制刷新数据，避免缓存问题
-    if (!MNUtil.isIPadOS() && this.todayBoardDataLoaded && taskConfig.isTodayBoardCacheValid()) {
+    if (this.todayBoardDataLoaded && taskConfig.isTodayBoardCacheValid()) {
       MNUtil.log("✅ 数据已加载且缓存有效，跳过重复加载")
       return
-    }
-    
-    if (MNUtil.isIPadOS()) {
-      MNUtil.log("📱 检测到 iPad 设备，强制刷新数据")
     }
     
     // ========== 性能优化：尝试使用缓存数据 ==========
@@ -3429,41 +3234,19 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
     
     if (boundBoards === 0) {
       MNUtil.log("❌ 没有绑定任何看板")
+      MNUtil.showHUD("❌ 请先在设置中绑定看板\n设置 → Task Boards")
       
-      // iPad 上提供加载测试数据的选项
-      // if (MNUtil.isIPadOS()) {
-      //   MNUtil.log("📱 iPad 设备，尝试加载测试数据")
-      //   const jsCode = `
-      //     (function() {
-      //       if (typeof TaskSync !== 'undefined' && TaskSync.loadTestData) {
-      //         console.log('📱 iPad: 加载测试数据');
-      //         TaskSync.loadTestData();
-      //         return 'testDataLoaded';
-      //       } else if (typeof TaskSync !== 'undefined' && TaskSync.receiveTasks) {
-      //         TaskSync.receiveTasks({});
-      //         return 'emptyData';
-      //       }
-      //       return 'taskSyncNotReady';
-      //     })();
-      //   `
-      //   const result = await this.runJavaScriptInWebView(jsCode, 'todayBoardWebViewInstance')
-      //   MNUtil.log(`📱 iPad 测试数据加载结果: ${result}`)
-      //   MNUtil.showHUD("📱 iPad: 已加载测试数据\n请在设置中绑定看板")
-      // } else {
-      //   MNUtil.showHUD("❌ 请先在设置中绑定看板\n设置 → Task Boards")
-        
-      //   // 传递空数据给 WebView
-      //   const jsCode = `
-      //     (function() {
-      //       if (typeof TaskSync !== 'undefined' && TaskSync.receiveTasks) {
-      //         TaskSync.receiveTasks({});
-      //         return 'success';
-      //       }
-      //       return 'taskSyncNotReady';
-      //     })();
-      //   `
-      //   await this.runJavaScriptInWebView(jsCode, 'todayBoardWebViewInstance')
-      // }
+      // 传递空数据给 WebView
+      const jsCode = `
+        (function() {
+          if (typeof TaskSync !== 'undefined' && TaskSync.receiveTasks) {
+            TaskSync.receiveTasks({});
+            return 'success';
+          }
+          return 'taskSyncNotReady';
+        })();
+      `
+      await this.runJavaScriptInWebView(jsCode, 'todayBoardWebViewInstance')
       return
     }
     
@@ -3571,17 +3354,9 @@ taskSettingController.prototype.loadTodayBoardData = async function() {
     const taskSyncStatus = await this.runJavaScriptInWebView(checkTaskSyncCode, 'todayBoardWebViewInstance')
     MNUtil.log(`📋 TaskSync 状态: ${taskSyncStatus}`)
     
-    // iPad 上需要更长的等待时间
-    if (taskSyncStatus === 'notExists' || taskSyncStatus === undefined) {
-      const waitTime = MNUtil.isIPadOS() ? 2 : 1
-      MNUtil.log(`⚠️ TaskSync 未定义，等待 ${waitTime} 秒后重试...`)
-      await MNUtil.delay(waitTime)
-      
-      // iPad 上再次检查
-      if (MNUtil.isIPadOS()) {
-        const retryStatus = await this.runJavaScriptInWebView(checkTaskSyncCode, 'todayBoardWebViewInstance')
-        MNUtil.log(`📋 iPad 重试后 TaskSync 状态: ${retryStatus}`)
-      }
+    if (taskSyncStatus === 'notExists') {
+      MNUtil.log("⚠️ TaskSync 未定义，等待一秒后重试...")
+      await MNUtil.delay(1)
     }
     
     // 开始注入数据
@@ -4262,20 +4037,6 @@ taskSettingController.prototype.handleTodayBoardProtocol = function(url) {
         // 触发任务同步
         MNUtil.log("🔄 收到任务同步请求")
         this.loadTodayBoardData()
-        break
-        
-      case 'log':
-        // 处理来自 WebView 的日志消息
-        const level = params.level || 'log'
-        const message = decodeURIComponent(params.message || '')
-        const data = params.data ? JSON.parse(decodeURIComponent(params.data)) : null
-        
-        // 转发到 MNUtil.log
-        if (data) {
-          MNUtil.log(`📱 [WebView] ${message}`, data)
-        } else {
-          MNUtil.log(`📱 [WebView] ${message}`)
-        }
         break
         
       default:

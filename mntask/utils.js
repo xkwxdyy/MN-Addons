@@ -1,15555 +1,6239 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
+
+
+class taskFrame{
+  static gen(x,y,width,height){
+    return MNUtil.genFrame(x, y, width, height)
+  }
+  /**
+   * 
+   * @param {UIView} view 
+   * @param {number} x 
+   * @param {number} y 
+   * @param {number} width 
+   * @param {number} height 
+   */
+  static set(view,x,y,width,height){
+    // 添加安全检查
+    if (!view) {
+      // 静默返回，避免在布局更新时产生大量警告
+      // 某些视图可能尚未创建或已被销毁
+      return
+    }
+    
+    if (!view.frame) {
+      MNUtil.log("⚠️ taskFrame.set: view.frame 不存在")
+      return
+    }
+    
+    let oldFrame = view.frame
+    let frame = view.frame
+    
+    // 验证数值参数
+    if (x !== undefined) {
+      if (!isNaN(x) && isFinite(x)) {
+        frame.x = x
+      } else {
+        MNUtil.log(`⚠️ taskFrame.set: 无效的 x 值: ${x}`)
+      }
+    } else if (view.x !== undefined) {
+      frame.x = view.x
+    }
+    
+    if (y !== undefined) {
+      if (!isNaN(y) && isFinite(y)) {
+        frame.y = y
+      } else {
+        MNUtil.log(`⚠️ taskFrame.set: 无效的 y 值: ${y}`)
+      }
+    } else if (view.y !== undefined) {
+      frame.y = view.y
+    }
+    
+    if (width !== undefined) {
+      if (!isNaN(width) && isFinite(width) && width > 0) {
+        frame.width = width
+      } else {
+        MNUtil.log(`⚠️ taskFrame.set: 无效的 width 值: ${width}`)
+      }
+    } else if (view.width !== undefined) {
+      frame.width = view.width
+    }
+    
+    if (height !== undefined) {
+      if (!isNaN(height) && isFinite(height) && height > 0) {
+        frame.height = height
+      } else {
+        MNUtil.log(`⚠️ taskFrame.set: 无效的 height 值: ${height}`)
+      }
+    } else if (view.height !== undefined) {
+      frame.height = view.height
+    }
+    
+    // 最终验证 frame 的有效性
+    if (frame && !isNaN(frame.x) && !isNaN(frame.y) && 
+        !isNaN(frame.width) && !isNaN(frame.height) &&
+        isFinite(frame.x) && isFinite(frame.y) && 
+        isFinite(frame.width) && isFinite(frame.height) &&
+        frame.width > 0 && frame.height > 0) {
+      
+      if (!this.sameFrame(oldFrame,frame)) {
+        try {
+          view.frame = frame
+        } catch (error) {
+          MNUtil.log(`❌ taskFrame.set: 设置 frame 失败: ${error.message}`)
+        }
+      }
+    } else {
+      MNUtil.log(`⚠️ taskFrame.set: frame 值无效: ${JSON.stringify(frame)}`)
+    }
+  }
+  static sameFrame(frame1,frame2){
+    if (frame1.x === frame2.x && frame1.y === frame2.y && frame1.width === frame2.width && frame1.height === frame2.height) {
+      return true
+    }
+    return false
+  }
+  /**
+   * 
+   * @param {UIView} view 
+   * @param {number} x
+   */
+  static setX(view,x){
+    let frame = view.frame
+    frame.x = x
+    view.frame = frame
+  }
+  /**
+   * 
+   * @param {UIView} view 
+   * @param {number} y
+   */
+  static setY(view,y){
+    let frame = view.frame
+    frame.y = y
+    view.frame = frame
+  }
+  /**
+   * 
+   * @param {UIView} view
+   * @param {number} x 
+   * @param {number} y 
+   */
+  static setLoc(view,x,y){
+    let frame = view.frame
+    frame.x = x
+    frame.y = y
+    if (view.width) {
+      frame.width = view.width
+    }
+    if (view.height) {
+      frame.height = view.height
+    }
+    view.frame = frame
+  }
+  /**
+   * 
+   * @param {UIView} view 
+   * @param {number} width 
+   * @param {number} height 
+   */
+  static setSize(view,width,height){
+    let frame = view.frame
+    frame.width = width
+    frame.height = height
+    view.frame = frame
+  }
+  /**
+   * 
+   * @param {UIView} view 
+   * @param {number} width
+   */
+  static setWidth(view,width){
+    let frame = view.frame
+    frame.width = width
+    view.frame = frame
+  }
+  /**
+   * 
+   * @param {UIView} view 
+   * @param {number} height
+   */
+  static setHeight(view,height){
+    let frame = view.frame
+    frame.height = height
+    view.frame = frame
+  }
+  /**
+   * 
+   * @param {UIView} view 
+   * @param {number} xDiff
+   */
+  static moveX(view,xDiff){
+    let frame = view.frame
+    frame.x = frame.x+xDiff
+    view.frame = frame
+  }
+  /**
+   * 
+   * @param {UIView} view 
+   * @param {number} yDiff
+   */
+  static moveY(view,yDiff){
+    let frame = view.frame
+    frame.y = frame.y+yDiff
+    view.frame = frame
+  }
+}
+
+
+
+// 获取UITextView实例的所有属性
+function getAllProperties(obj) {
+    var props = [];
+    var proto = obj;
+    while (proto) {
+        props = props.concat(Object.getOwnPropertyNames(proto));
+        proto = Object.getPrototypeOf(proto);
+    }
+    return props;
+}
+// 定义一个类
+class taskUtils {
+  // 构造器方法，用于初始化新创建的对象
+  constructor(name) {
+    this.name = name;
+  }
+  /**@type {string} */
+  static previousNoteId
+  static errorLog = []
+  static version
+  static currentNoteId
+  static currentNotebookId
+  static currentSelection
+  static isSubscribe = false
+  static mainPath
+  /**
+   * @type {MNNote[]}
+   * @static
+   */
+  static sourceToRemove = []
+  static commentToRemove = {}
+  /**
+   * @type {UITextView}
+   * @static
+   */
+  static textView
+  static template = {
+      "🔨 trigger button":{
+        "action": "triggerButton",
+        "target": "Custom 3"
+      },
+      "🔨 user confirm":{
+        "action": "confirm",
+        "title": "请点击确认",
+        "onConfirm": {
+          "action": "",
+        },
+        "onCancel": {
+          "action": "",
+        }
+      },
+      "🔨 user select":{
+        "description": "要求用户选择一个选项",
+        "action": "userSelect",
+        "title": "test",
+        "selectItems": [
+          {
+            "action": "showMessage",
+            "content": "选中第一个",
+            "selectTitle": "teste1"
+          },
+          {
+            "action": "showMessage",
+            "content": "选中第二个",
+            "selectTitle": "teste2"
+          }
+        ]
+      },
+      "🔨 show message":{
+        "action": "showMessage",
+        "content": "Hello world"
+      },
+      "🔨 empty action":{
+          "description": "空白动作",
+          "action": "xxx",
+      },
+      "🔨 empty action with double click":{
+        "description": "空白动作 带双击动作",
+        "action": "xxx",
+        "doubleClick": {
+          "action": "xxx"
+        }
+      },
+      "🔨 split note to mindmap":{
+        "action": "markdown2Mindmap",
+        "source": "currentNote"
+      },
+      "🔨 import mindmap from clipboard":{
+        "action": "markdown2Mindmap",
+        "source": "clipboard"
+      },
+      "🔨 import mindmap from markdown file":{
+        "action": "markdown2Mindmap",
+        "source": "file"
+      },
+      "🔨 empty action with finish action":{
+        "description": "空白动作 带结束动作",
+        "action": "xxx",
+        "onFinish": {
+          "action": "xxx"
+        }
+      },
+      "🔨 setColor default":{},
+      "🔨 with fillpattern: both":{
+        "fillPattern":-1
+      },
+      "🔨 with fillpattern: fill":{
+        "fillPattern":-1
+      },
+      "🔨 with fillpattern: border":{
+        "fillPattern":-1
+      },
+      "🔨 with followAutoStyle":{
+        "followAutoStyle":true
+      },
+      "🔨 insert snippet":{
+        "description": "在输入框中插入文本片段",
+        "action": "insertSnippet",
+        "content": "test"
+      },
+      "🔨 insert snippet with menu":{
+        "description": "弹出菜单,选择要在输入框中插入的文本片段",
+        "action": "insertSnippet",
+        "target": "menu",
+        "menuItems": [
+          {
+            "menuTitle": "插入序号1️⃣",
+            "content": "1️⃣ "
+          },
+          {
+            "menuTitle": "插入序号2️⃣",
+            "content": "2️⃣ "
+          },
+          {
+            "menuTitle": "插入序号3️⃣",
+            "content": "3️⃣ "
+          },
+          {
+            "menuTitle": "插入序号4️⃣",
+            "content": "4️⃣ "
+          },
+          {
+            "menuTitle": "插入序号5️⃣",
+            "content": "5️⃣ "
+          },
+          {
+            "menuTitle": "插入序号6️⃣",
+            "content": "6️⃣ "
+          },
+          {
+            "menuTitle": "插入序号7️⃣",
+            "content": "7️⃣ "
+          },
+          {
+            "menuTitle": "插入序号8️⃣",
+            "content": "8️⃣ "
+          },
+          {
+            "menuTitle": "插入序号9️⃣",
+            "content": "9️⃣ "
+          }
+        ]
+      },
+      "🔨 add note index":{
+          "description": "多选状态下,给选中的卡片标题加序号",
+          "action": "mergeText",
+          "target": "title",
+          "source": [
+              "{{noteIndex}}、{{title}}"
+          ]
+      },
+      "🔨 toggle mindmap":{
+          "description": "开关脑图界面",
+          "action": "command",
+          "command": "ToggleMindMap"
+      },
+      "🔨 smart copy":{
+        "description": "智能复制",
+        "action": "copy",
+        "target": "auto"
+      },
+      "🔨 copy with menu":{
+          "description": "弹出菜单以选择需要复制的内容",
+          "action": "copy",
+          "target": "menu"
+      },
+      "🔨 copy markdown link":{
+        "description": "复制markdown链接, 以卡片内容为标题,卡片url为链接",
+        "action": "copy",
+        "content": "[{{note.allText}}]({{{note.url}}})"
+      },
+      "🔨 toggle markdown":{
+        "description": "切换摘录markdown渲染",
+        "action": "toggleMarkdown"
+      },
+      "🔨 toggle textFirst":{
+        "description": "切换摘录文本优先",
+        "action": "toggleTextFirst"
+      },
+      "🔨 chatAI with menu":{
+        "description": "弹出菜单选择需要执行的prompt",
+        "action": "chatAI",
+        "target": "menu"
+      },
+      "🔨 chatAI in prompt":{
+        "description": "执行预定好的prompt",
+        "action": "chatAI",
+        "target": "翻译"
+      },
+      "🔨 chatAI in custom prompt":{
+        "description": "指定user和system",
+        "action": "chatAI",
+        "user": "test",
+        "system": "test"
+      },
+      "🔨 search with menu":{
+        "description": "弹出菜单选择需要在Browser中搜索的内容",
+        "action": "search",
+        "target": "menu"
+      },
+      "🔨 search in Baidu":{
+        "description": "弹出菜单选择搜索的目的",
+        "action": "search",
+        "target": "Baidu"
+      },
+      "🔨 OCR with menu":{
+        "description": "弹出菜单选择OCR的目的",
+        "action": "ocr",
+        "target": "menu"
+      },
+      "🔨 OCR as chat mode reference":{
+        "description": "OCR 结果作为聊天模式引用",
+        "action": "ocr",
+        "target": "chatModeReference"
+      },
+      "🔨 OCR to clipboard":{
+        "description": "OCR 到剪贴板",
+        "action": "ocr",
+        "target": "clipboard"
+      },
+      "🔨 OCR with onFinish":{
+        "description": "OCR结束后执行特定动作",
+        "action": "ocr",
+        "target": "excerpt",
+        "onFinish":{
+          "action": "xxx"
+        }
+      },
+      "🔨 toggle full doc and tab bar":{
+          "description": "开关文档全屏和标签页",
+          "action": "command",
+          "commands": [
+              "ToggleFullDoc",
+              "ToggleTabsBar"
+          ]
+      },
+      "🔨 merge text of merged notes":{
+          "description": "把合并的卡片的文本合并到主卡片的摘录中",
+          "action": "mergeText",
+          "target": "excerptText",
+          "source": [
+              "{{excerptTexts}},"
+          ],
+          "removeSource": true
+      },
+      "🔨 create & move to main mindmap":{
+        "description": "创建摘录并移动到主脑图",
+        "action": "noteHighlight",
+        "mainMindMap": true
+      },
+      "🔨 create & move as child note":{
+        "description": "创建摘录并移动到指定卡片下",
+        "action": "noteHighlight",
+        "parentNote": "marginnote4app://note/xxx"
+      },
+      "🔨 create & set branch style":{
+        "description": "创建摘录并设置分支样式",
+        "action": "noteHighlight",
+        "onFinish": {
+          "action": "command",
+          "command": "SelBranchStyle3"
+        }
+        },
+      "🔨 move note to main mindmap":{
+        "description": "将当前笔记移动到主脑图中",
+        "action": "moveNote",
+        "target": "mainMindMap"
+      },
+    	"🔨 menu with actions":{
+        "description": "弹出菜单以选择要执行的动作",
+        "action": "menu",
+        "menuItems": [
+            "🔽 我是标题",
+            {
+                "action": "copy",
+                "menuTitle": "123",
+                "content": "test"
+            },
+            {
+                "action": "toggleView",
+                "targets": [
+                    "mindmapTask",
+                    "addonBar"
+                ],
+                "autoClose": false,
+                "menuTitle": "toggle"
+            }
+        ]
+      },
+      "🔨 focus in float window":{
+        "description": "在浮动窗口中显示当前笔记",
+        "action": "showInFloatWindow",
+        "target": "currentNoteInMindMap"
+      },
+      "🔨 focus note":{
+        "description": "聚焦特定笔记",
+        "action": "focus",
+        "noteURL": "marginnote4app://note/C1919104-10E9-4C97-B967-1F2BE3FD0BDF",
+        "target": "floatMindmap"
+      }
+    }
+  static init(mainPath){
+  try {
+    this.app = Application.sharedInstance()
+    this.data = Database.sharedInstance()
+    this.focusWindow = this.app.focusWindow
+    this.mainPath = mainPath
+    this.version = this.appVersion()
+    this.errorLog = [this.version]
+      } catch (error) {
+    this.addErrorLog(error, "init")
+  }
+  }
+  static showHUD(message,duration=2) {
+    this.app.showHUD(message,this.focusWindow,2)
+  }
+  static refreshSubscriptionStatus(){
+    this.isSubscribe = this.checkSubscribe(false,false,true)
+  }
+
+  static appVersion() {
+    let info = {}
+    let version = parseFloat(this.app.appVersion)
+    if (version >= 4) {
+      info.version = "marginnote4"
+    }else{
+      info.version = "marginnote3"
+    }
+    switch (this.app.osType) {
+      case 0:
+        info.type = "iPadOS"
+        break;
+      case 1:
+        info.type = "iPhoneOS"
+        break;
+      case 2:
+        info.type = "macOS"
+        break;
+      default:
+        break;
+    }
+    if (this.mainPath) {
+      let taskVersion = MNUtil.readJSON(this.mainPath+"/mnaddon.json").version
+      info.taskVersion = taskVersion
+    }
+    return info
+  }
+  static  getNoteColors() {
+    return ["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9fdc"]
+  }
+  static getNoteById(noteid) {
+    let note = this.data.getNoteById(noteid)
+    return note
+  }
+  /**
+   * 转化为非摘录版本
+   * 将带摘录的笔记转换为非摘录版本，保留所有内容但移除摘录属性
+   * @param {MNNote} note - 要转换的笔记
+   * @returns {MNNote} 转换后的笔记（如果已经是非摘录版本则返回原笔记）
+   */
+  static toNoExcerptVersion(note) {
+    if (note.parentNote) {
+      if (note.excerptText) { // 把摘录内容的检测放到 toNoExcerptVersion 的内部
+        let parentNote = note.parentNote
+        let config = {
+          title: note.noteTitle,
+          content: "",
+          markdown: true,
+          color: note.colorIndex
+        }
+        // 创建新兄弟卡片，标题为旧卡片的标题
+        let newNote = parentNote.createChildNote(config)
+        note.noteTitle = ""
+        // 将旧卡片合并到新卡片中
+        note.mergeInto(newNote)
+        // newNote.focusInMindMap(0.2)
+        return newNote; // 返回新卡片
+      } else {
+        return note;
+      }
+    } else {
+      MNUtil.showHUD("没有父卡片，无法进行非摘录版本的转换！")
+    }
+  }
+  static getNoteBookById(notebookId) {
+    let notebook = this.data.getNotebookById(notebookId)
+    return notebook
+  }
+  static getUrlByNoteId(noteid) {
+    let ver = this.appVersion()
+    return ver.version+'app://note/'+noteid
+  }
+  /**
+   * 
+   * @param {String} url 
+   * @returns {String}
+   */
+  static getNoteIdByURL(url) {
+    let targetNoteId = url.trim()
+    if (/^marginnote\dapp:\/\/note\//.test(targetNoteId)) {
+      targetNoteId = targetNoteId.slice(22)
+    }
+    return targetNoteId
+  }
+  static clipboardText() {
+    return UIPasteboard.generalPasteboard().string
+  }
+  static mergeWhitespace(str) {
+      if (!str) {
+        return ""
+      }
+      // 先将多个连续的换行符替换为双换行符
+      var tempStr = str.replace(/\n+/g, '\n\n');
+      // 再将其它的空白符（除了换行符）替换为单个空格
+      return tempStr.replace(/[\r\t\f\v ]+/g, ' ').trim();
+  }
+static replaceAction(des){
+try {
+
+  let range = des.range ?? "currentNotes"
+  let targetNotes = this.getNotesByRange(range)
+  if ("steps" in des) {//如果有steps则表示是多步替换,优先执行
+    let nSteps = des.steps.length
+    MNUtil.undoGrouping(()=>{
+      targetNotes.forEach(note=>{
+        let content= this._replace_get_content_(note, des)
+        for (let i = 0; i < nSteps; i++) {
+          let step = des.steps[i]
+          let ptt = this._replace_get_ptt_(step)
+          content = content.replace(ptt, step.to)
+        }
+        this._replace_set_content_(note, des, content)
+      })
+    })
+    return;
+  }
+  //如果没有steps则直接执行
+  let ptt = this._replace_get_ptt_(des)
+  MNUtil.undoGrouping(()=>{
+    targetNotes.forEach(note=>{
+      this.replace(note, ptt, des)
+    })
+  })
+  } catch (error) {
+  this.addErrorLog(error, "replace")
+}
+}
+static isPureMNImages(markdown) {
+  try {
+    // 匹配 base64 图片链接的正则表达式
+    const MNImagePattern = /!\[.*?\]\((marginnote4app\:\/\/markdownimg\/png\/.*?)(\))/g;
+    let res = markdown.match(MNImagePattern)
+    if (res) {
+      return markdown === res[0]
+    }else{
+      return false
+    }
+  } catch (error) {
+    taskUtils.addErrorLog(error, "isPureMNImages")
+    return false
+  }
+}
+static hasMNImages(markdown) {
+  try {
+    // 匹配 base64 图片链接的正则表达式
+    const MNImagePattern = /!\[.*?\]\((marginnote4app\:\/\/markdownimg\/png\/.*?)(\))/g;
+    let link = markdown.match(MNImagePattern)[0]
+    // MNUtil.copyJSON({"a":link,"b":markdown})
+    return markdown.match(MNImagePattern)?true:false
+  } catch (error) {
+    taskUtils.addErrorLog(error, "hasMNImages")
+    return false
+  }
+}
+  /**
+   * 
+   * @param {string} markdown 
+   * @returns {NSData}
+   */
+static getMNImagesFromMarkdown(markdown) {
+  try {
+    const MNImagePattern = /!\[.*?\]\((marginnote4app\:\/\/markdownimg\/png\/.*?)(\))/g;
+    let link = markdown.match(MNImagePattern)[0]
+    // MNUtil.copyJSON(link)
+    let hash = link.split("markdownimg/png/")[1].slice(0,-1)
+    let imageData = MNUtil.getMediaByHash(hash)
+    return imageData
+  } catch (error) {
+    taskUtils.addErrorLog(error, "replaceBase64ImagesWithR2")
+    return undefined
+  }
+}
+/**
+ * 
+ * @param {string} text 
+ * @param {UITextView} textView
+ */
+static insertSnippetToTextView(text, textView) {
+try {
+  let textLength = text.length
+  let cursorLocation = textLength
+  if (/{{cursor}}/.test(text)) {
+    cursorLocation = text.indexOf("{{cursor}}")
+    text = text.replace(/{{cursor}}/g, "")
+    textLength = text.length
+  }
+  let selectedRange = textView.selectedRange
+  let pre = textView.text.slice(0,selectedRange.location)
+  let post = textView.text.slice(selectedRange.location+selectedRange.length)
+  textView.text = pre+text+post
+  textView.selectedRange = {location:selectedRange.location+cursorLocation,length:0}
+  return true
+  } catch (error) {
+    this.addErrorLog(error, "insertSnippetToTextView")
+    return false
+  }
+}
+  static smartCopy(){
+    MNUtil.showHUD("smartcopy")
+    let selection = MNUtil.currentSelection
+    if (selection.onSelection) {
+      if (selection.isText) {
+        MNUtil.copy(selection.text)
+        MNUtil.showHUD('复制选中文本')
+      }else{
+        MNUtil.copyImage(selection.image)
+        MNUtil.showHUD('复制框选图片')
+      }
+      return true
+    }
+    let focusNote = MNNote.getFocusNote()
+    if (!focusNote) {
+      MNUtil.showHUD("No note found")
+      return false
+    }
+    if (focusNote.excerptPic && !focusNote.textFirst && focusNote.excerptPic.paint) {
+      MNUtil.copyImage(focusNote.excerptPicData)
+      MNUtil.showHUD('摘录图片已复制')
+      return true
+    }
+    if ((focusNote.excerptText && focusNote.excerptText.trim())){
+      let text = focusNote.excerptText
+      if (focusNote.excerptTextMarkdown) {
+        if (this.isPureMNImages(text.trim())) {
+          let imageData = this.getMNImagesFromMarkdown(text)
+          MNUtil.copyImage(imageData)
+          MNUtil.showHUD('摘录图片已复制')
+          return true
+        }
+      }
+
+      MNUtil.copy(text)
+      MNUtil.showHUD('摘录文字已复制')
+      return true
+    }
+    if (focusNote.comments.length) {
+      let firstComment = focusNote.comments[0]
+      switch (firstComment.type) {
+        case "TextNote":
+          MNUtil.copy(firstComment.text)
+          MNUtil.showHUD('首条评论已复制')
+          return true
+        case "PaintNote":
+          let imageData = MNUtil.getMediaByHash(firstComment.paint)
+          MNUtil.copyImage(imageData)
+          MNUtil.showHUD('首条评论已复制')
+          return true
+        case "HtmlNote":
+          MNUtil.copy(firstComment.text)
+          MNUtil.showHUD('尝试复制该类型评论: '+firstComment.type)
+          return true
+        case "LinkNote":
+          if (firstComment.q_hpic && !focusNote.textFirst && firstComment.q_hpic.paint) {
+            MNUtil.copyImage(MNUtil.getMediaByHash(firstComment.q_hpic.paint))
+            MNUtil.showHUD('图片已复制')
+          }else{
+            MNUtil.copy(firstComment.q_htext)
+            MNUtil.showHUD('首条评论已复制')
+          }
+          return true
+        default:
+          MNUtil.showHUD('暂不支持的评论类型: '+firstComment.type)
+          return false
+      }
+    }
+    MNUtil.copy(focusNote.noteTitle)
+    MNUtil.showHUD('标题已复制')
+    return true
+  }
+  static async copy(des) {
+    try {
+      
+
+    let focusNote = MNNote.getFocusNote()
+    let target = des.target
+    let element = undefined
+    if (target) {
+      switch (target) {
+        case "auto":
+          taskUtils.smartCopy()
+          return
+        case "selectionText":
+          if (MNUtil.currentSelection.onSelection) {
+            element = MNUtil.selectionText
+          }else{
+            if (this.textView && this.textView.text) {
+              let selectedRange = this.textView.selectedRange
+              if (selectedRange.length) {
+                element = this.textView.text.slice(selectedRange.location,selectedRange.location+selectedRange.length)
+              }else{
+                element = this.textView.text
+              }
+            }
+          }
+          break;
+        case "selectionImage":
+          MNUtil.copyImage(MNUtil.getDocImage(true))
+          MNUtil.showHUD("框选图片已复制")
+          return;
+        case "title":
+          if (focusNote) {
+            element = focusNote.noteTitle
+          }
+          break;
+        case "excerpt":
+          if (focusNote) {
+            if (focusNote.excerptPic && !focusNote.textFirst && focusNote.excerptPic.paint) {
+              MNUtil.copyImage(MNUtil.getMediaByHash(focusNote.excerptPic.paint))
+              MNUtil.showHUD("摘录图片已复制")
+              return
+            }
+            let text = focusNote.excerptText.trim()
+            if (focusNote.excerptTextMarkdown && this.isPureMNImages(text)) {
+              let imageData = this.getMNImagesFromMarkdown(text)
+              MNUtil.copyImage(imageData)
+              MNUtil.showHUD('摘录图片已复制')
+              return
+            }
+            if(text.trim()){
+              element = text
+            }else{
+              element = ""
+              MNUtil.showHUD("摘录文本为空")
+            }
+          }
+          break
+        case "excerptOCR":
+          if (focusNote) {
+            if (focusNote.excerptPic && !focusNote.textFirst && focusNote.excerptPic.paint) {
+              // MNUtil.copyImage(MNUtil.getMediaByHash(focusNote.excerptPic.paint))
+              // MNUtil.showHUD("图片已复制")
+
+              element = await this.getTextOCR(MNUtil.getMediaByHash(focusNote.excerptPic.paint))
+            }else{
+              let text = focusNote.excerptText.trim()
+              if (focusNote.excerptTextMarkdown && this.isPureMNImages(text)) {
+                  let imageData = this.getMNImagesFromMarkdown(text)
+                  element = await this.getTextOCR(imageData)
+              }else{
+                element = focusNote.excerptText
+              }
+            }
+          }
+          break
+        case "notesText":
+          if (focusNote) {
+            element = focusNote.allNoteText()
+          }
+          break;
+        case "comment":
+          if (focusNote && focusNote.comments.length) {
+            let index = 1
+            if (des.index) {
+              index = des.index
+            }
+            let comments = focusNote.comments
+            let commentsLength = comments.length
+            if (index > commentsLength) {
+              index = commentsLength
+            }
+            element = comments[index-1].text
+          }
+          break;
+        case "noteId":
+          if (focusNote) {
+            element = focusNote.noteId
+          }
+          break;
+        case "noteURL":
+          if (focusNote) {
+            element = focusNote.noteURL
+          }
+          break;
+        case "noteMarkdown":
+          if (focusNote) {
+            element = this.mergeWhitespace(await this.getMDFromNote(focusNote))
+          }
+          break;
+        case "noteMarkdownOCR":
+          if (focusNote) {
+            element = this.mergeWhitespace(await this.getMDFromNote(focusNote,0,true))
+          }
+          break;
+        case "noteWithDecendentsMarkdown":
+          if (focusNote) {
+            element = await this.getMDFromNote(focusNote)
+            // MNUtil.copyJSON(focusNote.descendantNodes.treeIndex)
+            let levels = focusNote.descendantNodes.treeIndex.map(ind=>ind.length)
+            let descendantNotes = focusNote.descendantNodes.descendant
+            let descendantsMarkdowns = await Promise.all(descendantNotes.map(async (note,index)=>{
+                return this.getMDFromNote(note,levels[index])
+              })
+            )
+            element = this.mergeWhitespace(element+"\n"+descendantsMarkdowns.join("\n\n"))
+          }
+          break;
+        default:
+          MNUtil.showHUD("Invalid target")
+          break;
+      }
+    }
+    let copyContent = des.content
+    if (copyContent) {
+      let replacedText = this.detectAndReplace(copyContent,element)
+      MNUtil.copy(replacedText)
+      MNUtil.showHUD("目标文本已复制")
+      return true
+    }else{//没有提供content参数则直接复制目标内容
+      if (element) {
+        MNUtil.copy(element)
+        MNUtil.showHUD("目标文本已复制")
+        return true
+      }else{
+        MNUtil.showHUD("无法获取目标文本")
+        return false
+      }
+    }
+    } catch (error) {
+      taskUtils.addErrorLog(error, "copy")
+      return false
+    }
+  }
+  static copyJSON(object) {
+    UIPasteboard.generalPasteboard().string = JSON.stringify(object,null,2)
+  }
+  /**
+   * 
+   * @param {NSData} imageData 
+   */
+  static copyImage(imageData) {
+    UIPasteboard.generalPasteboard().setDataForPasteboardType(imageData,"public.png")
+  }
+  static studyController() {
+    return this.app.studyController(this.focusWindow)
+  }
+  static studyView() {
+    return this.app.studyController(this.focusWindow).view
+  }
+  static currentDocController() {
+    return this.studyController().readerController.currentDocumentController
+  }
+  static get currentNotebookId() {
+    return this.studyController().notebookController.notebookId
+  }
+  static currentNotebook() {
+    return this.getNoteBookById(this.currentNotebookId)
+  }
+  static undoGrouping(f,notebookId = this.currentNotebookId){
+    UndoManager.sharedInstance().undoGrouping(
+      String(Date.now()),
+      notebookId,
+      f
+    )
+    this.app.refreshAfterDBChanged(notebookId)
+  }
+  static async checkMNUtil(alert = false,delay = 0.01){
+    if (typeof MNUtil === 'undefined') {//如果MNUtil未被加载，则执行一次延时，然后再检测一次
+      //仅在MNUtil未被完全加载时执行delay
+      await taskUtils.delay(delay)
+      if (typeof MNUtil === 'undefined') {
+        if (alert) {
+          taskUtils.confirm("MN Task: Install 'MN Utils' first", "MN Task: 请先安装'MN Utils'")
+        }else{
+          taskUtils.showHUD("MN Task: Please install 'MN Utils' first!",5)
+        }
+        return false
+      }
+    }
+    return true
+  }
+  /**
+   * 
+   * @param {MbBookNote|MNNote} currentNote 
+   * @param {string} targetNoteId 
+   */
+  static cloneAndMerge(currentNote,targetNoteId) {
+    let cloneNote = MNNote.clone(targetNoteId)
+    currentNote.merge(cloneNote.note)
+  }
+  /**
+   * 
+   * @param {MbBookNote|MNNote} currentNote 
+   * @param {string} targetNoteId 
+   */
+  static cloneAsChildNote(currentNote,targetNoteId) {
+    let cloneNote = MNNote.clone(targetNoteId)
+    currentNote.addChild(cloneNote.note)
+  }
+  static postNotification(name,userInfo) {
+    NSNotificationCenter.defaultCenter().postNotificationNameObjectUserInfo(name, this.focusWindow, userInfo)
+  }
+  /**
+   * 
+   * @param {string[]} arr 
+   * @param {string} element 
+   * @param {string} direction 
+   * @returns 
+   */
+  static moveElement(arr, element, direction) {
+      // 获取元素的索引
+      var index = arr.indexOf(element);
+      if (index === -1) {
+          this.showHUD('Element not found in array');
+          return;
+      }
+      switch (direction) {
+          case 'up':
+              if (index === 0) {
+                  this.showHUD('Element is already at the top');
+                  return;
+              }
+              // 交换元素位置
+              [arr[index], arr[index - 1]] = [arr[index - 1], arr[index]];
+              break;
+          case 'down':
+              if (index === arr.length - 1) {
+                  this.showHUD('Element is already at the bottom');
+                  return;
+              }
+              // 交换元素位置
+              [arr[index], arr[index + 1]] = [arr[index + 1], arr[index]];
+              break;
+          case 'top':
+              // 移除元素
+              arr.splice(index, 1);
+              // 添加到顶部
+              arr.unshift(element);
+              break;
+          default:
+              this.showHUD('Invalid direction');
+              break;
+      }
+  }
+/**
+ * 
+ * @param {string} text 
+ * @param {MNNote|MbBookNote|undefined} note 
+ * @returns 
+ */
+  static getVarInfo(text) {//对通用的部分先写好对应的值
+    let config = {}
+    let hasClipboardText = text.includes("{{clipboardText}}")
+    let hasSelectionText = text.includes("{{selectionText}}")
+    let hasCurrentDocName = text.includes("{{currentDocName}}")
+    let hasCurrentDocAttach = text.includes("{{currentDocAttach}}")
+    if (hasClipboardText) {
+      config.clipboardText = MNUtil.clipboardText
+    }
+    if (hasSelectionText) {
+      config.selectionText = MNUtil.selectionText
+    }
+    if (hasCurrentDocName) {
+      config.currentDocName = MNUtil.getFileName(MNUtil.currentDocController.document.pathFile)
+    }
+    if (hasCurrentDocAttach && editorUtils) {
+      config.currentDocAttach = editorUtils.getAttachContentByMD5(MNUtil.currentDocmd5)
+    }
+    return config
+  }
+  /**
+   * 
+   * @param {string} text 
+   * @param {MbBookNote|MNNote} note 
+   * @returns 
+   */
+  static getVarInfoWithNote(text,note) {
+    let config = {}
+    let hasClipboardText = text.includes("{{clipboardText}}")
+    let hasSelectionText = text.includes("{{selectionText}}")
+    let hasDocName = text.includes("{{currentDocName}}")
+    let hasTitle = text.includes("{{title}}")
+    let hasNoteId = text.includes("{{noteId}}")
+    if (hasTitle) {
+      config.title = note.noteTitle
+    }
+    if (hasClipboardText) {
+      config.clipboardText = MNUtil.clipboardText
+    }
+    if (hasSelectionText) {
+      config.selectionText = MNUtil.selectionText
+    }
+    if (hasDocName) {
+      config.currentDocName = MNUtil.getFileName(MNUtil.currentDocController.document.pathFile)
+    }
+    if (hasNoteId) {
+      config.noteId = note.noteId
+    }
+    return config
+  }
+  static escapeStringRegexp(str) {
+    return str.replace(/[|\\{}()[\]^$+*?.]/g, "\\$&").replace(/-/g, "\\x2d")
+  }
+  static string2Reg(str) {
+    str = str.trim()
+    if (!str.startsWith("/")) return new RegExp(taskUtils.escapeStringRegexp(str))
+    const regParts = str.match(/^\/(.+?)\/([gimsuy]*)$/)
+    if (!regParts) throw ""
+    return new RegExp(regParts[1], regParts[2])
+  }
+  /**
+   * 
+   * @param {*} range 
+   * @returns {MNNote[]}
+   */
+  static getNotesByRange(range){
+    if (range === undefined) {
+      return [MNNote.getFocusNote()]
+    }
+    switch (range) {
+      case "currentNotes":
+        return MNNote.getFocusNotes()
+      case "childNotes":
+        let childNotes = []
+        MNNote.getFocusNotes().map(note=>{
+          childNotes = childNotes.concat(note.childNotes)
+        })
+        return childNotes
+      case "descendants":
+        let descendantNotes = []
+        MNNote.getFocusNotes().map(note=>{
+          descendantNotes = descendantNotes.concat(note.descendantNodes.descendant)
+        })
+        return descendantNotes
+      default:
+        return [MNNote.getFocusNote()]
+    }
+  }
+  /**
+   * 
+   * @param {MNNote|MbBookNote} note 
+   * @param {{target:string,type:string,index:number}} des 
+   */
+  static clearNoteContent(note,des){
+    let target = des.target ?? "title"
+    switch (target) {
+      case "title":
+        note.noteTitle = ""
+        break;
+      case "excerptText":
+        note.excerptText = ""
+        break;
+      case "comments"://todo: 改进type检测,支持未添加index参数时移除所有评论
+        // this.removeComment(des)
+        let commentLength = note.comments.length
+        let comment
+        for (let i = commentLength-1; i >= 0; i--) {
+          if ("type" in des) {
+            switch (des.type) {
+              case "TextNote":
+                comment = note.comments[i]
+                if (comment.type === "TextNote") {
+                  note.removeCommentByIndex(i)
+                }
+                break;
+              case "LinkNote":
+                comment = note.comments[i]
+                if (comment.type === "LinkNote") {
+                  note.removeCommentByIndex(i)
+                }
+                break;
+              case "PaintNote":
+                comment = note.comments[i]
+                if (comment.type === "PaintNote") {
+                  note.removeCommentByIndex(i)
+                }
+                break;
+              case "HtmlNote":
+                comment = note.comments[i]
+                if (comment.type === "HtmlNote") {
+                  note.removeCommentByIndex(i)
+                }
+                break;
+              default:
+                break;
+            }
+          }else{
+            note.removeCommentByIndex(i)
+          }
+          break;
+        }
+        break;
+      default:
+        break;
+    }
+  }
+  /**
+   * 
+   * @param {MNNote|MbBookNote} note 
+   * @param {{target:string,type:string,index:number}} des 
+   */
+  static setNoteContent(note,content,des){
+    let target = des.target ?? "title"
+    let replacedText = this.detectAndReplace(content,undefined,note)
+    switch (target) {
+      case "title":
+        note.noteTitle = replacedText
+        break;
+      case "excerpt":
+      case "excerptText":
+        note.excerptText = replacedText
+        break;
+      case "newComment":
+        note.appendMarkdownComment(replacedText)
+        break;
+      default:
+        MNUtil.showHUD("Invalid target: "+target)
+        break;
+    }
+  }
+  static clearContent(des){
+    let range = des.range ?? "currentNotes"
+    let targetNotes = this.getNotesByRange(range)
+    MNUtil.undoGrouping(()=>{
+      targetNotes.forEach(note=>{
+        this.clearNoteContent(note, des)
+      })
+    })
+  }
+  static setContent(des){
+    try {
+    let range = des.range ?? "currentNotes"
+    let targetNotes = this.getNotesByRange(range)
+    MNUtil.undoGrouping(()=>{
+      targetNotes.forEach(note=>{
+        let content = des.content ?? "content"
+        this.setNoteContent(note, content,des)
+      })
+    })
+    } catch (error) {
+      taskUtils.addErrorLog(error, "setContent")
+    }
+  }
+  static replace(note,ptt,des){
+    let content
+    switch (des.target) {
+      case "title":
+        content = note.noteTitle
+        note.noteTitle = content.replace(ptt, des.to)
+        break;
+      case "excerpt":
+        content = note.excerptText ?? ""
+        note.excerptText = content.replace(ptt, des.to)
+        break;
+      default:
+        break;
+    }
+  }
+  static _replace_get_ptt_(des) {
+    let mod= des.mod ?? "g"
+    let ptt
+    if ("reg" in des) {
+      ptt = new RegExp(des.reg,mod)
+    }else{
+      ptt = new RegExp(this.escapeStringRegexp(des.from),mod)
+    }
+    return ptt
+  }
+  static _replace_get_content_(note,des) {
+    let content = ""
+    switch (des.target) {
+      case "title":
+        content = note.noteTitle
+        break;
+      case "excerpt":
+        content = note.excerptText ?? ""
+        break;
+      default:
+        break;
+    }
+    return content
+  }
+  static _replace_set_content_(note,des,content) {
+    switch (des.target) {
+      case "title":
+        note.noteTitle = content
+        break;
+      case "excerpt":
+        note.excerptText = content
+        break;
+      default:
+        break;
+    }
+  }
+  /**
+   * 关闭弹出菜单,如果delay为true则延迟0.5秒后关闭
+   * @param {PopupMenu} menu 
+   * @param {boolean} delay 
+   * @returns 
+   */
+  static dismissPopupMenu(menu,delay = false){
+    if (!menu) {
+      return
+    }
+    if (delay) {
+      MNUtil.delay(0.5).then(()=>{
+        if (!menu.stopHide) {
+          menu.dismissAnimated(true)
+        }
+      })
+      return
+    }
+    menu.dismissAnimated(true)
+  }
+  static shouldShowMenu(des){
+    if ( des && "target" in des) {
+      //des里提供了target参数的时候，如果target为menu则显示menu
+      if (des.target === "menu") {
+        return true
+      }
+      return false
+    }
+    //des里不提供target参数的时候默认为menu
+    return true
+  }
+  static paste(des){
+    if (!des.hideMessage) {
+      MNUtil.showHUD("paste")
+    }
+    let focusNote = MNNote.getFocusNote()
+    let text = MNUtil.clipboardText
+    let target = des.target ?? "default"
+    switch (target) {
+      case "default":
+        focusNote.paste()
+        break;
+      case "title":
+        MNUtil.undoGrouping(()=>{
+          focusNote.noteTitle = text
+        })
+        break;
+      case "excerpt":
+        MNUtil.undoGrouping(()=>{
+          focusNote.excerptText = text
+          if (des.markdown) {
+            focusNote.excerptTextMarkdown = true
+          }
+        })
+        break;
+      case "appendTitle":
+        MNUtil.undoGrouping(()=>{
+          focusNote.noteTitle = focusNote.noteTitle+";"+text
+        })
+        break;
+      case "appendExcerpt":
+        MNUtil.undoGrouping(()=>{
+          focusNote.excerptText = focusNote.excerptText+"\n"+text
+          if (des.markdown) {
+            focusNote.excerptTextMarkdown = true
+          }
+        })
+        break;
+      default:
+        break;
+    }
+  }
+  static showInFloatWindow(des){
+    let targetNoteid
+    if (des.noteURL) {
+      targetNoteid = MNUtil.getNoteIdByURL(des.noteURL)
+    }
+    switch (des.target) {
+      case "{{noteInClipboard}}":
+      case "noteInClipboard":
+        targetNoteid = MNNote.new(MNUtil.clipboardText).noteId
+        break;
+      case "{{currentNote}}":
+      case "currentNote":
+        targetNoteid = MNNote.getFocusNote().noteId
+        break;
+      case "{{currentChildMap}}":
+      case "currentChildMap":
+        if (MNUtil.mindmapView && MNUtil.mindmapView.mindmapNodes[0].note.childMindMap) {
+          targetNoteid = MNUtil.mindmapView.mindmapNodes[0].note.childMindMap.noteId
+        }else{
+          targetNoteid = undefined
+        }
+        break;
+      case "{{parentNote}}":
+      case "parentNote":
+        targetNoteid = MNNote.getFocusNote().parentNote.noteId
+        break;
+      case "{{currentNoteInMindMap}}":
+      case "currentNoteInMindMap":
+        let targetNote = MNNote.getFocusNote().realGroupNoteForTopicId()
+        if (targetNote) {
+          targetNote.focusInFloatMindMap()
+        }else{
+          MNUtil.showHUD("No Note found!")
+        }
+        return
+      default:
+        break;
+    }
+    if (targetNoteid) {
+      MNNote.focusInFloatMindMap(targetNoteid)
+    }else{
+      MNUtil.showHUD("No Note found!")
+    }
+  }
+  static async delay (seconds) {
+    return new Promise((resolve, reject) => {
+      NSTimer.scheduledTimerWithTimeInterval(seconds, false, function () {
+        resolve()
+      })
+    })
+  }
+  static currentChildMap() {
+    if (MNUtil.mindmapView && MNUtil.mindmapView.mindmapNodes[0].note?.childMindMap) {
+      return MNNote.new(MNUtil.mindmapView.mindmapNodes[0].note.childMindMap.noteId)
+    }else{
+      return undefined
+    }
+  }
+  static newNoteInCurrentChildMap(config){
+    let childMap = this.currentChildMap()
+    if (childMap) {
+      let child = childMap.createChildNote(config)
+      return child
+    }else{
+      let newNote = MNNote.new(config)
+      return newNote
+    }
+  }
+  static replaceNoteIndex(text,index,des){ 
+    let noteIndices = ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30'] 
+    if (des.noteIndices && des.noteIndices.length) {
+      noteIndices = des.noteIndices
+    }
+    let tem = text.replace("{{noteIndex}}",noteIndices[index])
+    return tem
+  
+  }
+  static replaceIndex(text,index,des){
+    let circleIndices = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩","⑪","⑫","⑬","⑭","⑮","⑯","⑰","⑱","⑲","⑳","㉑","㉒","㉓","㉔","㉕","㉖","㉗","㉘","㉙","㉚","㉛","㉜","㉝","㉞","㉟","㊱","㊲","㊳"]
+    let emojiIndices = ["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"]
+    let indices = ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30'] 
+    let alphabetIndices = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
+    if (des.customIndices && des.customIndices.length) {
+      indices = des.customIndices
+    }
+    let tem = text.replace("{{index}}",indices[index])
+                  .replace("{{circleIndex}}",circleIndices[index])
+                  .replace("{{emojiIndex}}",emojiIndices[index])
+                  .replace("{{alphabetIndex}}",alphabetIndices[index])
+    return tem
+  }
+  static emojiNumber(index){
+    let emojiIndices = ["0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"]
+    return emojiIndices[index]
+  }
+
+  /**
+   * 
+   * @param {MNNote} note 
+   * @param {*} des 
+   * @returns 
+   */
+  static getMergedText(note,des,noteIndex){
+  try {
+    let textList = []
+    des.source.map(text=>{
+      if (text.includes("{{title}}") && des.removeSource) {
+        if (note.noteId in taskUtils.commentToRemove) {
+          taskUtils.commentToRemove[note.noteId].push(-1)
+        }else{
+          taskUtils.commentToRemove[note.noteId] = [-1]
+        }
+      }
+      if (text.includes("{{tags}}")) {
+        note.tags.map(tag=>{
+          textList.push(text.replace('{{tags}}',tag))
+        })
+        return
+      }
+      if (text.includes("{{textComments}}")) {
+        let elementIndex = 0
+        note.comments.map((comment,index)=>{
+          if (comment.type === "TextNote" && !/^marginnote\dapp:\/\/note\//.test(comment.text) && !comment.text.startsWith("#") ) {
+            let tem = text.replace('{{textComments}}',(des.trim ? comment.text.trim(): comment.text))
+            tem = this.replaceIndex(tem, elementIndex, des)
+            tem = this.replaceNoteIndex(tem, noteIndex, des)
+            textList.push(tem)
+            elementIndex = elementIndex+1
+            if (des.removeSource) {
+              if (note.noteId in taskUtils.commentToRemove) {
+                taskUtils.commentToRemove[note.noteId].push(index)
+              }else{
+                taskUtils.commentToRemove[note.noteId] = [index]
+              }
+            }
+          }
+        })
+        return
+      }
+      if (text.includes("{{htmlComments}}")) {
+        let elementIndex = 0
+        note.comments.map((comment,index)=>{
+          if (comment.type === "HtmlNote") {
+            let tem = text.replace('{{htmlComments}}',(des.trim ? comment.text.trim(): comment.text))
+            tem = this.replaceIndex(tem, index, des)
+            tem = this.replaceNoteIndex(tem, noteIndex, des)
+            textList.push(tem)
+            elementIndex = elementIndex+1
+            if (des.removeSource) {
+              if (note.noteId in taskUtils.commentToRemove) {
+                taskUtils.commentToRemove[note.noteId].push(index)
+              }else{
+                taskUtils.commentToRemove[note.noteId] = [index]
+              }
+            }
+          }
+        })
+        return
+      }
+      if (text.includes("{{excerptText}}")) {
+        let targetText = note.excerptText ?? ""
+        if (des.trim) {
+          targetText = targetText.trim()
+        }
+        let tem = text.replace('{{excerptText}}',targetText)
+        tem = this.replaceNoteIndex(tem, noteIndex, des)
+        textList.push(tem)
+        return
+      }
+      if (text.includes("{{excerptTexts}}")) {
+        let index = 0
+        note.notes.map(n=>{
+          if (n.excerptText) {
+            let targetText = n.excerptText ?? ""
+            if (des.trim) {
+              targetText = targetText.trim()
+            }
+            let tem = text.replace('{{excerptTexts}}',targetText)
+            tem = this.replaceIndex(tem, index, des)
+            tem = this.replaceNoteIndex(tem, noteIndex, des)
+            textList.push(tem)
+            index = index+1
+            if (des.removeSource && n.noteId !== note.noteId) {
+              this.sourceToRemove.push(n)
+            }
+          }
+        })
+        return
+      }
+      let tem = this.detectAndReplaceWithNote(text,note)
+      tem = this.replaceNoteIndex(tem, noteIndex, des)
+      textList.push(tem) 
+    })
+    if (des.format) {
+      textList = textList.map((text,index)=>{
+        let tem = des.format.replace("{{element}}",text)
+        tem = this.replaceIndex(tem, index, des)
+        tem = this.replaceNoteIndex(tem, index, des)
+        return tem
+      })
+    }
+    let join = des.join ?? ""
+    let mergedText = textList.join(join)
+    if (des.replace) {
+      let ptt = new RegExp(des.replace[0], "g")
+      mergedText = mergedText.replace(ptt,des.replace[1])
+    }
+    return mergedText
+  } catch (error) {
+    return undefined
+  }
+  }
+  /**
+   * 
+   * @param {string} text 
+   * @param {string} userInput 
+   * @returns 
+   */
+  static checkVariableForNote(text,userInput){//提前写好要退化到的变量
+    let OCR_Enabled = chatAIUtils.OCREnhancedMode
+    let hasUserInput = text.includes("{{userInput}}")
+    let hasCards = text.includes("{{cards}}")
+    let hasCardsOCR = text.includes("{{cardsOCR}}")
+    let replaceVarConfig = {}
+    if (OCR_Enabled) {
+      replaceVarConfig.context = `{{textOCR}}`
+      replaceVarConfig.card = `{{cardOCR}}`
+      replaceVarConfig.parentCard = `{{parentCardOCR}}`
+      replaceVarConfig.cards = `{{cardsOCR}}`
+
+      if (hasUserInput && !userInput) {
+        replaceVarConfig.userInput = `{{textOCR}}`
+      }
+      if (hasCards || hasCardsOCR) {
+        if (this.getFocusNotes().length === 1) {
+          replaceVarConfig.cards = `{{cardOCR}}`
+          replaceVarConfig.cardsOCR = `{{cardOCR}}`
+        }
+      }
+    }else{
+      if (hasUserInput && !userInput) {
+        replaceVarConfig.userInput = `{{context}}`
+      }
+      if (hasCards || hasCardsOCR) {
+        if (this.getFocusNotes().length === 1) {
+          replaceVarConfig.cards = `{{card}}`
+          replaceVarConfig.cardsOCR = `{{carsdOCR}}`
+        }
+      }
+    }
+    return this.replacVar(text, replaceVarConfig)
+  }
+
+  static checkVariableForText(text,userInput){//提前写好要退化到的变量
+    let OCR_Enabled = chatAIUtils.OCREnhancedMode
+    let hasUserInput = text.includes("{{userInput}}")
+    let replaceVarConfig = {}
+    if (OCR_Enabled) {
+      replaceVarConfig.context = `{{textOCR}}`
+      replaceVarConfig.card = `{{textOCR}}`
+      replaceVarConfig.parentCard = `{{textOCR}}`
+      replaceVarConfig.cards = `{{textOCR}}`
+      if (hasUserInput && !userInput) {
+        replaceVarConfig.userInput = `{{textOCR}}`
+      }
+    }else{
+      replaceVarConfig.card = `{{context}}`
+      replaceVarConfig.cards = `{{context}}`
+      replaceVarConfig.parentCard = `{{context}}`
+      if (hasUserInput && !userInput) {
+        replaceVarConfig.userInput = `{{context}}`
+      }
+    }
+    replaceVarConfig.cardOCR = `{{textOCR}}`
+    replaceVarConfig.cardsOCR = `{{textOCR}}`
+    replaceVarConfig.parentCardOCR = `{{textOCR}}`
+    replaceVarConfig.noteDocInfo = `{{currentDocInfo}}`
+    replaceVarConfig.noteDocAttach = `{{currentDocAttach}}`
+    replaceVarConfig.noteDocName = `{{currentDocName}}`
+    return this.replacVar(text, replaceVarConfig)
+  }
+  static replacVar(text,varInfo) {
+    let vars = Object.keys(varInfo)
+    let original = text
+    for (let i = 0; i < vars.length; i++) {
+      const variable = vars[i];
+      const variableText = varInfo[variable]
+      original = original.replace(`{{${variable}}}`,variableText)
+    }
+    // copy(original)
+    return original
+  }
+
+  static detectAndReplace(text,element=undefined,note = MNNote.getFocusNote()) {
+    let noteConfig = this.getNoteObject(note,{},{parent:true,child:true,parentLevel:3})
+    // MNUtil.copy(noteConfig)
+    let config = {date:this.getDateObject()}
+    if (noteConfig) {
+      config.note = noteConfig
+      config.cursor = "{{cursor}}"
+    }
+    if (element !== undefined) {
+      config.element = element
+    }
+    let hasClipboardText = text.includes("{{clipboardText}}")
+    let hasSelectionText = text.includes("{{selectionText}}")
+    let hasCurrentDocName = text.includes("{{currentDocName}}")
+    let hasCurrentDocAttach = text.includes("{{currentDocAttach}}")
+    if (hasClipboardText) {
+      config.clipboardText = MNUtil.clipboardText
+    }
+    if (hasSelectionText) {
+      config.selectionText = MNUtil.selectionText
+    }
+    if (MNUtil.currentSelection.onSelection) {
+      config.isSelectionImage = !MNUtil.currentSelection.isText
+      config.isSelectionText = !!MNUtil.currentSelection.text
+    }else{
+      config.isSelectionImage = false
+      config.isSelectionText = false
+    }
+    if (hasCurrentDocName) {
+      config.currentDocName = MNUtil.getFileName(MNUtil.currentDocController.document.pathFile)
+    }
+    if (hasCurrentDocAttach && editorUtils) {
+      config.currentDocAttach = editorUtils.getAttachContentByMD5(MNUtil.currentDocmd5)
+    }
+    let output = MNUtil.render(text, config)
+    return output
+  }
+  /**
+   * 
+   * @param {string} text 
+   * @param {MbBookNote|MNNote} note 
+   * @returns 
+   */
+  static detectAndReplaceWithNote(text,note) {
+    let config = this.getVarInfoWithNote(text,note)
+    return this.replacVar(text,config)
+  }
+  /**
+   * 递归解析列表项及其子列表
+   * @param {object[]} items 
+   * @returns 
+   */
+  static processList(items) {
+  return items.map(item => {
+    // 提取当前列表项文本（忽略内部格式如粗体、斜体）
+    const text = item.text.trim();
+    const node = { name: text, children: [] ,type:item.type};
+
+    // 检查列表项内部是否包含子列表（嵌套结构）
+    const subLists = item.tokens.filter(t => t.type === 'list');
+    if (subLists.length) {
+      node.hasList = true
+      node.listText = subLists[0].raw
+      node.listStart = subLists[0].start
+      node.listOrdered = subLists[0].ordered
+      node.name = item.tokens[0].text
+    }
+    subLists.forEach(subList => {
+      // 递归处理子列表的 items
+      node.children.push(...this.processList(subList.items));
+    });
+
+    return node;
+  });
+}
+static getUnformattedText(token) {
+  if ("tokens" in token && token.tokens.length === 1) {
+    return this.getUnformattedText(token.tokens[0])
+  }else{
+    return token.text
+  }
+}
+/**
+ * 构建树结构（整合标题和列表解析）
+ * @param {object[]} tokens 
+ * @returns 
+ */
+  static buildTree(tokens) {
+  const root = { name: '中心主题', children: [] };
+  const stack = [{ node: root, depth: 0 }]; // 用栈跟踪层级
+  let filteredTokens = tokens.filter(token => token.type !== 'space' && token.type !== 'hr')
+
+  filteredTokens.forEach((token,index) => {
+    let current = stack[stack.length - 1];
+
+    if (token.type === 'heading') {
+      // 标题层级比栈顶浅，则回退栈到对应层级
+      while (stack.length > 1 && token.depth <= current.depth) {
+        stack.pop();
+        current = stack[stack.length - 1]
+      }
+      const newNode = { name: this.getUnformattedText(token), children: [] ,type:'heading'};
+      current.node.children.push(newNode);
+      stack.push({ node: newNode, depth: token.depth });
+    } else if (token.type === 'list') {
+      // 处理列表（可能包含多级嵌套）
+      const listNodes = this.processList(token.items);
+      if(index && filteredTokens[index-1].type === 'paragraph'){
+        if (current.node.type === 'paragraph') {
+          stack.pop();
+        }
+        stack.push({ node: current.node.children.at(-1), depth: 100 });
+        current = stack[stack.length - 1];
+        // current.node.children.at(-1).hasList = true;
+        // current.node.children.at(-1).listText = token.raw;
+        // current.node.children.at(-1).listStart = token.start;
+        // current.node.children.at(-1).ordered = token.ordered;
+        // current.node.children.at(-1).children.push(...listNodes)
+      }
+      current.node.hasList = true;
+      current.node.listText = token.raw;
+      current.node.listStart = token.start;
+      current.node.ordered = token.ordered;
+      current.node.children.push(...listNodes);
+      
+    } else {
+      if (token.type === 'paragraph' && current.node.type === 'paragraph') {
+        stack.pop();
+        current = stack[stack.length - 1];
+      }
+      current.node.children.push({ name: token.raw, raw: token.raw, children: [] ,type:token.type});
+    }
+  });
+  return root;
+}
+  static markdown2AST(markdown){
+    let tokens = marked.lexer(markdown)
+    // MNUtil.copy(tokens)
+    return this.buildTree(tokens)
+  }
+static  containsMathFormula(markdownText) {
+    // 正则表达式匹配单美元符号包裹的公式
+    const inlineMathRegex = /\$[^$]+\$/;
+    // 正则表达式匹配双美元符号包裹的公式
+    const blockMathRegex = /\$\$[^$]+\$\$/;
+    // 检查是否包含单美元或双美元符号包裹的公式
+    return inlineMathRegex.test(markdownText) || blockMathRegex.test(markdownText);
+}
+static  containsUrl(markdownText) {
+    // 正则表达式匹配常见的网址格式
+    const urlPattern = /https?:\/\/[^\s]+|www\.[^\s]+/i;
+    
+    // 使用正则表达式测试文本
+    return urlPattern.test(markdownText);
+}
+
+static removeMarkdownFormat(markdownStr) {
+  return markdownStr
+    // 移除加粗 ** ** 和 __ __
+    .replace(/\*\*(\S(.*?\S)?)\*\*/g, '$1')
+    .replace(/__(\S(.*?\S)?)__/g, '$1')
+    // 移除斜体 * * 和 _ _
+    .replace(/\*(\S(.*?\S)?)\*/g, '$1')
+    .replace(/_(\S(.*?\S)?)_/g, '$1')
+    // 移除删除线 ~~ ~~
+    .replace(/~~(\S(.*?\S)?)~~/g, '$1')
+    // 移除内联代码 ` `
+    .replace(/`([^`]+)`/g, '$1')
+    // 移除链接 [text](url)
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    // 移除图片 ![alt](url)
+    .replace(/!\[([^\]]+)\]\([^)]+\)/g, '$1')
+    // 移除标题 # 和 ##
+    .replace(/^#{1,6}\s+/gm, '')
+    // 移除部分列表符号（*、-、+.）
+    .replace(/^[\s\t]*([-*+]\.)\s+/gm, '')
+    // 移除块引用 >
+    .replace(/^>\s+/gm, '')
+    // 移除水平线 ---
+    .replace(/^[-*]{3,}/gm, '')
+    // 移除HTML标签（简单处理）
+    .replace(/<[^>]+>/g, '')
+    // 合并多个空行
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+static getConfig(text){
+  let hasMathFormula = this.containsMathFormula(text)
+  if (hasMathFormula) {
+    if (/\:/.test(text)) {
+      let splitedText = text.split(":")
+      if (this.containsMathFormula(splitedText[0])) {
+        let config = {excerptText:text,excerptTextMarkdown:true}
+        return config
+      }
+      if (this.containsMathFormula(splitedText[1])) {
+        let config = {title:splitedText[0],excerptText:splitedText[1],excerptTextMarkdown:true}
+        return config
+      }
+      let config = {title:splitedText[0],excerptText:splitedText[1]}
+      return config
+    }
+    if (/\：/.test(text)) {
+      let splitedText = text.split("：")
+      if (this.containsMathFormula(splitedText[0])) {
+        let config = {excerptText:text,excerptTextMarkdown:true}
+        return config
+      }
+      if (this.containsMathFormula(splitedText[1])) {
+        let config = {title:splitedText[0],excerptText:splitedText[1],excerptTextMarkdown:true}
+        return config
+      }
+      let config = {title:splitedText[0],excerptText:splitedText[1]}
+      return config
+    }
+    let config = {excerptText:text,excerptTextMarkdown:true}
+    return config
+  }
+  if (this.containsUrl(text)) {
+    let config = {excerptText:text,excerptTextMarkdown:true}
+    return config
+  }
+    if (/\:/.test(text)) {
+      let splitedText = text.split(":")
+      if (splitedText[0].length > 50) {
+        let config = {excerptText:text}
+        return config
+      }
+      let config = {title:splitedText[0],excerptText:splitedText[1]}
+      return config
+    }
+    if (/\：/.test(text)) {
+      let splitedText = text.split("：")
+      if (splitedText[0].length > 50) {
+        let config = {excerptText:text}
+        return config
+      }
+      let config = {title:splitedText[0],excerptText:splitedText[1]}
+      return config
+    }
+  if (text.length > 50) {
+    return {excerptText:text}
+  }
+  return {title:text}
+}
+  /**
+ * 
+ * @param {MNNote} note 
+ * @param {Object} ast 
+ */
+static AST2Mindmap(note,ast,level = "all") {
+try {
+  if (ast.children && ast.children.length) {
+    let hasList = ast.hasList
+    let listOrdered = ast.listOrdered || ast.ordered
+    ast.children.forEach((c,index)=>{
+      if (c.type === 'hr') {
+        return
+      }
+      let text = this.removeMarkdownFormat(c.name)
+      // let text = c.name
+      if (text.endsWith(":") || text.endsWith("：")) {
+        text = text.slice(0,-1)
+      }
+      let config = this.getConfig(text)
+      if ((text.startsWith('$') && text.endsWith('$')) || /\:/.test(text) || /：/.test(text)) {
+
+      }else{
+        if (c.children.length === 1 && !(/\:/.test(c.children[0].name) || /：/.test(c.children[0].name))) {
+          if (text.endsWith(":") || text.endsWith("：")) {
+            config = {excerptText:text+"\n"+c.children[0].name}
+          }else{
+            config = {title:text,excerptText:c.children[0].name}
+          }
+          let childNote = note.createChildNote(config)
+          if (c.children[0].children.length) {
+            this.AST2Mindmap(childNote,c.children[0])
+          }
+          return
+        }
+        if (c.children.length > 1 && c.children[0].type === 'paragraph' && c.children[1].type === 'heading') {
+          if (text.endsWith(":") || text.endsWith("：")) {
+            config = {excerptText:text+"\n"+c.children[0].name}
+          }else{
+            config = {title:text,excerptText:c.children[0].name}
+          }
+          c.children.shift()
+        }
+      }
+      if (hasList && listOrdered) {
+        if (ast.listStart == 0) {
+          ast.listStart = 1
+        }
+        if (config.title) {
+          config.title = (ast.listStart+index)+". "+config.title
+        }else{
+          config.excerptText = (ast.listStart+index)+". "+config.excerptText
+        }
+      }
+      // MNUtil.showHUD("message")
+      //继续创建子节点
+      let childNote = note.createChildNote(config)
+      this.AST2Mindmap(childNote,c)
+    })
+  }else{
+    // MNUtil.showHUD("No children found")
+  }
+  } catch (error) {
+  this.addErrorLog(error, "AST2Mindmap")
+}
+}
+ static async markdown2Mindmap(des){
+ try {
+  
+
+    let markdown = ``
+    let source = des.source ?? "currentNote"
+    let focusNote = MNNote.getFocusNote()
+    let newNoteTitle = "Mindmap"
+    switch (source) {
+      case "currentNote":
+        if (!focusNote) {
+          MNUtil.showHUD("No note found")
+          return
+        }
+        markdown = this.mergeWhitespace(await this.getMDFromNote(focusNote))
+        break;
+      case "file":
+        let filePath = await MNUtil.importFile(["public.text"])
+        if (filePath) {
+          markdown = MNUtil.readText(filePath)
+        }
+        newNoteTitle = MNUtil.getFileName(filePath).split(".")[0]
+        break;
+      case "clipboard":
+        markdown = MNUtil.clipboardText
+        break;
+      default:
+        break;
+    }
+    // let markdown = des.markdown
+    MNUtil.showHUD("Creating Mindmap...")
+    await MNUtil.delay(0.1)
+    let res = taskUtils.markdown2AST(markdown)
+    // MNUtil.copy(res)
+    MNUtil.undoGrouping(()=>{
+      if (!focusNote) {
+        focusNote = this.newNoteInCurrentChildMap({title:newNoteTitle})
+        focusNote.focusInFloatMindMap(0.5)
+      }
+      taskUtils.AST2Mindmap(focusNote,res)
+    })
+    return
+ } catch (error) {
+  this.addErrorLog(error, "markdown2Mindmap")
+  return
+ }
+  }
+  static checkHeight(height,maxButtons = 20){
+    if (height > 420 && !this.isSubscribed(false)) {
+      return 420
+    }
+    // let maxNumber = this.isSubscribe?maxButtons:9
+    let maxHeights = 45*maxButtons+15
+    if (height > maxHeights) {
+      return maxHeights
+    }else if(height < 60){
+      return 60
+    }else{
+      let newHeight = 45*(Math.floor(height/45))+15
+      return newHeight
+    }
+  }
+  static addErrorLog(error,source,info){
+    MNUtil.showHUD("MN Task Error ("+source+"): "+error)
+    let tem = {source:source,time:(new Date(Date.now())).toString()}
+    if (error.detail) {
+      tem.error = {message:error.message,detail:error.detail}
+    }else{
+      tem.error = error.message
+    }
+    if (info) {
+      tem.info = info
+    }
+    this.errorLog.push(tem)
+    MNUtil.copyJSON(this.errorLog)
+  }
+  static removeComment(des){
+    // MNUtil.copyJSON(des)
+    let focusNotes = MNNote.getFocusNotes()
+    if (des.find) {
+      let condition  = des.find
+      MNUtil.undoGrouping(()=>{
+        focusNotes.forEach(note=>{
+          if (note.comments.length) {
+            let indices = note.getCommentIndicesByCondition(condition)
+            if (!indices.length) {
+              MNUtil.showHUD("No match")
+              return
+            }
+            if (des.multi) {
+              note.removeCommentsByIndices(indices)
+            }else{
+              indices = MNUtil.sort(indices,"increment")
+              note.removeCommentByIndex(indices[0])
+            }
+          }
+        })
+      })
+      return
+    }
+    if (des.types || des.type) {
+      let types = Array.isArray(des.type) ? des.type : [des.type]
+      if (des.types) {
+        types = Array.isArray(des.types) ? des.types : [des.types]
+      }
+      MNUtil.undoGrouping(()=>{
+        focusNotes.forEach(note=>{
+          if (!note.comments.length) {
+            return
+          }
+          if (des.multi) {
+            let commentsToRemove = []
+            note.comments.forEach((comment,index)=>{
+              if (MNComment.commentBelongsToType(comment, types)) {
+                commentsToRemove.push(index)
+              }
+            })
+            if (!commentsToRemove.length) {
+              MNUtil.showHUD("No match")
+              return
+            }
+            note.removeCommentsByIndices(commentsToRemove)
+          }else{
+            let index = note.comments.findIndex(comment=>{
+              if (MNComment.commentBelongsToType(comment, types)) {
+                return true
+              }
+            })
+            if (index < 0) {
+              MNUtil.showHUD("No match")
+              return
+            }
+            note.removeCommentByIndex(index)
+          }
+        })
+      })
+      return
+    }
+    if (des.multi) {
+      let commentIndices = Array.isArray(des.index)? des.index : [des.index]
+      commentIndices = MNUtil.sort(commentIndices,"decrement")
+      // MNUtil.copyJSON(commentIndices)
+      if (!commentIndices.length) {
+        MNUtil.showHUD("No match")
+        return
+      }
+      MNUtil.undoGrouping(()=>{
+        focusNotes.forEach(note => {
+          if (note.comments.length) {
+            note.removeCommentsByIndices(commentIndices)
+          }
+        })
+      })
+    }else{
+      let commentIndex = des.index+1
+      if (commentIndex) {
+        MNUtil.undoGrouping(()=>{
+          focusNotes.forEach(note => {
+            if (note.comments.length) {
+              let commentLength = note.comments.length
+              if (commentIndex > commentLength) {
+                commentIndex = commentLength
+              }
+              note.removeCommentByIndex(commentIndex-1)
+            }
+          })
+        })
+      }
+    }
+  
+  }
+  static setTimer(des){
+    let userInfo = {timerMode:des.timerMode}
+    if (des.timerMode === "countdown") {
+      userInfo.minutes = des.minutes
+    }
+    if ("annotation" in des) {
+      userInfo.annotation = des.annotation
+    }
+    MNUtil.postNotification("setTimer", userInfo)
+  }
+  static searchInDict(des,button){
+    let target = des.target ?? "eudic"
+    let textSelected = MNUtil.selectionText
+    if (!textSelected) {
+      let focusNote = MNNote.getFocusNote()
+      if (focusNote) {
+        if (focusNote.excerptText) {
+          textSelected = focusNote.excerptText
+        }else if (focusNote.noteTitle) {
+          textSelected = focusNote.noteTitle
+        }else{
+          let firstComment = focusNote.comments.filter(comment=>comment.type === "TextNote")[0]
+          if (firstComment) {
+            textSelected = firstComment.text
+          }
+        }
+      }
+    }
+    if (textSelected) {
+      if (target === "eudic") {
+        let textEncoded = encodeURIComponent(textSelected)
+        let url = "eudic://dict/"+textEncoded
+        MNUtil.openURL(url)
+      }else{
+        let studyFrame = MNUtil.studyView.bounds
+        let beginFrame = self.view.frame
+        if (button.menu) {
+          button.menu.dismissAnimated(true)
+          let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+          let endFrame = taskFrame.gen(beginFrame.x-225, beginFrame.y-50, 500, 500)
+          endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
+          endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
+          MNUtil.postNotification("lookupText"+target,{text:textSelected,beginFrame:beginFrame,endFrame:endFrame})
+          return
+        }
+        let endFrame
+        beginFrame.y = beginFrame.y-10
+        if (beginFrame.x+490 > studyFrame.width) {
+          endFrame = taskFrame.gen(beginFrame.x-450, beginFrame.y-10, 500, 500)
+          if (beginFrame.y+490 > studyFrame.height) {
+            endFrame.y = studyFrame.height-500
+          }
+          if (endFrame.x < 0) {
+            endFrame.x = 0
+          }
+          if (endFrame.y < 0) {
+            endFrame.y = 0
+          }
+        }else{
+          endFrame = taskFrame.gen(beginFrame.x+40, beginFrame.y-10, 500, 500)
+          if (beginFrame.y+490 > studyFrame.height) {
+            endFrame.y = studyFrame.height-500
+          }
+          if (endFrame.x < 0) {
+            endFrame.x = 0
+          }
+          if (endFrame.y < 0) {
+            endFrame.y = 0
+          }
+        }
+        MNUtil.postNotification("lookupText"+target, {text:textSelected,beginFrame:beginFrame,endFrame:endFrame})
+      }
+
+
+      // let des = taskConfig.getDescriptionByName("searchInEudic")
+      // if (des && des.source) {
+      //   // MNUtil.copyJSON(des)
+      //   switch (des.source) {
+      //     case "eudic":
+      //       //donothing
+      //       break;
+      //     case "yddict":
+      //       MNUtil.copy(textSelected)
+      //       url = "yddict://"
+      //       break;
+      //     case "iciba":
+      //       url = "iciba://word="+textEncoded
+      //       break;
+      //     case "sogodict":
+      //       url = "bingdict://"+textEncoded
+      //       break;
+      //     case "bingdict":
+      //       url = "sogodict://"+textEncoded
+      //       break;
+      //     default:
+      //       MNUtil.showHUD("Invalid source")
+      //       return
+      //   }
+      // }
+      // showHUD(url)
+    }else{
+      MNUtil.showHUD('未找到有效文字')
+    }
+
+
+  }
+  static showMessage(des){
+    let content = this.detectAndReplace(des.content)
+    MNUtil.showHUD(content)
+  }
+  static async userConfirm(des){
+    if (des.title) {
+      let confirmTitle = this.detectAndReplace(des.title)
+      let confirmSubTitle = des.subTitle ? this.detectAndReplace(des.subTitle) : ""
+      let confirm = await MNUtil.confirm(confirmTitle, confirmSubTitle)
+      if (confirm) {
+        if ("onConfirm" in des) {
+          return des.onConfirm
+        }
+        return undefined
+      }else{
+        if ("onCancel" in des) {
+          return des.onCancel
+        }
+      }
+      return undefined
+    }
+    return undefined
+  }
+  static async userSelect(des){
+    if (des.title && des.selectItems) {
+      let confirmTitle = taskUtils.detectAndReplace(des.title)
+      let confirmSubTitle = des.subTitle ? taskUtils.detectAndReplace(des.subTitle) : ""
+      let selectTitles = des.selectItems.map(item=>{
+        return taskUtils.detectAndReplace(item.selectTitle)
+      })
+      let select = await MNUtil.userSelect(confirmTitle, confirmSubTitle, selectTitles)
+      if (select) {
+        let targetDes = des.selectItems[select-1]
+        return targetDes
+      }else{
+        if ("onCancel" in des) {
+          return des.onCancel
+        }
+      }
+      return undefined
+    }
+    return undefined
+  }
+  static chatAI(des,button){
+    if (des.target === "openFloat") {
+      MNUtil.postNotification("chatAIOpenFloat", {beginFrame:button.convertRectToView(button.bounds,MNUtil.studyView)})
+      return
+    }
+    if (des.target === "currentPrompt") {
+      MNUtil.postNotification("customChat",{})
+      return true
+    }
+    if (!des || !Object.keys(des).length) {
+      MNUtil.postNotification("customChat",{})
+      return
+    }
+
+    if (des.prompt) {
+      MNUtil.postNotification("customChat",{prompt:des.prompt})
+      return
+    }
+    if(des.user){
+      let question = {user:des.user}
+      if (des.system) {
+        question.system = des.system
+      }
+      MNUtil.postNotification("customChat",question)
+      // MNUtil.showHUD("Not supported yet...")
+      return;
+    }
+    MNUtil.postNotification("customChat",{})
+    // MNUtil.showHUD("No valid argument!")
+  }
+  static search(des,button){
+    // MNUtil.copyJSON(des)
+    // MNUtil.showHUD("Search")
+    let selectionText = MNUtil.selectionText
+    let noteId = undefined
+    let focusNote = MNNote.getFocusNote()
+    if (focusNote) {
+      noteId = focusNote.noteId
+    }
+    let studyFrame = MNUtil.studyView.bounds
+    let beginFrame = button.frame
+    if (button.menu) {
+      button.menu.dismissAnimated(true)
+      let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+      let endFrame = taskFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+      endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
+      endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
+      if (selectionText) {
+        // MNUtil.showHUD("Text:"+selectionText)
+        MNUtil.postNotification("searchInBrowser",{text:selectionText,beginFrame:beginFrame,endFrame:endFrame})
+      }else{
+        // MNUtil.showHUD("NoteId:"+noteId)
+        MNUtil.postNotification("searchInBrowser",{noteid:noteId,beginFrame:beginFrame,endFrame:endFrame})
+      }
+      return
+    }
+    // if (button.menu) {
+    //   beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+    // }
+    let endFrame
+    beginFrame.y = beginFrame.y-10
+    if (beginFrame.x+490 > studyFrame.width) {
+      endFrame = taskFrame.gen(beginFrame.x-450, beginFrame.y-10, 450, 500)
+      if (beginFrame.y+490 > studyFrame.height) {
+        endFrame.y = studyFrame.height-500
+      }
+    }else{
+      endFrame = taskFrame.gen(beginFrame.x+40, beginFrame.y-10, 450, 500)
+      if (beginFrame.y+490 > studyFrame.height) {
+        endFrame.y = studyFrame.height-500
+      }
+    }
+    if (des.engine) {
+      if (selectionText) {
+        // MNUtil.showHUD("Text:"+selectionText)
+        MNUtil.postNotification("searchInBrowser",{text:selectionText,engine:des.engine,beginFrame:beginFrame,endFrame:endFrame})
+      }else{
+        // MNUtil.showHUD("NoteId:"+noteId)
+        MNUtil.postNotification("searchInBrowser",{noteid:noteId,engine:des.engine,beginFrame:beginFrame,endFrame:endFrame})
+      }
+      return
+    }
+    if (selectionText) {
+      // MNUtil.showHUD("Text:"+selectionText)
+      MNUtil.postNotification("searchInBrowser",{text:selectionText,beginFrame:beginFrame,endFrame:endFrame})
+    }else{
+      // MNUtil.showHUD("NoteId:"+noteId)
+      MNUtil.postNotification("searchInBrowser",{noteid:noteId,beginFrame:beginFrame,endFrame:endFrame})
+    }
+  }
+  /**
+   * @param {NSData} image 
+   * @returns 
+   */
+  static async getTextOCR (image) {
+    if (typeof ocrNetwork === 'undefined') {
+      MNUtil.showHUD("Install 'MN OCR' first")
+      return undefined
+    }
+    try {
+      let res = await ocrNetwork.OCR(image)
+      // MNUtil.copy(res)
+      return res
+    } catch (error) {
+      chatAIUtils.addErrorLog(error, "getTextOCR",)
+      return undefined
+    }
+  }
+
+/**
+ * Initializes a request for ChatGPT using the provided configuration.
+ * 
+ * @param {Array} history - An array of messages to be included in the request.
+ * @param {string} apikey - The API key for authentication.
+ * @param {string} url - The URL endpoint for the API request.
+ * @param {string} model - The model to be used for the request.
+ * @param {number} temperature - The temperature parameter for the request.
+ * @param {Array<number>} funcIndices - An array of function indices to be included in the request.
+ * @returns {Promise<{content:string,media:string,title:string,link:string,refer:string,icon:string,index:number}[]>}
+ * @throws {Error} If the API key is empty or if there is an error during the request initialization.
+ */
+static async webSearchForZhipu (question,apikey) {
+  if (apikey.trim() === "") {
+    MNUtil.showHUD(model+": No apikey!")
+    return
+  }
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: "Bearer "+apikey,
+    Accept: "text/event-stream"
+  }
+    // copyJSON(headers)
+  let body = {
+    "tool":"web-search-pro",
+    "messages":[{"role": "user", "content": question}],
+    "stream":false
+  }
+  let url = "https://open.bigmodel.cn/api/paas/v4/tools"
+  // copyJSON(body)
+
+  // MNUtil.copyJSON(body)
+  // MNUtil.copy(url)
+  let res = await MNConnection.fetch(url,{
+      method: "POST",
+      headers: headers,
+      timeout: 60,
+      json: body
+    })
+  try {
+    return res.choices[0].message.tool_calls[1].search_result
+  } catch (error) {
+    return res
+  }
+}
+  static async webSearch(des){
+  try {
+    
+
+    let focusNote = MNNote.getFocusNote()
+    if (!focusNote) {
+      return
+    }
+    // let noteConfig = this.getNoteObject(MNNote.getFocusNote(),{},{parent:true,child:true})
+
+    let question = this.detectAndReplace(des.question)
+    // MNUtil.copy(noteConfig)
+    // return
+    MNUtil.waitHUD("Searching for ["+question+"] ")
+    let apikeys = ["449628b94fcac030495890ee542284b8.F23PvJW4XXLJ4Lsu","7a83bf0873d12b99a1f9ab972ee874a1.NULvuYvVrATzI4Uj"]
+    let apikey = MNUtil.getRandomElement(apikeys)
+    let res = await this.webSearchForZhipu(question,apikey)
+    let readCount = 0
+    if (!res.length) {
+      MNUtil.waitHUD("❌ No result")
+      MNUtil.delay(1).then(()=>{
+        MNUtil.stopHUD()
+      })
+      return
+    }
+    MNUtil.waitHUD(`Open URL (0/${res.length})`)
+    let processes = res.map(r=>{
+      if (r.link) {
+        return new Promise((resolve, reject) => {
+          let apikey = MNUtil.getRandomElement(apikeys)
+          this.webSearchForZhipu(r.link,apikey).then(tem=>{
+            readCount++
+            MNUtil.waitHUD(`Open URL (${readCount}/${res.length})`)
+            if ("statusCode" in tem && tem.statusCode >= 400) {
+            }else{
+              if (tem[0].content.length > r.content.length) {
+                r.content = tem[0].content
+              }
+            }
+            resolve(r)
+          })
+        })
+      }else{
+        readCount++
+        return r
+      }
+    })
+    let fullRes = await Promise.all(processes)
+    MNUtil.stopHUD()
+    MNUtil.copy(fullRes)
+
+    MNUtil.undoGrouping(()=>{
+      fullRes.map((r)=>{
+        let content = r.content
+        let markdown = false
+        if (r.link) {
+          content = content+`\n[More](${r.link})`
+          markdown = true
+        }
+        focusNote.createChildNote({title:r.title,excerptText:content,excerptTextMarkdown:markdown})
+      })
+    })
+    // MNUtil.stopHUD()
+    return res
+  } catch (error) {
+    this.addErrorLog(error, "webSearch")
+  }
+  }
+  /**
+   * 
+   * @param {{buffer:boolean,target:string,method:string}} des 
+   * @param {UIButton} button 
+   * @returns 
+   */
+  static async ocr(des,button){
+try {
+    let focusNote = MNNote.getFocusNote()
+    let imageData = MNUtil.getDocImage(true,true)
+    if (!imageData && focusNote) {
+      imageData = MNNote.getImageFromNote(focusNote)
+    }
+    if (!imageData) {
+      MNUtil.showHUD("No image found")
+      return
+    }
+    let buffer = des.buffer ?? true
+    let source = des.ocrSource ?? des.source
+    let target = des.target ?? "comment"
+    let res
+    if (typeof ocrUtils === 'undefined') {
+      // MNUtil.showHUD("MN Task: Please install 'MN OCR' first!")
+      res = await this.freeOCR(imageData)
+    }else{
+      res = await ocrNetwork.OCR(imageData,source,buffer)
+    }
+    // let res
+    let noteTargets = ["comment","excerpt","childNote"]
+    if (!focusNote && noteTargets.includes(target)) {
+      let selection = MNUtil.currentSelection
+      if (selection.onSelection) {
+        focusNote = MNNote.fromSelection()
+      }
+    }
+    if (res) {
+      switch (target) {
+        case "option":
+          if (focusNote) {
+            let userSelect = await MNUtil.userSelect("OCR Result", res, ["Copy","Comment","Excerpt","Editor","ChildNote"])
+            switch (userSelect) {
+              case 0:
+                return;
+              case 1:
+                MNUtil.copy(res)
+                MNUtil.showHUD("✅ Save to clipboard")
+                return;
+              case 2:
+                MNUtil.undoGrouping(()=>{
+                  focusNote.appendMarkdownComment(res)
+                  MNUtil.showHUD("✅ Append to comment")
+                })
+                MNUtil.postNotification("OCRFinished", {action:"toComment",noteId:focusNote.noteId,result:res})
+                return;
+              case 3:
+                ocrUtils.undoGrouping(()=>{
+                  // focusNote.textFirst = true
+                  focusNote.excerptTextMarkdown = true
+                  focusNote.excerptText =  res
+                  MNUtil.showHUD("✅ Set to excerpt")
+                })
+                MNUtil.postNotification("OCRFinished", {action:"toExcerpt",noteId:focusNote.noteId,result:res})
+                return;
+              case 4:
+                let studyFrame = MNUtil.studyView.bounds
+                let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+                let endFrame = taskFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+                endFrame.y = taskUtils.constrain(endFrame.y, 0, studyFrame.height-500)
+                endFrame.x = taskUtils.constrain(endFrame.x, 0, studyFrame.width-500)
+                MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
+                return;
+              case 5:
+                let child = focusNote.createChildNote({excerptText:res,excerptTextMarkdown:true})
+                child.focusInMindMap(0.5)
+                MNUtil.showHUD("✅ Create child note")
+                return;
+              default:
+                return;
+            }
+          }else{
+            let userSelect = await MNUtil.userSelect("OCR Result", res, ["Copy","Editor","New Note"])
+            switch (userSelect) {
+              case 0:
+                return;
+              case 1:
+                MNUtil.copy(res)
+                MNUtil.showHUD("✅ Save to clipboard")
+                return;
+              case 2:
+                let studyFrame = MNUtil.studyView.bounds
+                let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+                let endFrame = taskFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+                endFrame.y = taskUtils.constrain(endFrame.y, 0, studyFrame.height-500)
+                endFrame.x = taskUtils.constrain(endFrame.x, 0, studyFrame.width-500)
+                MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
+                return;
+              case 3:
+                MNUtil.undoGrouping(()=>{
+                  let childmap = MNUtil.currentChildMap
+                  if (childmap) {
+                    let child = focusNote.createChildNote({excerptText:res,excerptTextMarkdown:true})
+                    child.focusInMindMap(0.5)
+                  }else{
+                    let child = MNNote.new({excerptText:res,excerptTextMarkdown:true})
+                    child.focusInMindMap(0.5)
+                  }
+                })
+                MNUtil.showHUD("✅ Create child note")
+                return;
+              default:
+                return;
+            }
+          }
+        case "comment":
+          if (focusNote) {
+            MNUtil.undoGrouping(()=>{
+              focusNote.appendMarkdownComment(res)
+              MNUtil.showHUD("Append to comment")
+            })
+          }else{
+            MNUtil.copy(res)
+          }
+          break;
+        case "childNote":
+          if (focusNote) {
+            let config = {
+              excerptTextMarkdown: true,
+              content: res
+            }
+            if (des.followParentColor) {
+              config.colorIndex = focusNote.colorIndex
+            }
+            // MNUtil.copy(config)
+            let child = focusNote.createChildNote(config)
+            child.focusInMindMap(0.5)
+            MNUtil.showHUD("Append to child note")
+          }else{
+            MNUtil.copy(res)
+          }
+        break;
+        case "clipboard":
+          MNUtil.copy(res)
+          MNUtil.showHUD("Save to clipboard")
+          break;
+        case "excerpt":
+          if (focusNote) {
+            MNUtil.undoGrouping(()=>{
+              focusNote.excerptText =  res
+              focusNote.excerptTextMarkdown = true
+              MNUtil.showHUD("Set to excerpt")
+            })
+          }else{
+            MNUtil.copy(res)
+          }
+          break;
+        case "editor":
+          let studyFrame = MNUtil.studyView.bounds
+          let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
+          let endFrame = taskFrame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
+          endFrame.y = taskUtils.constrain(endFrame.y, 0, studyFrame.height-500)
+          endFrame.x = taskUtils.constrain(endFrame.x, 0, studyFrame.width-500)
+          MNUtil.postNotification("openInEditor",{content:res,beginFrame:beginFrame,endFrame:endFrame})
+          return
+        case "chatModeReference":
+          let method = "append"
+          if ("method" in des) {
+            method = des.method
+          }
+          MNUtil.postNotification(
+            "insertChatModeReference",
+            {
+              contents:[{type:"text",content:res}],
+              method:method
+            }
+          )
+          break;
+        default:
+          MNUtil.copy(res)
+          MNUtil.showHUD("Unkown target: "+target)
+          break;
+      }
+    }
+      
+    } catch (error) {
+      this.addErrorLog(error, "ocr")
+    }
+  
+  }
+/**
+ * Initializes a request for ChatGPT using the provided configuration.
+ * 
+ * @param {Array} history - An array of messages to be included in the request.
+ * @param {string} apikey - The API key for authentication.
+ * @param {string} url - The URL endpoint for the API request.
+ * @param {string} model - The model to be used for the request.
+ * @param {number} temperature - The temperature parameter for the request.
+ * @param {Array<number>} funcIndices - An array of function indices to be included in the request.
+ * @throws {Error} If the API key is empty or if there is an error during the request initialization.
+ */
+static initRequestForChatGPTWithoutStream (history,apikey,url,model,temperature,funcIndices=[]) {
+  if (apikey.trim() === "") {
+    MNUtil.showHUD(model+": No apikey!")
+    return
+  }
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: "Bearer "+apikey,
+    Accept: "text/event-stream"
+  }
+    // copyJSON(headers)
+  let body = {
+    "model":model,
+    "messages":history
+  }
+  // if (model !== "deepseek-reasoner") {
+    body.temperature = temperature
+    // if (url === "https://api.minimax.chat/v1/text/chatcompletion_v2") {
+    //   let tools = chatAITool.getToolsByIndex(funcIndices,true)
+    //   if (tools.length) {
+    //     body.tools = tools
+    //   }
+    //   body.max_tokens = 8000
+    // }else{
+    //   let tools = chatAITool.getToolsByIndex(funcIndices,false)
+    //   if (tools.length) {
+    //     body.tools = tools
+    //     body.tool_choice = "auto"
+    //   }
+    // }
+  const request = MNConnection.initRequest(url, {
+      method: "POST",
+      headers: headers,
+      timeout: 60,
+      json: body
+    })
+  return request
+}
+/**
+ * 
+ * @returns {Promise<Object>}
+ */
+ static async ChatGPTVision(imageData,model="glm-4v-flash") {
+  try {
+  let key = 'sk-S2rXjj2qB98OiweU46F3BcF2D36e4e5eBfB2C9C269627e44'
+  MNUtil.waitHUD("OCR By "+model)
+  let url = subscriptionConfig.config.url + "/v1/chat/completions"
+  let prompt = `—role—
+Image Text Extraction Specialist
+
+—goal—
+* For the given image, please directly output the text in the image.
+
+* For any formulas, you must enclose them with dollar signs.
+
+—constrain—
+* You are not allowed to output any content other than what is in the image.`
+  let compressedImageData = UIImage.imageWithData(imageData).jpegData(0.0)
+  let history = [
+    {
+      role: "user", 
+      content: [
+        {
+          "type": "text",
+          "text": prompt
+        },
+        {
+          "type": "image_url",
+          "image_url": {
+            "url" : "data:image/jpeg;base64,"+compressedImageData.base64Encoding()
+          }
+        }
+      ]
+    }
+  ]
+  let request = this.initRequestForChatGPTWithoutStream(history,key, url, model, 0.1)
+    let res = await MNConnection.sendRequest(request)
+    let ocrResult
+    if (res.choices && res.choices.length) {
+      ocrResult = res.choices[0].message.content
+    }else{
+      return undefined
+    }
+    let convertedText = ocrResult
+      .replace(/\$\$\n?/g, '$$$\n')
+      .replace(/(\\\[\s*\n?)|(\s*\\\]\n?)/g, '$$$\n')
+      .replace(/(\\\(\s*)|(\s*\\\))/g, '$')
+      .replace(/```/g,'')
+    return convertedText
+    
+  } catch (error) {
+    this.addErrorLog(error, "ChatGPTVision")
+    throw error;
+  }
+}
+  /**
+   * @param {NSData} image 
+   * @returns 
+   */
+  static async freeOCR(image){
+    let res = await this.ChatGPTVision(image)
+    MNUtil.stopHUD()
+    return res
+  }
+  
+  static moveComment(des){
+    let focusNotes = MNNote.getFocusNotes()
+    let commentIndex
+    if (des.find) {
+      let condition  = des.find
+      MNUtil.undoGrouping(()=>{
+        focusNotes.forEach(note=>{
+          let indices = note.getCommentIndicesByCondition(condition)
+          if (!indices.length) {
+            MNUtil.showHUD("No match")
+            return
+          }
+          if (indices.length && "to" in des) {
+            switch (typeof des.to) {
+              case "string":
+                note.moveCommentByAction(indices[0],des.to)
+                break;
+              case "number":
+                note.moveComment(indices[0], des.to)
+                break
+              default:
+                break;
+            }
+            return
+          }
+        })
+      })
+      return
+    }
+    if (des.type && "to" in des) {
+      let type = des.types ? des.type : [des.type]
+      switch (typeof des.to) {
+        case "string":
+          MNUtil.undoGrouping(()=>{
+            focusNotes.forEach(note=>{
+                let index = note.comments.findIndex(comment=>type.includes(comment.type))
+                if (index == -1) {
+                  MNUtil.showHUD("No match")
+                  return
+                }
+                note.moveCommentByAction(index,des.to)
+            })
+          })
+          break;
+        case "number":
+          MNUtil.undoGrouping(()=>{
+            focusNotes.forEach(note=>{
+                let index = note.comments.findIndex(comment=>type.includes(comment.type))
+                if (index == -1) {
+                  MNUtil.showHUD("No match")
+                  return
+                }
+                note.moveComment(index,des.to)
+            })
+          })
+          break
+        default:
+          break;
+      }
+      return
+    }
+    commentIndex = des.index
+    if (commentIndex === undefined) {
+      MNUtil.showHUD("Invalid index!")
+    }
+    if ("to" in des) {
+      switch (typeof des.to) {
+        case "string":
+          MNUtil.undoGrouping(()=>{
+            focusNotes.forEach(note => {
+              note.moveCommentByAction(commentIndex, des.to)
+            })
+          })
+          break;
+        case "number":
+          MNUtil.undoGrouping(()=>{
+            focusNotes.forEach(note => {
+              note.moveComment(commentIndex, des.to)
+            })
+          })
+          break
+        default:
+          break;
+      }
+    }
+  
+  }
+  static getDateObject(){
+    let dateObject = {
+      now:new Date(Date.now()).toLocaleString(),
+      tomorrow:new Date(Date.now()+86400000).toLocaleString(),
+      yesterday:new Date(Date.now()-86400000).toLocaleString(),
+      year:new Date().getFullYear(),
+      month:new Date().getMonth()+1,
+      day:new Date().getDate(),
+      hour:new Date().getHours(),
+      minute:new Date().getMinutes(),
+      second:new Date().getSeconds()
+    }
+    return dateObject
+  }
+  /**
+   * 
+   * @param {MNNote} note 
+   */
+  static getNoteObject(note,config={},opt={first:true}) {
+    try {
+    if (!note) {
+      return config
+    }
+      
+    let noteConfig = config
+    noteConfig.id = note.noteId
+    if (opt.first) {
+      noteConfig.notebook = {
+        id:note.notebookId,
+        name:MNUtil.getNoteBookById(note.notebookId).title,
+      }
+    }
+    noteConfig.title = note.noteTitle
+    noteConfig.url = note.noteURL
+    noteConfig.excerptText = note.excerptText
+    noteConfig.isMarkdownExcerpt = note.excerptTextMarkdown
+    noteConfig.isImageExcerpt = !!note.excerptPic
+    noteConfig.date = {
+      create:note.createDate.toLocaleString(),
+      modify:note.modifiedDate.toLocaleString(),
+    }
+    noteConfig.allText = note.allNoteText()
+    noteConfig.tags = note.tags
+    noteConfig.hashTags = note.tags.map(tag=> ("#"+tag)).join(" ")
+    noteConfig.hasTag = note.tags.length > 0
+    noteConfig.hasComment = note.comments.length > 0
+    noteConfig.hasChild = note.childNotes.length > 0
+    noteConfig.hasText = !!noteConfig.allText
+    if (note.colorIndex !== undefined) {
+      noteConfig.color = {}
+      noteConfig.color.lightYellow = note.colorIndex === 0
+      noteConfig.color.lightGreen = note.colorIndex === 1
+      noteConfig.color.lightBlue = note.colorIndex === 2
+      noteConfig.color.lightRed = note.colorIndex === 3
+      noteConfig.color.yellow = note.colorIndex === 4
+      noteConfig.color.green = note.colorIndex === 5
+      noteConfig.color.blue = note.colorIndex === 6
+      noteConfig.color.red = note.colorIndex === 7
+      noteConfig.color.orange = note.colorIndex === 8
+      noteConfig.color.darkGreen = note.colorIndex === 9
+      noteConfig.color.darkBlue = note.colorIndex === 10
+      noteConfig.color.deepRed = note.colorIndex === 11
+      noteConfig.color.white = note.colorIndex === 12
+      noteConfig.color.lightGray = note.colorIndex === 13
+      noteConfig.color.darkGray = note.colorIndex === 14
+      noteConfig.color.purple = note.colorIndex === 15
+    }
+    if (note.docMd5 && MNUtil.getDocById(note.docMd5)) {
+      noteConfig.docName = MNUtil.getFileName(MNUtil.getDocById(note.docMd5).pathFile) 
+    }
+    noteConfig.hasDoc = !!noteConfig.docName
+    if (note.childMindMap) {
+      noteConfig.childMindMap = this.getNoteObject(note.childMindMap,{},{first:false})
+    }
+    noteConfig.inMainMindMap = !noteConfig.childMindMap
+    noteConfig.inChildMindMap = !!noteConfig.childMindMap
+    if ("parent" in opt && opt.parent && note.parentNote) {
+      if (opt.parentLevel && opt.parentLevel > 0) {
+        noteConfig.parent = this.getNoteObject(note.parentNote,{},{parentLevel:opt.parentLevel-1,parent:true,first:false})
+      }else{
+        noteConfig.parent = this.getNoteObject(note.parentNote,{},{first:false})
+      }
+    }
+    noteConfig.hasParent = "parent" in noteConfig
+    if ("child" in opt && opt.child && note.childNotes) {
+      noteConfig.child = note.childNotes.map(note=>this.getNoteObject(note,{},{first:false}))
+    }
+    return noteConfig
+    } catch (error) {
+      this.addErrorLog(error, "getNoteObject")
+      return undefined
+    }
+  }
+  static htmlDev(content){
+    return `<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MNTask 任务看板</title>
-    
-    <!-- 引入测试数据 -->
-    <script src="testData.js"></script>
-    
-    <!-- 引入 MNTask 通信桥接库 -->
-    <script src="mntask-bridge.js"></script>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JSON Editor with Highlighting</title>
     <style>
-        /* ========================================
-           🎨 CSS 变量定义 - 现代化设计系统
-           ======================================== */
-        :root {
-            /* 主题色 - 深色系 */
-            --bg-primary: #0a0a0f;
-            --bg-secondary: #12121a;
-            --bg-tertiary: #1a1a25;
-            --bg-card: rgba(255, 255, 255, 0.03);
-            --bg-hover: rgba(255, 255, 255, 0.06);
-            --bg-active: rgba(102, 126, 234, 0.15);
-            --bg-focus: rgba(102, 126, 234, 0.25);
-            
-            /* 玻璃效果 */
-            --glass-bg: rgba(255, 255, 255, 0.04);
-            --glass-border: rgba(255, 255, 255, 0.08);
-            --glass-blur: blur(10px);
-            
-            /* 文字颜色 */
-            --text-primary: #ffffff;
-            --text-secondary: #a8a8b8;
-            --text-muted: #6c6c7c;
-            --text-disabled: #4a4a5a;
-            
-            /* 任务类型颜色 */
-            --type-goal: #667eea;        /* 目标 - 紫蓝 */
-            --type-kr: #f687b3;          /* 关键结果 - 粉红 */
-            --type-project: #48bb78;     /* 项目 - 绿色 */
-            --type-action: #ed8936;      /* 动作 - 橙色 */
-            
-            /* 状态颜色 */
-            --status-todo: #718096;      /* 未开始 - 灰色 */
-            --status-pause: #5b9dd9;     /* 暂停 - 蓝色 */
-            --status-doing: #f6ad55;     /* 进行中 - 橙黄 */
-            --status-done: #48bb78;      /* 已完成 - 绿色 */
-            
-            /* 优先级颜色 */
-            --priority-high: #fc8181;    /* 高 - 红色 */
-            --priority-medium: #f6e05e;  /* 中 - 黄色 */
-            --priority-low: #68d391;     /* 低 - 绿色 */
-            
-            /* 其他样式变量 */
-            --radius: 12px;
-            --radius-sm: 6px;
-            --radius-lg: 16px;
-            --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.4);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            
-            /* 间距系统 */
-            --spacing-xs: 4px;
-            --spacing-sm: 8px;
-            --spacing-md: 16px;
-            --spacing-lg: 24px;
-            --spacing-xl: 32px;
+        body{
+            background-color: lightgray;
+            font-size:1.1em;
         }
-
-        /* ========================================
-           📐 基础样式重置
-           ======================================== */
-        * {
-            margin: 0;
-            padding: 0;
+        .editor {
+            width: 100%;
+            height: 100%;
             box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            line-height: 1.6;
-            overflow: hidden;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        /* 自定义滚动条 */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: var(--bg-secondary);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--glass-border);
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--text-disabled);
-        }
-
-        /* ========================================
-           🏗️ 主布局结构
-           ======================================== */
-        .app-container {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            width: 100vw;
-            overflow: hidden;
-        }
-
-        /* 顶部导航栏 */
-        .navbar {
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur);
-            border-bottom: 1px solid var(--glass-border);
-            padding: var(--spacing-md) var(--spacing-lg);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-shrink: 0;
-            z-index: 100;
-        }
-
-        .navbar-left {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-lg);
-            flex: 1;
-        }
-
-        .navbar-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            background: linear-gradient(135deg, var(--type-goal) 0%, var(--type-kr) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        /* 快速添加任务输入框 */
-        .quick-add-container {
-            flex: 1;
-            max-width: 500px;
-        }
-
-        .quick-add-input {
-            width: 100%;
-            padding: var(--spacing-sm) var(--spacing-md);
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-size: 0.875rem;
-            transition: var(--transition);
-        }
-
-        .quick-add-input:focus {
-            outline: none;
-            border-color: var(--type-goal);
-            background: var(--bg-hover);
-        }
-
-        .quick-add-input::placeholder {
-            color: var(--text-muted);
-        }
-
-        /* 视图切换按钮组 */
-        .view-switcher {
-            display: flex;
-            gap: var(--spacing-xs);
-            background: var(--bg-card);
-            padding: var(--spacing-xs);
-            border-radius: var(--radius-sm);
-        }
-        
-        /* 全局功能按钮组 */
-        .global-actions {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            margin-left: var(--spacing-lg);
-        }
-        
-        .global-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: var(--radius-sm);
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            color: var(--text-secondary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: var(--transition);
-            position: relative;
-            font-size: 1.125rem;
-        }
-        
-        .global-btn:hover {
-            background: var(--bg-hover);
-            color: var(--text-primary);
-            border-color: var(--type-goal);
-        }
-        
-        .global-btn.active {
-            background: var(--bg-active);
-            color: var(--type-goal);
-        }
-        
-        .tooltip {
-            position: absolute;
-            bottom: -36px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            padding: var(--spacing-xs) var(--spacing-sm);
-            border-radius: var(--radius-sm);
-            font-size: 0.75rem;
-            white-space: nowrap;
-            opacity: 0;
-            visibility: hidden;
-            transition: var(--transition);
-            pointer-events: none;
-            box-shadow: var(--shadow);
-        }
-        
-        .global-btn:hover .tooltip {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .view-btn {
-            padding: var(--spacing-sm) var(--spacing-md);
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
-            border-radius: var(--radius-sm);
-            transition: var(--transition);
-            font-size: 0.875rem;
-            font-weight: 500;
-            white-space: nowrap;
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-xs);
-        }
-
-        .view-btn:hover {
-            background: var(--bg-hover);
-            color: var(--text-primary);
-        }
-
-        .view-btn.active {
-            background: var(--bg-active);
-            color: var(--type-goal);
-        }
-
-        /* 主内容区域 */
-        .main-content {
-            flex: 1;
-            display: flex;
-            overflow: hidden;
-        }
-
-        /* 侧边栏 - 自定义视图 */
-        .sidebar {
-            width: 240px;
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur);
-            border-right: 1px solid var(--glass-border);
-            padding: var(--spacing-lg);
-            overflow-y: auto;
-            flex-shrink: 0;
-            transition: transform 0.3s ease;
-        }
-
-        .sidebar.collapsed {
-            transform: translateX(-240px);
-            margin-right: -240px;
-        }
-
-        .sidebar-section {
-            margin-bottom: var(--spacing-xl);
-        }
-
-        .sidebar-title {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--text-muted);
-            margin-bottom: var(--spacing-md);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        /* 自定义视图列表 */
-        .custom-view-item {
-            padding: var(--spacing-sm) var(--spacing-md);
-            margin-bottom: var(--spacing-xs);
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 0.875rem;
-        }
-
-        .custom-view-item:hover {
-            background: var(--bg-hover);
-        }
-
-        .custom-view-item.active {
-            background: var(--bg-active);
-            color: var(--type-goal);
-        }
-
-        /* 工作区 */
-        .workspace {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            background: var(--bg-primary);
-        }
-
-        /* 视图容器 */
-        .view-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: var(--spacing-lg);
-        }
-
-        /* ========================================
-           🎯 焦点任务视图
-           ======================================== */
-        .focus-view {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        /* 当前焦点任务 */
-        .current-focus-section {
-            margin-bottom: var(--spacing-xl);
-        }
-
-        .section-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: var(--spacing-lg);
-        }
-
-        .section-title {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .focus-task-container {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: var(--spacing-lg);
-        }
-
-        .focus-task-card {
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-lg);
-            padding: var(--spacing-lg);
-            padding-left: calc(var(--spacing-lg) + 30px);
-            transition: var(--transition);
-            cursor: pointer;
-            position: relative;
-        }
-
-        .focus-task-card:hover {
-            border-color: var(--type-goal);
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
-        }
-
-        .focus-task-card.active {
-            border-color: var(--type-goal);
-            background: var(--bg-focus);
-        }
-
-        /* 拖拽状态样式 */
-
-        /* 拖拽手柄 */
-        .drag-handle {
-            position: absolute;
-            left: var(--spacing-sm);
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 20px;
-            color: var(--text-muted);
-            cursor: grab;
-            opacity: 0;
-            transition: opacity 0.2s;
-            user-select: none;
-            z-index: 10;
-        }
-        
-        .focus-task-card:hover .drag-handle {
-            opacity: 0.5;
-        }
-        
-        .drag-handle:hover {
-            opacity: 1 !important;
-            color: var(--text-secondary);
-        }
-        
-        /* 待处理任务置顶按钮 */
-        .pending-task-pin {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            left: 40px;
-            width: 28px;
-            height: 28px;
-            border: none;
-            background: rgba(255, 255, 255, 0.08);
-            color: var(--text-muted);
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            line-height: 1;
-            transition: var(--transition);
-            opacity: 0;
-            z-index: 10;
-        }
-        
-        .pending-task-item:hover .pending-task-pin {
-            opacity: 0.6;
-        }
-        
-        .pending-task-item:hover .pending-task-pin:hover {
-            background: rgba(102, 126, 234, 0.2);
-            color: var(--type-goal);
-            opacity: 1;
-        }
-        
-        /* 待处理任务拖拽样式 */
-        .pending-task-item:hover .drag-handle {
-            opacity: 0.5;
-        }
-        
-        .pending-task-item .drag-handle:hover {
-            opacity: 1 !important;
-            color: var(--text-secondary);
-        }
-        
-        .pending-task-item.dragging {
-            opacity: 0.5;
-            transform: scale(0.95);
-            box-shadow: none;
-            cursor: grabbing;
-        }
-        
-        .pending-task-item.drop-indicator-top {
-            margin-top: 25px;
-            transition: margin 0.2s ease-out;
-        }
-        
-        .pending-task-item.drop-indicator-top::before {
-            content: '↓ 放置到这里';
-            position: absolute;
-            top: -25px;
-            left: 0;
-            right: 0;
-            height: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: 2px dashed rgba(255, 255, 255, 0.5);
-            border-radius: var(--radius-sm);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 600;
-            font-size: 12px;
-            box-shadow: 0 0 15px rgba(102, 126, 234, 0.6);
-            animation: dropZonePulse 0.8s ease-in-out infinite;
-        }
-        
-        .pending-task-item.drop-indicator-bottom {
-            margin-bottom: 25px;
-            transition: margin 0.2s ease-out;
-        }
-        
-        .pending-task-item.drop-indicator-bottom::after {
-            content: '↑ 放置到这里';
-            position: absolute;
-            bottom: -25px;
-            left: 0;
-            right: 0;
-            height: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: 2px dashed rgba(255, 255, 255, 0.5);
-            border-radius: var(--radius-sm);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 600;
-            font-size: 12px;
-            box-shadow: 0 0 15px rgba(102, 126, 234, 0.6);
-            animation: dropZonePulse 0.8s ease-in-out infinite;
-        }
-        
-        .drag-handle:active {
-            cursor: grabbing;
-        }
-        
-        /* 拖拽状态 */
-        .focus-task-card.dragging {
-            opacity: 0.3;
-            transform: scale(0.95);
-            box-shadow: none;
-            cursor: grabbing;
-        }
-        
-        /* 拖拽时的容器状态 */
-        .focus-tasks-container.dragging-active {
-            gap: calc(var(--spacing-lg) + 10px);
-        }
-        
-        /* 插入指示器 */
-        .focus-task-card.drop-indicator-top {
-            margin-top: 35px;
-            transition: margin 0.2s ease-out;
-        }
-        
-        .focus-task-card.drop-indicator-top::before {
-            content: '↓ 放置到这里';
-            position: absolute;
-            top: -35px;
-            left: -5px;
-            right: -5px;
-            height: 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: 2px dashed rgba(255, 255, 255, 0.5);
-            border-radius: var(--radius);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 600;
-            font-size: 14px;
-            box-shadow: 0 0 20px rgba(102, 126, 234, 0.6),
-                        inset 0 0 20px rgba(255, 255, 255, 0.2);
-            animation: dropZonePulse 0.8s ease-in-out infinite;
-            z-index: 100;
-        }
-        
-        .focus-task-card.drop-indicator-bottom {
-            margin-bottom: 35px;
-            transition: margin 0.2s ease-out;
-        }
-        
-        .focus-task-card.drop-indicator-bottom::after {
-            content: '↑ 放置到这里';
-            position: absolute;
-            bottom: -35px;
-            left: -5px;
-            right: -5px;
-            height: 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: 2px dashed rgba(255, 255, 255, 0.5);
-            border-radius: var(--radius);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 600;
-            font-size: 14px;
-            box-shadow: 0 0 20px rgba(102, 126, 234, 0.6),
-                        inset 0 0 20px rgba(255, 255, 255, 0.2);
-            animation: dropZonePulse 0.8s ease-in-out infinite;
-            z-index: 100;
-        }
-        
-        @keyframes dropZonePulse {
-            0%, 100% { 
-                opacity: 0.9; 
-                transform: scale(1);
-                box-shadow: 0 0 20px rgba(102, 126, 234, 0.6),
-                            inset 0 0 20px rgba(255, 255, 255, 0.2);
-            }
-            50% { 
-                opacity: 1; 
-                transform: scale(1.02);
-                box-shadow: 0 0 30px rgba(102, 126, 234, 0.8),
-                            inset 0 0 30px rgba(255, 255, 255, 0.3);
-            }
-        }
-
-        /* 焦点任务移除按钮 */
-        .focus-task-remove {
-            position: absolute;
-            top: var(--spacing-sm);
-            right: var(--spacing-sm);
-            width: 28px;
-            height: 28px;
-            border: none;
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text-secondary);
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            line-height: 1;
-            transition: var(--transition);
-            opacity: 0;
-            z-index: 10;
-        }
-
-        .focus-task-card:hover .focus-task-remove {
-            opacity: 1;
-        }
-
-        .focus-task-remove:hover {
-            background: rgba(252, 129, 129, 0.2);
-            color: #fc8181;
-            transform: scale(1.1);
-        }
-        
-        /* 当前任务标记按钮 */
-        .focus-task-current {
-            position: absolute;
-            top: var(--spacing-sm);
-            right: calc(var(--spacing-sm) + 36px);
-            width: 28px;
-            height: 28px;
-            border: none;
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text-secondary);
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            line-height: 1;
-            transition: var(--transition);
-            opacity: 0;
-            z-index: 10;
-        }
-        
-        .focus-task-card:hover .focus-task-current {
-            opacity: 1;
-        }
-        
-        .focus-task-current:hover {
-            background: rgba(102, 126, 234, 0.2);
-            color: var(--type-goal);
-            transform: scale(1.1);
-        }
-        
-        .focus-task-current.active {
-            opacity: 1;
-            color: #f6ad55;
-            background: rgba(246, 173, 85, 0.2);
-        }
-        
-        /* 焦点任务定位按钮 */
-        .focus-task-locate {
-            position: absolute;
-            top: var(--spacing-sm);
-            right: calc(var(--spacing-sm) + 72px); /* 在当前任务标记按钮左边 */
-            width: 28px;
-            height: 28px;
-            border: none;
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text-secondary);
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            line-height: 1;
-            transition: var(--transition);
-            opacity: 0;
-            z-index: 10;
-        }
-        
-        .focus-task-card:hover .focus-task-locate {
-            opacity: 1;
-        }
-        
-        .focus-task-locate:hover {
-            background: rgba(91, 157, 217, 0.2);
-            color: var(--status-pause);
-            transform: scale(1.1);
-        }
-
-        @media (max-width: 768px) {
-            .focus-task-remove {
-                opacity: 1;
-                width: 36px;
-                height: 36px;
-                font-size: 20px;
-            }
-            
-            .focus-task-current {
-                opacity: 1;
-                width: 36px;
-                height: 36px;
-                font-size: 20px;
-                right: calc(var(--spacing-sm) + 44px);
-            }
-            
-            .focus-task-locate {
-                opacity: 1;
-                width: 36px;
-                height: 36px;
-                font-size: 18px;
-                right: calc(var(--spacing-sm) + 88px);
-            }
-            
-            .drag-handle {
-                opacity: 0.3;
-                font-size: 24px;
-            }
-            
-            /* 待处理任务置顶按钮在移动设备上始终显示 */
-            .pending-task-pin {
-                opacity: 0.3;
-            }
-            
-            .pending-task-item:hover .pending-task-pin,
-            .pending-task-item:hover .pending-task-pin:hover {
-                opacity: 1;
-            }
-        }
-
-
-        /* 任务类型标签 */
-        .task-type-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: var(--spacing-xs) var(--spacing-sm);
-            border-radius: var(--radius-sm);
-            font-size: 0.75rem;
-            font-weight: 500;
-            margin-bottom: var(--spacing-md);
-        }
-
-        .task-type-badge.goal {
-            background: rgba(102, 126, 234, 0.2);
-            color: var(--type-goal);
-        }
-
-        .task-type-badge.kr {
-            background: rgba(246, 135, 179, 0.2);
-            color: var(--type-kr);
-        }
-
-        .task-type-badge.project {
-            background: rgba(72, 187, 120, 0.2);
-            color: var(--type-project);
-        }
-
-        .task-type-badge.action {
-            background: rgba(237, 137, 54, 0.2);
-            color: var(--type-action);
-        }
-
-        .focus-task-title {
-            font-size: 1.125rem;
-            font-weight: 600;
-            margin-bottom: var(--spacing-sm);
-            line-height: 1.4;
-        }
-
-        .focus-task-meta {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-md);
-            margin-bottom: var(--spacing-md);
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-
-        .focus-task-actions {
-            display: flex;
-            gap: var(--spacing-sm);
-            margin-top: var(--spacing-lg);
-            flex-wrap: wrap;
-            width: 100%;
-        }
-        
-        .focus-task-actions .btn {
-            flex: 1 1 calc(33.33% - var(--spacing-sm));
-            min-width: 0;
-            font-size: 0.75rem;
-            padding: 4px 8px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .focus-task-content {
-            flex: 1;
-            width: 100%;
-        }
-        
-        /* 最近进展样式 */
-        .recent-progress {
-            margin: var(--spacing-md) 0;
-            padding: var(--spacing-sm) var(--spacing-md);
-            background: var(--bg-card);
-            border-left: 3px solid var(--type-goal);
-            border-radius: var(--radius-sm);
-            font-size: 0.875rem;
-        }
-        
-        .recent-progress-header {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-xs);
-            color: var(--text-muted);
-            font-size: 0.75rem;
-            margin-bottom: var(--spacing-xs);
-        }
-        
-        .recent-progress-content {
-            color: var(--text-primary);
-            line-height: 1.4;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            max-height: 3.6em; /* 限制最多显示3行 (1.4 * 3 ≈ 4.2) */
-            overflow: hidden;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            line-clamp: 3; /* 标准属性，提高兼容性 */
-            -webkit-box-orient: vertical;
-            text-overflow: ellipsis;
-        }
-        
-        .recent-progress-time {
-            color: var(--text-muted);
-            font-size: 0.75rem;
-        }
-
-        .btn {
-            padding: var(--spacing-sm) var(--spacing-md);
-            border: none;
-            border-radius: var(--radius-sm);
-            font-size: 0.875rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            gap: var(--spacing-xs);
-        }
-
-        .btn-primary {
-            background: var(--type-goal);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #5a6fd6;
-            transform: translateY(-1px);
-        }
-
-        .btn-secondary {
-            background: var(--bg-card);
-            color: var(--text-primary);
-            border: 1px solid var(--glass-border);
-        }
-
-        .btn-secondary:hover {
-            background: var(--bg-hover);
-            border-color: var(--text-muted);
-        }
-        
-        .btn-info {
-            background: #5bc0de;
-            color: white;
-            border: none;
-        }
-        
-        .btn-info:hover {
-            background: #46b8da;
-            transform: translateY(-1px);
-        }
-
-        /* 启动按钮特殊样式 */
-        .btn-launch {
-            background: linear-gradient(135deg, var(--type-goal) 0%, var(--type-kr) 100%);
-            color: white;
-            font-weight: 600;
-        }
-
-        .btn-launch:hover {
-            transform: translateY(-1px) scale(1.02);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-
-        /* ========================================
-           📱 移动端优化
-           ======================================== */
-        @media (max-width: 768px) {
-            /* 增大按钮点击区域 */
-            .btn {
-                min-height: 44px;
-                padding: var(--spacing-md) var(--spacing-lg);
-                font-size: 0.9375rem;
-            }
-            
-            /* 确保焦点任务按钮有足够间距 */
-            .focus-task-actions {
-                gap: var(--spacing-xs);
-                margin-top: var(--spacing-md);
-            }
-            
-            .focus-task-actions .btn {
-                flex: 1 1 100%;
-                justify-content: center;
-                margin-bottom: var(--spacing-xs);
-            }
-            
-            /* 优化模态框关闭按钮 */
-            .modal-close {
-                width: 44px;
-                height: 44px;
-                font-size: 24px;
-            }
-            
-            /* 侧边栏项目增大点击区域 */
-            .custom-view-item,
-            .list-checkbox,
-            .task-select-item {
-                min-height: 48px;
-                padding: var(--spacing-md);
-            }
-            
-            /* 待处理任务按钮优化 */
-            .pending-task-item button {
-                min-height: 36px;
-                padding: var(--spacing-sm) var(--spacing-md);
-            }
-            
-            /* 增加触摸反馈 */
-            .btn:active,
-            .focus-task-card:active,
-            .custom-view-item:active {
-                transform: scale(0.98);
-                opacity: 0.9;
-            }
-            
-            /* 防止误触，增加按钮间距 */
-            .focus-task-meta {
-                gap: var(--spacing-md);
-                flex-wrap: wrap;
-            }
-            
-            /* 快速输入框优化 */
-            .quick-add-input {
-                min-height: 48px;
-                font-size: 16px; /* 防止iOS缩放 */
-            }
-            
-            /* 看板移动端优化 */
-            .type-boards-container {
-                padding: var(--spacing-sm);
-                gap: var(--spacing-lg);
-            }
-            
-            .kanban-container {
-                padding: var(--spacing-sm);
-                gap: var(--spacing-sm);
-            }
-            
-            .kanban-column {
-                min-width: 260px;
-            }
-            
-            .type-board-header {
-                padding: var(--spacing-md);
-            }
-            
-            .type-board-title {
-                font-size: 1rem;
-            }
-        }
-
-        /* 触摸设备优化 */
-        @media (hover: none) and (pointer: coarse) {
-            /* 移除悬停效果，改为触摸效果 */
-            .focus-task-remove {
-                opacity: 1;
-            }
-            
-            /* 增强触摸反馈 */
-            .btn,
-            .focus-task-card,
-            .task-select-item,
-            .custom-view-item {
-                -webkit-tap-highlight-color: rgba(102, 126, 234, 0.2);
-            }
-            
-            /* 待处理任务置顶按钮在触屏设备上始终显示 */
-            .pending-task-pin {
-                opacity: 0.3;
-            }
-            
-            /* 触摸时提供反馈 */
-            .pending-task-pin:active {
-                opacity: 1;
-                background: rgba(102, 126, 234, 0.3);
-            }
-        }
-
-        /* ========================================
-           🔗 启动链接管理样式
-           ======================================== */
-        .launch-link-form {
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-lg);
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-sm);
-        }
-
-        .form-label {
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-
-        .form-input {
-            width: 100%;
-            padding: var(--spacing-sm) var(--spacing-md);
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-size: 0.875rem;
-            transition: var(--transition);
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: var(--type-goal);
-            background: var(--bg-hover);
-        }
-
-        .form-hint {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin: 0;
-        }
-
-        /* 链接类型选择器 */
-        .link-type-selector {
-            display: flex;
-            gap: var(--spacing-sm);
-            background: var(--glass-bg);
-            padding: var(--spacing-xs);
-            border-radius: var(--radius-sm);
-        }
-
-        .link-type-btn {
-            flex: 1;
-            padding: var(--spacing-sm) var(--spacing-md);
-            border: none;
-            background: transparent;
-            color: var(--text-secondary);
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: var(--spacing-xs);
-            font-size: 0.875rem;
-        }
-
-        .link-type-btn:hover {
-            background: var(--bg-hover);
-            color: var(--text-primary);
-        }
-
-        .link-type-btn.active {
-            background: var(--type-goal);
-            color: white;
-        }
-
-        /* 最近链接 */
-        .recent-links-section {
-            border-top: 1px solid var(--glass-border);
-            padding-top: var(--spacing-lg);
-        }
-
-        .recent-links-title {
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-            margin-bottom: var(--spacing-md);
-        }
-
-        .recent-links-list {
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-xs);
-        }
-
-        .recent-link-item {
-            padding: var(--spacing-sm) var(--spacing-md);
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-        }
-
-        .recent-link-item:hover {
-            border-color: var(--type-goal);
-            background: var(--bg-hover);
-        }
-
-        .recent-link-icon {
-            font-size: 1rem;
-        }
-
-        .recent-link-text {
-            flex: 1;
-            font-size: 0.75rem;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .recent-link-time {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-
-        /* ========================================
-           📅 今日时间轴视图
-           ======================================== */
-        .timeline-section {
-            margin-top: var(--spacing-xl);
-        }
-
-        .timeline-container {
-            position: relative;
-            padding-left: var(--spacing-xl);
-        }
-
-        .timeline-line {
-            position: absolute;
-            left: 12px;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: var(--glass-border);
-        }
-        
-        /* 时间轴日期分组 */
-        .timeline-date-group {
-            margin-bottom: var(--spacing-xl);
-        }
-        
-        .timeline-date-label {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--type-goal);
-            margin-bottom: var(--spacing-md);
-            padding: var(--spacing-xs) var(--spacing-sm);
-            background: var(--bg-card);
-            border-left: 3px solid var(--type-goal);
-            border-radius: var(--radius-sm);
-            display: inline-block;
-        }
-
-        .timeline-item {
-            position: relative;
-            margin-bottom: var(--spacing-lg);
-            display: flex;
-            align-items: flex-start;
-            gap: var(--spacing-md);
-        }
-
-        .timeline-dot {
-            position: absolute;
-            left: -20px;
-            top: 8px;
-            width: 8px;
-            height: 8px;
-            background: var(--type-goal);
-            border-radius: 50%;
-            box-shadow: 0 0 0 4px var(--bg-primary), 0 0 0 6px var(--glass-border);
-        }
-
-        .timeline-time {
-            min-width: 60px;
-            font-size: 0.875rem;
-            color: var(--text-muted);
-            font-weight: 500;
-        }
-
-        .timeline-content {
-            flex: 1;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            padding: var(--spacing-md);
-            transition: var(--transition);
-        }
-
-        .timeline-content:hover {
-            border-color: var(--type-goal);
-            background: var(--bg-hover);
-        }
-
-        /* 进展记录子项样式 */
-        .timeline-progress-logs {
-            margin-top: var(--spacing-sm);
-            padding-top: var(--spacing-sm);
-            border-top: 1px solid var(--glass-border);
-        }
-
-        .timeline-progress-item {
-            position: relative;
-            padding-left: 20px;
-            margin-bottom: 6px;
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            line-height: 1.4;
-        }
-
-        .timeline-progress-item::before {
-            content: "├─";
-            position: absolute;
-            left: 0;
-            top: 0;
-            color: var(--glass-border);
             font-family: monospace;
-        }
-
-        .timeline-progress-item:last-child::before {
-            content: "└─";
-        }
-
-        .timeline-progress-time {
-            font-weight: 500;
-            color: var(--type-keyresult);
-            margin-right: 4px;
-        }
-
-        /* 时间轴控件容器 */
-        .timeline-controls {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-lg);
-            margin-left: auto;
-        }
-        
-        /* 时间轴视图模式切换 */
-        .timeline-view-mode {
-            display: flex;
-            gap: 4px;
-            background: var(--bg-card);
-            padding: 4px;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--glass-border);
-        }
-        
-        .view-mode-btn {
-            padding: 6px 12px;
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-            font-weight: 500;
-            cursor: pointer;
-            border-radius: var(--radius-sm);
-            transition: var(--transition);
-        }
-        
-        .view-mode-btn:hover {
-            background: var(--bg-hover);
-            color: var(--text-primary);
-        }
-        
-        .view-mode-btn.active {
-            background: var(--bg-active);
-            color: var(--type-goal);
-        }
-        
-        /* 时间轴日期选择器样式 */
-        .timeline-date-controls {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-        }
-
-        .timeline-date-picker {
-            padding: var(--spacing-xs) var(--spacing-sm);
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-size: 0.875rem;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .timeline-date-picker:hover {
-            border-color: var(--type-goal);
-        }
-
-        .timeline-date-picker:focus {
-            outline: none;
-            border-color: var(--type-goal);
-            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
-        }
-
-        .date-nav-btn {
-            padding: var(--spacing-xs) var(--spacing-sm);
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-            cursor: pointer;
-            transition: var(--transition);
-            min-width: 32px;
-        }
-
-        .date-nav-btn:hover {
-            border-color: var(--type-goal);
-            color: var(--type-goal);
-            background: var(--bg-hover);
-        }
-
-        .date-nav-btn.today-btn {
-            padding: var(--spacing-xs) var(--spacing-md);
-        }
-
-        /* 日期导航分组样式 */
-        .timeline-date-controls {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-lg);
-            flex-wrap: wrap;
-        }
-
-        .date-nav-section,
-        .quick-date-section,
-        .week-nav-section {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-xs);
-        }
-
-        .quick-date-section .date-nav-btn {
-            min-width: 48px;
-            padding: var(--spacing-xs) var(--spacing-sm);
-        }
-
-        .week-nav-section .date-nav-btn {
-            min-width: 48px;
-            font-size: 0.8rem;
-        }
-
-        /* 小屏幕适配 */
-        @media (max-width: 768px) {
-            .timeline-date-controls {
-                flex-direction: column;
-                gap: var(--spacing-sm);
-            }
-            
-            .date-nav-section,
-            .quick-date-section,
-            .week-nav-section {
-                width: 100%;
-                justify-content: center;
-            }
-        }
-
-        .timeline-stats {
-            display: flex;
-            gap: var(--spacing-lg);
-            margin: var(--spacing-md) 0;
-            padding: var(--spacing-md);
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            font-size: 0.875rem;
-        }
-
-        .timeline-stat {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-xs);
-        }
-
-        .timeline-stat-label {
-            color: var(--text-muted);
-        }
-
-        .timeline-stat-value {
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        
-
-        /* 时间轴空状态样式 */
-        .timeline-empty-state {
-            text-align: center;
-            padding: var(--spacing-xl) var(--spacing-lg);
-            color: var(--text-muted);
-        }
-
-        .empty-state-icon {
-            font-size: 3rem;
-            margin-bottom: var(--spacing-md);
-            opacity: 0.5;
-        }
-
-        .empty-state-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-            margin-bottom: var(--spacing-sm);
-        }
-
-        .empty-state-text {
-            font-size: 0.875rem;
-            margin-bottom: var(--spacing-lg);
-        }
-
-        .empty-state-actions {
-            display: flex;
-            gap: var(--spacing-md);
-            justify-content: center;
-        }
-        
-        /* ========================================
-           🔀 并发任务样式
-           ======================================== */
-        .timeline-content-wrapper {
-            flex: 1;
-            position: relative;
-        }
-        
-        .timeline-content-wrapper.concurrent {
-            padding: var(--spacing-sm);
-            background: var(--glass-bg);
-            border: 2px dashed var(--type-project);
-            border-radius: var(--radius);
-        }
-        
-        .concurrent-label {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: var(--type-project);
-            margin-bottom: var(--spacing-sm);
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-xs);
-        }
-        
-        .timeline-item.concurrent-group .timeline-dot {
-            width: 12px;
-            height: 12px;
-            background: var(--type-project);
-            box-shadow: 0 0 0 4px var(--bg-primary), 0 0 0 6px var(--type-project);
-        }
-        
-        .timeline-content.concurrent-task {
-            position: relative;
-            transition: all 0.2s ease;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-        
-        .timeline-content.concurrent-task:hover {
-            transform: translateX(-10px) scale(1.02);
-            opacity: 1 !important;
-            z-index: 10;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-        }
-        
-        .timeline-content.concurrent-task::before {
-            content: "🔀";
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            background: var(--type-project);
-            color: white;
-            font-size: 0.75rem;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-
-        /* ========================================
-           📝 快速进展输入样式
-           ======================================== */
-        .quick-progress-section {
-            margin-top: var(--spacing-sm);
-            border-top: 1px solid var(--glass-border);
-            padding-top: var(--spacing-sm);
-        }
-
-        .quick-progress-panel {
-            margin-top: var(--spacing-sm);
-            padding: var(--spacing-sm);
-            background: var(--bg-tertiary);
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--glass-border);
-            animation: slideDown 0.2s ease-out;
-        }
-
-        .quick-progress-panel.hidden {
-            display: none;
-        }
-
-        .progress-input {
-            width: 100%;
-            min-height: 60px;
-            max-height: 120px;
-            padding: var(--spacing-sm);
-            background: var(--bg-secondary);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-size: 0.85rem;
-            line-height: 1.4;
-            resize: vertical;
-            font-family: inherit;
-            transition: var(--transition);
-        }
-
-        .progress-input:focus {
-            outline: none;
-            border-color: var(--type-action);
-            box-shadow: 0 0 0 2px rgba(237, 137, 54, 0.2);
-        }
-
-        .progress-input::placeholder {
-            color: var(--text-muted);
-        }
-
-        .progress-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: var(--spacing-xs);
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-
-        .progress-char-count {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-xs);
-        }
-
-        .char-count {
-            font-weight: 600;
-            transition: color 0.3s ease;
-        }
-
-        .progress-tip {
-            font-style: italic;
-            opacity: 0.8;
-        }
-
-        .progress-actions {
-            display: flex;
-            gap: var(--spacing-sm);
-            margin-top: var(--spacing-sm);
-            justify-content: flex-end;
-        }
-
-        .btn-sm {
-            padding: 4px 12px;
-            font-size: 0.8rem;
-            min-height: 28px;
-            font-weight: 500;
-        }
-
-        .btn-outline {
-            background: transparent;
-            border: 1px solid var(--glass-border);
-            color: var(--text-secondary);
-            transition: var(--transition);
-        }
-
-        .btn-outline:hover {
-            background: var(--bg-hover);
-            border-color: var(--type-action);
-            color: var(--text-primary);
-        }
-
-        /* 快速进展输入动画 */
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes pulse {
-            0% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.6;
-            }
-            100% {
-                opacity: 1;
-            }
-        }
-
-        /* 移动端适配 */
-        @media (max-width: 768px) {
-            .progress-input {
-                min-height: 50px;
-                font-size: 0.875rem;
-            }
-            
-            .progress-actions {
-                flex-direction: column;
-                gap: var(--spacing-xs);
-            }
-            
-            .btn-sm {
-                width: 100%;
-                padding: var(--spacing-sm);
-            }
-        }
-
-        /* ========================================
-           📝 时间轴进展记录显示样式
-           ======================================== */
-        .timeline-main-content {
-            width: 100%;
-        }
-
-        .timeline-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: var(--spacing-md);
-            margin-bottom: var(--spacing-md);
-        }
-
-        .task-info {
-            flex: 1;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .task-info:hover {
-            opacity: 0.8;
-        }
-
-        .task-actions {
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-xs);
-            flex-shrink: 0;
-        }
-
-        .task-actions .btn {
-            min-width: 32px;
-            height: 32px;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.875rem;
-        }
-        
-        /* 时间轴任务按钮样式 */
-        .timeline-task-actions {
-            display: flex;
-            gap: 6px;
-            margin-top: 8px;
-            flex-wrap: wrap;
-        }
-        
-        .timeline-task-actions .btn-sm {
-            padding: 2px 8px;
-            font-size: 0.75rem;
-            min-height: 24px;
-        }
-
-        .timeline-progress-display {
-            margin: var(--spacing-md) 0;
-            padding: var(--spacing-sm);
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            font-size: 0.8rem;
-            line-height: 1.4;
-        }
-
-        .progress-header {
-            font-weight: 600;
-            color: var(--text-secondary);
-            margin-bottom: var(--spacing-xs);
-            font-size: 0.75rem;
-        }
-
-        .progress-item {
-            margin-bottom: 2px;
-            padding: 2px 0;
-            color: var(--text-primary);
-        }
-
-        .progress-item.latest {
-            font-weight: 500;
-            color: var(--type-action);
-        }
-
-        .progress-item.history {
-            color: var(--text-muted);
-            padding-left: var(--spacing-sm);
-        }
-
-        .progress-more {
-            color: var(--text-muted);
-            font-style: italic;
-            margin-top: var(--spacing-xs);
-            font-size: 0.7rem;
-        }
-
-        .timeline-progress-empty {
-            color: var(--text-muted);
-            font-style: italic;
-            text-align: center;
-            padding: var(--spacing-sm);
-            font-size: 0.75rem;
-        }
-
-        .progress-inline-actions {
-            display: flex;
-            gap: var(--spacing-xs);
-            margin-top: var(--spacing-sm);
-        }
-
-        .progress-inline-actions .btn {
-            font-size: 0.7rem;
-            padding: 2px 8px;
-            height: 24px;
-            min-width: 50px;
-            border-radius: 4px;
-        }
-
-        /* 可编辑字段样式 */
-        .editable-field {
-            cursor: pointer;
-            padding: 2px 6px;
-            border-radius: 4px;
-            border: 1px solid transparent;
-            transition: var(--transition);
-            position: relative;
-        }
-
-        .editable-field:hover {
-            background: var(--bg-hover);
-            border-color: var(--glass-border);
-        }
-
-        .editable-field::after {
-            content: "✏️";
-            opacity: 0;
-            position: absolute;
-            right: -20px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 0.7rem;
-            transition: var(--transition);
-        }
-
-        .editable-field:hover::after {
-            opacity: 0.6;
-        }
-
-        .field-editing {
-            background: var(--bg-focus);
-            border-color: var(--type-action);
-        }
-
-        .field-input {
-            background: var(--bg-secondary);
-            border: 1px solid var(--type-action);
-            border-radius: 4px;
-            padding: 4px 8px;
-            color: var(--text-primary);
-            font-size: inherit;
-            width: 100%;
-            outline: none;
-        }
-
-        .priority-select {
-            background: var(--bg-secondary);
-            border: 1px solid var(--type-action);
-            border-radius: 4px;
-            padding: 4px 8px;
-            color: var(--text-primary);
-            font-size: inherit;
-            outline: none;
-        }
-
-        .tags-editor {
-            background: var(--bg-secondary);
-            border: 1px solid var(--type-action);
-            border-radius: 4px;
-            padding: 4px 8px;
-            color: var(--text-primary);
-            font-size: inherit;
-            width: 100%;
-            outline: none;
-            min-height: 60px;
-        }
-
-        /* 按钮颜色变化 */
-        .btn-success {
-            background: var(--status-done);
-            border-color: var(--status-done);
-        }
-
-        .btn-success:hover {
-            background: #3ea663;
-            border-color: #3ea663;
-        }
-
-        /* ========================================
-           📝 时间轴进展记录响应式设计
-           ======================================== */
-        @media (max-width: 768px) {
-            .timeline-header {
-                flex-direction: column;
-                gap: var(--spacing-sm);
-            }
-            
-            .task-actions {
-                flex-direction: row;
-                align-self: stretch;
-                justify-content: space-between;
-            }
-            
-            .task-actions .btn {
-                flex: 1;
-                min-width: auto;
-                height: 36px;
-                font-size: 0.8rem;
-            }
-            
-            .timeline-progress-display {
-                font-size: 0.75rem;
-            }
-            
-            .progress-item.history {
-                padding-left: var(--spacing-xs);
-            }
-        }
-
-        @media (max-width: 480px) {
-            .task-actions .btn {
-                height: 32px;
-                font-size: 0.75rem;
-            }
-            
-            .timeline-progress-display {
-                margin: var(--spacing-sm) 0;
-                padding: var(--spacing-xs);
-            }
-        }
-
-        /* ========================================
-           🔍 筛选器面板
-           ======================================== */
-        .filter-panel {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            padding: var(--spacing-lg);
-            margin-bottom: var(--spacing-lg);
-        }
-
-        .filter-row {
-            display: flex;
-            gap: var(--spacing-md);
-            margin-bottom: var(--spacing-md);
-            flex-wrap: wrap;
-        }
-
-        .filter-group {
-            flex: 1;
-            min-width: 200px;
-        }
-
-        .filter-label {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-            margin-bottom: var(--spacing-xs);
-        }
-
-        .filter-input {
-            width: 100%;
-            padding: var(--spacing-sm);
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-size: 0.875rem;
-        }
-
-        .filter-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: var(--spacing-xs);
-            margin-top: var(--spacing-sm);
-        }
-
-        .filter-tag {
-            padding: var(--spacing-xs) var(--spacing-sm);
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            font-size: 0.75rem;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .filter-tag:hover {
-            border-color: var(--type-goal);
-        }
-
-        .filter-tag.active {
-            background: var(--bg-active);
-            border-color: var(--type-goal);
-            color: var(--type-goal);
-        }
-
-        /* ========================================
-           💾 可保存视图管理
-           ======================================== */
-        .save-view-btn {
-            padding: var(--spacing-xs) var(--spacing-sm);
-            background: transparent;
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            color: var(--text-secondary);
-            font-size: 0.75rem;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .save-view-btn:hover {
-            border-color: var(--type-goal);
-            color: var(--type-goal);
-        }
-
-        /* ========================================
-           📊 进展记录面板
-           ======================================== */
-        .progress-log-panel {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            padding: var(--spacing-lg);
-            margin-top: var(--spacing-md);
-        }
-
-        .progress-log-item {
-            display: flex;
-            gap: var(--spacing-md);
-            padding: var(--spacing-sm) 0;
-            border-bottom: 1px solid var(--glass-border);
-        }
-
-        .progress-log-item:last-child {
-            border-bottom: none;
-        }
-
-        .progress-log-time {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            min-width: 120px;
-        }
-
-        .progress-log-content {
-            flex: 1;
-            font-size: 0.875rem;
-        }
-
-        /* ========================================
-           🔔 并发冲突提示样式
-           ======================================== */
-        .concurrent-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 2px 8px;
-            background: var(--type-project);
-            color: white;
-            font-size: 0.7rem;
-            font-weight: 600;
-            border-radius: 12px;
-            margin-left: var(--spacing-sm);
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
-        }
-        
-        .focus-task-card.has-conflict {
-            border: 2px solid var(--type-project);
-        }
-        
-        .focus-task-card.has-conflict::before {
-            content: "🔀";
-            position: absolute;
-            top: -10px;
-            right: -10px;
-            background: var(--type-project);
-            color: white;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.875rem;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-        }
-        
-        /* ========================================
-           🎨 动画效果
-           ======================================== */
-        .fade-in {
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .slide-in {
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from { transform: translateX(-20px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-
-        /* ========================================
-           📱 响应式设计
-           ======================================== */
-        @media (max-width: 768px) {
-            .sidebar {
-                position: fixed;
-                left: 0;
-                top: 0;
-                bottom: 0;
-                z-index: 1000;
-                box-shadow: var(--shadow-lg);
-            }
-
-            .sidebar.collapsed {
-                transform: translateX(-100%);
-            }
-
-            .navbar {
-                flex-wrap: wrap;
-                gap: var(--spacing-md);
-            }
-
-            .quick-add-container {
-                order: 3;
-                flex-basis: 100%;
-            }
-
-            .focus-task-container {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* ========================================
-           ⚠️ 冲突任务列表样式
-           ======================================== */
-        .conflict-tasks-list {
-            background: var(--glass-bg);
-            border: 1px solid var(--type-project);
-            border-radius: var(--radius-sm);
-            padding: var(--spacing-sm);
-            margin-top: var(--spacing-sm);
-        }
-        
-        .conflict-task-item {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            padding: var(--spacing-xs) 0;
-            border-bottom: 1px solid var(--glass-border);
-        }
-        
-        .conflict-task-item:last-child {
-            border-bottom: none;
-        }
-        
-        .conflict-task-item .task-type-badge {
-            flex-shrink: 0;
-        }
-        
-        .conflict-task-item .text-small {
-            flex: 1;
-        }
-        
-        .conflict-task-item .text-muted {
-            flex-shrink: 0;
-            font-weight: 500;
-        }
-        
-        /* ========================================
-           🛠️ 工具类
-           ======================================== */
-        .hidden {
-            display: none !important;
-        }
-        
-        /* ========================================
-           🔍 自动完成下拉菜单
-           ======================================== */
-        .autocomplete-dropdown {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: var(--bg-secondary);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            margin-top: 4px;
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 1000;
-            box-shadow: var(--shadow);
-            display: none;
-        }
-        
-        .autocomplete-dropdown.active {
-            display: block;
-        }
-        
-        .autocomplete-item {
-            padding: var(--spacing-sm) var(--spacing-md);
-            cursor: pointer;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            font-size: 0.875rem;
-        }
-        
-        .autocomplete-item:hover,
-        .autocomplete-item.selected {
-            background: var(--bg-hover);
-            color: var(--type-goal);
-        }
-        
-        .autocomplete-item-icon {
-            font-size: 1rem;
-        }
-        
-        .autocomplete-item-name {
-            flex: 1;
-        }
-        
-        .autocomplete-item-id {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-
-        .text-muted {
-            color: var(--text-muted);
-        }
-
-        .text-info {
-            color: var(--status-pause);
-        }
-
-        .text-warning {
-            color: var(--status-doing);
-        }
-
-        .text-success {
-            color: var(--status-done);
-        }
-
-        .text-small {
-            font-size: 0.875rem;
-        }
-
-        .mt-1 { margin-top: var(--spacing-sm); }
-        .mt-2 { margin-top: var(--spacing-md); }
-        .mt-3 { margin-top: var(--spacing-lg); }
-        .mb-1 { margin-bottom: var(--spacing-sm); }
-        .mb-2 { margin-bottom: var(--spacing-md); }
-        .mb-3 { margin-bottom: var(--spacing-lg); }
-        
-        /* ========================================
-           📝 全局快速进展弹窗
-           ======================================== */
-        .global-quick-progress {
-            position: fixed;
-            background: var(--bg-secondary);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            padding: var(--spacing-md);
-            box-shadow: var(--shadow-lg);
-            z-index: 1500;
-            width: 400px;
-            display: none;
-            animation: fadeInScale 0.2s ease-out;
-        }
-        
-        .global-quick-progress.active {
-            display: block;
-        }
-        
-        .global-quick-progress-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: var(--spacing-sm);
-        }
-        
-        .global-quick-progress-title {
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        
-        .global-quick-progress-close {
-            cursor: pointer;
-            color: var(--text-muted);
-            font-size: 1.2em;
-            padding: 4px;
-            line-height: 1;
-            transition: color 0.2s;
-        }
-        
-        .global-quick-progress-close:hover {
-            color: var(--text-primary);
-        }
-        
-        @keyframes fadeInScale {
-            from {
-                opacity: 0;
-                transform: scale(0.95);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-        
-        /* ========================================
-           🎭 模态框样式
-           ======================================== */
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
-        }
-        
-        .modal.active {
-            opacity: 1;
-            visibility: visible;
-        }
-        
-        .modal-content {
-            background: var(--bg-secondary);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-lg);
-            max-width: 90%;
-            max-height: 90vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            box-shadow: var(--shadow-lg);
-            transform: scale(0.9);
-            transition: transform 0.3s ease;
-        }
-        
-        .modal.active .modal-content {
-            transform: scale(1);
-        }
-        
-        .modal-header {
-            padding: var(--spacing-lg);
-            border-bottom: 1px solid var(--glass-border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        .modal-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-        }
-        
-        .modal-close {
-            width: 32px;
-            height: 32px;
-            border: none;
-            background: transparent;
-            color: var(--text-secondary);
-            cursor: pointer;
-            border-radius: var(--radius-sm);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: var(--transition);
-        }
-        
-        .modal-close:hover {
-            background: var(--bg-hover);
-            color: var(--text-primary);
-        }
-        
-        .modal-body {
-            flex: 1;
-            padding: var(--spacing-lg);
-            overflow-y: auto;
-        }
-        
-        .modal-footer {
-            padding: var(--spacing-lg);
-            border-top: 1px solid var(--glass-border);
-            display: flex;
-            gap: var(--spacing-md);
-            justify-content: flex-end;
-        }
-        
-        /* 任务选择列表 */
-        .task-select-list {
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-sm);
-        }
-        
-        .task-select-item {
-            padding: var(--spacing-md);
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        
-        .task-select-item:hover {
-            border-color: var(--type-goal);
-            background: var(--bg-hover);
-        }
-        
-        .task-select-item.selected {
-            border-color: var(--type-goal);
-            background: var(--bg-active);
-        }
-        
-        /* 搜索结果操作按钮样式 */
-        .search-action-btn {
-            width: 32px;
-            height: 32px;
-            padding: 0;
-            border: 1px solid var(--glass-border);
-            background: var(--bg-card);
-            border-radius: var(--radius-sm);
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-            cursor: pointer;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .search-action-btn:hover {
-            background: var(--bg-hover);
-            border-color: var(--type-goal);
-            color: var(--text-primary);
-            transform: scale(1.05);
-        }
-        
-        .search-action-btn.active {
-            background: var(--bg-active);
-            border-color: var(--type-goal);
-            color: var(--type-goal);
-        }
-        
-        .search-action-btn.active:hover {
-            background: var(--bg-focus);
-            transform: scale(1.05);
-        }
-        
-        /* 高级筛选样式 */
-        .checkbox-group {
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-xs);
-        }
-        
-        .checkbox-group .filter-checkbox {
-            margin: 0;
-            padding: var(--spacing-xs);
-            border-radius: var(--radius-sm);
-            transition: var(--transition);
-        }
-        
-        .checkbox-group .filter-checkbox:hover {
-            background: var(--bg-hover);
-        }
-        
-        .advanced-filters-grid {
-            animation: fadeIn 0.3s ease-out;
-        }
-        
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        /* 看板视图样式 */
-        .type-boards-container {
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-xl);
-            padding: var(--spacing-lg);
-        }
-        
-        /* 看板筛选工具栏 */
-        .board-filter-toolbar {
-            display: flex;
-            gap: var(--spacing-lg);
-            padding: var(--spacing-md);
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            margin-top: var(--spacing-md);
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        
-        .filter-section {
-            display: flex;
-            gap: var(--spacing-sm);
-            align-items: center;
-        }
-        
-        .filter-input {
-            padding: var(--spacing-sm) var(--spacing-md);
-            background: var(--bg-secondary);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-size: 0.875rem;
-            min-width: 200px;
-            transition: var(--transition);
-        }
-        
-        .filter-input:focus {
-            outline: none;
-            border-color: var(--type-goal);
-            background: var(--bg-hover);
-        }
-        
-        .filter-select {
-            padding: var(--spacing-sm) var(--spacing-md);
-            background: var(--bg-secondary);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-size: 0.875rem;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        
-        .filter-select:hover {
-            background: var(--bg-hover);
-            border-color: var(--type-goal);
-        }
-        
-        .filter-quick-btn {
-            padding: var(--spacing-sm) var(--spacing-md);
-            background: transparent;
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        
-        .filter-quick-btn:hover {
-            background: var(--bg-hover);
-            border-color: var(--type-goal);
-            color: var(--text-primary);
-        }
-        
-        /* 活动筛选条件栏 */
-        .active-filters-bar {
-            display: flex;
-            gap: var(--spacing-md);
-            padding: var(--spacing-sm) var(--spacing-md);
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            margin-top: var(--spacing-sm);
-            align-items: center;
-        }
-        
-        .filter-label {
-            font-size: 0.875rem;
-            color: var(--text-muted);
-        }
-        
-        #boardFilterTags {
-            display: flex;
-            gap: var(--spacing-sm);
-            flex-wrap: wrap;
-        }
-        
-        /* 统计信息栏 */
-        .board-stats-bar {
-            display: flex;
-            gap: var(--spacing-lg);
-            padding: var(--spacing-md) var(--spacing-lg);
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            margin-top: var(--spacing-md);
-            margin-bottom: var(--spacing-md);
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .board-stats-bar .stat-item {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-        }
-        
-        .board-stats-bar .stat-icon {
-            font-size: 1.25rem;
-        }
-        
-        .board-stats-bar .stat-label {
-            font-size: 0.875rem;
-            color: var(--text-muted);
-        }
-        
-        .board-stats-bar .stat-value {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        
-        .stat-divider {
-            width: 1px;
-            height: 24px;
-            background: var(--glass-border);
-        }
-
-        .type-board-section {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-lg);
-            overflow: hidden;
-        }
-
-        .type-board-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: var(--spacing-lg);
-            background: var(--bg-secondary);
-            border-bottom: 1px solid var(--glass-border);
-        }
-
-        .type-board-title {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-md);
-            margin: 0;
-            font-size: 1.125rem;
-        }
-
-        .type-board-count {
-            font-size: 0.875rem;
-            color: var(--text-muted);
-            font-weight: normal;
-        }
-
-        .btn-sm {
-            padding: var(--spacing-xs) var(--spacing-sm);
-            font-size: 0.75rem;
-        }
-
-        .kanban-container {
-            display: flex;
-            gap: var(--spacing-lg);
-            overflow-x: auto;
-            padding: var(--spacing-lg);
-            min-height: 300px;
-        }
-        
-        .kanban-column {
-            min-width: 280px;
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            display: flex;
-            flex-direction: column;
-            height: fit-content;
-            min-height: 200px;
-        }
-        
-        .kanban-header {
-            padding: var(--spacing-md);
-            border-bottom: 1px solid var(--glass-border);
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        .kanban-count {
-            background: var(--bg-active);
-            padding: var(--spacing-xs) var(--spacing-sm);
-            border-radius: var(--radius-sm);
-            font-size: 0.75rem;
-        }
-        
-        .kanban-body {
-            flex: 1;
-            padding: var(--spacing-md);
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-sm);
-        }
-        
-        .kanban-card {
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            padding: var(--spacing-md);
-            cursor: move;
-            transition: var(--transition);
-        }
-        
-        .kanban-card:hover {
-            border-color: var(--type-goal);
-            transform: translateY(-2px);
-            box-shadow: var(--shadow);
-        }
-        
-        /* 看板折叠/展开动画 */
-        .kanban-container {
-            transition: all 0.3s ease-in-out;
-            transform-origin: top;
-        }
-        
-        .type-board-section .btn-sm {
-            transition: transform 0.3s ease;
-        }
-        
-        .type-board-section .btn-sm:hover {
-            transform: scale(1.1);
-        }
-        
-        /* ========================================
-           📋 项目看板样式
-           ======================================== */
-        .board-columns {
-            display: flex;
-            gap: var(--spacing-lg);
-            overflow-x: auto;
-            padding-bottom: var(--spacing-lg);
-        }
-
-        .board-column {
-            min-width: 300px;
-            flex: 1;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            display: flex;
-            flex-direction: column;
-        }
-
-        .board-column-header {
-            padding: var(--spacing-md);
-            border-bottom: 1px solid var(--glass-border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .board-column-header h3 {
-            margin: 0;
-            font-size: 1rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-xs);
-        }
-
-        .count-badge {
-            background: var(--bg-active);
-            padding: var(--spacing-xs) var(--spacing-sm);
-            border-radius: var(--radius-sm);
-            font-size: 0.75rem;
-            color: var(--type-goal);
-        }
-
-        .board-column-content {
-            flex: 1;
-            padding: var(--spacing-md);
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-sm);
-        }
-
-        .board-card {
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            padding: var(--spacing-md);
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .board-card:hover {
-            border-color: var(--type-goal);
-            transform: translateY(-2px);
-            box-shadow: var(--shadow);
-        }
-
-        .board-card-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: var(--spacing-sm);
-        }
-
-        .board-card-title {
-            font-size: 0.9375rem;
-            font-weight: 600;
-            margin: var(--spacing-sm) 0;
-            line-height: 1.4;
-        }
-
-        .board-card-meta {
-            display: flex;
-            gap: var(--spacing-md);
-            margin: var(--spacing-sm) 0;
-            font-size: 0.875rem;
-            color: var(--text-muted);
-        }
-
-        .board-card-footer {
-            margin-top: var(--spacing-md);
-            padding-top: var(--spacing-sm);
-            border-top: 1px solid var(--glass-border);
-        }
-
-        .board-card-actions {
-            display: flex;
-            gap: var(--spacing-xs);
-            flex-wrap: wrap;
-        }
-        
-        /* 看板卡片折叠/展开状态样式 */
-        .board-card {
-            position: relative;
-            min-height: 60px;
-            transition: all 0.3s ease;
-        }
-        
-        .board-card:not(.expanded) {
-            padding-bottom: calc(var(--spacing-md) + 20px);
-        }
-        
-        .board-card.expanded {
-            min-height: auto;
-        }
-        
-        .board-card .expand-indicator {
-            transition: transform 0.3s ease;
-        }
-        
-        .board-card:hover .expand-indicator {
-            opacity: 1 !important;
-        }
-        
-        /* 子项目样式 */
-        .board-card.sub-project {
-            margin-left: var(--spacing-lg);
-            margin-top: var(--spacing-sm);
-            position: relative;
-            border-left: 3px solid var(--type-project);
-            background: rgba(72, 187, 120, 0.05);
-        }
-        
-        .sub-project-indicator {
-            position: absolute;
-            left: -20px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 15px;
-            height: 1px;
-            background: var(--glass-border);
-        }
-        
-        .sub-project-indicator::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: -6px;
-            width: 1px;
-            height: calc(50% + 6px);
-            background: var(--glass-border);
-        }
-        
-        .board-card.sub-project .board-card-title {
-            font-size: 0.875rem;
-        }
-
-        .btn-sm {
-            padding: var(--spacing-xs) var(--spacing-sm);
-            font-size: 0.75rem;
-        }
-        
-        /* 看板拖拽样式 */
-        .kanban-card[draggable="true"] {
-            cursor: grab;
-            position: relative;
-        }
-        
-        .kanban-card[draggable="true"]:active {
-            cursor: grabbing;
-        }
-        
-        .kanban-card.dragging {
-            opacity: 0.5;
-            transform: rotate(3deg) scale(1.02);
-            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.3);
-            transition: none;
-            position: relative;
-            z-index: 1000;
-        }
-        
-        /* 原位置的占位符效果 */
-        .kanban-card.dragging::after {
-            content: '';
-            position: absolute;
-            top: -5px;
-            left: -5px;
-            right: -5px;
-            bottom: -5px;
-            border: 2px dashed var(--type-goal);
-            border-radius: var(--radius-sm);
-            opacity: 0.5;
-            pointer-events: none;
-        }
-        
-        /* 不同状态列的拖拽效果 */
-        .kanban-column[data-status="未开始"].drag-over {
-            background: linear-gradient(135deg, var(--bg-active) 0%, rgba(113, 128, 150, 0.1) 100%);
-            border-color: var(--status-todo);
-            box-shadow: inset 0 0 0 2px var(--status-todo), 0 4px 20px rgba(113, 128, 150, 0.2);
-        }
-        
-        .kanban-column[data-status="进行中"].drag-over {
-            background: linear-gradient(135deg, var(--bg-active) 0%, rgba(246, 173, 85, 0.1) 100%);
-            border-color: var(--status-doing);
-            box-shadow: inset 0 0 0 2px var(--status-doing), 0 4px 20px rgba(246, 173, 85, 0.2);
-        }
-        
-        .kanban-column[data-status="暂停"].drag-over {
-            background: linear-gradient(135deg, var(--bg-active) 0%, rgba(91, 157, 217, 0.1) 100%);
-            border-color: var(--status-pause);
-            box-shadow: inset 0 0 0 2px var(--status-pause), 0 4px 20px rgba(91, 157, 217, 0.2);
-        }
-        
-        .kanban-column[data-status="已完成"].drag-over {
-            background: linear-gradient(135deg, var(--bg-active) 0%, rgba(72, 187, 120, 0.1) 100%);
-            border-color: var(--status-done);
-            box-shadow: inset 0 0 0 2px var(--status-done), 0 4px 20px rgba(72, 187, 120, 0.2);
-        }
-        
-        .kanban-column.drag-over .board-column-header h3 {
-            transform: scale(1.05);
-            transition: transform 0.2s ease;
-        }
-        
-        /* 拖拽占位符样式 */
-        .drag-placeholder {
-            height: 120px;
-            margin: var(--spacing-md) 0;
-            border: 2px dashed var(--glass-border);
-            border-radius: var(--radius);
-            background: var(--bg-hover);
-            opacity: 0.5;
-            transition: var(--transition);
-            animation: placeholderPulse 1.5s ease-in-out infinite;
-        }
-        
-        @keyframes placeholderPulse {
-            0%, 100% { opacity: 0.3; }
-            50% { opacity: 0.6; }
-        }
-        
-        /* 禁止文本选择在拖拽时 */
-        .dragging * {
-            user-select: none;
-            -webkit-user-select: none;
-        }
-        
-        /* 拖拽时的指示器 */
-        .drop-indicator {
-            position: absolute;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, transparent, var(--type-goal), transparent);
-            opacity: 0;
-            transition: opacity 0.2s;
-            pointer-events: none;
-        }
-        
-        .drop-indicator.active {
-            opacity: 1;
-            animation: indicatorGlow 0.5s ease-in-out;
-        }
-        
-        @keyframes indicatorGlow {
-            0% { transform: scaleX(0); }
-            100% { transform: scaleX(1); }
-        }
-        
-        /* 拖拽时卡片hover效果禁用 */
-        .dragging .board-card:hover {
-            transform: none;
-            border-color: var(--glass-border);
-        }
-        
-        /* 项目看板拖拽样式 */
-        .board-card[draggable="true"] {
-            cursor: grab;
-        }
-        
-        .board-card[draggable="true"]:active {
-            cursor: grabbing;
-        }
-        
-        .board-card.dragging {
-            opacity: 0.3;
-            transform: rotate(2deg) scale(1.01);
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-            transition: none;
-            position: relative;
-            z-index: 1000;
-        }
-        
-        /* 看板列的拖拽悬停效果 */
-        .board-column-content.drag-over {
-            background: var(--bg-active);
-            border: 2px dashed var(--type-project);
-            border-radius: var(--radius-sm);
-            position: relative;
-            min-height: 100px;
-        }
-        
-        .board-column-content.drag-over::before {
-            content: '释放以移动到此状态';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: var(--type-project);
-            font-size: 0.875rem;
-            font-weight: 600;
-            opacity: 0.8;
-            pointer-events: none;
-            white-space: nowrap;
-        }
-        
-        /* 不同状态列的拖拽效果 */
-        .board-column-content[data-status="未开始"].drag-over {
-            background: linear-gradient(135deg, var(--bg-active) 0%, rgba(113, 128, 150, 0.1) 100%);
-            border-color: var(--status-todo);
-        }
-        
-        .board-column-content[data-status="进行中"].drag-over {
-            background: linear-gradient(135deg, var(--bg-active) 0%, rgba(246, 173, 85, 0.1) 100%);
-            border-color: var(--status-doing);
-        }
-        
-        .board-column-content[data-status="已完成"].drag-over {
-            background: linear-gradient(135deg, var(--bg-active) 0%, rgba(72, 187, 120, 0.1) 100%);
-            border-color: var(--status-done);
-        }
-        
-        /* 列表视图样式 */
-        .list-container {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            overflow: hidden;
-        }
-        
-        .list-header {
-            display: grid;
-            grid-template-columns: 40px 120px 120px 1fr 100px 120px 150px;
-            gap: var(--spacing-md);
-            padding: var(--spacing-md);
-            background: var(--bg-tertiary);
-            border-bottom: 1px solid var(--glass-border);
-            font-weight: 600;
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-        
-        .list-body {
-            max-height: calc(100vh - 300px);
-            overflow-y: auto;
-        }
-        
-        .list-row {
-            display: grid;
-            grid-template-columns: 40px 120px 120px 1fr 100px 120px 150px;
-            gap: var(--spacing-md);
-            padding: var(--spacing-md);
-            border-bottom: 1px solid var(--glass-border);
-            align-items: center;
-            transition: var(--transition);
-        }
-        
-        .list-row:hover {
-            background: var(--bg-hover);
-        }
-        
-        .list-checkbox {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-        }
-        
-        /* 任务详情模态框 */
-        .task-detail-section {
-            margin-bottom: var(--spacing-lg);
-        }
-        
-        .task-detail-label {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-            margin-bottom: var(--spacing-xs);
-        }
-        
-        .task-detail-value {
-            font-size: 1rem;
-            color: var(--text-primary);
-        }
-        
-        .task-detail-tags {
-            display: flex;
-            gap: var(--spacing-xs);
-            flex-wrap: wrap;
-            margin-top: var(--spacing-sm);
-        }
-        
-        .task-detail-tag {
-            padding: var(--spacing-xs) var(--spacing-sm);
-            background: var(--bg-active);
-            border-radius: var(--radius-sm);
-            font-size: 0.875rem;
-            color: var(--type-goal);
-        }
-        
-        /* 进展日志样式 */
-        .progress-log-item {
-            display: flex;
-            gap: var(--spacing-md);
-            padding: var(--spacing-md);
-            border-bottom: 1px solid var(--glass-border);
-            transition: var(--transition);
-        }
-        
-        .progress-log-item:last-child {
-            border-bottom: none;
-        }
-        
-        .progress-log-item:hover {
-            background: var(--bg-hover);
-            cursor: pointer;
-        }
-        
-        .progress-log-item:hover .progress-log-content::after {
-            content: " ✏️";
-            opacity: 0.5;
-            font-size: 0.875rem;
-        }
-        
-        .progress-log-time {
-            font-size: 0.875rem;
-            color: var(--text-muted);
-            min-width: 140px;
-            flex-shrink: 0;
-        }
-        
-        .progress-log-content {
-            flex: 1;
-            font-size: 0.9375rem;
-            line-height: 1.6;
             white-space: pre-wrap;
-            word-break: break-word;
-        }
-        
-        .progress-log-empty {
-            text-align: center;
-            padding: var(--spacing-xl);
-            color: var(--text-muted);
-        }
-        
-        /* ========================================
-           🎨 动态侧边栏样式
-           ======================================== */
-        
-        /* 看板导航项 */
-        .board-nav-item {
-            padding: var(--spacing-md);
-            margin-bottom: var(--spacing-sm);
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: var(--transition);
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-        }
-        
-        .board-nav-item:hover {
-            background: var(--bg-hover);
-            border-color: var(--type-goal);
-        }
-        
-        .board-nav-item.active {
-            background: var(--bg-active);
-            border-color: var(--type-goal);
-            color: var(--type-goal);
-        }
-        
-        .board-nav-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: var(--spacing-sm);
-        }
-        
-        .board-nav-title {
-            font-weight: 500;
-            font-size: 0.9375rem;
-        }
-        
-        .board-nav-count {
-            background: var(--bg-active);
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            color: var(--type-goal);
-        }
-        
-        .board-nav-stats {
-            display: flex;
-            gap: var(--spacing-xs);
-            flex-wrap: wrap;
-        }
-        
-        .status-tag {
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-        
-        .status-tag.todo {
-            background: rgba(113, 128, 150, 0.2);
-            color: var(--status-todo);
-        }
-        
-        .status-tag.pause {
-            background: rgba(91, 157, 217, 0.2);
-            color: var(--status-pause);
-        }
-        
-        .status-tag.doing {
-            background: rgba(246, 173, 85, 0.2);
-            color: var(--status-doing);
-        }
-        
-        .status-tag.done {
-            background: rgba(72, 187, 120, 0.2);
-            color: var(--status-done);
-        }
-        
-        /* 日期导航网格 */
-        .date-nav-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--spacing-sm);
-            margin-bottom: var(--spacing-md);
-        }
-        
-        .date-nav-btn {
-            padding: var(--spacing-sm);
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            cursor: pointer;
-            transition: var(--transition);
-            font-size: 0.875rem;
-        }
-        
-        .date-nav-btn:hover {
-            background: var(--bg-hover);
-            border-color: var(--type-goal);
-        }
-        
-        /* 时间轴统计迷你版 */
-        .timeline-stats-mini {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--spacing-sm);
-        }
-        
-        .timeline-stats-mini .stat-item {
-            background: var(--bg-card);
-            padding: var(--spacing-sm);
-            border-radius: var(--radius-sm);
-            text-align: center;
-        }
-        
-        .stat-label {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            display: block;
-        }
-        
-        .stat-value {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--type-goal);
-        }
-        
-        /* 进度条迷你版 */
-        .progress-bar-mini {
-            height: 4px;
-            background: var(--bg-hover);
-            border-radius: 2px;
-            overflow: hidden;
-            margin-top: var(--spacing-xs);
-        }
-        
-        .progress-bar-mini .progress-fill {
-            height: 100%;
-            background: var(--type-goal);
-            transition: width 0.3s ease;
-        }
-        
-        /* 项目统计 */
-        .project-stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--spacing-sm);
-        }
-        
-        /* 目标导航项 */
-        .goal-nav-item {
-            padding: var(--spacing-md);
-            margin-bottom: var(--spacing-sm);
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        
-        .goal-nav-item:hover {
-            background: var(--bg-hover);
-            border-color: var(--type-goal);
-        }
-        
-        .goal-nav-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: var(--spacing-sm);
-        }
-        
-        .goal-nav-krs {
-            padding-left: var(--spacing-md);
-        }
-        
-        .kr-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: var(--spacing-xs) 0;
-            border-bottom: 1px solid var(--glass-border);
-        }
-        
-        .kr-item:last-child {
-            border-bottom: none;
-        }
-        
-        /* 目标统计 */
-        .goal-stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--spacing-sm);
-        }
-        
-        /* 按钮块样式 */
-        .btn-block {
-            width: 100%;
-            margin-bottom: var(--spacing-sm);
-        }
-        
-        /* 项目快速切换按钮 */
-        .project-btn {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .project-btn .badge {
-            background: var(--glass-bg);
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-        }
-        
-        /* 保存视图按钮 */
-        .save-view-btn {
-            padding: 4px 8px;
-            background: transparent;
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            color: var(--text-secondary);
-            font-size: 0.75rem;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        
-        .save-view-btn:hover {
-            background: var(--bg-hover);
-            border-color: var(--type-goal);
-            color: var(--type-goal);
-        }
-        
-        /* ========================================
-           ⏰ 时间轴任务组样式
-           ======================================== */
-        
-        /* 任务组容器 */
-        .timeline-item-group {
-            position: relative;
-            display: flex;
-            gap: var(--spacing-lg);
-            margin-bottom: var(--spacing-xl);
-            padding-left: 20px;
-        }
-        
-        /* 任务组的时间点 */
-        .timeline-dot-group {
-            position: absolute;
-            left: -8px;
-            top: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        /* 任务组计数 */
-        .timeline-group-count {
-            background: var(--type-goal);
-            color: white;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-        
-        /* 任务组标签 */
-        .timeline-group-label {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-            margin-bottom: var(--spacing-sm);
-            font-weight: 500;
-        }
-        
-        /* 任务组内容容器 */
-        .timeline-group-tasks {
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-sm);
-        }
-        
-        /* 分组中的任务内容 */
-        .timeline-content-grouped {
-            margin-left: 0;
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-        }
-        
-        .timeline-content-grouped:hover {
-            border-color: var(--type-goal);
-            transform: translateX(4px);
-        }
-        
-        /* ========================================
-           📱 响应式样式
-           ======================================== */
-        
-        /* 侧边栏切换按钮 */
-        .sidebar-toggle-btn {
-            position: fixed;
-            left: 20px;
-            bottom: 20px;
-            width: 48px;
-            height: 48px;
-            background: var(--bg-active);
-            border: 1px solid var(--glass-border);
-            border-radius: 50%;
-            cursor: pointer;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            color: var(--text-primary);
-            box-shadow: var(--shadow);
-            transition: var(--transition);
-            z-index: 1000;
-        }
-        
-        .sidebar-toggle-btn:hover {
-            background: var(--type-goal);
-            transform: scale(1.1);
-        }
-        
-        /* 窗口一半宽度及以下自动折叠侧边栏 (960px及以下) */
-        @media (max-width: 960px) {
-            /* 默认隐藏侧边栏 */
-            .sidebar {
-                position: fixed;
-                left: 0;
-                top: 60px;
-                bottom: 0;
-                z-index: 999;
-                transform: translateX(-100%);
-                box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
-            }
-            
-            .sidebar.show {
-                transform: translateX(0);
-            }
-            
-            /* 显示切换按钮 */
-            .sidebar-toggle-btn {
-                display: flex;
-            }
-            
-            /* 调整主内容区域 */
-            .workspace {
-                margin-left: 0;
-            }
-            
-            /* 调整焦点任务卡片网格 */
-            .focus-task-container {
-                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            }
-            
-            /* 调整导航栏布局 */
-            .navbar {
-                flex-wrap: wrap;
-                padding: var(--spacing-sm) var(--spacing-md);
-            }
-            
-            .navbar-left {
-                flex: 1 1 100%;
-                margin-bottom: var(--spacing-sm);
-            }
-            
-            .view-switcher {
-                flex: 1 1 auto;
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-                scrollbar-width: none;
-            }
-            
-            .view-switcher::-webkit-scrollbar {
-                display: none;
-            }
-            
-            .quick-add-container {
-                display: none;
-            }
-        }
-        
-        /* Desktop: show toggle button when sidebar is collapsed */
-        @media (min-width: 961px) {
-            body.sidebar-collapsed .sidebar-toggle-btn {
-                display: flex;
-            }
-        }
-        
-        /* 手机设备 (768px及以下) */
-        @media (max-width: 768px) {
-            /* 进一步调整焦点任务容器 */
-            .focus-task-container {
-                grid-template-columns: 1fr;
-                gap: var(--spacing-md);
-            }
-            
-            /* 调整看板列 */
-            .board-columns {
-                flex-direction: column;
-            }
-            
-            .board-column {
-                min-width: 100%;
-                margin-bottom: var(--spacing-lg);
-            }
-            
-            /* 调整目标看板 */
-            .goal-board {
-                grid-template-columns: 1fr;
-            }
-            
-            /* 调整时间线控制栏 */
-            .timeline-controls {
-                flex-wrap: wrap;
-                gap: var(--spacing-sm);
-            }
-            
-            .timeline-date-picker {
-                flex: 1 1 100%;
-                justify-content: center;
-            }
-            
-            .timeline-view-mode {
-                flex: 1 1 100%;
-                justify-content: center;
-            }
-            
-            /* 调整统计卡片 */
-            .timeline-stats {
-                grid-template-columns: 1fr;
-            }
-            
-            /* 隐藏一些非必要元素 */
-            .global-actions {
-                display: none;
-            }
-        }
-        
-        /* 侧边栏遮罩层 */
-        .sidebar-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 998;
-            display: none;
-            transition: opacity 0.3s;
-        }
-
-        /* ========================================
-           📋 计划视图样式 - 反思仪表板
-           ======================================== */
-        
-        .planning-section {
-            padding: var(--spacing-lg);
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        /* 反思仪表板容器 */
-        .reflection-dashboard {
-            background: var(--bg-secondary);
-            border-radius: var(--radius-lg);
-            padding: var(--spacing-xl);
-            min-height: 100vh;
-        }
-        
-        /* 反思面板网格布局 */
-        .reflection-panels {
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-xl);
-            margin-top: var(--spacing-xl);
-        }
-        
-        /* 单个反思区块 */
-        .reflection-section {
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            padding: var(--spacing-lg);
-            backdrop-filter: var(--glass-blur);
-            transition: var(--transition);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .reflection-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, transparent, var(--type-goal), transparent);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        
-        .reflection-section:hover {
-            border-color: var(--type-goal);
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
-        }
-        
-        .reflection-section:hover::before {
-            opacity: 1;
-        }
-        
-        /* 区块标题 */
-        .section-subtitle {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: var(--spacing-md);
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-        }
-        
-        /* 焦点任务统计卡片 */
-        .focus-stats {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: var(--spacing-md);
-            margin-bottom: var(--spacing-lg);
-        }
-        
-        .stat-cards {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: var(--spacing-md);
-            margin-bottom: var(--spacing-lg);
-        }
-        
-        .stat-card {
-            background: var(--bg-hover);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            padding: var(--spacing-md);
-            text-align: center;
-            transition: var(--transition);
-        }
-        
-        .stat-card:hover {
-            background: var(--bg-active);
-            border-color: var(--type-goal);
-        }
-        
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--type-goal);
-            line-height: 1;
-        }
-        
-        .stat-label {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-            margin-top: var(--spacing-xs);
-        }
-        
-        /* 空状态样式 */
-        .empty-state {
-            text-align: center;
-            color: var(--text-muted);
-            font-style: italic;
-            padding: var(--spacing-xl) 0;
-        }
-        
-        /* 高亮显示 */
-        .highlight {
-            color: var(--type-goal);
-            font-weight: 600;
-        }
-        
-        /* 今日任务统计项 */
-        .stat-item {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            padding: var(--spacing-sm);
-            background: var(--bg-hover);
-            border-radius: var(--radius-sm);
-            margin-bottom: var(--spacing-sm);
-        }
-        
-        .stat-item.completed { border-left: 3px solid var(--status-done); }
-        .stat-item.in-progress { border-left: 3px solid var(--status-doing); }
-        .stat-item.paused { border-left: 3px solid var(--status-pause); }
-        .stat-item.not-started { border-left: 3px solid var(--status-todo); }
-        
-        /* 任务元信息 */
-        .task-meta {
-            display: flex;
-            gap: var(--spacing-md);
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-        
-        .task-type {
-            background: var(--bg-active);
-            padding: 2px 8px;
-            border-radius: 12px;
-        }
-        
-        /* 进度任务信息 */
-        .progress-task {
-            font-weight: 500;
-            color: var(--type-goal);
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        
-        .progress-task:hover {
-            text-decoration: underline;
-        }
-        
-        .progress-note {
-            margin-top: var(--spacing-xs);
-            color: var(--text-primary);
-        }
-        
-        /* 警告提示 */
-        .pending-warning {
-            background: rgba(252, 129, 129, 0.1);
-            border: 1px solid rgba(252, 129, 129, 0.3);
-            border-radius: var(--radius-sm);
-            padding: var(--spacing-md);
-            margin-top: var(--spacing-md);
-            color: var(--priority-high);
-        }
-        
-        /* 明日任务数量 */
-        .tomorrow-count {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: var(--spacing-md);
-        }
-        
-        /* 建议文本 */
-        .suggestion {
-            color: var(--text-secondary);
-            margin-top: var(--spacing-sm);
-        }
-        
-        /* 任务列表项 */
-        .reflection-task-item {
-            background: var(--bg-hover);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            padding: var(--spacing-md);
-            margin-bottom: var(--spacing-sm);
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-md);
-            transition: var(--transition);
-            cursor: pointer;
-        }
-        
-        .reflection-task-item:hover {
-            background: var(--bg-active);
-            border-color: var(--type-goal);
-            transform: translateX(4px);
-        }
-        
-        .task-status-indicator {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-        
-        .task-status-indicator.todo { background: var(--status-todo); }
-        .task-status-indicator.doing { background: var(--status-doing); }
-        .task-status-indicator.done { background: var(--status-done); }
-        .task-status-indicator.pause { background: var(--status-pause); }
-        
-        .reflection-task-info {
-            flex: 1;
-        }
-        
-        .reflection-task-title {
-            font-weight: 500;
-            color: var(--text-primary);
-            margin-bottom: 2px;
-        }
-        
-        .reflection-task-meta {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            display: flex;
-            gap: var(--spacing-sm);
-        }
-        
-        /* 待处理任务统计 */
-        .pending-stats {
-            display: flex;
-            justify-content: space-between;
-            background: var(--bg-hover);
-            border-radius: var(--radius-sm);
-            padding: var(--spacing-md);
-            margin-bottom: var(--spacing-lg);
-        }
-        
-        .pending-stat-item {
-            text-align: center;
-        }
-        
-        .pending-stat-value {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--type-project);
-        }
-        
-        .pending-stat-label {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-        
-        /* 今日任务统计 */
-        .today-stats {
-            background: var(--bg-hover);
-            border-radius: var(--radius-sm);
-            padding: var(--spacing-md);
-            margin-bottom: var(--spacing-lg);
-        }
-        
-        .time-efficiency-bar {
-            height: 8px;
-            background: var(--bg-tertiary);
-            border-radius: 4px;
-            overflow: hidden;
-            margin: var(--spacing-sm) 0;
-        }
-        
-        .efficiency-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--type-project), var(--type-goal));
-            transition: width 0.3s ease;
-        }
-        
-        /* 进展记录列表 */
-        .progress-list {
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        
-        .progress-item {
-            background: var(--bg-hover);
-            border-left: 3px solid var(--type-action);
-            padding: var(--spacing-sm) var(--spacing-md);
-            margin-bottom: var(--spacing-sm);
-            font-size: 0.875rem;
-        }
-        
-        .progress-time {
-            color: var(--text-muted);
-            font-size: 0.75rem;
-        }
-        
-        /* 反思提示区域 */
-        .reflection-prompt {
-            background: var(--bg-hover);
-            border: 1px dashed var(--glass-border);
-            border-radius: var(--radius-sm);
-            padding: var(--spacing-md);
-            margin-top: var(--spacing-lg);
-            font-style: italic;
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-        }
-        
-        .reflection-prompt p {
-            margin: 0;
-        }
-        
-        /* 操作按钮区域 */
-        .pending-actions,
-        .add-progress-prompt,
-        .quick-planning {
-            margin-top: var(--spacing-md);
-            display: flex;
-            gap: var(--spacing-sm);
-            flex-wrap: wrap;
-        }
-        
-        /* 明日任务列表 */
-        .tomorrow-tasks {
-            margin-bottom: var(--spacing-lg);
-        }
-        
-        .tomorrow-task-item {
-            background: var(--bg-hover);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            padding: var(--spacing-md);
-            margin-bottom: var(--spacing-sm);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .tomorrow-task-item:hover {
-            border-color: var(--type-kr);
-            background: var(--bg-active);
-        }
-        
-        /* 规划建议列表 */
-        .planning-suggestions {
-            background: var(--bg-hover);
-            border-radius: var(--radius-sm);
-            padding: var(--spacing-md);
-            margin-bottom: var(--spacing-lg);
-        }
-        
-        .planning-suggestions h4 {
-            font-size: 0.875rem;
-            font-weight: 600;
-            margin-bottom: var(--spacing-sm);
-            color: var(--text-primary);
-        }
-        
-        .planning-suggestions ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        
-        .planning-suggestions li {
-            padding: var(--spacing-xs) 0;
-            padding-left: var(--spacing-md);
-            position: relative;
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-        
-        .planning-suggestions li::before {
-            content: "•";
-            position: absolute;
-            left: 0;
-            color: var(--type-goal);
-            font-weight: bold;
-        }
-        
-        /* 响应式调整 */
-        @media (max-width: 1024px) {
-            .reflection-panels {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        @media (max-width: 768px) {
-            .reflection-dashboard {
-                padding: var(--spacing-md);
-            }
-            
-            .reflection-panels {
-                gap: var(--spacing-md);
-            }
-            
-            .reflection-section {
-                padding: var(--spacing-md);
-            }
-            
-            .focus-stats {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        .planning-panels {
-            display: grid;
-            grid-template-columns: 3fr 2fr;  /* 60/40 分割 */
-            gap: var(--spacing-lg);
-            margin-top: var(--spacing-lg);
-        }
-        
-        .planning-panel {
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            backdrop-filter: var(--glass-blur);
-            overflow: hidden;
-        }
-        
-        .planning-panel.planning-actions {
-            background: var(--bg-secondary);
-            border: 2px solid var(--type-goal);
-        }
-        
-        .planning-panel.task-pool {
-            height: 600px;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .planning-panel.task-pool .panel-content {
-            flex: 1;
-            overflow-y: auto;
-            max-height: unset;
-        }
-        
-        .planning-panel.planning-actions.enhanced {
-            position: sticky;
-            top: 20px;
-            max-height: calc(100vh - 200px);
-        }
-        
-        .panel-header {
-            background: var(--glass-bg);
-            padding: var(--spacing-md);
-            border-bottom: 1px solid var(--glass-border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .panel-title {
-            font-size: 1rem;
-            font-weight: 600;
-            margin: 0;
-        }
-        
-        .panel-count {
-            background: var(--type-goal);
-            color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-        
-        .panel-content {
-            padding: var(--spacing-md);
-            max-height: 500px;
-            overflow-y: auto;
-        }
-        
-        .quick-planning-options {
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-sm);
-            margin-bottom: var(--spacing-lg);
-        }
-        
-        .planning-btn {
-            background: linear-gradient(135deg, var(--type-goal), var(--type-project));
-            color: white;
-            border: none;
-            padding: var(--spacing-md);
-            border-radius: var(--radius-sm);
-            font-size: 0.875rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: var(--spacing-sm);
-        }
-        
-        .planning-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow);
-        }
-        
-        .planning-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        .planning-btn.primary {
-            background: linear-gradient(135deg, #ff6b6b, #f06595);
-            font-size: 1rem;
-            padding: var(--spacing-lg);
-        }
-        
-        .smart-planning-section,
-        .manual-planning-section {
-            margin-bottom: var(--spacing-xl);
-        }
-        
-        .planning-tips {
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            padding: var(--spacing-md);
-            margin-top: var(--spacing-md);
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-        
-        .planning-tips ul {
-            list-style: none;
-            padding: 0;
-            margin-top: var(--spacing-sm);
-        }
-        
-        .planning-tips li {
-            padding: var(--spacing-xs) 0;
-            border-bottom: 1px solid var(--glass-border);
-        }
-        
-        .planning-tips li:last-child {
-            border-bottom: none;
-        }
-        
-        .planning-filters {
-            border-top: 1px solid var(--glass-border);
-            padding-top: var(--spacing-md);
-        }
-        
-        .planning-filters h4 {
-            margin-bottom: var(--spacing-md);
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-        
-        .filter-group {
-            margin-bottom: var(--spacing-md);
-        }
-        
-        .filter-group label {
-            display: block;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-bottom: var(--spacing-xs);
-        }
-        
-        .filter-group select,
-        .filter-group input[type="checkbox"] {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-size: 0.75rem;
-        }
-        
-        .filter-group select {
-            width: 100%;
-            padding: var(--spacing-xs);
-        }
-        
-        .planning-task-item {
-            background: var(--bg-hover);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            padding: var(--spacing-md);
-            margin-bottom: var(--spacing-sm);
-            cursor: pointer;
-            transition: var(--transition);
-            position: relative;
-            display: flex;
-            align-items: flex-start;
-            gap: var(--spacing-md);
-        }
-        
-        .planning-task-item:hover {
-            border-color: var(--type-goal);
-            transform: translateY(-1px);
-            box-shadow: var(--shadow);
-            background: rgba(102, 126, 234, 0.08);
-        }
-        
-        .planning-task-item.selected {
-            border-color: var(--type-goal);
-            background: var(--bg-active);
-            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.3);
-        }
-        
-        .planning-task-item.dragging {
-            opacity: 0.5;
-        }
-        
-        .planning-task-item.drag-over {
-            border-color: var(--type-project);
-            background: rgba(72, 187, 120, 0.1);
-        }
-        
-        /* 任务复选框样式增强 */
-        .task-checkbox {
-            position: relative;
-            flex-shrink: 0;
-        }
-        
-        .task-checkbox input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-            accent-color: var(--type-goal);
-        }
-        
-        .task-content {
-            flex: 1;
-            min-width: 0;
-        }
-        
-        .task-header {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            margin-bottom: var(--spacing-sm);
-            flex-wrap: wrap;
-        }
-        
-        .task-title {
-            font-size: 0.95rem;
-            font-weight: 500;
-            margin: 0;
-            color: var(--text-primary);
-            word-break: break-word;
-        }
-        
-        .task-meta {
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-xs);
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-        }
-        
-        .task-path {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-xs);
-            opacity: 0.8;
-        }
-        
-        .task-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: var(--spacing-xs);
-            color: var(--text-muted);
-        }
-        
-        /* 选中任务预览 */
-        .selected-tasks-preview {
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            padding: var(--spacing-md);
-            margin-bottom: var(--spacing-lg);
-        }
-        
-        .selected-tasks-list {
-            max-height: 200px;
-            overflow-y: auto;
-            margin-top: var(--spacing-sm);
-        }
-        
-        .selected-task-item {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            padding: var(--spacing-sm);
-            background: var(--bg-hover);
-            border-radius: var(--radius-sm);
-            margin-bottom: var(--spacing-xs);
-            font-size: 0.875rem;
-        }
-        
-        .selected-task-item:hover {
-            background: var(--bg-active);
-        }
-        
-        .remove-selected {
-            cursor: pointer;
-            color: var(--text-muted);
-            transition: color 0.2s;
-        }
-        
-        .remove-selected:hover {
-            color: var(--priority-high);
-        }
-        
-        /* 规划建议 */
-        .planning-suggestions {
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            padding: var(--spacing-md);
-            margin-top: var(--spacing-md);
-            font-size: 0.875rem;
-            line-height: 1.6;
-        }
-        
-        .planning-suggestions ul {
-            list-style: none;
-            padding: 0;
-            margin: var(--spacing-sm) 0 0 0;
-        }
-        
-        .planning-suggestions li {
-            display: flex;
-            align-items: flex-start;
-            gap: var(--spacing-sm);
-            padding: var(--spacing-xs) 0;
-        }
-        
-        .planning-suggestions li::before {
-            content: "•";
-            color: var(--type-goal);
-            font-weight: bold;
-        }
-        
-        /* 规划结果预览 */
-        .planning-result-preview {
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            padding: var(--spacing-md);
-            margin-top: var(--spacing-lg);
-        }
-        
-        .result-stats {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: var(--spacing-sm);
-            margin-top: var(--spacing-sm);
-        }
-        
-        .stat-item {
-            background: var(--bg-hover);
-            padding: var(--spacing-sm);
-            border-radius: var(--radius-sm);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.875rem;
-        }
-        
-        .stat-value {
-            font-weight: 600;
-            color: var(--type-goal);
-        }
-        
-        .planning-task-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: var(--spacing-xs);
-        }
-        
-        .planning-task-title {
-            font-weight: 500;
-            margin-bottom: var(--spacing-xs);
-        }
-        
-        .planning-task-path {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-        
-        /* 响应式调整 */
-        @media (max-width: 1200px) {
-            .planning-panels {
-                grid-template-columns: 1fr;
-                gap: var(--spacing-md);
-            }
-            
-            .planning-panel.planning-actions.enhanced {
-                position: relative;
-                top: auto;
-                max-height: none;
-                order: -1;
-            }
-            
-            .planning-panel.task-pool {
-                height: auto;
-                min-height: 400px;
-            }
-        }
-        
-        @media (max-width: 768px) {
-            .planning-task-item {
-                padding: var(--spacing-sm);
-            }
-            
-            .task-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            
-            .planning-btn {
-                font-size: 0.813rem;
-                padding: var(--spacing-sm) var(--spacing-md);
-            }
-        }
-        
-        .sidebar-overlay.show {
-            display: block;
-        }
-        
-        @media (max-width: 960px) {
-            .sidebar-overlay.show {
-                display: block;
-            }
-        }
-        
-        /* ========================================
-           📊 看板视图模式切换
-           ======================================== */
-        .board-view-switcher {
-            display: flex;
-            gap: var(--spacing-xs);
-            background: var(--bg-card);
-            padding: var(--spacing-xs);
-            border-radius: var(--radius-sm);
-        }
-        
-        .board-mode-btn {
-            padding: var(--spacing-sm) var(--spacing-md);
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
-            border-radius: var(--radius-sm);
-            transition: var(--transition);
-            font-size: 0.875rem;
-            font-weight: 500;
-            white-space: nowrap;
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-xs);
-        }
-        
-        .board-mode-btn.active {
-            background: var(--bg-active);
-            color: var(--type-goal);
-        }
-        
-        .board-mode-btn:hover:not(.active) {
-            background: var(--bg-hover);
-            color: var(--text-primary);
-        }
-        
-        /* 树形视图样式 */
-        .tree-view {
-            padding: var(--spacing-md);
-        }
-        
-        .tree-node {
-            margin-bottom: var(--spacing-xs);
-        }
-        
-        .tree-node-content {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            padding: var(--spacing-sm) var(--spacing-md);
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        
-        .tree-node-content:hover {
-            background: var(--bg-hover);
-            border-color: var(--type-goal);
-        }
-        
-        .tree-expand-icon {
-            width: 20px;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        
-        .tree-expand-icon.expanded {
-            transform: rotate(90deg);
-        }
-        
-        .tree-children {
-            margin-left: 32px;
-            margin-top: var(--spacing-xs);
-        }
-        
-        .tree-children.collapsed {
-            display: none;
-        }
-        
-        /* 列表视图样式 */
-        .list-view {
-            padding: var(--spacing-md);
-        }
-        
-        .list-header {
-            display: grid;
-            grid-template-columns: 40px 2fr 1fr 1fr 1fr 120px 120px;
-            gap: var(--spacing-md);
-            padding: var(--spacing-md);
-            background: var(--bg-secondary);
-            border-radius: var(--radius-sm);
-            font-weight: 600;
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-            margin-bottom: var(--spacing-sm);
-        }
-        
-        .list-row {
-            display: grid;
-            grid-template-columns: 40px 2fr 1fr 1fr 1fr 120px 120px;
-            gap: var(--spacing-md);
-            padding: var(--spacing-md);
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            margin-bottom: var(--spacing-xs);
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        
-        .list-row:hover {
-            background: var(--bg-hover);
-            border-color: var(--type-goal);
-        }
-        
-        .list-cell {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-xs);
-        }
-        
-        /* ========================================
-           📊 统一看板视图样式
-           ======================================== */
-        .board-list-view {
-            padding: var(--spacing-md);
-        }
-        
-        .list-section {
-            margin-bottom: var(--spacing-xl);
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            overflow: hidden;
-        }
-        
-        .list-section-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: var(--spacing-md) var(--spacing-lg);
-            background: var(--bg-secondary);
-            border-bottom: 1px solid var(--glass-border);
-        }
-        
-        .list-section-header h3 {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin: 0;
-        }
-        
-        .task-list-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        .task-list-table thead {
-            background: var(--bg-tertiary);
-        }
-        
-        .task-list-table th {
-            padding: var(--spacing-md);
-            text-align: left;
-            font-weight: 600;
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-            border-bottom: 1px solid var(--glass-border);
-        }
-        
-        .task-list-table tbody tr {
-            border-bottom: 1px solid var(--glass-border);
-            transition: var(--transition);
-        }
-        
-        .task-list-table tbody tr:hover {
-            background: var(--bg-hover);
-            cursor: pointer;
-        }
-        
-        .task-list-table td {
-            padding: var(--spacing-md);
-            color: var(--text-primary);
-        }
-        
-        .task-list-table .task-title {
-            font-weight: 500;
-            color: var(--text-primary);
-        }
-        
-        .task-list-table .task-actions {
-            text-align: right;
-        }
-        
-        .task-list-table .task-actions button {
-            margin-left: var(--spacing-sm);
-        }
-        
-        /* 树形视图扩展样式 */
-        .board-tree-view {
-            padding: var(--spacing-lg);
-            background: var(--bg-card);
-            border-radius: var(--radius);
-        }
-        
-        .tree-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: var(--spacing-lg);
-            padding-bottom: var(--spacing-md);
-            border-bottom: 1px solid var(--glass-border);
-        }
-        
-        .tree-header h3 {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin: 0;
-        }
-        
-        .tree-controls {
-            display: flex;
-            gap: var(--spacing-sm);
-        }
-        
-        .tree-content {
-            padding: var(--spacing-md);
-        }
-        
-        .tree-toggle {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-            cursor: pointer;
-            user-select: none;
-            width: 20px;
-            display: inline-block;
-            text-align: center;
-        }
-        
-        .tree-toggle.has-children:hover {
-            color: var(--text-primary);
-        }
-        
-        .tree-type-icon {
-            font-size: 1.1rem;
-        }
-        
-        .tree-title {
-            flex: 1;
-            font-weight: 500;
-            color: var(--text-primary);
-        }
-        
-        .tree-status {
-            font-size: 0.875rem;
-            margin-right: var(--spacing-sm);
-        }
-        
-        .tree-priority {
-            font-size: 0.75rem;
-        }
-        
-        /* 任务类型标签 */
-        .task-type-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 2px 8px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            border-radius: var(--radius-sm);
-            background: var(--bg-tertiary);
-            color: var(--text-secondary);
-            border: 1px solid var(--glass-border);
-        }
-        
-        /* 侧边栏项目筛选样式 */
-        .sidebar-stats {
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-sm);
-        }
-        
-        .sidebar-stats .stat-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: var(--spacing-xs) var(--spacing-sm);
-            background: var(--bg-card);
-            border-radius: var(--radius-sm);
-            font-size: 0.875rem;
-        }
-        
-        .sidebar-stats .stat-value {
-            font-weight: 600;
-            color: var(--type-goal);
-        }
-        
-        .active-filter-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: var(--spacing-sm);
-            background: var(--bg-active);
-            border-radius: var(--radius-sm);
-            margin-bottom: var(--spacing-sm);
-            font-size: 0.875rem;
-        }
-        
-        .clear-filter-btn {
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
-            padding: 2px 6px;
-            border-radius: var(--radius-sm);
-            transition: var(--transition);
-        }
-        
-        .clear-filter-btn:hover {
-            background: var(--bg-hover);
-            color: var(--text-primary);
-        }
-        
-        .project-filter-list {
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-xs);
-        }
-        
-        .project-filter-item {
-            padding: var(--spacing-sm);
-            background: var(--bg-card);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        
-        .project-filter-item:hover {
-            background: var(--bg-hover);
-            border-color: var(--type-goal);
-        }
-        
-        .project-filter-item.active {
-            background: var(--bg-active);
-            border-color: var(--type-goal);
-        }
-        
-        .project-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: var(--spacing-xs);
-        }
-        
-        .project-name {
-            font-weight: 500;
-            color: var(--text-primary);
-        }
-        
-        .project-count {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-        }
-        
-        .project-progress {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-        }
-        
-        .progress-bar-mini {
-            flex: 1;
-            height: 4px;
-            background: var(--bg-secondary);
-            border-radius: 2px;
-            overflow: hidden;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: var(--type-goal);
-            transition: width 0.3s ease;
-        }
-        
-        .progress-text {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            min-width: 35px;
-            text-align: right;
-        }
-        
-        .empty-message {
-            text-align: center;
-            padding: var(--spacing-md);
-            color: var(--text-muted);
-            font-size: 0.875rem;
-        }
-        
-        /* ========================================
-           📊 甘特图样式
-           ======================================== */
-        .gantt-chart {
-            background: var(--bg-card);
-            border-radius: var(--radius);
-            overflow: hidden;
-            border: 1px solid var(--glass-border);
-        }
-        
-        .gantt-header {
-            display: flex;
-            background: var(--bg-secondary);
-            border-bottom: 1px solid var(--glass-border);
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        
-        .gantt-task-list-header {
-            width: 300px;
-            padding: var(--spacing-md);
-            font-weight: 600;
-            color: var(--text-primary);
-            border-right: 1px solid var(--glass-border);
-            flex-shrink: 0;
-        }
-        
-        .gantt-timeline-header {
-            display: flex;
-            overflow-x: auto;
-            background: var(--bg-tertiary);
-        }
-        
-        .gantt-day {
-            border-right: 1px solid var(--glass-border);
-            text-align: center;
-            flex-shrink: 0;
-            background: var(--bg-secondary);
-            transition: var(--transition);
-        }
-        
-        .gantt-day:hover {
-            background: var(--bg-hover);
-        }
-        
-        .gantt-day.today {
-            background: var(--bg-active);
-            color: var(--type-goal);
-            font-weight: 600;
-        }
-        
-        .gantt-day.weekend {
-            opacity: 0.7;
-            background: var(--bg-tertiary);
-        }
-        
-        .gantt-day-number {
-            padding: var(--spacing-xs) 0;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-        
-        .gantt-day-name {
-            padding-bottom: var(--spacing-xs);
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-        }
-        
-        .gantt-body {
-            display: flex;
-            max-height: 600px;
             overflow: auto;
+            outline: none; /* Removes the default focus outline */
         }
-        
-        .gantt-task-list {
-            width: 300px;
-            flex-shrink: 0;
-            border-right: 1px solid var(--glass-border);
+        .key {
+            color: rgb(181, 0, 0);
+            font-weight: bold;
         }
-        
-        .gantt-task-item {
-            height: 40px;
-            padding: 0 var(--spacing-md);
-            border-bottom: 1px solid var(--glass-border);
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            cursor: pointer;
-            transition: var(--transition);
+        .string {
+            color: green;
         }
-        
-        .gantt-task-item:hover {
-            background: var(--bg-hover);
+        .number {
+            color: rgb(201, 77, 0);
         }
-        
-        .gantt-task-type {
-            font-size: 1rem;
-            flex-shrink: 0;
+        .boolean {
+            color: rgb(204, 0, 204);
         }
-        
-        .gantt-task-title {
-            flex: 1;
-            font-size: 0.875rem;
-            font-weight: 500;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        
-        .gantt-task-status {
-            font-size: 0.875rem;
-            flex-shrink: 0;
-        }
-        
-        .gantt-timeline {
-            position: relative;
-            overflow-x: auto;
-            background-image: repeating-linear-gradient(
-                to right,
-                var(--glass-border) 0,
-                var(--glass-border) 1px,
-                transparent 1px,
-                transparent 40px
-            );
-        }
-        
-        .gantt-today-line {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: var(--priority-high);
-            z-index: 5;
-            opacity: 0.8;
-        }
-        
-        .gantt-bar {
-            position: absolute;
-            height: 30px;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            overflow: hidden;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            padding: 0 var(--spacing-sm);
-        }
-        
-        .gantt-bar:hover {
-            transform: translateY(-1px);
-            box-shadow: var(--shadow);
-            z-index: 10;
-        }
-        
-        .gantt-bar-progress {
-            position: absolute;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: var(--radius-sm);
-        }
-        
-        .gantt-bar-text {
-            position: relative;
-            z-index: 1;
-            font-size: 0.75rem;
-            font-weight: 500;
-            color: white;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        
-        /* 任务类型颜色 */
-        .gantt-bar-目标 {
-            background: var(--type-goal);
-        }
-        
-        .gantt-bar-关键结果 {
-            background: var(--type-kr);
-        }
-        
-        .gantt-bar-项目 {
-            background: var(--type-project);
-        }
-        
-        .gantt-bar-动作 {
-            background: var(--type-action);
-        }
-        
-        /* 任务状态透明度 */
-        .gantt-bar-未开始 {
-            opacity: 0.6;
-        }
-        
-        .gantt-bar-进行中 {
-            opacity: 0.9;
-        }
-        
-        .gantt-bar-已完成 {
-            opacity: 0.8;
-        }
-        
-        .gantt-bar-暂停 {
-            opacity: 0.5;
-            background-image: repeating-linear-gradient(
-                45deg,
-                transparent,
-                transparent 10px,
-                rgba(255, 255, 255, 0.1) 10px,
-                rgba(255, 255, 255, 0.1) 20px
-            );
-        }
-        
-        .empty-gantt {
-            padding: var(--spacing-xl);
-            text-align: center;
-            color: var(--text-muted);
-        }
-        
-        .empty-gantt p {
-            margin: var(--spacing-sm) 0;
-        }
-        
-        /* ========================================
-           📋 计划视图任务列表样式
-           ======================================== */
-        
-        /* 任务年龄标签 */
-        .task-age {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            background: var(--bg-hover);
-            padding: 2px 6px;
-            border-radius: var(--radius-sm);
-        }
-        
-        /* 任务优先级标签 */
-        .task-priority {
-            font-size: 0.75rem;
-            padding: 2px 8px;
-            border-radius: var(--radius-sm);
-            font-weight: 500;
-        }
-        
-        .task-priority.high {
-            background: rgba(252, 129, 129, 0.15);
-            color: var(--priority-high);
-            border: 1px solid rgba(252, 129, 129, 0.3);
-        }
-        
-        .task-priority.medium {
-            background: rgba(246, 224, 94, 0.15);
-            color: var(--priority-medium);
-            border: 1px solid rgba(246, 224, 94, 0.3);
-        }
-        
-        .task-priority.low {
-            background: rgba(104, 211, 145, 0.15);
-            color: var(--priority-low);
-            border: 1px solid rgba(104, 211, 145, 0.3);
-        }
-        
-        /* 优先级统计 */
-        .priority-count {
-            padding: 4px 8px;
-            border-radius: var(--radius-sm);
-            font-weight: 500;
-        }
-        
-        .priority-count.high {
-            background: rgba(252, 129, 129, 0.2);
-            color: var(--priority-high);
-        }
-        
-        .priority-count.medium {
-            background: rgba(246, 224, 94, 0.2);
-            color: var(--priority-medium);
-        }
-        
-        .priority-count.low {
-            background: rgba(104, 211, 145, 0.2);
-            color: var(--priority-low);
-        }
-        
-        /* 任务元信息容器 */
-        .task-meta {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            margin-top: 4px;
-            font-size: 0.75rem;
-        }
-        
-        /* 任务进展标签 */
-        .task-progress {
-            color: var(--text-secondary);
-        }
-        
-        /* 任务父级标签 */
-        .task-parent {
-            color: var(--text-secondary);
-            font-style: italic;
-        }
-        
-        /* 高亮文本 */
-        .highlight {
-            color: var(--type-goal);
-            font-weight: 600;
-        }
-        
-        /* 计划视图特定样式 */
-        .latest-progress {
-            padding: 4px 8px;
-            background: var(--bg-tertiary);
-            border-radius: var(--radius-sm);
-            border-left: 2px solid var(--type-action);
-        }
-        
-        .tomorrow-task {
-            border-left: 3px solid var(--type-goal);
-        }
-        
-        .tomorrow-warning {
-            background: rgba(252, 129, 129, 0.1);
-            border: 1px solid rgba(252, 129, 129, 0.3);
-            color: var(--priority-high);
-        }
-        
-        .task-description {
-            line-height: 1.4;
-            opacity: 0.9;
+        .null {
+            color: gray;
         }
     </style>
 </head>
 <body>
-    <!-- 侧边栏遮罩层 -->
-    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
-    
-    <!-- 侧边栏切换按钮 -->
-    <button class="sidebar-toggle-btn" id="sidebarToggleBtn" onclick="toggleSidebar()">
-        ☰
-    </button>
-    
-    <div class="app-container">
-        <!-- 顶部导航栏 -->
-        <nav class="navbar">
-            <div class="navbar-left">
-                <h1 class="navbar-title">MNTask 看板</h1>
-                
-                <!-- 快速添加任务 -->
-                <div class="quick-add-container" style="position: relative;">
-                    <input type="text" 
-                           id="quickAddInput"
-                           class="quick-add-input" 
-                           placeholder="快速添加任务... (输入后按Enter，支持 #标签 @项目 !优先级)"
-                           onkeypress="handleQuickAdd(event)"
-                           oninput="handleQuickAddInput(event)"
-                           onkeydown="handleAutocompleteNavigation(event)">
-                    <div id="projectAutocomplete" class="autocomplete-dropdown">
-                        <!-- 自动完成项目将在这里动态生成 -->
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 视图切换 -->
-            <div class="view-switcher">
-                <button class="view-btn active" data-view="focus" onclick="switchView('focus')">
-                    🎯 焦点任务
-                </button>
-                <button class="view-btn" data-view="planning" onclick="switchView('planning')">
-                    📋 计划
-                </button>
-                <button class="view-btn" data-view="today" onclick="switchView('today')">
-                    📅 时间轴
-                </button>
-                <button class="view-btn" data-view="board" onclick="switchView('board')">
-                    📊 看板
-                </button>
-            </div>
-            
-            <!-- 全局功能按钮 -->
-            <div class="global-actions">
-                <button class="global-btn" onclick="refreshTasks()">
-                    🔄
-                    <span class="tooltip">刷新数据</span>
-                </button>
-                <button class="global-btn" onclick="openGlobalSearch()">
-                    🔍
-                    <span class="tooltip">全局搜索 (Ctrl+K)</span>
-                </button>
-                <button class="global-btn" onclick="openSettings()">
-                    ⚙️
-                    <span class="tooltip">设置</span>
-                </button>
-                <button class="global-btn" onclick="openHelp()">
-                    ❓
-                    <span class="tooltip">帮助与教程</span>
-                </button>
-            </div>
-        </nav>
 
-        <!-- 主内容区域 -->
-        <div class="main-content">
-            <!-- 侧边栏 - 自定义视图 -->
-            <aside class="sidebar" id="sidebar">
-                <!-- 焦点统计 -->
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">焦点统计</h3>
-                    <div class="custom-view-item" onclick="applyQuickFilter('current')">
-                        <span>🎯 当前焦点</span>
-                        <span class="text-small text-muted">3</span>
-                    </div>
-                </div>
+<div id="editor" class="editor" contenteditable>${content}</div>
 
-                <!-- 任务管理 -->
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">任务管理</h3>
-                    <div class="custom-view-item" onclick="openAddToPendingModal()">
-                        <span>📋 添加到待处理</span>
-                        <span class="text-small text-muted">+</span>
-                    </div>
-                    <div class="custom-view-item" onclick="openTaskFilterModal()">
-                        <span>🔍 任务筛选</span>
-                        <span class="text-small text-muted">⚙️</span>
-                    </div>
-                </div>
+<script>
+  let isComposing = false;
+function getCaretPosition(element) {
+    const selection = window.getSelection();
+    let caretOffset = 0;
+    if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const preCaretRange = range.cloneRange();
+        preCaretRange.selectNodeContents(element);
+        preCaretRange.setEnd(range.endContainer, range.endOffset);
+        caretOffset = preCaretRange.toString().length;
+    }
+    return caretOffset;
+}
 
-                <!-- 自定义视图 -->
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">
-                        <span>自定义视图</span>
-                        <button class="save-view-btn" onclick="saveCurrentView()">
-                            + 保存当前
-                        </button>
-                    </h3>
-                    <div id="customViewsList">
-                        <div class="custom-view-item" onclick="loadCustomView('plugin-bugs')">
-                            <span>🐛 插件Bug汇总</span>
-                            <span class="text-small text-muted">15</span>
-                        </div>
-                        <div class="custom-view-item" onclick="loadCustomView('week-focus')">
-                            <span>🎯 本周重点</span>
-                            <span class="text-small text-muted">7</span>
-                        </div>
-                        <div class="custom-view-item" onclick="loadCustomView('review-needed')">
-                            <span>👀 待Review</span>
-                            <span class="text-small text-muted">4</span>
-                        </div>
-                    </div>
-                </div>
+function setCaretPosition(element, offset) {
+    const range = document.createRange();
+    const selection = window.getSelection();
+    let currentOffset = 0;
+    let found = false;
 
-                <!-- 项目分组 -->
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">项目分组</h3>
-                    <div class="custom-view-item" onclick="filterByProject('mntask')">
-                        <span>📦 MNTask插件</span>
-                        <span class="text-small text-muted">23</span>
-                    </div>
-                    <div class="custom-view-item" onclick="filterByProject('mnai')">
-                        <span>🤖 MNAI插件</span>
-                        <span class="text-small text-muted">18</span>
-                    </div>
-                    <div class="custom-view-item" onclick="filterByProject('research')">
-                        <span>🔬 研究项目</span>
-                        <span class="text-small text-muted">12</span>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- 工作区 -->
-            <div class="workspace">
-                <!-- 焦点任务视图 -->
-                <div id="view-focus" class="view-container">
-                    <div class="focus-view">
-                        <!-- 当前焦点任务 -->
-                        <div class="current-focus-section">
-                            <div class="section-header">
-                                <h2 class="section-title">🎯 当前焦点任务</h2>
-                            </div>
-                            
-                            <div class="focus-task-container" id="focusTaskContainer">
-                                <!-- 焦点任务卡片将在这里动态生成 -->
-                            </div>
-                        </div>
-
-                        <!-- 筛选状态显示 -->
-                        <div class="filter-tags" id="activeFilters" style="margin-bottom: var(--spacing-lg);">
-                            <!-- 活跃的筛选标签 -->
-                        </div>
-
-                        <!-- 待处理任务概览 -->
-                        <div class="section-header mt-3">
-                            <h2 class="section-title">📋 待处理任务</h2>
-                            <span class="text-muted">共 <span id="pendingCount">0</span> 项</span>
-                        </div>
-                        <div id="pendingTasksList">
-                            <!-- 待处理任务列表 -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 计划视图 -->
-                <div id="view-planning" class="view-container hidden">
-                    <div class="planning-section reflection-dashboard">
-                        <div class="section-header">
-                            <h2 class="section-title">📊 任务反思与计划</h2>
-                            <div class="planning-controls">
-                                <button class="btn btn-secondary" onclick="renderPlanningView()">
-                                    🔄 刷新
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- 反思仪表板 -->
-                        <div class="reflection-panels">
-                            <!-- 1. 焦点任务完成情况 -->
-                            <div class="reflection-section focus-review">
-                                <h3 class="section-subtitle">🎯 焦点任务回顾</h3>
-                                <div class="focus-stats" id="focusTasksStats">
-                                    <!-- 动态渲染统计数据 -->
-                                </div>
-                                <div class="focus-task-list" id="focusTasksList">
-                                    <!-- 动态渲染焦点任务列表 -->
-                                </div>
-                                <div class="reflection-prompt">
-                                    <p>💭 反思：哪些任务进展顺利？哪些遇到了阻碍？</p>
-                                </div>
-                            </div>
-                            
-                            <!-- 2. 待处理任务检查 -->
-                            <div class="reflection-section pending-review">
-                                <h3 class="section-subtitle">📋 待处理任务检查</h3>
-                                <div class="pending-overview" id="pendingOverview">
-                                    <!-- 动态渲染待处理概览 -->
-                                </div>
-                                <div class="pending-actions">
-                                    <button class="btn btn-primary" onclick="openAddToPendingModal()">
-                                        ➕ 添加新的待处理任务
-                                    </button>
-                                    <button class="btn btn-secondary" onclick="reviewPendingTasks()">
-                                        🔄 重新评估优先级
-                                    </button>
-                                </div>
-                                <div class="reflection-prompt">
-                                    <p>💭 反思：这些任务是否还有价值？需要重新安排优先级吗？</p>
-                                </div>
-                            </div>
-                            
-                            <!-- 3. 今日任务完成情况 -->
-                            <div class="reflection-section today-review">
-                                <h3 class="section-subtitle">📅 今日任务回顾</h3>
-                                <div class="today-timeline-summary" id="todayTasksSummary">
-                                    <!-- 动态渲染今日任务统计 -->
-                                </div>
-                                <div class="add-progress-prompt">
-                                    <button class="btn btn-primary" onclick="showAddProgressModal()">
-                                        ➕ 为今天的任务添加进展记录
-                                    </button>
-                                </div>
-                                <div class="reflection-prompt">
-                                    <p>💭 反思：今天的时间利用效率如何？有哪些收获和教训？</p>
-                                </div>
-                            </div>
-                            
-                            <!-- 4. 明日任务预览 -->
-                            <div class="reflection-section tomorrow-preview">
-                                <h3 class="section-subtitle">🌅 明日任务预览</h3>
-                                <div class="tomorrow-tasks" id="tomorrowTasksList">
-                                    <!-- 动态渲染明日任务 -->
-                                </div>
-                                <div class="planning-suggestions">
-                                    <h4>💡 规划建议</h4>
-                                    <ul id="planningSuggestionsList">
-                                        <li>考虑将未完成的焦点任务延续到明天</li>
-                                        <li>从待处理中选择高优先级任务</li>
-                                        <li>预留时间处理可能的紧急事务</li>
-                                    </ul>
-                                </div>
-                                <div class="quick-planning">
-                                    <button class="btn btn-primary" onclick="openTomorrowPlanningModal()">
-                                        📅 快速规划明天的任务
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <!-- 5. 全局任务筛选 -->
-                            <div class="reflection-section all-tasks-filter" id="all-tasks-filter">
-                                <h3 class="section-subtitle">🔍 全部任务筛选</h3>
-                                <div class="filter-controls" style="margin-bottom: 15px;">
-                                    <div class="filter-row" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
-                                        <input type="text" 
-                                               id="allTasksSearch" 
-                                               class="filter-input" 
-                                               placeholder="🔍 搜索任务标题..." 
-                                               style="flex: 1; min-width: 200px;"
-                                               oninput="filterAllTasks()">
-                                        <select id="allTasksTypeFilter" onchange="filterAllTasks()" style="min-width: 120px;">
-                                            <option value="">所有类型</option>
-                                            <option value="目标">🎦 目标</option>
-                                            <option value="关键结果">🔑 关键结果</option>
-                                            <option value="项目">📦 项目</option>
-                                            <option value="动作">⚡ 动作</option>
-                                        </select>
-                                        <select id="allTasksStatusFilter" onchange="filterAllTasks()" style="min-width: 120px;">
-                                            <option value="">所有状态</option>
-                                            <option value="未开始">⏰ 未开始</option>
-                                            <option value="进行中">🚀 进行中</option>
-                                            <option value="暂停">⏸ 暂停</option>
-                                            <option value="已完成">✅ 已完成</option>
-                                        </select>
-                                        <select id="allTasksPriorityFilter" onchange="filterAllTasks()" style="min-width: 120px;">
-                                            <option value="">所有优先级</option>
-                                            <option value="高">🔴 高</option>
-                                            <option value="中">🟡 中</option>
-                                            <option value="低">🟢 低</option>
-                                        </select>
-                                    </div>
-                                    <div class="filter-actions" style="display: flex; gap: 10px; align-items: center;">
-                                        <span id="allTasksCount" class="text-muted" style="font-size: 0.85em;">显示全部 ${tasks.length} 个任务</span>
-                                        <button class="btn btn-sm" onclick="resetAllTasksFilter()">🔄 重置筛选</button>
-                                    </div>
-                                </div>
-                                <div class="all-tasks-list" id="allTasksList" style="max-height: 400px; overflow-y: auto;">
-                                    <!-- 动态渲染任务列表 -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 今日时间轴视图 -->
-                <div id="view-today" class="view-container hidden">
-                    <div class="timeline-section">
-                        <div class="section-header">
-                            <h2 class="section-title">📅 任务执行时间轴</h2>
-                            <div class="timeline-controls">
-                                <div class="timeline-view-mode">
-                                    <button class="view-mode-btn active" data-mode="day" onclick="setTimelineViewMode('day')">日</button>
-                                    <button class="view-mode-btn" data-mode="week" onclick="setTimelineViewMode('week')">周</button>
-                                    <button class="view-mode-btn" data-mode="month" onclick="setTimelineViewMode('month')">月</button>
-                                </div>
-                                <div class="timeline-date-controls">
-                                    <div class="date-nav-section">
-                                        <button class="date-nav-btn" onclick="changeTimelineDate(-1)">←</button>
-                                        <input type="date" id="timelineDatePicker" class="timeline-date-picker" onchange="onTimelineDateChange()">
-                                        <button class="date-nav-btn" onclick="changeTimelineDate(1)">→</button>
-                                    </div>
-                                    <div class="quick-date-section">
-                                        <button class="date-nav-btn" onclick="selectYesterday()">昨天</button>
-                                        <button class="date-nav-btn today-btn" onclick="selectTodayDate()">今天</button>
-                                        <button class="date-nav-btn" onclick="selectTomorrow()">明天</button>
-                                    </div>
-                                    <div class="week-nav-section">
-                                        <button class="date-nav-btn" onclick="selectThisWeek()">本周</button>
-                                        <button class="date-nav-btn" onclick="selectNextWeek()">下周</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="timeline-stats" id="timelineStats">
-                            <!-- 统计信息将在这里动态生成 -->
-                        </div>
-                        
-                        <div class="timeline-container" id="todayTimeline">
-                            <div class="timeline-line"></div>
-                            <!-- 时间轴项目将在这里动态生成 -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 统一看板视图 -->
-                <div id="view-board" class="view-container hidden">
-                    <div class="section-header">
-                        <h2 class="section-title">📊 任务看板</h2>
-                        <span class="text-muted">管理所有任务的进展</span>
-                        <div class="board-view-switcher" style="margin-left: auto;">
-                            <button class="board-mode-btn active" data-mode="kanban" onclick="switchBoardMode('kanban')">
-                                📦 看板
-                            </button>
-                            <button class="board-mode-btn" data-mode="list" onclick="switchBoardMode('list')">
-                                📃 列表
-                            </button>
-                            <button class="board-mode-btn" data-mode="tree" onclick="switchBoardMode('tree')">
-                                🌳 树形
-                            </button>
-                            <button class="board-mode-btn" data-mode="gantt" onclick="switchBoardMode('gantt')">
-                                📊 甘特图
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- 筛选工具栏 -->
-                    <div class="board-filter-toolbar">
-                        <div class="filter-section">
-                            <input type="text" 
-                                   class="filter-input" 
-                                   placeholder="🔍 搜索任务标题或标签..." 
-                                   id="boardSearchInput"
-                                   onkeyup="handleBoardSearch(event)">
-                        </div>
-                        
-                        <div class="filter-section">
-                            <select class="filter-select" id="boardProjectFilter" onchange="handleBoardProjectFilter()">
-                                <option value="">📦 所有项目</option>
-                            </select>
-                            
-                            <select class="filter-select" id="boardStatusFilter" onchange="handleBoardStatusFilter()">
-                                <option value="">📊 所有状态</option>
-                                <option value="未开始">🔵 未开始</option>
-                                <option value="进行中">🟡 进行中</option>
-                                <option value="已完成">🟢 已完成</option>
-                            </select>
-                            
-                            <select class="filter-select" id="boardPriorityFilter" onchange="handleBoardPriorityFilter()">
-                                <option value="">⚡ 所有优先级</option>
-                                <option value="高">🔴 高</option>
-                                <option value="中">🟡 中</option>
-                                <option value="低">🟢 低</option>
-                            </select>
-                            
-                            <select class="filter-select" id="boardTypeFilter" onchange="handleBoardTypeFilter()">
-                                <option value="">📋 所有类型</option>
-                                <option value="目标">🎯 目标</option>
-                                <option value="关键结果">🔑 关键结果</option>
-                                <option value="项目">📁 项目</option>
-                                <option value="动作">⚡ 动作</option>
-                            </select>
-                        </div>
-                        
-                        <div class="filter-section">
-                            <button class="filter-quick-btn" onclick="filterTodayTasks()">📅 今日任务</button>
-                            <button class="filter-quick-btn" onclick="filterWeekTasks()">📆 本周任务</button>
-                            <button class="filter-quick-btn" onclick="filterOverdueTasks()">逾期任务</button>
-                            <button class="filter-quick-btn" onclick="clearAllFilters()">🔄 清除筛选</button>
-                        </div>
-                    </div>
-                    
-                    <!-- 当前筛选条件 -->
-                    <div class="active-filters-bar" id="boardActiveFilters" style="display: none;">
-                        <span class="filter-label">当前筛选：</span>
-                        <div id="boardFilterTags">
-                            <!-- 筛选标签将在这里动态生成 -->
-                        </div>
-                    </div>
-                    
-                    <!-- 统计信息栏 -->
-                    <div class="board-stats-bar" id="boardStatsBar">
-                        <div class="stat-item">
-                            <span class="stat-icon">📊</span>
-                            <span class="stat-label">总计</span>
-                            <span class="stat-value" id="boardTotalCount">0</span>
-                        </div>
-                        <div class="stat-divider"></div>
-                        <div class="stat-item">
-                            <span class="stat-icon">🔵</span>
-                            <span class="stat-label">未开始</span>
-                            <span class="stat-value" id="boardTodoCount">0</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-icon">🟡</span>
-                            <span class="stat-label">进行中</span>
-                            <span class="stat-value" id="boardDoingCount">0</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-icon">🟢</span>
-                            <span class="stat-label">已完成</span>
-                            <span class="stat-value" id="boardDoneCount">0</span>
-                        </div>
-                        <div class="stat-divider"></div>
-                        <div class="stat-item">
-                            <span class="stat-label">完成率</span>
-                            <span class="stat-value" id="boardCompletionRate">0%</span>
-                        </div>
-                    </div>
-                    
-                    <div id="boardContainer">
-                        <!-- 看板内容将在这里动态生成 -->
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </div>
-
-    <!-- 模态框 - 选择焦点任务 -->
-    <div id="selectFocusModal" class="modal">
-        <div class="modal-content" style="width: 600px;">
-            <div class="modal-header">
-                <h3 class="modal-title">选择焦点任务</h3>
-                <button class="modal-close" onclick="closeModal('selectFocusModal')">✕</button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted mb-3">最多可选择5个焦点任务</p>
-                <div id="taskSelectList" class="task-select-list">
-                    <!-- 任务列表将在这里动态生成 -->
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('selectFocusModal')">取消</button>
-                <button class="btn btn-primary" onclick="confirmFocusSelection()">确定</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 模态框 - 任务详情 -->
-    <div id="taskDetailModal" class="modal">
-        <div class="modal-content" style="width: 500px;">
-            <div class="modal-header">
-                <h3 class="modal-title">任务详情</h3>
-                <button class="modal-close" onclick="closeModal('taskDetailModal')">✕</button>
-            </div>
-            <div class="modal-body">
-                <div class="task-detail-section">
-                    <div class="task-detail-label">任务标题</div>
-                    <div class="task-detail-value editable-field" id="detailTitle">-</div>
-                </div>
-                
-                <div class="task-detail-section">
-                    <div class="task-detail-label">任务路径</div>
-                    <div class="task-detail-value" id="detailPath">-</div>
-                </div>
-                
-                <div class="task-detail-section">
-                    <div class="task-detail-label">基本信息</div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md);">
-                        <div>
-                            <div class="text-small text-muted">类型</div>
-                            <div id="detailType">-</div>
-                        </div>
-                        <div>
-                            <div class="text-small text-muted">状态</div>
-                            <div id="detailStatus">-</div>
-                        </div>
-                        <div>
-                            <div class="text-small text-muted">优先级</div>
-                            <div class="editable-field" id="detailPriority">-</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="task-detail-section">
-                    <div class="task-detail-label">时间信息</div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md);">
-                        <div>
-                            <div class="text-small text-muted">截止日期</div>
-                            <div id="detailDueDate">-</div>
-                        </div>
-                        <!-- 今日安排功能已移除
-                        <div>
-                            <div class="text-small text-muted">今日安排</div>
-                            <div id="detailTodayTime">-</div>
-                        </div>
-                        -->
-                        <div>
-                            <div class="text-small text-muted">开始时间</div>
-                            <div id="detailStartTime">-</div>
-                        </div>
-                        <div>
-                            <div class="text-small text-muted">结束时间</div>
-                            <div id="detailEndTime">-</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="task-detail-section">
-                    <div class="task-detail-label">标签</div>
-                    <div class="task-detail-tags editable-field" id="detailTags">
-                        <!-- 标签将在这里动态生成 -->
-                    </div>
-                </div>
-                
-                <div class="task-detail-section">
-                    <div class="task-detail-label">启动链接</div>
-                    <div class="task-detail-value editable-field" id="detailLaunchLink">-</div>
-                </div>
-                
-                <div class="task-detail-section">
-                    <div class="task-detail-label">进展记录</div>
-                    <div class="task-detail-progress" id="detailProgress">
-                        <!-- 进展记录将在这里动态生成 -->
-                    </div>
-                    <div class="task-detail-actions" style="margin-top: 10px;">
-                        <button class="btn btn-sm btn-primary" onclick="addProgressNote(null, window.currentDetailTaskId)">添加进展</button>
-                        <button class="btn btn-sm btn-secondary" onclick="viewProgressLog(null, window.currentDetailTaskId)">查看全部</button>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <div id="taskStatusButtons" style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <!-- 状态切换按钮将在这里动态生成 -->
-                </div>
-                <button class="btn btn-secondary" onclick="closeModal('taskDetailModal')" style="margin-left: auto;">关闭</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 模态框 - 进展详情 -->
-    <div id="progressLogModal" class="modal">
-        <div class="modal-content" style="width: 600px; max-height: 80vh;">
-            <div class="modal-header">
-                <h3 class="modal-title" id="progressLogTitle">进展详情</h3>
-                <button class="modal-close" onclick="closeModal('progressLogModal')">✕</button>
-            </div>
-            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
-                <div id="progressLogList">
-                    <!-- 进展日志列表将在这里动态生成 -->
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" onclick="closeModal('progressLogModal')">关闭</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 模态框 - 安排明天任务 -->
-    <div id="scheduleTomorrowModal" class="modal">
-        <div class="modal-content" style="width: 600px; max-height: 80vh;">
-            <div class="modal-header">
-                <h3 class="modal-title">安排明天的任务</h3>
-                <button class="modal-close" onclick="closeModal('scheduleTomorrowModal')">✕</button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted mb-3">选择要安排到明天的任务（可多选）</p>
-                <div id="tomorrowTaskSelectList" class="task-select-list" style="max-height: 400px; overflow-y: auto;">
-                    <!-- 任务列表将在这里动态生成 -->
-                </div>
-            </div>
-            <div class="modal-footer">
-                <div class="text-muted" style="margin-right: auto;">
-                    已选择 <span id="selectedTomorrowCount">0</span> 个任务
-                </div>
-                <button class="btn btn-secondary" onclick="closeModal('scheduleTomorrowModal')">取消</button>
-                <button class="btn btn-primary" onclick="confirmTomorrowSchedule()">确定安排</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 模态框 - 启动链接管理 -->
-    <div id="launchLinkModal" class="modal">
-        <div class="modal-content" style="width: 600px; max-height: 80vh;">
-            <div class="modal-header">
-                <h3 class="modal-title" id="launchLinkTitle">设置启动链接</h3>
-                <button class="modal-close" onclick="closeModal('launchLinkModal')">✕</button>
-            </div>
-            <div class="modal-body">
-                <div class="launch-link-form">
-                    <div class="form-group">
-                        <div class="form-label">链接类型</div>
-                        <div class="link-type-selector">
-                            <button class="link-type-btn active" data-type="marginnote" onclick="selectLinkType('marginnote')">
-                                📚 MarginNote
-                            </button>
-                            <button class="link-type-btn" data-type="url" onclick="selectLinkType('url')">
-                                🌐 网页链接
-                            </button>
-                            <button class="link-type-btn" data-type="file" onclick="selectLinkType('file')">
-                                📄 文件路径
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group" id="marginnoteLinkGroup">
-                        <label class="form-label" for="marginnoteLink">MarginNote UIState 链接</label>
-                        <input type="text" 
-                               class="form-input" 
-                               id="marginnoteLink" 
-                               placeholder="marginnote4app://note/..."
-                               value="">
-                        <p class="form-hint">粘贴从 MarginNote 复制的 UIState 链接</p>
-                    </div>
-                    
-                    <div class="form-group hidden" id="urlLinkGroup">
-                        <label class="form-label" for="urlLink">网页链接</label>
-                        <input type="url" 
-                               class="form-input" 
-                               id="urlLink" 
-                               placeholder="https://..."
-                               value="">
-                        <p class="form-hint">输入要打开的网页地址</p>
-                    </div>
-                    
-                    <div class="form-group hidden" id="fileLinkGroup">
-                        <label class="form-label" for="fileLink">文件路径</label>
-                        <input type="text" 
-                               class="form-input" 
-                               id="fileLink" 
-                               placeholder="/path/to/file..."
-                               value="">
-                        <p class="form-hint">输入本地文件的完整路径</p>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label" for="linkNote">备注说明（可选）</label>
-                        <textarea class="form-input" 
-                                  id="linkNote" 
-                                  rows="2" 
-                                  placeholder="描述这个链接的用途..."></textarea>
-                    </div>
-                    
-                    <!-- 最近使用的链接 -->
-                    <div class="recent-links-section" id="recentLinksSection">
-                        <h4 class="recent-links-title">最近使用的链接</h4>
-                        <div id="recentLinksList" class="recent-links-list">
-                            <!-- 动态生成最近链接 -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('launchLinkModal')">取消</button>
-                <button class="btn btn-primary" onclick="confirmLaunchLink()">确定</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 模态框 - 添加到待处理 -->
-    <div id="addToPendingModal" class="modal">
-        <div class="modal-content" style="width: 700px; max-height: 80vh;">
-            <div class="modal-header">
-                <h3 class="modal-title">📋 添加到待处理任务</h3>
-                <button class="modal-close" onclick="closeModal('addToPendingModal')">✕</button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted mb-3">选择要添加到待处理的任务（可多选）</p>
-                
-                <!-- 完整筛选器 -->
-                <div class="filter-panel" style="margin-bottom: var(--spacing-lg);">
-                    <div class="filter-row">
-                        <div class="filter-group">
-                            <div class="filter-label">标题包含</div>
-                            <input type="text" class="filter-input" placeholder="搜索任务标题..." id="pendingTaskSearch" onkeyup="filterPendingCandidates()">
-                        </div>
-                        <div class="filter-group">
-                            <div class="filter-label">任务状态</div>
-                            <select class="filter-input" id="pendingTaskStatus" onchange="filterPendingCandidates()">
-                                <option value="">所有状态</option>
-                                <option value="未开始">未开始</option>
-                                <option value="进行中">进行中</option>
-                                <option value="暂停">暂停</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <div class="filter-label">优先级</div>
-                            <select class="filter-input" id="pendingTaskPriority" onchange="filterPendingCandidates()">
-                                <option value="">所有优先级</option>
-                                <option value="高">高优先级</option>
-                                <option value="中">中优先级</option>
-                                <option value="低">低优先级</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="filter-row">
-                        <div class="filter-group">
-                            <div class="filter-label">项目筛选</div>
-                            <select class="filter-input" id="pendingTaskProject" onchange="filterPendingCandidates()">
-                                <option value="">所有项目</option>
-                                <option value="mntask">MNTask插件</option>
-                                <option value="mnai">MNAI插件</option>
-                                <option value="research">研究项目</option>
-                                <option value="personal">个人项目</option>
-                                <option value="work">工作项目</option>
-                                <option value="learning">学习计划</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <div class="filter-label">标签筛选</div>
-                            <input type="text" class="filter-input" placeholder="输入标签..." id="pendingTaskTag" onkeyup="filterPendingCandidates()">
-                        </div>
-                        <div class="filter-group">
-                            <div class="filter-label" style="color: var(--text-muted); font-size: 0.8rem;">
-                                <span>📌 仅显示动作类型任务</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="pendingCandidatesList" class="task-select-list" style="max-height: 400px; overflow-y: auto;">
-                    <!-- 候选任务列表将在这里动态生成 -->
-                </div>
-            </div>
-            <div class="modal-footer">
-                <div class="text-muted" style="margin-right: auto;">
-                    已选择 <span id="selectedPendingCount">0</span> 个任务
-                </div>
-                <button class="btn btn-secondary" onclick="closeModal('addToPendingModal')">取消</button>
-                <button class="btn btn-primary" onclick="confirmAddToPending()">确定添加</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 模态框 - 任务筛选 -->
-    <div id="taskFilterModal" class="modal">
-        <div class="modal-content" style="width: 600px;">
-            <div class="modal-header">
-                <h3 class="modal-title">🔍 任务筛选</h3>
-                <button class="modal-close" onclick="closeModal('taskFilterModal')">✕</button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted mb-3">设置筛选条件来过滤显示的任务</p>
-                
-                <div class="filter-panel">
-                    <div class="filter-row">
-                        <div class="filter-group">
-                            <div class="filter-label">标题包含</div>
-                            <input type="text" class="filter-input" placeholder="搜索任务标题..." id="modalFilterTitle">
-                        </div>
-                        <div class="filter-group">
-                            <div class="filter-label">任务类型</div>
-                            <select class="filter-input" id="modalFilterType">
-                                <option value="">所有类型</option>
-                                <option value="目标">目标</option>
-                                <option value="关键结果">关键结果</option>
-                                <option value="项目">项目</option>
-                                <option value="动作">动作</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="filter-row">
-                        <div class="filter-group">
-                            <div class="filter-label">项目筛选</div>
-                            <select class="filter-input" id="modalFilterProject">
-                                <option value="">所有项目</option>
-                                <option value="mntask">MNTask插件</option>
-                                <option value="mnai">MNAI插件</option>
-                                <option value="research">研究项目</option>
-                                <option value="personal">个人项目</option>
-                                <option value="work">工作项目</option>
-                                <option value="learning">学习计划</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <div class="filter-label">任务状态</div>
-                            <select class="filter-input" id="modalFilterStatus">
-                                <option value="">所有状态</option>
-                                <option value="未开始">未开始</option>
-                                <option value="进行中">进行中</option>
-                                <option value="暂停">暂停</option>
-                                <option value="已完成">已完成</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="filter-row">
-                        <div class="filter-group">
-                            <div class="filter-label">优先级</div>
-                            <select class="filter-input" id="modalFilterPriority">
-                                <option value="">所有优先级</option>
-                                <option value="高">高优先级</option>
-                                <option value="中">中优先级</option>
-                                <option value="低">低优先级</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <div class="filter-label">标签筛选</div>
-                            <input type="text" class="filter-input" placeholder="输入标签..." id="modalFilterTag">
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="clearAllFilters()">清除所有</button>
-                <button class="btn btn-secondary" onclick="closeModal('taskFilterModal')">取消</button>
-                <button class="btn btn-primary" onclick="applyModalFilters()">应用筛选</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 模态框 - 全局搜索 -->
-    <div id="globalSearchModal" class="modal">
-        <div class="modal-content" style="width: 800px; max-height: 90vh;">
-            <div class="modal-header">
-                <h3 class="modal-title">🔍 全局搜索与筛选</h3>
-                <button class="modal-close" onclick="closeModal('globalSearchModal')">✕</button>
-            </div>
-            <div class="modal-body" style="padding: 0;">
-                <!-- 快速搜索区域 -->
-                <div style="padding: var(--spacing-lg); border-bottom: 1px solid var(--glass-border);">
-                    <input type="text" 
-                           id="globalSearchInput" 
-                           class="form-input" 
-                           placeholder="搜索任务标题、路径、标签..."
-                           oninput="performGlobalSearch()"
-                           style="font-size: 1.125rem; padding: var(--spacing-md);">
-                    
-                    <div class="search-filters" style="margin-top: var(--spacing-md); display: flex; gap: var(--spacing-sm); align-items: center;">
-                        <label class="filter-checkbox">
-                            <input type="checkbox" id="searchInCompleted" onchange="performGlobalSearch()">
-                            包含已完成
-                        </label>
-                        <label class="filter-checkbox">
-                            <input type="checkbox" id="searchInTags" checked onchange="performGlobalSearch()">
-                            搜索标签
-                        </label>
-                        <label class="filter-checkbox">
-                            <input type="checkbox" id="searchInPath" checked onchange="performGlobalSearch()">
-                            搜索路径
-                        </label>
-                        <button class="btn btn-sm" onclick="toggleAdvancedFilters()" style="margin-left: auto;">
-                            <span id="advancedFiltersToggleText">⚙️ 高级筛选</span>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- 高级筛选区域（可折叠） -->
-                <div id="advancedFiltersPanel" style="display: none; padding: var(--spacing-lg); border-bottom: 1px solid var(--glass-border); background: var(--bg-tertiary);">
-                    <!-- 快速筛选预设 -->
-                    <div style="margin-bottom: var(--spacing-md);">
-                        <div class="filter-label">快速筛选：</div>
-                        <div style="display: flex; gap: var(--spacing-sm); flex-wrap: wrap;">
-                            <button class="btn btn-sm" onclick="applyQuickFilter('today')">📅 今日任务</button>
-                            <button class="btn btn-sm" onclick="applyQuickFilter('weekFocus')">🎯 本周焦点</button>
-                            <button class="btn btn-sm" onclick="applyQuickFilter('highPriority')">🔴 高优先级未完成</button>
-                            <button class="btn btn-sm" onclick="applyQuickFilter('inProgress')">🔄 进行中任务</button>
-                            <button class="btn btn-sm" onclick="applyQuickFilter('pendingReview')">📋 待处理审查</button>
-                        </div>
-                    </div>
-                    
-                    <!-- 详细筛选选项 -->
-                    <div class="advanced-filters-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-md);">
-                        <!-- 任务类型（多选） -->
-                        <div class="filter-group">
-                            <div class="filter-label">任务类型</div>
-                            <div class="checkbox-group">
-                                <label class="filter-checkbox">
-                                    <input type="checkbox" name="searchTypes" value="目标" checked onchange="performGlobalSearch()">
-                                    🎯 目标
-                                </label>
-                                <label class="filter-checkbox">
-                                    <input type="checkbox" name="searchTypes" value="关键结果" checked onchange="performGlobalSearch()">
-                                    🔑 关键结果
-                                </label>
-                                <label class="filter-checkbox">
-                                    <input type="checkbox" name="searchTypes" value="项目" checked onchange="performGlobalSearch()">
-                                    📦 项目
-                                </label>
-                                <label class="filter-checkbox">
-                                    <input type="checkbox" name="searchTypes" value="动作" checked onchange="performGlobalSearch()">
-                                    ⚡ 动作
-                                </label>
-                            </div>
-                        </div>
-                        
-                        <!-- 任务状态（多选） -->
-                        <div class="filter-group">
-                            <div class="filter-label">任务状态</div>
-                            <div class="checkbox-group">
-                                <label class="filter-checkbox">
-                                    <input type="checkbox" name="searchStatuses" value="未开始" checked onchange="performGlobalSearch()">
-                                    😴 未开始
-                                </label>
-                                <label class="filter-checkbox">
-                                    <input type="checkbox" name="searchStatuses" value="进行中" checked onchange="performGlobalSearch()">
-                                    🔥 进行中
-                                </label>
-                                <label class="filter-checkbox">
-                                    <input type="checkbox" name="searchStatuses" value="暂停" checked onchange="performGlobalSearch()">
-                                    ⏸ 暂停
-                                </label>
-                                <label class="filter-checkbox">
-                                    <input type="checkbox" name="searchStatuses" value="已完成" onchange="performGlobalSearch()">
-                                    ✅ 已完成
-                                </label>
-                                <label class="filter-checkbox">
-                                    <input type="checkbox" name="searchStatuses" value="已归档" onchange="performGlobalSearch()">
-                                    📦 已归档
-                                </label>
-                            </div>
-                        </div>
-                        
-                        <!-- 优先级（多选） -->
-                        <div class="filter-group">
-                            <div class="filter-label">优先级</div>
-                            <div class="checkbox-group">
-                                <label class="filter-checkbox">
-                                    <input type="checkbox" name="searchPriorities" value="高" checked onchange="performGlobalSearch()">
-                                    🔴 高
-                                </label>
-                                <label class="filter-checkbox">
-                                    <input type="checkbox" name="searchPriorities" value="中" checked onchange="performGlobalSearch()">
-                                    🟡 中
-                                </label>
-                                <label class="filter-checkbox">
-                                    <input type="checkbox" name="searchPriorities" value="低" checked onchange="performGlobalSearch()">
-                                    🟢 低
-                                </label>
-                            </div>
-                        </div>
-                        
-                        <!-- 特殊筛选 -->
-                        <div class="filter-group">
-                            <div class="filter-label">特殊筛选</div>
-                            <div class="checkbox-group">
-                                <label class="filter-checkbox">
-                                    <input type="checkbox" id="searchOnlyFocus" onchange="performGlobalSearch()">
-                                    🎯 仅焦点任务
-                                </label>
-                                <label class="filter-checkbox">
-                                    <input type="checkbox" id="searchOnlyPending" onchange="performGlobalSearch()">
-                                    📋 仅待处理任务
-                                </label>
-                                <label class="filter-checkbox">
-                                    <input type="checkbox" id="searchWithProgress" onchange="performGlobalSearch()">
-                                    📝 有进展记录
-                                </label>
-                                <label class="filter-checkbox">
-                                    <input type="checkbox" id="searchWithLaunch" onchange="performGlobalSearch()">
-                                    🚀 有启动链接
-                                </label>
-                            </div>
-                        </div>
-                        
-                        <!-- 项目筛选 -->
-                        <div class="filter-group">
-                            <div class="filter-label">项目</div>
-                            <select class="filter-input" id="searchProject" onchange="performGlobalSearch()">
-                                <option value="">所有项目</option>
-                                <option value="mntask">📦 MNTask插件</option>
-                                <option value="mnai">🤖 MNAI插件</option>
-                                <option value="research">🔬 研究项目</option>
-                                <option value="personal">👤 个人项目</option>
-                                <option value="work">💼 工作项目</option>
-                                <option value="learning">📚 学习计划</option>
-                            </select>
-                        </div>
-                        
-                        <!-- 时间范围 -->
-                        <div class="filter-group">
-                            <div class="filter-label">时间范围</div>
-                            <select class="filter-input" id="searchTimeRange" onchange="performGlobalSearch()">
-                                <option value="">所有时间</option>
-                                <option value="today">今天</option>
-                                <option value="thisWeek">本周</option>
-                                <option value="thisMonth">本月</option>
-                                <option value="lastMonth">上个月</option>
-                                <option value="custom">自定义...</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <!-- 筛选条件操作按钮 -->
-                    <div style="margin-top: var(--spacing-md); display: flex; gap: var(--spacing-sm); justify-content: flex-end;">
-                        <button class="btn btn-sm btn-secondary" onclick="resetAdvancedFilters()">重置筛选</button>
-                    </div>
-                </div>
-                
-                <!-- 活跃筛选条件显示 -->
-                <div id="activeSearchFilters" style="padding: var(--spacing-md); display: none; gap: var(--spacing-sm); flex-wrap: wrap; background: var(--bg-secondary); border-bottom: 1px solid var(--glass-border);">
-                    <!-- 活跃的筛选标签将显示在这里 -->
-                </div>
-                
-                <!-- 搜索结果区域 -->
-                <div style="padding: var(--spacing-lg);">
-                    <div id="searchResultsStats" style="margin-bottom: var(--spacing-md); color: var(--text-secondary); font-size: 0.875rem;">
-                        <!-- 搜索结果统计信息 -->
-                    </div>
-                    <div id="searchResults" style="max-height: 400px; overflow-y: auto;">
-                        <!-- 搜索结果将在这里显示 -->
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // 全局错误处理器
-        window.onerror = function(msg, url, lineNo, columnNo, error) {
-            MNUtil.log('🚨 JavaScript错误:', {
-                message: msg,
-                source: url,
-                line: lineNo,
-                column: columnNo,
-                error: error
-            });
-            
-            // 尝试通过MNTask协议发送错误日志
-            try {
-                const errorData = {
-                    level: 'error',
-                    message: `JavaScript错误: ${msg}`,
-                    data: JSON.stringify({
-                        filename: url,
-                        lineno: lineNo,
-                        colno: columnNo,
-                        stack: error ? error.stack : ''
-                    })
-                };
-                window.location.href = `mntask://log?${new URLSearchParams(errorData).toString()}`;
-            } catch (e) {
-                MNUtil.log('发送错误日志失败:', e);
-            }
-            
-            return true; // 阻止默认错误处理
-        };
-        
-        // 处理Promise拒绝
-        window.addEventListener('unhandledrejection', function(event) {
-            MNUtil.log('🚨 未处理的Promise拒绝:', event.reason);
-            event.preventDefault();
-        });
-        
-        /* ========================================
-           📊 数据模型
-           ======================================== */
-        
-        // 任务数据结构
-        let tasks = [];
-        let filteredTasks = []; // 筛选后的任务列表
-        let currentView = 'focus';
-        let focusTasks = new Set(); // 当前焦点任务ID集合
-        let focusTasksOrder = []; // 焦点任务的排序
-        let tempFocusTasks = new Set(); // 临时选择的焦点任务ID集合
-        let pendingTasks = new Set(); // 待处理任务ID集合（独立于筛选器）
-        let pendingTasksOrder = []; // 待处理任务排序数组
-        let customViews = {}; // 自定义视图配置
-        let activeFilters = {}; // 当前激活的筛选器
-        let currentEditingTaskId = null; // 当前正在编辑的任务ID
-        
-        // 任务卡片展开状态管理
-        let expandedTasksBoard = new Set(); // 看板视图展开的任务ID集合
-        
-        // 时间轴相关变量
-        let now = new Date();
-        let selectedTimelineDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // 当前选择的时间轴日期（纯日期，无时间）
-        let timelineViewMode = 'day'; // 时间轴视图模式: 'day', 'week', 'month'
-        
-        // 项目列表和自动完成相关变量
-        const projectList = [
-            { id: 'mntask', name: 'MNTask插件', icon: '📦' },
-            { id: 'mnai', name: 'MNAI插件', icon: '🤖' },
-            { id: 'research', name: '研究项目', icon: '🔬' },
-            { id: 'personal', name: '个人项目', icon: '👤' },
-            { id: 'work', name: '工作项目', icon: '💼' },
-            { id: 'learning', name: '学习计划', icon: '📚' }
-        ];
-        let autocompleteSelectedIndex = -1;
-        let autocompleteActive = false;
-        let currentAutocompleteList = [];
-
-        /* ========================================
-           🔔 通知系统
-           ======================================== */
-        
-        let notificationCount = 0;
-        
-        // 滚动到指定区域
-        function scrollToSection(sectionId) {
-            let element;
-            
-            // 根据不同的 section ID 查找对应的元素
-            switch(sectionId) {
-                case 'focus-review':
-                    element = document.querySelector('.focus-review');
-                    break;
-                case 'pending-review':
-                    element = document.querySelector('.pending-review');
-                    break;
-                case 'today-review':
-                    element = document.querySelector('.today-review');
-                    break;
-                case 'tomorrow-preview':
-                    element = document.querySelector('.tomorrow-preview');
-                    break;
-                case 'all-tasks-filter':
-                    element = document.getElementById('allTasksSection');
-                    break;
-                default:
-                    element = document.getElementById(sectionId);
-            }
-            
-            if (element) {
-                // 滚动到元素位置，预留一些顶部空间
-                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                
-                // 添加高亮效果
-                element.style.transition = 'all 0.3s ease';
-                element.style.transform = 'scale(1.02)';
-                element.style.boxShadow = '0 0 20px rgba(102, 126, 234, 0.5)';
-                
-                // 2秒后移除高亮效果
-                setTimeout(() => {
-                    element.style.transform = '';
-                    element.style.boxShadow = '';
-                }, 2000);
-            }
-        }
-        
-        function showNotification(message, type = 'info', duration = 3000) {
-            // 创建通知元素
-            const notification = document.createElement('div');
-            notification.className = `notification notification-${type}`;
-            notification.style.top = `${20 + notificationCount * 70}px`;
-            
-            // 添加图标和关闭按钮
-            const icons = {
-                info: '💡',
-                warning: '⚠️',
-                error: '❌',
-                success: '✅'
-            };
-            
-            notification.innerHTML = `
-                <span class="notification-icon">${icons[type] || icons.info}</span>
-                <span class="notification-message">${message}</span>
-                <button class="notification-close">×</button>
-            `;
-            
-            // 添加样式（如果还没有的话）
-            if (!document.getElementById('notificationStyles')) {
-                const style = document.createElement('style');
-                style.id = 'notificationStyles';
-                style.textContent = `
-                    .notification {
-                        position: fixed;
-                        right: 20px;
-                        padding: 16px 20px;
-                        padding-right: 40px;
-                        border-radius: 12px;
-                        font-size: 14px;
-                        font-weight: 500;
-                        color: white;
-                        background: #4CAF50;
-                        box-shadow: 0 6px 16px rgba(0,0,0,0.4);
-                        z-index: 10000;
-                        animation: slideIn 0.3s ease-out;
-                        max-width: 350px;
-                        min-width: 250px;
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        transition: transform 0.3s ease;
-                    }
-                    
-                    .notification-icon {
-                        font-size: 18px;
-                        flex-shrink: 0;
-                    }
-                    
-                    .notification-message {
-                        flex: 1;
-                        line-height: 1.4;
-                    }
-                    
-                    .notification-close {
-                        position: absolute;
-                        top: 50%;
-                        right: 12px;
-                        transform: translateY(-50%);
-                        background: none;
-                        border: none;
-                        color: white;
-                        font-size: 24px;
-                        cursor: pointer;
-                        opacity: 0.8;
-                        padding: 0;
-                        width: 24px;
-                        height: 24px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        transition: opacity 0.2s;
-                    }
-                    
-                    .notification-close:hover {
-                        opacity: 1;
-                    }
-                    
-                    .notification-success {
-                        background: #48bb78;
-                    }
-                    
-                    .notification-warning {
-                        background: #ed8936;
-                    }
-                    
-                    .notification-error {
-                        background: #e53e3e;
-                    }
-                    
-                    .notification-info {
-                        background: #3182ce;
-                    }
-                    
-                    @keyframes slideIn {
-                        from { transform: translateX(120%); }
-                        to { transform: translateX(0); }
-                    }
-                    
-                    @keyframes slideOut {
-                        from { transform: translateX(0); }
-                        to { transform: translateX(120%); }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
-            
-            // 增加计数器
-            notificationCount++;
-            
-            // 添加到页面
-            document.body.appendChild(notification);
-            
-            // 关闭功能
-            const closeNotification = () => {
-                notification.style.animation = 'slideOut 0.3s ease-out';
-                setTimeout(() => {
-                    notification.remove();
-                    notificationCount--;
-                    // 重新排列剩余的通知
-                    document.querySelectorAll('.notification').forEach((n, index) => {
-                        n.style.top = `${20 + index * 70}px`;
-                    });
-                }, 300);
-            };
-            
-            // 点击关闭按钮
-            notification.querySelector('.notification-close').onclick = closeNotification;
-            
-            // 自动移除
-            if (duration > 0) {
-                setTimeout(closeNotification, duration);
-            }
-        }
-        
-        // 定位到任务卡片
-        function focusTaskInMindMap(taskId) {
-            try {
-                // 通过 URL Scheme 调用插件原生代码
-                window.location.href = `mntask://showInMindMap?taskId=${encodeURIComponent(taskId)}`;
-                
-                // 关闭任务详情模态框（如果打开的话）
-                const modal = document.getElementById('taskDetailModal');
-                if (modal && modal.classList.contains('active')) {
-                    closeModal('taskDetailModal');
-                }
-            } catch (error) {
-                MNUtil.log('定位卡片失败:', error);
-                showNotification('定位失败：' + error.message, 'error');
-            }
-        }
-        
-        // 确认对话框
-        function showConfirm(message, onConfirm, onCancel) {
-            // 创建遮罩层
-            const overlay = document.createElement('div');
-            overlay.className = 'confirm-overlay';
-            
-            // 创建对话框
-            const dialog = document.createElement('div');
-            dialog.className = 'confirm-dialog';
-            dialog.innerHTML = `
-                <div class="confirm-content">
-                    <p>${message}</p>
-                    <div class="confirm-buttons">
-                        <button class="btn btn-secondary" onclick="this.closest('.confirm-overlay').remove()">取消</button>
-                        <button class="btn btn-primary confirm-ok">确定</button>
-                    </div>
-                </div>
-            `;
-            
-            // 添加样式
-            if (!document.getElementById('confirmStyles')) {
-                const style = document.createElement('style');
-                style.id = 'confirmStyles';
-                style.textContent = `
-                    .confirm-overlay {
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        bottom: 0;
-                        background: rgba(0, 0, 0, 0.6);
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        z-index: 10000;
-                        animation: fadeIn 0.2s ease-out;
-                    }
-                    
-                    .confirm-dialog {
-                        background: var(--bg-tertiary);
-                        border-radius: var(--radius-lg);
-                        padding: 24px;
-                        max-width: 400px;
-                        width: 90%;
-                        box-shadow: var(--shadow-lg);
-                        animation: scaleIn 0.2s ease-out;
-                    }
-                    
-                    .confirm-content p {
-                        margin: 0 0 20px;
-                        font-size: 16px;
-                        color: var(--text-primary);
-                    }
-                    
-                    .confirm-buttons {
-                        display: flex;
-                        gap: 12px;
-                        justify-content: flex-end;
-                    }
-                    
-                    @keyframes fadeIn {
-                        from { opacity: 0; }
-                        to { opacity: 1; }
-                    }
-                    
-                    @keyframes scaleIn {
-                        from { transform: scale(0.9); opacity: 0; }
-                        to { transform: scale(1); opacity: 1; }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
-            
-            overlay.appendChild(dialog);
-            document.body.appendChild(overlay);
-            
-            // 绑定事件
-            dialog.querySelector('.confirm-ok').onclick = () => {
-                overlay.remove();
-                if (onConfirm) onConfirm();
-            };
-            
-            overlay.onclick = (e) => {
-                if (e.target === overlay) {
-                    overlay.remove();
-                    if (onCancel) onCancel();
-                }
-            };
-        }
-        
-        // 扩展的任务数据结构示例
-        const taskTemplate = {
-            id: "task_1",
-            type: "动作", // 目标、关键结果、项目、动作
-            status: "进行中", // 未开始、暂停、进行中、已完成
-            title: "修复MNTask插件Bug",
-            path: "Q1目标 >> 产品优化 >> 插件开发",
-            
-            // 新增字段
-            launchLink: "marginnote4app://note/xxx", // MN uistate链接
-            currentFocus: true, // 是否是当前焦点任务
-            // 时间安排功能已移除
-            
-            // 原有字段
-            fields: {
-                priority: "高", // 高、中、低
-                dueDate: "2025-01-25",
-                tags: ["插件", "Bug", "紧急"],
-                today: true, // 是否是今日任务
-                plannedDate: null, // 计划执行日期
-                
-                // 新增进展记录
-                progressLog: [
-                    {
-                        date: "2025-01-20 10:00",
-                        note: "完成问题定位，发现是TaskFieldUtils方法名冲突"
-                    }
-                ],
-                
-                // 所属的自定义视图
-                customViews: ["插件Bug汇总", "本周重点"],
-                
-                // 项目归属
-                project: "mntask",
-                
-                // 时间记录
-                startTime: null, // 任务开始时间
-                endTime: null    // 任务结束时间
-            }
-        };
-
-        /* ========================================
-           🚀 初始化
-           ======================================== */
-        
-        // 生成测试数据
-        function generateTestData() {
-            // 从外部文件加载测试数据
-            if (typeof testTaskData !== 'undefined') {
-                const data = testTaskData.generate();
-                tasks = data.tasks;
-                focusTasks = new Set(data.focusTasks);
-                MNUtil.log(`✅ 加载了 ${tasks.length} 个测试任务`);
-            } else {
-                MNUtil.log('❌ 无法加载测试数据，请确保 testData.js 文件存在');
-            }
-            
-            MNUtil.log(`✅ 生成了 ${tasks.length} 个测试任务`);
-        }
-
-        /* ========================================
-           📱 响应式侧边栏功能
-           ======================================== */
-        
-        // 切换侧边栏显示状态
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            const windowWidth = window.innerWidth;
-            
-            if (windowWidth > 960) {
-                // 桌面端：使用 collapsed 类
-                sidebar.classList.toggle('collapsed');
-                const isCollapsed = sidebar.classList.contains('collapsed');
-                // 更新 body 类以控制按钮显示
-                document.body.classList.toggle('sidebar-collapsed', isCollapsed);
-                // 保存折叠状态到 localStorage
-                localStorage.setItem('sidebar-collapsed', isCollapsed);
-            } else {
-                // 移动端：使用 show 类和遮罩层
-                sidebar.classList.toggle('show');
-                overlay.classList.toggle('show');
-                
-                // 如果是打开状态，阻止主体滚动
-                if (sidebar.classList.contains('show')) {
-                    document.body.style.overflow = 'hidden';
-                } else {
-                    document.body.style.overflow = '';
-                }
-            }
-        }
-        
-        // 处理窗口大小变化
-        function handleWindowResize() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            const windowWidth = window.innerWidth;
-            
-            // 如果窗口宽度大于960px，确保侧边栏恢复正常状态
-            if (windowWidth > 960) {
-                sidebar.classList.remove('show');
-                overlay.classList.remove('show');
-                document.body.style.overflow = '';
-                
-                // 恢复桌面端的折叠状态
-                const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
-                sidebar.classList.toggle('collapsed', isCollapsed);
-                document.body.classList.toggle('sidebar-collapsed', isCollapsed);
-            } else {
-                // 移动端时移除桌面端的类
-                sidebar.classList.remove('collapsed');
-                document.body.classList.remove('sidebar-collapsed');
-            }
-        }
-        
-        // 初始化响应式侧边栏
-        function initResponsiveSidebar() {
-            // 添加窗口大小变化监听器
-            window.addEventListener('resize', handleWindowResize);
-            
-            // 初始检查
-            handleWindowResize();
-            
-            // 点击侧边栏外部关闭侧边栏（仅在移动设备上）
-            document.addEventListener('click', (e) => {
-                const sidebar = document.getElementById('sidebar');
-                const toggleBtn = document.getElementById('sidebarToggleBtn');
-                const windowWidth = window.innerWidth;
-                
-                if (windowWidth <= 960 && 
-                    sidebar.classList.contains('show') && 
-                    !sidebar.contains(e.target) && 
-                    !toggleBtn.contains(e.target)) {
-                    toggleSidebar();
-                }
-            });
-        }
-        
-        /* ========================================
-           🎯 焦点任务功能
-           ======================================== */
-        
-        // 时间冲突检查功能已移除 - 系统不再考虑时间安排
-        
-        // 渲染焦点任务卡片
-        function renderFocusTasks() {
-            const container = document.getElementById('focusTaskContainer');
-            // 只显示动作类型的未完成、未归档的焦点任务
-            let focusTasksList = tasks.filter(task => 
-                focusTasks.has(task.id) && 
-                task.type === '动作' && 
-                task.status !== '已完成' &&
-                task.status !== '已归档'
-            );
-            
-            // 按照 focusTasksOrder 排序
-            if (focusTasksOrder.length > 0) {
-                focusTasksList.sort((a, b) => {
-                    const indexA = focusTasksOrder.indexOf(a.id);
-                    const indexB = focusTasksOrder.indexOf(b.id);
-                    if (indexA === -1) return 1;
-                    if (indexB === -1) return -1;
-                    return indexA - indexB;
-                });
-            }
-            
-            container.innerHTML = focusTasksList.map((task, index) => {
-                // 时间冲突检查已移除
-                
-                return `
-                <div class="focus-task-card ${task.currentFocus ? 'active' : ''} fade-in" 
-                     draggable="true"
-                     data-task-id="${task.id}"
-                     data-task-index="${index}"
-                     ondragstart="handleDragStart(event)"
-                     ondragover="handleDragOver(event)"
-                     ondragenter="handleDragEnter(event)"
-                     ondragleave="handleDragLeave(event)"
-                     ondrop="handleDrop(event)"
-                     ondragend="handleDragEnd(event)">
-                    <div class="drag-handle" onclick="event.stopPropagation();" title="拖拽排序">⋮⋮</div>
-                    <button class="focus-task-remove" onclick="removeFromFocus(event, '${task.id}')" title="从焦点移除">
-                        ✕
-                    </button>
-                    <button class="focus-task-current ${task.currentFocus ? 'active' : ''}" 
-                            onclick="event.stopPropagation(); toggleCurrentFocus('${task.id}')" 
-                            title="${task.currentFocus ? '取消当前任务' : '设为当前任务'}">
-                        ${task.currentFocus ? '⭐' : '☆'}
-                    </button>
-                    <button class="focus-task-locate" 
-                            onclick="event.stopPropagation(); focusTaskInMindMap('${task.id}')" 
-                            title="定位到卡片">
-                        📍
-                    </button>
-                    <div class="focus-task-content" onclick="handleFocusTaskClick(event, '${task.id}')" style="cursor: pointer; flex: 1;">
-                    <div class="task-type-badge ${task.type.toLowerCase()}">
-                        ${getTaskTypeIcon(task.type)} ${task.type}
-                    </div>
-                    
-                    <h3 class="focus-task-title">${task.title}</h3>
-                    ${task.path ? `<div class="focus-task-path" style="font-size: 0.75rem; color: var(--text-muted); margin: 4px 0 8px 0;">📍 ${task.path}</div>` : ''}
-                    <div class="focus-task-meta">
-                        <span>${getStatusIcon(task.status)} ${task.status}</span>
-                        <span>${getPriorityIcon(task.fields.priority)} ${task.fields.priority}</span>
-                        ${task.fields.dueDate ? `<span>📅 ${formatDate(task.fields.dueDate)}</span>` : ''}
-                    </div>
-                    
-                    <div class="focus-task-meta">
-                        ${task.status === '未开始' ? `
-                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '进行中')">
-                                🚀 开始任务
-                            </button>
-                        ` : task.status === '进行中' ? `
-                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem; background: #48bb78;" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '已完成')">
-                                ✅ 完成任务
-                            </button>
-                            <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '暂停')">
-                                ⏸ 暂停
-                            </button>
-                        ` : task.status === '暂停' ? `
-                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '进行中')">
-                                ▶️ 继续任务
-                            </button>
-                        ` : ''}
-                        ${task.fields.startTime ? `<span style="font-size: 0.75rem; color: var(--text-muted);">⏱ ${formatElapsedTime(task.fields.startTime, task.fields.endTime)}</span>` : ''}
-                    </div>
-                    
-                    
-                    ${task.fields.progressLog && task.fields.progressLog.length > 0 ? `
-                        <div class="recent-progress">
-                            <div class="recent-progress-header">
-                                <span>📝 最近进展</span>
-                                <span class="recent-progress-time">${formatProgressTimeRelative(task.fields.progressLog[task.fields.progressLog.length - 1].date)}</span>
-                            </div>
-                            <div class="recent-progress-content">
-                                ${stripHTMLTags(task.fields.progressLog[task.fields.progressLog.length - 1].note)}
-                            </div>
-                        </div>
-                    ` : ''}
-                    
-                    <div class="focus-task-actions">
-                        ${task.launchLink ? `
-                            <button class="btn btn-launch" onclick="launchTask(event, '${task.id}')">
-                                🚀 启动
-                            </button>
-                        ` : `
-                            <button class="btn btn-secondary" onclick="setLaunchLink(event, '${task.id}')">
-                                🔗 设置启动链接
-                            </button>
-                        `}
-                        <button class="btn btn-secondary" onclick="addProgressNote(event, '${task.id}')">
-                            📝 添加进展
-                        </button>
-                        <button class="btn btn-secondary" onclick="viewProgressLog(event, '${task.id}')">
-                            📊 进展详情
-                        </button>
-                    </div>
-                    </div>
-                </div>
-            `;
-            }).join('') || '<p class="text-muted">暂无焦点任务，请从任务列表中选择</p>';
-            
-            // 更新待处理任务
-            renderPendingTasks();
-        }
-
-        // 渲染待处理任务
-        function renderPendingTasks() {
-            // 使用独立的待处理任务列表（不受筛选器影响）
-            let pendingTasksList = tasks.filter(task => 
-                pendingTasks.has(task.id) && 
-                task.status !== '已完成' && 
-                !focusTasks.has(task.id) &&
-                task.type === '动作'  // 只显示动作类型的任务
-            );
-            
-            // 按照 pendingTasksOrder 排序
-            if (pendingTasksOrder.length > 0) {
-                pendingTasksList.sort((a, b) => {
-                    const indexA = pendingTasksOrder.indexOf(a.id);
-                    const indexB = pendingTasksOrder.indexOf(b.id);
-                    if (indexA === -1) return 1;
-                    if (indexB === -1) return -1;
-                    return indexA - indexB;
-                });
-            }
-            
-            document.getElementById('pendingCount').textContent = pendingTasksList.length;
-            
-            const container = document.getElementById('pendingTasksList');
-            container.innerHTML = pendingTasksList.slice(0, 10).map((task, index) => `
-                <div class="timeline-content mb-2 slide-in pending-task-item" 
-                     draggable="true"
-                     data-task-id="${task.id}"
-                     data-task-index="${index}"
-                     ondragstart="handlePendingDragStart(event)"
-                     ondragover="handlePendingDragOver(event)"
-                     ondragenter="handlePendingDragEnter(event)"
-                     ondragleave="handlePendingDragLeave(event)"
-                     ondrop="handlePendingDrop(event)"
-                     ondragend="handlePendingDragEnd(event)"
-                     onclick="showInMindMap('${task.id}')" 
-                     style="cursor: pointer; position: relative;">
-                    <div class="drag-handle" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 16px; color: var(--text-muted); cursor: grab; opacity: 0; transition: opacity 0.2s;" title="拖拽排序">⋮⋮</div>
-                    ${index > 0 ? `<button class="pending-task-pin" onclick="event.stopPropagation(); pinToTopPending('${task.id}')" title="置顶">⬆️</button>` : ''}
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-left: 70px;">
-                        <div>
-                            <span class="task-type-badge ${task.type.toLowerCase()} text-small">
-                                ${getTaskTypeIcon(task.type)} ${task.type}
-                            </span>
-                            <span class="text-small text-muted ml-2">${task.fields.priority}优先级</span>
-                        </div>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); removeFromPending('${task.id}')">
-                                ✕ 移除
-                            </button>
-                            <button class="btn btn-primary" style="padding: 12px 20px; font-size: 1rem; font-weight: 600; background: linear-gradient(135deg, #667eea, #764ba2); border: none; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); transition: all 0.3s ease;" onclick="event.stopPropagation(); addToFocus('${task.id}')" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(102, 126, 234, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.3)'">
-                                🎯 加入焦点
-                            </button>
-                        </div>
-                    </div>
-                    <div class="mt-1 font-weight-500" style="margin-left: 70px;">${task.title}</div>
-                    <div class="text-small text-muted" style="margin-left: 70px;">${task.path}</div>
-                    ${task.fields.dueDate ? `<div class="text-small text-muted" style="margin-left: 70px;">截止: ${formatDate(task.fields.dueDate)}</div>` : ''}
-                </div>
-            `).join('') || '<p class="text-muted">暂无待处理任务，点击左侧 "📋 添加到待处理" 来添加任务</p>';
-        }
-
-        /* ========================================
-           📅 今日时间轴功能
-           ======================================== */
-        
-        // 时间段重叠检查功能已移除 - 系统不再考虑时间安排
-        
-        // 将任务分组（时间重叠检查已移除）
-        function groupConcurrentTasks(tasks) {
-            // 由于不再考虑时间安排，每个任务单独成组
-            return tasks.map(task => [task]);
-        }
-        
-        // 设置时间轴视图模式
-        function setTimelineViewMode(mode) {
-            timelineViewMode = mode;
-            
-            // 更新按钮状态
-            document.querySelectorAll('.view-mode-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.mode === mode);
-            });
-            
-            // 更新日期导航的步进值
-            renderTodayTimeline();
-        }
-        
-        // 获取日期范围
-        function getDateRange(baseDate, mode) {
-            const start = new Date(baseDate);
-            const end = new Date(baseDate);
-            
-            switch (mode) {
-                case 'week':
-                    // 获取本周的开始和结束日期（周一到周日）
-                    const day = start.getDay();
-                    const diff = start.getDate() - day + (day === 0 ? -6 : 1);
-                    start.setDate(diff);
-                    end.setDate(start.getDate() + 6);
-                    break;
-                case 'month':
-                    // 获取本月的开始和结束日期
-                    start.setDate(1);
-                    end.setMonth(end.getMonth() + 1);
-                    end.setDate(0);
-                    break;
-                // 'day' 模式不需要调整
-            }
-            
-            return {
-                start: formatDateToLocal(start),
-                end: formatDateToLocal(end)
-            };
-        }
-        
-        // 强制刷新时间轴视图
-        function forceRefreshTimeline(targetTaskId = null, savedScrollPosition = null) {
-            MNUtil.log('🔄 [forceRefreshTimeline] 开始执行强制刷新时间轴', { targetTaskId, savedScrollPosition });
-            
-            // 立即保存数据
-            saveToLocalStorage();
-            MNUtil.log('💾 [forceRefreshTimeline] 数据已保存到本地存储');
-            
-            // 先捕获一些要验证的任务状态
-            const tasksToVerify = ['task_6', 'task_8', 'task_59'];
-            const beforeStates = {};
-            tasksToVerify.forEach(taskId => {
-                const task = tasks.find(t => t.id === taskId);
-                if (task) {
-                    beforeStates[taskId] = {
-                        status: task.status,
-                        title: task.title.substring(0, 30) + '...'
-                    };
-                }
-            });
-            MNUtil.log('🔍 [forceRefreshTimeline] 刷新前任务状态:', beforeStates);
-            
-            // 使用requestAnimationFrame确保在下一帧重新渲染
-            requestAnimationFrame(() => {
-                MNUtil.log('🎯 [forceRefreshTimeline] requestAnimationFrame 回调开始执行');
-                
-                const container = document.getElementById('todayTimeline');  // 修复容器ID
-                MNUtil.log('📦 [forceRefreshTimeline] 查找容器元素 todayTimeline:', container ? '找到' : '未找到');
-                
-                if (container) {
-                    // 捕获刷新前的按钮状态
-                    const beforeButtons = {};
-                    tasksToVerify.forEach(taskId => {
-                        const taskEl = container.querySelector(`[data-task-id="${taskId}"]`);
-                        if (taskEl) {
-                            const buttons = taskEl.querySelectorAll('.timeline-task-actions button');
-                            beforeButtons[taskId] = Array.from(buttons).map(btn => btn.textContent.trim());
-                        }
-                    });
-                    MNUtil.log('🔘 [forceRefreshTimeline] 刷新前按钮状态:', beforeButtons);
-                    
-                    MNUtil.log('🗑️ [forceRefreshTimeline] 清空容器前的HTML长度:', container.innerHTML.length);
-                    
-                    // 强力DOM刷新：先设置为空，再强制重排，再渲染
-                    container.innerHTML = '';
-                    container.style.display = 'none';
-                    container.offsetHeight; // 强制重排
-                    container.style.display = '';
-                    
-                    MNUtil.log('✅ [forceRefreshTimeline] 容器已清空并强制重排');
-                    
-                    // 重新渲染时间轴
-                    MNUtil.log('🎨 [forceRefreshTimeline] 调用 renderTodayTimeline 开始重新渲染');
-                    renderTodayTimeline();
-                    MNUtil.log('✅ [forceRefreshTimeline] renderTodayTimeline 调用完成');
-                    
-                    // 验证刷新后的按钮状态并恢复滚动位置
-                    setTimeout(() => {
-                        const afterButtons = {};
-                        tasksToVerify.forEach(taskId => {
-                            const taskEl = container.querySelector(`[data-task-id="${taskId}"]`);
-                            if (taskEl) {
-                                const buttons = taskEl.querySelectorAll('.timeline-task-actions button');
-                                afterButtons[taskId] = Array.from(buttons).map(btn => btn.textContent.trim());
-                                
-                                // 检查任务状态文本
-                                const statusEl = taskEl.querySelector('[class*="status"]');
-                                const task = tasks.find(t => t.id === taskId);
-                                MNUtil.log(`📊 [DOM验证] ${taskId}:`, {
-                                    数据状态: task?.status,
-                                    DOM状态: statusEl?.textContent.trim(),
-                                    按钮变化: beforeButtons[taskId]?.join(',') + ' → ' + afterButtons[taskId]?.join(',')
-                                });
-                            }
-                        });
-                        MNUtil.log('🔘 [forceRefreshTimeline] 刷新后按钮状态:', afterButtons);
-                        MNUtil.log('📏 [forceRefreshTimeline] 刷新后HTML长度:', container.innerHTML.length);
-                        
-                        // 恢复滚动位置
-                        const viewContainer = document.querySelector('.view-container');
-                        if (viewContainer && savedScrollPosition !== null) {
-                            MNUtil.log('📍 [forceRefreshTimeline] 恢复滚动位置:', savedScrollPosition);
-                            viewContainer.scrollTop = savedScrollPosition;
-                            
-                            // 如果有目标任务ID，确保该任务可见
-                            if (targetTaskId) {
-                                const taskElement = document.querySelector(`[data-task-id="${targetTaskId}"]`);
-                                if (taskElement) {
-                                    // 使用 scrollIntoView 确保任务在视图中心（瞬时滚动）
-                                    taskElement.scrollIntoView({ behavior: 'instant', block: 'center' });
-                                    MNUtil.log('🎯 [forceRefreshTimeline] 滚动到任务:', targetTaskId);
-                                }
-                            }
-                        }
-                    }, 50); // 减少延迟以加快响应速度
-                    
-                    // 更新侧边栏
-                    MNUtil.log('📊 [forceRefreshTimeline] 更新侧边栏统计');
-                    updateSidebar('today');
-                    updateSidebarStats();
-                    MNUtil.log('✅ [forceRefreshTimeline] 强制刷新完成');
-                } else {
-                    MNUtil.log('❌ [forceRefreshTimeline] 未找到容器元素 todayTimeline');
-                }
-            });
-        }
-        
-        // 时间轴专用的任务状态切换函数
-        function toggleTaskStatusInTimeline(taskId, newStatus) {
-            MNUtil.log('🔧 [toggleTaskStatusInTimeline] 开始执行，参数:', { taskId, newStatus });
-            
-            // 记录当前滚动位置
-            const viewContainer = document.querySelector('.view-container');
-            const scrollPosition = viewContainer ? viewContainer.scrollTop : 0;
-            MNUtil.log('📍 [toggleTaskStatusInTimeline] 记录滚动位置:', scrollPosition);
-            
-            // 直接更新任务状态，避免重复刷新
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) {
-                MNUtil.log('❌ [toggleTaskStatusInTimeline] 未找到任务: ' + taskId);
+    function traverseNodes(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            const nodeLength = node.textContent.length;
+            if (currentOffset + nodeLength >= offset) {
+                range.setStart(node, offset - currentOffset);
+                range.collapse(true);
+                found = true;
                 return;
-            }
-            MNUtil.log('✅ [toggleTaskStatusInTimeline] 找到任务: ' + task.title);
-            
-            const oldStatus = task.status;
-            MNUtil.log('📝 [toggleTaskStatusInTimeline] 状态变更: ' + oldStatus + ' → ' + newStatus);
-            const currentTime = new Date().toISOString();
-            const today = formatDateToLocal(new Date());
-            
-            // 状态更新逻辑（与toggleTaskStatus相同）
-            if (oldStatus === '未开始' && newStatus === '进行中') {
-                task.fields.startTime = currentTime;
-                task.fields.plannedDate = today;
-                task.fields.today = true;
-            } else if (oldStatus === '暂停' && newStatus === '进行中') {
-                task.fields.plannedDate = today;
-                task.fields.today = true;
-                if (!task.fields.startTime) {
-                    task.fields.startTime = currentTime;
-                }
-            } else if (oldStatus === '进行中' && newStatus === '已完成') {
-                task.fields.endTime = currentTime;
-            } else if (newStatus === '进行中' && !task.fields.startTime) {
-                task.fields.startTime = currentTime;
-                task.fields.plannedDate = today;
-                task.fields.today = true;
-            } else if (newStatus === '已完成' && !task.fields.endTime) {
-                task.fields.endTime = currentTime;
-                if (!task.fields.startTime) {
-                    task.fields.startTime = currentTime;
-                }
-            }
-            
-            // 更新状态
-            task.status = newStatus;
-            MNUtil.log('✅ [toggleTaskStatusInTimeline] 状态更新完成，task对象:', {
-                id: task.id,
-                title: task.title.substring(0, 20) + '...',
-                oldStatus: oldStatus,
-                newStatus: task.status,
-                startTime: task.fields.startTime,
-                endTime: task.fields.endTime
-            });
-            
-            // 记录进展
-            if (!task.fields.progressLog) {
-                task.fields.progressLog = [];
-            }
-            task.fields.progressLog.push({
-                date: new Date().toLocaleString('zh-CN'),
-                note: `任务状态从"${oldStatus}"变更为"${newStatus}"`
-            });
-            
-            // 保存数据
-            saveToLocalStorage();
-            
-            // 验证tasks数组中的更新
-            const updatedTask = tasks.find(t => t.id === taskId);
-            MNUtil.log('🔍 [toggleTaskStatusInTimeline] 验证tasks数组中的任务状态:', {
-                id: updatedTask.id,
-                status: updatedTask.status,
-                isSameObject: updatedTask === task
-            });
-            
-            // 显示通知
-            showNotification(`任务状态已更新为：${newStatus}`, 'success');
-            MNUtil.log('📢 [toggleTaskStatusInTimeline] 通知已显示');
-            
-            // 立即强制刷新时间轴，传递任务ID和滚动位置
-            MNUtil.log('🔄 [toggleTaskStatusInTimeline] 准备调用 forceRefreshTimeline');
-            forceRefreshTimeline(taskId, scrollPosition);
-            MNUtil.log('✅ [toggleTaskStatusInTimeline] forceRefreshTimeline 调用完成');
-            
-            // 更新侧边栏统计
-            updateSidebar('today');
-            updateSidebarStats();
-            MNUtil.log('✅ [toggleTaskStatusInTimeline] 状态切换完成');
-        }
-        
-        // 时间轴专用的添加到焦点函数
-        function addToFocusInTimeline(taskId) {
-            // 只统计符合显示条件的焦点任务数量
-            const activeFocusTasks = Array.from(focusTasks)
-                .map(id => tasks.find(t => t.id === id))
-                .filter(task => 
-                    task && 
-                    task.type === '动作' && 
-                    task.status !== '已完成' && 
-                    task.status !== '已归档'
-                );
-            
-            if (activeFocusTasks.length >= 5) {
-                showNotification('焦点任务不能超过5个，请先移除其他任务', 'warning');
-                return;
-            }
-            
-            focusTasks.add(taskId);
-            
-            // 将新任务添加到排序数组末尾
-            if (!focusTasksOrder.includes(taskId)) {
-                focusTasksOrder.push(taskId);
-            }
-            
-            // 保存数据
-            saveToLocalStorage();
-            
-            // 显示通知
-            showNotification('已添加到焦点任务', 'success');
-            
-            // 立即刷新时间轴
-            forceRefreshTimeline();
-            
-            // 更新侧边栏统计
-            updateSidebar('today');
-            updateSidebarStats();
-        }
-        
-        // 时间轴专用的添加到待处理函数
-        function addToPendingInTimeline(taskId) {
-            if (pendingTasks.has(taskId)) {
-                showNotification('该任务已在待处理列表中', 'warning');
-                return;
-            }
-            
-            pendingTasks.add(taskId);
-            
-            // 将新任务添加到排序数组末尾
-            if (!pendingTasksOrder.includes(taskId)) {
-                pendingTasksOrder.push(taskId);
-            }
-            
-            // 保存数据
-            saveToLocalStorage();
-            
-            // 显示通知
-            showNotification('已添加到待处理任务', 'success');
-            
-            // 立即刷新时间轴
-            forceRefreshTimeline();
-            
-            // 更新侧边栏统计
-            updateSidebar('today');
-            updateSidebarStats();
-        }
-        
-        // 渲染今日时间轴
-        function renderTodayTimeline() {
-            MNUtil.log('🎨 [renderTodayTimeline] 开始渲染时间轴');
-            
-            // 获取选择的日期范围
-            const dateRange = getDateRange(selectedTimelineDate, timelineViewMode);
-            const todayStr = formatDateToLocal(new Date());
-            MNUtil.log('📅 [renderTodayTimeline] 日期范围:', { dateRange: dateRange, today: todayStr });
-            
-            // 根据选择的日期范围筛选任务
-            // 始终使用最新的 tasks 数组，避免使用过时的 filteredTasks
-            const baseTasks = tasks;
-            MNUtil.log('📊 [renderTodayTimeline] 基础任务数量: ' + baseTasks.length);
-            
-            const timelineTasks = baseTasks.filter(task => {
-                // 只显示项目和动作类型的任务
-                if (task.type !== '项目' && task.type !== '动作') {
-                    return false;
-                }
-                
-                // 不显示已归档的任务
-                if (task.status === '已归档') {
-                    return false;
-                }
-                
-                // 显示所有未完成的任务和今天完成的任务
-                if (task.status === '已完成') {
-                    // 已完成任务只显示今天完成的
-                    if (task.fields.endTime) {
-                        const endDate = formatDateToLocal(new Date(task.fields.endTime));
-                        if (endDate !== todayStr) {
-                            return false;
-                        }
-                    }
-                }
-                // 未开始、进行中、暂停的任务都显示
-                
-                // 如果任务有 plannedDate，则按日期范围筛选
-                if (task.fields.plannedDate) {
-                    if (timelineViewMode === 'day') {
-                        return task.fields.plannedDate === dateRange.start;
-                    } else {
-                        return task.fields.plannedDate >= dateRange.start && 
-                               task.fields.plannedDate <= dateRange.end;
-                    }
-                }
-                
-                // 如果没有 plannedDate，不显示在时间轴中
-                // （已移除对 today 字段的依赖）
-                
-                // 其他情况不显示没有 plannedDate 的任务
-                return false;
-            });
-            
-            MNUtil.log('🎯 [renderTodayTimeline] 筛选后的时间轴任务数量: ' + timelineTasks.length);
-            MNUtil.log('🔍 [renderTodayTimeline] 任务状态检查:', 
-                timelineTasks.map(t => ({ 
-                    id: t.id, 
-                    title: t.title.substring(0, 20) + '...', 
-                    status: t.status 
-                }))
-            );
-            
-            const container = document.getElementById('todayTimeline');
-            MNUtil.log('📦 [renderTodayTimeline] 获取容器元素: ' + (container ? '成功' : '失败'));
-            
-            if (!container) {
-                MNUtil.log('❌ [renderTodayTimeline] 未找到时间轴容器元素 todayTimeline');
-                return;
-            }
-            
-            // 更新统计信息
-            updateTimelineStats(timelineTasks, dateRange);
-            
-            // 纯按时间排序，状态通过视觉样式区分
-            timelineTasks.sort((a, b) => {
-                // 获取任务时间（优先使用开始时间，否则使用结束时间）
-                const timeA = a.fields.startTime || a.fields.endTime || '';
-                const timeB = b.fields.startTime || b.fields.endTime || '';
-                
-                // 如果时间相同，进行中的任务优先显示
-                if (timeA === timeB) {
-                    if (a.status === '进行中' && b.status !== '进行中') return -1;
-                    if (a.status !== '进行中' && b.status === '进行中') return 1;
-                    // 最后按任务ID排序（确保稳定的排序结果）
-                    return a.id.localeCompare(b.id);
-                }
-                
-                // 按时间升序排序（最早的在前）
-                return timeA.localeCompare(timeB);
-            });
-            
-            // 生成时间轴内容
-            if (timelineTasks.length === 0) {
-                container.innerHTML = '<p class="text-muted">暂无进行中或已完成的任务</p>';
-                return;
-            }
-            
-            // 对于周视图和月视图，按日期分组
-            if (timelineViewMode !== 'day') {
-                const tasksByDate = {};
-                timelineTasks.forEach(task => {
-                    const date = task.fields.plannedDate || formatDateToLocal(new Date());
-                    if (!tasksByDate[date]) {
-                        tasksByDate[date] = [];
-                    }
-                    tasksByDate[date].push(task);
-                });
-                
-                // 生成分组的时间轴
-                const sortedDates = Object.keys(tasksByDate).sort();
-                
-                // 强制DOM更新
-                MNUtil.log('🔧 [renderTodayTimeline] 强制DOM更新前');
-                container.style.display = 'none';
-                container.offsetHeight; // 强制重排
-                
-                container.innerHTML = `
-                    <div class="timeline-line"></div>
-                    ${sortedDates.map(date => {
-                        const dateObj = new Date(date);
-                        const dateLabel = dateObj.toLocaleDateString('zh-CN', {
-                            month: 'numeric',
-                            day: 'numeric',
-                            weekday: 'short'
-                        });
-                        
-                        return `
-                            <div class="timeline-date-group">
-                                <div class="timeline-date-label">${dateLabel}</div>
-                                ${tasksByDate[date].map(task => renderTimelineTask(task)).join('')}
-                            </div>
-                        `;
-                    }).join('')}
-                `;
-                container.style.display = ''; // 恢复显示
-                MNUtil.log('✅ [renderTodayTimeline] 强制DOM更新完成（周/月视图）');
             } else {
-                // 日视图 - 检测并分组同时间的任务
-                const taskGroups = [];
-                let currentGroup = null;
-                
-                timelineTasks.forEach((task, index) => {
-                    const taskTime = task.fields.startTime || task.fields.endTime || '';
-                    
-                    if (currentGroup && currentGroup.time === taskTime) {
-                        // 添加到当前组
-                        currentGroup.tasks.push(task);
-                    } else {
-                        // 创建新组
-                        currentGroup = {
-                            time: taskTime,
-                            tasks: [task]
-                        };
-                        taskGroups.push(currentGroup);
-                    }
-                });
-                
-                // 渲染分组的时间轴
-                // 强制DOM更新
-                MNUtil.log('🔧 [renderTodayTimeline] 强制DOM更新前（日视图）');
-                container.style.display = 'none';
-                container.offsetHeight; // 强制重排
-                
-                container.innerHTML = `
-                    <div class="timeline-line"></div>
-                    ${taskGroups.map(group => {
-                        if (group.tasks.length === 1) {
-                            // 单个任务，正常渲染
-                            return renderTimelineTask(group.tasks[0]);
-                        } else {
-                            // 多个任务同时间，特殊渲染
-                            return renderTimelineTaskGroup(group);
-                        }
-                    }).join('')}
-                `;
-                
-                container.style.display = ''; // 恢复显示
-                MNUtil.log('✅ [renderTodayTimeline] 强制DOM更新完成（日视图）');
+                currentOffset += nodeLength;
             }
-            
-            MNUtil.log('📏 [renderTodayTimeline] 最终渲染的HTML长度: ' + container.innerHTML.length);
-            
-            // DOM更新验证
-            if (timelineTasks.length > 0) {
-                const firstTaskId = timelineTasks[0].id;
-                const taskElement = container.querySelector(`[data-task-id="${firstTaskId}"]`);
-                if (taskElement) {
-                    const statusElement = taskElement.querySelector('.task-status') || 
-                                        taskElement.querySelector('[class*="status"]');
-                    MNUtil.log('🔍 [renderTodayTimeline] DOM验证 - 第一个任务的状态显示: ' + 
-                        (statusElement ? statusElement.textContent.trim() : '未找到状态元素'));
-                }
-            }
-            
-            MNUtil.log('✅ [renderTodayTimeline] 时间轴渲染完成');
-        }
-        
-        // 渲染同时间的任务组
-        function renderTimelineTaskGroup(group) {
-            // 获取第一个任务的时间，不区分状态
-            const firstTask = group.tasks[0];
-            const taskTime = firstTask.fields.startTime || firstTask.fields.endTime;
-            const timeStr = taskTime
-                ? new Date(taskTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-                : '暂无时间';
-            
-            return `
-                <div class="timeline-item-group fade-in">
-                    <div class="timeline-dot-group">
-                        <div class="timeline-dot ${group.tasks.some(t => t.status === '进行中') ? 'active' : ''}"></div>
-                        <span class="timeline-group-count">${group.tasks.length}</span>
-                    </div>
-                    <div class="timeline-time">${timeStr}</div>
-                    <div class="timeline-content-wrapper">
-                        <div class="timeline-group-label">同一时间的任务</div>
-                        <div class="timeline-group-tasks">
-                            ${group.tasks.map(task => `
-                                <div class="timeline-content timeline-content-grouped" onclick="showInMindMap('${task.id}')">
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <span class="task-type-badge ${task.type.toLowerCase()} text-small">
-                                            ${getTaskTypeIcon(task.type)} ${task.type}
-                                        </span>
-                                        <span class="${getStatusClass(task.status)} text-small">
-                                            ${getStatusIcon(task.status)} ${task.status}
-                                        </span>
-                                    </div>
-                                    <div class="mt-1 font-weight-500">${task.title}</div>
-                                    <div class="text-small text-muted mt-1">
-                                        ${task.path}
-                                    </div>
-                                    ${task.status === '进行中' && task.fields.startTime ? `
-                                        <div class="text-small text-muted mt-1">
-                                            ⏱ 已用时：${formatElapsedTime(task.fields.startTime)}
-                                        </div>
-                                    ` : ''}
-                                    ${task.status === '已完成' && task.fields.startTime && task.fields.endTime ? `
-                                        <div class="text-small text-muted mt-1">
-                                            ⏱ 耗时：${formatElapsedTime(task.fields.startTime, task.fields.endTime)}
-                                        </div>
-                                    ` : ''}
-                                    <div class="mt-2" style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                        ${task.status === '未开始' ? `
-                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); MNUtil.log('🚀 [Timeline Group Button] 开始任务按钮被点击，taskId: ' + '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '进行中')">
-                                                🚀 开始
-                                            </button>
-                                        ` : ''}
-                                        ${task.status === '进行中' ? `
-                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); MNUtil.log('✅ [Timeline Group Button] 完成任务按钮被点击，taskId: ' + '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '已完成')">
-                                                ✅ 完成
-                                            </button>
-                                            <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); MNUtil.log('⏸ [Timeline Group Button] 暂停任务按钮被点击，taskId: ' + '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '暂停')">
-                                                ⏸ 暂停
-                                            </button>
-                                        ` : ''}
-                                        ${task.status === '暂停' ? `
-                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); MNUtil.log('▶️ [Timeline Group Button] 继续任务按钮被点击，taskId: ' + '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '进行中')">
-                                                ▶️ 继续
-                                            </button>
-                                        ` : ''}
-                                        ${task.status !== '已完成' && !focusTasks.has(task.id) ? `
-                                            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); addToFocusInTimeline('${task.id}')" title="添加到焦点">
-                                                🎯 焦点
-                                            </button>
-                                        ` : ''}
-                                        ${task.status !== '已完成' && !pendingTasks.has(task.id) ? `
-                                            <button class="btn btn-info" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); addToPendingInTimeline('${task.id}')" title="添加到待处理">
-                                                📋 待处理
-                                            </button>
-                                        ` : ''}
-                                        <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="event.stopPropagation(); viewProgressLog(event, '${task.id}')">
-                                            📊 进展
-                                        </button>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-        
-        // 渲染单个时间轴任务
-        function renderTimelineTask(task) {
-            // 调试特定任务的渲染
-            if (task.id === 'task_6' || task.id === 'task_8' || task.id === 'task_59') {
-                const originalTask = tasks.find(t => t.id === task.id);
-                MNUtil.log('🎯 [renderTimelineTask] 渲染特定任务:', {
-                    id: task.id,
-                    title: task.title.substring(0, 30) + '...',
-                    status: task.status,
-                    originalStatus: originalTask ? originalTask.status : 'N/A',
-                    isSameObject: task === originalTask,
-                    hasStartButton: task.status === '未开始',
-                    hasCompleteButton: task.status === '进行中',
-                    hasPauseButton: task.status === '进行中',
-                    hasContinueButton: task.status === '暂停'
-                });
-            }
-            
-            // 优先显示任务的具体时间，不区分状态
-            const taskTime = task.fields.startTime || task.fields.endTime;
-            const timeStr = taskTime
-                ? new Date(taskTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-                : '暂无时间';
-            
-            // 添加时间戳确保DOM识别变化
-            const timestamp = Date.now();
-            
-            return `
-                <div class="timeline-item fade-in" data-task-id="${task.id}" data-timestamp="${timestamp}">
-                    <div class="timeline-dot ${task.status === '进行中' ? 'active' : ''}"></div>
-                    <div class="timeline-time">${timeStr}</div>
-                    <div class="timeline-content-wrapper">
-                        <div class="timeline-main-content">
-                            <!-- 任务头部：信息 + 操作按钮 -->
-                            <div class="timeline-header">
-                                <div class="task-info" onclick="showInMindMap('${task.id}')">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-xs);">
-                                        <span class="task-type-badge ${task.type.toLowerCase()} text-small">
-                                            ${getTaskTypeIcon(task.type)} ${task.type}
-                                        </span>
-                                        <span class="${getStatusClass(task.status)} text-small task-status-display">
-                                            ${getStatusIcon(task.status)} ${task.status}
-                                        </span>
-                                    </div>
-                                    <div class="font-weight-500" style="margin-bottom: var(--spacing-xs);">${task.title}</div>
-                                    <div class="text-small text-muted" style="margin-bottom: var(--spacing-xs);">
-                                        📍 ${task.path}
-                                    </div>
-                                    ${task.status === '进行中' && task.fields.startTime ? `
-                                        <div class="text-small text-muted">
-                                            ⏱ 已用时：${formatElapsedTime(task.fields.startTime)}
-                                        </div>
-                                    ` : ''}
-                                    ${task.status === '已完成' && task.fields.startTime && task.fields.endTime ? `
-                                        <div class="text-small text-muted">
-                                            ⏱ 耗时：${formatElapsedTime(task.fields.startTime, task.fields.endTime)}
-                                        </div>
-                                    ` : ''}
-                                </div>
-                                
-                                <div class="timeline-task-actions" data-current-status="${task.status}">
-                                    <!-- 调试信息：当前状态=${task.status} -->
-                                    ${task.status === '未开始' ? `
-                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); MNUtil.log('🚀 [Timeline Button] 开始任务按钮被点击，taskId: ' + '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '进行中')" title="开始任务" data-action="start">
-                                            🚀
-                                        </button>
-                                    ` : ''}
-                                    ${task.status === '进行中' ? `
-                                        <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); MNUtil.log('✅ [Timeline Button] 完成任务按钮被点击，taskId: ' + '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '已完成')" title="完成任务" data-action="complete">
-                                            ✅
-                                        </button>
-                                        <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); MNUtil.log('⏸ [Timeline Button] 暂停任务按钮被点击，taskId: ' + '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '暂停')" title="暂停任务" data-action="pause">
-                                            ⏸
-                                        </button>
-                                    ` : ''}
-                                    ${task.status === '暂停' ? `
-                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); MNUtil.log('▶️ [Timeline Button] 继续任务按钮被点击，taskId: ' + '${task.id}'); toggleTaskStatusInTimeline('${task.id}', '进行中')" title="继续任务" data-action="continue">
-                                            ▶️
-                                        </button>
-                                    ` : ''}
-                                    ${task.status !== '已完成' && !focusTasks.has(task.id) ? `
-                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); addToFocusInTimeline('${task.id}')" title="添加到焦点">
-                                            🎯
-                                        </button>
-                                    ` : ''}
-                                    ${task.status !== '已完成' && !pendingTasks.has(task.id) ? `
-                                        <button class="btn btn-sm btn-info" onclick="event.stopPropagation(); addToPendingInTimeline('${task.id}')" title="添加到待处理">
-                                            📋
-                                        </button>
-                                    ` : ''}
-                                </div>
-                            </div>
-                            
-                            <!-- 进展记录显示区域 -->
-                            ${renderTaskProgressInline(task)}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        /* ========================================
-           🔍 筛选功能
-           ======================================== */
-        
-        // 应用快速筛选
-        function applyQuickFilter(filterType) {
-            // 更新侧边栏选中状态
-            document.querySelectorAll('.custom-view-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            event.target.closest('.custom-view-item').classList.add('active');
-            
-            // 应用筛选逻辑
-            switch(filterType) {
-                case 'current':
-                    // 显示焦点任务
-                    switchView('focus');
-                    break;
-                case 'today':
-                    // 切换到今日视图，并设置日期为今天
-                    const now1 = new Date();
-                    selectedTimelineDate = new Date(now1.getFullYear(), now1.getMonth(), now1.getDate());
-                    switchView('today');
-                    break;
-                case 'high-priority':
-                    // 筛选高优先级任务
-                    activeFilters.priority = '高';
-                    applyFilters();
-                    break;
-                case 'in-progress':
-                    // 筛选进行中的任务
-                    activeFilters.status = '进行中';
-                    applyFilters();
-                    break;
-                case 'paused':
-                    // 筛选暂停的任务
-                    activeFilters.status = '暂停';
-                    applyFilters();
-                    break;
-            }
-        }
-
-        // 保存当前视图
-        function saveCurrentView() {
-            const viewName = prompt('请输入视图名称：');
-            if (!viewName) return;
-            
-            // 保存当前的筛选配置
-            customViews[viewName] = {
-                filters: {...activeFilters},
-                focusTasks: [...focusTasks],
-                viewType: currentView
-            };
-            
-            // 添加到侧边栏
-            const viewsList = document.getElementById('customViewsList');
-            const newItem = document.createElement('div');
-            newItem.className = 'custom-view-item slide-in';
-            newItem.onclick = () => loadCustomView(viewName);
-            newItem.innerHTML = `
-                <span>📌 ${viewName}</span>
-                <span class="text-small text-muted">0</span>
-            `;
-            viewsList.appendChild(newItem);
-            
-            showNotification(`视图 "${viewName}" 已保存`, 'success');
-        }
-
-        // 加载自定义视图
-        function loadCustomView(viewName) {
-            const view = customViews[viewName];
-            if (view) {
-                activeFilters = {...view.filters};
-                focusTasks = new Set(view.focusTasks);
-                switchView(view.viewType);
-                applyFilters();
-            }
-        }
-
-        /* ========================================
-           🚀 任务操作功能
-           ======================================== */
-        
-        // 启动任务
-        function launchTask(event, taskId) {
-            event.stopPropagation();
-            const task = tasks.find(t => t.id === taskId);
-            if (task && task.launchLink) {
-                MNUtil.log(`启动任务: ${task.title}`);
-                MNUtil.log(`跳转到: ${task.launchLink}`);
-                // 在实际应用中，这里会调用 window.location.href = task.launchLink
-                showNotification(`正在启动任务: ${task.title}`, 'info');
-                // 模拟启动任务 - 实际应该打开链接
-                MNUtil.log(`启动链接: ${task.launchLink}`);
-            }
-        }
-
-        // 设置启动链接
-        function setLaunchLink(event, taskId) {
-            event.stopPropagation();
-            currentEditingTaskId = taskId;
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) return;
-            
-            // 更新模态框标题
-            document.getElementById('launchLinkTitle').textContent = `设置启动链接 - ${task.title}`;
-            
-            // 如果任务已有链接，预填充
-            if (task.launchLink) {
-                document.getElementById('marginnoteLink').value = task.launchLink;
-            }
-            
-            // 加载最近使用的链接
-            loadRecentLinks();
-            
-            // 显示模态框
-            document.getElementById('launchLinkModal').classList.add('active');
-        }
-
-        // 选择链接类型
-        function selectLinkType(type) {
-            // 更新按钮状态
-            document.querySelectorAll('.link-type-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelector(`[data-type="${type}"]`).classList.add('active');
-            
-            // 显示对应的输入框
-            document.getElementById('marginnoteLinkGroup').classList.add('hidden');
-            document.getElementById('urlLinkGroup').classList.add('hidden');
-            document.getElementById('fileLinkGroup').classList.add('hidden');
-            
-            switch(type) {
-                case 'marginnote':
-                    document.getElementById('marginnoteLinkGroup').classList.remove('hidden');
-                    break;
-                case 'url':
-                    document.getElementById('urlLinkGroup').classList.remove('hidden');
-                    break;
-                case 'file':
-                    document.getElementById('fileLinkGroup').classList.remove('hidden');
-                    break;
-            }
-        }
-
-        // 加载最近使用的链接
-        function loadRecentLinks() {
-            const recentLinks = getRecentLinks();
-            const listContainer = document.getElementById('recentLinksList');
-            
-            if (recentLinks.length === 0) {
-                listContainer.innerHTML = '<p class="text-muted text-small">暂无最近使用的链接</p>';
-                return;
-            }
-            
-            listContainer.innerHTML = recentLinks.map(link => `
-                <div class="recent-link-item" onclick="applyRecentLink('${encodeURIComponent(link.url)}', '${link.type}')">
-                    <span class="recent-link-icon">${getIconByType(link.type)}</span>
-                    <span class="recent-link-text">${link.url}</span>
-                    <span class="recent-link-time">${formatRelativeTime(link.time)}</span>
-                </div>
-            `).join('');
-        }
-
-        // 应用最近的链接
-        function applyRecentLink(encodedUrl, type) {
-            const url = decodeURIComponent(encodedUrl);
-            selectLinkType(type);
-            
-            switch(type) {
-                case 'marginnote':
-                    document.getElementById('marginnoteLink').value = url;
-                    break;
-                case 'url':
-                    document.getElementById('urlLink').value = url;
-                    break;
-                case 'file':
-                    document.getElementById('fileLink').value = url;
-                    break;
-            }
-        }
-
-        // 确认启动链接
-        function confirmLaunchLink() {
-            const activeType = document.querySelector('.link-type-btn.active').dataset.type;
-            let link = '';
-            
-            switch(activeType) {
-                case 'marginnote':
-                    link = document.getElementById('marginnoteLink').value.trim();
-                    break;
-                case 'url':
-                    link = document.getElementById('urlLink').value.trim();
-                    break;
-                case 'file':
-                    link = document.getElementById('fileLink').value.trim();
-                    break;
-            }
-            
-            if (!link) {
-                showNotification('请输入链接', 'warning');
-                return;
-            }
-            
-            const task = tasks.find(t => t.id === currentEditingTaskId);
-            if (task) {
-                task.launchLink = link;
-                task.launchLinkType = activeType;
-                
-                // 保存到最近使用
-                saveRecentLink(link, activeType);
-                
-                // 清空表单
-                document.getElementById('marginnoteLink').value = '';
-                document.getElementById('urlLink').value = '';
-                document.getElementById('fileLink').value = '';
-                document.getElementById('linkNote').value = '';
-                
-                closeModal('launchLinkModal');
-                renderFocusTasks();
-                saveToLocalStorage();
-                
-                // 显示成功提示
-                MNUtil.log('✅ 启动链接已设置');
-            }
-        }
-
-        // 获取最近使用的链接
-        function getRecentLinks() {
-            const saved = localStorage.getItem('mntask-recent-links');
-            return saved ? JSON.parse(saved) : [];
-        }
-
-        // 保存最近使用的链接
-        function saveRecentLink(url, type) {
-            let recentLinks = getRecentLinks();
-            
-            // 移除重复项
-            recentLinks = recentLinks.filter(link => link.url !== url);
-            
-            // 添加到开头
-            recentLinks.unshift({
-                url: url,
-                type: type,
-                time: Date.now()
-            });
-            
-            // 最多保存10个
-            recentLinks = recentLinks.slice(0, 10);
-            
-            localStorage.setItem('mntask-recent-links', JSON.stringify(recentLinks));
-        }
-
-        // 根据类型获取图标
-        function getIconByType(type) {
-            const icons = {
-                'marginnote': '📚',
-                'url': '🌐',
-                'file': '📄'
-            };
-            return icons[type] || '🔗';
-        }
-
-        // 格式化相对时间
-        function formatRelativeTime(timestamp) {
-            const now = Date.now();
-            const diff = now - timestamp;
-            const minutes = Math.floor(diff / 60000);
-            const hours = Math.floor(diff / 3600000);
-            const days = Math.floor(diff / 86400000);
-            
-            if (minutes < 1) return '刚刚';
-            if (minutes < 60) return `${minutes}分钟前`;
-            if (hours < 24) return `${hours}小时前`;
-            if (days < 7) return `${days}天前`;
-            return new Date(timestamp).toLocaleDateString('zh-CN');
-        }
-
-        // 添加进展说明
-        function addProgressNote(event, taskId) {
-            MNUtil.log('🔍 [addProgressNote] 函数被调用');
-            MNUtil.log('📊 参数:', { event: event, taskId: taskId });
-            
-            try {
-                // 检查event参数，避免报错
-                if (event && event.stopPropagation) {
-                    event.stopPropagation();
-                    MNUtil.log('✅ 已阻止事件冒泡');
-                }
-                
-                MNUtil.log('🔍 查找任务，taskId:', taskId);
-                MNUtil.log('📊 当前tasks数组长度:', tasks.length);
-                
-                const task = tasks.find(t => t.id === taskId);
-                if (!task) {
-                    MNUtil.log('❌ 找不到任务，taskId:', taskId);
-                    MNUtil.log('📊 可用的任务ID:', tasks.map(t => t.id));
-                    return;
-                }
-                MNUtil.log('✅ 找到任务:', task);
-                
-                MNUtil.log('🔍 弹出输入框');
-                const note = prompt('请输入进展说明：');
-                MNUtil.log('📊 用户输入:', note);
-                
-                if (note && note.trim()) {
-                    // 添加进展记录
-                    if (!task.fields.progressLog) {
-                        MNUtil.log('📝 初始化progressLog数组');
-                        task.fields.progressLog = [];
-                    }
-                    
-                    const newProgress = {
-                        date: new Date().toLocaleString('zh-CN'),
-                        note: note.trim()
-                    };
-                    MNUtil.log('📊 新进展记录:', newProgress);
-                    
-                    task.fields.progressLog.push(newProgress);
-                    MNUtil.log('✅ 进展已添加到数组，当前进展数:', task.fields.progressLog.length);
-                    
-                    // 同步进展数据到原生端
-                    if (window.TaskSync && window.TaskSync.sendTaskUpdate) {
-                        MNUtil.log('🔍 开始同步到原生端');
-                        // 将进展数据转换为MarginNote期望的HTML格式
-                        const progressesForSync = task.fields.progressLog.map(p => {
-                            // 构建MarginNote的进展HTML格式
-                            const timeHtml = `<div style="position:relative; padding-left:28px; margin:14px 0; color:#1E40AF; font-weight:500; font-size:0.92em">
-  <div style="position:absolute; left:0; top:50%; transform:translateY(-50%); 
-              width:18px; height:18px; background:conic-gradient(#3B82F6 0%, #60A5FA 50%, #3B82F6 100%); 
-              border-radius:50%; display:flex; align-items:center; justify-content:center">
-    <div style="width:8px; height:8px; background:white; border-radius:50%"></div>
-  </div>
-  ${p.date}
-</div>
-${p.note}`;
-                            return timeHtml;
-                        });
-                        MNUtil.log('📊 同步数据格式:', progressesForSync);
-                        
-                        TaskSync.sendTaskUpdate(taskId, {
-                            progresses: progressesForSync
-                        });
-                        MNUtil.log('📤 进展数据已同步到原生端');
-                    } else {
-                        MNUtil.log('⚠️ TaskSync 不可用');
-                    }
-                    
-                    // 根据当前视图刷新对应内容
-                    MNUtil.log('🔍 当前视图:', currentView);
-                    if (currentView === 'focus') {
-                        MNUtil.log('🔄 刷新焦点任务视图');
-                        renderFocusTasks();
-                    } else if (currentView === 'planning') {
-                        MNUtil.log('🔄 刷新规划视图');
-                        renderPlanningView();
-                    } else if (currentView === 'today') {
-                        MNUtil.log('🔄 刷新今日时间轴');
-                        renderTodayTimeline();
-                    }
-                    
-                    MNUtil.log('💾 保存到本地存储');
-                    saveToLocalStorage();
-                    showNotification('进展已记录', 'success');
-                    MNUtil.log('✅ [addProgressNote] 执行完成');
-                } else {
-                    MNUtil.log('⚠️ 用户取消或输入为空');
-                }
-            } catch (error) {
-                MNUtil.log('🚨 [addProgressNote] 执行出错:', error);
-                MNUtil.log('错误堆栈:', error.stack);
-                showNotification('添加进展失败: ' + error.message, 'error');
-            }
-        }
-
-        // 查看进展日志
-        function viewProgressLog(event, taskId) {
-            // 检查event参数是否存在
-            if (event && event.stopPropagation) {
-                event.stopPropagation();
-            }
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) return;
-            
-            // 更新模态框标题
-            document.getElementById('progressLogTitle').textContent = `${task.title} - 进展详情`;
-            
-            // 生成进展日志内容
-            const logList = document.getElementById('progressLogList');
-            
-            if (!task.fields.progressLog || task.fields.progressLog.length === 0) {
-                logList.innerHTML = `
-                    <div class="progress-log-empty">
-                        <p>暂无进展记录</p>
-                        <button class="btn btn-primary" onclick="closeModal('progressLogModal'); addProgressNote(event, '${taskId}')">
-                            📝 添加第一条进展
-                        </button>
-                    </div>
-                `;
-            } else {
-                // 按时间倒序显示，最新的在前面
-                const sortedLogs = [...task.fields.progressLog].reverse();
-                logList.innerHTML = sortedLogs.map((log, index) => {
-                    const originalIndex = task.fields.progressLog.length - 1 - index; // 获取原始索引
-                    return `
-                        <div class="progress-log-item" 
-                             data-task-id="${taskId}" 
-                             data-log-index="${originalIndex}"
-                             ondblclick="editProgressLog('${taskId}', ${originalIndex})">
-                            <div class="progress-log-time">${log.date}</div>
-                            <div class="progress-log-content">${escapeHtml(log.note)}</div>
-                        </div>
-                    `;
-                }).join('');
-            }
-            
-            // 显示模态框
-            document.getElementById('progressLogModal').classList.add('active');
-        }
-        
-        // HTML 转义函数，防止 XSS
-        function escapeHtml(unsafe) {
-            if (unsafe == null) {
-                return '';
-            }
-            return String(unsafe)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-        
-        // 编辑进展日志
-        function editProgressLog(taskId, logIndex) {
-            const task = tasks.find(t => t.id === taskId);
-            if (!task || !task.fields.progressLog || !task.fields.progressLog[logIndex]) return;
-            
-            const log = task.fields.progressLog[logIndex];
-            const logItem = document.querySelector(`[data-task-id="${taskId}"][data-log-index="${logIndex}"]`);
-            if (!logItem) return;
-            
-            const contentDiv = logItem.querySelector('.progress-log-content');
-            const originalContent = log.note;
-            
-            // 创建编辑区域
-            const textarea = document.createElement('textarea');
-            textarea.className = 'progress-log-edit';
-            textarea.value = originalContent;
-            textarea.style.width = '100%';
-            textarea.style.minHeight = '60px';
-            textarea.style.padding = '8px';
-            textarea.style.fontSize = '0.9375rem';
-            textarea.style.fontFamily = 'inherit';
-            textarea.style.lineHeight = '1.6';
-            textarea.style.background = 'var(--bg-primary)';
-            textarea.style.color = 'var(--text-primary)';
-            textarea.style.border = '1px solid var(--type-goal)';
-            textarea.style.borderRadius = 'var(--radius-sm)';
-            textarea.style.resize = 'vertical';
-            
-            // 替换内容
-            contentDiv.innerHTML = '';
-            contentDiv.appendChild(textarea);
-            
-            // 自动调整高度
-            textarea.style.height = 'auto';
-            textarea.style.height = textarea.scrollHeight + 'px';
-            textarea.focus();
-            textarea.select();
-            
-            // 保存函数
-            const saveEdit = () => {
-                const newContent = textarea.value.trim();
-                if (newContent && newContent !== originalContent) {
-                    log.note = newContent;
-                    saveToLocalStorage();
-                    // 重新渲染进展日志
-                    viewProgressLog({ stopPropagation: () => {} }, taskId);
-                } else if (!newContent) {
-                    // 如果内容为空，恢复原内容
-                    contentDiv.innerHTML = escapeHtml(originalContent);
-                } else {
-                    // 内容未改变，恢复显示
-                    contentDiv.innerHTML = escapeHtml(originalContent);
-                }
-            };
-            
-            // 取消编辑函数
-            const cancelEdit = () => {
-                contentDiv.innerHTML = escapeHtml(originalContent);
-            };
-            
-            // 监听键盘事件
-            textarea.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    saveEdit();
-                } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    cancelEdit();
-                }
-            });
-            
-            // 失去焦点时保存
-            textarea.addEventListener('blur', saveEdit);
-            
-            // 自动调整高度
-            textarea.addEventListener('input', () => {
-                textarea.style.height = 'auto';
-                textarea.style.height = textarea.scrollHeight + 'px';
-            });
-        }
-
-        /* ========================================
-           🚀 快速进展输入功能
-           ======================================== */
-
-        // 切换快速进展输入面板
-        // 旧的快速进展函数已移除，现在使用全局快速进展弹窗
-        // showQuickProgress, openGlobalQuickProgress, closeGlobalQuickProgress, 
-        // updateGlobalCharacterCount, saveGlobalQuickProgress 函数在第13456行后定义
-
-        /* ========================================
-           📝 时间轴进展记录显示功能
-           ======================================== */
-
-        // 格式化进展时间显示（绝对时间格式）
-        function formatProgressTimeAbsolute(dateStr) {
-            const progressDate = new Date(dateStr);
-            const now = new Date();
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const progressDay = new Date(progressDate.getFullYear(), progressDate.getMonth(), progressDate.getDate());
-            
-            const timeStr = progressDate.toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'});
-            
-            if (progressDay.getTime() === today.getTime()) {
-                return timeStr; // 今天：显示 "9:15"
-            } else if (progressDay.getTime() === today.getTime() - 86400000) {
-                return `昨天 ${timeStr}`; // 昨天：显示 "昨天 9:15"
-            } else {
-                return `${progressDate.getMonth()+1}-${progressDate.getDate()} ${timeStr}`; // 更早：显示 "1-15 9:15"
-            }
-        }
-
-        // 渲染任务内联进展记录
-        function renderTaskProgressInline(task) {
-            if (!task.fields.progressLog || task.fields.progressLog.length === 0) {
-                return `
-                    <div class="timeline-progress-display">
-                        <div class="progress-header">📝 最新进展：</div>
-                        <div class="timeline-progress-empty">暂无进展记录</div>
-                        <div class="progress-inline-actions">
-                            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleQuickProgress('${task.id}')" title="记录进展">
-                                📝 记录
-                            </button>
-                            <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); viewProgressLog(event, '${task.id}')" title="查看详情">
-                                📊 详情
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            // 获取最新5条进展，按时间倒序
-            const recentProgress = [...task.fields.progressLog]
-                .sort((a, b) => new Date(b.date) - new Date(a.date))
-                .slice(0, 5);
-            
-            return `
-                <div class="timeline-progress-display">
-                    <div class="progress-header">📝 最新进展：</div>
-                    ${recentProgress.map((progress, index) => `
-                        <div class="progress-item ${index === 0 ? 'latest' : 'history'}">
-                            ${index === 0 ? 
-                                `${formatProgressTimeAbsolute(progress.date)}: ${progress.note}` :
-                                `｜- ${formatProgressTimeAbsolute(progress.date)} ${progress.note}`
-                            }
-                        </div>
-                    `).join('')}
-                    ${task.fields.progressLog.length > 5 ? 
-                        `<div class="progress-more">还有 ${task.fields.progressLog.length - 5} 条记录...</div>` : 
-                        ''
-                    }
-                    <div class="progress-inline-actions">
-                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleQuickProgress('${task.id}')" title="记录进展">
-                            📝 记录
-                        </button>
-                        <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); viewProgressLog(event, '${task.id}')" title="查看详情">
-                            📊 详情
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
-
-        // 为快速进展输入添加键盘快捷键支持
-        function setupQuickProgressKeyboardShortcuts() {
-            document.addEventListener('keydown', function(e) {
-                // 检查是否在快速进展输入框中
-                if (e.target && e.target.classList.contains('progress-input')) {
-                    if (e.ctrlKey && e.key === 'Enter') {
-                        // Ctrl+Enter 保存
-                        e.preventDefault();
-                        const taskId = e.target.id.replace('progressText-', '');
-                        saveQuickProgress(taskId);
-                    } else if (e.key === 'Escape') {
-                        // Esc 取消
-                        e.preventDefault();
-                        const taskId = e.target.id.replace('progressText-', '');
-                        cancelQuickProgress(taskId);
-                    }
-                }
-            });
-        }
-
-        // 切换当前焦点状态
-        function toggleCurrentFocus(taskId) {
-            const task = tasks.find(t => t.id === taskId);
-            if (task) {
-                // 如果点击的是已经在焦点中的任务，切换其活跃状态
-                if (task.currentFocus) {
-                    task.currentFocus = false;
-                } else {
-                    // 先将其他任务的焦点状态取消
-                    tasks.forEach(t => t.currentFocus = false);
-                    task.currentFocus = true;
-                    
-                    // 将当前任务移动到焦点任务列表的第一个位置
-                    // 先从 focusTasksOrder 中移除该任务
-                    const currentIndex = focusTasksOrder.indexOf(taskId);
-                    if (currentIndex > -1) {
-                        focusTasksOrder.splice(currentIndex, 1);
-                    }
-                    // 将任务插入到第一个位置
-                    focusTasksOrder.unshift(taskId);
-                }
-                renderFocusTasks();
-            }
-        }
-
-        // 确保只有一个任务被标记为当前焦点
-        function ensureOnlyOneCurrentFocus() {
-            let hasCurrentFocus = false;
-            let currentFocusCount = 0;
-            
-            // 先统计有多少个任务被标记为当前焦点
-            tasks.forEach(task => {
-                if (task.currentFocus) {
-                    currentFocusCount++;
-                }
-            });
-            
-            // 如果有多个，只保留第一个
-            if (currentFocusCount > 1) {
-                tasks.forEach(task => {
-                    if (task.currentFocus) {
-                        if (hasCurrentFocus) {
-                            // 如果已经有一个当前焦点任务，将后续的都设为 false
-                            task.currentFocus = false;
-                        } else {
-                            hasCurrentFocus = true;
-                        }
-                    }
-                });
-                MNUtil.log(`修复了 ${currentFocusCount - 1} 个重复的当前焦点任务标记`);
-            }
-        }
-
-        // 添加到焦点任务
-        function addToFocus(taskId) {
-            // 只统计符合显示条件的焦点任务数量
-            const activeFocusTasks = Array.from(focusTasks)
-                .map(id => tasks.find(t => t.id === id))
-                .filter(task => 
-                    task && 
-                    task.type === '动作' && 
-                    task.status !== '已完成' && 
-                    task.status !== '已归档'
-                );
-            
-            if (activeFocusTasks.length >= 5) {
-                showNotification('焦点任务不能超过5个，请先移除其他任务', 'warning');
-                return;
-            }
-            
-            focusTasks.add(taskId);
-            
-            // 将新任务添加到排序数组末尾
-            if (!focusTasksOrder.includes(taskId)) {
-                focusTasksOrder.push(taskId);
-            }
-            
-            renderFocusTasks();
-            renderPendingTasks(); // 重新渲染待处理任务
-            updateSidebarStats();
-            saveToLocalStorage();
-            showNotification('已添加到焦点任务', 'success');
-            
-            // 根据当前视图刷新相应内容
-            if (currentView === 'today') {
-                // 强制刷新时间轴
-                setTimeout(() => {
-                    const container = document.getElementById('todayTimelineContainer');
-                    if (container) {
-                        container.innerHTML = '';  // 清空内容
-                    }
-                    renderTodayTimeline();
-                }, 50);
-            } else if (currentView === 'planning') {
-                // 刷新计划视图中的待处理任务和焦点任务列表
-                renderPendingTasksReview();
-                renderFocusTasksReview();
-            }
-        }
-        
-        // 直接添加单个任务到待处理
-        function addToPending(taskId) {
-            if (pendingTasks.has(taskId)) {
-                showNotification('该任务已在待处理列表中', 'warning');
-                return;
-            }
-            
-            pendingTasks.add(taskId);
-            
-            // 将新任务添加到排序数组末尾
-            if (!pendingTasksOrder.includes(taskId)) {
-                pendingTasksOrder.push(taskId);
-            }
-            
-            renderPendingTasks();
-            updateSidebarStats();
-            saveToLocalStorage();
-            showNotification('已添加到待处理任务', 'success');
-            
-            // 根据当前视图刷新相应内容
-            if (currentView === 'today') {
-                // 强制刷新时间轴
-                setTimeout(() => {
-                    const container = document.getElementById('todayTimelineContainer');
-                    if (container) {
-                        container.innerHTML = '';  // 清空内容
-                    }
-                    renderTodayTimeline();
-                }, 50);
-            }
-        }
-
-        /* ========================================
-           📋 待处理任务管理
-           ======================================== */
-
-        // 打开添加到待处理的模态框
-        function openAddToPendingModal() {
-            const modal = document.getElementById('addToPendingModal');
-            modal.classList.add('active');
-            
-            // 重置临时选择
-            tempPendingTasks = new Set();
-            updateSelectedPendingCount();
-            
-            // 渲染候选任务列表
-            filterPendingCandidates();
-        }
-
-        // 临时选择的待处理任务
-        let tempPendingTasks = new Set();
-
-        // 筛选待处理候选任务
-        function filterPendingCandidates() {
-            const searchText = document.getElementById('pendingTaskSearch').value.trim().toLowerCase();
-            const selectedStatus = document.getElementById('pendingTaskStatus').value;
-            const selectedPriority = document.getElementById('pendingTaskPriority').value;
-            const selectedProject = document.getElementById('pendingTaskProject').value;
-            const tagText = document.getElementById('pendingTaskTag').value.trim().toLowerCase();
-            
-            // 筛选候选任务（排除已完成、已在焦点、已在待处理的任务）
-            const candidates = tasks.filter(task => {
-                // 基本条件：未完成、不在焦点、不在待处理
-                if (task.status === '已完成' || focusTasks.has(task.id) || pendingTasks.has(task.id)) {
-                    return false;
-                }
-                
-                // 强制限制：只处理动作类型的任务
-                if (task.type !== '动作') {
-                    return false;
-                }
-                
-                // 搜索条件
-                if (searchText && !task.title.toLowerCase().includes(searchText)) {
-                    return false;
-                }
-                
-                // 状态筛选
-                if (selectedStatus && task.status !== selectedStatus) {
-                    return false;
-                }
-                
-                // 优先级筛选
-                if (selectedPriority && task.fields.priority !== selectedPriority) {
-                    return false;
-                }
-                
-                // 项目筛选
-                if (selectedProject && task.fields.project !== selectedProject) {
-                    return false;
-                }
-                
-                // 标签筛选
-                if (tagText) {
-                    const hasMatchingTag = task.fields.tags.some(tag => 
-                        tag.toLowerCase().includes(tagText)
-                    );
-                    if (!hasMatchingTag) {
-                        return false;
-                    }
-                }
-                
-                return true;
-            });
-            
-            // 渲染候选任务列表
-            const container = document.getElementById('pendingCandidatesList');
-            container.innerHTML = candidates.map(task => `
-                <div class="task-select-item ${tempPendingTasks.has(task.id) ? 'selected' : ''}" 
-                     onclick="togglePendingSelection('${task.id}', event)">
-                    <input type="checkbox" class="list-checkbox" ${tempPendingTasks.has(task.id) ? 'checked' : ''}>
-                    <div class="task-select-content">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span class="task-type-badge ${task.type.toLowerCase()} text-small">
-                                ${getTaskTypeIcon(task.type)} ${task.type}
-                            </span>
-                            <span class="text-small text-muted">${task.fields.priority}优先级</span>
-                        </div>
-                        <div class="mt-1 font-weight-500">${task.title}</div>
-                        <div class="text-small text-muted">${task.path}</div>
-                    </div>
-                </div>
-            `).join('') || '<p class="text-muted">没有符合条件的任务</p>';
-        }
-
-        // 切换待处理任务选择
-        function togglePendingSelection(taskId, event) {
-            const taskItem = event.currentTarget;
-            const checkbox = taskItem.querySelector('.list-checkbox');
-            
-            if (tempPendingTasks.has(taskId)) {
-                tempPendingTasks.delete(taskId);
-                checkbox.checked = false;
-                taskItem.classList.remove('selected');
-            } else {
-                tempPendingTasks.add(taskId);
-                checkbox.checked = true;
-                taskItem.classList.add('selected');
-            }
-            
-            updateSelectedPendingCount();
-        }
-
-        // 更新选择计数
-        function updateSelectedPendingCount() {
-            document.getElementById('selectedPendingCount').textContent = tempPendingTasks.size;
-        }
-
-        // 确认添加到待处理
-        function confirmAddToPending() {
-            // 将临时选择的任务添加到待处理列表
-            tempPendingTasks.forEach(taskId => {
-                pendingTasks.add(taskId);
-            });
-            
-            // 关闭模态框
-            closeModal('addToPendingModal');
-            
-            // 根据当前视图刷新对应内容
-            if (currentView === 'focus') {
-                renderPendingTasks();
-            } else if (currentView === 'planning') {
-                // 刷新计划视图中的待处理任务部分
-                renderPendingTasksReview();
-            }
-            
-            // 保存数据
-            saveToLocalStorage();
-            
-            showNotification(`已添加 ${tempPendingTasks.size} 个任务到待处理`, 'success');
-        }
-
-        // 从待处理中移除任务
-        function removeFromPending(taskId) {
-            pendingTasks.delete(taskId);
-            
-            // 根据当前视图刷新对应内容
-            if (currentView === 'focus') {
-                renderPendingTasks();
-            } else if (currentView === 'planning') {
-                // 刷新计划视图中的待处理任务部分
-                renderPendingTasksReview();
-            }
-            
-            saveToLocalStorage();
-            showNotification('已从待处理中移除', 'info');
-        }
-        
-        // 将任务置顶到待处理列表
-        function pinToTopPending(taskId) {
-            // 先从当前位置移除
-            const currentIndex = pendingTasksOrder.indexOf(taskId);
-            if (currentIndex > -1) {
-                pendingTasksOrder.splice(currentIndex, 1);
-            }
-            // 添加到顶部
-            pendingTasksOrder.unshift(taskId);
-            
-            // 重新渲染并保存
-            renderPendingTasks();
-            saveToLocalStorage();
-            showNotification('任务已置顶', 'success');
-        }
-
-        /* ========================================
-           🔍 任务筛选管理
-           ======================================== */
-
-        // 打开任务筛选模态框
-        function openTaskFilterModal() {
-            const modal = document.getElementById('taskFilterModal');
-            modal.classList.add('active');
-            
-            // 填充当前筛选值
-            document.getElementById('modalFilterTitle').value = activeFilters.title || '';
-            document.getElementById('modalFilterType').value = activeFilters.type || '';
-            document.getElementById('modalFilterProject').value = activeFilters.project || '';
-            document.getElementById('modalFilterStatus').value = activeFilters.status || '';
-            document.getElementById('modalFilterPriority').value = activeFilters.priority || '';
-            document.getElementById('modalFilterTag').value = activeFilters.tag || '';
-        }
-
-        // 应用模态框中的筛选
-        function applyModalFilters() {
-            activeFilters.title = document.getElementById('modalFilterTitle').value.trim();
-            activeFilters.type = document.getElementById('modalFilterType').value;
-            activeFilters.project = document.getElementById('modalFilterProject').value;
-            activeFilters.status = document.getElementById('modalFilterStatus').value;
-            activeFilters.priority = document.getElementById('modalFilterPriority').value;
-            activeFilters.tag = document.getElementById('modalFilterTag').value.trim();
-            
-            // 清空空值
-            Object.keys(activeFilters).forEach(key => {
-                if (!activeFilters[key]) {
-                    delete activeFilters[key];
-                }
-            });
-            
-            // 关闭模态框
-            closeModal('taskFilterModal');
-            
-            // 应用筛选
-            applyFilters();
-            
-            showNotification('筛选条件已应用', 'success');
-        }
-
-        // 清除所有筛选条件
-        function clearAllFilters() {
-            activeFilters = {};
-            
-            // 清空表单
-            document.getElementById('modalFilterTitle').value = '';
-            document.getElementById('modalFilterType').value = '';
-            document.getElementById('modalFilterProject').value = '';
-            document.getElementById('modalFilterStatus').value = '';
-            document.getElementById('modalFilterPriority').value = '';
-            document.getElementById('modalFilterTag').value = '';
-            
-            // 应用筛选
-            applyFilters();
-            
-            showNotification('已清除所有筛选条件', 'info');
-        }
-
-        // 处理焦点任务卡片点击
-        function handleFocusTaskClick(event, taskId) {
-            // 阻止事件冒泡到父元素
-            event.stopPropagation();
-            
-            // 检查是否点击了按钮或其他交互元素
-            const target = event.target;
-            if (target.tagName === 'BUTTON' || target.closest('button')) {
-                return; // 如果点击的是按钮，不处理
-            }
-            
-            // 显示任务详情
-            MNUtil.log('🔍 [handleFocusTaskClick] 点击焦点任务卡片，taskId:', taskId);
-            showInMindMap(taskId);
-        }
-
-        // 从焦点任务中移除
-        function removeFromFocus(event, taskId) {
-            event.stopPropagation();
-            
-            // 从焦点任务集合中移除
-            focusTasks.delete(taskId);
-            
-            // 从排序数组中移除
-            focusTasksOrder = focusTasksOrder.filter(id => id !== taskId);
-            
-            // 自动加入待处理（如果还未加入）
-            if (!pendingTasks.has(taskId)) {
-                pendingTasks.add(taskId);
-                // 将新任务添加到排序数组末尾
-                if (!pendingTasksOrder.includes(taskId)) {
-                    pendingTasksOrder.push(taskId);
-                }
-                showNotification('已从焦点移除并加入待处理任务', 'info');
-            } else {
-                showNotification('已从焦点任务移除', 'info');
-            }
-            
-            // 重新渲染
-            renderFocusTasks();
-            renderPendingTasks(); // 同时刷新待处理任务列表
-            updateSidebarStats();
-            saveToLocalStorage();
-        }
-
-        // 切换任务状态
-        function toggleTaskStatus(taskId, newStatus) {
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) {
-                MNUtil.log('Task not found: ' + taskId);
-                return;
-            }
-            
-            const oldStatus = task.status;
-            const currentTime = new Date().toISOString();
-            
-            // 状态变化逻辑
-            const today = formatDateToLocal(new Date());
-            
-            if (oldStatus === '未开始' && newStatus === '进行中') {
-                // 任务开始，记录开始时间并更新日期
-                task.fields.startTime = currentTime;
-                task.fields.plannedDate = today;
-                task.fields.today = true;
-            } else if (oldStatus === '暂停' && newStatus === '进行中') {
-                // 从暂停恢复，更新日期为今天
-                task.fields.plannedDate = today;
-                task.fields.today = true;
-                // 如果之前没有开始时间，记录新的开始时间
-                if (!task.fields.startTime) {
-                    task.fields.startTime = currentTime;
-                }
-            } else if (oldStatus === '进行中' && newStatus === '已完成') {
-                // 任务完成，记录结束时间
-                task.fields.endTime = currentTime;
-            } else if (newStatus === '进行中' && !task.fields.startTime) {
-                // 如果直接设置为进行中且没有开始时间，记录开始时间并更新日期
-                task.fields.startTime = currentTime;
-                task.fields.plannedDate = today;
-                task.fields.today = true;
-            } else if (newStatus === '已完成' && !task.fields.endTime) {
-                // 如果直接设置为已完成且没有结束时间，记录结束时间
-                task.fields.endTime = currentTime;
-                // 如果没有开始时间，也设置开始时间（避免出现只有结束时间的情况）
-                if (!task.fields.startTime) {
-                    task.fields.startTime = currentTime;
-                }
-            }
-            
-            // 更新状态
-            task.status = newStatus;
-            
-            // 记录进展
-            if (!task.fields.progressLog) {
-                task.fields.progressLog = [];
-            }
-            task.fields.progressLog.push({
-                date: new Date().toLocaleString('zh-CN'),
-                note: `任务状态从"${oldStatus}"变更为"${newStatus}"`
-            });
-            
-            // 保存数据到本地存储
-            saveToLocalStorage();
-            
-            // 强制刷新视图 - 使用setTimeout确保DOM更新
-            setTimeout(() => {
-                // 刷新主视图
-                switch(currentView) {
-                    case 'focus':
-                        renderFocusTasks();
-                        break;
-                    case 'today':  // 时间轴视图的实际名称是 'today'
-                        // 强制重新渲染整个时间轴
-                        const container = document.getElementById('todayTimelineContainer');
-                        if (container) {
-                            container.innerHTML = '';  // 清空内容
-                        }
-                        renderTodayTimeline();
-                        break;
-                    case 'planning':
-                        renderPlanningView();
-                        break;
-                    case 'project':
-                        renderProjectBoard();
-                        break;
-                    case 'goal':
-                        renderGoalBoard();
-                        break;
-                    case 'board':
-                        renderBoardView();
-                        // 初始化项目下拉框
-                        initializeBoardProjectFilter();
-                        // 初始化统计信息
-                        updateBoardStats();
-                        break;
-                    case 'list':
-                        renderListView();
-                        break;
-                }
-                
-                // 更新侧边栏（特别是时间轴视图的统计）
-                updateSidebar(currentView);
-                updateSidebarStats();
-                
-                // 显示状态变更通知
-                showNotification(`任务状态已更新为：${newStatus}`, 'success');
-            }, 50);
-        }
-        
-        // 更新任务状态
-        function updateTaskStatus(taskId, newStatus) {
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) {
-                MNUtil.log('未找到任务: ' + taskId);
-                return;
-            }
-            
-            const oldStatus = task.status;
-            const currentTime = new Date().toISOString();
-            const today = formatDateToLocal(new Date());
-            
-            // 状态更新逻辑
-            if (oldStatus === '未开始' && newStatus === '进行中') {
-                task.fields.startTime = currentTime;
-                task.fields.plannedDate = today;
-                task.fields.today = true;
-            } else if (oldStatus === '暂停' && newStatus === '进行中') {
-                task.fields.plannedDate = today;
-                task.fields.today = true;
-                if (!task.fields.startTime) {
-                    task.fields.startTime = currentTime;
-                }
-            } else if (oldStatus === '进行中' && newStatus === '已完成') {
-                task.fields.endTime = currentTime;
-            } else if (newStatus === '进行中' && !task.fields.startTime) {
-                task.fields.startTime = currentTime;
-                task.fields.plannedDate = today;
-                task.fields.today = true;
-            } else if (newStatus === '已完成' && !task.fields.endTime) {
-                task.fields.endTime = currentTime;
-                if (!task.fields.startTime) {
-                    task.fields.startTime = currentTime;
-                }
-            }
-            
-            // 更新状态
-            task.status = newStatus;
-            
-            // 记录进展
-            if (!task.fields.progressLog) {
-                task.fields.progressLog = [];
-            }
-            task.fields.progressLog.push({
-                date: new Date().toLocaleString('zh-CN'),
-                note: `任务状态从"${oldStatus}"变更为"${newStatus}"`
-            });
-            
-            // 保存数据
-            saveToLocalStorage();
-            
-            // 同步到原生端
-            if (window.TaskSync) {
-                TaskSync.sendTaskUpdate(taskId, {
-                    status: newStatus,
-                    newProgress: `任务状态从"${oldStatus}"变更为"${newStatus}"`
-                });
-            }
-            
-            // 显示通知
-            showNotification(`任务状态已更新为：${newStatus}`, 'success');
-            
-            // 刷新当前视图
-            refreshCurrentView();
-        }
-        
-        // 移除任务日期
-        function removeTaskDate(taskId) {
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) {
-                MNUtil.log('未找到任务: ' + taskId);
-                return;
-            }
-            
-            // 清除计划日期
-            task.fields.plannedDate = null;
-            task.fields.today = false;
-            
-            // 记录进展
-            if (!task.fields.progressLog) {
-                task.fields.progressLog = [];
-            }
-            task.fields.progressLog.push({
-                date: new Date().toLocaleString('zh-CN'),
-                note: '移除了任务的计划日期'
-            });
-            
-            // 保存数据
-            saveToLocalStorage();
-            
-            // 显示通知
-            showNotification('已移除任务的计划日期', 'success');
-            
-            // 刷新当前视图
-            refreshCurrentView();
-        }
-        
-        // 刷新当前视图
-        function refreshCurrentView() {
-            switch (currentView) {
-                case 'planning':
-                    renderPlanningView();
-                    break;
-                case 'today':
-                    renderTodayTimeline();
-                    break;
-                case 'board':
-                    updateBoardDisplay();
-                    break;
-                case 'project':
-                    updateProjectBoard();
-                    break;
-                case 'goal':
-                    updateGoalView();
-                    break;
-                default:
-                    renderFocusTasks();
-                    renderPendingTasks();
-            }
-            
-            // 更新侧边栏
-            updateSidebarStats();
-        }
-
-        // 拖拽相关变量
-        let draggedTaskId = null;
-        let draggedElement = null;
-        let currentDropTarget = null;
-        let dropPosition = null;
-
-        // 拖拽开始
-        function handleDragStart(event) {
-            const card = event.target.closest('.focus-task-card');
-            if (!card) return;
-            
-            draggedTaskId = card.dataset.taskId;
-            draggedElement = card;
-            card.classList.add('dragging');
-            
-            // 给容器添加拖拽活动状态
-            const container = document.querySelector('.focus-tasks-container');
-            if (container) {
-                container.classList.add('dragging-active');
-            }
-            
-            event.dataTransfer.effectAllowed = 'move';
-            event.dataTransfer.setData('text/plain', draggedTaskId);
-            
-            // 延迟添加拖拽样式，避免影响拖拽图像
-            setTimeout(() => {
-                card.style.opacity = '0.3';
-            }, 0);
-        }
-        
-        // 拖拽进入
-        function handleDragEnter(event) {
-            const target = event.target.closest('.focus-task-card');
-            if (!target || target === draggedElement) return;
-            
-            currentDropTarget = target;
-        }
-        
-        // 拖拽离开
-        function handleDragLeave(event) {
-            const target = event.target.closest('.focus-task-card');
-            if (!target) return;
-            
-            // 确保真的离开了卡片（不是进入子元素）
-            if (!target.contains(event.relatedTarget)) {
-                target.classList.remove('drop-indicator-top', 'drop-indicator-bottom');
-            }
-        }
-
-        // 拖拽经过
-        function handleDragOver(event) {
-            event.preventDefault();
-            event.dataTransfer.dropEffect = 'move';
-            
-            const target = event.target.closest('.focus-task-card');
-            if (!target || target === draggedElement) return;
-            
-            // 清除所有指示器
-            document.querySelectorAll('.focus-task-card').forEach(card => {
-                if (card !== target) {
-                    card.classList.remove('drop-indicator-top', 'drop-indicator-bottom');
-                }
-            });
-            
-            // 计算鼠标位置
-            const rect = target.getBoundingClientRect();
-            const y = event.clientY - rect.top;
-            const height = rect.height;
-            
-            // 根据鼠标位置决定插入位置
-            if (y < height / 2) {
-                // 上半部分 - 在目标上方插入
-                target.classList.remove('drop-indicator-bottom');
-                target.classList.add('drop-indicator-top');
-                dropPosition = 'before';
-            } else {
-                // 下半部分 - 在目标下方插入
-                target.classList.remove('drop-indicator-top');
-                target.classList.add('drop-indicator-bottom');
-                dropPosition = 'after';
-            }
-        }
-
-        // 拖拽放下
-        function handleDrop(event) {
-            event.preventDefault();
-            event.stopPropagation();
-            
-            const dropTarget = event.target.closest('.focus-task-card');
-            if (!dropTarget || draggedTaskId === dropTarget.dataset.taskId) {
-                return false;
-            }
-            
-            const dropTaskId = dropTarget.dataset.taskId;
-            
-            // 更新 focusTasksOrder 数组
-            const draggedIndex = focusTasksOrder.indexOf(draggedTaskId);
-            const dropIndex = focusTasksOrder.indexOf(dropTaskId);
-            
-            // 先移除被拖拽的元素
-            if (draggedIndex !== -1) {
-                focusTasksOrder.splice(draggedIndex, 1);
-            }
-            
-            // 重新计算插入位置
-            let newIndex = focusTasksOrder.indexOf(dropTaskId);
-            if (dropPosition === 'after') {
-                newIndex++;
-            }
-            
-            // 插入到新位置
-            focusTasksOrder.splice(newIndex, 0, draggedTaskId);
-            
-            // 确保数组中只包含当前焦点任务
-            focusTasksOrder = focusTasksOrder.filter(id => focusTasks.has(id));
-            
-            // 重新渲染焦点任务
-            renderFocusTasks();
-            saveToLocalStorage();
-            
-            return false;
-        }
-
-        // 拖拽结束
-        function handleDragEnd(event) {
-            if (draggedElement) {
-                draggedElement.classList.remove('dragging');
-                draggedElement.style.opacity = '';
-            }
-            
-            // 移除容器的拖拽活动状态
-            const container = document.querySelector('.focus-tasks-container');
-            if (container) {
-                container.classList.remove('dragging-active');
-            }
-            
-            // 清除所有拖拽指示器
-            document.querySelectorAll('.focus-task-card').forEach(card => {
-                card.classList.remove('drop-indicator-top', 'drop-indicator-bottom');
-            });
-            
-            draggedTaskId = null;
-            draggedElement = null;
-            currentDropTarget = null;
-            dropPosition = null;
-        }
-
-        /* ========================================
-           📋 待处理任务拖拽排序功能
-           ======================================== */
-        
-        let draggedPendingTaskId = null;
-        let draggedPendingElement = null;
-        let currentPendingDropTarget = null;
-        let pendingDropPosition = null;
-        
-        // 项目看板拖拽相关变量
-        let draggedProjectTaskId = null;
-        let draggedProjectElement = null;
-
-        // 待处理任务拖拽开始
-        function handlePendingDragStart(event) {
-            draggedPendingTaskId = event.target.dataset.taskId;
-            draggedPendingElement = event.target;
-            
-            event.target.classList.add('dragging');
-            event.target.style.opacity = '0.5';
-            
-            // 设置拖拽数据
-            event.dataTransfer.setData('text/plain', draggedPendingTaskId);
-            event.dataTransfer.effectAllowed = 'move';
-        }
-
-        // 待处理任务拖拽悬停
-        function handlePendingDragOver(event) {
-            event.preventDefault();
-            event.dataTransfer.dropEffect = 'move';
-            
-            if (event.target === draggedPendingElement) return;
-            
-            const taskItem = event.target.closest('.pending-task-item');
-            if (!taskItem || taskItem === draggedPendingElement) return;
-            
-            const rect = taskItem.getBoundingClientRect();
-            const midpoint = rect.top + rect.height / 2;
-            const mouseY = event.clientY;
-            
-            // 清除之前的指示器
-            document.querySelectorAll('.pending-task-item').forEach(item => {
-                item.classList.remove('drop-indicator-top', 'drop-indicator-bottom');
-            });
-            
-            // 添加新的指示器
-            if (mouseY < midpoint) {
-                taskItem.classList.add('drop-indicator-top');
-                pendingDropPosition = 'top';
-            } else {
-                taskItem.classList.add('drop-indicator-bottom'); 
-                pendingDropPosition = 'bottom';
-            }
-            
-            currentPendingDropTarget = taskItem;
-        }
-
-        // 待处理任务拖拽进入
-        function handlePendingDragEnter(event) {
-            event.preventDefault();
-        }
-
-        // 待处理任务拖拽离开
-        function handlePendingDragLeave(event) {
-            // 如果离开的是当前容器，清除指示器
-            if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget)) {
-                event.currentTarget.classList.remove('drop-indicator-top', 'drop-indicator-bottom');
-            }
-        }
-
-        // 待处理任务拖拽放置
-        function handlePendingDrop(event) {
-            event.preventDefault();
-            
-            if (!draggedPendingTaskId || !currentPendingDropTarget) return;
-            
-            const targetTaskId = currentPendingDropTarget.dataset.taskId;
-            if (draggedPendingTaskId === targetTaskId) return;
-            
-            // 更新排序
-            updatePendingTaskOrder(draggedPendingTaskId, targetTaskId, pendingDropPosition);
-            
-            // 重新渲染
-            renderPendingTasks();
-            
-            // 保存状态
-            saveToLocalStorage();
-        }
-
-        // 待处理任务拖拽结束
-        function handlePendingDragEnd(event) {
-            if (draggedPendingElement) {
-                draggedPendingElement.classList.remove('dragging');
-                draggedPendingElement.style.opacity = '';
-            }
-            
-            // 清除所有拖拽指示器
-            document.querySelectorAll('.pending-task-item').forEach(item => {
-                item.classList.remove('drop-indicator-top', 'drop-indicator-bottom');
-            });
-            
-            draggedPendingTaskId = null;
-            draggedPendingElement = null;
-            currentPendingDropTarget = null;
-            pendingDropPosition = null;
-        }
-
-        // 更新待处理任务排序
-        function updatePendingTaskOrder(draggedId, targetId, position) {
-            // 从当前排序中移除拖拽的任务
-            pendingTasksOrder = pendingTasksOrder.filter(id => id !== draggedId);
-            
-            // 找到目标任务的位置
-            const targetIndex = pendingTasksOrder.indexOf(targetId);
-            
-            if (targetIndex === -1) {
-                // 如果目标任务不在排序中，添加到末尾
-                pendingTasksOrder.push(targetId);
-                pendingTasksOrder.push(draggedId);
-            } else {
-                // 根据放置位置插入
-                const insertIndex = position === 'top' ? targetIndex : targetIndex + 1;
-                pendingTasksOrder.splice(insertIndex, 0, draggedId);
-            }
-            
-            // 确保所有待处理任务都在排序中
-            const allPendingIds = Array.from(pendingTasks);
-            allPendingIds.forEach(id => {
-                if (!pendingTasksOrder.includes(id)) {
-                    pendingTasksOrder.push(id);
-                }
-            });
-        }
-
-        /* ========================================
-           🛠️ 工具函数
-           ======================================== */
-        
-        // 获取任务类型图标
-        function getTaskTypeIcon(type) {
-            const icons = {
-                '目标': '🎯',
-                '关键结果': '🔑',
-                '项目': '📁',
-                '动作': '⚡'
-            };
-            return icons[type] || '📌';
-        }
-
-        // 获取状态图标
-        function getStatusIcon(status) {
-            const icons = {
-                '未开始': '⏸',
-                '暂停': '⏯',
-                '进行中': '🚀',
-                '已完成': '✅',
-                '已归档': '📦'
-            };
-            return icons[status] || '❓';
-        }
-
-        // 获取优先级图标
-        function getPriorityIcon(priority) {
-            const icons = {
-                '高': '🔴',
-                '中': '🟡',
-                '低': '🟢'
-            };
-            return icons[priority] || '⚪';
-        }
-
-        // 获取状态样式类
-        function getStatusClass(status) {
-            const classes = {
-                '未开始': 'text-muted',
-                '暂停': 'text-info',
-                '进行中': 'text-warning',
-                '已完成': 'text-success'
-            };
-            return classes[status] || '';
-        }
-
-        // 去除HTML标签
-        function stripHTMLTags(html) {
-            if (!html) return '';
-            
-            MNUtil.log('🔍 stripHTMLTags 输入:', html);
-            
-            // 特殊处理MarginNote的进展格式
-            // 格式：<div style="...">时间</div>进展内容
-            const progressPattern = /<div[^>]*>.*?(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}).*?<\/div>\s*(.+)/s;
-            const progressMatch = html.match(progressPattern);
-            if (progressMatch) {
-                // 如果匹配到进展格式，只返回进展内容部分
-                const progressContent = progressMatch[2].trim();
-                MNUtil.log('✅ 提取的进展内容:', progressContent);
-                return progressContent;
-            }
-            
-            // 先尝试修复不完整的HTML
-            let fixedHtml = html;
-            
-            // 如果以样式属性开始但没有开始标签，添加一个
-            if (html.match(/^[a-zA-Z-]+\s*[:;]/) && !html.startsWith('<')) {
-                fixedHtml = '<div style="' + html;
-            }
-            
-            // 处理不匹配的引号和标签
-            fixedHtml = fixedHtml
-                .replace(/"/g, '"')  // 统一引号
-                .replace(/>/g, '>')  // 确保标签闭合
-                .replace(/</g, '<');
-            
-            // 创建临时DOM元素来解析HTML
-            const tmp = document.createElement('div');
-            try {
-                tmp.innerHTML = fixedHtml;
-                const result = tmp.textContent || tmp.innerText || '';
-                MNUtil.log('✅ stripHTMLTags 输出:', result);
-                return result;
-            } catch (e) {
-                MNUtil.log('❌ stripHTMLTags 解析失败:', e);
-                // 如果解析失败，使用正则表达式移除HTML
-                const cleaned = html
-                    .replace(/<[^>]*>/g, '')  // 移除完整的标签
-                    .replace(/^[^>]*>/, '')   // 移除开头的不完整标签
-                    .replace(/<[^>]*$/, '')   // 移除结尾的不完整标签
-                    .trim();
-                MNUtil.log('✅ stripHTMLTags 备用输出:', cleaned);
-                return cleaned;
-            }
-        }
-
-        // 格式化日期
-        function formatDate(dateStr) {
-            const date = new Date(dateStr);
-            const today = new Date();
-            const diffDays = Math.floor((date - today) / (1000 * 60 * 60 * 24));
-            
-            if (diffDays === 0) return '今天';
-            if (diffDays === 1) return '明天';
-            if (diffDays === -1) return '昨天';
-            if (diffDays > 0 && diffDays <= 7) return `${diffDays}天后`;
-            if (diffDays < 0) return `逾期${-diffDays}天`;
-            
-            return date.toLocaleDateString('zh-CN');
-        }
-        
-        // 格式化经过时间
-        function formatElapsedTime(startTime, endTime) {
-            if (!startTime) return '';
-            
-            const start = new Date(startTime);
-            const end = endTime ? new Date(endTime) : new Date();
-            const diff = Math.floor((end - start) / 1000); // 秒数
-            
-            if (diff < 60) return `${diff}秒`;
-            if (diff < 3600) return `${Math.floor(diff / 60)}分钟`;
-            if (diff < 86400) {
-                const hours = Math.floor(diff / 3600);
-                const minutes = Math.floor((diff % 3600) / 60);
-                return minutes > 0 ? `${hours}小时${minutes}分钟` : `${hours}小时`;
-            }
-            
-            const days = Math.floor(diff / 86400);
-            const hours = Math.floor((diff % 86400) / 3600);
-            return hours > 0 ? `${days}天${hours}小时` : `${days}天`;
-        }
-        
-        // 格式化进展时间（相对时间格式）
-        function formatProgressTimeRelative(dateStr) {
-            if (!dateStr) return '';
-            
-            const date = new Date(dateStr);
-            const now = new Date();
-            const diff = Math.floor((now - date) / 1000); // 秒数
-            
-            // 小于1分钟
-            if (diff < 60) return '刚刚';
-            
-            // 小于1小时
-            if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`;
-            
-            // 小于24小时
-            if (diff < 86400) {
-                const hours = Math.floor(diff / 3600);
-                return `${hours}小时前`;
-            }
-            
-            // 小于7天
-            if (diff < 604800) {
-                const days = Math.floor(diff / 86400);
-                if (days === 1) return '昨天 ' + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-                if (days === 2) return '前天 ' + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-                return `${days}天前`;
-            }
-            
-            // 超过7天，显示具体日期
-            return date.toLocaleDateString('zh-CN', { 
-                month: 'numeric', 
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        }
-
-        // 切换视图
-        function switchView(viewName) {
-            // 更新按钮状态
-            document.querySelectorAll('.view-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.view === viewName);
-            });
-            
-            // 隐藏所有视图
-            document.querySelectorAll('.view-container').forEach(view => {
-                view.classList.add('hidden');
-            });
-            
-            // 显示目标视图
-            const targetView = document.getElementById(`view-${viewName}`);
-            if (targetView) {
-                targetView.classList.remove('hidden');
-            }
-            
-            currentView = viewName;
-            
-            // 更新侧边栏内容
-            updateSidebar(viewName);
-            
-            // 特殊处理：今日视图需要初始化日期
-            if (viewName === 'today') {
-                // 重置为今天的日期
-                const now2 = new Date();
-                selectedTimelineDate = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate());
-                // 初始化日期选择器
-                const datePicker = document.getElementById('timelineDatePicker');
-                if (datePicker) {
-                    datePicker.value = formatDateToLocal(selectedTimelineDate);
-                }
-            }
-            
-            // 应用筛选器
-            applyFilters();
-            
-            // 根据视图类型渲染内容（注意：applyFilters 已经会调用相应的渲染函数，这里注释掉避免重复渲染）
-            /*switch(viewName) {
-                case 'focus':
-                    renderFocusTasks();
-                    renderPendingTasks();
-                    break;
-                case 'today':
-                    // 重置为今天的日期
-                    const now2 = new Date();
-                    selectedTimelineDate = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate());
-                    // 初始化日期选择器
-                    const datePicker = document.getElementById('timelineDatePicker');
-                    if (datePicker) {
-                        datePicker.value = formatDateToLocal(selectedTimelineDate);
-                    }
-                    renderTodayTimeline();
-                    break;
-                case 'project':
-                    renderProjectBoard();
-                    break;
-                case 'goal':
-                    renderGoalBoard();
-                    break;
-                case 'board':
-                    renderBoardView();
-                    // 初始化项目下拉框
-                    initializeBoardProjectFilter();
-                    // 初始化统计信息
-                    updateBoardStats();
-                    break;
-                case 'list':
-                    renderListView();
-                    break;
-                case 'planning':
-                    renderPlanningView();
-                    break;
-            }*/
-        }
-
-        // 快速添加任务
-        function handleQuickAdd(event) {
-            if (event.key !== 'Enter') return;
-            
-            // 如果自动完成正在显示且有选中项，让 handleAutocompleteNavigation 处理
-            if (autocompleteActive && autocompleteSelectedIndex >= 0) {
-                return;
-            }
-            
-            const input = event.target;
-            const text = input.value.trim();
-            if (!text) return;
-            
-            // 解析输入文本
-            let title = text;
-            let tags = [];
-            let priority = '中';
-            let project = '';
-            
-            // 提取标签 #tag
-            const tagMatches = text.match(/#(\S+)/g);
-            if (tagMatches) {
-                tags = tagMatches.map(tag => tag.substring(1));
-                title = title.replace(/#\S+/g, '').trim();
-            }
-            
-            // 提取项目 @project
-            const projectMatch = text.match(/@(\S+)/);
-            if (projectMatch) {
-                project = projectMatch[1];
-                title = title.replace(/@\S+/g, '').trim();
-            }
-            
-            // 提取优先级 !high !medium !low
-            const priorityMatch = text.match(/!(\S+)/);
-            if (priorityMatch) {
-                const p = priorityMatch[1].toLowerCase();
-                if (p === 'high' || p === '高') priority = '高';
-                else if (p === 'low' || p === '低') priority = '低';
-                title = title.replace(/!\S+/g, '').trim();
-            }
-            
-            // 创建新任务
-            const newTask = {
-                id: `task_${Date.now()}`,
-                type: "动作",
-                status: "未开始",
-                title: title,
-                path: project || "快速添加",
-                launchLink: "",
-                currentFocus: false,
-                fields: {
-                    priority: priority,
-                    dueDate: "",
-                    tags: tags,
-                    today: true, // 快速添加的任务默认为今日任务
-                    plannedDate: formatDateToLocal(new Date()), // 默认为今天的日期
-                    progressLog: [],
-                    customViews: [],
-                    project: project,
-                    startTime: null, // 任务开始时间
-                    endTime: null    // 任务结束时间
-                }
-            };
-            
-            tasks.unshift(newTask);
-            input.value = '';
-            
-            // 刷新当前视图
-            switch(currentView) {
-                case 'focus':
-                    renderFocusTasks();
-                    break;
-                case 'today':
-                    renderTodayTimeline();
-                    break;
-            }
-            
-            // 显示成功提示
-            MNUtil.log(`✅ 任务已添加: ${title}`);
-        }
-
-        /* ========================================
-           🎹 自动完成功能
-           ======================================== */
-        
-        // 处理输入框的实时输入
-        function handleQuickAddInput(event) {
-            const input = event.target;
-            const value = input.value;
-            const cursorPosition = input.selectionStart;
-            
-            // 检查光标前的文本，查找 @ 符号
-            const textBeforeCursor = value.substring(0, cursorPosition);
-            const atSignIndex = textBeforeCursor.lastIndexOf('@');
-            
-            if (atSignIndex !== -1) {
-                // 获取 @ 后面的文本（不包括空格）
-                const textAfterAt = textBeforeCursor.substring(atSignIndex + 1);
-                
-                // 如果 @ 后面没有空格，说明正在输入项目名
-                if (!textAfterAt.includes(' ')) {
-                    showProjectAutocomplete(textAfterAt, atSignIndex);
-                    return;
-                }
-            }
-            
-            // 如果没有检测到 @ 或已经完成输入，隐藏自动完成
-            hideAutocomplete();
-        }
-        
-        // 显示项目自动完成下拉菜单
-        function showProjectAutocomplete(searchText, atPosition) {
-            const dropdown = document.getElementById('projectAutocomplete');
-            const input = document.getElementById('quickAddInput');
-            
-            // 获取所有项目（包括动态的）
-            const allProjects = getAllProjects();
-            
-            // 过滤项目列表
-            currentAutocompleteList = allProjects.filter(project => 
-                project.id.toLowerCase().includes(searchText.toLowerCase()) ||
-                project.name.toLowerCase().includes(searchText.toLowerCase())
-            );
-            
-            if (currentAutocompleteList.length === 0) {
-                hideAutocomplete();
-                return;
-            }
-            
-            // 生成下拉菜单内容
-            dropdown.innerHTML = currentAutocompleteList.map((project, index) => `
-                <div class="autocomplete-item ${index === autocompleteSelectedIndex ? 'selected' : ''}" 
-                     data-index="${index}"
-                     onmouseover="selectAutocompleteItem(${index})"
-                     onclick="insertProject('${project.id}', ${atPosition})">
-                    <span class="autocomplete-item-icon">${project.icon}</span>
-                    <span class="autocomplete-item-name">${project.name}</span>
-                    <span class="autocomplete-item-id">@${project.id}</span>
-                </div>
-            `).join('');
-            
-            // 显示下拉菜单
-            dropdown.classList.add('active');
-            autocompleteActive = true;
-            autocompleteSelectedIndex = 0;
-            
-            // 高亮第一项
-            updateAutocompleteSelection();
-        }
-        
-        // 隐藏自动完成下拉菜单
-        function hideAutocomplete() {
-            const dropdown = document.getElementById('projectAutocomplete');
-            dropdown.classList.remove('active');
-            autocompleteActive = false;
-            autocompleteSelectedIndex = -1;
-            currentAutocompleteList = [];
-        }
-        
-        // 处理自动完成的键盘导航
-        function handleAutocompleteNavigation(event) {
-            if (!autocompleteActive) return;
-            
-            switch(event.key) {
-                case 'ArrowDown':
-                    event.preventDefault();
-                    autocompleteSelectedIndex = (autocompleteSelectedIndex + 1) % currentAutocompleteList.length;
-                    updateAutocompleteSelection();
-                    break;
-                    
-                case 'ArrowUp':
-                    event.preventDefault();
-                    autocompleteSelectedIndex = autocompleteSelectedIndex <= 0 
-                        ? currentAutocompleteList.length - 1 
-                        : autocompleteSelectedIndex - 1;
-                    updateAutocompleteSelection();
-                    break;
-                    
-                case 'Enter':
-                    if (autocompleteSelectedIndex >= 0) {
-                        event.preventDefault();
-                        const input = document.getElementById('quickAddInput');
-                        const cursorPosition = input.selectionStart;
-                        const textBeforeCursor = input.value.substring(0, cursorPosition);
-                        const atSignIndex = textBeforeCursor.lastIndexOf('@');
-                        
-                        if (atSignIndex !== -1) {
-                            const selectedProject = currentAutocompleteList[autocompleteSelectedIndex];
-                            insertProject(selectedProject.id, atSignIndex);
-                        }
-                    }
-                    break;
-                    
-                case 'Escape':
-                    event.preventDefault();
-                    hideAutocomplete();
-                    break;
-                    
-                case ' ':
-                    // 空格键会结束自动完成
-                    hideAutocomplete();
-                    break;
-            }
-        }
-        
-        // 更新自动完成选中项的高亮
-        function updateAutocompleteSelection() {
-            const items = document.querySelectorAll('.autocomplete-item');
-            items.forEach((item, index) => {
-                item.classList.toggle('selected', index === autocompleteSelectedIndex);
-            });
-        }
-        
-        // 选择自动完成项（鼠标悬停）
-        function selectAutocompleteItem(index) {
-            autocompleteSelectedIndex = index;
-            updateAutocompleteSelection();
-        }
-        
-        // 插入选中的项目
-        function insertProject(projectId, atPosition) {
-            const input = document.getElementById('quickAddInput');
-            const value = input.value;
-            const cursorPosition = input.selectionStart;
-            
-            // 计算要替换的范围
-            const beforeAt = value.substring(0, atPosition);
-            const afterCursor = value.substring(cursorPosition);
-            
-            // 构建新的输入值
-            const newValue = beforeAt + '@' + projectId + ' ' + afterCursor;
-            input.value = newValue;
-            
-            // 设置光标位置到项目ID后面
-            const newCursorPosition = atPosition + projectId.length + 2; // +2 for @ and space
-            input.setSelectionRange(newCursorPosition, newCursorPosition);
-            
-            // 隐藏自动完成
-            hideAutocomplete();
-            
-            // 聚焦输入框
-            input.focus();
-        }
-        
-        // 动态获取所有项目（包括预定义和从任务中提取的）
-        function getAllProjects() {
-            // 从任务中提取所有使用过的项目
-            const usedProjects = new Set();
-            tasks.forEach(task => {
-                if (task.fields.project && task.fields.project.trim()) {
-                    usedProjects.add(task.fields.project);
-                }
-            });
-            
-            // 合并预定义项目和使用过的项目
-            const allProjectIds = new Set([...projectList.map(p => p.id), ...usedProjects]);
-            
-            // 构建完整的项目列表
-            const completeProjectList = [];
-            allProjectIds.forEach(projectId => {
-                const predefinedProject = projectList.find(p => p.id === projectId);
-                if (predefinedProject) {
-                    completeProjectList.push(predefinedProject);
-                } else {
-                    // 为新项目创建默认图标和名称
-                    completeProjectList.push({
-                        id: projectId,
-                        name: projectId.charAt(0).toUpperCase() + projectId.slice(1),
-                        icon: '📋'
-                    });
-                }
-            });
-            
-            return completeProjectList;
-        }
-        
-        /* ========================================
-           🔧 缺失函数实现
-           ======================================== */
-        
-        // 选择焦点任务
-        function selectFocusTasks() {
-            const modal = document.getElementById('selectFocusModal');
-            const listContainer = document.getElementById('taskSelectList');
-            
-            // 创建 focusTasks 的临时副本
-            tempFocusTasks = new Set(focusTasks);
-            
-            // 渲染任务列表 - 显示待处理列表中的任务
-            let nonCompletedTasks = tasks.filter(task => 
-                pendingTasks.has(task.id) && 
-                task.status !== '已完成' && 
-                task.type === '动作'
-            );
-            
-            // 按照 pendingTasksOrder 排序
-            if (pendingTasksOrder.length > 0) {
-                nonCompletedTasks.sort((a, b) => {
-                    const indexA = pendingTasksOrder.indexOf(a.id);
-                    const indexB = pendingTasksOrder.indexOf(b.id);
-                    if (indexA === -1) return 1;
-                    if (indexB === -1) return -1;
-                    return indexA - indexB;
-                });
-            }
-            
-            if (nonCompletedTasks.length === 0) {
-                listContainer.innerHTML = `
-                    <div class="text-center text-muted" style="padding: 40px;">
-                        <div style="font-size: 48px; opacity: 0.3;">📋</div>
-                        <p class="mt-2">暂无待处理任务可选择</p>
-                        <p class="text-small">请先将任务添加到待处理列表</p>
-                    </div>
-                `;
-            } else {
-                listContainer.innerHTML = nonCompletedTasks.map(task => `
-                    <div class="task-select-item ${tempFocusTasks.has(task.id) ? 'selected' : ''}" 
-                         onclick="toggleTaskSelection('${task.id}', event)">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <span class="task-type-badge ${task.type.toLowerCase()} text-small">
-                                    ${getTaskTypeIcon(task.type)} ${task.type}
-                                </span>
-                                <span class="text-small text-muted ml-2">${task.fields.priority}优先级</span>
-                            </div>
-                            <input type="checkbox" class="list-checkbox" 
-                                   ${tempFocusTasks.has(task.id) ? 'checked' : ''} 
-                                   onchange="event.stopPropagation()"
-                                   style="pointer-events: none;">
-                        </div>
-                        <div class="mt-1 font-weight-500">${task.title}</div>
-                        <div class="text-small text-muted">${task.path}</div>
-                    </div>
-                `).join('');
-            }
-            
-            modal.classList.add('active');
-        }
-        
-        // 切换任务选择
-        function toggleTaskSelection(taskId, event) {
-            // 从事件目标或其父元素获取任务项元素
-            const taskItem = event.currentTarget.classList.contains('task-select-item') 
-                ? event.currentTarget 
-                : event.currentTarget.closest('.task-select-item');
-            
-            const checkbox = taskItem.querySelector('.list-checkbox');
-            
-            if (tempFocusTasks.has(taskId)) {
-                tempFocusTasks.delete(taskId);
-                checkbox.checked = false;
-                taskItem.classList.remove('selected');
-            } else {
-                if (tempFocusTasks.size >= 5) {
-                    showNotification('焦点任务不能超过5个', 'warning');
-                    return;
-                }
-                tempFocusTasks.add(taskId);
-                checkbox.checked = true;
-                taskItem.classList.add('selected');
-            }
-            // 注意：这里不更新侧边栏统计，因为还没有确认
-        }
-        
-        // 确认焦点选择
-        function confirmFocusSelection() {
-            // 将临时选择同步到全局状态
-            focusTasks = new Set(tempFocusTasks);
-            
-            // 将新添加的任务添加到排序数组末尾
-            tempFocusTasks.forEach(taskId => {
-                if (!focusTasksOrder.includes(taskId)) {
-                    focusTasksOrder.push(taskId);
-                }
-            });
-            
-            // 移除不再是焦点任务的ID
-            focusTasksOrder = focusTasksOrder.filter(id => focusTasks.has(id));
-            
-            closeModal('selectFocusModal');
-            renderFocusTasks();
-            updateSidebarStats();
-            saveToLocalStorage();
-        }
-        
-        // 关闭模态框
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.remove('active');
-        }
-        
-        // 初始化modal点击空白处关闭功能
-        function initModalCloseOnClickOutside() {
-            // 获取所有modal元素
-            const modals = document.querySelectorAll('.modal');
-            
-            modals.forEach(modal => {
-                modal.addEventListener('click', function(e) {
-                    // 如果点击的是modal背景（不是modal-content内部）
-                    if (e.target === this) {
-                        this.classList.remove('active');
-                    }
-                });
-            });
-            
-            // 添加ESC键关闭功能
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    const activeModal = document.querySelector('.modal.active');
-                    if (activeModal) {
-                        activeModal.classList.remove('active');
-                    }
-                }
-            });
-        }
-        
-        // 按标题筛选
-        function filterTasks() {
-            const keyword = event.target.value.trim().toLowerCase();
-            activeFilters.title = keyword;
-            applyFilters();
-        }
-        
-        // 按标签筛选
-        function filterByTags() {
-            const tagKeyword = event.target.value.trim().toLowerCase();
-            activeFilters.tag = tagKeyword;
-            applyFilters();
-        }
-        
-        // 按选择的项目筛选
-        function filterBySelectedProject() {
-            const project = event.target.value;
-            activeFilters.project = project;
-            applyFilters();
-        }
-        
-        // 按项目筛选（侧边栏）
-        function filterByProject(project) {
-            activeFilters.project = project;
-            // 不强制切换视图，在当前视图中应用筛选
-            applyFilters();
-        }
-        
-        // 计算项目进度
-        function getProjectProgress(projectTasks) {
-            if (projectTasks.length === 0) return 0;
-            const completedCount = projectTasks.filter(t => t.status === '已完成').length;
-            return Math.round((completedCount / projectTasks.length) * 100);
-        }
-        
-        // 看板视图项目筛选
-        function filterByBoardProject(project) {
-            activeFilters.project = project;
-            applyFilters();
-            renderBoardSidebar(); // 更新侧边栏显示
-            showNotification(`已筛选项目: ${project}`, 'info');
-        }
-        
-        // 清除项目筛选
-        function clearProjectFilter() {
-            activeFilters.project = null;
-            applyFilters();
-            renderBoardSidebar(); // 更新侧边栏显示
-            showNotification('已清除项目筛选', 'success');
-        }
-        
-        // 显示所有任务
-        function showAllTasks() {
-            // 清除所有筛选条件
-            activeFilters = {
-                title: null,
-                tag: null,
-                project: null,
-                status: null,
-                priority: null,
-                type: null
-            };
-            applyFilters();
-            renderBoardSidebar();
-            showNotification('已显示所有任务', 'success');
-        }
-        
-        // 导出看板数据
-        function exportBoardData() {
-            const exportData = {
-                exportDate: new Date().toISOString(),
-                tasks: tasks,
-                statistics: {
-                    total: tasks.length,
-                    byType: {
-                        goals: tasks.filter(t => t.type === '目标').length,
-                        keyResults: tasks.filter(t => t.type === '关键结果').length,
-                        projects: tasks.filter(t => t.type === '项目').length,
-                        actions: tasks.filter(t => t.type === '动作').length
-                    },
-                    byStatus: {
-                        notStarted: tasks.filter(t => t.status === '未开始').length,
-                        inProgress: tasks.filter(t => t.status === '进行中').length,
-                        completed: tasks.filter(t => t.status === '已完成').length
-                    }
-                }
-            };
-            
-            const dataStr = JSON.stringify(exportData, null, 2);
-            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-            
-            const exportFileDefaultName = `mntask-board-export-${new Date().toISOString().split('T')[0]}.json`;
-            
-            const linkElement = document.createElement('a');
-            linkElement.setAttribute('href', dataUri);
-            linkElement.setAttribute('download', exportFileDefaultName);
-            linkElement.click();
-            
-            showNotification('看板数据已导出', 'success');
-        }
-        
-        // 检查是否有活跃的筛选条件
-        function hasActiveFilters() {
-            // 检查通用筛选器
-            const hasActiveFilter = activeFilters.title || activeFilters.tag || activeFilters.project || 
-                                  activeFilters.status || activeFilters.priority || activeFilters.type;
-            
-            // 检查看板筛选器
-            const hasBoardFilter = boardFilters.search || boardFilters.project || boardFilters.status || 
-                                  boardFilters.priority || boardFilters.type;
-            
-            return hasActiveFilter || hasBoardFilter;
-        }
-        
-        // 应用筛选
-        function applyFilters() {
-            // 更新全局 filteredTasks
-            MNUtil.log(`🔍 [applyFilters] 开始筛选，总任务数: ${tasks.length}, 当前视图: ${currentView}`);
-            
-            filteredTasks = tasks.filter(task => {
-                // 特殊规则：在焦点视图中默认隐藏已完成和已归档的任务
-                // 如果没有显式设置状态筛选，且在焦点视图中，隐藏已完成和已归档任务
-                if (!activeFilters.status && currentView === 'focus' && 
-                    (task.status === '已完成' || task.status === '已归档')) {
-                    return false;
-                }
-                
-                // 标题筛选
-                if (activeFilters.title && !task.title.toLowerCase().includes(activeFilters.title)) {
-                    return false;
-                }
-                
-                // 标签筛选
-                if (activeFilters.tag) {
-                    const hasTag = task.fields.tags.some(tag => 
-                        tag.toLowerCase().includes(activeFilters.tag)
-                    );
-                    if (!hasTag) return false;
-                }
-                
-                // 项目筛选
-                if (activeFilters.project && task.fields.project !== activeFilters.project) {
-                    return false;
-                }
-                
-                // 状态筛选
-                if (activeFilters.status && task.status !== activeFilters.status) {
-                    return false;
-                }
-                
-                // 优先级筛选
-                if (activeFilters.priority && task.fields.priority !== activeFilters.priority) {
-                    return false;
-                }
-                
-                return true;
-            });
-            
-            MNUtil.log(`✅ [applyFilters] 筛选完成，筛选后任务数: ${filteredTasks.length}`);
-            if (filteredTasks.length > 0) {
-                MNUtil.log(`📊 [applyFilters] 任务状态分布:`, 
-                    filteredTasks.reduce((acc, task) => {
-                        acc[task.status] = (acc[task.status] || 0) + 1;
-                        return acc;
-                    }, {})
-                );
-            }
-            
-            // 根据当前视图渲染
-            switch(currentView) {
-                case 'focus':
-                    renderFocusTasks();
-                    renderPendingTasks(); // 重新渲染待处理任务
-                    break;
-                case 'today':
-                    renderTodayTimeline();
-                    break;
-                case 'board':
-                    // 根据当前看板模式重新渲染
-                    switch(currentBoardMode) {
-                        case 'kanban':
-                            renderBoardKanban();
-                            break;
-                        case 'list':
-                            renderBoardList();
-                            break;
-                        case 'tree':
-                            renderBoardTree();
-                            break;
-                        case 'gantt':
-                            renderBoardGantt();
-                            break;
-                    }
-                    // 初始化项目下拉框和统计信息
-                    initializeBoardProjectFilter();
-                    updateBoardStats();
-                    break;
-                case 'project':
-                    renderProjectBoard();
-                    break;
-                case 'goal':
-                    renderGoalBoard();
-                    break;
-                case 'list':
-                    renderListView();
-                    break;
-                case 'planning':
-                    renderPlanningView();
-                    break;
-            }
-            
-            // 更新筛选标签显示
-            updateFilterTags();
-        }
-        
-        // 更新筛选标签显示
-        function updateFilterTags() {
-            const container = document.getElementById('activeFilters');
-            const tags = [];
-            
-            // 如果没有显式设置状态筛选，显示默认规则
-            if (!activeFilters.status && currentView === 'focus') {
-                tags.push(`默认: 隐藏已完成任务`);
-            }
-            
-            if (activeFilters.title) {
-                tags.push(`标题: ${activeFilters.title}`);
-            }
-            if (activeFilters.tag) {
-                tags.push(`标签: ${activeFilters.tag}`);
-            }
-            if (activeFilters.project) {
-                tags.push(`项目: ${activeFilters.project}`);
-            }
-            if (activeFilters.status) {
-                tags.push(`状态: ${activeFilters.status}`);
-            }
-            if (activeFilters.priority) {
-                tags.push(`优先级: ${activeFilters.priority}`);
-            }
-            
-            container.innerHTML = tags.map(tag => {
-                const isDefaultRule = tag.startsWith('默认:');
-                return `
-                    <span class="filter-tag ${isDefaultRule ? '' : 'active'}" ${isDefaultRule ? 'style="background: var(--bg-hover); border: 1px solid var(--glass-border); color: var(--text-muted);"' : ''}>
-                        ${tag}
-                        ${!isDefaultRule ? `<span style="margin-left: 8px; cursor: pointer;" onclick="clearFilter('${tag.split(':')[0].trim()}')">✕</span>` : ''}
-                    </span>
-                `;
-            }).join('');
-        }
-        
-        // 清除单个筛选条件
-        function clearFilter(filterType) {
-            const filterMap = {
-                '标题': 'title',
-                '标签': 'tag',
-                '项目': 'project',
-                '状态': 'status',
-                '优先级': 'priority'
-            };
-            
-            delete activeFilters[filterMap[filterType]];
-            applyFilters();
-        }
-        
-        // 查看任务详情
-        // 获取时间冲突任务功能已移除 - 系统不再考虑时间安排
-        
-        function showInMindMap(taskId) {
-            MNUtil.log('🔍 [showInMindMap] 被调用，taskId:', taskId);
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) {
-                MNUtil.log('❌ [showInMindMap] 找不到任务:', taskId);
-                return;
-            }
-            MNUtil.log('✅ [showInMindMap] 找到任务:', task);
-            
-            // 保存当前查看的任务ID
-            window.currentDetailTaskId = taskId;
-            
-            // 填充详情
-            // 对于可编辑字段，保持onclick处理
-            const titleEl = document.getElementById('detailTitle');
-            titleEl.textContent = task.title;
-            titleEl.onclick = function() { editTaskField('title', this); };
-            
-            document.getElementById('detailPath').textContent = task.path || '无';
-            document.getElementById('detailType').innerHTML = `${getTaskTypeIcon(task.type)} ${task.type}`;
-            document.getElementById('detailStatus').innerHTML = `${getStatusIcon(task.status)} ${task.status}`;
-            
-            const priorityEl = document.getElementById('detailPriority');
-            priorityEl.innerHTML = `${getPriorityIcon(task.fields.priority)} ${task.fields.priority}`;
-            priorityEl.onclick = function() { editTaskField('priority', this); };
-            document.getElementById('detailDueDate').textContent = task.fields.dueDate ? formatDate(task.fields.dueDate) : '未设置';
-            
-            // 时间安排功能已移除 - UI字段已隐藏
-            
-            const launchLinkEl = document.getElementById('detailLaunchLink');
-            launchLinkEl.textContent = task.launchLink || '未设置';
-            launchLinkEl.onclick = function() { editTaskField('launchLink', this); };
-            document.getElementById('detailStartTime').textContent = task.fields.startTime ? new Date(task.fields.startTime).toLocaleString('zh-CN') : '未开始';
-            document.getElementById('detailEndTime').textContent = task.fields.endTime ? new Date(task.fields.endTime).toLocaleString('zh-CN') : '未结束';
-            
-            // 标签
-            const tagsContainer = document.getElementById('detailTags');
-            tagsContainer.innerHTML = task.fields.tags.map(tag => `
-                <span class="task-detail-tag">${tag}</span>
-            `).join('') || '<span class="text-muted">无标签</span>';
-            tagsContainer.onclick = function() { editTaskField('tags', this); };
-            
-            // 显示进展记录
-            const progressContainer = document.getElementById('detailProgress');
-            if (!task.fields.progressLog || task.fields.progressLog.length === 0) {
-                progressContainer.innerHTML = '<p class="text-muted">暂无进展记录</p>';
-            } else {
-                // 显示最近3条进展记录
-                const recentLogs = task.fields.progressLog.slice(-3).reverse();
-                progressContainer.innerHTML = recentLogs.map(log => `
-                    <div class="progress-log-item" style="margin-bottom: 8px; padding: 8px; background: var(--bg-hover); border-radius: 4px;">
-                        <div class="progress-log-time" style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 4px;">
-                            ${log.date}
-                        </div>
-                        <div class="progress-log-note">${stripHTMLTags(log.note)}</div>
-                    </div>
-                `).join('');
-                
-                if (task.fields.progressLog.length > 3) {
-                    progressContainer.innerHTML += `
-                        <p class="text-muted text-small" style="margin-top: 8px;">
-                            还有 ${task.fields.progressLog.length - 3} 条更早的记录
-                        </p>
-                    `;
-                }
-            }
-            
-            // 生成状态切换按钮
-            const statusButtons = document.getElementById('taskStatusButtons');
-            const statuses = ['未开始', '进行中', '暂停', '已完成'];
-            statusButtons.innerHTML = statuses
-                .filter(status => status !== task.status) // 排除当前状态
-                .map(status => `
-                    <button class="btn btn-primary" onclick="toggleTaskStatusFromDetail('${status}')">
-                        ${getStatusIcon(status)} 设为${status}
-                    </button>
-                `).join('') + `
-                <button class="btn btn-info" onclick="focusTaskInMindMap('${task.id}')">
-                    📍 定位到卡片
-                </button>
-            `;
-            
-            // 显示模态框
-            MNUtil.log('🎯 [showInMindMap] 准备显示模态框');
-            const modal = document.getElementById('taskDetailModal');
-            if (!modal) {
-                MNUtil.log('❌ [showInMindMap] 找不到 taskDetailModal 元素');
-                return;
-            }
-            modal.classList.add('active');
-            MNUtil.log('✅ [showInMindMap] 模态框已添加 active 类');
-        }
-        
-        // 从详情模态框切换任务状态
-        function toggleTaskStatusFromDetail(newStatus) {
-            if (window.currentDetailTaskId) {
-                toggleTaskStatus(window.currentDetailTaskId, newStatus);
-                // 关闭模态框
-                closeModal('taskDetailModal');
-                // 清空当前任务ID
-                window.currentDetailTaskId = null;
-            }
-        }
-
-        // 处理看板任务卡片点击
-        function handleBoardTaskClick(event, taskId) {
-            // 直接打开任务详情
-            showInMindMap(taskId);
-        }
-
-        /* ========================================
-           ✏️ 任务字段编辑功能
-           ======================================== */
-
-        // 编辑任务字段
-        function editTaskField(fieldType, element) {
-            // 防止重复编辑
-            if (element.classList.contains('field-editing')) {
-                return;
-            }
-
-            const taskId = window.currentDetailTaskId;
-            if (!taskId) return;
-
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) return;
-
-            element.classList.add('field-editing');
-            const originalContent = element.innerHTML;
-            let originalValue;
-
-            switch (fieldType) {
-                case 'title':
-                    originalValue = task.title;
-                    element.innerHTML = `<input type="text" class="field-input" value="${escapeHtml(originalValue)}" onblur="saveTaskField('${fieldType}', this, '${taskId}')" onkeydown="handleFieldKeydown(event, '${fieldType}', this, '${taskId}')">`;
-                    break;
-                
-                case 'priority':
-                    originalValue = task.fields.priority;
-                    element.innerHTML = `
-                        <select class="priority-select" onblur="saveTaskField('${fieldType}', this, '${taskId}')" onkeydown="handleFieldKeydown(event, '${fieldType}', this, '${taskId}')">
-                            <option value="高" ${originalValue === '高' ? 'selected' : ''}>🔴 高</option>
-                            <option value="中" ${originalValue === '中' ? 'selected' : ''}>🟡 中</option>
-                            <option value="低" ${originalValue === '低' ? 'selected' : ''}>🟢 低</option>
-                        </select>
-                    `;
-                    break;
-                
-                case 'tags':
-                    originalValue = task.fields.tags.join(', ');
-                    element.innerHTML = `<textarea class="tags-editor" placeholder="输入标签，用逗号分隔" onblur="saveTaskField('${fieldType}', this, '${taskId}')" onkeydown="handleFieldKeydown(event, '${fieldType}', this, '${taskId}')">${escapeHtml(originalValue)}</textarea>`;
-                    break;
-                
-                case 'launchLink':
-                    originalValue = task.launchLink || '';
-                    element.innerHTML = `<input type="text" class="field-input" value="${escapeHtml(originalValue)}" placeholder="输入MarginNote链接" onblur="saveTaskField('${fieldType}', this, '${taskId}')" onkeydown="handleFieldKeydown(event, '${fieldType}', this, '${taskId}')">`;
-                    break;
-            }
-
-            // 聚焦到输入框
-            const input = element.querySelector('input, select, textarea');
-            if (input) {
-                input.focus();
-                if (input.type === 'text' || input.tagName === 'TEXTAREA') {
-                    input.select();
-                }
-            }
-
-            // 保存原始内容用于取消编辑
-            element._originalContent = originalContent;
-            element._originalValue = originalValue;
-        }
-
-        // 处理字段编辑的键盘事件
-        function handleFieldKeydown(event, fieldType, input, taskId) {
-            if (event.key === 'Enter' && fieldType !== 'tags') {
-                event.preventDefault();
-                saveTaskField(fieldType, input, taskId);
-            } else if (event.key === 'Escape') {
-                event.preventDefault();
-                cancelFieldEdit(fieldType, input, taskId);
-            }
-        }
-
-        // 保存任务字段
-        function saveTaskField(fieldType, input, taskId) {
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) return;
-
-            const element = input.closest('.editable-field');
-            const newValue = input.value.trim();
-
-            switch (fieldType) {
-                case 'title':
-                    if (newValue && newValue !== task.title) {
-                        task.title = newValue;
-                        element.textContent = newValue;
-                        showNotification('标题已更新', 'success');
-                    } else {
-                        element.innerHTML = element._originalContent;
-                    }
-                    break;
-                
-                case 'priority':
-                    if (newValue !== task.fields.priority) {
-                        task.fields.priority = newValue;
-                        element.innerHTML = `${getPriorityIcon(newValue)} ${newValue}`;
-                        showNotification('优先级已更新', 'success');
-                    } else {
-                        element.innerHTML = element._originalContent;
-                    }
-                    break;
-                
-                case 'tags':
-                    const newTags = newValue ? newValue.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
-                    task.fields.tags = newTags;
-                    element.innerHTML = newTags.length > 0 ? 
-                        newTags.map(tag => `<span class="task-detail-tag">${tag}</span>`).join('') : 
-                        '<span class="text-muted">无标签</span>';
-                    showNotification('标签已更新', 'success');
-                    break;
-                
-                case 'launchLink':
-                    if (newValue !== task.launchLink) {
-                        task.launchLink = newValue;
-                        element.textContent = newValue || '未设置';
-                        
-                        // 同步启动链接到原生端
-                        if (window.TaskSync && window.TaskSync.sendTaskUpdate) {
-                            TaskSync.sendTaskUpdate(taskId, {
-                                launchLink: newValue
-                            });
-                            MNUtil.log('📤 启动链接已同步到原生端');
-                        }
-                        
-                        showNotification('启动链接已更新', 'success');
-                    } else {
-                        element.innerHTML = element._originalContent;
-                    }
-                    break;
-            }
-
-            element.classList.remove('field-editing');
-            
-            // 保存到本地存储
-            saveToLocalStorage();
-            
-            // 刷新相关视图
-            refreshAllViews();
-        }
-
-        // 取消字段编辑
-        function cancelFieldEdit(fieldType, input, taskId) {
-            const element = input.closest('.editable-field');
-            element.innerHTML = element._originalContent;
-            element.classList.remove('field-editing');
-        }
-
-        // 刷新所有视图
-        function refreshAllViews() {
-            if (currentView === 'focus') {
-                renderFocusTasks();
-                renderPendingTasks();
-            } else if (currentView === 'timeline') {
-                renderTodayTimeline();
-            } else if (currentView === 'planning') {
-                renderPlanningView();
-            }
-        }
-        
-        /* ========================================
-           📦 项目看板
-           ======================================== */
-        
-        function renderProjectBoard() {
-            const container = document.getElementById('projectBoardContainer');
-            const projectTasks = tasks.filter(task => task.type === '项目');
-            
-            // 构建项目层级结构
-            const rootProjects = projectTasks.filter(p => !p.parent);
-            const subProjects = projectTasks.filter(p => p.parent);
-            
-            // 创建项目卡片的渲染函数
-            function renderProjectCard(project, isSubProject = false) {
-                const childProjects = subProjects.filter(sub => sub.parent === project.id);
-                
-                return `
-                    <div class="board-card ${isSubProject ? 'sub-project' : ''}" 
-                         draggable="true"
-                         data-task-id="${project.id}"
-                         data-task-status="${project.status}"
-                         ondragstart="handleProjectDragStart(event)"
-                         ondragend="handleProjectDragEnd(event)"
-                         onclick="showInMindMap('${project.id}')">
-                        ${isSubProject ? '<div class="sub-project-indicator"></div>' : ''}
-                        <div class="board-card-header">
-                            <span class="priority-badge ${project.fields.priority.toLowerCase()}">
-                                ${getPriorityIcon(project.fields.priority)}
-                            </span>
-                            <span class="text-small text-muted">${project.fields.project || '未分类'}</span>
-                        </div>
-                        <h4 class="board-card-title">${project.title}</h4>
-                        <div class="board-card-meta">
-                            ${project.fields.dueDate ? `<span>📅 ${formatDate(project.fields.dueDate)}</span>` : ''}
-                            ${project.fields.progress ? `<span>📊 ${project.fields.progress}%</span>` : ''}
-                            ${childProjects.length > 0 ? `<span>📁 ${childProjects.length} 子项目</span>` : ''}
-                        </div>
-                        <div class="board-card-footer">
-                            <div class="board-card-actions">
-                                ${project.status === '未开始' ? `
-                                    <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleTaskStatus('${project.id}', '进行中')">
-                                        🚀 开始
-                                    </button>
-                                ` : project.status === '进行中' ? `
-                                    <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); toggleTaskStatus('${project.id}', '已完成')">
-                                        ✅ 完成
-                                    </button>
-                                ` : ''}
-                            </div>
-                        </div>
-                    </div>
-                    ${childProjects.filter(sub => sub.status === project.status).map(sub => 
-                        renderProjectCard(sub, true)
-                    ).join('')}
-                `;
-            }
-            
-            // 按状态分组，只包含根项目
-            const statusGroups = {
-                '未开始': rootProjects.filter(t => t.status === '未开始'),
-                '进行中': rootProjects.filter(t => t.status === '进行中'),
-                '已完成': rootProjects.filter(t => t.status === '已完成')
-            };
-            
-            // 计算每个状态的总项目数（包括子项目）
-            const totalCounts = {
-                '未开始': projectTasks.filter(t => t.status === '未开始').length,
-                '进行中': projectTasks.filter(t => t.status === '进行中').length,
-                '已完成': projectTasks.filter(t => t.status === '已完成').length
-            };
-            
-            container.innerHTML = `
-                <div class="board-columns">
-                    ${Object.entries(statusGroups).map(([status, rootTasks]) => `
-                        <div class="board-column">
-                            <div class="board-column-header">
-                                <h3>${getStatusIcon(status)} ${status}</h3>
-                                <span class="count-badge">${totalCounts[status]}</span>
-                            </div>
-                            <div class="board-column-content"
-                                 data-status="${status}"
-                                 ondragover="handleProjectDragOver(event)"
-                                 ondragleave="handleProjectDragLeave(event)"
-                                 ondrop="handleProjectDrop(event)">
-                                ${rootTasks.map(task => renderProjectCard(task)).join('') || '<p class="text-muted">暂无项目</p>'}
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-        }
-        
-        // 当前看板视图模式
-        let currentBoardMode = 'kanban';
-        
-        // 看板筛选相关变量
-        let boardFilters = {
-            search: '',
-            project: '',
-            status: '',
-            priority: '',
-            type: ''
-        };
-        
-        // 处理看板搜索
-        function handleBoardSearch(event) {
-            boardFilters.search = event.target.value.trim().toLowerCase();
-            applyBoardFilters();
-        }
-        
-        // 处理看板项目筛选
-        function handleBoardProjectFilter() {
-            boardFilters.project = document.getElementById('boardProjectFilter').value;
-            applyBoardFilters();
-        }
-        
-        // 处理看板状态筛选
-        function handleBoardStatusFilter() {
-            boardFilters.status = document.getElementById('boardStatusFilter').value;
-            applyBoardFilters();
-        }
-        
-        // 处理看板优先级筛选
-        function handleBoardPriorityFilter() {
-            boardFilters.priority = document.getElementById('boardPriorityFilter').value;
-            applyBoardFilters();
-        }
-        
-        // 处理看板类型筛选
-        function handleBoardTypeFilter() {
-            boardFilters.type = document.getElementById('boardTypeFilter').value;
-            applyBoardFilters();
-        }
-        
-        // 筛选今日任务
-        function filterTodayTasks() {
-            const today = formatDateToLocal(new Date());
-            boardFilters = { search: '', project: '', status: '', priority: '', type: '' };
-            activeFilters.plannedDate = today;
-            applyBoardFilters();
-            showNotification('已筛选今日任务', 'info');
-        }
-        
-        // 筛选本周任务
-        function filterWeekTasks() {
-            const now = new Date();
-            const weekStart = new Date(now);
-            weekStart.setDate(now.getDate() - now.getDay());
-            const weekEnd = new Date(weekStart);
-            weekEnd.setDate(weekStart.getDate() + 6);
-            
-            boardFilters = { search: '', project: '', status: '', priority: '', type: '' };
-            activeFilters.dateRange = { start: weekStart, end: weekEnd };
-            applyBoardFilters();
-            showNotification('已筛选本周任务', 'info');
-        }
-        
-        // 筛选逾期任务
-        function filterOverdueTasks() {
-            boardFilters = { search: '', project: '', status: '', priority: '', type: '' };
-            activeFilters.overdue = true;
-            applyBoardFilters();
-            showNotification('已筛选逾期任务', 'info');
-        }
-        
-        // 清除所有筛选
-        function clearAllFilters() {
-            boardFilters = { search: '', project: '', status: '', priority: '', type: '' };
-            activeFilters = {};
-            
-            // 重置筛选控件
-            document.getElementById('boardSearchInput').value = '';
-            document.getElementById('boardProjectFilter').value = '';
-            document.getElementById('boardStatusFilter').value = '';
-            document.getElementById('boardPriorityFilter').value = '';
-            document.getElementById('boardTypeFilter').value = '';
-            
-            applyBoardFilters();
-            showNotification('已清除所有筛选', 'info');
-        }
-        
-        // 应用看板筛选
-        function applyBoardFilters() {
-            let filtered = tasks;
-            
-            // 搜索筛选
-            if (boardFilters.search) {
-                filtered = filtered.filter(task => 
-                    task.title.toLowerCase().includes(boardFilters.search) ||
-                    task.fields.tags.some(tag => tag.toLowerCase().includes(boardFilters.search))
-                );
-            }
-            
-            // 项目筛选
-            if (boardFilters.project) {
-                filtered = filtered.filter(task => task.fields.project === boardFilters.project);
-            }
-            
-            // 状态筛选
-            if (boardFilters.status) {
-                filtered = filtered.filter(task => task.status === boardFilters.status);
-            }
-            
-            // 优先级筛选
-            if (boardFilters.priority) {
-                filtered = filtered.filter(task => task.fields.priority === boardFilters.priority);
-            }
-            
-            // 类型筛选
-            if (boardFilters.type) {
-                filtered = filtered.filter(task => task.type === boardFilters.type);
-            }
-            
-            // 应用其他全局筛选条件
-            if (activeFilters.plannedDate) {
-                filtered = filtered.filter(task => task.fields.plannedDate === activeFilters.plannedDate);
-            }
-            
-            if (activeFilters.overdue) {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                filtered = filtered.filter(task => {
-                    if (!task.fields.dueDate || task.status === '已完成') return false;
-                    const dueDate = new Date(task.fields.dueDate);
-                    return dueDate < today;
-                });
-            }
-            
-            if (activeFilters.dateRange) {
-                filtered = filtered.filter(task => {
-                    if (!task.fields.plannedDate) return false;
-                    const taskDate = new Date(task.fields.plannedDate);
-                    return taskDate >= activeFilters.dateRange.start && taskDate <= activeFilters.dateRange.end;
-                });
-            }
-            
-            filteredTasks = filtered;
-            
-            // 更新筛选标签显示
-            updateBoardFilterTags();
-            
-            // 更新统计信息
-            updateBoardStats();
-            
-            // 根据当前视图重新渲染
-            if (currentView === 'timeline') {
-                renderTodayTimeline();
-            } else if (currentView === 'board') {
-                renderBoardView();
-            } else if (currentView === 'planning') {
-                showPlanningView();
-            }
-        }
-        
-        // 更新看板筛选标签
-        function updateBoardFilterTags() {
-            const container = document.getElementById('boardFilterTags');
-            const activeFiltersBar = document.getElementById('boardActiveFilters');
-            const tags = [];
-            
-            if (boardFilters.search) tags.push(`搜索: ${boardFilters.search}`);
-            if (boardFilters.project) tags.push(`项目: ${boardFilters.project}`);
-            if (boardFilters.status) tags.push(`状态: ${boardFilters.status}`);
-            if (boardFilters.priority) tags.push(`优先级: ${boardFilters.priority}`);
-            if (boardFilters.type) tags.push(`类型: ${boardFilters.type}`);
-            if (activeFilters.plannedDate) tags.push(`日期: ${activeFilters.plannedDate}`);
-            if (activeFilters.overdue) tags.push(`逾期任务`);
-            if (activeFilters.dateRange) tags.push(`本周任务`);
-            
-            if (tags.length > 0) {
-                activeFiltersBar.style.display = 'flex';
-                container.innerHTML = tags.map(tag => `
-                    <span class="filter-tag active">
-                        ${tag}
-                        <span style="margin-left: 8px; cursor: pointer;" onclick="removeFilterTag('${tag}')">✕</span>
-                    </span>
-                `).join('');
-            } else {
-                activeFiltersBar.style.display = 'none';
-            }
-        }
-        
-        // 移除筛选标签
-        function removeFilterTag(tag) {
-            if (tag.startsWith('搜索:')) {
-                boardFilters.search = '';
-                document.getElementById('boardSearchInput').value = '';
-            } else if (tag.startsWith('项目:')) {
-                boardFilters.project = '';
-                document.getElementById('boardProjectFilter').value = '';
-            } else if (tag.startsWith('状态:')) {
-                boardFilters.status = '';
-                document.getElementById('boardStatusFilter').value = '';
-            } else if (tag.startsWith('优先级:')) {
-                boardFilters.priority = '';
-                document.getElementById('boardPriorityFilter').value = '';
-            } else if (tag.startsWith('类型:')) {
-                boardFilters.type = '';
-                document.getElementById('boardTypeFilter').value = '';
-            } else if (tag.includes('日期:')) {
-                delete activeFilters.plannedDate;
-            } else if (tag === '逾期任务') {
-                delete activeFilters.overdue;
-            } else if (tag === '本周任务') {
-                delete activeFilters.dateRange;
-            }
-            
-            applyBoardFilters();
-        }
-        
-        // 更新看板统计信息
-        function updateBoardStats() {
-            const tasksToCount = hasActiveFilters() || Object.values(boardFilters).some(v => v) ? filteredTasks : tasks;
-            
-            const stats = {
-                total: tasksToCount.length,
-                todo: tasksToCount.filter(t => t.status === '未开始').length,
-                doing: tasksToCount.filter(t => t.status === '进行中').length,
-                done: tasksToCount.filter(t => t.status === '已完成').length
-            };
-            
-            stats.completionRate = stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0;
-            
-            document.getElementById('boardTotalCount').textContent = stats.total;
-            document.getElementById('boardTodoCount').textContent = stats.todo;
-            document.getElementById('boardDoingCount').textContent = stats.doing;
-            document.getElementById('boardDoneCount').textContent = stats.done;
-            document.getElementById('boardCompletionRate').textContent = stats.completionRate + '%';
-        }
-        
-        // 聚焦今日任务（侧边栏按钮）
-        function focusTodayTasks() {
-            filterTodayTasks();
-        }
-        
-        // 项目快速切换
-        function quickSwitchProject(project) {
-            boardFilters.project = project;
-            document.getElementById('boardProjectFilter').value = project;
-            applyBoardFilters();
-            showNotification(`已切换到项目: ${project}`, 'info');
-        }
-        
-        // 初始化看板项目筛选下拉框
-        function initializeBoardProjectFilter() {
-            const projectFilter = document.getElementById('boardProjectFilter');
-            if (!projectFilter) return;
-            
-            // 获取所有项目
-            const allProjects = [...new Set(tasks
-                .filter(t => t.fields.project)
-                .map(t => t.fields.project)
-            )].sort();
-            
-            // 清空现有选项
-            projectFilter.innerHTML = '<option value="">📦 所有项目</option>';
-            
-            // 添加项目选项
-            allProjects.forEach(project => {
-                const option = document.createElement('option');
-                option.value = project;
-                option.textContent = project;
-                projectFilter.appendChild(option);
-            });
-            
-            // 恢复之前的选择
-            if (boardFilters.project) {
-                projectFilter.value = boardFilters.project;
-            }
-        }
-        
-        // 渲染统一看板视图
-        function renderBoardView() {
-            // 默认显示看板模式
-            renderBoardKanban();
-        }
-        
-        // 切换看板显示模式
-        function switchBoardMode(mode) {
-            currentBoardMode = mode;
-            
-            // 更新按钮状态
-            document.querySelectorAll('.board-mode-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.mode === mode);
-            });
-            
-            // 根据模式渲染不同视图
-            switch(mode) {
-                case 'kanban':
-                    renderBoardKanban();
-                    break;
-                case 'list':
-                    renderBoardList();
-                    break;
-                case 'tree':
-                    renderBoardTree();
-                    break;
-                case 'gantt':
-                    renderBoardGantt();
-                    break;
-            }
-        }
-        
-        // 渲染看板模式
-        function renderBoardKanban() {
-            const container = document.getElementById('boardContainer');
-            
-            // 使用筛选后的任务或所有任务
-            const tasksToShow = hasActiveFilters() ? filteredTasks : tasks;
-            
-            // 获取所有任务（包括目标、关键结果、项目和动作）
-            const allTasks = tasksToShow.filter(task => 
-                ['目标', '关键结果', '项目', '动作'].includes(task.type)
-            );
-            
-            // 按状态分组
-            const statusGroups = {
-                '未开始': allTasks.filter(t => t.status === '未开始'),
-                '进行中': allTasks.filter(t => t.status === '进行中'),
-                '已完成': allTasks.filter(t => t.status === '已完成')
-            };
-            
-            container.innerHTML = `
-                <div class="board-columns">
-                    ${Object.entries(statusGroups).map(([status, statusTasks]) => `
-                        <div class="board-column">
-                            <div class="board-column-header">
-                                <h3>${getStatusIcon(status)} ${status}</h3>
-                                <span class="count-badge">${statusTasks.length}</span>
-                            </div>
-                            <div class="board-column-content"
-                                 data-status="${status}"
-                                 ondragover="handleBoardDragOver(event)"
-                                 ondragleave="handleBoardDragLeave(event)"
-                                 ondrop="handleBoardDrop(event)">
-                                ${statusTasks.map(task => renderTaskCard(task)).join('')}
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-        }
-        
-        // 渲染列表模式
-        function renderBoardList() {
-            const container = document.getElementById('boardContainer');
-            
-            // 使用筛选后的任务或所有任务
-            const tasksToShow = hasActiveFilters() ? filteredTasks : tasks;
-            
-            // 获取所有任务并按类型分组
-            const tasksByType = {
-                '目标': tasksToShow.filter(t => t.type === '目标'),
-                '关键结果': tasksToShow.filter(t => t.type === '关键结果'),
-                '项目': tasksToShow.filter(t => t.type === '项目'),
-                '动作': tasksToShow.filter(t => t.type === '动作')
-            };
-            
-            container.innerHTML = `
-                <div class="board-list-view">
-                    ${Object.entries(tasksByType).map(([type, typeTasks]) => `
-                        <div class="list-section">
-                            <div class="list-section-header">
-                                <h3>${getTaskTypeIcon(type)} ${type}</h3>
-                                <span class="count-badge">${typeTasks.length}</span>
-                            </div>
-                            <div class="list-section-content">
-                                <table class="task-list-table">
-                                    <thead>
-                                        <tr>
-                                            <th>标题</th>
-                                            <th>状态</th>
-                                            <th>优先级</th>
-                                            <th>到期日期</th>
-                                            <th>进度</th>
-                                            <th>操作</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${typeTasks.map(task => `
-                                            <tr class="task-list-row" onclick="showInMindMap('${task.id}')">
-                                                <td class="task-title">
-                                                    ${task.title}
-                                                    ${task.path ? `<div style="font-size: 0.85em; color: var(--text-muted); opacity: 0.7;">📍 ${task.path}</div>` : ''}
-                                                </td>
-                                                <td><span class="status-badge ${task.status}">${getStatusIcon(task.status)} ${task.status}</span></td>
-                                                <td><span class="priority-badge ${task.fields.priority.toLowerCase()}">${getPriorityIcon(task.fields.priority)}</span></td>
-                                                <td>${task.fields.dueDate ? formatDate(task.fields.dueDate) : '-'}</td>
-                                                <td>${task.fields.progress ? `${task.fields.progress}%` : '-'}</td>
-                                                <td class="task-actions">
-                                                    ${getTaskActions(task)}
-                                                </td>
-                                            </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-        }
-        
-        // 渲染树形模式
-        function renderBoardTree() {
-            const container = document.getElementById('boardContainer');
-            
-            // 构建任务层级结构
-            const taskHierarchy = buildTaskHierarchy();
-            
-            container.innerHTML = `
-                <div class="board-tree-view">
-                    <div class="tree-header">
-                        <h3>🌳 任务层级结构</h3>
-                        <div class="tree-controls">
-                            <button class="btn btn-sm" onclick="expandAllTreeNodes()">展开全部</button>
-                            <button class="btn btn-sm" onclick="collapseAllTreeNodes()">折叠全部</button>
-                        </div>
-                    </div>
-                    <div class="tree-content">
-                        ${renderTreeNodes(taskHierarchy)}
-                    </div>
-                </div>
-            `;
-        }
-        
-        // 构建任务层级结构
-        function buildTaskHierarchy() {
-            const hierarchy = [];
-            
-            // 使用筛选后的任务或所有任务
-            const tasksToUse = hasActiveFilters() ? filteredTasks : tasks;
-            
-            // 首先获取所有目标
-            const goals = tasksToUse.filter(t => t.type === '目标');
-            
-            goals.forEach(goal => {
-                const goalNode = {
-                    task: goal,
-                    children: []
-                };
-                
-                // 获取该目标下的关键结果
-                const krs = tasksToUse.filter(t => 
-                    t.type === '关键结果' && 
-                    t.path && t.path.includes(goal.title)
-                );
-                
-                krs.forEach(kr => {
-                    const krNode = {
-                        task: kr,
-                        children: []
-                    };
-                    
-                    // 获取该关键结果下的项目
-                    const projects = tasksToUse.filter(t => 
-                        t.type === '项目' && 
-                        t.path && t.path.includes(kr.title)
-                    );
-                    
-                    projects.forEach(project => {
-                        const projectNode = {
-                            task: project,
-                            children: []
-                        };
-                        
-                        // 获取该项目下的动作
-                        const actions = tasksToUse.filter(t => 
-                            t.type === '动作' && 
-                            t.path && t.path.includes(project.title)
-                        );
-                        
-                        actions.forEach(action => {
-                            projectNode.children.push({
-                                task: action,
-                                children: []
-                            });
-                        });
-                        
-                        krNode.children.push(projectNode);
-                    });
-                    
-                    goalNode.children.push(krNode);
-                });
-                
-                hierarchy.push(goalNode);
-            });
-            
-            return hierarchy;
-        }
-        
-        // 渲染树形节点
-        function renderTreeNodes(nodes, level = 0) {
-            return nodes.map(node => `
-                <div class="tree-node" style="margin-left: ${level * 30}px;">
-                    <div class="tree-node-content" onclick="toggleTreeNode(this)">
-                        <span class="tree-toggle ${node.children.length > 0 ? 'has-children' : ''}">
-                            ${node.children.length > 0 ? '▼' : '▪'}
-                        </span>
-                        <span class="tree-type-icon">${getTaskTypeIcon(node.task.type)}</span>
-                        <span class="tree-title">${node.task.title}</span>
-                        <span class="tree-status">${getStatusIcon(node.task.status)}</span>
-                        <span class="tree-priority priority-badge ${node.task.fields.priority.toLowerCase()}">
-                            ${getPriorityIcon(node.task.fields.priority)}
-                        </span>
-                    </div>
-                    ${node.children.length > 0 ? `
-                        <div class="tree-children">
-                            ${renderTreeNodes(node.children, level + 1)}
-                        </div>
-                    ` : ''}
-                </div>
-            `).join('');
-        }
-        
-        // 渲染任务卡片（统一格式）
-        function renderTaskCard(task) {
-            return `
-                <div class="board-card" 
-                     draggable="true"
-                     data-task-id="${task.id}"
-                     data-task-status="${task.status}"
-                     ondragstart="handleBoardDragStart(event)"
-                     ondragend="handleBoardDragEnd(event)"
-                     onclick="handleBoardTaskClick(event, '${task.id}')"
-                     style="cursor: pointer;">
-                    <div class="board-card-header">
-                        <span class="type-icon">${getTaskTypeIcon(task.type)}</span>
-                        <span class="priority-badge ${task.fields.priority.toLowerCase()}">
-                            ${getPriorityIcon(task.fields.priority)}
-                        </span>
-                    </div>
-                    <h4 class="board-card-title">${task.title}</h4>
-                    ${task.path ? `<div class="board-card-path" style="font-size: 0.85rem; color: var(--text-muted); opacity: 0.7; margin: 4px 0;">📍 ${task.path}</div>` : ''}
-                    
-                    <div class="board-card-meta">
-                        ${task.fields.dueDate ? `<span>📅 ${formatDate(task.fields.dueDate)}</span>` : ''}
-                        ${task.fields.progress ? `<span>📊 ${task.fields.progress}%</span>` : ''}
-                    </div>
-                    <div class="board-card-footer">
-                        <span class="task-type-badge">${task.type}</span>
-                        ${getTaskActions(task)}
-                    </div>
-                </div>
-            `;
-        }
-        
-        // 获取任务操作按钮
-        function getTaskActions(task) {
-            let actions = '';
-            
-            // 状态操作按钮
-            if (task.status === '未开始') {
-                actions += `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '进行中')">🚀 开始</button>`;
-            } else if (task.status === '进行中') {
-                actions += `<button class="btn btn-sm btn-success" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '已完成')">✅ 完成</button>`;
-            }
-            
-            // 定位按钮
-            actions += `<button class="btn btn-sm btn-info" onclick="event.stopPropagation(); focusTaskInMindMap('${task.id}')" title="定位到卡片">📍</button>`;
-            
-            return actions;
-        }
-        
-        // 统一看板拖拽功能
-        let draggedBoardTaskId = null;
-        let draggedBoardElement = null;
-        
-        function handleBoardDragStart(event) {
-            const card = event.target.closest('.board-card');
-            if (!card) return;
-            
-            draggedBoardTaskId = card.dataset.taskId;
-            draggedBoardElement = card;
-            
-            card.classList.add('dragging');
-            event.dataTransfer.effectAllowed = 'move';
-            event.dataTransfer.setData('text/plain', draggedBoardTaskId);
-            
-            setTimeout(() => {
-                card.style.opacity = '0.3';
-            }, 0);
-        }
-        
-        function handleBoardDragEnd(event) {
-            const card = event.target.closest('.board-card');
-            if (!card) return;
-            
-            card.classList.remove('dragging');
-            card.style.opacity = '';
-            
-            // 清除所有拖拽高亮
-            document.querySelectorAll('.board-column-content').forEach(col => {
-                col.classList.remove('drag-over');
-            });
-            
-            draggedBoardTaskId = null;
-            draggedBoardElement = null;
-        }
-        
-        function handleBoardDragOver(event) {
-            event.preventDefault();
-            event.dataTransfer.dropEffect = 'move';
-            
-            const column = event.target.closest('.board-column-content');
-            if (column) {
-                column.classList.add('drag-over');
-            }
-        }
-        
-        function handleBoardDragLeave(event) {
-            const column = event.target.closest('.board-column-content');
-            if (column && !column.contains(event.relatedTarget)) {
-                column.classList.remove('drag-over');
-            }
-        }
-        
-        function handleBoardDrop(event) {
-            event.preventDefault();
-            
-            const column = event.target.closest('.board-column-content');
-            if (!column || !draggedBoardTaskId) return;
-            
-            column.classList.remove('drag-over');
-            
-            const newStatus = column.dataset.status;
-            const task = findTaskById(draggedBoardTaskId);
-            
-            if (task && task.status !== newStatus) {
-                toggleTaskStatus(draggedBoardTaskId, newStatus);
-            }
-        }
-        
-        // 树形视图交互功能
-        function toggleTreeNode(element) {
-            const node = element.parentElement;
-            const children = node.querySelector('.tree-children');
-            const toggle = element.querySelector('.tree-toggle');
-            
-            if (children && toggle.classList.contains('has-children')) {
-                children.classList.toggle('collapsed');
-                toggle.textContent = children.classList.contains('collapsed') ? '▶' : '▼';
-            }
-        }
-        
-        function expandAllTreeNodes() {
-            document.querySelectorAll('.tree-children').forEach(children => {
-                children.classList.remove('collapsed');
-            });
-            document.querySelectorAll('.tree-toggle.has-children').forEach(toggle => {
-                toggle.textContent = '▼';
-            });
-        }
-        
-        function collapseAllTreeNodes() {
-            document.querySelectorAll('.tree-children').forEach(children => {
-                children.classList.add('collapsed');
-            });
-            document.querySelectorAll('.tree-toggle.has-children').forEach(toggle => {
-                toggle.textContent = '▶';
-            });
-        }
-        
-        // 渲染甘特图模式
-        function renderBoardGantt() {
-            const container = document.getElementById('boardContainer');
-            
-            // 使用筛选后的任务或所有任务
-            const tasksToShow = hasActiveFilters() ? filteredTasks : tasks;
-            
-            // 获取有日期的任务
-            const tasksWithDates = tasksToShow.filter(task => 
-                task.fields.plannedDate || task.fields.dueDate || task.fields.startTime
-            ).sort((a, b) => {
-                const dateA = getTaskStartDate(a);
-                const dateB = getTaskStartDate(b);
-                return dateA - dateB;
-            });
-            
-            if (tasksWithDates.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-gantt">
-                        <p>暂无带有日期信息的任务</p>
-                        <p class="text-muted">甘特图需要任务设置计划日期、截止日期或开始时间</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            // 计算时间范围
-            const { startDate, endDate } = calculateGanttDateRange(tasksWithDates);
-            const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-            const dayWidth = Math.max(40, Math.min(80, 3000 / totalDays)); // 自适应日期宽度
-            
-            // 生成甘特图HTML
-            container.innerHTML = `
-                <div class="gantt-chart">
-                    <div class="gantt-header">
-                        <div class="gantt-task-list-header">任务名称</div>
-                        <div class="gantt-timeline-header" style="width: ${totalDays * dayWidth}px;">
-                            ${generateTimelineHeader(startDate, endDate, dayWidth)}
-                        </div>
-                    </div>
-                    <div class="gantt-body">
-                        <div class="gantt-task-list">
-                            ${tasksWithDates.map((task, index) => `
-                                <div class="gantt-task-item" onclick="showInMindMap('${task.id}')">
-                                    <span class="gantt-task-type">${getTaskTypeIcon(task.type)}</span>
-                                    <span class="gantt-task-title">${task.title}</span>
-                                    <span class="gantt-task-status">${getStatusIcon(task.status)}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                        <div class="gantt-timeline" style="width: ${totalDays * dayWidth}px;">
-                            ${generateTodayLine(startDate, dayWidth)}
-                            ${tasksWithDates.map((task, index) => 
-                                generateTaskBar(task, index, startDate, dayWidth)
-                            ).join('')}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-        
-        // 获取任务开始日期
-        function getTaskStartDate(task) {
-            if (task.fields.startTime) {
-                return new Date(task.fields.startTime);
-            } else if (task.fields.plannedDate) {
-                return new Date(task.fields.plannedDate);
-            } else if (task.fields.dueDate) {
-                return new Date(task.fields.dueDate);
-            }
-            return new Date();
-        }
-        
-        // 获取任务结束日期
-        function getTaskEndDate(task) {
-            if (task.fields.endTime) {
-                return new Date(task.fields.endTime);
-            } else if (task.fields.dueDate) {
-                return new Date(task.fields.dueDate);
-            } else {
-                // 如果没有结束时间，默认为开始时间当天结束
-                const startDate = getTaskStartDate(task);
-                return new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 23, 59, 59);
-            }
-        }
-        
-        // 计算甘特图日期范围
-        function calculateGanttDateRange(tasks) {
-            let minDate = new Date();
-            let maxDate = new Date();
-            
-            tasks.forEach(task => {
-                const startDate = getTaskStartDate(task);
-                const endDate = getTaskEndDate(task);
-                
-                if (startDate < minDate) minDate = startDate;
-                if (endDate > maxDate) maxDate = endDate;
-            });
-            
-            // 添加前后缓冲
-            const startDate = new Date(minDate);
-            startDate.setDate(startDate.getDate() - 7); // 前7天
-            
-            const endDate = new Date(maxDate);
-            endDate.setDate(endDate.getDate() + 7); // 后7天
-            
-            return { startDate, endDate };
-        }
-        
-        // 生成时间轴头部
-        function generateTimelineHeader(startDate, endDate, dayWidth) {
-            const days = [];
-            const currentDate = new Date(startDate);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            while (currentDate <= endDate) {
-                const isToday = currentDate.getTime() === today.getTime();
-                const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
-                
-                days.push(`
-                    <div class="gantt-day ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}" 
-                         style="width: ${dayWidth}px;">
-                        <div class="gantt-day-number">${currentDate.getDate()}</div>
-                        <div class="gantt-day-name">${getWeekdayName(currentDate.getDay())}</div>
-                    </div>
-                `);
-                
-                currentDate.setDate(currentDate.getDate() + 1);
-            }
-            
-            return days.join('');
-        }
-        
-        // 生成今日线
-        function generateTodayLine(startDate, dayWidth) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            const daysDiff = Math.floor((today - startDate) / (1000 * 60 * 60 * 24));
-            if (daysDiff < 0) return '';
-            
-            return `<div class="gantt-today-line" style="left: ${daysDiff * dayWidth + dayWidth / 2}px;"></div>`;
-        }
-        
-        // 生成任务条
-        function generateTaskBar(task, index, startDate, dayWidth) {
-            const taskStartDate = getTaskStartDate(task);
-            const taskEndDate = getTaskEndDate(task);
-            
-            const startDaysDiff = Math.floor((taskStartDate - startDate) / (1000 * 60 * 60 * 24));
-            const duration = Math.ceil((taskEndDate - taskStartDate) / (1000 * 60 * 60 * 24)) + 1;
-            
-            const left = startDaysDiff * dayWidth;
-            const width = duration * dayWidth - 4; // 减去边距
-            
-            // 计算进度
-            const progress = task.fields.progress || 0;
-            const progressWidth = (width * progress) / 100;
-            
-            // 根据任务类型和状态设置颜色
-            const barClass = `gantt-bar-${task.type} gantt-bar-${task.status}`;
-            
-            return `
-                <div class="gantt-bar ${barClass}" 
-                     style="top: ${index * 40 + 5}px; left: ${left}px; width: ${width}px;"
-                     onclick="showInMindMap('${task.id}')"
-                     title="${task.title}">
-                    <div class="gantt-bar-progress" style="width: ${progressWidth}px;"></div>
-                    <div class="gantt-bar-text">${task.title}</div>
-                </div>
-            `;
-        }
-        
-        // 获取星期名称
-        function getWeekdayName(day) {
-            const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
-            return weekdays[day];
-        }
-        
-        /* ========================================
-           🎯 项目看板拖拽功能
-           ======================================== */
-        
-        // 项目卡片拖拽开始
-        function handleProjectDragStart(event) {
-            const card = event.target.closest('.board-card');
-            if (!card) return;
-            
-            draggedProjectTaskId = card.dataset.taskId;
-            draggedProjectElement = card;
-            
-            card.classList.add('dragging');
-            event.dataTransfer.effectAllowed = 'move';
-            event.dataTransfer.setData('text/plain', draggedProjectTaskId);
-            
-            // 延迟设置透明度，避免影响拖拽图像
-            setTimeout(() => {
-                card.style.opacity = '0.3';
-            }, 0);
-        }
-        
-        // 项目看板列拖拽悬停
-        function handleProjectDragOver(event) {
-            event.preventDefault();
-            event.dataTransfer.dropEffect = 'move';
-            
-            const column = event.target.closest('.board-column-content');
-            if (column) {
-                column.classList.add('drag-over');
-            }
-        }
-        
-        // 项目看板列拖拽离开
-        function handleProjectDragLeave(event) {
-            const column = event.target.closest('.board-column-content');
-            if (column && !column.contains(event.relatedTarget)) {
-                column.classList.remove('drag-over');
-            }
-        }
-        
-        // 项目卡片放置
-        function handleProjectDrop(event) {
-            event.preventDefault();
-            event.stopPropagation();
-            
-            const column = event.target.closest('.board-column-content');
-            if (!column || !draggedProjectTaskId) return;
-            
-            const newStatus = column.dataset.status;
-            const task = tasks.find(t => t.id === draggedProjectTaskId);
-            
-            if (task && task.status !== newStatus) {
-                // 使用 toggleTaskStatus 更新任务状态，确保所有状态变化逻辑正确执行
-                toggleTaskStatus(draggedProjectTaskId, newStatus);
-                
-                // 显示通知
-                showNotification(`任务已移动到 ${newStatus}`, 'success');
-            }
-            
-            // 清除拖拽悬停样式
-            column.classList.remove('drag-over');
-        }
-        
-        // 项目卡片拖拽结束
-        function handleProjectDragEnd(event) {
-            if (draggedProjectElement) {
-                draggedProjectElement.classList.remove('dragging');
-                draggedProjectElement.style.opacity = '';
-            }
-            
-            // 清除所有拖拽悬停样式
-            document.querySelectorAll('.board-column-content').forEach(col => {
-                col.classList.remove('drag-over');
-            });
-            
-            // 重置拖拽状态
-            draggedProjectTaskId = null;
-            draggedProjectElement = null;
-        }
-        
-        /* ========================================
-           🎪 目标看板
-           ======================================== */
-        
-        function renderGoalBoard() {
-            const container = document.getElementById('goalBoardContainer');
-            const goals = tasks.filter(task => task.type === '目标');
-            const keyResults = tasks.filter(task => task.type === '关键结果');
-            
-            container.innerHTML = `
-                <div class="goal-board">
-                    ${goals.map(goal => {
-                        const goalKeyResults = keyResults.filter(kr => kr.parent === goal.id);
-                        const progress = goalKeyResults.length > 0
-                            ? Math.round(goalKeyResults.reduce((sum, kr) => sum + (kr.fields.progress || 0), 0) / goalKeyResults.length)
-                            : 0;
-                        
-                        return `
-                            <div class="goal-card" data-goal-id="${goal.id}" onclick="showInMindMap('${goal.id}')" style="cursor: pointer;">
-                                <div class="goal-header">
-                                    <h3 class="goal-title">
-                                        ${getTaskTypeIcon('目标')} ${goal.title}
-                                    </h3>
-                                    <span class="${getStatusClass(goal.status)}">
-                                        ${getStatusIcon(goal.status)} ${goal.status}
-                                    </span>
-                                </div>
-                                <div class="goal-progress">
-                                    <div class="progress-bar">
-                                        <div class="progress-fill" style="width: ${progress}%"></div>
-                                    </div>
-                                    <span class="progress-text">${progress}%</span>
-                                </div>
-                                <div class="key-results">
-                                    <h4 class="key-results-title">关键结果</h4>
-                                    ${goalKeyResults.length > 0 ? goalKeyResults.map(kr => `
-                                        <div class="key-result-item" onclick="event.stopPropagation(); showInMindMap('${kr.id}')">
-                                            <div class="key-result-header">
-                                                <span class="key-result-title">${kr.title}</span>
-                                                <span class="key-result-progress">${kr.fields.progress || 0}%</span>
-                                            </div>
-                                            <div class="key-result-progress-bar">
-                                                <div class="progress-fill" style="width: ${kr.fields.progress || 0}%"></div>
-                                            </div>
-                                        </div>
-                                    `).join('') : '<p class="text-muted text-small">暂无关键结果</p>'}
-                                </div>
-                                <div class="goal-actions">
-                                    ${goal.status !== '已完成' ? `
-                                        <button class="btn btn-primary" onclick="event.stopPropagation(); addKeyResult('${goal.id}')">
-                                            ➕ 添加关键结果
-                                        </button>
-                                    ` : ''}
-                                </div>
-                            </div>
-                        `;
-                    }).join('') || '<p class="text-muted">暂无目标</p>'}
-                </div>
-            `;
-        }
-        
-        /* ========================================
-           🎨 动态侧边栏系统
-           ======================================== */
-        
-        // 更新侧边栏内容
-        function updateSidebar(viewName) {
-            const sidebar = document.getElementById('sidebar');
-            
-            switch(viewName) {
-                case 'focus':
-                    renderFocusSidebar();
-                    break;
-                case 'today':
-                    renderTimelineSidebar();
-                    break;
-                case 'board':
-                    renderBoardSidebar();
-                    break;
-                case 'planning':
-                    renderPlanningSidebar();
-                    break;
-                default:
-                    renderFocusSidebar(); // 默认显示焦点视图的侧边栏
-            }
-        }
-        
-        
-        // 焦点视图侧边栏
-        function renderFocusSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            
-            // 统计焦点任务信息
-            const focusTasksArray = Array.from(focusTasks);
-            
-            sidebar.innerHTML = `
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">🎯 焦点统计</h3>
-                    <div class="custom-view-item active">
-                        <span>🎯 当前焦点</span>
-                        <span class="text-small text-muted">${focusTasksArray.length}</span>
-                    </div>
-                </div>
-                
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">任务管理</h3>
-                    <div class="custom-view-item" onclick="openAddToPendingModal()">
-                        <span>📋 添加到待处理</span>
-                        <span class="text-small text-muted">+</span>
-                    </div>
-                </div>
-                
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">快速操作</h3>
-                    <button class="btn btn-block btn-secondary" onclick="selectFocusTasks()">
-                        🎯 选择焦点任务
-                    </button>
-                    <button class="btn btn-block btn-secondary" onclick="clearFocusTasks()">
-                        🗑️ 清空焦点任务
-                    </button>
-                    <button class="btn btn-block btn-secondary" onclick="resetToTestData()">
-                        🔄 重置测试数据
-                    </button>
-                    <button class="btn btn-block btn-secondary" onclick="clearCacheAndRefresh()">
-                        🧹 清除缓存并刷新
-                    </button>
-                </div>
-            `;
-        }
-        
-        // 时间轴视图侧边栏
-        function renderTimelineSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            
-            // 获取选中日期的任务
-            const selectedDateStr = formatDateToLocal(selectedTimelineDate);
-            const dateTasks = tasks.filter(t => t.fields.plannedDate === selectedDateStr);
-            
-            sidebar.innerHTML = `
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">📊 任务统计</h3>
-                    <div class="timeline-stats-mini">
-                        <div class="stat-item">
-                            <span class="stat-label">总任务</span>
-                            <span class="stat-value">${dateTasks.length}</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">已完成</span>
-                            <span class="stat-value">${dateTasks.filter(t => t.status === '已完成').length}</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">进行中</span>
-                            <span class="stat-value">${dateTasks.filter(t => t.status === '进行中').length}</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">⚡ 快速操作</h3>
-                    <button class="btn btn-block btn-secondary" onclick="openAddToPendingModal()">
-                        📋 添加到待处理
-                    </button>
-                    <button class="btn btn-block btn-secondary" onclick="refreshTimelineView()">
-                        🔄 刷新视图
-                    </button>
-                </div>
-            `;
-        }
-        
-        // 项目视图侧边栏
-        function renderProjectSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            
-            // 获取所有项目
-            const projects = [...new Set(tasks.filter(t => t.type === '项目').map(t => t.path))];
-            
-            sidebar.innerHTML = `
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">📦 项目列表</h3>
-                    ${projects.map(project => {
-                        const projectTasks = tasks.filter(t => t.path === project && t.type === '项目');
-                        const completedCount = projectTasks.filter(t => t.status === '已完成').length;
-                        const progress = projectTasks.length > 0 ? Math.round(completedCount / projectTasks.length * 100) : 0;
-                        
-                        return `
-                            <div class="custom-view-item" onclick="filterByProject('${project}')">
-                                <div>
-                                    <div>${project}</div>
-                                    <div class="progress-bar-mini">
-                                        <div class="progress-fill" style="width: ${progress}%"></div>
-                                    </div>
-                                </div>
-                                <span class="text-small text-muted">${progress}%</span>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-                
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">项目统计</h3>
-                    <div class="project-stats">
-                        <div class="stat-item">
-                            <span class="stat-label">总项目数</span>
-                            <span class="stat-value">${projects.length}</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">进行中</span>
-                            <span class="stat-value">${tasks.filter(t => t.type === '项目' && t.status === '进行中').length}</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-        
-        // 目标视图侧边栏
-        function renderGoalSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            
-            // 获取所有目标
-            const goals = tasks.filter(t => t.type === '目标');
-            const keyResults = tasks.filter(t => t.type === '关键结果');
-            
-            sidebar.innerHTML = `
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">🎪 目标层级</h3>
-                    ${goals.map(goal => {
-                        const goalKRs = keyResults.filter(kr => kr.parent === goal.id);
-                        const progress = goalKRs.length > 0
-                            ? Math.round(goalKRs.reduce((sum, kr) => sum + (kr.fields.progress || 0), 0) / goalKRs.length)
-                            : 0;
-                        
-                        return `
-                            <div class="goal-nav-item" onclick="scrollToGoal('${goal.id}')">
-                                <div class="goal-nav-header">
-                                    <span>${getTaskTypeIcon('目标')} ${goal.title}</span>
-                                    <span class="text-small">${progress}%</span>
-                                </div>
-                                <div class="goal-nav-krs">
-                                    ${goalKRs.map(kr => `
-                                        <div class="kr-item">
-                                            <span class="text-small">🔑 ${kr.title}</span>
-                                            <span class="text-small text-muted">${kr.fields.progress || 0}%</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-                
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">目标统计</h3>
-                    <div class="goal-stats">
-                        <div class="stat-item">
-                            <span class="stat-label">总目标数</span>
-                            <span class="stat-value">${goals.length}</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">关键结果</span>
-                            <span class="stat-value">${keyResults.length}</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-        
-        // 计划视图侧边栏
-        function renderPlanningSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            
-            sidebar.innerHTML = `
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">🗺️ 快速定位</h3>
-                    <div class="custom-view-item" onclick="scrollToSection('focus-review')" style="cursor: pointer;">
-                        <span>🎯 焦点任务回顾</span>
-                        <span class="text-small text-muted">→</span>
-                    </div>
-                    <div class="custom-view-item" onclick="scrollToSection('pending-review')" style="cursor: pointer;">
-                        <span>📋 待处理任务检查</span>
-                        <span class="text-small text-muted">→</span>
-                    </div>
-                    <div class="custom-view-item" onclick="scrollToSection('today-review')" style="cursor: pointer;">
-                        <span>📅 今日任务回顾</span>
-                        <span class="text-small text-muted">→</span>
-                    </div>
-                    <div class="custom-view-item" onclick="scrollToSection('tomorrow-preview')" style="cursor: pointer;">
-                        <span>🌅 明日任务预览</span>
-                        <span class="text-small text-muted">→</span>
-                    </div>
-                    <div class="custom-view-item" onclick="scrollToSection('all-tasks-filter')" style="cursor: pointer;">
-                        <span>🔍 全部任务筛选</span>
-                        <span class="text-small text-muted">→</span>
-                    </div>
-                </div>
-                
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">⚡ 快速操作</h3>
-                    <button class="btn btn-block btn-primary" onclick="openAddToPendingModal()">
-                        📋 添加到待处理
-                    </button>
-                    <button class="btn btn-block btn-secondary" onclick="openTomorrowPlanningModal()">
-                        📅 规划明日任务
-                    </button>
-                    <button class="btn btn-block btn-secondary" onclick="refreshPlanningView()">
-                        🔄 刷新视图
-                    </button>
-                </div>
-            `;
-        }
-        
-        // 统一看板视图侧边栏
-        function renderBoardSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            
-            // 获取所有任务的项目列表
-            const allProjects = [...new Set(tasks
-                .filter(t => t.fields.project)
-                .map(t => t.fields.project)
-            )].sort();
-            
-            sidebar.innerHTML = `
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">⚡ 快速操作</h3>
-                    <button class="btn btn-block btn-primary" onclick="focusTodayTasks()">
-                        🎯 聚焦今日重点
-                    </button>
-                    <button class="btn btn-block btn-secondary" onclick="openBatchOperationModal()">
-                        📋 批量操作
-                    </button>
-                    <button class="btn btn-block btn-secondary" onclick="openTaskFilterModal()">
-                        🔍 高级筛选
-                    </button>
-                    <button class="btn btn-block btn-secondary" onclick="openDataAnalysisModal()">
-                        📊 数据分析
-                    </button>
-                </div>
-                
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">🏷️ 标签管理</h3>
-                    <button class="btn btn-block btn-secondary" onclick="openTagManagerModal()">
-                        🏷️ 管理标签
-                    </button>
-                    <button class="btn btn-block btn-secondary" onclick="filterByPopularTags()">
-                        🔥 热门标签
-                    </button>
-                </div>
-                
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">📁 项目快速切换</h3>
-                    <div class="project-quick-switch">
-                        ${allProjects.length > 0 ? allProjects.map(project => {
-                            const projectTasks = tasks.filter(t => t.fields.project === project);
-                            return `
-                                <button class="btn btn-block btn-secondary project-btn" onclick="quickSwitchProject('${project}')">
-                                    <span>📦 ${project}</span>
-                                    <span class="badge">${projectTasks.length}</span>
-                                </button>
-                            `;
-                        }).join('') : '<div class="empty-message">暂无项目</div>'}
-                    </div>
-                </div>
-                
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">🔧 工具</h3>
-                    <button class="btn btn-block btn-secondary" onclick="exportBoardData()">
-                        💾 导出数据
-                    </button>
-                    <button class="btn btn-block btn-secondary" onclick="importBoardData()">
-                        📥 导入数据
-                    </button>
-                    <button class="btn btn-block btn-secondary" onclick="openSettingsModal()">
-                        ⚙️ 看板设置
-                    </button>
-                </div>
-            `;
-        }
-        
-        // 清空焦点任务
-        function clearFocusTasks() {
-            showConfirm('确定要清空所有焦点任务吗？', () => {
-                focusTasks.clear();
-                focusTasksOrder = [];
-                renderFocusTasks();
-                updateSidebarStats();
-                saveToLocalStorage();
-                showNotification('已清空所有焦点任务', 'success');
-            });
-        }
-        
-        // 滚动到指定目标
-        function scrollToGoal(goalId) {
-            const goalElement = document.querySelector(`[data-goal-id="${goalId}"]`);
-            if (goalElement) {
-                goalElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
-        
-        
-        /* ========================================
-           🛠️ 占位函数 - 待实现功能
-           ======================================== */
-        
-        // 批量操作
-        function openBatchOperationModal() {
-            showNotification('批量操作功能开发中...', 'info');
-        }
-        
-        // 数据分析
-        function openDataAnalysisModal() {
-            showNotification('数据分析功能开发中...', 'info');
-        }
-        
-        // 标签管理
-        function openTagManagerModal() {
-            showNotification('标签管理功能开发中...', 'info');
-        }
-        
-        // 热门标签筛选
-        function filterByPopularTags() {
-            showNotification('热门标签功能开发中...', 'info');
-        }
-        
-        // 导入数据
-        function importBoardData() {
-            showNotification('数据导入功能开发中...', 'info');
-        }
-        
-        // 看板设置
-        function openSettingsModal() {
-            showNotification('看板设置功能开发中...', 'info');
-        }
-        
-        // 导出看板数据
-        function exportBoardData() {
-            MNUtil.log('📤 开始导出数据...');
-            MNUtil.log('📊 当前 tasks 数组长度: ' + tasks.length);
-            
-            const exportData = {
-                exportDate: new Date().toISOString(),
-                tasks: tasks,
-                focusTasks: Array.from(focusTasks),
-                pendingTasks: Array.from(pendingTasks),
-                statistics: {
-                    total: tasks.length,
-                    byType: {
-                        goals: tasks.filter(t => t.type === '目标').length,
-                        keyResults: tasks.filter(t => t.type === '关键结果').length,
-                        projects: tasks.filter(t => t.type === '项目').length,
-                        actions: tasks.filter(t => t.type === '动作').length
-                    },
-                    byStatus: {
-                        notStarted: tasks.filter(t => t.status === '未开始').length,
-                        inProgress: tasks.filter(t => t.status === '进行中').length,
-                        completed: tasks.filter(t => t.status === '已完成').length,
-                        paused: tasks.filter(t => t.status === '暂停').length,
-                        archived: tasks.filter(t => t.status === '已归档').length
-                    }
-                }
-            };
-            
-            // 创建下载链接
-            const dataStr = JSON.stringify(exportData, null, 2);
-            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-            
-            const exportFileDefaultName = `mntask_export_${new Date().toISOString().split('T')[0]}.json`;
-            
-            const linkElement = document.createElement('a');
-            linkElement.setAttribute('href', dataUri);
-            linkElement.setAttribute('download', exportFileDefaultName);
-            linkElement.click();
-            
-            showNotification(`已导出 ${tasks.length} 个任务`, 'success');
-        }
-        
-        // 刷新计划视图
-        function refreshPlanningView() {
-            MNUtil.log('🔄 刷新计划视图');
-            renderPlanningView();
-            showNotification('计划视图已刷新', 'success');
-        }
-        
-        // 刷新时间轴视图
-        function refreshTimelineView() {
-            MNUtil.log('🔄 刷新时间轴视图');
-            renderTodayTimeline();
-            showNotification('时间轴已刷新', 'success');
-        }
-        
-        // 快速切换项目
-        function quickSwitchProject(projectName) {
-            MNUtil.log('🔄 切换到项目: ' + projectName);
-            activeFilters.project = projectName;
-            applyFilters();
-            showNotification(`已切换到项目: ${projectName}`, 'success');
-        }
-        
-        // 聚焦今日重点
-        function focusTodayTasks() {
-            MNUtil.log('🎯 聚焦今日重点');
-            const today = formatDateToLocal(new Date());
-            const todayTasks = tasks.filter(t => 
-                t.fields.plannedDate === today && 
-                t.status !== '已完成' &&
-                t.status !== '已归档'
-            );
-            
-            if (todayTasks.length === 0) {
-                showNotification('今天没有计划的任务', 'info');
-                return;
-            }
-            
-            // 清空当前焦点任务
-            focusTasks.clear();
-            focusTasksOrder = [];
-            
-            // 添加今日任务到焦点
-            todayTasks.forEach(task => {
-                focusTasks.add(task.id);
-                focusTasksOrder.push(task.id);
-            });
-            
-            // 保存并刷新
-            saveToLocalStorage();
-            switchView('focus');
-            showNotification(`已将 ${todayTasks.length} 个今日任务加入焦点`, 'success');
-        }
-        
-        // 打开任务筛选模态框
-        function openTaskFilterModal() {
-            // 直接调用全局搜索功能，它已经包含了完整的筛选功能
-            openGlobalSearch();
-        }
-        
-        /* ========================================
-           💾 数据持久化
-           ======================================== */
-        
-        // 保存到 localStorage
-        function saveToLocalStorage() {
-            const data = {
-                tasks: tasks,
-                focusTasks: Array.from(focusTasks),
-                focusTasksOrder: focusTasksOrder,
-                pendingTasks: Array.from(pendingTasks),
-                pendingTasksOrder: pendingTasksOrder,
-                customViews: customViews,
-                activeFilters: activeFilters,
-                currentView: currentView,
-                selectedTimelineDate: selectedTimelineDate.toISOString()
-            };
-            
-            localStorage.setItem('mntask-focus-board', JSON.stringify(data));
-        }
-        
-        // 从 localStorage 加载
-        function loadFromLocalStorage() {
-            const savedData = localStorage.getItem('mntask-focus-board');
-            if (savedData) {
-                try {
-                    const data = JSON.parse(savedData);
-                    tasks = data.tasks || [];
-                    focusTasks = new Set(data.focusTasks || []);
-                    focusTasksOrder = data.focusTasksOrder || [];
-                    pendingTasks = new Set(data.pendingTasks || []);
-                    pendingTasksOrder = data.pendingTasksOrder || [];
-                    customViews = data.customViews || {};
-                    activeFilters = data.activeFilters || {};
-                    currentView = data.currentView || 'focus';
-                    
-                    // 加载保存的时间轴日期
-                    if (data.selectedTimelineDate) {
-                        const savedDate = new Date(data.selectedTimelineDate);
-                        selectedTimelineDate = new Date(savedDate.getFullYear(), savedDate.getMonth(), savedDate.getDate());
-                    }
-                    
-                    return true;
-                } catch (e) {
-                    MNUtil.log('加载数据失败:', e);
-                }
-            }
-            return false;
-        }
-        
-        // 重置为测试数据
-        function resetToTestData() {
-            if (confirm('确定要重置为测试数据吗？当前数据将被清除。')) {
-                // 清除localStorage
-                localStorage.removeItem('mntask-focus-board');
-                
-                // 清空现有数据
-                tasks = [];
-                focusTasks.clear();
-                focusTasksOrder = [];
-                pendingTasks.clear();
-                pendingTasksOrder = [];
-                activeFilters = {};
-                
-                // 重新生成测试数据
-                generateTestData();
-                
-                // 确保只有一个任务被标记为当前焦点
-                ensureOnlyOneCurrentFocus();
-                
-                // 重新初始化
-                filteredTasks = tasks;
-                if (hasActiveFilters()) {
-                    applyFilters();
-                }
-                
-                // 刷新当前视图
-                switchView(currentView);
-                
-                // 更新侧边栏
-                updateSidebar(currentView);
-                updateSidebarStats();
-                
-                showNotification('已重置为测试数据', 'success');
-            }
-        }
-        
-        // 清除缓存并刷新数据
-        function clearCacheAndRefresh() {
-            if (confirm('确定要清除本地缓存并重新加载数据吗？')) {
-                // 清除 localStorage
-                localStorage.removeItem('mntask-focus-board');
-                
-                // 清空当前数据
-                tasks = [];
-                focusTasks.clear();
-                focusTasksOrder = [];
-                pendingTasks.clear();
-                pendingTasksOrder = [];
-                customViews = {};
-                activeFilters = {};
-                
-                // 重置 filteredTasks
-                filteredTasks = [];
-                
-                // 显示提示
-                showNotification('缓存已清除，正在重新加载数据...', 'info');
-                
-                // 刷新当前视图（显示空状态）
-                switchView(currentView);
-                updateSidebar(currentView);
-                updateSidebarStats();
-                
-                // 请求插件重新发送数据
-                if (window.TaskSync && window.TaskSync.requestSync) {
-                    MNUtil.log('🔄 请求同步真实数据');
-                    TaskSync.requestSync();
-                } else {
-                    MNUtil.log('❌ TaskSync 未就绪');
-                    showNotification('无法同步数据，TaskSync 未就绪', 'error');
-                }
-            }
-        }
-        
-        /* ========================================
-           📅 安排明天任务功能
-           ======================================== */
-        
-        // 临时存储选中的任务ID
-        let selectedTomorrowTasks = new Set();
-        
-        // 打开安排明天任务对话框
-        function scheduleTomorrowTasks() {
-            selectedTomorrowTasks.clear();
-            const container = document.getElementById('tomorrowTaskSelectList');
-            
-            // 筛选可以安排的任务（未开始和暂停的任务）
-            const availableTasks = tasks.filter(task => 
-                task.status === '未开始' || task.status === '暂停'
-            );
-            
-            if (availableTasks.length === 0) {
-                container.innerHTML = '<p class="text-muted text-center">没有可安排的任务（只能安排"未开始"和"暂停"状态的任务）</p>';
-            } else {
-                container.innerHTML = availableTasks.map(task => `
-                    <div class="task-select-item">
-                        <input type="checkbox" 
-                               id="tomorrow_${task.id}" 
-                               value="${task.id}"
-                               onchange="toggleTomorrowTask('${task.id}')">
-                        <label for="tomorrow_${task.id}" style="flex: 1; cursor: pointer;">
-                            <div class="task-select-info">
-                                <div class="task-select-header">
-                                    <span class="task-type-badge ${task.type.toLowerCase()}">
-                                        ${getTaskTypeIcon(task.type)} ${task.type}
-                                    </span>
-                                    <span class="task-status-badge ${task.status.toLowerCase()}">
-                                        ${getStatusIcon(task.status)} ${task.status}
-                                    </span>
-                                    ${task.fields.priority ? `
-                                        <span class="priority-indicator ${task.fields.priority.toLowerCase()}">
-                                            ${getPriorityIcon(task.fields.priority)}
-                                        </span>
-                                    ` : ''}
-                                </div>
-                                <div class="task-select-title">${task.title}</div>
-                                <div class="task-select-path">${task.path}</div>
-                                ${task.fields.plannedDate ? `
-                                    <div class="text-small text-muted">
-                                        当前计划日期: ${formatDate(task.fields.plannedDate)}
-                                    </div>
-                                ` : ''}
-                            </div>
-                        </label>
-                    </div>
-                `).join('');
-            }
-            
-            updateTomorrowSelectionCount();
-            document.getElementById('scheduleTomorrowModal').classList.add('active');
-        }
-        
-        // 切换任务选择状态
-        function toggleTomorrowTask(taskId) {
-            if (selectedTomorrowTasks.has(taskId)) {
-                selectedTomorrowTasks.delete(taskId);
-            } else {
-                selectedTomorrowTasks.add(taskId);
-            }
-            updateTomorrowSelectionCount();
-        }
-        
-        // 更新选择计数
-        function updateTomorrowSelectionCount() {
-            document.getElementById('selectedTomorrowCount').textContent = selectedTomorrowTasks.size;
-        }
-        
-        // 确认安排到明天
-        function confirmTomorrowSchedule() {
-            if (selectedTomorrowTasks.size === 0) {
-                showNotification('请至少选择一个任务', 'warning');
-                return;
-            }
-            
-            // 计算明天的日期
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            
-            // 更新选中任务的 plannedDate
-            let updatedCount = 0;
-            selectedTomorrowTasks.forEach(taskId => {
-                const task = tasks.find(t => t.id === taskId);
-                if (task) {
-                    updateTaskPlannedDate(task, tomorrow);
-                    updatedCount++;
-                    
-                    // 添加进展记录
-                    if (!task.fields.progressLog) {
-                        task.fields.progressLog = [];
-                    }
-                    task.fields.progressLog.push({
-                        date: new Date().toLocaleString('zh-CN'),
-                        note: `任务已安排到 ${tomorrow.toLocaleDateString('zh-CN')}`
-                    });
-                }
-            });
-            
-            // 保存数据
-            saveToLocalStorage();
-            
-            // 关闭模态框
-            closeModal('scheduleTomorrowModal');
-            
-            // 显示成功提示
-            showNotification(`已成功安排 ${updatedCount} 个任务到明天`, 'success');
-            
-            // 如果当前在时间轴视图，刷新显示
-            if (currentView === 'today') {
-                renderTodayTimeline();
-            }
-            
-            // 更新侧边栏统计
-            updateSidebarStats();
-        }
-        
-        /* ========================================
-           📅 时间轴日期选择功能
-           ======================================== */
-        
-        // 格式化日期为本地日期字符串 (YYYY-MM-DD)
-        function formatDateToLocal(date) {
-            // 确保使用本地时间而不是UTC时间
-            const localDate = new Date(date.getTime());
-            const year = localDate.getFullYear();
-            const month = String(localDate.getMonth() + 1).padStart(2, '0');
-            const day = String(localDate.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
-        
-        // 统一处理任务计划日期变更
-        function updateTaskPlannedDate(task, newDate) {
-            const today = formatDateToLocal(new Date());
-            const newDateStr = typeof newDate === 'string' ? newDate : formatDateToLocal(newDate);
-            task.fields.plannedDate = newDateStr;
-            
-            // 如果任务进行中但被安排到未来，自动暂停
-            if (task.status === '进行中' && newDateStr > today) {
-                task.status = '暂停';
-                // 记录进展
-                if (!task.fields.progressLog) {
-                    task.fields.progressLog = [];
-                }
-                const displayDate = new Date(newDateStr).toLocaleDateString('zh-CN');
-                task.fields.progressLog.push({
-                    date: new Date().toLocaleString('zh-CN'),
-                    note: `任务已暂停并安排到 ${displayDate}`
-                });
-            }
-        }
-        
-        // 更新时间轴统计信息
-        function updateTimelineStats(timelineTasks, dateRange) {
-            const statsContainer = document.getElementById('timelineStats');
-            if (!statsContainer) return;
-            
-            const notStartedCount = timelineTasks.filter(t => t.status === '未开始').length;
-            const inProgressCount = timelineTasks.filter(t => t.status === '进行中').length;
-            const pausedCount = timelineTasks.filter(t => t.status === '暂停').length;
-            const completedCount = timelineTasks.filter(t => t.status === '已完成').length;
-            
-            // 格式化日期显示
-            let dateDisplay;
-            const today = formatDateToLocal(new Date());
-            const startDate = new Date(dateRange.start);
-            const endDate = new Date(dateRange.end);
-            
-            if (timelineViewMode === 'day') {
-                const isToday = dateRange.start === today;
-                dateDisplay = isToday ? '今天' : startDate.toLocaleDateString('zh-CN', { 
-                    month: 'long', 
-                    day: 'numeric', 
-                    weekday: 'long' 
-                });
-            } else if (timelineViewMode === 'week') {
-                const weekNum = getWeekNumber(startDate);
-                const year = startDate.getFullYear();
-                dateDisplay = `${year}年 第${weekNum}周 (${startDate.toLocaleDateString('zh-CN', {
-                    month: 'numeric',
-                    day: 'numeric'
-                })} - ${endDate.toLocaleDateString('zh-CN', {
-                    month: 'numeric',
-                    day: 'numeric'
-                })})`;
-            } else if (timelineViewMode === 'month') {
-                dateDisplay = startDate.toLocaleDateString('zh-CN', { 
-                    year: 'numeric',
-                    month: 'long' 
-                });
-            }
-            
-            statsContainer.innerHTML = `
-                <div class="timeline-stat">
-                    <span class="timeline-stat-label">📅 ${timelineViewMode === 'day' ? '日期' : timelineViewMode === 'week' ? '周' : '月份'}：</span>
-                    <span class="timeline-stat-value">${dateDisplay}</span>
-                </div>
-                ${notStartedCount > 0 ? `
-                <div class="timeline-stat">
-                    <span class="timeline-stat-label">📝 未开始：</span>
-                    <span class="timeline-stat-value">${notStartedCount}</span>
-                </div>
-                ` : ''}
-                <div class="timeline-stat">
-                    <span class="timeline-stat-label">🚀 进行中：</span>
-                    <span class="timeline-stat-value">${inProgressCount}</span>
-                </div>
-                ${pausedCount > 0 ? `
-                <div class="timeline-stat">
-                    <span class="timeline-stat-label">⏸ 暂停：</span>
-                    <span class="timeline-stat-value">${pausedCount}</span>
-                </div>
-                ` : ''}
-                <div class="timeline-stat">
-                    <span class="timeline-stat-label">✅ 已完成：</span>
-                    <span class="timeline-stat-value">${completedCount}</span>
-                </div>
-                <div class="timeline-stat">
-                    <span class="timeline-stat-label">📊 总计：</span>
-                    <span class="timeline-stat-value">${timelineTasks.length}</span>
-                </div>
-            `;
-        }
-        
-        // 获取周数
-        function getWeekNumber(date) {
-            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-            const dayNum = d.getUTCDay() || 7;
-            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-            const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-            return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
-        }
-        
-        // 改变时间轴日期
-        function changeTimelineDate(direction) {
-            // 创建本地日期副本，避免直接修改
-            const year = selectedTimelineDate.getFullYear();
-            const month = selectedTimelineDate.getMonth();
-            const day = selectedTimelineDate.getDate();
-            let newDate = new Date(year, month, day);
-            
-            // 根据视图模式调整步进值
-            switch (timelineViewMode) {
-                case 'day':
-                    newDate = new Date(year, month, day + direction);
-                    break;
-                case 'week':
-                    newDate = new Date(year, month, day + (direction * 7));
-                    break;
-                case 'month':
-                    // 处理月份边界情况
-                    if (direction > 0) {
-                        // 下个月
-                        if (month === 11) {
-                            newDate = new Date(year + 1, 0, 1);
-                        } else {
-                            // 保持日期在月末的处理
-                            const nextMonth = month + 1;
-                            const daysInNextMonth = new Date(year, nextMonth + 1, 0).getDate();
-                            const targetDay = Math.min(day, daysInNextMonth);
-                            newDate = new Date(year, nextMonth, targetDay);
-                        }
-                    } else {
-                        // 上个月
-                        if (month === 0) {
-                            newDate = new Date(year - 1, 11, 1);
-                        } else {
-                            const prevMonth = month - 1;
-                            const daysInPrevMonth = new Date(year, month, 0).getDate();
-                            const targetDay = Math.min(day, daysInPrevMonth);
-                            newDate = new Date(year, prevMonth, targetDay);
-                        }
-                    }
-                    break;
-            }
-            
-            selectedTimelineDate = newDate;
-            
-            // 更新日期选择器的值
-            const datePicker = document.getElementById('timelineDatePicker');
-            if (datePicker) {
-                datePicker.value = formatDateToLocal(selectedTimelineDate);
-            }
-            
-            // 重新渲染时间轴
-            renderTodayTimeline();
-        }
-        
-        // 选择今天的日期
-        function selectTodayDate() {
-            const now = new Date();
-            // 创建本地日期，避免时区问题
-            selectedTimelineDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            timelineViewMode = 'day'; // 重置为日视图
-            
-            // 更新视图模式按钮状态
-            document.querySelectorAll('.view-mode-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.mode === 'day');
-            });
-            
-            // 更新日期选择器的值
-            const datePicker = document.getElementById('timelineDatePicker');
-            if (datePicker) {
-                datePicker.value = formatDateToLocal(selectedTimelineDate);
-            }
-            
-            // 重新渲染时间轴
-            renderTodayTimeline();
-        }
-
-        // 选择昨天的日期（固定昨天）
-        function selectYesterday() {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth();
-            const day = now.getDate();
-            // 创建本地日期，昨天
-            selectedTimelineDate = new Date(year, month, day - 1);
-            
-            // 更新日期选择器的值
-            const datePicker = document.getElementById('timelineDatePicker');
-            if (datePicker) {
-                datePicker.value = formatDateToLocal(selectedTimelineDate);
-            }
-            
-            // 重新渲染时间轴
-            renderTodayTimeline();
-        }
-
-        // 选择明天的日期（固定明天）
-        function selectTomorrow() {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth();
-            const day = now.getDate();
-            // 创建本地日期，明天
-            selectedTimelineDate = new Date(year, month, day + 1);
-            
-            // 更新日期选择器的值
-            const datePicker = document.getElementById('timelineDatePicker');
-            if (datePicker) {
-                datePicker.value = formatDateToLocal(selectedTimelineDate);
-            }
-            
-            // 重新渲染时间轴
-            renderTodayTimeline();
-        }
-
-        // 选择本周（周一开始）
-        function selectThisWeek() {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = today.getMonth();
-            const day = today.getDate();
-            const currentDay = today.getDay();
-            const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay; // 如果是周日(0)，回退6天；否则前进到周一
-            
-            // 创建本地日期，本周一
-            selectedTimelineDate = new Date(year, month, day + mondayOffset);
-            timelineViewMode = 'week'; // 切换到周视图
-            
-            // 更新视图模式按钮状态
-            document.querySelectorAll('.view-mode-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.mode === 'week');
-            });
-            
-            // 更新日期选择器的值
-            const datePicker = document.getElementById('timelineDatePicker');
-            if (datePicker) {
-                datePicker.value = formatDateToLocal(selectedTimelineDate);
-            }
-            
-            // 重新渲染时间轴
-            renderTodayTimeline();
-        }
-
-        // 选择下周（下周一开始）
-        function selectNextWeek() {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = today.getMonth();
-            const day = today.getDate();
-            const currentDay = today.getDay();
-            const nextMondayOffset = currentDay === 0 ? 1 : 8 - currentDay; // 计算到下周一的天数
-            
-            // 创建本地日期，下周一
-            selectedTimelineDate = new Date(year, month, day + nextMondayOffset);
-            timelineViewMode = 'week'; // 切换到周视图
-            
-            // 更新视图模式按钮状态
-            document.querySelectorAll('.view-mode-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.mode === 'week');
-            });
-            
-            // 更新日期选择器的值
-            const datePicker = document.getElementById('timelineDatePicker');
-            if (datePicker) {
-                datePicker.value = formatDateToLocal(selectedTimelineDate);
-            }
-            
-            // 重新渲染时间轴
-            renderTodayTimeline();
-        }
-        
-        // 刷新时间轴视图
-        function refreshTimelineView() {
-            renderTodayTimeline();
-            updateSidebar('today');
-            showNotification('时间轴视图已刷新', 'success');
-        }
-        
-        // 按时间段筛选时间轴任务
-        function filterTimelineByTimeSlot(timeSlot) {
-            const selectedDateStr = formatDateToLocal(selectedTimelineDate);
-            const dateTasks = tasks.filter(t => t.fields.plannedDate === selectedDateStr);
-            
-            let filteredTasks = [];
-            switch(timeSlot) {
-                // 时间段筛选功能已移除
-                case '上午':
-                case '下午':
-                case '晚上':
-                case '未安排':
-                    filteredTasks = dateTasks;
-                    break;
-                default:
-                    filteredTasks = dateTasks;
-            }
-            
-            // 重新渲染时间轴，只显示筛选后的任务
-            renderTimelineWithFiltered(filteredTasks, timeSlot);
-        }
-
-        // 使用筛选后的任务渲染时间轴
-        function renderTimelineWithFiltered(filteredTasks, timeSlotFilter) {
-            const container = document.getElementById('timelineTaskContainer');
-            if (!container) return;
-            
-            if (filteredTasks.length === 0) {
-                container.innerHTML = `<p class="text-muted text-center">当前时间段没有任务</p>`;
-                return;
-            }
-            
-            container.innerHTML = filteredTasks.map(task => `
-                <div class="timeline-task-item" onclick="showInMindMap('${task.id}')">
-                    <div class="task-content">
-                        <div class="task-title">
-                            ${task.title}
-                            ${task.path ? `<div style="font-size: 0.85em; color: var(--text-muted); opacity: 0.7;">📍 ${task.path}</div>` : ''}
-                        </div>
-                        <div class="task-meta">
-                            <span class="task-type ${task.type.toLowerCase()}">${task.type}</span>
-                            <span class="task-status ${task.status.toLowerCase()}">${task.status}</span>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-            
-            // 显示筛选提示
-            showNotification(`已筛选显示 ${timeSlotFilter} 的任务`, 'info');
-        }
-        
-        // 日期选择器改变事件
-        function onTimelineDateChange() {
-            const datePicker = document.getElementById('timelineDatePicker');
-            if (datePicker && datePicker.value) {
-                // 创建本地日期，避免时区问题
-                const [year, month, day] = datePicker.value.split('-');
-                selectedTimelineDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-                renderTodayTimeline();
-            }
-        }
-        
-        /* ========================================
-           📱 触摸事件和设备适配支持
-           ======================================== */
-        
-        /**
-         * 设备检测工具类
-         */
-        const DeviceDetector = {
-            /**
-             * 检测是否为触摸设备
-             */
-            isTouchDevice() {
-                return ('ontouchstart' in window) || 
-                       (navigator.maxTouchPoints > 0) || 
-                       (navigator.msMaxTouchPoints > 0);
-            },
-            
-            /**
-             * 检测是否为 iOS 设备
-             */
-            isIOS() {
-                return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-            },
-            
-            /**
-             * 检测是否为 iPad
-             */
-            isIPad() {
-                return (navigator.userAgent.includes("iPad") || 
-                       (navigator.userAgent.includes("Mac") && this.isTouchDevice()));
-            },
-            
-            /**
-             * 获取设备类型
-             */
-            getDeviceType() {
-                if (this.isIPad()) return 'ipad';
-                if (this.isIOS()) return 'iphone';
-                if (this.isTouchDevice()) return 'touch';
-                return 'desktop';
-            }
-        };
-        
-        
-        /**
-         * 初始化设备特定的适配逻辑
-         */
-        function initDeviceAdaptation() {
-            const deviceType = DeviceDetector.getDeviceType();
-            MNUtil.log(`🔧 初始化 ${deviceType} 设备适配`);
-            
-            // iPad 特定适配
-            if (deviceType === 'ipad') {
-                // 禁用默认的上下文菜单
-                document.addEventListener('contextmenu', (e) => {
-                    e.preventDefault();
-                });
-                
-                // 处理方向变化
-                window.addEventListener('orientationchange', handleOrientationChange);
-                handleOrientationChange(); // 初始化时调用一次
-                
-                // 优化侧边栏在 iPad 上的行为
-                optimizeIPadSidebar();
-                
-                // 添加多任务手势支持
-                addMultitaskingSupport();
-            }
-            
-            // iPhone 特定适配
-            else if (deviceType === 'iphone') {
-                // 在 iPhone 上默认隐藏侧边栏
-                const sidebar = document.getElementById('sidebar');
-                if (sidebar && window.innerWidth < 768) {
-                    sidebar.classList.add('hidden');
-                    document.body.classList.add('sidebar-hidden');
-                }
-                
-                // 优化小屏幕上的布局
-                optimizeSmallScreenLayout();
-            }
-            
-            // 通用触摸设备适配
-            if (DeviceDetector.isTouchDevice()) {
-                // 添加滑动手势支持
-                addSwipeGestures();
-                
-                // 优化滚动行为
-                optimizeScrollBehavior();
-                
-                // 处理虚拟键盘
-                handleVirtualKeyboard();
-            }
-            
-            // 桌面设备适配
-            else {
-                // 添加键盘快捷键
-                addKeyboardShortcuts();
-                
-                // 启用拖拽功能
-                enableDesktopDragAndDrop();
-            }
-        }
-        
-        /**
-         * 处理设备方向变化
-         */
-        function handleOrientationChange() {
-            const orientation = window.orientation;
-            const isLandscape = Math.abs(orientation) === 90;
-            
-            document.body.classList.toggle('landscape', isLandscape);
-            document.body.classList.toggle('portrait', !isLandscape);
-            
-            MNUtil.log(`📐 设备方向: ${isLandscape ? '横屏' : '竖屏'}`);
-            
-            // 横屏时可能需要调整布局
-            if (isLandscape && DeviceDetector.isIPad()) {
-                // 在横屏模式下显示侧边栏
-                const sidebar = document.getElementById('sidebar');
-                if (sidebar) {
-                    sidebar.classList.remove('hidden');
-                }
-            }
-        }
-        
-        /**
-         * 优化 iPad 侧边栏
-         */
-        function optimizeIPadSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            if (!sidebar) return;
-            
-            // 在 iPad 上使用覆盖式侧边栏而非推移式
-            if (window.innerWidth < 1024) {
-                sidebar.classList.add('overlay-mode');
-                
-                // 点击空白处关闭侧边栏
-                const overlay = document.getElementById('sidebarOverlay');
-                if (overlay) {
-                    overlay.addEventListener('touchstart', (e) => {
-                        e.preventDefault();
-                        toggleSidebar();
-                    });
-                }
-            }
-        }
-        
-        /**
-         * 添加多任务手势支持
-         */
-        function addMultitaskingSupport() {
-            // 检测四指或五指手势（iPad 多任务手势）
-            let touchCount = 0;
-            
-            document.addEventListener('touchstart', (e) => {
-                touchCount = e.touches.length;
-            });
-            
-            document.addEventListener('touchend', (e) => {
-                // 如果是多指手势，不阻止默认行为
-                if (touchCount >= 4) {
-                    return;
-                }
-                touchCount = 0;
-            });
-        }
-        
-        /**
-         * 优化小屏幕布局
-         */
-        function optimizeSmallScreenLayout() {
-            // 调整网格布局为单列
-            const style = document.createElement('style');
-            style.textContent = `
-                @media (max-width: 480px) {
-                    .task-grid,
-                    .focus-container {
-                        grid-template-columns: 1fr !important;
-                    }
-                    
-                    .modal-content {
-                        width: 95% !important;
-                        margin: 2.5% auto !important;
-                    }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-        
-        /**
-         * 添加滑动手势
-         */
-        function addSwipeGestures() {
-            let touchStartX = 0;
-            let touchStartY = 0;
-            let touchEndX = 0;
-            let touchEndY = 0;
-            
-            document.addEventListener('touchstart', (e) => {
-                touchStartX = e.changedTouches[0].screenX;
-                touchStartY = e.changedTouches[0].screenY;
-            }, { passive: true });
-            
-            document.addEventListener('touchend', (e) => {
-                touchEndX = e.changedTouches[0].screenX;
-                touchEndY = e.changedTouches[0].screenY;
-                handleSwipe();
-            }, { passive: true });
-            
-            function handleSwipe() {
-                const deltaX = touchEndX - touchStartX;
-                const deltaY = touchEndY - touchStartY;
-                const minSwipeDistance = 50;
-                
-                // 水平滑动
-                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
-                    if (deltaX > 0) {
-                        // 右滑 - 显示侧边栏
-                        if (touchStartX < 20) { // 从边缘开始
-                            const sidebar = document.getElementById('sidebar');
-                            if (sidebar && sidebar.classList.contains('hidden')) {
-                                toggleSidebar();
-                            }
-                        }
-                    } else {
-                        // 左滑 - 隐藏侧边栏
-                        const sidebar = document.getElementById('sidebar');
-                        if (sidebar && !sidebar.classList.contains('hidden') && window.innerWidth < 768) {
-                            toggleSidebar();
-                        }
-                    }
-                }
-            }
-        }
-        
-        /**
-         * 优化滚动行为
-         */
-        function optimizeScrollBehavior() {
-            // 防止过度滚动
-            document.body.addEventListener('touchmove', (e) => {
-                if (e.target.closest('.modal-content')) {
-                    // 允许模态框内的滚动
-                    return;
-                }
-                
-                const scrollable = e.target.closest('.task-list, .timeline-content, .board-column-content');
-                if (scrollable) {
-                    const isScrollable = scrollable.scrollHeight > scrollable.clientHeight;
-                    if (!isScrollable) {
-                        e.preventDefault();
-                    }
-                }
-            }, { passive: false });
-        }
-        
-        /**
-         * 处理虚拟键盘
-         */
-        function handleVirtualKeyboard() {
-            // 监听输入框焦点
-            document.addEventListener('focusin', (e) => {
-                if (e.target.matches('input, textarea')) {
-                    document.body.classList.add('keyboard-visible');
-                    
-                    // 确保输入框在视口内
-                    setTimeout(() => {
-                        e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }, 300);
-                }
-            });
-            
-            document.addEventListener('focusout', (e) => {
-                if (e.target.matches('input, textarea')) {
-                    document.body.classList.remove('keyboard-visible');
-                }
-            });
-        }
-        
-        /**
-         * 添加键盘快捷键（桌面端）
-         */
-        function addKeyboardShortcuts() {
-            const shortcuts = {
-                'ctrl+k': () => openGlobalSearch(),
-                'ctrl+n': () => showQuickAddTask(),
-                'ctrl+/': () => openHelp(),
-                'ctrl+,': () => openSettings(),
-                'ctrl+r': () => refreshTasks(),
-                'ctrl+1': () => switchView('focus'),
-                'ctrl+2': () => switchView('planning'),
-                'ctrl+3': () => switchView('today'),
-                'ctrl+4': () => switchView('board'),
-                'escape': () => closeAllModals()
-            };
-            
-            document.addEventListener('keydown', (e) => {
-                const key = (e.ctrlKey || e.metaKey ? 'ctrl+' : '') + e.key.toLowerCase();
-                
-                if (shortcuts[key]) {
-                    e.preventDefault();
-                    shortcuts[key]();
-                }
-            });
-        }
-        
-        /**
-         * 启用桌面端拖拽功能
-         */
-        function enableDesktopDragAndDrop() {
-            // 这里可以添加更高级的桌面端拖拽功能
-            MNUtil.log('✅ 桌面端拖拽功能已启用');
-        }
-        
-        /**
-         * 关闭所有模态框
-         */
-        function closeAllModals() {
-            document.querySelectorAll('.modal.active').forEach(modal => {
-                modal.classList.remove('active');
-            });
-        }
-        
-        /**
-         * 添加触摸反馈样式
-         */
-        function addTouchFeedbackStyles() {
-            const style = document.createElement('style');
-            style.textContent = `
-                /* 触摸反馈效果 */
-                .touch-active {
-                    opacity: 0.7 !important;
-                    transform: scale(0.98) !important;
-                    transition: all 0.1s ease !important;
-                }
-                
-                /* 优化移动端滚动 */
-                .task-list,
-                .project-grid,
-                .board-column-content,
-                .timeline-content {
-                    -webkit-overflow-scrolling: touch;
-                    overscroll-behavior: contain;
-                }
-                
-                /* iPad 特定优化 */
-                @media screen and (min-width: 768px) and (max-width: 1366px) {
-                    .btn, .task-card, .view-btn {
-                        min-height: 44px; /* Apple 推荐的最小触摸目标 */
-                        padding: 12px 16px;
-                    }
-                    
-                    .task-actions button {
-                        min-width: 44px;
-                        min-height: 44px;
-                    }
-                }
-                
-                /* 防止 iOS 上的文本选择 */
-                .btn, .task-card-header, .view-btn {
-                    -webkit-touch-callout: none;
-                    -webkit-user-select: none;
-                }
-                
-                /* 优化移动端按钮和交互元素 */
-                @media (hover: none) and (pointer: coarse) {
-                    /* 增大所有按钮的可点击区域 */
-                    .btn {
-                        min-height: 44px;
-                        padding: 12px 20px;
-                        font-size: 16px; /* 防止 iOS 自动缩放 */
-                    }
-                    
-                    .btn-sm {
-                        min-height: 36px;
-                        padding: 8px 16px;
-                        font-size: 14px;
-                    }
-                    
-                    /* 任务卡片优化 */
-                    .focus-task-card,
-                    .task-item,
-                    .pending-task-item {
-                        min-height: 60px;
-                        padding: 16px;
-                    }
-                    
-                    /* 任务操作按钮组优化 */
-                    .task-actions {
-                        gap: 12px;
-                    }
-                    
-                    .task-actions button {
-                        min-width: 44px;
-                        min-height: 44px;
-                        font-size: 18px;
-                    }
-                    
-                    /* 视图切换按钮优化 */
-                    .view-btn {
-                        min-height: 44px;
-                        padding: 12px 16px;
-                        font-size: 15px;
-                    }
-                    
-                    /* 侧边栏项目优化 */
-                    .custom-view-item,
-                    .project-item {
-                        min-height: 44px;
-                        padding: 12px 16px;
-                    }
-                    
-                    /* 模态框按钮优化 */
-                    .modal-footer .btn {
-                        min-width: 100px;
-                    }
-                    
-                    /* 输入框优化 */
-                    input[type="text"],
-                    input[type="date"],
-                    select,
-                    textarea {
-                        min-height: 44px;
-                        font-size: 16px; /* 防止缩放 */
-                        padding: 12px;
-                    }
-                    
-                    /* 复选框和单选框优化 */
-                    input[type="checkbox"],
-                    input[type="radio"] {
-                        width: 20px;
-                        height: 20px;
-                        margin-right: 12px;
-                    }
-                    
-                    /* 下拉菜单项优化 */
-                    .dropdown-item {
-                        min-height: 44px;
-                        padding: 12px 16px;
-                    }
-                    
-                    /* 标签优化 */
-                    .tag,
-                    .priority-tag,
-                    .status-tag {
-                        padding: 6px 12px;
-                        font-size: 14px;
-                    }
-                    
-                    /* 进度条触摸区域优化 */
-                    .progress-bar-container {
-                        min-height: 24px;
-                        padding: 8px 0;
-                    }
-                    
-                    /* 快速操作按钮始终显示 */
-                    .quick-action-btn,
-                    .task-quick-btn {
-                        opacity: 0.8;
-                    }
-                    
-                    /* 防止双击缩放 */
-                    * {
-                        touch-action: manipulation;
-                    }
-                    
-                    /* 滚动容器优化 */
-                    .scroll-container {
-                        scroll-snap-type: y proximity;
-                        scroll-padding-top: 20px;
-                    }
-                    
-                    .task-item,
-                    .focus-task-card {
-                        scroll-snap-align: start;
-                    }
-                }
-                
-                /* iPad Pro 特定优化 */
-                @media screen and (min-width: 1024px) and (max-width: 1366px) and (hover: none) {
-                    /* 利用更大的屏幕空间 */
-                    .main-container {
-                        padding: 24px;
-                    }
-                    
-                    .task-grid {
-                        grid-template-columns: repeat(3, 1fr);
-                        gap: 24px;
-                    }
-                    
-                    /* 侧边栏在 iPad Pro 上可以更宽 */
-                    .sidebar {
-                        width: 320px;
-                    }
-                }
-                
-                /* 横屏模式优化 */
-                @media screen and (orientation: landscape) and (max-height: 768px) {
-                    /* 减少垂直方向的内边距 */
-                    .header {
-                        padding: 12px 20px;
-                    }
-                    
-                    .view-tabs {
-                        margin-bottom: 16px;
-                    }
-                    
-                    /* 优化内容区域高度 */
-                    .content-area {
-                        max-height: calc(100vh - 120px);
-                    }
-                }
-                
-                /* 安全区域适配（针对有刘海屏的设备） */
-                @supports (padding: env(safe-area-inset-left)) {
-                    .main-container {
-                        padding-left: max(20px, env(safe-area-inset-left));
-                        padding-right: max(20px, env(safe-area-inset-right));
-                        padding-bottom: max(20px, env(safe-area-inset-bottom));
-                    }
-                    
-                    .sidebar {
-                        padding-left: env(safe-area-inset-left);
-                    }
-                    
-                    .header {
-                        padding-top: max(20px, env(safe-area-inset-top));
-                    }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-        
-        /* ========================================
-           🚀 应用初始化
-           ======================================== */
-        
-        // 页面加载完成后初始化
-        document.addEventListener('DOMContentLoaded', function() {
-            // 初始化设备适配
-            MNUtil.log('📱 设备类型: ' + DeviceDetector.getDeviceType());
-            
-            // 添加触摸反馈样式
-            addTouchFeedbackStyles();
-            
-            // 添加设备类型到 body 类名，方便 CSS 定制
-            document.body.classList.add(`device-${DeviceDetector.getDeviceType()}`);
-            
-            // 设备特定的适配逻辑
-            initDeviceAdaptation();
-            
-            // 尝试从 localStorage 加载数据
-            const hasData = loadFromLocalStorage();
-            
-            if (!hasData) {
-                // 如果没有保存的数据，生成测试数据
-                generateTestData();
-            }
-            
-            // 确保只有一个任务被标记为当前焦点
-            ensureOnlyOneCurrentFocus();
-            
-            // 初始化 filteredTasks
-            filteredTasks = tasks;
-            
-            // 如果有激活的筛选器，应用筛选
-            if (hasActiveFilters()) {
-                applyFilters();
-            }
-            
-            // 恢复侧边栏折叠状态（仅在桌面端）
-            if (window.innerWidth > 960) {
-                const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
-                if (isCollapsed) {
-                    document.getElementById('sidebar').classList.add('collapsed');
-                    document.body.classList.add('sidebar-collapsed');
-                }
-            }
-            
-            // 渲染初始视图
-            switchView(currentView);
-            
-            // 初始化modal点击空白处关闭功能
-            initModalCloseOnClickOutside();
-            
-            // 绑定全局键盘事件
-            document.addEventListener('keydown', function(e) {
-                // Esc 关闭模态框
-                if (e.key === 'Escape') {
-                    document.querySelectorAll('.modal.active').forEach(modal => {
-                        modal.classList.remove('active');
-                    });
-                }
-                
-                // Ctrl/Cmd + K 打开全局搜索
-                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-                    e.preventDefault();
-                    openGlobalSearch();
-                }
-                
-                // Ctrl/Cmd + S 保存
-                if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                    e.preventDefault();
-                    saveToLocalStorage();
-                    MNUtil.log('✅ 数据已保存');
-                }
-            });
-            
-            // 定期自动保存
-            setInterval(saveToLocalStorage, 30000); // 每30秒自动保存
-            
-            // 更新侧边栏统计
-            updateSidebarStats();
-            
-            // 全局点击事件 - 点击其他地方关闭自动完成
-            document.addEventListener('click', function(e) {
-                const quickAddContainer = document.querySelector('.quick-add-container');
-                if (!quickAddContainer.contains(e.target)) {
-                    hideAutocomplete();
-                }
-            });
-            
-            // 初始化响应式侧边栏
-            initResponsiveSidebar();
-            
-            // 初始化快速进展键盘快捷键
-            setupQuickProgressKeyboardShortcuts();
-            
-            MNUtil.log('🚀 MNTask 看板已启动');
-            MNUtil.log('✅ MNTask 任务看板初始化完成');
-            
-            // 延迟请求同步数据（等待原生端准备就绪）
-            setTimeout(() => {
-                if (window.TaskSync) {
-                    TaskSync.requestSync();
-                }
-            }, 500);
-        });
-        
-        // 更新侧边栏统计
-        function updateSidebarStats() {
-            // 只更新当前焦点的数量
-            document.querySelectorAll('.custom-view-item').forEach(item => {
-                const text = item.textContent;
-                const countEl = item.querySelector('.text-small.text-muted');
-                if (!countEl) return;
-                
-                if (text.includes('当前焦点')) {
-                    countEl.textContent = focusTasks.size;
-                }
-            });
-        }
-        
-        /* ========================================
-           🔍 全局搜索功能
-           ======================================== */
-        
-        // 打开全局搜索
-        function openGlobalSearch() {
-            const modal = document.getElementById('globalSearchModal');
-            const input = document.getElementById('globalSearchInput');
-            
-            modal.classList.add('active');
-            input.value = '';
-            input.focus();
-            
-            // 显示初始搜索结果（最近访问的任务）
-            showRecentTasks();
-        }
-        
-        // 执行全局搜索
-        function performGlobalSearch() {
-            const keyword = document.getElementById('globalSearchInput').value.trim().toLowerCase();
-            const includeCompleted = document.getElementById('searchInCompleted').checked;
-            const searchInTags = document.getElementById('searchInTags').checked;
-            const searchInPath = document.getElementById('searchInPath').checked;
-            
-            // 获取高级筛选条件
-            const selectedTypes = Array.from(document.querySelectorAll('input[name="searchTypes"]:checked')).map(cb => cb.value);
-            const selectedStatuses = Array.from(document.querySelectorAll('input[name="searchStatuses"]:checked')).map(cb => cb.value);
-            const selectedPriorities = Array.from(document.querySelectorAll('input[name="searchPriorities"]:checked')).map(cb => cb.value);
-            const selectedProject = document.getElementById('searchProject').value;
-            const timeRange = document.getElementById('searchTimeRange').value;
-            
-            // 特殊筛选
-            const onlyFocus = document.getElementById('searchOnlyFocus').checked;
-            const onlyPending = document.getElementById('searchOnlyPending').checked;
-            const withProgress = document.getElementById('searchWithProgress').checked;
-            const withLaunch = document.getElementById('searchWithLaunch').checked;
-            
-            // 筛选任务
-            let results = tasks.filter(task => {
-                // 确保任务有基本属性
-                if (!task || !task.title) {
-                    return false;
-                }
-                
-                // 类型筛选
-                if (selectedTypes.length > 0 && !selectedTypes.includes(task.type)) {
-                    return false;
-                }
-                
-                // 状态筛选
-                if (selectedStatuses.length > 0 && !selectedStatuses.includes(task.status)) {
-                    return false;
-                }
-                
-                // 优先级筛选
-                const taskPriority = (task.fields && task.fields.priority) || '低';
-                if (selectedPriorities.length > 0 && !selectedPriorities.includes(taskPriority)) {
-                    return false;
-                }
-                
-                // 项目筛选
-                if (selectedProject && task.fields && task.fields.project !== selectedProject) {
-                    return false;
-                }
-                
-                // 特殊筛选
-                if (onlyFocus && !focusTasks.has(task.id)) {
-                    return false;
-                }
-                if (onlyPending && !pendingTasks.has(task.id)) {
-                    return false;
-                }
-                if (withProgress && (!task.fields || !task.fields.progressLog || task.fields.progressLog.length === 0)) {
-                    return false;
-                }
-                if (withLaunch && !task.launchLink) {
-                    return false;
-                }
-                
-                // 时间范围筛选
-                if (timeRange && !matchTimeRange(task, timeRange)) {
-                    return false;
-                }
-                
-                // 关键词搜索（如果有输入关键词）
-                if (keyword) {
-                    let matchKeyword = false;
-                    
-                    // 搜索标题
-                    if (task.title.toLowerCase().includes(keyword)) {
-                        matchKeyword = true;
-                    }
-                    
-                    // 搜索路径
-                    if (!matchKeyword && searchInPath && task.path && task.path.toLowerCase().includes(keyword)) {
-                        matchKeyword = true;
-                    }
-                    
-                    // 搜索标签
-                    if (!matchKeyword && searchInTags && task.fields && task.fields.tags && Array.isArray(task.fields.tags)) {
-                        matchKeyword = task.fields.tags.some(tag => tag.toLowerCase().includes(keyword));
-                    }
-                    
-                    return matchKeyword;
-                }
-                
-                return true;
-            });
-            
-            // 更新活跃筛选条件显示
-            updateActiveSearchFilters();
-            
-            // 显示搜索结果统计
-            updateSearchResultsStats(results.length, tasks.length);
-            
-            // 显示搜索结果
-            displaySearchResults(results);
-        }
-        
-        // 显示最近访问的任务
-        function showRecentTasks() {
-            const recentTasks = tasks
-                .filter(task => task && task.status !== '已完成')
-                .sort((a, b) => {
-                    // 优先显示焦点任务
-                    if (focusTasks.has(a.id) && !focusTasks.has(b.id)) return -1;
-                    if (!focusTasks.has(a.id) && focusTasks.has(b.id)) return 1;
-                    // 其次按优先级排序
-                    const priorityOrder = { '高': 0, '中': 1, '低': 2 };
-                    const aPriority = (a.fields && a.fields.priority) || '低';
-                    const bPriority = (b.fields && b.fields.priority) || '低';
-                    return priorityOrder[aPriority] - priorityOrder[bPriority];
-                })
-                .slice(0, 10);
-            
-            const container = document.getElementById('searchResults');
-            if (!container) return;
-            
-            container.innerHTML = `
-                <h4 style="margin-bottom: var(--spacing-md); color: var(--text-secondary);">最近任务</h4>
-                ${recentTasks.map(task => createSearchResultItem(task)).join('')}
-            `;
-        }
-        
-        // 显示搜索结果
-        function displaySearchResults(results) {
-            const container = document.getElementById('searchResults');
-            
-            if (results.length === 0) {
-                container.innerHTML = '<p class="text-muted text-center">没有找到匹配的任务</p>';
-                return;
-            }
-            
-            container.innerHTML = `
-                <h4 style="margin-bottom: var(--spacing-md); color: var(--text-secondary);">
-                    搜索结果 (${results.length})
-                </h4>
-                ${results.map(task => createSearchResultItem(task)).join('')}
-            `;
-        }
-        
-        // 创建搜索结果项
-        function createSearchResultItem(task) {
-            // 确保任务有必要的属性
-            const taskType = task.type || '动作';
-            const taskStatus = task.status || '未开始';
-            const taskTitle = task.title || '未命名任务';
-            const taskPath = task.path || '';
-            const taskTags = (task.fields && task.fields.tags && Array.isArray(task.fields.tags)) ? task.fields.tags : [];
-            const isInFocus = focusTasks.has(task.id);
-            const isInPending = pendingTasks.has(task.id);
-            const isCompleted = taskStatus === '已完成' || taskStatus === '已归档';
-            
-            return `
-                <div class="search-result-item" 
-                     onmouseover="this.style.background='var(--bg-hover)'; this.style.borderColor='var(--type-goal)'" 
-                     onmouseout="this.style.background='var(--bg-card)'; this.style.borderColor='var(--glass-border)'"
-                     style="
-                    padding: var(--spacing-md);
-                    margin-bottom: var(--spacing-sm);
-                    background: var(--bg-card);
-                    border: 1px solid var(--glass-border);
-                    border-radius: var(--radius-sm);
-                    transition: var(--transition);
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: flex-start;
-                    gap: var(--spacing-md);
-                ">
-                    <!-- 主体内容区域 -->
-                    <div style="flex: 1; cursor: pointer;" onclick="selectSearchResult('${task.id}')">
-                        <div style="display: flex; align-items: center; gap: var(--spacing-sm); margin-bottom: var(--spacing-xs);">
-                            <span class="task-type-badge ${taskType.toLowerCase()}">
-                                ${getTaskTypeIcon(taskType)} ${taskType}
-                            </span>
-                            <span class="text-small" style="color: ${getStatusColor(taskStatus)};">
-                                ${getStatusIcon(taskStatus)} ${taskStatus}
-                            </span>
-                            ${isInFocus ? '<span class="text-small">🎯 焦点</span>' : ''}
-                            ${isInPending ? '<span class="text-small">📋 待处理</span>' : ''}
-                        </div>
-                        <div class="font-weight-500">${highlightKeyword(taskTitle)}</div>
-                        ${taskPath ? `<div class="text-small text-muted">${highlightKeyword(taskPath)}</div>` : ''}
-                        ${taskTags.length > 0 ? `
-                            <div style="margin-top: var(--spacing-xs);">
-                                ${taskTags.map(tag => `
-                                    <span class="filter-tag text-small">${highlightKeyword(tag)}</span>
-                                `).join('')}
-                            </div>
-                        ` : ''}
-                    </div>
-                    
-                    <!-- 操作按钮区域 -->
-                    <div class="search-result-actions" style="display: flex; gap: var(--spacing-xs); flex-shrink: 0;">
-                        <!-- 定位按钮 -->
-                        <button class="search-action-btn" 
-                                onclick="event.stopPropagation(); handleSearchAction('locate', '${task.id}')"
-                                title="定位卡片">
-                            📍
-                        </button>
-                        
-                        <!-- 焦点按钮 -->
-                        ${!isCompleted ? `
-                            <button class="search-action-btn ${isInFocus ? 'active' : ''}" 
-                                    onclick="event.stopPropagation(); handleSearchAction('focus', '${task.id}')"
-                                    title="${isInFocus ? '移出焦点' : '加入焦点'}">
-                                ${isInFocus ? '🎯' : '🎯'}
-                            </button>
-                        ` : ''}
-                        
-                        <!-- 待处理按钮 -->
-                        ${!isCompleted ? `
-                            <button class="search-action-btn ${isInPending ? 'active' : ''}" 
-                                    onclick="event.stopPropagation(); handleSearchAction('pending', '${task.id}')"
-                                    title="${isInPending ? '移出待处理' : '加入待处理'}">
-                                ${isInPending ? '📋' : '📋'}
-                            </button>
-                        ` : ''}
-                    </div>
-                </div>
-            `;
-        }
-        
-        // 高亮关键词
-        function highlightKeyword(text) {
-            const keyword = document.getElementById('globalSearchInput').value.trim();
-            if (!keyword || !text) return text;
-            
-            const regex = new RegExp(`(${keyword})`, 'gi');
-            return text.replace(regex, '<mark style="background: var(--type-goal); color: white; padding: 0 2px; border-radius: 2px;">$1</mark>');
-        }
-        
-        // 选择搜索结果
-        function selectSearchResult(taskId) {
-            // 关闭搜索模态框
-            closeModal('globalSearchModal');
-            
-            // 查看任务详情
-            showInMindMap(taskId);
-        }
-        
-        // 处理搜索结果的操作按钮
-        function handleSearchAction(action, taskId) {
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) return;
-            
-            switch (action) {
-                case 'locate':
-                    // 定位卡片
-                    focusTaskInMindMap(taskId);
-                    closeModal('globalSearchModal');
-                    break;
-                    
-                case 'focus':
-                    // 加入/移出焦点
-                    if (focusTasks.has(taskId)) {
-                        // 创建一个假的 event 对象
-                        const fakeEvent = { stopPropagation: () => {} };
-                        removeFromFocus(fakeEvent, taskId);
-                    } else {
-                        addToFocus(taskId);
-                    }
-                    // 刷新搜索结果以更新按钮状态
-                    performGlobalSearch();
-                    break;
-                    
-                case 'pending':
-                    // 加入/移出待处理
-                    if (pendingTasks.has(taskId)) {
-                        removeFromPending(taskId);
-                    } else {
-                        addToPending(taskId);
-                    }
-                    // 刷新搜索结果以更新按钮状态
-                    performGlobalSearch();
-                    break;
-            }
-        }
-        
-        // 获取状态颜色
-        function getStatusColor(status) {
-            const colors = {
-                '未开始': 'var(--status-todo)',
-                '暂停': 'var(--status-pause)',
-                '进行中': 'var(--status-doing)',
-                '已完成': 'var(--status-done)'
-            };
-            return colors[status] || 'var(--text-secondary)';
-        }
-        
-        // 切换高级筛选面板
-        function toggleAdvancedFilters() {
-            const panel = document.getElementById('advancedFiltersPanel');
-            const toggleText = document.getElementById('advancedFiltersToggleText');
-            
-            if (panel.style.display === 'none') {
-                panel.style.display = 'block';
-                toggleText.textContent = '⚙️ 收起筛选';
-            } else {
-                panel.style.display = 'none';
-                toggleText.textContent = '⚙️ 高级筛选';
-            }
-        }
-        
-        // 时间范围匹配
-        function matchTimeRange(task, range) {
-            const now = new Date();
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            
-            switch (range) {
-                case 'today':
-                    // 检查计划日期或开始日期是否是今天
-                    if (task.fields && task.fields.dueDate) {
-                        const dueDate = new Date(task.fields.dueDate);
-                        return dueDate.toDateString() === today.toDateString();
-                    }
-                    if (task.fields && task.fields.startTime) {
-                        const startDate = new Date(task.fields.startTime);
-                        return startDate.toDateString() === today.toDateString();
-                    }
-                    return false;
-                    
-                case 'thisWeek':
-                    const weekStart = new Date(today);
-                    weekStart.setDate(today.getDate() - today.getDay());
-                    const weekEnd = new Date(weekStart);
-                    weekEnd.setDate(weekStart.getDate() + 6);
-                    
-                    if (task.fields && task.fields.dueDate) {
-                        const dueDate = new Date(task.fields.dueDate);
-                        return dueDate >= weekStart && dueDate <= weekEnd;
-                    }
-                    return false;
-                    
-                case 'thisMonth':
-                    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-                    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-                    
-                    if (task.fields && task.fields.dueDate) {
-                        const dueDate = new Date(task.fields.dueDate);
-                        return dueDate >= monthStart && dueDate <= monthEnd;
-                    }
-                    return false;
-                    
-                case 'lastMonth':
-                    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-                    
-                    if (task.fields && task.fields.dueDate) {
-                        const dueDate = new Date(task.fields.dueDate);
-                        return dueDate >= lastMonthStart && dueDate <= lastMonthEnd;
-                    }
-                    return false;
-                    
-                default:
-                    return true;
-            }
-        }
-        
-        // 更新活跃筛选条件显示
-        function updateActiveSearchFilters() {
-            const container = document.getElementById('activeSearchFilters');
-            const filters = [];
-            
-            // 收集所有活跃的筛选条件
-            const keyword = document.getElementById('globalSearchInput').value.trim();
-            if (keyword) {
-                filters.push({ type: 'keyword', label: `关键词: ${keyword}`, key: 'keyword' });
-            }
-            
-            const selectedTypes = Array.from(document.querySelectorAll('input[name="searchTypes"]:checked'));
-            if (selectedTypes.length > 0 && selectedTypes.length < 4) {
-                filters.push({ type: 'types', label: `类型: ${selectedTypes.map(cb => cb.value).join(', ')}`, key: 'types' });
-            }
-            
-            const selectedStatuses = Array.from(document.querySelectorAll('input[name="searchStatuses"]:checked'));
-            if (selectedStatuses.length > 0 && selectedStatuses.length < 5) {
-                filters.push({ type: 'statuses', label: `状态: ${selectedStatuses.map(cb => cb.value).join(', ')}`, key: 'statuses' });
-            }
-            
-            const selectedPriorities = Array.from(document.querySelectorAll('input[name="searchPriorities"]:checked'));
-            if (selectedPriorities.length > 0 && selectedPriorities.length < 3) {
-                filters.push({ type: 'priorities', label: `优先级: ${selectedPriorities.map(cb => cb.value).join(', ')}`, key: 'priorities' });
-            }
-            
-            const selectedProject = document.getElementById('searchProject').value;
-            if (selectedProject) {
-                const projectText = document.querySelector(`#searchProject option[value="${selectedProject}"]`).textContent;
-                filters.push({ type: 'project', label: `项目: ${projectText}`, key: 'project' });
-            }
-            
-            const timeRange = document.getElementById('searchTimeRange').value;
-            if (timeRange) {
-                const rangeText = document.querySelector(`#searchTimeRange option[value="${timeRange}"]`).textContent;
-                filters.push({ type: 'timeRange', label: `时间: ${rangeText}`, key: 'timeRange' });
-            }
-            
-            // 特殊筛选
-            if (document.getElementById('searchOnlyFocus').checked) {
-                filters.push({ type: 'special', label: '仅焦点任务', key: 'onlyFocus' });
-            }
-            if (document.getElementById('searchOnlyPending').checked) {
-                filters.push({ type: 'special', label: '仅待处理任务', key: 'onlyPending' });
-            }
-            if (document.getElementById('searchWithProgress').checked) {
-                filters.push({ type: 'special', label: '有进展记录', key: 'withProgress' });
-            }
-            if (document.getElementById('searchWithLaunch').checked) {
-                filters.push({ type: 'special', label: '有启动链接', key: 'withLaunch' });
-            }
-            
-            // 显示筛选条件
-            if (filters.length > 0) {
-                container.style.display = 'flex';
-                container.innerHTML = filters.map(f => `
-                    <span class="filter-tag" style="cursor: pointer;" onclick="removeSearchFilter('${f.key}')">
-                        ${f.label} ✕
-                    </span>
-                `).join('');
-            } else {
-                container.style.display = 'none';
-            }
-        }
-        
-        // 更新搜索结果统计
-        function updateSearchResultsStats(resultCount, totalCount) {
-            const statsContainer = document.getElementById('searchResultsStats');
-            const filterCount = totalCount - resultCount;
-            
-            if (filterCount > 0) {
-                statsContainer.innerHTML = `找到 ${resultCount} 个任务 (已筛选 ${filterCount} 个)`;
-            } else {
-                statsContainer.innerHTML = `找到 ${resultCount} 个任务`;
-            }
-        }
-        
-        // 应用快速筛选预设
-        function applyQuickFilter(preset) {
-            // 先重置所有筛选
-            resetAdvancedFilters();
-            
-            switch (preset) {
-                case 'today':
-                    document.getElementById('searchTimeRange').value = 'today';
-                    break;
-                    
-                case 'weekFocus':
-                    document.getElementById('searchTimeRange').value = 'thisWeek';
-                    document.getElementById('searchOnlyFocus').checked = true;
-                    break;
-                    
-                case 'highPriority':
-                    // 只选择高优先级
-                    document.querySelectorAll('input[name="searchPriorities"]').forEach(cb => cb.checked = false);
-                    document.querySelector('input[name="searchPriorities"][value="高"]').checked = true;
-                    // 排除已完成
-                    document.querySelectorAll('input[name="searchStatuses"]').forEach(cb => cb.checked = cb.value !== '已完成' && cb.value !== '已归档');
-                    break;
-                    
-                case 'inProgress':
-                    // 只选择进行中状态
-                    document.querySelectorAll('input[name="searchStatuses"]').forEach(cb => cb.checked = false);
-                    document.querySelector('input[name="searchStatuses"][value="进行中"]').checked = true;
-                    break;
-                    
-                case 'pendingReview':
-                    document.getElementById('searchOnlyPending').checked = true;
-                    break;
-            }
-            
-            // 触发搜索
-            performGlobalSearch();
-        }
-        
-        // 重置高级筛选
-        function resetAdvancedFilters() {
-            // 重置所有复选框为默认状态
-            document.querySelectorAll('input[name="searchTypes"]').forEach(cb => cb.checked = true);
-            document.querySelectorAll('input[name="searchStatuses"]').forEach(cb => cb.checked = cb.value !== '已完成' && cb.value !== '已归档');
-            document.querySelectorAll('input[name="searchPriorities"]').forEach(cb => cb.checked = true);
-            
-            // 重置下拉框
-            document.getElementById('searchProject').value = '';
-            document.getElementById('searchTimeRange').value = '';
-            
-            // 重置特殊筛选
-            document.getElementById('searchOnlyFocus').checked = false;
-            document.getElementById('searchOnlyPending').checked = false;
-            document.getElementById('searchWithProgress').checked = false;
-            document.getElementById('searchWithLaunch').checked = false;
-            
-            // 触发搜索
-            performGlobalSearch();
-        }
-        
-        // 移除单个筛选条件
-        function removeSearchFilter(filterKey) {
-            switch (filterKey) {
-                case 'keyword':
-                    document.getElementById('globalSearchInput').value = '';
-                    break;
-                case 'types':
-                    document.querySelectorAll('input[name="searchTypes"]').forEach(cb => cb.checked = true);
-                    break;
-                case 'statuses':
-                    document.querySelectorAll('input[name="searchStatuses"]').forEach(cb => cb.checked = cb.value !== '已完成' && cb.value !== '已归档');
-                    break;
-                case 'priorities':
-                    document.querySelectorAll('input[name="searchPriorities"]').forEach(cb => cb.checked = true);
-                    break;
-                case 'project':
-                    document.getElementById('searchProject').value = '';
-                    break;
-                case 'timeRange':
-                    document.getElementById('searchTimeRange').value = '';
-                    break;
-                case 'onlyFocus':
-                    document.getElementById('searchOnlyFocus').checked = false;
-                    break;
-                case 'onlyPending':
-                    document.getElementById('searchOnlyPending').checked = false;
-                    break;
-                case 'withProgress':
-                    document.getElementById('searchWithProgress').checked = false;
-                    break;
-                case 'withLaunch':
-                    document.getElementById('searchWithLaunch').checked = false;
-                    break;
-            }
-            
-            // 触发搜索
-            performGlobalSearch();
-        }
-        
-        /* ========================================
-           ⚙️ 设置功能
-           ======================================== */
-        
-        function openSettings() {
-            // 暂时使用 alert，后续可以实现完整的设置界面
-            showNotification('设置功能开发中...', 'info');
-        }
-        
-        /* ========================================
-           🔄 刷新数据功能
-           ======================================== */
-        
-        function refreshTasks() {
-            // 显示加载提示
-            showNotification('正在刷新数据...', 'info');
-            
-            // 检查 TaskSync 是否可用
-            if (window.TaskSync && window.TaskSync.requestSync) {
-                // ========== 性能优化：手动刷新时强制清除缓存 ==========
-                // 传递 forceRefresh 参数，让原生端知道需要强制刷新
-                if (mnTaskBridge && mnTaskBridge.ready) {
-                    mnTaskBridge.send('syncTasks', { forceRefresh: true })
-                        .then(response => {
-                            MNUtil.log('✅ 通过 MNTaskBridge 请求强制刷新成功:', response);
-                        })
-                        .catch(error => {
-                            MNUtil.log('❌ MNTaskBridge 请求同步失败:', error);
-                            // 降级到原有方案
-                            window.location.href = 'mntask://syncTasks?forceRefresh=true';
-                        });
-                } else {
-                    // 使用原有的 URL Scheme 方案，带上 forceRefresh 参数
-                    window.location.href = 'mntask://syncTasks?forceRefresh=true';
-                }
-                MNUtil.log('📤 已发送强制刷新请求');
-            } else {
-                MNUtil.log('❌ TaskSync 未定义或 requestSync 方法不存在');
-                showNotification('刷新失败：TaskSync 未就绪', 'error');
-            }
-        }
-        
-        /* ========================================
-           ❓ 帮助功能
-           ======================================== */
-        
-        function openHelp() {
-            // 暂时使用 alert，后续可以实现完整的帮助界面
-            showNotification('帮助功能开发中...', 'info');
-        }
-        
-        /* ========================================
-           📌 计划视图功能
-           ======================================== */
-        
-        // 初始化计划视图选择状态
-        function initPlanningSelection() {
-            if (!window.selectedPlanningTasks) {
-                window.selectedPlanningTasks = new Set();
-            }
-            MNUtil.log('Planning selection initialized');
-        }
-        
-        // 渲染计划视图
-        function renderPlanningView() {
-            MNUtil.log('🎨 [renderPlanningView] 开始渲染反思仪表板');
-            
-            // 1. 渲染焦点任务回顾
-            renderFocusTasksReview();
-            
-            // 2. 渲染待处理任务检查
-            renderPendingTasksReview();
-            
-            // 3. 渲染今日任务回顾
-            renderTodayTasksReview();
-            
-            // 4. 渲染明日任务预览
-            renderTomorrowTasksPreview();
-            
-            // 5. 渲染全局任务筛选
-            renderAllTasksFilter();
-            
-            // 更新侦边栏
-            updateSidebar('planning');
-        }
-        
-        // 渲染焦点任务回顾
-        function renderFocusTasksReview() {
-            // 使用与焦点任务视图相同的过滤逻辑：只统计动作类型且未完成、未归档的任务
-            const focusTasksArray = Array.from(focusTasks)
-                .map(id => tasks.find(t => t.id === id))
-                .filter(task => 
-                    task && 
-                    task.type === '动作' && 
-                    task.status !== '已完成' && 
-                    task.status !== '已归档'
-                );
-            
-            // 按状态分组
-            const tasksByStatus = {
-                '已完成': focusTasksArray.filter(t => t.status === '已完成'),
-                '进行中': focusTasksArray.filter(t => t.status === '进行中'),
-                '暂停': focusTasksArray.filter(t => t.status === '暂停'),
-                '未开始': focusTasksArray.filter(t => t.status === '未开始')
-            };
-            
-            const completed = tasksByStatus['已完成'].length;
-            const total = focusTasksArray.length;
-            const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
-            
-            // 渲染统计数据
-            const statsContainer = document.getElementById('focusTasksStats');
-            statsContainer.innerHTML = `
-                <div class="stat-cards">
-                    <div class="stat-card">
-                        <div class="stat-value">${completed}/${total}</div>
-                        <div class="stat-label">已完成</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${rate}%</div>
-                        <div class="stat-label">完成率</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${focusTasksArray.filter(t => t.status === '进行中').length}</div>
-                        <div class="stat-label">进行中</div>
-                    </div>
-                </div>
-            `;
-            
-            // 渲染焦点任务列表
-            const listContainer = document.getElementById('focusTasksList');
-            if (focusTasksArray.length === 0) {
-                listContainer.innerHTML = '<p class="empty-state">当前没有焦点任务</p>';
-            } else {
-                listContainer.innerHTML = `
-                    ${tasksByStatus['已完成'].length > 0 ? `
-                        <div class="status-group" style="margin-bottom: 20px;">
-                            <h5 style="font-size: 0.85em; color: var(--status-done); margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
-                                ✅ 已完成 (${tasksByStatus['已完成'].length})
-                            </h5>
-                            <div style="margin-left: 20px;">
-                                ${tasksByStatus['已完成'].map(task => {
-                    const progressCount = task.fields.progressLog ? task.fields.progressLog.length : 0;
-                    return `
-                        <div class="reflection-task-item" style="position: relative;">
-                            <div onclick="showInMindMap('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
-                                <div class="task-status-icon">${getStatusIcon(task.status)}</div>
-                                <div class="task-info">
-                                    <div class="task-title">${task.title}</div>
-                                    <div class="task-meta">
-                                        <span class="task-type">${task.type}</span>
-                                        <span class="task-progress">进展记录: ${progressCount}</span>
-                                    </div>
-                                </div>
-                                ${task.status !== '已完成' ? `
-                                    <button class="btn btn-sm" onclick="event.stopPropagation(); showQuickProgress('${task.id}')">
-                                        📝 添加进展
-                                    </button>
-                                ` : ''}
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
-                    
-                    ${tasksByStatus['进行中'].length > 0 ? `
-                        <div class="status-group" style="margin-bottom: 20px;">
-                            <h5 style="font-size: 0.85em; color: var(--status-doing); margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
-                                🚀 进行中 (${tasksByStatus['进行中'].length})
-                            </h5>
-                            <div style="margin-left: 20px;">
-                                ${tasksByStatus['进行中'].map(task => {
-                    const progressCount = task.fields.progressLog ? task.fields.progressLog.length : 0;
-                    return `
-                        <div class="reflection-task-item" style="position: relative;">
-                            <div onclick="showInMindMap('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
-                                <div class="task-status-icon">${getStatusIcon(task.status)}</div>
-                                <div class="task-info">
-                                    <div class="task-title">${task.title}</div>
-                                    <div class="task-meta">
-                                        <span class="task-type">${task.type}</span>
-                                        <span class="task-progress">进展记录: ${progressCount}</span>
-                                    </div>
-                                </div>
-                                <button class="btn btn-sm" onclick="event.stopPropagation(); showQuickProgress('${task.id}')">
-                                    📝 添加进展
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
-                    
-                    ${tasksByStatus['暂停'].length > 0 ? `
-                        <div class="status-group" style="margin-bottom: 20px;">
-                            <h5 style="font-size: 0.85em; color: var(--status-pause); margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
-                                ⏸ 暂停 (${tasksByStatus['暂停'].length})
-                            </h5>
-                            <div style="margin-left: 20px;">
-                                ${tasksByStatus['暂停'].map(task => {
-                    const progressCount = task.fields.progressLog ? task.fields.progressLog.length : 0;
-                    return `
-                        <div class="reflection-task-item" style="position: relative;">
-                            <div onclick="showInMindMap('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
-                                <div class="task-status-icon">${getStatusIcon(task.status)}</div>
-                                <div class="task-info">
-                                    <div class="task-title">${task.title}</div>
-                                    <div class="task-meta">
-                                        <span class="task-type">${task.type}</span>
-                                        <span class="task-progress">进展记录: ${progressCount}</span>
-                                    </div>
-                                </div>
-                                <button class="btn btn-sm" onclick="event.stopPropagation(); showQuickProgress('${task.id}')">
-                                    📝 添加进展
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
-                    
-                    ${tasksByStatus['未开始'].length > 0 ? `
-                        <div class="status-group" style="margin-bottom: 20px;">
-                            <h5 style="font-size: 0.85em; color: var(--status-todo); margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
-                                ⏰ 未开始 (${tasksByStatus['未开始'].length})
-                            </h5>
-                            <div style="margin-left: 20px;">
-                                ${tasksByStatus['未开始'].map(task => {
-                    const progressCount = task.fields.progressLog ? task.fields.progressLog.length : 0;
-                    return `
-                        <div class="reflection-task-item" style="position: relative;">
-                            <div onclick="showInMindMap('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
-                                <div class="task-status-icon">${getStatusIcon(task.status)}</div>
-                                <div class="task-info">
-                                    <div class="task-title">${task.title}</div>
-                                    <div class="task-meta">
-                                        <span class="task-type">${task.type}</span>
-                                        <span class="task-progress">进展记录: ${progressCount}</span>
-                                    </div>
-                                </div>
-                                <button class="btn btn-sm" onclick="event.stopPropagation(); showQuickProgress('${task.id}')">
-                                    📝 添加进展
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
-                `;
-            }
-        }
-        
-        // 渲染待处理任务检查
-        function renderPendingTasksReview() {
-            const pendingTasksArray = Array.from(pendingTasks).map(id => tasks.find(t => t.id === id)).filter(Boolean);
-            const overviewContainer = document.getElementById('pendingOverview');
-            
-            // 计算最早的待处理任务等待时间
-            let oldestWaitTime = 0;
-            pendingTasksArray.forEach(task => {
-                if (task.fields.createdAt) {
-                    const waitDays = Math.floor((new Date() - new Date(task.fields.createdAt)) / (1000 * 60 * 60 * 24));
-                    if (waitDays > oldestWaitTime) oldestWaitTime = waitDays;
-                }
-            });
-            
-            overviewContainer.innerHTML = `
-                <div class="pending-stats">
-                    <div class="pending-count">
-                        当前有 <span class="highlight">${pendingTasksArray.length}</span> 个待处理任务
-                    </div>
-                    ${oldestWaitTime > 0 ? `
-                        <div class="pending-age">
-                            最早的任务已等待 <span class="highlight">${oldestWaitTime}天</span>
-                        </div>
-                    ` : ''}
-                </div>
-                ${pendingTasksArray.length > 10 ? `
-                    <div class="pending-warning">
-                        ⚠️ 待处理任务较多（${pendingTasksArray.length}个），建议重新评估优先级
-                    </div>
-                ` : ''}
-                
-                <!-- 待处理任务列表 -->
-                <div class="pending-tasks-list" style="margin-top: 15px;">
-                    ${pendingTasksArray.length === 0 ? '<p class="empty-state">没有待处理任务</p>' : 
-                      pendingTasksArray.slice(0, 5).map(task => `
-                        <div class="reflection-task-item" onclick="showInMindMap('${task.id}')" style="margin-bottom: 8px;">
-                            <div class="task-status-icon">${getStatusIcon(task.status)}</div>
-                            <div class="task-info">
-                                <div class="task-title">${task.title}</div>
-                                <div class="task-meta">
-                                    <span class="task-type">${task.type}</span>
-                                    <span class="task-priority ${task.fields.priority.toLowerCase()}">${getPriorityIcon(task.fields.priority)} ${task.fields.priority}</span>
-                                    ${task.fields.createdAt ? `<span class="task-age">等待${Math.floor((new Date() - new Date(task.fields.createdAt)) / (1000 * 60 * 60 * 24))}天</span>` : ''}
-                                </div>
-                            </div>
-                            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); removeFromPending('${task.id}'); addToFocus('${task.id}')">
-                                → 加入焦点
-                            </button>
-                        </div>
-                    `).join('')}
-                    ${pendingTasksArray.length > 5 ? `
-                        <p class="text-muted text-small" style="margin-top: 10px;">
-                            还有 ${pendingTasksArray.length - 5} 个待处理任务...
-                        </p>
-                    ` : ''}
-                </div>
-            `;
-        }
-        
-        // 渲染今日任务回顾
-        function renderTodayTasksReview() {
-            const today = formatDateToLocal(new Date());
-            const todayTasks = tasks.filter(task => 
-                (task.fields.plannedDate === today || task.fields.today) &&
-                (task.type === '项目' || task.type === '动作')
-            );
-            
-            // 按状态分组
-            const tasksByStatus = {
-                '已完成': todayTasks.filter(t => t.status === '已完成'),
-                '进行中': todayTasks.filter(t => t.status === '进行中'),
-                '暂停': todayTasks.filter(t => t.status === '暂停'),
-                '未开始': todayTasks.filter(t => t.status === '未开始')
-            };
-            
-            const summaryContainer = document.getElementById('todayTasksSummary');
-            
-            // 创建树状结构的渲染函数
-            const renderTaskTree = (status, tasks, icon) => {
-                if (tasks.length === 0) return '';
-                
-                return `
-                    <div class="tree-status-node" style="margin-bottom: 20px;">
-                        <div class="tree-status-header" style="font-weight: 600; color: var(--status-${getStatusColor(status)}); margin-bottom: 10px;">
-                            ${icon} ${status} (${tasks.length})
-                        </div>
-                        <div class="tree-task-list" style="margin-left: 20px; border-left: 2px solid var(--glass-border); padding-left: 15px;">
-                            ${tasks.map((task, index) => `
-                                <div class="tree-task-item" style="position: relative; margin-bottom: ${index === tasks.length - 1 ? '0' : '12px'};">
-                                    <!-- 树形连接线 -->
-                                    <div style="position: absolute; left: -16px; top: 12px; width: 13px; height: 1px; background: var(--glass-border);"></div>
-                                    ${index === tasks.length - 1 ? `
-                                        <div style="position: absolute; left: -17px; top: -100%; bottom: 12px; width: 2px; background: var(--bg-secondary);"></div>
-                                    ` : ''}
-                                    
-                                    <div class="task-content" style="background: var(--bg-card); padding: 10px; border-radius: 8px; border: 1px solid var(--glass-border);">
-                                        <div onclick="showInMindMap('${task.id}')" style="cursor: pointer;">
-                                            <div style="display: flex; align-items: center; justify-content: space-between;">
-                                                <div style="flex: 1;">
-                                                    <div class="task-title" style="font-weight: 500; margin-bottom: 4px;">${task.title}</div>
-                                                    <div class="task-meta" style="font-size: 0.85em; color: var(--text-muted);">
-                                                        <span class="task-type">${getTaskTypeIcon(task.type)} ${task.type}</span>
-                                                        <span class="task-priority ${task.fields.priority.toLowerCase()}" style="margin-left: 8px;">
-                                                            ${getPriorityIcon(task.fields.priority)} ${task.fields.priority}
-                                                        </span>
-                                                        ${task.fields.progressLog && task.fields.progressLog.length > 0 ? 
-                                                            `<span style="margin-left: 8px;">📝 ${task.fields.progressLog.length}条进展</span>` : 
-                                                            ''
-                                                        }
-                                                    </div>
-                                                    ${task.fields.progressLog && task.fields.progressLog.length > 0 ? `
-                                                        <div class="latest-progress" style="margin-top: 6px; padding: 6px 10px; background: var(--bg-hover); border-radius: 6px; font-size: 0.85em; color: var(--text-secondary);">
-                                                            💭 ${task.fields.progressLog[task.fields.progressLog.length - 1].note.substring(0, 60)}${task.fields.progressLog[task.fields.progressLog.length - 1].note.length > 60 ? '...' : ''}
-                                                        </div>
-                                                    ` : ''}
-                                                </div>
-                                                ${(status === '未开始' || status === '暂停') ? `
-                                                    <div class="task-actions" style="display: flex; gap: 5px; margin-left: 10px;">
-                                                        ${status === '未开始' ? `
-                                                            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); updateTaskStatus('${task.id}', '进行中')">
-                                                                ▶️ 开始
-                                                            </button>
-                                                        ` : `
-                                                            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); updateTaskStatus('${task.id}', '进行中')">
-                                                                ▶️ 继续
-                                                            </button>
-                                                        `}
-                                                        <button class="btn btn-sm" onclick="event.stopPropagation(); addToPending('${task.id}')">
-                                                            📋 待处理
-                                                        </button>
-                                                        ${status === '未开始' ? `
-                                                            <button class="btn btn-sm" onclick="event.stopPropagation(); moveToTomorrow('${task.id}')">
-                                                                📅 明天
-                                                            </button>
-                                                        ` : ''}
-                                                    </div>
-                                                ` : status === '进行中' ? `
-                                                    <div class="task-actions" style="display: flex; gap: 5px; margin-left: 10px;">
-                                                        <button class="btn btn-sm" onclick="event.stopPropagation(); showQuickProgress('${task.id}')">
-                                                            📝 进展
-                                                        </button>
-                                                        <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); updateTaskStatus('${task.id}', '已完成')">
-                                                            ✅ 完成
-                                                        </button>
-                                                    </div>
-                                                ` : ''}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-            };
-            
-            // 获取状态对应的颜色类名
-            function getStatusColor(status) {
-                const colorMap = {
-                    '已完成': 'done',
-                    '进行中': 'doing',
-                    '暂停': 'pause',
-                    '未开始': 'todo'
-                };
-                return colorMap[status] || 'todo';
-            }
-            
-            // 使用树状结构展示
-            summaryContainer.innerHTML = `
-                <div class="today-tasks-tree">
-                    ${todayTasks.length === 0 ? '<p class="empty-state">今天没有安排任务</p>' : `
-                        ${renderTaskTree('已完成', tasksByStatus['已完成'], '✅')}
-                        ${renderTaskTree('进行中', tasksByStatus['进行中'], '🚀')}
-                        ${renderTaskTree('暂停', tasksByStatus['暂停'], '⏸')}
-                        ${renderTaskTree('未开始', tasksByStatus['未开始'], '⏰')}
-                    `}
-                </div>
-            `;
-        }
-        
-        // 渲染明日任务预览
-        function renderTomorrowTasksPreview() {
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            const tomorrowStr = formatDateToLocal(tomorrow);
-            
-            const tomorrowTasks = tasks.filter(task => 
-                task.fields.plannedDate === tomorrowStr &&
-                (task.type === '项目' || task.type === '动作')
-            );
-            
-            // 按优先级分组
-            const highPriorityTasks = tomorrowTasks.filter(t => t.fields.priority === '高');
-            const mediumPriorityTasks = tomorrowTasks.filter(t => t.fields.priority === '中');
-            const lowPriorityTasks = tomorrowTasks.filter(t => t.fields.priority === '低');
-            
-            const listContainer = document.getElementById('tomorrowTasksList');
-            if (tomorrowTasks.length === 0) {
-                listContainer.innerHTML = `
-                    <p class="empty-state">明天还没有安排任务</p>
-                    <p class="suggestion">建议从待处理任务中选择重要的任务安排到明天</p>
-                    <button class="btn btn-primary" onclick="openAddToPendingModal()" style="margin-top: 10px;">
-                        📋 查看待处理任务
-                    </button>
-                `;
-            } else {
-                listContainer.innerHTML = `
-                    <div class="tomorrow-overview" style="margin-bottom: 15px;">
-                        <div class="tomorrow-count">已安排 <span class="highlight">${tomorrowTasks.length}</span> 个任务</div>
-                        <div class="tomorrow-priority-breakdown" style="display: flex; gap: 10px; margin-top: 8px; font-size: 0.85em;">
-                            ${highPriorityTasks.length > 0 ? `<span class="priority-count high">高优先级: ${highPriorityTasks.length}</span>` : ''}
-                            ${mediumPriorityTasks.length > 0 ? `<span class="priority-count medium">中优先级: ${mediumPriorityTasks.length}</span>` : ''}
-                            ${lowPriorityTasks.length > 0 ? `<span class="priority-count low">低优先级: ${lowPriorityTasks.length}</span>` : ''}
-                        </div>
-                    </div>
-                    
-                    <div class="tomorrow-task-list">
-                        ${tomorrowTasks.map(task => {
-                            const isProject = task.type === '项目';
-                            const parentProject = isProject ? null : tasks.find(t => t.id === task.fields.parentId && t.type === '项目');
-                            
-                            return `
-                            <div class="reflection-task-item tomorrow-task" onclick="showInMindMap('${task.id}')" style="margin-bottom: 10px;">
-                                <div class="task-status-icon">${getTaskTypeIcon(task.type)}</div>
-                                <div class="task-info" style="flex: 1;">
-                                    <div class="task-title">${task.title}</div>
-                                    <div class="task-meta">
-                                        <span class="task-type">${task.type}</span>
-                                        <span class="task-priority ${task.fields.priority.toLowerCase()}">${getPriorityIcon(task.fields.priority)} ${task.fields.priority}</span>
-                                        ${parentProject ? `<span class="task-parent">📁 ${parentProject.title}</span>` : ''}
-                                    </div>
-                                    ${task.fields.description ? `
-                                        <div class="task-description" style="margin-top: 5px; font-size: 0.85em; color: var(--text-muted);">
-                                            ${task.fields.description.substring(0, 80)}${task.fields.description.length > 80 ? '...' : ''}
-                                        </div>
-                                    ` : ''}
-                                </div>
-                                <div class="task-actions" style="display: flex; gap: 5px;">
-                                    <button class="btn btn-sm" onclick="event.stopPropagation(); removeTaskDate('${task.id}')">
-                                        ❌ 移除
-                                    </button>
-                                    <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); addToFocus('${task.id}')">
-                                        🎯 加入焦点
-                                    </button>
-                                </div>
-                            </div>
-                        `}).join('')}
-                    </div>
-                    
-                    ${tomorrowTasks.length >= 5 ? `
-                        <div class="tomorrow-warning" style="margin-top: 15px; padding: 10px; background: var(--bg-hover); border-radius: var(--radius-sm);">
-                            ⚠️ 明天的任务较多，注意合理安排时间和精力
-                        </div>
-                    ` : ''}
-                `;
-            }
-            
-            // 更新规划建议
-            updatePlanningSuggestions();
-        }
-        
-        // 更新规划建议
-        function updatePlanningSuggestions() {
-            const suggestions = [];
-            
-            // 检查未完成的焦点任务
-            const unfinishedFocus = Array.from(focusTasks)
-                .map(id => tasks.find(t => t.id === id))
-                .filter(t => t && t.status !== '已完成');
-            
-            if (unfinishedFocus.length > 0) {
-                suggestions.push(`有 ${unfinishedFocus.length} 个焦点任务未完成，考虑延续到明天`);
-            }
-            
-            // 检查高优先级待处理任务
-            const highPriorityPending = Array.from(pendingTasks)
-                .map(id => tasks.find(t => t.id === id))
-                .filter(t => t && t.fields.priority === '高');
-            
-            if (highPriorityPending.length > 0) {
-                suggestions.push(`待处理中有 ${highPriorityPending.length} 个高优先级任务需要安排`);
-            }
-            
-            // 检查明日任务量
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            const tomorrowStr = formatDateToLocal(tomorrow);
-            const tomorrowTasks = tasks.filter(t => t.fields.plannedDate === tomorrowStr);
-            
-            if (tomorrowTasks.length > 8) {
-                suggestions.push('明天的任务较多，注意合理安排时间');
-            } else if (tomorrowTasks.length < 3) {
-                suggestions.push('明天的任务较少，可以多安排一些任务');
-            }
-            
-            // 更新建议列表
-            const suggestionsList = document.getElementById('planningSuggestionsList');
-            if (suggestions.length > 0) {
-                suggestionsList.innerHTML = suggestions.map(s => `<li>${s}</li>`).join('');
-            }
-        }
-        
-        // 渲染全部任务筛选
-        function renderAllTasksFilter() {
-            const container = document.getElementById('allTasksList');
-            if (!container) return;
-            
-            // 初始化显示所有任务
-            const filteredTasks = tasks;
-            updateAllTasksList(filteredTasks);
-            updateAllTasksCount(filteredTasks.length, tasks.length);
-        }
-        
-        // 筛选所有任务
-        function filterAllTasks() {
-            const searchTerm = document.getElementById('allTasksSearch').value.toLowerCase();
-            const typeFilter = document.getElementById('allTasksTypeFilter').value;
-            const statusFilter = document.getElementById('allTasksStatusFilter').value;
-            const priorityFilter = document.getElementById('allTasksPriorityFilter').value;
-            
-            const filtered = tasks.filter(task => {
-                // 搜索词过滤
-                if (searchTerm && !task.title.toLowerCase().includes(searchTerm)) {
-                    return false;
-                }
-                
-                // 类型过滤
-                if (typeFilter && task.type !== typeFilter) {
-                    return false;
-                }
-                
-                // 状态过滤
-                if (statusFilter && task.status !== statusFilter) {
-                    return false;
-                }
-                
-                // 优先级过滤
-                if (priorityFilter && task.fields.priority !== priorityFilter) {
-                    return false;
-                }
-                
-                return true;
-            });
-            
-            updateAllTasksList(filtered);
-            updateAllTasksCount(filtered.length, tasks.length);
-        }
-        
-        // 更新任务列表显示
-        function updateAllTasksList(filteredTasks) {
-            const container = document.getElementById('allTasksList');
-            if (!container) return;
-            
-            if (filteredTasks.length === 0) {
-                container.innerHTML = '<p class="empty-state">没有找到匹配的任务</p>';
-                return;
-            }
-            
-            // 按类型分组
-            const tasksByType = {
-                '目标': filteredTasks.filter(t => t.type === '目标'),
-                '关键结果': filteredTasks.filter(t => t.type === '关键结果'),
-                '项目': filteredTasks.filter(t => t.type === '项目'),
-                '动作': filteredTasks.filter(t => t.type === '动作')
-            };
-            
-            container.innerHTML = Object.entries(tasksByType)
-                .filter(([type, tasks]) => tasks.length > 0)
-                .map(([type, typeTasks]) => `
-                    <div class="task-type-group" style="margin-bottom: 20px;">
-                        <h5 style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 10px;">
-                            ${getTaskTypeIcon(type)} ${type} (${typeTasks.length})
-                        </h5>
-                        <div style="margin-left: 15px;">
-                            ${typeTasks.map(task => `
-                                <div class="reflection-task-item" onclick="showInMindMap('${task.id}')" style="margin-bottom: 8px;">
-                                    <div class="task-status-icon">${getStatusIcon(task.status)}</div>
-                                    <div class="task-info" style="flex: 1;">
-                                        <div class="task-title">
-                                            ${task.title}
-                                            ${task.path ? `<div style="font-size: 0.85em; color: var(--text-muted); opacity: 0.7; margin-top: 2px;">📍 ${task.path}</div>` : ''}
-                                        </div>
-                                        <div class="task-meta">
-                                            <span class="task-status ${task.status.toLowerCase()}">${task.status}</span>
-                                            <span class="task-priority ${task.fields.priority.toLowerCase()}">${getPriorityIcon(task.fields.priority)} ${task.fields.priority}</span>
-                                            ${task.fields.project ? `<span class="task-project">📦 ${task.fields.project}</span>` : ''}
-                                            ${task.fields.plannedDate ? `<span class="task-date">📅 ${formatDate(task.fields.plannedDate)}</span>` : ''}
-                                        </div>
-                                    </div>
-                                    <div class="task-actions" style="display: flex; gap: 5px;">
-                                        ${task.status !== '已完成' && !focusTasks.has(task.id) ? `
-                                            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); addToFocus('${task.id}')">
-                                                🎯 加入焦点
-                                            </button>
-                                        ` : ''}
-                                        ${task.status !== '已完成' && !pendingTasks.has(task.id) ? `
-                                            <button class="btn btn-sm" onclick="event.stopPropagation(); addToPending('${task.id}')">
-                                                📋 加入待处理
-                                            </button>
-                                        ` : ''}
-                                        ${task.status !== '已完成' && !task.fields.plannedDate ? `
-                                            <button class="btn btn-sm" onclick="event.stopPropagation(); openScheduleTaskModal('${task.id}')">
-                                                📅 安排日期
-                                            </button>
-                                        ` : ''}
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `).join('');
-        }
-        
-        // 更新任务计数
-        function updateAllTasksCount(filteredCount, totalCount) {
-            const countElement = document.getElementById('allTasksCount');
-            if (!countElement) return;
-            
-            if (filteredCount === totalCount) {
-                countElement.textContent = `显示全部 ${totalCount} 个任务`;
-            } else {
-                countElement.textContent = `显示 ${filteredCount} / ${totalCount} 个任务`;
-            }
-        }
-        
-        // 重置筛选
-        function resetAllTasksFilter() {
-            document.getElementById('allTasksSearch').value = '';
-            document.getElementById('allTasksTypeFilter').value = '';
-            document.getElementById('allTasksStatusFilter').value = '';
-            document.getElementById('allTasksPriorityFilter').value = '';
-            
-            renderAllTasksFilter();
-        }
-        
-        // 打开安排任务日期对话框
-        function openScheduleTaskModal(taskId) {
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) return;
-            
-            const modal = document.createElement('div');
-            modal.className = 'modal active';
-            modal.innerHTML = `
-                <div class="modal-overlay" onclick="this.parentElement.remove()"></div>
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>📅 安排任务日期</h3>
-                        <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
-                    </div>
-                    <div class="modal-body">
-                        <div style="margin-bottom: 15px;">
-                            <h4>${getTaskTypeIcon(task.type)} ${task.title}</h4>
-                            <p class="text-muted">${task.type} - ${task.status}</p>
-                        </div>
-                        <div style="margin-bottom: 15px;">
-                            <label for="scheduleDate">选择日期：</label>
-                            <input type="date" 
-                                   id="scheduleDate" 
-                                   value="${formatDateToLocal(new Date())}" 
-                                   min="${formatDateToLocal(new Date())}">
-                        </div>
-                        <div class="quick-date-options" style="display: flex; gap: 10px; margin-bottom: 15px;">
-                            <button class="btn btn-sm" onclick="document.getElementById('scheduleDate').value = '${formatDateToLocal(new Date())}'">
-                                今天
-                            </button>
-                            <button class="btn btn-sm" onclick="document.getElementById('scheduleDate').value = '${formatDateToLocal(new Date(Date.now() + 86400000))}'">
-                                明天
-                            </button>
-                            <button class="btn btn-sm" onclick="document.getElementById('scheduleDate').value = '${formatDateToLocal(new Date(Date.now() + 2 * 86400000))}'">
-                                后天
-                            </button>
-                            <button class="btn btn-sm" onclick="document.getElementById('scheduleDate').value = '${formatDateToLocal(new Date(Date.now() + 7 * 86400000))}'">
-                                下周
-                            </button>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">取消</button>
-                        <button class="btn btn-primary" onclick="confirmScheduleTask('${taskId}')">
-                            确定安排
-                        </button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-        }
-        
-        // 确认安排任务日期
-        function confirmScheduleTask(taskId) {
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) return;
-            
-            const dateInput = document.getElementById('scheduleDate');
-            const selectedDate = new Date(dateInput.value + 'T00:00:00');
-            
-            updateTaskPlannedDate(task, selectedDate);
-            
-            // 记录进展
-            if (!task.fields.progressLog) {
-                task.fields.progressLog = [];
-            }
-            task.fields.progressLog.push({
-                date: new Date().toLocaleString('zh-CN'),
-                note: `任务已安排到 ${selectedDate.toLocaleDateString('zh-CN')}`
-            });
-            
-            // 保存数据
-            saveToLocalStorage();
-            
-            // 关闭对话框
-            document.querySelector('.modal').remove();
-            
-            // 刷新显示
-            filterAllTasks();
-            
-            showNotification(`任务已安排到 ${selectedDate.toLocaleDateString('zh-CN')}`, 'success');
-        }
-        
-        // 获取未规划的任务
-        function getUnplannedTasks() {
-            return tasks.filter(task => {
-                // 只返回动作类型的任务
-                if (task.type !== '动作') {
-                    return false;
-                }
-                
-                // 已在焦点或待处理中的算作已规划
-                if (task.currentFocus || pendingTasks.has(task.id)) {
-                    return false;
-                }
-                
-                // 有明确计划日期的算作已规划
-                if (task.fields.plannedDate && task.fields.plannedDate !== formatDateToLocal(new Date())) {
-                    return false;
-                }
-                
-                // 已完成的任务不需要规划
-                if (task.status === '已完成') {
-                    return false;
-                }
-                
-                return true;
-            });
-        }
-        
-        // 获取已规划的任务
-        function getPlannedTasks() {
-            return tasks.filter(task => {
-                // 只返回动作类型的任务
-                if (task.type !== '动作') {
-                    return false;
-                }
-                
-                // 在焦点或待处理中的算作已规划
-                if (task.currentFocus || pendingTasks.has(task.id)) {
-                    return true;
-                }
-                
-                // 有明确计划日期的算作已规划
-                if (task.fields.plannedDate && task.fields.plannedDate !== formatDateToLocal(new Date())) {
-                    return true;
-                }
-                
-                return false;
-            });
-        }
-        
-        /* ========================================
-           🎯 计划视图相关函数
-           ======================================== */
-        
-        // 重新评估待处理任务的优先级
-        function reviewPendingTasks() {
-            // 打开待处理任务管理模态框，让用户重新排序和评估
-            openAddToPendingModal();
-            showNotification('请在弹出的窗口中重新评估待处理任务的优先级', 'info');
-        }
-        
-        // 显示添加进展记录的模态框
-        function showAddProgressModal() {
-            // 获取今天的任务
-            const todayStr = formatDateToLocal(new Date());
-            const todayTasks = tasks.filter(task => {
-                return task.type === '动作' && 
-                       task.status !== '已完成' &&
-                       (task.fields.plannedDate === todayStr || task.currentFocus);
-            });
-            
-            if (todayTasks.length === 0) {
-                showNotification('今天没有需要添加进展的任务', 'info');
-                return;
-            }
-            
-            // 如果只有一个任务，直接为它添加进展
-            if (todayTasks.length === 1) {
-                addProgressNote(null, todayTasks[0].id);
-                return;
-            }
-            
-            // 多个任务时，显示选择列表
-            const modalContent = `
-                <div class="modal-header">
-                    <h3>选择要添加进展的任务</h3>
-                    <span class="close" onclick="closeModal('progressTaskSelectModal')">&times;</span>
-                </div>
-                <div class="modal-body">
-                    <div class="task-select-list">
-                        ${todayTasks.map(task => `
-                            <div class="task-select-item" onclick="closeModal('progressTaskSelectModal'); addProgressNote(null, '${task.id}');">
-                                <div class="task-type-badge ${task.type.toLowerCase()}">
-                                    ${getTaskTypeIcon(task.type)} ${task.type}
-                                </div>
-                                <div class="task-title">${task.title}</div>
-                                <div class="task-status-badge ${getStatusClass(task.status)}">
-                                    ${task.status}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-            
-            // 创建临时模态框
-            const modal = document.createElement('div');
-            modal.id = 'progressTaskSelectModal';
-            modal.className = 'modal';
-            modal.innerHTML = `<div class="modal-content">${modalContent}</div>`;
-            document.body.appendChild(modal);
-            modal.classList.add('active');
-        }
-        
-        // 打开明天任务规划的模态框
-        function openTomorrowPlanningModal() {
-            // 获取可以规划到明天的任务
-            const availableTasks = tasks.filter(task => {
-                return task.type === '动作' && 
-                       task.status !== '已完成' &&
-                       !task.fields.plannedDate; // 没有计划日期的任务
-            });
-            
-            const modalContent = `
-                <div class="modal-header">
-                    <h3>规划明天的任务</h3>
-                    <span class="close" onclick="closeModal('tomorrowPlanningModal')">&times;</span>
-                </div>
-                <div class="modal-body">
-                    <p class="mb-3">选择要安排到明天的任务：</p>
-                    <div class="task-select-list" style="max-height: 400px; overflow-y: auto;">
-                        ${availableTasks.length > 0 ? availableTasks.map(task => `
-                            <div class="task-select-item" data-task-id="${task.id}">
-                                <input type="checkbox" class="task-checkbox" value="${task.id}">
-                                <div class="task-select-content">
-                                    <div class="task-type-badge ${task.type.toLowerCase()}">
-                                        ${getTaskTypeIcon(task.type)} ${task.type}
-                                    </div>
-                                    <div class="task-title">${task.title}</div>
-                                    <div class="text-small text-muted">${task.path}</div>
-                                </div>
-                            </div>
-                        `).join('') : '<p class="text-muted">没有可以规划的任务</p>'}
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" onclick="closeModal('tomorrowPlanningModal')">取消</button>
-                    <button class="btn btn-primary" onclick="saveTomorrowPlanning()">确定</button>
-                </div>
-            `;
-            
-            // 创建模态框
-            const modal = document.createElement('div');
-            modal.id = 'tomorrowPlanningModal';
-            modal.className = 'modal';
-            modal.innerHTML = `<div class="modal-content">${modalContent}</div>`;
-            document.body.appendChild(modal);
-            modal.classList.add('active');
-            
-            // 绑定复选框点击事件
-            modal.querySelectorAll('.task-select-item').forEach(item => {
-                item.addEventListener('click', function(e) {
-                    if (e.target.type !== 'checkbox') {
-                        const checkbox = this.querySelector('.task-checkbox');
-                        checkbox.checked = !checkbox.checked;
-                    }
-                });
-            });
-        }
-        
-        // 保存明天的任务规划
-        function saveTomorrowPlanning() {
-            const modal = document.getElementById('tomorrowPlanningModal');
-            const selectedTaskIds = Array.from(modal.querySelectorAll('.task-checkbox:checked'))
-                .map(cb => cb.value);
-            
-            if (selectedTaskIds.length === 0) {
-                showNotification('请至少选择一个任务', 'warning');
-                return;
-            }
-            
-            // 设置任务的计划日期为明天
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            const tomorrowStr = formatDateToLocal(tomorrow);
-            
-            selectedTaskIds.forEach(taskId => {
-                const task = tasks.find(t => t.id === taskId);
-                if (task) {
-                    task.fields.plannedDate = tomorrowStr;
-                }
-            });
-            
-            // 保存数据
-            saveToLocalStorage();
-            
-            // 关闭模态框
-            closeModal('tomorrowPlanningModal');
-            
-            // 刷新视图
-            renderPlanningView();
-            
-            showNotification(`成功将 ${selectedTaskIds.length} 个任务安排到明天`, 'success');
-        }
-        
-        // 快速为特定任务添加进展记录
-        // 全局快速进展弹窗状态
-        let currentProgressTaskId = null;
-        
-        function showQuickProgress(taskId) {
-            // 使用全局快速进展弹窗
-            openGlobalQuickProgress(taskId);
-        }
-        
-        function openGlobalQuickProgress(taskId) {
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) return;
-            
-            currentProgressTaskId = taskId;
-            const popup = document.getElementById('globalQuickProgress');
-            
-            // 设置任务信息
-            const iconSpan = popup.querySelector('.task-icon');
-            const nameSpan = popup.querySelector('.task-name');
-            iconSpan.textContent = getTaskTypeIcon(task.type);
-            nameSpan.textContent = task.name;
-            
-            // 清空之前的内容
-            const textarea = document.getElementById('globalProgressText');
-            textarea.value = '';
-            updateGlobalCharacterCount();
-            
-            // 获取点击按钮的位置
-            const button = event.target.closest('button');
-            if (button) {
-                const rect = button.getBoundingClientRect();
-                const popupWidth = 400;
-                const popupHeight = 260;
-                
-                // 计算弹窗位置
-                let left = rect.right + 10;
-                let top = rect.top;
-                
-                // 防止超出右边界
-                if (left + popupWidth > window.innerWidth - 20) {
-                    left = rect.left - popupWidth - 10;
-                }
-                
-                // 防止超出底部
-                if (top + popupHeight > window.innerHeight - 20) {
-                    top = window.innerHeight - popupHeight - 20;
-                }
-                
-                // 防止超出顶部
-                if (top < 20) {
-                    top = 20;
-                }
-                
-                popup.style.left = left + 'px';
-                popup.style.top = top + 'px';
-            }
-            
-            // 显示弹窗
-            popup.classList.add('active');
-            
-            // 聚焦输入框
-            setTimeout(() => {
-                textarea.focus();
-            }, 100);
-            
-            // 绑定快捷键
-            textarea.onkeydown = function(e) {
-                if (e.ctrlKey && e.key === 'Enter') {
-                    e.preventDefault();
-                    saveGlobalQuickProgress();
-                } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    closeGlobalQuickProgress();
-                }
-            };
-        }
-        
-        function closeGlobalQuickProgress() {
-            const popup = document.getElementById('globalQuickProgress');
-            popup.classList.remove('active');
-            currentProgressTaskId = null;
-        }
-        
-        function updateGlobalCharacterCount() {
-            const textarea = document.getElementById('globalProgressText');
-            const charCount = document.getElementById('globalCharCount');
-            const currentLength = textarea.value.length;
-            
-            charCount.textContent = currentLength;
-            
-            // 根据字符数量改变颜色
-            if (currentLength > 400) {
-                charCount.style.color = 'var(--priority-high)';
-            } else if (currentLength > 300) {
-                charCount.style.color = 'var(--priority-medium)';
-            } else {
-                charCount.style.color = 'var(--text-muted)';
-            }
-            
-            // 接近限制时提示
-            if (currentLength >= 450) {
-                charCount.parentElement.style.animation = 'pulse 1s infinite';
-            } else {
-                charCount.parentElement.style.animation = 'none';
-            }
-        }
-        
-        function saveGlobalQuickProgress() {
-            if (!currentProgressTaskId) return;
-            
-            const progressText = document.getElementById('globalProgressText').value.trim();
-            if (!progressText) {
-                showNotification('请输入进展内容', 'warning');
-                return;
-            }
-            
-            const task = tasks.find(t => t.id === currentProgressTaskId);
-            if (!task) return;
-            
-            // 保存进展 - 使用与旧函数相同的数据结构
-            const now = new Date();
-            const progressEntry = {
-                date: now.toLocaleString('zh-CN'),
-                note: progressText
-            };
-            
-            // 更新任务进展日志
-            if (!task.fields) {
-                task.fields = {};
-            }
-            if (!task.fields.progressLog) {
-                task.fields.progressLog = [];
-            }
-            task.fields.progressLog.push(progressEntry);
-            
-            // 更新任务的最后更新时间
-            task.lastModified = now.toISOString();
-            
-            // 保存到本地存储
-            saveToLocalStorage();
-            
-            // 显示成功提示
-            const progressLength = progressText.length;
-            showNotification(`进展已保存 ✅ (${progressLength}字)`, 'success');
-            
-            // 关闭弹窗
-            closeGlobalQuickProgress();
-            
-            // 根据当前视图刷新对应内容
-            if (currentView === 'today') {
-                setTimeout(() => {
-                    forceRefreshTimeline();
-                }, 50);
-            } else if (currentView === 'planning') {
-                // 刷新计划视图
-                renderPlanningView();
-            } else if (currentView === 'focus') {
-                // 刷新焦点视图
-                renderFocusTasks();
-            }
-        }
-        
-        // 绑定全局快捷键
-        document.addEventListener('keydown', function(e) {
-            // Ctrl/Cmd + K 打开搜索
-            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-                e.preventDefault();
-                openGlobalSearch();
-            }
-        });
-        
-        /* ========================================
-           🌟 页面加载完成后初始化
-           ======================================== */
-        // 第二个 DOMContentLoaded 已合并到第一个中，避免重复初始化
-        
-        /**
-         * 初始化 MNTask 通信桥接器
-         */
-        let mnTaskBridge = null;
-        
-        // 在页面加载时初始化桥接器
-        if (typeof MNTaskBridge !== 'undefined') {
-            mnTaskBridge = new MNTaskBridge({
-                debug: true,
-                protocol: 'mntask://',
-                autoInit: true
-            });
-            
-            // 监听来自插件的任务数据
-            mnTaskBridge.on('tasks', (tasksData) => {
-                if (window.TaskSync) {
-                    TaskSync.receiveTasks(tasksData);
-                }
-            });
-            
-            MNUtil.log('✅ MNTaskBridge 已初始化');
         } else {
-            MNUtil.log('⚠️ MNTaskBridge 未找到，使用降级方案');
-        }
-        
-        /**
-         * MNUtil 代理对象 - 用于在 WebView 环境中模拟 MNUtil.log 功能
-         * 通过 MNTaskBridge 将日志发送到插件端
-         */
-        window.MNUtil = window.MNUtil || {
-            log: function(message, data) {
-                // 尝试通过 bridge 发送日志
-                if (mnTaskBridge && mnTaskBridge.ready) {
-                    mnTaskBridge.send('log', {
-                        level: 'log',
-                        message: message,
-                        data: data
-                    }).catch(err => {
-                        // 如果发送失败，回退到 console.log
-                        console.log('[MNUtil.log]', message, data);
-                    });
-                } else {
-                    // 如果 bridge 不可用，使用 console.log
-                    if (typeof console !== 'undefined' && console.log) {
-                        if (data !== undefined) {
-                            console.log('[MNUtil.log]', message, data);
-                        } else {
-                            console.log('[MNUtil.log]', message);
-                        }
-                    }
-                }
-            }
-        };
-        
-        /**
-         * TaskSync - 任务数据同步类
-         * 用于处理与原生端的数据交互
-         * 优先使用 MNTaskBridge，如果不可用则降级到原有方案
-         */
-        class TaskSync {
-            // 同步状态管理
-            static isSyncing = false;
-            static lastSyncTime = null;
-            /**
-             * 接收来自原生端的任务数据
-             * @param {Object} tasksData - 包含各看板任务的数据
-             */
-            static receiveTasks(tasksData) {
-                MNUtil.log('🚀 [TaskSync.receiveTasks] 开始执行');
-                MNUtil.log('📥 接收到任务数据:', tasksData);
-                MNUtil.log('📊 接收数据类型:', typeof tasksData);
-                MNUtil.log('📊 全局 tasks 数组当前长度:', tasks.length);
-                
-                // 增强的数据验证
-                if (!tasksData) {
-                    MNUtil.log('❌ 接收到 null 或 undefined 数据');
-                    showNotification('未接收到任务数据', 'error');
-                    // 重置同步状态
-                    this.isSyncing = false;
-                    return 'error: 数据为空';
-                }
-                
-                if (typeof tasksData !== 'object') {
-                    MNUtil.log('❌ 数据类型错误，期望对象，实际为:', typeof tasksData);
-                    showNotification('接收到无效的任务数据格式', 'error');
-                    // 重置同步状态
-                    this.isSyncing = false;
-                    return 'error: 数据类型错误';
-                }
-                
-                // 如果是字符串，尝试解析
-                let parsedData = tasksData;
-                if (typeof tasksData === 'string') {
-                    MNUtil.log('📋 数据是字符串，尝试解析...');
-                    try {
-                        parsedData = JSON.parse(tasksData);
-                        MNUtil.log('✅ 字符串解析成功');
-                    } catch (e) {
-                        MNUtil.log('❌ JSON 解析失败:', e.message);
-                        return 'error: JSON解析失败';
-                    }
-                }
-                
-                // 打印接收到的看板键
-                const boardKeys = Object.keys(parsedData);
-                MNUtil.log('📋 看板列表:', boardKeys);
-                
-                // 检查是否有有效的任务数据
-                let hasValidData = false;
-                let totalTasksInData = 0;
-                
-                for (const boardKey of boardKeys) {
-                    const boardTasks = parsedData[boardKey];
-                    MNUtil.log(`📋 检查 ${boardKey} 看板:`, {
-                        isArray: Array.isArray(boardTasks),
-                        length: boardTasks ? boardTasks.length : 0,
-                        type: typeof boardTasks
-                    });
-                    
-                    if (Array.isArray(boardTasks) && boardTasks.length > 0) {
-                        hasValidData = true;
-                        totalTasksInData += boardTasks.length;
-                    }
-                }
-                
-                MNUtil.log(`📊 数据统计: 总共 ${totalTasksInData} 个任务`);
-                
-                if (!hasValidData) {
-                    MNUtil.log('⚠️ 接收到的任务数据为空，保留现有数据');
-                    showNotification('未接收到任何任务数据，保留现有数据', 'warning');
-                    // 重置同步状态
-                    this.isSyncing = false;
-                    return 'warning: 无有效任务数据';
-                }
-                
-                try {
-                    // 备份现有数据
-                    const backupTasks = [...tasks];
-                    MNUtil.log(`📦 备份现有 ${backupTasks.length} 个任务`);
-                    
-                    // 清空现有数据
-                    tasks.length = 0;
-                    MNUtil.log('🗑️ 已清空 tasks 数组');
-                    
-                    let totalReceived = 0;
-                    let totalConverted = 0;
-                    let conversionErrors = [];
-                    
-                    // 处理每个看板的任务
-                    for (const [boardKey, boardTasks] of Object.entries(parsedData)) {
-                        MNUtil.log(`\n📋 开始处理 ${boardKey} 看板: ${boardTasks.length} 个任务`);
-                        
-                        if (!Array.isArray(boardTasks)) {
-                            MNUtil.log(`⚠️ ${boardKey} 看板数据不是数组:`, boardTasks);
-                            continue;
-                        }
-                        
-                        for (let i = 0; i < boardTasks.length; i++) {
-                            const taskData = boardTasks[i];
-                            totalReceived++;
-                            
-                            // 打印前3个任务的详细信息
-                            if (i < 3) {
-                                MNUtil.log(`  任务[${i}]:`, {
-                                    id: taskData.id,
-                                    title: taskData.title || taskData.titleContent,
-                                    type: taskData.type,
-                                    status: taskData.status
-                                });
-                            }
-                            
-                            // 验证任务数据的必要字段
-                            if (!taskData.id) {
-                                conversionErrors.push(`${boardKey}[${i}]: 缺少id字段`);
-                                continue;
-                            }
-                            
-                            // 转换为界面需要的格式
-                            try {
-                                const task = this.convertToUIFormat(taskData);
-                                if (task) {
-                                    tasks.push(task);
-                                    totalConverted++;
-                                } else {
-                                    conversionErrors.push(`${boardKey}[${i}]: 转换失败 (id: ${taskData.id})`);
-                                }
-                            } catch (convError) {
-                                MNUtil.log(`❌ 转换任务 ${boardKey}[${i}] 失败:`, convError);
-                                conversionErrors.push(`${boardKey}[${i}]: ${convError.message}`);
-                            }
-                        }
-                        
-                        MNUtil.log(`✅ ${boardKey} 看板处理完成: 转换 ${boardTasks.length} 个任务`);
-                    }
-                    
-                    // 输出转换结果统计
-                    MNUtil.log(`\n📊 数据转换统计:`);
-                    MNUtil.log(`  - 接收任务总数: ${totalReceived}`);
-                    MNUtil.log(`  - 成功转换: ${totalConverted}`);
-                    MNUtil.log(`  - 转换失败: ${totalReceived - totalConverted}`);
-                    MNUtil.log(`  - 当前 tasks 数组长度: ${tasks.length}`);
-                    
-                    if (conversionErrors.length > 0) {
-                        MNUtil.log('⚠️ 转换错误详情:', conversionErrors);
-                    }
-                    
-                    // 检查是否成功转换了至少一个任务
-                    if (totalConverted === 0) {
-                        MNUtil.log('❌ 没有成功转换任何任务，恢复备份数据');
-                        tasks.length = 0;
-                        tasks.push(...backupTasks);
-                        showNotification('任务转换失败，已恢复原有数据', 'error');
-                        return 'error: 转换失败';
-                    }
-                    
-                    // 验证 tasks 数组
-                    MNUtil.log('🔍 验证 tasks 数组:');
-                    MNUtil.log('  - 长度:', tasks.length);
-                    MNUtil.log('  - 第一个任务:', tasks[0]);
-                    MNUtil.log('  - window.tasks === tasks:', window.tasks === tasks);
-                    
-                    // 刷新当前视图
-                    MNUtil.log('🔄 刷新视图:', currentView);
-                    switchView(currentView);
-                    
-                    // 保存新数据到 localStorage（关键修复）
-                    MNUtil.log('💾 保存到 localStorage...');
-                    saveToLocalStorage();
-                    
-                    MNUtil.log(`✅ 成功加载 ${tasks.length} 个任务`);
-                    MNUtil.log('🔄 数据已保存到本地存储');
-                    showNotification(`成功加载 ${tasks.length} 个任务`, 'success');
-                    
-                    // 最终验证
-                    MNUtil.log('🎯 最终验证 - tasks 数组长度:', tasks.length);
-                    MNUtil.log('📋 [TaskSync.receiveTasks] 执行完成');
-                    
-                    // 重置同步状态
-                    this.isSyncing = false;
-                    this.lastSyncTime = Date.now();
-                    
-                    return 'success';
-                    
-                } catch (error) {
-                    MNUtil.log('❌ 接收任务数据失败:', error);
-                    MNUtil.log('错误堆栈:', error.stack);
-                    
-                    // 恢复备份数据
-                    if (typeof backupTasks !== 'undefined' && backupTasks.length > 0) {
-                        MNUtil.log('🔄 恢复备份数据...');
-                        tasks.length = 0;
-                        tasks.push(...backupTasks);
-                        showNotification('数据同步失败，已恢复原有数据', 'error');
-                    }
-                    
-                    // 重置同步状态
-                    this.isSyncing = false;
-                    
-                    return 'error: ' + error.message;
-                }
-            }
-            
-            /**
-             * 转换进展数据格式
-             * @param {Array} progresses - 原生进展数据
-             * @returns {Array} UI 格式的进展数据
-             */
-            static convertProgressData(progresses) {
-                MNUtil.log('🔍 [convertProgressData] 开始转换进展数据');
-                MNUtil.log('📊 原始进展数据:', progresses);
-                MNUtil.log('📊 进展数据类型:', Array.isArray(progresses) ? 'Array' : typeof progresses);
-                
-                if (!progresses || !Array.isArray(progresses)) {
-                    MNUtil.log('⚠️ 进展数据为空或非数组，返回空数组');
-                    return [];
-                }
-                
-                MNUtil.log('📊 进展数量:', progresses.length);
-                
-                const result = progresses.map((progress, index) => {
-                    MNUtil.log(`\n🔍 处理第 ${index + 1} 条进展:`);
-                    MNUtil.log('📊 原始数据:', progress);
-                    MNUtil.log('📊 数据类型:', typeof progress);
-                    
-                    // 如果已经是正确格式，直接返回
-                    if (progress.date && progress.note) {
-                        MNUtil.log('✅ 已是正确格式，直接使用');
-                        return progress;
-                    }
-                    
-                    // 尝试解析不同格式的进展数据
-                    if (typeof progress === 'string') {
-                        MNUtil.log('📝 字符串格式，尝试解析');
-                        MNUtil.log('📊 字符串内容:', progress);
-                        MNUtil.log('📊 字符串长度:', progress.length);
-                        
-                        // 假设字符串格式为 "时间: 内容" 或直接是内容
-                        const parts = progress.split(/[:：]/);
-                        MNUtil.log('📊 分割后的部分:', parts);
-                        MNUtil.log('📊 分割部分数量:', parts.length);
-                        
-                        if (parts.length >= 2) {
-                            const convertedData = {
-                                date: parts[0].trim(),
-                                note: parts.slice(1).join(':').trim()
-                            };
-                            MNUtil.log('✅ 解析为时间:内容格式:', convertedData);
-                            return convertedData;
-                        } else {
-                            const noteContent = stripHTMLTags(progress);
-                            const convertedData = {
-                                date: new Date().toLocaleString('zh-CN'),
-                                note: noteContent
-                            };
-                            MNUtil.log('📝 无时间戳，使用当前时间:', convertedData);
-                            MNUtil.log('📊 清理HTML前:', progress);
-                            MNUtil.log('📊 清理HTML后:', noteContent);
-                            return convertedData;
-                        }
-                    } else if (typeof progress === 'object') {
-                        MNUtil.log('📦 对象格式，尝试提取字段');
-                        MNUtil.log('📊 对象键:', Object.keys(progress));
-                        MNUtil.log('📊 对象内容:', JSON.stringify(progress));
-                        
-                        // 尝试从对象中提取时间和内容
-                        const dateValue = progress.time || progress.timestamp || progress.date || new Date().toLocaleString('zh-CN');
-                        const noteSource = progress.content || progress.note || progress.text || JSON.stringify(progress);
-                        const noteValue = stripHTMLTags(noteSource);
-                        
-                        const convertedData = {
-                            date: dateValue,
-                            note: noteValue
-                        };
-                        MNUtil.log('✅ 从对象提取的数据:', convertedData);
-                        MNUtil.log('📊 清理HTML前:', noteSource);
-                        MNUtil.log('📊 清理HTML后:', noteValue);
-                        return convertedData;
-                    }
-                    
-                    // 默认处理
-                    MNUtil.log('⚠️ 使用默认处理方式');
-                    const stringValue = String(progress);
-                    const noteValue = stripHTMLTags(stringValue);
-                    const convertedData = {
-                        date: new Date().toLocaleString('zh-CN'),
-                        note: noteValue
-                    };
-                    MNUtil.log('📊 转换为字符串:', stringValue);
-                    MNUtil.log('📊 清理HTML后:', noteValue);
-                    MNUtil.log('✅ 默认处理结果:', convertedData);
-                    return convertedData;
-                });
-                
-                MNUtil.log('\n✅ [convertProgressData] 转换完成');
-                MNUtil.log('📊 转换后的数据:', result);
-                return result;
-            }
-            
-            /**
-             * 将原生数据格式转换为 UI 格式
-             * @param {Object} taskData - 原生任务数据
-             * @returns {Object} UI 格式的任务对象
-             */
-            static convertToUIFormat(taskData) {
-                // 验证必要字段
-                if (!taskData || !taskData.id) {
-                    MNUtil.log('❌ 转换失败: 缺少必要字段', taskData);
-                    return null;
-                }
-                
-                const typeIconMap = {
-                    'target': '🎯',
-                    'keyresult': '📊',
-                    'project': '📁',
-                    'action': '🔨',
-                    // 中文类型映射
-                    '目标': '🎯',
-                    '关键结果': '📊',
-                    '项目': '📁',
-                    '动作': '🔨'
-                };
-                
-                const statusMap = {
-                    '未开始': 'todo',
-                    '进行中': 'doing',
-                    '已完成': 'done',
-                    '暂停': 'pause',
-                    '已归档': 'archived'
-                };
-                
-                const priorityMap = {
-                    '高': 'high',
-                    '中': 'medium',
-                    '低': 'low'
-                };
-                
-                // 调试日志：显示原始数据
-                if (tasks.length < 5) { // 只显示前5个任务的详细信息
-                    MNUtil.log(`🔍 转换任务数据:`, {
-                        id: taskData.id,
-                        type: taskData.type,
-                        titleContent: taskData.titleContent,
-                        status: taskData.status,
-                        priority: taskData.priority
-                    });
-                }
-                
-                const convertedTask = {
-                    id: taskData.id,
-                    type: taskData.type,
-                    title: taskData.title || taskData.titleContent || '无标题',  // 兼容两种字段名
-                    path: taskData.path || taskData.titlePath || '',  // 兼容两种字段名
-                    status: taskData.status,  // 保持中文状态名，不进行转换
-                    statusEn: statusMap[taskData.status] || 'todo',  // 英文状态供内部逻辑使用
-                    priority: priorityMap[taskData.priority] || taskData.priority || 'low',
-                    description: taskData.description || '',
-                    launchLink: taskData.launchLink || '',
-                    parentId: taskData.parentURL ? taskData.parentURL.split('/').pop() : null,
-                    parentTitle: taskData.parentTitle || '',
-                    icon: typeIconMap[taskData.type] || '📄',
-                    isScheduled: false,
-                    scheduledDate: null,
-                    scheduleTime: null,
-                    isCurrent: false,
-                    isCompleted: taskData.status === '已完成',
-                    completedDate: null,
-                    createdDate: new Date().toISOString().split('T')[0],
-                    updatedDate: new Date().toISOString().split('T')[0],
-                    tags: [],
-                    notes: taskData.description || '',
-                    // fields 对象存储任务的字段数据
-                    fields: {
-                        priority: taskData.priority || '低',  // 保持中文格式的优先级
-                        progressLog: this.convertProgressData(taskData.progresses)
-                    },
-                    // 保存原始数据用于同步
-                    _originalData: taskData
-                };
-                
-                // 验证转换结果
-                if (!convertedTask.title || !convertedTask.type) {
-                    MNUtil.log('⚠️ 转换后的任务缺少关键字段:', convertedTask);
-                }
-                
-                return convertedTask;
-            }
-            
-            /**
-             * 发送任务更新到原生端
-             * @param {string} taskId - 任务 ID
-             * @param {Object} updates - 更新的字段
-             */
-            static sendTaskUpdate(taskId, updates) {
-                const task = tasks.find(t => t.id === taskId);
-                if (!task || !task._originalData) {
-                    MNUtil.log('❌ 找不到任务或原始数据: ' + taskId);
-                    return;
-                }
-                
-                // 构建更新数据
-                const updateData = {
-                    id: taskId,
-                    ...updates
-                };
-                
-                // 如果更新了状态，转换回原生格式
-                if (updates.status) {
-                    const statusMap = {
-                        'todo': '未开始',
-                        'doing': '进行中',
-                        'done': '已完成',
-                        'pause': '暂停'
-                    };
-                    updateData.status = statusMap[updates.status] || updates.status;
-                }
-                
-                // 优先使用 MNTaskBridge
-                if (mnTaskBridge && mnTaskBridge.ready) {
-                    mnTaskBridge.send('updateTask', updateData)
-                        .then(response => {
-                            MNUtil.log('✅ 通过 MNTaskBridge 发送成功:', response);
-                        })
-                        .catch(error => {
-                            MNUtil.log('❌ MNTaskBridge 发送失败:', error);
-                            // 降级到原有方案
-                            this._sendViaURLScheme('updateTask', updateData);
-                        });
-                } else {
-                    // 使用原有的 URL Scheme 方案
-                    this._sendViaURLScheme('updateTask', updateData);
-                }
-                
-                MNUtil.log('📤 发送任务更新:', updateData);
-            }
-            
-            /**
-             * 批量发送任务更新
-             * @param {Array} tasksUpdates - 多个任务的更新数据
-             */
-            static sendBatchUpdate(tasksUpdates) {
-                // 优先使用 MNTaskBridge
-                if (mnTaskBridge && mnTaskBridge.ready) {
-                    mnTaskBridge.send('batchUpdate', tasksUpdates)
-                        .then(response => {
-                            MNUtil.log('✅ 通过 MNTaskBridge 批量发送成功:', response);
-                        })
-                        .catch(error => {
-                            MNUtil.log('❌ MNTaskBridge 批量发送失败:', error);
-                            // 降级到原有方案
-                            this._sendViaURLScheme('batchUpdate', tasksUpdates);
-                        });
-                } else {
-                    // 使用原有的 URL Scheme 方案
-                    this._sendViaURLScheme('batchUpdate', tasksUpdates);
-                }
-                
-                MNUtil.log('📤 批量发送任务更新:', tasksUpdates);
-            }
-            
-            /**
-             * 请求同步最新数据
-             */
-            static requestSync() {
-                // 检查是否正在同步
-                if (this.isSyncing) {
-                    MNUtil.log('⏳ 正在同步中，跳过重复请求');
-                    return;
-                }
-                
-                // 检查是否刚刚同步过（5秒内）
-                if (this.lastSyncTime && Date.now() - this.lastSyncTime < 5000) {
-                    MNUtil.log('⏰ 刚刚同步过，跳过频繁请求');
-                    return;
-                }
-                
-                // 设置同步状态
-                this.isSyncing = true;
-                MNUtil.log('🔄 开始请求同步数据...');
-                
-                // 优先使用 MNTaskBridge
-                if (mnTaskBridge && mnTaskBridge.ready) {
-                    mnTaskBridge.send('syncTasks', {})
-                        .then(response => {
-                            MNUtil.log('✅ 通过 MNTaskBridge 请求同步成功:', response);
-                            this.lastSyncTime = Date.now();
-                        })
-                        .catch(error => {
-                            MNUtil.log('❌ MNTaskBridge 请求同步失败:', error);
-                            // 降级到原有方案
-                            window.location.href = 'mntask://syncTasks';
-                            this.lastSyncTime = Date.now();
-                        })
-                        .finally(() => {
-                            this.isSyncing = false;
-                        });
-                } else {
-                    // 使用原有的 URL Scheme 方案
-                    window.location.href = 'mntask://syncTasks';
-                    this.lastSyncTime = Date.now();
-                    // URL Scheme 无法知道何时完成，延迟重置状态
-                    setTimeout(() => {
-                        this.isSyncing = false;
-                    }, 2000);
-                }
-                
-                MNUtil.log('🔄 请求同步任务数据');
-            }
-            
-            /**
-             * 通过 URL Scheme 发送数据（降级方案）
-             * @private
-             */
-            static _sendViaURLScheme(action, data) {
-                let url = `mntask://${action}`;
-                if (data && Object.keys(data).length > 0) {
-                    url += `?data=${encodeURIComponent(JSON.stringify(data))}`;
-                }
-                window.location.href = url;
+            for (let i = 0; i < node.childNodes.length; i++) {
+                traverseNodes(node.childNodes[i]);
+                if (found) return;
             }
         }
-        
-        // 将 TaskSync 暴露到全局
-        window.TaskSync = TaskSync;
-    </script>
-    
-    <!-- 全局快速进展弹窗 -->
-    <div id="globalQuickProgress" class="global-quick-progress">
-        <div class="global-quick-progress-header">
-            <div class="global-quick-progress-title">
-                <span class="task-icon"></span>
-                <span class="task-name"></span>
-            </div>
-            <span class="global-quick-progress-close" onclick="closeGlobalQuickProgress()">×</span>
-        </div>
-        <textarea class="progress-input" 
-                  placeholder="记录当前进展..."
-                  id="globalProgressText"
-                  oninput="updateGlobalCharacterCount()"
-                  maxlength="500"></textarea>
-        <div class="progress-meta">
-            <div class="progress-char-count">
-                <span id="globalCharCount" class="char-count">0</span>/500
-            </div>
-            <div class="progress-tip">
-                💡 Ctrl+Enter 保存，Esc 取消
-            </div>
-        </div>
-        <div class="progress-actions">
-            <button class="btn btn-primary btn-sm" onclick="saveGlobalQuickProgress()">
-                💾 保存
-            </button>
-            <button class="btn btn-secondary btn-sm" onclick="closeGlobalQuickProgress()">
-                取消
-            </button>
-        </div>
-    </div>
+    }
+
+    traverseNodes(element);
+    selection.removeAllRanges();
+    selection.addRange(range);
+}
+    function updateContentWithoutBlur() {
+        if (isComposing) return;
+        const editor = document.getElementById('editor');
+        const caretPosition = getCaretPosition(editor);
+        const json = editor.innerText;
+        editor.innerHTML = syntaxHighlight(json);
+        setCaretPosition(editor, caretPosition);
+    }
+    function updateContent() {
+        const editor = document.getElementById('editor');
+        const json = editor.innerText;
+        try {
+            const parsedJson = JSON.parse(json);
+            editor.innerHTML = syntaxHighlight(JSON.stringify(parsedJson, null, 4));
+        } catch (e) {
+            console.error("Invalid JSON:", e.message);
+        }
+        document.getElementById('editor').blur();
+    }
+
+    function syntaxHighlight(json) {
+        json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return json.replace(/("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(?:\\s*:)?|\\b-?\\d+(?:\\.\\d*)?(?:[eE][+\\-]?\\d+)?\\b|\\btrue\\b|\\bfalse\\b|\\bnull\\b)/g, function (match) {
+            let cls = 'number';
+            if (/^"/.test(match)) {
+                if (/:$/.test(match)) {
+                    cls = 'key';
+                    match = match.slice(0, -1) + '</span>:';
+                } else {
+                    cls = 'string';
+                }
+            } else if (/true|false/.test(match)) {
+                cls = 'boolean';
+            } else if (/null/.test(match)) {
+                cls = 'null';
+            }
+            return '<span class="' + cls + '">' + match + '</span>';
+        });
+    }
+
+  document.getElementById('editor').addEventListener('input', updateContentWithoutBlur);
+  document.getElementById('editor').addEventListener('compositionstart', () => {
+      isComposing = true;
+  });
+
+  document.getElementById('editor').addEventListener('compositionend', () => {
+      isComposing = false;
+      updateContentWithoutBlur();
+  });
+  updateContent();
+</script>
+
 </body>
 </html>
+
+`
+  }
+  static JShtml(content){
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JSON Editor with Highlighting</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/styles/github.min.css" rel="stylesheet">
+    <style>
+        body{
+          margin: 0;
+          background-color: lightgray;
+          font-size:1.1em;
+        }
+        pre{
+          margin: 0;
+          padding: 0;
+        }
+        code{
+            background-color: lightgray !important;
+            height: calc(100vh - 30px);
+            white-space: pre-wrap; /* 保留空格和换行符，并自动换行 */
+            word-wrap: break-word; /* 针对长单词进行换行 */
+        }
+        .editor {
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            font-family: monospace;
+            white-space: pre-wrap;
+            overflow: auto;
+            outline: none; /* Removes the default focus outline */
+        }
+        .key {
+            color: red;
+        }
+        .string {
+            color: green;
+        }
+        .number {
+            color: blue;
+        }
+    .hljs-literal {
+        color: rgb(204, 0, 204);
+    }
+        .null {
+            color: gray;
+        }
+    .hljs-property {
+        color: #1870dc; /* 自定义内置类颜色 */
+    }
+    .hljs-function {
+        color: #8f21d8; /* 自定义内置类颜色 */
+    }
+    .hljs-string {
+        color: #429904; /* 自定义内置类颜色 */
+    }
+    .hljs-built_in {
+        font-weight: bold;
+        color: #dd6b00; /* 自定义内置类颜色 */
+    }
+    </style>
+</head>
+<body>
+<pre><code class="javascript" id="code-block" contenteditable>${content}</code></pre>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/languages/javascript.min.js"></script>
+<script>
+hljs.registerLanguage('javascript', function(hljs) {
+  var KEYWORDS = 'in if for while finally var new function do return void else break catch ' +
+                 'instanceof with throw case default try this switch continue typeof delete ' +
+                 'let yield const export super debugger as await static import from as async await';
+  var LITERALS = 'true false null undefined NaN Infinity';
+  var TYPES = 'Object Function Boolean Symbol MNUtil MNNote taskUtils taskConfig';
+
+  return {
+    keywords: {
+      keyword: KEYWORDS,
+      literal: LITERALS,
+      built_in: TYPES
+    },
+    contains: [
+      hljs.APOS_STRING_MODE,
+      hljs.QUOTE_STRING_MODE,
+      hljs.C_LINE_COMMENT_MODE,
+      hljs.C_BLOCK_COMMENT_MODE,
+      hljs.C_NUMBER_MODE,
+      {
+        className: 'property',
+        begin: '(?<=\\\\.)\\\\w+\\\\b(?!\\\\()'
+      },
+      {
+        className: 'function',
+        begin: '(?<=\\\\.)\\\\w+(?=\\\\()'
+      }
+    ]
+  };
+});
+let isComposing = false;
+function getCaretPosition(element) {
+    const selection = window.getSelection();
+    let caretOffset = 0;
+    if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const preCaretRange = range.cloneRange();
+        preCaretRange.selectNodeContents(element);
+        preCaretRange.setEnd(range.endContainer, range.endOffset);
+        caretOffset = preCaretRange.toString().length;
+    }
+    return caretOffset;
+}
+
+function setCaretPosition(element, offset) {
+    const range = document.createRange();
+    const selection = window.getSelection();
+    let currentOffset = 0;
+    let found = false;
+
+    function traverseNodes(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            const nodeLength = node.textContent.length;
+            if (currentOffset + nodeLength >= offset) {
+                range.setStart(node, offset - currentOffset);
+                range.collapse(true);
+                found = true;
+                return;
+            } else {
+                currentOffset += nodeLength;
+            }
+        } else {
+            for (let i = 0; i < node.childNodes.length; i++) {
+                traverseNodes(node.childNodes[i]);
+                if (found) return;
+            }
+        }
+    }
+
+    traverseNodes(element);
+    selection.removeAllRanges();
+    selection.addRange(range);
+}
+    function updateContent() {
+        const editor = document.getElementById('code-block');
+        hljs.highlightElement(editor);
+        editor.blur();
+    }
+    function updateContentWithoutBlur() {
+      if (isComposing) return;
+      const editor = document.getElementById('code-block');
+      const caretPosition = getCaretPosition(editor);
+      hljs.highlightElement(editor);
+      setCaretPosition(editor, caretPosition);
+    }
+document.getElementById('code-block').addEventListener('input', updateContentWithoutBlur);
+document.getElementById('code-block').addEventListener('compositionstart', () => {
+    isComposing = true;
+});
+
+document.getElementById('code-block').addEventListener('compositionend', () => {
+    isComposing = false;
+    updateContentWithoutBlur();
+});
+    updateContent();
+</script>
+
+</body>
+</html>
+`
+  }
+  static jsonEditor(){
+    return `
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <!-- when using the mode "code", it's important to specify charset utf-8 -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"/>
+    <title>Vditor</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link href="jsoneditor.css" rel="stylesheet" type="text/css">
+    <script src="jsoneditor.js"></script>
+</head>
+<style>
+body {
+    margin: 0;
+    padding: 0;
+    font-size: large;
+    height: 100vh !important;
+    min-height: 100vh !important;
+}
+</style>
+<body>
+    <div id="jsoneditor"></div>
+
+    <script>
+        // create the editor
+        const container = document.getElementById("jsoneditor")
+        const options = {}
+        const editor = new JSONEditor(container, options)
+
+        // set json
+        const initialJson = {}
+        editor.set(initialJson)
+
+        // get json
+        const updatedJson = editor.get()
+        function updateContent(data) {
+          let tem = decodeURIComponent(data)
+          // MNUtil.copy(tem)
+          editor.set(JSON.parse(tem))
+        }
+        function getContent() {
+          let tem = JSON.stringify(editor.get(),null,2)
+          return encodeURIComponent(tem)
+        }
+    </script>
+</body>
+</html>`
+  }
+  static html(content){
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JSON Editor with Highlighting</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/styles/github.min.css" rel="stylesheet">
+    <style>
+        body{
+          margin: 0;
+          background-color: lightgray;
+          font-size:1.1em;
+        }
+        pre{
+          margin: 0;
+          padding: 0;
+        }
+        code{
+            padding: 0 !important;
+            background-color: lightgray !important;
+            height: 100vh;
+            white-space: pre-wrap; /* 保留空格和换行符，并自动换行 */
+            word-wrap: break-word; /* 针对长单词进行换行 */
+        }
+        .editor {
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            font-family: monospace;
+            white-space: pre-wrap;
+            overflow: auto;
+            outline: none; /* Removes the default focus outline */
+        }
+        .key {
+            color: red;
+        }
+        .string {
+            color: green;
+        }
+        .hljs-number {
+            color: rgb(253, 99, 4);
+        }
+    .hljs-literal {
+        color: rgb(204, 0, 204);
+    }
+        .null {
+            color: gray;
+        }
+    .hljs-attr {
+            color: rgb(181, 0, 0);
+            font-weight: bold;
+    }
+    .hljs-function {
+        color: #8f21d8; /* 自定义内置类颜色 */
+    }
+    .hljs-string {
+        color: #429904; /* 自定义内置类颜色 */
+    }
+    .hljs-built_in {
+        font-weight: bold;
+        color: #dd6b00; /* 自定义内置类颜色 */
+    }
+    </style>
+</head>
+<body>
+<pre><code class="json" id="code-block" contenteditable>${content}</code></pre>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/languages/javascript.min.js"></script>
+<script>
+
+let isComposing = false;
+function getCaretPosition(element) {
+    const selection = window.getSelection();
+    let caretOffset = 0;
+    if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const preCaretRange = range.cloneRange();
+        preCaretRange.selectNodeContents(element);
+        preCaretRange.setEnd(range.endContainer, range.endOffset);
+        caretOffset = preCaretRange.toString().length;
+    }
+    return caretOffset;
+}
+
+function setCaretPosition(element, offset) {
+    const range = document.createRange();
+    const selection = window.getSelection();
+    let currentOffset = 0;
+    let found = false;
+
+    function traverseNodes(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            const nodeLength = node.textContent.length;
+            if (currentOffset + nodeLength >= offset) {
+                range.setStart(node, offset - currentOffset);
+                range.collapse(true);
+                found = true;
+                return;
+            } else {
+                currentOffset += nodeLength;
+            }
+        } else {
+            for (let i = 0; i < node.childNodes.length; i++) {
+                traverseNodes(node.childNodes[i]);
+                if (found) return;
+            }
+        }
+    }
+
+    traverseNodes(element);
+    selection.removeAllRanges();
+    selection.addRange(range);
+}
+    function updateContent() {
+        const editor = document.getElementById('code-block');
+        const json = editor.innerText;
+
+        try {
+            const parsedJson = JSON.parse(json);
+            editor.innerHTML = JSON.stringify(parsedJson, null, 4);
+            hljs.highlightElement(editor);
+        } catch (e) {
+            console.error("Invalid JSON:", e.message);
+        }
+        editor.blur();
+    }
+    function updateContentWithoutBlur() {
+      if (isComposing) return;
+      const editor = document.getElementById('code-block');
+      const caretPosition = getCaretPosition(editor);
+      const json = editor.innerText.replace('”,','\",').replace('“,','\",');
+      editor.innerHTML = json
+      hljs.highlightElement(editor);
+      setCaretPosition(editor, caretPosition);
+    }
+document.getElementById('code-block').addEventListener('input', updateContentWithoutBlur);
+document.getElementById('code-block').addEventListener('compositionstart', () => {
+    isComposing = true;
+});
+
+document.getElementById('code-block').addEventListener('compositionend', () => {
+    isComposing = false;
+    updateContentWithoutBlur();
+});
+    updateContent();
+</script>
+
+</body>
+</html>
+`
+  }
+  /**
+   * count为true代表本次check会消耗一次免费额度（如果当天未订阅），如果为false则表示只要当天免费额度没用完，check就会返回true
+   * 开启ignoreFree则代表本次check只会看是否订阅，不管是否还有免费额度
+   * @returns {Boolean}
+   */
+  static checkSubscribe(count = true, msg = true,ignoreFree = false){
+    // return true
+
+    if (typeof subscriptionConfig !== 'undefined') {
+      let res = subscriptionConfig.checkSubscribed(count,ignoreFree,msg)
+      return res
+    }else{
+      if (msg) {
+        this.showHUD("Please install 'MN Utils' first!")
+      }
+      return false
+    }
+  }
+  static isSubscribed(msg = true){
+    if (typeof subscriptionConfig !== 'undefined') {
+      return subscriptionConfig.isSubscribed()
+    }else{
+      if (msg) {
+        this.showHUD("Please install 'MN Utils' first!")
+      }
+      return false
+    }
+  }
+  /**
+   * 
+   * @param {string} fullPath 
+   * @returns {string}
+   */
+  static getExtensionFolder(fullPath) {
+      // 找到最后一个'/'的位置
+      let lastSlashIndex = fullPath.lastIndexOf('/');
+      // 从最后一个'/'之后截取字符串，得到文件名
+      let fileName = fullPath.substring(0,lastSlashIndex);
+      return fileName;
+  }
+  static checkMNUtilsFolder(fullPath){
+    let extensionFolder = this.getExtensionFolder(fullPath)
+    let folderExists = NSFileManager.defaultManager().fileExistsAtPath(extensionFolder+"/marginnote.extension.mnutils/main.js")
+    if (!folderExists) {
+      this.showHUD("MN Task: Please install 'MN Utils' first!")
+    }
+    return folderExists
+  }
+  /**
+   * 
+   * @param {MNNote} note 
+   * @param {*} des 
+   */
+  static async focus(des){
+    let targetNote = des.noteURL? MNNote.new(des.noteURL):MNNote.getFocusNote()
+    if (!targetNote) {
+      MNUtil.showHUD("No targetNote!")
+      return
+    }
+    if (des.source) {
+      switch (des.source) {
+        case "parentNote":
+          targetNote = targetNote.parentNote
+          if (!targetNote) {
+            MNUtil.showHUD("No parentNote!")
+            return
+          }
+          break;
+        default:
+          break;
+      }
+    }
+    if (!des.target) {
+      MNUtil.showHUD("Missing param: target")
+      return
+    }
+    targetNote = targetNote.realGroupNoteForTopicId()
+    switch (des.target) {
+        case "doc":
+          await targetNote.focusInDocument()
+          break;
+        case "mindmap":
+          if (targetNote.notebookId !== MNUtil.currentNotebookId) {
+            if (des.forceToFocus) {
+              MNUtil.openURL(targetNote.noteURL)
+            }else{
+              await targetNote.focusInFloatMindMap()
+            }
+          }else{
+            await targetNote.focusInMindMap()
+          }
+          break;
+        case "both":
+          await targetNote.focusInDocument()
+          if (targetNote.notebookId !== MNUtil.currentNotebookId) {
+            await targetNote.focusInFloatMindMap()
+          }else{
+            await targetNote.focusInMindMap()
+          }
+          // await targetNote.focusInMindMap()
+          break;
+        case "floatMindmap":
+          await targetNote.focusInFloatMindMap()
+          break;
+        default:
+          MNUtil.showHUD("No valid value for target!")
+          break;
+      }
+    }
+  /**
+   * 
+   * @param {*} des 
+   * @returns {Promise<MNNote|undefined>}
+   */
+  static async noteHighlight(des){
+    let selection = MNUtil.currentSelection
+    if (!selection.onSelection) {
+      MNUtil.showHUD("No selection")
+      return undefined
+    }
+    let OCRText = undefined
+    if ("OCR" in des && des.OCR) {
+      OCRText = await this.getTextOCR(selection.image)
+    }
+    let currentNote = MNNote.getFocusNote()
+    let focusNote = MNNote.new(selection.docController.highlightFromSelection())
+    focusNote = focusNote.realGroupNoteForTopicId()
+    return new Promise((resolve, reject) => {
+      MNUtil.undoGrouping(()=>{
+        try {
+        if ("color" in des && des.color >= 0) {
+          let color = des.color
+          focusNote.colorIndex = color
+        }
+
+        if ("fillPattern" in des && des.fillPattern >= 0) {
+          let fillPattern = des.fillPattern
+          focusNote.fillIndex = fillPattern
+        }
+        if (OCRText) {
+          focusNote.excerptText = OCRText
+          focusNote.excerptTextMarkdown = true
+          focusNote.textFirst = true
+        }else if ("textFirst" in des && des.textFirst) {
+          focusNote.textFirst = des.textFirst
+        }
+        if ("asTitle" in des && des.asTitle) {
+          focusNote.noteTitle = focusNote.excerptText
+          focusNote.excerptText = ""
+          focusNote.excerptTextMarkdown = false
+        }else if ("title" in des) {
+          focusNote.noteTitle = des.title
+        }
+        if ("tags" in des) {
+          let tags = des.tags
+          focusNote.appendTags(tags)
+        }else if("tag" in des){
+          let tag = des.tag
+          MNUtil.showHUD("add tag: "+tag)
+          focusNote.appendTags([tag])
+        }
+        if (des.mergeToPreviousNote && currentNote) {
+            currentNote.merge(focusNote)
+            focusNote.colorIndex = currentNote.colorIndex
+            focusNote.fillIndex = currentNote.fillIndex
+            if (currentNote.excerptText && (!currentNote.excerptPic || currentNote.textFirst) && focusNote.excerptText && (!focusNote.excerptPic || focusNote.textFirst)) {
+              let mergedText = currentNote.excerptText+" "+focusNote.excerptText
+              currentNote.excerptText = MNUtil.mergeWhitespace(mergedText)
+              focusNote.excerptText = ""
+            }
+            resolve(currentNote)
+        }else{
+          if ("mainMindMap" in des && des.mainMindMap) {
+            if (focusNote.parentNote) {
+              focusNote.removeFromParent()
+            }else{
+              MNUtil.showHUD("Already in main mindmap")
+            }
+          }else if ("parentNote" in des) {
+            let parentNote = MNNote.new(des.parentNote)
+            if (parentNote) {
+              parentNote = parentNote.realGroupNoteForTopicId()
+            }
+            if (parentNote.notebookId === focusNote.notebookId) {
+              MNUtil.showHUD("move to "+parentNote.noteId)
+              parentNote.addChild(focusNote)
+            }else{
+              MNUtil.showHUD("Not in same notebook")
+            }
+          }
+        }
+        resolve(focusNote)
+        } catch (error) {
+          taskUtils.addErrorLog(error, "noteHighlight")
+          resolve(undefined)
+        }
+      })
+    })
+  }
+  static insertSnippet(des){
+    let target = des.target ?? "textview"
+    let success = true
+    switch (target) {
+      case "textview":
+        let textView = taskUtils.textView
+        if (!textView || textView.hidden) {
+          MNUtil.showHUD("No textView")
+          success = false
+          break;
+        }
+        let textContent = taskUtils.detectAndReplace(des.content)
+        success = taskUtils.insertSnippetToTextView(textContent,textView)
+        break;
+      case "editor":
+        let contents = [
+          {
+            type:"text",
+            content:taskUtils.detectAndReplace(des.content)
+          }
+        ]
+        MNUtil.postNotification("editorInsert", {contents:contents})
+        break;
+      default:
+        break;
+    }
+    return success
+  }
+  static async moveNote(des){
+    let focusNotes = MNNote.getFocusNotes()
+    MNUtil.undoGrouping(()=>{
+      if (des.mainMindMap) {
+        focusNotes.map((note)=>{
+          let realNote = note.realGroupNoteForTopicId()
+          if (realNote.parentNote) {
+            realNote.removeFromParent()
+          }
+        })
+      }else if(des.noteURL){
+        let parentNote = MNNote.new(des.noteURL)
+        if (parentNote) {
+          focusNotes.map((note)=>{
+            if (parentNote.notebookId === note.notebookId) {
+              parentNote.addChild(note)
+            }
+          })
+        }
+      }
+    })
+  }
+  /**
+   *
+   * @param {UIView} view
+   */
+  static isDescendantOfCurrentWindow(view){
+    return view.isDescendantOfView(MNUtil.currentWindow)
+  }
+  static toggleSidebar(des){
+    if ("target" in des) {
+      switch (des.target) {
+        case "chatMode":
+          if (typeof chatAIUtils === "undefined") {
+            MNUtil.showHUD("Install MN ChatAI First")
+            return
+          }
+          if (chatAIUtils.isMN3()) {
+            MNUtil.showHUD("Only available in MN4")
+            return
+          }
+          if (!chatAIUtils.sideOutputController) {
+            try {
+              chatAIUtils.sideOutputController = sideOutputController.new();
+              MNUtil.toggleExtensionPanel()
+              MNExtensionPanel.show()
+              MNExtensionPanel.addSubview("chatAISideOutputView", chatAIUtils.sideOutputController.view)
+              let panelView = MNExtensionPanel.view
+              chatAIUtils.sideOutputController.view.hidden = false
+              chatAIUtils.sideOutputController.view.frame = {x:0,y:0,width:panelView.frame.width,height:panelView.frame.height}
+              chatAIUtils.sideOutputController.currentFrame = {x:0,y:0,width:panelView.frame.width,height:panelView.frame.height}
+              // MNUtil.toggleExtensionPanel()
+            } catch (error) {
+              taskUtils.addErrorLog(error, "openSideBar")
+            }
+            chatAIUtils.sideOutputController.openChatView(false)
+          }else{
+            if (chatAIUtils.sideOutputController.view.hidden) {
+              MNExtensionPanel.show("chatAISideOutputView")
+              chatAIUtils.sideOutputController.openChatView(false)
+            }else{
+              MNUtil.toggleExtensionPanel()
+            }
+          }
+          break;
+        default:
+          break;
+      }
+    }else{
+      MNUtil.toggleExtensionPanel()
+    }
+  }
+  static async setColor(des){
+  try {
+    let fillIndex = -1
+    let colorIndex = des.color
+    if ("fillPattern" in des) {
+      fillIndex = des.fillPattern
+    }
+    if ("followAutoStyle" in des && des.followAutoStyle && (typeof autoUtils !== 'undefined')) {
+      let focusNotes
+      let selection = MNUtil.currentSelection
+      if (selection.onSelection) {
+        focusNotes = [MNNote.new(selection.docController.highlightFromSelection())]
+      }else{
+        focusNotes = MNNote.getFocusNotes()
+      }
+      if (!des.hideMessage) {
+        MNUtil.showHUD("followAutoStyle")
+      }
+      MNUtil.undoGrouping(()=>{
+        try {
+          
+
+        focusNotes.map(note=>{
+          let fillIndex
+          if (note.excerptPic) {
+            fillIndex = autoUtils.getConfig("image")[colorIndex]
+          }else{
+            fillIndex = autoUtils.getConfig("text")[colorIndex]
+          }
+          this.setNoteColor(note,colorIndex,fillIndex)
+
+        })
+        } catch (error) {
+          taskUtils.addErrorLog(error, "setColor")
+        }
+      })
+      return
+    }
+
+    // MNUtil.copy(description+fillIndex)
+    let focusNotes
+    let selection = MNUtil.currentSelection
+    if (selection.onSelection) {
+      focusNotes = [MNNote.new(selection.docController.highlightFromSelection())]
+    }else{
+      focusNotes = MNNote.getFocusNotes()
+    }
+    // await MNUtil.delay(1)
+    MNUtil.undoGrouping(()=>{
+      focusNotes.map(note=>{
+        this.setNoteColor(note,colorIndex,fillIndex)
+          // let tem = {
+          //   noteId:note.colorIndex}
+          // // MNUtil.copy(note.realGroupNoteIdForTopicId())
+          // // MNUtil.showHUD("123")
+          // if (note.originNoteId) {
+          //   // MNUtil.showHUD("message")
+          //   let originNote = MNNote.new(note.originNoteId)
+          //   tem.originNoteId = originNote.colorIndex
+          //   this.setNoteColor(originNote,colorIndex,fillIndex)
+          // }
+          // tem.realGroupNoteId = note.realGroupNoteIdForTopicId()
+          // MNUtil.copy(tem)
+          // if (note.realGroupNoteIdForTopicId() && note.realGroupNoteIdForTopicId() !== note.noteId) {
+          //   // MNUtil.showHUD("realGroupNoteIdForTopicId")
+          //   let realGroupNote = note.realGroupNoteForTopicId()
+          //   this.setNoteColor(realGroupNote,colorIndex,fillIndex)
+
+          // }
+      })
+    })
+  } catch (error) {
+    taskUtils.addErrorLog(error, "setColor")
+  }
+  }
+  static switchTitleOrExcerpt() {
+    let focusNotes = MNNote.getFocusNotes()
+    let success = true
+    MNUtil.undoGrouping(()=>{
+    try {
+      for (const note of focusNotes) {
+        let title = note.noteTitle ?? ""
+        let text = note.excerptText ?? ""
+        if (!title && !text) {
+          let comments = note.comments
+          if (comments.length > 0) {
+            let firstComment = comments[0]
+            switch (firstComment.type) {
+              case "TextNote":
+                note.noteTitle = firstComment.text
+                note.removeCommentByIndex(0)
+                break;
+              case "LinkNote":
+                note.noteTitle = firstComment.q_htext
+                note.removeCommentByIndex(0)
+                break;
+              case "HtmlNote":
+                note.noteTitle = firstComment.text
+                note.removeCommentByIndex(0)
+                break;
+              default:
+                MNUtil.showHUD("Unsupported comment type: "+firstComment.type)
+                success = false
+                break;
+            }
+          }
+          return
+        }
+        // 只允许存在一个
+          if ((title && text) && (title !== text)) {
+            note.noteTitle = ""
+            note.excerptText = title
+            note.appendMarkdownComment(text)
+          }else if (title || text) {
+            // 去除划重点留下的 ****
+            note.noteTitle = text.replace(/\*\*(.*?)\*\*/g, "$1")
+            note.excerptText = title
+          }else if (title == text) {
+            // 如果摘录与标题相同，MN 只显示标题，此时我们必然想切换到摘录
+            note.noteTitle = ""
+          }
+      }
+    } catch (error) {
+      this.addErrorLog(error, "switchTitleOrExcerpt")
+      success = false
+    }
+    })
+    return success
+  }
+  /**
+   * 
+   * @param {MNNote} note 
+   * @param {number} colorIndex 
+   * @param {number} fillIndex 
+   */
+  static setNoteColor(note,colorIndex,fillIndex){
+    if (note.note.groupNoteId) {//有合并卡片
+      let originNote = MNNote.new(note.note.groupNoteId)
+      originNote.notes.forEach(n=>{
+        n.colorIndex = colorIndex
+        if (fillIndex !== -1) {
+          n.fillIndex = fillIndex
+        }
+      })
+    }else{
+      note.notes.forEach(n=>{
+        n.colorIndex = colorIndex
+        if (fillIndex !== -1) {
+          n.fillIndex = fillIndex
+        }
+      })
+      // if (note.originNoteId) {
+      //   let originNote = MNNote.new(note.originNoteId)
+      //   originNote.notes.forEach(n=>{
+      //     n.colorIndex = colorIndex
+      //     if (fillIndex !== -1) {
+      //       n.fillIndex = fillIndex
+      //     }
+      //   })
+      //   // this.setNoteColor(originNote,colorIndex,fillIndex)
+      // }
+    }
+  }
+  /**
+   * 
+   * @param {UITextView} textView 
+   */
+  static getMindmapview(textView){
+    let mindmapView
+    if (textView.isDescendantOfView(MNUtil.mindmapView)) {
+      mindmapView = MNUtil.mindmapView
+      return mindmapView
+    }else{
+      try {
+        let targetMindview = textView.superview.superview.superview.superview.superview
+        let targetStudyview = targetMindview.superview.superview.superview
+        if (targetStudyview === MNUtil.studyView) {
+          mindmapView = targetMindview
+          MNUtil.floatMindMapView = mindmapView
+          return mindmapView
+        }
+        return undefined
+      } catch (error) {
+        return undefined
+      }
+    }
+  }
+  static checkExtendView(textView) {
+    try {
+      if (textView.superview.superview.superview.superview.superview.superview.superview.superview === MNUtil.readerController.view) {
+        // MNUtil.showHUD("嵌入")
+        return true
+      }
+      if (textView.superview.superview.superview.superview.superview.superview.superview.superview.superview === MNUtil.readerController.view) {
+        // MNUtil.showHUD("折叠")
+        return true
+      }
+      if (textView.superview.superview.superview.superview.superview.superview.superview.superview.superview.superview.superview.superview.superview === MNUtil.readerController.view) {
+        // MNUtil.showHUD("页边")
+        return true
+      }
+    } catch (error) {
+      return false
+    }
+  }
+  static isHexColor(str) {
+    // 正则表达式匹配 3 位或 6 位的十六进制颜色代码
+    const hexColorPattern = /^#([A-Fa-f0-9]{6})$/;
+    return hexColorPattern.test(str);
+  }
+  static parseWinRect(winRect){
+    let rectArr = winRect.replace(/{/g, '').replace(/}/g, '').replace(/\s/g, '').split(',')
+    let X = Number(rectArr[0])
+    let Y = Number(rectArr[1])
+    let H = Number(rectArr[3])
+    let W = Number(rectArr[2])
+    let studyFrame = MNUtil.studyView.frame
+    let studyFrameX = studyFrame.x
+    let frame = taskFrame.gen(X-studyFrameX, Y, W, H)
+    return frame
+  }
+  static getButtonColor(){
+    if (!this.isSubscribed(false)) {
+      return MNUtil.hexColorAlpha("#ffffff", 0.85)
+    }
+    // let color = MNUtil.app.defaultBookPageColor.hexStringValue
+    // MNUtil.copy(color)
+    let varColors = ["defaultBookPageColor","defaultHighlightBlendColor","defaultDisableColor","defaultTextColor","defaultNotebookColor","defaultTintColor","defaultTintColorForSelected","defaultTintColorForDarkBackground"]
+    if (varColors.includes(taskConfig.buttonConfig.color)) {
+      return MNUtil.app[taskConfig.buttonConfig.color].colorWithAlphaComponent(taskConfig.buttonConfig.alpha)
+    }
+    // if () {
+      
+    // }
+    return MNUtil.hexColorAlpha(taskConfig.buttonConfig.color, taskConfig.buttonConfig.alpha)
+  }
+  static getOnlineImage(url,scale=3){
+    MNUtil.showHUD("Downloading image")
+    let imageData = NSData.dataWithContentsOfURL(MNUtil.genNSURL(url))
+    if (imageData) {
+      MNUtil.showHUD("Download success")
+      return UIImage.imageWithDataScale(imageData,scale)
+    }
+    MNUtil.showHUD("Download failed")
+    return undefined
+  }
+  static shortcut(name,des){
+    let url = "shortcuts://run-shortcut?name="+encodeURIComponent(name)
+    if (des && des.input) {
+      url = url+"&input="+encodeURIComponent(des.input)
+    }
+    if (des && des.text) {
+      let text = this.detectAndReplace(des.text)
+      url = url+"&text="+encodeURIComponent(text)
+    }
+    MNUtil.openURL(url)
+  }
+  /**
+   * 
+   * @param {string} content 
+   */
+  static exportMD(content,target = "auto"){
+    switch (target) {
+      case "file":
+        MNUtil.writeText(taskConfig.mainPath+"/export.md",content)
+        MNUtil.saveFile(taskConfig.mainPath+"/export.md", ["public.md"])
+        break;
+      case "auto":
+      case "clipboard":
+        MNUtil.copy(content)
+        break;
+      default:
+        break;
+    }
+  }
+  static async export(des){
+    try {
+
+    let focusNote = MNNote.getFocusNote()
+    let exportTarget = des.target ?? "auto"
+    let exportSource = des.source ?? "noteDoc"
+    switch (exportSource) {
+      case "noteDoc":
+        if (focusNote) {
+          let noteDocPath = MNUtil.getDocById(focusNote.note.docMd5).fullPathFileName
+          MNUtil.saveFile(noteDocPath, ["public.pdf"])
+        }else{
+          let docPath = MNUtil.currentDocController.document.fullPathFileName
+          MNUtil.saveFile(docPath, ["public.pdf"])
+        }
+        break;
+      case "noteMarkdown":
+        let md = await this.getMDFromNote(focusNote)
+        this.exportMD(md,exportTarget)
+        break;
+      case "noteMarkdownOCR":
+        if (focusNote) {
+          let md = this.mergeWhitespace(await this.getMDFromNote(focusNote,0,true))
+          this.exportMD(md,exportTarget)
+        }
+        break;
+      case "noteWithDecendentsMarkdown":
+        if (focusNote) {
+          let md = await this.getMDFromNote(focusNote)
+          // MNUtil.copyJSON(focusNote.descendantNodes.treeIndex)
+          let levels = focusNote.descendantNodes.treeIndex.map(ind=>ind.length)
+          let descendantNotes = focusNote.descendantNodes.descendant
+          let descendantsMarkdowns = await Promise.all(descendantNotes.map(async (note,index)=>{
+              return this.getMDFromNote(note,levels[index])
+            })
+          )
+          md = this.mergeWhitespace(md+"\n"+descendantsMarkdowns.join("\n\n"))
+          this.exportMD(md,exportTarget)
+        }
+        break;
+      case "currentDoc":
+        let docPath = MNUtil.currentDocController.document.fullPathFileName
+        MNUtil.saveFile(docPath, ["public.pdf"])
+        break;
+      default:
+        break;
+    }
+      
+  } catch (error) {
+      taskUtils.addErrorLog(error, "export")
+  }
+  }
+  /**
+   * 
+   * @param {MNNote} note 
+   * @param {number} level 
+   * @returns {Promise<string>}
+   */
+  static async getMDFromNote(note,level = 0,OCR_enabled = false){
+    if (note) {
+      note = note.realGroupNoteForTopicId()
+    }else{
+      return ""
+    }
+try {
+  let title = (note.noteTitle && note.noteTitle.trim()) ? "# "+note.noteTitle.trim() : ""
+  if (title.trim()) {
+    title = title.split(";").filter(t=>{
+      if (/{{.*}}/.test(t)) {
+        return false
+      }
+      return true
+    }).join(";")
+  }
+  let textFirst = note.textFirst
+  let excerptText
+  if (note.excerptPic && !textFirst) {
+    if (OCR_enabled) {
+      excerptText = await this.getTextOCR(MNUtil.getMediaByHash(note.excerptPic.paint))
+    }else{
+      excerptText = ""
+    }
+  }else{
+    excerptText = note.excerptText ?? ""
+  }
+  if (note.comments.length) {
+    let comments = note.comments
+    for (let i = 0; i < comments.length; i++) {
+      const comment = comments[i];
+      switch (comment.type) {
+        case "TextNote":
+          if (/^marginnote\dapp\:\/\//.test(comment.text)) {
+            //do nothing
+          }else{
+            excerptText = excerptText+"\n"+comment.text
+          }
+          break;
+        case "HtmlNote":
+          excerptText = excerptText+"\n"+comment.text
+          break
+        case "LinkNote":
+          if (OCR_enabled && comment.q_hpic  && comment.q_hpic.paint && !textFirst) {
+            let imageData = MNUtil.getMediaByHash(comment.q_hpic.paint)
+            let imageSize = UIImage.imageWithData(imageData).size
+            if (imageSize.width === 1 && imageSize.height === 1) {
+              if (comment.q_htext) {
+                excerptText = excerptText+"\n"+comment.q_htext
+              }
+            }else{
+              excerptText = excerptText+"\n"+await this.getTextOCR(imageData)
+            }
+          }else{
+            excerptText = excerptText+"\n"+comment.q_htext
+          }
+          break
+        case "PaintNote":
+          if (OCR_enabled && comment.paint){
+            excerptText = excerptText+"\n"+await this.getTextOCR(MNUtil.getMediaByHash(comment.paint))
+          }
+          break
+        default:
+          break;
+      }
+    }
+  }
+  excerptText = (excerptText && excerptText.trim()) ? this.highlightEqualsContentReverse(excerptText) : ""
+  let content = title+"\n"+excerptText
+  if (level) {
+    content = content.replace(/(#+\s)/g, "#".repeat(level)+"\$1")
+  }
+  return content
+}catch(error){
+  this.addErrorLog(error, "getMDFromNote")
+  return ""
+}
+  }
+  static highlightEqualsContentReverse(markdown) {
+      // 使用正则表达式匹配==xxx==的内容并替换为<mark>xxx</mark>
+      return markdown.replace(/<mark>(.+?)<\/mark>/g, '==\$1==');
+  }
+  static constrain(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+/**
+ * 
+ * @param {UIButton} button 
+ * @returns {CGRect}
+ */
+static getButtonFrame(button){
+  let buttonFrame = button.convertRectToView(button.frame, MNUtil.studyView)
+  return buttonFrame
+}
+  static getTempelateNames(item){
+    if (!taskConfig.checkCouldSave(item)) {
+      return undefined
+    }
+    switch (item) {
+      case "ocr":
+        return [
+            "🔨 OCR to clipboard",
+            "🔨 OCR as chat mode reference",
+            "🔨 OCR with menu",
+            "🔨 OCR with onFinish"
+          ]
+      case "search":
+        return [
+            "🔨 search with menu",
+            "🔨 search in Baidu"
+          ]
+      case "chatglm":
+        return [
+            "🔨 chatAI with menu",
+            "🔨 chatAI in prompt",
+            "🔨 chatAI in custom prompt"
+          ]
+      case "copy":
+        return [
+            "🔨 smart copy",
+            "🔨 copy with menu",
+            "🔨 copy markdown link"
+          ]
+      case "color1":
+      case "color2":
+      case "color3":
+      case "color4":
+      case "color5":
+      case "color6":
+      case "color7":
+      case "color8":
+      case "color9":
+      case "color10":
+      case "color11":
+      case "color12":
+      case "color13":
+      case "color14":
+      case "color15":
+        return [
+          "🔨 setColor default",
+          "🔨 with fillpattern: both",
+          "🔨 with fillpattern: fill",
+          "🔨 with fillpattern: border",
+          "🔨 with followAutoStyle"
+        ]
+      default:
+        break;
+    }
+    return [
+      "🔨 empty action",
+      "🔨 empty action with double click",
+      "🔨 empty action with finish action",
+      "🔨 insert snippet",
+      "🔨 insert snippet with menu",
+      "🔨 add note index",
+      "🔨 toggle mindmap",
+      "🔨 copy with menu",
+      "🔨 copy markdown link",
+      "🔨 toggle markdown",
+      "🔨 toggle textFirst",
+      "🔨 chatAI with menu",
+      "🔨 search with menu",
+      "🔨 split note to mindmap",
+      "🔨 import mindmap from markdown file",
+      "🔨 import mindmap from clipboard",
+      "🔨 OCR with menu",
+      "🔨 OCR to clipboard",
+      "🔨 OCR as chat mode reference",
+      "🔨 toggle full doc and tab bar",
+      "🔨 merge text of merged notes",
+      "🔨 create & move to main mindmap",
+      "🔨 create & move as child note",
+      "🔨 create & set branch style",
+      "🔨 move note to main mindmap",
+      "🔨 menu with actions",
+      "🔨 focus in float window",
+      "🔨 focus note",
+      "🔨 user confirm",
+      "🔨 user select",
+      "🔨 show message",
+      "🔨 trigger button"
+    ]
+  }
+  static extractJSONFromMarkdown(markdown) {
+    // 使用正则表达式匹配被```JSON```包裹的内容
+    const regex = /```JSON([\s\S]*?)```/g;
+    const matches = regex.exec(markdown);
+    
+    // 提取匹配结果中的JSON字符串部分，并去掉多余的空格和换行符
+    if (matches && matches[1]) {
+        const jsonString = matches[1].trim();
+        return JSON.parse(jsonString);
+    } else {
+        return undefined;
+    }
+  }
+  static addTags(des){
+    let focusNotes = MNNote.getFocusNotes()
+    if (des.tags) {
+      MNUtil.undoGrouping(()=>{
+        focusNotes.forEach(note=>{
+          let tags = des.tags.map(t=>{
+            return this.detectAndReplace(t,undefined,note)
+          })
+          note.appendTags(tags)
+        })
+      })
+    }else{
+      MNUtil.undoGrouping(()=>{
+        focusNotes.forEach(note=>{
+          let replacedText = this.detectAndReplace(des.tag,undefined,note)
+          note.appendTags([replacedText])
+        })
+      })
+    }
+  }
+  static removeTags(des){
+    let focusNotes = MNNote.getFocusNotes()
+    // MNUtil.showHUD("removeTags")
+    if (des.tags) {
+      MNUtil.undoGrouping(()=>{
+        focusNotes.forEach(note=>{
+          note.removeTags(des.tags)
+        })
+      })
+    }else{
+      MNUtil.undoGrouping(()=>{
+        focusNotes.forEach(note=>{
+          note.removeTags([des.tag])
+        })
+      })
+    }
+  }
+  static extractUrls(text) {
+  // 定义匹配URL的正则表达式
+  const urlRegex = /https?:\/\/[^\s/$.?#].[^\s]*/g;
+  // 使用正则表达式匹配所有的URL
+  const urls = text.match(urlRegex);
+  // 如果没有匹配的URL则返回空数组
+  return urls ? urls : [];
+}
+  /**
+   * 
+   * @param {MNNote} note 
+   */
+  static noteHasWebURL(note){
+    let content = note.allNoteText()
+    return this.extractUrls(content)
+  }
+  static openWebURL(des){
+    let focusNote = MNNote.getFocusNote()
+    if (focusNote) {
+      let urls = this.noteHasWebURL(focusNote)
+      if (urls.length) {
+        MNUtil.postNotification("openInBrowser", {url:urls[0]})
+        return true
+      }
+    }
+    let selection = MNUtil.currentSelection
+    if (selection.onSelection) {
+      let selectionText = selection.text
+      let urls = this.extractUrls(selectionText)
+      if (urls.length) {
+        MNUtil.postNotification("openInBrowser", {url:urls[0]})
+        return true
+      }
+    }
+    MNUtil.showHUD("No web url found")
+    return false
+  }
+  static async render(template,opt={}){
+    try {
+      if (opt.noteId) {
+        return await this.getNoteVarInfo(opt.noteId,template,opt.userInput)
+      }else{
+        return await this.getTextVarInfo(template,opt.userInput)
+      }
+    } catch (error) {
+      this.addErrorLog(error, "render")
+      throw error;
+    }
+  }
+  static async getNoteVarInfo(noteid,text,userInput) {
+    try {
+    let replaceText= text
+    let note = MNNote.new(noteid)
+    let noteConfig = this.getNoteObject(note)
+    let config = this.getVarInfo(text,userInput,{note:noteConfig})
+    let prompt = MNUtil.render(replaceText, config)
+    return prompt
+      
+    } catch (error) {
+      this.addErrorLog(error, "getNoteVarInfo")
+      throw error;
+    }
+  }
+
+static async getTextVarInfo(text,userInput) {
+  try {
+  let replaceText= text
+  let noteConfig = this.getNoteObject(MNNote.getFocusNote())
+  let config = this.getVarInfo(text,userInput,{note:noteConfig})
+  let output = mustache.render(replaceText, config)
+  return output
+  // MNUtil.copy(output)
+  // return this.replacVar(replaceText, config)
+    } catch (error) {
+    this.addErrorLog(error, "getTextVarInfo")
+    throw error;
+    // this.addErrorLog(error, "getTextVarInfo")
+  }
+
+}
+  /**
+   * Displays a confirmation dialog with a main title and a subtitle.
+   * 
+   * This method shows a confirmation dialog with the specified main title and subtitle.
+   * It returns a promise that resolves with the button index of the button clicked by the user.
+   * 
+   * @param {string} mainTitle - The main title of the confirmation dialog.
+   * @param {string} subTitle - The subtitle of the confirmation dialog.
+   * @returns {Promise<number>} A promise that resolves with the button index of the button clicked by the user.
+   */
+  static async confirm(mainTitle,subTitle){
+    return new Promise((resolve, reject) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        mainTitle,subTitle,0,"Cancel",["Confirm"],
+        (alert, buttonIndex) => {
+          // MNUtil.copyJSON({alert:alert,buttonIndex:buttonIndex})
+          resolve(buttonIndex)
+        }
+      )
+    })
+  }
+}
+
+class taskConfig {
+  // 构造器方法，用于初始化新创建的对象
+  constructor(name) {
+    this.name = name;
+  }
+  // static defaultAction
+  static isFirst = true
+  static cloudStore
+  static mainPath
+  static action = []
+  static dynamicAction = []
+  static showEditorOnNoteEdit = false
+  static defalutButtonConfig = {color:"#ffffff",alpha:0.85}
+  static defaultWindowState = {
+    // 夏大鱼羊 - begin：add Preprocess
+    preprocess:false,
+    // 夏大鱼羊 - end
+    sideMode:"",//固定工具栏下贴边模式
+    splitMode:false,//固定工具栏下是否跟随分割线
+    open:false,//固定工具栏是否默认常驻
+    dynamicButton:9,//跟随模式下的工具栏显示的按钮数量,
+    dynamicOrder:false,
+    dynamicDirection:"vertical",//跟随模式下的工具栏默认方向
+    frame:{x:0,y:0,width:40,height:415},
+    direction:"vertical",//默认工具栏方向
+  }
+  //非自定义动作的key
+  static builtinActionKeys = [
+    "setting",
+    "copy",
+    "searchInEudic",
+    "switchTitleorExcerpt",
+    "copyAsMarkdownLink",
+    "search",
+    "bigbang",
+    "snipaste",
+    "chatglm",
+    "edit",
+    "ocr",
+    "execute",
+    "pasteAsTitle",
+    "clearFormat",
+    "color0",
+    "color1",
+    "color2",
+    "color3",
+    "color4",
+    "color5",
+    "color6",
+    "color7",
+    "color8",
+    "color9",
+    "color10",
+    "color11",
+    "color12",
+    "color13",
+    "color14",
+    "color15",
+    "sidebar",]
+  static allPopupButtons = [
+  "copy",
+  "copyOCR",
+  "toggleTitle",
+  "toggleCopyMode",
+  "toggleGroupMode",
+  "insertAI",
+  "aiFromNote",
+  "moveNoteTo",
+  "linkNoteTo",
+  "noteHighlight",
+  "blankHighlight",
+  "mergeHighlight",
+  "delHighlight",
+  "sendHighlight",
+  "foldHighlight",
+  "textHighlight",
+  "paintHighlight",
+  "sourceHighlight",
+  "setTitleHighlight",
+  "setCommentHighlight",
+  "setEmphasisHighlight",
+  "sourceHighlightOfNote",
+  "highStyleColor0",
+  "highStyleColor1",
+  "highStyleColor2",
+  "highStyleColor3",
+  "highlightType1",
+  "highlightType2",
+  "highlightType3",
+  "highlightType4",
+  "highlightShortcut1",
+  "highlightShortcut2",
+  "highlightShortcut3",
+  "highlightShortcut4",
+  "highlightShortcut5",
+  "highlightShortcut6",
+  "highlightShortcut7",
+  "highlightShortcut8",
+  "editHashtags",
+  "deleteNote",
+  "commentNote",
+  "pasteToNote",
+  "mergeIntoNote",
+  "focusCurrentNote",
+  "draftCurrentNote",
+  "collapseBlank",
+  "collapseBlankOnPage",
+  "cancelBlankOnPage",
+  "setBlankLayer",
+  "insertBlank",
+  "insertTranslation",
+  "addToTOC",
+  "addToReview",
+  "addSelToReivew",
+  "speechText",
+  "speechHighlight",
+  "goWiki",
+  "goPalette",
+  "goWikiNote",
+  "goDictionary",
+  "goToMindMap",
+  "newGroupChild",
+  "splitBook",
+  "pasteOnPage",
+  "textboxOnPage",
+  "fullTextOnPage",
+  "imageboxOnPage",
+  "cameraOnPage",
+  "moreOperations",
+  "dragDrop"
+]
+  static defaultPopupReplaceConfig = {
+    noteHighlight:{enabled:false,target:"",name:"noteHighlight"},
+    textHighlight:{enabled:false,target:"",name:"textHighlight"},
+    addToReview:{enabled:false,target:"",name:"addToReview"},
+    goPalette:{enabled:false,target:"",name:"goPalette"},
+    editHashtags:{enabled:false,target:"",name:"editHashtags"},
+    toggleTitle:{enabled:false,target:"",name:"toggleTitle"},
+    moveNoteTo:{enabled:false,target:"",name:"moveNoteTo"},
+    toggleCopyMode:{enabled:false,target:"",name:"toggleCopyMode"},
+    insertAI:{enabled:false,target:"",name:"insertAI"},
+    aiFromNote:{enabled:false,target:"",name:"aiFromNote"},
+    pasteToNote:{enabled:false,target:"",name:"pasteToNote"},
+    linkNoteTo:{enabled:false,target:"",name:"linkNoteTo"},
+    goWikiNote:{enabled:false,target:"",name:"goWikiNote"},
+    focusCurrentNote:{enabled:false,target:"",name:"focusCurrentNote"},
+    delHighlight:{enabled:false,target:"",name:"delHighlight"},
+    moreOperations:{enabled:false,target:"",name:"moreOperations"},
+    blankHighlight:{enabled:false,target:"",name:"blankHighlight"},
+    mergeHighlight:{enabled:false,target:"",name:"mergeHighlight"},
+    highStyleColor0:{enabled:false,target:"",name:"highStyleColor0"},
+    highStyleColor1:{enabled:false,target:"",name:"highStyleColor1"},
+    highStyleColor2:{enabled:false,target:"",name:"highStyleColor2"},
+    highStyleColor3:{enabled:false,target:"",name:"highStyleColor3"},
+    goWiki:{enabled:false,target:"",name:"goWiki"},
+    speechHighlight:{enabled:false,target:"",name:"speechHighlight"},
+    sendHighlight:{enabled:false,target:"",name:"sendHighlight"},
+    sourceHighlight:{enabled:false,target:"",name:"sourceHighlight"},
+    commentNote:{enabled:false,target:"",name:"commentNote"},
+    deleteNote:{enabled:false,target:"",name:"deleteNote"},
+    copy:{enabled:false,target:"",name:"copy"},
+    insertBlank:{enabled:false,target:"",name:"insertBlank"},
+    collapseBlank:{enabled:false,target:"",name:"collapseBlank"},
+    collapseBlankOnPage:{enabled:false,target:"",name:"collapseBlankOnPage"},
+    cancelBlankOnPage:{enabled:false,target:"",name:"cancelBlankOnPage"},
+    copyOCR:{enabled:false,target:"",name:"copyOCR"},
+    foldHighlight:{enabled:false,target:"",name:"foldHighlight"},
+    addToTOC:{enabled:false,target:"",name:"addToTOC"},
+    addSelToReivew:{enabled:false,target:"",name:"addSelToReview"},
+    highlightType1:{enabled:false,target:"",name:"highlightType1"},
+    highlightType2:{enabled:false,target:"",name:"highlightType2"},
+    highlightType3:{enabled:false,target:"",name:"highlightType3"},
+    highlightType4:{enabled:false,target:"",name:"highlightType4"},
+    highlightShortcut1:{enabled:false,target:"",name:"highlightShortcut1"},
+    highlightShortcut2:{enabled:false,target:"",name:"highlightShortcut2"},
+    highlightShortcut3:{enabled:false,target:"",name:"highlightShortcut3"},
+    highlightShortcut4:{enabled:false,target:"",name:"highlightShortcut4"},
+    highlightShortcut5:{enabled:false,target:"",name:"highlightShortcut5"},
+    highlightShortcut6:{enabled:false,target:"",name:"highlightShortcut6"},
+    highlightShortcut7:{enabled:false,target:"",name:"highlightShortcut7"},
+    highlightShortcut8:{enabled:false,target:"",name:"highlightShortcut8"},
+    speechText:{enabled:false,target:"",name:"speechText"},
+    goDictionary:{enabled:false,target:"",name:"goDictionary"},
+    goToMindMap:{enabled:false,target:"",name:"goToMindMap"},
+    setTitleHighlight:{enabled:false,target:"",name:"setTitleHighlight"},
+    setCommentHighlight:{enabled:false,target:"",name:"setCommentHighlight"},
+    setEmphasisHighlight:{enabled:false,target:"",name:"setEmphasisHighlight"},
+    mergeIntoNote:{enabled:false,target:"",name:"mergeIntoNote"},
+    newGroupChild:{enabled:false,target:"",name:"newGroupChild"},
+    toggleGroupMode:{enabled:false,target:"",name:"toggleGroupMode"},
+    draftCurrentNote:{enabled:false,target:"",name:"draftCurrentNote"},
+    insertTranslation:{enabled:false,target:"",name:"insertTranslation"},
+    splitBook:{enabled:false,target:"",name:"splitBook"},
+    pasteOnPage:{enabled:false,target:"",name:"pasteOnPage"},
+    textboxOnPage:{enabled:false,target:"",name:"textboxOnPage"},
+    fullTextOnPage:{enabled:false,target:"",name:"fullTextOnPage"},
+    imageboxOnPage:{enabled:false,target:"",name:"imageboxOnPage"},
+    cameraOnPage:{enabled:false,target:"",name:"cameraOnPage"},
+    setBlankLayer:{enabled:false,target:"",name:"setBlankLayer"},
+    sourceHighlightOfNote:{enabled:false,target:"",name:"sourceHighlightOfNote"},
+    paintHighlight:{enabled:false,target:"",name:"paintHighlight"},
+    dragDrop:{enabled:false,target:"",name:"dragDrop"},
+  }
+  static defalutImageScale = {
+    "color0":2.4,
+    "color1":2.4,
+    "color2":2.4,
+    "color3":2.4,
+    "color4":2.4,
+    "color5":2.4,
+    "color6":2.4,
+    "color7":2.4,
+    "color8":2.4,
+    "color9":2.4,
+    "color10":2.4,
+    "color11":2.4,
+    "color12":2.4,
+    "color13":2.4,
+    "color14":2.4,
+    "color15":2.4,
+    "undo":2.2,
+    "redo":2.2
+  }
+  static imageConfigs = {}
+  static dynamicImageConfigs = {}
+  static imageScale = {}
+  static dynamicImageScale = {}
+  static defaultSyncConfig = {
+    iCloudSync: false,
+    lastSyncTime: 0,
+    lastModifyTime: 0
+  }
+  /**
+   * @type {{iCloudSync:boolean,lastSyncTime:number,lastModifyTime:number}}
+   */
+  static syncConfig = {}
+  /**
+   * @type {NSUbiquitousKeyValueStore}
+   */
+  static cloudStore
+  
+  // 今日看板任务数据缓存
+  static todayBoardCache = {
+    data: null,                 // 缓存的任务数据
+    timestamp: null,            // 缓存时间戳
+    notebookId: null,          // 缓存对应的笔记本ID
+    isValid: false             // 缓存是否有效
+  }
+  
+  // 定义全局配置字段（跨笔记本共享）
+  static globalConfigFields = [
+    'windowState', 'action', 'dynamicAction', 'actions', 
+    'buttonConfig', 'popupConfig', 'addonLogos', 'imageScale', 
+    'syncConfig', 'dynamic', 'referenceIds'
+  ]
+  
+  // 定义笔记本配置字段（每个笔记本独立）
+  static notebookConfigFields = [
+    'rootNoteId', 'partitionCards', 'launchedTaskState'
+  ]
+  
+  // 获取当前笔记本 ID
+  static getCurrentNotebookId() {
+    try {
+      return taskUtils.currentNotebookId
+    } catch (error) {
+      taskUtils.addErrorLog(error, "getCurrentNotebookId")
+      return null
+    }
+  }
+  
+  // static defaultConfig = {showEditorWhenEditingNote:false}
+  static init(mainPath){
+    // this.config = this.getByDefault("MNTask_config",this.defaultConfig)
+    try {
+    this.mainPath = mainPath
+    this.dynamic = this.getByDefault("MNTask_dynamic",false)
+    this.addonLogos = this.getByDefault("MNTask_addonLogos",{})
+    // 夏大鱼羊 - begin：用来存参考文献的数据
+    taskConfig.referenceIds = this.getByDefault("MNTask_referenceIds", {})
+    // 夏大鱼羊 - end
+    // 任务管理根节点和分区卡片存储
+    this.rootNoteId = this.getByDefault("MNTask_rootNoteId", null)
+    this.partitionCards = this.getByDefault("MNTask_partitionCards", {})
+    this.windowState = this.getByDefault("MNTask_windowState",this.defaultWindowState)
+    this.buttonNumber = this.getDefaultActionKeys().length
+    //数组格式,存的是每个action的key
+    this.action = this.getByDefault("MNTask_action", this.getDefaultActionKeys())
+    this.action = this.action.map(a=>{
+      if (a === "excute") {
+        return "execute"
+      }
+      return a
+    })
+    this.dynamicAction = this.getByDefault("MNTask_dynamicAction", this.action)
+    if (this.dynamicAction.length === 0) {
+      this.dynamicAction = this.action
+    }
+
+    this.actions = this.getByDefault("MNTask_actionConfig", this.getActions())
+    if ("excute" in this.actions) {
+      let action = this.actions["excute"]
+      action.image = "execute"
+      this.actions["execute"] = action
+      delete this.actions["excute"]
+    }
+    if ("execute" in this.actions) {
+      if (this.actions["execute"].image === "excute") {
+        this.actions["execute"].image = "execute"
+      }
+    }
+    this.buttonConfig = this.getByDefault("MNTask_buttonConfig", this.defalutButtonConfig)
+    // MNUtil.copyJSON(this.buttonConfig)
+    this.highlightColor = UIColor.blendedColor(
+      UIColor.colorWithHexString("#2c4d81").colorWithAlphaComponent(0.8),
+      taskUtils.app.defaultTextColor,
+      0.8
+    );
+      let editorConfig = this.getDescriptionByName("edit")
+      if ("showOnNoteEdit" in editorConfig) {
+        this.showEditorOnNoteEdit = editorConfig.showOnNoteEdit
+      }
+      
+    } catch (error) {
+      taskUtils.addErrorLog(error, "init")
+    }
+    this.buttonImageFolder = MNUtil.dbFolder+"/buttonImage"
+    NSFileManager.defaultManager().createDirectoryAtPathAttributes(this.buttonImageFolder, undefined)
+    // this.popupConfig = this.getByDefault("MNTask_popupConfig", this.defaultPopupReplaceConfig)
+    // this.popupConfig = this.defaultPopupReplaceConfig
+    this.popupConfig = this.getByDefault("MNTask_popupConfig", this.defaultPopupReplaceConfig)
+    this.syncConfig = this.getByDefault("MNTask_syncConfig", this.defaultSyncConfig)
+    this.initImage()
+    this.checkCloudStore(false)
+  }
+  static checkCloudStore(notification = true){//用于替代initCloudStore
+    if (!this.cloudStore) {
+      this.cloudStore = NSUbiquitousKeyValueStore.defaultStore()
+      if (notification) {
+        MNUtil.postNotification("NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI", {}) 
+      }
+    }
+  }
+  static initCloudStore(){
+    this.cloudStore = NSUbiquitousKeyValueStore.defaultStore()
+    MNUtil.postNotification("NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI", {})
+    // this.readCloudConfig(false)
+  }
+  static get iCloudSync(){//同时考虑订阅情况
+    if (taskUtils.checkSubscribe(false,false,true)) {
+      return this.syncConfig.iCloudSync
+    }
+    return false
+  }
+  static hasPopup(){
+    let popupConfig = this.popupConfig
+    let keys = Object.keys(this.popupConfig)
+    let hasReplace = keys.some((key)=>{
+    if (popupConfig[key].enabled && popupConfig[key].target) {
+      return true
+    }
+    return false
+  })
+  return hasReplace
+  }
+  
+  static hasNotebookContent() {
+    // 检查是否有任何看板绑定或根节点ID
+    return this.rootNoteId !== null || 
+           (this.partitionCards && Object.keys(this.partitionCards).length > 0)
+  }
+  static getPopupConfig(key){
+    if (this.popupConfig[key] !== undefined) {
+      return this.popupConfig[key]
+    }else{
+      return this.defaultPopupReplaceConfig[key]
+    }
+  }
+  static deepEqual(obj1, obj2) {
+    if (obj1 === obj2) return true;
+
+    if (typeof obj1 !== 'object' || obj1 === null ||
+        typeof obj2 !== 'object' || obj2 === null) {
+        return false;
+    }
+
+    let keys1 = Object.keys(obj1);
+    let keys2 = Object.keys(obj2);
+
+    if (keys1.length !== keys2.length) return false;
+
+    for (let key of keys1) {
+        if (!keys2.includes(key)) {
+            return false;
+        }
+        if (["lastModifyTime","lastSyncTime","iCloudSync"].includes(key)) {
+          continue
+        }
+        if (MNUtil.isIOS() && ["windowState"].includes(key)) {
+          //iOS端不参与"MNTask_windowState"的云同步,因此比较时忽略该参数
+          continue
+        }
+        if (!this.deepEqual(obj1[key], obj2[key])) {
+          return false;
+        }
+    }
+    return true;
+  }
+  static getAllConfig(){
+    if (this.dynamicAction.length === 0) {
+      this.dynamicAction = this.action
+    }
+    let config = {
+      windowState: this.windowState,
+      syncConfig: this.syncConfig,
+      dynamic: this.dynamic,
+      addonLogos: this.addonLogos,
+      referenceIds:this.referenceIds,
+      rootNoteId: this.rootNoteId,
+      partitionCards: this.partitionCards,
+      actionKeys: this.action,
+      dynamicActionKeys: this.dynamicAction,
+      actions: this.actions,
+      buttonConfig:this.buttonConfig,
+      popupConfig:this.popupConfig
+    }
+    return config
+  }
+  // 导入全局配置
+  static importGlobalConfig(config) {
+    try {
+      if (!MNUtil.isIOS() && config.windowState) { //iOS端不参与"MNTask_windowState"的云同步
+        this.windowState = config.windowState
+      }
+      let icloudSync = this.syncConfig.iCloudSync
+      if (config.syncConfig) this.syncConfig = config.syncConfig
+      if (config.dynamic !== undefined) this.dynamic = config.dynamic
+      if (config.addonLogos) this.addonLogos = config.addonLogos
+      if (config.referenceIds) this.referenceIds = config.referenceIds
+      if (config.actionKeys) this.action = config.actionKeys
+      if (config.actions) this.actions = config.actions
+      if (config.buttonConfig) this.buttonConfig = config.buttonConfig
+      if (config.popupConfig) this.popupConfig = config.popupConfig
+      if (config.dynamicActionKeys && config.dynamicActionKeys.length > 0) {
+        this.dynamicAction = config.dynamicActionKeys
+      } else if (config.actionKeys) {
+        this.dynamicAction = config.actionKeys
+      }
+      this.syncConfig.iCloudSync = icloudSync
+      return true
+    } catch (error) {
+      taskUtils.addErrorLog(error, "importGlobalConfig")
+      return false
+    }
+  }
+  
+  // 导入笔记本配置
+  static importNotebookConfig(config) {
+    try {
+      if (config.rootNoteId !== undefined) this.rootNoteId = config.rootNoteId
+      if (config.partitionCards) this.partitionCards = config.partitionCards
+      return true
+    } catch (error) {
+      taskUtils.addErrorLog(error, "importNotebookConfig")
+      return false
+    }
+  }
+  
+  static importConfig(config){
+    try {
+    if (!MNUtil.isIOS()) { //iOS端不参与"MNTask_windowState"的云同步
+      this.windowState = config.windowState
+    }
+    let icloudSync = this.syncConfig.iCloudSync
+    this.syncConfig = config.syncConfig
+    this.dynamic = config.dynamic
+    this.addonLogos = config.addonLogos
+    this.referenceIds = config.referenceIds
+    this.rootNoteId = config.rootNoteId
+    this.partitionCards = config.partitionCards
+    this.action = config.actionKeys
+    this.actions = config.actions
+    this.buttonConfig = config.buttonConfig
+    this.popupConfig = config.popupConfig
+    if (config.dynamicActionKeys && config.dynamicActionKeys.length > 0) {
+      this.dynamicAction = config.dynamicActionKeys
+    }else{
+      this.dynamicAction = this.action
+    }
+    this.syncConfig.iCloudSync = icloudSync
+    return true
+    } catch (error) {
+      taskUtils.addErrorLog(error, "importConfig")
+      return false
+    }
+  }
+  static getLocalLatestTime(){
+    let lastSyncTime = this.syncConfig.lastSyncTime ?? 0
+    let lastModifyTime = this.syncConfig.lastModifyTime ?? 0
+    return Math.max(lastSyncTime,lastModifyTime)
+  }
+  
+  // 分离全局配置和笔记本配置
+  static separateConfig(config) {
+    const globalConfig = {}
+    const notebookConfig = {}
+    
+    for (const key in config) {
+      if (this.globalConfigFields.includes(key)) {
+        globalConfig[key] = config[key]
+      } else if (this.notebookConfigFields.includes(key)) {
+        notebookConfig[key] = config[key]
+      }
+    }
+    
+    return { globalConfig, notebookConfig }
+  }
+  
+  // 获取笔记本配置的 iCloud 键
+  static getNotebookConfigKey(notebookId) {
+    return `MNTask_notebook_${notebookId || this.getCurrentNotebookId()}`
+  }
+  
+  // 合并全局配置和笔记本配置
+  static mergeConfigs(globalConfig, notebookConfig) {
+    return { ...globalConfig, ...notebookConfig }
+  }
+  static async readCloudConfig(msg = true,alert = false,force = false){
+    try {
+      this.checkCloudStore(false)
+      const notebookId = this.getCurrentNotebookId()
+      if (!notebookId) {
+        if (msg) {
+          MNUtil.showHUD("无法获取笔记本 ID")
+        }
+        return false
+      }
+      
+      // 读取全局配置
+      let cloudGlobalConfig = this.cloudStore.objectForKey("MNTask_totalConfig")
+      
+      // 读取笔记本配置
+      const notebookKey = this.getNotebookConfigKey(notebookId)
+      let cloudNotebookConfig = this.cloudStore.objectForKey(notebookKey)
+      
+      // 处理配置迁移（向后兼容）
+      if (cloudGlobalConfig && !cloudNotebookConfig) {
+        // 旧版本配置，需要迁移
+        const { globalConfig, notebookConfig } = this.separateConfig(cloudGlobalConfig)
+        cloudGlobalConfig = globalConfig
+        cloudNotebookConfig = notebookConfig
+        
+        // 保存分离后的配置
+        if (force || this.iCloudSync) {
+          this.cloudStore.setObjectForKey(globalConfig, "MNTask_totalConfig")
+          this.cloudStore.setObjectForKey(notebookConfig, notebookKey)
+        }
+      }
+      
+      if (force) {
+        // 强制导入
+        if (cloudGlobalConfig) {
+          this.importGlobalConfig(cloudGlobalConfig)
+        }
+        if (cloudNotebookConfig) {
+          this.importNotebookConfig(cloudNotebookConfig)
+        }
+        this.syncConfig.lastSyncTime = Date.now()
+        this.save(undefined,undefined,false)
+        if (msg) {
+          MNUtil.showHUD("Import from iCloud")
+        }
+        return true
+      }
+      
+      if(!this.iCloudSync){
+        return false
+      }
+      
+      // 合并配置用于比较
+      const cloudConfig = this.mergeConfigs(cloudGlobalConfig || {}, cloudNotebookConfig || {})
+      const localConfig = this.getAllConfig()
+      
+      if (cloudConfig && cloudConfig.syncConfig) {
+        let same = this.deepEqual(cloudConfig, localConfig)
+        if (same && !force) {
+          if (msg) {
+            MNUtil.showHUD("No change")
+          }
+          return false
+        }
+        
+        let localLatestTime = this.getLocalLatestTime()
+        let cloudLatestTime = Math.max(cloudConfig.syncConfig.lastSyncTime || 0, cloudConfig.syncConfig.lastModifyTime || 0)
+        let cloudOldestTime = Math.min(cloudConfig.syncConfig.lastSyncTime || 0, cloudConfig.syncConfig.lastModifyTime || 0)
+        
+        if (localLatestTime < cloudOldestTime || force) {
+          if (alert) {
+            let confirm = await MNUtil.confirm("MN Task: Import from iCloud?","MN Task: 是否导入iCloud配置？")
+            if (!confirm) {
+              return false
+            }
+          }
+          if (msg) {
+            MNUtil.showHUD("Import from iCloud")
+          }
+          
+          // 分别导入全局和笔记本配置
+          if (cloudGlobalConfig) {
+            this.importGlobalConfig(cloudGlobalConfig)
+          }
+          if (cloudNotebookConfig) {
+            this.importNotebookConfig(cloudNotebookConfig)
+          }
+          
+          this.syncConfig.lastSyncTime = Date.now()
+          this.save(undefined,undefined,false)
+          return true
+        }
+        
+        if (this.syncConfig.lastModifyTime > (cloudConfig.syncConfig.lastModifyTime+1000) ) {
+          if (alert) {
+            let confirm = await MNUtil.confirm("MN Task: Uploading to iCloud?","MN Task: 是否上传配置到iCloud？")
+            if (!confirm) {
+              return false
+            }
+          }
+          this.writeCloudConfig()
+          return false
+        }
+        
+        let userSelect = await MNUtil.userSelect("MN Task\nConflict config, import or export?","配置冲突，请选择操作",["📥 Import / 导入","📤 Export / 导出"])
+        switch (userSelect) {
+          case 0:
+            MNUtil.showHUD("User Cancel")
+            return false
+          case 1:
+            if (cloudGlobalConfig) {
+              this.importGlobalConfig(cloudGlobalConfig)
+            }
+            if (cloudNotebookConfig) {
+              this.importNotebookConfig(cloudNotebookConfig)
+            }
+            this.syncConfig.lastSyncTime = Date.now()
+            this.save(undefined,undefined,false)
+            return true
+          case 2:
+            this.writeCloudConfig(msg,true)
+            return false
+          default:
+            return false
+        }
+      }else{
+        let confirm = await MNUtil.confirm("MN Task: Empty config in iCloud, uploading?","MN Task: iCloud配置为空,是否上传？")
+        if (!confirm) {
+          return false
+        }
+        this.writeCloudConfig(msg)
+        if (msg) {
+          MNUtil.showHUD("No config in iCloud, uploading...")
+        }
+        return false
+      }
+    } catch (error) {
+      taskUtils.addErrorLog(error, "readCloudConfig")
+      return false
+    }
+  }
+  static writeCloudConfig(msg = true,force = false){
+  try {
+    this.checkCloudStore()
+    const notebookId = this.getCurrentNotebookId()
+    if (!notebookId) {
+      if (msg) {
+        MNUtil.showHUD("无法获取笔记本 ID")
+      }
+      return false
+    }
+    
+    if (force) {//force下不检查订阅(由更上层完成)
+      this.syncConfig.lastSyncTime = Date.now()
+      this.syncConfig.lastModifyTime = Date.now()
+      
+      // 分离配置
+      const config = this.getAllConfig()
+      const { globalConfig, notebookConfig } = this.separateConfig(config)
+      
+      // 保存全局配置
+      let cloudGlobalConfig = this.cloudStore.objectForKey("MNTask_totalConfig")
+      if (MNUtil.isIOS() && cloudGlobalConfig && cloudGlobalConfig.windowState) {
+        //iOS端不参与"MNTask_windowState"的云同步
+        globalConfig.windowState = cloudGlobalConfig.windowState
+      }
+      
+      if (msg) {
+        MNUtil.showHUD("Uploading...")
+      }
+      
+      // 分别保存全局配置和笔记本配置
+      this.cloudStore.setObjectForKey(globalConfig,"MNTask_totalConfig")
+      
+      // 只有在有实际内容时才保存笔记本配置
+      if (this.hasNotebookContent()) {
+        const notebookKey = this.getNotebookConfigKey(notebookId)
+        this.cloudStore.setObjectForKey(notebookConfig, notebookKey)
+      }
+      
+      return true
+    }
+    
+    if(!this.iCloudSync){
+      return false
+    }
+    
+    let iCloudSync = this.syncConfig.iCloudSync
+    
+    // 读取云端配置进行比较
+    let cloudGlobalConfig = this.cloudStore.objectForKey("MNTask_totalConfig")
+    const notebookKey = this.getNotebookConfigKey(notebookId)
+    let cloudNotebookConfig = this.cloudStore.objectForKey(notebookKey)
+    
+    const cloudConfig = this.mergeConfigs(cloudGlobalConfig || {}, cloudNotebookConfig || {})
+    const localConfig = this.getAllConfig()
+    
+    if (cloudConfig && cloudConfig.syncConfig) {
+      let same = this.deepEqual(cloudConfig, localConfig)
+      if (same) {
+        if (msg) {
+          MNUtil.showHUD("No change")
+        }
+        return false
+      }
+      let localLatestTime = this.getLocalLatestTime()
+      let cloudOldestTime = Math.min(cloudConfig.syncConfig.lastSyncTime || 0, cloudConfig.syncConfig.lastModifyTime || 0)
+      if (localLatestTime < cloudOldestTime) {
+        let localTime = new Date(localLatestTime).toLocaleString()
+        let cloudTime = new Date(cloudOldestTime).toLocaleString()
+        MNUtil.showHUD("Conflict config: local_"+localTime+", cloud_"+cloudTime)
+        return false
+      }
+    }
+    
+    this.syncConfig.lastSyncTime = Date.now()
+    
+    if (this.dynamicAction.length === 0) {
+      this.dynamicAction = this.action
+    }
+    
+    // 分离配置
+    const config = this.getAllConfig()
+    const { globalConfig, notebookConfig } = this.separateConfig(config)
+    
+    // 处理 iOS windowState
+    if (MNUtil.isIOS() && cloudGlobalConfig && cloudGlobalConfig.windowState) {
+      //iOS端不参与"MNTask_windowState"的云同步
+      globalConfig.windowState = cloudGlobalConfig.windowState
+    }
+    
+    if (msg) {
+      MNUtil.showHUD("Uploading...")
+    }
+    
+    // 保存 iCloudSync 状态
+    globalConfig.syncConfig.iCloudSync = iCloudSync
+    
+    // 分别保存全局配置和笔记本配置
+    this.cloudStore.setObjectForKey(globalConfig,"MNTask_totalConfig")
+    
+    // 只有在有实际内容时才保存笔记本配置
+    if (this.hasNotebookContent()) {
+      this.cloudStore.setObjectForKey(notebookConfig, notebookKey)
+    }
+    
+    this.syncConfig.lastSyncTime = Date.now()
+    this.save("MNTask_syncConfig",undefined,false)
+    return true
+  } catch (error) {
+    taskUtils.addErrorLog(error, "writeCloudConfig")
+    return false
+  }
+  }
+  static initImage(){
+    try {
+    let keys = this.getDefaultActionKeys()
+    this.imageScale = taskConfig.getByDefault("MNTask_imageScale",{})
+    // MNUtil.copyJSON(this.imageScale)
+    // let images = keys.map(key=>this.mainPath+"/"+this.getAction(key).image+".png")
+    // MNUtil.copyJSON(images)
+    keys.forEach((key)=>{
+      let tem = this.imageScale[key]
+      if (tem && MNUtil.isfileExists(this.buttonImageFolder+"/"+tem.path)) {
+        let scale = tem.scale ?? 2
+        this.imageConfigs[key] = MNUtil.getImage(this.buttonImageFolder+"/"+tem.path,scale)
+      }else{
+        let scale = 2
+        if (key in taskConfig.defalutImageScale) {
+          scale = taskConfig.defalutImageScale[key]
+        }
+        this.imageConfigs[key] = MNUtil.getImage(this.mainPath+"/"+this.getAction(key).image+".png",scale)
+      }
+    })
+    this.curveImage = MNUtil.getImage(this.mainPath+"/curve.png",2)
+    this.runImage = MNUtil.getImage(this.mainPath+"/run.png",2.6)
+    this.templateImage = MNUtil.getImage(this.mainPath+"/template.png",2.2)
+    // MNUtil.copyJSON(this.imageConfigs)
+      } catch (error) {
+      taskUtils.addErrorLog(error, "initImage")
+    }
+  }
+  // static setImageByURL(action,url,refresh = false) {
+  //   this.imageConfigs[action] = taskUtils.getOnlineImage(url)
+  //   if (refresh) {
+  //     MNUtil.postNotification("refreshTaskButton", {})
+  //   }
+  // }
+  static setImageByURL(action,url,refresh = false,scale = 3) {
+    let md5 = MNUtil.MD5(url)
+    // let imagePath = this.mainPath+"/"+this.getAction(action).image+".png"
+    // MNUtil.getImage(this.mainPath+"/"+this.getAction(key).image+".png",scale)
+    let localPath = this.buttonImageFolder+"/"+md5+".png"
+    this.imageScale[action] = {path:md5+".png",scale:scale}
+    this.save("MNTask_imageScale")
+    let image = undefined
+    let imageData = undefined
+    if (MNUtil.isfileExists(localPath)) {
+      image = MNUtil.getImage(localPath,scale)
+      // image.pngData().writeToFileAtomically(imagePath, false)
+      this.imageConfigs[action] = image
+      if (refresh) {
+        MNUtil.postNotification("refreshTaskButton", {})
+      }
+      return
+    }
+    if (/^marginnote\dapp:\/\/note\//.test(url)) {
+      let note = MNNote.new(url)
+      imageData = MNNote.getImageFromNote(note)
+      if (imageData) {
+        image = UIImage.imageWithDataScale(imageData, scale)
+        // imageData.writeToFileAtomically(imagePath, false)
+        imageData.writeToFileAtomically(localPath, false)
+        this.imageConfigs[action] = image
+        if (refresh) {
+          MNUtil.postNotification("refreshTaskButton", {})
+        }
+      }
+      return
+    }
+    if (/^https?:\/\//.test(url)) {
+      image = taskUtils.getOnlineImage(url,scale)
+      this.imageConfigs[action] = image
+      imageData = image.pngData()
+      // imageData.writeToFileAtomically(imagePath, false)
+      imageData.writeToFileAtomically(localPath, false)
+      if (refresh) {
+        MNUtil.postNotification("refreshTaskButton", {})
+      }
+      return
+    }
+    // }
+    if (refresh) {
+      MNUtil.postNotification("refreshTaskButton", {})
+    }
+  }
+  /**
+   * 
+   * @param {string} action 
+   * @param {UIImage} image 
+   * @param {boolean} refresh 
+   * @param {number} scale 
+   * @returns 
+   */
+  static setButtonImage(action,image,refresh = false,scale = 3) {
+  try {
+    let size = image.size
+    if (size.width > 500 || size.height > 500) {
+      MNUtil.showHUD("Image size is too large")
+      return
+    }
+
+    let md5 = MNUtil.MD5(image.pngData().base64Encoding())
+    // let imagePath = this.mainPath+"/"+this.getAction(action).image+".png"
+    // MNUtil.getImage(this.mainPath+"/"+this.getAction(key).image+".png",scale)
+    let localPath = this.buttonImageFolder+"/"+md5+".png"
+    this.imageScale[action] = {path:md5+".png",scale:1}
+    this.save("MNTask_imageScale")
+    if (MNUtil.isfileExists(localPath)) {
+      this.imageConfigs[action] = image
+      if (refresh) {
+        MNUtil.postNotification("refreshTaskButton", {})
+      }
+      return
+    }else{
+      this.imageConfigs[action] = image
+      image.pngData().writeToFileAtomically(localPath, false)
+      if (refresh) {
+        MNUtil.postNotification("refreshTaskButton", {})
+      }
+    }
+    // }
+    if (refresh) {
+      MNUtil.postNotification("refreshTaskButton", {})
+    }
+  } catch (error) {
+    taskUtils.addErrorLog(error, "setButtonImage")
+  }
+  }
+  /**
+   * 只是返回数组,代表所有按钮的顺序
+   * @param {boolean} dynamic
+   * @returns {string[]}
+   */
+  static getAllActions(dynamic = false){
+    if (dynamic) {
+      let absentKeys = this.getDefaultActionKeys().filter(key=>!this.dynamicAction.includes(key))
+      let allActions = this.dynamicAction.concat(absentKeys)
+      // MNUtil.copyJSON(allActions)
+      return allActions
+    }else{
+      let absentKeys = this.getDefaultActionKeys().filter(key=>!this.action.includes(key))
+      let allActions = this.action.concat(absentKeys)
+      // MNUtil.copyJSON(allActions)
+      return allActions
+    }
+  }
+  static getDesByButtonName(targetButtonName){
+    let allActions = this.action.concat(this.getDefaultActionKeys().slice(this.action.length))
+    let allButtonNames = allActions.map(action=>this.getAction(action).name)
+    let buttonIndex = allButtonNames.indexOf(targetButtonName)
+    if (buttonIndex === -1) {
+      MNUtil.showHUD("Button not found: "	+ targetButtonName)
+      return undefined
+    }
+    let action = allActions[buttonIndex]
+    let actionDes = taskConfig.getDescriptionByName(action)
+    return actionDes
+  
+  }
+  static getWindowState(key){
+    //用户已有配置可能不包含某些新的key，用这个方法做兼容性处理
+    if (this.windowState[key] !== undefined) {
+      return this.windowState[key]
+    }else{
+      return this.defaultWindowState[key]
+    }
+  }
+  static direction(dynamic = false){
+    if (dynamic) {
+      return this.getWindowState("dynamicDirection")
+    }else{
+      return this.getWindowState("direction")
+    }
+  }
+  static horizontal(dynamic = false){
+    if (dynamic) {
+      return this.getWindowState("dynamicDirection") === "horizontal"
+    }else{
+      return this.getWindowState("direction") === "horizontal"
+    }
+  }
+  static vertical(dynamic = false){
+    if (dynamic) {
+      return this.getWindowState("dynamicDirection") === "vertical"
+    }else{
+      return this.getWindowState("direction") === "vertical"
+    }
+  }
+  static toggleTaskDirection(source){
+    if (!taskUtils.checkSubscribe(true)) {
+      return
+    }
+    switch (source) {
+      case "fixed":
+        if (taskConfig.getWindowState("direction") === "vertical") {
+          taskConfig.windowState.direction = "horizontal"
+          taskConfig.save("MNTask_windowState")
+          MNUtil.showHUD("Set fixed direction to horizontal")
+
+        }else{
+          taskConfig.windowState.direction = "vertical"
+          taskConfig.save("MNTask_windowState")
+          MNUtil.showHUD("Set fixed direction to vertical")
+        }
+        break;
+      case "dynamic":
+        if (taskConfig.getWindowState("dynamicDirection") === "vertical") {
+          taskConfig.windowState.dynamicDirection = "horizontal"
+          taskConfig.save("MNTask_windowState")
+          MNUtil.showHUD("Set dynamic direction to horizontal")
+        }else{
+          taskConfig.windowState.dynamicDirection = "vertical"
+          taskConfig.save("MNTask_windowState")
+          MNUtil.showHUD("Set dynamic direction to vertical")
+        }
+        break;
+      default:
+        break;
+    }
+    MNUtil.postNotification("refreshTaskButton",{})
+  }
+  /**
+   * 
+   * @param {MbBookNote} note
+   */
+  static expandesConfig(note,config,orderedKeys=undefined,exclude=undefined) {
+    let mnnote = MNNote.new(note)
+    let keys
+    if (orderedKeys) {
+      keys = orderedKeys
+    }else{
+      keys = Object.keys(config)
+    }
+    keys.forEach((key)=>{
+      let subConfig = config[key]
+      if (typeof subConfig === "object") {
+        let child = taskUtils.createChildNote(note,key)
+        this.expandesConfig(child, subConfig,undefined,exclude)
+      }else{
+        if (exclude) {
+          if (key !== exclude) {
+            taskUtils.createChildNote(note,key,config[key])
+          }
+        }else{
+          taskUtils.createChildNote(note,key,config[key])
+        }
+      }
+    })
+  }
+  static checkLogoStatus(addon){
+  // try {
+    if (this.addonLogos && (addon in this.addonLogos)) {
+      return this.addonLogos[addon]
+    }else{
+      return true
+    }
+  // } catch (error) {
+  //   taskUtils.addErrorLog(error, "checkLogoStatus")
+  //   return true
+  // }
+  }
+static template(action) {
+  let config = {action:action}
+  switch (action) {
+    case "cloneAndMerge":
+      config.target = taskUtils.version.version+"app://note/xxxx"
+      break
+    case "link":
+      config.target = taskUtils.version.version+"app://note/xxxx"
+      config.type = "Both"
+      break
+    case "clearContent":
+      config.target = "title"
+      break
+    case "setContent":
+      config.target = "title"//excerptText,comment
+      config.content = "test"
+      break
+    case "addComment":
+      config.content = "test"
+      break
+    case "removeComment":
+      config.index = 1//0表示全部，设一个特别大的值表示最后一个
+      break
+    case "copy":
+      config.target = "title"
+      break
+    case "showInFloatWindow":
+      config.target = taskUtils.version+"app://note/xxxx"
+      break
+    case "addChildNote":
+      config.title = "title"
+      config.content = "{{clipboardText}}"
+      break;
+    default:
+      break;
+  }
+  return JSON.stringify(config,null,2)
+}
+static getAction(actionKey){
+  let action = {}
+  if (actionKey in this.actions) {
+    action = this.actions[actionKey]
+    if (!MNUtil.isValidJSON(action.description)) {//兼容旧版本的description问题
+      action.description = this.getActions()[actionKey].description
+    }
+    return action
+  }
+  return this.getActions()[actionKey]
+}
+
+static getActions() {
+  return {
+    "copy":{name:"Copy",image:"copyExcerptPic",description:"{}"},
+    "searchInEudic":{name:"Search in Eudic",image:"searchInEudic",description:"{}"},
+    "switchTitleorExcerpt":{name:"Switch title",image:"switchTitleorExcerpt",description:"{}"},
+    "copyAsMarkdownLink":{name:"Copy md link",image:"copyAsMarkdownLink",description:"{}"},
+    "search":{name:"Search",image:"search",description:"{}"},
+    "bigbang":{name:"Bigbang",image:"bigbang",description:"{}"},
+    "snipaste":{name:"Snipaste",image:"snipaste",description:"{}"},
+    "chatglm":{name:"ChatAI",image:"ai",description:"{}"},
+    "setting":{name:"Setting",image:"setting",description:"{}"},
+    "pasteAsTitle":{name:"Paste As Title",image:"pasteAsTitle",description:JSON.stringify({"action": "setContent","target": "title","content": "{{clipboardText}}"},null,2)},
+    "clearFormat":{name:"Clear Format",image:"clearFormat",description:"{}"},
+    "color0":{name:"Set Color 1",image:"color0",description:JSON.stringify({fillPattern:-1},null,2)},
+    "color1":{name:"Set Color 2",image:"color1",description:JSON.stringify({fillPattern:-1},null,2)},
+    "color2":{name:"Set Color 3",image:"color2",description:JSON.stringify({fillPattern:-1},null,2)},
+    "color3":{name:"Set Color 4",image:"color3",description:JSON.stringify({fillPattern:-1},null,2)},
+    "color4":{name:"Set Color 5",image:"color4",description:JSON.stringify({fillPattern:-1},null,2)},
+    "color5":{name:"Set Color 6",image:"color5",description:JSON.stringify({fillPattern:-1},null,2)},
+    "color6":{name:"Set Color 7",image:"color6",description:JSON.stringify({fillPattern:-1},null,2)},
+    "color7":{name:"Set Color 8",image:"color7",description:JSON.stringify({fillPattern:-1},null,2)},
+    "color8":{name:"Set Color 9",image:"color8",description:JSON.stringify({fillPattern:-1},null,2)},
+    "color9":{name:"Set Color 10",image:"color9",description:JSON.stringify({fillPattern:-1},null,2)},
+    "color10":{name:"Set Color 11",image:"color10",description:JSON.stringify({fillPattern:-1},null,2)},
+    "color11":{name:"Set Color 12",image:"color11",description:JSON.stringify({fillPattern:-1},null,2)},
+    "color12":{name:"Set Color 13",image:"color12",description:JSON.stringify({fillPattern:-1},null,2)},
+    "color13":{name:"Set Color 14",image:"color13",description:JSON.stringify({fillPattern:-1},null,2)},
+    "color14":{name:"Set Color 15",image:"color14",description:JSON.stringify({fillPattern:-1},null,2)},
+    "color15":{name:"Set Color 16",image:"color15",description:JSON.stringify({fillPattern:-1},null,2)},
+    "custom1":{name:"Custom 1",image:"custom1",description: this.template("cloneAndMerge")},
+    "custom2":{name:"Custom 2",image:"custom2",description: this.template("link")},
+    "custom3":{name:"Custom 3",image:"custom3",description: this.template("clearContent")},
+    "custom4":{name:"Custom 4",image:"custom4",description: this.template("copy")},
+    "custom5":{name:"Custom 5",image:"custom5",description: this.template("addChildNote")},
+    "custom6":{name:"Custom 6",image:"custom6",description: this.template("showInFloatWindow")},
+    "custom7":{name:"Custom 7",image:"custom7",description: this.template("setContent")},
+    "custom8":{name:"Custom 8",image:"custom8",description: this.template("addComment")},
+    "custom9":{name:"Custom 9",image:"custom9",description: this.template("removeComment")},
+    "custom10":{name:"Custom 10",image:"custom10",description: this.template("cloneAndMerge")},
+    "custom11":{name:"Custom 11",image:"custom11",description: this.template("cloneAndMerge")},
+    "custom12":{name:"Custom 12",image:"custom12",description: this.template("link")},
+    "custom13":{name:"Custom 13",image:"custom13",description: this.template("clearContent")},
+    "custom14":{name:"Custom 14",image:"custom14",description: this.template("copy")},
+    "custom15":{name:"Custom 15",image:"custom15",description: this.template("addChildNote")},
+    "custom16":{name:"Custom 16",image:"custom16",description: this.template("showInFloatWindow")},
+    "custom17":{name:"Custom 17",image:"custom17",description: this.template("setContent")},
+    "custom18":{name:"Custom 18",image:"custom18",description: this.template("addComment")},
+    "custom19":{name:"Custom 19",image:"custom19",description: this.template("removeComment")},
+    "ocr":{name:"ocr",image:"ocr",description:JSON.stringify({target:"comment",source:"default"})},
+    "edit":{name:"edit",image:"edit",description:JSON.stringify({showOnNoteEdit:false})},
+    "timer":{name:"timer",image:"timer",description:JSON.stringify({target:"menu"})},
+    "execute":{name:"execute",image:"execute",description:"MNUtil.showHUD('Hello world')"},
+    "sidebar":{name:"sidebar",image:"sidebar",description:"{}"},
+    "undo":{name:"undo",image:"undo",description:"{}"},
+    "redo":{name:"redo",image:"redo",description:"{}"},
+  }
+}
+static execute(){
+
+
+}
+static getDefaultActionKeys() {
+  let actions = this.getActions()
+  // MNUtil.copyJSON(actions)
+  // MNUtil.copyJSON(Object.keys(actions))
+  return Object.keys(actions)
+}
+static save(key = undefined,value = undefined,upload = true) {
+  // MNUtil.showHUD("save")
+  if(key === undefined){
+    let defaults = NSUserDefaults.standardUserDefaults()
+    defaults.setObjectForKey(this.windowState,"MNTask_windowState")
+    defaults.setObjectForKey(this.dynamic,"MNTask_dynamic")
+    defaults.setObjectForKey(this.action,"MNTask_action")
+    defaults.setObjectForKey(this.dynamicAction,"MNTask_dynamicAction")
+    defaults.setObjectForKey(this.actions,"MNTask_actionConfig")
+    defaults.setObjectForKey(this.addonLogos,"MNTask_addonLogos")
+    defaults.setObjectForKey(this.referenceIds,"MNTask_referenceIds")
+    // 检查 null 值，避免崩溃
+    if (this.rootNoteId !== null && this.rootNoteId !== undefined) {
+      defaults.setObjectForKey(this.rootNoteId,"MNTask_rootNoteId")
+    }
+    defaults.setObjectForKey(this.partitionCards,"MNTask_partitionCards")
+    defaults.setObjectForKey(this.buttonConfig,"MNTask_buttonConfig")
+    defaults.setObjectForKey(this.popupConfig,"MNTask_popupConfig")
+    defaults.setObjectForKey(this.imageScale,"MNTask_imageScale")
+    defaults.setObjectForKey(this.syncConfig,"MNTask_syncConfig")
+    this.syncConfig.lastModifyTime = Date.now()
+    if (upload && this.iCloudSync) {
+      this.writeCloudConfig(false)
+    }
+    return
+  }
+  if (value) {
+    NSUserDefaults.standardUserDefaults().setObjectForKey(value,key)
+    this.syncConfig.lastModifyTime = Date.now()
+    if (upload && this.iCloudSync) {
+      this.writeCloudConfig(false)
+    }
+  }else{
+    // showHUD(key)
+    switch (key) {
+      case "MNTask_referenceIds":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.referenceIds,key)
+        break;
+      case "MNTask_rootNoteId":
+        // 检查 null 值，避免崩溃
+        if (this.rootNoteId !== null && this.rootNoteId !== undefined) {
+          NSUserDefaults.standardUserDefaults().setObjectForKey(this.rootNoteId,key)
+        }
+        break;
+      case "MNTask_partitionCards":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.partitionCards,key)
+        break;
+      case "MNTask_windowState":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.windowState,key)
+        if (MNUtil.isIOS()) { //iOS端不参与"MNTask_windowState"的云同步
+          return
+        }
+        break;
+      case "MNTask_dynamic":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.dynamic,key)
+        break;
+      case "MNTask_dynamicAction":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.dynamicAction,key)
+        break;
+      case "MNTask_action":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.action,key)
+        break;
+      case "MNTask_actionConfig":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.actions,key)
+        break;
+      case "MNTask_addonLogos":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.addonLogos,key)
+        break;
+      case "MNTask_buttonConfig":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.buttonConfig,key)
+        break;
+      case "MNTask_popupConfig":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.popupConfig,key)
+        break;
+      case "MNTask_imageScale":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.imageScale,key)
+        break;
+      case "MNTask_syncConfig":
+        NSUserDefaults.standardUserDefaults().setObjectForKey(this.syncConfig,key)
+        break;
+      default:
+        taskUtils.showHUD("Not supported")
+        break;
+    }
+    this.syncConfig.lastModifyTime = Date.now()
+    if (upload && this.iCloudSync) {
+      this.writeCloudConfig(false)
+    }
+  }
+  NSUserDefaults.standardUserDefaults().synchronize()
+}
+
+static get(key) {
+  return NSUserDefaults.standardUserDefaults().objectForKey(key)
+}
+
+static getByDefault(key,defaultValue) {
+  let value = NSUserDefaults.standardUserDefaults().objectForKey(key)
+  if (value === undefined) {
+    // 检查 defaultValue 是否为 null 或 undefined，避免崩溃
+    if (defaultValue !== null && defaultValue !== undefined) {
+      NSUserDefaults.standardUserDefaults().setObjectForKey(defaultValue,key)
+    }
+    return defaultValue
+  }
+  return value
+}
+
+static remove(key) {
+  NSUserDefaults.standardUserDefaults().removeObjectForKey(key)
+}
+static reset(target){
+  switch (target) {
+    case "config":
+      this.actions = this.getActions()
+      this.save("MNTask_actionConfig")
+      break;
+    case "order":
+      this.action = this.getDefaultActionKeys()
+      this.save("MNTask_action")
+      break;  
+    case "dynamicOrder":
+      this.dynamicAction = this.getDefaultActionKeys()
+      this.save("MNTask_dynamicAction")
+      break;
+    default:
+      break;
+  }
+}
+static getDescriptionByIndex(index){
+  let actionName = taskConfig.action[index]
+  if (actionName in taskConfig.actions) {
+    return JSON.parse(taskConfig.actions[actionName].description)
+  }else{
+    return JSON.parse(taskConfig.getActions()[actionName].description)
+  }
+}
+static getExecuteCode(){
+  let actionName = "execute"
+  if (actionName in taskConfig.actions) {
+    return taskConfig.actions[actionName].description
+  }else{
+    return taskConfig.getActions()[actionName].description
+  }
+}
+static getDescriptionByName(actionName){
+  let des
+  if (actionName in taskConfig.actions) {
+    des = taskConfig.actions[actionName].description
+  }else{
+    des = taskConfig.getActions()[actionName].description
+  }
+  if (MNUtil.isValidJSON(des)) {
+    return JSON.parse(des)
+  }
+  if (actionName === "pasteAsTitle") {
+    return {
+      "action": "paste",
+      "target": "title",
+      "content": "{{clipboardText}}"
+    }
+  }
+  return {}
+}
+  static checkCouldSave(actionName){
+    if (actionName.includes("custom")) {
+      return true
+    }
+    if (actionName.includes("color")) {
+      return true
+    }
+    let whiteNamelist = ["timer","search","copy","chatglm","ocr","edit","searchInEudic","pasteAsTitle","sidebar"]
+    if (whiteNamelist.includes(actionName)) {
+      return true
+    }
+    MNUtil.showHUD("Only available for Custom Action!")
+    return false
+  }
+
+  // 根节点管理方法
+  static saveRootNoteId(noteId) {
+    this.rootNoteId = noteId
+    // 检查 null 值，避免崩溃
+    if (noteId !== null && noteId !== undefined) {
+      this.save("MNTask_rootNoteId", noteId)
+      
+      // 如果开启了 iCloud 同步，保存到云端
+      if (this.iCloudSync) {
+        this.writeCloudConfig(false)
+      }
+    } else {
+      // 如果是 null 或 undefined，删除键
+      this.remove("MNTask_rootNoteId")
+    }
+  }
+  
+  static getRootNoteId() {
+    return this.rootNoteId
+  }
+  
+  static clearRootNoteId() {
+    this.rootNoteId = null
+    // 使用 remove 方法删除键，避免设置 null 值导致崩溃
+    this.remove("MNTask_rootNoteId")
+  }
+  
+  // 分区卡片管理方法
+  static getPartitionCard(partitionName) {
+    return this.partitionCards[partitionName] || null
+  }
+  
+  static savePartitionCard(partitionName, cardId) {
+    this.partitionCards[partitionName] = cardId
+    this.save("MNTask_partitionCards", this.partitionCards)
+    
+    // 如果开启了 iCloud 同步，保存到云端
+    if (this.iCloudSync) {
+      this.writeCloudConfig(false)
+    }
+  }
+  
+  static clearPartitionCards() {
+    this.partitionCards = {}
+    this.save("MNTask_partitionCards", {})
+  }
+
+  // 通用看板管理方法
+  static getBoardNoteId(boardKey) {
+    // 为了向后兼容，root 看板特殊处理
+    if (boardKey === 'root') {
+      return this.getRootNoteId()
+    }
+    // 其他看板使用分区卡片存储
+    return this.getPartitionCard(boardKey)
+  }
+  
+  static saveBoardNoteId(boardKey, noteId) {
+    // 为了向后兼容，root 看板特殊处理
+    if (boardKey === 'root') {
+      return this.saveRootNoteId(noteId)
+    }
+    // 其他看板使用分区卡片存储
+    return this.savePartitionCard(boardKey, noteId)
+  }
+  
+  static clearBoardNoteId(boardKey) {
+    // 为了向后兼容，root 看板特殊处理
+    if (boardKey === 'root') {
+      return this.clearRootNoteId()
+    }
+    // 其他看板清除对应的分区卡片
+    if (this.partitionCards[boardKey]) {
+      delete this.partitionCards[boardKey]
+      this.save("MNTask_partitionCards", this.partitionCards)
+    }
+  }
+  
+  // 获取笔记本级别的任务启动状态
+  static getLaunchedTaskState() {
+    const notebookId = this.getCurrentNotebookId()
+    if (!notebookId) return {
+      isTaskLaunched: false,
+      currentLaunchedTaskId: null
+    }
+    
+    const key = `MNTask_launchedTaskState_${notebookId}`
+    const jsonString = this.getByDefault(key, null)
+    
+    if (jsonString) {
+      try {
+        return JSON.parse(jsonString)
+      } catch (e) {
+        // 解析失败返回默认值
+      }
+    }
+    
+    return {
+      isTaskLaunched: false,
+      currentLaunchedTaskId: null
+    }
+  }
+  
+  // 保存笔记本级别的任务启动状态
+  static saveLaunchedTaskState(state) {
+    const notebookId = this.getCurrentNotebookId()
+    if (!notebookId) return
+    
+    const key = `MNTask_launchedTaskState_${notebookId}`
+    // 序列化为 JSON 字符串
+    const jsonString = JSON.stringify(state)
+    this.save(key, jsonString)
+  }
+  
+  // 清除笔记本级别的任务启动状态
+  static clearLaunchedTaskState() {
+    const notebookId = this.getCurrentNotebookId()
+    if (!notebookId) return
+    
+    const key = `MNTask_launchedTaskState_${notebookId}`
+    const state = {
+      isTaskLaunched: false,
+      currentLaunchedTaskId: null
+    }
+    this.save(key, state)
+  }
+  
+  // 清理空的笔记本配置
+  static async cleanEmptyNotebookConfigs() {
+    try {
+      this.checkCloudStore()
+      const allKeys = this.cloudStore.dictionaryRepresentation()
+      let cleanedCount = 0
+      let checkedCount = 0
+      
+      for (const key in allKeys) {
+        if (key.startsWith('MNTask_notebook_')) {
+          checkedCount++
+          const config = allKeys[key]
+          // 检查配置是否为空或只有默认值
+          if (this.isEmptyNotebookConfig(config)) {
+            this.cloudStore.removeObjectForKey(key)
+            cleanedCount++
+            MNUtil.log(`清理空配置: ${key}`)
+          }
+        }
+      }
+      
+      MNUtil.log(`检查了 ${checkedCount} 个笔记本配置，清理了 ${cleanedCount} 个空配置`)
+      return { checkedCount, cleanedCount }
+    } catch (error) {
+      taskUtils.addErrorLog(error, "cleanEmptyNotebookConfigs")
+      return { checkedCount: 0, cleanedCount: 0 }
+    }
+  }
+  
+  // 判断笔记本配置是否为空
+  static isEmptyNotebookConfig(config) {
+    if (!config) return true
+    
+    // 如果配置不是对象，返回 true
+    if (typeof config !== 'object') return true
+    
+    // 检查是否有实际内容
+    const hasRootNote = config.rootNoteId !== null && 
+                       config.rootNoteId !== undefined && 
+                       config.rootNoteId !== ""
+    
+    const hasPartitions = config.partitionCards && 
+                         typeof config.partitionCards === 'object' &&
+                         Object.keys(config.partitionCards).length > 0
+    
+    const hasLaunchedTask = config.launchedTaskState && 
+                           config.launchedTaskState.currentLaunchedTaskId !== null &&
+                           config.launchedTaskState.currentLaunchedTaskId !== undefined
+    
+    // 如果既没有根节点也没有分区卡片，且没有启动的任务，认为是空配置
+    return !hasRootNote && !hasPartitions && !hasLaunchedTask
+  }
+  
+  // 彻底清理所有 MNTask 配置
+  static async resetAllConfigs() {
+    try {
+      // 1. 清理所有 iCloud 配置
+      this.checkCloudStore()
+      const allKeys = this.cloudStore.dictionaryRepresentation()
+      let cleanedCount = 0
+      
+      for (const key in allKeys) {
+        if (key.startsWith('MNTask_')) {
+          this.cloudStore.removeObjectForKey(key)
+          cleanedCount++
+          MNUtil.log(`清理 iCloud 配置: ${key}`)
+        }
+      }
+      
+      // 2. 清理本地配置
+      const localKeys = [
+        "MNTask_windowState", "MNTask_dynamic", "MNTask_action",
+        "MNTask_dynamicAction", "MNTask_actionConfig", "MNTask_addonLogos",
+        "MNTask_referenceIds", "MNTask_rootNoteId", "MNTask_partitionCards",
+        "MNTask_buttonConfig", "MNTask_popupConfig", "MNTask_imageScale",
+        "MNTask_syncConfig"
+      ]
+      
+      localKeys.forEach(key => {
+        this.remove(key)
+      })
+      
+      // 3. 重置内存中的配置到默认值
+      this.windowState = this.defaultWindowState
+      this.dynamic = true
+      this.action = this.getDefaultActionKeys()
+      this.dynamicAction = this.action
+      this.actions = this.getActions()
+      this.addonLogos = {}
+      this.referenceIds = {}
+      this.rootNoteId = null
+      this.partitionCards = {}
+      this.buttonConfig = this.defalutButtonConfig
+      this.popupConfig = this.defaultPopupReplaceConfig
+      this.imageScale = {}
+      this.syncConfig = this.defaultSyncConfig
+      
+      // 4. 同步 iCloud
+      if (this.cloudStore) {
+        this.cloudStore.synchronize()
+      }
+      
+      return { success: true, cleanedCount }
+    } catch (error) {
+      taskUtils.addErrorLog(error, "resetAllConfigs")
+      return { success: false, cleanedCount: 0 }
+    }
+  }
+  
+  // 清理当前笔记本的看板配置
+  static clearCurrentNotebookBoards() {
+    this.rootNoteId = null
+    this.partitionCards = {}
+    this.remove("MNTask_rootNoteId")
+    this.save("MNTask_partitionCards", {})
+    
+    // 如果开启了 iCloud 同步，也更新云端
+    if (this.iCloudSync) {
+      this.writeCloudConfig(false)
+    }
+  }
+  
+  // 清理无效的看板绑定
+  static cleanInvalidBoardBindings() {
+    let cleaned = false
+    let cleanedBoards = []
+    
+    // 检查根节点
+    if (this.rootNoteId) {
+      const note = MNNote.new(this.rootNoteId)
+      if (!note) {
+        this.clearRootNoteId()
+        cleaned = true
+        cleanedBoards.push("根目录")
+      }
+    }
+    
+    // 检查分区卡片
+    const boardNames = {
+      'target': '目标看板',
+      'project': '项目看板',
+      'action': '动作看板',
+      'completed': '已完成看板',
+      'today': '今日看板'
+    }
+    
+    for (const key in this.partitionCards) {
+      const noteId = this.partitionCards[key]
+      if (noteId) {
+        const note = MNNote.new(noteId)
+        if (!note) {
+          this.clearBoardNoteId(key)
+          cleaned = true
+          cleanedBoards.push(boardNames[key] || key)
+        }
+      }
+    }
+    
+    return { cleaned, cleanedBoards }
+  }
+  
+  // ========== 今日看板性能优化：缓存管理方法 ==========
+  
+  /**
+   * 检查缓存是否有效
+   * @returns {boolean} 缓存是否有效
+   */
+  static isTodayBoardCacheValid() {
+    // 检查缓存是否存在
+    if (!this.todayBoardCache.data || !this.todayBoardCache.timestamp) {
+      return false
+    }
+    
+    // 检查缓存是否对应当前笔记本
+    const currentNotebookId = this.getCurrentNotebookId()
+    if (this.todayBoardCache.notebookId !== currentNotebookId) {
+      return false
+    }
+    
+    // 检查缓存是否过期（默认5分钟过期）
+    const cacheAge = Date.now() - this.todayBoardCache.timestamp
+    const maxAge = 5 * 60 * 1000 // 5分钟
+    if (cacheAge > maxAge) {
+      return false
+    }
+    
+    return this.todayBoardCache.isValid
+  }
+  
+  /**
+   * 获取缓存的任务数据
+   * @returns {Object|null} 缓存的任务数据
+   */
+  static getTodayBoardCache() {
+    if (this.isTodayBoardCacheValid()) {
+      MNUtil.log("✅ 使用缓存的今日看板数据")
+      return this.todayBoardCache.data
+    }
+    return null
+  }
+  
+  /**
+   * 设置任务数据缓存
+   * @param {Object} data - 要缓存的任务数据
+   */
+  static setTodayBoardCache(data) {
+    this.todayBoardCache = {
+      data: data,
+      timestamp: Date.now(),
+      notebookId: this.getCurrentNotebookId(),
+      isValid: true
+    }
+    MNUtil.log("✅ 已更新今日看板数据缓存")
+  }
+  
+  /**
+   * 清除缓存
+   */
+  static clearTodayBoardCache() {
+    this.todayBoardCache = {
+      data: null,
+      timestamp: null,
+      notebookId: null,
+      isValid: false
+    }
+    MNUtil.log("🗑️ 已清除今日看板数据缓存")
+  }
+  
+  /**
+   * 标记缓存为无效（但不清除数据）
+   */
+  static invalidateTodayBoardCache() {
+    this.todayBoardCache.isValid = false
+    MNUtil.log("⚠️ 已标记今日看板缓存为无效")
+  }
+  
+  /**
+   * 当任务数据发生变化时调用
+   * 用于主动使缓存失效
+   */
+  static onTaskDataChanged() {
+    this.invalidateTodayBoardCache()
+  }
+
+}
+
+
+class taskSandbox{
+  static async execute(code){
+    'use strict';
+    if (!taskUtils.checkSubscribe(true)) {
+      return
+    }
+    try {
+      eval(code)
+      // MNUtil.studyView.bringSubviewToFront(MNUtil.mindmapView)
+      // MNUtil.notebookController.view.hidden = true
+      // MNUtil.mindmapView.setZoomScaleAnimated(10.0,true)
+      // MNUtil.mindmapView.zoomScale = 0.1;
+      // MNUtil.mindmapView.hidden = true
+      // MNUtil.showHUD("message"+MNUtil.mindmapView.minimumZoomScale)
+      // MNUtil.copyJSON(getAllProperties(MNUtil.mindmapView))
+    } catch (error) {
+      taskUtils.addErrorLog(error, "executeInSandbox",code)
+    }
+  }
+}
+
+// 加载夏大鱼羊的扩展文件
+JSB.require('xdyy_utils_extensions')
+
+// 初始化夏大鱼羊的扩展
+if (typeof initXDYYExtensions === 'function') {
+  initXDYYExtensions()
+}
+if (typeof extendTaskConfigInit === 'function') {
+  extendTaskConfigInit()
+}

@@ -2524,99 +2524,39 @@ taskController.prototype.tableItem = function (title,selector,param = "",checked
  * @returns 
  */
 taskController.prototype.setFrame = function (frame,maximize = false) {
-  try {
-    // 🔧 添加frame参数验证，防止传入无效值导致崩溃
-    if (!frame || typeof frame !== 'object') {
-      MNUtil.log("⚠️ setFrame: frame参数无效，使用默认frame")
-      frame = {x: 10, y: 10, width: 40, height: 200}
-    }
-    
-    // 验证frame的各个属性
-    if (typeof frame.x !== 'number' || isNaN(frame.x) || !isFinite(frame.x)) {
-      MNUtil.log("⚠️ setFrame: frame.x无效: " + frame.x + "，使用默认值10")
-      frame.x = 10
-    }
-    if (typeof frame.y !== 'number' || isNaN(frame.y) || !isFinite(frame.y)) {
-      MNUtil.log("⚠️ setFrame: frame.y无效: " + frame.y + "，使用默认值10")
-      frame.y = 10
-    }
-    if (typeof frame.width !== 'number' || isNaN(frame.width) || !isFinite(frame.width) || frame.width < 0) {
-      MNUtil.log("⚠️ setFrame: frame.width无效: " + frame.width + "，使用默认值40")
-      frame.width = 40
-    }
-    if (typeof frame.height !== 'number' || isNaN(frame.height) || !isFinite(frame.height) || frame.height < 0) {
-      MNUtil.log("⚠️ setFrame: frame.height无效: " + frame.height + "，使用默认值200")
-      frame.height = 200
-    }
-    
-    // 验证studyView边界
-    if (!MNUtil.studyView || !MNUtil.studyView.bounds) {
-      MNUtil.log("⚠️ setFrame: studyView或bounds无效，使用默认边界")
-      const defaultBounds = {width: 800, height: 600}
-      MNUtil.studyView = {bounds: defaultBounds}
-    }
-    
-    let targetFrame = {x:frame.x,y:frame.y}
-    if(taskConfig.horizontal(this.dynamicWindow)){
-      let width = Math.max(frame.width,frame.height)
-      if (maximize) {
-        width = 45*this.buttonNumber+15
-      }else{
-        this.buttonNumber = Math.floor(width/45)
-      }
-      if (frame.x + width > MNUtil.studyView.bounds.width) {
-        width = MNUtil.studyView.bounds.width - frame.x
-      }
-      width = taskUtils.checkHeight(width,this.maxButtonNumber)
-      targetFrame.width = width
-      targetFrame.height = 40
-      targetFrame.x = taskUtils.constrain(targetFrame.x, 0, MNUtil.studyView.bounds.width-width)
-      targetFrame.y = taskUtils.constrain(targetFrame.y, 0, MNUtil.studyView.bounds.height-40)
+  let targetFrame = {x:frame.x,y:frame.y}
+  if(taskConfig.horizontal(this.dynamicWindow)){
+    let width = Math.max(frame.width,frame.height)
+    if (maximize) {
+      width = 45*this.buttonNumber+15
     }else{
-      targetFrame.width = 40
-      let height = Math.max(frame.width,frame.height)
-      if (maximize) {
-        height = 45*this.buttonNumber+15
-      }else{
-        this.buttonNumber = Math.floor(height/45)
-      }
-      if (height > 420 && !taskUtils.isSubscribed(false)) {
-        height = 420
-      }
-      if (frame.y + height > MNUtil.studyView.bounds.height) {
-        height = MNUtil.studyView.bounds.height - frame.y
-      }
-      height = taskUtils.checkHeight(height,this.maxButtonNumber)
-      targetFrame.height = height
+      this.buttonNumber = Math.floor(width/45)
     }
-    
-    // 🔧 最终验证targetFrame，确保所有值都是有效的
-    if (typeof targetFrame.x !== 'number' || isNaN(targetFrame.x) || !isFinite(targetFrame.x)) {
-      MNUtil.log("⚠️ setFrame: targetFrame.x无效，重置为0")
-      targetFrame.x = 0
+    if (frame.x + width > MNUtil.studyView.bounds.width) {
+      width = MNUtil.studyView.bounds.width - frame.x
     }
-    if (typeof targetFrame.y !== 'number' || isNaN(targetFrame.y) || !isFinite(targetFrame.y)) {
-      MNUtil.log("⚠️ setFrame: targetFrame.y无效，重置为0")
-      targetFrame.y = 0
+    width = taskUtils.checkHeight(width,this.maxButtonNumber)
+    targetFrame.width = width
+    targetFrame.height = 40
+    targetFrame.x = taskUtils.constrain(targetFrame.x, 0, MNUtil.studyView.bounds.width-width)
+    targetFrame.y = taskUtils.constrain(targetFrame.y, 0, MNUtil.studyView.bounds.height-40)
+  }else{
+    targetFrame.width = 40
+    let height = Math.max(frame.width,frame.height)
+    if (maximize) {
+      height = 45*this.buttonNumber+15
+    }else{
+      this.buttonNumber = Math.floor(height/45)
     }
-    if (typeof targetFrame.width !== 'number' || isNaN(targetFrame.width) || !isFinite(targetFrame.width) || targetFrame.width <= 0) {
-      MNUtil.log("⚠️ setFrame: targetFrame.width无效，重置为40")
-      targetFrame.width = 40
+    if (height > 420 && !taskUtils.isSubscribed(false)) {
+      height = 420
     }
-    if (typeof targetFrame.height !== 'number' || isNaN(targetFrame.height) || !isFinite(targetFrame.height) || targetFrame.height <= 0) {
-      MNUtil.log("⚠️ setFrame: targetFrame.height无效，重置为200")
-      targetFrame.height = 200
+    if (frame.y + height > MNUtil.studyView.bounds.height) {
+      height = MNUtil.studyView.bounds.height - frame.y
     }
-    
-    MNUtil.log("✅ setFrame: 设置frame: " + JSON.stringify(targetFrame))
-    this.view.frame = targetFrame
-    this.currentFrame = targetFrame
-  } catch (error) {
-    MNUtil.log("❌ setFrame: 设置frame时发生错误: " + error.message)
-    taskUtils.addErrorLog(error, "setFrame")
-    // 使用安全的默认值
-    const safeFrame = {x: 10, y: 10, width: 40, height: 200}
-    this.view.frame = safeFrame
-    this.currentFrame = safeFrame
+    height = taskUtils.checkHeight(height,this.maxButtonNumber)
+    targetFrame.height = height
   }
+  this.view.frame = targetFrame
+  this.currentFrame = targetFrame
 }

@@ -48,6 +48,7 @@ interface Task {
   category?: string
   order?: number
   parentId?: string // 父任务ID
+  isInPending?: boolean // 是否在待处理列表中显示
   progressHistory?: Array<{
     id: string
     content: string
@@ -61,12 +62,125 @@ interface ExportData {
   exportDate: string
   focusTasks: Task[]
   pendingTasks: Task[]
+  allTasks: Task[]
   totalTasks: number
 }
+
+const sampleTasks: Task[] = [
+  {
+    id: "1",
+    title: "提取评论如果是行内链接的话，也要进行相应处理！",
+    description: "需要检查评论中的行内链接格式，确保在提取过程中能够正确识别和处理这些链接，避免丢失重要的引用信息。",
+    completed: false,
+    isFocusTask: true,
+    isPriorityFocus: true,
+    priority: "low",
+    status: "in-progress",
+    type: "action",
+    createdAt: new Date(),
+    order: 0,
+    progress: "2025/01/28 12:00:00 提取评论如果是行内链接的话，也要进行相应处理！",
+    category: "开发 MarginNote 插件",
+    parentId: "project-1",
+  },
+  {
+    id: "2",
+    title: "Bug: 查找后会复制一个 ID",
+    description:
+      "在执行查找操作后，系统会意外复制一个ID到剪贴板，这可能会干扰用户的正常工作流程。需要调试并修复这个问题。",
+    completed: false,
+    isFocusTask: true,
+    isPriorityFocus: false,
+    priority: "low",
+    status: "paused",
+    type: "action",
+    createdAt: new Date(),
+    order: 1,
+    progress:
+      "2025/01/28 11:30:00 relative; padding-left:28px; margin:14px 0; color:#1E40AF; font-weight:500; font-size:0.92em",
+    category: "开发 MarginNote 插件",
+    parentId: "project-1",
+  },
+]
+
+const samplePending: Task[] = [
+  {
+    id: "project-1",
+    title: "开发 MNUtils 插件",
+    description: "开发一个功能强大的 MarginNote 工具插件，包含多种实用功能。",
+    completed: false,
+    isFocusTask: false,
+    isPriorityFocus: false,
+    priority: "high",
+    status: "todo",
+    type: "project",
+    createdAt: new Date(),
+    category: "开发 MarginNote 插件",
+    isInPending: true,
+  },
+  {
+    id: "pending-1",
+    title: "思路卡片的标题要修改前缀！",
+    description: "当前思路卡片的标题前缀不够清晰，需要重新设计一个更直观的前缀格式，帮助用户快速识别卡片类型。",
+    completed: false,
+    isFocusTask: false,
+    isPriorityFocus: false,
+    priority: "medium",
+    status: "todo",
+    type: "action",
+    createdAt: new Date(),
+    category: "开发 MarginNote 插件",
+    parentId: "project-1",
+    isInPending: true,
+  },
+  {
+    id: "pending-2",
+    title: "完成 MNTask 任务管理系统",
+    description: "开发一个完整的任务管理系统，包含焦点任务、待处理任务、进度跟踪等功能模块。",
+    completed: false,
+    isFocusTask: false,
+    isPriorityFocus: false,
+    priority: "high",
+    status: "todo",
+    type: "project",
+    createdAt: new Date(),
+    category: "个人项目",
+    isInPending: true,
+  },
+  {
+    id: "pending-3",
+    title: "每月完成 5 个高质量插件功能",
+    description: "通过持续开发和优化，确保每个月都能交付 5 个经过充分测试的插件功能。",
+    completed: false,
+    isFocusTask: false,
+    isPriorityFocus: false,
+    priority: "high",
+    status: "todo",
+    type: "key-result",
+    createdAt: new Date(),
+    category: "工作目标",
+    isInPending: true,
+  },
+  {
+    id: "pending-4",
+    title: "成为 MarginNote 插件开发专家",
+    description: "通过深入学习和实践，掌握 MarginNote 插件开发的各种技术和最佳实践，成为该领域的专家。",
+    completed: false,
+    isFocusTask: false,
+    isPriorityFocus: false,
+    priority: "medium",
+    status: "todo",
+    type: "objective",
+    createdAt: new Date(),
+    category: "职业发展",
+    isInPending: true,
+  },
+]
 
 export default function MNTaskBoard() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [pendingTasks, setPendingTasks] = useState<Task[]>([])
+  const [allTasks, setAllTasks] = useState<Task[]>([]) // 存储所有任务的总列表
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState("")
@@ -78,52 +192,64 @@ export default function MNTaskBoard() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 生成任务路径
-  const generateTaskPath = (task: Task, allTasks: Task[]): string => {
+  const generateTaskPath = (task: Task, allTasksList: Task[]): string => {
     if (!task.parentId) {
       return task.category || ""
     }
 
-    const parentTask = allTasks.find((t) => t.id === task.parentId)
+    const parentTask = allTasksList.find((t) => t.id === task.parentId)
     if (!parentTask) {
       return task.category || ""
     }
 
-    const parentPath = generateTaskPath(parentTask, allTasks)
+    const parentPath = generateTaskPath(parentTask, allTasksList)
     return parentPath ? `${parentPath} >> ${parentTask.title}` : parentTask.title
   }
 
   // 获取所有任务（包括焦点任务和待处理任务）
-  const getAllTasks = (): Task[] => {
-    return [...tasks, ...pendingTasks]
+  const getAllTasksList = (): Task[] => {
+    return allTasks
   }
 
   // 获取可作为父任务的任务列表（项目类型）
   const getAvailableParentTasks = (currentTaskId?: string): Task[] => {
-    const allTasks = getAllTasks()
-    return allTasks.filter(
+    const allTasksList = getAllTasksList()
+    return allTasksList.filter(
       (task) =>
-        task.type === "project" && task.id !== currentTaskId && !isDescendantOf(task.id, currentTaskId || "", allTasks),
+        task.type === "project" &&
+        task.id !== currentTaskId &&
+        !isDescendantOf(task.id, currentTaskId || "", allTasksList),
     )
   }
 
   // 检查是否为子任务（避免循环引用）
-  const isDescendantOf = (potentialParentId: string, taskId: string, allTasks: Task[]): boolean => {
-    const task = allTasks.find((t) => t.id === taskId)
+  const isDescendantOf = (potentialParentId: string, taskId: string, allTasksList: Task[]): boolean => {
+    const task = allTasksList.find((t) => t.id === taskId)
     if (!task || !task.parentId) return false
     if (task.parentId === potentialParentId) return true
-    return isDescendantOf(potentialParentId, task.parentId, allTasks)
+    return isDescendantOf(potentialParentId, task.parentId, allTasksList)
   }
 
   // 获取任务的子任务
   const getChildTasks = (parentId: string): Task[] => {
-    const allTasks = getAllTasks()
-    return allTasks.filter((task) => task.parentId === parentId)
+    const allTasksList = getAllTasksList()
+    return allTasksList.filter((task) => task.parentId === parentId)
   }
 
   // Load tasks from localStorage on component mount
   useEffect(() => {
     const savedTasks = localStorage.getItem("mntask-tasks")
     const savedPending = localStorage.getItem("mntask-pending")
+    const savedAllTasks = localStorage.getItem("mntask-all-tasks")
+
+    if (savedAllTasks) {
+      const parsedAllTasks = JSON.parse(savedAllTasks).map((task: any) => ({
+        ...task,
+        createdAt: new Date(task.createdAt),
+        type: task.type || "action",
+      }))
+      setAllTasks(parsedAllTasks)
+    }
 
     if (savedTasks) {
       const parsedTasks = JSON.parse(savedTasks).map((task: any, index: number) => ({
@@ -135,43 +261,6 @@ export default function MNTaskBoard() {
       setTasks(parsedTasks)
     } else {
       // Initialize with sample tasks
-      const sampleTasks: Task[] = [
-        {
-          id: "1",
-          title: "提取评论如果是行内链接的话，也要进行相应处理！",
-          description:
-            "需要检查评论中的行内链接格式，确保在提取过程中能够正确识别和处理这些链接，避免丢失重要的引用信息。",
-          completed: false,
-          isFocusTask: true,
-          isPriorityFocus: true,
-          priority: "low",
-          status: "in-progress",
-          type: "action",
-          createdAt: new Date(),
-          order: 0,
-          progress: "2025/01/28 12:00:00 提取评论如果是行内链接的话，也要进行相应处理！",
-          category: "开发 MarginNote 插件",
-          parentId: "project-1",
-        },
-        {
-          id: "2",
-          title: "Bug: 查找后会复制一个 ID",
-          description:
-            "在执行查找操作后，系统会意外复制一个ID到剪贴板，这可能会干扰用户的正常工作流程。需要调试并修复这个问题。",
-          completed: false,
-          isFocusTask: true,
-          isPriorityFocus: false,
-          priority: "low",
-          status: "paused",
-          type: "action",
-          createdAt: new Date(),
-          order: 1,
-          progress:
-            "2025/01/28 11:30:00 relative; padding-left:28px; margin:14px 0; color:#1E40AF; font-weight:500; font-size:0.92em",
-          category: "开发 MarginNote 插件",
-          parentId: "project-1",
-        },
-      ]
       setTasks(sampleTasks)
     }
 
@@ -184,77 +273,36 @@ export default function MNTaskBoard() {
       setPendingTasks(parsedPending)
     } else {
       // Initialize with sample pending task
-      const samplePending: Task[] = [
-        {
-          id: "project-1",
-          title: "开发 MNUtils 插件",
-          description: "开发一个功能强大的 MarginNote 工具插件，包含多种实用功能。",
-          completed: false,
-          isFocusTask: false,
-          isPriorityFocus: false,
-          priority: "high",
-          status: "todo",
-          type: "project",
-          createdAt: new Date(),
-          category: "开发 MarginNote 插件",
-        },
-        {
-          id: "pending-1",
-          title: "思路卡片的标题要修改前缀！",
-          description: "当前思路卡片的标题前缀不够清晰，需要重新设计一个更直观的前缀格式，帮助用户快速识别卡片类型。",
-          completed: false,
-          isFocusTask: false,
-          isPriorityFocus: false,
-          priority: "medium",
-          status: "todo",
-          type: "action",
-          createdAt: new Date(),
-          category: "开发 MarginNote 插件",
-          parentId: "project-1",
-        },
-        {
-          id: "pending-2",
-          title: "完成 MNTask 任务管理系统",
-          description: "开发一个完整的任务管理系统，包含焦点任务、待处理任务、进度跟踪等功能模块。",
-          completed: false,
-          isFocusTask: false,
-          isPriorityFocus: false,
-          priority: "high",
-          status: "todo",
-          type: "project",
-          createdAt: new Date(),
-          category: "个人项目",
-        },
-        {
-          id: "pending-3",
-          title: "每月完成 5 个高质量插件功能",
-          description: "通过持续开发和优化，确保每个月都能交付 5 个经过充分测试的插件功能。",
-          completed: false,
-          isFocusTask: false,
-          isPriorityFocus: false,
-          priority: "high",
-          status: "todo",
-          type: "key-result",
-          createdAt: new Date(),
-          category: "工作目标",
-        },
-        {
-          id: "pending-4",
-          title: "成为 MarginNote 插件开发专家",
-          description: "通过深入学习和实践，掌握 MarginNote 插件开发的各种技术和最佳实践，成为该领域的专家。",
-          completed: false,
-          isFocusTask: false,
-          isPriorityFocus: false,
-          priority: "medium",
-          status: "todo",
-          type: "objective",
-          createdAt: new Date(),
-          category: "职业发展",
-        },
-      ]
       setPendingTasks(samplePending)
     }
+
+    // 如果没有保存的总任务列表，从焦点任务和待处理任务中构建
+    if (!savedAllTasks) {
+      const initialAllTasks = [...(sampleTasks || []), ...(samplePending || [])]
+      setAllTasks(initialAllTasks)
+    }
   }, [])
+
+  // 同步更新总任务列表
+  useEffect(() => {
+    const combinedTasks = [...tasks, ...pendingTasks]
+    const uniqueTasks = combinedTasks.reduce(
+      (acc: Task[], current) => {
+        const existingIndex = acc.findIndex((task) => task.id === current.id)
+        if (existingIndex >= 0) {
+          // 如果任务已存在，更新它
+          acc[existingIndex] = current
+        } else {
+          // 如果任务不存在，添加它
+          acc.push(current)
+        }
+        return acc
+      },
+      [...allTasks.filter((task) => !combinedTasks.some((ct) => ct.id === task.id))],
+    )
+
+    setAllTasks(uniqueTasks)
+  }, [tasks, pendingTasks])
 
   // Save tasks to localStorage whenever tasks change
   useEffect(() => {
@@ -264,6 +312,10 @@ export default function MNTaskBoard() {
   useEffect(() => {
     localStorage.setItem("mntask-pending", JSON.stringify(pendingTasks))
   }, [pendingTasks])
+
+  useEffect(() => {
+    localStorage.setItem("mntask-all-tasks", JSON.stringify(allTasks))
+  }, [allTasks])
 
   const focusTasksCount = tasks.filter((task) => task.isFocusTask && !task.completed).length
   const priorityFocusCount = tasks.filter((task) => task.isPriorityFocus && !task.completed).length
@@ -304,6 +356,7 @@ export default function MNTaskBoard() {
         isPriorityFocus: false,
         order: undefined,
         status: "todo" as const, // 重置状态为待办
+        isInPending: true,
       }
 
       setTasks(tasks.filter((t) => t.id !== taskId))
@@ -395,7 +448,7 @@ export default function MNTaskBoard() {
 
   const deleteTask = (taskId: string) => {
     // 删除任务时，需要处理子任务
-    const allTasks = getAllTasks()
+    const allTasksList = getAllTasksList()
     const childTasks = getChildTasks(taskId)
 
     if (childTasks.length > 0) {
@@ -411,14 +464,21 @@ export default function MNTaskBoard() {
           .map((task) => (task.parentId === taskId ? { ...task, parentId: undefined } : task))
           .filter((task) => task.id !== taskId),
       )
+
+      setAllTasks(
+        allTasks
+          .map((task) => (task.parentId === taskId ? { ...task, parentId: undefined } : task))
+          .filter((task) => task.id !== taskId),
+      )
     } else {
       setTasks(tasks.filter((task) => task.id !== taskId))
+      setAllTasks(allTasks.filter((task) => task.id !== taskId))
     }
   }
 
   const deletePendingTask = (taskId: string) => {
     // 删除任务时，需要处理子任务
-    const allTasks = getAllTasks()
+    const allTasksList = getAllTasksList()
     const childTasks = getChildTasks(taskId)
 
     if (childTasks.length > 0) {
@@ -430,8 +490,29 @@ export default function MNTaskBoard() {
           .map((task) => (task.parentId === taskId ? { ...task, parentId: undefined } : task))
           .filter((task) => task.id !== taskId),
       )
+
+      setAllTasks(
+        allTasks
+          .map((task) => (task.parentId === taskId ? { ...task, parentId: undefined } : task))
+          .filter((task) => task.id !== taskId),
+      )
     } else {
       setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
+      setAllTasks(allTasks.filter((task) => task.id !== taskId))
+    }
+  }
+
+  // 从待处理列表中移除任务（但不删除任务本身）
+  const removeFromPending = (taskId: string) => {
+    const taskToRemove = pendingTasks.find((task) => task.id === taskId)
+    if (taskToRemove) {
+      // 从待处理列表中移除
+      setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
+
+      // 在总任务列表中标记为不在待处理中
+      setAllTasks(allTasks.map((task) => (task.id === taskId ? { ...task, isInPending: false } : task)))
+
+      toast.success("任务已从待处理列表中移除")
     }
   }
 
@@ -494,6 +575,7 @@ export default function MNTaskBoard() {
       status: "todo",
       type: "action", // 默认类型为动作
       createdAt: new Date(),
+      isInPending: true,
     }
     setPendingTasks([...pendingTasks, newTask])
     setNewTaskTitle("")
@@ -508,6 +590,7 @@ export default function MNTaskBoard() {
         isFocusTask: true,
         status: "in-progress" as const,
         order: maxOrder + 1,
+        isInPending: false,
       }
       setTasks([...tasks, focusTask])
       setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
@@ -533,6 +616,7 @@ export default function MNTaskBoard() {
         isPriorityFocus: false,
         order: undefined,
         status: "todo" as const,
+        isInPending: true,
       }))
 
     const nonFocusTasks = tasks.filter((task) => !task.isFocusTask)
@@ -544,8 +628,10 @@ export default function MNTaskBoard() {
   const resetData = () => {
     setTasks([])
     setPendingTasks([])
+    setAllTasks([])
     localStorage.removeItem("mntask-tasks")
     localStorage.removeItem("mntask-pending")
+    localStorage.removeItem("mntask-all-tasks")
     setShowResetConfirm(false)
     toast.success("数据已重置")
   }
@@ -555,7 +641,10 @@ export default function MNTaskBoard() {
   }
 
   const openTaskDetails = (taskId: string) => {
-    const task = tasks.find((t) => t.id === taskId) || pendingTasks.find((t) => t.id === taskId)
+    const task =
+      tasks.find((t) => t.id === taskId) ||
+      pendingTasks.find((t) => t.id === taskId) ||
+      allTasks.find((t) => t.id === taskId)
     if (task) {
       setSelectedTask(task) // 确保设置最新的任务数据
       setIsDetailsModalOpen(true)
@@ -586,6 +675,8 @@ export default function MNTaskBoard() {
     setTasks(tasks.map((task) => (task.id === taskId ? { ...task, ...updates } : task)))
     // 更新待处理任务
     setPendingTasks(pendingTasks.map((task) => (task.id === taskId ? { ...task, ...updates } : task)))
+    // 更新总任务列表
+    setAllTasks(allTasks.map((task) => (task.id === taskId ? { ...task, ...updates } : task)))
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -630,6 +721,20 @@ export default function MNTaskBoard() {
     // 更新待处理任务
     setPendingTasks((prevPendingTasks) =>
       prevPendingTasks.map((task) => {
+        if (task.id === taskId) {
+          const updatedProgressHistory =
+            task.progressHistory?.map((progress) =>
+              progress.id === progressId ? { ...progress, content } : progress,
+            ) || []
+          return { ...task, progressHistory: updatedProgressHistory, updatedAt: new Date() }
+        }
+        return task
+      }),
+    )
+
+    // 更新总任务列表
+    setAllTasks((prevAllTasks) =>
+      prevAllTasks.map((task) => {
         if (task.id === taskId) {
           const updatedProgressHistory =
             task.progressHistory?.map((progress) =>
@@ -691,6 +796,19 @@ export default function MNTaskBoard() {
         return task
       }),
     )
+
+    // 更新总任务列表
+    setAllTasks((prevAllTasks) =>
+      prevAllTasks.map((task) => {
+        if (task.id === taskId) {
+          const updatedProgressHistory = task.progressHistory?.filter((progress) => progress.id !== progressId) || []
+          const updatedTask = { ...task, progressHistory: updatedProgressHistory, updatedAt: new Date() }
+
+          return updatedTask
+        }
+        return task
+      }),
+    )
   }
 
   const toggleTaskSelection = (taskId: string) => {
@@ -710,6 +828,7 @@ export default function MNTaskBoard() {
           isFocusTask: true,
           status: "in-progress" as const,
           order: maxOrder + selectedPendingTasks.indexOf(taskId) + 1,
+          isInPending: false,
         }
         setTasks((prev) => [...prev, focusTask])
       }
@@ -727,7 +846,8 @@ export default function MNTaskBoard() {
         exportDate: new Date().toISOString(),
         focusTasks: tasks,
         pendingTasks: pendingTasks,
-        totalTasks: tasks.length + pendingTasks.length,
+        allTasks: allTasks,
+        totalTasks: allTasks.length,
       }
 
       const dataStr = JSON.stringify(exportData, null, 2)
@@ -822,8 +942,22 @@ export default function MNTaskBoard() {
           })) || [],
       }))
 
+      const processedAllTasks = (importData.allTasks || [...importData.focusTasks, ...importData.pendingTasks]).map(
+        (task: any) => ({
+          ...task,
+          createdAt: new Date(task.createdAt),
+          updatedAt: task.updatedAt ? new Date(task.updatedAt) : undefined,
+          progressHistory:
+            task.progressHistory?.map((entry: any) => ({
+              ...entry,
+              timestamp: new Date(entry.timestamp),
+            })) || [],
+        }),
+      )
+
       setTasks(processedFocusTasks)
       setPendingTasks(processedPendingTasks)
+      setAllTasks(processedAllTasks)
       setShowImportConfirm(false)
       setImportData(null)
 
@@ -867,8 +1001,8 @@ export default function MNTaskBoard() {
 
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                 {focusTasks.map((task) => {
-                  const allTasks = getAllTasks()
-                  const taskPath = generateTaskPath(task, allTasks)
+                  const allTasksList = getAllTasksList()
+                  const taskPath = generateTaskPath(task, allTasksList)
                   const taskWithPath = { ...task, category: taskPath }
 
                   return (
@@ -970,8 +1104,8 @@ export default function MNTaskBoard() {
 
             <div className="space-y-3">
               {pendingTasks.map((task) => {
-                const allTasks = getAllTasks()
-                const taskPath = generateTaskPath(task, allTasks)
+                const allTasksList = getAllTasksList()
+                const taskPath = generateTaskPath(task, allTasksList)
                 const taskWithPath = { ...task, category: taskPath }
 
                 return (
@@ -983,6 +1117,7 @@ export default function MNTaskBoard() {
                       onToggleSelection={toggleTaskSelection}
                       onOpenDetails={openTaskDetails}
                       onDelete={deletePendingTask}
+                      onRemoveFromPending={removeFromPending}
                       onAddToFocus={addToFocus}
                       onLocateTask={locateTask}
                       onLaunchTask={launchTask}
@@ -1014,7 +1149,7 @@ export default function MNTaskBoard() {
         onUpdateProgress={updateProgress}
         onDeleteProgress={deleteProgress}
         availableParentTasks={getAvailableParentTasks(selectedTask?.id)}
-        allTasks={getAllTasks()}
+        allTasks={getAllTasksList()}
       />
       <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
         <AlertDialogContent className="bg-slate-800 border-slate-700">

@@ -36,6 +36,7 @@ interface PendingTaskCardProps {
   onToggleSelection: (taskId: string) => void
   onOpenDetails: (taskId: string) => void
   onDelete: (taskId: string) => void
+  onRemoveFromPending: (taskId: string) => void
   onAddToFocus: (taskId: string) => void
   onLocateTask: (taskId: string) => void
   onLaunchTask: (taskId: string) => void
@@ -49,6 +50,7 @@ export function PendingTaskCard({
   onToggleSelection,
   onOpenDetails,
   onDelete,
+  onRemoveFromPending,
   onAddToFocus,
   onLocateTask,
   onLaunchTask,
@@ -306,16 +308,16 @@ export function PendingTaskCard({
                 <Plus className="w-3 h-3" />
               </Button>
 
-              {/* 删除按钮 */}
+              {/* 从待处理中移除按钮 */}
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation()
-                  onDelete(task.id)
+                  onRemoveFromPending(task.id)
                 }}
-                className="p-1 h-6 w-6 text-slate-500 hover:text-red-400"
-                title="删除任务"
+                className="p-1 h-6 w-6 text-slate-500 hover:text-orange-400 hover:bg-orange-900/20"
+                title="从待处理中移除"
               >
                 <X className="w-4 h-4" />
               </Button>

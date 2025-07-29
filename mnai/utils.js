@@ -159,7 +159,7 @@ class chatAITool{
   let funcName = this.name
   let args = chatAIUtils.getValidJSON(func.function.arguments)
   // MNUtil.copy(func.function.arguments)
-  let noteid = noteId ?? chatAIUtils.getFocusNoteId()
+  let noteid = noteId ?? chatAIUtils.getFocusNoteId(this.needNote)
   // MNUtil.log(noteid)
   if (this.needNote && !noteid) { return this.genErrorInNoNote(func.id)}
   let checkRes = this.checkArgs(args,func.id)
@@ -194,6 +194,12 @@ class chatAITool{
     case "searchNotes":
       response = await this.searchNotes(func,args)
       return response
+    case "createHTML":
+      response = await this.createHTML(func,args)
+      return response
+    case "createMermaidChart":
+      response = await this.createMermaidChart(func,args)
+      return response
     default:
       break;
   }
@@ -215,7 +221,7 @@ class chatAITool{
       })
       break;
     case "addComment":
-      response.result = MNUtil.mergeWhitespace(args.comment.trim())
+      response.result = chatAITool.formatMarkdownList(args.comment)
       message.response = "Comment is added: "+response.result
       response.toolMessages = chatAITool.genToolMessage(message,func.id)
       MNUtil.undoGrouping(()=>{
@@ -225,19 +231,22 @@ class chatAITool{
         }
       })
       break;
-    case "createHTML":
-      let fixedArgs = this.fixHtmlArgs(args)
-      let fullHtml = this.getFullHTML(fixedArgs)
-      if (fullHtml) {
-        MNUtil.postNotification("snipasteHtml", {html:fullHtml})
-        response.result = MNUtil.mergeWhitespace(fullHtml)
-        response.success = true
-        message.response = "HTML file is created, with a preview window"
-      }else{
-        message.response = "Creating HTML file failed"
-      }
-      response.toolMessages = chatAITool.genToolMessage(message,func.id)
-      break;
+    // case "createMermaidChart":
+    //   let args = this.fixHtmlArgs(args)
+
+    // case "createHTML":
+    //   let fixedArgs = this.fixHtmlArgs(args)
+    //   let fullHtml = this.getFullHTML(fixedArgs)
+    //   if (fullHtml) {
+    //     MNUtil.postNotification("snipasteHtml", {html:fullHtml})
+    //     response.result = MNUtil.mergeWhitespace(fullHtml)
+    //     response.success = true
+    //     message.response = "HTML file is created, with a preview window"
+    //   }else{
+    //     message.response = "Creating HTML file failed"
+    //   }
+    //   response.toolMessages = chatAITool.genToolMessage(message,func.id)
+    //   break;
 
     case "addTag":
       response.result = "#"+MNUtil.mergeWhitespace(args.tag.trim())
@@ -260,7 +269,7 @@ class chatAITool{
       MNUtil.copy(response.result)
       break;
     case "copyText":
-      response.result = args.text.trim()
+      response.result = chatAITool.formatMarkdownList(args.text)
       message.response = "Text is copied: "+response.result
       response.toolMessages = chatAITool.genToolMessage(message,func.id)
       MNUtil.copy(response.result)
@@ -392,7 +401,7 @@ class chatAITool{
         if (parentNote) {
           let noteContent = {
             title:parentNote.noteTitle,
-            content:parentNote.allText,
+            content:chatAITool.formatMarkdownList(parentNote.allText),
             id:parentNote.noteId,
             color:parentNote.color
           }
@@ -421,7 +430,8 @@ class chatAITool{
       break;
     case "setExcerpt":
       // note = MNUtil.getNoteById(noteid)
-      response.result = args.excerpt.trim()
+      // response.result = args.excerpt.replace(/&nbsp;/g, ' ')
+      response.result = chatAITool.formatMarkdownList(args.excerpt)
       note = MNNote.new(noteid)
       note = note.realGroupNoteForTopicId()
       MNUtil.undoGrouping(()=>{
@@ -443,7 +453,7 @@ class chatAITool{
       }
       let content = args.content
       if (content) {
-        config.content = content.trim()
+        config.content = chatAITool.formatMarkdownList(content)
       }
       let htmlContent = args.html
       // if (htmlContent) {
@@ -638,6 +648,38 @@ class chatAITool{
         }
       }
       response.toolMessages = chatAITool.genToolMessage(message,func.id)
+    return response
+  }
+  async createHTML(func,args) {
+    let response = {}
+    let message = {success:true}
+    let fixedArgs = this.fixHtmlArgs(args)
+    let fullHtml = this.getFullHTML(fixedArgs)
+    if (fullHtml) {
+      MNUtil.postNotification("snipasteHtml", {html:fullHtml})
+      response.result = MNUtil.mergeWhitespace(fullHtml)
+      response.success = true
+      message.response = "HTML file is created, with a preview window"
+    }else{
+      message.response = "Creating HTML file failed"
+    }
+    response.toolMessages = chatAITool.genToolMessage(message,func.id)
+    return response
+  }
+  async createMermaidChart(func,args) {
+    let response = {}
+    let message = {success:true}
+    let content = args.content ?? ""
+    if (content) {
+      content = chatAIUtils.replaceLtInLatexBlocks(content)
+      MNUtil.postNotification("snipasteMermaid", {content:content,force:true})
+      response.result = content
+      response.success = true
+      message.response = "Mermaid chart is created, with a preview window"
+    }else{
+      message.response = "Creating Mermaid chart failed"
+    }
+    response.toolMessages = chatAITool.genToolMessage(message,func.id)
     return response
   }
   async generateImage(func,args) {
@@ -973,7 +1015,7 @@ class chatAITool{
           break;
         case "setContent":
           MNUtil.undoGrouping(()=>{
-            note.excerptText = args.content
+            note.excerptText = chatAITool.formatMarkdownList(args.content)
             note.excerptTextMarkdown = true
           })
           message.response = `Note/card Content has been changed as "${args.content}"`
@@ -982,7 +1024,7 @@ class chatAITool{
         case "appendContent":
           let targetContent = note.excerptText+"\n"+args.content
           MNUtil.undoGrouping(()=>{
-            note.excerptText = targetContent
+            note.excerptText = chatAITool.formatMarkdownList(targetContent)
           })
           message.response = `Note/card Content has been changed as "${targetContent}"`
           message.success = true
@@ -996,7 +1038,7 @@ class chatAITool{
           break;
         case "addComment":
           MNUtil.undoGrouping(()=>{
-            note.appendMarkdownComment(args.content)
+            note.appendMarkdownComment(chatAITool.formatMarkdownList(args.content))
           })
           message.response = `Add comment with "${args.content}"`
           message.success = true
@@ -1076,11 +1118,6 @@ class chatAITool{
       response.toolMessages = chatAITool.genToolMessage(message, func.id)
     return response
   }
-  async userInput(func,args) {
-    let response = {}
-    let message = {success:true}
-    return response
-  }
   /**
  * 
  * @param {MNNote} note 
@@ -1128,7 +1165,64 @@ try {
 }
 
 }
+  /**
+   * Merges multiple consecutive whitespace characters into a single space, except for newlines.
+   * 
+   * This method processes the input string to replace multiple consecutive whitespace characters
+   * (excluding newlines) with a single space. It also ensures that multiple consecutive newlines
+   * are reduced to a single newline. The resulting string is then trimmed of any leading or trailing
+   * whitespace.
+   * 
+   * @param {string} str - The input string to be processed.
+   * @returns {string} The processed string with merged whitespace.
+   */
+  static mergeWhitespace(str) {
+      if (!str) {
+        return "";
+      }
+      // 1. 替换为标准空格
+      // 2. 将多个连续的换行符替换为单个换行符
+      // 3. 将其它空白符（除了换行符）替换为单个空格
+      var tempStr = str.replace(/&nbsp;/g, ' ').replace(/\n+/g, '\n\n').replace(/[\r\t\f\v\s]+/g, ' ').trim()
+      // var tempStr = str.replace(/\n+/g, '\n').replace(/[\r\t\f\v ]+/g, ' ').trim()
+      return tempStr;
+  }
 
+/**
+ * 修复包含非标准空格和格式错误的 Markdown 无序列表。
+ * @param {string} markdownText - 包含格式问题的 Markdown 文本。
+ * @returns {string} - 格式修正后的 Markdown 文本。
+ */
+static formatMarkdownList(markdownText) {
+  // 1. 首先，全局替换所有的 &nbsp; 为标准空格。
+  let correctedText = markdownText.replace(/&nbsp;/g, ' ');
+
+  // 2. 将文本按行分割成数组，以便逐行处理。
+  const lines = correctedText.split('\n');
+
+  // 3. 遍历每一行，修正列表项的格式。
+  const formattedLines = lines.map(line => {
+    // 使用正则表达式匹配以可选空格开头，后跟一个短横线 (-) 的行。
+    // \s* : 匹配行首的任意个空格（处理缩进）。
+    // -     : 匹配列表标记符“-”。
+    // \s* : 匹配“-”后面可能存在或缺失的空格。
+    // (.*)  : 捕获该行剩余的全部内容（即列表的文本）。
+    const listRegex = /^\s*-\s*(.*)$/;
+
+    // 如果当前行匹配列表项的格式
+    if (listRegex.test(line)) {
+      // 就将其替换为标准格式：“  - 文本内容”
+      // 这里我们统一使用两个空格作为缩进，并在“-”后加一个空格。
+      return line.replace(listRegex, '  - $1');
+    }
+    
+    // 如果不是列表项，则保持原样。
+    return line;
+  });
+
+  // 4. 将处理好的各行重新用换行符连接成一个完整的字符串。
+  return formattedLines.join('\n');
+}
 
 /**
  * 
@@ -1227,8 +1321,68 @@ static render(funcObject){
   let funcHtml = `<code class="hljs">${funcText.trim()}</code>`
   return funcHtml
 }
+static getLoadingHTML(){
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正在加载...</title>
+    <style>
+        /* 整体页面样式 */
+        body, html {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0; /* 背景颜色可以按需修改 */
+            font-family: Arial, sans-serif;
+        }
+
+        /* 加载容器样式 */
+        .loading-container {
+            text-align: center;
+        }
+
+        /* 旋转动画 */
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #ccc; /* 圈的颜色 */
+            border-top: 5px solid #3498db; /* 旋转部分的颜色 */
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px auto; /* 居中并与文字拉开距离 */
+        }
+
+        /* 定义旋转动画 */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* “loading” 文字样式 */
+        .loading-text {
+            font-size: 20px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="loading-container">
+        <div class="spinner"></div>
+        <div class="loading-text">loading</div>
+    </div>
+
+</body>
+</html>`
+}
 
 codifyToolCall (args,force = false) {
+try {
+
   let funcName = this.name
   // MNUtil.copy(funcName)
   switch (funcName) {
@@ -1236,6 +1390,12 @@ codifyToolCall (args,force = false) {
       if (args.title) {
         return `${funcName}("${MNUtil.mergeWhitespace(args.title)}")\n`
       }
+      return `${funcName}()\n`
+    case "createMermaidChart":
+      let content = args?.content?.trim() ?? ""
+      content = chatAIUtils.replaceLtInLatexBlocks(content)
+      MNUtil.postNotification("snipasteMermaid", {content:content})
+      return `${funcName}(\n${content}\n)\n`
     case "createHTML":
       let fixedArgs = this.fixHtmlArgs(args)
       let htmlConfig = {}
@@ -1249,7 +1409,7 @@ codifyToolCall (args,force = false) {
       if (fullHtml) {
         MNUtil.postNotification("snipasteHtml", {html:fullHtml,force:force})
       }else{
-        MNUtil.postNotification("snipasteHtml", {html:`<div>Loading<div>`})
+        MNUtil.postNotification("snipasteHtml", {html:this.getLoadingHTML()})
       }
       // MNUtil.copy(args)
       return `${funcName}(${JSON.stringify(htmlConfig)})\n`
@@ -1257,32 +1417,38 @@ codifyToolCall (args,force = false) {
       if (args.prompt) {
         return `${funcName}("${MNUtil.mergeWhitespace(args.prompt)}")\n`
       }
+      return `${funcName}()\n`
     case "addComment":
       if (args.comment) {
-        return `${funcName}("${args.comment.trim()}")\n`
+        return `${funcName}("${MNUtil.mergeWhitespace(args.comment)}")\n`
       }
+      return `${funcName}()\n`
     case "addTag":
       if (args.tag) {
         return `${funcName}("${MNUtil.mergeWhitespace(args.tag)}")\n`
       }
+      return `${funcName}()\n`
     case "copyMarkdownLink":
       if (args.title) {
         return `${funcName}("${MNUtil.mergeWhitespace(args.title)}")\n`
       }
+      return `${funcName}()\n`
     case "copyCardURL":
       return `${funcName}()\n`
     case "copyText":
       if (args.text) {
         return `${funcName}("${MNUtil.mergeWhitespace(args.text)}")\n`
       }
+      return `${funcName}()\n`
     case "close":
       return `${funcName}()\n`
     case "clearExcerpt":
       return `${funcName}()\n`
     case "setExcerpt":
       if (args.excerpt) {
-        return `${funcName}("${args.excerpt.trim()}")\n`
+        return `${funcName}("${MNUtil.mergeWhitespace(args.excerpt)}")\n`
       }
+      return `${funcName}()\n`
     case "readDocument":
       let currentDocName = MNUtil.getFileName(MNUtil.currentDocController.document.pathFile)
       return `${funcName}("${currentDocName}")\n`
@@ -1320,6 +1486,7 @@ codifyToolCall (args,force = false) {
         })
         return `${funcName}(${JSON.stringify(asts,undefined,2)})\n`
       }
+      return `${funcName}()\n`
     case "createMindmap":
       if (args.ast) {
         // MNUtil.showHUD(typeof args.ast)
@@ -1363,6 +1530,11 @@ codifyToolCall (args,force = false) {
     default:
       return `${funcName}(${JSON.stringify(args,undefined,2)})\n`
   }
+  
+} catch (error) {
+  chatAIUtils.addErrorLog(error, "chatAITool.codifyToolCall")
+  return `${funcName}()\n`
+}
 }
 genErrorInMissingArguments(arg,funcId) {
   // MNUtil.copy(arg)
@@ -1401,6 +1573,117 @@ fixHtmlArgs(args){
     args.css = this.preCSS
   }
   return args
+}
+getFullMermaindHTML(content) {
+  // 对 content 中的反引号和反斜杠进行转义，以安全地插入到 <script> 块中
+  const escapedContent = content
+    .replace(/\\/g, '\\\\') // 1. 转义反斜杠
+    .replace(/`/g, '\\`')   // 2. 转义反引号
+    .replace(/\$/g, '\\$');  // 3. 转义美元符号
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自适应大小的 Mermaid 图表</title>
+    <script src="https://vip.123pan.cn/1836303614/dl/cdn/mermaid.js" defer></script>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; 
+        }
+
+        #mermaid-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px; 
+            box-sizing: border-box;
+        }
+
+        #mermaid-container svg {
+            /* * SVG 在 viewBox 属性的帮助下，会保持其原始长宽比，
+             * 同时缩放到适应这个 100% 的容器尺寸。
+             */
+            width: 100%;
+            height: 100%;
+        }
+        /* 加载容器样式 */
+        .loading-container {
+            text-align: center;
+        }
+
+        /* 旋转动画 */
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #ccc; /* 圈的颜色 */
+            border-top: 5px solid #3498db; /* 旋转部分的颜色 */
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px auto; /* 居中并与文字拉开距离 */
+        }
+
+        /* 定义旋转动画 */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* “loading” 文字样式 */
+        .loading-text {
+            font-size: 20px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="mermaid-container">
+      <div class="loading-container">
+          <div class="spinner"></div>
+          <div class="loading-text">loading</div>
+      </div>
+    </div>
+
+    <script>
+      // 监听 DOMContentLoaded 事件
+      document.addEventListener('DOMContentLoaded', function () {
+
+        mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: 'strict'
+        });
+
+        // 尝试使用一个更复杂的图表来观察缩放效果
+        const mermaidContent = \`${escapedContent}\`;
+
+        const container = document.getElementById('mermaid-container');
+
+        mermaid.render('mermaid-graph', mermaidContent).then(({ svg, bind }) => {
+            
+            container.innerHTML = svg;
+            const svgElement = container.querySelector('svg');
+
+            if (svgElement) {
+                // 移除这些属性，让 CSS 来控制大小
+                svgElement.removeAttribute('width');
+                svgElement.removeAttribute('height');
+                svgElement.removeAttribute('style');
+            }
+            
+            if (bind) {
+                bind(container);
+            }
+        });
+      })
+    </script>
+</body>
+</html>`
 }
 getFullHTML(args){
     if (args.html) {
@@ -1620,6 +1903,33 @@ ${args.html}
         },
         required:["ast"],
         description:"this tool is used to create a mindmap"
+      },
+      "createMermaidChart":{
+        needNote:false,
+        toolTitle: "🔨 Create Mermaid Chart",
+        args:{
+          content:{
+            type:"string",
+            description:`content of the chart. 
+### Constraints ###
+1. All node labels must be wrapped in double quotes. 
+2. Latex formulas must be wrapped in double dollar signs. 
+3. Mermaid chart can not render two latex blocks in one node. Never use two or more latex blocks in one node.
+###################
+
+### Example #######
+graph TD
+    A["Start"] --> B["Calculate $$x^2 + y^2$$"]
+    B --> C["If $$x^2 + y^2 > 1$$?"]
+    C -- Yes --> D["Outside the circle"]
+    C -- No --> E["Inside the circle"]
+    D --> F["End"]
+    E --> F["End"]
+###################`
+          }
+        },
+        required:[],
+        description:"this tool is used to create a mermaid chart"
       },
       "createHTML":{
         needNote:false,
@@ -1874,13 +2184,47 @@ For example, set parameter \`originalContent\` to "reveals" and parameter \`cont
     }
   }
   static get toolNames(){
-    return ["setTitle","addComment","copyMarkdownLink","copyCardURL","copyText","close","addTag","addChildNote","clearExcerpt","setExcerpt","readDocument","readNotes","webSearch","readParentNote","createMindmap","editNote","generateImage","createHTML","userConfirm","userInput","userSelect","mergeNotes","moveNotes","linkNotes","organizeNotes","searchNotes"]
+    return ["setTitle","addComment","copyMarkdownLink","copyCardURL","copyText","close","addTag","addChildNote","clearExcerpt","setExcerpt","readDocument","readNotes","webSearch","readParentNote","createMindmap","editNote","generateImage","createHTML","userConfirm","userInput","userSelect","mergeNotes","moveNotes","linkNotes","organizeNotes","searchNotes","createMermaidChart"]
   }
   static get toolNumber(){
     return this.toolNames.length
   }
+  static get oldTools(){
+    return [0,1,2,3,4,6,8,9]
+  }
   static get activatedTools(){
-    return [0,1,6,7,14,17,15,16,18,19,20,2,3,4,8,9,10,11,12,13,21,22,23,24,25,5]
+    return [15,11,13,21,22,23,24,25,7,14,17,16,18,19,20,10,12,0,1,6,2,3,4,8,9,5]
+    // return [15,11,13,21,22,23,24,25,7,14,17,26,16,18,19,20,10,12,0,1,6,2,3,4,8,9,5]
+  }
+  static get activatedToolsExceptOld(){
+    return [15,11,13,21,22,23,24,25,7,14,17,16,18,19,20,10,12,5]
+    // return [15,11,13,21,22,23,24,25,7,14,17,26,16,18,19,20,10,12,5]
+  }
+  static getChangedTools(currentFunc,index){
+    let targetFunc = currentFunc
+    switch (index) {
+      case -1:
+        targetFunc = []
+        break;
+      case 100:
+        if (chatAIUtils.checkSubscribe()) {
+          targetFunc = chatAITool.activatedToolsExceptOld
+        }
+        break
+      default:
+        if (chatAITool.oldTools.includes(index) || chatAIUtils.checkSubscribe()) {
+          if (targetFunc.includes(index)) {
+            targetFunc = targetFunc.filter(func=> func!==index)
+          }else{
+            targetFunc.push(index)
+          }
+          targetFunc.sort(function(a, b) {
+            return a - b;
+          });
+        }
+        break;
+    }
+    return targetFunc
   }
   /**
    * 
@@ -2109,21 +2453,33 @@ class chatAIUtils {
     this.focusWindow = this.app.focusWindow
     this.version = this.appVersion()
     this.errorLog = [this.version]
+    this.onAlert = false
   }
   static async checkMNUtil(alert = false,delay = 0.01){
+  try {
+    
+
     if (typeof MNUtil === 'undefined') {//如果MNUtil未被加载，则执行一次延时，然后再检测一次
       //仅在MNUtil未被完全加载时执行delay
-      await chatAIUtils.delay(delay)
+      await this.delay(delay)
       if (typeof MNUtil === 'undefined') {
         if (alert) {
-          chatAIUtils.confirm("MN ChatAI\nInstall 'MN Utils' first", "请先安装'MN Utils'")
+          let res = await this.confirm("MN ChatAI:", "Install 'MN Utils' first\n\n请先安装'MN Utils'",["Cancel","Open URL"])
+          if (res) {
+            this.openURL("https://bbs.marginnote.com.cn/t/topic/49699")
+          }
         }else{
-          chatAIUtils.showHUD("MN ChatAI: Please install 'MN Utils' first!",5)
+          this.showHUD("MN ChatAI: Please install 'MN Utils' first!",5)
         }
         return false
       }
     }
     return true
+  } catch (error) {
+    this.copy(error.toString())
+    // chatAIUtils.addErrorLog(error, "chatAITool.checkMNUtil")
+    return false
+  }
   }
   static showHUD(message,duration=2) {
     this.app.showHUD(message,this.focusWindow,2)
@@ -2414,8 +2770,6 @@ static textMatchKeyword(text, query) {
    */
   static getStatusCodeDescription(code){
   try {
-    
-
   // if (typeof code === "number") {
   //   code = toString(code)
   // }
@@ -2752,7 +3106,7 @@ try {
     }
     return imageDatas
   }
-  static getFocusNote() {
+  static getFocusNote(allowSelection = true) {
     //MNNote的方法可能无法兼顾到保存的对照视图,多加一个判断
     let focusNote = MNNote.getFocusNote()
     if (focusNote) {
@@ -2761,40 +3115,20 @@ try {
       if (this.currentNoteId) {
         return MNNote.new(this.currentNoteId)
       }
-      if (MNUtil.currentSelection.onSelection) {
+      if (allowSelection && MNUtil.currentSelection.onSelection) {
         return MNNote.fromSelection().realGroupNoteForTopicId()
       }
       return undefined
     }
   }
 
-  static getFocusNoteId() {
+  static getFocusNoteId(allowSelection = true) {
     //MNNote的方法可能无法兼顾到保存的对照视图,多加一个判断
-    let focusNote = MNNote.getFocusNote()
+    let focusNote = this.getFocusNote(allowSelection)
     if (focusNote) {
       return focusNote.noteId
-    }else{
-      if (this.currentNoteId) {
-        return this.currentNoteId
-      }
-      if (MNUtil.currentSelection.onSelection) {
-        return MNNote.fromSelection().realGroupNoteForTopicId().noteId
-      }
-      return undefined
     }
-  }
-
-  static getFocusNoteId() {
-    //MNNote的方法可能无法兼顾到保存的对照视图,多加一个判断
-    let focusNote = MNNote.getFocusNote()
-    if (focusNote) {
-      return focusNote.noteId
-    }else{
-      if (this.currentNoteId) {
-        return this.currentNoteId
-      }
-      return undefined
-    }
+    return undefined
   }
 
   static getFocusNotes() {
@@ -3178,6 +3512,9 @@ try {
     return this.studyController().studyMode
   }
   static openURL(url){
+    if (!this.app) {
+      this.app = Application.sharedInstance()
+    }
     this.app.openURL(NSURL.URLWithString(url));
   }
   static ensureChatAIController(){
@@ -5000,17 +5337,27 @@ code.hljs {
   static isMN3(){
     return MNUtil.appVersion().version == "marginnote3"
   }
+  /**
+   * 
+   * @param {MNNote} focusNote 
+   * @param {string} text 
+   * @returns 
+   */
   static async insertBlank(focusNote,text){
-    if (!MNUtil.studyController.docMapSplitMode) {
-      MNUtil.showHUD("❌ Unspported in full map mode")
-      return
+  try {
+
+    if (!MNUtil.docMapSplitMode) {
+      MNUtil.studyController.docMapSplitMode = 1
+      // MNUtil.showHUD("❌ Unspported in full map mode")
+      await MNUtil.delay(0.2)
     }
-    // let originNote = MNNote.new(focusNote.originNoteId)
+    // focusNote = focusNote.originNote
     focusNote.focusInDocument()
     await MNUtil.delay(0.1)
     MNUtil.excuteCommand("InsertBlank")
     await MNUtil.delay(0.2)
     let comments = MNComment.from(focusNote)
+    // MNUtil.copy(comments)
     let comment = comments.findLast(c=>c.type==="blankTextComment" || c.type==="blankImageComment")
     if (comment) {
       let note = comment.note
@@ -5034,6 +5381,13 @@ code.hljs {
         MNUtil.showHUD("❌ Failed to insert blank")
       }
     }
+    // await MNUtil.delay(1)
+    // let tem = MNComment.from(focusNote)
+    // MNUtil.copy(tem)
+    
+  } catch (error) {
+    chatAIUtils.addErrorLog(error, "chatAIUtils.insertBlank")
+  }
   }
   static parseVars(template){
     let tokens = mustache.parse(template)
@@ -5427,13 +5781,19 @@ static async getTextVarInfo(text,userInput,vision=false,ocr=this.OCREnhancedMode
    * 
    * @param {string} mainTitle - The main title of the confirmation dialog.
    * @param {string} subTitle - The subtitle of the confirmation dialog.
-   * @returns {Promise<number>} A promise that resolves with the button index of the button clicked by the user.
+   * @param {string[]} items - The items of the confirmation dialog.
+   * @returns {Promise<number|undefined>} A promise that resolves with the button index of the button clicked by the user.
    */
-  static async confirm(mainTitle,subTitle){
+  static async confirm(mainTitle,subTitle,items = ["Cancel","Confirm"]){
+    if (MNOnAlert) {
+      return
+    }
+    MNOnAlert = true
     return new Promise((resolve, reject) => {
       UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-        mainTitle,subTitle,0,"Cancel",["Confirm"],
+        mainTitle,subTitle,0,items[0],items.slice(1),
         (alert, buttonIndex) => {
+          MNOnAlert = false
           // MNUtil.copyJSON({alert:alert,buttonIndex:buttonIndex})
           resolve(buttonIndex)
         }
@@ -5788,6 +6148,12 @@ static fixMarkdownLatexSpaces(markdownText) {
     return '$' + trimmedContent + '$';
   });
 }
+static replaceLtInLatexBlocks(markdown) {
+    return markdown.replace(/\$\$(.*?)\$\$/gs, (match, latexContent) => {
+        return '$$' + latexContent.replace(/</g, '\\lt') + '$$';
+    });
+}
+
 }
 
 class chatAIConfig {
@@ -5873,6 +6239,9 @@ class chatAIConfig {
     githubKey: "",
     githubUrl: "https://models.inference.ai.azure.com/chat/completions",
     githubModel: "gpt-4o",
+    ppioKey:"",
+    ppioUrl:"https://api.ppinfra.com/v3/openai/chat/completions",
+    ppioModel:"deepseek/deepseek-v3/community",
     dynamic:true,
     dynamicFunc : [],
     dynamicModel : "Default",
@@ -6127,7 +6496,30 @@ class chatAIConfig {
           "qwen-max-latest",
           "deepseek-r1",
           "deepseek-v3"
-        ]
+        ],
+    "PPIO":[
+        "deepseek/deepseek-r1-0528",
+        "deepseek/deepseek-r1-turbo",
+        "deepseek/deepseek-v3-0324",
+        "deepseek/deepseek-v3-turbo",
+        "deepseek/deepseek-v3/community",
+        "deepseek/deepseek-r1/community",
+        "deepseek/deepseek-prover-v2-671b",
+        "moonshotai/kimi-k2-instruct",
+        "baidu/ernie-4.5-vl-424b-a47b",
+        "baidu/ernie-4.5-300b-a47b-paddle",
+        "qwen/qwen3-235b-a22b-fp8",
+        "qwen/qwen3-30b-a3b-fp8",
+        "qwen/qwen3-32b-fp8",
+        "qwen/qwen3-8b-fp8",
+        "qwen/qwen3-4b-fp8",
+        "thudm/glm-z1-32b-0414",
+        "thudm/glm-z1-9b-0414",
+        "thudm/glm-4-32b-0414",
+        "thudm/glm-4-9b-0414",
+        "thudm/glm-z1-rumination-32b-0414",
+        "thudm/glm-4.1v-9b-thinking"
+      ]
   }
   static defaultDynamicPrompt = {
     "note":"list below is the structure of a card:\n{{card}}",
@@ -6351,6 +6743,8 @@ class chatAIConfig {
         return this.getConfig("qwenKey")
       case "SiliconFlow":
         return this.getConfig("siliconFlowKey")
+      case "PPIO":
+        return this.getConfig("ppioKey")
       case "Volcengine":
         return this.getConfig("volcengineKey")
       case "Github":
@@ -7592,7 +7986,7 @@ class chatAIConfig {
     return this.usage
   }
   static allSource(withBuiltIn = false,checkKey = false){
-    let allSources = ['Subscription','ChatGPT','ChatGLM','KimiChat','Minimax','Deepseek','SiliconFlow','Github','Qwen','Volcengine','Claude','Gemini','Custom']
+    let allSources = ['Subscription','ChatGPT','ChatGLM','KimiChat','Minimax','Deepseek','SiliconFlow','PPIO','Github','Qwen','Volcengine','Claude','Gemini','Custom']
     if (checkKey) {
       allSources = allSources.filter(source=>this.hasAPIKeyInSource(source))
     }
@@ -7623,6 +8017,8 @@ class chatAIConfig {
         return "qwenKey"
       case "SiliconFlow":
         return "siliconFlowKey"
+      case "PPIO":
+        return "ppioKey"
       case "Volcengine":
         return "volcengineKey"
       case "Github":
@@ -7648,6 +8044,8 @@ class chatAIConfig {
         return this.modelConfig["Volcengine"]
       case "SiliconFlow":
         return this.modelConfig["SiliconFlow"]
+      case "PPIO":
+        return this.modelConfig["PPIO"]
       case "Github":
         return this.modelConfig["Github"]
       case "ChatGLM":
@@ -7703,6 +8101,9 @@ class chatAIConfig {
       case "SiliconFlow":
         this.config.siliconFlowKey = apikey
         break;
+      case "PPIO":
+        this.config.ppioKey = apikey
+        break;
       case "Volcengine":
         this.config.volcengineKey = apikey
         break;
@@ -7748,6 +8149,7 @@ class chatAIConfig {
       case "Claude":
       case "Gemini":
       case "SiliconFlow":
+      case "PPIO":
       case "Volcengine":
       case "Github":
       case "ChatGPT":
@@ -7792,6 +8194,9 @@ class chatAIConfig {
       case "SiliconFlow":
         this.config.siliconFlowModel = model
         break;
+      case "PPIO":
+        this.config.ppioModel = model
+        break;
       case "Volcengine":
         this.config.volcengineModel = model
         break;
@@ -7819,6 +8224,9 @@ class chatAIConfig {
       case "Subscription":
         this.config.subscriptionModel = model
         break;
+      case "PPIO":
+        this.config.ppioModel = model
+        break;
       case "Built-in":
         break;
       default:
@@ -7844,6 +8252,9 @@ class chatAIConfig {
         break;
       case "SiliconFlow":
         model = this.getConfig("siliconFlowModel")
+        break;
+      case "PPIO":
+        model = this.getConfig("ppioModel")
         break;
       case "Volcengine":
         model = this.getConfig("volcengineModel")
@@ -7940,6 +8351,10 @@ class chatAIConfig {
       case "SiliconFlow":
         config.key = this.getConfig("siliconFlowKey")
         config.url = this.getConfig("siliconFlowUrl")
+        return config
+      case "PPIO":
+        config.key = this.getConfig("ppioKey")
+        config.url = this.getConfig("ppioUrl")
         return config
       case "Volcengine":
         config.key = this.getConfig("volcengineKey")
@@ -8994,10 +9409,6 @@ static async uploadWebDAVFile(url, username, password, fileContent) {
  * @throws {Error} If the API key is empty or if there is an error during the request initialization.
  */
 static async webSearch (question,apikey) {
-  if (apikey.trim() === "") {
-    MNUtil.showHUD(model+": No apikey!")
-    return
-  }
   const headers = {
     "Content-Type": "application/json",
     Authorization: "Bearer "+apikey,
@@ -9047,7 +9458,7 @@ static async webSearch (question,apikey) {
  */
 static initRequestForChatGPT (history,apikey,url,model,temperature,funcIndices=[]) {
   if (apikey.trim() === "") {
-    MNUtil.showHUD(model+": No apikey!")
+    MNUtil.confirm("MN ChatAI", `❌ APIKey not found!\n\nURL: ${url}\n\nModel: ${model}\n\nPlease check your settings.`)
     return
   }
   let key = apikey
@@ -9103,7 +9514,7 @@ static initRequestForChatGPT (history,apikey,url,model,temperature,funcIndices=[
  */
 static initRequestForChatGPTWithoutStream (history,apikey,url,model,temperature,funcIndices=[]) {
   if (apikey.trim() === "") {
-    MNUtil.showHUD(model+": No apikey!")
+    MNUtil.confirm("MN ChatAI", `❌ APIKey not found!\n\nURL: ${url}\n\nModel: ${model}\n\nPlease check your settings.`)
     return
   }
   const headers = {

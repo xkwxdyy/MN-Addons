@@ -1,16 +1,13 @@
-修复生图失败的问题
-修复markdown表格渲染的问题
-6个按钮支持自定义,支持设置单击和长按的功能,及执行完成后是否关闭窗口
-新增一个allowEdit选项,默认true,关闭后AI回答的内容不能直接编辑,但选择文本更方便
 
-保存prompt时增加内容检测
-改进Built-in免费额度用完时的提示
-支持使用PDF.js实现本地提取PDF内容，在More标签页下新增一个"PDF Extract Mode"，默认为PDF.js，可以切换回原来的Moonshot
-每次导入配置时自动保存一份导入前的备份，可在Sync标签页下点击restore config恢复
+复制图片后自动调用snipaste预览
+更新mermaid版本并本地化
+修复自动创建摘录的bug
+新增源：PPIO
+改进打开各源的开发平台逻辑
+更新浮动窗口修改tools逻辑
 
-修复createMindmap的一个bug
-修复未选中卡片下点击按钮的一些bug
-修复点击发送按钮无响应的bug
-修复调整MN窗口时的bug
-tools新增searchNotes
-可在小窗中直接修改dynamic下的tools
+killall "MarginNote 4" && sleep 1 && open "/Applications/MarginNote 4.app"
+
+pgrep -x "MarginNote 4" > /dev/null && (killall "MarginNote 4" && sleep 1 && open "/Applications/MarginNote 4.app") || open "/Applications/MarginNote 4.app"
+
+osascript -e 'tell application "MarginNote 4" to quit' && sleep 1 && open "/Applications/MarginNote 4.app" || (killall "MarginNote 4" && sleep 1 && open "/Applications/MarginNote 4.app")

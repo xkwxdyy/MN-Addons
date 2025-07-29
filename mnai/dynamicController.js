@@ -288,15 +288,20 @@ var dynamicController = JSB.defineClass('dynamicController : UIViewController <N
     }
   },
   openSetting:function (params) {
-      if (chatAIUtils.chatController.view.hidden) {
-        if (chatAIUtils.chatController.isFirst) {
+      let setting = chatAIUtils.chatController
+      if (setting.view.hidden) {
+        if (setting.isFirst) {
           let width = 330
-          chatAIUtils.chatController.view.frame = {x:self.view.frame.x-10,y:self.view.frame.y-20,width:width,height:465}
-          chatAIUtils.chatController.currentFrame = chatAIUtils.chatController.view.frame
-          chatAIUtils.chatController.show(self.view.frame)
-          chatAIUtils.chatController.isFirst = false;
+          let frame = {x:self.view.frame.x-10,y:self.view.frame.y-20,width:width,height:465}
+          if (frame.y + 465 > MNUtil.studyHeight) {
+            frame.y = MNUtil.studyHeight - 465
+          }
+          setting.view.frame = frame
+          setting.currentFrame = frame
+          setting.show(self.view.frame)
+          setting.isFirst = false;
         }else{
-          chatAIUtils.chatController.show(self.view.frame)
+          setting.show(self.view.frame)
         }
       }
   },
@@ -309,7 +314,7 @@ var dynamicController = JSB.defineClass('dynamicController : UIViewController <N
       let currentFunc = chatAIConfig.getConfig("dynamicFunc")
       let selector = 'setDynamicFunc:'
 
-    let newOrder = chatAITool.activatedTools
+    let newOrder = chatAITool.activatedToolsExceptOld
     let menu = new Menu(button,self)
     menu.width = 250
     menu.rowHeight = 35
@@ -321,10 +326,33 @@ var dynamicController = JSB.defineClass('dynamicController : UIViewController <N
       let tool = chatAITool.getToolByName(toolName)
       menu.addMenuItem(tool.toolTitle,        selector,toolIndex,currentFunc.includes(toolIndex))
     })
+    menu.addMenuItem("🗿 Old Tools (Free)", "showOldTools:",button)
     menu.addMenuItem("❌ None",             selector,-1,currentFunc.length === 0)
     menu.show()
     } catch (error) {
       chatAIUtils.addErrorLog(error, "changeDynamicFunc")
+    }
+  },
+  showOldTools: function(button){
+    let self = getChatglmController()
+    Menu.dismissCurrentMenu()
+    try {
+    let currentFunc = chatAIConfig.getConfig("dynamicFunc")
+    let selector = 'setDynamicFunc:'
+    let newOrder = chatAITool.oldTools
+    let menu = new Menu(button,self)
+    menu.width = 250
+    menu.rowHeight = 35
+    menu.preferredPosition = 4
+    let toolNames = chatAITool.toolNames
+    newOrder.map((toolIndex)=>{
+      let toolName = toolNames[toolIndex]
+      let tool = chatAITool.getToolByName(toolName)
+      menu.addMenuItem(tool.toolTitle,        selector,toolIndex,currentFunc.includes(toolIndex))
+    })
+    menu.show()
+    } catch (error) {
+      chatAIUtils.addErrorLog(error, "changeFunc")
     }
   },
   setDynamicFunc(param) {

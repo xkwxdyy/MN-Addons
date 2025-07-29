@@ -1,8 +1,8 @@
-
+if (typeof MNOnAlert === 'undefined') {
+  var MNOnAlert = false
+}
 JSB.newAddon = function (mainPath) {
 // try {
-  
-
   JSB.require('utils')
   if (!chatAIUtils.checkMNUtilsFolder(mainPath)) { return undefined }
   JSB.require('webviewController');
@@ -59,8 +59,8 @@ JSB.newAddon = function (mainPath) {
         self.addObserver('onAddonBroadcast:', 'AddonBroadcast');
         self.addObserver('onCloudConfigChange:', 'NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI')
         // self.addObserver('onKeyboardWillShowNotification:', "UIResponderKeyboardWillShowNotification")
-        self.addObserver('onKeyboardWillShowNotification:', "UIResponderKeyboardWillChangeFrameNotification")
-        self.addObserver('onKeyboardWillShowNotification:', "keyboardWillChangeFrameNotification")
+        // self.addObserver('onKeyboardWillShowNotification:', "UIResponderKeyboardWillChangeFrameNotification")
+        // self.addObserver('onKeyboardWillShowNotification:', "keyboardWillChangeFrameNotification")
         } catch (error) {
           chatAIUtils.addErrorLog(error, "sceneWillConnect")
       }

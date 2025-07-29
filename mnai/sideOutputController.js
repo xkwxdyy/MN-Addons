@@ -371,98 +371,58 @@ try {
     MNUtil.postNotification("aiLinkOnText",{text:text,noteid:self.noteid})
   },
   changeFunc: function (button) {
+  try {
     let self = getSideOutputController()
-    try {
-      if (!chatAIUtils.checkSubscribe(false)) {
-        return
-      }
-      let currentFunc = self.funcIndices
-      let selector = 'setFunc:'
+    let currentFunc = self.funcIndices
+    let selector = 'setFunc:'
+    let newOrder = chatAITool.activatedToolsExceptOld
+    let isAllTools = newOrder.every(toolIndex=>currentFunc.includes(toolIndex))
     let menu = new Menu(button,self)
     menu.width = 250
     menu.rowHeight = 35
     menu.preferredPosition = 0
-    menu.addMenuItem("🛠️ All Tools",        selector,100,currentFunc.length === 21)
-    menu.addMenuItem("🔨 Set Title",        selector,0,currentFunc.includes(0))
-    menu.addMenuItem("🔨 Add Comment",      selector,1,currentFunc.includes(1))
-    menu.addMenuItem("🔨 Add Tag",          selector,6,currentFunc.includes(6))
-    menu.addMenuItem("🔨 Create ChildNote", selector,7,currentFunc.includes(7))
-    menu.addMenuItem("🔨 Create Mindmap",   selector,14,currentFunc.includes(14))
-    menu.addMenuItem("🔨 Create HTML",      selector,17,currentFunc.includes(17))
-    menu.addMenuItem("🔨 Edit Note",        selector,15,currentFunc.includes(15))
-    menu.addMenuItem("🎨 Generate Image",   selector,16,currentFunc.includes(16))
-    menu.addMenuItem("🔨 User Confirm",     selector,18,currentFunc.includes(18))
-    menu.addMenuItem("🔨 User Input",       selector,19,currentFunc.includes(19))
-    menu.addMenuItem("🔨 User Select",      selector,20,currentFunc.includes(20))
-    menu.addMenuItem("🔨 Copy MD Link",     selector,2,currentFunc.includes(2))
-    menu.addMenuItem("🔨 Copy Card URL",    selector,3,currentFunc.includes(3))
-    menu.addMenuItem("🔨 Copy Text",        selector,4,currentFunc.includes(4))
-    menu.addMenuItem("🔨 Clear Excerpt",    selector,8,currentFunc.includes(8))
-    menu.addMenuItem("🔨 Set Excerpt",      selector,9,currentFunc.includes(9))
-    menu.addMenuItem("🔨 Read Doc",         selector,10,currentFunc.includes(10))
-    menu.addMenuItem("🔨 Read Notes",       selector,11,currentFunc.includes(11))
-    menu.addMenuItem("🔨 Read ParentNote",  selector,13,currentFunc.includes(13))
-    menu.addMenuItem("🔨 Web Search",       selector,12,currentFunc.includes(12))
-    menu.addMenuItem("🔨 Close",            selector,5,currentFunc.includes(5))
+    menu.addMenuItem("🌟 All Tools",        selector,100,isAllTools)
+    let toolNames = chatAITool.toolNames
+    newOrder.map((toolIndex)=>{
+      let toolName = toolNames[toolIndex]
+      let tool = chatAITool.getToolByName(toolName)
+      menu.addMenuItem(tool.toolTitle,        selector,toolIndex,currentFunc.includes(toolIndex))
+    })
+    menu.addMenuItem("🗿 Old Tools (Free)", "showOldTools:",button)
     menu.addMenuItem("❌ None",             selector,-1,currentFunc.length === 0)
-    // var commandTable = [
-    //       {title:"🛠️ All Tools",object:self,selector:selector,param:100,checked:currentFunc.length === 10},
-    //       {title:"🔨 Set Title",object:self,selector:selector,param:0,checked:currentFunc.includes(0)},
-    //       {title:"🔨 Add Comment",object:self,selector:selector,param:1,checked:currentFunc.includes(1)},
-    //       {title:"🔨 Add Tag",object:self,selector:selector,param:6,checked:currentFunc.includes(6)},
-    //       {title:"🔨 Create ChildNote",object:self,selector:selector,param:7,checked:currentFunc.includes(7)},
-    //       {title:"🔨 Create Mindmap",object:self,selector:selector,param:14,checked:currentFunc.includes(14)},
-    //       {title:"🌐 Create HTML",object:self,selector:selector,param:17,checked:currentFunc.includes(17)},
-    //       {title:"🔨 Edit Note",object:self,selector:selector,param:15,checked:currentFunc.includes(15)},
-    //       {title:"🎨 Generate Image",object:self,selector:selector,param:16,checked:currentFunc.includes(16)},
-    //       {title:"🔨 User Confirm",object:self,selector:selector,param:18,checked:currentFunc.includes(18)},
-    //       {title:"🔨 User Input",object:self,selector:selector,param:19,checked:currentFunc.includes(19)},
-    //       {title:"🔨 User Select",object:self,selector:selector,param:20,checked:currentFunc.includes(20)},
-    //       {title:"🔨 Copy MD Link",object:self,selector:selector,param:2,checked:currentFunc.includes(2)},
-    //       {title:"🔨 Copy Card URL",object:self,selector:selector,param:3,checked:currentFunc.includes(3)},
-    //       {title:"🔨 Copy Text",object:self,selector:selector,param:4,checked:currentFunc.includes(4)},
-    //       {title:"🔨 Clear Excerpt",object:self,selector:selector,param:8,checked:currentFunc.includes(8)},
-    //       {title:"🔨 Set Excerpt",object:self,selector:selector,param:9,checked:currentFunc.includes(9)},
-    //       {title:"🔨 Read Doc",object:self,selector:selector,param:10,checked:currentFunc.includes(10)},
-    //       {title:"🔨 Read Notes",object:self,selector:selector,param:11,checked:currentFunc.includes(11)},
-    //       {title:"🔨 Read ParentNote",object:self,selector:selector,param:13,checked:currentFunc.includes(13)},
-    //       {title:"🔨 Web Search",object:self,selector:selector,param:12,checked:currentFunc.includes(12)},
-    //       {title:"🔨 Close",object:self,selector:selector,param:5,checked:currentFunc.includes(5)},
-    //       {title:"❌ None",object:self,selector:selector,param:-1,checked:currentFunc.length === 0},
-    //     ];
-    // self.popoverController = chatAIUtils.getPopoverAndPresent(button,commandTable,250,0)
     menu.show()
     } catch (error) {
       chatAIUtils.addErrorLog(error, "sideOutputController.changeFunc")
     }
+  },
+  showOldTools: function(button){
+  try {
+    let self = getChatglmController()
+    Menu.dismissCurrentMenu()
+    let currentFunc = self.funcIndices
+    let selector = 'setFunc:'
+    let newOrder = chatAITool.oldTools
+    let menu = new Menu(button,self)
+    menu.width = 250
+    menu.rowHeight = 35
+    menu.preferredPosition = 0
+    let toolNames = chatAITool.toolNames
+    newOrder.map((toolIndex)=>{
+      let toolName = toolNames[toolIndex]
+      let tool = chatAITool.getToolByName(toolName)
+      menu.addMenuItem(tool.toolTitle,        selector,toolIndex,currentFunc.includes(toolIndex))
+    })
+    menu.show()
+  } catch (error) {
+    chatAIUtils.addErrorLog(error, "changeFunc")
+  }
   },
   setFunc: function (index) {
     let self = getSideOutputController()
     Menu.dismissCurrentMenu()
     if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
 try {
-    if (!chatAIUtils.checkSubscribe()) {
-      return
-    }
-    let currentFunc = self.funcIndices
-    switch (index) {
-      case -1:
-        currentFunc = []
-        break;
-      case 100:
-        currentFunc = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]//增加函数后要在这里加一条，不然显示不出来
-        break
-      default:
-        if (currentFunc.includes(index)) {
-          currentFunc = currentFunc.filter(func=> func!==index)
-        }else{
-          currentFunc.push(index)
-        }
-        currentFunc.sort(function(a, b) {
-          return a - b;
-        });
-        break;
-    }
+    let currentFunc = chatAITool.getChangedTools(self.funcIndices, index)
     self.funcIndices = currentFunc
     self.setCurrentFuncIdxs(currentFunc)
     chatAIConfig.config.chatFuncIndices = currentFunc
@@ -1333,6 +1293,7 @@ try {
     case "Minimax":
     case "Deepseek":
     case "SiliconFlow":
+    case "PPIO":
     case "Volcengine":
     case "Github":
     case "Qwen":
@@ -1830,7 +1791,7 @@ try {
       this.history.push({role:"assistant",content:this.response})
     }
     if (!this.response.trim() && !this.tool.length  && !this.preFuncResponse) {
-      MNUtil.showHUD("Empty response")
+      MNUtil.showHUD("Empty response"+this.history.length)
     }
     this.funcResponse = ""
     this.lastResponse = this.response.trim()
@@ -3128,7 +3089,7 @@ sideOutputController.prototype.speech = async function(text,webview){
  * @param {number[]} actionIndices 
  * @param {string} text 
  */
-sideOutputController.prototype.excuteFinishAction = function (actionIndices,text) {
+sideOutputController.prototype.executeFinishAction = function (actionIndices,text) {
   try {
     
 
@@ -3194,7 +3155,7 @@ sideOutputController.prototype.excuteFinishAction = function (actionIndices,text
     }
   })
   } catch (error) {
-    chatAIUtils.addErrorLog(error, "excuteFinishAction")
+    chatAIUtils.addErrorLog(error, "executeFinishAction")
   }
 }
 /**

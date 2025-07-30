@@ -129,9 +129,15 @@ viewWillLayoutSubviews: function() {
   },
 
   webViewDidStartLoad: function(webView) {
+  try {
+
     let currentURL = webView.request.URL().absoluteString();
     if (!currentURL) {return}
     let config = MNUtil.parseURL(webView.request.URL())
+    // MNUtil.log({
+    //   message:"webViewDidStartLoad",
+    //   detail:config
+    // })
     // MNUtil.copy(config)
     if (config.url === "about:blank") {
       self.refreshButton.setImageForState(browserUtils.reloadImage,0)
@@ -141,6 +147,7 @@ viewWillLayoutSubviews: function() {
       self.refreshButton.setImageForState(browserUtils.stopImage,0)
       self.changeButtonOpacity(0.5)
     }
+
     // MNUtil.showHUD("Start")
 //         self.runJavaScript(`
 // function clickButtonAfterVideoLoad(buttonSelector) {
@@ -166,12 +173,18 @@ viewWillLayoutSubviews: function() {
     // pasteBoard.string = currentURL
     UIApplication.sharedApplication().networkActivityIndicatorVisible = true;
     // self.refreshButton.setTitleForState('✖️', 0);
+    
+  } catch (error) {
+    browserUtils.addErrorLog(error, "webViewDidStartLoad")
+  }
   },
   /**
    * 
    * @param {UIWebView} webView 
    */
   webViewDidFinishLoad: async function(webView) {
+  try {
+
     let self = getBrowserController()
     // MNUtil.log("webViewDidFinishLoad")
     MNUtil.stopHUD()
@@ -186,6 +199,10 @@ viewWillLayoutSubviews: function() {
     self.isLoading = false;
     UIApplication.sharedApplication().networkActivityIndicatorVisible = false;
     let config = MNUtil.parseURL(webView.request.URL())
+    // MNUtil.log({
+    //   message:"webViewDidFinishLoad",
+    //   detail:config
+    // })
     if (config.scheme === "about") {
       return
     }
@@ -229,6 +246,7 @@ viewWillLayoutSubviews: function() {
           self.updateAppiconForgeOffset()
           return;
         case "m.bilibili.com":
+          // MNUtil.showHUD("m.bilibili.com")
           self.updateBilibiliOffset()
           return;
         case "www.bilibili.com":
@@ -240,51 +258,6 @@ viewWillLayoutSubviews: function() {
         default:
           break;
       }
-    }
-    if (/https:\/\/www\.bilibili\.com\/.*/.test(self.webview.url)) {
-      if (/https:\/\/www\.bilibili\.com\/video\/.*/.test(self.webview.url)) {
-      // MNUtil.delay(1).then(()=>{
-      //   self.runJavaScript(`document.querySelector('.bpx-player-ctrl-btn.bpx-player-ctrl-wide').click()`)
-      // })
-      
-        // MNUtil.showHUD("message")
-//         self.runJavaScript(`/**
-//  * 在 video 标签加载完成后点击指定按钮
-//  * @param {string} videoSelector - video 标签的选择器
-//  * @param {string} buttonSelector - 按钮的选择器
-//  */
-// function clickButtonAfterVideoLoad(videoSelector, buttonSelector) {
-//         // 监听 video 加载完成事件
-//         document.addEventListener('loadeddata', () => {
-//             console.log('视频加载完成，准备点击按钮');
-
-//             // 获取按钮元素
-//             const button = document.querySelector(buttonSelector);
-
-//             if (button) {
-//                 // 触发按钮的点击事件
-//                 button.click();
-//                 console.log('按钮已被点击');
-//             } else {
-//                 console.log('按钮未找到');
-//             }
-//         });
-// }
-
-// // 调用示例
-// clickButtonAfterVideoLoad('video', '.bpx-player-ctrl-btn.bpx-player-ctrl-wide');
-
-// `)
-
-      }else{
-        self.updateBilibiliOffset()
-      }
-      // let frame = self.view.frame
-      // if (frame.width < 300) {
-      //   frame.width = 720
-      //   self.setFrame(frame)
-      // }
-      return;
     }
     if (/https\:\/\/.*\.bing\.com\/search.*/.test(self.webview.url)) {
         self.updateBingOffset()
@@ -311,21 +284,26 @@ viewWillLayoutSubviews: function() {
       default:
         break;
     }
+    
+  } catch (error) {
+    browserUtils.addErrorLog(error, "webViewDidFinishLoad")
+  }
   },
   webViewDidFailLoadWithError: function(webView, error) {
     // MNUtil.showHUD("789")
+    // MNUtil.log("webViewDidFailLoadWithError")
     self.refreshButton.setImageForState(browserUtils.reloadImage,0)
     // self.refreshButton.setTitleForState('🔄', 0);
     self.changeButtonOpacity(1.0)
     self.isLoading = false;
     // MNUtil.showHUD(error)
-    // let errorInfo = {
-    //   code:error.code,
-    //   domain: error.domain,
-    //   description: error.localizedDescription,
-    //   userInfo: error.userInfo
-    // }
-    // MNUtil.copyJSON(errorInfo)
+    let errorInfo = {
+      code:error.code,
+      domain: error.domain,
+      description: error.localizedDescription,
+      userInfo: error.userInfo
+    }
+    MNUtil.log(errorInfo)
 
     // self.getCurrentURL()
     //UIApplication.sharedApplication().networkActivityIndicatorVisible = false;
@@ -364,6 +342,11 @@ viewWillLayoutSubviews: function() {
     // }
     
     let config = MNUtil.parseURL(requestURL)
+    // let currentConfig = MNUtil.parseURL(currentURL)
+    // MNUtil.log({
+    //   message:"webViewShouldStartLoadWithRequestNavigationType",
+    //   detail:config
+    // })
     switch (config.scheme) {
       case "zhihu":
         return false;
@@ -397,6 +380,11 @@ viewWillLayoutSubviews: function() {
               return false
             case "oia.zhihu.com":
               return false
+            case "s1.hdslb.com":
+              if (currentURL.startsWith("https://www.bilibili.com/video/")) {
+                self.enableWideMode()
+              }
+              return true
             case "oia.xiaohongshu.com":
               MNUtil.confirm("MN Utils", "Open Red Note?\n\n是否打开小红书？").then(async (confirm)=>{
                 let deeplink = config.params.deeplink
@@ -558,22 +546,23 @@ viewWillLayoutSubviews: function() {
     } 
 
     // MNUtil.copy(requestURL)
-    if (requestURL.startsWith("https://s1.hdslb.com") && /https:\/\/www\.bilibili\.com\/video\/.*/.test(currentURL)) {
-        self.runJavaScript(`
-// 存储 interval ID
-const intervalId = setInterval(() => {
-  const wideButton = document.querySelector('.bpx-player-ctrl-btn.bpx-player-ctrl-wide');
-  if (wideButton) {
-    wideButton.click(); // 点击按钮
-    clearInterval(intervalId); // 取消 interval
-  }
-}, 1000);
+//     if (requestURL.startsWith("https://s1.hdslb.com") && /https:\/\/www\.bilibili\.com\/video\/.*/.test(currentURL)) {
+//         self.runJavaScript(`
+// // 存储 interval ID
+// const intervalId = setInterval(() => {
+//   const wideButton = document.querySelector('.bpx-player-ctrl-btn.bpx-player-ctrl-wide');
+//   if (wideButton) {
+//     wideButton.click(); // 点击按钮
+//     clearInterval(intervalId); // 取消 interval
+//   }
+// }, 1000);
 
-        `)
-self.updateBilibiliOffset()
-        // self.runJavaScript(`document.querySelector('.bpx-player-ctrl-btn.bpx-player-ctrl-wide').click()`)
-      // MNUtil.showHUD("message")
-    }
+//         `)
+// self.updateBilibiliOffset()
+//         // self.runJavaScript(`document.querySelector('.bpx-player-ctrl-btn.bpx-player-ctrl-wide').click()`)
+//       // MNUtil.showHUD("message")
+//       return true
+//     }
     // if (/^webaction\:\/\/showError/.test(requestURL)) {
     //   let error = decodeURIComponent(requestURL.split("showError=")[1])
     //   MNUtil.showHUD(error)
@@ -635,7 +624,7 @@ self.updateBilibiliOffset()
       let studyFrame = MNUtil.studyView.bounds
       self.lastFrame.x = MNUtil.constrain(self.lastFrame.x, 0, studyFrame.width-self.lastFrame.width)
       self.lastFrame.y = MNUtil.constrain(self.lastFrame.y, 0, studyFrame.height-self.lastFrame.height)
-      let color = this.desktop ? "#b5b5f5":"#9bb2d6"
+      let color = self.desktop ? "#b5b5f5":"#9bb2d6"
       self.view.layer.backgroundColor = MNUtil.hexColorAlpha(color,0.8)
       self.view.layer.borderColor = MNUtil.hexColorAlpha(color,0.8)
       self.moveButton.setImageForState(undefined,0)
@@ -657,6 +646,7 @@ self.updateBilibiliOffset()
     menu.addMenuItem('🎬  VideoFrame → ChildNote', 'videoFrameToNote:',true)
     menu.addMenuItem('🎬  VideoFrame → NewNote', 'videoFrameToNewNote:',true)
     menu.addMenuItem('🎬  VideoFrame → NewComment', 'videoFrameToComment:',true)
+    // menu.addMenuItem('🎬  VideoFrame → NewComment', 'changeZoomScale:',true)
     if ((await self.currentURLStartsWith("https://doc2x.noedgeai.com"))) {
       menu.addMenuItem('📤  Upload to Doc2X', 'uploadToDoc2X:',true)
     }
@@ -675,6 +665,25 @@ self.updateBilibiliOffset()
     //     {title:'UploadToDoc2X',object:self,selector:'uploadToDoc2X:',param:true},
     //   ];
     // self.view.popoverController = MNUtil.getPopoverAndPresent(sender, commandTable,250,1)
+  },
+  changeZoomScale: async function (params) {
+  try {
+    let scrollview = self.webview.scrollView
+  let webWidth = scrollview.contentSize.width
+    MNUtil.log({
+      message:"enableWideMode",
+      detail:{
+        maximumZoomScale:scrollview.maximumZoomScale,
+        minimumZoomScale:scrollview.minimumZoomScale,
+        zoomScale:scrollview.zoomScale,
+        possibleZoomScales:self.view.frame.width/webWidth,
+      }
+    })
+    scrollview.contentSize = {width:self.view.frame.width, height:scrollview.contentSize.height}
+    
+  } catch (error) {
+    browserUtils.addErrorLog(error, "changeZoomScale")
+  }
   },
   changeBilibiliVideoPart: async function (button) {
     let self = getBrowserController()
@@ -1445,21 +1454,25 @@ exportToPDF()
   },
   videoFrame: async function (width) {
     let self = getBrowserController()
+    Menu.dismissCurrentMenu()
     if (self.view.popoverController) {self.view.popoverController.dismissPopoverAnimated(true);}
     self.videoFrameAction("clipboard")
   },
   videoFrameToSnipaste: async function (width) {
     let self = getBrowserController()
+    Menu.dismissCurrentMenu()
     if (self.view.popoverController) {self.view.popoverController.dismissPopoverAnimated(true);}
     self.videoFrameAction("snipaste")
   },
   videoFrameToEditor: async function (width) {
     let self = getBrowserController()
+    Menu.dismissCurrentMenu()
     if (self.view.popoverController) {self.view.popoverController.dismissPopoverAnimated(true);}
     self.videoFrameAction("editor")
   },
   videoFrameToNote: async function (childNote) {
     let self = getBrowserController()
+    Menu.dismissCurrentMenu()
     if (self.view.popoverController) {self.view.popoverController.dismissPopoverAnimated(true);}
     if (childNote) {
       self.videoFrameAction("childNote")
@@ -1956,7 +1969,7 @@ backward10Seconds();`);
         self.view.layer.opacity = 0
         self.hideAllButton()
         self.onAnimate = true
-        let color = this.desktop ? "#b5b5f5":"#9bb2d6"
+        let color = self.desktop ? "#b5b5f5":"#9bb2d6"
         self.view.layer.backgroundColor = MNUtil.hexColorAlpha(color,0.8)
         self.view.layer.borderColor = MNUtil.hexColorAlpha(color,0.8)
         MNUtil.animate(()=>{
@@ -2027,6 +2040,35 @@ backward10Seconds();`);
       let size = {width:width,height:height}
       browserConfig.config.size = size
       browserConfig.save("MNBrowser_config")
+//       self.runJavaScript(`(function() {
+//     let resizeTimer;
+//     const container = document.documentElement; // 根元素作为基准（可替换为其他容器）
+
+//     function adjustScale() {
+//         // 1. 获取内容的实际宽度
+//         const contentWidth = container.scrollWidth; 
+        
+//         // 2. 计算动态缩放比例（限制最小比例为1，避免放大导致模糊）
+//         const windowWidth = window.innerWidth;
+//         const scale = Math.min(1, windowWidth / contentWidth); 
+        
+//         // 3. 应用缩放并同步占位尺寸
+//         container.style.transform = \`scale(\${scale})\`;
+//         container.style.transformOrigin = '0 0';
+//         container.style.width = \`\${contentWidth * scale}px\`;
+//         container.style.height = \`\${container.scrollHeight * scale}px\`; // 可选，防止纵向挤压
+//     }
+
+//     // 4. 防抖优化性能
+//     window.addEventListener('resize', () => {
+//         clearTimeout(resizeTimer);
+//         resizeTimer = setTimeout(adjustScale, 50);
+//     });
+
+//     // 初始化时执行一次调整
+//     adjustScale();
+// })();
+// `)
       // MNUtil.showHUD("End")
     }
   },
@@ -3488,6 +3530,15 @@ browserController.prototype.updateBilibiliOffset = async function() {
   if (document.getElementsByClassName("slide-ad-exp") && document.getElementsByClassName("slide-ad-exp").length > 0) {
     document.getElementsByClassName("slide-ad-exp")[0].style.display = "none";
   }
+  if (document.getElementsByClassName("call-app") && document.getElementsByClassName("call-app").length > 0) {
+    document.getElementsByClassName("call-app")[0].style.display = 'none'
+  }
+  if (document.getElementsByClassName("relative-course") && document.getElementsByClassName("relative-course").length > 0) {
+    document.getElementsByClassName("relative-course")[0].style.display = 'none'
+  }
+  if (document.getElementsByClassName("navbar-h5") && document.getElementsByClassName("navbar-h5").length > 0) {
+    document.getElementsByClassName("navbar-h5")[0].style.display = 'none'
+  }
   `,0.5)
 };
 
@@ -4212,7 +4263,8 @@ browserController.prototype.getColor = function (highlight = false) {
 browserController.prototype.setWebMode = function (desktop = false) {
   if (desktop) {
     this.desktop = true
-    this.webview.customUserAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15'
+    // this.webview.customUserAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15'
+    this.webview.customUserAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Safari/605.1.15'
     this.setAllButtonColor("#b5b5f5")
   }else{
     this.desktop = false
@@ -4673,25 +4725,23 @@ try {
         }
         break;
       case "editor":
+        // MNUtil.copy(videoFrameInfo)
         if ("bv" in videoFrameInfo) {
           MNUtil.showHUD("videoframe → Editor")
           MNUtil.postNotification("editorInsert", {contents:[
             {type:"image",content:videoFrameInfo.image},
             {type:"text",content:browserUtils.videoTime2MD(videoFrameInfo)}
           ]})
+        }else{
+          MNUtil.showHUD("videoframe → Editor")
+          MNUtil.postNotification("editorInsert", {contents:[
+            {type:"image",content:videoFrameInfo.image}
+          ]})
         }
         break;
       case "excerpt":
-        if (!focusNote) {
-          MNUtil.showHUD("No note selected!")
-          return
-        }
-        if ("bv" in videoFrameInfo) {
+        if (focusNote) {
           MNUtil.showHUD("videoframe → Excerpt")
-          if (focusNote.excerptPic && !focusNote.textFirst) {
-            self.webview.endEditing(true)
-            MNUtil.excuteCommand("EditTextMode")
-          }
           let MDVideoInfo = browserUtils.videoInfo2MD(videoFrameInfo)
           let excerptText = (focusNote.excerptText??"")+`\n`+MDVideoInfo
             MNUtil.undoGrouping(()=>{
@@ -4699,14 +4749,13 @@ try {
               focusNote.excerptTextMarkdown = true
               focusNote.processMarkdownBase64Images()
             })
-        }
-        break;
-      case "childNote":
-        if (!focusNote) {
+        }else{
           MNUtil.showHUD("No note selected!")
           return
         }
-        if ("bv" in videoFrameInfo) {
+        break;
+      case "childNote":
+        if (focusNote) {
           MNUtil.showHUD("videoframe → ChildNote")
           let MDVideoInfo = browserUtils.videoInfo2MD(videoFrameInfo)
           let config = {excerptText:MDVideoInfo,excerptTextMarkdown:true}
@@ -4716,44 +4765,45 @@ try {
           }else{
             MNUtil.showHUD("❌ Create note failed")
           }
-        }
-        break;
-      case "comment":
-        if (!focusNote) {
+        }else{
           MNUtil.showHUD("No note selected!")
           return
         }
-        if ("bv" in videoFrameInfo) {
+        break;
+      case "comment":
+        if (focusNote) {
           MNUtil.showHUD("videoframe → Comment")
           let MDVideoInfo = browserUtils.videoInfo2MD(videoFrameInfo)
-            MNUtil.undoGrouping(()=>{
-              focusNote.excerptTextMarkdown = true
-              focusNote.appendMarkdownComment(MDVideoInfo)
-              focusNote.processMarkdownBase64Images()
-            })
+          MNUtil.undoGrouping(()=>{
+            focusNote.excerptTextMarkdown = true
+            focusNote.appendMarkdownComment(MDVideoInfo)
+            focusNote.processMarkdownBase64Images()
+          })
+        }else{
+          MNUtil.showHUD("No note selected!")
+          return
         }
+
         break;
       case "newNote":
-        if ("bv" in videoFrameInfo) {
-          MNUtil.showHUD("videoframe → ChildNote")
-          let MDVideoInfo = browserUtils.videoInfo2MD(videoFrameInfo)
-          let config = {excerptText:MDVideoInfo,excerptTextMarkdown:true}
-          let mindmap = MNUtil.mindmapView.mindmapNodes[0].note.childMindMap
-          // MNNote.new(mindmap).focusInMindMap()
-          if (mindmap) {
-            let childNote = MNNote.new(mindmap).createChildNote(config)
-            childNote.focusInMindMap(0.5)
-          }else{
-            MNUtil.showHUD("Create in main mindmap")
-            MNUtil.undoGrouping(()=>{
-              let newNote = MNNote.new(config)
-              if (!newNote) {
-                MNUtil.showHUD("❌ Create note failed")
-                return
-              }
-              newNote.focusInMindMap(0.5)
-            })
-          }
+        MNUtil.showHUD("videoframe → ChildNote")
+        let MDVideoInfo = browserUtils.videoInfo2MD(videoFrameInfo)
+        let config = {excerptText:MDVideoInfo,excerptTextMarkdown:true}
+        let mindmap = MNUtil.mindmapView.mindmapNodes[0].note.childMindMap
+        // MNNote.new(mindmap).focusInMindMap()
+        if (mindmap) {
+          let childNote = MNNote.new(mindmap).createChildNote(config)
+          childNote.focusInMindMap(0.5)
+        }else{
+          MNUtil.showHUD("Create in main mindmap")
+          MNUtil.undoGrouping(()=>{
+            let newNote = MNNote.new(config)
+            if (!newNote) {
+              MNUtil.showHUD("❌ Create note failed")
+              return
+            }
+            newNote.focusInMindMap(0.5)
+          })
         }
         break;
       default:
@@ -4820,7 +4870,7 @@ try {
         if ("bv" in videoFrameInfo) {
           MNUtil.showHUD("videoTime → Excerpt")
           if (focusNote.excerptPic && !focusNote.textFirst) {
-            self.webview.endEditing(true)
+            this.webview.endEditing(true)
             MNUtil.excuteCommand("EditTextMode")
           }
           let MDVideoInfo = formatedLink
@@ -4992,7 +5042,7 @@ browserController.prototype.customHomepage = async function (params) {//需要�
       homePage.url = "https://"+res.input
     }
     browserConfig.config.homePage = homePage
-    self.setHomepageButton.setTitleForState("HomePage: "+homePage.url,0)
+    this.setHomepageButton.setTitleForState("HomePage: "+homePage.url,0)
     MNUtil.showHUD("New HomePage: "+res.input)
 }
 
@@ -5009,7 +5059,7 @@ browserController.prototype.waitHUD = function (title,view = this.view) {
  * @this {browserController}
  */
 browserController.prototype.uploadPDFToDoc2XByBase64 = async function (fileBase64,fileName) {
-self.runJavaScript(`
+this.runJavaScript(`
 function uploadPDFBase64(filebase64,fileName) {
   // 1. 获取页面的拖放区域
   const dropZone = document.body;
@@ -5072,7 +5122,7 @@ uploadPDFBase64("${fileBase64}","${fileName}")
  * @this {browserController}
  */
 browserController.prototype.uploadImageToDoc2XByBase64 = async function (fileBase64,fileName) {
-self.runJavaScript(`
+this.runJavaScript(`
 function uploadPDFBase64(filebase64,fileName) {
   // 1. 获取页面的拖放区域
   const dropZone = document.body;
@@ -5365,16 +5415,16 @@ browserController.prototype.uploadImageToDoc2X = async function (currentImage = 
       let fileBase64 = currentImage.base64Encoding().replace(/"/g, '\\"')
       await this.uploadImageToDoc2XByBase64(fileBase64, fileName)
       await MNUtil.stopHUD(0.5)
-      currentURL = await this.getCurrentURL()
+      let currentURL = await this.getCurrentURL()
       // MNUtil.log(currentURL)
       // MNUtil.log(self.preParseId)
-      while (!currentURL.startsWith("https://doc2x.noedgeai.com/ocr?parseId_0=") || currentURL.includes(self.preParseId)) {
+      while (!currentURL.startsWith("https://doc2x.noedgeai.com/ocr?parseId_0=") || currentURL.includes(this.preParseId)) {
         // MNUtil.log("delay")
         await MNUtil.delay(0.5)
         currentURL = await this.getCurrentURL()
       }
       let config = MNUtil.parseURL(currentURL)
-      self.preParseId = config.params.parseId_0
+      this.preParseId = config.params.parseId_0
       // MNUtil.copy(config)
       await MNUtil.delay(0.5)
       this.runJavaScript(`
@@ -5542,4 +5592,37 @@ let encodedPartInfo = await this.runJavaScript(`
     }else{
       MNUtil.showHUD("No video part found")
     }
+}
+
+browserController.prototype.enableWideMode = async function() {
+    let scrollview = this.webview.scrollView
+  let webWidth = scrollview.contentSize.width
+  let notWide = (scrollview.zoomScale - scrollview.minimumZoomScale < 0.01) && (webWidth/this.view.frame.width > 1.1)
+    // MNUtil.log({
+    //   message:"enableWideMode",
+    //   detail:{
+    //     maximumZoomScale:scrollview.maximumZoomScale,
+    //     minimumZoomScale:scrollview.minimumZoomScale,
+    //     zoomScale:scrollview.zoomScale,
+    //     possibleZoomScales:webWidth/this.view.frame.width,
+    //     notWide:notWide
+    //   }
+    // })
+
+  // MNUtil.log(webWidth)
+  // MNUtil.log(this.view.frame.width)
+              if (this.view.frame.width < 700 && !notWide) {
+                
+                this.runJavaScript(`
+// 存储 interval ID
+const intervalId = setInterval(() => {
+  const wideButton = document.querySelector('.bpx-player-ctrl-btn.bpx-player-ctrl-wide');
+  if (wideButton) {
+    wideButton.click(); // 点击按钮
+    clearInterval(intervalId); // 取消 interval
+    document.getElementById("biliMainHeader").style.display = 'none'
+  }
+}, 1000);`)
+              }
+                this.updateBilibiliOffset()
 }

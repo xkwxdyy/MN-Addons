@@ -73,7 +73,12 @@ JSB.newAddon = function (mainPath) {
         // self.addonController = browserController.new();
         MNUtil.studyView.addSubview(self.addonController.view)
         MNUtil.refreshAddonCommands()
-        self.addonController.view.hidden = true;
+        if (self.addonController.miniMode) {
+          MNUtil.showHUD("miniMode")
+          self.addonController.view.hidden = false;
+        }else{
+          self.addonController.view.hidden = true;
+        }
         self.addonController.notebookid = notebookid
 
         if (browserConfig.dynamic) {
@@ -102,18 +107,18 @@ JSB.newAddon = function (mainPath) {
 
         // Application.sharedInstance().showHUD("close",self.window,2)
         if (self.addonController.miniMode) {
-          self.addonController.homePage()
-          let preFrame = self.addonController.view.frame
-          self.addonController.view.hidden = true
-          self.addonController.showAllButton()
-          let studyFrame = Application.sharedInstance().studyController(self.window).view.bounds
-          if (self.addonController.view.frame.x < studyFrame.width*0.5) {
-            self.addonController.lastFrame.x = 0
-          }else{
-            self.addonController.lastFrame.x = studyFrame.width-self.addonController.lastFrame.width
-          }
-          self.addonController.setFrame(self.addonController.lastFrame)
-          self.addonController.show(preFrame)
+          // self.addonController.homePage()
+          // let preFrame = self.addonController.view.frame
+          // self.addonController.view.hidden = true
+          // self.addonController.showAllButton()
+          // let studyFrame = Application.sharedInstance().studyController(self.window).view.bounds
+          // if (self.addonController.view.frame.x < studyFrame.width*0.5) {
+          //   self.addonController.lastFrame.x = 0
+          // }else{
+          //   self.addonController.lastFrame.x = studyFrame.width-self.addonController.lastFrame.width
+          // }
+          // self.addonController.setFrame(self.addonController.lastFrame)
+          // self.addonController.show(preFrame)
         }
         self.addonController.view.removeFromSuperview()
         self.newWindowController.view.removeFromSuperview()
@@ -172,6 +177,8 @@ JSB.newAddon = function (mainPath) {
             if (currentFrame.y >= studyFrame.height) {
               currentFrame.y = studyFrame.height-20              
             }
+            currentFrame.width = MNUtil.constrain(currentFrame.width, 265, studyFrame.width-currentFrame.x)
+            currentFrame.height = MNUtil.constrain(currentFrame.height, 150, studyFrame.height-currentFrame.y)
             self.addonController.setFrame(currentFrame)
           }
         }
@@ -990,7 +997,7 @@ JSB.newAddon = function (mainPath) {
    */
   MNBrowserClass.prototype.removeObservers = function (names) {
     names.forEach(name=>{
-      NSNotificationCenter.defaultCenter().removeObserverName(self, name);
+      NSNotificationCenter.defaultCenter().removeObserverName(this, name);
     })
   }
   /**
@@ -1007,19 +1014,19 @@ JSB.newAddon = function (mainPath) {
       if (refresh) {
         MNUtil.refreshAddonCommands()
       }
-      if (!this.addonController.inHomePage) {
+      if (!this.addonController.miniMode && !this.addonController.inHomePage) {
         this.addonController.homePage()
       }
     }
       } catch (error) {
-    browserUtils.showHUD(error,5)
+        browserUtils.addErrorLog(error, "ensureView")
   }
   }
   MNBrowserClass.prototype.checkUpdate = async function () {
     // browserUtils.addErrorLog("not implemented", "checkUpdate")
     let success = await browserConfig.readCloudConfig(false)
     if (success) {
-      self.addonController.refreshLastSyncTime()
+      this.addonController.refreshLastSyncTime()
     }
   }
   return MNBrowserClass;

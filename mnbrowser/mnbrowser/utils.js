@@ -747,8 +747,13 @@ static extractBilibiliLinks(markdownText) {
   return results;
 }
   static videoInfo2MD(videoFrameInfo){
-    let timeStamp = this.videoTime2MD(videoFrameInfo)
-    return `![image.png](${videoFrameInfo.image})\n${timeStamp}`
+    if ("bv" in videoFrameInfo) {
+      let timeStamp = this.videoTime2MD(videoFrameInfo)
+      return `![image.png](${videoFrameInfo.image})\n${timeStamp}`
+      
+    }else{
+      return `![image.png](${videoFrameInfo.image})`
+    }
   }
   static videoTime2MD(videoFrameInfo){
     let formatedVideoTime = this.formatSeconds(videoFrameInfo.time)

@@ -4083,6 +4083,9 @@ class MNMath {
     let selectAllText = allSelected ? "⬜ 取消全选" : "☑️ 全选所有内容";
     displayOptions.unshift(selectAllText);
     
+    // 添加范围选择选项
+    displayOptions.splice(1, 0, "📍 选择范围");
+    
     // 添加分隔线和操作选项
     if (previousDialog) {
       displayOptions.push("⬅️ 返回上一层");
@@ -4118,6 +4121,10 @@ class MNMath {
           
           // 递归显示更新后的对话框
           this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
+          
+        } else if (buttonIndex === 2) {
+          // 用户选择了范围选择
+          this.showRangeSelectDialog(note, commentOptions, selectedIndices, previousDialog);
           
         } else if (buttonIndex === displayOptions.length) {
           // 用户选择了"删除选中项"
@@ -4175,7 +4182,7 @@ class MNMath {
           }
           
           // 用户选择了某个评论，切换选中状态
-          let selectedComment = commentOptions[buttonIndex - 2]; // 因为加了全选选项，所以索引要减2
+          let selectedComment = commentOptions[buttonIndex - 3]; // 因为加了全选和范围选择选项，所以索引要减3
           
           if (selectedIndices.has(selectedComment.index)) {
             selectedIndices.delete(selectedComment.index);
@@ -4188,6 +4195,162 @@ class MNMath {
         }
       }
     );
+  }
+
+  /**
+   * 显示范围选择对话框
+   * 
+   * @param {MNNote} note - 笔记对象
+   * @param {Array} commentOptions - 所有评论选项
+   * @param {Set} selectedIndices - 当前已选中的索引集合
+   * @param {Function} previousDialog - 返回上一层的函数
+   */
+  static showRangeSelectDialog(note, commentOptions, selectedIndices, previousDialog) {
+    // 检查是否有足够的评论进行范围选择
+    if (commentOptions.length < 2) {
+      MNUtil.showHUD("评论数量不足，至少需要2个评论才能进行范围选择");
+      this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
+      return;
+    }
+    
+    // 第一阶段：选择起始位置
+    this.showStartPositionDialog(note, commentOptions, selectedIndices, previousDialog);
+  }
+
+  /**
+   * 显示起始位置选择对话框
+   * 
+   * @param {MNNote} note - 笔记对象
+   * @param {Array} commentOptions - 所有评论选项
+   * @param {Set} selectedIndices - 当前已选中的索引集合
+   * @param {Function} previousDialog - 返回上一层的函数
+   */
+  static showStartPositionDialog(note, commentOptions, selectedIndices, previousDialog) {
+    // 构建显示选项
+    let displayOptions = commentOptions.map((item, index) => {
+      return `${index + 1}. ${item.display}`;
+    });
+    
+    // 添加返回选项
+    displayOptions.push("⬅️ 返回多选");
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "范围选择 - 第1步",
+      "请选择起始评论",
+      0,
+      "取消",
+      displayOptions,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) {
+          // 取消，返回多选对话框
+          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
+          return;
+        }
+        
+        if (buttonIndex === displayOptions.length) {
+          // 返回多选
+          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
+          return;
+        }
+        
+        // 用户选择了起始位置
+        const startIndex = buttonIndex - 1;
+        const startComment = commentOptions[startIndex];
+        
+        // 进入第二阶段：选择结束位置
+        this.showEndPositionDialog(note, commentOptions, selectedIndices, startComment, previousDialog);
+      }
+    );
+  }
+
+  /**
+   * 显示结束位置选择对话框
+   * 
+   * @param {MNNote} note - 笔记对象
+   * @param {Array} commentOptions - 所有评论选项
+   * @param {Set} selectedIndices - 当前已选中的索引集合
+   * @param {Object} startComment - 起始评论对象
+   * @param {Function} previousDialog - 返回上一层的函数
+   */
+  static showEndPositionDialog(note, commentOptions, selectedIndices, startComment, previousDialog) {
+    // 构建显示选项，高亮起始位置和提供范围预览
+    let displayOptions = commentOptions.map((item, index) => {
+      let prefix = "";
+      if (item.index === startComment.index) {
+        prefix = "🟢 ";  // 起始位置标记
+      } else if (item.index < startComment.index) {
+        // 显示向上范围的大小
+        const rangeSize = startComment.index - item.index + 1;
+        prefix = `📈${rangeSize} `;
+      } else if (item.index > startComment.index) {
+        // 显示向下范围的大小
+        const rangeSize = item.index - startComment.index + 1;
+        prefix = `📉${rangeSize} `;
+      }
+      return `${prefix}${index + 1}. ${item.display}`;
+    });
+    
+    // 添加返回选项
+    displayOptions.push("⬅️ 返回第1步");
+    displayOptions.push("⬅️ 返回多选");
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "范围选择 - 第2步",
+      `请选择结束评论\n已选择起始: #${startComment.index + 1}`,
+      0,
+      "取消",
+      displayOptions,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) {
+          // 取消，返回多选对话框
+          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
+          return;
+        }
+        
+        if (buttonIndex === displayOptions.length) {
+          // 返回多选
+          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
+          return;
+        }
+        
+        if (buttonIndex === displayOptions.length - 1) {
+          // 返回第1步
+          this.showStartPositionDialog(note, commentOptions, selectedIndices, previousDialog);
+          return;
+        }
+        
+        // 用户选择了结束位置
+        const endIndex = buttonIndex - 1;
+        const endComment = commentOptions[endIndex];
+        
+        // 执行范围选择
+        this.selectCommentRange(selectedIndices, startComment.index, endComment.index);
+        
+        // 显示成功提示并返回多选对话框
+        const rangeSize = Math.abs(endComment.index - startComment.index) + 1;
+        MNUtil.showHUD(`已选择范围：#${Math.min(startComment.index, endComment.index) + 1} 到 #${Math.max(startComment.index, endComment.index) + 1}，共 ${rangeSize} 个评论`);
+        
+        this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
+      }
+    );
+  }
+
+  /**
+   * 选择评论范围
+   * 
+   * @param {Set} selectedIndices - 已选中的索引集合
+   * @param {number} startIndex - 起始索引
+   * @param {number} endIndex - 结束索引
+   */
+  static selectCommentRange(selectedIndices, startIndex, endIndex) {
+    // 确保起始索引小于结束索引
+    const minIndex = Math.min(startIndex, endIndex);
+    const maxIndex = Math.max(startIndex, endIndex);
+    
+    // 将范围内的所有索引添加到选中集合
+    for (let i = minIndex; i <= maxIndex; i++) {
+      selectedIndices.add(i);
+    }
   }
 
   /**

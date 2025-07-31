@@ -239,6 +239,7 @@ class MNLog {
    */
   static info(log,source=undefined){
     let logObject = this.getLogObject(log,"INFO",source)
+    // MNUtil.copy(logObject)
     this.logs.push(logObject)
     this.updateLog(logObject)
     if (this.logs.length > 1000) {
@@ -432,12 +433,12 @@ class MNUtil {
         }
       }
     }
-    this.logs.push(log)
+    MNLog.logs.push(log)
     if (subscriptionUtils.subscriptionController) {
       subscriptionUtils.subscriptionController?.appendLog(log)
     }
-    if (this.logs.length > 1000) {
-      this.logs.shift()
+    if (MNLog.logs.length > 1000) {
+      MNLog.logs.shift()
     }
   }
 
@@ -3567,11 +3568,11 @@ class MNConnection{
         }
         // MNUtil.showHUD("123")
 
-          const result = NSJSONSerialization.JSONObjectWithDataOptions(
+          let result = NSJSONSerialization.JSONObjectWithDataOptions(
             data,
             1<<0
           )
-          const validJson = result && NSJSONSerialization.isValidJSONObject(result)
+          let validJson = result && NSJSONSerialization.isValidJSONObject(result)
           if (err.localizedDescription){
             MNUtil.showHUD(err.localizedDescription)
             let error = {error:err.localizedDescription}

@@ -168,6 +168,12 @@ function registerAllButtons() {
     templateName: "menu_excerpt"
   });
 
+  // 代码学习按钮
+  global.registerButton("custom_code", {
+    name: "代码学习",
+    image: "code",
+    templateName: "menu_codeLearning"
+  });
   
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
     MNUtil.log(`🚀 已注册 ${Object.keys(global.customButtons).length} 个自定义按钮`);

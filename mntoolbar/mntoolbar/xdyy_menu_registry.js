@@ -637,6 +637,11 @@ function registerAllMenuTemplates() {
     },
   });
 
+  // 代码学习菜单
+  global.registerMenuTemplate("menu_codeLearning", JSON.stringify({
+    action: "codeLearning"
+  }));
+
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
     MNUtil.log(
       `🚀 已注册 ${Object.keys(global.customMenuTemplates).length} 个自定义菜单模板`,

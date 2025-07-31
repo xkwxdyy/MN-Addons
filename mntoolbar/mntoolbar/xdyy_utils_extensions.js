@@ -2095,6 +2095,163 @@ function extendToolbarConfigInit() {
     MNUtil.postNotification("refreshToolbarButton", {});
   };
 
+  // ===== 代码学习相关功能 =====
+  // 夏大鱼羊
+
+  /**
+   * 代码学习功能模块
+   * 用于处理代码学习卡片的标题格式化
+   */
+  toolbarUtils.codeLearn = {
+    /**
+     * 获取代码卡片的层级路径
+     * @param {MNNote} note - 当前卡片（D级）
+     * @returns {Object|null} 返回路径信息对象 {plugin, file, class, path} 或 null
+     */
+    getCodeCardPath: function(note) {
+      try {
+        if (!note || !note.parentNote) {
+          MNUtil.showHUD("请选择一个有父卡片的知识点卡片");
+          return null;
+        }
+
+        // C级：类卡片
+        const classNote = note.parentNote;
+        if (!classNote.noteTitle || !classNote.noteTitle.includes("类")) {
+          MNUtil.showHUD("父卡片不是类卡片（标题需包含"类"字）");
+          return null;
+        }
+        const className = classNote.noteTitle.trim();
+
+        // B级：文件卡片
+        if (!classNote.parentNote) {
+          MNUtil.showHUD("找不到文件卡片");
+          return null;
+        }
+        const fileNote = classNote.parentNote;
+        if (!fileNote.noteTitle || !fileNote.noteTitle.match(/\.(js|ts|jsx|tsx)$/)) {
+          MNUtil.showHUD("父父卡片不是文件卡片（需要.js等后缀）");
+          return null;
+        }
+        const fileName = fileNote.noteTitle.trim();
+
+        // A级：插件根卡片
+        if (!fileNote.parentNote) {
+          MNUtil.showHUD("找不到插件根卡片");
+          return null;
+        }
+        const pluginNote = fileNote.parentNote;
+        // 提取插件名，去除可能的emoji
+        const pluginTitle = pluginNote.noteTitle.trim();
+        const pluginName = pluginTitle.replace(/^[🧩📦🔧🛠️]*\s*/, "");
+
+        return {
+          plugin: pluginName,
+          file: fileName,
+          class: className,
+          path: `${pluginName}/${fileName}/${className}`
+        };
+      } catch (error) {
+        toolbarUtils.addErrorLog(error, "getCodeCardPath");
+        MNUtil.showHUD("获取路径时出错：" + error.message);
+        return null;
+      }
+    },
+
+    /**
+     * 根据类型生成调用方式
+     * @param {string} methodName - 方法名
+     * @param {string} type - 类型
+     * @param {string} className - 类名（不含"类"字）
+     * @returns {string[]} 调用方式数组
+     */
+    generateCallMethods: function(methodName, type, className) {
+      // 从类名中提取纯类名（去除"类"字和空格）
+      const pureClassName = className.replace(/\s*类\s*$/, "").trim();
+      
+      switch (type) {
+        case "staticVar":  // 类的静态变量
+          return [
+            `${pureClassName}.${methodName}`,
+            `this.${methodName}`
+          ];
+        
+        case "staticMethod":  // 类的静态方法
+          return [
+            `${pureClassName}.${methodName}`,
+            `this.${methodName}`
+          ];
+        
+        case "instanceMethod":  // 实例方法
+          return [
+            `instance.${methodName}`,
+            `this.${methodName}`
+          ];
+        
+        case "getter":  // 实例 Getter 方法
+          return [
+            `instance.${methodName}`,
+            `this.${methodName}`,
+            `get ${methodName}()`
+          ];
+        
+        case "setter":  // 实例 Setter 方法
+          return [
+            `instance.${methodName} = value`,
+            `this.${methodName} = value`,
+            `set ${methodName}(value)`
+          ];
+        
+        default:
+          return [methodName];
+      }
+    },
+
+    /**
+     * 处理代码学习卡片
+     * @param {MNNote} note - 要处理的卡片
+     * @param {string} type - 选择的类型
+     */
+    processCodeLearningCard: function(note, type) {
+      try {
+        // 获取路径信息
+        const pathInfo = this.getCodeCardPath(note);
+        if (!pathInfo) {
+          return;
+        }
+
+        // 获取原始方法名
+        const originalTitle = note.noteTitle.trim();
+        const methodName = originalTitle;
+
+        // 根据类型生成前缀
+        const typePrefix = {
+          "staticVar": "类：静态变量",
+          "staticMethod": "类：静态方法",
+          "instanceMethod": "实例方法",
+          "getter": "实例：Getter 方法",
+          "setter": "实例：Setter 方法"
+        }[type];
+
+        // 生成调用方式
+        const callMethods = this.generateCallMethods(methodName, type, pathInfo.class);
+        
+        // 组装新标题
+        const newTitle = `【${typePrefix} >> ${pathInfo.path}】; ${callMethods.join("; ")}`;
+
+        // 更新标题
+        MNUtil.undoGrouping(() => {
+          note.noteTitle = newTitle;
+          MNUtil.showHUD("✅ 代码学习标题已更新");
+        });
+
+      } catch (error) {
+        toolbarUtils.addErrorLog(error, "processCodeLearningCard");
+        MNUtil.showHUD("处理失败：" + error.message);
+      }
+    }
+  };
+
   // 扩展 defaultWindowState
   // 夏大鱼羊
   if (toolbarConfig.defaultWindowState) {

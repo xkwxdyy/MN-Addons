@@ -4277,6 +4277,60 @@ function registerAllCustomActions() {
       MNMath.showSearchBoard();
     } catch (error) {}
   });
+
+  // codeLearning - 代码学习功能
+  global.registerCustomAction("codeLearning", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    // 检查是否有选中的卡片
+    if (!focusNote) {
+      MNUtil.showHUD("请先选择一个代码知识卡片");
+      return;
+    }
+
+    // 代码元素类型选项
+    const codeTypes = [
+      { name: "类的静态变量", type: "静态变量" },
+      { name: "类的静态方法", type: "静态方法" },
+      { name: "实例方法", type: "实例方法" },
+      { name: "实例 Getter 方法", type: "Getter" },
+      { name: "实例 Setter 方法", type: "Setter" }
+    ];
+
+    // 显示选择对话框
+    const typeNames = codeTypes.map(t => t.name);
+    const selectedIndex = await MNUtil.userSelect(
+      "选择代码元素类型",
+      "请选择当前卡片对应的代码元素类型",
+      typeNames
+    );
+
+    // 处理用户取消
+    if (selectedIndex === 0) {
+      return;
+    }
+
+    // 获取选中的类型
+    const selectedType = codeTypes[selectedIndex - 1].type;
+
+    try {
+      MNUtil.undoGrouping(() => {
+        // 调用工具函数处理卡片
+        const result = toolbarUtils.codeLearn.processCodeLearningCard(focusNote, selectedType);
+        
+        if (result.success) {
+          MNUtil.showHUD(`✅ 已处理为${codeTypes[selectedIndex - 1].name}卡片`);
+        } else {
+          MNUtil.showHUD(`❌ ${result.error}`);
+        }
+      });
+    } catch (error) {
+      MNUtil.showHUD(`❌ 处理失败: ${error.message || error}`);
+      if (typeof toolbarUtils !== "undefined" && toolbarUtils.addErrorLog) {
+        toolbarUtils.addErrorLog(error, "codeLearning");
+      }
+    }
+  });
 }
 
 // 立即注册

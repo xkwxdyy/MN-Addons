@@ -2140,10 +2140,10 @@ if (typeof MNUtil !== "undefined" && MNUtil.getNoteById) {
     if (note) {
       return note;
     } else {
-      if (alert) {
-        // 不复制 noteId，只显示提示
-        this.showHUD("Note not exist: " + noteid);
-      }
+      // if (alert) {
+      //   // 不复制 noteId，只显示提示
+      //   this.showHUD("Note not exist: " + noteid);
+      // }
       return undefined;
     }
   };

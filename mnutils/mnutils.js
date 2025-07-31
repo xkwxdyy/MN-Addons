@@ -1507,7 +1507,7 @@ static textMatchPhrase(text, query) {
    * @param {string} noteid 
    * @returns 
    */
-  static getNoteById(noteid,alert = true) {
+  static getNoteById(noteid,alert = false) {
     let note = this.db.getNoteById(noteid)
     if (note) {
       return note

@@ -2102,43 +2102,52 @@ function extendToolbarConfigInit() {
    * 代码学习功能模块
    * 用于处理代码学习卡片的标题格式化
    */
-  toolbarUtils.codeLearn = {
     /**
      * 获取代码卡片的层级路径
      * @param {MNNote} note - 当前卡片（D级）
-     * @returns {Object|null} 返回路径信息对象 {plugin, file, class, path} 或 null
+     * @returns {Object} 返回 {success: boolean, data?: {plugin, file, class, path}, error?: string}
      */
-    getCodeCardPath: function(note) {
+    toolbarUtils.getCodeCardPath =  function(note) {
       try {
         if (!note || !note.parentNote) {
-          MNUtil.showHUD("请选择一个有父卡片的知识点卡片");
-          return null;
+          return {
+            success: false,
+            error: "请选择一个有父卡片的知识点卡片"
+          };
         }
 
         // C级：类卡片
         const classNote = note.parentNote;
         if (!classNote.noteTitle || !classNote.noteTitle.includes("类")) {
-          MNUtil.showHUD("父卡片不是类卡片（标题需包含"类"字）");
-          return null;
+          return {
+            success: false,
+            error: "父卡片不是类卡片"
+          };
         }
         const className = classNote.noteTitle.trim();
 
         // B级：文件卡片
         if (!classNote.parentNote) {
-          MNUtil.showHUD("找不到文件卡片");
-          return null;
+          return {
+            success: false,
+            error: "找不到文件卡片"
+          };
         }
         const fileNote = classNote.parentNote;
         if (!fileNote.noteTitle || !fileNote.noteTitle.match(/\.(js|ts|jsx|tsx)$/)) {
-          MNUtil.showHUD("父父卡片不是文件卡片（需要.js等后缀）");
-          return null;
+          return {
+            success: false,
+            error: "父父卡片不是文件卡片（需要.js等后缀）"
+          };
         }
         const fileName = fileNote.noteTitle.trim();
 
         // A级：插件根卡片
         if (!fileNote.parentNote) {
-          MNUtil.showHUD("找不到插件根卡片");
-          return null;
+          return {
+            success: false,
+            error: "找不到插件根卡片"
+          };
         }
         const pluginNote = fileNote.parentNote;
         // 提取插件名，去除可能的emoji
@@ -2146,15 +2155,20 @@ function extendToolbarConfigInit() {
         const pluginName = pluginTitle.replace(/^[🧩📦🔧🛠️]*\s*/, "");
 
         return {
-          plugin: pluginName,
-          file: fileName,
-          class: className,
-          path: `${pluginName}/${fileName}/${className}`
+          success: true,
+          data: {
+            plugin: pluginName,
+            file: fileName,
+            class: className,
+            path: `${pluginName}/${fileName}/${className}`
+          }
         };
       } catch (error) {
         toolbarUtils.addErrorLog(error, "getCodeCardPath");
-        MNUtil.showHUD("获取路径时出错：" + error.message);
-        return null;
+        return {
+          success: false,
+          error: "获取路径时出错：" + error.message
+        };
       }
     },
 
@@ -2165,7 +2179,7 @@ function extendToolbarConfigInit() {
      * @param {string} className - 类名（不含"类"字）
      * @returns {string[]} 调用方式数组
      */
-    generateCallMethods: function(methodName, type, className) {
+    toolbarUtils.generateCallMethods =  function(methodName, type, className) {
       // 从类名中提取纯类名（去除"类"字和空格）
       const pureClassName = className.replace(/\s*类\s*$/, "").trim();
       
@@ -2184,22 +2198,17 @@ function extendToolbarConfigInit() {
         
         case "instanceMethod":  // 实例方法
           return [
-            `instance.${methodName}`,
-            `this.${methodName}`
+            `${methodName}`
           ];
         
         case "getter":  // 实例 Getter 方法
           return [
-            `instance.${methodName}`,
-            `this.${methodName}`,
-            `get ${methodName}()`
+            `${methodName}`,
           ];
         
         case "setter":  // 实例 Setter 方法
           return [
-            `instance.${methodName} = value`,
-            `this.${methodName} = value`,
-            `set ${methodName}(value)`
+            `${methodName}`,
           ];
         
         default:
@@ -2207,18 +2216,41 @@ function extendToolbarConfigInit() {
       }
     },
 
-    /**
-     * 处理代码学习卡片
-     * @param {MNNote} note - 要处理的卡片
-     * @param {string} type - 选择的类型
-     */
-    processCodeLearningCard: function(note, type) {
+   /**
+   * 处理代码学习卡片
+   * @param {MNNote} note - 要处理的卡片
+   * @param {string} type - 选择的类型（中文）
+   * @returns {Object} 返回 {success: boolean, error?: string}
+   */
+  toolbarUtils.processCodeLearningCard = function(note, type) {
       try {
+        // 中文类型到内部键的映射
+        // const typeMap = {
+        //   "静态变量": "staticVar",
+        //   "静态方法": "staticMethod",
+        //   "实例方法": "instanceMethod",
+        //   "Getter": "getter",
+        //   "Setter": "setter"
+        // };
+
+        // 转换类型
+        // const internalType = typeMap[type];
+        // if (!internalType) {
+        //   return {
+        //     success: false,
+        //     error: `未知的类型: ${type}`
+        //   };
+        // }
+
         // 获取路径信息
-        const pathInfo = this.getCodeCardPath(note);
-        if (!pathInfo) {
-          return;
+        const pathResult = this.getCodeCardPath(note);
+        if (!pathResult.success) {
+          return {
+            success: false,
+            error: pathResult.error || "无法获取卡片路径信息"
+          };
         }
+        const pathInfo = pathResult.data;
 
         // 获取原始方法名
         const originalTitle = note.noteTitle.trim();
@@ -2240,17 +2272,20 @@ function extendToolbarConfigInit() {
         const newTitle = `【${typePrefix} >> ${pathInfo.path}】; ${callMethods.join("; ")}`;
 
         // 更新标题
-        MNUtil.undoGrouping(() => {
-          note.noteTitle = newTitle;
-          MNUtil.showHUD("✅ 代码学习标题已更新");
-        });
+        note.noteTitle = newTitle;
+        
+        return {
+          success: true
+        };
 
       } catch (error) {
         toolbarUtils.addErrorLog(error, "processCodeLearningCard");
-        MNUtil.showHUD("处理失败：" + error.message);
+        return {
+          success: false,
+          error: error.message || "处理失败"
+        };
       }
     }
-  };
 
   // 扩展 defaultWindowState
   // 夏大鱼羊

@@ -4227,8 +4227,8 @@ class MNMath {
    */
   static showStartPositionDialog(note, commentOptions, selectedIndices, previousDialog) {
     // 构建显示选项
-    let displayOptions = commentOptions.map((item, index) => {
-      return `${index + 1}. ${item.display}`;
+    let displayOptions = commentOptions.map((item) => {
+      return item.display;
     });
     
     // 添加返回选项
@@ -4274,20 +4274,20 @@ class MNMath {
    */
   static showEndPositionDialog(note, commentOptions, selectedIndices, startComment, previousDialog) {
     // 构建显示选项，高亮起始位置和提供范围预览
-    let displayOptions = commentOptions.map((item, index) => {
+    let displayOptions = commentOptions.map((item) => {
       let prefix = "";
       if (item.index === startComment.index) {
         prefix = "🟢 ";  // 起始位置标记
       } else if (item.index < startComment.index) {
         // 显示向上范围的大小
         const rangeSize = startComment.index - item.index + 1;
-        prefix = `📈${rangeSize} `;
+        prefix = `⬆️${rangeSize} `;
       } else if (item.index > startComment.index) {
         // 显示向下范围的大小
         const rangeSize = item.index - startComment.index + 1;
-        prefix = `📉${rangeSize} `;
+        prefix = `⬇️${rangeSize} `;
       }
-      return `${prefix}${index + 1}. ${item.display}`;
+      return `${prefix}${item.display}`;
     });
     
     // 添加返回选项

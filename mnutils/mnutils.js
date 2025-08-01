@@ -95,7 +95,8 @@ class Menu{
   try {
     if (autoWidth || !this.width) {//用autoWidth参数来控制是否自动计算宽度,如果menu实例没有width参数,也会自动计算宽度
       let titles = this.commandTable.map(item=>item.title)
-      let maxWidth = this.width
+      let maxWidth = 0
+      // let maxWidth = this.width
       titles.forEach(title=>{
         let width = MNUtil.strCode(title)*9+30
         if (width > maxWidth) {
@@ -397,7 +398,7 @@ class MNUtil {
         source:"Default",
         timestamp:Date.now()
       }
-      this.logs.push(log)
+      MNLog.logs.push(log)
       // MNUtil.copy(this.logs)
         if (subscriptionUtils.subscriptionController) {
           subscriptionUtils.subscriptionController?.appendLog(log)
@@ -779,6 +780,7 @@ class MNUtil {
     // this.copyJSON(res)
   }
   static countWords(str) {
+    //对中文而言计算的是字数
     const chinese = Array.from(str)
       .filter(ch => /[\u4e00-\u9fa5]/.test(ch))
       .length
@@ -786,8 +788,35 @@ class MNUtil {
       .map(ch => /[a-zA-Z0-9\s]/.test(ch) ? ch : ' ')
       .join('').split(/\s+/).filter(s => s)
       .length
-
     return chinese + english
+  }
+  static removePunctuationOnlyElements(arr) {
+    // Regular expression to match strings consisting only of punctuation.
+    // This regex includes common Chinese and English punctuation marks.
+    // \p{P} matches any kind of punctuation character.
+    // \p{S} matches any kind of symbol.
+    // We also include specific Chinese punctuation not always covered by \p{P} or \p{S} in all JS environments.
+    const punctuationRegex = /^(?:[\p{P}\p{S}¡¿〽〃「」『』【】〝〞〟〰〾〿——‘’“”〝〞‵′＂＃＄％＆＇（）＊＋，－．／：；＜＝＞＠［＼］＾＿｀｛｜｝～￥িপূর্ণ！＂＃＄％＆＇（）＊＋，－．／：；＜＝＞？＠［＼］＾＿｀｛｜｝～])*$/u;
+
+    return arr.filter(item => !punctuationRegex.test(item.trim()));
+  }
+  static doSegment(str) {
+    if (!this.segmentit) {
+      this.segmentit = Segmentit.useDefault(new Segmentit.Segment());
+    }
+    let words = this.segmentit.doSegment(str,{simple:true}).filter(word=>!/^\s*$/.test(word))
+    return words
+  }
+  static wordCountBySegmentit(str) {
+    //对中文而言计算的是词数
+    if (!this.segmentit) {
+      this.segmentit = Segmentit.useDefault(new Segmentit.Segment());
+    }
+    let words = this.segmentit.doSegment(str,{simple:true}).filter(word=>!/^\s*$/.test(word))
+    //去除标点符号
+    let wordsWithoutPunctuation = this.removePunctuationOnlyElements(words)
+    // MNUtil.copy(wordsWithoutPunctuation)
+    return wordsWithoutPunctuation.length
   }
   /**
    * 
@@ -1019,6 +1048,10 @@ static textMatchPhrase(text, query) {
       NSFileManager.defaultManager().createDirectoryAtPathAttributes(path, undefined)
     }
   }
+  /**
+   * 如果中间有文件夹不存在,则会创建对应文件夹
+   * @param {string} path 
+   */
   static createFolderDev(path){
     if (!this.isfileExists(path)) {
       NSFileManager.defaultManager().createDirectoryAtPathWithIntermediateDirectoriesAttributes(path, true, undefined)
@@ -1496,6 +1529,25 @@ static textMatchPhrase(text, query) {
   static isNoteInReview(noteId){
     return this.studyController.isNoteInReview(noteId)
   }
+  /**
+   * 当删除学习集后,还有可能学习集本身存在,但是对应的笔记清空的情况
+   * @param {*} notebookId 
+   * @param {*} checkNotes 
+   * @returns 
+   */
+  static notebookExists(notebookId,checkNotes = false){
+    let notebook = this.db.getNotebookById(notebookId)
+    if (notebook) {
+      if (checkNotes) {
+        if (notebook.notes && notebook.notes.length > 0) {
+          return true
+        }
+        return false
+      }
+      return true
+    }
+    return false
+  }
   static noteExists(noteId){
     let note = this.db.getNoteById(noteId)
     if (note) {
@@ -1506,9 +1558,9 @@ static textMatchPhrase(text, query) {
   /**
    * 
    * @param {string} noteid 
-   * @returns 
+   * @returns {MbBookNote}
    */
-  static getNoteById(noteid,alert = false) {
+  static getNoteById(noteid,alert = true) {
     let note = this.db.getNoteById(noteid)
     if (note) {
       return note
@@ -1878,7 +1930,7 @@ static textMatchPhrase(text, query) {
     }
 
   } catch (error) {
-    MNUtil.showHUD(error)
+    MNUtil.addErrorLog(error, "focusNoteInMindMapById")
   }
   }
   static focusNoteInFloatMindMapById(noteId,delay = 0){
@@ -1918,33 +1970,32 @@ static textMatchPhrase(text, query) {
   }
   /**
    * 
-   * @param {string} text 
+   * @param {string} jsonString 
    * @returns {object|undefined}
    */
-  static getValidJSON(text) {
+static getValidJSON(jsonString,debug = false) {
+  try {
+    if (typeof jsonString === "object") {
+      return jsonString
+    }
+    return JSON.parse(jsonString)
+  } catch (error) {
     try {
-    if (text.endsWith(':')) {
-      text = text+'""}'
-    }
-    if (this.isValidJSON(text)) {
-      return JSON.parse(text)
-    }else if (this.isValidJSON(text+"\"}")){
-      return JSON.parse(text+"\"}")
-    }else if (this.isValidJSON(text+"}")){
-      return JSON.parse(text+"}")
-    }else if (!text.startsWith('{') && text.endsWith('}')){
-      return JSON.parse("{"+text)
-    }else{
-      // this.showHUD("no valid json")
-      // this.copy(original)
-      return undefined
-    }
+      return JSON.parse(jsonrepair(jsonString))
     } catch (error) {
-      this.showHUD("Error in getValidJSON: "+error)
-      this.copy(text)
-      return undefined
+      let errorString = error.toString()
+      try {
+        if (errorString.startsWith("Unexpected character \"{\" at position")) {
+          return JSON.parse(jsonrepair(jsonString+"}"))
+        }
+        return {}
+      } catch (error) {
+        debug && this.addErrorLog(error, "getValidJSON", jsonString)
+        return {}
+      }
     }
   }
+}
   /**
    * Merges multiple consecutive whitespace characters into a single space, except for newlines.
    * 
@@ -1993,6 +2044,19 @@ static textMatchPhrase(text, query) {
       f
     )
     this.app.refreshAfterDBChanged(notebookId)
+  }
+  static getNoteColorHex(colorIndex){
+    let theme = MNUtil.app.currentTheme
+    let colorConfig = {
+      Default:["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9edc"],
+      Dark:["#a0a071","#809f7b","#71839e","#986d77","#a0a032","#479e2c","#33759c","#921c12","#96551c","#204f2c","#0c266c","#771e14","#a0a0a0","#898989","#717171","#77638a"],
+      Gary:["#d2d294","#a8d1a1","#94accf","#c88f9d","#d2d244","#5fcf3d","#459acd","#c0281b","#c46f28","#2c683a","#12328e","#9c281c","#d2d2d2","#b4b4b4","#949494","#9c82b5"]
+    }
+    let colorHexes = (theme in colorConfig)?colorConfig[theme]:colorConfig["Default"]
+    if (colorIndex !== undefined && colorIndex >= 0) {
+      return colorHexes[colorIndex]
+    }
+    return "#ffffff"
   }
   static getImage(path,scale=2) {
     return UIImage.imageWithDataScale(NSData.dataWithContentsOfFile(path), scale)
@@ -2141,6 +2205,10 @@ static textMatchPhrase(text, query) {
    */
   static openDoc(md5,notebookId=MNUtil.currentNotebookId){
     MNUtil.studyController.openNotebookAndDocument(notebookId, md5)
+    let splitMode = MNUtil.docMapSplitMode
+    if (splitMode === 0) {
+      MNUtil.studyController.docMapSplitMode = 1
+    }
   }
   /**
    * Converts NSData to a string.
@@ -2668,39 +2736,13 @@ try {
             textField.text = options.default
           }
         } catch (error) {
-          MNUtil.addErrorLog(error, "MNUtil.input")
+          this.addErrorLog(error, "MNUtil.input")
         }
       }
     })
   }
 
-  static removePunctuationOnlyElements(arr) {
-    // Regular expression to match strings consisting only of punctuation.
-    // This regex includes common Chinese and English punctuation marks.
-    // \p{P} matches any kind of punctuation character.
-    // \p{S} matches any kind of symbol.
-    // We also include specific Chinese punctuation not always covered by \p{P} or \p{S} in all JS environments.
-    const punctuationRegex = /^(?:[\p{P}\p{S}¡¿〽〃「」『』【】〝〞〟〰〾〿——‘’“”〝〞‵′＂＃＄％＆＇（）＊＋，－．／：；＜＝＞＠［＼］＾＿｀｛｜｝～￥িপূর্ণ！＂＃＄％＆＇（）＊＋，－．／：；＜＝＞？＠［＼］＾＿｀｛｜｝～])*$/u;
 
-    return arr.filter(item => !punctuationRegex.test(item.trim()));
-  }
-  static doSegment(str) {
-    if (!this.segmentit) {
-      this.segmentit = Segmentit.useDefault(new Segmentit.Segment());
-    }
-    let words = this.segmentit.doSegment(str,{simple:true}).filter(word=>!/^\s*$/.test(word))
-    return words
-  }
-  static wordCountBySegmentit(str) {
-    if (!this.segmentit) {
-      this.segmentit = Segmentit.useDefault(new Segmentit.Segment());
-    }
-    let words = this.segmentit.doSegment(str,{simple:true}).filter(word=>!/^\s*$/.test(word))
-    //去除标点符号
-    let wordsWithoutPunctuation = this.removePunctuationOnlyElements(words)
-    // MNUtil.copy(wordsWithoutPunctuation)
-    return wordsWithoutPunctuation.length
-  }
   /**
    * 注意这里的code需要是字符串
    * @param {string} code
@@ -2748,14 +2790,21 @@ try {
     "507": "Insufficient Storage",
     "508": "Loop Detected",
     "510": "Not Extended",
-    "511": "Network Authentication Required"
+    "511": "Network Authentication Required",
+    "525": "SSL handshake failed",
+  }
+  if (typeof code === "number") {
+    let codeString = ""+code
+    if (codeString in des) {
+      return (codeString+": "+des[codeString])
+    }
   }
   if (code in des) {
     return (code+": "+des[code])
   }
   return undefined
   } catch (error) {
-    MNUtil.addErrorLog(error, "getStatusCodeDescription")
+    this.addErrorLog(error, "getStatusCodeDescription")
   }
   }
   /**
@@ -2913,7 +2962,7 @@ try {
         return false
       }
     } catch (error) {
-      MNUtil.showHUD(error)
+      this.addErrorLog(error, "isPureMNImages")
       return false
     }
   }
@@ -2925,7 +2974,7 @@ try {
       // MNUtil.copyJSON({"a":link,"b":markdown})
       return markdown.match(MNImagePattern)?true:false
     } catch (error) {
-      MNUtil.showHUD(error)
+      this.addErrorLog(error, "hasMNImages")
       return false
     }
   }
@@ -2943,7 +2992,7 @@ try {
       let imageData = MNUtil.getMediaByHash(hash)
       return imageData
     } catch (error) {
-      MNUtil.showHUD(error)
+      this.addErrorLog(error, "getMNImageFromMarkdown")
       return undefined
     }
   }
@@ -5056,6 +5105,23 @@ class MNNote{
     return this.note.groupMode
   }
   /**
+   * @returns {string}
+   */
+  get getNoteColorHex(){
+    let colorIndex = this.note.colorIndex
+    let theme = MNUtil.app.currentTheme
+    let colorConfig = {
+      Default:["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9edc"],
+      Dark:["#a0a071","#809f7b","#71839e","#986d77","#a0a032","#479e2c","#33759c","#921c12","#96551c","#204f2c","#0c266c","#771e14","#a0a0a0","#898989","#717171","#77638a"],
+      Gary:["#d2d294","#a8d1a1","#94accf","#c88f9d","#d2d244","#5fcf3d","#459acd","#c0281b","#c46f28","#2c683a","#12328e","#9c281c","#d2d2d2","#b4b4b4","#949494","#9c82b5"]
+    }
+    let colorHexes = (theme in colorConfig)?colorConfig[theme]:colorConfig["Default"]
+    if (colorIndex !== undefined && colorIndex >= 0) {
+      return colorHexes[colorIndex]
+    }
+    return "#ffffff"
+  }
+  /**
    * Retrieves the child notes of the current note.
    * 
    * This method returns an array of MNNote instances representing the child notes of the current note. If the current note has no child notes, it returns an empty array.
@@ -5576,6 +5642,39 @@ class MNNote{
   get document(){
     return MNDocument.new(this.note.docMd5)
   }
+  get brotherNotes(){
+    let parentNote = this.parentNote
+    if (parentNote) {
+      return parentNote.childNotes
+    }
+    return []
+  }
+  /**在同级卡片中的索引 */
+  get indexInBrotherNotes(){
+  try {
+    let parentNote = this.parentNote
+    if (parentNote) {
+      let childNoteIds = parentNote.childNotes.map(note=>note.noteId)
+      return childNoteIds.indexOf(this.noteId)
+    }
+    return -1
+  } catch (error) {
+   MNNote.addErrorLog(error, "indexInBrotherNotes")
+   return -1
+  }
+  }
+
+  /**
+   * 笔记可能已经被删除
+   * @param {string} noteId 
+   * @returns {boolean}
+   */
+  get exist(){
+    if (this.note.noteId) {
+      return true
+    }
+    return false
+  }
   open(){
     MNUtil.openURL(this.noteURL)
   }
@@ -5616,7 +5715,7 @@ class MNNote{
   realGroupNoteForTopicId(nodebookid = MNUtil.currentNotebookId){
     let noteId = this.note.realGroupNoteIdForTopicId(nodebookid)
     if (!noteId) {
-      return this.note
+      return this
     }
     return MNNote.new(noteId)
   };
@@ -5629,7 +5728,7 @@ class MNNote{
   noteInDocForTopicId(nodebookid = MNUtil.currentNotebookId){
     let noteId = this.note.realGroupNoteIdForTopicId(nodebookid)
     if (!noteId) {
-      return this.note
+      return this
     }
     return MNNote.new(noteId)
   };
@@ -5712,7 +5811,7 @@ try {
   let content = title+"\n"+excerptText
   return content
 }catch(error){
-  MNUtil.showHUD("Error in (getMDContent): "+error.toString())
+  MNNote.addErrorLog(error, "MNNote.getMDContent", info)
   return ""
 }
   }
@@ -5787,12 +5886,93 @@ try {
     return this
   }
   /**
-   * 
+   * beforeNote的参数为数字时,代表在指定序号前插入,0为第一个
+   * 无论什么情况都返回自身
+   * @param {MNNote|string} note
+   * @param {MNNote|string|number|undefined} beforeNote
    * @returns {MNNote}
    */
-  insertChildBefore(){
-    this.note.insertChildBefore()
+  insertChildBefore(note,beforeNote){
+  try {
+    let childNoteSize = this.childNotes.length
+    if (childNoteSize === 0 || beforeNote === undefined) {
+    //如果没有子卡片,也就无所谓插入顺序
+    //如果没有提供beforeNote,则插入到最后
+      this.addChild(note)
+      return this
+    }
+
+    if (typeof beforeNote === "number") {
+      //限制beforeNote的值,确保能取到笔记
+      beforeNote = MNUtil.constrain(beforeNote, 0, childNoteSize-1)
+      MNUtil.log("beforeNote:"+beforeNote)
+      let targetNote = this.childNotes[beforeNote]
+      let note0 = MNNote.new(note)
+      this.note.insertChildBefore(note0.note,targetNote.note)
+      return this
+    }else{
+      let note0 = MNNote.new(note)
+      let note1 = MNNote.new(beforeNote)
+      this.note.insertChildBefore(note0.note,note1.note)
+      return this
+    }
+    
+  } catch (error) {
+    MNUtil.addErrorLog(error, "MNNote.insertChildBefore")
     return this
+  }
+  }
+  /**
+   * beforeNote的参数为数字时,代表在指定序号前插入,0为第一个
+   * 无论什么情况都返回自身
+   * @param {MNNote|string} note
+   * @param {MNNote|string|number|undefined} beforeNote
+   * @returns {MNNote}
+   */
+  insertChildAfter(note,beforeNote){
+  try {
+    let childNoteSize = this.childNotes.length
+    if (childNoteSize === 0 || beforeNote === undefined) {
+    //如果没有子卡片,也就无所谓插入顺序
+    //如果没有提供beforeNote,则插入到最后
+      this.addChild(note)
+      return this
+    }
+
+    if (typeof beforeNote === "number") {
+      //限制beforeNote的值,确保能取到笔记
+      beforeNote = MNUtil.constrain(beforeNote, 0, childNoteSize-1)
+      if (beforeNote === childNoteSize-1) {//如果是最后一个,则插入到最后
+        this.addChild(note)
+        return this
+      }
+      //插入到指定卡片的下一张卡片的前面
+      let targetNote = this.childNotes[beforeNote+1]
+      let note0 = MNNote.new(note)
+      this.note.insertChildBefore(note0.note,targetNote.note)
+      return this
+    }else{
+      let childNoteIds = this.childNotes.map(note=>note.noteId)
+      let noteIndex = childNoteIds.indexOf(beforeNote)
+      if (noteIndex === -1) {//beforeNote不在子卡片中,插入到最后
+        this.addChild(note)
+        return this
+      }
+      if (noteIndex === childNoteSize-1) {//如果是最后一个,则插入到最后
+        this.addChild(note)
+        return this
+      }
+      //插入到指定卡片的下一张卡片的前面
+      let note0 = MNNote.new(childNoteIds[noteIndex+1])
+      let note1 = MNNote.new(beforeNote)
+      this.note.insertChildBefore(note0.note,note1.note)
+      return this
+    }
+    
+  } catch (error) {
+    MNUtil.addErrorLog(error, "MNNote.insertChildAfter")
+    return this
+  }
   }
   /**
    * Deletes the current note, optionally including its descendant notes.
@@ -5811,6 +5991,60 @@ try {
     }
   }
   /**
+   * 移动卡片到目标卡片(成为目标卡片的子卡片)
+   * 如果提供的是索引,则是移动到同级卡片的目标索引
+   * @param {MNNote|MbBookNote|number} note 
+   */
+  moveTo(note){
+    if (typeof note === "number") {
+      let brotherNotes = this.brotherNotes
+      if (note >= brotherNotes.length-1) {
+        //移动到同级卡片的最后一个卡片
+        this.parentNote.addChild(this)
+        // this.moveAfter(brotherNotes[brotherNotes.length-1])
+        return
+      }
+      //移动到n就是移动到n的前面
+      this.moveBefore(note)
+      return
+    }
+    if (note.notebookId !== this.notebookId) {
+      MNNote.addErrorLog("Notes not in the same notebook", "moveTo")
+      return
+    }
+    note.addChild(this.note)
+  }
+  /**
+   * 对于同级卡片,移动到指定卡片前
+   * 如果目标卡片和当前卡片不属于同一个父卡片,则会成为目标卡片的同级卡片
+   * @param {MNNote|MbBookNote|number} note 
+   */
+  moveBefore(note){
+    if (typeof note === "number") {
+      let parentNote = this.parentNote
+      parentNote.insertChildBefore(this, note)
+      return
+    }
+    let targetNote = MNNote.new(note)
+    let parentNote = targetNote.parentNote
+    parentNote.insertChildBefore(this, targetNote)
+  }
+  /**
+   * 对于同级卡片,移动到指定卡片后
+   * @param {MNNote|MbBookNote|number} note 
+   */
+  moveAfter(note){
+    if (typeof note === "number") {
+      let parentNote = this.parentNote
+      parentNote.insertChildAfter(this.note, note)
+      return
+    }
+    let targetNote = MNNote.new(note)
+    let parentNote = targetNote.parentNote
+    //先移动到卡片前
+    parentNote.insertChildAfter(this.note, targetNote)
+  }
+  /**
    * Adds a child note to the current note.
    * 
    * This method adds a child note to the current note. The child note can be specified as an MbBookNote instance, an MNNote instance, a note URL, or a note ID.
@@ -5822,7 +6056,7 @@ try {
    */
   addChild(note){
     try {
-
+    // MNUtil.log(MNUtil.typeOf(note))
     // MNUtil.showHUD(MNUtil.typeOf(note))
     switch (MNUtil.typeOf(note)) {
       case "NoteURL":
@@ -6637,19 +6871,105 @@ try {
   copyURL(){
     MNUtil.copy(this.noteURL)
   }
+  /**
+   * 
+   */
+  getNoteObject(opt={first:true}) {
+    let note = this
+    try {
+    if (!note) {
+      return undefined
+    }
+      
+    let noteConfig = config
+    noteConfig.id = note.noteId
+    if (opt.first) {
+      noteConfig.notebook = {
+        id:note.notebookId,
+        name:MNUtil.getNoteBookById(note.notebookId).title,
+      }
+    }
+    noteConfig.title = note.noteTitle
+    noteConfig.url = note.noteURL
+    noteConfig.excerptText = note.excerptText
+    noteConfig.isMarkdownExcerpt = note.excerptTextMarkdown
+    noteConfig.isImageExcerpt = !!note.excerptPic
+    noteConfig.date = {
+      create:note.createDate.toLocaleString(),
+      modify:note.modifiedDate.toLocaleString(),
+    }
+    noteConfig.allText = note.allNoteText()
+    noteConfig.tags = note.tags
+    noteConfig.hashTags = note.tags.map(tag=> ("#"+tag)).join(" ")
+    noteConfig.hasTag = note.tags.length > 0
+    noteConfig.hasComment = note.comments.length > 0
+    noteConfig.hasChild = note.childNotes.length > 0
+    if (note.colorIndex !== undefined) {
+      noteConfig.colorHex = this.getNoteColorHex
+      noteConfig.color = {}
+      noteConfig.color.lightYellow = note.colorIndex === 0
+      noteConfig.color.lightGreen = note.colorIndex === 1
+      noteConfig.color.lightBlue = note.colorIndex === 2
+      noteConfig.color.lightRed = note.colorIndex === 3
+      noteConfig.color.yellow = note.colorIndex === 4
+      noteConfig.color.green = note.colorIndex === 5
+      noteConfig.color.blue = note.colorIndex === 6
+      noteConfig.color.red = note.colorIndex === 7
+      noteConfig.color.orange = note.colorIndex === 8
+      noteConfig.color.darkGreen = note.colorIndex === 9
+      noteConfig.color.darkBlue = note.colorIndex === 10
+      noteConfig.color.deepRed = note.colorIndex === 11
+      noteConfig.color.white = note.colorIndex === 12
+      noteConfig.color.lightGray = note.colorIndex === 13
+      noteConfig.color.darkGray = note.colorIndex === 14
+      noteConfig.color.purple = note.colorIndex === 15
+    }
+    if (note.docMd5 && MNUtil.getDocById(note.docMd5)) {
+      noteConfig.docName = MNUtil.getDocById(note.docMd5).docTitle
+    }
+    noteConfig.hasDoc = !!noteConfig.docName
+    if (note.childMindMap) {
+      noteConfig.childMindMap = this.getNoteObject(note.childMindMap,{first:false})
+    }
+    noteConfig.inMainMindMap = !noteConfig.childMindMap
+    noteConfig.inChildMindMap = !!noteConfig.childMindMap
+    if ("parent" in opt && opt.parent && note.parentNote) {
+      if (opt.parentLevel && opt.parentLevel > 0) {
+        noteConfig.parent = this.getNoteObject(note.parentNote,{parentLevel:opt.parentLevel-1,parent:true,first:false})
+      }else{
+        noteConfig.parent = this.getNoteObject(note.parentNote,{first:false})
+      }
+    }
+    noteConfig.hasParent = "parent" in noteConfig
+    if ("child" in opt && opt.child && note.childNotes) {
+      noteConfig.child = note.childNotes.map(note=>this.getNoteObject(note,{first:false}))
+    }
+    return noteConfig
+    } catch (error) {
+      MNNote.addErrorLog(error, "MNNote.getNoteObject")
+      return {}
+    }
+  }
   static errorLog = []
   static addErrorLog(error,source,info){
     MNUtil.showHUD("MNNote Error ("+source+"): "+error)
-    let log = {
-      error:error.toString(),
-      source:source,
-      time:(new Date(Date.now())).toString()
+    let tem = {source:source,time:(new Date(Date.now())).toString()}
+    if (error.detail) {
+      tem.error = {message:error.message,detail:error.detail}
+    }else{
+      tem.error = error.message
     }
     if (info) {
-      log.info = info
+      tem.info = info
     }
-    this.errorLog.push(log)
-    MNUtil.copyJSON(this.errorLog)
+    this.errorLog.push(tem)
+    this.copyJSON(this.errorLog)
+    MNLog.log({
+      message:source,
+      level:"ERROR",
+      source:"MNNote",
+      detail:tem
+    })
   }
   /**
    *
@@ -6735,11 +7055,18 @@ try {
     }
   }
   static get currentChildMap(){
+  try {
+
     if (MNUtil.mindmapView && MNUtil.mindmapView.mindmapNodes[0].note?.childMindMap) {
       return this.new(MNUtil.mindmapView.mindmapNodes[0].note.childMindMap.noteId)
     }else{
       return undefined
     }
+    
+  } catch (error) {
+    MNNote.addErrorLog(error, "currentChildMap")
+    return undefined
+  }
   }
   /**
    * Retrieves the currently focused note in the mind map or document.
@@ -6867,33 +7194,83 @@ try {
   static getSelectedNotes(){
     return this.getFocusNotes()
   }
+/**
+ * 
+ * @param {MNNote[]} notes 
+ * @returns 
+ */
+static buildHierarchy(notes) {
+try {
+
+  const tree = [];
+  const map = {}; // Helper to quickly find notes by their ID
+
+  // First pass: Create a map of notes and initialize a 'children' array for each.
+  notes.forEach(note => {
+    map[note.id] = { id:note.id, children: [] }; // Store a copy and add children array
+  });
+  // Second pass: Populate the 'children' arrays and identify root nodes.
+  notes.forEach(note => {
+    let parentId = note.parentNoteId
+    if (parentId && map[parentId]) {
+      // If it has a parent and the parent exists in our map, add it to parent's children
+      map[parentId].children.push(map[note.id]);
+    } else {
+      // Otherwise, it's a root node (or an orphan if parentId is invalid but present)
+      tree.push(map[note.id]);
+    }
+  });
+
+  return tree;
+  
+} catch (error) {
+  return []
+}
+}
   /**
-   * 还需要改进逻辑
+   * 
    * @param {*} range 
    * @returns {MNNote[]}
    */
   static getNotesByRange(range){
+  try {
+
     if (range === undefined) {
-      return [this.getFocusNote()]
+      return [MNNote.getFocusNote()]
     }
     switch (range) {
       case "currentNotes":
-        return this.getFocusNotes()
+        return MNNote.getFocusNotes()
       case "childNotes":
         let childNotes = []
-        this.getFocusNotes().map(note=>{
+        MNNote.getFocusNotes().map(note=>{
           childNotes = childNotes.concat(note.childNotes)
         })
         return childNotes
       case "descendants":
+      case "descendantNotes"://所有后代节点
         let descendantNotes = []
-        this.getFocusNotes().map(note=>{
+        // let descendantNotes = []
+        let focusNotes = MNNote.getFocusNotes()
+        if (focusNotes.length === 0) {
+          MNUtil.showHUD("No notes found")
+          return []
+        }
+        let topLevelNotes = this.buildHierarchy(focusNotes).map(o=>MNNote.new(o.id))
+        // let notesWithoutDescendants = focusNotes.filter(note=>!note.hasDescendantNodes)
+        topLevelNotes.map(note=>{
           descendantNotes = descendantNotes.concat(note.descendantNodes.descendant)
         })
+        MNUtil.log("descendantNotes:"+descendantNotes.length)
         return descendantNotes
       default:
-        return [this.getFocusNote()]
+        return [MNNote.getFocusNote()]
     }
+    
+  } catch (error) {
+    MNNote.addErrorLog(error, "MNNote.getNotesByRange")
+    return []
+  }
   }
   /**
    * Clones a note to the specified notebook.
@@ -7083,7 +7460,7 @@ try {
     return imageDatas
   }
   /**
-   * 
+   * 笔记可能已经被删除
    * @param {string} noteId 
    * @returns {boolean}
    */

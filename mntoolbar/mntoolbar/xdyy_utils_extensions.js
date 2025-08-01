@@ -2224,6 +2224,36 @@ function extendToolbarConfigInit() {
           
           return methods;
         
+        case "staticGetter":  // 类的静态 Getter
+          const staticGetterMethods = [`${pureClassName}.${methodName}`];
+          
+          // 只有在有文件路径时才添加 this 版本
+          if (hasFilePath) {
+            staticGetterMethods.push(`this.${methodName}`);
+          }
+          
+          // 如果类名包含 "Class"，添加 self 版本
+          if (hasClassInName) {
+            staticGetterMethods.push(`self.${methodName}`);
+          }
+          
+          return staticGetterMethods;
+        
+        case "staticSetter":  // 类的静态 Setter
+          const staticSetterMethods = [`${pureClassName}.${methodName}`];
+          
+          // 只有在有文件路径时才添加 this 版本
+          if (hasFilePath) {
+            staticSetterMethods.push(`this.${methodName}`);
+          }
+          
+          // 如果类名包含 "Class"，添加 self 版本
+          if (hasClassInName) {
+            staticSetterMethods.push(`self.${methodName}`);
+          }
+          
+          return staticSetterMethods;
+        
         case "instanceMethod":  // 实例方法
           return [
             `${methodName}`
@@ -2238,6 +2268,21 @@ function extendToolbarConfigInit() {
           return [
             `${methodName}`,
           ];
+        
+        case "prototype":  // 原型链方法
+          const prototypeMethods = [`${pureClassName}.${methodName}`];
+          
+          // 如果有文件路径，添加 this 版本
+          if (hasFilePath) {
+            prototypeMethods.push(`this.${methodName}`);
+          }
+          
+          // 如果类名包含 "Class"，添加 self 版本
+          if (hasClassInName) {
+            prototypeMethods.push(`self.${methodName}`);
+          }
+          
+          return prototypeMethods;
         
         default:
           return [methodName];

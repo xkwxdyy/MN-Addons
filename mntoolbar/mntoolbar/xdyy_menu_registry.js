@@ -638,9 +638,28 @@ function registerAllMenuTemplates() {
   });
 
   // 代码学习菜单
-  global.registerMenuTemplate("menu_codeLearning", JSON.stringify({
-    action: "codeLearning"
-  }));
+  global.registerMenuTemplate("menu_codeLearning", {
+    action: "menu",
+    menuItems: [
+      {
+        action: "codeLearning",
+        menuTitle: "📚 代码学习（创建调用卡片）"
+      },
+      {
+        action: "codeAnalysisWithAI", 
+        menuTitle: "🤖 AI 代码分析"
+      },
+      "⚙️ 设置",
+      {
+        action: "switchCodeAnalysisModel",
+        menuTitle: "⚙️ 切换 AI 分析模型"
+      },
+      {
+        action: "switchOCRSource",
+        menuTitle: "⚙️ 切换 OCR 源"
+      }
+    ]
+  });
 
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
     MNUtil.log(

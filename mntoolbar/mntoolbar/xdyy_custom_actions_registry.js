@@ -4292,6 +4292,8 @@ function registerAllCustomActions() {
     const codeTypes = [
       "类：静态变量",
       "类：静态方法",
+      "类：静态 Getter",
+      "类：静态 Setter",
       "类：原型链方法",
       "实例：方法",
       "实例：Getter 方法",
@@ -4312,10 +4314,12 @@ function registerAllCustomActions() {
         const typeMap = {
           1: "staticVar",
           2: "staticMethod",
-          3: "prototype",
-          4: "instanceMethod",
-          5: "getter",
-          6: "setter"
+          3: "staticGetter",
+          4: "staticSetter",
+          5: "prototype",
+          6: "instanceMethod",
+          7: "getter",
+          8: "setter"
         };
         
         const selectedType = typeMap[buttonIndex];
@@ -4334,6 +4338,175 @@ function registerAllCustomActions() {
         }
       }
     );
+  });
+
+  // switchCodeAnalysisModel - 切换代码分析模型
+  global.registerCustomAction("switchCodeAnalysisModel", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+
+    // 代码分析模型选项
+    const analysisModels = [
+      "gpt-4o-mini",
+      "gpt-4o",
+      "gpt-4.1",
+      "gpt-4.1-mini", 
+      "gpt-4.1-nano",
+      "claude-3-5-sonnet",
+      "claude-3-7-sonnet",
+      "glm-4-plus",
+      "glm-z1-airx",
+      "deepseek-chat",
+      "deepseek-reasoner",
+      "glm-4-flashx（内置智谱AI）"
+    ];
+    
+    const currentModel = toolbarConfig.codeAnalysisModel || "gpt-4o";
+
+    // 显示选择对话框
+    const selectedIndex = await MNUtil.userSelect(
+      "选择代码分析模型",
+      `当前: ${currentModel}`,
+      analysisModels
+    );
+
+    if (selectedIndex === 0) {
+      // 用户取消
+      return;
+    }
+
+    // 保存选择（selectedIndex 从 1 开始）
+    const selectedModel = analysisModels[selectedIndex - 1];
+    toolbarConfig.codeAnalysisModel = selectedModel;
+    toolbarConfig.save();
+
+    MNUtil.showHUD(`✅ 代码分析模型已切换为: ${selectedModel}`);
+  });
+
+  // codeAnalysisWithAI - AI 代码分析
+  global.registerCustomAction("codeAnalysisWithAI", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    try {
+      // 检查是否有选中的卡片
+      if (!focusNote) {
+        MNUtil.showHUD("请先选择一个代码卡片");
+        return;
+      }
+
+      // 获取图片数据
+      let imageData = MNUtil.getDocImage(true, true);
+      if (!imageData && focusNote) {
+        imageData = MNNote.getImageFromNote(focusNote);
+      }
+      if (!imageData) {
+        MNUtil.showHUD("未找到可识别的图片");
+        return;
+      }
+
+      // 使用配置的 OCR 源，默认为 Doc2X
+      const ocrSource = toolbarConfig.ocrSource || toolbarConfig.defaultOCRSource || "Doc2X";
+
+      // OCR 源名称映射
+      const ocrSourceNames = {
+        Doc2X: "Doc2X - 专业文档识别",
+        SimpleTex: "SimpleTex - 数学公式",
+        "GPT-4o": "GPT-4o - OpenAI 视觉",
+        "GPT-4o-mini": "GPT-4o mini",
+        "glm-4v-plus": "glm-4v-plus - 智谱AI Plus",
+        "glm-4v-flash": "glm-4v-flash - 智谱AI Flash",
+        "claude-3-5-sonnet-20241022": "Claude 3.5 Sonnet",
+        "claude-3-7-sonnet": "Claude 3.7 Sonnet",
+        "gemini-2.0-flash": "Gemini 2.0 Flash - Google",
+        "Moonshot-v1": "Moonshot-v1",
+      };
+
+      const sourceName = ocrSourceNames[ocrSource] || ocrSource;
+      MNUtil.showHUD(`正在使用 ${sourceName} 识别代码...`);
+
+      // 执行 OCR
+      let ocrResult;
+      if (typeof ocrNetwork !== "undefined") {
+        // 使用 MNOCR 插件
+        ocrResult = await ocrNetwork.OCR(imageData, ocrSource, true);
+      } else if (typeof toolbarUtils !== "undefined") {
+        // 使用免费 OCR（ChatGPT Vision - glm-4v-flash 模型）
+        ocrResult = await toolbarUtils.freeOCR(imageData);
+      } else {
+        MNUtil.showHUD("请先安装 MN OCR 插件");
+        return;
+      }
+
+      if (!ocrResult) {
+        MNUtil.showHUD("OCR 识别失败");
+        return;
+      }
+
+      // AI 处理
+      const analysisModel = toolbarConfig.codeAnalysisModel || "gpt-4o";
+      MNUtil.showHUD(`正在使用 ${analysisModel} 分析代码...`);
+
+      // 构建详细提示词
+      const codeAnalysisPrompt = `你是一个专业的JavaScript代码处理引擎，我将提供类中的函数代码（static/prototype/实例方法）。请严格按以下步骤处理：
+
+1. **注释清理**：
+   - 删除所有非解释性注释（如\`// 临时调试\`，\`/* 废弃代码 */\`）
+   - 保留授权注释（如\`/*! MIT License */\`）和文档性注释
+
+2. **代码格式化**：
+   - 2空格缩进
+   - 操作符空格：\`a+b\` → \`a + b\`
+   - 对象/数组空格：\`{a:1}\` → \`{ a:1 }\`
+   - 分号使用：符合StandardJS规范
+
+3. **JSDoc生成**：
+   - 函数功能描述
+   - @param {Type} param - 参数说明
+   - @returns {ReturnType} 返回值说明
+   - @throws {ErrorType} 错误说明
+   - 必需标记：@static 静态方法，@memberof ClassName.prototype 原型方法
+
+4. **函数解释**：
+   按执行顺序解释逻辑块，说明目的和算法复杂度
+
+5. **优化建议**（以[!]标记）：
+   性能提示和安全提醒
+
+**输出格式**：
+\`\`\`javascript
+[格式化后的完整代码]
+\`\`\`
+// 函数解析
+[分步骤的详细解释]
+[优化建议]
+
+---
+
+请分析以下代码：
+
+${ocrResult}`;
+
+      // 调用 AI API（参考 ocrWithTranslation）
+      const aiAnalysisResult = await toolbarUtils.ocrWithTranslation(
+        codeAnalysisPrompt, 
+        analysisModel
+      );
+
+      // 结果存储（使用 appendMarkdownComment）
+      MNUtil.undoGrouping(() => {
+        focusNote.appendMarkdownComment(`## 🤖 AI 代码分析\n\n${aiAnalysisResult}`);
+        
+        // TODO: 移动到"分析"字段（需要研究具体实现）
+        // 可能需要调用类似 MNMath.manageCommentsByPopup 的功能
+
+        MNUtil.showHUD("✅ AI 代码分析完成并添加到评论");
+      });
+
+    } catch (error) {
+      MNUtil.showHUD("AI 代码分析失败: " + error.message);
+      if (typeof toolbarUtils !== "undefined" && toolbarUtils.addErrorLog) {
+        toolbarUtils.addErrorLog(error, "codeAnalysisWithAI");
+      }
+    }
   });
 }
 

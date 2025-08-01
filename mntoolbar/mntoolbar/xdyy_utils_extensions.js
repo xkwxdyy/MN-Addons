@@ -2126,29 +2126,49 @@ function extendToolbarConfigInit() {
         }
         const className = classNote.noteTitle.trim();
 
-        // B级：文件卡片
+        // B级：文件卡片（可选）
         if (!classNote.parentNote) {
+          // 只有类，没有文件路径的情况
           return {
-            success: false,
-            error: "找不到文件卡片"
+            success: true,
+            data: {
+              plugin: null,
+              file: null,
+              class: className,
+              path: className  // 路径就是类名
+            }
           };
         }
+        
         const fileNote = classNote.parentNote;
         if (!fileNote.noteTitle || !fileNote.noteTitle.match(/\.(js|ts|jsx|tsx)$/)) {
+          // 父父卡片存在但不是文件卡片，也返回只有类的情况
           return {
-            success: false,
-            error: "父父卡片不是文件卡片（需要.js等后缀）"
+            success: true,
+            data: {
+              plugin: null,
+              file: null,
+              class: className,
+              path: className
+            }
           };
         }
         const fileName = fileNote.noteTitle.trim();
 
-        // A级：插件根卡片
+        // A级：插件根卡片（可选）
         if (!fileNote.parentNote) {
+          // 有文件但没有插件根卡片
           return {
-            success: false,
-            error: "找不到插件根卡片"
+            success: true,
+            data: {
+              plugin: null,
+              file: fileName,
+              class: className,
+              path: `${fileName}/${className}`
+            }
           };
         }
+        
         const pluginNote = fileNote.parentNote;
         // 提取插件名，去除可能的emoji
         const pluginTitle = pluginNote.noteTitle.trim();
@@ -2177,24 +2197,32 @@ function extendToolbarConfigInit() {
      * @param {string} methodName - 方法名
      * @param {string} type - 类型
      * @param {string} className - 类名（不含"类"字）
+     * @param {boolean} hasFilePath - 是否有文件路径（默认true）
      * @returns {string[]} 调用方式数组
      */
-    toolbarUtils.generateCallMethods =  function(methodName, type, className) {
+    toolbarUtils.generateCallMethods =  function(methodName, type, className, hasFilePath = true) {
       // 从类名中提取纯类名（去除"类"字和空格）
       const pureClassName = className.replace(/\s*类\s*$/, "").trim();
       
+      // 检查类名是否包含 "Class"
+      const hasClassInName = className.includes("Class") || pureClassName.includes("Class");
+      
       switch (type) {
         case "staticVar":  // 类的静态变量
-          return [
-            `${pureClassName}.${methodName}`,
-            `this.${methodName}`
-          ];
-        
         case "staticMethod":  // 类的静态方法
-          return [
-            `${pureClassName}.${methodName}`,
-            `this.${methodName}`
-          ];
+          const methods = [`${pureClassName}.${methodName}`];
+          
+          // 只有在有文件路径时才添加 this 版本
+          if (hasFilePath) {
+            methods.push(`this.${methodName}`);
+          }
+          
+          // 如果类名包含 "Class"，添加 self 版本
+          if (hasClassInName) {
+            methods.push(`self.${methodName}`);
+          }
+          
+          return methods;
         
         case "instanceMethod":  // 实例方法
           return [
@@ -2262,11 +2290,15 @@ function extendToolbarConfigInit() {
           "staticMethod": "类：静态方法",
           "instanceMethod": "实例方法",
           "getter": "实例：Getter 方法",
-          "setter": "实例：Setter 方法"
+          "setter": "实例：Setter 方法",
+          "prototype": "类：原型链方法"
         }[type];
 
+        // 检查是否有文件路径
+        const hasFilePath = pathInfo.file !== null;
+        
         // 生成调用方式
-        const callMethods = this.generateCallMethods(methodName, type, pathInfo.class);
+        const callMethods = this.generateCallMethods(methodName, type, pathInfo.class, hasFilePath);
         
         // 组装新标题
         const newTitle = `【${typePrefix} >> ${pathInfo.path}】; ${callMethods.join("; ")}`;

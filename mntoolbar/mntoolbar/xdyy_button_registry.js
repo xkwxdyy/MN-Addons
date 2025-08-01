@@ -114,6 +114,13 @@ function registerAllButtons() {
     templateName: "menu_reference"
   });
 
+  // 代码学习按钮
+  global.registerButton("custom_code", {
+    name: "代码学习",
+    image: "code",
+    templateName: "menu_codeLearning"
+  });
+
   global.registerButton("custom7", {
     name: "隐藏插件栏",
     image: "hideAddonBar",
@@ -166,13 +173,6 @@ function registerAllButtons() {
     name: "[卡片弹窗替换]摘录",
     image: "excerpt_white",
     templateName: "menu_excerpt"
-  });
-
-  // 代码学习按钮
-  global.registerButton("custom_code", {
-    name: "代码学习",
-    image: "code",
-    templateName: "menu_codeLearning"
   });
   
   if (typeof MNUtil !== "undefined" && MNUtil.log) {

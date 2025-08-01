@@ -4291,7 +4291,8 @@ function registerAllCustomActions() {
     // 代码元素类型选项
     const codeTypes = [
       "类：静态变量",
-      "类：静态方法", 
+      "类：静态方法",
+      "类：原型链方法",
       "实例：方法",
       "实例：Getter 方法",
       "实例：Setter 方法"
@@ -4311,9 +4312,10 @@ function registerAllCustomActions() {
         const typeMap = {
           1: "staticVar",
           2: "staticMethod",
-          3: "instanceMethod",
-          4: "getter",
-          5: "setter"
+          3: "prototype",
+          4: "instanceMethod",
+          5: "getter",
+          6: "setter"
         };
         
         const selectedType = typeMap[buttonIndex];

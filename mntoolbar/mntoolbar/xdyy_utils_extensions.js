@@ -1751,7 +1751,7 @@ function extendToolbarConfigInit() {
       }
 
       // 先显示 OCR 结果
-      MNUtil.showHUD("📝 OCR 完成，正在翻译...");
+      // MNUtil.showHUD("📝 OCR 完成，正在翻译...");
 
       let translatedText = null;
 
@@ -1794,6 +1794,53 @@ function extendToolbarConfigInit() {
       toolbarUtils.addErrorLog(error, "ocrWithTranslation");
       // 翻译失败时返回原始文本
       return ocrText;
+    }
+  };
+
+  toolbarUtils.AIWithPromptAndModel = async function (
+    prompt,
+    model = "gpt-4o-mini",
+  ) {
+    try {
+      // 检查 MNUtils 是否激活
+      if (typeof subscriptionConfig === "undefined") {
+        MNUtil.showHUD("❌ 请先安装并激活 MN Utils");
+        return null;
+      }
+
+      if (!subscriptionConfig.getConfig("activated")) {
+        MNUtil.showHUD("❌ 请在 MN Utils 中配置 API Key");
+        return null;
+      }
+
+      // 构建消息
+      const messages = [
+        { role: "system", content: prompt },
+        { role: "user", content: text },
+      ];
+
+      // 使用 Subscription 配置
+      const config = {
+        apiKey: subscriptionConfig.config.apikey,
+        apiHost: subscriptionConfig.config.url,
+        model: model,
+        temperature: 0.3,
+        stream: false,
+      };
+
+      // 发送请求
+      const result = await this.sendAIRequest(messages, config);
+
+      if (result) {
+        return result.trim();
+      } else {
+        MNUtil.showHUD("❌ AI 请求失败");
+        return null;
+      }
+    } catch (error) {
+      toolbarUtils.addErrorLog(error, "AIWithPromptAndModel");
+      MNUtil.showHUD("❌ AI 请求出错: " + error.message);
+      return null;
     }
   };
 

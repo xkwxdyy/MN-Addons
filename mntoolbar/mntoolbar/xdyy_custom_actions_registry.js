@@ -4446,7 +4446,7 @@ function registerAllCustomActions() {
       MNUtil.showHUD(`正在使用 ${analysisModel} 分析代码...`);
 
       // 构建详细提示词
-      const codeAnalysisPrompt = `你是一个专业的JavaScript代码处理引擎，我将提供类中的函数代码（static/prototype/实例方法）。请严格按以下步骤处理：
+      const codeAnalysisPrompt = `你是一个专业的JavaScript代码处理引擎，请分析以下代码：${ocrResult}。请严格按以下步骤处理：
 
 1. **注释清理**：
    - 删除所有非解释性注释（如\`// 临时调试\`，\`/* 废弃代码 */\`）
@@ -4465,38 +4465,55 @@ function registerAllCustomActions() {
    - @throws {ErrorType} 错误说明
    - 必需标记：@static 静态方法，@memberof ClassName.prototype 原型方法
 
-4. **函数解释**：
-   按执行顺序解释逻辑块，说明目的和算法复杂度
-
-5. **优化建议**（以[!]标记）：
-   性能提示和安全提醒
+4. **详细解释**：
+   将函数的详细解释以JavaScript注释的形式直接写在代码中，包括：
+   - 逻辑块的目的和实现原理
+   - 算法复杂度分析
+   - 为什么选择这种实现方式
+   - 关键代码行的作用说明
 
 **输出格式**：
 \`\`\`javascript
-[格式化后的完整代码]
+/**
+ * 完整的JSDoc注释
+ */
+functionName() {
+  // 详细注释：解释这行代码的作用和原理
+  // 包括算法复杂度、实现逻辑等详细说明
+  code here;
+  
+  // 继续用注释解释每个重要的代码块
+  more code;
+}
 \`\`\`
-// 函数解析
-[分步骤的详细解释]
-[优化建议]
 
----
+**然后单独列出优化建议**：
+[!] 性能提示：具体的优化建议
+[!] 安全提醒：具体的安全建议
 
-请分析以下代码：
-
-${ocrResult}`;
+**重要**
+1. 不要输出标题、操作总结或外部解释文本，只输出格式化的代码（含详细行级注释）和优化建议。
+2. 不需要加
+\`\`\`
+/**
+ * @license
+ * MIT License
+ */
+\`\`\`
+`;
 
       // 调用 AI API（参考 ocrWithTranslation）
-      const aiAnalysisResult = await toolbarUtils.ocrWithTranslation(
+      const aiAnalysisResult = await toolbarUtils.AIWithPromptAndModel(
         codeAnalysisPrompt, 
         analysisModel
       );
 
       // 结果存储（使用 appendMarkdownComment）
       MNUtil.undoGrouping(() => {
-        focusNote.appendMarkdownComment(`## 🤖 AI 代码分析\n\n${aiAnalysisResult}`);
-        
-        // TODO: 移动到"分析"字段（需要研究具体实现）
-        // 可能需要调用类似 MNMath.manageCommentsByPopup 的功能
+        let clonedNote = MNNote.clone("9C4F3120-9A82-440A-97FF-F08D5B53B972")
+        focusNote.merge(clonedNote.note)
+        focusNote.appendMarkdownComment(aiAnalysisResult);
+        MNMath.moveCommentsArrToField(focusNote,"Z", "分析");
 
         MNUtil.showHUD("✅ AI 代码分析完成并添加到评论");
       });

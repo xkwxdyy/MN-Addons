@@ -43,7 +43,7 @@ try {
 
     // self.createButton("screenButton","changeScreen:","toolbar")
     self.createButton("screenButton","closeButtonTapped:","toolbar")
-    self.screenButton.setImageForState(self.stopImage,0)
+    self.screenButton.setImageForState(chatAIConfig.closeImage,0)
     self.screenButton.backgroundColor = MNUtil.hexColorAlpha("#e06c75",0.8)
     // MNUtil.copy(actionImages)
     self.createButton("bigbangButton","executeCustomButton:","toolbar")
@@ -406,7 +406,7 @@ try {
     // MNUtil.copy(self.originalText)
     self.promptButton.setTitleForState(chatAIConfig.prompts[chatAIConfig.currentPrompt].title ,0)
     var commandTable = chatAIConfig.config.promptNames.map(promptName => {
-      return {title:chatAIConfig.prompts[promptName].title,object:self,selector:'askWithPrompt:',param:promptName,checked:chatAIConfig.currentPrompt===promptName}
+      return {title:"🚀 "+chatAIConfig.prompts[promptName].title,object:self,selector:'askWithPrompt:',param:promptName,checked:chatAIConfig.currentPrompt===promptName}
     })
 
     // switch (chatAIConfig.getConfig("notifyLoc")) {
@@ -1392,7 +1392,11 @@ try {
     this.funcResponse = ""
     this.lastResponse = this.response.trim()
 
-    // MNUtil.copy(this.lastResponse)
+    MNUtil.log({
+      message:this.currentTitle??"notification.aiResponse",
+      source:"MN ChatAI",
+      detail:this.response
+    })
     this.response = ""
     this.preResponse = ""
     if (this.actions.length && !this.onChat) {
@@ -1423,7 +1427,6 @@ notificationController.prototype.init = function () {
   // let ctr = this
   // MNUtil.showHUD("message")
   this.reloadImage = MNUtil.getImage(chatAIConfig.mainPath + `/reload.png`)
-  this.stopImage = MNUtil.getImage(chatAIConfig.mainPath + `/stop.png`)
   this.bigbangImage = MNUtil.getImage(chatAIConfig.mainPath + `/bigbang.png`)
   this.copyImage = MNUtil.getImage(chatAIConfig.mainPath + `/copy.png`)
   this.titleImage = MNUtil.getImage(chatAIConfig.mainPath + `/title.png`)
@@ -1442,7 +1445,7 @@ notificationController.prototype.init = function () {
   this.clearImage = MNUtil.getImage(chatAIConfig.mainPath + `/eraser.png`)
   this.mindmapImage = MNUtil.getImage(chatAIConfig.mainPath + `/mindmap.png`)
   this.editorImage = MNUtil.getImage(chatAIConfig.mainPath + `/edit.png`,2.2)
-  this.actionImages = MNUtil.getImage(chatAIConfig.mainPath + `/action.png`)
+  this.actionImage = MNUtil.getImage(chatAIConfig.mainPath + `/action.png`)
   this.snipasteImage = MNUtil.getImage(chatAIConfig.mainPath + `/snipaste.png`)
   this.menuImage = MNUtil.getImage(chatAIConfig.mainPath + `/menu.png`)
   this.searchImage = MNUtil.getImage(chatAIConfig.mainPath + `/search.png`)
@@ -2139,7 +2142,6 @@ notificationController.prototype.setWebviewContentDev = async function (response
   *重新加载一遍veditor
   */
 notificationController.prototype.setNewResponse = function (webview) {
-  MNUtil.log("setNewResponse")
   if (webview) {
     this[webview].loadFileURLAllowingReadAccessToURL(
       NSURL.fileURLWithPath(chatAIConfig.mainPath + `/veditor_${this.theme}.html`),
@@ -2747,8 +2749,39 @@ try {
  */
 notificationController.prototype.executeAction = async function (action,text,undoGrouping=true){
 try {
+
     let note = await this.currentNote(false)
     switch (action) {
+      case "stopOutput":
+        if (this.connection) {
+          this.connection.cancel()
+          delete this.connection
+          this.showHUD("Stop output")
+        }else{
+          this.showHUD("Not on output")
+        }
+        this.setButtonOpacity(1.0)
+        return;
+      case "switchLocation":
+        if (this.notifyLoc === 1) {
+          chatAIConfig.config.notifyLoc = 0
+          chatAIConfig.save("MNChatglm_config")
+          this.show(chatAIConfig.config.notifyLoc,false,true)
+          if (chatAIUtils.chatController.windowLocationButton) {
+            chatAIUtils.chatController.windowLocationButton.setTitleForState("Notification: Left",0)
+          }
+          return
+        }
+        if (this.notifyLoc === 0) {
+          chatAIConfig.config.notifyLoc = 1
+          this.show(chatAIConfig.config.notifyLoc,false,true)
+          chatAIConfig.save("MNChatglm_config")
+          if (chatAIUtils.chatController.windowLocationButton) {
+            chatAIUtils.chatController.windowLocationButton.setTitleForState("Notification: Right",0)
+          }
+          return
+        }
+        return
       case "none":
         this.showHUD("No action")
         return;
@@ -3055,9 +3088,41 @@ function generateUrlScheme(scheme, host, path, query, fragment) {
  * @param {string} action 
  * @param {UIButton} button 
  */
+notificationController.prototype.executeToolbarAction = async function (actionKey,button){
+  if (typeof toolbarUtils === "undefined") {
+    this.showHUD("Please install MN Utils First!")
+    return
+  }
+  if (!chatAIUtils.checkSubscribe(true)) {
+    return
+  }
+  let actionDes = toolbarConfig.getDescriptionById(actionKey)
+  if (!("action" in actionDes)) {
+    self.showHUD("Missing action")
+    return
+  }
+  await toolbarUtils.customActionByDes(actionDes,button,undefined,false)
+  while ("onFinish" in actionDes) {
+    let delay = actionDes.delay ?? 0.5
+    actionDes = actionDes.onFinish
+    await MNUtil.delay(delay)
+    await toolbarUtils.customActionByDes(actionDes,button,undefined,false)
+  }
+
+}
+/**
+ * @this {notificationController}
+ * @param {string} action 
+ * @param {UIButton} button 
+ */
 notificationController.prototype.executeActionFromButton = async function (action,button){
     Menu.dismissCurrentMenu()
 try {
+    if (action.startsWith("toolbar:")) {
+      let toolbarAction = action.split(":")[1]
+      this.executeToolbarAction(toolbarAction, button)
+      return
+    }
 
     if (action === "menu") {
       if (!button) {
@@ -3065,22 +3130,27 @@ try {
       }
       let menu = new Menu(button,this)
       let selector = 'executeCustomButton:'
-      menu.addMenuItem("bigbang",selector,"bigbang")
-      menu.addMenuItem("addChildNote",selector,"addChildNote")
-      menu.addMenuItem("addBrotherNote",selector,"addBrotherNote")
-      menu.addMenuItem("addComment",selector,"addComment")
-      menu.addMenuItem("addBlankComment",selector,"addBlankComment")
-      menu.addMenuItem("setTitle",selector,"setTitle")
-      menu.addMenuItem("addTitle",selector,"addTitle")
-      menu.addMenuItem("copy",selector,"copy")
-      menu.addMenuItem("setExcerpt",selector,"setExcerpt")
-      menu.addMenuItem("appendExcerpt",selector,"appendExcerpt")
-      menu.addMenuItem("markdown2Mindmap",selector,"markdown2Mindmap")
-      menu.addMenuItem("openInEditor",selector,"openInEditor")
-      menu.addMenuItem("snipaste",selector,"snipaste")
-      menu.addMenuItem("searchInBrowser",selector,"searchInBrowser")
-      menu.addMenuItem("reAsk",selector,"reAsk")
-      menu.addMenuItem("openChat",selector,"openChat")
+      menu.addMenuItem("添加子卡片/节点",selector,"addChildNote")
+      menu.addMenuItem("添加兄弟卡片/节点",selector,"addBrotherNote")
+      menu.addMenuItem("添加评论",selector,"addComment")
+      menu.addMenuItem("添加文字留白",selector,"addBlankComment")
+      menu.addMenuItem("设置标题",selector,"setTitle")
+      menu.addMenuItem("追加标题",selector,"addTitle")
+      menu.addMenuItem("复制内容",selector,"copy")
+      menu.addMenuItem("设置摘要",selector,"setExcerpt")
+      menu.addMenuItem("追加摘要",selector,"appendExcerpt")
+      menu.addMenuItem("Markdown转脑图",selector,"markdown2Mindmap")
+      menu.addMenuItem("调用 MN Editor",selector,"openInEditor")
+      menu.addMenuItem("调用 MN Bigbang",selector,"bigbang")
+      menu.addMenuItem("调用 MN Snipaste",selector,"snipasteText")
+      menu.addMenuItem("调用 MN Snipaste 预览 HTML",selector,"snipasteHTML")
+      menu.addMenuItem("调用 MN Browser 搜索",selector,"searchInBrowser")
+      menu.addMenuItem("重新生成",selector,"reAsk")
+      menu.addMenuItem("打开聊天模式",selector,"openChat")
+      menu.addMenuItem("停止输出",selector,"stopOutput")
+      menu.addMenuItem("切换窗口位置",selector,"switchLocation")
+      menu.width = 250
+      menu.preferredPosition = 0
       menu.show()
       return
     }
@@ -3327,14 +3397,20 @@ try {
 /** @this {notificationController} */
 notificationController.prototype.refreshCustomButton = function (){
   let actionImages = chatAIConfig.getActionImages()
-  this.bigbangButton.setImageForState(this[actionImages[0]],0)
-  this.commentButton.setImageForState(this[actionImages[1]],0)
-  this.titleButton.setImageForState(this[actionImages[2]],0)
-  this.copyButton.setImageForState(this[actionImages[3]],0)
-  this.excerptButton.setImageForState(this[actionImages[4]],0)
-  this.childButton.setImageForState(this[actionImages[5]],0)
-  this.reloadButton.setImageForState(this[actionImages[6]],0)
-  this.chatButton.setImageForState(this[actionImages[7]],0)
+  if (!actionImages) {
+    MNUtil.log("No aciton images")
+    return
+  }
+  // MNUtil.log({message:"refreshCustomButton",source:"MN ChatAI",detail:actionImages})
+
+  this.bigbangButton.setImageForState(actionImages[0],0)
+  this.commentButton.setImageForState(actionImages[1],0)
+  this.titleButton.setImageForState(actionImages[2],0)
+  this.copyButton.setImageForState(actionImages[3],0)
+  this.excerptButton.setImageForState(actionImages[4],0)
+  this.childButton.setImageForState(actionImages[5],0)
+  this.reloadButton.setImageForState(actionImages[6],0)
+  this.chatButton.setImageForState(actionImages[7],0)
 }
 
 /** @this {notificationController} */

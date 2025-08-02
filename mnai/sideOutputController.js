@@ -1827,7 +1827,6 @@ sideOutputController.prototype.init = function () {
   // let ctr = this
   // MNUtil.showHUD("message")
   this.reloadImage = MNUtil.getImage(chatAIConfig.mainPath + `/reload.png`)
-  this.stopImage = MNUtil.getImage(chatAIConfig.mainPath + `/stop.png`)
   this.bigbangImage = MNUtil.getImage(chatAIConfig.mainPath + `/bigbang.png`)
   this.copyImage = MNUtil.getImage(chatAIConfig.mainPath + `/copy.png`)
   this.titleImage = MNUtil.getImage(chatAIConfig.mainPath + `/title.png`)
@@ -2366,7 +2365,7 @@ sideOutputController.prototype.openChatView = async function (params=undefined) 
     }
     this.chatToolbar.frame = MNUtil.genFrame(x, 300, 350, 85)
     this.createButton("closeChatButton","closeButtonTapped:")
-    this.closeChatButton.setImageForState(this.stopImage,0)
+    this.closeChatButton.setImageForState(chatAIConfig.closeImage,0)
     this.closeChatButton.backgroundColor = MNUtil.hexColorAlpha("#e06c75",0.8)
 
     this.createButton("chatsNavButton","toggleNavEv:")

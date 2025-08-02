@@ -28,6 +28,12 @@ var chatglmController = JSB.defineClass('chatglmController : UIViewController', 
     self.resizeGesture = new UIPanGestureRecognizer(self,"onResizeGesture:")
     self.promptSaveButton.addGestureRecognizer(self.resizeGesture)
     self.resizeGesture.view.hidden = false
+
+    self.resizeGesture0 = new UIPanGestureRecognizer(self,"onResizeGesture:")
+    self.saveCustomButton.addGestureRecognizer(self.resizeGesture0)
+    self.resizeGesture.view.hidden = false
+    // MNButton.addPanGesture(self.saveCustomButtonConfig, self, "onResizeGesture:")
+    // self.saveCustomButtonConfig.addGestureRecognizer(self.resizeGesture)
     // self.resizeGesture.addTargetAction(self,"onResizeGesture:")
     // self.chatglmController.view.hidden = false
     } catch (error) {
@@ -328,7 +334,12 @@ var chatglmController = JSB.defineClass('chatglmController : UIViewController', 
   saveCustomModels: function (params) {
     chatAIConfig.config.customModel = self.customModelInput.text
     chatAIConfig.save("MNChatglm_config")
-    MNUtil.showHUD("Save model")
+    self.showHUD("Save model")
+  },
+  showNotification: async function (params) {
+    if (chatAIUtils.notifyController.view.hidden) {
+      chatAIUtils.notifyController.beginNotification("test")
+    }
   },
   saveCustomButtonConfig: async function (params) {
     try {
@@ -337,9 +348,10 @@ var chatglmController = JSB.defineClass('chatglmController : UIViewController', 
       }
     let content = await self.getWebviewContent()
     let customButton = JSON.parse(content)
+    MNUtil.log({message:"customButton",source:"MN ChatAI",detail:customButton})
     chatAIConfig.config.customButton = customButton
     chatAIConfig.save("MNChatglm_config")
-    MNUtil.showHUD("Save Custom Buttons")
+    self.showHUD("Save Custom Buttons")
     self.refreshCustomButton()
 
     } catch (error) {
@@ -633,6 +645,8 @@ try {
     menu.addMenuItem("🔨 Snipaste Text", selector,15,currentAction.includes(15))
     menu.addMenuItem("🔨 Close", selector,5,currentAction.includes(5))
     menu.addMenuItem("❌ None", selector,-1,currentAction.length === 0)
+    menu.addMenuItem("➡️ Toolbar actions:", "chooseToolbarActions")
+
     menu.width = 250
     menu.show()
   },
@@ -695,9 +709,14 @@ try {
     chatAIConfig.config.dynamicAction = currentAction
     chatAIConfig.save("MNChatglm_config")
 } catch (error) {
-  MNUtil.showHUD(error)
+  chatAIUtils.addErrorLog(error, "chooseAction")
 }
 
+  },
+  chooseToolbarActions: function (button) {
+    let self = getChatglmController()
+    Menu.dismissCurrentMenu()
+    MNUtil.showHUD("Unspported yet...")
   },
   changeOpacityTo:function (opacity) {
     self.view.layer.opacity = opacity
@@ -855,7 +874,7 @@ try {
       MNUtil.studyView.bringSubviewToFront(self.view)
     }
   } catch (error) {
-    MNUtil.showHUD(error)
+    chatAIUtils.addErrorLog(error, "onResizeGesture")
   }
   },
   onResizeGesture0:function (gesture) {
@@ -913,12 +932,14 @@ try {
   },
   refreshModel: async function (param) {
     Menu.dismissCurrentMenu()
+    self.waitHUD("Refresh Model...")
     let res = await chatAINetwork.fetchModelConfig()
     if (res && "Github" in res) {
       // MNUtil.copy(res)
-      MNUtil.showHUD("✅ Refresh Success!")
+      self.waitHUD("✅ Refresh Success!")
       chatAIConfig.modelConfig = res
       chatAIConfig.save("MNChatglm_modelConfig")
+      MNUtil.stopHUD(1)
     }
   },
   customButtonTabTapped: function (button) {
@@ -1337,7 +1358,13 @@ try {
         }
         break;
       case "ChatGLM":
-        self.openURL("https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys")
+        confirm = await MNUtil.confirm("MN ChatAI", "是否已注册ChatGLM？",["未注册","已注册"])
+        if (confirm) {
+          self.openURL("https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys")
+        }else{
+          self.openURL("https://www.bigmodel.cn/invite?icode=8sa1hLdemfigJAPEbzFQ233uFJ1nZ0jLLgipQkYjpcA%3D")
+        }
+        break;
         break;
       case "PPIO":
         confirm = await MNUtil.confirm("MN ChatAI", "是否已注册PPIO？",["未注册","已注册"])
@@ -1434,19 +1461,19 @@ try {
   saveConfig: async function (params) {
     switch (chatAIConfig.config.source) {
       case "Built-in":
-        MNUtil.showHUD("Refreshing...")
+        self.waitHUD("Refreshing...")
         let keys = await chatAINetwork.fetchKeys0()
         if (keys) {
           chatAIConfig.keys = keys 
           if (keys.message) {
-            MNUtil.showHUD(keys.message)
+            self.waitHUD(keys.message)
             chatAIConfig.save('MNChatglm_builtInKeys')
             self.refreshView("modelView")
+            MNUtil.stopHUD(1)
             // self.refreshButton.setTitleForState(`1️⃣: ${keys.key0.keys.length}, 2️⃣: ${keys.key1.keys.length}, 3️⃣: ${keys.key2.keys.length}, 4️⃣: ${keys.key3.keys.length}`,0)
             return
           }
         }
-        MNUtil.showHUD("error")
         return;
       case "ChatGLM":
         chatAIConfig.config.apikey = self.apiKeyInput.text.trim()
@@ -1610,6 +1637,7 @@ try {
           }
           let confirm = await MNUtil.confirm("MN ChatAI\nDelete this prompt?", "删除这个prompt？")
           if (confirm) {
+            let prompt = chatAIConfig.prompts[currentPrompt]
             delete chatAIConfig.prompts[currentPrompt]
             chatAIConfig.config.promptNames = promptNames.filter(item=>item !== chatAIConfig.config.currentPrompt)
             chatAIConfig.setCurrentPrompt(chatAIConfig.config.promptNames[0])
@@ -1617,6 +1645,7 @@ try {
             self.refreshLayout()
             chatAIConfig.save(["MNChatglm_config","MNChatglm_prompts"])
             self.scrollview.setContentOffsetAnimated({x:0,y:0}, true)
+            MNUtil.log({message:"Delete Prompt: "+prompt.title,source:"MN ChatAI",detail:prompt})
           }
           break;
         case "Top":
@@ -1654,6 +1683,7 @@ try {
             let systemMessage = await chatAIUtils.render(system,opt)
             // MNUtil.confirm("System Prompt", systemMessage.slice(0, 2000))
             if (systemMessage && systemMessage.trim()) {
+              MNUtil.log({message:"Test Prompt: "+self.titleInput.text,source:"MN ChatAI",detail:systemMessage})
               MNUtil.copy(systemMessage)
               self.showHUD("Copy system message")
             }else{
@@ -1671,6 +1701,7 @@ try {
             let opt = {noteId:MNNote.getFocusNote()?.noteId,vision:!!vision}
             let contextMessage = await chatAIUtils.render(context,opt)
             if (contextMessage && contextMessage.trim()) {
+              MNUtil.log({message:"Test Prompt: "+self.titleInput.text,source:"MN ChatAI",detail:contextMessage})
               MNUtil.copy(contextMessage)
               self.showHUD("Copy context message")
             }else{
@@ -1912,6 +1943,7 @@ try {
       systemMessage = await chatAIUtils.getTextVarInfo(system,userInput)
     }
     if (systemMessage) {
+      MNUtil.log({message:"Test Dynamic Prompt",source:"MN ChatAI",detail:systemMessage})
       MNUtil.copy(systemMessage)
       MNUtil.showHUD("Copy system message")
     }else{
@@ -2010,7 +2042,6 @@ try {
     if (modifiedTime) {
       let dateObj = new Date(modifiedTime)
       let dateString = dateObj.toLocaleString()
-      // MNButton.setTitle(this.restoreConfigButton, "Last Sync Time: "+dateObj.toLocaleString())
       let confirm = await MNUtil.confirm("Restore Config", "恢复上次配置\n\n将会恢复到上次导入前的配置\n\n上次配置的修改时间："+dateString )
       if (confirm) {
         // MNUtil.copy(chatAIConfig.previousConfig)
@@ -2190,7 +2221,7 @@ try {
         break;
     }
   } catch (error) {
-    MNUtil.showHUD("Error in focusConfigNoteId: "+error)
+    chatAIUtils.addErrorLog(error, "focusConfigNoteId")
   }
   }
 });
@@ -2200,7 +2231,6 @@ chatglmController.prototype.init = function () {
   //  */
   // let ctr = this
   this.reloadImage = MNUtil.getImage(chatAIConfig.mainPath + `/reload.png`)
-  this.stopImage = MNUtil.getImage(chatAIConfig.mainPath + `/stop.png`)
   this.settingImage = MNUtil.getImage(chatAIConfig.mainPath + `/setting.png`)
   this.visionImage = MNUtil.getImage(chatAIConfig.mainPath + `/vision.png`,1.5)
   this.searchedText = '';
@@ -2479,8 +2509,9 @@ chatglmController.prototype.settingViewLayout = function (){
     this.modelScrollview.frame = MNUtil.genFrame(5, 5, 145, height-75)
     this.sourceButton.frame = MNUtil.genFrame(realX,5,realWidth-100,35)
     this.saveConfigButton.frame = MNUtil.genFrame(width-90,5,85,35)
-    this.saveCustomButton.frame = MNUtil.genFrame(width-62.5,2.5,60,30)
-    this.resetCustomButton.frame = MNUtil.genFrame(width-125,2.5,60,30)
+    this.saveCustomButton.frame = MNUtil.genFrame(width-65,height-100,60,30)
+    this.resetCustomButton.frame = MNUtil.genFrame(width-130,height-100,60,30)
+    this.showNotificationButton.frame = MNUtil.genFrame(width-195,height-100,60,30)
     this.apiKeyInput.frame = MNUtil.genFrame(realX,50,realWidth-10,75)
     this.pasteApiKeyButton.frame = MNUtil.genFrame(width-40,90,30,30)
     this.URLInput.frame = MNUtil.genFrame(realX,130,realWidth-10,40)
@@ -2610,7 +2641,7 @@ try {
 
   this.createButton("closeButton","closeButtonTapped:","view")
   this.closeButton.layer.cornerRadius = 10;
-  MNButton.setImage(this.closeButton, this.stopImage)
+  MNButton.setImage(this.closeButton, chatAIConfig.closeImage)
   MNButton.setColor(this.closeButton, "#e06c75")
   targetView = "tabView"
   //创建切换按钮
@@ -2754,12 +2785,16 @@ try {
   targetView = "customButtonView"
   this.createWebviewInput("customButtonView")
   this.createButton("saveCustomButton","saveCustomButtonConfig:","customButtonView")
-  MNButton.setConfig(this.saveCustomButton, {opacity:0.8,color:"#e06c75",title:"Save",bold:true})
+  MNButton.setConfig(this.saveCustomButton, {opacity:0.75,color:"#e06c75",title:"Save",bold:true})
   MNButton.setRadius(this.saveCustomButton,11)
 
   this.createButton("resetCustomButton","resetCustomButtonConfig:","customButtonView")
-  MNButton.setConfig(this.resetCustomButton, {opacity:0.8,color:"#457bd3",title:"Reset",bold:true})
+  MNButton.setConfig(this.resetCustomButton, {opacity:0.75,color:"#457bd3",title:"Reset",bold:true})
   MNButton.setRadius(this.resetCustomButton,11)
+
+  this.createButton("showNotificationButton","showNotification:","customButtonView")
+  MNButton.setConfig(this.showNotificationButton, {opacity:0.75,color:"#457bd3",title:"Show",bold:true})
+  MNButton.setRadius(this.showNotificationButton,11)
 
   //autoActionView
 
@@ -3749,15 +3784,15 @@ chatglmController.prototype.createWebviewInput = function (superView) {
   this.webviewInput.layer.borderWidth = 0
   this.webviewInput.layer.opacity = 0.85
   this.webviewInput.scrollEnabled = false
-  this.webviewInput.scrollView.scrollEnabled = false
+  // this.webviewInput.scrollView.scrollEnabled = false
+  // this.webviewInput.loadFileURLAllowingReadAccessToURL(
+  //   NSURL.fileURLWithPath(chatAIUtils.mainPath + '/jsoneditor.html'),
+  //   NSURL.fileURLWithPath(chatAIUtils.mainPath + '/')
+  // );
   this.webviewInput.loadFileURLAllowingReadAccessToURL(
-    NSURL.fileURLWithPath(chatAIUtils.mainPath + '/jsoneditor.html'),
+    NSURL.fileURLWithPath(chatAIUtils.mainPath + '/buttonEditor.html'),
     NSURL.fileURLWithPath(chatAIUtils.mainPath + '/')
   );
-  // this.webviewInput.loadFileURLAllowingReadAccessToURL(
-  //   NSURL.fileURLWithPath(this.mainPath + '/jsoneditor.html'),
-  //   NSURL.fileURLWithPath(MNUtil.mainPath + '/')
-  // );
     } catch (error) {
     MNUtil.showHUD(error)
   }
@@ -3778,7 +3813,9 @@ chatglmController.prototype.loadWebviewContent = function () {
  * @param {object|string} content
  * @this {chatglmController}
  */
-chatglmController.prototype.setWebviewContent = function (content) {
+chatglmController.prototype.setWebviewContent = async function (content) {
+try {
+
   if (typeof content === "object") {
     let button1 = content.button1
     if (!("autoClose" in button1)) {
@@ -3806,6 +3843,8 @@ chatglmController.prototype.setWebviewContent = function (content) {
     }
     let button7 = content.button7 ?? {click:"reAsk",longPress:"reAskWithMenu",autoClose:false}
     let button8 = content.button8 ?? {click:"openChat",longPress:"none",autoClose:true}
+
+
     let sortedContent = {
       button1: button1,
       button2: button2,
@@ -3816,27 +3855,33 @@ chatglmController.prototype.setWebviewContent = function (content) {
       button7: button7,
       button8: button8
     }
-    this.runJavaScript(`setContent('${encodeURIComponent(JSON.stringify(sortedContent))}')`)
+    if (typeof toolbarUtils === "undefined") {
+      await this.runJavaScript(`setContent("${encodeURIComponent(JSON.stringify(sortedContent))}")`)
+    }else{
+      let actionKey = toolbarConfig.getAllActions()
+      let buttonConfigs = actionKey.map(key=>{
+        return {value:"toolbar:"+key,text:"🔨  "+toolbarConfig.getAction(key).name}
+      })
+      // MNUtil.copy(`updateAction("${encodeURIComponent(JSON.stringify(buttonConfigs))}")`)
+      await this.runJavaScript(`
+      updateAction("${encodeURIComponent(JSON.stringify(buttonConfigs))}")
+      setContent("${encodeURIComponent(JSON.stringify(sortedContent))}")
+      `)
+    }
+    // MNUtil.copy(`setContent("${encodeURIComponent(JSON.stringify(sortedContent))}")`)
+    // await this.runJavaScript(`setContent("${encodeURIComponent(JSON.stringify(sortedContent))}")`)
     return
   }
   if (!MNUtil.isValidJSON(content)) {
     content = "{}"
   }
   this.runJavaScript(`setContent('${encodeURIComponent(content)}')`)
+  
+} catch (error) {
+  chatAIUtils.addErrorLog(error, "setWebviewContent")
 }
-/**
- * @this {chatglmController}
- */
-chatglmController.prototype.updateWebviewContent = function (content) {
-  if (typeof content === "object") {
-    this.runJavaScript(`updateContent('${encodeURIComponent(JSON.stringify(content))}')`)
-    return
-  }
-  if (!MNUtil.isValidJSON(content)) {
-    content = "{}"
-  }
-  this.runJavaScript(`updateContent('${encodeURIComponent(content)}')`)
 }
+
 /**
  * @this {chatglmController}
  */
@@ -3848,7 +3893,7 @@ chatglmController.prototype.setJSContent = function (content) {
  * @this {chatglmController}
  */
 chatglmController.prototype.blur = async function () {
-  this.runJavaScript(`removeFocus()`)
+  this.runJavaScript(`document.activeElement.blur();`)
   this.webviewInput.endEditing(true)
 }
 
@@ -3857,7 +3902,8 @@ chatglmController.prototype.blur = async function () {
  */
 chatglmController.prototype.getWebviewContent = async function () {
   // let content = await this.runJavaScript(`updateContent(); document.body.innerText`)
-  let content = await this.runJavaScript(`getContent()`)
+  await this.runJavaScript(`document.activeElement.blur();`)
+  let content = await this.runJavaScript(`getContent();`)
   let tem = decodeURIComponent(content)
   this.webviewInput.endEditing(true)
   return tem
@@ -3885,7 +3931,7 @@ chatglmController.prototype.refreshCustomButton = function (){
  * @param {number} duration 
  * @param {UIView} view 
  */
-chatglmController.prototype.showHUD = function (title,duration = 1.5,view = self.view) {
+chatglmController.prototype.showHUD = function (title,duration = 1.5,view = this.view) {
   MNUtil.showHUD(title,duration,view)
 }
 
@@ -3898,29 +3944,39 @@ chatglmController.prototype.openURL = function (url, mode = "auto") {
   switch (mode) {
     case "auto":
       if (typeof browserUtils !== "undefined") {
-        self.showHUD("Open in browser")
+        this.showHUD("Open in browser")
         MNUtil.postNotification("openInBrowser", {url:url})
       }else{
-        self.showHUD("Open in external browser")
+        this.showHUD("Open in external browser")
         MNUtil.openURL(url)
       }
       break;
     case "mnbrowser":
     case "mn":
       if (typeof browserUtils !== "undefined") {
-        self.showHUD("Open in browser")
+        this.showHUD("Open in browser")
         MNUtil.postNotification("openInBrowser", {url:url})
       }else{
         MNUtil.showHUD("Please install MN Browser First")
       }
       break;
     case "external":
-      self.showHUD("Open in external browser")
+      this.showHUD("Open in external browser")
       MNUtil.openURL(url)
       break;
     default:
       break;
   }
+}
+
+/**
+ * 
+ * @param {string} title 
+ * @param {number} duration 
+ * @param {UIView} view 
+ */
+chatglmController.prototype.waitHUD = function (title,view = this.view) {
+  MNUtil.waitHUD(title,view)
 }
 /** @type {UITextView} */
 chatglmController.prototype.contextInput

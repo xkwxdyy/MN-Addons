@@ -6,6 +6,8 @@
 改进打开各源的开发平台逻辑
 更新浮动窗口修改tools逻辑
 
+为特定行为添加日志
+
 killall "MarginNote 4" && sleep 1 && open "/Applications/MarginNote 4.app"
 
 pgrep -x "MarginNote 4" > /dev/null && (killall "MarginNote 4" && sleep 1 && open "/Applications/MarginNote 4.app") || open "/Applications/MarginNote 4.app"

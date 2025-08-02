@@ -672,7 +672,6 @@ dynamicController.prototype.init = function () {
     this.scrollview.autoresizingMask = (1 << 0 | 1 << 3);
     this.scrollview.id = "promptScrollView"
   this.reloadImage = MNUtil.getImage(chatAIConfig.mainPath + `/reload.png`)
-  this.stopImage = MNUtil.getImage(chatAIConfig.mainPath + `/stop.png`)
   this.bigbangImage = MNUtil.getImage(chatAIConfig.mainPath + `/bigbang.png`)
   this.copyImage = MNUtil.getImage(chatAIConfig.mainPath + `/copy.png`)
   this.titleImage = MNUtil.getImage(chatAIConfig.mainPath + `/title.png`)
@@ -731,7 +730,7 @@ dynamicController.prototype.init = function () {
   this.setCurrentModel()
 
   this.closeButton = this.createButton("closeInput:")
-  this.closeButton.setImageForState(this.stopImage,0)
+  this.closeButton.setImageForState(chatAIConfig.closeImage,0)
   this.closeButton.hidden = true
   this.closeButton.backgroundColor =  MNUtil.hexColorAlpha("#e06c75",0.8)
 

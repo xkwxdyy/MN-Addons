@@ -672,6 +672,7 @@ class chatAITool{
     let content = args.content ?? ""
     if (content) {
       content = chatAIUtils.replaceLtInLatexBlocks(content)
+      MNUtil.log(content)
       MNUtil.postNotification("snipasteMermaid", {content:content,force:true})
       response.result = content
       response.success = true
@@ -2193,12 +2194,12 @@ For example, set parameter \`originalContent\` to "reveals" and parameter \`cont
     return [0,1,2,3,4,6,8,9]
   }
   static get activatedTools(){
-    return [15,11,13,21,22,23,24,25,7,14,17,16,18,19,20,10,12,0,1,6,2,3,4,8,9,5]
-    // return [15,11,13,21,22,23,24,25,7,14,17,26,16,18,19,20,10,12,0,1,6,2,3,4,8,9,5]
+    // return [15,11,13,21,22,23,24,25,7,14,17,16,18,19,20,10,12,0,1,6,2,3,4,8,9,5]
+    return [15,11,13,21,22,23,24,25,7,14,17,26,16,18,19,20,10,12,0,1,6,2,3,4,8,9,5]
   }
   static get activatedToolsExceptOld(){
-    return [15,11,13,21,22,23,24,25,7,14,17,16,18,19,20,10,12,5]
-    // return [15,11,13,21,22,23,24,25,7,14,17,26,16,18,19,20,10,12,5]
+    // return [15,11,13,21,22,23,24,25,7,14,17,16,18,19,20,10,12,5]
+    return [15,11,13,21,22,23,24,25,7,14,17,26,16,18,19,20,10,12,5]
   }
   static getChangedTools(currentFunc,index){
     let targetFunc = currentFunc
@@ -5216,12 +5217,14 @@ code.hljs {
     }
     this.errorLog.push(tem)
     MNUtil.copy(this.errorLog)
-    MNUtil.log({
-      source:"MN ChatAI",
-      level:"error",
-      message:source,
-      detail:tem,
-    })
+    if (typeof MNUtil.log !== 'undefined') {
+      MNUtil.log({
+        source:"MN ChatAI",
+        level:"error",
+        message:source,
+        detail:tem,
+      })
+    }
   }
   static checkLogo(){
     if (typeof MNUtil === 'undefined') return false
@@ -6323,7 +6326,9 @@ class chatAIConfig {
     }
   }
   }
+
   static actionImages = {
+    stopOutput:"stopImage",
     bigbang:"bigbangImage",
     addComment:"commentImage",
     setTitle:"titleImage",
@@ -6341,16 +6346,29 @@ class chatAIConfig {
     searchInBrowser:"searchImage",
     reAsk:"reloadImage",
     reAskWithMenu:"reloadImage",
-    openChat:"chatImage"
+    openChat:"chatImage",
+    none:"noneImage",
+    switchLocation:"switchLocationImage"
   }
+  //直接返回UIImage
   static actionImage(action){
     if (action in this.actionImages) {
-      return this.actionImages[action]
+      return this[this.actionImages[action]]
     }
-    return "actionImage"
+    if (action.startsWith("toolbar:")) {
+      let toolbarAction = action.split(":")[1]
+      let image = toolbarConfig.imageConfigs[toolbarAction]
+      let scale = image.scale
+      let newImage = UIImage.imageWithCGImageScaleOrientation(image.CGImage,scale*1.1,0)
+      return newImage
+    }
+    return this.defaultActionImage
   }
   static getActionImages(){
+  try {
+
     let config = this.getConfig("customButton")
+    // MNUtil.log({message:"getActionImages",source:"MN ChatAI",detail:config})
     let actions = [
       config.button1.click,
       config.button2.click,
@@ -6372,6 +6390,11 @@ class chatAIConfig {
     return actions.map(action=>{
       return this.actionImage(action)
     })
+    
+  } catch (error) {
+    chatAIUtils.addErrorLog(error, "utils.getActionImages")
+    return undefined
+  }
   }
   static defaultModelConfig = {
     "Volcengine":[
@@ -6569,11 +6592,45 @@ class chatAIConfig {
     }
     let ignoreShortText = this.getConfig("ignoreShortText")
     if (ignoreShortText == undefined) {
-      chatAIConfig.config.ignoreShortText = false
+      this.config.ignoreShortText = false
     }
     chatAITool.initTools()
     this.checkDataDir()
     // MNUtil.copy(this.config.r2password)
+    // /**
+    //  * @type {chatglmController}
+    //  */
+    // let ctr = this
+    // MNUtil.showHUD("message")
+    this.reloadImage = MNUtil.getImage(this.mainPath + `/reload.png`)
+    this.stopImage = MNUtil.getImage(this.mainPath + `/stop.png`)
+    this.closeImage = MNUtil.getImage(this.mainPath + `/close.png`)
+    this.bigbangImage = MNUtil.getImage(this.mainPath + `/bigbang.png`)
+    this.copyImage = MNUtil.getImage(this.mainPath + `/copy.png`)
+    this.titleImage = MNUtil.getImage(this.mainPath + `/title.png`)
+    this.tagImage = MNUtil.getImage(this.mainPath + `/tag.png`)
+    this.commentImage = MNUtil.getImage(this.mainPath + `/comment.png`)
+    this.aiImage = MNUtil.getImage(this.mainPath + `/ai.png`, 3)
+    this.aiLinkImage = MNUtil.getImage(this.mainPath + `/aiLink.png`)
+    this.chatImage = MNUtil.getImage(this.mainPath + `/chat.png`)
+    this.sendImage = MNUtil.getImage(this.mainPath + `/send.png`)
+    this.lockImage = MNUtil.getImage(this.mainPath + `/lock.png`)
+    this.unlockImage = MNUtil.getImage(this.mainPath + `/unlock.png`)
+    this.excerptImage = MNUtil.getImage(this.mainPath + `/excerpt.png`,2.3)
+    this.childImage = MNUtil.getImage(this.mainPath + `/childNote.png`)
+    this.brotherImage = MNUtil.getImage(this.mainPath + `/brotherNote.png`)
+    this.quoteImage = MNUtil.getImage(this.mainPath + `/quote.png`)
+    this.clearImage = MNUtil.getImage(this.mainPath + `/eraser.png`)
+    this.mindmapImage = MNUtil.getImage(this.mainPath + `/mindmap.png`)
+    this.editorImage = MNUtil.getImage(this.mainPath + `/edit.png`,2.2)
+    this.defaultActionImage = MNUtil.getImage(this.mainPath + `/action.png`)
+    this.snipasteImage = MNUtil.getImage(this.mainPath + `/snipaste.png`)
+    this.menuImage = MNUtil.getImage(this.mainPath + `/menu.png`)
+    this.searchImage = MNUtil.getImage(this.mainPath + `/search.png`)
+    this.noneImage = MNUtil.getImage(this.mainPath + `/none.png`)
+    this.settingImage = MNUtil.getImage(this.mainPath + `/setting.png`)
+    this.visionImage = MNUtil.getImage(this.mainPath + `/vision.png`,1.5)
+    this.switchLocationImage = MNUtil.getImage(this.mainPath + `/switch.png`)
   }
   
   static checkDataDir(){
@@ -7015,6 +7072,7 @@ class chatAIConfig {
       this.saveAfterImport()
       this.setSyncStatus(false,true)
       chatAIUtils.notifyController.refreshCustomButton()
+      MNUtil.log({message:"Import Config",source:"MN ChatAI",detail:newConfig})
       return true
     }else{
       this.setSyncStatus(false)

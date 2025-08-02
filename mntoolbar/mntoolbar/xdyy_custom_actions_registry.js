@@ -38,6 +38,41 @@ global.executeCustomAction = async function (actionName, context) {
   return false;
 };
 
+// 全局 AI Prompt 对象，统一管理所有 AI 提示词
+const XDYY_PROMPTS = {
+  /**
+   * 代码分析 Prompt 生成函数
+   * @param {string} sourceCode - 要分析的源代码
+   * @returns {string} 完整的代码分析提示词
+   */
+  codeAnalysis: (sourceCode) => {
+    return `你是专业的JavaScript代码分析引擎。对以下代码进行处理：
+
+${sourceCode}
+
+处理要求：
+- 清理非解释性注释，保留文档性注释
+- 使用2空格缩进，标准JavaScript格式化
+- 添加完整JSDoc注释（@param、@returns、@throws等）
+- 在代码中添加详细的行级注释，解释每个逻辑块的目的、实现原理、算法复杂度、关键代码行的作用
+
+输出格式：
+\`\`\`javascript
+[格式化的代码，包含完整JSDoc和详细行级注释]
+\`\`\`
+
+[!] 性能提示：[具体建议]
+[!] 安全提醒：[具体建议]
+
+重要：只输出代码块和优化建议，不要任何标题、总结或外部解释文本。所有详细解释必须写在JavaScript注释中。`;
+  }
+  
+  // 未来可扩展其他类型的 Prompt：
+  // translation: (text, targetLang) => { ... },
+  // documentation: (code) => { ... },
+  // refactoring: (code, style) => { ... }
+};
+
 // 注册所有自定义 actions
 function registerAllCustomActions() {
   // 需要的变量声明
@@ -4445,26 +4480,8 @@ function registerAllCustomActions() {
       const analysisModel = toolbarConfig.codeAnalysisModel || "gpt-4o";
       MNUtil.showHUD(`正在使用 ${analysisModel} 分析代码...`);
 
-      // 构建代码分析提示词
-      const codeAnalysisPrompt = `你是专业的JavaScript代码分析引擎。对以下代码进行处理：
-
-${ocrResult}
-
-处理要求：
-- 清理非解释性注释，保留文档性注释
-- 使用2空格缩进，标准JavaScript格式化
-- 添加完整JSDoc注释（@param、@returns、@throws等）
-- 在代码中添加详细的行级注释，解释每个逻辑块的目的、实现原理、算法复杂度、关键代码行的作用
-
-输出格式：
-\`\`\`javascript
-[格式化的代码，包含完整JSDoc和详细行级注释]
-\`\`\`
-
-[!] 性能提示：[具体建议]
-[!] 安全提醒：[具体建议]
-
-重要：只输出代码块和优化建议，不要任何标题、总结或外部解释文本。所有详细解释必须写在JavaScript注释中。`;
+      // 使用全局 Prompt 对象生成代码分析提示词
+      const codeAnalysisPrompt = XDYY_PROMPTS.codeAnalysis(ocrResult);
 
       // 调用 AI API（参考 ocrWithTranslation）
       const aiAnalysisResult = await toolbarUtils.ocrWithAI(
@@ -4542,26 +4559,8 @@ ${ocrResult}
       const analysisModel = toolbarConfig.codeAnalysisModel || "gpt-4o";
       MNUtil.showHUD(`正在使用 ${analysisModel} 分析代码...`);
 
-      // 构建代码分析提示词
-      const codeAnalysisPrompt = `你是专业的JavaScript代码分析引擎。对以下代码进行处理：
-
-${sourceCode}
-
-处理要求：
-- 清理非解释性注释，保留文档性注释
-- 使用2空格缩进，标准JavaScript格式化
-- 添加完整JSDoc注释（@param、@returns、@throws等）
-- 在代码中添加详细的行级注释，解释每个逻辑块的目的、实现原理、算法复杂度、关键代码行的作用
-
-输出格式：
-\`\`\`javascript
-[格式化的代码，包含完整JSDoc和详细行级注释]
-\`\`\`
-
-[!] 性能提示：[具体建议]
-[!] 安全提醒：[具体建议]
-
-重要：只输出代码块和优化建议，不要任何标题、总结或外部解释文本。所有详细解释必须写在JavaScript注释中。`;
+      // 使用全局 Prompt 对象生成代码分析提示词
+      const codeAnalysisPrompt = XDYY_PROMPTS.codeAnalysis(sourceCode);
 
       // 调用 AI API
       const aiAnalysisResult = await toolbarUtils.ocrWithAI(

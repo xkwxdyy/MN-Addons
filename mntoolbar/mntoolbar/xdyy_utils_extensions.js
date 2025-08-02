@@ -2350,11 +2350,13 @@ function extendToolbarConfigInit() {
         case "getter":  // 实例 Getter 方法
           return [
             `${methodName}`,
+            `this.${methodName}`
           ];
         
         case "setter":  // 实例 Setter 方法
           return [
             `${methodName}`,
+            `this.${methodName}`
           ];
         
         case "prototype":  // 原型链方法
@@ -2374,7 +2376,8 @@ function extendToolbarConfigInit() {
         
         case "instanceProperty":  // 实例属性
           return [
-            `${methodName}`
+            `${methodName}`,
+            `this.${methodName}`
           ];
         
         default:

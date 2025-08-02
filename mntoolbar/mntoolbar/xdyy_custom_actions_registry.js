@@ -4327,6 +4327,26 @@ function registerAllCustomActions() {
     } catch (error) {}
   });
 
+  global.registerCustomAction("codeMergeTemplate", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    try {
+      let ifTemplateMerged = false
+      focusNote.MNComments.forEach((comment) => {
+        if (comment.type == "HtmlComment" && comment.text.includes("思考")) {
+          ifTemplateMerged = true
+        }
+      })
+      if (!ifTemplateMerged) {
+        let clonedNote = MNNote.clone("9C4F3120-9A82-440A-97FF-F08D5B53B972")
+        MNUtil.undoGrouping(()=>{
+          focusNote.merge(clonedNote.note)
+        })
+      }
+    } catch (error) {
+
+    }
+  })
+
   // codeLearning - 代码学习功能
   global.registerCustomAction("codeLearning", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
@@ -4395,32 +4415,27 @@ function registerAllCustomActions() {
   global.registerCustomAction("switchCodeAnalysisModel", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
 
-    // 代码分析模型选项（按性能优劣排序，基于 mnai 项目最新配置）
+    // 代码分析模型选项（只使用经过验证的可用模型）
     const analysisModels = [
-      // 🥇 顶级模型（代码分析最优）
-      "claude-3-7-sonnet-20250219",           // Claude 最新 3.7 版本
-      "claude-3-7-sonnet-20250219-thinking",  // Claude 3.7 思维版
-      "gpt-4.5-preview",                      // GPT 4.5 预览版
-      "deepseek-r1-250120",                   // DeepSeek R1 最新版
+      // 🥇 顶级模型（已验证可用）
+      "o1-all",                               // OpenAI o1 推理模型
+      "gpt-4o",                               // GPT-4o 最新版
+      "claude-3-5-sonnet-20241022",          // Claude 3.5 最新版
+      "gpt-4o-2024-08-06",                   // GPT-4o 指定版本
       
-      // 🥈 高级模型（性能优秀）
-      "claude-3-7-sonnet",                    // Claude 3.7 通用版
-      "gpt-4.1-2025-04-14",                   // GPT 4.1 最新版
-      "deepseek-reasoner",                    // DeepSeek 推理模型
-      "gemini-2.5-pro-exp-03-25",            // Gemini 2.5 Pro
-      "qwq-plus",                             // 通义千问推理增强
+      // 🥈 高级模型（经过验证）
+      "deepseek-reasoner",                    // DeepSeek 推理模型  
+      "glm-4-plus",                          // 智谱 AI 旗舰
+      "gpt-4-1106-preview",                  // GPT-4 Turbo
+      "gemini-1.5-flash",                    // Gemini 1.5 Flash
       
       // 🥉 实用模型（性价比高）
-      "gpt-4o",                               // GPT-4o 稳定版
-      "claude-3-5-sonnet-20241022",          // Claude 3.5 最新版
-      "gemini-2.0-flash-thinking-exp",       // Gemini 2.0 思维版
-      "gpt-4o-mini",                          // GPT-4o mini
-      "glm-4-plus",                           // 智谱 AI 旗舰
+      "gpt-4o-mini",                         // GPT-4o mini
+      "deepseek-chat",                       // DeepSeek 通用版
+      "claude-3-5-sonnet",                   // Claude 3.5 通用版
+      "glm-4-airx",                          // 智谱 AI 实时版
       
       // 💡 特殊用途
-      "deepseek-chat",                        // DeepSeek 通用版
-      "glm-4-airx",                          // 智谱 AI 实时
-      "gemini-2.0-flash",                     // Gemini 2.0 快速版
       "glm-4-flashx（内置智谱AI）"            // 内置模型
     ];
     

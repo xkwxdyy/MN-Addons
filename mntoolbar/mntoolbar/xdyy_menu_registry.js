@@ -640,7 +640,12 @@ function registerAllMenuTemplates() {
   // 代码学习菜单
   global.registerMenuTemplate("menu_codeLearning", {
     action: "menu",
+    menuWidth: 350,
     menuItems: [
+      {
+        action: "codeMergeTemplate",
+        menuTitle: "📚 代码卡片合并模板"
+      },
       {
         action: "codeLearning",
         menuTitle: "📚 代码学习（创建调用卡片）"
@@ -656,11 +661,11 @@ function registerAllMenuTemplates() {
       "⚙️ 设置",
       {
         action: "switchCodeAnalysisModel",
-        menuTitle: "⚙️ 切换 AI 分析模型"
+        menuTitle: "    ⚙️ 切换 AI 分析模型"
       },
       {
         action: "switchOCRSource",
-        menuTitle: "⚙️ 切换 OCR 源"
+        menuTitle: "    ⚙️ 切换 OCR 源"
       }
     ]
   });

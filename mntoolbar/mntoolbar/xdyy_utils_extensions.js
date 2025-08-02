@@ -2296,7 +2296,7 @@ function extendToolbarConfigInit() {
       const hasClassInName = className.includes("Class") || pureClassName.includes("Class");
       
       switch (type) {
-        case "staticVar":  // 类的静态变量
+        case "staticProperty":  // 类的静态变量
         case "staticMethod":  // 类的静态方法
           const methods = [`${pureClassName}.${methodName}`];
           
@@ -2372,6 +2372,11 @@ function extendToolbarConfigInit() {
           
           return prototypeMethods;
         
+        case "instanceProperty":  // 实例属性
+          return [
+            `${methodName}`
+          ];
+        
         default:
           return [methodName];
       }
@@ -2385,24 +2390,6 @@ function extendToolbarConfigInit() {
    */
   toolbarUtils.processCodeLearningCard = function(note, type) {
       try {
-        // 中文类型到内部键的映射
-        // const typeMap = {
-        //   "静态变量": "staticVar",
-        //   "静态方法": "staticMethod",
-        //   "实例方法": "instanceMethod",
-        //   "Getter": "getter",
-        //   "Setter": "setter"
-        // };
-
-        // 转换类型
-        // const internalType = typeMap[type];
-        // if (!internalType) {
-        //   return {
-        //     success: false,
-        //     error: `未知的类型: ${type}`
-        //   };
-        // }
-
         // 获取路径信息
         const pathResult = this.getCodeCardPath(note);
         if (!pathResult.success) {
@@ -2419,12 +2406,13 @@ function extendToolbarConfigInit() {
 
         // 根据类型生成前缀
         const typePrefix = {
-          "staticVar": "类：静态变量",
+          "staticProperty": "类：静态属性",
           "staticMethod": "类：静态方法",
           "instanceMethod": "实例方法",
           "getter": "实例：Getter 方法",
           "setter": "实例：Setter 方法",
-          "prototype": "类：原型链方法"
+          "prototype": "类：原型链方法",
+          "instanceProperty": "实例：属性"
         }[type];
 
         // 检查是否有文件路径

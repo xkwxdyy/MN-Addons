@@ -1673,17 +1673,10 @@ function extendToolbarConfigInit() {
    */
   toolbarUtils.sendAIRequest = async function (messages, config) {
     try {
-      const headers = {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + config.apiKey,
-      };
-
-      const body = {
-        model: config.model,
-        messages: messages,
-        temperature: config.temperature,
-        stream: config.stream,
-      };
+      // 检查 MNConnection 是否可用
+      if (typeof MNConnection === "undefined") {
+        throw new Error("MNConnection 不可用，请确保 MN Utils 已安装");
+      }
 
       // 构建完整 URL
       let apiUrl = config.apiHost;
@@ -1695,37 +1688,29 @@ function extendToolbarConfigInit() {
         apiUrl += "v1/chat/completions";
       }
 
-      // 创建请求
-      const request = NSMutableURLRequest.requestWithURL(
-        NSURL.URLWithString(apiUrl),
-      );
-      request.HTTPMethod = "POST";
+      const body = {
+        model: config.model,
+        messages: messages,
+        temperature: config.temperature,
+        stream: config.stream,
+      };
 
-      // 设置请求头
-      Object.keys(headers).forEach((key) => {
-        request.setValueForHTTPHeaderField(headers[key], key);
+      // 使用 MNConnection 创建和发送请求
+      const request = MNConnection.initRequest(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + config.apiKey,
+        },
+        timeout: 30,
+        json: body,
       });
 
-      // 设置请求体
-      request.HTTPBody = NSJSONSerialization.dataWithJSONObjectOptions(body, 0);
+      // 发送请求
+      const response = await MNConnection.sendRequest(request);
 
-      // 发送同步请求
-      const response =
-        NSURLConnection.sendSynchronousRequestReturningResponseError(request);
-
-      if (response && response.length() > 0) {
-        const jsonResponse = NSJSONSerialization.JSONObjectWithDataOptions(
-          response,
-          0,
-        );
-
-        if (
-          jsonResponse &&
-          jsonResponse.choices &&
-          jsonResponse.choices.length > 0
-        ) {
-          return jsonResponse.choices[0].message.content;
-        }
+      if (response && response.choices && response.choices.length > 0) {
+        return response.choices[0].message.content;
       }
 
       return null;
@@ -1872,7 +1857,7 @@ function extendToolbarConfigInit() {
       // 构建消息
       const messages = [
         { role: "system", content: prompt },
-        { role: "user", content: prompt },
+        { role: "user", content: "" },
       ];
 
       // 使用 Subscription 配置

@@ -4445,61 +4445,26 @@ function registerAllCustomActions() {
       const analysisModel = toolbarConfig.codeAnalysisModel || "gpt-4o";
       MNUtil.showHUD(`正在使用 ${analysisModel} 分析代码...`);
 
-      // 构建详细提示词
-      const codeAnalysisPrompt = `你是一个专业的JavaScript代码处理引擎，请分析以下代码：${ocrResult}。请严格按以下步骤处理：
+      // 构建代码分析提示词
+      const codeAnalysisPrompt = `你是专业的JavaScript代码分析引擎。对以下代码进行处理：
 
-1. **注释清理**：
-   - 删除所有非解释性注释（如\`// 临时调试\`，\`/* 废弃代码 */\`）
-   - 保留授权注释（如\`/*! MIT License */\`）和文档性注释
+${ocrResult}
 
-2. **代码格式化**：
-   - 2空格缩进
-   - 操作符空格：\`a+b\` → \`a + b\`
-   - 对象/数组空格：\`{a:1}\` → \`{ a:1 }\`
-   - 分号使用：符合StandardJS规范
+处理要求：
+- 清理非解释性注释，保留文档性注释
+- 使用2空格缩进，标准JavaScript格式化
+- 添加完整JSDoc注释（@param、@returns、@throws等）
+- 在代码中添加详细的行级注释，解释每个逻辑块的目的、实现原理、算法复杂度、关键代码行的作用
 
-3. **JSDoc生成**：
-   - 函数功能描述
-   - @param {Type} param - 参数说明
-   - @returns {ReturnType} 返回值说明
-   - @throws {ErrorType} 错误说明
-   - 必需标记：@static 静态方法，@memberof ClassName.prototype 原型方法
-
-4. **详细解释**：
-   将函数的详细解释以JavaScript注释的形式直接写在代码中，包括：
-   - 逻辑块的目的和实现原理
-   - 算法复杂度分析
-   - 为什么选择这种实现方式
-   - 关键代码行的作用说明
-
-**输出格式**：
+输出格式：
 \`\`\`javascript
-/**
- * 完整的JSDoc注释
- */
-functionName() {
-  // 详细注释：解释这行代码的作用和原理
-  code here;
-  
-  // 继续用注释解释每个重要的代码块
-  more code;
-}
+[格式化的代码，包含完整JSDoc和详细行级注释]
 \`\`\`
 
-**然后单独列出优化建议**：
-[!] 性能提示：具体的优化建议
-[!] 安全提醒：具体的安全建议
+[!] 性能提示：[具体建议]
+[!] 安全提醒：[具体建议]
 
-**重要**
-1. 不要输出标题、操作总结或外部解释文本，只输出格式化的代码（含详细行级注释）和优化建议。
-2. 不需要加
-\`\`\`
-/**
- * @license
- * MIT License
- */
-\`\`\`
-`;
+重要：只输出代码块和优化建议，不要任何标题、总结或外部解释文本。所有详细解释必须写在JavaScript注释中。`;
 
       // 调用 AI API（参考 ocrWithTranslation）
       const aiAnalysisResult = await toolbarUtils.ocrWithAI(
@@ -4529,6 +4494,125 @@ functionName() {
       MNUtil.showHUD("AI 代码分析失败: " + error.message);
       if (typeof toolbarUtils !== "undefined" && toolbarUtils.addErrorLog) {
         toolbarUtils.addErrorLog(error, "codeAnalysisWithAI");
+      }
+    }
+  });
+
+  // codeAnalysisFromComment - 直接分析卡片评论中的代码
+  global.registerCustomAction("codeAnalysisFromComment", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    try {
+      // 检查是否有选中的卡片
+      if (!focusNote) {
+        MNUtil.showHUD("请先选择一个包含代码的卡片");
+        return;
+      }
+
+      // 检查卡片是否有评论
+      if (!focusNote.comments || focusNote.comments.length === 0) {
+        MNUtil.showHUD("选中的卡片没有评论内容");
+        return;
+      }
+
+      // 获取第一条评论作为源代码
+      const firstComment = focusNote.comments[0];
+      let sourceCode = "";
+
+      if (firstComment.type === "TextNote") {
+        sourceCode = firstComment.text;
+      } else if (firstComment.type === "HtmlNote") {
+        // 从 HTML 中提取文本内容
+        sourceCode = firstComment.text.replace(/<[^>]*>/g, '').trim();
+      } else {
+        MNUtil.showHUD("第一条评论不是文本类型，无法分析");
+        return;
+      }
+
+      if (!sourceCode || sourceCode.trim().length === 0) {
+        MNUtil.showHUD("第一条评论为空，无法分析");
+        return;
+      }
+
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`🔧 [代码分析] 从评论获取代码，长度: ${sourceCode.length}`);
+      }
+
+      // AI 处理
+      const analysisModel = toolbarConfig.codeAnalysisModel || "gpt-4o";
+      MNUtil.showHUD(`正在使用 ${analysisModel} 分析代码...`);
+
+      // 构建代码分析提示词
+      const codeAnalysisPrompt = `你是专业的JavaScript代码分析引擎。对以下代码进行处理：
+
+${sourceCode}
+
+处理要求：
+- 清理非解释性注释，保留文档性注释
+- 使用2空格缩进，标准JavaScript格式化
+- 添加完整JSDoc注释（@param、@returns、@throws等）
+- 在代码中添加详细的行级注释，解释每个逻辑块的目的、实现原理、算法复杂度、关键代码行的作用
+
+输出格式：
+\`\`\`javascript
+[格式化的代码，包含完整JSDoc和详细行级注释]
+\`\`\`
+
+[!] 性能提示：[具体建议]
+[!] 安全提醒：[具体建议]
+
+重要：只输出代码块和优化建议，不要任何标题、总结或外部解释文本。所有详细解释必须写在JavaScript注释中。`;
+
+      // 调用 AI API
+      const aiAnalysisResult = await toolbarUtils.ocrWithAI(
+        codeAnalysisPrompt, 
+        analysisModel
+      );
+
+      if (!aiAnalysisResult) {
+        MNUtil.showHUD("AI 分析失败");
+        return;
+      }
+
+      // 获取父卡片用于添加分析结果
+      const parentNote = focusNote.parentNote;
+      if (!parentNote) {
+        MNUtil.showHUD("当前卡片没有父卡片，无法添加分析结果");
+        return;
+      }
+
+      // 结果存储到父卡片（使用 appendMarkdownComment）
+      MNUtil.undoGrouping(() => {
+        // 确保父卡片有模板结构
+        let ifTemplateMerged = false
+        parentNote.MNComments.forEach((comment) => {
+          if (comment.type == "HtmlComment" && comment.text.includes("思考")) {
+            ifTemplateMerged = true
+          }
+        })
+        if (!ifTemplateMerged) {
+          let clonedNote = MNNote.clone("9C4F3120-9A82-440A-97FF-F08D5B53B972")
+          parentNote.merge(clonedNote.note)
+        }
+
+        // 添加分析结果
+        parentNote.appendMarkdownComment(aiAnalysisResult);
+        MNMath.moveCommentsArrToField(parentNote, "Z", "分析");
+
+        // 删除包含源代码的子卡片
+        focusNote.removeFromParent();
+
+        MNUtil.showHUD("✅ AI 代码分析完成，源卡片已删除");
+        
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`✅ [代码分析] 分析完成，结果已添加到父卡片`);
+        }
+      });
+
+    } catch (error) {
+      MNUtil.showHUD("AI 代码分析失败: " + error.message);
+      if (typeof toolbarUtils !== "undefined" && toolbarUtils.addErrorLog) {
+        toolbarUtils.addErrorLog(error, "codeAnalysisFromComment");
       }
     }
   });

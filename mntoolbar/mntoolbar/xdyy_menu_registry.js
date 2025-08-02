@@ -647,7 +647,11 @@ function registerAllMenuTemplates() {
       },
       {
         action: "codeAnalysisWithAI", 
-        menuTitle: "🤖 AI 代码分析"
+        menuTitle: "🤖 AI 代码分析（OCR）"
+      },
+      {
+        action: "codeAnalysisFromComment",
+        menuTitle: "📝 AI 代码分析（评论）"
       },
       "⚙️ 设置",
       {

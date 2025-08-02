@@ -4503,15 +4503,23 @@ functionName() {
 `;
 
       // 调用 AI API（参考 ocrWithTranslation）
-      const aiAnalysisResult = await toolbarUtils.AIWithPromptAndModel(
+      const aiAnalysisResult = await toolbarUtils.ocrWithAI(
         codeAnalysisPrompt, 
         analysisModel
       );
 
       // 结果存储（使用 appendMarkdownComment）
       MNUtil.undoGrouping(() => {
-        let clonedNote = MNNote.clone("9C4F3120-9A82-440A-97FF-F08D5B53B972")
-        focusNote.merge(clonedNote.note)
+        let ifTemplateMerged = false
+        focusNote.MNComments.forEach((comment) => {
+          if (comment.type == "HtmlComment" && comment.text.includes("思考")) {
+            ifTemplateMerged = true
+          }
+        })
+        if (!ifTemplateMerged) {
+          let clonedNote = MNNote.clone("9C4F3120-9A82-440A-97FF-F08D5B53B972")
+          focusNote.merge(clonedNote.note)
+        }
         focusNote.appendMarkdownComment(aiAnalysisResult);
         MNMath.moveCommentsArrToField(focusNote,"Z", "分析");
 

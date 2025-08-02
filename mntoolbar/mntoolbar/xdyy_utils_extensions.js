@@ -1757,6 +1757,62 @@ function extendToolbarConfigInit() {
 
       // 优先尝试使用内置翻译 API
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`🔧 [OCR翻译] 尝试使用翻译 API`);
+      }
+      translatedText = await this.aiTranslate(ocrText, "中文", model);
+
+      // 如果内置 API 失败，尝试使用 MN Utils 的 API（如果配置了）
+      if (
+        !translatedText &&
+        typeof subscriptionConfig !== "undefined" &&
+        subscriptionConfig.getConfig("activated")
+      ) {
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`🔧 [OCR翻译] API 失败，尝试使用内置API`);
+        }
+        translatedText = await this.aiTranslateBuiltin(ocrText, "中文", model);
+      }
+
+      if (translatedText) {
+        MNUtil.showHUD("✅ 翻译完成");
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`✅ [OCR翻译] 翻译成功`);
+        }
+        return translatedText;
+      } else {
+        // 如果翻译失败，返回原始 OCR 文本
+        MNUtil.showHUD("⚠️ 翻译失败，使用原始文本");
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`❌ [OCR翻译] 翻译失败，返回原始文本`);
+        }
+        return ocrText;
+      }
+    } catch (error) {
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`❌ [OCR翻译] 异常: ${error.message}`);
+      }
+      toolbarUtils.addErrorLog(error, "ocrWithTranslation");
+      // 翻译失败时返回原始文本
+      return ocrText;
+    }
+  };
+
+  toolbarUtils.ocrWithAI = async function (
+    ocrText,
+    model = "gpt-4o-mini",
+  ) {
+    try {
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`🔧 [OCR翻译] 开始处理，文本长度: ${ocrText.length}`);
+      }
+
+      // 先显示 OCR 结果
+      // MNUtil.showHUD("📝 OCR 完成，正在翻译...");
+
+      let translatedText = null;
+
+      // 优先尝试使用内置翻译 API
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
         MNUtil.log(`🔧 [OCR翻译] 尝试使用内置翻译 API`);
       }
       translatedText = await this.aiTranslateBuiltin(ocrText, "中文", model);
@@ -1816,7 +1872,7 @@ function extendToolbarConfigInit() {
       // 构建消息
       const messages = [
         { role: "system", content: prompt },
-        { role: "user", content: text },
+        { role: "user", content: prompt },
       ];
 
       // 使用 Subscription 配置

@@ -4479,7 +4479,6 @@ function registerAllCustomActions() {
  */
 functionName() {
   // 详细注释：解释这行代码的作用和原理
-  // 包括算法复杂度、实现逻辑等详细说明
   code here;
   
   // 继续用注释解释每个重要的代码块

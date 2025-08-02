@@ -1788,52 +1788,52 @@ function extendToolbarConfigInit() {
   ) {
     try {
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log(`🔧 [OCR翻译] 开始处理，文本长度: ${ocrText.length}`);
+        MNUtil.log(`🔧 [AI处理] 开始处理，文本长度: ${ocrText.length}`);
       }
 
       // 先显示 OCR 结果
-      // MNUtil.showHUD("📝 OCR 完成，正在翻译...");
+      // MNUtil.showHUD("📝 OCR 完成，正在处理...");
 
-      let translatedText = null;
+      let aiResultText = null;
 
-      // 优先尝试使用内置翻译 API
+      // 优先尝试使用内置 AI API
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log(`🔧 [OCR翻译] 尝试使用内置翻译 API`);
+        MNUtil.log(`🔧 [AI处理] 尝试使用内置 AI API`);
       }
-      translatedText = await this.aiTranslateBuiltin(ocrText, "中文", model);
+      aiResultText = await this.aiTranslateBuiltin(ocrText, "中文", model);
 
       // 如果内置 API 失败，尝试使用 MN Utils 的 API（如果配置了）
       if (
-        !translatedText &&
+        !aiResultText &&
         typeof subscriptionConfig !== "undefined" &&
         subscriptionConfig.getConfig("activated")
       ) {
         if (typeof MNUtil !== "undefined" && MNUtil.log) {
-          MNUtil.log(`🔧 [OCR翻译] 内置 API 失败，尝试使用 MN Utils API`);
+          MNUtil.log(`🔧 [AI处理] 内置 API 失败，尝试使用 MN Utils API`);
         }
-        translatedText = await this.aiTranslate(ocrText, "中文", model);
+        aiResultText = await this.aiTranslate(ocrText, "中文", model);
       }
 
-      if (translatedText) {
-        MNUtil.showHUD("✅ 翻译完成");
+      if (aiResultText) {
+        MNUtil.showHUD("✅ AI 处理完成");
         if (typeof MNUtil !== "undefined" && MNUtil.log) {
-          MNUtil.log(`✅ [OCR翻译] 翻译成功`);
+          MNUtil.log(`✅ [AI处理] 处理成功`);
         }
-        return translatedText;
+        return aiResultText;
       } else {
-        // 如果翻译失败，返回原始 OCR 文本
-        MNUtil.showHUD("⚠️ 翻译失败，使用原始文本");
+        // 如果处理失败，返回原始 OCR 文本
+        MNUtil.showHUD("⚠️ AI 处理失败，使用原始文本");
         if (typeof MNUtil !== "undefined" && MNUtil.log) {
-          MNUtil.log(`❌ [OCR翻译] 翻译失败，返回原始文本`);
+          MNUtil.log(`❌ [AI处理] 处理失败，返回原始文本`);
         }
         return ocrText;
       }
     } catch (error) {
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log(`❌ [OCR翻译] 异常: ${error.message}`);
+        MNUtil.log(`❌ [AI处理] 异常: ${error.message}`);
       }
-      toolbarUtils.addErrorLog(error, "ocrWithTranslation");
-      // 翻译失败时返回原始文本
+      toolbarUtils.addErrorLog(error, "ocrWithAI");
+      // 处理失败时返回原始文本
       return ocrText;
     }
   };

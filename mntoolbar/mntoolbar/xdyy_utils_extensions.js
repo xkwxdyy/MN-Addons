@@ -1640,11 +1640,20 @@ function extendToolbarConfigInit() {
         { role: "user", content: text },
       ];
 
+      // 解析模型名称，去除前缀（如 "Subscription: gpt-4o" -> "gpt-4o"）
+      let actualModel = model;
+      if (model.includes(":")) {
+        const parts = model.split(":").map(s => s.trim());
+        if (parts.length === 2) {
+          actualModel = parts[1]; // 提取实际模型名
+        }
+      }
+
       // 使用 Subscription 配置
       const config = {
         apiKey: subscriptionConfig.config.apikey,
         apiHost: subscriptionConfig.config.url,
-        model: model,
+        model: actualModel,  // 使用解析后的模型名
         temperature: 0.3,
         stream: false,
       };
@@ -1696,11 +1705,23 @@ function extendToolbarConfigInit() {
       }
       messages.push({ role: "user", content: userContent });
 
+      // 解析模型名称，去除前缀（如 "Subscription: gpt-4o" -> "gpt-4o"）
+      let actualModel = model;
+      if (model.includes(":")) {
+        const parts = model.split(":").map(s => s.trim());
+        if (parts.length === 2) {
+          actualModel = parts[1]; // 提取实际模型名
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log(`🔧 [AI通用请求] 解析模型: ${model} -> ${actualModel}`);
+          }
+        }
+      }
+
       // 使用 Subscription 配置
       const config = {
         apiKey: subscriptionConfig.config.apikey,
         apiHost: subscriptionConfig.config.url,
-        model: model,
+        model: actualModel,  // 使用解析后的模型名
         temperature: 0.7,  // 通用请求使用稍高的温度
         stream: false,
       };
@@ -1949,11 +1970,20 @@ function extendToolbarConfigInit() {
         { role: "user", content: "" },
       ];
 
+      // 解析模型名称，去除前缀（如 "Subscription: gpt-4o" -> "gpt-4o"）
+      let actualModel = model;
+      if (model.includes(":")) {
+        const parts = model.split(":").map(s => s.trim());
+        if (parts.length === 2) {
+          actualModel = parts[1]; // 提取实际模型名
+        }
+      }
+
       // 使用 Subscription 配置
       const config = {
         apiKey: subscriptionConfig.config.apikey,
         apiHost: subscriptionConfig.config.url,
-        model: model,
+        model: actualModel,  // 使用解析后的模型名
         temperature: 0.3,
         stream: false,
       };
@@ -2188,7 +2218,7 @@ function extendToolbarConfigInit() {
     try {
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
         MNUtil.log(`🔧 [AI内置] 开始处理: ${userContent.substring(0, 50)}...`);
-        MNUtil.log(`🔧 [AI内置] 模型: ${model}`);
+        MNUtil.log(`🔧 [AI内置] 原始模型: ${model}`);
       }
 
       // 检查 MNConnection 是否可用

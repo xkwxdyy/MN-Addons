@@ -4415,31 +4415,31 @@ function registerAllCustomActions() {
   global.registerCustomAction("switchCodeAnalysisModel", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
 
-    // 代码分析模型选项（只使用经过验证的可用模型）
+    // 代码分析模型选项（使用 mnai 兼容格式）
     const analysisModels = [
-      // 🥇 顶级模型（已验证可用）
-      "o1-all",                               // OpenAI o1 推理模型
-      "gpt-4o",                               // GPT-4o 最新版
-      "claude-3-5-sonnet-20241022",          // Claude 3.5 最新版
-      "gpt-4o-2024-08-06",                   // GPT-4o 指定版本
+      // 🥇 顶级模型（订阅模型，需要 MN Utils）
+      "Subscription: o1-all",                // OpenAI o1 推理模型
+      "Subscription: gpt-4o",                // GPT-4o 最新版
+      "Subscription: claude-3-5-sonnet-20241022", // Claude 3.5 最新版
+      "Subscription: gpt-4o-2024-08-06",     // GPT-4o 指定版本
       
-      // 🥈 高级模型（经过验证）
-      "deepseek-reasoner",                    // DeepSeek 推理模型  
-      "glm-4-plus",                          // 智谱 AI 旗舰
-      "gpt-4-1106-preview",                  // GPT-4 Turbo
-      "gemini-1.5-flash",                    // Gemini 1.5 Flash
+      // 🥈 高级模型（订阅模型）
+      "Subscription: deepseek-reasoner",     // DeepSeek 推理模型  
+      "ChatGLM: glm-4-plus",                // 智谱 AI 旗舰
+      "Subscription: gpt-4-1106-preview",   // GPT-4 Turbo
+      "Subscription: gemini-1.5-flash",     // Gemini 1.5 Flash
       
       // 🥉 实用模型（性价比高）
-      "gpt-4o-mini",                         // GPT-4o mini
-      "deepseek-chat",                       // DeepSeek 通用版
-      "claude-3-5-sonnet",                   // Claude 3.5 通用版
-      "glm-4-airx",                          // 智谱 AI 实时版
+      "Subscription: gpt-4o-mini",          // GPT-4o mini
+      "Deepseek: deepseek-chat",            // DeepSeek 通用版
+      "Subscription: claude-3-5-sonnet",    // Claude 3.5 通用版
+      "ChatGLM: glm-4-airx",               // 智谱 AI 实时版
       
-      // 💡 特殊用途
-      "glm-4-flashx（内置智谱AI）"            // 内置模型
+      // 💡 内置模型（免费）
+      "Built-in"                            // 内置智谱 AI
     ];
     
-    const currentModel = toolbarConfig.codeAnalysisModel || "gpt-4o";
+    const currentModel = toolbarConfig.codeAnalysisModel || "Subscription: gpt-4o";
 
     // 显示选择对话框
     const selectedIndex = await MNUtil.userSelect(
@@ -4521,7 +4521,7 @@ function registerAllCustomActions() {
       }
 
       // AI 处理
-      const analysisModel = toolbarConfig.codeAnalysisModel || "gpt-4o";
+      const analysisModel = toolbarConfig.codeAnalysisModel || "Subscription: gpt-4o";
       MNUtil.showHUD(`正在使用 ${analysisModel} 分析代码...`);
 
       // 使用全局 Prompt 对象生成代码分析提示词
@@ -4600,7 +4600,7 @@ function registerAllCustomActions() {
       }
 
       // AI 处理
-      const analysisModel = toolbarConfig.codeAnalysisModel || "gpt-4o";
+      const analysisModel = toolbarConfig.codeAnalysisModel || "Subscription: gpt-4o";
       MNUtil.showHUD(`正在使用 ${analysisModel} 分析代码...`);
 
       // 使用全局 Prompt 对象生成代码分析提示词

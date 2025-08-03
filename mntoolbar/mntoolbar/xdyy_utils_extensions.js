@@ -1789,29 +1789,56 @@ function extendToolbarConfigInit() {
     try {
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
         MNUtil.log(`🔧 [AI处理] 开始处理，文本长度: ${ocrText.length}`);
+        MNUtil.log(`🔧 [AI处理] 使用模型: ${model}`);
       }
-
-      // 先显示 OCR 结果
-      // MNUtil.showHUD("📝 OCR 完成，正在处理...");
 
       let aiResultText = null;
 
-      // 优先尝试使用内置 AI API
-      if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log(`🔧 [AI处理] 尝试使用内置 AI API`);
-      }
-      aiResultText = await this.aiTranslateBuiltin(ocrText, "中文", model);
+      // 智能选择 API 调用方式
+      if (model.startsWith("Subscription:") || model.startsWith("ChatGPT:") || 
+          model.startsWith("ChatGLM:") || model.startsWith("Deepseek:") ||
+          model.startsWith("Claude:") || model.startsWith("Gemini:")) {
+        // 订阅模型，直接使用 MN Utils API
+        if (typeof subscriptionConfig === "undefined") {
+          MNUtil.showHUD("❌ 请先安装并激活 MN Utils");
+          return ocrText;
+        }
+        
+        if (!subscriptionConfig.getConfig("activated")) {
+          MNUtil.showHUD("❌ 请在 MN Utils 中配置 API Key");
+          return ocrText;
+        }
 
-      // 如果内置 API 失败，尝试使用 MN Utils 的 API（如果配置了）
-      if (
-        !aiResultText &&
-        typeof subscriptionConfig !== "undefined" &&
-        subscriptionConfig.getConfig("activated")
-      ) {
         if (typeof MNUtil !== "undefined" && MNUtil.log) {
-          MNUtil.log(`🔧 [AI处理] 内置 API 失败，尝试使用 MN Utils API`);
+          MNUtil.log(`🔧 [AI处理] 使用订阅 API 处理模型: ${model}`);
         }
         aiResultText = await this.aiTranslate(ocrText, "中文", model);
+        
+      } else if (model === "Built-in" || model.startsWith("glm-")) {
+        // 内置模型，使用内置 API
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`🔧 [AI处理] 使用内置 AI API 处理模型: ${model}`);
+        }
+        aiResultText = await this.aiTranslateBuiltin(ocrText, "中文", model);
+        
+      } else {
+        // 未知模型，先尝试内置 API，失败后尝试订阅 API
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`🔧 [AI处理] 未知模型 ${model}，先尝试内置 API`);
+        }
+        aiResultText = await this.aiTranslateBuiltin(ocrText, "中文", model);
+
+        // 如果内置 API 失败，尝试使用 MN Utils 的 API
+        if (
+          !aiResultText &&
+          typeof subscriptionConfig !== "undefined" &&
+          subscriptionConfig.getConfig("activated")
+        ) {
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log(`🔧 [AI处理] 内置 API 失败，尝试使用订阅 API`);
+          }
+          aiResultText = await this.aiTranslate(ocrText, "中文", model);
+        }
       }
 
       if (aiResultText) {

@@ -1666,6 +1666,62 @@ function extendToolbarConfigInit() {
   };
 
   /**
+   * 通用 AI 请求（支持自定义 system 和 user 消息）
+   * @param {string} userContent - 用户输入内容
+   * @param {string} systemPrompt - 系统提示词（可选）
+   * @param {string} model - AI 模型
+   * @returns {Promise<string>} AI 响应内容
+   */
+  toolbarUtils.aiGeneralRequest = async function (
+    userContent,
+    systemPrompt = "",
+    model = "gpt-4o-mini"
+  ) {
+    try {
+      // 检查 MNUtils 是否激活
+      if (typeof subscriptionConfig === "undefined") {
+        MNUtil.showHUD("❌ 请先安装并激活 MN Utils");
+        return null;
+      }
+
+      if (!subscriptionConfig.getConfig("activated")) {
+        MNUtil.showHUD("❌ 请在 MN Utils 中配置 API Key");
+        return null;
+      }
+
+      // 构建消息数组
+      const messages = [];
+      if (systemPrompt) {
+        messages.push({ role: "system", content: systemPrompt });
+      }
+      messages.push({ role: "user", content: userContent });
+
+      // 使用 Subscription 配置
+      const config = {
+        apiKey: subscriptionConfig.config.apikey,
+        apiHost: subscriptionConfig.config.url,
+        model: model,
+        temperature: 0.7,  // 通用请求使用稍高的温度
+        stream: false,
+      };
+
+      // 发送请求
+      const result = await this.sendAIRequest(messages, config);
+
+      if (result) {
+        return result.trim();
+      } else {
+        MNUtil.showHUD("❌ AI 请求失败");
+        return null;
+      }
+    } catch (error) {
+      toolbarUtils.addErrorLog(error, "aiGeneralRequest");
+      MNUtil.showHUD("❌ AI 请求出错: " + error.message);
+      return null;
+    }
+  };
+
+  /**
    * 发送 AI 请求（通用方法）
    * @param {Array} messages - 消息数组
    * @param {Object} config - 配置对象
@@ -1785,12 +1841,18 @@ function extendToolbarConfigInit() {
   toolbarUtils.ocrWithAI = async function (
     ocrText,
     model = "gpt-4o-mini",
+    systemPrompt = ""
   ) {
     try {
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
         MNUtil.log(`🔧 [AI处理] 开始处理，文本长度: ${ocrText.length}`);
         MNUtil.log(`🔧 [AI处理] 使用模型: ${model}`);
       }
+
+      // 处理向后兼容：如果 ocrText 包含完整提示词（没有 systemPrompt），则使用空的 systemPrompt
+      // 这样可以兼容现有的调用方式
+      const userContent = ocrText;
+      const sysPrompt = systemPrompt || "";
 
       let aiResultText = null;
 
@@ -1812,21 +1874,21 @@ function extendToolbarConfigInit() {
         if (typeof MNUtil !== "undefined" && MNUtil.log) {
           MNUtil.log(`🔧 [AI处理] 使用订阅 API 处理模型: ${model}`);
         }
-        aiResultText = await this.aiTranslate(ocrText, "中文", model);
+        aiResultText = await this.aiGeneralRequest(ocrText, systemPrompt, model);
         
       } else if (model === "Built-in" || model.startsWith("glm-")) {
         // 内置模型，使用内置 API
         if (typeof MNUtil !== "undefined" && MNUtil.log) {
           MNUtil.log(`🔧 [AI处理] 使用内置 AI API 处理模型: ${model}`);
         }
-        aiResultText = await this.aiTranslateBuiltin(ocrText, "中文", model);
+        aiResultText = await this.aiGeneralRequestBuiltin(ocrText, systemPrompt, model);
         
       } else {
         // 未知模型，先尝试内置 API，失败后尝试订阅 API
         if (typeof MNUtil !== "undefined" && MNUtil.log) {
           MNUtil.log(`🔧 [AI处理] 未知模型 ${model}，先尝试内置 API`);
         }
-        aiResultText = await this.aiTranslateBuiltin(ocrText, "中文", model);
+        aiResultText = await this.aiGeneralRequestBuiltin(ocrText, systemPrompt, model);
 
         // 如果内置 API 失败，尝试使用 MN Utils 的 API
         if (
@@ -1837,7 +1899,7 @@ function extendToolbarConfigInit() {
           if (typeof MNUtil !== "undefined" && MNUtil.log) {
             MNUtil.log(`🔧 [AI处理] 内置 API 失败，尝试使用订阅 API`);
           }
-          aiResultText = await this.aiTranslate(ocrText, "中文", model);
+          aiResultText = await this.aiGeneralRequest(ocrText, systemPrompt, model);
         }
       }
 
@@ -2107,6 +2169,126 @@ function extendToolbarConfigInit() {
         MNUtil.log(`❌ [翻译] 异常错误: ${error.message}`);
       }
       toolbarUtils.addErrorLog(error, "aiTranslateBuiltin");
+      return null;
+    }
+  };
+
+  /**
+   * 通用 AI 请求 - 内置 API 版本（使用智谱 AI）
+   * @param {string} userContent - 用户输入内容
+   * @param {string} systemPrompt - 系统提示词（可选）
+   * @param {string} model - AI 模型
+   * @returns {Promise<string>} AI 响应内容
+   */
+  toolbarUtils.aiGeneralRequestBuiltin = async function (
+    userContent,
+    systemPrompt = "",
+    model = "glm-4-flashx-250414"
+  ) {
+    try {
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`🔧 [AI内置] 开始处理: ${userContent.substring(0, 50)}...`);
+        MNUtil.log(`🔧 [AI内置] 模型: ${model}`);
+      }
+
+      // 检查 MNConnection 是否可用
+      if (typeof MNConnection === "undefined") {
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`❌ [AI内置] MNConnection 不可用`);
+        }
+        throw new Error("MNConnection 不可用，请确保 MN Utils 已安装");
+      }
+
+      // 使用智谱 AI 的内置 API Key
+      const apiKey = "449628b94fcac030495890ee542284b8.F23PvJW4XXLJ4Lsu";
+      const apiUrl = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
+
+      // 模型映射：将其他模型名称映射到智谱 AI 的模型
+      const modelMap = {
+        "gpt-4o-mini": "glm-4-flashx-250414",
+        "gpt-4o": "glm-4-flashx-250414",
+        "gpt-4.1": "glm-4-flashx-250414",
+        "claude-3-5-sonnet": "glm-4-flashx-250414",
+        "claude-3-7-sonnet": "glm-4-flashx-250414",
+        "Built-in": "glm-4-flashx-250414"
+      };
+
+      // 使用映射后的模型名称，如果没有映射则使用原始名称
+      const actualModel = modelMap[model] || model;
+
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`🔧 [AI内置] 实际使用模型: ${actualModel}`);
+      }
+
+      // 构建消息数组
+      const messages = [];
+      if (systemPrompt) {
+        messages.push({ role: "system", content: systemPrompt });
+      }
+      messages.push({ role: "user", content: userContent.trim() });
+
+      // 构建请求体
+      const body = {
+        model: actualModel,
+        messages: messages,
+        temperature: 0.7,  // 通用请求使用稍高的温度
+      };
+
+      // 使用 MNConnection 创建和发送请求
+      const request = MNConnection.initRequest(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + apiKey,
+        },
+        timeout: 30,
+        json: body,
+      });
+
+      // 发送请求
+      const response = await MNConnection.sendRequest(request);
+
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(
+          `🔧 [AI内置] API 响应: ${JSON.stringify(response).substring(0, 200)}...`,
+        );
+      }
+
+      // 检查响应状态
+      if (response && response.statusCode >= 400) {
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`❌ [AI内置] API 错误: 状态码 ${response.statusCode}`);
+          if (response.data && response.data.error) {
+            MNUtil.log(
+              `❌ [AI内置] 错误详情: ${JSON.stringify(response.data.error)}`,
+            );
+          }
+        }
+        return null;
+      }
+
+      // 处理成功响应
+      if (response && response.choices && response.choices.length > 0) {
+        const resultText = response.choices[0].message.content;
+        if (resultText) {
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log(
+              `✅ [AI内置] 处理成功: ${resultText.substring(0, 100)}...`,
+            );
+          }
+          return resultText.trim();
+        }
+      }
+
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`❌ [AI内置] 无有效响应或响应格式错误`);
+      }
+      return null;
+    } catch (error) {
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`❌ [AI内置] 异常错误: ${error.message}`);
+      }
+      toolbarUtils.addErrorLog(error, "aiGeneralRequestBuiltin");
       return null;
     }
   };

@@ -4527,7 +4527,6 @@ function registerAllCustomActions() {
       // 使用全局 Prompt 对象生成代码分析提示词
       const codeAnalysisPrompt = XDYY_PROMPTS.codeAnalysis(ocrResult);
 
-      // 调用 AI API（参考 ocrWithTranslation）
       const aiAnalysisResult = await toolbarUtils.ocrWithAI(
         codeAnalysisPrompt, 
         analysisModel

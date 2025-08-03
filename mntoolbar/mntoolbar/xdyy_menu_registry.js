@@ -648,7 +648,7 @@ function registerAllMenuTemplates() {
       },
       {
         action: "codeLearning",
-        menuTitle: "📚 代码学习（创建调用卡片）"
+        menuTitle: "📚 代码卡片标题制卡"
       },
       {
         action: "codeAnalysisWithAI", 

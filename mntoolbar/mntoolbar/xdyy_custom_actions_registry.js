@@ -46,7 +46,7 @@ const XDYY_PROMPTS = {
    * @returns {string} 完整的代码分析提示词
    */
   codeAnalysis: (sourceCode) => {
-    return `你是专业的JavaScript代码分析师，你的任务是为代码添加详细的注释和文档，但绝对不能修改任何原始代码。
+    return `你是专业的JavaScript代码分析师，请使用中文进行所有注释和说明。你的任务是为代码添加详细的中文注释和文档，但绝对不能修改任何原始代码。
 
 原始代码：
 ${sourceCode}
@@ -66,19 +66,22 @@ ${sourceCode}
    - 在关键代码行添加行级注释解释
 
 3. **注释要求**：
+   - 所有注释必须使用中文
    - 添加完整JSDoc（@param、@returns、@throws等）
-   - 添加详细行级注释解释逻辑、算法复杂度、实现原理
-   - 所有解释都必须写在JavaScript注释中
+   - 不要添加 @example 标签
+   - 只对复杂逻辑、算法或不明显的代码添加行级注释
+   - 避免对简单赋值或显而易见的操作添加冗余注释
+   - 重点解释代码的意图、业务逻辑和潜在风险
 
 输出格式：
 \`\`\`javascript
-[完全保持原始代码不变，只添加JSDoc和行级注释]
+[完全保持原始代码不变，只添加中文JSDoc和必要的行级注释]
 \`\`\`
 
-[!] 性能提示：[具体建议]
-[!] 安全提醒：[具体建议]
+[!] 性能提示：[用中文给出具体建议]
+[!] 安全提醒：[用中文给出具体建议]
 
-**重要警告**：如果你修改了任何原始代码（除删除废弃注释外），这将被视为严重错误。你只能添加注释来解释代码，绝对不能改变代码本身的任何内容。`;
+**重要警告**：如果你修改了任何原始代码（除删除废弃注释外），这将被视为严重错误。你只能添加中文注释来解释代码，绝对不能改变代码本身的任何内容。`;
   }
   
   // 未来可扩展其他类型的 Prompt：
@@ -4532,6 +4535,13 @@ function registerAllCustomActions() {
         analysisModel
       );
 
+      // 检查 AI 分析是否成功
+      if (!aiAnalysisResult || aiAnalysisResult === ocrResult) {
+        // AI 分析失败，返回了原始文本或空结果
+        MNUtil.showHUD("❌ AI 代码分析失败，未能生成分析结果");
+        return;
+      }
+
       // 结果存储（使用 appendMarkdownComment）
       MNUtil.undoGrouping(() => {
         let ifTemplateMerged = false
@@ -4611,8 +4621,10 @@ function registerAllCustomActions() {
         analysisModel
       );
 
-      if (!aiAnalysisResult) {
-        MNUtil.showHUD("AI 分析失败");
+      // 检查 AI 分析是否成功
+      if (!aiAnalysisResult || aiAnalysisResult === sourceCode) {
+        // AI 分析失败，返回了原始文本或空结果
+        MNUtil.showHUD("❌ AI 代码分析失败，未能生成分析结果");
         return;
       }
 

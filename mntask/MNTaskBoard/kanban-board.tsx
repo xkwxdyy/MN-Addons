@@ -574,11 +574,6 @@ export function KanbanBoard({
                 </Button>
               </div>
 
-              {/* 语法提示 */}
-              <div className="text-xs text-slate-400">
-                <p>💡 使用 #标签 快速添加标签，支持多种引号格式</p>
-                <p className="mt-1">支持: #标签 #"英文引号" #"中文引号" #【方括号】 #（圆括号）</p>
-              </div>
 
               {selectedPerspective && (
                 <div className="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
@@ -819,11 +814,6 @@ export function KanbanBoard({
           </Button>
         </div>
 
-        {/* 语法提示 */}
-        <div className="text-xs text-slate-400">
-          <p>💡 使用 #标签 快速添加标签，支持多种引号格式</p>
-          <p className="mt-1">支持: #标签 #"英文引号" #"中文引号" #【方括号】 #（圆括号）</p>
-        </div>
 
         {selectedPerspective && (
           <div className="text-xs text-slate-400 flex items-center gap-2 flex-wrap">

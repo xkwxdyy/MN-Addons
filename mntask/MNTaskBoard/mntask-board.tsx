@@ -222,7 +222,8 @@ export default function MNTaskBoard() {
 
   // 透视相关状态
   const [perspectives, setPerspectives] = useState<Perspective[]>([])
-  const [selectedPerspectiveId, setSelectedPerspectiveId] = useState<string | null>(null)
+  const [focusSelectedPerspectiveId, setFocusSelectedPerspectiveId] = useState<string | null>(null)
+  const [kanbanSelectedPerspectiveId, setKanbanSelectedPerspectiveId] = useState<string | null>(null)
 
   // 透视管理函数
   const createPerspective = (perspective: Omit<Perspective, "id" | "createdAt">) => {
@@ -241,7 +242,7 @@ export default function MNTaskBoard() {
     setPerspectives(updatedPerspectives)
 
     // 如果正在编辑当前选中的透视，更新选中状态
-    if (selectedPerspectiveId === perspectiveId) {
+    if (focusSelectedPerspectiveId === perspectiveId) {
       // 透视选择状态会自动保持，因为ID没变
     }
 
@@ -250,8 +251,8 @@ export default function MNTaskBoard() {
 
   const deletePerspective = (perspectiveId: string) => {
     setPerspectives(perspectives.filter((p) => p.id !== perspectiveId))
-    if (selectedPerspectiveId === perspectiveId) {
-      setSelectedPerspectiveId(null)
+    if (focusSelectedPerspectiveId === perspectiveId) {
+      setFocusSelectedPerspectiveId(null)
     }
     toast.success("透视删除成功")
   }
@@ -349,10 +350,23 @@ export default function MNTaskBoard() {
   }
 
   // 获取当前选中的透视
-  const selectedPerspective = selectedPerspectiveId ? perspectives.find((p) => p.id === selectedPerspectiveId) : null
+  const getFocusSelectedPerspective = focusSelectedPerspectiveId
+    ? perspectives.find((p) => p.id === focusSelectedPerspectiveId)
+    : null
+
+  const getKanbanSelectedPerspective = kanbanSelectedPerspectiveId
+    ? perspectives.find((p) => p.id === kanbanSelectedPerspectiveId)
+    : null
 
   // 应用透视筛选到任务列表
-  const getFilteredTasks = (taskList: Task[]): Task[] => {
+  const getFilteredTasks = (taskList: Task[], view: "focus" | "kanban"): Task[] => {
+    let selectedPerspective = null
+    if (view === "focus") {
+      selectedPerspective = getFocusSelectedPerspective
+    } else if (view === "kanban") {
+      selectedPerspective = getKanbanSelectedPerspective
+    }
+
     if (!selectedPerspective) return taskList
     return applyPerspectiveFilter(taskList, selectedPerspective.filters)
   }
@@ -364,7 +378,8 @@ export default function MNTaskBoard() {
     const savedAllTasks = localStorage.getItem("mntask-all-tasks")
     const savedView = localStorage.getItem("mntask-current-view")
     const savedPerspectives = localStorage.getItem("mntask-perspectives")
-    const savedSelectedPerspective = localStorage.getItem("mntask-selected-perspective")
+    const savedFocusSelectedPerspective = localStorage.getItem("mntask-focus-selected-perspective")
+    const savedKanbanSelectedPerspective = localStorage.getItem("mntask-kanban-selected-perspective")
 
     // 恢复视图状态
     if (savedView && (savedView === "focus" || savedView === "kanban" || savedView === "perspective")) {
@@ -381,8 +396,12 @@ export default function MNTaskBoard() {
     }
 
     // 恢复选中的透视
-    if (savedSelectedPerspective) {
-      setSelectedPerspectiveId(savedSelectedPerspective)
+    if (savedFocusSelectedPerspective) {
+      setFocusSelectedPerspectiveId(savedFocusSelectedPerspective)
+    }
+
+    if (savedKanbanSelectedPerspective) {
+      setKanbanSelectedPerspectiveId(savedKanbanSelectedPerspective)
     }
 
     if (savedAllTasks) {
@@ -441,12 +460,9 @@ export default function MNTaskBoard() {
 
   // 保存选中的透视
   useEffect(() => {
-    if (selectedPerspectiveId) {
-      localStorage.setItem("mntask-selected-perspective", selectedPerspectiveId)
-    } else {
-      localStorage.removeItem("mntask-selected-perspective")
-    }
-  }, [selectedPerspectiveId])
+    localStorage.setItem("mntask-focus-selected-perspective", focusSelectedPerspectiveId || "")
+    localStorage.setItem("mntask-kanban-selected-perspective", kanbanSelectedPerspectiveId || "")
+  }, [focusSelectedPerspectiveId, kanbanSelectedPerspectiveId])
 
   // 同步更新总任务列表
   useEffect(() => {
@@ -483,8 +499,11 @@ export default function MNTaskBoard() {
   }, [allTasks])
 
   // 应用透视筛选后的任务列表
-  const filteredTasks = getFilteredTasks(tasks)
-  const filteredPendingTasks = getFilteredTasks(pendingTasks.filter((task) => task.type === "action"))
+  const filteredTasks = getFilteredTasks(tasks, "focus")
+  const filteredPendingTasks = getFilteredTasks(
+    pendingTasks.filter((task) => task.type === "action"),
+    "focus",
+  )
 
   const focusTasksCount = filteredTasks.filter((task) => task.isFocusTask && !task.completed).length
   const priorityFocusCount = filteredTasks.filter((task) => task.isPriorityFocus && !task.completed).length
@@ -732,13 +751,56 @@ export default function MNTaskBoard() {
     )
   }
 
+  // 解析任务标题中的标签语法
+  const parseTaskTitleWithTags = (input: string): { title: string; tags: string[] } => {
+    // 支持多种引号格式的正则表达式：
+    // #标签 - 无引号的标签
+    // #"标签" - 英文双引号
+    // #'标签' - 英文单引号
+    // #"标签" - 中文双引号
+    // #'标签' - 中文单引号
+    // #【标签】- 中文方括号
+    // #（标签）- 中文圆括号
+    const tagRegex = /#(?:"([^"]+)"|'([^']+)'|“([^“]+)”|‘([^‘]+)’|【([^】]+)】|（([^）]+)）|([^\s#]+))/g
+    const tags: string[] = []
+    let match
+
+    // 提取所有标签
+    while ((match = tagRegex.exec(input)) !== null) {
+      // match[1] - 英文双引号内容
+      // match[2] - 英文单引号内容
+      // match[3] - 中文双引号内容
+      // match[4] - 中文单引号内容
+      // match[5] - 中文方括号内容
+      // match[6] - 中文圆括号内容
+      // match[7] - 无引号内容
+      const tag = match[1] || match[2] || match[3] || match[4] || match[5] || match[6] || match[7]
+      if (tag && tag.trim()) {
+        tags.push(tag.trim())
+      }
+    }
+
+    // 移除标签部分，获取纯净的任务标题
+    const title = input.replace(tagRegex, "").trim()
+
+    return { title, tags }
+  }
+
   const addToPending = () => {
     if (!newTaskTitle.trim()) return
+
+    // 解析任务标题和标签
+    const { title, tags: parsedTags } = parseTaskTitleWithTags(newTaskTitle)
+
+    if (!title) {
+      toast.error("请输入任务标题")
+      return
+    }
 
     // 基础任务数据
     const baseTask: Task = {
       id: `pending-${Date.now()}`,
-      title: newTaskTitle.trim(),
+      title: title,
       completed: false,
       isFocusTask: false,
       isPriorityFocus: false,
@@ -747,16 +809,17 @@ export default function MNTaskBoard() {
       type: "action", // 默认类型为动作
       createdAt: new Date(),
       isInPending: true,
-      tags: [], // 初始化空标签数组
+      tags: [...parsedTags], // 使用解析出的标签
     }
 
     // 如果当前有选中的透视，自动应用透视的筛选条件
-    if (selectedPerspective) {
-      const filters = selectedPerspective.filters
+    if (getFocusSelectedPerspective) {
+      const filters = getFocusSelectedPerspective.filters
 
-      // 自动添加透视中的标签
+      // 合并透视标签和解析出的标签
       if (filters.tags.length > 0) {
-        baseTask.tags = [...filters.tags]
+        const allTags = [...new Set([...baseTask.tags, ...filters.tags])]
+        baseTask.tags = allTags
       }
 
       // 如果透视指定了特定的任务类型，使用第一个类型
@@ -780,8 +843,15 @@ export default function MNTaskBoard() {
     setNewTaskTitle("")
 
     // 显示提示信息
-    if (selectedPerspective && selectedPerspective.filters.tags.length > 0) {
-      toast.success(`任务已添加并自动应用透视标签: ${selectedPerspective.filters.tags.join(", ")}`)
+    const appliedTags = baseTask.tags || []
+    if (appliedTags.length > 0) {
+      if (parsedTags.length > 0 && getFocusSelectedPerspective && getFocusSelectedPerspective.filters.tags.length > 0) {
+        toast.success(`任务已添加！应用标签: ${appliedTags.join(", ")} (包含解析标签和透视标签)`)
+      } else if (parsedTags.length > 0) {
+        toast.success(`任务已添加！应用标签: ${appliedTags.join(", ")}`)
+      } else if (getFocusSelectedPerspective && getFocusSelectedPerspective.filters.tags.length > 0) {
+        toast.success(`任务已添加并自动应用透视标签: ${appliedTags.join(", ")}`)
+      }
     }
   }
 
@@ -789,8 +859,8 @@ export default function MNTaskBoard() {
     const finalTaskData = { ...taskData }
 
     // 如果当前有选中的透视，自动应用透视的筛选条件
-    if (selectedPerspective) {
-      const filters = selectedPerspective.filters
+    if (getFocusSelectedPerspective) {
+      const filters = getFocusSelectedPerspective.filters
 
       // 自动添加透视中的标签（合并而不是覆盖）
       if (filters.tags.length > 0) {
@@ -824,8 +894,9 @@ export default function MNTaskBoard() {
     setPendingTasks([...pendingTasks, newTask])
 
     // 显示提示信息
-    if (selectedPerspective && selectedPerspective.filters.tags.length > 0) {
-      toast.success(`任务已添加并自动应用透视标签: ${selectedPerspective.filters.tags.join(", ")}`)
+    const appliedTags = newTask.tags || []
+    if (appliedTags.length > 0 && getFocusSelectedPerspective && getFocusSelectedPerspective.filters.tags.length > 0) {
+      toast.success(`任务已添加并自动应用透视标签: ${appliedTags.join(", ")}`)
     }
   }
 
@@ -1013,12 +1084,14 @@ export default function MNTaskBoard() {
     setPendingTasks([])
     setAllTasks([])
     setPerspectives([])
-    setSelectedPerspectiveId(null)
+    setFocusSelectedPerspectiveId(null)
+    setKanbanSelectedPerspectiveId(null)
     localStorage.removeItem("mntask-tasks")
     localStorage.removeItem("mntask-pending")
     localStorage.removeItem("mntask-all-tasks")
     localStorage.removeItem("mntask-perspectives")
-    localStorage.removeItem("mntask-selected-perspective")
+    localStorage.removeItem("mntask-focus-selected-perspective")
+    localStorage.removeItem("mntask-kanban-selected-perspective")
     setShowResetConfirm(false)
     toast.success("数据已重置")
   }
@@ -1393,8 +1466,8 @@ export default function MNTaskBoard() {
                     <span className="text-white font-medium">透视筛选:</span>
                   </div>
                   <Select
-                    value={selectedPerspectiveId || "all"}
-                    onValueChange={(value) => setSelectedPerspectiveId(value === "all" ? null : value)}
+                    value={focusSelectedPerspectiveId || "all"}
+                    onValueChange={(value) => setFocusSelectedPerspectiveId(value === "all" ? null : value)}
                   >
                     <SelectTrigger className="w-64 bg-slate-800/50 border-slate-700 text-white">
                       <SelectValue placeholder="选择透视..." />
@@ -1420,7 +1493,7 @@ export default function MNTaskBoard() {
                       ))}
                     </SelectContent>
                   </Select>
-                  {selectedPerspective && (
+                  {getFocusSelectedPerspective && (
                     <div className="flex items-center gap-2">
                       <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
                         {filteredTasks.length + filteredPendingTasks.length} 个任务
@@ -1428,7 +1501,7 @@ export default function MNTaskBoard() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setSelectedPerspectiveId(null)}
+                        onClick={() => setFocusSelectedPerspectiveId(null)}
                         className="p-1 h-6 w-6 text-slate-400 hover:text-white"
                       >
                         <X className="w-3 h-3" />
@@ -1436,10 +1509,12 @@ export default function MNTaskBoard() {
                     </div>
                   )}
                 </div>
-                {selectedPerspective && (
+                {getFocusSelectedPerspective && (
                   <div className="mt-2 text-sm text-slate-400">
-                    {selectedPerspective.description && <p className="mb-1">{selectedPerspective.description}</p>}
-                    <p>筛选条件: {getFilterSummary(selectedPerspective.filters)}</p>
+                    {getFocusSelectedPerspective.description && (
+                      <p className="mb-1">{getFocusSelectedPerspective.description}</p>
+                    )}
+                    <p>筛选条件: {getFilterSummary(getFocusSelectedPerspective.filters)}</p>
                   </div>
                 )}
               </div>
@@ -1450,7 +1525,7 @@ export default function MNTaskBoard() {
                   <div className="flex items-center gap-2 mb-6">
                     <Target className="w-5 h-5 text-red-400" />
                     <h2 className="text-xl font-semibold text-white">
-                      {selectedPerspective ? `${selectedPerspective.name} - 焦点任务` : "焦点任务"}
+                      {getFocusSelectedPerspective ? `${getFocusSelectedPerspective.name} - 焦点任务` : "焦点任务"}
                     </h2>
                     <Badge className="bg-red-500/20 text-red-300 border-red-500/30">{focusTasksCount}</Badge>
                   </div>
@@ -1491,14 +1566,14 @@ export default function MNTaskBoard() {
                   <div className="flex items-center gap-2">
                     <Clock className="w-5 h-5 text-slate-400" />
                     <h2 className="text-xl font-semibold text-white">
-                      {selectedPerspective ? `${selectedPerspective.name} - 待处理任务` : "待处理任务"}
+                      {getFocusSelectedPerspective ? `${getFocusSelectedPerspective.name} - 待处理任务` : "待处理任务"}
                     </h2>
                     <Badge className="bg-slate-700 text-slate-300 border-slate-600">
                       共 {filteredPendingTasks.length} 项动作
                     </Badge>
                     {pendingTasks.length > filteredPendingTasks.length && (
                       <Badge className="bg-yellow-600/20 text-yellow-300 border-yellow-600/30 text-xs">
-                        {selectedPerspective
+                        {getFocusSelectedPerspective
                           ? "透视筛选"
                           : `已隐藏 ${pendingTasks.length - filteredPendingTasks.length} 项非动作任务`}
                       </Badge>
@@ -1556,8 +1631,8 @@ export default function MNTaskBoard() {
                     <div className="flex gap-3">
                       <Input
                         placeholder={
-                          selectedPerspective
-                            ? `快速添加${selectedPerspective.name}任务... (输入后按Enter)`
+                          getFocusSelectedPerspective
+                            ? `快速添加${getFocusSelectedPerspective.name}任务... (输入后按Enter)`
                             : "快速添加动作任务... (输入后按Enter)"
                         }
                         value={newTaskTitle}
@@ -1570,27 +1645,40 @@ export default function MNTaskBoard() {
                         添加
                       </Button>
                     </div>
-                    {selectedPerspective && (
+
+                    {/* 语法提示 */}
+                    <div className="mt-2 text-xs text-slate-400">
+                      <p>💡 标签语法: 使用 #标签 快速添加标签，支持多种引号格式</p>
+                      <p className="mt-1">
+                        支持格式: #标签 #"带空格" #'单引号' #"中文引号" #'中文单引号' #【方括号】 #（圆括号）
+                      </p>
+                      <p className="mt-1">
+                        示例: "修复登录问题 #bug修复 #"高优先级" #【紧急处理】" → 任务: "修复登录问题", 标签: bug修复,
+                        高优先级, 紧急处理
+                      </p>
+                    </div>
+
+                    {getFocusSelectedPerspective && (
                       <div className="mt-2 text-xs text-slate-400 flex items-center gap-2">
                         <Eye className="w-3 h-3" />
                         <span>新任务将自动应用透视条件:</span>
-                        {selectedPerspective.filters.tags.length > 0 && (
+                        {getFocusSelectedPerspective.filters.tags.length > 0 && (
                           <div className="flex gap-1">
-                            {selectedPerspective.filters.tags.map((tag) => (
+                            {getFocusSelectedPerspective.filters.tags.map((tag) => (
                               <Badge key={tag} className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
                                 {tag}
                               </Badge>
                             ))}
                           </div>
                         )}
-                        {selectedPerspective.filters.taskTypes.length === 1 && (
+                        {getFocusSelectedPerspective.filters.taskTypes.length === 1 && (
                           <Badge className="bg-green-500/20 text-green-300 border-green-500/30 text-xs">
-                            {getTypeText(selectedPerspective.filters.taskTypes[0])}
+                            {getTypeText(getFocusSelectedPerspective.filters.taskTypes[0])}
                           </Badge>
                         )}
-                        {selectedPerspective.filters.priorities.length === 1 && (
+                        {getFocusSelectedPerspective.filters.priorities.length === 1 && (
                           <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30 text-xs">
-                            {getPriorityText(selectedPerspective.filters.priorities[0])}优先级
+                            {getPriorityText(getFocusSelectedPerspective.filters.priorities[0])}优先级
                           </Badge>
                         )}
                       </div>
@@ -1626,7 +1714,7 @@ export default function MNTaskBoard() {
                   {filteredPendingTasks.length === 0 && (
                     <div className="text-center py-8 text-slate-400">
                       <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      {selectedPerspective ? (
+                      {getFocusSelectedPerspective ? (
                         <>
                           <p>当前透视下暂无待处理的动作任务</p>
                           <p className="text-sm">尝试切换到"全部任务"或调整透视筛选条件</p>
@@ -1654,7 +1742,7 @@ export default function MNTaskBoard() {
               pendingTasks={pendingTasks}
               allTasks={allTasks}
               perspectives={perspectives}
-              selectedPerspectiveId={selectedPerspectiveId}
+              selectedPerspectiveId={kanbanSelectedPerspectiveId}
               onUpdateTask={updateTask}
               onOpenDetails={openTaskDetails}
               onDeleteTask={deleteTask}
@@ -1662,7 +1750,7 @@ export default function MNTaskBoard() {
               onAddToPending={addToPendingFromKanban}
               onRemoveFromPending={removeFromPending}
               onAddTask={addTaskToPending}
-              onPerspectiveChange={setSelectedPerspectiveId}
+              onPerspectiveChange={setKanbanSelectedPerspectiveId}
             />
           ) : (
             /* 透视视图 */
@@ -1670,7 +1758,7 @@ export default function MNTaskBoard() {
               tasks={tasks}
               pendingTasks={pendingTasks}
               perspectives={perspectives}
-              selectedPerspectiveId={selectedPerspectiveId}
+              selectedPerspectiveId={focusSelectedPerspectiveId}
               onUpdateTask={updateTask}
               onOpenDetails={openTaskDetails}
               onDeleteTask={deleteTask}
@@ -1687,7 +1775,7 @@ export default function MNTaskBoard() {
               onAddProgress={addProgress}
               onRemoveFromPending={removeFromPending}
               availableTags={getAllTags()}
-              onPerspectiveChange={setSelectedPerspectiveId}
+              onPerspectiveChange={setFocusSelectedPerspectiveId}
               onCreatePerspective={createPerspective}
               onUpdatePerspective={updatePerspective}
               onDeletePerspective={deletePerspective}

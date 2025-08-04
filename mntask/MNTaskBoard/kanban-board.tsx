@@ -9,20 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DraggableTaskCard } from "./draggable-task-card"
-import {
-  Clock,
-  Play,
-  Pause,
-  CheckCircle,
-  Target,
-  FolderOpen,
-  TrendingUp,
-  Crosshair,
-  Filter,
-  X,
-  Plus,
-  Eye,
-} from "lucide-react"
+import { Target, FolderOpen, TrendingUp, Crosshair, Filter, X, Plus, Eye } from "lucide-react"
 import { toast } from "sonner"
 
 interface Task {
@@ -250,6 +237,41 @@ export function KanbanBoard({
     }
   }
 
+  // 解析任务标题中的标签语法
+  const parseTaskTitleWithTags = (input: string): { title: string; tags: string[] } => {
+    // 支持多种引号格式的正则表达式：
+    // #标签 - 无引号的标签
+    // #"标签" - 英文双引号
+    // #'标签' - 英文单引号  
+    // #"标签" - 中文双引号
+    // #'标签' - 中文单引号
+    // #【标签】- 中文方括号
+    // #（标签）- 中文圆括号
+    const tagRegex = /#(?:"([^"]+)"|'([^']+)'|“([^“]+)”|‘([^‘]+)’|【([^】]+)】|（([^）]+)）|([^\s#]+))/g
+    const tags: string[] = []
+    let match
+
+    // 提取所有标签
+    while ((match = tagRegex.exec(input)) !== null) {
+      // match[1] - 英文双引号内容
+      // match[2] - 英文单引号内容
+      // match[3] - 中文双引号内容
+      // match[4] - 中文单引号内容
+      // match[5] - 中文方括号内容
+      // match[6] - 中文圆括号内容
+      // match[7] - 无引号内容
+      const tag = match[1] || match[2] || match[3] || match[4] || match[5] || match[6] || match[7]
+      if (tag && tag.trim()) {
+        tags.push(tag.trim())
+      }
+    }
+
+    // 移除标签部分，获取纯净的任务标题
+    const title = input.replace(tagRegex, "").trim()
+
+    return { title, tags }
+  }
+
   // 添加新任务
   const handleAddTask = () => {
     if (!newTaskTitle.trim()) {
@@ -257,9 +279,17 @@ export function KanbanBoard({
       return
     }
 
+    // 解析任务标题和标签
+    const { title, tags: parsedTags } = parseTaskTitleWithTags(newTaskTitle)
+
+    if (!title) {
+      toast.error("请输入任务标题")
+      return
+    }
+
     // 基础任务数据
     const baseTask: Omit<Task, "id" | "createdAt"> = {
-      title: newTaskTitle.trim(),
+      title: title,
       description: "",
       completed: false,
       isFocusTask: false,
@@ -267,7 +297,7 @@ export function KanbanBoard({
       priority: "low",
       status: "todo",
       type: newTaskType,
-      tags: [],
+      tags: [...parsedTags], // 使用解析出的标签
       progressHistory: [],
       isInPending: false,
     }
@@ -276,9 +306,10 @@ export function KanbanBoard({
     if (selectedPerspective) {
       const filters = selectedPerspective.filters
 
-      // 自动添加透视中的标签
+      // 合并透视标签和解析出的标签
       if (filters.tags.length > 0) {
-        baseTask.tags = [...filters.tags]
+        const allTags = [...new Set([...baseTask.tags, ...filters.tags])]
+        baseTask.tags = allTags
       }
 
       // 如果透视指定了特定的任务类型，使用第一个类型
@@ -308,10 +339,17 @@ export function KanbanBoard({
     // 不关闭 showAddTask 状态
 
     // 显示提示信息
-    if (selectedPerspective && selectedPerspective.filters.tags.length > 0) {
-      toast.success(
-        `${getTypeInfo(newTaskType).text}任务创建成功并自动应用透视标签: ${selectedPerspective.filters.tags.join(", ")}`,
-      )
+    const appliedTags = baseTask.tags || []
+    if (appliedTags.length > 0) {
+      if (parsedTags.length > 0 && selectedPerspective && selectedPerspective.filters.tags.length > 0) {
+        toast.success(
+          `${getTypeInfo(newTaskType).text}任务创建成功！应用标签: ${appliedTags.join(", ")} (包含解析标签和透视标签)`,
+        )
+      } else if (parsedTags.length > 0) {
+        toast.success(`${getTypeInfo(newTaskType).text}任务创建成功！应用标签: ${appliedTags.join(", ")}`)
+      } else if (selectedPerspective && selectedPerspective.filters.tags.length > 0) {
+        toast.success(`${getTypeInfo(newTaskType).text}任务创建成功并自动应用透视标签: ${appliedTags.join(", ")}`)
+      }
     } else {
       toast.success(`${getTypeInfo(newTaskType).text}任务创建成功`, {
         duration: 2000, // 缩短提示时间，避免干扰连续添加
@@ -535,6 +573,13 @@ export function KanbanBoard({
                   取消
                 </Button>
               </div>
+
+              {/* 语法提示 */}
+              <div className="text-xs text-slate-400">
+                <p>💡 使用 #标签 快速添加标签，支持多种引号格式</p>
+                <p className="mt-1">支持: #标签 #"英文引号" #"中文引号" #【方括号】 #（圆括号）</p>
+              </div>
+
               {selectedPerspective && (
                 <div className="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
                   <Eye className="w-3 h-3" />
@@ -773,78 +818,3 @@ export function KanbanBoard({
             添加
           </Button>
         </div>
-
-        <div className="text-xs text-slate-400">
-          提示：输入任务标题后按 Enter 键可快速添加任务，任务将出现在"待开始"列中
-          {selectedPerspective && <span className="text-blue-300"> • 当前透视: {selectedPerspective.name}</span>}
-        </div>
-
-        {selectedPerspective && (
-          <div className="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
-            <Eye className="w-3 h-3" />
-            <span>新任务将自动应用透视条件:</span>
-            {selectedPerspective.filters.tags.length > 0 && (
-              <div className="flex gap-1">
-                {selectedPerspective.filters.tags.map((tag) => (
-                  <Badge key={tag} className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-            )}
-            {selectedPerspective.filters.taskTypes.length === 1 && (
-              <Badge className="bg-green-500/20 text-green-300 border-green-500/30 text-xs">
-                {getTypeText(selectedPerspective.filters.taskTypes[0])}
-              </Badge>
-            )}
-            {selectedPerspective.filters.priorities.length === 1 && (
-              <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30 text-xs">
-                {getPriorityText(selectedPerspective.filters.priorities[0])}优先级
-              </Badge>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* 拖拽提示 */}
-      <div className="bg-blue-900/20 border border-blue-700/30 rounded-lg p-3">
-        <p className="text-blue-300 text-sm flex items-center gap-2">
-          <Target className="w-4 h-4" />
-          提示：拖拽任务卡片到不同列可以快速更改任务状态，动作任务可通过菜单加入焦点或待处理列表
-          {selectedPerspective && (
-            <span className="text-blue-200"> • 当前显示 {selectedPerspective.name} 透视下的任务</span>
-          )}
-        </p>
-      </div>
-
-      {/* 看板列 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {renderKanbanColumn("todo", "待开始", Clock, "text-slate-400", "bg-slate-600/50 text-slate-300", todoTasks)}
-        {renderKanbanColumn(
-          "in-progress",
-          "进行中",
-          Play,
-          "text-blue-400",
-          "bg-blue-600/20 text-blue-300",
-          inProgressTasks,
-        )}
-        {renderKanbanColumn(
-          "paused",
-          "已暂停",
-          Pause,
-          "text-yellow-400",
-          "bg-yellow-600/20 text-yellow-300",
-          pausedTasks,
-        )}
-        {renderKanbanColumn(
-          "completed",
-          "已完成",
-          CheckCircle,
-          "text-green-400",
-          "bg-green-600/20 text-green-300",
-          completedTasks,
-        )}
-      </div>
-    </div>
-  )
-}

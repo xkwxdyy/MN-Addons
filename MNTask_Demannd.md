@@ -1,3 +1,10 @@
+请先读取 /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/AI_CONTEXT.md 了解 MN-Addon 项目的当前状态，然后帮我开发 MNTask 项目。
+深度学习 parseTaskTitle 和 parseTaskComments 函数，我希望你开发一个能修改 parseTaskComments 解析出来的内容对应任何一条评论的内容的函数。ultrathink
+
+
+
+
+---
 > 下面说的“看板”或“MNTask”默认指“task-focus-board.html” 文件
 > 如果是软件里的“看板”，是指一些固定的卡片，作为看板的功能，来“存”卡片而已，本身并没有什么特别，主要在 setting 里的 “Task Board” 视图中绑定的卡片
 > “MN 里任务卡片”指的是 MarginNote 里的任务类型的卡片

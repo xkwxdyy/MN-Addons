@@ -1,3 +1,266 @@
+> **Analyzing code comment task**
+> The user requests to add detailed Chinese comments to the JavaScript code without modifying the original code. The commented-out line `// MNUtil.copyJSON(sender.userInfo)` seems to be a deprecated debug line, and the guidelines allow us to delete non-explanatory, deprecated comments. I think it's best to remove this line since it's not functional and doesn't add clarity. I'll ensure the JSDoc comment is added properly without altering the structure or indentation of code.> 
+
+> **Preparing code with comments**
+> The line `// MNUtil.copyJSON(sender.userInfo)` is commented out, likely due to being old debug code, so I'll remove it as instructed. I'll add a JSDoc comment using Chinese, giving an explanation of the function—focusing on the parameters and return values. I’ll also include brief line-level comments to explain logical checks like verifying if MNUtil is available and ensuring the window is in focus. The indentation and line endings must remain unchanged, except for the JSDoc comment above the function.
+> *Thought for 12 seconds*
+
+```javascript
+/**
+ * 设置视频播放时间点的回调函数  
+ *
+ * @param {Object} sender - 事件发送者对象，通常由系统或其他模块触发  
+ * @param {Object} sender.userInfo - 事件附带的用户信息  
+ * @param {number} sender.userInfo.time - 需要跳转的视频时间（秒）  
+ * @returns {void}
+ * @throws {Error} 当 MNUtil 未定义或当前窗口不在焦点时不会抛出异常，而是直接返回，避免后续逻辑执行
+ */
+onSetVideo: function (sender) {
+    // 若工具库 MNUtil 尚未加载，则直接返回，防止调用其方法时报错
+    if (typeof MNUtil === 'undefined') {
+        return
+    }
+    // 只有当前窗口处于焦点时才继续执行，避免后台窗口误触发
+    if (self.window !== self.appInstance.focusWindow) {
+        return
+    }
+    // 通过注入脚本，将第一个 <video> 元素的播放位置跳转到指定时间
+    self.addonController.runJavaScript('document.getElementsByTagName(\'video\')[0].currentTime = '+sender.userInfo.time)
+}
+```
+
+[!] 性能提示：若页面包含多个 `<video>` 元素或元素动态创建，建议在调用前缓存或校验目标视频节点，以减少频繁的 DOM 查询和潜在的空指针问题。  
+[!] 安全提醒：拼接字符串执行 `runJavaScript` 存在代码注入风险，应确保 `sender.userInfo.time` 已做类型与范围校验，防止恶意输入导致任意脚本执行。
+
+
+上面是 AI 的回答，可以看到输出了 AI 的思考！导致我得手动删除！请继续优化 XDYY_PROMPTS.codeAnalysis，修复上面的问题
+
+
+
+```javascript
+/**
+ * Initializes a set of static images for use in the application.
+ * This method is designed to load multiple image assets based on a given main path.
+ * 
+ * @param {string} mainPath - The base directory path where the images are located.
+ *                            This path is concatenated with specific filenames to generate
+ *                            the full file paths for the images.
+ * 
+ * @example
+ * MyClass.init('/assets/images');
+ * // This will load images from '/assets/images/screen.png', '/assets/images/link.png', etc.
+ * 
+ * [!] 性能提示：如果mainPath包含大量的资源文件，可能会影响初始化时间，建议按需加载。
+ * [!] 安全提醒：确保mainPath是可信路径，避免路径注入风险。
+ */
+static init(mainPath){
+    // Store the base directory path for later use
+    this.mainPath = mainPath;
+
+    // Load the "screen.png" image and assign it to a static property
+    this.screenImage = MNUtil.getImage(mainPath + `/screen.png`);
+    // Load the "link.png" image, possibly used for hyperlinking or navigation icons
+    this.linkImage = MNUtil.getImage(mainPath + `/link.png`);
+    // Load the "home.png" image, typically used for a home button or icon
+    this.homeImage = MNUtil.getImage(mainPath + `/home.png`);
+    // Load the "goforward.png" image, representing a forward navigation button
+    this.goforwardImage = MNUtil.getImage(mainPath + `/goforward.png`);
+    // Load the "goback.png" image, representing a back navigation button
+    this.gobackImage = MNUtil.getImage(mainPath + `/goback.png`);
+    // Load the "reload.png" image, commonly used for a reload or refresh button
+    this.reloadImage = MNUtil.getImage(mainPath + `/reload.png`);
+    // Load the "stop.png" image, likely used to indicate a stop action
+    this.stopImage = MNUtil.getImage(mainPath + `/stop.png`);
+    // Load the "webapp.png" image, possibly representing a web application icon
+    this.webappImage = MNUtil.getImage(mainPath + `/webapp.png`);
+    // Load the "more.png" image with a scaling factor of 2.5
+    // The second parameter (2.5) might specify a resizing or scaling factor for the image
+    this.moreImage = MNUtil.getImage(mainPath + `/more.png`, 2.5);
+}
+```
+
+
+上面是AI 返回的结果，请继续优化 XDYY_PROMPTS.codeAnalysis。满足：
+1. 解析要用中文
+2. 不需要 @example
+3. 其余的你看是否需要优化 ultrathink
+
+
+---
+现在 ocrWithAI 功能的效果很不错，要开发一个新的。
+主要痛点是，如果内容太长了，我可能不 OCR 了，而是我直接电脑上复制代码，然后我会粘贴成为 focusNote 的子卡片 A的第一条评论。所以增加一个直接通过选中 A 卡片触发功能，就是 A 的第一条评论作为处理的源代码，然后后续是一样的，成功处理了之后再删除卡片 A，A.removeFromParent() 可以删除卡片。ultrathink
+
+---
+static addHistory(type,detail){
+    if (this.focusHistory.length>=10) {
+        this.focusHistory.shift()
+    }
+    let history = {type:type,time:Date.now(),...detail}
+    this.focusHistory.push(history)
+    // MNUtil.copy(this.focusHistory)
+}
+
+的内容，最后怎么结果是
+```javascript
+/**
+ * @param {number} a - 第一个数字参数
+ * @param {number} b - 第二个数字参数
+ * @returns {number} 两个数字的和
+ * @throws {TypeError} 如果参数不是数字类型
+ * @static
+ */
+function addHistory(a, b) {
+  // 详细注释：此函数用于计算两个数字的加和并记录历史记录
+  // 实现原理：直接使用JavaScript的加法运算符进行计算
+  // 算法复杂度：O(1)，加法操作是常数时间复杂度
+  // 为什么选择这种实现方式：简单直接，符合数学加法的基本定义
+  // 关键代码行的作用说明：
+  // - 使用加法运算符计算结果
+  // - 检查参数类型确保输入有效
+  
+  if (typeof a !== 'number' || typeof b !== 'number') {
+    throw new TypeError('Both parameters must be numbers');
+  }
+  
+  const result = a + b;
+  
+  // 记录历史记录的逻辑（假设有记录历史的功能）
+  // 这里省略具体实现，因为重点在于加法计算本身
+  
+  return result;
+}
+```
+
+[!] 性能提示：如果此函数被频繁调用且参数类型固定，可以考虑使用类型守卫或缓存机制优化性能。
+[!] 安全提醒：确保输入参数类型正确，避免潜在的类型错误导致程序崩溃。
+
+---
+
+代码完全错的！  请优化提示词！ultrathink
+
+---
+## 🤖 AI 代码分析
+
+```javascript
+/**
+ * 添加历史记录到焦点历史数组中。
+ * @param {string} type - 历史记录的类型。
+ * @param {Object} detail - 历史记录的详细信息。
+ * @static
+ */
+static addHistory(type, detail) {
+  if (this.focusHistory.length >= 10) {
+    this.focusHistory.shift();
+  }
+
+  let history = { type, time: Date.now(), ...detail };
+
+  this.focusHistory.push(history);
+}
+```
+
+[分步骤的详细解释]
+1. **注释清理**：删除了非解释性注释，保留了授权注释和文档性注释。
+2. **代码格式化**：使用了2空格缩进，调整了操作符和对象/数组周围的空格，并使用了分号。
+3. **JSDoc生成**：添加了函数功能描述、参数说明、返回值说明和错误说明，并标记了静态方法。
+4. **函数解释**：
+   - 首先检查`focusHistory`数组的长度是否大于或等于10，如果是，则使用`shift()`方法移除数组的第一个元素。
+   - 然后创建一个新的历史记录对象`history`，包含类型、当前时间戳和详细信息。
+   - 最后将新的历史记录对象添加到`focusHistory`数组中。
+5. **优化建议**：
+   [!] `Date.now()`是一个轻量级函数，适合频繁调用，但如果有更高的性能要求，可以考虑缓存时间戳。
+
+[优化建议]
+[!] `Date.now()`是一个轻量级函数，适合频繁调用，但如果有更高的性能要求，可以考虑缓存时间戳。
+
+
+---
+上面是 AI 的回答，请基于下面的要求优化里面的提示词：
+1. 不需要 `## 🤖 AI 代码分析`
+2. AI 做了什么的总结不需要，比如
+```
+1. **注释清理**：删除了非解释性注释，保留了授权注释和文档性注释。
+2. **代码格式化**：使用了2空格缩进，调整了操作符和对象/数组周围的空格，并使用了分号。
+3. **JSDoc生成**：添加了函数功能描述、参数说明、返回值说明和错误说明，并标记了静态方法。
+```
+就不需要
+3. [分步骤的详细解释] 这一块去掉吧，就保留建议。
+4. 然后详细解释是用 JS 的代码注释写到 jS 代码里面！ultrathink
+
+---
+请学习 mntoolbar 的 ocrAsProofTitleWithTranslation 函数。我现在需要给 menu_codeLearning 按钮添加一个功能。
+1. 先 OCR 卡片，这一步和 ocrAsProofTitleWithTranslation 函数一样。
+2. 然后获取 OCR 的结果，再进行 AI 处理，下面是提示词：
+
+````
+你是一个专业的JavaScript代码处理引擎，我将提供类中的函数代码（static/prototype/实例方法）。请严格按以下步骤处理：
+
+1. **注释清理**：
+   - 删除所有非解释性注释（如`// 临时调试`，`/* 废弃代码 */`）
+   - 保留授权注释（如`/*! MIT License */`）和文档性注释
+
+2. **代码格式化**：
+   ```javascript
+   // 要求：
+   - 2空格缩进
+   - 操作符空格：`a+b` → `a + b`
+   - 对象/数组空格：`{a:1}` → `{ a:1 }`
+   - 分号使用：符合StandardJS规范
+   ```
+
+3. **JSDoc生成**：
+   ```javascript
+   /**
+    * 函数功能描述
+    * @param {Type} param - 参数说明
+    * @returns {ReturnType} 返回值说明
+    * @throws {ErrorType} 错误说明
+    * @example // 使用示例
+    */
+   ```
+   - 类型推断顺序：1) 代码分析 2) TypeScript类型 3) `any`
+   - 必需标记：
+     - `@static` 静态方法
+     - `@memberof ClassName.prototype` 原型方法
+
+4. **函数解释**：
+   ```text
+   // 按执行顺序解释：
+   1. [逻辑块1]：说明目的（例：数据初始化）
+   2. [逻辑块2]：核心算法说明（含复杂度O(n)）
+   3. [边界处理]：特殊条件检查说明
+   ```
+
+5. **优化建议**（以`[!]`标记）：
+   ```text
+   [!] 性能提示：可改用Map提升查找效率
+   [!] 安全提醒：缺少输入验证
+   ```
+
+**输出格式**：
+````javascript
+// [文件路径，如: src/utils/String.js]
+[格式化后的完整代码]
+```
+// 函数解析
+[分步骤的详细解释]
+[优化建议]
+````
+
+3. 然后学习一下 manageCommentsByPopup 函数是如何移动内容到某个字段的。我需要把上面 AI 给的回答，添加到选中的卡片的评论中，并移动到“分析”字段。ultrathink
+
+
+
+
+
+---
+我会给AI 一个 JavaScript 里某个函数，主要是类里的函数，比如 static 的 或者是 prototype 的代码，然后我希望 AI 要实现以下几步
+1. 如果是非解释性注释，就直接去掉。
+2. 按照 JavaScript 正确的空格进行缩进，因为可能缺少缩进
+3. 给函数添加 JSDoc
+4. 尽可能详细地解释函数体里的实现，因为我在学习代码。
+请你看看是否需要进一步优化，然后帮我写一个 AI 提示词。
+---
 请你为 mntoolbar 开发一个新按钮，按钮用 code.png，主要用来学习代码。名字就叫“代码学习”。先开发单击功能。功能不要写在注册的地方，而是 utils 里面进行封装。
 我先说一下背景。我是要在 MarginNote4 里学习代码，我把代码转成了 PDF 在里面学习。mntoolbar 是 MarginNote 4 的插件。
 卡片对应的具体的插件和文件，比如

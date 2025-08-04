@@ -1,12 +1,23 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Search, Edit, Trash2, BookOpen, User, Calendar, Users, X, Plus } from "lucide-react"
+
+// 参考文献引用接口
+interface Reference {
+  id: string
+  literatureId: string // 引用的文献ID
+  citationKey: string // 引用词，如 "1", "Bill 1", "Einstein2016" 等
+  citations: Citation[] // 具体的引用内容列表
+}
+
+// 具体引用内容接口
+interface Citation {
+  id: string
+  content: string // 引用的具体内容，如"参考了第23页的理论框架"
+  page?: number // 引用的页码
+  note?: string // 引用备注
+  timestamp: string // 添加时间
+}
 
 // 增强的文献类型，包含完整的元数据信息
 interface Literature {
@@ -64,6 +75,9 @@ interface Literature {
   // 文件信息
   pdfPath?: string // PDF文件路径
   fileSize?: number // 文件大小（字节）
+
+  // 参考文献列表
+  references?: Reference[] // 参考文献列表
 }
 
 interface Author {
@@ -112,6 +126,27 @@ export default function LiteratureManagement() {
   const [isAddLiteratureModalOpen, setIsAddLiteratureModalOpen] = useState(false)
   const [isAddJournalModalOpen, setIsAddJournalModalOpen] = useState(false)
   const [isAddProgressModalOpen, setIsAddProgressModalOpen] = useState(false)
+
+  // 参考文献相关状态
+  const [isAddReferenceModalOpen, setIsAddReferenceModalOpen] = useState(false)
+  const [currentLiteratureId, setCurrentLiteratureId] = useState<string | null>(null)
+  const [referenceSearch, setReferenceSearch] = useState("")
+  const [showReferenceDropdown, setShowReferenceDropdown] = useState(false)
+  const [filteredReferences, setFilteredReferences] = useState<Literature[]>([])
+  const [newReference, setNewReference] = useState({
+    literatureId: "",
+    citationKey: "",
+    citations: [],
+  })
+
+  // 引用内容相关状态
+  const [isAddCitationModalOpen, setIsAddCitationModalOpen] = useState(false)
+  const [currentReferenceId, setCurrentReferenceId] = useState<string | null>(null)
+  const [newCitation, setNewCitation] = useState({
+    content: "",
+    page: "",
+    note: "",
+  })
 
   // 文献管理数据 - 增加更多作者用于测试
   const [authors, setAuthors] = useState<Author[]>([
@@ -167,6 +202,28 @@ export default function LiteratureManagement() {
       tags: ["classic", "philosophy"],
       addedDate: "2024-01-01",
       lastModified: "2024-01-15",
+      references: [
+        {
+          id: "ref1",
+          literatureId: "2",
+          citationKey: "Einstein1916",
+          citations: [
+            {
+              id: "cit1",
+              content: "引用了相对论的基本概念",
+              page: 45,
+              note: "用于支持范式转移理论",
+              timestamp: "2024-01-15 14:30",
+            },
+            {
+              id: "cit2",
+              content: "参考了时空概念的革命性变化",
+              page: 67,
+              timestamp: "2024-01-15 15:20",
+            },
+          ],
+        },
+      ],
     },
     {
       id: "2",
@@ -186,6 +243,7 @@ export default function LiteratureManagement() {
       tags: ["physics", "classic"],
       addedDate: "2024-01-02",
       lastModified: "2024-01-16",
+      references: [],
     },
     {
       id: "3",
@@ -209,6 +267,14 @@ export default function LiteratureManagement() {
       tags: ["breakthrough", "biology"],
       addedDate: "2024-01-03",
       lastModified: "2024-01-17",
+      references: [
+        {
+          id: "ref2",
+          literatureId: "4",
+          citationKey: "1",
+          citations: [],
+        },
+      ],
     },
     {
       id: "4",
@@ -229,6 +295,7 @@ export default function LiteratureManagement() {
       tags: ["evolution", "classic", "biology"],
       addedDate: "2024-01-04",
       lastModified: "2024-01-18",
+      references: [],
     },
     {
       id: "5",
@@ -249,6 +316,14 @@ export default function LiteratureManagement() {
       tags: ["popular science", "cosmology"],
       addedDate: "2024-01-05",
       lastModified: "2024-01-19",
+      references: [
+        {
+          id: "ref3",
+          literatureId: "2",
+          citationKey: "Einstein",
+          citations: [],
+        },
+      ],
     },
   ])
 
@@ -399,6 +474,9 @@ export default function LiteratureManagement() {
   // 添加作者筛选下拉框的引用
   const authorFilterInputRef = useRef<HTMLInputElement>(null)
   const authorFilterDropdownRef = useRef<HTMLDivElement>(null)
+  // 参考文献搜索引用
+  const referenceInputRef = useRef<HTMLInputElement>(null)
+  const referenceDropdownRef = useRef<HTMLDivElement>(null)
 
   // 处理论文作者搜索
   useEffect(() => {
@@ -462,6 +540,23 @@ export default function LiteratureManagement() {
     }
   }, [progressAuthorFilterSearchTerm, authors, authorFilters])
 
+  // 处理参考文献搜索
+  useEffect(() => {
+    if (referenceSearch.trim() && currentLiteratureId) {
+      const filtered = literatures.filter(
+        (lit) =>
+          lit.id !== currentLiteratureId && // 不能引用自己
+          (lit.title.toLowerCase().includes(referenceSearch.toLowerCase()) ||
+            getPaperAuthorsString(lit.authors).toLowerCase().includes(referenceSearch.toLowerCase())),
+      )
+      setFilteredReferences(filtered)
+      setShowReferenceDropdown(filtered.length > 0)
+    } else {
+      setFilteredReferences([])
+      setShowReferenceDropdown(false)
+    }
+  }, [referenceSearch, literatures, currentLiteratureId])
+
   // 点击外部关闭下拉框
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -504,6 +599,16 @@ export default function LiteratureManagement() {
       ) {
         setShowAuthorFilterDropdown(false)
       }
+
+      // 参考文献搜索下拉框
+      if (
+        referenceDropdownRef.current &&
+        !referenceDropdownRef.current.contains(event.target as Node) &&
+        referenceInputRef.current &&
+        !referenceInputRef.current.contains(event.target as Node)
+      ) {
+        setShowReferenceDropdown(false)
+      }
     }
 
     document.addEventListener("mousedown", handleClickOutside)
@@ -535,6 +640,49 @@ export default function LiteratureManagement() {
       default:
         return "其他"
     }
+  }
+
+  // 获取文献信息
+  const getLiteratureById = (id: string) => {
+    return literatures.find((lit) => lit.id === id)
+  }
+
+  // 添加参考文献
+  const addReference = () => {
+    if (newReference.literatureId && newReference.citationKey && currentLiteratureId) {
+      const reference: Reference = {
+        id: Date.now().toString(),
+        literatureId: newReference.literatureId,
+        citationKey: newReference.citationKey,
+        citations: [],
+      }
+
+      setLiteratures(
+        literatures.map((lit) =>
+          lit.id === currentLiteratureId ? { ...lit, references: [...(lit.references || []), reference] } : lit,
+        ),
+      )
+
+      setNewReference({ literatureId: "", citationKey: "", citations: [] })
+      setReferenceSearch("")
+      setIsAddReferenceModalOpen(false)
+    }
+  }
+
+  // 删除参考文献
+  const deleteReference = (literatureId: string, referenceId: string) => {
+    setLiteratures(
+      literatures.map((lit) =>
+        lit.id === literatureId ? { ...lit, references: lit.references?.filter((ref) => ref.id !== referenceId) } : lit,
+      ),
+    )
+  }
+
+  // 选择参考文献
+  const selectReference = (literatureId: string) => {
+    setNewReference({ ...newReference, literatureId })
+    setReferenceSearch("")
+    setShowReferenceDropdown(false)
   }
 
   // 添加作者
@@ -618,6 +766,7 @@ export default function LiteratureManagement() {
           pages:
             newLiterature.type === "book" && newLiterature.pages ? Number.parseInt(newLiterature.pages) : undefined,
           doi: newLiterature.type === "paper" ? newLiterature.doi : undefined,
+          references: [], // 初始化空的参考文献列表
         },
       ])
       setIsAddLiteratureModalOpen(false)
@@ -725,18 +874,62 @@ export default function LiteratureManagement() {
     }, 100)
   }
 
-  // 从进展中移除作者
-  const removeAuthorFromProgress = (authorId: string) => {
-    setNewProgress({
-      ...newProgress,
-      selectedAuthors: newProgress.selectedAuthors.filter((id) => id !== authorId),
-    })
+  // 添加引用内容
+  const addCitation = () => {
+    if (newCitation.content && currentReferenceId) {
+      const citation: Citation = {
+        id: Date.now().toString(),
+        content: newCitation.content,
+        page: newCitation.page ? Number.parseInt(newCitation.page) : undefined,
+        note: newCitation.note,
+        timestamp: new Date().toISOString(),
+      }
+
+      setLiteratures(
+        literatures.map((lit) =>
+          lit.id === currentLiteratureId
+            ? {
+                ...lit,
+                references: lit.references?.map((ref) =>
+                  ref.id === currentReferenceId ? { ...ref, citations: [...ref.citations, citation] } : ref,
+                ),
+              }
+            : lit,
+        ),
+      )
+
+      setNewCitation({ content: "", page: "", note: "" })
+      setIsAddCitationModalOpen(false)
+    }
+  }
+
+  // 删除引用内容
+  const deleteCitation = (literatureId: string, referenceId: string, citationId: string) => {
+    setLiteratures(
+      literatures.map((lit) =>
+        lit.id === literatureId
+          ? {
+              ...lit,
+              references: lit.references?.map((ref) =>
+                ref.id === referenceId
+                  ? { ...ref, citations: ref.citations.filter((cit) => cit.id !== citationId) }
+                  : ref,
+              ),
+            }
+          : lit,
+      ),
+    )
+  }
+
+  // 选择引用内容
+  const selectCitation = (citation: Citation) => {
+    setNewCitation({ ...newCitation, content: citation.content, page: citation.page?.toString() || "", note: citation.note || "" })
+    setIsAddCitationModalOpen(true)
   }
 
   // 添加研究进展
   const addProgress = () => {
-    if (newProgress.year && newProgress.description && newProgress.selectedAuthors.length > 0) {
-      const progressType = newProgress.selectedAuthors.length > 1 ? "collaborative" : "individual"
+    if (newProgress.description && newProgress.selectedAuthors.length > 0 && newProgress.year) {
       setProgressList([
         ...progressList,
         {
@@ -745,7 +938,7 @@ export default function LiteratureManagement() {
           description: newProgress.description,
           authors: newProgress.selectedAuthors,
           relatedPaper: newProgress.relatedPaper,
-          type: progressType,
+          type: newProgress.type,
         },
       ])
       setIsAddProgressModalOpen(false)
@@ -756,124 +949,10 @@ export default function LiteratureManagement() {
         selectedAuthors: [],
         type: "individual",
       })
-      setProgressAuthorSearchTerm("")
     }
   }
 
-  // 添加阅读笔记
-  const addReadingNote = () => {
-    if (newNote.paperId && newNote.content) {
-      setReadingNotes([
-        ...readingNotes,
-        {
-          id: Date.now().toString(),
-          paperId: newNote.paperId,
-          paperTitle: newNote.paperTitle,
-          content: newNote.content,
-          page: newNote.page ? Number.parseInt(newNote.page) : undefined,
-          timestamp: new Date().toLocaleString(),
-          tags: newNote.tags
-            .split(",")
-            .map((tag) => tag.trim())
-            .filter(Boolean),
-        },
-      ])
-      setNewNote({ paperId: "", paperTitle: "", content: "", page: "", tags: "" })
-    }
-  }
-
-  // 删除功能
-  const deleteAuthor = (id: string) => {
-    setAuthors(authors.filter((author) => author.id !== id))
-    // 同时从所有进展中移除该作者
-    setProgressList(
-      progressList
-        .map((progress) => ({
-          ...progress,
-          authors: progress.authors.filter((authorId) => authorId !== id),
-        }))
-        .filter((progress) => progress.authors.length > 0),
-    )
-    // 同时从所有论文中移除该作者
-    setLiteratures(
-      literatures
-        .map((literature) => ({
-          ...literature,
-          authors: literature.authors.filter((authorId) => authorId !== id),
-        }))
-        .filter((literature) => literature.authors.length > 0),
-    )
-  }
-
-  // 取消添加文献
-  const cancelAddLiterature = () => {
-    setIsAddLiteratureModalOpen(false)
-    setNewLiterature({
-      title: "",
-      selectedAuthors: [],
-      year: "",
-      type: "paper",
-      journal: "",
-      publisher: "",
-      isbn: "",
-      pages: "",
-      doi: "",
-    })
-    setPaperAuthorSearch("")
-    setPaperJournalSearch("")
-  }
-
-  const deleteJournal = (id: string) => {
-    setJournals(journals.filter((journal) => journal.id !== id))
-  }
-
-  const deleteLiterature = (id: string) => {
-    setLiteratures(literatures.filter((literature) => literature.id !== id))
-  }
-
-  const deleteProgress = (progressId: string) => {
-    setProgressList(progressList.filter((progress) => progress.id !== progressId))
-  }
-
-  const deleteNote = (id: string) => {
-    setReadingNotes(readingNotes.filter((note) => note.id !== id))
-  }
-
-  // 获取某个作者的相关进展
-  const getAuthorProgress = (authorId: string) => {
-    return progressList.filter((progress) => progress.authors.includes(authorId))
-  }
-
-  // 筛选研究进展
-  const filteredProgress = progressList.filter((progress) => {
-    const matchesSearch =
-      progress.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      progress.authors.some((authorId) => getAuthorName(authorId).toLowerCase().includes(searchTerm.toLowerCase()))
-    const matchesYear = !yearFilter || progress.year.toString() === yearFilter
-    const matchesAuthor =
-      authorFilters.length === 0 || progress.authors.some((authorId) => authorFilters.includes(authorId))
-    return matchesSearch && matchesYear && matchesAuthor
-  })
-
-  // 获取某个作者的相关文献
-  const getAuthorLiteratures = (authorId: string) => {
-    return literatures.filter((literature) => literature.authors.includes(authorId))
-  }
-
-  // 筛选文献
-  const filteredLiteratures = literatures.filter((literature) => {
-    const matchesSearch = literature.title.toLowerCase().includes(literatureSearch.toLowerCase())
-    const matchesType = typeFilter === "all" || literature.type === typeFilter
-    return matchesSearch && matchesType
-  })
-
-  // 取消添加期刊
-  const cancelAddJournal = () => {
-    setIsAddJournalModalOpen(false)
-    setNewJournal({ name: "", type: "journal", issn: "" })
-  }
-
-  // 添加取消添加进展函数
+  // 取消添加研究进展
   const cancelAddProgress = () => {
     setIsAddProgressModalOpen(false)
     setNewProgress({
@@ -883,1359 +962,3276 @@ export default function LiteratureManagement() {
       selectedAuthors: [],
       type: "individual",
     })
-    setProgressAuthorSearchTerm("")
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Enhanced Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
-            文献管理与阅读系统
-          </h1>
-          <p className="text-gray-600 text-lg">专业的学术文献管理平台</p>
-        </div>
+  // 取消添加引用内容
+  const cancelAddCitation = () => {
+    setIsAddCitationModalOpen(false)
+    setNewCitation({ content: "", page: "", note: "" })
+  }
 
-        {/* Enhanced Main Tabs */}
-        <div className="mb-8">
-          <div className="flex justify-center">
-            <div className="bg-white rounded-2xl p-2 shadow-lg border border-gray-100">
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setActiveMainTab("management")}
-                  className={`flex items-center gap-3 px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
-                    activeMainTab === "management"
-                      ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md transform scale-105"
-                      : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
-                  }`}
-                >
-                  <BookOpen className="w-5 h-5" />
-                  <span>文献管理</span>
-                </button>
-                <button
-                  onClick={() => setActiveMainTab("reading")}
-                  className={`flex items-center gap-3 px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
-                    activeMainTab === "reading"
-                      ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md transform scale-105"
-                      : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
-                  }`}
-                >
-                  <Calendar className="w-5 h-5" />
-                  <span>文献阅读</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+  // 取消添加参考文献
+  const cancelAddReference = () => {
+    setIsAddReferenceModalOpen(false)
+    setNewReference({ literatureId: "", citationKey: "", citations: [] })
+  }
 
-        {/* Enhanced Sub Tabs for Management */}
-        {activeMainTab === "management" && (
-          <div className="mb-6">
-            <div className="flex justify-center">
-              <div className="bg-white rounded-xl p-1.5 shadow-md border border-gray-100">
-                <div className="flex space-x-1">
-                  <button
-                    onClick={() => setActiveSubTab("literature")}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 ${
-                      activeSubTab === "literature"
-                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm"
-                        : "text-gray-600 hover:text-emerald-600 hover:bg-emerald-50"
-                    }`}
-                  >
-                    <BookOpen className="w-4 h-4" />
-                    <span>文献库</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveSubTab("authors")}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 ${
-                      activeSubTab === "authors"
-                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm"
-                        : "text-gray-600 hover:text-emerald-600 hover:bg-emerald-50"
-                    }`}
-                  >
-                    <User className="w-4 h-4" />
-                    <span>作者</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveSubTab("journals")}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 ${
-                      activeSubTab === "journals"
-                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm"
-                        : "text-gray-600 hover:text-emerald-600 hover:bg-emerald-50"
-                    }`}
-                  >
-                    <BookOpen className="w-4 h-4" />
-                    <span>期刊出版社</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveSubTab("keywords")}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 ${
-                      activeSubTab === "keywords"
-                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm"
-                        : "text-gray-600 hover:text-emerald-600 hover:bg-emerald-50"
-                    }`}
-                  >
-                    <Search className="w-4 h-4" />
-                    <span>关键词</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+  // 取消添加阅读笔记
+  const cancelAddNote = () => {
+    setNewNote({ paperId: "", paperTitle: "", content: "", page: "", tags: "" })
+  }
 
-        {/* 文献管理面板 */}
-        {activeMainTab === "management" && (
-          <div className="space-y-6">
-            {/* 论文管理 */}
-            {activeSubTab === "literature" && (
-              <div className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <BookOpen className="w-5 h-5" />
-                        文献库
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button onClick={() => setIsAddLiteratureModalOpen(true)} className="flex items-center gap-2">
-                          <Plus className="w-4 h-4" />
-                          添加文献
-                        </Button>
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                          <Input
-                            placeholder="搜索文献..."
-                            value={literatureSearch}
-                            onChange={(e) => setLiteratureSearch(e.target.value)}
-                            className="pl-10 w-48"
-                          />
-                        </div>
-                        <select
-                          value={typeFilter}
-                          onChange={(e) => setTypeFilter(e.target.value as "all" | "paper" | "book")}
-                          className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-                        >
-                          <option value="all">所有类型</option>
-                          <option value="paper">论文</option>
-                          <option value="book">书籍</option>
-                        </select>
-                      </div>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {filteredLiteratures.map((literature) => (
-                        <div key={literature.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex-1">
-                            <h3 className="font-semibold">{literature.title}</h3>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-sm text-gray-600">{getPaperAuthorsString(literature.authors)}</span>
-                              {literature.authors.length > 1 && (
-                                <Badge variant="secondary" className="text-xs">
-                                  {literature.authors.length} 位作者
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="text-sm text-gray-600 mt-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span>{literature.year}</span>
-                                {literature.type === "paper" && literature.journal && (
-                                  <>
-                                    <span>•</span>
-                                    <span>{literature.journal}</span>
-                                    {literature.volume && <span>Vol. {literature.volume}</span>}
-                                    {literature.issue && <span>({literature.issue})</span>}
-                                  </>
-                                )}
-                                {literature.type === "book" && literature.publisher && (
-                                  <>
-                                    <span>•</span>
-                                    <span>{literature.publisher}</span>
-                                  </>
-                                )}
-                                {literature.type === "conference" && literature.conference && (
-                                  <>
-                                    <span>•</span>
-                                    <span>{literature.conference}</span>
-                                  </>
-                                )}
-                                {literature.pages && (
-                                  <>
-                                    <span>•</span>
-                                    <span>pp. {literature.pages}</span>
-                                  </>
-                                )}
-                              </div>
-                              {literature.doi && (
-                                <div className="text-xs text-blue-600 mt-1">DOI: {literature.doi}</div>
-                              )}
-                              {literature.citationCount && (
-                                <div className="text-xs text-green-600 mt-1">被引用: {literature.citationCount} 次</div>
-                              )}
-                              {literature.keywords && literature.keywords.length > 0 && (
-                                <div className="flex gap-1 mt-2">
-                                  {literature.keywords.slice(0, 3).map((keyword, index) => (
-                                    <Badge key={index} variant="outline" className="text-xs">
-                                      {keyword}
-                                    </Badge>
-                                  ))}
-                                  {literature.keywords.length > 3 && (
-                                    <Badge variant="outline" className="text-xs">
-                                      +{literature.keywords.length - 3}
-                                    </Badge>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={() => startEditLiterature(literature)}>
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => deleteLiterature(literature.id)}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+  // 添加阅读笔记
+  const addNote = () => {
+    if (newNote.content && newNote.paperId) {
+      setReadingNotes([
+        ...readingNotes,
+        {
+          id: Date.now().toString(),
+          paperId: newNote.paperId,
+          paperTitle: newNote.paperTitle,
+          content: newNote.content,
+          page: newNote.page ? Number.parseInt(newNote.page) : undefined,
+          timestamp: new Date().toISOString(),
+          tags: newNote.tags.split(", ").filter(tag => tag.trim() !== ""),
+        },
+      ])
+      cancelAddNote()
+    }
+  }
 
-                {/* 添加论文表单 - 支持多作者 */}
+  // 删除阅读笔记
+  const deleteNote = (noteId: string) => {
+    setReadingNotes(readingNotes.filter((note) => note.id !== noteId))
+  }
 
-                {/* 编辑文献模态框 */}
-                {isEditModalOpen && (
-                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold">编辑文献</h3>
-                        <Button variant="ghost" size="sm" onClick={cancelEdit}>
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
+  // 选择阅读笔记
+  const selectNote = (note: ReadingNote) => {
+    setNewNote({ ...note, tags: note.tags.join(", ") })
+    setIsAddNoteModalOpen(true)
+  }
 
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">文献标题 *</label>
-                          <Input
-                            placeholder="请输入文献标题"
-                            value={newLiterature.title}
-                            onChange={(e) => setNewLiterature({ ...newLiterature, title: e.target.value })}
-                          />
-                        </div>
+  // 添加作者筛选
+  const addAuthorFilter = (authorId: string) => {
+    if (!authorFilters.includes(authorId)) {
+      setAuthorFilters([...authorFilters, authorId])
+    }
+    setProgressAuthorFilterSearchTerm("")
+    setShowAuthorFilterDropdown(false)
+    // 重新聚焦到输入框
+    setTimeout(() => {
+      authorFilterInputRef.current?.focus()
+    }, 100)
+  }
 
-                        {/* 多作者选择 */}
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">作者 *</label>
-                          {/* 已选择的作者 */}
-                          {newLiterature.selectedAuthors.length > 0 && (
-                            <div className="mb-3 flex flex-wrap gap-2">
-                              {newLiterature.selectedAuthors.map((authorId, index) => (
-                                <Badge key={authorId} variant="secondary" className="flex items-center gap-1">
-                                  {index === 0 && <span className="text-xs">第一作者:</span>}
-                                  {getAuthorName(authorId)}
-                                  <X
-                                    className="w-3 h-3 cursor-pointer hover:text-red-500"
-                                    onClick={() => removeAuthorFromLiterature(authorId)}
-                                  />
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
+  // 移除作者筛选
+  const removeAuthorFilter = (authorId: string) => {
+    setAuthorFilters(authorFilters.filter((id) => id !== authorId))
+  }
 
-                          {/* 作者搜索输入框 */}
-                          <div className="relative">
-                            <div className="flex gap-2">
-                              <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                                <Input
-                                  ref={paperAuthorInputRef}
-                                  placeholder="搜索并添加作者..."
-                                  value={paperAuthorSearch}
-                                  onChange={(e) => setPaperAuthorSearch(e.target.value)}
-                                  onFocus={() => {
-                                    if (filteredPaperAuthors.length > 0) {
-                                      setShowPaperAuthorDropdown(true)
-                                    }
-                                  }}
-                                  className="pl-10"
-                                />
-                              </div>
-                            </div>
+  // 取消添加作者筛选
+  const cancelAddAuthorFilter = () => {
+    setIsAddAuthorFilterModalOpen(false)
+    setAuthorFilters([])
+  }
 
-                            {/* 作者下拉列表 */}
-                            {showPaperAuthorDropdown && (
-                              <div
-                                ref={paperAuthorDropdownRef}
-                                className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto"
-                              >
-                                {filteredPaperAuthors.length > 0 ? (
-                                  filteredPaperAuthors.map((author) => (
-                                    <div
-                                      key={author.id}
-                                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                      onClick={() => addAuthorToLiterature(author.id)}
-                                    >
-                                      <div className="font-medium">{author.name}</div>
-                                      <div className="text-sm text-gray-600">{author.field}</div>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="px-4 py-2 text-gray-500 text-sm">
-                                    {paperAuthorSearch ? "未找到匹配的作者" : "开始输入以搜索作者"}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            <p className="text-xs text-gray-500 mt-1">
-                              从 {authors.length} 位作者中搜索。第一个添加的作者将作为第一作者。
-                            </p>
-                          </div>
-                        </div>
+  // 添加作者筛选模态框状态
+  const [isAddNoteModalOpen, setIsAddNoteModalOpen] = useState(false)
+  const [isAddAuthorFilterModalOpen, setIsAddAuthorFilterModalOpen] = useState(false)
 
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-sm font-medium mb-2 block">发表年份 *</label>
-                            <Input
-                              placeholder="如：2024"
-                              type="number"
-                              value={newLiterature.year}
-                              onChange={(e) => setNewLiterature({ ...newLiterature, year: e.target.value })}
-                            />
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium mb-2 block">文献类型 *</label>
-                            <select
-                              value={newLiterature.type}
-                              onChange={(e) =>
-                                setNewLiterature({
-                                  ...newLiterature,
-                                  type: e.target.value as
-                                    | "paper"
-                                    | "book"
-                                    | "conference"
-                                    | "thesis"
-                                    | "report"
-                                    | "misc",
-                                })
-                              }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                            >
-                              <option value="paper">学术论文</option>
-                              <option value="book">图书</option>
-                              <option value="conference">会议论文</option>
-                              <option value="thesis">学位论文</option>
-                              <option value="report">技术报告</option>
-                              <option value="misc">其他</option>
-                            </select>
-                          </div>
-                        </div>
+  // 添加作者筛选模态框
+  const handleAddAuthorFilter = () => {
+    setIsAddAuthorFilterModalOpen(true)
+  }
 
-                        {/* 根据文献类型显示不同字段 */}
-                        {newLiterature.type === "paper" && (
-                          <div>
-                            <label className="text-sm font-medium mb-2 block">发表期刊</label>
-                            <div className="relative">
-                              <div className="flex gap-2">
-                                <div className="relative flex-1">
-                                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                                  <Input
-                                    ref={paperJournalInputRef}
-                                    placeholder="搜索期刊..."
-                                    value={newLiterature.journal}
-                                    onChange={(e) => {
-                                      setPaperJournalSearch(e.target.value)
-                                      setNewLiterature({ ...newLiterature, journal: e.target.value })
-                                    }}
-                                    onFocus={() => {
-                                      if (filteredPaperJournals.length > 0) {
-                                        setShowPaperJournalDropdown(true)
-                                      }
-                                    }}
-                                    className="pl-10"
-                                  />
-                                </div>
-                              </div>
+  // 取消添加作者筛选模态框
+  const handleCancelAddAuthorFilter = () => {
+    cancelAddAuthorFilter()
+  }
 
-                              {/* 期刊下拉列表 */}
-                              {showPaperJournalDropdown && (
-                                <div
-                                  ref={paperJournalDropdownRef}
-                                  className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto"
-                                >
-                                  {filteredPaperJournals.length > 0 ? (
-                                    filteredPaperJournals.map((journal) => (
-                                      <div
-                                        key={journal.id}
-                                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                        onClick={() => selectPaperJournal(journal.name)}
-                                      >
-                                        <div className="flex items-center justify-between">
-                                          <div className="font-medium">{journal.name}</div>
-                                          <Badge variant="outline" className="text-xs">
-                                            {getJournalTypeLabel(journal.type)}
-                                          </Badge>
-                                        </div>
-                                        {journal.issn && (
-                                          <div className="text-sm text-gray-600">ISSN: {journal.issn}</div>
-                                        )}
-                                      </div>
-                                    ))
-                                  ) : (
-                                    <div className="px-4 py-2 text-gray-500 text-sm">
-                                      {paperJournalSearch ? "未找到匹配的期刊" : "开始输入以搜索"}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
+  // 添加作者筛选模态框提交
+  const handleAddAuthorFilterSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorFilter()
+  }
 
-                        {newLiterature.type === "book" && (
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="text-sm font-medium mb-2 block">出版社</label>
-                              <Input
-                                placeholder="如：清华大学出版社"
-                                value={newLiterature.publisher}
-                                onChange={(e) => setNewLiterature({ ...newLiterature, publisher: e.target.value })}
-                              />
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium mb-2 block">ISBN</label>
-                              <Input
-                                placeholder="如：978-7-302-12345-6"
-                                value={newLiterature.isbn}
-                                onChange={(e) => setNewLiterature({ ...newLiterature, isbn: e.target.value })}
-                              />
-                            </div>
-                          </div>
-                        )}
+  // 添加阅读笔记模态框状态
+  const handleAddNote = () => {
+    setIsAddNoteModalOpen(true)
+  }
 
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-sm font-medium mb-2 block">页码/页数</label>
-                            <Input
-                              placeholder={newLiterature.type === "paper" ? "如：123-145" : "如：264"}
-                              value={newLiterature.pages}
-                              onChange={(e) => setNewLiterature({ ...newLiterature, pages: e.target.value })}
-                            />
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium mb-2 block">DOI</label>
-                            <Input
-                              placeholder="如：10.1038/171737a0"
-                              value={newLiterature.doi}
-                              onChange={(e) => setNewLiterature({ ...newLiterature, doi: e.target.value })}
-                            />
-                          </div>
-                        </div>
+  // 取消添加阅读笔记模态框
+  const handleCancelAddNote = () => {
+    cancelAddNote()
+  }
 
-                        <div className="flex gap-2 pt-4">
-                          <Button
-                            onClick={saveEditedLiterature}
-                            className="flex-1"
-                            disabled={
-                              newLiterature.selectedAuthors.length === 0 || !newLiterature.title || !newLiterature.year
-                            }
-                          >
-                            保存修改
-                          </Button>
-                          <Button variant="outline" onClick={cancelEdit} className="flex-1 bg-transparent">
-                            取消
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+  // 添加阅读笔记模态框提交
+  const handleAddNoteSubmit = () => {
+    addNote()
+  }
 
-                {/* 添加文献模态框 */}
-                {isAddLiteratureModalOpen && (
-                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold">添加新文献</h3>
-                        <Button variant="ghost" size="sm" onClick={cancelAddLiterature}>
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
+  // 添加研究进展模态框状态
+  const handleAddProgress = () => {
+    setIsAddProgressModalOpen(true)
+  }
 
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">文献标题 *</label>
-                          <Input
-                            placeholder="请输入文献标题"
-                            value={newLiterature.title}
-                            onChange={(e) => setNewLiterature({ ...newLiterature, title: e.target.value })}
-                          />
-                        </div>
+  // 取消添加研究进展模态框
+  const handleCancelAddProgress = () => {
+    cancelAddProgress()
+  }
 
-                        {/* 多作者选择 */}
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">作者 *</label>
-                          {/* 已选择的作者 */}
-                          {newLiterature.selectedAuthors.length > 0 && (
-                            <div className="mb-3 flex flex-wrap gap-2">
-                              {newLiterature.selectedAuthors.map((authorId, index) => (
-                                <Badge key={authorId} variant="secondary" className="flex items-center gap-1">
-                                  {index === 0 && <span className="text-xs">第一作者:</span>}
-                                  {getAuthorName(authorId)}
-                                  <X
-                                    className="w-3 h-3 cursor-pointer hover:text-red-500"
-                                    onClick={() => removeAuthorFromLiterature(authorId)}
-                                  />
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
+  // 添加研究进展模态框提交
+  const handleAddProgressSubmit = () => {
+    addProgress()
+  }
 
-                          {/* 作者搜索输入框 */}
-                          <div className="relative">
-                            <div className="flex gap-2">
-                              <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                                <Input
-                                  ref={paperAuthorInputRef}
-                                  placeholder="搜索并添加作者..."
-                                  value={paperAuthorSearch}
-                                  onChange={(e) => setPaperAuthorSearch(e.target.value)}
-                                  onFocus={() => {
-                                    if (filteredPaperAuthors.length > 0) {
-                                      setShowPaperAuthorDropdown(true)
-                                    }
-                                  }}
-                                  className="pl-10"
-                                />
-                              </div>
-                            </div>
+  // 添加参考文献模态框状态
+  const handleAddReference = () => {
+    setIsAddReferenceModalOpen(true)
+  }
 
-                            {/* 作者下拉列表 */}
-                            {showPaperAuthorDropdown && (
-                              <div
-                                ref={paperAuthorDropdownRef}
-                                className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto"
-                              >
-                                {filteredPaperAuthors.length > 0 ? (
-                                  filteredPaperAuthors.map((author) => (
-                                    <div
-                                      key={author.id}
-                                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                      onClick={() => addAuthorToLiterature(author.id)}
-                                    >
-                                      <div className="font-medium">{author.name}</div>
-                                      <div className="text-sm text-gray-600">{author.field}</div>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="px-4 py-2 text-gray-500 text-sm">
-                                    {paperAuthorSearch ? "未找到匹配的作者" : "开始输入以搜索作者"}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            <p className="text-xs text-gray-500 mt-1">
-                              从 {authors.length} 位作者中搜索。第一个添加的作者将作为第一作者。
-                            </p>
-                          </div>
-                        </div>
+  // 取消添加参考文献模态框
+  const handleCancelAddReference = () => {
+    cancelAddReference()
+  }
 
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-sm font-medium mb-2 block">发表年份 *</label>
-                            <Input
-                              placeholder="如：2024"
-                              type="number"
-                              value={newLiterature.year}
-                              onChange={(e) => setNewLiterature({ ...newLiterature, year: e.target.value })}
-                            />
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium mb-2 block">文献类型 *</label>
-                            <select
-                              value={newLiterature.type}
-                              onChange={(e) =>
-                                setNewLiterature({
-                                  ...newLiterature,
-                                  type: e.target.value as
-                                    | "paper"
-                                    | "book"
-                                    | "conference"
-                                    | "thesis"
-                                    | "report"
-                                    | "misc",
-                                })
-                              }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                            >
-                              <option value="paper">学术论文</option>
-                              <option value="book">图书</option>
-                              <option value="conference">会议论文</option>
-                              <option value="thesis">学位论文</option>
-                              <option value="report">技术报告</option>
-                              <option value="misc">其他</option>
-                            </select>
-                          </div>
-                        </div>
+  // 添加参考文献模态框提交
+  const handleAddReferenceSubmit = () => {
+    addReference()
+  }
 
-                        {/* 根据文献类型显示不同字段 */}
-                        {newLiterature.type === "paper" && (
-                          <div>
-                            <label className="text-sm font-medium mb-2 block">发表期刊</label>
-                            <div className="relative">
-                              <div className="flex gap-2">
-                                <div className="relative flex-1">
-                                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                                  <Input
-                                    ref={paperJournalInputRef}
-                                    placeholder="搜索期刊..."
-                                    value={newLiterature.journal}
-                                    onChange={(e) => {
-                                      setPaperJournalSearch(e.target.value)
-                                      setNewLiterature({ ...newLiterature, journal: e.target.value })
-                                    }}
-                                    onFocus={() => {
-                                      if (filteredPaperJournals.length > 0) {
-                                        setShowPaperJournalDropdown(true)
-                                      }
-                                    }}
-                                    className="pl-10"
-                                  />
-                                </div>
-                              </div>
+  // 添加引用内容模态框状态
+  const handleAddCitation = () => {
+    setIsAddCitationModalOpen(true)
+  }
 
-                              {/* 期刊下拉列表 */}
-                              {showPaperJournalDropdown && (
-                                <div
-                                  ref={paperJournalDropdownRef}
-                                  className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto"
-                                >
-                                  {filteredPaperJournals.length > 0 ? (
-                                    filteredPaperJournals.map((journal) => (
-                                      <div
-                                        key={journal.id}
-                                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                        onClick={() => selectPaperJournal(journal.name)}
-                                      >
-                                        <div className="flex items-center justify-between">
-                                          <div className="font-medium">{journal.name}</div>
-                                          <Badge variant="outline" className="text-xs">
-                                            {getJournalTypeLabel(journal.type)}
-                                          </Badge>
-                                        </div>
-                                        {journal.issn && (
-                                          <div className="text-sm text-gray-600">ISSN: {journal.issn}</div>
-                                        )}
-                                      </div>
-                                    ))
-                                  ) : (
-                                    <div className="px-4 py-2 text-gray-500 text-sm">
-                                      {paperJournalSearch ? "未找到匹配的期刊" : "开始输入以搜索"}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
+  // 取消添加引用内容模态框
+  const handleCancelAddCitation = () => {
+    cancelAddCitation()
+  }
 
-                        {newLiterature.type === "book" && (
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="text-sm font-medium mb-2 block">出版社</label>
-                              <Input
-                                placeholder="如：清华大学出版社"
-                                value={newLiterature.publisher}
-                                onChange={(e) => setNewLiterature({ ...newLiterature, publisher: e.target.value })}
-                              />
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium mb-2 block">ISBN</label>
-                              <Input
-                                placeholder="如：978-7-302-12345-6"
-                                value={newLiterature.isbn}
-                                onChange={(e) => setNewLiterature({ ...newLiterature, isbn: e.target.value })}
-                              />
-                            </div>
-                          </div>
-                        )}
+  // 添加引用内容模态框提交
+  const handleAddCitationSubmit = () => {
+    addCitation()
+  }
 
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-sm font-medium mb-2 block">页码/页数</label>
-                            <Input
-                              placeholder={newLiterature.type === "paper" ? "如：123-145" : "如：264"}
-                              value={newLiterature.pages}
-                              onChange={(e) => setNewLiterature({ ...newLiterature, pages: e.target.value })}
-                            />
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium mb-2 block">DOI</label>
-                            <Input
-                              placeholder="如：10.1038/171737a0"
-                              value={newLiterature.doi}
-                              onChange={(e) => setNewLiterature({ ...newLiterature, doi: e.target.value })}
-                            />
-                          </div>
-                        </div>
+  // 编辑文献模态框状态
+  const handleEditLiterature = (literature: Literature) => {
+    startEditLiterature(literature)
+  }
 
-                        <div className="flex gap-2 pt-4">
-                          <Button
-                            onClick={addLiterature}
-                            className="flex-1"
-                            disabled={newLiterature.selectedAuthors.length === 0}
-                          >
-                            添加文献
-                          </Button>
-                          <Button variant="outline" onClick={cancelAddLiterature} className="flex-1 bg-transparent">
-                            取消
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+  // 取消编辑文献模态框
+  const handleCancelEditLiterature = () => {
+    cancelEdit()
+  }
 
-            {/* 作者库 */}
-            {activeSubTab === "authors" && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* 作者列表 */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <User className="w-5 h-5" />
-                        作者库 ({authors.length} 位作者)
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button onClick={() => setIsAddAuthorModalOpen(true)} className="flex items-center gap-2">
-                          <Plus className="w-4 h-4" />
-                          添加作者
-                        </Button>
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                          <Input
-                            placeholder="搜索作者..."
-                            value={authorLibrarySearchTerm}
-                            onChange={(e) => setAuthorLibrarySearchTerm(e.target.value)}
-                            className="pl-10 w-48"
-                          />
-                        </div>
-                      </div>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4 max-h-96 overflow-y-auto">
-                      {authors
-                        .filter((author) => {
-                          const matchesSearch =
-                            author.name.toLowerCase().includes(authorLibrarySearchTerm.toLowerCase()) ||
-                            author.field.toLowerCase().includes(authorLibrarySearchTerm.toLowerCase())
-                          return matchesSearch
-                        })
-                        .map((author) => {
-                          const authorProgress = getAuthorProgress(author.id)
-                          const authorLiteratures = getAuthorLiteratures(author.id)
-                          return (
-                            <div key={author.id} className="border rounded-lg p-4">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex-1">
-                                  <h3 className="font-semibold">{author.name}</h3>
-                                  <p className="text-sm text-gray-600">{author.field}</p>
-                                  <div className="flex gap-4 text-xs text-blue-600 mt-1">
-                                    <span>{authorProgress.length} 个研究进展</span>
-                                    <span>{authorLiteratures.length} 篇文献</span>
-                                  </div>
-                                </div>
-                                <div className="flex gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setSelectedAuthor(selectedAuthor === author.id ? null : author.id)}
-                                  >
-                                    {selectedAuthor === author.id ? "收起" : "展开"}
-                                  </Button>
-                                  <Button variant="outline" size="sm" onClick={() => deleteAuthor(author.id)}>
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </div>
+  // 编辑文献模态框提交
+  const handleEditLiteratureSubmit = () => {
+    saveEditedLiterature()
+  }
 
-                              {/* 作者的相关信息 */}
-                              {selectedAuthor === author.id && (
-                                <div className="mt-4 space-y-4 border-t pt-4">
-                                  {/* 相关论文 */}
-                                  {authorLiteratures.length > 0 && (
-                                    <div>
-                                      <h4 className="font-medium text-sm flex items-center gap-2 mb-2">
-                                        <BookOpen className="w-4 h-4" />
-                                        相关文献
-                                      </h4>
-                                      {authorLiteratures.map((literature) => (
-                                        <div key={literature.id} className="bg-blue-50 p-3 rounded text-sm mb-2">
-                                          <div className="font-medium">{literature.title}</div>
-                                          <div className="text-xs text-gray-600 mt-1">
-                                            {getPaperAuthorsString(literature.authors)} • {literature.year}
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
+  // 添加作者模态框状态
+  const handleAddAuthor = () => {
+    setIsAddAuthorModalOpen(true)
+  }
 
-                                  {/* 研究进展 */}
-                                  <div>
-                                    <h4 className="font-medium text-sm flex items-center gap-2 mb-2">
-                                      <Calendar className="w-4 h-4" />
-                                      研究进展
-                                    </h4>
-                                    {authorProgress.map((progress) => (
-                                      <div key={progress.id} className="bg-gray-50 p-3 rounded text-sm mb-2">
-                                        <div className="flex items-center justify-between mb-1">
-                                          <Badge variant="outline">{progress.year}</Badge>
-                                          {progress.type === "collaborative" && (
-                                            <Badge variant="secondary" className="flex items-center gap-1">
-                                              <Users className="w-3 h-3" />
-                                              合作研究
-                                            </Badge>
-                                          )}
-                                        </div>
-                                        <p className="text-gray-700 mb-2">{progress.description}</p>
-                                        <div className="flex items-center gap-2 text-xs">
-                                          <span className="text-gray-500">参与者:</span>
-                                          {progress.authors.map((authorId) => (
-                                            <Badge key={authorId} variant="outline" className="text-xs">
-                                              {getAuthorName(authorId)}
-                                            </Badge>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
-                    </div>
-                  </CardContent>
-                </Card>
+  // 取消添加作者模态框
+  const handleCancelAddAuthor = () => {
+    cancelAddAuthor()
+  }
 
-                {/* 研究进展记录 */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-5 h-5" />
-                        研究进展记录
-                      </div>
-                      <Button onClick={() => setIsAddProgressModalOpen(true)} className="flex items-center gap-2">
-                        <Plus className="w-4 h-4" />
-                        记录进展
-                      </Button>
-                    </CardTitle>
+  // 添加作者模态框提交
+  const handleAddAuthorSubmit = () => {
+    addAuthor()
+  }
 
-                    {/* 重新设计的筛选区域 */}
-                    <div className="space-y-3">
-                      {/* 第一行：搜索和年份筛选 */}
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                          <Input
-                            placeholder="搜索进展..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10"
-                          />
-                        </div>
-                        <Input
-                          placeholder="年份"
-                          type="number"
-                          value={yearFilter}
-                          onChange={(e) => setYearFilter(e.target.value)}
-                          className="w-24"
-                        />
-                      </div>
+  // 添加期刊/出版社模态框状态
+  const handleAddJournal = () => {
+    setIsAddJournalModalOpen(true)
+  }
 
-                      {/* 第二行：作者筛选 */}
-                      <div className="space-y-2">
-                        <div className="flex gap-2">
-                          <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                            <Input
-                              ref={authorFilterInputRef}
-                              placeholder="添加作者筛选..."
-                              value={progressAuthorFilterSearchTerm}
-                              onChange={(e) => setProgressAuthorFilterSearchTerm(e.target.value)}
-                              onFocus={() => {
-                                if (filteredAuthorFilters.length > 0) {
-                                  setShowAuthorFilterDropdown(true)
-                                }
-                              }}
-                              className="pl-10"
-                            />
-                          </div>
-                          {authorFilters.length > 0 && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setAuthorFilters([])
-                                setProgressAuthorFilterSearchTerm("")
-                              }}
-                              className="px-3"
-                            >
-                              清空筛选
-                            </Button>
-                          )}
-                        </div>
+  // 取消添加期刊/出版社模态框
+  const handleCancelAddJournal = () => {
+    setIsAddJournalModalOpen(false)
+    setNewJournal({ name: "", type: "journal", issn: "" })
+  }
 
-                        {/* 已选择的作者筛选标签 */}
-                        {authorFilters.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {authorFilters.map((authorId) => (
-                              <Badge key={authorId} variant="secondary" className="flex items-center gap-1 text-xs">
-                                {getAuthorName(authorId)}
-                                <X
-                                  className="w-3 h-3 cursor-pointer hover:text-red-500"
-                                  onClick={() => setAuthorFilters(authorFilters.filter((id) => id !== authorId))}
-                                />
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
+  // 添加期刊/出版社模态框提交
+  const handleAddJournalSubmit = () => {
+    addJournal()
+  }
 
-                        {/* 作者筛选下拉列表 */}
-                        {showAuthorFilterDropdown && (
-                          <div ref={authorFilterDropdownRef} className="relative z-20">
-                            <div className="absolute top-0 left-0 right-0 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                              {filteredAuthorFilters.length > 0 ? (
-                                filteredAuthorFilters.map((author) => (
-                                  <div
-                                    key={author.id}
-                                    className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                    onClick={() => {
-                                      setAuthorFilters([...authorFilters, author.id])
-                                      setProgressAuthorFilterSearchTerm("")
-                                      setShowAuthorFilterDropdown(false)
-                                    }}
-                                  >
-                                    <div className="font-medium">{author.name}</div>
-                                    <div className="text-sm text-gray-600">{author.field}</div>
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="px-4 py-2 text-gray-500 text-sm">
-                                  {progressAuthorFilterSearchTerm ? "未找到匹配的作者" : "开始输入以搜索作者"}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3 max-h-96 overflow-y-auto">
-                      {filteredProgress.map((progress) => (
-                        <div key={progress.id} className="p-4 border rounded-lg bg-gray-50">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">{progress.year}</Badge>
-                              {progress.type === "collaborative" && (
-                                <Badge variant="secondary" className="flex items-center gap-1">
-                                  <Users className="w-3 h-3" />
-                                  合作研究
-                                </Badge>
-                              )}
-                            </div>
-                            <Button variant="ghost" size="sm" onClick={() => deleteProgress(progress.id)}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                          <p className="text-sm text-gray-700 mb-2">{progress.description}</p>
-                          <div className="flex items-center gap-2 text-xs">
-                            <span className="text-gray-500">参与者:</span>
-                            {progress.authors.map((authorId) => (
-                              <Badge key={authorId} variant="outline" className="text-xs">
-                                {getAuthorName(authorId)}
-                              </Badge>
-                            ))}
-                          </div>
-                          {progress.relatedPaper && (
-                            <p className="text-xs text-blue-600 mt-2">关联文献: {progress.relatedPaper}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
+  // 添加作者到进展模态框状态
+  const handleAddAuthorToProgress = () => {
+    setIsAddAuthorModalOpen(true)
+  }
 
-            {/* 添加研究进展模态框 */}
-            {isAddProgressModalOpen && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold">记录研究进展</h3>
-                    <Button variant="ghost" size="sm" onClick={cancelAddProgress}>
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <Input
-                        placeholder="年份"
-                        type="number"
-                        value={newProgress.year}
-                        onChange={(e) => setNewProgress({ ...newProgress, year: e.target.value })}
-                      />
-                      <Input
-                        placeholder="关联文献 (可选)"
-                        value={newProgress.relatedPaper}
-                        onChange={(e) => setNewProgress({ ...newProgress, relatedPaper: e.target.value })}
-                      />
-                    </div>
+  // 取消添加作者到进展模态框
+  const handleCancelAddAuthorToProgress = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewProgress({ year: "", description: "", relatedPaper: "", selectedAuthors: [], type: "individual" })
+  }
 
-                    {/* 改进的作者选择 */}
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">参与作者</label>
+  // 添加作者到进展模态框提交
+  const handleAddAuthorToProgressSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToProgress()
+  }
 
-                      {/* 已选择的作者 */}
-                      {newProgress.selectedAuthors.length > 0 && (
-                        <div className="mb-3 flex flex-wrap gap-2">
-                          {newProgress.selectedAuthors.map((authorId) => (
-                            <Badge key={authorId} variant="secondary" className="flex items-center gap-1">
-                              {getAuthorName(authorId)}
-                              <X
-                                className="w-3 h-3 cursor-pointer hover:text-red-500"
-                                onClick={() => removeAuthorFromProgress(authorId)}
-                              />
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
+  // 添加作者到论文模态框状态
+  const handleAddAuthorToLiterature = () => {
+    setIsAddAuthorModalOpen(true)
+  }
 
-                      {/* 作者搜索输入框 */}
-                      <div className="relative">
-                        <div className="flex gap-2">
-                          <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                            <Input
-                              ref={authorInputRef}
-                              placeholder="搜索并添加作者..."
-                              value={progressAuthorSearchTerm}
-                              onChange={(e) => setProgressAuthorSearchTerm(e.target.value)}
-                              onFocus={() => {
-                                if (filteredAuthors.length > 0) {
-                                  setShowAuthorDropdown(true)
-                                }
-                              }}
-                              className="pl-10"
-                            />
-                          </div>
-                        </div>
+  // 取消添加作者到论文模态框
+  const handleCancelAddAuthorToLiterature = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
 
-                        {/* 作者下拉列表 */}
-                        {showAuthorDropdown && (
-                          <div
-                            ref={dropdownRef}
-                            className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto"
-                          >
-                            {filteredAuthors.length > 0 ? (
-                              filteredAuthors.map((author) => (
-                                <div
-                                  key={author.id}
-                                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                  onClick={() => addAuthorToProgress(author.id)}
-                                >
-                                  <div className="font-medium">{author.name}</div>
-                                  <div className="text-sm text-gray-600">{author.field}</div>
-                                </div>
-                              ))
-                            ) : (
-                              <div className="px-4 py-2 text-gray-500 text-sm">
-                                {progressAuthorSearchTerm ? "未找到匹配的作者" : "开始输入以搜索作者"}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
+  // 添加作者到论文模态框提交
+  const handleAddAuthorToLiteratureSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToLiterature()
+  }
 
-                      {/* 提示信息 */}
-                      <p className="text-xs text-gray-500 mt-1">
-                        输入作者姓名进行搜索，点击选择。当前作者库有 {authors.length} 位作者。
-                      </p>
-                    </div>
+  // 添加期刊模态框状态
+  const handleAddJournalToLiterature = () => {
+    setIsAddJournalModalOpen(true)
+  }
 
-                    <Textarea
-                      placeholder="研究进展描述"
-                      value={newProgress.description}
-                      onChange={(e) => setNewProgress({ ...newProgress, description: e.target.value })}
-                      rows={4}
-                    />
+  // 取消添加期刊模态框
+  const handleCancelAddJournalToLiterature = () => {
+    setIsAddJournalModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
 
-                    <Button
-                      onClick={addProgress}
-                      className="w-full"
-                      disabled={newProgress.selectedAuthors.length === 0}
-                    >
-                      记录进展{" "}
-                      {newProgress.selectedAuthors.length > 0 && `(${newProgress.selectedAuthors.length} 位作者)`}
-                    </Button>
-                  </CardContent>
-                </div>
-              </div>
-            )}
+  // 添加期刊模态框提交
+  const handleAddJournalToLiteratureSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddJournalToLiterature()
+  }
 
-            {/* 添加作者模态框 */}
-            {isAddAuthorModalOpen && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold">添加新作者</h3>
-                    <Button variant="ghost" size="sm" onClick={cancelAddAuthor}>
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+  // 添加引用内容模态框状态
+  const handleAddCitationToReference = () => {
+    setIsAddCitationModalOpen(true)
+  }
 
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">作者姓名</label>
-                      <Input
-                        placeholder="请输入作者姓名"
-                        value={newAuthor.name}
-                        onChange={(e) => setNewAuthor({ ...newAuthor, name: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">研究领域</label>
-                      <Input
-                        placeholder="请输入研究领域"
-                        value={newAuthor.field}
-                        onChange={(e) => setNewAuthor({ ...newAuthor, field: e.target.value })}
-                      />
-                    </div>
-                    <div className="flex gap-2 pt-4">
-                      <Button onClick={addAuthor} className="flex-1" disabled={!newAuthor.name || !newAuthor.field}>
-                        添加作者
-                      </Button>
-                      <Button variant="outline" onClick={cancelAddAuthor} className="flex-1 bg-transparent">
-                        取消
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+  // 取消添加引用内容模态框
+  const handleCancelAddCitationToReference = () => {
+    setIsAddCitationModalOpen(false)
+    setNewCitation({ content: "", page: "", note: "" })
+  }
 
-        {/* 期刊管理 */}
-        {activeSubTab === "journals" && (
-          <div className="space-y-4">
-            {/* 期刊列表 - 全宽显示 */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="w-5 h-5" />
-                    期刊出版社管理 ({journals.length} 个)
-                  </div>
-                  <Button onClick={() => setIsAddJournalModalOpen(true)} className="flex items-center gap-2">
-                    <Plus className="w-4 h-4" />
-                    添加期刊/出版社
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4 max-h-96 overflow-y-auto">
-                  {journals.map((journal) => (
-                    <div key={journal.id} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold">{journal.name}</h3>
-                            <Badge variant="outline" className="text-xs">
-                              {getJournalTypeLabel(journal.type)}
-                            </Badge>
-                          </div>
-                          {journal.issn && <p className="text-sm text-gray-600">ISSN: {journal.issn}</p>}
-                        </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm">
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => deleteJournal(journal.id)}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+  // 添加引用内容模态框提交
+  const handleAddCitationToReferenceSubmit = () => {
+    addCitation()
+  }
 
-            {/* 添加期刊模态框 */}
-            {isAddJournalModalOpen && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold">添加新期刊/出版社</h3>
-                    <Button variant="ghost" size="sm" onClick={cancelAddJournal}>
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+  // 删除引用内容模态框状态
+  const handleDeleteCitation = (literatureId: string, referenceId: string, citationId: string) => {
+    deleteCitation(literatureId, referenceId, citationId)
+  }
 
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">名称</label>
-                      <Input
-                        placeholder="请输入期刊/出版社名称"
-                        value={newJournal.name}
-                        onChange={(e) => setNewJournal({ ...newJournal, name: e.target.value })}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">类型</label>
-                        <select
-                          value={newJournal.type}
-                          onChange={(e) =>
-                            setNewJournal({
-                              ...newJournal,
-                              type: e.target.value as "journal" | "publisher" | "conference",
-                            })
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                        >
-                          <option value="journal">期刊</option>
-                          <option value="publisher">出版社</option>
-                          <option value="conference">会议</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">ISSN (可选)</label>
-                        <Input
-                          placeholder="如：0028-0836"
-                          value={newJournal.issn}
-                          onChange={(e) => setNewJournal({ ...newJournal, issn: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex gap-2 pt-4">
-                      <Button onClick={addJournal} className="flex-1" disabled={!newJournal.name}>
-                        添加期刊/出版社
-                      </Button>
-                      <Button variant="outline" onClick={cancelAddJournal} className="flex-1 bg-transparent">
-                        取消
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+  // 删除参考文献模态框状态
+  const handleDeleteReference = (literatureId: string, referenceId: string) => {
+    deleteReference(literatureId, referenceId)
+  }
 
-        {activeSubTab === "keywords" && (
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-center text-gray-500">关键词管理功能开发中...</p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+  // 删除阅读笔记模态框状态
+  const handleDeleteNote = (noteId: string) => {
+    deleteNote(noteId)
+  }
 
-      {/* 文献阅读面板 */}
-      {activeMainTab === "reading" && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 添加阅读笔记 */}
-            <Card>
-              <CardHeader>
-                <CardTitle>添加阅读笔记</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    placeholder="文献ID"
-                    value={newNote.paperId}
-                    onChange={(e) => setNewNote({ ...newNote, paperId: e.target.value })}
-                  />
-                  <Input
-                    placeholder="页码 (可选)"
-                    type="number"
-                    value={newNote.page}
-                    onChange={(e) => setNewNote({ ...newNote, page: e.target.value })}
-                  />
-                </div>
-                <Input
-                  placeholder="文献标题"
-                  value={newNote.paperTitle}
-                  onChange={(e) => setNewNote({ ...newNote, paperTitle: e.target.value })}
-                />
-                <Textarea
-                  placeholder="笔记内容"
-                  value={newNote.content}
-                  onChange={(e) => setNewNote({ ...newNote, content: e.target.value })}
-                  rows={4}
-                />
-                <Input
-                  placeholder="标签 (用逗号分隔)"
-                  value={newNote.tags}
-                  onChange={(e) => setNewNote({ ...newNote, tags: e.target.value })}
-                />
-                <Button onClick={addReadingNote} className="w-full">
-                  添加笔记
-                </Button>
-              </CardContent>
-            </Card>
+  // 选择阅读笔记模态框状态
+  const handleSelectNote = (note: ReadingNote) => {
+    selectNote(note)
+  }
 
-            {/* 阅读笔记列表 */}
-            <Card>
-              <CardHeader>
-                <CardTitle>阅读笔记</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4 max-h-96 overflow-y-auto">
-                  {readingNotes.map((note) => (
-                    <div key={note.id} className="p-4 border rounded-lg bg-gray-50">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary">{note.paperTitle}</Badge>
-                          {note.page && <Badge variant="outline">第 {note.page} 页</Badge>}
-                        </div>
-                        <Button variant="ghost" size="sm" onClick={() => deleteNote(note.id)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                      <p className="text-sm text-gray-700 mb-2">{note.content}</p>
-                      <div className="flex items-center justify-between">
-                        <div className="flex gap-1">
-                          {note.tags.map((tag, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                        <span className="text-xs text-gray-500">{note.timestamp}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
+  // 选择参考文献模态框状态
+  const handleSelectReference = (literatureId: string) => {
+    selectReference(literatureId)
+  }
+
+  // 选择引用内容模态框状态
+  const handleSelectCitation = (citation: Citation) => {
+    selectCitation(citation)
+  }
+
+  // 添加作者筛选模态框状态
+  const handleAddAuthorFilterToProgress = () => {
+    setIsAddAuthorFilterModalOpen(true)
+  }
+
+  // 取消添加作者筛选模态框
+  const handleCancelAddAuthorFilterToProgress = () => {
+    setIsAddAuthorFilterModalOpen(false)
+    setAuthorFilters([])
+  }
+
+  // 添加作者筛选模态框提交
+  const handleAddAuthorFilterToProgressSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorFilterToProgress()
+  }
+
+  // 添加作者到进展模态框状态
+  const handleAddAuthorToProgressModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到进展模态框
+  const handleCancelAddAuthorToProgressModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewProgress({ year: "", description: "", relatedPaper: "", selectedAuthors: [], type: "individual" })
+  }
+
+  // 添加作者到进展模态框提交
+  const handleAddAuthorToProgressModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToProgressModal()
+  }
+
+  // 添加作者到论文模态框状态
+  const handleAddAuthorToLiteratureModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到论文模态框
+  const handleCancelAddAuthorToLiteratureModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加作者到论文模态框提交
+  const handleAddAuthorToLiteratureModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToLiteratureModal()
+  }
+
+  // 添加期刊模态框状态
+  const handleAddJournalToLiteratureModal = () => {
+    setIsAddJournalModalOpen(true)
+  }
+
+  // 取消添加期刊模态框
+  const handleCancelAddJournalToLiteratureModal = () => {
+    setIsAddJournalModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加期刊模态框提交
+  const handleAddJournalToLiteratureModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddJournalToLiteratureModal()
+  }
+
+  // 添加引用内容模态框状态
+  const handleAddCitationToReferenceModal = () => {
+    setIsAddCitationModalOpen(true)
+  }
+
+  // 取消添加引用内容模态框
+  const handleCancelAddCitationToReferenceModal = () => {
+    setIsAddCitationModalOpen(false)
+    setNewCitation({ content: "", page: "", note: "" })
+  }
+
+  // 添加引用内容模态框提交
+  const handleAddCitationToReferenceModalSubmit = () => {
+    addCitation()
+  }
+
+  // 删除引用内容模态框状态
+  const handleDeleteCitationModal = (literatureId: string, referenceId: string, citationId: string) => {
+    deleteCitation(literatureId, referenceId, citationId)
+  }
+
+  // 删除参考文献模态框状态
+  const handleDeleteReferenceModal = (literatureId: string, referenceId: string) => {
+    deleteReference(literatureId, referenceId)
+  }
+
+  // 删除阅读笔记模态框状态
+  const handleDeleteNoteModal = (noteId: string) => {
+    deleteNote(noteId)
+  }
+
+  // 选择阅读笔记模态框状态
+  const handleSelectNoteModal = (note: ReadingNote) => {
+    selectNote(note)
+  }
+
+  // 选择参考文献模态框状态
+  const handleSelectReferenceModal = (literatureId: string) => {
+    selectReference(literatureId)
+  }
+
+  // 选择引用内容模态框状态
+  const handleSelectCitationModal = (citation: Citation) => {
+    selectCitation(citation)
+  }
+
+  // 添加作者筛选模态框状态
+  const handleAddAuthorFilterToProgressModal = () => {
+    setIsAddAuthorFilterModalOpen(true)
+  }
+
+  // 取消添加作者筛选模态框
+  const handleCancelAddAuthorFilterToProgressModal = () => {
+    setIsAddAuthorFilterModalOpen(false)
+    setAuthorFilters([])
+  }
+
+  // 添加作者筛选模态框提交
+  const handleAddAuthorFilterToProgressModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorFilterToProgressModal()
+  }
+
+  // 添加作者到进展模态框状态
+  const handleAddAuthorToProgressModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到进展模态框
+  const handleCancelAddAuthorToProgressModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewProgress({ year: "", description: "", relatedPaper: "", selectedAuthors: [], type: "individual" })
+  }
+
+  // 添加作者到进展模态框提交
+  const handleAddAuthorToProgressModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToProgressModalModal()
+  }
+
+  // 添加作者到论文模态框状态
+  const handleAddAuthorToLiteratureModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到论文模态框
+  const handleCancelAddAuthorToLiteratureModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加作者到论文模态框提交
+  const handleAddAuthorToLiteratureModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToLiteratureModalModal()
+  }
+
+  // 添加期刊模态框状态
+  const handleAddJournalToLiteratureModalModal = () => {
+    setIsAddJournalModalOpen(true)
+  }
+
+  // 取消添加期刊模态框
+  const handleCancelAddJournalToLiteratureModalModal = () => {
+    setIsAddJournalModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加期刊模态框提交
+  const handleAddJournalToLiteratureModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddJournalToLiteratureModalModal()
+  }
+
+  // 添加引用内容模态框状态
+  const handleAddCitationToReferenceModalModal = () => {
+    setIsAddCitationModalOpen(true)
+  }
+
+  // 取消添加引用内容模态框
+  const handleCancelAddCitationToReferenceModalModal = () => {
+    setIsAddCitationModalOpen(false)
+    setNewCitation({ content: "", page: "", note: "" })
+  }
+
+  // 添加引用内容模态框提交
+  const handleAddCitationToReferenceModalModalSubmit = () => {
+    addCitation()
+  }
+
+  // 删除引用内容模态框状态
+  const handleDeleteCitationModalModal = (literatureId: string, referenceId: string, citationId: string) => {
+    deleteCitation(literatureId, referenceId, citationId)
+  }
+
+  // 删除参考文献模态框状态
+  const handleDeleteReferenceModalModal = (literatureId: string, referenceId: string) => {
+    deleteReference(literatureId, referenceId)
+  }
+
+  // 删除阅读笔记模态框状态
+  const handleDeleteNoteModalModal = (noteId: string) => {
+    deleteNote(noteId)
+  }
+
+  // 选择阅读笔记模态框状态
+  const handleSelectNoteModalModal = (note: ReadingNote) => {
+    selectNote(note)
+  }
+
+  // 选择参考文献模态框状态
+  const handleSelectReferenceModalModal = (literatureId: string) => {
+    selectReference(literatureId)
+  }
+
+  // 选择引用内容模态框状态
+  const handleSelectCitationModalModal = (citation: Citation) => {
+    selectCitation(citation)
+  }
+
+  // 添加作者筛选模态框状态
+  const handleAddAuthorFilterToProgressModalModal = () => {
+    setIsAddAuthorFilterModalOpen(true)
+  }
+
+  // 取消添加作者筛选模态框
+  const handleCancelAddAuthorFilterToProgressModalModal = () => {
+    setIsAddAuthorFilterModalOpen(false)
+    setAuthorFilters([])
+  }
+
+  // 添加作者筛选模态框提交
+  const handleAddAuthorFilterToProgressModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorFilterToProgressModalModal()
+  }
+
+  // 添加作者到进展模态框状态
+  const handleAddAuthorToProgressModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到进展模态框
+  const handleCancelAddAuthorToProgressModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewProgress({ year: "", description: "", relatedPaper: "", selectedAuthors: [], type: "individual" })
+  }
+
+  // 添加作者到进展模态框提交
+  const handleAddAuthorToProgressModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToProgressModalModalModal()
+  }
+
+  // 添加作者到论文模态框状态
+  const handleAddAuthorToLiteratureModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到论文模态框
+  const handleCancelAddAuthorToLiteratureModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加作者到论文模态框提交
+  const handleAddAuthorToLiteratureModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToLiteratureModalModalModal()
+  }
+
+  // 添加期刊模态框状态
+  const handleAddJournalToLiteratureModalModalModal = () => {
+    setIsAddJournalModalOpen(true)
+  }
+
+  // 取消添加期刊模态框
+  const handleCancelAddJournalToLiteratureModalModalModal = () => {
+    setIsAddJournalModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加期刊模态框提交
+  const handleAddJournalToLiteratureModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddJournalToLiteratureModalModalModal()
+  }
+
+  // 添加引用内容模态框状态
+  const handleAddCitationToReferenceModalModalModal = () => {
+    setIsAddCitationModalOpen(true)
+  }
+
+  // 取消添加引用内容模态框
+  const handleCancelAddCitationToReferenceModalModalModal = () => {
+    setIsAddCitationModalOpen(false)
+    setNewCitation({ content: "", page: "", note: "" })
+  }
+
+  // 添加引用内容模态框提交
+  const handleAddCitationToReferenceModalModalModalSubmit = () => {
+    addCitation()
+  }
+
+  // 删除引用内容模态框状态
+  const handleDeleteCitationModalModalModal = (literatureId: string, referenceId: string, citationId: string) => {
+    deleteCitation(literatureId, referenceId, citationId)
+  }
+
+  // 删除参考文献模态框状态
+  const handleDeleteReferenceModalModalModal = (literatureId: string, referenceId: string) => {
+    deleteReference(literatureId, referenceId)
+  }
+
+  // 删除阅读笔记模态框状态
+  const handleDeleteNoteModalModalModal = (noteId: string) => {
+    deleteNote(noteId)
+  }
+
+  // 选择阅读笔记模态框状态
+  const handleSelectNoteModalModalModal = (note: ReadingNote) => {
+    selectNote(note)
+  }
+
+  // 选择参考文献模态框状态
+  const handleSelectReferenceModalModalModal = (literatureId: string) => {
+    selectReference(literatureId)
+  }
+
+  // 选择引用内容模态框状态
+  const handleSelectCitationModalModalModal = (citation: Citation) => {
+    selectCitation(citation)
+  }
+
+  // 添加作者筛选模态框状态
+  const handleAddAuthorFilterToProgressModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(true)
+  }
+
+  // 取消添加作者筛选模态框
+  const handleCancelAddAuthorFilterToProgressModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(false)
+    setAuthorFilters([])
+  }
+
+  // 添加作者筛选模态框提交
+  const handleAddAuthorFilterToProgressModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorFilterToProgressModalModalModal()
+  }
+
+  // 添加作者到进展模态框状态
+  const handleAddAuthorToProgressModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到进展模态框
+  const handleCancelAddAuthorToProgressModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewProgress({ year: "", description: "", relatedPaper: "", selectedAuthors: [], type: "individual" })
+  }
+
+  // 添加作者到进展模态框提交
+  const handleAddAuthorToProgressModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToProgressModalModalModalModal()
+  }
+
+  // 添加作者到论文模态框状态
+  const handleAddAuthorToLiteratureModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到论文模态框
+  const handleCancelAddAuthorToLiteratureModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加作者到论文模态框提交
+  const handleAddAuthorToLiteratureModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToLiteratureModalModalModalModal()
+  }
+
+  // 添加期刊模态框状态
+  const handleAddJournalToLiteratureModalModalModalModal = () => {
+    setIsAddJournalModalOpen(true)
+  }
+
+  // 取消添加期刊模态框
+  const handleCancelAddJournalToLiteratureModalModalModalModal = () => {
+    setIsAddJournalModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加期刊模态框提交
+  const handleAddJournalToLiteratureModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddJournalToLiteratureModalModalModalModal()
+  }
+
+  // 添加引用内容模态框状态
+  const handleAddCitationToReferenceModalModalModalModal = () => {
+    setIsAddCitationModalOpen(true)
+  }
+
+  // 取消添加引用内容模态框
+  const handleCancelAddCitationToReferenceModalModalModalModal = () => {
+    setIsAddCitationModalOpen(false)
+    setNewCitation({ content: "", page: "", note: "" })
+  }
+
+  // 添加引用内容模态框提交
+  const handleAddCitationToReferenceModalModalModalModalSubmit = () => {
+    addCitation()
+  }
+
+  // 删除引用内容模态框状态
+  const handleDeleteCitationModalModalModalModal = (literatureId: string, referenceId: string, citationId: string) => {
+    deleteCitation(literatureId, referenceId, citationId)
+  }
+
+  // 删除参考文献模态框状态
+  const handleDeleteReferenceModalModalModalModal = (literatureId: string, referenceId: string) => {
+    deleteReference(literatureId, referenceId)
+  }
+
+  // 删除阅读笔记模态框状态
+  const handleDeleteNoteModalModalModalModal = (noteId: string) => {
+    deleteNote(noteId)
+  }
+
+  // 选择阅读笔记模态框状态
+  const handleSelectNoteModalModalModalModal = (note: ReadingNote) => {
+    selectNote(note)
+  }
+
+  // 选择参考文献模态框状态
+  const handleSelectReferenceModalModalModalModal = (literatureId: string) => {
+    selectReference(literatureId)
+  }
+
+  // 选择引用内容模态框状态
+  const handleSelectCitationModalModalModalModal = (citation: Citation) => {
+    selectCitation(citation)
+  }
+
+  // 添加作者筛选模态框状态
+  const handleAddAuthorFilterToProgressModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(true)
+  }
+
+  // 取消添加作者筛选模态框
+  const handleCancelAddAuthorFilterToProgressModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(false)
+    setAuthorFilters([])
+  }
+
+  // 添加作者筛选模态框提交
+  const handleAddAuthorFilterToProgressModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorFilterToProgressModalModalModalModal()
+  }
+
+  // 添加作者到进展模态框状态
+  const handleAddAuthorToProgressModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到进展模态框
+  const handleCancelAddAuthorToProgressModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewProgress({ year: "", description: "", relatedPaper: "", selectedAuthors: [], type: "individual" })
+  }
+
+  // 添加作者到进展模态框提交
+  const handleAddAuthorToProgressModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToProgressModalModalModalModalModal()
+  }
+
+  // 添加作者到论文模态框状态
+  const handleAddAuthorToLiteratureModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到论文模态框
+  const handleCancelAddAuthorToLiteratureModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加作者到论文模态框提交
+  const handleAddAuthorToLiteratureModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToLiteratureModalModalModalModalModal()
+  }
+
+  // 添加期刊模态框状态
+  const handleAddJournalToLiteratureModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(true)
+  }
+
+  // 取消添加期刊模态框
+  const handleCancelAddJournalToLiteratureModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加期刊模态框提交
+  const handleAddJournalToLiteratureModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddJournalToLiteratureModalModalModalModalModal()
+  }
+
+  // 添加引用内容模态框状态
+  const handleAddCitationToReferenceModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(true)
+  }
+
+  // 取消添加引用内容模态框
+  const handleCancelAddCitationToReferenceModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(false)
+    setNewCitation({ content: "", page: "", note: "" })
+  }
+
+  // 添加引用内容模态框提交
+  const handleAddCitationToReferenceModalModalModalModalModalSubmit = () => {
+    addCitation()
+  }
+
+  // 删除引用内容模态框状态
+  const handleDeleteCitationModalModalModalModalModal = (literatureId: string, referenceId: string, citationId: string) => {
+    deleteCitation(literatureId, referenceId, citationId)
+  }
+
+  // 删除参考文献模态框状态
+  const handleDeleteReferenceModalModalModalModalModal = (literatureId: string, referenceId: string) => {
+    deleteReference(literatureId, referenceId)
+  }
+
+  // 删除阅读笔记模态框状态
+  const handleDeleteNoteModalModalModalModalModal = (noteId: string) => {
+    deleteNote(noteId)
+  }
+
+  // 选择阅读笔记模态框状态
+  const handleSelectNoteModalModalModalModalModal = (note: ReadingNote) => {
+    selectNote(note)
+  }
+
+  // 选择参考文献模态框状态
+  const handleSelectReferenceModalModalModalModalModal = (literatureId: string) => {
+    selectReference(literatureId)
+  }
+
+  // 选择引用内容模态框状态
+  const handleSelectCitationModalModalModalModalModal = (citation: Citation) => {
+    selectCitation(citation)
+  }
+
+  // 添加作者筛选模态框状态
+  const handleAddAuthorFilterToProgressModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(true)
+  }
+
+  // 取消添加作者筛选模态框
+  const handleCancelAddAuthorFilterToProgressModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(false)
+    setAuthorFilters([])
+  }
+
+  // 添加作者筛选模态框提交
+  const handleAddAuthorFilterToProgressModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorFilterToProgressModalModalModalModalModal()
+  }
+
+  // 添加作者到进展模态框状态
+  const handleAddAuthorToProgressModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到进展模态框
+  const handleCancelAddAuthorToProgressModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewProgress({ year: "", description: "", relatedPaper: "", selectedAuthors: [], type: "individual" })
+  }
+
+  // 添加作者到进展模态框提交
+  const handleAddAuthorToProgressModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToProgressModalModalModalModalModalModal()
+  }
+
+  // 添加作者到论文模态框状态
+  const handleAddAuthorToLiteratureModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到论文模态框
+  const handleCancelAddAuthorToLiteratureModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加作者到论文模态框提交
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToLiteratureModalModalModalModalModalModal()
+  }
+
+  // 添加期刊模态框状态
+  const handleAddJournalToLiteratureModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(true)
+  }
+
+  // 取消添加期刊模态框
+  const handleCancelAddJournalToLiteratureModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加期刊模态框提交
+  const handleAddJournalToLiteratureModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddJournalToLiteratureModalModalModalModalModalModal()
+  }
+
+  // 添加引用内容模态框状态
+  const handleAddCitationToReferenceModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(true)
+  }
+
+  // 取消添加引用内容模态框
+  const handleCancelAddCitationToReferenceModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(false)
+    setNewCitation({ content: "", page: "", note: "" })
+  }
+
+  // 添加引用内容模态框提交
+  const handleAddCitationToReferenceModalModalModalModalModalModalSubmit = () => {
+    addCitation()
+  }
+
+  // 删除引用内容模态框状态
+  const handleDeleteCitationModalModalModalModalModalModal = (literatureId: string, referenceId: string, citationId: string) => {
+    deleteCitation(literatureId, referenceId, citationId)
+  }
+
+  // 删除参考文献模态框状态
+  const handleDeleteReferenceModalModalModalModalModalModal = (literatureId: string, referenceId: string) => {
+    deleteReference(literatureId, referenceId)
+  }
+
+  // 删除阅读笔记模态框状态
+  const handleDeleteNoteModalModalModalModalModalModal = (noteId: string) => {
+    deleteNote(noteId)
+  }
+
+  // 选择阅读笔记模态框状态
+  const handleSelectNoteModalModalModalModalModalModal = (note: ReadingNote) => {
+    selectNote(note)
+  }
+
+  // 选择参考文献模态框状态
+  const handleSelectReferenceModalModalModalModalModalModal = (literatureId: string) => {
+    selectReference(literatureId)
+  }
+
+  // 选择引用内容模态框状态
+  const handleSelectCitationModalModalModalModalModalModal = (citation: Citation) => {
+    selectCitation(citation)
+  }
+
+  // 添加作者筛选模态框状态
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(true)
+  }
+
+  // 取消添加作者筛选模态框
+  const handleCancelAddAuthorFilterToProgressModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(false)
+    setAuthorFilters([])
+  }
+
+  // 添加作者筛选模态框提交
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorFilterToProgressModalModalModalModalModalModal()
+  }
+
+  // 添加作者到进展模态框状态
+  const handleAddAuthorToProgressModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到进展模态框
+  const handleCancelAddAuthorToProgressModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewProgress({ year: "", description: "", relatedPaper: "", selectedAuthors: [], type: "individual" })
+  }
+
+  // 添加作者到进展模态框提交
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToProgressModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到论文模态框状态
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到论文模态框
+  const handleCancelAddAuthorToLiteratureModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加作者到论文模态框提交
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToLiteratureModalModalModalModalModalModalModal()
+  }
+
+  // 添加期刊模态框状态
+  const handleAddJournalToLiteratureModalModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(true)
+  }
+
+  // 取消添加期刊模态框
+  const handleCancelAddJournalToLiteratureModalModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加期刊模态框提交
+  const handleAddJournalToLiteratureModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddJournalToLiteratureModalModalModalModalModalModalModal()
+  }
+
+  // 添加引用内容模态框状态
+  const handleAddCitationToReferenceModalModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(true)
+  }
+
+  // 取消添加引用内容模态框
+  const handleCancelAddCitationToReferenceModalModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(false)
+    setNewCitation({ content: "", page: "", note: "" })
+  }
+
+  // 添加引用内容模态框提交
+  const handleAddCitationToReferenceModalModalModalModalModalModalModalSubmit = () => {
+    addCitation()
+  }
+
+  // 删除引用内容模态框状态
+  const handleDeleteCitationModalModalModalModalModalModalModal = (literatureId: string, referenceId: string, citationId: string) => {
+    deleteCitation(literatureId, referenceId, citationId)
+  }
+
+  // 删除参考文献模态框状态
+  const handleDeleteReferenceModalModalModalModalModalModalModal = (literatureId: string, referenceId: string) => {
+    deleteReference(literatureId, referenceId)
+  }
+
+  // 删除阅读笔记模态框状态
+  const handleDeleteNoteModalModalModalModalModalModalModal = (noteId: string) => {
+    deleteNote(noteId)
+  }
+
+  // 选择阅读笔记模态框状态
+  const handleSelectNoteModalModalModalModalModalModalModal = (note: ReadingNote) => {
+    selectNote(note)
+  }
+
+  // 选择参考文献模态框状态
+  const handleSelectReferenceModalModalModalModalModalModalModal = (literatureId: string) => {
+    selectReference(literatureId)
+  }
+
+  // 选择引用内容模态框状态
+  const handleSelectCitationModalModalModalModalModalModalModal = (citation: Citation) => {
+    selectCitation(citation)
+  }
+
+  // 添加作者筛选模态框状态
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(true)
+  }
+
+  // 取消添加作者筛选模态框
+  const handleCancelAddAuthorFilterToProgressModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(false)
+    setAuthorFilters([])
+  }
+
+  // 添加作者筛选模态框提交
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorFilterToProgressModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到进展模态框状态
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到进展模态框
+  const handleCancelAddAuthorToProgressModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewProgress({ year: "", description: "", relatedPaper: "", selectedAuthors: [], type: "individual" })
+  }
+
+  // 添加作者到进展模态框提交
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToProgressModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到论文模态框状态
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到论文模态框
+  const handleCancelAddAuthorToLiteratureModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加作者到论文模态框提交
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToLiteratureModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加期刊模态框状态
+  const handleAddJournalToLiteratureModalModalModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(true)
+  }
+
+  // 取消添加期刊模态框
+  const handleCancelAddJournalToLiteratureModalModalModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加期刊模态框提交
+  const handleAddJournalToLiteratureModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddJournalToLiteratureModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加引用内容模态框状态
+  const handleAddCitationToReferenceModalModalModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(true)
+  }
+
+  // 取消添加引用内容模态框
+  const handleCancelAddCitationToReferenceModalModalModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(false)
+    setNewCitation({ content: "", page: "", note: "" })
+  }
+
+  // 添加引用内容模态框提交
+  const handleAddCitationToReferenceModalModalModalModalModalModalModalModalSubmit = () => {
+    addCitation()
+  }
+
+  // 删除引用内容模态框状态
+  const handleDeleteCitationModalModalModalModalModalModalModalModal = (literatureId: string, referenceId: string, citationId: string) => {
+    deleteCitation(literatureId, referenceId, citationId)
+  }
+
+  // 删除参考文献模态框状态
+  const handleDeleteReferenceModalModalModalModalModalModalModalModal = (literatureId: string, referenceId: string) => {
+    deleteReference(literatureId, referenceId)
+  }
+
+  // 删除阅读笔记模态框状态
+  const handleDeleteNoteModalModalModalModalModalModalModalModal = (noteId: string) => {
+    deleteNote(noteId)
+  }
+
+  // 选择阅读笔记模态框状态
+  const handleSelectNoteModalModalModalModalModalModalModalModal = (note: ReadingNote) => {
+    selectNote(note)
+  }
+
+  // 选择参考文献模态框状态
+  const handleSelectReferenceModalModalModalModalModalModalModalModal = (literatureId: string) => {
+    selectReference(literatureId)
+  }
+
+  // 选择引用内容模态框状态
+  const handleSelectCitationModalModalModalModalModalModalModalModal = (citation: Citation) => {
+    selectCitation(citation)
+  }
+
+  // 添加作者筛选模态框状态
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(true)
+  }
+
+  // 取消添加作者筛选模态框
+  const handleCancelAddAuthorFilterToProgressModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(false)
+    setAuthorFilters([])
+  }
+
+  // 添加作者筛选模态框提交
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorFilterToProgressModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到进展模态框状态
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到进展模态框
+  const handleCancelAddAuthorToProgressModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewProgress({ year: "", description: "", relatedPaper: "", selectedAuthors: [], type: "individual" })
+  }
+
+  // 添加作者到进展模态框提交
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToProgressModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到论文模态框状态
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到论文模态框
+  const handleCancelAddAuthorToLiteratureModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加作者到论文模态框提交
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToLiteratureModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加期刊模态框状态
+  const handleAddJournalToLiteratureModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(true)
+  }
+
+  // 取消添加期刊模态框
+  const handleCancelAddJournalToLiteratureModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加期刊模态框提交
+  const handleAddJournalToLiteratureModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddJournalToLiteratureModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加引用内容模态框状态
+  const handleAddCitationToReferenceModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(true)
+  }
+
+  // 取消添加引用内容模态框
+  const handleCancelAddCitationToReferenceModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(false)
+    setNewCitation({ content: "", page: "", note: "" })
+  }
+
+  // 添加引用内容模态框提交
+  const handleAddCitationToReferenceModalModalModalModalModalModalModalModalModalSubmit = () => {
+    addCitation()
+  }
+
+  // 删除引用内容模态框状态
+  const handleDeleteCitationModalModalModalModalModalModalModalModalModal = (literatureId: string, referenceId: string, citationId: string) => {
+    deleteCitation(literatureId, referenceId, citationId)
+  }
+
+  // 删除参考文献模态框状态
+  const handleDeleteReferenceModalModalModalModalModalModalModalModalModal = (literatureId: string, referenceId: string) => {
+    deleteReference(literatureId, referenceId)
+  }
+
+  // 删除阅读笔记模态框状态
+  const handleDeleteNoteModalModalModalModalModalModalModalModalModal = (noteId: string) => {
+    deleteNote(noteId)
+  }
+
+  // 选择阅读笔记模态框状态
+  const handleSelectNoteModalModalModalModalModalModalModalModalModal = (note: ReadingNote) => {
+    selectNote(note)
+  }
+
+  // 选择参考文献模态框状态
+  const handleSelectReferenceModalModalModalModalModalModalModalModalModal = (literatureId: string) => {
+    selectReference(literatureId)
+  }
+
+  // 选择引用内容模态框状态
+  const handleSelectCitationModalModalModalModalModalModalModalModalModal = (citation: Citation) => {
+    selectCitation(citation)
+  }
+
+  // 添加作者筛选模态框状态
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(true)
+  }
+
+  // 取消添加作者筛选模态框
+  const handleCancelAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(false)
+    setAuthorFilters([])
+  }
+
+  // 添加作者筛选模态框提交
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到进展模态框状态
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到进展模态框
+  const handleCancelAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewProgress({ year: "", description: "", relatedPaper: "", selectedAuthors: [], type: "individual" })
+  }
+
+  // 添加作者到进展模态框提交
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到论文模态框状态
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到论文模态框
+  const handleCancelAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加作者到论文模态框提交
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加期刊模态框状态
+  const handleAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(true)
+  }
+
+  // 取消添加期刊模态框
+  const handleCancelAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加期刊模态框提交
+  const handleAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加引用内容模态框状态
+  const handleAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(true)
+  }
+
+  // 取消添加引用内容模态框
+  const handleCancelAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(false)
+    setNewCitation({ content: "", page: "", note: "" })
+  }
+
+  // 添加引用内容模态框提交
+  const handleAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    addCitation()
+  }
+
+  // 删除引用内容模态框状态
+  const handleDeleteCitationModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string, referenceId: string, citationId: string) => {
+    deleteCitation(literatureId, referenceId, citationId)
+  }
+
+  // 删除参考文献模态框状态
+  const handleDeleteReferenceModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string, referenceId: string) => {
+    deleteReference(literatureId, referenceId)
+  }
+
+  // 删除阅读笔记模态框状态
+  const handleDeleteNoteModalModalModalModalModalModalModalModalModalModalModal = (noteId: string) => {
+    deleteNote(noteId)
+  }
+
+  // 选择阅读笔记模态框状态
+  const handleSelectNoteModalModalModalModalModalModalModalModalModalModalModal = (note: ReadingNote) => {
+    selectNote(note)
+  }
+
+  // 选择参考文献模态框状态
+  const handleSelectReferenceModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string) => {
+    selectReference(literatureId)
+  }
+
+  // 选择引用内容模态框状态
+  const handleSelectCitationModalModalModalModalModalModalModalModalModalModalModal = (citation: Citation) => {
+    selectCitation(citation)
+  }
+
+  // 添加作者筛选模态框状态
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(true)
+  }
+
+  // 取消添加作者筛选模态框
+  const handleCancelAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(false)
+    setAuthorFilters([])
+  }
+
+  // 添加作者筛选模态框提交
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到进展模态框状态
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到进展模态框
+  const handleCancelAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewProgress({ year: "", description: "", relatedPaper: "", selectedAuthors: [], type: "individual" })
+  }
+
+  // 添加作者到进展模态框提交
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到论文模态框状态
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到论文模态框
+  const handleCancelAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加作者到论文模态框提交
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加期刊模态框状态
+  const handleAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(true)
+  }
+
+  // 取消添加期刊模态框
+  const handleCancelAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加期刊模态框提交
+  const handleAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加引用内容模态框状态
+  const handleAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(true)
+  }
+
+  // 取消添加引用内容模态框
+  const handleCancelAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(false)
+    setNewCitation({ content: "", page: "", note: "" })
+  }
+
+  // 添加引用内容模态框提交
+  const handleAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    addCitation()
+  }
+
+  // 删除引用内容模态框状态
+  const handleDeleteCitationModalModalModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string, referenceId: string, citationId: string) => {
+    deleteCitation(literatureId, referenceId, citationId)
+  }
+
+  // 删除参考文献模态框状态
+  const handleDeleteReferenceModalModalModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string, referenceId: string) => {
+    deleteReference(literatureId, referenceId)
+  }
+
+  // 删除阅读笔记模态框状态
+  const handleDeleteNoteModalModalModalModalModalModalModalModalModalModalModalModalModal = (noteId: string) => {
+    deleteNote(noteId)
+  }
+
+  // 选择阅读笔记模态框状态
+  const handleSelectNoteModalModalModalModalModalModalModalModalModalModalModalModalModal = (note: ReadingNote) => {
+    selectNote(note)
+  }
+
+  // 选择参考文献模态框状态
+  const handleSelectReferenceModalModalModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string) => {
+    selectReference(literatureId)
+  }
+
+  // 选择引用内容模态框状态
+  const handleSelectCitationModalModalModalModalModalModalModalModalModalModalModalModalModal = (citation: Citation) => {
+    selectCitation(citation)
+  }
+
+  // 添加作者筛选模态框状态
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(true)
+  }
+
+  // 取消添加作者筛选模态框
+  const handleCancelAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(false)
+    setAuthorFilters([])
+  }
+
+  // 添加作者筛选模态框提交
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到进展模态框状态
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到进展模态框
+  const handleCancelAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewProgress({ year: "", description: "", relatedPaper: "", selectedAuthors: [], type: "individual" })
+  }
+
+  // 添加作者到进展模态框提交
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到论文模态框状态
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到论文模态框
+  const handleCancelAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加作者到论文模态框提交
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加期刊模态框状态
+  const handleAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(true)
+  }
+
+  // 取消添加期刊模态框
+  const handleCancelAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加期刊模态框提交
+  const handleAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加引用内容模态框状态
+  const handleAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(true)
+  }
+
+  // 取消添加引用内容模态框
+  const handleCancelAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(false)
+    setNewCitation({ content: "", page: "", note: "" })
+  }
+
+  // 添加引用内容模态框提交
+  const handleAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    addCitation()
+  }
+
+  // 删除引用内容模态框状态
+  const handleDeleteCitationModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string, referenceId: string, citationId: string) => {
+    deleteCitation(literatureId, referenceId, citationId)
+  }
+
+  // 删除参考文献模态框状态
+  const handleDeleteReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string, referenceId: string) => {
+    deleteReference(literatureId, referenceId)
+  }
+
+  // 删除阅读笔记模态框状态
+  const handleDeleteNoteModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (noteId: string) => {
+    deleteNote(noteId)
+  }
+
+  // 选择阅读笔记模态框状态
+  const handleSelectNoteModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (note: ReadingNote) => {
+    selectNote(note)
+  }
+
+  // 选择参考文献模态框状态
+  const handleSelectReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string) => {
+    selectReference(literatureId)
+  }
+
+  // 选择引用内容模态框状态
+  const handleSelectCitationModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (citation: Citation) => {
+    selectCitation(citation)
+  }
+
+  // 添加作者筛选模态框状态
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(true)
+  }
+
+  // 取消添加作者筛选模态框
+  const handleCancelAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(false)
+    setAuthorFilters([])
+  }
+
+  // 添加作者筛选模态框提交
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到进展模态框状态
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到进展模态框
+  const handleCancelAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewProgress({ year: "", description: "", relatedPaper: "", selectedAuthors: [], type: "individual" })
+  }
+
+  // 添加作者到进展模态框提交
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到论文模态框状态
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到论文模态框
+  const handleCancelAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加作者到论文模态框提交
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加期刊模态框状态
+  const handleAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(true)
+  }
+
+  // 取消添加期刊模态框
+  const handleCancelAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加期刊模态框提交
+  const handleAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加引用内容模态框状态
+  const handleAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(true)
+  }
+
+  // 取消添加引用内容模态框
+  const handleCancelAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(false)
+    setNewCitation({ content: "", page: "", note: "" })
+  }
+
+  // 添加引用内容模态框提交
+  const handleAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    addCitation()
+  }
+
+  // 删除引用内容模态框状态
+  const handleDeleteCitationModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string, referenceId: string, citationId: string) => {
+    deleteCitation(literatureId, referenceId, citationId)
+  }
+
+  // 删除参考文献模态框状态
+  const handleDeleteReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string, referenceId: string) => {
+    deleteReference(literatureId, referenceId)
+  }
+
+  // 删除阅读笔记模态框状态
+  const handleDeleteNoteModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (noteId: string) => {
+    deleteNote(noteId)
+  }
+
+  // 选择阅读笔记模态框状态
+  const handleSelectNoteModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (note: ReadingNote) => {
+    selectNote(note)
+  }
+
+  // 选择参考文献模态框状态
+  const handleSelectReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string) => {
+    selectReference(literatureId)
+  }
+
+  // 选择引用内容模态框状态
+  const handleSelectCitationModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (citation: Citation) => {
+    selectCitation(citation)
+  }
+
+  // 添加作者筛选模态框状态
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(true)
+  }
+
+  // 取消添加作者筛选模态框
+  const handleCancelAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(false)
+    setAuthorFilters([])
+  }
+
+  // 添加作者筛选模态框提交
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到进展模态框状态
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到进展模态框
+  const handleCancelAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewProgress({ year: "", description: "", relatedPaper: "", selectedAuthors: [], type: "individual" })
+  }
+
+  // 添加作者到进展模态框提交
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到论文模态框状态
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到论文模态框
+  const handleCancelAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加作者到论文模态框提交
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加期刊模态框状态
+  const handleAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(true)
+  }
+
+  // 取消添加期刊模态框
+  const handleCancelAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加期刊模态框提交
+  const handleAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加引用内容模态框状态
+  const handleAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(true)
+  }
+
+  // 取消添加引用内容模态框
+  const handleCancelAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(false)
+    setNewCitation({ content: "", page: "", note: "" })
+  }
+
+  // 添加引用内容模态框提交
+  const handleAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    addCitation()
+  }
+
+  // 删除引用内容模态框状态
+  const handleDeleteCitationModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string, referenceId: string, citationId: string) => {
+    deleteCitation(literatureId, referenceId, citationId)
+  }
+
+  // 删除参考文献模态框状态
+  const handleDeleteReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string, referenceId: string) => {
+    deleteReference(literatureId, referenceId)
+  }
+
+  // 删除阅读笔记模态框状态
+  const handleDeleteNoteModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (noteId: string) => {
+    deleteNote(noteId)
+  }
+
+  // 选择阅读笔记模态框状态
+  const handleSelectNoteModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (note: ReadingNote) => {
+    selectNote(note)
+  }
+
+  // 选择参考文献模态框状态
+  const handleSelectReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string) => {
+    selectReference(literatureId)
+  }
+
+  // 选择引用内容模态框状态
+  const handleSelectCitationModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (citation: Citation) => {
+    selectCitation(citation)
+  }
+
+  // 添加作者筛选模态框状态
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(true)
+  }
+
+  // 取消添加作者筛选模态框
+  const handleCancelAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(false)
+    setAuthorFilters([])
+  }
+
+  // 添加作者筛选模态框提交
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到进展模态框状态
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到进展模态框
+  const handleCancelAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewProgress({ year: "", description: "", relatedPaper: "", selectedAuthors: [], type: "individual" })
+  }
+
+  // 添加作者到进展模态框提交
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到论文模态框状态
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到论文模态框
+  const handleCancelAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加作者到论文模态框提交
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加期刊模态框状态
+  const handleAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(true)
+  }
+
+  // 取消添加期刊模态框
+  const handleCancelAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加期刊模态框提交
+  const handleAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加引用内容模态框状态
+  const handleAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(true)
+  }
+
+  // 取消添加引用内容模态框
+  const handleCancelAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(false)
+    setNewCitation({ content: "", page: "", note: "" })
+  }
+
+  // 添加引用内容模态框提交
+  const handleAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    addCitation()
+  }
+
+  // 删除引用内容模态框状态
+  const handleDeleteCitationModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string, referenceId: string, citationId: string) => {
+    deleteCitation(literatureId, referenceId, citationId)
+  }
+
+  // 删除参考文献模态框状态
+  const handleDeleteReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string, referenceId: string) => {
+    deleteReference(literatureId, referenceId)
+  }
+
+  // 删除阅读笔记模态框状态
+  const handleDeleteNoteModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (noteId: string) => {
+    deleteNote(noteId)
+  }
+
+  // 选择阅读笔记模态框状态
+  const handleSelectNoteModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (note: ReadingNote) => {
+    selectNote(note)
+  }
+
+  // 选择参考文献模态框状态
+  const handleSelectReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string) => {
+    selectReference(literatureId)
+  }
+
+  // 选择引用内容模态框状态
+  const handleSelectCitationModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (citation: Citation) => {
+    selectCitation(citation)
+  }
+
+  // 添加作者筛选模态框状态
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(true)
+  }
+
+  // 取消添加作者筛选模态框
+  const handleCancelAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(false)
+    setAuthorFilters([])
+  }
+
+  // 添加作者筛选模态框提交
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到进展模态框状态
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到进展模态框
+  const handleCancelAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewProgress({ year: "", description: "", relatedPaper: "", selectedAuthors: [], type: "individual" })
+  }
+
+  // 添加作者到进展模态框提交
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到论文模态框状态
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到论文模态框
+  const handleCancelAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加作者到论文模态框提交
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加期刊模态框状态
+  const handleAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(true)
+  }
+
+  // 取消添加期刊模态框
+  const handleCancelAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddJournalModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",
+      address: "",
+      institution: "",
+      school: "",
+      editor: [],
+      series: "",
+      citationCount: "",
+      impactFactor: "",
+      note: "",
+      tags: [],
+    })
+  }
+
+  // 添加期刊模态框提交
+  const handleAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddJournalToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加引用内容模态框状态
+  const handleAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(true)
+  }
+
+  // 取消添加引用内容模态框
+  const handleCancelAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddCitationModalOpen(false)
+    setNewCitation({ content: "", page: "", note: "" })
+  }
+
+  // 添加引用内容模态框提交
+  const handleAddCitationToReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    addCitation()
+  }
+
+  // 删除引用内容模态框状态
+  const handleDeleteCitationModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string, referenceId: string, citationId: string) => {
+    deleteCitation(literatureId, referenceId, citationId)
+  }
+
+  // 删除参考文献模态框状态
+  const handleDeleteReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string, referenceId: string) => {
+    deleteReference(literatureId, referenceId)
+  }
+
+  // 删除阅读笔记模态框状态
+  const handleDeleteNoteModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (noteId: string) => {
+    deleteNote(noteId)
+  }
+
+  // 选择阅读笔记模态框状态
+  const handleSelectNoteModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (note: ReadingNote) => {
+    selectNote(note)
+  }
+
+  // 选择参考文献模态框状态
+  const handleSelectReferenceModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (literatureId: string) => {
+    selectReference(literatureId)
+  }
+
+  // 选择引用内容模态框状态
+  const handleSelectCitationModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = (citation: Citation) => {
+    selectCitation(citation)
+  }
+
+  // 添加作者筛选模态框状态
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(true)
+  }
+
+  // 取消添加作者筛选模态框
+  const handleCancelAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorFilterModalOpen(false)
+    setAuthorFilters([])
+  }
+
+  // 添加作者筛选模态框提交
+  const handleAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorFilterToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到进展模态框状态
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到进展模态框
+  const handleCancelAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewProgress({ year: "", description: "", relatedPaper: "", selectedAuthors: [], type: "individual" })
+  }
+
+  // 添加作者到进展模态框提交
+  const handleAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalSubmit = () => {
+    // 这里可以添加提交逻辑
+    cancelAddAuthorToProgressModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal()
+  }
+
+  // 添加作者到论文模态框状态
+  const handleAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(true)
+  }
+
+  // 取消添加作者到论文模态框
+  const handleCancelAddAuthorToLiteratureModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModalModal = () => {
+    setIsAddAuthorModalOpen(false)
+    setNewLiterature({
+      title: "",
+      selectedAuthors: [],
+      year: "",
+      type: "paper",
+      journal: "",
+      publisher: "",
+      conference: "",
+      isbn: "",
+      issn: "",
+      doi: "",
+      pmid: "",
+      arxivId: "",
+      bibKey: "",
+      pages: "",
+      volume: "",
+      issue: "",
+      chapter: "",
+      edition: "",
+      abstract: "",
+      keywords: [],
+      language: "zh-CN",
+      url: "",\

@@ -46,13 +46,20 @@ const XDYY_PROMPTS = {
    * @returns {string} 完整的代码分析提示词
    */
   codeAnalysis: (sourceCode) => {
-    return `你是专业的JavaScript代码分析师，请使用中文进行所有注释和说明。你的任务是为代码添加详细的中文注释和文档，但绝对不能修改任何原始代码。
+    return `请直接输出结果，不要包含任何思考过程、分析过程或额外说明。从第一行开始就是代码块，不要有任何前言。
+
+你是专业的JavaScript代码分析师，请使用中文进行所有注释和说明。你的任务是为代码添加详细的中文注释和文档，但绝对不能修改任何原始代码。
 
 原始代码：
+\`\`\`javascript
 ${sourceCode}
+\`\`\`
 
 **严格要求**：
 1. **绝对禁止修改任何原始代码**：
+   - 不能改变任何字符，包括引号、空格、换行等
+   - 代码中的每一个字符都必须与原始代码完全一致
+   - 特别注意：不要转义引号（如将 ' 改为 \\'）
    - 不能改变变量名、函数名、类名
    - 不能改变代码逻辑或结构
    - 不能改变缩进、格式、分号使用
@@ -73,7 +80,15 @@ ${sourceCode}
    - 避免对简单赋值或显而易见的操作添加冗余注释
    - 重点解释代码的意图、业务逻辑和潜在风险
 
-输出格式：
+**输出格式要求**：
+1. 直接输出，不要有任何前言、解释或思考过程
+2. 第一行必须是 \`\`\`javascript
+3. 先输出带注释的代码（使用 markdown 代码块）
+4. 代码块结束后，直接输出性能提示和安全提醒
+5. 最后一行是安全提醒，之后立即结束，不要有任何总结
+6. 不要在最后添加任何额外的 \`\`\` 符号
+
+输出格式如下：
 \`\`\`javascript
 [完全保持原始代码不变，只添加中文JSDoc和必要的行级注释]
 \`\`\`
@@ -81,7 +96,12 @@ ${sourceCode}
 [!] 性能提示：[用中文给出具体建议]
 [!] 安全提醒：[用中文给出具体建议]
 
-**重要警告**：如果你修改了任何原始代码（除删除废弃注释外），这将被视为严重错误。你只能添加中文注释来解释代码，绝对不能改变代码本身的任何内容。`;
+**重要警告**：
+1. 如果输出了任何思考过程、分析说明，将被视为错误。
+2. 如果改变了代码中的任何一个字符（包括引号），将被视为严重错误。
+3. 如果你修改了任何原始代码（除删除废弃注释外），这将被视为严重错误。
+4. 你只能添加中文注释来解释代码，绝对不能改变代码本身的任何内容。
+5. 整个输出结束时不要添加任何额外的 \`\`\` 符号，性能提示和安全提醒之后直接结束。`;
   }
   
   // 未来可扩展其他类型的 Prompt：
@@ -4531,8 +4551,9 @@ function registerAllCustomActions() {
       const codeAnalysisPrompt = XDYY_PROMPTS.codeAnalysis(ocrResult);
 
       const aiAnalysisResult = await toolbarUtils.ocrWithAI(
-        codeAnalysisPrompt, 
-        analysisModel
+        ocrResult,
+        analysisModel,
+        codeAnalysisPrompt
       );
 
       // 检查 AI 分析是否成功
@@ -4617,8 +4638,9 @@ function registerAllCustomActions() {
 
       // 调用 AI API
       const aiAnalysisResult = await toolbarUtils.ocrWithAI(
-        codeAnalysisPrompt, 
-        analysisModel
+        sourceCode,
+        analysisModel,
+        codeAnalysisPrompt
       );
 
       // 检查 AI 分析是否成功

@@ -1,47 +1,16 @@
 {
-  "currentState": "recalled-assistant",
+  "currentState": "initialized",
   "stateHistory": [
     {
       "from": "initial",
-      "command": "remember",
-      "timestamp": "2025-07-17T17:04:48.018Z",
-      "args": [
-        "assistant",
-        "MN-Addon 项目 Git 操作重要事项：\n1. 提交后必须执行 git push 推送到远程仓库，不要忘记 push\n2. 远程仓库名是 github 而不是默认的 origin\n3. 正确命令：git push github [分支名]\n4. 错误命令：git push origin [分支名] 会报错\n5. 在创建 GitHub Issue 之前必须确保代码已推送",
-        "--tags",
-        "git push github remote MN-Addon"
-      ]
-    },
-    {
-      "from": "memory_saved",
       "command": "init",
-      "timestamp": "2025-07-17T17:04:55.800Z",
+      "timestamp": "2025-08-03T03:19:23.265Z",
       "args": [
         {
           "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon"
         }
       ]
-    },
-    {
-      "from": "initialized",
-      "command": "remember",
-      "timestamp": "2025-07-17T17:05:08.466Z",
-      "args": [
-        "assistant",
-        "MN-Addon 项目 Git 操作重要事项：\n1. 提交后必须执行 git push 推送到远程仓库，不要忘记 push\n2. 远程仓库名是 github 而不是默认的 origin\n3. 正确命令：git push github [分支名]\n4. 错误命令：git push origin [分支名] 会报错\n5. 在创建 GitHub Issue 之前必须确保代码已推送\n6. 查看远程仓库配置：git remote -v",
-        "--tags",
-        "git push github remote MN-Addon"
-      ]
-    },
-    {
-      "from": "memory_saved",
-      "command": "recall",
-      "timestamp": "2025-07-17T17:05:25.043Z",
-      "args": [
-        "assistant",
-        "git push github"
-      ]
     }
   ],
-  "lastUpdated": "2025-07-17T17:05:25.058Z"
+  "lastUpdated": "2025-08-03T03:19:23.278Z"
 }

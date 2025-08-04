@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -78,6 +78,8 @@ interface Perspective {
 interface PerspectiveViewProps {
   tasks: Task[]
   pendingTasks: Task[]
+  perspectives: Perspective[]
+  selectedPerspectiveId: string | null
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onOpenDetails: (taskId: string) => void
   onDeleteTask: (taskId: string) => void
@@ -94,6 +96,10 @@ interface PerspectiveViewProps {
   onAddProgress: (taskId: string, progress: string) => void
   onRemoveFromPending: (taskId: string) => void
   availableTags: string[]
+  onPerspectiveChange: (perspectiveId: string | null) => void
+  onCreatePerspective: (perspective: Omit<Perspective, "id" | "createdAt">) => Perspective
+  onUpdatePerspective: (perspectiveId: string, updates: Partial<Perspective>) => void
+  onDeletePerspective: (perspectiveId: string) => void
 }
 
 const defaultFilter: PerspectiveFilter = {
@@ -108,6 +114,8 @@ const defaultFilter: PerspectiveFilter = {
 export function PerspectiveView({
   tasks,
   pendingTasks,
+  perspectives,
+  selectedPerspectiveId,
   onUpdateTask,
   onOpenDetails,
   onDeleteTask,
@@ -124,9 +132,11 @@ export function PerspectiveView({
   onAddProgress,
   onRemoveFromPending,
   availableTags,
+  onPerspectiveChange,
+  onCreatePerspective,
+  onUpdatePerspective,
+  onDeletePerspective,
 }: PerspectiveViewProps) {
-  const [perspectives, setPerspectives] = useState<Perspective[]>([])
-  const [selectedPerspective, setSelectedPerspective] = useState<Perspective | null>(null)
   const [currentFilter, setCurrentFilter] = useState<PerspectiveFilter>(defaultFilter)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -135,22 +145,7 @@ export function PerspectiveView({
   const [newPerspectiveDescription, setNewPerspectiveDescription] = useState("")
   const [tempFilter, setTempFilter] = useState<PerspectiveFilter>(defaultFilter)
 
-  // 加载保存的透视
-  useEffect(() => {
-    const savedPerspectives = localStorage.getItem("mntask-perspectives")
-    if (savedPerspectives) {
-      const parsed = JSON.parse(savedPerspectives).map((p: any) => ({
-        ...p,
-        createdAt: new Date(p.createdAt),
-      }))
-      setPerspectives(parsed)
-    }
-  }, [])
-
-  // 保存透视到 localStorage
-  useEffect(() => {
-    localStorage.setItem("mntask-perspectives", JSON.stringify(perspectives))
-  }, [perspectives])
+  const selectedPerspective = selectedPerspectiveId ? perspectives.find((p) => p.id === selectedPerspectiveId) : null
 
   // 合并所有任务
   const allTasks = [...tasks, ...pendingTasks]
@@ -203,61 +198,41 @@ export function PerspectiveView({
       return
     }
 
-    const newPerspective: Perspective = {
-      id: `perspective-${Date.now()}`,
+    const perspectiveData = {
       name: newPerspectiveName.trim(),
       description: newPerspectiveDescription.trim(),
       filters: { ...tempFilter },
-      createdAt: new Date(),
     }
 
-    setPerspectives([...perspectives, newPerspective])
+    onCreatePerspective(perspectiveData)
     setNewPerspectiveName("")
     setNewPerspectiveDescription("")
     setTempFilter(defaultFilter)
     setIsCreateDialogOpen(false)
-    toast.success("透视创建成功")
   }
 
-  const updatePerspective = () => {
+  const updatePerspectiveHandler = () => {
     if (!editingPerspective || !newPerspectiveName.trim()) {
       toast.error("请输入透视名称")
       return
     }
 
-    const updatedPerspectives = perspectives.map((p) =>
-      p.id === editingPerspective.id
-        ? {
-            ...p,
-            name: newPerspectiveName.trim(),
-            description: newPerspectiveDescription.trim(),
-            filters: { ...tempFilter },
-          }
-        : p,
-    )
-
-    setPerspectives(updatedPerspectives)
-
-    // 如果正在编辑当前选中的透视，更新选中状态
-    if (selectedPerspective?.id === editingPerspective.id) {
-      const updatedPerspective = updatedPerspectives.find((p) => p.id === editingPerspective.id)
-      setSelectedPerspective(updatedPerspective || null)
+    const updates = {
+      name: newPerspectiveName.trim(),
+      description: newPerspectiveDescription.trim(),
+      filters: { ...tempFilter },
     }
 
+    onUpdatePerspective(editingPerspective.id, updates)
     setEditingPerspective(null)
     setNewPerspectiveName("")
     setNewPerspectiveDescription("")
     setTempFilter(defaultFilter)
     setIsEditDialogOpen(false)
-    toast.success("透视更新成功")
   }
 
-  const deletePerspective = (perspectiveId: string) => {
-    setPerspectives(perspectives.filter((p) => p.id !== perspectiveId))
-    if (selectedPerspective?.id === perspectiveId) {
-      setSelectedPerspective(null)
-    }
-    toast.success("透视删除成功")
+  const deletePerspectiveHandler = (perspectiveId: string) => {
+    onDeletePerspective(perspectiveId)
   }
 
   const openEditDialog = (perspective: Perspective) => {
@@ -356,7 +331,7 @@ export function PerspectiveView({
                   ? "bg-blue-600/20 border-blue-500"
                   : "bg-slate-800/30 border-slate-700 hover:bg-slate-700/30"
               }`}
-              onClick={() => setSelectedPerspective(perspective)}
+              onClick={() => onPerspectiveChange(perspective.id)}
             >
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
@@ -378,7 +353,7 @@ export function PerspectiveView({
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation()
-                        deletePerspective(perspective.id)
+                        deletePerspectiveHandler(perspective.id)
                       }}
                       className="h-8 w-8 p-0 text-slate-400 hover:text-red-400"
                     >
@@ -954,7 +929,7 @@ export function PerspectiveView({
             >
               取消
             </Button>
-            <Button onClick={updatePerspective} className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button onClick={updatePerspectiveHandler} className="bg-blue-600 hover:bg-blue-700 text-white">
               <Save className="w-4 h-4 mr-2" />
               保存更改
             </Button>

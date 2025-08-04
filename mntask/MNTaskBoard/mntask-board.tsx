@@ -28,13 +28,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
 
-interface ProgressEntry {
-  id: string
-  content: string
-  timestamp: Date
-  type: "progress"
-}
-
 interface Task {
   id: string
   title: string
@@ -258,7 +251,7 @@ export default function MNTaskBoard() {
   const [kanbanSelectedPerspectiveId, setKanbanSelectedPerspectiveId] = useState<string | null>(null)
 
   // 看板任务类型筛选状态
-  const [kanbanTaskTypeFilter, setKanbanTaskTypeFilter] = useState<TaskTypeFilter>("all")
+  const [_kanbanTaskTypeFilter, setKanbanTaskTypeFilter] = useState<TaskTypeFilter>("all")
 
   // 焦点视图待处理任务类型显示控制
   const [showAllPendingTypes, setShowAllPendingTypes] = useState(false)
@@ -544,7 +537,6 @@ export default function MNTaskBoard() {
   )
 
   const focusTasksCount = filteredTasks.filter((task) => task.isFocusTask && !task.completed).length
-  const priorityFocusCount = filteredTasks.filter((task) => task.isPriorityFocus && !task.completed).length
 
   const togglePriorityFocus = (taskId: string) => {
     setTasks(
@@ -674,7 +666,6 @@ export default function MNTaskBoard() {
 
   const deleteTask = (taskId: string) => {
     // 删除任务时，需要处理子任务
-    const allTasksList = getAllTasksList()
     const childTasks = getChildTasks(taskId)
 
     if (childTasks.length > 0) {
@@ -705,7 +696,6 @@ export default function MNTaskBoard() {
 
   const deletePendingTask = (taskId: string) => {
     // 删除任务时，需要处理子任务
-    const allTasksList = getAllTasksList()
     const childTasks = getChildTasks(taskId)
 
     if (childTasks.length > 0) {
@@ -1032,10 +1022,6 @@ export default function MNTaskBoard() {
 
       toast.success("任务已添加到待处理列表")
     }
-  }
-
-  const removePendingTask = (taskId: string) => {
-    setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
   }
 
   const selectFocusTasks = () => {

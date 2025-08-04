@@ -75,8 +75,8 @@ type TaskTypeFilter = "all" | "action" | "project" | "key-result" | "objective"
 type TaskStatus = "todo" | "in-progress" | "completed" | "paused"
 
 export function KanbanBoard({
-  tasks,
-  pendingTasks,
+  tasks: _tasks,
+  pendingTasks: _pendingTasks,
   allTasks,
   perspectives,
   selectedPerspectiveId,
@@ -521,7 +521,7 @@ export function KanbanBoard({
                 onChange={(e) => setNewTaskTitle(e.target.value)}
                 placeholder={selectedPerspective ? `输入${selectedPerspective.name}任务标题...` : "输入任务标题..."}
                 className="bg-slate-600/50 border-slate-500 text-white placeholder:text-slate-400"
-                onKeyPress={(e) => {
+                onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     handleAddTask()
                   }
@@ -767,7 +767,7 @@ export function KanbanBoard({
                 : "输入任务标题后按 Enter 快速添加..."
             }
             className="flex-1 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
-            onKeyPress={(e) => {
+            onKeyDown={(e) => {
               if (e.key === "Enter") {
                 handleAddTask()
               }

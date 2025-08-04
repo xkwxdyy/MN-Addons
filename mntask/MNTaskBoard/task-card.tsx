@@ -34,7 +34,7 @@ interface TaskCardProps {
   task: Task
   onToggleFocus: (taskId: string) => void
   onTogglePriorityFocus: (taskId: string) => void
-  onToggleStatus: (taskId: string) => void
+  onToggleStatus?: (taskId: string) => void
   onComplete: (taskId: string) => void
   onDelete: (taskId: string) => void
   onLocateTask: (taskId: string) => void
@@ -73,7 +73,6 @@ export function TaskCard({
   task,
   onToggleFocus,
   onTogglePriorityFocus,
-  onToggleStatus,
   onComplete,
   onDelete,
   onLocateTask,

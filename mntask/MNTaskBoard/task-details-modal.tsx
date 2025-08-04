@@ -99,7 +99,12 @@ export function TaskDetailsModal({
   const [showTagSuggestions, setShowTagSuggestions] = useState(false)
   const [newProgressContent, setNewProgressContent] = useState("")
   // 添加本地进展历史状态，用于立即更新显示
-  const [localProgressHistory, setLocalProgressHistory] = useState<Task["progressHistory"]>([])
+  const [localProgressHistory, setLocalProgressHistory] = useState<Array<{
+    id: string
+    content: string
+    timestamp: Date
+    type: "progress" | "status" | "comment"
+  }>>([])
 
   useEffect(() => {
     if (task) {

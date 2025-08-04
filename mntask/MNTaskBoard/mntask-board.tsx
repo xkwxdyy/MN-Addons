@@ -251,7 +251,7 @@ export default function MNTaskBoard() {
   const [kanbanSelectedPerspectiveId, setKanbanSelectedPerspectiveId] = useState<string | null>(null)
 
   // 看板任务类型筛选状态
-  const [_kanbanTaskTypeFilter, setKanbanTaskTypeFilter] = useState<TaskTypeFilter>("all")
+  const [kanbanTaskTypeFilter, setKanbanTaskTypeFilter] = useState<TaskTypeFilter>("all")
 
   // 焦点视图待处理任务类型显示控制
   const [showAllPendingTypes, setShowAllPendingTypes] = useState(false)
@@ -1716,6 +1716,7 @@ export default function MNTaskBoard() {
               allTasks={allTasks}
               perspectives={perspectives}
               selectedPerspectiveId={kanbanSelectedPerspectiveId}
+              selectedTaskTypeFilter={kanbanTaskTypeFilter}
               onUpdateTask={updateTask}
               onOpenDetails={openTaskDetails}
               onDeleteTask={deleteTask}
@@ -1861,7 +1862,7 @@ export default function MNTaskBoard() {
                 toast.warning(`已切换到看板视图，请检查任务类型筛选器是否正确设置为"${taskType}"`)
               }
             }
-          }, 300) // Increased timeout to ensure state updates
+          }, 500) // Increased timeout to ensure state updates and re-render
         }}
       />
       <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>

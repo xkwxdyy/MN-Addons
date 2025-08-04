@@ -2,7 +2,7 @@
 
 import React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -60,6 +60,7 @@ interface KanbanBoardProps {
   allTasks: Task[]
   perspectives: Perspective[]
   selectedPerspectiveId: string | null
+  selectedTaskTypeFilter?: TaskTypeFilter
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onOpenDetails: (taskId: string) => void
   onDeleteTask: (taskId: string) => void
@@ -80,6 +81,7 @@ export function KanbanBoard({
   allTasks,
   perspectives,
   selectedPerspectiveId,
+  selectedTaskTypeFilter,
   onUpdateTask,
   onOpenDetails,
   onDeleteTask,
@@ -90,11 +92,18 @@ export function KanbanBoard({
   onPerspectiveChange,
   onTaskTypeFilterChange,
 }: KanbanBoardProps) {
-  const [selectedFilter, setSelectedFilter] = useState<TaskTypeFilter>("all")
+  const [selectedFilter, setSelectedFilter] = useState<TaskTypeFilter>(selectedTaskTypeFilter || "all")
   const [newTaskTitle, setNewTaskTitle] = useState("")
   const [newTaskType, setNewTaskType] = useState<"action" | "project" | "key-result" | "objective">("action")
   const [showAddTask, setShowAddTask] = useState(false)
   const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null)
+
+  // Sync external filter changes with internal state
+  useEffect(() => {
+    if (selectedTaskTypeFilter) {
+      setSelectedFilter(selectedTaskTypeFilter)
+    }
+  }, [selectedTaskTypeFilter])
 
   // 应用透视筛选
   const applyPerspectiveFilter = (tasks: Task[], filters: PerspectiveFilter): Task[] => {

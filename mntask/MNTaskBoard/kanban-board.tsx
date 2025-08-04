@@ -308,7 +308,7 @@ export function KanbanBoard({
 
       // 合并透视标签和解析出的标签
       if (filters.tags.length > 0) {
-        const allTags = [...new Set([...baseTask.tags, ...filters.tags])]
+        const allTags = [...new Set([...(baseTask.tags || []), ...filters.tags])]
         baseTask.tags = allTags
       }
 
@@ -818,3 +818,47 @@ export function KanbanBoard({
             添加
           </Button>
         </div>
+
+        {/* 语法提示 */}
+        <div className="text-xs text-slate-400">
+          <p>💡 使用 #标签 快速添加标签，支持多种引号格式</p>
+          <p className="mt-1">支持: #标签 #"英文引号" #"中文引号" #【方括号】 #（圆括号）</p>
+        </div>
+
+        {selectedPerspective && (
+          <div className="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
+            <Eye className="w-3 h-3" />
+            <span>将自动应用透视条件:</span>
+            {selectedPerspective.filters.tags.length > 0 && (
+              <div className="flex gap-1">
+                {selectedPerspective.filters.tags.map((tag) => (
+                  <Badge key={tag} className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {selectedPerspective.filters.taskTypes.length === 1 && (
+              <Badge className="bg-green-500/20 text-green-300 border-green-500/30 text-xs">
+                {getTypeText(selectedPerspective.filters.taskTypes[0])}
+              </Badge>
+            )}
+            {selectedPerspective.filters.priorities.length === 1 && (
+              <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30 text-xs">
+                {getPriorityText(selectedPerspective.filters.priorities[0])}优先级
+              </Badge>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 看板列 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {renderKanbanColumn("todo", "待开始", Target, "text-blue-400", "bg-blue-500/20 text-blue-300", todoTasks)}
+        {renderKanbanColumn("in-progress", "进行中", TrendingUp, "text-green-400", "bg-green-500/20 text-green-300", inProgressTasks)}
+        {renderKanbanColumn("paused", "已暂停", X, "text-yellow-400", "bg-yellow-500/20 text-yellow-300", pausedTasks)}
+        {renderKanbanColumn("completed", "已完成", Crosshair, "text-purple-400", "bg-purple-500/20 text-purple-300", completedTasks)}
+      </div>
+    </div>
+  )
+}

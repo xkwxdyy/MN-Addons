@@ -818,7 +818,7 @@ export default function MNTaskBoard() {
 
       // 合并透视标签和解析出的标签
       if (filters.tags.length > 0) {
-        const allTags = [...new Set([...baseTask.tags, ...filters.tags])]
+        const allTags = [...new Set([...(baseTask.tags || []), ...filters.tags])]
         baseTask.tags = allTags
       }
 
@@ -1644,18 +1644,6 @@ export default function MNTaskBoard() {
                         <Plus className="w-4 h-4 mr-2" />
                         添加
                       </Button>
-                    </div>
-
-                    {/* 语法提示 */}
-                    <div className="mt-2 text-xs text-slate-400">
-                      <p>💡 标签语法: 使用 #标签 快速添加标签，支持多种引号格式</p>
-                      <p className="mt-1">
-                        支持格式: #标签 #"带空格" #'单引号' #"中文引号" #'中文单引号' #【方括号】 #（圆括号）
-                      </p>
-                      <p className="mt-1">
-                        示例: "修复登录问题 #bug修复 #"高优先级" #【紧急处理】" → 任务: "修复登录问题", 标签: bug修复,
-                        高优先级, 紧急处理
-                      </p>
                     </div>
 
                     {getFocusSelectedPerspective && (

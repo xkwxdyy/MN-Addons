@@ -242,7 +242,7 @@ export function KanbanBoard({
     // 支持多种引号格式的正则表达式：
     // #标签 - 无引号的标签
     // #"标签" - 英文双引号
-    // #'标签' - 英文单引号  
+    // #'标签' - 英文单引号
     // #"标签" - 中文双引号
     // #'标签' - 中文单引号
     // #【标签】- 中文方括号
@@ -574,7 +574,6 @@ export function KanbanBoard({
                 </Button>
               </div>
 
-
               {selectedPerspective && (
                 <div className="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
                   <Eye className="w-3 h-3" />
@@ -814,7 +813,6 @@ export function KanbanBoard({
           </Button>
         </div>
 
-
         {selectedPerspective && (
           <div className="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
             <Eye className="w-3 h-3" />
@@ -845,9 +843,23 @@ export function KanbanBoard({
       {/* 看板列 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {renderKanbanColumn("todo", "待开始", Target, "text-blue-400", "bg-blue-500/20 text-blue-300", todoTasks)}
-        {renderKanbanColumn("in-progress", "进行中", TrendingUp, "text-green-400", "bg-green-500/20 text-green-300", inProgressTasks)}
+        {renderKanbanColumn(
+          "in-progress",
+          "进行中",
+          TrendingUp,
+          "text-green-400",
+          "bg-green-500/20 text-green-300",
+          inProgressTasks,
+        )}
         {renderKanbanColumn("paused", "已暂停", X, "text-yellow-400", "bg-yellow-500/20 text-yellow-300", pausedTasks)}
-        {renderKanbanColumn("completed", "已完成", Crosshair, "text-purple-400", "bg-purple-500/20 text-purple-300", completedTasks)}
+        {renderKanbanColumn(
+          "completed",
+          "已完成",
+          Crosshair,
+          "text-purple-400",
+          "bg-purple-500/20 text-purple-300",
+          completedTasks,
+        )}
       </div>
     </div>
   )

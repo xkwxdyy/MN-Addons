@@ -12,7 +12,7 @@ import { PerspectiveView } from "./perspective-view"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Target, Clock, Plus, Eye, Filter, X } from "lucide-react"
 import { TaskDetailsModal } from "./task-details-modal"
@@ -204,6 +204,36 @@ const samplePending: Task[] = [
     tags: ["学习成长", "专业技能", "长期目标"],
   },
 ]
+
+// 解析任务标题中的标签语法
+const parseTaskTitleWithTags = (input: string): { title: string; tags: string[] } => {
+  const tagRegex = /#(?:"([^"]+)"|'([^']+)'|“([^“]+)”|‘([^‘]+)’|【([^】]+)】|（([^）]+)）|([^\s#]+))/g
+  const tags: string[] = []
+  let match
+  let title = input
+
+  while ((match = tagRegex.exec(input)) !== null) {
+    const tag = match[1] || match[2] || match[3] || match[4] || match[5] || match[6] || match[7]
+    if (tag && tag.trim()) {
+      tags.push(tag.trim())
+    }
+  }
+
+  title = input.replace(tagRegex, "").trim()
+  return { title, tags }
+}
+
+// 解析缩进任务列表
+const parseIndentedTaskList = (text: string): { title: string; tags: string[]; indentation: number }[] => {
+  const lines = text.split("\n").filter((line) => line.trim() !== "")
+  return lines.map((line) => {
+    const indentationMatch = line.match(/^(\s*)/)
+    const indentation = indentationMatch ? Math.floor(indentationMatch[1].length / 2) : 0
+    const titleWithTags = line.trim()
+    const { title, tags } = parseTaskTitleWithTags(titleWithTags)
+    return { title, tags, indentation }
+  })
+}
 
 export default function MNTaskBoard() {
   const [currentView, setCurrentView] = useState<"focus" | "kanban" | "perspective">("focus")
@@ -751,108 +781,53 @@ export default function MNTaskBoard() {
     )
   }
 
-  // 解析任务标题中的标签语法
-  const parseTaskTitleWithTags = (input: string): { title: string; tags: string[] } => {
-    // 支持多种引号格式的正则表达式：
-    // #标签 - 无引号的标签
-    // #"标签" - 英文双引号
-    // #'标签' - 英文单引号
-    // #"标签" - 中文双引号
-    // #'标签' - 中文单引号
-    // #【标签】- 中文方括号
-    // #（标签）- 中文圆括号
-    const tagRegex = /#(?:"([^"]+)"|'([^']+)'|“([^“]+)”|‘([^‘]+)’|【([^】]+)】|（([^）]+)）|([^\s#]+))/g
-    const tags: string[] = []
-    let match
-
-    // 提取所有标签
-    while ((match = tagRegex.exec(input)) !== null) {
-      // match[1] - 英文双引号内容
-      // match[2] - 英文单引号内容
-      // match[3] - 中文双引号内容
-      // match[4] - 中文单引号内容
-      // match[5] - 中文方括号内容
-      // match[6] - 中文圆括号内容
-      // match[7] - 无引号内容
-      const tag = match[1] || match[2] || match[3] || match[4] || match[5] || match[6] || match[7]
-      if (tag && tag.trim()) {
-        tags.push(tag.trim())
-      }
-    }
-
-    // 移除标签部分，获取纯净的任务标题
-    const title = input.replace(tagRegex, "").trim()
-
-    return { title, tags }
-  }
-
   const addToPending = () => {
     if (!newTaskTitle.trim()) return
 
-    // 解析任务标题和标签
-    const { title, tags: parsedTags } = parseTaskTitleWithTags(newTaskTitle)
-
-    if (!title) {
-      toast.error("请输入任务标题")
+    const parsedLines = parseIndentedTaskList(newTaskTitle)
+    if (parsedLines.length === 0) {
+      toast.error("请输入任务内容")
       return
     }
 
-    // 基础任务数据
-    const baseTask: Task = {
-      id: `pending-${Date.now()}`,
-      title: title,
-      completed: false,
-      isFocusTask: false,
-      isPriorityFocus: false,
-      priority: "low",
-      status: "todo",
-      type: "action", // 默认类型为动作
-      createdAt: new Date(),
-      isInPending: true,
-      tags: [...parsedTags], // 使用解析出的标签
-    }
+    const newTasks: Task[] = []
+    const parentStack: { id: string; indentation: number }[] = []
 
-    // 如果当前有选中的透视，自动应用透视的筛选条件
-    if (getFocusSelectedPerspective) {
-      const filters = getFocusSelectedPerspective.filters
-
-      // 合并透视标签和解析出的标签
-      if (filters.tags.length > 0) {
-        const allTags = [...new Set([...(baseTask.tags || []), ...filters.tags])]
-        baseTask.tags = allTags
+    parsedLines.forEach((line) => {
+      while (parentStack.length > 0 && line.indentation <= parentStack[parentStack.length - 1].indentation) {
+        parentStack.pop()
       }
+      const parentId = parentStack.length > 0 ? parentStack[parentStack.length - 1].id : undefined
 
-      // 如果透视指定了特定的任务类型，使用第一个类型
-      if (filters.taskTypes.length === 1) {
-        baseTask.type = filters.taskTypes[0] as "action" | "project" | "key-result" | "objective"
+      const newTask: Task = {
+        id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        title: line.title,
+        completed: false,
+        isFocusTask: false,
+        isPriorityFocus: false,
+        priority: "low",
+        status: "todo",
+        type: "action", // Default type, will be updated
+        createdAt: new Date(),
+        isInPending: true,
+        tags: line.tags,
+        parentId: parentId,
       }
+      newTasks.push(newTask)
+      parentStack.push({ id: newTask.id, indentation: line.indentation })
+    })
 
-      // 如果透视指定了特定的优先级，使用第一个优先级
-      if (filters.priorities.length === 1) {
-        baseTask.priority = filters.priorities[0] as "low" | "medium" | "high"
+    // Post-process to set task types to 'project' for tasks with children
+    const taskIdsWithChildren = new Set(newTasks.map((t) => t.parentId).filter(Boolean))
+    newTasks.forEach((task) => {
+      if (taskIdsWithChildren.has(task.id)) {
+        task.type = "project"
       }
+    })
 
-      // 如果透视指定了特定的状态，使用第一个状态
-      if (filters.statuses.length === 1) {
-        baseTask.status = filters.statuses[0] as "todo" | "in-progress" | "completed" | "paused"
-        baseTask.completed = baseTask.status === "completed"
-      }
-    }
-
-    setPendingTasks([...pendingTasks, baseTask])
+    setPendingTasks((prev) => [...prev, ...newTasks])
     setNewTaskTitle("")
-
-    // 显示提示信息
-    const appliedTags = baseTask.tags || []
-    if (appliedTags.length > 0) {
-      if (parsedTags.length > 0 && getFocusSelectedPerspective && getFocusSelectedPerspective.filters.tags.length > 0) {
-        toast.success(`任务已添加！应用标签: ${appliedTags.join(", ")} (包含解析标签和透视标签)`)
-      } else if (parsedTags.length > 0) {
-        toast.success(`任务已添加！应用标签: ${appliedTags.join(", ")}`)
-      } else if (getFocusSelectedPerspective && getFocusSelectedPerspective.filters.tags.length > 0) {
-        toast.success(`任务已添加并自动应用透视标签: ${appliedTags.join(", ")}`)
-      }
-    }
+    toast.success(`成功添加 ${newTasks.length} 个任务`)
   }
 
   const addTaskToPending = (taskData: Omit<Task, "id" | "createdAt">) => {
@@ -1139,8 +1114,8 @@ export default function MNTaskBoard() {
     setAllTasks(allTasks.map((task) => (task.id === taskId ? { ...task, ...updates } : task)))
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       addToPending()
     }
   }
@@ -1629,22 +1604,27 @@ export default function MNTaskBoard() {
                 <Card className="bg-slate-800/30 border-slate-700">
                   <CardContent className="p-4">
                     <div className="flex gap-3">
-                      <Input
-                        placeholder={
-                          getFocusSelectedPerspective
-                            ? `快速添加${getFocusSelectedPerspective.name}任务... (输入后按Enter)`
-                            : "快速添加动作任务... (输入后按Enter)"
-                        }
+                      <Textarea
+                        placeholder={`快速添加任务...
+- 使用缩进创建层级任务 (2个空格)
+- 项目 A
+  - 子任务 B #标签`}
                         value={newTaskTitle}
                         onChange={(e) => setNewTaskTitle(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        className="flex-1 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
+                        onKeyDown={handleKeyPress}
+                        className="flex-1 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 min-h-[100px] text-sm"
                       />
-                      <Button onClick={addToPending} className="bg-purple-600 hover:bg-purple-700 text-white">
+                      <Button
+                        onClick={addToPending}
+                        className="bg-purple-600 hover:bg-purple-700 text-white self-start"
+                      >
                         <Plus className="w-4 h-4 mr-2" />
                         添加
                       </Button>
                     </div>
+                    <p className="text-xs text-slate-400 mt-2">
+                      提示: 使用缩进创建层级任务。按 (Cmd/Ctrl + Enter) 快速提交。
+                    </p>
 
                     {getFocusSelectedPerspective && (
                       <div className="mt-2 text-xs text-slate-400 flex items-center gap-2">

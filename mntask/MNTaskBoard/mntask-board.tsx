@@ -1605,10 +1605,6 @@ export default function MNTaskBoard() {
                   <CardContent className="p-4">
                     <div className="flex gap-3">
                       <Textarea
-                        placeholder={`快速添加任务...
-- 使用缩进创建层级任务 (2个空格)
-- 项目 A
-  - 子任务 B #标签`}
                         value={newTaskTitle}
                         onChange={(e) => setNewTaskTitle(e.target.value)}
                         onKeyDown={handleKeyPress}

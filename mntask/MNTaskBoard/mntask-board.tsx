@@ -7,6 +7,8 @@ import { Header } from "./header"
 import { Sidebar } from "./sidebar"
 import { TaskCard } from "./task-card"
 import { PendingTaskCard } from "./pending-task-card"
+import { KanbanBoard } from "./kanban-board"
+import { PerspectiveView } from "./perspective-view"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -49,6 +51,7 @@ interface Task {
   order?: number
   parentId?: string // 父任务ID
   isInPending?: boolean // 是否在待处理列表中显示
+  tags?: string[] // 标签数组
   progressHistory?: Array<{
     id: string
     content: string
@@ -82,6 +85,7 @@ const sampleTasks: Task[] = [
     progress: "2025/01/28 12:00:00 提取评论如果是行内链接的话，也要进行相应处理！",
     category: "开发 MarginNote 插件",
     parentId: "project-1",
+    tags: ["bug修复", "链接处理", "紧急"],
   },
   {
     id: "2",
@@ -100,6 +104,7 @@ const sampleTasks: Task[] = [
       "2025/01/28 11:30:00 relative; padding-left:28px; margin:14px 0; color:#1E40AF; font-weight:500; font-size:0.92em",
     category: "开发 MarginNote 插件",
     parentId: "project-1",
+    tags: ["bug修复", "剪贴板"],
   },
 ]
 
@@ -117,6 +122,7 @@ const samplePending: Task[] = [
     createdAt: new Date(),
     category: "开发 MarginNote 插件",
     isInPending: true,
+    tags: ["插件开发", "MarginNote", "工具"],
   },
   {
     id: "pending-1",
@@ -132,6 +138,7 @@ const samplePending: Task[] = [
     category: "开发 MarginNote 插件",
     parentId: "project-1",
     isInPending: true,
+    tags: ["UI优化", "用户体验"],
   },
   {
     id: "pending-2",
@@ -146,6 +153,7 @@ const samplePending: Task[] = [
     createdAt: new Date(),
     category: "个人项目",
     isInPending: true,
+    tags: ["任务管理", "系统开发", "个人项目"],
   },
   {
     id: "pending-3",
@@ -160,6 +168,7 @@ const samplePending: Task[] = [
     createdAt: new Date(),
     category: "工作目标",
     isInPending: true,
+    tags: ["KPI", "质量保证", "月度目标"],
   },
   {
     id: "pending-4",
@@ -174,10 +183,12 @@ const samplePending: Task[] = [
     createdAt: new Date(),
     category: "职业发展",
     isInPending: true,
+    tags: ["学习成长", "专业技能", "长期目标"],
   },
 ]
 
 export default function MNTaskBoard() {
+  const [currentView, setCurrentView] = useState<"focus" | "kanban" | "perspective">("focus")
   const [tasks, setTasks] = useState<Task[]>([])
   const [pendingTasks, setPendingTasks] = useState<Task[]>([])
   const [allTasks, setAllTasks] = useState<Task[]>([]) // 存储所有任务的总列表
@@ -211,6 +222,17 @@ export default function MNTaskBoard() {
     return allTasks
   }
 
+  // 获取所有已使用的标签
+  const getAllTags = (): string[] => {
+    const allTagsSet = new Set<string>()
+    allTasks.forEach((task) => {
+      task.tags?.forEach((tag) => {
+        allTagsSet.add(tag)
+      })
+    })
+    return Array.from(allTagsSet).sort()
+  }
+
   // 获取可作为父任务的任务列表（项目类型）
   const getAvailableParentTasks = (currentTaskId?: string): Task[] => {
     const allTasksList = getAllTasksList()
@@ -241,12 +263,19 @@ export default function MNTaskBoard() {
     const savedTasks = localStorage.getItem("mntask-tasks")
     const savedPending = localStorage.getItem("mntask-pending")
     const savedAllTasks = localStorage.getItem("mntask-all-tasks")
+    const savedView = localStorage.getItem("mntask-current-view")
+
+    // 恢复视图状态
+    if (savedView && (savedView === "focus" || savedView === "kanban" || savedView === "perspective")) {
+      setCurrentView(savedView)
+    }
 
     if (savedAllTasks) {
       const parsedAllTasks = JSON.parse(savedAllTasks).map((task: any) => ({
         ...task,
         createdAt: new Date(task.createdAt),
         type: task.type || "action",
+        tags: task.tags || [], // 确保标签属性存在
       }))
       setAllTasks(parsedAllTasks)
     }
@@ -257,6 +286,7 @@ export default function MNTaskBoard() {
         createdAt: new Date(task.createdAt),
         order: task.order ?? index,
         type: task.type || "action", // 为旧数据设置默认类型
+        tags: task.tags || [], // 确保标签属性存在
       }))
       setTasks(parsedTasks)
     } else {
@@ -269,6 +299,7 @@ export default function MNTaskBoard() {
         ...task,
         createdAt: new Date(task.createdAt),
         type: task.type || "action", // 为旧数据设置默认类型
+        tags: task.tags || [], // 确保标签属性存在
       }))
       setPendingTasks(parsedPending)
     } else {
@@ -282,6 +313,11 @@ export default function MNTaskBoard() {
       setAllTasks(initialAllTasks)
     }
   }, [])
+
+  // 保存视图状态
+  useEffect(() => {
+    localStorage.setItem("mntask-current-view", currentView)
+  }, [currentView])
 
   // 同步更新总任务列表
   useEffect(() => {
@@ -316,6 +352,9 @@ export default function MNTaskBoard() {
   useEffect(() => {
     localStorage.setItem("mntask-all-tasks", JSON.stringify(allTasks))
   }, [allTasks])
+
+  // 过滤待处理任务，只显示动作类型
+  const filteredPendingTasks = pendingTasks.filter((task) => task.type === "action")
 
   const focusTasksCount = tasks.filter((task) => task.isFocusTask && !task.completed).length
   const priorityFocusCount = tasks.filter((task) => task.isPriorityFocus && !task.completed).length
@@ -472,6 +511,7 @@ export default function MNTaskBoard() {
       )
     } else {
       setTasks(tasks.filter((task) => task.id !== taskId))
+      setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
       setAllTasks(allTasks.filter((task) => task.id !== taskId))
     }
   }
@@ -576,17 +616,29 @@ export default function MNTaskBoard() {
       type: "action", // 默认类型为动作
       createdAt: new Date(),
       isInPending: true,
+      tags: [], // 初始化空标签数组
     }
     setPendingTasks([...pendingTasks, newTask])
     setNewTaskTitle("")
   }
 
+  const addTaskToPending = (taskData: Omit<Task, "id" | "createdAt">) => {
+    const newTask: Task = {
+      ...taskData,
+      id: `task-${Date.now()}`,
+      createdAt: new Date(),
+    }
+    setPendingTasks([...pendingTasks, newTask])
+  }
+
+  // 修复：支持从待处理任务和总任务列表中添加到焦点
   const addToFocus = (taskId: string) => {
-    const taskToMove = pendingTasks.find((task) => task.id === taskId)
-    if (taskToMove) {
+    // 首先从待处理任务中查找
+    const taskFromPending = pendingTasks.find((task) => task.id === taskId)
+    if (taskFromPending) {
       const maxOrder = Math.max(...tasks.filter((t) => t.isFocusTask && !t.isPriorityFocus).map((t) => t.order || 0), 0)
       const focusTask = {
-        ...taskToMove,
+        ...taskFromPending,
         isFocusTask: true,
         status: "in-progress" as const,
         order: maxOrder + 1,
@@ -594,6 +646,139 @@ export default function MNTaskBoard() {
       }
       setTasks([...tasks, focusTask])
       setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
+
+      // 同时更新 allTasks 中的任务状态
+      setAllTasks(
+        allTasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                isFocusTask: true,
+                status: "in-progress" as const,
+                order: maxOrder + 1,
+                isInPending: false,
+              }
+            : task,
+        ),
+      )
+
+      toast.success("任务已添加到焦点")
+      return
+    }
+
+    // 如果在待处理任务中没找到，从总任务列表中查找
+    const taskFromAll = allTasks.find((task) => task.id === taskId)
+    if (taskFromAll && taskFromAll.type === "action" && !taskFromAll.isFocusTask) {
+      const maxOrder = Math.max(...tasks.filter((t) => t.isFocusTask && !t.isPriorityFocus).map((t) => t.order || 0), 0)
+      const focusTask = {
+        ...taskFromAll,
+        isFocusTask: true,
+        status: "in-progress" as const,
+        order: maxOrder + 1,
+        isInPending: false,
+      }
+
+      // 添加到焦点任务
+      setTasks([...tasks, focusTask])
+
+      // 如果任务在待处理列表中，从待处理列表中移除
+      if (taskFromAll.isInPending) {
+        setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
+      }
+
+      // 更新 allTasks 中的任务状态
+      setAllTasks(
+        allTasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                isFocusTask: true,
+                status: "in-progress" as const,
+                order: maxOrder + 1,
+                isInPending: false,
+              }
+            : task,
+        ),
+      )
+
+      toast.success("任务已添加到焦点")
+    }
+  }
+
+  // 修复：将任务添加到待处理列表
+  const addToPendingFromKanban = (taskId: string) => {
+    // 从焦点任务中查找
+    const taskFromFocus = tasks.find((task) => task.id === taskId)
+    if (taskFromFocus && taskFromFocus.type === "action") {
+      const pendingTask = {
+        ...taskFromFocus,
+        isFocusTask: false,
+        isPriorityFocus: false,
+        order: undefined,
+        status: "todo" as const,
+        isInPending: true,
+      }
+
+      // 从焦点任务中移除
+      setTasks(tasks.filter((task) => task.id !== taskId))
+      // 添加到待处理任务
+      setPendingTasks([...pendingTasks, pendingTask])
+
+      // 重要：同时更新 allTasks 中的任务状态
+      setAllTasks(
+        allTasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                isFocusTask: false,
+                isPriorityFocus: false,
+                order: undefined,
+                status: "todo" as const,
+                isInPending: true,
+              }
+            : task,
+        ),
+      )
+
+      toast.success("任务已添加到待处理列表")
+      return
+    }
+
+    // 从总任务列表中查找（可能是其他视图中的任务）
+    const taskFromAll = allTasks.find((task) => task.id === taskId)
+    if (taskFromAll && taskFromAll.type === "action" && !taskFromAll.isInPending) {
+      const pendingTask = {
+        ...taskFromAll,
+        isFocusTask: false,
+        isPriorityFocus: false,
+        order: undefined,
+        status: "todo" as const,
+        isInPending: true,
+      }
+
+      // 添加到待处理任务（如果不存在）
+      const existsInPending = pendingTasks.some((task) => task.id === taskId)
+      if (!existsInPending) {
+        setPendingTasks([...pendingTasks, pendingTask])
+      }
+
+      // 重要：同时更新 allTasks 中的任务状态
+      setAllTasks(
+        allTasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                isFocusTask: false,
+                isPriorityFocus: false,
+                order: undefined,
+                status: "todo" as const,
+                isInPending: true,
+              }
+            : task,
+        ),
+      )
+
+      toast.success("任务已添加到待处理列表")
     }
   }
 
@@ -924,6 +1109,7 @@ export default function MNTaskBoard() {
         ...task,
         createdAt: new Date(task.createdAt),
         updatedAt: task.updatedAt ? new Date(task.updatedAt) : undefined,
+        tags: task.tags || [], // 确保标签属性存在
         progressHistory:
           task.progressHistory?.map((entry: any) => ({
             ...entry,
@@ -935,6 +1121,7 @@ export default function MNTaskBoard() {
         ...task,
         createdAt: new Date(task.createdAt),
         updatedAt: task.updatedAt ? new Date(task.updatedAt) : undefined,
+        tags: task.tags || [], // 确保标签属性存在
         progressHistory:
           task.progressHistory?.map((entry: any) => ({
             ...entry,
@@ -947,6 +1134,7 @@ export default function MNTaskBoard() {
           ...task,
           createdAt: new Date(task.createdAt),
           updatedAt: task.updatedAt ? new Date(task.updatedAt) : undefined,
+          tags: task.tags || [], // 确保标签属性存在
           progressHistory:
             task.progressHistory?.map((entry: any) => ({
               ...entry,
@@ -970,172 +1158,227 @@ export default function MNTaskBoard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <Header />
+      <Header currentView={currentView} onViewChange={setCurrentView} />
 
       {/* 隐藏的文件输入 */}
       <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileChange} style={{ display: "none" }} />
 
       {/* 主内容区域 - 添加顶部间距以避免与固定header重叠 */}
       <div className="pt-20 flex" style={{ minHeight: "calc(100vh - 80px)" }}>
-        <Sidebar
-          focusTasksCount={focusTasksCount}
-          pendingTasksCount={pendingTasks.length}
-          isSelectionMode={isSelectionMode}
-          onAddToPending={addToPending}
-          onSelectFocusTasks={selectFocusTasks}
-          onClearFocusTasks={clearFocusTasks}
-          onResetData={handleResetClick}
-          onExportData={exportData}
-          onImportData={handleImportClick}
-        />
+        {/* 只在焦点视图显示侧边栏 */}
+        {currentView === "focus" && (
+          <Sidebar
+            focusTasksCount={focusTasksCount}
+            pendingTasksCount={filteredPendingTasks.length}
+            isSelectionMode={isSelectionMode}
+            onAddToPending={addToPending}
+            onSelectFocusTasks={selectFocusTasks}
+            onClearFocusTasks={clearFocusTasks}
+            onResetData={handleResetClick}
+            onExportData={exportData}
+            onImportData={handleImportClick}
+          />
+        )}
 
-        <div className="flex-1 p-6 ml-64 overflow-y-auto">
-          {/* 焦点任务区域 */}
-          {focusTasks.length > 0 && (
-            <div className="mb-8">
-              <div className="flex items-center gap-2 mb-6">
-                <Target className="w-5 h-5 text-red-400" />
-                <h2 className="text-xl font-semibold text-white">焦点任务</h2>
-                <Badge className="bg-red-500/20 text-red-300 border-red-500/30">{focusTasksCount}</Badge>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {focusTasks.map((task) => {
-                  const allTasksList = getAllTasksList()
-                  const taskPath = generateTaskPath(task, allTasksList)
-                  const taskWithPath = { ...task, category: taskPath }
-
-                  return (
-                    <div key={task.id} id={`task-${task.id}`}>
-                      <TaskCard
-                        task={taskWithPath}
-                        onToggleFocus={toggleFocusTask}
-                        onTogglePriorityFocus={togglePriorityFocus}
-                        onToggleStatus={toggleTaskStatus}
-                        onComplete={completeTask}
-                        onDelete={deleteTask}
-                        onLocateTask={locateTask}
-                        onLaunchTask={launchTask}
-                        onOpenDetails={openTaskDetails}
-                        onStartTask={startTask}
-                        onPauseTask={pauseTask}
-                        onResumeTask={resumeTask}
-                        onAddProgress={addProgress}
-                      />
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* 待处理任务区域 */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-slate-400" />
-                <h2 className="text-xl font-semibold text-white">待处理任务</h2>
-                <Badge className="bg-slate-700 text-slate-300 border-slate-600">共 {pendingTasks.length} 项</Badge>
-              </div>
-            </div>
-
-            {isSelectionMode && (
-              <div className="flex items-center justify-between bg-slate-800/50 border border-slate-700 rounded-lg p-4 mb-4">
-                <div className="flex items-center gap-4">
-                  <span className="text-white text-sm">已选择 {selectedPendingTasks.length} 个任务</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedPendingTasks(pendingTasks.map((task) => task.id))}
-                    className="border-slate-600 text-slate-300 hover:bg-slate-700 bg-transparent"
-                  >
-                    全选
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedPendingTasks([])}
-                    className="border-slate-600 text-slate-300 hover:bg-slate-700 bg-transparent"
-                  >
-                    清空
-                  </Button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setIsSelectionMode(false)
-                      setSelectedPendingTasks([])
-                    }}
-                    className="border-slate-600 text-slate-300 hover:bg-slate-700 bg-transparent"
-                  >
-                    取消
-                  </Button>
-                  <Button
-                    onClick={addSelectedToFocus}
-                    disabled={selectedPendingTasks.length === 0}
-                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white disabled:opacity-50"
-                  >
-                    <Target className="w-4 h-4 mr-2" />
-                    添加到焦点 ({selectedPendingTasks.length})
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* 快速添加任务 */}
-            <Card className="bg-slate-800/30 border-slate-700">
-              <CardContent className="p-4">
-                <div className="flex gap-3">
-                  <Input
-                    placeholder="快速添加任务... (输入后按Enter)"
-                    value={newTaskTitle}
-                    onChange={(e) => setNewTaskTitle(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    className="flex-1 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
-                  />
-                  <Button onClick={addToPending} className="bg-purple-600 hover:bg-purple-700 text-white">
-                    <Plus className="w-4 h-4 mr-2" />
-                    添加
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="space-y-3">
-              {pendingTasks.map((task) => {
-                const allTasksList = getAllTasksList()
-                const taskPath = generateTaskPath(task, allTasksList)
-                const taskWithPath = { ...task, category: taskPath }
-
-                return (
-                  <div key={task.id} id={`task-${task.id}`}>
-                    <PendingTaskCard
-                      task={taskWithPath}
-                      isSelected={selectedPendingTasks.includes(task.id)}
-                      isSelectionMode={isSelectionMode}
-                      onToggleSelection={toggleTaskSelection}
-                      onOpenDetails={openTaskDetails}
-                      onDelete={deletePendingTask}
-                      onRemoveFromPending={removeFromPending}
-                      onAddToFocus={addToFocus}
-                      onLocateTask={locateTask}
-                      onLaunchTask={launchTask}
-                      onAddProgress={addProgress}
-                    />
+        <div className={`flex-1 overflow-y-auto ${currentView === "focus" ? "ml-64 p-6" : ""}`}>
+          {currentView === "focus" ? (
+            <>
+              {/* 焦点任务区域 */}
+              {focusTasks.length > 0 && (
+                <div className="mb-8">
+                  <div className="flex items-center gap-2 mb-6">
+                    <Target className="w-5 h-5 text-red-400" />
+                    <h2 className="text-xl font-semibold text-white">焦点任务</h2>
+                    <Badge className="bg-red-500/20 text-red-300 border-red-500/30">{focusTasksCount}</Badge>
                   </div>
-                )
-              })}
 
-              {pendingTasks.length === 0 && (
-                <div className="text-center py-8 text-slate-400">
-                  <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>暂无待处理任务</p>
-                  <p className="text-sm">使用上方输入框快速添加新任务</p>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {focusTasks.map((task) => {
+                      const allTasksList = getAllTasksList()
+                      const taskPath = generateTaskPath(task, allTasksList)
+                      const taskWithPath = { ...task, category: taskPath }
+
+                      return (
+                        <div key={task.id} id={`task-${task.id}`}>
+                          <TaskCard
+                            task={taskWithPath}
+                            onToggleFocus={toggleFocusTask}
+                            onTogglePriorityFocus={togglePriorityFocus}
+                            onToggleStatus={toggleTaskStatus}
+                            onComplete={completeTask}
+                            onDelete={deleteTask}
+                            onLocateTask={locateTask}
+                            onLaunchTask={launchTask}
+                            onOpenDetails={openTaskDetails}
+                            onStartTask={startTask}
+                            onPauseTask={pauseTask}
+                            onResumeTask={resumeTask}
+                            onAddProgress={addProgress}
+                          />
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               )}
-            </div>
-          </div>
+
+              {/* 待处理任务区域 - 只显示动作类型 */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-slate-400" />
+                    <h2 className="text-xl font-semibold text-white">待处理任务</h2>
+                    <Badge className="bg-slate-700 text-slate-300 border-slate-600">
+                      共 {filteredPendingTasks.length} 项动作
+                    </Badge>
+                    {pendingTasks.length > filteredPendingTasks.length && (
+                      <Badge className="bg-yellow-600/20 text-yellow-300 border-yellow-600/30 text-xs">
+                        已隐藏 {pendingTasks.length - filteredPendingTasks.length} 项非动作任务
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                {isSelectionMode && (
+                  <div className="flex items-center justify-between bg-slate-800/50 border border-slate-700 rounded-lg p-4 mb-4">
+                    <div className="flex items-center gap-4">
+                      <span className="text-white text-sm">已选择 {selectedPendingTasks.length} 个任务</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedPendingTasks(filteredPendingTasks.map((task) => task.id))}
+                        className="border-slate-600 text-slate-300 hover:bg-slate-700 bg-transparent"
+                      >
+                        全选
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedPendingTasks([])}
+                        className="border-slate-600 text-slate-300 hover:bg-slate-700 bg-transparent"
+                      >
+                        清空
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setIsSelectionMode(false)
+                          setSelectedPendingTasks([])
+                        }}
+                        className="border-slate-600 text-slate-300 hover:bg-slate-700 bg-transparent"
+                      >
+                        取消
+                      </Button>
+                      <Button
+                        onClick={addSelectedToFocus}
+                        disabled={selectedPendingTasks.length === 0}
+                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white disabled:opacity-50"
+                      >
+                        <Target className="w-4 h-4 mr-2" />
+                        添加到焦点 ({selectedPendingTasks.length})
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 快速添加任务 */}
+                <Card className="bg-slate-800/30 border-slate-700">
+                  <CardContent className="p-4">
+                    <div className="flex gap-3">
+                      <Input
+                        placeholder="快速添加动作任务... (输入后按Enter)"
+                        value={newTaskTitle}
+                        onChange={(e) => setNewTaskTitle(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        className="flex-1 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
+                      />
+                      <Button onClick={addToPending} className="bg-purple-600 hover:bg-purple-700 text-white">
+                        <Plus className="w-4 h-4 mr-2" />
+                        添加
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <div className="space-y-3">
+                  {filteredPendingTasks.map((task) => {
+                    const allTasksList = getAllTasksList()
+                    const taskPath = generateTaskPath(task, allTasksList)
+                    const taskWithPath = { ...task, category: taskPath }
+
+                    return (
+                      <div key={task.id} id={`task-${task.id}`}>
+                        <PendingTaskCard
+                          task={taskWithPath}
+                          isSelected={selectedPendingTasks.includes(task.id)}
+                          isSelectionMode={isSelectionMode}
+                          onToggleSelection={toggleTaskSelection}
+                          onOpenDetails={openTaskDetails}
+                          onDelete={deletePendingTask}
+                          onRemoveFromPending={removeFromPending}
+                          onAddToFocus={addToFocus}
+                          onLocateTask={locateTask}
+                          onLaunchTask={launchTask}
+                          onAddProgress={addProgress}
+                        />
+                      </div>
+                    )
+                  })}
+
+                  {filteredPendingTasks.length === 0 && (
+                    <div className="text-center py-8 text-slate-400">
+                      <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>暂无待处理的动作任务</p>
+                      <p className="text-sm">使用上方输入框快速添加新的动作任务</p>
+                      {pendingTasks.length > 0 && (
+                        <p className="text-xs text-yellow-400 mt-2">
+                          提示：当前隐藏了 {pendingTasks.length} 个非动作类型的任务
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : currentView === "kanban" ? (
+            /* 看板视图 */
+            <KanbanBoard
+              tasks={tasks}
+              pendingTasks={pendingTasks}
+              allTasks={allTasks} // 添加这一行
+              onUpdateTask={updateTask}
+              onOpenDetails={openTaskDetails}
+              onDeleteTask={deleteTask}
+              onAddToFocus={addToFocus}
+              onAddToPending={addToPendingFromKanban}
+              onRemoveFromPending={removeFromPending}
+              onAddTask={addTaskToPending}
+            />
+          ) : (
+            /* 透视视图 */
+            <PerspectiveView
+              tasks={tasks}
+              pendingTasks={pendingTasks}
+              onUpdateTask={updateTask}
+              onOpenDetails={openTaskDetails}
+              onDeleteTask={deleteTask}
+              onAddToFocus={addToFocus}
+              onToggleFocus={toggleFocusTask}
+              onTogglePriorityFocus={togglePriorityFocus}
+              onToggleStatus={toggleTaskStatus}
+              onComplete={completeTask}
+              onLocateTask={locateTask}
+              onLaunchTask={launchTask}
+              onStartTask={startTask}
+              onPauseTask={pauseTask}
+              onResumeTask={resumeTask}
+              onAddProgress={addProgress}
+              onRemoveFromPending={removeFromPending}
+              availableTags={getAllTags()}
+            />
+          )}
         </div>
       </div>
 
@@ -1150,6 +1393,7 @@ export default function MNTaskBoard() {
         onDeleteProgress={deleteProgress}
         availableParentTasks={getAvailableParentTasks(selectedTask?.id)}
         allTasks={getAllTasksList()}
+        availableTags={getAllTags()}
       />
       <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
         <AlertDialogContent className="bg-slate-800 border-slate-700">

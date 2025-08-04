@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -8,7 +10,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
-import { Trash2, Edit3, Check, Minus, Pin, Link } from "lucide-react"
+import { Trash2, Edit3, Check, Minus, Pin, Link, X, Plus, Tag } from "lucide-react"
+import { toast } from "sonner"
 
 interface Task {
   id: string
@@ -26,6 +29,7 @@ interface Task {
   category?: string
   order?: number
   parentId?: string
+  tags?: string[]
   progressHistory?: Array<{
     id: string
     content: string
@@ -45,6 +49,30 @@ interface TaskDetailsModalProps {
   onDeleteProgress: (taskId: string, progressId: string) => void
   availableParentTasks: Task[]
   allTasks: Task[]
+  availableTags: string[]
+}
+
+// 预定义的标签颜色
+const tagColors = [
+  "bg-red-500/20 text-red-300 border-red-500/30",
+  "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  "bg-green-500/20 text-green-300 border-green-500/30",
+  "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+  "bg-purple-500/20 text-purple-300 border-purple-500/30",
+  "bg-pink-500/20 text-pink-300 border-pink-500/30",
+  "bg-indigo-500/20 text-indigo-300 border-indigo-500/30",
+  "bg-orange-500/20 text-orange-300 border-orange-500/30",
+  "bg-teal-500/20 text-teal-300 border-teal-500/30",
+  "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
+]
+
+// 根据标签名称生成一致的颜色
+const getTagColor = (tag: string): string => {
+  const hash = tag.split("").reduce((a, b) => {
+    a = (a << 5) - a + b.charCodeAt(0)
+    return a & a
+  }, 0)
+  return tagColors[Math.abs(hash) % tagColors.length]
 }
 
 export function TaskDetailsModal({
@@ -58,14 +86,21 @@ export function TaskDetailsModal({
   onDeleteProgress,
   availableParentTasks,
   allTasks,
+  availableTags,
 }: TaskDetailsModalProps) {
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [editingProgressId, setEditingProgressId] = useState<string | null>(null)
   const [editingProgressContent, setEditingProgressContent] = useState("")
+  const [newTag, setNewTag] = useState("")
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false)
+  const [newProgressContent, setNewProgressContent] = useState("")
+  // 添加本地进展历史状态，用于立即更新显示
+  const [localProgressHistory, setLocalProgressHistory] = useState<Task["progressHistory"]>([])
 
   useEffect(() => {
     if (task) {
-      setEditingTask({ ...task })
+      setEditingTask({ ...task, tags: task.tags || [] })
+      setLocalProgressHistory(task.progressHistory || [])
     }
   }, [task])
 
@@ -104,12 +139,14 @@ export function TaskDetailsModal({
       status: editingTask.status,
       completed: editingTask.status === "completed",
       parentId: editingTask.parentId,
+      tags: editingTask.tags,
     })
     onClose()
   }
 
   const handleCancel = () => {
-    setEditingTask({ ...task })
+    setEditingTask({ ...task, tags: task.tags || [] })
+    setLocalProgressHistory(task.progressHistory || [])
     onClose()
   }
 
@@ -168,6 +205,12 @@ export function TaskDetailsModal({
   const saveProgressEdit = () => {
     if (editingProgressId && editingProgressContent.trim()) {
       onUpdateProgress(task.id, editingProgressId, editingProgressContent.trim())
+
+      // 更新本地状态
+      setLocalProgressHistory((prev) =>
+        prev.map((p) => (p.id === editingProgressId ? { ...p, content: editingProgressContent.trim() } : p)),
+      )
+
       setEditingProgressId(null)
       setEditingProgressContent("")
     }
@@ -176,6 +219,98 @@ export function TaskDetailsModal({
   const cancelProgressEdit = () => {
     setEditingProgressId(null)
     setEditingProgressContent("")
+  }
+
+  // 添加标签
+  const addTag = (tagToAdd: string) => {
+    const trimmedTag = tagToAdd.trim()
+    if (trimmedTag && !editingTask.tags?.some((tag) => tag.toLowerCase() === trimmedTag.toLowerCase())) {
+      setEditingTask({
+        ...editingTask,
+        tags: [...(editingTask.tags || []), trimmedTag],
+      })
+      setNewTag("")
+      setShowTagSuggestions(false)
+    }
+  }
+
+  // 删除标签
+  const removeTag = (tagToRemove: string) => {
+    setEditingTask({
+      ...editingTask,
+      tags: editingTask.tags?.filter((tag) => tag !== tagToRemove),
+    })
+  }
+
+  // 处理标签输入
+  const handleTagInputChange = (value: string) => {
+    setNewTag(value)
+    setShowTagSuggestions(value.length > 0)
+  }
+
+  // 处理标签输入的回车键
+  const handleTagKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      if (newTag.trim()) {
+        addTag(newTag)
+      }
+    } else if (e.key === "Escape") {
+      setNewTag("")
+      setShowTagSuggestions(false)
+    }
+  }
+
+  // 过滤可用标签，排除已选择的标签，支持模糊搜索
+  const getFilteredAvailableTags = () => {
+    if (!newTag.trim()) return []
+
+    const currentTags = editingTask.tags || []
+    const filtered = availableTags
+      .filter((tag) => !currentTags.some((currentTag) => currentTag.toLowerCase() === tag.toLowerCase()))
+      .filter((tag) => tag.toLowerCase().includes(newTag.toLowerCase()))
+      .slice(0, 5) // 限制显示数量
+
+    return filtered
+  }
+
+  const filteredTags = getFilteredAvailableTags()
+
+  const handleAddProgress = () => {
+    if (!newProgressContent.trim() || !task) return
+
+    const newProgressEntry = {
+      id: Date.now().toString(),
+      content: newProgressContent.trim(),
+      timestamp: new Date(),
+      type: "progress" as const,
+    }
+
+    // 立即更新本地状态
+    const updatedProgressHistory = [...localProgressHistory, newProgressEntry]
+    setLocalProgressHistory(updatedProgressHistory)
+
+    // 调用父组件的更新函数
+    onUpdateTask(task.id, {
+      progress: newProgressContent.trim(),
+      progressHistory: updatedProgressHistory,
+      updatedAt: new Date(),
+    })
+
+    // 清空输入框
+    setNewProgressContent("")
+
+    // 显示成功提示
+    toast?.success?.("进展已添加")
+  }
+
+  const handleDeleteProgress = (progressId: string) => {
+    // 更新本地状态
+    const updatedProgressHistory = localProgressHistory.filter((p) => p.id !== progressId)
+    setLocalProgressHistory(updatedProgressHistory)
+
+    // 调用父组件的删除函数
+    onDeleteProgress(task.id, progressId)
   }
 
   return (
@@ -197,6 +332,92 @@ export function TaskDetailsModal({
             {editingTask.isPriorityFocus && (
               <Badge className="bg-red-500/20 text-red-300 border-red-500/30">优先焦点</Badge>
             )}
+          </div>
+
+          {/* 标签管理 */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
+              <Tag className="w-4 h-4" />
+              标签
+            </label>
+
+            {/* 现有标签显示 */}
+            <div className="flex flex-wrap gap-2">
+              {editingTask.tags?.map((tag, index) => (
+                <Badge key={index} className={`${getTagColor(tag)} border text-xs flex items-center gap-1 pr-1`}>
+                  <span>{tag}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeTag(tag)}
+                    className="p-0 h-4 w-4 hover:bg-transparent text-current opacity-70 hover:opacity-100"
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </Badge>
+              ))}
+              {(!editingTask.tags || editingTask.tags.length === 0) && (
+                <span className="text-slate-400 text-sm">暂无标签</span>
+              )}
+            </div>
+
+            {/* 添加新标签 */}
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <Input
+                    value={newTag}
+                    onChange={(e) => handleTagInputChange(e.target.value)}
+                    onKeyDown={handleTagKeyPress}
+                    onFocus={() => setShowTagSuggestions(newTag.length > 0)}
+                    onBlur={(e) => {
+                      const relatedTarget = e.relatedTarget as HTMLElement
+                      if (relatedTarget && relatedTarget.closest("[data-tag-suggestion]")) {
+                        return
+                      }
+                      setTimeout(() => setShowTagSuggestions(false), 150)
+                    }}
+                    placeholder="输入新标签..."
+                    className="bg-slate-800 border-slate-700 text-white text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+
+                  {/* 标签建议下拉列表 */}
+                  {showTagSuggestions && filteredTags.length > 0 && (
+                    <div
+                      className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-xl z-50 max-h-40 overflow-y-auto"
+                      data-tag-suggestion
+                    >
+                      {filteredTags.map((tag) => (
+                        <div
+                          key={tag}
+                          onMouseDown={(e) => {
+                            e.preventDefault()
+                            addTag(tag)
+                          }}
+                          className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-slate-800 text-sm flex items-center gap-2 border-b border-slate-100 last:border-b-0"
+                        >
+                          <Badge className={`${getTagColor(tag)} border text-xs`}>{tag}</Badge>
+                          <span className="font-medium">{tag}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <Button
+                  onClick={() => addTag(newTag)}
+                  disabled={
+                    !newTag.trim() || editingTask.tags?.some((tag) => tag.toLowerCase() === newTag.trim().toLowerCase())
+                  }
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                  size="sm"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="text-xs text-slate-400">
+                输入标签名称，按回车或点击加号添加。输入时会显示匹配的已有标签供选择。
+              </div>
+            </div>
           </div>
 
           {/* 父任务关联 */}
@@ -248,7 +469,7 @@ export function TaskDetailsModal({
                 {childTasks.map((childTask) => (
                   <div
                     key={childTask.id}
-                    className="text-xs text-slate-300 bg-slate-800/50 rounded px-2 py-1 flex items-center gap-2"
+                    className="text-xs text-slate-300 bg-slate-800/50 border border-slate-700 rounded px-2 py-1 flex items-center gap-2"
                   >
                     <span>{getTypeInfo(childTask.type).emoji}</span>
                     <span>{childTask.title}</span>
@@ -261,7 +482,7 @@ export function TaskDetailsModal({
             </div>
           )}
 
-          {/* 路径字段 - 显示生成的路径 */}
+          {/* 路径字段 */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-300">路径</label>
             <div className="bg-slate-800/50 border border-slate-700 rounded px-3 py-2 text-white text-sm">
@@ -272,7 +493,6 @@ export function TaskDetailsModal({
               onChange={(e) => setEditingTask({ ...editingTask, category: e.target.value })}
               placeholder="请输入基础路径..."
               className="bg-slate-800 border-slate-700 text-white"
-              onFocus={(e) => e.target.blur()}
             />
             <div className="text-xs text-slate-400">基础路径会与父任务路径组合生成完整路径</div>
           </div>
@@ -285,7 +505,6 @@ export function TaskDetailsModal({
               onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
               placeholder="请输入任务标题..."
               className="bg-slate-800 border-slate-700 text-white"
-              onFocus={(e) => e.target.blur()}
             />
           </div>
 
@@ -297,7 +516,6 @@ export function TaskDetailsModal({
               onChange={(e) => setEditingTask({ ...editingTask, description: e.target.value })}
               placeholder="请输入任务描述..."
               className="bg-slate-800 border-slate-700 text-white min-h-[100px]"
-              onFocus={(e) => e.target.blur()}
             />
           </div>
 
@@ -418,84 +636,119 @@ export function TaskDetailsModal({
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-medium text-white">进展历史</h3>
               <Badge className="bg-slate-700 text-slate-300 border-slate-600">
-                {task.progressHistory?.length || 0} 条记录
+                {localProgressHistory.length} 条记录
               </Badge>
             </div>
 
-            <div className="space-y-3 max-h-60 overflow-y-auto">
-              {task.progressHistory && task.progressHistory.length > 0 ? (
-                task.progressHistory
-                  .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-                  .map((progress) => (
-                    <div key={progress.id} className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                            <span className="text-xs text-slate-400">进展更新</span>
-                            <span className="text-xs text-slate-500">
-                              {new Date(progress.timestamp).toLocaleString("zh-CN")}
-                            </span>
-                          </div>
-                          {editingProgressId === progress.id ? (
-                            <div className="space-y-2">
-                              <Textarea
-                                value={editingProgressContent}
-                                onChange={(e) => setEditingProgressContent(e.target.value)}
-                                className="bg-slate-700 border-slate-600 text-white text-sm"
-                                rows={2}
-                              />
-                              <div className="flex gap-2">
+            {/* 添加新进展 */}
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Textarea
+                  value={newProgressContent}
+                  onChange={(e) => setNewProgressContent(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault()
+                      handleAddProgress()
+                    }
+                  }}
+                  placeholder="记录任务进展..."
+                  className="flex-1 bg-slate-800 border-slate-700 text-white text-sm min-h-[80px] resize-none"
+                />
+                <Button
+                  onClick={handleAddProgress}
+                  disabled={!newProgressContent.trim()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 self-start disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  添加
+                </Button>
+              </div>
+              <div className="text-xs text-slate-400">记录任务的最新进展，按 Enter 快速添加（Shift+Enter 换行）</div>
+            </div>
+
+            {/* 进展历史列表 - 修复滚动问题 */}
+            <div className="border border-slate-700 rounded-lg bg-slate-800/30">
+              <div className="max-h-80 overflow-y-auto p-1">
+                {localProgressHistory && localProgressHistory.length > 0 ? (
+                  <div className="space-y-3 p-3">
+                    {localProgressHistory
+                      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                      .map((progress) => (
+                        <div key={progress.id} className="bg-slate-800/70 rounded-lg p-3 border border-slate-700">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-2 h-2 bg-blue-400 rounded-full flex-shrink-0"></div>
+                                <span className="text-xs text-slate-400">进展更新</span>
+                                <span className="text-xs text-slate-500">
+                                  {new Date(progress.timestamp).toLocaleString("zh-CN")}
+                                </span>
+                              </div>
+                              {editingProgressId === progress.id ? (
+                                <div className="space-y-2">
+                                  <Textarea
+                                    value={editingProgressContent}
+                                    onChange={(e) => setEditingProgressContent(e.target.value)}
+                                    className="bg-slate-700 border-slate-600 text-white text-sm resize-none"
+                                    rows={2}
+                                  />
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      onClick={saveProgressEdit}
+                                      className="bg-green-600 hover:bg-green-700 text-white h-7 px-2"
+                                    >
+                                      <Check className="w-3 h-3 mr-1" />
+                                      保存
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={cancelProgressEdit}
+                                      className="text-slate-400 hover:text-white h-7 px-2"
+                                    >
+                                      取消
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="text-sm text-slate-300 whitespace-pre-wrap break-words">
+                                  {progress.content}
+                                </p>
+                              )}
+                            </div>
+                            {editingProgressId !== progress.id && (
+                              <div className="flex gap-1 flex-shrink-0">
                                 <Button
+                                  variant="ghost"
                                   size="sm"
-                                  onClick={saveProgressEdit}
-                                  className="bg-green-600 hover:bg-green-700 text-white h-7 px-2"
+                                  onClick={() => startEditingProgress(progress.id, progress.content)}
+                                  className="p-1 h-6 w-6 text-slate-400 hover:text-blue-400"
                                 >
-                                  <Check className="w-3 h-3 mr-1" />
-                                  保存
+                                  <Edit3 className="w-3 h-3" />
                                 </Button>
                                 <Button
-                                  size="sm"
                                   variant="ghost"
-                                  onClick={cancelProgressEdit}
-                                  className="text-slate-400 hover:text-white h-7 px-2"
+                                  size="sm"
+                                  onClick={() => handleDeleteProgress(progress.id)}
+                                  className="p-1 h-6 w-6 text-slate-400 hover:text-red-400"
                                 >
-                                  取消
+                                  <Trash2 className="w-3 h-3" />
                                 </Button>
                               </div>
-                            </div>
-                          ) : (
-                            <p className="text-sm text-slate-300 whitespace-pre-wrap">{progress.content}</p>
-                          )}
-                        </div>
-                        {editingProgressId !== progress.id && (
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => startEditingProgress(progress.id, progress.content)}
-                              className="p-1 h-6 w-6 text-slate-400 hover:text-blue-400"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onDeleteProgress(task.id, progress.id)}
-                              className="p-1 h-6 w-6 text-slate-400 hover:text-red-400"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  ))
-              ) : (
-                <div className="text-center py-8 text-slate-400">
-                  <p>暂无进展记录</p>
-                </div>
-              )}
+                        </div>
+                      ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-slate-400">
+                    <p>暂无进展记录</p>
+                    <p className="text-xs mt-1">在上方输入框中添加第一条进展记录</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

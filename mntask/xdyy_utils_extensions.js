@@ -5270,6 +5270,55 @@ class MNTaskManager {
             targetPosition++
           })
           
+          // 7. 处理已有的子卡片链接位置
+          MNUtil.log(`\n📎 开始调整子卡片链接位置...`)
+          const finalParsed = this.parseTaskComments(note)
+          
+          // 找到所有在"信息"字段下的链接
+          const infoField = finalParsed.taskFields.find(f => f.content === '信息')
+          if (infoField) {
+            // 找到信息字段的结束位置（下一个主字段的位置）
+            let infoEndIndex = note.MNComments.length
+            for (let field of finalParsed.taskFields) {
+              if (field.isMainField && field.index > infoField.index) {
+                infoEndIndex = field.index
+                break
+              }
+            }
+            
+            const linksToMove = []
+            
+            for (let link of finalParsed.links) {
+              if (link.index > infoField.index && link.index < infoEndIndex) {
+                // 获取子卡片信息
+                const childNote = MNNote.new(link.linkedNoteId)
+                if (childNote && this.isTaskCard(childNote)) {
+                  const childParts = this.parseTaskTitle(childNote.noteTitle)
+                  const childStatus = childParts.status || '未开始'
+                  linksToMove.push({
+                    index: link.index,
+                    status: childStatus,
+                    childTitle: childNote.noteTitle
+                  })
+                }
+              }
+            }
+            
+            // 从后往前移动，避免索引变化问题
+            linksToMove.sort((a, b) => b.index - a.index)
+            
+            linksToMove.forEach(linkInfo => {
+              MNUtil.log(`📍 移动链接到"${linkInfo.status}"字段下: ${linkInfo.childTitle}`)
+              this.moveCommentToField(note, linkInfo.index, linkInfo.status, true)
+            })
+            
+            if (linksToMove.length > 0) {
+              MNUtil.log(`✅ 已调整 ${linksToMove.length} 个子卡片链接位置`)
+            } else {
+              MNUtil.log(`ℹ️ 没有需要调整的子卡片链接`)
+            }
+          }
+          
           MNUtil.log(`✅ 成功将动作卡片转换为项目类型`)
         } else {
           MNUtil.log(`❌ 无法找到更新后的"包含"字段位置`)

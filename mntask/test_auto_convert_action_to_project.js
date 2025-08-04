@@ -38,11 +38,12 @@ function testAutoConvertActionToProject() {
   MNUtil.log("   - 信息")
   MNUtil.log("   - 启动（原有）")
   MNUtil.log("   - 包含（新增）")
-  MNUtil.log("   - 未开始（新增）")
+  MNUtil.log("   - 未开始（新增）- 子卡片链接应该在这里")
   MNUtil.log("   - 进行中（新增）")
   MNUtil.log("   - 已完成（新增）")
   MNUtil.log("   - 已归档（新增）")
   MNUtil.log("   - 进展")
+  MNUtil.log("4. 子卡片的链接应该从\"信息\"字段下移动到\"未开始\"字段下")
   
   MNUtil.log("\n========== 测试说明结束 ==========")
 }

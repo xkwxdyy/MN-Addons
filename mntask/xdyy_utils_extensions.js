@@ -680,7 +680,20 @@ class MNTaskManager {
           // 添加任务字段（信息字段和状态字段）
           MNUtil.log(`📝 调用 addTaskFieldsWithStatus`)
           this.addTaskFieldsWithStatus(noteToConvert)
-          
+        })
+        
+        // 如果需要将父卡片从动作转为项目，先进行转换
+        if (shouldTransformParentToProject) {
+          MNUtil.log(`\n🔄 === 开始转换父卡片类型 ===`)
+          const transformResult = this.transformActionToProject(parentNote)
+          if (transformResult) {
+            MNUtil.log(`✅ 父卡片已成功从动作转换为项目类型`)
+          } else {
+            MNUtil.log(`❌ 父卡片转换失败`)
+          }
+        }
+        
+        MNUtil.undoGrouping(() => {
           // 执行链接操作（处理所属字段和父子链接）
           if (parentNote && this.isTaskCard(parentNote)) {
             MNUtil.log(`🔗 父卡片是任务卡片，执行链接操作`)
@@ -699,17 +712,6 @@ class MNTaskManager {
             }
           }
         })
-        
-        // 如果需要将父卡片从动作转为项目
-        if (shouldTransformParentToProject) {
-          MNUtil.log(`\n🔄 === 开始转换父卡片类型 ===`)
-          const transformResult = this.transformActionToProject(parentNote)
-          if (transformResult) {
-            MNUtil.log(`✅ 父卡片已成功从动作转换为项目类型`)
-          } else {
-            MNUtil.log(`❌ 父卡片转换失败`)
-          }
-        }
         
         return {
           type: 'created',
@@ -1577,7 +1579,7 @@ class MNTaskManager {
         this.moveCommentToField(parent, linkIndexInParent, "信息", true)
       } else {
         MNUtil.log(`📋 父任务是${parentTitleParts.type}类型，将链接移动到"${status}"字段下`)
-        this.moveCommentToField(parent, linkIndexInParent, status, true)
+        this.moveCommentToField(parent, linkIndexInParent, status, false)
       }
       
       // 5. 在子任务中更新所属字段（这已经包含了父任务的链接）
@@ -5309,7 +5311,7 @@ class MNTaskManager {
             
             linksToMove.forEach(linkInfo => {
               MNUtil.log(`📍 移动链接到"${linkInfo.status}"字段下: ${linkInfo.childTitle}`)
-              this.moveCommentToField(note, linkInfo.index, linkInfo.status, true)
+              this.moveCommentToField(note, linkInfo.index, linkInfo.status, false)
             })
             
             if (linksToMove.length > 0) {

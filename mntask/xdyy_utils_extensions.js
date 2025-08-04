@@ -517,6 +517,7 @@ class MNTaskManager {
     try {
       // 获取父卡片
       const parentNote = focusNote.parentNote
+      let shouldTransformParentToProject = false
       
       if (parentNote) {
         MNUtil.log(`👪 检测到父卡片:`)
@@ -532,6 +533,14 @@ class MNTaskManager {
           MNUtil.log(`  - 父任务类型: ${parentParts.type}`)
           MNUtil.log(`  - 父任务状态: ${parentParts.status}`)
           MNUtil.log(`  - 父任务内容: ${parentParts.content}`)
+          
+          // 检查是否需要自动推断类型
+          if (!taskType && parentParts.type === '动作' && !this.isTaskCard(focusNote)) {
+            // 父卡片是动作类型，子卡片不是任务卡片，自动设置子卡片为动作类型
+            MNUtil.log(`🎯 自动推断：父卡片是动作类型，子卡片设为动作类型，父卡片将转为项目类型`)
+            taskType = '动作'
+            shouldTransformParentToProject = true
+          }
         }
       } else {
         MNUtil.log(`👪 没有父卡片`)
@@ -690,6 +699,17 @@ class MNTaskManager {
             }
           }
         })
+        
+        // 如果需要将父卡片从动作转为项目
+        if (shouldTransformParentToProject) {
+          MNUtil.log(`\n🔄 === 开始转换父卡片类型 ===`)
+          const transformResult = this.transformActionToProject(parentNote)
+          if (transformResult) {
+            MNUtil.log(`✅ 父卡片已成功从动作转换为项目类型`)
+          } else {
+            MNUtil.log(`❌ 父卡片转换失败`)
+          }
+        }
         
         return {
           type: 'created',
@@ -953,7 +973,46 @@ class MNTaskManager {
       description: '',      // 描述（从纯文本评论中提取）
       otherComments: [],    // 其他评论
       plainTextComments: [], // 纯文本评论（用于提取描述）
-      fields: []            // 统一的字段数组（用于数据提取）
+      fields: [],           // 统一的字段数组（用于数据提取）
+      
+      // 扩展字段 - 日期和时间相关
+      todayMarker: null,        // 📅 今日 字段
+      dueDateField: null,       // 📅 截止日期 字段
+      overdueMarker: null,      // ⚠️ 过期 字段
+      scheduledTime: null,      // ⏰ 计划时间 字段
+      
+      // 扩展字段 - 优先级和状态
+      priorityField: null,      // 🔥 优先级 字段
+      progressField: null,      // 📊 进度 字段
+      taskLogField: null,       // 📝 任务记录 字段
+      
+      // 扩展字段 - 任务分类
+      preconditions: null,      // 前置条件 字段
+      dependencies: null,       // 依赖关系 字段
+      resources: null,          // 资源 字段
+      notes: null,              // 备注 字段
+      
+      // 扩展字段 - 项目管理
+      milestone: null,          // 里程碑 字段
+      deliverables: null,       // 交付物 字段
+      stakeholders: null,       // 利益相关者 字段
+      risks: null,              // 风险 字段
+      
+      // 扩展字段 - 学习和知识管理
+      concepts: null,           // 概念 字段
+      references: null,         // 参考资料 字段
+      examples: null,           // 示例 字段
+      questions: null,          // 问题 字段
+      
+      // 扩展字段 - 自定义标签
+      tags: null,               // 标签 字段
+      category: null,           // 分类 字段
+      
+      // 扩展字段 - 特殊字段识别
+      customFields: [],         // 其他自定义字段的集合
+      
+      // 进展记录管理
+      progressRecords: []       // 进展记录列表，包含 {id, commentIndex, timestamp, content}
     }
     
     if (!note || !note.MNComments) return result
@@ -1151,6 +1210,64 @@ class MNTaskManager {
           index: index
         })
       }
+    })
+    
+    // 解析进展记录ID和相关信息
+    comments.forEach((comment, index) => {
+      if (!comment) return
+      
+      const text = comment.text || ''
+      const commentType = comment.type || ''
+      
+      // 检查是否是带有 data-progress-id 的进展记录
+      if ((commentType === 'textComment' || commentType === 'markdownComment')) {
+        const progressIdMatch = text.match(/data-progress-id="([^"]+)"/)
+        if (progressIdMatch) {
+          const progressId = progressIdMatch[1]
+          
+          // 提取时间戳
+          const timestampMatch = text.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/)
+          const timestamp = timestampMatch ? timestampMatch[1] : null
+          
+          // 提取内容（去除HTML标签后的部分）
+          const contentMatch = text.match(/<\/div>\s*(.+)$/s)
+          const content = contentMatch ? contentMatch[1].trim() : ''
+          
+          result.progressRecords.push({
+            id: progressId,
+            commentIndex: index,
+            timestamp: timestamp,
+            content: content
+          })
+        }
+        // 处理旧格式的进展记录（没有ID的），为其生成临时ID
+        else if (text.match(/^\s*<div[^>]*style="[^"]*position:\s*relative[^"]*padding-left:\s*28px/)) {
+          // 这是旧格式的进展记录，生成临时ID
+          const timestampMatch = text.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/)
+          if (timestampMatch) {
+            const timestamp = timestampMatch[1]
+            const timestampForId = timestamp.replace(/[- :]/g, '')
+            const tempId = `legacy_progress_${timestampForId}_${index}`
+            
+            const contentMatch = text.match(/<\/div>\s*(.+)$/s)
+            const content = contentMatch ? contentMatch[1].trim() : ''
+            
+            result.progressRecords.push({
+              id: tempId,
+              commentIndex: index,
+              timestamp: timestamp,
+              content: content,
+              isLegacy: true  // 标记为旧格式记录
+            })
+          }
+        }
+      }
+    })
+    
+    // 按时间戳排序进展记录（最新的在前）
+    result.progressRecords.sort((a, b) => {
+      if (!a.timestamp || !b.timestamp) return 0
+      return new Date(b.timestamp) - new Date(a.timestamp)
     })
     
     return result
@@ -5074,6 +5191,99 @@ class MNTaskManager {
   }
 
   /**
+   * 将动作类型的卡片转换为项目类型
+   * @param {MNNote} note - 要转换的动作卡片
+   * @returns {boolean} 是否成功转换
+   */
+  static transformActionToProject(note) {
+    if (!note || !this.isTaskCard(note)) {
+      MNUtil.log(`❌ 卡片无效或不是任务卡片`)
+      return false
+    }
+    
+    const titleParts = this.parseTaskTitle(note.noteTitle)
+    if (titleParts.type !== '动作') {
+      MNUtil.log(`❌ 卡片不是动作类型，无需转换`)
+      return false
+    }
+    
+    MNUtil.log(`🔄 开始将动作卡片转换为项目类型`)
+    MNUtil.log(`📝 原标题: ${note.noteTitle}`)
+    
+    try {
+      MNUtil.undoGrouping(() => {
+        // 1. 修改标题中的类型
+        let newTitle
+        if (titleParts.path) {
+          newTitle = `【项目 >> ${titleParts.path}｜${titleParts.status}】${titleParts.content}`
+        } else {
+          newTitle = `【项目｜${titleParts.status}】${titleParts.content}`
+        }
+        note.noteTitle = newTitle
+        MNUtil.log(`✅ 标题已更新: ${newTitle}`)
+        
+        // 2. 解析当前字段
+        const parsed = this.parseTaskComments(note)
+        
+        // 3. 查找参考位置（启动字段或信息字段）
+        const launchField = parsed.taskFields.find(f => 
+          f.content && f.content.includes('[启动]')
+        )
+        const referenceField = launchField || parsed.taskFields.find(f => f.content === '信息')
+        
+        if (!referenceField) {
+          MNUtil.log(`❌ 找不到参考字段位置`)
+          return
+        }
+        
+        MNUtil.log(`📍 参考字段"${launchField ? '启动' : '信息'}"位置：${referenceField.index}`)
+        
+        // 4. 添加"包含"字段
+        const containsFieldHtml = TaskFieldUtils.createFieldHtml('包含', 'mainField')
+        note.appendMarkdownComment(containsFieldHtml)
+        const containsIndex = note.MNComments.length - 1
+        MNUtil.log(`📝 添加"包含"字段到索引 ${containsIndex}`)
+        
+        // 移动到参考字段后面
+        note.moveComment(containsIndex, referenceField.index + 1, false)
+        MNUtil.log(`🔄 移动"包含"字段到位置 ${referenceField.index + 1}`)
+        
+        // 5. 重新解析以获取更新后的位置
+        const updatedParsed = this.parseTaskComments(note)
+        const updatedContainsField = updatedParsed.taskFields.find(f => f.content === '包含')
+        
+        if (updatedContainsField) {
+          // 6. 添加状态字段
+          const statuses = ['未开始', '进行中', '已完成', '已归档']
+          let targetPosition = updatedContainsField.index + 1
+          
+          statuses.forEach((status, idx) => {
+            const statusHtml = TaskFieldUtils.createStatusField(status)
+            note.appendMarkdownComment(statusHtml)
+            const statusIndex = note.MNComments.length - 1
+            MNUtil.log(`📝 添加"${status}"字段到索引 ${statusIndex}`)
+            
+            // 移动到正确位置
+            note.moveComment(statusIndex, targetPosition, false)
+            MNUtil.log(`🔄 移动"${status}"字段到位置 ${targetPosition}`)
+            
+            targetPosition++
+          })
+          
+          MNUtil.log(`✅ 成功将动作卡片转换为项目类型`)
+        } else {
+          MNUtil.log(`❌ 无法找到更新后的"包含"字段位置`)
+        }
+      })
+      
+      return true
+    } catch (error) {
+      MNUtil.log(`❌ 转换失败: ${error.message || error}`)
+      return false
+    }
+  }
+
+  /**
    * 根据层级批量制卡
    * @param {Object} rootNote - 根卡片
    * @returns {Promise<boolean>} 是否成功
@@ -5815,8 +6025,67 @@ ${content.trim()}`
         }
       }
       
+      // 策略5: 按进展记录ID定位
+      else if (selector.progressId) {
+        const progressId = selector.progressId;
+        
+        // 处理特殊关键字
+        if (progressId === 'latest') {
+          // 获取最新的进展记录（时间戳最大的）
+          if (parsed.progressRecords.length > 0) {
+            const latestRecord = parsed.progressRecords[0]; // 已按时间戳排序，最新的在前
+            targetIndex = latestRecord.commentIndex;
+            targetComment = mnComments[targetIndex];
+            if (logPrefix) {
+              MNUtil.log(`${logPrefix} 按最新进展定位: ${latestRecord.id} -> 索引 ${targetIndex}`);
+            }
+          } else {
+            return { success: false, message: "未找到任何进展记录" };
+          }
+        } else if (progressId === 'oldest') {
+          // 获取最早的进展记录（时间戳最小的）
+          if (parsed.progressRecords.length > 0) {
+            const oldestRecord = parsed.progressRecords[parsed.progressRecords.length - 1]; // 最早的在最后
+            targetIndex = oldestRecord.commentIndex;
+            targetComment = mnComments[targetIndex];
+            if (logPrefix) {
+              MNUtil.log(`${logPrefix} 按最早进展定位: ${oldestRecord.id} -> 索引 ${targetIndex}`);
+            }
+          } else {
+            return { success: false, message: "未找到任何进展记录" };
+          }
+        } else {
+          // 按具体的进展ID查找
+          const progressRecord = parsed.progressRecords.find(record => record.id === progressId);
+          if (progressRecord) {
+            targetIndex = progressRecord.commentIndex;
+            targetComment = mnComments[targetIndex];
+            if (logPrefix) {
+              MNUtil.log(`${logPrefix} 按进展ID定位: ${progressId} -> 索引 ${targetIndex}`);
+            }
+          } else {
+            return { success: false, message: `未找到进展记录ID: ${progressId}` };
+          }
+        }
+      }
+      
+      // 策略6: 按进展记录索引定位
+      else if (typeof selector.progressIndex === 'number') {
+        const progressIndex = selector.progressIndex;
+        if (progressIndex >= 0 && progressIndex < parsed.progressRecords.length) {
+          const progressRecord = parsed.progressRecords[progressIndex];
+          targetIndex = progressRecord.commentIndex;
+          targetComment = mnComments[targetIndex];
+          if (logPrefix) {
+            MNUtil.log(`${logPrefix} 按进展索引定位: ${progressIndex} (${progressRecord.id}) -> 索引 ${targetIndex}`);
+          }
+        } else {
+          return { success: false, message: `进展索引 ${progressIndex} 超出范围 (0-${parsed.progressRecords.length-1})` };
+        }
+      }
+      
       else {
-        return { success: false, message: "无效的选择器：必须提供 index、fieldName、contentMatch 或 type+fieldContext" };
+        return { success: false, message: "无效的选择器：必须提供 index、fieldName、contentMatch、type+fieldContext、progressId 或 progressIndex" };
       }
 
       // 执行修改
@@ -6090,6 +6359,220 @@ ${content.trim()}`
         successCount: successCount,
         errorCount: errorCount + 1
       };
+    }
+  }
+
+  /**
+   * 获取任务卡片的所有进展记录
+   * @param {MNNote} note - 任务卡片笔记
+   * @returns {Array} 进展记录数组，格式：[{id, commentIndex, timestamp, content, isLegacy?}]
+   */
+  static getProgressRecords(note) {
+    if (!note || !note.MNComments) {
+      return [];
+    }
+    
+    const parsed = this.parseTaskComments(note);
+    return parsed.progressRecords || [];
+  }
+
+  /**
+   * 修改特定的进展记录
+   * @param {MNNote} note - 任务卡片笔记
+   * @param {string} progressId - 进展记录ID，支持具体ID、'latest'、'oldest'
+   * @param {string} newContent - 新的进展内容
+   * @param {Object} options - 修改选项
+   * @returns {Object} 修改结果 {success: boolean, message: string, modifiedIndex?: number}
+   */
+  static modifyProgressRecord(note, progressId, newContent, options = {}) {
+    if (!note || !note.MNComments) {
+      return { success: false, message: "无效的笔记对象或无评论" };
+    }
+    
+    if (!progressId || typeof progressId !== 'string') {
+      return { success: false, message: "无效的进展记录ID" };
+    }
+    
+    if (typeof newContent !== 'string') {
+      return { success: false, message: "新内容必须为字符串" };
+    }
+
+    // 使用现有的 modifyTaskComment 方法，通过 progressId 选择器
+    const selector = { progressId: progressId };
+    
+    // 构造完整的进展记录HTML（保持原有格式，只修改内容部分）
+    const parsed = this.parseTaskComments(note);
+    let targetRecord = null;
+    
+    if (progressId === 'latest' && parsed.progressRecords.length > 0) {
+      targetRecord = parsed.progressRecords[0];
+    } else if (progressId === 'oldest' && parsed.progressRecords.length > 0) {
+      targetRecord = parsed.progressRecords[parsed.progressRecords.length - 1];
+    } else {
+      targetRecord = parsed.progressRecords.find(record => record.id === progressId);
+    }
+    
+    if (!targetRecord) {
+      return { success: false, message: `未找到进展记录: ${progressId}` };
+    }
+
+    // 构建新的完整HTML内容（保持时间戳和样式，只修改文本内容）
+    const originalComment = note.MNComments[targetRecord.commentIndex];
+    const originalText = originalComment.text || '';
+    
+    // 提取HTML部分和内容部分
+    const htmlMatch = originalText.match(/^(<div[^>]*>.*?<\/div>)\s*(.*)$/s);
+    if (htmlMatch) {
+      const htmlPart = htmlMatch[1];  // HTML时间戳部分
+      const newFullContent = htmlPart + '\n' + newContent.trim();
+      
+      // 使用 modifyTaskComment 进行实际修改
+      return this.modifyTaskComment(note, selector, newFullContent, {
+        ...options,
+        preserveFieldFormat: false  // 不保持字段格式，因为这是完整内容替换
+      });
+    } else {
+      return { success: false, message: "无法解析进展记录格式" };
+    }
+  }
+
+  /**
+   * 删除特定的进展记录
+   * @param {MNNote} note - 任务卡片笔记  
+   * @param {string} progressId - 进展记录ID，支持具体ID、'latest'、'oldest'
+   * @returns {Object} 删除结果 {success: boolean, message: string, deletedIndex?: number}
+   */
+  static deleteProgressRecord(note, progressId) {
+    if (!note || !note.MNComments) {
+      return { success: false, message: "无效的笔记对象或无评论" };
+    }
+    
+    if (!progressId || typeof progressId !== 'string') {
+      return { success: false, message: "无效的进展记录ID" };
+    }
+
+    const parsed = this.parseTaskComments(note);
+    let targetRecord = null;
+    
+    if (progressId === 'latest' && parsed.progressRecords.length > 0) {
+      targetRecord = parsed.progressRecords[0];
+    } else if (progressId === 'oldest' && parsed.progressRecords.length > 0) {
+      targetRecord = parsed.progressRecords[parsed.progressRecords.length - 1];
+    } else {
+      targetRecord = parsed.progressRecords.find(record => record.id === progressId);
+    }
+    
+    if (!targetRecord) {
+      return { success: false, message: `未找到进展记录: ${progressId}` };
+    }
+
+    try {
+      const targetIndex = targetRecord.commentIndex;
+      const mnComments = MNComment.from(note);
+      
+      if (!mnComments || targetIndex >= mnComments.length) {
+        return { success: false, message: "无法获取评论对象或索引超出范围" };
+      }
+
+      // 删除评论
+      mnComments[targetIndex].remove();
+      
+      MNUtil.log(`✅ 删除进展记录成功: ${progressId} (索引 ${targetIndex})`);
+      
+      return {
+        success: true,
+        message: "进展记录删除成功",
+        deletedIndex: targetIndex,
+        deletedRecord: targetRecord
+      };
+      
+    } catch (error) {
+      MNUtil.log(`❌ 删除进展记录失败: ${error.message}`);
+      return { success: false, message: `删除失败: ${error.message}` };
+    }
+  }
+
+  /**
+   * 在特定位置插入新的进展记录
+   * @param {MNNote} note - 任务卡片笔记
+   * @param {string} content - 进展内容
+   * @param {string} afterProgressId - 在指定进展记录后插入，可选参数
+   * @returns {Object} 插入结果 {success: boolean, message: string, insertedIndex?: number, progressId?: string}
+   */
+  static insertProgressRecord(note, content, afterProgressId = null) {
+    if (!note || !note.MNComments) {
+      return { success: false, message: "无效的笔记对象或无评论" };
+    }
+    
+    if (typeof content !== 'string' || !content.trim()) {
+      return { success: false, message: "进展内容不能为空" };
+    }
+
+    try {
+      // 生成新的进展记录
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+      
+      // 生成唯一ID
+      const timestampForId = timestamp.replace(/[- :]/g, '');
+      const randomSuffix = Math.random().toString(36).substr(2, 6);
+      const progressId = `progress_${timestampForId}_${randomSuffix}`;
+      
+      // 构建HTML内容
+      const timestampHtml = `<div data-progress-id="${progressId}" style="position:relative; padding-left:28px; margin:14px 0; color:#1E40AF; font-weight:500; font-size:0.92em">
+  <div style="position:absolute; left:0; top:50%; transform:translateY(-50%); 
+              width:18px; height:18px; background:conic-gradient(#3B82F6 0%, #60A5FA 50%, #3B82F6 100%); 
+              border-radius:50%; display:flex; align-items:center; justify-content:center">
+    <div style="width:8px; height:8px; background:white; border-radius:50%"></div>
+  </div>
+  ${timestamp}
+</div>
+${content.trim()}`;
+
+      let insertIndex = -1;
+      
+      if (afterProgressId) {
+        // 在指定进展记录后插入
+        const parsed = this.parseTaskComments(note);
+        const afterRecord = parsed.progressRecords.find(record => record.id === afterProgressId);
+        
+        if (afterRecord) {
+          insertIndex = afterRecord.commentIndex + 1;
+        } else {
+          return { success: false, message: `未找到指定的进展记录: ${afterProgressId}` };
+        }
+      }
+      
+      if (insertIndex === -1) {
+        // 添加到卡片末尾
+        note.appendMarkdownComment(timestampHtml);
+        insertIndex = note.MNComments.length - 1;
+      } else {
+        // 在指定位置插入
+        note.insertMarkdownComment(timestampHtml, insertIndex);
+      }
+      
+      // 刷新卡片显示
+      note.refresh();
+      
+      MNUtil.log(`✅ 插入进展记录成功: ${progressId} (索引 ${insertIndex})`);
+      
+      return {
+        success: true,
+        message: "进展记录插入成功", 
+        insertedIndex: insertIndex,
+        progressId: progressId
+      };
+      
+    } catch (error) {
+      MNUtil.log(`❌ 插入进展记录失败: ${error.message}`);
+      return { success: false, message: `插入失败: ${error.message}` };
     }
   }
 

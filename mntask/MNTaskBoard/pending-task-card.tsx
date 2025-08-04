@@ -167,6 +167,7 @@ export function PendingTaskCard({
         isSelectionMode && isSelected ? "ring-2 ring-purple-500 bg-slate-800/60" : ""
       }`}
       onClick={handleCardClick}
+      data-task-id={task.id}
     >
       <CardContent className="p-4">
         {/* 顶部徽章行 */}

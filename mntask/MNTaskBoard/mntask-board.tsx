@@ -87,6 +87,8 @@ interface ExportData {
   totalTasks: number
 }
 
+type TaskTypeFilter = "all" | "action" | "project" | "key-result" | "objective"
+
 const sampleTasks: Task[] = [
   {
     id: "1",
@@ -207,7 +209,7 @@ const samplePending: Task[] = [
 
 // 解析任务标题中的标签语法
 const parseTaskTitleWithTags = (input: string): { title: string; tags: string[] } => {
-  const tagRegex = /#(?:"([^"]+)"|'([^']+)'|“([^“]+)”|‘([^‘]+)’|【([^】]+)】|（([^）]+)）|([^\s#]+))/g
+  const tagRegex = /#(?:"([^"]+)"|'([^']+)'|"([^"]+)"|'([^']+)'|【([^】]+)】|（([^）]+)）|([^\s#]+))/g
   const tags: string[] = []
   let match
   let title = input
@@ -254,6 +256,12 @@ export default function MNTaskBoard() {
   const [perspectives, setPerspectives] = useState<Perspective[]>([])
   const [focusSelectedPerspectiveId, setFocusSelectedPerspectiveId] = useState<string | null>(null)
   const [kanbanSelectedPerspectiveId, setKanbanSelectedPerspectiveId] = useState<string | null>(null)
+
+  // 看板任务类型筛选状态
+  const [kanbanTaskTypeFilter, setKanbanTaskTypeFilter] = useState<TaskTypeFilter>("all")
+
+  // 焦点视图待处理任务类型显示控制
+  const [showAllPendingTypes, setShowAllPendingTypes] = useState(false)
 
   // 透视管理函数
   const createPerspective = (perspective: Omit<Perspective, "id" | "createdAt">) => {
@@ -531,7 +539,7 @@ export default function MNTaskBoard() {
   // 应用透视筛选后的任务列表
   const filteredTasks = getFilteredTasks(tasks, "focus")
   const filteredPendingTasks = getFilteredTasks(
-    pendingTasks.filter((task) => task.type === "action"),
+    showAllPendingTypes ? pendingTasks : pendingTasks.filter((task) => task.type === "action"),
     "focus",
   )
 
@@ -1535,7 +1543,7 @@ export default function MNTaskBoard() {
                 </div>
               )}
 
-              {/* 待处理任务区域 - 只显示动作类型 */}
+              {/* 待处理任务区域 */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -1544,15 +1552,27 @@ export default function MNTaskBoard() {
                       {getFocusSelectedPerspective ? `${getFocusSelectedPerspective.name} - 待处理任务` : "待处理任务"}
                     </h2>
                     <Badge className="bg-slate-700 text-slate-300 border-slate-600">
-                      共 {filteredPendingTasks.length} 项动作
+                      共 {filteredPendingTasks.length} 项{showAllPendingTypes ? "任务" : "动作"}
                     </Badge>
-                    {pendingTasks.length > filteredPendingTasks.length && (
+                    {!showAllPendingTypes && pendingTasks.length > filteredPendingTasks.length && (
                       <Badge className="bg-yellow-600/20 text-yellow-300 border-yellow-600/30 text-xs">
                         {getFocusSelectedPerspective
                           ? "透视筛选"
                           : `已隐藏 ${pendingTasks.length - filteredPendingTasks.length} 项非动作任务`}
                       </Badge>
                     )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAllPendingTypes(!showAllPendingTypes)}
+                      className={`border-slate-600 text-slate-300 hover:bg-slate-700 bg-transparent ${
+                        showAllPendingTypes ? "bg-slate-700 text-white" : ""
+                      }`}
+                    >
+                      {showAllPendingTypes ? "显示所有类型" : "仅显示动作"}
+                    </Button>
                   </div>
                 </div>
 
@@ -1605,6 +1625,7 @@ export default function MNTaskBoard() {
                   <CardContent className="p-4">
                     <div className="flex gap-3">
                       <Textarea
+                        placeholder={`快速添加任务...使用 2 个空格创建层级任务`}
                         value={newTaskTitle}
                         onChange={(e) => setNewTaskTitle(e.target.value)}
                         onKeyDown={handleKeyPress}
@@ -1680,16 +1701,18 @@ export default function MNTaskBoard() {
                       <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
                       {getFocusSelectedPerspective ? (
                         <>
-                          <p>当前透视下暂无待处理的动作任务</p>
+                          <p>当前透视下暂无待处理的{showAllPendingTypes ? "任务" : "动作任务"}</p>
                           <p className="text-sm">尝试切换到"全部任务"或调整透视筛选条件</p>
                         </>
                       ) : (
                         <>
-                          <p>暂无待处理的动作任务</p>
-                          <p className="text-sm">使用上方输入框快速添加新的动作任务</p>
-                          {pendingTasks.length > 0 && (
+                          <p>暂无待处理的{showAllPendingTypes ? "任务" : "动作任务"}</p>
+                          <p className="text-sm">
+                            使用上方输入框快速添加新的{showAllPendingTypes ? "任务" : "动作任务"}
+                          </p>
+                          {!showAllPendingTypes && pendingTasks.length > 0 && (
                             <p className="text-xs text-yellow-400 mt-2">
-                              提示：当前隐藏了 {pendingTasks.length} 个非动作类型的任务
+                              提示：当前隐藏了 {pendingTasks.length} 个非动作类型的任务，点击右上角按钮可显示所有类型
                             </p>
                           )}
                         </>
@@ -1715,6 +1738,7 @@ export default function MNTaskBoard() {
               onRemoveFromPending={removeFromPending}
               onAddTask={addTaskToPending}
               onPerspectiveChange={setKanbanSelectedPerspectiveId}
+              onTaskTypeFilterChange={setKanbanTaskTypeFilter}
             />
           ) : (
             /* 透视视图 */
@@ -1760,6 +1784,99 @@ export default function MNTaskBoard() {
         availableParentTasks={getAvailableParentTasks(selectedTask?.id)}
         allTasks={getAllTasksList()}
         availableTags={getAllTags()}
+        onOpenSubtaskDetails={(subtask) => {
+          setSelectedTask(subtask)
+          // Keep the modal open to show the subtask details
+        }}
+        onLocateTaskInBoard={(taskId, taskType) => {
+          console.log("Locating task:", taskId, "of type:", taskType)
+
+          // 首先确保任务存在于allTasks中
+          const taskToLocate = allTasks.find((t) => t.id === taskId)
+          if (!taskToLocate) {
+            toast.error("找不到要定位的任务")
+            return
+          }
+
+          // Switch to kanban view
+          setCurrentView("kanban")
+
+          // Close the current modal
+          setIsDetailsModalOpen(false)
+
+          // Set the appropriate task type filter and perspective
+          const taskTypeFilter = taskType as TaskTypeFilter
+          setKanbanTaskTypeFilter(taskTypeFilter)
+
+          // 如果任务不在当前透视中，清除透视筛选
+          if (kanbanSelectedPerspectiveId) {
+            const perspective = perspectives.find((p) => p.id === kanbanSelectedPerspectiveId)
+            if (perspective) {
+              const filteredTasks = applyPerspectiveFilter([taskToLocate], perspective.filters)
+              if (filteredTasks.length === 0) {
+                setKanbanSelectedPerspectiveId(null)
+                console.log("Task not in current perspective, clearing perspective filter")
+              }
+            }
+          }
+
+          // Wait for the view to switch and state to update, then locate the task
+          setTimeout(() => {
+            console.log("Attempting to locate task element...")
+
+            // Try multiple selectors to find the task
+            const selectors = [`[data-task-id="${taskId}"]`, `#task-${taskId}`, `[data-testid="task-${taskId}"]`]
+
+            let taskElement: Element | null = null
+            for (const selector of selectors) {
+              taskElement = document.querySelector(selector)
+              if (taskElement) {
+                console.log("Found task element with selector:", selector)
+                break
+              }
+            }
+
+            if (taskElement) {
+              // Scroll to the task
+              taskElement.scrollIntoView({ behavior: "smooth", block: "center" })
+
+              // Add a temporary highlight effect
+              taskElement.classList.add("ring-2", "ring-blue-500", "ring-opacity-75", "transition-all", "duration-300")
+
+              // Remove highlight after animation
+              setTimeout(() => {
+                taskElement?.classList.remove(
+                  "ring-2",
+                  "ring-blue-500",
+                  "ring-opacity-75",
+                  "transition-all",
+                  "duration-300",
+                )
+              }, 3000)
+
+              // Show success message
+              const typeText =
+                taskType === "action"
+                  ? "动作"
+                  : taskType === "project"
+                    ? "项目"
+                    : taskType === "key-result"
+                      ? "关键结果"
+                      : "目标"
+              toast.success(`已切换到看板视图并定位到${typeText}任务: ${taskToLocate.title}`)
+            } else {
+              console.log("Task element not found, task might not be visible in current filters")
+
+              // Check if task should be visible
+              const shouldBeVisible = taskTypeFilter === "all" || taskToLocate.type === taskTypeFilter
+              if (shouldBeVisible) {
+                toast.error(`任务已切换到看板视图，但无法定位任务。任务可能不在当前筛选条件中。`)
+              } else {
+                toast.warning(`已切换到看板视图，请检查任务类型筛选器是否正确设置为"${taskType}"`)
+              }
+            }
+          }, 300) // Increased timeout to ensure state updates
+        }}
       />
       <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
         <AlertDialogContent className="bg-slate-800 border-slate-700">
@@ -1825,66 +1942,66 @@ export default function MNTaskBoard() {
       </AlertDialog>
     </div>
   )
+}
 
-  // 辅助函数：获取筛选条件摘要
-  function getFilterSummary(filters: PerspectiveFilter): string {
-    const parts: string[] = []
+// 辅助函数：获取筛选条件摘要
+function getFilterSummary(filters: PerspectiveFilter): string {
+  const parts: string[] = []
 
-    if (filters.tags.length > 0) {
-      parts.push(`标签: ${filters.tags.join(", ")}`)
-    }
-    if (filters.taskTypes.length > 0) {
-      const typeNames = filters.taskTypes.map((type) => {
-        switch (type) {
-          case "action":
-            return "动作"
-          case "project":
-            return "项目"
-          case "key-result":
-            return "关键结果"
-          case "objective":
-            return "目标"
-          default:
-            return type
-        }
-      })
-      parts.push(`类型: ${typeNames.join(", ")}`)
-    }
-    if (filters.statuses.length > 0) {
-      const statusNames = filters.statuses.map((status) => {
-        switch (status) {
-          case "todo":
-            return "待开始"
-          case "in-progress":
-            return "进行中"
-          case "paused":
-            return "已暂停"
-          case "completed":
-            return "已完成"
-          default:
-            return status
-        }
-      })
-      parts.push(`状态: ${statusNames.join(", ")}`)
-    }
-    if (filters.priorities.length > 0) {
-      const priorityNames = filters.priorities.map((priority) => {
-        switch (priority) {
-          case "low":
-            return "低"
-          case "medium":
-            return "中"
-          case "high":
-            return "高"
-          default:
-            return priority
-        }
-      })
-      parts.push(`优先级: ${priorityNames.join(", ")}`)
-    }
-
-    return parts.length > 0 ? parts.join(" | ") : "无筛选条件"
+  if (filters.tags.length > 0) {
+    parts.push(`标签: ${filters.tags.join(", ")}`)
   }
+  if (filters.taskTypes.length > 0) {
+    const typeNames = filters.taskTypes.map((type) => {
+      switch (type) {
+        case "action":
+          return "动作"
+        case "project":
+          return "项目"
+        case "key-result":
+          return "关键结果"
+        case "objective":
+          return "目标"
+        default:
+          return type
+      }
+    })
+    parts.push(`类型: ${typeNames.join(", ")}`)
+  }
+  if (filters.statuses.length > 0) {
+    const statusNames = filters.statuses.map((status) => {
+      switch (status) {
+        case "todo":
+          return "待开始"
+        case "in-progress":
+          return "进行中"
+        case "paused":
+          return "已暂停"
+        case "completed":
+          return "已完成"
+        default:
+          return status
+      }
+    })
+    parts.push(`状态: ${statusNames.join(", ")}`)
+  }
+  if (filters.priorities.length > 0) {
+    const priorityNames = filters.priorities.map((priority) => {
+      switch (priority) {
+        case "low":
+          return "低"
+        case "medium":
+          return "中"
+        case "high":
+          return "高"
+        default:
+          return priority
+      }
+    })
+    parts.push(`优先级: ${priorityNames.join(", ")}`)
+  }
+
+  return parts.length > 0 ? parts.join(" | ") : "无筛选条件"
 }
 
 // 辅助函数：获取任务类型文本

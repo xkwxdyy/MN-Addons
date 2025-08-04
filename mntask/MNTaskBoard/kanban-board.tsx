@@ -68,6 +68,7 @@ interface KanbanBoardProps {
   onRemoveFromPending?: (taskId: string) => void
   onAddTask?: (task: Omit<Task, "id" | "createdAt">) => void
   onPerspectiveChange: (perspectiveId: string | null) => void
+  onTaskTypeFilterChange?: (filter: TaskTypeFilter) => void
 }
 
 type TaskTypeFilter = "all" | "action" | "project" | "key-result" | "objective"
@@ -87,6 +88,7 @@ export function KanbanBoard({
   onRemoveFromPending,
   onAddTask,
   onPerspectiveChange,
+  onTaskTypeFilterChange,
 }: KanbanBoardProps) {
   const [selectedFilter, setSelectedFilter] = useState<TaskTypeFilter>("all")
   const [newTaskTitle, setNewTaskTitle] = useState("")
@@ -247,7 +249,7 @@ export function KanbanBoard({
     // #'标签' - 中文单引号
     // #【标签】- 中文方括号
     // #（标签）- 中文圆括号
-    const tagRegex = /#(?:"([^"]+)"|'([^']+)'|“([^“]+)”|‘([^‘]+)’|【([^】]+)】|（([^）]+)）|([^\s#]+))/g
+    const tagRegex = /#(?:"([^"]+)"|'([^']+)'|"([^"]+)"|'([^']+)'|【([^】]+)】|（([^）]+)）|([^\s#]+))/g
     const tags: string[] = []
     let match
 
@@ -369,6 +371,8 @@ export function KanbanBoard({
     if (newFilter !== "all") {
       setNewTaskType(newFilter as "action" | "project" | "key-result" | "objective")
     }
+    // 通知父组件筛选器变化
+    onTaskTypeFilterChange?.(newFilter)
   }
 
   // 获取筛选条件摘要

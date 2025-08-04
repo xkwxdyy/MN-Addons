@@ -167,6 +167,7 @@ export function TaskCard({
         task.isPriorityFocus ? "ring-2 ring-orange-500/60 shadow-lg shadow-orange-500/20 bg-slate-800/70" : ""
       }`}
       onClick={handleCardClick}
+      data-task-id={task.id}
     >
       <CardContent className="p-4">
         {/* 顶部徽章行 */}

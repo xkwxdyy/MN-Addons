@@ -72,6 +72,7 @@ interface Perspective {
   name: string
   description?: string
   filters: PerspectiveFilter
+  groupBy: "none" | "type" | "status" | "priority"
   createdAt: Date
 }
 
@@ -144,6 +145,7 @@ export function PerspectiveView({
   const [newPerspectiveName, setNewPerspectiveName] = useState("")
   const [newPerspectiveDescription, setNewPerspectiveDescription] = useState("")
   const [tempFilter, setTempFilter] = useState<PerspectiveFilter>(defaultFilter)
+  const [tempGroupBy, setTempGroupBy] = useState<"none" | "type" | "status" | "priority">("none")
 
   const selectedPerspective = selectedPerspectiveId ? perspectives.find((p) => p.id === selectedPerspectiveId) : null
 
@@ -202,12 +204,14 @@ export function PerspectiveView({
       name: newPerspectiveName.trim(),
       description: newPerspectiveDescription.trim(),
       filters: { ...tempFilter },
+      groupBy: tempGroupBy,
     }
 
     onCreatePerspective(perspectiveData)
     setNewPerspectiveName("")
     setNewPerspectiveDescription("")
     setTempFilter(defaultFilter)
+    setTempGroupBy("none")
     setIsCreateDialogOpen(false)
   }
 
@@ -221,6 +225,7 @@ export function PerspectiveView({
       name: newPerspectiveName.trim(),
       description: newPerspectiveDescription.trim(),
       filters: { ...tempFilter },
+      groupBy: tempGroupBy,
     }
 
     onUpdatePerspective(editingPerspective.id, updates)
@@ -228,6 +233,7 @@ export function PerspectiveView({
     setNewPerspectiveName("")
     setNewPerspectiveDescription("")
     setTempFilter(defaultFilter)
+    setTempGroupBy("none")
     setIsEditDialogOpen(false)
   }
 
@@ -240,6 +246,7 @@ export function PerspectiveView({
     setNewPerspectiveName(perspective.name)
     setNewPerspectiveDescription(perspective.description || "")
     setTempFilter({ ...perspective.filters })
+    setTempGroupBy(perspective.groupBy || "none")
     setIsEditDialogOpen(true)
   }
 
@@ -247,6 +254,7 @@ export function PerspectiveView({
     setNewPerspectiveName("")
     setNewPerspectiveDescription("")
     setTempFilter(defaultFilter)
+    setTempGroupBy("none")
     setIsCreateDialogOpen(true)
   }
 
@@ -307,6 +315,80 @@ export function PerspectiveView({
     }
 
     return parts.length > 0 ? parts.join(" | ") : "无筛选条件"
+  }
+
+  const getTypeText = (type: string): string => {
+    switch (type) {
+      case "action":
+        return "动作"
+      case "project":
+        return "项目"
+      case "key-result":
+        return "关键结果"
+      case "objective":
+        return "目标"
+      default:
+        return type
+    }
+  }
+
+  const getStatusText = (status: string): string => {
+    switch (status) {
+      case "todo":
+        return "待开始"
+      case "in-progress":
+        return "进行中"
+      case "paused":
+        return "已暂停"
+      case "completed":
+        return "已完成"
+      default:
+        return status
+    }
+  }
+
+  const getPriorityText = (priority: string): string => {
+    switch (priority) {
+      case "low":
+        return "低"
+      case "medium":
+        return "中"
+      case "high":
+        return "高"
+      default:
+        return priority
+    }
+  }
+
+  const getGroupDisplayName = (key: string, groupBy: "none" | "type" | "status" | "priority"): string => {
+    if (key === "undefined" || key === "Uncategorized") return "未分类"
+    switch (groupBy) {
+      case "type":
+        return getTypeText(key)
+      case "status":
+        return getStatusText(key)
+      case "priority":
+        return `${getPriorityText(key)}优先级`
+      default:
+        return key
+    }
+  }
+
+  const groupTasks = (tasks: Task[], groupBy: "none" | "type" | "status" | "priority"): Record<string, Task[]> => {
+    if (groupBy === "none") {
+      return { all_tasks: tasks }
+    }
+    return tasks.reduce(
+      (acc, task) => {
+        const key = String(task[groupBy]) || "Uncategorized"
+        if (!acc[key]) {
+          acc[key] = []
+        }
+        acc[key].push(task)
+        return acc
+      },
+      {} as Record<string, Task[]>,
+    )
   }
 
   return (
@@ -399,67 +481,103 @@ export function PerspectiveView({
             </h2>
           </div>
 
-          {/* 焦点任务 */}
-          {focusTasks.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Target className="w-5 h-5 text-red-400" />
-                <h3 className="text-lg font-medium text-white">焦点任务</h3>
-                <Badge className="bg-red-500/20 text-red-300 border-red-500/30">{focusTasks.length}</Badge>
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {focusTasks.map((task) => (
-                  <div key={task.id} id={`task-${task.id}`}>
-                    <TaskCard
-                      task={task}
-                      onToggleFocus={onToggleFocus}
-                      onTogglePriorityFocus={onTogglePriorityFocus}
-                      onToggleStatus={onToggleStatus}
-                      onComplete={onComplete}
-                      onDelete={onDeleteTask}
-                      onLocateTask={onLocateTask}
-                      onLaunchTask={onLaunchTask}
-                      onOpenDetails={onOpenDetails}
-                      onStartTask={onStartTask}
-                      onPauseTask={onPauseTask}
-                      onResumeTask={onResumeTask}
-                      onAddProgress={onAddProgress}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {(() => {
+            const groupBy = selectedPerspective.groupBy || "none"
+            const groupedFocusTasks = groupTasks(focusTasks, groupBy)
+            const groupedPendingTasks = groupTasks(pendingFilteredTasks, groupBy)
 
-          {/* 待处理任务 */}
-          {pendingFilteredTasks.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-slate-400" />
-                <h3 className="text-lg font-medium text-white">待处理任务</h3>
-                <Badge className="bg-slate-700 text-slate-300 border-slate-600">{pendingFilteredTasks.length}</Badge>
-              </div>
-              <div className="space-y-3">
-                {pendingFilteredTasks.map((task) => (
-                  <div key={task.id} id={`task-${task.id}`}>
-                    <PendingTaskCard
-                      task={task}
-                      isSelected={false}
-                      isSelectionMode={false}
-                      onToggleSelection={() => {}}
-                      onOpenDetails={onOpenDetails}
-                      onDelete={onDeleteTask}
-                      onRemoveFromPending={onRemoveFromPending}
-                      onAddToFocus={onAddToFocus}
-                      onLocateTask={onLocateTask}
-                      onLaunchTask={onLaunchTask}
-                      onAddProgress={onAddProgress}
-                    />
+            return (
+              <>
+                {/* 焦点任务 */}
+                {focusTasks.length > 0 && (
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-2">
+                      <Target className="w-5 h-5 text-red-400" />
+                      <h3 className="text-lg font-medium text-white">焦点任务</h3>
+                      <Badge className="bg-red-500/20 text-red-300 border-red-500/30">{focusTasks.length}</Badge>
+                    </div>
+                    {Object.entries(groupedFocusTasks).map(([groupKey, tasksInGroup]) => (
+                      <div key={`focus-${groupKey}`} className="space-y-4">
+                        {groupBy !== "none" && (
+                          <h4 className="font-semibold text-slate-300 border-b border-slate-700 pb-2">
+                            {getGroupDisplayName(groupKey, groupBy)}
+                            <Badge variant="secondary" className="ml-2">
+                              {tasksInGroup.length}
+                            </Badge>
+                          </h4>
+                        )}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                          {tasksInGroup.map((task) => (
+                            <div key={task.id} id={`task-${task.id}`}>
+                              <TaskCard
+                                task={task}
+                                onToggleFocus={onToggleFocus}
+                                onTogglePriorityFocus={onTogglePriorityFocus}
+                                onToggleStatus={onToggleStatus}
+                                onComplete={onComplete}
+                                onDelete={onDeleteTask}
+                                onLocateTask={onLocateTask}
+                                onLaunchTask={onLaunchTask}
+                                onOpenDetails={onOpenDetails}
+                                onStartTask={onStartTask}
+                                onPauseTask={onPauseTask}
+                                onResumeTask={onResumeTask}
+                                onAddProgress={onAddProgress}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                )}
+
+                {/* 待处理任务 */}
+                {pendingFilteredTasks.length > 0 && (
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-slate-400" />
+                      <h3 className="text-lg font-medium text-white">待处理任务</h3>
+                      <Badge className="bg-slate-700 text-slate-300 border-slate-600">
+                        {pendingFilteredTasks.length}
+                      </Badge>
+                    </div>
+                    {Object.entries(groupedPendingTasks).map(([groupKey, tasksInGroup]) => (
+                      <div key={`pending-${groupKey}`} className="space-y-4">
+                        {groupBy !== "none" && (
+                          <h4 className="font-semibold text-slate-300 border-b border-slate-700 pb-2">
+                            {getGroupDisplayName(groupKey, groupBy)}
+                            <Badge variant="secondary" className="ml-2">
+                              {tasksInGroup.length}
+                            </Badge>
+                          </h4>
+                        )}
+                        <div className="space-y-3">
+                          {tasksInGroup.map((task) => (
+                            <div key={task.id} id={`task-${task.id}`}>
+                              <PendingTaskCard
+                                task={task}
+                                isSelected={false}
+                                isSelectionMode={false}
+                                onToggleSelection={() => {}}
+                                onOpenDetails={onOpenDetails}
+                                onDelete={onDeleteTask}
+                                onRemoveFromPending={onRemoveFromPending}
+                                onAddToFocus={onAddToFocus}
+                                onLocateTask={onLocateTask}
+                                onLaunchTask={onLaunchTask}
+                                onAddProgress={onAddProgress}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )
+          })()}
 
           {filteredTasks.length === 0 && (
             <div className="text-center py-12 text-slate-400">
@@ -512,6 +630,31 @@ export function PerspectiveView({
                 placeholder="输入透视描述..."
                 className="bg-slate-700/50 border-slate-600 text-white"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="groupBy" className="text-white">
+                分组方式
+              </Label>
+              <Select value={tempGroupBy} onValueChange={(value) => setTempGroupBy(value as any)}>
+                <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
+                  <SelectValue placeholder="选择分组方式" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-800 border-slate-700">
+                  <SelectItem value="none" className="text-slate-300">
+                    无分组
+                  </SelectItem>
+                  <SelectItem value="type" className="text-slate-300">
+                    按类型
+                  </SelectItem>
+                  <SelectItem value="status" className="text-slate-300">
+                    按状态
+                  </SelectItem>
+                  <SelectItem value="priority" className="text-slate-300">
+                    按优先级
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* 标签筛选 */}
@@ -741,6 +884,31 @@ export function PerspectiveView({
                 placeholder="输入透视描述..."
                 className="bg-slate-700/50 border-slate-600 text-white"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-groupBy" className="text-white">
+                分组方式
+              </Label>
+              <Select value={tempGroupBy} onValueChange={(value) => setTempGroupBy(value as any)}>
+                <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
+                  <SelectValue placeholder="选择分组方式" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-800 border-slate-700">
+                  <SelectItem value="none" className="text-slate-300">
+                    无分组
+                  </SelectItem>
+                  <SelectItem value="type" className="text-slate-300">
+                    按类型
+                  </SelectItem>
+                  <SelectItem value="status" className="text-slate-300">
+                    按状态
+                  </SelectItem>
+                  <SelectItem value="priority" className="text-slate-300">
+                    按优先级
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* 标签筛选 */}

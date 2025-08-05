@@ -68,6 +68,7 @@ interface Perspective {
   name: string
   description?: string
   filters: PerspectiveFilter
+  groupBy: "none" | "type" | "status" | "priority"
   createdAt: Date
 }
 
@@ -422,6 +423,7 @@ export default function MNTaskBoard() {
     if (savedPerspectives) {
       const parsed = JSON.parse(savedPerspectives).map((p: any) => ({
         ...p,
+        groupBy: p.groupBy || "none",
         createdAt: new Date(p.createdAt),
       }))
       setPerspectives(parsed)

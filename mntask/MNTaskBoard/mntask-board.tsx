@@ -808,9 +808,38 @@ export default function MNTaskBoard() {
         type: "action", // Default type, will be updated
         createdAt: new Date(),
         isInPending: true,
-        tags: line.tags,
+        tags: [...line.tags], // 使用解析出的标签作为基础
         parentId: parentId,
       }
+
+      // 如果当前有选中的透视，自动应用透视的筛选条件
+      if (getFocusSelectedPerspective) {
+        const filters = getFocusSelectedPerspective.filters
+
+        // 合并透视标签和解析出的标签
+        if (filters.tags.length > 0) {
+          const existingTags = newTask.tags || []
+          const allTags = [...new Set([...existingTags, ...filters.tags])]
+          newTask.tags = allTags
+        }
+
+        // 如果透视指定了特定的任务类型，使用第一个类型
+        if (filters.taskTypes.length === 1) {
+          newTask.type = filters.taskTypes[0] as "action" | "project" | "key-result" | "objective"
+        }
+
+        // 如果透视指定了特定的优先级，使用第一个优先级
+        if (filters.priorities.length === 1) {
+          newTask.priority = filters.priorities[0] as "low" | "medium" | "high"
+        }
+
+        // 如果透视指定了特定的状态，使用第一个状态
+        if (filters.statuses.length === 1) {
+          newTask.status = filters.statuses[0] as "todo" | "in-progress" | "completed" | "paused"
+          newTask.completed = newTask.status === "completed"
+        }
+      }
+
       newTasks.push(newTask)
       parentStack.push({ id: newTask.id, indentation: line.indentation })
     })
@@ -825,7 +854,46 @@ export default function MNTaskBoard() {
 
     setPendingTasks((prev) => [...prev, ...newTasks])
     setNewTaskTitle("")
-    toast.success(`成功添加 ${newTasks.length} 个任务`)
+
+    // 显示更详细的成功提示信息
+    if (getFocusSelectedPerspective) {
+      const appliedConditions: string[] = []
+
+      // 检查应用了哪些透视条件
+      if (getFocusSelectedPerspective.filters.tags.length > 0) {
+        appliedConditions.push(`标签: ${getFocusSelectedPerspective.filters.tags.join(", ")}`)
+      }
+      if (getFocusSelectedPerspective.filters.taskTypes.length === 1) {
+        const typeText = getTypeText(getFocusSelectedPerspective.filters.taskTypes[0])
+        appliedConditions.push(`类型: ${typeText}`)
+      }
+      if (getFocusSelectedPerspective.filters.priorities.length === 1) {
+        const priorityText = getPriorityText(getFocusSelectedPerspective.filters.priorities[0])
+        appliedConditions.push(`优先级: ${priorityText}`)
+      }
+      if (getFocusSelectedPerspective.filters.statuses.length === 1) {
+        const statusText =
+          getFocusSelectedPerspective.filters.statuses[0] === "todo"
+            ? "待开始"
+            : getFocusSelectedPerspective.filters.statuses[0] === "in-progress"
+              ? "进行中"
+              : getFocusSelectedPerspective.filters.statuses[0] === "paused"
+                ? "已暂停"
+                : "已完成"
+        appliedConditions.push(`状态: ${statusText}`)
+      }
+
+      if (appliedConditions.length > 0) {
+        toast.success(`成功添加 ${newTasks.length} 个任务并自动应用透视条件`, {
+          description: appliedConditions.join(" | "),
+          duration: 4000,
+        })
+      } else {
+        toast.success(`成功添加 ${newTasks.length} 个任务到 ${getFocusSelectedPerspective.name} 透视`)
+      }
+    } else {
+      toast.success(`成功添加 ${newTasks.length} 个任务`)
+    }
   }
 
   const addTaskToPending = (taskData: Omit<Task, "id" | "createdAt">) => {
@@ -1652,6 +1720,11 @@ export default function MNTaskBoard() {
                             {getPriorityText(getFocusSelectedPerspective.filters.priorities[0])}优先级
                           </Badge>
                         )}
+                        {getFocusSelectedPerspective.filters.statuses.length === 1 && (
+                          <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30 text-xs">
+                            {getPriorityText(getFocusSelectedPerspective.filters.priorities[0])}优先级
+                          </Badge>
+                        )}
                       </div>
                     )}
                   </CardContent>
@@ -1771,6 +1844,7 @@ export default function MNTaskBoard() {
         availableParentTasks={getAvailableParentTasks(selectedTask?.id)}
         allTasks={getAllTasksList()}
         availableTags={getAllTags()}
+        onAddTask={addTaskToPending}
         onOpenSubtaskDetails={(subtask) => {
           setSelectedTask(subtask)
           // Keep the modal open to show the subtask details

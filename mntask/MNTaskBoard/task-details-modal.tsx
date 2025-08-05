@@ -100,12 +100,15 @@ export function TaskDetailsModal({
   const [editingProgressContent, setEditingProgressContent] = useState("")
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("")
 
+  // 添加本地状态来跟踪当前任务的状态，确保UI能及时响应
+  const [currentTask, setCurrentTask] = useState<Task | null>(null)
+
   const titleInputRef = useRef<HTMLInputElement>(null)
   const progressTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Auto-focus on progress textarea when modal opens
   useEffect(() => {
-    if (isOpen && task && progressTextareaRef.current) {
+    if (isOpen && currentTask && progressTextareaRef.current) {
       const timer = setTimeout(() => {
         // First blur any currently focused element
         if (document.activeElement && document.activeElement !== document.body) {
@@ -116,10 +119,12 @@ export function TaskDetailsModal({
       }, 200)
       return () => clearTimeout(timer)
     }
-  }, [isOpen, task])
+  }, [isOpen, currentTask])
 
+  // 当传入的task发生变化时，更新本地状态和临时状态
   useEffect(() => {
     if (task) {
+      setCurrentTask(task)
       setTempTitle(task.title)
       setTempDescription(task.description || "")
       setTempTags(task.tags || [])
@@ -137,27 +142,31 @@ export function TaskDetailsModal({
     }
   }, [editingTitle])
 
-  if (!task) return null
+  if (!currentTask) return null
 
   const handleSave = () => {
     const updates: Partial<Task> = {}
     let hasChanges = false
 
-    if (tempTitle !== task.title) {
+    if (tempTitle !== currentTask.title) {
       updates.title = tempTitle
       hasChanges = true
     }
-    if (tempDescription !== (task.description || "")) {
+    if (tempDescription !== (currentTask.description || "")) {
       updates.description = tempDescription
       hasChanges = true
     }
-    if (JSON.stringify(tempTags) !== JSON.stringify(task.tags || [])) {
+    if (JSON.stringify(tempTags) !== JSON.stringify(currentTask.tags || [])) {
       updates.tags = tempTags
       hasChanges = true
     }
 
     if (hasChanges) {
-      onUpdateTask(task.id, updates)
+      updates.updatedAt = new Date()
+      onUpdateTask(currentTask.id, updates)
+      // 立即更新本地状态
+      setCurrentTask({ ...currentTask, ...updates })
+      console.log("Saving task updates:", updates) // 调试日志
     }
   }
 
@@ -168,14 +177,17 @@ export function TaskDetailsModal({
   }
 
   const handleTitleSave = () => {
-    if (tempTitle.trim() && tempTitle !== task.title) {
-      onUpdateTask(task.id, { title: tempTitle.trim() })
+    if (tempTitle.trim() && tempTitle !== currentTask.title) {
+      const updates = { title: tempTitle.trim(), updatedAt: new Date() }
+      onUpdateTask(currentTask.id, updates)
+      // 立即更新本地状态
+      setCurrentTask({ ...currentTask, ...updates })
     }
     setEditingTitle(false)
   }
 
   const handleTitleCancel = () => {
-    setTempTitle(task.title)
+    setTempTitle(currentTask.title)
     setEditingTitle(false)
   }
 
@@ -188,12 +200,16 @@ export function TaskDetailsModal({
         type: "progress" as const,
       }
 
-      const updatedProgressHistory = [...(task.progressHistory || []), progressEntry]
-      onUpdateTask(task.id, {
+      const updatedProgressHistory = [...(currentTask.progressHistory || []), progressEntry]
+      const updates = {
         progress: newProgress.trim(),
         progressHistory: updatedProgressHistory,
         updatedAt: new Date(),
-      })
+      }
+
+      onUpdateTask(currentTask.id, updates)
+      // 立即更新本地状态
+      setCurrentTask({ ...currentTask, ...updates })
       setNewProgress("")
       toast.success("进展已添加")
     }
@@ -206,7 +222,7 @@ export function TaskDetailsModal({
 
   const handleSaveProgress = () => {
     if (editingProgressId && editingProgressContent.trim()) {
-      onUpdateProgress(task.id, editingProgressId, editingProgressContent.trim())
+      onUpdateProgress(currentTask.id, editingProgressId, editingProgressContent.trim())
       setEditingProgressId(null)
       setEditingProgressContent("")
       toast.success("进展已更新")
@@ -219,7 +235,7 @@ export function TaskDetailsModal({
   }
 
   const handleDeleteProgress = (progressId: string) => {
-    onDeleteProgress(task.id, progressId)
+    onDeleteProgress(currentTask.id, progressId)
     toast.success("进展已删除")
   }
 
@@ -235,22 +251,44 @@ export function TaskDetailsModal({
   }
 
   const handleStatusChange = (newStatus: "todo" | "in-progress" | "completed" | "paused") => {
-    onUpdateTask(task.id, {
+    console.log("Status change requested:", newStatus) // 调试日志
+    const updates = {
       status: newStatus,
       completed: newStatus === "completed",
-    })
+      updatedAt: new Date(),
+    }
+
+    onUpdateTask(currentTask.id, updates)
+    // 立即更新本地状态以确保UI响应
+    setCurrentTask({ ...currentTask, ...updates })
+    toast.success(`状态已更新为: ${getStatusText(newStatus)}`)
   }
 
   const handlePriorityChange = (newPriority: "low" | "medium" | "high") => {
-    onUpdateTask(task.id, { priority: newPriority })
+    console.log("Priority change requested:", newPriority) // 调试日志
+    const updates = { priority: newPriority, updatedAt: new Date() }
+    onUpdateTask(currentTask.id, updates)
+    // 立即更新本地状态
+    setCurrentTask({ ...currentTask, ...updates })
+    toast.success(`优先级已更新为: ${getPriorityText(newPriority)}`)
   }
 
   const handleTypeChange = (newType: "action" | "project" | "key-result" | "objective") => {
-    onUpdateTask(task.id, { type: newType })
+    console.log("Type change requested:", newType) // 调试日志
+    const updates = { type: newType, updatedAt: new Date() }
+    onUpdateTask(currentTask.id, updates)
+    // 立即更新本地状态
+    setCurrentTask({ ...currentTask, ...updates })
+    toast.success(`类型已更新为: ${getTypeText(newType)}`)
   }
 
   const handleParentChange = (parentId: string) => {
-    onUpdateTask(task.id, { parentId: parentId === "none" ? undefined : parentId })
+    console.log("Parent change requested:", parentId) // 调试日志
+    const updates = { parentId: parentId === "none" ? undefined : parentId, updatedAt: new Date() }
+    onUpdateTask(currentTask.id, updates)
+    // 立即更新本地状态
+    setCurrentTask({ ...currentTask, ...updates })
+    toast.success("父任务已更新")
   }
 
   const handleAddSubtask = () => {
@@ -267,7 +305,7 @@ export function TaskDetailsModal({
       priority: "medium",
       status: "todo",
       type: "action",
-      parentId: task.id,
+      parentId: currentTask.id,
       isInPending: true,
       tags: [],
     }
@@ -285,7 +323,7 @@ export function TaskDetailsModal({
   }
 
   const getSubtasks = () => {
-    return allTasks.filter((t) => t.parentId === task.id)
+    return allTasks.filter((t) => t.parentId === currentTask.id)
   }
 
   const getStatusIcon = (status: string) => {
@@ -362,14 +400,14 @@ export function TaskDetailsModal({
   }
 
   const subtasks = getSubtasks()
-  const canHaveSubtasks = ["project", "key-result", "objective"].includes(task.type)
+  const canHaveSubtasks = ["project", "key-result", "objective"].includes(currentTask.type)
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="bg-slate-800 border-slate-700 max-w-6xl max-h-[90vh] overflow-hidden p-0">
         <DialogHeader className="px-6 py-4 border-b border-slate-700">
           <DialogTitle className="flex items-center gap-3 text-white">
-            {getTypeIcon(task.type)}
+            {getTypeIcon(currentTask.type)}
             {editingTitle ? (
               <div className="flex items-center gap-2 flex-1">
                 <Input
@@ -402,7 +440,7 @@ export function TaskDetailsModal({
                 className="text-lg font-semibold cursor-pointer hover:text-blue-400 transition-colors flex-1"
                 onClick={() => setEditingTitle(true)}
               >
-                {task.title}
+                {currentTask.title}
               </span>
             )}
           </DialogTitle>
@@ -418,6 +456,7 @@ export function TaskDetailsModal({
                 <Textarea
                   value={tempDescription}
                   onChange={(e) => setTempDescription(e.target.value)}
+                  onBlur={handleSave} // 失去焦点时自动保存
                   placeholder="添加更详细的描述..."
                   className="bg-slate-700/50 border-slate-600 text-white min-h-[120px]"
                   tabIndex={-1}
@@ -539,8 +578,8 @@ export function TaskDetailsModal({
 
                 <ScrollArea className="max-h-64">
                   <div className="space-y-3">
-                    {task.progressHistory && task.progressHistory.length > 0 ? (
-                      [...task.progressHistory].reverse().map((progress) => (
+                    {currentTask.progressHistory && currentTask.progressHistory.length > 0 ? (
+                      [...currentTask.progressHistory].reverse().map((progress) => (
                         <div key={progress.id} className="bg-slate-700/30 border border-slate-600 rounded-lg p-3">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
@@ -618,9 +657,14 @@ export function TaskDetailsModal({
               {/* Status */}
               <div className="space-y-2">
                 <label className="text-white text-sm font-medium">状态</label>
-                <Select value={task.status} onValueChange={handleStatusChange}>
+                <Select value={currentTask.status} onValueChange={handleStatusChange}>
                   <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
-                    <SelectValue />
+                    <SelectValue>
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(currentTask.status)}
+                        {getStatusText(currentTask.status)}
+                      </div>
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-slate-800 border-slate-700">
                     <SelectItem value="todo" className="text-white">
@@ -654,9 +698,9 @@ export function TaskDetailsModal({
               {/* Priority */}
               <div className="space-y-2">
                 <label className="text-white text-sm font-medium">优先级</label>
-                <Select value={task.priority} onValueChange={handlePriorityChange}>
+                <Select value={currentTask.priority} onValueChange={handlePriorityChange}>
                   <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
-                    <SelectValue />
+                    <SelectValue>{getPriorityText(currentTask.priority)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-slate-800 border-slate-700">
                     <SelectItem value="low" className="text-white">
@@ -675,9 +719,14 @@ export function TaskDetailsModal({
               {/* Type */}
               <div className="space-y-2">
                 <label className="text-white text-sm font-medium">类型</label>
-                <Select value={task.type} onValueChange={handleTypeChange}>
+                <Select value={currentTask.type} onValueChange={handleTypeChange}>
                   <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
-                    <SelectValue />
+                    <SelectValue>
+                      <div className="flex items-center gap-2">
+                        {getTypeIcon(currentTask.type)}
+                        {getTypeText(currentTask.type)}
+                      </div>
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-slate-800 border-slate-700">
                     <SelectItem value="action" className="text-white">
@@ -765,29 +814,29 @@ export function TaskDetailsModal({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => onToggleFocus(task.id)}
+                    onClick={() => onToggleFocus(currentTask.id)}
                     className={`w-full justify-start ${
-                      task.isFocusTask
+                      currentTask.isFocusTask
                         ? "bg-red-500/20 border-red-500/30 text-red-300 hover:bg-red-500/30"
                         : "border-slate-600 text-slate-300 hover:bg-slate-700"
                     }`}
                   >
                     <Target className="w-4 h-4 mr-2" />
-                    {task.isFocusTask ? "移出焦点" : "添加到焦点"}
+                    {currentTask.isFocusTask ? "移出焦点" : "添加到焦点"}
                   </Button>
-                  {task.isFocusTask && (
+                  {currentTask.isFocusTask && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => onTogglePriorityFocus(task.id)}
+                      onClick={() => onTogglePriorityFocus(currentTask.id)}
                       className={`w-full justify-start ${
-                        task.isPriorityFocus
+                        currentTask.isPriorityFocus
                           ? "bg-yellow-500/20 border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/30"
                           : "border-slate-600 text-slate-300 hover:bg-slate-700"
                       }`}
                     >
                       <Star className="w-4 h-4 mr-2" />
-                      {task.isPriorityFocus ? "取消优先焦点" : "设为优先焦点"}
+                      {currentTask.isPriorityFocus ? "取消优先焦点" : "设为优先焦点"}
                     </Button>
                   )}
                 </div>
@@ -796,7 +845,7 @@ export function TaskDetailsModal({
               {/* Parent Task */}
               <div className="space-y-2">
                 <label className="text-white text-sm font-medium">父任务</label>
-                <Select value={task.parentId || "none"} onValueChange={handleParentChange}>
+                <Select value={currentTask.parentId || "none"} onValueChange={handleParentChange}>
                   <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
                     <SelectValue />
                   </SelectTrigger>
@@ -817,11 +866,11 @@ export function TaskDetailsModal({
               </div>
 
               {/* Path */}
-              {task.category && (
+              {currentTask.category && (
                 <div className="space-y-2">
                   <label className="text-white text-sm font-medium">路径</label>
                   <div className="bg-slate-700/30 border border-slate-600 rounded-lg p-3">
-                    <p className="text-slate-300 text-sm">{task.category}</p>
+                    <p className="text-slate-300 text-sm">{currentTask.category}</p>
                   </div>
                 </div>
               )}
@@ -832,12 +881,12 @@ export function TaskDetailsModal({
               <div className="space-y-3 text-sm">
                 <div className="flex items-center gap-2 text-slate-400">
                   <Calendar className="w-4 h-4" />
-                  <span>创建于: {new Date(task.createdAt).toLocaleString()}</span>
+                  <span>创建于: {new Date(currentTask.createdAt).toLocaleString()}</span>
                 </div>
-                {task.updatedAt && (
+                {currentTask.updatedAt && (
                   <div className="flex items-center gap-2 text-slate-400">
                     <Calendar className="w-4 h-4" />
-                    <span>更新于: {new Date(task.updatedAt).toLocaleString()}</span>
+                    <span>更新于: {new Date(currentTask.updatedAt).toLocaleString()}</span>
                   </div>
                 )}
               </div>

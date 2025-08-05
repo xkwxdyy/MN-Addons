@@ -442,6 +442,7 @@ export default function MNTaskBoard() {
       const parsedAllTasks = JSON.parse(savedAllTasks).map((task: any) => ({
         ...task,
         createdAt: new Date(task.createdAt),
+        updatedAt: task.updatedAt ? new Date(task.updatedAt) : undefined,
         type: task.type || "action",
         tags: task.tags || [], // 确保标签属性存在
       }))
@@ -452,6 +453,7 @@ export default function MNTaskBoard() {
       const parsedTasks = JSON.parse(savedTasks).map((task: any, index: number) => ({
         ...task,
         createdAt: new Date(task.createdAt),
+        updatedAt: task.updatedAt ? new Date(task.updatedAt) : undefined,
         order: task.order ?? index,
         type: task.type || "action", // 为旧数据设置默认类型
         tags: task.tags || [], // 确保标签属性存在
@@ -466,6 +468,7 @@ export default function MNTaskBoard() {
       const parsedPending = JSON.parse(savedPending).map((task: any) => ({
         ...task,
         createdAt: new Date(task.createdAt),
+        updatedAt: task.updatedAt ? new Date(task.updatedAt) : undefined,
         type: task.type || "action", // 为旧数据设置默认类型
         tags: task.tags || [], // 确保标签属性存在
       }))
@@ -546,7 +549,7 @@ export default function MNTaskBoard() {
     return activeFocusTasks.length + activePendingTasks.length
   }
 
-  const focusTasksCount = filteredTasks.filter((task) => task.isFocusTask && !task.completed).length
+  const focusTasksCount = allTasks.filter((task) => task.isFocusTask && !task.completed).length
 
   const togglePriorityFocus = (taskId: string) => {
     setTasks(
@@ -669,20 +672,22 @@ export default function MNTaskBoard() {
   }
 
   const completeTask = (taskId: string) => {
-    setTasks(
-      tasks.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              completed: true,
-              status: "completed" as const,
-              isFocusTask: false, // 移出焦点
-              isPriorityFocus: false, // 取消优先焦点
-              order: undefined, // 清除排序
-            }
-          : task,
-      ),
-    )
+    const taskUpdates = {
+      completed: true,
+      status: "completed" as const,
+      isFocusTask: false, // 移出焦点
+      isPriorityFocus: false, // 取消优先焦点
+      order: undefined, // 清除排序
+    }
+
+    // 更新焦点任务列表
+    setTasks(tasks.map((task) => (task.id === taskId ? { ...task, ...taskUpdates } : task)))
+
+    // 更新待处理任务列表
+    setPendingTasks(pendingTasks.map((task) => (task.id === taskId ? { ...task, ...taskUpdates } : task)))
+
+    // 更新总任务列表
+    setAllTasks(allTasks.map((task) => (task.id === taskId ? { ...task, ...taskUpdates } : task)))
   }
 
   const deleteTask = (taskId: string) => {
@@ -1159,13 +1164,14 @@ export default function MNTaskBoard() {
   }
 
   const openTaskDetails = (taskId: string) => {
-    const task =
-      tasks.find((t) => t.id === taskId) ||
-      pendingTasks.find((t) => t.id === taskId) ||
-      allTasks.find((t) => t.id === taskId)
+    // 优先从 allTasks 中获取最新的任务数据
+    const task = allTasks.find((t) => t.id === taskId)
     if (task) {
-      setSelectedTask(task) // 确保设置最新的任务数据
+      console.log("Opening task details for:", task.title, "Description:", task.description) // 调试日志
+      setSelectedTask(task)
       setIsDetailsModalOpen(true)
+    } else {
+      console.warn("Task not found in allTasks:", taskId)
     }
   }
 
@@ -1189,12 +1195,19 @@ export default function MNTaskBoard() {
   }
 
   const updateTask = (taskId: string, updates: Partial<Task>) => {
+    console.log("Updating task:", taskId, "with updates:", updates) // 调试日志
+
     // 更新焦点任务
     setTasks(tasks.map((task) => (task.id === taskId ? { ...task, ...updates } : task)))
     // 更新待处理任务
     setPendingTasks(pendingTasks.map((task) => (task.id === taskId ? { ...task, ...updates } : task)))
     // 更新总任务列表
     setAllTasks(allTasks.map((task) => (task.id === taskId ? { ...task, ...updates } : task)))
+
+    // 如果当前选中的任务就是被更新的任务，也要更新选中任务的状态
+    if (selectedTask && selectedTask.id === taskId) {
+      setSelectedTask({ ...selectedTask, ...updates })
+    }
   }
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

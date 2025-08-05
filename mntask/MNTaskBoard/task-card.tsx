@@ -4,7 +4,24 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Play, Pause, Square, Trash2, MoreVertical, Minus, Zap, MapPin, Plus, Star } from "lucide-react"
+import {
+  Play,
+  Pause,
+  Square,
+  Trash2,
+  MoreVertical,
+  Minus,
+  Zap,
+  MapPin,
+  Plus,
+  Star,
+  Target,
+  FolderOpen,
+  TrendingUp,
+  AlertCircle,
+  Clock,
+  CheckCircle,
+} from "lucide-react"
 
 interface Task {
   id: string
@@ -83,78 +100,108 @@ export function TaskCard({
   onResumeTask,
   onAddProgress,
 }: TaskCardProps) {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "todo":
-        return "bg-slate-600 text-slate-300"
-      case "in-progress":
-        return "bg-blue-600 text-blue-100"
-      case "paused":
-        return "bg-yellow-600 text-yellow-100"
-      case "completed":
-        return "bg-green-600 text-green-100"
-      default:
-        return "bg-slate-600 text-slate-300"
-    }
-  }
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "todo":
-        return "待开始"
-      case "in-progress":
-        return "进行中"
-      case "paused":
-        return "已暂停"
-      case "completed":
-        return "已完成"
-      default:
-        return "未知"
-    }
-  }
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "low":
-        return "bg-slate-600 text-slate-300"
-      case "medium":
-        return "bg-yellow-600 text-yellow-100"
-      case "high":
-        return "bg-red-600 text-red-100"
-      default:
-        return "bg-slate-600 text-slate-300"
-    }
-  }
-
-  const getPriorityText = (priority: string) => {
-    switch (priority) {
-      case "low":
-        return "低优先级"
-      case "medium":
-        return "中优先级"
-      case "high":
-        return "高优先级"
-      default:
-        return "未知"
-    }
-  }
-
-  const getTypeInfo = (type: string) => {
+  // 获取任务类型信息
+  const getTaskTypeInfo = (type: string) => {
     switch (type) {
       case "action":
-        return { emoji: "⚡️", text: "动作" }
+        return { icon: Zap, text: "动作", color: "bg-blue-100 text-blue-800 border-blue-200" }
       case "project":
-        return { emoji: "📁", text: "项目" }
+        return { icon: FolderOpen, text: "项目", color: "bg-purple-100 text-purple-800 border-purple-200" }
       case "key-result":
-        return { emoji: "📈", text: "关键结果" }
+        return { icon: TrendingUp, text: "关键结果", color: "bg-green-100 text-green-800 border-green-200" }
       case "objective":
-        return { emoji: "🎯", text: "目标" }
+        return { icon: Target, text: "目标", color: "bg-orange-100 text-orange-800 border-orange-200" }
       default:
-        return { emoji: "⚡️", text: "动作" }
+        return { icon: Zap, text: "动作", color: "bg-blue-100 text-blue-800 border-blue-200" }
     }
   }
 
-  const typeInfo = getTypeInfo(task.type)
+  // 获取状态信息
+  const getStatusInfo = (status: string) => {
+    switch (status) {
+      case "todo":
+        return {
+          icon: Clock,
+          text: "待开始",
+          color: "bg-slate-500",
+          dotColor: "bg-slate-300",
+          bgColor: "bg-slate-100 text-slate-700",
+        }
+      case "in-progress":
+        return {
+          icon: Play,
+          text: "进行中",
+          color: "bg-blue-500",
+          dotColor: "bg-blue-400",
+          bgColor: "bg-blue-100 text-blue-700",
+        }
+      case "paused":
+        return {
+          icon: Pause,
+          text: "已暂停",
+          color: "bg-yellow-500",
+          dotColor: "bg-yellow-400",
+          bgColor: "bg-yellow-100 text-yellow-700",
+        }
+      case "completed":
+        return {
+          icon: CheckCircle,
+          text: "已完成",
+          color: "bg-green-500",
+          dotColor: "bg-green-400",
+          bgColor: "bg-green-100 text-green-700",
+        }
+      default:
+        return {
+          icon: Clock,
+          text: "待开始",
+          color: "bg-slate-500",
+          dotColor: "bg-slate-300",
+          bgColor: "bg-slate-100 text-slate-700",
+        }
+    }
+  }
+
+  // 获取优先级信息
+  const getPriorityInfo = (priority: string) => {
+    switch (priority) {
+      case "high":
+        return {
+          icon: AlertCircle,
+          text: "高",
+          color: "bg-gradient-to-r from-red-500 to-red-600 text-white",
+          borderColor: "border-red-300",
+        }
+      case "medium":
+        return {
+          icon: Zap,
+          text: "中",
+          color: "bg-gradient-to-r from-yellow-500 to-yellow-600 text-white",
+          borderColor: "border-yellow-300",
+        }
+      case "low":
+        return {
+          icon: Clock,
+          text: "低",
+          color: "bg-gradient-to-r from-slate-400 to-slate-500 text-white",
+          borderColor: "border-slate-300",
+        }
+      default:
+        return {
+          icon: Clock,
+          text: "低",
+          color: "bg-gradient-to-r from-slate-400 to-slate-500 text-white",
+          borderColor: "border-slate-300",
+        }
+    }
+  }
+
+  const typeInfo = getTaskTypeInfo(task.type)
+  const statusInfo = getStatusInfo(task.status)
+  const priorityInfo = getPriorityInfo(task.priority)
+  const TypeIcon = typeInfo.icon
+  const StatusIcon = statusInfo.icon
+  const PriorityIcon = priorityInfo.icon
 
   const handleCardClick = () => {
     onOpenDetails(task.id)
@@ -172,19 +219,40 @@ export function TaskCard({
         {/* 顶部徽章行 */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2 flex-wrap">
-            {/* 任务类型徽章 */}
-            <Badge className="bg-slate-700/50 text-slate-300 border-slate-600 text-xs">
-              <span className="mr-1">{typeInfo.emoji}</span>
-              {typeInfo.text}
-            </Badge>
+            {/* 任务类型徽章 - 矩形设计 */}
+            <div
+              className={`inline-flex items-center gap-1 px-2 py-1 rounded-md border text-xs font-medium ${typeInfo.color}`}
+            >
+              <TypeIcon className="w-3 h-3" />
+              <span>{typeInfo.text}</span>
+            </div>
 
-            {/* 状态徽章 */}
-            <Badge className={`${getStatusColor(task.status)} border-0 text-xs`}>{getStatusText(task.status)}</Badge>
+            {/* 状态徽章 - 胶囊设计带状态点 */}
+            <div
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${statusInfo.bgColor}`}
+            >
+              <div className={`w-2 h-2 rounded-full ${statusInfo.dotColor}`} />
+              <span>{statusInfo.text}</span>
+            </div>
 
-            {/* 优先级徽章 */}
-            <Badge className={`${getPriorityColor(task.priority)} border-0 text-xs`}>
-              {getPriorityText(task.priority)}
-            </Badge>
+            {/* 优先级徽章 - 菱形切角设计 */}
+            <div
+              className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium ${priorityInfo.color}`}
+              style={{
+                clipPath: "polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%)",
+              }}
+            >
+              <PriorityIcon className="w-3 h-3" />
+              <span>{priorityInfo.text}</span>
+            </div>
+
+            {/* 优先焦点徽章 - 圆角胶囊设计 */}
+            {task.isPriorityFocus && (
+              <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-medium">
+                <Star className="w-3 h-3 fill-current" />
+                <span>优先</span>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-1">

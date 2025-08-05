@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import { useState } from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -93,7 +94,12 @@ export function DraggableTaskCard({
   onAddToPending,
   onRemoveFromPending,
 }: DraggableTaskCardProps) {
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStartTime, setDragStartTime] = useState(0)
+
   const handleDragStart = (e: React.DragEvent) => {
+    setIsDragging(true)
+    setDragStartTime(Date.now())
     e.dataTransfer.setData(
       "text/plain",
       JSON.stringify({
@@ -102,6 +108,28 @@ export function DraggableTaskCard({
       }),
     )
     e.dataTransfer.effectAllowed = "move"
+  }
+
+  const handleDragEnd = () => {
+    // Add a small delay to prevent click event from firing immediately after drag
+    setTimeout(() => {
+      setIsDragging(false)
+    }, 100)
+  }
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Prevent click if we just finished dragging
+    if (isDragging || Date.now() - dragStartTime < 200) {
+      return
+    }
+
+    // Don't trigger if clicking on interactive elements
+    const target = e.target as HTMLElement
+    if (target.closest("button") || target.closest('[role="button"]') || target.closest(".dropdown-trigger")) {
+      return
+    }
+
+    onOpenDetails(task.id)
   }
 
   // 获取任务类型信息
@@ -209,71 +237,114 @@ export function DraggableTaskCard({
 
   return (
     <Card
-      className="bg-slate-800/50 border-slate-700 hover:bg-slate-700/50 transition-colors cursor-move"
+      className={`bg-slate-800/50 border-slate-700 transition-all duration-200 ${
+        isDragging
+          ? "cursor-grabbing opacity-50 scale-105"
+          : "cursor-pointer hover:bg-slate-700/50 hover:border-slate-600 hover:shadow-lg"
+      }`}
       draggable
       onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onClick={handleCardClick}
       data-task-id={task.id}
     >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <TypeIcon className="w-4 h-4 text-slate-400" />
+            <TypeIcon className="w-4 h-4 text-slate-400 flex-shrink-0" />
             <h3 className="font-medium text-white text-sm truncate">{task.title}</h3>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-400 hover:text-white">
-                <MoreHorizontal className="w-3 h-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-slate-800 border-slate-700" align="end">
-              <DropdownMenuItem
-                onClick={() => onOpenDetails(task.id)}
-                className="text-slate-300 hover:bg-slate-700 focus:bg-slate-700"
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                查看详情
-              </DropdownMenuItem>
-              {task.isFocusTask && onAddToPending && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {/* Quick View Details Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                onOpenDetails(task.id)
+              }}
+              className="h-6 w-6 p-0 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
+              title="查看详情"
+            >
+              <Eye className="w-3 h-3" />
+            </Button>
+
+            {/* More Options Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 text-slate-400 hover:text-white dropdown-trigger"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="w-3 h-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-slate-800 border-slate-700" align="end">
                 <DropdownMenuItem
-                  onClick={() => onAddToPending(task.id)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onOpenDetails(task.id)
+                  }}
                   className="text-slate-300 hover:bg-slate-700 focus:bg-slate-700"
                 >
-                  <Clock className="w-4 h-4 mr-2" />
-                  移到待处理
+                  <Eye className="w-4 h-4 mr-2" />
+                  查看详情
                 </DropdownMenuItem>
-              )}
-              {!task.isFocusTask && onAddToFocus && (
+                {task.isFocusTask && onAddToPending && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onAddToPending(task.id)
+                    }}
+                    className="text-slate-300 hover:bg-slate-700 focus:bg-slate-700"
+                  >
+                    <Clock className="w-4 h-4 mr-2" />
+                    移到待处理
+                  </DropdownMenuItem>
+                )}
+                {!task.isFocusTask && onAddToFocus && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onAddToFocus(task.id)
+                    }}
+                    className="text-slate-300 hover:bg-slate-700 focus:bg-slate-700"
+                  >
+                    <Target className="w-4 h-4 mr-2" />
+                    添加到焦点
+                  </DropdownMenuItem>
+                )}
+                {task.isInPending && onRemoveFromPending && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onRemoveFromPending(task.id)
+                    }}
+                    className="text-slate-300 hover:bg-slate-700 focus:bg-slate-700"
+                  >
+                    <Clock className="w-4 h-4 mr-2" />
+                    移出待处理
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator className="bg-slate-600" />
                 <DropdownMenuItem
-                  onClick={() => onAddToFocus(task.id)}
-                  className="text-slate-300 hover:bg-slate-700 focus:bg-slate-700"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDeleteTask(task.id)
+                  }}
+                  className="text-red-400 hover:bg-red-900/20 focus:bg-red-900/20"
                 >
-                  <Target className="w-4 h-4 mr-2" />
-                  添加到焦点
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  删除任务
                 </DropdownMenuItem>
-              )}
-              {task.isInPending && onRemoveFromPending && (
-                <DropdownMenuItem
-                  onClick={() => onRemoveFromPending(task.id)}
-                  className="text-slate-300 hover:bg-slate-700 focus:bg-slate-700"
-                >
-                  <Clock className="w-4 h-4 mr-2" />
-                  移出待处理
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator className="bg-slate-600" />
-              <DropdownMenuItem
-                onClick={() => onDeleteTask(task.id)}
-                className="text-red-400 hover:bg-red-900/20 focus:bg-red-900/20"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                删除任务
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-0 space-y-3">
+      <CardContent className="pt-0 space-y-3 group">
         {task.description && <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{task.description}</p>}
 
         {/* 标签显示 */}
@@ -331,6 +402,11 @@ export function DraggableTaskCard({
             💬 {task.progress}
           </div>
         )}
+
+        {/* Click hint - only show on hover */}
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-xs text-slate-500 text-center py-1">
+          点击查看详情 • 拖拽移动状态
+        </div>
       </CardContent>
     </Card>
   )

@@ -80,6 +80,7 @@ interface ExportData {
   totalTasks: number
 }
 
+type ViewMode = "focus" | "kanban" | "perspective"
 type TaskTypeFilter = "all" | "action" | "project" | "key-result" | "objective"
 
 const sampleTasks: Task[] = [
@@ -535,6 +536,13 @@ export default function MNTaskBoard() {
     showAllPendingTypes ? pendingTasks : pendingTasks.filter((task) => task.type === "action"),
     "focus",
   )
+
+  // 计算实际的筛选任务数量（不包括已完成的任务）
+  const getFilteredTaskCount = (): number => {
+    const activeFocusTasks = filteredTasks.filter((task) => !task.completed)
+    const activePendingTasks = filteredPendingTasks.filter((task) => !task.completed)
+    return activeFocusTasks.length + activePendingTasks.length
+  }
 
   const focusTasksCount = filteredTasks.filter((task) => task.isFocusTask && !task.completed).length
 
@@ -1533,7 +1541,7 @@ export default function MNTaskBoard() {
                   {getFocusSelectedPerspective && (
                     <div className="flex items-center gap-2">
                       <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
-                        {filteredTasks.length + filteredPendingTasks.length} 个任务
+                        {getFilteredTaskCount()} 个任务
                       </Badge>
                       <Button
                         variant="ghost"

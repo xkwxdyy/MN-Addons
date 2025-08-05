@@ -1100,6 +1100,7 @@ try {
           if (toolbarConfig.horizontal()) {
             let currentFrame = toolbar.currentFrame
             // let maxWidth = toolbarUtils.checkHeight(this.studyView.bounds.width-currentFrame.x-15,toolbar.maxButtonNumber)
+            let studyFrame = this.studyView.bounds
             let width = 45*toolbar.buttonNumber+15
             // MNUtil.copy({currentFrame:currentFrame,width:width,studyFrame:this.studyView.bounds})
             if ((currentFrame.width+currentFrame.x) > (this.studyView.bounds.width)) {//工具栏超过边界,需要约束
@@ -1122,6 +1123,18 @@ try {
                 currentFrame.width = width
                 toolbar.view.frame = currentFrame
                 return
+              }
+            }
+            if (toolbar.sideMode) {
+              switch (toolbar.sideMode) {
+                case "top":
+                  currentFrame.y = 0
+                  break;
+                case "bottom":
+                  currentFrame.y = studyFrame.height-toolbarUtils.bottomOffset-40
+                  break;
+                default:
+                  break;
               }
             }
             toolbar.view.frame = currentFrame

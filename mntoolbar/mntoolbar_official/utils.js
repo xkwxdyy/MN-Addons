@@ -467,6 +467,8 @@ class toolbarUtils {
     this.mainPath = mainPath
     this.version = this.appVersion()
     this.errorLog = [this.version]
+    this.topOffset = MNUtil.isMacOS()?30:22
+    this.bottomOffset = MNUtil.isMacOS()?0:10
       } catch (error) {
     this.addErrorLog(error, "init")
   }
@@ -572,10 +574,10 @@ class toolbarUtils {
         menuItems = ["tag","tags"]
         break;
       case "mergeText":
-        menuItems = ["target","source","range"]
+        menuItems = ["target","source","range","varName"]
         break;
       case "ocr":
-        menuItems = ["target","ocrSource","method","followParentColor"]
+        menuItems = ["target","ocrSource","method","followParentColor","varName"]
         break;
       case "toggleSidebar":
         menuItems = ["target"]
@@ -605,7 +607,7 @@ class toolbarUtils {
         menuItems = ["target"]
         break;
       case "setContent":
-        menuItems = ["target","content","range"]
+        menuItems = ["target","content","range","varName"]
         break;
       case "clearContent":
         menuItems = ["target","type","allowDeleteNote","range","index"]
@@ -632,7 +634,7 @@ class toolbarUtils {
         menuItems = ["content"]
         break;
       case "confirm":
-        menuItems = ["title","subTitle"]
+        menuItems = ["title","subTitle","onCancel","onConfirm"]
         break;
       case "tirggerButton":
         menuItems = ["buttonName"]
@@ -649,8 +651,14 @@ class toolbarUtils {
       case "noteHighlight":
         menuItems = ["color","fillPattern","asTitle","title","ocr","tags","tag","parentNote","mainMindMap","textFirst","focusAfterDelay","focusInFloatWindowForAllDocMode","markdown","continueExcerpt"]
         break;
+      case "snipaste":
+        menuItems = ["target","page","audioAction","audioAutoPlay"]
+        break;
       case "search":
-        menuItems = ["target","engine"]
+        menuItems = ["target","engine","followButton"]
+        break;
+      case "openInEditor":
+        menuItems = ["followButton"]
         break;
       case "chatAI":
         menuItems = ["target","prompt","user","system"]
@@ -662,9 +670,44 @@ class toolbarUtils {
       menuItems = menuItems.concat(["onFinish"])
       return menuItems.map(item=>prefix+item)
     }else{
-      menuItems = menuItems.concat(["onLongPress","onFinish"])
+      menuItems = menuItems.concat(["onLongPress","onFinish","description"])
       return menuItems
     }
+  }
+  static addActionOption(config,item){
+    switch (item) {
+      case "onLongPress":
+        config.onLongPress = {action:""}
+        break;
+      case "onFinish":
+        config.onFinish = {action:""}
+        break;
+      case "onCancel":
+        config.onCancel = {action:""}
+        break;
+      case "onConfirm":
+        config.onConfirm = {action:""}
+        break;
+      case "markdown":
+      case "compression":
+      case "followParentColor":
+      case "multi":
+      case "allowDeleteNote":
+      case "followAutoStyle":
+      case "forceToFocus":
+      case "textFirst":
+      case "focusInFloatWindowForAllDocMode":
+      case "mainMindMap":
+      case "ocr":
+      case "asTitle":
+      case "audioAutoPlay":
+        config[item] = true
+        break;
+      default:
+        config[item] = ""
+        break;
+    }
+    return config
   }
   static mergeWhitespace(str) {
       if (!str) {
@@ -930,10 +973,18 @@ try {
     if (target) {
       switch (target) {
         case "auto":
-          toolbarUtils.smartCopy()
-          return
+          if (!des.content) {
+            toolbarUtils.smartCopy()
+            return
+          }
+          break
         case "chatAIOutput":
-          element = await chatAIUtils.notifyController.getTextForAction()
+          if (typeof chatAIUtils === "undefined") {
+            MNUtil.showHUD("Install MN ChatAI First!")
+            element = ""
+          }else{
+            element = await chatAIUtils.notifyController.getTextForAction()
+          }
           break;
         case "selectionText":
           if (MNUtil.currentSelection.onSelection) {
@@ -1065,8 +1116,13 @@ try {
     }
     let copyContent = des.content
     if (copyContent) {
+      let replacedText = ""
       // let replacedText = this.detectAndReplace(copyContent,element)
-      let replacedText = await this.render(copyContent,{element:element,noteId:focusNote.noteId})
+      if (focusNote) {
+        replacedText = await this.render(copyContent,{element:element,noteId:focusNote.noteId})
+      }else{
+        replacedText = await this.render(copyContent,{element:element})
+      }
       MNUtil.copy(replacedText)
       MNUtil.showHUD("目标文本已复制")
       return true
@@ -1406,6 +1462,16 @@ try {
       case "newComment":
         note.appendTextComment(replacedText)
         break;
+      case "globalVar":
+        let varName = des.varName
+        if (!varName) {
+          MNUtil.showHUD("❌ varName not found!")
+          return
+        }
+        //将句号和空格都替换成下划线
+        varName = varName.trim().replace(/\.|\s/g, "_")
+        toolbarSandbox.setValue(varName, replacedText)
+        break;
       default:
         MNUtil.showHUD("Invalid target: "+target)
         break;
@@ -1444,14 +1510,37 @@ try {
     try {
     let range = des.range ?? "currentNotes"
     let targetNotes = this.getNotesByRange(range)
-    MNUtil.undoGrouping(()=>{
-      targetNotes.forEach(note=>{
-        let content = des.content ?? "content"
-        this.setNoteContent(note, content,des)
+    if (targetNotes.length) {
+      MNUtil.undoGrouping(()=>{
+        targetNotes.forEach(note=>{
+          let content = des.content ?? "content"
+          this.setNoteContent(note, content,des)
+        })
       })
-    })
+    }else{
+      let content = des.content
+      if (content && content.trim()) {
+        let replacedText = this.detectAndReplace(content)
+        switch (des.target) {
+          case "globalVar":
+            let varName = des.varName
+            if (!varName) {
+              MNUtil.showHUD("❌ varName not found!")
+              return
+            }
+            //将句号和空格都替换成下划线
+            varName = varName.trim().replace(/\.|\s/g, "_")
+            toolbarSandbox.setValue(varName, replacedText)
+            break;
+        
+          default:
+            break;
+        }
+      }
+
+    }
     } catch (error) {
-      toolbarUtils.addErrorLog(error, "setContent")
+      this.addErrorLog(error, "setContent")
     }
   }
   static replace(note,ptt,des){
@@ -1657,7 +1746,10 @@ try {
     if (des.noteIndices && des.noteIndices.length) {
       noteIndices = des.noteIndices
     }
+    MNUtil.log(text)
+    MNUtil.log("replaceNoteIndex:"+noteIndices[index])
     let tem = text.replace("{{noteIndex}}",noteIndices[index])
+    MNUtil.log(tem)
     return tem
   
   }
@@ -1690,7 +1782,7 @@ try {
   try {
     let textList = []
     des.source.map(text=>{
-      if (text.includes("{{title}}") && des.removeSource) {
+      if (text.includes("{{note.title}}") && des.removeSource) {
         if (note.noteId in toolbarUtils.commentToRemove) {
           toolbarUtils.commentToRemove[note.noteId].push(-1)
         }else{
@@ -1773,8 +1865,8 @@ try {
         })
         return
       }
-      let tem = this.detectAndReplaceWithNote(text,note)
-      tem = this.replaceNoteIndex(tem, noteIndex, des)
+      let tem = this.replaceNoteIndex(text, noteIndex, des)
+      tem = this.detectAndReplace(tem,undefined,note)
       textList.push(tem) 
     })
     if (des.format) {
@@ -1791,8 +1883,10 @@ try {
       let ptt = new RegExp(des.replace[0], "g")
       mergedText = mergedText.replace(ptt,des.replace[1])
     }
+    mergedText = this.detectAndReplace(mergedText,undefined,note)
     return mergedText
   } catch (error) {
+    this.addErrorLog(error, "getMergedText")
     return undefined
   }
   }
@@ -1801,6 +1895,10 @@ try {
 
       let noteRange = des.range ?? "currentNotes"
       let targetNotes = this.getNotesByRange(noteRange)
+      if (!targetNotes.length) {
+        MNUtil.showHUD("MergeText: no note found")
+        return
+      }
         MNUtil.undoGrouping(()=>{
           targetNotes.forEach((note,index)=>{
             let mergedText = this.getMergedText(note, des, index)
@@ -1826,6 +1924,16 @@ try {
                 break;
               case "clipboard":
                 MNUtil.copy(mergedText)
+                break;
+              case "globalVar":
+                let varName = des.varName
+                if (!varName) {
+                  MNUtil.showHUD("❌ varName not found!")
+                  return
+                }
+                //将句号和空格都替换成下划线
+                varName = varName.trim().replace(/\.|\s/g, "_")
+                toolbarSandbox.setValue(varName, mergedText)
                 break;
               default:
                 break;
@@ -1963,6 +2071,7 @@ try {
     let hasSelectionText = text.includes("{{selectionText}}")
     let hasCurrentDocName = text.includes("{{currentDocName}}")
     let hasCurrentDocAttach = text.includes("{{currentDocAttach}}")
+    let hasChatAIOutput = text.includes("{{chatAIOutput}}")
     if (hasClipboardText) {
       config.clipboardText = MNUtil.clipboardText
     }
@@ -1982,18 +2091,14 @@ try {
     if (hasCurrentDocAttach && editorUtils) {
       config.currentDocAttach = editorUtils.getAttachContentByMD5(MNUtil.currentDocmd5)
     }
+    if (hasChatAIOutput && this.chatAIOutput) {
+      config.chatAIOutput = this.chatAIOutput
+    }
+    if (toolbarSandbox.hasGlobalVar()) {
+      config.globalVar = toolbarSandbox.getGlobalVarObject()
+    }
     let output = MNUtil.render(text, config)
     return output
-  }
-  /**
-   * 
-   * @param {string} text 
-   * @param {MbBookNote|MNNote} note 
-   * @returns 
-   */
-  static detectAndReplaceWithNote(text,note) {
-    let config = this.getVarInfoWithNote(text,note)
-    return this.replacVar(text,config)
   }
   /**
    * 递归解析列表项及其子列表
@@ -2388,6 +2493,13 @@ try {
       case "clipboard":
         markdown = MNUtil.clipboardText
         break;
+      case "chatAIOutput":
+        if (typeof chatAIUtils === "undefined") {
+          MNUtil.showHUD("Install MN ChatAI First!")
+          return
+        }
+        markdown = await chatAIUtils.notifyController.getTextForAction()
+        break;
       default:
         break;
     }
@@ -2774,13 +2886,32 @@ try {
    * @returns 
    */
   static chatAI(des,button){
-    if (des.target === "openFloat") {
-      MNUtil.postNotification("chatAIOpenFloat", {beginFrame:button.convertRectToView(button.bounds,MNUtil.studyView)})
-      return
-    }
-    if (des.target === "currentPrompt") {
-      MNUtil.postNotification("customChat",{})
-      return true
+    switch (des.target) {
+      case "openFloat":
+        MNUtil.postNotification("chatAIOpenFloat", {beginFrame:button.convertRectToView(button.bounds,MNUtil.studyView)})
+        return;
+      case "openFloat":
+        MNUtil.postNotification("chatAIOpenFloat", {beginFrame:button.convertRectToView(button.bounds,MNUtil.studyView)})
+        return;
+      case "currentPrompt":
+        MNUtil.postNotification("customChat",{})
+        return;
+      case "stopOutput":
+        if (typeof chatAIUtils === "undefined") {
+          return;
+        }
+        let notifyController = chatAIUtils.notifyController
+        if (notifyController.connection) {
+          notifyController.connection.cancel()
+          delete notifyController.connection
+          notifyController.showHUD("Stop output")
+        }else{
+          notifyController.showHUD("Not on output")
+        }
+        notifyController.setButtonOpacity(1.0)
+        return;
+      default:
+        break;
     }
     if (!des || !Object.keys(des).length) {
       MNUtil.postNotification("customChat",{})
@@ -2818,12 +2949,12 @@ try {
     if (foucsNote) {
       noteId = foucsNote.noteId
     }
-    if (button) {
+    let followButton = des.followButton ?? true
+    if (button && followButton) {
       let studyFrame = MNUtil.studyView.bounds
-      let beginFrame = button.frame
+      let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
       if (button.menu) {
         button.menu.dismissAnimated(true)
-        let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
         let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
         endFrame.y = MNUtil.constrain(endFrame.y, 0, studyFrame.height-500)
         endFrame.x = MNUtil.constrain(endFrame.x, 0, studyFrame.width-500)
@@ -3206,6 +3337,16 @@ try {
               method:method
             }
           )
+          break;
+        case "globalVar":
+          let varName = des.varName
+          if (!varName) {
+            MNUtil.showHUD("❌ varName not found!")
+            return
+          }
+          //将句号和空格都替换成下划线
+          varName = varName.trim().replace(/\.|\s/g, "_")
+          toolbarSandbox.setValue(varName, res)
           break;
         default:
           MNUtil.copy(res)
@@ -4251,7 +4392,8 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       return
     }
     let studyFrame = MNUtil.studyView.bounds
-    if (button && button.menu) {
+    let followButton = des.followButton??true
+    if (followButton && button && button.menu) {
       button.menu.dismissAnimated(true)
       let beginFrame = button.convertRectToView(button.bounds,MNUtil.studyView)
       let endFrame = Frame.gen(beginFrame.x-225, beginFrame.y-50, 450, 500)
@@ -4260,7 +4402,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       MNUtil.postNotification("openInEditor",{noteId:noteId,beginFrame:beginFrame,endFrame:endFrame})
       return
     }
-    if (button) {
+    if (followButton && button) {
       let beginFrame = button.frame
       beginFrame.y = beginFrame.y-10
       if (beginFrame.x+490 > studyFrame.width) {
@@ -5030,6 +5172,9 @@ static getButtonFrame(button){
     let noteConfig = this.getNoteObject(note)
     let config = await this.getVarInfo(text,{userInput:userInput,note:noteConfig})
     // MNUtil.copy(noteConfig)
+    if (toolbarSandbox.hasGlobalVar()) {
+      config.globalVar = toolbarSandbox.getGlobalVarObject()
+    }
     let prompt = MNUtil.render(replaceText, config)
     return prompt
       
@@ -5044,6 +5189,9 @@ static async getTextVarInfo(text,userInput) {
   let replaceText= text
   let noteConfig = this.getNoteObject(MNNote.getFocusNote())
   let config = await this.getVarInfo(text,{note:noteConfig,userInput:userInput})
+  if (toolbarSandbox.hasGlobalVar()) {
+    config.globalVar = toolbarSandbox.getGlobalVarObject()
+  }
   let output = mustache.render(replaceText, config)
   return output
   // MNUtil.copy(output)
@@ -5081,6 +5229,85 @@ static async getTextVarInfo(text,userInput) {
         }
       )
     })
+  }
+  static snipaste(des){
+    try {
+
+    let selection = MNUtil.currentSelection
+    let target = des.target ?? "auto"
+    // MNUtil.log(target)
+    switch (target) {
+      case "auto":
+        if (selection.onSelection && !selection.isText) {
+          let imageData = selection.image
+          MNUtil.postNotification("snipasteImage", {imageData:imageData})
+        }else if (MNNote.getFocusNote()) {
+          if ("audioAutoPlay" in des) {
+            MNUtil.postNotification("snipasteNote",{noteid:MNNote.getFocusNote().noteId,audioAutoPlay:des.audioAutoPlay})
+          }else{
+            MNUtil.postNotification("snipasteNote",{noteid:MNNote.getFocusNote().noteId})
+          }
+        }else{
+          MNUtil.showHUD("No note found")
+        }
+        break;
+      case "selectionImage":
+        if (selection.onSelection) {
+          let imageData = selection.image
+          MNUtil.postNotification("snipasteImage", {imageData:imageData})
+        }else{
+          MNUtil.showHUD("No selection found")
+        }
+        break;
+      case "selectionText":
+        if (selection.onSelection) {
+          let text = selection.text
+          MNUtil.postNotification("snipasteHtml",{text:text})
+        }else{
+          MNUtil.showHUD("No selection found")
+        }
+        break;
+      case "note":
+        if (MNNote.getFocusNote()) {
+          if ("audioAutoPlay" in des) {
+            MNUtil.postNotification("snipasteNote",{noteid:MNNote.getFocusNote().noteId,audioAutoPlay:des.audioAutoPlay})
+          }else{
+            MNUtil.postNotification("snipasteNote",{noteid:MNNote.getFocusNote().noteId})
+          }
+        }else{
+          MNUtil.showHUD("No note found")
+        }
+        break;
+      case "pdf":
+        let page = des.page ?? "current"
+        // let doc = des.doc ?? "current"
+        let doc = MNUtil.currentDocController
+        switch (page) {
+          case "current":
+            MNUtil.postNotification("snipastePDF",{docMd5:doc.docMd5,currPageNo:doc.currPageNo})
+            break;
+          case "first":
+            MNUtil.postNotification("snipastePDF",{docMd5:doc.docMd5,currPageNo:0})
+            break;
+          case "last":
+            MNUtil.postNotification("snipastePDF",{docMd5:doc.docMd5,currPageNo:doc.document.pageCount-1})
+            break;
+          default:
+            break;
+        }
+        break;
+      case "audioControl":
+        let action = des.audioAction ?? "playOrPause"
+        MNUtil.postNotification("snipasteAudioAction", {action:action})
+        break;
+      default:
+        break;
+    }
+      
+    } catch (error) {
+      this.addErrorLog(error, "snipaste")
+      return
+    }
   }
 /**
  * 根据动作名在配置中查找符合的动作并执行（不是根据id/key）
@@ -5136,6 +5363,9 @@ static async customActionByDes(des,button,controller,checkSubscribe = true) {//�
     if (checkSubscribe && !this.checkSubscribe(true)) {
       return
     }
+    if (typeof chatAIUtils !== "undefined") {
+      this.chatAIOutput = await chatAIUtils.notifyController.getTextForAction()
+    }
     let focusNote = MNNote.getFocusNote()
     let targetNotes = []
     let success = true
@@ -5163,13 +5393,14 @@ static async customActionByDes(des,button,controller,checkSubscribe = true) {//�
         await MNUtil.delay(0.1)
         break;
       case "snipaste":
-        let selection = MNUtil.currentSelection
-        if (selection.onSelection && !selection.isText) {
-          let imageData = selection.image
-          MNUtil.postNotification("snipasteImage", {imageData:imageData})
-        }else{
-          MNUtil.postNotification("snipasteNote",{noteid:focusNote.noteId})
-        }
+        this.snipaste(des)
+        // let selection = MNUtil.currentSelection
+        // if (selection.onSelection && !selection.isText) {
+        //   let imageData = selection.image
+        //   MNUtil.postNotification("snipasteImage", {imageData:imageData})
+        // }else{
+        //   MNUtil.postNotification("snipasteNote",{noteid:focusNote.noteId})
+        // }
         await MNUtil.delay(0.1)
         break;
       case "openSetting":
@@ -6034,7 +6265,7 @@ class toolbarConfig {
     this.addonLogos = this.getByDefault("MNToolbar_addonLogos",{})
     this.windowState = this.getByDefault("MNToolbar_windowState",this.defaultWindowState)
     this.buttonNumber = this.getDefaultActionKeys().length
-    //数组格式,存的是每个action的key
+    //数组格式,存的是每个action的key,代表顺序
     this.action = this.getByDefault("MNToolbar_action", this.getDefaultActionKeys())
     this.action = this.action.map(a=>{
       if (a === "excute") {
@@ -6042,11 +6273,12 @@ class toolbarConfig {
       }
       return a
     })
+    //数组格式,存的是每个action的key,代表顺序
     this.dynamicAction = this.getByDefault("MNToolbar_dynamicAction", this.action)
     if (this.dynamicAction.length === 0) {
       this.dynamicAction = this.action
     }
-
+    //不要直接使用这个属性,请使用getAction
     this.actions = this.getByDefault("MNToolbar_actionConfig", this.getActions())
     if ("excute" in this.actions) {
       let action = this.actions["excute"]
@@ -6480,7 +6712,7 @@ class toolbarConfig {
   }
   }
   /**
-   * 只是返回数组,代表所有按钮的顺序
+   * 只是返回数组,代表所有按钮的顺序,数组元素为每个动作的key
    * @param {boolean} dynamic
    * @returns {string[]}
    */
@@ -6503,6 +6735,7 @@ class toolbarConfig {
     let buttonIndex = allButtonNames.indexOf(targetButtonName)
     if (buttonIndex === -1) {
       MNUtil.showHUD("Button not found: "	+ targetButtonName)
+      MNUtil.log("Button not found: "	+ targetButtonName)
       return undefined
     }
     let action = allActions[buttonIndex]
@@ -6651,7 +6884,7 @@ static template(action) {
   return JSON.stringify(config,null,2)
 }
 /**
- * 
+ * 用这个API获取每个按钮的配置,不要直接用actions
  * @param {string} actionKey 
  * @returns {object}
  */
@@ -6668,7 +6901,7 @@ static getAction(actionKey){
   return this.getActions()[actionKey]
 }
 
-static getActions() {
+static getActions() {//默认值
   return {
     "copy":{name:"Copy",image:"copyExcerptPic",description:"{}"},
     "searchInEudic":{name:"Search in Eudic",image:"searchInEudic",description:"{}"},
@@ -6716,13 +6949,13 @@ static getActions() {
     "custom17":{name:"Custom 17",image:"custom17",description: this.template("setContent")},
     "custom18":{name:"Custom 18",image:"custom18",description: this.template("addComment")},
     "custom19":{name:"Custom 19",image:"custom19",description: this.template("removeComment")},
-    "ocr":{name:"ocr",image:"ocr",description:JSON.stringify({target:"comment",source:"default"})},
-    "edit":{name:"edit",image:"edit",description:JSON.stringify({showOnNoteEdit:false})},
-    "timer":{name:"timer",image:"timer",description:JSON.stringify({target:"menu"})},
-    "execute":{name:"execute",image:"execute",description:"MNUtil.showHUD('Hello world')"},
-    "sidebar":{name:"sidebar",image:"sidebar",description:"{}"},
-    "undo":{name:"undo",image:"undo",description:"{}"},
-    "redo":{name:"redo",image:"redo",description:"{}"},
+    "ocr":{name:"OCR",image:"ocr",description:JSON.stringify({target:"comment",source:"default"})},
+    "edit":{name:"Edit Note",image:"edit",description:JSON.stringify({showOnNoteEdit:false})},
+    "timer":{name:"Timer",image:"timer",description:JSON.stringify({target:"menu"})},
+    "execute":{name:"Execute",image:"execute",description:"MNUtil.showHUD('Hello world')"},
+    "sidebar":{name:"Sidebar",image:"sidebar",description:"{}"},
+    "undo":{name:"Undo",image:"undo",description:"{}"},
+    "redo":{name:"Redo",image:"redo",description:"{}"},
   }
 }
 static execute(){
@@ -6947,7 +7180,7 @@ static getDescriptionById(actionKey){
     if (actionName.includes("color")) {
       return true
     }
-    let whiteNamelist = ["timer","search","copy","chatglm","ocr","edit","searchInEudic","pasteAsTitle","sidebar"]
+    let whiteNamelist = ["timer","search","copy","chatglm","ocr","edit","searchInEudic","pasteAsTitle","sidebar","snipaste"]
     if (whiteNamelist.includes(actionName)) {
       return true
     }
@@ -6957,6 +7190,26 @@ static getDescriptionById(actionKey){
 
 }
 class toolbarSandbox{
+  static globalVar = {}
+  static hasGlobalVar(){
+    if (Object.keys(this.globalVar).length) {
+      return true
+    }
+    return false
+  }
+  static setValue(key,value){
+    MNUtil.log("setValue:"+key)
+    this.globalVar[key] = value
+  }
+  static getValue(key){
+    return this.globalVar[key]
+  }
+  static getGlobalVarObject(){
+    return this.globalVar
+  }
+  static copyGlobalVar(){
+    MNUtil.copy(this.globalVar)
+  }
   static async execute(code){
     'use strict';
     if (!toolbarUtils.checkSubscribe(true)) {

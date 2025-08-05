@@ -470,7 +470,7 @@ function getSchemaByActionName(actionName) {
       properties.index = numberEnum([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60])
       break;
     case "markdown2Mindmap":
-      properties.source = stringEnum(['currentNote','clipboard','file'])
+      properties.source = stringEnum(['currentNote','clipboard','file','chatAIOutput'])
       properties.method = stringEnum(['onlyHeading','auto'])
       break;
     case "addMarkdownLink":
@@ -503,19 +503,21 @@ function getSchemaByActionName(actionName) {
       properties.target = stringType()
       break;
     case "mergeText":
-      properties.target = stringEnum(['excerptText','title','newComment','clipboard'])
+      properties.target = stringEnum(['excerptText','title','newComment','clipboard','globalVar'])
       properties.source = arrayType(stringType())
+      properties.varName = stringType()
       properties.range = stringEnum(['currentNotes','childNotes','descendantNotes'])
       break
     case "cloneAndMerge":
       properties.target = stringType()
       break;
     case "ocr":
-      properties.target = stringEnum(['comment','excerpt','childNote','clipboard','editor','chatModeReference','option'])
-      properties.ocrSource = stringEnum(["Doc2X","SimpleTex","GPT-4o","GPT-4o-mini","GPT-4.1","GPT-4.1-mini","GPT-4.1-nano","MiniMax-Text-01","glm-4v-plus","glm-4v-flash","claude-3-5-sonnet-20241022","claude-3-7-sonnet","gemini-2.0-flash","gemini-2.0-flash-lite","gemini-2.5-pro","gemini-2.5-flash","Moonshot-v1"])
+      properties.target = stringEnum(['menu','comment','excerpt','childNote','clipboard','editor','chatModeReference','option','globalVar'])
+      properties.ocrSource = stringEnum(["Doc2X","SimpleTex","GPT-4o","GPT-4o-mini","GPT-4.1","GPT-4.1-mini","GPT-4.1-nano","MiniMax-Text-01","abab6.5s-chat","doubao-seed-1-6","doubao-seed-1.6-flash","glm-4v-plus","glm-4v-flash","glm-4.1v-thinking-flash","claude-3-5-haiku","claude-3-7-sonnet","claude-opus-4","claude-sonnet-4","gemini-2.0-flash","gemini-2.0-flash-lite","gemini-2.5-pro","gemini-2.5-flash","gemini-2.5-flash-lite","Moonshot-v1"])
       properties.source = properties.ocrSource
       properties.method = stringEnum(["replace","append"])
       properties.followParentColor = booleanType(false)
+      properties.varName = stringType()
       break;
     case "toggleSidebar":
       properties.target = stringEnum(['chatMode'])
@@ -566,9 +568,10 @@ function getSchemaByActionName(actionName) {
       properties.target = stringEnum(["title","excerpt","appendTitle","appendExcerpt"])
       break;
     case "setContent":
-      properties.target = stringEnum(['title','excerpt','newComment'])
+      properties.target = stringEnum(['title','excerpt','newComment','globalVar'])
       properties.content = stringType()
       properties.range = stringEnum(['currentNotes','childNotes','descendantNotes'])
+      properties.varName = stringType()
       break;
     case "clearContent":
       properties.target = stringEnum(['title','excerptText','comments','excerptTextAndComments'])
@@ -590,6 +593,12 @@ function getSchemaByActionName(actionName) {
       properties.target = stringEnum(['menu'])
       properties.tags = arrayType(stringType())
       properties.tag = stringType()
+      break;
+    case "snipaste":
+      properties.target = stringEnum(['auto','selectionImage','selectionText','note','pdf','audioControl'])
+      properties.page = stringEnum(['current','first','last'])
+      properties.audioAutoPlay = booleanType()
+      properties.audioAction = stringEnum(['playOrPause','toggleMute','forward15s','backward15s','play0.5x','play2x','play3x','play4x'])
       break;
     case "searchInDict":
       properties.target = stringEnum(['eudic','MdxDictOxford','MdxDictCollins'])
@@ -662,9 +671,13 @@ function getSchemaByActionName(actionName) {
     case "search":
       properties.target = stringEnum(['menu'])
       properties.engine = stringType()
+      properties.followButton = booleanType()
+      break;
+    case "openInEditor":
+      properties.followButton = booleanType()
       break;
     case "chatAI":
-      properties.target = stringEnum(['menu','openFloat','currentPrompt'])
+      properties.target = stringEnum(['menu','openFloat','currentPrompt','stopOutput'])
       properties.prompt = stringType()
       properties.user = stringType()
       properties.system = stringType()
@@ -1000,7 +1013,7 @@ function setSchemaByAction(action) {
               case 'title':
               case 'subTitle':
                 return [
-                  '{{clipboardText}}','{{selectionText}}','{{currentDocName}}','{{currentDocAttach}}',
+                  '{{globalVar.}}','{{clipboardText}}','{{selectionText}}','{{currentDocName}}','{{currentDocAttach}}','{{chatAIOutput}}',
                   '{{note.title}}','{{note.url}}','{{note.id}}','{{note.hashTags}}','{{note.excerptText}}','{{note.allText}}','{{note.docName}}',
                   '{{note.parent.title}}','{{note.parent.url}}','{{note.parent.id}}','{{note.parent.hashTags}}','{{note.parent.excerptText}}','{{note.parent.allText}}','{{note.parent.docName}}',
                   '{{note.childMindMap.title}}','{{note.childMindMap.url}}','{{note.childMindMap.id}}','{{note.childMindMap.hashTags}}','{{note.childMindMap.excerptText}}','{{note.childMindMap.allText}}','{{note.childMindMap.docName}}',
@@ -1178,6 +1191,11 @@ function setSchemaByAction(action) {
         editor.update(tem)
         editor.expandAll()
         adjustSelectWidth()
+        if ("action" in tem) {
+          setSchemaByAction(tem)
+        }else{
+          setSchema()
+        }
       }
       function getContent() {
         let tem = JSON.stringify(editor.get(),null,2)

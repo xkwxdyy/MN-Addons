@@ -820,13 +820,30 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     MNUtil.copy(url)
     MNUtil.showHUD("✅ Action URL copied to clipboard")
   },
-  shareActionURL:function (actionKey) {
+  shareActionURL:async function (actionKey) {
     Menu.dismissCurrentMenu()
-    let des = toolbarConfig.getDescriptionById(actionKey)
+    let input = await self.getWebviewContent()
+    let config = JSON.parse(input)
+    // let des = toolbarConfig.getDescriptionById(actionKey)
     // MNUtil.copy(des)
-    let url = "marginnote4app://addon/mntoolbar?config="+encodeURIComponent(JSON.stringify(des))
-    MNUtil.copy(url)
-    MNUtil.showHUD("✅ Share URL copied to clipboard")
+    // let url = "marginnote4app://addon/mntoolbar?config="+encodeURIComponent(JSON.stringify(des))
+    if ("description" in config) {
+      let url =  `[➕导入](marginnote4app://addon/mntoolbar?config=${encodeURIComponent(input)}) ${config.description}
+\`\`\`json
+${input}
+\`\`\`
+`
+      MNUtil.copy(url)
+      MNUtil.showHUD("✅ Share URL copied to clipboard")
+      return
+    }
+      let url =  `[➕导入](marginnote4app://addon/mntoolbar?config=${encodeURIComponent(input)})
+\`\`\`json
+${input}
+\`\`\`
+`
+      MNUtil.copy(url)
+      MNUtil.showHUD("✅ Share URL copied to clipboard")
     // MNUtil.shareText(url, "Share "+des.name+" config")
     // let shareText = "Share "+buttonName+" config"
   },
@@ -957,14 +974,14 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     // let des = toolbarConfig.getDescriptionById(selected)
     let actionName = des.action
     let menuItems = toolbarUtils.getActionOptions(actionName)
-    // if ("onFinish" in des) {
-    //   let menuItemsForOnFinish = toolbarUtils.getActionOptions(des.onFinish.action,"onFinish.")
-    //   menuItems = menuItems.concat(menuItemsForOnFinish)
-    // }
-    // if ("onLongPress" in des) {
-    //   let menuItemsForOnLongPress = toolbarUtils.getActionOptions(des.onLongPress.action,"onLongPress.")
-    //   menuItems = menuItems.concat(menuItemsForOnLongPress)
-    // }
+    if ("onFinish" in des) {
+      let menuItemsForOnFinish = toolbarUtils.getActionOptions(des.onFinish.action,"onFinish.")
+      menuItems = menuItems.concat(menuItemsForOnFinish)
+    }
+    if ("onLongPress" in des) {
+      let menuItemsForOnLongPress = toolbarUtils.getActionOptions(des.onLongPress.action,"onLongPress.")
+      menuItems = menuItems.concat(menuItemsForOnLongPress)
+    }
     let width = []
     if (menuItems.length > 0) {
       let currentKeys = Object.keys(des)
@@ -972,7 +989,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       if (menuItems.length > 0) {
         // MNUtil.copy(currentKeys)
         menuItems.forEach(item=>{
-          menu.addMenuItem("🔘  "+item,"addOption:",item)
+          menu.addMenuItem("🔘  "+item,"addOption:",{item:item,currentDes:des})
           width.push(toolbarUtils.strCode("🔘  "+item))
         })
         menu.width = Math.max(...width)*9+30
@@ -982,35 +999,64 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     }
     self.showHUD("No options")
   },
-  addOption:async function (item) {
+  addOption:async function (params) {
     Menu.dismissCurrentMenu()
-    let input = await self.getWebviewContent()
-    let config = JSON.parse(input)
-    switch (item) {
-      case "onLongPress":
-        config.onLongPress = {action:""}
-        break;
-      case "onFinish":
-        config.onFinish = {action:""}
-        break;
-      case "markdown":
-      case "compression":
-      case "followParentColor":
-      case "multi":
-      case "allowDeleteNote":
-      case "followAutoStyle":
-      case "forceToFocus":
-      case "textFirst":
-      case "focusInFloatWindowForAllDocMode":
-      case "mainMindMap":
-      case "ocr":
-      case "asTitle":
-        config[item] = true
-        break;
-      default:
-        config[item] = ""
-        break;
+    let item = params.item
+    let config = params.currentDes
+    if (item.startsWith("onFinish.")) {
+      let items = item.split(".")
+      let levels = items.length
+      if (levels > 2) {
+        MNUtil.showHUD("Level "+levels+" is not supported")
+        return
+      }
+      let onFinish = config.onFinish
+      let onFinishItem = items[1]
+      onFinish = toolbarUtils.addActionOption(onFinish, onFinishItem)
+      config.onFinish = onFinish
+      self.updateWebviewContent(config)
+      return
     }
+    if (item.startsWith("onLongPress.")) {
+      let items = item.split(".")
+      let levels = items.length
+      if (levels > 2) {
+        MNUtil.showHUD("Level "+levels+" is not supported")
+        return
+      }
+      let onLongPress = config.onLongPress
+      let onLongPressItem = items[1]
+      onLongPress = toolbarUtils.addActionOption(onLongPress, onLongPressItem)
+      config.onLongPress = onLongPress
+      self.updateWebviewContent(config)
+      return
+    }
+    config = toolbarUtils.addActionOption(config, item)
+    // switch (item) {
+    //   case "onLongPress":
+    //     config.onLongPress = {action:""}
+    //     break;
+    //   case "onFinish":
+    //     config.onFinish = {action:""}
+    //     break;
+    //   case "markdown":
+    //   case "compression":
+    //   case "followParentColor":
+    //   case "multi":
+    //   case "allowDeleteNote":
+    //   case "followAutoStyle":
+    //   case "forceToFocus":
+    //   case "textFirst":
+    //   case "focusInFloatWindowForAllDocMode":
+    //   case "mainMindMap":
+    //   case "ocr":
+    //   case "asTitle":
+    //     config[item] = true
+    //     break;
+    //   default:
+    //     config[item] = ""
+    //     break;
+    // }
     self.updateWebviewContent(config)
   },
   saveButtonColor:function (button) {
@@ -1727,22 +1773,41 @@ settingController.prototype.refreshLayout = function () {
     let buttonWidth = 40
     let buttonHeight = 40
     this.locs = [];
-    this.words.map((word,index)=>{
-      // let title = word
-      if (xLeft+initX+buttonWidth > viewFrame.width) {
-        initX = 9
-        initY = initY+50
-        initL = initL+1
-      }
-      this["nameButton"+index].frame = {  x: xLeft+initX,  y: initY,  width: buttonWidth,  height: buttonHeight,};
-      this.locs.push({
-        x:xLeft+initX,
-        y:initY,
-        l:initL,
-        i:index
+      this.words.map((word,index)=>{
+        // let title = word
+        if (xLeft+initX+buttonWidth > viewFrame.width) {
+          initX = 9
+          initY = initY+50
+          initL = initL+1
+        }
+        // this["nameButton"+index].frame = {  x: xLeft+initX,  y: initY,  width: buttonWidth,  height: buttonHeight,};
+        this.locs.push({
+          x:xLeft+initX,
+          y:initY,
+          l:initL,
+          i:index
+        })
+        initX = initX+buttonWidth+10
       })
-      initX = initX+buttonWidth+10
-    })
+    if (this.preLocs && MNUtil.deepEqual(this.preLocs,this.locs)) {
+      this.words.map((word,index)=>{
+        this["nameButton"+index].frame = {  x: this.locs[index].x,  y: this.locs[index].y,  width: buttonWidth,  height: buttonHeight,};
+      })
+    }else{
+      if (this.preLocs) {
+        this.words.map((word,index)=>{
+          this["nameButton"+index].frame = {  x: this.preLocs[index].x,  y: this.preLocs[index].y,  width: buttonWidth,  height: buttonHeight,};
+        })
+      }
+      this.preLocs = this.locs
+      MNUtil.animate(()=>{
+        this.words.map((word,index)=>{
+          this["nameButton"+index].frame = {  x: this.locs[index].x,  y: this.locs[index].y,  width: buttonWidth,  height: buttonHeight,};
+        })
+      },0.1)
+    }
+
+
     if (this.lastLength && this.lastLength>this.words.length) {
       for (let index = this.words.length; index < this.lastLength; index++) {
         this["nameButton"+index].hidden = true
@@ -2022,6 +2087,12 @@ settingController.prototype.loadWebviewContent = function () {
  * @this {settingController}
  */
 settingController.prototype.setWebviewContent = function (content) {
+  // let searchEngines = []
+  // if (typeof browserUtils !== 'undefined') {
+  //   searchEngines = browserConfig.entrieNames.map(entrieName => {
+  //     return browserConfig.entries[entrieName].title
+  //   })
+  // }
   if (typeof content === "object") {
     // MNUtil.copy(`setContent('${encodeURIComponent(JSON.stringify(content))}')`)
     this.runJavaScript(`setContent('${encodeURIComponent(JSON.stringify(content))}')`)

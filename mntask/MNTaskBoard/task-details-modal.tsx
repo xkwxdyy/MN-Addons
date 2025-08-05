@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -96,13 +98,7 @@ export function TaskDetailsModal({
   const [newProgress, setNewProgress] = useState("")
   const [editingProgressId, setEditingProgressId] = useState<string | null>(null)
   const [editingProgressContent, setEditingProgressContent] = useState("")
-  const [showAddSubtask, setShowAddSubtask] = useState(false)
-  const [newSubtask, setNewSubtask] = useState({
-    title: "",
-    description: "",
-    type: "action" as "action" | "project" | "key-result" | "objective",
-    priority: "medium" as "low" | "medium" | "high",
-  })
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState("")
 
   const titleInputRef = useRef<HTMLInputElement>(null)
   const progressTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -130,13 +126,7 @@ export function TaskDetailsModal({
       setNewProgress("")
       setEditingTitle(false)
       setEditingProgressId(null)
-      setShowAddSubtask(false)
-      setNewSubtask({
-        title: "",
-        description: "",
-        type: "action",
-        priority: "medium",
-      })
+      setNewSubtaskTitle("")
     }
   }, [task])
 
@@ -169,6 +159,11 @@ export function TaskDetailsModal({
     if (hasChanges) {
       onUpdateTask(task.id, updates)
     }
+  }
+
+  const handleClose = () => {
+    // 在关闭前自动保存更改
+    handleSave()
     onClose()
   }
 
@@ -259,34 +254,34 @@ export function TaskDetailsModal({
   }
 
   const handleAddSubtask = () => {
-    if (!newSubtask.title.trim()) {
-      toast.error("请输入子任务标题")
+    if (!newSubtaskTitle.trim()) {
       return
     }
 
     const subtaskData: Omit<Task, "id" | "createdAt"> = {
-      title: newSubtask.title.trim(),
-      description: newSubtask.description.trim(),
+      title: newSubtaskTitle.trim(),
+      description: "",
       completed: false,
       isFocusTask: false,
       isPriorityFocus: false,
-      priority: newSubtask.priority,
+      priority: "medium",
       status: "todo",
-      type: newSubtask.type,
+      type: "action",
       parentId: task.id,
       isInPending: true,
       tags: [],
     }
 
     onAddTask(subtaskData)
-    setShowAddSubtask(false)
-    setNewSubtask({
-      title: "",
-      description: "",
-      type: "action",
-      priority: "medium",
-    })
+    setNewSubtaskTitle("")
     toast.success("子任务已创建")
+  }
+
+  const handleSubtaskInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      handleAddSubtask()
+    }
   }
 
   const getSubtasks = () => {
@@ -370,7 +365,7 @@ export function TaskDetailsModal({
   const canHaveSubtasks = ["project", "key-result", "objective"].includes(task.type)
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="bg-slate-800 border-slate-700 max-w-6xl max-h-[90vh] overflow-hidden p-0">
         <DialogHeader className="px-6 py-4 border-b border-slate-700">
           <DialogTitle className="flex items-center gap-3 text-white">
@@ -433,122 +428,7 @@ export function TaskDetailsModal({
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-white font-medium">子任务 ({subtasks.length})</h3>
-                  {canHaveSubtasks && (
-                    <Button
-                      size="sm"
-                      onClick={() => setShowAddSubtask(!showAddSubtask)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
-                    >
-                      <Plus className="w-4 h-4 mr-1" />
-                      添加子任务
-                    </Button>
-                  )}
                 </div>
-
-                {showAddSubtask && canHaveSubtasks && (
-                  <div className="bg-slate-700/30 border border-slate-600 rounded-lg p-4 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-white text-sm font-medium">标题</label>
-                        <Input
-                          value={newSubtask.title}
-                          onChange={(e) => setNewSubtask({ ...newSubtask, title: e.target.value })}
-                          placeholder="输入子任务标题..."
-                          className="bg-slate-700/50 border-slate-600 text-white"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-white text-sm font-medium">类型</label>
-                        <Select
-                          value={newSubtask.type}
-                          onValueChange={(value: "action" | "project" | "key-result" | "objective") =>
-                            setNewSubtask({ ...newSubtask, type: value })
-                          }
-                        >
-                          <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-slate-800 border-slate-700">
-                            <SelectItem value="action" className="text-white">
-                              <div className="flex items-center gap-2">
-                                <Target className="w-4 h-4" />
-                                动作
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="project" className="text-white">
-                              <div className="flex items-center gap-2">
-                                <FolderOpen className="w-4 h-4" />
-                                项目
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="key-result" className="text-white">
-                              <div className="flex items-center gap-2">
-                                <TrendingUp className="w-4 h-4" />
-                                关键结果
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="objective" className="text-white">
-                              <div className="flex items-center gap-2">
-                                <Crosshair className="w-4 h-4" />
-                                目标
-                              </div>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-white text-sm font-medium">描述</label>
-                      <Textarea
-                        value={newSubtask.description}
-                        onChange={(e) => setNewSubtask({ ...newSubtask, description: e.target.value })}
-                        placeholder="输入子任务描述..."
-                        className="bg-slate-700/50 border-slate-600 text-white"
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-white text-sm font-medium">优先级</label>
-                      <Select
-                        value={newSubtask.priority}
-                        onValueChange={(value: "low" | "medium" | "high") =>
-                          setNewSubtask({ ...newSubtask, priority: value })
-                        }
-                      >
-                        <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-800 border-slate-700">
-                          <SelectItem value="low" className="text-white">
-                            低优先级
-                          </SelectItem>
-                          <SelectItem value="medium" className="text-white">
-                            中优先级
-                          </SelectItem>
-                          <SelectItem value="high" className="text-white">
-                            高优先级
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-2">
-                      <Button onClick={handleAddSubtask} className="bg-green-600 hover:bg-green-700 text-white">
-                        <Save className="w-4 h-4 mr-2" />
-                        创建子任务
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowAddSubtask(false)}
-                        className="border-slate-600 text-slate-300 hover:bg-slate-700"
-                      >
-                        取消
-                      </Button>
-                    </div>
-                  </div>
-                )}
 
                 <div className="space-y-3">
                   {subtasks.length > 0 ? (
@@ -602,16 +482,30 @@ export function TaskDetailsModal({
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-8 text-slate-400">
+                    <div className="text-center py-4 text-slate-400">
                       <div className="text-sm">暂无子任务</div>
-                      {canHaveSubtasks ? (
-                        <div className="text-xs mt-1">只有项目、关键结果和目标类型的任务可以添加子任务</div>
-                      ) : (
-                        <div className="text-xs mt-1">当前任务类型不支持添加子任务</div>
-                      )}
                     </div>
                   )}
                 </div>
+
+                {canHaveSubtasks && (
+                  <div className="relative mt-4">
+                    <Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input
+                      value={newSubtaskTitle}
+                      onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                      onKeyDown={handleSubtaskInputKeyDown}
+                      placeholder="添加一个动作并按 Enter 键"
+                      className="bg-slate-700/50 border-slate-600 text-white pl-9"
+                    />
+                  </div>
+                )}
+
+                {!canHaveSubtasks && subtasks.length === 0 && (
+                  <div className="text-center py-4 text-slate-400">
+                    <div className="text-xs mt-1">当前任务类型不支持添加子任务</div>
+                  </div>
+                )}
               </div>
 
               {/* Progress History */}
@@ -955,12 +849,18 @@ export function TaskDetailsModal({
         <div className="px-6 py-4 border-t border-slate-700 flex justify-end gap-3">
           <Button
             variant="outline"
-            onClick={onClose}
+            onClick={handleClose}
             className="border-slate-600 text-slate-300 hover:bg-slate-700 bg-transparent"
           >
-            取消
+            关闭
           </Button>
-          <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white">
+          <Button
+            onClick={() => {
+              handleSave()
+              toast.success("更改已保存")
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
             保存更改
           </Button>
         </div>

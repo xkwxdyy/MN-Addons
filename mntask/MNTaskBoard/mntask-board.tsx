@@ -670,7 +670,18 @@ export default function MNTaskBoard() {
 
   const completeTask = (taskId: string) => {
     setTasks(
-      tasks.map((task) => (task.id === taskId ? { ...task, completed: true, status: "completed" as const } : task)),
+      tasks.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              completed: true,
+              status: "completed" as const,
+              isFocusTask: false, // 移出焦点
+              isPriorityFocus: false, // 取消优先焦点
+              order: undefined, // 清除排序
+            }
+          : task,
+      ),
     )
   }
 

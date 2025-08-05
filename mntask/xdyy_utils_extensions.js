@@ -591,6 +591,13 @@ class MNTaskManager {
           MNUtil.log(`📝 调用 addTaskFieldsWithStatus`)
           this.addTaskFieldsWithStatus(noteToConvert)
           
+          // 检查和补充缺失的字段（如进展字段等）
+          MNUtil.log(`🔄 检查是否需要升级旧任务卡片...`)
+          if (this.upgradeOldTaskCard(noteToConvert)) {
+            MNUtil.log(`✅ 补充了缺失的字段`)
+            hasChanges = true
+          }
+          
           // 检查是否有新字段被添加
           if (noteToConvert.MNComments.length > beforeFieldCount) {
             MNUtil.log(`📝 添加了 ${noteToConvert.MNComments.length - beforeFieldCount} 个新字段`)

@@ -145,8 +145,13 @@ export function TaskDetailsModal({
   if (!currentTask) return null
 
   const handleSave = () => {
+    console.log("=== TaskDetailsModal handleSave called ===")
     const updates: Partial<Task> = {}
     let hasChanges = false
+
+    console.log("Current task description:", currentTask.description)
+    console.log("Temp description:", tempDescription)
+    console.log("Description changed:", tempDescription !== (currentTask.description || ""))
 
     if (tempTitle !== currentTask.title) {
       updates.title = tempTitle
@@ -155,6 +160,7 @@ export function TaskDetailsModal({
     if (tempDescription !== (currentTask.description || "")) {
       updates.description = tempDescription
       hasChanges = true
+      console.log("Adding description to updates:", tempDescription)
     }
     if (JSON.stringify(tempTags) !== JSON.stringify(currentTask.tags || [])) {
       updates.tags = tempTags
@@ -163,11 +169,15 @@ export function TaskDetailsModal({
 
     if (hasChanges) {
       updates.updatedAt = new Date()
+      console.log("Calling onUpdateTask with updates:", updates)
       onUpdateTask(currentTask.id, updates)
       // 立即更新本地状态
       setCurrentTask({ ...currentTask, ...updates })
-      console.log("Saving task updates:", updates) // 调试日志
+      console.log("Local currentTask updated with description:", { ...currentTask, ...updates }.description)
+    } else {
+      console.log("No changes detected, not saving")
     }
+    console.log("=== TaskDetailsModal handleSave completed ===")
   }
 
   const handleClose = () => {

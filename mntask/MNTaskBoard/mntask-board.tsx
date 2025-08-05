@@ -445,7 +445,12 @@ export default function MNTaskBoard() {
         updatedAt: task.updatedAt ? new Date(task.updatedAt) : undefined,
         type: task.type || "action",
         tags: task.tags || [], // 确保标签属性存在
+        // description 字段通过展开运算符自动保留
       }))
+      console.log("Loaded allTasks from localStorage, sample task:", parsedAllTasks[0])
+      if (parsedAllTasks[0]) {
+        console.log("First task description:", parsedAllTasks[0].description)
+      }
       setAllTasks(parsedAllTasks)
     }
 
@@ -501,26 +506,28 @@ export default function MNTaskBoard() {
     localStorage.setItem("mntask-kanban-selected-perspective", kanbanSelectedPerspectiveId || "")
   }, [focusSelectedPerspectiveId, kanbanSelectedPerspectiveId])
 
-  // 同步更新总任务列表
-  useEffect(() => {
-    const combinedTasks = [...tasks, ...pendingTasks]
-    const uniqueTasks = combinedTasks.reduce(
-      (acc: Task[], current) => {
-        const existingIndex = acc.findIndex((task) => task.id === current.id)
-        if (existingIndex >= 0) {
-          // 如果任务已存在，更新它
-          acc[existingIndex] = current
-        } else {
-          // 如果任务不存在，添加它
-          acc.push(current)
-        }
-        return acc
-      },
-      [...allTasks.filter((task) => !combinedTasks.some((ct) => ct.id === task.id))],
-    )
-
-    setAllTasks(uniqueTasks)
-  }, [tasks, pendingTasks])
+  // 移除有问题的 allTasks 同步逻辑
+  // 这个 useEffect 会导致数据覆盖问题，因为它使用了闭包中的旧 allTasks 值
+  // 现在所有的任务更新都通过 updateTask 等函数显式处理 allTasks
+  // useEffect(() => {
+  //   const combinedTasks = [...tasks, ...pendingTasks]
+  //   const uniqueTasks = combinedTasks.reduce(
+  //     (acc: Task[], current) => {
+  //       const existingIndex = acc.findIndex((task) => task.id === current.id)
+  //       if (existingIndex >= 0) {
+  //         // 如果任务已存在，更新它
+  //         acc[existingIndex] = current
+  //       } else {
+  //         // 如果任务不存在，添加它
+  //         acc.push(current)
+  //       }
+  //       return acc
+  //     },
+  //     [...allTasks.filter((task) => !combinedTasks.some((ct) => ct.id === task.id))],
+  //   )
+  //
+  //   setAllTasks(uniqueTasks)
+  // }, [tasks, pendingTasks])
 
   // Save tasks to localStorage whenever tasks change
   useEffect(() => {
@@ -532,6 +539,10 @@ export default function MNTaskBoard() {
   }, [pendingTasks])
 
   useEffect(() => {
+    console.log("Saving allTasks to localStorage, count:", allTasks.length)
+    if (allTasks.length > 0 && allTasks[0].description !== undefined) {
+      console.log("First task has description:", allTasks[0].description)
+    }
     localStorage.setItem("mntask-all-tasks", JSON.stringify(allTasks))
   }, [allTasks])
 
@@ -879,6 +890,8 @@ export default function MNTaskBoard() {
     })
 
     setPendingTasks((prev) => [...prev, ...newTasks])
+    // 同时更新 allTasks
+    setAllTasks((prev) => [...prev, ...newTasks])
     setNewTaskTitle("")
 
     // 显示更详细的成功提示信息
@@ -959,6 +972,8 @@ export default function MNTaskBoard() {
       createdAt: new Date(),
     }
     setPendingTasks([...pendingTasks, newTask])
+    // 同时更新 allTasks
+    setAllTasks([...allTasks, newTask])
 
     // 显示提示信息
     const appliedTags = newTask.tags || []
@@ -1164,15 +1179,35 @@ export default function MNTaskBoard() {
   }
 
   const openTaskDetails = (taskId: string) => {
+    console.log("=== openTaskDetails called ===")
+    console.log("Looking for task ID:", taskId)
+    
     // 优先从 allTasks 中获取最新的任务数据
     const task = allTasks.find((t) => t.id === taskId)
     if (task) {
-      console.log("Opening task details for:", task.title, "Description:", task.description) // 调试日志
+      console.log("Task found in allTasks:")
+      console.log("  Title:", task.title)
+      console.log("  Description:", task.description !== undefined ? `"${task.description}"` : "undefined")
+      console.log("  Has description:", task.description !== undefined && task.description !== "")
       setSelectedTask(task)
       setIsDetailsModalOpen(true)
     } else {
       console.warn("Task not found in allTasks:", taskId)
+      // 尝试从其他数组中查找
+      const taskInFocus = tasks.find((t) => t.id === taskId)
+      const taskInPending = pendingTasks.find((t) => t.id === taskId)
+      
+      if (taskInFocus) {
+        console.log("Found in focus tasks, using it")
+        setSelectedTask(taskInFocus)
+        setIsDetailsModalOpen(true)
+      } else if (taskInPending) {
+        console.log("Found in pending tasks, using it")
+        setSelectedTask(taskInPending)
+        setIsDetailsModalOpen(true)
+      }
     }
+    console.log("=== openTaskDetails completed ===")
   }
 
   const locateTask = (taskId: string) => {
@@ -1195,19 +1230,49 @@ export default function MNTaskBoard() {
   }
 
   const updateTask = (taskId: string, updates: Partial<Task>) => {
-    console.log("Updating task:", taskId, "with updates:", updates) // 调试日志
+    console.log("=== updateTask called ===")
+    console.log("Task ID:", taskId)
+    console.log("Updates:", updates)
+    console.log("Description in updates:", updates.description !== undefined ? `"${updates.description}"` : "not included")
 
     // 更新焦点任务
-    setTasks(tasks.map((task) => (task.id === taskId ? { ...task, ...updates } : task)))
+    setTasks(prev => {
+      const updated = prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
+      const targetTask = updated.find(t => t.id === taskId)
+      if (targetTask) {
+        console.log("Updated task in focus tasks, description:", targetTask.description)
+      }
+      return updated
+    })
+    
     // 更新待处理任务
-    setPendingTasks(pendingTasks.map((task) => (task.id === taskId ? { ...task, ...updates } : task)))
+    setPendingTasks(prev => {
+      const updated = prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
+      const targetTask = updated.find(t => t.id === taskId)
+      if (targetTask) {
+        console.log("Updated task in pending tasks, description:", targetTask.description)
+      }
+      return updated
+    })
+    
     // 更新总任务列表
-    setAllTasks(allTasks.map((task) => (task.id === taskId ? { ...task, ...updates } : task)))
+    setAllTasks(prev => {
+      const updated = prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
+      const targetTask = updated.find(t => t.id === taskId)
+      if (targetTask) {
+        console.log("Updated task in allTasks, description:", targetTask.description)
+      }
+      return updated
+    })
 
     // 如果当前选中的任务就是被更新的任务，也要更新选中任务的状态
     if (selectedTask && selectedTask.id === taskId) {
-      setSelectedTask({ ...selectedTask, ...updates })
+      const updatedSelectedTask = { ...selectedTask, ...updates }
+      setSelectedTask(updatedSelectedTask)
+      console.log("Updated selectedTask, description:", updatedSelectedTask.description)
     }
+    
+    console.log("=== updateTask completed ===")
   }
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

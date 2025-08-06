@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from "react"
-import type { Task, Perspective, PerspectiveFilter } from "@/types/task"
+import type { Task, Perspective, PerspectiveFilter, FilterRule, FilterCondition, FilterOperator } from "@/types/task"
 import { toast } from "sonner"
 
 /**
@@ -117,7 +117,88 @@ export function usePerspectives() {
     toast.success("透视删除成功")
   }
 
-  // Apply perspective filter to tasks
+  // Evaluate a single filter condition against a task
+  const evaluateCondition = (task: Task, condition: FilterCondition): boolean => {
+    const { field, values, tagMatchMode } = condition
+    
+    switch (field) {
+      case "tags":
+        if (!values || values.length === 0) return true
+        if (!task.tags || task.tags.length === 0) return false
+        
+        if (tagMatchMode === "all") {
+          // Task must have ALL specified tags
+          return values.every(tag => task.tags?.includes(tag))
+        } else {
+          // Task must have ANY of the specified tags (default behavior)
+          return values.some(tag => task.tags?.includes(tag))
+        }
+        
+      case "taskTypes":
+        if (!values || values.length === 0) return true
+        return values.includes(task.type)
+        
+      case "statuses":
+        if (!values || values.length === 0) return true
+        return values.includes(task.status)
+        
+      case "priorities":
+        if (!values || values.length === 0) return true
+        return values.includes(task.priority)
+        
+      case "focusTask":
+        if (!values || values.length === 0 || values[0] === "all") return true
+        if (values[0] === "focus") return task.isFocusTask
+        if (values[0] === "non-focus") return !task.isFocusTask
+        return true
+        
+      case "priorityFocus":
+        if (!values || values.length === 0 || values[0] === "all") return true
+        if (values[0] === "priority") return task.isPriorityFocus
+        if (values[0] === "non-priority") return !task.isPriorityFocus
+        return true
+        
+      default:
+        return true
+    }
+  }
+
+  // Recursively evaluate filter rules (supports nested rule groups)
+  const evaluateFilterRule = (task: Task, rule: FilterRule): boolean => {
+    const { operator, conditions = [], ruleGroups = [] } = rule
+    
+    // Evaluate conditions
+    const conditionResults = conditions.map(condition => evaluateCondition(task, condition))
+    
+    // Evaluate nested rule groups recursively
+    const ruleGroupResults = ruleGroups.map(ruleGroup => evaluateFilterRule(task, ruleGroup))
+    
+    // Combine all results
+    const allResults = [...conditionResults, ...ruleGroupResults]
+    
+    if (allResults.length === 0) return true
+    
+    switch (operator) {
+      case "all": // AND
+        return allResults.every(result => result)
+        
+      case "any": // OR
+        return allResults.some(result => result)
+        
+      case "none": // NOT
+        return !allResults.some(result => result)
+        
+      default:
+        return true
+    }
+  }
+
+  // Apply filter rules to tasks (new nested rule system)
+  const applyFilterRules = (tasks: Task[], filterRules: FilterRule): Task[] => {
+    return tasks.filter(task => evaluateFilterRule(task, filterRules))
+  }
+
+  // Apply perspective filter to tasks (legacy system for backward compatibility)
   const applyPerspectiveFilter = (tasks: Task[], filters: PerspectiveFilter): Task[] => {
     return tasks.filter((task) => {
       // Tag filter
@@ -179,7 +260,15 @@ export function usePerspectives() {
     }
 
     if (!selectedPerspective) return taskList
-    return applyPerspectiveFilter(taskList, selectedPerspective.filters)
+    
+    // Use new filter rules if available, otherwise fall back to legacy filters
+    if (selectedPerspective.filterRules) {
+      return applyFilterRules(taskList, selectedPerspective.filterRules)
+    } else if (selectedPerspective.filters) {
+      return applyPerspectiveFilter(taskList, selectedPerspective.filters)
+    }
+    
+    return taskList
   }
 
   // Reset perspectives (used when resetting all data)
@@ -209,6 +298,9 @@ export function usePerspectives() {
     
     // Filter operations
     applyPerspectiveFilter,
+    applyFilterRules,
+    evaluateCondition,
+    evaluateFilterRule,
     getFilteredTasks,
     
     // Getters

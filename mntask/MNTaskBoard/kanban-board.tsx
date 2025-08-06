@@ -146,7 +146,7 @@ export function KanbanBoard({
 
   // 应用透视筛选到任务列表
   const getFilteredTasks = (taskList: Task[]): Task[] => {
-    if (!selectedPerspective) return taskList
+    if (!selectedPerspective || !selectedPerspective.filters) return taskList
     return applyPerspectiveFilter(taskList, selectedPerspective.filters)
   }
 

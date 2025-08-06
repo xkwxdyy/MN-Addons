@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog,
   DialogContent,
@@ -29,10 +30,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Eye, Plus, Edit, Trash2, Filter, Target, FolderOpen, TrendingUp, Crosshair, Clock, X } from "lucide-react"
+import { Eye, Plus, Edit, Trash2, Filter, Target, FolderOpen, TrendingUp, Crosshair, Clock, X, Layers, Sparkles } from "lucide-react"
 import { TaskCard } from "./task-card"
 import { PendingTaskCard } from "./pending-task-card"
+import { FilterRuleEditor } from "@/components/filter-rule-editor"
+import { SMART_PERSPECTIVES, createSmartPerspective } from "@/constants/smart-perspectives"
 import { toast } from "sonner"
+import type { FilterRule } from "@/types/task"
 
 interface Task {
   id: string
@@ -133,6 +137,7 @@ export function PerspectiveView({
 }: PerspectiveViewProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isSmartTemplatesOpen, setIsSmartTemplatesOpen] = useState(false)
   const [editingPerspective, setEditingPerspective] = useState<Perspective | null>(null)
   const [showCompletedTasks, setShowCompletedTasks] = useState(false)
 
@@ -141,6 +146,7 @@ export function PerspectiveView({
     name: "",
     description: "",
     groupBy: "none" as "none" | "type" | "status" | "priority",
+    useAdvancedFilters: false,
     filters: {
       tags: [] as string[],
       taskTypes: [] as string[],
@@ -149,6 +155,8 @@ export function PerspectiveView({
       focusTask: "all",
       priorityFocus: "all",
     },
+    filterRules: null as FilterRule | null,
+    tagMatchMode: "any" as "any" | "all", // 标签匹配模式
   })
 
   // 重置表单
@@ -157,6 +165,7 @@ export function PerspectiveView({
       name: "",
       description: "",
       groupBy: "none",
+      useAdvancedFilters: false,
       filters: {
         tags: [],
         taskTypes: [],
@@ -165,6 +174,8 @@ export function PerspectiveView({
         focusTask: "all",
         priorityFocus: "all",
       },
+      filterRules: null,
+      tagMatchMode: "any",
     })
   }
 
@@ -258,13 +269,67 @@ export function PerspectiveView({
       return
     }
 
-    const newPerspective = onCreatePerspective({
+    // 准备透视数据
+    const perspectiveData: any = {
       name: formData.name.trim(),
       description: formData.description.trim(),
-      filters: formData.filters,
       groupBy: formData.groupBy,
-    })
+    }
 
+    // 根据筛选模式设置筛选规则
+    if (formData.useAdvancedFilters && formData.filterRules) {
+      perspectiveData.filterRules = formData.filterRules
+    } else {
+      // 在简单模式下，如果选择了"包含所有"标签，需要转换为高级规则
+      if (formData.tagMatchMode === "all" && formData.filters.tags.length > 0) {
+        perspectiveData.filterRules = {
+          id: `rule-${Date.now()}`,
+          operator: "all",
+          conditions: [{
+            field: "tags",
+            values: formData.filters.tags,
+            tagMatchMode: "all"
+          }],
+          ruleGroups: []
+        }
+        // 将其他筛选条件也添加到规则中
+        if (formData.filters.taskTypes.length > 0) {
+          perspectiveData.filterRules.conditions.push({
+            field: "taskTypes",
+            values: formData.filters.taskTypes
+          })
+        }
+        if (formData.filters.statuses.length > 0) {
+          perspectiveData.filterRules.conditions.push({
+            field: "statuses",
+            values: formData.filters.statuses
+          })
+        }
+        if (formData.filters.priorities.length > 0) {
+          perspectiveData.filterRules.conditions.push({
+            field: "priorities",
+            values: formData.filters.priorities
+          })
+        }
+        if (formData.filters.focusTask !== "all") {
+          perspectiveData.filterRules.conditions.push({
+            field: "focusTask",
+            values: [formData.filters.focusTask]
+          })
+        }
+        if (formData.filters.priorityFocus !== "all") {
+          perspectiveData.filterRules.conditions.push({
+            field: "priorityFocus",
+            values: [formData.filters.priorityFocus]
+          })
+        }
+      } else {
+        // 使用传统的筛选器
+        perspectiveData.filters = formData.filters
+      }
+    }
+
+    const newPerspective = onCreatePerspective(perspectiveData)
     onPerspectiveChange(newPerspective.id)
     setIsCreateDialogOpen(false)
     resetForm()
@@ -273,11 +338,25 @@ export function PerspectiveView({
   // 处理编辑透视
   const handleEditPerspective = (perspective: Perspective) => {
     setEditingPerspective(perspective)
+    
+    // 判断是否使用高级筛选
+    const useAdvanced = false  // 暂时不支持高级筛选
+    
     setFormData({
       name: perspective.name,
       description: perspective.description || "",
       groupBy: perspective.groupBy,
-      filters: { ...perspective.filters },
+      useAdvancedFilters: useAdvanced,
+      filters: perspective.filters || {
+        tags: [],
+        taskTypes: [],
+        statuses: [],
+        priorities: [],
+        focusTask: "all",
+        priorityFocus: "all",
+      },
+      filterRules: null,  // 暂时不支持高级筛选
+      tagMatchMode: "any", // 默认值，可以从 filterRules 中推断
     })
     setIsEditDialogOpen(true)
   }
@@ -289,12 +368,22 @@ export function PerspectiveView({
       return
     }
 
-    onUpdatePerspective(editingPerspective.id, {
+    const updateData: any = {
       name: formData.name.trim(),
       description: formData.description.trim(),
-      filters: formData.filters,
       groupBy: formData.groupBy,
-    })
+    }
+
+    // 根据筛选模式设置筛选规则
+    if (formData.useAdvancedFilters && formData.filterRules) {
+      updateData.filterRules = formData.filterRules
+      updateData.filters = undefined // 清除旧的筛选器
+    } else {
+      updateData.filters = formData.filters
+      updateData.filterRules = undefined // 清除高级规则
+    }
+
+    onUpdatePerspective(editingPerspective.id, updateData)
 
     setIsEditDialogOpen(false)
     setEditingPerspective(null)
@@ -448,6 +537,16 @@ export function PerspectiveView({
             </label>
           </div>
 
+          {/* 智能透视模板按钮 */}
+          <Button
+            variant="outline"
+            onClick={() => setIsSmartTemplatesOpen(true)}
+            className="border-purple-500/30 text-purple-300 hover:bg-purple-500/10"
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            智能模板
+          </Button>
+
           {/* 创建透视按钮 */}
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
@@ -516,28 +615,76 @@ export function PerspectiveView({
 
                 <Separator className="bg-slate-600" />
 
-                {/* 筛选条件 */}
-                <div className="space-y-4">
-                  <h3 className="text-white font-medium">筛选条件</h3>
+                {/* 筛选模式选择 */}
+                <Tabs
+                  value={formData.useAdvancedFilters ? "advanced" : "simple"}
+                  onValueChange={(value) => {
+                    const useAdvanced = value === "advanced"
+                    if (useAdvanced && !formData.filterRules) {
+                      // 初始化高级筛选规则
+                      setFormData({
+                        ...formData,
+                        useAdvancedFilters: useAdvanced,
+                        filterRules: {
+                          id: `rule-${Date.now()}`,
+                          operator: "all",
+                          conditions: [],
+                          ruleGroups: []
+                        }
+                      })
+                    } else {
+                      setFormData({ ...formData, useAdvancedFilters: useAdvanced })
+                    }
+                  }}
+                  className="w-full"
+                >
+                  <TabsList className="grid w-full grid-cols-2 bg-slate-700">
+                    <TabsTrigger value="simple" className="data-[state=active]:bg-slate-600">
+                      <Filter className="w-3 h-3 mr-1" />
+                      简单筛选
+                    </TabsTrigger>
+                    <TabsTrigger value="advanced" className="data-[state=active]:bg-slate-600">
+                      <Layers className="w-3 h-3 mr-1" />
+                      高级筛选
+                    </TabsTrigger>
+                  </TabsList>
 
-                  {/* 标签筛选 */}
-                  <div className="space-y-2">
-                    <label className="text-white text-sm">标签</label>
-                    <div className="flex flex-wrap gap-2">
-                      {availableTags.map((tag) => (
-                        <Badge
-                          key={tag}
-                          className={`cursor-pointer text-xs ${
-                            formData.filters.tags.includes(tag)
-                              ? "bg-blue-500/30 text-blue-300 border-blue-500/50"
-                              : "bg-slate-600/50 text-slate-300 border-slate-500/30 hover:bg-slate-500/50"
-                          }`}
-                          onClick={() => {
-                            const newTags = formData.filters.tags.includes(tag)
-                              ? formData.filters.tags.filter((t) => t !== tag)
-                              : [...formData.filters.tags, tag]
-                            setFormData({
-                              ...formData,
+                  {/* 简单筛选模式 */}
+                  <TabsContent value="simple" className="space-y-4 mt-4">
+                    <h3 className="text-white font-medium">筛选条件</h3>
+
+                    {/* 标签筛选 */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-white text-sm">标签</label>
+                        <Select
+                          value={formData.tagMatchMode}
+                          onValueChange={(value) => setFormData({ ...formData, tagMatchMode: value as "any" | "all" })}
+                        >
+                          <SelectTrigger className="w-32 h-7 text-xs bg-slate-700/50 border-slate-600 text-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-slate-800 border-slate-700">
+                            <SelectItem value="any" className="text-white text-xs">包含任一</SelectItem>
+                            <SelectItem value="all" className="text-white text-xs">包含所有</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {availableTags.map((tag) => (
+                          <Badge
+                            key={tag}
+                            className={`cursor-pointer text-xs ${
+                              formData.filters.tags.includes(tag)
+                                ? "bg-blue-500/30 text-blue-300 border-blue-500/50"
+                                : "bg-slate-600/50 text-slate-300 border-slate-500/30 hover:bg-slate-500/50"
+                            }`}
+                            onClick={() => {
+                              const newTags = formData.filters.tags.includes(tag)
+                                ? formData.filters.tags.filter((t) => t !== tag)
+                                : [...formData.filters.tags, tag]
+                              setFormData({
+                                ...formData,
                               filters: { ...formData.filters, tags: newTags },
                             })
                           }}
@@ -692,7 +839,27 @@ export function PerspectiveView({
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
+                  </TabsContent>
+
+                  {/* 高级筛选模式 */}
+                  <TabsContent value="advanced" className="space-y-4 mt-4">
+                    <div className="space-y-2">
+                      <h3 className="text-white font-medium">高级筛选规则</h3>
+                      <p className="text-slate-400 text-xs">
+                        使用嵌套规则组创建复杂的筛选条件（支持 AND、OR、NOT 逻辑）
+                      </p>
+                    </div>
+                    
+                    {formData.filterRules && (
+                      <FilterRuleEditor
+                        rule={formData.filterRules}
+                        availableTags={availableTags}
+                        onUpdate={(rule) => setFormData({ ...formData, filterRules: rule })}
+                        isRoot={true}
+                      />
+                    )}
+                  </TabsContent>
+                </Tabs>
               </div>
 
               <DialogFooter className="px-6 pb-6 pt-4 border-t border-slate-700">
@@ -1039,6 +1206,93 @@ export function PerspectiveView({
             </Button>
             <Button onClick={handleUpdatePerspective} className="bg-blue-600 hover:bg-blue-700 text-white">
               保存更改
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 智能透视模板对话框 */}
+      <Dialog open={isSmartTemplatesOpen} onOpenChange={setIsSmartTemplatesOpen}>
+        <DialogContent className="bg-slate-800 border-slate-700 w-[95vw] max-w-3xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="px-6 pt-6 pb-4">
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-purple-400" />
+              智能透视模板
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              选择一个预设的智能透视模板，快速创建常用的任务视图
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto px-6 pb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {SMART_PERSPECTIVES.map((template, index) => (
+                <Card
+                  key={index}
+                  className="bg-slate-700/50 border-slate-600 cursor-pointer hover:bg-slate-700/70 transition-colors"
+                  onClick={() => {
+                    const newPerspective = createSmartPerspective(template)
+                    const created = onCreatePerspective(newPerspective)
+                    onPerspectiveChange(created.id)
+                    setIsSmartTemplatesOpen(false)
+                    toast.success(`已创建智能透视: ${template.name}`)
+                  }}
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">{template.icon}</span>
+                        <CardTitle className="text-white text-base">{template.name}</CardTitle>
+                      </div>
+                      {template.isSmartPerspective && (
+                        <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-xs">
+                          智能
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-slate-400 text-sm">{template.description}</p>
+                    <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
+                      <span>分组: {
+                        template.groupBy === "none" ? "不分组" :
+                        template.groupBy === "type" ? "按类型" :
+                        template.groupBy === "status" ? "按状态" :
+                        "按优先级"
+                      }</span>
+                      {template.filterRules && (
+                        <>
+                          <span>•</span>
+                          <span>
+                            规则: {template.filterRules.conditions?.length || 0} 条件,
+                            {template.filterRules.ruleGroups?.length || 0} 组
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <div className="mt-6 p-4 bg-slate-700/30 rounded-lg">
+              <h3 className="text-white text-sm font-medium mb-2">提示</h3>
+              <ul className="text-slate-400 text-xs space-y-1">
+                <li>• 智能透视模板基于常见的任务管理场景预设</li>
+                <li>• 创建后可以根据需要进一步自定义筛选条件</li>
+                <li>• 支持复杂的嵌套规则（AND、OR、NOT 逻辑）</li>
+                <li>• 可以组合多个条件创建精确的任务视图</li>
+              </ul>
+            </div>
+          </div>
+
+          <DialogFooter className="px-6 pb-6 pt-4 border-t border-slate-700">
+            <Button
+              variant="outline"
+              onClick={() => setIsSmartTemplatesOpen(false)}
+              className="border-slate-600 text-slate-300 hover:bg-slate-700 bg-transparent"
+            >
+              关闭
             </Button>
           </DialogFooter>
         </DialogContent>

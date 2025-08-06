@@ -36,6 +36,28 @@ export interface Task {
   progressHistory?: ProgressHistoryItem[]
 }
 
+// Filter rule types and operators
+export type FilterOperator = "all" | "any" | "none" // Corresponds to AND, OR, NOT
+export type FilterFieldType = "tags" | "taskTypes" | "statuses" | "priorities" | "focusTask" | "priorityFocus"
+export type TagMatchMode = "all" | "any" // Match all tags or any tag
+
+// Individual filter condition
+export interface FilterCondition {
+  field: FilterFieldType
+  values: string[]
+  // For tags, specify whether to match all or any
+  tagMatchMode?: TagMatchMode
+}
+
+// Filter rule that can contain conditions and nested rule groups
+export interface FilterRule {
+  id: string
+  operator: FilterOperator
+  conditions?: FilterCondition[]
+  ruleGroups?: FilterRule[] // Nested rule groups for complex logic
+}
+
+// Legacy filter interface (for backward compatibility)
 export interface PerspectiveFilter {
   tags: string[]
   taskTypes: string[]
@@ -45,13 +67,17 @@ export interface PerspectiveFilter {
   priorityFocus: string // "all" | "priority" | "non-priority"
 }
 
+// Enhanced perspective with support for both legacy and new filter formats
 export interface Perspective {
   id: string
   name: string
   description?: string
-  filters: PerspectiveFilter
+  filters?: PerspectiveFilter // Legacy filter format
+  filterRules?: FilterRule // New nested filter rules
   groupBy: "none" | "type" | "status" | "priority"
   createdAt: Date
+  isSmartPerspective?: boolean // Flag for preset smart perspectives
+  icon?: string // Optional icon for the perspective
 }
 
 export interface ExportData {

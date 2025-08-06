@@ -465,7 +465,7 @@ export default function MNTaskBoard() {
                     {getFocusSelectedPerspective.description && (
                       <p className="mb-1">{getFocusSelectedPerspective.description}</p>
                     )}
-                    <p>筛选条件: {getFilterSummary(getFocusSelectedPerspective.filters)}</p>
+                    <p>筛选条件: {getFocusSelectedPerspective.filters ? getFilterSummary(getFocusSelectedPerspective.filters) : '无'}</p>
                   </div>
                 )}
               </div>
@@ -628,7 +628,7 @@ export default function MNTaskBoard() {
                       提示: 使用缩进创建层级任务。按 (Cmd/Ctrl + Enter) 快速提交。
                     </p>
 
-                    {getFocusSelectedPerspective && (
+                    {getFocusSelectedPerspective && getFocusSelectedPerspective.filters && (
                       <div className="mt-2 text-xs text-slate-400 flex items-center gap-2">
                         <Eye className="w-3 h-3" />
                         <span>新任务将自动应用透视条件:</span>
@@ -653,7 +653,7 @@ export default function MNTaskBoard() {
                         )}
                         {getFocusSelectedPerspective.filters.statuses.length === 1 && (
                           <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30 text-xs">
-                            {getPriorityText(getFocusSelectedPerspective.filters.priorities[0])}优先级
+                            {getStatusText(getFocusSelectedPerspective.filters.statuses[0])}
                           </Badge>
                         )}
                       </div>
@@ -729,7 +729,7 @@ export default function MNTaskBoard() {
               onRemoveFromPending={removeFromPending}
               onAddTask={(taskData) => {
           const perspective = getFocusSelectedPerspective
-          if (perspective) {
+          if (perspective && perspective.filters) {
             addTaskToPending(taskData, perspective.filters)
           } else {
             addTaskToPending(taskData)
@@ -816,7 +816,7 @@ export default function MNTaskBoard() {
           // 如果任务不在当前透视中，清除透视筛选
           if (kanbanSelectedPerspectiveId) {
             const perspective = perspectives.find((p) => p.id === kanbanSelectedPerspectiveId)
-            if (perspective) {
+            if (perspective && perspective.filters) {
               const filteredTasks = applyPerspectiveFilter([taskToLocate], perspective.filters)
               if (filteredTasks.length === 0) {
                 setKanbanSelectedPerspectiveId(null)

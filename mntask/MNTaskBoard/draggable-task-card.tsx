@@ -346,6 +346,18 @@ export function DraggableTaskCard({
                     添加到焦点
                   </DropdownMenuItem>
                 )}
+                {!task.isFocusTask && !task.isInPending && onAddToPending && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onAddToPending(task.id)
+                    }}
+                    className="text-slate-300 hover:bg-slate-700 focus:bg-slate-700"
+                  >
+                    <Clock className="w-4 h-4 mr-2" />
+                    添加到待处理
+                  </DropdownMenuItem>
+                )}
                 {task.isInPending && onRemoveFromPending && (
                   <DropdownMenuItem
                     onClick={(e) => {

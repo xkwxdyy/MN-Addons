@@ -197,7 +197,10 @@ export function useTaskManager() {
         isFocusTask: false,
         isPriorityFocus: false,
         order: undefined,
-        status: "todo" as const,
+        status: task.status === "in-progress" ? "paused" as const :
+                task.status === "completed" ? "todo" as const :
+                task.status === "paused" ? "paused" as const :
+                "todo" as const,
         isInPending: true,
       }
 
@@ -616,7 +619,7 @@ export function useTaskManager() {
 
     // Check all tasks
     const taskFromAll = allTasks.find((task) => task.id === taskId)
-    if (taskFromAll && taskFromAll.type === "action" && !taskFromAll.isFocusTask) {
+    if (taskFromAll && !taskFromAll.isFocusTask) {
       const maxOrder = Math.max(...tasks.filter((t) => t.isFocusTask && !t.isPriorityFocus).map((t) => t.order || 0), 0)
       const focusTask = {
         ...taskFromAll,
@@ -653,13 +656,16 @@ export function useTaskManager() {
   const addToPendingFromKanban = (taskId: string) => {
     // Check focus tasks
     const taskFromFocus = tasks.find((task) => task.id === taskId)
-    if (taskFromFocus && taskFromFocus.type === "action") {
+    if (taskFromFocus) {
       const pendingTask = {
         ...taskFromFocus,
         isFocusTask: false,
         isPriorityFocus: false,
         order: undefined,
-        status: "todo" as const,
+        status: taskFromFocus.status === "in-progress" ? "paused" as const :
+                taskFromFocus.status === "completed" ? "todo" as const :
+                taskFromFocus.status === "paused" ? "paused" as const :
+                "todo" as const,
         isInPending: true,
       }
 
@@ -674,7 +680,10 @@ export function useTaskManager() {
                 isFocusTask: false,
                 isPriorityFocus: false,
                 order: undefined,
-                status: "todo" as const,
+                status: taskFromFocus.status === "in-progress" ? "paused" as const :
+                        taskFromFocus.status === "completed" ? "todo" as const :
+                        taskFromFocus.status === "paused" ? "paused" as const :
+                        "todo" as const,
                 isInPending: true,
               }
             : task,
@@ -687,13 +696,16 @@ export function useTaskManager() {
 
     // Check all tasks
     const taskFromAll = allTasks.find((task) => task.id === taskId)
-    if (taskFromAll && taskFromAll.type === "action" && !taskFromAll.isInPending) {
+    if (taskFromAll && !taskFromAll.isInPending) {
       const pendingTask = {
         ...taskFromAll,
         isFocusTask: false,
         isPriorityFocus: false,
         order: undefined,
-        status: "todo" as const,
+        status: taskFromAll.status === "in-progress" ? "paused" as const :
+                taskFromAll.status === "completed" ? "todo" as const :
+                taskFromAll.status === "paused" ? "paused" as const :
+                "todo" as const,
         isInPending: true,
       }
 
@@ -710,7 +722,10 @@ export function useTaskManager() {
                 isFocusTask: false,
                 isPriorityFocus: false,
                 order: undefined,
-                status: "todo" as const,
+                status: taskFromAll.status === "in-progress" ? "paused" as const :
+                        taskFromAll.status === "completed" ? "todo" as const :
+                        taskFromAll.status === "paused" ? "paused" as const :
+                        "todo" as const,
                 isInPending: true,
               }
             : task,

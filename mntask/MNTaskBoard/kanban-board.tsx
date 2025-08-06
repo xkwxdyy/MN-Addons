@@ -11,48 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DraggableTaskCard } from "./draggable-task-card"
 import { Target, FolderOpen, TrendingUp, Crosshair, Filter, X, Plus, Eye } from "lucide-react"
 import { toast } from "sonner"
-
-interface Task {
-  id: string
-  title: string
-  description?: string
-  completed: boolean
-  isFocusTask: boolean
-  isPriorityFocus: boolean
-  priority: "low" | "medium" | "high"
-  status: "todo" | "in-progress" | "completed" | "paused"
-  type: "action" | "project" | "key-result" | "objective"
-  createdAt: Date
-  updatedAt?: Date
-  progress?: string
-  category?: string
-  order?: number
-  tags?: string[]
-  isInPending?: boolean
-  progressHistory?: Array<{
-    id: string
-    content: string
-    timestamp: Date
-    type: "progress" | "status" | "comment"
-  }>
-}
-
-interface PerspectiveFilter {
-  tags: string[]
-  taskTypes: string[]
-  statuses: string[]
-  priorities: string[]
-  focusTask: string // "all" | "focus" | "non-focus"
-  priorityFocus: string // "all" | "priority" | "non-priority"
-}
-
-interface Perspective {
-  id: string
-  name: string
-  description?: string
-  filters: PerspectiveFilter
-  createdAt: Date
-}
+import type { Task, Perspective, PerspectiveFilter } from "@/types/task"
 
 interface KanbanBoardProps {
   tasks: Task[]

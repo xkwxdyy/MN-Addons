@@ -36,51 +36,7 @@ import { PendingTaskCard } from "./pending-task-card"
 import { FilterRuleEditor } from "@/components/filter-rule-editor"
 import { SMART_PERSPECTIVES, createSmartPerspective } from "@/constants/smart-perspectives"
 import { toast } from "sonner"
-import type { FilterRule } from "@/types/task"
-
-interface Task {
-  id: string
-  title: string
-  description?: string
-  completed: boolean
-  isFocusTask: boolean
-  isPriorityFocus: boolean
-  priority: "low" | "medium" | "high"
-  status: "todo" | "in-progress" | "completed" | "paused"
-  type: "action" | "project" | "key-result" | "objective"
-  createdAt: Date
-  updatedAt?: Date
-  progress?: string
-  category?: string
-  order?: number
-  parentId?: string
-  isInPending?: boolean
-  tags?: string[]
-  progressHistory?: Array<{
-    id: string
-    content: string
-    timestamp: Date
-    type: "progress" | "status" | "comment"
-  }>
-}
-
-interface PerspectiveFilter {
-  tags: string[]
-  taskTypes: string[]
-  statuses: string[]
-  priorities: string[]
-  focusTask: string // "all" | "focus" | "non-focus"
-  priorityFocus: string // "all" | "priority" | "non-priority"
-}
-
-interface Perspective {
-  id: string
-  name: string
-  description?: string
-  filters: PerspectiveFilter
-  groupBy: "none" | "type" | "status" | "priority"
-  createdAt: Date
-}
+import type { FilterRule, Task, Perspective, PerspectiveFilter } from "@/types/task"
 
 interface PerspectiveViewProps {
   tasks: Task[]
@@ -1235,7 +1191,9 @@ export function PerspectiveView({
                   className="bg-slate-700/50 border-slate-600 cursor-pointer hover:bg-slate-700/70 transition-colors"
                   onClick={() => {
                     const newPerspective = createSmartPerspective(template)
-                    const created = onCreatePerspective(newPerspective)
+                    // Extract id and createdAt to match the expected type
+                    const { id, createdAt, ...perspectiveData } = newPerspective
+                    const created = onCreatePerspective(perspectiveData)
                     onPerspectiveChange(created.id)
                     setIsSmartTemplatesOpen(false)
                     toast.success(`已创建智能透视: ${template.name}`)

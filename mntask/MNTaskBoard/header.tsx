@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Target, LayoutGrid, Eye, Menu, Inbox } from "lucide-react"
+import { Target, LayoutGrid, Eye, Menu, Inbox, RefreshCw } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import {
   DropdownMenu,
@@ -13,9 +13,11 @@ import {
 interface HeaderProps {
   currentView: "focus" | "kanban" | "perspective" | "inbox"
   onViewChange: (view: "focus" | "kanban" | "perspective" | "inbox") => void
+  onRefresh?: () => void
+  isRefreshing?: boolean
 }
 
-export function Header({ currentView, onViewChange }: HeaderProps) {
+export function Header({ currentView, onViewChange, onRefresh, isRefreshing = false }: HeaderProps) {
   const isMobile = useIsMobile()
 
   const viewOptions = [
@@ -39,9 +41,25 @@ export function Header({ currentView, onViewChange }: HeaderProps) {
           </div>
         </div>
 
-        {/* 视图切换 - 移动端使用下拉菜单，桌面端使用按钮组 */}
-        {isMobile ? (
-          <DropdownMenu>
+        {/* 视图切换和刷新按钮 */}
+        <div className="flex items-center gap-2">
+          {/* 刷新按钮 */}
+          {onRefresh && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              className="text-slate-400 hover:text-white hover:bg-slate-700"
+              title="刷新数据"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </Button>
+          )}
+          
+          {/* 视图切换 - 移动端使用下拉菜单，桌面端使用按钮组 */}
+          {isMobile ? (
+            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
@@ -82,8 +100,8 @@ export function Header({ currentView, onViewChange }: HeaderProps) {
               })}
             </DropdownMenuContent>
           </DropdownMenu>
-        ) : (
-          <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg p-1">
+          ) : (
+            <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg p-1">
             {viewOptions.map((option) => {
               const Icon = option.icon
               return (
@@ -103,8 +121,9 @@ export function Header({ currentView, onViewChange }: HeaderProps) {
                 </Button>
               )
             })}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     </header>
   )

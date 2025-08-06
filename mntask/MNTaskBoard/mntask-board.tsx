@@ -86,6 +86,7 @@ export default function MNTaskBoard() {
     addSelectedToFocus,
     resetData: resetTaskData,
     importTasks,
+    refreshData,
     // Inbox operations
     addToInbox,
     deleteInboxTask,
@@ -107,6 +108,7 @@ export default function MNTaskBoard() {
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [showImportConfirm, setShowImportConfirm] = useState(false)
   const [importData, setImportData] = useState<ExportData | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 透视管理
@@ -425,7 +427,16 @@ export default function MNTaskBoard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <Header currentView={currentView} onViewChange={setCurrentView} />
+      <Header 
+        currentView={currentView} 
+        onViewChange={setCurrentView}
+        onRefresh={async () => {
+          setIsRefreshing(true)
+          await refreshData()
+          setIsRefreshing(false)
+        }}
+        isRefreshing={isRefreshing}
+      />
 
       {/* 隐藏的文件输入 */}
       <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileChange} style={{ display: "none" }} />

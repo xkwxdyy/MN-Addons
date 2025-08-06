@@ -953,6 +953,28 @@ export function useTaskManager() {
     // The useEffect hook will automatically save to API storage
   }
 
+  const refreshData = async () => {
+    try {
+      const data = await apiStorage.loadData()
+      
+      setTasks(data.tasks.map((task: any, index: number) => ({
+        ...task,
+        order: task.order ?? index,
+        type: task.type || "action",
+        tags: task.tags || [],
+      })))
+      setPendingTasks(data.pendingTasks)
+      setInboxTasks(data.inboxTasks || [])
+      
+      toast.success("数据已刷新")
+      return true
+    } catch (error) {
+      console.error('Failed to refresh data:', error)
+      toast.error('刷新失败，请重试')
+      return false
+    }
+  }
+
   // Inbox operations
   const addToInbox = (title: string, additionalProps?: Partial<Task>) => {
     const { title: parsedTitle, tags } = parseTaskTitleWithTags(title)
@@ -1107,6 +1129,7 @@ export function useTaskManager() {
     addSelectedToFocus,
     resetData,
     importTasks,
+    refreshData,
     
     // Inbox operations
     addToInbox,

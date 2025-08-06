@@ -46,6 +46,14 @@ self.addEventListener('fetch', (event) => {
   if (event.request.url.includes('/api/')) {
     return;
   }
+  
+  // Skip webpack dev server requests
+  if (event.request.url.includes('webpack') || 
+      event.request.url.includes('_next/static') ||
+      event.request.url.includes('.hot-update') ||
+      event.request.url.includes('.well-known')) {
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request)
@@ -78,6 +86,11 @@ self.addEventListener('fetch', (event) => {
           if (event.request.destination === 'document') {
             return caches.match('/');
           }
+          // Return network error response for non-document requests
+          return new Response('Network error', { 
+            status: 408, 
+            statusText: 'Request Timeout' 
+          });
         });
       })
   );

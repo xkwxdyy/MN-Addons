@@ -63,7 +63,7 @@ export function useTaskManager() {
           setTasks(SAMPLE_TASKS)
           setPendingTasks(SAMPLE_PENDING_TASKS)
           setInboxTasks([])
-          setAllTasks([...SAMPLE_TASKS, ...SAMPLE_PENDING_TASKS])
+          // allTasks will be set by useEffect
           
           // Save sample data
           await apiStorage.saveData({
@@ -82,14 +82,14 @@ export function useTaskManager() {
           })))
           setPendingTasks(data.pendingTasks)
           setInboxTasks(data.inboxTasks || [])
-          setAllTasks(data.allTasks)
+          // allTasks will be set by useEffect
         }
       } catch (error) {
         console.error('Failed to load data:', error)
         toast.error('Failed to load data. Using default data.')
         setTasks(SAMPLE_TASKS)
         setPendingTasks(SAMPLE_PENDING_TASKS)
-        setAllTasks([...SAMPLE_TASKS, ...SAMPLE_PENDING_TASKS])
+        // allTasks will be set by useEffect
       } finally {
         setIsLoading(false)
       }
@@ -110,12 +110,15 @@ export function useTaskManager() {
     // Set new timeout for debounced save
     saveTimeoutRef.current = setTimeout(async () => {
       try {
+        // Calculate allTasks instead of using state to avoid circular dependency
+        const computedAllTasks = [...tasks, ...pendingTasks, ...inboxTasks]
+        
         // Use updateData to only update task-related fields
         await apiStorage.updateData({
           tasks,
           pendingTasks,
           inboxTasks,
-          allTasks
+          allTasks: computedAllTasks
         })
       } catch (error) {
         console.error('Failed to save tasks:', error)
@@ -127,7 +130,17 @@ export function useTaskManager() {
         clearTimeout(saveTimeoutRef.current)
       }
     }
-  }, [tasks, pendingTasks, inboxTasks, allTasks, isLoading])
+  }, [tasks, pendingTasks, inboxTasks, isLoading]) // Removed allTasks from dependencies
+
+  // Sync allTasks state when component tasks change
+  // This is separate from saving to avoid circular dependency
+  useEffect(() => {
+    if (isLoading) return // Don't update while loading
+    
+    // Update allTasks to reflect the current state
+    const computedAllTasks = [...tasks, ...pendingTasks, ...inboxTasks]
+    setAllTasks(computedAllTasks)
+  }, [tasks, pendingTasks, inboxTasks, isLoading])
 
   // Helper functions
   const getAllTasksList = (): Task[] => {
@@ -225,8 +238,7 @@ export function useTaskManager() {
 
       setTasks(tasks.filter((t) => t.id !== taskId))
       setPendingTasks([...pendingTasks, updatedTask])
-      // Also update in allTasks
-      setAllTasks(allTasks.map((t) => t.id === taskId ? updatedTask : t))
+      // allTasks will be automatically synced via useEffect
     } else {
       console.warn("toggleFocusTask called on non-focus task")
     }
@@ -264,7 +276,7 @@ export function useTaskManager() {
 
     setTasks(tasks.map(updateTask))
     setPendingTasks(pendingTasks.map(updateTask))
-    setAllTasks(allTasks.map(updateTask))
+    // allTasks will be automatically synced via useEffect
   }
 
   const startTask = (taskId: string) => {
@@ -279,7 +291,7 @@ export function useTaskManager() {
 
     setTasks(tasks.map(updateTask))
     setPendingTasks(pendingTasks.map(updateTask))
-    setAllTasks(allTasks.map(updateTask))
+    // allTasks will be automatically synced via useEffect
   }
 
   const pauseTask = (taskId: string) => {
@@ -293,7 +305,7 @@ export function useTaskManager() {
 
     setTasks(tasks.map(updateTask))
     setPendingTasks(pendingTasks.map(updateTask))
-    setAllTasks(allTasks.map(updateTask))
+    // allTasks will be automatically synced via useEffect
   }
 
   const resumeTask = (taskId: string) => {
@@ -307,7 +319,7 @@ export function useTaskManager() {
 
     setTasks(tasks.map(updateTask))
     setPendingTasks(pendingTasks.map(updateTask))
-    setAllTasks(allTasks.map(updateTask))
+    // allTasks will be automatically synced via useEffect
   }
 
   const completeTask = (taskId: string) => {
@@ -321,7 +333,7 @@ export function useTaskManager() {
 
     setTasks(tasks.map((task) => (task.id === taskId ? { ...task, ...taskUpdates } : task)))
     setPendingTasks(pendingTasks.map((task) => (task.id === taskId ? { ...task, ...taskUpdates } : task)))
-    setAllTasks(allTasks.map((task) => (task.id === taskId ? { ...task, ...taskUpdates } : task)))
+    // allTasks will be automatically synced via useEffect
   }
 
   const deleteTask = (taskId: string) => {
@@ -348,7 +360,7 @@ export function useTaskManager() {
     } else {
       setTasks(tasks.filter((task) => task.id !== taskId))
       setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
-      setAllTasks(allTasks.filter((task) => task.id !== taskId))
+      // allTasks will be automatically synced via useEffect
     }
   }
 
@@ -371,7 +383,7 @@ export function useTaskManager() {
       )
     } else {
       setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
-      setAllTasks(allTasks.filter((task) => task.id !== taskId))
+      // allTasks will be automatically synced via useEffect
     }
   }
 
@@ -379,7 +391,7 @@ export function useTaskManager() {
     const taskToRemove = pendingTasks.find((task) => task.id === taskId)
     if (taskToRemove) {
       setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
-      setAllTasks(allTasks.map((task) => (task.id === taskId ? { ...task, isInPending: false } : task)))
+      // allTasks will be automatically synced via useEffect
       toast.success("任务已从待处理列表中移除")
     }
   }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -177,13 +177,31 @@ export function PerspectiveView({
   const selectedPerspective = selectedPerspectiveId ? perspectives.find((p) => p.id === selectedPerspectiveId) : null
 
   // 获取筛选后的任务
-  const allTasks = [...tasks, ...pendingTasks]
-  const filteredTasks = selectedPerspective && selectedPerspective.filters 
-    ? applyPerspectiveFilter(allTasks, selectedPerspective.filters) 
-    : allTasks
+  const allTasks = useMemo(() => [...tasks, ...pendingTasks], [tasks, pendingTasks])
+  
+  const filteredTasks = useMemo(() => {
+    return selectedPerspective && selectedPerspective.filters 
+      ? applyPerspectiveFilter(allTasks, selectedPerspective.filters) 
+      : allTasks
+  }, [selectedPerspective, allTasks])
 
   // 根据是否显示已完成任务进行筛选
-  const displayTasks = showCompletedTasks ? filteredTasks : filteredTasks.filter((task) => !task.completed)
+  const displayTasks = useMemo(() => {
+    return showCompletedTasks ? filteredTasks : filteredTasks.filter((task) => !task.completed)
+  }, [showCompletedTasks, filteredTasks])
+  
+  // 预计算每个透视的任务数量，避免在渲染时重复计算
+  const perspectiveTasksMap = useMemo(() => {
+    const map = new Map<string, Task[]>()
+    perspectives.forEach(p => {
+      if (p.id === selectedPerspectiveId) {
+        map.set(p.id, displayTasks)
+      } else {
+        map.set(p.id, applyPerspectiveFilter(allTasks, p.filters))
+      }
+    })
+    return map
+  }, [perspectives, selectedPerspectiveId, displayTasks, allTasks])
 
   // Helper functions for text conversion
   const getTypeText = (type: string) => {
@@ -815,10 +833,8 @@ export function PerspectiveView({
           
           {/* 用户创建的透视卡片 */}
           {perspectives.map((perspective) => {
-            // 计算该透视的任务数量
-            const perspectiveTasks = perspective === selectedPerspective 
-              ? displayTasks 
-              : applyPerspectiveFilter(allTasks, perspective.filters)
+            // 使用预计算的任务数量
+            const perspectiveTasks = perspectiveTasksMap.get(perspective.id) || []
             
             return (
               <PerspectiveCard

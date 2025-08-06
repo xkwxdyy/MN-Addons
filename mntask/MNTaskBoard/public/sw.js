@@ -15,7 +15,7 @@ self.addEventListener('install', (event) => {
         return cache.addAll(urlsToCache);
       })
   );
-  self.skipWaiting();
+  // Removed self.skipWaiting() to prevent automatic activation
 });
 
 // Activate event - clean up old caches
@@ -32,7 +32,7 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
-  self.clients.claim();
+  // Removed self.clients.claim() to prevent automatic page refresh
 });
 
 // Fetch event - serve from cache when offline

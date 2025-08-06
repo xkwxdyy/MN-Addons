@@ -1,146 +1,276 @@
-# MNTaskBoard
+# MNTask 任务管理系统 - 使用教程
 
-A modern task management board application for MarginNote, built with Next.js 15, React 19, and TypeScript.
+MNTask 是一个支持多端同步的任务管理系统，特别优化了移动端快速录入体验。您可以在手机上快速记录想法，在电脑上详细管理任务。
 
-## 🚀 Features
+## 🌟 核心特性
 
-- **Focus View**: Manage priority focus tasks and pending tasks
-- **Kanban Board**: Drag-and-drop task management by type
-- **Perspective View**: Custom filters and grouping options
-- **Task Hierarchy**: Support for parent-child task relationships
-- **Progress Tracking**: Track task progress with history
-- **Import/Export**: JSON data import/export functionality
-- **Dark Theme**: Modern dark UI with glassmorphism effects
+- **📥 收件箱（Inbox）**：专为移动端优化的快速录入界面
+- **🎯 焦点视图**：管理今日重点任务和待处理事项
+- **📋 看板视图**：按任务类型拖拽管理
+- **🔍 透视视图**：自定义筛选和分组
+- **📱 PWA 支持**：可安装到手机主屏幕，支持离线使用
+- **☁️ 坚果云同步**：多设备数据自动同步
+- **🏷️ 智能标签**：#标签自动识别和分类
 
-## 📦 Installation
+## 🚀 快速开始
 
+### 第一步：在电脑上启动
+
+1. **打开终端，进入项目目录**：
 ```bash
-# Install dependencies
+cd /Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask/MNTaskBoard
+```
+
+2. **安装依赖**（首次使用）：
+```bash
 pnpm install
+```
 
-# Start development server
+3. **启动开发服务器**：
+```bash
 pnpm dev
-
-# Build for production
-pnpm build
-
-# Run production build
-pnpm start
 ```
 
-## 🏗️ Project Structure
+4. **打开浏览器访问**：
+```
+http://localhost:3000
+```
+> 💡 如果 3000 端口被占用，会自动使用 3001 端口
+
+## 📱 第二步：手机端设置（重要！）
+
+### iPhone 用户
+
+1. **确保手机和电脑在同一 WiFi 网络**
+
+2. **查看电脑的局域网 IP 地址**：
+   - Mac 终端输入：`ifconfig | grep inet`
+   - 找到类似 `192.168.x.x` 的地址
+
+3. **在手机 Safari 中访问**：
+   ```
+   http://192.168.x.x:3000
+   ```
+   （替换为您的实际 IP 和端口）
+
+4. **添加到主屏幕**（获得最佳体验）：
+   - 点击 Safari 底部的分享按钮 ⎙
+   - 滑动找到「添加到主屏幕」
+   - 输入名称「MNTask」
+   - 点击「添加」
+
+5. **完成！** 现在您可以像原生 App 一样使用了
+
+### Android 用户
+
+1. 在 Chrome 中访问应用
+2. 点击菜单 → 「添加到主屏幕」
+3. 确认安装
+
+## 🎯 核心功能使用指南
+
+### 1. 📥 收件箱（Inbox）- 快速录入神器
+
+**这是您最常用的功能，特别适合手机端快速记录**
+
+#### 使用场景
+- 💡 突然想到一个任务
+- 🏃 走路时的灵感捕捉
+- 📝 开会时快速记录待办事项
+- 🚇 通勤路上的想法记录
+
+#### 操作方法
+1. 打开应用（手机端默认进入收件箱）
+2. 在顶部输入框输入任务
+3. 按 Enter 或点击「添加」按钮
+4. 任务立即保存到收件箱
+
+#### 智能输入技巧
+```
+示例输入：完成项目报告 #工作 #重要
+```
+- 使用 `#标签` 自动添加标签
+- 标签会显示为彩色标记
+- 支持多个标签
+
+### 2. 🗂️ 任务整理 - 从收件箱到正式任务
+
+**建议在电脑上进行整理，屏幕大操作方便**
+
+#### 整理流程
+1. 切换到「收件箱」视图
+2. 查看所有临时记录的任务
+3. 对每个任务进行处理：
+
+| 操作 | 适用场景 |
+|-----|---------|
+| **移至焦点任务** | 重要且今天要做的任务 |
+| **移至待处理** | 需要安排但不紧急的任务 |
+| **删除** | 不再需要的任务 |
+
+#### 批量操作（节省时间）
+1. 点击「批量管理」按钮
+2. 勾选多个任务
+3. 选择批量操作：
+   - ✅ 批量移至焦点
+   - ⏱️ 批量移至待处理
+   - 🗑️ 批量删除
+
+### 3. 🎯 焦点视图 - 今日待办
+
+**切换方法**：点击顶部导航栏的「焦点视图」
+
+#### 三个区域
+```
+┌─────────────────────────┐
+│  ⭐ 优先焦点任务（1-3个）│  ← 最重要的任务
+├─────────────────────────┤
+│  📌 普通焦点任务        │  ← 今天要完成的
+├─────────────────────────┤
+│  ⏳ 待处理任务          │  ← 暂时不做但要记录
+└─────────────────────────┘
+```
+
+#### 任务操作
+- 点击任务查看详情
+- 点击复选框标记完成
+- 拖动调整顺序（电脑端）
+- 点击星标设为优先焦点
+
+### 4. 📋 看板视图 - 项目管理
+
+**切换方法**：点击顶部导航栏的「看板视图」
+
+#### 四个分类
+| 类型 | 用途 | 示例 |
+|-----|------|-----|
+| **动作** | 具体的执行任务 | 写邮件、开会、编程 |
+| **项目** | 包含多个子任务 | 产品发布、季度规划 |
+| **关键结果** | 可衡量的目标 | 完成10个客户访谈 |
+| **目标** | 长期愿景 | 成为行业专家 |
+
+### 5. 🔍 透视视图 - 自定义筛选
+
+**创建个人透视**：
+1. 切换到「透视视图」
+2. 点击「新建透视」
+3. 设置筛选条件
+4. 保存透视
+
+**推荐透视**：
+- 「今日工作」：标签包含 #工作 且状态为进行中
+- 「紧急事项」：标签包含 #紧急
+- 「本周回顾」：本周创建的所有已完成任务
+
+## 💡 最佳实践
+
+### 📅 日常工作流
 
 ```
-mntask-board/
-├── app/                    # Next.js app directory
-├── components/
-│   ├── ui/                # Shadcn/ui components
-│   └── theme-provider.tsx # Theme provider
-├── constants/             # Application constants
-├── services/             # Service layer
-│   └── storage.ts        # LocalStorage service
-├── types/               # TypeScript type definitions
-│   └── task.ts          # Task-related types
-├── hooks/               # Custom React hooks
-├── lib/                 # Utility functions
-└── public/             # Static assets
+早上（电脑）           白天（手机）           晚上（电脑）
+    ↓                    ↓                    ↓
+查看焦点任务 ──→ 随时记录到收件箱 ──→ 整理收件箱
+调整优先级          不用分类             更新进度
+标记优先焦点        快速输入             规划明天
 ```
 
-## 🔧 Recent Optimizations (2025-01-05)
+### 🏷️ 标签体系建议
 
-### ✅ Completed
+创建适合自己的标签体系：
 
-1. **Cleaned up file structure**
-   - Removed 52 duplicate UI component files from root and `/ui` directories
-   - Deleted 20 unnecessary .zip backup files
-   - Consolidated all UI components in `components/ui/`
+**领域分类**
+- `#工作` `#生活` `#学习` `#健康`
 
-2. **Fixed project configuration**
-   - Updated package.json with proper project name and description
-   - Locked all dependency versions (removed "latest" references)
+**优先级**
+- `#紧急` `#重要` `#普通`
 
-3. **Improved code organization**
-   - Created `types/task.ts` for all type definitions
-   - Created `constants/index.ts` for application constants
-   - Created `services/storage.ts` for localStorage operations
+**时间范围**
+- `#今天` `#本周` `#本月`
 
-### 🚧 TODO - High Priority
+**任务类型**
+- `#会议` `#邮件` `#文档` `#沟通`
 
-1. **Component Refactoring** (Critical)
-   - Split `mntask-board.tsx` (2132 lines) into smaller components
-   - Extract task management logic to `hooks/useTaskManager.ts`
-   - Extract perspective logic to `hooks/usePerspectives.ts`
-   - Move business components to `components/` directory
+### 📥 收件箱管理原则
 
-2. **Code Quality**
-   - Add ESLint configuration
-   - Add Prettier configuration
-   - Setup Husky pre-commit hooks
-   - Add TypeScript strict mode checks
+#### 2分钟原则
+```
+任务能在2分钟内完成？
+  ├─ 是 → 立即完成
+  └─ 否 → 移至相应列表
+```
 
-3. **Testing**
-   - Setup Jest and React Testing Library
-   - Add unit tests for core functions
-   - Add integration tests for task operations
-   - Add E2E tests for user workflows
+#### 数量控制
+- 🟢 0-5个：优秀，保持
+- 🟡 5-10个：良好，尽快整理
+- 🔴 10个以上：立即整理！
 
-4. **Performance Optimization**
-   - Implement React.memo for heavy components
-   - Add virtual scrolling for large task lists
-   - Optimize localStorage operations with debouncing
+## 🔄 坚果云同步设置
 
-5. **Documentation**
-   - Add JSDoc comments to all functions
-   - Create API documentation
-   - Add contribution guidelines
+### 方案一：本地文件同步（推荐）
 
-## 🐛 Known Issues
+1. **项目已在坚果云文件夹中**
+   - 数据自动保存在 `data/tasks.json`
+   - 坚果云会自动同步
 
-1. **Task Description Persistence** (Fixed)
-   - Previously: Task descriptions were lost after modal close
-   - Solution: Fixed allTasks synchronization logic
+2. **多设备使用**
+   - 每台设备都安装坚果云
+   - 同步同一个项目文件夹
+   - 各自运行 `pnpm dev`
 
-2. **Code Organization**
-   - Main component file is too large (2132 lines)
-   - Needs modularization and separation of concerns
+### 方案二：云端部署（高级）
 
-## 🛠️ Technology Stack
+部署到 Vercel（免费）：
+```bash
+npm install -g vercel
+vercel
+```
 
-- **Framework**: Next.js 15.2.4
-- **UI Library**: React 19
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **Components**: Radix UI / shadcn/ui
-- **State**: React hooks + localStorage
+## ❓ 常见问题解答
 
-## 📝 Development Guidelines
+### Q: 手机端无法访问？
 
-1. **File Organization**
-   - UI components go in `components/ui/`
-   - Business components go in `components/`
-   - Types go in `types/`
-   - Constants go in `constants/`
-   - Services go in `services/`
+**检查清单**：
+- [ ] 手机和电脑在同一 WiFi？
+- [ ] 防火墙是否阻止了端口？
+- [ ] IP 地址是否正确？
+- [ ] 服务器是否正在运行？
 
-2. **Naming Conventions**
-   - Components: PascalCase
-   - Functions/hooks: camelCase
-   - Constants: UPPER_SNAKE_CASE
-   - Types/Interfaces: PascalCase
+### Q: 数据没有同步？
 
-3. **State Management**
-   - Use React hooks for local state
-   - Use localStorage for persistence
-   - Always update all three task arrays (tasks, pendingTasks, allTasks)
+**解决步骤**：
+1. 确保坚果云客户端正在运行
+2. 检查 `data` 文件夹是否在同步目录
+3. 等待几秒让坚果云完成同步
+4. 刷新页面查看最新数据
 
-## 📄 License
+### Q: 如何备份数据？
 
-Private project - All rights reserved
+**三重保障**：
+1. **自动备份**：系统每天自动创建备份
+2. **坚果云历史**：坚果云保留文件历史版本
+3. **手动导出**：复制 `data/tasks.json` 文件
 
-## 👥 Contributors
+### Q: 添加到主屏幕后图标是空白的？
 
-MN-Addon Development Team
+暂时使用占位符图标，您可以：
+1. 替换 `public/icon-192.png`
+2. 替换 `public/icon-512.png`
+3. 使用您喜欢的图标（建议尺寸：192x192 和 512x512）
+
+## 🎉 开始您的高效任务管理之旅！
+
+**核心理念**：
+> 📱 手机 = 快速捕捉想法  
+> 💻 电脑 = 详细整理管理  
+> ☁️ 云端 = 自动同步数据
+
+**每日三步走**：
+1. **早上**：查看今日焦点，调整优先级
+2. **白天**：随时记录到收件箱
+3. **晚上**：整理收件箱，规划明天
 
 ---
 
-*Last updated: 2025-01-05*
+有问题或建议？欢迎反馈！
+
+*最后更新：2025-01-06*

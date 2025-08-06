@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -56,7 +57,8 @@ const getPerspectiveIcon = (perspective: Perspective | null, isAllTasks: boolean
   }
 }
 
-export function PerspectiveCard({
+// Memoize the component to avoid unnecessary re-renders
+export const PerspectiveCard = React.memo(function PerspectiveCard({
   perspective,
   tasks,
   isSelected,
@@ -105,8 +107,9 @@ export function PerspectiveCard({
             <div className="flex items-center gap-3">
               <div className={cn(
                 "p-2 rounded-lg",
-                "bg-gradient-to-br from-white/10 to-white/5",
-                "backdrop-blur-sm border border-white/10"
+                "bg-gradient-to-br from-slate-700/50 to-slate-800/50",
+                "backdrop-blur-sm border border-slate-600/50",
+                "shadow-inner"
               )}>
                 {getPerspectiveIcon(perspective, isAllTasks)}
               </div>
@@ -119,35 +122,32 @@ export function PerspectiveCard({
             </div>
             
             {!isAllTasks && perspective && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-white">
-                    <MoreVertical className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-slate-800 border-slate-700">
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onEdit?.()
-                    }}
-                    className="text-white hover:bg-slate-700"
-                  >
-                    <Edit className="w-3 h-3 mr-2" />
-                    编辑
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onDelete?.()
-                    }}
-                    className="text-red-400 hover:bg-slate-700 hover:text-red-300"
-                  >
-                    <Trash2 className="w-3 h-3 mr-2" />
-                    删除
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onEdit?.()
+                  }}
+                  className="h-7 w-7 p-0 text-slate-300 hover:text-white hover:bg-slate-700/50"
+                  title="编辑透视"
+                >
+                  <Edit className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDelete?.()
+                  }}
+                  className="h-7 w-7 p-0 text-slate-300 hover:text-red-400 hover:bg-red-500/20"
+                  title="删除透视"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
             )}
           </div>
         </CardHeader>
@@ -161,9 +161,9 @@ export function PerspectiveCard({
           
           {/* 进度条 */}
           <div className="mb-3">
-            <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
+            <div className="h-2 bg-slate-700/70 rounded-full overflow-hidden border border-slate-600/50">
               <div 
-                className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-500"
+                className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-500 shadow-sm"
                 style={{ width: `${completionRate}%` }}
               />
             </div>
@@ -177,28 +177,28 @@ export function PerspectiveCard({
           <div className="grid grid-cols-2 gap-2">
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
-                <CheckCircle className="w-3 h-3 text-green-400" />
+                <CheckCircle className="w-3 h-3 text-green-500" />
                 <span className="text-xs text-slate-300">已完成</span>
               </div>
               <span className="text-xs text-white font-medium ml-auto">{completedTasks}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
-                <Play className="w-3 h-3 text-blue-400" />
+                <Play className="w-3 h-3 text-blue-500" />
                 <span className="text-xs text-slate-300">进行中</span>
               </div>
               <span className="text-xs text-white font-medium ml-auto">{inProgressTasks}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
-                <Target className="w-3 h-3 text-yellow-400" />
+                <Target className="w-3 h-3 text-yellow-500" />
                 <span className="text-xs text-slate-300">待开始</span>
               </div>
               <span className="text-xs text-white font-medium ml-auto">{todoTasks}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
-                <Pause className="w-3 h-3 text-orange-400" />
+                <Pause className="w-3 h-3 text-orange-500" />
                 <span className="text-xs text-slate-300">已暂停</span>
               </div>
               <span className="text-xs text-white font-medium ml-auto">{pausedTasks}</span>
@@ -227,4 +227,4 @@ export function PerspectiveCard({
       </div>
     </Card>
   )
-}
+})

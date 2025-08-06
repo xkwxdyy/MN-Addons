@@ -4,17 +4,7 @@
     {
       "from": "initial",
       "command": "init",
-      "timestamp": "2025-08-06T05:59:21.575Z",
-      "args": [
-        {
-          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask/MNTaskBoard"
-        }
-      ]
-    },
-    {
-      "from": "initialized",
-      "command": "init",
-      "timestamp": "2025-08-06T14:57:29.018Z",
+      "timestamp": "2025-08-06T18:03:51.944Z",
       "args": [
         {
           "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask/MNTaskBoard"
@@ -22,5 +12,5 @@
       ]
     }
   ],
-  "lastUpdated": "2025-08-06T14:57:29.048Z"
+  "lastUpdated": "2025-08-06T18:03:51.973Z"
 }

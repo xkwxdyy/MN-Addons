@@ -29,10 +29,8 @@ export function PWARegister() {
         .then((registration) => {
           console.log('Service Worker registered:', registration)
           
-          // Check for updates periodically
-          setInterval(() => {
-            registration.update()
-          }, 60000) // Check every minute
+          // Check for updates only once on page load
+          registration.update()
         })
         .catch((error) => {
           console.error('Service Worker registration failed:', error)

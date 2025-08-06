@@ -844,6 +844,36 @@ export function useTaskManager() {
     toast.success("数据已重置")
   }
 
+  const importTasks = (focusTasks: Task[], pendingTasksList: Task[], allTasksList?: Task[]) => {
+    // Set focus tasks
+    setTasks(focusTasks)
+    
+    // Set pending tasks
+    setPendingTasks(pendingTasksList)
+    
+    // Set all tasks - if not provided, construct from focus and pending
+    if (allTasksList) {
+      setAllTasks(allTasksList)
+    } else {
+      // Build allTasks from focus and pending, avoiding duplicates
+      const taskMap = new Map<string, Task>()
+      
+      // Add all focus tasks
+      focusTasks.forEach(task => {
+        taskMap.set(task.id, task)
+      })
+      
+      // Add all pending tasks
+      pendingTasksList.forEach(task => {
+        taskMap.set(task.id, task)
+      })
+      
+      setAllTasks(Array.from(taskMap.values()))
+    }
+    
+    // The useEffect hook will automatically save to localStorage
+  }
+
   return {
     // State
     tasks,
@@ -885,5 +915,6 @@ export function useTaskManager() {
     clearFocusTasks,
     addSelectedToFocus,
     resetData,
+    importTasks,
   }
 }

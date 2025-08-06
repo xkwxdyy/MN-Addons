@@ -71,6 +71,7 @@ export default function MNTaskBoard() {
     clearFocusTasks,
     addSelectedToFocus,
     resetData: resetTaskData,
+    importTasks,
   } = useTaskManager()
 
   // UI state
@@ -303,6 +304,11 @@ export default function MNTaskBoard() {
         ) {
           throw new Error("Invalid data format")
         }
+        
+        // allTasks is optional but if provided, should be an array
+        if (data.allTasks && !Array.isArray(data.allTasks)) {
+          throw new Error("Invalid allTasks format")
+        }
 
         setImportData(data)
         setShowImportConfirm(true)
@@ -321,30 +327,36 @@ export default function MNTaskBoard() {
     if (!importData) return
 
     try {
-      // Process and import the data
-      // Note: We need to implement an import function in the hook
-      // For now, we'll clear data and reimport
-      resetTaskData()
-      
-      // Process focus tasks and add them
-      importData.focusTasks.forEach((task: any) => {
-        const processedTask = {
-          ...task,
-          createdAt: new Date(task.createdAt),
-          updatedAt: task.updatedAt ? new Date(task.updatedAt) : undefined,
-          tags: task.tags || [],
-          progressHistory:
-            task.progressHistory?.map((entry: any) => ({
-              ...entry,
-              timestamp: new Date(entry.timestamp),
-            })) || [],
-        }
-        // TODO: Need to implement direct task import in the hook
-      })
+      // Process focus tasks
+      const processedFocusTasks = importData.focusTasks.map((task: any) => ({
+        ...task,
+        createdAt: new Date(task.createdAt),
+        updatedAt: task.updatedAt ? new Date(task.updatedAt) : undefined,
+        tags: task.tags || [],
+        progressHistory:
+          task.progressHistory?.map((entry: any) => ({
+            ...entry,
+            timestamp: new Date(entry.timestamp),
+          })) || [],
+      }))
       
       // Process pending tasks
-      importData.pendingTasks.forEach((task: any) => {
-        const processedTask = {
+      const processedPendingTasks = importData.pendingTasks.map((task: any) => ({
+        ...task,
+        createdAt: new Date(task.createdAt),
+        updatedAt: task.updatedAt ? new Date(task.updatedAt) : undefined,
+        tags: task.tags || [],
+        progressHistory:
+          task.progressHistory?.map((entry: any) => ({
+            ...entry,
+            timestamp: new Date(entry.timestamp),
+          })) || [],
+      }))
+      
+      // Process all tasks if provided
+      let processedAllTasks: Task[] | undefined
+      if (importData.allTasks) {
+        processedAllTasks = importData.allTasks.map((task: any) => ({
           ...task,
           createdAt: new Date(task.createdAt),
           updatedAt: task.updatedAt ? new Date(task.updatedAt) : undefined,
@@ -354,13 +366,16 @@ export default function MNTaskBoard() {
               ...entry,
               timestamp: new Date(entry.timestamp),
             })) || [],
-        }
-        // TODO: Need to implement direct task import in the hook
-      })
+        }))
+      }
+      
+      // Import the tasks using the new importTasks method
+      importTasks(processedFocusTasks, processedPendingTasks, processedAllTasks)
+      
       setShowImportConfirm(false)
       setImportData(null)
 
-      toast.success(`数据导入成功！共导入 ${importData.totalTasks} 个任务`)
+      toast.success(`数据导入成功！共导入 ${importData.totalTasks || (processedFocusTasks.length + processedPendingTasks.length)} 个任务`)
     } catch (error) {
       console.error("Import failed:", error)
       toast.error("导入失败，请重试")

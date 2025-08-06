@@ -3,10 +3,11 @@
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
-import type { Task, Perspective, PerspectiveFilter, ExportData, ViewMode, TaskTypeFilter } from "@/types/task"
+import type { Task, ExportData, TaskTypeFilter } from "@/types/task"
 import { STORAGE_KEYS, SAMPLE_TASKS, SAMPLE_PENDING_TASKS, EXPORT_CONFIG, TASK_TYPE_OPTIONS, TASK_STATUS_OPTIONS, TASK_PRIORITY_OPTIONS } from "@/constants"
 import { StorageService } from "@/services/storage"
 import { useTaskManager } from "@/hooks/useTaskManager"
+import { usePerspectives } from "@/hooks/usePerspectives"
 import { Header } from "./header"
 import { Sidebar } from "./sidebar"
 import { TaskCard } from "./task-card"
@@ -81,10 +82,23 @@ export default function MNTaskBoard() {
   const [importData, setImportData] = useState<ExportData | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // 透视相关状态
-  const [perspectives, setPerspectives] = useState<Perspective[]>([])
-  const [focusSelectedPerspectiveId, setFocusSelectedPerspectiveId] = useState<string | null>(null)
-  const [kanbanSelectedPerspectiveId, setKanbanSelectedPerspectiveId] = useState<string | null>(null)
+  // 透视管理
+  const {
+    perspectives,
+    focusSelectedPerspectiveId,
+    kanbanSelectedPerspectiveId,
+    setFocusSelectedPerspectiveId,
+    setKanbanSelectedPerspectiveId,
+    createPerspective,
+    updatePerspective,
+    deletePerspective,
+    applyPerspectiveFilter,
+    getFilteredTasks,
+    getFocusSelectedPerspective,
+    getKanbanSelectedPerspective,
+    getFilterSummary,
+    resetPerspectives,
+  } = usePerspectives()
 
   // 看板任务类型筛选状态
   const [kanbanTaskTypeFilter, setKanbanTaskTypeFilter] = useState<TaskTypeFilter>("all")
@@ -92,126 +106,14 @@ export default function MNTaskBoard() {
   // 焦点视图待处理任务类型显示控制
   const [showAllPendingTypes, setShowAllPendingTypes] = useState(false)
 
-  // 透视管理函数
-  const createPerspective = (perspective: Omit<Perspective, "id" | "createdAt">) => {
-    const newPerspective: Perspective = {
-      ...perspective,
-      id: `perspective-${Date.now()}`,
-      createdAt: new Date(),
-    }
-    setPerspectives([...perspectives, newPerspective])
-    toast.success("透视创建成功")
-    return newPerspective
-  }
 
-  const updatePerspective = (perspectiveId: string, updates: Partial<Perspective>) => {
-    const updatedPerspectives = perspectives.map((p) => (p.id === perspectiveId ? { ...p, ...updates } : p))
-    setPerspectives(updatedPerspectives)
-
-    // 如果正在编辑当前选中的透视，更新选中状态
-    if (focusSelectedPerspectiveId === perspectiveId) {
-      // 透视选择状态会自动保持，因为ID没变
-    }
-
-    toast.success("透视更新成功")
-  }
-
-  const deletePerspective = (perspectiveId: string) => {
-    setPerspectives(perspectives.filter((p) => p.id !== perspectiveId))
-    if (focusSelectedPerspectiveId === perspectiveId) {
-      setFocusSelectedPerspectiveId(null)
-    }
-    toast.success("透视删除成功")
-  }
-
-
-  // 应用透视筛选
-  const applyPerspectiveFilter = (tasks: Task[], filters: PerspectiveFilter): Task[] => {
-    return tasks.filter((task) => {
-      // 标签筛选
-      if (filters.tags.length > 0) {
-        const hasMatchingTag = filters.tags.some((tag) => task.tags?.includes(tag))
-        if (!hasMatchingTag) return false
-      }
-
-      // 任务类型筛选
-      if (filters.taskTypes.length > 0 && !filters.taskTypes.includes(task.type)) {
-        return false
-      }
-
-      // 状态筛选
-      if (filters.statuses.length > 0 && !filters.statuses.includes(task.status)) {
-        return false
-      }
-
-      // 优先级筛选
-      if (filters.priorities.length > 0 && !filters.priorities.includes(task.priority)) {
-        return false
-      }
-
-      // 焦点任务筛选
-      if (filters.focusTask === "focus" && !task.isFocusTask) return false
-      if (filters.focusTask === "non-focus" && task.isFocusTask) return false
-
-      // 优先焦点筛选
-      if (filters.priorityFocus === "priority" && !task.isPriorityFocus) return false
-      if (filters.priorityFocus === "non-priority" && task.isPriorityFocus) return false
-
-      return true
-    })
-  }
-
-  // 获取当前选中的透视
-  const getFocusSelectedPerspective = focusSelectedPerspectiveId
-    ? perspectives.find((p) => p.id === focusSelectedPerspectiveId)
-    : null
-
-  const getKanbanSelectedPerspective = kanbanSelectedPerspectiveId
-    ? perspectives.find((p) => p.id === kanbanSelectedPerspectiveId)
-    : null
-
-  // 应用透视筛选到任务列表
-  const getFilteredTasks = (taskList: Task[], view: "focus" | "kanban"): Task[] => {
-    let selectedPerspective = null
-    if (view === "focus") {
-      selectedPerspective = getFocusSelectedPerspective
-    } else if (view === "kanban") {
-      selectedPerspective = getKanbanSelectedPerspective
-    }
-
-    if (!selectedPerspective) return taskList
-    return applyPerspectiveFilter(taskList, selectedPerspective.filters)
-  }
-
-  // Load perspectives and view state from localStorage
+  // Load view state from localStorage
   useEffect(() => {
     const savedView = localStorage.getItem("mntask-current-view")
-    const savedPerspectives = localStorage.getItem("mntask-perspectives")
-    const savedFocusSelectedPerspective = localStorage.getItem("mntask-focus-selected-perspective")
-    const savedKanbanSelectedPerspective = localStorage.getItem("mntask-kanban-selected-perspective")
 
     // 恢复视图状态
     if (savedView && (savedView === "focus" || savedView === "kanban" || savedView === "perspective")) {
       setCurrentView(savedView)
-    }
-
-    // 恢复透视数据
-    if (savedPerspectives) {
-      const parsed = JSON.parse(savedPerspectives).map((p: any) => ({
-        ...p,
-        groupBy: p.groupBy || "none",
-        createdAt: new Date(p.createdAt),
-      }))
-      setPerspectives(parsed)
-    }
-
-    // 恢复选中的透视
-    if (savedFocusSelectedPerspective) {
-      setFocusSelectedPerspectiveId(savedFocusSelectedPerspective)
-    }
-
-    if (savedKanbanSelectedPerspective) {
-      setKanbanSelectedPerspectiveId(savedKanbanSelectedPerspective)
     }
   }, [])
 
@@ -220,16 +122,6 @@ export default function MNTaskBoard() {
     localStorage.setItem("mntask-current-view", currentView)
   }, [currentView])
 
-  // 保存透视数据
-  useEffect(() => {
-    localStorage.setItem("mntask-perspectives", JSON.stringify(perspectives))
-  }, [perspectives])
-
-  // 保存选中的透视
-  useEffect(() => {
-    localStorage.setItem("mntask-focus-selected-perspective", focusSelectedPerspectiveId || "")
-    localStorage.setItem("mntask-kanban-selected-perspective", kanbanSelectedPerspectiveId || "")
-  }, [focusSelectedPerspectiveId, kanbanSelectedPerspectiveId])
 
   // 应用透视筛选后的任务列表
   const filteredTasks = getFilteredTasks(tasks, "focus")
@@ -268,12 +160,7 @@ export default function MNTaskBoard() {
 
   const resetData = () => {
     resetTaskData()  // Call the hook's reset function
-    setPerspectives([])
-    setFocusSelectedPerspectiveId(null)
-    setKanbanSelectedPerspectiveId(null)
-    localStorage.removeItem("mntask-perspectives")
-    localStorage.removeItem("mntask-focus-selected-perspective")
-    localStorage.removeItem("mntask-kanban-selected-perspective")
+    resetPerspectives()  // Call the perspectives hook's reset function
     setShowResetConfirm(false)
     toast.success("数据已重置")
   }
@@ -1047,65 +934,6 @@ export default function MNTaskBoard() {
   )
 }
 
-// 辅助函数：获取筛选条件摘要
-function getFilterSummary(filters: PerspectiveFilter): string {
-  const parts: string[] = []
-
-  if (filters.tags.length > 0) {
-    parts.push(`标签: ${filters.tags.join(", ")}`)
-  }
-  if (filters.taskTypes.length > 0) {
-    const typeNames = filters.taskTypes.map((type) => {
-      switch (type) {
-        case "action":
-          return "动作"
-        case "project":
-          return "项目"
-        case "key-result":
-          return "关键结果"
-        case "objective":
-          return "目标"
-        default:
-          return type
-      }
-    })
-    parts.push(`类型: ${typeNames.join(", ")}`)
-  }
-  if (filters.statuses.length > 0) {
-    const statusNames = filters.statuses.map((status) => {
-      switch (status) {
-        case "todo":
-          return "待开始"
-        case "in-progress":
-          return "进行中"
-        case "paused":
-          return "已暂停"
-        case "completed":
-          return "已完成"
-        default:
-          return status
-      }
-    })
-    parts.push(`状态: ${statusNames.join(", ")}`)
-  }
-  if (filters.priorities.length > 0) {
-    const priorityNames = filters.priorities.map((priority) => {
-      switch (priority) {
-        case "low":
-          return "低"
-        case "medium":
-          return "中"
-        case "high":
-          return "高"
-        default:
-          return priority
-      }
-    })
-    parts.push(`优先级: ${priorityNames.join(", ")}`)
-  }
-
-  return parts.length > 0 ? parts.join(" | ") : "无筛选条件"
-}
 
 // 辅助函数：获取任务类型文本
 function getTypeText(type: string): string {

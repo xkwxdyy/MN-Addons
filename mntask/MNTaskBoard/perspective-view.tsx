@@ -220,7 +220,9 @@ export function PerspectiveView({
 
   // 获取筛选后的任务
   const allTasks = [...tasks, ...pendingTasks]
-  const filteredTasks = selectedPerspective ? applyPerspectiveFilter(allTasks, selectedPerspective.filters) : allTasks
+  const filteredTasks = selectedPerspective && selectedPerspective.filters 
+    ? applyPerspectiveFilter(allTasks, selectedPerspective.filters) 
+    : allTasks
 
   // 根据是否显示已完成任务进行筛选
   const displayTasks = showCompletedTasks ? filteredTasks : filteredTasks.filter((task) => !task.completed)

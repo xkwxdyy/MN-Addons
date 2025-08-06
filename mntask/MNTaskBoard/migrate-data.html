@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MNTask 数据迁移工具</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .port-selector {
+            margin-bottom: 30px;
+        }
+        .port-selector label {
+            display: block;
+            margin-bottom: 10px;
+            color: #555;
+            font-weight: 500;
+        }
+        .port-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input[type="number"] {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #5a67d8;
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background: #48bb78;
+        }
+        .btn-secondary:hover {
+            background: #38a169;
+        }
+        .btn-danger {
+            background: #f56565;
+        }
+        .btn-danger:hover {
+            background: #e53e3e;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        .status.show {
+            display: block;
+        }
+        .status.success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+        .status.error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #fc8181;
+        }
+        .status.info {
+            background: #bee3f8;
+            color: #2c5282;
+            border: 1px solid #90cdf4;
+        }
+        .data-info {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .data-info h3 {
+            margin-top: 0;
+            color: #2d3748;
+            font-size: 18px;
+        }
+        .data-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .data-item:last-child {
+            border-bottom: none;
+        }
+        .data-item strong {
+            color: #4a5568;
+        }
+        .data-item span {
+            color: #667eea;
+            font-weight: 600;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .action-buttons button {
+            flex: 1;
+        }
+        .note {
+            background: #fef5e7;
+            border-left: 4px solid #f39c12;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .note h4 {
+            margin: 0 0 10px 0;
+            color: #e67e22;
+        }
+        .note p {
+            margin: 5px 0;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 MNTask 数据迁移工具</h1>
+        <p class="subtitle">将你的任务数据从浏览器存储迁移到本地文件系统</p>
+
+        <div class="note">
+            <h4>📌 使用说明</h4>
+            <p>1. 输入你之前使用的端口号（如 3000 或 3001）</p>
+            <p>2. 点击"检查数据"查看该端口的存储数据</p>
+            <p>3. 如果有数据，点击"导出为JSON"保存备份</p>
+            <p>4. 新系统会自动从文件系统加载数据</p>
+        </div>
+
+        <div class="port-selector">
+            <label for="port">选择端口号：</label>
+            <div class="port-input">
+                <input type="number" id="port" value="3001" min="3000" max="9999">
+                <button class="btn" onclick="checkData()">检查数据</button>
+            </div>
+        </div>
+
+        <div id="dataInfo" class="data-info" style="display: none;">
+            <h3>📊 发现的数据</h3>
+            <div class="data-item">
+                <strong>焦点任务：</strong>
+                <span id="tasksCount">0</span>
+            </div>
+            <div class="data-item">
+                <strong>待处理任务：</strong>
+                <span id="pendingCount">0</span>
+            </div>
+            <div class="data-item">
+                <strong>所有任务：</strong>
+                <span id="allTasksCount">0</span>
+            </div>
+            <div class="data-item">
+                <strong>透视配置：</strong>
+                <span id="perspectivesCount">0</span>
+            </div>
+        </div>
+
+        <div class="action-buttons" id="actionButtons" style="display: none;">
+            <button class="btn btn-secondary" onclick="exportData()">
+                💾 导出为JSON
+            </button>
+            <button class="btn btn-danger" onclick="clearData()">
+                🗑️ 清除旧数据
+            </button>
+        </div>
+
+        <div id="status" class="status"></div>
+
+        <script>
+            let currentData = null;
+
+            function checkData() {
+                const port = document.getElementById('port').value;
+                const baseUrl = `http://localhost:${port}`;
+                
+                // Create an iframe to access localStorage of specific port
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = `${baseUrl}/`;
+                
+                showStatus('info', `正在连接到端口 ${port}...`);
+                
+                // Since we can't directly access localStorage across ports,
+                // we'll provide instructions and manual export
+                setTimeout(() => {
+                    showManualInstructions(port);
+                }, 1000);
+            }
+
+            function showManualInstructions(port) {
+                const dataInfo = document.getElementById('dataInfo');
+                const actionButtons = document.getElementById('actionButtons');
+                
+                showStatus('info', 
+                    `<strong>手动导出步骤：</strong><br>
+                    1. 在新标签页打开 <a href="http://localhost:${port}" target="_blank">http://localhost:${port}</a><br>
+                    2. 打开浏览器开发者工具 (F12)<br>
+                    3. 进入 Console 控制台<br>
+                    4. 复制并运行下面的代码：`
+                );
+
+                // Show export code
+                const exportCode = `
+// 复制这段代码到控制台运行
+(function exportMNTaskData() {
+    const data = {
+        tasks: localStorage.getItem('mntask-tasks'),
+        pendingTasks: localStorage.getItem('mntask-pending'),
+        allTasks: localStorage.getItem('mntask-all-tasks'),
+        perspectives: localStorage.getItem('mntask-perspectives'),
+        exportDate: new Date().toISOString(),
+        sourcePort: ${port}
+    };
+    
+    // Parse and count
+    let tasksCount = 0, pendingCount = 0, allCount = 0, perspectivesCount = 0;
+    
+    try {
+        if (data.tasks) tasksCount = JSON.parse(data.tasks).length;
+        if (data.pendingTasks) pendingCount = JSON.parse(data.pendingTasks).length;
+        if (data.allTasks) allCount = JSON.parse(data.allTasks).length;
+        if (data.perspectives) perspectivesCount = JSON.parse(data.perspectives).length;
+    } catch (e) {}
+    
+    console.log(\`找到数据：焦点任务 \${tasksCount} 个，待处理任务 \${pendingCount} 个，总任务 \${allCount} 个，透视 \${perspectivesCount} 个\`);
+    
+    // Create download
+    const jsonStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonStr], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = \`mntask-port-\${${port}}-backup-\${new Date().toISOString().slice(0,10)}.json\`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    console.log('✅ 数据已导出！请查看下载文件夹');
+    return data;
+})();
+                `;
+
+                // Add code block to status
+                const statusEl = document.getElementById('status');
+                statusEl.innerHTML += `
+                    <pre style="background: #2d3748; color: #fff; padding: 15px; border-radius: 8px; margin-top: 15px; overflow-x: auto; font-size: 12px;">${exportCode}</pre>
+                    <p style="margin-top: 15px;">5. 运行后会自动下载 JSON 文件</p>
+                    <p>6. 将下载的文件保存到安全的位置作为备份</p>
+                `;
+            }
+
+            function showStatus(type, message) {
+                const status = document.getElementById('status');
+                status.className = `status show ${type}`;
+                status.innerHTML = message;
+            }
+
+            function exportData() {
+                if (!currentData) {
+                    showStatus('error', '没有可导出的数据');
+                    return;
+                }
+
+                const jsonStr = JSON.stringify(currentData, null, 2);
+                const blob = new Blob([jsonStr], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `mntask-migration-${new Date().toISOString().slice(0,10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                showStatus('success', '✅ 数据已导出！请查看下载文件夹');
+            }
+
+            function clearData() {
+                if (confirm('确定要清除旧的浏览器存储数据吗？建议先导出备份！')) {
+                    const port = document.getElementById('port').value;
+                    showStatus('info', 
+                        `请在 http://localhost:${port} 的控制台运行：<br>
+                        <code>localStorage.clear(); console.log("数据已清除");</code>`
+                    );
+                }
+            }
+        </script>
+    </div>
+</body>
+</html>

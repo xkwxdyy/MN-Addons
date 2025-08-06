@@ -3,10 +3,11 @@
  * Extracted from mntask-board.tsx for better separation of concerns.
  */
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import type { Task, PerspectiveFilter } from "@/types/task"
 import { SAMPLE_TASKS, SAMPLE_PENDING_TASKS } from "@/constants"
 import { toast } from "sonner"
+import { apiStorage } from "@/services/apiStorage"
 
 // Parse task title with tags
 const parseTaskTitleWithTags = (input: string): { title: string; tags: string[] } => {
@@ -45,70 +46,78 @@ export function useTaskManager() {
   const [selectedPendingTasks, setSelectedPendingTasks] = useState<string[]>([])
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Load tasks from localStorage on mount
+  // Load tasks from API on mount
   useEffect(() => {
-    const savedTasks = localStorage.getItem("mntask-tasks")
-    const savedPending = localStorage.getItem("mntask-pending")
-    const savedAllTasks = localStorage.getItem("mntask-all-tasks")
-
-    if (savedAllTasks) {
-      const parsedAllTasks = JSON.parse(savedAllTasks).map((task: any) => ({
-        ...task,
-        createdAt: new Date(task.createdAt),
-        updatedAt: task.updatedAt ? new Date(task.updatedAt) : undefined,
-        type: task.type || "action",
-        tags: task.tags || [],
-      }))
-      setAllTasks(parsedAllTasks)
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        const data = await apiStorage.loadData()
+        
+        // If no data exists, use sample data
+        if (data.tasks.length === 0 && data.pendingTasks.length === 0 && data.allTasks.length === 0) {
+          setTasks(SAMPLE_TASKS)
+          setPendingTasks(SAMPLE_PENDING_TASKS)
+          setAllTasks([...SAMPLE_TASKS, ...SAMPLE_PENDING_TASKS])
+          
+          // Save sample data
+          await apiStorage.saveData({
+            tasks: SAMPLE_TASKS,
+            pendingTasks: SAMPLE_PENDING_TASKS,
+            allTasks: [...SAMPLE_TASKS, ...SAMPLE_PENDING_TASKS],
+            perspectives: []
+          })
+        } else {
+          setTasks(data.tasks.map((task: any, index: number) => ({
+            ...task,
+            order: task.order ?? index,
+            type: task.type || "action",
+            tags: task.tags || [],
+          })))
+          setPendingTasks(data.pendingTasks)
+          setAllTasks(data.allTasks)
+        }
+      } catch (error) {
+        console.error('Failed to load data:', error)
+        toast.error('Failed to load data. Using default data.')
+        setTasks(SAMPLE_TASKS)
+        setPendingTasks(SAMPLE_PENDING_TASKS)
+        setAllTasks([...SAMPLE_TASKS, ...SAMPLE_PENDING_TASKS])
+      } finally {
+        setIsLoading(false)
+      }
     }
-
-    if (savedTasks) {
-      const parsedTasks = JSON.parse(savedTasks).map((task: any, index: number) => ({
-        ...task,
-        createdAt: new Date(task.createdAt),
-        updatedAt: task.updatedAt ? new Date(task.updatedAt) : undefined,
-        order: task.order ?? index,
-        type: task.type || "action",
-        tags: task.tags || [],
-      }))
-      setTasks(parsedTasks)
-    } else {
-      setTasks(SAMPLE_TASKS)
-    }
-
-    if (savedPending) {
-      const parsedPending = JSON.parse(savedPending).map((task: any) => ({
-        ...task,
-        createdAt: new Date(task.createdAt),
-        updatedAt: task.updatedAt ? new Date(task.updatedAt) : undefined,
-        type: task.type || "action",
-        tags: task.tags || [],
-      }))
-      setPendingTasks(parsedPending)
-    } else {
-      setPendingTasks(SAMPLE_PENDING_TASKS)
-    }
-
-    // If no saved allTasks, build from focus and pending
-    if (!savedAllTasks) {
-      const initialAllTasks = [...(SAMPLE_TASKS || []), ...(SAMPLE_PENDING_TASKS || [])]
-      setAllTasks(initialAllTasks)
-    }
+    
+    loadData()
   }, [])
 
-  // Save tasks to localStorage
+  // Save tasks to API (debounced)
   useEffect(() => {
-    localStorage.setItem("mntask-tasks", JSON.stringify(tasks))
-  }, [tasks])
-
-  useEffect(() => {
-    localStorage.setItem("mntask-pending", JSON.stringify(pendingTasks))
-  }, [pendingTasks])
-
-  useEffect(() => {
-    localStorage.setItem("mntask-all-tasks", JSON.stringify(allTasks))
-  }, [allTasks])
+    if (isLoading) return // Don't save while loading
+    
+    // Clear any existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+    
+    // Set new timeout for debounced save
+    saveTimeoutRef.current = setTimeout(() => {
+      apiStorage.saveData({
+        tasks,
+        pendingTasks,
+        allTasks,
+        perspectives: [] // Will be handled by usePerspectives hook
+      })
+    }, 1000) // Debounce for 1 second
+    
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+    }
+  }, [tasks, pendingTasks, allTasks, isLoading])
 
   // Helper functions
   const getAllTasksList = (): Task[] => {
@@ -877,13 +886,19 @@ export function useTaskManager() {
     setIsSelectionMode(false)
   }
 
-  const resetData = () => {
+  const resetData = async () => {
     setTasks([])
     setPendingTasks([])
     setAllTasks([])
-    localStorage.removeItem("mntask-tasks")
-    localStorage.removeItem("mntask-pending")
-    localStorage.removeItem("mntask-all-tasks")
+    
+    // Clear file storage
+    await apiStorage.saveData({
+      tasks: [],
+      pendingTasks: [],
+      allTasks: [],
+      perspectives: []
+    })
+    
     toast.success("数据已重置")
   }
 
@@ -914,10 +929,13 @@ export function useTaskManager() {
       setAllTasks(Array.from(taskMap.values()))
     }
     
-    // The useEffect hook will automatically save to localStorage
+    // The useEffect hook will automatically save to API storage
   }
 
   return {
+    // Loading state
+    isLoading,
+    
     // State
     tasks,
     pendingTasks,

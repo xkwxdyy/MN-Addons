@@ -3,9 +3,10 @@
  * Extracted from mntask-board.tsx for better separation of concerns.
  */
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import type { Task, Perspective, PerspectiveFilter, FilterRule, FilterCondition, FilterOperator } from "@/types/task"
 import { toast } from "sonner"
+import { apiStorage } from "@/services/apiStorage"
 
 /**
  * Get filter summary text for display.
@@ -45,39 +46,71 @@ export function usePerspectives() {
   const [perspectives, setPerspectives] = useState<Perspective[]>([])
   const [focusSelectedPerspectiveId, setFocusSelectedPerspectiveId] = useState<string | null>(null)
   const [kanbanSelectedPerspectiveId, setKanbanSelectedPerspectiveId] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Load perspectives and selected IDs from localStorage
+  // Load perspectives and selected IDs from API storage
   useEffect(() => {
-    const savedPerspectives = localStorage.getItem("mntask-perspectives")
-    const savedFocusSelectedPerspective = localStorage.getItem("mntask-focus-selected-perspective")
-    const savedKanbanSelectedPerspective = localStorage.getItem("mntask-kanban-selected-perspective")
-
-    // Restore perspectives data
-    if (savedPerspectives) {
-      const parsed = JSON.parse(savedPerspectives).map((p: any) => ({
-        ...p,
-        groupBy: p.groupBy || "none",
-        createdAt: new Date(p.createdAt),
-      }))
-      setPerspectives(parsed)
+    const loadPerspectivesData = async () => {
+      setIsLoading(true)
+      try {
+        const data = await apiStorage.loadData()
+        
+        // Load perspectives
+        if (data.perspectives && data.perspectives.length > 0) {
+          setPerspectives(data.perspectives)
+        }
+        
+        // Try to load selected perspectives from localStorage (UI state)
+        const savedFocusSelectedPerspective = localStorage.getItem("mntask-focus-selected-perspective")
+        const savedKanbanSelectedPerspective = localStorage.getItem("mntask-kanban-selected-perspective")
+        
+        if (savedFocusSelectedPerspective) {
+          setFocusSelectedPerspectiveId(savedFocusSelectedPerspective)
+        }
+        
+        if (savedKanbanSelectedPerspective) {
+          setKanbanSelectedPerspectiveId(savedKanbanSelectedPerspective)
+        }
+      } catch (error) {
+        console.error('Failed to load perspectives:', error)
+        toast.error('Failed to load perspectives')
+      } finally {
+        setIsLoading(false)
+      }
     }
-
-    // Restore selected perspectives
-    if (savedFocusSelectedPerspective) {
-      setFocusSelectedPerspectiveId(savedFocusSelectedPerspective)
-    }
-
-    if (savedKanbanSelectedPerspective) {
-      setKanbanSelectedPerspectiveId(savedKanbanSelectedPerspective)
-    }
+    
+    loadPerspectivesData()
   }, [])
 
-  // Save perspectives to localStorage
+  // Save perspectives to API storage (debounced)
   useEffect(() => {
-    localStorage.setItem("mntask-perspectives", JSON.stringify(perspectives))
-  }, [perspectives])
+    if (isLoading) return
+    
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+    
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        const currentData = await apiStorage.loadData()
+        await apiStorage.saveData({
+          ...currentData,
+          perspectives
+        })
+      } catch (error) {
+        console.error('Failed to save perspectives:', error)
+      }
+    }, 1000)
+    
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+    }
+  }, [perspectives, isLoading])
 
-  // Save selected perspectives to localStorage
+  // Save selected perspectives to localStorage (UI state only)
   useEffect(() => {
     localStorage.setItem("mntask-focus-selected-perspective", focusSelectedPerspectiveId || "")
     localStorage.setItem("mntask-kanban-selected-perspective", kanbanSelectedPerspectiveId || "")
@@ -272,16 +305,31 @@ export function usePerspectives() {
   }
 
   // Reset perspectives (used when resetting all data)
-  const resetPerspectives = () => {
+  const resetPerspectives = async () => {
     setPerspectives([])
     setFocusSelectedPerspectiveId(null)
     setKanbanSelectedPerspectiveId(null)
-    localStorage.removeItem("mntask-perspectives")
+    
+    // Clear UI state from localStorage
     localStorage.removeItem("mntask-focus-selected-perspective")
     localStorage.removeItem("mntask-kanban-selected-perspective")
+    
+    // Clear from API storage
+    try {
+      const currentData = await apiStorage.loadData()
+      await apiStorage.saveData({
+        ...currentData,
+        perspectives: []
+      })
+    } catch (error) {
+      console.error('Failed to reset perspectives:', error)
+    }
   }
 
   return {
+    // Loading state
+    isLoading,
+    
     // State
     perspectives,
     focusSelectedPerspectiveId,

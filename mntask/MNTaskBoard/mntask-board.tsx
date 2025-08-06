@@ -5,7 +5,6 @@ import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import type { Task, ExportData, TaskTypeFilter } from "@/types/task"
 import { STORAGE_KEYS, SAMPLE_TASKS, SAMPLE_PENDING_TASKS, EXPORT_CONFIG, TASK_TYPE_OPTIONS, TASK_STATUS_OPTIONS, TASK_PRIORITY_OPTIONS } from "@/constants"
-import { StorageService } from "@/services/storage"
 import { useTaskManager } from "@/hooks/useTaskManager"
 import { usePerspectives } from "@/hooks/usePerspectives"
 import { Header } from "./header"
@@ -33,9 +32,21 @@ import {
 } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
 
+// Helper function for status text
+const getStatusText = (status: string) => {
+  const statusMap: Record<string, string> = {
+    'todo': '待开始',
+    'in-progress': '进行中',
+    'paused': '已暂停',
+    'completed': '已完成'
+  }
+  return statusMap[status] || status
+}
+
 export default function MNTaskBoard() {
   // Task management hook
   const {
+    isLoading: isTasksLoading,
     tasks,
     pendingTasks,
     allTasks,
@@ -109,6 +120,8 @@ export default function MNTaskBoard() {
 
 
   // Load view state from localStorage
+  // Note: View state is pure UI state, so we keep it in localStorage for simplicity
+  // This doesn't need to be persisted to the file system
   useEffect(() => {
     const savedView = localStorage.getItem("mntask-current-view")
 
@@ -118,7 +131,7 @@ export default function MNTaskBoard() {
     }
   }, [])
 
-  // 保存视图状态
+  // 保存视图状态 (UI state only)
   useEffect(() => {
     localStorage.setItem("mntask-current-view", currentView)
   }, [currentView])
@@ -380,6 +393,19 @@ export default function MNTaskBoard() {
       console.error("Import failed:", error)
       toast.error("导入失败，请重试")
     }
+  }
+
+  // Show loading state
+  if (isTasksLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-white text-lg">正在加载任务数据...</p>
+          <p className="text-slate-400 text-sm mt-2">首次加载可能需要几秒钟</p>
+        </div>
+      </div>
+    )
   }
 
   return (

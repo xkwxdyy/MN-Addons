@@ -399,7 +399,7 @@ export function TaskDetailsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="bg-slate-800 border-slate-700 max-w-6xl max-h-[90vh] overflow-hidden p-0">
+      <DialogContent className="bg-slate-800 border-slate-700 w-[95vw] max-w-6xl max-h-[90vh] flex flex-col overflow-hidden p-0">
         <DialogHeader className="px-6 py-4 border-b border-slate-700">
           <DialogTitle className="flex items-center gap-3 text-white">
             {getTypeIcon(currentTask.type)}
@@ -444,7 +444,7 @@ export function TaskDetailsModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden h-0">
           {/* Left Column - Main Content */}
           <div className="flex-1 p-6 overflow-y-auto">
             <div className="space-y-6">

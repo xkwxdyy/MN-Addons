@@ -456,13 +456,13 @@ export function PerspectiveView({
                 创建透视
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-slate-800 border-slate-700 max-w-2xl">
-              <DialogHeader>
+            <DialogContent className="bg-slate-800 border-slate-700 w-[95vw] max-w-2xl max-h-[90vh] flex flex-col">
+              <DialogHeader className="px-6 pt-6 pb-4">
                 <DialogTitle className="text-white">创建新透视</DialogTitle>
                 <DialogDescription className="text-slate-400">创建一个新的透视来筛选和组织你的任务</DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-4">
+              <div className="flex-1 overflow-y-auto px-6 space-y-4">
                 {/* 基本信息 */}
                 <div className="space-y-2">
                   <label className="text-white text-sm font-medium">透视名称</label>
@@ -695,7 +695,7 @@ export function PerspectiveView({
                 </div>
               </div>
 
-              <DialogFooter>
+              <DialogFooter className="px-6 pb-6 pt-4 border-t border-slate-700">
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -786,13 +786,13 @@ export function PerspectiveView({
 
       {/* 编辑透视对话框 */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="bg-slate-800 border-slate-700 max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="bg-slate-800 border-slate-700 w-[95vw] max-w-2xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="px-6 pt-6 pb-4">
             <DialogTitle className="text-white">编辑透视</DialogTitle>
             <DialogDescription className="text-slate-400">修改透视的筛选条件和分组方式</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="flex-1 overflow-y-auto px-6 space-y-4">
             {/* 基本信息 */}
             <div className="space-y-2">
               <label className="text-white text-sm font-medium">透视名称</label>
@@ -1025,7 +1025,7 @@ export function PerspectiveView({
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="px-6 pb-6 pt-4 border-t border-slate-700">
             <Button
               variant="outline"
               onClick={() => {

@@ -4,6 +4,7 @@ import path from 'path'
 export interface TaskData {
   tasks: any[]
   pendingTasks: any[]
+  inboxTasks: any[]
   allTasks: any[]
   perspectives: any[]
   lastUpdated: string

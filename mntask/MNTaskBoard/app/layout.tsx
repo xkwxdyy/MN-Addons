@@ -8,6 +8,12 @@ export const metadata: Metadata = {
   title: "MNTask - 任务管理系统",
   description: "专业的任务管理和项目协作平台",
   generator: "Next.js",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "MNTask",
+  },
 }
 
 export const viewport: Viewport = {

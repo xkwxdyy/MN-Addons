@@ -42,8 +42,10 @@ const parseIndentedTaskList = (text: string): { title: string; tags: string[]; i
 export function useTaskManager() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [pendingTasks, setPendingTasks] = useState<Task[]>([])
+  const [inboxTasks, setInboxTasks] = useState<Task[]>([])
   const [allTasks, setAllTasks] = useState<Task[]>([])
   const [selectedPendingTasks, setSelectedPendingTasks] = useState<string[]>([])
+  const [selectedInboxTasks, setSelectedInboxTasks] = useState<string[]>([])
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState("")
   const [isLoading, setIsLoading] = useState(true)
@@ -60,12 +62,14 @@ export function useTaskManager() {
         if (data.tasks.length === 0 && data.pendingTasks.length === 0 && data.allTasks.length === 0) {
           setTasks(SAMPLE_TASKS)
           setPendingTasks(SAMPLE_PENDING_TASKS)
+          setInboxTasks([])
           setAllTasks([...SAMPLE_TASKS, ...SAMPLE_PENDING_TASKS])
           
           // Save sample data
           await apiStorage.saveData({
             tasks: SAMPLE_TASKS,
             pendingTasks: SAMPLE_PENDING_TASKS,
+            inboxTasks: [],
             allTasks: [...SAMPLE_TASKS, ...SAMPLE_PENDING_TASKS],
             perspectives: []
           })
@@ -77,6 +81,7 @@ export function useTaskManager() {
             tags: task.tags || [],
           })))
           setPendingTasks(data.pendingTasks)
+          setInboxTasks(data.inboxTasks || [])
           setAllTasks(data.allTasks)
         }
       } catch (error) {
@@ -109,6 +114,7 @@ export function useTaskManager() {
         await apiStorage.updateData({
           tasks,
           pendingTasks,
+          inboxTasks,
           allTasks
         })
       } catch (error) {
@@ -121,7 +127,7 @@ export function useTaskManager() {
         clearTimeout(saveTimeoutRef.current)
       }
     }
-  }, [tasks, pendingTasks, allTasks, isLoading])
+  }, [tasks, pendingTasks, inboxTasks, allTasks, isLoading])
 
   // Helper functions
   const getAllTasksList = (): Task[] => {
@@ -935,6 +941,113 @@ export function useTaskManager() {
     // The useEffect hook will automatically save to API storage
   }
 
+  // Inbox operations
+  const addToInbox = (title: string, additionalProps?: Partial<Task>) => {
+    const { title: parsedTitle, tags } = parseTaskTitleWithTags(title)
+    
+    if (!parsedTitle.trim()) {
+      toast.error("请输入任务标题")
+      return
+    }
+
+    const newTask: Task = {
+      id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      title: parsedTitle,
+      completed: false,
+      isFocusTask: false,
+      isPriorityFocus: false,
+      priority: "low",
+      status: "todo",
+      type: "action",
+      isInInbox: true,
+      tags: tags.length > 0 ? tags : [],
+      createdAt: new Date(),
+      progressHistory: [],
+      ...additionalProps
+    }
+
+    setInboxTasks(prev => [...prev, newTask])
+    setAllTasks(prev => [...prev, newTask])
+    toast.success("已添加到收件箱")
+    return newTask
+  }
+
+  const deleteInboxTask = (taskId: string) => {
+    setInboxTasks(prev => prev.filter(t => t.id !== taskId))
+    setAllTasks(prev => prev.filter(t => t.id !== taskId))
+    toast.success("已从收件箱删除")
+  }
+
+  const moveFromInboxToFocus = (taskId: string) => {
+    const task = inboxTasks.find(t => t.id === taskId)
+    if (!task) return
+
+    const updatedTask = { ...task, isFocusTask: true, isInInbox: false }
+    setInboxTasks(prev => prev.filter(t => t.id !== taskId))
+    setTasks(prev => [...prev, updatedTask])
+    setAllTasks(prev => prev.map(t => t.id === taskId ? updatedTask : t))
+    toast.success("已移至焦点任务")
+  }
+
+  const moveFromInboxToPending = (taskId: string) => {
+    const task = inboxTasks.find(t => t.id === taskId)
+    if (!task) return
+
+    const updatedTask = { ...task, isInPending: true, isInInbox: false }
+    setInboxTasks(prev => prev.filter(t => t.id !== taskId))
+    setPendingTasks(prev => [...prev, updatedTask])
+    setAllTasks(prev => prev.map(t => t.id === taskId ? updatedTask : t))
+    toast.success("已移至待处理任务")
+  }
+
+  const moveSelectedFromInbox = (destination: "focus" | "pending") => {
+    const selectedTasks = inboxTasks.filter(t => selectedInboxTasks.includes(t.id))
+    
+    if (selectedTasks.length === 0) {
+      toast.error("请先选择任务")
+      return
+    }
+
+    if (destination === "focus") {
+      const updatedTasks = selectedTasks.map(t => ({ ...t, isFocusTask: true, isInInbox: false }))
+      setInboxTasks(prev => prev.filter(t => !selectedInboxTasks.includes(t.id)))
+      setTasks(prev => [...prev, ...updatedTasks])
+      setAllTasks(prev => prev.map(t => {
+        const updated = updatedTasks.find(ut => ut.id === t.id)
+        return updated || t
+      }))
+      toast.success(`已将 ${selectedTasks.length} 个任务移至焦点任务`)
+    } else {
+      const updatedTasks = selectedTasks.map(t => ({ ...t, isInPending: true, isInInbox: false }))
+      setInboxTasks(prev => prev.filter(t => !selectedInboxTasks.includes(t.id)))
+      setPendingTasks(prev => [...prev, ...updatedTasks])
+      setAllTasks(prev => prev.map(t => {
+        const updated = updatedTasks.find(ut => ut.id === t.id)
+        return updated || t
+      }))
+      toast.success(`已将 ${selectedTasks.length} 个任务移至待处理`)
+    }
+
+    setSelectedInboxTasks([])
+  }
+
+  const toggleInboxTaskSelection = (taskId: string) => {
+    setSelectedInboxTasks(prev =>
+      prev.includes(taskId)
+        ? prev.filter(id => id !== taskId)
+        : [...prev, taskId]
+    )
+  }
+
+  const clearInboxSelection = () => {
+    setSelectedInboxTasks([])
+  }
+
+  const updateInboxTask = (taskId: string, updates: Partial<Task>) => {
+    setInboxTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t))
+    setAllTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t))
+  }
+
   return {
     // Loading state
     isLoading,
@@ -942,8 +1055,10 @@ export function useTaskManager() {
     // State
     tasks,
     pendingTasks,
+    inboxTasks,
     allTasks,
     selectedPendingTasks,
+    selectedInboxTasks,
     isSelectionMode,
     newTaskTitle,
     setNewTaskTitle,
@@ -980,5 +1095,15 @@ export function useTaskManager() {
     addSelectedToFocus,
     resetData,
     importTasks,
+    
+    // Inbox operations
+    addToInbox,
+    deleteInboxTask,
+    moveFromInboxToFocus,
+    moveFromInboxToPending,
+    moveSelectedFromInbox,
+    toggleInboxTaskSelection,
+    clearInboxSelection,
+    updateInboxTask,
   }
 }

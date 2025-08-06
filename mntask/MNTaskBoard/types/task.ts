@@ -5,7 +5,7 @@
 export type TaskPriority = "low" | "medium" | "high"
 export type TaskStatus = "todo" | "in-progress" | "completed" | "paused"
 export type TaskType = "action" | "project" | "key-result" | "objective"
-export type ViewMode = "focus" | "kanban" | "perspective"
+export type ViewMode = "focus" | "kanban" | "perspective" | "inbox"
 export type TaskTypeFilter = "all" | "action" | "project" | "key-result" | "objective"
 
 export interface ProgressHistoryItem {
@@ -32,6 +32,7 @@ export interface Task {
   order?: number
   parentId?: string // Parent task ID for hierarchical relationships
   isInPending?: boolean // Whether the task appears in pending list
+  isInInbox?: boolean // Whether the task appears in inbox
   tags?: string[] // Task tags
   progressHistory?: ProgressHistoryItem[]
 }

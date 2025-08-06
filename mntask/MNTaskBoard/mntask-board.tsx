@@ -13,6 +13,7 @@ import { TaskCard } from "./task-card"
 import { PendingTaskCard } from "./pending-task-card"
 import { KanbanBoard } from "./kanban-board"
 import { PerspectiveView } from "./perspective-view"
+import { InboxView } from "./inbox-view"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -49,8 +50,10 @@ export default function MNTaskBoard() {
     isLoading: isTasksLoading,
     tasks,
     pendingTasks,
+    inboxTasks,
     allTasks,
     selectedPendingTasks,
+    selectedInboxTasks,
     isSelectionMode,
     newTaskTitle,
     setNewTaskTitle,
@@ -83,10 +86,22 @@ export default function MNTaskBoard() {
     addSelectedToFocus,
     resetData: resetTaskData,
     importTasks,
+    // Inbox operations
+    addToInbox,
+    deleteInboxTask,
+    moveFromInboxToFocus,
+    moveFromInboxToPending,
+    moveSelectedFromInbox,
+    toggleInboxTaskSelection,
+    clearInboxSelection,
+    updateInboxTask,
   } = useTaskManager()
 
-  // UI state
-  const [currentView, setCurrentView] = useState<"focus" | "kanban" | "perspective">("focus")
+  // UI state - 移动端默认显示 Inbox
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+  const [currentView, setCurrentView] = useState<"focus" | "kanban" | "perspective" | "inbox">(
+    isMobile ? "inbox" : "focus"
+  )
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
@@ -764,7 +779,7 @@ export default function MNTaskBoard() {
               onPerspectiveChange={setKanbanSelectedPerspectiveId}
               onTaskTypeFilterChange={setKanbanTaskTypeFilter}
             />
-          ) : (
+          ) : currentView === "perspective" ? (
             /* 透视视图 */
             <PerspectiveView
               tasks={tasks}
@@ -791,6 +806,21 @@ export default function MNTaskBoard() {
               onCreatePerspective={createPerspective}
               onUpdatePerspective={updatePerspective}
               onDeletePerspective={deletePerspective}
+            />
+          ) : (
+            /* Inbox 视图 */
+            <InboxView
+              tasks={inboxTasks}
+              selectedTasks={selectedInboxTasks}
+              onAddTask={addToInbox}
+              onDeleteTask={deleteInboxTask}
+              onMoveToFocus={moveFromInboxToFocus}
+              onMoveToPending={moveFromInboxToPending}
+              onMoveSelectedTasks={moveSelectedFromInbox}
+              onToggleSelection={toggleInboxTaskSelection}
+              onClearSelection={clearInboxSelection}
+              onUpdateTask={updateInboxTask}
+              onOpenTaskDetails={openTaskDetails}
             />
           )}
         </div>

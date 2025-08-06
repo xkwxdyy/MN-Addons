@@ -18,16 +18,16 @@ interface PerspectiveCardProps {
   onDelete?: () => void
 }
 
-// 生成渐变背景
+// 生成渐变背景 - 更明亮的颜色方案
 const gradients = [
-  "from-blue-500/10 to-cyan-500/10",
-  "from-purple-500/10 to-pink-500/10",
-  "from-green-500/10 to-emerald-500/10",
-  "from-orange-500/10 to-yellow-500/10",
-  "from-indigo-500/10 to-blue-500/10",
-  "from-red-500/10 to-rose-500/10",
-  "from-teal-500/10 to-cyan-500/10",
-  "from-violet-500/10 to-purple-500/10",
+  "from-blue-500/30 via-blue-600/20 to-cyan-500/30",
+  "from-purple-500/30 via-purple-600/20 to-pink-500/30",
+  "from-green-500/30 via-green-600/20 to-emerald-500/30",
+  "from-orange-500/30 via-orange-600/20 to-yellow-500/30",
+  "from-indigo-500/30 via-indigo-600/20 to-blue-500/30",
+  "from-red-500/30 via-red-600/20 to-rose-500/30",
+  "from-teal-500/30 via-teal-600/20 to-cyan-500/30",
+  "from-violet-500/30 via-violet-600/20 to-purple-500/30",
 ]
 
 const getGradient = (name: string): string => {
@@ -82,18 +82,21 @@ export function PerspectiveCard({
   return (
     <Card
       className={cn(
-        "relative overflow-hidden cursor-pointer transition-all duration-300 border-2",
-        "hover:shadow-xl hover:scale-[1.02] hover:border-blue-500/50",
+        "relative overflow-hidden cursor-pointer transition-all duration-300 group",
+        "bg-slate-800/60 backdrop-blur-sm",
+        "border border-slate-700/70",
+        "hover:shadow-xl hover:scale-[1.02] hover:border-slate-600",
         isSelected 
-          ? "border-blue-500 shadow-lg shadow-blue-500/20 scale-[1.02]" 
-          : "border-slate-700 hover:border-slate-600",
+          ? "ring-2 ring-blue-500 border-blue-500 shadow-lg shadow-blue-500/20 scale-[1.02]" 
+          : "",
         "bg-gradient-to-br",
         gradient
       )}
       onClick={onSelect}
+      onDoubleClick={() => !isAllTasks && onEdit?.()}
     >
-      {/* 背景装饰 */}
-      <div className="absolute inset-0 bg-slate-800/40 backdrop-blur-sm" />
+      {/* 背景装饰 - 更透明的遮罩 */}
+      <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-[1px]" />
       
       {/* 内容 */}
       <div className="relative">

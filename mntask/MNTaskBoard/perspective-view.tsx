@@ -30,11 +30,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Eye, Plus, Edit, Trash2, Filter, Target, FolderOpen, TrendingUp, Crosshair, Clock, X, Layers, Sparkles } from "lucide-react"
+import { Eye, Plus, Edit, Trash2, Filter, Target, FolderOpen, TrendingUp, Crosshair, Clock, X, Layers } from "lucide-react"
 import { TaskCard } from "./task-card"
 import { PendingTaskCard } from "./pending-task-card"
+import { PerspectiveCard } from "./perspective-card"
 import { FilterRuleEditor } from "@/components/filter-rule-editor"
-import { SMART_PERSPECTIVES, createSmartPerspective } from "@/constants/smart-perspectives"
 import { toast } from "sonner"
 import type { FilterRule, Task, Perspective, PerspectiveFilter } from "@/types/task"
 
@@ -93,7 +93,6 @@ export function PerspectiveView({
 }: PerspectiveViewProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [isSmartTemplatesOpen, setIsSmartTemplatesOpen] = useState(false)
   const [editingPerspective, setEditingPerspective] = useState<Perspective | null>(null)
   const [showCompletedTasks, setShowCompletedTasks] = useState(false)
 
@@ -136,26 +135,29 @@ export function PerspectiveView({
   }
 
   // 应用透视筛选
-  const applyPerspectiveFilter = (allTasks: Task[], filters: PerspectiveFilter): Task[] => {
+  const applyPerspectiveFilter = (allTasks: Task[], filters: PerspectiveFilter | undefined): Task[] => {
+    // 如果没有筛选条件，返回所有任务
+    if (!filters) return allTasks
+    
     return allTasks.filter((task) => {
       // 标签筛选
-      if (filters.tags.length > 0) {
+      if (filters.tags && filters.tags.length > 0) {
         const hasMatchingTag = filters.tags.some((tag) => task.tags?.includes(tag))
         if (!hasMatchingTag) return false
       }
 
       // 任务类型筛选
-      if (filters.taskTypes.length > 0 && !filters.taskTypes.includes(task.type)) {
+      if (filters.taskTypes && filters.taskTypes.length > 0 && !filters.taskTypes.includes(task.type)) {
         return false
       }
 
       // 状态筛选
-      if (filters.statuses.length > 0 && !filters.statuses.includes(task.status)) {
+      if (filters.statuses && filters.statuses.length > 0 && !filters.statuses.includes(task.status)) {
         return false
       }
 
       // 优先级筛选
-      if (filters.priorities.length > 0 && !filters.priorities.includes(task.priority)) {
+      if (filters.priorities && filters.priorities.length > 0 && !filters.priorities.includes(task.priority)) {
         return false
       }
 
@@ -435,51 +437,9 @@ export function PerspectiveView({
     <div className="p-6 space-y-6">
       {/* 头部控制区域 */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Eye className="w-6 h-6 text-blue-400" />
-            <h1 className="text-2xl font-bold text-white">透视视图</h1>
-          </div>
-
-          {/* 透视选择器 */}
-          <Select
-            value={selectedPerspectiveId || "all"}
-            onValueChange={(value) => onPerspectiveChange(value === "all" ? null : value)}
-          >
-            <SelectTrigger className="w-64 bg-slate-800/50 border-slate-700 text-white">
-              <SelectValue placeholder="选择透视..." />
-            </SelectTrigger>
-            <SelectContent className="bg-slate-800 border-slate-700">
-              <SelectItem value="all" className="text-white hover:bg-slate-700">
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4" />
-                  <span>全部任务</span>
-                </div>
-              </SelectItem>
-              {perspectives.map((perspective) => (
-                <SelectItem key={perspective.id} value={perspective.id} className="text-white hover:bg-slate-700">
-                  <div className="flex items-center gap-2">
-                    <Eye className="w-4 h-4" />
-                    <span>{perspective.name}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {selectedPerspective && (
-            <div className="flex items-center gap-2">
-              <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">{displayTasks.length} 个任务</Badge>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onPerspectiveChange(null)}
-                className="p-1 h-6 w-6 text-slate-400 hover:text-white"
-              >
-                <X className="w-3 h-3" />
-              </Button>
-            </div>
-          )}
+        <div className="flex items-center gap-2">
+          <Eye className="w-6 h-6 text-blue-400" />
+          <h1 className="text-2xl font-bold text-white">透视视图</h1>
         </div>
 
         <div className="flex items-center gap-2">
@@ -495,16 +455,6 @@ export function PerspectiveView({
               显示已完成任务
             </label>
           </div>
-
-          {/* 智能透视模板按钮 */}
-          <Button
-            variant="outline"
-            onClick={() => setIsSmartTemplatesOpen(true)}
-            className="border-purple-500/30 text-purple-300 hover:bg-purple-500/10"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            智能模板
-          </Button>
 
           {/* 创建透视按钮 */}
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -841,74 +791,56 @@ export function PerspectiveView({
         </div>
       </div>
 
-      {/* 当前透视信息 */}
-      {selectedPerspective && (
-        <Card className="bg-slate-800/30 border-slate-700">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Eye className="w-5 h-5 text-blue-400" />
-                <div>
-                  <CardTitle className="text-white text-lg">{selectedPerspective.name}</CardTitle>
-                  {selectedPerspective.description && (
-                    <p className="text-slate-400 text-sm mt-1">{selectedPerspective.description}</p>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleEditPerspective(selectedPerspective)}
-                  className="text-slate-400 hover:text-white"
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="sm" className="text-slate-400 hover:text-red-400">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent className="bg-slate-800 border-slate-700">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="text-white">删除透视</AlertDialogTitle>
-                      <AlertDialogDescription className="text-slate-300">
-                        确定要删除透视 "{selectedPerspective.name}" 吗？此操作无法撤销。
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel className="bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600">
-                        取消
-                      </AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => handleDeletePerspective(selectedPerspective.id)}
-                        className="bg-red-600 text-white hover:bg-red-700"
-                      >
-                        删除
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="flex items-center gap-4 text-sm text-slate-400">
-              <span>
-                分组:{" "}
-                {selectedPerspective.groupBy === "none"
-                  ? "不分组"
-                  : `按${selectedPerspective.groupBy === "type" ? "类型" : selectedPerspective.groupBy === "status" ? "状态" : "优先级"}分组`}
-              </span>
-              <span>•</span>
-              <span>创建于: {new Date(selectedPerspective.createdAt).toLocaleDateString()}</span>
-              <span>•</span>
-              <span>任务数: {displayTasks.length}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* 透视选择区域 */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium text-slate-300">选择透视</h2>
+          {selectedPerspective && (
+            <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
+              当前: {selectedPerspective.name}
+            </Badge>
+          )}
+        </div>
+        
+        {/* 透视卡片网格 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {/* 全部任务卡片 */}
+          <PerspectiveCard
+            perspective={null}
+            tasks={allTasks}
+            isSelected={!selectedPerspectiveId}
+            isAllTasks={true}
+            onSelect={() => onPerspectiveChange(null)}
+          />
+          
+          {/* 用户创建的透视卡片 */}
+          {perspectives.map((perspective) => {
+            // 计算该透视的任务数量
+            const perspectiveTasks = perspective === selectedPerspective 
+              ? displayTasks 
+              : applyPerspectiveFilter(allTasks, perspective.filters)
+            
+            return (
+              <PerspectiveCard
+                key={perspective.id}
+                perspective={perspective}
+                tasks={perspectiveTasks}
+                isSelected={perspective.id === selectedPerspectiveId}
+                onSelect={() => onPerspectiveChange(perspective.id)}
+                onEdit={() => handleEditPerspective(perspective)}
+                onDelete={() => {
+                  if (confirm(`确定要删除透视 "${perspective.name}" 吗？此操作无法撤销。`)) {
+                    handleDeletePerspective(perspective.id)
+                  }
+                }}
+              />
+            )
+          })}
+        </div>
+      </div>
+      
+      {/* 分隔线 */}
+      {selectedPerspectiveId && <Separator className="bg-slate-700" />}
 
       {/* 编辑透视对话框 */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -1170,94 +1102,6 @@ export function PerspectiveView({
         </DialogContent>
       </Dialog>
 
-      {/* 智能透视模板对话框 */}
-      <Dialog open={isSmartTemplatesOpen} onOpenChange={setIsSmartTemplatesOpen}>
-        <DialogContent className="bg-slate-800 border-slate-700 w-[95vw] max-w-3xl max-h-[90vh] flex flex-col">
-          <DialogHeader className="px-6 pt-6 pb-4">
-            <DialogTitle className="text-white flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-purple-400" />
-              智能透视模板
-            </DialogTitle>
-            <DialogDescription className="text-slate-400">
-              选择一个预设的智能透视模板，快速创建常用的任务视图
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-y-auto px-6 pb-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {SMART_PERSPECTIVES.map((template, index) => (
-                <Card
-                  key={index}
-                  className="bg-slate-700/50 border-slate-600 cursor-pointer hover:bg-slate-700/70 transition-colors"
-                  onClick={() => {
-                    const newPerspective = createSmartPerspective(template)
-                    // Extract id and createdAt to match the expected type
-                    const { id, createdAt, ...perspectiveData } = newPerspective
-                    const created = onCreatePerspective(perspectiveData)
-                    onPerspectiveChange(created.id)
-                    setIsSmartTemplatesOpen(false)
-                    toast.success(`已创建智能透视: ${template.name}`)
-                  }}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">{template.icon}</span>
-                        <CardTitle className="text-white text-base">{template.name}</CardTitle>
-                      </div>
-                      {template.isSmartPerspective && (
-                        <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-xs">
-                          智能
-                        </Badge>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-slate-400 text-sm">{template.description}</p>
-                    <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
-                      <span>分组: {
-                        template.groupBy === "none" ? "不分组" :
-                        template.groupBy === "type" ? "按类型" :
-                        template.groupBy === "status" ? "按状态" :
-                        "按优先级"
-                      }</span>
-                      {template.filterRules && (
-                        <>
-                          <span>•</span>
-                          <span>
-                            规则: {template.filterRules.conditions?.length || 0} 条件,
-                            {template.filterRules.ruleGroups?.length || 0} 组
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            <div className="mt-6 p-4 bg-slate-700/30 rounded-lg">
-              <h3 className="text-white text-sm font-medium mb-2">提示</h3>
-              <ul className="text-slate-400 text-xs space-y-1">
-                <li>• 智能透视模板基于常见的任务管理场景预设</li>
-                <li>• 创建后可以根据需要进一步自定义筛选条件</li>
-                <li>• 支持复杂的嵌套规则（AND、OR、NOT 逻辑）</li>
-                <li>• 可以组合多个条件创建精确的任务视图</li>
-              </ul>
-            </div>
-          </div>
-
-          <DialogFooter className="px-6 pb-6 pt-4 border-t border-slate-700">
-            <Button
-              variant="outline"
-              onClick={() => setIsSmartTemplatesOpen(false)}
-              className="border-slate-600 text-slate-300 hover:bg-slate-700 bg-transparent"
-            >
-              关闭
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* 任务列表 */}
       <div className="space-y-6">

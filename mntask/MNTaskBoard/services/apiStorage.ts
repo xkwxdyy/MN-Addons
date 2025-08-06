@@ -150,6 +150,29 @@ class ApiStorageService {
     }, 500) // Debounce for 500ms
   }
 
+  /**
+   * Partially update data - only update specified fields
+   * This helps avoid race conditions when multiple hooks update different parts
+   */
+  async updateData(partialData: Partial<StorageData>): Promise<void> {
+    try {
+      // Get current data (from cache if available)
+      const currentData = this.cache || await this.loadData()
+      
+      // Merge with partial update
+      const updatedData = {
+        ...currentData,
+        ...partialData
+      }
+      
+      // Save the merged data
+      await this.saveData(updatedData)
+    } catch (error) {
+      console.error('Failed to update data:', error)
+      throw error
+    }
+  }
+
   // Deprecated: Only kept for migration purposes
   // Will be removed in future version
 

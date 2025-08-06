@@ -93,9 +93,8 @@ export function usePerspectives() {
     
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        const currentData = await apiStorage.loadData()
-        await apiStorage.saveData({
-          ...currentData,
+        // Use updateData to only update perspectives
+        await apiStorage.updateData({
           perspectives
         })
       } catch (error) {
@@ -316,9 +315,7 @@ export function usePerspectives() {
     
     // Clear from API storage
     try {
-      const currentData = await apiStorage.loadData()
-      await apiStorage.saveData({
-        ...currentData,
+      await apiStorage.updateData({
         perspectives: []
       })
     } catch (error) {

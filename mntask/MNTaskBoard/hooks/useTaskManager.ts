@@ -103,13 +103,17 @@ export function useTaskManager() {
     }
     
     // Set new timeout for debounced save
-    saveTimeoutRef.current = setTimeout(() => {
-      apiStorage.saveData({
-        tasks,
-        pendingTasks,
-        allTasks,
-        perspectives: [] // Will be handled by usePerspectives hook
-      })
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        // Use updateData to only update task-related fields
+        await apiStorage.updateData({
+          tasks,
+          pendingTasks,
+          allTasks
+        })
+      } catch (error) {
+        console.error('Failed to save tasks:', error)
+      }
     }, 1000) // Debounce for 1 second
     
     return () => {
@@ -891,12 +895,11 @@ export function useTaskManager() {
     setPendingTasks([])
     setAllTasks([])
     
-    // Clear file storage
-    await apiStorage.saveData({
+    // Clear file storage (only task-related data)
+    await apiStorage.updateData({
       tasks: [],
       pendingTasks: [],
-      allTasks: [],
-      perspectives: []
+      allTasks: []
     })
     
     toast.success("数据已重置")

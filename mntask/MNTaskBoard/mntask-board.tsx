@@ -31,123 +31,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
 
-const sampleTasks: Task[] = [
-  {
-    id: "1",
-    title: "提取评论如果是行内链接的话，也要进行相应处理！",
-    description: "需要检查评论中的行内链接格式，确保在提取过程中能够正确识别和处理这些链接，避免丢失重要的引用信息。",
-    completed: false,
-    isFocusTask: true,
-    isPriorityFocus: true,
-    priority: "low",
-    status: "in-progress",
-    type: "action",
-    createdAt: new Date(),
-    order: 0,
-    progress: "2025/01/28 12:00:00 提取评论如果是行内链接的话，也要进行相应处理！",
-    category: "开发 MarginNote 插件",
-    parentId: "project-1",
-    tags: ["bug修复", "链接处理", "紧急"],
-  },
-  {
-    id: "2",
-    title: "Bug: 查找后会复制一个 ID",
-    description:
-      "在执行查找操作后，系统会意外复制一个ID到剪贴板，这可能会干扰用户的正常工作流程。需要调试并修复这个问题。",
-    completed: false,
-    isFocusTask: true,
-    isPriorityFocus: false,
-    priority: "low",
-    status: "paused",
-    type: "action",
-    createdAt: new Date(),
-    order: 1,
-    progress:
-      "2025/01/28 11:30:00 relative; padding-left:28px; margin:14px 0; color:#1E40AF; font-weight:500; font-size:0.92em",
-    category: "开发 MarginNote 插件",
-    parentId: "project-1",
-    tags: ["bug修复", "剪贴板"],
-  },
-]
-
-const samplePending: Task[] = [
-  {
-    id: "project-1",
-    title: "开发 MNUtils 插件",
-    description: "开发一个功能强大的 MarginNote 工具插件，包含多种实用功能。",
-    completed: false,
-    isFocusTask: false,
-    isPriorityFocus: false,
-    priority: "high",
-    status: "todo",
-    type: "project",
-    createdAt: new Date(),
-    category: "开发 MarginNote 插件",
-    isInPending: true,
-    tags: ["插件开发", "MarginNote", "工具"],
-  },
-  {
-    id: "pending-1",
-    title: "思路卡片的标题要修改前缀！",
-    description: "当前思路卡片的标题前缀不够清晰，需要重新设计一个更直观的前缀格式，帮助用户快速识别卡片类型。",
-    completed: false,
-    isFocusTask: false,
-    isPriorityFocus: false,
-    priority: "medium",
-    status: "todo",
-    type: "action",
-    createdAt: new Date(),
-    category: "开发 MarginNote 插件",
-    parentId: "project-1",
-    isInPending: true,
-    tags: ["UI优化", "用户体验"],
-  },
-  {
-    id: "pending-2",
-    title: "完成 MNTask 任务管理系统",
-    description: "开发一个完整的任务管理系统，包含焦点任务、待处理任务、进度跟踪等功能模块。",
-    completed: false,
-    isFocusTask: false,
-    isPriorityFocus: false,
-    priority: "high",
-    status: "todo",
-    type: "project",
-    createdAt: new Date(),
-    category: "个人项目",
-    isInPending: true,
-    tags: ["任务管理", "系统开发", "个人项目"],
-  },
-  {
-    id: "pending-3",
-    title: "每月完成 5 个高质量插件功能",
-    description: "通过持续开发和优化，确保每个月都能交付 5 个经过充分测试的插件功能。",
-    completed: false,
-    isFocusTask: false,
-    isPriorityFocus: false,
-    priority: "high",
-    status: "todo",
-    type: "key-result",
-    createdAt: new Date(),
-    category: "工作目标",
-    isInPending: true,
-    tags: ["KPI", "质量保证", "月度目标"],
-  },
-  {
-    id: "pending-4",
-    title: "成为 MarginNote 插件开发专家",
-    description: "通过深入学习和实践，掌握 MarginNote 插件开发的各种技术和最佳实践，成为该领域的专家。",
-    completed: false,
-    isFocusTask: false,
-    isPriorityFocus: false,
-    priority: "medium",
-    status: "todo",
-    type: "objective",
-    createdAt: new Date(),
-    category: "职业发展",
-    isInPending: true,
-    tags: ["学习成长", "专业技能", "长期目标"],
-  },
-]
 
 // 解析任务标题中的标签语法
 const parseTaskTitleWithTags = (input: string): { title: string; tags: string[] } => {
@@ -413,7 +296,7 @@ export default function MNTaskBoard() {
       setTasks(parsedTasks)
     } else {
       // Initialize with sample tasks
-      setTasks(sampleTasks)
+      setTasks(SAMPLE_TASKS)
     }
 
     if (savedPending) {
@@ -427,12 +310,12 @@ export default function MNTaskBoard() {
       setPendingTasks(parsedPending)
     } else {
       // Initialize with sample pending task
-      setPendingTasks(samplePending)
+      setPendingTasks(SAMPLE_PENDING_TASKS)
     }
 
     // 如果没有保存的总任务列表，从焦点任务和待处理任务中构建
     if (!savedAllTasks) {
-      const initialAllTasks = [...(sampleTasks || []), ...(samplePending || [])]
+      const initialAllTasks = [...(SAMPLE_TASKS || []), ...(SAMPLE_PENDING_TASKS || [])]
       setAllTasks(initialAllTasks)
     }
   }, [])

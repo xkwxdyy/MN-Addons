@@ -440,7 +440,7 @@ export function PerspectiveView({
             <Checkbox
               id="show-completed"
               checked={showCompletedTasks}
-              onCheckedChange={setShowCompletedTasks}
+              onCheckedChange={(checked) => setShowCompletedTasks(checked === true)}
               className="border-slate-600 data-[state=checked]:bg-blue-600"
             />
             <label htmlFor="show-completed" className="text-sm text-slate-300 cursor-pointer">

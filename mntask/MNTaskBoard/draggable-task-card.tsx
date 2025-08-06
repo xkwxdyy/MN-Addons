@@ -96,6 +96,7 @@ export function DraggableTaskCard({
 }: DraggableTaskCardProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [dragStartTime, setDragStartTime] = useState(0)
+  const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null)
 
   const handleDragStart = (e: React.DragEvent) => {
     setIsDragging(true)
@@ -114,6 +115,32 @@ export function DraggableTaskCard({
     // Add a small delay to prevent click event from firing immediately after drag
     setTimeout(() => {
       setIsDragging(false)
+    }, 100)
+  }
+
+  // Touch event handlers for mobile drag support
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0]
+    setTouchStartPos({ x: touch.clientX, y: touch.clientY })
+    setDragStartTime(Date.now())
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartPos) return
+    const touch = e.touches[0]
+    const deltaX = Math.abs(touch.clientX - touchStartPos.x)
+    const deltaY = Math.abs(touch.clientY - touchStartPos.y)
+    
+    // If moved more than 10px, consider it a drag
+    if (deltaX > 10 || deltaY > 10) {
+      setIsDragging(true)
+    }
+  }
+
+  const handleTouchEnd = () => {
+    setTimeout(() => {
+      setIsDragging(false)
+      setTouchStartPos(null)
     }, 100)
   }
 
@@ -245,6 +272,9 @@ export function DraggableTaskCard({
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       onClick={handleCardClick}
       data-task-id={task.id}
     >

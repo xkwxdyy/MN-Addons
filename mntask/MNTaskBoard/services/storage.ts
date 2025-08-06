@@ -76,10 +76,6 @@ export class StorageService {
    */
   static saveAllTasks(tasks: Task[]): void {
     try {
-      console.log("Saving allTasks to localStorage, count:", tasks.length)
-      if (tasks.length > 0 && tasks[0].description !== undefined) {
-        console.log("First task has description:", tasks[0].description)
-      }
       localStorage.setItem(STORAGE_KEYS.ALL_TASKS, JSON.stringify(tasks))
     } catch (error) {
       console.error("Failed to save all tasks:", error)
@@ -101,11 +97,6 @@ export class StorageService {
         type: task.type || "action",
         tags: task.tags || [],
       }))
-      
-      console.log("Loaded allTasks from localStorage, sample task:", parsedTasks[0])
-      if (parsedTasks[0]) {
-        console.log("First task description:", parsedTasks[0].description)
-      }
       
       return parsedTasks
     } catch (error) {

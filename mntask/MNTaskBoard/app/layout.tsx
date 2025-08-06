@@ -5,9 +5,11 @@ import { GeistMono } from "geist/font/mono"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "v0 App",
-  description: "Created with v0",
-  generator: "v0.dev",
+  title: "MNTask - 任务管理系统",
+  description: "专业的任务管理和项目协作平台",
+  generator: "Next.js",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
+  themeColor: "#1e293b",
 }
 
 export default function RootLayout({

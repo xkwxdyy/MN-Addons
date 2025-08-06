@@ -214,7 +214,7 @@ export function PendingTaskCard({
       onClick={handleCardClick}
       data-task-id={task.id}
     >
-      <CardContent className="p-4">
+      <CardContent className="p-3 md:p-4">
         {/* 顶部徽章行 */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2 flex-wrap">
@@ -273,8 +273,8 @@ export function PendingTaskCard({
               {/* 更多操作菜单 */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" size="sm" className="p-1 h-6 w-6 text-slate-400 hover:text-white">
-                    <MoreVertical className="w-4 h-4" />
+                  <Button variant="ghost" size="sm" className="p-1 md:p-1 h-9 w-9 md:h-6 md:w-6 text-slate-400 hover:text-white">
+                    <MoreVertical className="w-5 h-5 md:w-4 md:h-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-slate-800 border-slate-700">

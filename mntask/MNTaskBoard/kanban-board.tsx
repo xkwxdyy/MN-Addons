@@ -854,7 +854,7 @@ export function KanbanBoard({
       </div>
 
       {/* 看板列 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {renderKanbanColumn("todo", "待开始", Target, "text-blue-400", "bg-blue-500/20 text-blue-300", todoTasks)}
         {renderKanbanColumn(
           "in-progress",

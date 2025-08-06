@@ -215,7 +215,7 @@ export function TaskCard({
       onClick={handleCardClick}
       data-task-id={task.id}
     >
-      <CardContent className="p-4">
+      <CardContent className="p-3 md:p-4">
         {/* 顶部徽章行 */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2 flex-wrap">
@@ -264,19 +264,19 @@ export function TaskCard({
                 e.stopPropagation()
                 onTogglePriorityFocus(task.id)
               }}
-              className={`p-1 h-6 w-6 transition-colors ${
+              className={`p-1 md:p-1 h-9 w-9 md:h-6 md:w-6 transition-colors ${
                 task.isPriorityFocus ? "text-orange-400 hover:text-orange-300" : "text-slate-500 hover:text-orange-400"
               }`}
               title={task.isPriorityFocus ? "取消优先焦点" : "设为优先焦点"}
             >
-              <Star className={`w-4 h-4 ${task.isPriorityFocus ? "fill-current" : ""}`} />
+              <Star className={`w-5 h-5 md:w-4 md:h-4 ${task.isPriorityFocus ? "fill-current" : ""}`} />
             </Button>
 
             {/* 更多操作菜单 */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                <Button variant="ghost" size="sm" className="p-1 h-6 w-6 text-slate-400 hover:text-white">
-                  <MoreVertical className="w-4 h-4" />
+                <Button variant="ghost" size="sm" className="p-1 md:p-1 h-9 w-9 md:h-6 md:w-6 text-slate-400 hover:text-white">
+                  <MoreVertical className="w-5 h-5 md:w-4 md:h-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-slate-800 border-slate-700">
@@ -306,7 +306,7 @@ export function TaskCard({
         </div>
 
         {/* 任务标题 */}
-        <h3 className="text-white font-medium mb-2 line-clamp-2 leading-relaxed">{task.title}</h3>
+        <h3 className="text-base md:text-sm text-white font-medium mb-2 line-clamp-2 leading-relaxed">{task.title}</h3>
 
         {/* 标签显示 */}
         {task.tags && task.tags.length > 0 && (
@@ -367,10 +367,10 @@ export function TaskCard({
                   e.stopPropagation()
                   onStartTask(task.id)
                 }}
-                className="p-1 h-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                className="p-2 md:p-1 h-10 md:h-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
               >
-                <Play className="w-4 h-4" />
-                <span className="ml-1 text-xs">继续</span>
+                <Play className="w-5 h-5 md:w-4 md:h-4" />
+                <span className="ml-1 text-sm md:text-xs">继续</span>
               </Button>
             )}
 
@@ -382,10 +382,10 @@ export function TaskCard({
                   e.stopPropagation()
                   onPauseTask(task.id)
                 }}
-                className="p-1 h-8 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-900/20"
+                className="p-2 md:p-1 h-10 md:h-8 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-900/20"
               >
-                <Pause className="w-4 h-4" />
-                <span className="ml-1 text-xs">暂停</span>
+                <Pause className="w-5 h-5 md:w-4 md:h-4" />
+                <span className="ml-1 text-sm md:text-xs">暂停</span>
               </Button>
             )}
 
@@ -397,10 +397,10 @@ export function TaskCard({
                   e.stopPropagation()
                   onResumeTask(task.id)
                 }}
-                className="p-1 h-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                className="p-2 md:p-1 h-10 md:h-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
               >
-                <Play className="w-4 h-4" />
-                <span className="ml-1 text-xs">继续</span>
+                <Play className="w-5 h-5 md:w-4 md:h-4" />
+                <span className="ml-1 text-sm md:text-xs">继续</span>
               </Button>
             )}
 
@@ -411,10 +411,10 @@ export function TaskCard({
                 e.stopPropagation()
                 onComplete(task.id)
               }}
-              className="p-1 h-8 text-green-400 hover:text-green-300 hover:bg-green-900/20"
+              className="p-2 md:p-1 h-10 md:h-8 text-green-400 hover:text-green-300 hover:bg-green-900/20"
             >
               <Square className="w-4 h-4" />
-              <span className="ml-1 text-xs">完成</span>
+              <span className="ml-1 text-sm md:text-xs">完成</span>
             </Button>
           </div>
 

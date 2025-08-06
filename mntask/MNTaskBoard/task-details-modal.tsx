@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -399,7 +400,7 @@ export function TaskDetailsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="bg-slate-800 border-slate-700 w-[95vw] max-w-6xl max-h-[90vh] flex flex-col overflow-hidden p-0">
+      <DialogContent className="bg-slate-800 border-slate-700 w-screen sm:w-[95vw] sm:max-w-6xl h-screen sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden p-0 rounded-none sm:rounded-lg">
         <DialogHeader className="px-6 py-4 border-b border-slate-700">
           <DialogTitle className="flex items-center gap-3 text-white">
             {getTypeIcon(currentTask.type)}
@@ -444,9 +445,9 @@ export function TaskDetailsModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-1 overflow-hidden h-0">
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden h-0">
           {/* Left Column - Main Content */}
-          <div className="flex-1 p-6 overflow-y-auto">
+          <div className="flex-1 p-4 md:p-6 overflow-y-auto">
             <div className="space-y-6">
               {/* Task Description */}
               <div className="space-y-2">
@@ -648,7 +649,7 @@ export function TaskDetailsModal({
           </div>
 
           {/* Right Column - Attributes */}
-          <div className="w-80 bg-slate-800/50 border-l border-slate-700 p-6 overflow-y-auto">
+          <div className="w-full md:w-80 bg-slate-800/50 border-t md:border-t-0 md:border-l border-slate-700 p-4 md:p-6 overflow-y-auto">
             <div className="space-y-6">
               <h3 className="text-white font-medium">属性</h3>
 

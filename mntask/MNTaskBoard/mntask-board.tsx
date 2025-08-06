@@ -406,21 +406,21 @@ export default function MNTaskBoard() {
           />
         )}
 
-        <div className={`flex-1 overflow-y-auto ${currentView === "focus" ? "ml-64 p-6" : ""}`}>
+        <div className={`flex-1 overflow-y-auto ${currentView === "focus" ? "md:ml-64 p-4 md:p-6" : ""}`}>
           {currentView === "focus" ? (
             <>
               {/* 透视选择器 */}
-              <div className="mb-6">
-                <div className="flex items-center gap-4">
+              <div className="mb-4 md:mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                   <div className="flex items-center gap-2">
-                    <Eye className="w-5 h-5 text-blue-400" />
-                    <span className="text-white font-medium">透视筛选:</span>
+                    <Eye className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
+                    <span className="text-sm md:text-base text-white font-medium">透视筛选:</span>
                   </div>
                   <Select
                     value={focusSelectedPerspectiveId || "all"}
                     onValueChange={(value) => setFocusSelectedPerspectiveId(value === "all" ? null : value)}
                   >
-                    <SelectTrigger className="w-64 bg-slate-800/50 border-slate-700 text-white">
+                    <SelectTrigger className="w-full sm:w-64 bg-slate-800/50 border-slate-700 text-white">
                       <SelectValue placeholder="选择透视..." />
                     </SelectTrigger>
                     <SelectContent className="bg-slate-800 border-slate-700">
@@ -472,10 +472,10 @@ export default function MNTaskBoard() {
 
               {/* 焦点任务区域 */}
               {focusTasks.length > 0 && (
-                <div className="mb-8">
-                  <div className="flex items-center gap-2 mb-6">
-                    <Target className="w-5 h-5 text-red-400" />
-                    <h2 className="text-xl font-semibold text-white">
+                <div className="mb-6 md:mb-8">
+                  <div className="flex items-center gap-2 mb-4 md:mb-6">
+                    <Target className="w-4 h-4 md:w-5 md:h-5 text-red-400" />
+                    <h2 className="text-lg md:text-xl font-semibold text-white">
                       {getFocusSelectedPerspective ? `${getFocusSelectedPerspective.name} - 焦点任务` : "焦点任务"}
                     </h2>
                     <Badge className="bg-red-500/20 text-red-300 border-red-500/30">{focusTasksCount}</Badge>
@@ -513,10 +513,10 @@ export default function MNTaskBoard() {
 
               {/* 待处理任务区域 */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-slate-400" />
-                    <h2 className="text-xl font-semibold text-white">
+                    <Clock className="w-4 h-4 md:w-5 md:h-5 text-slate-400" />
+                    <h2 className="text-lg md:text-xl font-semibold text-white">
                       {getFocusSelectedPerspective ? `${getFocusSelectedPerspective.name} - 待处理任务` : "待处理任务"}
                     </h2>
                     <Badge className="bg-slate-700 text-slate-300 border-slate-600">

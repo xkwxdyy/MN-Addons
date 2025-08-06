@@ -31,7 +31,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
-      <body className={GeistSans.className}>{children}</body>
+      <body className={GeistSans.className} suppressHydrationWarning>{children}</body>
     </html>
   )
 }

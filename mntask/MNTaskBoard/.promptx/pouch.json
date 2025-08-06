@@ -10,7 +10,17 @@
           "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask/MNTaskBoard"
         }
       ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-08-06T14:57:29.018Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask/MNTaskBoard"
+        }
+      ]
     }
   ],
-  "lastUpdated": "2025-08-06T05:59:21.585Z"
+  "lastUpdated": "2025-08-06T14:57:29.048Z"
 }

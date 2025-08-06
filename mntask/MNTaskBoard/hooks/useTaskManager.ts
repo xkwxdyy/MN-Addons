@@ -203,82 +203,89 @@ export function useTaskManager() {
 
       setTasks(tasks.filter((t) => t.id !== taskId))
       setPendingTasks([...pendingTasks, updatedTask])
+      // Also update in allTasks
+      setAllTasks(allTasks.map((t) => t.id === taskId ? updatedTask : t))
     } else {
       console.warn("toggleFocusTask called on non-focus task")
     }
   }
 
   const toggleTaskStatus = (taskId: string) => {
-    setTasks(
-      tasks.map((task) => {
-        if (task.id === taskId) {
-          let newStatus: "todo" | "in-progress" | "completed" | "paused"
-          switch (task.status) {
-            case "todo":
-              newStatus = "in-progress"
-              break
-            case "in-progress":
-              newStatus = "paused"
-              break
-            case "paused":
-              newStatus = "completed"
-              break
-            case "completed":
-              newStatus = "todo"
-              break
-            default:
-              newStatus = "in-progress"
-          }
-
-          return {
-            ...task,
-            status: newStatus,
-            completed: newStatus === "completed",
-          }
+    const updateTask = (task: Task) => {
+      if (task.id === taskId) {
+        let newStatus: "todo" | "in-progress" | "completed" | "paused"
+        switch (task.status) {
+          case "todo":
+            newStatus = "in-progress"
+            break
+          case "in-progress":
+            newStatus = "paused"
+            break
+          case "paused":
+            newStatus = "completed"
+            break
+          case "completed":
+            newStatus = "todo"
+            break
+          default:
+            newStatus = "in-progress"
         }
-        return task
-      }),
-    )
+
+        return {
+          ...task,
+          status: newStatus,
+          completed: newStatus === "completed",
+        }
+      }
+      return task
+    }
+
+    setTasks(tasks.map(updateTask))
+    setPendingTasks(pendingTasks.map(updateTask))
+    setAllTasks(allTasks.map(updateTask))
   }
 
   const startTask = (taskId: string) => {
-    setTasks(
-      tasks.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              status: "in-progress" as const,
-              completed: false,
-            }
-          : task,
-      ),
-    )
+    const updateTask = (task: Task) =>
+      task.id === taskId
+        ? {
+            ...task,
+            status: "in-progress" as const,
+            completed: false,
+          }
+        : task
+
+    setTasks(tasks.map(updateTask))
+    setPendingTasks(pendingTasks.map(updateTask))
+    setAllTasks(allTasks.map(updateTask))
   }
 
   const pauseTask = (taskId: string) => {
-    setTasks(
-      tasks.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              status: "paused" as const,
-            }
-          : task,
-      ),
-    )
+    const updateTask = (task: Task) =>
+      task.id === taskId
+        ? {
+            ...task,
+            status: "paused" as const,
+          }
+        : task
+
+    setTasks(tasks.map(updateTask))
+    setPendingTasks(pendingTasks.map(updateTask))
+    setAllTasks(allTasks.map(updateTask))
   }
 
   const resumeTask = (taskId: string) => {
-    setTasks(
-      tasks.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              status: "in-progress" as const,
-            }
-          : task,
-      ),
-    )
+    const updateTask = (task: Task) =>
+      task.id === taskId
+        ? {
+            ...task,
+            status: "in-progress" as const,
+          }
+        : task
+
+    setTasks(tasks.map(updateTask))
+    setPendingTasks(pendingTasks.map(updateTask))
+    setAllTasks(allTasks.map(updateTask))
   }
 
   const completeTask = (taskId: string) => {

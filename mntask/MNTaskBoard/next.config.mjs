@@ -24,6 +24,21 @@ const nextConfig = {
       'http://10.0.0.*:3000',
       'http://10.0.0.*:3001',
     ]
+  },
+  // 配置 webpack 忽略 data 目录的文件变化
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.watchOptions = {
+        ...config.watchOptions,
+        ignored: [
+          '**/node_modules',
+          '**/.git',
+          '**/data/**',  // 忽略 data 目录，防止文件变化触发 Fast Refresh
+          '**/.next/**'
+        ]
+      }
+    }
+    return config
   }
 }
 

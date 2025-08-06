@@ -404,6 +404,27 @@ export function useTaskManager() {
         return task
       }),
     )
+
+    setAllTasks(
+      allTasks.map((task) => {
+        if (task.id === taskId) {
+          const newProgressEntry = {
+            id: Date.now().toString(),
+            content: progress,
+            timestamp: new Date(),
+            type: "progress" as const,
+          }
+
+          return {
+            ...task,
+            progress: progress,
+            progressHistory: [...(task.progressHistory || []), newProgressEntry],
+            updatedAt: new Date(),
+          }
+        }
+        return task
+      }),
+    )
   }
 
   const addToPending = (

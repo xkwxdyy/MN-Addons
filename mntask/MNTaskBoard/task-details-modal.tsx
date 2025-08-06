@@ -243,11 +243,15 @@ export function TaskDetailsModal({
     if (newTag.trim() && !tempTags.includes(newTag.trim())) {
       setTempTags([...tempTags, newTag.trim()])
       setNewTag("")
+      // 自动保存标签更改
+      setTimeout(() => handleSave(), 0)
     }
   }
 
   const handleRemoveTag = (tagToRemove: string) => {
     setTempTags(tempTags.filter((tag) => tag !== tagToRemove))
+    // 自动保存标签更改
+    setTimeout(() => handleSave(), 0)
   }
 
   const handleStatusChange = (newStatus: "todo" | "in-progress" | "completed" | "paused") => {
@@ -797,7 +801,11 @@ export function TaskDetailsModal({
                         <Badge
                           key={tag}
                           className="bg-slate-600/50 text-slate-300 border-slate-500/30 cursor-pointer hover:bg-slate-500/50 text-xs"
-                          onClick={() => setTempTags([...tempTags, tag])}
+                          onClick={() => {
+                            setTempTags([...tempTags, tag])
+                            // 自动保存标签更改
+                            setTimeout(() => handleSave(), 0)
+                          }}
                         >
                           {tag}
                         </Badge>
@@ -894,22 +902,13 @@ export function TaskDetailsModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-700 flex justify-end gap-3">
+        <div className="px-6 py-4 border-t border-slate-700 flex justify-end">
           <Button
             variant="outline"
             onClick={handleClose}
             className="border-slate-600 text-slate-300 hover:bg-slate-700 bg-transparent"
           >
             关闭
-          </Button>
-          <Button
-            onClick={() => {
-              handleSave()
-              toast.success("更改已保存")
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            保存更改
           </Button>
         </div>
       </DialogContent>

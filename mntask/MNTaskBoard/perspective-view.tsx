@@ -227,6 +227,50 @@ export function PerspectiveView({
   // 根据是否显示已完成任务进行筛选
   const displayTasks = showCompletedTasks ? filteredTasks : filteredTasks.filter((task) => !task.completed)
 
+  // Helper functions for text conversion
+  const getTypeText = (type: string) => {
+    switch (type) {
+      case "action":
+        return "动作"
+      case "project":
+        return "项目"
+      case "key-result":
+        return "关键结果"
+      case "objective":
+        return "目标"
+      default:
+        return type
+    }
+  }
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "todo":
+        return "待开始"
+      case "in-progress":
+        return "进行中"
+      case "paused":
+        return "已暂停"
+      case "completed":
+        return "已完成"
+      default:
+        return status
+    }
+  }
+
+  const getPriorityText = (priority: string) => {
+    switch (priority) {
+      case "low":
+        return "低优先级"
+      case "medium":
+        return "中优先级"
+      case "high":
+        return "高优先级"
+      default:
+        return priority
+    }
+  }
+
   // 按分组方式组织任务
   const groupTasks = (tasks: Task[], groupBy: string) => {
     if (groupBy === "none") {
@@ -401,49 +445,6 @@ export function PerspectiveView({
   }
 
   // 辅助函数
-  const getTypeText = (type: string) => {
-    switch (type) {
-      case "action":
-        return "动作"
-      case "project":
-        return "项目"
-      case "key-result":
-        return "关键结果"
-      case "objective":
-        return "目标"
-      default:
-        return type
-    }
-  }
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "todo":
-        return "待开始"
-      case "in-progress":
-        return "进行中"
-      case "paused":
-        return "已暂停"
-      case "completed":
-        return "已完成"
-      default:
-        return status
-    }
-  }
-
-  const getPriorityText = (priority: string) => {
-    switch (priority) {
-      case "low":
-        return "低优先级"
-      case "medium":
-        return "中优先级"
-      case "high":
-        return "高优先级"
-      default:
-        return priority
-    }
-  }
-
   const getTypeIcon = (type: string) => {
     switch (type) {
       case "action":

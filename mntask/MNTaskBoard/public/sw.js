@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mntask-v1';
+const CACHE_NAME = 'mntask-v2';
 const urlsToCache = [
   '/',
   '/manifest.json',

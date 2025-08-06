@@ -3,6 +3,9 @@
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
+import type { Task, Perspective, PerspectiveFilter, ExportData, ViewMode, TaskTypeFilter } from "@/types/task"
+import { STORAGE_KEYS, SAMPLE_TASKS, SAMPLE_PENDING_TASKS, EXPORT_CONFIG, TASK_TYPE_OPTIONS, TASK_STATUS_OPTIONS, TASK_PRIORITY_OPTIONS } from "@/constants"
+import { StorageService } from "@/services/storage"
 import { Header } from "./header"
 import { Sidebar } from "./sidebar"
 import { TaskCard } from "./task-card"
@@ -27,62 +30,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
-
-interface Task {
-  id: string
-  title: string
-  description?: string
-  completed: boolean
-  isFocusTask: boolean
-  isPriorityFocus: boolean
-  priority: "low" | "medium" | "high"
-  status: "todo" | "in-progress" | "completed" | "paused"
-  type: "action" | "project" | "key-result" | "objective"
-  createdAt: Date
-  updatedAt?: Date
-  progress?: string
-  category?: string
-  order?: number
-  parentId?: string // 父任务ID
-  isInPending?: boolean // 是否在待处理列表中显示
-  tags?: string[] // 标签数组
-  progressHistory?: Array<{
-    id: string
-    content: string
-    timestamp: Date
-    type: "progress" | "status" | "comment"
-  }>
-}
-
-interface PerspectiveFilter {
-  tags: string[]
-  taskTypes: string[]
-  statuses: string[]
-  priorities: string[]
-  focusTask: string // "all" | "focus" | "non-focus"
-  priorityFocus: string // "all" | "priority" | "non-priority"
-}
-
-interface Perspective {
-  id: string
-  name: string
-  description?: string
-  filters: PerspectiveFilter
-  groupBy: "none" | "type" | "status" | "priority"
-  createdAt: Date
-}
-
-interface ExportData {
-  version: string
-  exportDate: string
-  focusTasks: Task[]
-  pendingTasks: Task[]
-  allTasks: Task[]
-  totalTasks: number
-}
-
-type ViewMode = "focus" | "kanban" | "perspective"
-type TaskTypeFilter = "all" | "action" | "project" | "key-result" | "objective"
 
 const sampleTasks: Task[] = [
   {

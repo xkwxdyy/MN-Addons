@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -145,13 +145,8 @@ export function TaskDetailsModal({
   if (!currentTask) return null
 
   const handleSave = () => {
-    console.log("=== TaskDetailsModal handleSave called ===")
     const updates: Partial<Task> = {}
     let hasChanges = false
-
-    console.log("Current task description:", currentTask.description)
-    console.log("Temp description:", tempDescription)
-    console.log("Description changed:", tempDescription !== (currentTask.description || ""))
 
     if (tempTitle !== currentTask.title) {
       updates.title = tempTitle
@@ -160,7 +155,6 @@ export function TaskDetailsModal({
     if (tempDescription !== (currentTask.description || "")) {
       updates.description = tempDescription
       hasChanges = true
-      console.log("Adding description to updates:", tempDescription)
     }
     if (JSON.stringify(tempTags) !== JSON.stringify(currentTask.tags || [])) {
       updates.tags = tempTags
@@ -169,15 +163,10 @@ export function TaskDetailsModal({
 
     if (hasChanges) {
       updates.updatedAt = new Date()
-      console.log("Calling onUpdateTask with updates:", updates)
       onUpdateTask(currentTask.id, updates)
       // 立即更新本地状态
       setCurrentTask({ ...currentTask, ...updates })
-      console.log("Local currentTask updated with description:", { ...currentTask, ...updates }.description)
-    } else {
-      console.log("No changes detected, not saving")
     }
-    console.log("=== TaskDetailsModal handleSave completed ===")
   }
 
   const handleClose = () => {
@@ -261,7 +250,6 @@ export function TaskDetailsModal({
   }
 
   const handleStatusChange = (newStatus: "todo" | "in-progress" | "completed" | "paused") => {
-    console.log("Status change requested:", newStatus) // 调试日志
     const updates = {
       status: newStatus,
       completed: newStatus === "completed",
@@ -275,7 +263,6 @@ export function TaskDetailsModal({
   }
 
   const handlePriorityChange = (newPriority: "low" | "medium" | "high") => {
-    console.log("Priority change requested:", newPriority) // 调试日志
     const updates = { priority: newPriority, updatedAt: new Date() }
     onUpdateTask(currentTask.id, updates)
     // 立即更新本地状态
@@ -284,7 +271,6 @@ export function TaskDetailsModal({
   }
 
   const handleTypeChange = (newType: "action" | "project" | "key-result" | "objective") => {
-    console.log("Type change requested:", newType) // 调试日志
     const updates = { type: newType, updatedAt: new Date() }
     onUpdateTask(currentTask.id, updates)
     // 立即更新本地状态
@@ -293,7 +279,6 @@ export function TaskDetailsModal({
   }
 
   const handleParentChange = (parentId: string) => {
-    console.log("Parent change requested:", parentId) // 调试日志
     const updates = { parentId: parentId === "none" ? undefined : parentId, updatedAt: new Date() }
     onUpdateTask(currentTask.id, updates)
     // 立即更新本地状态
@@ -454,6 +439,9 @@ export function TaskDetailsModal({
               </span>
             )}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            编辑任务详情，包括描述、状态、优先级和其他属性
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-1 overflow-hidden">

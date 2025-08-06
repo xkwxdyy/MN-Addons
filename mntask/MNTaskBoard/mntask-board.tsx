@@ -394,10 +394,10 @@ export default function MNTaskBoard() {
         tags: task.tags || [], // 确保标签属性存在
         // description 字段通过展开运算符自动保留
       }))
-      console.log("Loaded allTasks from localStorage, sample task:", parsedAllTasks[0])
-      if (parsedAllTasks[0]) {
-        console.log("First task description:", parsedAllTasks[0].description)
-      }
+      // console.log("Loaded allTasks from localStorage, sample task:", parsedAllTasks[0])
+      // if (parsedAllTasks[0]) {
+      //   console.log("First task description:", parsedAllTasks[0].description)
+      // }
       setAllTasks(parsedAllTasks)
     }
 
@@ -486,10 +486,10 @@ export default function MNTaskBoard() {
   }, [pendingTasks])
 
   useEffect(() => {
-    console.log("Saving allTasks to localStorage, count:", allTasks.length)
-    if (allTasks.length > 0 && allTasks[0].description !== undefined) {
-      console.log("First task has description:", allTasks[0].description)
-    }
+    // console.log("Saving allTasks to localStorage, count:", allTasks.length)
+    // if (allTasks.length > 0 && allTasks[0].description !== undefined) {
+    //   console.log("First task has description:", allTasks[0].description)
+    // }
     localStorage.setItem("mntask-all-tasks", JSON.stringify(allTasks))
   }, [allTasks])
 
@@ -1126,39 +1126,27 @@ export default function MNTaskBoard() {
   }
 
   const openTaskDetails = (taskId: string) => {
-    console.log("=== openTaskDetails called ===")
-    console.log("Looking for task ID:", taskId)
-    
     // 优先从 allTasks 中获取最新的任务数据
     const task = allTasks.find((t) => t.id === taskId)
     if (task) {
-      console.log("Task found in allTasks:")
-      console.log("  Title:", task.title)
-      console.log("  Description:", task.description !== undefined ? `"${task.description}"` : "undefined")
-      console.log("  Has description:", task.description !== undefined && task.description !== "")
       setSelectedTask(task)
       setIsDetailsModalOpen(true)
     } else {
-      console.warn("Task not found in allTasks:", taskId)
       // 尝试从其他数组中查找
       const taskInFocus = tasks.find((t) => t.id === taskId)
       const taskInPending = pendingTasks.find((t) => t.id === taskId)
       
       if (taskInFocus) {
-        console.log("Found in focus tasks, using it")
         setSelectedTask(taskInFocus)
         setIsDetailsModalOpen(true)
       } else if (taskInPending) {
-        console.log("Found in pending tasks, using it")
         setSelectedTask(taskInPending)
         setIsDetailsModalOpen(true)
       }
     }
-    console.log("=== openTaskDetails completed ===")
   }
 
   const locateTask = (taskId: string) => {
-    console.log("Locate task:", taskId)
     // 这里可以添加定位任务的逻辑，比如滚动到任务位置并高亮
     const taskElement = document.getElementById(`task-${taskId}`)
     if (taskElement) {
@@ -1171,44 +1159,26 @@ export default function MNTaskBoard() {
   }
 
   const launchTask = (taskId: string) => {
-    console.log("Launch task in external software:", taskId)
     // 这里可以添加启动外部软件的逻辑
     // 比如打开特定的应用程序或网页链接
   }
 
   const updateTask = (taskId: string, updates: Partial<Task>) => {
-    console.log("=== updateTask called ===")
-    console.log("Task ID:", taskId)
-    console.log("Updates:", updates)
-    console.log("Description in updates:", updates.description !== undefined ? `"${updates.description}"` : "not included")
-
     // 更新焦点任务
     setTasks(prev => {
       const updated = prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
-      const targetTask = updated.find(t => t.id === taskId)
-      if (targetTask) {
-        console.log("Updated task in focus tasks, description:", targetTask.description)
-      }
       return updated
     })
     
     // 更新待处理任务
     setPendingTasks(prev => {
       const updated = prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
-      const targetTask = updated.find(t => t.id === taskId)
-      if (targetTask) {
-        console.log("Updated task in pending tasks, description:", targetTask.description)
-      }
       return updated
     })
     
     // 更新总任务列表
     setAllTasks(prev => {
       const updated = prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
-      const targetTask = updated.find(t => t.id === taskId)
-      if (targetTask) {
-        console.log("Updated task in allTasks, description:", targetTask.description)
-      }
       return updated
     })
 
@@ -1216,10 +1186,7 @@ export default function MNTaskBoard() {
     if (selectedTask && selectedTask.id === taskId) {
       const updatedSelectedTask = { ...selectedTask, ...updates }
       setSelectedTask(updatedSelectedTask)
-      console.log("Updated selectedTask, description:", updatedSelectedTask.description)
     }
-    
-    console.log("=== updateTask completed ===")
   }
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1896,7 +1863,6 @@ export default function MNTaskBoard() {
           // Keep the modal open to show the subtask details
         }}
         onLocateTaskInBoard={(taskId, taskType) => {
-          console.log("Locating task:", taskId, "of type:", taskType)
 
           // 首先确保任务存在于allTasks中
           const taskToLocate = allTasks.find((t) => t.id === taskId)
@@ -1922,14 +1888,14 @@ export default function MNTaskBoard() {
               const filteredTasks = applyPerspectiveFilter([taskToLocate], perspective.filters)
               if (filteredTasks.length === 0) {
                 setKanbanSelectedPerspectiveId(null)
-                console.log("Task not in current perspective, clearing perspective filter")
+                // Task not in current perspective, clearing perspective filter
               }
             }
           }
 
           // Wait for the view to switch and state to update, then locate the task
           setTimeout(() => {
-            console.log("Attempting to locate task element...")
+            // Attempting to locate task element...
 
             // Try multiple selectors to find the task
             const selectors = [`[data-task-id="${taskId}"]`, `#task-${taskId}`, `[data-testid="task-${taskId}"]`]
@@ -1938,7 +1904,7 @@ export default function MNTaskBoard() {
             for (const selector of selectors) {
               taskElement = document.querySelector(selector)
               if (taskElement) {
-                console.log("Found task element with selector:", selector)
+                // Found task element with selector
                 break
               }
             }
@@ -1972,7 +1938,7 @@ export default function MNTaskBoard() {
                       : "目标"
               toast.success(`已切换到看板视图并定位到${typeText}任务: ${taskToLocate.title}`)
             } else {
-              console.log("Task element not found, task might not be visible in current filters")
+              // Task element not found, task might not be visible in current filters
 
               // Check if task should be visible
               const shouldBeVisible = taskTypeFilter === "all" || taskToLocate.type === taskTypeFilter

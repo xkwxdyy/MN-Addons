@@ -63,15 +63,15 @@ export function RecycleBinView({
   const getTaskTypeIcon = (type: string) => {
     switch (type) {
       case "action":
-        return <CheckSquare className="h-4 w-4" />
+        return <CheckSquare className="h-4 w-4 text-blue-400" />
       case "project":
-        return <Package className="h-4 w-4" />
+        return <Package className="h-4 w-4 text-purple-400" />
       case "key-result":
-        return <Target className="h-4 w-4" />
+        return <Target className="h-4 w-4 text-green-400" />
       case "objective":
-        return <Flag className="h-4 w-4" />
+        return <Flag className="h-4 w-4 text-orange-400" />
       default:
-        return <Square className="h-4 w-4" />
+        return <Square className="h-4 w-4 text-slate-400" />
     }
   }
 
@@ -123,7 +123,7 @@ export function RecycleBinView({
         <div className="flex items-center gap-2">
           <Trash2 className="h-5 w-5 text-slate-400" />
           <h2 className="text-xl font-semibold text-white">回收站</h2>
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-slate-300">
             ({tasks.length} 个任务)
           </span>
         </div>
@@ -207,7 +207,7 @@ export function RecycleBinView({
       {/* Info message */}
       <Card className="mb-4 bg-slate-800/50 border-slate-700">
         <CardContent className="py-3">
-          <div className="flex items-center gap-2 text-sm text-slate-400">
+          <div className="flex items-center gap-2 text-sm text-slate-200">
             <AlertCircle className="h-4 w-4" />
             <span>回收站中的任务将在删除后 7 天自动清理</span>
           </div>
@@ -219,7 +219,7 @@ export function RecycleBinView({
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <Trash2 className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-            <p className="text-slate-500">回收站为空</p>
+            <p className="text-slate-300">回收站为空</p>
           </div>
         </div>
       ) : (
@@ -244,7 +244,7 @@ export function RecycleBinView({
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={() => onToggleSelection(task.id)}
-                        className="mt-1"
+                        className="mt-1 border-2 border-slate-400 data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500"
                       />
 
                       {/* Task content */}
@@ -262,12 +262,12 @@ export function RecycleBinView({
                         </div>
                         
                         {task.description && (
-                          <p className="text-sm text-slate-500 mb-2 line-clamp-2">
+                          <p className="text-sm text-slate-300 mb-2 line-clamp-2">
                             {task.description}
                           </p>
                         )}
                         
-                        <div className="flex items-center gap-4 text-xs text-slate-500">
+                        <div className="flex items-center gap-4 text-xs text-slate-300">
                           <span>{getTaskTypeLabel(task.type)}</span>
                           {task.deletedAt && (
                             <span className="flex items-center gap-1">
@@ -288,13 +288,14 @@ export function RecycleBinView({
                       {/* Action buttons */}
                       <div className="flex items-center gap-1">
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation()
                             onRestoreTask(task.id)
                           }}
                           title="恢复任务"
+                          className="border-green-600 text-green-400 hover:bg-green-600/10 hover:text-green-300"
                         >
                           <RotateCcw className="h-4 w-4" />
                         </Button>
@@ -302,12 +303,13 @@ export function RecycleBinView({
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={(e) => e.stopPropagation()}
                               title="永久删除"
+                              className="border-red-600 text-red-400 hover:bg-red-600/10 hover:text-red-300"
                             >
-                              <Trash2 className="h-4 w-4 text-red-400" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>

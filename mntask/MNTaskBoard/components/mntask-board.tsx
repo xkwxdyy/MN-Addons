@@ -580,7 +580,7 @@ export default function MNTaskBoard() {
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {focusTasks.map((task) => {
+                    {focusTasks.filter(task => !task.completed).map((task) => {
                       const allTasksList = getAllTasksList()
                       const taskPath = generateTaskPath(task, allTasksList)
                       const taskWithPath = { ...task, category: taskPath }

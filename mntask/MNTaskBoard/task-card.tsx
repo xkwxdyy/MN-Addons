@@ -280,16 +280,18 @@ export function TaskCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-slate-800 border-slate-700">
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onToggleFocus(task.id)
-                  }}
-                  className="text-slate-300 hover:bg-slate-700"
-                >
-                  <Minus className="w-4 h-4 mr-2" />
-                  移出焦点
-                </DropdownMenuItem>
+                {!task.completed && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onToggleFocus(task.id)
+                    }}
+                    className="text-slate-300 hover:bg-slate-700"
+                  >
+                    <Minus className="w-4 h-4 mr-2" />
+                    移出焦点
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation()

@@ -267,12 +267,12 @@ export function TaskSearch({
       <DialogContent className="max-w-3xl p-0 bg-slate-900/95 backdrop-blur-sm border-slate-700">
         <Command className="rounded-lg border-0">
           <div className="flex items-center border-b border-slate-700 px-3">
-            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+            <Search className="mr-2 h-4 w-4 shrink-0 text-slate-400" />
             <Command.Input
               value={search}
               onValueChange={setSearch}
               placeholder="搜索任务..."
-              className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
             />
             <div className="flex items-center gap-2">
               {hasActiveFilters && (
@@ -280,7 +280,7 @@ export function TaskSearch({
                   variant="ghost"
                   size="sm"
                   onClick={clearFilters}
-                  className="h-7 px-2 text-xs"
+                  className="h-7 px-2 text-xs text-slate-300 hover:text-white"
                 >
                   清除筛选
                 </Button>
@@ -290,8 +290,8 @@ export function TaskSearch({
                 size="sm"
                 onClick={() => setShowFilters(!showFilters)}
                 className={cn(
-                  "h-7 px-2",
-                  showFilters && "bg-slate-800"
+                  "h-7 px-2 text-slate-400 hover:text-white",
+                  showFilters && "bg-slate-800 text-white"
                 )}
               >
                 <Filter className="h-3 w-3" />
@@ -311,7 +311,10 @@ export function TaskSearch({
                     variant={selectedFilters.type.includes(type) ? "default" : "outline"}
                     size="sm"
                     onClick={() => toggleFilter("type", type)}
-                    className="h-6 px-2 text-xs"
+                    className={cn(
+                      "h-6 px-2 text-xs",
+                      selectedFilters.type.includes(type) ? "text-white" : "text-slate-300 hover:text-white"
+                    )}
                   >
                     {getTypeLabel(type)}
                   </Button>
@@ -327,7 +330,10 @@ export function TaskSearch({
                     variant={selectedFilters.status.includes(status) ? "default" : "outline"}
                     size="sm"
                     onClick={() => toggleFilter("status", status)}
-                    className="h-6 px-2 text-xs"
+                    className={cn(
+                      "h-6 px-2 text-xs",
+                      selectedFilters.status.includes(status) ? "text-white" : "text-slate-300 hover:text-white"
+                    )}
                   >
                     {getStatusLabel(status)}
                   </Button>
@@ -343,7 +349,10 @@ export function TaskSearch({
                     variant={selectedFilters.priority.includes(priority) ? "default" : "outline"}
                     size="sm"
                     onClick={() => toggleFilter("priority", priority)}
-                    className="h-6 px-2 text-xs"
+                    className={cn(
+                      "h-6 px-2 text-xs",
+                      selectedFilters.priority.includes(priority) ? "text-white" : "text-slate-300 hover:text-white"
+                    )}
                   >
                     {priority === "high" ? "高" : priority === "medium" ? "中" : "低"}
                   </Button>
@@ -363,7 +372,10 @@ export function TaskSearch({
                     variant={selectedFilters.location.includes(loc.value) ? "default" : "outline"}
                     size="sm"
                     onClick={() => toggleFilter("location", loc.value)}
-                    className="h-6 px-2 text-xs"
+                    className={cn(
+                      "h-6 px-2 text-xs",
+                      selectedFilters.location.includes(loc.value) ? "text-white" : "text-slate-300 hover:text-white"
+                    )}
                   >
                     {loc.label}
                   </Button>
@@ -380,10 +392,13 @@ export function TaskSearch({
                       variant={selectedFilters.tags.includes(tag) ? "default" : "outline"}
                       size="sm"
                       onClick={() => toggleFilter("tags", tag)}
-                      className="h-6 px-2 text-xs"
+                      className={cn(
+                        "h-6 px-2 text-xs flex items-center",
+                        selectedFilters.tags.includes(tag) ? "text-white" : "text-slate-300 hover:text-white"
+                      )}
                     >
                       <Hash className="w-3 h-3 mr-1" />
-                      {tag}
+                      <span>{tag}</span>
                     </Button>
                   ))}
                 </div>
@@ -394,13 +409,13 @@ export function TaskSearch({
           <Command.List className="max-h-[400px] overflow-y-auto p-2">
             {/* Search history */}
             {!search && searchHistory.length > 0 && (
-              <Command.Group heading="搜索历史">
+              <Command.Group heading="搜索历史" className="[&_[cmdk-group-heading]]:text-slate-400 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1">
                 {searchHistory.map((query, index) => (
                   <Command.Item
                     key={index}
                     value={query}
                     onSelect={() => setSearch(query)}
-                    className="flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-slate-800"
+                    className="flex items-center gap-2 p-2 rounded-md cursor-pointer text-slate-300 hover:bg-slate-800 hover:text-white"
                   >
                     <History className="w-4 h-4 text-slate-500" />
                     <span className="text-sm">{query}</span>
@@ -417,7 +432,7 @@ export function TaskSearch({
                 </div>
               ) : (
                 Object.entries(groupedTasks).map(([type, tasks]) => (
-                  <Command.Group key={type} heading={getTypeLabel(type)}>
+                  <Command.Group key={type} heading={getTypeLabel(type)} className="[&_[cmdk-group-heading]]:text-slate-400 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1">
                     {tasks.slice(0, 10).map((task) => (
                       <Command.Item
                         key={task.id}
@@ -427,13 +442,13 @@ export function TaskSearch({
                           onSelectTask(task)
                           onOpenChange(false)
                         }}
-                        className="flex items-center justify-between p-2 rounded-md cursor-pointer hover:bg-slate-800 mb-1"
+                        className="flex items-center justify-between p-2 rounded-md cursor-pointer text-slate-300 hover:bg-slate-800 hover:text-white mb-1"
                       >
                         <div className="flex items-center gap-3 flex-1">
                           {getTypeIcon(task.type)}
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium">
+                              <span className="text-sm font-medium text-white">
                                 {task.title}
                               </span>
                               {task.isPriorityFocus && (
@@ -458,7 +473,7 @@ export function TaskSearch({
                               {task.tags && task.tags.length > 0 && (
                                 <div className="flex items-center gap-1">
                                   {task.tags.map(tag => (
-                                    <Badge key={tag} variant="outline" className="text-xs px-1 py-0">
+                                    <Badge key={tag} variant="outline" className="text-xs px-1 py-0 text-slate-300 border-slate-600">
                                       #{tag}
                                     </Badge>
                                   ))}
@@ -518,7 +533,7 @@ export function TaskSearch({
                 ))
               )
             ) : (
-              <div className="py-6 text-center text-sm text-slate-500">
+              <div className="py-6 text-center text-sm text-slate-400">
                 输入关键词搜索任务，或使用筛选器
               </div>
             )}

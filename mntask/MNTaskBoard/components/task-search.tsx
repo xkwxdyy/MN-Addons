@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react"
 import { Command } from "cmdk"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { VisuallyHidden } from "@/components/ui/visually-hidden"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { Task } from "@/types/task"
@@ -265,6 +266,11 @@ export function TaskSearch({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl p-0 bg-slate-900/95 backdrop-blur-sm border-slate-700">
+        <VisuallyHidden>
+          <DialogHeader>
+            <DialogTitle>任务搜索</DialogTitle>
+          </DialogHeader>
+        </VisuallyHidden>
         <Command className="rounded-lg border-0">
           <div className="flex items-center border-b border-slate-700 px-3">
             <Search className="mr-2 h-4 w-4 shrink-0 text-slate-400" />

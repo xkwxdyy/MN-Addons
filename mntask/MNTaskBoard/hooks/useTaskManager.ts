@@ -393,14 +393,25 @@ export function useTaskManager() {
       // 从待处理列表中移除
       setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
       
-      // 更新allTasks中的任务，去掉待处理标识
-      setAllTasks(prev => prev.map(task => 
-        task.id === taskId 
-          ? { ...task, isInPending: false }
-          : task
-      ))
+      // 确保任务存在于 allTasks 中，并更新状态
+      setAllTasks(prev => {
+        const existsInAll = prev.some(task => task.id === taskId)
+        
+        if (existsInAll) {
+          // 如果已存在，更新其状态
+          return prev.map(task => 
+            task.id === taskId 
+              ? { ...task, isInPending: false }
+              : task
+          )
+        } else {
+          // 如果不存在，添加到 allTasks
+          console.log(`Task ${taskId} not found in allTasks, adding it`)
+          return [...prev, { ...taskToRemove, isInPending: false }]
+        }
+      })
       
-      toast.success("任务已从待处理列表中移除")
+      toast.success("任务已移至任务库")
     }
   }
 

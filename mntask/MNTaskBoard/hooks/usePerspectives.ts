@@ -45,7 +45,7 @@ export function usePerspectives() {
   // Perspective state
   const [perspectives, setPerspectives] = useState<Perspective[]>([])
   const [focusSelectedPerspectiveId, setFocusSelectedPerspectiveId] = useState<string | null>(null)
-  const [kanbanSelectedPerspectiveId, setKanbanSelectedPerspectiveId] = useState<string | null>(null)
+  const [librarySelectedPerspectiveId, setLibrarySelectedPerspectiveId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -63,14 +63,21 @@ export function usePerspectives() {
         
         // Try to load selected perspectives from localStorage (UI state)
         const savedFocusSelectedPerspective = localStorage.getItem("mntask-focus-selected-perspective")
-        const savedKanbanSelectedPerspective = localStorage.getItem("mntask-kanban-selected-perspective")
+        // Handle legacy storage key
+        const savedLibrarySelectedPerspective = localStorage.getItem("mntask-library-selected-perspective") || 
+                                                localStorage.getItem("mntask-kanban-selected-perspective")
         
         if (savedFocusSelectedPerspective) {
           setFocusSelectedPerspectiveId(savedFocusSelectedPerspective)
         }
         
-        if (savedKanbanSelectedPerspective) {
-          setKanbanSelectedPerspectiveId(savedKanbanSelectedPerspective)
+        if (savedLibrarySelectedPerspective) {
+          setLibrarySelectedPerspectiveId(savedLibrarySelectedPerspective)
+          // Clean up legacy key if present
+          if (localStorage.getItem("mntask-kanban-selected-perspective")) {
+            localStorage.removeItem("mntask-kanban-selected-perspective")
+            localStorage.setItem("mntask-library-selected-perspective", savedLibrarySelectedPerspective)
+          }
         }
       } catch (error) {
         console.error('Failed to load perspectives:', error)
@@ -112,8 +119,8 @@ export function usePerspectives() {
   // Save selected perspectives to localStorage (UI state only)
   useEffect(() => {
     localStorage.setItem("mntask-focus-selected-perspective", focusSelectedPerspectiveId || "")
-    localStorage.setItem("mntask-kanban-selected-perspective", kanbanSelectedPerspectiveId || "")
-  }, [focusSelectedPerspectiveId, kanbanSelectedPerspectiveId])
+    localStorage.setItem("mntask-library-selected-perspective", librarySelectedPerspectiveId || "")
+  }, [focusSelectedPerspectiveId, librarySelectedPerspectiveId])
 
   // CRUD operations
   const createPerspective = (perspective: Omit<Perspective, "id" | "createdAt">) => {
@@ -142,8 +149,8 @@ export function usePerspectives() {
     if (focusSelectedPerspectiveId === perspectiveId) {
       setFocusSelectedPerspectiveId(null)
     }
-    if (kanbanSelectedPerspectiveId === perspectiveId) {
-      setKanbanSelectedPerspectiveId(null)
+    if (librarySelectedPerspectiveId === perspectiveId) {
+      setLibrarySelectedPerspectiveId(null)
     }
     
     toast.success("透视删除成功")
@@ -277,18 +284,18 @@ export function usePerspectives() {
     ? perspectives.find((p) => p.id === focusSelectedPerspectiveId)
     : null
 
-  const getKanbanSelectedPerspective = kanbanSelectedPerspectiveId
-    ? perspectives.find((p) => p.id === kanbanSelectedPerspectiveId)
+  const getLibrarySelectedPerspective = librarySelectedPerspectiveId
+    ? perspectives.find((p) => p.id === librarySelectedPerspectiveId)
     : null
 
   // Apply perspective filter to task list based on view
-  const getFilteredTasks = (taskList: Task[], view: "focus" | "kanban"): Task[] => {
+  const getFilteredTasks = (taskList: Task[], view: "focus" | "library"): Task[] => {
     let selectedPerspective = null
     
     if (view === "focus") {
       selectedPerspective = getFocusSelectedPerspective
-    } else if (view === "kanban") {
-      selectedPerspective = getKanbanSelectedPerspective
+    } else if (view === "library") {
+      selectedPerspective = getLibrarySelectedPerspective
     }
 
     if (!selectedPerspective) return taskList
@@ -307,10 +314,12 @@ export function usePerspectives() {
   const resetPerspectives = async () => {
     setPerspectives([])
     setFocusSelectedPerspectiveId(null)
-    setKanbanSelectedPerspectiveId(null)
+    setLibrarySelectedPerspectiveId(null)
     
     // Clear UI state from localStorage
     localStorage.removeItem("mntask-focus-selected-perspective")
+    localStorage.removeItem("mntask-library-selected-perspective")
+    // Also clean up legacy key
     localStorage.removeItem("mntask-kanban-selected-perspective")
     
     // Clear from API storage
@@ -330,11 +339,11 @@ export function usePerspectives() {
     // State
     perspectives,
     focusSelectedPerspectiveId,
-    kanbanSelectedPerspectiveId,
+    librarySelectedPerspectiveId,
     
     // Setters
     setFocusSelectedPerspectiveId,
-    setKanbanSelectedPerspectiveId,
+    setLibrarySelectedPerspectiveId,
     
     // CRUD operations
     createPerspective,
@@ -350,7 +359,7 @@ export function usePerspectives() {
     
     // Getters
     getFocusSelectedPerspective,
-    getKanbanSelectedPerspective,
+    getLibrarySelectedPerspective,
     
     // Utilities
     getFilterSummary,

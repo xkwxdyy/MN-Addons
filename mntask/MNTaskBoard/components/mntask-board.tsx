@@ -11,7 +11,7 @@ import { Header } from "@/header"
 import { Sidebar } from "@/sidebar"
 import { TaskCard } from "@/task-card"
 import { PendingTaskCard } from "@/pending-task-card"
-import { KanbanBoard } from "@/kanban-board"
+import { TaskLibrary } from "@/task-library"
 import { PerspectiveView } from "@/perspective-view"
 import { InboxView } from "@/inbox-view"
 import { Button } from "@/components/ui/button"
@@ -78,7 +78,7 @@ export default function MNTaskBoard() {
     addToPending,
     addTaskToPending,
     addToFocus,
-    addToPendingFromKanban,
+    addToPendingFromLibrary: addToPendingFromKanban,
     updateTask,
     updateProgress,
     deleteProgress,
@@ -102,7 +102,7 @@ export default function MNTaskBoard() {
 
   // UI state - 移动端默认显示 Inbox
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
-  const [currentView, setCurrentView] = useState<"focus" | "kanban" | "perspective" | "inbox">(
+  const [currentView, setCurrentView] = useState<"focus" | "library" | "perspective" | "inbox">(
     isMobile ? "inbox" : "focus"
   )
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
@@ -117,22 +117,22 @@ export default function MNTaskBoard() {
   const {
     perspectives,
     focusSelectedPerspectiveId,
-    kanbanSelectedPerspectiveId,
+    librarySelectedPerspectiveId: kanbanSelectedPerspectiveId,
     setFocusSelectedPerspectiveId,
-    setKanbanSelectedPerspectiveId,
+    setLibrarySelectedPerspectiveId: setKanbanSelectedPerspectiveId,
     createPerspective,
     updatePerspective,
     deletePerspective,
     applyPerspectiveFilter,
     getFilteredTasks,
     getFocusSelectedPerspective,
-    getKanbanSelectedPerspective,
+    getLibrarySelectedPerspective: getKanbanSelectedPerspective,
     getFilterSummary,
     resetPerspectives,
   } = usePerspectives()
 
-  // 看板任务类型筛选状态
-  const [kanbanTaskTypeFilter, setKanbanTaskTypeFilter] = useState<TaskTypeFilter>("all")
+  // 任务库任务类型筛选状态
+  const [libraryTaskTypeFilter, setLibraryTaskTypeFilter] = useState<TaskTypeFilter>("all")
 
   // 焦点视图待处理任务类型显示控制
   const [showAllPendingTypes, setShowAllPendingTypes] = useState(false)
@@ -156,8 +156,14 @@ export default function MNTaskBoard() {
     const savedView = localStorage.getItem("mntask-current-view")
 
     // 恢复视图状态
-    if (savedView && (savedView === "focus" || savedView === "kanban" || savedView === "perspective")) {
-      setCurrentView(savedView)
+    if (savedView && (savedView === "focus" || savedView === "library" || savedView === "kanban" || savedView === "perspective")) {
+      // Handle legacy "kanban" value
+      if (savedView === "kanban") {
+        setCurrentView("library")
+        localStorage.setItem(STORAGE_KEYS.VIEW_MODE, "library")
+      } else {
+        setCurrentView(savedView)
+      }
     }
   }, [])
 
@@ -804,20 +810,20 @@ export default function MNTaskBoard() {
                 </div>
               </div>
             </>
-          ) : currentView === "kanban" ? (
-            /* 看板视图 */
+          ) : currentView === "library" ? (
+            /* 任务库视图 */
             <KanbanBoard
               focusTasks={focusTasks}
               pendingTasks={pendingTasks}
               allTasks={allTasks}
               perspectives={perspectives}
               selectedPerspectiveId={kanbanSelectedPerspectiveId}
-              selectedTaskTypeFilter={kanbanTaskTypeFilter}
+              selectedTaskTypeFilter={libraryTaskTypeFilter}
               onUpdateTask={updateTask}
               onOpenDetails={openTaskDetails}
               onDeleteTask={deleteTask}
               onAddToFocus={addToFocus}
-              onAddToPending={addToPendingFromKanban}
+              onAddToPending={addToPendingFromLibrary}
               onRemoveFromPending={removeFromPending}
               onAddTask={(taskData) => {
           const perspective = getFocusSelectedPerspective
@@ -828,7 +834,7 @@ export default function MNTaskBoard() {
           }
         }}
               onPerspectiveChange={setKanbanSelectedPerspectiveId}
-              onTaskTypeFilterChange={setKanbanTaskTypeFilter}
+              onTaskTypeFilterChange={setLibraryTaskTypeFilter}
             />
           ) : currentView === "perspective" ? (
             /* 透视视图 */
@@ -910,15 +916,15 @@ export default function MNTaskBoard() {
             return
           }
 
-          // Switch to kanban view
-          setCurrentView("kanban")
+          // Switch to task library view
+          setCurrentView("library")
 
           // Close the current modal
           setIsDetailsModalOpen(false)
 
           // Set the appropriate task type filter and perspective
           const taskTypeFilter = taskType as TaskTypeFilter
-          setKanbanTaskTypeFilter(taskTypeFilter)
+          setLibraryTaskTypeFilter(taskTypeFilter)
 
           // 如果任务不在当前透视中，清除透视筛选
           if (kanbanSelectedPerspectiveId) {
@@ -975,16 +981,16 @@ export default function MNTaskBoard() {
                     : taskType === "key-result"
                       ? "关键结果"
                       : "目标"
-              toast.success(`已切换到看板视图并定位到${typeText}任务: ${taskToLocate.title}`)
+              toast.success(`已切换到任务库并定位到${typeText}任务: ${taskToLocate.title}`)
             } else {
               // Task element not found, task might not be visible in current filters
 
               // Check if task should be visible
               const shouldBeVisible = taskTypeFilter === "all" || taskToLocate.type === taskTypeFilter
               if (shouldBeVisible) {
-                toast.error(`任务已切换到看板视图，但无法定位任务。任务可能不在当前筛选条件中。`)
+                toast.error(`任务已切换到任务库，但无法定位任务。任务可能不在当前筛选条件中。`)
               } else {
-                toast.warning(`已切换到看板视图，请检查任务类型筛选器是否正确设置为"${taskType}"`)
+                toast.warning(`已切换到任务库，请检查任务类型筛选器是否正确设置为"${taskType}"`)
               }
             }
           }, 500) // Increased timeout to ensure state updates and re-render

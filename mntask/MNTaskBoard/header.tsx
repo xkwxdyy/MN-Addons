@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 interface HeaderProps {
-  currentView: "focus" | "kanban" | "perspective" | "inbox"
-  onViewChange: (view: "focus" | "kanban" | "perspective" | "inbox") => void
+  currentView: "focus" | "library" | "perspective" | "inbox"
+  onViewChange: (view: "focus" | "library" | "perspective" | "inbox") => void
   onRefresh?: () => void
   isRefreshing?: boolean
   onSearchOpen?: () => void
@@ -24,7 +24,7 @@ export function Header({ currentView, onViewChange, onRefresh, isRefreshing = fa
   const viewOptions = [
     { value: "inbox" as const, label: "收件箱", icon: Inbox },
     { value: "focus" as const, label: "焦点视图", icon: Target },
-    { value: "kanban" as const, label: "看板视图", icon: LayoutGrid },
+    { value: "library" as const, label: "任务库", icon: LayoutGrid },
     { value: "perspective" as const, label: "透视视图", icon: Eye },
   ]
 

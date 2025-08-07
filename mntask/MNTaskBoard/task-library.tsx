@@ -13,7 +13,7 @@ import { Target, FolderOpen, TrendingUp, Crosshair, Filter, X, Plus, Eye } from 
 import { toast } from "sonner"
 import type { Task, Perspective, PerspectiveFilter } from "@/types/task"
 
-interface KanbanBoardProps {
+interface TaskLibraryProps {
   focusTasks: Task[]
   pendingTasks: Task[]
   allTasks: Task[]
@@ -34,7 +34,7 @@ interface KanbanBoardProps {
 type TaskTypeFilter = "all" | "action" | "project" | "key-result" | "objective"
 type TaskStatus = "todo" | "in-progress" | "completed" | "paused"
 
-export function KanbanBoard({
+export function TaskLibrary({
   focusTasks: _focusTasks,
   pendingTasks: _pendingTasks,
   allTasks,
@@ -50,7 +50,7 @@ export function KanbanBoard({
   onAddTask,
   onPerspectiveChange,
   onTaskTypeFilterChange,
-}: KanbanBoardProps) {
+}: TaskLibraryProps) {
   const [selectedFilter, setSelectedFilter] = useState<TaskTypeFilter>(selectedTaskTypeFilter || "all")
   const [newTaskTitle, setNewTaskTitle] = useState("")
   const [newTaskType, setNewTaskType] = useState<"action" | "project" | "key-result" | "objective">("action")
@@ -433,8 +433,8 @@ export function KanbanBoard({
     }
   }
 
-  // 渲染看板列
-  const renderKanbanColumn = (
+  // 渲染任务列
+  const renderTaskColumn = (
     status: TaskStatus,
     title: string,
     icon: React.ComponentType<any>,
@@ -812,10 +812,10 @@ export function KanbanBoard({
         )}
       </div>
 
-      {/* 看板列 */}
+      {/* 任务列 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        {renderKanbanColumn("todo", "待开始", Target, "text-blue-400", "bg-blue-500/20 text-blue-300", todoTasks)}
-        {renderKanbanColumn(
+        {renderTaskColumn("todo", "待开始", Target, "text-blue-400", "bg-blue-500/20 text-blue-300", todoTasks)}
+        {renderTaskColumn(
           "in-progress",
           "进行中",
           TrendingUp,
@@ -823,8 +823,8 @@ export function KanbanBoard({
           "bg-green-500/20 text-green-300",
           inProgressTasks,
         )}
-        {renderKanbanColumn("paused", "已暂停", X, "text-yellow-400", "bg-yellow-500/20 text-yellow-300", pausedTasks)}
-        {renderKanbanColumn(
+        {renderTaskColumn("paused", "已暂停", X, "text-yellow-400", "bg-yellow-500/20 text-yellow-300", pausedTasks)}
+        {renderTaskColumn(
           "completed",
           "已完成",
           Crosshair,

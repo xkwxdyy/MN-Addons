@@ -5,7 +5,7 @@
 export type TaskPriority = "low" | "medium" | "high"
 export type TaskStatus = "todo" | "in-progress" | "completed" | "paused"
 export type TaskType = "action" | "project" | "key-result" | "objective"
-export type ViewMode = "focus" | "kanban" | "perspective" | "inbox"
+export type ViewMode = "focus" | "library" | "perspective" | "inbox"
 export type TaskTypeFilter = "all" | "action" | "project" | "key-result" | "objective"
 
 export interface ProgressHistoryItem {

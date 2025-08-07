@@ -44,8 +44,10 @@ export function useTaskManager() {
   const [pendingTasks, setPendingTasks] = useState<Task[]>([])
   const [inboxTasks, setInboxTasks] = useState<Task[]>([])
   const [allTasks, setAllTasks] = useState<Task[]>([])
+  const [recycleBin, setRecycleBin] = useState<Task[]>([])
   const [selectedPendingTasks, setSelectedPendingTasks] = useState<string[]>([])
   const [selectedInboxTasks, setSelectedInboxTasks] = useState<string[]>([])
+  const [selectedRecycleBinTasks, setSelectedRecycleBinTasks] = useState<string[]>([])
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState("")
   const [isLoading, setIsLoading] = useState(true)
@@ -63,6 +65,7 @@ export function useTaskManager() {
           setFocusTasks(SAMPLE_TASKS)
           setPendingTasks(SAMPLE_PENDING_TASKS)
           setInboxTasks([])
+          setRecycleBin([])
           // allTasks will be set by useEffect
           
           // Save sample data
@@ -71,6 +74,7 @@ export function useTaskManager() {
             pendingTasks: SAMPLE_PENDING_TASKS,
             inboxTasks: [],
             allTasks: [...SAMPLE_TASKS, ...SAMPLE_PENDING_TASKS],
+            recycleBin: [],
             perspectives: []
           })
         } else {
@@ -82,6 +86,7 @@ export function useTaskManager() {
           })))
           setPendingTasks(data.pendingTasks)
           setInboxTasks(data.inboxTasks || [])
+          setRecycleBin(data.recycleBin || [])
           // allTasks will be set by useEffect
         }
       } catch (error) {
@@ -118,7 +123,8 @@ export function useTaskManager() {
           focusTasks,
           pendingTasks,
           inboxTasks,
-          allTasks: computedAllTasks
+          allTasks: computedAllTasks,
+          recycleBin
         })
       } catch (error) {
         console.error('Failed to save tasks:', error)
@@ -130,7 +136,7 @@ export function useTaskManager() {
         clearTimeout(saveTimeoutRef.current)
       }
     }
-  }, [focusTasks, pendingTasks, inboxTasks, isLoading]) // Removed allTasks from dependencies
+  }, [focusTasks, pendingTasks, inboxTasks, recycleBin, isLoading]) // Removed allTasks from dependencies
 
   // Sync allTasks state when component focusTasks change
   // This is separate from saving to avoid circular dependency
@@ -419,54 +425,69 @@ export function useTaskManager() {
   }
 
   const deleteTask = (taskId: string) => {
+    // Find the task to delete
+    const taskToDelete = 
+      focusTasks.find(t => t.id === taskId) ||
+      pendingTasks.find(t => t.id === taskId) ||
+      inboxTasks.find(t => t.id === taskId) ||
+      allTasks.find(t => t.id === taskId)
+    
+    if (!taskToDelete) {
+      console.warn(`Task ${taskId} not found for deletion`)
+      return
+    }
+
+    // Mark task as deleted and move to recycle bin
+    const deletedTask: Task = {
+      ...taskToDelete,
+      deletedAt: new Date(),
+      isDeleted: true,
+      isFocusTask: false,
+      isInPending: false,
+      isInInbox: false
+    }
+
+    // Handle child tasks
     const childTasks = getChildTasks(taskId)
-
     if (childTasks.length > 0) {
-      setFocusTasks(
-        focusTasks
-          .map((task) => (task.parentId === taskId ? { ...task, parentId: undefined } : task))
-          .filter((task) => task.id !== taskId),
+      // Unparent child tasks
+      setFocusTasks(prev => 
+        prev
+          .map(task => task.parentId === taskId ? { ...task, parentId: undefined } : task)
+          .filter(task => task.id !== taskId)
       )
-
-      setPendingTasks(
-        pendingTasks
-          .map((task) => (task.parentId === taskId ? { ...task, parentId: undefined } : task))
-          .filter((task) => task.id !== taskId),
+      setPendingTasks(prev =>
+        prev
+          .map(task => task.parentId === taskId ? { ...task, parentId: undefined } : task)
+          .filter(task => task.id !== taskId)
       )
-
-      setAllTasks(
-        allTasks
-          .map((task) => (task.parentId === taskId ? { ...task, parentId: undefined } : task))
-          .filter((task) => task.id !== taskId),
+      setInboxTasks(prev =>
+        prev
+          .map(task => task.parentId === taskId ? { ...task, parentId: undefined } : task)
+          .filter(task => task.id !== taskId)
+      )
+      setAllTasks(prev =>
+        prev
+          .map(task => task.parentId === taskId ? { ...task, parentId: undefined } : task)
+          .filter(task => task.id !== taskId)
       )
     } else {
-      setFocusTasks(focusTasks.filter((task) => task.id !== taskId))
-      setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
-      setAllTasks(allTasks.filter((task) => task.id !== taskId))
+      // Remove from all lists
+      setFocusTasks(prev => prev.filter(task => task.id !== taskId))
+      setPendingTasks(prev => prev.filter(task => task.id !== taskId))
+      setInboxTasks(prev => prev.filter(task => task.id !== taskId))
+      setAllTasks(prev => prev.filter(task => task.id !== taskId))
     }
+
+    // Add to recycle bin
+    setRecycleBin(prev => [...prev, deletedTask])
+    
+    toast.success("任务已移至回收站")
   }
 
   const deletePendingTask = (taskId: string) => {
-    const childTasks = getChildTasks(taskId)
-
-    if (childTasks.length > 0) {
-      setFocusTasks(focusTasks.map((task) => (task.parentId === taskId ? { ...task, parentId: undefined } : task)))
-
-      setPendingTasks(
-        pendingTasks
-          .map((task) => (task.parentId === taskId ? { ...task, parentId: undefined } : task))
-          .filter((task) => task.id !== taskId),
-      )
-
-      setAllTasks(
-        allTasks
-          .map((task) => (task.parentId === taskId ? { ...task, parentId: undefined } : task))
-          .filter((task) => task.id !== taskId),
-      )
-    } else {
-      setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
-      setAllTasks(allTasks.filter((task) => task.id !== taskId))
-    }
+    // Use the same soft delete logic as deleteTask
+    deleteTask(taskId)
   }
 
   const removeFromPending = (taskId: string) => {
@@ -1108,10 +1129,96 @@ export function useTaskManager() {
   }
 
   const deleteInboxTask = (taskId: string) => {
-    setInboxTasks(prev => prev.filter(t => t.id !== taskId))
-    setAllTasks(prev => prev.filter(t => t.id !== taskId))
-    toast.success("已从收件箱删除")
+    // Use the same soft delete logic as deleteTask
+    deleteTask(taskId)
   }
+
+  // Recycle bin operations
+  const restoreFromRecycleBin = (taskId: string) => {
+    const taskToRestore = recycleBin.find(t => t.id === taskId)
+    if (!taskToRestore) {
+      console.warn(`Task ${taskId} not found in recycle bin`)
+      return
+    }
+
+    // Remove deleted flags
+    const restoredTask: Task = {
+      ...taskToRestore,
+      deletedAt: undefined,
+      isDeleted: false,
+    }
+
+    // Determine where to restore the task based on its previous location
+    if (taskToRestore.isFocusTask) {
+      setFocusTasks(prev => [...prev, { ...restoredTask, isFocusTask: true }])
+    } else if (taskToRestore.isInPending) {
+      setPendingTasks(prev => [...prev, { ...restoredTask, isInPending: true }])
+    } else if (taskToRestore.isInInbox) {
+      setInboxTasks(prev => [...prev, { ...restoredTask, isInInbox: true }])
+    } else {
+      // Default to allTasks only (library task)
+      setAllTasks(prev => [...prev, restoredTask])
+    }
+
+    // Always add to allTasks if not already there
+    setAllTasks(prev => {
+      const exists = prev.some(t => t.id === taskId)
+      if (!exists) {
+        return [...prev, restoredTask]
+      }
+      return prev.map(t => t.id === taskId ? restoredTask : t)
+    })
+
+    // Remove from recycle bin
+    setRecycleBin(prev => prev.filter(t => t.id !== taskId))
+    
+    toast.success("任务已恢复")
+  }
+
+  const permanentlyDelete = (taskId: string) => {
+    setRecycleBin(prev => prev.filter(t => t.id !== taskId))
+    toast.success("任务已永久删除")
+  }
+
+  const emptyRecycleBin = () => {
+    const count = recycleBin.length
+    if (count === 0) {
+      toast.info("回收站已空")
+      return
+    }
+    
+    setRecycleBin([])
+    toast.success(`已永久删除 ${count} 个任务`)
+  }
+
+  const cleanupOldRecycleBinItems = () => {
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    
+    const itemsToKeep = recycleBin.filter(task => {
+      if (!task.deletedAt) return true // Keep if no deletion date
+      return new Date(task.deletedAt) > sevenDaysAgo
+    })
+    
+    const deletedCount = recycleBin.length - itemsToKeep.length
+    if (deletedCount > 0) {
+      setRecycleBin(itemsToKeep)
+      console.log(`自动清理了 ${deletedCount} 个过期的回收站任务`)
+    }
+  }
+
+  // Run cleanup on mount and every day
+  useEffect(() => {
+    cleanupOldRecycleBinItems()
+    
+    // Set up daily cleanup
+    const interval = setInterval(() => {
+      cleanupOldRecycleBinItems()
+    }, 24 * 60 * 60 * 1000) // Run once per day
+    
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only run on mount
 
   const moveFromInboxToFocus = (taskId: string) => {
     const task = inboxTasks.find(t => t.id === taskId)
@@ -1183,6 +1290,45 @@ export function useTaskManager() {
     setAllTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t))
   }
 
+  // Recycle bin selection operations
+  const toggleRecycleBinTaskSelection = (taskId: string) => {
+    setSelectedRecycleBinTasks(prev =>
+      prev.includes(taskId)
+        ? prev.filter(id => id !== taskId)
+        : [...prev, taskId]
+    )
+  }
+
+  const clearRecycleBinSelection = () => {
+    setSelectedRecycleBinTasks([])
+  }
+
+  const restoreSelectedFromRecycleBin = () => {
+    if (selectedRecycleBinTasks.length === 0) {
+      toast.error("请先选择要恢复的任务")
+      return
+    }
+
+    selectedRecycleBinTasks.forEach(taskId => {
+      restoreFromRecycleBin(taskId)
+    })
+
+    clearRecycleBinSelection()
+    toast.success(`已恢复 ${selectedRecycleBinTasks.length} 个任务`)
+  }
+
+  const permanentlyDeleteSelected = () => {
+    if (selectedRecycleBinTasks.length === 0) {
+      toast.error("请先选择要删除的任务")
+      return
+    }
+
+    const count = selectedRecycleBinTasks.length
+    setRecycleBin(prev => prev.filter(t => !selectedRecycleBinTasks.includes(t.id)))
+    clearRecycleBinSelection()
+    toast.success(`已永久删除 ${count} 个任务`)
+  }
+
   return {
     // Loading state
     isLoading,
@@ -1192,8 +1338,10 @@ export function useTaskManager() {
     pendingTasks,
     inboxTasks,
     allTasks,
+    recycleBin,
     selectedPendingTasks,
     selectedInboxTasks,
+    selectedRecycleBinTasks,
     isSelectionMode,
     newTaskTitle,
     setNewTaskTitle,
@@ -1241,5 +1389,15 @@ export function useTaskManager() {
     toggleInboxTaskSelection,
     clearInboxSelection,
     updateInboxTask,
+
+    // Recycle bin operations
+    restoreFromRecycleBin,
+    permanentlyDelete,
+    emptyRecycleBin,
+    cleanupOldRecycleBinItems,
+    toggleRecycleBinTaskSelection,
+    clearRecycleBinSelection,
+    restoreSelectedFromRecycleBin,
+    permanentlyDeleteSelected,
   }
 }

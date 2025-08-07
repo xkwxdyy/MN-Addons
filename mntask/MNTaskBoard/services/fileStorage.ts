@@ -7,6 +7,7 @@ export interface TaskData {
   pendingTasks: any[]
   inboxTasks: any[]
   allTasks: any[]
+  recycleBin: any[]
   perspectives: any[]
   lastUpdated: string
 }

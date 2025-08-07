@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Target, LayoutGrid, Eye, Menu, Inbox, RefreshCw, Search } from "lucide-react"
+import { Target, LayoutGrid, Eye, Menu, Inbox, RefreshCw, Search, Trash2 } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import {
   DropdownMenu,
@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 interface HeaderProps {
-  currentView: "focus" | "library" | "perspective" | "inbox"
-  onViewChange: (view: "focus" | "library" | "perspective" | "inbox") => void
+  currentView: "focus" | "library" | "perspective" | "inbox" | "recycle"
+  onViewChange: (view: "focus" | "library" | "perspective" | "inbox" | "recycle") => void
   onRefresh?: () => void
   isRefreshing?: boolean
   onSearchOpen?: () => void
@@ -26,6 +26,7 @@ export function Header({ currentView, onViewChange, onRefresh, isRefreshing = fa
     { value: "focus" as const, label: "焦点视图", icon: Target },
     { value: "library" as const, label: "任务库", icon: LayoutGrid },
     { value: "perspective" as const, label: "透视视图", icon: Eye },
+    { value: "recycle" as const, label: "回收站", icon: Trash2 },
   ]
 
   return (

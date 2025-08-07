@@ -12,6 +12,7 @@ export async function GET() {
         tasks: [],  // 保留以兼容旧版本
         pendingTasks: [],
         allTasks: [],
+        recycleBin: [],
         perspectives: [],
         lastUpdated: new Date().toISOString()
       })

@@ -5,6 +5,7 @@ export interface StorageData {
   pendingTasks: Task[]
   inboxTasks: Task[]
   allTasks: Task[]
+  recycleBin: Task[]
   perspectives: Perspective[]
 }
 
@@ -43,6 +44,10 @@ class ApiStorageService {
         pendingTasks: (data.pendingTasks || []).map(parseTaskDates),
         inboxTasks: (data.inboxTasks || []).map(parseTaskDates),
         allTasks: (data.allTasks || []).map(parseTaskDates),
+        recycleBin: (data.recycleBin || []).map((task: any) => ({
+          ...parseTaskDates(task),
+          deletedAt: task.deletedAt ? new Date(task.deletedAt) : undefined
+        })),
         perspectives: (data.perspectives || []).map(parsePerspectiveDates)
       }
       
@@ -65,6 +70,7 @@ class ApiStorageService {
         pendingTasks: [],
         inboxTasks: [],
         allTasks: [],
+        recycleBin: [],
         perspectives: []
       }
     }
@@ -80,6 +86,7 @@ class ApiStorageService {
       const pendingTasks = localStorage.getItem('mntask-pending')
       const inboxTasks = localStorage.getItem('mntask-inbox')
       const allTasks = localStorage.getItem('mntask-all-tasks')
+      const recycleBin = localStorage.getItem('mntask-recycle-bin')
       const perspectives = localStorage.getItem('mntask-perspectives')
       
       if (!focusTasks && !pendingTasks && !allTasks) {
@@ -90,6 +97,7 @@ class ApiStorageService {
         ...task,
         createdAt: new Date(task.createdAt),
         updatedAt: task.updatedAt ? new Date(task.updatedAt) : undefined,
+        deletedAt: task.deletedAt ? new Date(task.deletedAt) : undefined,
         progressHistory: task.progressHistory?.map((p: any) => ({
           ...p,
           timestamp: new Date(p.timestamp)
@@ -106,6 +114,7 @@ class ApiStorageService {
         pendingTasks: pendingTasks ? JSON.parse(pendingTasks).map(parseTaskDates) : [],
         inboxTasks: inboxTasks ? JSON.parse(inboxTasks).map(parseTaskDates) : [],
         allTasks: allTasks ? JSON.parse(allTasks).map(parseTaskDates) : [],
+        recycleBin: recycleBin ? JSON.parse(recycleBin).map(parseTaskDates) : [],
         perspectives: perspectives ? JSON.parse(perspectives).map(parsePerspectiveDates) : []
       }
     } catch (error) {

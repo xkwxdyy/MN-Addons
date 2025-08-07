@@ -5,7 +5,7 @@
 export type TaskPriority = "low" | "medium" | "high"
 export type TaskStatus = "todo" | "in-progress" | "completed" | "paused"
 export type TaskType = "action" | "project" | "key-result" | "objective"
-export type ViewMode = "focus" | "library" | "perspective" | "inbox"
+export type ViewMode = "focus" | "library" | "perspective" | "inbox" | "recycle"
 export type TaskTypeFilter = "all" | "action" | "project" | "key-result" | "objective"
 
 export interface ProgressHistoryItem {
@@ -27,6 +27,8 @@ export interface Task {
   type: TaskType
   createdAt: Date
   updatedAt?: Date
+  deletedAt?: Date // When the task was deleted
+  isDeleted?: boolean // Whether the task is in recycle bin
   progress?: string
   category?: string
   order?: number

@@ -222,17 +222,22 @@ export function useTaskManager() {
     const task = focusTasks.find((t) => t.id === taskId)
     if (!task) return
 
-    // Handle completed tasks - always move to pending
+    // Handle completed tasks - remove from focus, not move to pending
     if (task.completed) {
-      const updatedTask = {
-        ...task,
-        isFocusTask: false,
-        isPriorityFocus: false,
-        order: undefined,
-        isInPending: true,
-      }
       setFocusTasks(focusTasks.filter((t) => t.id !== taskId))
-      setPendingTasks([...pendingTasks, updatedTask])
+      
+      // Update in allTasks
+      setAllTasks(allTasks.map(t => 
+        t.id === taskId 
+          ? { 
+              ...t, 
+              isFocusTask: false,
+              isPriorityFocus: false,
+              isInPending: false,
+              order: undefined
+            }
+          : t
+      ))
       return
     }
 
@@ -340,18 +345,23 @@ export function useTaskManager() {
     // Check if task is in focusTasks
     const focusTask = focusTasks.find(t => t.id === taskId)
     if (focusTask) {
-      // Move completed task from focus to pending
-      const updatedTask = {
-        ...focusTask,
-        completed: true,
-        status: "completed" as const,
-        isFocusTask: false,
-        isPriorityFocus: false,
-        order: undefined,
-        isInPending: true
-      }
+      // Remove from focus tasks (completed tasks don't belong to pending)
       setFocusTasks(focusTasks.filter(t => t.id !== taskId))
-      setPendingTasks([...pendingTasks, updatedTask])
+      
+      // Update in allTasks to mark as completed
+      setAllTasks(allTasks.map(task => 
+        task.id === taskId 
+          ? { 
+              ...task, 
+              completed: true,
+              status: "completed" as const,
+              isFocusTask: false,
+              isPriorityFocus: false,
+              isInPending: false,
+              order: undefined
+            }
+          : task
+      ))
     } else {
       // Handle completion in pending tasks - remove from pending list
       const completedTask = pendingTasks.find(t => t.id === taskId)

@@ -21,6 +21,7 @@ import {
   AlertCircle,
   Clock,
   CheckCircle,
+  Flame,
 } from "lucide-react"
 
 interface Task {
@@ -210,12 +211,12 @@ export function TaskCard({
   return (
     <Card
       className={`bg-slate-800/50 border-slate-700 hover:bg-slate-800/70 transition-all duration-200 cursor-pointer ${
-        task.isPriorityFocus ? "ring-2 ring-orange-500/60 shadow-lg shadow-orange-500/20 bg-slate-800/70" : ""
+        task.isPriorityFocus ? "priority-focus-card priority-focus-enter overflow-hidden" : ""
       }`}
       onClick={handleCardClick}
       data-task-id={task.id}
     >
-      <CardContent className="p-3 md:p-4">
+      <CardContent className={`${task.isPriorityFocus ? "p-6 md:p-8" : "p-3 md:p-4"}`}>
         {/* 顶部徽章行 */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2 flex-wrap">
@@ -248,9 +249,9 @@ export function TaskCard({
 
             {/* 优先焦点徽章 - 圆角胶囊设计 */}
             {task.isPriorityFocus && (
-              <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-medium">
-                <Star className="w-3 h-3 fill-current" />
-                <span>优先</span>
+              <div className="priority-badge-animated inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-orange-500 via-orange-400 to-red-500 text-white text-xs font-bold shadow-lg shadow-orange-500/30">
+                <Flame className="w-3.5 h-3.5" />
+                <span>优先焦点</span>
               </div>
             )}
           </div>
@@ -264,12 +265,12 @@ export function TaskCard({
                 e.stopPropagation()
                 onTogglePriorityFocus(task.id)
               }}
-              className={`p-1 md:p-1 h-9 w-9 md:h-6 md:w-6 transition-colors ${
-                task.isPriorityFocus ? "text-orange-400 hover:text-orange-300" : "text-slate-500 hover:text-orange-400"
+              className={`p-1 md:p-1 h-9 w-9 md:h-6 md:w-6 transition-all ${
+                task.isPriorityFocus ? "text-orange-400 hover:text-orange-300 animate-pulse" : "text-slate-500 hover:text-orange-400"
               }`}
               title={task.isPriorityFocus ? "取消优先焦点" : "设为优先焦点"}
             >
-              <Star className={`w-5 h-5 md:w-4 md:h-4 ${task.isPriorityFocus ? "fill-current" : ""}`} />
+              <Flame className={`w-5 h-5 md:w-4 md:h-4 ${task.isPriorityFocus ? "drop-shadow-[0_0_8px_rgba(251,146,60,0.8)]" : ""}`} />
             </Button>
 
             {/* 更多操作菜单 */}
@@ -308,7 +309,9 @@ export function TaskCard({
         </div>
 
         {/* 任务标题 */}
-        <h3 className="text-base md:text-sm text-white font-medium mb-2 line-clamp-2 leading-relaxed">{task.title}</h3>
+        <h3 className={`text-white font-medium mb-2 line-clamp-2 leading-relaxed ${
+          task.isPriorityFocus ? "text-xl md:text-2xl font-bold" : "text-base md:text-sm"
+        }`}>{task.title}</h3>
 
         {/* 标签显示 */}
         {task.tags && task.tags.length > 0 && (
@@ -331,18 +334,30 @@ export function TaskCard({
 
         {/* 任务描述 */}
         {task.description && (
-          <div className="mb-3 p-2 bg-slate-700/30 rounded-md border-l-2 border-slate-600">
-            <p className="text-xs text-slate-300 line-clamp-3 leading-relaxed italic">{task.description}</p>
+          <div className={`mb-3 p-2 bg-slate-700/30 rounded-md border-l-2 ${
+            task.isPriorityFocus ? "border-orange-500" : "border-slate-600"
+          }`}>
+            <p className={`text-slate-300 leading-relaxed italic ${
+              task.isPriorityFocus ? "text-sm" : "text-xs line-clamp-3"
+            }`}>{task.description}</p>
           </div>
         )}
 
         {/* 最新进展 */}
         {task.progress && (
-          <div className="mb-3 p-2 bg-blue-900/20 rounded border-l-2 border-blue-500">
+          <div className={`mb-3 p-2 bg-blue-900/20 rounded border-l-2 border-blue-500 ${
+            task.isPriorityFocus ? "p-3" : "p-2"
+          }`}>
             <div className="flex items-center gap-1 mb-1">
-              <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-              <span className="text-xs text-blue-300 font-medium">最近进展</span>
-              <span className="text-xs text-slate-400">
+              <div className={`bg-blue-400 rounded-full ${
+                task.isPriorityFocus ? "w-3 h-3" : "w-2 h-2"
+              }`}></div>
+              <span className={`text-blue-300 font-medium ${
+                task.isPriorityFocus ? "text-sm" : "text-xs"
+              }`}>最近进展</span>
+              <span className={`text-slate-400 ${
+                task.isPriorityFocus ? "text-sm" : "text-xs"
+              }`}>
                 {task.updatedAt
                   ? new Date(task.updatedAt).toLocaleString("zh-CN", {
                       month: "2-digit",
@@ -353,12 +368,16 @@ export function TaskCard({
                   : ""}
               </span>
             </div>
-            <p className="text-xs text-slate-300 line-clamp-2">{task.progress}</p>
+            <p className={`text-slate-300 ${
+              task.isPriorityFocus ? "text-sm" : "text-xs line-clamp-2"
+            }`}>{task.progress}</p>
           </div>
         )}
 
         {/* 底部操作按钮 */}
-        <div className="flex items-center justify-between pt-2 border-t border-slate-700">
+        <div className={`flex items-center justify-between border-t border-slate-700 ${
+          task.isPriorityFocus ? "pt-4" : "pt-2"
+        }`}>
           <div className="flex items-center gap-2">
             {/* 状态控制按钮 */}
             {task.status === "todo" && (
@@ -369,10 +388,12 @@ export function TaskCard({
                   e.stopPropagation()
                   onStartTask(task.id)
                 }}
-                className="p-2 md:p-1 h-10 md:h-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                className={`text-blue-400 hover:text-blue-300 hover:bg-blue-900/20 ${
+                  task.isPriorityFocus ? "p-3 h-12" : "p-2 md:p-1 h-10 md:h-8"
+                }`}
               >
-                <Play className="w-5 h-5 md:w-4 md:h-4" />
-                <span className="ml-1 text-sm md:text-xs">继续</span>
+                <Play className={task.isPriorityFocus ? "w-5 h-5" : "w-5 h-5 md:w-4 md:h-4"} />
+                <span className={`ml-1 ${task.isPriorityFocus ? "text-base" : "text-sm md:text-xs"}`}>继续</span>
               </Button>
             )}
 
@@ -384,10 +405,12 @@ export function TaskCard({
                   e.stopPropagation()
                   onPauseTask(task.id)
                 }}
-                className="p-2 md:p-1 h-10 md:h-8 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-900/20"
+                className={`text-yellow-400 hover:text-yellow-300 hover:bg-yellow-900/20 ${
+                  task.isPriorityFocus ? "p-3 h-12" : "p-2 md:p-1 h-10 md:h-8"
+                }`}
               >
-                <Pause className="w-5 h-5 md:w-4 md:h-4" />
-                <span className="ml-1 text-sm md:text-xs">暂停</span>
+                <Pause className={task.isPriorityFocus ? "w-5 h-5" : "w-5 h-5 md:w-4 md:h-4"} />
+                <span className={`ml-1 ${task.isPriorityFocus ? "text-base" : "text-sm md:text-xs"}`}>暂停</span>
               </Button>
             )}
 
@@ -399,10 +422,12 @@ export function TaskCard({
                   e.stopPropagation()
                   onResumeTask(task.id)
                 }}
-                className="p-2 md:p-1 h-10 md:h-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                className={`text-blue-400 hover:text-blue-300 hover:bg-blue-900/20 ${
+                  task.isPriorityFocus ? "p-3 h-12" : "p-2 md:p-1 h-10 md:h-8"
+                }`}
               >
-                <Play className="w-5 h-5 md:w-4 md:h-4" />
-                <span className="ml-1 text-sm md:text-xs">继续</span>
+                <Play className={task.isPriorityFocus ? "w-5 h-5" : "w-5 h-5 md:w-4 md:h-4"} />
+                <span className={`ml-1 ${task.isPriorityFocus ? "text-base" : "text-sm md:text-xs"}`}>继续</span>
               </Button>
             )}
 
@@ -413,10 +438,12 @@ export function TaskCard({
                 e.stopPropagation()
                 onComplete(task.id)
               }}
-              className="p-2 md:p-1 h-10 md:h-8 text-green-400 hover:text-green-300 hover:bg-green-900/20"
+              className={`text-green-400 hover:text-green-300 hover:bg-green-900/20 ${
+                task.isPriorityFocus ? "p-3 h-12" : "p-2 md:p-1 h-10 md:h-8"
+              }`}
             >
-              <Square className="w-4 h-4" />
-              <span className="ml-1 text-sm md:text-xs">完成</span>
+              <Square className={task.isPriorityFocus ? "w-5 h-5" : "w-4 h-4"} />
+              <span className={`ml-1 ${task.isPriorityFocus ? "text-base" : "text-sm md:text-xs"}`}>完成</span>
             </Button>
           </div>
 

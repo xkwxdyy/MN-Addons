@@ -88,3 +88,127 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Priority Focus Task Animations and Effects */
+@keyframes priority-pulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 20px rgba(251, 146, 60, 0.4),
+      0 0 40px rgba(251, 146, 60, 0.2),
+      0 4px 16px rgba(251, 146, 60, 0.3);
+  }
+  50% {
+    box-shadow: 
+      0 0 30px rgba(251, 146, 60, 0.6),
+      0 0 60px rgba(251, 146, 60, 0.3),
+      0 4px 20px rgba(251, 146, 60, 0.4);
+  }
+}
+
+@keyframes priority-glow {
+  0%, 100% {
+    border-color: rgba(251, 146, 60, 0.6);
+    background: linear-gradient(135deg, 
+      rgba(251, 146, 60, 0.05) 0%, 
+      rgba(239, 68, 68, 0.05) 100%);
+  }
+  50% {
+    border-color: rgba(251, 146, 60, 0.9);
+    background: linear-gradient(135deg, 
+      rgba(251, 146, 60, 0.08) 0%, 
+      rgba(239, 68, 68, 0.08) 100%);
+  }
+}
+
+@keyframes priority-badge-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes priority-indicator-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes priority-focus-in {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1.02);
+    opacity: 1;
+  }
+}
+
+/* Priority Focus Card Styles */
+.priority-focus-card {
+  position: relative;
+  animation: priority-pulse 3s ease-in-out infinite;
+  transform: scale(1.02);
+  z-index: 10;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 280px;
+}
+
+.priority-focus-card:hover {
+  transform: scale(1.04);
+  animation: priority-pulse 1.5s ease-in-out infinite;
+}
+
+.priority-focus-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  background: linear-gradient(180deg, 
+    #fbbf24 0%, 
+    #fb923c 50%, 
+    #ef4444 100%);
+  background-size: 200% 200%;
+  animation: priority-indicator-flow 3s ease infinite;
+  border-radius: 6px 0 0 6px;
+  box-shadow: 2px 0 10px rgba(251, 146, 60, 0.5);
+}
+
+.priority-focus-card::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(135deg, 
+    rgba(251, 146, 60, 0.2) 0%, 
+    rgba(239, 68, 68, 0.2) 100%);
+  border-radius: 0.5rem;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.priority-focus-card:hover::after {
+  opacity: 1;
+}
+
+.priority-badge-animated {
+  animation: priority-badge-float 2s ease-in-out infinite;
+}
+
+/* Priority Focus Entrance Animation */
+.priority-focus-enter {
+  animation: priority-focus-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}

@@ -14,6 +14,7 @@ import { PendingTaskCard } from "@/pending-task-card"
 import { TaskLibrary } from "@/task-library"
 import { PerspectiveView } from "@/perspective-view"
 import { InboxView } from "@/inbox-view"
+import { RecycleBinView } from "@/components/recycle-bin-view"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -54,8 +55,10 @@ export default function MNTaskBoard() {
     pendingTasks,
     inboxTasks,
     allTasks,
+    recycleBin,
     selectedPendingTasks,
     selectedInboxTasks,
+    selectedRecycleBinTasks,
     isSelectionMode,
     newTaskTitle,
     setNewTaskTitle,
@@ -98,11 +101,20 @@ export default function MNTaskBoard() {
     toggleInboxTaskSelection,
     clearInboxSelection,
     updateInboxTask,
+    // Recycle bin operations
+    restoreFromRecycleBin,
+    permanentlyDelete,
+    emptyRecycleBin,
+    cleanupOldRecycleBinItems,
+    toggleRecycleBinTaskSelection,
+    clearRecycleBinSelection,
+    restoreSelectedFromRecycleBin,
+    permanentlyDeleteSelected,
   } = useTaskManager()
 
   // UI state - 移动端默认显示 Inbox
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
-  const [currentView, setCurrentView] = useState<"focus" | "library" | "perspective" | "inbox">(
+  const [currentView, setCurrentView] = useState<"focus" | "library" | "perspective" | "inbox" | "recycle">(
     isMobile ? "inbox" : "focus"
   )
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
@@ -504,7 +516,7 @@ export default function MNTaskBoard() {
           />
         )}
 
-        <div className={`flex-1 overflow-y-auto ${currentView === "focus" ? "md:ml-64 p-4 md:p-6" : ""}`}>
+        <div className={`flex-1 overflow-y-auto ${currentView === "focus" ? "md:ml-64 p-4 md:p-6" : "p-4 md:p-6"}`}>
           {currentView === "focus" ? (
             <>
               {/* 透视选择器 */}
@@ -579,33 +591,78 @@ export default function MNTaskBoard() {
                     <Badge className="bg-red-500/20 text-red-300 border-red-500/30">{focusTasksCount}</Badge>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {focusTasks.filter(task => !task.completed).map((task) => {
-                      const allTasksList = getAllTasksList()
-                      const taskPath = generateTaskPath(task, allTasksList)
-                      const taskWithPath = { ...task, category: taskPath }
+                  {/* 分离优先焦点任务和普通焦点任务 */}
+                  {(() => {
+                    const activeFocusTasks = focusTasks.filter(task => !task.completed)
+                    const priorityFocusTasks = activeFocusTasks.filter(task => task.isPriorityFocus)
+                    const normalFocusTasks = activeFocusTasks.filter(task => !task.isPriorityFocus)
 
-                      return (
-                        <div key={task.id} id={`task-${task.id}`}>
-                          <TaskCard
-                            task={taskWithPath}
-                            onToggleFocus={toggleFocusTask}
-                            onTogglePriorityFocus={togglePriorityFocus}
-                            onToggleStatus={toggleTaskStatus}
-                            onComplete={completeTask}
-                            onDelete={deleteTask}
-                            onLocateTask={locateTask}
-                            onLaunchTask={launchTask}
-                            onOpenDetails={openTaskDetails}
-                            onStartTask={startTask}
-                            onPauseTask={pauseTask}
-                            onResumeTask={resumeTask}
-                            onAddProgress={addProgress}
-                          />
-                        </div>
-                      )
-                    })}
-                  </div>
+                    return (
+                      <>
+                        {/* 优先焦点任务 - 独占一行，更大的卡片 */}
+                        {priorityFocusTasks.length > 0 && (
+                          <div className="mb-6 space-y-4">
+                            {priorityFocusTasks.map((task) => {
+                              const allTasksList = getAllTasksList()
+                              const taskPath = generateTaskPath(task, allTasksList)
+                              const taskWithPath = { ...task, category: taskPath }
+
+                              return (
+                                <div key={task.id} id={`task-${task.id}`} className="w-full">
+                                  <TaskCard
+                                    task={taskWithPath}
+                                    onToggleFocus={toggleFocusTask}
+                                    onTogglePriorityFocus={togglePriorityFocus}
+                                    onToggleStatus={toggleTaskStatus}
+                                    onComplete={completeTask}
+                                    onDelete={deleteTask}
+                                    onLocateTask={locateTask}
+                                    onLaunchTask={launchTask}
+                                    onOpenDetails={openTaskDetails}
+                                    onStartTask={startTask}
+                                    onPauseTask={pauseTask}
+                                    onResumeTask={resumeTask}
+                                    onAddProgress={addProgress}
+                                  />
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+
+                        {/* 普通焦点任务 - 网格布局 */}
+                        {normalFocusTasks.length > 0 && (
+                          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                            {normalFocusTasks.map((task) => {
+                              const allTasksList = getAllTasksList()
+                              const taskPath = generateTaskPath(task, allTasksList)
+                              const taskWithPath = { ...task, category: taskPath }
+
+                              return (
+                                <div key={task.id} id={`task-${task.id}`}>
+                                  <TaskCard
+                                    task={taskWithPath}
+                                    onToggleFocus={toggleFocusTask}
+                                    onTogglePriorityFocus={togglePriorityFocus}
+                                    onToggleStatus={toggleTaskStatus}
+                                    onComplete={completeTask}
+                                    onDelete={deleteTask}
+                                    onLocateTask={locateTask}
+                                    onLaunchTask={launchTask}
+                                    onOpenDetails={openTaskDetails}
+                                    onStartTask={startTask}
+                                    onPauseTask={pauseTask}
+                                    onResumeTask={resumeTask}
+                                    onAddProgress={addProgress}
+                                  />
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
                 </div>
               )}
 
@@ -867,7 +924,7 @@ export default function MNTaskBoard() {
               onUpdatePerspective={updatePerspective}
               onDeletePerspective={deletePerspective}
             />
-          ) : (
+          ) : currentView === "inbox" ? (
             /* Inbox 视图 */
             <InboxView
               tasks={inboxTasks}
@@ -881,6 +938,19 @@ export default function MNTaskBoard() {
               onClearSelection={clearInboxSelection}
               onUpdateTask={updateInboxTask}
               onOpenTaskDetails={openTaskDetails}
+            />
+          ) : (
+            /* 回收站视图 */
+            <RecycleBinView
+              tasks={recycleBin}
+              selectedTasks={selectedRecycleBinTasks}
+              onToggleSelection={toggleRecycleBinTaskSelection}
+              onRestoreTask={restoreFromRecycleBin}
+              onPermanentlyDelete={permanentlyDelete}
+              onEmptyRecycleBin={emptyRecycleBin}
+              onRestoreSelected={restoreSelectedFromRecycleBin}
+              onPermanentlyDeleteSelected={permanentlyDeleteSelected}
+              onClearSelection={clearRecycleBinSelection}
             />
           )}
         </div>

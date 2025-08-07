@@ -18,6 +18,7 @@ import {
   Play,
   Pause,
   CheckCircle,
+  Flame,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -268,6 +269,8 @@ export function DraggableTaskCard({
         isDragging
           ? "cursor-grabbing opacity-50 scale-105"
           : "cursor-pointer hover:bg-slate-700/50 hover:border-slate-600 hover:shadow-lg"
+      } ${
+        task.isPriorityFocus ? "priority-focus-card priority-focus-enter overflow-hidden" : ""
       }`}
       draggable
       onDragStart={handleDragStart}
@@ -427,8 +430,9 @@ export function DraggableTaskCard({
             </div>
           </div>
           {task.isPriorityFocus && (
-            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-medium">
-              <span>优先</span>
+            <div className="priority-badge-animated inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-orange-500 via-orange-400 to-red-500 text-white text-xs font-bold shadow-lg shadow-orange-500/30">
+              <Flame className="w-3.5 h-3.5" />
+              <span>优先焦点</span>
             </div>
           )}
         </div>

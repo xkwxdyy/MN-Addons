@@ -67,7 +67,7 @@ export function useTaskManager() {
           
           // Save sample data
           await apiStorage.saveData({
-            tasks: SAMPLE_TASKS,
+            focusTasks: SAMPLE_TASKS,
             pendingTasks: SAMPLE_PENDING_TASKS,
             inboxTasks: [],
             allTasks: [...SAMPLE_TASKS, ...SAMPLE_PENDING_TASKS],
@@ -115,7 +115,7 @@ export function useTaskManager() {
         
         // Use updateData to only update task-related fields
         await apiStorage.updateData({
-          tasks,
+          focusTasks,
           pendingTasks,
           inboxTasks,
           allTasks: computedAllTasks
@@ -130,7 +130,7 @@ export function useTaskManager() {
         clearTimeout(saveTimeoutRef.current)
       }
     }
-  }, [tasks, pendingTasks, inboxTasks, isLoading]) // Removed allTasks from dependencies
+  }, [focusTasks, pendingTasks, inboxTasks, isLoading]) // Removed allTasks from dependencies
 
   // Sync allTasks state when component focusTasks change
   // This is separate from saving to avoid circular dependency
@@ -138,9 +138,9 @@ export function useTaskManager() {
     if (isLoading) return // Don't update while loading
     
     // Update allTasks to reflect the current state
-    const computedAllTasks = [...tasks, ...pendingTasks, ...inboxTasks]
+    const computedAllTasks = [...focusTasks, ...pendingTasks, ...inboxTasks]
     setAllTasks(computedAllTasks)
-  }, [tasks, pendingTasks, inboxTasks, isLoading])
+  }, [focusTasks, pendingTasks, inboxTasks, isLoading])
 
   // Helper functions
   const getAllTasksList = (): Task[] => {
@@ -627,7 +627,7 @@ export function useTaskManager() {
     // First check pending tasks
     const taskFromPending = pendingTasks.find((task) => task.id === taskId)
     if (taskFromPending) {
-      const maxOrder = Math.max(...tasks.filter((t) => t.isFocusTask && !t.isPriorityFocus).map((t) => t.order || 0), 0)
+      const maxOrder = Math.max(...focusTasks.filter((t) => t.isFocusTask && !t.isPriorityFocus).map((t) => t.order || 0), 0)
       const focusTask = {
         ...taskFromPending,
         isFocusTask: true,
@@ -659,7 +659,7 @@ export function useTaskManager() {
     // Check all tasks
     const taskFromAll = allTasks.find((task) => task.id === taskId)
     if (taskFromAll && !taskFromAll.isFocusTask) {
-      const maxOrder = Math.max(...tasks.filter((t) => t.isFocusTask && !t.isPriorityFocus).map((t) => t.order || 0), 0)
+      const maxOrder = Math.max(...focusTasks.filter((t) => t.isFocusTask && !t.isPriorityFocus).map((t) => t.order || 0), 0)
       const focusTask = {
         ...taskFromAll,
         isFocusTask: true,
@@ -875,7 +875,7 @@ export function useTaskManager() {
   }
 
   const clearFocusTasks = () => {
-    const focusTasksToMove = tasks
+    const focusTasksToMove = focusTasks
       .filter((task) => task.isFocusTask)
       .map((task) => ({
         ...task,
@@ -897,7 +897,7 @@ export function useTaskManager() {
       const taskToMove = pendingTasks.find((task) => task.id === taskId)
       if (taskToMove) {
         const maxOrder = Math.max(
-          ...tasks.filter((t) => t.isFocusTask && !t.isPriorityFocus).map((t) => t.order || 0),
+          ...focusTasks.filter((t) => t.isFocusTask && !t.isPriorityFocus).map((t) => t.order || 0),
           0,
         )
         const focusTask = {
@@ -923,7 +923,7 @@ export function useTaskManager() {
     
     // Clear file storage (only task-related data)
     await apiStorage.updateData({
-      tasks: [],
+      focusTasks: [],
       pendingTasks: [],
       allTasks: []
     })

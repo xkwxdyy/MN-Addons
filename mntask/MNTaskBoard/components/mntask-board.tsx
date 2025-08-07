@@ -7,20 +7,20 @@ import type { Task, ExportData, TaskTypeFilter } from "@/types/task"
 import { STORAGE_KEYS, SAMPLE_TASKS, SAMPLE_PENDING_TASKS, EXPORT_CONFIG, TASK_TYPE_OPTIONS, TASK_STATUS_OPTIONS, TASK_PRIORITY_OPTIONS } from "@/constants"
 import { useTaskManager } from "@/hooks/useTaskManager"
 import { usePerspectives } from "@/hooks/usePerspectives"
-import { Header } from "./header"
-import { Sidebar } from "./sidebar"
-import { TaskCard } from "./task-card"
-import { PendingTaskCard } from "./pending-task-card"
-import { KanbanBoard } from "./kanban-board"
-import { PerspectiveView } from "./perspective-view"
-import { InboxView } from "./inbox-view"
+import { Header } from "@/header"
+import { Sidebar } from "@/sidebar"
+import { TaskCard } from "@/task-card"
+import { PendingTaskCard } from "@/pending-task-card"
+import { KanbanBoard } from "@/kanban-board"
+import { PerspectiveView } from "@/perspective-view"
+import { InboxView } from "@/inbox-view"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Target, Clock, Plus, Eye, Filter, X } from "lucide-react"
-import { TaskDetailsModal } from "./task-details-modal"
+import { TaskDetailsModal } from "@/task-details-modal"
 import { TaskSearch } from "@/components/task-search"
 import { useTaskSearch } from "@/hooks/useTaskSearch"
 import {
@@ -306,8 +306,6 @@ export default function MNTaskBoard() {
     }
   })
 
-  // 分离焦点任务和普通任务
-  const focusTasks = sortedTasks.filter((task) => task.isFocusTask)
 
 
 

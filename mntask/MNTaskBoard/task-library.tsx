@@ -273,27 +273,27 @@ export function TaskLibrary({
     }
 
     // 如果当前有选中的透视，自动应用透视的筛选条件
-    if (selectedPerspective) {
+    if (selectedPerspective?.filters) {
       const filters = selectedPerspective.filters
 
       // 合并透视标签和解析出的标签
-      if (filters.tags.length > 0) {
+      if (filters.tags?.length > 0) {
         const allTags = [...new Set([...(baseTask.tags || []), ...filters.tags])]
         baseTask.tags = allTags
       }
 
       // 如果透视指定了特定的任务类型，使用第一个类型
-      if (filters.taskTypes.length === 1) {
+      if (filters.taskTypes?.length === 1) {
         baseTask.type = filters.taskTypes[0] as "action" | "project" | "key-result" | "objective"
       }
 
       // 如果透视指定了特定的优先级，使用第一个优先级
-      if (filters.priorities.length === 1) {
+      if (filters.priorities?.length === 1) {
         baseTask.priority = filters.priorities[0] as "low" | "medium" | "high"
       }
 
       // 如果透视指定了特定的状态，使用第一个状态
-      if (filters.statuses.length === 1) {
+      if (filters.statuses?.length === 1) {
         baseTask.status = filters.statuses[0] as "todo" | "in-progress" | "completed" | "paused"
         baseTask.completed = baseTask.status === "completed"
       }
@@ -311,13 +311,13 @@ export function TaskLibrary({
     // 显示提示信息
     const appliedTags = baseTask.tags || []
     if (appliedTags.length > 0) {
-      if (parsedTags.length > 0 && selectedPerspective && selectedPerspective.filters.tags.length > 0) {
+      if (parsedTags.length > 0 && selectedPerspective?.filters?.tags && selectedPerspective.filters.tags.length > 0) {
         toast.success(
           `${getTypeInfo(newTaskType).text}任务创建成功！应用标签: ${appliedTags.join(", ")} (包含解析标签和透视标签)`,
         )
       } else if (parsedTags.length > 0) {
         toast.success(`${getTypeInfo(newTaskType).text}任务创建成功！应用标签: ${appliedTags.join(", ")}`)
-      } else if (selectedPerspective && selectedPerspective.filters.tags.length > 0) {
+      } else if (selectedPerspective?.filters?.tags && selectedPerspective.filters.tags.length > 0) {
         toast.success(`${getTypeInfo(newTaskType).text}任务创建成功并自动应用透视标签: ${appliedTags.join(", ")}`)
       }
     } else {
@@ -344,13 +344,14 @@ export function TaskLibrary({
   }
 
   // 获取筛选条件摘要
-  const getFilterSummary = (filters: PerspectiveFilter): string => {
+  const getFilterSummary = (filters: PerspectiveFilter | undefined): string => {
+    if (!filters) return "无筛选条件"
     const parts: string[] = []
 
-    if (filters.tags.length > 0) {
+    if (filters.tags?.length > 0) {
       parts.push(`标签: ${filters.tags.join(", ")}`)
     }
-    if (filters.taskTypes.length > 0) {
+    if (filters.taskTypes?.length > 0) {
       const typeNames = filters.taskTypes.map((type) => {
         switch (type) {
           case "action":
@@ -367,7 +368,7 @@ export function TaskLibrary({
       })
       parts.push(`类型: ${typeNames.join(", ")}`)
     }
-    if (filters.statuses.length > 0) {
+    if (filters.statuses?.length > 0) {
       const statusNames = filters.statuses.map((status) => {
         switch (status) {
           case "todo":
@@ -384,7 +385,7 @@ export function TaskLibrary({
       })
       parts.push(`状态: ${statusNames.join(", ")}`)
     }
-    if (filters.priorities.length > 0) {
+    if (filters.priorities?.length > 0) {
       const priorityNames = filters.priorities.map((priority) => {
         switch (priority) {
           case "low":
@@ -550,21 +551,21 @@ export function TaskLibrary({
                 <div className="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
                   <Eye className="w-3 h-3" />
                   <span>将自动应用透视条件:</span>
-                  {selectedPerspective.filters.tags.length > 0 && (
+                  {selectedPerspective.filters?.tags && selectedPerspective.filters.tags.length > 0 && (
                     <div className="flex gap-1">
-                      {selectedPerspective.filters.tags.map((tag) => (
+                      {selectedPerspective.filters?.tags?.map((tag) => (
                         <Badge key={tag} className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
                           {tag}
                         </Badge>
                       ))}
                     </div>
                   )}
-                  {selectedPerspective.filters.taskTypes.length === 1 && (
+                  {selectedPerspective.filters?.taskTypes?.length === 1 && (
                     <Badge className="bg-green-500/20 text-green-300 border-green-500/30 text-xs">
                       {getTypeText(selectedPerspective.filters.taskTypes[0])}
                     </Badge>
                   )}
-                  {selectedPerspective.filters.priorities.length === 1 && (
+                  {selectedPerspective.filters?.priorities?.length === 1 && (
                     <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30 text-xs">
                       {getPriorityText(selectedPerspective.filters.priorities[0])}优先级
                     </Badge>
@@ -664,7 +665,7 @@ export function TaskLibrary({
         {selectedPerspective && (
           <div className="text-sm text-slate-400">
             {selectedPerspective.description && <p className="mb-1">{selectedPerspective.description}</p>}
-            <p>筛选条件: {getFilterSummary(selectedPerspective.filters)}</p>
+            <p>筛选条件: {getFilterSummary(selectedPerspective?.filters)}</p>
           </div>
         )}
       </div>
@@ -789,21 +790,21 @@ export function TaskLibrary({
           <div className="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
             <Eye className="w-3 h-3" />
             <span>将自动应用透视条件:</span>
-            {selectedPerspective.filters.tags.length > 0 && (
+            {selectedPerspective.filters?.tags && selectedPerspective.filters.tags.length > 0 && (
               <div className="flex gap-1">
-                {selectedPerspective.filters.tags.map((tag) => (
+                {selectedPerspective.filters?.tags?.map((tag) => (
                   <Badge key={tag} className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
                     {tag}
                   </Badge>
                 ))}
               </div>
             )}
-            {selectedPerspective.filters.taskTypes.length === 1 && (
+            {selectedPerspective.filters?.taskTypes?.length === 1 && (
               <Badge className="bg-green-500/20 text-green-300 border-green-500/30 text-xs">
                 {getTypeText(selectedPerspective.filters.taskTypes[0])}
               </Badge>
             )}
-            {selectedPerspective.filters.priorities.length === 1 && (
+            {selectedPerspective.filters?.priorities?.length === 1 && (
               <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30 text-xs">
                 {getPriorityText(selectedPerspective.filters.priorities[0])}优先级
               </Badge>

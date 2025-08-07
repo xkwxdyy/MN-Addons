@@ -59,7 +59,7 @@ export function useTaskManager() {
         const data = await apiStorage.loadData()
         
         // If no data exists, use sample data
-        if ((data.focusTasks || data.tasks || []).length === 0 && data.pendingTasks.length === 0 && data.allTasks.length === 0) {
+        if (data.focusTasks.length === 0 && data.pendingTasks.length === 0 && data.allTasks.length === 0) {
           setFocusTasks(SAMPLE_TASKS)
           setPendingTasks(SAMPLE_PENDING_TASKS)
           setInboxTasks([])
@@ -74,7 +74,7 @@ export function useTaskManager() {
             perspectives: []
           })
         } else {
-          setFocusTasks((data.focusTasks || data.tasks || []).map((task: any, index: number) => ({
+          setFocusTasks(data.focusTasks.map((task: any, index: number) => ({
             ...task,
             order: task.order ?? index,
             type: task.type || "action",
@@ -703,7 +703,7 @@ export function useTaskManager() {
     }
   }
 
-  const addToPendingFromKanban = (taskId: string) => {
+  const addToPendingFromLibrary = (taskId: string) => {
     // Check focus tasks
     const taskFromFocus = focusTasks.find((task) => task.id === taskId)
     if (taskFromFocus) {
@@ -976,7 +976,7 @@ export function useTaskManager() {
     try {
       const data = await apiStorage.loadData()
       
-      setFocusTasks(data.tasks.map((task: any, index: number) => ({
+      setFocusTasks(data.focusTasks.map((task: any, index: number) => ({
         ...task,
         order: task.order ?? index,
         type: task.type || "action",
@@ -1138,7 +1138,7 @@ export function useTaskManager() {
     addToPending,
     addTaskToPending,
     addToFocus,
-    addToPendingFromKanban,
+    addToPendingFromLibrary,
     updateTask,
     updateProgress,
     deleteProgress,

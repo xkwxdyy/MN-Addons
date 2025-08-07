@@ -78,7 +78,7 @@ export default function MNTaskBoard() {
     addToPending,
     addTaskToPending,
     addToFocus,
-    addToPendingFromLibrary: addToPendingFromKanban,
+    addToPendingFromLibrary,
     updateTask,
     updateProgress,
     deleteProgress,
@@ -117,16 +117,16 @@ export default function MNTaskBoard() {
   const {
     perspectives,
     focusSelectedPerspectiveId,
-    librarySelectedPerspectiveId: kanbanSelectedPerspectiveId,
+    librarySelectedPerspectiveId,
     setFocusSelectedPerspectiveId,
-    setLibrarySelectedPerspectiveId: setKanbanSelectedPerspectiveId,
+    setLibrarySelectedPerspectiveId,
     createPerspective,
     updatePerspective,
     deletePerspective,
     applyPerspectiveFilter,
     getFilteredTasks,
     getFocusSelectedPerspective,
-    getLibrarySelectedPerspective: getKanbanSelectedPerspective,
+    getLibrarySelectedPerspective,
     getFilterSummary,
     resetPerspectives,
   } = usePerspectives()
@@ -812,12 +812,12 @@ export default function MNTaskBoard() {
             </>
           ) : currentView === "library" ? (
             /* 任务库视图 */
-            <KanbanBoard
+            <TaskLibrary
               focusTasks={focusTasks}
               pendingTasks={pendingTasks}
               allTasks={allTasks}
               perspectives={perspectives}
-              selectedPerspectiveId={kanbanSelectedPerspectiveId}
+              selectedPerspectiveId={librarySelectedPerspectiveId}
               selectedTaskTypeFilter={libraryTaskTypeFilter}
               onUpdateTask={updateTask}
               onOpenDetails={openTaskDetails}
@@ -833,7 +833,7 @@ export default function MNTaskBoard() {
             addTaskToPending(taskData)
           }
         }}
-              onPerspectiveChange={setKanbanSelectedPerspectiveId}
+              onPerspectiveChange={setLibrarySelectedPerspectiveId}
               onTaskTypeFilterChange={setLibraryTaskTypeFilter}
             />
           ) : currentView === "perspective" ? (
@@ -927,12 +927,12 @@ export default function MNTaskBoard() {
           setLibraryTaskTypeFilter(taskTypeFilter)
 
           // 如果任务不在当前透视中，清除透视筛选
-          if (kanbanSelectedPerspectiveId) {
-            const perspective = perspectives.find((p) => p.id === kanbanSelectedPerspectiveId)
+          if (librarySelectedPerspectiveId) {
+            const perspective = perspectives.find((p) => p.id === librarySelectedPerspectiveId)
             if (perspective && perspective.filters) {
               const filteredTasks = applyPerspectiveFilter([taskToLocate], perspective.filters)
               if (filteredTasks.length === 0) {
-                setKanbanSelectedPerspectiveId(null)
+                setLibrarySelectedPerspectiveId(null)
                 // Task not in current perspective, clearing perspective filter
               }
             }

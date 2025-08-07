@@ -13,7 +13,7 @@ export const STORAGE_KEYS = {
   VIEW_MODE: "viewMode",
   SHOW_ALL_PENDING_TYPES: "showAllPendingTypes",
   FOCUS_SELECTED_PERSPECTIVE: "focusSelectedPerspective",
-  KANBAN_SELECTED_PERSPECTIVE: "kanbanSelectedPerspective",
+  LIBRARY_SELECTED_PERSPECTIVE: "librarySelectedPerspective",
   PERSPECTIVE_SELECTED: "perspectiveSelectedPerspective",
 } as const
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Target, LayoutGrid, Eye, Menu, Inbox, RefreshCw } from "lucide-react"
+import { Target, LayoutGrid, Eye, Menu, Inbox, RefreshCw, Search } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import {
   DropdownMenu,
@@ -15,9 +15,10 @@ interface HeaderProps {
   onViewChange: (view: "focus" | "kanban" | "perspective" | "inbox") => void
   onRefresh?: () => void
   isRefreshing?: boolean
+  onSearchOpen?: () => void
 }
 
-export function Header({ currentView, onViewChange, onRefresh, isRefreshing = false }: HeaderProps) {
+export function Header({ currentView, onViewChange, onRefresh, isRefreshing = false, onSearchOpen }: HeaderProps) {
   const isMobile = useIsMobile()
 
   const viewOptions = [
@@ -43,6 +44,24 @@ export function Header({ currentView, onViewChange, onRefresh, isRefreshing = fa
 
         {/* 视图切换和刷新按钮 */}
         <div className="flex items-center gap-2">
+          {/* 搜索按钮 */}
+          {onSearchOpen && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onSearchOpen}
+              className="text-slate-400 hover:text-white hover:bg-slate-700 flex items-center gap-2"
+              title="搜索任务 (⌘K)"
+            >
+              <Search className="w-4 h-4" />
+              {!isMobile && (
+                <kbd className="hidden lg:inline-block px-1.5 py-0.5 text-xs bg-slate-800 rounded">
+                  ⌘K
+                </kbd>
+              )}
+            </Button>
+          )}
+          
           {/* 刷新按钮 */}
           {onRefresh && (
             <Button

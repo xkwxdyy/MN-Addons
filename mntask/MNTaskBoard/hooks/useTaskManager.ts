@@ -390,8 +390,16 @@ export function useTaskManager() {
   const removeFromPending = (taskId: string) => {
     const taskToRemove = pendingTasks.find((task) => task.id === taskId)
     if (taskToRemove) {
+      // 从待处理列表中移除
       setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
-      // allTasks will be automatically synced via useEffect
+      
+      // 更新allTasks中的任务，去掉待处理标识
+      setAllTasks(prev => prev.map(task => 
+        task.id === taskId 
+          ? { ...task, isInPending: false }
+          : task
+      ))
+      
       toast.success("任务已从待处理列表中移除")
     }
   }

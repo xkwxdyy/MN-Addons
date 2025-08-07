@@ -21,6 +21,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Target, Clock, Plus, Eye, Filter, X } from "lucide-react"
 import { TaskDetailsModal } from "./task-details-modal"
+import { TaskSearch } from "@/components/task-search"
+import { useTaskSearch } from "@/hooks/useTaskSearch"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -135,6 +137,17 @@ export default function MNTaskBoard() {
   // 焦点视图待处理任务类型显示控制
   const [showAllPendingTypes, setShowAllPendingTypes] = useState(false)
 
+  // 搜索功能
+  const {
+    searchOpen,
+    setSearchOpen,
+    searchTasks,
+    quickSearch,
+    saveSearch,
+    getSuggestions,
+    highlightMatch
+  } = useTaskSearch({ tasks: allTasks })
+
 
   // Load view state from localStorage
   // Note: View state is pure UI state, so we keep it in localStorage for simplicity
@@ -170,6 +183,33 @@ export default function MNTaskBoard() {
 
   const focusTasksCount = allTasks.filter((task) => task.isFocusTask && !task.completed).length
 
+  // 搜索相关处理函数
+  const handleSearchSelectTask = (task: Task) => {
+    setSelectedTask(task)
+    setIsDetailsModalOpen(true)
+  }
+
+  const handleSearchQuickAction = (task: Task, action: "complete" | "pause" | "resume" | "delete") => {
+    switch (action) {
+      case "complete":
+        completeTask(task.id)
+        toast.success(`任务 "${task.title}" 已完成`)
+        break
+      case "pause":
+        pauseTask(task.id)
+        toast.success(`任务 "${task.title}" 已暂停`)
+        break
+      case "resume":
+        resumeTask(task.id)
+        toast.success(`任务 "${task.title}" 已恢复`)
+        break
+      case "delete":
+        deleteTask(task.id)
+        toast.success(`任务 "${task.title}" 已删除`)
+        break
+    }
+  }
+
 
 
 
@@ -200,24 +240,25 @@ export default function MNTaskBoard() {
     setShowResetConfirm(true)
   }
 
-  const openTaskDetails = (taskId: string) => {
-    // 优先从 allTasks 中获取最新的任务数据
-    const task = allTasks.find((t) => t.id === taskId)
+  const openTaskDetails = (taskIdOrTask: string | Task) => {
+    // 支持传入 taskId 或 task 对象
+    let task: Task | undefined
+    if (typeof taskIdOrTask === 'string') {
+      // 优先从 allTasks 中获取最新的任务数据
+      task = allTasks.find((t) => t.id === taskIdOrTask)
+      if (!task) {
+        // 尝试从其他数组中查找
+        const taskInFocus = tasks.find((t) => t.id === taskIdOrTask)
+        const taskInPending = pendingTasks.find((t) => t.id === taskIdOrTask)
+        task = taskInFocus || taskInPending
+      }
+    } else {
+      task = taskIdOrTask
+    }
+    
     if (task) {
       setSelectedTask(task)
       setIsDetailsModalOpen(true)
-    } else {
-      // 尝试从其他数组中查找
-      const taskInFocus = tasks.find((t) => t.id === taskId)
-      const taskInPending = pendingTasks.find((t) => t.id === taskId)
-      
-      if (taskInFocus) {
-        setSelectedTask(taskInFocus)
-        setIsDetailsModalOpen(true)
-      } else if (taskInPending) {
-        setSelectedTask(taskInPending)
-        setIsDetailsModalOpen(true)
-      }
     }
   }
 
@@ -436,6 +477,7 @@ export default function MNTaskBoard() {
           setIsRefreshing(false)
         }}
         isRefreshing={isRefreshing}
+        onSearchOpen={() => setSearchOpen(true)}
       />
 
       {/* 隐藏的文件输入 */}
@@ -1012,6 +1054,15 @@ export default function MNTaskBoard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 搜索组件 */}
+      <TaskSearch
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        tasks={allTasks}
+        onSelectTask={handleSearchSelectTask}
+        onQuickAction={handleSearchQuickAction}
+      />
     </div>
   )
 }

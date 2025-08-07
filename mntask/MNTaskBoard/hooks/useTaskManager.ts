@@ -137,9 +137,40 @@ export function useTaskManager() {
   useEffect(() => {
     if (isLoading) return // Don't update while loading
     
-    // Update allTasks to reflect the current state
-    const computedAllTasks = [...focusTasks, ...pendingTasks, ...inboxTasks]
-    setAllTasks(computedAllTasks)
+    setAllTasks(prevAllTasks => {
+      // Create a Map to track all tasks by ID
+      const taskMap = new Map<string, Task>()
+      
+      // First, preserve tasks that exist in allTasks but aren't in any active list
+      // These are tasks in the "library" (not in focus, pending, or inbox)
+      prevAllTasks.forEach(task => {
+        // Check if task is not in any of the active lists
+        const isInFocus = focusTasks.some(t => t.id === task.id)
+        const isInPending = pendingTasks.some(t => t.id === task.id)
+        const isInInbox = inboxTasks.some(t => t.id === task.id)
+        
+        if (!isInFocus && !isInPending && !isInInbox) {
+          // This task is in the library, preserve it
+          taskMap.set(task.id, { ...task, isFocusTask: false, isInPending: false, isInInbox: false })
+        }
+      })
+      
+      // Then add/update tasks from the active lists
+      focusTasks.forEach(task => {
+        taskMap.set(task.id, { ...task, isFocusTask: true, isInPending: false, isInInbox: false })
+      })
+      
+      pendingTasks.forEach(task => {
+        taskMap.set(task.id, { ...task, isFocusTask: false, isInPending: true, isInInbox: false })
+      })
+      
+      inboxTasks.forEach(task => {
+        taskMap.set(task.id, { ...task, isFocusTask: false, isInPending: false, isInInbox: true })
+      })
+      
+      // Return the merged result
+      return Array.from(taskMap.values())
+    })
   }, [focusTasks, pendingTasks, inboxTasks, isLoading])
 
   // Helper functions
@@ -411,7 +442,7 @@ export function useTaskManager() {
     } else {
       setFocusTasks(focusTasks.filter((task) => task.id !== taskId))
       setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
-      // allTasks will be automatically synced via useEffect
+      setAllTasks(allTasks.filter((task) => task.id !== taskId))
     }
   }
 

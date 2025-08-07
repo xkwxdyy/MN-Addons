@@ -2,7 +2,8 @@ import fs from 'fs/promises'
 import path from 'path'
 
 export interface TaskData {
-  tasks: any[]
+  focusTasks?: any[]  // 新字段
+  tasks?: any[]       // 保留旧字段以兼容
   pendingTasks: any[]
   inboxTasks: any[]
   allTasks: any[]

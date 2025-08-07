@@ -40,7 +40,7 @@ const parseIndentedTaskList = (text: string): { title: string; tags: string[]; i
 }
 
 export function useTaskManager() {
-  const [tasks, setTasks] = useState<Task[]>([])
+  const [focusTasks, setFocusTasks] = useState<Task[]>([])
   const [pendingTasks, setPendingTasks] = useState<Task[]>([])
   const [inboxTasks, setInboxTasks] = useState<Task[]>([])
   const [allTasks, setAllTasks] = useState<Task[]>([])
@@ -51,7 +51,7 @@ export function useTaskManager() {
   const [isLoading, setIsLoading] = useState(true)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Load tasks from API on mount
+  // Load focusTasks from API on mount
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true)
@@ -59,8 +59,8 @@ export function useTaskManager() {
         const data = await apiStorage.loadData()
         
         // If no data exists, use sample data
-        if (data.tasks.length === 0 && data.pendingTasks.length === 0 && data.allTasks.length === 0) {
-          setTasks(SAMPLE_TASKS)
+        if ((data.focusTasks || data.tasks || []).length === 0 && data.pendingTasks.length === 0 && data.allTasks.length === 0) {
+          setFocusTasks(SAMPLE_TASKS)
           setPendingTasks(SAMPLE_PENDING_TASKS)
           setInboxTasks([])
           // allTasks will be set by useEffect
@@ -74,7 +74,7 @@ export function useTaskManager() {
             perspectives: []
           })
         } else {
-          setTasks(data.tasks.map((task: any, index: number) => ({
+          setFocusTasks((data.focusTasks || data.tasks || []).map((task: any, index: number) => ({
             ...task,
             order: task.order ?? index,
             type: task.type || "action",
@@ -87,7 +87,7 @@ export function useTaskManager() {
       } catch (error) {
         console.error('Failed to load data:', error)
         toast.error('Failed to load data. Using default data.')
-        setTasks(SAMPLE_TASKS)
+        setFocusTasks(SAMPLE_TASKS)
         setPendingTasks(SAMPLE_PENDING_TASKS)
         // allTasks will be set by useEffect
       } finally {
@@ -98,7 +98,7 @@ export function useTaskManager() {
     loadData()
   }, [])
 
-  // Save tasks to API (debounced)
+  // Save focusTasks to API (debounced)
   useEffect(() => {
     if (isLoading) return // Don't save while loading
     
@@ -111,7 +111,7 @@ export function useTaskManager() {
     saveTimeoutRef.current = setTimeout(async () => {
       try {
         // Calculate allTasks instead of using state to avoid circular dependency
-        const computedAllTasks = [...tasks, ...pendingTasks, ...inboxTasks]
+        const computedAllTasks = [...focusTasks, ...pendingTasks, ...inboxTasks]
         
         // Use updateData to only update task-related fields
         await apiStorage.updateData({
@@ -132,7 +132,7 @@ export function useTaskManager() {
     }
   }, [tasks, pendingTasks, inboxTasks, isLoading]) // Removed allTasks from dependencies
 
-  // Sync allTasks state when component tasks change
+  // Sync allTasks state when component focusTasks change
   // This is separate from saving to avoid circular dependency
   useEffect(() => {
     if (isLoading) return // Don't update while loading
@@ -195,8 +195,8 @@ export function useTaskManager() {
 
   // Task operations
   const togglePriorityFocus = (taskId: string) => {
-    setTasks(
-      tasks.map((task) => {
+    setFocusTasks(
+      focusTasks.map((task) => {
         if (task.id === taskId) {
           if (task.isFocusTask) {
             const newIsPriorityFocus = !task.isPriorityFocus
@@ -219,7 +219,7 @@ export function useTaskManager() {
   }
 
   const toggleFocusTask = (taskId: string) => {
-    const task = tasks.find((t) => t.id === taskId)
+    const task = focusTasks.find((t) => t.id === taskId)
     if (!task) return
 
     if (task.isFocusTask) {
@@ -236,7 +236,7 @@ export function useTaskManager() {
         isInPending: true,
       }
 
-      setTasks(tasks.filter((t) => t.id !== taskId))
+      setFocusTasks(focusTasks.filter((t) => t.id !== taskId))
       setPendingTasks([...pendingTasks, updatedTask])
       // allTasks will be automatically synced via useEffect
     } else {
@@ -274,7 +274,7 @@ export function useTaskManager() {
       return task
     }
 
-    setTasks(tasks.map(updateTask))
+    setFocusTasks(focusTasks.map(updateTask))
     setPendingTasks(pendingTasks.map(updateTask))
     // allTasks will be automatically synced via useEffect
   }
@@ -289,7 +289,7 @@ export function useTaskManager() {
           }
         : task
 
-    setTasks(tasks.map(updateTask))
+    setFocusTasks(focusTasks.map(updateTask))
     setPendingTasks(pendingTasks.map(updateTask))
     // allTasks will be automatically synced via useEffect
   }
@@ -303,7 +303,7 @@ export function useTaskManager() {
           }
         : task
 
-    setTasks(tasks.map(updateTask))
+    setFocusTasks(focusTasks.map(updateTask))
     setPendingTasks(pendingTasks.map(updateTask))
     // allTasks will be automatically synced via useEffect
   }
@@ -317,7 +317,7 @@ export function useTaskManager() {
           }
         : task
 
-    setTasks(tasks.map(updateTask))
+    setFocusTasks(focusTasks.map(updateTask))
     setPendingTasks(pendingTasks.map(updateTask))
     // allTasks will be automatically synced via useEffect
   }
@@ -331,7 +331,7 @@ export function useTaskManager() {
       order: undefined,
     }
 
-    setTasks(tasks.map((task) => (task.id === taskId ? { ...task, ...taskUpdates } : task)))
+    setFocusTasks(focusTasks.map((task) => (task.id === taskId ? { ...task, ...taskUpdates } : task)))
     setPendingTasks(pendingTasks.map((task) => (task.id === taskId ? { ...task, ...taskUpdates } : task)))
     // allTasks will be automatically synced via useEffect
   }
@@ -340,8 +340,8 @@ export function useTaskManager() {
     const childTasks = getChildTasks(taskId)
 
     if (childTasks.length > 0) {
-      setTasks(
-        tasks
+      setFocusTasks(
+        focusTasks
           .map((task) => (task.parentId === taskId ? { ...task, parentId: undefined } : task))
           .filter((task) => task.id !== taskId),
       )
@@ -358,7 +358,7 @@ export function useTaskManager() {
           .filter((task) => task.id !== taskId),
       )
     } else {
-      setTasks(tasks.filter((task) => task.id !== taskId))
+      setFocusTasks(focusTasks.filter((task) => task.id !== taskId))
       setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
       // allTasks will be automatically synced via useEffect
     }
@@ -368,7 +368,7 @@ export function useTaskManager() {
     const childTasks = getChildTasks(taskId)
 
     if (childTasks.length > 0) {
-      setTasks(tasks.map((task) => (task.parentId === taskId ? { ...task, parentId: undefined } : task)))
+      setFocusTasks(focusTasks.map((task) => (task.parentId === taskId ? { ...task, parentId: undefined } : task)))
 
       setPendingTasks(
         pendingTasks
@@ -405,8 +405,8 @@ export function useTaskManager() {
   }
 
   const addProgress = (taskId: string, progress: string) => {
-    setTasks(
-      tasks.map((task) => {
+    setFocusTasks(
+      focusTasks.map((task) => {
         if (task.id === taskId) {
           const newProgressEntry = {
             id: Date.now().toString(),
@@ -535,7 +535,7 @@ export function useTaskManager() {
       parentStack.push({ id: newTask.id, indentation: line.indentation })
     })
 
-    // Set task types to 'project' for tasks with children
+    // Set task types to 'project' for focusTasks with children
     const taskIdsWithChildren = new Set(newTasks.map((t) => t.parentId).filter(Boolean))
     newTasks.forEach((task) => {
       if (taskIdsWithChildren.has(task.id)) {
@@ -635,7 +635,7 @@ export function useTaskManager() {
         order: maxOrder + 1,
         isInPending: false,
       }
-      setTasks([...tasks, focusTask])
+      setFocusTasks([...focusTasks, focusTask])
       setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
 
       setAllTasks(
@@ -668,7 +668,7 @@ export function useTaskManager() {
         isInPending: false,
       }
 
-      setTasks([...tasks, focusTask])
+      setFocusTasks([...focusTasks, focusTask])
 
       if (taskFromAll.isInPending) {
         setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
@@ -694,7 +694,7 @@ export function useTaskManager() {
 
   const addToPendingFromKanban = (taskId: string) => {
     // Check focus tasks
-    const taskFromFocus = tasks.find((task) => task.id === taskId)
+    const taskFromFocus = focusTasks.find((task) => task.id === taskId)
     if (taskFromFocus) {
       const pendingTask = {
         ...taskFromFocus,
@@ -708,7 +708,7 @@ export function useTaskManager() {
         isInPending: true,
       }
 
-      setTasks(tasks.filter((task) => task.id !== taskId))
+      setFocusTasks(focusTasks.filter((task) => task.id !== taskId))
       setPendingTasks([...pendingTasks, pendingTask])
 
       setAllTasks(
@@ -776,7 +776,7 @@ export function useTaskManager() {
   }
 
   const updateTask = (taskId: string, updates: Partial<Task>) => {
-    setTasks(prev => {
+    setFocusTasks(prev => {
       const updated = prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
       return updated
     })
@@ -793,7 +793,7 @@ export function useTaskManager() {
   }
 
   const updateProgress = (taskId: string, progressId: string, content: string) => {
-    setTasks((prevTasks) =>
+    setFocusTasks((prevTasks) =>
       prevTasks.map((task) => {
         if (task.id === taskId) {
           const updatedProgressHistory =
@@ -834,7 +834,7 @@ export function useTaskManager() {
   }
 
   const deleteProgress = (taskId: string, progressId: string) => {
-    setTasks((prevTasks) =>
+    setFocusTasks((prevTasks) =>
       prevTasks.map((task) => {
         if (task.id === taskId) {
           const updatedProgressHistory = task.progressHistory?.filter((progress) => progress.id !== progressId) || []
@@ -886,9 +886,9 @@ export function useTaskManager() {
         isInPending: true,
       }))
 
-    const nonFocusTasks = tasks.filter((task) => !task.isFocusTask)
+    const nonFocusTasks = focusTasks.filter((task) => !task.isFocusTask)
 
-    setTasks(nonFocusTasks)
+    setFocusTasks(nonFocusTasks)
     setPendingTasks([...pendingTasks, ...focusTasksToMove])
   }
 
@@ -907,7 +907,7 @@ export function useTaskManager() {
           order: maxOrder + selectedPendingTasks.indexOf(taskId) + 1,
           isInPending: false,
         }
-        setTasks((prev) => [...prev, focusTask])
+        setFocusTasks((prev) => [...prev, focusTask])
       }
     })
 
@@ -917,7 +917,7 @@ export function useTaskManager() {
   }
 
   const resetData = async () => {
-    setTasks([])
+    setFocusTasks([])
     setPendingTasks([])
     setAllTasks([])
     
@@ -933,12 +933,12 @@ export function useTaskManager() {
 
   const importTasks = (focusTasks: Task[], pendingTasksList: Task[], allTasksList?: Task[]) => {
     // Set focus tasks
-    setTasks(focusTasks)
+    setFocusTasks(focusTasks)
     
     // Set pending tasks
     setPendingTasks(pendingTasksList)
     
-    // Set all tasks - if not provided, construct from focus and pending
+    // Set all focusTasks - if not provided, construct from focus and pending
     if (allTasksList) {
       setAllTasks(allTasksList)
     } else {
@@ -965,7 +965,7 @@ export function useTaskManager() {
     try {
       const data = await apiStorage.loadData()
       
-      setTasks(data.tasks.map((task: any, index: number) => ({
+      setFocusTasks(data.tasks.map((task: any, index: number) => ({
         ...task,
         order: task.order ?? index,
         type: task.type || "action",
@@ -1026,7 +1026,7 @@ export function useTaskManager() {
 
     const updatedTask = { ...task, isFocusTask: true, isInInbox: false }
     setInboxTasks(prev => prev.filter(t => t.id !== taskId))
-    setTasks(prev => [...prev, updatedTask])
+    setFocusTasks(prev => [...prev, updatedTask])
     setAllTasks(prev => prev.map(t => t.id === taskId ? updatedTask : t))
     toast.success("已移至焦点任务")
   }
@@ -1053,7 +1053,7 @@ export function useTaskManager() {
     if (destination === "focus") {
       const updatedTasks = selectedTasks.map(t => ({ ...t, isFocusTask: true, isInInbox: false }))
       setInboxTasks(prev => prev.filter(t => !selectedInboxTasks.includes(t.id)))
-      setTasks(prev => [...prev, ...updatedTasks])
+      setFocusTasks(prev => [...prev, ...updatedTasks])
       setAllTasks(prev => prev.map(t => {
         const updated = updatedTasks.find(ut => ut.id === t.id)
         return updated || t
@@ -1095,7 +1095,7 @@ export function useTaskManager() {
     isLoading,
     
     // State
-    tasks,
+    focusTasks,
     pendingTasks,
     inboxTasks,
     allTasks,

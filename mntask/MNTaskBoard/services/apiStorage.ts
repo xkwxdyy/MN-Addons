@@ -1,7 +1,7 @@
 import { Task, Perspective } from '@/types/task'
 
 export interface StorageData {
-  tasks: Task[]
+  focusTasks: Task[]
   pendingTasks: Task[]
   inboxTasks: Task[]
   allTasks: Task[]
@@ -39,7 +39,7 @@ class ApiStorageService {
       })
       
       this.cache = {
-        tasks: (data.tasks || []).map(parseTaskDates),
+        focusTasks: (data.focusTasks || data.tasks || []).map(parseTaskDates),
         pendingTasks: (data.pendingTasks || []).map(parseTaskDates),
         inboxTasks: (data.inboxTasks || []).map(parseTaskDates),
         allTasks: (data.allTasks || []).map(parseTaskDates),
@@ -61,7 +61,7 @@ class ApiStorageService {
       
       // Return empty structure
       return {
-        tasks: [],
+        focusTasks: [],
         pendingTasks: [],
         inboxTasks: [],
         allTasks: [],
@@ -76,13 +76,13 @@ class ApiStorageService {
    */
   private loadFromLocalStorage(): StorageData | null {
     try {
-      const tasks = localStorage.getItem('mntask-tasks')
+      const focusTasks = localStorage.getItem('mntask-tasks')
       const pendingTasks = localStorage.getItem('mntask-pending')
       const inboxTasks = localStorage.getItem('mntask-inbox')
       const allTasks = localStorage.getItem('mntask-all-tasks')
       const perspectives = localStorage.getItem('mntask-perspectives')
       
-      if (!tasks && !pendingTasks && !allTasks) {
+      if (!focusTasks && !pendingTasks && !allTasks) {
         return null
       }
       
@@ -102,7 +102,7 @@ class ApiStorageService {
       })
       
       return {
-        tasks: tasks ? JSON.parse(tasks).map(parseTaskDates) : [],
+        focusTasks: focusTasks ? JSON.parse(focusTasks).map(parseTaskDates) : [],
         pendingTasks: pendingTasks ? JSON.parse(pendingTasks).map(parseTaskDates) : [],
         inboxTasks: inboxTasks ? JSON.parse(inboxTasks).map(parseTaskDates) : [],
         allTasks: allTasks ? JSON.parse(allTasks).map(parseTaskDates) : [],

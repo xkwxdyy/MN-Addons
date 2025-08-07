@@ -8,7 +8,8 @@ export async function GET() {
     if (!data) {
       // Return empty data structure if no file exists
       return NextResponse.json({
-        tasks: [],
+        focusTasks: [],
+        tasks: [],  // 保留以兼容旧版本
         pendingTasks: [],
         allTasks: [],
         perspectives: [],
@@ -16,7 +17,14 @@ export async function GET() {
       })
     }
     
-    return NextResponse.json(data)
+    // 确保兼容性：如果有旧的 tasks 字段，复制到 focusTasks
+    const responseData = {
+      ...data,
+      focusTasks: data.focusTasks || data.tasks || [],
+      tasks: data.tasks || data.focusTasks || []  // 保留以兼容
+    }
+    
+    return NextResponse.json(responseData)
   } catch (error) {
     console.error('Failed to read tasks:', error)
     return NextResponse.json(

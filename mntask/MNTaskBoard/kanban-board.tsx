@@ -14,7 +14,7 @@ import { toast } from "sonner"
 import type { Task, Perspective, PerspectiveFilter } from "@/types/task"
 
 interface KanbanBoardProps {
-  tasks: Task[]
+  focusTasks: Task[]
   pendingTasks: Task[]
   allTasks: Task[]
   perspectives: Perspective[]
@@ -35,7 +35,7 @@ type TaskTypeFilter = "all" | "action" | "project" | "key-result" | "objective"
 type TaskStatus = "todo" | "in-progress" | "completed" | "paused"
 
 export function KanbanBoard({
-  tasks: _tasks,
+  focusTasks: _focusTasks,
   pendingTasks: _pendingTasks,
   allTasks,
   perspectives,

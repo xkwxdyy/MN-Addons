@@ -39,7 +39,7 @@ import { toast } from "sonner"
 import type { FilterRule, Task, Perspective, PerspectiveFilter } from "@/types/task"
 
 interface PerspectiveViewProps {
-  tasks: Task[]
+  focusTasks: Task[]
   pendingTasks: Task[]
   perspectives: Perspective[]
   selectedPerspectiveId: string | null
@@ -66,7 +66,7 @@ interface PerspectiveViewProps {
 }
 
 export function PerspectiveView({
-  tasks,
+  focusTasks,
   pendingTasks,
   perspectives,
   selectedPerspectiveId,
@@ -177,7 +177,7 @@ export function PerspectiveView({
   const selectedPerspective = selectedPerspectiveId ? perspectives.find((p) => p.id === selectedPerspectiveId) : null
 
   // 获取筛选后的任务
-  const allTasks = useMemo(() => [...tasks, ...pendingTasks], [tasks, pendingTasks])
+  const allTasks = useMemo(() => [...focusTasks, ...pendingTasks], [focusTasks, pendingTasks])
   
   const filteredTasks = useMemo(() => {
     return selectedPerspective && selectedPerspective.filters 

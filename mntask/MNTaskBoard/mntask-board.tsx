@@ -50,7 +50,7 @@ export default function MNTaskBoard() {
   // Task management hook
   const {
     isLoading: isTasksLoading,
-    tasks,
+    focusTasks,
     pendingTasks,
     inboxTasks,
     allTasks,
@@ -168,7 +168,7 @@ export default function MNTaskBoard() {
 
 
   // 应用透视筛选后的任务列表
-  const filteredTasks = getFilteredTasks(tasks, "focus")
+  const filteredTasks = getFilteredTasks(focusTasks, "focus")
   const filteredPendingTasks = getFilteredTasks(
     showAllPendingTypes ? pendingTasks : pendingTasks.filter((task) => task.type === "action"),
     "focus",
@@ -248,7 +248,7 @@ export default function MNTaskBoard() {
       task = allTasks.find((t) => t.id === taskIdOrTask)
       if (!task) {
         // 尝试从其他数组中查找
-        const taskInFocus = tasks.find((t) => t.id === taskIdOrTask)
+        const taskInFocus = focusTasks.find((t) => t.id === taskIdOrTask)
         const taskInPending = pendingTasks.find((t) => t.id === taskIdOrTask)
         task = taskInFocus || taskInPending
       }
@@ -318,7 +318,7 @@ export default function MNTaskBoard() {
       const exportData: ExportData = {
         version: "1.0.0",
         exportDate: new Date().toISOString(),
-        focusTasks: tasks,
+        focusTasks: focusTasks,
         pendingTasks: pendingTasks,
         allTasks: allTasks,
         totalTasks: allTasks.length,
@@ -809,7 +809,7 @@ export default function MNTaskBoard() {
           ) : currentView === "kanban" ? (
             /* 看板视图 */
             <KanbanBoard
-              tasks={tasks}
+              focusTasks={focusTasks}
               pendingTasks={pendingTasks}
               allTasks={allTasks}
               perspectives={perspectives}
@@ -835,7 +835,7 @@ export default function MNTaskBoard() {
           ) : currentView === "perspective" ? (
             /* 透视视图 */
             <PerspectiveView
-              tasks={tasks}
+              focusTasks={focusTasks}
               pendingTasks={pendingTasks}
               perspectives={perspectives}
               selectedPerspectiveId={focusSelectedPerspectiveId}

@@ -178,7 +178,7 @@ export default function MNTaskBoard() {
   const filteredPendingTasks = getFilteredTasks(
     showAllPendingTypes ? pendingTasks : pendingTasks.filter((task) => task.type === "action"),
     "focus",
-  )
+  ).filter(task => task.status !== "completed") // 过滤掉已完成的任务
 
   // 计算实际的筛选任务数量（不包括已完成的任务）
   const getFilteredTaskCount = (): number => {
@@ -779,6 +779,9 @@ export default function MNTaskBoard() {
                           onLocateTask={locateTask}
                           onLaunchTask={launchTask}
                           onAddProgress={addProgress}
+                          onStartTask={startTask}
+                          onPauseTask={pauseTask}
+                          onCompleteTask={completeTask}
                         />
                       </div>
                     )

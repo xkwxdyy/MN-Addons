@@ -57,6 +57,9 @@ interface PendingTaskCardProps {
   onLocateTask: (taskId: string) => void
   onLaunchTask: (taskId: string) => void
   onAddProgress: (taskId: string, progress: string) => void
+  onStartTask?: (taskId: string) => void
+  onPauseTask?: (taskId: string) => void
+  onCompleteTask?: (taskId: string) => void
 }
 
 // 预定义的标签颜色
@@ -94,6 +97,9 @@ export function PendingTaskCard({
   onLocateTask,
   onLaunchTask,
   onAddProgress,
+  onStartTask,
+  onPauseTask,
+  onCompleteTask,
 }: PendingTaskCardProps) {
   // 获取任务类型信息
   const getTaskTypeInfo = (type: string) => {
@@ -359,6 +365,56 @@ export function PendingTaskCard({
                 <Target className="w-3 h-3 mr-1" />
                 加入焦点
               </Button>
+
+              {/* 状态切换按钮组 */}
+              {task.status === "todo" && onStartTask && (
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onStartTask(task.id)
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-1 h-8"
+                >
+                  <Play className="w-3 h-3 mr-1" />
+                  开始
+                </Button>
+              )}
+              {task.status === "in-progress" && onPauseTask && (
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onPauseTask(task.id)
+                  }}
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white text-sm px-3 py-1 h-8"
+                >
+                  <Pause className="w-3 h-3 mr-1" />
+                  暂停
+                </Button>
+              )}
+              {task.status === "paused" && onStartTask && (
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onStartTask(task.id)
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-1 h-8"
+                >
+                  <Play className="w-3 h-3 mr-1" />
+                  继续
+                </Button>
+              )}
+              {task.status !== "completed" && onCompleteTask && (
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onCompleteTask(task.id)
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1 h-8"
+                >
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  完成
+                </Button>
+              )}
             </div>
 
             <div className="flex items-center gap-1">

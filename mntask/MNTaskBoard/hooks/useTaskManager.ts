@@ -353,18 +353,26 @@ export function useTaskManager() {
       setFocusTasks(focusTasks.filter(t => t.id !== taskId))
       setPendingTasks([...pendingTasks, updatedTask])
     } else {
-      // Handle completion in pending tasks
-      const taskUpdates = {
-        completed: true,
-        status: "completed" as const,
-        isFocusTask: false,
-        isPriorityFocus: false,
+      // Handle completion in pending tasks - remove from pending list
+      const completedTask = pendingTasks.find(t => t.id === taskId)
+      if (completedTask) {
+        // Remove from pending tasks
+        setPendingTasks(pendingTasks.filter(task => task.id !== taskId))
+        
+        // Update in allTasks to mark as completed
+        setAllTasks(allTasks.map(task => 
+          task.id === taskId 
+            ? { 
+                ...task, 
+                completed: true,
+                status: "completed" as const,
+                isFocusTask: false,
+                isPriorityFocus: false,
+                isInPending: false
+              }
+            : task
+        ))
       }
-      setPendingTasks(pendingTasks.map((task) => 
-        task.id === taskId 
-          ? { ...task, ...taskUpdates } 
-          : task
-      ))
     }
     // allTasks will be automatically synced via useEffect
   }
@@ -416,7 +424,7 @@ export function useTaskManager() {
       )
     } else {
       setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
-      // allTasks will be automatically synced via useEffect
+      setAllTasks(allTasks.filter((task) => task.id !== taskId))
     }
   }
 

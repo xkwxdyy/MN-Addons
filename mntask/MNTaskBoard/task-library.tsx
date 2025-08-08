@@ -29,6 +29,7 @@ interface TaskLibraryProps {
   onAddTask?: (task: Omit<Task, "id" | "createdAt">) => void
   onPerspectiveChange: (perspectiveId: string | null) => void
   onTaskTypeFilterChange?: (filter: TaskTypeFilter) => void
+  onAddProgress?: (taskId: string, progress: string) => void
 }
 
 type TaskTypeFilter = "all" | "action" | "project" | "key-result" | "objective"
@@ -50,6 +51,7 @@ export function TaskLibrary({
   onAddTask,
   onPerspectiveChange,
   onTaskTypeFilterChange,
+  onAddProgress,
 }: TaskLibraryProps) {
   const [selectedFilter, setSelectedFilter] = useState<TaskTypeFilter>(selectedTaskTypeFilter || "all")
   const [newTaskTitle, setNewTaskTitle] = useState("")
@@ -586,6 +588,7 @@ export function TaskLibrary({
             onAddToFocus={onAddToFocus}
             onAddToPending={onAddToPending}
             onRemoveFromPending={onRemoveFromPending}
+            onAddProgress={onAddProgress}
           />
         ))}
 

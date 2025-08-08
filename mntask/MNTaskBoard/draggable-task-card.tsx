@@ -5,6 +5,7 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { ProgressDialog } from "@/components/progress-dialog"
 import {
   MoreHorizontal,
   Target,
@@ -61,6 +62,7 @@ interface DraggableTaskCardProps {
   onAddToFocus?: (taskId: string) => void
   onAddToPending?: (taskId: string) => void
   onRemoveFromPending?: (taskId: string) => void
+  onAddProgress?: (taskId: string, progress: string) => void
 }
 
 // 预定义的标签颜色
@@ -94,10 +96,12 @@ export function DraggableTaskCard({
   onAddToFocus,
   onAddToPending,
   onRemoveFromPending,
+  onAddProgress,
 }: DraggableTaskCardProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [dragStartTime, setDragStartTime] = useState(0)
   const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null)
+  const [progressDialogOpen, setProgressDialogOpen] = useState(false)
 
   const handleDragStart = (e: React.DragEvent) => {
     setIsDragging(true)
@@ -264,6 +268,7 @@ export function DraggableTaskCard({
   const PriorityIcon = priorityInfo.icon
 
   return (
+    <>
     <Card
       className={`bg-slate-800/50 border-slate-700 transition-all duration-200 ${
         isDragging
@@ -285,7 +290,7 @@ export function DraggableTaskCard({
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <TypeIcon className="w-4 h-4 text-slate-400 flex-shrink-0" />
-            <h3 className="font-medium text-white text-sm truncate">{task.title}</h3>
+            <h3 className="font-medium text-white text-sm line-clamp-2 leading-relaxed">{task.title}</h3>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
             {/* Quick View Details Button */}
@@ -455,5 +460,19 @@ export function DraggableTaskCard({
         </div>
       </CardContent>
     </Card>
+    
+    {/* Progress Dialog */}
+    {onAddProgress && (
+      <ProgressDialog
+        open={progressDialogOpen}
+        onOpenChange={setProgressDialogOpen}
+        onConfirm={(progress) => {
+          onAddProgress?.(task.id, progress)
+          setProgressDialogOpen(false)
+        }}
+        taskTitle={task.title}
+      />
+    )}
+    </>
   )
 }

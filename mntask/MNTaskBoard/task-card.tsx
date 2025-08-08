@@ -1,9 +1,11 @@
 "use client"
 
+import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { ProgressDialog } from "@/components/progress-dialog"
 import {
   Play,
   Pause,
@@ -101,6 +103,7 @@ export function TaskCard({
   onResumeTask,
   onAddProgress,
 }: TaskCardProps) {
+  const [progressDialogOpen, setProgressDialogOpen] = useState(false)
   // 获取任务类型信息
   const getTaskTypeInfo = (type: string) => {
     switch (type) {
@@ -209,6 +212,7 @@ export function TaskCard({
   }
 
   return (
+    <>
     <Card
       className={`bg-slate-800/50 border-slate-700 hover:bg-slate-800/70 transition-all duration-200 cursor-pointer ${
         task.isPriorityFocus ? "priority-focus-card priority-focus-enter overflow-hidden" : ""
@@ -482,10 +486,7 @@ export function TaskCard({
               size="sm"
               onClick={(e) => {
                 e.stopPropagation()
-                const progress = prompt("请输入进展内容:")
-                if (progress?.trim()) {
-                  onAddProgress(task.id, progress.trim())
-                }
+                setProgressDialogOpen(true)
               }}
               className="p-1 h-6 w-6 text-slate-400 hover:text-blue-400 hover:bg-blue-900/20"
               title="进展"
@@ -496,5 +497,17 @@ export function TaskCard({
         </div>
       </CardContent>
     </Card>
+    
+    {/* Progress Dialog */}
+    <ProgressDialog
+      open={progressDialogOpen}
+      onOpenChange={setProgressDialogOpen}
+      onConfirm={(progress) => {
+        onAddProgress(task.id, progress)
+        setProgressDialogOpen(false)
+      }}
+      taskTitle={task.title}
+    />
+    </>
   )
 }

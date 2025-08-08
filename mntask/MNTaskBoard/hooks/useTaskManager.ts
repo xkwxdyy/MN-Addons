@@ -255,6 +255,46 @@ export function useTaskManager() {
     )
   }
 
+  // Helper function to handle inbox task status changes
+  const handleInboxTaskStatusChange = (taskId: string, updates: Partial<Task>) => {
+    const inboxTask = inboxTasks.find(t => t.id === taskId)
+    if (!inboxTask) return false
+    
+    // Check if status is being changed from default 'todo' to any other status
+    if (updates.status && updates.status !== 'todo') {
+      // Determine where the task should be moved to
+      // If task already has isFocusTask flag, move to focus, otherwise to pending
+      const destination = inboxTask.isFocusTask ? 'focus' : 'pending'
+      
+      // Update task and move it
+      const updatedTask = { 
+        ...inboxTask, 
+        ...updates,
+        isInInbox: false,
+        isFocusTask: destination === 'focus',
+        isInPending: destination === 'pending'
+      }
+      
+      // Remove from inbox
+      setInboxTasks(prev => prev.filter(t => t.id !== taskId))
+      
+      // Add to target list
+      if (destination === 'focus') {
+        setFocusTasks(prev => [...prev, updatedTask])
+      } else {
+        setPendingTasks(prev => [...prev, updatedTask])
+      }
+      
+      // Update allTasks
+      setAllTasks(prev => prev.map(t => t.id === taskId ? updatedTask : t))
+      
+      toast.success(`任务已从收件箱移至${destination === 'focus' ? '焦点' : '待处理'}列表`)
+      return true
+    }
+    
+    return false
+  }
+
   const toggleFocusTask = (taskId: string) => {
     const task = focusTasks.find((t) => t.id === taskId)
     if (!task) return
@@ -301,31 +341,44 @@ export function useTaskManager() {
   }
 
   const toggleTaskStatus = (taskId: string) => {
+    // First check which list the task is in
+    const task = focusTasks.find(t => t.id === taskId) || 
+                 pendingTasks.find(t => t.id === taskId) ||
+                 inboxTasks.find(t => t.id === taskId)
+    
+    if (!task) return
+
+    let newStatus: "todo" | "in-progress" | "completed" | "paused"
+    switch (task.status) {
+      case "todo":
+        newStatus = "in-progress"
+        break
+      case "in-progress":
+        newStatus = "paused"
+        break
+      case "paused":
+        newStatus = "completed"
+        break
+      case "completed":
+        newStatus = "todo"
+        break
+      default:
+        newStatus = "in-progress"
+    }
+
+    const updates = {
+      status: newStatus,
+      completed: newStatus === "completed",
+    }
+
+    // Check if this is an inbox task that needs to be moved
+    if (inboxTasks.find(t => t.id === taskId) && handleInboxTaskStatusChange(taskId, updates)) {
+      return // Task has been moved from inbox
+    }
+
     const updateTask = (task: Task) => {
       if (task.id === taskId) {
-        let newStatus: "todo" | "in-progress" | "completed" | "paused"
-        switch (task.status) {
-          case "todo":
-            newStatus = "in-progress"
-            break
-          case "in-progress":
-            newStatus = "paused"
-            break
-          case "paused":
-            newStatus = "completed"
-            break
-          case "completed":
-            newStatus = "todo"
-            break
-          default:
-            newStatus = "in-progress"
-        }
-
-        return {
-          ...task,
-          status: newStatus,
-          completed: newStatus === "completed",
-        }
+        return { ...task, ...updates }
       }
       return task
     }
@@ -336,6 +389,11 @@ export function useTaskManager() {
   }
 
   const startTask = (taskId: string) => {
+    // Check if this is an inbox task that needs to be moved
+    if (handleInboxTaskStatusChange(taskId, { status: "in-progress" as const, completed: false })) {
+      return // Task has been moved from inbox
+    }
+
     const updateTask = (task: Task) =>
       task.id === taskId
         ? {
@@ -351,6 +409,11 @@ export function useTaskManager() {
   }
 
   const pauseTask = (taskId: string) => {
+    // Check if this is an inbox task that needs to be moved
+    if (handleInboxTaskStatusChange(taskId, { status: "paused" as const })) {
+      return // Task has been moved from inbox
+    }
+
     const updateTask = (task: Task) =>
       task.id === taskId
         ? {
@@ -365,6 +428,11 @@ export function useTaskManager() {
   }
 
   const resumeTask = (taskId: string) => {
+    // Check if this is an inbox task that needs to be moved
+    if (handleInboxTaskStatusChange(taskId, { status: "in-progress" as const })) {
+      return // Task has been moved from inbox
+    }
+
     const updateTask = (task: Task) =>
       task.id === taskId
         ? {
@@ -379,6 +447,15 @@ export function useTaskManager() {
   }
 
   const completeTask = (taskId: string) => {
+    // Check if this is an inbox task that needs to be moved
+    if (handleInboxTaskStatusChange(taskId, { 
+      status: "completed" as const, 
+      completed: true, 
+      completedAt: new Date()
+    })) {
+      return // Task has been moved from inbox
+    }
+
     // Check if task is in focusTasks
     const focusTask = focusTasks.find(t => t.id === taskId)
     if (focusTask) {
@@ -905,6 +982,11 @@ export function useTaskManager() {
   const updateTask = (taskId: string, updates: Partial<Task>) => {
     console.log(`[updateTask] Updating task ${taskId} with:`, updates)
     
+    // Check if this is an inbox task that needs to be moved due to status change
+    if (handleInboxTaskStatusChange(taskId, updates)) {
+      return // Task has been moved from inbox, no need for further updates
+    }
+    
     setFocusTasks(prev => {
       const updated = prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
       return updated
@@ -1311,13 +1393,20 @@ export function useTaskManager() {
 
   const updateInboxTask = (taskId: string, updates: Partial<Task>) => {
     console.log(`[updateInboxTask] Updating task ${taskId} with:`, updates)
-    setInboxTasks(prev => {
-      const updated = prev.map(t => t.id === taskId ? { ...t, ...updates } : t)
-      console.log(`[updateInboxTask] Updated inboxTasks:`, updated.find(t => t.id === taskId))
-      return updated
-    })
-    // Remove direct allTasks update - let useEffect handle synchronization to avoid race conditions
-    // setAllTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t))
+    
+    // If status is being updated and changed from 'todo', move task out of inbox
+    if (updates.status && updates.status !== 'todo') {
+      handleInboxTaskStatusChange(taskId, updates)
+    } else {
+      // Only update task info without moving it
+      setInboxTasks(prev => {
+        const updated = prev.map(t => t.id === taskId ? { ...t, ...updates } : t)
+        console.log(`[updateInboxTask] Updated inboxTasks:`, updated.find(t => t.id === taskId))
+        return updated
+      })
+      // Update allTasks as well
+      setAllTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t))
+    }
   }
 
   // Recycle bin selection operations

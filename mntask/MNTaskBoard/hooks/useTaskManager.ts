@@ -597,6 +597,14 @@ export function useTaskManager() {
       return
     }
 
+    // Debug log to verify perspective filters are being passed
+    if (selectedPerspectiveFilters) {
+      console.log('[addToPending] Applying perspective filters:', {
+        name: selectedPerspectiveName,
+        filters: selectedPerspectiveFilters
+      })
+    }
+
     const newTasks: Task[] = []
     const parentStack: { id: string; indentation: number }[] = []
 
@@ -624,24 +632,29 @@ export function useTaskManager() {
       // Apply perspective filters if provided
       if (selectedPerspectiveFilters) {
         const filters = selectedPerspectiveFilters
+        console.log(`[addToPending] Applying filters to task "${line.title}":`, filters)
 
-        if (filters.tags.length > 0) {
+        if (filters.tags && filters.tags.length > 0) {
           const existingTags = newTask.tags || []
           const allTags = [...new Set([...existingTags, ...filters.tags])]
           newTask.tags = allTags
+          console.log(`[addToPending] Applied tags:`, allTags)
         }
 
-        if (filters.taskTypes.length === 1) {
+        if (filters.taskTypes && filters.taskTypes.length === 1) {
           newTask.type = filters.taskTypes[0] as "action" | "project" | "key-result" | "objective"
+          console.log(`[addToPending] Applied type:`, newTask.type)
         }
 
-        if (filters.priorities.length === 1) {
+        if (filters.priorities && filters.priorities.length === 1) {
           newTask.priority = filters.priorities[0] as "low" | "medium" | "high"
+          console.log(`[addToPending] Applied priority:`, newTask.priority)
         }
 
-        if (filters.statuses.length === 1) {
+        if (filters.statuses && filters.statuses.length === 1) {
           newTask.status = filters.statuses[0] as "todo" | "in-progress" | "completed" | "paused"
           newTask.completed = newTask.status === "completed"
+          console.log(`[addToPending] Applied status:`, newTask.status)
         }
       }
 

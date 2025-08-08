@@ -301,9 +301,11 @@ export default function MNTaskBoard() {
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       const perspective = getFocusSelectedPerspective
-      if (perspective) {
+      if (perspective && perspective.filters) {
+        console.log('[handleKeyPress] Using perspective:', perspective.name, perspective.filters)
         addToPending(undefined, perspective.filters, perspective.name)
       } else {
+        console.log('[handleKeyPress] No perspective selected')
         addToPending()
       }
     }
@@ -677,6 +679,11 @@ export default function MNTaskBoard() {
                     <Badge className="bg-slate-700 text-slate-300 border-slate-600">
                       共 {filteredPendingTasks.length} 项{showAllPendingTypes ? "任务" : "动作"}
                     </Badge>
+                    {getFocusSelectedPerspective && (
+                      <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
+                        透视已激活
+                      </Badge>
+                    )}
                     {!showAllPendingTypes && pendingTasks.length > filteredPendingTasks.length && (
                       <Badge className="bg-yellow-600/20 text-yellow-300 border-yellow-600/30 text-xs">
                         {getFocusSelectedPerspective
@@ -767,9 +774,11 @@ export default function MNTaskBoard() {
                       <Button
                         onClick={() => {
                           const perspective = getFocusSelectedPerspective
-                          if (perspective) {
+                          if (perspective && perspective.filters) {
+                            console.log('[Add Button] Using perspective:', perspective.name, perspective.filters)
                             addToPending(undefined, perspective.filters, perspective.name)
                           } else {
+                            console.log('[Add Button] No perspective selected')
                             addToPending()
                           }
                         }}
@@ -784,33 +793,37 @@ export default function MNTaskBoard() {
                     </p>
 
                     {getFocusSelectedPerspective && getFocusSelectedPerspective.filters && (
-                      <div className="mt-2 text-xs text-slate-400 flex items-center gap-2">
-                        <Eye className="w-3 h-3" />
-                        <span>新任务将自动应用透视条件:</span>
-                        {getFocusSelectedPerspective.filters.tags.length > 0 && (
-                          <div className="flex gap-1">
-                            {getFocusSelectedPerspective.filters.tags.map((tag) => (
-                              <Badge key={tag} className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                        {getFocusSelectedPerspective.filters.taskTypes.length === 1 && (
-                          <Badge className="bg-green-500/20 text-green-300 border-green-500/30 text-xs">
-                            {getTypeText(getFocusSelectedPerspective.filters.taskTypes[0])}
-                          </Badge>
-                        )}
-                        {getFocusSelectedPerspective.filters.priorities.length === 1 && (
-                          <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30 text-xs">
-                            {getPriorityText(getFocusSelectedPerspective.filters.priorities[0])}优先级
-                          </Badge>
-                        )}
-                        {getFocusSelectedPerspective.filters.statuses.length === 1 && (
-                          <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30 text-xs">
-                            {getStatusText(getFocusSelectedPerspective.filters.statuses[0])}
-                          </Badge>
-                        )}
+                      <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/20 rounded-md">
+                        <div className="text-xs text-blue-300 flex items-center gap-2 mb-1">
+                          <Eye className="w-3 h-3" />
+                          <span className="font-medium">新任务将自动继承以下透视条件:</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {getFocusSelectedPerspective.filters.tags.length > 0 && (
+                            <>
+                              {getFocusSelectedPerspective.filters.tags.map((tag) => (
+                                <Badge key={tag} className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
+                                  标签: {tag}
+                                </Badge>
+                              ))}
+                            </>
+                          )}
+                          {getFocusSelectedPerspective.filters.taskTypes.length === 1 && (
+                            <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-xs">
+                              类型: {getTypeText(getFocusSelectedPerspective.filters.taskTypes[0])}
+                            </Badge>
+                          )}
+                          {getFocusSelectedPerspective.filters.priorities.length === 1 && (
+                            <Badge className="bg-orange-500/20 text-orange-300 border-orange-500/30 text-xs">
+                              优先级: {getPriorityText(getFocusSelectedPerspective.filters.priorities[0])}
+                            </Badge>
+                          )}
+                          {getFocusSelectedPerspective.filters.statuses.length === 1 && (
+                            <Badge className="bg-green-500/20 text-green-300 border-green-500/30 text-xs">
+                              状态: {getStatusText(getFocusSelectedPerspective.filters.statuses[0])}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     )}
                   </CardContent>

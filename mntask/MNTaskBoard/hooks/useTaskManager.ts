@@ -890,6 +890,8 @@ export function useTaskManager() {
   }
 
   const updateTask = (taskId: string, updates: Partial<Task>) => {
+    console.log(`[updateTask] Updating task ${taskId} with:`, updates)
+    
     setFocusTasks(prev => {
       const updated = prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
       return updated
@@ -897,6 +899,15 @@ export function useTaskManager() {
     
     setPendingTasks(prev => {
       const updated = prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
+      return updated
+    })
+    
+    setInboxTasks(prev => {
+      const updated = prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
+      const updatedTask = updated.find(t => t.id === taskId)
+      if (updatedTask) {
+        console.log(`[updateTask] Updated inboxTask:`, updatedTask)
+      }
       return updated
     })
     
@@ -1286,8 +1297,14 @@ export function useTaskManager() {
   }
 
   const updateInboxTask = (taskId: string, updates: Partial<Task>) => {
-    setInboxTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t))
-    setAllTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t))
+    console.log(`[updateInboxTask] Updating task ${taskId} with:`, updates)
+    setInboxTasks(prev => {
+      const updated = prev.map(t => t.id === taskId ? { ...t, ...updates } : t)
+      console.log(`[updateInboxTask] Updated inboxTasks:`, updated.find(t => t.id === taskId))
+      return updated
+    })
+    // Remove direct allTasks update - let useEffect handle synchronization to avoid race conditions
+    // setAllTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t))
   }
 
   // Recycle bin selection operations

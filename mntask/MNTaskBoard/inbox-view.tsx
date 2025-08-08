@@ -78,7 +78,7 @@ export function InboxView({
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
       handleAddTask()
     }
@@ -218,7 +218,7 @@ export function InboxView({
             </Button>
           </div>
           <div className="mt-2 text-xs text-muted-foreground">
-            提示：按 Enter 快速添加，支持 #标签 自动识别
+            提示：按 Cmd+Enter（Mac）或 Ctrl+Enter（Windows）快速添加，支持 #标签 自动识别
           </div>
         </CardContent>
       </Card>
@@ -264,7 +264,7 @@ export function InboxView({
                             value={editingTitle}
                             onChange={(e) => setEditingTitle(e.target.value)}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") saveEdit()
+                              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) saveEdit()
                               if (e.key === "Escape") cancelEdit()
                             }}
                             autoFocus

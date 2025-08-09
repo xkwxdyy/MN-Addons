@@ -66,7 +66,7 @@ export function useTaskManager() {
           setPendingTasks(SAMPLE_PENDING_TASKS)
           setInboxTasks([])
           setRecycleBin([])
-          // allTasks will be set by useEffect
+          setAllTasks([...SAMPLE_TASKS, ...SAMPLE_PENDING_TASKS])
           
           // Save sample data
           await apiStorage.saveData({
@@ -87,14 +87,17 @@ export function useTaskManager() {
           setPendingTasks(data.pendingTasks)
           setInboxTasks(data.inboxTasks || [])
           setRecycleBin(data.recycleBin || [])
-          // allTasks will be set by useEffect
+          // Critical fix: restore allTasks from saved data
+          setAllTasks(data.allTasks || [])
         }
       } catch (error) {
         console.error('Failed to load data:', error)
         toast.error('Failed to load data. Using default data.')
         setFocusTasks(SAMPLE_TASKS)
         setPendingTasks(SAMPLE_PENDING_TASKS)
-        // allTasks will be set by useEffect
+        setInboxTasks([])
+        setRecycleBin([])
+        setAllTasks([...SAMPLE_TASKS, ...SAMPLE_PENDING_TASKS])
       } finally {
         setIsLoading(false)
       }
@@ -127,7 +130,7 @@ export function useTaskManager() {
       } catch (error) {
         console.error('Failed to save tasks:', error)
       }
-    }, 1000) // Debounce for 1 second
+    }, 500) // Debounce for 500ms
     
     return () => {
       if (saveTimeoutRef.current) {
@@ -135,6 +138,47 @@ export function useTaskManager() {
       }
     }
   }, [focusTasks, pendingTasks, inboxTasks, recycleBin, allTasks, isLoading])
+
+  // Save immediately before page unload to prevent data loss
+  useEffect(() => {
+    // Check if we're in the browser
+    if (typeof window === 'undefined') return
+    
+    const handleBeforeUnload = () => {
+      // If there's a pending save, clear it and save immediately
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+        saveTimeoutRef.current = null
+      }
+      
+      // Perform synchronous save (best effort)
+      // Note: This uses the current state values from the closure
+      try {
+        // Using synchronous XHR as async operations may not complete
+        const data = {
+          focusTasks,
+          pendingTasks,
+          inboxTasks,
+          allTasks,
+          recycleBin
+        }
+        
+        // Create a synchronous request (not ideal but necessary for beforeunload)
+        const xhr = new XMLHttpRequest()
+        xhr.open('POST', '/api/backup', false) // false makes it synchronous
+        xhr.setRequestHeader('Content-Type', 'application/json')
+        xhr.send(JSON.stringify(data))
+      } catch (error) {
+        console.error('Failed to save on unload:', error)
+      }
+    }
+    
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [focusTasks, pendingTasks, inboxTasks, allTasks, recycleBin])
 
   // Sync allTasks state when component focusTasks change
   // This is separate from saving to avoid circular dependency
@@ -751,6 +795,23 @@ export function useTaskManager() {
       setNewTaskTitle("")
     }
 
+    // Immediately save to prevent data loss on quick refresh
+    // Clear any pending debounced save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+    
+    // Perform immediate save
+    apiStorage.updateData({
+      focusTasks,
+      pendingTasks: [...pendingTasks, ...newTasks],
+      inboxTasks,
+      allTasks: [...allTasks, ...newTasks],
+      recycleBin
+    }).catch(error => {
+      console.error('Failed to save immediately after addToPending:', error)
+    })
+
     // Show success message
     if (selectedPerspectiveFilters && selectedPerspectiveName) {
       const appliedConditions: string[] = []
@@ -818,6 +879,21 @@ export function useTaskManager() {
     }
     setPendingTasks([...pendingTasks, newTask])
     setAllTasks([...allTasks, newTask])
+    
+    // Immediately save to prevent data loss on quick refresh
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+    
+    apiStorage.updateData({
+      focusTasks,
+      pendingTasks: [...pendingTasks, newTask],
+      inboxTasks,
+      allTasks: [...allTasks, newTask],
+      recycleBin
+    }).catch(error => {
+      console.error('Failed to save immediately after addTaskToPending:', error)
+    })
 
     const appliedTags = newTask.tags || []
     if (appliedTags.length > 0 && selectedPerspectiveFilters && selectedPerspectiveFilters.tags.length > 0) {
@@ -866,6 +942,21 @@ export function useTaskManager() {
     
     // Only add to allTasks, not to pendingTasks
     setAllTasks([...allTasks, newTask])
+    
+    // Immediately save to prevent data loss on quick refresh
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+    
+    apiStorage.updateData({
+      focusTasks,
+      pendingTasks,
+      inboxTasks,
+      allTasks: [...allTasks, newTask],
+      recycleBin
+    }).catch(error => {
+      console.error('Failed to save immediately after addTaskToLibrary:', error)
+    })
 
     const appliedTags = newTask.tags || []
     if (appliedTags.length > 0 && selectedPerspectiveFilters && selectedPerspectiveFilters.tags.length > 0) {
@@ -1260,6 +1351,9 @@ export function useTaskManager() {
       })))
       setPendingTasks(data.pendingTasks)
       setInboxTasks(data.inboxTasks || [])
+      setRecycleBin(data.recycleBin || [])
+      // Also refresh allTasks
+      setAllTasks(data.allTasks || [])
       
       toast.success("数据已刷新")
       return true

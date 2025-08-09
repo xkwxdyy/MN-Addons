@@ -175,3 +175,50 @@ setTasks(tasks.map(task =>
 - 所有任务更新必须同时更新三个数组：`tasks`、`pendingTasks` 和 `allTasks`
 - 不要使用自动同步逻辑，避免意外的数据覆盖
 - 任何新的任务操作函数都必须显式处理 `allTasks` 的更新
+
+### 任务库添加功能数据丢失问题（2025-01-27 已修复）
+
+**问题描述**：
+1. 任务库快速添加功能错误地将任务添加到待处理任务列表
+2. 任务在快速刷新后（1-2秒内）会消失，数据未能及时保存
+3. 焦点视图中的待处理任务也存在相同的快速刷新数据丢失问题
+
+**根本原因**：
+1. `TaskLibrary` 组件错误调用了 `addTaskToPending` 而不是 `addTaskToLibrary`
+2. 数据保存使用了 1 秒的防抖延迟，导致快速刷新时数据还未保存就丢失了
+3. `loadData` 函数没有正确恢复 `allTasks` 数据
+4. 保存逻辑错误地重新计算 `allTasks` 而不是使用实际状态
+
+**解决方案**：
+
+1. **创建专用的 `addTaskToLibrary` 函数**：
+```typescript
+const addTaskToLibrary = (taskData, filters) => {
+  // 仅添加到 allTasks，不添加到 pendingTasks
+  const newTask = { ...taskData, isInPending: false }
+  setAllTasks([...allTasks, newTask])
+  
+  // 立即保存，防止数据丢失
+  if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
+  apiStorage.updateData({ ... }).catch(...)
+}
+```
+
+2. **修复数据保存和加载逻辑**：
+- 使用实际的 `allTasks` 状态，而不是重新计算
+- 在 `loadData` 中正确恢复 `allTasks`
+- 减少防抖延迟到 500ms
+
+3. **添加立即保存机制**：
+- 在所有添加任务函数中清除防抖并立即保存
+- 添加 `beforeunload` 事件监听器，确保页面卸载前保存数据
+- 修复 SSR 兼容性问题，仅在客户端添加事件监听器
+
+**关键代码修改**：
+- `/hooks/useTaskManager.ts`: 添加 `addTaskToLibrary` 函数，修复保存逻辑
+- `/components/mntask-board.tsx`: 修改 TaskLibrary 的 onAddTask 回调
+
+**重要提醒**：
+- 所有任务添加操作都应该包含立即保存逻辑
+- 使用 `beforeunload` 事件作为最后的保护措施
+- 保持防抖机制但减少延迟时间以提升响应速度

@@ -115,15 +115,13 @@ export function useTaskManager() {
     // Set new timeout for debounced save
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        // Calculate allTasks instead of using state to avoid circular dependency
-        const computedAllTasks = [...focusTasks, ...pendingTasks, ...inboxTasks]
-        
-        // Use updateData to only update task-related fields
+        // Use the actual allTasks state to ensure library-only tasks are saved
+        // Note: allTasks is not in the dependency array to avoid circular updates
         await apiStorage.updateData({
           focusTasks,
           pendingTasks,
           inboxTasks,
-          allTasks: computedAllTasks,
+          allTasks: allTasks,
           recycleBin
         })
       } catch (error) {
@@ -136,7 +134,7 @@ export function useTaskManager() {
         clearTimeout(saveTimeoutRef.current)
       }
     }
-  }, [focusTasks, pendingTasks, inboxTasks, recycleBin, isLoading]) // Removed allTasks from dependencies
+  }, [focusTasks, pendingTasks, inboxTasks, recycleBin, allTasks, isLoading])
 
   // Sync allTasks state when component focusTasks change
   // This is separate from saving to avoid circular dependency
@@ -827,6 +825,56 @@ export function useTaskManager() {
     }
   }
 
+  const addTaskToLibrary = (
+    taskData: Omit<Task, "id" | "createdAt">,
+    selectedPerspectiveFilters?: PerspectiveFilter
+  ) => {
+    const finalTaskData = { ...taskData }
+
+    // Apply perspective filters if provided
+    if (selectedPerspectiveFilters) {
+      const filters = selectedPerspectiveFilters
+
+      if (filters.tags.length > 0) {
+        const existingTags = finalTaskData.tags || []
+        const newTags = [...new Set([...existingTags, ...filters.tags])]
+        finalTaskData.tags = newTags
+      }
+
+      if (filters.taskTypes.length === 1 && !taskData.type) {
+        finalTaskData.type = filters.taskTypes[0] as "action" | "project" | "key-result" | "objective"
+      }
+
+      if (filters.priorities.length === 1 && !taskData.priority) {
+        finalTaskData.priority = filters.priorities[0] as "low" | "medium" | "high"
+      }
+
+      if (filters.statuses.length === 1 && !taskData.status) {
+        finalTaskData.status = filters.statuses[0] as "todo" | "in-progress" | "completed" | "paused"
+        finalTaskData.completed = finalTaskData.status === "completed"
+      }
+    }
+
+    const newTask: Task = {
+      ...finalTaskData,
+      id: `task-${Date.now()}`,
+      createdAt: new Date(),
+      isInPending: false, // Ensure it's not marked as pending
+      isFocusTask: false,
+      isInInbox: false
+    }
+    
+    // Only add to allTasks, not to pendingTasks
+    setAllTasks([...allTasks, newTask])
+
+    const appliedTags = newTask.tags || []
+    if (appliedTags.length > 0 && selectedPerspectiveFilters && selectedPerspectiveFilters.tags.length > 0) {
+      toast.success(`任务已添加到任务库并应用透视标签: ${appliedTags.join(", ")}`)
+    } else {
+      toast.success(`任务已添加到任务库`)
+    }
+  }
+
   const addToFocus = (taskId: string) => {
     // First check pending tasks
     const taskFromPending = pendingTasks.find((task) => task.id === taskId)
@@ -1132,6 +1180,25 @@ export function useTaskManager() {
     })
 
     setPendingTasks((prev) => prev.filter((task) => !selectedPendingTasks.includes(task.id)))
+    setSelectedPendingTasks([])
+    setIsSelectionMode(false)
+  }
+
+  const removeSelectedFromPending = () => {
+    // 一次性从待处理列表中移除所有选中的任务
+    setPendingTasks(prev => prev.filter(task => !selectedPendingTasks.includes(task.id)))
+    
+    // 更新 allTasks 中这些任务的状态
+    setAllTasks(prev => prev.map(task => 
+      selectedPendingTasks.includes(task.id) 
+        ? { ...task, isInPending: false }
+        : task
+    ))
+    
+    // 显示成功提示
+    toast.success(`已将 ${selectedPendingTasks.length} 个任务移至任务库`)
+    
+    // 清空选中列表并退出选择模式
     setSelectedPendingTasks([])
     setIsSelectionMode(false)
   }
@@ -1486,6 +1553,7 @@ export function useTaskManager() {
     addProgress,
     addToPending,
     addTaskToPending,
+    addTaskToLibrary,
     addToFocus,
     addToPendingFromLibrary,
     updateTask,
@@ -1495,6 +1563,7 @@ export function useTaskManager() {
     selectFocusTasks,
     clearFocusTasks,
     addSelectedToFocus,
+    removeSelectedFromPending,
     resetData,
     importTasks,
     refreshData,

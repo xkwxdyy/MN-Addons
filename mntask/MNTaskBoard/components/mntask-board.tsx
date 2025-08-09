@@ -20,7 +20,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Target, Clock, Plus, Eye, Filter, X } from "lucide-react"
+import { Target, Clock, Plus, Eye, Filter, X, Trash2 } from "lucide-react"
 import { TaskDetailsModal } from "@/task-details-modal"
 import { TaskSearch } from "@/components/task-search"
 import { useTaskSearch } from "@/hooks/useTaskSearch"
@@ -80,6 +80,7 @@ export default function MNTaskBoard() {
     addProgress,
     addToPending,
     addTaskToPending,
+    addTaskToLibrary,
     addToFocus,
     addToPendingFromLibrary,
     updateTask,
@@ -89,6 +90,7 @@ export default function MNTaskBoard() {
     selectFocusTasks,
     clearFocusTasks,
     addSelectedToFocus,
+    removeSelectedFromPending,
     resetData: resetTaskData,
     importTasks,
     refreshData,
@@ -749,6 +751,14 @@ export default function MNTaskBoard() {
                         取消
                       </Button>
                       <Button
+                        onClick={removeSelectedFromPending}
+                        disabled={selectedPendingTasks.length === 0}
+                        className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white disabled:opacity-50"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        移出待处理 ({selectedPendingTasks.length})
+                      </Button>
+                      <Button
                         onClick={addSelectedToFocus}
                         disabled={selectedPendingTasks.length === 0}
                         className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white disabled:opacity-50"
@@ -899,11 +909,11 @@ export default function MNTaskBoard() {
               onAddToPending={addToPendingFromLibrary}
               onRemoveFromPending={removeFromPending}
               onAddTask={(taskData) => {
-          const perspective = getFocusSelectedPerspective
+          const perspective = getLibrarySelectedPerspective
           if (perspective && perspective.filters) {
-            addTaskToPending(taskData, perspective.filters)
+            addTaskToLibrary(taskData, perspective.filters)
           } else {
-            addTaskToPending(taskData)
+            addTaskToLibrary(taskData)
           }
         }}
               onPerspectiveChange={setLibrarySelectedPerspectiveId}

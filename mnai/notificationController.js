@@ -593,11 +593,51 @@ try {
   webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     let requestURL = request.URL().absoluteString()
     // MNUtil.copy(requestURL)
-    // let config = MNUtil.parseURL(requestURL)
-    // MNUtil.copy(config)
-    // if (config.scheme === "mnchatai") {
-      
-    // }
+    let config = MNUtil.parseURL(requestURL)
+    if (config.scheme === "userselect") {
+      switch (config.host) {
+        case "choice":
+          if ("content" in config.params) {
+            let content = config.params.content
+            self.showHUD("💬 Reply: "+content)
+            self.continueAsk(content)
+          }else if ("linkText" in config.params) {
+            let linkText = config.params.linkText
+            // let content = config.params.content
+            self.showHUD("💬 Reply: "+linkText)
+            self.continueAsk(linkText)
+          }else{
+            MNUtil.copy(config)
+          }
+          break;
+        case "addnote":
+          if ("content" in config.params) {
+            let content = config.params.content
+            self.showHUD("➕ Add note: "+content)
+            let note = MNNote.new(self.noteid)??chatAIUtils.getFocusNote()
+            let childNote = note.createChildNote({excerptText:content,excerptTextMarkdown:true})
+            childNote.focusInMindMap(0.5)
+          }else {
+            MNUtil.copy(config)
+          }
+          break;
+        case "addcomment":
+          if ("content" in config.params) {
+            let content = config.params.content
+            self.showHUD("➕ Add comment: "+content)
+            let note = MNNote.new(self.noteid)??chatAIUtils.getFocusNote()
+            MNUtil.undoGrouping(()=>{
+              note.appendMarkdownComment(content)
+            })
+          }else {
+            MNUtil.copy(config)
+          }
+        default:
+          break;
+      }
+
+      return false
+    }
     if (/^nativecopy\:\/\//.test(requestURL)) {
       let text = decodeURIComponent(requestURL.split("content=")[1])
       MNUtil.copy(text)
@@ -614,8 +654,16 @@ try {
       return false
     }
     if (/^editorheight\:\/\//.test(requestURL)) {
+      
+      // MNUtil.log("editorheight")
       let height = decodeURIComponent(requestURL.split("content=")[1])
       // MNUtil.waitHUD("editorheight"+height)  
+      // try {
+      // MNUtil.log(`${height}:${self.webviewResponse.scrollView.contentSize.height}`)
+        
+      // } catch (error) {
+      //   MNUtil.log(error.message)
+      // }
       if ((parseInt(height)+5) === self.sizeHeight) {
         self.onResponse = false
         return false
@@ -898,6 +946,7 @@ try {
   this.temperature = temperature
   this.funcIndices = config.func ?? []
   this.actions = config.action ?? []
+  this.toolbarAction = config.toolbarAction ?? ""
   if (temperature !== undefined) {//优先从函数的参数中获取温度
     this.temperature = temperature
   }else{
@@ -955,7 +1004,6 @@ try {
 }
 }
 
-
 /**
  * @this {notificationController}
  */
@@ -969,7 +1017,7 @@ notificationController.prototype.askWithDynamicPromptOnText = async function (us
   chatAIUtils.notifyController.currentPrompt = "Dynamic"
   chatAIUtils.notifyController.noteid = undefined
     } catch (error) {
-    MNUtil.showHUD(error)
+    chatAIUtils.addErrorLog(error, "notificationController.askWithDynamicPromptOnText")
   }
 }
 
@@ -1139,6 +1187,7 @@ try {
   this.token = []
   this.preFuncResponse = ""
   this.actions = config.action
+  this.toolbarAction = config.toolbarAction ?? ""
   // this.targetTextview = "textviewResponse"
   if (!this.preCheck()) {
     return
@@ -1202,6 +1251,7 @@ try {
   this.history = []
   this.token = []
   this.actions = config.action
+  this.toolbarAction = config.toolbarAction ?? ""
   this.preFuncResponse = ""
   // this.targetTextview = "textviewResponse"
   if (!this.preCheck()) {
@@ -1400,7 +1450,13 @@ try {
     this.response = ""
     this.preResponse = ""
     if (this.actions.length && !this.onChat) {
-      this.executeFinishAction(this.actions,this.lastResponse)
+      await this.executeFinishAction(this.actions,this.lastResponse)
+    }
+    // MNUtil.log(this.toolbarAction)
+    if (this.toolbarAction && this.toolbarAction.trim()) {
+
+      this.executeToolbarAction(this.toolbarAction, this.view)
+      // MNUtil.log("Should execute toolbar action: "+this.toolbarAction)
     }
     if (chatAIUtils.dynamicController) {
       MNUtil.studyView.bringSubviewToFront(chatAIUtils.dynamicController.view)
@@ -1506,7 +1562,7 @@ notificationController.prototype.setNotiLayout = function (forceHeight) {
     this.currentFrame = currentFrame
     this.webviewResponse.frame = webviewFrame
     this.setLayout()
-  }).then(()=>{
+  },0.1).then(()=>{
     this.onAnimate = false
   })
 }
@@ -1696,6 +1752,9 @@ notificationController.prototype.hide = async function () {
   // this.currentFrame = preFrame
   this.custom = preCustom
   this.response = ''
+  this.preResponse = ""
+  this.preFuncResponse = ''
+  this.funcResponse = ''
   this.setNewResponse()
   return
 }
@@ -2191,11 +2250,12 @@ notificationController.prototype.setResponseText = async function (funcResponse 
     // MNUtil.copy(this.tem)
     this.onResponse = true
     this.onreceive = false
+    let response = chatAIUtils.fixMarkdownLinks(this.response.trim())
     // MNUtil.copy(this.reasoningResponse)
     let option = {
       scrollToBottom: this.scrollToBottom,
       funcResponse: funcHtml,
-      response: this.response.trim(),
+      response: response,
       reasoningResponse: this.reasoningResponse,
     }
     if (!this.onFinish) {
@@ -2369,7 +2429,7 @@ notificationController.prototype.speech = async function(text,webview){
  * @param {number[]} actionIndices 
  * @param {string} text 
  */
-notificationController.prototype.executeFinishAction = function (actionIndices,text) {
+notificationController.prototype.executeFinishAction = async function (actionIndices,text) {
   try {
     
 
@@ -2390,100 +2450,14 @@ notificationController.prototype.executeFinishAction = function (actionIndices,t
       }else{
         await this.executeAction(action, text,false)
       }
-      // switch (actions[index]) {
-      //   case "setTitle":
-      //     if (note) {
-      //       note.noteTitle = MNUtil.mergeWhitespace(text)
-      //       MNUtil.showHUD("Title is set")
-      //     }else{
-      //       // MNUtil.showHUD("No note selected")
-      //     }
-      //     break;
-      //   case "snipasteHTML":
-      //     let htmlBlock = chatAIUtils.extractHtmlCodeBlocks(text)
-      //     if (htmlBlock.length) {
-      //       MNUtil.showHUD("Preview...")
-      //       MNUtil.postNotification("snipasteHtml", {html:htmlBlock[0].code})
-      //     }
-      //     break;
-      //   case "addComment":
-      //     if (note) {
-      //       if (text.trim()) {
-      //         note.appendMarkdownComment(text.trim())
-      //         MNUtil.showHUD("Comment is added")
-      //       }else{
-      //         MNUtil.showHUD("Empty content!")
-      //       }
-      //     }else{
-      //       // MNUtil.showHUD("No note selected")
-      //     }
-      //     break;
-      //   case "addTag":
-      //     if (note) {
-      //       note.appendTextComment("#"+MNUtil.mergeWhitespace(text))
-      //       MNUtil.showHUD("Tag is added")
-      //     }else{
-      //       // MNUtil.showHUD("No note selected")
-      //     }
-      //     break
-      //   case "copyCardURL":
-      //     if (note) {
-      //       MNUtil.copy(note.noteURL)
-      //       MNUtil.showHUD("Link is copied")
-      //     }else{
-      //       // MNUtil.showHUD("No note selected")
-      //     }
-      //     break;
-      //   case "copyMarkdownLink":
-      //     if (note) {
-      //       MNUtil.copy(`[${text}](${note.noteURL})`)
-      //       MNUtil.showHUD("Markdown Link is copied")
-      //     }else{
-      //       // MNUtil.showHUD("No note selected")
-      //     }
-      //     break;
-      //   case "copyText":
-      //     MNUtil.copy(text)
-      //     MNUtil.showHUD("Content is copied")
-      //     break;
-      //   case "clearExcerpt":
-      //     if (note) {
-      //       note.excerptText = ""
-      //       MNUtil.showHUD("clear excerpt")
-      //     }else{
-      //       // MNUtil.showHUD("No note selected")
-      //     }
-      //     break;
-      //   case "close":
-      //     shouldClose = true;
-      //     break;
-      //   case "setExcerpt":
-      //     if (note) {
-      //       note.excerptText = text
-      //       MNUtil.showHUD("excerpt is set")
-      //     }else{
-      //       // MNUtil.showHUD("No note selected")
-      //     }
-      //     break;
-      //   case "addChildNote":
-      //     if (note) {
-      //       note.createChildNote({content:text,markdown:true})
-      //       MNUtil.showHUD("child note is added")
-      //     }else{
-      //       // MNUtil.showHUD("No note selected")
-      //     }
-      //     break;
-      //   default:
-      //     break;
-      // }
     })
   
   })
-  MNUtil.delay(0.5).then(()=>{
-    if (shouldClose) {
-      this.hide()
-    }
-  })
+  await MNUtil.delay(0.5)
+  if (shouldClose) {
+    this.hide()
+  }
+  return
   } catch (error) {
     chatAIUtils.addErrorLog(error, "notificationController.executeFinishAction")
   }
@@ -2740,6 +2714,17 @@ try {
 }
 }
 
+notificationController.prototype.stopOutput = async function () {
+  if (this.connection) {
+    this.connection.cancel()
+    delete this.connection
+    this.showHUD("Stop output")
+  }else{
+    this.showHUD("Not on output")
+  }
+  this.setButtonOpacity(1.0)
+  return;
+}
 /**
  * 不包括带有按钮的动作
  * @this {notificationController}
@@ -2752,6 +2737,10 @@ try {
 
     let note = await this.currentNote(false)
     switch (action) {
+      case "editMode":
+        this.showHUD("Edit mode")
+        this.runJavaScript(`openEdit(true)`)
+        return
       case "stopOutput":
         if (this.connection) {
           this.connection.cancel()
@@ -2761,6 +2750,41 @@ try {
           this.showHUD("Not on output")
         }
         this.setButtonOpacity(1.0)
+        return;
+      case "reply":
+        let userInputRes = await MNUtil.userInput("MN ChatAI", "Reply to the last message\n\n请输入回复内容", ["Cancel","Yes/是","No/不是","Continue/继续","Exit/退出","Confirm"])
+        switch (userInputRes.button) {
+          case 0:
+            MNUtil.showHUD("Cancel")
+            return
+          case 1:
+            this.showHUD("💬 Reply: Yes")
+            this.continueAsk("Yes")
+            return
+          case 2:
+            this.showHUD("💬 Reply: No")
+            this.continueAsk("No")
+            return
+          case 3:
+            this.showHUD("💬 Reply: Continue")
+            this.continueAsk("Continue")
+            return
+          case 4:
+            this.showHUD("💬 Reply: Exit")
+            this.continueAsk("Exit")
+            return
+          case 5:
+            let text = userInputRes.input
+            if (text.trim()) {
+              this.showHUD("💬 Reply: "+text)
+              this.continueAsk(text)
+            }else{
+              MNUtil.showHUD("内容为空")
+            }
+            break;
+          default:
+            break;
+        }
         return;
       case "switchLocation":
         if (this.notifyLoc === 1) {
@@ -3101,6 +3125,7 @@ notificationController.prototype.executeToolbarAction = async function (actionKe
     self.showHUD("Missing action")
     return
   }
+  MNUtil.log({message:"executeToolbarAction",source:"MN ChatAI",detail:actionDes})
   await toolbarUtils.customActionByDes(actionDes,button,undefined,false)
   while ("onFinish" in actionDes) {
     let delay = actionDes.delay ?? 0.5

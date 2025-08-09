@@ -263,30 +263,31 @@
 </div>
 
 <script>
-  let actionNames = ['none','menu','bigbang','addChildNote','addBrotherNote','addComment','addBlankComment','setTitle','addTitle','copy','setExcerpt','appendExcerpt','markdown2Mindmap','openInEditor','snipaste','snipasteText','snipasteHTML','searchInBrowser','reAsk','reAskWithMenu','openChat'];
-  let actionMap = {
-    'none': '无操作',
-    'menu': '打开菜单',
-    'addChildNote': '添加子卡片/节点',
-    'addBrotherNote': '添加兄弟卡片/节点',
-    'addComment': '添加评论',
-    'addBlankComment': '添加文字留白',
-    'setTitle': '设置标题',
-    'addTitle': '添加标题',
-    'copy': '复制内容',
-    'setExcerpt': '设置摘录文本/笔记正文',
-    'appendExcerpt': '追加到摘录文本/笔记正文',
-    'markdown2Mindmap': 'Markdown转脑图',
-    'openInEditor': '调用 MN Editor',
-    'bigbang': '调用 MN Bigbang',
-    'snipaste': '调用 MN Snipaste',
-    'snipasteText': '调用 MN Snipaste',
-    'snipasteHTML': '调用 MN Snipaste 预览 HTML',
-    'searchInBrowser': '调用 MN Browser 搜索',
-    'reAsk': '重新生成',
-    'reAskWithMenu': '选择模型并重新生成',
-    'openChat': '打开聊天模式',
-  }
+  let actionNames = ['none','menu','bigbang','addChildNote','addBrotherNote','addComment','addBlankComment','setTitle','addTitle','copy','setExcerpt','appendExcerpt','markdown2Mindmap','editMode','openInEditor','snipaste','snipasteText','snipasteHTML','searchInBrowser','reAsk','reAskWithMenu','openChat'];
+  // let actionMap = {
+  //   'none': '无操作',
+  //   'menu': '打开菜单',
+  //   'addChildNote': '添加子卡片/节点',
+  //   'addBrotherNote': '添加兄弟卡片/节点',
+  //   'addComment': '添加评论',
+  //   'addBlankComment': '添加文字留白',
+  //   'setTitle': '设置标题',
+  //   'addTitle': '添加标题',
+  //   'copy': '复制内容',
+  //   'setExcerpt': '设置摘录文本/笔记正文',
+  //   'appendExcerpt': '追加到摘录文本/笔记正文',
+  //   'markdown2Mindmap': 'Markdown转脑图',
+  //   'openInEditor': '调用 MN Editor',
+  //   'bigbang': '调用 MN Bigbang',
+  //   'snipaste': '调用 MN Snipaste',
+  //   'snipasteText': '调用 MN Snipaste',
+  //   'snipasteHTML': '调用 MN Snipaste 预览 HTML',
+  //   'searchInBrowser': '调用 MN Browser 搜索',
+  //   'reAsk': '重新生成',
+  //   'reAskWithMenu': '选择模型并重新生成',
+  //   'openChat': '打开聊天模式',
+  //   'reply':'回复'
+  // }
   let action = [
     { value: 'none', text: '无操作' },
     { value: 'menu', text: '打开菜单' },
@@ -300,6 +301,7 @@
     { value: 'setExcerpt', text: '设置摘要' },
     { value: 'appendExcerpt', text: '追加摘要' },
     { value: 'markdown2Mindmap', text: 'Markdown转脑图' },
+    { value: 'editMode', text: '编辑模式' },
     { value: 'openInEditor', text: '调用 MN Editor' },
     { value: 'bigbang', text: '调用 MN Bigbang' },
     { value: 'snipasteText', text: '调用 MN Snipaste' },
@@ -309,7 +311,8 @@
     { value: 'reAskWithMenu', text: '选择模型并重新生成' },
     { value: 'openChat', text: '打开聊天模式' },
     { value: 'stopOutput', text: '停止输出' },
-    { value: 'switchLocation', text: '切换窗口位置' }
+    { value: 'switchLocation', text: '切换窗口位置' },
+    { value: 'reply', text: '回复' }
   ]
     let singleClickActions = action
 

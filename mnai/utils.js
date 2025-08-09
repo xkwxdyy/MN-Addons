@@ -3321,6 +3321,28 @@ try {
   }
   /**
    * 
+   * @param {MbBook} doc 
+   * @returns 
+   */
+  static getDocObject(doc) {
+    if (!doc) {
+      return undefined
+    }
+    let docConfig = {}
+    docConfig.id = doc.docMd5
+    docConfig.name = doc.docTitle
+    let notebookId = doc.currentTopicId
+    if (notebookId) {
+      docConfig.notebook = {
+        id:notebookId,
+        name:MNUtil.getNoteBookById(notebookId).title,
+      }
+    }
+    docConfig.pageCount = doc.pageCount
+    return docConfig
+  }
+  /**
+   * 
    * @param {MNNote} note 
    */
   static getNoteObject(note,opt={first:true}) {
@@ -3376,9 +3398,11 @@ try {
       noteConfig.color.purple = note.colorIndex === 15
     }
     if (note.docMd5 && MNUtil.getDocById(note.docMd5)) {
-      noteConfig.docName = MNUtil.getFileName(MNUtil.getDocById(note.docMd5).pathFile) 
+      noteConfig.doc = this.getDocObject(MNUtil.getDocById(note.docMd5)) 
+      noteConfig.hasDoc = true
+    }else{
+      noteConfig.hasDoc = false
     }
-    noteConfig.hasDoc = !!noteConfig.docName
     if (note.childMindMap) {
       noteConfig.childMindMap = this.getNoteObject(note.childMindMap,{first:false})
     }
@@ -3715,6 +3739,111 @@ try {
       }
     }
     return undefined
+  }
+  static async getInfoForReference(){
+    try {
+      let info = {userInput:"",ocr:false}
+      if (chatAIUtils.currentNoteId) {
+        let note = MNNote.new(chatAIUtils.currentNoteId)
+        info.userInput = `{{note:${chatAIUtils.currentNoteId}}}`
+        // let hasImage = chatAIUtils.hasImageInNote(note)
+        let imageDatas = chatAIUtils.getImagesFromNote(note)
+        let numberOfImages = imageDatas.length
+        // let imageData = note.imageData
+        if (numberOfImages) {//检查是否包含图片
+          let autoImage = chatAIConfig.getConfig("autoImage")
+          let autoOCR = chatAIConfig.getConfig("autoOCR")
+          if (autoImage || autoOCR) {//如果同时开启了自动图片和自动OCR，则只有当图片存在时才会调用OCR
+            if (autoImage) {//将图片添加到引用框中
+              info.imageData = imageDatas[0]
+              if (numberOfImages > 1) {
+                info.imageDatas = imageDatas
+              }
+              return info
+            }else if (autoOCR) {//对图片进行OCR
+              let text = await chatAINetwork.getTextOCR(imageDatas[0])
+              if (numberOfImages > 1) {
+                for (let i = 1; i < numberOfImages; i++) {
+                  const image = imageDatas[i]
+                  const tem = await chatAINetwork.getTextOCR(image)
+                  text = text + "\n" + tem
+                }
+              }
+
+              info.userInput = text
+              info.ocr = true
+              return info
+            }
+          }
+        }
+        return info
+      }
+      let selection = MNUtil.currentSelection
+      if (selection.onSelection) {//文档上存在选区
+        info.userInput = selection.text
+        if (selection.isText) {//选区为文本
+          // let autoOCR = chatAIConfig.getConfig("autoOCR")
+          // if (autoOCR) {//如果开启了自动OCR，则只有当图片存在时才会调用OCR
+          //   let text = await chatAINetwork.getTextOCR(selection.image)
+          //   info.userInput = text
+          //   info.ocr = true
+          // }
+          return info
+        }else{//选区为图片
+          let autoImage = chatAIConfig.getConfig("autoImage")
+          let autoOCR = chatAIConfig.getConfig("autoOCR")
+          if (autoImage || autoOCR) {//如果同时开启了自动图片和自动OCR，则只有当图片存在时才会调用OCR
+            let imageData = selection.image
+            if (autoImage) {//将图片添加到引用框中
+              info.imageData = imageData
+              return info
+            }else if (autoOCR) {
+              let text = await chatAINetwork.getTextOCR(imageData)
+              info.userInput = text
+              info.ocr = true
+              return info
+            }
+          }
+        }
+        return info
+      }
+      let note = chatAIUtils.getFocusNote()
+      if (note) {
+        info.userInput = `{{note:${note.noteId}}}`
+        let imageDatas = chatAIUtils.getImagesFromNote(note)
+        // let imageData = note.imageData
+        let numberOfImages = imageDatas.length
+        if (numberOfImages) {//检查是否包含图片
+          let autoImage = chatAIConfig.getConfig("autoImage")
+          let autoOCR = chatAIConfig.getConfig("autoOCR")
+          if (autoImage || autoOCR) {//如果同时开启了自动图片和自动OCR，则只有当图片存在时才会调用OCR
+            if (autoImage) {//将图片添加到引用框中
+              info.imageData = imageDatas[0]
+              if (numberOfImages > 1) {
+                info.imageDatas = imageDatas
+              }
+              return info
+            }else if (autoOCR) {
+              let text = await chatAINetwork.getTextOCR(imageDatas[0])
+              if (numberOfImages > 1) {
+                for (let i = 1; i < numberOfImages; i++) {
+                  const image = imageDatas[i]
+                  const tem = await chatAINetwork.getTextOCR(image)
+                  text = text + "\n" + tem
+                }
+              }
+              info.userInput = text
+              info.ocr = true
+              return info
+            }
+          }
+        }
+      }
+      return info
+    } catch (error) {
+      chatAIUtils.addErrorLog(error, "getInfoForReference")
+      return undefined
+    }
   }
   static getToday() {
     // 创建一个新的Date对象，默认情况下它会包含当前日期和时间
@@ -4943,7 +5072,7 @@ code.hljs {
   }
   static getLocalBufferFromImageData(imageData){
     let base64 = imageData.base64Encoding()
-    let md5 = MNUtil.MD5(base64)
+    let md5 = chatAIUtils.MD5(base64)
     let fileName = "local_"+md5+".png"
     if (!imageData) {
       return fileName
@@ -5501,8 +5630,9 @@ static getLineByIndex(str, index) {
     let replaceText= text//this.checkVariableForNote(text, userInput)//提前写好要退化到的变量
     let vars = this.parseVars(replaceText)
     let note = MNNote.new(noteid)
+    let docConfig = this.getDocObject(MNUtil.currentDoc)
     let noteConfig = this.getNoteObject(note,{parent:true,child:true,parentLevel:3})
-    let config = noteConfig ? this.getVarInfo(vars,{note:noteConfig,visionMode:vision}) : this.getVarInfo(vars,{visionMode:vision})
+    let config = noteConfig ? this.getVarInfo(vars,{note:noteConfig,visionMode:vision,currentDoc:docConfig}) : this.getVarInfo(vars,{visionMode:vision,currentDoc:docConfig})
     // let selectedText = MNUtil.selectionText
     let contextVar = ""
     if (vars.hasContext) {
@@ -5647,6 +5777,11 @@ static getLineByIndex(str, index) {
       throw error;
     }
   }
+  static MD5(base64Data){
+    const wordArray = CryptoJS.enc.Base64.parse(base64Data);
+    let md5 = CryptoJS.MD5(wordArray).toString();
+    return md5
+  }
 
 static async getTextVarInfo(text,userInput,vision=false,ocr=this.OCREnhancedMode) {
   try {
@@ -5654,7 +5789,8 @@ static async getTextVarInfo(text,userInput,vision=false,ocr=this.OCREnhancedMode
     // this.showHUD(userInput+vars.hasUserInput)
   let replaceText= text//this.checkVariableForText(text, userInput)//提前写好要退化到的变量
   let noteConfig = this.getNoteObject(MNNote.getFocusNote())
-  let config = noteConfig ? this.getVarInfo(vars,{note:noteConfig,visionMode:vision}) : this.getVarInfo(vars,{visionMode:vision})
+  let docConfig = this.getDocObject(MNUtil.currentDoc)
+  let config = noteConfig ? this.getVarInfo(vars,{note:noteConfig,visionMode:vision,currentDoc:docConfig}) : this.getVarInfo(vars,{visionMode:vision,currentDoc:docConfig})
   let fileContent = undefined
   let selectedText = MNUtil.selectionText
   if (MNUtil.activeTextView && MNUtil.activeTextView.selectedRange.length>0) {
@@ -5662,8 +5798,9 @@ static async getTextVarInfo(text,userInput,vision=false,ocr=this.OCREnhancedMode
     selectedText = MNUtil.activeTextView.text.slice(range.location,range.location+range.length)
   }
   if (vars.hasOCR || vars.hasCardOCR || vars.hasParentCardOCR || vars.hasCardsOCR) {
-    if (MNUtil.getDocImage()) {
-      let ocrText = await chatAINetwork.getTextOCR(MNUtil.getDocImage())
+    let docImage = MNUtil.getDocImage()
+    if (docImage) {
+      let ocrText = await chatAINetwork.getTextOCR(docImage)
       if (ocrText && ocrText.trim()) {
         selectedText = ocrText
       }
@@ -5696,10 +5833,14 @@ static async getTextVarInfo(text,userInput,vision=false,ocr=this.OCREnhancedMode
     }
   }
   if (vars.hasContext || vars.hasCard || vars.hasParentCard || vars.hasCards) {
-    if (ocr && MNUtil.getDocImage()) {
-      let ocrText = await chatAINetwork.getTextOCR(MNUtil.getDocImage())
-      if (ocrText && ocrText.trim()) {
-        selectedText = ocrText
+    
+    if (ocr) {
+      let docImage = MNUtil.getDocImage()
+      if (docImage) {
+        let ocrText = await chatAINetwork.getTextOCR(docImage)
+        if (ocrText && ocrText.trim()) {
+          selectedText = ocrText
+        }
       }
     }
     if (vars.hasContext) {
@@ -5718,9 +5859,10 @@ static async getTextVarInfo(text,userInput,vision=false,ocr=this.OCREnhancedMode
   if (vars.hasUserInput ) {
     if (userInput ) {
       selectedText = userInput
-    }else{
-      if (ocr && MNUtil.getDocImage()) {
-        let ocrText = await chatAINetwork.getTextOCR(MNUtil.getDocImage())
+    }else if (ocr) {
+      let docImage = MNUtil.getDocImage()
+      if (docImage) {
+        let ocrText = await chatAINetwork.getTextOCR(docImage)
         if (ocrText && ocrText.trim()) {
           selectedText = ocrText
         }
@@ -6084,7 +6226,7 @@ static getValidJSON(jsonString,debug = false) {
     } catch (error) {
       let errorString = error.toString()
       try {
-        if (errorString.startsWith("Unexpected character \"{\" at position 9")) {
+        if (errorString.startsWith("Unexpected character \"{\" at position")) {
           return JSON.parse(jsonrepair(jsonString+"}"))
         }
         return {}
@@ -6156,7 +6298,45 @@ static replaceLtInLatexBlocks(markdown) {
         return '$$' + latexContent.replace(/</g, '\\lt') + '$$';
     });
 }
+/**
+ * 通过对URL参数进行编码，来修复文本中特定格式的Markdown链接。
+ * 此函数会查找形如 [文字](userselect://choice?content=文字) 的链接，
+ * 并对 content 参数的值进行标准的URL编码，以确保链接格式正确，能被正常解析。
+ *
+ * @param {string} text - 包含可能需要修复的Markdown链接的原始字符串。
+ * @returns {string} - 修复了链接格式的新字符串。
+ */
+static fixMarkdownLinks(text) {
+  // 正则表达式用于匹配并捕获链接文本和需要编码的内容。
+  // 捕获组1 ($1): 方括号内的链接文本。
+  // 捕获组2 ($2): `content=`之后到右括号之前的所有内容。
+  const brokenLinkRegex = /\[([^\]]+)\]\(userselect:\/\/(choice|addnote|addcomment)(\?content=([^)]+))?\)/g;
 
+  /**
+   * 这是一个自定义的替换函数。
+   * String.prototype.replace() 可以接受一个函数作为第二个参数，
+   * 对每一个匹配项动态地创建替换字符串。
+   * @param {string} match - 完整的匹配项，例如 "[A...](userselect...)"
+   * @param {string} linkText - 捕获组1的内容。
+   * @param {string} content - 捕获组2的内容。
+   * @returns {string} - 格式修复后的完整Markdown链接。
+   */
+  const replacer = (match, linkText, host,content) => {
+    // 使用 encodeURIComponent 对包含特殊字符的内容进行编码。
+    // 这是处理URL参数的标准做法。
+      const encodedLinkText = encodeURIComponent(linkText);
+    if (content) {
+      const encodedContent = encodeURIComponent(decodeURIComponent(content).replace("?content=", ""));
+      // 重新组装成修复后的链接。
+      return `[${linkText}](userselect://${host}?content=${encodedContent}&linkText=${encodedLinkText})`;
+    }else{
+      return `[${linkText}](userselect://${host}?linkText=${encodedLinkText})`;
+    }
+  };
+
+  // 执行查找和替换。
+  return text.replace(brokenLinkRegex, replacer);
+}
 }
 
 class chatAIConfig {
@@ -6194,8 +6374,11 @@ class chatAIConfig {
     sideBar: true,
     autoAction: false,
     onSelection: true,
+    onSelectionImage: true,
     onNote: true,
+    onNoteImage: true,
     onNewExcerpt: true,
+    onNewExcerptImage: true,
     delay: 0,
     ignoreShortText: false,
     notifyLoc: 0,
@@ -6250,11 +6433,14 @@ class chatAIConfig {
     dynamicModel : "Default",
     dynamicAction: [],
     dynamicTemp: 0.8,
+    dynamicToolbarAction: "",
     colorConfig: [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    imageColorConfig: [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
     simpleTexKey:"",
     autoExport:false,
     autoImport:false,
     autoImage:false,
+    autoOCR:false,
     lastSyncTime:0,
     modifiedTime:0,
     speech:false,
@@ -6280,7 +6466,7 @@ class chatAIConfig {
     chatModel:"Default",
     chatFuncIndices:[],
     chatSystemPrompt:"",
-    allowEdit:true,
+    allowEdit:false,
     PDFExtractMode:"local",
     customButton:{
       "button1":{
@@ -6340,6 +6526,7 @@ class chatAIConfig {
     addBrotherNote:"brotherImage",
     markdown2Mindmap:"mindmapImage",
     addBlankComment:"commentImage",
+    editMode:"editorImage",
     openInEditor:"editorImage",
     snipaste:"snipasteImage",
     menu:"menuImage",
@@ -6348,7 +6535,8 @@ class chatAIConfig {
     reAskWithMenu:"reloadImage",
     openChat:"chatImage",
     none:"noneImage",
-    switchLocation:"switchLocationImage"
+    switchLocation:"switchLocationImage",
+    reply:"replyImage"
   }
   //直接返回UIImage
   static actionImage(action){
@@ -6363,6 +6551,13 @@ class chatAIConfig {
       return newImage
     }
     return this.defaultActionImage
+  }
+  static getUnusedKey(){
+      let i = 0
+      while (chatAIConfig.prompts["customEngine"+i]) {
+        i = i+1
+      }
+      return ("customEngine"+i)
   }
   static getActionImages(){
   try {
@@ -6630,7 +6825,8 @@ class chatAIConfig {
     this.noneImage = MNUtil.getImage(this.mainPath + `/none.png`)
     this.settingImage = MNUtil.getImage(this.mainPath + `/setting.png`)
     this.visionImage = MNUtil.getImage(this.mainPath + `/vision.png`,1.5)
-    this.switchLocationImage = MNUtil.getImage(this.mainPath + `/switch.png`)
+    this.switchLocationImage = MNUtil.getImage(this.mainPath + `/switch.png`),
+    this.replyImage = MNUtil.getImage(this.mainPath + `/reply.png`)
   }
   
   static checkDataDir(){
@@ -8488,6 +8684,9 @@ class chatAIConfig {
     if (promptConfig.action) {
       config.action = promptConfig.action
     }
+    if (promptConfig.toolbarAction) {
+      config.toolbarAction = promptConfig.toolbarAction
+    }
     return config
   }
   static getDynmaicConfig(){
@@ -8496,6 +8695,7 @@ class chatAIConfig {
     let dynamicFunc = this.getConfig("dynamicFunc")
     let dynamicAction = this.getConfig("dynamicAction")
     let dynamicTemp = this.getConfig("dynamicTemp")
+    let dynamicToolbarAction = this.getConfig("dynamicToolbarAction")
     let config = chatAIConfig.parseModelConfig(promptModel)
     // MNUtil.copyJSON(config)
     // let modelConfig = promptModel.split(":").map(model=>model.trim())
@@ -8515,6 +8715,9 @@ class chatAIConfig {
     }
     if (dynamicAction.length){
       config.action = dynamicAction
+    }
+    if (dynamicToolbarAction) {
+      config.toolbarAction = dynamicToolbarAction
     }
     return config
   }
@@ -8841,6 +9044,7 @@ class chatAINetwork {
   constructor(name) {
     this.name = name;
   }
+  static OCRBuffer = {}
   static requestWithURL(url){
     return NSMutableURLRequest.requestWithURL(NSURL.URLWithString(url))
   }
@@ -8980,13 +9184,17 @@ Content-Type: application/pdf
    * @param {NSData} image 
    * @returns 
    */
-  static async getTextOCR (image) {
-    if (typeof ocrNetwork === 'undefined') {
-      return await this.freeOCR(image)
-    }
+  static async getTextOCR (image,compression = true) {
     try {
+      if (compression) {
+        image = UIImage.imageWithData(image).jpegData(0.1)
+      }
+      if (typeof ocrNetwork === 'undefined') {
+        //OCR未安装，使用自带OCR
+        return await this.freeOCR(image)
+      }
       let res = await ocrNetwork.OCR(image)
-      MNUtil.copy(res)
+      // MNUtil.copy(res)
       return res
     } catch (error) {
       chatAIUtils.addErrorLog(error, "getTextOCR",)
@@ -8994,14 +9202,18 @@ Content-Type: application/pdf
     }
   }
 /**
- * 
+ * 允许直接传入base64图片,减少转换耗时
+ * @param {string|NSData} imageData
  * @returns {Promise<Object>}
  */
  static async ChatGPTVision(imageData,model="glm-4v-flash") {
   try {
-  let key = 'sk-S2rXjj2qB98OiweU46F3BcF2D36e4e5eBfB2C9C269627e44'
+  let keys = ['449628b94fcac030495890ee542284b8.F23PvJW4XXLJ4Lsu','b153822e28214c1ae0edc301f2b244c9.rvBehQYAxTkqznVs']
+  // let key = 'sk-S2rXjj2qB98OiweU46F3BcF2D36e4e5eBfB2C9C269627e44'
+  let key = chatAIUtils.getRandomElement(keys)
   MNUtil.waitHUD("OCR By "+model)
-  let url = subscriptionConfig.config.url + "/v1/chat/completions"
+  // let url = subscriptionConfig.config.url + "/v1/chat/completions"
+  let url = 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
   let prompt = `—role—
 Image Text Extraction Specialist
 
@@ -9012,7 +9224,13 @@ Image Text Extraction Specialist
 
 —constrain—
 * You are not allowed to output any content other than what is in the image.`
-  let compressedImageData = UIImage.imageWithData(imageData).jpegData(0.0)
+  // let compressedImageData = UIImage.imageWithData(imageData).jpegData(0.1)
+  let imageUrl = "data:image/jpeg;base64,"
+  if (typeof imageData === "string") {
+    imageUrl = imageUrl+imageData
+  }else{
+    imageUrl = imageUrl+imageData.base64Encoding()
+  }
   let history = [
     {
       role: "user", 
@@ -9024,7 +9242,7 @@ Image Text Extraction Specialist
         {
           "type": "image_url",
           "image_url": {
-            "url" : "data:image/jpeg;base64,"+compressedImageData.base64Encoding()
+            "url" : imageUrl
           }
         }
       ]
@@ -9043,6 +9261,7 @@ Image Text Extraction Specialist
       .replace(/(\\\[\s*\n?)|(\s*\\\]\n?)/g, '$$$\n')
       .replace(/(\\\(\s*)|(\s*\\\))/g, '$')
       .replace(/```/g,'')
+    MNUtil.stopHUD()
     return convertedText
     
   } catch (error) {
@@ -9083,7 +9302,17 @@ Image Text Extraction Specialist
    * @returns 
    */
   static async freeOCR(image){
-    let res = await this.ChatGPTVision(image)
+    let imageBase64 = image.base64Encoding()
+    let MD5 = chatAIUtils.MD5(imageBase64)
+    if (MD5 in this.OCRBuffer) {
+      // MNUtil.showHUD("Read from buffer...")
+      // let sourcesForAction = ["Doc2X","SimpleTex"]
+      let res = this.OCRBuffer[MD5]
+      return res
+    }
+
+    let res = await this.ChatGPTVision(imageBase64)
+    this.OCRBuffer[MD5] = res
     MNUtil.stopHUD()
     return res
   }

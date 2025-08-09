@@ -9,7 +9,9 @@ JSB.newAddon = function (mainPath) {
   JSB.require('notificationController')
   JSB.require('dynamicController')
   JSB.require('sideOutputController')
-  JSB.require('jsonrepair')
+  if (typeof jsonrepair === 'undefined') {
+    JSB.require('jsonrepair')
+  }
   // JSB.require('parse5-browser')
   // chatAIConfig.remove("MNChatglm_builtInKeys")
 // } catch (error) {
@@ -428,40 +430,17 @@ JSB.newAddon = function (mainPath) {
       },
       onAddonBroadcast: async function (sender) {
       try {
-        let message = sender.userInfo.message
-        // MNUtil.copy(message)
-        if (/mnchatai\?/.test(message)) {
-          let arguments = message.match(/(?<=mnchatai\?).*/)[0].split("&")
-          let config = {}
-          arguments.forEach((arg)=>{
-            let kv = arg.split("=")
-            switch (kv[0]) {
-              case "user":
-              case "prompt":
-                config[kv[0]] = decodeURIComponent(kv[1])
-                break;
-              default:
-                config[kv[0]] = kv[1]
-                break;
-            }
-          })
-          // MNUtil.copy(config)
-          if (!("action" in config)) {
-            MNUtil.showHUD("Missing argument: action")
-            return
-          }
-          // MNUtil.copy(config)
-          let currentNoteId = MNNote.getFocusNote()?.noteId
-          if (config.action === "ask") {
-            let dynamicFrame = MNUtil.genFrame(0, 0, 40, 40)
-            // await self.checkDynamicController(dynamicFrame)
-            // chatAIUtils.ensureView(chatAIUtils.dynamicController.view)
-      //marginnote4app://addon/mnchatai?action=ask&user={query}
-      //marginnote4app://addon/mnchatai?action=ask&user={query}&mode=vision
-      //marginnote4app://addon/mnchatai?action=ask&user={query}&mode=ocr
-            let user = config.user
-            if ("mode" in config) {
-              if (config.mode === "vision") {
+        let message = "marginnote4app://addon/"+sender.userInfo.message
+        let config = MNUtil.parseURL(message)
+        let addon = config.pathComponents[0]
+
+        if (addon === "mnchatai") {
+          let action = config.params.action
+          if (action === "ask") {
+            let user = config.params.user
+            if ("mode" in config.params) {
+              let mode = config.params.mode
+              if (mode === "vision") {
                 let imageDatas
                 let system
                 if (currentNoteId) {
@@ -482,7 +461,7 @@ JSB.newAddon = function (mainPath) {
                 chatAIUtils.notifyController.askByVision(question)
                 return
               }
-              if (config.mode === "ocr") {
+              if (mode === "ocr") {
                 if (MNUtil.currentSelection.onSelection || !currentNoteId) {
                   chatAIUtils.notifyController.askWithDynamicPromptOnText(user,true)
                 }else{
@@ -498,14 +477,14 @@ JSB.newAddon = function (mainPath) {
             }
             return
           }
-          if(config.action === "executeprompt"){
+          if (action === "executeprompt") {
             //marginnote4app://addon/mnchatai?action=executeprompt&prompt={query}
             //对于query，需要匹配promptNames中的promptName,首先进行全匹配,寻找Prompt名与query相同的Prompt
             //如果找到,则执行Prompt
             //如果未找到,则进行模糊匹配,寻找Prompt名与query最接近的Prompt
             //优先寻找以query开头的Prompt
             //如果仍未找到,则进行模糊匹配
-            let prompt = config.prompt
+            let prompt = config.params.prompt
             let promptKeys = chatAIConfig.config.promptNames
             let promptNames = promptKeys.map(key=>chatAIConfig.prompts[key].title)
             let similarPrompts = chatAIUtils.findSimilarPrompts(prompt, promptNames)
@@ -519,7 +498,7 @@ JSB.newAddon = function (mainPath) {
             }
             return
           }
-          if (config.action === "opensetting") {
+          if (action === "opensetting") {
             //marginnote4app://addon/mnchatai?action=opensetting
             if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
             let chatController = chatAIUtils.chatController
@@ -542,9 +521,8 @@ JSB.newAddon = function (mainPath) {
             });
             if (!chatController.view.window) return;
             if (self.viewTimer) self.viewTimer.invalidate();
-            return
           }
-          if (config.action === "togglesidebar") {
+          if (action === "togglesidebar") {
             //marginnote4app://addon/mnchatai?action=togglesidebar
             if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
             if (chatAIUtils.isMN3()) {
@@ -575,9 +553,179 @@ JSB.newAddon = function (mainPath) {
             chatAIUtils.sideOutputController.openChatView(false)
             return
           }
-
+          if (action === "importprompt") {
+            let promptConfig = config.params.promptconfig
+            if (promptConfig.title) {
+              let confirm = await MNUtil.confirm("MN ChatAI\nImport prompt ["+promptConfig.title+"]?", "是否导入 prompt ["+promptConfig.title+"]？\n"+JSON.stringify(promptConfig,null,2))
+              if (!confirm) {
+                MNUtil.showHUD("Cancel import")
+                return
+              }
+            }else{
+              return
+            }
+            let unusedKey = chatAIConfig.getUnusedKey()
+            chatAIUtils.chatController.importNewPrompt(promptConfig,unusedKey)
+            // let i = 0
+            // while (chatAIConfig.prompts["customEngine"+i]) {
+            //   i = i+1
+            // }
+            // chatAIUtils.chatController.importNewPrompt(promptConfig,"customEngine"+i)
+            return
+          }
           MNUtil.showHUD('Unsupported action: '+config.action)
         }
+
+      //   let message = sender.userInfo.message
+      //   // MNUtil.copy(message)
+      //   if (/mnchatai\?/.test(message)) {
+      //     let arguments = message.match(/(?<=mnchatai\?).*/)[0].split("&")
+      //     let config = {}
+      //     arguments.forEach((arg)=>{
+      //       let kv = arg.split("=")
+      //       switch (kv[0]) {
+      //         case "user":
+      //         case "prompt":
+      //           config[kv[0]] = decodeURIComponent(kv[1])
+      //           break;
+      //         default:
+      //           config[kv[0]] = kv[1]
+      //           break;
+      //       }
+      //     })
+      //     // MNUtil.copy(config)
+      //     if (!("action" in config)) {
+      //       MNUtil.showHUD("Missing argument: action")
+      //       return
+      //     }
+      //     // MNUtil.copy(config)
+      //     let currentNoteId = MNNote.getFocusNote()?.noteId
+      //     if (config.action === "ask") {
+      //       let dynamicFrame = MNUtil.genFrame(0, 0, 40, 40)
+      //       // await self.checkDynamicController(dynamicFrame)
+      //       // chatAIUtils.ensureView(chatAIUtils.dynamicController.view)
+      // //marginnote4app://addon/mnchatai?action=ask&user={query}
+      // //marginnote4app://addon/mnchatai?action=ask&user={query}&mode=vision
+      // //marginnote4app://addon/mnchatai?action=ask&user={query}&mode=ocr
+      //       let user = config.user
+      //       if ("mode" in config) {
+      //         if (config.mode === "vision") {
+      //           let imageDatas
+      //           let system
+      //           if (currentNoteId) {
+      //             imageDatas = chatAIUtils.getImagesFromNote(MNNote.new(currentNoteId))
+      //             system = chatAIConfig.dynamicPrompt.note
+      //           }else{
+      //             imageDatas = [MNUtil.getDocImage(true,true)]
+      //             system = chatAIConfig.dynamicPrompt.text
+      //           }
+      //           if (system.trim()) {
+      //             let systemMessage = await chatAIUtils.getTextVarInfo(system,user)
+      //             let question = [{role:"system",content:systemMessage},chatAIUtils.genUserMessage(user, imageDatas)]
+      //             // MNUtil.copy(question)
+      //             chatAIUtils.notifyController.askByVision(question)
+      //             return
+      //           }
+      //           let question = chatAIUtils.genUserMessage(user, imageDatas)
+      //           chatAIUtils.notifyController.askByVision(question)
+      //           return
+      //         }
+      //         if (config.mode === "ocr") {
+      //           if (MNUtil.currentSelection.onSelection || !currentNoteId) {
+      //             chatAIUtils.notifyController.askWithDynamicPromptOnText(user,true)
+      //           }else{
+      //             chatAIUtils.notifyController.askWithDynamicPromptOnNote(currentNoteId,user,true)
+      //           }
+      //           return
+      //         }
+      //       }
+      //       if (MNUtil.currentSelection.onSelection || !currentNoteId) {
+      //         chatAIUtils.notifyController.askWithDynamicPromptOnText(user)
+      //       }else{
+      //         chatAIUtils.notifyController.askWithDynamicPromptOnNote(currentNoteId,user)
+      //       }
+      //       return
+      //     }
+      //     if(config.action === "executeprompt"){
+      //       //marginnote4app://addon/mnchatai?action=executeprompt&prompt={query}
+      //       //对于query，需要匹配promptNames中的promptName,首先进行全匹配,寻找Prompt名与query相同的Prompt
+      //       //如果找到,则执行Prompt
+      //       //如果未找到,则进行模糊匹配,寻找Prompt名与query最接近的Prompt
+      //       //优先寻找以query开头的Prompt
+      //       //如果仍未找到,则进行模糊匹配
+      //       let prompt = config.prompt
+      //       let promptKeys = chatAIConfig.config.promptNames
+      //       let promptNames = promptKeys.map(key=>chatAIConfig.prompts[key].title)
+      //       let similarPrompts = chatAIUtils.findSimilarPrompts(prompt, promptNames)
+      //       if (similarPrompts.length) {
+      //         let firstPrompt = similarPrompts[0]
+      //         let promptKey = chatAIUtils.findKeyByTitle(chatAIConfig.prompts, firstPrompt)
+      //         chatAIUtils.notifyController.noteid = currentNoteId
+      //         chatAIUtils.chatController.askWithDelay(promptKey)
+      //       }else{
+      //         MNUtil.showHUD('No matching prompt found: '+prompt)
+      //       }
+      //       return
+      //     }
+      //     if (config.action === "opensetting") {
+      //       //marginnote4app://addon/mnchatai?action=opensetting
+      //       if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
+      //       let chatController = chatAIUtils.chatController
+      //       if (chatController.view.hidden) {
+      //         if (chatController.isFirst) {
+      //           // Application.sharedInstance().showHUD("first",self.window,2)
+      //           chatController.isFirst = false;
+      //           let width = 330
+      //           let height = 465
+      //           chatController.view.frame = {x:MNUtil.studyWidth*0.5-width*0.5,y:MNUtil.studyHeight*0.5-height*0.5,width:width,height:height}
+      //           chatController.currentFrame = chatController.view.frame
+      //         }
+      //         chatController.show()
+      //       } else {
+      //         chatController.hide()
+      //         return;
+      //       }
+      //       NSTimer.scheduledTimerWithTimeInterval(0.2, false, function () {
+      //         MNUtil.studyView.becomeFirstResponder(); // For dismiss keyboard on iOS
+      //       });
+      //       if (!chatController.view.window) return;
+      //       if (self.viewTimer) self.viewTimer.invalidate();
+      //       return
+      //     }
+      //     if (config.action === "togglesidebar") {
+      //       //marginnote4app://addon/mnchatai?action=togglesidebar
+      //       if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
+      //       if (chatAIUtils.isMN3()) {
+      //         MNUtil.showHUD("Only available in MN4")
+      //         return
+      //       }
+      //       if (!chatAIUtils.sideOutputController) {
+      //         try {
+      //           chatAIUtils.sideOutputController = sideOutputController.new();
+      //           MNUtil.toggleExtensionPanel()
+      //           MNExtensionPanel.show()
+      //           MNExtensionPanel.addSubview("chatAISideOutputView", chatAIUtils.sideOutputController.view)
+      //           let panelView = MNExtensionPanel.view
+      //           chatAIUtils.sideOutputController.view.hidden = false
+      //           chatAIUtils.sideOutputController.view.frame = {x:0,y:0,width:panelView.frame.width,height:panelView.frame.height}
+      //           chatAIUtils.sideOutputController.currentFrame = {x:0,y:0,width:panelView.frame.width,height:panelView.frame.height}
+      //           // MNUtil.toggleExtensionPanel()
+      //         } catch (error) {
+      //           chatAIUtils.addErrorLog(error, "openSideBar")
+      //         }
+      //       }else{
+      //         if (MNExtensionPanel.on) {
+      //           MNExtensionPanel.toggle()
+      //         }else{
+      //           MNExtensionPanel.show("chatAISideOutputView")
+      //         }
+      //       }
+      //       chatAIUtils.sideOutputController.openChatView(false)
+      //       return
+      //     }
+
+      //     MNUtil.showHUD('Unsupported action: '+config.action)
+      //   }
       } catch (error) {
         chatAIUtils.addErrorLog(error, "onAddonBroadcast")
       }

@@ -100,50 +100,19 @@ var dynamicController = JSB.defineClass('dynamicController : UIViewController <N
       self.promptInput.text = ""
     }
   },
-  addContext: function (params) {
+  addContext: async function (params) {
       if (chatAIUtils.isMN3()) {
         MNUtil.showHUD("Only available in MN4")
         return
       }
+      let info = await chatAIUtils.getInfoForReference()
       chatAIUtils.openSideOutput()
-      let userInput = ""
-      if (chatAIUtils.currentNoteId) {
-        let note = MNNote.new(chatAIUtils.currentNoteId)
-        userInput = `{{note:${chatAIUtils.currentNoteId}}}`
-        let hasImage = chatAIUtils.hasImageInNote(note)
-        if (hasImage && chatAIConfig.getConfig("autoImage")) {
-          let imageData = MNNote.getImageFromNote(note)
-          chatAIUtils.sideOutputController.addToInput(userInput,imageData)
-        }else{
-          chatAIUtils.sideOutputController.addToInput(userInput)
-        }
-        return
+      let userInput = info.userInput
+      if ("imageData" in info) {
+        chatAIUtils.sideOutputController.addToInput(userInput,imageData)
       }else{
-        let selection = MNUtil.currentSelection
-        if (selection.onSelection) {
-          userInput = MNUtil.selectionText
-          if (selection.isText || !chatAIConfig.getConfig("autoImage")) {
-            chatAIUtils.sideOutputController.addToInput(userInput)
-            return
-          }else{
-            let imageData = selection.image
-            chatAIUtils.sideOutputController.addToInput("",imageData)
-            return
-          }
-        }else{
-          let note = chatAIUtils.getFocusNote()
-          userInput = `{{note:${note.noteId}}}`
-          let hasImage = chatAIUtils.hasImageInNote(note)
-          if (hasImage) {
-            let imageData = MNNote.getImageFromNote(note)
-            chatAIUtils.sideOutputController.addToInput(userInput,imageData)
-          }else{
-            chatAIUtils.sideOutputController.addToInput(userInput)
-          }
-          return
-        }
+        chatAIUtils.sideOutputController.addToInput(userInput)
       }
-      chatAIUtils.sideOutputController.addToInput(userInput)
   },
   onLongPress: async function (gesture) {
     if (gesture.state === 1) {
@@ -261,6 +230,39 @@ var dynamicController = JSB.defineClass('dynamicController : UIViewController <N
   toggleOCREnhanceMode:async function (params) {
     chatAIUtils.OCREnhancedMode = !chatAIUtils.OCREnhancedMode
     if (chatAIUtils.OCREnhancedMode) {
+      let autoOCR = chatAIConfig.getConfig("autoOCR")
+      if (autoOCR) {
+        if (chatAIUtils.currentNoteId) {
+          let note = MNNote.new(chatAIUtils.currentNoteId)
+          let imageData = note.imageData
+          if (imageData) {
+            chatAINetwork.getTextOCR(imageData).then(()=>{
+              self.OCREnhanced.backgroundColor = MNUtil.hexColorAlpha("#e06c75",0.8)
+            })
+          }else{
+            MNUtil.showHUD("OCR Enhanced ✅")
+            self.OCREnhanced.backgroundColor = MNUtil.hexColorAlpha("#e06c75",0.8)
+          }
+          return
+        }
+        let selection = MNUtil.currentSelection
+        if (selection.onSelection) {//文档上存在选区
+          let imageData = selection.image
+          chatAINetwork.getTextOCR(imageData).then(()=>{
+            self.OCREnhanced.backgroundColor = MNUtil.hexColorAlpha("#e06c75",0.8)
+          })
+          return
+        }
+        let note = chatAIUtils.getFocusNote()
+        let imageData = note.imageData
+        if (imageData) {//检查是否包含图片
+          chatAINetwork.getTextOCR(imageData).then(()=>{
+            self.OCREnhanced.backgroundColor = MNUtil.hexColorAlpha("#e06c75",0.8)
+          })
+          return
+        }
+
+      }
       MNUtil.showHUD("OCR Enhanced ✅")
       self.OCREnhanced.backgroundColor = MNUtil.hexColorAlpha("#e06c75",0.8)
     }else{
@@ -486,7 +488,9 @@ try {
       return
     }
     let self = getDynamicController();
-    self.promptInput.endEditing(true)
+    MNUtil.delay(0.1).then(()=>{
+      self.promptInput.endEditing(true)
+    })
     let userInput = self.promptInput.text
     let notifyController = chatAIUtils.notifyController
     let currentNoteId = chatAIUtils.currentNoteId
@@ -817,7 +821,7 @@ dynamicController.prototype.createButton = function (targetAction,superview,) {
 /**
  * @this {dynamicController}
  */
-dynamicController.prototype.setLayout = async function (frame) {
+dynamicController.prototype.setLayout = async function (frame = this.lastFrame) {
   MNUtil.studyView.bringSubviewToFront(this.view)
   if (frame.width !== 300) {
     frame.width = 64
@@ -904,17 +908,26 @@ dynamicController.prototype.openInput = async function () {
   this.lastFrame.height = 215
   this.aiButton.hidden = true
   this.addButton.hidden = true
-  let selection = MNUtil.currentSelection
-  if (selection.onSelection) {
-    if (!selection.isText && chatAIConfig.getConfig("autoImage")) {
+  chatAIUtils.getInfoForReference().then((info)=>{
+    if ("imageData" in info) {
       chatAIUtils.visionMode = true
     }
-  }else{
-    let focusNote = chatAIUtils.getFocusNote()
-    if (chatAIUtils.hasImageInNote(focusNote) && chatAIConfig.getConfig("autoImage")) {
-      chatAIUtils.visionMode = true
+    if (info.ocr) {
+      chatAIUtils.OCREnhancedMode = true
     }
-  }
+    this.setLayout()
+  })
+  // let selection = MNUtil.currentSelection
+  // if (selection.onSelection) {
+  //   if (!selection.isText && chatAIConfig.getConfig("autoImage")) {
+  //     chatAIUtils.visionMode = true
+  //   }
+  // }else{
+  //   let focusNote = chatAIUtils.getFocusNote()
+  //   if (chatAIUtils.hasImageInNote(focusNote) && chatAIConfig.getConfig("autoImage")) {
+  //     chatAIUtils.visionMode = true
+  //   }
+  // }
   let model = chatAIConfig.getConfig("dynamicModel")
   let modelConfig = chatAIConfig.parseModelConfig(model)
   if (modelConfig.source === "Built-in") {
@@ -922,7 +935,7 @@ dynamicController.prototype.openInput = async function () {
   }else{
     MNButton.setTitle(this.modelButton, modelConfig.model,14,true)
   }
-  await this.setLayout(this.lastFrame)
+  await this.setLayout()
   this.view.backgroundColor = MNUtil.hexColorAlpha("#e4eeff",0)
   this.view.hidden = false
   if (MNUtil.version.type === "macOS" && (!MNUtil.activeTextView)) {
@@ -931,14 +944,6 @@ dynamicController.prototype.openInput = async function () {
   } catch (error) {
     chatAIUtils.addErrorLog(error, "dynamicController.openInput")
   }
-  // if (!chatAIUtils.currentNoteId && !chatAIUtils.currentSelection) {
-  //   chatAIUtils.noSystemMode = true
-  //   if (chatAIUtils.noSystemMode) {
-  //     this.systemButton.backgroundColor = MNUtil.hexColorAlpha("#e06c75",0.8)
-  //   }else{
-  //     this.systemButton.backgroundColor = MNUtil.hexColorAlpha("#c0bfbf",0.8)
-  //   }
-  // }
 }
 /**
  * @this {dynamicController}

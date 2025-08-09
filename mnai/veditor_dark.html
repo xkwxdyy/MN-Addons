@@ -15,12 +15,15 @@
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script> -->
     <link rel="stylesheet" href="veditor.css" />
     <!-- <script src="https://unpkg.com/vditor/dist/index.min.js"></script> -->
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
+    <!-- <script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css"> -->
     <style>
       body{
         margin: 0px;
         background-color: #24292e;
+      }
+      a {
+        color:rgb(0, 166, 255);
       }
       .vditor {
         --border-color: rgba(180, 142, 142, 0);
@@ -79,6 +82,7 @@
 
 let editor
 let preContent = `I'm thinking...`
+// let preContent = `[test](https://www.baidu.com)`
 let preHtml = ""
 let preFunc = ""
 let preReasoning = ""

@@ -2844,6 +2844,96 @@ function registerAllCustomActions() {
     },
   );
 
+  // adjustHtmlMDLevelsUp - 批量上移层级
+  global.registerCustomAction(
+    "adjustHtmlMDLevelsUp",
+    async function (context) {
+      const { button, des, focusNote, focusNotes, self } = context;
+      MNUtil.undoGrouping(() => {
+        try {
+          const adjustedCount = HtmlMarkdownUtils.adjustAllHtmlMDLevels(focusNote, "up");
+          if (adjustedCount > 0) {
+            MNUtil.showHUD(`✅ 已将 ${adjustedCount} 个层级上移一级`);
+          } else {
+            MNUtil.showHUD("没有可调整的层级评论");
+          }
+        } catch (error) {
+          MNUtil.showHUD("调整层级失败: " + error.toString());
+        }
+      });
+    },
+  );
+  
+  // adjustHtmlMDLevelsDown - 批量下移层级
+  global.registerCustomAction(
+    "adjustHtmlMDLevelsDown",
+    async function (context) {
+      const { button, des, focusNote, focusNotes, self } = context;
+      MNUtil.undoGrouping(() => {
+        try {
+          const adjustedCount = HtmlMarkdownUtils.adjustAllHtmlMDLevels(focusNote, "down");
+          if (adjustedCount > 0) {
+            MNUtil.showHUD(`✅ 已将 ${adjustedCount} 个层级下移一级`);
+          } else {
+            MNUtil.showHUD("没有可调整的层级评论");
+          }
+        } catch (error) {
+          MNUtil.showHUD("调整层级失败: " + error.toString());
+        }
+      });
+    },
+  );
+  
+  // adjustHtmlMDLevelsByHighest - 按最高级调整层级
+  global.registerCustomAction(
+    "adjustHtmlMDLevelsByHighest",
+    async function (context) {
+      const { button, des, focusNote, focusNotes, self } = context;
+      
+      // 定义可选的层级
+      const levelOptions = [
+        "🎯 goal（最高级）",
+        "🚩 level1",
+        "▸ level2",
+        "▪ level3",
+        "• level4",
+        "· level5"
+      ];
+      
+      const levelValues = ["goal", "level1", "level2", "level3", "level4", "level5"];
+      
+      // 弹窗让用户选择目标最高级
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "选择目标最高级别",
+        "当前卡片中的最高层级将调整为您选择的级别，其他层级会相应调整",
+        0,
+        "取消",
+        levelOptions,
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) return; // 用户取消
+          
+          const targetLevel = levelValues[buttonIndex - 1];
+          
+          MNUtil.undoGrouping(() => {
+            try {
+              const result = HtmlMarkdownUtils.adjustHtmlMDLevelsByHighest(focusNote, targetLevel);
+              
+              if (result.adjustedCount > 0) {
+                MNUtil.showHUD(`✅ 已调整 ${result.adjustedCount} 个层级\n最高级从 ${result.originalHighest} 改为 ${result.targetHighest}`);
+              } else if (result.originalHighest === result.targetHighest) {
+                MNUtil.showHUD(`当前最高级已经是 ${targetLevel}`);
+              } else {
+                MNUtil.showHUD("没有找到可调整的层级评论");
+              }
+            } catch (error) {
+              MNUtil.showHUD("调整层级失败: " + error.toString());
+            }
+          });
+        }
+      );
+    },
+  );
+
   // ========== MOVE 相关 (19 个) ==========
 
   // moveToExcerptPartTop
@@ -4350,6 +4440,17 @@ function registerAllCustomActions() {
     } catch (error) {}
   });
 
+  // manageSynonymGroups - 管理同义词组
+  global.registerCustomAction("manageSynonymGroups", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    try {
+      // 调用同义词组管理界面
+      await MNMath.manageSynonymGroups();
+    } catch (error) {
+      MNUtil.showHUD("管理同义词组失败: " + error.message);
+    }
+  });
+
   global.registerCustomAction("codeMergeTemplate", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
@@ -4692,6 +4793,93 @@ function registerAllCustomActions() {
       }
     }
   });
+  
+  // ========== HtmlMarkdown 层级调整相关 ==========
+  
+  // adjustHtmlMDLevelsUp - 所有层级上移一级
+  global.registerCustomAction(
+    "adjustHtmlMDLevelsUp",
+    async function (context) {
+      const { button, des, focusNote, focusNotes, self } = context;
+      if (!focusNote) {
+        MNUtil.showHUD("请先选择一个卡片");
+        return;
+      }
+      MNUtil.undoGrouping(() => {
+        try {
+          HtmlMarkdownUtils.adjustAllHtmlMDLevels(focusNote, "up");
+        } catch (error) {
+          MNUtil.showHUD("操作失败: " + error.message);
+        }
+      });
+    }
+  );
+  
+  // adjustHtmlMDLevelsDown - 所有层级下移一级
+  global.registerCustomAction(
+    "adjustHtmlMDLevelsDown",
+    async function (context) {
+      const { button, des, focusNote, focusNotes, self } = context;
+      if (!focusNote) {
+        MNUtil.showHUD("请先选择一个卡片");
+        return;
+      }
+      MNUtil.undoGrouping(() => {
+        try {
+          HtmlMarkdownUtils.adjustAllHtmlMDLevels(focusNote, "down");
+        } catch (error) {
+          MNUtil.showHUD("操作失败: " + error.message);
+        }
+      });
+    }
+  );
+  
+  // adjustHtmlMDLevelsByHighest - 指定最高级别调整层级
+  global.registerCustomAction(
+    "adjustHtmlMDLevelsByHighest",
+    async function (context) {
+      const { button, des, focusNote, focusNotes, self } = context;
+      if (!focusNote) {
+        MNUtil.showHUD("请先选择一个卡片");
+        return;
+      }
+      
+      // 定义可选的层级
+      const levelOptions = [
+        "🎯 Goal（最高级）",
+        "🚩 Level 1",
+        "▸ Level 2",
+        "▪ Level 3",
+        "• Level 4",
+        "· Level 5"
+      ];
+      
+      const levelValues = ["goal", "level1", "level2", "level3", "level4", "level5"];
+      
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "选择目标最高级别",
+        "将调整所有层级，使最高级别变为您选择的级别",
+        0,
+        "取消",
+        levelOptions,
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) {
+            return; // 用户取消
+          }
+          
+          const targetLevel = levelValues[buttonIndex - 1];
+          
+          MNUtil.undoGrouping(() => {
+            try {
+              HtmlMarkdownUtils.adjustHtmlMDLevelsByHighest(focusNote, targetLevel);
+            } catch (error) {
+              MNUtil.showHUD("操作失败: " + error.message);
+            }
+          });
+        }
+      );
+    }
+  );
 }
 
 // 立即注册

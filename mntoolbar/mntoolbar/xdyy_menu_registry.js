@@ -550,6 +550,19 @@ function registerAllMenuTemplates() {
           action: "renewContentsToHtmlMarkdownCommentType",
           menuTitle: "🔄 更新文本内容为 HtmlMD 评论",
         },
+        "📊 批量调整层级",
+        {
+          action: "adjustHtmlMDLevelsUp",
+          menuTitle: "    ⬆️ 所有层级上移一级",
+        },
+        {
+          action: "adjustHtmlMDLevelsDown",
+          menuTitle: "    ⬇️ 所有层级下移一级",
+        },
+        {
+          action: "adjustHtmlMDLevelsByHighest",
+          menuTitle: "    🎯 指定最高级别调整层级",
+        },
       ],
     },
   });
@@ -632,6 +645,10 @@ function registerAllMenuTemplates() {
         {
           action: "manageSearchRoots",
           menuTitle: "📁 管理搜索根目录",
+        },
+        {
+          action: "manageSynonymGroups",
+          menuTitle: "🔄 管理同义词组",
         },
       ],
     },

@@ -554,6 +554,71 @@ MNUtil.animate(() => {
 }, 0.25); // 动画时长
 ```
 
+## 🔧 代码解压与格式化
+
+### JavaScript 压缩代码解压
+
+当遇到压缩/混淆的 JavaScript 代码时，可以使用以下工具进行格式化：
+
+#### 1. 使用 Prettier（推荐）
+```bash
+# 安装并使用 prettier 格式化代码
+npx prettier@latest filename.js --write --print-width 120 --tab-width 2 --single-quote --trailing-comma es5 --bracket-spacing --arrow-parens always
+```
+
+#### 2. 使用 js-beautify
+```bash
+# 安装 js-beautify
+npm install -g js-beautify
+
+# 格式化代码
+js-beautify filename.js -o formatted_filename.js -s 2 --type js
+```
+
+#### 3. 使用 Node.js 自定义脚本
+创建格式化脚本 `format.js`：
+```javascript
+const fs = require('fs');
+const content = fs.readFileSync('compressed.js', 'utf8');
+
+function formatJavaScript(code) {
+  return code
+    .split(';').join(';\n')
+    .split('{').join('{\n  ')
+    .split('}').join('\n}\n')
+    .split(',').join(', ')
+    .replace(/\n\s*\n\s*\n/g, '\n\n')
+    .replace(/function\(/g, 'function (')
+    .replace(/if\(/g, 'if (')
+    .replace(/for\(/g, 'for (')
+    .replace(/while\(/g, 'while (')
+    .replace(/\)\{/g, ') {');
+}
+
+const formatted = formatJavaScript(content);
+fs.writeFileSync('formatted.js', formatted);
+console.log('格式化完成');
+```
+
+运行脚本：
+```bash
+node format.js
+```
+
+#### 格式化参数说明
+- `--print-width 120`: 行宽度限制
+- `--tab-width 2`: 缩进宽度
+- `--single-quote`: 使用单引号
+- `--trailing-comma es5`: ES5 兼容的尾逗号
+- `--bracket-spacing`: 括号内空格
+- `--arrow-parens always`: 箭头函数始终使用括号
+
+### 注意事项
+1. **压缩代码的限制**：变量名已被混淆（如 t, e, i），无法恢复原始有意义的变量名
+2. **格式化 vs 反混淆**：这些工具只能改善代码格式，不能还原变量名和注释
+3. **备份原文件**：格式化前建议备份原始文件
+4. **大文件处理**：超大文件可能需要分段处理或使用专门的在线工具
+
 ## 🐛 调试技巧
 
 ### 1. 日志输出

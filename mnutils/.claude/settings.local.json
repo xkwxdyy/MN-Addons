@@ -30,7 +30,11 @@
       "mcp__promptx__promptx_init",
       "mcp__promptx__promptx_remember",
       "Bash(git add:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(npx js-beautify:*)",
+      "Bash(npm install:*)",
+      "Bash(js-beautify:*)",
+      "Bash(npx prettier:*)"
     ],
     "deny": []
   }

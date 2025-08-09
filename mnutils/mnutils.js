@@ -226,8 +226,11 @@ class MNLog {
    * @param {string|{message:string,level:string,source:string,timestamp:number,detail:string}} log 
    * @returns 
    */
-  static log(log){
+  static log(log,detail = undefined){
     let logObject = this.getLogObject(log)
+    if ((typeof log === "string" || typeof log === "number") && detail !== undefined) {
+      logObject.detail = detail
+    }
     this.logs.push(logObject)
     this.updateLog(logObject)
     if (this.logs.length > 1000) {
@@ -391,13 +394,16 @@ class MNUtil {
    * @param {string|{message:string,level:string,source:string,timestamp:number,detail:string}} log 
    * @returns 
    */
-  static log(log){
+  static log(log,detail = undefined){
     if (typeof log == "string" || typeof log == "number") {
       log = {
         message:log,
         level:"INFO",
         source:"Default",
         timestamp:Date.now()
+      }
+      if (detail !== undefined) {
+        log.detail = detail
       }
       MNLog.logs.push(log)
       // MNUtil.copy(this.logs)
@@ -653,6 +659,9 @@ class MNUtil {
   static get currentNotebook() {
     return this.getNoteBookById(this.currentNotebookId)
   }
+  /**
+   * @returns {MbBook}
+   */
   static get currentDoc() {
     return this.currentDocController.document
   }
@@ -1361,19 +1370,66 @@ static textMatchPhrase(text, query) {
   }
   /**
    *
-   * @param {string} url
+   * @param {string|NSURL} url
    */
   static openURL(url,mode = "external"){
-    switch (mode) {
-      case "external":
-        this.app.openURL(NSURL.URLWithString(url));
-        break;
-      case "mnbrowser":
-        MNUtil.postNotification("openInBrowser", {url:url})
-        break;
-      default:
-        break;
+  try {
+
+    let type = this.typeOf(url)
+    // MNUtil.log(type)
+
+    if (type === "NSURL") {
+      switch (mode) {
+        case "auto":
+          if (typeof browserUtils !== "undefined") {
+            MNUtil.postNotification("openInBrowser", {url:url.absoluteString()})
+          }else{
+            this.app.openURL(url);
+          }
+          break;
+        case "external":
+          this.app.openURL(url);
+          break;
+        case "mnbrowser":
+          if (typeof browserUtils !== "undefined") {
+            MNUtil.postNotification("openInBrowser", {url:url.absoluteString()})
+          }else{
+            MNUtil.showHUD("❌ MN Browser not installed")
+          }
+          break;
+        default:
+          break;
+      }
+      return
     }
+    if (typeof url === "string") {
+      switch (mode) {
+        case "auto":
+          if (typeof browserUtils !== "undefined") {
+            MNUtil.postNotification("openInBrowser", {url:url})
+          }else{
+            this.app.openURL(NSURL.URLWithString(url));
+          }
+          break;
+        case "external":
+          // MNUtil.log("openURL:"+url)
+          this.app.openURL(NSURL.URLWithString(url));
+          break;
+        case "mnbrowser":
+          if (typeof browserUtils !== "undefined") {
+            MNUtil.postNotification("openInBrowser", {url:url})
+          }else{
+            MNUtil.showHUD("❌ MN Browser not installed")
+          }
+          break;
+        default:
+          break;
+      }
+      return
+    }
+  } catch (error) {
+    this.addErrorLog(error, "openURL", {url:url,mode:mode})
+  }
   }
   static openWith(config,addon = "external"){
     if (addon) {
@@ -1417,6 +1473,32 @@ static textMatchPhrase(text, query) {
     }
 
     
+  }
+  static compressImage(imageData,quality = 0.1){
+    let compressedData
+    switch (typeof imageData) {
+      case "string":
+        if (imageData.startsWith("data:image/jpeg;base64,") || imageData.startsWith("data:image/png;base64,")) {
+          let data = this.dataFromBase64(imageData)
+          compressedData = UIImage.imageWithData(data).jpegData(quality)
+          return compressedData;
+        }else{
+          let data = this.dataFromBase64(base64,"png")
+          compressedData = UIImage.imageWithData(data).jpegData(quality)
+          return compressedData;
+        }
+        break;
+      case "NSData":
+        compressedData = UIImage.imageWithData(imageData).jpegData(quality)
+        return compressedData;
+      case "UIImage":
+        compressedData = imageData.jpegData(quality)
+        return compressedData;
+        break;
+      default:
+        break;
+    }
+    return undefined
   }
   /**
    * 
@@ -1635,6 +1717,25 @@ static textMatchPhrase(text, query) {
             let pdfData = NSData.dataWithContentsOfURL(MNUtil.genNSURL("data:application/pdf;base64,"+base64))
             return pdfData
           }
+          break;
+        case "png":
+          if (base64.startsWith("data:image/png;base64,")) {
+            let pdfData = NSData.dataWithContentsOfURL(MNUtil.genNSURL(base64))
+            return pdfData
+          }else{
+            let pdfData = NSData.dataWithContentsOfURL(MNUtil.genNSURL("data:image/png;base64,"+base64))
+            return pdfData
+          }
+          break;
+        case "jpeg":
+          if (base64.startsWith("data:image/jpeg;base64,")) {
+            let pdfData = NSData.dataWithContentsOfURL(MNUtil.genNSURL(base64))
+            return pdfData
+          }else{
+            let pdfData = NSData.dataWithContentsOfURL(MNUtil.genNSURL("data:image/jpeg;base64,"+base64))
+            return pdfData
+          }
+          break;
         default:
           break;
       }
@@ -2621,7 +2722,7 @@ try {
     }
     return undefined
   } catch (error) {
-    MNUtil.showHUD(error)
+    this.addErrorLog(error, "getDocImage")
     return undefined
   }
   }
@@ -2969,9 +3070,17 @@ try {
   }
   static hasMNImages(markdown) {
     try {
+      if (!markdown) {
+        return false
+      }
+      if (!markdown.trim()) {
+        return false
+      }
       // 匹配 base64 图片链接的正则表达式
       const MNImagePattern = /!\[.*?\]\((marginnote4app\:\/\/markdownimg\/png\/.*?)(\))/g;
-      let link = markdown.match(MNImagePattern)[0]
+      // let link = markdown.match(MNImagePattern)
+      // console.log(link);
+      
       // MNUtil.copyJSON({"a":link,"b":markdown})
       return markdown.match(MNImagePattern)?true:false
     } catch (error) {
@@ -6252,6 +6361,22 @@ try {
     }
     return false
   }
+  getImage(checkTextFirst = true){//第一个图片
+    let imageData = MNNote.getImageFromNote(this,checkTextFirst)
+    let image = imageData?UIImage.imageWithData(imageData):undefined
+    return image
+  }
+  getImageData(checkTextFirst = true){
+    return MNNote.getImageFromNote(this,checkTextFirst)
+  }
+  getImages(checkTextFirst = true){//所有图片
+    let imageDatas = MNNote.getImagesFromNote(this,checkTextFirst)
+    let images = imageDatas?imageDatas.map(imageData=>UIImage.imageWithData(imageData)):undefined
+    return images
+  }
+  getImageDatas(checkTextFirst = true){//所有图片
+    return MNNote.getImagesFromNote(this,checkTextFirst)
+  }
   /**
    * Append text comments as much as you want.
    * @param {string[]} comments
@@ -7335,11 +7460,11 @@ try {
    * This method checks for image data in the current document controller's selection. If no image is found, it checks the focused note within the current document controller.
    * If the document map split mode is enabled, it iterates through all document controllers to find the image data. If a pop-up selection info is available, it also checks the associated document controller.
    * 
-   * @param {boolean} [checkImageFromNote=false] - Whether to check the focused note for image data.
+   * @param {boolean} [checkImageFromNote=true] - Whether to check the focused note for image data.
    * @param {boolean} [checkDocMapSplitMode=false] - Whether to check other document controllers if the document map split mode is enabled.
    * @returns {NSData|undefined} The image data if found, otherwise undefined.
    */
-  static getImageFromNote(note,checkTextFirst = false) {
+  static getImageFromNote(note,checkTextFirst = true) {
     if (note.excerptPic) {
       if (checkTextFirst && note.textFirst) {
         //检查发现图片已经转为文本，因此略过
@@ -7502,6 +7627,12 @@ class MNComment {
         MNUtil.showHUD("Invalid type: "+this.type)
         return undefined
     }
+  }
+  get audioData(){
+    if (this.type === "audioComment") {
+      return MNUtil.getMediaByHash(this.detail.audio)
+    }
+    return undefined
   }
 
   get text(){
@@ -7831,6 +7962,8 @@ class MNComment {
         }else{
           return "imageComment"
         }
+      case "AudioNote"://录音文件（可能还有其他的）
+        return "audioComment"
       default:
         return undefined
     }

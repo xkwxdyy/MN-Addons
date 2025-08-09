@@ -543,17 +543,19 @@ function getSchemaByActionName(actionName) {
       properties.name = stringType()
       break;
     case "replace":
-      properties.target = stringEnum(['excerpt','title','clipboardText'])
+      properties.target = stringEnum(['excerpt','title','clipboardText','globalVar'])
       properties.content = stringType()
       properties.from = stringType()
       properties.to = stringType()
       properties.reg = stringType()
       properties.steps = arrayType()
       properties.range = stringEnum(['currentNotes','childNotes','descendantNotes'])
+      properties.varName = stringType()
       break;
     case "showInFloatWindow":
       properties.noteURL = stringType()
-      properties.target = stringEnum(['noteInClipboard','currentNote','currentChildMap','parentNote','currentNoteInMindMap','menu'])
+      properties.target = stringEnum(['noteInClipboard','currentNote','currentChildMap','parentNote','currentNoteInMindMap','menu','globalVar'])
+      properties.varName = stringType()
       break;
     case "export":
       properties.source = stringEnum(['noteDoc','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown'])
@@ -624,8 +626,9 @@ function getSchemaByActionName(actionName) {
       properties.buttonName = stringType()
       break;
     case "focus":
-      properties.source = stringEnum(['parentNote'])
+      properties.source = stringEnum(['currentNote','childMindMap','parentNote','globalVar'])
       properties.target = stringEnum(['doc','mindmap','both','floatMindmap'])
+      properties.varName = stringType()
       properties.noteURL = stringType()
       properties.forceToFocus = booleanType()
       break;

@@ -312,7 +312,11 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   },
   changePopupReplace: function (button) {
     let allActions = toolbarConfig.getAllActions()
-    // MNUtil.copyJSON(allActions)
+    // var config = allActions.map(actionKey=>{
+    //   let actionName = toolbarConfig.getAction(actionKey).name
+    //   return {title:actionName,key:actionKey}
+    // })
+    // MNUtil.copyJSON(config)
     var commandTable = allActions.map(actionKey=>{
       let actionName = toolbarConfig.getAction(actionKey).name
       return {title:actionName,object:self,selector:'setPopupReplace:',param:{id:button.id,name:actionName,target:actionKey}}
@@ -322,39 +326,6 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     }else{
       self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,200,1)
     }
-    // MNUtil.showHUD("replacePopupEditTapped")
-  },
-  setPopupReplace: function (config) {
-    self.checkPopoverController()
-    try {
-      // MNUtil.copyJSON(config)
-      // MNUtil.copyJSON(toolbarConfig.popupConfig)
-    let popupConfig = toolbarConfig.getPopupConfig(config.id)
-    popupConfig.target = config.target
-    toolbarConfig.popupConfig[config.id] = popupConfig
-    // MNUtil.copyJSON(toolbarConfig.popupConfig)
-    // MNUtil.showHUD("Set target: "+config.target)
-    let buttonName = "replacePopupButton_"+config.id
-    MNButton.setConfig(self[buttonName], {title:config.id+": "+config.name,font:17,radius:10,bold:true})
-    toolbarConfig.save("MNToolbar_popupConfig")
-    } catch (error) {
-      toolbarUtils.addErrorLog(error, "setPopupReplace")
-    }
-  },
-  /**
-   * 
-   * @param {UISwitch} button 
-   */
-  togglePopupReplace: function (button) {
-    // MNUtil.showHUD("togglePopupReplace:"+button.id)
-    let popupConfig = toolbarConfig.getPopupConfig(button.id)
-    if (button.on) {
-      popupConfig.enabled = true
-    }else{
-      popupConfig.enabled = false
-    }
-    toolbarConfig.popupConfig[button.id] = popupConfig
-    toolbarConfig.save("MNToolbar_popupConfig")
   },
   onMoveGesture:function (gesture) {
     let self = getSettingController()
@@ -451,7 +422,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     MNButton.setColor(self.popupButton, "#9bb2d6", 0.8)
     MNButton.setColor(self.dynamicButton, "#9bb2d6", 0.8)
   },
-  popupButtonTapped: function (params) {
+  popupButtonTapped: async function (params) {
     self.advanceView.hidden = true
     self.advancedButton.selected = false
     self.configView.hidden = true
@@ -463,7 +434,33 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     MNButton.setColor(self.advancedButton, "#9bb2d6", 0.8)
     MNButton.setColor(self.popupButton, "#457bd3", 0.8)
     MNButton.setColor(self.dynamicButton, "#9bb2d6", 0.8)
+    self.popupEditView.loadFileURLAllowingReadAccessToURL(
+      NSURL.fileURLWithPath(self.mainPath + '/popupReplace.html'),
+      NSURL.fileURLWithPath(self.mainPath + '/')
+    );
     self.settingViewLayout()
+    let allActions = toolbarConfig.getAllActions()
+    var config = allActions.map(actionKey=>{
+      let actionName = toolbarConfig.getAction(actionKey).name
+      return {title:actionName,key:actionKey}
+    })
+    let popupConfig = toolbarConfig.popupConfig
+    // MNUtil.copy(`updatePopupReplaceConfigEncoded("${encodeURIComponent(JSON.stringify(popupConfig))}");
+    // updateTargetActionsEncoded("${encodeURIComponent(JSON.stringify(config))}");
+    // updateConfigList();
+    // `)
+    await MNUtil.delay(0.1)
+    let res = await self.runJavaScript(`isInitialized()`, "popupEditView")
+    let isInitialized = JSON.parse(res).initialized
+    if (!isInitialized) {
+      MNUtil.showHUD("wait for init")
+      await MNUtil.delay(1)
+    }
+    self.runJavaScript(`updatePopupReplaceConfigEncoded("${encodeURIComponent(JSON.stringify(popupConfig))}");
+    updateTargetActionsEncoded("${encodeURIComponent(JSON.stringify(config))}");
+    updateConfigList();
+    `, "popupEditView")
+
   },
   configButtonTapped: function (params) {
     self.configView.hidden = false
@@ -507,38 +504,11 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   },
   chooseTemplate: async function (button) {
     let self = getSettingController()
-    let buttonX = toolbarUtils.getButtonFrame(button).x//转化成相对于studyview的
-    let selected = self.selectedItem
-    let templateNames = toolbarUtils.getTempelateNames(selected)
-    if (!templateNames) {
-      return
-    }
-    var templates = toolbarUtils.template
-    var commandTable = templateNames.map((templateName,index)=>{
-      return {
-        title:templateName,
-        object:self,
-        selector:'setTemplate:',
-        param:templates[templateName]
-      }
-    })
-    commandTable.unshift({
-      title:"⬇️ Choose a template:",
-      object:self,
-      selector:'hideTemplateChooser:',
-      param:undefined
-    })
-    let width = 300
-    if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
-      self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
+    if (typeof browserUtils !== "undefined") {
+      MNUtil.postNotification("openInBrowser", {url:"https://mnaddon.craft.me/toolbar/template"})
     }else{
-      self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
+      MNUtil.openURL("https://mnaddon.craft.me/toolbar/template")
     }
-    // self.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,300,4)
-  },
-  setTemplate: async function (config) {
-    self.checkPopoverController()
-    self.updateWebviewContent(JSON.stringify(config))
   },
   configCopyTapped: async function (params) {
     // MNUtil.copy(self.selectedItem)
@@ -645,6 +615,14 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     } catch (error) {
       toolbarUtils.addErrorLog(error, "configSaveTapped", info)
     }
+  },
+  popupSaveTapped: async function (params) {
+    let self = getSettingController()
+    let config = await self.getUpdatedConfig()
+    self.runJavaScript(`document.activeElement.blur()`, "popupEditView")
+    self.popupEditView.endEditing()
+    self.showHUD("Save Popup config")
+    toolbarConfig.popupConfig = config
   },
   configRunTapped: async function (button) {
     let self = getSettingController()
@@ -1346,8 +1324,9 @@ settingController.prototype.settingViewLayout = function (){
     Frame.set(this.settingView,0,55,width,height-55)
     Frame.set(this.configView,0,0,width-2,height-60)
     Frame.set(this.advanceView,0,0,width-2,height-60)
-    Frame.set(this.popupEditView,0,0,width-2,height-60)
+    Frame.set(this.popupEditView,0,0,width-2,height-55)
     Frame.set(this.resizeButton,width-25,height-80)
+    Frame.set(this.savePopupButton,width-70,5)
     if (width < 650) {
       Frame.set(this.webviewInput, 5, 195, width-10, height-255)
       Frame.set(this.titleInput,5,155,width-122,35)
@@ -1392,26 +1371,6 @@ settingController.prototype.settingViewLayout = function (){
     Frame.set(this.popupButton, this.dynamicButton.frame.x + this.dynamicButton.frame.width+5, 5)
     Frame.set(this.advancedButton, this.popupButton.frame.x + this.popupButton.frame.width+5, 5)
     Frame.set(this.closeButton, width-35, 5)
-    let scrollHeight = 5
-    if (MNUtil.appVersion().type === "macOS") {
-      for (let i = 0; i < toolbarConfig.allPopupButtons.length; i++) {
-        let replaceButtonName = "replacePopupButton_"+toolbarConfig.allPopupButtons[i]
-        let replaceSwtichName = "replacePopupSwtich_"+toolbarConfig.allPopupButtons[i]
-        Frame.set(this[replaceButtonName], 5, 5+i*40, width-10)
-        Frame.set(this[replaceSwtichName], width-33, 5+i*40)
-        scrollHeight = (i+1)*40+5
-      }
-    }else{
-      for (let i = 0; i < toolbarConfig.allPopupButtons.length; i++) {
-        let replaceButtonName = "replacePopupButton_"+toolbarConfig.allPopupButtons[i]
-        let replaceSwtichName = "replacePopupSwtich_"+toolbarConfig.allPopupButtons[i]
-        Frame.set(this[replaceButtonName], 5, 5+i*40, width-65)
-        Frame.set(this[replaceSwtichName], width-55, 6.5+i*40)
-        scrollHeight = (i+1)*40+5
-      }
-    }
-    Frame.set(this.popupScroll, 0, 0, width, height-55)
-    this.popupScroll.contentSize = {width:width,height:scrollHeight}
     Frame.set(this.editorButton, 5, 5, (width-15)/2,35)
     Frame.set(this.chatAIButton, 10+(width-15)/2, 5, (width-15)/2,35)
     Frame.set(this.snipasteButton, 5, 45, (width-15)/2,35)
@@ -1442,10 +1401,13 @@ try {
   this.creatView("tabView","view","#9bb2d6",0.0)
   this.creatView("configView","settingView","#9bb2d6",0.0)
 
-  this.creatView("popupEditView","settingView","#9bb2d6",0.0)
+  // this.creatView("popupEditView","settingView","#9bb2d6",0.0)
+  this.createWebviewButtonReplace("settingView")
   this.popupEditView.hidden = true
-  this.createScrollView("popupScroll", "popupEditView")
-  this.popupScroll.layer.backgroundColor = MNUtil.hexColorAlpha("#c0bfbf",0.0)
+  this.createButton("savePopupButton","popupSaveTapped:","popupEditView")
+  MNButton.setConfig(this.savePopupButton, {opacity:0.8,color:"#e06c75",title:"Save","font":18,bold:true})
+  this.savePopupButton.width = 65
+  this.savePopupButton.height = 35
 
   this.creatView("advanceView","settingView","#9bb2d6",0.0)
   this.advanceView.hidden = true
@@ -1481,33 +1443,6 @@ try {
   this.closeButton.width = 30
   this.closeButton.height = 30
 
-  // this.createButton("editorButton","toggleAddonLogo:","advanceView")
-  try {
-    toolbarConfig.allPopupButtons.forEach(buttonName=>{
-      let replaceButtonName = "replacePopupButton_"+buttonName
-      let replaceSwtichName = "replacePopupSwtich_"+buttonName
-      this.createButton(replaceButtonName,"changePopupReplace:","popupScroll")
-      let replaceButton = this[replaceButtonName]
-      replaceButton.height = 35
-      replaceButton.id = buttonName
-      let target = toolbarConfig.getPopupConfig(buttonName).target
-      if (target) {
-        let actionName = toolbarConfig.getAction(toolbarConfig.getPopupConfig(buttonName).target).name
-        MNButton.setConfig(replaceButton, {color:"#558fed",alpha:0.9,opacity:1.0,title:buttonName+": "+actionName,font:17,radius:10,bold:true})
-      }else{
-        MNButton.setConfig(replaceButton, {color:"#558fed",alpha:0.9,opacity:1.0,title:buttonName+": ",font:17,radius:10,bold:true})
-      }
-      this.createSwitch(replaceSwtichName, "togglePopupReplace:", "popupScroll")
-      let replaceSwtich = this[replaceSwtichName]
-      replaceSwtich.id = buttonName
-      replaceSwtich.on = toolbarConfig.getPopupConfig(buttonName).enabled
-      replaceSwtich.hidden = false
-      replaceSwtich.width = 20
-      replaceSwtich.height = 35
-    })
-  } catch (error) {
-    // toolbarUtils.addErrorLog(error, "replacePopupEditSwtich")
-  }
 
   this.createButton("editorButton","toggleAddonLogo:","advanceView")
   this.editorButton.layer.opacity = 1.0
@@ -1845,22 +1780,6 @@ settingController.prototype.refreshView = function (name) {
         MNButton.setTitle(this.iCloudButton, "iCloud Sync "+(iCloudSync? "✅":"❌"),undefined, true)
       break;
     case "popupEditView":
-      toolbarConfig.allPopupButtons.forEach(buttonName=>{
-        let replaceButtonName = "replacePopupButton_"+buttonName
-        let replaceSwtichName = "replacePopupSwtich_"+buttonName
-        let replaceButton = this[replaceButtonName]
-        replaceButton.id = buttonName
-        let target = toolbarConfig.getPopupConfig(buttonName).target
-        if (target) {
-          let actionName = toolbarConfig.getAction(toolbarConfig.getPopupConfig(buttonName).target).name
-          MNButton.setConfig(replaceButton, {color:"#558fed",alpha:0.9,opacity:1.0,title:buttonName+": "+actionName,font:17,radius:10,bold:true})
-        }else{
-          MNButton.setConfig(replaceButton, {color:"#558fed",alpha:0.9,opacity:1.0,title:buttonName+": ",font:17,radius:10,bold:true})
-        }
-        let replaceSwtich = this[replaceSwtichName]
-        replaceSwtich.id = buttonName
-        replaceSwtich.on = toolbarConfig.getPopupConfig(buttonName).enabled
-      })
     default:
       break;
   }
@@ -2067,6 +1986,40 @@ settingController.prototype.createWebviewInput = function (superView) {
     this[superView].addSubview(this.webviewInput)
   }
 }
+
+/**
+ * @this {settingController}
+ */
+settingController.prototype.createWebviewButtonReplace = function (superView) {
+  try {
+  // this.popupEditView = MNUtil.createJsonEditor(this.mainPath + '/jsoneditor.html')
+  this.popupEditView = new UIWebView(this.view.bounds);
+  this.popupEditView.backgroundColor = MNUtil.hexColorAlpha("#c0bfbf",0.8)
+  this.popupEditView.scalesPageToFit = false;
+  this.popupEditView.autoresizingMask = (1 << 1 | 1 << 4);
+  this.popupEditView.delegate = this;
+  // this.popupEditView.setValueForKey("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Safari/605.1.15","User-Agent")
+  this.popupEditView.scrollView.delegate = this;
+  this.popupEditView.layer.cornerRadius = 12;
+  this.popupEditView.layer.masksToBounds = true;
+  this.popupEditView.layer.borderColor = MNUtil.hexColorAlpha("#9bb2d6",0.8);
+  this.popupEditView.layer.borderWidth = 0
+  this.popupEditView.layer.opacity = 0.85
+  // this.popupEditView.loadFileURLAllowingReadAccessToURL(
+  //   NSURL.fileURLWithPath(this.mainPath + '/test.html'),
+  //   NSURL.fileURLWithPath(this.mainPath + '/')
+  // );
+  // this.popupEditView.loadFileURLAllowingReadAccessToURL(
+  //   NSURL.fileURLWithPath(this.mainPath + '/jsoneditor.html'),
+  //   NSURL.fileURLWithPath(MNUtil.mainPath + '/')
+  // );
+    } catch (error) {
+      toolbarUtils.addErrorLog(error, "createWebviewButtonReplace")
+  }
+  if (superView) {
+    this[superView].addSubview(this.popupEditView)
+  }
+}
 /**
  * @this {settingController}
  */
@@ -2137,10 +2090,10 @@ settingController.prototype.getWebviewContent = async function () {
 }
 
 /** @this {settingController} */
-settingController.prototype.runJavaScript = async function(script) {
+settingController.prototype.runJavaScript = async function(script,webview = "webviewInput") {
   // if(!this.webviewResponse || !this.webviewResponse.window)return;
   return new Promise((resolve, reject) => {
-      this.webviewInput.evaluateJavaScript(script,(result) => {resolve(result)});
+      this[webview].evaluateJavaScript(script,(result) => {resolve(result)});
   })
 };
 /** @this {settingController} */
@@ -2200,6 +2153,13 @@ settingController.prototype.importFromShareURL = async function (config) {
     return
   }
 }
+
+settingController.prototype.getUpdatedConfig = async function () {
+  let configEncoded = await this.runJavaScript(`getUpdatedConfigEncoded()`, "popupEditView")
+  let config = JSON.parse(decodeURIComponent(configEncoded))
+  return config
+}
+
 /**
  * 
  * @type {toolbarController}

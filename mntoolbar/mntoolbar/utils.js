@@ -176,289 +176,6 @@ class toolbarUtils {
    * @static
    */
   static textView
-  static template = {
-      "🔨 trigger button":{
-        "action": "triggerButton",
-        "target": "Custom 3"
-      },
-      "🔨 user confirm":{
-        "action": "confirm",
-        "title": "请点击确认",
-        "onConfirm": {
-          "action": "",
-        },
-        "onCancel": {
-          "action": "",
-        }
-      },
-      "🔨 user select":{
-        "description": "要求用户选择一个选项",
-        "action": "userSelect",
-        "title": "test",
-        "selectItems": [
-          {
-            "action": "showMessage",
-            "content": "选中第一个",
-            "selectTitle": "teste1"
-          },
-          {
-            "action": "showMessage",
-            "content": "选中第二个",
-            "selectTitle": "teste2"
-          }
-        ]
-      },
-      "🔨 show message":{
-        "action": "showMessage",
-        "content": "Hello world"
-      },
-      "🔨 empty action":{
-          "description": "空白动作",
-          "action": "xxx",
-      },
-      "🔨 split note to mindmap":{
-        "action": "markdown2Mindmap",
-        "source": "currentNote"
-      },
-      "🔨 import mindmap from clipboard":{
-        "action": "markdown2Mindmap",
-        "source": "clipboard"
-      },
-      "🔨 import mindmap from markdown file":{
-        "action": "markdown2Mindmap",
-        "source": "file"
-      },
-      "🔨 empty action with finish action":{
-        "description": "空白动作 带结束动作",
-        "action": "xxx",
-        "onFinish": {
-          "action": "xxx"
-        }
-      },
-      "🔨 setColor default":{},
-      "🔨 with fillpattern: both":{
-        "fillPattern":-1
-      },
-      "🔨 with fillpattern: fill":{
-        "fillPattern":-1
-      },
-      "🔨 with fillpattern: border":{
-        "fillPattern":-1
-      },
-      "🔨 with followAutoStyle":{
-        "followAutoStyle":true
-      },
-      "🔨 insert snippet":{
-        "description": "在输入框中插入文本片段",
-        "action": "insertSnippet",
-        "content": "test"
-      },
-      "🔨 insert snippet with menu":{
-        "description": "弹出菜单,选择要在输入框中插入的文本片段",
-        "action": "insertSnippet",
-        "target": "menu",
-        "menuItems": [
-          {
-            "menuTitle": "插入序号1️⃣",
-            "content": "1️⃣ "
-          },
-          {
-            "menuTitle": "插入序号2️⃣",
-            "content": "2️⃣ "
-          },
-          {
-            "menuTitle": "插入序号3️⃣",
-            "content": "3️⃣ "
-          },
-          {
-            "menuTitle": "插入序号4️⃣",
-            "content": "4️⃣ "
-          },
-          {
-            "menuTitle": "插入序号5️⃣",
-            "content": "5️⃣ "
-          },
-          {
-            "menuTitle": "插入序号6️⃣",
-            "content": "6️⃣ "
-          },
-          {
-            "menuTitle": "插入序号7️⃣",
-            "content": "7️⃣ "
-          },
-          {
-            "menuTitle": "插入序号8️⃣",
-            "content": "8️⃣ "
-          },
-          {
-            "menuTitle": "插入序号9️⃣",
-            "content": "9️⃣ "
-          }
-        ]
-      },
-      "🔨 add note index":{
-          "description": "多选状态下,给选中的卡片标题加序号",
-          "action": "mergeText",
-          "target": "title",
-          "source": [
-              "{{noteIndex}}、{{title}}"
-          ]
-      },
-      "🔨 toggle mindmap":{
-          "description": "开关脑图界面",
-          "action": "command",
-          "command": "ToggleMindMap"
-      },
-      "🔨 smart copy":{
-        "description": "智能复制",
-        "action": "copy",
-        "target": "auto"
-      },
-      "🔨 copy with menu":{
-          "description": "弹出菜单以选择需要复制的内容",
-          "action": "copy",
-          "target": "menu"
-      },
-      "🔨 copy markdown link":{
-        "description": "复制markdown链接, 以卡片内容为标题,卡片url为链接",
-        "action": "copy",
-        "content": "[{{note.allText}}]({{{note.url}}})"
-      },
-      "🔨 toggle markdown":{
-        "description": "切换摘录markdown渲染",
-        "action": "toggleMarkdown"
-      },
-      "🔨 toggle textFirst":{
-        "description": "切换摘录文本优先",
-        "action": "toggleTextFirst"
-      },
-      "🔨 chatAI with menu":{
-        "description": "弹出菜单选择需要执行的prompt",
-        "action": "chatAI",
-        "target": "menu"
-      },
-      "🔨 chatAI in prompt":{
-        "description": "执行预定好的prompt",
-        "action": "chatAI",
-        "prompt": "翻译"
-      },
-      "🔨 chatAI in current prompt":{
-        "description": "执行当前的prompt",
-        "action": "chatAI",
-        "target": "currentPrompt"
-      },
-      "🔨 chatAI in custom prompt":{
-        "description": "指定user和system",
-        "action": "chatAI",
-        "user": "test",
-        "system": "test"
-      },
-      "🔨 search with menu":{
-        "description": "弹出菜单选择需要在Browser中搜索的内容",
-        "action": "search",
-        "target": "menu"
-      },
-      "🔨 search in Baidu":{
-        "description": "百度搜索",
-        "action": "search",
-        "target": "Baidu"
-      },
-      "🔨 OCR with menu":{
-        "description": "弹出菜单选择OCR的目的",
-        "action": "ocr",
-        "target": "menu"
-      },
-      "🔨 OCR as chat mode reference":{
-        "description": "OCR 结果作为聊天模式引用",
-        "action": "ocr",
-        "target": "chatModeReference"
-      },
-      "🔨 OCR to clipboard":{
-        "description": "OCR 到剪贴板",
-        "action": "ocr",
-        "target": "clipboard"
-      },
-      "🔨 OCR with onFinish":{
-        "description": "OCR结束后执行特定动作",
-        "action": "ocr",
-        "target": "excerpt",
-        "onFinish":{
-          "action": "xxx"
-        }
-      },
-      "🔨 toggle full doc and tab bar":{
-          "description": "开关文档全屏和标签页",
-          "action": "command",
-          "commands": [
-              "ToggleFullDoc",
-              "ToggleTabsBar"
-          ]
-      },
-      "🔨 merge text of merged notes":{
-          "description": "把合并的卡片的文本合并到主卡片的摘录中",
-          "action": "mergeText",
-          "target": "excerptText",
-          "source": [
-              "{{excerptTexts}},"
-          ],
-          "removeSource": true
-      },
-      "🔨 create & move to main mindmap":{
-        "description": "创建摘录并移动到主脑图",
-        "action": "noteHighlight",
-        "mainMindMap": true
-      },
-      "🔨 create & move as child note":{
-        "description": "创建摘录并移动到指定卡片下",
-        "action": "noteHighlight",
-        "parentNote": "marginnote4app://note/xxx"
-      },
-      "🔨 create & set branch style":{
-        "description": "创建摘录并设置分支样式",
-        "action": "noteHighlight",
-        "onFinish": {
-          "action": "command",
-          "command": "SelBranchStyle3"
-        }
-        },
-      "🔨 move note to main mindmap":{
-        "description": "将当前笔记移动到主脑图中",
-        "action": "moveNote",
-        "target": "mainMindMap"
-      },
-    	"🔨 menu with actions":{
-        "description": "弹出菜单以选择要执行的动作",
-        "action": "menu",
-        "menuItems": [
-            "🔽 我是标题",
-            {
-                "action": "copy",
-                "menuTitle": "123",
-                "content": "test"
-            },
-            {
-                "action": "toggleView",
-                "targets": [
-                    "mindmapToolbar",
-                    "addonBar"
-                ],
-                "autoClose": false,
-                "menuTitle": "toggle"
-            }
-        ]
-      },
-      "🔨 focus in float window":{
-        "description": "在浮动窗口中显示当前笔记",
-        "action": "showInFloatWindow",
-        "target": "currentNoteInMindMap"
-      },
-      "🔨 focus note":{
-        "description": "聚焦特定笔记",
-        "action": "focus",
-        "noteURL": "marginnote4app://note/C1919104-10E9-4C97-B967-1F2BE3FD0BDF",
-        "target": "floatMindmap"
-      }
-    }
   static init(mainPath){
   try {
     this.app = Application.sharedInstance()
@@ -550,7 +267,7 @@ class toolbarUtils {
         menuItems = ["targetMode","range"]
         break;
       case "copy":
-        menuItems = ["target","index","content"]
+        menuItems = ["target","index","content","varName"]
         break;
       case "addComment":
         menuItems = ["content","markdown","index"]
@@ -592,10 +309,10 @@ class toolbarUtils {
         menuItems = ["name"]
         break;
       case "replace":
-        menuItems = ["target","content","from","to","reg","steps","range"]
+        menuItems = ["target","content","from","to","reg","steps","range","varName"]
         break;
       case "showInFloatWindow":
-        menuItems = ["noteURL","target"]
+        menuItems = ["noteURL","target","varName"]
         break;
       case "export":
         menuItems = ["source","target"]
@@ -640,7 +357,7 @@ class toolbarUtils {
         menuItems = ["buttonName"]
         break;
       case "focus":
-        menuItems = ["source","target","noteURL","forceToFocus"]
+        menuItems = ["source","target","noteURL","forceToFocus","varName"]
         break;
       case "insertSnippet":
         menuItems = ["content","target"]
@@ -720,8 +437,32 @@ class toolbarUtils {
   }
 static replaceAction(des){
 try {
+  if (des.target === "globalVar") {
+    if (!des.varName) {
+      MNUtil.showHUD("❌ varName not found")
+      return
+    }
+    let content = des.content ?? toolbarSandbox.getValue(des.varName)
+    content = this.detectAndReplace(content)
+
+    if ("steps" in des) {//如果有steps则表示是多步替换,优先执行
+      let nSteps = des.steps.length
+      for (let i = 0; i < nSteps; i++) {
+        let step = des.steps[i]
+        let ptt = this._replace_get_ptt_(step)
+        content = content.replace(ptt, step.to)
+      }
+      toolbarSandbox.setValue(des.varName, content)
+      return;
+    }
+    let ptt = this._replace_get_ptt_(des)
+    content = content.replace(ptt, des.to)
+    toolbarSandbox.setValue(des.varName, content)
+    return
+  }
   if (des.target === "clipboardText") {
     let content = des.content ?? MNUtil.clipboardText
+    content = this.detectAndReplace(content)
     if ("steps" in des) {//如果有steps则表示是多步替换,优先执行
       let nSteps = des.steps.length
       for (let i = 0; i < nSteps; i++) {
@@ -1107,6 +848,13 @@ try {
               })
             )
             element = this.mergeWhitespace(element+"\n"+descendantsMarkdowns.join("\n\n"))
+          }
+          break;
+        case "globalVar":
+          if (des.varName) {
+            element = toolbarSandbox.getValue(des.varName)
+          }else{
+            MNUtil.showHUD("❌ varName not found")
           }
           break;
         default:
@@ -1703,11 +1451,24 @@ try {
       case "currentNoteInMindMap":
         let targetNote = MNNote.getFocusNote().realGroupNoteForTopicId()
         if (targetNote) {
-          targetNote.focusInFloatMindMap()
+          targetNoteid = targetNote.noteId
         }else{
           MNUtil.showHUD("No Note found!")
         }
-        return
+        break;
+      case "globalVar":
+        if (des.varName) {
+          let noteId = toolbarSandbox.getValue(des.varName)
+          let tem = MNNote.new(noteId)
+          if (tem) {
+            targetNoteid = tem.noteId
+          }else{
+            MNUtil.showHUD("❌ note not valid")
+          }
+        }else{
+          MNUtil.showHUD("❌ varName not found")
+        }
+        break;
       default:
         break;
     }
@@ -4234,11 +3995,29 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     }
     if (des.source) {
       switch (des.source) {
+        case "currentNote":
+          break;
+        case "childMindMap":
+          targetNote = targetNote.childMindMap
+          break;
         case "parentNote":
           targetNote = targetNote.parentNote
           if (!targetNote) {
             MNUtil.showHUD("No parentNote!")
             return
+          }
+          break;
+        case "globalVar":
+          if (des.varName) {
+            let noteId = toolbarSandbox.getValue(des.varName)
+            let tem = MNNote.new(noteId)
+            if (tem) {
+              targetNote = tem
+            }else{
+              MNUtil.showHUD("❌ note not valid")
+            }
+          }else{
+            MNUtil.showHUD("❌ varName not found")
           }
           break;
         default:

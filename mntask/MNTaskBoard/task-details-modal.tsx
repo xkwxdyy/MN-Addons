@@ -302,12 +302,12 @@ export function TaskDetailsModal({
       completed: false,
       isFocusTask: false,
       isPriorityFocus: false,
-      priority: "medium",
+      priority: "low",
       status: "todo",
       type: "action",
       parentId: currentTask.id,
       isInPending: true,
-      tags: [],
+      tags: currentTask.tags || [],
     }
 
     onAddTask(subtaskData)

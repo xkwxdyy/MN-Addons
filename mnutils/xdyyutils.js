@@ -4086,6 +4086,9 @@ class MNMath {
     // 添加范围选择选项
     displayOptions.splice(1, 0, "📍 选择范围");
     
+    // 添加反选选项
+    displayOptions.splice(2, 0, "🔄 反选");
+    
     // 添加分隔线和操作选项
     if (previousDialog) {
       displayOptions.push("⬅️ 返回上一层");
@@ -4125,6 +4128,22 @@ class MNMath {
         } else if (buttonIndex === 2) {
           // 用户选择了范围选择
           this.showRangeSelectDialog(note, commentOptions, selectedIndices, previousDialog);
+          
+        } else if (buttonIndex === 3) {
+          // 用户选择了反选
+          const newSelectedIndices = new Set();
+          commentOptions.forEach(item => {
+            if (!selectedIndices.has(item.index)) {
+              newSelectedIndices.add(item.index);
+            }
+          });
+          
+          // 清空原集合并添加反选的项
+          selectedIndices.clear();
+          newSelectedIndices.forEach(index => selectedIndices.add(index));
+          
+          // 递归显示更新后的对话框
+          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
           
         } else if (buttonIndex === displayOptions.length) {
           // 用户选择了"删除选中项"
@@ -7012,10 +7031,12 @@ class MNMath {
               isDefault: true
             }
           },
+          rootsOrder: ["default"],  // 新增：根目录顺序数组
           lastUsedRoot: "default",
           includeClassification: true,  // 默认包含归类卡片
           ignorePrefix: false,  // 默认搜索完整标题
           searchInKeywords: false,  // 默认不搜索关键词字段
+          onlyClassification: false,  // 默认不启用只搜索归类卡片
           synonymGroups: [],  // 同义词组
           lastModified: Date.now()
         };
@@ -7031,9 +7052,23 @@ class MNMath {
       if (config && config.searchInKeywords === undefined) {
         config.searchInKeywords = false;
       }
+      if (config && config.onlyClassification === undefined) {
+        config.onlyClassification = false;  // 默认不启用只搜索归类卡片
+      }
       // 添加同义词组字段
       if (config && !config.synonymGroups) {
         config.synonymGroups = [];
+      }
+      
+      // 数据迁移：如果旧版本没有 rootsOrder，自动生成
+      if (config && config.roots && !config.rootsOrder) {
+        config.rootsOrder = Object.keys(config.roots);
+        // 确保 default 在第一位
+        const defaultIndex = config.rootsOrder.indexOf("default");
+        if (defaultIndex > 0) {
+          config.rootsOrder.splice(defaultIndex, 1);
+          config.rootsOrder.unshift("default");
+        }
       }
       
       return config;
@@ -7048,10 +7083,12 @@ class MNMath {
             isDefault: true
           }
         },
+        rootsOrder: ["default"],  // 根目录顺序
         lastUsedRoot: "default",
         includeClassification: true,  // 默认包含归类卡片
         ignorePrefix: false,  // 默认搜索完整标题
         searchInKeywords: false,  // 默认不搜索关键词字段
+        onlyClassification: false,  // 默认不启用只搜索归类卡片
         synonymGroups: [],  // 同义词组
         lastModified: Date.now()
       };
@@ -7137,6 +7174,12 @@ class MNMath {
         name: name,
         isDefault: false
       };
+      
+      // 添加到顺序数组末尾
+      if (!this.searchRootConfigs.rootsOrder) {
+        this.searchRootConfigs.rootsOrder = Object.keys(this.searchRootConfigs.roots);
+      }
+      this.searchRootConfigs.rootsOrder.push(key);
       
       // 保存配置
       this.saveSearchConfig();
@@ -7455,6 +7498,7 @@ class MNMath {
       
       // 获取配置中的归类卡片设置
       const includeClassification = this.searchRootConfigs ? this.searchRootConfigs.includeClassification : true;
+      const onlyClassification = this.searchRootConfigs ? this.searchRootConfigs.onlyClassification : false;
       // 获取配置中的忽略前缀设置
       const ignorePrefix = this.searchRootConfigs ? this.searchRootConfigs.ignorePrefix : false;
       
@@ -7477,13 +7521,19 @@ class MNMath {
         // 获取卡片类型
         const noteType = this.getNoteType(mnNote);
         
-        // 如果不包含归类卡片，检查是否为归类卡片
-        if (!includeClassification && noteType === "归类") {
+        // 处理归类卡片的过滤逻辑
+        if (onlyClassification) {
+          // 只搜索归类卡片模式
+          if (noteType !== "归类") {
+            continue;  // 跳过非归类卡片
+          }
+        } else if (!includeClassification && noteType === "归类") {
+          // 不包含归类卡片模式
           continue;  // 跳过归类卡片
         }
         
-        // 如果用户选择了特定类型，进行类型筛选
-        if (selectedTypes !== null && selectedTypes.size > 0) {
+        // 如果用户选择了特定类型，进行类型筛选（只搜索归类卡片时忽略类型筛选）
+        if (!onlyClassification && selectedTypes !== null && selectedTypes.size > 0) {
           if (!selectedTypes.has(noteType)) {
             continue;  // 跳过未选中类型的卡片
           }
@@ -7559,18 +7609,23 @@ class MNMath {
         // 显示归类卡片搜索状态
         const includeClassification = this.searchRootConfigs.includeClassification;
         message += `\n📑 搜索归类卡片：${includeClassification ? "☑️ 是" : "☐︎ 否"}`;
+        // 显示只搜索归类卡片状态
+        const onlyClassification = this.searchRootConfigs.onlyClassification;
+        message += `\n🎯 只搜索归类卡片：${onlyClassification ? "☑️ 是" : "☐︎ 否"}`;
         // 显示忽略前缀搜索状态
         const ignorePrefix = this.searchRootConfigs.ignorePrefix;
-        message += `\n🎯 忽略前缀搜索：${ignorePrefix ? "☑️ 是" : "☐︎ 否"}`;
+        message += `\n📝 忽略前缀搜索：${ignorePrefix ? "☑️ 是" : "☐︎ 否"}`;
         // 显示搜索关键词字段状态
         const searchInKeywords = this.searchRootConfigs.searchInKeywords;
         message += `\n🔖 搜索关键词字段：${searchInKeywords ? "☑️ 是" : "☐︎ 否"}`;
-        // 显示选中的类型
-        if (selectedTypes !== null && selectedTypes.size > 0) {
-          const typeNames = Array.from(selectedTypes).join("、");
-          message += `\n📋 搜索类型：${typeNames}`;
-        } else {
-          message += `\n📋 搜索类型：全部`;
+        // 显示选中的类型（只搜索归类卡片时不显示类型选择）
+        if (!onlyClassification) {
+          if (selectedTypes !== null && selectedTypes.size > 0) {
+            const typeNames = Array.from(selectedTypes).join("、");
+            message += `\n📋 搜索类型：${typeNames}`;
+          } else {
+            message += `\n📋 搜索类型：全部`;
+          }
         }
         message += `\n\n💡 提示：点击"添加根目录"可使用当前卡片或输入ID/URL`;
         
@@ -7581,11 +7636,21 @@ class MNMath {
             message,
             2, // 输入框样式
             "取消",
-            ["开始搜索", "下一个词", "切换根目录", "添加根目录", 
-             includeClassification ? "☑️ 搜索归类卡片" : "☐︎ 搜索归类卡片",
-             ignorePrefix ? "☑️ 忽略前缀搜索" : "☐︎ 忽略前缀搜索",
-             searchInKeywords ? "☑️ 搜索关键词字段" : "☐︎ 搜索关键词字段",
-             "📋 选择类型"],
+            // 构建按钮数组
+            (() => {
+              const buttons = [
+                "开始搜索", "下一个词", "切换根目录", "添加根目录",
+                includeClassification ? "☑️ 搜索归类卡片" : "☐︎ 搜索归类卡片",
+                onlyClassification ? "☑️ 只搜索归类卡片" : "☐︎ 只搜索归类卡片",
+                ignorePrefix ? "☑️ 忽略前缀搜索" : "☐︎ 忽略前缀搜索",
+                searchInKeywords ? "☑️ 搜索关键词字段" : "☐︎ 搜索关键词字段"
+              ];
+              // 只在未启用"只搜索归类卡片"时显示类型选择按钮
+              if (!onlyClassification) {
+                buttons.push("📋 选择类型");
+              }
+              return buttons;
+            })(),
             (alert, buttonIndex) => {
               if (buttonIndex === 0) {
                 // 取消
@@ -7631,16 +7696,22 @@ class MNMath {
                   resolve({ action: "toggleClassification" });
                   break;
                   
-                case 6: // 切换忽略前缀搜索开关
+                case 6: // 切换只搜索归类卡片开关
+                  resolve({ action: "toggleOnlyClassification" });
+                  break;
+                  
+                case 7: // 切换忽略前缀搜索开关
                   resolve({ action: "toggleIgnorePrefix" });
                   break;
                   
-                case 7: // 切换搜索关键词字段开关
+                case 8: // 切换搜索关键词字段开关
                   resolve({ action: "toggleSearchInKeywords" });
                   break;
                   
-                case 8: // 选择类型
-                  resolve({ action: "selectTypes" });
+                case 9: // 选择类型（只在未启用"只搜索归类卡片"时存在）
+                  if (!onlyClassification) {
+                    resolve({ action: "selectTypes" });
+                  }
                   break;
               }
             }
@@ -7701,8 +7772,25 @@ class MNMath {
           case "toggleClassification":
             // 切换归类卡片搜索开关
             this.searchRootConfigs.includeClassification = !this.searchRootConfigs.includeClassification;
+            // 如果禁用了包含归类卡片，同时也要禁用只搜索归类卡片
+            if (!this.searchRootConfigs.includeClassification) {
+              this.searchRootConfigs.onlyClassification = false;
+            }
             this.saveSearchConfig();
             MNUtil.showHUD(`归类卡片搜索：${this.searchRootConfigs.includeClassification ? "已启用" : "已禁用"}`);
+            break;
+            
+          case "toggleOnlyClassification":
+            // 切换只搜索归类卡片开关
+            this.searchRootConfigs.onlyClassification = !this.searchRootConfigs.onlyClassification;
+            // 如果启用了只搜索归类卡片，确保包含归类卡片也是启用的
+            if (this.searchRootConfigs.onlyClassification) {
+              this.searchRootConfigs.includeClassification = true;
+              // 同时清空类型选择
+              selectedTypes = null;
+            }
+            this.saveSearchConfig();
+            MNUtil.showHUD(`只搜索归类卡片：${this.searchRootConfigs.onlyClassification ? "已启用" : "已禁用"}`);
             break;
             
           case "toggleIgnorePrefix":

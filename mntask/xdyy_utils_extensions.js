@@ -563,6 +563,11 @@ class MNTaskManager {
         // 已经是任务格式，只需要添加字段
         MNUtil.log(`📋 已是任务格式，开始添加/更新字段`)
         
+        // 解析任务标题获取当前状态
+        const titleParts = this.parseTaskTitle(noteToConvert.noteTitle)
+        const currentStatus = titleParts.status
+        MNUtil.log(`📊 当前任务状态: ${currentStatus}`)
+        
         // 检查是否缺少所属字段
         const parsed = this.parseTaskComments(noteToConvert)
         MNUtil.log(`🔍 当前卡片字段情况:`)
@@ -574,6 +579,33 @@ class MNTaskManager {
         let hasChanges = false
         
         MNUtil.undoGrouping(() => {
+          // 根据当前状态设置对应的颜色
+          let newColorIndex = 12  // 默认白色
+          switch (currentStatus) {
+            case "已完成":
+              newColorIndex = 1  // 绿色
+              break
+            case "进行中":
+              newColorIndex = 3  // 粉色
+              break
+            case "暂停":
+              newColorIndex = 8  // 蓝色
+              break
+            case "未开始":
+              newColorIndex = 12  // 白色
+              break
+            case "已归档":
+              newColorIndex = 13  // 灰色
+              break
+          }
+          
+          // 只有颜色不同时才更新
+          if (noteToConvert.colorIndex !== newColorIndex) {
+            MNUtil.log(`🎨 更新颜色: ${noteToConvert.colorIndex} → ${newColorIndex}`)
+            noteToConvert.colorIndex = newColorIndex
+            hasChanges = true
+          }
+          
           // 先清理失效链接
           MNUtil.log(`🧹 开始清理失效链接...`)
           const removedLinksCount = this.cleanupBrokenLinks(noteToConvert)

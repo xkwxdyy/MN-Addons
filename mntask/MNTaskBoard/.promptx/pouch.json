@@ -4,7 +4,7 @@
     {
       "from": "initial",
       "command": "init",
-      "timestamp": "2025-08-10T15:56:41.691Z",
+      "timestamp": "2025-08-10T18:48:09.412Z",
       "args": [
         {
           "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask/MNTaskBoard"
@@ -12,5 +12,5 @@
       ]
     }
   ],
-  "lastUpdated": "2025-08-10T15:56:41.703Z"
+  "lastUpdated": "2025-08-10T18:48:09.457Z"
 }

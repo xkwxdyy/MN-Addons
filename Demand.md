@@ -1,3 +1,27 @@
+我输入
+```
+我是//夏康玮//的//粉丝//哈哈哈
+```
+点击兄弟卡片，出来的是下面五张（省去了评论）
+```
+“我是”相关命题
+“我是夏康玮”相关命题
+“我是的”相关命题
+“我是粉丝”相关命题
+“我是哈哈哈”相关命题
+```
+明显效果是错的，应该是
+```
+“我是”相关命题
+“我是夏康玮”相关命题
+“我是夏康玮的”相关命题
+“我是夏康玮的粉丝”相关命题
+“我是夏康玮的哈哈哈”相关命题
+```
+
+
+
+---
 > **Analyzing code comment task**
 > The user requests to add detailed Chinese comments to the JavaScript code without modifying the original code. The commented-out line `// MNUtil.copyJSON(sender.userInfo)` seems to be a deprecated debug line, and the guidelines allow us to delete non-explanatory, deprecated comments. I think it's best to remove this line since it's not functional and doesn't add clarity. I'll ensure the JSDoc comment is added properly without altering the structure or indentation of code.> 
 

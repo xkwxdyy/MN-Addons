@@ -4426,6 +4426,14 @@ class MNMath {
         });
       },
       
+      "YZ 最后两条评论": () => {
+        const moveCommentIndexArr = [note.comments.length - 2, note.comments.length - 1];
+        this.showActionSelectionDialog(note, moveCommentIndexArr, () => {
+          // 返回函数：重新显示主菜单
+          this.manageCommentsByPopup(note);
+        });
+      },
+      
       "📦 选择字段区域": () => {
         this.showFieldSelectionForMove(note, (indices) => {
           if (indices && indices.length > 0) {

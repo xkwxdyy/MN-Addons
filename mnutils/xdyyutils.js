@@ -639,16 +639,9 @@ class MNMath {
    * 转化为非摘录版本
    */
   static toNoExcerptVersion(note){
-    // 保存原始剪贴板
-    const originalClipboard = MNUtil.clipboardText;
-    MNUtil.log(`[toNoExcerptVersion] 开始，原剪贴板内容: ${originalClipboard ? originalClipboard.substring(0, 50) + "..." : "空"}`);
-    
     if (note.parentNote) {
       if (note.excerptText) { // 把摘录内容的检测放到 toNoExcerptVersion 的内部
         let parentNote = note.parentNote
-        
-        // 创建新兄弟卡片前检查剪贴板
-        MNUtil.log(`[toNoExcerptVersion] 创建新卡片前剪贴板: ${MNUtil.clipboardText === originalClipboard ? "未变化" : "已变化为: " + MNUtil.clipboardText}`);
         
         let config = {
           title: note.noteTitle,
@@ -659,37 +652,11 @@ class MNMath {
         // 创建新兄弟卡片，标题为旧卡片的标题
         let newNote = parentNote.createChildNote(config)
         
-        // 检查创建后剪贴板
-        const afterCreateClipboard = MNUtil.clipboardText;
-        MNUtil.log(`[toNoExcerptVersion] 创建新卡片后剪贴板: ${afterCreateClipboard}`);
-        MNUtil.log(`[toNoExcerptVersion] 新卡片ID: ${newNote.noteId}`);
-        
-        // 如果剪贴板被修改为新卡片ID，立即恢复
-        if (afterCreateClipboard === newNote.noteId) {
-          MNUtil.log(`[toNoExcerptVersion] ⚠️ 检测到剪贴板被设置为新卡片ID，立即恢复`);
-          MNUtil.clipboardText = originalClipboard;
-        }
-        
         note.noteTitle = ""
-        
-        // 合并前检查
-        MNUtil.log(`[toNoExcerptVersion] 合并前剪贴板: ${MNUtil.clipboardText === originalClipboard ? "未变化" : "已变化为: " + MNUtil.clipboardText}`);
         
         // 将旧卡片合并到新卡片中
         note.mergeInto(newNote)
-        
-        // 合并后检查
-        const afterMergeClipboard = MNUtil.clipboardText;
-        MNUtil.log(`[toNoExcerptVersion] 合并后剪贴板: ${afterMergeClipboard}`);
-        
-        // 最终恢复剪贴板
-        if (MNUtil.clipboardText !== originalClipboard) {
-          MNUtil.log(`[toNoExcerptVersion] ✅ 最终恢复剪贴板`);
-          MNUtil.clipboardText = originalClipboard;
-        }
-        
-        MNUtil.log(`[toNoExcerptVersion] 完成，返回新卡片ID: ${newNote.noteId}`);
-        // newNote.focusInMindMap(0.2)
+      
         return newNote; // 返回新卡片
       } else {
         return note;
@@ -7194,6 +7161,440 @@ class MNMath {
   }
   
   /**
+   * 删除搜索根目录
+   * @param {string} key - 根目录的键名
+   * @returns {boolean} 是否成功
+   */
+  static deleteSearchRoot(key) {
+    try {
+      this.initSearchConfig();
+      
+      // 不能删除默认根目录
+      if (key === "default") {
+        MNUtil.showHUD("不能删除默认根目录");
+        return false;
+      }
+      
+      // 删除根目录
+      if (this.searchRootConfigs.roots[key]) {
+        delete this.searchRootConfigs.roots[key];
+        
+        // 从顺序数组中移除
+        if (this.searchRootConfigs.rootsOrder) {
+          const index = this.searchRootConfigs.rootsOrder.indexOf(key);
+          if (index > -1) {
+            this.searchRootConfigs.rootsOrder.splice(index, 1);
+          }
+        }
+        
+        // 如果删除的是最后使用的根目录，重置为默认
+        if (this.searchRootConfigs.lastUsedRoot === key) {
+          this.searchRootConfigs.lastUsedRoot = "default";
+        }
+        
+        this.saveSearchConfig();
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      MNUtil.log("删除搜索根目录失败: " + error.toString());
+      return false;
+    }
+  }
+  
+  /**
+   * 编辑搜索根目录
+   * @param {string} key - 根目录的键名
+   * @param {string} newName - 新名称
+   * @param {string} newNoteId - 新的笔记ID（可选）
+   * @returns {boolean} 是否成功
+   */
+  static editSearchRoot(key, newName, newNoteId) {
+    try {
+      this.initSearchConfig();
+      
+      if (!this.searchRootConfigs.roots[key]) {
+        MNUtil.showHUD("根目录不存在");
+        return false;
+      }
+      
+      // 更新名称
+      if (newName) {
+        this.searchRootConfigs.roots[key].name = newName;
+      }
+      
+      // 更新笔记ID（如果提供）
+      if (newNoteId) {
+        // 处理 URL 格式
+        if (newNoteId.includes("marginnote")) {
+          newNoteId = newNoteId.toNoteId();
+        }
+        
+        // 验证卡片是否存在
+        const note = MNUtil.getNoteById(newNoteId);
+        if (!note) {
+          MNUtil.showHUD("新的卡片不存在");
+          return false;
+        }
+        
+        this.searchRootConfigs.roots[key].id = newNoteId;
+      }
+      
+      this.saveSearchConfig();
+      return true;
+    } catch (error) {
+      MNUtil.log("编辑搜索根目录失败: " + error.toString());
+      return false;
+    }
+  }
+  
+  /**
+   * 导出搜索配置
+   * @returns {string|null} JSON字符串，失败返回null
+   */
+  static exportSearchConfig() {
+    try {
+      this.initSearchConfig();
+      
+      const config = {
+        version: "1.0",
+        exportDate: new Date().toISOString(),
+        roots: this.searchRootConfigs.roots,
+        rootsOrder: this.searchRootConfigs.rootsOrder,
+        lastUsedRoot: this.searchRootConfigs.lastUsedRoot,
+        settings: {
+          includeClassification: this.searchRootConfigs.includeClassification,
+          onlyClassification: this.searchRootConfigs.onlyClassification,
+          ignorePrefix: this.searchRootConfigs.ignorePrefix,
+          searchInKeywords: this.searchRootConfigs.searchInKeywords
+        }
+      };
+      
+      const jsonStr = JSON.stringify(config, null, 2);
+      MNUtil.copy(jsonStr);
+      
+      return jsonStr;
+    } catch (error) {
+      MNUtil.log("导出搜索配置失败: " + error.toString());
+      return null;
+    }
+  }
+  
+  /**
+   * 导入搜索配置
+   * @returns {Promise<boolean>} 是否成功
+   */
+  static async importSearchConfig() {
+    try {
+      const clipboardText = MNUtil.clipboardText;
+      if (!clipboardText) {
+        MNUtil.showHUD("剪贴板为空");
+        return false;
+      }
+      
+      let config;
+      try {
+        config = JSON.parse(clipboardText);
+      } catch (e) {
+        MNUtil.showHUD("剪贴板内容不是有效的JSON格式");
+        return false;
+      }
+      
+      // 验证配置格式
+      if (!config.version || !config.roots) {
+        MNUtil.showHUD("配置格式无效");
+        return false;
+      }
+      
+      // 询问导入方式
+      return new Promise((resolve) => {
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "导入配置",
+          "选择导入方式：",
+          0,
+          "取消",
+          ["替换现有配置", "合并配置"],
+          (alert, buttonIndex) => {
+            if (buttonIndex === 0) {
+              resolve(false);
+              return;
+            }
+            
+            this.initSearchConfig();
+            
+            if (buttonIndex === 1) {
+              // 替换模式
+              this.searchRootConfigs.roots = config.roots;
+              this.searchRootConfigs.rootsOrder = config.rootsOrder || Object.keys(config.roots);
+              this.searchRootConfigs.lastUsedRoot = config.lastUsedRoot || "default";
+              
+              if (config.settings) {
+                Object.assign(this.searchRootConfigs, config.settings);
+              }
+            } else if (buttonIndex === 2) {
+              // 合并模式
+              // 合并根目录
+              Object.assign(this.searchRootConfigs.roots, config.roots);
+              
+              // 合并顺序数组
+              if (config.rootsOrder) {
+                const existingKeys = new Set(this.searchRootConfigs.rootsOrder || []);
+                for (const key of config.rootsOrder) {
+                  if (!existingKeys.has(key) && this.searchRootConfigs.roots[key]) {
+                    this.searchRootConfigs.rootsOrder.push(key);
+                  }
+                }
+              }
+              
+              // 合并设置
+              if (config.settings) {
+                Object.assign(this.searchRootConfigs, config.settings);
+              }
+            }
+            
+            this.saveSearchConfig();
+            resolve(true);
+          }
+        );
+      });
+    } catch (error) {
+      MNUtil.log("导入搜索配置失败: " + error.toString());
+      MNUtil.showHUD("导入失败：" + error.message);
+      return false;
+    }
+  }
+  
+  /**
+   * 显示根目录排序对话框
+   * @returns {Promise<boolean>} 是否修改了顺序
+   */
+  static async showRootOrderDialog() {
+    try {
+      this.initSearchConfig();
+      
+      // 确保有顺序数组
+      if (!this.searchRootConfigs.rootsOrder) {
+        this.searchRootConfigs.rootsOrder = Object.keys(this.searchRootConfigs.roots);
+      }
+      
+      const roots = this.searchRootConfigs.roots;
+      const currentOrder = this.searchRootConfigs.rootsOrder;
+      const newOrder = [];
+      const remainingKeys = new Set(currentOrder);
+      
+      MNUtil.showHUD("请依次点击根目录，设置新顺序");
+      
+      while (remainingKeys.size > 0) {
+        const options = [];
+        const keys = [];
+        
+        // 构建选项列表
+        for (const key of remainingKeys) {
+          if (roots[key]) {
+            options.push(roots[key].name);
+            keys.push(key);
+          }
+        }
+        
+        if (options.length === 0) break;
+        
+        // 显示选择对话框
+        const result = await new Promise((resolve) => {
+          UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+            `设置顺序 (${newOrder.length + 1}/${currentOrder.length})`,
+            `已选择：${newOrder.map(k => roots[k].name).join(" → ")}\n\n请选择下一个：`,
+            0,
+            "完成",
+            options,
+            (alert, buttonIndex) => {
+              if (buttonIndex === 0) {
+                resolve(null);
+              } else {
+                resolve(keys[buttonIndex - 1]);
+              }
+            }
+          );
+        });
+        
+        if (result === null) {
+          // 用户点击完成，将剩余的按原顺序添加
+          for (const key of currentOrder) {
+            if (remainingKeys.has(key)) {
+              newOrder.push(key);
+            }
+          }
+          break;
+        }
+        
+        // 添加选中的项
+        newOrder.push(result);
+        remainingKeys.delete(result);
+      }
+      
+      // 保存新顺序
+      this.searchRootConfigs.rootsOrder = newOrder;
+      this.saveSearchConfig();
+      
+      return true;
+    } catch (error) {
+      MNUtil.log("调整根目录顺序失败: " + error.toString());
+      MNUtil.showHUD("调整顺序失败：" + error.message);
+      return false;
+    }
+  }
+  
+  /**
+   * 显示根目录管理对话框
+   * @returns {Promise<boolean>} 是否进行了修改
+   */
+  static async showRootManagementDialog() {
+    try {
+      this.initSearchConfig();
+      
+      // 获取所有根目录
+      const roots = this.searchRootConfigs.roots;
+      const rootsOrder = this.searchRootConfigs.rootsOrder || Object.keys(roots);
+      
+      // 构建选项列表
+      const options = [];
+      const keys = [];
+      
+      for (const key of rootsOrder) {
+        if (roots[key]) {
+          const root = roots[key];
+          const prefix = root.isDefault ? "📌 " : "";
+          options.push(prefix + root.name);
+          keys.push(key);
+        }
+      }
+      
+      if (options.length === 0) {
+        MNUtil.showHUD("没有可管理的根目录");
+        return false;
+      }
+      
+      // 显示选择对话框
+      const selectedKey = await new Promise((resolve) => {
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "管理根目录",
+          "选择要管理的根目录：",
+          0,
+          "取消",
+          options,
+          (alert, buttonIndex) => {
+            if (buttonIndex === 0) {
+              resolve(null);
+            } else {
+              resolve(keys[buttonIndex - 1]);
+            }
+          }
+        );
+      });
+      
+      if (!selectedKey) return false;
+      
+      const selectedRoot = roots[selectedKey];
+      
+      // 显示操作选项
+      const action = await new Promise((resolve) => {
+        const buttons = ["编辑名称", "更改卡片"];
+        if (selectedKey !== "default") {
+          buttons.push("删除");
+        }
+        
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          selectedRoot.name,
+          `ID: ${selectedRoot.id}\n选择操作：`,
+          0,
+          "取消",
+          buttons,
+          (alert, buttonIndex) => {
+            if (buttonIndex === 0) {
+              resolve(null);
+            } else {
+              resolve(buttons[buttonIndex - 1]);
+            }
+          }
+        );
+      });
+      
+      if (!action) return false;
+      
+      let modified = false;
+      
+      switch (action) {
+        case "编辑名称":
+          const newName = await new Promise((resolve) => {
+            const alert = UIAlertView.alloc().init();
+            alert.title = "编辑名称";
+            alert.message = "输入新名称：";
+            alert.alertViewStyle = 2; // UIAlertViewStylePlainTextInput
+            alert.addButtonWithTitle("取消");
+            alert.addButtonWithTitle("确定");
+            const textField = alert.textFieldAtIndex(0);
+            textField.text = selectedRoot.name;
+            alert.showWithHandler((alertView, buttonIndex) => {
+              if (buttonIndex === 1) {
+                resolve(alertView.textFieldAtIndex(0).text.trim());
+              } else {
+                resolve(null);
+              }
+            });
+          });
+          
+          if (newName && newName !== selectedRoot.name) {
+            modified = this.editSearchRoot(selectedKey, newName);
+            if (modified) {
+              MNUtil.showHUD("✅ 已更新名称");
+            }
+          }
+          break;
+          
+        case "更改卡片":
+          const focusNote = MNNote.getFocusNote();
+          if (!focusNote) {
+            MNUtil.showHUD("请先选择一个卡片");
+            break;
+          }
+          
+          const confirmed = await MNUtil.confirm(
+            "更改根目录卡片",
+            `将根目录"${selectedRoot.name}"更改为当前选中的卡片？`
+          );
+          
+          if (confirmed) {
+            modified = this.editSearchRoot(selectedKey, null, focusNote.noteId);
+            if (modified) {
+              MNUtil.showHUD("✅ 已更改卡片");
+            }
+          }
+          break;
+          
+        case "删除":
+          const deleteConfirmed = await MNUtil.confirm(
+            "删除根目录",
+            `确定要删除"${selectedRoot.name}"吗？`
+          );
+          
+          if (deleteConfirmed) {
+            modified = this.deleteSearchRoot(selectedKey);
+            if (modified) {
+              MNUtil.showHUD("✅ 已删除");
+            }
+          }
+          break;
+      }
+      
+      return modified;
+    } catch (error) {
+      MNUtil.log("管理根目录失败: " + error.toString());
+      MNUtil.showHUD("操作失败：" + error.message);
+      return false;
+    }
+  }
+  
+  /**
    * 从卡片中提取关键词字段的内容
    * @param {MNNote} note - 要提取关键词的卡片
    * @returns {string} 关键词内容，如果没有则返回空字符串
@@ -7353,7 +7754,7 @@ class MNMath {
       const jsonStr = JSON.stringify(config, null, 2);
       
       // 复制到剪贴板
-      MNUtil.clipboardText = jsonStr;
+      MNUtil.copy(jsonStr);
       
       // 保存到文件（可选）
       const fileName = `synonym_groups_${Date.now()}.json`;
@@ -7649,6 +8050,8 @@ class MNMath {
               if (!onlyClassification) {
                 buttons.push("📋 选择类型");
               }
+              // 添加配置管理按钮
+              buttons.push("📤 导出配置", "📥 导入配置", "🔄 调整顺序", "🗑️ 管理根目录");
               return buttons;
             })(),
             (alert, buttonIndex) => {
@@ -7712,6 +8115,22 @@ class MNMath {
                   if (!onlyClassification) {
                     resolve({ action: "selectTypes" });
                   }
+                  break;
+                  
+                case 10: // 导出配置
+                  resolve({ action: "exportConfig" });
+                  break;
+                  
+                case 11: // 导入配置
+                  resolve({ action: "importConfig" });
+                  break;
+                  
+                case 12: // 调整顺序
+                  resolve({ action: "adjustOrder" });
+                  break;
+                  
+                case 13: // 管理根目录
+                  resolve({ action: "manageRoots" });
                   break;
               }
             }
@@ -7812,6 +8231,45 @@ class MNMath {
             const newSelectedTypes = await this.showTypeSelectDialog(selectedTypes);
             if (newSelectedTypes !== null) {
               selectedTypes = newSelectedTypes;
+            }
+            break;
+            
+          case "exportConfig":
+            // 导出配置
+            const exported = this.exportSearchConfig();
+            if (exported) {
+              MNUtil.showHUD("✅ 配置已导出到剪贴板");
+            }
+            break;
+            
+          case "importConfig":
+            // 导入配置
+            const imported = await this.importSearchConfig();
+            if (imported) {
+              // 刷新根目录列表
+              allRoots = this.getAllSearchRoots();
+              currentRootId = this.getCurrentSearchRoot();
+              MNUtil.showHUD("✅ 配置已导入");
+            }
+            break;
+            
+          case "adjustOrder":
+            // 调整根目录顺序
+            const orderChanged = await this.showRootOrderDialog();
+            if (orderChanged) {
+              // 刷新根目录列表
+              allRoots = this.getAllSearchRoots();
+              MNUtil.showHUD("✅ 已更新根目录顺序");
+            }
+            break;
+            
+          case "manageRoots":
+            // 管理根目录（编辑/删除）
+            const rootsManaged = await this.showRootManagementDialog();
+            if (rootsManaged) {
+              // 刷新根目录列表
+              allRoots = this.getAllSearchRoots();
+              currentRootId = this.getCurrentSearchRoot();
             }
             break;
         }
@@ -7938,10 +8396,17 @@ class MNMath {
       const rootOptions = ["📍 当前选中的卡片（临时）"];
       const rootKeys = ["__current__"];
       
-      for (const [key, root] of Object.entries(allRoots)) {
-        const marker = root.id === currentRootId ? " ✅" : "";
-        rootOptions.push(root.name + marker);
-        rootKeys.push(key);
+      // 使用 rootsOrder 数组的顺序，如果没有则使用 Object.keys
+      this.initSearchConfig();
+      const rootsOrder = this.searchRootConfigs.rootsOrder || Object.keys(allRoots);
+      
+      for (const key of rootsOrder) {
+        const root = allRoots[key];
+        if (root) {
+          const marker = root.id === currentRootId ? " ✅" : "";
+          rootOptions.push(root.name + marker);
+          rootKeys.push(key);
+        }
       }
       
       UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
@@ -8369,7 +8834,7 @@ class MNMath {
           break;
           
         case 5: // 复制词汇
-          MNUtil.clipboardText = group.words.join(", ");
+          MNUtil.copy(group.words.join(", "));
           MNUtil.showHUD("📋 已复制到剪贴板");
           break;
       }

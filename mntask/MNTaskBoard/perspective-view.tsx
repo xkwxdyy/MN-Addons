@@ -63,6 +63,8 @@ interface PerspectiveViewProps {
   onCreatePerspective: (perspective: Omit<Perspective, "id" | "createdAt">) => Perspective
   onUpdatePerspective: (perspectiveId: string, updates: Partial<Perspective>) => void
   onDeletePerspective: (perspectiveId: string) => void
+  applyPerspectiveFilter?: (tasks: Task[], filters: PerspectiveFilter) => Task[]
+  applyFilterRules?: (tasks: Task[], rules: FilterRule) => Task[]
 }
 
 export function PerspectiveView({
@@ -90,6 +92,8 @@ export function PerspectiveView({
   onCreatePerspective,
   onUpdatePerspective,
   onDeletePerspective,
+  applyPerspectiveFilter,
+  applyFilterRules,
 }: PerspectiveViewProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -134,44 +138,6 @@ export function PerspectiveView({
     })
   }
 
-  // 应用透视筛选
-  const applyPerspectiveFilter = (allTasks: Task[], filters: PerspectiveFilter | undefined): Task[] => {
-    // 如果没有筛选条件，返回所有任务
-    if (!filters) return allTasks
-    
-    return allTasks.filter((task) => {
-      // 标签筛选
-      if (filters.tags && filters.tags.length > 0) {
-        const hasMatchingTag = filters.tags.some((tag) => task.tags?.includes(tag))
-        if (!hasMatchingTag) return false
-      }
-
-      // 任务类型筛选
-      if (filters.taskTypes && filters.taskTypes.length > 0 && !filters.taskTypes.includes(task.type)) {
-        return false
-      }
-
-      // 状态筛选
-      if (filters.statuses && filters.statuses.length > 0 && !filters.statuses.includes(task.status)) {
-        return false
-      }
-
-      // 优先级筛选
-      if (filters.priorities && filters.priorities.length > 0 && !filters.priorities.includes(task.priority)) {
-        return false
-      }
-
-      // 焦点任务筛选
-      if (filters.focusTask === "focus" && !task.isFocusTask) return false
-      if (filters.focusTask === "non-focus" && task.isFocusTask) return false
-
-      // 优先焦点筛选
-      if (filters.priorityFocus === "priority" && !task.isPriorityFocus) return false
-      if (filters.priorityFocus === "non-priority" && task.isPriorityFocus) return false
-
-      return true
-    })
-  }
 
   // 获取当前选中的透视
   const selectedPerspective = selectedPerspectiveId ? perspectives.find((p) => p.id === selectedPerspectiveId) : null
@@ -180,10 +146,19 @@ export function PerspectiveView({
   const allTasks = useMemo(() => [...focusTasks, ...pendingTasks], [focusTasks, pendingTasks])
   
   const filteredTasks = useMemo(() => {
-    return selectedPerspective && selectedPerspective.filters 
-      ? applyPerspectiveFilter(allTasks, selectedPerspective.filters) 
-      : allTasks
-  }, [selectedPerspective, allTasks])
+    if (!selectedPerspective) return allTasks
+    
+    // 使用新的筛选规则系统（如果有）
+    if (selectedPerspective.filterRules && applyFilterRules) {
+      return applyFilterRules(allTasks, selectedPerspective.filterRules)
+    }
+    // 使用传统的筛选系统
+    else if (selectedPerspective.filters && applyPerspectiveFilter) {
+      return applyPerspectiveFilter(allTasks, selectedPerspective.filters)
+    }
+    
+    return allTasks
+  }, [selectedPerspective, allTasks, applyPerspectiveFilter, applyFilterRules])
 
   // 根据是否显示已完成任务进行筛选
   const displayTasks = useMemo(() => {
@@ -197,11 +172,20 @@ export function PerspectiveView({
       if (p.id === selectedPerspectiveId) {
         map.set(p.id, displayTasks)
       } else {
-        map.set(p.id, applyPerspectiveFilter(allTasks, p.filters))
+        // 使用新的筛选规则系统（如果有）
+        if (p.filterRules && applyFilterRules) {
+          map.set(p.id, applyFilterRules(allTasks, p.filterRules))
+        }
+        // 使用传统的筛选系统
+        else if (p.filters && applyPerspectiveFilter) {
+          map.set(p.id, applyPerspectiveFilter(allTasks, p.filters))
+        } else {
+          map.set(p.id, allTasks)
+        }
       }
     })
     return map
-  }, [perspectives, selectedPerspectiveId, displayTasks, allTasks])
+  }, [perspectives, selectedPerspectiveId, displayTasks, allTasks, applyPerspectiveFilter, applyFilterRules])
 
   // Helper functions for text conversion
   const getTypeText = (type: string) => {
@@ -362,7 +346,16 @@ export function PerspectiveView({
     setEditingPerspective(perspective)
     
     // 判断是否使用高级筛选
-    const useAdvanced = false  // 暂时不支持高级筛选
+    const useAdvanced = !!perspective.filterRules
+    
+    // 从 filterRules 中推断标签匹配模式
+    let tagMatchMode: "any" | "all" = "any"
+    if (perspective.filterRules) {
+      const tagCondition = perspective.filterRules.conditions?.find(c => c.field === "tags")
+      if (tagCondition?.tagMatchMode) {
+        tagMatchMode = tagCondition.tagMatchMode
+      }
+    }
     
     setFormData({
       name: perspective.name,
@@ -377,8 +370,8 @@ export function PerspectiveView({
         focusTask: "all",
         priorityFocus: "all",
       },
-      filterRules: null,  // 暂时不支持高级筛选
-      tagMatchMode: "any", // 默认值，可以从 filterRules 中推断
+      filterRules: perspective.filterRules || null,
+      tagMatchMode: tagMatchMode,
     })
     setIsEditDialogOpen(true)
   }
@@ -401,8 +394,55 @@ export function PerspectiveView({
       updateData.filterRules = formData.filterRules
       updateData.filters = undefined // 清除旧的筛选器
     } else {
-      updateData.filters = formData.filters
-      updateData.filterRules = undefined // 清除高级规则
+      // 在简单模式下，如果选择了"包含所有"标签，需要转换为高级规则
+      if (formData.tagMatchMode === "all" && formData.filters.tags.length > 0) {
+        updateData.filterRules = {
+          id: `rule-${Date.now()}`,
+          operator: "all",
+          conditions: [{
+            field: "tags",
+            values: formData.filters.tags,
+            tagMatchMode: "all"
+          }],
+          ruleGroups: []
+        }
+        // 将其他筛选条件也添加到规则中
+        if (formData.filters.taskTypes.length > 0) {
+          updateData.filterRules.conditions.push({
+            field: "taskTypes",
+            values: formData.filters.taskTypes
+          })
+        }
+        if (formData.filters.statuses.length > 0) {
+          updateData.filterRules.conditions.push({
+            field: "statuses",
+            values: formData.filters.statuses
+          })
+        }
+        if (formData.filters.priorities.length > 0) {
+          updateData.filterRules.conditions.push({
+            field: "priorities",
+            values: formData.filters.priorities
+          })
+        }
+        if (formData.filters.focusTask !== "all") {
+          updateData.filterRules.conditions.push({
+            field: "focusTask",
+            values: [formData.filters.focusTask]
+          })
+        }
+        if (formData.filters.priorityFocus !== "all") {
+          updateData.filterRules.conditions.push({
+            field: "priorityFocus",
+            values: [formData.filters.priorityFocus]
+          })
+        }
+        updateData.filters = undefined // 清除传统筛选器
+      } else {
+        // 使用传统的筛选器
+        updateData.filters = formData.filters
+        updateData.filterRules = undefined // 清除高级规则
+      }
     }
 
     onUpdatePerspective(editingPerspective.id, updateData)
@@ -920,14 +960,62 @@ export function PerspectiveView({
 
             <Separator className="bg-slate-600" />
 
-            {/* 筛选条件 - 与创建对话框相同的内容 */}
-            <div className="space-y-4">
-              <h3 className="text-white font-medium">筛选条件</h3>
+            {/* 筛选模式选择 */}
+            <Tabs
+              value={formData.useAdvancedFilters ? "advanced" : "simple"}
+              onValueChange={(value) => {
+                const useAdvanced = value === "advanced"
+                if (useAdvanced && !formData.filterRules) {
+                  // 初始化高级筛选规则
+                  setFormData({
+                    ...formData,
+                    useAdvancedFilters: useAdvanced,
+                    filterRules: {
+                      id: `rule-${Date.now()}`,
+                      operator: "all",
+                      conditions: [],
+                      ruleGroups: []
+                    }
+                  })
+                } else {
+                  setFormData({ ...formData, useAdvancedFilters: useAdvanced })
+                }
+              }}
+              className="w-full"
+            >
+              <TabsList className="grid w-full grid-cols-2 bg-slate-700">
+                <TabsTrigger value="simple" className="data-[state=active]:bg-slate-600">
+                  <Filter className="w-3 h-3 mr-1" />
+                  简单筛选
+                </TabsTrigger>
+                <TabsTrigger value="advanced" className="data-[state=active]:bg-slate-600">
+                  <Layers className="w-3 h-3 mr-1" />
+                  高级筛选
+                </TabsTrigger>
+              </TabsList>
 
-              {/* 标签筛选 */}
-              <div className="space-y-2">
-                <label className="text-white text-sm">标签</label>
-                <div className="flex flex-wrap gap-2">
+              {/* 简单筛选模式 */}
+              <TabsContent value="simple" className="space-y-4 mt-4">
+                <h3 className="text-white font-medium">筛选条件</h3>
+
+                {/* 标签筛选 */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-white text-sm">标签</label>
+                    <Select
+                      value={formData.tagMatchMode}
+                      onValueChange={(value) => setFormData({ ...formData, tagMatchMode: value as "any" | "all" })}
+                    >
+                      <SelectTrigger className="w-32 h-7 text-xs bg-slate-700/50 border-slate-600 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700">
+                        <SelectItem value="any" className="text-white text-xs">包含任一</SelectItem>
+                        <SelectItem value="all" className="text-white text-xs">包含所有</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
                   {availableTags.map((tag) => (
                     <Badge
                       key={tag}
@@ -1096,7 +1184,27 @@ export function PerspectiveView({
                   </SelectContent>
                 </Select>
               </div>
-            </div>
+              </TabsContent>
+
+              {/* 高级筛选模式 */}
+              <TabsContent value="advanced" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <h3 className="text-white font-medium">高级筛选规则</h3>
+                  <p className="text-slate-400 text-xs">
+                    使用嵌套规则组创建复杂的筛选条件（支持 AND、OR、NOT 逻辑）
+                  </p>
+                </div>
+                
+                {formData.filterRules && (
+                  <FilterRuleEditor
+                    rule={formData.filterRules}
+                    availableTags={availableTags}
+                    onUpdate={(rule) => setFormData({ ...formData, filterRules: rule })}
+                    isRoot={true}
+                  />
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
 
           <DialogFooter className="px-6 pb-6 pt-4 border-t border-slate-700">

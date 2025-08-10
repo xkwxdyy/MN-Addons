@@ -241,7 +241,6 @@ body {
       'ExtendMargin',
       'ExtendPopup',
       'ExpandExtend',
-
       'FocusNote',
       'FocusParent',
       'FoldHighlight',
@@ -609,6 +608,9 @@ function getSchemaByActionName(actionName) {
       properties.color = numberEnum([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15])
       properties.fillPattern = numberEnum([-1,0,1,2])
       properties.followAutoStyle = booleanType()
+      properties.usingCommand = booleanType()
+      properties.asTitleForNewNote = booleanType()
+      properties.wordThreshold = numberEnum([5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100])
       break;
     case "userSelect":
       properties.title = stringType()
@@ -670,6 +672,7 @@ function getSchemaByActionName(actionName) {
       properties.focusInFloatWindowForAllDocMode = booleanType()
       properties.markdown = booleanType()
       properties.continueExcerpt = booleanType()
+      properties.wordThreshold = numberEnum([5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100])
       break;
     case "search":
       properties.target = stringEnum(['menu'])
@@ -684,6 +687,7 @@ function getSchemaByActionName(actionName) {
       properties.prompt = stringType()
       properties.user = stringType()
       properties.system = stringType()
+      properties.numberOfPrompts = numberEnum([5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20])
       break;
     default:
       break;

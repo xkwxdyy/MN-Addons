@@ -254,7 +254,9 @@ class toolbarUtils {
   static clipboardText() {
     return UIPasteboard.generalPasteboard().string
   }
-  static getActionOptions(actionName,prefix = undefined){
+  static getActionOptions(des,prefix = undefined){
+    let actionName = des.action
+    let keys = Object.keys(des)
     let menuItems = []
     switch (actionName) {
       case "toggleTextFirst":
@@ -342,7 +344,7 @@ class toolbarUtils {
         menuItems = ["target"]
         break;
       case "setColor":
-        menuItems = ["color","fillPattern","followAutoStyle"]
+        menuItems = ["color","fillPattern","followAutoStyle","usingCommand","asTitleForNewNote","wordThreshold"]
         break;
       case "userSelect":
         menuItems = ["title","subTitle","selectItems"]
@@ -366,7 +368,7 @@ class toolbarUtils {
         menuItems = ["mainMindMap","noteURL"]
         break;
       case "noteHighlight":
-        menuItems = ["color","fillPattern","asTitle","title","ocr","tags","tag","parentNote","mainMindMap","textFirst","focusAfterDelay","focusInFloatWindowForAllDocMode","markdown","continueExcerpt"]
+        menuItems = ["color","fillPattern","asTitle","title","ocr","tags","tag","parentNote","mainMindMap","textFirst","focusAfterDelay","focusInFloatWindowForAllDocMode","markdown","continueExcerpt","wordThreshold"]
         break;
       case "snipaste":
         menuItems = ["target","page","audioAction","audioAutoPlay"]
@@ -378,16 +380,20 @@ class toolbarUtils {
         menuItems = ["followButton"]
         break;
       case "chatAI":
-        menuItems = ["target","prompt","user","system"]
+        menuItems = ["target","prompt","user","system","numberOfPrompts"]
         break;
       default:
         break;
     }
     if (prefix) {
-      menuItems = menuItems.concat(["onFinish"])
+      if (!("onFinish" in des)) {
+        menuItems = menuItems.concat(["onFinish"])
+      }
+      menuItems = menuItems.filter(item=>!keys.includes(item))
       return menuItems.map(item=>prefix+item)
     }else{
       menuItems = menuItems.concat(["onLongPress","onFinish","description"])
+      menuItems = menuItems.filter(item=>!keys.includes(item))
       return menuItems
     }
   }
@@ -417,8 +423,16 @@ class toolbarUtils {
       case "mainMindMap":
       case "ocr":
       case "asTitle":
+      case "asTitleForNewNote":
+      case "usingCommand":
       case "audioAutoPlay":
         config[item] = true
+        break;
+      case "wordThreshold":
+        config.wordThreshold = 30
+        break;
+      case "numberOfPrompts":
+        config.numberOfPrompts = 20
         break;
       default:
         config[item] = ""
@@ -4076,6 +4090,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     if ("OCR" in des && des.OCR) {
       OCRText = await this.getTextOCR(selection.image)
     }
+    let wordThreshold = des.wordThreshold ?? 30
     let currentNote = MNNote.getFocusNote()
     let focusNote = MNNote.new(selection.docController.highlightFromSelection())
     focusNote = focusNote.realGroupNoteForTopicId()
@@ -4102,9 +4117,12 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
           focusNote.excerptTextMarkdown = des.markdown
         }
         if ("asTitle" in des && des.asTitle) {
-          focusNote.noteTitle = focusNote.excerptText
-          focusNote.excerptText = ""
-          focusNote.excerptTextMarkdown = false
+          let wordsNumber = MNUtil.wordCountBySegmentit(focusNote.excerptText)
+          if (wordsNumber > 0 && wordsNumber < wordThreshold) {
+            focusNote.noteTitle = focusNote.excerptText
+            focusNote.excerptText = ""
+            focusNote.excerptTextMarkdown = false
+          }
         }else if ("title" in des) {
           focusNote.noteTitle = des.title
         }
@@ -4329,6 +4347,9 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
   try {
     let fillIndex = -1
     let colorIndex = des.color
+    let changeColorByCommand = des.usingCommand ?? false
+    let asTitle = false
+    let wordThreshold = des.wordThreshold ?? 30
     if ("fillPattern" in des) {
       fillIndex = des.fillPattern
     }
@@ -4336,9 +4357,26 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
       let focusNotes
       let selection = MNUtil.currentSelection
       if (selection.onSelection) {
-        focusNotes = [MNNote.new(selection.docController.highlightFromSelection())]
+        let focusNote = MNNote.fromSelection()
+        await MNUtil.delay(0.5)
+        if ("asTitleForNewNote" in des && des.asTitleForNewNote) {
+          asTitle = true
+        }
+        // MNUtil.log(focusNote.notebook.title)
+        if (focusNote.notebookId !== MNUtil.currentNotebookId) {
+          if (focusNote.realGroupNoteIdForTopicId(MNUtil.currentNotebookId)) {
+            focusNote = focusNote.realGroupNoteForTopicId(MNUtil.currentNotebookId)
+            // focusNote.focusInMindMap()
+          }
+        }
+
+        focusNotes = [focusNote]
+        // focusNotes = [MNNote.new(selection.docController.highlightFromSelection())]
       }else{
         focusNotes = MNNote.getFocusNotes()
+      }
+      if (changeColorByCommand) {
+        MNUtil.excuteCommand("EditColorNoteIndex"+colorIndex)
       }
       if (!des.hideMessage) {
         MNUtil.showHUD("followAutoStyle")
@@ -4354,7 +4392,7 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
           }else{
             fillIndex = autoUtils.getConfig("text")[colorIndex]
           }
-          this.setNoteColor(note,colorIndex,fillIndex)
+          this.setNoteColor(note,{colorIndex:colorIndex,fillIndex:fillIndex,asTitle:asTitle,wordThreshold:wordThreshold})
 
         })
         } catch (error) {
@@ -4368,32 +4406,31 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
     let focusNotes
     let selection = MNUtil.currentSelection
     if (selection.onSelection) {
-      focusNotes = [MNNote.new(selection.docController.highlightFromSelection())]
+      let focusNote = MNNote.fromSelection()
+      await MNUtil.delay(0.5)
+      if ("asTitleForNewNote" in des && des.asTitleForNewNote) {
+        asTitle = true
+      }
+      if (focusNote.notebookId !== MNUtil.currentNotebookId) {
+        if (focusNote.realGroupNoteIdForTopicId(MNUtil.currentNotebookId)) {
+          focusNote = focusNote.realGroupNoteForTopicId(MNUtil.currentNotebookId)
+          // focusNote.focusInMindMap()
+        }
+      }
+
+      focusNotes = [focusNote]
+      // focusNotes[0].focusInMindMap()
+      // focusNotes = [MNNote.new(selection.docController.highlightFromSelection())]
     }else{
       focusNotes = MNNote.getFocusNotes()
     }
+      if (changeColorByCommand) {
+        MNUtil.excuteCommand("EditColorNoteIndex"+colorIndex)
+      }
     // await MNUtil.delay(1)
     MNUtil.undoGrouping(()=>{
       focusNotes.map(note=>{
-        this.setNoteColor(note,colorIndex,fillIndex)
-          // let tem = {
-          //   noteId:note.colorIndex}
-          // // MNUtil.copy(note.realGroupNoteIdForTopicId())
-          // // MNUtil.showHUD("123")
-          // if (note.originNoteId) {
-          //   // MNUtil.showHUD("message")
-          //   let originNote = MNNote.new(note.originNoteId)
-          //   tem.originNoteId = originNote.colorIndex
-          //   this.setNoteColor(originNote,colorIndex,fillIndex)
-          // }
-          // tem.realGroupNoteId = note.realGroupNoteIdForTopicId()
-          // MNUtil.copy(tem)
-          // if (note.realGroupNoteIdForTopicId() && note.realGroupNoteIdForTopicId() !== note.noteId) {
-          //   // MNUtil.showHUD("realGroupNoteIdForTopicId")
-          //   let realGroupNote = note.realGroupNoteForTopicId()
-          //   this.setNoteColor(realGroupNote,colorIndex,fillIndex)
-
-          // }
+        this.setNoteColor(note,{colorIndex:colorIndex,fillIndex:fillIndex,asTitle:asTitle,wordThreshold:wordThreshold})
       })
     })
   } catch (error) {
@@ -4457,35 +4494,42 @@ document.getElementById('code-block').addEventListener('compositionend', () => {
   /**
    * 
    * @param {MNNote} note 
-   * @param {number} colorIndex 
-   * @param {number} fillIndex 
+   * @param {{colorIndex:number,fillIndex:number,asTitle:boolean,wordThreshold:number}} option 
    */
-  static setNoteColor(note,colorIndex,fillIndex){
+  static setNoteColor(note,option,colorIndex,fillIndex){
     if (note.note.groupNoteId) {//æœ‰åˆå¹¶å¡ç‰‡
       let originNote = MNNote.new(note.note.groupNoteId)
       originNote.notes.forEach(n=>{
-        n.colorIndex = colorIndex
-        if (fillIndex !== -1) {
-          n.fillIndex = fillIndex
+        if ("colorIndex" in option) {
+          n.colorIndex = option.colorIndex
+        }
+        if ("fillIndex" in option && option.fillIndex !== -1) {
+          n.fillIndex = option.fillIndex
+        }
+        if ("asTitle" in option && option.asTitle) {
+          let wordsNumber = MNUtil.wordCountBySegmentit(n.excerptText)
+          if (wordsNumber > 0 && wordsNumber < option.wordThreshold) {
+            n.noteTitle = n.excerptText
+            n.excerptText = ""
+          }
         }
       })
     }else{
       note.notes.forEach(n=>{
-        n.colorIndex = colorIndex
-        if (fillIndex !== -1) {
-          n.fillIndex = fillIndex
+        if ("colorIndex" in option) {
+          n.colorIndex = option.colorIndex
+        }
+        if ("fillIndex" in option && option.fillIndex !== -1) {
+          n.fillIndex = option.fillIndex
+        }
+        if ("asTitle" in option && option.asTitle) {
+          let wordsNumber = MNUtil.wordCountBySegmentit(n.excerptText)
+          if (wordsNumber > 0 && wordsNumber < option.wordThreshold) {
+            n.noteTitle = n.excerptText
+            n.excerptText = ""
+          }
         }
       })
-      // if (note.originNoteId) {
-      //   let originNote = MNNote.new(note.originNoteId)
-      //   originNote.notes.forEach(n=>{
-      //     n.colorIndex = colorIndex
-      //     if (fillIndex !== -1) {
-      //       n.fillIndex = fillIndex
-      //     }
-      //   })
-      //   // this.setNoteColor(originNote,colorIndex,fillIndex)
-      // }
     }
   }
   /**
@@ -5152,6 +5196,7 @@ static async customActionByDes(des,button,controller,checkSubscribe = true) {//è
     let notebookid = focusNote ? focusNote.notebookId : MNUtil.currentNotebookId
     let title,content,color,config
     let targetNoteId
+    MNUtil.log(des.action)
     switch (des.action) {
       case "switchTitleorExcerpt":
       case "switchTitleOrExcerpt":
@@ -5480,9 +5525,11 @@ static async customActionByDes(des,button,controller,checkSubscribe = true) {//è
         break;
       case "clearContent":
         this.clearContent(des)
+        await MNUtil.delay(0.1)
         break;
       case "setContent":
-          this.setContent(des)
+        this.setContent(des)
+        await MNUtil.delay(0.1)
         break;
       case "showInFloatWindow":
         this.showInFloatWindow(des)
@@ -5497,6 +5544,7 @@ static async customActionByDes(des,button,controller,checkSubscribe = true) {//è
           // MNUtil.showHUD("message")
         }
         MNUtil.showHUD("No valid argument!")
+        await MNUtil.delay(0.1)
         break;
       case "command":
         let urlPre = "marginnote4app://command/"
@@ -5527,6 +5575,7 @@ static async customActionByDes(des,button,controller,checkSubscribe = true) {//è
           url = url+"&text="+encodeURIComponent(text)
         }
         MNUtil.openURL(url)
+        await MNUtil.delay(0.1)
         break
       case "toggleTextFirst":
         if (!des.hideMessage) {
@@ -5567,9 +5616,11 @@ static async customActionByDes(des,button,controller,checkSubscribe = true) {//è
         break
       case "toggleSidebar":
         this.toggleSidebar(des)
+        await MNUtil.delay(0.1)
         break;
       case "replace":
         this.replaceAction(des)
+        await MNUtil.delay(0.1)
         break;
       case "mergeText":
         this.mergeText(des)
@@ -5577,12 +5628,15 @@ static async customActionByDes(des,button,controller,checkSubscribe = true) {//è
         break;
       case "chatAI":
         this.chatAI(des,button)
+        await MNUtil.delay(0.1)
         break
       case "search":
         this.search(des,button)
+        await MNUtil.delay(0.1)
         break;
       case "openWebURL":
         this.openWebURL(des)
+        await MNUtil.delay(0.1)
         break;
       case "addImageComment":
         let source = des.source ?? "photo"
@@ -5621,9 +5675,11 @@ static async customActionByDes(des,button,controller,checkSubscribe = true) {//è
         break;
       case "focus":
         await this.focus(des)
+        await MNUtil.delay(0.1)
         break 
       case "showMessage":
         this.showMessage(des)
+        await MNUtil.delay(0.1)
         break
       case "addWordsToEurdic":
         let words = des.words ?? [des.word]
@@ -5637,6 +5693,7 @@ static async customActionByDes(des,button,controller,checkSubscribe = true) {//è
           option.studylistName = des.studylistName
         }
         await this.addWordsToEurdic(words,option)
+        await MNUtil.delay(0.1)
         break
       case "confirm":
         let targetDes = await this.userConfirm(des)
@@ -5693,11 +5750,13 @@ static async customActionByDes(des,button,controller,checkSubscribe = true) {//è
         break;
       case "setColor":
         await this.setColor(des)
+        await MNUtil.delay(0.1)
         break;
       case "triggerButton":
         let targetButtonName = des.buttonName
         let description = toolbarConfig.getDesByButtonName(targetButtonName)
         success = await this.customActionByDes(description)
+        await MNUtil.delay(0.1)
         break;
       default:
         MNUtil.showHUD("Not supported yet...")

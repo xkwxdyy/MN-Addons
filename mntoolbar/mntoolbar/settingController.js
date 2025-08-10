@@ -535,8 +535,9 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     if (MNUtil.isValidJSON(input)) {
       if (toolbarConfig.builtinActionKeys.includes(self.selectedItem)) {
         let oldConfig = toolbarConfig.getDescriptionById(self.selectedItem)
-        // MNUtil.copy(oldConfig)
-        if (oldConfig.action !== input.action) {
+        let inputConfig = JSON.parse(input)
+        // MNUtil.log(inputConfig.action)
+        if (oldConfig.action !== inputConfig.action) {
           MNUtil.showHUD("Only supports acton: "+oldConfig.action)
           return
         }
@@ -950,20 +951,19 @@ ${input}
     let input = await self.getWebviewContent()
     let des = JSON.parse(input)
     // let des = toolbarConfig.getDescriptionById(selected)
-    let actionName = des.action
-    let menuItems = toolbarUtils.getActionOptions(actionName)
+    let menuItems = toolbarUtils.getActionOptions(des)
     if ("onFinish" in des) {
-      let menuItemsForOnFinish = toolbarUtils.getActionOptions(des.onFinish.action,"onFinish.")
+      let menuItemsForOnFinish = toolbarUtils.getActionOptions(des.onFinish,"onFinish.")
       menuItems = menuItems.concat(menuItemsForOnFinish)
     }
     if ("onLongPress" in des) {
-      let menuItemsForOnLongPress = toolbarUtils.getActionOptions(des.onLongPress.action,"onLongPress.")
+      let menuItemsForOnLongPress = toolbarUtils.getActionOptions(des.onLongPress,"onLongPress.")
       menuItems = menuItems.concat(menuItemsForOnLongPress)
     }
     let width = []
     if (menuItems.length > 0) {
-      let currentKeys = Object.keys(des)
-      menuItems = menuItems.filter(item=>!currentKeys.includes(item))
+      // let currentKeys = Object.keys(des)
+      // menuItems = menuItems.filter(item=>!currentKeys.includes(item))
       if (menuItems.length > 0) {
         // MNUtil.copy(currentKeys)
         menuItems.forEach(item=>{

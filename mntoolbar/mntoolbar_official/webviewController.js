@@ -1825,7 +1825,8 @@ toolbarController.prototype.customActionMenu =  function (button,des) {
         case "chatAI":
           let promptKeys = chatAIConfig.getConfig("promptNames")
           let prompts = chatAIConfig.prompts
-          var commandTable = promptKeys.map(promptKey=>{
+          let numberOfPrompts = des.numberOfPrompts ?? promptKeys.length
+          commandTable = promptKeys.slice(0,numberOfPrompts).map(promptKey=>{
             let title = prompts[promptKey].title.trim()
             return tableItem("🚀   "+title, {action:"chatAI",prompt:title})
           })

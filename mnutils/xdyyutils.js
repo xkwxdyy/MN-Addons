@@ -4194,14 +4194,14 @@ class MNMath {
         } else {
           // 需要检查是否选择了返回选项
           const returnIndex = previousDialog ? displayOptions.indexOf("⬅️ 返回上一层") : -1;
-          if (previousDialog && buttonIndex === returnIndex + 1) {
+          if (previousDialog && buttonIndex - 1 === returnIndex) {
             // 用户选择了返回上一层
             previousDialog();
             return;
           }
           
           // 用户选择了某个评论，切换选中状态
-          let selectedComment = commentOptions[buttonIndex - 3]; // 因为加了全选和范围选择选项，所以索引要减3
+          let selectedComment = commentOptions[buttonIndex - 4]; // 因为加了全选、范围选择和反选选项，所以索引要减4
           
           if (selectedIndices.has(selectedComment.index)) {
             selectedIndices.delete(selectedComment.index);

@@ -138,6 +138,7 @@ export default function MNTaskBoard() {
     updatePerspective,
     deletePerspective,
     applyPerspectiveFilter,
+    applyFilterRules,
     getFilteredTasks,
     getFocusSelectedPerspective,
     getLibrarySelectedPerspective,
@@ -918,12 +919,14 @@ export default function MNTaskBoard() {
         }}
               onPerspectiveChange={setLibrarySelectedPerspectiveId}
               onTaskTypeFilterChange={setLibraryTaskTypeFilter}
+              applyPerspectiveFilter={applyPerspectiveFilter}
             />
           ) : currentView === "perspective" ? (
             /* 透视视图 */
             <PerspectiveView
               focusTasks={focusTasks}
               pendingTasks={pendingTasks}
+              allTasks={allTasks}
               perspectives={perspectives}
               selectedPerspectiveId={focusSelectedPerspectiveId}
               onUpdateTask={updateTask}
@@ -946,6 +949,8 @@ export default function MNTaskBoard() {
               onCreatePerspective={createPerspective}
               onUpdatePerspective={updatePerspective}
               onDeletePerspective={deletePerspective}
+              applyPerspectiveFilter={applyPerspectiveFilter}
+              applyFilterRules={applyFilterRules}
             />
           ) : currentView === "inbox" ? (
             /* Inbox 视图 */

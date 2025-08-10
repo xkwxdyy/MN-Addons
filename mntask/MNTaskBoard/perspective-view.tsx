@@ -41,6 +41,7 @@ import type { FilterRule, Task, Perspective, PerspectiveFilter } from "@/types/t
 interface PerspectiveViewProps {
   focusTasks: Task[]
   pendingTasks: Task[]
+  allTasks: Task[]
   perspectives: Perspective[]
   selectedPerspectiveId: string | null
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
@@ -70,6 +71,7 @@ interface PerspectiveViewProps {
 export function PerspectiveView({
   focusTasks,
   pendingTasks,
+  allTasks,
   perspectives,
   selectedPerspectiveId,
   onUpdateTask,
@@ -143,8 +145,6 @@ export function PerspectiveView({
   const selectedPerspective = selectedPerspectiveId ? perspectives.find((p) => p.id === selectedPerspectiveId) : null
 
   // 获取筛选后的任务
-  const allTasks = useMemo(() => [...focusTasks, ...pendingTasks], [focusTasks, pendingTasks])
-  
   const filteredTasks = useMemo(() => {
     if (!selectedPerspective) return allTasks
     

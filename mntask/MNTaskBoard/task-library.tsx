@@ -30,6 +30,7 @@ interface TaskLibraryProps {
   onPerspectiveChange: (perspectiveId: string | null) => void
   onTaskTypeFilterChange?: (filter: TaskTypeFilter) => void
   onAddProgress?: (taskId: string, progress: string) => void
+  applyPerspectiveFilter?: (tasks: Task[], filters: PerspectiveFilter) => Task[]
 }
 
 type TaskTypeFilter = "all" | "action" | "project" | "key-result" | "objective"
@@ -52,6 +53,7 @@ export function TaskLibrary({
   onPerspectiveChange,
   onTaskTypeFilterChange,
   onAddProgress,
+  applyPerspectiveFilter,
 }: TaskLibraryProps) {
   const [selectedFilter, setSelectedFilter] = useState<TaskTypeFilter>(selectedTaskTypeFilter || "all")
   const [newTaskTitle, setNewTaskTitle] = useState("")
@@ -66,48 +68,13 @@ export function TaskLibrary({
     }
   }, [selectedTaskTypeFilter])
 
-  // 应用透视筛选
-  const applyPerspectiveFilter = (tasks: Task[], filters: PerspectiveFilter): Task[] => {
-    return tasks.filter((task) => {
-      // 标签筛选
-      if (filters.tags.length > 0) {
-        const hasMatchingTag = filters.tags.some((tag) => task.tags?.includes(tag))
-        if (!hasMatchingTag) return false
-      }
-
-      // 任务类型筛选
-      if (filters.taskTypes.length > 0 && !filters.taskTypes.includes(task.type)) {
-        return false
-      }
-
-      // 状态筛选
-      if (filters.statuses.length > 0 && !filters.statuses.includes(task.status)) {
-        return false
-      }
-
-      // 优先级筛选
-      if (filters.priorities.length > 0 && !filters.priorities.includes(task.priority)) {
-        return false
-      }
-
-      // 焦点任务筛选
-      if (filters.focusTask === "focus" && !task.isFocusTask) return false
-      if (filters.focusTask === "non-focus" && task.isFocusTask) return false
-
-      // 优先焦点筛选
-      if (filters.priorityFocus === "priority" && !task.isPriorityFocus) return false
-      if (filters.priorityFocus === "non-priority" && task.isPriorityFocus) return false
-
-      return true
-    })
-  }
 
   // 获取当前选中的透视
   const selectedPerspective = selectedPerspectiveId ? perspectives.find((p) => p.id === selectedPerspectiveId) : null
 
   // 应用透视筛选到任务列表
   const getFilteredTasks = (taskList: Task[]): Task[] => {
-    if (!selectedPerspective || !selectedPerspective.filters) return taskList
+    if (!selectedPerspective || !selectedPerspective.filters || !applyPerspectiveFilter) return taskList
     return applyPerspectiveFilter(taskList, selectedPerspective.filters)
   }
 

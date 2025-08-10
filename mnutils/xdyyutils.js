@@ -5769,14 +5769,16 @@ class MNMath {
                   lastNote = firstNote
                   
                   // 如果有更多部分，创建子卡片链
+                  let previousTitle = titlePartsArray[0]  // 记录上一个标题
                   for (let i = 1; i < titlePartsArray.length; i++) {
                     let childNote = MNNote.clone(this.types["归类"].templateNoteId)
-                    // 累积标题：第一部分 + 当前部分
-                    let accumulatedTitle = titlePartsArray[0] + titlePartsArray[i]
+                    // 累积标题：上一个标题 + 当前部分
+                    let accumulatedTitle = previousTitle + titlePartsArray[i]
                     childNote.noteTitle = "“" + accumulatedTitle + "”相关" + type
                     lastNote.addChild(childNote.note)
                     this.linkParentNote(childNote)
                     lastNote = childNote
+                    previousTitle = accumulatedTitle  // 更新上一个标题
                   }
                   
                   // 聚焦最后创建的卡片

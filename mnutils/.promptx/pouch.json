@@ -1,27 +1,16 @@
 {
-  "currentState": "memory_saved",
+  "currentState": "initialized",
   "stateHistory": [
     {
       "from": "initial",
       "command": "init",
-      "timestamp": "2025-08-11T17:32:35.562Z",
+      "timestamp": "2025-08-11T18:36:34.592Z",
       "args": [
         {
           "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnutils"
         }
       ]
-    },
-    {
-      "from": "initialized",
-      "command": "remember",
-      "timestamp": "2025-08-11T17:32:54.953Z",
-      "args": [
-        "assistant",
-        "## MNUtils API 关键知识：note.MNComments vs note.comments\n\n### 核心区别\n1. **note.comments** - 原始评论数组，包含 NoteComment 对象\n   - type 只有5种基础类型：TextNote, HtmlNote, LinkNote, PaintNote, AudioNote\n   \n2. **note.MNComments** - 处理后的 MNComment 实例数组\n   - 通过 MNComment.from(note) 生成\n   - type 属性已经是15+种细分类型：drawingComment, imageCommentWithDrawing 等\n\n### 常见错误\n❌ 对 MNComments 元素再次调用 getCommentType：\n```javascript\nlet commentType = MNComment.getCommentType(note.MNComments[0]); // 错误\n```\n\n✅ 正确用法：\n```javascript\nlet commentType = note.MNComments[0].type; // 直接使用 type 属性\n```\n\n### 手写评论判断示例\n```javascript\n// 使用 MNComments（推荐）\nfunction isHandwritingComment(note, index) {\n  let commentType = note.MNComments[index].type;\n  return commentType === \"drawingComment\" || \n         commentType === \"imageCommentWithDrawing\" || \n         commentType === \"mergedImageCommentWithDrawing\";\n}\n```\n\n### 影响范围\n- xdyyutils.js 中的 MNMath 类\n- 所有评论类型判断功能\n- 特别是手写、图片、合并内容的识别\n\n发现日期：2025-01-12\n项目：MN-Addon/mnutils",
-        "--tags",
-        "MNUtils API MarginNote 评论类型 手写评论"
-      ]
     }
   ],
-  "lastUpdated": "2025-08-11T17:32:54.960Z"
+  "lastUpdated": "2025-08-11T18:36:34.609Z"
 }

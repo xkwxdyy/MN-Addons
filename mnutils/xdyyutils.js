@@ -412,18 +412,6 @@ class MNMath {
   }
 
   static autoMoveNewContent(note) {
-    // 特殊处理：检查除HTML评论外是否只有一条手写评论
-    let nonHtmlComments = note.MNComments.filter(c => c.type !== "HtmlComment");
-    if (nonHtmlComments.length === 1) {
-      let commentType = MNComment.getCommentType(nonHtmlComments[0]);
-      if (commentType === "drawingComment" || 
-          commentType === "imageCommentWithDrawing" || 
-          commentType === "mergedImageCommentWithDrawing") {
-        MNUtil.log("🖊️ 检测到模板合并后只有单个手写评论，跳过自动移动");
-        return;
-      }
-    }
-    
     // 获取卡片类型
     let noteType = this.getNoteType(note);
     // 获取默认字段
@@ -442,6 +430,21 @@ class MNMath {
     if (moveIndexArr.length === 0) {
       // MNUtil.showHUD(`没有新内容需要移动到 ${defaultField} 字段！`);
       return;
+    }
+    
+    // 特殊处理：检查要移动的内容是否全部是手写评论
+    if (moveIndexArr.length > 0) {
+      let allHandwriting = moveIndexArr.every(index => {
+        let commentType = MNComment.getCommentType(note.MNComments[index]);
+        return commentType === "drawingComment" || 
+               commentType === "imageCommentWithDrawing" || 
+               commentType === "mergedImageCommentWithDrawing";
+      });
+      
+      if (allHandwriting) {
+        MNUtil.log("🖊️ 要移动的内容只有手写评论，跳过自动移动");
+        return;
+      }
     }
 
     // 在移动之前先提取 markdown 链接

@@ -542,6 +542,20 @@ function registerAllMenuTemplates() {
       action: "menu",
       menuWidth: 300,
       menuItems: [
+        "🔢 带序号的评论",
+        {
+          action: "addCaseComment",
+          menuTitle: "    📋 添加 Case 评论（自动编号）",
+        },
+        {
+          action: "addStepComment",
+          menuTitle: "    👣 添加 Step 评论（自动编号）",
+        },
+        {
+          action: "addNumberedHtmlMarkdownComment",
+          menuTitle: "    🔢 更多带序号类型...",
+        },
+        "-",
         {
           action: "changeHtmlMarkdownCommentTypeByPopup",
           menuTitle: "🔄 修改某条 HtmlMD 评论的类型",

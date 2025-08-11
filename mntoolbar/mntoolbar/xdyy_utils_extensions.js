@@ -2739,3 +2739,164 @@ if (typeof MNUtil !== "undefined" && MNUtil.getNoteById) {
     MNUtil.log("🔧 已重写 MNUtil.getNoteById 方法，修复自动复制 ID 问题");
   }
 }
+
+/**
+ * HtmlMarkdownUtils 扩展 - 带序号的评论支持
+ * 添加 Case、Step 等带自动序号的评论类型
+ */
+if (typeof HtmlMarkdownUtils !== "undefined") {
+  // 添加新的图标和样式（如果不存在）
+  if (!HtmlMarkdownUtils.icons.case) {
+    HtmlMarkdownUtils.icons.case = '📋';
+    HtmlMarkdownUtils.icons.step = '👣';
+  }
+  
+  if (!HtmlMarkdownUtils.prefix.case) {
+    HtmlMarkdownUtils.prefix.case = '';  // 序号将动态生成
+    HtmlMarkdownUtils.prefix.step = '';   // 序号将动态生成
+  }
+  
+  if (!HtmlMarkdownUtils.styles.case) {
+    HtmlMarkdownUtils.styles.case = 'font-weight:600;color:#2563EB;background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border:2px solid #3B82F6;border-radius:8px;padding:8px 16px;display:inline-block;box-shadow:0 2px 4px rgba(37,99,235,0.2);margin:4px 0;';
+    HtmlMarkdownUtils.styles.step = 'font-weight:500;color:#059669;background:#ECFDF5;border-left:4px solid #10B981;padding:6px 12px;display:inline-block;border-radius:0 4px 4px 0;margin:4px 0;';
+  }
+  
+  /**
+   * 获取笔记中某类型的下一个序号
+   * @param {MNNote} note - 笔记对象
+   * @param {string} typePrefix - 类型前缀，如 "Case", "Step" 等
+   * @returns {number} 下一个可用的序号
+   */
+  HtmlMarkdownUtils.getNextNumberForType = function(note, typePrefix) {
+    const pattern = new RegExp(`${typePrefix}\\s*(\\d+)`, 'gi');
+    let maxNumber = 0;
+    
+    // 遍历所有评论查找最大序号
+    const comments = note.comments || note.MNComments || [];
+    for (const comment of comments) {
+      if (comment && comment.text) {
+        const matches = [...comment.text.matchAll(pattern)];
+        for (const match of matches) {
+          const num = parseInt(match[1]);
+          if (num > maxNumber) maxNumber = num;
+        }
+      }
+    }
+    
+    return maxNumber + 1;
+  };
+  
+  /**
+   * 创建带序号的 HTML 文本
+   * @param {string} text - 内容文本
+   * @param {string} type - 类型（如 'case', 'step'）
+   * @param {number} number - 序号（可选，不提供则自动计算）
+   * @param {MNNote} note - 笔记对象（用于自动计算序号）
+   * @returns {string} 格式化后的 HTML 文本
+   */
+  HtmlMarkdownUtils.createNumberedHtmlText = function(text, type, number, note) {
+    // 支持的带序号类型配置
+    const numberedTypes = {
+      'case': { prefix: 'Case', icon: '📋' },
+      'step': { prefix: 'Step', icon: '👣' },
+      'example': { prefix: 'Example', icon: '📝' },
+      // 可以继续添加更多类型
+    };
+    
+    // 如果不是带序号的类型，使用原有方法
+    if (!numberedTypes[type]) {
+      return this.createHtmlMarkdownText(text, type);
+    }
+    
+    const config = numberedTypes[type];
+    
+    // 如果没有提供序号，自动计算
+    if (!number && note) {
+      number = this.getNextNumberForType(note, config.prefix);
+    }
+    
+    // 如果还是没有序号，默认为 1
+    if (!number) {
+      number = 1;
+    }
+    
+    // 构建带序号的文本
+    const formattedText = `${config.prefix} ${number}: ${typeof Pangu !== 'undefined' ? Pangu.spacing(text) : text}`;
+    
+    // 使用对应的样式
+    const style = this.styles[type] || '';
+    const icon = this.icons[type] || config.icon;
+    
+    return `<span id="${type}" style="${style}">${icon} ${formattedText}</span>`;
+  };
+  
+  if (typeof MNUtil !== "undefined" && MNUtil.log) {
+    MNUtil.log("✨ 已添加 HtmlMarkdownUtils 带序号评论支持");
+  }
+}
+
+/**
+ * MNMath 扩展 - 带序号评论的便捷方法
+ */
+if (typeof MNMath !== "undefined") {
+  /**
+   * 为笔记添加带序号的 Case 评论
+   * @param {MNNote} note - 笔记对象
+   * @param {string} text - 评论内容
+   * @param {number} customNumber - 自定义序号（可选）
+   * @returns {number} 使用的序号
+   */
+  MNMath.addCaseComment = function(note, text, customNumber) {
+    const number = customNumber || HtmlMarkdownUtils.getNextNumberForType(note, 'Case');
+    const htmlText = HtmlMarkdownUtils.createNumberedHtmlText(text, 'case', number, note);
+    note.appendHtmlComment(htmlText, text);
+    return number;
+  };
+  
+  /**
+   * 为笔记添加带序号的 Step 评论
+   * @param {MNNote} note - 笔记对象
+   * @param {string} text - 评论内容
+   * @param {number} customNumber - 自定义序号（可选）
+   * @returns {number} 使用的序号
+   */
+  MNMath.addStepComment = function(note, text, customNumber) {
+    const number = customNumber || HtmlMarkdownUtils.getNextNumberForType(note, 'Step');
+    const htmlText = HtmlMarkdownUtils.createNumberedHtmlText(text, 'step', number, note);
+    note.appendHtmlComment(htmlText, text);
+    return number;
+  };
+  
+  /**
+   * 通用的添加带序号评论方法
+   * @param {MNNote} note - 笔记对象
+   * @param {string} text - 评论内容
+   * @param {string} type - 类型（'case', 'step', 'example' 等）
+   * @param {number} customNumber - 自定义序号（可选）
+   * @returns {number} 使用的序号
+   */
+  MNMath.addNumberedComment = function(note, text, type, customNumber) {
+    // 获取类型对应的前缀
+    const numberedTypes = {
+      'case': 'Case',
+      'step': 'Step',
+      'example': 'Example'
+    };
+    
+    const prefix = numberedTypes[type];
+    if (!prefix) {
+      // 如果不是带序号的类型，使用普通方法
+      note.appendMarkdownComment(HtmlMarkdownUtils.createHtmlMarkdownText(text, type));
+      return null;
+    }
+    
+    const number = customNumber || HtmlMarkdownUtils.getNextNumberForType(note, prefix);
+    const htmlText = HtmlMarkdownUtils.createNumberedHtmlText(text, type, number, note);
+    note.appendHtmlComment(htmlText, text);
+    return number;
+  };
+  
+  if (typeof MNUtil !== "undefined" && MNUtil.log) {
+    MNUtil.log("✨ 已添加 MNMath 带序号评论便捷方法");
+  }
+}

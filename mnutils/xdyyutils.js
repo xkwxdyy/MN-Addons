@@ -412,6 +412,18 @@ class MNMath {
   }
 
   static autoMoveNewContent(note) {
+    // 特殊处理：检查除HTML评论外是否只有一条手写评论
+    let nonHtmlComments = note.MNComments.filter(c => c.type !== "HtmlComment");
+    if (nonHtmlComments.length === 1) {
+      let commentType = MNComment.getCommentType(nonHtmlComments[0]);
+      if (commentType === "drawingComment" || 
+          commentType === "imageCommentWithDrawing" || 
+          commentType === "mergedImageCommentWithDrawing") {
+        MNUtil.log("🖊️ 检测到模板合并后只有单个手写评论，跳过自动移动");
+        return;
+      }
+    }
+    
     // 获取卡片类型
     let noteType = this.getNoteType(note);
     // 获取默认字段

@@ -4451,6 +4451,48 @@ function registerAllCustomActions() {
     }
   });
 
+  // exportSearchConfig - 导出搜索配置
+  global.registerCustomAction("exportSearchConfig", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    try {
+      // 调用 MNMath 中的导出配置对话框
+      await MNMath.showExportConfigDialog();
+    } catch (error) {
+      MNUtil.showHUD("导出配置失败: " + error.message);
+      if (typeof toolbarUtils !== "undefined") {
+        toolbarUtils.addErrorLog(error, "exportSearchConfig");
+      }
+    }
+  });
+
+  // importSearchConfig - 导入搜索配置
+  global.registerCustomAction("importSearchConfig", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    try {
+      // 调用 MNMath 中的导入配置对话框
+      await MNMath.showImportConfigDialog();
+    } catch (error) {
+      MNUtil.showHUD("导入配置失败: " + error.message);
+      if (typeof toolbarUtils !== "undefined") {
+        toolbarUtils.addErrorLog(error, "importSearchConfig");
+      }
+    }
+  });
+
+  // showSearchSettings - 搜索设置
+  global.registerCustomAction("showSearchSettings", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    try {
+      // 调用 MNMath 中的搜索设置对话框
+      await MNMath.showSearchSettingsDialog();
+    } catch (error) {
+      MNUtil.showHUD("搜索设置失败: " + error.message);
+      if (typeof toolbarUtils !== "undefined") {
+        toolbarUtils.addErrorLog(error, "showSearchSettings");
+      }
+    }
+  });
+
   global.registerCustomAction("codeMergeTemplate", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {

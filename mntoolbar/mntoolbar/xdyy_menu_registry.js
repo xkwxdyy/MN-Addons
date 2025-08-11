@@ -632,23 +632,39 @@ function registerAllMenuTemplates() {
     onLongPress: {
       // 长按：显示菜单
       action: "menu",
-      menuWidth: 300,
+      menuWidth: 350,
       menuItems: [
+        "🔍 搜索功能",
         {
           action: "showSearchBoard",
-          menuTitle: "📋 打开搜索看板",
+          menuTitle: "    📋 打开搜索看板",
         },
         {
           action: "searchDefinition",
-          menuTitle: "📚 搜索上层定义卡片的目录",
+          menuTitle: "    📚 搜索上层定义卡片的目录",
         },
+        "⚙️ 基础配置",
         {
           action: "manageSearchRoots",
-          menuTitle: "📁 管理搜索根目录",
+          menuTitle: "    📁 管理搜索根目录",
         },
         {
+          action: "showSearchSettings",
+          menuTitle: "    🎯 搜索设置",
+        },
+        "📝 同义词管理",
+        {
           action: "manageSynonymGroups",
-          menuTitle: "🔄 管理同义词组",
+          menuTitle: "    （包含导入导出功能）",
+        },
+        "📊 配置同步",
+        {
+          action: "exportSearchConfig",
+          menuTitle: "    📤 导出搜索配置",
+        },
+        {
+          action: "importSearchConfig",
+          menuTitle: "    📥 导入搜索配置",
         },
       ],
     },

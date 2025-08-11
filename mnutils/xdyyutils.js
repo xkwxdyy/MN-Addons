@@ -7250,7 +7250,7 @@ class MNMath {
   }
   
   /**
-   * 导出搜索配置
+   * 导出搜索配置（保留原方法以兼容）
    * @returns {string|null} JSON字符串，失败返回null
    */
   static exportSearchConfig() {
@@ -7268,7 +7268,8 @@ class MNMath {
           onlyClassification: this.searchRootConfigs.onlyClassification,
           ignorePrefix: this.searchRootConfigs.ignorePrefix,
           searchInKeywords: this.searchRootConfigs.searchInKeywords
-        }
+        },
+        synonymGroups: this.searchRootConfigs.synonymGroups || []
       };
       
       const jsonStr = JSON.stringify(config, null, 2);
@@ -7280,30 +7281,201 @@ class MNMath {
       return null;
     }
   }
+
+  /**
+   * 获取完整的搜索配置（包括同义词）
+   * @returns {Object} 配置对象
+   */
+  static getFullSearchConfig() {
+    this.initSearchConfig();
+    
+    return {
+      version: "1.0",
+      exportDate: new Date().toISOString(),
+      exportFrom: "MNMath",
+      searchConfig: {
+        roots: this.searchRootConfigs.roots,
+        rootsOrder: this.searchRootConfigs.rootsOrder,
+        lastUsedRoot: this.searchRootConfigs.lastUsedRoot,
+        includeClassification: this.searchRootConfigs.includeClassification,
+        onlyClassification: this.searchRootConfigs.onlyClassification,
+        ignorePrefix: this.searchRootConfigs.ignorePrefix,
+        searchInKeywords: this.searchRootConfigs.searchInKeywords
+      },
+      synonymGroups: this.searchRootConfigs.synonymGroups || []
+    };
+  }
+
+  /**
+   * 导出搜索配置到指定目标
+   * @param {string} type - 导出类型: "iCloud", "clipboard", "currentNote", "file"
+   * @returns {Promise<boolean>} 是否成功
+   */
+  static async exportSearchConfigTo(type) {
+    try {
+      const config = this.getFullSearchConfig();
+      const jsonStr = JSON.stringify(config, null, 2);
+      
+      switch (type) {
+        case "iCloud":
+          // 使用 iCloud 同步
+          const iCloudKey = "MNMath_SearchConfig";
+          MNUtil.setByiCloud(iCloudKey, jsonStr);
+          MNUtil.showHUD("✅ 已导出到 iCloud");
+          return true;
+          
+        case "clipboard":
+          MNUtil.copy(jsonStr);
+          MNUtil.showHUD("✅ 已导出到剪贴板");
+          return true;
+          
+        case "currentNote":
+          const focusNote = MNNote.getFocusNote();
+          if (!focusNote) {
+            MNUtil.showHUD("❌ 请先选择一个笔记");
+            return false;
+          }
+          
+          MNUtil.undoGrouping(() => {
+            focusNote.noteTitle = "MNMath_搜索配置";
+            focusNote.excerptText = "```json\n" + jsonStr + "\n```";
+            focusNote.excerptTextMarkdown = true;
+          });
+          MNUtil.showHUD("✅ 已导出到当前笔记");
+          return true;
+          
+        case "file":
+          // 导出到文件
+          const dateStr = new Date().toISOString().replace(/:/g, '-').split('.')[0];
+          const fileName = `MNMath_SearchConfig_${dateStr}.json`;
+          const documentsPath = NSSearchPathForDirectoriesInDomains(9, 1, true).firstObject; // NSDocumentDirectory
+          
+          if (documentsPath) {
+            const filePath = documentsPath + "/" + fileName;
+            NSString.stringWithString(jsonStr).writeToFileAtomicallyEncodingError(
+              filePath, true, 4, null // NSUTF8StringEncoding = 4
+            );
+            
+            // 保存文件对话框
+            MNUtil.saveFile(filePath, ["public.json"]);
+            MNUtil.showHUD(`✅ 已导出到文件\n${fileName}`);
+            return true;
+          }
+          MNUtil.showHUD("❌ 文件导出失败");
+          return false;
+          
+        default:
+          MNUtil.showHUD("❌ 不支持的导出类型");
+          return false;
+      }
+    } catch (error) {
+      MNUtil.showHUD("❌ 导出失败：" + error.message);
+      MNUtil.log("导出搜索配置失败: " + error.toString());
+      return false;
+    }
+  }
   
   /**
-   * 导入搜索配置
+   * 导入搜索配置（保留原方法以兼容）
    * @returns {Promise<boolean>} 是否成功
    */
   static async importSearchConfig() {
+    return this.importSearchConfigFrom("clipboard");
+  }
+
+  /**
+   * 从指定来源导入搜索配置
+   * @param {string} type - 导入类型: "iCloud", "clipboard", "currentNote", "file"
+   * @returns {Promise<boolean>} 是否成功
+   */
+  static async importSearchConfigFrom(type) {
     try {
-      const clipboardText = MNUtil.clipboardText;
-      if (!clipboardText) {
-        MNUtil.showHUD("剪贴板为空");
-        return false;
+      let jsonStr = null;
+      
+      switch (type) {
+        case "iCloud":
+          // 从 iCloud 导入
+          const iCloudKey = "MNMath_SearchConfig";
+          jsonStr = MNUtil.getByiCloud(iCloudKey);
+          if (!jsonStr) {
+            MNUtil.showHUD("❌ iCloud 中没有配置");
+            return false;
+          }
+          break;
+          
+        case "clipboard":
+          jsonStr = MNUtil.clipboardText;
+          if (!jsonStr) {
+            MNUtil.showHUD("❌ 剪贴板为空");
+            return false;
+          }
+          break;
+          
+        case "currentNote":
+          const focusNote = MNNote.getFocusNote();
+          if (!focusNote) {
+            MNUtil.showHUD("❌ 请先选择一个笔记");
+            return false;
+          }
+          
+          // 从笔记内容中提取 JSON
+          const excerptText = focusNote.excerptText || "";
+          // 尝试提取 markdown 代码块中的 JSON
+          const codeBlockMatch = excerptText.match(/```json\s*([\s\S]*?)\s*```/);
+          if (codeBlockMatch) {
+            jsonStr = codeBlockMatch[1];
+          } else {
+            // 尝试直接解析
+            jsonStr = excerptText;
+          }
+          break;
+          
+        case "file":
+          // 从文件导入
+          const filePath = MNUtil.openFile(["public.json"]);
+          if (!filePath) {
+            MNUtil.showHUD("❌ 未选择文件");
+            return false;
+          }
+          
+          jsonStr = NSString.stringWithContentsOfFileEncodingError(filePath, 4, null); // NSUTF8StringEncoding = 4
+          if (!jsonStr) {
+            MNUtil.showHUD("❌ 无法读取文件");
+            return false;
+          }
+          break;
+          
+        default:
+          MNUtil.showHUD("❌ 不支持的导入类型");
+          return false;
       }
       
+      // 解析 JSON
       let config;
       try {
-        config = JSON.parse(clipboardText);
+        config = JSON.parse(jsonStr);
       } catch (e) {
-        MNUtil.showHUD("剪贴板内容不是有效的JSON格式");
+        MNUtil.showHUD("❌ 内容不是有效的 JSON 格式");
         return false;
       }
       
-      // 验证配置格式
-      if (!config.version || !config.roots) {
-        MNUtil.showHUD("配置格式无效");
+      // 处理新版本格式（包含 searchConfig 和 synonymGroups）
+      let searchConfig, synonymGroups;
+      if (config.searchConfig) {
+        // 新格式
+        searchConfig = config.searchConfig;
+        synonymGroups = config.synonymGroups;
+      } else if (config.roots) {
+        // 旧格式
+        searchConfig = {
+          roots: config.roots,
+          rootsOrder: config.rootsOrder,
+          lastUsedRoot: config.lastUsedRoot,
+          ...config.settings
+        };
+        synonymGroups = config.synonymGroups;
+      } else {
+        MNUtil.showHUD("❌ 配置格式无效");
         return false;
       }
       
@@ -7315,7 +7487,7 @@ class MNMath {
           0,
           "取消",
           ["替换现有配置", "合并配置"],
-          (alert, buttonIndex) => {
+          (_, buttonIndex) => {
             if (buttonIndex === 0) {
               resolve(false);
               return;
@@ -7325,46 +7497,255 @@ class MNMath {
             
             if (buttonIndex === 1) {
               // 替换模式
-              this.searchRootConfigs.roots = config.roots;
-              this.searchRootConfigs.rootsOrder = config.rootsOrder || Object.keys(config.roots);
-              this.searchRootConfigs.lastUsedRoot = config.lastUsedRoot || "default";
+              if (searchConfig.roots) {
+                this.searchRootConfigs.roots = searchConfig.roots;
+                this.searchRootConfigs.rootsOrder = searchConfig.rootsOrder || Object.keys(searchConfig.roots);
+                this.searchRootConfigs.lastUsedRoot = searchConfig.lastUsedRoot || "default";
+              }
               
-              if (config.settings) {
-                Object.assign(this.searchRootConfigs, config.settings);
+              // 应用其他设置
+              if (searchConfig.includeClassification !== undefined) {
+                this.searchRootConfigs.includeClassification = searchConfig.includeClassification;
+              }
+              if (searchConfig.onlyClassification !== undefined) {
+                this.searchRootConfigs.onlyClassification = searchConfig.onlyClassification;
+              }
+              if (searchConfig.ignorePrefix !== undefined) {
+                this.searchRootConfigs.ignorePrefix = searchConfig.ignorePrefix;
+              }
+              if (searchConfig.searchInKeywords !== undefined) {
+                this.searchRootConfigs.searchInKeywords = searchConfig.searchInKeywords;
+              }
+              
+              // 替换同义词组
+              if (synonymGroups) {
+                this.searchRootConfigs.synonymGroups = synonymGroups;
               }
             } else if (buttonIndex === 2) {
               // 合并模式
               // 合并根目录
-              Object.assign(this.searchRootConfigs.roots, config.roots);
-              
-              // 合并顺序数组
-              if (config.rootsOrder) {
-                const existingKeys = new Set(this.searchRootConfigs.rootsOrder || []);
-                for (const key of config.rootsOrder) {
-                  if (!existingKeys.has(key) && this.searchRootConfigs.roots[key]) {
-                    this.searchRootConfigs.rootsOrder.push(key);
+              if (searchConfig.roots) {
+                Object.assign(this.searchRootConfigs.roots, searchConfig.roots);
+                
+                // 合并顺序数组
+                if (searchConfig.rootsOrder) {
+                  const existingKeys = new Set(this.searchRootConfigs.rootsOrder || []);
+                  for (const key of searchConfig.rootsOrder) {
+                    if (!existingKeys.has(key) && this.searchRootConfigs.roots[key]) {
+                      this.searchRootConfigs.rootsOrder.push(key);
+                    }
                   }
                 }
               }
               
-              // 合并设置
-              if (config.settings) {
-                Object.assign(this.searchRootConfigs, config.settings);
+              // 合并同义词组
+              if (synonymGroups && synonymGroups.length > 0) {
+                if (!this.searchRootConfigs.synonymGroups) {
+                  this.searchRootConfigs.synonymGroups = [];
+                }
+                // 避免重复
+                const existingIds = new Set(this.searchRootConfigs.synonymGroups.map(g => g.id));
+                for (const group of synonymGroups) {
+                  if (!existingIds.has(group.id)) {
+                    this.searchRootConfigs.synonymGroups.push(group);
+                  }
+                }
               }
             }
             
             this.saveSearchConfig();
+            MNUtil.showHUD("✅ 配置导入成功");
             resolve(true);
           }
         );
       });
     } catch (error) {
       MNUtil.log("导入搜索配置失败: " + error.toString());
-      MNUtil.showHUD("导入失败：" + error.message);
+      MNUtil.showHUD("❌ 导入失败：" + error.message);
       return false;
     }
   }
   
+  /**
+   * 显示导出配置选择对话框
+   * @returns {Promise<boolean>} 是否成功导出
+   */
+  static async showExportConfigDialog() {
+    return new Promise((resolve) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "导出搜索配置",
+        "选择导出方式：",
+        0,
+        "取消",
+        [
+          "☁️ 导出到 iCloud",
+          "📋 导出到剪贴板",
+          "📝 导出到当前笔记",
+          "📁 导出到文件"
+        ],
+        async (_, buttonIndex) => {
+          if (buttonIndex === 0) {
+            resolve(false);
+            return;
+          }
+          
+          const types = ["iCloud", "clipboard", "currentNote", "file"];
+          const success = await this.exportSearchConfigTo(types[buttonIndex - 1]);
+          resolve(success);
+        }
+      );
+    });
+  }
+
+  /**
+   * 显示导入配置选择对话框
+   * @returns {Promise<boolean>} 是否成功导入
+   */
+  static async showImportConfigDialog() {
+    return new Promise((resolve) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "导入搜索配置",
+        "选择导入来源：",
+        0,
+        "取消",
+        [
+          "☁️ 从 iCloud 导入",
+          "📋 从剪贴板导入",
+          "📝 从当前笔记导入",
+          "📁 从文件导入"
+        ],
+        async (_, buttonIndex) => {
+          if (buttonIndex === 0) {
+            resolve(false);
+            return;
+          }
+          
+          const types = ["iCloud", "clipboard", "currentNote", "file"];
+          const success = await this.importSearchConfigFrom(types[buttonIndex - 1]);
+          resolve(success);
+        }
+      );
+    });
+  }
+
+  /**
+   * 管理搜索根目录界面
+   * 提供根目录的管理功能
+   */
+  static async manageSearchRootsUI() {
+    try {
+      const options = [
+        "📁 管理根目录列表",
+        "🔄 调整根目录顺序",
+        "➕ 添加当前卡片为根目录"
+      ];
+      
+      const result = await MNUtil.userSelect(
+        "管理搜索根目录",
+        "选择操作：",
+        options
+      );
+      
+      if (result === null || result === 0) {
+        return false;
+      }
+      
+      switch (result) {
+        case 1: // 管理根目录列表
+          await this.showRootManagementDialog();
+          break;
+          
+        case 2: // 调整根目录顺序
+          await this.showRootOrderDialog();
+          break;
+          
+        case 3: // 添加当前卡片
+          const focusNote = MNNote.getFocusNote();
+          if (focusNote) {
+            const name = focusNote.noteTitle || "未命名";
+            const key = "root_" + Date.now();
+            this.addSearchRoot(key, name, focusNote.noteId);
+            MNUtil.showHUD(`✅ 已添加根目录：${name}`);
+          } else {
+            MNUtil.showHUD("❌ 请先选择一个卡片");
+          }
+          break;
+      }
+      
+      return true;
+    } catch (error) {
+      MNUtil.showHUD("❌ 操作失败：" + error.message);
+      return false;
+    }
+  }
+
+  /**
+   * 管理同义词组界面
+   * 提供同义词组的管理功能（保留原方法名兼容）
+   */
+  static async manageSynonymGroupsUI() {
+    return this.manageSynonymGroups();
+  }
+
+  /**
+   * 综合搜索配置管理界面（已废弃）
+   * 此方法已被拆分为独立的配置功能，不再使用
+   * @deprecated 使用 showSearchSettingsDialog、manageSearchRootsUI、manageSynonymGroups 等独立方法
+   */
+  /*
+  static async manageSearchConfig() {
+    // 此方法已废弃，功能已拆分为独立的配置管理方法
+    MNUtil.showHUD("此功能已拆分为独立的配置管理方法");
+    return false;
+  }
+  */
+
+  /**
+   * 显示搜索设置对话框
+   */
+  static async showSearchSettingsDialog() {
+    this.initSearchConfig();
+    
+    const settings = [
+      `${this.searchRootConfigs.includeClassification ? "☑️" : "☐︎"} 搜索归类卡片`,
+      `${this.searchRootConfigs.onlyClassification ? "☑️" : "☐︎"} 只搜索归类卡片`,
+      `${this.searchRootConfigs.ignorePrefix ? "☑️" : "☐︎"} 忽略前缀搜索`,
+      `${this.searchRootConfigs.searchInKeywords ? "☑️" : "☐︎"} 搜索关键词字段`
+    ];
+    
+    const result = await MNUtil.userSelect(
+      "搜索设置",
+      "点击切换设置状态：",
+      settings
+    );
+    
+    if (result === null || result === 0) {
+      return false;
+    }
+    
+    switch (result) {
+      case 1:
+        this.searchRootConfigs.includeClassification = !this.searchRootConfigs.includeClassification;
+        break;
+      case 2:
+        this.searchRootConfigs.onlyClassification = !this.searchRootConfigs.onlyClassification;
+        break;
+      case 3:
+        this.searchRootConfigs.ignorePrefix = !this.searchRootConfigs.ignorePrefix;
+        break;
+      case 4:
+        this.searchRootConfigs.searchInKeywords = !this.searchRootConfigs.searchInKeywords;
+        break;
+    }
+    
+    this.saveSearchConfig();
+    MNUtil.showHUD("✅ 设置已更新");
+    
+    // 重新显示设置对话框
+    await this.showSearchSettingsDialog();
+    return true;
+  }
+
   /**
    * 显示根目录排序对话框
    * @returns {Promise<boolean>} 是否修改了顺序
@@ -7633,6 +8014,39 @@ class MNMath {
   }
 
   /**
+   * 智能解析同义词输入
+   * 支持多种分隔符，优先级如下：
+   * 1. 逗号分隔（中英文）
+   * 2. 分号分隔（中英文）
+   * 3. 两个或更多连续空格
+   * 4. 单空格分隔（仅当没有其他分隔符时）
+   * @param {string} input - 用户输入的词汇字符串
+   * @returns {Array<string>} 解析后的词汇数组
+   */
+  static parseWords(input) {
+    // 移除首尾空格
+    input = input.trim();
+    
+    // 优先级1：逗号分割
+    if (input.includes(',') || input.includes('，')) {
+      return input.split(/[,，]/).map(w => w.trim()).filter(w => w);
+    }
+    
+    // 优先级2：分号分割
+    if (input.includes(';') || input.includes('；')) {
+      return input.split(/[;；]/).map(w => w.trim()).filter(w => w);
+    }
+    
+    // 优先级3：两个或更多连续空格
+    if (/\s{2,}/.test(input)) {
+      return input.split(/\s{2,}/).map(w => w.trim()).filter(w => w);
+    }
+    
+    // 优先级4：单空格分割
+    return input.split(/\s+/).map(w => w.trim()).filter(w => w);
+  }
+
+  /**
    * 添加同义词组
    * @param {string} name - 组名
    * @param {Array<string>} words - 词汇数组
@@ -7821,6 +8235,238 @@ class MNMath {
       MNUtil.log("导出同义词组失败: " + error.toString());
       return null;
     }
+  }
+
+  /**
+   * 格式化 JSON 为 Markdown 代码块
+   * @param {string} jsonStr - JSON 字符串
+   * @returns {string} 格式化后的 Markdown 代码块
+   */
+  static formatJsonAsCodeBlock(jsonStr) {
+    return `\`\`\`json\n${jsonStr}\n\`\`\``;
+  }
+
+  /**
+   * 从 Markdown 代码块中提取 JSON
+   * @param {string} text - 包含代码块的文本
+   * @returns {string|null} 提取的 JSON 字符串，失败返回 null
+   */
+  static extractJsonFromCodeBlock(text) {
+    // 尝试提取 ```json ... ``` 格式的内容
+    const codeBlockMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+    if (codeBlockMatch) {
+      return codeBlockMatch[1].trim();
+    }
+    
+    // 如果没有代码块格式，直接返回原文本（兼容旧格式）
+    return text;
+  }
+
+  /**
+   * 在笔记中查找同义词配置评论
+   * @param {MNNote} note - 笔记对象
+   * @returns {Object|null} 返回 {index: 评论索引, comment: 评论对象} 或 null
+   */
+  static findSynonymConfigComment(note) {
+    if (!note || !note.comments) return null;
+    
+    for (let i = 0; i < note.comments.length; i++) {
+      const comment = note.comments[i];
+      if (comment.type === "textComment" && comment.text.includes('"synonymGroups"')) {
+        return {
+          index: i,
+          comment: comment
+        };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * 同义词配置导出到指定目标
+   * @param {string} target - 导出目标: 'icloud', 'clipboard', 'note', 'file'
+   * @returns {Promise<boolean>} 导出是否成功
+   */
+  static async exportSynonymConfigTo(target) {
+    try {
+      this.initSearchConfig();
+      const config = {
+        version: "1.0",
+        type: "synonymGroups",
+        exportDate: new Date().toISOString(),
+        synonymGroups: this.getSynonymGroups()
+      };
+      
+      const jsonStr = JSON.stringify(config, null, 2);
+      
+      switch (target) {
+        case 'icloud':
+          MNUtil.setByiCloud("MNMath_SynonymGroups_Config", jsonStr);
+          MNUtil.showHUD("✅ 已同步到 iCloud");
+          return true;
+          
+        case 'clipboard':
+          MNUtil.copy(jsonStr);
+          MNUtil.showHUD("✅ 已复制到剪贴板");
+          return true;
+          
+        case 'note':
+          const focusNote = MNNote.getFocusNote();
+          if (!focusNote) {
+            MNUtil.showHUD("❌ 请先选中一个笔记");
+            return false;
+          }
+          
+          // 格式化为 Markdown 代码块
+          const formattedJson = this.formatJsonAsCodeBlock(jsonStr);
+          
+          // 查找已有的同义词配置评论
+          const existingConfig = this.findSynonymConfigComment(focusNote);
+          
+          if (existingConfig) {
+            // 替换已有配置
+            focusNote.MNComments[existingConfig.index].text = formattedJson;
+            MNUtil.showHUD("✅ 已更新当前笔记中的配置");
+          } else {
+            // 添加新配置
+            focusNote.appendTextComment(formattedJson);
+            MNUtil.showHUD("✅ 已保存到当前笔记");
+          }
+          return true;
+          
+        case 'file':
+          const fileName = `synonym_groups_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+          const documentsPath = NSFileManager.defaultManager().documentsPath;
+          if (documentsPath) {
+            const filePath = documentsPath + "/" + fileName;
+            NSString.stringWithString(jsonStr).writeToFileAtomicallyEncodingError(
+              filePath, true, 4, null // NSUTF8StringEncoding = 4
+            );
+            MNUtil.showHUD(`✅ 已导出到文件\n📁 ${fileName}`);
+            return true;
+          } else {
+            throw new Error("无法访问文档目录");
+          }
+          
+        default:
+          throw new Error("未知的导出目标");
+      }
+    } catch (error) {
+      MNUtil.showHUD(`❌ 导出到 ${target} 失败：${error.message}`);
+      MNUtil.log(`导出同义词配置到 ${target} 失败: ${error.toString()}`);
+      return false;
+    }
+  }
+
+  /**
+   * 从指定来源导入同义词配置
+   * @param {string} source - 导入来源: 'icloud', 'clipboard', 'note', 'file'
+   * @returns {Promise<boolean>} 导入是否成功
+   */
+  static async importSynonymConfigFrom(source) {
+    try {
+      let jsonStr = null;
+      
+      switch (source) {
+        case 'icloud':
+          jsonStr = MNUtil.getByiCloud("MNMath_SynonymGroups_Config", null);
+          if (!jsonStr) {
+            MNUtil.showHUD("❌ iCloud 中未找到同义词配置");
+            return false;
+          }
+          break;
+          
+        case 'clipboard':
+          jsonStr = MNUtil.clipboardText;
+          if (!jsonStr) {
+            MNUtil.showHUD("❌ 剪贴板为空");
+            return false;
+          }
+          break;
+          
+        case 'note':
+          const focusNote = MNNote.getFocusNote();
+          if (!focusNote) {
+            MNUtil.showHUD("❌ 请先选中包含配置的笔记");
+            return false;
+          }
+          
+          // 使用辅助方法查找同义词配置评论
+          const configComment = this.findSynonymConfigComment(focusNote);
+          if (!configComment) {
+            MNUtil.showHUD("❌ 当前笔记中未找到同义词配置");
+            return false;
+          }
+          
+          // 从评论中提取 JSON（支持代码块格式和纯文本格式）
+          jsonStr = this.extractJsonFromCodeBlock(configComment.comment.text);
+          if (!jsonStr) {
+            MNUtil.showHUD("❌ 无法解析笔记中的配置格式");
+            return false;
+          }
+          break;
+          
+        case 'file':
+          // 文件导入需要用户选择文件，这里先提示
+          MNUtil.showHUD("❌ 文件导入功能需要手动实现文件选择");
+          return false;
+          
+        default:
+          throw new Error("未知的导入来源");
+      }
+      
+      return await this.importSynonymGroups(jsonStr);
+    } catch (error) {
+      MNUtil.showHUD(`❌ 从 ${source} 导入失败：${error.message}`);
+      MNUtil.log(`从 ${source} 导入同义词配置失败: ${error.toString()}`);
+      return false;
+    }
+  }
+
+  /**
+   * 显示同义词导出选择对话框
+   */
+  static async showExportSynonymDialog() {
+    const options = [
+      "☁️ 同步到 iCloud",
+      "📋 复制到剪贴板", 
+      "📝 保存到当前笔记",
+      "📁 导出到文件"
+    ];
+    
+    const result = await MNUtil.userSelect(
+      "导出同义词配置",
+      "选择导出方式：",
+      options
+    );
+    
+    if (result === null || result === 0) return;
+    
+    const targets = ['icloud', 'clipboard', 'note', 'file'];
+    await this.exportSynonymConfigTo(targets[result - 1]);
+  }
+
+  /**
+   * 显示同义词导入选择对话框
+   */
+  static async showImportSynonymDialog() {
+    const options = [
+      "☁️ 从 iCloud 同步",
+      "📋 从剪贴板导入",
+      "📝 从当前笔记导入"
+      // 暂时不包含文件导入
+    ];
+    
+    const result = await MNUtil.userSelect(
+      "导入同义词配置",
+      "选择导入来源：",
+      options
+    );
+    
+    if (result === null || result === 0) return;
+    
+    const sources = ['icloud', 'clipboard', 'note'];
+    await this.importSynonymConfigFrom(sources[result - 1]);
   }
 
   /**
@@ -8108,8 +8754,6 @@ class MNMath {
               if (!onlyClassification) {
                 buttons.push("📋 选择类型");
               }
-              // 添加配置管理按钮
-              buttons.push("📤 导出配置", "📥 导入配置", "🔄 调整顺序", "🗑️ 管理根目录");
               return buttons;
             })(),
             (alert, buttonIndex) => {
@@ -8173,22 +8817,6 @@ class MNMath {
                   if (!onlyClassification) {
                     resolve({ action: "selectTypes" });
                   }
-                  break;
-                  
-                case 10: // 导出配置
-                  resolve({ action: "exportConfig" });
-                  break;
-                  
-                case 11: // 导入配置
-                  resolve({ action: "importConfig" });
-                  break;
-                  
-                case 12: // 调整顺序
-                  resolve({ action: "adjustOrder" });
-                  break;
-                  
-                case 13: // 管理根目录
-                  resolve({ action: "manageRoots" });
                   break;
               }
             }
@@ -8292,44 +8920,6 @@ class MNMath {
             }
             break;
             
-          case "exportConfig":
-            // 导出配置
-            const exported = this.exportSearchConfig();
-            if (exported) {
-              MNUtil.showHUD("✅ 配置已导出到剪贴板");
-            }
-            break;
-            
-          case "importConfig":
-            // 导入配置
-            const imported = await this.importSearchConfig();
-            if (imported) {
-              // 刷新根目录列表
-              allRoots = this.getAllSearchRoots();
-              currentRootId = this.getCurrentSearchRoot();
-              MNUtil.showHUD("✅ 配置已导入");
-            }
-            break;
-            
-          case "adjustOrder":
-            // 调整根目录顺序
-            const orderChanged = await this.showRootOrderDialog();
-            if (orderChanged) {
-              // 刷新根目录列表
-              allRoots = this.getAllSearchRoots();
-              MNUtil.showHUD("✅ 已更新根目录顺序");
-            }
-            break;
-            
-          case "manageRoots":
-            // 管理根目录（编辑/删除）
-            const rootsManaged = await this.showRootManagementDialog();
-            if (rootsManaged) {
-              // 刷新根目录列表
-              allRoots = this.getAllSearchRoots();
-              currentRootId = this.getCurrentSearchRoot();
-            }
-            break;
         }
         
         // 如果是 search 或 cancel，会 return，其他情况继续循环
@@ -8742,11 +9332,12 @@ class MNMath {
         
         // 添加操作选项
         options.push("➕ 添加新同义词组");
-        options.push("📤 导出配置到剪贴板");
-        options.push("📥 从剪贴板导入配置");
+        options.push("──────────────");
+        options.push("📤 导出同义词配置");
+        options.push("📥 导入同义词配置");
         
         const result = await MNUtil.userSelect(
-          "管理同义词组",
+          "同义词管理",
           `共 ${groups.length} 个同义词组\n\n提示：点击同义词组可编辑`,
           options
         );
@@ -8764,11 +9355,14 @@ class MNMath {
           // 添加新组
           await this.showAddSynonymGroupDialog();
         } else if (selectedIndex === groups.length + 1) {
-          // 导出配置
-          this.exportSynonymGroups();
+          // 分隔线，重新显示菜单
+          continue;
         } else if (selectedIndex === groups.length + 2) {
+          // 导出配置
+          await this.showExportSynonymDialog();
+        } else if (selectedIndex === groups.length + 3) {
           // 导入配置
-          await this.importSynonymGroupsFromClipboard();
+          await this.showImportSynonymDialog();
         }
       }
     } catch (error) {
@@ -8805,7 +9399,7 @@ class MNMath {
           // 第二步：输入词汇
           UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
             "添加同义词",
-            `组名：${groupName}\n\n请输入同义词（用空格或逗号分隔）：`,
+            `组名：${groupName}\n\n请输入同义词，支持以下分隔方式：\n• 逗号：machine learning, deep learning\n• 分号：机器学习; 深度学习\n• 双空格：机器学习  深度学习\n• 单空格：机器 学习（仅当无其他分隔符时）`,
             2,
             "取消",
             ["确定"],
@@ -8822,8 +9416,8 @@ class MNMath {
                 return;
               }
               
-              // 解析词汇
-              const words = wordsInput.split(/[,，\s]+/).filter(w => w.trim());
+              // 使用智能解析
+              const words = this.parseWords(wordsInput);
               
               if (words.length < 2) {
                 MNUtil.showHUD("❌ 至少需要2个同义词");
@@ -8908,7 +9502,7 @@ class MNMath {
     return new Promise((resolve) => {
       UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
         "编辑词汇",
-        `组名：${group.name}\n\n修改词汇（用空格或逗号分隔）：`,
+        `组名：${group.name}\n当前词汇：${group.words.join(", ")}\n\n修改词汇，支持以下分隔方式：\n• 逗号：machine learning, deep learning\n• 分号：机器学习; 深度学习\n• 双空格：机器学习  深度学习\n• 单空格：机器 学习（仅当无其他分隔符时）`,
         2,
         "取消",
         ["确定"],
@@ -8920,7 +9514,7 @@ class MNMath {
           
           const newWords = alert.textFieldAtIndex(0).text;
           if (newWords) {
-            const words = newWords.split(/[,，\s]+/).filter(w => w.trim());
+            const words = this.parseWords(newWords);
             if (words.length >= 2) {
               group.words = words;
               group.updatedAt = Date.now();
@@ -8934,13 +9528,8 @@ class MNMath {
           }
         }
       );
-      // 设置输入框的初始值
-      setTimeout(() => {
-        const textField = UIAlertView.currentAlertView().textFieldAtIndex(0);
-        if (textField) {
-          textField.text = group.words.join(", ");
-        }
-      }, 100);
+      // 注意：MarginNote 的 JSB 框架不支持 setTimeout
+      // 无法预填充输入框，用户需要手动输入新值
     });
   }
 
@@ -8951,7 +9540,7 @@ class MNMath {
     return new Promise((resolve) => {
       UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
         "重命名",
-        "请输入新名称：",
+        `当前名称：${group.name}\n\n请输入新名称：`,
         2,
         "取消",
         ["确定"],
@@ -8971,13 +9560,8 @@ class MNMath {
           }
         }
       );
-      // 设置输入框的初始值
-      setTimeout(() => {
-        const textField = UIAlertView.currentAlertView().textFieldAtIndex(0);
-        if (textField) {
-          textField.text = group.name;
-        }
-      }, 100);
+      // 注意：MarginNote 的 JSB 框架不支持 setTimeout
+      // 无法预填充输入框，用户需要手动输入新值
     });
   }
 

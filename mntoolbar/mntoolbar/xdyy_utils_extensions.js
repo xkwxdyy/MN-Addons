@@ -2849,7 +2849,7 @@ if (typeof MNMath !== "undefined") {
   MNMath.addCaseComment = function(note, text, customNumber) {
     const number = customNumber || HtmlMarkdownUtils.getNextNumberForType(note, 'Case');
     const htmlText = HtmlMarkdownUtils.createNumberedHtmlText(text, 'case', number, note);
-    note.appendHtmlComment(htmlText, text);
+    note.appendMarkdownComment(htmlText);
     return number;
   };
   
@@ -2863,7 +2863,7 @@ if (typeof MNMath !== "undefined") {
   MNMath.addStepComment = function(note, text, customNumber) {
     const number = customNumber || HtmlMarkdownUtils.getNextNumberForType(note, 'Step');
     const htmlText = HtmlMarkdownUtils.createNumberedHtmlText(text, 'step', number, note);
-    note.appendHtmlComment(htmlText, text);
+    note.appendMarkdownComment(htmlText);
     return number;
   };
   
@@ -2892,7 +2892,7 @@ if (typeof MNMath !== "undefined") {
     
     const number = customNumber || HtmlMarkdownUtils.getNextNumberForType(note, prefix);
     const htmlText = HtmlMarkdownUtils.createNumberedHtmlText(text, type, number, note);
-    note.appendHtmlComment(htmlText, text);
+    note.appendMarkdownComment(htmlText);
     return number;
   };
   

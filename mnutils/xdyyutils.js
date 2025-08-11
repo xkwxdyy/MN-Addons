@@ -2060,6 +2060,7 @@ class MNMath {
     let marginNoteLinks = [];
     if (moveIndexArr.length > 0) {
       marginNoteLinks = this.extractMarginNoteLinksFromComments(note, moveIndexArr);
+      MNUtil.log(`🔍 在合并模板前找到 ${marginNoteLinks.length} 个 MarginNote 链接`);
     }
     
     let ifTemplateMerged = this.mergeTemplate(note)
@@ -2080,6 +2081,7 @@ class MNMath {
     
     // 处理之前提取的 MarginNote 链接
     if (marginNoteLinks.length > 0) {
+      MNUtil.log("🔗 开始处理合并模板前提取的 MarginNote 链接...");
       this.processExtractedMarginNoteLinks(note, marginNoteLinks);
     }
   }
@@ -2501,44 +2503,6 @@ class MNMath {
     }
 
     return noteType || undefined;
-  }
-
-  /**
-   * 判断卡片自身是否为知识点卡片（不向上查找）
-   * 只基于卡片自身的标题格式判断，不会查找父卡片
-   * 
-   * @param {MNNote} note - 要判断的卡片
-   * @returns {boolean} 如果卡片标题本身就是知识点格式返回 true，否则返回 false
-   */
-  static isDirectKnowledgeNote(note) {
-    const title = note.noteTitle || note.title || "";
-    // 检查是否有知识点卡片的标题格式：【类型：xxx】或【类型 >> xxx】
-    const match = title.match(/^【(.{1,4})\s*(?:>>|：)\s*.*】/);
-    if (!match) return false;
-    
-    const type = match[1].trim();
-    // 检查类型是否在知识点类型列表中
-    for (let typeKey in this.types) {
-      if (this.types[typeKey].prefixName === type && 
-          this.knowledgeNoteTypes.includes(typeKey)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * 判断卡片自身是否为归类卡片（不向上查找）
-   * 只基于卡片自身的标题格式判断，不会查找父卡片
-   * 
-   * @param {MNNote} note - 要判断的卡片
-   * @returns {boolean} 如果卡片标题本身就是归类格式返回 true，否则返回 false
-   */
-  static isDirectClassificationNote(note) {
-    const title = note.noteTitle || note.title || "";
-    // 检查是否有归类卡片的标题格式：“xxx”相关 或 “xxx”：“xxx”相关
-    return /^“[^“]*”：“[^“]*”\s*相关.*$/.test(title) || 
-           /^“[^“]+”\s*相关.*$/.test(title);
   }
 
   /**
@@ -6158,63 +6122,6 @@ class MNMath {
   }
 
   /**
-   * 为笔记添加带序号的 Case 评论
-   * @param {MNNote} note - 笔记对象
-   * @param {string} text - 评论内容
-   * @param {number} customNumber - 自定义序号（可选）
-   * @returns {number} 使用的序号
-   */
-  static addCaseComment(note, text, customNumber) {
-    const number = customNumber || HtmlMarkdownUtils.getNextNumberForType(note, 'Case');
-    const htmlText = HtmlMarkdownUtils.createNumberedHtmlText(text, 'case', number, note);
-    note.appendHtmlComment(htmlText, text);
-    return number;
-  }
-
-  /**
-   * 为笔记添加带序号的 Step 评论
-   * @param {MNNote} note - 笔记对象
-   * @param {string} text - 评论内容
-   * @param {number} customNumber - 自定义序号（可选）
-   * @returns {number} 使用的序号
-   */
-  static addStepComment(note, text, customNumber) {
-    const number = customNumber || HtmlMarkdownUtils.getNextNumberForType(note, 'Step');
-    const htmlText = HtmlMarkdownUtils.createNumberedHtmlText(text, 'step', number, note);
-    note.appendHtmlComment(htmlText, text);
-    return number;
-  }
-
-  /**
-   * 通用的添加带序号评论方法
-   * @param {MNNote} note - 笔记对象
-   * @param {string} text - 评论内容
-   * @param {string} type - 类型（'case', 'step', 'example' 等）
-   * @param {number} customNumber - 自定义序号（可选）
-   * @returns {number} 使用的序号
-   */
-  static addNumberedComment(note, text, type, customNumber) {
-    // 获取类型对应的前缀
-    const numberedTypes = {
-      'case': 'Case',
-      'step': 'Step',
-      'example': 'Example'
-    };
-    
-    const prefix = numberedTypes[type];
-    if (!prefix) {
-      // 如果不是带序号的类型，使用普通方法
-      note.appendMarkdownComment(HtmlMarkdownUtils.createHtmlMarkdownText(text, type));
-      return null;
-    }
-    
-    const number = customNumber || HtmlMarkdownUtils.getNextNumberForType(note, prefix);
-    const htmlText = HtmlMarkdownUtils.createNumberedHtmlText(text, type, number, note);
-    note.appendHtmlComment(htmlText, text);
-    return number;
-  }
-
-  /**
    * 删除双向链接
    * 解析笔记中任意字段下的链接，并支持双向删除（同时删除对方笔记中的反向链接）
    * @param {MNNote} note - 要处理的笔记
@@ -9620,205 +9527,37 @@ class MNMath {
    */
   static async editSynonymWords(group) {
     return new Promise((resolve) => {
-      this.showSynonymMultiSelectDialog(group, resolve);
-    });
-  }
-
-  /**
-   * 显示同义词多选对话框
-   * @param {Object} group - 同义词组对象
-   * @param {Function} callback - 回调函数
-   */
-  static showSynonymMultiSelectDialog(group, callback = null) {
-    const selectedIndices = new Set();
-    // 默认全选所有同义词
-    group.words.forEach((_, index) => selectedIndices.add(index));
-    
-    this.showSynonymMultiSelectDialogRecursive(group, selectedIndices, callback);
-  }
-
-  /**
-   * 递归显示同义词多选对话框
-   * @param {Object} group - 同义词组对象
-   * @param {Set} selectedIndices - 已选中的索引集合
-   * @param {Function} callback - 回调函数
-   */
-  static showSynonymMultiSelectDialogRecursive(group, selectedIndices, callback = null) {
-    // 构建显示选项
-    let displayOptions = group.words.map((word, index) => {
-      let prefix = selectedIndices.has(index) ? "✅ " : "⬜ ";
-      return prefix + word;
-    });
-    
-    // 添加全选/取消全选选项
-    let allSelected = selectedIndices.size === group.words.length;
-    let selectAllText = allSelected ? "⬜ 取消全选" : "☑️ 全选所有词汇";
-    displayOptions.unshift(selectAllText);
-    
-    // 添加反选选项
-    displayOptions.splice(1, 0, "🔄 反选");
-    
-    // 添加分隔线和操作选项
-    displayOptions.push("──────────────");
-    displayOptions.push("✨ 保留选中项并添加新词");
-    displayOptions.push("✅ 仅保留选中项");
-    displayOptions.push("➕ 添加新词（保留全部）");
-    
-    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-      "选择要保留的同义词",
-      `组名：${group.name}\n已选中 ${selectedIndices.size}/${group.words.length} 项`,
-      0,
-      "取消",
-      displayOptions,
-      (alert, buttonIndex) => {
-        if (buttonIndex === 0) {
-          // 取消
-          if (callback) callback(false);
-          return;
-        }
-        
-        if (buttonIndex === 1) {
-          // 用户选择了全选/取消全选
-          if (allSelected) {
-            selectedIndices.clear();
-          } else {
-            selectedIndices.clear();
-            group.words.forEach((_, index) => {
-              selectedIndices.add(index);
-            });
-          }
-          
-          // 递归显示更新后的对话框
-          this.showSynonymMultiSelectDialogRecursive(group, selectedIndices, callback);
-          
-        } else if (buttonIndex === 2) {
-          // 用户选择了反选
-          const newSelectedIndices = new Set();
-          group.words.forEach((_, index) => {
-            if (!selectedIndices.has(index)) {
-              newSelectedIndices.add(index);
-            }
-          });
-          
-          // 清空原集合并添加反选的项
-          selectedIndices.clear();
-          newSelectedIndices.forEach(index => selectedIndices.add(index));
-          
-          // 递归显示更新后的对话框
-          this.showSynonymMultiSelectDialogRecursive(group, selectedIndices, callback);
-          
-        } else if (buttonIndex === displayOptions.length) {
-          // 用户选择了"添加新词（保留全部）"
-          this.showAddWordsDialog(group, [...group.words], callback);
-          
-        } else if (buttonIndex === displayOptions.length - 1) {
-          // 用户选择了"仅保留选中项"
-          if (selectedIndices.size === 0) {
-            MNUtil.showHUD("❌ 请至少选择一个词汇");
-            this.showSynonymMultiSelectDialogRecursive(group, selectedIndices, callback);
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "编辑词汇",
+        `组名：${group.name}\n当前词汇：${group.words.join(", ")}\n\n修改词汇，支持以下分隔方式：\n• 逗号：machine learning, deep learning\n• 分号：机器学习; 深度学习\n• 双空格：机器学习  深度学习\n• 单空格：机器 学习（仅当无其他分隔符时）`,
+        2,
+        "取消",
+        ["确定"],
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) {
+            resolve(false);
             return;
           }
           
-          const selectedWords = Array.from(selectedIndices).map(index => group.words[index]);
-          this.saveSelectedWords(group, selectedWords, callback);
-          
-        } else if (buttonIndex === displayOptions.length - 2) {
-          // 用户选择了"保留选中项并添加新词"
-          if (selectedIndices.size === 0) {
-            MNUtil.showHUD("❌ 请至少选择一个词汇");
-            this.showSynonymMultiSelectDialogRecursive(group, selectedIndices, callback);
-            return;
-          }
-          
-          const selectedWords = Array.from(selectedIndices).map(index => group.words[index]);
-          this.showAddWordsDialog(group, selectedWords, callback);
-          
-        } else if (buttonIndex === displayOptions.length - 3) {
-          // 用户选择了分隔线，忽略并重新显示
-          this.showSynonymMultiSelectDialogRecursive(group, selectedIndices, callback);
-          
-        } else {
-          // 用户选择了某个同义词，切换选中状态
-          let wordIndex = buttonIndex - 3; // 因为加了全选、反选选项，所以索引要减3
-          
-          if (selectedIndices.has(wordIndex)) {
-            selectedIndices.delete(wordIndex);
-          } else {
-            selectedIndices.add(wordIndex);
-          }
-          
-          // 递归显示更新后的对话框
-          this.showSynonymMultiSelectDialogRecursive(group, selectedIndices, callback);
-        }
-      }
-    );
-  }
-
-  /**
-   * 显示添加新词汇的对话框
-   * @param {Object} group - 同义词组对象
-   * @param {Array} existingWords - 已有的词汇列表
-   * @param {Function} callback - 回调函数
-   */
-  static showAddWordsDialog(group, existingWords, callback = null) {
-    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-      "添加新词汇",
-      `组名：${group.name}\n已有词汇：${existingWords.join(", ")}\n\n添加新词汇，支持以下分隔方式：\n• 逗号：machine learning, deep learning\n• 分号：机器学习; 深度学习\n• 双空格：机器学习  深度学习\n• 单空格：机器 学习（仅当无其他分隔符时）`,
-      2,
-      "取消",
-      ["确定"],
-      (alert, buttonIndex) => {
-        if (buttonIndex === 0) {
-          // 取消，返回多选对话框，重建选中状态
-          const selectedIndices = new Set();
-          group.words.forEach((word, index) => {
-            if (existingWords.includes(word)) {
-              selectedIndices.add(index);
+          const newWords = alert.textFieldAtIndex(0).text;
+          if (newWords) {
+            const words = this.parseWords(newWords);
+            if (words.length >= 2) {
+              group.words = words;
+              group.updatedAt = Date.now();
+              this.saveSearchConfig();
+              MNUtil.showHUD(`✅ 已更新词汇（${words.length}个词）`);
+              resolve(true);
+            } else {
+              MNUtil.showHUD("❌ 至少需要2个同义词");
+              resolve(false);
             }
-          });
-          this.showSynonymMultiSelectDialogRecursive(group, selectedIndices, callback);
-          return;
-        }
-        
-        const newWordsText = alert.textFieldAtIndex(0).text;
-        let finalWords = [...existingWords];
-        
-        if (newWordsText && newWordsText.trim()) {
-          const newWords = this.parseWords(newWordsText.trim());
-          if (newWords.length > 0) {
-            // 去重添加新词汇
-            newWords.forEach(word => {
-              if (!finalWords.includes(word)) {
-                finalWords.push(word);
-              }
-            });
           }
         }
-        
-        this.saveSelectedWords(group, finalWords, callback);
-      }
-    );
-  }
-
-  /**
-   * 保存选中的词汇
-   * @param {Object} group - 同义词组对象
-   * @param {Array} words - 词汇列表
-   * @param {Function} callback - 回调函数
-   */
-  static saveSelectedWords(group, words, callback = null) {
-    if (words.length < 2) {
-      MNUtil.showHUD("❌ 至少需要2个同义词");
-      if (callback) callback(false);
-      return;
-    }
-    
-    group.words = words;
-    group.updatedAt = Date.now();
-    this.saveSearchConfig();
-    MNUtil.showHUD(`✅ 已更新词汇（${words.length}个词）`);
-    
-    if (callback) callback(true);
+      );
+      // 注意：MarginNote 的 JSB 框架不支持 setTimeout
+      // 无法预填充输入框，用户需要手动输入新值
+    });
   }
 
   /**
@@ -9893,9 +9632,7 @@ class HtmlMarkdownUtils {
     idea: '💡',
     method: '✨',
     check: '🔍',
-    sketch: '✏️',
-    case: '📋',
-    step: '👣'
+    sketch: '✏️'
   };
   static prefix = {
     danger: '',
@@ -9916,9 +9653,7 @@ class HtmlMarkdownUtils {
     idea: '思路：',
     method: '方法：',
     check: 'CHECK',
-    sketch: 'SKETCH',
-    case: '',  // 序号将动态生成
-    step: ''   // 序号将动态生成
+    sketch: 'SKETCH'
   };
   static styles = {
     // 格外注意
@@ -9944,11 +9679,7 @@ class HtmlMarkdownUtils {
     // 检查
     check: 'font-weight:600;color:#34A853;background:#E6F7EE;border:2px solid #34A853;border-radius:4px;padding:4px 8px;display:inline-block;box-shadow:0 1px 2px rgba(52,168,83,0.2);margin:0 2px;line-height:1.3;vertical-align:baseline;position:relative;',
     // 草稿/手绘
-    sketch: 'background:transparent;color:#5D4037;display:inline-block;border-bottom:2px dotted #FF9800;padding:0 4px 2px;margin:0 2px;line-height:1.2;vertical-align:baseline;position:relative;font-size:0.9em;font-style:italic;',
-    // 案例
-    case: 'font-weight:600;color:#2563EB;background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border:2px solid #3B82F6;border-radius:8px;padding:8px 16px;display:inline-block;box-shadow:0 2px 4px rgba(37,99,235,0.2);margin:4px 0;',
-    // 步骤
-    step: 'font-weight:500;color:#059669;background:#ECFDF5;border-left:4px solid #10B981;padding:6px 12px;display:inline-block;border-radius:0 4px 4px 0;margin:4px 0;'
+    sketch: 'background:transparent;color:#5D4037;display:inline-block;border-bottom:2px dotted #FF9800;padding:0 4px 2px;margin:0 2px;line-height:1.2;vertical-align:baseline;position:relative;font-size:0.9em;font-style:italic;'
   };
   // 定义即使内容为空也要输出的类型白名单
   static emptyContentWhitelist = ['check'];
@@ -10210,75 +9941,6 @@ class HtmlMarkdownUtils {
     note.appendMarkdownComment(
       HtmlMarkdownUtils.createHtmlMarkdownText(text, type),
     )
-  }
-
-  /**
-   * 获取笔记中某类型的下一个序号
-   * @param {MNNote} note - 笔记对象
-   * @param {string} typePrefix - 类型前缀，如 "Case", "Step" 等
-   * @returns {number} 下一个可用的序号
-   */
-  static getNextNumberForType(note, typePrefix) {
-    const pattern = new RegExp(`${typePrefix}\\s*(\\d+)`, 'gi');
-    let maxNumber = 0;
-    
-    // 遍历所有评论查找最大序号
-    const comments = note.comments || note.MNComments || [];
-    for (const comment of comments) {
-      if (comment && comment.text) {
-        const matches = [...comment.text.matchAll(pattern)];
-        for (const match of matches) {
-          const num = parseInt(match[1]);
-          if (num > maxNumber) maxNumber = num;
-        }
-      }
-    }
-    
-    return maxNumber + 1;
-  }
-
-  /**
-   * 创建带序号的 HTML 文本
-   * @param {string} text - 内容文本
-   * @param {string} type - 类型（如 'case', 'step'）
-   * @param {number} number - 序号（可选，不提供则自动计算）
-   * @param {MNNote} note - 笔记对象（用于自动计算序号）
-   * @returns {string} 格式化后的 HTML 文本
-   */
-  static createNumberedHtmlText(text, type, number, note) {
-    // 支持的带序号类型配置
-    const numberedTypes = {
-      'case': { prefix: 'Case', icon: '📋' },
-      'step': { prefix: 'Step', icon: '👣' },
-      'example': { prefix: 'Example', icon: '📝' },
-      // 可以继续添加更多类型
-    };
-    
-    // 如果不是带序号的类型，使用原有方法
-    if (!numberedTypes[type]) {
-      return this.createHtmlMarkdownText(text, type);
-    }
-    
-    const config = numberedTypes[type];
-    
-    // 如果没有提供序号，自动计算
-    if (!number && note) {
-      number = this.getNextNumberForType(note, config.prefix);
-    }
-    
-    // 如果还是没有序号，默认为 1
-    if (!number) {
-      number = 1;
-    }
-    
-    // 构建带序号的文本
-    const formattedText = `${config.prefix} ${number}: ${Pangu.spacing(text)}`;
-    
-    // 使用对应的样式
-    const style = this.styles[type] || '';
-    const icon = this.icons[type] || config.icon;
-    
-    return `<span id="${type}" style="${style}">${icon} ${formattedText}</span>`;
   }
 
   /**
@@ -10747,53 +10409,6 @@ class HtmlMarkdownUtils {
       if (!allDescendants || allDescendants.length === 0) {
           MNUtil.showHUD("没有可合并的后代笔记。", 2);
           return;
-      }
-
-      // 过滤掉知识点卡片和归类卡片的分支
-      // 首先找出所有需要排除的分支根节点（直接子节点）
-      const excludedBranchRoots = new Set();
-      
-      // 检查直接子节点
-      if (rootFocusNote.childNotes && rootFocusNote.childNotes.length > 0) {
-          rootFocusNote.childNotes.forEach(childNote => {
-              // 判断子卡片是否是归类卡片或知识点卡片（仅检查卡片自身，不向上查找）
-              if (MNMath.isDirectClassificationNote(childNote) || MNMath.isDirectKnowledgeNote(childNote)) {
-                  excludedBranchRoots.add(childNote.noteId);
-              }
-          });
-      }
-      
-      // 如果有需要排除的分支，过滤掉这些分支的所有节点
-      if (excludedBranchRoots.size > 0) {
-          const filteredDescendants = [];
-          const filteredTreeIndex = [];
-          
-          for (let i = 0; i < allDescendants.length; i++) {
-              const node = allDescendants[i];
-              const nodeTreeIndex = treeIndex[i];
-              
-              // treeIndex[0] 是直接子节点在 childNotes 中的索引
-              if (nodeTreeIndex.length > 0) {
-                  const directChildIndex = nodeTreeIndex[0];
-                  const directChild = rootFocusNote.childNotes[directChildIndex];
-                  
-                  // 如果这个节点不属于被排除的分支，则保留
-                  if (directChild && !excludedBranchRoots.has(directChild.noteId)) {
-                      filteredDescendants.push(node);
-                      filteredTreeIndex.push(nodeTreeIndex);
-                  }
-              }
-          }
-          
-          // 更新为过滤后的数组
-          allDescendants = filteredDescendants;
-          treeIndex = filteredTreeIndex;
-          
-          // 如果过滤后没有节点了，提示并返回
-          if (allDescendants.length === 0) {
-              MNUtil.showHUD("所有子卡片都是知识点或归类卡片，无法合并。", 2);
-              return;
-          }
       }
 
       const nodesWithInfo = allDescendants.map((node, i) => ({
@@ -11501,7 +11116,7 @@ String.prototype.isPositiveInteger = function() {
  * 判断是否是知识点卡片的标题
  */
 String.prototype.ifKnowledgeNoteTitle = function () {
-  return /^【.{2,4} >> .*】/.test(this)
+  return /^【.{2,4}：.*】/.test(this)
 }
 String.prototype.isKnowledgeNoteTitle = function () {
   return this.ifKnowledgeNoteTitle()
@@ -11510,7 +11125,7 @@ String.prototype.isKnowledgeNoteTitle = function () {
  * 获取知识点卡片的前缀
  */
 String.prototype.toKnowledgeNotePrefix = function () {
-  let match = this.match(/^【.{2,4} >> (.*)】/)
+  let match = this.match(/^【.{2,4}：(.*)】/)
   return match ? match[1] : this  // 如果匹配不到，返回原字符串
 }
 /**

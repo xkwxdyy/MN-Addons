@@ -7699,6 +7699,47 @@ class MNMath {
    * @param {Array<string>} keywords - 原始关键词数组
    * @returns {Array<string>} 扩展后的关键词数组
    */
+  /**
+   * 扩展关键词并返回分组结构（用于"与"逻辑搜索）
+   * @param {Array<string>} keywords - 原始关键词数组
+   * @returns {Array<Array<string>>} 分组的关键词数组，每组包含原始词及其同义词
+   */
+  static expandKeywordsWithSynonymsGrouped(keywords) {
+    const synonymGroups = this.getSynonymGroups();
+    const keywordGroups = [];
+    
+    for (const keyword of keywords) {
+      const keywordGroup = new Set();
+      // 先添加原始关键词
+      keywordGroup.add(keyword);
+      
+      // 查找包含该关键词的同义词组
+      for (const group of synonymGroups) {
+        if (!group.enabled) continue;
+        
+        // 检查关键词是否在组内
+        const foundInGroup = group.words.some(word => 
+          word.toLowerCase() === keyword.toLowerCase()
+        );
+        
+        if (foundInGroup) {
+          // 添加组内所有词
+          group.words.forEach(word => keywordGroup.add(word));
+        }
+      }
+      
+      keywordGroups.push(Array.from(keywordGroup));
+    }
+    
+    // 记录日志
+    const totalExpanded = keywordGroups.reduce((sum, group) => sum + group.length, 0);
+    if (totalExpanded > keywords.length) {
+      MNUtil.log(`关键词分组扩展：${keywords.join(" // ")} → ${keywordGroups.map(g => `[${g.join(", ")}]`).join(" 且 ")}`);
+    }
+    
+    return keywordGroups;
+  }
+
   static expandKeywordsWithSynonyms(keywords) {
     const synonymGroups = this.getSynonymGroups();
     const expandedKeywords = new Set();
@@ -7873,10 +7914,13 @@ class MNMath {
    */
   static async searchNotesInDescendants(keywords, rootNoteId, selectedTypes = null) {
     try {
-      // 扩展关键词（应用同义词组）
-      const expandedKeywords = this.expandKeywordsWithSynonyms(keywords);
-      if (expandedKeywords.length > keywords.length) {
-        MNUtil.showHUD(`🔄 关键词已扩展：${expandedKeywords.length}个词`);
+      // 获取分组的扩展关键词（用于"与"逻辑搜索）
+      const expandedKeywordGroups = this.expandKeywordsWithSynonymsGrouped(keywords);
+      
+      // 计算总扩展词数用于显示
+      const totalExpandedCount = expandedKeywordGroups.reduce((sum, group) => sum + group.length, 0);
+      if (totalExpandedCount > keywords.length) {
+        MNUtil.showHUD(`🔄 关键词已扩展：${keywords.length}个词组，共${totalExpandedCount}个词`);
         await MNUtil.delay(0.5);
       }
       
@@ -7962,17 +8006,31 @@ class MNMath {
           }
         }
         
-        // 检查是否有任何一个扩展后的关键词包含在搜索文本中
-        // 使用扩展后的关键词进行匹配
-        let anyMatch = false;
-        for (const keyword of expandedKeywords) {
-          if (searchText.includes(keyword)) {
-            anyMatch = true;
-            break;
+        // 使用"与"逻辑：每个关键词组必须至少有一个匹配
+        // 例如：输入 "A//B"，A 及其同义词为一组，B 及其同义词为一组
+        // 搜索文本必须包含第一组中的至少一个词 且 包含第二组中的至少一个词
+        let allGroupsMatch = true;
+        
+        for (const keywordGroup of expandedKeywordGroups) {
+          let groupHasMatch = false;
+          
+          // 检查当前组中是否有任何关键词匹配
+          for (const keyword of keywordGroup) {
+            if (searchText.includes(keyword)) {
+              groupHasMatch = true;
+              break;  // 找到匹配就跳出当前组的循环
+            }
+          }
+          
+          // 如果当前组没有任何匹配，则整体不匹配
+          if (!groupHasMatch) {
+            allGroupsMatch = false;
+            break;  // 不需要检查其他组了
           }
         }
         
-        if (anyMatch) {
+        // 只有所有组都有匹配时，才将卡片加入结果
+        if (allGroupsMatch) {
           results.push(mnNote);
         }
       }

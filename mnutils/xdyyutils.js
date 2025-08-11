@@ -435,7 +435,7 @@ class MNMath {
     // 特殊处理：检查要移动的内容是否全部是手写评论
     if (moveIndexArr.length > 0) {
       let allHandwriting = moveIndexArr.every(index => {
-        let commentType = MNComment.getCommentType(note.MNComments[index]);
+        let commentType = note.MNComments[index].type;
         return commentType === "drawingComment" || 
                commentType === "imageCommentWithDrawing" || 
                commentType === "mergedImageCommentWithDrawing";
@@ -2008,7 +2008,7 @@ class MNMath {
   static mergeTemplateAndAutoMoveNoteContent(note) {
     // 特殊处理：如果只有一条评论且是手写类型，直接合并模板不移动内容
     if (note.MNComments.length === 1) {
-      let commentType = MNComment.getCommentType(note.MNComments[0]);
+      let commentType = note.MNComments[0].type;
       if (commentType === "drawingComment" || 
           commentType === "imageCommentWithDrawing" || 
           commentType === "mergedImageCommentWithDrawing") {

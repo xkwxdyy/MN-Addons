@@ -2045,7 +2045,6 @@ class MNMath {
     let marginNoteLinks = [];
     if (moveIndexArr.length > 0) {
       marginNoteLinks = this.extractMarginNoteLinksFromComments(note, moveIndexArr);
-      MNUtil.log(`🔍 在合并模板前找到 ${marginNoteLinks.length} 个 MarginNote 链接`);
     }
     
     let ifTemplateMerged = this.mergeTemplate(note)
@@ -2066,7 +2065,6 @@ class MNMath {
     
     // 处理之前提取的 MarginNote 链接
     if (marginNoteLinks.length > 0) {
-      MNUtil.log("🔗 开始处理合并模板前提取的 MarginNote 链接...");
       this.processExtractedMarginNoteLinks(note, marginNoteLinks);
     }
   }
@@ -2488,6 +2486,30 @@ class MNMath {
     }
 
     return noteType || undefined;
+  }
+
+  /**
+   * 判断卡片是否为知识点卡片
+   * 
+   * 知识点卡片包括：定义、命题、例子、反例、思想方法、问题、思路
+   * 
+   * @param {MNNote} note - 要判断的卡片
+   * @returns {boolean} 如果是知识点卡片返回 true，否则返回 false
+   */
+  static isKnowledgeNote(note) {
+    const noteType = this.getNoteType(note);
+    return noteType && this.knowledgeNoteTypes.includes(noteType);
+  }
+
+  /**
+   * 判断卡片是否为归类卡片
+   * 
+   * @param {MNNote} note - 要判断的卡片
+   * @returns {boolean} 如果是归类卡片返回 true，否则返回 false
+   */
+  static isClassificationNote(note) {
+    const noteType = this.getNoteType(note);
+    return noteType === "归类";
   }
 
   /**
@@ -9569,37 +9591,205 @@ class MNMath {
    */
   static async editSynonymWords(group) {
     return new Promise((resolve) => {
-      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-        "编辑词汇",
-        `组名：${group.name}\n当前词汇：${group.words.join(", ")}\n\n修改词汇，支持以下分隔方式：\n• 逗号：machine learning, deep learning\n• 分号：机器学习; 深度学习\n• 双空格：机器学习  深度学习\n• 单空格：机器 学习（仅当无其他分隔符时）`,
-        2,
-        "取消",
-        ["确定"],
-        (alert, buttonIndex) => {
-          if (buttonIndex === 0) {
-            resolve(false);
+      this.showSynonymMultiSelectDialog(group, resolve);
+    });
+  }
+
+  /**
+   * 显示同义词多选对话框
+   * @param {Object} group - 同义词组对象
+   * @param {Function} callback - 回调函数
+   */
+  static showSynonymMultiSelectDialog(group, callback = null) {
+    const selectedIndices = new Set();
+    // 默认全选所有同义词
+    group.words.forEach((_, index) => selectedIndices.add(index));
+    
+    this.showSynonymMultiSelectDialogRecursive(group, selectedIndices, callback);
+  }
+
+  /**
+   * 递归显示同义词多选对话框
+   * @param {Object} group - 同义词组对象
+   * @param {Set} selectedIndices - 已选中的索引集合
+   * @param {Function} callback - 回调函数
+   */
+  static showSynonymMultiSelectDialogRecursive(group, selectedIndices, callback = null) {
+    // 构建显示选项
+    let displayOptions = group.words.map((word, index) => {
+      let prefix = selectedIndices.has(index) ? "✅ " : "⬜ ";
+      return prefix + word;
+    });
+    
+    // 添加全选/取消全选选项
+    let allSelected = selectedIndices.size === group.words.length;
+    let selectAllText = allSelected ? "⬜ 取消全选" : "☑️ 全选所有词汇";
+    displayOptions.unshift(selectAllText);
+    
+    // 添加反选选项
+    displayOptions.splice(1, 0, "🔄 反选");
+    
+    // 添加分隔线和操作选项
+    displayOptions.push("──────────────");
+    displayOptions.push("✨ 保留选中项并添加新词");
+    displayOptions.push("✅ 仅保留选中项");
+    displayOptions.push("➕ 添加新词（保留全部）");
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "选择要保留的同义词",
+      `组名：${group.name}\n已选中 ${selectedIndices.size}/${group.words.length} 项`,
+      0,
+      "取消",
+      displayOptions,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) {
+          // 取消
+          if (callback) callback(false);
+          return;
+        }
+        
+        if (buttonIndex === 1) {
+          // 用户选择了全选/取消全选
+          if (allSelected) {
+            selectedIndices.clear();
+          } else {
+            selectedIndices.clear();
+            group.words.forEach((_, index) => {
+              selectedIndices.add(index);
+            });
+          }
+          
+          // 递归显示更新后的对话框
+          this.showSynonymMultiSelectDialogRecursive(group, selectedIndices, callback);
+          
+        } else if (buttonIndex === 2) {
+          // 用户选择了反选
+          const newSelectedIndices = new Set();
+          group.words.forEach((_, index) => {
+            if (!selectedIndices.has(index)) {
+              newSelectedIndices.add(index);
+            }
+          });
+          
+          // 清空原集合并添加反选的项
+          selectedIndices.clear();
+          newSelectedIndices.forEach(index => selectedIndices.add(index));
+          
+          // 递归显示更新后的对话框
+          this.showSynonymMultiSelectDialogRecursive(group, selectedIndices, callback);
+          
+        } else if (buttonIndex === displayOptions.length) {
+          // 用户选择了"添加新词（保留全部）"
+          this.showAddWordsDialog(group, [...group.words], callback);
+          
+        } else if (buttonIndex === displayOptions.length - 1) {
+          // 用户选择了"仅保留选中项"
+          if (selectedIndices.size === 0) {
+            MNUtil.showHUD("❌ 请至少选择一个词汇");
+            this.showSynonymMultiSelectDialogRecursive(group, selectedIndices, callback);
             return;
           }
           
-          const newWords = alert.textFieldAtIndex(0).text;
-          if (newWords) {
-            const words = this.parseWords(newWords);
-            if (words.length >= 2) {
-              group.words = words;
-              group.updatedAt = Date.now();
-              this.saveSearchConfig();
-              MNUtil.showHUD(`✅ 已更新词汇（${words.length}个词）`);
-              resolve(true);
-            } else {
-              MNUtil.showHUD("❌ 至少需要2个同义词");
-              resolve(false);
+          const selectedWords = Array.from(selectedIndices).map(index => group.words[index]);
+          this.saveSelectedWords(group, selectedWords, callback);
+          
+        } else if (buttonIndex === displayOptions.length - 2) {
+          // 用户选择了"保留选中项并添加新词"
+          if (selectedIndices.size === 0) {
+            MNUtil.showHUD("❌ 请至少选择一个词汇");
+            this.showSynonymMultiSelectDialogRecursive(group, selectedIndices, callback);
+            return;
+          }
+          
+          const selectedWords = Array.from(selectedIndices).map(index => group.words[index]);
+          this.showAddWordsDialog(group, selectedWords, callback);
+          
+        } else if (buttonIndex === displayOptions.length - 3) {
+          // 用户选择了分隔线，忽略并重新显示
+          this.showSynonymMultiSelectDialogRecursive(group, selectedIndices, callback);
+          
+        } else {
+          // 用户选择了某个同义词，切换选中状态
+          let wordIndex = buttonIndex - 3; // 因为加了全选、反选选项，所以索引要减3
+          
+          if (selectedIndices.has(wordIndex)) {
+            selectedIndices.delete(wordIndex);
+          } else {
+            selectedIndices.add(wordIndex);
+          }
+          
+          // 递归显示更新后的对话框
+          this.showSynonymMultiSelectDialogRecursive(group, selectedIndices, callback);
+        }
+      }
+    );
+  }
+
+  /**
+   * 显示添加新词汇的对话框
+   * @param {Object} group - 同义词组对象
+   * @param {Array} existingWords - 已有的词汇列表
+   * @param {Function} callback - 回调函数
+   */
+  static showAddWordsDialog(group, existingWords, callback = null) {
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "添加新词汇",
+      `组名：${group.name}\n已有词汇：${existingWords.join(", ")}\n\n添加新词汇，支持以下分隔方式：\n• 逗号：machine learning, deep learning\n• 分号：机器学习; 深度学习\n• 双空格：机器学习  深度学习\n• 单空格：机器 学习（仅当无其他分隔符时）`,
+      2,
+      "取消",
+      ["确定"],
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) {
+          // 取消，返回多选对话框，重建选中状态
+          const selectedIndices = new Set();
+          group.words.forEach((word, index) => {
+            if (existingWords.includes(word)) {
+              selectedIndices.add(index);
             }
+          });
+          this.showSynonymMultiSelectDialogRecursive(group, selectedIndices, callback);
+          return;
+        }
+        
+        const newWordsText = alert.textFieldAtIndex(0).text;
+        let finalWords = [...existingWords];
+        
+        if (newWordsText && newWordsText.trim()) {
+          const newWords = this.parseWords(newWordsText.trim());
+          if (newWords.length > 0) {
+            // 去重添加新词汇
+            newWords.forEach(word => {
+              if (!finalWords.includes(word)) {
+                finalWords.push(word);
+              }
+            });
           }
         }
-      );
-      // 注意：MarginNote 的 JSB 框架不支持 setTimeout
-      // 无法预填充输入框，用户需要手动输入新值
-    });
+        
+        this.saveSelectedWords(group, finalWords, callback);
+      }
+    );
+  }
+
+  /**
+   * 保存选中的词汇
+   * @param {Object} group - 同义词组对象
+   * @param {Array} words - 词汇列表
+   * @param {Function} callback - 回调函数
+   */
+  static saveSelectedWords(group, words, callback = null) {
+    if (words.length < 2) {
+      MNUtil.showHUD("❌ 至少需要2个同义词");
+      if (callback) callback(false);
+      return;
+    }
+    
+    group.words = words;
+    group.updatedAt = Date.now();
+    this.saveSearchConfig();
+    MNUtil.showHUD(`✅ 已更新词汇（${words.length}个词）`);
+    
+    if (callback) callback(true);
   }
 
   /**
@@ -10509,6 +10699,21 @@ class HtmlMarkdownUtils {
           return;
       }
 
+      // 检查卡片类型，避免对归类卡片或知识点卡片进行误处理
+      
+      // 如果是归类卡片，不进行合并操作
+      if (MNMath.isClassificationNote(rootFocusNote)) {
+          MNUtil.showHUD("归类卡片不支持此合并操作", 2);
+          return;
+      }
+      
+      // 如果是知识点卡片，不进行合并操作
+      if (MNMath.isKnowledgeNote(rootFocusNote)) {
+          const noteType = MNMath.getNoteType(rootFocusNote);
+          MNUtil.showHUD(`${noteType}卡片不支持此合并操作`, 2);
+          return;
+      }
+
       // 1. API 名称更正：使用属性访问 rootFocusNote.descendantNodes
       let allDescendants, treeIndex;
       try {
@@ -11235,7 +11440,7 @@ String.prototype.isPositiveInteger = function() {
  * 判断是否是知识点卡片的标题
  */
 String.prototype.ifKnowledgeNoteTitle = function () {
-  return /^【.{2,4}：.*】/.test(this)
+  return /^【.{2,4} >> .*】/.test(this)
 }
 String.prototype.isKnowledgeNoteTitle = function () {
   return this.ifKnowledgeNoteTitle()
@@ -11244,7 +11449,7 @@ String.prototype.isKnowledgeNoteTitle = function () {
  * 获取知识点卡片的前缀
  */
 String.prototype.toKnowledgeNotePrefix = function () {
-  let match = this.match(/^【.{2,4}：(.*)】/)
+  let match = this.match(/^【.{2,4} >> (.*)】/)
   return match ? match[1] : this  // 如果匹配不到，返回原字符串
 }
 /**

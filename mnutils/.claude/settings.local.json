@@ -34,7 +34,11 @@
       "Bash(npx js-beautify:*)",
       "Bash(npm install:*)",
       "Bash(js-beautify:*)",
-      "Bash(npx prettier:*)"
+      "Bash(npx prettier:*)",
+      "Bash(git worktree:*)",
+      "Bash(git worktree:*)",
+      "Bash(git -C /tmp/mn-handwriting-optimize add mnutils/xdyyutils.js)",
+      "Bash(mnaddon4 build:*)"
     ],
     "deny": []
   }

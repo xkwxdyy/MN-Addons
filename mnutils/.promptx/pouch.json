@@ -1,16 +1,25 @@
 {
-  "currentState": "initialized",
+  "currentState": "memory_saved",
   "stateHistory": [
     {
       "from": "initial",
       "command": "init",
-      "timestamp": "2025-07-19T15:01:01.142Z",
+      "timestamp": "2025-08-11T16:16:02.431Z",
       "args": [
         {
           "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnutils"
         }
       ]
+    },
+    {
+      "from": "initialized",
+      "command": "remember",
+      "timestamp": "2025-08-11T16:16:17.874Z",
+      "args": [
+        "assistant",
+        "为 MNMath 类添加了两个判断卡片类型的方法：\n\n1. `isKnowledgeNote(note)` - 判断是否为知识点卡片\n   - 知识点卡片包括：定义、命题、例子、反例、思想方法、问题、思路\n   - 返回 boolean\n\n2. `isClassificationNote(note)` - 判断是否为归类卡片\n   - 判断卡片类型是否为\"归类\"\n   - 返回 boolean\n\n文件修改：\n- xdyyutils.js 第 2491-2513 行：添加了两个新方法\n- xdyyutils.js 第 10702-10715 行：重构现有代码使用新方法\n\n使用示例：\n```javascript\n// 判断是否为归类卡片\nif (MNMath.isClassificationNote(note)) {\n  MNUtil.showHUD(\"归类卡片不支持此操作\", 2);\n}\n\n// 判断是否为知识点卡片\nif (MNMath.isKnowledgeNote(note)) {\n  const noteType = MNMath.getNoteType(note);\n  MNUtil.showHUD(`${noteType}卡片不支持此操作`, 2);\n}\n```"
+      ]
     }
   ],
-  "lastUpdated": "2025-07-19T15:01:01.172Z"
+  "lastUpdated": "2025-08-11T16:16:17.925Z"
 }

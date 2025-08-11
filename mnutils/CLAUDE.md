@@ -522,6 +522,89 @@ Pangu.spacing(text)
 - **String.prototype**: 85+ 方法扩展
 - **MNNote.prototype**: 30+ 方法扩展，提供更流畅的链式调用
 
+## ⚠️ 重要：note.MNComments 与 note.comments 的区别（2025-01-12）
+
+### 问题背景
+在开发手写评论优化功能时，发现了一个关键的 API 使用误区，导致类型判断失效。
+
+### 核心区别
+
+#### 1. `note.comments` - 原始评论数组
+- 包含底层的 `NoteComment` 对象
+- `comment.type` 只有基础类型值：
+  - `"TextNote"` - 文本评论
+  - `"HtmlNote"` - HTML 评论
+  - `"LinkNote"` - 链接评论（包括合并的图片/文本）
+  - `"PaintNote"` - 绘图评论（包括图片和手写）
+  - `"AudioNote"` - 音频评论
+
+#### 2. `note.MNComments` - 处理后的评论数组
+- 通过 `MNComment.from(note)` 生成的 `MNComment` 实例数组
+- 每个 `MNComment` 实例在构造时会调用 `MNComment.getCommentType(comment)`
+- `MNComment` 的 `type` 属性是细分后的类型：
+  - `"textComment"` - 纯文本
+  - `"markdownComment"` - Markdown 文本
+  - `"tagComment"` - 标签（#开头）
+  - `"linkComment"` - 笔记链接
+  - `"summaryComment"` - 概要链接
+  - `"HtmlComment"` - HTML 评论
+  - `"mergedTextComment"` - 合并的文本
+  - `"mergedImageComment"` - 合并的图片
+  - `"mergedImageCommentWithDrawing"` - 合并的图片+手写
+  - `"imageComment"` - 图片
+  - `"imageCommentWithDrawing"` - 图片+手写
+  - `"drawingComment"` - 纯手写
+  - `"audioComment"` - 音频
+
+### 正确用法
+
+```javascript
+// ❌ 错误：对 MNComments 元素再次调用 getCommentType
+let commentType = MNComment.getCommentType(note.MNComments[0]);
+
+// ✅ 正确：直接使用 MNComments 元素的 type 属性
+let commentType = note.MNComments[0].type;
+
+// ❌ 错误：对原始 comments 使用细分类型判断
+if (note.comments[0].type === "drawingComment") { } // 永远为 false
+
+// ✅ 正确：对原始 comments 使用基础类型判断
+if (note.comments[0].type === "PaintNote") { }
+
+// ✅ 或者：对原始 comments 调用 getCommentType 获取细分类型
+let commentType = MNComment.getCommentType(note.comments[0]);
+if (commentType === "drawingComment") { }
+```
+
+### 实际应用示例
+
+```javascript
+// 判断是否为手写评论
+function isHandwritingComment(note, index) {
+  // 方法1：使用 MNComments（推荐）
+  let commentType = note.MNComments[index].type;
+  return commentType === "drawingComment" || 
+         commentType === "imageCommentWithDrawing" || 
+         commentType === "mergedImageCommentWithDrawing";
+  
+  // 方法2：使用原始 comments
+  let comment = note.comments[index];
+  if (comment.type === "PaintNote" || comment.type === "LinkNote") {
+    let commentType = MNComment.getCommentType(comment);
+    return commentType === "drawingComment" || 
+           commentType === "imageCommentWithDrawing" || 
+           commentType === "mergedImageCommentWithDrawing";
+  }
+  return false;
+}
+```
+
+### 注意事项
+1. **优先使用 `note.MNComments`**：已经过处理，type 属性更精确
+2. **不要重复调用 `getCommentType`**：MNComments 的元素已经调用过了
+3. **理解类型层次**：基础类型（5种） → 细分类型（15+种）
+4. **调试技巧**：使用 `MNUtil.log(note.MNComments[0])` 查看实际的 type 值
+
 ## 🎨 UI/UX 设计规范
 
 ### 1. 颜色主题

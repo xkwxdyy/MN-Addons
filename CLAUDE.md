@@ -1,5 +1,84 @@
 # MN-Addon 开发经验与常见问题
 
+## note.MNComments 与 note.comments 的关键区别（2025-01-12）
+
+### 问题背景
+在优化 MNMath.makeNote 手写评论处理时，发现了一个容易混淆的 API 使用问题，导致类型判断失效。
+
+### 核心区别
+
+#### 1. `note.comments` - 原始评论数组
+- 包含底层的 `NoteComment` 对象
+- `comment.type` 只有 5 种基础类型值：
+  - `"TextNote"` - 文本评论
+  - `"HtmlNote"` - HTML 评论
+  - `"LinkNote"` - 链接评论（包括合并的图片/文本）
+  - `"PaintNote"` - 绘图评论（包括图片和手写）
+  - `"AudioNote"` - 音频评论
+
+#### 2. `note.MNComments` - 处理后的评论数组  
+- 通过 `MNComment.from(note)` 生成的 `MNComment` 实例数组
+- 构造时自动调用 `MNComment.getCommentType(comment)` 设置 type
+- `MNComment` 的 `type` 属性是细分后的 15+ 种类型：
+  - 文本类：`"textComment"`, `"markdownComment"`, `"tagComment"`
+  - 链接类：`"linkComment"`, `"summaryComment"`
+  - HTML类：`"HtmlComment"`
+  - 合并类：`"mergedTextComment"`, `"mergedImageComment"`, `"mergedImageCommentWithDrawing"`
+  - 图片类：`"imageComment"`, `"imageCommentWithDrawing"`
+  - 手写类：`"drawingComment"`
+  - 其他：`"audioComment"`, `"blankTextComment"`, `"blankImageComment"`
+
+### 常见错误与正确用法
+
+```javascript
+// ❌ 错误1：对 MNComments 元素再次调用 getCommentType
+let commentType = MNComment.getCommentType(note.MNComments[0]);
+
+// ✅ 正确：直接使用 type 属性（已经是细分类型）
+let commentType = note.MNComments[0].type;
+
+// ❌ 错误2：对原始 comments 使用细分类型判断
+if (note.comments[0].type === "drawingComment") { } // 永远为 false
+
+// ✅ 正确：对原始 comments 使用基础类型
+if (note.comments[0].type === "PaintNote") { }
+```
+
+### 实际案例：判断手写评论
+
+```javascript
+// 推荐方法：使用 MNComments
+function isHandwritingComment(note, index) {
+  let commentType = note.MNComments[index].type;
+  return commentType === "drawingComment" || 
+         commentType === "imageCommentWithDrawing" || 
+         commentType === "mergedImageCommentWithDrawing";
+}
+
+// 备选方法：使用原始 comments（更复杂）
+function isHandwritingCommentAlt(note, index) {
+  let comment = note.comments[index];
+  if (comment.type === "PaintNote" || comment.type === "LinkNote") {
+    let commentType = MNComment.getCommentType(comment);
+    return commentType === "drawingComment" || 
+           commentType === "imageCommentWithDrawing" || 
+           commentType === "mergedImageCommentWithDrawing";
+  }
+  return false;
+}
+```
+
+### 最佳实践
+1. **优先使用 `note.MNComments`**：类型已细分，使用更方便
+2. **避免重复调用 `getCommentType`**：MNComments 已经处理过了
+3. **理解类型层次**：基础类型（5种） → 细分类型（15+种）
+4. **调试技巧**：`MNUtil.log(note.MNComments[0])` 查看实际 type 值
+
+### 影响范围
+- xdyyutils.js 中的 MNMath 类方法
+- 所有涉及评论类型判断的功能
+- 特别是手写、图片、合并内容的识别
+
 ## 复杂筛选逻辑实现（2025-01-11）
 
 ### 需求背景

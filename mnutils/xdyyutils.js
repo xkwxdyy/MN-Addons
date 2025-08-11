@@ -6095,6 +6095,63 @@ class MNMath {
   }
 
   /**
+   * 为笔记添加带序号的 Case 评论
+   * @param {MNNote} note - 笔记对象
+   * @param {string} text - 评论内容
+   * @param {number} customNumber - 自定义序号（可选）
+   * @returns {number} 使用的序号
+   */
+  static addCaseComment(note, text, customNumber) {
+    const number = customNumber || HtmlMarkdownUtils.getNextNumberForType(note, 'Case');
+    const htmlText = HtmlMarkdownUtils.createNumberedHtmlText(text, 'case', number, note);
+    note.appendHtmlComment(htmlText, text);
+    return number;
+  }
+
+  /**
+   * 为笔记添加带序号的 Step 评论
+   * @param {MNNote} note - 笔记对象
+   * @param {string} text - 评论内容
+   * @param {number} customNumber - 自定义序号（可选）
+   * @returns {number} 使用的序号
+   */
+  static addStepComment(note, text, customNumber) {
+    const number = customNumber || HtmlMarkdownUtils.getNextNumberForType(note, 'Step');
+    const htmlText = HtmlMarkdownUtils.createNumberedHtmlText(text, 'step', number, note);
+    note.appendHtmlComment(htmlText, text);
+    return number;
+  }
+
+  /**
+   * 通用的添加带序号评论方法
+   * @param {MNNote} note - 笔记对象
+   * @param {string} text - 评论内容
+   * @param {string} type - 类型（'case', 'step', 'example' 等）
+   * @param {number} customNumber - 自定义序号（可选）
+   * @returns {number} 使用的序号
+   */
+  static addNumberedComment(note, text, type, customNumber) {
+    // 获取类型对应的前缀
+    const numberedTypes = {
+      'case': 'Case',
+      'step': 'Step',
+      'example': 'Example'
+    };
+    
+    const prefix = numberedTypes[type];
+    if (!prefix) {
+      // 如果不是带序号的类型，使用普通方法
+      note.appendMarkdownComment(HtmlMarkdownUtils.createHtmlMarkdownText(text, type));
+      return null;
+    }
+    
+    const number = customNumber || HtmlMarkdownUtils.getNextNumberForType(note, prefix);
+    const htmlText = HtmlMarkdownUtils.createNumberedHtmlText(text, type, number, note);
+    note.appendHtmlComment(htmlText, text);
+    return number;
+  }
+
+  /**
    * 删除双向链接
    * 解析笔记中任意字段下的链接，并支持双向删除（同时删除对方笔记中的反向链接）
    * @param {MNNote} note - 要处理的笔记
@@ -9605,7 +9662,9 @@ class HtmlMarkdownUtils {
     idea: '💡',
     method: '✨',
     check: '🔍',
-    sketch: '✏️'
+    sketch: '✏️',
+    case: '📋',
+    step: '👣'
   };
   static prefix = {
     danger: '',
@@ -9626,7 +9685,9 @@ class HtmlMarkdownUtils {
     idea: '思路：',
     method: '方法：',
     check: 'CHECK',
-    sketch: 'SKETCH'
+    sketch: 'SKETCH',
+    case: '',  // 序号将动态生成
+    step: ''   // 序号将动态生成
   };
   static styles = {
     // 格外注意
@@ -9652,7 +9713,11 @@ class HtmlMarkdownUtils {
     // 检查
     check: 'font-weight:600;color:#34A853;background:#E6F7EE;border:2px solid #34A853;border-radius:4px;padding:4px 8px;display:inline-block;box-shadow:0 1px 2px rgba(52,168,83,0.2);margin:0 2px;line-height:1.3;vertical-align:baseline;position:relative;',
     // 草稿/手绘
-    sketch: 'background:transparent;color:#5D4037;display:inline-block;border-bottom:2px dotted #FF9800;padding:0 4px 2px;margin:0 2px;line-height:1.2;vertical-align:baseline;position:relative;font-size:0.9em;font-style:italic;'
+    sketch: 'background:transparent;color:#5D4037;display:inline-block;border-bottom:2px dotted #FF9800;padding:0 4px 2px;margin:0 2px;line-height:1.2;vertical-align:baseline;position:relative;font-size:0.9em;font-style:italic;',
+    // 案例
+    case: 'font-weight:600;color:#2563EB;background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border:2px solid #3B82F6;border-radius:8px;padding:8px 16px;display:inline-block;box-shadow:0 2px 4px rgba(37,99,235,0.2);margin:4px 0;',
+    // 步骤
+    step: 'font-weight:500;color:#059669;background:#ECFDF5;border-left:4px solid #10B981;padding:6px 12px;display:inline-block;border-radius:0 4px 4px 0;margin:4px 0;'
   };
   // 定义即使内容为空也要输出的类型白名单
   static emptyContentWhitelist = ['check'];
@@ -9914,6 +9979,75 @@ class HtmlMarkdownUtils {
     note.appendMarkdownComment(
       HtmlMarkdownUtils.createHtmlMarkdownText(text, type),
     )
+  }
+
+  /**
+   * 获取笔记中某类型的下一个序号
+   * @param {MNNote} note - 笔记对象
+   * @param {string} typePrefix - 类型前缀，如 "Case", "Step" 等
+   * @returns {number} 下一个可用的序号
+   */
+  static getNextNumberForType(note, typePrefix) {
+    const pattern = new RegExp(`${typePrefix}\\s*(\\d+)`, 'gi');
+    let maxNumber = 0;
+    
+    // 遍历所有评论查找最大序号
+    const comments = note.comments || note.MNComments || [];
+    for (const comment of comments) {
+      if (comment && comment.text) {
+        const matches = [...comment.text.matchAll(pattern)];
+        for (const match of matches) {
+          const num = parseInt(match[1]);
+          if (num > maxNumber) maxNumber = num;
+        }
+      }
+    }
+    
+    return maxNumber + 1;
+  }
+
+  /**
+   * 创建带序号的 HTML 文本
+   * @param {string} text - 内容文本
+   * @param {string} type - 类型（如 'case', 'step'）
+   * @param {number} number - 序号（可选，不提供则自动计算）
+   * @param {MNNote} note - 笔记对象（用于自动计算序号）
+   * @returns {string} 格式化后的 HTML 文本
+   */
+  static createNumberedHtmlText(text, type, number, note) {
+    // 支持的带序号类型配置
+    const numberedTypes = {
+      'case': { prefix: 'Case', icon: '📋' },
+      'step': { prefix: 'Step', icon: '👣' },
+      'example': { prefix: 'Example', icon: '📝' },
+      // 可以继续添加更多类型
+    };
+    
+    // 如果不是带序号的类型，使用原有方法
+    if (!numberedTypes[type]) {
+      return this.createHtmlMarkdownText(text, type);
+    }
+    
+    const config = numberedTypes[type];
+    
+    // 如果没有提供序号，自动计算
+    if (!number && note) {
+      number = this.getNextNumberForType(note, config.prefix);
+    }
+    
+    // 如果还是没有序号，默认为 1
+    if (!number) {
+      number = 1;
+    }
+    
+    // 构建带序号的文本
+    const formattedText = `${config.prefix} ${number}: ${Pangu.spacing(text)}`;
+    
+    // 使用对应的样式
+    const style = this.styles[type] || '';
+    const icon = this.icons[type] || config.icon;
+    
+    return `<span id="${type}" style="${style}">${icon} ${formattedText}</span>`;
   }
 
   /**

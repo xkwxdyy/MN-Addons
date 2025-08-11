@@ -4,7 +4,7 @@
     {
       "from": "initial",
       "command": "init",
-      "timestamp": "2025-08-11T16:16:02.431Z",
+      "timestamp": "2025-08-11T17:32:35.562Z",
       "args": [
         {
           "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnutils"
@@ -14,12 +14,14 @@
     {
       "from": "initialized",
       "command": "remember",
-      "timestamp": "2025-08-11T16:16:17.874Z",
+      "timestamp": "2025-08-11T17:32:54.953Z",
       "args": [
         "assistant",
-        "为 MNMath 类添加了两个判断卡片类型的方法：\n\n1. `isKnowledgeNote(note)` - 判断是否为知识点卡片\n   - 知识点卡片包括：定义、命题、例子、反例、思想方法、问题、思路\n   - 返回 boolean\n\n2. `isClassificationNote(note)` - 判断是否为归类卡片\n   - 判断卡片类型是否为\"归类\"\n   - 返回 boolean\n\n文件修改：\n- xdyyutils.js 第 2491-2513 行：添加了两个新方法\n- xdyyutils.js 第 10702-10715 行：重构现有代码使用新方法\n\n使用示例：\n```javascript\n// 判断是否为归类卡片\nif (MNMath.isClassificationNote(note)) {\n  MNUtil.showHUD(\"归类卡片不支持此操作\", 2);\n}\n\n// 判断是否为知识点卡片\nif (MNMath.isKnowledgeNote(note)) {\n  const noteType = MNMath.getNoteType(note);\n  MNUtil.showHUD(`${noteType}卡片不支持此操作`, 2);\n}\n```"
+        "## MNUtils API 关键知识：note.MNComments vs note.comments\n\n### 核心区别\n1. **note.comments** - 原始评论数组，包含 NoteComment 对象\n   - type 只有5种基础类型：TextNote, HtmlNote, LinkNote, PaintNote, AudioNote\n   \n2. **note.MNComments** - 处理后的 MNComment 实例数组\n   - 通过 MNComment.from(note) 生成\n   - type 属性已经是15+种细分类型：drawingComment, imageCommentWithDrawing 等\n\n### 常见错误\n❌ 对 MNComments 元素再次调用 getCommentType：\n```javascript\nlet commentType = MNComment.getCommentType(note.MNComments[0]); // 错误\n```\n\n✅ 正确用法：\n```javascript\nlet commentType = note.MNComments[0].type; // 直接使用 type 属性\n```\n\n### 手写评论判断示例\n```javascript\n// 使用 MNComments（推荐）\nfunction isHandwritingComment(note, index) {\n  let commentType = note.MNComments[index].type;\n  return commentType === \"drawingComment\" || \n         commentType === \"imageCommentWithDrawing\" || \n         commentType === \"mergedImageCommentWithDrawing\";\n}\n```\n\n### 影响范围\n- xdyyutils.js 中的 MNMath 类\n- 所有评论类型判断功能\n- 特别是手写、图片、合并内容的识别\n\n发现日期：2025-01-12\n项目：MN-Addon/mnutils",
+        "--tags",
+        "MNUtils API MarginNote 评论类型 手写评论"
       ]
     }
   ],
-  "lastUpdated": "2025-08-11T16:16:17.925Z"
+  "lastUpdated": "2025-08-11T17:32:54.960Z"
 }

@@ -38,7 +38,9 @@
       "Bash(git worktree:*)",
       "Bash(git worktree:*)",
       "Bash(git -C /tmp/mn-handwriting-optimize add mnutils/xdyyutils.js)",
-      "Bash(mnaddon4 build:*)"
+      "Bash(mnaddon4 build:*)",
+      "Bash(git -C /tmp/mn-handwriting-optimize log --oneline -n 5)",
+      "Bash(git cherry-pick:*)"
     ],
     "deny": []
   }

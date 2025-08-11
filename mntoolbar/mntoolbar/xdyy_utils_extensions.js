@@ -2799,7 +2799,6 @@ if (typeof HtmlMarkdownUtils !== "undefined") {
     const numberedTypes = {
       'case': { prefix: 'Case', icon: '📋' },
       'step': { prefix: 'Step', icon: '👣' },
-      'example': { prefix: 'Example', icon: '📝' },
       // 可以继续添加更多类型
     };
     
@@ -2868,10 +2867,10 @@ if (typeof MNMath !== "undefined") {
   };
   
   /**
-   * 通用的添加带序号评论方法
+   * 通用的添加带序号评论方法（保留以防其他地方调用）
    * @param {MNNote} note - 笔记对象
    * @param {string} text - 评论内容
-   * @param {string} type - 类型（'case', 'step', 'example' 等）
+   * @param {string} type - 类型（'case', 'step' 等）
    * @param {number} customNumber - 自定义序号（可选）
    * @returns {number} 使用的序号
    */
@@ -2879,8 +2878,7 @@ if (typeof MNMath !== "undefined") {
     // 获取类型对应的前缀
     const numberedTypes = {
       'case': 'Case',
-      'step': 'Step',
-      'example': 'Example'
+      'step': 'Step'
     };
     
     const prefix = numberedTypes[type];

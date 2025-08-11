@@ -2445,61 +2445,6 @@ function registerAllCustomActions() {
     );
   });
 
-  // addNumberedHtmlMarkdownComment - 通用的带序号评论添加器
-  global.registerCustomAction("addNumberedHtmlMarkdownComment", async function (context) {
-    const { button, des, focusNote, focusNotes, self } = context;
-    
-    // 支持的带序号类型
-    const numberedTypes = [
-      { title: "Case: 📋", type: "case" },
-      { title: "Step: 👣", type: "step" },
-      { title: "Example: 📝", type: "example" },
-    ];
-    
-    const typeTitles = numberedTypes.map(t => t.title);
-    
-    // 先选择类型
-    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-      "选择带序号的类型",
-      "选择要添加的评论类型",
-      0,
-      "取消",
-      typeTitles,
-      (alert, buttonIndex) => {
-        if (buttonIndex === 0) return;  // 取消
-        
-        const selectedType = numberedTypes[buttonIndex - 1];
-        
-        // 再输入内容
-        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-          `添加 ${selectedType.title}`,
-          "输入内容（将自动添加序号）",
-          2,
-          "取消",
-          ["确定"],
-          (alert2, buttonIndex2) => {
-            if (buttonIndex2 === 1) {
-              MNUtil.undoGrouping(() => {
-                try {
-                  const inputText = alert2.textFieldAtIndex(0).text;
-                  if (inputText && inputText.trim()) {
-                    const number = MNMath.addNumberedComment(
-                      focusNote, 
-                      inputText.trim(), 
-                      selectedType.type
-                    );
-                    MNUtil.showHUD(`✅ 已添加带序号的 ${selectedType.type} 评论`);
-                  }
-                } catch (error) {
-                  MNUtil.showHUD("添加带序号评论失败: " + error);
-                }
-              });
-            }
-          }
-        );
-      }
-    );
-  });
 
   // ocrAsProofTitle - OCR 识别设置为标题
   global.registerCustomAction("ocrAsProofTitle", async function (context) {

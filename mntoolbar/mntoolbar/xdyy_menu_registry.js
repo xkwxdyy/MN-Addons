@@ -552,11 +552,6 @@ function registerAllMenuTemplates() {
           menuTitle: "    👣 添加 Step 评论（自动编号）",
         },
         {
-          action: "addNumberedHtmlMarkdownComment",
-          menuTitle: "    🔢 更多带序号类型...",
-        },
-        "-",
-        {
           action: "changeHtmlMarkdownCommentTypeByPopup",
           menuTitle: "🔄 修改某条 HtmlMD 评论的类型",
         },

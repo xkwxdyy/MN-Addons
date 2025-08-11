@@ -1991,6 +1991,18 @@ class MNMath {
    * 【非摘录版本】初始状态合并模板卡片后自动移动卡片的内容
    */
   static mergeTemplateAndAutoMoveNoteContent(note) {
+    // 特殊处理：如果只有一条评论且是手写类型，直接合并模板不移动内容
+    if (note.MNComments.length === 1) {
+      let commentType = MNComment.getCommentType(note.MNComments[0]);
+      if (commentType === "drawingComment" || 
+          commentType === "imageCommentWithDrawing" || 
+          commentType === "mergedImageCommentWithDrawing") {
+        MNUtil.log("🖊️ 检测到单个手写评论，直接合并模板，不移动内容");
+        this.mergeTemplate(note);
+        return;
+      }
+    }
+    
     // 白名单：这些类型的卡片即使只有图片+链接也按正常方式处理
     const typeWhitelist = []; // 暂时为空，后续可以添加需要排除的卡片类型
     

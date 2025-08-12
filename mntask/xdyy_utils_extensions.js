@@ -5626,10 +5626,11 @@ class MNTaskManager {
     });
     
     // 批量制卡
-    MNUtil.undoGrouping(() => {
+    MNUtil.undoGrouping(async () => {
       const processedNodes = [];
       
-      nodesWithInfo.forEach((nodeInfo, index) => {
+      // 使用 for...of 循环代替 forEach，以支持 await
+      for (const [index, nodeInfo] of nodesWithInfo.entries()) {
         const node = nodeInfo.node;
         const level = nodeInfo.level;
         const parentNode = index === 0 ? null : nodeParentMap.get(node);
@@ -5650,7 +5651,7 @@ class MNTaskManager {
             type: taskType
           });
         }
-      });
+      }
       
       MNUtil.showHUD(`✅ 批量制卡完成：成功处理 ${processedNodes.length}/${nodesWithInfo.length} 个节点`);
     });

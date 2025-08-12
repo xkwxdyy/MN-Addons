@@ -7505,38 +7505,57 @@ ${content.trim()}`;
   /**
    * 获取卡片中绑定的任务卡片
    * @param {MNNote} note - 要检查的卡片
-   * @returns {Array<Object>} 任务卡片信息数组 [{noteId, note, status}]
+   * @returns {Array<Object>} 任务卡片信息数组 [{noteId, note, status, type}]
    */
   static getBindedTaskCards(note) {
     const bindedTasks = []
     
     if (!note || !note.MNComments) return bindedTasks
     
-    // 遍历所有评论，查找任务卡片链接
-    for (const comment of note.MNComments) {
-      if (!comment || !comment.text) continue
+    // 遍历所有评论
+    for (let i = 0; i < note.MNComments.length; i++) {
+      const comment = note.MNComments[i]
+      if (!comment) continue
       
-      // 匹配任务卡片链接格式：【类型｜状态】标题
-      const linkMatch = comment.text.match(/\[【(目标|关键结果|项目|动作)[^】]*｜([^】]+)】[^\]]*\]\(marginnote4app:\/\/note\/([^)]+)\)/)
-      if (linkMatch) {
-        const [, type, status, noteId] = linkMatch
+      // 获取评论类型（兼容不同的属性位置）
+      const commentType = comment.type || 
+        (comment.detail && MNComment.getCommentType(comment.detail))
+      
+      // 检查是否是链接类型的评论
+      if (commentType === "linkComment" || 
+          commentType === "mergedTextComment") {
         
-        try {
-          const linkedNote = MNNote.new(noteId)
-          if (linkedNote && MNTaskManager.isTaskCard(linkedNote)) {
-            bindedTasks.push({
-              noteId: noteId,
-              note: linkedNote,
-              status: status,
-              type: type
-            })
+        // 获取链接文本
+        const linkText = comment.text || 
+          (comment.detail && comment.detail.text) || ""
+        
+        // 提取 noteId（支持 marginnote3 和 marginnote4）
+        const noteIdMatch = linkText.match(/marginnote[34]app:\/\/note\/([A-Z0-9-]+)/i)
+        if (noteIdMatch && noteIdMatch[1]) {
+          const noteId = noteIdMatch[1]
+          
+          try {
+            // 获取链接的笔记
+            const linkedNote = MNNote.new(noteId)
+            if (linkedNote && this.isTaskCard(linkedNote)) {
+              // 解析任务信息
+              const titleParts = this.parseTaskTitle(linkedNote.noteTitle)
+              bindedTasks.push({
+                noteId: noteId,
+                note: linkedNote,
+                status: titleParts.status,
+                type: titleParts.type
+              })
+              MNUtil.log(`📎 找到绑定的任务卡片: ${titleParts.type}｜${titleParts.status}`)
+            }
+          } catch (e) {
+            MNUtil.log(`⚠️ 无法获取链接的任务卡片: ${noteId}`)
           }
-        } catch (e) {
-          MNUtil.log(`⚠️ 无法获取链接的任务卡片: ${noteId}`)
         }
       }
     }
     
+    MNUtil.log(`📎 共找到 ${bindedTasks.length} 个绑定的任务卡片`)
     return bindedTasks
   }
   

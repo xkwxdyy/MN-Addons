@@ -2506,37 +2506,13 @@ class MNMath {
   }
 
   /**
-   * 判断卡片是否为知识点卡片
-   * 
-   * 知识点卡片包括：定义、命题、例子、反例、思想方法、问题、思路
-   * 
-   * @param {MNNote} note - 要判断的卡片
-   * @returns {boolean} 如果是知识点卡片返回 true，否则返回 false
-   */
-  static isKnowledgeNote(note) {
-    const noteType = this.getNoteType(note);
-    return noteType && this.knowledgeNoteTypes.includes(noteType);
-  }
-
-  /**
-   * 判断卡片是否为归类卡片
-   * 
-   * @param {MNNote} note - 要判断的卡片
-   * @returns {boolean} 如果是归类卡片返回 true，否则返回 false
-   */
-  static isClassificationNote(note) {
-    const noteType = this.getNoteType(note);
-    return noteType === "归类";
-  }
-
-  /**
    * 判断卡片自身是否为知识点卡片（不向上查找）
    * 只基于卡片自身的标题格式判断，不会查找父卡片
    * 
    * @param {MNNote} note - 要判断的卡片
    * @returns {boolean} 如果卡片标题本身就是知识点格式返回 true，否则返回 false
    */
-  static isDirectKnowledgeNote(note) {
+  static isKnowledgeNote(note) {
     const title = note.noteTitle || note.title || "";
     // 检查是否有知识点卡片的标题格式：【类型：xxx】或【类型 >> xxx】
     const match = title.match(/^【(.{1,4})\s*(?:>>|：)\s*.*】/);
@@ -2560,7 +2536,7 @@ class MNMath {
    * @param {MNNote} note - 要判断的卡片
    * @returns {boolean} 如果卡片标题本身就是归类格式返回 true，否则返回 false
    */
-  static isDirectClassificationNote(note) {
+  static isClassificationNote(note) {
     const title = note.noteTitle || note.title || "";
     // 检查是否有归类卡片的标题格式："xxx"相关 或 "xxx"："xxx"相关
     return /^"[^"]*"："[^"]*"\s*相关.*$/.test(title) || 
@@ -11830,7 +11806,7 @@ class HtmlMarkdownUtils {
       if (rootFocusNote.childNotes && rootFocusNote.childNotes.length > 0) {
           rootFocusNote.childNotes.forEach(childNote => {
               // 判断子卡片是否是归类卡片或知识点卡片（仅检查卡片自身，不向上查找）
-              if (MNMath.isDirectClassificationNote(childNote) || MNMath.isDirectKnowledgeNote(childNote)) {
+              if (MNMath.isClassificationNote(childNote) || MNMath.isKnowledgeNote(childNote)) {
                   excludedBranchRoots.add(childNote.noteId);
               }
           });

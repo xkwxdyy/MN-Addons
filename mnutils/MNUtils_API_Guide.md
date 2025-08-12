@@ -1118,10 +1118,6 @@ static icons = {
 
 // 创建带样式的 HTML 文本
 static createHtmlMarkdownText(text, type = 'none')
-
-// 使用示例
-let html = HtmlMarkdownUtils.createHtmlMarkdownText("重要内容", "danger");
-note.appendHtmlComment(html, "重要内容", 16, "danger");
 ```
 
 ### Pangu 类 - 中文排版优化
@@ -1732,7 +1728,6 @@ let newNote = MNNote.new({
 // === 评论操作 ===
 note.appendTextComment("普通文本");
 note.appendMarkdownComment("**Markdown** 文本");
-note.appendHtmlComment(html, "显示文本", 16, "style");
 
 // === 批量操作 ===
 MNUtil.undoGrouping(() => {

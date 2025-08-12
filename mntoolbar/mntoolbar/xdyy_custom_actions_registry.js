@@ -2993,6 +2993,23 @@ function registerAllCustomActions() {
     },
   );
 
+  // addEquivalenceProof - 添加等价证明
+  global.registerCustomAction(
+    "addEquivalenceProof",
+    async function (context) {
+      const { button, des, focusNote, focusNotes, self } = context;
+      
+      MNUtil.undoGrouping(async () => {
+        try {
+          // 使用 MNMath 类的方法
+          await MNMath.addEquivalenceProof(focusNote);
+        } catch (error) {
+          MNUtil.showHUD(`❌ 错误: ${error.message}`);
+        }
+      });
+    }
+  );
+
   // ========== MOVE 相关 (19 个) ==========
 
   // moveToExcerptPartTop

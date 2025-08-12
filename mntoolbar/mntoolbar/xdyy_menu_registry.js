@@ -551,6 +551,11 @@ function registerAllMenuTemplates() {
           action: "addStepComment",
           menuTitle: "    👣 添加 Step 评论（自动编号）",
         },
+        "🔄 等价证明",
+        {
+          action: "addEquivalenceProof",
+          menuTitle: "    ⇔ 添加等价证明",
+        },
         {
           action: "changeHtmlMarkdownCommentTypeByPopup",
           menuTitle: "🔄 修改某条 HtmlMD 评论的类型",

@@ -2327,7 +2327,7 @@ global.registerCustomAction("applyTemplate", async function(context) {
 ```javascript
 // URL Scheme 调用
 global.registerCustomAction("openInObsidian", async function(context) {
-  const { focusNote } = context;
+  const { button, des, focusNote, focusNotes, self } = context;
   if (!focusNote) {
     MNUtil.showHUD("❌ 请选择笔记");
     return;

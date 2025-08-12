@@ -2381,6 +2381,25 @@ class MNMath {
   }
 
   /**
+   * 添加等价证明
+   * 
+   * @param {MNNote} note - 目标卡片
+   */
+  static async addEquivalenceProof(note) {
+    if (!note) {
+      note = MNNote.getFocusNote();
+    }
+    
+    if (!note) {
+      MNUtil.showHUD("请先选择一个卡片");
+      return;
+    }
+    
+    // 调用 HtmlMarkdownUtils 的方法
+    await HtmlMarkdownUtils.insertEquivalenceProofByPopup(note);
+  }
+
+  /**
    * 增加总结卡片
    * 
    * @param {MNNote} note - 当前卡片
@@ -11066,7 +11085,11 @@ class HtmlMarkdownUtils {
     // 检查
     check: 'font-weight:600;color:#34A853;background:#E6F7EE;border:2px solid #34A853;border-radius:4px;padding:4px 8px;display:inline-block;box-shadow:0 1px 2px rgba(52,168,83,0.2);margin:0 2px;line-height:1.3;vertical-align:baseline;position:relative;',
     // 草稿/手绘
-    sketch: 'background:transparent;color:#5D4037;display:inline-block;border-bottom:2px dotted #FF9800;padding:0 4px 2px;margin:0 2px;line-height:1.2;vertical-align:baseline;position:relative;font-size:0.9em;font-style:italic;'
+    sketch: 'background:transparent;color:#5D4037;display:inline-block;border-bottom:2px dotted #FF9800;padding:0 4px 2px;margin:0 2px;line-height:1.2;vertical-align:baseline;position:relative;font-size:0.9em;font-style:italic;',
+    // 等价证明
+    equivalence: 'background:linear-gradient(135deg,#F0F9FF,#E0F2FE);color:#0369A1;border-left:4px solid #0EA5E9;padding:12px 16px;display:block;margin:8px 0;border-radius:0 8px 8px 0;font-weight:500;line-height:1.6;box-shadow:0 2px 4px rgba(14,165,233,0.15);',
+    // 蕴含关系
+    implication: 'background:#FEF3C7;color:#92400E;border-left:3px solid #F59E0B;padding:10px 14px;display:block;margin:6px 0;border-radius:4px;line-height:1.5;font-style:italic;'
   };
   // 定义即使内容为空也要输出的类型白名单
   static emptyContentWhitelist = ['check'];
@@ -12327,6 +12350,150 @@ class HtmlMarkdownUtils {
     });
     
     MNUtil.showHUD(`成功转换 ${contents.length} 条内容`);
+  }
+
+  /**
+   * 智能添加空格
+   * 在中文和英文/数字之间添加空格
+   * @param {string} text - 要处理的文本
+   * @returns {string} 处理后的文本
+   */
+  static smartSpacing(text) {
+    if (!text) return text;
+    
+    // 中文字符范围
+    const cjkRegex = /[\u2e80-\u2eff\u2f00-\u2fdf\u3040-\u309f\u30a0-\u30ff\u3100-\u312f\u3200-\u32ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/;
+    
+    // 在中文和英文/数字之间添加空格
+    let result = text;
+    
+    // 中文后接英文或数字
+    result = result.replace(/([\u4e00-\u9fa5])([a-zA-Z0-9])/g, '$1 $2');
+    
+    // 英文或数字后接中文
+    result = result.replace(/([a-zA-Z0-9])([\u4e00-\u9fa5])/g, '$1 $2');
+    
+    return result;
+  }
+
+  /**
+   * 创建等价证明文本
+   * @param {string} propositionA - 命题 A
+   * @param {string} propositionB - 命题 B
+   * @returns {Object} 包含两个方向证明的对象
+   */
+  static createEquivalenceProof(propositionA, propositionB) {
+    // 处理空格
+    const spacedA = this.smartSpacing(propositionA);
+    const spacedB = this.smartSpacing(propositionB);
+    
+    // 生成两个方向的证明
+    const proofAtoB = this.createHtmlMarkdownText(
+      `若 ${spacedA} 成立，则 ${spacedB} 成立`,
+      'implication'
+    );
+    
+    const proofBtoA = this.createHtmlMarkdownText(
+      `若 ${spacedB} 成立，则 ${spacedA} 成立`,
+      'implication'
+    );
+    
+    const equivalence = this.createHtmlMarkdownText(
+      `${spacedA} ⇔ ${spacedB}`,
+      'equivalence'
+    );
+    
+    return {
+      proofAtoB,
+      proofBtoA,
+      equivalence,
+      fullProof: [equivalence, proofAtoB, proofBtoA]
+    };
+  }
+
+  /**
+   * 通过弹窗输入创建等价证明
+   * @param {MNNote} note - 目标笔记
+   */
+  static async insertEquivalenceProofByPopup(note) {
+    if (!note) {
+      MNUtil.showHUD("请先选择一个笔记");
+      return;
+    }
+    
+    try {
+      // 第一步：输入命题 A
+      const propositionA = await new Promise((resolve) => {
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "输入命题 A",
+          "请输入第一个命题（例如：A是B的子集）",
+          2, // 输入框样式
+          "取消",
+          ["下一步"],
+          (alert, buttonIndex) => {
+            if (buttonIndex === 1) {
+              const text = alert.textFieldAtIndex(0).text;
+              resolve(text);
+            } else {
+              resolve(null);
+            }
+          }
+        );
+      });
+      
+      if (!propositionA) {
+        MNUtil.showHUD("已取消");
+        return;
+      }
+      
+      // 第二步：输入命题 B
+      const propositionB = await new Promise((resolve) => {
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "输入命题 B",
+          "请输入第二个命题（例如：B包含A）",
+          2, // 输入框样式
+          "取消",
+          ["确定"],
+          (alert, buttonIndex) => {
+            if (buttonIndex === 1) {
+              const text = alert.textFieldAtIndex(0).text;
+              resolve(text);
+            } else {
+              resolve(null);
+            }
+          }
+        );
+      });
+      
+      if (!propositionB) {
+        MNUtil.showHUD("已取消");
+        return;
+      }
+      
+      // 生成等价证明
+      const proof = this.createEquivalenceProof(propositionA, propositionB);
+      
+      // 添加到笔记
+      MNUtil.undoGrouping(() => {
+        // 添加等价关系
+        note.appendMarkdownComment(proof.equivalence);
+        
+        // 添加正向证明
+        note.appendMarkdownComment(proof.proofAtoB);
+        note.appendMarkdownComment("证明：");
+        
+        // 添加反向证明
+        note.appendMarkdownComment(proof.proofBtoA);
+        note.appendMarkdownComment("证明：");
+        
+        note.refresh();
+      });
+      
+      MNUtil.showHUD("✅ 等价证明已添加");
+      
+    } catch (error) {
+      MNUtil.showHUD(`❌ 错误: ${error.message}`);
+    }
   }
 }
 // 夏大鱼羊 - end

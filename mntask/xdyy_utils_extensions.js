@@ -7643,13 +7643,18 @@ ${content.trim()}`;
       const parentTask = selectedCandidate.note
       
       MNUtil.log(`✅ 选择的父任务: ${parentTask.noteTitle}`)
+
+      const titleParts = MNMath.parseNoteTitle(sourceNote)
+      const handledTitle = "「" + titleParts.type + " >> " + titleParts.prefixContent + " >> " + titleParts.content + "」"
+
+      MNUtil.copy(handledTitle)
       
       // 4. 输入新任务标题
       const inputResult = await MNUtil.input(
         '新任务标题',
         '请输入新任务的标题',
         ["取消", "确定"],
-        { default: sourceNote.noteTitle || '新任务' }
+        { default: "" }
       )
       
       if (inputResult.button === 0) {

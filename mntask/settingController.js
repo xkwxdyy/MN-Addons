@@ -1917,24 +1917,24 @@ taskSettingController.prototype.settingViewLayout = function (){
     // this.taskBoardView.contentSize = {width: width-2, height: 600}
     
     // 今日看板 WebView 布局
-    // taskFrame.set(this.todayBoardWebView, 0, 0, width-2, height-60)
+    taskFrame.set(this.todayBoardWebView, 0, 0, width-2, height-60)
     
-    // // 如果 WebView 实例存在，更新其 frame
-    // if (this.todayBoardWebViewInstance) {
-    //   // 使用 bounds 而不是 frame，确保相对于父视图的坐标系
-    //   const containerBounds = this.todayBoardWebView.bounds
-    //   this.todayBoardWebViewInstance.frame = {
-    //     x: 0,
-    //     y: 0,
-    //     width: containerBounds.width,
-    //     height: containerBounds.height
-    //   }
+    // 如果 WebView 实例存在，更新其 frame
+    if (this.todayBoardWebViewInstance) {
+      // 使用 bounds 而不是 frame，确保相对于父视图的坐标系
+      const containerBounds = this.todayBoardWebView.bounds
+      this.todayBoardWebViewInstance.frame = {
+        x: 0,
+        y: 0,
+        width: containerBounds.width,
+        height: containerBounds.height
+      }
       
-    //   // 设置自动调整大小的 mask，使 WebView 随容器大小变化
-    //   this.todayBoardWebViewInstance.autoresizingMask = (1 << 1 | 1 << 4) // 宽高自适应
+      // 设置自动调整大小的 mask，使 WebView 随容器大小变化
+      this.todayBoardWebViewInstance.autoresizingMask = (1 << 1 | 1 << 4) // 宽高自适应
       
-    //   MNUtil.log(`📐 更新 WebView frame: ${JSON.stringify(this.todayBoardWebViewInstance.frame)}`)
-    // }
+      MNUtil.log(`📐 更新 WebView frame: ${JSON.stringify(this.todayBoardWebViewInstance.frame)}`)
+    }
     
 }
 
@@ -1973,8 +1973,8 @@ try {
   this.taskBoardView.backgroundColor = MNUtil.hexColorAlpha("#9bb2d6",0.0)
   
   // 创建今日看板视图（包含 WebView）
-  // this.creatView("todayBoardWebView","settingView","#9bb2d6",0.0)
-  // this.todayBoardWebView.hidden = true
+  this.creatView("todayBoardWebView","settingView","#9bb2d6",0.0)
+  this.todayBoardWebView.hidden = true
 
 
   // this.createButton("todayBoardButton","todayBoardButtonTapped:","tabView")
@@ -2013,12 +2013,12 @@ try {
   this.taskBoardButton.height = 30
   this.taskBoardButton.selected = false
 
-  // // 添加今日看板按钮
-  // this.createButton("todayBoardButton","todayBoardButtonTapped:","tabView")
-  // MNButton.setConfig(this.todayBoardButton, {alpha:0.9,opacity:1.0,title:"今日看板",font:17,radius:10,bold:true})
-  // this.todayBoardButton.width = this.todayBoardButton.sizeThatFits({width:150,height:30}).width+15
-  // this.todayBoardButton.height = 30
-  // this.todayBoardButton.selected = false
+  // 添加今日看板按钮
+  this.createButton("todayBoardButton","todayBoardButtonTapped:","tabView")
+  MNButton.setConfig(this.todayBoardButton, {alpha:0.9,opacity:1.0,title:"今日看板",font:17,radius:10,bold:true})
+  this.todayBoardButton.width = this.todayBoardButton.sizeThatFits({width:150,height:30}).width+15
+  this.todayBoardButton.height = 30
+  this.todayBoardButton.selected = false
 
   this.createButton("closeButton","closeButtonTapped:","view")
   MNButton.setConfig(this.closeButton, {color:"#e06c75",alpha:0.9,opacity:1.0,radius:10,bold:true})
@@ -2308,7 +2308,7 @@ try {
   })
   
   // 创建今日看板的 WebView
-  // this.createTodayBoardWebView()
+  this.createTodayBoardWebView()
   
 } catch (error) {
   taskUtils.addErrorLog(error, "createSettingView")

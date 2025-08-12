@@ -9697,6 +9697,7 @@ class MNMath {
         if (selectedIndex < groups.length) {
           // 编辑现有组
           await this.editSynonymGroup(groups[selectedIndex]);
+          continue; // 重新显示菜单，避免双弹窗
         } else if (selectedIndex === groups.length) {
           // 添加新组
           await this.showAddSynonymGroupDialog();
@@ -10476,6 +10477,7 @@ class MNMath {
         if (selectedIndex < groups.length) {
           // 编辑现有组
           await this.editExclusionGroup(groups[selectedIndex]);
+          continue; // 重新显示菜单，避免双弹窗
         } else if (selectedIndex === groups.length) {
           // 添加新组
           await this.showAddExclusionGroupDialog();

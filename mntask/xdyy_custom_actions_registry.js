@@ -510,16 +510,21 @@ function registerAllCustomActions() {
     const { button, des, focusNote, focusNotes, self } = context;
     
     if (!focusNote) {
-      MNUtil.showHUD("请先选择一个任务卡片");
+      MNUtil.showHUD("请先选择一个卡片");
       return;
     }
     
     // 检查是否是任务卡片
     if (!MNTaskManager.isTaskCard(focusNote)) {
-      MNUtil.showHUD("请选择一个任务卡片");
+      // 尝试处理绑定的任务
+      const result = await MNTaskManager.applyProgressToBindedCard(focusNote);
+      if (!result) {
+        MNUtil.showHUD("请选择一个任务卡片或绑定了任务的知识点卡片");
+      }
       return;
     }
     
+    // 原有的任务卡片处理逻辑
     try {
       // 弹出输入框让用户输入记录内容
       UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
@@ -539,39 +544,9 @@ function registerAllCustomActions() {
             
             MNUtil.undoGrouping(() => {
               try {
-                // 获取当前时间并格式化
-                const now = new Date();
-                const year = now.getFullYear();
-                const month = String(now.getMonth() + 1).padStart(2, '0');
-                const day = String(now.getDate()).padStart(2, '0');
-                const hours = String(now.getHours()).padStart(2, '0');
-                const minutes = String(now.getMinutes()).padStart(2, '0');
-                const seconds = String(now.getSeconds()).padStart(2, '0');
-                const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-                
-                // 生成唯一的进展记录ID
-                const timestampForId = timestamp.replace(/[- :]/g, '');  // 移除特殊字符
-                const randomSuffix = Math.random().toString(36).substr(2, 6);  // 生成6位随机字符串
-                const progressId = `progress_${timestampForId}_${randomSuffix}`;
-                
-                // 构建带样式的时间戳HTML，添加唯一ID属性
-                const timestampHtml = `<div data-progress-id="${progressId}" style="position:relative; padding-left:28px; margin:14px 0; color:#1E40AF; font-weight:500; font-size:0.92em">
-  <div style="position:absolute; left:0; top:50%; transform:translateY(-50%); 
-              width:18px; height:18px; background:conic-gradient(#3B82F6 0%, #60A5FA 50%, #3B82F6 100%); 
-              border-radius:50%; display:flex; align-items:center; justify-content:center">
-    <div style="width:8px; height:8px; background:white; border-radius:50%"></div>
-  </div>
-  ${timestamp}
-</div>
-${content.trim()}`;
-                
-                // 添加到卡片最后
-                focusNote.appendMarkdownComment(timestampHtml);
-                
-                // 刷新卡片显示
-                focusNote.refresh();
-                
-                MNUtil.showHUD("✅ 已添加时间戳记录");
+                // 调用 MNTaskManager 的添加进展记录方法
+                MNTaskManager.addProgressRecord(focusNote, content);
+                MNUtil.showHUD("✅ 已添加进展记录");
               } catch (error) {
                 MNUtil.showHUD("添加记录失败：" + error.message);
               }

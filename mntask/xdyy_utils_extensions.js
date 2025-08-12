@@ -6339,6 +6339,80 @@ class MNTaskManager {
   }
   
   /**
+   * 为绑定的任务卡片添加进展记录
+   * @param {MNNote} note - 知识点卡片
+   * @returns {Promise<boolean>} 是否成功添加
+   */
+  static async applyProgressToBindedCard(note) {
+    const bindedTasks = this.getBindedTaskCards(note);
+    
+    if (bindedTasks.length === 0) {
+      return false;
+    }
+    
+    // 选择要添加进展的任务
+    let selectedTask;
+    if (bindedTasks.length === 1) {
+      selectedTask = bindedTasks[0];
+    } else {
+      // 多个任务，让用户选择
+      const options = bindedTasks.map(t => {
+        const titleParts = this.parseTaskTitle(t.note.noteTitle);
+        return `【${titleParts.type}｜${t.status}】${titleParts.content}`;
+      });
+      
+      const selectedIndex = await MNUtil.userSelect(
+        "选择要添加进展的任务",
+        "",
+        options
+      );
+      
+      if (selectedIndex === 0) return false; // 用户取消
+      selectedTask = bindedTasks[selectedIndex - 1];
+    }
+    
+    // 弹出输入框让用户输入进展内容
+    return new Promise((resolve) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "添加进展记录",
+        `为任务「${this.parseTaskTitle(selectedTask.note.noteTitle).content}」添加进展`,
+        2,  // 输入框样式
+        "取消",
+        ["确定"],
+        (alert, buttonIndex) => {
+          if (buttonIndex === 1) {
+            const content = alert.textFieldAtIndex(0).text;
+            
+            if (!content || content.trim() === "") {
+              MNUtil.showHUD("记录内容不能为空");
+              resolve(false);
+              return;
+            }
+            
+            MNUtil.undoGrouping(() => {
+              try {
+                // 添加进展记录
+                this.addProgressRecord(selectedTask.note, content);
+                selectedTask.note.refresh();
+                note.refresh(); // 刷新知识点卡片
+                
+                MNUtil.showHUD("✅ 已添加进展记录");
+                resolve(true);
+              } catch (error) {
+                MNUtil.showHUD("添加记录失败：" + error.message);
+                MNUtil.log(`❌ applyProgressToBindedCard error: ${error.message}`);
+                resolve(false);
+              }
+            });
+          } else {
+            resolve(false);
+          }
+        }
+      );
+    });
+  }
+  
+  /**
    * 添加进展记录
    * @param {MNNote} note - 任务卡片
    * @param {string} content - 记录内容

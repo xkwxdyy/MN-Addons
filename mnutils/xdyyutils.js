@@ -9853,7 +9853,7 @@ class MNMath {
     
     const result = await MNUtil.userSelect(
       `选择要添加的${category}`,
-      "可多次选择，选择"全部添加"一次性添加所有项",
+      "可多次选择，选择“全部添加”一次性添加所有项",
       options
     );
     

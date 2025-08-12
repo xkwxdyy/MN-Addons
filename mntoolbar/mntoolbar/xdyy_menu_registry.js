@@ -666,6 +666,11 @@ function registerAllMenuTemplates() {
           action: "manageSynonymGroups",
           menuTitle: "    （包含导入导出功能）",
         },
+        "🚫 排除词管理",
+        {
+          action: "manageExclusionGroups",
+          menuTitle: "    （智能过滤搜索结果）",
+        },
         "📊 配置同步",
         {
           action: "exportSearchConfig",

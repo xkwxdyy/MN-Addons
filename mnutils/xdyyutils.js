@@ -2539,8 +2539,8 @@ class MNMath {
   static isClassificationNote(note) {
     const title = note.noteTitle || note.title || "";
     // 检查是否有归类卡片的标题格式："xxx"相关 或 "xxx"："xxx"相关
-    return /^"[^"]*"："[^"]*"\s*相关.*$/.test(title) || 
-           /^"[^"]+"\s*相关.*$/.test(title);
+    return /^“[^“]*”：“[^“]*”\s*相关.*$/.test(title) || 
+           /^“[^“]+”\s*相关.*$/.test(title);
   }
 
   /**

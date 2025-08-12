@@ -5142,35 +5142,30 @@ class MNTaskManager {
         return false;
       }
       
-      // 有绑定的任务，获取下一个状态
-      let nextStatus = "进行中";  // 默认
-      
-      if (bindedTasks.length === 1) {
-        // 只有一个绑定任务，根据其当前状态决定下一个状态
-        const currentStatus = bindedTasks[0].status;
-        switch (currentStatus) {
-          case "未开始":
-            nextStatus = "进行中";
-            break;
-          case "暂停":
-            nextStatus = "进行中";
-            break;
-          case "进行中":
-            nextStatus = "已完成";
-            break;
-          case "已完成":
-            nextStatus = "已归档";
-            break;
-          default:
-            nextStatus = "进行中";
-        }
-      }
-      
-      // 应用状态到绑定的任务
-      const result = await this.applyStatusToBindedCard(note, nextStatus);
+      // 应用"前进"操作到绑定的任务
+      const result = await this.applyStatusToBindedCard(note, 'forward');
       if (result && result.type === 'applied') {
         // 刷新知识点卡片以更新显示
         note.refresh();
+        
+        // 如果是归档操作，还需要移动到归档区
+        if (result.newStatus === '已归档') {
+          const completedBoardId = taskConfig.getBoardNoteId('completed');
+          if (completedBoardId) {
+            const completedBoardNote = MNNote.new(completedBoardId);
+            if (completedBoardNote) {
+              const selectedTask = MNNote.new(result.taskId);
+              if (selectedTask) {
+                MNUtil.undoGrouping(() => {
+                  const success = this.moveTo(selectedTask, completedBoardNote);
+                  if (success) {
+                    MNUtil.showHUD("✅ 任务已归档并移动到归档区");
+                  }
+                });
+              }
+            }
+          }
+        }
       }
       return result && result.type === 'applied';
     }
@@ -7794,12 +7789,61 @@ ${content.trim()}`;
   }
   
   /**
+   * 根据当前状态和操作类型计算下一个状态
+   * @param {string} currentStatus - 当前状态
+   * @param {string} action - 操作类型 ('forward', 'backward', 'pause')
+   * @returns {string|null} 下一个状态，如果操作无效返回 null
+   */
+  static getNextStatus(currentStatus, action) {
+    switch (action) {
+      case 'forward':
+        switch (currentStatus) {
+          case "未开始":
+            return "进行中";
+          case "暂停":
+            return "进行中";
+          case "进行中":
+            return "已完成";
+          case "已完成":
+            return "已归档";
+          case "已归档":
+            return null; // 已归档无法继续前进
+          default:
+            return "进行中"; // 默认
+        }
+      
+      case 'backward':
+        switch (currentStatus) {
+          case "未开始":
+            return null; // 未开始无法后退
+          case "进行中":
+            return "未开始";
+          case "暂停":
+            return "进行中";
+          case "已完成":
+            return "进行中";
+          case "已归档":
+            return "已完成";
+          default:
+            return "未开始"; // 默认
+        }
+      
+      case 'pause':
+        // 只有进行中的任务可以暂停
+        return currentStatus === "进行中" ? "暂停" : null;
+      
+      default:
+        return null;
+    }
+  }
+
+  /**
    * 应用状态到绑定的任务卡片
    * @param {MNNote} note - 源卡片
-   * @param {string} newStatus - 新状态
+   * @param {string} action - 操作类型 ('forward', 'backward', 'pause') 或具体状态值（向后兼容）
    * @returns {Object} 应用结果
    */
-  static async applyStatusToBindedCard(note, newStatus) {
+  static async applyStatusToBindedCard(note, action) {
     const bindedTasks = MNTaskManager.getBindedTaskCards(note)
     
     if (bindedTasks.length === 0) {
@@ -7807,9 +7851,33 @@ ${content.trim()}`;
       return null
     }
     
+    // 判断是操作类型还是具体状态值（向后兼容）
+    const isAction = ['forward', 'backward', 'pause'].includes(action)
+    
     if (bindedTasks.length === 1) {
       // 只有一个绑定任务，直接应用
       const task = bindedTasks[0]
+      
+      // 根据操作类型或直接状态值计算新状态
+      let newStatus
+      if (isAction) {
+        newStatus = this.getNextStatus(task.status, action)
+        if (!newStatus) {
+          // 无效的状态转换
+          if (action === 'pause') {
+            MNUtil.showHUD("只有进行中的任务可以暂停")
+          } else if (action === 'backward' && task.status === '未开始') {
+            MNUtil.showHUD("任务尚未开始")
+          } else if (action === 'forward' && task.status === '已归档') {
+            MNUtil.showHUD("任务已归档")
+          }
+          return { type: 'skipped', reason: '无效的状态转换' }
+        }
+      } else {
+        // 向后兼容：直接使用传入的状态值
+        newStatus = action
+      }
+      
       MNTaskManager.updateTaskStatus(task.note, newStatus)
       MNUtil.showHUD(`✅ 已更新绑定任务状态: ${newStatus}`)
       return {
@@ -7827,6 +7895,27 @@ ${content.trim()}`;
     if (activeTasks.length === 1) {
       // 只有一个活跃任务，直接应用
       const task = activeTasks[0]
+      
+      // 根据操作类型或直接状态值计算新状态
+      let newStatus
+      if (isAction) {
+        newStatus = this.getNextStatus(task.status, action)
+        if (!newStatus) {
+          // 无效的状态转换
+          if (action === 'pause') {
+            MNUtil.showHUD("只有进行中的任务可以暂停")
+          } else if (action === 'backward' && task.status === '未开始') {
+            MNUtil.showHUD("任务尚未开始")
+          } else if (action === 'forward' && task.status === '已归档') {
+            MNUtil.showHUD("任务已归档")
+          }
+          return { type: 'skipped', reason: '无效的状态转换' }
+        }
+      } else {
+        // 向后兼容：直接使用传入的状态值
+        newStatus = action
+      }
+      
       MNTaskManager.updateTaskStatus(task.note, newStatus)
       MNUtil.showHUD(`✅ 已更新绑定任务状态: ${newStatus}`)
       return {
@@ -7857,6 +7946,27 @@ ${content.trim()}`;
       }
       
       const selectedTask = activeTasks[selectedIndex - 1]
+      
+      // 根据操作类型或直接状态值计算新状态
+      let newStatus
+      if (isAction) {
+        newStatus = this.getNextStatus(selectedTask.status, action)
+        if (!newStatus) {
+          // 无效的状态转换
+          if (action === 'pause') {
+            MNUtil.showHUD("只有进行中的任务可以暂停")
+          } else if (action === 'backward' && selectedTask.status === '未开始') {
+            MNUtil.showHUD("任务尚未开始")
+          } else if (action === 'forward' && selectedTask.status === '已归档') {
+            MNUtil.showHUD("任务已归档")
+          }
+          return { type: 'skipped', reason: '无效的状态转换' }
+        }
+      } else {
+        // 向后兼容：直接使用传入的状态值
+        newStatus = action
+      }
+      
       MNTaskManager.updateTaskStatus(selectedTask.note, newStatus)
       MNUtil.showHUD(`✅ 已更新任务状态: ${newStatus}`)
       return {

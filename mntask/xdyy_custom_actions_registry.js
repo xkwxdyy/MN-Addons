@@ -499,57 +499,11 @@ function registerAllCustomActions() {
       return;
     }
     
-    // 检查是否是任务卡片
-    if (!MNTaskManager.isTaskCard(focusNote)) {
-      MNUtil.showHUD("请先将卡片转换为任务卡片", 2);
-      return;
-    }
+    // 调用封装的方法
+    const result = MNTaskManager.addOrUpdateLaunchLink(focusNote);
     
-    // 获取剪切板内容
-    const clipboardText = MNUtil.clipboardText;
-    const defaultLaunchLink = "marginnote4app://uistatus/H4sIAAAAAAAAE5VSy5LbIBD8F87SFuIp%2BWbJ5VxyyCG3VCqF0LBmg4VKoM06W%2F73AHbiveY2j56mp5l3NHr%2F8zxxtEOGgNbYMNNJGGmHJWAsmRg7wRQIojpDZQtEj5ibpm0apeRI5ahBcKEx4agqZGFxNqIdzlmM%2Fjx5jXZGuQAV0mqdRv9WujmG6Q7Vzv%2BGB8zPEeYYSivNO3WB1U5JI2MDYw0b6l4OtGb7o6h72rY1wU2Hh33Ph%2BMh6YC3ND%2Bd%2FQSFwlgHNzLjvIpntdwSr7cw%2BwiFuj%2F27ND2pO4IYTXjvajbLqf4yEk74D2lXaI2m3MfV0pkn71W0foZ7d6RNyZAzNGPl%2BDnV%2BU2%2BHpZkg40fPri7RwTRzbgibWSck6YbEUjGO1khS6lzgWThLNUo7jlmF8rFLRyeZUnIiiTVGDcsK5JGHEtCgI4F9Kr375XyC%2Bw3uXgD5kfX26FLTo7P7xe1DMkf1O5tBc1gysTRUv6f960mLKOcdJgUqEVAqhVnwp6hVcLv26hfT7dnL0T32D5Iko%2F2AlGtT7a%2BUzsbHz2SvstGbNr0jZRjeFkpwnmf9B4gnM28ABGbS4bGP1i9f8cRJb59zCvfwCp6rmF9QIAAA%3D%3D";
-    
-    // 检查是否是 MarginNote UI 状态链接，如果不是则使用默认链接
-    let linkToUse = defaultLaunchLink;
-    if (clipboardText) {
-      if (clipboardText.startsWith("marginnote4app://uistatus/")) {
-        linkToUse = clipboardText;
-        MNUtil.showHUD("✅ 更新 UI 状态链接");
-      } else if (clipboardText.ifNoteIdorURL()) {
-        linkToUse = clipboardText.toNoteURL()
-        MNUtil.showHUD("✅ 更新卡片链接: " + MNNote.new(clipboardText).title);
-      }
-    }
-    
-    MNUtil.undoGrouping(() => {
-      try {
-        // 构建特殊的字段内容：字段名即是 Markdown 链接
-        const launchLink = `[启动](${linkToUse})`;
-        const fieldHtml = TaskFieldUtils.createFieldHtml(launchLink, 'subField');
-        
-        // 检查是否已有"启动"字段
-        const existingIndex = focusNote.getIncludingCommentIndex("[启动]");
-        
-        if (existingIndex !== -1) {
-          // 更新现有字段
-          focusNote.replaceWithMarkdownComment(fieldHtml, existingIndex);
-          // MNUtil.showHUD("✅ 已更新启动链接", 2);
-        } else {
-          // 添加新字段
-          focusNote.appendMarkdownComment(fieldHtml);
-          const lastIndex = focusNote.MNComments.length - 1;
-          
-          // 移动到"信息"字段下
-          MNTaskManager.moveCommentToField(focusNote, lastIndex, '信息', true);
-          // MNUtil.showHUD("✅ 已添加启动链接", 2);
-        }
-        
-        // 刷新卡片
-        focusNote.refresh();
-      } catch (error) {
-        MNUtil.showHUD("操作失败：" + error.message, 2);
-      }
-    });
+    // 显示结果
+    MNUtil.showHUD(result.message, 2);
   });
 
   MNTaskGlobal.registerCustomAction("addTimestampRecord", async function(context) {

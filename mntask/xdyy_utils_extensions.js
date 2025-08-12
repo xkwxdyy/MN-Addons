@@ -7381,7 +7381,7 @@ ${content.trim()}`;
         newTaskNote.appendNoteLink(sourceNote, "To")
         await this.convertToTaskCard(newTaskNote, "动作")
         await this.toggleStatusForward(newTaskNote)
-        this.
+        this.addOrUpdateLaunchLink(newTaskNote, sourceNote.noteURL)
         
         
         // 创建双向链接

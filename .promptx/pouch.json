@@ -1,16 +1,64 @@
 {
-  "currentState": "initialized",
+  "currentState": "role_activated_with_memory",
   "stateHistory": [
     {
       "from": "initial",
       "command": "init",
-      "timestamp": "2025-08-03T03:19:23.265Z",
+      "timestamp": "2025-08-11T18:36:34.592Z",
       "args": [
         {
-          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon"
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnutils"
         }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-08-11T19:17:20.030Z",
+      "args": [
+        {
+          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnutils"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-08-12T02:07:58.218Z",
+      "args": [
+        {
+          "workingDirectory": "/tmp/mn-partial-synonym"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-08-12T02:16:07.134Z",
+      "args": [
+        {
+          "workingDirectory": "/tmp/mn-partial-synonym"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "init",
+      "timestamp": "2025-08-12T02:25:02.797Z",
+      "args": [
+        {
+          "workingDirectory": "/tmp/mn-partial-synonym"
+        }
+      ]
+    },
+    {
+      "from": "initialized",
+      "command": "action",
+      "timestamp": "2025-08-12T02:26:24.420Z",
+      "args": [
+        "assistant"
       ]
     }
   ],
-  "lastUpdated": "2025-08-03T03:19:23.278Z"
+  "lastUpdated": "2025-08-12T02:26:24.466Z"
 }

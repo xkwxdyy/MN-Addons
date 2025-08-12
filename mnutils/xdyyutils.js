@@ -8083,14 +8083,16 @@ class MNMath {
    * 添加同义词组
    * @param {string} name - 组名
    * @param {Array<string>} words - 词汇数组
+   * @param {boolean} partialReplacement - 是否启用局部替换（默认 false）
    */
-  static addSynonymGroup(name, words) {
+  static addSynonymGroup(name, words, partialReplacement = false) {
     this.initSearchConfig();
     const group = {
       id: "group_" + Date.now(),
       name: name,
       words: words,
       enabled: true,
+      partialReplacement: partialReplacement,  // 新增字段
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
@@ -8141,6 +8143,103 @@ class MNMath {
   }
 
   /**
+   * 转义正则表达式特殊字符
+   * @param {string} str - 要转义的字符串
+   * @returns {string} 转义后的字符串
+   */
+  static escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /**
+   * 判断空格处理规则
+   * @param {string} from - 原始词
+   * @param {string} to - 替换词
+   * @returns {string} 空格处理规则：'removeSpace' | 'addSpace' | 'direct'
+   */
+  static getSpacingRule(from, to) {
+    const isFromSymbol = /^[^\u4e00-\u9fa5a-zA-Z]+$/.test(from);  // 非中英文
+    const isToSymbol = /^[^\u4e00-\u9fa5a-zA-Z]+$/.test(to);
+    const isFromChinese = /[\u4e00-\u9fa5]/.test(from);
+    const isToChinese = /[\u4e00-\u9fa5]/.test(to);
+    const isFromEnglish = /[a-zA-Z]/.test(from);
+    const isToEnglish = /[a-zA-Z]/.test(to);
+    
+    // 符号和中文之间的转换
+    if (isFromSymbol && isToChinese) return 'removeSpace';
+    if (isFromChinese && isToSymbol) return 'keepOrAdd';
+    
+    // 中英文之间的转换
+    if (isFromChinese && isToEnglish) return 'addSpace';
+    if (isFromEnglish && isToChinese) return 'removeSpace';
+    
+    return 'direct';
+  }
+
+  /**
+   * 生成局部替换变体
+   * @param {string} keyword - 原始关键词
+   * @param {Object} group - 同义词组
+   * @returns {Array<string>} 生成的变体数组
+   */
+  static generatePartialReplacements(keyword, group) {
+    const variants = new Set();
+    
+    if (!group.partialReplacement || !group.words) return Array.from(variants);
+    
+    // 对组内每个词进行检查
+    for (const word of group.words) {
+      if (keyword.includes(word)) {
+        // 生成所有其他词的替换变体
+        for (const replacement of group.words) {
+          if (replacement === word) continue;  // 跳过自己
+          
+          let variant = keyword;
+          const spacingRule = this.getSpacingRule(word, replacement);
+          
+          switch (spacingRule) {
+            case 'removeSpace':
+              // 移除前后空格
+              const regex = new RegExp(`\\s*${this.escapeRegex(word)}\\s*`, 'g');
+              variant = variant.replace(regex, replacement);
+              break;
+              
+            case 'addSpace':
+              // 添加空格
+              variant = variant.replace(word, ` ${replacement} `);
+              variant = variant.replace(/\s+/g, ' ').trim();
+              break;
+              
+            case 'keepOrAdd':
+              // 如果原本有空格则保持，没有则添加
+              if (keyword.includes(` ${word} `)) {
+                variant = variant.replace(` ${word} `, ` ${replacement} `);
+              } else if (keyword.includes(`${word} `)) {
+                variant = variant.replace(`${word} `, `${replacement} `);
+              } else if (keyword.includes(` ${word}`)) {
+                variant = variant.replace(` ${word}`, ` ${replacement}`);
+              } else {
+                variant = variant.replace(word, ` ${replacement} `);
+                variant = variant.replace(/\s+/g, ' ').trim();
+              }
+              break;
+              
+            default:
+              // 直接替换
+              variant = variant.replace(word, replacement);
+          }
+          
+          if (variant !== keyword) {
+            variants.add(variant);
+          }
+        }
+      }
+    }
+    
+    return Array.from(variants);
+  }
+
+  /**
    * 扩展关键词（核心功能）
    * 根据同义词组扩展输入的关键词
    * @param {Array<string>} keywords - 原始关键词数组
@@ -8164,7 +8263,7 @@ class MNMath {
       for (const group of synonymGroups) {
         if (!group.enabled) continue;
         
-        // 检查关键词是否在组内
+        // 1. 完整词匹配（原有功能）
         const foundInGroup = group.words.some(word => 
           word.toLowerCase() === keyword.toLowerCase()
         );
@@ -8172,6 +8271,12 @@ class MNMath {
         if (foundInGroup) {
           // 添加组内所有词
           group.words.forEach(word => keywordGroup.add(word));
+        }
+        
+        // 2. 局部替换（新功能）
+        if (group.partialReplacement) {
+          const partialVariants = this.generatePartialReplacements(keyword, group);
+          partialVariants.forEach(variant => keywordGroup.add(variant));
         }
       }
       
@@ -8181,7 +8286,14 @@ class MNMath {
     // 记录日志
     const totalExpanded = keywordGroups.reduce((sum, group) => sum + group.length, 0);
     if (totalExpanded > keywords.length) {
-      MNUtil.log(`关键词分组扩展：${keywords.join(" // ")} → ${keywordGroups.map(g => `[${g.join(", ")}]`).join(" 且 ")}`);
+      const details = keywordGroups.map((g, i) => {
+        if (g.length > 3) {
+          return `  ${keywords[i]} → [${g.slice(0, 3).join(", ")}...共${g.length}个]`;
+        } else {
+          return `  ${keywords[i]} → [${g.join(", ")}]`;
+        }
+      }).join("\n");
+      MNUtil.log(`关键词扩展详情：\n${details}`);
     }
     
     return keywordGroups;
@@ -9557,13 +9669,15 @@ class MNMath {
         // 显示现有同义词组
         for (const group of groups) {
           const status = group.enabled ? "✅" : "⭕";
+          const partialIcon = group.partialReplacement ? "🔄" : "";  // 局部替换标识
           const wordsPreview = group.words.slice(0, 3).join(", ");
           const moreText = group.words.length > 3 ? `... (共${group.words.length}个)` : "";
-          options.push(`${status} ${group.name}: ${wordsPreview}${moreText}`);
+          options.push(`${status} ${partialIcon} ${group.name}: ${wordsPreview}${moreText}`);
         }
         
         // 添加操作选项
         options.push("➕ 添加新同义词组");
+        options.push("🚀 快速添加常用组（中英文/数学符号）");  // 新增
         options.push("──────────────");
         options.push("📤 导出同义词配置");
         options.push("📥 导入同义词配置");
@@ -9587,12 +9701,15 @@ class MNMath {
           // 添加新组
           await this.showAddSynonymGroupDialog();
         } else if (selectedIndex === groups.length + 1) {
+          // 快速添加常用组
+          await this.showQuickAddTemplates();
+        } else if (selectedIndex === groups.length + 2) {
           // 分隔线，重新显示菜单
           continue;
-        } else if (selectedIndex === groups.length + 2) {
+        } else if (selectedIndex === groups.length + 3) {
           // 导出配置
           await this.showExportSynonymDialog();
-        } else if (selectedIndex === groups.length + 3) {
+        } else if (selectedIndex === groups.length + 4) {
           // 导入配置
           await this.showImportSynonymDialog();
         }
@@ -9601,6 +9718,216 @@ class MNMath {
       MNUtil.showHUD("管理同义词组失败：" + error.message);
       MNUtil.log("管理同义词组错误: " + error.toString());
     }
+  }
+
+  /**
+   * 显示快速添加模板
+   */
+  static async showQuickAddTemplates() {
+    const templates = [
+      "📐 数学人名（柯西/Cauchy等）",
+      "🔢 集合符号（⊂/子集/包含等）",
+      "📊 数学运算（积分/微分/导数等）",
+      "🎯 单位圆盘（𝔻/单位圆盘/unit disk）",
+      "💻 编程术语（函数/function等）",
+      "──────────────",
+      "➕ 自定义批量添加"
+    ];
+    
+    const result = await MNUtil.userSelect(
+      "快速添加常用同义词组",
+      "选择一个模板类型",
+      templates
+    );
+    
+    if (result === null || result === 0) return;
+    
+    switch (result) {
+      case 1: // 数学人名
+        await this.addMathNamesTemplate();
+        break;
+      case 2: // 集合符号
+        await this.addSetSymbolsTemplate();
+        break;
+      case 3: // 数学运算
+        await this.addMathOperationsTemplate();
+        break;
+      case 4: // 单位圆盘
+        await this.addUnitDiskTemplate();
+        break;
+      case 5: // 编程术语
+        await this.addProgrammingTermsTemplate();
+        break;
+      case 6: // 分隔线
+        break;
+      case 7: // 自定义批量添加
+        await this.showCustomBatchAdd();
+        break;
+    }
+  }
+
+  /**
+   * 添加数学人名模板
+   */
+  static async addMathNamesTemplate() {
+    const commonMathNames = [
+      { name: "柯西相关", words: ["柯西", "Cauchy", "cauchy"], partial: true },
+      { name: "黎曼相关", words: ["黎曼", "Riemann", "riemann"], partial: true },
+      { name: "欧拉相关", words: ["欧拉", "Euler", "euler"], partial: true },
+      { name: "高斯相关", words: ["高斯", "Gauss", "gauss"], partial: true },
+      { name: "傅里叶相关", words: ["傅里叶", "Fourier", "fourier"], partial: true },
+      { name: "拉普拉斯相关", words: ["拉普拉斯", "Laplace", "laplace"], partial: true },
+      { name: "泰勒相关", words: ["泰勒", "Taylor", "taylor"], partial: true },
+      { name: "希尔伯特相关", words: ["希尔伯特", "Hilbert", "hilbert"], partial: true }
+    ];
+    
+    await this.selectAndAddTemplates(commonMathNames, "数学人名");
+  }
+
+  /**
+   * 添加集合符号模板
+   */
+  static async addSetSymbolsTemplate() {
+    const setSymbols = [
+      { name: "子集符号", words: ["⊂", "⊆", "子集", "包含于", "真包含"], partial: true },
+      { name: "属于符号", words: ["∈", "∉", "属于", "不属于"], partial: true },
+      { name: "并集交集", words: ["∪", "∩", "并集", "交集", "union", "intersection"], partial: true },
+      { name: "空集", words: ["∅", "空集", "empty set"], partial: true }
+    ];
+    
+    await this.selectAndAddTemplates(setSymbols, "集合符号");
+  }
+
+  /**
+   * 添加数学运算模板
+   */
+  static async addMathOperationsTemplate() {
+    const mathOperations = [
+      { name: "微积分", words: ["积分", "integral", "微分", "differential", "导数", "derivative"], partial: true },
+      { name: "极限", words: ["极限", "limit", "lim"], partial: true },
+      { name: "求和", words: ["∑", "Σ", "求和", "sum", "summation"], partial: true },
+      { name: "连续性", words: ["连续", "continuous", "不连续", "discontinuous"], partial: true },
+      { name: "可微性", words: ["可微", "differentiable", "不可微"], partial: true }
+    ];
+    
+    await this.selectAndAddTemplates(mathOperations, "数学运算");
+  }
+
+  /**
+   * 添加单位圆盘模板
+   */
+  static async addUnitDiskTemplate() {
+    const unitDisk = [
+      { name: "单位圆盘", words: ["𝔻", "单位圆盘", "unit disk", "unit disc"], partial: true },
+      { name: "实数域", words: ["ℝ", "实数", "real numbers"], partial: true },
+      { name: "复数域", words: ["ℂ", "复数", "complex numbers"], partial: true },
+      { name: "自然数", words: ["ℕ", "自然数", "natural numbers"], partial: true },
+      { name: "整数", words: ["ℤ", "整数", "integers"], partial: true },
+      { name: "有理数", words: ["ℚ", "有理数", "rational numbers"], partial: true }
+    ];
+    
+    await this.selectAndAddTemplates(unitDisk, "数学符号");
+  }
+
+  /**
+   * 添加编程术语模板
+   */
+  static async addProgrammingTermsTemplate() {
+    const programmingTerms = [
+      { name: "函数", words: ["函数", "function", "func", "方法", "method"], partial: true },
+      { name: "变量", words: ["变量", "variable", "var"], partial: true },
+      { name: "类", words: ["类", "class", "类型", "type"], partial: true },
+      { name: "接口", words: ["接口", "interface"], partial: true },
+      { name: "实现", words: ["实现", "implement", "implementation"], partial: true }
+    ];
+    
+    await this.selectAndAddTemplates(programmingTerms, "编程术语");
+  }
+
+  /**
+   * 选择并添加模板
+   */
+  static async selectAndAddTemplates(templates, category) {
+    const options = templates.map(t => `${t.name}: ${t.words.join(", ")}`);
+    options.push("✅ 全部添加");
+    
+    const result = await MNUtil.userSelect(
+      `选择要添加的${category}`,
+      "可多次选择，选择"全部添加"一次性添加所有项",
+      options
+    );
+    
+    if (result === null || result === 0) return;
+    
+    if (result === options.length) {
+      // 全部添加
+      for (const template of templates) {
+        this.addSynonymGroup(template.name, template.words, template.partial);
+      }
+      MNUtil.showHUD(`✅ 已添加 ${templates.length} 个${category}组`);
+    } else {
+      // 添加选中的
+      const template = templates[result - 1];
+      this.addSynonymGroup(template.name, template.words, template.partial);
+      MNUtil.showHUD(`✅ 已添加：${template.name}`);
+      
+      // 继续选择
+      await this.selectAndAddTemplates(templates, category);
+    }
+  }
+
+  /**
+   * 自定义批量添加
+   */
+  static async showCustomBatchAdd() {
+    return new Promise((resolve) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "批量添加同义词组",
+        "输入格式（每行一组）：\n组名: 词1, 词2, 词3\n\n例如：\n柯西: 柯西, Cauchy, cauchy\n单位圆: 𝔻, 单位圆盘, unit disk",
+        2,
+        "取消",
+        ["添加（普通）", "添加（开启局部替换）"],
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) {
+            resolve(false);
+            return;
+          }
+          
+          const input = alert.textFieldAtIndex(0).text;
+          if (!input) {
+            MNUtil.showHUD("请输入内容");
+            resolve(false);
+            return;
+          }
+          
+          const enablePartial = buttonIndex === 2;
+          const lines = input.split('\n').filter(line => line.trim());
+          let addedCount = 0;
+          
+          for (const line of lines) {
+            const colonIndex = line.indexOf(':');
+            if (colonIndex > 0) {
+              const name = line.substring(0, colonIndex).trim();
+              const wordsStr = line.substring(colonIndex + 1).trim();
+              const words = this.parseWords(wordsStr);
+              
+              if (name && words.length >= 2) {
+                this.addSynonymGroup(name, words, enablePartial);
+                addedCount++;
+              }
+            }
+          }
+          
+          if (addedCount > 0) {
+            MNUtil.showHUD(`✅ 已添加 ${addedCount} 个同义词组`);
+            resolve(true);
+          } else {
+            MNUtil.showHUD("未能识别有效的同义词组");
+            resolve(false);
+          }
+        }
+      );
+    });
   }
 
   /**
@@ -9675,14 +10002,18 @@ class MNMath {
     try {
       const options = [
         group.enabled ? "🔴 禁用此组" : "🟢 启用此组",
+        group.partialReplacement ? "🔄 关闭局部替换" : "🔄 开启局部替换",  // 新增
         "✏️ 编辑词汇",
         "📝 重命名组",
         "🗑 删除此组",
-        "📋 复制词汇列表"
+        "📋 复制词汇列表",
+        "──────────────",
+        "🔍 测试局部替换效果"  // 新增
       ];
       
       const wordsPreview = group.words.join(", ");
-      const message = `词汇：${wordsPreview}\n状态：${group.enabled ? "已启用" : "已禁用"}\n创建时间：${new Date(group.createdAt).toLocaleDateString()}`;
+      const partialStatus = group.partialReplacement ? "已开启" : "已关闭";
+      const message = `词汇：${wordsPreview}\n状态：${group.enabled ? "已启用" : "已禁用"}\n局部替换：${partialStatus}\n创建时间：${new Date(group.createdAt).toLocaleDateString()}`;
       
       const result = await MNUtil.userSelect(group.name, message, options);
       
@@ -9698,15 +10029,22 @@ class MNMath {
           MNUtil.showHUD(group.enabled ? "✅ 已启用" : "⭕ 已禁用");
           break;
           
-        case 2: // 编辑词汇
+        case 2: // 开启/关闭局部替换
+          group.partialReplacement = !group.partialReplacement;
+          group.updatedAt = Date.now();
+          this.saveSearchConfig();
+          MNUtil.showHUD(group.partialReplacement ? "🔄 已开启局部替换" : "已关闭局部替换");
+          break;
+          
+        case 3: // 编辑词汇
           await this.editSynonymWords(group);
           break;
           
-        case 3: // 重命名
+        case 4: // 重命名
           await this.renameSynonymGroup(group);
           break;
           
-        case 4: // 删除
+        case 5: // 删除
           const confirmDelete = await this.confirmAction(
             "确认删除",
             `确定要删除"${group.name}"吗？\n此操作不可恢复。`
@@ -9717,9 +10055,16 @@ class MNMath {
           }
           break;
           
-        case 5: // 复制词汇
+        case 6: // 复制词汇
           MNUtil.copy(group.words.join(", "));
           MNUtil.showHUD("📋 已复制到剪贴板");
+          break;
+          
+        case 7: // 分隔线
+          break;
+          
+        case 8: // 测试局部替换
+          await this.testPartialReplacement(group);
           break;
       }
     } catch (error) {
@@ -9762,6 +10107,60 @@ class MNMath {
       );
       // 注意：MarginNote 的 JSB 框架不支持 setTimeout
       // 无法预填充输入框，用户需要手动输入新值
+    });
+  }
+
+  /**
+   * 测试局部替换功能
+   */
+  static async testPartialReplacement(group) {
+    return new Promise((resolve) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "测试局部替换",
+        `组"${group.name}"包含：${group.words.join(", ")}\n\n请输入测试文本：`,
+        2,
+        "返回",
+        ["测试"],
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) {
+            resolve(false);
+            return;
+          }
+          
+          const testText = alert.textFieldAtIndex(0).text;
+          if (!testText) {
+            MNUtil.showHUD("请输入测试文本");
+            resolve(false);
+            return;
+          }
+          
+          // 生成变体
+          const variants = this.generatePartialReplacements(testText, group);
+          
+          if (variants.length > 0) {
+            const resultText = `原文：${testText}\n\n生成的变体（${variants.length}个）：\n${variants.map((v, i) => `${i+1}. ${v}`).join('\n')}`;
+            
+            // 显示结果
+            UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+              "替换结果",
+              resultText,
+              0,
+              "确定",
+              ["复制所有变体"],
+              (alert2, buttonIndex2) => {
+                if (buttonIndex2 === 1) {
+                  MNUtil.copy(variants.join("\n"));
+                  MNUtil.showHUD("📋 已复制到剪贴板");
+                }
+                resolve(true);
+              }
+            );
+          } else {
+            MNUtil.showHUD("未找到可替换的内容");
+            resolve(false);
+          }
+        }
+      );
     });
   }
 

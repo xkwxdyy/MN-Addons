@@ -514,9 +514,22 @@ class MNTaskManager {
     MNUtil.log(`🆔 卡片ID: ${focusNote.noteId}`)
     MNUtil.log(`📋 指定任务类型: ${taskType || '未指定'}`)
     
+    // 检查是否是非任务看板卡片（需要创建临时任务）
+    const parentNote = focusNote.parentNote
+    const isParentTaskCard = parentNote ? this.isTaskCard(parentNote) : false
+    const isFocusTaskCard = this.isTaskCard(focusNote)
+    
+    // 判断是否需要创建临时任务
+    // 条件：1. 不是任务卡片 且 2. (没有父卡片 或 父卡片不是任务卡片)
+    const needCreateTemporary = !isFocusTaskCard && (!parentNote || !isParentTaskCard)
+    
+    if (needCreateTemporary) {
+      MNUtil.log('🆕 检测到非任务看板卡片，触发临时任务创建流程...')
+      return await this.createTemporaryTask(focusNote)
+    }
+    
     try {
-      // 获取父卡片
-      const parentNote = focusNote.parentNote
+      // 原有的制卡逻辑
       let shouldTransformParentToProject = false
       
       if (parentNote) {
@@ -525,7 +538,6 @@ class MNTaskManager {
         MNUtil.log(`  - ID: ${parentNote.noteId}`)
         
         // 详细检查父卡片是否是任务卡片
-        const isParentTaskCard = this.isTaskCard(parentNote)
         MNUtil.log(`👪 父卡片任务卡片检查结果: ${isParentTaskCard ? '✅ 是' : '❌ 否'}`)
         
         if (isParentTaskCard) {
@@ -535,7 +547,7 @@ class MNTaskManager {
           MNUtil.log(`  - 父任务内容: ${parentParts.content}`)
           
           // 检查是否需要自动推断类型
-          if (!taskType && parentParts.type === '动作' && !this.isTaskCard(focusNote)) {
+          if (!taskType && parentParts.type === '动作' && !isFocusTaskCard) {
             // 父卡片是动作类型，子卡片不是任务卡片，自动设置子卡片为动作类型
             MNUtil.log(`🎯 自动推断：父卡片是动作类型，子卡片设为动作类型，父卡片将转为项目类型`)
             taskType = '动作'
@@ -1745,8 +1757,16 @@ class MNTaskManager {
    * @param {string} newStatus - 新状态
    * @param {boolean} skipParentUpdate - 是否跳过父任务更新（内部使用，避免循环）
    */
-  static updateTaskStatus(note, newStatus, skipParentUpdate = false) {
-    if (!this.isTaskCard(note)) return
+  static async updateTaskStatus(note, newStatus, skipParentUpdate = false) {
+    // 首先检查是否有绑定的任务卡片
+    if (!this.isTaskCard(note)) {
+      // 不是任务卡片，检查是否有绑定的任务
+      const bindedResult = await this.applyStatusToBindedCard(note, newStatus)
+      if (bindedResult) {
+        return bindedResult
+      }
+      return
+    }
     
     const titleParts = this.parseTaskTitle(note.noteTitle)
     const oldStatus = titleParts.status
@@ -4880,9 +4900,42 @@ class MNTaskManager {
       return false;
     }
     
+    // 检查是否是任务卡片，如果不是，尝试处理绑定的任务
     if (!this.isTaskCard(note)) {
-      MNUtil.showHUD("请选择一个任务卡片");
-      return false;
+      const bindedTasks = this.getBindedTaskCards(note);
+      
+      if (bindedTasks.length === 0) {
+        MNUtil.showHUD("请选择一个任务卡片");
+        return false;
+      }
+      
+      // 有绑定的任务，获取下一个状态
+      let nextStatus = "进行中";  // 默认
+      
+      if (bindedTasks.length === 1) {
+        // 只有一个绑定任务，根据其当前状态决定下一个状态
+        const currentStatus = bindedTasks[0].status;
+        switch (currentStatus) {
+          case "未开始":
+            nextStatus = "进行中";
+            break;
+          case "暂停":
+            nextStatus = "进行中";
+            break;
+          case "进行中":
+            nextStatus = "已完成";
+            break;
+          case "已完成":
+            nextStatus = "已归档";
+            break;
+          default:
+            nextStatus = "进行中";
+        }
+      }
+      
+      // 应用状态到绑定的任务
+      const result = await this.applyStatusToBindedCard(note, nextStatus);
+      return result && result.type === 'applied';
     }
     
     const titleParts = this.parseTaskTitle(note.noteTitle);
@@ -6922,15 +6975,459 @@ ${content.trim()}`;
 
     return summary;
   }
-}
 
-// 确认 MNTaskManager 类已定义
-if (typeof MNUtil !== 'undefined' && MNUtil.log) {
-  MNUtil.log("✅ MNTaskManager 类已成功定义")
+  /**
+   * 获取所有进行中的任务
+   * @param {Object} options - 选项
+   * @returns {Array<MNNote>} 进行中的任务列表
+   */
+  static getInProgressTasks(options = {}) {
+    const {
+      boardKeys = ['project', 'action'],  // 默认只搜索项目和动作看板
+      includeCompleted = false
+    } = options
+    
+    MNUtil.log('🔍 开始搜索进行中的任务...')
+    const results = []
+    
+    for (const boardKey of boardKeys) {
+      const boardNoteId = taskConfig.getBoardNoteId(boardKey)
+      if (!boardNoteId) continue
+      
+      const boardNote = MNNote.new(boardNoteId)
+      if (!boardNote) continue
+      
+      const tasks = MNTaskManager.filterTasksFromBoard(boardNote, {
+        statuses: includeCompleted ? ['进行中', '已完成'] : ['进行中']
+      })
+      
+      results.push(...tasks)
+    }
+    
+    MNUtil.log(`✅ 找到 ${results.length} 个进行中的任务`)
+    return results
+  }
+  
+  /**
+   * 获取底层任务（没有子项目的项目或动作）
+   * @param {Object} options - 选项
+   * @returns {Array<MNNote>} 底层任务列表
+   */
+  static getBottomLevelTasks(options = {}) {
+    const {
+      boardKeys = ['project', 'action'],
+      statuses = ['进行中']
+    } = options
+    
+    MNUtil.log('🔍 开始搜索底层任务...')
+    const results = []
+    
+    for (const boardKey of boardKeys) {
+      const boardNoteId = taskConfig.getBoardNoteId(boardKey)
+      if (!boardNoteId) continue
+      
+      const boardNote = MNNote.new(boardNoteId)
+      if (!boardNote) continue
+      
+      const tasks = MNTaskManager.filterTasksFromBoard(boardNote, { statuses })
+      
+      // 筛选底层任务
+      for (const task of tasks) {
+        const titleParts = MNTaskManager.parseTaskTitle(task.noteTitle)
+        
+        // 动作类型的任务都是底层任务
+        if (titleParts.type === '动作') {
+          results.push(task)
+          continue
+        }
+        
+        // 项目类型的任务，检查是否有子项目
+        if (titleParts.type === '项目') {
+          let hasSubProject = false
+          
+          if (task.childNotes && task.childNotes.length > 0) {
+            for (const child of task.childNotes) {
+              if (MNTaskManager.isTaskCard(child)) {
+                const childParts = MNTaskManager.parseTaskTitle(child.noteTitle)
+                if (childParts.type === '项目') {
+                  hasSubProject = true
+                  break
+                }
+              }
+            }
+          }
+          
+          // 没有子项目的项目是底层任务
+          if (!hasSubProject) {
+            results.push(task)
+          }
+        }
+      }
+    }
+    
+    MNUtil.log(`✅ 找到 ${results.length} 个底层任务`)
+    return results
+  }
+  
+  /**
+   * 智能查找合适的父任务
+   * @param {MNNote} currentNote - 当前卡片
+   * @returns {Array<Object>} 父任务候选列表 [{note, reason, priority}]
+   */
+  static findSuitableParentTasks(currentNote) {
+    MNUtil.log('🎯 开始智能查找合适的父任务...')
+    const candidates = []
+    
+    // 1. 检查当前启动的任务
+    const launchedState = taskConfig.getLaunchedTaskState()
+    if (launchedState.isTaskLaunched && launchedState.currentLaunchedTaskId) {
+      const launchedTask = MNNote.new(launchedState.currentLaunchedTaskId)
+      if (launchedTask && MNTaskManager.isTaskCard(launchedTask)) {
+        const titleParts = MNTaskManager.parseTaskTitle(launchedTask.noteTitle)
+        
+        // 如果启动的是动作，获取其父任务和兄弟任务
+        if (titleParts.type === '动作') {
+          // 添加其父任务
+          if (launchedTask.parentNote && MNTaskManager.isTaskCard(launchedTask.parentNote)) {
+            candidates.push({
+              note: launchedTask.parentNote,
+              reason: '当前启动任务的父项目',
+              priority: 100
+            })
+          }
+          
+          // 添加启动任务本身（会转为项目）
+          candidates.push({
+            note: launchedTask,
+            reason: '当前启动的任务',
+            priority: 95
+          })
+          
+          // 添加兄弟任务中的进行中任务
+          if (launchedTask.parentNote) {
+            const siblings = launchedTask.parentNote.childNotes || []
+            for (const sibling of siblings) {
+              if (sibling.noteId === launchedTask.noteId) continue
+              if (MNTaskManager.isTaskCard(sibling)) {
+                const siblingParts = MNTaskManager.parseTaskTitle(sibling.noteTitle)
+                if (siblingParts.status === '进行中') {
+                  candidates.push({
+                    note: sibling,
+                    reason: '当前启动任务的兄弟任务',
+                    priority: 85
+                  })
+                }
+              }
+            }
+          }
+        } else {
+          // 启动的是项目或其他类型，直接添加
+          candidates.push({
+            note: launchedTask,
+            reason: '当前启动的项目',
+            priority: 100
+          })
+          
+          // 添加其子任务（进行中的）
+          const children = launchedTask.childNotes || []
+          for (const child of children) {
+            if (MNTaskManager.isTaskCard(child)) {
+              const childParts = MNTaskManager.parseTaskTitle(child.noteTitle)
+              if (childParts.status === '进行中') {
+                candidates.push({
+                  note: child,
+                  reason: '启动项目的子任务',
+                  priority: 90
+                })
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // 2. 获取所有底层任务
+    const bottomTasks = MNTaskManager.getBottomLevelTasks({
+      statuses: ['进行中', '未开始']
+    })
+    
+    // 过滤掉已经在候选列表中的任务
+    const existingIds = new Set(candidates.map(c => c.note.noteId))
+    
+    for (const task of bottomTasks) {
+      if (existingIds.has(task.noteId)) continue
+      
+      const titleParts = MNTaskManager.parseTaskTitle(task.noteTitle)
+      const priority = titleParts.status === '进行中' ? 70 : 60
+      
+      candidates.push({
+        note: task,
+        reason: titleParts.status === '进行中' ? '进行中的任务' : '未开始的任务',
+        priority: priority
+      })
+    }
+    
+    // 按优先级排序
+    candidates.sort((a, b) => b.priority - a.priority)
+    
+    MNUtil.log(`✅ 找到 ${candidates.length} 个候选父任务`)
+    return candidates
+  }
+  
+  /**
+   * 创建临时任务
+   * @param {MNNote} sourceNote - 源卡片（非任务卡片）
+   * @returns {Object} 创建结果
+   */
+  static async createTemporaryTask(sourceNote) {
+    MNUtil.log('\n🚀 === 开始创建临时任务 ===')
+    MNUtil.log(`📝 源卡片: ${sourceNote.noteTitle}`)
+    
+    try {
+      // 1. 查找合适的父任务
+      const candidates = MNTaskManager.findSuitableParentTasks(sourceNote)
+      
+      if (candidates.length === 0) {
+        MNUtil.showHUD('❌ 没有找到合适的父任务，请先创建项目或动作')
+        return {
+          type: 'failed',
+          error: '没有合适的父任务'
+        }
+      }
+      
+      // 2. 构建选择列表
+      const selectOptions = candidates.map(c => {
+        const titleParts = MNTaskManager.parseTaskTitle(c.note.noteTitle)
+        return `【${titleParts.type}】${titleParts.content} (${c.reason})`
+      })
+      
+      // 3. 让用户选择父任务
+      const selectedIndex = await MNUtil.userSelect(
+        '选择父任务',
+        '将新任务添加到哪个任务下？',
+        selectOptions
+      )
+      
+      if (selectedIndex === 0) {
+        return {
+          type: 'cancelled',
+          reason: '用户取消选择'
+        }
+      }
+      
+      const selectedCandidate = candidates[selectedIndex - 1]
+      const parentTask = selectedCandidate.note
+      
+      MNUtil.log(`✅ 选择的父任务: ${parentTask.noteTitle}`)
+      
+      // 4. 输入新任务标题
+      const newTaskTitle = await MNUtil.userInputSingleLine(
+        '新任务标题',
+        '请输入新任务的标题',
+        sourceNote.noteTitle || '新任务'
+      )
+      
+      if (!newTaskTitle) {
+        return {
+          type: 'cancelled',
+          reason: '用户取消输入'
+        }
+      }
+      
+      // 5. 创建新任务卡片
+      let newTaskNote
+      
+      MNUtil.undoGrouping(() => {
+        // 创建子卡片
+        newTaskNote = MNNote.createChildNote(
+          parentTask,
+          safeSpacing(`【动作｜进行中】${newTaskTitle}`)
+        )
+        
+        // 设置颜色（粉色=进行中）
+        newTaskNote.colorIndex = 3
+        
+        // 添加任务字段
+        MNTaskManager.addTaskFieldsWithStatus(newTaskNote)
+        
+        // 创建双向链接
+        sourceNote.appendNoteLink(newTaskNote, "To")
+        newTaskNote.appendNoteLink(sourceNote, "From")
+        
+        // 如果源卡片是知识点卡片，移动链接
+        try {
+          if (typeof MNMath !== 'undefined' && MNMath.isKnowledgeCard) {
+            if (MNMath.isKnowledgeCard(sourceNote)) {
+              MNUtil.log('📚 检测到知识点卡片，移动任务链接...')
+              if (MNMath.moveTaskCardLink) {
+                MNMath.moveTaskCardLink(sourceNote, newTaskNote)
+              }
+            }
+          }
+        } catch (e) {
+          MNUtil.log(`⚠️ 处理知识点卡片链接时出错: ${e.message}`)
+        }
+      })
+      
+      // 6. 检查是否需要转换父任务类型
+      const parentParts = MNTaskManager.parseTaskTitle(parentTask.noteTitle)
+      if (parentParts.type === '动作') {
+        MNUtil.log('🔄 父任务是动作类型，需要转换为项目...')
+        const transformResult = MNTaskManager.transformActionToProject(parentTask)
+        if (transformResult) {
+          MNUtil.log('✅ 父任务已成功转换为项目类型')
+        }
+      }
+      
+      // 7. 显示创建结果
+      MNUtil.showHUD(`✅ 临时任务创建成功`)
+      
+      // 8. 打开新任务卡片
+      MNUtil.openNote(newTaskNote)
+      
+      return {
+        type: 'created',
+        noteId: newTaskNote.noteId,
+        title: newTaskNote.noteTitle,
+        parentId: parentTask.noteId,
+        parentTitle: parentTask.noteTitle
+      }
+      
+    } catch (error) {
+      MNUtil.log(`❌ 创建临时任务失败: ${error.message}`)
+      return {
+        type: 'failed',
+        error: error.message
+      }
+    }
+  }
+  
+  /**
+   * 获取卡片中绑定的任务卡片
+   * @param {MNNote} note - 要检查的卡片
+   * @returns {Array<Object>} 任务卡片信息数组 [{noteId, note, status}]
+   */
+  static getBindedTaskCards(note) {
+    const bindedTasks = []
+    
+    if (!note || !note.MNComments) return bindedTasks
+    
+    // 遍历所有评论，查找任务卡片链接
+    for (const comment of note.MNComments) {
+      if (!comment || !comment.text) continue
+      
+      // 匹配任务卡片链接格式：【类型｜状态】标题
+      const linkMatch = comment.text.match(/\[【(目标|关键结果|项目|动作)[^】]*｜([^】]+)】[^\]]*\]\(marginnote4app:\/\/note\/([^)]+)\)/)
+      if (linkMatch) {
+        const [, type, status, noteId] = linkMatch
+        
+        try {
+          const linkedNote = MNNote.new(noteId)
+          if (linkedNote && MNTaskManager.isTaskCard(linkedNote)) {
+            bindedTasks.push({
+              noteId: noteId,
+              note: linkedNote,
+              status: status,
+              type: type
+            })
+          }
+        } catch (e) {
+          MNUtil.log(`⚠️ 无法获取链接的任务卡片: ${noteId}`)
+        }
+      }
+    }
+    
+    return bindedTasks
+  }
+  
+  /**
+   * 应用状态到绑定的任务卡片
+   * @param {MNNote} note - 源卡片
+   * @param {string} newStatus - 新状态
+   * @returns {Object} 应用结果
+   */
+  static async applyStatusToBindedCard(note, newStatus) {
+    const bindedTasks = MNTaskManager.getBindedTaskCards(note)
+    
+    if (bindedTasks.length === 0) {
+      // 没有绑定的任务，按原流程处理
+      return null
+    }
+    
+    if (bindedTasks.length === 1) {
+      // 只有一个绑定任务，直接应用
+      const task = bindedTasks[0]
+      MNTaskManager.updateTaskStatus(task.note, newStatus)
+      MNUtil.showHUD(`✅ 已更新绑定任务状态: ${newStatus}`)
+      return {
+        type: 'applied',
+        taskId: task.noteId,
+        newStatus: newStatus
+      }
+    }
+    
+    // 多个绑定任务，优先处理非完成/归档状态的
+    const activeTasks = bindedTasks.filter(t => 
+      t.status !== '已完成' && t.status !== '已归档'
+    )
+    
+    if (activeTasks.length === 1) {
+      // 只有一个活跃任务，直接应用
+      const task = activeTasks[0]
+      MNTaskManager.updateTaskStatus(task.note, newStatus)
+      MNUtil.showHUD(`✅ 已更新绑定任务状态: ${newStatus}`)
+      return {
+        type: 'applied',
+        taskId: task.noteId,
+        newStatus: newStatus
+      }
+    }
+    
+    if (activeTasks.length > 1) {
+      // 多个活跃任务，让用户选择
+      const options = activeTasks.map(t => {
+        const titleParts = MNTaskManager.parseTaskTitle(t.note.noteTitle)
+        return `【${titleParts.type}｜${titleParts.status}】${titleParts.content}`
+      })
+      
+      const selectedIndex = await MNUtil.userSelect(
+        '选择要更新的任务',
+        `发现 ${activeTasks.length} 个绑定的任务`,
+        options
+      )
+      
+      if (selectedIndex === 0) {
+        return {
+          type: 'cancelled',
+          reason: '用户取消选择'
+        }
+      }
+      
+      const selectedTask = activeTasks[selectedIndex - 1]
+      MNTaskManager.updateTaskStatus(selectedTask.note, newStatus)
+      MNUtil.showHUD(`✅ 已更新任务状态: ${newStatus}`)
+      return {
+        type: 'applied',
+        taskId: selectedTask.noteId,
+        newStatus: newStatus
+      }
+    }
+    
+    // 没有活跃任务，都是已完成/归档的
+    MNUtil.showHUD('⚠️ 所有绑定的任务都已完成或归档')
+    return {
+      type: 'skipped',
+      reason: '所有任务都已完成或归档'
+    }
+  }
 }
 
 /**
- * TaskFilterEngine - 任务筛选引擎
+ * MNTaskManager 类结束
+ */
+
+/**
+ * TaskFilterEngine 类 - 任务筛选引擎
  * 提供多维度的任务筛选和排序功能
  */
 class TaskFilterEngine {
@@ -8195,9 +8692,8 @@ class TaskFilterEngine {
       { name: "Files", scheme: "shareddocuments:" }
     ];
   }
+
 }
-
-
 /**
  * 初始化扩展
  * 需要在 taskUtils 定义后调用

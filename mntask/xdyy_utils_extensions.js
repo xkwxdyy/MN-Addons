@@ -878,9 +878,9 @@ class MNTaskManager {
         MNUtil.log(`  - Text length: ${storedComment.text ? storedComment.text.length : 0}`)
       }
       
-      // 如果是"动作"类型，添加信息字段和默认启动字段
-      if (taskType === "动作") {
-        MNUtil.log("🎯 动作类型任务，添加信息字段、启动字段和进展字段")
+      // 如果是"动作"或"项目"类型，添加信息字段和默认启动字段
+      if (taskType === "动作" || taskType === "项目") {
+        MNUtil.log(`🎯 ${taskType}类型任务，添加信息字段、启动字段和进展字段`)
         
         // 添加默认启动字段
         const defaultLaunchLink = "marginnote4app://uistatus/H4sIAAAAAAAAE5VSy5LbIBD8F87SFuIp%2BWbJ5VxyyCG3VCqF0LBmg4VKoM06W%2F73AHbiveY2j56mp5l3NHr%2F8zxxtEOGgNbYMNNJGGmHJWAsmRg7wRQIojpDZQtEj5ibpm0apeRI5ahBcKEx4agqZGFxNqIdzlmM%2Fjx5jXZGuQAV0mqdRv9WujmG6Q7Vzv%2BGB8zPEeYYSivNO3WB1U5JI2MDYw0b6l4OtGb7o6h72rY1wU2Hh33Ph%2BMh6YC3ND%2Bd%2FQSFwlgHNzLjvIpntdwSr7cw%2BwiFuj%2F27ND2pO4IYTXjvajbLqf4yEk74D2lXaI2m3MfV0pkn71W0foZ7d6RNyZAzNGPl%2BDnV%2BU2%2BHpZkg40fPri7RwTRzbgibWSck6YbEUjGO1khS6lzgWThLNUo7jlmF8rFLRyeZUnIiiTVGDcsK5JGHEtCgI4F9Kr375XyC%2Bw3uXgD5kfX26FLTo7P7xe1DMkf1O5tBc1gysTRUv6f960mLKOcdJgUqEVAqhVnwp6hVcLv26hfT7dnL0T32D5Iko%2F2AlGtT7a%2BUzsbHz2SvstGbNr0jZRjeFkpwnmf9B4gnM28ABGbS4bGP1i9f8cRJb59zCvfwCp6rmF9QIAAA%3D%3D";
@@ -888,7 +888,25 @@ class MNTaskManager {
         const launchFieldHtml = TaskFieldUtils.createFieldHtml(launchLink, 'subField');
         MNUtil.log("📝 启动字段HTML: " + launchFieldHtml)
         note.appendMarkdownComment(launchFieldHtml)
-        MNUtil.log("✅ 添加启动字段，索引：" + (note.MNComments.length - 1))
+        MNUtil.log(`✅ 添加启动字段，索引：` + (note.MNComments.length - 1))
+        
+        // 如果是项目类型，还需要添加包含字段和状态字段
+        if (taskType === "项目") {
+          // 添加主字段"包含"
+          const containsFieldHtml = TaskFieldUtils.createFieldHtml('包含', 'mainField')
+          MNUtil.log("📝 包含字段HTML: " + containsFieldHtml)
+          note.appendMarkdownComment(containsFieldHtml)
+          MNUtil.log("✅ 添加包含字段，索引：" + (note.MNComments.length - 1))
+          
+          // 添加四个状态子字段
+          const statuses = ['未开始', '进行中', '已完成', '已归档']
+          statuses.forEach(status => {
+            const statusHtml = TaskFieldUtils.createStatusField(status)
+            MNUtil.log(`📝 ${status}字段HTML: ` + statusHtml)
+            note.appendMarkdownComment(statusHtml)
+            MNUtil.log(`✅ 添加${status}字段，索引：` + (note.MNComments.length - 1))
+          })
+        }
         
         // 添加主字段"进展"
         const progressFieldHtml = TaskFieldUtils.createFieldHtml('进展', 'mainField')
@@ -1724,10 +1742,10 @@ class MNTaskManager {
         note.replaceWithMarkdownComment(belongsToText, parsed.belongsTo.index)
       }
       
-      // 如果是动作类型，还需要检查并添加启动字段
+      // 如果是动作或项目类型，还需要检查并添加启动字段
       const childTitleParts = this.parseTaskTitle(note.noteTitle)
-      if (childTitleParts.type === "动作" && !this.hasLaunchField(note)) {
-        MNUtil.log("➕ 为动作类型添加默认启动字段")
+      if ((childTitleParts.type === "动作" || childTitleParts.type === "项目") && !this.hasLaunchField(note)) {
+        MNUtil.log(`➕ 为${childTitleParts.type}类型添加默认启动字段`)
         this.addDefaultLaunchField(note)
       }
       
@@ -2819,10 +2837,10 @@ class MNTaskManager {
         // 2. 更新所属字段
         this.updateBelongsToField(childNote, parentNote)
         
-        // 3. 如果是动作类型，检查并添加启动字段
+        // 3. 如果是动作或项目类型，检查并添加启动字段
         const childTitleParts = this.parseTaskTitle(childNote.noteTitle)
-        if (childTitleParts.type === "动作" && !this.hasLaunchField(childNote)) {
-          MNUtil.log("➕ 为动作类型添加默认启动字段")
+        if ((childTitleParts.type === "动作" || childTitleParts.type === "项目") && !this.hasLaunchField(childNote)) {
+          MNUtil.log(`➕ 为${childTitleParts.type}类型添加默认启动字段`)
           this.addDefaultLaunchField(childNote)
         }
         
@@ -7363,6 +7381,7 @@ ${content.trim()}`;
         newTaskNote.appendNoteLink(sourceNote, "To")
         await this.convertToTaskCard(newTaskNote, "动作")
         await this.toggleStatusForward(newTaskNote)
+        this.
         
         
         // 创建双向链接

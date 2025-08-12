@@ -5168,6 +5168,10 @@ class MNTaskManager {
       
       // 应用状态到绑定的任务
       const result = await this.applyStatusToBindedCard(note, nextStatus);
+      if (result && result.type === 'applied') {
+        // 刷新知识点卡片以更新显示
+        note.refresh();
+      }
       return result && result.type === 'applied';
     }
     
@@ -5255,7 +5259,7 @@ class MNTaskManager {
 
   /**
    * 向后切换任务状态（退回上一个状态）
-   * @param {Object} note - 任务卡片
+   * @param {Object} note - 任务卡片或知识点卡片
    * @returns {boolean} 是否成功
    */
   static toggleStatusBackward(note) {
@@ -5264,9 +5268,140 @@ class MNTaskManager {
       return false;
     }
     
+    // 检查是否是任务卡片，如果不是，尝试处理绑定的任务
     if (!this.isTaskCard(note)) {
-      MNUtil.showHUD("请选择一个任务卡片");
-      return false;
+      const bindedTasks = this.getBindedTaskCards(note);
+      
+      if (bindedTasks.length === 0) {
+        MNUtil.showHUD("请选择一个任务卡片");
+        return false;
+      }
+      
+      // 有绑定的任务，处理状态退回
+      if (bindedTasks.length === 1) {
+        // 只有一个绑定任务，根据其当前状态决定上一个状态
+        const currentStatus = bindedTasks[0].status;
+        let prevStatus = "未开始";
+        
+        switch (currentStatus) {
+          case "未开始":
+            MNUtil.showHUD("任务尚未开始");
+            return false;
+          case "进行中":
+            prevStatus = "未开始";
+            break;
+          case "暂停":
+            prevStatus = "进行中";
+            break;
+          case "已完成":
+            prevStatus = "进行中";
+            break;
+          case "已归档":
+            prevStatus = "已完成";
+            break;
+          default:
+            MNUtil.showHUD("未知的任务状态");
+            return false;
+        }
+        
+        // 应用状态
+        MNUtil.undoGrouping(() => {
+          this.updateTaskStatus(bindedTasks[0].note, prevStatus);
+          bindedTasks[0].note.refresh();
+          // 刷新知识点卡片
+          note.refresh();
+        });
+        
+        MNUtil.showHUD(`↩️ 状态已退回：${currentStatus} → ${prevStatus}`);
+        return true;
+      }
+      
+      // 多个绑定任务，优先处理非未开始状态的
+      const activeTasks = bindedTasks.filter(t => t.status !== '未开始');
+      
+      if (activeTasks.length === 0) {
+        MNUtil.showHUD("所有任务都处于未开始状态");
+        return false;
+      }
+      
+      if (activeTasks.length === 1) {
+        // 只有一个活跃任务，处理退回
+        const task = activeTasks[0];
+        const currentStatus = task.status;
+        let prevStatus = "未开始";
+        
+        switch (currentStatus) {
+          case "进行中":
+            prevStatus = "未开始";
+            break;
+          case "暂停":
+            prevStatus = "进行中";
+            break;
+          case "已完成":
+            prevStatus = "进行中";
+            break;
+          case "已归档":
+            prevStatus = "已完成";
+            break;
+        }
+        
+        MNUtil.undoGrouping(() => {
+          this.updateTaskStatus(task.note, prevStatus);
+          task.note.refresh();
+          // 刷新知识点卡片
+          note.refresh();
+        });
+        
+        MNUtil.showHUD(`↩️ 状态已退回：${currentStatus} → ${prevStatus}`);
+        return true;
+      }
+      
+      // 多个活跃任务，让用户选择
+      const options = activeTasks.map(t => {
+        const titleParts = this.parseTaskTitle(t.note.noteTitle);
+        return `【${titleParts.type}｜${titleParts.status}】${titleParts.content}`;
+      });
+      
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        '选择要退回的任务',
+        `发现 ${activeTasks.length} 个可退回的任务`,
+        0,
+        "取消",
+        options,
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) return;
+          
+          const selectedTask = activeTasks[buttonIndex - 1];
+          const currentStatus = selectedTask.status;
+          let prevStatus = "未开始";
+          
+          switch (currentStatus) {
+            case "进行中":
+              prevStatus = "未开始";
+              break;
+            case "暂停":
+              prevStatus = "进行中";
+              break;
+            case "已完成":
+              prevStatus = "进行中";
+              break;
+            case "已归档":
+              prevStatus = "已完成";
+              break;
+          }
+          
+          MNUtil.undoGrouping(() => {
+            this.updateTaskStatus(selectedTask.note, prevStatus);
+            selectedTask.note.refresh();
+            // 刷新知识点卡片
+            note.refresh();
+          });
+          
+          MNUtil.showHUD(`↩️ 状态已退回：${currentStatus} → ${prevStatus}`);
+        }
+      );
+      
+      return true;
     }
     
     const titleParts = this.parseTaskTitle(note.noteTitle);
@@ -5301,15 +5436,72 @@ class MNTaskManager {
   
   /**
    * 暂停任务
-   * @param {MNNote} note - 要暂停的任务卡片
+   * @param {MNNote} note - 要暂停的任务卡片或知识点卡片
    * @returns {boolean} 是否成功暂停
    */
   static async pauseTask(note) {
-    if (!note || !this.isTaskCard(note)) {
-      MNUtil.showHUD("请先选择一个任务卡片");
+    if (!note) {
+      MNUtil.showHUD("请先选择一个任务");
       return false;
     }
     
+    // 检查是否是任务卡片，如果不是，尝试处理绑定的任务
+    if (!this.isTaskCard(note)) {
+      const bindedTasks = this.getBindedTaskCards(note);
+      
+      if (bindedTasks.length === 0) {
+        MNUtil.showHUD("请选择一个任务卡片");
+        return false;
+      }
+      
+      // 筛选可暂停的任务（进行中的任务）
+      const pausableTasks = bindedTasks.filter(t => t.status === '进行中');
+      
+      if (pausableTasks.length === 0) {
+        MNUtil.showHUD("没有进行中的任务可以暂停");
+        return false;
+      }
+      
+      if (pausableTasks.length === 1) {
+        // 只有一个可暂停任务
+        MNUtil.undoGrouping(() => {
+          this.updateTaskStatus(pausableTasks[0].note, "暂停");
+          pausableTasks[0].note.refresh();
+          // 刷新知识点卡片
+          note.refresh();
+        });
+        MNUtil.showHUD(`⏸️ 任务已暂停`);
+        return true;
+      }
+      
+      // 多个可暂停任务，让用户选择
+      const options = pausableTasks.map(t => {
+        const titleParts = this.parseTaskTitle(t.note.noteTitle);
+        return `【${titleParts.type}】${titleParts.content}`;
+      });
+      
+      const selectedIndex = await MNUtil.userSelect(
+        '选择要暂停的任务',
+        `发现 ${pausableTasks.length} 个进行中的任务`,
+        options
+      );
+      
+      if (selectedIndex === 0) {
+        return false;  // 用户取消
+      }
+      
+      const selectedTask = pausableTasks[selectedIndex - 1];
+      MNUtil.undoGrouping(() => {
+        this.updateTaskStatus(selectedTask.note, "暂停");
+        selectedTask.note.refresh();
+        // 刷新知识点卡片
+        note.refresh();
+      });
+      MNUtil.showHUD(`⏸️ 任务已暂停`);
+      return true;
+    }
+    
+    // 原有的任务卡片逻辑
     const titleParts = this.parseTaskTitle(note.noteTitle);
     const currentStatus = titleParts.status;
     

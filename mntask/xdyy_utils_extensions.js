@@ -5626,10 +5626,11 @@ class MNTaskManager {
     });
     
     // 批量制卡
-    MNUtil.undoGrouping(() => {
+    MNUtil.undoGrouping(async () => {
       const processedNodes = [];
       
-      nodesWithInfo.forEach((nodeInfo, index) => {
+      for (let index = 0; index < nodesWithInfo.length; index++) {
+        const nodeInfo = nodesWithInfo[index];
         const node = nodeInfo.node;
         const level = nodeInfo.level;
         const parentNode = index === 0 ? null : nodeParentMap.get(node);
@@ -5653,7 +5654,7 @@ class MNTaskManager {
         }
         
         // 转换为任务卡片，传递 taskType 作为字符串
-        const result = this.convertToTaskCard(node, taskType);
+        const result = await this.convertToTaskCard(node, taskType);
         
         if (result && (result.type === 'created' || result.type === 'upgraded')) {
           processedNodes.push({
@@ -5662,7 +5663,7 @@ class MNTaskManager {
             type: taskType
           });
         }
-      });
+      }
       
       MNUtil.showHUD(`✅ 批量制卡完成：成功处理 ${processedNodes.length}/${nodesWithInfo.length} 个节点`);
     });

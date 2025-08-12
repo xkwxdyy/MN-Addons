@@ -7353,39 +7353,33 @@ ${content.trim()}`;
       }
       
       // 5. 创建新任务卡片
-      let newTaskNote
       
-      MNUtil.undoGrouping(() => {
+      // MNUtil.undoGrouping(() => {
         // 创建子卡片
-        newTaskNote = MNNote.createChildNote(
-          parentTask,
-          safeSpacing(`【动作｜进行中】${newTaskTitle}`)
+        let newTaskNote = parentTask.createChildNote(
+          {title: safeSpacing(`${newTaskTitle}`), colorIndex: 3}
         )
+
+        newTaskNote.appendNoteLink(sourceNote, "To")
+        await this.convertToTaskCard(newTaskNote, "动作")
+        await this.toggleStatusForward(newTaskNote)
         
-        // 设置颜色（粉色=进行中）
-        newTaskNote.colorIndex = 3
-        
-        // 添加任务字段
-        MNTaskManager.addTaskFieldsWithStatus(newTaskNote)
         
         // 创建双向链接
         sourceNote.appendNoteLink(newTaskNote, "To")
-        newTaskNote.appendNoteLink(sourceNote, "From")
         
         // 如果源卡片是知识点卡片，移动链接
         try {
-          if (typeof MNMath !== 'undefined' && MNMath.isKnowledgeCard) {
-            if (MNMath.isKnowledgeCard(sourceNote)) {
+          if (typeof MNMath !== 'undefined' && MNMath.isKnowledgeNote) {
+            if (MNMath.isKnowledgeNote(sourceNote)) {
               MNUtil.log('📚 检测到知识点卡片，移动任务链接...')
-              if (MNMath.moveTaskCardLink) {
-                MNMath.moveTaskCardLink(sourceNote, newTaskNote)
-              }
+              MNMath.moveTaskCardLinksToRelatedField(sourceNote)
             }
           }
         } catch (e) {
           MNUtil.log(`⚠️ 处理知识点卡片链接时出错: ${e.message}`)
         }
-      })
+      // })
       
       // 6. 检查是否需要转换父任务类型
       const parentParts = MNTaskManager.parseTaskTitle(parentTask.noteTitle)
@@ -7401,7 +7395,7 @@ ${content.trim()}`;
       MNUtil.showHUD(`✅ 临时任务创建成功`)
       
       // 8. 打开新任务卡片
-      MNUtil.openNote(newTaskNote)
+      newTaskNote.focusInFloatMindMap(0.3)
       
       return {
         type: 'created',

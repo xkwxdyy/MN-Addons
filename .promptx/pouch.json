@@ -4,7 +4,7 @@
     {
       "from": "initial",
       "command": "init",
-      "timestamp": "2025-08-12T11:14:16.568Z",
+      "timestamp": "2025-08-12T13:26:31.734Z",
       "args": [
         {
           "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon"
@@ -12,5 +12,5 @@
       ]
     }
   ],
-  "lastUpdated": "2025-08-12T11:14:16.586Z"
+  "lastUpdated": "2025-08-12T13:26:31.746Z"
 }

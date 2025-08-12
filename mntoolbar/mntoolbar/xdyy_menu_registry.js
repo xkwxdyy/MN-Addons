@@ -551,10 +551,14 @@ function registerAllMenuTemplates() {
           action: "addStepComment",
           menuTitle: "    👣 添加 Step 评论（自动编号）",
         },
-        "🔄 等价证明",
+        "🔄 证明相关",
         {
           action: "addEquivalenceProof",
-          menuTitle: "    ⇔ 添加等价证明",
+          menuTitle: "    ⇔ 添加证明（使用模板）",
+        },
+        {
+          action: "manageProofTemplates",
+          menuTitle: "    ⚙️ 管理证明模板",
         },
         {
           action: "changeHtmlMarkdownCommentTypeByPopup",

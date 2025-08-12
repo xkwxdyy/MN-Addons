@@ -9991,13 +9991,15 @@ class MNMath {
   /**
    * 使用多选界面编辑同义词
    * @param {Object} group - 同义词组对象
+   * @returns {Promise<boolean>} 返回是否成功保存
    */
   static async editSynonymWordsWithMultiSelect(group) {
-    const selectedWords = new Set(group.words); // 默认全选现有词汇
-    let newWordsInput = "";
-    
-    // 递归显示多选对话框
-    const showMultiSelectDialog = () => {
+    return new Promise((resolve) => {
+      const selectedWords = new Set(group.words); // 默认全选现有词汇
+      let newWordsInput = "";
+      
+      // 递归显示多选对话框
+      const showMultiSelectDialog = () => {
       // 构建显示选项
       let displayOptions = group.words.map(word => {
         let prefix = selectedWords.has(word) ? "✅ " : "";
@@ -10030,12 +10032,13 @@ class MNMath {
         (alert, buttonIndex) => {
           if (buttonIndex === 0) {
             // 用户取消
+            resolve(false);
             return;
           }
           
           if (buttonIndex === 1) {
             // 添加新词汇
-            this.showAddNewWordsDialog((input) => {
+            this.showAddNewWordsDialog().then((input) => {
               if (input) {
                 newWordsInput = input;
               }
@@ -10074,6 +10077,7 @@ class MNMath {
               group.updatedAt = Date.now();
               this.saveSearchConfig();
               MNUtil.showHUD(`✅ 已更新词汇（${finalWords.length}个词）`);
+              resolve(true);
             } else {
               MNUtil.showHUD("❌ 至少需要2个同义词");
               showMultiSelectDialog();
@@ -10098,35 +10102,39 @@ class MNMath {
           }
         }
       );
-    };
-    
-    showMultiSelectDialog();
+      };
+      
+      showMultiSelectDialog();
+    });
   }
 
   /**
    * 显示添加新词汇的输入对话框
+   * @returns {Promise<string|null>} 返回输入的文本或 null
    */
-  static async showAddNewWordsDialog(callback) {
-    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-      "添加新词汇",
-      "输入新词汇，支持以下分隔方式：\n• 逗号：machine learning, deep learning\n• 分号：机器学习; 深度学习\n• 双空格：机器学习  深度学习\n• 单空格：机器 学习（仅当无其他分隔符时）",
-      2,
-      "取消",
-      ["确定"],
-      (alert, buttonIndex) => {
-        if (buttonIndex === 0) {
-          callback(null);
-          return;
+  static async showAddNewWordsDialog() {
+    return new Promise((resolve) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "添加新词汇",
+        "输入新词汇，支持以下分隔方式：\n• 逗号：machine learning, deep learning\n• 分号：机器学习; 深度学习\n• 双空格：机器学习  深度学习\n• 单空格：机器 学习（仅当无其他分隔符时）",
+        2,
+        "取消",
+        ["确定"],
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) {
+            resolve(null);
+            return;
+          }
+          
+          const input = alert.textFieldAtIndex(0).text;
+          if (input && input.trim()) {
+            resolve(input);
+          } else {
+            resolve(null);
+          }
         }
-        
-        const input = alert.textFieldAtIndex(0).text;
-        if (input && input.trim()) {
-          callback(input);
-        } else {
-          callback(null);
-        }
-      }
-    );
+      );
+    });
   }
 
   /**

@@ -2506,6 +2506,44 @@ class MNMath {
   }
 
   /**
+   * 判断卡片自身是否为知识点卡片（不向上查找）
+   * 只基于卡片自身的标题格式判断，不会查找父卡片
+   * 
+   * @param {MNNote} note - 要判断的卡片
+   * @returns {boolean} 如果卡片标题本身就是知识点格式返回 true，否则返回 false
+   */
+  static isDirectKnowledgeNote(note) {
+    const title = note.noteTitle || note.title || "";
+    // 检查是否有知识点卡片的标题格式：【类型：xxx】或【类型 >> xxx】
+    const match = title.match(/^【(.{1,4})\s*(?:>>|：)\s*.*】/);
+    if (!match) return false;
+    
+    const type = match[1].trim();
+    // 检查类型是否在知识点类型列表中
+    for (let typeKey in this.types) {
+      if (this.types[typeKey].prefixName === type && 
+          this.knowledgeNoteTypes.includes(typeKey)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * 判断卡片自身是否为归类卡片（不向上查找）
+   * 只基于卡片自身的标题格式判断，不会查找父卡片
+   * 
+   * @param {MNNote} note - 要判断的卡片
+   * @returns {boolean} 如果卡片标题本身就是归类格式返回 true，否则返回 false
+   */
+  static isDirectClassificationNote(note) {
+    const title = note.noteTitle || note.title || "";
+    // 检查是否有归类卡片的标题格式："xxx"相关 或 "xxx"："xxx"相关
+    return /^"[^"]*"："[^"]*"\s*相关.*$/.test(title) || 
+           /^"[^"]+"\s*相关.*$/.test(title);
+  }
+
+  /**
    * 基于卡片标题生成子卡片前缀内容
    */
   static createChildNoteTitlePrefixContent(note) {
@@ -11758,6 +11796,53 @@ class HtmlMarkdownUtils {
       if (!allDescendants || allDescendants.length === 0) {
           MNUtil.showHUD("没有可合并的后代笔记。", 2);
           return;
+      }
+
+      // 过滤掉知识点卡片和归类卡片的分支
+      // 首先找出所有需要排除的分支根节点（直接子节点）
+      const excludedBranchRoots = new Set();
+      
+      // 检查直接子节点
+      if (rootFocusNote.childNotes && rootFocusNote.childNotes.length > 0) {
+          rootFocusNote.childNotes.forEach(childNote => {
+              // 判断子卡片是否是归类卡片或知识点卡片（仅检查卡片自身，不向上查找）
+              if (MNMath.isDirectClassificationNote(childNote) || MNMath.isDirectKnowledgeNote(childNote)) {
+                  excludedBranchRoots.add(childNote.noteId);
+              }
+          });
+      }
+      
+      // 如果有需要排除的分支，过滤掉这些分支的所有节点
+      if (excludedBranchRoots.size > 0) {
+          const filteredDescendants = [];
+          const filteredTreeIndex = [];
+          
+          for (let i = 0; i < allDescendants.length; i++) {
+              const node = allDescendants[i];
+              const nodeTreeIndex = treeIndex[i];
+              
+              // treeIndex[0] 是直接子节点在 childNotes 中的索引
+              if (nodeTreeIndex.length > 0) {
+                  const directChildIndex = nodeTreeIndex[0];
+                  const directChild = rootFocusNote.childNotes[directChildIndex];
+                  
+                  // 如果这个节点不属于被排除的分支，则保留
+                  if (directChild && !excludedBranchRoots.has(directChild.noteId)) {
+                      filteredDescendants.push(node);
+                      filteredTreeIndex.push(nodeTreeIndex);
+                  }
+              }
+          }
+          
+          // 更新为过滤后的数组
+          allDescendants = filteredDescendants;
+          treeIndex = filteredTreeIndex;
+          
+          // 如果过滤后没有节点了，提示并返回
+          if (allDescendants.length === 0) {
+              MNUtil.showHUD("所有子卡片都是知识点或归类卡片，无法合并。", 2);
+              return;
+          }
       }
 
       const nodesWithInfo = allDescendants.map((node, i) => ({

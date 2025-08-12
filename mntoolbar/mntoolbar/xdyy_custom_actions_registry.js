@@ -4510,6 +4510,17 @@ function registerAllCustomActions() {
     }
   });
 
+  // manageExclusionGroups - 管理排除词组
+  global.registerCustomAction("manageExclusionGroups", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    try {
+      // 调用排除词组管理界面
+      await MNMath.manageExclusionGroups();
+    } catch (error) {
+      MNUtil.showHUD("管理排除词组失败: " + error.message);
+    }
+  });
+
   // exportSearchConfig - 导出搜索配置
   global.registerCustomAction("exportSearchConfig", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;

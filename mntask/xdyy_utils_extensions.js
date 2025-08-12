@@ -371,7 +371,8 @@ class MNTaskManager {
   static parseTaskTitle(title) {
     let titleParts = {}
     // 匹配格式：【类型 >> 路径｜状态】内容 或 【类型｜状态】内容
-    let match = title.match(/^【([^｜】]+)｜([^】]+)】(.*)/)
+    // 使用贪婪匹配 .+ 来处理嵌套的 【】 格式
+    let match = title.match(/^【(.+)｜([^】]+)】(.*)/)
     
     if (match) {
       const typeAndPath = match[1].trim()  // "类型" 或 "类型 >> 路径"
@@ -829,10 +830,21 @@ class MNTaskManager {
     
     const parentParts = this.parseTaskTitle(parentNote.noteTitle)
     
+    // 清理内容中的任务格式标记，防止嵌套格式传播
+    let cleanContent = parentParts.content
+    if (cleanContent) {
+      // 移除内容中的任务格式 【...】
+      cleanContent = cleanContent.replace(/【[^】]+】/g, '').trim()
+      // 如果清理后为空，使用原内容
+      if (!cleanContent) {
+        cleanContent = parentParts.content
+      }
+    }
+    
     if (parentParts.path) {
-      return safeSpacing(`${parentParts.path} >> ${parentParts.content}`)
+      return safeSpacing(`${parentParts.path} >> ${cleanContent}`)
     } else {
-      return parentParts.content
+      return cleanContent
     }
   }
 
@@ -857,7 +869,32 @@ class MNTaskManager {
     
     // 解析任务类型
     const titleParts = this.parseTaskTitle(note.noteTitle)
-    const taskType = titleParts.type
+    let taskType = titleParts.type
+    
+    // 错误处理：如果无法解析任务类型，尝试从标题推断或使用默认值
+    if (!taskType) {
+      MNUtil.log("⚠️ 无法从标题解析任务类型，可能是标题格式有问题")
+      MNUtil.log(`  - 标题: ${note.noteTitle}`)
+      
+      // 尝试从父卡片推断类型
+      const parentNote = note.parentNote
+      if (parentNote && this.isTaskCard(parentNote)) {
+        const parentParts = this.parseTaskTitle(parentNote.noteTitle)
+        if (parentParts.type === "动作") {
+          // 如果父卡片是动作，子卡片默认也是动作
+          taskType = "动作"
+          MNUtil.log(`  - 根据父卡片类型推断为: ${taskType}`)
+        } else {
+          // 其他情况默认为动作
+          taskType = "动作"
+          MNUtil.log(`  - 使用默认类型: ${taskType}`)
+        }
+      } else {
+        // 没有父卡片或父卡片不是任务卡片，默认为动作
+        taskType = "动作"
+        MNUtil.log(`  - 使用默认类型: ${taskType}`)
+      }
+    }
     
     MNUtil.log(`📋 任务类型：${taskType}`)
     

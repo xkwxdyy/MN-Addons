@@ -5565,21 +5565,9 @@ class MNTaskManager {
         
         MNUtil.log(`📝 层级 ${level} - 节点 ${index}：${node.noteTitle} → ${taskType}`);
         
-        // 检查是否已经是任务卡片
-        let isAlreadyTaskCard = this.isTaskCard(node);
-        if (!isAlreadyTaskCard) {
-          // 构建任务路径
-          const path = this.buildTaskPath(node);
-          // 创建任务卡片标题（包含路径）
-          const content = node.noteTitle || "未命名任务";
-          const taskTitle = path ? 
-            `【${taskType} >> ${path}｜未开始】${content}` :
-            `【${taskType}｜未开始】${content}`;
-          node.noteTitle = taskTitle;
-        }
-        
         // 转换为任务卡片，传递 taskType 作为字符串
-        const result = this.convertToTaskCard(node, taskType);
+        // convertToTaskCard 内部会处理标题的设置和判断
+        const result = await this.convertToTaskCard(node, taskType);
         
         if (result && (result.type === 'created' || result.type === 'upgraded')) {
           processedNodes.push({

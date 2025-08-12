@@ -4380,6 +4380,31 @@ class MNTaskManager {
   }
 
   /**
+   * 从看板中筛选任务卡片
+   * @param {MNNote} boardNote - 看板笔记
+   * @param {Object} options - 筛选选项
+   * @param {Array<string>} options.statuses - 要筛选的状态列表
+   * @returns {Array<MNNote>} 符合条件的任务卡片列表
+   */
+  static filterTasksFromBoard(boardNote, options = {}) {
+    const { statuses = [] } = options
+    
+    // 获取看板中的所有任务卡片
+    const allTasks = this.getAllTaskCardsFromBoard(boardNote)
+    
+    // 如果没有指定状态筛选，返回所有任务
+    if (statuses.length === 0) {
+      return allTasks
+    }
+    
+    // 筛选符合状态的任务
+    return allTasks.filter(task => {
+      const titleParts = this.parseTaskTitle(task.noteTitle)
+      return statuses.includes(titleParts.status)
+    })
+  }
+
+  /**
    * 获取笔记的状态
    * @param {MNNote} note - 笔记对象
    * @returns {string} 状态字符串（'未开始'/'进行中'/'已完成'/'已归档'）
@@ -4822,20 +4847,59 @@ class MNTaskManager {
       upgraded: [],
       skipped: [],
       failed: [],
+      cancelled: [],  // 添加 cancelled 类型
       total: notes.length
     };
     
     // 处理每个卡片
     for (const note of notes) {
-      let result;
-      
-      // 所有卡片都走 convertToTaskCard 路径
-      // convertToTaskCard 内部会处理已是任务卡片和新卡片的不同情况
-      result = await this.convertToTaskCard(note);
-      
-      // 归类结果
-      results[result.type].push(result);
+      try {
+        // 所有卡片都走 convertToTaskCard 路径
+        // convertToTaskCard 内部会处理已是任务卡片和新卡片的不同情况
+        const result = await this.convertToTaskCard(note);
+        
+        // 添加日志
+        MNUtil.log(`📋 处理卡片: ${note.noteTitle}`);
+        MNUtil.log(`  结果类型: ${result.type}`);
+        if (result.error) {
+          MNUtil.log(`  错误信息: ${result.error}`);
+        }
+        
+        // 确保 result.type 是有效的键
+        if (results.hasOwnProperty(result.type)) {
+          results[result.type].push(result);
+        } else {
+          // 未知类型，当作失败处理
+          MNUtil.log(`❌ 未知的结果类型: ${result.type}`);
+          results.failed.push({
+            ...result,
+            type: 'failed',
+            error: `未知的结果类型: ${result.type}`
+          });
+        }
+      } catch (error) {
+        // 捕获异常
+        MNUtil.log(`❌ 处理卡片出错: ${error.message || error}`);
+        MNUtil.log(`  卡片标题: ${note.noteTitle}`);
+        MNUtil.log(`  错误堆栈: ${error.stack || '无堆栈信息'}`);
+        
+        results.failed.push({
+          type: 'failed',
+          noteId: note.noteId,
+          title: note.noteTitle,
+          error: error.message || error.toString()
+        });
+      }
     }
+    
+    // 添加汇总日志
+    MNUtil.log(`\n📊 批处理结果汇总:`);
+    MNUtil.log(`  总计: ${results.total} 个`);
+    MNUtil.log(`  创建: ${results.created.length} 个`);
+    MNUtil.log(`  升级: ${results.upgraded.length} 个`);
+    MNUtil.log(`  跳过: ${results.skipped.length} 个`);
+    MNUtil.log(`  取消: ${results.cancelled.length} 个`);
+    MNUtil.log(`  失败: ${results.failed.length} 个`);
     
     return results;
   }
@@ -4874,6 +4938,9 @@ class MNTaskManager {
     if (result.skipped.length > 0) {
       messages.push(`⏭️ 跳过: ${result.skipped.length}个`);
     }
+    if (result.cancelled && result.cancelled.length > 0) {
+      messages.push(`🚫 取消: ${result.cancelled.length}个`);
+    }
     if (result.failed.length > 0) {
       messages.push(`❌ 失败: ${result.failed.length}个`);
     }
@@ -4883,8 +4950,15 @@ class MNTaskManager {
     
     // 记录详细日志
     if (result.failed.length > 0) {
+      MNUtil.log(`\n❌ 失败详情:`);
       result.failed.forEach(item => {
-        MNUtil.log(`❌ 制卡失败 [${item.title}]: ${item.error}`);
+        MNUtil.log(`  [${item.title}]: ${item.error}`);
+      });
+    }
+    if (result.cancelled && result.cancelled.length > 0) {
+      MNUtil.log(`\n🚫 取消详情:`);
+      result.cancelled.forEach(item => {
+        MNUtil.log(`  [${item.title || '未知'}]: ${item.reason || '用户取消'}`);
       });
     }
   }
